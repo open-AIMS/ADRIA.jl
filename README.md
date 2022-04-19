@@ -1,4 +1,4 @@
-# ADRIAjl
+# ADRIA.jl
 
 Julia implementation of ADRIA (in progress).
 
