@@ -7,18 +7,16 @@ Partial calibration using data by Hughes et al [1] (see Fig. 2C)
 
 Parameters
 ----------
-tstep   : int, current time step
-n_p1    : float, Gompertz distribution shape parameter 1
-n_p2    : float, Gompertz distribution shape parameter 2
-a_adapt : array[sp*2, float], assisted adaptation
+Y       : bleaching mortality for each coral species
+tstep   : current time step
+n_p1    : Gompertz distribution shape parameter 1
+n_p2    : Gompertz distribution shape parameter 2
+a_adapt : assisted adaptation
             where `sp` is the number of species considered
-n_adapt : array[sp*2, float], natural adaptation
+n_adapt : natural adaptation
             where `sp` is the number of species considered
-dhw     : float, degree heating weeks for given time step
+dhw     : degree heating weeks for given time step for each site
 
-Returns
--------
-Y : Array[sp*2, float], bleaching mortality for each coral species
 
 References
 ----------
@@ -44,18 +42,18 @@ References
     Marine Ecology Progress Series, 603, 257-264.
     https://doi.org/10.3354/meps12732
 """
-function bleaching_mortality(tstep, n_p1, n_p2, a_adapt, n_adapt, bleach_resist, dhw)
-    ad = a_adapt + bleach_resist + (tstep .* n_adapt);
+function bleaching_mortality!(Y::Array{Float64, 2}, tstep::Int64, n_p1::Float64, n_p2::Float64, 
+                              a_adapt::Vector{Float64}, n_adapt::Vector{Float64}, 
+                              bleach_resist::Vector{Float64}, dhw::Vector{Float64})::Nothing
+    ad::Array{Float64} = a_adapt .+ bleach_resist .+ (tstep .* n_adapt);
 
     # Incorporate adaptation effect but maximum reduction is to 0
-    capped_dhw = max(0.0, dhw - ad);
-
+    capped::Array{Float64} = max.(0.0, dhw' .- ad)
     # Model 1: #Based on delta covers observed by Hughes et al. 2018 (Fig 2A)
     # and calibrated by Bozec et al. 2022
-    Y = exp(n_p1 * (exp(n_p2 * capped_dhw)));
-
     # Halve bleaching mortality (see Baird et al., 2018)
-    Y .= Y * 0.5;
+    Y .= 1.0 .- exp.(n_p1 * (exp.(n_p2 * capped))) * 0.5;
 
+    return
 end
 
