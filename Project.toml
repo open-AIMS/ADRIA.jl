@@ -26,6 +26,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 WinRPM = "c17dfb99-b4f7-5aad-8812-456da1ad7187"
 
 [compat]
+CSV = "0.10"
 OrdinaryDiffEq = "6"
 GraphPlot = "0.5"
 GeoDataFrames = "0.2"
