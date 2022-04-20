@@ -7,7 +7,7 @@ import ModelParameters: Model
 
 Convert Coral Model specification to a DataFrame of coral parameters
 """
-function to_spec(m::Corals)::DataFrame
+function to_spec(m::Coral)::DataFrame
     _, pnames, spec = coral_spec()
 
     val_df = DataFrame(Model(m))

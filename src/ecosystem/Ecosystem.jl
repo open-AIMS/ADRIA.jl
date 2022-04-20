@@ -35,7 +35,7 @@ Base.@kwdef struct Intervention{N,P} <: EcoModel
     fogging::P = Param(0.2, ptype="real", bounds=(0.0, 0.3)) # fogging, float, assumed percent reduction in bleaching mortality
     SRM::P = Param(0.0, ptype="real", bounds=(0.0, 12.0)) # SRM, float, reduction in DHWs due to shading
     a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 12.0)) # Aadpt, float, float, increased adaptation rate
-    n_adapt::P = Param(0.025, ptype="real", bounds=(0.0, 0.1)) # Natad, float, natural adaptation rate
+    n_adapt::P = Param(0.025, ptype="real", bounds=(0.0, 0.05)) # Natad, float, natural adaptation rate
     seed_years::N = Param(10, ptype="integer", bounds=(5, 16)) # Seedyrs, integer, years into simulation during which seeding is considered
     shade_years::N = Param(10, ptype="integer", bounds=(5, 74)) # Shadeyrs, integer, years into simulation during which shading is considered
     seed_freq::N = Param(5, ptype="integer", bounds=(0, 6)) # Seedfreq, integer, yearly intervals to adjust seeding site selection (0 is set and forget)
@@ -75,14 +75,14 @@ Example
 -------
 julia> _coral_struct(Dict("a"=>200))
 
-julia> y = Corals()
-Corals{Int64}(200)
+julia> y = Coral()
+Coral{Int64}(200)
 
 julia> y.a
     200
 """
 function _coral_struct(field_defs::Dict)::Nothing
-    s::String = "Base.@kwdef struct Corals{P} <: EcoModel\n"
+    s::String = "Base.@kwdef struct Coral{P} <: EcoModel\n"
 
     for (f, v) in field_defs
         s = s * "$(f)::P = $(v)\n"
@@ -103,11 +103,11 @@ Example
 -------
     # Define default coral struct (default in ADRIA is ± 10%)
     create_coral_struct()
-    coral = Corals()
+    coral = Coral()
 
     # Recreate coral spec ± 50% from nominal values
     create_coral_struct((0.5, 1.5))
-    coral = Corals()
+    coral = Coral()
 """
 function create_coral_struct(bounds=(0.9, 1.1))
     _, base_coral_params, x = coral_spec()
@@ -174,7 +174,7 @@ function coral_spec()::NamedTuple
 
     params = DataFrame();
 
-    param_names = ["growth_rate", "fecundity", "wavemort90", "mb_rate", "natad", "bleach_resist"]
+    param_names = ["growth_rate", "fecundity", "wavemort90", "mb_rate", "n_adapt", "bleach_resist"]
 
     # Coral species are divided into taxa and size classes
     taxa_names = [
@@ -309,7 +309,7 @@ function coral_spec()::NamedTuple
     # added to these
 
     natad = zeros(36);
-    params.natad = natad;
+    params.n_adapt = natad;
 
     # Estimated bleaching resistance (as DHW) relative to the assemblage
     # response for 2016 bleaching on the GBR (based on Hughes et al. 2018).
