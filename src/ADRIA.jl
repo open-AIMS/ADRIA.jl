@@ -6,7 +6,7 @@ using Distributed
 using MATLAB  # MATLAB interface
 using MAT     # Julia package to read `.mat` files
 
-using StaticArrays
+using StaticArrays, SparseArrays, SparseArrayKit
 using LinearAlgebra, Statistics
 using DifferentialEquations
 
