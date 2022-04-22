@@ -2,40 +2,42 @@
 
 Core ADRIA domain. Represents study area.
 """
-struct Domain
-    TP_data     # site connectivity data
-    site_ranks  # site rank
-    strongpred  # strongest predecessor
-    site_data   # table of site data (depth, carrying capacity, etc)
-    site_id_col  # column to use as site ids
-    init_coral_cover  # initial coral cover dataset
-    coral_domain  # coral
-    connectivity_site_ids  # Site IDs as specified by the connectivity dataset (indicates order of `TP_data`)
-    removed_sites  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
-    dhw_scens  # DHW scenarios
-    wave_scens # wave scenarios
+struct Domain{M, I, D, S, V, T, X}
+    # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
+
+    TP_data::D     # site connectivity data
+    site_ranks::V  # site rank
+    strongpred::I  # strongest predecessor
+    site_data::D   # table of site data (depth, carrying capacity, etc)
+    site_id_col::S  # column to use as site ids
+    init_coral_cover::M  # initial coral cover dataset
+    coral_growth::CoralGrowth  # coral
+    connectivity_site_ids::T  # Site IDs as specified by the connectivity dataset (indicates order of `TP_data`)
+    removed_sites::T  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
+    dhw_scens::X  # DHW scenarios
+    wave_scens::X # wave scenarios
 
     # Parameters
-    intervention
-    criteria
-    coral
-    sim_constants
+    intervention::Intervention
+    criteria::Criteria
+    coral::Coral
+    sim_constants::SimConstants
 end
 
 
 """
-Barrier function to create Domain struct without specifying core parameters.
+Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
 function Domain(TP_base, site_ranks, strongest_predecessor, 
-                  site_data, site_id_col, init_coral_cover, coral_domain, site_ids, removed_sites, DHWs, waves)
+                  site_data, site_id_col, init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves)
     
     intervention = Intervention()
     criteria = Criteria()
     coral = Coral()
     sim_constants = SimConstants()
     return Domain(TP_base, site_ranks, strongest_predecessor, site_data, site_id_col,
-                  init_coral_cover, coral_domain, site_ids, removed_sites, DHWs, waves,
-                  intervention, criteria, coral, sim_constants)
+                  init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
+                  intervention, criteria, coral, sim_constants);
 end
 
 
@@ -68,7 +70,7 @@ function Domain(site_data_fn::String, site_id_col::String, init_coral_fn::String
         dhw = matread(dhw_fn)["dhw"]
 
         if size(dhw, 2) != n_sites
-            @warn "Mismatch in DHW data. DEBUG: Truncating so that data size matches!"
+            @warn "Mismatch in DHW data. Truncating so that data size matches!"
             dhw = dhw[:, 1:n_sites, :];
         end
 
@@ -81,7 +83,7 @@ function Domain(site_data_fn::String, site_id_col::String, init_coral_fn::String
         waves = matread(wave_fn)["wave"]
 
         if size(waves, 2) != n_sites
-            @warn "Mismatch in wave data. DEBUG: Truncating so that data size matches!"
+            @warn "Mismatch in wave data. Truncating so that data size matches!"
             waves = waves[:, 1:n_sites, :];
         end
     else
@@ -94,7 +96,7 @@ function Domain(site_data_fn::String, site_id_col::String, init_coral_fn::String
         coral_cover = matread(init_coral_fn)["covers"]
 
         if !isempty(site_conn.truncated)
-            @warn "Mismatch in coral cover data. DEBUG: Truncating so that data size matches!"
+            @warn "Mismatch in coral cover data. Truncating so that data size matches!"
             coral_cover = coral_cover[:, 1:n_sites];
         end
     else
