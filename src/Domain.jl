@@ -7,6 +7,7 @@ struct Domain
     site_ranks  # site rank
     strongpred  # strongest predecessor
     site_data   # table of site data (depth, carrying capacity, etc)
+    site_id_col  # column to use as site ids
     init_coral_cover  # initial coral cover dataset
     coral_domain  # coral
     connectivity_site_ids  # Site IDs as specified by the connectivity dataset (indicates order of `TP_data`)
@@ -26,13 +27,13 @@ end
 Barrier function to create Domain struct without specifying core parameters.
 """
 function Domain(TP_base, site_ranks, strongest_predecessor, 
-                  site_data, init_coral_cover, coral_domain, site_ids, removed_sites, DHWs, waves)
+                  site_data, site_id_col, init_coral_cover, coral_domain, site_ids, removed_sites, DHWs, waves)
     
     intervention = Intervention()
     criteria = Criteria()
     coral = Coral()
     sim_constants = SimConstants()
-    return Domain(TP_base, site_ranks, strongest_predecessor, site_data, 
+    return Domain(TP_base, site_ranks, strongest_predecessor, site_data, site_id_col,
                   init_coral_cover, coral_domain, site_ids, removed_sites, DHWs, waves,
                   intervention, criteria, coral, sim_constants)
 end
@@ -102,7 +103,7 @@ function Domain(site_data_fn::String, site_id_col::String, init_coral_fn::String
     end
 
     return Domain(site_conn.TP_base, conns.site_ranks, conns.strongest_predecessor, 
-                  site_data, coral_cover, coral_growth, site_conn.site_ids, site_conn.truncated, dhw, waves)
+                  site_data, site_id_col, coral_cover, coral_growth, site_conn.site_ids, site_conn.truncated, dhw, waves)
 end
 
 
