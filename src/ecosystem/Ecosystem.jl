@@ -31,11 +31,11 @@ Base.@kwdef struct Intervention{N,P} <: EcoModel
     # Intervention Parameters
     guided::N = Param(0, ptype="integer", bounds=(0, 5)) # Guided, choice of MCDA approach
     seed_TA::N = Param(0, ptype="integer", bounds=(0, 500000)) # Seed1, integer, number of Enhanced TA to seed
-    seed_TC::N = Param(0, ptype="integer", bounds=(0, 500000)) # Seed2, integer, number of Enhanced TC to seed
+    seed_CA::N = Param(0, ptype="integer", bounds=(0, 500000)) # Seed2, integer, number of Enhanced CA to seed
     fogging::P = Param(0.2, ptype="real", bounds=(0.0, 0.3)) # fogging, float, assumed percent reduction in bleaching mortality
     SRM::P = Param(0.0, ptype="real", bounds=(0.0, 12.0)) # SRM, float, reduction in DHWs due to shading
     a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 12.0)) # Aadpt, float, float, increased adaptation rate
-    n_adapt::P = Param(0.025, ptype="real", bounds=(0.0, 0.05)) # Natad, float, natural adaptation rate
+    n_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 0.05)) # Natad, float, natural adaptation rate
     seed_years::N = Param(10, ptype="integer", bounds=(5, 16)) # Seedyrs, integer, years into simulation during which seeding is considered
     shade_years::N = Param(10, ptype="integer", bounds=(5, 74)) # Shadeyrs, integer, years into simulation during which shading is considered
     seed_freq::N = Param(5, ptype="integer", bounds=(0, 6)) # Seedfreq, integer, yearly intervals to adjust seeding site selection (0 is set and forget)
@@ -174,7 +174,7 @@ function coral_spec()::NamedTuple
 
     params = DataFrame();
 
-    param_names = ["growth_rate", "fecundity", "wavemort90", "mb_rate", "n_adapt", "bleach_resist"]
+    param_names = ["growth_rate", "fecundity", "wavemort90", "mb_rate", "bleach_resist"]
 
     # Coral species are divided into taxa and size classes
     taxa_names = [
@@ -307,9 +307,8 @@ function coral_spec()::NamedTuple
 
     # Background rates of natural adaptation. User-defined natad rates will be
     # added to these
-
-    natad = zeros(36);
-    params.n_adapt = natad;
+    # natad = zeros(36);
+    # params.n_adapt = natad;
 
     # Estimated bleaching resistance (as DHW) relative to the assemblage
     # response for 2016 bleaching on the GBR (based on Hughes et al. 2018).
