@@ -2,22 +2,23 @@
 
 
 """
-    run_scenario(domain::Domain)::NamedTuple
+    run_scenario(domain::Domain; reps=1, MCDA_approach=1)::NamedTuple
 
-Convenience function to run a scenario for a Domain directly.
+Convenience function to directly run a scenario for a Domain with pre-set values.
 """
-function run_scenario(domain::Domain; reps=1, alg_ind=1)::NamedTuple
+function run_scenario(domain::Domain; reps=1, MCDA_approach=1)::NamedTuple
 
     # Set scenario constants here to avoid repeated allocations
-    @set! domain.coral_domain.ode_p.P = domain.sim_constants.max_coral_cover::Float64
-    @set! domain.coral_domain.ode_p.comp = domain.sim_constants.comp::Float64
+    # TODO: Set all constants outside rep or scenario loop
+    @set! domain.coral_growth.ode_p.P = domain.sim_constants.max_coral_cover::Float64
+    @set! domain.coral_growth.ode_p.comp = domain.sim_constants.comp::Float64
 
-    x = (x=nothing,)
+    # TODO: Actually store all results
     for i in 1:reps
-        x = run_scenario(domain.coral_domain, domain.intervention, domain.criteria,
+        x = run_scenario(domain.coral_growth, domain.intervention, domain.criteria,
             domain.coral_params, domain.sim_constants, domain.site_data,
-            domain.init_coral_cover, domain.coral_domain.ode_p,
-            domain.dhw_scens[:, :, i], domain.wave_scens[:, :, i], alg_ind)
+            domain.init_coral_cover, domain.coral_growth.ode_p,
+            domain.dhw_scens[:, :, i], domain.wave_scens[:, :, i], MCDA_approach)
     end
 
     return x
@@ -25,13 +26,14 @@ end
 
 
 """
-    run_scenario(domain, interv, criteria, corals, sim_params, site_data, init_cov::Array{Float64, 2})::NamedTuple
+    run_scenario(domain, interv, criteria, corals, sim_params, site_data, init_cov::Array{Float64, 2}, p::NamedTuple, 
+                 dhw_scen::Array, wave_scen::Array, MCDA_approach::Int64)::NamedTuple
 
-
+Core scenario running function.
 """
 function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
     init_cov::Array{Float64,2}, p::NamedTuple, dhw_scen::Array,
-    wave_scen::Array, alg_ind::Int64)::NamedTuple
+    wave_scen::Array, MCDA_approach::Int64)::NamedTuple
 
     # TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
@@ -82,6 +84,15 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
     Yout::Array{Float64,3} = zeros(tf, n_species, n_sites)
     Yout[1, :, :] .= @view init_cov[:, :]
     cov_tmp::Array{Float64,2} = similar(init_cov, Float64)
+
+    # Yshade = ndSparse(zeros(tf, nsites));
+    # Yfog = ndSparse(zeros(tf, nsites));
+    # Yseed = ndSparse(zeros(tf, 2, nsites)); % only log seedable corals to save memory
+
+    site_rankings = SparseArray(zeros(tf, n_sites, 2)) # log seeding/shading ranks
+    Yshade = SparseArray(spzeros(tf, n_sites))
+    Yfog = SparseArray(spzeros(tf, n_sites))
+    Yseed = SparseArray(zeros(tf, 2, n_sites))
 
     # Intervention strategy: 0 is random, 1 is guided
     strategy = interv.guided.val
@@ -194,8 +205,7 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
     n_adapt = interv.n_adapt.val  # Level of natural coral adaptation
 
     # level of added natural coral adaptation
-    # natad = coral_params.natad + interv.Natad;
-    n_adapt = interv.n_adapt.val
+    n_adapt = interv.n_adapt.val  # natad = coral_params.natad + interv.Natad;
     bleach_resist = corals.bleach_resist
 
     ## Extract other parameters
@@ -206,7 +216,7 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
     # Wave stress
     mwaves::Array{Float64,3} = zeros(tf, n_species, n_sites)
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
-    for sp::Int64 in 1:n_species
+    @inbounds for sp::Int64 in 1:n_species
         mwaves[:, sp, :] .= wavemort90[sp] .* wave_scen
     end
 
@@ -250,20 +260,16 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
 
             dMCDA_vars.sumcover = sum(Y_pstep, dims=1)' # dims: nsites * 1
 
-            # sslog.seed = yrslogseed(tstep);
-            # sslog.shade = yrslogshade(tstep);
-            (prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings) = dMCDA(mcda_vars, alg_ind,
+            (prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
                 refseedsites, prefshadesites, rankings)
 
             nprefseed[tstep] = nprefseedsites    # number of preferred seeding sites
             nprefshade[tstep] = nprefshadesites  # number of preferred shading sites
 
-        # Log site ranks
-        # if any(strlength(collect_logs) > 0) && any(ismember("site_rankings", collect_logs))
-        #     % skip first col as it only holds site ids
-        #     site_rankings(tstep, rankings(:, 1), :) = rankings(:, 2:end);
-        # end
+            # Log site ranks
+            # First col only holds site ids so skip (with 2:end)
+            site_rankings[tstep, rankings[:, 1], :] = rankings[:, 2:end]
         else
             # Unguided
             if seed_decision_years[tstep]
@@ -278,38 +284,31 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
 
         has_shade_sites = !all(prefshadesites .== 0)
         has_seed_sites = !all(prefseedsites .== 0)
+        if (srm > 0) && in_shade_years && has_shade_sites
+            Yshade[tstep, prefshadesites] = srm
 
-        ### TODO: Apply fogging
-        # % Warming and disturbance event going into the pulse function
-        # if (srm > 0) && in_shade_years && has_shade_sites
-        #     Yshade(tstep, prefshadesites) = srm;
+            # Apply reduction in DHW due to shading
+            adjusted_dhw::Array{Float64} = max(0.0, dhw_step - Yshade(tstep, :))
+        else
+            adjusted_dhw = dhw_step
+        end
 
-        #     % Apply reduction in DHW due to shading
-        #     adjusted_dhw = max(0.0, dhw_step - Yshade(tstep, :));
-        # else
-        #     adjusted_dhw = dhw_step;
-        # end
-
-        # adjusted_dhw::Array{Float64} = dhw_step
-
-
-        # if (fogging > 0.0) && in_shade_years && (has_seed_sites || has_shade_sites)
-        #     if has_seed_sites
-        #         % Always fog where sites are selected if possible
-        #         adjusted_dhw(:, prefseedsites) = adjusted_dhw(:, prefseedsites) .* (1.0 - fogging);
-        #         Yfog(tstep, prefseedsites) = fogging;
-        #     elseif has_shade_sites
-        #         % Otherwise, if no sites are selected, fog selected shade sites
-        #         adjusted_dhw(:, prefshadesites) = adjusted_dhw(:, prefshadesites) .* (1.0 - fogging);
-        #         Yfog(tstep, prefshadesites) = fogging;
-        #     end
-        # end
-        ### END APPLY FOGGING
+        if (fogging > 0.0) && in_shade_years && (has_seed_sites || has_shade_sites)
+            if has_seed_sites
+                # Always fog where sites are selected if possible
+                adjusted_dhw[prefseedsites] = adjusted_dhw[prefseedsites] .* (1.0 - fogging)
+                Yfog[tstep, prefseedsites] .= fogging
+            elseif has_shade_sites
+                # Otherwise, if no sites are selected, fog selected shade sites
+                adjusted_dhw[prefshadesites] = adjusted_dhw[prefshadesites] .* (1.0 - fogging)
+                Yfog[tstep, prefshadesites] .= fogging
+            end
+        end
 
         # Calculate and apply bleaching mortality
         bleaching_mortality!(Sbl, tstep, neg_e_p1,
             neg_e_p2, a_adapt, n_adapt,
-            bleach_resist, dhw_step)
+            bleach_resist, adjusted_dhw)
 
         # proportional loss + proportional recruitment
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
@@ -328,8 +327,8 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
             cov_tmp[seed_size_class2, prefseedsites] .= cov_tmp[seed_size_class2, prefseedsites] .+ scaled_seed_CA  # seed Enhanced Corymbose Acropora
 
             # Log seed values/sites
-            # Yseed(tstep, 1, prefseedsites) = scaled_seed1; % log site as seeded with Enhanced Tabular Acropora
-            # Yseed(tstep, 2, prefseedsites) = scaled_seed2; % log site as seeded with Enhanced Corymbose Acropora
+            Yseed[tstep, 1, prefseedsites] = scaled_seed1  # log site as seeded with Enhanced Tabular Acropora
+            Yseed[tstep, 2, prefseedsites] = scaled_seed2  # log site as seeded with Enhanced Corymbose Acropora
         end
 
         growth.u0[:, :] .= @views cov_tmp[:, :] .* prop_loss[:, :]  # update initial condition
@@ -341,7 +340,7 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
         # Yout[tstep, :, :] .= sol.u[end]
     end
 
-    results::NamedTuple = (Y=Yout,)
+    results::NamedTuple = (Y=Yout, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_rankings=site_rankings)
 
     return results
 end
