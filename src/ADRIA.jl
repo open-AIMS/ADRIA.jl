@@ -1,5 +1,8 @@
 module ADRIA
 
+using Random
+using Distributed
+
 using MATLAB  # MATLAB interface
 using MAT     # Julia package to read `.mat` files
 
@@ -17,8 +20,6 @@ using CSV
 include("utils/text_display.jl");  # need better name for this file
 
 include("ecosystem/corals/growth.jl");
-include("ecosystem/corals/fecundity_scope.jl");
-include("ecosystem/corals/bleaching_mortality.jl");
 include("ecosystem/corals/CoralGrowth.jl");
 include("ecosystem/Ecosystem.jl");
 
@@ -32,8 +33,8 @@ include("ecosystem/const_params.jl");
 include("Domain.jl")
 include("scenario.jl");
 
-# Connectivity
 include("sites/connectivity.jl")
+include("sites/dMCDA.jl");
 
 
 export fecundity_scope!, bleaching_mortality!
