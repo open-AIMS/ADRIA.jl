@@ -13,12 +13,14 @@ Parameters
 ----------
 file_loc   : str, path to data file (or datasets) to load.
                 If a folder, searches subfolders as well.
-site_order : string, array of recom connectivity IDs indicating order
+conn_ids : Vector, of connectivity IDs indicating order
                 of TP values
+unique_ids : Vector, of unique site ids
+site_order : Vector, of indices mapping duplicate conn_ids to their unique ID positions
 con_cutoff : float, percent thresholds of max for weak connections in
                 network (defined by user or defaults in simConstants)
 agg_func   : function_handle, defaults to `mean`.
-swap       : logical, whether to transpose data.
+swap       : boolean, whether to transpose data.
 
 
 Returns
@@ -32,12 +34,16 @@ NamedTuple:
 Examples
 --------
     site_connectivity("MooreTPmean.csv", site_order)
-    site_connectivity("MooreTPmean.csv", site_order; con_cutoff=0.01, agg_func=mean, swap=true)
+    site_connectivity("MooreTPmean.csv", site_order; con_cutoff=0.02, agg_func=mean, swap=true)
 """
-function site_connectivity(file_loc::String, site_order::Array; con_cutoff=0.02, agg_func=mean, swap=false)::NamedTuple
-    if any(ismissing.(site_order))
-        @warn "Removing entries marked as `missing` from provided list of sites (`site_order`)."
-        site_order = skipmissing(site_order)
+function site_connectivity(file_loc::String, conn_ids::Vector, unique_site_ids::Vector, site_order::Vector; con_cutoff=0.02, agg_func=mean, swap=false)::NamedTuple
+    
+    # Remove any row marked as missing
+    if any(ismissing.(conn_ids))
+        @warn "Removing entries marked as `missing` from provided list of sites."
+        unique_site_ids = String.(unique_site_ids[.!ismissing.(conn_ids)])
+        site_order = site_order[.!ismissing.(conn_ids)]
+        conn_ids = String.(conn_ids[.!ismissing.(conn_ids)])
     end
 
     if isdir(file_loc)
@@ -56,22 +62,34 @@ function site_connectivity(file_loc::String, site_order::Array; con_cutoff=0.02,
     con_site_ids = names(con_file1)[2:end]
 
     # Get IDs missing in con_site_ids
-    truncated = setdiff(con_site_ids, site_order)
+    truncated = setdiff(con_site_ids, conn_ids)
 
     # Get IDs missing in site_order
-    append!(truncated, setdiff(site_order, con_site_ids))
+    append!(truncated, setdiff(conn_ids, con_site_ids))
 
     # Identify IDs that appear in both datasets
-    valid_ids = [x for x in con_site_ids if x ∉ truncated]
+    # valid_ids = [x for x in con_site_ids if x ∉ truncated]
+
+    # mark missing elements
+    valid_ids = [x ∉ truncated ? x : missing for x in conn_ids]
+    not_missing = .!ismissing.(valid_ids)
+
+    # Align IDs
+    conn_ids = coalesce(conn_ids[not_missing])
+    unique_site_ids = coalesce(unique_site_ids[not_missing])
+    site_order = coalesce(site_order[not_missing])
+    # conn_ids = [x for x in conn_ids if x ∉ truncated]
+    # conn_ids = conn_ids[.!ismissing.(valid_ids)]
+
+    # Use marked missing elements array to align unique_id and site_order list
+    # ...
 
     if length(truncated) > 0
         if length(truncated) == length(con_site_ids)
             error("All sites appear to be missing from data set. Aborting.")
         end
 
-        for missing_id in truncated
-            @warn "$(missing_id) not found in site_ids! This site will be removed from runs."
-        end
+        @warn "The following sites were not found in site_ids and were removed:\n$(truncated)"
     end
 
     # Helper method to align/reorder data
@@ -79,16 +97,21 @@ function site_connectivity(file_loc::String, site_order::Array; con_cutoff=0.02,
     # Columns should match order of rows, except that Julia DFs treats the
     # index column as the first data column. To account for this, we subtract 1
     # from the list of row indices to get things to line up properly.
-    align_df = (target_df) -> target_df[indexin(valid_ids, names(target_df)) .- 1, valid_ids]
+    # align_df = (target_df) -> target_df[indexin(conn_ids, names(target_df)) .- 1, conn_ids]
+
+    # Recreate Dataframe, duplicating rows/cols by indicated order of unique sites
+    # We skip the first column (with `2:end`) as this is the source site index column
+    align_df = (df) -> DataFrame(Dict(c => v for (c, v) in 
+                        zip(unique_site_ids, eachcol(Matrix(df[:, 2:end])[site_order, site_order]))))
 
     # Reorder all data into expected form
-    con_file1 = align_df(con_file1)  # con_file1[indexin(valid_ids, names(con_file1)) .- 1, valid_ids]
+    con_file1 = align_df(con_file1)
     if length(con_files) > 1
         # More than 1 file, so read all these in
         con_data = [con_file1]
         for cf in con_files[2:end]
             df = CSV.read(cf, DataFrame, comment="#", missingstring=["NA"], transpose=swap)
-            push!(con_data, align_df(df))  # df[indexin(valid_ids, names(df)) .- 1, valid_ids]
+            push!(con_data, align_df(df))
         end
 
         # Fill missing values with 0.0
@@ -113,7 +136,7 @@ function site_connectivity(file_loc::String, site_order::Array; con_cutoff=0.02,
         TP_base[:, :] = tmp
     end
 
-    return (TP_base=TP_base, truncated=truncated, site_ids=valid_ids)
+    return (TP_base=TP_base, truncated=truncated, site_ids=conn_ids)
 end
 
 

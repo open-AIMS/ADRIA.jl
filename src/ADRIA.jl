@@ -10,7 +10,7 @@ using StaticArrays, SparseArrays, SparseArrayKit
 using LinearAlgebra, Statistics
 using DifferentialEquations
 
-using Setfield, ModelParameters
+using Setfield, ModelParameters, DataStructures
 
 using DataFrames, GeoDataFrames, Graphs
 
@@ -27,14 +27,14 @@ include("ecosystem/Ecosystem.jl");
 # Have to call this before including specification methods
 create_coral_struct()
 
-include("ecosystem/corals/spec.jl");
-include("ecosystem/const_params.jl");
+include("ecosystem/corals/spec.jl")
+include("ecosystem/const_params.jl")
 
 include("Domain.jl")
-include("scenario.jl");
+include("scenario.jl")
 
 include("sites/connectivity.jl")
-include("sites/dMCDA.jl");
+include("sites/dMCDA.jl")
 
 
 export fecundity_scope!, bleaching_mortality!

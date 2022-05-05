@@ -1,24 +1,119 @@
 """Scenario running functions"""
 
 
+using Infiltrator
+using Zarr
+import Dates: now
+import Setfield: @set!
+
 """
-    run_scenario(domain::Domain; reps=1, MCDA_approach=1)::NamedTuple
+    run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
+    run_scenarios(df_row::DataFrameRow, domain::Domain, reps::Int64, site_ranks, seed_log, fog_log)
+
+Run scenarios defined by parameter tables in parallel.
+"""
+function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
+    # Attach scenario_invoke_time
+    # 
+    # Set up result logs (based on scenario_invoke_time?)
+    @set! domain.scenario_invoke_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
+    @infiltrate
+    log_location = joinpath(ENV["OUTPUT_DIR"], "$(domain.name)__$(domain.scenario_invoke_time)")
+
+    z_store = DirectoryStore(log_location)
+    result_loc = joinpath(z_store.folder, "results")
+
+    @info "Hit here"
+    @infiltrate
+    tf, n_sites = domain.sim_constants.tf, domain.coral_growth.n_sites
+    result_dims = (tf, n_sites, reps, nrow(param_df))
+    zcreate(Float32, result_dims..., path=result_loc, fill_value=0.0, chunks=(result_dims[1:end-1]..., 1))
+
+    # set up logs for site ranks, seed/fog log
+    zgroup(z_store, "logs")
+    log_fn = joinpath(z_store.folder, "logs")
+
+    # store the top 50 ranked sites
+    # tf, sites up to 50, site id and rank, no. scenarios
+    rank_dims = (tf, min(n_sites, 50), 2, nrow(param_df))
+
+    # tf, no. intervention sites, site id and rank, no. scenarios
+    seed_fog_dims = (tf, domain.sim_constants.nsiteint, 2, nrow(param_df))
+
+    # See if Zarr group/array attributes can be used for something like the below
+
+    # Possible structure that only logs sites that were intervened on
+    # y = Dict(i=>zeros(rand(1:74, 1)[1],2) for i in 1:20)
+    # using DataStructures; DefaultDict(default, kv)
+    # try
+    #     y[k] = vcat(y[k], log_pair)  # where k = `site id` and log_pair = Matrix([timestep log_value])
+    # catch e
+    #     if isa(e, KeyError)
+    #         y[k] = log_pair
+    #     else
+    #         rethrow(e)
+    #     end
+    # end
+
+    ranks = zcreate(Float32, rank_dims..., name="rankings", path=log_fn, fill_value=0.0, chunks=(rank_dims[1:3]..., 1))
+    seed_log = zcreate(Float32, seed_fog_dims..., name="seed", path=log_fn, fill_value=0.0, chunks=(seed_fog_dims[1:3]..., 1))
+    fog_log = zcreate(Float32, seed_fog_dims..., name="fog", path=log_fn, fill_value=0.0, chunks=(seed_fog_dims[1:3]..., 1))
+
+    # zgroup(z_store, "logs")
+    # log_fn = joinpath(z_store.folder, "logs")
+    # ranks = zcreate(Float32, d_dims..., name="rankings", path=log_fn, fill_value=0.0, chunks=(d_dims[1], d_dims[2], d_dims[3], 1))
+    # seed_log = zcreate(Float32, d_dims..., name="seed", path=log_fn, fill_value=0.0, chunks=(d_dims[1], d_dims[2], d_dims[3], 1))
+    # fog_log = zcreate(Float32, d_dims..., name="fog", path=log_fn, fill_value=0.0, chunks=(d_dims[1], d_dims[2], d_dims[3], 1))
+
+    # Batch run scenarios
+    pmap((scen) -> run_scenarios(scen, domain, reps), eachrow(param_df))
+end
+function run_scenarios(df_row::DataFrameRow, domain::Domain, reps::Int64; site_ranks=nothing, seed_log=nothing, fog_log=nothing)
+    # Update model with values in given DF row
+    update_domain!(domain, df_row)
+    run_scenario(domain; reps=reps, site_ranks=site_ranks, seed_log=seed_log, fog_log=fog_log)
+end
+
+
+"""
+    run_scenario(domain::Domain; reps=1, site_ranks::String, seed_log::String, fog_log::String)::NamedTuple
 
 Convenience function to directly run a scenario for a Domain with pre-set values.
 """
-function run_scenario(domain::Domain; reps=1, MCDA_approach=1)::NamedTuple
+function run_scenario(domain::Domain; reps=1, site_ranks, seed_log, fog_log)::NamedTuple
+
+    if !isnothing(site_ranks)
+        log_site_ranks = zopen(site_ranks, "w")
+    end
+
+    if !isnothing(seed_log)
+        log_seed = zopen(seed_log, "w")
+    end
+
+    if !isnothing(fog_log)
+        log_fog = zopen(fog_log, "w")
+    end
 
     # Set scenario constants here to avoid repeated allocations
     # TODO: Set all constants outside rep or scenario loop
     @set! domain.coral_growth.ode_p.P = domain.sim_constants.max_coral_cover::Float64
     @set! domain.coral_growth.ode_p.comp = domain.sim_constants.comp::Float64
 
+    # TODO: Select subset that isn't the coral parameters
+    # interv = component_params(domain.model, Intervention)
+    # criteria = component_params(domain.model, Criteria)
+    # selector = domain.model[:component] .!== Coral
+    param_set = NamedTuple{domain.model[:fieldname]}(domain.model[:val])
+
+    # Expand coral model to include its specifications across all taxa/species/groups
+    coral_params = to_spec(component_params(domain.model, Coral))
+
     # TODO: Actually store all results
+    x = nothing
     for i in 1:reps
-        x = run_scenario(domain.coral_growth, domain.intervention, domain.criteria,
-            domain.coral_params, domain.sim_constants, domain.site_data,
+        x = run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
             domain.init_coral_cover, domain.coral_growth.ode_p,
-            domain.dhw_scens[:, :, i], domain.wave_scens[:, :, i], MCDA_approach)
+            domain.dhw_scens[:, :, i], domain.wave_scens[:, :, i])
     end
 
     return x
@@ -26,14 +121,14 @@ end
 
 
 """
-    run_scenario(domain, interv, criteria, corals, sim_params, site_data, init_cov::Array{Float64, 2}, p::NamedTuple, 
-                 dhw_scen::Array, wave_scen::Array, MCDA_approach::Int64)::NamedTuple
+    run_scenario(domain, param_set, corals, sim_params, site_data, init_cov::Array{Float64, 2}, p::NamedTuple,
+                 dhw_scen::Array, wave_scen::Array)::NamedTuple
 
 Core scenario running function.
 """
-function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
+function run_scenario(domain, param_set, corals, sim_params, site_data,
     init_cov::Array{Float64,2}, p::NamedTuple, dhw_scen::Array,
-    wave_scen::Array, MCDA_approach::Int64)::NamedTuple
+    wave_scen::Array)::NamedTuple
 
     # TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
@@ -41,23 +136,25 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
     tspan::Tuple = (0.0, 1.0)
     solver::BS3 = BS3()
 
+    MCDA_approach::Int64 = param_set.guided
+
     # sim constants
-    n_sites = domain.n_sites
+    n_sites = domain.coral_growth.n_sites
     nsiteint = sim_params.nsiteint::Int64
     tf = sim_params.tf::Int64
-    n_species = domain.n_species
-    n_groups = domain.n_groups
+    n_species = domain.coral_growth.n_species
+    n_groups = domain.coral_growth.n_groups
 
     # years to start seeding/shading
-    seed_start_year = interv.seed_year_start.val
-    shade_start_year = interv.shade_year_start.val
+    seed_start_year = param_set.seed_year_start
+    shade_start_year = param_set.shade_year_start
 
-    seed_TA_vol = interv.seed_TA.val # tabular Acropora size class 2, per year per species per cluster
-    seed_CA_vol = interv.seed_CA.val # corymbose Acropora size class 2, per year per species per cluster
-    fogging = interv.fogging.val #  percent reduction in bleaching mortality through fogging
-    srm = interv.SRM.val #  DHW equivalents reduced by some shading mechanism
-    seed_years = interv.seed_years.val # number of years to seed
-    shade_years = interv.shade_years.val # number of years to shade
+    seed_TA_vol = param_set.seed_TA  # tabular Acropora size class 2, per year per species per cluster
+    seed_CA_vol = param_set.seed_CA  # corymbose Acropora size class 2, per year per species per cluster
+    fogging = param_set.fogging  # percent reduction in bleaching mortality through fogging
+    srm = param_set.SRM  # DHW equivalents reduced by some shading mechanism
+    seed_years = param_set.seed_years  # number of years to seed
+    shade_years = param_set.shade_years  # number of years to shade
 
     # Gompertz shape parameters for bleaching
     neg_e_p1::Real = -sim_params.gompertz_p1
@@ -94,22 +191,21 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
     Yfog = SparseArray(spzeros(tf, n_sites))
     Yseed = SparseArray(zeros(tf, 2, n_sites))
 
-    # Intervention strategy: 0 is random, 1 is guided
-    strategy = interv.guided.val
-    is_guided = strategy > 0
+    # Intervention strategy: 0 is random, > 0 is guided
+    is_guided = param_set.guided > 0
 
     # Years at which to reassess seeding site selection
     seed_decision_years = repeat([false], tf)
     shade_decision_years = repeat([false], tf)
 
-    if interv.seed_freq.val > 0
-        shade_decision_years[seed_start_year:interv.seed_freq.val:(seed_start_year+seed_years-1)] .= true
+    if param_set.seed_freq > 0
+        shade_decision_years[seed_start_year:param_set.seed_freq:(seed_start_year+seed_years-1)] .= true
     else
         shade_decision_years[max(seed_start_year, 2)] = true
     end
 
-    if interv.shade_freq.val > 0
-        shade_decision_years[shade_start_year:interv.shade_freq.val:(shade_start_year+shade_years-1)] .= true
+    if param_set.shade_freq > 0
+        shade_decision_years[shade_start_year:param_set.shade_freq:(shade_start_year+shade_years-1)] .= true
     else
         shade_decision_years[max(shade_start_year, 2)] = true
     end
@@ -119,24 +215,26 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
 
     if is_guided
         ## Weights for connectivity , waves (ww), high cover (whc) and low
-        wtwaves = criteria.wave_stress.val # weight of wave damage in MCDA
-        wtheat = criteria.heat_stress.val # weight of heat damage in MCDA
-        wtconshade = criteria.shade_connectivity.val # weight of connectivity for shading in MCDA
-        wtconseed = criteria.seed_connectivity.val # weight of connectivity for seeding in MCDA
-        wthicover = criteria.coral_cover_high.val # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
-        wtlocover = criteria.coral_cover_low.val # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
-        wtpredecseed = criteria.seed_priority.val # weight for the importance of seeding sites that are predecessors of priority reefs
-        wtpredecshade = criteria.shade_priority.val # weight for the importance of shading sites that are predecessors of priority reefs
-        risktol = criteria.deployed_coral_risk_tol.val # risk tolerance
+        wtwaves = param_set.wave_stress # weight of wave damage in MCDA
+        wtheat = param_set.heat_stress # weight of heat damage in MCDA
+        wtconshade = param_set.shade_connectivity # weight of connectivity for shading in MCDA
+        wtconseed = param_set.seed_connectivity # weight of connectivity for seeding in MCDA
+        wthicover = param_set.coral_cover_high # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
+        wtlocover = param_set.coral_cover_low # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
+        wtpredecseed = param_set.seed_priority # weight for the importance of seeding sites that are predecessors of priority reefs
+        wtpredecshade = param_set.shade_priority # weight for the importance of shading sites that are predecessors of priority reefs
+        risktol = param_set.deployed_coral_risk_tol # risk tolerance
 
         # Filter out sites outside of desired depth range
         if .!all(site_data.sitedepth .== 0)
-            max_depth = criteria.depth_min.val + criteria.depth_offset.val
-            depth_criteria = (site_data.sitedepth .> -max_depth) .& (site_data.sitedepth .< -criteria.depth_min)
-            depth_priority = site_data[depth_criteria, domain.site_id_col]
+            max_depth = param_set.depth_min + param_set.depth_offset
+            depth_criteria = (site_data.sitedepth .> -max_depth) .& (site_data.sitedepth .< -param_set.depth_min)
+
+            # TODO: Include this change in MATLAB version as well
+            depth_priority = collect(1:nrow(site_data))[depth_criteria]  #  site_data[depth_criteria, domain.site_id_col]
         else
             # No depth data, so consider all sites
-            depth_priority = site_data[:, domain.site_id_col]
+            depth_priority = collect(1:nrow(site_data))  # site_data[:, domain.unique_site_id_col]
         end
 
         # if any(isa.(depth_priority, String))
@@ -148,22 +246,22 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
         max_cover = site_data.k / 100.0 # Max coral cover at each site. Divided by 100 to convert to proportion
 
         # pre-allocate prefseedsites, prefshadesites and rankings
-        rankings = [depth_priority, zeros(length(depth_priority), 1), zeros(length(depth_priority), 1)]
-        prefseedsites = zeros(1, nsiteint)
-        prefshadesites = zeros(1, nsiteint)
+        rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
+        prefseedsites = zeros(Int, 1, nsiteint)
+        prefshadesites = zeros(Int, 1, nsiteint)
 
         # Prep site selection
         mcda_vars = DMCDA_vars(
             depth_priority,
             nsiteint,
             sim_params.prioritysites,
-            strongpred,
-            domain.site_ranks.C1,
-            0,  # dam prob
-            0,  # heatstressprob
-            0,  # sumcover
+            domain.strongpred,
+            domain.site_ranks,
+            zeros(n_species, n_sites),  # dam prob
+            dhw_scen[1, :],  # heatstressprob
+            Yout[1, :, :],  # sumcover
             max_cover,
-            site_data.area,
+            site_area,
             risktol,
             wtconseed,
             wtconshade,
@@ -175,7 +273,9 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
             wtpredecshade
         )
     else
-        Random.seed!(floor(Int, sum(Model(interv)[:val]) + sum(Model(criteria)[:val])))
+        # TODO: More robust way of getting intervention/criteria values
+        seed_val = floor(Int, sum([copy(getindex(param_set, i)) for i in 1:24]))
+        Random.seed!(seed_val)
     end
 
     # n_species
@@ -200,12 +300,12 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
     a_adapt = zeros(n_species)
 
     # assign level of assisted coral adaptation
-    a_adapt[tabular_enhanced] .= interv.a_adapt.val
-    a_adapt[corymbose_enhanced] .= interv.a_adapt.val
-    n_adapt = interv.n_adapt.val  # Level of natural coral adaptation
+    a_adapt[tabular_enhanced] .= param_set.a_adapt
+    a_adapt[corymbose_enhanced] .= param_set.a_adapt
+    n_adapt = param_set.n_adapt  # Level of natural coral adaptation
 
     # level of added natural coral adaptation
-    n_adapt = interv.n_adapt.val  # natad = coral_params.natad + interv.Natad;
+    n_adapt = param_set.n_adapt  # natad = coral_params.natad + interv.Natad;
     bleach_resist = corals.bleach_resist
 
     ## Extract other parameters
@@ -255,14 +355,14 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
         if is_guided
             # Update dMCDA values
-            dMCDA_vars.damprob .= dropdims(mwaves(tstep, :, :), dims=1)'
-            dMCDA_vars.heatstressprob .= dhw_step'
+            mcda_vars.damprob .= mwaves[tstep, :, :]
+            mcda_vars.heatstressprob .= dhw_step
 
-            dMCDA_vars.sumcover = sum(Y_pstep, dims=1)' # dims: nsites * 1
+            mcda_vars.sumcover .= sum(cov_tmp, dims=1) # dims: nsites * 1
 
             (prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                refseedsites, prefshadesites, rankings)
+                prefseedsites, prefshadesites, rankings)
 
             nprefseed[tstep] = nprefseedsites    # number of preferred seeding sites
             nprefshade[tstep] = nprefshadesites  # number of preferred shading sites
@@ -288,7 +388,7 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
             Yshade[tstep, prefshadesites] = srm
 
             # Apply reduction in DHW due to shading
-            adjusted_dhw::Array{Float64} = max(0.0, dhw_step - Yshade(tstep, :))
+            adjusted_dhw::Array{Float64} = max(0.0, dhw_step - Yshade[tstep, :])
         else
             adjusted_dhw = dhw_step
         end
@@ -296,13 +396,14 @@ function run_scenario(domain, interv, criteria, corals, sim_params, site_data,
         if (fogging > 0.0) && in_shade_years && (has_seed_sites || has_shade_sites)
             if has_seed_sites
                 # Always fog where sites are selected if possible
-                adjusted_dhw[prefseedsites] = adjusted_dhw[prefseedsites] .* (1.0 - fogging)
-                Yfog[tstep, prefseedsites] .= fogging
+                site_locs = prefseedsites
             elseif has_shade_sites
                 # Otherwise, if no sites are selected, fog selected shade sites
-                adjusted_dhw[prefshadesites] = adjusted_dhw[prefshadesites] .* (1.0 - fogging)
-                Yfog[tstep, prefshadesites] .= fogging
+                site_locs = prefshadesites
             end
+
+            adjusted_dhw[site_locs] = adjusted_dhw[site_locs] .* (1.0 - fogging)
+            Yfog[tstep, site_locs] .= fogging
         end
 
         # Calculate and apply bleaching mortality
