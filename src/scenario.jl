@@ -45,21 +45,6 @@ function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
     # tf, no. intervention sites, site id and rank, no. scenarios
     seed_dims = (tf, 2, n_sites, reps, n_scens)
 
-    # See if Zarr group/array attributes can be used for something like the below
-
-    # Possible structure that only logs sites that were intervened on
-    # y = Dict(i=>zeros(rand(1:74, 1)[1],2) for i in 1:20)
-    # using DataStructures; DefaultDict(default, kv)
-    # try
-    #     y[k] = vcat(y[k], log_pair)  # where k = `site id` and log_pair = Matrix([timestep log_value])
-    # catch e
-    #     if isa(e, KeyError)
-    #         y[k] = log_pair
-    #     else
-    #         rethrow(e)
-    #     end
-    # end
-
     attrs = Dict(
         :structure=> ("sites", "seed/fog/shade", "reps", "scenarios"),
         :unique_site_ids=>domain.unique_site_ids,
