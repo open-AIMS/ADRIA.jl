@@ -57,6 +57,15 @@ function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 end
 
 
+"""
+prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
+
+# Returns
+Tuple : preferred seed sites, preferred shade/fog sites, number of seed sites, number of shade sites, rankings
+
+        `rankings` is an Nx3 matrix holding: site_id, seeding_rank, shading_rank
+        0 indicates sites that were not considered
+"""
 function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesites, rankingsin)
 
     site_ids = d_vars.site_ids
