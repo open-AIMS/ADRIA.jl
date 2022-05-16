@@ -59,10 +59,10 @@ function site_connectivity(file_loc::String, conn_ids::Vector, unique_site_ids::
 
     # Get site ids from first file
     con_file1 = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap)
-    con_site_ids = names(con_file1)[2:end]
+    con_site_ids = con_file1[:, "source_site"]  # names(con_file1)[2:end]
 
     # Get IDs missing in con_site_ids
-    truncated = setdiff(con_site_ids, conn_ids)
+    truncated::Array{String} = setdiff(con_site_ids, conn_ids)
 
     # Get IDs missing in site_order
     append!(truncated, setdiff(conn_ids, con_site_ids))
