@@ -17,28 +17,33 @@ function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
     # 
     # Set up result logs (based on scenario_invoke_time?)
     @set! domain.scenario_invoke_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
-    @infiltrate
     log_location = joinpath(ENV["OUTPUT_DIR"], "$(domain.name)__$(domain.scenario_invoke_time)")
 
     z_store = DirectoryStore(log_location)
     result_loc = joinpath(z_store.folder, "results")
 
-    @info "Hit here"
-    @infiltrate
     tf, n_sites = domain.sim_constants.tf, domain.coral_growth.n_sites
-    result_dims = (tf, n_sites, reps, nrow(param_df))
-    zcreate(Float32, result_dims..., path=result_loc, fill_value=0.0, chunks=(result_dims[1:end-1]..., 1))
+    result_dims = (tf, domain.coral_growth.n_species, n_sites, reps, nrow(param_df))
+    
+    attrs = Dict(
+        :structure => ("timesteps", "species", "sites", "reps", "scenarios"),
+        :unique_site_ids => domain.unique_site_ids,
+    )
+    raw = zcreate(Float32, result_dims..., path=result_loc, fill_value=0.0, chunks=(result_dims[1:end-1]..., 1), attrs=attrs)
 
     # set up logs for site ranks, seed/fog log
     zgroup(z_store, "logs")
     log_fn = joinpath(z_store.folder, "logs")
 
-    # store the top 50 ranked sites
-    # tf, sites up to 50, site id and rank, no. scenarios
-    rank_dims = (tf, min(n_sites, 50), 2, nrow(param_df))
+    # store ranked sites
+    # sites, site id and rank, reps, no. scenarios
+    n_scens = nrow(param_df)
+    rank_dims = (n_sites, 2, reps, n_scens)
+
+    fog_dims = (tf, n_sites, reps, n_scens)
 
     # tf, no. intervention sites, site id and rank, no. scenarios
-    seed_fog_dims = (tf, domain.sim_constants.nsiteint, 2, nrow(param_df))
+    seed_dims = (tf, 2, n_sites, reps, n_scens)
 
     # See if Zarr group/array attributes can be used for something like the below
 
@@ -55,44 +60,43 @@ function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
     #     end
     # end
 
-    ranks = zcreate(Float32, rank_dims..., name="rankings", path=log_fn, fill_value=0.0, chunks=(rank_dims[1:3]..., 1))
-    seed_log = zcreate(Float32, seed_fog_dims..., name="seed", path=log_fn, fill_value=0.0, chunks=(seed_fog_dims[1:3]..., 1))
-    fog_log = zcreate(Float32, seed_fog_dims..., name="fog", path=log_fn, fill_value=0.0, chunks=(seed_fog_dims[1:3]..., 1))
+    attrs = Dict(
+        :structure=> ("sites", "seed/fog/shade", "reps", "scenarios"),
+        :unique_site_ids=>domain.unique_site_ids,
+    )
+    ranks = zcreate(Float32, rank_dims..., name="rankings", path=log_fn, fill_value=0.0, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
 
-    # zgroup(z_store, "logs")
-    # log_fn = joinpath(z_store.folder, "logs")
-    # ranks = zcreate(Float32, d_dims..., name="rankings", path=log_fn, fill_value=0.0, chunks=(d_dims[1], d_dims[2], d_dims[3], 1))
-    # seed_log = zcreate(Float32, d_dims..., name="seed", path=log_fn, fill_value=0.0, chunks=(d_dims[1], d_dims[2], d_dims[3], 1))
-    # fog_log = zcreate(Float32, d_dims..., name="fog", path=log_fn, fill_value=0.0, chunks=(d_dims[1], d_dims[2], d_dims[3], 1))
+    attrs = Dict(
+        :structure=> ("timesteps", "intervened sites", "coral type", "scenarios"),
+        :unique_site_ids=>domain.unique_site_ids,
+    )
+    seed_log = zcreate(Float32, seed_dims..., name="seed", path=log_fn, fill_value=0.0, chunks=(seed_dims[1:4]..., 1))
+    fog_log = zcreate(Float32, fog_dims..., name="fog", path=log_fn, fill_value=0.0, chunks=(fog_dims[1:3]..., 1))
+    shade_log = zcreate(Float32, fog_dims..., name="shade", path=log_fn, fill_value=0.0, chunks=(fog_dims[1:3]..., 1))
 
     # Batch run scenarios
-    pmap((scen) -> run_scenarios(scen, domain, reps), eachrow(param_df))
+    map((dfx) -> run_scenarios(dfx[1], dfx[2], domain, reps; raw=raw, site_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log), enumerate(eachrow(param_df)))
 end
-function run_scenarios(df_row::DataFrameRow, domain::Domain, reps::Int64; site_ranks=nothing, seed_log=nothing, fog_log=nothing)
+function run_scenarios(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64; raw=nothing, site_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
     # Update model with values in given DF row
     update_domain!(domain, df_row)
-    run_scenario(domain; reps=reps, site_ranks=site_ranks, seed_log=seed_log, fog_log=fog_log)
+    run_scenario(domain; idx=r_idx, reps=reps, raw=raw, site_ranks=site_ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
 end
 
 
 """
-    run_scenario(domain::Domain; reps=1, site_ranks::String, seed_log::String, fog_log::String)::NamedTuple
+    run_scenario(domain::Domain; reps=1, raw, site_ranks::String, seed_log::String, fog_log::String)::NamedTuple
 
 Convenience function to directly run a scenario for a Domain with pre-set values.
+
+Stores results on disk in Zarr format at pre-configured location.
+
+# Notes
+Only the mean site rankings are kept
 """
-function run_scenario(domain::Domain; reps=1, site_ranks, seed_log, fog_log)::NamedTuple
+function run_scenario(domain::Domain; idx=1, reps=1, raw, site_ranks, seed_log, fog_log, shade_log)
 
-    if !isnothing(site_ranks)
-        log_site_ranks = zopen(site_ranks, "w")
-    end
-
-    if !isnothing(seed_log)
-        log_seed = zopen(seed_log, "w")
-    end
-
-    if !isnothing(fog_log)
-        log_fog = zopen(fog_log, "w")
-    end
+    result_set = (raw=raw, site_ranks=site_ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
 
     # Set scenario constants here to avoid repeated allocations
     # TODO: Set all constants outside rep or scenario loop
@@ -108,15 +112,23 @@ function run_scenario(domain::Domain; reps=1, site_ranks, seed_log, fog_log)::Na
     # Expand coral model to include its specifications across all taxa/species/groups
     coral_params = to_spec(component_params(domain.model, Coral))
 
-    # TODO: Actually store all results
-    x = nothing
-    for i in 1:reps
-        x = run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
-            domain.init_coral_cover, domain.coral_growth.ode_p,
-            domain.dhw_scens[:, :, i], domain.wave_scens[:, :, i])
-    end
+    @inbounds for i::Int in 1:reps
+        y = run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
+                domain.init_coral_cover, domain.coral_growth.ode_p,
+                domain.dhw_scens[:, :, i], domain.wave_scens[:, :, i])
 
-    return x
+        # Capture results to disk
+        for (k, v) in pairs(result_set)
+            if !isnothing(v)
+                if k == :raw || k == :seed_log
+                    v[:, :, :, i, idx] .= getfield(y, k)
+                else
+                    v[:, :, i, idx] .= getfield(y, k)
+                end
+            end
+        end
+
+    end
 end
 
 
@@ -125,12 +137,15 @@ end
                  dhw_scen::Array, wave_scen::Array)::NamedTuple
 
 Core scenario running function.
+
+# Notes
+Only the mean site rankings are kept
 """
 function run_scenario(domain, param_set, corals, sim_params, site_data,
     init_cov::Array{Float64,2}, p::NamedTuple, dhw_scen::Array,
     wave_scen::Array)::NamedTuple
 
-    # TODO: All cached arrays/values to be moved to outer function and passed in
+    ### TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
 
     tspan::Tuple = (0.0, 1.0)
@@ -160,7 +175,7 @@ function run_scenario(domain, param_set, corals, sim_params, site_data,
     neg_e_p1::Real = -sim_params.gompertz_p1
     neg_e_p2::Real = -sim_params.gompertz_p2
 
-    ## END TODO
+    ### END TODO
 
     site_area::Array{Float64,2} = site_data.area'
 
@@ -186,10 +201,10 @@ function run_scenario(domain, param_set, corals, sim_params, site_data,
     # Yfog = ndSparse(zeros(tf, nsites));
     # Yseed = ndSparse(zeros(tf, 2, nsites)); % only log seedable corals to save memory
 
-    site_rankings = SparseArray(zeros(tf, n_sites, 2)) # log seeding/shading ranks
+    site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
     Yfog = SparseArray(spzeros(tf, n_sites))
-    Yseed = SparseArray(zeros(tf, 2, n_sites))
+    Yseed = SparseArray(zeros(tf, 2, n_sites))  # 2 = the two enhanced coral types
 
     # Intervention strategy: 0 is random, > 0 is guided
     is_guided = param_set.guided > 0
@@ -278,8 +293,6 @@ function run_scenario(domain, param_set, corals, sim_params, site_data,
         Random.seed!(seed_val)
     end
 
-    # n_species
-
     # containers for seeding, shading and cooling
     nprefseed = zeros(tf)
     nprefshade = zeros(tf)
@@ -346,8 +359,6 @@ function run_scenario(domain, param_set, corals, sim_params, site_data,
 
         # adjusting absolute recruitment at each site by dividing by the area
         p.rec .= (potential_settler_cover * ((fec_scope .* LPs) * TP_data)) / site_area
-        # mul!(p.rec, potential_settler_cover .* (fec_scope .* LPs), TP_data)
-        # @. p.rec = p.rec / site_area
 
         @views dhw_step .= dhw_scen[tstep, :]  # subset of DHW for given timestep
 
@@ -355,7 +366,7 @@ function run_scenario(domain, param_set, corals, sim_params, site_data,
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
         if is_guided
             # Update dMCDA values
-            mcda_vars.damprob .= mwaves[tstep, :, :]
+            mcda_vars.damprob .= @view mwaves[tstep, :, :]
             mcda_vars.heatstressprob .= dhw_step
 
             mcda_vars.sumcover .= sum(cov_tmp, dims=1) # dims: nsites * 1
@@ -369,7 +380,7 @@ function run_scenario(domain, param_set, corals, sim_params, site_data,
 
             # Log site ranks
             # First col only holds site ids so skip (with 2:end)
-            site_rankings[tstep, rankings[:, 1], :] = rankings[:, 2:end]
+            site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
         else
             # Unguided
             if seed_decision_years[tstep]
@@ -413,7 +424,7 @@ function run_scenario(domain, param_set, corals, sim_params, site_data,
 
         # proportional loss + proportional recruitment
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
-        @views @. cov_tmp = cov_tmp[:, :] * prop_loss[:, :]
+        @views cov_tmp = cov_tmp[:, :] .* prop_loss[:, :]
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
@@ -434,14 +445,21 @@ function run_scenario(domain, param_set, corals, sim_params, site_data,
 
         growth.u0[:, :] .= @views cov_tmp[:, :] .* prop_loss[:, :]  # update initial condition
         sol::ODESolution = solve(growth, solver, save_everystep=false, abstol=1e-7, reltol=1e-4)
-        @views Yout[tstep, :, :] .= sol.u[end]
+        Yout[tstep, :, :] .= sol.u[end]
 
         # growth::ODEProblem = ODEProblem{true, false}(growthODE, cov_tmp, tspan, p)
         # sol::ODESolution = solve(growth, solver, save_everystep=false, abstol=1e-6, reltol=1e-7)
         # Yout[tstep, :, :] .= sol.u[end]
     end
 
-    results::NamedTuple = (Y=Yout, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_rankings=site_rankings)
+    # avoid placing importance on sites that were not considered
+    # (lower values are higher importance)
+    site_ranks[site_ranks .== 0.0] .= n_sites + 1
+
+    # Squash site ranks down to average rankings over time
+    site_ranks = dropdims(mean(site_ranks, dims=1), dims=1)
+
+    results::NamedTuple = (raw=Yout, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks)
 
     return results
 end
