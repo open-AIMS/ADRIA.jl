@@ -33,8 +33,8 @@ end
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
 function Domain(name, TP_base, site_ranks, strongest_predecessor,
-                site_data, site_id_col, unique_site_id_col, init_coral_cover, coral_growth,
-                site_ids, removed_sites, DHWs, waves)::Domain
+    site_data, site_id_col, unique_site_id_col, init_coral_cover, coral_growth,
+    site_ids, removed_sites, DHWs, waves)::Domain
 
     # intervention = Intervention()
     # criteria = Criteria()
@@ -53,7 +53,7 @@ end
 Convenience constructor for Domain
 """
 function Domain(name::String, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
-                conn_path::String, dhw_fn::String, wave_fn::String)::Domain
+    conn_path::String, dhw_fn::String, wave_fn::String)::Domain
 
     site_data = GeoDataFrames.read(site_data_fn)
 
@@ -117,8 +117,8 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
     end
 
     return Domain(name, site_conn.TP_base, conns.site_ranks, conns.strongest_predecessor,
-                  site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
-                  site_conn.site_ids, site_conn.truncated, dhw, waves)
+        site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
+        site_conn.site_ids, site_conn.truncated, dhw, waves)
 end
 
 
@@ -171,5 +171,90 @@ Extract parameters for a specific model component
 """
 function component_params(m::Model, component::Type)::DataFrame
     df::DataFrame = DataFrame(m)
-    return df[df.component .== component, :]
+    return df[df.component.==component, :]
+end
+
+
+"""
+
+# Returns
+Matrix : n_reps * sites * 3
+
+last dimension indicates: site_id, seeding rank, shading rank
+"""
+function site_selection(domain::Domain, criteria::DataFrame, ts::Int, n_reps::Int, alg_ind::Int)
+    # Site Data
+    site_d = domain.site_data
+    sr = domain.site_ranks
+    area = site_d.area
+
+    # Weights for connectivity , waves (ww), high cover (whc) and low
+    wtwaves = criteria.wave_stress           # weight of wave damage in MCDA
+    wtheat = criteria.heat_stress            # weight of heat damage in MCDA
+    wtconshade = criteria.shade_connectivity # weight of connectivity for shading in MCDA
+    wtconseed = criteria.seed_connectivity   # weight of connectivity for seeding in MCDA
+    wthicover = criteria.coral_cover_high    # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
+    wtlocover = criteria.coral_cover_low     # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
+    wtpredecseed = criteria.seed_priority    # weight for the importance of seeding sites that are predecessors of priority reefs
+    wtpredecshade = criteria.shade_priority  # weight for the importance of shading sites that are predecessors of priority reefs
+    risktol = criteria.deployed_coral_risk_tol # risk tolerance
+    depth_min = criteria.depth_min
+    depth_offset = criteria.depth_offset
+
+    # Filter out sites outside of desired depth range
+    max_depth = depth_min + depth_offset
+    depth_criteria = (site_d.sitedepth .> -max_depth) .& (site_d.sitedepth .< -depth_min)
+
+    depth_priority = collect(1:nrow(site_d))[depth_criteria]
+
+    max_cover = site_d.k / 100.0  # Max coral cover at each site
+
+    n_siteint = domain.sim_constants.nsiteint
+    w_scens = domain.wave_scens
+    dhw_scen = domain.dhw_scens
+
+    sumcover = sum(domain.init_coral_cover, dims=2)
+    sumcover = sumcover / 100.0
+
+    ranks = zeros(n_reps, length(depth_priority), 3)
+
+    for i = 1:n_reps
+        # site_id, seeding rank, shading rank
+        rankingsin = [depth_priority zeros(length(depth_priority), 1) zeros(length(depth_priority), 1)]
+        prefseedsites = zeros(1, n_siteint)
+        prefshadesites = zeros(1, n_siteint)
+        dhw_step = dhw_scen[ts, :, i]
+        heatstressprob = dhw_step
+
+        w_step = w_scens[ts, :, i]
+        damprob = w_step
+
+        mcda_vars = DMCDA_vars(
+            depth_priority,
+            n_siteint,
+            domain.sim_constants.prioritysites,
+            domain.strongpred,
+            sr,  # sr.C1
+            damprob,
+            heatstressprob,
+            sumcover,
+            max_cover,
+            area,
+            risktol,
+            wtconseed,
+            wtconshade,
+            wtwaves,
+            wtheat,
+            wthicover,
+            wtlocover,
+            wtpredecseed,
+            wtpredecshade
+        )
+
+        # dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesites, rankingsin)
+        (_, _, _, _, rankings) = dMCDA(mcda_vars, alg_ind, false, false, prefseedsites, prefshadesites, rankingsin)
+        ranks[i, :, :] = rankings
+    end
+
+    return ranks
 end
