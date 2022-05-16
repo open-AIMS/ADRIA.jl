@@ -74,6 +74,8 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
     coral_growth = CoralGrowth(nrow(site_data))
     n_sites = coral_growth.n_sites
 
+    # conn_site_names = names(site_conn.TP_base)
+
     # TODO: Load DHW/Wave data from
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
@@ -120,17 +122,21 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
 end
 
 
-# function Base.getproperty(o::Domain, s::Symbol)
-#     if s == :coral_params
-#         return to_spec(o.coral)
-#     end
+function Base.getproperty(o::Domain, s::Symbol)
+    if s == :unique_site_ids
+        return o.site_data[:, o.unique_site_id_col]
+    end
 
-#     if hasfield(typeof(o), s)
-#         return getfield(o, s)
-#     end
+    # if s == :coral_params
+    #     return to_spec(o.coral)
+    # end
 
-#     return o.super.s
-# end
+    if hasfield(typeof(o), s)
+        return getfield(o, s)
+    end
+
+    return o.super.s
+end
 
 
 function param_table(d::Domain)::DataFrame
