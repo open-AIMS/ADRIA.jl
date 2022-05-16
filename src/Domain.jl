@@ -2,7 +2,7 @@
 
 Core ADRIA domain. Represents study area.
 """
-struct Domain{M, I, D, S, V, T, X}
+struct Domain{M,I,D,S,V,T,X}
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
     name::S           # human-readable name
@@ -42,8 +42,8 @@ function Domain(name, TP_base, site_ranks, strongest_predecessor,
     model = Model((Intervention(), Criteria(), Coral()))
     sim_constants = SimConstants()
     return Domain(name, "", TP_base, site_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
-                  init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
-                  model, sim_constants);
+        init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
+        model, sim_constants)
 end
 
 
@@ -58,7 +58,7 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
     site_data = GeoDataFrames.read(site_data_fn)
 
     # Sort data to maintain consistent order
-    sort!(site_data, [Symbol(site_id_col)]);
+    sort!(site_data, [Symbol(site_id_col)])
 
     site_data.row_id = 1:nrow(site_data)
     site_data._siteref_id = groupindices(groupby(site_data, Symbol(site_id_col)))
@@ -83,7 +83,7 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
 
         if size(dhw, 2) != n_sites
             @warn "Mismatch in DHW data. Truncating so that data size matches!"
-            dhw = dhw[:, 1:n_sites, :];
+            dhw = dhw[:, 1:n_sites, :]
         end
 
     else
@@ -96,7 +96,7 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
 
         if size(waves, 2) != n_sites
             @warn "Mismatch in wave data. Truncating so that data size matches!"
-            waves = waves[:, 1:n_sites, :];
+            waves = waves[:, 1:n_sites, :]
         end
     else
         @warn "Using empty wave data"
@@ -109,7 +109,7 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
 
         if !isempty(site_conn.truncated)
             @warn "Mismatch in coral cover data. Truncating so that data size matches!"
-            coral_cover = coral_cover[:, 1:n_sites];
+            coral_cover = coral_cover[:, 1:n_sites]
         end
     else
         @warn "Using random initial coral cover"
