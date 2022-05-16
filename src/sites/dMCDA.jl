@@ -72,6 +72,7 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
     nsites = length(site_ids)
     nsiteint = d_vars.nsiteint
     prioritysites = d_vars.prioritysites[in.(d_vars.prioritysites, [site_ids])]
+
     strongpred = d_vars.strongpred[site_ids, :]
     centr = d_vars.centr[site_ids]
     damprob = d_vars.damprob[site_ids]
