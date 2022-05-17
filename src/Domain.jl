@@ -1,3 +1,15 @@
+"""Store environmental data layers used for scenario"""
+struct EnvLayer{S}
+    site_data_fn::S
+    site_id_col::S
+    unique_site_id_col::S
+    init_coral_cov_fn::S
+    connectivity_fn::S
+    DHW_fn::S
+    wave_fn::S
+end
+
+
 """
 
 Core ADRIA domain. Represents study area.
@@ -6,6 +18,7 @@ struct Domain{M,I,D,S,V,T,X}
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
     name::S           # human-readable name
+    env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
     TP_data::D     # site connectivity data
     site_ranks::V  # site rank
@@ -32,7 +45,7 @@ end
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
-function Domain(name, TP_base, site_ranks, strongest_predecessor,
+function Domain(name, env_layers, TP_base, site_ranks, strongest_predecessor,
     site_data, site_id_col, unique_site_id_col, init_coral_cover, coral_growth,
     site_ids, removed_sites, DHWs, waves)::Domain
 
@@ -41,7 +54,7 @@ function Domain(name, TP_base, site_ranks, strongest_predecessor,
     # coral = Coral()
     model = Model((Intervention(), Criteria(), Coral()))
     sim_constants = SimConstants()
-    return Domain(name, "", TP_base, site_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
+    return Domain(name, env_layers, "", TP_base, site_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)
 end
@@ -54,6 +67,8 @@ Convenience constructor for Domain
 """
 function Domain(name::String, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
     conn_path::String, dhw_fn::String, wave_fn::String)::Domain
+
+    env_layer_md = EnvLayer(site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn)
 
     site_data = GeoDataFrames.read(site_data_fn)
 
@@ -116,7 +131,7 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
         coral_cover = rand(coral_growth.n_species, n_sites)
     end
 
-    return Domain(name, site_conn.TP_base, conns.site_ranks, conns.strongest_predecessor,
+    return Domain(name, env_layer_md, site_conn.TP_base, conns.site_ranks, conns.strongest_predecessor,
         site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
         site_conn.site_ids, site_conn.truncated, dhw, waves)
 end
