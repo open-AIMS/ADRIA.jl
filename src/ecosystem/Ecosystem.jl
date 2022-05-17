@@ -176,8 +176,6 @@ function coral_spec()::NamedTuple
 
     params = DataFrame();
 
-    param_names = ["growth_rate", "fecundity", "wavemort90", "mb_rate", "bleach_resist"]
-
     # Coral species are divided into taxa and size classes
     taxa_names = [
         "tabular_acropora_enhanced";
@@ -323,6 +321,10 @@ function coral_spec()::NamedTuple
         1.0 1.0 1.0 1.0 1.0 1.0]; # Large massives 
 
     params.bleach_resist = bleach_resist'[:];
+
+    # Get perturbable coral parameters
+    param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "size_cm", "coral_id"])
+    # param_names = ["growth_rate", "fecundity", "wavemort90", "mb_rate", "bleach_resist", "colony_area_cm2"]
 
     return (taxa_names=taxa_names, param_names=param_names, params=params)
 end
