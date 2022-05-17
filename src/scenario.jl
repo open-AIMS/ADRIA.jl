@@ -1,10 +1,9 @@
 """Scenario running functions"""
 
 
-using Infiltrator
 using Zarr
-import Dates: now
-import Setfield: @set!
+
+
 
 """
     run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
@@ -13,51 +12,7 @@ import Setfield: @set!
 Run scenarios defined by parameter tables in parallel.
 """
 function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
-    # Attach scenario_invoke_time
-    # 
-    # Set up result logs (based on scenario_invoke_time?)
-    @set! domain.scenario_invoke_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
-    log_location = joinpath(ENV["OUTPUT_DIR"], "$(domain.name)__$(domain.scenario_invoke_time)")
-
-    z_store = DirectoryStore(log_location)
-    result_loc = joinpath(z_store.folder, "results")
-
-    tf, n_sites = domain.sim_constants.tf, domain.coral_growth.n_sites
-    result_dims = (tf, domain.coral_growth.n_species, n_sites, reps, nrow(param_df))
-    
-    attrs = Dict(
-        :structure => ("timesteps", "species", "sites", "reps", "scenarios"),
-        :unique_site_ids => domain.unique_site_ids,
-    )
-    raw = zcreate(Float32, result_dims..., path=result_loc, fill_value=0.0, chunks=(result_dims[1:end-1]..., 1), attrs=attrs)
-
-    # set up logs for site ranks, seed/fog log
-    zgroup(z_store, "logs")
-    log_fn = joinpath(z_store.folder, "logs")
-
-    # store ranked sites
-    # sites, site id and rank, reps, no. scenarios
-    n_scens = nrow(param_df)
-    rank_dims = (n_sites, 2, reps, n_scens)
-
-    fog_dims = (tf, n_sites, reps, n_scens)
-
-    # tf, no. intervention sites, site id and rank, no. scenarios
-    seed_dims = (tf, 2, n_sites, reps, n_scens)
-
-    attrs = Dict(
-        :structure=> ("sites", "seed/fog/shade", "reps", "scenarios"),
-        :unique_site_ids=>domain.unique_site_ids,
-    )
-    ranks = zcreate(Float32, rank_dims..., name="rankings", path=log_fn, fill_value=0.0, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
-
-    attrs = Dict(
-        :structure=> ("timesteps", "intervened sites", "coral type", "scenarios"),
-        :unique_site_ids=>domain.unique_site_ids,
-    )
-    seed_log = zcreate(Float32, seed_dims..., name="seed", path=log_fn, fill_value=0.0, chunks=(seed_dims[1:4]..., 1))
-    fog_log = zcreate(Float32, fog_dims..., name="fog", path=log_fn, fill_value=0.0, chunks=(fog_dims[1:3]..., 1))
-    shade_log = zcreate(Float32, fog_dims..., name="shade", path=log_fn, fill_value=0.0, chunks=(fog_dims[1:3]..., 1))
+    raw, ranks, seed_log, fog_log, shade_log = ADRIA.setup_result_store!(domain, param_df, reps)
 
     # Batch run scenarios
     map((dfx) -> run_scenarios(dfx[1], dfx[2], domain, reps; raw=raw, site_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log), enumerate(eachrow(param_df)))
