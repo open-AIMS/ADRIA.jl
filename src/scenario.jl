@@ -15,7 +15,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
     raw, ranks, seed_log, fog_log, shade_log = ADRIA.setup_result_store!(domain, param_df, reps)
 
     # Batch run scenarios
-    map((dfx) -> run_scenarios(dfx[1], dfx[2], domain, reps; raw=raw, site_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log), enumerate(eachrow(param_df)))
+    pmap((dfx) -> run_scenarios(dfx[1], dfx[2], domain, reps; raw=raw, site_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log), enumerate(eachrow(param_df)))
 end
 function run_scenarios(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64; raw=nothing, site_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
     # Update model with values in given DF row
