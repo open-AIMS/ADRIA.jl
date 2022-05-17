@@ -31,16 +31,19 @@ include("ecosystem/corals/spec.jl")
 include("ecosystem/const_params.jl")
 
 include("Domain.jl")
+include("results/result_set.jl")
 include("scenario.jl")
 
 include("sites/connectivity.jl")
 include("sites/dMCDA.jl")
+
+include("metrics/metrics.jl")
 
 
 export fecundity_scope!, bleaching_mortality!
 export growthODE
 export run_scenario, coral_spec
 export create_coral_struct, Intervention, Criteria, Corals, SimConstants
-export Domain
+export Domain, metrics
 
 end
