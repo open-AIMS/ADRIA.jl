@@ -8,6 +8,7 @@ import ModelParameters: update!, Model
 abstract type EcoModel end
 
 
+"""Set a model parameter value directly."""
 function set!(p::Param, val)
     if hasproperty(p, :ptype) && p.ptype == "integer" && !isinteger(val)
         # For integer/categorical parameters, take floor of v + 1, capping to the upper bound
@@ -20,6 +21,7 @@ function set!(p::Param, val)
 end
 
 
+"""Update a given model with new uncertain parameter values."""
 function update!(m::Model, vals::Union{Vector,Tuple,Array})::Nothing
     m[:val] = map((x) -> set!(x...), zip(params(m), vals))
 
@@ -101,7 +103,7 @@ Generates Coral struct
 
 Example
 -------
-    # Define default coral struct (default in ADRIA is ± 10%)
+    # Define coral struct with auto-generated parameter ranges (default in ADRIA is ± 10%)
     create_coral_struct()
     coral = Coral()
 
