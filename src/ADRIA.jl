@@ -31,7 +31,8 @@ include("ecosystem/corals/spec.jl")
 include("ecosystem/const_params.jl")
 
 include("Domain.jl")
-include("results/result_set.jl")
+include("io/inputs.jl")
+include("io/result_set.jl")
 include("scenario.jl")
 
 include("sites/connectivity.jl")

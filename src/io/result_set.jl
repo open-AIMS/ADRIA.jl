@@ -58,7 +58,7 @@ Sets up an on-disk result store.
 """
 function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)
     @set! domain.scenario_invoke_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
-    log_location = joinpath(ENV["OUTPUT_DIR"], "$(domain.name)__$(domain.scenario_invoke_time)")
+    log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__$(domain.scenario_invoke_time)")
 
     z_store = DirectoryStore(log_location)
 
