@@ -15,7 +15,7 @@ end
 """
     CoralGrowth(n_sites)
 
-Implements temporary caches for a scenario with 36 'species' (split into 6 groups)
+Implements temporary hardcoded caches for a scenario with 36 'species' (split into 6 groups).
 """
 function CoralGrowth(n_sites)
     n_species, n_groups = 36, 6
