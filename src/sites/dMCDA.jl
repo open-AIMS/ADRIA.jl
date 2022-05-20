@@ -18,16 +18,6 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wtlocover  # ::F
     wtpredecseed  # ::F
     wtpredecshade  # ::F
-
-    # ADRIA.DMCDA_vars(::Vector{Union{Missing, String}}, ::Int64, ::Vector{Any},
-    # ::Vector{Int64}, ::Vector{Float64}, ::Int64, ::Int64, ::Int64, ::Vector{Float64},
-    # ::Matrix{Float64}, ::Float64, ::Float64, ::Float64, ::Float64, ::Float64,
-    # ::Float64, ::Float64, ::Float64, ::Float64)
-
-    # dMCDA_vars = struct('site_ids', depth_priority, 'nsiteint', nsiteint, 'prioritysites', sim_params.prioritysites, ...
-    #     'strongpred', strongpred, 'centr', site_ranks.C1, 'damprob', 0, 'heatstressprob', 0, ...
-    #     'sumcover', 0, 'maxcover', max_cover, 'area', site_data.area, 'risktol', risktol, 'wtconseed', wtconseed, 'wtconshade', wtconshade, ...
-    #     'wtwaves', wtwaves, 'wtheat', wtheat, 'wthicover', wthicover, 'wtlocover', wtlocover, 'wtpredecseed', wtpredecseed, 'wtpredecshade', wtpredecshade);
 end
 
 
