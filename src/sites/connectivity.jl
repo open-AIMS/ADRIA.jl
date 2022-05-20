@@ -145,12 +145,18 @@ end
 
 Generate array of outdegree connectivity strength for each node and its
 strongest predecessor.
+
+# Returns
+NamedTuple:
+- conn_ranks : sites ranked by connectivity
+- strongest_predecessor : strongest predecessor for each site
 """
 function connectivity_strength(TP_base::DataFrame)::NamedTuple
 
     g = SimpleDiGraph(Matrix(TP_base))
 
-    # ew_base = weights(g)  # all equality weighted anyway...
+    # ew_base = weights(g)  # commented out ew_base are all equally weighted anyway...
+
     # Measure centrality based on number of incoming connections
     C1 = outdegree_centrality(g)
 
@@ -174,5 +180,5 @@ function connectivity_strength(TP_base::DataFrame)::NamedTuple
         end
     end
 
-    return (site_ranks=C1, strongest_predecessor=strongpred)
+    return (conn_ranks=C1, strongest_predecessor=strongpred)
 end
