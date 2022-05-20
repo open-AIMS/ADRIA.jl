@@ -21,7 +21,7 @@ struct Domain{M,I,D,S,V,T,X}
     env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
     TP_data::D     # site connectivity data
-    site_ranks::V  # site rank
+    conn_ranks::V  # site rank
     strongpred::I  # strongest predecessor
     site_data::D   # table of site data (depth, carrying capacity, etc)
     site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
@@ -34,10 +34,7 @@ struct Domain{M,I,D,S,V,T,X}
     wave_scens::X # wave scenarios
 
     # Parameters
-    model::Model
-    # intervention::Intervention
-    # criteria::Criteria
-    # coral::Coral
+    model::Model  # core model
     sim_constants::SimConstants
 end
 
@@ -45,7 +42,7 @@ end
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
-function Domain(name, env_layers, TP_base, site_ranks, strongest_predecessor,
+function Domain(name, env_layers, TP_base, conn_ranks, strongest_predecessor,
     site_data, site_id_col, unique_site_id_col, init_coral_cover, coral_growth,
     site_ids, removed_sites, DHWs, waves)::Domain
 
@@ -54,7 +51,8 @@ function Domain(name, env_layers, TP_base, site_ranks, strongest_predecessor,
     # coral = Coral()
     model = Model((Intervention(), Criteria(), Coral()))
     sim_constants = SimConstants()
-    return Domain(name, env_layers, "", TP_base, site_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
+    sim_constants.tf = size(DHWs)[1]  # auto-adjust to length of available time series
+    return Domain(name, env_layers, "", TP_base, conn_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)
 end
@@ -131,7 +129,7 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
         coral_cover = rand(coral_growth.n_species, n_sites)
     end
 
-    return Domain(name, env_layer_md, site_conn.TP_base, conns.site_ranks, conns.strongest_predecessor,
+    return Domain(name, env_layer_md, site_conn.TP_base, conns.conn_ranks, conns.strongest_predecessor,
         site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
         site_conn.site_ids, site_conn.truncated, dhw, waves)
 end
@@ -200,7 +198,7 @@ last dimension indicates: site_id, seeding rank, shading rank
 function site_selection(domain::Domain, criteria::DataFrame, ts::Int, n_reps::Int, alg_ind::Int)
     # Site Data
     site_d = domain.site_data
-    sr = domain.site_ranks
+    sr = domain.conn_ranks
     area = site_d.area
 
     # Weights for connectivity , waves (ww), high cover (whc) and low
