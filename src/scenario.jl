@@ -7,7 +7,7 @@ using Zarr
 
 """
     run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
-    run_scenarios(df_row::DataFrameRow, domain::Domain, reps::Int64, site_ranks, seed_log, fog_log)
+    run_scenarios(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64; raw=nothing, conn_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
 
 Run scenarios defined by parameter tables in parallel.
 """
@@ -15,17 +15,17 @@ function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
     raw, ranks, seed_log, fog_log, shade_log = ADRIA.setup_result_store!(domain, param_df, reps)
 
     # Batch run scenarios
-    pmap((dfx) -> run_scenarios(dfx[1], dfx[2], domain, reps; raw=raw, site_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log), enumerate(eachrow(param_df)))
+    map((dfx) -> run_scenarios(dfx[1], dfx[2], domain, reps; raw=raw, conn_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log), enumerate(eachrow(param_df)))
 end
-function run_scenarios(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64; raw=nothing, site_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
+function run_scenarios(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64; raw=nothing, conn_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
     # Update model with values in given DF row
     update_domain!(domain, df_row)
-    run_scenario(domain; idx=r_idx, reps=reps, raw=raw, site_ranks=site_ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
+    run_scenario(domain; idx=r_idx, reps=reps, raw=raw, conn_ranks=conn_ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
 end
 
 
 """
-    run_scenario(domain::Domain; reps=1, raw, site_ranks::String, seed_log::String, fog_log::String)::NamedTuple
+    run_scenario(domain::Domain; reps=1, raw, conn_ranks::String, seed_log::String, fog_log::String)::NamedTuple
 
 Convenience function to directly run a scenario for a Domain with pre-set values.
 
@@ -34,9 +34,10 @@ Stores results on disk in Zarr format at pre-configured location.
 # Notes
 Only the mean site rankings are kept
 """
-function run_scenario(domain::Domain; idx=1, reps=1, raw, site_ranks, seed_log, fog_log, shade_log)
+function run_scenario(domain::Domain; idx=1, reps=1, raw, conn_ranks, seed_log, fog_log, shade_log)
 
-    result_set = (raw=raw, site_ranks=site_ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
+    # Note here, conn_ranks are used as a template to store site ranks
+    result_set = (raw=raw, site_ranks=copy(conn_ranks), seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
 
     # Set scenario constants here to avoid repeated allocations
     # TODO: Set all constants outside rep or scenario loop
@@ -211,7 +212,7 @@ function run_scenario(domain, param_set, corals, sim_params, site_data,
             nsiteint,
             sim_params.prioritysites,
             domain.strongpred,
-            domain.site_ranks,
+            domain.conn_ranks,
             zeros(n_species, n_sites),  # dam prob
             dhw_scen[1, :],  # heatstressprob
             Yout[1, :, :],  # sumcover
