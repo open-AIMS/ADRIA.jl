@@ -11,8 +11,8 @@ abstract type EcoModel end
 """Set a model parameter value directly."""
 function set!(p::Param, val)
     if hasproperty(p, :ptype) && p.ptype == "integer" && !isinteger(val)
-        # For integer/categorical parameters, take floor of v + 1, capping to the upper bound
-        val = floor(val + 1)
+        # For integer/categorical parameters, take floor of v+1, capping to the upper bound
+        val = floor(val+1)
         val = min(val, p.bounds[2])
     end
 
