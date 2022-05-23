@@ -29,6 +29,26 @@ end
 
 
 """
+    store_name(r::ResultSet)::String
+
+Get name of result set.
+"""
+function store_name(r::ResultSet)::String
+    return "$(r.name)__$(r.invoke_time)"
+end
+
+
+"""
+    store_location(r::ResultSet)::String
+
+Get location of result set.
+"""
+function store_location(r::ResultSet)::String
+    return joinpath(ENV["ADRIA_OUTPUT_DIR"], store_name(r))
+end
+
+
+"""
     setup_result_store!(domain::Domain, param_df::DataFrame)
 
 Sets up an on-disk result store.
@@ -47,13 +67,16 @@ Sets up an on-disk result store.
 
 `inputs` store includes domain specification metadata including what connectivity/DHW/wave data was used.
 
+# Notes
+- `domain` is replaced with an identical copy with an updated scenario invoke time.
+- -9999.0 is used as an arbitrary fill value.
+
 # Inputs
 - `domain` : ADRIA scenario domain
 - `param_df` : ADRIA scenario specification
 
-# Notes
-- `domain` is updated with scenario invoke time.
-- -9999.0 is used as an arbitrary fill value.
+# Returns
+domain, raw, ranks, seed_log, fog_log, shade_log
 
 """
 function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)

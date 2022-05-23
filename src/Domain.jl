@@ -161,6 +161,11 @@ function param_table(d::Domain)::DataFrame
 end
 
 
+"""
+    update_domain!(d::Domain, params::DataFrameRow)
+
+Update given domain with new parameter values.
+"""
 function update_domain!(d::Domain, params::DataFrameRow)
     p_df = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
     p_df[!, :val] = collect(params)
