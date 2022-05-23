@@ -4,13 +4,12 @@
 Create transitional probability matrix indicating connectivity between
 sites, level of centrality, and the strongest predecessor for each site.
 
-NOTE: Transposes transitional probability matrix
+NOTE: Transposes transitional probability matrix if `swap == true`
       If multiple files are read in, this assumes all file rows/cols
       follow the same order as the first file read in.
 
 
-Parameters
-----------
+# Arguments
 file_loc   : str, path to data file (or datasets) to load.
                 If a folder, searches subfolders as well.
 conn_ids : Vector, of connectivity IDs indicating order
@@ -23,18 +22,18 @@ agg_func   : function_handle, defaults to `mean`.
 swap       : boolean, whether to transpose data.
 
 
-Returns
--------
+# Returns
 NamedTuple:
     TP_data : DataFrame, containing the transition probability for all sites
     truncated : ID of sites removed
     site_ids : ID of sites kept
 
 
-Examples
---------
+# Examples
+```julia
     site_connectivity("MooreTPmean.csv", site_order)
     site_connectivity("MooreTPmean.csv", site_order; con_cutoff=0.02, agg_func=mean, swap=true)
+```
 """
 function site_connectivity(file_loc::String, conn_ids::Vector, unique_site_ids::Vector, site_order::Vector; con_cutoff=0.02, agg_func=mean, swap=false)::NamedTuple
     
