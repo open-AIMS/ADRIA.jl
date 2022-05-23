@@ -1,25 +1,46 @@
 """Scenario running functions"""
 
 
-using Zarr
-
-
 
 """
     run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
-    run_scenarios(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64; raw=nothing, conn_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
 
 Run scenarios defined by parameter tables in parallel.
+
+# Notes
+Returned `domain` holds scenario invoke time used as unique result set identifier.
+
+# Returns
+domain
 """
-function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)
-    raw, ranks, seed_log, fog_log, shade_log = ADRIA.setup_result_store!(domain, param_df, reps)
+function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1)::Domain
+    domain, raw, ranks, seed_log, fog_log, shade_log = ADRIA.setup_result_store!(domain, param_df, reps)
 
     # Batch run scenarios
-    pmap((dfx) -> run_scenarios(dfx[1], dfx[2], domain, reps; raw=raw, conn_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log), enumerate(eachrow(param_df)))
+    pmap((dfx) -> run_scenario(dfx[1], dfx[2], domain, reps; raw=raw, conn_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log), enumerate(eachrow(param_df)))
+
+    return domain
 end
-function run_scenarios(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64; raw=nothing, conn_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
+
+
+"""
+    run_scenarios(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64; raw=nothing, conn_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
+
+Run individual scenarios for a given domain.
+
+Stores results on disk in Zarr format at pre-configured location.
+
+# Notes
+Only the mean site rankings are kept
+"""
+function run_scenario(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64; raw=nothing, conn_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
     # Update model with values in given DF row
     update_domain!(domain, df_row)
+
+    # TODO: Modify all scenario constants here to avoid repeated allocations
+    @set! domain.coral_growth.ode_p.P = domain.sim_constants.max_coral_cover::Float64
+    @set! domain.coral_growth.ode_p.comp = domain.sim_constants.comp::Float64
+
     run_scenario(domain; idx=r_idx, reps=reps, raw=raw, conn_ranks=conn_ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
 end
 
@@ -38,11 +59,6 @@ function run_scenario(domain::Domain; idx=1, reps=1, raw, conn_ranks, seed_log, 
 
     # Note here, conn_ranks are used as a template to store site ranks
     result_set = (raw=raw, site_ranks=copy(conn_ranks), seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
-
-    # Set scenario constants here to avoid repeated allocations
-    # TODO: Set all constants outside rep or scenario loop
-    @set! domain.coral_growth.ode_p.P = domain.sim_constants.max_coral_cover::Float64
-    @set! domain.coral_growth.ode_p.comp = domain.sim_constants.comp::Float64
 
     # TODO: Select subset that isn't the coral parameters
     # interv = component_params(domain.model, Intervention)
@@ -137,10 +153,6 @@ function run_scenario(domain, param_set, corals, sim_params, site_data,
     Yout::Array{Float64,3} = zeros(tf, n_species, n_sites)
     Yout[1, :, :] .= @view init_cov[:, :]
     cov_tmp::Array{Float64,2} = similar(init_cov, Float64)
-
-    # Yshade = ndSparse(zeros(tf, nsites));
-    # Yfog = ndSparse(zeros(tf, nsites));
-    # Yseed = ndSparse(zeros(tf, 2, nsites)); % only log seedable corals to save memory
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
