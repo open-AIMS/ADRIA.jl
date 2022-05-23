@@ -1,7 +1,7 @@
-using PkgVersion
-using Zarr
-
 import Dates: now
+
+using PkgVersion, Zarr
+
 import Setfield: @set!
 import DataFrames: DataFrame
 import ADRIA: Domain, EnvLayer
@@ -15,6 +15,7 @@ const INPUTS = "inputs"
 struct ResultSet
     name
     invoke_time
+    ADRIA_VERSION
     env_layer_md
 
     inputs
@@ -104,7 +105,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)
         :sim_constants => Dict(fn=>getfield(domain.sim_constants, fn) for fn ∈ fieldnames(typeof(domain.sim_constants)))
     )
 
-    inputs = zcreate(Float64, input_dims..., fill_value=-9999.0, path=input_loc, chunks=input_dims, attrs=attrs)
+    inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=true, path=input_loc, chunks=input_dims, attrs=attrs)
     inputs[:, :] = Matrix(param_df)
 
     # Raw result store
@@ -116,7 +117,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)
         :structure => ("timesteps", "species", "sites", "reps", "scenarios"),
         :unique_site_ids => domain.unique_site_ids,
     )
-    raw = zcreate(Float32, result_dims..., fill_value=-9999.0, path=result_loc, chunks=(result_dims[1:end-1]..., 1), attrs=attrs)
+    raw = zcreate(Float32, result_dims...; fill_value=-9999.0, fill_as_missing=true, path=result_loc, chunks=(result_dims[1:end-1]..., 1), attrs=attrs)
 
     # Set up logs for site ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
@@ -134,21 +135,27 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)
         :structure=> ("sites", "seed/fog/shade", "reps", "scenarios"),
         :unique_site_ids=>domain.unique_site_ids,
     )
-    ranks = zcreate(Float32, rank_dims..., name="rankings", fill_value=-9999.0, path=log_fn, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
+    ranks = zcreate(Float32, rank_dims..., name="rankings"; fill_value=-9999.0, fill_as_missing=true, path=log_fn, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
         :structure=> ("timesteps", "intervened sites", "coral type", "scenarios"),
         :unique_site_ids=>domain.unique_site_ids,
     )
-    seed_log = zcreate(Float32, seed_dims..., name="seed", fill_value=-9999.0, path=log_fn, chunks=(seed_dims[1:4]..., 1))
-    fog_log = zcreate(Float32, fog_dims..., name="fog", fill_value=-9999.0, path=log_fn, chunks=(fog_dims[1:3]..., 1))
-    shade_log = zcreate(Float32, fog_dims..., name="shade", fill_value=-9999.0, path=log_fn, chunks=(fog_dims[1:3]..., 1))
+    seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=-9999.0, fill_as_missing=true, path=log_fn, chunks=(seed_dims[1:4]..., 1))
+    fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=-9999.0, fill_as_missing=true, path=log_fn, chunks=(fog_dims[1:3]..., 1))
+    shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=-9999.0, fill_as_missing=true, path=log_fn, chunks=(fog_dims[1:3]..., 1))
 
-    return raw, ranks, seed_log, fog_log, shade_log
+    return domain, raw, ranks, seed_log, fog_log, shade_log
 end
 
 
-function load_results(result_loc)
+"""
+    load_results(result_loc::String)::ResultSet
+    load_results(domain::Domain)::ResultSet
+
+Create interface to a given Zarr result set.
+"""
+function load_results(result_loc::String)::ResultSet
     result_set = zopen(joinpath(result_loc, RESULTS))
     log_set = zopen(joinpath(result_loc, LOG_GRP))
     input_set = zopen(joinpath(result_loc, INPUTS))
@@ -168,6 +175,7 @@ function load_results(result_loc)
 
     return ResultSet(input_set.attrs["name"], 
                      input_set.attrs["invoke_time"],
+                     input_set.attrs["ADRIA_VERSION"],
                      env_layer_md,
                      inputs_used,
                      input_set.attrs["sim_constants"],
@@ -176,5 +184,34 @@ function load_results(result_loc)
                      log_set["seed"],
                      log_set["fog"],
                      log_set["shade"])
+end
+function load_results(domain::Domain)::ResultSet
+    log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__$(domain.scenario_invoke_time)")
+    return load_results(log_location)
+end
 
+
+"""
+Hacky scenario filtering - to be replaced with more robust approach.
+
+Only supports filtering by single attribute.
+Should be expanded to support filtering metric results too.
+
+# Examples
+```julia
+select(result, "guided .> 0.0")
+
+# Above expands to:
+# result.inputs.guided .> 0.0
+```
+"""
+function select(r::ResultSet, op::String)
+    scens = r.inputs
+
+    col, qry = split(op, " ", limit=2)
+    col = Symbol(col)
+
+    df_ss = getproperty(scens, col)
+
+    return eval(Meta.parse("$df_ss $qry"))
 end
