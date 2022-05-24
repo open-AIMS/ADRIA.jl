@@ -116,7 +116,7 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
 end
 
 
-function unique_sites(d::domain)
+function unique_sites(d::Domain)
     return d.site_data[:, d.unique_site_id_col]
 end
 
