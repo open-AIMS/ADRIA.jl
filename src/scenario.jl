@@ -35,7 +35,7 @@ Only the mean site rankings are kept
 """
 function run_scenario(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64; raw=nothing, conn_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
     # Update model with values in given DF row
-    update_domain!(domain, df_row)
+    update_params!(domain, df_row)
 
     # TODO: Modify all scenario constants here to avoid repeated allocations
     @set! domain.coral_growth.ode_p.P = domain.sim_constants.max_coral_cover::Float64

@@ -87,43 +87,24 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
     coral_growth = CoralGrowth(nrow(site_data))
     n_sites = coral_growth.n_sites
 
-    # conn_site_names = names(site_conn.TP_base)
-
-    # TODO: Load DHW/Wave data from
+    # TODO: Reorder sites so entries align with each other
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
-        dhw = matread(dhw_fn)["dhw"]
-
-        if size(dhw, 2) != n_sites
-            @warn "Mismatch in DHW data. Truncating so that data size matches!"
-            dhw = dhw[:, 1:n_sites, :]
-        end
-
+        dhw = load_mat_data(dhw_fn, "dhw", site_data[:, unique_site_id_col], n_sites)
     else
         @warn "Using empty DHW data"
         dhw = zeros(74, n_sites, 50)
     end
 
     if endswith(wave_fn, ".mat")
-        waves = matread(wave_fn)["wave"]
-
-        if size(waves, 2) != n_sites
-            @warn "Mismatch in wave data. Truncating so that data size matches!"
-            waves = waves[:, 1:n_sites, :]
-        end
+        waves = load_mat_data(wave_fn, "waves", site_data[:, unique_site_id_col], n_sites)
     else
         @warn "Using empty wave data"
         waves = zeros(74, n_sites, 50)
     end
 
-
     if endswith(init_coral_fn, ".mat")
-        coral_cover = matread(init_coral_fn)["covers"]
-
-        if !isempty(site_conn.truncated)
-            @warn "Mismatch in coral cover data. Truncating so that data size matches!"
-            coral_cover = coral_cover[:, 1:n_sites]
-        end
+        coral_cover = load_mat_data(init_coral_fn, "waves", site_data[:, unique_site_id_col], n_sites)
     else
         @warn "Using random initial coral cover"
         coral_cover = rand(coral_growth.n_species, n_sites)
@@ -135,20 +116,8 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
 end
 
 
-function Base.getproperty(o::Domain, s::Symbol)
-    if s == :unique_site_ids
-        return o.site_data[:, o.unique_site_id_col]
-    end
-
-    # if s == :coral_params
-    #     return to_spec(o.coral)
-    # end
-
-    if hasfield(typeof(o), s)
-        return getfield(o, s)
-    end
-
-    return o.super.s
+function unique_sites(d::domain)
+    return d.site_data[:, d.unique_site_id_col]
 end
 
 
@@ -162,11 +131,11 @@ end
 
 
 """
-    update_domain!(d::Domain, params::DataFrameRow)
+    update_params!(d::Domain, params::DataFrameRow)
 
 Update given domain with new parameter values.
 """
-function update_domain!(d::Domain, params::DataFrameRow)
+function update_params!(d::Domain, params::DataFrameRow)
     p_df = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
     p_df[!, :val] = collect(params)
 
@@ -181,6 +150,34 @@ function update_domain!(d::Domain, params::DataFrameRow)
 
     # update with new parameters
     update!(d.model, p_df)
+end
+
+
+function load_mat_data(data_fn::String, attr::String, expected_id_order::Array{String}, n_sites::Int)
+    data = matread(data_fn)
+    loaded = nothing
+    try
+        site_order = data["reef_siteids"]
+        loaded = NamedArray(data[attr], site_order)
+
+        # Attach site names to each column
+        setnames!(loaded, site_order, 2)
+
+        # Reorder sites so they match with spatial data
+        loaded = loaded[:, expected_id_order, :]
+    catch err
+        if isa(err, KeyError)
+            @warn "Provided data file did not have reef_siteids! There may be a mismatch in sites."
+            if size(loaded, 2) != n_sites
+                @warn "Mismatch in data. Truncating so that data size matches!"
+                loaded = loaded[:, 1:n_sites, :]
+            end
+        else
+            rethrow(err)
+        end
+    end
+
+    return loaded
 end
 
 

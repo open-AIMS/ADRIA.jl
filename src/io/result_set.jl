@@ -115,7 +115,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)
     
     attrs = Dict(
         :structure => ("timesteps", "species", "sites", "reps", "scenarios"),
-        :unique_site_ids => domain.unique_site_ids,
+        :unique_site_ids => unique_sites(domain),
     )
     raw = zcreate(Float32, result_dims...; fill_value=-9999.0, fill_as_missing=true, path=result_loc, chunks=(result_dims[1:end-1]..., 1), attrs=attrs)
 
@@ -133,13 +133,13 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)
 
     attrs = Dict(
         :structure=> ("sites", "seed/fog/shade", "reps", "scenarios"),
-        :unique_site_ids=>domain.unique_site_ids,
+        :unique_site_ids=>unique_sites(domain),
     )
     ranks = zcreate(Float32, rank_dims..., name="rankings"; fill_value=-9999.0, fill_as_missing=true, path=log_fn, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
         :structure=> ("timesteps", "intervened sites", "coral type", "scenarios"),
-        :unique_site_ids=>domain.unique_site_ids,
+        :unique_site_ids=>unique_sites(domain),
     )
     seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=-9999.0, fill_as_missing=true, path=log_fn, chunks=(seed_dims[1:4]..., 1))
     fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=-9999.0, fill_as_missing=true, path=log_fn, chunks=(fog_dims[1:3]..., 1))
