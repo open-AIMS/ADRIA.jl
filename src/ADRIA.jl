@@ -5,7 +5,7 @@ using Distributed
 
 using MATLAB, MAT  # MATLAB interface and package to read in `.mat` files
 
-using SparseArrayKit, DifferentialEquations
+using NamedArrays, SparseArrayKit, DifferentialEquations
 using Setfield, ModelParameters, DataStructures
 using DataFrames, GeoDataFrames, Graphs
 
