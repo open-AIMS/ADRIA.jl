@@ -128,11 +128,10 @@ function _indicative_result_display(res)
 
     fig = plot(p, p2, size=(1000, 500), layout=(1,2), left_margin=5mm, bottom_margin=5mm, xrotation=45, 
             legend=:best, fg_legend=:transparent, bg_legend=:transparent)
-
     # display(fig)
-    gui(fig)
+    # gui(fig)
 
-    savefig("$(ADRIA.store_name(res)).png", fig)
+    savefig("$(ADRIA.store_name(res)).png")
 
     # TODO: Force display from commandline
     # https://discourse.julialang.org/t/how-to-display-the-plots-by-executing-the-file-from-command-line/13822/2
