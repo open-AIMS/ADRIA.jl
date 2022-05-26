@@ -141,9 +141,11 @@ function run_scenario(param_df::DataFrameRow, domain::Domain; rep_id::Int=1)::Na
     # Expand coral model to include its specifications across all taxa/species/groups
     coral_params = to_spec(component_params(domain.model, Coral))
 
+    tf = domain.sim_constants.tf
     return run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
-                        Array{Float64}(domain.init_coral_cover), domain.coral_growth.ode_p,
-                        Array{Float64}(domain.dhw_scens[:, :, rep_id]), Array{Float64}(domain.wave_scens[:, :, rep_id]))
+                        Matrix{Float64}(domain.init_coral_cover), domain.coral_growth.ode_p,
+                        Matrix{Float64}(domain.dhw_scens[1:tf, :, rep_id]), 
+                        Matrix{Float64}(domain.wave_scens[1:tf, :, rep_id]))
 end
 
 
@@ -157,8 +159,8 @@ Core scenario running function.
 Only the mean site rankings are kept
 """
 function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim_params::SimConstants, site_data::DataFrame,
-    init_cov::Array{Float64,2}, p::NamedTuple, dhw_scen::Array,
-    wave_scen::Array)::NamedTuple
+    init_cov::Array{Float64,2}, p::NamedTuple, dhw_scen::Matrix{Float64},
+    wave_scen::Matrix{Float64})::NamedTuple
 
     ### TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
@@ -200,7 +202,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                                         sim_params.density_ratio_of_settlers_to_larvae)
 
     # Caches
-    TP_data::Array{Float64,2} = rand(n_sites, n_sites)
+    TP_data::Array{Float64,2} = Matrix(domain.TP_data)
     LPs::Array{Float64,2} = zeros(n_groups, n_sites)
     fec_all::Array{Float64,2} = similar(init_cov, Float64)
     fec_scope::Array{Float64,2} = zeros(n_groups, n_sites)
