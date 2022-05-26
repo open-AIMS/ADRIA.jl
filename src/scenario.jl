@@ -118,8 +118,10 @@ function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::Named
         end
     end
 
-    # Squash site ranks down to average rankings over environmental repeats
-    data_store.site_ranks[:, :, :, idx] = dropdims(mean(tmp_site_ranks, dims=4), dims=4)
+    if !isnothing(data_store.site_ranks)
+        # Squash site ranks down to average rankings over environmental repeats
+        data_store.site_ranks[:, :, :, idx] = dropdims(mean(tmp_site_ranks, dims=4), dims=4)
+    end
 end
 
 
