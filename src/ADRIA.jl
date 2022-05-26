@@ -60,7 +60,7 @@ if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the pac
         ENV["ADRIA_THRESHOLD"] = 1e-6
         ex_domain.sim_constants.tf = 2
         ds = (raw=nothing, site_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
-        # run_scenario(1, p_df[1, :], ex_domain, 1, ds)
+        run_scenario(1, p_df[1, :], ex_domain, 1, ds)
         run_scenario(1, p_df[end, :], ex_domain, 1, ds)
         delete!(ENV, "ADRIA_THRESHOLD")
     end
