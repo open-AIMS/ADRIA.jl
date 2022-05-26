@@ -21,6 +21,7 @@ struct Domain{M,I,D,S,V,T,X}
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
     name::S           # human-readable name
+    rcp::Int
     env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
     TP_data::D     # site connectivity data
@@ -45,17 +46,14 @@ end
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
-function Domain(name, env_layers, TP_base, conn_ranks, strongest_predecessor,
+function Domain(name, rcp, env_layers, TP_base, conn_ranks, strongest_predecessor,
     site_data, site_id_col, unique_site_id_col, init_coral_cover, coral_growth,
     site_ids, removed_sites, DHWs, waves)::Domain
 
-    # intervention = Intervention()
-    # criteria = Criteria()
-    # coral = Coral()
     model = Model((Intervention(), Criteria(), Coral()))
     sim_constants = SimConstants()
     sim_constants.tf = size(DHWs)[1]  # auto-adjust to length of available time series
-    return Domain(name, env_layers, "", TP_base, conn_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
+    return Domain(name, rcp, env_layers, "", TP_base, conn_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)
 end
@@ -66,12 +64,21 @@ end
 
 Convenience constructor for Domain
 """
-function Domain(name::String, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
+function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
     conn_path::String, dhw_fn::String, wave_fn::String)::Domain
 
     env_layer_md = EnvLayer(site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn)
 
-    site_data = GeoDataFrames.read(site_data_fn)
+    site_data = nothing
+    try
+        site_data = GeoDataFrames.read(site_data_fn)
+    catch err
+        if !isfile(site_data_fn)
+            error("Provided site data path is not valid or missing: $(site_data_fn).")
+        else
+            rethrow(err)
+        end
+    end
 
     # Sort data to maintain consistent order
     sort!(site_data, [Symbol(site_id_col)])
@@ -79,7 +86,6 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
     site_data.row_id = 1:nrow(site_data)
     site_data._siteref_id = groupindices(groupby(site_data, Symbol(site_id_col)))
 
-    # tmp_site_ids = site_data[:, [:_siteref_id, Symbol(site_id_col)]]
     conn_ids = site_data[:, site_id_col]
     site_conn = site_connectivity(conn_path, conn_ids, site_data[:, unique_site_id_col], site_data._siteref_id)
     conns = connectivity_strength(site_conn.TP_base)
@@ -100,20 +106,20 @@ function Domain(name::String, site_data_fn::String, site_id_col::String, unique_
     end
 
     if endswith(wave_fn, ".mat")
-        waves = load_mat_data(wave_fn, "waves", site_data[:, unique_site_id_col], n_sites)
+        waves = load_mat_data(wave_fn, "wave", site_data[:, unique_site_id_col], n_sites)
     else
         @warn "Using empty wave data"
         waves = zeros(74, n_sites, 50)
     end
 
     if endswith(init_coral_fn, ".mat")
-        coral_cover = load_mat_data(init_coral_fn, "waves", site_data[:, unique_site_id_col], n_sites)
+        coral_cover = load_mat_data(init_coral_fn, "covers", site_data[:, unique_site_id_col], n_sites)
     else
         @warn "Using random initial coral cover"
         coral_cover = rand(coral_growth.n_species, n_sites)
     end
 
-    return Domain(name, env_layer_md, site_conn.TP_base, conns.conn_ranks, conns.strongest_predecessor,
+    return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.conn_ranks, conns.strongest_predecessor,
         site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
         site_conn.site_ids, site_conn.truncated, dhw, waves)
 end

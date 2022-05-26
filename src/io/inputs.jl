@@ -20,6 +20,7 @@ function load_domain(path::String, rcp::Union{String, Integer})
 
     dom = Domain(
         domain_name,
+        rcp,
         site_path,
         "siteref",
         "reef_siteid",
