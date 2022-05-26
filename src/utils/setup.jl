@@ -25,10 +25,6 @@ function setup()
         end
 
         addprocs(active_cores, exeflags="--project")
-
-        @eval @everywhere begin
-            using ADRIA
-        end
     end
 end
 

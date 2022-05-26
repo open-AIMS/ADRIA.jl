@@ -31,6 +31,8 @@ function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=0)::Doma
 
     # Batch run scenarios
     if nrow(param_df) > 16
+        @eval @everywhere using ADRIA
+
         @showprogress "Running..." 1 pmap(func, enumerate(eachrow(param_df)))
     else
         @showprogress "Running..." 1 map(func, enumerate(eachrow(param_df)))
