@@ -116,27 +116,27 @@ end
 
 
 """
-    bleaching_mortality(tstep, n_p1, n_p2, a_adapt, n_adapt, bleach_resist, dhw)
+    bleaching_mortality(Y::Array{Float64,2}, tstep::Int64, n_p1::Float64, n_p2::Float64,
+        a_adapt::Vector{Float64}, n_adapt::Float64,
+        bleach_resist::Vector{Float64}, dhw::Vector{Float64})::Nothing
 
 Gompertz cumulative mortality function
 
 Partial calibration using data by Hughes et al [1] (see Fig. 2C)
 
-Parameters
-----------
-Y       : bleaching mortality for each coral species
-tstep   : current time step
-n_p1    : Gompertz distribution shape parameter 1
-n_p2    : Gompertz distribution shape parameter 2
-a_adapt : assisted adaptation
+# Arguments
+- Y       : bleaching mortality for each coral species
+- tstep   : current time step
+- n_p1    : Gompertz distribution shape parameter 1
+- n_p2    : Gompertz distribution shape parameter 2
+- a_adapt : assisted adaptation
             where `sp` is the number of species considered
-n_adapt : natural adaptation
+- n_adapt : natural adaptation
             where `sp` is the number of species considered
-dhw     : degree heating weeks for given time step for each site
+- dhw     : degree heating weeks for given time step for each site
 
 
-References
-----------
+# References
 1. Hughes, T.P., Kerry, J.T., Baird, A.H., Connolly, S.R.,
     Dietzel, A., Eakin, C.M., Heron, S.F., Hoey, A.S.,
     Hoogenboom, M.O., Liu, G., McWilliam, M.J., Pears, R.J.,
@@ -176,6 +176,9 @@ end
 
 
 """
+    fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64},
+                     Y_pstep::Array{Float64, 2}, site_area::Array{Float64})::Nothing
+
 The scope that different coral groups and size classes have for
 producing larvae without consideration of environment.
 
@@ -185,16 +188,14 @@ this produces an estimate of the relative fecundity of each coral group and size
 Total relative fecundity of a group is then calculated as the sum of
 fecundities across size classes.
 
-Parameters
-----------
-fec_groups : Matrix[n_classes, n_sites], memory cache to place results into
-fec_all : Matrix[n_taxa, n_sites], temporary cache to place intermediate fecundity values into
-fec_params : Vector, coral fecundity parameters
-Y_pstep : Matrix[n_taxa, n_sites], of values in previous time step
-site_area : Vector[n_sites], of site areas
+# Arguments
+- fec_groups : Matrix[n_classes, n_sites], memory cache to place results into
+- fec_all : Matrix[n_taxa, n_sites], temporary cache to place intermediate fecundity values into
+- fec_params : Vector, coral fecundity parameters
+- Y_pstep : Matrix[n_taxa, n_sites], of values in previous time step
+- site_area : Vector[n_sites], of site areas
 
-Returns
--------
+# Returns
 Matrix[n_classes, n_sites] : fecundity per m2 of coral
 """
 function fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64},
@@ -219,22 +220,25 @@ function fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64,
 end
 
 
-function larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
-    # Estimate how scope for larval production by each coral type changes as a
-    # function of last year's heat stress. The function is theoretical and is
-    # not yet verified by data. The rationale is that
+"""
+    larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
 
-    #
-    # Inputs:
-    #    tstep : int,
-    #    assistadapt : array, DHW
-    #    n_adapt : array, DHWs per year for all species
-    #    stresspast : array, DHW at previous time step for each site
-    #    LPdhwcoeff : float,
-    #    DHWmaxtot : int, maximum DHW
-    #    LPDprm2 : int, larval production parameter 2
-    # Output:
-    #    array of ngroups by nsites
+Estimate how scope for larval production by each coral type changes as a
+function of last year's heat stress. The function is theoretical and is not yet verified by data.
+
+# Arguments
+- tstep : int,
+- assistadapt : array, DHW
+- n_adapt : array, DHWs per year for all species
+- stresspast : array, DHW at previous time step for each site
+- LPdhwcoeff : float,
+- DHWmaxtot : int, maximum DHW
+- LPDprm2 : int, larval production parameter 2
+
+# Returns
+array of ngroups by nsites
+"""
+function larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
     ad = @. a_adapt + tstep * n_adapt;
 
     # using half of DHWmaxtot as a placeholder
