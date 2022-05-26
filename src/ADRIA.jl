@@ -7,16 +7,17 @@ using MATLAB, MAT  # MATLAB interface and package to read in `.mat` files
 
 using NamedArrays, SparseArrayKit, DifferentialEquations
 using Setfield, ModelParameters, DataStructures
-using DataFrames, GeoDataFrames, Graphs
+using DataFrames, GeoDataFrames, Graphs, CSV
 
-using CSV
+using ProgressMeter
 
 
-include("utils/text_display.jl");  # need better name for this file
+include("utils/text_display.jl")  # need better name for this file
+include("utils/setup.jl")
 
-include("ecosystem/corals/growth.jl");
-include("ecosystem/corals/CoralGrowth.jl");
-include("ecosystem/Ecosystem.jl");
+include("ecosystem/corals/growth.jl")
+include("ecosystem/corals/CoralGrowth.jl")
+include("ecosystem/Ecosystem.jl")
 
 # Generate base coral struct from default spec.
 # Have to call this before including specification methods
