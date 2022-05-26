@@ -177,7 +177,7 @@ function load_mat_data(data_fn::String, attr::String, expected_id_order::Array{S
         setnames!(loaded, site_order, 2)
 
         # Reorder sites so they match with spatial data
-        loaded = loaded[:, expected_id_order, :]
+        loaded = selectdim(loaded, 2, 1:n_sites)
     catch err
         if isa(err, KeyError)
             @warn "Provided file $(data_fn) did not have reef_siteids! There may be a mismatch in sites."
