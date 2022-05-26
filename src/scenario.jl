@@ -254,16 +254,19 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         wtpredecshade = param_set.shade_priority # weight for the importance of shading sites that are predecessors of priority reefs
         risktol = param_set.deployed_coral_risk_tol # risk tolerance
 
+        # Defaults to considering all sites if depth cannot be considered.
+        depth_priority = collect(1:nrow(site_data))
+
         # Filter out sites outside of desired depth range
         if .!all(site_data.sitedepth .== 0)
             max_depth = param_set.depth_min + param_set.depth_offset
             depth_criteria = (site_data.sitedepth .> -max_depth) .& (site_data.sitedepth .< -param_set.depth_min)
 
             # TODO: Include this change in MATLAB version as well
-            depth_priority = collect(1:nrow(site_data))[depth_criteria]  #  site_data[depth_criteria, domain.site_id_col]
-        else
-            # No depth data, so consider all sites
-            depth_priority = collect(1:nrow(site_data))  # site_data[:, domain.unique_site_id_col]
+            if any(depth_criteria .> 0)
+                # If sites can be filtered based on depth, do so. Otherwise if no sites can be filtered, remove depth as a criterion.
+                depth_priority = collect(1:nrow(site_data))[depth_criteria]
+            end
         end
 
         # pre-allocate rankings
