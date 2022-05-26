@@ -152,9 +152,11 @@ function update_params!(d::Domain, params::DataFrameRow)
     if any(to_floor .> 0)
         v = p_df[to_floor, :val]
 
+        p_df[to_floor, :val] .= map_to_discrete.(v, getindex.(p_df[to_floor, :bounds], 2))
+
         # Floor values, capping to maximum bound value
-        v .= min.(floor.(v), [b[2] for b in p_df[to_floor, :bounds]])
-        p_df[to_floor, :val] = Int.(v)
+        # v .= min.(floor.(v), [b[2] for b in p_df[to_floor, :bounds]])
+        # p_df[to_floor, :val] = Int.(v)
     end
 
     # update with new parameters
