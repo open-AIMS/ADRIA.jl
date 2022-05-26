@@ -1,0 +1,40 @@
+{
+  "name": "Example_domain",
+  "title": "Example reef cluster data package",
+  "description": "Example data package for ADRIA",
+  "sources": [],
+  "contributors": [
+    {
+      "title": "Joe Smith",
+      "email": "joe.smith@example.com",
+      "role": "author",
+      "description": "Assembled example data"
+    }
+  ],
+  "resources": [
+    {
+      "name": "spatial_data",
+      "description": "spatial data for Example cluster",
+      "path": "site_data/Example_domain.gpkg",
+      "format": "geopackage"
+    },
+    {
+      "name": "coral_cover",
+      "description": "Initial coral cover",
+      "path": "site_data/coral_cover.mat",
+      "format": "MAT v7.3"
+    },
+    {
+      "name": "waves",
+      "description": "Stochastic wave data for the Example cluster",
+      "path": "waves/waves_data.mat",
+      "format": "MAT v7.3"
+    },
+    {
+      "name": "connectivity",
+      "description": "Example connectivity data for specific days across years, grouped by year",
+      "path": "connectivity",
+      "format": "CSV"
+    }
+  ]
+}
