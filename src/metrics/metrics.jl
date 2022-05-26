@@ -78,7 +78,7 @@ function coral_evenness(rs::ResultSet)
     X = rs.raw
 
     x = min.(max.(X, 0.0), 1.0)
-    covers = coral_cover(X)
+    covers = coral_cover(x)
 
     # Evenness as a functional diversity metric
     n = 4;  # number of taxa
