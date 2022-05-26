@@ -14,7 +14,7 @@ function load_domain(path::String, rcp::Union{String, Integer})
 
     dhw = joinpath(path, "DHWs", "dhwRCP$(rcp).mat")
 
-    site_path = joinpath(site_data, "$(domain_name)_cluster.gpkg")
+    site_path = joinpath(site_data, "$(domain_name).gpkg")
     init_coral_cov = joinpath(site_data, "coral_cover.mat")
     wave = joinpath(path, "waves/wave_data.mat")
 
