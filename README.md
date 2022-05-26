@@ -39,3 +39,25 @@ julia> ]activate .
 ```
 
 Development scripts/functions can then be worked on in the `sandbox` folder without these polluting the repository.
+
+
+# App
+
+[IN PROGRESS]
+
+A command-line application can be created with PackageCompiler.jl
+
+```julia
+create_app("./", "app"; include_lazy_artifacts=true, force=true)
+```
+
+```bash
+# Run scenarios and generate png of indicative results
+$ app/bin/ADRIA.exe run [path to data package] [RCP scenario] [CSV of scenarios to run]
+
+# Re-create plot of indicative results
+$ app/bin/ADRIA.exe load [path to result set]
+
+# Display options
+$ app/bin/ADRIA.exe help
+```
