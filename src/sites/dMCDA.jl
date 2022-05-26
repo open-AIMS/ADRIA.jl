@@ -196,7 +196,7 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
         SE .= SE .* repeat(wse', size(SE, 1), 1)
         s_order = mcda_func(SE)
 
-        last_idx = min(nsiteint, height(s_order))
+        last_idx = min(nsiteint, size(s_order, 1))
         prefseedsites = s_order[1:last_idx, 1]
 
         # Match by site_id and assign rankings to log
@@ -223,8 +223,6 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
         align_rankings!(rankings, s_order, 3)
     end
 
-    # s_order[:, 1] .= Int.(s_order[:, 1])
-
     nprefseedsites = length(prefseedsites)
     nprefshadesites = length(prefshadesites)
 
@@ -238,7 +236,6 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
     end
 
     return prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
-
 end
 
 
