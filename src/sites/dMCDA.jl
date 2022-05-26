@@ -134,10 +134,8 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
         return prefseedsites, nprefseedsites, prefshadesites, nprefshadesites, rankings
     end
 
-    # number of sites left after risk filtration
-    if nsiteint > length(A[:, 1])
-        nsiteint = length(A[:, 1])
-    end
+    # cap to number of sites left after risk filtration
+    nsiteint = min(nsiteint, length(A[:, 1]))
 
     ## Seeding - Filtered set
     # define seeding weights
