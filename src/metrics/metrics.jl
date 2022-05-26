@@ -206,10 +206,10 @@ function reef_condition_index(rs::ResultSet)
 end
 
 
-function summarize_total_cover(rs::ResultSet)
+function summarize_total_cover(rs::ResultSet)::NamedTuple
     cover = coral_cover(rs).total_cover
 
-    x = Dict(Symbol(f) => f(cover, dims=(3,2)) for f in [mean, median, std, minimum, maximum])
+    x = Dict(Symbol(f) => dropdims(f(cover, dims=(3,2)), dims=(3,2)) for f in [mean, median, std, minimum, maximum])
     return (;zip(keys(x), values(x))...)
 end
 
