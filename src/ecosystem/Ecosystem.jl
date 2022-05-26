@@ -95,15 +95,18 @@ https://stackoverflow.com/a/27084705/2694952
 https://stackoverflow.com/questions/27083816/is-it-possible-to-create-types-in-julia-at-runtime
 
 
-Example
--------
-julia> _coral_struct(Dict("a"=>200))
+# Example
 
-julia> y = Coral()
-Coral{Int64}(200)
+```julia
+# Generate Coral struct with single attribute "a"
+_coral_struct(Dict("a"=>200))
 
-julia> y.a
-    200
+y = Coral()
+# Coral{Int64}(200)
+
+y.a
+# 200
+```
 """
 function _coral_struct(field_defs::Dict)::Nothing
     s::String = "Base.@kwdef struct Coral{P} <: EcoModel\n"
@@ -121,17 +124,18 @@ end
 """
     create_coral_struct(bounds=(0.9, 1.1))
 
-Generates Coral struct
+Generates Coral struct using the default parameter spec.
 
-Example
--------
-    # Define coral struct with auto-generated parameter ranges (default in ADRIA is ± 10%)
-    create_coral_struct()
-    coral = Coral()
+# Example
+```julia
+# Define coral struct with auto-generated parameter ranges (default in ADRIA is ± 10%)
+create_coral_struct()
+coral = Coral()
 
-    # Recreate coral spec ± 50% from nominal values
-    create_coral_struct((0.5, 1.5))
-    coral = Coral()
+# Recreate coral spec ± 50% from nominal values
+create_coral_struct((0.5, 1.5))
+coral = Coral()
+```
 """
 function create_coral_struct(bounds=(0.9, 1.1))
     _, base_coral_params, x = coral_spec()
