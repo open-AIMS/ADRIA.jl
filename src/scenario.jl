@@ -13,7 +13,7 @@ Returned `domain` holds scenario invoke time used as unique result set identifie
 # Arguments
 - param_df : DataFrame of scenarios to run
 - domain : Domain, to run scenarios with
-- reps : environmental scenario repeats. If 0 (the default), loads the user-specified value from config.
+- reps : Environmental scenario repeats. If 0 (the default), loads the user-specified value from config.
 
 # Returns
 domain
@@ -86,14 +86,14 @@ function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::Named
 
     # Passing in environmental layer data stripped of named dimensions.
     init_cc = Array{Float64}(domain.init_coral_cover)
-    all_dhws = Array{Float64}(domain.dhw_scens[:, :, 1:reps])
-    all_waves = Array{Float64}(domain.wave_scens[:, :, 1:reps])
+    all_dhws = Array{Float64}(domain.dhw_scens[1:tf, :, 1:reps])
+    all_waves = Array{Float64}(domain.wave_scens[1:tf, :, 1:reps])
 
     result_set = Array{NamedTuple}(repeat([(empty=0,)], reps))
     @inbounds for i::Int in 1:reps
         result_set[i] = run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
-                                    init_cc, domain.coral_growth.ode_p,
-                                    all_dhws[:, :, i], all_waves[:, :, i])
+                                      init_cc, domain.coral_growth.ode_p,
+                                      all_dhws[:, :, i], all_waves[1:tf, :, i])
     end
 
     # Capture results to disk
@@ -227,14 +227,16 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     shade_decision_years = repeat([false], tf)
 
     if param_set.seed_freq > 0
-        seed_decision_years[seed_start_year:param_set.seed_freq:(seed_start_year+seed_years-1)] .= true
+        max_consider = min(seed_start_year+seed_years-1, tf)
+        seed_decision_years[seed_start_year:param_set.seed_freq:max_consider] .= true
     else
         # Start at year 2 or the given specified seed start year
         seed_decision_years[max(seed_start_year, 2)] .= true
     end
 
     if param_set.shade_freq > 0
-        shade_decision_years[shade_start_year:param_set.shade_freq:(shade_start_year+shade_years-1)] .= true
+        max_consider = min(shade_start_year+shade_years-1, tf)
+        shade_decision_years[shade_start_year:param_set.shade_freq:max_consider] .= true
     else
         # Start at year 2 or the given specified shade start year
         shade_decision_years[max(shade_start_year, 2)] .= true
@@ -342,12 +344,13 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # Wave stress
     mwaves::Array{Float64,3} = zeros(tf, n_species, n_sites)
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
+
     @inbounds for sp::Int64 in 1:n_species
-        mwaves[:, sp, :] .= wavemort90[sp] .* wave_scen
+        @views mwaves[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :, :]
     end
 
-    mwaves[mwaves.<0.0] .= 0.0
-    mwaves[mwaves.>1.0] .= 1.0
+    mwaves[mwaves .< 0.0] .= 0.0
+    mwaves[mwaves .> 1.0] .= 1.0
 
     Sw_t = 1.0 .- mwaves
 
@@ -371,7 +374,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         fecundity_scope!(fec_scope, fec_all, fec_params, cov_tmp, site_area)
 
         # adjusting absolute recruitment at each site by dividing by the area
-        p.rec .= (potential_settler_cover * ((fec_scope .* LPs) * TP_data)) / site_area
+        @views p.rec[:, :] .= (potential_settler_cover * ((fec_scope .* LPs) * TP_data)) / site_area
 
         @views dhw_step .= dhw_scen[tstep, :]  # subset of DHW for given timestep
 
