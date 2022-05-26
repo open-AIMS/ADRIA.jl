@@ -5,7 +5,7 @@ Julia implementation of ADRIA (in progress).
 In the short-term, functionality may leverage the existing MATLAB version and so a working copy of MATLAB and ADRIA is recommended.
 Interaction is handled via the MATLAB.jl interface (See intro here: https://github.com/JuliaInterop/MATLAB.jl).
 
-The `example.ipynb` in the `examples` directory showcases an example use of MATLAB.jl
+Example scripts are found in the `examples` directory.
 
 
 ## Development setup
@@ -40,6 +40,42 @@ julia> ]activate .
 
 Development scripts/functions can then be worked on in the `sandbox` folder without these polluting the repository.
 
+
+## Note
+
+The very first import of the ADRIA package will be very slow as it attempts to precompile common functions to reduce later start up time.
+This slow initial precompilation has to be repeated if the package is modified, but will remain "fast" if no changes are made.
+
+To ameliorate this start-up cost while developing, use the [Revise package](https://github.com/timholy/Revise.jl).
+
+```julia
+julia> @time using ADRIA
+[ Info: Precompiling ADRIA [7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600]
+180.850632 seconds (62.73 M allocations: 4.070 GiB, 1.17% gc time, 6.57% compilation time)
+
+julia> @time using ADRIA
+  0.002154 seconds (430 allocations: 28.562 KiB)
+```
+
+The same applies when running ADRIA for the first time:
+
+```julia
+# Running the first time
+julia> @time include("running_scenarios.jl")
+[ Info: Loading data package
+[ Info: Loading example scenarios
+[ Info: Setting up and running scenarios
+[ Info: Reloading results and saving figure
+441.297525 seconds (402.13 M allocations: 24.268 GiB, 2.05% gc time, 53.47% compilation time)
+
+# Running a second time
+julia> @time include("running_scenarios.jl")
+[ Info: Loading data package
+[ Info: Loading example scenarios
+[ Info: Setting up and running scenarios
+[ Info: Reloading results and saving figure
+  5.066090 seconds (1.66 M allocations: 2.145 GiB, 6.70% gc time, 0.00% compilation time)
+```
 
 # App
 
