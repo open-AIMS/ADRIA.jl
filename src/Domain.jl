@@ -166,22 +166,26 @@ end
 
 function load_mat_data(data_fn::String, attr::String, expected_id_order::Array{String}, n_sites::Int)
     data = matread(data_fn)
-    loaded = nothing
+    loaded = data[attr]
+
+    site_order = nothing
     try
-        site_order = data["reef_siteids"]
-        loaded = NamedArray(data[attr], site_order)
+        site_order = Array{String}(data["reef_siteids"])
 
         # Attach site names to each column
+        loaded = NamedArray(data[attr])
         setnames!(loaded, site_order, 2)
 
         # Reorder sites so they match with spatial data
         loaded = loaded[:, expected_id_order, :]
     catch err
         if isa(err, KeyError)
-            @warn "Provided data file did not have reef_siteids! There may be a mismatch in sites."
+            @warn "Provided file $(data_fn) did not have reef_siteids! There may be a mismatch in sites."
             if size(loaded, 2) != n_sites
-                @warn "Mismatch in data. Truncating so that data size matches!"
-                loaded = loaded[:, 1:n_sites, :]
+                @warn "Mismatch in number of sites ($(data_fn)).\nTruncating so that data size matches!"
+
+                # Subset down to number of sites
+                loaded = selectdim(loaded, 2, 1:n_sites)
             end
         else
             rethrow(err)
