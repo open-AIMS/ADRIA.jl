@@ -9,21 +9,42 @@ abstract type EcoModel end
 
 
 """Set a model parameter value directly."""
-function set!(p::Param, val)
+function set(p::Param, val::Number)
     if hasproperty(p, :ptype) && p.ptype == "integer" && !isinteger(val)
-        # For integer/categorical parameters, take floor of v+1, capping to the upper bound
-        val = floor(val+1)
-        val = min(val, p.bounds[2])
+        val = map_to_discrete(val, p.bounds[2])
     end
 
-    # @set! p.val = val
     return val
 end
 
 
+"""
+    map_to_discrete(v::Number, u::Int)::Int
+
+For integer/categorical parameters, take floor of `v`, capping to `u - 1`
+"""
+function map_to_discrete(v::Number, u::Int)::Int
+    return min(floor(v), u-1)
+end
+
+"""
+    map_to_discrete!(df::DataFrame, u::AbstractArray)::Nothing
+
+Update a dataframe of parameters.
+Length of `u` is expected to match number of columns in `df`.
+"""
+function map_to_discrete!(df::DataFrame, u::Union{AbstractArray, Tuple})::Nothing
+    for (idx, b) in enumerate(u)
+        df[:, idx] .= map_to_discrete.(df[:, idx], b)
+    end
+end
+
+
+
+
 """Update a given model with new uncertain parameter values."""
 function update!(m::Model, vals::Union{Vector,Tuple,Array})::Nothing
-    m[:val] = map((x) -> set!(x...), zip(params(m), vals))
+    m[:val] = map((x) -> set(x...), zip(params(m), vals))
 
     return
 end
@@ -31,20 +52,20 @@ end
 
 Base.@kwdef struct Intervention{N,P} <: EcoModel
     # Intervention Parameters
-    # Integer values have a -1 offset to allow for discrete value mapping (see `set!() method`)
-    guided::N = Param(0, ptype="integer", bounds=(0-1, 4)) # Guided, choice of MCDA approach
-    seed_TA::N = Param(0, ptype="integer", bounds=(0-1, 500000)) # Seed1, integer, number of Enhanced TA to seed
-    seed_CA::N = Param(0, ptype="integer", bounds=(0-1, 500000)) # Seed2, integer, number of Enhanced CA to seed
+    # Integer values have a +1 offset to allow for discrete value mapping (see `set!() method`)
+    guided::N = Param(0, ptype="integer", bounds=(0, 3+1)) # Guided, choice of MCDA approach
+    seed_TA::N = Param(0, ptype="integer", bounds=(0, 500000+1)) # Seed1, integer, number of Enhanced TA to seed
+    seed_CA::N = Param(0, ptype="integer", bounds=(0, 500000+1)) # Seed2, integer, number of Enhanced CA to seed
     fogging::P = Param(0.2, ptype="real", bounds=(0.0, 0.3)) # fogging, float, assumed percent reduction in bleaching mortality
     SRM::P = Param(0.0, ptype="real", bounds=(0.0, 12.0)) # SRM, float, reduction in DHWs due to shading
     a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 12.0)) # Aadpt, float, float, increased adaptation rate
     n_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 0.05)) # Natad, float, natural adaptation rate
-    seed_years::N = Param(10, ptype="integer", bounds=(5-1, 16)) # Seedyrs, integer, years into simulation during which seeding is considered
-    shade_years::N = Param(10, ptype="integer", bounds=(5-1, 74)) # Shadeyrs, integer, years into simulation during which shading is considered
-    seed_freq::N = Param(5, ptype="integer", bounds=(0-1, 6)) # Seedfreq, integer, yearly intervals to adjust seeding site selection (0 is set and forget)
-    shade_freq::N = Param(1, ptype="integer", bounds=(0-1, 6)) # Shadefreq, integer, yearly intervals to adjust shading (fogging) site selection (0 is set and forget)
-    seed_year_start::N = Param(2, ptype="integer", bounds=(2-1, 26)) # Seedyr_start, integer, seed intervention start offset from simulation start
-    shade_year_start::N = Param(2, ptype="integer", bounds=(2-1, 26)) # Shadeyr_start, integer, shade intervention start offset from simulation start
+    seed_years::N = Param(10, ptype="integer", bounds=(5, 15+1)) # Seedyrs, integer, years into simulation during which seeding is considered
+    shade_years::N = Param(10, ptype="integer", bounds=(5, 74+1)) # Shadeyrs, integer, years into simulation during which shading is considered
+    seed_freq::N = Param(5, ptype="integer", bounds=(0, 5+1)) # Seedfreq, integer, yearly intervals to adjust seeding site selection (0 is set and forget)
+    shade_freq::N = Param(1, ptype="integer", bounds=(0, 5+1)) # Shadefreq, integer, yearly intervals to adjust shading (fogging) site selection (0 is set and forget)
+    seed_year_start::N = Param(2, ptype="integer", bounds=(2, 25+1)) # Seedyr_start, integer, seed intervention start offset from simulation start
+    shade_year_start::N = Param(2, ptype="integer", bounds=(2, 25+1)) # Shadeyr_start, integer, shade intervention start offset from simulation start
 end
 
 
