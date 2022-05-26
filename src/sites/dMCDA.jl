@@ -101,17 +101,17 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
     c_cov_area = centr .* sumcover .* area
 
     # node connectivity centrality, need to instead work out strongest predecessors to priority sites
-    A[:, 2] = maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
+    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
 
     # Account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
     A[:, 3] .= maximum(damprob) != 0 ? damprob / maximum(damprob) : damprob
 
     # risk from heat exposure
-    A[:, 4] = maximum(heatstressprob) != 0 ? heatstressprob / maximum(heatstressprob) : heatstressprob
+    A[:, 4] .= maximum(heatstressprob) != 0 ? heatstressprob / maximum(heatstressprob) : heatstressprob
 
     # priority predecessors
-    A[:, 5] = predec[:, 3]
+    A[:, 5] .= predec[:, 3]
 
     A[:, 6] = (maxcover - sumcover) ./ maxcover # proportion of cover compared to max possible cover
 
@@ -146,15 +146,13 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
         wse[2:end] .= mcda_normalize(wse[2:end])
 
         # define seeding decision matrix
-        SE[:, 1] = A[:, 1]  # sites column (remaining)
-        SE[:, 2] = A[:, 2]  # centrality
-        SE[:, 3] = (1.0 - A[:, 3])  # complementary of damage risk
-        SE[:, 4] = (1.0 - A[:, 4])  # complimetary of wave risk
-        SE[:, 5] = A[:, 5]  # priority predecessors
-        SE[:, 6] = A[:, 6]  # coral real estate relative to max capacity
+        SE[:, 1:2] = A[:, 1:2]  # sites column (remaining), centrality
+        SE[:, 3] = (1.0 .- A[:, 3])  # complementary of damage risk
+        SE[:, 4] = (1.0 .- A[:, 4])  # complimetary of wave risk
+        SE[:, 5:6] = A[:, 5:6]  # priority predecessors, coral real estate relative to max capacity
 
         # remove sites at maximum carrying capacity
-        SE .= SE[vec(A[:, 6] .<= 0), :]
+        SE = SE[vec(A[:, 6] .<= 0), :]
     end
 
     if log_shade
@@ -163,11 +161,9 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
         wsh = [1, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
         wsh[2:end] .= mcda_normalize(wsh[2:end])
 
-        SH[:, 1] = A[:, 1] # sites column (remaining)
-        SH[:, 2] = A[:, 2] # absolute centrality
+        SH[:, 1:2] = A[:, 1:2] # sites column (remaining), absolute centrality
         SH[:, 3] = (1.0 .- A[:, 3]) # complimentary of wave damage risk
-        SH[:, 4] = A[:, 4] # complimentary of heat damage risk
-        SH[:, 5] = A[:, 5] # priority predecessors
+        SH[:, 4:5] = A[:, 4:5] # complimentary of heat damage risk, priority predecessors
         SH[:, 6] = (1.0 .- A[:, 6]) # coral cover relative to max capacity
     end
 
