@@ -264,6 +264,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
             # TODO: Include this change in MATLAB version as well
             if any(depth_criteria .> 0)
+                @warn "No sites within provided depth range of $(param_set.depth_min) - $(max_depth) meters. Considering all sites."
+
                 # If sites can be filtered based on depth, do so. Otherwise if no sites can be filtered, remove depth as a criterion.
                 depth_priority = collect(1:nrow(site_data))[depth_criteria]
             end
