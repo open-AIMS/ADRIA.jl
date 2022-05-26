@@ -78,7 +78,7 @@ Sets up an on-disk result store.
 - `param_df` : ADRIA scenario specification
 
 # Returns
-domain, (raw, ranks, seed_log, fog_log, shade_log)
+domain, (raw, site_ranks, seed_log, fog_log, shade_log)
 
 """
 function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tuple
