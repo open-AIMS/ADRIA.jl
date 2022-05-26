@@ -34,9 +34,6 @@ end
 """
 """
 function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
-    # Add ranking column
-    # s_order[:, 3] = 1:length(s_order[:, 1])
-
     # match site_ids by given order
     match_idx = findall(in.(rankings[:, 1], (s_order[:, 1], )))
 
