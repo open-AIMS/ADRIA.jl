@@ -288,3 +288,18 @@ function site_selection(domain::Domain, criteria::DataFrame, ts::Int, n_reps::In
 
     return ranks
 end
+
+
+function Base.show(io::IO, mime::MIME"text/plain", d::Domain)
+
+    println("Domain: $(d.name)")
+    println("Number of sites: $(nrow(d.site_data))")
+
+    println("Site data file: $(d.env_layer_md.site_data_fn)")
+    println("Connectivity file: $(d.env_layer_md.connectivity_fn)")
+    println("DHW file: $(d.env_layer_md.DHW_fn)")
+    println("Wave file: $(d.env_layer_md.wave_fn)")
+
+    println("\nEcosystem model specification")
+    show(io, mime, d.model)
+end
