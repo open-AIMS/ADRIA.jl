@@ -1,4 +1,7 @@
-"""Store environmental data layers used for scenario"""
+"""
+
+Store environmental data layers used for scenario
+"""
 struct EnvLayer{S}
     site_data_fn::S
     site_id_col::S

@@ -176,14 +176,14 @@ end
 
 
 """
-The scope that different coral groups and size classes have for 
+The scope that different coral groups and size classes have for
 producing larvae without consideration of environment.
 
-Coral fecundity per coral area of the different size classes.  
+Coral fecundity per coral area of the different size classes.
 When multiplied by the relative cover of each size class within taxa,
-this produces an estimate of the relative fecundity of each coral group and size.  
-Total relative fecundity of a group is then calculated as the sum of 
-fecundities across size classes. 
+this produces an estimate of the relative fecundity of each coral group and size.
+Total relative fecundity of a group is then calculated as the sum of
+fecundities across size classes.
 
 Parameters
 ----------
@@ -197,7 +197,7 @@ Returns
 -------
 Matrix[n_classes, n_sites] : fecundity per m2 of coral
 """
-function fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64}, 
+function fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64},
                           Y_pstep::Array{Float64, 2}, site_area::Array{Float64})::Nothing
     ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
     nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
@@ -220,10 +220,10 @@ end
 
 
 function larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
-    # Estimate how scope for larval production by each coral type changes as a 
-    # function of last year's heat stress. The function is theoretical and is 
-    # not yet verified by data. The rationale is that 
-    
+    # Estimate how scope for larval production by each coral type changes as a
+    # function of last year's heat stress. The function is theoretical and is
+    # not yet verified by data. The rationale is that
+
     #
     # Inputs:
     #    tstep : int,
@@ -233,18 +233,18 @@ function larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWm
     #    LPdhwcoeff : float,
     #    DHWmaxtot : int, maximum DHW
     #    LPDprm2 : int, larval production parameter 2
-    # Output:  
+    # Output:
     #    array of ngroups by nsites
     ad = @. a_adapt + tstep * n_adapt;
-    
-    tmp_ad = @. (1 - ad / (DHWmaxtot/2)); #using half of DHWmaxtot as a placeholder 
-    # for the maximum capacity for thermal adaptation 
-    
-    # one way around dimensional issue - tmp_ad for each class as the averaged
-    # # of the enhanced and unenhanced corals in that class
+
+    # using half of DHWmaxtot as a placeholder
+    # for the maximum capacity for thermal adaptation
+    tmp_ad = @. (1 - ad / (DHWmaxtot/2));
+
+    # One way around dimensional issue - tmp_ad for each class as the averaged
+    # of the enhanced and unenhanced corals in that class
+    # KA note: this works as it averages over size classes and not across groups.
     tmp_ad2 = mean(reshape(tmp_ad, Int(length(tmp_ad)/n_groups), n_groups), dims=1);
-    # KA note: this works as it averages over size classes and not across groups.  
-    
+
     return 1.0 .- exp.(-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2' .- LPDprm2))));
 end
-    
