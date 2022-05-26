@@ -5,7 +5,7 @@ Julia implementation of ADRIA (in progress).
 In the short-term, functionality may leverage the existing MATLAB version and so a working copy of MATLAB and ADRIA is recommended.
 Interaction is handled via the MATLAB.jl interface (See intro here: https://github.com/JuliaInterop/MATLAB.jl).
 
-Example scripts are found in the `examples` directory.
+Scripts showcasing example usage are found in the `examples` directory.
 
 
 ## Development setup
