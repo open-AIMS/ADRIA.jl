@@ -2,6 +2,39 @@
 
 
 """
+    setup_cache(domain::Domain)::NamedTuple
+
+Establish tuple of matrices/vectors for use as reusable data stores to avoid repeated memory allocations.
+"""
+function setup_cache(domain::Domain)::NamedTuple
+
+    # sim constants
+    tf = domain.sim_constants.tf
+    n_sites::Int64 = domain.coral_growth.n_sites
+    n_species::Int64 = domain.coral_growth.n_species
+    n_groups::Int64 = domain.coral_growth.n_groups
+
+    # Strip names from NamedArrays
+    init_cov = Matrix{Float64}(domain.init_coral_cover)
+
+    cache = (
+        LPs = zeros(n_groups, n_sites),
+        fec_all = similar(init_cov, Float64),
+        fec_scope = zeros(n_groups, n_sites),
+        prop_loss = zeros(n_species, n_sites),
+        Sbl = zeros(n_species, n_sites),
+        dhw_step = zeros(n_sites),
+        init_cov = init_cov,
+        cov_tmp = similar(init_cov),
+        site_area = Array{Float64}(domain.site_data.area'),
+        TP_data = Array{Float64, 2}(domain.TP_data)
+    )
+
+    return cache
+end
+
+
+"""
     run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=0)
 
 Run scenarios defined by the parameter table storing results to disk.
@@ -26,8 +59,9 @@ function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=0)::Doma
     end
 
     domain, data_store = ADRIA.setup_result_store!(domain, param_df, reps)
+    cache = setup_cache(domain)
 
-    func = (dfx) -> run_scenario(dfx[1], dfx[2], domain, reps, data_store)
+    func = (dfx) -> run_scenario(dfx, domain, reps, data_store, cache)
 
     # Batch run scenarios
     if nrow(param_df) > 16
@@ -43,7 +77,7 @@ end
 
 
 """
-    run_scenarios(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64, data_store::NamedTuple)
+    run_scenarios(scen::Tuple{Int, DataFrameRow}, domain::Domain, reps::Int64, data_store::NamedTuple)
 
 Run individual scenarios for a given domain.
 
@@ -52,20 +86,23 @@ Stores results on disk in Zarr format at pre-configured location.
 # Notes
 Only the mean site rankings over all environmental scenarios are kept
 """
-function run_scenario(r_idx::Int, df_row::DataFrameRow, domain::Domain, reps::Int64, data_store::NamedTuple)
+function run_scenario(scen::Tuple{Int, DataFrameRow}, domain::Domain, reps::Int64, data_store::NamedTuple, cache::NamedTuple)
     # Update model with values in given DF row
-    update_params!(domain, df_row)
+    update_params!(domain, scen[2])
 
     # TODO: Modify all scenario constants here to avoid repeated allocations
     @set! domain.coral_growth.ode_p.P = domain.sim_constants.max_coral_cover::Float64
     @set! domain.coral_growth.ode_p.comp = domain.sim_constants.comp::Float64
 
-    run_scenario(domain; idx=r_idx, reps=reps, data_store=data_store)
+    run_scenario(domain; idx=scen[1], reps=reps, data_store=data_store, cache=cache)
+end
+function run_scenario(scen::Tuple{Int, DataFrameRow}, domain::Domain, reps::Int64, data_store::NamedTuple)
+    run_scenario(scen, domain, reps, data_store, setup_cache(domain))
 end
 
 
 """
-    run_scenario(domain::Domain; reps=1, data_store::NamedTuple)::NamedTuple
+    run_scenario(domain::Domain; reps=1, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
 
 Convenience function to directly run a scenario for a Domain with pre-set values.
 
@@ -74,7 +111,7 @@ Stores results on disk in Zarr format at pre-configured location.
 # Notes
 Only the mean site rankings over all environmental scenarios are kept
 """
-function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::NamedTuple)
+function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::NamedTuple, cache::NamedTuple)
     tf = domain.sim_constants.tf
 
     # TODO: Select subset that isn't the coral parameters
@@ -87,15 +124,15 @@ function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::Named
     coral_params = to_spec(component_params(domain.model, Coral))
 
     # Passing in environmental layer data stripped of named dimensions.
-    init_cc = Array{Float64}(domain.init_coral_cover)
+    # init_cc = Array{Float64}(domain.init_coral_cover)
     all_dhws = Array{Float64}(domain.dhw_scens[1:tf, :, 1:reps])
     all_waves = Array{Float64}(domain.wave_scens[1:tf, :, 1:reps])
 
     result_set = Array{NamedTuple}(repeat([(empty=0,)], reps))
     @inbounds for i::Int in 1:reps
         result_set[i] = run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
-                                      init_cc, domain.coral_growth.ode_p,
-                                      all_dhws[:, :, i], all_waves[1:tf, :, i])
+                                     domain.coral_growth.ode_p,
+                                     all_dhws[:, :, i], all_waves[1:tf, :, i], cache)
     end
 
     # Capture results to disk
@@ -143,16 +180,16 @@ function run_scenario(param_df::DataFrameRow, domain::Domain; rep_id::Int=1)::Na
     # Expand coral model to include its specifications across all taxa/species/groups
     coral_params = to_spec(component_params(domain.model, Coral))
 
-    tf = domain.sim_constants.tf
+    cache = setup_cache(domain)
     return run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
-                        Matrix{Float64}(domain.init_coral_cover), domain.coral_growth.ode_p,
+                        domain.coral_growth.ode_p,
                         Matrix{Float64}(domain.dhw_scens[1:tf, :, rep_id]), 
-                        Matrix{Float64}(domain.wave_scens[1:tf, :, rep_id]))
+                        Matrix{Float64}(domain.wave_scens[1:tf, :, rep_id]), cache)
 end
 
 
 """
-    run_scenario(domain, param_set, corals, sim_params, site_data, init_cov::Array{Float64, 2}, p::NamedTuple,
+    run_scenario(domain, param_set, corals, sim_params, site_data, p::NamedTuple,
                  dhw_scen::Array, wave_scen::Array)::NamedTuple
 
 Core scenario running function.
@@ -161,8 +198,8 @@ Core scenario running function.
 Only the mean site rankings are kept
 """
 function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim_params::SimConstants, site_data::DataFrame,
-    init_cov::Array{Float64,2}, p::NamedTuple, dhw_scen::Matrix{Float64},
-    wave_scen::Matrix{Float64})::NamedTuple
+    p::NamedTuple, dhw_scen::Matrix{Float64},
+    wave_scen::Matrix{Float64}, cache::NamedTuple)::NamedTuple
 
     ### TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
@@ -196,7 +233,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     ### END TODO
 
-    site_area::Array{Float64,2} = site_data.area'
+    # site_area::Array{Float64,2} = site_data.area'
+    site_area = cache.site_area
 
     fec_params::Vector{Float64} = corals.fecundity
     potential_settler_cover::Float64 = (sim_params.max_settler_density *
@@ -204,22 +242,34 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                                         sim_params.density_ratio_of_settlers_to_larvae)
 
     # Caches
-    TP_data::Array{Float64,2} = Matrix(domain.TP_data)
-    LPs::Array{Float64,2} = zeros(n_groups, n_sites)
-    fec_all::Array{Float64,2} = similar(init_cov, Float64)
-    fec_scope::Array{Float64,2} = zeros(n_groups, n_sites)
-    prop_loss::Array{Float64,2} = zeros(n_species, n_sites)
-    Sbl::Array{Float64,2} = zeros(n_species, n_sites)
-    dhw_step::Vector{Float64} = zeros(n_sites)
+    # TP_data::Array{Float64,2} = Matrix(domain.TP_data)
+    TP_data = cache.TP_data
+    # LPs::Array{Float64,2} = zeros(n_groups, n_sites)
+    # fec_all::Array{Float64,2} = similar(init_cov, Float64)
+    # fec_scope::Array{Float64,2} = zeros(n_groups, n_sites)
+    # prop_loss::Array{Float64,2} = zeros(n_species, n_sites)
+    # Sbl::Array{Float64,2} = zeros(n_species, n_sites)
+    # dhw_step::Vector{Float64} = zeros(n_sites)
+    LPs = cache.LPs[:, :]
+    fec_all = cache.fec_all[:, :]
+    fec_scope = cache.fec_scope[:, :]
+    prop_loss = cache.prop_loss[:, :]
+    Sbl = cache.Sbl[:, :]
+    dhw_step = cache.dhw_step[:]
+    cov_tmp = cache.cov_tmp[:, :]
 
     Yout::Array{Float64,3} = zeros(tf, n_species, n_sites)
-    Yout[1, :, :] .= @view init_cov[:, :]
-    cov_tmp::Array{Float64,2} = similar(init_cov, Float64)
+    Yout[1, :, :] .= @view cache.init_cov[:, :]
+    # cov_tmp::Array{Float64,2} = similar(init_cov, Float64)
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
     Yfog = SparseArray(spzeros(tf, n_sites))
     Yseed = SparseArray(zeros(tf, 2, n_sites))  # 2 = the two enhanced coral types
+    # site_ranks = @view cache.site_ranks[:, :]
+    # Yshade = @view cache.Yshade[:, :]
+    # Yfog = @view cache.Yfog[:, :]
+    # Yseed = @view cache.Yseed[:, :]
 
     # Intervention strategy: 0 is random, > 0 is guided
     is_guided = param_set.guided > 0
@@ -369,7 +419,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         @views cov_tmp[:, :] .= Yout[p_step, :, :]
 
         LPs .= larval_production(tstep, a_adapt, n_adapt, dhw_scen[p_step, :],
-            LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
+                                 LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
 
         # Calculates scope for coral fedundity for each size class and at
         # each site. Now using coral fecundity per m2 in 'coralSpec()'
@@ -417,7 +467,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             Yshade[tstep, prefshadesites] = srm
 
             # Apply reduction in DHW due to shading
-            adjusted_dhw::Array{Float64} = max(0.0, dhw_step - Yshade[tstep, :])
+            adjusted_dhw::Vector{Float64} = max(0.0, dhw_step - Yshade[tstep, :])
         else
             adjusted_dhw = dhw_step
         end
@@ -453,12 +503,12 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             scaled_seed_CA = (((seed_CA_vol / nsiteint) * col_area_seed_CA) ./ site_area_seed)
 
             # Seed each site with the value indicated with seed1/seed2
-            cov_tmp[seed_size_class1, prefseedsites] .= cov_tmp[seed_size_class1, prefseedsites] .+ scaled_seed_TA  # seed Enhanced Tabular Acropora
-            cov_tmp[seed_size_class2, prefseedsites] .= cov_tmp[seed_size_class2, prefseedsites] .+ scaled_seed_CA  # seed Enhanced Corymbose Acropora
+            @views cov_tmp[seed_size_class1, prefseedsites] .= cov_tmp[seed_size_class1, prefseedsites] .+ scaled_seed_TA  # seed Enhanced Tabular Acropora
+            @views cov_tmp[seed_size_class2, prefseedsites] .= cov_tmp[seed_size_class2, prefseedsites] .+ scaled_seed_CA  # seed Enhanced Corymbose Acropora
 
             # Log seed values/sites
-            Yseed[tstep, 1, prefseedsites] = scaled_seed_TA  # log site as seeded with Enhanced Tabular Acropora
-            Yseed[tstep, 2, prefseedsites] = scaled_seed_CA  # log site as seeded with Enhanced Corymbose Acropora
+            @views Yseed[tstep, 1, prefseedsites] = scaled_seed_TA  # log site as seeded with Enhanced Tabular Acropora
+            @views Yseed[tstep, 2, prefseedsites] = scaled_seed_CA  # log site as seeded with Enhanced Corymbose Acropora
         end
 
         growth.u0[:, :] .= @views cov_tmp[:, :] .* prop_loss[:, :]  # update initial condition
