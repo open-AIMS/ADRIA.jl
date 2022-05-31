@@ -130,12 +130,52 @@ function unique_sites(d::Domain)
 end
 
 
+"""
+    param_table(d::Domain)::DataFrame
+
+Get model fieldnames and their parameter values.
+"""
 function param_table(d::Domain)::DataFrame
     f_names = collect(d.model[:fieldname])
     vals = collect(d.model[:val])
     p_df = DataFrame(OrderedDict(k => v for (k, v) in zip(f_names, vals)))
 
     return p_df
+end
+
+
+"""
+    model_spec(d::Domain)::DataFrame
+    model_spec(d::Domain, filepath::String)::Nothing
+
+Get model specification as DataFrame with lower and upper bounds.
+
+If a filepath is provided, writes the specification out to file with ADRIA metadata.
+"""
+function model_spec(d::Domain)::DataFrame
+    spec = DataFrame(d.model)
+    bnds = spec[:, :bounds]
+    spec[:, :lower_bound] = [x[1] for x in bnds]
+    spec[:, :upper_bound] = [x[2] for x in bnds]
+    spec[!, :component] = string.(spec[:, :component])
+    spec[:, :component] = replace.(spec[:, :component], "ADRIA."=>"")
+
+    select!(spec, Not(:bounds))
+
+    return spec
+end
+function model_spec(d::Domain, filepath::String)::Nothing
+
+    version = PkgVersion.Version(@__MODULE__)
+    vers_id = "v$(version)"
+
+    open(filepath, "w") do io
+        write(io, "# Generated with ADRIA.jl $(vers_id) on $(replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_"))\n")
+    end
+
+    model_spec(d) |> CSV.write(filepath, writeheader=true, append=true)
+
+    return
 end
 
 
