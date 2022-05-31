@@ -228,19 +228,22 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", r::ResultSet)
 
     vers = r.ADRIA_VERSION
-    vers_id = "$(vers["major"]).$(vers["minor"]).$(vers["patch"])"
+    vers_id = "v$(vers["major"]).$(vers["minor"]).$(vers["patch"])"
 
+    tf, species, sites, reps, scens = size(r.raw)
     println("""
     Domain: $(r.name)
 
     Run with ADRIA $(vers_id) on $(r.invoke_time) for RCP $(r.rcp)
 
-    Number of intervention scenarios run: $(nrow(r.inputs))
-    Number of sites: $(size(r.raw, 2))
+    Intervention scenarios run: $(scens)
+    Environmental scenarios: $(reps)
+    Number of sites: $(sites)
+    Species/size groups represented: $(species)
+    Timesteps: $(tf)
 
     Input layers
-    ------------
-    """)
+    ------------""")
 
     for fn in fieldnames(typeof(r.env_layer_md))
         println("$(fn) : $(getfield(r.env_layer_md, fn))")
