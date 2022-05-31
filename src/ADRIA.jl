@@ -52,18 +52,25 @@ export Domain, metrics, select
 # Precompile as the final step of the module definition:
 if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the package
     let
+
         here = @__DIR__
         ex_dir = joinpath(here, "../examples")
-        @debug "Pre-running examples to reduce spin-up time"
+        @debug "Pre-running examples to reduce future spin-up time"
+
+        f() = begin 
+            @showprogress 1 for _ in 1:10
+            end
+        end
+        b = redirect_stdout(f, devnull);
 
         ex_domain = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), 45)
         p_df = CSV.read(joinpath(ex_dir, "example_scenarios.csv"), DataFrame, comment="#")
 
         ENV["ADRIA_THRESHOLD"] = 1e-6
-        ex_domain.sim_constants.tf = 2
+        ex_domain.sim_constants.tf = 3
         ds = (raw=nothing, site_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
-        run_scenario(1, p_df[1, :], ex_domain, 1, ds)
-        run_scenario(1, p_df[end, :], ex_domain, 1, ds)
+        run_scenario((1, p_df[1, :]), ex_domain, 1, ds)
+        run_scenario((1, p_df[end, :]), ex_domain, 1, ds)
         delete!(ENV, "ADRIA_THRESHOLD")
     end
 end
