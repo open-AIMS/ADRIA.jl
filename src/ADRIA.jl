@@ -1,14 +1,16 @@
 module ADRIA
 
-using Random, TOML, Hwloc, StaticArrays, SparseArrays, LinearAlgebra, Statistics
-using Distributed
-
-using MATLAB, MAT  # MATLAB interface and package to read in `.mat` files
-
+using Random, TOML, Dates, CpuId
+using StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
 using NamedArrays, SparseArrayKit, DifferentialEquations
+
+using MAT  # Package to read in `.mat` files
+
 using Setfield, ModelParameters, DataStructures
 using DataFrames, GeoDataFrames, Graphs, CSV
 using Plots
+
+using PkgVersion
 
 using ProgressMeter
 
