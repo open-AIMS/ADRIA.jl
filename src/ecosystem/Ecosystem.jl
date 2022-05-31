@@ -109,13 +109,15 @@ y.a
 ```
 """
 function _coral_struct(field_defs::Dict)::Nothing
-    s::String = "Base.@kwdef struct Coral{P} <: EcoModel\n"
+    s = IOBuffer()
+    write(s, "Base.@kwdef struct Coral{P} <: EcoModel\n")
 
     for (f, v) in field_defs
-        s = s * "$(f)::P = $(v)\n"
+        write(s, "$(f)::P = $(v)\n")
     end
 
-    eval(Meta.parse(s * "end"))
+    write(s, "end")
+    eval(Meta.parse(String(take!(s))))
 
     return
 end
