@@ -7,7 +7,7 @@ Load domain specification from data package.
 - path : location of data package
 - rcp : RCP scenario to run
 """
-function load_domain(path::String, rcp::Union{String, Integer})
+function load_domain(path::String, rcp::Union{String, Integer})::Domain
     domain_name = basename(path)
     conn_path = joinpath(path, "connectivity/")
     site_data = joinpath(path, "site_data")
@@ -18,7 +18,7 @@ function load_domain(path::String, rcp::Union{String, Integer})
     init_coral_cov = joinpath(site_data, "coral_cover.mat")
     wave = joinpath(path, "waves/wave_data.mat")
 
-    dom = Domain(
+    return Domain(
         domain_name,
         rcp,
         site_path,
@@ -29,6 +29,4 @@ function load_domain(path::String, rcp::Union{String, Integer})
         dhw,
         wave
     );
-
-    return dom
 end

@@ -83,14 +83,14 @@ domain, (raw, site_ranks, seed_log, fog_log, shade_log)
 """
 function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tuple
     @set! domain.scenario_invoke_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
-    log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__$(domain.rcp)__$(domain.scenario_invoke_time)")
+    log_location::String = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__$(domain.rcp)__$(domain.scenario_invoke_time)")
 
     z_store = DirectoryStore(log_location)
 
     # Store copy of inputs
-    input_loc = joinpath(z_store.folder, INPUTS)
-    input_dims = size(param_df)
-    attrs = Dict(
+    input_loc::String = joinpath(z_store.folder, INPUTS)
+    input_dims::Tuple{Int64,Int64} = size(param_df)
+    attrs::Dict = Dict(
         :name => domain.name,
         :rcp => domain.rcp,
         :columns => names(param_df),
@@ -115,9 +115,9 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
     inputs[:, :] = Matrix(param_df)
 
     # Raw result store
-    result_loc = joinpath(z_store.folder, RESULTS)
-    tf, n_sites = domain.sim_constants.tf, domain.coral_growth.n_sites
-    result_dims = (tf, domain.coral_growth.n_species, n_sites, reps, nrow(param_df))
+    result_loc::String = joinpath(z_store.folder, RESULTS)
+    tf, n_sites = domain.sim_constants.tf::Int64, domain.coral_growth.n_sites::Int64
+    result_dims::Tuple{Int64,Int64,Int64,Int64,Int64} = (tf, domain.coral_growth.n_species, n_sites, reps, nrow(param_df))
     
     attrs = Dict(
         :structure => ("timesteps", "species", "sites", "reps", "scenarios"),
@@ -128,15 +128,15 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
 
     # Set up logs for site ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
-    log_fn = joinpath(z_store.folder, LOG_GRP)
+    log_fn::String = joinpath(z_store.folder, LOG_GRP)
 
     # Store ranked sites
-    n_scens = nrow(param_df)
-    rank_dims = (tf, n_sites, 2, n_scens)  # sites, site id and rank, reps, no. scenarios
-    fog_dims = (tf, n_sites, reps, n_scens)  # timeframe, sites, reps, no. scenarios
+    n_scens::Int64 = nrow(param_df)
+    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_sites, 2, n_scens)  # sites, site id and rank, reps, no. scenarios
+    fog_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_sites, reps, n_scens)  # timeframe, sites, reps, no. scenarios
 
     # tf, no. intervention sites, site id and rank, no. scenarios
-    seed_dims = (tf, 2, n_sites, reps, n_scens)
+    seed_dims::Tuple{Int64,Int64,Int64,Int64,Int64} = (tf, 2, n_sites, reps, n_scens)
 
     attrs = Dict(
         :structure=> ("sites", "seed/fog/shade", "reps", "scenarios"),
@@ -167,10 +167,10 @@ function load_results(result_loc::String)::ResultSet
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
 
-    input_cols = input_set.attrs["columns"]
-    inputs_used = DataFrame(input_set[:, :], input_cols)
+    input_cols::Array{String} = input_set.attrs["columns"]
+    inputs_used::DataFrame = DataFrame(input_set[:, :], input_cols)
 
-    env_layer_md = EnvLayer(
+    env_layer_md::EnvLayer = EnvLayer(
         input_set.attrs["site_data_file"],
         input_set.attrs["site_id_col"],
         input_set.attrs["unique_site_id_col"],

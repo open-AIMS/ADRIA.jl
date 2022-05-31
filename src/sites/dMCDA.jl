@@ -45,7 +45,7 @@ end
 
 
 """
-prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
+    dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, rankingsin::Matrix{Int64})
 
 # Returns
 Tuple : preferred seed sites, preferred shade/fog sites, number of seed sites, number of shade sites, rankings
@@ -53,7 +53,7 @@ Tuple : preferred seed sites, preferred shade/fog sites, number of seed sites, n
         `rankings` is an Nx3 matrix holding: site_id, seeding_rank, shading_rank
         0 indicates sites that were not considered
 """
-function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesites, rankingsin)
+function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, rankingsin::Matrix{Int64})
 
     site_ids = d_vars.site_ids
     nsites = length(site_ids)
@@ -85,7 +85,7 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
     predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
     predprior = [x for x in predprior if !isnan(x)]
 
-    predec[predprior, 3] .= 1
+    predec[predprior, 3] .= 1.0
 
     # Combine data into matrix
     A = zeros(length(site_ids), 6)
@@ -175,7 +175,7 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
     end
 
     if isempty(SE)
-        prefseedsites = 0
+        prefseedsites = repeat([0], nsiteint)
     elseif log_seed
         # Remove cols that are all 0
         selector = vec(.!all(SE .== 0, dims=1))
@@ -188,14 +188,14 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
         s_order = mcda_func(SE)
 
         last_idx = min(nsiteint, size(s_order, 1))
-        prefseedsites = s_order[1:last_idx, 1]
+        prefseedsites = Int.(s_order[1:last_idx, 1])
 
         # Match by site_id and assign rankings to log
         align_rankings!(rankings, s_order, 2)
     end
 
     if isempty(SH)
-        prefshadesites = 0
+        prefshadesites = repeat([0], nsiteint)
     elseif log_shade
         # Remove cols that are all 0
         selector = vec(.!all(SH .== 0, dims=1))
@@ -208,7 +208,7 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
         s_order = mcda_func(SH)
 
         last_idx = min(nsiteint, size(s_order, 1))
-        prefshadesites = s_order[1:last_idx, 1]
+        prefshadesites = Int.(s_order[1:last_idx, 1])
 
         # Match by site_id and assign rankings to log
         align_rankings!(rankings, s_order, 3)
@@ -219,18 +219,18 @@ function dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesit
 
     # Replace with input rankings if seeding or shading rankings have not been filled
     if (sum(rankings[:, 2]) == 0.0) && (nprefseedsites != 0)
-        rankings[:, 2] .= rankingsin[:, 2]
+        rankings[:, 2] .= @view rankingsin[:, 2]
     end
 
     if (sum(rankings[:, 3]) == 0.0) && (nprefshadesites != 0)
-        rankings[:, 3] .= rankingsin[:, 3]
+        rankings[:, 3] .= @view rankingsin[:, 3]
     end
 
     return prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
 end
 
 
-function order_ranking(S)
+function order_ranking(S::Array{Float64, 2})::Array{Float64, 2}
     n = size(S,1)
     s_order = Union{Float64, Int64}[zeros(Int, n) zeros(Float64, n) zeros(Int, n)]
 
@@ -245,7 +245,7 @@ function order_ranking(S)
 end
 
 
-function topsis(S)
+function topsis(S::Array{Float64, 2})::Array{Float64, 2}
 
     # compute the set of positive ideal solutions for each criteria (max for
     # good criteria, min for bad criteria). Max used as all criteria
@@ -287,7 +287,7 @@ v : Real, level of compromise (utility vs. regret).
         - v > 0.5 is max group utility (majority rules)
 
 """
-function vikor(S; v=0.5)
+function vikor(S::Array{Float64, 2}; v::Float64=0.5)::Array{Float64, 2}
 
     F_s = maximum(S[:, 2:end])
 

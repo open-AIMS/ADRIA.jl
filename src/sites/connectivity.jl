@@ -167,7 +167,7 @@ function connectivity_strength(TP_base::DataFrame)::NamedTuple
         if length(incoming) > 0
             # For each incoming connection, find the one with most "in"
             # connections themselves
-            in_conns = [length(inneighbors(g, in_id)) for in_id in incoming]
+            in_conns = Int64[length(inneighbors(g, in_id)) for in_id in incoming]
 
             # Find index of predecessor with most connections
             # (use `first` to get the first match in case of a tie)
