@@ -21,7 +21,7 @@ function setup()
     if nprocs() == 1
         active_cores = parse(Int, ENV["ADRIA_NUM_CORES"])
         if active_cores <= 0
-            active_cores = num_physical_cores()
+            active_cores = cpucores()
         end
 
         addprocs(active_cores, exeflags="--project")
