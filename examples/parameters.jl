@@ -3,11 +3,17 @@ using ADRIA
 
 
 @info "Loading data package"
-data_pkg = "C:/development/ADRIA_brick/Brick"
+data_pkg = "./Example_domain"
 scenario_domain = ADRIA.load_domain(data_pkg, 45)
 
-# Get current parameter table
+# Get current parameter table (fieldnames and their values)
 param_df = ADRIA.param_table(scenario_domain)
+
+# Get model specification with lower/upper bounds separated
+model_spec = ADRIA.model_spec(scenario_domain)
+
+# Export model specification to CSV
+model_spec = ADRIA.model_spec(scenario_domain, "model_spec.csv")
 
 # Update a domain spec with new values from row of DataFrame
 update_params!(scenario_domain, param_df[1, :])
