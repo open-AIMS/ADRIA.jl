@@ -139,7 +139,7 @@ create_coral_struct((0.5, 1.5))
 coral = Coral()
 ```
 """
-function create_coral_struct(bounds=(0.9, 1.1))
+function create_coral_struct(bounds::Tuple{Float64, Float64}=(0.9, 1.1))::Nothing
     _, base_coral_params, x = coral_spec()
 
     coral_ids = x.coral_id
@@ -173,13 +173,11 @@ Notes:
 Values for the historical, temporal patterns of degree heating weeks
 between bleaching years come from [1].
 
-Returns
--------
-params : NamedTuple[taxa_names, param_names, params], taxa names, parameter 
-         names, and parameter values for each coral taxa, group and size class
+# Returns
+- params : NamedTuple[taxa_names, param_names, params], taxa names, parameter 
+           names, and parameter values for each coral taxa, group and size class
 
-References
-----------
+# References
 1. Lough, J.M., Anderson, K.D. and Hughes, T.P. (2018)
        'Increasing thermal stress for tropical coral reefs: 1871-2017',
        Scientific Reports, 8(1), p. 6079.
@@ -205,7 +203,7 @@ function coral_spec()::NamedTuple
     params = DataFrame();
 
     # Coral species are divided into taxa and size classes
-    taxa_names = [
+    taxa_names = String[
         "tabular_acropora_enhanced";
         "tabular_acropora_unenhanced";
         "corymbose_acropora_enhanced";
@@ -216,13 +214,13 @@ function coral_spec()::NamedTuple
 
     tn = repeat(taxa_names, 6, 1)
 
-    size_cm = [2; 5; 10; 20; 40; 80]
-    size_class_means_from = [1; 3.5; 7.5; 15; 30; 60]
-    size_class_means_to = [size_class_means_from[2:end]; 100.0];
+    size_cm = Float64[2; 5; 10; 20; 40; 80]
+    size_class_means_from = Float64[1; 3.5; 7.5; 15; 30; 60]
+    size_class_means_to = Float64[size_class_means_from[2:end]; 100.0];
 
     # total number of "species" modelled in the current version.
-    nclasses = length(size_cm);
-    nspecies = length(taxa_names) * nclasses;
+    nclasses::Int64 = length(size_cm);
+    nspecies::Int64 = length(taxa_names) * nclasses;
 
     # Create combinations of taxa names and size classes
     params.name = human_readable_name(tn, true);
@@ -231,7 +229,7 @@ function coral_spec()::NamedTuple
     params.class_id = repeat(1:nclasses, nclasses);
     params.size_cm = repeat(size_cm, nclasses);
 
-    params.coral_id = ["$(x[1])_$(x[2])_$(x[3])" for x in zip(tn, params.taxa_id, params.class_id)]
+    params.coral_id = String["$(x[1])_$(x[2])_$(x[3])" for x in zip(tn, params.taxa_id, params.class_id)]
 
     # rec = [0.00, 0.01, 0.00, 0.01, 0.01, 0.01];
     # params.recruitment_factor = repmat(rec, 1, nclasses)';
@@ -244,9 +242,6 @@ function coral_spec()::NamedTuple
 
     ### Base covers
     #First express as number of colonies per size class per 100m2 of reef
-
-    # NOTE: These values are currently being overwritten by init_coral_cover
-    # in the ADRIA class (see init_coral_cover method in ADRIA.m)
     base_coral_numbers =
         [0 0 0 0 0 0;           # Tabular Acropora Enhanced
          0 0 0 0 0 0;           # Tabular Acropora Unenhanced
@@ -268,7 +263,7 @@ function coral_spec()::NamedTuple
     params.colony_area_cm2 = reshape(colony_area', nspecies)
     colony_area_m2_to = colony_area ./ (10^4)
 
-    a_arena = 100 # m2 of reef arena where corals grow, survive and reproduce
+    a_arena::Float64 = 100.0 # m2 of reef arena where corals grow, survive and reproduce
 
     # convert to coral covers (proportions) and convert to vector
     params.basecov = @. base_coral_numbers'[:] * colony_area_m2_from'[:] / a_arena
@@ -276,7 +271,7 @@ function coral_spec()::NamedTuple
     ## Coral growth rates as linear extensions (Bozec et al 2021 Table S2)
     # we assume similar growth rates for enhanced and unenhanced corals
     linear_extension =
-       [1 3 3 4.4 4.4 4.4;  # Tabular Acropora Enhanced
+       Float64[1 3 3 4.4 4.4 4.4;  # Tabular Acropora Enhanced
         1 3 3 4.4 4.4 4.4;   # Tabular Acropora Unenhanced
         1 3 3 3 3 3;         # Corymbose Acropora Enhanced
         1 3 3 3 3 3;         # Corymbose Acropora Unenhanced
@@ -287,7 +282,7 @@ function coral_spec()::NamedTuple
     # First calculate what proportion of coral numbers that change size class
     # given linear extensions. This is based on the simple assumption that
     # coral sizes are evenly distributed within each bin
-    bin_widths = [2, 3, 5, 10, 20, 40];
+    bin_widths = Float64[2, 3, 5, 10, 20, 40];
     diam_bin_widths = repeat(bin_widths, nclasses, 1)
     prop_change = @views linear_extension'[:] ./ diam_bin_widths
 
@@ -300,8 +295,8 @@ function coral_spec()::NamedTuple
     # over the year (used in 'growthODE4()').
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
-    fec_par_a = [1.02; 1.02; 1.69; 1.69; 0.86; 0.86]; # fecundity parameter a
-    fec_par_b = [1.28; 1.28; 1.05; 1.05; 1.21; 1.21]; # fecundity parameter b
+    fec_par_a = Float64[1.02; 1.02; 1.69; 1.69; 0.86; 0.86]; # fecundity parameter a
+    fec_par_b = Float64[1.28; 1.28; 1.05; 1.05; 1.21; 1.21]; # fecundity parameter b
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
@@ -314,22 +309,22 @@ function coral_spec()::NamedTuple
     ## Mortality
     # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
     wavemort90 =
-       [0 0 0.00 0.00 0.00 0.00;   # Tabular Acropora Enhanced
-        0 0 0.00 0.00 0.00 0.00;   # Tabular Acropora Unenhanced
-        0 0 0.00 0.00 0.00 0.00;   # Corymbose Acropora Enhanced
-        0 0 0.00 0.00 0.00 0.00;   # Corymbose Acropora Unenhanced
-        0 0 0.00 0.00 0.00 0.00;   # Small massives
-        0 0 0.00 0.00 0.00 0.00];  # Large massives
+        Float64[0 0 0.00 0.00 0.00 0.00;   # Tabular Acropora Enhanced
+            0 0 0.00 0.00 0.00 0.00;   # Tabular Acropora Unenhanced
+            0 0 0.00 0.00 0.00 0.00;   # Corymbose Acropora Enhanced
+            0 0 0.00 0.00 0.00 0.00;   # Corymbose Acropora Unenhanced
+            0 0 0.00 0.00 0.00 0.00;   # Small massives
+            0 0 0.00 0.00 0.00 0.00];  # Large massives
 
     params.wavemort90 = wavemort90'[:];
 
     # Background mortality taken from Bozec et al. 2021 (Table S2)
-    mb = [0.20 0.19 0.15 0.098 0.098 0.098;    # Tabular Acropora Enhanced
-          0.20 0.19 0.15 0.098 0.098 0.098;    # Tabular Acropora Unenhanced
-          0.20 0.17 0.12 0.088 0.088 0.088;    # Corymbose Acropora Enhanced
-          0.20 0.17 0.12 0.088 0.088 0.088;    # Corymbose Acropora Unenhanced
-          0.20 0.10 0.04 0.030 0.020 0.020;    # Small massives and encrusting
-          0.20 0.10 0.04 0.030 0.020 0.020];   # Large massives
+    mb = Float64[0.20 0.19 0.15 0.098 0.098 0.098;    # Tabular Acropora Enhanced
+            0.20 0.19 0.15 0.098 0.098 0.098;    # Tabular Acropora Unenhanced
+            0.20 0.17 0.12 0.088 0.088 0.088;    # Corymbose Acropora Enhanced
+            0.20 0.17 0.12 0.088 0.088 0.088;    # Corymbose Acropora Unenhanced
+            0.20 0.10 0.04 0.030 0.020 0.020;    # Small massives and encrusting
+            0.20 0.10 0.04 0.030 0.020 0.020];   # Large massives
 
     params.mb_rate = mb'[:];
 
@@ -340,7 +335,7 @@ function coral_spec()::NamedTuple
 
     # Estimated bleaching resistance (as DHW) relative to the assemblage
     # response for 2016 bleaching on the GBR (based on Hughes et al. 2018).
-    bleach_resist = [
+    bleach_resist = Float64[
         0.0 0.0 0.0 0.0 0.0 0.0;  # Tabular Acropora Enhanced
         0.0 0.0 0.0 0.0 0.0 0.0;  # Tabular Acropora Unenhanced
         0.0 0.0 0.0 0.0 0.0 0.0;  # Corymbose Acropora Enhanced
