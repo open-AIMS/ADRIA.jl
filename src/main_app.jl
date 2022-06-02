@@ -3,6 +3,7 @@ using Plots, Plots.Measures
 
 const valid_methods = ["run", "load", "help"]
 
+
 """
 
 Main entry point for ADRIA application.
@@ -55,10 +56,7 @@ function adria_cmd_run()
         use_cores = (active_cores <= 0) ? num_physical_cores() : active_cores
         addprocs(use_cores; exeflags="--project")
 
-        @eval @everywhere begin
-            using Statistics
-            using ADRIA
-        end
+        @eval @everywhere using ADRIA
     end
 
     domain = load_domain(data_pkg_loc, rcp)
