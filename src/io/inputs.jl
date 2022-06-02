@@ -30,3 +30,25 @@ function load_domain(path::String, rcp::Union{String, Integer})::Domain
         wave
     );
 end
+
+
+"""
+    load_scenarios(domain::Domain, filepath::String)::DataFrame
+
+Load and pre-process scenario values.
+Parameters intended to be of Integer type or casted as such.
+"""
+function load_scenarios(domain::Domain, filepath::String)::DataFrame
+    df = CSV.read(filepath, DataFrame, comment="#")
+
+    bnds = domain.model[:bounds]
+
+    p_types = domain.model[:ptype]
+    for (i, dt) in enumerate(p_types)
+        if dt == "integer"
+            df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
+        end
+    end
+
+    return df
+end

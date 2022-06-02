@@ -24,7 +24,7 @@ end
 For integer/categorical parameters, take floor of `v`, capping to `u - 1`
 """
 function map_to_discrete(v::Number, u::Int)::Int
-    return min(floor(v), u-1)
+    return Int(min(floor(v), u-1))
 end
 
 """
@@ -35,7 +35,7 @@ Length of `u` is expected to match number of columns in `df`.
 """
 function map_to_discrete!(df::DataFrame, u::Union{AbstractArray, Tuple})::Nothing
     for (idx, b) in enumerate(u)
-        df[:, idx] .= map_to_discrete.(df[:, idx], b)
+        df[!, idx] .= map_to_discrete.(df[!, idx], b)
     end
 end
 

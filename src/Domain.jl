@@ -188,8 +188,8 @@ function update_params!(d::Domain, params::DataFrameRow)
     p_df = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
     p_df[!, :val] = collect(params)
 
-    to_floor = (p_df.ptype .== "integer") .& .!isinteger.(p_df.val)
-    if any(to_floor .> 0)
+    to_floor = (p_df.ptype .== "integer")  # .& .!isinteger.(p_df.val)
+    if any(to_floor)
         v = p_df[to_floor, :val]
 
         p_df[to_floor, :val] .= map_to_discrete.(v, getindex.(p_df[to_floor, :bounds], 2))
