@@ -35,7 +35,7 @@ end
 """
 function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # match site_ids by given order
-    match_idx = findall(in.(rankings[:, 1], (s_order[:, 1], )))
+    match_idx::Vector = findall(in.(rankings[:, 1], (s_order[:, 1], )))
 
     # Fill target ranking column
     rankings[match_idx, col] = s_order[:, 3]
@@ -53,8 +53,9 @@ Tuple : preferred seed sites, preferred shade/fog sites, number of seed sites, n
         `rankings` is an Nx3 matrix holding: site_id, seeding_rank, shading_rank
         0 indicates sites that were not considered
 """
-function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, rankingsin::Matrix{Int64})
-
+function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, 
+               prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, 
+               rankingsin::Matrix{Int64})::Tuple
     site_ids = d_vars.site_ids
     nsites = length(site_ids)
     nsiteint = d_vars.nsiteint
@@ -80,7 +81,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     # site_id, seeding rank, shading rank
     rankings = [site_ids zeros(Int, nsites) zeros(Int, nsites)]
 
-    predec = zeros(nsites, 3)
+    predec::Array{Float64} = zeros(nsites, 3)
     predec[:, 1:2] .= strongpred
     predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
     predprior = [x for x in predprior if !isnan(x)]
@@ -89,8 +90,6 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # Combine data into matrix
     A = zeros(length(site_ids), 6)
-    SE = zeros(length(site_ids), 6)
-    SH = zeros(length(site_ids), 6)
 
     A[:, 1] = site_ids  # column of site IDs
 
@@ -122,13 +121,17 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     A[rule, 4] .= NaN
 
     # remove rows with NaNs
-    A .= A[vec(.!any(isnan.(A), dims=2)), :]
+    A = A[vec(.!any(isnan.(A), dims=2)), :]
+
+    # Set up SE and SH to be same size as A
+    SE = zeros(size(A, 1), 6)
+    SH = zeros(size(A, 1), 6)
 
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         nprefseedsites = 0
         nprefshadesites = 0
-        return prefseedsites, nprefseedsites, prefshadesites, nprefshadesites, rankings
+        return prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
     end
 
     # cap to number of sites left after risk filtration
@@ -142,6 +145,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
         # define seeding decision matrix
         SE[:, 1:2] = A[:, 1:2]  # sites column (remaining), centrality
+
         SE[:, 3] = (1.0 .- A[:, 3])  # complementary of damage risk
         SE[:, 4] = (1.0 .- A[:, 4])  # complimetary of wave risk
         SE[:, 5:6] = A[:, 5:6]  # priority predecessors, coral real estate relative to max capacity
@@ -230,9 +234,9 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 end
 
 
-function order_ranking(S::Array{Float64, 2})::Array{Float64, 2}
-    n = size(S,1)
-    s_order = Union{Float64, Int64}[zeros(Int, n) zeros(Float64, n) zeros(Int, n)]
+function order_ranking(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
+    n::Int64 = size(S,1)
+    s_order::Array = Union{Float64, Int64}[zeros(Int, n) zeros(Float64, n) zeros(Int, n)]
 
     s_order[:, 3] .= Int.(1:size(S, 1))
 
@@ -245,7 +249,7 @@ function order_ranking(S::Array{Float64, 2})::Array{Float64, 2}
 end
 
 
-function topsis(S::Array{Float64, 2})::Array{Float64, 2}
+function topsis(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
 
     # compute the set of positive ideal solutions for each criteria (max for
     # good criteria, min for bad criteria). Max used as all criteria
@@ -278,16 +282,15 @@ end
 """
     vikor(S; v=0.5)
 
-Parameters
-----------
-S : Matrix
-v : Real, level of compromise (utility vs. regret).
+# Arguments
+- S : Matrix
+- v : Real, level of compromise (utility vs. regret).
         - v = 0.5 is consensus
         - v < 0.5 is minimal regret
         - v > 0.5 is max group utility (majority rules)
 
 """
-function vikor(S::Array{Float64, 2}; v::Float64=0.5)::Array{Float64, 2}
+function vikor(S::Array{Float64, 2}; v::Float64=0.5)::Array{Union{Float64, Int64}, 2}
 
     F_s = maximum(S[:, 2:end])
 

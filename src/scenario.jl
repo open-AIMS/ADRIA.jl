@@ -283,7 +283,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         seed_decision_years[seed_start_year:param_set.seed_freq:max_consider] .= true
     else
         # Start at year 2 or the given specified seed start year
-        seed_decision_years[max(seed_start_year, 2)] .= true
+        seed_decision_years[max(seed_start_year, 2)] = true
     end
 
     if param_set.shade_freq > 0
@@ -291,11 +291,11 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         shade_decision_years[shade_start_year:param_set.shade_freq:max_consider] .= true
     else
         # Start at year 2 or the given specified shade start year
-        shade_decision_years[max(shade_start_year, 2)] .= true
+        shade_decision_years[max(shade_start_year, 2)] = true
     end
 
-    prefseedsites = zeros(Int, 1, nsiteint)
-    prefshadesites = zeros(Int, 1, nsiteint)
+    prefseedsites::Vector{Int64} = zeros(Int, nsiteint)
+    prefshadesites::Vector{Int64} = zeros(Int, nsiteint)
 
     # Max coral cover at each site. Divided by 100 to convert to proportion
     max_cover = site_data.k / 100.0
