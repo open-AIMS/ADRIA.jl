@@ -1,4 +1,5 @@
 """
+    EnvLayer{S}
 
 Store environmental data layers used for scenario
 """
@@ -14,6 +15,7 @@ end
 
 
 """
+    Domain{M,I,D,S,V,T,X}
 
 Core ADRIA domain. Represents study area.
 """
@@ -46,12 +48,12 @@ end
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
-function Domain(name, rcp, env_layers, TP_base, conn_ranks, strongest_predecessor,
-    site_data, site_id_col, unique_site_id_col, init_coral_cover, coral_growth,
-    site_ids, removed_sites, DHWs, waves)::Domain
+function Domain(name::String, rcp::Int, env_layers::EnvLayer, TP_base::DataFrame, conn_ranks::Vector{Float64}, strongest_predecessor::Vector{Int64},
+    site_data::DataFrame, site_id_col::String, unique_site_id_col::String, init_coral_cover::NamedMatrix, coral_growth::CoralGrowth,
+    site_ids::Vector{String}, removed_sites::Vector{String}, DHWs::Union{NamedArray, Matrix}, waves::Union{NamedArray, Matrix})::Domain
 
-    model = Model((Intervention(), Criteria(), Coral()))
-    sim_constants = SimConstants()
+    model::Model = Model((Intervention(), Criteria(), Coral()))
+    sim_constants::SimConstants = SimConstants()
     sim_constants.tf = size(DHWs)[1]  # auto-adjust to length of available time series
     return Domain(name, rcp, env_layers, "", TP_base, conn_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
@@ -86,15 +88,15 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
     site_data.row_id = 1:nrow(site_data)
     site_data._siteref_id = groupindices(groupby(site_data, Symbol(site_id_col)))
 
-    conn_ids = site_data[:, site_id_col]
-    site_conn = site_connectivity(conn_path, conn_ids, site_data[:, unique_site_id_col], site_data._siteref_id)
-    conns = connectivity_strength(site_conn.TP_base)
+    conn_ids::Vector{String} = site_data[:, site_id_col]
+    site_conn::NamedTuple = site_connectivity(conn_path, conn_ids, site_data[:, unique_site_id_col], site_data._siteref_id)
+    conns::NamedTuple = connectivity_strength(site_conn.TP_base)
 
     # Filter out missing entries
     site_data = site_data[coalesce.(in.(conn_ids, [site_conn.site_ids]), false), :]
 
-    coral_growth = CoralGrowth(nrow(site_data))
-    n_sites = coral_growth.n_sites
+    coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
+    n_sites::Int64 = coral_growth.n_sites
 
     # TODO: Reorder sites so entries align with each other
     # TODO: Clean these repetitive lines up
@@ -125,7 +127,7 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
 end
 
 
-function unique_sites(d::Domain)
+function unique_sites(d::Domain)::Vector{String}
     return d.site_data[:, d.unique_site_id_col]
 end
 
@@ -206,18 +208,17 @@ end
 
 function load_mat_data(data_fn::String, attr::String, expected_id_order::Array{String}, n_sites::Int)
     data = matread(data_fn)
-    loaded = data[attr]
+    local loaded::NamedArray
 
-    site_order = nothing
     try
-        site_order = Array{String}(data["reef_siteids"])
+        site_order::Array{String} = Array{String}(data["reef_siteids"])
 
         # Attach site names to each column
         loaded = NamedArray(data[attr])
         setnames!(loaded, site_order, 2)
 
         # Reorder sites so they match with spatial data
-        loaded = selectdim(loaded, 2, 1:n_sites)
+        loaded = selectdim(loaded, 2, expected_id_order)
     catch err
         if isa(err, KeyError)
             @warn "Provided file $(data_fn) did not have reef_siteids! There may be a mismatch in sites."
@@ -225,7 +226,7 @@ function load_mat_data(data_fn::String, attr::String, expected_id_order::Array{S
                 @warn "Mismatch in number of sites ($(data_fn)).\nTruncating so that data size matches!"
 
                 # Subset down to number of sites
-                loaded = selectdim(loaded, 2, 1:n_sites)
+                loaded = selectdim(data[attr], 2, 1:n_sites)
             end
         else
             rethrow(err)

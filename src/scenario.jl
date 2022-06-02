@@ -464,10 +464,10 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         has_shade_sites = !all(prefshadesites .== 0)
         has_seed_sites = !all(prefseedsites .== 0)
         if (srm > 0) && in_shade_years && has_shade_sites
-            Yshade[tstep, prefshadesites] = srm
+            Yshade[tstep, prefshadesites] .= srm
 
             # Apply reduction in DHW due to shading
-            adjusted_dhw::Vector{Float64} = max(0.0, dhw_step - Yshade[tstep, :])
+            adjusted_dhw::Vector{Float64} = max.(0.0, dhw_step .- Yshade[tstep, :])
         else
             adjusted_dhw = dhw_step
         end
@@ -475,7 +475,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         if (fogging > 0.0) && in_shade_years && (has_seed_sites || has_shade_sites)
             if has_seed_sites
                 # Always fog where sites are selected if possible
-                site_locs = prefseedsites
+                site_locs::Vector{Int64} = prefseedsites
             elseif has_shade_sites
                 # Otherwise, if no sites are selected, fog selected shade sites
                 site_locs = prefshadesites
