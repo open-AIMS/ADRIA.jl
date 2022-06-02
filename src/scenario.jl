@@ -360,9 +360,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         Random.seed!(rnd_seed_val)
     end
 
-    # containers for seeding, shading and cooling
-    nprefseed = zeros(tf)
-    nprefshade = zeros(tf)
+    # logs for seeding, shading and cooling
+    # nprefseed = zeros(Int, [tf])
+    # nprefshade = zeros(Int, [tf])
 
     # Define constant table location for seed values
     # Seed1 = Tabular Acropora Enhanced (taxa 1, size class 2)
@@ -443,8 +443,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                 seed_decision_years[tstep], shade_decision_years[tstep],
                 prefseedsites, prefshadesites, rankings)
 
-            nprefseed[tstep] = nprefseedsites    # number of preferred seeding sites
-            nprefshade[tstep] = nprefshadesites  # number of preferred shading sites
+            # nprefseed[tstep] = nprefseedsites    # number of preferred seeding sites
+            # nprefshade[tstep] = nprefshadesites  # number of preferred shading sites
 
             # Log site ranks
             # First col only holds site ids so skip (with 2:end)
