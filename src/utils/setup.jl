@@ -1,4 +1,4 @@
-function setup()
+function setup()::Nothing
     try
         # Load in configuration settings
         config = TOML.parsefile(joinpath(pwd(), "config.toml"))
@@ -26,6 +26,8 @@ function setup()
 
         addprocs(active_cores, exeflags="--project")
     end
+
+    return
 end
 
 
