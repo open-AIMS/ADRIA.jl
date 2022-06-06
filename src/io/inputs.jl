@@ -16,7 +16,7 @@ function load_domain(path::String, rcp::Union{String, Integer})::Domain
 
     site_path = joinpath(site_data, "$(domain_name).gpkg")
     init_coral_cov = joinpath(site_data, "coral_cover.mat")
-    wave = joinpath(path, "waves/wave_data.mat")
+    wave = joinpath(path, "waves/wave_RCP$(rcp).mat")
 
     return Domain(
         domain_name,
