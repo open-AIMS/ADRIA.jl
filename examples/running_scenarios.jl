@@ -6,7 +6,6 @@ how many environmental scenarios to run (`reps`) and the output location
 to store results in.
 """
 
-
 using CSV, DataFrames
 using ADRIA
 
@@ -17,8 +16,7 @@ ADRIA.setup()  # Load config and set up multiprocessing
 ex_domain = ADRIA.load_domain("Example_domain", 45)
 
 @info "Loading example scenarios"
-p_df = CSV.read("./example_scenarios.csv", DataFrame, comment="#")
-
+p_df = ADRIA.load_scenarios(ex_domain, "./example_sample.csv")
 
 # Batch run scenarios. Returns an updated domain object with the run ID used to gather results later.
 @info "Setting up and running scenarios"
