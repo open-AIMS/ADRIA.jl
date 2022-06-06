@@ -5,6 +5,7 @@ using Interpolations, Statistics
 using DataFrames
 import ADRIA: coral_spec, ResultSet
 
+
 """
     coral_cover(X)::NamedTuple
 

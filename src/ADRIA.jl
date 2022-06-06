@@ -64,7 +64,7 @@ if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the pac
         b = redirect_stdout(f, devnull);
 
         ex_domain = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), 45)
-        p_df = ADRIA.load_scenarios(ex_domain, "./example_scenarios.csv")
+        p_df = ADRIA.load_scenarios(ex_domain, joinpath(ex_dir, "example_scenarios.csv"))
 
         ENV["ADRIA_THRESHOLD"] = 1e-6
         ex_domain.sim_constants.tf = 3
