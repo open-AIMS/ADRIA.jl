@@ -1,9 +1,23 @@
 # ADRIA.jl
 
-Julia implementation of ADRIA (in progress).
+Julia implementation of ADRIA under development.
 
 Scripts showcasing example usage are found in the `examples` directory.
 
+
+## Setup
+
+To specify user-specific options, a `config.toml` file should be created with the following options (adjusted to suit your needs):
+
+```toml
+[operation]
+num_cores = 2     # No. of cores to use. Values <= 0 will use all available cores.
+reps = 20         # No. of environmental scenarios to run
+threshold = 1e-6  # Result values below this will be set to 0.0
+
+[results]
+output_dir = "./Outputs"  # Change this to point to where you want to store results
+```
 
 ## Development setup
 
@@ -35,7 +49,7 @@ julia> ]activate .
 # Press ctrl+c to exit the package manager
 ```
 
-Development scripts/functions can then be worked on in the `sandbox` folder without these polluting the repository.
+Development scripts/functions can then be worked on in the `sandbox` folder without these polluting the ADRIA project itself.
 
 
 ## Note
