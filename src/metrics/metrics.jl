@@ -6,6 +6,10 @@ using DataFrames
 import ADRIA: coral_spec, ResultSet
 
 
+function relative_cover(X::AbstractArray{Real})::AbstractArray{Real}
+    return dropdims(sum(X, dims=2), dims=2)  # sum over all species and size classes
+end
+
 """
     coral_cover(X)::NamedTuple
 
@@ -27,7 +31,7 @@ NamedTuple
 """
 function coral_cover(X::AbstractArray)::NamedTuple
     # Relative total coral cover
-    TC = dropdims(sum(X, dims=2), dims=2)  # sum over all species and size classes
+    TC = relative_cover(X)  # sum over all species and size classes
 
     _, _, cs_p = coral_spec()
 
@@ -67,7 +71,7 @@ end
 
 
 """
-    coral_evenness(X)
+    coral_evenness(rs::ResultSet)
 
 Calculates evenness across functional coral groups in ADRIA.
 Inverse Simpsons diversity indicator.
@@ -75,18 +79,20 @@ Inverse Simpsons diversity indicator.
 # Notes
 Number of taxa (distinct groups with enhanced lumped with unenhanced) is hardcoded in this function.
 """
-function coral_evenness(rs::ResultSet)
+function coral_evenness(rs::ResultSet)::AbstractArray
     X = rs.raw
-
+    return coral_evenness(X)
+end
+function coral_evenness(X::AbstractArray)::AbstractArray
     x = min.(max.(X, 0.0), 1.0)
-    covers = coral_cover(x)
+    covers = relative_cover(x)
 
     # Evenness as a functional diversity metric
     n = 4;  # number of taxa
-    p1 = dropdims(sum(covers.tab_acr, dims=2), dims=2) ./ covers.total_cover;
-    p2 = dropdims(sum(covers.cor_acr, dims=2), dims=2) ./ covers.total_cover;
-    p3 = dropdims(sum(covers.small_enc, dims=2), dims=2) ./ covers.total_cover;
-    p4 = dropdims(sum(covers.large_mass, dims=2), dims=2) ./ covers.total_cover;
+    p1 = dropdims(sum(covers.tab_acr, dims=2), dims=2) ./ covers;
+    p2 = dropdims(sum(covers.cor_acr, dims=2), dims=2) ./ covers;
+    p3 = dropdims(sum(covers.small_enc, dims=2), dims=2) ./ covers;
+    p4 = dropdims(sum(covers.large_mass, dims=2), dims=2) ./ covers;
 
     sum_psqr = p1.^2 + p2.^2 + p3.^2 + p4.^2;  # functional diversity
     simpson_D = 1 ./ sum_psqr;  # Hill 1973, Ecology 54:427-432
