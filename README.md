@@ -62,7 +62,7 @@ To ameliorate this start-up cost while developing, use the [Revise package](http
 ```julia
 julia> @time using ADRIA
 [ Info: Precompiling ADRIA [7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600]
-180.850632 seconds (62.73 M allocations: 4.070 GiB, 1.17% gc time, 6.57% compilation time)
+111.073238 seconds (63.24 M allocations: 4.103 GiB, 1.96% gc time, 9.91% compilation time)
 
 julia> @time using ADRIA
   0.002154 seconds (430 allocations: 28.562 KiB)
