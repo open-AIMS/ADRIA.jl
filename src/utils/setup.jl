@@ -11,7 +11,7 @@ function setup()::Nothing
 
         # Note: anything stored in ENV will be stored as String.
         ENV["ADRIA_OUTPUT_DIR"] = "./Outputs"
-        ENV["ADRIA_NUM_CORES"] = -1
+        ENV["ADRIA_NUM_CORES"] = 1
         ENV["ADRIA_reps"] = 20
         ENV["ADRIA_THRESHOLD"] = Float32(1e-8)
     end
