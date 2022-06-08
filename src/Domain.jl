@@ -83,7 +83,7 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
     end
 
     # Sort data to maintain consistent order
-    sort!(site_data, [Symbol(site_id_col)])
+    sort!(site_data, [Symbol(unique_site_id_col)])
 
     site_data.row_id = 1:nrow(site_data)
     site_data._siteref_id = groupindices(groupby(site_data, Symbol(site_id_col)))
