@@ -51,28 +51,34 @@ export Domain, metrics, select
 
 # Precompile as the final step of the module definition:
 if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the package
-    let
+    precompile(load_domain, (String, Int64))
+    precompile(Domain, (String, Int64, String, String, String, String, String, String, String))
+    precompile(EnvLayer, (String, String, String, String, String, String, String))
 
-        here = @__DIR__
-        ex_dir = joinpath(here, "../examples")
-        @debug "Pre-running examples to reduce future spin-up time"
+    precompile(Domain, (String, Int, EnvLayer, DataFrame, Vector{Float64}, Vector{Int64}, DataFrame, String, String, NamedMatrix, CoralGrowth,
+        Vector{String}, Vector{String}, NamedArray, NamedArray))
 
-        f() = begin 
-            @showprogress 1 for _ in 1:10
-            end
-        end
-        b = redirect_stdout(f, devnull);
+    # let
+    #     here = @__DIR__
+    #     ex_dir = joinpath(here, "../examples")
+    #     @debug "Pre-running examples to reduce future spin-up time"
 
-        ex_domain = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), 45)
-        p_df = ADRIA.load_scenarios(ex_domain, joinpath(ex_dir, "example_scenarios.csv"))
+    #     f() = begin 
+    #         @showprogress 1 for _ in 1:10
+    #         end
+    #     end
+    #     b = redirect_stdout(f, devnull);
 
-        ENV["ADRIA_THRESHOLD"] = 1e-6
-        ex_domain.sim_constants.tf = 3
-        ds = (raw=nothing, site_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
-        run_scenario((1, p_df[1, :]), ex_domain, 1, ds)
-        run_scenario((1, p_df[end, :]), ex_domain, 1, ds)
-        delete!(ENV, "ADRIA_THRESHOLD")
-    end
+    #     ex_domain = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), 45)
+    #     p_df = ADRIA.load_scenarios(ex_domain, joinpath(ex_dir, "example_scenarios.csv"))
+
+    #     ENV["ADRIA_THRESHOLD"] = 1e-6
+    #     ex_domain.sim_constants.tf = 3
+    #     ds = (raw=nothing, site_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
+    #     run_scenario((1, p_df[1, :]), ex_domain, 1, ds)
+    #     run_scenario((1, p_df[end, :]), ex_domain, 1, ds)
+    #     delete!(ENV, "ADRIA_THRESHOLD")
+    # end
 end
 
 end
