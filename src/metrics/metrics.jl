@@ -6,7 +6,7 @@ using DataFrames
 import ADRIA: coral_spec, ResultSet
 
 
-function relative_cover(X::AbstractArray{Real})::AbstractArray{Real}
+function relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     return dropdims(sum(X, dims=2), dims=2)  # sum over all species and size classes
 end
 
@@ -29,9 +29,9 @@ NamedTuple
     - juveniles : area covered by juveniles
     - large : area covered by large mature corals
 """
-function coral_cover(X::AbstractArray)::NamedTuple
+function coral_cover(X::AbstractArray{<:Real})::NamedTuple
     # Relative total coral cover
-    TC = relative_cover(X)  # sum over all species and size classes
+    TC::AbstractArray{<:Real} = relative_cover(X)  # sum over all species and size classes
 
     _, _, cs_p = coral_spec()
 
@@ -79,11 +79,11 @@ Inverse Simpsons diversity indicator.
 # Notes
 Number of taxa (distinct groups with enhanced lumped with unenhanced) is hardcoded in this function.
 """
-function coral_evenness(rs::ResultSet)::AbstractArray
+function coral_evenness(rs::ResultSet)::AbstractArray{<:Real}
     X = rs.raw
     return coral_evenness(X)
 end
-function coral_evenness(X::AbstractArray)::AbstractArray
+function coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     x = min.(max.(X, 0.0), 1.0)
     covers = relative_cover(x)
 
@@ -106,7 +106,7 @@ end
 
 Provide indication of shelter volume.
 """
-function shelter_volume(X::AbstractArray, inputs::DataFrame)
+function shelter_volume(X::AbstractArray{<:Real}, inputs::DataFrame)::AbstractArray{<:Real}
     _, _, cs_p = coral_spec()
     n_corals = length(unique(cs_p.taxa_id))
 
@@ -146,7 +146,7 @@ function shelter_volume(X::AbstractArray, inputs::DataFrame)
     #  sum over groups and size classes to estimate total shelter volume per ha
     return dropdims(sum(sv, dims=2), dims=2);
 end
-function shelter_volume(rs::ResultSet)
+function shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
     return shelter_volume(rs.raw, rs.inputs)
 end
 
@@ -168,7 +168,7 @@ Input dimensions: timesteps, species, sites
 # Outputs
 Dimensions: timesteps, sites, interventions, repeats
 """
-function reef_condition_index(TC::AbstractArray, E::AbstractArray, SV::AbstractArray, juveniles::AbstractArray)::Array
+function reef_condition_index(TC::AbstractArray{<:Real}, E::AbstractArray, SV::AbstractArray{<:Real}, juveniles::AbstractArray{<:Real})::Array{<:Real}
     # Compare outputs against reef condition criteria provided by experts
 
     # These are median values for 7 experts. TODO: draw from distributions
@@ -203,7 +203,7 @@ function reef_condition_index(TC::AbstractArray, E::AbstractArray, SV::AbstractA
 
     return mean([TC_i, SV_i, juv_i])
 end
-function reef_condition_index(rs::ResultSet)
+function reef_condition_index(rs::ResultSet)::Array{<:Real}
     cover = coral_cover(rs)
     TC = cover.total_cover
     juv = cover.juveniles
