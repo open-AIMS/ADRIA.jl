@@ -3,7 +3,7 @@
 
 Store environmental data layers used for scenario
 """
-struct EnvLayer{S}
+struct EnvLayer{S<:AbstractString}
     site_data_fn::S
     site_id_col::S
     unique_site_id_col::S
@@ -19,7 +19,7 @@ end
 
 Core ADRIA domain. Represents study area.
 """
-struct Domain{M,I,D,S,V,T,X}
+struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray}
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
     name::S           # human-readable name
@@ -69,9 +69,9 @@ Convenience constructor for Domain
 function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
     conn_path::String, dhw_fn::String, wave_fn::String)::Domain
 
-    env_layer_md = EnvLayer(site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn)
+    env_layer_md::EnvLayer = EnvLayer(site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn)
 
-    site_data = nothing
+    site_data::DataFrame = DataFrame()
     try
         site_data = GeoDataFrames.read(site_data_fn)
     catch err
@@ -98,27 +98,26 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
 
-    # TODO: Reorder sites so entries align with each other
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
-        dhw = load_mat_data(dhw_fn, "dhw", site_data[:, unique_site_id_col], n_sites)
+        dhw::NamedArray = load_mat_data(dhw_fn, "dhw", site_data[:, unique_site_id_col], n_sites)
     else
         @warn "Using empty DHW data"
-        dhw = zeros(74, n_sites, 50)
+        dhw = NamedArray(zeros(74, n_sites, 50))
     end
 
     if endswith(wave_fn, ".mat")
-        waves = load_mat_data(wave_fn, "wave", site_data[:, unique_site_id_col], n_sites)
+        waves::NamedArray = load_mat_data(wave_fn, "wave", site_data[:, unique_site_id_col], n_sites)
     else
         @warn "Using empty wave data"
-        waves = zeros(74, n_sites, 50)
+        waves = NamedArray(zeros(74, n_sites, 50))
     end
 
     if endswith(init_coral_fn, ".mat")
-        coral_cover = load_mat_data(init_coral_fn, "covers", site_data[:, unique_site_id_col], n_sites)
+        coral_cover::NamedArray = load_mat_data(init_coral_fn, "covers", site_data[:, unique_site_id_col], n_sites)
     else
         @warn "Using random initial coral cover"
-        coral_cover = rand(coral_growth.n_species, n_sites)
+        coral_cover = NamedArray(rand(coral_growth.n_species, n_sites))
     end
 
     return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.conn_ranks, conns.strongest_predecessor,
@@ -138,9 +137,9 @@ end
 Get model fieldnames and their parameter values.
 """
 function param_table(d::Domain)::DataFrame
-    f_names = collect(d.model[:fieldname])
-    vals = collect(d.model[:val])
-    p_df = DataFrame(OrderedDict(k => v for (k, v) in zip(f_names, vals)))
+    f_names::Vector{String} = collect(d.model[:fieldname])
+    vals::Vector = collect(d.model[:val])
+    p_df::DataFrame = DataFrame(OrderedDict(k => v for (k, v) in zip(f_names, vals)))
 
     return p_df
 end
@@ -206,7 +205,7 @@ function update_params!(d::Domain, params::DataFrameRow)
 end
 
 
-function load_mat_data(data_fn::String, attr::String, expected_id_order::Array{String}, n_sites::Int)
+function load_mat_data(data_fn::String, attr::String, expected_id_order::Array{String}, n_sites::Int)::NamedArray
     data = matread(data_fn)
     local loaded::NamedArray
 
