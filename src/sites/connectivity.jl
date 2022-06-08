@@ -35,33 +35,34 @@ NamedTuple:
     site_connectivity("MooreTPmean.csv", site_order; con_cutoff=0.02, agg_func=mean, swap=true)
 ```
 """
-function site_connectivity(file_loc::String, conn_ids::Vector, unique_site_ids::Vector, site_order::Vector; con_cutoff=0.02, agg_func=mean, swap=false)::NamedTuple
+function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_site_ids::Vector{String}, site_order::Vector{Union{Missing, Int64}}; 
+    con_cutoff::Float64=0.02, agg_func::Function=mean, swap::Bool=false)::NamedTuple
     
     # Remove any row marked as missing
     if any(ismissing.(conn_ids))
         @warn "Removing entries marked as `missing` from provided list of sites."
-        unique_site_ids = String.(unique_site_ids[.!ismissing.(conn_ids)])
+        unique_site_ids::Vector{String} = String.(unique_site_ids[.!ismissing.(conn_ids)])
         site_order = site_order[.!ismissing.(conn_ids)]
-        conn_ids = String.(conn_ids[.!ismissing.(conn_ids)])
+        conn_ids::Vector{String} = String.(conn_ids[.!ismissing.(conn_ids)])
     end
 
     if isdir(file_loc)
-        con_files = []
+        con_files::Vector{String} = String[]
         for (root, _, files) in walkdir(file_loc)
             append!(con_files, map((x) -> joinpath(root, x), files))
         end
     elseif isfile(file_loc)
-        con_files = [file_loc]
+        con_files = String[file_loc]
     else
         error("Could not find location: $(file_loc)")
     end
 
     # Get site ids from first file
-    con_file1 = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap)
-    con_site_ids = con_file1[:, "source_site"]  # names(con_file1)[2:end]
+    con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap)
+    con_site_ids::Vector{String} = con_file1[:, "source_site"]  # names(con_file1)[2:end]
 
     # Get IDs missing in con_site_ids
-    truncated::Array{String} = setdiff(con_site_ids, conn_ids)
+    truncated::Vector{String} = setdiff(con_site_ids, conn_ids)
 
     # Get IDs missing in site_order
     append!(truncated, setdiff(conn_ids, con_site_ids))
