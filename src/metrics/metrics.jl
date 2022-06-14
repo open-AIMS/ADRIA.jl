@@ -31,7 +31,7 @@ NamedTuple
 """
 function coral_cover(X::AbstractArray{<:Real})::NamedTuple
     # Relative total coral cover
-    TC::AbstractArray{<:Real} = relative_cover(X)  # sum over all species and size classes
+    rc::AbstractArray{<:Real} = relative_cover(X)  # sum over all species and size classes
 
     _, _, cs_p::DataFrame = coral_spec()
 
@@ -54,7 +54,7 @@ function coral_cover(X::AbstractArray{<:Real})::NamedTuple
     large_corals::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 5), :, :, :] + X[:, screen(cs_p.class_id, 6), :, :, :]
     large_all::AbstractArray{<:Real} = dropdims(sum(large_corals, dims=2), dims=2)
 
-    covers = (total_cover = TC,
+    covers = (total_cover = rc,
               enhanced_tab_acr = sc1,
               unenhanced_tab_acr = sc2,
               enhanced_cor_acr = sc3,
