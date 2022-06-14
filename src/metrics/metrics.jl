@@ -213,11 +213,64 @@ function reef_condition_index(rs::ResultSet)::Array{<:Real}
 end
 
 
-function summarize_total_cover(rs::ResultSet)::NamedTuple
-    cover::Array{<:Real} = relative_cover(rs.raw)
+function summarize_relative_cover(data::AbstractArray{<:Real})::Dict{Symbol, Array{<:Real}}
+    cover::Array{<:Real} = relative_cover(data)
 
-    x::Dict{Symbol, Array} = Dict(Symbol(f) => dropdims(f(cover, dims=(3,2)), dims=(3,2)) for f in [mean, median, std, minimum, maximum])
-    return (;zip(keys(x), values(x))...)
+    x::Dict{Symbol, Array{<:Real}} = Dict(Symbol(f) => dropdims(f(cover, dims=(4,3,2)), dims=(4,3,2)) for f in [mean, median, std, minimum, maximum])
+
+    # Calculate quantiles (doesn't support `dims` so have to loop directly)
+    q_series::Array{<:Real} = fill(0.0, size(cover, 1), 4)
+    @inbounds Threads.@threads for i in 1:size(cover, 1)
+        q_series[i, :] = quantile(vec(collect(selectdim(cover, 1, i))), [0.025, 0.125, 0.875, 0.975])
+    end
+
+    x[:lower_95] = q_series[:, 1]
+    x[:lower_75] = q_series[:, 2]
+    x[:upper_75] = q_series[:, 3]
+    x[:upper_95] = q_series[:, 4]
+
+    return x
 end
+function summarize_relative_cover(rs::ResultSet)::NamedTuple
+    return summarize_relative_cover(rs.raw)
+end
+
+
+"""
+    trajectory_heatmap(data::Matrix{Float64})::Tuple{Vector{Float64}, Vector{Float64}, Matrix{Int64}}
+
+Estimate heatmap of trajectories from a 2D dataset.
+
+# Arguments
+- data : An N*D matrix where N is time steps and D is the scenario outcome for the given timestep in N
+
+# Returns
+OnlineStats.HeatMap
+"""
+function trajectory_heatmap(data::AbstractArray{<:Real})::HeatMap
+    n_ts::Int64, n_scens::Int64 = size(data)
+    o = HeatMap(zip(repeat(1:n_ts, n_scens), data))
+
+    return o
+end
+
+
+"""
+    trajectory_heatmap_data(data::Matrix{Float64})::Tuple{Vector{Float64}, Vector{Float64}, Matrix{Int64}}
+
+Estimate heatmap of trajectories from a 2D dataset.
+
+# Arguments
+- data : An N*D matrix where N is time steps and D is the scenario outcome for the given timestep in N
+
+# Returns
+Tuple of xedges, yedges, and bi-dimensional histogram matrix
+"""
+function trajectory_heatmap_data(data::AbstractArray{<:Real})::Tuple{Vector{Float64}, Vector{Float64}, Matrix{Int64}}
+    o::HeatMap = trajectory_heatmap(data)
+
+    return collect(o.xedges), collect(o.yedges), o.counts
+end
+# function temporal_histogram(rs::ResultSet)::Tuple{Vector{Float64}, Vector{Float64}, Matrix{Int64}}
 
 end
