@@ -124,7 +124,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
         :unique_site_ids => unique_sites(domain),
     )
     compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
-    raw = zcreate(Float32, result_dims...; fill_value=-9999.0, fill_as_missing=false, path=result_loc, chunks=(result_dims[1:end-1]..., 1), attrs=attrs, compressor=compressor)
+    raw = zcreate(Float32, result_dims...; fill_value=nothing, fill_as_missing=false, path=result_loc, chunks=(result_dims[1:end-1]..., 1), attrs=attrs, compressor=compressor)
 
     # Set up logs for site ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
@@ -142,15 +142,15 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
         :structure=> ("sites", "seed/fog/shade", "reps", "scenarios"),
         :unique_site_ids=>unique_sites(domain),
     )
-    ranks = zcreate(Float32, rank_dims...; name="rankings", fill_value=-9999.0, fill_as_missing=false, path=log_fn, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
+    ranks = zcreate(Float32, rank_dims...; name="rankings", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
         :structure=> ("timesteps", "intervened sites", "coral type", "scenarios"),
         :unique_site_ids=>unique_sites(domain),
     )
-    seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=-9999.0, fill_as_missing=false, path=log_fn, chunks=(seed_dims[1:4]..., 1))
-    fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=-9999.0, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1))
-    shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=-9999.0, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1))
+    seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(seed_dims[1:4]..., 1))
+    fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1))
+    shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1))
 
     return domain, (raw=raw, site_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
 end
