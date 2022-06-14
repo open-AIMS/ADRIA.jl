@@ -225,16 +225,16 @@ function select(r::ResultSet, op::String)
 end
 
 
-function Base.show(io::IO, mime::MIME"text/plain", r::ResultSet)
+function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
-    vers = r.ADRIA_VERSION
+    vers = rs.ADRIA_VERSION
     vers_id = "v$(vers["major"]).$(vers["minor"]).$(vers["patch"])"
 
-    tf, species, sites, reps, scens = size(r.raw)
+    tf, species, sites, reps, scens = size(rs.raw)
     println("""
-    Domain: $(r.name)
+    Domain: $(rs.name)
 
-    Run with ADRIA $(vers_id) on $(r.invoke_time) for RCP $(r.rcp)
+    Run with ADRIA $(vers_id) on $(rs.invoke_time) for RCP $(rs.rcp)
 
     Intervention scenarios run: $(scens)
     Environmental scenarios: $(reps)
@@ -245,7 +245,7 @@ function Base.show(io::IO, mime::MIME"text/plain", r::ResultSet)
     Input layers
     ------------""")
 
-    for fn in fieldnames(typeof(r.env_layer_md))
-        println("$(fn) : $(getfield(r.env_layer_md, fn))")
+    for fn in fieldnames(typeof(rs.env_layer_md))
+        println("$(fn) : $(getfield(rs.env_layer_md, fn))")
     end
 end
