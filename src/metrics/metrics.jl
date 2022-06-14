@@ -1,6 +1,6 @@
 module metrics
 
-using Interpolations, Statistics
+using Interpolations, Statistics, OnlineStats
 
 using DataFrames
 import ADRIA: coral_spec, ResultSet
@@ -168,7 +168,7 @@ Input dimensions: timesteps, species, sites
 # Outputs
 Dimensions: timesteps, sites, interventions, repeats
 """
-function reef_condition_index(TC::AbstractArray{<:Real}, E::AbstractArray{<:Real}, SV::AbstractArray{<:Real}, juveniles::AbstractArray{<:Real})::Array{<:Real}
+function reef_condition_index(TC::T, E::T, SV::T, juveniles::T)::T where T <: AbstractArray{<:Real}
     # Compare outputs against reef condition criteria provided by experts
 
     # These are median values for 7 experts. TODO: draw from distributions
@@ -186,10 +186,10 @@ function reef_condition_index(TC::AbstractArray{<:Real}, E::AbstractArray{<:Real
     SV_func::GriddedInterpolation{Float64, 1, Float64, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.18, 0.30, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.9, 1.0], lin_grid)
     juv_func::GriddedInterpolation{Float64, 1, Float64, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 1.0],), Float64[0, 0.1, 0.5, 0.9, 1.0], lin_grid)
 
-    TC_i::Array{<:Real} = TC_func.(TC);
-    # E_i::Array{<:Real} = E_func.(E);
-    SV_i::Array{<:Real} = SV_func.(SV);
-    juv_i::Array{<:Real} = juv_func.(juveniles);
+    TC_i::T = TC_func.(TC);
+    # E_i::T = E_func.(E);
+    SV_i::T = SV_func.(SV);
+    juv_i::T = juv_func.(juveniles);
 
     # Original
     # Y = (TC_i + E_i + SV_i + juv_i) ./ 4;
