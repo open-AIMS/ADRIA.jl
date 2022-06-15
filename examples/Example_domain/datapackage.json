@@ -27,7 +27,7 @@
     {
       "name": "waves",
       "description": "Stochastic wave data for the Example cluster",
-      "path": "waves/waves_data.mat",
+      "path": "waves/wave_RCP45.mat",
       "format": "MAT v7.3"
     },
     {
