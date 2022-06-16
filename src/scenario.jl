@@ -64,7 +64,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=0)::Doma
     func = (dfx) -> run_scenario(dfx, domain, reps, data_store, cache)
 
     # Batch run scenarios
-    if nrow(param_df) > 16
+    if nrow(param_df) > 64
         @eval @everywhere using ADRIA
 
         @showprogress "Running..." 4 pmap(func, enumerate(eachrow(param_df)))
@@ -518,11 +518,10 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # growth::ODEProblem = ODEProblem{true, false}(growthODE, cov_tmp, tspan, p)
         # sol::ODESolution = solve(growth, solver, save_everystep=false, abstol=1e-6, reltol=1e-7)
-        # Yout[tstep, :, :] = sol.u[end]
+        # Yout[tstep, :, :] .= sol.u[end]
 
-        # Using the last step from ODE above,
-        # If any sites are above their maximum possible value,
-        # proportionally adjust each entry so that their sum is <= max_cover for each site
+        # Using the last step from ODE above, proportionally adjust site coral cover
+        # if any are above the maximum possible (i.e., the site `k` value)
         @views Ycover .= vec(sum(Yout[tstep, :, :], dims=1))
         if any(Ycover .> max_cover)
             exceeded::Vector{Int32} = findall(Ycover .> max_cover)
