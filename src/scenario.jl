@@ -261,6 +261,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     Yout::Array{Float64,3} = zeros(tf, n_species, n_sites)
     Yout[1, :, :] .= @view cache.init_cov[:, :]
     # cov_tmp::Array{Float64,2} = similar(init_cov, Float64)
+    Ycover::Vector{Float64} = zeros(n_sites)
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
@@ -517,7 +518,16 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # growth::ODEProblem = ODEProblem{true, false}(growthODE, cov_tmp, tspan, p)
         # sol::ODESolution = solve(growth, solver, save_everystep=false, abstol=1e-6, reltol=1e-7)
-        # Yout[tstep, :, :] .= sol.u[end]
+        # Yout[tstep, :, :] = sol.u[end]
+
+        # Using the last step from ODE above,
+        # If any sites are above their maximum possible value,
+        # proportionally adjust each entry so that their sum is <= max_cover for each site
+        @views Ycover .= vec(sum(Yout[tstep, :, :], dims=1))
+        if any(Ycover .> max_cover)
+            exceeded::Vector{Int32} = findall(Ycover .> max_cover)
+            @views Yout[tstep, :, exceeded] .= (Yout[tstep, :, exceeded] ./ Ycover[exceeded]') .* max_cover[exceeded]'
+        end
     end
 
     # avoid placing importance on sites that were not considered
