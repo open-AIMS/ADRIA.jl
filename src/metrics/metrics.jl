@@ -10,6 +10,7 @@ function relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     return dropdims(sum(X, dims=2), dims=2)  # sum over all species and size classes
 end
 
+
 """
     coral_cover(X)::NamedTuple
 
