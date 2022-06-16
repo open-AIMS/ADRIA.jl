@@ -427,7 +427,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         fecundity_scope!(fec_scope, fec_all, fec_params, cov_tmp, site_area)
 
         # adjusting absolute recruitment at each site by dividing by the area
-        @views p.rec[:, :] .= (potential_settler_cover * ((fec_scope .* LPs) * TP_data)) / site_area
+        @views p.rec[:, :] .= (potential_settler_cover .* ((fec_scope .* LPs) * TP_data)) / site_area
 
         @views dhw_step .= dhw_scen[tstep, :]  # subset of DHW for given timestep
 
