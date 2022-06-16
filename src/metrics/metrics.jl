@@ -217,20 +217,23 @@ end
 function summarize_relative_cover(data::AbstractArray{<:Real})::Dict{Symbol, Array{<:Real}}
     cover::Array{<:Real} = relative_cover(data)
 
-    x::Dict{Symbol, Array{<:Real}} = Dict(Symbol(f) => dropdims(f(cover, dims=(4,3,2)), dims=(4,3,2)) for f in [mean, median, std, minimum, maximum])
+    summarized::Dict{Symbol, Array{<:Real}} = Dict(Symbol(f) => dropdims(f(cover, dims=(4,3,2)), dims=(4,3,2)) 
+                                                    for f in [mean, median, std, minimum, maximum])
 
     # Calculate quantiles (doesn't support `dims` so have to loop directly)
-    q_series::Array{<:Real} = fill(0.0, size(cover, 1), 4)
+    q_series::Array{Float32} = fill(0.0, size(cover, 1), 8)
+    qs::Array{Float32} = Float32[0.025, 0.125, 0.25, 0.375, 0.625, 0.75, 0.875, 0.975]
     @inbounds Threads.@threads for i in 1:size(cover, 1)
-        q_series[i, :] = quantile(vec(collect(selectdim(cover, 1, i))), [0.025, 0.125, 0.875, 0.975])
+        q_series[i, :] = quantile(vec(collect(selectdim(cover, 1, i))), qs)
     end
 
-    x[:lower_95] = q_series[:, 1]
-    x[:lower_75] = q_series[:, 2]
-    x[:upper_75] = q_series[:, 3]
-    x[:upper_95] = q_series[:, 4]
+    target_keys = Symbol[:lower_95, :lower_75, :lower_50, :lower_25, 
+                         :upper_25, :upper_50, :upper_75, :upper_95]
+    @inbounds for (i, k) in enumerate(target_keys)
+        summarized[k] = q_series[:, i]
+    end
 
-    return x
+    return summarized
 end
 function summarize_relative_cover(rs::ResultSet)::NamedTuple
     return summarize_relative_cover(rs.raw)
@@ -250,7 +253,7 @@ OnlineStats.HeatMap
 """
 function trajectory_heatmap(data::AbstractArray{<:Real})::HeatMap
     n_ts::Int64, n_scens::Int64 = size(data)
-    o = HeatMap(zip(repeat(1:n_ts, n_scens), data))
+    o = HeatMap(zip(repeat(1:n_ts, n_scens), data), n_ts)
 
     return o
 end
