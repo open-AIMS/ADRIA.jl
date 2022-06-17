@@ -143,7 +143,7 @@ function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::Named
     for (k, v) in pairs(data_store)
         if !isnothing(v)
             c_dim = ndims(getfield(result_set[1], k)) + 1
-            vals::Array{Float32} = convert(Array{Float32}, cat([getfield(r, k) for r in result_set]..., dims=c_dim))
+            vals::Array{Float32} = convert(Array{Float32}, cat(Array{Float32}[getfield(r, k) for r in result_set]..., dims=c_dim))
 
             vals[vals .< threshold] .= 0.0
 
