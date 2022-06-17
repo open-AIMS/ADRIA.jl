@@ -64,7 +64,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=0)::Doma
     func = (dfx) -> run_scenario(dfx, domain, reps, data_store, cache)
 
     # Batch run scenarios
-    if nrow(param_df) > 16
+    if nrow(param_df) > 64
         @eval @everywhere using ADRIA
 
         @showprogress "Running..." 4 pmap(func, enumerate(eachrow(param_df)))
@@ -143,7 +143,7 @@ function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::Named
     for (k, v) in pairs(data_store)
         if !isnothing(v)
             c_dim = ndims(getfield(result_set[1], k)) + 1
-            vals::Array{Float32} = convert(Array{Float32}, cat([getfield(r, k) for r in result_set]..., dims=c_dim))
+            vals::Array{Float32} = convert(Array{Float32}, cat(Array{Float32}[getfield(r, k) for r in result_set]..., dims=c_dim))
 
             vals[vals .< threshold] .= 0.0
 
@@ -261,6 +261,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     Yout::Array{Float64,3} = zeros(tf, n_species, n_sites)
     Yout[1, :, :] .= @view cache.init_cov[:, :]
     # cov_tmp::Array{Float64,2} = similar(init_cov, Float64)
+    Ycover::Vector{Float64} = zeros(n_sites)
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
@@ -426,7 +427,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         fecundity_scope!(fec_scope, fec_all, fec_params, cov_tmp, site_area)
 
         # adjusting absolute recruitment at each site by dividing by the area
-        @views p.rec[:, :] .= (potential_settler_cover * ((fec_scope .* LPs) * TP_data)) / site_area
+        @views p.rec[:, :] .= (potential_settler_cover .* ((fec_scope .* LPs) * TP_data)) ./ site_area
 
         @views dhw_step .= dhw_scen[tstep, :]  # subset of DHW for given timestep
 
@@ -518,6 +519,14 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # growth::ODEProblem = ODEProblem{true, false}(growthODE, cov_tmp, tspan, p)
         # sol::ODESolution = solve(growth, solver, save_everystep=false, abstol=1e-6, reltol=1e-7)
         # Yout[tstep, :, :] .= sol.u[end]
+
+        # Using the last step from ODE above, proportionally adjust site coral cover
+        # if any are above the maximum possible (i.e., the site `k` value)
+        @views Ycover .= vec(sum(Yout[tstep, :, :], dims=1))
+        if any(Ycover .> max_cover)
+            exceeded::Vector{Int32} = findall(Ycover .> max_cover)
+            @views Yout[tstep, :, exceeded] .= (Yout[tstep, :, exceeded] ./ Ycover[exceeded]') .* max_cover[exceeded]'
+        end
     end
 
     # avoid placing importance on sites that were not considered
