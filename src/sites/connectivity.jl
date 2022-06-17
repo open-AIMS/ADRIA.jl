@@ -62,34 +62,29 @@ function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_si
     con_site_ids::Vector{String} = con_file1[:, "source_site"]  # names(con_file1)[2:end]
 
     # Get IDs missing in con_site_ids
-    truncated::Vector{String} = setdiff(con_site_ids, conn_ids)
+    invalid_ids::Vector{String} = setdiff(con_site_ids, conn_ids)
 
     # Get IDs missing in site_order
-    append!(truncated, setdiff(conn_ids, con_site_ids))
+    append!(invalid_ids, setdiff(conn_ids, con_site_ids))
 
-    # Identify IDs that appear in both datasets
-    # valid_ids = [x for x in con_site_ids if x ∉ truncated]
-
-    # mark missing elements
-    valid_ids = [x ∉ truncated ? x : missing for x in conn_ids]
-    not_missing = .!ismissing.(valid_ids)
+    # Identify IDs that do not appear in `invalid_ids`
+    valid_ids = [x ∉ invalid_ids ? x : missing for x in conn_ids]
+    valid_idx = .!ismissing.(valid_ids)
 
     # Align IDs
-    conn_ids = coalesce(conn_ids[not_missing])
-    unique_site_ids = coalesce(unique_site_ids[not_missing])
-    site_order = coalesce(site_order[not_missing])
-    # conn_ids = [x for x in conn_ids if x ∉ truncated]
-    # conn_ids = conn_ids[.!ismissing.(valid_ids)]
+    conn_ids = coalesce(conn_ids[valid_idx])
+    unique_site_ids = coalesce(unique_site_ids[valid_idx])
+    site_order = coalesce(site_order[valid_idx])
 
     # Use marked missing elements array to align unique_id and site_order list
     # ...
 
-    if length(truncated) > 0
-        if length(truncated) == length(con_site_ids)
+    if length(invalid_ids) > 0
+        if length(invalid_ids) == length(con_site_ids)
             error("All sites appear to be missing from data set. Aborting.")
         end
 
-        @warn "The following sites were not found in site_ids and were removed:\n$(truncated)"
+        @warn "The following sites were not found in site_ids and were removed:\n$(invalid_ids)"
     end
 
     # Helper method to align/reorder data
@@ -116,7 +111,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_si
 
         # Fill missing values with 0.0
         TP_base = similar(con_file1)
-        tmp = agg_func(cat(map(Matrix, con_data), dims=3))
+        tmp::Matrix{Union{Missing, Float64}} = agg_func(cat(map(Matrix, con_data), dims=3))
 
         TP_base[:, :] .= coalesce.(tmp, 0.0)
     else
@@ -136,7 +131,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_si
         TP_base[:, :] = tmp
     end
 
-    return (TP_base=TP_base, truncated=truncated, site_ids=conn_ids)
+    return (TP_base=TP_base, truncated=invalid_ids, site_ids=conn_ids)
 end
 
 

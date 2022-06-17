@@ -238,17 +238,17 @@ function of last year's heat stress. The function is theoretical and is not yet 
 # Returns
 array of ngroups by nsites
 """
-function larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
-    ad = @. a_adapt + tstep * n_adapt;
+function larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)::Matrix{Float64}
+    ad::Vector{Float64} = @. a_adapt + tstep * n_adapt;
 
     # using half of DHWmaxtot as a placeholder
     # for the maximum capacity for thermal adaptation
-    tmp_ad = @. (1 - ad / (DHWmaxtot/2));
+    tmp_ad::Vector{Float64} = @. (1.0 - ad / (DHWmaxtot/2));
 
     # One way around dimensional issue - tmp_ad for each class as the averaged
     # of the enhanced and unenhanced corals in that class
     # KA note: this works as it averages over size classes and not across groups.
-    tmp_ad2 = mean(reshape(tmp_ad, Int(length(tmp_ad)/n_groups), n_groups), dims=1);
+    tmp_ad2::Array{Float64} = mean(reshape(tmp_ad, Int64(length(tmp_ad)/n_groups), n_groups), dims=1);
 
     return 1.0 .- exp.(-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2' .- LPDprm2))));
 end

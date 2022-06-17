@@ -85,11 +85,13 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
     # Sort data to maintain consistent order
     sort!(site_data, [Symbol(unique_site_id_col)])
 
+    u_sids::Vector{String} = site_data[!, unique_site_id_col]
+
     site_data.row_id = 1:nrow(site_data)
     site_data._siteref_id = groupindices(groupby(site_data, Symbol(site_id_col)))
 
     conn_ids::Vector{String} = site_data[:, site_id_col]
-    site_conn::NamedTuple = site_connectivity(conn_path, conn_ids, site_data[:, unique_site_id_col], site_data._siteref_id)
+    site_conn::NamedTuple = site_connectivity(conn_path, conn_ids, u_sids, site_data._siteref_id)
     conns::NamedTuple = connectivity_strength(site_conn.TP_base)
 
     # Filter out missing entries
@@ -98,23 +100,25 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
 
+    loader = (fn::String, attr::String) -> load_mat_data(fn, attr, u_sids, n_sites)
+
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
-        dhw::NamedArray = load_mat_data(dhw_fn, "dhw", site_data[:, unique_site_id_col], n_sites)
+        dhw::NamedArray = loader(dhw_fn, "dhw"::String)
     else
         @warn "Using empty DHW data"
         dhw = NamedArray(zeros(74, n_sites, 50))
     end
 
     if endswith(wave_fn, ".mat")
-        waves::NamedArray = load_mat_data(wave_fn, "wave", site_data[:, unique_site_id_col], n_sites)
+        waves::NamedArray = loader(wave_fn, "wave"::String)
     else
         @warn "Using empty wave data"
         waves = NamedArray(zeros(74, n_sites, 50))
     end
 
     if endswith(init_coral_fn, ".mat")
-        coral_cover::NamedArray = load_mat_data(init_coral_fn, "covers", site_data[:, unique_site_id_col], n_sites)
+        coral_cover::NamedArray = loader(init_coral_fn, "covers"::String)
     else
         @warn "Using random initial coral cover"
         coral_cover = NamedArray(rand(coral_growth.n_species, n_sites))

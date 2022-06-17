@@ -56,10 +56,10 @@ Tuple : preferred seed sites, preferred shade/fog sites, number of seed sites, n
 function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, 
                prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, 
                rankingsin::Matrix{Int64})::Tuple
-    site_ids = d_vars.site_ids
-    nsites = length(site_ids)
-    nsiteint = d_vars.nsiteint
-    prioritysites = d_vars.prioritysites[in.(d_vars.prioritysites, [site_ids])]
+    site_ids::Array{Int64} = d_vars.site_ids
+    nsites::Int64 = length(site_ids)
+    nsiteint::Int64 = d_vars.nsiteint
+    prioritysites::Array{Int64} = d_vars.prioritysites[in.(d_vars.prioritysites, [site_ids])]
 
     strongpred = d_vars.strongpred[site_ids, :]
     centr = d_vars.centr[site_ids]
@@ -79,7 +79,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     wtpredecshade = d_vars.wtpredecshade
 
     # site_id, seeding rank, shading rank
-    rankings = [site_ids zeros(Int, nsites) zeros(Int, nsites)]
+    rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
 
     predec::Array{Float64} = zeros(nsites, 3)
     predec[:, 1:2] .= strongpred
