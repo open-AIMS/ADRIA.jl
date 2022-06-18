@@ -90,7 +90,7 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
     site_data.row_id = 1:nrow(site_data)
     site_data._siteref_id = groupindices(groupby(site_data, Symbol(site_id_col)))
 
-    conn_ids::Vector{String} = site_data[:, site_id_col]
+    conn_ids::Vector{Union{Missing, String}} = site_data[:, site_id_col]
     site_conn::NamedTuple = site_connectivity(conn_path, conn_ids, u_sids, site_data._siteref_id)
     conns::NamedTuple = connectivity_strength(site_conn.TP_base)
 

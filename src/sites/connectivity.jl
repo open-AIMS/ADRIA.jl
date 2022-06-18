@@ -35,7 +35,7 @@ NamedTuple:
     site_connectivity("MooreTPmean.csv", site_order; con_cutoff=0.02, agg_func=mean, swap=true)
 ```
 """
-function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_site_ids::Vector{String}, site_order::Vector{Union{Missing, Int64}}; 
+function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, String}}, unique_site_ids::Vector{String}, site_order::Vector{Union{Missing, Int64}}; 
     con_cutoff::Float64=0.02, agg_func::Function=mean, swap::Bool=false)::NamedTuple
     
     # Remove any row marked as missing
