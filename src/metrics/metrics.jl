@@ -235,7 +235,7 @@ function summarize_relative_cover(data::AbstractArray{<:Real})::Dict{Symbol, Arr
 
     return summarized
 end
-function summarize_relative_cover(rs::ResultSet)::NamedTuple
+function summarize_relative_cover(rs::ResultSet)::Dict{Symbol, Array{<:Real}}
     return summarize_relative_cover(rs.raw)
 end
 
