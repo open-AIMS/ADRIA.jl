@@ -319,7 +319,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Filter out sites outside of desired depth range
         if .!all(site_data.sitedepth .== 0)
             max_depth = param_set.depth_min + param_set.depth_offset
-            depth_criteria = (site_data.sitedepth .> -max_depth) .& (site_data.sitedepth .< -param_set.depth_min)
+            depth_criteria = (site_data.sitedepth .>= -max_depth) .& (site_data.sitedepth .<= -param_set.depth_min)
 
             # TODO: Include this change in MATLAB version as well
             if any(depth_criteria .> 0)
