@@ -100,7 +100,7 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
 
-    loader = (fn::String, attr::String) -> load_mat_data(fn, attr, u_sids, n_sites)
+    loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
 
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
@@ -209,19 +209,13 @@ function update_params!(d::Domain, params::DataFrameRow)
 end
 
 
-function load_mat_data(data_fn::String, attr::String, expected_id_order::Array{String}, n_sites::Int)::NamedArray
+function load_mat_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
     data = matread(data_fn)
     local loaded::NamedArray
+    local site_order::Array{String}
 
     try
-        site_order::Array{String} = Array{String}(data["reef_siteids"])
-
-        # Attach site names to each column
-        loaded = NamedArray(data[attr])
-        setnames!(loaded, site_order, 2)
-
-        # Reorder sites so they match with spatial data
-        loaded = selectdim(loaded, 2, expected_id_order)
+        site_order = Array{String}(data["reef_siteids"])
     catch err
         if isa(err, KeyError)
             @warn "Provided file $(data_fn) did not have reef_siteids! There may be a mismatch in sites."
@@ -235,6 +229,13 @@ function load_mat_data(data_fn::String, attr::String, expected_id_order::Array{S
             rethrow(err)
         end
     end
+
+    # Attach site names to each column
+    loaded = NamedArray(data[attr])
+    setnames!(loaded, site_order, 2)
+
+    # Reorder sites so they match with spatial data
+    loaded = selectdim(loaded, 2, site_order)
 
     return loaded
 end
