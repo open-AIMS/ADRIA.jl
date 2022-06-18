@@ -78,7 +78,7 @@ Base.@kwdef struct Criteria{P} <: EcoModel
     coral_cover_low::P = Param(1.0, ptype="real", bounds=(0.0, 1.0))
     seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0))
     shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0))
-    deployed_coral_risk_tol::P = Param(5.0, ptype="real", bounds=(0.0, 1.0))
+    deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.0, 1.0))
     depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0))     # minimum depth
     depth_offset::P = Param(5.0, ptype="real", bounds=(5.0, 6.0))  # offset from minimum depth to indicate maximum depth**
 end
