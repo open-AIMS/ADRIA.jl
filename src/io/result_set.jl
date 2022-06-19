@@ -17,6 +17,8 @@ struct ResultSet
     rcp
     invoke_time
     ADRIA_VERSION
+    site_area
+    site_max_coral_cover
     env_layer_md
 
     inputs
@@ -104,7 +106,10 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
         :connectivity_file => domain.env_layer_md.connectivity_fn,
         :DHW_file => domain.env_layer_md.DHW_fn,
         :wave_file => domain.env_layer_md.wave_fn,
-        :sim_constants => Dict(fn=>getfield(domain.sim_constants, fn) for fn ∈ fieldnames(typeof(domain.sim_constants)))
+        :sim_constants => Dict(fn=>getfield(domain.sim_constants, fn) for fn ∈ fieldnames(typeof(domain.sim_constants))),
+
+        :site_area => domain.site_data.area,
+        :site_max_coral_cover => domain.site_data.k
     )
 
     inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
@@ -121,7 +126,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
     
     attrs = Dict(
         :structure => ("timesteps", "species", "sites", "reps", "scenarios"),
-        :unique_site_ids => unique_sites(domain),
+        :unique_site_ids => unique_sites(domain)
     )
     compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
     raw = zcreate(Float32, result_dims...; fill_value=nothing, fill_as_missing=false, path=result_loc, chunks=(result_dims[1:end-1]..., 1), attrs=attrs, compressor=compressor)
@@ -167,6 +172,19 @@ function load_results(result_loc::String)::ResultSet
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
 
+    r_vers = input_set.attrs["ADRIA_VERSION"]
+    r_vers_id = "v$(r_vers["major"]).$(r_vers["minor"]).$(r_vers["patch"])"
+
+    t_vers = PkgVersion.Version(@__MODULE__)
+    t_vers_id = "v"*string(t_vers)
+
+    if r_vers_id != t_vers_id
+        msg = """Results were produced with ADRIA $(r_vers_id) (this version: $(t_vers_id)).\n
+        Errors may occur when analyzing data."""
+
+        @warn msg
+    end
+
     input_cols::Array{String} = input_set.attrs["columns"]
     inputs_used::DataFrame = DataFrame(input_set[:, :], input_cols)
 
@@ -177,13 +195,15 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["init_coral_cover_file"],
         input_set.attrs["connectivity_file"],
         input_set.attrs["DHW_file"],
-        input_set.attrs["wave_file"],
+        input_set.attrs["wave_file"]
     )
 
     return ResultSet(input_set.attrs["name"],
                      input_set.attrs["rcp"],
                      input_set.attrs["invoke_time"],
                      input_set.attrs["ADRIA_VERSION"],
+                     input_set.attrs["site_area"],
+                     input_set.attrs["site_max_coral_cover"],
                      env_layer_md,
                      inputs_used,
                      input_set.attrs["sim_constants"],
