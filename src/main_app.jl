@@ -89,62 +89,54 @@ Display results for indicative purposes, just to demonstrate things are working.
 Not intended for production.
 """
 function _indicative_result_display(res)
-    nodeploy_scens = select(res, "guided .== 0") .&& select(res, "seed_TA .== 0")
-    unguided_scens = select(res, "guided .== 0") .&& select(res, "seed_TA .== 500000")
-    guided_scens = select(res, "guided .> 0") .&& select(res, "seed_TA .== 500000")
+    nodeploy_scens = findall(select(res, "guided .== 0") .&& select(res, "seed_TA .== 0"))
+    unguided_scens = findall(select(res, "guided .== 0") .&& select(res, "seed_TA .> 0"))
+    guided_scens = findall(select(res, "guided .> 0") .&& select(res, "seed_TA .> 0"))
 
-    Y_o = ADRIA.metrics.summarize_total_cover(res)
-
+    Y_no = ADRIA.metrics.summarize_relative_cover(selectdim(res.raw, 5, nodeploy_scens))
+    Y_ung = ADRIA.metrics.summarize_relative_cover(selectdim(res.raw, 5, unguided_scens))
+    Y_g = ADRIA.metrics.summarize_relative_cover(selectdim(res.raw, 5, guided_scens))
+    
     year_axis = [t % 5 == 0 || t == 2099 ? string(t) : "" for t in 2025:2099]
-
+    
     # No deployment
-    upper = maximum(Y_o.maximum[:, nodeploy_scens], dims=2)
-    u_d = Array{Float32}(dropdims(upper, dims=2))
-    lower = minimum(Y_o.minimum[:, nodeploy_scens], dims=2)
-    l_d = Array{Float32}(dropdims(lower, dims=2))
-
-    p = plot(u_d, fillrange=l_d, color=:lightsalmon1, alpha=0.8, label="")
-    mean_nodeploy = dropdims(mean(Y_o.mean[:, nodeploy_scens], dims=2), dims=2)
-    plot!(mean_nodeploy, label="No Deployment mean", linecolor=:red, alpha=0.8)
+    upper = Y_no[:upper_95]
+    lower = Y_no[:lower_95]
+    
+    p = plot(upper, fillrange=lower, color=:lightsalmon1, alpha=0.8, label="")
+    plot!(Y_no[:median], label="No Deployment median", linecolor=:red, alpha=0.8)
 
 
     # Unguided Deployment
-    upper = maximum(Y_o.maximum[:, unguided_scens], dims=2)
-    u_d = Array{Float32}(dropdims(upper, dims=2))
-    lower = minimum(Y_o.minimum[:, unguided_scens], dims=2)
-    l_d = Array{Float32}(dropdims(lower, dims=2))
-
-    p = plot!(u_d, fillrange=l_d, color=:lightblue2, alpha=0.5, label="")
-    mean_unguided = dropdims(mean(Y_o.mean[:, unguided_scens], dims=2), dims=2)
-    plot!(mean_unguided, label="Unguided mean", linecolor=:blue, alpha=0.5)
-
-
+    upper = Y_ung[:upper_95]
+    lower = Y_ung[:lower_95]
+    p = plot!(upper, fillrange=lower, color=:lightblue2, alpha=0.8, label="")
+    plot!(Y_ung[:median], label="Unguided median", linecolor=:blue, alpha=0.5)
+    
+    
     # Guided
-    upper = maximum(Y_o.maximum[:, guided_scens], dims=2)
-    u_d = Array{Float32}(dropdims(upper, dims=2))
-    lower = minimum(Y_o.minimum[:, guided_scens], dims=2)
-    l_d = Array{Float32}(dropdims(lower, dims=2))
-
-    plot!(u_d, fillrange=l_d, color=:lightseagreen, alpha=0.4, label="")
-    mean_guided = dropdims(mean(Y_o.mean[:, guided_scens], dims=2), dims=2)
-    plot!(mean_guided,
-        label="Guided mean", linecolor=:green, alpha=0.4,
+    upper = Y_g[:upper_95]
+    lower = Y_g[:lower_95]
+    
+    plot!(upper, fillrange=lower, color=:lightseagreen, alpha=0.4, label="")
+    plot!(Y_g[:median],
+        label="Guided median", linecolor=:green, alpha=0.4,
         xlabel="Year", ylabel="Relative Cover",
         xticks=(1:75, year_axis))
-
-    p2 = plot(mean_guided - mean_nodeploy, label="Guided - No Deployment (μ)",
+    
+    p2 = plot(Y_ung[:mean] - Y_no[:mean], label="Guided - No Deployment (μ)",
             xlabel="Year", ylabel="δ Relative Cover",
             xticks=(1:75, year_axis), color=:red
     )
-    plot!(mean_guided - mean_unguided, label="Guided - Unguided (μ)", color=:blue)
-
+    plot!(Y_g[:mean] - Y_ung[:mean], label="Guided - Unguided (μ)", color=:blue)
+    
     fig = plot(p, p2, size=(1000, 500), layout=(1,2), left_margin=5mm, bottom_margin=5mm, xrotation=45,
             legend=:best, fg_legend=:transparent, bg_legend=:transparent)
     # display(fig)
     # gui(fig)
-
+    
     savefig(joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(ADRIA.store_name(res)).png"))
-
+    
     # TODO: Force display from commandline
     # https://discourse.julialang.org/t/how-to-display-the-plots-by-executing-the-file-from-command-line/13822/2
 end
