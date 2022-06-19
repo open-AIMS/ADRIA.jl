@@ -8,7 +8,7 @@ Base coral growth function.
 """
 function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _::Real)::Nothing
     k = @view p.k[:, :]
-    k .= max.(p.P .- sum(X, dims=1), 0.0)
+    k .= max.(p.P' .- sum(X, dims=1), 0.0)
 
     # Use temporary caches
     k_X_r = @view p.kXr[:, :]
@@ -38,6 +38,12 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
 
     # Ensure no non-negative values
     du .= max.(du, 0.0)
+
+    # c::Matrix{Float64} = sum(du, dims=1)
+    # if any(c .> k)
+    #     exceeded::Vector{Int32} = findall(c .> k)
+    #     du[:, exceeded] .= (du[:, exceeded] ./ c[exceeded]') .* k[exceeded]'
+    # end
 
     return
 end

@@ -91,8 +91,8 @@ function run_scenario(scen::Tuple{Int, DataFrameRow}, domain::Domain, reps::Int6
     update_params!(domain, scen[2])
 
     # TODO: Modify all scenario constants here to avoid repeated allocations
-    @set! domain.coral_growth.ode_p.P = domain.sim_constants.max_coral_cover::Float64
-    @set! domain.coral_growth.ode_p.comp = domain.sim_constants.comp::Float64
+    @set! domain.coral_growth.ode_p.P = (domain.site_data.k::Vector{Float64} / 100.0)  # Max possible cover at site
+    @set! domain.coral_growth.ode_p.comp = domain.sim_constants.comp::Float64  # competition rate between two mature coral groups
 
     run_scenario(domain; idx=scen[1], reps=reps, data_store=data_store, cache=cache)
 end
