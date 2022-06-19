@@ -18,7 +18,7 @@ Converts outputs from scenario runs to relative cover of the four different cora
 
 # Returns
 NamedTuple
-    - total_cover : total coral cover
+    - relative_cover : relative coral cover
     - enhanced_tab_acr : cover of enhanced tabular acropora
     - unenhanced_tab_acr : area covered by unenhanced tabular acropora
     - enhanced_cor_acr : area covered by enhanced corymbose acropora
@@ -55,7 +55,7 @@ function coral_cover(X::AbstractArray{<:Real})::NamedTuple
     large_corals::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 5), :, :, :] + X[:, screen(cs_p.class_id, 6), :, :, :]
     large_all::AbstractArray{<:Real} = dropdims(sum(large_corals, dims=2), dims=2)
 
-    covers = (total_cover = rc,
+    covers = (relative_cover = rc,
               enhanced_tab_acr = sc1,
               unenhanced_tab_acr = sc2,
               enhanced_cor_acr = sc3,
