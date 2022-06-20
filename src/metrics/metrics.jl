@@ -18,6 +18,9 @@ function total_cover(X::AbstractArray{<:Real},site_area::Vector{Any})::AbstractA
 
     return tot_cov  # sum over all species and size classes
 end
+function total_cover(rs::ResultSet)::AbstractArray{<:Real}
+    return total_cover(rs.raw, rs.site_area)
+end
 """
     coral_cover(X)::NamedTuple
 
@@ -213,7 +216,7 @@ function reef_condition_index(TC::T, E::T, SV::T, juveniles::T)::T where T <: Ab
 end
 function reef_condition_index(rs::ResultSet)::Array{<:Real}
     cover::Array{<:Real} = coral_cover(rs)
-    TC::Array{<:Real} = cover.total_cover
+    TC::Array{<:Real} = total_cover(rs)
     juv::Array{<:Real} = cover.juveniles
     E::Array{<:Real} = coral_evenness(rs)
     SV::Array{<:Real} = shelter_volume(rs)
