@@ -6,23 +6,41 @@ using DataFrames
 import ADRIA: coral_spec, ResultSet
 
 
+"""
+    relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+
+# Arguments
+- X : Matrix of raw model results
+"""
 function relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     return dropdims(sum(X, dims=2), dims=2)  # sum over all species and size classes
 end
 
-function total_cover(X::AbstractArray{<:Real},site_area::Vector{Any})::AbstractArray{<:Real}
-    
+
+"""
+    total_cover(X::AbstractArray{<:Real},site_area::Vector{<:Real})::AbstractArray{<:Real}
+    total_cover(rs::ResultSet)::AbstractArray{<:Real}
+
+# Arguments
+- X : Matrix of raw model results
+- site_area : Vector of site areas, with sites following the same order as given indicated in X.
+"""
+function total_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
+
     rel_cov = relative_cover(X)
     dims = size(rel_cov)
-    tot_cov = repeat(site_area',dims[1],1,dims[3],dims[4]).*rel_cov
+    tot_cov = repeat(site_area', dims[1], 1, dims[3], dims[4]) .* rel_cov
 
     return tot_cov  # sum over all species and size classes
 end
 function total_cover(rs::ResultSet)::AbstractArray{<:Real}
     return total_cover(rs.raw, rs.site_area)
 end
+
+
 """
-    coral_cover(X)::NamedTuple
+    coral_cover(X::AbstractArray{<:Real})::NamedTuple
+    coral_cover(rs::ResultSet)
 
 Converts outputs from scenario runs to relative cover of the four different coral taxa.
 
@@ -82,7 +100,8 @@ end
 
 
 """
-    coral_evenness(rs::ResultSet)
+    coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    coral_evenness(rs::ResultSet)::AbstractArray{<:Real}
 
 Calculates evenness across functional coral groups in ADRIA.
 Inverse Simpsons diversity indicator.
@@ -90,30 +109,29 @@ Inverse Simpsons diversity indicator.
 # Notes
 Number of taxa (distinct groups with enhanced lumped with unenhanced) is hardcoded in this function.
 """
-function coral_evenness(rs::ResultSet)::AbstractArray{<:Real}
-    X::Array{<:Real} = rs.raw
-    return coral_evenness(X)
-end
 function coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     x::Array{<:Real} = min.(max.(X, 0.0), 1.0)
     covers::Array{<:Real} = relative_cover(x)
 
     # Evenness as a functional diversity metric
-    n::Int64 = 4;  # number of taxa
-    p1::Array{<:Real} = dropdims(sum(covers.tab_acr, dims=2), dims=2) ./ covers;
-    p2::Array{<:Real} = dropdims(sum(covers.cor_acr, dims=2), dims=2) ./ covers;
-    p3::Array{<:Real} = dropdims(sum(covers.small_enc, dims=2), dims=2) ./ covers;
-    p4::Array{<:Real} = dropdims(sum(covers.large_mass, dims=2), dims=2) ./ covers;
+    n::Int64 = 4  # number of taxa
+    p1::Array{<:Real} = dropdims(sum(covers.tab_acr, dims=2), dims=2) ./ covers
+    p2::Array{<:Real} = dropdims(sum(covers.cor_acr, dims=2), dims=2) ./ covers
+    p3::Array{<:Real} = dropdims(sum(covers.small_enc, dims=2), dims=2) ./ covers
+    p4::Array{<:Real} = dropdims(sum(covers.large_mass, dims=2), dims=2) ./ covers
 
-    sum_psqr::Array{<:Real} = p1.^2 + p2.^2 + p3.^2 + p4.^2;  # functional diversity
-    simpson_D::Array{<:Real} = 1 ./ sum_psqr;  # Hill 1973, Ecology 54:427-432
-    return simpson_D ./ n;  # Group evenness
+    sum_psqr::Array{<:Real} = p1 .^ 2 + p2 .^ 2 + p3 .^ 2 + p4 .^ 2  # functional diversity
+    simpson_D::Array{<:Real} = 1 ./ sum_psqr  # Hill 1973, Ecology 54:427-432
+    return simpson_D ./ n  # Group evenness
+end
+function coral_evenness(rs::ResultSet)::AbstractArray{<:Real}
+    return coral_evenness(rs.raw)
 end
 
 
 """
-    shelter_volume(rs::ResultSet)
     shelter_volume(X::AbstractArray, inputs::DataFrame)
+    shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume.
 """
@@ -166,9 +184,9 @@ end
     reef_condition_index(TC, E, SV, juveniles)
     reef_condition_index(rs)
 
-Translates coral metrics in ADRIA to a Reef Condition Metrics
+Translates coral metrics in ADRIA to a Reef Condition Metrics.
 
-# Inputs
+# Arguments
 - TC        : Total relative coral cover across all groups
 - E         : Evenness across four coral groups
 - SV        : Shelter volume based coral sizes and abundances
@@ -176,10 +194,10 @@ Translates coral metrics in ADRIA to a Reef Condition Metrics
 
 Input dimensions: timesteps, species, sites
 
-# Outputs
+# Returns
 Dimensions: timesteps, sites, interventions, repeats
 """
-function reef_condition_index(TC::T, E::T, SV::T, juveniles::T)::T where T <: AbstractArray{<:Real}
+function reef_condition_index(TC::T, E::T, SV::T, juveniles::T)::T where {T<:AbstractArray{<:Real}}
     # Compare outputs against reef condition criteria provided by experts
 
     # These are median values for 7 experts. TODO: draw from distributions
@@ -224,11 +242,17 @@ function reef_condition_index(rs::ResultSet)::Array{<:Real}
 end
 
 
-function summarize_relative_cover(data::AbstractArray{<:Real})::Dict{Symbol, Array{<:Real}}
+"""
+    summarize_relative_cover(data::AbstractArray{<:Real})::Dict{Symbol,Array{<:Real}}
+    summarize_relative_cover(rs::ResultSet)::Dict{Symbol,Array{<:Real}}
+
+Calculate summarized relative cover.
+"""
+function summarize_relative_cover(data::AbstractArray{<:Real}, dims::Tuple{<:Int}=(4,3,2))::Dict{Symbol,Array{<:Real}}
     cover::Array{<:Real} = relative_cover(data)
 
-    summarized::Dict{Symbol, Array{<:Real}} = Dict(Symbol(f) => dropdims(f(cover, dims=(4,3,2)), dims=(4,3,2)) 
-                                                    for f in [mean, median, std, minimum, maximum])
+    summarized::Dict{Symbol,Array{<:Real}} = Dict(Symbol(f) => dropdims(f(cover, dims=dims), dims=dims)
+                                                  for f in [mean, median, std, minimum, maximum])
 
     # Calculate quantiles (doesn't support `dims` so have to loop directly)
     q_series::Array{Float32} = fill(0.0, size(cover, 1), 8)
