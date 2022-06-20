@@ -24,7 +24,9 @@ function setup()::Nothing
             active_cores = cpucores()
         end
 
-        addprocs(active_cores, exeflags="--project")
+        if active_cores > 1
+            addprocs(active_cores, exeflags="--project")
+        end
     end
 
     return
