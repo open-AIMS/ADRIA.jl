@@ -205,7 +205,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
 
     tspan::Tuple = (0.0, 1.0)
-    solver::BS3 = BS3()
+    solver::RK4 = RK4()
 
     MCDA_approach::Int64 = param_set.guided
 
@@ -414,7 +414,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     col_area_seed_TA = corals.colony_area_cm2[seed_size_class1] / 10^4
     col_area_seed_CA = corals.colony_area_cm2[seed_size_class2] / 10^4
 
-    growth::ODEProblem = ODEProblem{true,false}(growthODE, cov_tmp, tspan, p)
+    growth::ODEProblem = ODEProblem{true,false}(growthODE, cov_tmp, tspan, p; 
+                                                save_everystep=false, save_start=false, alg_hints=[:nonstiff])
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
         @views cov_tmp[:, :] .= Yout[p_step, :, :]

@@ -262,7 +262,7 @@ function summarize_relative_cover(data::AbstractArray{<:Real}, dims::Tuple{<:Int
     end
 
     target_keys = Symbol[:lower_95, :lower_75, :lower_50, :lower_25,
-        :upper_25, :upper_50, :upper_75, :upper_95]
+                         :upper_25, :upper_50, :upper_75, :upper_95]
     @inbounds for (i, k) in enumerate(target_keys)
         summarized[k] = q_series[:, i]
     end
