@@ -83,14 +83,14 @@ function coral_cover(X::AbstractArray{<:Real})::NamedTuple
     large_corals::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 5), :, :, :] + X[:, screen(cs_p.class_id, 6), :, :, :]
     large_all::AbstractArray{<:Real} = dropdims(sum(large_corals, dims=2), dims=2)
 
-    covers = (relative_cover = rc,
-              enhanced_tab_acr = sc1,
-              unenhanced_tab_acr = sc2,
-              enhanced_cor_acr = sc3,
-              unenhanced_cor_acr = sc4,
-              tab_acr = C1, cor_acr = C2, 
-              small_enc = C3, large_mass = C4,
-              juveniles=juv_all, large=large_all)
+    covers = (relative_cover=rc,
+        enhanced_tab_acr=sc1,
+        unenhanced_tab_acr=sc2,
+        enhanced_cor_acr=sc3,
+        unenhanced_cor_acr=sc4,
+        tab_acr=C1, cor_acr=C2,
+        small_enc=C3, large_mass=C4,
+        juveniles=juv_all, large=large_all)
 
     return covers
 end
@@ -147,33 +147,33 @@ function shelter_volume(X::AbstractArray{<:Real}, inputs::DataFrame)::AbstractAr
         -7.37 1.34;   # columnar from Urbina-Barretto 2021, assumed similar for corymbose Acropora
         -7.37 1.34;   # columnar from Urbina-Barretto 2021, assumed similar for corymbose Acropora
         -9.69 1.49;   # massives from Urbina-Barretto 2021, assumed similar for encrusting and small massives
-        -9.69 1.49]  # massives from Urbina-Barretto 2021,  assumed similar for large massives
+        -9.69 1.49]   # massives from Urbina-Barretto 2021,  assumed similar for large massives
 
     sheltervolume_parameters = repeat(sheltervolume_parameters, n_corals, 1)
 
-    ntsteps::Int64, nspecies::Int64, nsites::Int64, nint::Int64, nreps::Int64 = size(X);
+    ntsteps::Int64, nspecies::Int64, nsites::Int64, nint::Int64, nreps::Int64 = size(X)
 
     #  Estimate log colony volume (litres) based on relationship
     #  established by Urbina-Barretto 2021
-    logcolony_sheltervolume = sheltervolume_parameters[:,1] .+ sheltervolume_parameters[:,2] .* log10.(colony_area_cm2);
-    maxlogcolony_sheltervolume = sheltervolume_parameters[:,1] .+ sheltervolume_parameters[:,2] .* log10.(maximum(colony_area_cm2, dims=1));
+    logcolony_sheltervolume = sheltervolume_parameters[:, 1] .+ sheltervolume_parameters[:, 2] .* log10.(colony_area_cm2)
+    maxlogcolony_sheltervolume = sheltervolume_parameters[:, 1] .+ sheltervolume_parameters[:, 2] .* log10.(maximum(colony_area_cm2, dims=1))
 
-    shelter_volume_colony_litres_per_cm2 = (10.0.^logcolony_sheltervolume);
-    max_shelter_volume_colony_litres_per_cm2 = (10.0.^maxlogcolony_sheltervolume);
+    shelter_volume_colony_litres_per_cm2 = (10.0 .^ logcolony_sheltervolume)
+    max_shelter_volume_colony_litres_per_cm2 = (10.0 .^ maxlogcolony_sheltervolume)
 
     # convert from litres per cm2 to m3 per ha
-    cm2_m3::Float64 = (10^-3) * 10^4 *10^4
-    shelter_volume_colony_m3_per_ha::Array{Float64} = shelter_volume_colony_litres_per_cm2 * cm2_m3;
-    max_shelter_volume_colony_m3_per_ha::Array{Float64} = max_shelter_volume_colony_litres_per_cm2 * cm2_m3;
+    cm2_m3::Float64 = (10^-3) * 10^4 * 10^4
+    shelter_volume_colony_m3_per_ha::Array{Float64} = shelter_volume_colony_litres_per_cm2 * cm2_m3
+    max_shelter_volume_colony_m3_per_ha::Array{Float64} = max_shelter_volume_colony_litres_per_cm2 * cm2_m3
 
     # calculate shelter volume of groups and size classes and multiply with covers
-    sv::Array{Float64} = zeros(ntsteps, nspecies, nsites, nint, nreps);
+    sv::Array{Float64} = zeros(ntsteps, nspecies, nsites, nint, nreps)
     for sp::Int64 = 1:nspecies
-        sv[:,sp,:,:,:] = (shelter_volume_colony_m3_per_ha[sp] / max_shelter_volume_colony_m3_per_ha[sp]) .* X[:,sp,:,:,:];
+        sv[:, sp, :, :, :] = (shelter_volume_colony_m3_per_ha[sp] / max_shelter_volume_colony_m3_per_ha[sp]) .* X[:, sp, :, :, :]
     end
 
     # sum over groups and size classes to estimate total shelter volume per ha
-    return dropdims(sum(sv, dims=2), dims=2);
+    return dropdims(sum(sv, dims=2), dims=2)
 end
 function shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
     return shelter_volume(rs.raw, rs.inputs)
@@ -210,15 +210,15 @@ function reef_condition_index(TC::T, E::T, SV::T, juveniles::T)::T where {T<:Abs
 
     # Note that the scores for evenness and juveniles are slightly different
     lin_grid::Gridded{Linear{Throw{OnGrid}}} = Gridded(Linear())
-    TC_func::GriddedInterpolation{Float64, 1, Float64, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.05, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0], lin_grid)
+    TC_func::GriddedInterpolation{Float64,1,Float64,Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.05, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0], lin_grid)
     # E_func::GriddedInterpolation{Float64, 1, Float64, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.5, 0.7, 0.9, 1.0], lin_grid)
-    SV_func::GriddedInterpolation{Float64, 1, Float64, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.18, 0.30, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.9, 1.0], lin_grid)
-    juv_func::GriddedInterpolation{Float64, 1, Float64, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 1.0],), Float64[0, 0.1, 0.5, 0.9, 1.0], lin_grid)
+    SV_func::GriddedInterpolation{Float64,1,Float64,Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.18, 0.30, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.9, 1.0], lin_grid)
+    juv_func::GriddedInterpolation{Float64,1,Float64,Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 1.0],), Float64[0, 0.1, 0.5, 0.9, 1.0], lin_grid)
 
-    TC_i::T = TC_func.(TC);
+    TC_i::T = TC_func.(TC)
     # E_i::T = E_func.(E);
-    SV_i::T = SV_func.(SV);
-    juv_i::T = juv_func.(juveniles);
+    SV_i::T = SV_func.(SV)
+    juv_i::T = juv_func.(juveniles)
 
     # Original
     # Y = (TC_i + E_i + SV_i + juv_i) ./ 4;
