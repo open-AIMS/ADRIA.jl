@@ -18,7 +18,7 @@ end
 
 
 """
-    total_cover(X::AbstractArray{<:Real},site_area::Vector{<:Real})::AbstractArray{<:Real}
+    total_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
     total_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 # Arguments
@@ -26,12 +26,7 @@ end
 - site_area : Vector of site areas, with sites following the same order as given indicated in X.
 """
 function total_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
-
-    rel_cov = relative_cover(X)
-    dims = size(rel_cov)
-    tot_cov = repeat(site_area', dims[1], 1, dims[3], dims[4]) .* rel_cov
-
-    return tot_cov  # sum over all species and size classes
+    return relative_cover(X) .* site_area'
 end
 function total_cover(rs::ResultSet)::AbstractArray{<:Real}
     return total_cover(rs.raw, rs.site_area)
