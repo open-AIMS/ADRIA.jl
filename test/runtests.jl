@@ -1,5 +1,5 @@
 using Test
-using CSV, DataFrames, ADRIA
+using TOML, CSV, DataFrames, ADRIA
 
 
 const TEST_DATA_DIR = joinpath(@__DIR__, "data")
@@ -10,7 +10,23 @@ const TEST_DATA_DIR = joinpath(@__DIR__, "data")
 end
 
 
-@testset "site_selection" begin
+@testset "Config" begin
+    ADRIA.setup()
+
+    # Ensure environment variables are set
+    @test haskey(ENV, "ADRIA_OUTPUT_DIR")
+    @test haskey(ENV, "ADRIA_NUM_CORES")
+    @test haskey(ENV, "ADRIA_reps")
+    @test haskey(ENV, "ADRIA_THRESHOLD")
+
+    # Check that the correct number of processors have been spun up.
+    @test nprocs() == parse(Int, ENV["ADRIA_NUM_CORES"])
+end
+
+
+@testset "site selection" begin
+    # TODO: Complete tests with @tests
+
     site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
     conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
 
