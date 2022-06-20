@@ -239,7 +239,30 @@ function summarize_relative_cover(rs::ResultSet)::Dict{Symbol, Array{<:Real}}
     return summarize_relative_cover(rs.raw)
 end
 
+function summarize_raw(data::AbstractArray{<:Real},dims_sum::Int64)::Dict{Symbol, Array{<:Real}}
+    cover::Array{<:Real} = relative_cover(data)
 
+    summarized::Dict{Symbol, Array{<:Real}} = Dict(Symbol(f) => dropdims(f(cover, dims=dims_sum), dims=dims_sum) 
+                                                    for f in [mean, median, std, minimum, maximum])
+
+    # Calculate quantiles (doesn't support `dims` so have to loop directly)
+    q_series::Array{Float32} = fill(0.0, size(cover, 1), 8)
+    qs::Array{Float32} = Float32[0.025, 0.125, 0.25, 0.375, 0.625, 0.75, 0.875, 0.975]
+    @inbounds Threads.@threads for i in 1:size(cover, 1)
+        q_series[i, :] = quantile(vec(collect(selectdim(cover, 1, i))), qs)
+    end
+
+    target_keys = Symbol[:lower_95, :lower_75, :lower_50, :lower_25, 
+                         :upper_25, :upper_50, :upper_75, :upper_95]
+    @inbounds for (i, k) in enumerate(target_keys)
+        summarized[k] = q_series[:, i]
+    end
+
+    return summarized
+end
+function summarize_raw(rs::ResultSet)::Dict{Symbol, Array{<:Real}}
+    return summarize_raw(rs.raw)
+end
 """
     trajectory_heatmap(data::Matrix{Float64})::Tuple{Vector{Float64}, Vector{Float64}, Matrix{Int64}}
 
