@@ -12,24 +12,24 @@ const LOG_GRP = "logs"
 const INPUTS = "inputs"
 
 
-struct ResultSet
-    name
-    rcp
-    invoke_time
-    ADRIA_VERSION
-    site_ids
-    site_area
-    site_max_coral_cover
-    env_layer_md
+struct ResultSet{S, T, F}
+    name::S
+    rcp::Int
+    invoke_time::S
+    ADRIA_VERSION::S
+    site_ids::T
+    site_area::F
+    site_max_coral_cover::F
+    env_layer_md::EnvLayer
 
-    inputs
-    sim_constants
+    inputs::DataFrame
+    sim_constants::Dict
 
-    raw
-    ranks
-    seed_log
-    fog_log
-    shade_log
+    raw::AbstractArray
+    ranks::AbstractArray
+    seed_log::AbstractArray
+    fog_log::AbstractArray
+    shade_log::AbstractArray
 end
 
 
@@ -98,7 +98,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
         :rcp => domain.rcp,
         :columns => names(param_df),
         :invoke_time => domain.scenario_invoke_time,
-        :ADRIA_VERSION => PkgVersion.Version(@__MODULE__),
+        :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)),
         
         :site_data_file => domain.env_layer_md.site_data_fn,
         :site_id_col => domain.env_layer_md.site_id_col,
@@ -170,15 +170,12 @@ end
 Create interface to a given Zarr result set.
 """
 function load_results(result_loc::String)::ResultSet
-    result_set = zopen(joinpath(result_loc, RESULTS), fill_as_missing=false)
+    raw_set = zopen(joinpath(result_loc, RESULTS), fill_as_missing=false)
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
 
-    r_vers = input_set.attrs["ADRIA_VERSION"]
-    r_vers_id = "v$(r_vers["major"]).$(r_vers["minor"]).$(r_vers["patch"])"
-
-    t_vers = PkgVersion.Version(@__MODULE__)
-    t_vers_id = "v"*string(t_vers)
+    r_vers_id = input_set.attrs["ADRIA_VERSION"]
+    t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
 
     if r_vers_id != t_vers_id
         msg = """Results were produced with ADRIA $(r_vers_id) (this version: $(t_vers_id)).\n
@@ -205,12 +202,12 @@ function load_results(result_loc::String)::ResultSet
                      input_set.attrs["invoke_time"],
                      input_set.attrs["ADRIA_VERSION"],
                      input_set.attrs["site_ids"],
-                     input_set.attrs["site_area"],
-                     input_set.attrs["site_max_coral_cover"],
+                     convert.(Float64, input_set.attrs["site_area"]),
+                     convert.(Float64, input_set.attrs["site_max_coral_cover"]),
                      env_layer_md,
                      inputs_used,
                      input_set.attrs["sim_constants"],
-                     result_set,
+                     raw_set,
                      log_set["rankings"],
                      log_set["seed"],
                      log_set["fog"],
@@ -250,8 +247,7 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
-    vers = rs.ADRIA_VERSION
-    vers_id = "v$(vers["major"]).$(vers["minor"]).$(vers["patch"])"
+    vers_id = rs.ADRIA_VERSION
 
     tf, species, sites, reps, scens = size(rs.raw)
     println("""
