@@ -269,15 +269,16 @@ function summarize_relative_cover(data::AbstractArray{<:Real}, dims::Tuple{<:Int
 
     return summarized
 end
-function summarize_relative_cover(rs::ResultSet)::Dict{Symbol, Array{<:Real}}
-    return summarize_relative_cover(rs.raw)
+function summarize_relative_cover(rs::ResultSet, dims=(4,3,2))::Dict{Symbol,Array{<:Real}}
+    return summarize_relative_cover(rs.raw, dims)
 end
 
-function summarize_raw(data::AbstractArray{<:Real},dims_sum::Tuple{Int64})::Dict{Symbol, Array{<:Real}}
+
+function summarize_raw(data::AbstractArray{<:Real}, dims_sum::Tuple{Int64})::Dict{Symbol,Array{<:Real}}
     cover::Array{<:Real} = relative_cover(data)
 
-    summarized::Dict{Symbol, Array{<:Real}} = Dict(Symbol(f) => dropdims(f(cover, dims=dims_sum), dims=dims_sum) 
-                                                    for f in [mean, median, std, minimum, maximum])
+    summarized::Dict{Symbol,Array{<:Real}} = Dict(Symbol(f) => dropdims(f(cover, dims=dims_sum), dims=dims_sum)
+                                                  for f in [mean, median, std, minimum, maximum])
 
     # Calculate quantiles (doesn't support `dims` so have to loop directly)
     q_series::Array{Float32} = fill(0.0, size(cover, 1), 8)
