@@ -10,7 +10,14 @@ function relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     return dropdims(sum(X, dims=2), dims=2)  # sum over all species and size classes
 end
 
+function total_cover(X::AbstractArray{<:Real},site_area::Vector{Any})::AbstractArray{<:Real}
+    
+    rel_cov = relative_cover(X)
+    dims = size(rel_cov)
+    tot_cov = repeat(site_area',dims[1],1,dims[3],dims[4]).*rel_cov
 
+    return tot_cov  # sum over all species and size classes
+end
 """
     coral_cover(X)::NamedTuple
 
@@ -239,7 +246,7 @@ function summarize_relative_cover(rs::ResultSet)::Dict{Symbol, Array{<:Real}}
     return summarize_relative_cover(rs.raw)
 end
 
-function summarize_raw(data::AbstractArray{<:Real},dims_sum::Int64)::Dict{Symbol, Array{<:Real}}
+function summarize_raw(data::AbstractArray{<:Real},dims_sum::Tuple{Int64})::Dict{Symbol, Array{<:Real}}
     cover::Array{<:Real} = relative_cover(data)
 
     summarized::Dict{Symbol, Array{<:Real}} = Dict(Symbol(f) => dropdims(f(cover, dims=dims_sum), dims=dims_sum) 
@@ -260,8 +267,8 @@ function summarize_raw(data::AbstractArray{<:Real},dims_sum::Int64)::Dict{Symbol
 
     return summarized
 end
-function summarize_raw(rs::ResultSet)::Dict{Symbol, Array{<:Real}}
-    return summarize_raw(rs.raw)
+function summarize_raw(rs::ResultSet,dims_sum::Tuple{Int64})::Dict{Symbol, Array{<:Real}}
+    return summarize_raw(rs.raw,dims_sum)
 end
 """
     trajectory_heatmap(data::Matrix{Float64})::Tuple{Vector{Float64}, Vector{Float64}, Matrix{Int64}}
