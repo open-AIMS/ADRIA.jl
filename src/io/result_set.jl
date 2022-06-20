@@ -17,6 +17,7 @@ struct ResultSet
     rcp
     invoke_time
     ADRIA_VERSION
+    site_ids
     site_area
     site_max_coral_cover
     env_layer_md
@@ -108,6 +109,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
         :wave_file => domain.env_layer_md.wave_fn,
         :sim_constants => Dict(fn=>getfield(domain.sim_constants, fn) for fn ∈ fieldnames(typeof(domain.sim_constants))),
 
+        :site_ids => unique_sites(domain),
         :site_area => domain.site_data.area,
         :site_max_coral_cover => domain.site_data.k
     )
@@ -202,6 +204,7 @@ function load_results(result_loc::String)::ResultSet
                      input_set.attrs["rcp"],
                      input_set.attrs["invoke_time"],
                      input_set.attrs["ADRIA_VERSION"],
+                     input_set.attrs["site_ids"],
                      input_set.attrs["site_area"],
                      input_set.attrs["site_max_coral_cover"],
                      env_layer_md,
