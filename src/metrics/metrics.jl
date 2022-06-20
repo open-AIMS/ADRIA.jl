@@ -261,8 +261,8 @@ function summarize_relative_cover(data::AbstractArray{<:Real}, dims::Tuple{<:Int
         q_series[i, :] = quantile(vec(collect(selectdim(cover, 1, i))), qs)
     end
 
-    target_keys = Symbol[:lower_95, :lower_75, :lower_50, :lower_25, 
-                         :upper_25, :upper_50, :upper_75, :upper_95]
+    target_keys = Symbol[:lower_95, :lower_75, :lower_50, :lower_25,
+        :upper_25, :upper_50, :upper_75, :upper_95]
     @inbounds for (i, k) in enumerate(target_keys)
         summarized[k] = q_series[:, i]
     end
@@ -287,17 +287,19 @@ function summarize_raw(data::AbstractArray{<:Real}, dims_sum::Tuple{Int64})::Dic
         q_series[i, :] = quantile(vec(collect(selectdim(cover, 1, i))), qs)
     end
 
-    target_keys = Symbol[:lower_95, :lower_75, :lower_50, :lower_25, 
-                         :upper_25, :upper_50, :upper_75, :upper_95]
+    target_keys = Symbol[:lower_95, :lower_75, :lower_50, :lower_25,
+        :upper_25, :upper_50, :upper_75, :upper_95]
     @inbounds for (i, k) in enumerate(target_keys)
         summarized[k] = q_series[:, i]
     end
 
     return summarized
 end
-function summarize_raw(rs::ResultSet,dims_sum::Tuple{Int64})::Dict{Symbol, Array{<:Real}}
-    return summarize_raw(rs.raw,dims_sum)
+function summarize_raw(rs::ResultSet, dims_sum::Tuple{Int64})::Dict{Symbol,Array{<:Real}}
+    return summarize_raw(rs.raw, dims_sum)
 end
+
+
 """
     trajectory_heatmap(data::Matrix{Float64})::Tuple{Vector{Float64}, Vector{Float64}, Matrix{Int64}}
 
@@ -328,7 +330,7 @@ Estimate heatmap of trajectories from a 2D dataset.
 # Returns
 Tuple of xedges, yedges, and bi-dimensional histogram matrix
 """
-function trajectory_heatmap_data(data::AbstractArray{<:Real})::Tuple{Vector{Float64}, Vector{Float64}, Matrix{Int64}}
+function trajectory_heatmap_data(data::AbstractArray{<:Real})::Tuple{Vector{Float64},Vector{Float64},Matrix{Int64}}
     o::HeatMap = trajectory_heatmap(data)
 
     return collect(o.xedges), collect(o.yedges), o.counts
