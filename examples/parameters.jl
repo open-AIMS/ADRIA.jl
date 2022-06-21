@@ -1,3 +1,13 @@
+@doc """
+Example script showcasing how to extract model details, such as
+- the model parameter table
+- model specification
+
+and more specific information/data from the above.
+
+This example file assumes Julia is started in the examples folder.
+"""
+
 using DataFrames
 using ADRIA
 
