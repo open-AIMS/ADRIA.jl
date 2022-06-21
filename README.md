@@ -44,7 +44,7 @@ julia> ]activate .
 (sandbox) pkg> dev ../
 
 # Add debugging tools to sandbox environment
-(sandbox) pkg> add Revise Infiltrator ProfileView BenchMarkTools
+(sandbox) pkg> add Revise Infiltrator ProfileView BenchmarkTools
 
 # Press ctrl+c to exit the package manager
 ```
