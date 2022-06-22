@@ -152,7 +152,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         SE[:, 5:6] = A[:, 5:6]  # priority predecessors, coral real estate relative to max capacity
 
         # remove sites at maximum carrying capacity, take log to emphasize importance of space for seeding
-        SE = SE[vec(A[:, 6] .>= 0), :]
+        SE = SE[vec(A[:, 6] .> 0), :]
         SE[:,6] = -log10.(SE[:,6])
     end
 
