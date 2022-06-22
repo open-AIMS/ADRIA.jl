@@ -9,7 +9,6 @@ Establish tuple of matrices/vectors for use as reusable data stores to avoid rep
 function setup_cache(domain::Domain)::NamedTuple
 
     # sim constants
-    tf = domain.sim_constants.tf
     n_sites::Int64 = domain.coral_growth.n_sites
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
@@ -205,7 +204,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
 
     tspan::Tuple = (0.0, 1.0)
-    solver::BS3 = BS3()
+    solver::RK4 = RK4()
 
     MCDA_approach::Int64 = param_set.guided
 
@@ -513,11 +512,12 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         growth.u0[:, :] .= @views cov_tmp[:, :] .* prop_loss[:, :]  # update initial condition
-        sol::ODESolution = solve(growth, solver, save_everystep=false, abstol=1e-7, reltol=1e-4)
+        sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false, 
+                                 alg_hints=[:nonstiff], abstol=1e-7, reltol=1e-4)
         Yout[tstep, :, :] .= sol.u[end]
 
-        # growth::ODEProblem = ODEProblem{true, false}(growthODE, cov_tmp, tspan, p)
-        # sol::ODESolution = solve(growth, solver, save_everystep=false, abstol=1e-6, reltol=1e-7)
+        # growth::ODEProblem = ODEProblem{true,false}(growthODE, cov_tmp .* prop_loss[:, :], tspan, p)
+        # sol::ODESolution = solve(growth, solver, abstol=1e-7, reltol=1e-4, save_everystep=false, save_start=false, alg_hints=[:nonstiff])
         # Yout[tstep, :, :] .= sol.u[end]
 
         # Using the last step from ODE above, proportionally adjust site coral cover

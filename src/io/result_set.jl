@@ -1,6 +1,6 @@
 import Dates: now
 
-using PkgVersion, Zarr
+using PkgVersion, Zarr, NamedDims
 
 import Setfield: @set!
 import DataFrames: DataFrame
@@ -12,23 +12,24 @@ const LOG_GRP = "logs"
 const INPUTS = "inputs"
 
 
-struct ResultSet
-    name
-    rcp
-    invoke_time
-    ADRIA_VERSION
-    site_area
-    site_max_coral_cover
-    env_layer_md
+struct ResultSet{S, T, F}
+    name::S
+    rcp::Int
+    invoke_time::S
+    ADRIA_VERSION::S
+    site_ids::T
+    site_area::F
+    site_max_coral_cover::F
+    env_layer_md::EnvLayer
 
-    inputs
-    sim_constants
+    inputs::DataFrame
+    sim_constants::Dict
 
-    raw
-    ranks
-    seed_log
-    fog_log
-    shade_log
+    raw::AbstractArray
+    ranks::AbstractArray
+    seed_log::AbstractArray
+    fog_log::AbstractArray
+    shade_log::AbstractArray
 end
 
 
@@ -97,7 +98,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
         :rcp => domain.rcp,
         :columns => names(param_df),
         :invoke_time => domain.scenario_invoke_time,
-        :ADRIA_VERSION => PkgVersion.Version(@__MODULE__),
+        :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)),
         
         :site_data_file => domain.env_layer_md.site_data_fn,
         :site_id_col => domain.env_layer_md.site_id_col,
@@ -108,6 +109,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
         :wave_file => domain.env_layer_md.wave_fn,
         :sim_constants => Dict(fn=>getfield(domain.sim_constants, fn) for fn ∈ fieldnames(typeof(domain.sim_constants))),
 
+        :site_ids => unique_sites(domain),
         :site_area => domain.site_data.area,
         :site_max_coral_cover => domain.site_data.k
     )
@@ -144,18 +146,23 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
     seed_dims::Tuple{Int64,Int64,Int64,Int64,Int64} = (tf, 2, n_sites, reps, n_scens)
 
     attrs = Dict(
-        :structure=> ("sites", "seed/fog/shade", "reps", "scenarios"),
+        :structure=> ("timesteps", "sites", "reps", "scenarios"),
         :unique_site_ids=>unique_sites(domain),
     )
     ranks = zcreate(Float32, rank_dims...; name="rankings", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
-        :structure=> ("timesteps", "intervened sites", "coral type", "scenarios"),
+        :structure=> ("timesteps", "coral_id", "sites", "reps", "scenarios"),
         :unique_site_ids=>unique_sites(domain),
     )
-    seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(seed_dims[1:4]..., 1))
-    fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1))
-    shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1))
+    seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(seed_dims[1:4]..., 1), attrs=attrs)
+
+    attrs = Dict(
+        :structure=> ("timesteps", "sites", "reps", "scenarios"),
+        :unique_site_ids=>unique_sites(domain),
+    )
+    fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1), attrs=attrs)
+    shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1), attrs=attrs)
 
     return domain, (raw=raw, site_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
 end
@@ -168,15 +175,12 @@ end
 Create interface to a given Zarr result set.
 """
 function load_results(result_loc::String)::ResultSet
-    result_set = zopen(joinpath(result_loc, RESULTS), fill_as_missing=false)
+    raw_set = zopen(joinpath(result_loc, RESULTS), fill_as_missing=false)
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
 
-    r_vers = input_set.attrs["ADRIA_VERSION"]
-    r_vers_id = "v$(r_vers["major"]).$(r_vers["minor"]).$(r_vers["patch"])"
-
-    t_vers = PkgVersion.Version(@__MODULE__)
-    t_vers_id = "v"*string(t_vers)
+    r_vers_id = input_set.attrs["ADRIA_VERSION"]
+    t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
 
     if r_vers_id != t_vers_id
         msg = """Results were produced with ADRIA $(r_vers_id) (this version: $(t_vers_id)).\n
@@ -202,16 +206,17 @@ function load_results(result_loc::String)::ResultSet
                      input_set.attrs["rcp"],
                      input_set.attrs["invoke_time"],
                      input_set.attrs["ADRIA_VERSION"],
-                     input_set.attrs["site_area"],
-                     input_set.attrs["site_max_coral_cover"],
+                     input_set.attrs["site_ids"],
+                     convert.(Float64, input_set.attrs["site_area"]),
+                     convert.(Float64, input_set.attrs["site_max_coral_cover"]),
                      env_layer_md,
                      inputs_used,
                      input_set.attrs["sim_constants"],
-                     result_set,
-                     log_set["rankings"],
-                     log_set["seed"],
-                     log_set["fog"],
-                     log_set["shade"])
+                     NamedDimsArray{Symbol.(Tuple(raw_set.attrs["structure"]))}(raw_set),
+                     NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
+                     NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
+                     NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
+                     NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]))
 end
 function load_results(domain::Domain)::ResultSet
     log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__$(domain.rcp)__$(domain.scenario_invoke_time)")
@@ -247,8 +252,7 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
-    vers = rs.ADRIA_VERSION
-    vers_id = "v$(vers["major"]).$(vers["minor"]).$(vers["patch"])"
+    vers_id = rs.ADRIA_VERSION
 
     tf, species, sites, reps, scens = size(rs.raw)
     println("""
