@@ -1,6 +1,6 @@
 import Dates: now
 
-using PkgVersion, Zarr
+using PkgVersion, Zarr, NamedDims
 
 import Setfield: @set!
 import DataFrames: DataFrame
@@ -146,18 +146,23 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
     seed_dims::Tuple{Int64,Int64,Int64,Int64,Int64} = (tf, 2, n_sites, reps, n_scens)
 
     attrs = Dict(
-        :structure=> ("sites", "seed/fog/shade", "reps", "scenarios"),
+        :structure=> ("timesteps", "sites", "reps", "scenarios"),
         :unique_site_ids=>unique_sites(domain),
     )
     ranks = zcreate(Float32, rank_dims...; name="rankings", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
-        :structure=> ("timesteps", "intervened sites", "coral type", "scenarios"),
+        :structure=> ("timesteps", "coral_id", "sites", "reps", "scenarios"),
         :unique_site_ids=>unique_sites(domain),
     )
-    seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(seed_dims[1:4]..., 1))
-    fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1))
-    shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1))
+    seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(seed_dims[1:4]..., 1), attrs=attrs)
+
+    attrs = Dict(
+        :structure=> ("timesteps", "sites", "reps", "scenarios"),
+        :unique_site_ids=>unique_sites(domain),
+    )
+    fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1), attrs=attrs)
+    shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1), attrs=attrs)
 
     return domain, (raw=raw, site_ranks=ranks, seed_log=seed_log, fog_log=fog_log, shade_log=shade_log)
 end
@@ -207,11 +212,11 @@ function load_results(result_loc::String)::ResultSet
                      env_layer_md,
                      inputs_used,
                      input_set.attrs["sim_constants"],
-                     raw_set,
-                     log_set["rankings"],
-                     log_set["seed"],
-                     log_set["fog"],
-                     log_set["shade"])
+                     NamedDimsArray{Symbol.(Tuple(raw_set.attrs["structure"]))}(raw_set),
+                     NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
+                     NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
+                     NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
+                     NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]))
 end
 function load_results(domain::Domain)::ResultSet
     log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__$(domain.rcp)__$(domain.scenario_invoke_time)")
