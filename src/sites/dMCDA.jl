@@ -1,3 +1,4 @@
+
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     nsiteint  # ::I
@@ -108,7 +109,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # priority predecessors
     A[:, 5] .= predec[:, 3]
-
+   
     A[:, 6] = (maxcover - sumcover) ./ maxcover # proportion of cover compared to max possible cover
 
     # set any infs to zero
@@ -146,12 +147,13 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         # define seeding decision matrix
         SE[:, 1:2] = A[:, 1:2]  # sites column (remaining), centrality
 
-        SE[:, 3] = (1.0 .- A[:, 3])  # complementary of damage risk
-        SE[:, 4] = (1.0 .- A[:, 4])  # complimetary of wave risk
+        SE[:, 3] = (1.0 .- A[:, 3])  # compliment of damage risk
+        SE[:, 4] = (1.0 .- A[:, 4])  # compliment of wave risk
         SE[:, 5:6] = A[:, 5:6]  # priority predecessors, coral real estate relative to max capacity
 
-        # remove sites at maximum carrying capacity
-        SE = SE[vec(A[:, 6] .<= 0), :]
+        # remove sites at maximum carrying capacity, take log to emphasize importance of space for seeding
+        SE = SE[vec(A[:, 6] .> 0), :]
+        SE[:,6] = -log10.(SE[:,6])
     end
 
     if log_shade
