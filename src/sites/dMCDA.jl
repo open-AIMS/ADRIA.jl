@@ -1,3 +1,5 @@
+"""Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
+
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
@@ -23,7 +25,7 @@ end
 
 
 """
-    mcda_normalize(x)
+    mcda_normalize(x::Union{Matrix, Vector})::Union{Matrix, Vector}
 
 Normalize a Matrix (SE/SH) or Vector (wse/wsh) for MCDA.
 """
@@ -33,6 +35,9 @@ end
 
 
 """
+    align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
+
+Align a vector of site rankings to match the indicated order in `s_order`.
 """
 function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # match site_ids by given order
@@ -54,8 +59,8 @@ Tuple : preferred seed sites, preferred shade/fog sites, number of seed sites, n
         `rankings` is an Nx3 matrix holding: site_id, seeding_rank, shading_rank
         0 indicates sites that were not considered
 """
-function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, 
-               prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, 
+function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool,
+               prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int},
                rankingsin::Matrix{Int64})::Tuple
     site_ids::Array{Int64} = d_vars.site_ids
     nsites::Int64 = length(site_ids)
@@ -109,7 +114,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # priority predecessors
     A[:, 5] .= predec[:, 3]
-   
+
     A[:, 6] = (maxcover - sumcover) ./ maxcover # proportion of cover compared to max possible cover
 
     # set any infs to zero
