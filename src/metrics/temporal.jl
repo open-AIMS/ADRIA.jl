@@ -1,5 +1,6 @@
 import Interpolations: GriddedInterpolation
 
+
 """
     relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
 
