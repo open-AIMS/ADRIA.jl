@@ -48,8 +48,20 @@ end
 
 Get location of result set.
 """
-function store_location(r::ResultSet)::String
-    return joinpath(ENV["ADRIA_OUTPUT_DIR"], store_name(r))
+function store_location(rs::ResultSet)::String
+    store = ""
+    try
+        store = joinpath(ENV["ADRIA_OUTPUT_DIR"], store_name(rs))
+    catch err
+        if isa(err, KeyError)
+            @warn "Output directory not yet set. Displaying result directory instead."
+            store = store_name(rs)
+        else
+            rethrow(err)
+        end
+    end
+
+    return store
 end
 
 
@@ -255,10 +267,12 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     vers_id = rs.ADRIA_VERSION
 
     tf, species, sites, reps, scens = size(rs.raw)
+
     println("""
     Domain: $(rs.name)
 
     Run with ADRIA $(vers_id) on $(rs.invoke_time) for RCP $(rs.rcp)
+    Results stored at: $(store_location(rs))
 
     Intervention scenarios run: $(scens)
     Environmental scenarios: $(reps)
