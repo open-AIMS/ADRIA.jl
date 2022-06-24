@@ -162,8 +162,9 @@ function model_spec(d::Domain)::DataFrame
     bnds = spec[:, :bounds]
     spec[:, :lower_bound] = [x[1] for x in bnds]
     spec[:, :upper_bound] = [x[2] for x in bnds]
-    spec[!, :component] = string.(spec[:, :component])
-    spec[:, :component] = replace.(spec[:, :component], "ADRIA."=>"")
+    spec[:, :full_bounds] = bnds
+    spec[!, :component] = replace.(string.(spec[:, :component]), "ADRIA."=>"")
+    spec[:, :is_constant] = spec[:, :lower_bound] .== spec[:, :upper_bound]
 
     select!(spec, Not(:bounds))
 
