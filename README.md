@@ -29,8 +29,8 @@ $ julia --project=.
 julia> ]instantiate
 ```
 
-For development purposes, set up a sandbox environment.
-Steps below assumes you are in the ADRIA.jl project folder.
+For development purposes, set up a sandbox environment (setup only needs to be done once).
+The steps below assumes you are in the ADRIA.jl project folder.
 
 ```bash
 $ mkdir sandbox
@@ -51,8 +51,23 @@ julia> ]activate .
 
 Development scripts/functions can then be worked on in the `sandbox` folder without these polluting the ADRIA project itself.
 
+## Troubleshooting F.A.Q
 
-## Note
+ADRIA.jl is under active development and from time to time issues may arise.
+
+**Q.** I get this warning when trying to load pre-existing results:
+  `Results were produced with an older version of ADRIA (v0.x.x). The installed version of ADRIA is: v0.y.y
+    Errors may occur when analyzing data.` (where `x` and `y` are different numbers).
+
+**A.** The result set being loaded were created by an older version of ADRIA, and stored in an older, possibly incompatible, format. 
+  Either go back to the version indicated, or re-run the scenarios to obtain results in the updated format.
+
+**Q.** I get an error or warning about an `ENV` variable not being found or set.
+
+**A.** Double check the configuration settings in `config.toml` (see above)
+
+
+## Notes
 
 The very first import of the ADRIA package will be very slow as it attempts to precompile common functions to reduce later start up time.
 This slow initial precompilation has to be repeated if the package is modified, but will remain "fast" if no changes are made.
