@@ -463,8 +463,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         has_shade_sites = !all(prefshadesites .== 0)
         has_seed_sites = !all(prefseedsites .== 0)
-        if (srm > 0) && in_shade_years && has_shade_sites
-            Yshade[tstep, prefshadesites] .= srm
+        if (srm > 0) && in_shade_years
+            Yshade[tstep, :] .= srm
 
             # Apply reduction in DHW due to shading
             adjusted_dhw::Vector{Float64} = max.(0.0, dhw_step .- Yshade[tstep, :])
