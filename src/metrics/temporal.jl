@@ -259,7 +259,7 @@ function summarize_data(data::AbstractArray{<:Real}, dims::Tuple{Vararg{Int64}})
 end
 
 
-function summarize_rci(rs::ResultSet, dims::Tuple{Vararg{Int64}})::Dict{Symbol, AbstractArray{<:Real}}
+function summarize_rci(rs::ResultSet, dims::Tuple{Vararg{Int64}}=(4,3,2))::Dict{Symbol, AbstractArray{<:Real}}
     rci::AbstractArray{<:Real} = reef_condition_index(rs)
     return summarize_data(rci, dims)
 end
