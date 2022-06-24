@@ -52,35 +52,35 @@ end
 
 Base.@kwdef struct Intervention{N,P} <: EcoModel
     # Intervention Parameters
-    # Integer values have a +1 offset to allow for discrete value mapping (see `set!() method`)
-    guided::N = Param(0, ptype="integer", bounds=(0, 3+1)) # Guided, choice of MCDA approach
-    seed_TA::N = Param(0, ptype="integer", bounds=(0, 500000+1)) # Seed1, integer, number of Enhanced TA to seed
-    seed_CA::N = Param(0, ptype="integer", bounds=(0, 500000+1)) # Seed2, integer, number of Enhanced CA to seed
-    fogging::P = Param(0.2, ptype="real", bounds=(0.0, 0.3)) # fogging, float, assumed percent reduction in bleaching mortality
-    SRM::P = Param(0.0, ptype="real", bounds=(0.0, 12.0)) # SRM, float, reduction in DHWs due to shading
-    a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 12.0)) # Aadpt, float, float, increased adaptation rate
-    n_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 0.05)) # Natad, float, natural adaptation rate
-    seed_years::N = Param(10, ptype="integer", bounds=(5, 15+1)) # Seedyrs, integer, years into simulation during which seeding is considered
-    shade_years::N = Param(10, ptype="integer", bounds=(5, 74+1)) # Shadeyrs, integer, years into simulation during which shading is considered
-    seed_freq::N = Param(5, ptype="integer", bounds=(0, 5+1)) # Seedfreq, integer, yearly intervals to adjust seeding site selection (0 is set and forget)
-    shade_freq::N = Param(1, ptype="integer", bounds=(0, 5+1)) # Shadefreq, integer, yearly intervals to adjust shading (fogging) site selection (0 is set and forget)
-    seed_year_start::N = Param(2, ptype="integer", bounds=(2, 25+1)) # Seedyr_start, integer, seed intervention start offset from simulation start
-    shade_year_start::N = Param(2, ptype="integer", bounds=(2, 25+1)) # Shadeyr_start, integer, shade intervention start offset from simulation start
+    # Integer values have a +1 offset to allow for discrete value mapping (see `set() method`)
+    guided::N = Param(0, ptype="integer", bounds=(0, 3+1), dists="unif") # Guided, choice of MCDA approach
+    seed_TA::N = Param(0, ptype="integer", bounds=(0, 500000+1), dists="unif") # Seed1, integer, number of Enhanced TA to seed
+    seed_CA::N = Param(0, ptype="integer", bounds=(0, 500000+1), dists="unif") # Seed2, integer, number of Enhanced CA to seed
+    fogging::P = Param(0.2, ptype="real", bounds=(0.0, 0.3), dists="unif") # fogging, float, assumed percent reduction in bleaching mortality
+    SRM::P = Param(0.0, ptype="real", bounds=(0.0, 12.0), dists="unif") # SRM, float, reduction in DHWs due to shading
+    a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 12.0), dists="unif") # Aadpt, float, float, increased adaptation rate
+    n_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif") # Natad, float, natural adaptation rate
+    seed_years::N = Param(10, ptype="integer", bounds=(5, 15+1), dists="unif") # Seedyrs, integer, years into simulation during which seeding is considered
+    shade_years::N = Param(10, ptype="integer", bounds=(5, 74+1), dists="unif") # Shadeyrs, integer, years into simulation during which shading is considered
+    seed_freq::N = Param(5, ptype="integer", bounds=(0, 5+1), dists="unif") # Seedfreq, integer, yearly intervals to adjust seeding site selection (0 is set and forget)
+    shade_freq::N = Param(1, ptype="integer", bounds=(0, 5+1), dists="unif") # Shadefreq, integer, yearly intervals to adjust shading (fogging) site selection (0 is set and forget)
+    seed_year_start::N = Param(2, ptype="integer", bounds=(2, 25+1), dists="unif") # Seedyr_start, integer, seed intervention start offset from simulation start
+    shade_year_start::N = Param(2, ptype="integer", bounds=(2, 25+1), dists="unif") # Shadeyr_start, integer, shade intervention start offset from simulation start
 end
 
 
 Base.@kwdef struct Criteria{P} <: EcoModel
-    wave_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0))
-    heat_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0))
-    shade_connectivity::P = Param(0.0, ptype="real", bounds=(0.0, 1.0))
-    seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0))
-    coral_cover_high::P = Param(0.0, ptype="real", bounds=(0.0, 1.0))
-    coral_cover_low::P = Param(1.0, ptype="real", bounds=(0.0, 1.0))
-    seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0))
-    shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0))
-    deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.0, 1.0))
-    depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0))     # minimum depth
-    depth_offset::P = Param(5.0, ptype="real", bounds=(5.0, 6.0))  # offset from minimum depth to indicate maximum depth**
+    wave_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    heat_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    shade_connectivity::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    coral_cover_high::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    coral_cover_low::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif")     # minimum depth
+    depth_offset::P = Param(5.0, ptype="real", bounds=(5.0, 6.0), dists="unif")  # offset from minimum depth to indicate maximum depth**
 end
 # **This is simply to avoid parameterization/implementation
 #   that requires one parameter to be greater than another.
@@ -130,7 +130,8 @@ Generates Coral struct using the default parameter spec.
 
 # Example
 ```julia
-# Define coral struct with auto-generated parameter ranges (default in ADRIA is ± 10%)
+# Define coral struct with auto-generated parameter ranges 
+# (default in ADRIA is ± 10%, triangular distribution with peak at 0.5)
 create_coral_struct()
 coral = Coral()
 
@@ -149,7 +150,7 @@ function create_coral_struct(bounds::Tuple{Float64, Float64}=(0.9, 1.1))::Nothin
         for p in base_coral_params
             f_name = c_id * "_" * p
             f_val = x[x.coral_id.==c_id, p][1]
-            struct_fields[f_name] = Param(f_val, ptype="real", bounds=(f_val * bounds[1], f_val * bounds[2]))
+            struct_fields[f_name] = Param(f_val, ptype="real", bounds=(f_val * bounds[1], f_val * bounds[2], 0.5), dists="triang")
         end
     end
 
