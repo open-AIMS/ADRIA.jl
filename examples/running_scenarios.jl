@@ -28,6 +28,9 @@ ex_domain = ADRIA.run_scenarios(p_df, ex_domain)
 @info "Reloading results and saving figure"
 res = ADRIA.load_results(ex_domain)
 
+# Can also do
+# res = ADRIA.load_results("path to result set")
+
 # Specific metrics found in the `metrics` submodule.
 # Y_TC = ADRIA.metrics.coral_cover(res).total_cover
 # Y_o = ADRIA.metrics.summarize_total_cover(res)
