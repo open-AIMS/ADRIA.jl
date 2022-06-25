@@ -266,6 +266,21 @@ end
 
 
 """
+    summarize_total_cover(data::AbstractArray{<:Real}, areas::AbstractArray{<:Real})::Dict{Symbol,AbstractArray{<:Real}}
+    summarize_total_cover(rs::ResultSet, dims::Tuple=(4,3,2))::Dict{Symbol,AbstractArray{<:Real}}
+
+Calculate summarized total cover.
+"""
+function summarize_total_cover(data::AbstractArray{<:Real}, areas::AbstractArray{<:Real})::Dict{Symbol,AbstractArray{<:Real}}
+    rc::AbstractArray{<:Real} = total_cover(data, areas)
+    return summarize_data(rc, (4,3,2))
+end
+function summarize_total_cover(rs::ResultSet)::Dict{Symbol,AbstractArray{<:Real}}
+    return summarize_total_cover(rs.raw, rs.site_area)
+end
+
+
+"""
     summarize_relative_cover(data::AbstractArray{<:Real}, dims::Tuple=(4,3,2))::Dict{Symbol,AbstractArray{<:Real}}
     summarize_relative_cover(rs::ResultSet, dims::Tuple=(4,3,2))::Dict{Symbol,AbstractArray{<:Real}}
 
