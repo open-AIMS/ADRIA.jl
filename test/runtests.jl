@@ -20,6 +20,7 @@ end
     @test haskey(ENV, "ADRIA_THRESHOLD")
 
     # Check that the correct number of processors have been spun up.
+    @eval using Distributed
     @test nprocs() == parse(Int, ENV["ADRIA_NUM_CORES"])
 end
 
