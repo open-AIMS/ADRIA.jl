@@ -41,7 +41,11 @@ p_vals = scenario_domain.model[:val]
 p_types = scenario_domain.model[:ptype]
 
 ## Parameter bounds (for e.g., to pass into a sampler or optimizer)
-## Note: ADRIA integer parameter bounds are set to (ℓ-1, u) as the `floor(x+1)` is assigned with `update_params!()`.
+## Note: ADRIA integer parameter bounds are set such that ℓ ≤ x ≤ u+1,
+## where ℓ is the lower bound and u is the upper bound.
+## This is because `floor(x)` is assigned with `update_params!()`.
+## Instances where ℓ := x := u indicate uncertain parameters that 
+## are nevertheless assumed to be constant.
 p_bounds = scenario_domain.model[:bounds]
 
 ## Component groups
