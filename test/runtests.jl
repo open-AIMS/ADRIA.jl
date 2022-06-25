@@ -33,6 +33,7 @@ end
 
     test_domain = Domain(
         "Test",
+        45,
         site_path,
         "siteref",
         "reef_siteid",
