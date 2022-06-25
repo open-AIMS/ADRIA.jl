@@ -29,7 +29,7 @@ $ julia --project=.
 julia> ]instantiate
 ```
 
-For development purposes, set up a sandbox environment (setup only needs to be done once).
+For development purposes, set up a sandbox environment **(setup only needs to be done once)**.
 The steps below assumes you are in the ADRIA.jl project folder.
 
 ```bash
@@ -51,20 +51,32 @@ julia> ]activate .
 
 Development scripts/functions can then be worked on in the `sandbox` folder without these polluting the ADRIA project itself.
 
+
 ## Troubleshooting F.A.Q
 
 ADRIA.jl is under active development and from time to time issues may arise.
+Here are some answers to some issues encountered.
 
-**Q.** I get this warning when trying to load pre-existing results:
-  `Results were produced with an older version of ADRIA (v0.x.x). The installed version of ADRIA is: v0.y.y
-    Errors may occur when analyzing data.` (where `x` and `y` are different numbers).
+**Q. I get this warning when trying to load pre-existing results:**
+  `Results were produced with an older version of ADRIA (v0.x.x). The installed version of ADRIA is: v0.y.y. Errors may occur when analyzing data.` 
+  (where `x` and `y` are different numbers).
 
-**A.** The result set being loaded were created by an older version of ADRIA, and stored in an older, possibly incompatible, format. 
+**A.** The result set being loaded were created by an older version of ADRIA, and stored in an older, possibly incompatible, format.
+  Sometimes, results may still be produced/analyzed as normal. In other times, ADRIA.jl or the expected metadata in the result set may have changed
+  leading to errors when conducting analyses.
+
   Either go back to the version indicated, or re-run the scenarios to obtain results in the updated format.
 
-**Q.** I get an error or warning about an `ENV` variable not being found or set.
+**Q. I get an error or warning about an `ENV` variable not being found or set.**
 
-**A.** Double check the configuration settings in `config.toml` (see above)
+**A.** Double check the configuration settings in `config.toml` (see above).
+
+**Q. How do I run my own scenarios?**
+
+**A.** Scenarios are defined in a CSV file of parameter values (with values in columns, so that each row defines a scenario).
+
+  - See the `example_scenarios.csv` file in the `examples` directory for an idea of what this looks like.
+  - See also the `running_scenarios.jl` example script which showcases how to run such a file for a given study area.
 
 
 ## Notes
