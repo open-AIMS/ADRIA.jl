@@ -58,6 +58,20 @@ function summarize_relative_cover(rs::ResultSet, dims::Tuple{Vararg{Int64}}=(4,3
 end
 
 
+"""
+    summarize_coral_evenness(data::AbstractArray{<:Real}, dims::Tuple=(4,3,2))::Dict{Symbol,AbstractArray{<:Real}}
+    summarize_coral_evenness(rs::ResultSet, dims::Tuple=(4,3,2))::Dict{Symbol,AbstractArray{<:Real}}
+
+Calculate summarized coral evenness.
+"""
+function summarize_coral_evenness(data::AbstractArray{<:Real})::Dict{Symbol,AbstractArray{<:Real}}
+    return summarize_data(coral_evenness(data), (4,3,2))
+end
+function summarize_coral_evenness(rs::ResultSet)::Dict{Symbol,AbstractArray{<:Real}}
+    return summarize_coral_evenness(rs.raw)
+end
+
+
 function summarize_raw(data::AbstractArray{<:Real}, dims::Tuple{Vararg{Int64}})::Dict{Symbol,AbstractArray{<:Real}}
     return summarize_data(data, dims)
 end
