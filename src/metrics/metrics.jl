@@ -222,6 +222,10 @@ function reef_condition_index(rc::AbstractArray{<:Real}, E::AbstractArray{<:Real
     # {'Poor'    }      0.15     0.25    0.30    0.25
     # {'VeryPoor'}      0.05     0.15    0.18    0.15
 
+    rc .= min.(rc, 1.0)
+    SV .= min.(SV, 1.0)
+    juveniles .= min.(juveniles, 1.0)
+
     # Note that the scores for evenness and juveniles are slightly different
     lin_grid::Gridded{Linear{Throw{OnGrid}}} = Gridded(Linear())
     TC_func::GriddedInterpolation{Float64,1,Float64,Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.05, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0], lin_grid)
@@ -247,11 +251,16 @@ function reef_condition_index(rc::AbstractArray{<:Real}, E::AbstractArray{<:Real
     return mean([rc_i, SV_i, juv_i])
 end
 function reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
-    cover::NamedTuple = coral_cover(rs)
     rc::AbstractArray{<:Real} = relative_cover(rs)
-    juv::AbstractArray{<:Real} = cover.juveniles
-    E::AbstractArray{<:Real} = coral_evenness(rs)
+    
+    # Divide across sites by the max possible proportional coral cover
+    rc .= mapslices((s) -> s ./ (rs.site_max_coral_cover / 100.0), rc, dims=2)
+
+    juv::AbstractArray{<:Real} = juveniles(rs)
+    # E::AbstractArray{<:Real} = coral_evenness(rs)
+    E = Array(Float32[])
     SV::AbstractArray{<:Real} = shelter_volume(rs)
+
     return reef_condition_index(rc, E, SV, juv)
 end
 
