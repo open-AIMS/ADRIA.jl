@@ -121,14 +121,14 @@ Number of taxa (distinct groups with enhanced lumped with unenhanced) is hardcod
 """
 function coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     x::AbstractArray{<:Real} = min.(max.(X, 0.0), 1.0)
-    rc::AbstractArray{<:Real} = relative_cover(x)
+    covers::NamedTuple = coral_cover(x)
 
     # Evenness as a functional diversity metric
     n::Int64 = 4  # number of taxa
-    p1::AbstractArray{<:Real} = dropdims(sum(covers.tab_acr, dims=2), dims=2) ./ rc
-    p2::AbstractArray{<:Real} = dropdims(sum(covers.cor_acr, dims=2), dims=2) ./ rc
-    p3::AbstractArray{<:Real} = dropdims(sum(covers.small_enc, dims=2), dims=2) ./ rc
-    p4::AbstractArray{<:Real} = dropdims(sum(covers.large_mass, dims=2), dims=2) ./ rc
+    p1::AbstractArray{<:Real} = dropdims(sum(covers.tab_acr, dims=2), dims=2) ./ covers.relative_cover
+    p2::AbstractArray{<:Real} = dropdims(sum(covers.cor_acr, dims=2), dims=2) ./ covers.relative_cover
+    p3::AbstractArray{<:Real} = dropdims(sum(covers.small_enc, dims=2), dims=2) ./ covers.relative_cover
+    p4::AbstractArray{<:Real} = dropdims(sum(covers.large_mass, dims=2), dims=2) ./ covers.relative_cover
 
     sum_psqr::AbstractArray{<:Real} = p1 .^ 2 + p2 .^ 2 + p3 .^ 2 + p4 .^ 2  # functional diversity
     simpson_D::AbstractArray{<:Real} = 1 ./ sum_psqr  # Hill 1973, Ecology 54:427-432
@@ -165,7 +165,7 @@ function shelter_volume(X::AbstractArray{<:Real}, inputs::DataFrame)::AbstractAr
 
     sheltervolume_parameters = repeat(sheltervolume_parameters, n_corals, 1)
 
-    ntsteps::Int64, nspecies::Int64, nsites::Int64, nint::Int64, nreps::Int64 = size(X)
+    ntsteps::Int64, nspecies::Int64, nsites::Int64, nreps::Int64, nint::Int64 = size(X)
 
     #  Estimate log colony volume (litres) based on relationship
     #  established by Urbina-Barretto 2021
