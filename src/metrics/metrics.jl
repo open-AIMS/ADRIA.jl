@@ -75,8 +75,7 @@ function coral_cover(X::AbstractArray{<:Real})::NamedTuple
     C4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 6), :, :, :]  # Large massives
 
     # Cover of juvenile corals (< 5cm diameter)
-    juv_groups::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 1), :, :, :] .+ X[:, screen(cs_p.class_id, 2), :, :, :]
-    juv_all::AbstractArray{<:Real} = dropdims(sum(juv_groups, dims=2), dims=2)
+    juv_all = juveniles(X)
 
     large_corals::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 5), :, :, :] + X[:, screen(cs_p.class_id, 6), :, :, :]
     large_all::AbstractArray{<:Real} = dropdims(sum(large_corals, dims=2), dims=2)
@@ -94,6 +93,20 @@ function coral_cover(X::AbstractArray{<:Real})::NamedTuple
 end
 function coral_cover(rs::ResultSet)::NamedTuple
     return coral_cover(rs.raw)
+end
+
+
+function juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    screen = (x, idx) -> findall(x .== idx)
+    _, _, cs_p::DataFrame = coral_spec()
+
+    # Cover of juvenile corals (< 5cm diameter)
+    juv_groups::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 1), :, :, :] .+ X[:, screen(cs_p.class_id, 2), :, :, :]
+
+    return dropdims(sum(juv_groups, dims=2), dims=2)
+end
+function juveniles(rs::ResultSet)::AbstractArray{<:Real}
+    return juveniles(rs.raw)
 end
 
 
