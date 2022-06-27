@@ -101,6 +101,21 @@ end
 
 
 """
+Helper method to proportionally adjust coral cover.
+Modifies arrays in-place.
+"""
+function proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
+    # Proportionally adjust initial covers
+    @views Ycover .= vec(sum(Yout[tstep, :, :], dims=1))
+    if any(Ycover .> max_cover)
+        exceeded::Vector{Int32} = findall(Ycover .> max_cover)
+
+        @views Yout[tstep, :, exceeded] .= (Yout[tstep, :, exceeded] ./ Ycover[exceeded]') .* max_cover[exceeded]'
+    end
+end
+
+
+"""
     run_scenario(domain::Domain; reps=1, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
 
 Convenience function to directly run a scenario for a Domain with pre-set values.
@@ -299,6 +314,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     # Max coral cover at each site. Divided by 100 to convert to proportion
     max_cover = site_data.k / 100.0
+
+    # Proportionally adjust initial cover (handles inappropriate initial conditions)
+    proportional_adjustment!(Yout, Ycover, max_cover, 1)
 
     if is_guided
         ## Weights for connectivity , waves (ww), high cover (whc) and low
@@ -522,11 +540,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        @views Ycover .= vec(sum(Yout[tstep, :, :], dims=1))
-        if any(Ycover .> max_cover)
-            exceeded::Vector{Int32} = findall(Ycover .> max_cover)
-            @views Yout[tstep, :, exceeded] .= (Yout[tstep, :, exceeded] ./ Ycover[exceeded]') .* max_cover[exceeded]'
-        end
+        proportional_adjustment!(Yout, Ycover, max_cover, tstep)
     end
 
     # avoid placing importance on sites that were not considered
