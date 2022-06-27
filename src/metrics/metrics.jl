@@ -13,7 +13,7 @@ import ADRIA: coral_spec, ResultSet
 - X : Matrix of raw model results
 """
 function relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
-    return dropdims(sum(X, dims=:species), dims=2)  # sum over all species and size classes
+    return dropdims(sum(X, dims=:species), dims=:species)  # sum over all species and size classes
 end
 function relative_cover(rs::ResultSet)
     return relative_cover(rs.raw)
@@ -57,7 +57,6 @@ NamedTuple
     - large : area covered by large mature corals
 """
 function coral_cover(X::AbstractArray{<:Real})::NamedTuple
-    # Relative total coral cover
     rc::AbstractArray{<:Real} = relative_cover(X)  # sum over all species and size classes
 
     _, _, cs_p::DataFrame = coral_spec()
