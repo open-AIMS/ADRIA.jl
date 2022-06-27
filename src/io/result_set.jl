@@ -111,7 +111,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
         :columns => names(param_df),
         :invoke_time => domain.scenario_invoke_time,
         :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)),
-        
+
         :site_data_file => domain.env_layer_md.site_data_fn,
         :site_id_col => domain.env_layer_md.site_id_col,
         :unique_site_id_col => domain.env_layer_md.unique_site_id_col,
@@ -137,7 +137,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int)::Tu
     result_loc::String = joinpath(z_store.folder, RESULTS)
     tf, n_sites = domain.sim_constants.tf::Int64, domain.coral_growth.n_sites::Int64
     result_dims::Tuple{Int64,Int64,Int64,Int64,Int64} = (tf, domain.coral_growth.n_species, n_sites, reps, nrow(param_df))
-    
+
     attrs = Dict(
         :structure => ("timesteps", "species", "sites", "reps", "scenarios"),
         :unique_site_ids => unique_sites(domain)
@@ -195,7 +195,7 @@ function load_results(result_loc::String)::ResultSet
     t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
 
     if r_vers_id != t_vers_id
-        msg = """Results were produced with an older version of ADRIA ($(r_vers_id)). The installed version of ADRIA is: $(t_vers_id)).\n
+        msg = """Results were produced with an older version of ADRIA ($(r_vers_id)). The installed version of ADRIA is $(t_vers_id).\n
         Errors may occur when analyzing data."""
 
         @warn msg
