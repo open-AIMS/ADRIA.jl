@@ -72,6 +72,11 @@ function summarize_coral_evenness(rs::ResultSet)::Dict{Symbol,AbstractArray{<:Re
 end
 
 
+function summarize_shelter_volume(rs::ResultSet, dims=(4,3,2))::Dict{Symbol, AbstractArray{<:Real}}
+    return summarize_data(shelter_volume(rs.raw, rs.inputs), dims)
+end
+
+
 function summarize_raw(data::AbstractArray{<:Real}, dims::Tuple{Vararg{Int64}})::Dict{Symbol,AbstractArray{<:Real}}
     return summarize_data(data, dims)
 end
