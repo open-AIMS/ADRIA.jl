@@ -181,19 +181,16 @@ function shelter_volume(X::AbstractArray{<:Real}, inputs::DataFrame)::AbstractAr
     max_shelter_volume_colony_m3_per_ha::Array{Float32} = max_shelter_volume_colony_litres_per_cm2 * cm2_m3
 
     # calculate shelter volume of groups and size classes and multiply with covers
-    sv::Array{Float32} = zeros(ntsteps, nspecies, nsites, nint, nreps)
-    @inbounds Threads.@threads for sp::Int64 = 1:nspecies
+    sv::NamedDimsArray = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros(ntsteps, nspecies, nsites, nreps, nint))
+    @inbounds Threads.@threads for sp::Int64 in 1:nspecies
         sv[:, sp, :, :, :] = (shelter_volume_colony_m3_per_ha[sp] / max_shelter_volume_colony_m3_per_ha[sp]) .* X[:, sp, :, :, :]
     end
 
     # sum over groups and size classes to estimate total shelter volume per ha
-    return dropdims(sum(sv, dims=2), dims=2)
+    return dropdims(sum(sv, dims=:species), dims=:species)
 end
 function shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
     return shelter_volume(rs.raw, rs.inputs)
-end
-function summarize_shelter_volume(rs::ResultSet, dims=(4,3,2))::Dict{Symbol, AbstractArray{<:Real}}
-    return summarize_data(shelter_volume(rs.raw, rs.inputs), dims)
 end
 
 
