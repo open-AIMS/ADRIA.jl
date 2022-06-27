@@ -22,8 +22,18 @@ function summarize_data(data::AbstractArray{<:Real}, dims::Tuple{Vararg{Int64}})
 end
 
 
-function summarize_rci(rs::ResultSet, dims::Tuple{Vararg{Int64}}=(4,3,2))::Dict{Symbol, AbstractArray{<:Real}}
-    rci::AbstractArray{<:Real} = reef_condition_index(rs)
+function summarize_rci(rs::ResultSet, s_ids, dims::Tuple{Vararg{Int64}}=(4,3,2))::Dict{Symbol, AbstractArray{<:Real}}
+    X::AbstractArray{<:Real} = rs.raw[scenarios=s_ids]
+
+    # Divide across sites by the max possible proportional coral cover
+    rc::AbstractArray{<:Real} = relative_cover(X)
+    rc .= mapslices((s) -> s ./ (rs.site_max_coral_cover / 100.0), rc, dims=2)
+
+    E::AbstractArray{<:Real} = Array(Float32[])
+    SV::AbstractArray{<:Real} = shelter_volume(X, rs.inputs[s_ids, :])
+    juv::AbstractArray{<:Real} = juveniles(X)
+
+    rci::AbstractArray{<:Real} = reef_condition_index(rc, E, SV, juv)
     return summarize_data(rci, dims)
 end
 
