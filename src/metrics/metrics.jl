@@ -102,7 +102,7 @@ function juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     # Cover of juvenile corals (< 5cm diameter)
     juv_groups::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 1), :, :, :] .+ X[:, screen(cs_p.class_id, 2), :, :, :]
 
-    return dropdims(sum(juv_groups, dims=2), dims=2)
+    return dropdims(sum(juv_groups, dims=:species), dims=:species)
 end
 function juveniles(rs::ResultSet)::AbstractArray{<:Real}
     return juveniles(rs.raw)
