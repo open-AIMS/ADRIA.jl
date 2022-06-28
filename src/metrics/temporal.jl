@@ -1,14 +1,19 @@
+"""Scenario outcomes over time and space.
+
+Provides summary statistics across selected scenarios.
+"""
+
 import Interpolations: GriddedInterpolation
 
 
-function summarize_data(data::AbstractArray{<:Real}, dims::Tuple{Vararg{Int64}})::Dict{Symbol, AbstractArray{<:Real}}
+function summarize_data(data::AbstractArray{<:Real}, dims::Tuple{Vararg{Int64}}, timesteps=(:))::Dict{Symbol, AbstractArray{<:Real}}
     summarized::Dict{Symbol, AbstractArray{<:Real}} = Dict(Symbol(f) => dropdims(f(data, dims=dims), dims=dims)
                                                            for f in [mean, median, std, minimum, maximum])
 
     # Calculate quantiles (doesn't support `dims` so have to loop directly)
     q_series::Array{Float32} = fill(0.0, size(data, 1), 8)
     qs::Array{Float32} = Float32[0.025, 0.125, 0.25, 0.375, 0.625, 0.75, 0.875, 0.975]
-    @inbounds Threads.@threads for i in 1:size(data, 1)
+    @inbounds Threads.@threads for i in 1:size(data[timesteps=timesteps], 1)
         q_series[i, :] = quantile(vec(collect(selectdim(data, 1, i))), qs)
     end
 
