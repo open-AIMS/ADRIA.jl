@@ -61,7 +61,7 @@ function store_location(rs::ResultSet)::String
         end
     end
 
-    return store
+    return replace(store, "\\"=>"/")
 end
 
 
