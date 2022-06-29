@@ -2,7 +2,7 @@ using Statistics, OnlineStats
 
 
 """
-    per_site(metric, data::NamedDimsArray, timestep::Union{Int, UnitRange, Colon}=(:))
+    per_site(metric, data::NamedDimsArray)
 
 Get metric results applied to the site-level at indicated time (or across timesteps).
 
@@ -14,12 +14,12 @@ Get metric results applied to the site-level at indicated time (or across timest
 # Returns
 Vector of N elements, where N is the number of sites.
 """
-function per_site(metric, data::NamedDimsArray, timestep::Union{Int, UnitRange, Vector{Int64}, Colon}=(:))
+function per_site(metric, data::NamedDimsArray)
     num_sites = size(data, dim(data, :sites))
     met = zeros(num_sites)
 
     @inbounds Threads.@threads for i in 1:num_sites
-        met[i] = metric(data[sites=i, timesteps=timestep])
+        met[i] = metric(data[sites=i])
     end
 
     return met

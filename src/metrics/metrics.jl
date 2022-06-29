@@ -7,13 +7,46 @@ import ADRIA: coral_spec, ResultSet
 
 
 """
+    call_metric(metric, raw, args...; timesteps=(:), species=(:), sites=(:), reps=(:), scens=(:))
+
+Convenience method that slices the data in the specified manner.
+
+# Arguments
+- metric : Function, the metric function to apply to "raw" data.
+- raw    : NamedDimsArray, raw data to pass into `metric`
+- args   : Additional positional arguments to pass into `metric`
+- dims   : dummy keyword argument, not used but defined to allow use with other methods
+"""
+function call_metric(metric::Function, raw::NamedDimsArray, args...; kwargs...)
+    rd = slice_results(raw; kwargs...)
+    dims = haskey(kwargs, :dims) ? kwargs[:dims] : nothing
+    if isnothing(dims)
+        return metric(rd, args...)
+    else
+        return metric(rd, args...; dims=dims)
+    end
+end
+
+
+"""
+    slice_results(raw::NamedDimsArray; timesteps=(:), species=(:), sites=(:), reps=(:), scenarios=(:), dims=nothing)
+
+Slice data as indicated. `dims` and `metric` parameter is accepted, but ignored/unused.
+"""
+function slice_results(raw::NamedDimsArray; timesteps=(:), species=(:), sites=(:), reps=(:), scenarios=(:), dims=nothing, metric=nothing)
+    return raw[timesteps=timesteps, species=species, sites=sites, reps=reps, scenarios=scenarios]
+end
+
+
+"""
     relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
 
 # Arguments
 - X : Matrix of raw model results
 """
 function relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
-    return dropdims(sum(X, dims=:species), dims=:species)  # sum over all species and size classes
+    # sum over all species and size classes
+    return dropdims(sum(slice_results(X), dims=:species), dims=:species)
 end
 function relative_cover(rs::ResultSet)
     return relative_cover(rs.raw)
