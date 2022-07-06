@@ -141,8 +141,8 @@ end
 Get model fieldnames and their parameter values.
 """
 function param_table(d::Domain)::DataFrame
-    f_names::Vector{String} = collect(d.model[:fieldname])
-    vals::Vector = collect(d.model[:val])
+    f_names::Vector{String} = collect(string.(d.model[:fieldname]))
+    vals::Vector{<:Real} = collect(d.model[:val])
     p_df::DataFrame = DataFrame(OrderedDict(k => v for (k, v) in zip(f_names, vals)))
 
     return p_df
