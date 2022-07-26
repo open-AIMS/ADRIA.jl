@@ -7,7 +7,12 @@ import Interpolations: GriddedInterpolation
 
 
 function summarize_trajectory(data::NamedDimsArray)::Dict{Symbol, AbstractArray{<:Real}}
-    squash = (:scenarios, :reps, :sites)
+    if :sites in dimnames(data)
+        squash = (:scenarios, :reps, :sites)
+    else
+        squash = (:scenarios, :reps)
+    end
+
     summarized::Dict{Symbol, AbstractArray{<:Real}} = Dict(Symbol(f) => dropdims(f(data, dims=squash), dims=squash)
                                                            for f in [mean, median, std, minimum, maximum])
 
@@ -70,6 +75,7 @@ Calculate summarized total cover.
 function summarize_total_cover(data::NamedDimsArray, areas::AbstractArray{<:Real}; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     sites = haskey(kwargs, :sites) ? kwargs[:sites] : (:)
     tac = call_metric(total_cover, data, areas[sites]; kwargs...)
+    tac = dropdims(sum(tac, dims=:sites), dims=:sites)
     return summarize_trajectory(tac)
 end
 function summarize_total_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
