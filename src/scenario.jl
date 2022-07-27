@@ -101,8 +101,16 @@ end
 
 
 """
+    proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
+
 Helper method to proportionally adjust coral cover.
 Modifies arrays in-place.
+
+# Arguments
+- Yout : Coral cover result set
+- Ycover : Temporary cache matrix, avoids memory allocations
+- max_cover : maximum possible coral cover for each site
+- tstep : current time step
 """
 function proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
     # Proportionally adjust initial covers
