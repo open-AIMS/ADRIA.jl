@@ -198,7 +198,7 @@ function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max
 
     sheltervolume_parameters = repeat(sheltervolume_parameters, n_corals, 1)
 
-    ntsteps::Int64, nspecies::Int64, nsites::Int64, nreps::Int64, nint::Int64 = size(X)
+    nspecies::Int64 = size(X, :species)
 
     #  Estimate log colony volume (litres) based on relationship
     #  established by Urbina-Barretto 2021
@@ -214,7 +214,7 @@ function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max
     max_shelter_volume_colony_m3_per_ha::Array{Float32} = max_shelter_volume_colony_litres_per_cm2 * cm2_m3
 
     # calculate shelter volume of groups and size classes and multiply with covers
-    sv::NamedDimsArray = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros(ntsteps, nspecies, nsites, nreps, nint))
+    sv::NamedDimsArray = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros(size(X)...))
     @inbounds Threads.@threads for sp::Int64 in 1:nspecies
         sv[:, sp, :, :, :] = (shelter_volume_colony_m3_per_ha[sp] / max_shelter_volume_colony_m3_per_ha[sp]) .* X[:, sp, :, :, :]
     end
