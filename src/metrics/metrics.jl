@@ -182,7 +182,7 @@ Provide indication of shelter volume.
 - X : raw results
 - inputs : DataFrame of scenarios
 """
-function shelter_volume(X::AbstractArray{<:Real}, inputs::DataFrame)::AbstractArray{<:Real}
+function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max_cover::Vector{<:Real}, inputs::DataFrame)::AbstractArray{<:Real}
     _, _, cs_p::DataFrame = coral_spec()
     n_corals::Int64 = length(unique(cs_p.taxa_id))
 
@@ -223,7 +223,7 @@ function shelter_volume(X::AbstractArray{<:Real}, inputs::DataFrame)::AbstractAr
     return dropdims(sum(sv, dims=:species), dims=:species)
 end
 function shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
-    return shelter_volume(rs.raw, rs.inputs)
+    return shelter_volume(rs.raw, rs.site_area, rs.site_max_coral_cover ./ 100.0, rs.inputs)
 end
 
 
