@@ -269,9 +269,7 @@ function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max
     # Order follows the coral types listed above, repeated 6 times to cover size classes.
     pa_params = repeat(pa_params, inner=(n_corals, 1))
 
-    # Estimate log colony volume (litres) based on relationship
-    # established by Urbina-Barretto 2021, for each taxa/size class and scenario
-    log_colony = pa_params[:, 1] .+ pa_params[:, 2] .* log10.(colony_area_cm2)
+    nspecies::Int64 = size(X, :species)
 
     # Maximum colony area for each species and scenario, using largest size class
     if ndims(colony_area_cm2) == 1
@@ -288,30 +286,10 @@ function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max
     colony_vol_m3_per_m2::Array{Float64} = colony_litres_per_cm2 * cm2_m3_per_m2
     max_colony_vol_m3_per_m2::Array{Float64} = max_colony_litres_per_cm2 * cm2_m3_per_m2
 
-    return colony_vol_m3_per_m2, max_colony_vol_m3_per_m2
-end
-
-
-"""
-    _shelter_species_loop(X, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, max_colony_vol_m3_per_m2, site_area)
-
-Helper method to calculate relative shelter volume metric across each species/size class for a given scenario.
-
-# Arguments
-- X : raw results (proportional coral cover relative to full site area)
-- nspecies : number of species (taxa and size classes) considered
-- scen : scenario number to calculate metric for
-- colony_vol_m3_per_m2 : estimated cubic volume per m² of coverage for each species/size class (36)
-- max_colony_vol_m3_per_m2 : theoretical maximum volume per m² of coverage for each taxa (6)
-- site_area : area of site in m²
-"""
-function _shelter_species_loop(X, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, max_colony_vol_m3_per_m2, site_area)
-    # Calculate absolute shelter volume
-    sv = nothing
-    try
-        sv = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros(size(X)...))
-    catch
-        sv = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros([size(X)..., 1]...))
+    # calculate shelter volume of groups and size classes and multiply with covers
+    sv::NamedDimsArray = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros(size(X)...))
+    @inbounds Threads.@threads for sp::Int64 in 1:nspecies
+        sv[:, sp, :, :, :] = (shelter_volume_colony_m3_per_ha[sp] / max_shelter_volume_colony_m3_per_ha[sp]) .* X[:, sp, :, :, :]
     end
 
     _shelter_species_loop!(X, sv, nspecies, scen, colony_vol_m3_per_m2, site_area)
