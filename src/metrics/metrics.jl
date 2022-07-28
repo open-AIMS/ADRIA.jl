@@ -248,7 +248,7 @@ Helper function to convert coral colony values from Litres/cm² to m³/m²
 # Returns
 Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
 """
-function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame, DataFrameRow})::Tuple
+function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max_cover::Vector{<:Real}, inputs::DataFrame)::AbstractArray{<:Real}
     _, _, cs_p::DataFrame = coral_spec()
     n_corals::Int64 = length(unique(cs_p.taxa_id))
 
@@ -421,8 +421,8 @@ function _absolute_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, 
     # Sum over groups and size classes to estimate total shelter volume per site
     return dropdims(sum(sv, dims=:species), dims=:species)
 end
-function _absolute_shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
-    return rs.outcomes[:absolute_shelter_volume]
+function shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
+    return shelter_volume(rs.raw, rs.site_area, rs.site_max_coral_cover ./ 100.0, rs.inputs)
 end
 
 
