@@ -291,7 +291,7 @@ function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max
     max_colony_litres_per_cm2 = 10.0 .^ max_log_colony
 
     # Convert from litres per cm2 to m^3 per m^2
-    cm2_m3_per_m2::Float32 = (10^-3) * 10^4
+    cm2_m3_per_m2::Float32 = 10^-3 * 10^4
     colony_vol_m3_per_m2::Array{Float32} = colony_litres_per_cm2 * cm2_m3_per_m2
     max_colony_vol_m3_per_m2::Array{Float32} = max_colony_litres_per_cm2 * cm2_m3_per_m2
 
@@ -304,8 +304,8 @@ function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max
             # sv_m3 = [m^2 covered by species] * [m^3 volume per m^2]
             # max_sv_m3 = [theoretical max volume per m^2] .* [max possible absolute coral cover area for each site (in m^2)]
             # [SV as proportion of maximum possible SV] = sv_m3 / max_sv_m3
-            sv_m3 .= (X[species=sp, scenarios=scen] .* site_area') .* colony_vol_m3_per_m2[sp, scen]
-            max_sv_m3 .= max_colony_vol_m3_per_m2[sp, scen] .* (site_area .* max_cover)'
+            @. sv_m3 = (X[species=sp, scenarios=scen] * site_area') * colony_vol_m3_per_m2[sp, scen]
+            @. max_sv_m3 = max_colony_vol_m3_per_m2[sp, scen] * (site_area * max_cover)'
 
             # sv ∈ [0, 1], 0 = no shelter; 1 = maximum shelter
             sv[species=sp, scenarios=scen] .= sv_m3 ./ max_sv_m3
