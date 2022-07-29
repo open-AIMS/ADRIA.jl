@@ -231,24 +231,24 @@ function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max
     colony_vol_m3_per_m2::Array{Float32} = colony_litres_per_cm2 * cm2_m3_per_m2
     max_colony_vol_m3_per_m2::Array{Float32} = max_colony_litres_per_cm2 * cm2_m3_per_m2
 
-    # calculate shelter volume of groups and size classes and multiply with covers
+    # Calculate shelter volume of groups and size classes and multiply with covers
     sv::NamedDimsArray = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros(size(X)...))
-    @inbounds Threads.@threads for sp::Int64 in 1:nspecies
-        # Original:
-        # sv[:, sp, :, :, :] = (colony_vol_m3_per_m2[sp] / max_colony_vol_m3_per_m2[sp]) .* X[:, sp, :, :, :]
+    sv_m3 = zeros(size(X[species=1, scenarios=1])...)
+    max_sv_m3 = zeros(1, size(X, :sites))
+    for scen::Int64 in 1:nscens
+        @inbounds for sp::Int64 in 1:nspecies
+            # sv_m3 = [m^2 covered by species] * [m^3 volume per m^2]
+            # max_sv_m3 = [theoretical max volume per m^2] .* [max possible absolute coral cover area for each site (in m^2)]
+            # [SV as proportion of maximum possible SV] = sv_m3 / max_sv_m3
+            sv_m3 .= (X[species=sp, scenarios=scen] .* site_area') .* colony_vol_m3_per_m2[sp, scen]
+            max_sv_m3 .= max_colony_vol_m3_per_m2[sp, scen] .* (site_area .* max_cover)'
 
-        # Updated:
-        # sv_m3 = [m^2 covered by species] * [m^3 volume per m^2]
-        # max_sv_m3 = [theoretical max volume per m^2] .* [max possible absolute coral cover area for each site (in m^2)]
-        # [SV as proportion of maximum possible SV] = sv_m3 / max_sv_m3
-        sv_m3 = (X[species=sp] .* site_area') .* colony_vol_m3_per_m2[sp]
-        max_sv_m3 = max_colony_vol_m3_per_m2[sp] .* (site_area .* max_cover)'
-
-        # sv ∈ [0, 1], 0 = no shelter; 1 = maximum shelter
-        sv[species=sp] .= sv_m3 ./ max_sv_m3
+            # sv ∈ [0, 1], 0 = no shelter; 1 = maximum shelter
+            sv[species=sp, scenarios=scen] .= sv_m3 ./ max_sv_m3
+        end
     end
 
-    # sum over groups and size classes to estimate total proportional shelter volume per site
+    # Sum over groups and size classes to estimate total proportional shelter volume per site
     return dropdims(sum(sv, dims=:species), dims=:species)
 end
 function shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
