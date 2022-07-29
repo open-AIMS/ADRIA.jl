@@ -284,8 +284,8 @@ function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max
 
     # Estimate log colony volume (litres) based on relationship
     # established by Urbina-Barretto 2021, for each taxa/size class and scenario
-    log_colony = sheltervolume_parameters[:, 1] .+ sheltervolume_parameters[:, 2] .* log10.(colony_area_cm2)
-    max_log_colony = sheltervolume_parameters[:, 1] .+ sheltervolume_parameters[:, 2] .* log10(maximum(colony_area_cm2))
+    log_colony = pa_params[:, 1] .+ pa_params[:, 2] .* log10.(colony_area_cm2)
+    max_log_colony = pa_params[:, 1] .+ pa_params[:, 2] .* log10.(maximum(colony_area_cm2, dims=1))
 
     colony_litres_per_cm2 = 10.0 .^ log_colony
     max_colony_litres_per_cm2 = 10.0 .^ max_log_colony
