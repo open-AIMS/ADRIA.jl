@@ -242,17 +242,29 @@ end
 
 Helper function to convert coral colony values from Litres/cm² to m³/m²
 
-# Arguments
-- inputs : Scenario values for the simulation
+The metric applies log-log linear models developed by Urbina-Barreto et al., [1]
+which uses colony diameter and planar area (2D metrics) to estimate 
+shelter volume (a 3D metric).
 
-# Returns
-Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
+
+# Arguments
+- X : raw results
+- inputs : DataFrame of scenarios
+
+# References
+1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V., 
+     Elise, S., Kulbicki, M., Quod, J.-P., Dutrieux, E., Garnier, R., 
+     Henrich Bruggemann, J., Penin, L., & Adjeroud, M. (2021). 
+   Quantifying the shelter capacity of coral reefs using photogrammetric 
+     3D modeling: From colonies to reefscapes. 
+   Ecological Indicators, 121, 107151.
+   https://doi.org/10.1016/j.ecolind.2020.107151
 """
 function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max_cover::Vector{<:Real}, inputs::DataFrame)::AbstractArray{<:Real}
     _, _, cs_p::DataFrame = coral_spec()
     n_corals::Int64 = length(unique(cs_p.taxa_id))
 
-    # Extract colony area (in cm^2) from scenario inputs
+    # Extract assumed colony area (in cm^2) for each taxa/size class from scenario inputs
     colony_area_cm2::Array{Float64} = Array{Float64}(inputs[:, contains.(names(inputs), "colony_area_cm2")])'
 
     # Colony planar area parameters (see second column of Table 1 in Urbina-Barreto et al., [1])
@@ -264,13 +276,14 @@ function shelter_volume(X::AbstractArray{<:Real}, site_area::Vector{<:Real}, max
         -9.69 1.49;   # massives from Urbina-Barretto 2021, assumed similar for encrusting and small massives
         -9.69 1.49]   # massives from Urbina-Barretto 2021,  assumed similar for large massives
 
-    # Expand parameters defined above to cover all coral taxa/size classes
-    sheltervolume_parameters = repeat(sheltervolume_parameters, n_corals, 1)
+    # Expand planar area parameters defined above to cover all coral taxa/size classes
+    pa_params = repeat(pa_params, n_corals, 1)
 
     nspecies::Int64 = size(X, :species)
+    nscens::Int64 = size(X, :scenarios)
 
-    #  Estimate log colony volume (litres) based on relationship
-    #  established by Urbina-Barretto 2021
+    # Estimate log colony volume (litres) based on relationship
+    # established by Urbina-Barretto 2021, for each taxa/size class and scenario
     log_colony = sheltervolume_parameters[:, 1] .+ sheltervolume_parameters[:, 2] .* log10.(colony_area_cm2)
     max_log_colony = sheltervolume_parameters[:, 1] .+ sheltervolume_parameters[:, 2] .* log10(maximum(colony_area_cm2))
 
