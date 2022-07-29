@@ -216,8 +216,8 @@ function coral_spec()::NamedTuple
     tn = repeat(taxa_names, 6, 1)
 
     size_cm = Float64[2; 5; 10; 20; 40; 80]
-    size_class_means_from = Float64[1; 3.5; 7.5; 15; 30; 60]
-    size_class_means_to = Float64[size_class_means_from[2:end]; 100.0];
+    size_class_means_from = Float64[1; 3.5; 7.5; 15; 30; 60]  # in cm^2
+    size_class_means_to = Float64[size_class_means_from[2:end]; 100.0];  # in cm^2
 
     # total number of "species" modelled in the current version.
     nclasses::Int64 = length(size_cm);
@@ -255,15 +255,10 @@ function coral_spec()::NamedTuple
     colony_diam_means_from = repeat(size_class_means_from', nclasses, 1)
     colony_diam_means_to = repeat(size_class_means_to', nclasses', 1)
 
-    colony_area_m2_from = @. pi * ((colony_diam_means_from / 2)^2) / (10^4)
-    colony_area = @. pi * ((colony_diam_means_to / 2)^2)
-    params.colony_area_cm2 = reshape(colony_area', nspecies)
-    colony_area_m2_to = colony_area ./ (10^4)
-
-    a_arena::Float64 = 100.0 # m2 of reef arena where corals grow, survive and reproduce
-
-    # convert to coral covers (proportions) and convert to vector
-    params.basecov = @. base_coral_numbers'[:] * colony_area_m2_from'[:] / a_arena
+    colony_area_m2_from_ha = @. pi * ((colony_diam_means_from / 2)^2) / (10^4)
+    colony_area_cm2 = @. pi * ((colony_diam_means_to / 2)^2)
+    params.colony_area_cm2 = reshape(colony_area_cm2', nspecies)
+    colony_area_to_m2 = colony_area_cm2 ./ (10^4)
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 Table S2)
     # we assume similar growth rates for enhanced and unenhanced corals
@@ -284,7 +279,7 @@ function coral_spec()::NamedTuple
     prop_change = @views linear_extension'[:] ./ diam_bin_widths
 
     # Second, growth as transitions of cover to higher bins is estimated as
-    params.growth_rate = vec(prop_change .* (colony_area_m2_to'[:] ./ colony_area_m2_from'[:]))
+    params.growth_rate = vec(prop_change .* (colony_area_to_m2'[:] ./ colony_area_m2_from_ha'[:]))
 
     # note that we use proportion of bin widths and linear extension to estimate
     # number of corals changing size class, but we use the bin means to estimate
@@ -297,10 +292,10 @@ function coral_spec()::NamedTuple
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
-    fec = exp.(fec_par_a .+ fec_par_b .* log.(colony_area_m2_from * 10^4))
+    fec = exp.(fec_par_a .+ fec_par_b .* log.(colony_area_m2_from_ha * 10^4))
 
     # then convert to number of larvae produced per m2
-    fec_m2 = fec ./ colony_area_m2_from;  # convert from per colony area to per m2
+    fec_m2 = fec ./ colony_area_m2_from_ha;  # convert from per colony area to per m2
     params.fecundity = fec_m2'[:];
 
     ## Mortality
