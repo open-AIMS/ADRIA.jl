@@ -191,7 +191,7 @@ between bleaching years come from [1].
        management in the Whitsundays.
      https://doi.org/10.13140/RG.2.2.26976.20482
 
-3. Hall,V.R. & Hughes, T.P. 1996. Reproductive strategies of modular
+3. Hall, V.R. & Hughes, T.P. 1996. Reproductive strategies of modular
       organisms: comparative studies of reef-building corals. Ecology,
       77: 950 - 963.
 """
@@ -232,11 +232,7 @@ function coral_spec()::NamedTuple
 
     params.coral_id = String["$(x[1])_$(x[2])_$(x[3])" for x in zip(tn, params.taxa_id, params.class_id)]
 
-    # rec = [0.00, 0.01, 0.00, 0.01, 0.01, 0.01];
-    # params.recruitment_factor = repmat(rec, 1, nclasses)';
-
-    ## Ecological parameters
-
+    # Ecological parameters
     # To be more consistent with parameters in ReefMod, IPMF and RRAP
     # interventions, we express coral abundance as colony numbers in different
     # size classes and growth rates as linear extention (in cm per year).
