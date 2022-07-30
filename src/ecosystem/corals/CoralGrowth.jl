@@ -38,7 +38,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
                      sel_en::StaticArrays.SVector{2, Int64}, sel_unen::StaticArrays.SVector{2, Int64}, encrusting::StaticArrays.SVector{2, Int64},
                      small_r::StaticArrays.SVector{4, Int64}, enc::StaticArrays.SVector{2, Int64}, rec::Matrix{Float64}, k::Matrix{Float64},
                      kX_sel_en::Matrix{Float64}, X_tab::Matrix{Float64}, kXr::Matrix{Float64}, k_rec::Matrix{Float64},
-                     X_mb::Matrix{Float64}}((
+                     X_mb::Matrix{Float64}, cover::Vector{Float64}}((
         zeros(n_species, 1), 0.3, zeros(n_species, 1), 0.3,
 
         # cached indices
@@ -47,7 +47,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
 
         # cache matrices
         zeros(n_groups, n_sites), zeros(1, n_sites), zeros(2, n_sites), zeros(1, n_sites),
-        zeros(n_species, n_sites), zeros(n_groups, n_sites), zeros(n_species, n_sites)
+        zeros(n_species, n_sites), zeros(n_groups, n_sites), zeros(n_species, n_sites), zeros(n_sites)
     ))
 
     # p = (
