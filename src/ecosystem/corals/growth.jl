@@ -9,7 +9,7 @@ Modifies arrays in-place.
 
 # Arguments
 - Yout : Coral cover result set
-- cover_tmp : Temporary cache matrix holding sum over species. Avoids memory allocations
+- cover_tmp : Temporary cache matrix, avoids memory allocations
 - max_cover : maximum possible coral cover for each site
 """
 function proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
