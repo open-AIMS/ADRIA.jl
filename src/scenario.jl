@@ -281,8 +281,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     Yout::Array{Float64,3} = zeros(tf, n_species, n_sites)
     Yout[1, :, :] .= @view cache.init_cov[:, :]
-    # cov_tmp::Array{Float64,2} = similar(init_cov, Float64)
-    Ycover::Vector{Float64} = zeros(n_sites)
+    cover_tmp = p.cover
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
@@ -323,7 +322,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     max_cover = site_data.k / 100.0
 
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
-    proportional_adjustment!(Yout, Ycover, max_cover, 1)
+    proportional_adjustment!(Yout[1, :, :], cover_tmp, max_cover)
 
     if is_guided
         ## Weights for connectivity , waves (ww), high cover (whc) and low
@@ -544,7 +543,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        proportional_adjustment!(Yout, Ycover, max_cover, tstep)
+        proportional_adjustment!(Yout[tstep, :, :], cover_tmp, max_cover)
     end
 
     # avoid placing importance on sites that were not considered
