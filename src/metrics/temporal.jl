@@ -115,8 +115,10 @@ end
 
 
 function summarize_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
-    sv_sliced = slice_results(rs.outcomes[:absolute_shelter_volume]; kwargs...)
-    return summarize_trajectory(sv_sliced)
+    scen_ids = haskey(kwargs, :scenarios) ? kwargs[:scenarios] : (:)
+
+    sv = call_metric(shelter_volume, rs.raw, rs.site_area, rs.site_max_coral_cover ./ 100.0, rs.inputs[scen_ids, :]; kwargs...)
+    return summarize_trajectory(sv)
 end
 
 

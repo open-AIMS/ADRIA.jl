@@ -43,7 +43,7 @@ end
 Calculate the cluster-wide absolute shelter volume for each individual scenario.
 """
 function scenario_shelter_volume(data::NamedDimsArray, area, max_cover, inputs; kwargs...)
-    sv = call_metric(absolute_shelter_volume, data, area, max_cover, inputs; kwargs...)
+    sv = call_metric(shelter_volume, data, area, max_cover, inputs; kwargs...)
     return dropdims(mean(sum(sv, dims=:sites), dims=:reps), dims=(:sites, :reps))
 end
 
@@ -52,5 +52,5 @@ function scenario_shelter_volume(sv::NamedDimsArray; kwargs...)
     return dropdims(mean(sum(sv_sliced, dims=:sites), dims=:reps), dims=(:sites, :reps))
 end
 function scenario_shelter_volume(rs::ResultSet; kwargs...)
-    return scenario_shelter_volume(rs.outcomes[:absolute_shelter_volume]; kwargs...)
+    return scenario_shelter_volume(rs.raw, rs.site_area, rs.site_max_coral_cover ./ 100.0, rs.inputs; kwargs...)
 end
