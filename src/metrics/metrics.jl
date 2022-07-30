@@ -18,12 +18,11 @@ Convenience method that slices the data in the specified manner.
 - dims   : dummy keyword argument, not used but defined to allow use with other methods
 """
 function call_metric(metric::Function, raw::NamedDimsArray, args...; kwargs...)
-    rd = slice_results(raw; kwargs...)
     dims = haskey(kwargs, :dims) ? kwargs[:dims] : nothing
     if isnothing(dims)
-        return metric(rd, args...)
+        return metric(slice_results(raw; kwargs...), args...)
     else
-        return metric(rd, args...; dims=dims)
+        return metric(slice_results(raw; kwargs...), args...; dims=dims)
     end
 end
 
