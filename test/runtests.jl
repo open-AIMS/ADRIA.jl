@@ -78,8 +78,8 @@ end
     tmp = zeros(20)
     max_cover = rand(1, 20)
 
-    for i in 1:size(Y,1)
-        adjusted = ADRIA.proportional_adjustment!(Y, tmp, max_cover, 1)
+    for i in axes(Y,1)
+        adjusted = ADRIA.proportional_adjustment!(Y[i, :, :], tmp, max_cover)
 
         @test all(adjusted .<= 1.0)
         @test all(adjusted .>= 0.0)

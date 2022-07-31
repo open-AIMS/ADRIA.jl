@@ -101,29 +101,6 @@ end
 
 
 """
-    proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
-
-Helper method to proportionally adjust coral cover.
-Modifies arrays in-place.
-
-# Arguments
-- Yout : Coral cover result set
-- Ycover : Temporary cache matrix, avoids memory allocations
-- max_cover : maximum possible coral cover for each site
-- tstep : current time step
-"""
-function proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
-    # Proportionally adjust initial covers
-    @views Ycover .= vec(sum(Yout[tstep, :, :], dims=1))
-    if any(Ycover .> max_cover)
-        exceeded::Vector{Int32} = findall(Ycover .> max_cover)
-
-        @views Yout[tstep, :, exceeded] .= (Yout[tstep, :, exceeded] ./ Ycover[exceeded]') .* max_cover[exceeded]'
-    end
-end
-
-
-"""
     run_scenario(domain::Domain; reps=1, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
 
 Convenience function to directly run a scenario for a Domain with pre-set values.
@@ -281,8 +258,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     Yout::Array{Float64,3} = zeros(tf, n_species, n_sites)
     Yout[1, :, :] .= @view cache.init_cov[:, :]
-    # cov_tmp::Array{Float64,2} = similar(init_cov, Float64)
-    Ycover::Vector{Float64} = zeros(n_sites)
+    cover_tmp = p.cover
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
@@ -323,7 +299,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     max_cover = site_data.k / 100.0
 
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
-    proportional_adjustment!(Yout, Ycover, max_cover, 1)
+    proportional_adjustment!(Yout[1, :, :], cover_tmp, max_cover)
 
     if is_guided
         ## Weights for connectivity , waves (ww), high cover (whc) and low
@@ -547,7 +523,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        proportional_adjustment!(Yout, Ycover, max_cover, tstep)
+        proportional_adjustment!(Yout[tstep, :, :], cover_tmp, max_cover)
     end
 
     # avoid placing importance on sites that were not considered
