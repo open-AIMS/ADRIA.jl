@@ -108,7 +108,7 @@ function proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractA
     # Proportionally adjust initial covers
     @views Ycover .= vec(sum(Yout[tstep, :, :], dims=1))
     if any(Ycover .> max_cover)
-        exceeded::Vector{Int32} = findall(Ycover .> max_cover)
+        exceeded::Vector{Int32} = findall(Ycover .> vec(max_cover))
 
         @views Yout[tstep, :, exceeded] .= (Yout[tstep, :, exceeded] ./ Ycover[exceeded]') .* max_cover[exceeded]'
     end
