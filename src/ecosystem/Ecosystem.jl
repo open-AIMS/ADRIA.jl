@@ -40,8 +40,6 @@ function map_to_discrete!(df::DataFrame, u::Union{AbstractArray, Tuple})::Nothin
 end
 
 
-
-
 """Update a given model with new uncertain parameter values."""
 function update!(m::Model, vals::Union{Vector,Tuple,Array})::Nothing
     m[:val] = map((x) -> set(x...), zip(params(m), vals))
@@ -161,6 +159,42 @@ end
 
 
 """
+    colony_areas()
+
+Generate colony area data based on Bozec et al., [1].
+
+# Returns
+- colony_area_cm2 : upper colony areas in cm^2
+- colony_area_m2_from_ha : lower colony area in m^2
+
+
+# References
+1. Bozec, Y.-M., Rowell, D., Harrison, L., Gaskell, J., Hock, K.,
+     Callaghan, D., Gorton, R., Kovacs, E. M., Lyons, M., Mumby, P.,
+     & Roelfsema, C. (2021).
+       Baseline mapping to support reef restoration and resilience-based
+       management in the Whitsundays.
+     https://doi.org/10.13140/RG.2.2.26976.20482
+"""
+function colony_areas()
+    size_class_means_from_cm2 = Float64[1; 3.5; 7.5; 15; 30; 60]  # in cm^2
+    size_class_means_to_cm2 = Float64[size_class_means_from_cm2[2:end]; 100.0];  # in cm^2
+
+    nclasses::Int64 = length(size_class_means_from_cm2)
+
+    # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
+    # To convert to cover we locate bin means and calculate bin mean areas
+    colony_diam_means_from_cm2 = repeat(size_class_means_from_cm2', nclasses, 1)
+    colony_diam_means_to_cm2 = repeat(size_class_means_to_cm2', nclasses', 1)
+
+    colony_area_m2_from_ha = @. pi * ((colony_diam_means_from_cm2 / 2)^2) / (10^4)
+    colony_area_cm2 = @. pi * ((colony_diam_means_to_cm2 / 2)^2)
+
+    return colony_area_cm2, colony_area_m2_from_ha
+end
+
+
+"""
     coral_spec()
 
 Template for coral parameter values for ADRIA.
@@ -216,8 +250,6 @@ function coral_spec()::NamedTuple
     tn = repeat(taxa_names, 6, 1)
 
     size_cm = Float64[2; 5; 10; 20; 40; 80]
-    size_class_means_from = Float64[1; 3.5; 7.5; 15; 30; 60]  # in cm^2
-    size_class_means_to = Float64[size_class_means_from[2:end]; 100.0];  # in cm^2
 
     # total number of "species" modelled in the current version.
     nclasses::Int64 = length(size_cm);
@@ -237,28 +269,9 @@ function coral_spec()::NamedTuple
     # interventions, we express coral abundance as colony numbers in different
     # size classes and growth rates as linear extention (in cm per year).
 
-    ### Base covers
-    #First express as number of colonies per size class per 100m2 of reef
-    base_coral_numbers =
-        [0 0 0 0 0 0;           # Tabular Acropora Enhanced
-         0 0 0 0 0 0;           # Tabular Acropora Unenhanced
-         0 0 0 0 0 0;           # Corymbose Acropora Enhanced
-         200 100 100 50 30 10;  # Corymbose Acropora Unenhanced
-         200 100 200 30 0 0;    # small massives
-         0 0 0 0 0 0];             # large massives
-
-    # To convert to covers we need to first calculate the area of colonies,
-    # multiply by how many corals in each bin, and divide by reef area
-
-    # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
-    # To convert to cover we locate bin means and calculate bin mean areas
-    colony_diam_means_from = repeat(size_class_means_from', nclasses, 1)
-    colony_diam_means_to = repeat(size_class_means_to', nclasses', 1)
-
-    colony_area_m2_from_ha = @. pi * ((colony_diam_means_from / 2)^2) / (10^4)
-    colony_area_cm2 = @. pi * ((colony_diam_means_to / 2)^2)
+    colony_area_cm2, colony_area_m2_from_ha = colony_areas()
     params.colony_area_cm2 = reshape(colony_area_cm2', nspecies)
-    colony_area_to_m2 = colony_area_cm2 ./ (10^4)
+    colony_area_to_m2 = colony_area_cm2 ./ 10^4
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 Table S2)
     # we assume similar growth rates for enhanced and unenhanced corals
