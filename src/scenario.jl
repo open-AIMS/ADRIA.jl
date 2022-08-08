@@ -106,6 +106,30 @@ end
 
 
 """
+    proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
+
+Helper method to proportionally adjust coral cover.
+Modifies arrays in-place.
+
+# Arguments
+- Yout : Coral cover result set
+- Ycover : Temporary cache matrix, avoids memory allocations
+- max_cover : maximum possible coral cover for each site
+- tstep : current time step
+"""
+function proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
+    # Proportionally adjust initial covers
+    @views Ycover .= vec(sum(Yout[tstep, :, :], dims=1))
+    if any(Ycover .> max_cover)
+
+        exceeded::Vector{Int64} = findall(Ycover .> max_cover)
+
+        @views Yout[tstep, :, exceeded] .= (Yout[tstep, :, exceeded] ./ Ycover[exceeded]') .* max_cover[exceeded]'
+    end
+end
+
+
+"""
     run_scenario(domain::Domain; reps=1, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
 
 Convenience function to directly run a scenario for a Domain with pre-set values.
@@ -525,7 +549,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             @views cov_tmp[seed_size_class1, prefseedsites] .= cov_tmp[seed_size_class1, prefseedsites] .+ scaled_seed_TA  # seed Enhanced Tabular Acropora
             @views cov_tmp[seed_size_class2, prefseedsites] .= cov_tmp[seed_size_class2, prefseedsites] .+ scaled_seed_CA  # seed Enhanced Corymbose Acropora
 
-            # Log seed values/sites (these values are in m^2)
+            # Log seed values/sites
             Yseed[tstep, 1, prefseedsites] .= scaled_seed_TA  # log site as seeded with Enhanced Tabular Acropora
             Yseed[tstep, 2, prefseedsites] .= scaled_seed_CA  # log site as seeded with Enhanced Corymbose Acropora
         end
