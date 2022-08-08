@@ -82,6 +82,8 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
         end
     end
 
+    # TODO: Update site depth offset/bounds based on spatial data
+
     # Sort data to maintain consistent order
     sort!(site_data, [Symbol(unique_site_id_col)])
 
@@ -189,9 +191,11 @@ end
     update_params!(d::Domain, params::DataFrameRow)
 
 Update given domain with new parameter values.
+Maps sampled continuous values to discrete values for categorical variables.
 """
 function update_params!(d::Domain, params::DataFrameRow)
     p_df = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
+
     p_df[!, :val] = collect(params)
 
     to_floor = (p_df.ptype .== "integer")  # .& .!isinteger.(p_df.val)
@@ -262,7 +266,7 @@ function site_selection(domain::Domain, criteria::DataFrame, ts::Int, n_reps::In
     # Site Data
     site_d = domain.site_data
     sr = domain.conn_ranks
-    area = site_d.area
+    area = site_area(domain)
 
     # Weights for connectivity , waves (ww), high cover (whc) and low
     wtwaves = criteria.wave_stress           # weight of wave damage in MCDA
@@ -333,6 +337,16 @@ function site_selection(domain::Domain, criteria::DataFrame, ts::Int, n_reps::In
     end
 
     return ranks
+end
+
+
+"""
+    site_area(domain::Domain)::Vector{Float64}
+
+Get site area for the given domain.
+"""
+function site_area(domain::Domain)::Vector{Float64}
+    return domain.site_data.area
 end
 
 
