@@ -250,8 +250,6 @@ function coral_spec()::NamedTuple
     tn = repeat(taxa_names, 6, 1)
 
     size_cm = Float64[2; 5; 10; 20; 40; 80]
-    size_class_means_from = Float64[1; 3.5; 7.5; 15; 30; 60]  # in cm^2
-    size_class_means_to = Float64[size_class_means_from[2:end]; 100.0];  # in cm^2
 
     # total number of "species" modelled in the current version.
     nclasses::Int64 = length(size_cm);
@@ -274,19 +272,6 @@ function coral_spec()::NamedTuple
     colony_area_cm2, colony_area_m2_from_ha = colony_areas()
     params.colony_area_cm2 = reshape(colony_area_cm2', nspecies)
     colony_area_to_m2 = colony_area_cm2 ./ 10^4
-
-    # To convert to covers we need to first calculate the area of colonies,
-    # multiply by how many corals in each bin, and divide by reef area
-
-    # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
-    # To convert to cover we locate bin means and calculate bin mean areas
-    colony_diam_means_from = repeat(size_class_means_from', nclasses, 1)
-    colony_diam_means_to = repeat(size_class_means_to', nclasses', 1)
-
-    colony_area_m2_from_ha = @. pi * ((colony_diam_means_from / 2)^2) / (10^4)
-    colony_area_cm2 = @. pi * ((colony_diam_means_to / 2)^2)
-    params.colony_area_cm2 = reshape(colony_area_cm2', nspecies)
-    colony_area_to_m2 = colony_area_cm2 ./ (10^4)
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 Table S2)
     # we assume similar growth rates for enhanced and unenhanced corals
