@@ -60,14 +60,14 @@ function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=0)::Doma
     domain, data_store = ADRIA.setup_result_store!(domain, param_df, reps)
     cache = setup_cache(domain)
 
-    func = (dfx) -> run_scenario(dfx, domain, reps, data_store, cache)
-
     # Batch run scenarios
-    if nrow(param_df) > 64
+    if (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
         @eval @everywhere using ADRIA
 
+        func = (dfx) -> run_scenario(dfx, domain, reps, data_store, cache)
         @showprogress "Running..." 4 pmap(func, enumerate(eachrow(param_df)))
     else
+        func = (dfx) -> run_scenario(dfx, domain, reps, data_store, cache)
         @showprogress "Running..." 1 map(func, enumerate(eachrow(param_df)))
     end
 
