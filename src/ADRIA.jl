@@ -8,7 +8,6 @@ using MAT  # Package to read in `.mat` files
 
 using Setfield, ModelParameters, DataStructures
 using DataFrames, GeoDataFrames, Graphs, CSV
-using Plots
 
 using PkgVersion
 
@@ -31,23 +30,28 @@ include("ecosystem/const_params.jl")
 
 include("Domain.jl")
 include("io/inputs.jl")
-include("io/result_set.jl")
-include("scenario.jl")
 
 include("sites/connectivity.jl")
 include("sites/dMCDA.jl")
 
+include("io/result_set.jl")
 include("metrics/metrics.jl")
+include("io/result_io.jl")
 
-include("main_app.jl")
+include("scenario.jl")
+
+# include("main_app.jl")
 
 
 export fecundity_scope!, bleaching_mortality!
 export growthODE
 export run_scenario, coral_spec
 export create_coral_struct, Intervention, Criteria, Corals, SimConstants
+export site_area
 export Domain, metrics, select
 
+# metric helper methods
+export dims, ndims
 
 # Precompile as the final step of the module definition:
 # if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the package
