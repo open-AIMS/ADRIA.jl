@@ -83,5 +83,8 @@ end
 
         @test all(adjusted .<= 1.0)
         @test all(adjusted .>= 0.0)
-    end    
+    end
 end
+
+include("metrics.jl")
+include("modifying_metrics.jl")
