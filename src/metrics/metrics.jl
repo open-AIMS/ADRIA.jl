@@ -6,6 +6,54 @@ using DataFrames
 import ADRIA: coral_spec, ResultSet
 
 
+abstract type Outcome end
+
+
+struct Metric{F<:Function, T<:Tuple} <: Outcome
+    func::F
+    dims::T
+end
+
+
+function (f::Metric)(raw, args...; kwargs...)
+    try
+        return f.func(NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
+    catch
+        return f.func(raw, args...; kwargs...)
+    end
+end
+
+
+"""
+    metric_name(m::Metric)::String
+
+Get name of metric as a string.
+"""
+function metric_name(m::Metric)::String
+    return replace(String(Symbol(m.func)), "_"=>"", count=1)
+end
+
+
+"""
+    dims(m::Metric)::Tuple
+
+Get dimension names for a given outcome/metric.
+"""
+function dims(m::Metric)::Tuple
+    return m.dims
+end
+
+
+"""
+    ndims(m::Metric)::Int64
+
+Infer the number of dimensions for a given outcome/metric.
+"""
+function Base.ndims(m::Metric)::Int64
+    return length(dims(m))
+end
+
+
 """
     call_metric(metric, raw, args...; timesteps=(:), species=(:), sites=(:), reps=(:), scens=(:))
 
@@ -353,6 +401,41 @@ end
 include("temporal.jl")
 include("site_level.jl")
 include("scenario.jl")
+
+
+# Wrap base metric functions with dimension metadata
+relative_cover = Metric(_relative_cover, (:timesteps, :sites, :reps, :scenarios))
+total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :reps, :scenarios))
+absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :reps, :scenarios))
+relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :reps, :scenarios))
+coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :reps, :scenarios))
+juveniles = Metric(_juveniles, (:timesteps, :sites, :reps, :scenarios))
+reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :reps, :scenarios))
+
+
+"""
+    @extend_metric(name, m, args)
+
+Macro to extend a given metric with additional argument values that are made constant.
+
+# Arguments
+- name : arbitrary name for generated function
+- m : metric function
+- args : additional arguments whose values will be made constant
+
+# Example
+
+```julia
+import ADRIA.metrics: total_absolute_cover
+extended_metric = @extend_metric(example_func, total_absolute_cover, [site_area(domain)])
+
+Y = extended_metric(raw_results)  # Equivalent to total_absolute_cover(raw_results, site_area(domain))
+```
+"""
+macro extend_metric(name, m, args)
+    eval(:(($name)(X) = ($m.func)(X, $args...)))
+    return :(Metric(eval($name), $m.dims))
+end
 
 
 end
