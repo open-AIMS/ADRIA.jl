@@ -106,30 +106,6 @@ end
 
 
 """
-    proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
-
-Helper method to proportionally adjust coral cover.
-Modifies arrays in-place.
-
-# Arguments
-- Yout : Coral cover result set
-- Ycover : Temporary cache matrix, avoids memory allocations
-- max_cover : maximum possible coral cover for each site
-- tstep : current time step
-"""
-function proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
-    # Proportionally adjust initial covers
-    @views Ycover .= vec(sum(Yout[tstep, :, :], dims=1))
-    if any(Ycover .> max_cover)
-
-        exceeded::Vector{Int64} = findall(Ycover .> max_cover)
-
-        @views Yout[tstep, :, exceeded] .= (Yout[tstep, :, exceeded] ./ Ycover[exceeded]') .* max_cover[exceeded]'
-    end
-end
-
-
-"""
     run_scenario(domain::Domain; reps=1, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
 
 Convenience function to directly run a scenario for a Domain with pre-set values.
@@ -372,9 +348,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         depth_priority = collect(1:nrow(site_data))
 
         # Filter out sites outside of desired depth range
-        if .!all(site_data.sitedepth .== 0)
+        if .!all(site_data.depth_med .== 0)
             max_depth::Float64 = param_set.depth_min + param_set.depth_offset
-            depth_criteria::BitArray{1} = (site_data.sitedepth .>= -max_depth) .& (site_data.sitedepth .<= -param_set.depth_min)
+            depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set.depth_min) .& (site_data.depth_med .<= max_depth)
 
             # TODO: Include this change in MATLAB version as well
             if any(depth_criteria .> 0)
@@ -527,7 +503,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                 site_locs = prefshadesites
             end
 
-            adjusted_dhw[site_locs] = adjusted_dhw[site_locs] .* (1.0 - fogging)
+            adjusted_dhw[site_locs] .= adjusted_dhw[site_locs] .* (1.0 - fogging)
             Yfog[tstep, site_locs] .= fogging
         end
 
@@ -536,15 +512,15 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             neg_e_p2, a_adapt, n_adapt,
             bleach_resist, adjusted_dhw)
 
-        # proportional loss + proportional recruitment
-        @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
-        @views cov_tmp = cov_tmp[:, :] .* prop_loss[:, :]
-
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
-            # extract site area for sites selected and scale by available space for populations (k/100)
+            # Extract site area for sites selected: site area * k = seeded area (m^2)
             site_area_seed = site_area[prefseedsites] .* max_cover[prefseedsites]
 
+            # Yout[tstep, :, prefseedsites]
+
+            # Determine area (m^2) to be covered by seeded corals
+            # and scale by area to be seeded
             scaled_seed_TA = (((seed_TA_vol / nsiteint) * col_area_seed_TA) ./ site_area_seed)
             scaled_seed_CA = (((seed_CA_vol / nsiteint) * col_area_seed_CA) ./ site_area_seed)
 
@@ -552,11 +528,12 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             @views cov_tmp[seed_size_class1, prefseedsites] .= cov_tmp[seed_size_class1, prefseedsites] .+ scaled_seed_TA  # seed Enhanced Tabular Acropora
             @views cov_tmp[seed_size_class2, prefseedsites] .= cov_tmp[seed_size_class2, prefseedsites] .+ scaled_seed_CA  # seed Enhanced Corymbose Acropora
 
-            # Log seed values/sites
+            # Log seed values/sites (these values are in m^2)
             Yseed[tstep, 1, prefseedsites] .= scaled_seed_TA  # log site as seeded with Enhanced Tabular Acropora
             Yseed[tstep, 2, prefseedsites] .= scaled_seed_CA  # log site as seeded with Enhanced Corymbose Acropora
         end
 
+        @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
         growth.u0[:, :] .= @views cov_tmp[:, :] .* prop_loss[:, :]  # update initial condition
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
                                  alg_hints=[:nonstiff], abstol=1e-8, reltol=1e-7)

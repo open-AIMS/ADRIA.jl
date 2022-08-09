@@ -28,11 +28,9 @@ struct ResultSet{S, T, F, A, B}
     # raw::AbstractArray
     outcomes::Dict
     ranks::A
-    seed_log::B
-    fog_log::A
-    shade_log::A
-
-    
+    seed_log::B  # Values stored in m^2
+    fog_log::A   # Reduction in bleaching mortality (0.0 - 1.0)
+    shade_log::A # Reduction in bleaching mortality (0.0 - 1.0)    
 end
 
 

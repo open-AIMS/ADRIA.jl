@@ -53,6 +53,15 @@ export Domain, metrics, select
 # metric helper methods
 export dims, ndims
 
+
+if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the package
+    precompile(load_results, (String, ))
+    precompile(load_domain, (String, Int64))
+    precompile(Domain, (String, Int64, String, String, String, String, String, String, String))
+    precompile(EnvLayer, (String, String, String, String, String, String, String))
+end
+
+
 # Precompile as the final step of the module definition:
 # if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the package
 #     precompile(load_domain, (String, Int64))
