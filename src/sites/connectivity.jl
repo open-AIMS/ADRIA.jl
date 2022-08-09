@@ -60,6 +60,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, Str
     # Get site ids from first file
     con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap)
     con_site_ids::Vector{String} = con_file1[:, "source_site"]  # names(con_file1)[2:end]
+    con_site_ids = [x[1] for x in split.(con_site_ids, "_v"; limit=2)]
 
     # Get IDs missing in con_site_ids
     invalid_ids::Vector{String} = setdiff(con_site_ids, conn_ids)
@@ -80,11 +81,11 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, Str
     # ...
 
     if length(invalid_ids) > 0
-        if length(invalid_ids) == length(con_site_ids)
+        if length(invalid_ids) >= length(con_site_ids)
             error("All sites appear to be missing from data set. Aborting.")
         end
 
-        @warn "The following sites were not found in site_ids and were removed:\n$(invalid_ids)"
+        @warn "The following sites (n=$(length(invalid_ids))) were not found in site_ids and were removed:\n$(invalid_ids)"
     end
 
     # Helper method to align/reorder data
