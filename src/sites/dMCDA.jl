@@ -1,6 +1,9 @@
 """Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
 
 
+using StatsBase
+
+
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     nsiteint  # ::I
@@ -336,17 +339,16 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - max_cover : vector/matrix : maximum carrying capacity of each site (`k` value)
 """
 function unguided_site_selection!(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)::Nothing
-    # Unguided deployment, seed/shade corals anywhere so long as max_cover > 0
-    # otherwise, may select an empty site, causing zero-division error later on.
+    # Unguided deployment, seed/shade corals anywhere so long as max_cover > 0.
+    # Only sites with max_cover are considered, otherwise a zero-division error may occur later on.
 
-    # `unique()` used to catch cases where number of eligible sites < `nsiteint`
-    # `resize!()` to recreate vector of `nsiteint` entries if duplicate sites are filtered out
+    # Select sites (without replacement to avoid duplicate sites)
     if seed_years
-        prefseedsites .= resize!(unique(rand(findall(max_cover .> 0.0), nsiteint)), nsiteint)
+        prefseedsites .= StatsBase.sample(findall(max_cover .> 0.0), nsiteint; replace=false)
     end
 
     if shade_years
-        prefshadesites .= resize!(unique(rand(findall(max_cover .> 0.0), nsiteint)), nsiteint)
+        prefshadesites .= StatsBase.sample(findall(max_cover .> 0.0), nsiteint; replace=false)
     end
 
     return nothing
