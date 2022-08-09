@@ -514,6 +514,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             # Extract site area for sites selected: site area * k = seeded area (m^2)
             site_area_seed = site_area[prefseedsites] .* max_cover[prefseedsites]
 
+            # Yout[tstep, :, prefseedsites]
+
             # Determine area (m^2) to be covered by seeded corals
             # and scale by area to be seeded
             scaled_seed_TA = (((seed_TA_vol / nsiteint) * col_area_seed_TA) ./ site_area_seed)
