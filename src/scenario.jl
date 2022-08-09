@@ -509,14 +509,12 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             neg_e_p2, a_adapt, n_adapt,
             bleach_resist, adjusted_dhw)
 
-        # proportional loss + proportional recruitment
-        @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
-        @views cov_tmp = cov_tmp[:, :] .* prop_loss[:, :]
-
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
             # Extract site area for sites selected: site area * k = seeded area (m^2)
             site_area_seed = site_area[prefseedsites] .* max_cover[prefseedsites]
+
+            # Yout[tstep, :, prefseedsites]
 
             # Determine area (m^2) to be covered by seeded corals
             # and scale by area to be seeded
@@ -532,6 +530,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             Yseed[tstep, 2, prefseedsites] .= scaled_seed_CA  # log site as seeded with Enhanced Corymbose Acropora
         end
 
+        @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
         growth.u0[:, :] .= @views cov_tmp[:, :] .* prop_loss[:, :]  # update initial condition
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
                                  alg_hints=[:nonstiff], abstol=1e-8, reltol=1e-7)
