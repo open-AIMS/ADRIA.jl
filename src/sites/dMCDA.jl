@@ -320,3 +320,34 @@ function vikor(S::Array{Float64, 2}; v::Float64=0.5)::Array{Union{Float64, Int64
 
     return s_order
 end
+
+
+"""
+    unguided_site_selection!(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)
+
+Randomly select seed/shade site locations for the given year, constraining to sites with max. carrying capacity > 0.
+Here, `max_cover` represents the max. carrying capacity for each site (the `k` value).
+
+# Arguments
+- prefseedsites : Previously selected sites
+- seed_years : bool, indicating whether to seed this year or not
+- shade_years : bool, indicating whether to shade this year or not
+- nsiteint : int, number of sites to intervene on
+- max_cover : vector/matrix : maximum carrying capacity of each site (`k` value)
+"""
+function unguided_site_selection!(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)::Nothing
+    # Unguided deployment, seed/shade corals anywhere so long as max_cover > 0
+    # otherwise, may select an empty site, causing zero-division error later on.
+
+    # `unique()` used to catch cases where number of eligible sites < `nsiteint`
+    # `resize!()` to recreate vector of `nsiteint` entries if duplicate sites are filtered out
+    if seed_years
+        prefseedsites .= resize!(unique(rand(findall(max_cover .> 0.0), nsiteint)), nsiteint)
+    end
+
+    if shade_years
+        prefshadesites .= resize!(unique(rand(findall(max_cover .> 0.0), nsiteint)), nsiteint)
+    end
+
+    return nothing
+end

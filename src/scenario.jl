@@ -503,15 +503,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             # First col only holds site ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
         else
-            # Unguided
-            if seed_decision_years[tstep]
-                # Unguided deployment, seed/shade corals anywhere
-                prefseedsites = rand(1:n_sites, nsiteint)
-            end
-
-            if shade_decision_years[tstep]
-                prefshadesites = rand(1:n_sites, nsiteint)
-            end
+            # Unguided deployment, seed/shade corals anywhere, so long as max_cover > 0
+            unguided_site_selection!(prefseedsites, prefshadesites, seed_decision_years[tstep], shade_decision_years[tstep], nsiteint, max_cover)
         end
 
         has_shade_sites = !all(prefshadesites .== 0)
