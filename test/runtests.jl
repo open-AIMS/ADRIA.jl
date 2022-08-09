@@ -25,31 +25,6 @@ end
 end
 
 
-@testset "site selection" begin
-    # TODO: Complete tests with @tests
-
-    site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
-    conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
-
-    test_domain = Domain(
-        "Test",
-        45,
-        site_path,
-        "siteref",
-        "reef_siteid",
-        "",            # empty coral cover
-        conn_path,     # test connectivity data
-        "",            # empty DHW
-        ""             # empty wave
-    );
-
-    p_tbl = ADRIA.param_table(test_domain)
-    p_tbl.depth_offset .= 7.0
-    ranks = ADRIA.site_selection(test_domain, p_tbl, 1, 10, 1)
-
-end
-
-
 @testset "Discrete parameters" begin
     site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
     conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
@@ -85,6 +60,8 @@ end
         @test all(adjusted .>= 0.0)
     end
 end
+
+include("site_selection.jl")
 
 include("metrics.jl")
 include("modifying_metrics.jl")
