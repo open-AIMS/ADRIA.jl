@@ -101,8 +101,16 @@ end
 
 
 """
+    proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
+
 Helper method to proportionally adjust coral cover.
 Modifies arrays in-place.
+
+# Arguments
+- Yout : Coral cover result set
+- Ycover : Temporary cache matrix, avoids memory allocations
+- max_cover : maximum possible coral cover for each site
+- tstep : current time step
 """
 function proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real}, tstep::Int64)
     # Proportionally adjust initial covers
@@ -123,22 +131,21 @@ Convenience function to directly run a scenario for a Domain with pre-set values
 Stores results on disk in Zarr format at pre-configured location.
 
 # Notes
-Only the mean site rankings over all environmental scenarios are kept
+Logs of site ranks only store the mean site rankings over all environmental scenarios.
+This is to reduce the volume of data stored.
 """
 function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::NamedTuple, cache::NamedTuple)
     tf = domain.sim_constants.tf
 
-    # TODO: Select subset that isn't the coral parameters
-    # interv = component_params(domain.model, Intervention)
-    # criteria = component_params(domain.model, Criteria)
-    # selector = domain.model[:component] .!== Coral
-    param_set = NamedTuple{domain.model[:fieldname]}(domain.model[:val])
+    # Extract non-coral parameters
+    df = DataFrame(domain.model)
+    not_coral_params = df[!, :component] .!== Coral
+    param_set = NamedTuple{tuple(df[not_coral_params, :fieldname]...)}(df[not_coral_params, :val])
 
     # Expand coral model to include its specifications across all taxa/species/groups
     coral_params = to_spec(component_params(domain.model, Coral))
 
-    # Passing in environmental layer data stripped of named dimensions.
-    # init_cc = Array{Float64}(domain.init_coral_cover)
+    # Pass in environmental layer data stripped of named dimensions.
     all_dhws = Array{Float64}(domain.dhw_scens[1:tf, :, 1:reps])
     all_waves = Array{Float64}(domain.wave_scens[1:tf, :, 1:reps])
 
@@ -204,7 +211,7 @@ end
 
 """
     run_scenario(domain, param_set, corals, sim_params, site_data, p::NamedTuple,
-                 dhw_scen::Array, wave_scen::Array)::NamedTuple
+                 dhw_scen::Array, wave_scen::Array, cache::NamedTuple)::NamedTuple
 
 Core scenario running function.
 
