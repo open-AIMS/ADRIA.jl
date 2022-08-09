@@ -348,9 +348,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         depth_priority = collect(1:nrow(site_data))
 
         # Filter out sites outside of desired depth range
-        if .!all(site_data.sitedepth .== 0)
+        if .!all(site_data.depth_med .== 0)
             max_depth::Float64 = param_set.depth_min + param_set.depth_offset
-            depth_criteria::BitArray{1} = (site_data.sitedepth .>= -max_depth) .& (site_data.sitedepth .<= -param_set.depth_min)
+            depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set.depth_min) .& (site_data.depth_med .<= max_depth)
 
             # TODO: Include this change in MATLAB version as well
             if any(depth_criteria .> 0)
@@ -500,7 +500,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                 site_locs = prefshadesites
             end
 
-            adjusted_dhw[site_locs] = adjusted_dhw[site_locs] .* (1.0 - fogging)
+            adjusted_dhw[site_locs] .= adjusted_dhw[site_locs] .* (1.0 - fogging)
             Yfog[tstep, site_locs] .= fogging
         end
 
