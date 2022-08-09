@@ -487,16 +487,17 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - max_cover : vector/matrix : maximum carrying capacity of each site (`k` value)
 """
 function unguided_site_selection!(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)::Nothing
-    # Unguided deployment, seed/shade corals anywhere so long as max_cover > 0.
-    # Only sites with max_cover are considered, otherwise a zero-division error may occur later on.
+    # Unguided deployment, seed/shade corals anywhere so long as max_cover > 0
+    # otherwise, may select an empty site, causing zero-division error later on.
 
-    # Select sites (without replacement to avoid duplicate sites)
+    # `unique()` used to catch cases where number of eligible sites < `nsiteint`
+    # `resize!()` to recreate vector of `nsiteint` entries if duplicate sites are filtered out
     if seed_years
-        prefseedsites .= StatsBase.sample(findall(max_cover .> 0.0), nsiteint; replace=false)
+        prefseedsites .= resize!(unique(rand(findall(max_cover .> 0.0), nsiteint)), nsiteint)
     end
 
     if shade_years
-        prefshadesites .= StatsBase.sample(findall(max_cover .> 0.0), nsiteint; replace=false)
+        prefshadesites .= resize!(unique(rand(findall(max_cover .> 0.0), nsiteint)), nsiteint)
     end
 
     return nothing
