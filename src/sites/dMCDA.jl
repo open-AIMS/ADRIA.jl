@@ -66,13 +66,13 @@ Columns indicate:
 # Arguments
 - site_ids : vector of site ids
 - centr : site centrality (relative strength of connectivity)
-- sumcover : vector, sum of coral cover (across species?) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
+- sumcover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
 - maxcover : maximum possible proportional coral cover for each site, relative to total site area (k <= 1.0)
 - area : absolute area (in m²)
-- damprob : Probability of wave damage (?)
+- damprob : Probability of wave damage
 - heatstressprob : Probability of site being affected by heat stress
-- predec : ???
-- risktol : ???
+- predec : list of priority predecessors (sites strongly connected to priority sites)
+- risktol : tolerance for wave and heat risk (0-1). Sites with heat or wave risk> risktol are filtered out.
 """
 function create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
     A = zeros(length(site_ids), 6)
