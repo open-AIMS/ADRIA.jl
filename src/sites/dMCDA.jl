@@ -85,6 +85,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
 
+    # work out which priority predecssors are connected to priority sites
     predec::Array{Float64} = zeros(nsites, 3)
     predec[:, 1:2] .= strongpred
     predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
@@ -92,7 +93,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     predec[predprior, 3] .= 1.0
 
-    # Combine data into matrix
+    # Combine decision criteria into decision matrix A
     A = zeros(length(site_ids), 6)
 
     A[:, 1] = site_ids  # column of site IDs
@@ -103,7 +104,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     # node connectivity centrality, need to instead work out strongest predecessors to priority sites
     A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
 
-    # Account for cases where no chance of damage or heat stress
+    # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
     A[:, 3] .= maximum(damprob) != 0 ? damprob / maximum(damprob) : damprob
 
@@ -113,7 +114,8 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     # priority predecessors
     A[:, 5] .= predec[:, 3]
 
-    A[:, 6] = (maxcover - sumcover) ./ maxcover # proportion of cover compared to max possible cover
+    # Proportion of empty space (no coral) compared to max possible cover
+    A[:, 6] = (maxcover - sumcover) ./ maxcover 
 
     # set any infs to zero
     A[maxcover .== 0, 6] .= 0.0
