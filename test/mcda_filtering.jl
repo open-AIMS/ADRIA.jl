@@ -57,7 +57,7 @@ end
     predec[predprior, 3] .= 1.0
 
     sumcover = [0.3, 0.5, 0.9, 0.6, 0.0]
-    maxcover = [0.8, 0.75, 0.91, 0.77, 0.0]
+    maxcover = [0.8, 0.75, 0.6, 0.77, 0.0]
 
     A = create_decision_matrix(1:n_sites, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
 
@@ -65,7 +65,8 @@ end
     SE = filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
 
     # Last site should be filtered out due to no space
-    @test size(SE, 1) == (size(A, 1) - 1)
+    # Third site should be filtered out due to cover >carrying capacity
+    @test size(SE, 1) == (size(A, 1) - 2)
     @test maximum(SE[:, 1]) != maximum(A[:, 1])
 
     # Largest site with plenty of space should have highest score
