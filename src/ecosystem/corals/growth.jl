@@ -6,9 +6,6 @@
 
 Base coral growth function.
 """
-
-using Infiltrator
-
 function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _::Real)::Nothing
     k = @view p.k[:, :]
     k .= max.(p.P' .- sum(X, dims=1), 0.0)
