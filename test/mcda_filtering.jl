@@ -21,7 +21,7 @@ import ADRIA: mcda_normalize, create_decision_matrix, filter_seed_sites
     risktol = 0.8
 
     sumcover = [0.3, 0.5, 0.9, 0.6, 0.0]
-    maxcover = [800.0, 750.0, 200.0, 199.0, 0.0]
+    maxcover = [0.8, 0.75, 0.95, 0.7, 0.0]
 
     A = create_decision_matrix(1:n_sites, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
 
@@ -31,6 +31,10 @@ import ADRIA: mcda_normalize, create_decision_matrix, filter_seed_sites
 
     # Site with known 0 max cover should be 0
     @test A[end, 6] == 0.0
+
+    # After normalization, all entries should be in [0,1]
+    @test !any(A .> 1.0)
+    @test !any(A .< 0.0)
 end
 
 
@@ -53,14 +57,14 @@ end
     predec[predprior, 3] .= 1.0
 
     sumcover = [0.3, 0.5, 0.9, 0.6, 0.0]
-    maxcover = [800.0, 750.0, 200.0, 199.0, 0.0]
+    maxcover = [0.8, 0.75, 0.91, 0.77, 0.0]
 
     A = create_decision_matrix(1:n_sites, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
 
     SE = zeros(size(A, 1), 6)
     SE = filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
 
-    # Last site should be filtered out
+    # Last site should be filtered out due to no space
     @test size(SE, 1) == (size(A, 1) - 1)
     @test maximum(SE[:, 1]) != maximum(A[:, 1])
 
