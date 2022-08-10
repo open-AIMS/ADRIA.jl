@@ -49,6 +49,105 @@ end
 
 
 """
+    create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec)
+
+Creates decision matrix `A`, with sites filtered based on risk.
+
+Where no sites are filtered, size of ``A := n_sites x 6``.
+
+Columns indicate:
+1. Site ID
+2. Node Connectivity Centrality
+3. Wave Damage Probability
+4. Heat Stress Probability
+5. Priority Predecessors
+6. Available Area (relative to max cover)
+
+# Arguments
+- site_ids : vector of site ids
+- centr : site centrality (relative strength of connectivity)
+- sumcover : vector, sum of coral cover (across species?) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
+- maxcover : maximum possible proportional coral cover for each site, relative to total site area (k <= 1.0)
+- area : absolute area (in m²)
+- damprob : Probability of wave damage (?)
+- heatstressprob : Probability of site being affected by heat stress
+- predec : ???
+- risktol : ???
+"""
+function create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
+    A = zeros(length(site_ids), 6)
+
+    A[:, 1] .= site_ids  # Column of site ids
+
+    # Account for cases where no coral cover
+    c_cov_area = centr .* sumcover .* area
+
+    # node connectivity centrality, need to instead work out strongest predecessors to priority sites
+    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
+
+    # Wave damage, account for cases where no chance of damage or heat stress
+    # if max > 0 then use damage probability from wave exposure
+    A[:, 3] .= maximum(damprob) != 0 ? damprob / maximum(damprob) : damprob
+
+    # risk from heat exposure
+    A[:, 4] .= maximum(heatstressprob) != 0 ? heatstressprob / maximum(heatstressprob) : heatstressprob
+
+    # priority predecessors
+    A[:, 5] .= predec[:, 3]
+
+    # Proportion of empty space (no coral) compared to max possible cover
+    A[:, 6] = (maxcover - sumcover) ./ maxcover
+
+    # set any infs to zero
+    A[maxcover .== 0, 6] .= 0.0
+
+    # Filter out sites that have high risk of wave damage, specifically
+    # exceeding the risk tolerance
+    A[A[:, 3] .> risktol, 3] .= NaN
+    rule = (A[:, 3] .<= risktol) .& (A[:, 4] .> risktol)
+    A[rule, 4] .= NaN
+
+    # remove rows with NaNs
+    A = A[vec(.!any(isnan.(A), dims=2)), :]
+
+    return A
+end
+
+
+"""
+    filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+
+Filter seed sites
+
+# Arguments
+- SE : Pre-existing matrix to populate
+- A : Decision matrix
+- wtconseed : Seed connectivity weight
+- wtwaves : Wave stress weight
+- wtheat : heat stress weight
+- wtpredecseed : predecessor seed (???)
+- wtlocover : level of preference for sites with low coral cover (?)
+"""
+function filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+    wse = [1, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover]
+    wse[2:end] .= mcda_normalize(wse[2:end])
+
+    # Define seeding decision matrix
+    SE[:, 1:2] .= A[:, 1:2]  # sites column (remaining), centrality
+
+    SE[:, 3] .= 1.0 .- A[:, 3]  # compliment of damage risk
+    SE[:, 4] .= 1.0 .- A[:, 4]  # compliment of wave risk
+    SE[:, 5:6] .= A[:, 5:6]  # priority predecessors, coral real estate relative to max capacity
+
+    # remove sites at maximum carrying capacity, take inverse log to emphasize importance of space for seeding
+    SE = SE[vec(A[:, 6] .> 0), :]
+    SE[:, 6] .= (10 .^ SE[:, 6]) ./ maximum(10 .^ SE[:, 6])
+
+    return SE
+end
+
+
+"""
     dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, rankingsin::Matrix{Int64})
 
 # Returns
@@ -93,46 +192,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     predec[predprior, 3] .= 1.0
 
-    # Combine decision criteria into decision matrix A
-    A = zeros(length(site_ids), 6)
-
-    A[:, 1] = site_ids  # column of site IDs
-
-    # Account for cases where no coral cover
-    c_cov_area = centr .* sumcover .* area
-
-    # node connectivity centrality, need to instead work out strongest predecessors to priority sites
-    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
-
-    # Wave damage, account for cases where no chance of damage or heat stress
-    # if max > 0 then use damage probability from wave exposure
-    A[:, 3] .= maximum(damprob) != 0 ? damprob / maximum(damprob) : damprob
-
-    # risk from heat exposure
-    A[:, 4] .= maximum(heatstressprob) != 0 ? heatstressprob / maximum(heatstressprob) : heatstressprob
-
-    # priority predecessors
-    A[:, 5] .= predec[:, 3]
-
-    # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 6] = (maxcover - sumcover) ./ maxcover 
-
-    # set any infs to zero
-    A[maxcover .== 0, 6] .= 0.0
-
-    # Filter out sites that have high risk of wave damage, specifically
-    # exceeding the risk tolerance
-    A[A[:, 3] .> risktol, 3] .= NaN
-    rule = (A[:, 3] .<= risktol) .& (A[:, 4] .> risktol)
-    A[rule, 4] .= NaN
-
-    # remove rows with NaNs
-    A = A[vec(.!any(isnan.(A), dims=2)), :]
-
-    # Set up SE and SH to be same size as A
-    SE = zeros(size(A, 1), 6)
-    SH = zeros(size(A, 1), 6)
-
+    A = create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         nprefseedsites = 0
@@ -140,25 +200,17 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         return prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
     end
 
+    # Set up SE and SH to be same size as A
+    SE = zeros(size(A, 1), 6)
+    SH = zeros(size(A, 1), 6)
+
     # cap to number of sites left after risk filtration
     nsiteint = min(nsiteint, length(A[:, 1]))
 
     ## Seeding - Filtered set
     # define seeding weights
     if log_seed
-        wse = [1, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover]
-        wse[2:end] .= mcda_normalize(wse[2:end])
-
-        # define seeding decision matrix
-        SE[:, 1:2] = A[:, 1:2]  # sites column (remaining), centrality
-
-        SE[:, 3] = (1.0 .- A[:, 3])  # compliment of damage risk
-        SE[:, 4] = (1.0 .- A[:, 4])  # compliment of wave risk
-        SE[:, 5:6] = A[:, 5:6]  # priority predecessors, coral real estate relative to max capacity
-
-        # remove sites at maximum carrying capacity, take inverse log to emphasize importance of space for seeding
-        SE = SE[vec(A[:, 6] .> 0), :]
-        SE[:,6] = 10 .^ SE[:,6]./maximum(10 .^ SE[:,6])
+        SE = filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     end
 
     if log_shade
