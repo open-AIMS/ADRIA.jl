@@ -1,6 +1,5 @@
 """Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
 
-
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     nsiteint  # ::I
@@ -22,7 +21,6 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wtpredecseed  # ::F
     wtpredecshade  # ::F
 end
-
 
 """
     mcda_normalize(x::Union{Matrix, Vector})::Union{Matrix, Vector}
@@ -158,11 +156,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
         # remove sites at maximum carrying capacity, take inverse log to emphasize importance of space for seeding
         SE = SE[vec(A[:, 6] .> 0), :]
-        cover_temp = zeros(length(SE[:,6]))
-        for k = 1:length(cover_temp)
-            cover_temp[k] = 10^SE[k,6]
-        end
-        SE[:,6] = cover_temp./maximum(cover_temp)
+        SE[:,6] = 10 .^ SE[:,6]./maximum(10 .^ SE[:,6])
     end
 
     if log_shade
