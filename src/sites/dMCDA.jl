@@ -125,8 +125,9 @@ Filter seed sites
 - wtconseed : Seed connectivity weight
 - wtwaves : Wave stress weight
 - wtheat : heat stress weight
-- wtpredecseed : predecessor seed (???)
-- wtlocover : level of preference for sites with low coral cover (?)
+- wtpredecseed : priority predecessor weight
+- wtlocover : weighting for low coral cover (coral real estate), when seeding
+- wthicover : weighting for hight coral cover, when shading
 """
 function filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     wse = [1, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover]
