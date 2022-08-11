@@ -25,16 +25,13 @@ import ADRIA: mcda_normalize, create_decision_matrix, filter_seed_sites
 
     A = create_decision_matrix(1:n_sites, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
 
-    # There should be nothing in `A` that is Inf or NaN
-    @test !any(isnan.(A))
-    @test !any(isinf.(A))
+    @test !any(isnan.(A)) || "NaNs found in decision matrix"
+    @test !any(isinf.(A)) || "Infs found in decision matrix"
 
-    # Site with known 0 max cover should be 0
-    @test A[end, 6] == 0.0
+    @test A[end, 6] == 0.0 || "Site with 0 max cover should be ignored but was not"
 
-    # After normalization, all entries should be in [0,1]
-    @test !any(A .> 1.0)
-    @test !any(A .< 0.0)
+    # After normalization, all entries should be ∈ [0,1]
+    @test all(0.0 .< A .< 1.0) || "Decision matrix values out of bounds"
 end
 
 
@@ -64,11 +61,7 @@ end
     SE = zeros(size(A, 1), 6)
     SE = filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
 
-    # Last site should be filtered out due to no space
-    # Third site should be filtered out due to cover >carrying capacity
-    @test size(SE, 1) == (size(A, 1) - 2)
-    @test maximum(SE[:, 1]) != maximum(A[:, 1])
-
-    # Largest site with plenty of space should have highest score
-    @test SE[1, 6] == 1.0
+    @test size(SE, 1) == (size(A, 1) - 2) || "Site where cover > carrying capacity not filtered out"
+    @test maximum(SE[:, 1]) != maximum(A[:, 1]) || "Last site should be filtered out due to no space"
+    @test SE[1, 6] == 1.0 || "Largest site with lots of space should have highest score"
 end
