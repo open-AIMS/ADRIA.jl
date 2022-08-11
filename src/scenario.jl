@@ -8,6 +8,9 @@ import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_vol
 
 Establish tuple of matrices/vectors for use as reusable data stores to avoid repeated memory allocations.
 """
+
+using Infiltrator
+
 function setup_cache(domain::Domain)::NamedTuple
 
     # sim constants
@@ -525,8 +528,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         if seed_corals && in_seed_years && has_seed_sites
 
             @infiltrate
-            # Extract site area for selected sites
-            site_area_seed = total_site_area[prefseedsites]
+            # extract site area for sites selected and scale by available space for populations (k/100)
+            site_area_seed = site_area[prefseedsites] .* (max_cover[prefseedsites]-sum(cov_tmp, dims=1)[prefseedsites])
 
             # Determine area (m^2) to be covered by seeded corals
             # and make relative to total site
