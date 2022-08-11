@@ -50,6 +50,35 @@ end
 
 
 """
+    rank_sites!(S, weights, rankings, nsiteint)
+
+# Arguments
+- S : Matrix, Site preference values
+- weights : weights to apply
+- rankings : vector of site ranks to update
+- nsiteint : number of sites to select for interventions
+"""
+function rank_sites!(S, weights, rankings, nsiteint)::Vector
+    # Filter out all non-preferred sites
+    selector = vec(.!all(S .== 0, dims=1))
+    weights = weights[selector]
+    S = S[:, selector]
+
+    S[:, 2:end] = mcda_normalize(S[:, 2:end])
+    S .= S .* repeat(weights', size(S, 1), 1)
+    s_order = mcda_func(S)
+
+    last_idx = min(nsiteint, size(s_order, 1))
+    prefshadesites = Int.(s_order[1:last_idx, 1])
+
+    # Match by site_id and assign rankings to log
+    align_rankings!(rankings, s_order, 3)
+
+    return prefshadesites
+end
+
+
+"""
     create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec)
 
 Creates decision matrix `A`, with sites filtered based on risk.
@@ -197,9 +226,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     A = create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
-        nprefseedsites = 0
-        nprefshadesites = 0
-        return prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
+        return prefseedsites, prefshadesites, rankings
     end
 
     # Set up SE and SH to be same size as A
@@ -222,9 +249,9 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         wsh[2:end] .= mcda_normalize(wsh[2:end])
 
         SH[:, 1:2] = A[:, 1:2] # sites column (remaining), absolute centrality
-        SH[:, 3] = (1.0 .- A[:, 3]) # complimentary of wave damage risk
+        SH[:, 3] = 1.0 .- A[:, 3] # complimentary of wave damage risk
         SH[:, 4:5] = A[:, 4:5] # complimentary of heat damage risk, priority predecessors
-        SH[:, 6] = (1.0 .- A[:, 6]) # coral cover relative to max capacity
+        SH[:, 6] = 1.0 .- A[:, 6] # coral cover relative to max capacity
     end
 
     if alg_ind == 1
@@ -242,56 +269,25 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     if isempty(SE)
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
-        # Remove cols that are all 0
-        selector = vec(.!all(SE .== 0, dims=1))
-        wse = wse[selector]
-        SE = SE[:, selector]
-
-        # normalisation
-        SE[:, 2:end] = mcda_normalize(SE[:, 2:end])
-        SE .= SE .* repeat(wse', size(SE, 1), 1)
-        s_order = mcda_func(SE)
-
-        last_idx = min(nsiteint, size(s_order, 1))
-        prefseedsites = Int.(s_order[1:last_idx, 1])
-
-        # Match by site_id and assign rankings to log
-        align_rankings!(rankings, s_order, 2)
+        prefseedsites = rank_sites!(SE, wse, rankings, nsiteint)
     end
 
     if isempty(SH)
         prefshadesites = repeat([0], nsiteint)
     elseif log_shade
-        # Remove cols that are all 0
-        selector = vec(.!all(SH .== 0, dims=1))
-        wsh = wsh[selector]
-        SH = SH[:, selector]
-
-        # normalisation
-        SH[:, 2:end] = mcda_normalize(SH[:, 2:end])
-        SH .= SH .* repeat(wsh', size(SH, 1), 1)
-        s_order = mcda_func(SH)
-
-        last_idx = min(nsiteint, size(s_order, 1))
-        prefshadesites = Int.(s_order[1:last_idx, 1])
-
-        # Match by site_id and assign rankings to log
-        align_rankings!(rankings, s_order, 3)
+        prefshadesites = rank_sites!(SH, wsh, rankings, nsiteint)
     end
 
-    nprefseedsites = length(prefseedsites)
-    nprefshadesites = length(prefshadesites)
-
     # Replace with input rankings if seeding or shading rankings have not been filled
-    if (sum(rankings[:, 2]) == 0.0) && (nprefseedsites != 0)
+    if (sum(rankings[:, 2]) == 0.0) && (length(prefseedsites) != 0)
         rankings[:, 2] .= @view rankingsin[:, 2]
     end
 
-    if (sum(rankings[:, 3]) == 0.0) && (nprefshadesites != 0)
+    if (sum(rankings[:, 3]) == 0.0) && (length(prefshadesites) != 0)
         rankings[:, 3] .= @view rankingsin[:, 3]
     end
 
-    return prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
+    return prefseedsites, prefshadesites, rankings
 end
 
 
