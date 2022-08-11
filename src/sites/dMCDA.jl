@@ -85,9 +85,10 @@ end
 """
     create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec)
 
-Creates decision matrix `A`, with sites filtered based on risk.
+Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
+Sites are then filtered based on heat and wave stress risk.
 
-If no sites are filtered the size of ``A := n_sites x 6``.
+Where no sites are filtered, size of ``A := n_sites × 6 criteria``.
 
 Columns indicate:
 1. Site ID
@@ -106,7 +107,7 @@ Columns indicate:
 - damprob : Probability of wave damage
 - heatstressprob : Probability of site being affected by heat stress
 - predec : list of priority predecessors (sites strongly connected to priority sites)
-- risktol : tolerance for wave and heat risk (0-1). Sites with heat or wave risk> risktol are filtered out.
+- risktol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
 """
 function create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
     A = zeros(length(site_ids), 6)
@@ -149,21 +150,20 @@ end
 
 
 """
-    filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+    create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
 
-Filter seed sites
+Create seeding specific decision matrix from criteria matrix. The weight criteria and filter.
 
 # Arguments
-- SE : Pre-existing seed decision matrix to populate
-- A : Criteria decision matrix
-- wtconseed : Seed connectivity weight
+- SE : Seeding decision matrix, containing criteria specific to seeding
+- A : Criteria  matrix
+- wtconseed : Seed connectivity weight for seeding
 - wtwaves : Wave stress weight
-- wtheat : heat stress weight
-- wtpredecseed : priority predecessor weight
-- wtlocover : weighting for low coral cover (coral real estate), when seeding
-- wthicover : weighting for hight coral cover, when shading
+- wtheat : Heat stress weight
+- wtpredecseed : Priority predecessor weight
+- wtlocover : Weighting for low coral cover (coral real estate), when seeding 
 """
-function filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+function create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     wse = [1, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover]
     wse[2:end] .= mcda_normalize(wse[2:end])
 
@@ -183,12 +183,51 @@ end
 
 
 """
+    create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+
+Create shading specific decision matrix and apply weightings.
+
+# Arguments
+- SH : Shading decision matrix, containing criteria specific to seeding
+- A : Criteria  matrix
+- wtconshade : Shading connectivity weight
+- wtwaves : Wave stress weight
+- wtheat : Heat stress weight
+- wtpredecshade : Priority predecessor weight for shading
+- wthicover : Weighting for high coral cover when shading 
+"""
+function create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+    wsh = [1, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
+    wsh[2:end] .= mcda_normalize(wsh[2:end])
+    
+    SH[:, 1:2] = A[:, 1:2] # sites column (remaining), absolute centrality
+    SH[:, 3] = (1.0 .- A[:, 3]) # complimentary of wave damage risk
+    SH[:, 4:5] = A[:, 4:5] # complimentary of heat damage risk, priority predecessors
+    SH[:, 6] = (1.0 .- A[:, 6]) # coral cover relative to max capacity
+    SH[SH[:,6] .> 1.0, 6] .= 1  # scale any sites above capacity back to 1
+    return SH
+end
+
+
+"""
     dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, rankingsin::Matrix{Int64})
 
-# Returns
-Tuple : preferred seed sites, preferred shade/fog sites, number of seed sites, number of shade sites, rankings
+# Arguments
+- d_vars : DMCDA_vars type struct containing weightings and criteria values for site selection.
+- alg_ind : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
+- log_seed : boolean ideicating whether seeding sites are being re-assesed at current time
+- log_shade : boolean ideicating whether shading/fogging sites are being re-assesed at current time
+- prefshadesites : previous time step's selection of sites for shading
+- prefseedsites : previous time step's selection of sites for seeding
+- rankingsin : storage for site rankings
 
-        `rankings` is an Nx3 matrix holding: site_id, seeding_rank, shading_rank
+# Returns
+Tuple : 
+    - prefseedsites : nsiteint highest ranked seeding sites
+    - prefshadesites : nsiteint highest ranked shading/fogging sites
+    - number of seed sites : nprefseedsites
+    - nprefshadesites : number of shade sites
+    - rankings : nsitesx3 matrix holding [site_id, seeding_rank, shading_rank],
         0 indicates sites that were not considered
 """
 function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool,
@@ -240,22 +279,14 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     # cap to number of sites left after risk filtration
     nsiteint = min(nsiteint, length(A[:, 1]))
 
-    ## Seeding - Filtered set
-    # define seeding weights
+    # if seeding, create seeding specific decision matrix
     if log_seed
-        SE = filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+        SE = create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     end
 
+    # if shading, create shading specific decision matrix
     if log_shade
-        ## Shading filtered set
-        # define shading weights
-        wsh = [1, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
-        wsh[2:end] .= mcda_normalize(wsh[2:end])
-
-        SH[:, 1:2] = A[:, 1:2] # sites column (remaining), absolute centrality
-        SH[:, 3] = 1.0 .- A[:, 3] # complimentary of wave damage risk
-        SH[:, 4:5] = A[:, 4:5] # complimentary of heat damage risk, priority predecessors
-        SH[:, 6] = 1.0 .- A[:, 6] # coral cover relative to max capacity
+        SH = create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     end
 
     if alg_ind == 1
@@ -295,6 +326,18 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 end
 
 
+"""
+    order_ranking(S::Array{Float64, 2})
+
+Uses simple summation as aggregation method for decision criteria. 
+Then orders sites from highest aggregate score to lowest.
+
+# Arguments
+- S : Decision matrix (seeding or shading)
+# Returns
+- s_order : nsites × 2 matrix with s_order[:,1] = site ids, s_order[:,2] = calculated site rank.
+
+"""
 function order_ranking(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
     n::Int64 = size(S,1)
     s_order::Array = Union{Float64, Int64}[zeros(Int, n) zeros(Float64, n) zeros(Int, n)]
@@ -310,17 +353,40 @@ function order_ranking(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
 end
 
 
+"""
+    topsis(S::Array{Float64, 2})
+
+Calculates ranks using the aggregation method of the TOPSIS MCDA algorithm.
+Rank for a particular site is calculated as a ratio 
+
+    C = S_n/(S_p + S_n)
+    
+S_n = √{∑(criteria .- NIS)²}
+    is the squareroot of the summed differences between the criteria for a site and the
+    Negative Ideal Solution (NIS), or worst performing site in each criteria.
+S_p  = √{∑(criteria .- NIS)²}
+    is the squareroot of the summed differences between the criteria for a site and the
+    Positive Ideal Solution (PIS), or best performing site in each criteria.
+
+    Details of this aggregation method in, for example [1].
+
+# References
+1. Opricovic, Serafim & Tzeng, Gwo-Hshiung. (2004) European Journal of Operational Research. 
+    Vol. 156. pp. 445. 
+    https://doi.org/10.1016/S0377-2217(03)00020-1. 
+
+# Arguments
+- S : Decision matrix (seeding or shading)
+# Returns
+- s_order : nsites*2 matrix with s_order[:,1] = site ids, s_order[:,2] = calculated site rank.
+
+"""
 function topsis(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
 
-    # compute the set of positive ideal solutions for each criteria (max for
-    # good criteria, min for bad criteria). Max used as all criteria
-    # represent preferred attributes not costs or negative attributes
+    # compute the set of positive ideal solutions for each criteria
     PIS = maximum(S[:, 2:end], dims=1)
 
     # compute the set of negative ideal solutions for each criteria
-    # (min for good criteria, max for bad criteria).
-    # Min used as all criteria represent preferred attributes not
-    # costs or negative attributes
     NIS = minimum(S[:, 2:end], dims=1)
 
     # calculate separation distance from the ideal and non-ideal solutions
@@ -343,12 +409,43 @@ end
 """
     vikor(S; v=0.5)
 
+Calculates ranks using the aggregation method of the VIKOR MCDA algorithm.
+Rank for a particular site is calculated as a linear combination of ratios,
+weighted by v:
+    Q = v(Sr - S_h) / (S_s - S_h) + (1 - v)(R - R_h) / (R_s - R_h)
+    
+where 
+- Sr = ∑(PIS-criteria) for each site, summed over criteria.
+- R = max(PIS-criteria) for each site, with the max over criteria.
+- S_h = min(∑(PIS-criteria)) over sites, the minimum summed distance from
+    the positive ideal solution.
+- S_s = max(∑(PIS-criteria)) over sites, maximum summed distance from 
+    the positive ideal solution.
+- R_h = min(max(PIS-criteria)) over sites, the minimum max distance from
+    the positive ideal solution.
+- R_s = max(max(PIS-criteria)) over sites, the maximum max distance from
+    the positive ideal solution.
+- v = weighting, representing different decision-making strategies,
+    or level of compromise between utility (overall performance)
+    and regret (risk of performing very badly in one criteria despite
+    exceptional performance in others)
+    - v = 0.5 is consensus
+    - v < 0.5 is minimal regret
+    - v > 0.5 is max group utility (majority rules)
+
+Details of this aggregation method in, for example [1]
+
+# References
+1. Alidrisi H. (2021) Journal of Risk and Financial Management.
+    Vol. 14. No. 6. pp. 271. 
+    https://doi.org/10.3390/jrfm14060271
+
 # Arguments
 - S : Matrix
-- v : Real, level of compromise (utility vs. regret).
-        - v = 0.5 is consensus
-        - v < 0.5 is minimal regret
-        - v > 0.5 is max group utility (majority rules)
+- v : Real
+
+# Returns
+- s_order : nsites*2 matrix with s_order[:,1] = site ids, s_order[:,2] = calculated site rank.
 
 """
 function vikor(S::Array{Float64, 2}; v::Float64=0.5)::Array{Union{Float64, Int64}, 2}
