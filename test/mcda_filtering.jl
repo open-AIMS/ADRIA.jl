@@ -1,7 +1,6 @@
 using Test
 import ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_shade_matrix
 
-using Infiltrator
 @testset "Create decision matrix" begin
 
     # Dummy data to create decision matrix from
@@ -78,7 +77,6 @@ end
     damprob = [0.05, 0.1, 0.1, 0.5, 0.0]
     heatstressprob = [0.05, 0.1, 0.1, 0.5, 0.0]
     
-    @infiltrate
     # Dummy priority predecssors
     prioritysites = zeros(n_sites)
     predec = zeros(n_sites, 3)
