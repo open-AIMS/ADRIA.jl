@@ -32,6 +32,7 @@ function mcda_normalize(x::Union{Matrix, Vector})::Union{Matrix, Vector}
     return x ./ sqrt(sum(x .^ 2))
 end
 
+
 """
     align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 
@@ -46,6 +47,7 @@ function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 
     return
 end
+
 
 """
     rank_sites!(S, weights, rankings, nsiteint)
@@ -82,7 +84,7 @@ end
 Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
 Sites are then filtered based on heat and wave stress risk.
 
-Where no sites are filtered, size of ``A := n_sites x 6 criteria``.
+Where no sites are filtered, size of ``A := n_sites × 6 criteria``.
 
 Columns indicate:
 1. Site ID
@@ -101,7 +103,7 @@ Columns indicate:
 - damprob : Probability of wave damage
 - heatstressprob : Probability of site being affected by heat stress
 - predec : list of priority predecessors (sites strongly connected to priority sites)
-- risktol : tolerance for wave and heat risk (0-1). Sites with heat or wave risk> risktol are filtered out.
+- risktol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
 """
 function create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
     A = zeros(length(site_ids), 6)
@@ -142,6 +144,7 @@ function create_decision_matrix(site_ids, centr, sumcover, maxcover, area, dampr
     return A
 end
 
+
 """
     create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
 
@@ -174,6 +177,7 @@ function create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtl
     return SE
 end
 
+
 """
     create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
 
@@ -191,26 +195,27 @@ Create shading specific decision matrix and apply weightings.
 function create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     wsh = [1, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
     wsh[2:end] .= mcda_normalize(wsh[2:end])
-
+    
     SH[:, 1:2] = A[:, 1:2] # sites column (remaining), absolute centrality
     SH[:, 3] = (1.0 .- A[:, 3]) # complimentary of wave damage risk
     SH[:, 4:5] = A[:, 4:5] # complimentary of heat damage risk, priority predecessors
     SH[:, 6] = (1.0 .- A[:, 6]) # coral cover relative to max capacity
-
-    return SE
+    SH[SH[:,6] .> 1.0, 6] .= 1  # scale any sites above capacity back to 1
+    return SH
 end
+
 
 """
     dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, rankingsin::Matrix{Int64})
 
 # Arguments
-    - d_vars : DMCDA_vars type struct containing weightings and criteria values for site selection.
-    - alg_ind : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
-    - log_seed : boolean ideicating whether seeding sites are being re-assesed at current time
-    - log_shade : boolean ideicating whether shading/fogging sites are being re-assesed at current time
-    - prefshadesites : previous time step's selection of sites for shading
-    - prefseedsites : previous time step's selection of sites for seeding
-    - rankingsin : storage for site rankings
+- d_vars : DMCDA_vars type struct containing weightings and criteria values for site selection.
+- alg_ind : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
+- log_seed : boolean ideicating whether seeding sites are being re-assesed at current time
+- log_shade : boolean ideicating whether shading/fogging sites are being re-assesed at current time
+- prefshadesites : previous time step's selection of sites for shading
+- prefseedsites : previous time step's selection of sites for seeding
+- rankingsin : storage for site rankings
 
 # Returns
 Tuple : 
@@ -295,43 +300,13 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     if isempty(SE)
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
-        # Remove cols that are all 0
-        selector = vec(.!all(SE .== 0, dims=1))
-        wse = wse[selector]
-        SE = SE[:, selector]
-
-        # normalisation
-        SE[:, 2:end] = mcda_normalize(SE[:, 2:end])
-        SE .= SE .* repeat(wse', size(SE, 1), 1)
-
-        # ranking
-        s_order = mcda_func(SE)
-        last_idx = min(nsiteint, size(s_order, 1))
-        prefseedsites = Int.(s_order[1:last_idx, 1])
-
-        # Match by site_id and assign rankings to log
-        align_rankings!(rankings, s_order, 2)
+        prefseedsites = rank_sites!(SE, wse, rankings, nsiteint)
     end
 
     if isempty(SH)
         prefshadesites = repeat([0], nsiteint)
     elseif log_shade
-        # Remove cols that are all 0
-        selector = vec(.!all(SH .== 0, dims=1))
-        wsh = wsh[selector]
-        SH = SH[:, selector]
-
-        # normalisation
-        SH[:, 2:end] = mcda_normalize(SH[:, 2:end])
-        SH .= SH .* repeat(wsh', size(SH, 1), 1)
-
-        # ranking
-        s_order = mcda_func(SH)
-        last_idx = min(nsiteint, size(s_order, 1))
-        prefshadesites = Int.(s_order[1:last_idx, 1])
-
-        # Match by site_id and assign rankings to log
-        align_rankings!(rankings, s_order, 3)
+        prefshadesites = rank_sites!(SH, wsh, rankings, nsiteint)
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
@@ -346,16 +321,17 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     return prefseedsites, prefshadesites, rankings
 end
 
+
 """
     order_ranking(S::Array{Float64, 2})
 
-    Uses simple summation as aggregation method for decision criteria. 
-    Then orders sites from highest aggregate score to lowest.
+Uses simple summation as aggregation method for decision criteria. 
+Then orders sites from highest aggregate score to lowest.
 
 # Arguments
 - S : Decision matrix (seeding or shading)
 # Returns
-- s_order : nsites*2 matrix with s_order[:,1] = site ids, s_order[:,2] = calculated site rank.
+- s_order : nsites × 2 matrix with s_order[:,1] = site ids, s_order[:,2] = calculated site rank.
 
 """
 function order_ranking(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
@@ -372,24 +348,28 @@ function order_ranking(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
     return s_order
 end
 
+
 """
     topsis(S::Array{Float64, 2})
 
-    Calculates ranks using the aggregation method of the TOPSIS MCDA algorithm.
-    Rank for a particular site is calculated as a ratio 
+Calculates ranks using the aggregation method of the TOPSIS MCDA algorithm.
+Rank for a particular site is calculated as a ratio 
 
-        C = S_n ./ (S_p + S_n)
+    C = S_n/(S_p + S_n)
     
-    S_n = sqrt.(sum((criteria .- NIS) .^ 2,dims=2))
-        is the squareroot of the summed differences between the criteria for a site and the
-         Negative Ideal Solution (NIS), or worst performing site in each criteria.
-    S_p  = sqrt.(sum((criteria .- PIS) .^ 2,dims=2))
-        is the squareroot of the summed differences between the criteria for a site and the
-        Positive Ideal Solution (PIS), or best performing site in each criteria.
+S_n = √{∑(criteria .- NIS)²}
+    is the squareroot of the summed differences between the criteria for a site and the
+    Negative Ideal Solution (NIS), or worst performing site in each criteria.
+S_p  = √{∑(criteria .- NIS)²}
+    is the squareroot of the summed differences between the criteria for a site and the
+    Positive Ideal Solution (PIS), or best performing site in each criteria.
 
-    Details of this aggregation method in, for example:
-    Opricovic, Serafim & Tzeng, Gwo-Hshiung. (2004) European Journal of Operational Research. 
-    Vol. 156. pp. 445. DOI: 10.1016/S0377-2217(03)00020-1. 
+    Details of this aggregation method in, for example [1].
+
+# References
+1. Opricovic, Serafim & Tzeng, Gwo-Hshiung. (2004) European Journal of Operational Research. 
+    Vol. 156. pp. 445. 
+    https://doi.org/10.1016/S0377-2217(03)00020-1. 
 
 # Arguments
 - S : Decision matrix (seeding or shading)
@@ -421,40 +401,45 @@ function topsis(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
     return s_order
 end
 
+
 """
     vikor(S; v=0.5)
 
-    Calculates ranks using the aggregation method of the VIKOR MCDA algorithm.
-    Rank for a particular site is calculated as a linear combination of ratios,
-    weighted by v:
-        Q = v * (Sr - S_h) / (S_s - S_h) + (1 - v) * (R - R_h) / (R_s - R_h)
+Calculates ranks using the aggregation method of the VIKOR MCDA algorithm.
+Rank for a particular site is calculated as a linear combination of ratios,
+weighted by v:
+    Q = v(Sr - S_h) / (S_s - S_h) + (1 - v)(R - R_h) / (R_s - R_h)
     
-    where 
-    - Sr = sum(PIS-criteria) for each site, summed over criteria.
-    - R = max(PIS-criteria) for each site, with the max over criteria.
-    - S_h = min(sum(PIS-criteria)) over sites, the minimum summed distance from
-            the positive ideal solution.
-    - S_s = max(sum(PIS-criteria)) over sites, maximum summed distance from 
-            the positive ideal solution.
-    - R_h = min(max(PIS-criteria)) over sites, the minimum max distance from
-            the positive ideal solution.
-    - R_s = max(max(PIS-criteria)) over sites, the maximum max distance from
-            the positive ideal solution.
-    - v = weighting, representing different decision-making strategies,
-            or level of compromise between utility (overall performance)
-            and regret (risk of performing very badly in one criteria despite
-            exceptional performance in others)
-            - v = 0.5 is consensus
-            - v < 0.5 is minimal regret
-            - v > 0.5 is max group utility (majority rules)
+where 
+- Sr = ∑(PIS-criteria) for each site, summed over criteria.
+- R = max(PIS-criteria) for each site, with the max over criteria.
+- S_h = min(∑(PIS-criteria)) over sites, the minimum summed distance from
+    the positive ideal solution.
+- S_s = max(∑(PIS-criteria)) over sites, maximum summed distance from 
+    the positive ideal solution.
+- R_h = min(max(PIS-criteria)) over sites, the minimum max distance from
+    the positive ideal solution.
+- R_s = max(max(PIS-criteria)) over sites, the maximum max distance from
+    the positive ideal solution.
+- v = weighting, representing different decision-making strategies,
+    or level of compromise between utility (overall performance)
+    and regret (risk of performing very badly in one criteria despite
+    exceptional performance in others)
+    - v = 0.5 is consensus
+    - v < 0.5 is minimal regret
+    - v > 0.5 is max group utility (majority rules)
 
-    Details of this aggregation method in, for example:
-    Alidrisi H., (2021) Journal of Risk and Financial Management,
-    Vol. 14, No. 6, pp. 271. DOI: 10.3390/jrfm14060271
+Details of this aggregation method in, for example [1]
+
+# References
+1. Alidrisi H. (2021) Journal of Risk and Financial Management.
+    Vol. 14. No. 6. pp. 271. 
+    https://doi.org/10.3390/jrfm14060271
 
 # Arguments
 - S : Matrix
 - v : Real
+
 # Returns
 - s_order : nsites*2 matrix with s_order[:,1] = site ids, s_order[:,2] = calculated site rank.
 
