@@ -22,6 +22,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wtpredecshade  # ::F
 end
 
+
 """
     mcda_normalize(x::Union{Matrix, Vector})::Union{Matrix, Vector}
 
@@ -47,6 +48,35 @@ function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 end
 
 """
+    rank_sites!(S, weights, rankings, nsiteint)
+
+# Arguments
+- S : Matrix, Site preference values
+- weights : weights to apply
+- rankings : vector of site ranks to update
+- nsiteint : number of sites to select for interventions
+"""
+function rank_sites!(S, weights, rankings, nsiteint)::Vector
+    # Filter out all non-preferred sites
+    selector = vec(.!all(S .== 0, dims=1))
+    weights = weights[selector]
+    S = S[:, selector]
+
+    S[:, 2:end] = mcda_normalize(S[:, 2:end])
+    S .= S .* repeat(weights', size(S, 1), 1)
+    s_order = mcda_func(S)
+
+    last_idx = min(nsiteint, size(s_order, 1))
+    prefshadesites = Int.(s_order[1:last_idx, 1])
+
+    # Match by site_id and assign rankings to log
+    align_rankings!(rankings, s_order, 3)
+
+    return prefshadesites
+end
+
+
+"""
     create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec)
 
 Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
@@ -66,8 +96,8 @@ Columns indicate:
 - site_ids : vector of site ids
 - centr : site centrality (relative strength of connectivity)
 - sumcover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
-- maxcover : maximum possible proportional coral cover for each site, relative to total site area (k <= 1.0)
-- area : absolute area (in m²)
+- maxcover : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
+- area : absolute area (in m²) for each site
 - damprob : Probability of wave damage
 - heatstressprob : Probability of site being affected by heat stress
 - predec : list of priority predecessors (sites strongly connected to priority sites)
@@ -230,9 +260,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     A = create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
-        nprefseedsites = 0
-        nprefshadesites = 0
-        return prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
+        return prefseedsites, prefshadesites, rankings
     end
 
     # Set up SE and SH to be same size as A
@@ -261,7 +289,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         # elseif alg_ind == 4
         #     mcda_func = multi_GA
     else
-        error("Unknown MCDA algorithm selected. Valid options are 1 to 3.")
+        error("Unknown MCDA algorithm selected. Valid options are 1 (Order Ranking), 2 (TOPSIS) and 3 (VIKOR).")
     end
 
     if isempty(SE)
@@ -306,19 +334,16 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         align_rankings!(rankings, s_order, 3)
     end
 
-    nprefseedsites = length(prefseedsites)
-    nprefshadesites = length(prefshadesites)
-
     # Replace with input rankings if seeding or shading rankings have not been filled
-    if (sum(rankings[:, 2]) == 0.0) && (nprefseedsites != 0)
+    if (sum(rankings[:, 2]) == 0.0) && (length(prefseedsites) != 0)
         rankings[:, 2] .= @view rankingsin[:, 2]
     end
 
-    if (sum(rankings[:, 3]) == 0.0) && (nprefshadesites != 0)
+    if (sum(rankings[:, 3]) == 0.0) && (length(prefshadesites) != 0)
         rankings[:, 3] .= @view rankingsin[:, 3]
     end
 
-    return prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
+    return prefseedsites, prefshadesites, rankings
 end
 
 """

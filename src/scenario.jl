@@ -464,12 +464,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
             mcda_vars.sumcover .= sum(cov_tmp, dims=1)  # dims: nsites * 1
 
-            (prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
-                seed_decision_years[tstep], shade_decision_years[tstep],
-                prefseedsites, prefshadesites, rankings)
-
-            # nprefseed[tstep] = nprefseedsites    # number of preferred seeding sites
-            # nprefshade[tstep] = nprefshadesites  # number of preferred shading sites
+            (prefseedsites, prefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach, 
+                                                              seed_decision_years[tstep], shade_decision_years[tstep],
+                                                              prefseedsites, prefshadesites, rankings)
 
             # Log site ranks
             # First col only holds site ids so skip (with 2:end)
