@@ -54,7 +54,7 @@ end
 
 Creates decision matrix `A`, with sites filtered based on risk.
 
-Where no sites are filtered, size of ``A := n_sites x 6``.
+If no sites are filtered the size of ``A := n_sites x 6``.
 
 Columns indicate:
 1. Site ID
@@ -69,7 +69,7 @@ Columns indicate:
 - centr : site centrality (relative strength of connectivity)
 - sumcover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
 - maxcover : maximum possible proportional coral cover for each site, relative to total site area (k <= 1.0)
-- area : absolute area (in m²)
+- area : absolute area (in m²) for each site
 - damprob : Probability of wave damage
 - heatstressprob : Probability of site being affected by heat stress
 - predec : list of priority predecessors (sites strongly connected to priority sites)
@@ -236,7 +236,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         # elseif alg_ind == 4
         #     mcda_func = multi_GA
     else
-        error("Unknown MCDA algorithm selected. Valid options are 1 to 3.")
+        error("Unknown MCDA algorithm selected. Valid options are 1 (Order Ranking), 2 (TOPSIS) and 3 (VIKOR).")
     end
 
     if isempty(SE)
