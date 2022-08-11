@@ -60,9 +60,9 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
 
     # Ensure no non-negative values
     du .= max.(du, 0.0)
-    
-    c::Vector{Float64} = vec(sum(du, dims=1))
-    if any(c .> k)
+
+    c::Vector{Float64} = zeros(size(du, 2))
+    proportional_adjustment!(du, c, collect(k))
 
     c::Vector{Float64} = zeros(size(du, 2))
     proportional_adjustment!(du, c, collect(k))
