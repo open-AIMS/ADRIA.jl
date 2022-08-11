@@ -38,10 +38,11 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
 
     # Ensure no non-negative values
     du .= max.(du, 0.0)
-
-    c::Matrix{Float64} = sum(du, dims=1)
+    
+    c::Vector{Float64} = vec(sum(du, dims=1))
     if any(c .> k)
-        exceeded::Vector{Int32} = findall(c .> k)
+
+        exceeded::Vector{Int64} = findall(c .> vec(k))
         du[:, exceeded] .= (du[:, exceeded] ./ c[exceeded]') .* k[exceeded]'
     end
 

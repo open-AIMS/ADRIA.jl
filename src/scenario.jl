@@ -116,7 +116,7 @@ function proportional_adjustment!(Yout::AbstractArray{<:Real}, Ycover::AbstractA
     # Proportionally adjust initial covers
     @views Ycover .= vec(sum(Yout[tstep, :, :], dims=1))
     if any(Ycover .> max_cover)
-        exceeded::Vector{Int32} = findall(Ycover .> max_cover)
+        exceeded::Vector{Int32} = findall(Ycover .> vec(max_cover))
 
         @views Yout[tstep, :, exceeded] .= (Yout[tstep, :, exceeded] ./ Ycover[exceeded]') .* max_cover[exceeded]'
     end
@@ -464,12 +464,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
             mcda_vars.sumcover .= sum(cov_tmp, dims=1)  # dims: nsites * 1
 
-            (prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
-                seed_decision_years[tstep], shade_decision_years[tstep],
-                prefseedsites, prefshadesites, rankings)
-
-            # nprefseed[tstep] = nprefseedsites    # number of preferred seeding sites
-            # nprefshade[tstep] = nprefshadesites  # number of preferred shading sites
+            (prefseedsites, prefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach, 
+                                                              seed_decision_years[tstep], shade_decision_years[tstep],
+                                                              prefseedsites, prefshadesites, rankings)
 
             # Log site ranks
             # First col only holds site ids so skip (with 2:end)

@@ -1,6 +1,5 @@
 """Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
 
-
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     nsiteint  # ::I
@@ -51,6 +50,135 @@ end
 
 
 """
+    rank_sites!(S, weights, rankings, nsiteint)
+
+# Arguments
+- S : Matrix, Site preference values
+- weights : weights to apply
+- rankings : vector of site ranks to update
+- nsiteint : number of sites to select for interventions
+"""
+function rank_sites!(S, weights, rankings, nsiteint)::Vector
+    # Filter out all non-preferred sites
+    selector = vec(.!all(S .== 0, dims=1))
+    weights = weights[selector]
+    S = S[:, selector]
+
+    S[:, 2:end] = mcda_normalize(S[:, 2:end])
+    S .= S .* repeat(weights', size(S, 1), 1)
+    s_order = mcda_func(S)
+
+    last_idx = min(nsiteint, size(s_order, 1))
+    prefshadesites = Int.(s_order[1:last_idx, 1])
+
+    # Match by site_id and assign rankings to log
+    align_rankings!(rankings, s_order, 3)
+
+    return prefshadesites
+end
+
+
+"""
+    create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec)
+
+Creates decision matrix `A`, with sites filtered based on risk.
+
+If no sites are filtered the size of ``A := n_sites x 6``.
+
+Columns indicate:
+1. Site ID
+2. Node Connectivity Centrality
+3. Wave Damage Probability
+4. Heat Stress Probability
+5. Priority Predecessors
+6. Available Area (relative to max cover)
+
+# Arguments
+- site_ids : vector of site ids
+- centr : site centrality (relative strength of connectivity)
+- sumcover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
+- maxcover : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
+- area : absolute area (in m²) for each site
+- damprob : Probability of wave damage
+- heatstressprob : Probability of site being affected by heat stress
+- predec : list of priority predecessors (sites strongly connected to priority sites)
+- risktol : tolerance for wave and heat risk (0-1). Sites with heat or wave risk> risktol are filtered out.
+"""
+function create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
+    A = zeros(length(site_ids), 6)
+
+    A[:, 1] .= site_ids  # Column of site ids
+
+    # Account for cases where no coral cover
+    c_cov_area = centr .* sumcover .* area
+
+    # node connectivity centrality, need to instead work out strongest predecessors to priority sites
+    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
+
+    # Wave damage, account for cases where no chance of damage or heat stress
+    # if max > 0 then use damage probability from wave exposure
+    A[:, 3] .= maximum(damprob) != 0 ? damprob / maximum(damprob) : damprob
+
+    # risk from heat exposure
+    A[:, 4] .= maximum(heatstressprob) != 0 ? heatstressprob / maximum(heatstressprob) : heatstressprob
+
+    # priority predecessors
+    A[:, 5] .= predec[:, 3]
+
+    # Proportion of empty space (no coral) compared to max possible cover
+    A[:, 6] = (maxcover - sumcover) ./ maxcover
+
+    # set any infs to zero
+    A[maxcover .== 0, 6] .= 0.0
+
+    # Filter out sites that have high risk of wave damage, specifically
+    # exceeding the risk tolerance
+    A[A[:, 3] .> risktol, 3] .= NaN
+    rule = (A[:, 3] .<= risktol) .& (A[:, 4] .> risktol)
+    A[rule, 4] .= NaN
+
+    # remove rows with NaNs
+    A = A[vec(.!any(isnan.(A), dims=2)), :]
+
+    return A
+end
+
+
+"""
+    filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+
+Filter seed sites
+
+# Arguments
+- SE : Pre-existing seed decision matrix to populate
+- A : Criteria decision matrix
+- wtconseed : Seed connectivity weight
+- wtwaves : Wave stress weight
+- wtheat : heat stress weight
+- wtpredecseed : priority predecessor weight
+- wtlocover : weighting for low coral cover (coral real estate), when seeding
+- wthicover : weighting for hight coral cover, when shading
+"""
+function filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+    wse = [1, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover]
+    wse[2:end] .= mcda_normalize(wse[2:end])
+
+    # Define seeding decision matrix
+    SE[:, 1:2] .= A[:, 1:2]  # sites column (remaining), centrality
+
+    SE[:, 3] .= 1.0 .- A[:, 3]  # compliment of damage risk
+    SE[:, 4] .= 1.0 .- A[:, 4]  # compliment of wave risk
+    SE[:, 5:6] .= A[:, 5:6]  # priority predecessors, coral real estate relative to max capacity
+
+    # remove sites at maximum carrying capacity, take inverse log to emphasize importance of space for seeding
+    SE = SE[vec(A[:, 6] .> 0), :]
+    SE[:, 6] .= (10 .^ SE[:, 6]) ./ maximum(10 .^ SE[:, 6])
+
+    return SE
+end
+
+
+"""
     dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, rankingsin::Matrix{Int64})
 
 # Returns
@@ -87,6 +215,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
 
+    # work out which priority predecssors are connected to priority sites
     predec::Array{Float64} = zeros(nsites, 3)
     predec[:, 1:2] .= strongpred
     predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
@@ -94,51 +223,15 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     predec[predprior, 3] .= 1.0
 
-    # Combine data into matrix
-    A = zeros(length(site_ids), 6)
-
-    A[:, 1] = site_ids  # column of site IDs
-
-    # Account for cases where no coral cover
-    c_cov_area = centr .* sumcover .* area
-
-    # node connectivity centrality, need to instead work out strongest predecessors to priority sites
-    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
-
-    # Account for cases where no chance of damage or heat stress
-    # if max > 0 then use damage probability from wave exposure
-    A[:, 3] .= maximum(damprob) != 0 ? damprob / maximum(damprob) : damprob
-
-    # risk from heat exposure
-    A[:, 4] .= maximum(heatstressprob) != 0 ? heatstressprob / maximum(heatstressprob) : heatstressprob
-
-    # priority predecessors
-    A[:, 5] .= predec[:, 3]
-
-    A[:, 6] = (maxcover - sumcover) ./ maxcover # proportion of cover compared to max possible cover
-
-    # set any infs to zero
-    A[maxcover .== 0, 6] .= 0.0
-
-    # Filter out sites that have high risk of wave damage, specifically
-    # exceeding the risk tolerance
-    A[A[:, 3] .> risktol, 3] .= NaN
-    rule = (A[:, 3] .<= risktol) .& (A[:, 4] .> risktol)
-    A[rule, 4] .= NaN
-
-    # remove rows with NaNs
-    A = A[vec(.!any(isnan.(A), dims=2)), :]
+    A = create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
+    if isempty(A)
+        # if all rows have nans and A is empty, abort mission
+        return prefseedsites, prefshadesites, rankings
+    end
 
     # Set up SE and SH to be same size as A
     SE = zeros(size(A, 1), 6)
     SH = zeros(size(A, 1), 6)
-
-    if isempty(A)
-        # if all rows have nans and A is empty, abort mission
-        nprefseedsites = 0
-        nprefshadesites = 0
-        return prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
-    end
 
     # cap to number of sites left after risk filtration
     nsiteint = min(nsiteint, length(A[:, 1]))
@@ -146,19 +239,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     ## Seeding - Filtered set
     # define seeding weights
     if log_seed
-        wse = [1, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover]
-        wse[2:end] .= mcda_normalize(wse[2:end])
-
-        # define seeding decision matrix
-        SE[:, 1:2] = A[:, 1:2]  # sites column (remaining), centrality
-
-        SE[:, 3] = (1.0 .- A[:, 3])  # compliment of damage risk
-        SE[:, 4] = (1.0 .- A[:, 4])  # compliment of wave risk
-        SE[:, 5:6] = A[:, 5:6]  # priority predecessors, coral real estate relative to max capacity
-
-        # remove sites at maximum carrying capacity, take log to emphasize importance of space for seeding
-        SE = SE[vec(A[:, 6] .> 0), :]
-        SE[:,6] = -log10.(SE[:,6])
+        SE = filter_seed_sites(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     end
 
     if log_shade
@@ -168,9 +249,9 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         wsh[2:end] .= mcda_normalize(wsh[2:end])
 
         SH[:, 1:2] = A[:, 1:2] # sites column (remaining), absolute centrality
-        SH[:, 3] = (1.0 .- A[:, 3]) # complimentary of wave damage risk
+        SH[:, 3] = 1.0 .- A[:, 3] # complimentary of wave damage risk
         SH[:, 4:5] = A[:, 4:5] # complimentary of heat damage risk, priority predecessors
-        SH[:, 6] = (1.0 .- A[:, 6]) # coral cover relative to max capacity
+        SH[:, 6] = 1.0 .- A[:, 6] # coral cover relative to max capacity
     end
 
     if alg_ind == 1
@@ -182,62 +263,31 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         # elseif alg_ind == 4
         #     mcda_func = multi_GA
     else
-        error("Unknown MCDA algorithm selected. Valid options are 1 to 3.")
+        error("Unknown MCDA algorithm selected. Valid options are 1 (Order Ranking), 2 (TOPSIS) and 3 (VIKOR).")
     end
 
     if isempty(SE)
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
-        # Remove cols that are all 0
-        selector = vec(.!all(SE .== 0, dims=1))
-        wse = wse[selector]
-        SE = SE[:, selector]
-
-        # normalisation
-        SE[:, 2:end] = mcda_normalize(SE[:, 2:end])
-        SE .= SE .* repeat(wse', size(SE, 1), 1)
-        s_order = mcda_func(SE)
-
-        last_idx = min(nsiteint, size(s_order, 1))
-        prefseedsites = Int.(s_order[1:last_idx, 1])
-
-        # Match by site_id and assign rankings to log
-        align_rankings!(rankings, s_order, 2)
+        prefseedsites = rank_sites!(SE, wse, rankings, nsiteint)
     end
 
     if isempty(SH)
         prefshadesites = repeat([0], nsiteint)
     elseif log_shade
-        # Remove cols that are all 0
-        selector = vec(.!all(SH .== 0, dims=1))
-        wsh = wsh[selector]
-        SH = SH[:, selector]
-
-        # normalisation
-        SH[:, 2:end] = mcda_normalize(SH[:, 2:end])
-        SH .= SH .* repeat(wsh', size(SH, 1), 1)
-        s_order = mcda_func(SH)
-
-        last_idx = min(nsiteint, size(s_order, 1))
-        prefshadesites = Int.(s_order[1:last_idx, 1])
-
-        # Match by site_id and assign rankings to log
-        align_rankings!(rankings, s_order, 3)
+        prefshadesites = rank_sites!(SH, wsh, rankings, nsiteint)
     end
 
-    nprefseedsites = length(prefseedsites)
-    nprefshadesites = length(prefshadesites)
-
     # Replace with input rankings if seeding or shading rankings have not been filled
-    if (sum(rankings[:, 2]) == 0.0) && (nprefseedsites != 0)
+    if (sum(rankings[:, 2]) == 0.0) && (length(prefseedsites) != 0)
         rankings[:, 2] .= @view rankingsin[:, 2]
     end
 
-    if (sum(rankings[:, 3]) == 0.0) && (nprefshadesites != 0)
+    if (sum(rankings[:, 3]) == 0.0) && (length(prefshadesites) != 0)
         rankings[:, 3] .= @view rankingsin[:, 3]
     end
 
-    return prefseedsites, prefshadesites, nprefseedsites, nprefshadesites, rankings
+    return prefseedsites, prefshadesites, rankings
 end
 
 
