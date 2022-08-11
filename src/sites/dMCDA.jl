@@ -22,6 +22,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wtpredecshade  # ::F
 end
 
+
 """
     mcda_normalize(x::Union{Matrix, Vector})::Union{Matrix, Vector}
 
