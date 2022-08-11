@@ -9,8 +9,11 @@ Load domain specification from data package.
 - rcp : RCP scenario to run
 """
 function load_domain(path::String, rcp::Int64)::Domain
-
     domain_name::String = basename(path)
+    if length(domain_name) == 0
+        domain_name = basename(dirname(path))
+    end
+
     conn_path::String = joinpath(path, "connectivity/")
     site_data::String = joinpath(path, "site_data")
 
@@ -24,7 +27,7 @@ function load_domain(path::String, rcp::Int64)::Domain
         domain_name,
         rcp,
         site_path,
-        "siteref",
+        "site_id",
         "reef_siteid",
         init_coral_cov,
         conn_path,

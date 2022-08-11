@@ -1,5 +1,9 @@
 """Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
 
+
+using StatsBase
+
+
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     nsiteint  # ::I
@@ -466,4 +470,34 @@ function vikor(S::Array{Float64, 2}; v::Float64=0.5)::Array{Union{Float64, Int64
     s_order .= sortslices(s_order, dims=1, by=x->x[2], rev=false)
 
     return s_order
+end
+
+
+"""
+    unguided_site_selection!(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)
+
+Randomly select seed/shade site locations for the given year, constraining to sites with max. carrying capacity > 0.
+Here, `max_cover` represents the max. carrying capacity for each site (the `k` value).
+
+# Arguments
+- prefseedsites : Previously selected sites
+- seed_years : bool, indicating whether to seed this year or not
+- shade_years : bool, indicating whether to shade this year or not
+- nsiteint : int, number of sites to intervene on
+- max_cover : vector/matrix : maximum carrying capacity of each site (`k` value)
+"""
+function unguided_site_selection!(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)::Nothing
+    # Unguided deployment, seed/shade corals anywhere so long as max_cover > 0.
+    # Only sites with max_cover are considered, otherwise a zero-division error may occur later on.
+
+    # Select sites (without replacement to avoid duplicate sites)
+    if seed_years
+        prefseedsites .= StatsBase.sample(findall(max_cover .> 0.0), nsiteint; replace=false)
+    end
+
+    if shade_years
+        prefshadesites .= StatsBase.sample(findall(max_cover .> 0.0), nsiteint; replace=false)
+    end
+
+    return nothing
 end

@@ -2,6 +2,28 @@
 
 
 """
+    proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
+
+Helper method to proportionally adjust coral cover.
+Modifies arrays in-place.
+
+# Arguments
+- Yout : Coral cover result set
+- cover_tmp : Temporary cache matrix holding sum over species. Avoids memory allocations
+- max_cover : maximum possible coral cover for each site
+"""
+function proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
+    # Proportionally adjust initial covers
+    @views cover_tmp .= vec(sum(Yout, dims=1))
+    if any(cover_tmp .> max_cover)
+        exceeded::Vector{Int32} = findall(cover_tmp .> vec(max_cover))
+
+        @views Yout[:, exceeded] .= (Yout[:, exceeded] ./ cover_tmp[exceeded]') .* max_cover[exceeded]'
+    end
+end
+
+
+"""
     growthODE(du, X, p, _)
 
 Base coral growth function.
@@ -38,13 +60,12 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
 
     # Ensure no non-negative values
     du .= max.(du, 0.0)
-    
-    c::Vector{Float64} = vec(sum(du, dims=1))
-    if any(c .> k)
 
-        exceeded::Vector{Int64} = findall(c .> vec(k))
-        du[:, exceeded] .= (du[:, exceeded] ./ c[exceeded]') .* k[exceeded]'
-    end
+    c::Vector{Float64} = zeros(size(du, 2))
+    proportional_adjustment!(du, c, collect(k))
+
+    c::Vector{Float64} = zeros(size(du, 2))
+    proportional_adjustment!(du, c, collect(k))
 
     return
 end

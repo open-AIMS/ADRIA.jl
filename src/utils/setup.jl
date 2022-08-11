@@ -6,6 +6,7 @@ function setup()::Nothing
         ENV["ADRIA_NUM_CORES"] = config["operation"]["num_cores"]
         ENV["ADRIA_reps"] = config["operation"]["reps"]
         ENV["ADRIA_THRESHOLD"] = config["operation"]["threshold"]
+        ENV["ADRIA_DEBUG"] = haskey(config["operation"], "debug") ? config["operation"]["debug"] : false
     catch
         @warn "Could not find config.toml file.\nApplying default configuration and saving results to 'Outputs' in current directory."
 
@@ -14,6 +15,7 @@ function setup()::Nothing
         ENV["ADRIA_NUM_CORES"] = 1
         ENV["ADRIA_reps"] = 20
         ENV["ADRIA_THRESHOLD"] = Float32(1e-8)
+        ENV["ADRIA_DEBUG"] = false
     end
 
 

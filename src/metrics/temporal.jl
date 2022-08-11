@@ -13,7 +13,7 @@ function summarize_trajectory(data::NamedDimsArray)::Dict{Symbol, AbstractArray{
         squash = (:scenarios, :reps)
     end
 
-    summarized::Dict{Symbol, AbstractArray{<:Real}} = Dict(Symbol(f) => dropdims(f(data, dims=squash), dims=squash)
+    summarized::Dict{Symbol, AbstractArray{<:Real}} = Dict(Symbol(f) => collect(dropdims(f(data, dims=squash), dims=squash))
                                                            for f in [mean, median, std, minimum, maximum])
 
     # Calculate quantiles (doesn't support `dims` so have to loop directly)
@@ -74,12 +74,13 @@ Calculate summarized total cover.
 """
 function summarize_total_cover(data::NamedDimsArray, areas::AbstractArray{<:Real}; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     sites = haskey(kwargs, :sites) ? kwargs[:sites] : (:)
-    tac = call_metric(total_cover, data, areas[sites]; kwargs...)
+    tac = call_metric(total_absolute_cover, data, areas[sites]; kwargs...)
     tac = dropdims(sum(tac, dims=:sites), dims=:sites)
     return summarize_trajectory(tac)
 end
 function summarize_total_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
-    return summarize_total_cover(rs.raw, rs.site_area; kwargs...)
+    tac = dropdims(sum(_total_absolute_cover(rs), dims=:sites), dims=:sites)
+    return summarize_trajectory(slice_results(tac; kwargs...))
 end
 
 
@@ -89,12 +90,12 @@ end
 
 Calculate summarized relative cover.
 """
-function summarize_relative_cover(data::NamedDimsArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
-    rc::AbstractArray{<:Real} = call_metric(relative_cover, data; kwargs...)
-    return summarize_trajectory(rc)
+function summarize_relative_cover(rc::NamedDimsArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+    rc_sliced = slice_results(rc; kwargs...)
+    return summarize_trajectory(rc_sliced)
 end
-function summarize_relative_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
-    return summarize_relative_cover(rs.raw; kwargs...)
+function summarize_relative_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}    
+    return summarize_relative_cover(rs.outcomes[:relative_cover]; kwargs...)
 end
 
 
@@ -114,9 +115,14 @@ end
 
 
 function summarize_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
-    scen_ids = haskey(kwargs, :scenarios) ? kwargs[:scenarios] : (:)
-    sv = call_metric(shelter_volume, rs.raw, rs.inputs[scenarios=scen_ids]; kwargs...)
-    return summarize_trajectory(sv)
+    sv_sliced = slice_results(rs.outcomes[:absolute_shelter_volume]; kwargs...)
+    return summarize_trajectory(sv_sliced)
+end
+
+
+function summarize_trajectories(rs, ts_name; kwargs...)
+    sliced = slice_results(rs.outcomes[ts_name]; kwargs...)
+    return summarize_trajectory(sliced)
 end
 
 

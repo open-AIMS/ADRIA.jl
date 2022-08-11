@@ -82,10 +82,17 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
         end
     end
 
+    # TODO: Update site depth offset/bounds based on spatial data
+
     # Sort data to maintain consistent order
     sort!(site_data, [Symbol(unique_site_id_col)])
 
     u_sids::Vector{String} = site_data[!, unique_site_id_col]
+
+    # If site id column is missing then derive it from the Unique IDs
+    if !in(site_id_col, names(site_data))
+        site_data[!, site_id_col] .= [d[2] for d in split.(site_data[!, unique_site_id_col], "_"; limit=2)]
+    end
 
     site_data.row_id = 1:nrow(site_data)
     site_data._siteref_id = groupindices(groupby(site_data, Symbol(site_id_col)))
@@ -189,9 +196,11 @@ end
     update_params!(d::Domain, params::DataFrameRow)
 
 Update given domain with new parameter values.
+Maps sampled continuous values to discrete values for categorical variables.
 """
 function update_params!(d::Domain, params::DataFrameRow)
     p_df = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
+
     p_df[!, :val] = collect(params)
 
     to_floor = (p_df.ptype .== "integer")  # .& .!isinteger.(p_df.val)
@@ -213,13 +222,13 @@ end
 function load_mat_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
     data = matread(data_fn)
     local loaded::NamedArray
-    local site_order::Array{String}
+    local site_order::Vector{String}
 
     try
-        site_order = Array{String}(data["reef_siteids"])
+        site_order = Vector{String}(vec(data["reef_siteid"]))
     catch err
         if isa(err, KeyError)
-            @warn "Provided file $(data_fn) did not have reef_siteids! There may be a mismatch in sites."
+            @warn "Provided file $(data_fn) did not have reef_siteid! There may be a mismatch in sites."
             if size(loaded, 2) != n_sites
                 @warn "Mismatch in number of sites ($(data_fn)).\nTruncating so that data size matches!"
 
@@ -234,6 +243,8 @@ function load_mat_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
     # Attach site names to each column
     loaded = NamedArray(data[attr])
     setnames!(loaded, site_order, 2)
+    setdimnames!(loaded, "Source", 1)
+    setdimnames!(loaded, "Receiving", 2)
 
     # Reorder sites so they match with spatial data
     loaded = selectdim(loaded, 2, site_order)
@@ -262,7 +273,7 @@ function site_selection(domain::Domain, criteria::DataFrame, ts::Int, n_reps::In
     # Site Data
     site_d = domain.site_data
     sr = domain.conn_ranks
-    area = site_d.area
+    area = site_area(domain)
 
     # Weights for connectivity , waves (ww), high cover (whc) and low
     wtwaves = criteria.wave_stress           # weight of wave damage in MCDA
@@ -279,7 +290,7 @@ function site_selection(domain::Domain, criteria::DataFrame, ts::Int, n_reps::In
 
     # Filter out sites outside of desired depth range
     max_depth = depth_min + depth_offset
-    depth_criteria = (site_d.sitedepth .>= -max_depth) .& (site_d.sitedepth .<= -depth_min)
+    depth_criteria = (site_d.depth_med .>= -max_depth) .& (site_d.depth_med .<= -depth_min)
 
     depth_priority = collect(1:nrow(site_d))[depth_criteria]
 
@@ -333,6 +344,16 @@ function site_selection(domain::Domain, criteria::DataFrame, ts::Int, n_reps::In
     end
 
     return ranks
+end
+
+
+"""
+    site_area(domain::Domain)::Vector{Float64}
+
+Get site area for the given domain.
+"""
+function site_area(domain::Domain)::Vector{Float64}
+    return domain.site_data.area
 end
 
 
