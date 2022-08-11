@@ -97,7 +97,7 @@ Columns indicate:
 - site_ids : vector of site ids
 - centr : site centrality (relative strength of connectivity)
 - sumcover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
-- maxcover : maximum possible proportional coral cover for each site, relative to total site area (k <= 1.0)
+- maxcover : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
 - area : absolute area (in m²) for each site
 - damprob : Probability of wave damage
 - heatstressprob : Probability of site being affected by heat stress
@@ -150,8 +150,8 @@ end
 Filter seed sites
 
 # Arguments
-- SE : Pre-existing matrix to populate
-- A : Decision matrix
+- SE : Pre-existing seed decision matrix to populate
+- A : Criteria decision matrix
 - wtconseed : Seed connectivity weight
 - wtwaves : Wave stress weight
 - wtheat : heat stress weight
