@@ -6,7 +6,7 @@ using Pkg, PackageCompiler
 sysimage_fn = "ADRIA_sysimage.dll"
 if "dev" in ARGS
     @info "Adding dev packages"
-    dev_pkgs = ["Revise", "Infiltrator", "Statistics", "ArchGDAL", "Plots"]
+    dev_pkgs = ["Revise", "Infiltrator", "Statistics", "ArchGDAL", "Plots", "GR", "GR_jll"]
     Pkg.add(dev_pkgs)
 
     sysimage_fn = "ADRIA_sysimage_dev.dll"
