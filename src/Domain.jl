@@ -52,7 +52,18 @@ function Domain(name::String, rcp::Int, env_layers::EnvLayer, TP_base::DataFrame
     site_data::DataFrame, site_id_col::String, unique_site_id_col::String, init_coral_cover::NamedMatrix, coral_growth::CoralGrowth,
     site_ids::Vector{String}, removed_sites::Vector{String}, DHWs::Union{NamedArray, Matrix}, waves::Union{NamedArray, Matrix})::Domain
 
-    model::Model = Model((Intervention(), Criteria(), Coral()))
+    # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
+    criteria = Criteria()
+    if criteria.depth_min.bounds[1] > maximum(site_data.depth_med)
+        min_depth = minimum(site_data.depth_med)
+        fields = fieldnames(typeof(criteria))
+        c_spec = (; zip(fields, [getfield(criteria, f) for f in fields])...)
+        @set! c_spec.depth_min.bounds = (min_depth, minimum(min_depth+2.0, maximum(site_data.depth_med)))
+
+        criteria = Criteria(c_spec...)
+    end
+
+    model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
     sim_constants::SimConstants = SimConstants()
     sim_constants.tf = size(DHWs)[1]  # auto-adjust to length of available time series
     return Domain(name, rcp, env_layers, "", TP_base, conn_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
