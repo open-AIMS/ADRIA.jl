@@ -75,6 +75,7 @@ Here are some answers to some issues encountered.
 
 **A.** Scenarios are defined in a CSV file of parameter values (with values in columns, so that each row defines a scenario).
 
+  - See `parameters.jl` file in the `examples` directory on how to extract the model specification and parameter table for a given domain.
   - See the `example_scenarios.csv` file in the `examples` directory for an idea of what this looks like.
   - See also the `running_scenarios.jl` example script which showcases how to run such a file for a given study area.
 
@@ -84,15 +85,14 @@ Here are some answers to some issues encountered.
 The very first import of the ADRIA package will be very slow as it attempts to precompile common functions to reduce later start up time.
 This slow initial precompilation has to be repeated if the package is modified, but will remain "fast" if no changes are made.
 
-To ameliorate this start-up cost while developing, use the [Revise package](https://github.com/timholy/Revise.jl).
-
 ```julia
+# First time importing ADRIA
 julia> @time using ADRIA
-[ Info: Precompiling ADRIA [7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600]
-111.073238 seconds (63.24 M allocations: 4.103 GiB, 1.96% gc time, 9.91% compilation time)
+ 25.599935 seconds (40.47 M allocations: 2.990 GiB, 6.53% gc time, 22.64% compilation time)
 
+# After precompilation
 julia> @time using ADRIA
-  0.002154 seconds (430 allocations: 28.562 KiB)
+  0.002528 seconds (429 allocations: 27.859 KiB)
 ```
 
 The same applies when running ADRIA for the first time:
@@ -114,6 +114,8 @@ julia> @time include("running_scenarios.jl")
 [ Info: Reloading results and saving figure
   5.066090 seconds (1.66 M allocations: 2.145 GiB, 6.70% gc time, 0.00% compilation time)
 ```
+
+To ameliorate this start-up cost while developing, use the [Revise package](https://github.com/timholy/Revise.jl).
 
 # App
 
