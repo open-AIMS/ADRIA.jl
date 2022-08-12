@@ -4,7 +4,6 @@ function setup()::Nothing
         config = TOML.parsefile(joinpath(pwd(), "config.toml"))
         ENV["ADRIA_OUTPUT_DIR"] = config["results"]["output_dir"]
         ENV["ADRIA_NUM_CORES"] = config["operation"]["num_cores"]
-        ENV["ADRIA_reps"] = config["operation"]["reps"]
         ENV["ADRIA_THRESHOLD"] = config["operation"]["threshold"]
         ENV["ADRIA_DEBUG"] = haskey(config["operation"], "debug") ? config["operation"]["debug"] : false
     catch
@@ -13,7 +12,6 @@ function setup()::Nothing
         # Note: anything stored in ENV will be stored as String.
         ENV["ADRIA_OUTPUT_DIR"] = "./Outputs"
         ENV["ADRIA_NUM_CORES"] = 1
-        ENV["ADRIA_reps"] = 20
         ENV["ADRIA_THRESHOLD"] = Float32(1e-8)
         ENV["ADRIA_DEBUG"] = false
     end

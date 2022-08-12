@@ -34,7 +34,7 @@ include("io/inputs.jl")
 include("sites/connectivity.jl")
 include("sites/dMCDA.jl")
 
-include("io/result_set.jl")
+include("io/ResultSet.jl")
 include("metrics/metrics.jl")
 include("io/result_io.jl")
 

@@ -37,7 +37,7 @@ end
 
 
 """
-    run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=1, metrics::Array=[])
+    run_scenarios(param_df::DataFrame, domain::Domain; metrics::Array=[])
 
 Run scenarios defined by the parameter table storing results to disk.
 Scenarios are run in parallel where the number of scenarios > 16.
@@ -48,30 +48,25 @@ Returned `domain` holds scenario invoke time used as unique result set identifie
 # Arguments
 - param_df : DataFrame of scenarios to run
 - domain : Domain, to run scenarios with
-- reps : Environmental scenario repeats. If 0 (the default), loads the user-specified value from config.
 - metrics : Outcomes to store. Defaults to raw data only.
 
 # Returns
 domain
 """
-function run_scenarios(param_df::DataFrame, domain::Domain; reps::Int64=0)::Domain
+function run_scenarios(param_df::DataFrame, domain::Domain)::Domain
     has_setup()
 
-    if reps <= 0
-        reps = parse(Int, ENV["ADRIA_reps"])
-    end
-
-    domain, data_store = ADRIA.setup_result_store!(domain, param_df, reps)
+    domain, data_store = ADRIA.setup_result_store!(domain, param_df)
     cache = setup_cache(domain)
 
     # Batch run scenarios
     if (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
         @eval @everywhere using ADRIA
 
-        func = (dfx) -> run_scenario(dfx, domain, reps, data_store, cache)
+        func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
         @showprogress "Running..." 4 pmap(func, enumerate(eachrow(param_df)))
     else
-        func = (dfx) -> run_scenario(dfx, domain, reps, data_store, cache)
+        func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
         @showprogress "Running..." 1 map(func, enumerate(eachrow(param_df)))
     end
 
@@ -80,7 +75,7 @@ end
 
 
 """
-    run_scenarios(scen::Tuple{Int, DataFrameRow}, domain::Domain, reps::Int64, data_store::NamedTuple, cache::NamedTuple, metrics=[])
+    run_scenarios(scen::Tuple{Int, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple, metrics=[])
 
 Run individual scenarios for a given domain.
 
@@ -90,23 +85,26 @@ Stores results on disk in Zarr format at pre-configured location.
 Logs of site ranks only store the mean site rankings over all environmental scenarios.
 This is to reduce the volume of data stored.
 """
-function run_scenario(scen::Tuple{Int, DataFrameRow}, domain::Domain, reps::Int64, data_store::NamedTuple, cache::NamedTuple)
+function run_scenario(scen::Tuple{Int, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)
     # Update model with values in given DF row
     update_params!(domain, scen[2])
+
+    dhw_scen = scen[2].dhw_scenario
+    wave_scen = scen[2].wave_scenario
 
     # TODO: Modify all scenario constants here to avoid repeated allocations
     @set! domain.coral_growth.ode_p.P = (domain.site_data.k::Vector{Float64} / 100.0)  # Max possible cover at site
     @set! domain.coral_growth.ode_p.comp = domain.sim_constants.comp::Float64  # competition rate between two mature coral groups
 
-    run_scenario(domain; idx=scen[1], reps=reps, data_store=data_store, cache=cache)
+    run_scenario(domain; idx=scen[1], dhw=dhw_scen, wave=wave_scen, data_store=data_store, cache=cache)
 end
-function run_scenario(scen::Tuple{Int, DataFrameRow}, domain::Domain, reps::Int64, data_store::NamedTuple)
-    run_scenario(scen, domain, reps, data_store, setup_cache(domain))
+function run_scenario(scen::Tuple{Int, DataFrameRow}, domain::Domain, data_store::NamedTuple)
+    run_scenario(scen, domain, data_store, setup_cache(domain))
 end
 
 
 """
-    run_scenario(domain::Domain; reps=1, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
+    run_scenario(domain::Domain; idx=1, dhw=1, wave=1, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
 
 Convenience function to directly run a scenario for a Domain with pre-set values.
 
@@ -116,7 +114,7 @@ Stores results on disk in Zarr format at pre-configured location.
 Logs of site ranks only store the mean site rankings over all environmental scenarios.
 This is to reduce the volume of data stored.
 """
-function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::NamedTuple, cache::NamedTuple)
+function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_store::NamedTuple, cache::NamedTuple)
     tf::Int64 = domain.sim_constants.tf
 
     # Extract non-coral parameters
@@ -128,44 +126,38 @@ function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::Named
     coral_params = to_spec(component_params(domain.model, Coral))
 
     # Pass in environmental layer data stripped of named dimensions.
-    all_dhws = Array{Float64}(domain.dhw_scens[1:tf, :, 1:reps])
-    all_waves = Array{Float64}(domain.wave_scens[1:tf, :, 1:reps])
+    all_dhws = Array{Float64}(domain.dhw_scens[1:tf, :, :])
+    all_waves = Array{Float64}(domain.wave_scens[1:tf, :, :])
 
-    result_set = Array{NamedTuple}(repeat([(empty=0,)], reps))
-    @inbounds for i::Int in 1:reps
-        result_set[i] = run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
+    result_set = run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
                                      domain.coral_growth.ode_p,
-                                     all_dhws[:, :, i], all_waves[1:tf, :, i], cache)
-    end
+                                     all_dhws[:, :, dhw], all_waves[:, :, wave], cache)
 
     # Capture results to disk
     # Set values below threshold to 0 to save space
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
-    tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2, reps)
+    tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
 
-    c_dim = Base.ndims(getfield(result_set[1], :raw))  # concat along `reps` field
-    rep_raw = convert(Array{Float32}, cat([r.raw for r in result_set]..., dims=c_dim+1))
-
-    vals = relative_cover(rep_raw)
+    r_raw = result_set.raw
+    vals = relative_cover(r_raw)
     vals[vals .< threshold] .= 0.0
-    data_store.relative_cover[:, :, 1:reps, idx] .= vals
+    data_store.relative_cover[:, :, idx] .= vals
 
-    vals .= absolute_shelter_volume(rep_raw, site_area(domain), param_table(domain))
+    vals .= absolute_shelter_volume(r_raw, site_area(domain), param_table(domain))
     vals[vals .< threshold] .= 0.0
-    data_store.absolute_shelter_volume[:, :, 1:reps, idx] .= vals
+    data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(rep_raw, site_area(domain), param_table(domain))
+    vals .= relative_shelter_volume(r_raw, site_area(domain), param_table(domain))
     vals[vals .< threshold] .= 0.0
-    data_store.relative_shelter_volume[:, :, 1:reps, idx] .= vals
+    data_store.relative_shelter_volume[:, :, idx] .= vals
 
     # Store raw results if no metrics specified
-    # c_dim = Base.ndims(getfield(result_set[1], :raw)) + 1  # concat along `reps` field
     # if length(metrics) == 0
-    #     data_store.raw[:, :, :, 1:reps, idx] .= convert(Array{Float32}, cat(Array{Float32}[r.raw for r in result_set]..., dims=c_dim))
+    #     data_store.raw[:, :, :, idx] .= r.raw
     # end
 
     # Store logs
-    c_dim = Base.ndims(getfield(result_set[1], :raw)) + 1
+    c_dim = Base.ndims(result_set.raw) + 1
     log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log)
     for k in log_stores
         if k == :seed_log || k == :site_ranks
@@ -174,21 +166,21 @@ function run_scenario(domain::Domain; idx::Int=1, reps::Int=1, data_store::Named
             concat_dim = c_dim - 1
         end
 
-        vals = convert(Array{Float32}, cat(Array{Float32}[getfield(r, k) for r in result_set]..., dims=concat_dim))
+        vals = getfield(result_set, k)
         vals[vals .< threshold] .= 0.0
 
         if k == :seed_log
-            getfield(data_store, k)[:, :, :, 1:reps, idx] .= vals
+            getfield(data_store, k)[:, :, :, idx] .= vals
         elseif k == :site_ranks
-            tmp_site_ranks[:, :, :, 1:reps] .= vals
+            tmp_site_ranks[:, :, :] .= vals
         else
-            getfield(data_store, k)[:, :, 1:reps, idx] .= vals
+            getfield(data_store, k)[:, :, idx] .= vals
         end
     end
 
     if !isnothing(data_store.site_ranks)
         # Squash site ranks down to average rankings over environmental repeats
-        data_store.site_ranks[:, :, :, idx] = dropdims(mean(tmp_site_ranks, dims=4), dims=4)
+        data_store.site_ranks[:, :, :, idx] .= tmp_site_ranks
     end
 end
 
@@ -198,7 +190,7 @@ end
 
 Run a single scenario and return results.
 """
-function run_scenario(param_df::DataFrameRow, domain::Domain; rep_id::Int=1)::NamedTuple
+function run_scenario(param_df::DataFrameRow, domain::Domain)::NamedTuple
     has_setup()
 
     # Update model with values in given DF row
@@ -209,11 +201,14 @@ function run_scenario(param_df::DataFrameRow, domain::Domain; rep_id::Int=1)::Na
     # Expand coral model to include its specifications across all taxa/species/groups
     coral_params = to_spec(component_params(domain.model, Coral))
 
+    dhw_rep_id = param_df.dhw_scenario
+    wave_rep_id = param_df.wave_scenario
+
     cache = setup_cache(domain)
     return run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
                         domain.coral_growth.ode_p,
-                        Matrix{Float64}(domain.dhw_scens[1:tf, :, rep_id]),
-                        Matrix{Float64}(domain.wave_scens[1:tf, :, rep_id]), cache)
+                        Matrix{Float64}(domain.dhw_scens[1:tf, :, dhw_rep_id]),
+                        Matrix{Float64}(domain.wave_scens[1:tf, :, wave_rep_id]), cache)
 end
 
 

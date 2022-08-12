@@ -23,7 +23,7 @@ struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Flo
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
     name::S           # human-readable name
-    rcp::Int
+    RCP::Int
     env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
     TP_data::D     # site connectivity data
@@ -93,8 +93,6 @@ function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::Strin
         end
     end
 
-    # TODO: Update site depth offset/bounds based on spatial data
-
     # Sort data to maintain consistent order
     sort!(site_data, [Symbol(unique_site_id_col)])
 
@@ -163,6 +161,8 @@ function param_table(d::Domain)::DataFrame
     vals::Vector{<:Real} = collect(d.model[:val])
     p_df::DataFrame = DataFrame(OrderedDict(k => v for (k, v) in zip(f_names, vals)))
 
+    p_df[!, :RCP] .= d.RCP  # Add entry to indicate which RCP scenario was used
+
     return p_df
 end
 
@@ -212,20 +212,16 @@ Maps sampled continuous values to discrete values for categorical variables.
 function update_params!(d::Domain, params::DataFrameRow)
     p_df = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
 
-    p_df[!, :val] = collect(params)
+    p_df[!, :val] .= collect(params[Not(:RCP)])
 
-    to_floor = (p_df.ptype .== "integer")  # .& .!isinteger.(p_df.val)
+    to_floor = (p_df.ptype .== "integer")
     if any(to_floor)
         v = p_df[to_floor, :val]
 
         p_df[to_floor, :val] .= map_to_discrete.(v, getindex.(p_df[to_floor, :bounds], 2))
-
-        # Floor values, capping to maximum bound value
-        # v .= min.(floor.(v), [b[2] for b in p_df[to_floor, :bounds]])
-        # p_df[to_floor, :val] = Int.(v)
     end
 
-    # update with new parameters
+    # Update with new parameters
     update!(d.model, p_df)
 end
 

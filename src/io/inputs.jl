@@ -48,6 +48,7 @@ Parameters intended to be of Integer type or casted as such.
 """
 function load_scenarios(domain::Domain, filepath::String)::DataFrame
     df = CSV.read(filepath, DataFrame, comment="#")
+    df = df[!, Not(:RCP)]
 
     bnds = domain.model[:bounds]
 

@@ -42,8 +42,6 @@ function adria_cmd_run()
     config = TOML.parsefile("config.toml")
     ENV["ADRIA_OUTPUT_DIR"] = config["results"]["output_dir"]
 
-    reps = config["operation"]["reps"]
-
     data_pkg_loc = ARGS[2]
     rcp = ARGS[3]
     scenario_file = ARGS[4]
@@ -65,7 +63,7 @@ function adria_cmd_run()
     println("ADRIA.jl - Prototype App")
     println("Running $(n_scenarios) scenarios under RCP $(rcp) for $(domain.name)")
 
-    d = run_scenarios(scenarios, domain; reps=reps)
+    d = run_scenarios(scenarios, domain)
 
     res = ADRIA.load_results(d)
 
