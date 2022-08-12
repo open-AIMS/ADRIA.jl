@@ -5,8 +5,8 @@ using TOML, CSV, DataFrames, ADRIA
 const TEST_DATA_DIR = joinpath(@__DIR__, "data")
 
 
-@testset "ADRIA.jl" begin
-    # Write your tests here.
+@testset "Domain loading" begin
+    dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
 end
 
 
@@ -16,7 +16,6 @@ end
     # Ensure environment variables are set
     @test haskey(ENV, "ADRIA_OUTPUT_DIR")
     @test haskey(ENV, "ADRIA_NUM_CORES")
-    @test haskey(ENV, "ADRIA_reps")
     @test haskey(ENV, "ADRIA_THRESHOLD")
 
     # Check that the correct number of processors have been spun up.
@@ -30,21 +29,12 @@ end
     conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
     scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
 
-    test_domain = Domain(
-        "Test",
-        site_path,
-        "siteref",
-        "reef_siteid",
-        "",            # empty coral cover
-        conn_path,     # test connectivity data
-        "",            # empty DHW
-        ""             # empty wave
-    );
+    dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
 
     test_scens = CSV.read(scen_path, DataFrame)
-    ADRIA.update_params!(test_domain, test_scens[5, :])
+    ADRIA.update_params!(dom, test_scens[5, :])
 
-    @test all(ADRIA.param_table(test_domain).seed_TA .== 400000)
+    @test all(ADRIA.param_table(dom).seed_TA .== 500000)
 end
 
 
