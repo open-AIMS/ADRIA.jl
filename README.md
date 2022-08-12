@@ -80,6 +80,15 @@ Here are some answers to some issues encountered.
   - See also the `running_scenarios.jl` example script which showcases how to run such a file for a given study area.
 
 
+## Testing
+
+To run tests
+
+```bash
+$ julia --project=test test/runtests.jl
+```
+
+
 ## Notes
 
 The very first import of the ADRIA package will be very slow as it attempts to precompile common functions to reduce later start up time.
