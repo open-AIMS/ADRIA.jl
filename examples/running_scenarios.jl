@@ -2,8 +2,7 @@
 This example file assumes Julia is started in the examples folder.
 
 The accompanying `config.toml` file specifies how many cores to use, 
-how many environmental scenarios to run (`reps`) and the output location
-to store results in.
+and the output location to store results in.
 """
 
 using ADRIA
@@ -32,9 +31,9 @@ res = ADRIA.load_results(ex_domain)
 # res = ADRIA.load_results("path to result set")
 
 # Specific metrics found in the `metrics` submodule.
-# Y_TC = ADRIA.metrics.coral_cover(res).total_cover
+# Y_TC = ADRIA.metrics.coral_cover(res).total_absolute_cover
 # Y_o = ADRIA.metrics.summarize_total_cover(res)
 
 # Indicative result display for example only. This function to be removed.
 # Figure will be saved in the specified output location.
-ADRIA._indicative_result_display(res)
+# ADRIA._indicative_result_display(res)
