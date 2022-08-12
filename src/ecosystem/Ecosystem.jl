@@ -84,6 +84,19 @@ end
 #   that requires one parameter to be greater than another.
 
 
+struct EnvironmentalLayer{P} <: EcoModel
+    dhw_scenario::P
+    wave_scenario::P
+end
+
+function EnvironmentalLayer(dhw::AbstractArray, wave::AbstractArray)
+    return EnvironmentalLayer(
+        Param(1, bounds=(1, size(dhw, 3)+1), ptype="integer", dists="unif"),
+        Param(1, bounds=(1, size(wave, 3)+1), ptype="integer", dists="unif")
+    )
+end
+
+
 """
 _coral_struct(field_defs::Dict)::Nothing
 
