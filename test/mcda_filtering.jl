@@ -57,7 +57,7 @@ end
     A = create_decision_matrix(1:n_sites, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
 
     SE = zeros(size(A, 1), 6)
-    SE = create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+    SE, wse = create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
 
     @test size(SE, 1) == (size(A, 1) - 2) || "Site where cover > carrying capacity not filtered out"
     @test maximum(SE[:, 1]) != maximum(A[:, 1]) || "Last site should be filtered out due to no space"
@@ -91,7 +91,7 @@ end
     A = create_decision_matrix(1:n_sites, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
 
     SH = zeros(size(A, 1), 6)
-    SH = create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+    SH, wsh = create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     
     @test SH[4, 6] == 1.0 || "Largest site with most coral should have highest score"
 

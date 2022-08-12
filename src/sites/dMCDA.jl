@@ -58,7 +58,7 @@ end
 - rankings : vector of site ranks to update
 - nsiteint : number of sites to select for interventions
 """
-function rank_sites!(S, weights, rankings, nsiteint)::Vector
+function rank_sites!(S, weights, rankings, nsiteint, mcda_func)::Vector
     # Filter out all non-preferred sites
     selector = vec(.!all(S .== 0, dims=1))
     weights = weights[selector]
@@ -174,7 +174,7 @@ function create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtl
     SE = SE[vec(A[:, 6] .> 0), :]
     SE[:, 6] .= (10 .^ SE[:, 6]) ./ maximum(10 .^ SE[:, 6])
 
-    return SE
+    return SE, wse
 end
 
 
@@ -201,7 +201,7 @@ function create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, 
     SH[:, 4:5] = A[:, 4:5] # complimentary of heat damage risk, priority predecessors
     SH[:, 6] = (1.0 .- A[:, 6]) # coral cover relative to max capacity
     SH[SH[:,6] .> 1.0, 6] .= 1  # scale any sites above capacity back to 1
-    return SH
+    return SH, wsh
 end
 
 
@@ -277,12 +277,12 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE = create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+        SE, wse = create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        SH = create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+        SH, wsh = create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     end
 
     if alg_ind == 1
@@ -300,13 +300,13 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     if isempty(SE)
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
-        prefseedsites = rank_sites!(SE, wse, rankings, nsiteint)
+        prefseedsites = rank_sites!(SE, wse, rankings, nsiteint, mcda_func)
     end
 
     if isempty(SH)
         prefshadesites = repeat([0], nsiteint)
     elseif log_shade
-        prefshadesites = rank_sites!(SH, wsh, rankings, nsiteint)
+        prefshadesites = rank_sites!(SH, wsh, rankings, nsiteint, mcda_func)
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
