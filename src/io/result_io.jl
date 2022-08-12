@@ -1,72 +1,76 @@
 """
+    scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k)
     scenario_attributes(domain::Domain, param_df::DataFrame)
 
 Generate dictionary of scenario attributes.
 """
-function scenario_attributes(domain::Domain, param_df::DataFrame)
+function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k)::Dict
     attrs::Dict = Dict(
-        :name => domain.name,
-        :rcp => domain.rcp,
-        :columns => names(param_df),
-        :invoke_time => domain.scenario_invoke_time,
+        :name => name,
+        :RCP => RCP,
+        :columns => input_cols,
+        :invoke_time => invoke_time,
         :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)),
 
-        :site_data_file => domain.env_layer_md.site_data_fn,
-        :site_id_col => domain.env_layer_md.site_id_col,
-        :unique_site_id_col => domain.env_layer_md.unique_site_id_col,
-        :init_coral_cover_file => domain.env_layer_md.init_coral_cov_fn,
-        :connectivity_file => domain.env_layer_md.connectivity_fn,
-        :DHW_file => domain.env_layer_md.DHW_fn,
-        :wave_file => domain.env_layer_md.wave_fn,
-        :sim_constants => Dict(fn=>getfield(domain.sim_constants, fn) for fn ∈ fieldnames(typeof(domain.sim_constants))),
-
-        :site_ids => unique_sites(domain),
-        :site_area => domain.site_data.area,
-        :site_max_coral_cover => domain.site_data.k
+        :site_data_file => env_layer.site_data_fn,
+        :site_id_col => env_layer.site_id_col,
+        :unique_site_id_col => env_layer.unique_site_id_col,
+        :init_coral_cover_file => env_layer.init_coral_cov_fn,
+        :connectivity_file => env_layer.connectivity_fn,
+        :DHW_file => env_layer.DHW_fn,
+        :wave_file => env_layer.wave_fn,
+        :sim_constants => sim_constants,
+        :site_ids => unique_sites,
+        :site_area => area,
+        :site_max_coral_cover => k
     )
 
     return attrs
 end
+function scenario_attributes(domain::Domain, param_df::DataFrame)
+    return scenario_attributes(domain.name, domain.RCP, names(param_df), domain.scenario_invoke_time, 
+                domain.env_layer_md, domain.sim_constants,
+                unique_sites(domain), domain.site_data.area, domain.site_data.k)
+end
 
 
-function setup_logs(z_store, domain, param_df, tf, n_sites, reps)
+function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     # Set up logs for site ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
 
     # Store ranked sites
-    n_scens::Int64 = nrow(param_df)
-    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_sites, 2, n_scens)  # sites, site id and rank, reps, no. scenarios
-    fog_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_sites, reps, n_scens)  # timeframe, sites, reps, no. scenarios
+    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_sites, 2, n_scens)  # sites, site id and rank, no. scenarios
+    fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_sites, n_scens)  # timeframe, sites, no. scenarios
 
     # tf, no. intervention sites, site id and rank, no. scenarios
-    seed_dims::Tuple{Int64,Int64,Int64,Int64,Int64} = (tf, 2, n_sites, reps, n_scens)
+    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 2, n_sites, n_scens)
 
     attrs = Dict(
-        :structure=> ("timesteps", "sites", "reps", "scenarios"),
-        :unique_site_ids=>unique_sites(domain),
+        :structure=> ("timesteps", "sites", "intervention", "scenarios"),
+        :unique_site_ids=>unique_sites,
     )
     ranks = zcreate(Float32, rank_dims...; name="rankings", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
-        :structure=> ("timesteps", "coral_id", "sites", "reps", "scenarios"),
-        :unique_site_ids=>unique_sites(domain),
+        :structure=> ("timesteps", "coral_id", "sites", "scenarios"),
+        :unique_site_ids=>unique_sites,
     )
-    seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(seed_dims[1:4]..., 1), attrs=attrs)
+    seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(seed_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
-        :structure=> ("timesteps", "sites", "reps", "scenarios"),
-        :unique_site_ids=>unique_sites(domain),
+        :structure=> ("timesteps", "sites", "scenarios"),
+        :unique_site_ids=>unique_sites,
     )
-    fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1), attrs=attrs)
-    shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:3]..., 1), attrs=attrs)
+    fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
+    shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
 
     return ranks, seed_log, fog_log, shade_log
 end
 
 
 """
-    setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int64=0; metrics::Array=[])
+    setup_result_store!(domain::Domain, param_df::DataFrame; metrics::Array=[])
 
 Sets up an on-disk result store.
 
@@ -94,15 +98,19 @@ Sets up an on-disk result store.
 # Inputs
 - domain : ADRIA scenario domain
 - param_df : ADRIA scenario specification
-- reps : Number of environmental scenario repeats
 
 # Returns
 domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, site_ranks, seed_log, fog_log, shade_log)
 
 """
-function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int64)::Tuple
+function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
+    param_df = param_df[:, Not(:RCP)]  # Ignore RCP column if it exists
+
+    # Insert RCP column and populate with this dataset's RCP
+    insertcols!(param_df, 1, :RCP => repeat(domain.RCP, size(param_df, 1)))
+
     @set! domain.scenario_invoke_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
-    log_location::String = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__$(domain.rcp)__$(domain.scenario_invoke_time)")
+    log_location::String = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCP$(domain.RCP)__$(domain.scenario_invoke_time)")
 
     z_store = DirectoryStore(log_location)
 
@@ -130,8 +138,6 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int64)::
                 append!(dl, domain.coral_growth.n_species)
             elseif d == "sites"
                 append!(dl, n_sites)
-            elseif d == "reps"
-                append!(dl, reps)
             elseif d == "scenarios"
                 append!(dl, nrow(param_df))
             end
@@ -144,10 +150,10 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int64)::
 
     met_names = (:relative_cover, :relative_shelter_volume, :absolute_shelter_volume)
     dim_struct = Dict(
-        :structure => string.((:timesteps, :sites, :reps, :scenarios)),
+        :structure => string.((:timesteps, :sites, :scenarios)),
         :unique_site_ids => unique_sites(domain)
     )
-    result_dims::Tuple{Int64,Int64,Int64,Int64} = dim_lengths(dim_struct[:structure])
+    result_dims::Tuple{Int64,Int64,Int64} = dim_lengths(dim_struct[:structure])
 
     # Create stores for each metric
     stores = [
@@ -160,7 +166,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame, reps::Int64)::
     ]
 
     # Set up logs for site ranks, seed/fog log
-    stores = [stores..., setup_logs(z_store, domain, param_df, tf, n_sites, reps)...]
+    stores = [stores..., setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
 
     # NamedTuple{(Symbol.(metrics)..., :site_ranks, :seed_log, :fog_log, :shade_log)}(stores)
     return domain, (; zip((met_names..., :site_ranks, :seed_log, :fog_log, :shade_log), stores)...)
@@ -221,6 +227,6 @@ function load_results(result_loc::String)::ResultSet
     return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set)
 end
 function load_results(domain::Domain)::ResultSet
-    log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__$(domain.rcp)__$(domain.scenario_invoke_time)")
+    log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCP$(domain.RCP)__$(domain.scenario_invoke_time)")
     return load_results(log_location)
 end
