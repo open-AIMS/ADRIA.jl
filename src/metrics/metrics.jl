@@ -15,9 +15,12 @@ struct Metric{F<:Function, T<:Tuple} <: Outcome
 end
 
 
+"""
+Make Metric callable with arbitary arguments that are passed to associated function.
+"""
 function (f::Metric)(raw, args...; kwargs...)
     try
-        return f.func(NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
+        return f.func(NamedDimsArray{(:timesteps, :species, :sites, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
     catch
         return f.func(raw, args...; kwargs...)
     end
@@ -55,34 +58,34 @@ end
 
 
 """
-    call_metric(metric, raw, args...; timesteps=(:), species=(:), sites=(:), reps=(:), scens=(:))
+    call_metric(metric, data, args...; timesteps=(:), species=(:), sites=(:), scens=(:))
 
 Convenience method that slices the data in the specified manner.
 
 # Arguments
 - metric : Function, the metric function to apply to "raw" data.
-- raw    : NamedDimsArray, raw data to pass into `metric`
+- data    : NamedDimsArray, data to pass into `metric`
 - args   : Additional positional arguments to pass into `metric`
 - dims   : dummy keyword argument, not used but defined to allow use with other methods
 """
-function call_metric(metric::Function, raw::NamedDimsArray, args...; kwargs...)
+function call_metric(metric::Function, data::NamedDimsArray, args...; kwargs...)
     dims = haskey(kwargs, :dims) ? kwargs[:dims] : nothing
     if isnothing(dims)
-        return metric(slice_results(raw; kwargs...), args...)
+        return metric(slice_results(data; kwargs...), args...)
     else
-        return metric(slice_results(raw; kwargs...), args...; dims=dims)
+        return metric(slice_results(data; kwargs...), args...; dims=dims)
     end
 end
 
 
 """
-    slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(:), reps=(:), scenarios=(:))
+    slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))
 
 Slice data as indicated.
 Dimensions not found in target data are ignored.
 """
-function slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(:), reps=(:), scenarios=(:))
-    f_dims = (timesteps=timesteps, species=species, sites=sites, reps=reps, scenarios=scenarios)
+function slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))
+    f_dims = (timesteps=timesteps, species=species, sites=sites, scenarios=scenarios)
 
     s_names = keys(f_dims)
     d_names = dimnames(data)
@@ -309,15 +312,15 @@ function _shelter_species_loop(X, nspecies::Int64, scen::Int64, colony_vol_m3_pe
     # Calculate absolute shelter volume
     sv = nothing
     try
-        sv = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros(size(X)...))
+        sv = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(size(X)...))
     catch
-        sv = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros([size(X)..., 1]...))
+        sv = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros([size(X)..., 1]...))
     end
 
     _shelter_species_loop!(X, sv, nspecies, scen, colony_vol_m3_per_m2, site_area)
 
     covered_area = nothing
-    rsv = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros([size(X[species=1:6])..., 1]...))
+    rsv = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros([size(X[species=1:6])..., 1]...))
     taxa_max_map = zip([i:i+5 for i in 1:6:36], 1:6)
     @inbounds for (sp, sc) in taxa_max_map
         try
@@ -337,7 +340,7 @@ function _shelter_species_loop(X, nspecies::Int64, scen::Int64, colony_vol_m3_pe
         rsv[species=sc] .= NamedDims.rename(
             vcat([sum(sv[species=sp, timesteps=i], dims=:species) ./ max_vol
                         for i in axes(sv, :timesteps)]...),
-            (:timesteps, :sites, :reps, :scenarios)
+            (:timesteps, :sites, :scenarios)
         )
     end
 
@@ -405,14 +408,14 @@ function _absolute_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, 
     # Calculate shelter volume of groups and size classes and multiply with area covered
     if nrow(inputs) > 1
         nscens::Int64 = size(X, :scenarios)
-        sv = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros(size(X)...))
+        sv = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(size(X)...))
         for scen::Int64 in 1:nscens
             colony_vol, _ = _colony_Lcm2_to_m3m2(inputs[scen, :])
             _shelter_species_loop!(X, sv, nspecies, scen, colony_vol, site_area)
         end
     else
         # Collate for a single scenario
-        sv = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros([size(X)..., 1]...))
+        sv = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros([size(X)..., 1]...))
         colony_vol, _ = _colony_Lcm2_to_m3m2(inputs)
         _shelter_species_loop!(X, sv, nspecies, 1, colony_vol, site_area)
         sv = dropdims(sv, dims=:scenarios)
@@ -469,7 +472,7 @@ function _relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, 
     # Calculate shelter volume of groups and size classes and multiply with covers
     if nrow(inputs) > 1
         nscens::Int64 = size(X, :scenarios)
-        rsv = NamedDimsArray{(:timesteps, :species, :sites, :reps, :scenarios)}(zeros(size(X)...))
+        rsv = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(size(X)...))
         for scen::Int64 in 1:nscens
             colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs[scen, :])
             rsv[scenarios=scen] .= _shelter_species_loop(X, nspecies, scen, colony_vol, max_colony_vol, site_area)
@@ -567,13 +570,13 @@ include("scenario.jl")
 
 
 # Wrap base metric functions with dimension metadata
-relative_cover = Metric(_relative_cover, (:timesteps, :sites, :reps, :scenarios))
-total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :reps, :scenarios))
-absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :reps, :scenarios))
-relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :reps, :scenarios))
-coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :reps, :scenarios))
-juveniles = Metric(_juveniles, (:timesteps, :sites, :reps, :scenarios))
-reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :reps, :scenarios))
+relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
+total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scenarios))
+absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :scenarios))
+relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
+coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
+juveniles = Metric(_juveniles, (:timesteps, :sites, :scenarios))
+reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 
 """

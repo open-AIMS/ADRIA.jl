@@ -8,9 +8,9 @@ import Interpolations: GriddedInterpolation
 
 function summarize_trajectory(data::NamedDimsArray)::Dict{Symbol, AbstractArray{<:Real}}
     if :sites in dimnames(data)
-        squash = (:scenarios, :reps, :sites)
+        squash = (:scenarios, :sites)
     else
-        squash = (:scenarios, :reps)
+        squash = (:scenarios, )
     end
 
     summarized::Dict{Symbol, AbstractArray{<:Real}} = Dict(Symbol(f) => collect(dropdims(f(data, dims=squash), dims=squash))
@@ -67,25 +67,25 @@ end
 
 
 """
-    summarize_total_cover(data::AbstractArray{<:Real}, areas::AbstractArray{<:Real})::Dict{Symbol,AbstractArray{<:Real}}
-    summarize_total_cover(rs::ResultSet, dims::Tuple=(4,3,2))::Dict{Symbol,AbstractArray{<:Real}}
+    summarize_total_cover(raw::AbstractArray{<:Real}, areas::AbstractArray{<:Real}; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+    summarize_total_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
 
-Calculate summarized total cover.
+Calculate summarized total absolute cover.
 """
-function summarize_total_cover(data::NamedDimsArray, areas::AbstractArray{<:Real}; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+function summarize_total_cover(raw::NamedDimsArray, areas::AbstractArray{<:Real}; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     sites = haskey(kwargs, :sites) ? kwargs[:sites] : (:)
-    tac = call_metric(total_absolute_cover, data, areas[sites]; kwargs...)
+    tac = call_metric(total_absolute_cover, raw, areas[sites]; kwargs...)
     tac = dropdims(sum(tac, dims=:sites), dims=:sites)
     return summarize_trajectory(tac)
 end
 function summarize_total_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
-    tac = dropdims(sum(_total_absolute_cover(rs), dims=:sites), dims=:sites)
-    return summarize_trajectory(slice_results(tac; kwargs...))
+    tac = dropdims(sum(slice_results(_total_absolute_cover(rs); kwargs...), dims=:sites), dims=:sites)
+    return summarize_trajectory(tac)
 end
 
 
 """
-    summarize_relative_cover(data::AbstractArray{<:Real}, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+    summarize_relative_cover(rc::AbstractArray{<:Real}, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     summarize_relative_cover(rs::ResultSet, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
 
 Calculate summarized relative cover.
@@ -100,13 +100,13 @@ end
 
 
 """
-    summarize_coral_evenness(data::AbstractArray{<:Real}, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+    summarize_coral_evenness(raw::AbstractArray{<:Real}, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     summarize_coral_evenness(rs::ResultSet, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
 
 Calculate summarized coral evenness.
 """
-function summarize_coral_evenness(data::NamedDimsArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
-    ce::AbstractArray{<:Real} = call_metric(coral_evenness, data; kwargs...)
+function summarize_coral_evenness(raw::NamedDimsArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+    ce::AbstractArray{<:Real} = call_metric(coral_evenness, raw; kwargs...)
     return summarize_trajectory(ce)
 end
 function summarize_coral_evenness(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
@@ -114,7 +114,16 @@ function summarize_coral_evenness(rs::ResultSet; kwargs...)::Dict{Symbol,Abstrac
 end
 
 
-function summarize_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
+"""
+    summarize_absolute_shelter_volume(sv::AbstractArray{<:Real}, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+    summarize_absolute_shelter_volume(rs::ResultSet, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+
+Calculate summarized coral evenness.
+"""
+function summarize_absolute_shelter_volume(sv::NamedDimsArray; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
+    return summarize_trajectory(slice_results(sv; kwargs...))
+end
+function summarize_absolute_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
     sv_sliced = slice_results(rs.outcomes[:absolute_shelter_volume]; kwargs...)
     return summarize_trajectory(sv_sliced)
 end
