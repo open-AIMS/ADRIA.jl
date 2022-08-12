@@ -64,9 +64,6 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     c::Vector{Float64} = zeros(size(du, 2))
     proportional_adjustment!(du, c, collect(k))
 
-    c::Vector{Float64} = zeros(size(du, 2))
-    proportional_adjustment!(du, c, collect(k))
-
     return
 end
 
