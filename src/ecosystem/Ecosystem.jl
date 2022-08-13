@@ -82,6 +82,8 @@ Base.@kwdef struct Criteria{P} <: EcoModel
 end
 # **This is simply to avoid parameterization/implementation
 #   that requires one parameter to be greater than another.
+# Note: `depth_min` will be replaced with the shallowest depth value found for a given domain
+#       if all sites are found to be deeper than depth_min+depth_offset
 
 
 struct EnvironmentalLayer{P} <: EcoModel
