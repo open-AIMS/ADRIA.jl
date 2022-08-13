@@ -256,8 +256,14 @@ function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame, DataFrameRow})::Tuple
     n_corals::Int64 = length(unique(cs_p.taxa_id))
 
     # Extract assumed colony area (in cm^2) for each taxa/size class from scenario inputs
-    # Have to be careful to extract data in the correct order, amtching coral id
-    colony_area_cm2::Array{Float64} = Array{Float64}(inputs[:, cs_p.coral_id .* "_colony_area_cm2"])'
+    # Have to be careful to extract data in the correct order, matching coral id
+    colony_area_cm2 = nothing
+    try
+        colony_area_cm2 = Array{Float64}(inputs[:, cs_p.coral_id .* "_colony_area_cm2"])'
+    catch
+        # Get from DataFrameRow instead
+        colony_area_cm2 = Array{Float64}(inputs[cs_p.coral_id .* "_colony_area_cm2"])
+    end
 
     # Colony planar area parameters (see second column of Table 1 in Urbina-Barreto et al., [1])
     pa_params::Array{Float64} = Float64[
@@ -280,7 +286,7 @@ function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame, DataFrameRow})::Tuple
     if ndims(colony_area_cm2) == 1
         max_log_colony = pa_params[6:6:end, 1] .+ pa_params[6:6:end, 2] .* log10.(colony_area_cm2[6:6:end])
     else
-        max_log_colony = pa_params[6:6:end, 1] .+ pa_params[6:6:end, 2] .* log10.(colony_area_cm2[6:6:end, :])
+        max_log_colony = vec(pa_params[6:6:end, 1] .+ pa_params[6:6:end, 2] .* log10.(colony_area_cm2[6:6:end, :]))
     end
 
     colony_litres_per_cm2 = 10.0 .^ log_colony
@@ -469,26 +475,33 @@ maximum shelter volume possible.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
 function _relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::DataFrame)::AbstractArray{<:Real}
+    @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
+
     nspecies::Int64 = size(X, :species)
 
     # Calculate shelter volume of groups and size classes and multiply with covers
     if nrow(inputs) > 1
         nscens::Int64 = size(X, :scenarios)
-        rsv = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(size(X)...))
+        RSV = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(size(X[:, 1:6, :, :])...))
         for scen::Int64 in 1:nscens
             colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs[scen, :])
-            rsv[scenarios=scen] .= _shelter_species_loop(X, nspecies, scen, colony_vol, max_colony_vol, site_area)
+            RSV[scenarios=scen] .= _shelter_species_loop(X, nspecies, scen, colony_vol, max_colony_vol, site_area)
         end
     else
         # Collate for a single scenario
         colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs)
-        rsv = _shelter_species_loop(X, nspecies, 1, colony_vol, max_colony_vol, site_area)
-        rsv = dropdims(rsv, dims=:scenarios)
+        RSV = _shelter_species_loop(X, nspecies, 1, colony_vol, max_colony_vol, site_area)
     end
 
-    # Sum over groups and size classes to estimate total shelter volume 
+    @assert !any(RSV .> 1.2)
+
+    # Sum over groups and size classes to estimate total shelter volume
     # proportional to the theoretical maximum (per site)
-    return dropdims(sum(rsv, dims=:species), dims=:species)
+    RSV = dropdims(sum(RSV, dims=:species), dims=:species)
+
+    # @assert all(RSV .< 1.5)  # Error out in cases where RSV significantly .> 1.0
+    clamp!(RSV, 0.0, 1.0)
+    return RSV
 end
 function _relative_shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:relative_shelter_volume]
