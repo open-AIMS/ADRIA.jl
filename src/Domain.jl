@@ -23,7 +23,7 @@ struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Flo
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
     name::S           # human-readable name
-    RCP::Int
+    RCP::S
     env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
     TP_data::D     # site connectivity data
@@ -48,7 +48,7 @@ end
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
-function Domain(name::String, rcp::Int, env_layers::EnvLayer, TP_base::DataFrame, conn_ranks::Vector{Float64}, strongest_predecessor::Vector{Int64},
+function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::DataFrame, conn_ranks::Vector{Float64}, strongest_predecessor::Vector{Int64},
     site_data::DataFrame, site_id_col::String, unique_site_id_col::String, init_coral_cover::NamedMatrix, coral_growth::CoralGrowth,
     site_ids::Vector{String}, removed_sites::Vector{String}, DHWs::Union{NamedArray, Matrix}, waves::Union{NamedArray, Matrix})::Domain
 
@@ -77,7 +77,7 @@ end
 
 Convenience constructor for Domain
 """
-function Domain(name::String, rcp::Int, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
+function Domain(name::String, rcp::String, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
     conn_path::String, dhw_fn::String, wave_fn::String)::Domain
 
     env_layer_md::EnvLayer = EnvLayer(site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn)
@@ -211,8 +211,7 @@ Maps sampled continuous values to discrete values for categorical variables.
 """
 function update_params!(d::Domain, params::DataFrameRow)
     p_df = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
-
-    p_df[!, :val] .= collect(params[Not(:RCP)])
+    p_df[!, :val] .= collect(params[Not("RCP")])
 
     to_floor = (p_df.ptype .== "integer")
     if any(to_floor)

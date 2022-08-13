@@ -104,10 +104,12 @@ domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, site_
 
 """
 function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
-    param_df = param_df[:, Not(:RCP)]  # Ignore RCP column if it exists
+    if "RCP" in names(param_df)
+        param_df = param_df[:, Not("RCP")]  # Ignore RCP column if it exists
+    end
 
     # Insert RCP column and populate with this dataset's RCP
-    insertcols!(param_df, 1, :RCP => repeat(domain.RCP, size(param_df, 1)))
+    insertcols!(param_df, 1, :RCP => parse(Float64, domain.RCP))
 
     @set! domain.scenario_invoke_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
     log_location::String = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCP$(domain.RCP)__$(domain.scenario_invoke_time)")
@@ -122,8 +124,9 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
 
     # Store post-processed table of input parameters.
+    # +1 skips the RCP column
     integer_params = findall(domain.model[:ptype] .== "integer")
-    map_to_discrete!(param_df[:, integer_params], getindex.(domain.model[:bounds], 2)[integer_params])
+    map_to_discrete!(param_df[:, integer_params .+ 1], getindex.(domain.model[:bounds], 2)[integer_params])
     inputs[:, :] = Matrix(param_df)
 
     # Set up stores for each metric

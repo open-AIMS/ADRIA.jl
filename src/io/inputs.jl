@@ -8,7 +8,7 @@ Load domain specification from data package.
 - path : location of data package
 - rcp : RCP scenario to run
 """
-function load_domain(path::String, rcp::Int64)::Domain
+function load_domain(path::String, rcp::String)::Domain
     domain_name::String = basename(path)
     if length(domain_name) == 0
         domain_name = basename(dirname(path))
@@ -35,8 +35,8 @@ function load_domain(path::String, rcp::Int64)::Domain
         wave
     )
 end
-function load_domain(path::String, rcp::String)::Domain
-    return load_domain(path, parse(Int64, rcp))
+function load_domain(path::String, rcp::Int)::Domain
+    return load_domain(path, "$rcp")
 end
 
 
@@ -48,7 +48,10 @@ Parameters intended to be of Integer type or casted as such.
 """
 function load_scenarios(domain::Domain, filepath::String)::DataFrame
     df = CSV.read(filepath, DataFrame, comment="#")
-    df = df[!, Not(:RCP)]
+
+    if "RCP" in names(df)
+        df = df[!, Not("RCP")]
+    end
 
     bnds = domain.model[:bounds]
 
