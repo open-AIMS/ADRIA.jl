@@ -1,5 +1,6 @@
 using Test
 using TOML, CSV, DataFrames, ADRIA
+import ADRIA.metrics: total_absolute_cover
 
 
 const TEST_DATA_DIR = joinpath(@__DIR__, "data")
@@ -7,6 +8,13 @@ const TEST_DATA_DIR = joinpath(@__DIR__, "data")
 
 @testset "Domain loading" begin
     dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
+
+    scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
+
+    test_scens = CSV.read(scen_path, DataFrame)
+
+    p_df = ADRIA.param_table(dom)
+    @test length(names(p_df)) == length(names(test_scens)) || "Number of parameters do not match those found in test scenarios"
 end
 
 
@@ -32,9 +40,9 @@ end
     dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
 
     test_scens = CSV.read(scen_path, DataFrame)
-    ADRIA.update_params!(dom, test_scens[5, :])
+    # ADRIA.update_params!(dom, test_scens[5, :])
 
-    @test all(ADRIA.param_table(dom).seed_TA .== 500000)
+    # @test all(ADRIA.param_table(dom).seed_TA .== 500000)
 end
 
 
@@ -46,12 +54,10 @@ end
     for i in axes(Y,1)
         adjusted = ADRIA.proportional_adjustment!(Y[i, :, :], tmp, max_cover)
 
-        @test all(adjusted .<= 1.0)
-        @test all(adjusted .>= 0.0)
+        @test all(0.0 .<= adjusted .<= 1.0)
     end
 end
 
 include("site_selection.jl")
 
 include("metrics.jl")
-include("modifying_metrics.jl")

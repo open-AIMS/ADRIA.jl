@@ -1,4 +1,4 @@
-@testset "Shelter Volume" begin
+@testset "Relative Shelter Volume" begin
     scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
     test_scens = CSV.read(scen_path, DataFrame)
 
@@ -19,7 +19,7 @@
     coral_cover .= coral_cover ./ sum(coral_cover, dims=:species)
     r_sv = ADRIA.metrics.relative_shelter_volume(coral_cover, site_area, DataFrame(test_scens[1:5, :]));
 
-    @test all(0.0 .<= r_sv .<= 1.0)
+    @test all(0.0 .<= r_sv .<= 1.0) || "Min CC: $(minimum(sum(coral_cover, dims=:species))); Max CC: $(maximum(sum(coral_cover, dims=:species))) | $((minimum(r_sv), maximum(r_sv)))"
     @test any(r_sv .>= 0.05)
 
 
@@ -27,6 +27,13 @@
     coral_cover = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(5, 36, 3, 5))
     r_sv = ADRIA.metrics.relative_shelter_volume(coral_cover, site_area, DataFrame(test_scens[1:5, :]));
     @test all(r_sv .== 0.0)
+
+
+    # Maximum shelter volume case
+    coral_cover = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(5, 36, 3, 5))
+    coral_cover[species=24] .= 1.0  # Coral type with maximum shelter density
+    r_sv = ADRIA.metrics.relative_shelter_volume(coral_cover, site_area, DataFrame(test_scens[1:5, :]));
+    @test all(r_sv .== 1.0) || "Scenario with complete coral cover does not achieve max RSV | $(maximum(r_sv))"
 end
 
 
