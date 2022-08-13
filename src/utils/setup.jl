@@ -16,19 +16,6 @@ function setup()::Nothing
         ENV["ADRIA_DEBUG"] = false
     end
 
-
-    # Spin up workers if needed
-    if nprocs() == 1
-        active_cores = parse(Int, ENV["ADRIA_NUM_CORES"])
-        if active_cores <= 0
-            active_cores = cpucores()
-        end
-
-        if active_cores > 1
-            addprocs(active_cores, exeflags="--project")
-        end
-    end
-
     return
 end
 

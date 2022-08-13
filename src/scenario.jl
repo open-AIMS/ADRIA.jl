@@ -59,8 +59,20 @@ function run_scenarios(param_df::DataFrame, domain::Domain)::Domain
     domain, data_store = ADRIA.setup_result_store!(domain, param_df)
     cache = setup_cache(domain)
 
+    # Spin up workers if needed
+    if nprocs() == 1
+        active_cores = parse(Int, ENV["ADRIA_NUM_CORES"])
+        if active_cores <= 0
+            active_cores = cpucores()
+        end
+
+        if active_cores > 1
+            addprocs(active_cores, exeflags="--project")
+        end
+    end
+
     # Batch run scenarios
-    if (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    if (nrow(param_df) > 1024) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
         @eval @everywhere using ADRIA
 
         func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
