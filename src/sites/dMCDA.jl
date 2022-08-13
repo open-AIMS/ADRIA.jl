@@ -474,7 +474,7 @@ end
 
 
 """
-    unguided_site_selection!(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)
+    unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)
 
 Randomly select seed/shade site locations for the given year, constraining to sites with max. carrying capacity > 0.
 Here, `max_cover` represents the max. carrying capacity for each site (the `k` value).
@@ -486,18 +486,23 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - nsiteint : int, number of sites to intervene on
 - max_cover : vector/matrix : maximum carrying capacity of each site (`k` value)
 """
-function unguided_site_selection!(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)::Nothing
+function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)
     # Unguided deployment, seed/shade corals anywhere so long as max_cover > 0.
     # Only sites with max_cover are considered, otherwise a zero-division error may occur later on.
 
     # Select sites (without replacement to avoid duplicate sites)
+    num_sites = length(findall(max_cover .> 0.0))
+    s_nsiteint = num_sites < nsiteint ? num_sites : nsiteint
+
     if seed_years
-        prefseedsites .= StatsBase.sample(findall(max_cover .> 0.0), nsiteint; replace=false)
+        prefseedsites = zeros(nsiteint)
+        prefseedsites[1:s_nsiteint] = StatsBase.sample(findall(max_cover .> 0.0), s_nsiteint; replace=false)
     end
 
     if shade_years
-        prefshadesites .= StatsBase.sample(findall(max_cover .> 0.0), nsiteint; replace=false)
+        prefshadesites = zeros(nsiteint)
+        prefshadesites[1:s_nsiteint] = StatsBase.sample(findall(max_cover .> 0.0), s_nsiteint; replace=false)
     end
 
-    return nothing
+    return prefseedsites, prefshadesites
 end
