@@ -300,6 +300,9 @@ end
 
 Helper method to calculate relative shelter volume metric across each species/size class for a given scenario.
 
+Note: Species dimension is an amalgamation of taxa and size class.
+e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, size class 1-6, etc.
+
 # Arguments
 - X : raw results (proportional coral cover relative to full site area)
 - nspecies : number of species (taxa and size classes) considered
@@ -454,7 +457,6 @@ maximum shelter volume possible.
 # Arguments
 - X : raw results
 - site_area : area in m^2 for each site
-- max_cover : maximum possible coral cover for each site (in percentage of site_area)
 - inputs : DataFrame of scenario inputs
 
 # References
@@ -579,29 +581,29 @@ juveniles = Metric(_juveniles, (:timesteps, :sites, :scenarios))
 reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 
-"""
-    @extend_metric(name, m, args)
+# """
+#     @extend_metric(name, m, args)
 
-Macro to extend a given metric with additional argument values that are made constant.
+# Macro to extend a given metric with additional argument values that are made constant.
 
-# Arguments
-- name : arbitrary name for generated function
-- m : metric function
-- args : additional arguments whose values will be made constant
+# # Arguments
+# - name : arbitrary name for generated function
+# - m : metric function
+# - args : additional arguments whose values will be made constant
 
-# Example
+# # Example
 
-```julia
-import ADRIA.metrics: total_absolute_cover
-extended_metric = @extend_metric(example_func, total_absolute_cover, [site_area(domain)])
+# ```julia
+# import ADRIA.metrics: total_absolute_cover
+# extended_metric = @extend_metric(example_func, total_absolute_cover, [site_area(domain)])
 
-Y = extended_metric(raw_results)  # Equivalent to total_absolute_cover(raw_results, site_area(domain))
-```
-"""
-macro extend_metric(name, m, args)
-    eval(:(($name)(X) = ($m.func)(X, $args...)))
-    return :(Metric(eval($name), $m.dims))
-end
+# Y = extended_metric(raw_results)  # Equivalent to total_absolute_cover(raw_results, site_area(domain))
+# ```
+# """
+# macro extend_metric(name, m, args)
+#     eval(:(($name)(X) = ($m.func)(X, $args...)))
+#     return :(Metric(eval($name), $m.dims))
+# end
 
 
 end
