@@ -22,6 +22,14 @@ function (f::Metric)(raw, args...; kwargs...)
     try
         return f.func(NamedDimsArray{(:timesteps, :species, :sites, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
     catch
+        if ndims(raw) == 3
+            raw = NamedDimsArray{(:timesteps, :species, :sites)}(raw)
+        elseif ndims(raw) == 4
+            raw = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(raw)
+        else
+            error("Unknown result structure")
+        end
+
         return f.func(raw, args...; kwargs...)
     end
 end
@@ -317,31 +325,24 @@ e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, siz
 - max_colony_vol_m3_per_m2 : theoretical maximum volume per m² of coverage for each taxa (6)
 - site_area : area of site in m²
 """
-function _shelter_species_loop(X, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, max_colony_vol_m3_per_m2, site_area)
+function _shelter_species_loop(X::AbstractArray{T1, 3}, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, max_colony_vol_m3_per_m2, site_area) where {T1}
     # Calculate absolute shelter volumes first
-    ASV = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(size(X)...))
+    ASV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X)...))
     _shelter_species_loop!(X, ASV, nspecies, scen, colony_vol_m3_per_m2, site_area)
 
-    MSV = _total_absolute_cover(X[scenarios=scen], site_area) .* maximum(max_colony_vol_m3_per_m2, dims=1)  # in m³
+    MSV = _total_absolute_cover(X, site_area) .* maximum(max_colony_vol_m3_per_m2, dims=1)  # in m³
     # Ensure zero division does not occur
     # ASV should be 0.0 where MSV is 0.0 so the end result is 0.0 / 1.0
     MSV[MSV .== 0.0] .= 1.0
 
     covered_area = nothing
-    RSV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X[species=1:6, scenarios=scen])...))
+    RSV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X[species=1:6])...))
     taxa_max_map = zip([i:i+5 for i in 1:6:36], 1:6)
     @inbounds for (sp, sc) in taxa_max_map
         # Calculate area covered by each species group
-        try
-            # Handle multiple scenario data structure if necessary
-            covered_area = reduce(hcat,
-                            [sum(X[species=sp, scenarios=scen, sites=s], dims=:species) .* site_area[s]
-                                for s in eachindex(site_area)])
-        catch
-            covered_area = reduce(hcat,
+        covered_area = reduce(hcat,
                             [sum(X[species=sp, sites=s], dims=:species) .* site_area[s]
                                 for s in eachindex(site_area)])
-        end
 
         covered_area = NamedDims.rename(covered_area, (:timesteps, :sites))
 
@@ -350,12 +351,16 @@ function _shelter_species_loop(X, nspecies::Int64, scen::Int64, colony_vol_m3_pe
             continue
         end
 
-        RSV[species=sc] .= dropdims(sum(ASV[species=sp, scenarios=scen], dims=:species), dims=:species) ./ MSV
+        RSV[species=sc] .= dropdims(sum(ASV[species=sp], dims=:species), dims=:species) ./ MSV
     end
 
     @assert all(RSV .< 1.1)  # error out if RSV is drastically .> 1.0
 
     return RSV
+end
+
+function _shelter_species_loop(X::AbstractArray{T1, 4}, SV, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, site_area) where {T1}
+    return _shelter_species_loop(X[scenarios=scen], SV, nspecies, scen, colony_vol_m3_per_m2, site_area)
 end
 
 
@@ -372,33 +377,27 @@ Helper method to calculate absolute shelter volume metric across each species/si
 - colony_vol_m3_per_m2 : estimated cubic volume per m² of coverage for each species/size class (36)
 - site_area : area of site in m²
 """
-function _shelter_species_loop!(X, SV::AbstractArray, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, site_area)
-
+function _shelter_species_loop!(X::AbstractArray{T1, 3}, ASV::AbstractArray{T1, 3}, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, site_area) where {T1}
     covered_area = nothing
     @inbounds for sp::Int64 in 1:nspecies
-        try
-            # Calculate metric for the indicated scenario
-            covered_area = reduce(hcat,
-                            [X[species=sp, scenarios=scen, sites=s] .* site_area[s]
-                                for s in eachindex(site_area)])
-        catch
-            # Otherwise scenario dimension does not exist (single scenario case)
-            covered_area = reduce(hcat,
+        covered_area = reduce(hcat,
                             [X[species=sp, sites=s] .* site_area[s]
                                 for s in eachindex(site_area)])
-        end
 
         covered_area = NamedDims.rename(covered_area, (:timesteps, :sites))
 
         # SV represents absolute shelter volume in cubic meters
         if ndims(colony_vol_m3_per_m2) == 1
-            SV[species=sp, scenarios=scen] .= covered_area .* colony_vol_m3_per_m2[sp]
+            ASV[species=sp] .= covered_area .* colony_vol_m3_per_m2[sp]
         else
-            SV[species=sp, scenarios=scen] .= covered_area .* colony_vol_m3_per_m2[sp, scen]
+            ASV[species=sp] .= covered_area .* colony_vol_m3_per_m2[sp, scen]
         end
     end
 
-    clamp!(SV, 0.0, maximum(SV))
+    clamp!(ASV, 0.0, maximum(ASV))
+end
+function _shelter_species_loop!(X::AbstractArray{T1, 4}, ASV::AbstractArray{T1, 4}, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, site_area) where {T1}
+    return _shelter_species_loop!(X[scenarios=scen], ASV[scenarios=scen], nspecies, scen, colony_vol_m3_per_m2, site_area)
 end
 
 
@@ -441,10 +440,9 @@ function _absolute_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, 
         end
     else
         # Collate for a single scenario
-        ASV = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros([size(X)...]...))
+        ASV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X)...))
         colony_vol, _ = _colony_Lcm2_to_m3m2(inputs)
         _shelter_species_loop!(X, ASV, nspecies, 1, colony_vol, site_area)
-        ASV = dropdims(ASV, dims=:scenarios)
     end
 
     # Sum over groups and size classes to estimate total shelter volume per site
@@ -492,12 +490,11 @@ maximum shelter volume possible.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
 function _relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::DataFrame)::AbstractArray{<:Real}
-    @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
-
     nspecies::Int64 = size(X, :species)
 
     # Calculate shelter volume of groups and size classes and multiply with covers
     if nrow(inputs) > 1
+        @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
         nscens::Int64 = size(X, :scenarios)
         RSV = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(size(X[:, 1:6, :, :])...))
         for scen::Int64 in 1:nscens
