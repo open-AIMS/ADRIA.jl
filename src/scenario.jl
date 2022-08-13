@@ -294,7 +294,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     dhw_step = cache.dhw_step[:]
     cov_tmp = cache.cov_tmp[:, :]
 
-    Yout::Array{Float64,3} = zeros(tf, n_species, n_sites)
+    Yout::Array{Float64, 3} = zeros(tf, n_species, n_sites)
     Yout[1, :, :] .= @view cache.init_cov[:, :]
     cover_tmp = p.cover
 
@@ -520,8 +520,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         if seed_corals && in_seed_years && has_seed_sites
             # Extract site area for sites selected: site area * k = seeded area (m^2)
             site_area_seed = site_area[prefseedsites] .* max_cover[prefseedsites]
-
-            # Yout[tstep, :, prefseedsites]
 
             # Determine area (m^2) to be covered by seeded corals
             # and scale by area to be seeded
