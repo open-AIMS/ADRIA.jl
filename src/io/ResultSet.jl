@@ -59,9 +59,8 @@ end
 
 Combine arbitrary number of ADRIA result sets into a single data store.
 
-Note: As results are stored in Zarr format, the size of the combined data
-      can be expected to be approximately equal to the sum of the provided
-      result sets.
+Note: Results are stored in Zarr format. Combining data sets can be
+      expected to double total disk space requirement.
 """
 function combine_results(result_sets...)::ResultSet
     # Make sure results are all for the same domain
