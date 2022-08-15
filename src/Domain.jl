@@ -211,7 +211,12 @@ Maps sampled continuous values to discrete values for categorical variables.
 """
 function update_params!(d::Domain, params::DataFrameRow)
     p_df = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
-    p_df[!, :val] .= collect(params[Not("RCP")])
+
+    try
+        p_df[!, :val] .= collect(params[Not("RCP")])
+    catch err
+        error("Error occurred loading scenario samples.")
+    end
 
     to_floor = (p_df.ptype .== "integer")
     if any(to_floor)
