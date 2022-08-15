@@ -60,7 +60,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain)::Domain
     cache = setup_cache(domain)
 
     # Spin up workers if needed
-    if nprocs() == 1
+    if nprocs() == 1 && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
         active_cores = parse(Int, ENV["ADRIA_NUM_CORES"])
         if active_cores <= 0
             active_cores = cpucores()
