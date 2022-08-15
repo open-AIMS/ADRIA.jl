@@ -82,10 +82,11 @@ Here are some answers to some issues encountered.
 
 ## Testing
 
-To run tests
+To run tests:
 
 ```bash
-$ julia --project=test test/runtests.jl
+$ julia --project=.
+julia> ]test 
 ```
 
 
