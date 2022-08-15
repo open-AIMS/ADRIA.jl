@@ -126,12 +126,6 @@ function summarize_trajectories(rs, ts_name; kwargs...)
 end
 
 
-function summarize_trajectories(rs, ts_name; kwargs...)
-    sliced = slice_results(rs.outcomes[ts_name]; kwargs...)
-    return summarize_trajectory(sliced)
-end
-
-
 """
     trajectory_heatmap(data::Matrix{Float64})::Tuple{Vector{Float64}, Vector{Float64}, Matrix{Int64}}
 
