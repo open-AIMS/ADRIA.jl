@@ -20,6 +20,7 @@ struct ResultSet{S, T, F, A, B, C}
     site_ids::T
     site_area::F
     site_max_coral_cover::F
+    site_centroids::F
     env_layer_md::EnvLayer
 
     inputs::DataFrame
@@ -43,6 +44,7 @@ function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::
               input_set.attrs["site_ids"],
               convert.(Float64, input_set.attrs["site_area"]),
               convert.(Float64, input_set.attrs["site_max_coral_cover"]),
+              convert.(Float64, input_set.attrs["site_centroids"]),
               env_layer_md,
               inputs_used,
               input_set.attrs["sim_constants"],

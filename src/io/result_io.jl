@@ -1,10 +1,27 @@
 """
+    centroids(df::DataFrame)
+
+Extract and return long/lat from a GeoDataFrame.
+
+# Arguments
+df : GeoDataFrame
+
+# Returns
+Array of tuples (x, y), where x and y relate to long and lat respectively.
+"""
+function centroids(df::DataFrame)::Array
+    site_centroids = AG.centroid.(df.geometry)
+    return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
+end
+
+
+"""
     scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k)
     scenario_attributes(domain::Domain, param_df::DataFrame)
 
 Generate dictionary of scenario attributes.
 """
-function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k)::Dict
+function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k, centroids)::Dict
     attrs::Dict = Dict(
         :name => name,
         :RCP => RCP,
@@ -22,7 +39,8 @@ function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_
         :sim_constants => sim_constants,
         :site_ids => unique_sites,
         :site_area => area,
-        :site_max_coral_cover => k
+        :site_max_coral_cover => k,
+        :site_centroids => centroids
     )
 
     return attrs
@@ -30,7 +48,7 @@ end
 function scenario_attributes(domain::Domain, param_df::DataFrame)
     return scenario_attributes(domain.name, domain.RCP, names(param_df), domain.scenario_invoke_time, 
                 domain.env_layer_md, domain.sim_constants,
-                unique_sites(domain), domain.site_data.area, domain.site_data.k)
+                unique_sites(domain), domain.site_data.area, domain.site_data.k, centroids(domain.site_data))
 end
 
 
