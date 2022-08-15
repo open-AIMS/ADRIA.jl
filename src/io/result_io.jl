@@ -130,7 +130,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     insertcols!(param_df, 1, :RCP => parse(Float64, domain.RCP))
 
     @set! domain.scenario_invoke_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
-    log_location::String = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCP$(domain.RCP)__$(domain.scenario_invoke_time)")
+    log_location::String = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCPs$(domain.RCP)__$(domain.scenario_invoke_time)")
 
     z_store = DirectoryStore(log_location)
 
@@ -245,9 +245,9 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["wave_file"]
     )
 
-    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set)
+    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data)
 end
 function load_results(domain::Domain)::ResultSet
-    log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCP$(domain.RCP)__$(domain.scenario_invoke_time)")
+    log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCPs$(domain.RCP)__$(domain.scenario_invoke_time)")
     return load_results(log_location)
 end

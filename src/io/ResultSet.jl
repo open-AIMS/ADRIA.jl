@@ -165,7 +165,7 @@ end
 Get name of result set.
 """
 function store_name(r::ResultSet)::String
-    return "$(r.name)__$(r.RCP)__$(r.invoke_time)"
+    return "$(r.name)__RCPs$(r.RCP)__$(r.invoke_time)"
 end
 
 
