@@ -12,14 +12,15 @@ const LOG_GRP = "logs"
 const INPUTS = "inputs"
 
 
-struct ResultSet{S, T, F}
+struct ResultSet{S, T1, F, T2}
     name::S
     rcp::Int
     invoke_time::S
     ADRIA_VERSION::S
-    site_ids::T
+    site_ids::T1
     site_area::F
     site_max_coral_cover::F
+    site_centroids::T2
     env_layer_md::EnvLayer
 
     inputs::DataFrame
@@ -41,7 +42,7 @@ function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::
               input_set.attrs["site_ids"],
               convert.(Float64, input_set.attrs["site_area"]),
               convert.(Float64, input_set.attrs["site_max_coral_cover"]),
-              convert.(Float64, input_set.attrs["site_centroids"]),
+              input_set.attrs["site_centroids"],
               env_layer_md,
               inputs_used,
               input_set.attrs["sim_constants"],
