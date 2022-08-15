@@ -33,6 +33,9 @@ function (f::Metric)(raw, args...; kwargs...)
         return f.func(raw, args...; kwargs...)
     end
 end
+function (f::Metric)(rs::ResultSet, args...; kwargs...)
+    return f.func(rs, args...; kwargs...)
+end
 
 
 """
