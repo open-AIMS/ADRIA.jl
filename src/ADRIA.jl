@@ -40,8 +40,6 @@ include("io/result_io.jl")
 
 include("scenario.jl")
 
-# include("main_app.jl")
-
 
 export fecundity_scope!, bleaching_mortality!
 export growthODE
