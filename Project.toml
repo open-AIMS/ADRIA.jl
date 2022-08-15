@@ -4,6 +4,7 @@ authors = ["ConnectedSystems and contributors"]
 version = "0.4"
 
 [deps]
+ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 Compose = "a81c6b42-2e10-5240-aca2-a61377ecd94b"
 CpuId = "adafc99b-e345-5852-983c-f28acb93d879"
@@ -40,6 +41,7 @@ ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 
 [compat]
+ArchGDAL = "0.9"
 CPUSummary = "0.1.10"
 CSV = "0.10"
 Compose = "0.9"

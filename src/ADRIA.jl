@@ -8,6 +8,7 @@ using MAT  # Package to read in `.mat` files
 
 using Setfield, ModelParameters, DataStructures
 using DataFrames, GeoDataFrames, Graphs, CSV
+import ArchGDAL as AG
 
 using PkgVersion
 
@@ -39,6 +40,8 @@ include("metrics/metrics.jl")
 include("io/result_io.jl")
 
 include("scenario.jl")
+
+# include("main_app.jl")
 
 
 export fecundity_scope!, bleaching_mortality!
