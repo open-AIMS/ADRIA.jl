@@ -1,6 +1,7 @@
 # ADRIA.jl
+![Tests](https://github.com/open-AIMS/ADRIA.jl/actions/workflows/ci.yml/badge.svg?branch=main)
 
-Julia implementation of ADRIA under development.
+Julia implementation of ADRIA: the Adaptive Dynamic Reef Intervention Algorithm.
 
 Scripts showcasing example usage are found in the `examples` directory.
 
@@ -73,10 +74,10 @@ Here are some answers to some issues encountered.
 
 **Q. How do I run my own scenarios?**
 
-**A.** Scenarios are defined in a CSV file of parameter values (with values in columns, so that each row defines a scenario).
+**A.** Scenarios are defined in a CSV file (with parameter values in columns, so that each row defines a scenario).
 
-  - See `parameters.jl` file in the `examples` directory on how to extract the model specification and parameter table for a given domain.
   - See the `example_scenarios.csv` file in the `examples` directory for an idea of what this looks like.
+  - See `parameters.jl` file in the `examples` directory on how to extract the model specification and parameter table for a given domain.
   - See also the `running_scenarios.jl` example script which showcases how to run such a file for a given study area.
 
 
@@ -113,7 +114,6 @@ julia> @time include("running_scenarios.jl")
 [ Info: Loading data package
 [ Info: Loading example scenarios
 [ Info: Setting up and running scenarios
-[ Info: Reloading results and saving figure
 441.297525 seconds (402.13 M allocations: 24.268 GiB, 2.05% gc time, 53.47% compilation time)
 
 # Running a second time
@@ -121,7 +121,6 @@ julia> @time include("running_scenarios.jl")
 [ Info: Loading data package
 [ Info: Loading example scenarios
 [ Info: Setting up and running scenarios
-[ Info: Reloading results and saving figure
   5.066090 seconds (1.66 M allocations: 2.145 GiB, 6.70% gc time, 0.00% compilation time)
 ```
 
