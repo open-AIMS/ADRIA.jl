@@ -338,32 +338,16 @@ function _shelter_species_loop(X::AbstractArray{T1, 3}, nspecies::Int64, scen::I
     # ASV should be 0.0 where MSV is 0.0 so the end result is 0.0 / 1.0
     MSV[MSV .== 0.0] .= 1.0
 
-    covered_area = nothing
     RSV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X[species=1:6])...))
     taxa_max_map = zip([i:i+5 for i in 1:6:36], 1:6)
-    @inbounds for (sp, sc) in taxa_max_map
-        # Calculate area covered by each species group
-        covered_area = reduce(hcat,
-                            [sum(X[species=sp, sites=s], dims=:species) .* site_area[s]
-                                for s in eachindex(site_area)])
-
-        covered_area = NamedDims.rename(covered_area, (:timesteps, :sites))
-
-        if all(covered_area .== 0.0)
-            RSV[species=sc] .= 0.0
-            continue
-        end
-
-        RSV[species=sc] .= dropdims(sum(ASV[species=sp], dims=:species), dims=:species) ./ MSV
+    @inbounds for (sp, sq) in taxa_max_map
+        RSV[species=sq] .= dropdims(sum(ASV[species=sp], dims=:species), dims=:species) ./ MSV
     end
-
-    @assert all(RSV .< 1.1)  # error out if RSV is drastically .> 1.0
 
     return RSV
 end
-
-function _shelter_species_loop(X::AbstractArray{T1, 4}, SV, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, site_area) where {T1}
-    return _shelter_species_loop(X[scenarios=scen], SV, nspecies, scen, colony_vol_m3_per_m2, site_area)
+function _shelter_species_loop(X::AbstractArray{T1, 4}, nspecies::Int64, scen::Int64, colony_vol, max_colony_vol, site_area) where {T1}
+    return _shelter_species_loop(X[scenarios=scen], nspecies, scen, colony_vol, max_colony_vol, site_area)
 end
 
 
@@ -510,13 +494,12 @@ function _relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, 
         RSV = _shelter_species_loop(X, nspecies, 1, colony_vol, max_colony_vol, site_area)
     end
 
-    @assert !any(RSV .> 1.2)
+    @assert !any(RSV .> 1.1)  # Error out in cases where RSV significantly .> 1.0
 
     # Sum over groups and size classes to estimate total shelter volume
     # proportional to the theoretical maximum (per site)
     RSV = dropdims(sum(RSV, dims=:species), dims=:species)
 
-    # @assert all(RSV .< 1.5)  # Error out in cases where RSV significantly .> 1.0
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
