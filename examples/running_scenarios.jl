@@ -8,7 +8,7 @@ and the output location to store results in.
 using ADRIA
 
 
-ADRIA.setup()  # Load config and set up multiprocessing
+ADRIA.setup()  # Load and apply configuration options
 
 @info "Loading data package"
 ex_domain = ADRIA.load_domain("Example_domain", 45)
@@ -31,9 +31,4 @@ rs = ADRIA.load_results(ex_domain)
 # rs = ADRIA.load_results("path to result set")
 
 # Specific metrics found in the `metrics` submodule.
-# Y_TC = ADRIA.metrics.coral_cover(res).total_absolute_cover
-# Y_o = ADRIA.metrics.summarize_total_cover(res)
-
-# Indicative result display for example only. This function to be removed.
-# Figure will be saved in the specified output location.
-# ADRIA._indicative_result_display(res)
+# tac = ADRIA.metrics.total_absolute_cover(rs)
