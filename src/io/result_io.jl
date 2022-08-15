@@ -39,7 +39,7 @@ function scenario_attributes(domain::Domain, param_df::DataFrame)
 
         :site_ids => unique_sites(domain),
         :site_area => domain.site_data.area,
-        :site_max_coral_cover => domain.site_data.k
+        :site_max_coral_cover => domain.site_data.k,
         :site_centroids => centroids(domain.site_data)
     )
 
