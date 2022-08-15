@@ -33,6 +33,27 @@ struct ResultSet{S, T, F}
 end
 
 
+function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::DataFrame, outcomes::Dict, log_set::Zarr.ZGroup)::ResultSet
+    ResultSet(input_set.attrs["name"],
+              input_set.attrs["rcp"],
+              input_set.attrs["invoke_time"],
+              input_set.attrs["ADRIA_VERSION"],
+              input_set.attrs["site_ids"],
+              convert.(Float64, input_set.attrs["site_area"]),
+              convert.(Float64, input_set.attrs["site_max_coral_cover"]),
+              convert.(Float64, input_set.attrs["site_centroids"]),
+              env_layer_md,
+              inputs_used,
+              input_set.attrs["sim_constants"],
+              outcomes,
+              NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
+              NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
+              NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
+              NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]))
+end
+
+
+
 """
     store_name(r::ResultSet)::String
 
