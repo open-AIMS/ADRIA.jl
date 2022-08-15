@@ -10,20 +10,22 @@ import ADRIA: Domain, EnvLayer
 const RESULTS = "results"
 const LOG_GRP = "logs"
 const INPUTS = "inputs"
+const SITE_DATA = "site_data"
 
 
-struct ResultSet{S, T, F, A, B, C}
+struct ResultSet{S, T1, T2, F, A, B, C, G}
     name::S
     RCP::S
     invoke_time::S
     ADRIA_VERSION::S
-    site_ids::T
+    site_ids::T1
     site_area::F
     site_max_coral_cover::F
-    site_centroids::F
+    site_centroids::T2
     env_layer_md::EnvLayer
+    site_data::G
 
-    inputs::DataFrame
+    inputs::G
     sim_constants::Dict
 
     # raw::AbstractArray
@@ -35,7 +37,7 @@ struct ResultSet{S, T, F, A, B, C}
 end
 
 
-function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::DataFrame, outcomes::Dict, log_set::Zarr.ZGroup)::ResultSet
+function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::DataFrame, outcomes::Dict, log_set::Zarr.ZGroup, site_data::DataFrame)::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
     ResultSet(input_set.attrs["name"],
               string(rcp),
@@ -44,8 +46,9 @@ function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::
               input_set.attrs["site_ids"],
               convert.(Float64, input_set.attrs["site_area"]),
               convert.(Float64, input_set.attrs["site_max_coral_cover"]),
-              convert.(Float64, input_set.attrs["site_centroids"]),
+              input_set.attrs["site_centroids"],
               env_layer_md,
+              site_data,
               inputs_used,
               input_set.attrs["sim_constants"],
               outcomes,
@@ -70,7 +73,7 @@ function combine_results(result_sets...)::ResultSet
 
     # Ensure all sim constants are identical
     @assert all([result_sets[i].sim_constants == result_sets[i+1].sim_constants for i in 1:length(result_sets)-1])
-    
+
 
     # Ensure all result sets were from the same version of ADRIA
     if length(Set([rs.ADRIA_VERSION for rs in result_sets])) != 1
@@ -97,7 +100,13 @@ function combine_results(result_sets...)::ResultSet
 
     all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
     input_dims = size(all_inputs)
-    attrs = scenario_attributes(canonical_name, rcps, names(all_inputs), combined_time, env_md, rs1.sim_constants, rs1.site_ids, rs1.site_area, rs1.site_max_coral_cover)
+    attrs = scenario_attributes(canonical_name, rcps, names(all_inputs), combined_time, env_md, rs1.sim_constants,
+                                rs1.site_ids, rs1.site_area, rs1.site_max_coral_cover, rs1.site_centroids)
+
+    # Copy site data into result set
+    mkdir(joinpath(new_loc, "site_data"))
+    cp(attrs[:site_data_file], joinpath(new_loc, "site_data", basename(attrs[:site_data_file])), force=true)
+
 
     input_loc::String = joinpath(z_store.folder, INPUTS)
     # TODO: Fix issue - ERROR: UndefRefError: access to undefined reference

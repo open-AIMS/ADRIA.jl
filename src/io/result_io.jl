@@ -104,10 +104,12 @@ Sets up an on-disk result store.
 │   ├───relative_cover
 │   ├───relative_shelter_volume
 │   └───absolute_shelter_volume
+├───site_data
 └───inputs
 ```
 
-`inputs` store includes domain specification metadata including what connectivity/DHW/wave data was used.
+- `inputs` : includes domain specification metadata including what connectivity/DHW/wave data was used.
+- `site_data` : contains a copy of the spatial domain data (as geopackage).
 
 # Notes
 - `domain` is replaced with an identical copy with an updated scenario invoke time.
@@ -138,6 +140,10 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     input_loc::String = joinpath(z_store.folder, INPUTS)
     input_dims::Tuple{Int64,Int64} = size(param_df)
     attrs::Dict = scenario_attributes(domain, param_df)
+
+    # Copy site data into result set
+    mkdir(joinpath(log_location, "site_data"))
+    cp(attrs[:site_data_file], joinpath(log_location, "site_data", basename(attrs[:site_data_file])), force=true)
 
     inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
 
@@ -221,6 +227,13 @@ function load_results(result_loc::String)::ResultSet
 
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
+
+    result_loc = replace(result_loc, "\\"=>"/")
+    if endswith(result_loc, "/")
+        result_loc = result_loc[1:end-1]
+    end
+
+    site_data = GeoDataFrames.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"]*".gpkg"))
 
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
     t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
