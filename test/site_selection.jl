@@ -4,7 +4,7 @@
     dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
     p_tbl = ADRIA.param_table(dom)
 
-    p_tbl.depth_offset .= 7.0
+    p_tbl[:, :depth_offset] .= 7.0
 
     # ranks = ADRIA.site_selection(dom, p_tbl, 1, 10, 1)
 end
