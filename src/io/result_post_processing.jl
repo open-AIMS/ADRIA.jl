@@ -73,7 +73,7 @@ function create_BI_format_file(rs::ResultSet,file_loc::String)
     # set up for extract at 5-yearly slices
     tf = rs.sim_constants["tf"]
     years = collect(2025:5:2025+tf)
-    years_ints = collect(1:5:size(rel_cover)[1])
+    years_ints = collect(1:5:tf)
     n_years = length(years_ints)
 
     perms = n_years*n_sites*n_scens
