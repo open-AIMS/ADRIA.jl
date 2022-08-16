@@ -3,7 +3,6 @@ Functions for post-processing ADRIA results.
 
 """
 
-using Infiltrator
 using ADRIA
 import ADRIA: ResultSet
 using Statistics
@@ -11,13 +10,14 @@ using CSV
 using DataFrames
 
 """
-
-    RCP_to_SSP(rcp::String)::String
+    RCP_to_SSP(rcp)
 
 Converts RCP scenarios to SSP scenarios.
-Argument: rcp, a string indicating the RCP scenario
-Output: ssp, a string indicating the corresponding ssp scenario.
 
+...
+#Argument: 
+- `rcp::String`: a string indicating the RCP scenario
+...
 """
 
 function RCP_to_SSP(rcp::String)::String
@@ -35,18 +35,16 @@ function RCP_to_SSP(rcp::String)::String
 end
 
 """
+    create_BI_format_file(rs,file_loc)
 
-    create_BI_format_file(rs::ResultSet,file_loc::String)
+Creates a tabular csv files from input ADRIA results rs, suitable for processing in PowerBI etc.
+Saves as csv at file_loc.
 
-Creates a tabular csv files from input ADRIA results, suitable for processing in PowerBI etc.
-
-Argument: rs::ResultSet, a set of results run in ADRIA
-          file_loc::String, a string indicating the directory to save the csv file in.
-Output: a csv file with columns [Model, SSP, SiteID, Latitude, Longitude,
-                                    Year, DeployYear, SeedLevel, DHWenhancement, 
-                                    FogLevel, SiteArea, Kvalue, Guided,
-                                    MeanCoralCoverProp, DiffMeanCoralCoverProp,
-                                    ShelterVolume, DiffShelterVolume]
+...
+#Arguments: 
+- `rs::ResultSet`: a set of results run in ADRIA
+- `file_loc::String`: a string indicating the directory to save the csv file in.
+...
 """
 function create_BI_format_file(rs::ResultSet, file_loc::String)
 
@@ -60,7 +58,7 @@ function create_BI_format_file(rs::ResultSet, file_loc::String)
     #juveniles = dropdims(mean(cover[:juveniles],dims=:reps),dims=:reps)
     #rci = dropdims(mean(ADRIA.metrics.reef_condition_index(res),dims=:reps),dims=:reps)
     sheltervol = ADRIA.metrics.relative_shelter_volume(rs)
-    @infiltrate
+
     tf, n_sites, n_scens = size(rel_cover)
 
     # extract key site data
@@ -103,7 +101,7 @@ function create_BI_format_file(rs::ResultSet, file_loc::String)
                 seed = res.inputs.seed_TA[sce] + res.inputs.seed_CA[sce]
                 # fogging or no fogging
                 res.inputs.fogging[sce] > 0 ? fog = 1 : fog = 0
-                @infiltrate
+
                 # add scenario to structure
                 data_sum_df[count, :] = (model, ssp, site_ids[si], centroids[si][2, 1], centroids[si][1, 1], years[t], Int(res.inputs.seed_year_start[sce] + 2024),
                     seed, rs.inputs.a_adapt[sce], fog, sitearea[si], kvals[si], guided,
