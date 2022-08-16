@@ -61,8 +61,7 @@ function create_BI_format_file(rs::ResultSet,file_loc::String)
     #rci = dropdims(mean(ADRIA.metrics.reef_condition_index(res),dims=:reps),dims=:reps)
     sheltervol = ADRIA.metrics.relative_shelter_volume(rs)
     @infiltrate
-    n_sites = size(rel_cover)[2]
-    n_scens = size(rel_cover)[3]
+    tf, n_sites, n_scens = size(rel_cover)
 
     # extract key site data
     site_ids = rs.site_ids
@@ -71,7 +70,6 @@ function create_BI_format_file(rs::ResultSet,file_loc::String)
     sitearea = rs.site_area
 
     # set up for extract at 5-yearly slices
-    tf = rs.sim_constants["tf"]
     years = collect(2025:5:2025+tf)
     years_ints = collect(1:5:tf)
     n_years = length(years_ints)
