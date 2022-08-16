@@ -40,7 +40,7 @@ Saves as csv at `file_loc`.
 - `rs::ResultSet`: ADRIA result set
 - `file_loc::String`: directory to save the csv file in
 """
-function create_BI_format_file(rs::ResultSet, file_loc::String=".")
+function create_BI_format_file(rs::ResultSet, file_loc::String)
     model = "ADRIA"
     
     # extract RCP and convert to SSP
