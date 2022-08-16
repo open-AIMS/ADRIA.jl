@@ -1,6 +1,5 @@
 @doc """
-Functions for post-processing ADRIA results. 
-
+Functions for post-processing ADRIA results.
 """
 
 using ADRIA
@@ -12,12 +11,10 @@ using DataFrames
 """
     RCP_to_SSP(rcp)
 
-Converts RCP scenarios to SSP scenarios.
+Convert RCP scenarios to SSP scenarios.
 
-...
-# Argument: 
-- `rcp::String`: a string indicating the RCP scenario
-...
+# Arguments: 
+- `rcp::String`: RCP scenario identifier
 """
 function RCP_to_SSP(rcp::String)::String
     if rcp == "26"
@@ -34,20 +31,18 @@ function RCP_to_SSP(rcp::String)::String
 end
 
 """
-    create_BI_format_file(rs,file_loc)
+    create_BI_format_file(rs, file_loc)
 
-Creates a tabular csv files from input ADRIA results rs, suitable for processing in PowerBI etc.
-Saves as csv at file_loc.
+Creates a tabular csv files from ADRIA ResultSet, suitable for processing in PowerBI etc.
+Saves as csv at `file_loc`.
 
-...
-# Arguments: 
-- `rs::ResultSet`: a set of results run in ADRIA
-- `file_loc::String`: a string indicating the directory to save the csv file in.
-...
+# Arguments:
+- `rs::ResultSet`: ADRIA result set
+- `file_loc::String`: directory to save the csv file in
 """
-function create_BI_format_file(rs::ResultSet, file_loc::String)
-
+function create_BI_format_file(rs::ResultSet, file_loc::String=".")
     model = "ADRIA"
+    
     # extract RCP and convert to SSP
     rcp = rs.RCP
     ssp = RCP_to_SSP(rcp)
