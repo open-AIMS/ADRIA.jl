@@ -15,11 +15,10 @@ using DataFrames
 Converts RCP scenarios to SSP scenarios.
 
 ...
-#Argument: 
+# Argument: 
 - `rcp::String`: a string indicating the RCP scenario
 ...
 """
-
 function RCP_to_SSP(rcp::String)::String
     if rcp == "26"
         ssp = "SSP1"
@@ -41,7 +40,7 @@ Creates a tabular csv files from input ADRIA results rs, suitable for processing
 Saves as csv at file_loc.
 
 ...
-#Arguments: 
+# Arguments: 
 - `rs::ResultSet`: a set of results run in ADRIA
 - `file_loc::String`: a string indicating the directory to save the csv file in.
 ...
