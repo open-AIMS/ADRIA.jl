@@ -129,6 +129,22 @@ function summarize_absolute_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbo
 end
 
 
+"""
+    summarize_relative_shelter_volume(sv::AbstractArray{<:Real}, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+    summarize_relative_shelter_volume(rs::ResultSet, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+
+Calculate summarized coral evenness.
+"""
+function summarize_relative_shelter_volume(sv::NamedDimsArray; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
+    return summarize_trajectory(slice_results(sv; kwargs...))
+end
+function summarize_relative_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
+    sv_sliced = slice_results(rs.outcomes[:relative_shelter_volume]; kwargs...)
+    return summarize_trajectory(sv_sliced)
+end
+
+
+
 function summarize_trajectories(rs, ts_name; kwargs...)
     sliced = slice_results(rs.outcomes[ts_name]; kwargs...)
     return summarize_trajectory(sliced)
