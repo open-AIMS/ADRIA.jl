@@ -69,7 +69,7 @@ Note: Results are stored in Zarr format. Combining data sets can be
 """
 function combine_results(result_sets...)::ResultSet
     # Make sure results are all for the same domain
-    @assert length(Set([rs.name for rs in result_sets])) == 1
+    # @assert length(Set([rs.name for rs in result_sets])) == 1
 
     # Ensure all sim constants are identical
     @assert all([result_sets[i].sim_constants == result_sets[i+1].sim_constants for i in 1:length(result_sets)-1])
