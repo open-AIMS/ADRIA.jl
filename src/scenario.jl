@@ -536,15 +536,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             scaled_seed_TA = ((n_TA_to_seed / nsiteint) * col_area_seed_TA) ./ site_area_seed
             scaled_seed_CA = ((n_CA_to_seed / nsiteint) * col_area_seed_CA) ./ site_area_seed
 
-            excess_TA = sum(seed_TA_per_site)-seed_TA_vol
-            excess_CA = sum(seed_CA_per_site)-seed_CA_vol
-
-            seed_TA_per_site[seed_TA_per_site.==maximum(seed_TA_per_site)] = seed_TA_per_site[seed_TA_per_site.==maximum(seed_TA_per_site)] .- excess_TA
-            seed_CA_per_site[seed_CA_per_site.==maximum(seed_CA_per_site)] = seed_CA_per_site[seed_CA_per_site.==maximum(seed_CA_per_site)] .- excess_CA
-
-            scaled_seed_TA = ((seed_TA_per_site .* col_area_seed_TA))
-            scaled_seed_CA = ((seed_CA_per_site .* col_area_seed_CA))
-
             #scaled_seed_TA = site_area_seed ./ (((seed_TA_vol / nsiteint) * col_area_seed_TA))
             #scaled_seed_CA = site_area_seed ./ (((seed_CA_vol / nsiteint) * col_area_seed_CA))
 
