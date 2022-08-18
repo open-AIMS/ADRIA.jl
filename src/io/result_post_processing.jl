@@ -90,14 +90,14 @@ function create_BI_format_file(rs::ResultSet, file_loc::String)
             for sce in collect(1:n_scens)
 
                 # guided or unguided
-                res.inputs.guided[sce] > 0 ? guided = 1 : guided = 0
+                rs.inputs.guided[sce] > 0 ? guided = 1 : guided = 0
                 # seeding level including both species
-                seed = res.inputs.seed_TA[sce] + res.inputs.seed_CA[sce]
+                seed = rs.inputs.seed_TA[sce] + rs.inputs.seed_CA[sce]
                 # fogging or no fogging
-                res.inputs.fogging[sce] > 0 ? fog = 1 : fog = 0
+                rs.inputs.fogging[sce] > 0 ? fog = 1 : fog = 0
 
                 # add scenario to structure
-                data_sum_df[count, :] = (model, ssp, site_ids[si], centroids[si][2, 1], centroids[si][1, 1], years[t], Int(res.inputs.seed_year_start[sce] + 2024),
+                data_sum_df[count, :] = (model, ssp, site_ids[si], centroids[si][2, 1], centroids[si][1, 1], years[t], Int(rs.inputs.seed_year_start[sce] + 2024),
                     seed, rs.inputs.a_adapt[sce], fog, sitearea[si], kvals[si], guided,
                     rel_cover[years_ints[t], si, sce] * 100, (rel_cover[years_ints[t], si, sce].-rel_cover[years_ints[t], si, counter_ind])[1] * 100,
                     sheltervol[years_ints[t], si, sce] * 100, (sheltervol[years_ints[t], si, sce].-sheltervol[years_ints[t], si, counter_ind])[1] * 100)
