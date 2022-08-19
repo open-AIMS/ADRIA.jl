@@ -528,13 +528,21 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         if seed_corals && in_seed_years && has_seed_sites
 
             @infiltrate
-            # extract site area for sites selected and scale by available space for populations (k/100)
-            site_area_seed = site_area[prefseedsites] .* (max_cover[prefseedsites]-sum(cov_tmp, dims=1)[prefseedsites])
+            # extract site area for sites selected and scale by carrying capacity (k/100)
+            site_area_seed = site_area[prefseedsites] .* max_cover[prefseedsites]
+            # extract site area for sites selected and scale by actual available space (k/100 - sum_cover)
+            site_area_seed_remaining = site_area[prefseedsites] .* (max_cover[prefseedsites]-sum(cov_tmp, dims=1)[prefseedsites])
 
-            # Determine area (m^2) to be covered by seeded corals
-            # and make relative to total site
-            scaled_seed_TA = ((n_TA_to_seed / nsiteint) * col_area_seed_TA) ./ site_area_seed
-            scaled_seed_CA = ((n_CA_to_seed / nsiteint) * col_area_seed_CA) ./ site_area_seed
+            # proportion of available space relative to total space 
+            prop_area_avail = site_area_seed_remaining./site_area_seed
+
+            # distribute seeded corals (as area) across sites according to available space relative to carrying capacity
+            scaled_seed_TA = prop_area_avail.*(seed_TA_vol * col_area_seed_TA)
+            scaled_seed_CA = prop_area_avail.*(seed_CA_vol * col_area_seed_CA)
+            
+            # convert to relative cover proportion 
+            scaled_seed_TA = scaled_seed_TA./site_area_seed
+            scaled_seed_CA = scaled_seed_CA./site_area_seed
 
             # Seed each site with the value indicated with seed1/seed2
             @views cov_tmp[seed_size_class1, prefseedsites] .= cov_tmp[seed_size_class1, prefseedsites] .+ scaled_seed_TA  # seed Enhanced Tabular Acropora
