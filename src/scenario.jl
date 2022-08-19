@@ -449,6 +449,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     col_area_seed_TA = corals.colony_area_cm2[seed_size_class1] / 10^4
     col_area_seed_CA = corals.colony_area_cm2[seed_size_class2] / 10^4
 
+    absolute_k_area = (total_site_area .* max_cover)  # max possible coral area in m^2
     growth::ODEProblem = ODEProblem{true,false}(growthODE, cov_tmp, tspan, p)
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
@@ -462,7 +463,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         fecundity_scope!(fec_scope, fec_all, fec_params, cov_tmp, absolute_k_area)
 
         # adjusting absolute recruitment at each site by dividing by the area
-        @views p.rec[:, :] .= (potential_settler_cover .* ((fec_scope .* LPs) * TP_data)) ./ site_area
+        @views p.rec[:, :] .= (potential_settler_cover .* ((fec_scope .* LPs) * TP_data)) ./ absolute_k_area
 
         @views dhw_step .= dhw_scen[tstep, :]  # subset of DHW for given timestep
 
