@@ -270,7 +270,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     ### END TODO
 
     # site_area::Array{Float64,2} = site_data.area'
-    site_area = cache.site_area
+    total_site_area = cache.site_area
 
     fec_params::Vector{Float64} = corals.fecundity
     potential_settler_cover::Float64 = (sim_params.max_settler_density *
@@ -382,7 +382,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             dhw_scen[1, :],  # heatstressprob
             Yout[1, :, :],  # sumcover
             max_cover,
-            site_area,
+            total_site_area,
             risktol,
             wtconseed,
             wtconshade,
@@ -459,7 +459,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Calculates scope for coral fedundity for each size class and at
         # each site. Now using coral fecundity per m2 in 'coralSpec()'
-        fecundity_scope!(fec_scope, fec_all, fec_params, cov_tmp, site_area)
+        fecundity_scope!(fec_scope, fec_all, fec_params, cov_tmp, absolute_k_area)
 
         # adjusting absolute recruitment at each site by dividing by the area
         @views p.rec[:, :] .= (potential_settler_cover .* ((fec_scope .* LPs) * TP_data)) ./ site_area
@@ -519,7 +519,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
             # Extract site area for sites selected: site area * k = seeded area (m^2)
-            site_area_seed = site_area[prefseedsites] .* max_cover[prefseedsites]
+            site_area_seed = total_site_area[prefseedsites] .* max_cover[prefseedsites]
 
             # Determine area (m^2) to be covered by seeded corals
             # and scale by area to be seeded
