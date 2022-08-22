@@ -29,7 +29,7 @@ Base.@kwdef mutable struct SimConstants
     
     # Default percent thresholds of max connectivity to filter out weak connections in connectivity network. 
     # Suggest we keep this low
-    con_cutoff = 0.02;
+    con_cutoff = 0.01;
     RCP = 45;  # RCP scenario to use
     prioritysites = []; # sites to prioritize when seeding or shading
 

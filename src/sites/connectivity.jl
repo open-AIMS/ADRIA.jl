@@ -36,7 +36,7 @@ NamedTuple:
 ```
 """
 function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, String}}, unique_site_ids::Vector{String}, site_order::Vector{Union{Missing, Int64}}; 
-    con_cutoff::Float64=0.02, agg_func::Function=mean, swap::Bool=false)::NamedTuple
+    con_cutoff::Float64=0.01, agg_func::Function=mean, swap::Bool=false)::NamedTuple
     
     # Remove any row marked as missing
     if any(ismissing.(conn_ids))
