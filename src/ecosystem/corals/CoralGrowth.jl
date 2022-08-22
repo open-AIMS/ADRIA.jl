@@ -33,12 +33,28 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
     sel_en::SVector = @SVector [5, 11]
     sel_unen::SVector = @SVector [6, 12]
 
-    p = @NamedTuple{r::Matrix{Float64}, P::Float64, mb::Matrix{Float64}, comp::Float64, small_massives::StaticArrays.SVector{3, Int64},
-                     small::StaticArrays.SVector{4, Int64}, mid::StaticArrays.SVector{19, Int64}, large::StaticArrays.SVector{4, Int64},
-                     sel_en::StaticArrays.SVector{2, Int64}, sel_unen::StaticArrays.SVector{2, Int64}, encrusting::StaticArrays.SVector{2, Int64},
-                     small_r::StaticArrays.SVector{4, Int64}, enc::StaticArrays.SVector{2, Int64}, rec::Matrix{Float64}, k::Matrix{Float64},
-                     kX_sel_en::Matrix{Float64}, X_tab::Matrix{Float64}, kXr::Matrix{Float64}, k_rec::Matrix{Float64},
-                     X_mb::Matrix{Float64}, cover::Vector{Float64}}((
+    p = @NamedTuple{
+            r::Matrix{Float64},   # growth rate
+            P::Float64,           # max carrying capacity (`k` in other places) 
+            mb::Matrix{Float64},  # background mortality
+            comp::Float64,        # competition between small and large 
+            small_massives::StaticArrays.SVector{3, Int64},  # index locations for small massives
+            small::StaticArrays.SVector{4, Int64},           # indices for small size classes
+            mid::StaticArrays.SVector{19, Int64},            # indices for mid-size corals
+            large::StaticArrays.SVector{4, Int64},           # indices for large corals
+            sel_en::StaticArrays.SVector{2, Int64},          # specific size classes for enhanced corals
+            sel_unen::StaticArrays.SVector{2, Int64},        # specific size classes for unenhanced corals
+            encrusting::StaticArrays.SVector{2, Int64},      # encrusting corals
+            small_r::StaticArrays.SVector{4, Int64},         # growth rate for small corals
+            enc::StaticArrays.SVector{2, Int64},             # enc
+            rec::Matrix{Float64},                            # recruitment values
+            k::Matrix{Float64},                              # difference between max carrying cap and current coral cover
+            kX_sel_en::Matrix{Float64},                      # k * X_{sel_en}
+            X_tab::Matrix{Float64},                          # Coral cover of tabular corals
+            kXr::Matrix{Float64},                            # k * X * r
+            k_rec::Matrix{Float64},                          # k * recruitment
+            X_mb::Matrix{Float64},                           # X * mb
+            cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
         zeros(n_species, 1), 0.3, zeros(n_species, 1), 0.3,
 
         # cached indices
