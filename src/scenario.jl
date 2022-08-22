@@ -539,7 +539,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
         growth.u0[:, :] .= @views cov_tmp[:, :] .* prop_loss[:, :]  # update initial condition
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-                                 alg_hints=[:nonstiff], abstol=1e-8, reltol=1e-7)
+                                 alg_hints=[:nonstiff], abstol=1e-7, reltol=1e-4)
         Yout[tstep, :, :] .= sol.u[end]
 
         # growth::ODEProblem = ODEProblem{true,false}(growthODE, cov_tmp .* prop_loss[:, :], tspan, p)
