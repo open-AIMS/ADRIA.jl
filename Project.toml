@@ -42,7 +42,6 @@ Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 
 [compat]
 ArchGDAL = "0.9"
-CPUSummary = "0.1.10"
 CSV = "0.10"
 Compose = "0.9"
 CpuId = "0.3"
