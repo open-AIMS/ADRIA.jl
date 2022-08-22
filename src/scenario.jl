@@ -72,7 +72,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain)::Domain
     end
 
     # Batch run scenarios
-    if (nrow(param_df) > 1024) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    if (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
         @eval @everywhere using ADRIA
 
         func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
