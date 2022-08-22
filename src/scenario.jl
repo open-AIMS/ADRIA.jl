@@ -281,7 +281,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # TP_data::Array{Float64,2} = Matrix(domain.TP_data)
     TP_data = cache.TP_data
     # LPs::Array{Float64,2} = zeros(n_groups, n_sites)
-    # fec_all::Array{Float64,2} = similar(init_cov, Float64)
+    # fec_all::Array{Float64,2} = zeros(size(init_cov)...)
     # fec_scope::Array{Float64,2} = zeros(n_groups, n_sites)
     # prop_loss::Array{Float64,2} = zeros(n_species, n_sites)
     # Sbl::Array{Float64,2} = zeros(n_species, n_sites)
@@ -449,8 +449,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     col_area_seed_TA = corals.colony_area_cm2[seed_size_class1] / 10^4
     col_area_seed_CA = corals.colony_area_cm2[seed_size_class2] / 10^4
 
-    absolute_k_area = (total_site_area .* max_cover)  # max possible coral area in m^2
-    growth::ODEProblem = ODEProblem{true,false}(growthODE, cov_tmp, tspan, p)
+    # absolute_k_area = vec(total_site_area' .* max_cover)  # max possible coral area in m^2
+    growth::ODEProblem = ODEProblem{true,false}(growthODE, Yout[1, :, :], tspan, p)
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
         @views cov_tmp[:, :] .= Yout[p_step, :, :]
