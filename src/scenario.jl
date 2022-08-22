@@ -21,13 +21,13 @@ function setup_cache(domain::Domain)::NamedTuple
 
     cache = (
         LPs = zeros(n_groups, n_sites),
-        fec_all = similar(init_cov, Float64),
+        fec_all = zeros(size(init_cov)...),
         fec_scope = zeros(n_groups, n_sites),
         prop_loss = zeros(n_species, n_sites),
         Sbl = zeros(n_species, n_sites),
         dhw_step = zeros(n_sites),
         init_cov = init_cov,
-        cov_tmp = similar(init_cov),
+        cov_tmp = zeros(size(init_cov)...),
         site_area = Array{Float64}(domain.site_data.area'),
         TP_data = Array{Float64, 2}(domain.TP_data)
     )
