@@ -295,7 +295,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     cov_tmp = cache.cov_tmp[:, :]
 
     Yout::Array{Float64, 3} = zeros(tf, n_species, n_sites)
-    Yout[1, :, :] .= @view cache.init_cov[:, :]
+    Yout[1, :, :] .= cache.init_cov[:, :]
     cover_tmp = p.cover
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
@@ -336,8 +336,11 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # Max coral cover at each site. Divided by 100 to convert to proportion
     max_cover = site_data.k / 100.0
 
+    # Set other params for ODE
+    p.r .= corals.growth_rate  # Assumed growth_rate
+
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
-    proportional_adjustment!(Yout[1, :, :], cover_tmp, max_cover)
+    Yout[1, :, :] .= proportional_adjustment!(Yout[1, :, :], cover_tmp, max_cover)
 
     if is_guided
         ## Weights for connectivity , waves (ww), high cover (whc) and low
@@ -540,15 +543,14 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         growth.u0[:, :] .= @views cov_tmp[:, :] .* prop_loss[:, :]  # update initial condition
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
                                  alg_hints=[:nonstiff], abstol=1e-7, reltol=1e-4)
-        Yout[tstep, :, :] .= sol.u[end]
+        # Using the last step from ODE above, proportionally adjust site coral cover
+        # if any are above the maximum possible (i.e., the site `k` value)
+        Yout[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
 
         # growth::ODEProblem = ODEProblem{true,false}(growthODE, cov_tmp .* prop_loss[:, :], tspan, p)
         # sol::ODESolution = solve(growth, solver, abstol=1e-7, reltol=1e-4, save_everystep=false, save_start=false, alg_hints=[:nonstiff])
         # Yout[tstep, :, :] .= sol.u[end]
-
-        # Using the last step from ODE above, proportionally adjust site coral cover
-        # if any are above the maximum possible (i.e., the site `k` value)
-        proportional_adjustment!(Yout[tstep, :, :], cover_tmp, max_cover)
+        # Yout[tstep, :, :] .= proportional_adjustment!(Yout[tstep, :, :], cover_tmp, max_cover)
     end
 
     # avoid placing importance on sites that were not considered

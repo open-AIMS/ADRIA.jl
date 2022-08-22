@@ -14,12 +14,14 @@ Modifies arrays in-place.
 """
 function proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
     # Proportionally adjust initial covers
-    @views cover_tmp .= vec(sum(Yout, dims=1))
+    cover_tmp .= vec(sum(Yout, dims=1))
     if any(cover_tmp .> max_cover)
-        exceeded::Vector{Int32} = findall(cover_tmp .> vec(max_cover))
+        exceeded::Vector{Int32} = findall(cover_tmp .> max_cover)
 
-        @views Yout[:, exceeded] .= (Yout[:, exceeded] ./ cover_tmp[exceeded]') .* max_cover[exceeded]'
+        Yout[:, exceeded] .= (Yout[:, exceeded] ./ cover_tmp[exceeded]') .* max_cover[exceeded]'
     end
+
+    return Yout
 end
 
 
@@ -62,7 +64,7 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     du .= max.(du, 0.0)
 
     c::Vector{Float64} = zeros(size(du, 2))
-    proportional_adjustment!(du, c, collect(k))
+    du .= proportional_adjustment!(du, c, collect(p.P))
 
     return
 end
