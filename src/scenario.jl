@@ -460,7 +460,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Calculates scope for coral fedundity for each size class and at
         # each site. Now using coral fecundity per m2 in 'coralSpec()'
-        fecundity_scope!(fec_scope, fec_all, fec_params, cov_tmp, absolute_k_area)
+        fecundity_scope!(fec_scope, fec_all, fec_params, cov_tmp, max_cover)
 
         # adjusting absolute recruitment at each site by dividing by the area
         @views p.rec[:, :] .= (potential_settler_cover .* ((fec_scope .* LPs) * TP_data)) ./ absolute_k_area
