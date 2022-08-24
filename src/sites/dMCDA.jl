@@ -484,25 +484,26 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - seed_years : bool, indicating whether to seed this year or not
 - shade_years : bool, indicating whether to shade this year or not
 - nsiteint : int, number of sites to intervene on
-- max_cover : vector/matrix : maximum carrying capacity of each site (`k` value)
+- available_space : vector/matrix : space available at each site (`k` value)
 """
-function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)
-    # Unguided deployment, seed/shade corals anywhere so long as max_cover > 0.
-    # Only sites with max_cover are considered, otherwise a zero-division error may occur later on.
+function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, available_space)
+    # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.1
+    # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
     # Select sites (without replacement to avoid duplicate sites)
-    num_sites = length(findall(max_cover .> 0.0))
+    candidate_sites = findall(available_space .> 0.0)
+    num_sites = length(candidate_sites)
     s_nsiteint = num_sites < nsiteint ? num_sites : nsiteint
 
     if seed_years
-        prefseedsites = zeros(nsiteint)
-        prefseedsites[1:s_nsiteint] = StatsBase.sample(findall(max_cover .> 0.0), s_nsiteint; replace=false)
+        prefseedsites = zeros(Int64, nsiteint)
+        prefseedsites[1:s_nsiteint] .= StatsBase.sample(candidate_sites, s_nsiteint; replace=false)
     end
 
     if shade_years
-        prefshadesites = zeros(nsiteint)
-        prefshadesites[1:s_nsiteint] = StatsBase.sample(findall(max_cover .> 0.0), s_nsiteint; replace=false)
+        prefshadesites = zeros(Int64, nsiteint)
+        prefshadesites[1:s_nsiteint] .= StatsBase.sample(candidate_sites, s_nsiteint; replace=false)
     end
 
-    return prefseedsites, prefshadesites
+    return prefseedsites[prefseedsites .> 0], prefshadesites[prefshadesites .> 0]
 end
