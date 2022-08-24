@@ -545,7 +545,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
         growth.u0[:, :] .= @views cov_tmp[:, :] .* prop_loss[:, :]  # update initial condition
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-                                 alg_hints=[:nonstiff], abstol=1e-7, reltol=1e-4)
+                                 alg_hints=[:nonstiff], abstol=1e-8, reltol=1e-7)
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
         Yout[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
