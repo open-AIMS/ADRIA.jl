@@ -8,7 +8,7 @@ TODO: Produce summary stats. Currently returns just the mean.
 
 
 """
-    scenario_total_cover(data::NamedDimsArray, areas; kwargs...)
+    scenario_total_cover(rs::ResultSet; kwargs...)
 
 Calculate the cluster-wide total absolute coral cover for each individual scenario.
 """
@@ -18,7 +18,7 @@ end
 
 
 """
-    scenario_total_cover(data::NamedDimsArray, areas; kwargs...)
+    scenario_relative_cover(rs::ResultSet; kwargs...)
 
 Calculate the cluster-wide total absolute coral cover for each individual scenario.
 """
