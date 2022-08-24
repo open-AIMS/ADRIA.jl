@@ -18,7 +18,7 @@ function proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::Abstra
     if any(cover_tmp .> max_cover)
         exceeded::Vector{Int32} = findall(cover_tmp .> max_cover)
 
-        Yout[:, exceeded] .= (Yout[:, exceeded] ./ cover_tmp[exceeded]') .* max_cover[exceeded]'
+        @views Yout[:, exceeded] .= (Yout[:, exceeded] ./ cover_tmp[exceeded]') .* max_cover[exceeded]'
     end
 
     return Yout
@@ -185,8 +185,8 @@ Partial calibration using data by Hughes et al [1] (see Fig. 2C)
     https://doi.org/10.3354/meps12732
 """
 function bleaching_mortality!(Y::Array{Float64,2}, tstep::Int64, n_p1::Float64, n_p2::Float64,
-    a_adapt::Vector{Float64}, n_adapt::Float64,
-    bleach_resist::Vector{Float64}, dhw::AbstractArray{Float64})::Nothing
+                              a_adapt::Vector{Float64}, n_adapt::Float64,
+                              bleach_resist::Vector{Float64}, dhw::AbstractArray{Float64})::Nothing
     ad::Array{Float64} = a_adapt .+ bleach_resist .+ (tstep .* n_adapt)
 
     # Incorporate adaptation effect but maximum reduction is to 0
