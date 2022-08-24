@@ -240,9 +240,11 @@ between bleaching years come from [1].
        management in the Whitsundays.
      https://doi.org/10.13140/RG.2.2.26976.20482
 
-3. Hall, V.R. & Hughes, T.P. 1996. Reproductive strategies of modular
-      organisms: comparative studies of reef-building corals. Ecology,
-      77: 950 - 963.
+3. Hall, V.R. & Hughes, T.P. 1996. 
+   Reproductive strategies of modular organisms: 
+     comparative studies of reef-building corals. 
+   Ecology, 77: 950 - 963.
+   https://dx.doi.org/10.2307/2265514
 """
 function coral_spec()::NamedTuple
     # Below parameters pertaining to species are new. We now add size classes
