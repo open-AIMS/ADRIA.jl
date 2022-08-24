@@ -286,12 +286,12 @@ function coral_spec()::NamedTuple
     # interventions, we express coral abundance as colony numbers in different
     # size classes and growth rates as linear extention (in cm per year).
 
-    colony_area_lower_cm2, colony_area_upper_m2 = colony_areas()
-    params.colony_area_cm2 = reshape(colony_area_lower_cm2', nspecies)
+    colony_area_lower_cm², colony_area_upper_m² = colony_areas()
+    params.colony_area_cm2 = reshape(colony_area_lower_cm²', nspecies)
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 Table S2)
     # we assume similar growth rates for enhanced and unenhanced corals
-    # all values in cm^2
+    # all values in cm²
     linear_extension =
        Float64[1 3 3 4.4 4.4 4.4;  # Tabular Acropora Enhanced
         1 3 3 4.4 4.4 4.4;   # Tabular Acropora Unenhanced
@@ -306,10 +306,10 @@ function coral_spec()::NamedTuple
     # coral sizes are evenly distributed within each bin
     bin_widths = Float64[2, 3, 5, 10, 20, 40];  # cm^2
     diam_bin_widths = repeat(bin_widths, nclasses, 1)
-    prop_change = @views linear_extension'[:] ./ diam_bin_widths
+    prop_change_cm² = @views linear_extension'[:] ./ diam_bin_widths
 
     # Second, growth as transitions of cover to higher bins is estimated as
-    colony_area_to_m2 = colony_area_lower_cm2 ./ 10^4
+    colony_area_m² = colony_area_lower_cm² ./ 10^4
     params.growth_rate = vec(prop_change .* (colony_area_to_m2'[:] ./ colony_area_upper_m2'[:]))
 
     # note that we use proportion of bin widths and linear extension to estimate
@@ -323,11 +323,11 @@ function coral_spec()::NamedTuple
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
-    fec = exp.(fec_par_a .+ fec_par_b .* log.(colony_area_upper_m2 * 10^4))
+    fec = exp.(fec_par_a .+ fec_par_b .* log.(colony_area_upper_m² * 10^4))
 
     # then convert to number of larvae produced per m2
-    fec_m2 = fec ./ colony_area_upper_m2;  # convert from per colony area to per m2
-    params.fecundity = fec_m2'[:];
+    fec_m² = fec ./ colony_area_upper_m²;  # convert from per colony area to per m2
+    params.fecundity = fec_m²'[:];
 
     ## Mortality
     # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
@@ -369,8 +369,8 @@ function coral_spec()::NamedTuple
     params.bleach_resist = bleach_resist'[:];
 
     # Get perturbable coral parameters
+    # i.e., the parameter names not defined in the second list
     param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "size_cm", "coral_id"])
-    # param_names = ["growth_rate", "fecundity", "wavemort90", "mb_rate", "bleach_resist", "colony_area_cm2"]
 
     return (taxa_names=taxa_names, param_names=param_names, params=params)
 end
