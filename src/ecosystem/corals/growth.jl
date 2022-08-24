@@ -32,7 +32,7 @@ Base coral growth function.
 """
 function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _::Real)::Nothing
     k = @view p.k[:, :]
-    k .= max.(p.P' .- sum(X, dims=1), 0.0)
+    k .= max.(p.P' .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
 
     # Use temporary caches
     k_X_r = @view p.kXr[:, :]
@@ -40,9 +40,9 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     X_mb = @view p.X_mb[:, :]
     kX_sel_en = @view p.kX_sel_en[:, :]
     X_tab = @view p.X_tab[:, :]
-    @. k_X_r = k * X * p.r
-    @. k_rec = k * p.rec
-    @. X_mb = X * p.mb
+    @. k_X_r = k * X * p.r  # leftover space * current cover * growth_rate
+    @. k_rec = k * p.rec    # leftover space * recruitment
+    @. X_mb = X * p.mb      # current cover * background mortality
 
     @views @. kX_sel_en = k * X[p.sel_en, :]
     @views @. X_tab = (p.mb[26] + p.comp * (X[6, :] + X[12, :])')
@@ -62,9 +62,7 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
 
     # Ensure no non-negative values
     du .= max.(du, 0.0)
-
-    c::Vector{Float64} = zeros(size(du, 2))
-    du .= proportional_adjustment!(du, c, collect(p.P))
+    du .= proportional_adjustment!(du, zeros(size(du, 2)), p.P)
 
     return
 end
