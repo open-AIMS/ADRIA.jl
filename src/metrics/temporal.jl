@@ -7,14 +7,21 @@ import Interpolations: GriddedInterpolation
 
 
 function summarize_trajectory(data::NamedDimsArray)::Dict{Symbol, AbstractArray{<:Real}}
+    squash = nothing
     if :sites in dimnames(data)
         squash = (:scenarios, :sites)
-    else
+    elseif :scenarios in dimnames(data) && (size(data, :scenarios) > 1)
         squash = (:scenarios, )
     end
 
-    summarized::Dict{Symbol, AbstractArray{<:Real}} = Dict(Symbol(f) => collect(dropdims(f(data, dims=squash), dims=squash))
-                                                           for f in [mean, median, std, minimum, maximum])
+    if !isnothing(squash)
+        summarized::Dict{Symbol, AbstractArray{<:Real}} = Dict(Symbol(f) => collect(dropdims(f(data, dims=squash), dims=squash))
+                                                            for f in [mean, median, std, minimum, maximum])
+    else
+        # Only a single scenario so don't bother doing anything
+        summarized = Dict(Symbol(f) => data for f in [mean, median, minimum, maximum])
+        summarized[:std] = repeat([0.0], length(data))
+    end
 
     # Calculate quantiles (doesn't support `dims` so have to loop directly)
     q_series::Array{Float32} = fill(0.0, size(data, 1), 8)
