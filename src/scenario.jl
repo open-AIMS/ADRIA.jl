@@ -500,7 +500,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             Yshade[tstep, :] .= srm
 
             # Apply reduction in DHW due to shading
-            adjusted_dhw::Vector{Float64} = max.(0.0, dhw_step .- Yshade[tstep, :])
+            adjusted_dhw::Vector{Float64} = max.(0.0, dhw_step .- srm)
         else
             adjusted_dhw = dhw_step
         end
