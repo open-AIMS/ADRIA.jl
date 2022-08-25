@@ -128,7 +128,7 @@ end
     _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 The Total Absolute Coral Cover.
-Sum of proportional area taken up by all corals, multiplied by site area.
+Sum of proportional area taken up by all corals, multiplied by total site area.
 
 # Arguments
 - X : Matrix of raw model results
