@@ -477,9 +477,13 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             # First col only holds site ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
         else
-            # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
-            available_space = vec(max.(max_cover' .- sum(Y_tmp_cover, dims=1), 0.0))
-            prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites, seed_decision_years[tstep], shade_decision_years[tstep], nsiteint, available_space)
+            if seed_corals && in_seed_years
+                # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
+                available_space = vec(max.(max_cover' .- sum(Y_tmp_cover, dims=1), 0.0))
+                prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
+                                                                        seed_decision_years[tstep], shade_decision_years[tstep],
+                                                                        nsiteint, available_space)
+            end
         end
 
         has_shade_sites = !all(prefshadesites .== 0)
@@ -514,7 +518,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
             # Extract site area for selected sites
-            site_area_seed = total_site_area[prefseedsites]  # .* max_cover[prefseedsites]
+            site_area_seed = total_site_area[prefseedsites]
 
             # Determine area (m^2) to be covered by seeded corals
             # and make relative to total site
@@ -525,7 +529,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             @views Y_tmp_cover[seed_sc_TA, prefseedsites] .= Y_tmp_cover[seed_sc_TA, prefseedsites] .+ scaled_seed_TA
             @views Y_tmp_cover[seed_sc_CA, prefseedsites] .= Y_tmp_cover[seed_sc_CA, prefseedsites] .+ scaled_seed_CA
 
-            # Log seed values/sites (these values are in m^2)
+            # Log seed values/sites (these values are relative to site area)
             Yseed[tstep, 1, prefseedsites] .= scaled_seed_TA
             Yseed[tstep, 2, prefseedsites] .= scaled_seed_CA
         end
