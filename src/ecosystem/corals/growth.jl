@@ -166,7 +166,7 @@ Partial calibration using data by Hughes et al [1] (see Fig. 2C)
 
 # References
 1. Hughes, T.P., Kerry, J.T., Baird, A.H., Connolly, S.R.,
-    Dietzel, A., Eakin, C.M., Heron, S.F., Hoey, A.S.,
+     Dietzel, A., Eakin, C.M., Heron, S.F., Hoey, A.S.,
      Hoogenboom, M.O., Liu, G., McWilliam, M.J., Pears, R.J.,
      Pratchett, M.S., Skirving, W.J., Stella, J.S.
      and Torda, G. (2018)
@@ -184,11 +184,11 @@ Partial calibration using data by Hughes et al [1] (see Fig. 2C)
 
 3. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L.,
      Kerry, J., Kuo, C., Precoda, K., Torres-Pulliza, D., Woods, R.,
-    Zawada, K., & Hughes, T. (2018).
-    A decline in bleaching suggests that depth can provide a refuge
-    from global warming in most coral taxa.
-    Marine Ecology Progress Series, 603, 257-264.
-    https://doi.org/10.3354/meps12732
+     Zawada, K., & Hughes, T. (2018).
+   A decline in bleaching suggests that depth can provide a refuge
+     from global warming in most coral taxa.
+   Marine Ecology Progress Series, 603, 257-264.
+   https://doi.org/10.3354/meps12732
 """
 function bleaching_mortality!(Y::Array{Float64,2}, tstep::Int64, n_p1::Float64, n_p2::Float64,
                               a_adapt::Vector{Float64}, n_adapt::Float64,
@@ -289,3 +289,53 @@ function stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHW
 
     return 1.0 .- exp.(-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2' .- LPDprm2))));
 end
+
+
+"""
+    settler_density(α, β, L)
+
+Note for β: "For corals, the actual number of 6-month old recruits for each coral group
+    is generated [...] following a Poisson distribution with recruitment event rate λ
+    (see `actual_recruits()`)
+
+# Arguments
+- α : maximum achievable density (settlers/m²) for a 100% free space (set to 2.5 in [1] for Corymbose)
+- β : stock of larvae required to produce one-half the maximum settlement (larvae/m²), 
+        i.e., α/2(m²), set to 5000 in [1].
+- L : available larval pool
+
+# Returns
+Settler density (settlers / m²)
+
+# References
+1. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E.,
+     Castro-Sanguino, C., Condie, S. A., Puotinen, M.,
+     Thompson, A., & Mumby, P. J. (2022).
+   Cumulative impacts across Australia's Great Barrier Reef:
+     A mechanistic evaluation.
+   Ecological Monographs, 92(1), e01494.
+   https://doi.org/10.1002/ecm.1494
+
+# Examples
+settler_density(2.5, 5000.0, L)
+"""
+function settler_density(α, β, L)
+    return (α * L) / (β + L)
+end
+
+
+"""
+# Arguments
+- larval : Available larval pool
+- A : proportional space (in m²) covered by cropped algal turf, 
+        i.e., the substratum that is suitable for coral recruitment
+
+# Returns
+Poisson distribution function λ, distributes total recruits
+"""
+function recruitment_rate(larval_pool, A, α=2.5, β=5000.0)
+    return rand.(Poisson.(settler_density.(α, β, larval_pool) .* A))
+end
+
+
+
