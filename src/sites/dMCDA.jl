@@ -122,10 +122,10 @@ function create_decision_matrix(site_ids, centr, sumcover, maxcover, area, dampr
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
-    A[:, 3] .= maximum(damprob) != 0 ? damprob / maximum(damprob) : damprob
+    A[:, 3] .= maximum(damprob) != 0 ? (damprob .- minimum(damprob)) ./ (maximum(damprob) - minimum(damprob)) : damprob
 
     # risk from heat exposure
-    A[:, 4] .= maximum(heatstressprob) != 0 ? heatstressprob / maximum(heatstressprob) : heatstressprob
+    A[:, 4] .= maximum(heatstressprob) != 0 ? (heatstressprob .- minimum(heatstressprob)) ./ (maximum(heatstressprob) - minimum(heatstressprob)) : heatstressprob
 
     # priority predecessors
     A[:, 5] .= predec[:, 3]
@@ -315,11 +315,11 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # Replace with input rankings if seeding or shading rankings have not been filled
     if (sum(rankings[:, 2]) == 0.0) && (length(prefseedsites) != 0)
-        rankings[:, 2] .= @view rankingsin[:, 2]
+        rankings[:, 2] .= rankingsin[:, 2]
     end
 
     if (sum(rankings[:, 3]) == 0.0) && (length(prefshadesites) != 0)
-        rankings[:, 3] .= @view rankingsin[:, 3]
+        rankings[:, 3] .= rankingsin[:, 3]
     end
 
     return prefseedsites, prefshadesites, rankings
