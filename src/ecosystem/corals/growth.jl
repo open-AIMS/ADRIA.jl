@@ -273,9 +273,9 @@ of 0.9 inside sf(i, j) indicates that species i at site j can only produce
 - LPDprm2 : int, larval production parameter 2
 
 # Returns
-array of ngroups by nsites
+sf : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
 """
-function larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)::Matrix{Float64}
+function stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)::Matrix{Float64}
     ad::Vector{Float64} = @. a_adapt + tstep * n_adapt;
 
     # using half of DHWmaxtot as a placeholder
