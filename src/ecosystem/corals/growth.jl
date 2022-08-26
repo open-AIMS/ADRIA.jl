@@ -41,7 +41,6 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     X_mb = @view p.X_mb[:, :]
     sX_sel_en = @view p.sX_sel_en[:, :]
     X_tab = @view p.X_tab[:, :]
-    @infiltrate
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb      # current cover * background mortality
 
