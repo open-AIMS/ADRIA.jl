@@ -237,6 +237,11 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     p::NamedTuple, dhw_scen::Matrix{Float64},
     wave_scen::Matrix{Float64}, cache::NamedTuple)::NamedTuple
 
+    # Set random seed using intervention values
+    # TODO: More robust way of getting intervention/criteria values
+    rnd_seed_val = floor(Int, sum([copy(getindex(param_set, i)) for i in 1:26]))
+    Random.seed!(rnd_seed_val)
+
     ### TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
 
@@ -299,10 +304,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     Yshade = SparseArray(spzeros(tf, n_sites))
     Yfog = SparseArray(spzeros(tf, n_sites))
     Yseed = SparseArray(zeros(tf, 2, n_sites))  # 2 = the two enhanced coral types
-    # site_ranks = @view cache.site_ranks[:, :]
-    # Yshade = @view cache.Yshade[:, :]
-    # Yfog = @view cache.Yfog[:, :]
-    # Yseed = @view cache.Yseed[:, :]
 
     # Intervention strategy: 0 is random, > 0 is guided
     is_guided = param_set.guided > 0
@@ -393,19 +394,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             wtpredecseed,
             wtpredecshade
         )
-    else
-        # TODO: More robust way of getting intervention/criteria values
-        rnd_seed_val = floor(Int, sum([copy(getindex(param_set, i)) for i in 1:24]))
-        Random.seed!(rnd_seed_val)
     end
 
-    # logs for seeding, shading and cooling
-    # nprefseed = zeros(Int, [tf])
-    # nprefshade = zeros(Int, [tf])
-
     # Define constant table location for seed values
-    # Seed1 = Tabular Acropora Enhanced (taxa 1, size class 2)
-    # Seed2 = Corymbose Acropora Enhanced (taxa 3, size class 2)
     tabular_enhanced::BitArray = corals.taxa_id .== 1
     corymbose_enhanced::BitArray = corals.taxa_id .== 3
     target_class_id::BitArray = corals.class_id .== 2
