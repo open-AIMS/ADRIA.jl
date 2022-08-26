@@ -142,11 +142,13 @@ end
 
 
 """
-    bleaching_mortality(Y::Array{Float64,2}, tstep::Int64, n_p1::Float64, n_p2::Float64,
+    bleaching_mortality!(Y::Array{Float64,2}, tstep::Int64, n_p1::Float64, n_p2::Float64,
         a_adapt::Vector{Float64}, n_adapt::Float64,
         bleach_resist::Vector{Float64}, dhw::Vector{Float64})::Nothing
 
-Gompertz cumulative mortality function
+Gompertz cumulative mortality function.
+
+Updates `Y` with proportion of corals which survived (∈ [0,1]).
 
 Partial calibration using data by Hughes et al [1] (see Fig. 2C)
 
@@ -165,20 +167,23 @@ Partial calibration using data by Hughes et al [1] (see Fig. 2C)
 # References
 1. Hughes, T.P., Kerry, J.T., Baird, A.H., Connolly, S.R.,
     Dietzel, A., Eakin, C.M., Heron, S.F., Hoey, A.S.,
-    Hoogenboom, M.O., Liu, G., McWilliam, M.J., Pears, R.J.,
-    Pratchett, M.S., Skirving, W.J., Stella, J.S.
-    and Torda, G. (2018)
-    'Global warming transforms coral reef assemblages',
-    Nature, 556(7702), pp. 492-496.
-    doi:10.1038/s41586-018-0041-2.
+     Hoogenboom, M.O., Liu, G., McWilliam, M.J., Pears, R.J.,
+     Pratchett, M.S., Skirving, W.J., Stella, J.S.
+     and Torda, G. (2018)
+   Global warming transforms coral reef assemblages,
+   Nature, 556(7702), pp. 492-496.
+   doi:10.1038/s41586-018-0041-2.
 
-2. Bozec, Y.-M. et. al. 2022 (in press). Cumulative impacts across
-    Australia's Great Barrier Reef: A mechanistic evaluation.
-    Ecological Monographs.
-    https://doi.org/10.1101/2020.12.01.406413
+2. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E.,
+     Castro-Sanguino, C., Condie, S. A., Puotinen, M.,
+     Thompson, A., & Mumby, P. J. (2022).
+   Cumulative impacts across Australia's Great Barrier Reef:
+        A mechanistic evaluation.
+   Ecological Monographs, 92(1), e01494.
+   https://doi.org/10.1002/ecm.1494
 
 3. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L.,
-    Kerry, J., Kuo, C., Precoda, K., Torres-Pulliza, D., Woods, R.,
+     Kerry, J., Kuo, C., Precoda, K., Torres-Pulliza, D., Woods, R.,
     Zawada, K., & Hughes, T. (2018).
     A decline in bleaching suggests that depth can provide a refuge
     from global warming in most coral taxa.
@@ -203,7 +208,7 @@ end
 
 """
     fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64},
-                     Y_pstep::Array{Float64, 2}, site_area::Array{Float64})::Nothing
+                     Y_pstep::Array{Float64, 2}, k_area::Array{Float64})::Nothing
 
 The scope that different coral groups and size classes have for
 producing larvae without consideration of environment.
@@ -247,10 +252,16 @@ end
 
 
 """
-    larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
+    stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
 
 Estimate how scope for larval production by each coral type changes as a
-function of last year's heat stress. The function is theoretical and is not yet verified by data.
+function of last year's heat stress. The function is theoretical and is not
+yet verified by data.
+
+Stressed Fecundity (sf) is based on the proportion of baseline fecundity
+that is unaffected by heat stress in the previous year - e.g., a value
+of 0.9 inside sf(i, j) indicates that species i at site j can only produce
+90% of its usual larval output.
 
 # Arguments
 - tstep : int,
