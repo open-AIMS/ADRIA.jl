@@ -444,25 +444,41 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     growth::ODEProblem = ODEProblem{true,false}(growthODE, Y_cover[1, :, :], tspan, p)
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
-        @views Y_tmp_cover[:, :] .= Y_cover[p_step, :, :]
+        Y_tmp_cover[:, :] .= Y_cover[p_step, :, :]
 
-        LPs .= larval_production(tstep, a_adapt, n_adapt, dhw_scen[p_step, :],
+        sf .= stressed_fecundity(tstep, a_adapt, n_adapt, dhw_scen[p_step, :],
                                  LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
 
-        # Calculates scope for coral fedundity for each size class and at
-        # each site. Now using coral fecundity per m2 in 'coralSpec()'
-        fecundity_scope!(fec_scope, fec_all, fec_params, Y_tmp_cover, max_cover)
+        # Calculates scope for coral fedundity for each size class and at each site.
+        # fecundity_scope!(fec_scope, fec_all, fec_params, Y_tmp_cover, total_site_area)
+        suitable_substratum = sum(Y_tmp_cover, dims=1) .* total_site_area
+        fecundity_scope!(fec_scope, fec_all, fec_params, Y_tmp_cover, suitable_substratum)
 
-        # adjusting absolute recruitment at each site by dividing by the area
-        # Some sites have 0 max cover, so replace NaNs with 0.0
-        adj_rec = (potential_settler_cover .* ((fec_scope .* LPs) * TP_data)) ./ absolute_k_area'
-        @views p.rec[:, :] .= replace(replace(adj_rec, NaN=>0.0), Inf=>0.0)
+        # Send larvae out into the world
+        actual_fecundity = (fec_scope .* sf)
+        larval_pool = (actual_fecundity * TP_data)  # larval pool for each site (in larvae/m²)
 
+        site_coral_cover = vec(sum(Y_tmp_cover, dims=1))
+        absolute_site_coral_cover = site_coral_cover' .* total_site_area  # in m²
+        leftover_space = max.(absolute_k_area' .- absolute_site_coral_cover, 0.0)
+
+        # Larvae have landed, work out how many are recruited
+        r_rate = recruitment_rate(larval_pool, leftover_space) ./ absolute_k_area'  # convert to m²
+        r_rate = replace(replace(r_rate, NaN=>0.0), Inf=>0.0)  # remove division by 0 error
+        λ = min.(r_rate, sim_params.max_settler_density)
+
+        # Determine area covered by recruited larvae
+        settler_cover = λ .* sim_params.basal_area_per_settler
+        adj_rec = settler_cover .* max.(max_cover .- site_coral_cover, 0.0)'
+
+        # Recruitment should represent additional cover, relative to total site area
+        # Gets added to Y_cover in ODE
+        @views p.rec[:, :] .= adj_rec
         @views dhw_step .= dhw_scen[tstep, :]  # subset of DHW for given timestep
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
-        if is_guided
+        if is_guided && in_seed_years
             # Update dMCDA values
             mcda_vars.damprob .= @view mwaves[tstep, :, :]
             mcda_vars.heatstressprob .= dhw_step
@@ -511,9 +527,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         # Calculate and apply bleaching mortality
-        bleaching_mortality!(Sbl, tstep, neg_e_p1,
-            neg_e_p2, a_adapt, n_adapt,
-            bleach_resist, adjusted_dhw)
+        bleaching_mortality!(Sbl, tstep, neg_e_p1, neg_e_p2,
+                             a_adapt, n_adapt,
+                             bleach_resist, adjusted_dhw)
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
@@ -537,7 +553,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
         growth.u0[:, :] .= Y_tmp_cover[:, :] .* prop_loss[:, :]  # update initial condition
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-                                 alg_hints=[:nonstiff], abstol=1e-8, reltol=1e-7)  # , adaptive=false, dt=1.0
+                                 alg_hints=[:nonstiff], abstol=1e-9, reltol=1e-8)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
         Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
