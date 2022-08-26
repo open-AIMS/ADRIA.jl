@@ -217,21 +217,21 @@ fecundities across size classes.
 # Arguments
 - fec_groups : Matrix[n_classes, n_sites], memory cache to place results into
 - fec_all : Matrix[n_taxa, n_sites], temporary cache to place intermediate fecundity values into
-- fec_params : Vector, coral fecundity parameters
-- Y_pstep : Matrix[n_taxa, n_sites], of values in previous time step
-- k_area : Vector[n_sites], maximum proportional coral cover for each site (k ∈ [0,1])
+- fec_params : Vector, coral fecundity parameters (in per m²) for each species/size class
+- Y_pstep : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
+- site_area : Vector[n_sites], total site area in m²
 
 # Returns
 Matrix[n_classes, n_sites] : fecundity per m2 of coral
 """
 function fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64},
-                          Y_pstep::Array{Float64, 2}, k_area::Array{Float64})::Nothing
+                          Y_pstep::Array{Float64, 2}, site_area::Array{Float64})::Nothing
     ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
     nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
 
-    fec_all .= fec_params .* Y_pstep .* k_area';
+    fec_all .= fec_params .* Y_pstep .* site_area;
     for (i, (s, e)) in enumerate(zip(1:ngroups:nclasses, ngroups:ngroups:nclasses+1))
-        @views fec_groups[i, :] = sum(fec_all[s:e, :], dims=1)
+        @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
 
     # Above is equivalent to the below, but generic to any group/class size
