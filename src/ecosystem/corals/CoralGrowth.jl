@@ -35,7 +35,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
 
     p = @NamedTuple{
             r::Matrix{Float64},   # growth rate
-            P::Vector{Float64},   # max carrying capacity (`k` in other places) 
+            k::Vector{Float64},   # max carrying capacity
             mb::Matrix{Float64},  # background mortality
             comp::Float64,        # competition between small and large 
             small_massives::StaticArrays.SVector{3, Int64},  # index locations for small massives
@@ -48,11 +48,10 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
             small_r::StaticArrays.SVector{4, Int64},         # growth rate for small corals
             enc::StaticArrays.SVector{2, Int64},             # encrusting (values for what?)
             rec::Matrix{Float64},                            # recruitment values
-            k::Matrix{Float64},                              # available space, i.e., [max carrying cap] - [current coral cover]
-            kX_sel_en::Matrix{Float64},                      # cache store for k * X_{sel_en}, where `k` relates to available space (not max carrying capacity)
+            sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
+            sX_sel_en::Matrix{Float64},                      # cache store for k * X_{sel_en}, where `k` relates to available space (not max carrying capacity)
             X_tab::Matrix{Float64},                          # Coral cover of tabular corals
-            kXr::Matrix{Float64},                            # k * X * r
-            k_rec::Matrix{Float64},                          # k * recruitment
+            sXr::Matrix{Float64},                            # k * X * r
             X_mb::Matrix{Float64},                           # X * mb
             cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
         zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1), 0.3,
@@ -63,7 +62,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
 
         # cache matrices
         zeros(n_groups, n_sites), zeros(1, n_sites), zeros(2, n_sites), zeros(1, n_sites),
-        zeros(n_species, n_sites), zeros(n_groups, n_sites), zeros(n_species, n_sites), zeros(n_sites)
+        zeros(n_species, n_sites), zeros(n_species, n_sites), zeros(n_sites)
     ))
 
     # p = (

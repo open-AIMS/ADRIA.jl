@@ -1,5 +1,7 @@
 """Coral growth functions"""
 
+using Distributions
+
 
 """
     proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
@@ -9,7 +11,7 @@ Modifies arrays in-place.
 
 # Arguments
 - Yout : Coral cover result set
-- cover_tmp : Temporary cache matrix holding sum over species. Avoids memory allocations
+- cover_tmp : Temporary cache matrix used to hold sum over species. Avoids memory allocations
 - max_cover : maximum possible coral cover for each site
 """
 function proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
@@ -31,38 +33,37 @@ end
 Base coral growth function.
 """
 function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _::Real)::Nothing
-    k = @view p.k[:, :]
-    k .= max.(p.P' .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
+    s = @view p.sigma[:, :]
+    s .= max.(p.k' .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
 
     # Use temporary caches
-    k_X_r = @view p.kXr[:, :]
-    k_rec = @view p.k_rec[:, :]
+    sXr = @view p.sXr[:, :]
     X_mb = @view p.X_mb[:, :]
-    kX_sel_en = @view p.kX_sel_en[:, :]
+    sX_sel_en = @view p.sX_sel_en[:, :]
     X_tab = @view p.X_tab[:, :]
-    @. k_X_r = k * X * p.r  # leftover space * current cover * growth_rate
-    @. k_rec = k * p.rec    # leftover space * recruitment
+    @infiltrate
+    @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb      # current cover * background mortality
 
-    @views @. kX_sel_en = k * X[p.sel_en, :]
+    @views @. sX_sel_en = s * X[p.sel_en, :]
     @views @. X_tab = (p.mb[26] + p.comp * (X[6, :] + X[12, :])')
 
     r_comp = @views p.r[p.sel_en] .+ (p.comp .* sum(X[p.small_massives, :]))
 
-    @views @. du[p.sel_en, :] = k_X_r[p.sel_en - 1, :] - kX_sel_en * r_comp - X_mb[p.sel_en, :]
-    @views @. du[p.sel_unen, :] = kX_sel_en * r_comp + k_X_r[p.sel_unen, :] - X_mb[p.sel_unen, :]
+    @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sX_sel_en * r_comp - X_mb[p.sel_en, :]
+    @views @. du[p.sel_unen, :] = sX_sel_en * r_comp + sXr[p.sel_unen, :] - X_mb[p.sel_unen, :]
 
-    @views @. du[p.encrusting, :] = k_rec[p.enc, :] - k_X_r[p.encrusting, :] - X_mb[p.encrusting, :]
+    @views @. du[p.encrusting, :] = p.rec[p.enc, :] - sXr[p.encrusting, :] - X_mb[p.encrusting, :]
 
-    @views @. du[p.small_massives, :] = k_X_r[p.small_massives - 1, :] - k_X_r[p.small_massives, :] - X[p.small_massives, :] * X_tab
+    @views @. du[p.small_massives, :] = sXr[p.small_massives - 1, :] - sXr[p.small_massives, :] - X[p.small_massives, :] * X_tab
 
-    @views @. du[p.small, :] = k_rec[p.small_r, :] - k_X_r[p.small, :] - X_mb[p.small, :]
-    @views @. du[p.mid, :] = k_X_r[p.mid - 1, :] - k_X_r[p.mid, :] - X_mb[p.mid, :]
-    @views @. du[p.large, :] = k_X_r[p.large - 1 , :] + k_X_r[p.large, :] - X_mb[p.large, :]
+    @views @. du[p.small, :] = p.rec[p.small_r, :] - sXr[p.small, :] - X_mb[p.small, :]
+    @views @. du[p.mid, :] = sXr[p.mid - 1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
+    @views @. du[p.large, :] = sXr[p.large - 1 , :] + sXr[p.large, :] - X_mb[p.large, :]
 
     # Ensure no non-negative values
     du .= max.(du, 0.0)
-    du .= proportional_adjustment!(du, zeros(size(du, 2)), p.P)
+    du .= proportional_adjustment!(du, p.cover, p.k)
 
     return
 end
