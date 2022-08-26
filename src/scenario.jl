@@ -20,7 +20,7 @@ function setup_cache(domain::Domain)::NamedTuple
     init_cov = Matrix{Float64}(domain.init_coral_cover)
 
     cache = (
-        LPs = zeros(n_groups, n_sites),
+        sf = zeros(n_groups, n_sites),
         fec_all = zeros(size(init_cov)...),
         fec_scope = zeros(n_groups, n_sites),
         prop_loss = zeros(n_species, n_sites),
@@ -105,7 +105,7 @@ function run_scenario(scen::Tuple{Int, DataFrameRow}, domain::Domain, data_store
     wave_scen = scen[2].wave_scenario
 
     # TODO: Modify all scenario constants here to avoid repeated allocations
-    @set! domain.coral_growth.ode_p.P = (domain.site_data.k::Vector{Float64} / 100.0)  # Max possible cover at site
+    @set! domain.coral_growth.ode_p.k = (domain.site_data.k::Vector{Float64} / 100.0)  # Max possible cover at site
     @set! domain.coral_growth.ode_p.comp = domain.sim_constants.comp::Float64  # competition rate between two mature coral groups
 
     run_scenario(domain; idx=scen[1], dhw=dhw_scen, wave=wave_scen, data_store=data_store, cache=cache)
@@ -277,15 +277,13 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                                         sim_params.density_ratio_of_settlers_to_larvae)
 
     # Caches
-    # TP_data::Array{Float64,2} = Matrix(domain.TP_data)
     TP_data = cache.TP_data
-    # LPs::Array{Float64,2} = zeros(n_groups, n_sites)
     # fec_all::Array{Float64,2} = zeros(size(init_cov)...)
     # fec_scope::Array{Float64,2} = zeros(n_groups, n_sites)
     # prop_loss::Array{Float64,2} = zeros(n_species, n_sites)
     # Sbl::Array{Float64,2} = zeros(n_species, n_sites)
     # dhw_step::Vector{Float64} = zeros(n_sites)
-    LPs = cache.LPs[:, :]
+    sf = cache.sf[:, :]
     fec_all = cache.fec_all[:, :]
     fec_scope = cache.fec_scope[:, :]
     prop_loss = cache.prop_loss[:, :]
