@@ -447,41 +447,34 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                                  LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
 
         # Calculates scope for coral fedundity for each size class and at each site.
-        # fecundity_scope!(fec_scope, fec_all, fec_params, Y_tmp_cover, total_site_area)
-        suitable_substratum = sum(Y_tmp_cover, dims=1) .* total_site_area
-        fecundity_scope!(fec_scope, fec_all, fec_params, Y_tmp_cover, suitable_substratum)
+        fecundity_scope!(fec_scope, fec_all, fec_params, Y_pstep, total_site_area)
 
         # Send larvae out into the world
         actual_fecundity = (fec_scope .* sf)
         larval_pool = (actual_fecundity * TP_data)  # larval pool for each site (in larvae/m²)
-
-        site_coral_cover = vec(sum(Y_tmp_cover, dims=1))
-        absolute_site_coral_cover = site_coral_cover' .* total_site_area  # in m²
-        leftover_space = max.(absolute_k_area' .- absolute_site_coral_cover, 0.0)
+        site_coral_cover = vec(sum(Y_pstep, dims=1))
 
         # Larvae have landed, work out how many are recruited
         r_rate = recruitment_rate(larval_pool, leftover_space) ./ absolute_k_area'  # convert to m²
-        r_rate = replace(replace(r_rate, NaN=>0.0), Inf=>0.0)  # remove division by 0 error
-        λ = min.(r_rate, sim_params.max_settler_density)
+        λ = recruitment(larval_pool, sim_params.max_settler_density)
 
         # Determine area covered by recruited larvae
-        settler_cover = λ .* sim_params.basal_area_per_settler
+        settler_cover = λ .* sim_params.basal_area_per_settler  # area in m² for each settler across all sites
         adj_rec = settler_cover .* max.(max_cover .- site_coral_cover, 0.0)'
 
         # Recruitment should represent additional cover, relative to total site area
         # Gets added to Y_cover in ODE
-        @views p.rec[:, :] .= adj_rec
-        @views dhw_step .= dhw_scen[tstep, :]  # subset of DHW for given timestep
+        p.rec[:, :] .= adj_rec
 
+        @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
         if is_guided && in_seed_years
             # Update dMCDA values
             mcda_vars.damprob .= @view mwaves[tstep, :, :]
-            mcda_vars.heatstressprob .= dhw_step
+            mcda_vars.heatstressprob .= dhw_t
 
-            mcda_vars.sumcover .= sum(Y_tmp_cover, dims=1)  # dims: nsites * 1
-
+            mcda_vars.sumcover .= sum(Y_pstep, dims=1)  # dims: nsites * 1
             (prefseedsites, prefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
                                                               seed_decision_years[tstep], shade_decision_years[tstep],
                                                               prefseedsites, prefshadesites, rankings)
@@ -492,7 +485,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         else
             if seed_corals && in_seed_years
                 # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
-                available_space = vec(max.(max_cover' .- sum(Y_tmp_cover, dims=1), 0.0))
+                available_space = vec(max.(max_cover' .- sum(Y_pstep, dims=1), 0.0))
                 prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
                                                                         seed_decision_years[tstep], shade_decision_years[tstep],
                                                                         nsiteint, available_space)
@@ -505,9 +498,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             Yshade[tstep, :] .= srm
 
             # Apply reduction in DHW due to shading
-            adjusted_dhw::Vector{Float64} = max.(0.0, dhw_step .- srm)
+            adjusted_dhw::Vector{Float64} = max.(0.0, dhw_t .- srm)
         else
-            adjusted_dhw = dhw_step
+            adjusted_dhw = dhw_t
         end
 
         if (fogging > 0.0) && in_shade_years && (has_seed_sites || has_shade_sites)
@@ -538,9 +531,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             scaled_seed_TA = ((n_TA_to_seed / nsiteint) * col_area_seed_TA) ./ site_area_seed
             scaled_seed_CA = ((n_CA_to_seed / nsiteint) * col_area_seed_CA) ./ site_area_seed
 
-            # Seed each site with the value indicated with seed1/seed2
-            @views Y_tmp_cover[seed_sc_TA, prefseedsites] .= Y_tmp_cover[seed_sc_TA, prefseedsites] .+ scaled_seed_TA
-            @views Y_tmp_cover[seed_sc_CA, prefseedsites] .= Y_tmp_cover[seed_sc_CA, prefseedsites] .+ scaled_seed_CA
+            # Seed each site with TA or CA
+            @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed_TA
+            @views Y_pstep[seed_sc_CA, prefseedsites] .= Y_pstep[seed_sc_CA, prefseedsites] .+ scaled_seed_CA
 
             # Log seed values/sites (these values are relative to site area)
             Yseed[tstep, 1, prefseedsites] .= scaled_seed_TA
