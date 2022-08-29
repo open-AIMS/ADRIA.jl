@@ -290,8 +290,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     fec_scope = cache.fec_scope[:, :]
     prop_loss = cache.prop_loss[:, :]
     Sbl = cache.Sbl[:, :]
-    dhw_step = cache.dhw_step[:]
-    Y_tmp_cover = cache.cov_tmp[:, :]
+    dhw_t = cache.dhw_step[:]
+    Y_pstep = cache.cov_tmp[:, :]
 
     Y_cover::Array{Float64, 3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
     Y_cover[1, :, :] .= cache.init_cov[:, :]
@@ -441,7 +441,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     growth::ODEProblem = ODEProblem{true,false}(growthODE, Y_cover[1, :, :], tspan, p)
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
-        Y_tmp_cover[:, :] .= Y_cover[p_step, :, :]
+        Y_pstep[:, :] .= Y_cover[p_step, :, :]
 
         sf .= stressed_fecundity(tstep, a_adapt, n_adapt, dhw_scen[p_step, :],
                                  LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
