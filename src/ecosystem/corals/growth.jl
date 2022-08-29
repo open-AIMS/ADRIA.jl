@@ -1,5 +1,6 @@
 """Coral growth functions"""
 
+
 using Distributions
 
 
@@ -42,7 +43,7 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     sX_sel_en = @view p.sX_sel_en[:, :]
     X_tab = @view p.X_tab[:, :]
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
-    @. X_mb = X * p.mb      # current cover * background mortality
+    @. X_mb = X * p.mb    # current cover * background mortality
 
     @views @. sX_sel_en = s * X[p.sel_en, :]
     @views @. X_tab = (p.mb[26] + p.comp * (X[6, :] + X[12, :])')
@@ -62,7 +63,7 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
 
     # Ensure no non-negative values
     du .= max.(du, 0.0)
-    du .= proportional_adjustment!(du, p.cover, p.k)
+    # du .= proportional_adjustment!(du, p.cover, p.k)
 
     return
 end
@@ -319,22 +320,65 @@ Settler density (settlers / m²)
 settler_density(2.5, 5000.0, L)
 """
 function settler_density(α, β, L)
-    return (α * L) / (β + L)
+    return (α .* L) ./ (β .+ L)
 end
 
 
 """
+    recruitment_rate(larval_pool, α=2.5, β=5000.0)
+
 # Arguments
-- larval : Available larval pool
-- A : proportional space (in m²) covered by cropped algal turf, 
-        i.e., the substratum that is suitable for coral recruitment
+- larval_pool : Available larval pool
+- α : maximum achievable density (settlers/m²) for a 100% free space
+- β : stock of larvae required to produce 50% of the maximum settlement
 
 # Returns
-Poisson distribution function λ, distributes total recruits
+λ, coral recruitment for each coral taxa based on a Poisson distribution.
 """
-function recruitment_rate(larval_pool, A, α=2.5, β=5000.0)
-    return rand.(Poisson.(settler_density.(α, β, larval_pool) .* A))
+function recruitment_rate(larval_pool; α=2.5, β=5000.0)
+    return rand.(Poisson.(settler_density.(α, β, larval_pool)))
 end
 
 
+"""
+    recruitment(larval_pool, A::Matrix{<:Real}; α=2.5, β=5000.0)
 
+# Arguments
+- larval_pool : Available larval pool
+- A : proportional space (in m²) covered by cropped algal turf, 
+        i.e., the substratum that is suitable for coral recruitment
+- α : maximum achievable density (settlers/m²) for a 100% free space
+- β : stock of larvae required to produce 50% of the maximum settlement
+
+# Returns
+Total coral recruitment for each coral taxa and site based on a Poisson distribution.
+"""
+function recruitment(larval_pool, A::Matrix{<:Real}; α=2.5, β=5000.0)
+    return recruitment_rate(larval_pool; α, β) .* A
+end
+
+
+"""
+    recruitment(larval_pool, max_density::Float64; α=2.5, β=5000.0)
+
+# Arguments
+- larval_pool : Available larval pool
+- max_density : maximum possible number of settlers/m², taken from [1]
+- α : maximum achievable density (settlers/m²) for a 100% free space
+- β : stock of larvae required to produce 50% of the maximum settlement
+
+# Returns
+λ : Recruited coral per m² for each coral taxa and site based on a Poisson distribution, capped to a maximum density.
+
+# References
+1. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E.,
+     Castro-Sanguino, C., Condie, S. A., Puotinen, M.,
+     Thompson, A., & Mumby, P. J. (2022).
+   Cumulative impacts across Australia's Great Barrier Reef:
+     A mechanistic evaluation.
+   Ecological Monographs, 92(1), e01494.
+   https://doi.org/10.1002/ecm.1494
+"""
+function recruitment(larval_pool, max_density::Float64; α=2.5, β=5000.0)
+    return min.(recruitment_rate(larval_pool; α, β), max_density)
+end
