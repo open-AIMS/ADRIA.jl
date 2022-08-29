@@ -8,7 +8,7 @@ TODO: Produce summary stats. Currently returns just the mean.
 
 
 """
-    scenario_total_cover(data::NamedDimsArray, areas; kwargs...)
+    scenario_total_cover(rs::ResultSet; kwargs...)
 
 Calculate the cluster-wide total absolute coral cover for each individual scenario.
 """
@@ -18,7 +18,7 @@ end
 
 
 """
-    scenario_total_cover(data::NamedDimsArray, areas; kwargs...)
+    scenario_relative_cover(rs::ResultSet; kwargs...)
 
 Calculate the cluster-wide total absolute coral cover for each individual scenario.
 """
@@ -62,10 +62,10 @@ end
 
 Calculate the cluster-wide relative shelter volumes for each individual scenario.
 """
-function scenario_relative_shelter_volume(sv::NamedDimsArray; kwargs...)
+function scenario_rsv(sv::NamedDimsArray; kwargs...)
     sv_sliced = slice_results(sv; kwargs...)
     return dropdims(sum(sv_sliced, dims=:sites), dims=:sites)
 end
-function scenario_relative_shelter_volume(rs::ResultSet; kwargs...)
+function scenario_rsv(rs::ResultSet; kwargs...)
     return scenario_rsv(rs.outcomes[:relative_shelter_volume]; kwargs...)
 end

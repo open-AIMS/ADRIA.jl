@@ -29,7 +29,7 @@ Base.@kwdef mutable struct SimConstants
     
     # Default percent thresholds of max connectivity to filter out weak connections in connectivity network. 
     # Suggest we keep this low
-    con_cutoff = 0.02;
+    con_cutoff = 0.01;
     RCP = 45;  # RCP scenario to use
     prioritysites = []; # sites to prioritize when seeding or shading
 
@@ -57,13 +57,12 @@ Base.@kwdef mutable struct SimConstants
     
     # competition: probability that large tabular Acropora overtop small massives
     comp = 0.3;
-    #max_settler_density = 20; #per m2, more optimistic than Bozec et al 2021
     
     # True/False indicating Wwhether or not to mimic IPMF by loading only two coral types
     mimic_IPMF = Int8(0);  # Use 0 or 1 as booleans cannot be stored in netCDF
 
     max_settler_density = 2.5;                      # used by Bozec et al 2021 for Acropora
     density_ratio_of_settlers_to_larvae = 1 / 2000  # Bozec et al. 2021
-    basal_area_per_settler = pi * ((0.5 / 100)^2)   # in m^2 assuming 1cm diameter
+    basal_area_per_settler = pi * ((1.25 / 100.0)^2)   # in m^2 assuming 1cm diameter
     # potential_settler_cover::Float64 = max_settler_density * basal_area_per_settler * density_ratio_of_settlers_to_larvae;
 end

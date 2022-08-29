@@ -61,3 +61,4 @@ end
 include("site_selection.jl")
 
 include("metrics.jl")
+include("growth.jl")

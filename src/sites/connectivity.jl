@@ -36,7 +36,7 @@ NamedTuple:
 ```
 """
 function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, String}}, unique_site_ids::Vector{String}, site_order::Vector{Union{Missing, Int64}}; 
-    con_cutoff::Float64=0.02, agg_func::Function=mean, swap::Bool=false)::NamedTuple
+    con_cutoff::Float64=0.01, agg_func::Function=mean, swap::Bool=false)::NamedTuple
     
     # Remove any row marked as missing
     if any(ismissing.(conn_ids))
@@ -111,7 +111,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, Str
         end
 
         # Fill missing values with 0.0
-        TP_base = similar(con_file1)
+        TP_base = copy(con_file1)
         tmp::Matrix{Union{Missing, Float64}} = agg_func(cat(map(Matrix, con_data), dims=3))
 
         TP_base[:, :] .= coalesce.(tmp, 0.0)
@@ -157,7 +157,7 @@ function connectivity_strength(TP_base::DataFrame)::NamedTuple
     C1 = outdegree_centrality(g)
 
     # For each edge, find strongly connected predecessor (by number of connections)
-    strongpred = similar(C1, Int64)
+    strongpred = zeros(Int64, size(C1)...)
     for v_id in vertices(g)
         incoming = inneighbors(g, v_id)
 

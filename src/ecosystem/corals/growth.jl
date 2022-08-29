@@ -1,6 +1,9 @@
 """Coral growth functions"""
 
 
+using Distributions
+
+
 """
     proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
 
@@ -9,17 +12,19 @@ Modifies arrays in-place.
 
 # Arguments
 - Yout : Coral cover result set
-- cover_tmp : Temporary cache matrix holding sum over species. Avoids memory allocations
+- cover_tmp : Temporary cache matrix used to hold sum over species. Avoids memory allocations
 - max_cover : maximum possible coral cover for each site
 """
 function proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
     # Proportionally adjust initial covers
-    @views cover_tmp .= vec(sum(Yout, dims=1))
+    cover_tmp .= vec(sum(Yout, dims=1))
     if any(cover_tmp .> max_cover)
-        exceeded::Vector{Int32} = findall(cover_tmp .> vec(max_cover))
+        exceeded::Vector{Int32} = findall(cover_tmp .> max_cover)
 
         @views Yout[:, exceeded] .= (Yout[:, exceeded] ./ cover_tmp[exceeded]') .* max_cover[exceeded]'
     end
+
+    return Yout
 end
 
 
@@ -29,40 +34,36 @@ end
 Base coral growth function.
 """
 function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _::Real)::Nothing
-    k = @view p.k[:, :]
-    k .= max.(p.P' .- sum(X, dims=1), 0.0)
+    s = @view p.sigma[:, :]
+    s .= max.(p.k' .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
 
     # Use temporary caches
-    k_X_r = @view p.kXr[:, :]
-    k_rec = @view p.k_rec[:, :]
+    sXr = @view p.sXr[:, :]
     X_mb = @view p.X_mb[:, :]
-    kX_sel_en = @view p.kX_sel_en[:, :]
+    sX_sel_en = @view p.sX_sel_en[:, :]
     X_tab = @view p.X_tab[:, :]
-    @. k_X_r = k * X * p.r
-    @. k_rec = k * p.rec
-    @. X_mb = X * p.mb
+    @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
+    @. X_mb = X * p.mb    # current cover * background mortality
 
-    @views @. kX_sel_en = k * X[p.sel_en, :]
+    @views @. sX_sel_en = s * X[p.sel_en, :]
     @views @. X_tab = (p.mb[26] + p.comp * (X[6, :] + X[12, :])')
 
     r_comp = @views p.r[p.sel_en] .+ (p.comp .* sum(X[p.small_massives, :]))
 
-    @views @. du[p.sel_en, :] = k_X_r[p.sel_en - 1, :] - kX_sel_en * r_comp - X_mb[p.sel_en, :]
-    @views @. du[p.sel_unen, :] = kX_sel_en * r_comp + k_X_r[p.sel_unen, :] - X_mb[p.sel_unen, :]
+    @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sX_sel_en * r_comp - X_mb[p.sel_en, :]
+    @views @. du[p.sel_unen, :] = sX_sel_en * r_comp + sXr[p.sel_unen, :] - X_mb[p.sel_unen, :]
 
-    @views @. du[p.encrusting, :] = k_rec[p.enc, :] - k_X_r[p.encrusting, :] - X_mb[p.encrusting, :]
+    @views @. du[p.encrusting, :] = p.rec[p.enc, :] - sXr[p.encrusting, :] - X_mb[p.encrusting, :]
 
-    @views @. du[p.small_massives, :] = k_X_r[p.small_massives - 1, :] - k_X_r[p.small_massives, :] - X[p.small_massives, :] * X_tab
+    @views @. du[p.small_massives, :] = sXr[p.small_massives - 1, :] - sXr[p.small_massives, :] - X[p.small_massives, :] * X_tab
 
-    @views @. du[p.small, :] = k_rec[p.small_r, :] - k_X_r[p.small, :] - X_mb[p.small, :]
-    @views @. du[p.mid, :] = k_X_r[p.mid - 1, :] - k_X_r[p.mid, :] - X_mb[p.mid, :]
-    @views @. du[p.large, :] = k_X_r[p.large - 1 , :] + k_X_r[p.large, :] - X_mb[p.large, :]
+    @views @. du[p.small, :] = p.rec[p.small_r, :] - sXr[p.small, :] - X_mb[p.small, :]
+    @views @. du[p.mid, :] = sXr[p.mid - 1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
+    @views @. du[p.large, :] = sXr[p.large - 1 , :] + sXr[p.large, :] - X_mb[p.large, :]
 
     # Ensure no non-negative values
     du .= max.(du, 0.0)
-
-    c::Vector{Float64} = zeros(size(du, 2))
-    proportional_adjustment!(du, c, collect(k))
+    # du .= proportional_adjustment!(du, p.cover, p.k)
 
     return
 end
@@ -141,11 +142,13 @@ end
 
 
 """
-    bleaching_mortality(Y::Array{Float64,2}, tstep::Int64, n_p1::Float64, n_p2::Float64,
+    bleaching_mortality!(Y::Array{Float64,2}, tstep::Int64, n_p1::Float64, n_p2::Float64,
         a_adapt::Vector{Float64}, n_adapt::Float64,
         bleach_resist::Vector{Float64}, dhw::Vector{Float64})::Nothing
 
-Gompertz cumulative mortality function
+Gompertz cumulative mortality function.
+
+Updates `Y` with proportion of corals which survived (∈ [0,1]).
 
 Partial calibration using data by Hughes et al [1] (see Fig. 2C)
 
@@ -163,30 +166,33 @@ Partial calibration using data by Hughes et al [1] (see Fig. 2C)
 
 # References
 1. Hughes, T.P., Kerry, J.T., Baird, A.H., Connolly, S.R.,
-    Dietzel, A., Eakin, C.M., Heron, S.F., Hoey, A.S.,
-    Hoogenboom, M.O., Liu, G., McWilliam, M.J., Pears, R.J.,
-    Pratchett, M.S., Skirving, W.J., Stella, J.S.
-    and Torda, G. (2018)
-    'Global warming transforms coral reef assemblages',
-    Nature, 556(7702), pp. 492-496.
-    doi:10.1038/s41586-018-0041-2.
+     Dietzel, A., Eakin, C.M., Heron, S.F., Hoey, A.S.,
+     Hoogenboom, M.O., Liu, G., McWilliam, M.J., Pears, R.J.,
+     Pratchett, M.S., Skirving, W.J., Stella, J.S.
+     and Torda, G. (2018)
+   Global warming transforms coral reef assemblages,
+   Nature, 556(7702), pp. 492-496.
+   doi:10.1038/s41586-018-0041-2.
 
-2. Bozec, Y.-M. et. al. 2022 (in press). Cumulative impacts across
-    Australia's Great Barrier Reef: A mechanistic evaluation.
-    Ecological Monographs.
-    https://doi.org/10.1101/2020.12.01.406413
+2. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E.,
+     Castro-Sanguino, C., Condie, S. A., Puotinen, M.,
+     Thompson, A., & Mumby, P. J. (2022).
+   Cumulative impacts across Australia's Great Barrier Reef:
+        A mechanistic evaluation.
+   Ecological Monographs, 92(1), e01494.
+   https://doi.org/10.1002/ecm.1494
 
 3. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L.,
-    Kerry, J., Kuo, C., Precoda, K., Torres-Pulliza, D., Woods, R.,
-    Zawada, K., & Hughes, T. (2018).
-    A decline in bleaching suggests that depth can provide a refuge
-    from global warming in most coral taxa.
-    Marine Ecology Progress Series, 603, 257-264.
-    https://doi.org/10.3354/meps12732
+     Kerry, J., Kuo, C., Precoda, K., Torres-Pulliza, D., Woods, R.,
+     Zawada, K., & Hughes, T. (2018).
+   A decline in bleaching suggests that depth can provide a refuge
+     from global warming in most coral taxa.
+   Marine Ecology Progress Series, 603, 257-264.
+   https://doi.org/10.3354/meps12732
 """
 function bleaching_mortality!(Y::Array{Float64,2}, tstep::Int64, n_p1::Float64, n_p2::Float64,
-    a_adapt::Vector{Float64}, n_adapt::Float64,
-    bleach_resist::Vector{Float64}, dhw::AbstractArray{Float64})::Nothing
+                              a_adapt::Vector{Float64}, n_adapt::Float64,
+                              bleach_resist::Vector{Float64}, dhw::AbstractArray{Float64})::Nothing
     ad::Array{Float64} = a_adapt .+ bleach_resist .+ (tstep .* n_adapt)
 
     # Incorporate adaptation effect but maximum reduction is to 0
@@ -202,7 +208,7 @@ end
 
 """
     fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64},
-                     Y_pstep::Array{Float64, 2}, site_area::Array{Float64})::Nothing
+                     Y_pstep::Array{Float64, 2}, k_area::Array{Float64})::Nothing
 
 The scope that different coral groups and size classes have for
 producing larvae without consideration of environment.
@@ -216,9 +222,9 @@ fecundities across size classes.
 # Arguments
 - fec_groups : Matrix[n_classes, n_sites], memory cache to place results into
 - fec_all : Matrix[n_taxa, n_sites], temporary cache to place intermediate fecundity values into
-- fec_params : Vector, coral fecundity parameters
-- Y_pstep : Matrix[n_taxa, n_sites], of values in previous time step
-- site_area : Vector[n_sites], of site areas
+- fec_params : Vector, coral fecundity parameters (in per m²) for each species/size class
+- Y_pstep : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
+- site_area : Vector[n_sites], total site area in m²
 
 # Returns
 Matrix[n_classes, n_sites] : fecundity per m2 of coral
@@ -230,7 +236,7 @@ function fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64,
 
     fec_all .= fec_params .* Y_pstep .* site_area;
     for (i, (s, e)) in enumerate(zip(1:ngroups:nclasses, ngroups:ngroups:nclasses+1))
-        @views fec_groups[i, :] = sum(fec_all[s:e, :], dims=1)
+        @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
 
     # Above is equivalent to the below, but generic to any group/class size
@@ -246,10 +252,16 @@ end
 
 
 """
-    larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
+    stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
 
 Estimate how scope for larval production by each coral type changes as a
-function of last year's heat stress. The function is theoretical and is not yet verified by data.
+function of last year's heat stress. The function is theoretical and is not
+yet verified by data.
+
+Stressed Fecundity (sf) is based on the proportion of baseline fecundity
+that is unaffected by heat stress in the previous year - e.g., a value
+of 0.9 inside sf(i, j) indicates that species i at site j can only produce
+90% of its usual larval output.
 
 # Arguments
 - tstep : int,
@@ -261,9 +273,9 @@ function of last year's heat stress. The function is theoretical and is not yet 
 - LPDprm2 : int, larval production parameter 2
 
 # Returns
-array of ngroups by nsites
+sf : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
 """
-function larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)::Matrix{Float64}
+function stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)::Matrix{Float64}
     ad::Vector{Float64} = @. a_adapt + tstep * n_adapt;
 
     # using half of DHWmaxtot as a placeholder
@@ -276,4 +288,97 @@ function larval_production(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWm
     tmp_ad2::Array{Float64} = mean(reshape(tmp_ad, Int64(length(tmp_ad)/n_groups), n_groups), dims=1);
 
     return 1.0 .- exp.(-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2' .- LPDprm2))));
+end
+
+
+"""
+    settler_density(α, β, L)
+
+Note for β: "For corals, the actual number of 6-month old recruits for each coral group
+    is generated [...] following a Poisson distribution with recruitment event rate λ
+    (see `actual_recruits()`)
+
+# Arguments
+- α : maximum achievable density (settlers/m²) for a 100% free space (set to 2.5 in [1] for Corymbose)
+- β : stock of larvae required to produce one-half the maximum settlement (larvae/m²), 
+        i.e., α/2(m²), set to 5000 in [1].
+- L : available larval pool
+
+# Returns
+Settler density (settlers / m²)
+
+# References
+1. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E.,
+     Castro-Sanguino, C., Condie, S. A., Puotinen, M.,
+     Thompson, A., & Mumby, P. J. (2022).
+   Cumulative impacts across Australia's Great Barrier Reef:
+     A mechanistic evaluation.
+   Ecological Monographs, 92(1), e01494.
+   https://doi.org/10.1002/ecm.1494
+
+# Examples
+settler_density(2.5, 5000.0, L)
+"""
+function settler_density(α, β, L)
+    return (α .* L) ./ (β .+ L)
+end
+
+
+"""
+    recruitment_rate(larval_pool, α=2.5, β=5000.0)
+
+# Arguments
+- larval_pool : Available larval pool
+- α : maximum achievable density (settlers/m²) for a 100% free space
+- β : stock of larvae required to produce 50% of the maximum settlement
+
+# Returns
+λ, coral recruitment for each coral taxa based on a Poisson distribution.
+"""
+function recruitment_rate(larval_pool; α=2.5, β=5000.0)
+    return rand.(Poisson.(settler_density.(α, β, larval_pool)))
+end
+
+
+"""
+    recruitment(larval_pool, A::Matrix{<:Real}; α=2.5, β=5000.0)
+
+# Arguments
+- larval_pool : Available larval pool
+- A : proportional space (in m²) covered by cropped algal turf, 
+        i.e., the substratum that is suitable for coral recruitment
+- α : maximum achievable density (settlers/m²) for a 100% free space
+- β : stock of larvae required to produce 50% of the maximum settlement
+
+# Returns
+Total coral recruitment for each coral taxa and site based on a Poisson distribution.
+"""
+function recruitment(larval_pool, A::Matrix{<:Real}; α=2.5, β=5000.0)
+    return recruitment_rate(larval_pool; α, β) .* A
+end
+
+
+"""
+    recruitment(larval_pool, max_density::Float64; α=2.5, β=5000.0)
+
+# Arguments
+- larval_pool : Available larval pool
+- max_density : maximum possible number of settlers/m², taken from [1]
+- α : maximum achievable density (settlers/m²) for a 100% free space
+- β : stock of larvae required to produce 50% of the maximum settlement
+
+# Returns
+λ : Recruited coral per m² for each coral taxa and site based on a Poisson distribution, capped to a maximum density.
+
+# References
+1. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E.,
+     Castro-Sanguino, C., Condie, S. A., Puotinen, M.,
+     Thompson, A., & Mumby, P. J. (2022).
+   Cumulative impacts across Australia's Great Barrier Reef:
+     A mechanistic evaluation.
+   Ecological Monographs, 92(1), e01494.
+   https://doi.org/10.1002/ecm.1494
+"""
+function recruitment(larval_pool, max_density::Float64; α=2.5, β=5000.0)
+    return min.(recruitment_rate(larval_pool; α, β), max_density)
 end

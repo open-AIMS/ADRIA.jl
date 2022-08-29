@@ -100,10 +100,10 @@ Columns indicate:
 
 # Arguments
 - site_ids : vector of site ids
-- centr : site centrality (relative strength of connectivity)
+- centr : site centrality (relative strength of connectivity) (0 <= centr <= 1.0)
 - sumcover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
 - maxcover : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
-- area : absolute area (in m²) for each site
+- area : total absolute area (in m²) for each site
 - damprob : Probability of wave damage
 - heatstressprob : Probability of site being affected by heat stress
 - predec : list of priority predecessors (sites strongly connected to priority sites)
@@ -122,10 +122,10 @@ function create_decision_matrix(site_ids, centr, sumcover, maxcover, area, dampr
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
-    A[:, 3] .= maximum(damprob) != 0 ? damprob / maximum(damprob) : damprob
+    A[:, 3] .= maximum(damprob) != 0 ? (damprob .- minimum(damprob)) ./ (maximum(damprob) - minimum(damprob)) : damprob
 
     # risk from heat exposure
-    A[:, 4] .= maximum(heatstressprob) != 0 ? heatstressprob / maximum(heatstressprob) : heatstressprob
+    A[:, 4] .= maximum(heatstressprob) != 0 ? (heatstressprob .- minimum(heatstressprob)) ./ (maximum(heatstressprob) - minimum(heatstressprob)) : heatstressprob
 
     # priority predecessors
     A[:, 5] .= predec[:, 3]
@@ -315,11 +315,11 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # Replace with input rankings if seeding or shading rankings have not been filled
     if (sum(rankings[:, 2]) == 0.0) && (length(prefseedsites) != 0)
-        rankings[:, 2] .= @view rankingsin[:, 2]
+        rankings[:, 2] .= rankingsin[:, 2]
     end
 
     if (sum(rankings[:, 3]) == 0.0) && (length(prefshadesites) != 0)
-        rankings[:, 3] .= @view rankingsin[:, 3]
+        rankings[:, 3] .= rankingsin[:, 3]
     end
 
     return prefseedsites, prefshadesites, rankings
@@ -484,25 +484,26 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - seed_years : bool, indicating whether to seed this year or not
 - shade_years : bool, indicating whether to shade this year or not
 - nsiteint : int, number of sites to intervene on
-- max_cover : vector/matrix : maximum carrying capacity of each site (`k` value)
+- available_space : vector/matrix : space available at each site (`k` value)
 """
-function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)
-    # Unguided deployment, seed/shade corals anywhere so long as max_cover > 0.
-    # Only sites with max_cover are considered, otherwise a zero-division error may occur later on.
+function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, available_space)
+    # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.1
+    # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
     # Select sites (without replacement to avoid duplicate sites)
-    num_sites = length(findall(max_cover .> 0.0))
+    candidate_sites = findall(available_space .> 0.0)
+    num_sites = length(candidate_sites)
     s_nsiteint = num_sites < nsiteint ? num_sites : nsiteint
 
     if seed_years
-        prefseedsites = zeros(nsiteint)
-        prefseedsites[1:s_nsiteint] = StatsBase.sample(findall(max_cover .> 0.0), s_nsiteint; replace=false)
+        prefseedsites = zeros(Int64, nsiteint)
+        prefseedsites[1:s_nsiteint] .= StatsBase.sample(candidate_sites, s_nsiteint; replace=false)
     end
 
     if shade_years
-        prefshadesites = zeros(nsiteint)
-        prefshadesites[1:s_nsiteint] = StatsBase.sample(findall(max_cover .> 0.0), s_nsiteint; replace=false)
+        prefshadesites = zeros(Int64, nsiteint)
+        prefshadesites[1:s_nsiteint] .= StatsBase.sample(candidate_sites, s_nsiteint; replace=false)
     end
 
-    return prefseedsites, prefshadesites
+    return prefseedsites[prefseedsites .> 0], prefshadesites[prefshadesites .> 0]
 end
