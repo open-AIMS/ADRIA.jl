@@ -277,9 +277,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     total_site_area::Array{Float64, 2} = cache.site_area
 
     fec_params::Vector{Float64} = corals.fecundity
-    potential_settler_cover::Float64 = (sim_params.max_settler_density *
-                                        sim_params.basal_area_per_settler *
-                                        sim_params.density_ratio_of_settlers_to_larvae)
 
     # Caches
     TP_data = cache.TP_data
