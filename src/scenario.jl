@@ -541,17 +541,18 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
-        growth.u0[:, :] .= Y_tmp_cover[:, :] .* prop_loss[:, :]  # update initial condition
+        growth.u0[:, :] .= Y_pstep[:, :] .* prop_loss[:, :]  # update initial condition
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
                                  alg_hints=[:nonstiff], abstol=1e-9, reltol=1e-8)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
+        # Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
+        Y_cover[tstep, :, :] .= sol.u[end]
 
         # growth::ODEProblem = ODEProblem{true,false}(growthODE, cov_tmp .* prop_loss[:, :], tspan, p)
         # sol::ODESolution = solve(growth, solver, abstol=1e-7, reltol=1e-4, save_everystep=false, save_start=false, alg_hints=[:nonstiff])
-        # Yout[tstep, :, :] .= sol.u[end]
-        # Yout[tstep, :, :] .= proportional_adjustment!(Yout[tstep, :, :], cover_tmp, max_cover)
+        # Y_cover[tstep, :, :] .= sol.u[end]
+        # Y_cover[tstep, :, :] .= proportional_adjustment!(Yout[tstep, :, :], cover_tmp, max_cover)
     end
 
     # Avoid placing importance on sites that were not considered
