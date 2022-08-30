@@ -438,7 +438,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     col_area_seed_CA = corals.colony_area_cm2[seed_sc_CA] / 10^4
 
     absolute_k_area = vec(total_site_area' .* max_cover)  # max possible coral area in m^2
-    growth::ODEProblem = ODEProblem{true,false}(growthODE, Y_cover[1, :, :], tspan, p)
+    growth::ODEProblem = ODEProblem{true}(growthODE, Y_cover[1, :, :], tspan, p)
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
@@ -452,6 +452,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Send larvae out into the world
         actual_fecundity = (fec_scope .* sf)
         larval_pool = (actual_fecundity * TP_data)  # larval pool for each site (in larvae/m²)
+
+        site_coral_cover = vec(sum(Y_pstep, dims=1))
+        absolute_site_coral_cover = site_coral_cover' .* total_site_area  # in m²
         leftover_space = max.(absolute_k_area' .- absolute_site_coral_cover, 0.0)
 
         # Larvae have landed, work out how many are recruited

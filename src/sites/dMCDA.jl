@@ -346,14 +346,12 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     if log_seed && isempty(SE)
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
-        prefseedsites = rank_sites!(SE, wse, rankings, nsiteint, mcda_func)
         prefseedsites = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
     end
 
     if log_shade && isempty(SH)
         prefshadesites = repeat([0], nsiteint)
     elseif log_shade
-        prefshadesites = rank_sites!(SH, wsh, rankings, nsiteint, mcda_func)
         prefshadesites = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
     end
 
