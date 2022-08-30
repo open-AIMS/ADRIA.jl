@@ -171,6 +171,22 @@ Create seeding specific decision matrix from criteria matrix. The weight criteri
 - wtheat : Heat stress weight
 - wtpredecseed : Priority predecessor weight
 - wtlocover : Weighting for low coral cover (coral real estate), when seeding 
+
+# Returns
+Tuple (SE, wse)
+    - SE : Matrix of shape [n sites considered, 6]
+           1. Site index ID
+           2. Centrality
+           3. Damage risk (higher values = less risk)
+           4. Wave risk (higher values = less risk)
+           5. Priority predecessors relating to coral real estate relative to max capacity
+           6. Available space
+    - wse : 5-element vector of criteria weights
+        1. seed connectivity
+        2. wave
+        3. heat
+        4. seed predecessors (?)
+        5. low cover (?)
 """
 function create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     wse = [1, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover]
@@ -204,6 +220,22 @@ Create shading specific decision matrix and apply weightings.
 - wtheat : Heat stress weight
 - wtpredecshade : Priority predecessor weight for shading
 - wthicover : Weighting for high coral cover when shading 
+
+# Returns
+Tuple (SH, wsh)
+    - SH : Matrix of shape [n sites considered, 6]
+           1. Site index ID
+           2. Centrality
+           3. Damage risk (higher values = less risk)
+           4. Wave risk (higher values = less risk)
+           5. Priority predecessors relating to coral real estate relative to max capacity
+           6. Available space
+    - wsh : 5-element vector of criteria weights
+        1. shade connectivity
+        2. wave
+        3. heat
+        4. shade predecessors (?)
+        5. high cover (?)
 """
 function create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     wsh = [1, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
@@ -343,9 +375,12 @@ Then orders sites from highest aggregate score to lowest.
 
 # Arguments
 - S : Decision matrix (seeding or shading)
-# Returns
-- s_order : nsites × 2 matrix with s_order[:,1] = site ids, s_order[:,2] = calculated site rank.
 
+# Returns
+- s_order : nsites × 3 matrix with columns
+    1. site ids
+    2. calculated site rank
+    3. site ranking order (lower values = higher ranked)
 """
 function order_ranking(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
     n::Int64 = size(S,1)
@@ -386,9 +421,12 @@ S_p  = √{∑(criteria .- NIS)²}
 
 # Arguments
 - S : Decision matrix (seeding or shading)
-# Returns
-- s_order : nsites*2 matrix with s_order[:,1] = site ids, s_order[:,2] = calculated site rank.
 
+# Returns
+- s_order :
+    1. site ids
+    2. calculated site rank
+    3. site ranking order (lower values = higher ranked)
 """
 function topsis(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
 
@@ -454,8 +492,10 @@ Details of this aggregation method in, for example [1]
 - v : Real
 
 # Returns
-- s_order : nsites*2 matrix with s_order[:,1] = site ids, s_order[:,2] = calculated site rank.
-
+- s_order :
+    1. site ids
+    2. calculated site rank
+    3. site ranking order (lower values = higher ranked)
 """
 function vikor(S::Array{Float64, 2}; v::Float64=0.5)::Array{Union{Float64, Int64}, 2}
 
