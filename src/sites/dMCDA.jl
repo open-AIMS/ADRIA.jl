@@ -185,8 +185,8 @@ Tuple (SE, wse)
         1. seed connectivity
         2. wave
         3. heat
-        4. seed predecessors (?)
-        5. low cover (?)
+        4. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
+        5. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
 function create_seed_matrix(A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     # Set up decision matrix to be same size as A
@@ -237,8 +237,8 @@ Tuple (SH, wsh)
         1. shade connectivity
         2. wave
         3. heat
-        4. shade predecessors (?)
-        5. high cover (?)
+        4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
+        5. high cover (weights importance of sites with high cover of coral to shade)
 """
 function create_shade_matrix(A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     # Set up decision matrix to be same size as A
