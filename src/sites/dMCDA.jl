@@ -54,33 +54,42 @@ end
 
 
 """
-    rank_sites!(S, weights, rankings, nsiteint)
+    rank_sites!(S, weights, rankings, nsiteint, rank_col)
+    rank_seed_sites!(S, weights, rankings, nsiteint)
+    rank_shade_sites!(S, weights, rankings, nsiteint)
 
 # Arguments
 - S : Matrix, Site preference values
 - weights : weights to apply
 - rankings : vector of site ranks to update
 - nsiteint : number of sites to select for interventions
+- rank_col : column to fill with rankings (2 for seed, 3 for shade)
 """
-function rank_sites!(S, weights, rankings, nsiteint, mcda_func)::Vector
+function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vector
     # Filter out all non-preferred sites
-    selector = vec(.!all(S .== 0, dims=1))
+    selector = vec(.!all(S[:, 2:end] .== 0, dims=1))
     weights = weights[selector]
-    S = S[:, selector]
+    S = S[:, Bool[1, selector...]]
 
+    # Skip first column as this holds site index ids
     S[:, 2:end] = mcda_normalize(S[:, 2:end])
-    S .= S .* repeat(weights', size(S, 1), 1)
+    S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
     s_order = mcda_func(S)
 
     last_idx = min(nsiteint, size(s_order, 1))
-    prefshadesites = Int.(s_order[1:last_idx, 1])
+    prefsites = Int.(s_order[1:last_idx, 1])
 
     # Match by site_id and assign rankings to log
-    align_rankings!(rankings, s_order, 3)
+    align_rankings!(rankings, s_order, rank_col)
 
-    return prefshadesites
+    return prefsites
 end
-
+function rank_seed_sites!(S, weights, rankings, nsiteint, mcda_func)::Vector
+    rank_sites!(S, weights, rankings, nsiteint, mcda_func, 2)
+end
+function rank_shade_sites!(S, weights, rankings, nsiteint, mcda_func)::Vector
+    rank_sites!(S, weights, rankings, nsiteint, mcda_func, 3)
+end
 
 """
     create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec)
