@@ -452,7 +452,12 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Send larvae out into the world
         actual_fecundity = (fec_scope .* sf)
         larval_pool = (actual_fecundity * TP_data)  # larval pool for each site (in larvae/m²)
-        leftover_space = max.(absolute_k_area' .- total_site_area, 0.0)
+
+        site_coral_cover = vec(sum(Y_tmp_cover, dims=1))
+
+        absolute_site_coral_cover = site_coral_cover' .* total_site_area  # in m²
+
+        leftover_space = max.(absolute_k_area' .- absolute_site_coral_cover, 0.0)
 
         # Larvae have landed, work out how many are recruited
         λ = recruitment(larval_pool, leftover_space)  # recruits per m^2 per site
