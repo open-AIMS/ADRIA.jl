@@ -24,7 +24,6 @@ References:
 Base.@kwdef mutable struct SimConstants
     
     ## Base scenario parameters
-    tf = 50; #number of years - e.g. year 2050 if we start deploying in year 2025 and run for 25 years.
     nsiteint = 5; # max number of sites we intervene on in a given year.
     
     # Default percent thresholds of max connectivity to filter out weak connections in connectivity network. 

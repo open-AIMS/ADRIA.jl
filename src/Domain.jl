@@ -65,7 +65,6 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::DataFr
 
     model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
     sim_constants::SimConstants = SimConstants()
-    sim_constants.tf = size(DHWs)[1]  # auto-adjust to length of available time series
     return Domain(name, rcp, env_layers, "", TP_base, conn_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)

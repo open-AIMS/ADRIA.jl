@@ -127,7 +127,6 @@ Logs of site ranks only store the mean site rankings over all environmental scen
 This is to reduce the volume of data stored.
 """
 function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_store::NamedTuple, cache::NamedTuple)
-    tf::Int64 = domain.sim_constants.tf
 
     # Extract non-coral parameters
     df = DataFrame(domain.model)
@@ -138,8 +137,8 @@ function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_
     coral_params = to_spec(component_params(domain.model, Coral))
 
     # Pass in environmental layer data stripped of named dimensions.
-    all_dhws = Array{Float64}(domain.dhw_scens[1:tf, :, :])
-    all_waves = Array{Float64}(domain.wave_scens[1:tf, :, :])
+    all_dhws = Array{Float64}(domain.dhw_scens)
+    all_waves = Array{Float64}(domain.wave_scens)
 
     result_set = run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
                                      domain.coral_growth.ode_p,
@@ -253,7 +252,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # sim constants
     n_sites::Int64 = domain.coral_growth.n_sites
     nsiteint::Int64 = sim_params.nsiteint
-    tf::Int64 = sim_params.tf
+    tf::Int64 = size(dhw_scen, 1)
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
 

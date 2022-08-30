@@ -65,6 +65,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 2, n_sites, n_scens)
 
     attrs = Dict(
+        # Here, "intervention" refers to seeding or shading
         :structure=> ("timesteps", "sites", "intervention", "scenarios"),
         :unique_site_ids=>unique_sites,
     )
@@ -154,7 +155,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     inputs[:, :] = Matrix(param_df)
 
     # Set up stores for each metric
-    tf, n_sites = domain.sim_constants.tf::Int64, domain.coral_growth.n_sites::Int64
+    tf, n_sites, _ = size(domain.dhw_scens)
 
     function dim_lengths(metric_structure)
         dl = []
