@@ -66,11 +66,10 @@ SparseArrayKit = "0.2"
 StaticArrays = "1"
 StatsBase = "0.33"
 ThreadsX = "0.1"
-Zarr = "0.7.2"
+Zarr = "0.7.3"
 julia = "1"
 
 [extras]
-CPUSummary = "2a0fbf3d-bb9c-48f3-b0a9-814d99fd7ab9"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
