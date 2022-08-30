@@ -452,19 +452,17 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Send larvae out into the world
         actual_fecundity = (fec_scope .* sf)
         larval_pool = (actual_fecundity * TP_data)  # larval pool for each site (in larvae/m²)
-        site_coral_cover = vec(sum(Y_pstep, dims=1))
+        leftover_space = max.(absolute_k_area' .- absolute_site_coral_cover, 0.0)
 
         # Larvae have landed, work out how many are recruited
-        r_rate = recruitment_rate(larval_pool, leftover_space) ./ absolute_k_area'  # convert to m²
-        λ = recruitment(larval_pool, sim_params.max_settler_density)
+        λ = recruitment(larval_pool, leftover_space)  # recruits per m^2 per site
 
         # Determine area covered by recruited larvae
         settler_cover = λ .* sim_params.basal_area_per_settler  # area in m² for each settler across all sites
-        adj_rec = settler_cover .* max.(max_cover .- site_coral_cover, 0.0)'
 
         # Recruitment should represent additional cover, relative to total site area
-        # Gets added to Y_cover in ODE
-        p.rec[:, :] .= adj_rec
+        # Gets used in ODE
+        p.rec[:, :] .= settler_cover ./ total_site_area
 
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
