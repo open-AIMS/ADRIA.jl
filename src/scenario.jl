@@ -480,7 +480,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                                                               prefseedsites, prefshadesites, rankings)
 
             # Log site ranks
-            # First col only holds site ids so skip (with 2:end)
+            # First col only holds site index ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
         else
             if seed_corals && in_seed_years
