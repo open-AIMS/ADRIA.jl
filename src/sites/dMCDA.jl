@@ -189,7 +189,7 @@ Tuple (SE, wse)
         5. low cover (?)
 """
 function create_seed_matrix(A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
-    # Set up SE and SH to be same size as A
+    # Set up decision matrix to be same size as A
     SE = zeros(size(A, 1), 6)
 
     wse = [wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover]
@@ -241,6 +241,7 @@ Tuple (SH, wsh)
         5. high cover (?)
 """
 function create_shade_matrix(A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+    # Set up decision matrix to be same size as A
     SH = zeros(size(A, 1), 6)
     wsh = [wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
     wsh .= mcda_normalize(wsh)
