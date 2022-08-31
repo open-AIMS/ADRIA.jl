@@ -3,7 +3,6 @@
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
 
-
 """
     setup_cache(domain::Domain)::NamedTuple
 
@@ -147,7 +146,8 @@ function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_
     # Capture results to disk
     # Set values below threshold to 0 to save space
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
-    tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
+
+    tmp_site_ranks = zeros(Float32,size(all_dhws)[1], nrow(domain.site_data), 2)
 
     r_raw = result_set.raw
     vals = relative_cover(r_raw)
@@ -523,6 +523,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
+
+            @infiltrate
             # Extract site area for selected sites
             site_area_seed = total_site_area[prefseedsites]
 
