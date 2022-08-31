@@ -3,6 +3,7 @@
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
 
+
 """
     setup_cache(domain::Domain)::NamedTuple
 
@@ -525,13 +526,23 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
-            # Extract site area for selected sites
+            # Extract site area for sites selected
             site_area_seed = total_site_area[prefseedsites]
 
-            # Determine area (m^2) to be covered by seeded corals
-            # and make relative to total site
-            scaled_seed_TA = ((n_TA_to_seed / nsiteint) * col_area_seed_TA) ./ site_area_seed
-            scaled_seed_CA = ((n_CA_to_seed / nsiteint) * col_area_seed_CA) ./ site_area_seed
+            # Scale site area for sites selected by actual available space (k/100 - sum_cover)
+            site_area_seed_remaining = site_area_seed .* available_space[prefseedsites]
+
+            # Proportion of available space on each site relative to total space available on these sites
+            prop_area_avail = site_area_seed_remaining ./ sum(site_area_seed_remaining)
+
+            # Distribute seeded corals (as area) across sites according to available space proportions
+            # proportion*(area of 1 coral * num seeded corals)
+            scaled_seed_TA = prop_area_avail .* (n_TA_to_seed * col_area_seed_TA)
+            scaled_seed_CA = prop_area_avail .* (n_CA_to_seed * col_area_seed_CA)
+
+            # Convert to relative cover proportion by dividing by site area
+            scaled_seed_TA = scaled_seed_TA ./ site_area_seed
+            scaled_seed_CA = scaled_seed_CA ./ site_area_seed
 
             # Seed each site with TA or CA
             @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed_TA
