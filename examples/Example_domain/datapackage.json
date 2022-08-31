@@ -2,8 +2,11 @@
   "name": "Example_domain",
   "title": "Example reef cluster data package",
   "description": "Example data package for ADRIA",
-  "dpkg_version": "v0.2",
+  "version": "v0.2.1",
   "sources": [],
+  "simulation_metadata": {
+    "timeframe": [2026, 2099]
+  },
   "contributors": [
     {
       "title": "Joe Smith",

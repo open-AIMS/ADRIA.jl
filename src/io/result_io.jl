@@ -36,6 +36,7 @@ function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_
         :connectivity_file => env_layer.connectivity_fn,
         :DHW_file => env_layer.DHW_fn,
         :wave_file => env_layer.wave_fn,
+        :timeframe => env_layer.timeframe,
         :sim_constants => sim_constants,
         :site_ids => unique_sites,
         :site_area => area,
@@ -256,7 +257,8 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["init_coral_cover_file"],
         input_set.attrs["connectivity_file"],
         input_set.attrs["DHW_file"],
-        input_set.attrs["wave_file"]
+        input_set.attrs["wave_file"],
+        input_set.attrs["timeframe"]
     )
 
     return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data)

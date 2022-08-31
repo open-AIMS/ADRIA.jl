@@ -1,9 +1,9 @@
 """
-    EnvLayer{S}
+    EnvLayer{S, TF}
 
 Store environmental data layers used for scenario
 """
-struct EnvLayer{S<:AbstractString}
+struct EnvLayer{S<:AbstractString, TF}
     site_data_fn::S
     site_id_col::S
     unique_site_id_col::S
@@ -11,6 +11,7 @@ struct EnvLayer{S<:AbstractString}
     connectivity_fn::S
     DHW_fn::S
     wave_fn::S
+    timeframe::TF
 end
 
 
@@ -23,7 +24,7 @@ struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Flo
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
     name::S           # human-readable name
-    RCP::S
+    RCP::S            # RCP scenario represented
     env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
     TP_data::D     # site connectivity data
@@ -72,14 +73,27 @@ end
 
 
 """
-    Domain(site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String)
+    Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
+           conn_path::String, dhw_fn::String, wave_fn::String)::Domain
 
-Convenience constructor for Domain
+Convenience constructor for Domain.
+
+# Arguments
+- name : Name of domain
+- rcp : RCP scenario represented
+- timeframe : Time steps represented
+- site_data_fn : File name of spatial data used
+- site_id_col : Column holding name of reef the site is associated with (non-unique)
+- unique_site_id_col : Column holding unique site names/ids
+- init_coral_fn : Name of file holding initial coral cover values
+- conn_path : Path to directory holding connectivity data
+- dhw_fn : Filename of DHW data cube in use
+- wave_fn : Filename of wave data cube
 """
-function Domain(name::String, rcp::String, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
+function Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
     conn_path::String, dhw_fn::String, wave_fn::String)::Domain
 
-    env_layer_md::EnvLayer = EnvLayer(site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn)
+    env_layer_md::EnvLayer = EnvLayer(site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn, timeframe)
 
     site_data::DataFrame = DataFrame()
     try
@@ -138,6 +152,8 @@ function Domain(name::String, rcp::String, site_data_fn::String, site_id_col::St
         @warn "Using random initial coral cover"
         coral_cover = NamedArray(rand(coral_growth.n_species, n_sites))
     end
+
+    @assert length(timeframe) == size(dhw, 1) == size(waves, 1) "Provided time frame must match timesteps in DHW and wave data"
 
     return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.conn_ranks, conns.strongest_predecessor,
         site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
@@ -366,6 +382,10 @@ function site_area(domain::Domain)::Vector{Float64}
     return domain.site_data.area
 end
 
+function timesteps(domain::Domain)
+    return domain.env_layer_md.timeframe
+end
+
 
 function Base.show(io::IO, mime::MIME"text/plain", d::Domain)
 
@@ -376,6 +396,7 @@ function Base.show(io::IO, mime::MIME"text/plain", d::Domain)
     println("Connectivity file: $(d.env_layer_md.connectivity_fn)")
     println("DHW file: $(d.env_layer_md.DHW_fn)")
     println("Wave file: $(d.env_layer_md.wave_fn)")
+    println("Timeframe: $(d.env_layer_md.timeframe[1]) - $(d.env_layer_md.timeframe[end])")
 
     println("\nEcosystem model specification")
     show(io, mime, d.model)
