@@ -526,29 +526,28 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
-
-            # extract site area for sites selected
+            # Extract site area for sites selected
             site_area_seed = total_site_area[prefseedsites]
 
-            # scale site area for sites selected by actual available space (k/100 - sum_cover)
-            site_area_seed_remaining = site_area_seed.* available_space[prefseedsites]
+            # Scale site area for sites selected by actual available space (k/100 - sum_cover)
+            site_area_seed_remaining = site_area_seed .* available_space[prefseedsites]
 
-            # proportion of available space on each site relative to total space available on these sites
-            prop_area_avail = site_area_seed_remaining./sum(site_area_seed_remaining)
+            # Proportion of available space on each site relative to total space available on these sites
+            prop_area_avail = site_area_seed_remaining ./ sum(site_area_seed_remaining)
 
-            # distribute seeded corals (as area) across sites according to available space proportions
+            # Distribute seeded corals (as area) across sites according to available space proportions
             # proportion*(area of 1 coral * num seeded corals)
-            scaled_seed_TA = prop_area_avail.*(n_TA_to_seed * col_area_seed_TA)
-            scaled_seed_CA = prop_area_avail.*(n_CA_to_seed * col_area_seed_CA)
-            
-            # convert to relative cover proportion by dividing by site area
-            scaled_seed_TA = scaled_seed_TA./site_area_seed
-            scaled_seed_CA = scaled_seed_CA./site_area_seed
+            scaled_seed_TA = prop_area_avail .* (n_TA_to_seed * col_area_seed_TA)
+            scaled_seed_CA = prop_area_avail .* (n_CA_to_seed * col_area_seed_CA)
+
+            # Convert to relative cover proportion by dividing by site area
+            scaled_seed_TA = scaled_seed_TA ./ site_area_seed
+            scaled_seed_CA = scaled_seed_CA ./ site_area_seed
 
             # Seed each site with TA or CA
             @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed_TA
             @views Y_pstep[seed_sc_CA, prefseedsites] .= Y_pstep[seed_sc_CA, prefseedsites] .+ scaled_seed_CA
- 
+
             # Log seed values/sites (these values are relative to site area)
             Yseed[tstep, 1, prefseedsites] .= scaled_seed_TA
             Yseed[tstep, 2, prefseedsites] .= scaled_seed_CA
