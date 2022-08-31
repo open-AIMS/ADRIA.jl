@@ -3,12 +3,12 @@
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
 
+
 """
     setup_cache(domain::Domain)::NamedTuple
 
 Establish tuple of matrices/vectors for use as reusable data stores to avoid repeated memory allocations.
 """
-
 function setup_cache(domain::Domain)::NamedTuple
 
     # sim constants
