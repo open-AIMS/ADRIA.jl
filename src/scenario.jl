@@ -9,8 +9,6 @@ import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_vol
 Establish tuple of matrices/vectors for use as reusable data stores to avoid repeated memory allocations.
 """
 
-using Infiltrator
-
 function setup_cache(domain::Domain)::NamedTuple
 
     # sim constants
@@ -529,30 +527,32 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
 
-            @infiltrate
-            # extract site area for sites selected and scale by carrying capacity (k/100)
-            site_area_seed = site_area[prefseedsites] .* max_cover[prefseedsites]
-            # extract site area for sites selected and scale by actual available space (k/100 - sum_cover)
-            site_area_seed_remaining = site_area[prefseedsites] .* (max_cover[prefseedsites]-sum(cov_tmp, dims=1)[prefseedsites])
+            # extract site area for sites selected
+            site_area_seed = total_site_area[prefseedsites]
 
-            # proportion of available space relative to total space 
-            prop_area_avail = site_area_seed_remaining./site_area_seed
+            # scale site area for sites selected by actual available space (k/100 - sum_cover)
+            site_area_seed_remaining = site_area_seed.* available_space[prefseedsites]
 
-            # distribute seeded corals (as area) across sites according to available space relative to carrying capacity
-            scaled_seed_TA = prop_area_avail.*(seed_TA_vol * col_area_seed_TA)
-            scaled_seed_CA = prop_area_avail.*(seed_CA_vol * col_area_seed_CA)
+            # proportion of available space on each site relative to total space available on these sites
+            prop_area_avail = site_area_seed_remaining./sum(site_area_seed_remaining)
+
+            # distribute seeded corals (as area) across sites according to available space proportions
+            # proportion*(area of 1 coral * num seeded corals)
+            scaled_seed_TA = prop_area_avail.*(n_TA_to_seed * col_area_seed_TA)
+            scaled_seed_CA = prop_area_avail.*(n_CA_to_seed * col_area_seed_CA)
             
-            # convert to relative cover proportion 
+            # convert to relative cover proportion by dividing by site area
             scaled_seed_TA = scaled_seed_TA./site_area_seed
             scaled_seed_CA = scaled_seed_CA./site_area_seed
 
-            # Seed each site with the value indicated with seed1/seed2
-            @views cov_tmp[seed_size_class1, prefseedsites] .= cov_tmp[seed_size_class1, prefseedsites] .+ scaled_seed_TA  # seed Enhanced Tabular Acropora
-            @views cov_tmp[seed_size_class2, prefseedsites] .= cov_tmp[seed_size_class2, prefseedsites] .+ scaled_seed_CA  # seed Enhanced Corymbose Acropora
-
+            # Seed each site with TA or CA
+            @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed_TA
+            @views Y_pstep[seed_sc_CA, prefseedsites] .= Y_pstep[seed_sc_CA, prefseedsites] .+ scaled_seed_CA
+ 
             # Log seed values/sites (these values are relative to site area)
             Yseed[tstep, 1, prefseedsites] .= scaled_seed_TA
             Yseed[tstep, 2, prefseedsites] .= scaled_seed_CA
+
         end
 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
