@@ -525,8 +525,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
-
-            @infiltrate
             # Extract site area for selected sites
             site_area_seed = total_site_area[prefseedsites]
 
