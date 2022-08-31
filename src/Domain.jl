@@ -380,6 +380,10 @@ function site_area(domain::Domain)::Vector{Float64}
     return domain.site_data.area
 end
 
+function timesteps(domain::Domain)
+    return domain.env_layer_md.timeframe
+end
+
 
 function Base.show(io::IO, mime::MIME"text/plain", d::Domain)
 
