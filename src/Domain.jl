@@ -153,6 +153,8 @@ function Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::Stri
         coral_cover = NamedArray(rand(coral_growth.n_species, n_sites))
     end
 
+    @assert length(timeframe) == size(dhw, 1) == size(waves, 1) "Provided time frame must match timesteps in DHW and wave data"
+
     return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.conn_ranks, conns.strongest_predecessor,
         site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
         site_conn.site_ids, site_conn.truncated, dhw, waves)
