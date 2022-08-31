@@ -547,7 +547,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             # Seed each site with TA or CA
             @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed_TA
             @views Y_pstep[seed_sc_CA, prefseedsites] .= Y_pstep[seed_sc_CA, prefseedsites] .+ scaled_seed_CA
- 
+
             # Log seed values/sites (these values are relative to site area)
             Yseed[tstep, 1, prefseedsites] .= scaled_seed_TA
             Yseed[tstep, 2, prefseedsites] .= scaled_seed_CA
