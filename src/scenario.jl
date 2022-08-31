@@ -472,6 +472,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
+        available_space = vec(max.(max_cover' .- sum(Y_pstep, dims=1), 0.0))
         if is_guided && in_seed_years
             # Update dMCDA values
             mcda_vars.damprob .= @view mwaves[tstep, :, :]
@@ -488,7 +489,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         else
             if seed_corals && in_seed_years
                 # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
-                available_space = vec(max.(max_cover' .- sum(Y_pstep, dims=1), 0.0))
                 prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
                                                                         seed_decision_years[tstep], shade_decision_years[tstep],
                                                                         nsiteint, available_space)
