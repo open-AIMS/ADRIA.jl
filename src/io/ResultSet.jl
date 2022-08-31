@@ -18,6 +18,7 @@ struct ResultSet{S, T1, T2, F, A, B, C, G}
     RCP::S
     invoke_time::S
     ADRIA_VERSION::S
+
     site_ids::T1
     site_area::F
     site_max_coral_cover::F
@@ -96,7 +97,7 @@ function combine_results(result_sets...)::ResultSet
     envlayer = rs1.env_layer_md
     env_md = EnvLayer(envlayer.site_data_fn, envlayer.site_id_col, envlayer.unique_site_id_col,
                       envlayer.init_coral_cov_fn, envlayer.connectivity_fn,
-                      dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn))
+                      dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn), envlayer.timeframe)
 
     all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
     input_dims = size(all_inputs)
@@ -228,6 +229,19 @@ function select(r::ResultSet, op::String)
 end
 
 
+"""
+    timesteps(rs::ResultSet)
+
+Retrieve the time steps represented in the result set.
+
+# Arguments
+- rs : ResultSet
+"""
+function timesteps(rs::ResultSet)
+    return rs.env_layer_md.timeframe
+end
+
+
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
     vers_id = rs.ADRIA_VERSION
@@ -252,6 +266,12 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     ------------""")
 
     for fn in fieldnames(typeof(rs.env_layer_md))
+        if fn == :timeframe
+            tf = getfield(rs.env_layer_md, fn)
+            println("$(fn) : $(tf[1]) - $(tf[end])")
+            continue
+        end
+
         println("$(fn) : $(getfield(rs.env_layer_md, fn))")
     end
 end
