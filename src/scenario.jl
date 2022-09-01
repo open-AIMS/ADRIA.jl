@@ -1,8 +1,7 @@
 """Scenario running functions"""
 
-
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
-import ADRIA.distribute_seeded_corals
+
 
 """
     setup_cache(domain::Domain)::NamedTuple
