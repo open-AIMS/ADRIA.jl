@@ -155,11 +155,12 @@ function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_
     vals[vals .< threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
-    vals .= absolute_shelter_volume(r_raw, site_area(domain), param_table(domain))
+    p_tbl = param_table(domain)
+    vals .= absolute_shelter_volume(r_raw, site_area(domain), p_tbl)
     vals[vals .< threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(r_raw, site_area(domain), param_table(domain))
+    vals .= relative_shelter_volume(r_raw, site_area(domain), p_tbl)
     vals[vals .< threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
