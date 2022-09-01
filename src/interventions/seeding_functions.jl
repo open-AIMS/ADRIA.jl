@@ -1,5 +1,5 @@
 """
-    distribute_seeded_corals(total_site_area::Matrix{Float64},
+    distribute_seeded_corals(total_site_area::Vector{Float64},
         prefseedsites::Vector{Int64},available_space::Vector{Float64},
         n_to_seed::Vector{Int64},col_area_seed::Vector{Float64})
 
@@ -18,7 +18,7 @@ current available space at each selected site.
     - col_area_seed[1] = colony area of a TA coral.
     - col_area_seed[2] = colony area of a CA coral.
 """
-function distribute_seeded_corals(total_site_area::Matrix{Float64},
+function distribute_seeded_corals(total_site_area::Vector{Float64},
     prefseedsites::Vector{Int64}, available_space::Vector{Float64},
     n_to_seed::Vector{Int64}, col_area_seed::Vector{Float64})
 
