@@ -528,17 +528,17 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         if seed_corals && in_seed_years && has_seed_sites
             @infiltrate
             # calculates proportions to seed based on current available space
-            scaled_seed = distribute_seeded_corals(vec(total_site_area),
-                prefseedsites, available_space, [n_TA_to_seed, n_CA_to_seed],
-                [col_area_seed_TA, col_area_seed_CA])
+            [scaled_seed_TA,scaled_seed_CA] = distribute_seeded_corals(vec(total_site_area),
+                prefseedsites, available_space, (nTA = n_TA_to_seed, nCA = n_CA_to_seed),
+                (areaTA = col_area_seed_TA, areaCA = col_area_seed_CA))
 
             # Seed each site with TA or CA
-            @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed[1]
-            @views Y_pstep[seed_sc_CA, prefseedsites] .= Y_pstep[seed_sc_CA, prefseedsites] .+ scaled_seed[2]
+            @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed_TA
+            @views Y_pstep[seed_sc_CA, prefseedsites] .= Y_pstep[seed_sc_CA, prefseedsites] .+ scaled_seed_CA
 
             # Log seed values/sites (these values are relative to site area)
-            Yseed[tstep, 1, prefseedsites] .= scaled_seed[1]
-            Yseed[tstep, 2, prefseedsites] .= scaled_seed[2]
+            Yseed[tstep, 1, prefseedsites] .= scaled_seed_TA
+            Yseed[tstep, 2, prefseedsites] .= scaled_seed_CA
 
         end
 
