@@ -528,9 +528,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         if seed_corals && in_seed_years && has_seed_sites
             @infiltrate
             # calculates proportions to seed based on current available space
-            [scaled_seed_TA,scaled_seed_CA] = distribute_seeded_corals(vec(total_site_area),
-                prefseedsites, available_space, (nTA = n_TA_to_seed, nCA = n_CA_to_seed),
-                (areaTA = col_area_seed_TA, areaCA = col_area_seed_CA))
+            [scaled_seed_TA, scaled_seed_CA] = distribute_seeded_corals(vec(total_site_area),
+                prefseedsites, available_space, (nTA=n_TA_to_seed, nCA=n_CA_to_seed),
+                (areaTA=col_area_seed_TA, areaCA=col_area_seed_CA))
 
             # Seed each site with TA or CA
             @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed_TA

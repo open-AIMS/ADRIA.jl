@@ -15,9 +15,9 @@ using Infiltrator
     current_cover = zeros(size(total_site_area))
     # calculate available space
     available_space = vec((k .- current_cover))
-    prefseedsites = vec(rand(1:length(total_site_area),1,5))
-    col_area_seed = vec(rand(Uniform(0.0,0.005),1,2))
-    n_to_seed = vec(rand(20000:100000,1,2))
+    prefseedsites = vec(rand(1:length(total_site_area), 1, 5))
+    col_area_seed = vec(rand(Uniform(0.0, 0.005), 1, 2))
+    n_to_seed = vec(rand(20000:100000, 1, 2))
 
     # evaluate seeding distributions
     seed_dist = distribute_seeded_corals(total_site_area,
@@ -48,7 +48,7 @@ using Infiltrator
     min_ind = findfirst(item -> item == minimum(available_space[prefseedsites]), available_space[prefseedsites])
 
     # run tests
-    @test ((total_area_coral_TA - total_area_coral_TA_out)<10^-5) && ((total_area_coral_CA - total_area_coral_CA_out)<10^-5) || "Area of corals seeded not equal to (colony area) * (number or corals)"
+    @test ((total_area_coral_TA - total_area_coral_TA_out) < 10^-5) && ((total_area_coral_CA - total_area_coral_CA_out) < 10^-5) || "Area of corals seeded not equal to (colony area) * (number or corals)"
     @test all((seed_dist[1] .< 1) .&& (seed_dist[2] .< 1)) || "Some proportions of seeded corals greater than 1"
     @test all((seed_dist[1] .>= 0) .&& (seed_dist[2] .>= 0)) || "Some proportions of seeded corals less than zero"
     @test all((area_TA .<= available_area) .&& (area_CA .<= available_area)) || "Area seeded greater than available area"
