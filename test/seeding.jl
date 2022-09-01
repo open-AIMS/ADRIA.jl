@@ -2,13 +2,11 @@ using ADRIA
 import ADRIA: distribute_seeded_corals
 using Test
 using Distributions
-using Infiltrator
 
-@testset "seeding" begin
+@testset "Seeding distribution function" begin
     # first test function on example domain
     dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
 
-    @infiltrate
     # extract inputs for function
     total_site_area = site_area(dom)
     k = dom.site_data.k / 100

@@ -3,7 +3,6 @@
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
 import ADRIA.distribute_seeded_corals
-using Infiltrator
 
 """
     setup_cache(domain::Domain)::NamedTuple
@@ -526,7 +525,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
-            @infiltrate
+
             # calculates proportions to seed based on current available space
             scaled_seed = distribute_seeded_corals(vec(total_site_area),
                 prefseedsites, available_space, (nTA=n_TA_to_seed, nCA=n_CA_to_seed),
