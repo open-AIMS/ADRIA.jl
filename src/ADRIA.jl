@@ -35,7 +35,7 @@ include("io/inputs.jl")
 include("sites/connectivity.jl")
 include("sites/dMCDA.jl")
 
-include("interventions/seeding_functions.jl")
+include("interventions/seeding.jl")
 
 include("io/ResultSet.jl")
 include("metrics/metrics.jl")
