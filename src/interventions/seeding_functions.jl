@@ -8,20 +8,20 @@ nsiteint seeding sites selected. Distributes seeded corals according to
 current available space at each selected site.
 
 # Arguments
-- total_site_area : nsites*1 vector of total area at each site in m^2.
-- prefseedsites : nsiteint*1 vector of indices for the selected seeding sites.
-- available_space : nsites*1 vector of current available space at each site in m^2.
-- n_to_seed : 1*2 named tuple indicating number of each coral type to be seeded with:
+- total_site_area : nsites*1, total area at each site in m^2.
+- prefseedsites : nsiteint*1, indices for the selected seeding sites.
+- available_space : nsites*1, current available space at each site in m^2.
+- n_to_seed : 1*2, number of each coral type to be seeded with:
     - n_to_seed.nTA = no. of TA corals to be seeded.
     - n_to_seed.nCA = no. of CA corals to be seeded.
-- col_area_seed : 1*2 named tuple indicating area of each coral type to be seeded with:
+- col_area_seed : 1*2, area of each coral type to be seeded with:
     - col_area_seed.areaTA = colony area of a TA coral.
     - col_area_seed.areaCA = colony area of a CA coral.
 
 # Returns
-- Named tuple (seedTAprop = scaled_seed_TA, seedCAprop = scaled_seed_CA), where seedTAprop
-is an nsiteint*1 vector of proportions of TA coral to seed at prefseedsites and 
-seedCAprop in an nsiteint*1 vector of proportions of CA coral to seed at prefseedsites.
+- Named tuple (seedTAprop = scaled_seed_TA, seedCAprop = scaled_seed_CA), where:
+    - seedTAprop = nsiteint*1 vector of proportions of TA coral to seed at prefseedsites
+    - seedCAprop = nsiteint*1 vector of proportions of CA coral to seed at prefseedsites.
 """
 function distribute_seeded_corals(total_site_area::Vector{Float64},
     prefseedsites::Vector{Int64}, available_space::Vector{Float64},
