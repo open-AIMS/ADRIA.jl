@@ -149,19 +149,19 @@ function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_
     tf = size(all_dhws, 1)
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
-    tmp_site_ranks = zeros(Float32, size(all_dhws)[1], nrow(domain.site_data), 2)
+    tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
 
     r_raw = result_set.raw
     vals = relative_cover(r_raw)
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
     vals .= absolute_shelter_volume(r_raw, site_area(domain), param_table(domain))
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
     vals .= relative_shelter_volume(r_raw, site_area(domain), param_table(domain))
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
     # Store raw results if no metrics specified
