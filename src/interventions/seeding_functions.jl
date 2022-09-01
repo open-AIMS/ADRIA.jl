@@ -17,10 +17,16 @@ current available space at each selected site.
 - col_area_seed : 1*2 named tuple indicating area of each coral type to be seeded with:
     - col_area_seed.areaTA = colony area of a TA coral.
     - col_area_seed.areaCA = colony area of a CA coral.
+
+# Returns
+- Named tuple (seedTAprop = scaled_seed_TA, seedCAprop = scaled_seed_CA), where seedTAprop
+is an nsiteint*1 vector of proportions of TA coral to seed at prefseedsites and 
+seedCAprop in an nsiteint*1 vector of proportions of CA coral to seed at prefseedsites.
 """
 function distribute_seeded_corals(total_site_area::Vector{Float64},
     prefseedsites::Vector{Int64}, available_space::Vector{Float64},
-    n_to_seed::NamedTuple{Int64}, col_area_seed::NamedTuple{Float64})
+    n_to_seed::NamedTuple{(:nTA, :nCA), Tuple{Int64, Int64}}, 
+    col_area_seed::NamedTuple{(:areaTA, :areaCA), Tuple{Float64, Float64}})
 
     # extract site area for sites selected
     site_area_seed = total_site_area[prefseedsites]
@@ -40,5 +46,5 @@ function distribute_seeded_corals(total_site_area::Vector{Float64},
     scaled_seed_TA = scaled_seed_TA ./ site_area_seed
     scaled_seed_CA = scaled_seed_CA ./ site_area_seed
 
-    return [scaled_seed_TA, scaled_seed_CA]
+    return (seedTAprop = scaled_seed_TA, seedCAprop = scaled_seed_CA)
 end
