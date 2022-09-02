@@ -439,8 +439,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
     col_area_seed_CA = corals.colony_area_cm2[seed_sc_CA] / 10^4
 
-    absolute_k_area = vec(total_site_area' .* max_cover)  # max possible coral area in m^2
-    growth::ODEProblem = ODEProblem{true}(growthODE, Y_cover[1, :, :], tspan, p)
+    growth::ODEProblem = ODEProblem{true}(growthODE, cov_tmp, tspan, p)
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]

@@ -2,7 +2,7 @@
 
 
 using StatsBase
-
+using Infiltrator
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
@@ -15,6 +15,8 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     heatstressprob  # ::A
     sumcover  # ::F
     maxcover  # ::V
+    coralcolarea # ::V
+    ncoralseed # ::V
     area  # ::M
     risktol  # ::F
     wtinconnseed  # ::F
@@ -288,6 +290,7 @@ Tuple :
 function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool,
                prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int},
                rankingsin::Matrix{Int64})::Tuple
+               
     site_ids::Array{Int64} = d_vars.site_ids
     nsites::Int64 = length(site_ids)
     nsiteint::Int64 = d_vars.nsiteint
@@ -300,6 +303,10 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     heatstressprob = d_vars.heatstressprob[site_ids]
     sumcover = d_vars.sumcover[site_ids]
     maxcover = d_vars.maxcover[site_ids]
+    colareaTA = d_vars.coralcolarea[1]
+    colareaCA = d_vars.coralcolarea[2]
+    ncoralTA = d_vars.ncoralseed[1]
+    ncoralCA = d_vars.ncoralseed[2]
     area = d_vars.area[site_ids]
     risktol = d_vars.risktol
     wtinconnseed = d_vars.wtinconnseed
