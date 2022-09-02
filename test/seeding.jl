@@ -20,8 +20,8 @@ using Distributions
     # evaluate seeding distributions
     seed_dist = distribute_seeded_corals(total_site_area,
         prefseedsites, available_space,
-        (nTA=n_to_seed[1],nCA=n_to_seed[2]), 
-        (areaTA=col_area_seed[1],areaCA=col_area_seed[2]))
+        (nTA=n_to_seed[1], nCA=n_to_seed[2]),
+        (areaTA=col_area_seed[1], areaCA=col_area_seed[2]))
 
     # proportions of coral 
     total_area_coral_TA = sum((n_to_seed[1] .* col_area_seed[1]))
