@@ -11,10 +11,11 @@ using ADRIA
 ADRIA.setup()  # Load and apply configuration options
 
 @info "Loading data package"
-ex_domain = ADRIA.load_domain("Example_domain", 45)
+here = @__DIR__
+ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"), "45")
 
 @info "Loading example scenarios"
-p_df = ADRIA.load_scenarios(ex_domain, "./example_scenarios.csv")
+p_df = ADRIA.load_scenarios(ex_domain, joinpath(here, "example_scenarios.csv"))
 
 # Batch run scenarios. Returns an updated domain object with the run ID used to gather results later.
 @info "Setting up and running scenarios"
