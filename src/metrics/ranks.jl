@@ -3,6 +3,39 @@ import ADRIA: timesteps
 
 
 """
+    _get_ranks(rs::ResultSet, intervention::Int64; kwargs...)
+
+Extracts results for a specific intervention (seeding [1] or shading [2])
+"""
+function _get_ranks(rs::ResultSet, intervention::Int64; kwargs...)
+    return slice_results(rs.ranks[intervention=intervention]; kwargs...)
+end
+
+"""
+    _collate_ranks(rs, selected)
+
+Collates ranks into seed/shade ranking results into a common structure.
+"""
+function _collate_ranks(rs, selected; kwargs...)
+    nsteps, nsites = size(selected)
+
+    ts = timesteps(rs)
+    @assert length(ts) == nsteps
+
+    r_ids = rs.site_data.reef_siteid
+    if haskey(kwargs, :sites)
+        r_ids = r_ids[kwargs[:sites]]
+    end
+
+    if length(r_ids) != nsites
+        @warn "Length of reef ids do not match number of sites"
+    end
+
+    return NamedArray(unname(selected), (ts, r_ids, collect(1:size(selected, 3))), ("timesteps", "sites", "scenarios"))
+end
+
+
+"""
     seed_ranks(rs::ResultSet; kwargs...)
 
 # Arguments
@@ -18,23 +51,8 @@ ADRIA.metrics.seed_ranks(rs; timesteps=1:10, scenarios=3:5)
 ```
 """
 function seed_ranks(rs::ResultSet; kwargs...)
-    selected = slice_results(rs.ranks[intervention=1]; kwargs...)
-    nsteps, nsites = size(selected)
-
-    ts = timesteps(rs)
-
-    @assert length(ts) == nsteps
-
-    r_ids = rs.site_data.reef_siteid
-    if haskey(kwargs, :sites)
-        r_ids = r_ids[kwargs[:sites]]
-    end
-
-    if length(r_ids) != nsites
-        @warn "Length of reef ids do not match number of sites"
-    end
-
-    return NamedArray(unname(selected), (ts, r_ids, collect(1:size(selected, 3))), ("timesteps", "sites", "scenarios"))
+    selected = _get_ranks(rs, 1; kwargs...)
+    return _collate_ranks(rs, selected; kwargs...)
 end
 
 """
@@ -77,4 +95,24 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
     end
 
     return NamedDimsArray(top_sites, (:sites, :site_ranks, :scenarios))
+end
+
+"""
+    seed_ranks(rs::ResultSet; kwargs...)
+
+# Arguments
+- rs : ResultSet
+- kwargs : named dimensions to slice across
+
+# Returns
+NamedArray[timesteps, sites, scenarios]
+
+# Example
+```julia
+ADRIA.metrics.shade_ranks(rs; timesteps=1:10, scenarios=3:5)
+```
+"""
+function shade_ranks(rs::ResultSet; kwargs...)
+    selected = _get_ranks(rs, 2; kwargs...)
+    return _collate_ranks(rs, selected; kwargs...)
 end
