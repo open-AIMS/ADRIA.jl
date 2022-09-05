@@ -154,6 +154,7 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover,
     # set any infs to zero
     A[maxcover .== 0, 7] .= 0.0
 
+
     # Filter out sites that have high risk of wave damage, specifically
     # exceeding the risk tolerance
     A[A[:, 4] .> risktol, 4] .= NaN
@@ -251,7 +252,7 @@ Tuple (SH, wsh)
         4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
         5. high cover (weights importance of sites with high cover of coral to shade)
 """
-function create_shade_matrix(A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+function create_shade_matrix(A, area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     # Set up decision matrix to be same size as A
     SH = zeros(size(A, 1), 7)
     wsh = [wtconshade, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
