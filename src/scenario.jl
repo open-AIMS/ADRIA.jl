@@ -474,13 +474,14 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             # Log site ranks
             # First col only holds site index ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
-        else
-            if seed_corals && in_seed_years
-                # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
-                prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
-                    seed_decision_years[tstep], shade_decision_years[tstep],
-                    nsiteint, vec(leftover_space_m²))
-            end
+        elseif seed_corals && in_seed_years
+            # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
+            prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
+                seed_decision_years[tstep], shade_decision_years[tstep],
+                nsiteint, vec(leftover_space_m²))
+
+            site_ranks[tstep, prefseedsites, 1] .= 1.0
+            site_ranks[tstep, prefshadesites, 2] .= 1.0
         end
 
         has_shade_sites::Bool = !all(prefshadesites .== 0)
