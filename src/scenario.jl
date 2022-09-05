@@ -269,10 +269,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     seed_years::Int64 = param_set.seed_years  # number of years to seed
     shade_years::Int64 = param_set.shade_years  # number of years to shade
 
-    # Gompertz shape parameters for bleaching
-    neg_e_p1::Real = -sim_params.gompertz_p1
-    neg_e_p2::Real = -sim_params.gompertz_p2
-
     ### END TODO
 
     total_site_area::Array{Float64,2} = cache.site_area
@@ -410,8 +406,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     a_adapt[corymbose_enhanced] .= param_set.a_adapt
 
     # Level of natural coral adaptation
-    n_adapt = param_set.n_adapt  # natad = coral_params.natad + interv.Natad;
+    n_adapt = param_set.n_adapt
     bleach_resist = corals.bleach_resist
+    bleaching_sensitivity = sim_params.bleaching_sensitivity
 
     ## Extract other parameters
     LPdhwcoeff = sim_params.LPdhwcoeff # shape parameters relating dhw affecting cover to larval production
@@ -519,9 +516,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         # Calculate and apply bleaching mortality
-        bleaching_mortality!(Sbl, tstep, neg_e_p1, neg_e_p2,
-            a_adapt, n_adapt,
-            bleach_resist, adjusted_dhw)
+        bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw, 
+            a_adapt, n_adapt, bleach_resist)
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
@@ -549,11 +545,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # if any are above the maximum possible (i.e., the site `k` value)
         # Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
         Y_cover[tstep, :, :] .= sol.u[end]
-
-        # growth::ODEProblem = ODEProblem{true,false}(growthODE, cov_tmp .* prop_loss[:, :], tspan, p)
-        # sol::ODESolution = solve(growth, solver, abstol=1e-7, reltol=1e-4, save_everystep=false, save_start=false, alg_hints=[:nonstiff])
-        # Y_cover[tstep, :, :] .= sol.u[end]
-        # Y_cover[tstep, :, :] .= proportional_adjustment!(Yout[tstep, :, :], cover_tmp, max_cover)
     end
 
     # Avoid placing importance on sites that were not considered
