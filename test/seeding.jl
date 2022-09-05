@@ -3,7 +3,7 @@ import ADRIA: distribute_seeded_corals
 using Test
 using Distributions
 
-@testset "Seeding distribution function" begin
+@testset "Seeding distribution" begin
     # first test function on example domain
     dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
 
