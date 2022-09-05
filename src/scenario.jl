@@ -461,13 +461,12 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
-        available_space = vec(max.(max_cover' .- sum(Y_pstep, dims=1), 0.0))
         if is_guided && in_seed_years
             # Update dMCDA values
             mcda_vars.damprob .= @view mwaves[tstep, :, :]
             mcda_vars.heatstressprob .= dhw_t
 
-            mcda_vars.sumcover .= sum(Y_pstep, dims=1)  # dims: nsites * 1
+            mcda_vars.sumcover .= site_coral_cover
             (prefseedsites, prefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
                 prefseedsites, prefshadesites, rankings)
@@ -480,12 +479,12 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                 # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
                 prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
                     seed_decision_years[tstep], shade_decision_years[tstep],
-                    nsiteint, available_space)
+                    nsiteint, vec(leftover_space_m²))
             end
         end
 
-        has_shade_sites = !all(prefshadesites .== 0)
-        has_seed_sites = !all(prefseedsites .== 0)
+        has_shade_sites::Bool = !all(prefshadesites .== 0)
+        has_seed_sites::Bool = !all(prefseedsites .== 0)
         if (srm > 0.0) && in_shade_years
             Yshade[tstep, :] .= srm
 
@@ -514,10 +513,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
-
             # calculates proportions to seed based on current available space
             scaled_seed = distribute_seeded_corals(vec(total_site_area),
-                prefseedsites, available_space, (nTA=n_TA_to_seed, nCA=n_CA_to_seed),
+                prefseedsites, vec(leftover_space_m²), (nTA=n_TA_to_seed, nCA=n_CA_to_seed),
                 (areaTA=col_area_seed_TA, areaCA=col_area_seed_CA))
 
             # Seed each site with TA or CA
@@ -527,7 +525,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             # Log seed values/sites (these values are relative to site area)
             Yseed[tstep, 1, prefseedsites] .= scaled_seed.seedTAprop
             Yseed[tstep, 2, prefseedsites] .= scaled_seed.seedCAprop
-
         end
 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
