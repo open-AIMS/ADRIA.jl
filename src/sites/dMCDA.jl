@@ -305,10 +305,6 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     heatstressprob = d_vars.heatstressprob[site_ids]
     sumcover = d_vars.sumcover[site_ids]
     maxcover = d_vars.maxcover[site_ids]
-    colareaTA = d_vars.coralcolarea[1]
-    colareaCA = d_vars.coralcolarea[2]
-    ncoralTA = d_vars.ncoralseed[1]
-    ncoralCA = d_vars.ncoralseed[2]
     area = d_vars.area[site_ids]
     risktol = d_vars.risktol
     wtinconnseed = d_vars.wtinconnseed
