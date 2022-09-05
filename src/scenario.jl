@@ -1,7 +1,7 @@
 """Scenario running functions"""
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
-
+using Infiltrator
 
 """
     setup_cache(domain::Domain)::NamedTuple
@@ -334,6 +334,17 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
     Y_cover[1, :, :] .= proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
 
+    # Define constant table location for seed values
+    tabular_enhanced::BitArray = corals.taxa_id .== 1
+    corymbose_enhanced::BitArray = corals.taxa_id .== 3
+    target_class_id::BitArray = corals.class_id .== 1  # seed smallest size class
+    seed_sc_TA::Int64 = first(findall(tabular_enhanced .& target_class_id))  # size class indices for TA and CA
+    seed_sc_CA::Int64 = first(findall(corymbose_enhanced .& target_class_id))
+
+    # extract colony areas for sites selected and convert to m^2
+    col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
+    col_area_seed_CA = corals.colony_area_cm2[seed_sc_CA] / 10^4
+
     if is_guided
         ## Weights for connectivity , waves (ww), high cover (whc) and low
         wtwaves = param_set.wave_stress # weight of wave damage in MCDA
@@ -380,6 +391,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             dhw_scen[1, :],  # heatstressprob
             Y_cover[1, :, :],  # sumcover
             max_cover,
+            [col_area_seed_TA,col_area_seed_CA],
+            [n_TA_to_seed,n_CA_to_seed],
             total_site_area,
             risktol,
             wtinconnseed,
@@ -393,13 +406,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             wtpredecshade
         )
     end
-
-    # Define constant table location for seed values
-    tabular_enhanced::BitArray = corals.taxa_id .== 1
-    corymbose_enhanced::BitArray = corals.taxa_id .== 3
-    target_class_id::BitArray = corals.class_id .== 1  # seed smallest size class
-    seed_sc_TA::Int64 = first(findall(tabular_enhanced .& target_class_id))  # size class indices for TA and CA
-    seed_sc_CA::Int64 = first(findall(corymbose_enhanced .& target_class_id))
 
     #### End coral constants
 
@@ -435,11 +441,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # Flag indicating whether to seed or not to seed
     seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
 
-    # extract colony areas for sites selected and convert to m^2
-    col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
-    col_area_seed_CA = corals.colony_area_cm2[seed_sc_CA] / 10^4
-
-    growth::ODEProblem = ODEProblem{true}(growthODE, cov_tmp, tspan, p)
+    absolute_k_area = vec(total_site_area' .* max_cover)  # max possible coral area in m^2
+    growth::ODEProblem = ODEProblem{true}(growthODE, Y_cover[1, :, :], tspan, p)
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
