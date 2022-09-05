@@ -4,7 +4,6 @@ using DataFrames
 using ModelParameters
 import ModelParameters: update!, Model
 
-
 abstract type EcoModel end
 
 
