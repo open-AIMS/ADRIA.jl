@@ -2,6 +2,21 @@ using NamedArrays, NamedDims
 import ADRIA: timesteps
 
 
+"""
+    seed_ranks(rs::ResultSet; kwargs...)
+
+# Arguments
+- rs : ResultSet
+- kwargs : named dimensions to slice across
+
+# Returns
+NamedArray[timesteps, sites, scenarios]
+
+# Example
+```julia
+ADRIA.metrics.seed_ranks(rs; timesteps=1:10, scenarios=3:5)
+```
+"""
 function seed_ranks(rs::ResultSet; kwargs...)
     selected = slice_results(rs.ranks[intervention=1]; kwargs...)
     nsteps, nsites = size(selected)
@@ -34,7 +49,7 @@ Lower rank values are better (e.g., 1 = first choice)
 - kwargs : dimensions to slice across
 
 # Returns
-NamedDimsArray : [sites, [Site Index, Unique ID, Rank], scenarios]
+NamedDimsArray[sites, [Site Index, Unique ID, Rank], scenarios]
 """
 function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
     ranked_sites = seed_ranks(rs; kwargs...)
