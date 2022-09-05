@@ -225,7 +225,7 @@ fecundities across size classes.
 - site_area : Vector[n_sites], total site area in m²
 
 # Returns
-Matrix[n_classes, n_sites] : fecundity per m2 of coral
+Matrix[n_classes, n_sites] : fecundity per m² of coral
 """
 function fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64},
                           Y_pstep::Array{Float64, 2}, site_area::Array{Float64})::Nothing
