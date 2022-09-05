@@ -142,7 +142,7 @@ end
 
 
 """
-    bleaching_mortality!(Y::Matrix{Float64, 2}, tstep::Int64, depth::Vector{Float64},
+    bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
         s::Vector{Float64}, dhw::Float64, a_adapt::Float64, n_adapt::Float64,
         bleach_resist::Vector{Float64})
 
@@ -153,8 +153,8 @@ Model is adapted from Bozec et al., [2], itself based on data from Hughes et al.
 # Arguments
 - Y : Matrix to save results into
 - tstep : current time step
-- depth : mean site depth (m)
-- s : bleaching sensitivity of corals (relative values)
+- depth : mean site depth (m) for each site
+- s : bleaching sensitivity of corals (relative values) for each taxa/size class
 - dhw : Degree Heating Week experienced at site
 - a_adapt : Level of assisted adaptation (DHW reduction)
 - n_adapt : Level of natural adaptation (DHW reduction linearly scaled over time)
@@ -194,6 +194,8 @@ function bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Fl
 
     # Estimate long-term bleaching mortality with an estimated depth coefficient and
     # initial bleaching mortality (models from Bozec et al., 2022)
+    # `m_init`` as initially formulated produces values as a percentage (i.e., 0 - 100)
+    # and so we divide by 100 again to arrive at values 0 - 1.
     depth_coeff = ℯ.^(-0.07551.*depth)
     m_init = min.(((depth_coeff .* s')' .* ℯ.^(0.17.+0.35.*capped_dhw)) / 100.0 / 100.0, 1.0)
 
