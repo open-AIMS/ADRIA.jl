@@ -25,7 +25,16 @@ end
 """
     top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
 
-Get the top n seeded sites by their unique site id.
+Get the top n seeded sites over time by their unique site id.
+Lower rank values are better (e.g., 1 = first choice)
+
+# Arguments
+- rs : ResultSet
+- n : `n` sites to retrieve
+- kwargs : dimensions to slice across
+
+# Returns
+NamedDimsArray : [sites, [Site Index, Unique ID, Rank], scenarios]
 """
 function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
     ranked_sites = seed_ranks(rs; kwargs...)
@@ -35,18 +44,21 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
     # ranked_sites[ranked_sites .== min_rank]
 
     c_ranks = mean(ranked_sites, dims=1)
-    top_sites = Array{Union{String, Float32, Missing}}(undef, n, 2, size(ranked_sites, 3))
+    top_sites = Array{Union{String, Int32, Float32, Missing}}(undef, n, 3, size(ranked_sites, 3))
     for scen in axes(ranked_sites, 3)
         flat = vec(c_ranks[1, :, scen])
 
-        rank_score = flat[partialsortperm(flat, 1:n)]
+        idx = partialsortperm(flat, 1:n)
+
+        rank_score = flat[idx]
         if all(rank_score .== min_rank)
             top_sites[:, :, scen] .= missing
             continue
         end
 
-        top_sites[:, 1, scen] .= r_ids[partialsortperm(flat, 1:n)]
-        top_sites[:, 2, scen] .= rank_score
+        top_sites[:, 1, scen] .= Int32.(idx)
+        top_sites[:, 2, scen] .= r_ids[idx]
+        top_sites[:, 3, scen] .= rank_score
     end
 
     return NamedDimsArray(top_sites, (:sites, :site_ranks, :scenarios))
