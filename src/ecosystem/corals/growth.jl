@@ -196,7 +196,7 @@ function bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Fl
     # initial bleaching mortality (models from Bozec et al., 2022)
     # `m_init`` as initially formulated produces values as a percentage (i.e., 0 - 100)
     # and so we divide by 100 again to arrive at values 0 - 1.
-    depth_coeff = ℯ.^(-0.07551.*depth)
+    depth_coeff = ℯ.^(-0.07551.*(depth-2.0))
     m_init = min.(((depth_coeff .* s')' .* ℯ.^(0.17.+0.35.*capped_dhw)) / 100.0 / 100.0, 1.0)
 
     # How much coral survives bleaching event
