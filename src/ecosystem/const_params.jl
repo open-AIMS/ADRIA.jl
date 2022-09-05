@@ -40,7 +40,8 @@ Base.@kwdef mutable struct SimConstants
     prioritysites = []; # sites to prioritize when seeding or shading
 
     ## Environmental parameters
-    DHWmaxtot = 50; # max assumed DHW for all scenarios.  Will be obsolete when we move to new, shared inputs for DHW projections
+    # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
+    DHWmaxtot = 50;
 
     # Bleaching stress and coral fecundity parameters
     LPdhwcoeff = 0.4; # shape parameters relating dhw affecting cover to larval production
