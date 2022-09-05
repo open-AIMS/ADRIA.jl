@@ -17,8 +17,8 @@ corals according to current available space at each selected site.
 
 # Returns
 scaled_seed : NamedTuple (TA = scaled_seed_TA, CA = scaled_seed_CA), where:
-    - TA : nsiteint*1 vector of proportions of TA coral to seed at prefseedsites
-    - CA : nsiteint*1 vector of proportions of CA coral to seed at prefseedsites.
+    - TA : nsiteint elements, proportions of TA coral to seed at prefseedsites
+    - CA : nsiteint elements, proportions of CA coral to seed at prefseedsites.
 """
 function distribute_seeded_corals(total_site_area::Vector{Float64},
     prefseedsites::Vector{Int64}, available_space::Vector{Float64},
