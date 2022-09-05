@@ -429,7 +429,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     Sw_t = 1.0 .- mwaves
 
     # Flag indicating whether to seed or not to seed
-    seed_corals = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
+    seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
 
     # extract colony areas for sites selected and convert to m^2
     col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
