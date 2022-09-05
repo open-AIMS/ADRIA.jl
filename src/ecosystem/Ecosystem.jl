@@ -228,23 +228,29 @@ between bleaching years come from [1].
            names, and parameter values for each coral taxa, group and size class
 
 # References
-1. Lough, J.M., Anderson, K.D. and Hughes, T.P. (2018)
-       'Increasing thermal stress for tropical coral reefs: 1871-2017',
-       Scientific Reports, 8(1), p. 6079.
-       doi: 10.1038/s41598-018-24530-9.
+1. Lough, J. M., Anderson, K. D., & Hughes, T. P. (2018).
+    Increasing thermal stress for tropical coral reefs: 1871-2017.
+    Scientific Reports, 8(1), 6079.
+    https://doi.org/10.1038/s41598-018-24530-9
 
-2. Bozec, Y.-M., Rowell, D., Harrison, L., Gaskell, J., Hock, K.,
-     Callaghan, D., Gorton, R., Kovacs, E. M., Lyons, M., Mumby, P.,
-     & Roelfsema, C. (2021).
-       Baseline mapping to support reef restoration and resilience-based
-       management in the Whitsundays.
-     https://doi.org/10.13140/RG.2.2.26976.20482
-
-3. Hall, V.R. & Hughes, T.P. 1996. 
+2. Hall, V.R. & Hughes, T.P. 1996. 
    Reproductive strategies of modular organisms: 
      comparative studies of reef-building corals. 
    Ecology, 77: 950 - 963.
    https://dx.doi.org/10.2307/2265514
+
+3. Bozec, Y.-M., Rowell, D., Harrison, L., Gaskell, J., Hock, K.,
+    Callaghan, D., Gorton, R., Kovacs, E. M., Lyons, M., Mumby, P.,
+    & Roelfsema, C. (2021).
+   Baseline mapping to support reef restoration and
+     resilience-based management in the Whitsundays.
+   https://doi.org/10.13140/RG.2.2.26976.20482
+
+4. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E., Castro-Sanguino, C.,
+    Condie, S. A., Puotinen, M., Thompson, A., & Mumby, P. J. (2022).
+   Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation. 
+   Ecological Monographs, 92(1), e01494.
+   https://doi.org/10.1002/ecm.1494
 """
 function coral_spec()::NamedTuple
     # Below parameters pertaining to species are new. We now add size classes
@@ -367,7 +373,6 @@ function coral_spec()::NamedTuple
         0.0 0.0 0.0 0.0 0.0 0.0;  # Corymbose Acropora Unenhanced
         1.5 1.5 1.5 1.5 1.5 1.5;  # Small massives and encrusting
         1.0 1.0 1.0 1.0 1.0 1.0]; # Large massives 
-
     params.bleach_resist = bleach_resist'[:];
 
     # Get perturbable coral parameters

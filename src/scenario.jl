@@ -269,10 +269,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     seed_years::Int64 = param_set.seed_years  # number of years to seed
     shade_years::Int64 = param_set.shade_years  # number of years to shade
 
-    # Gompertz shape parameters for bleaching
-    neg_e_p1::Real = -sim_params.gompertz_p1
-    neg_e_p2::Real = -sim_params.gompertz_p2
-
     ### END TODO
 
     total_site_area::Array{Float64,2} = cache.site_area
@@ -410,8 +406,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     a_adapt[corymbose_enhanced] .= param_set.a_adapt
 
     # Level of natural coral adaptation
-    n_adapt = param_set.n_adapt  # natad = coral_params.natad + interv.Natad;
+    n_adapt = param_set.n_adapt
     bleach_resist = corals.bleach_resist
+    bleaching_sensitivity = sim_params.bleaching_sensitivity
 
     ## Extract other parameters
     LPdhwcoeff = sim_params.LPdhwcoeff # shape parameters relating dhw affecting cover to larval production
@@ -432,7 +429,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     Sw_t = 1.0 .- mwaves
 
     # Flag indicating whether to seed or not to seed
-    seed_corals = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
+    seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
 
     # extract colony areas for sites selected and convert to m^2
     col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
@@ -450,34 +447,26 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Calculates scope for coral fedundity for each size class and at each site.
         fecundity_scope!(fec_scope, fec_all, fec_params, Y_pstep, total_site_area)
 
-        # Send larvae out into the world
-        actual_fecundity = (fec_scope .* sf)
-        larval_pool = (actual_fecundity * TP_data)  # larval pool for each site (in larvae/m²)
+        site_coral_cover = sum(Y_pstep, dims=1)  # dims: nsites * 1
+        absolute_site_coral_cover = site_coral_cover .* total_site_area  # in m²
+        leftover_space_m² = max.(absolute_k_area' .- absolute_site_coral_cover, 0.0)
 
-        site_coral_cover = vec(sum(Y_pstep, dims=1))
-        absolute_site_coral_cover = site_coral_cover' .* total_site_area  # in m²
-        leftover_space = max.(absolute_k_area' .- absolute_site_coral_cover, 0.0)
-
-        # Larvae have landed, work out how many are recruited
-        λ = recruitment(larval_pool, leftover_space)  # recruits per m^2 per site
-
-        # Determine area covered by recruited larvae
-        settler_cover = λ .* sim_params.basal_area_per_settler  # area in m² for each settler across all sites
+        area_settled = settler_cover(fec_scope, sf, TP_data, leftover_space_m², 
+                                     sim_params.max_settler_density, sim_params.basal_area_per_settler)
 
         # Recruitment should represent additional cover, relative to total site area
         # Gets used in ODE
-        p.rec[:, :] .= settler_cover ./ total_site_area
+        p.rec[:, :] .= area_settled ./ total_site_area
 
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
-        available_space = vec(max.(max_cover' .- sum(Y_pstep, dims=1), 0.0))
         if is_guided && in_seed_years
             # Update dMCDA values
             mcda_vars.damprob .= @view mwaves[tstep, :, :]
             mcda_vars.heatstressprob .= dhw_t
 
-            mcda_vars.sumcover .= sum(Y_pstep, dims=1)  # dims: nsites * 1
+            mcda_vars.sumcover .= site_coral_cover
             (prefseedsites, prefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
                 prefseedsites, prefshadesites, rankings)
@@ -490,12 +479,12 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                 # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
                 prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
                     seed_decision_years[tstep], shade_decision_years[tstep],
-                    nsiteint, available_space)
+                    nsiteint, vec(leftover_space_m²))
             end
         end
 
-        has_shade_sites = !all(prefshadesites .== 0)
-        has_seed_sites = !all(prefseedsites .== 0)
+        has_shade_sites::Bool = !all(prefshadesites .== 0)
+        has_seed_sites::Bool = !all(prefseedsites .== 0)
         if (srm > 0.0) && in_shade_years
             Yshade[tstep, :] .= srm
 
@@ -519,26 +508,22 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         # Calculate and apply bleaching mortality
-        bleaching_mortality!(Sbl, tstep, neg_e_p1, neg_e_p2,
-            a_adapt, n_adapt,
-            bleach_resist, adjusted_dhw)
+        bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw, 
+            a_adapt, n_adapt, bleach_resist)
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
-
-            # calculates proportions to seed based on current available space
-            scaled_seed = distribute_seeded_corals(vec(total_site_area),
-                prefseedsites, available_space, (nTA=n_TA_to_seed, nCA=n_CA_to_seed),
-                (areaTA=col_area_seed_TA, areaCA=col_area_seed_CA))
+            # Calculate proportion to seed based on current available space
+            seeded_area = (TA=n_TA_to_seed*col_area_seed_TA, CA=n_CA_to_seed*col_area_seed_CA)
+            scaled_seed = distribute_seeded_corals(vec(total_site_area), prefseedsites, vec(leftover_space_m²), seeded_area)
 
             # Seed each site with TA or CA
-            @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed.seedTAprop
-            @views Y_pstep[seed_sc_CA, prefseedsites] .= Y_pstep[seed_sc_CA, prefseedsites] .+ scaled_seed.seedTAprop
+            @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed.TA
+            @views Y_pstep[seed_sc_CA, prefseedsites] .= Y_pstep[seed_sc_CA, prefseedsites] .+ scaled_seed.CA
 
             # Log seed values/sites (these values are relative to site area)
-            Yseed[tstep, 1, prefseedsites] .= scaled_seed.seedTAprop
-            Yseed[tstep, 2, prefseedsites] .= scaled_seed.seedCAprop
-
+            Yseed[tstep, 1, prefseedsites] .= scaled_seed.TA
+            Yseed[tstep, 2, prefseedsites] .= scaled_seed.CA
         end
 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
@@ -549,11 +534,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # if any are above the maximum possible (i.e., the site `k` value)
         # Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
         Y_cover[tstep, :, :] .= sol.u[end]
-
-        # growth::ODEProblem = ODEProblem{true,false}(growthODE, cov_tmp .* prop_loss[:, :], tspan, p)
-        # sol::ODESolution = solve(growth, solver, abstol=1e-7, reltol=1e-4, save_everystep=false, save_start=false, alg_hints=[:nonstiff])
-        # Y_cover[tstep, :, :] .= sol.u[end]
-        # Y_cover[tstep, :, :] .= proportional_adjustment!(Yout[tstep, :, :], cover_tmp, max_cover)
     end
 
     # Avoid placing importance on sites that were not considered

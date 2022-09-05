@@ -142,65 +142,65 @@ end
 
 
 """
-    bleaching_mortality!(Y::Array{Float64,2}, tstep::Int64, n_p1::Float64, n_p2::Float64,
-        a_adapt::Vector{Float64}, n_adapt::Float64,
-        bleach_resist::Vector{Float64}, dhw::Vector{Float64})::Nothing
+    bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
+        s::Vector{Float64}, dhw::Float64, a_adapt::Float64, n_adapt::Float64,
+        bleach_resist::Vector{Float64})
 
-Gompertz cumulative mortality function.
-
-Updates `Y` with proportion of corals which survived (∈ [0,1]).
-
-Partial calibration using data by Hughes et al [1] (see Fig. 2C)
+Calculates bleaching mortality taking into account depth and bleaching sensitivity of corals.
+Model is adapted from Bozec et al., [2], itself based on data from Hughes et al., [3]
+(bleaching sensitivity) and Baird et al., [1] (relationship between bleaching and depth).
 
 # Arguments
-- Y       : bleaching mortality for each coral species
-- tstep   : current time step
-- n_p1    : Gompertz distribution shape parameter 1
-- n_p2    : Gompertz distribution shape parameter 2
-- a_adapt : assisted adaptation
-            where `sp` is the number of species considered
-- n_adapt : natural adaptation
-            where `sp` is the number of species considered
-- dhw     : degree heating weeks for given time step for each site
+- Y : Matrix to save results into
+- tstep : current time step
+- depth : mean site depth (m) for each site
+- s : bleaching sensitivity of corals (relative values) for each taxa/size class
+- dhw : Degree Heating Week experienced at site
+- a_adapt : Level of assisted adaptation (DHW reduction)
+- n_adapt : Level of natural adaptation (DHW reduction linearly scaled over time)
+- bleach_resist : Level of bleaching resistance (inherent resilience to DHW)
 
+# Returns
+Nothing
 
 # References
-1. Hughes, T.P., Kerry, J.T., Baird, A.H., Connolly, S.R.,
-     Dietzel, A., Eakin, C.M., Heron, S.F., Hoey, A.S.,
-     Hoogenboom, M.O., Liu, G., McWilliam, M.J., Pears, R.J.,
-     Pratchett, M.S., Skirving, W.J., Stella, J.S.
-     and Torda, G. (2018)
-   Global warming transforms coral reef assemblages,
-   Nature, 556(7702), pp. 492-496.
-   doi:10.1038/s41586-018-0041-2.
+1. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
+     Precoda, K., Torres-Pulliza, D., Woods, R., Zawada, K., & Hughes, T. (2018).
+   A decline in bleaching suggests that depth can provide a refuge from global
+     warming in most coral taxa.
+   Marine Ecology Progress Series, 603, 257-264.
+   https://doi.org/10.3354/meps12732
 
-2. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E.,
-     Castro-Sanguino, C., Condie, S. A., Puotinen, M.,
-     Thompson, A., & Mumby, P. J. (2022).
-   Cumulative impacts across Australia's Great Barrier Reef:
-        A mechanistic evaluation.
+2. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E., Castro-Sanguino, C.,
+     Condie, S. A., Puotinen, M., Thompson, A., & Mumby, P. J. (2022).
+   Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation.
    Ecological Monographs, 92(1), e01494.
    https://doi.org/10.1002/ecm.1494
 
-3. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L.,
-     Kerry, J., Kuo, C., Precoda, K., Torres-Pulliza, D., Woods, R.,
-     Zawada, K., & Hughes, T. (2018).
-   A decline in bleaching suggests that depth can provide a refuge
-     from global warming in most coral taxa.
-   Marine Ecology Progress Series, 603, 257-264.
-   https://doi.org/10.3354/meps12732
+3. Hughes, T. P., Kerry, J. T., Baird, A. H., Connolly, S. R., Dietzel, A., Eakin, C. M.,
+     Heron, S. F., Hoey, A. S., Hoogenboom, M. O., Liu, G., McWilliam, M. J., Pears, R. J.,
+     Pratchett, M. S., Skirving, W. J., Stella, J. S., & Torda, G. (2018).
+   Global warming transforms coral reef assemblages.
+   Nature, 556(7702), 492-496.
+   https://doi.org/10.1038/s41586-018-0041-2
 """
-function bleaching_mortality!(Y::Array{Float64,2}, tstep::Int64, n_p1::Float64, n_p2::Float64,
-                              a_adapt::Vector{Float64}, n_adapt::Float64,
-                              bleach_resist::Vector{Float64}, dhw::AbstractArray{Float64})::Nothing
-    ad::Array{Float64} = a_adapt .+ bleach_resist .+ (tstep .* n_adapt)
+function bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
+    s::Vector{Float64}, dhw::Vector{Float64}, a_adapt::Vector{Float64}, n_adapt::Float64,
+    bleach_resist::Vector{Float64})::Nothing
 
     # Incorporate adaptation effect but maximum reduction is to 0
-    capped::Array{Float64} = max.(0.0, dhw' .- ad)
-    # Model 1: #Based on delta covers observed by Hughes et al. 2018 (Fig 2A)
-    # and calibrated by Bozec et al. 2022
-    # Halve bleaching mortality (see Baird et al., 2018)
-    Y .= 1.0 .- exp.(n_p1 * (exp.(n_p2 * capped))) * 0.5
+    ad::Array{Float64} = a_adapt .+ bleach_resist .+ (tstep .* n_adapt)
+    capped_dhw::Array{Float64} = max.(0.0, dhw' .- ad)
+
+    # Estimate long-term bleaching mortality with an estimated depth coefficient and
+    # initial bleaching mortality (models from Bozec et al., 2022)
+    # `m_init`` as initially formulated produces values as a percentage (i.e., 0 - 100)
+    # and so we divide by 100 again to arrive at values 0 - 1.
+    depth_coeff = ℯ.^(-0.07551.*depth)
+    m_init = min.(((depth_coeff .* s')' .* ℯ.^(0.17.+0.35.*capped_dhw)) / 100.0 / 100.0, 1.0)
+
+    # How much coral survives bleaching event
+    Y .= (1.0 .- m_init).^6
 
     return
 end
@@ -295,12 +295,11 @@ end
     settler_density(α, β, L)
 
 Note for β: "For corals, the actual number of 6-month old recruits for each coral group
-    is generated [...] following a Poisson distribution with recruitment event rate λ
-    (see `actual_recruits()`)
+    is generated [...] following a Poisson distribution with recruitment event rate λ.
 
 # Arguments
 - α : maximum achievable density (settlers/m²) for a 100% free space (set to 2.5 in [1] for Corymbose)
-- β : stock of larvae required to produce one-half the maximum settlement (larvae/m²), 
+- β : stock of larvae required to produce one-half the maximum settlement (larvae/m²),
         i.e., α/2(m²), set to 5000 in [1].
 - L : available larval pool
 
@@ -345,7 +344,7 @@ end
 
 # Arguments
 - larval_pool : Available larval pool
-- A : proportional space (in m²) covered by cropped algal turf, 
+- A : proportional space (in m²) covered by cropped algal turf,
         i.e., the substratum that is suitable for coral recruitment
 - α : maximum achievable density (settlers/m²) for a 100% free space
 - β : stock of larvae required to produce 50% of the maximum settlement
@@ -357,28 +356,28 @@ function recruitment(larval_pool, A::Matrix{<:Real}; α=2.5, β=5000.0)
     return recruitment_rate(larval_pool; α, β) .* A
 end
 
-
 """
-    recruitment(larval_pool, max_density::Float64; α=2.5, β=5000.0)
+    settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basal_area_per_settler)
 
 # Arguments
-- larval_pool : Available larval pool
-- max_density : maximum possible number of settlers/m², taken from [1]
-- α : maximum achievable density (settlers/m²) for a 100% free space
-- β : stock of larvae required to produce 50% of the maximum settlement
+- fec_scope : fecundity scope
+- sf : stressed fecundity 
+- TP_data : Trans
+- leftover_space : difference between sites' maximum carrying capacity and current coral cover (k - C_s)
+- max_density : number of settlers / m²
+- basal_area_per_settler : area taken up by a single settler
 
 # Returns
-λ : Recruited coral per m² for each coral taxa and site based on a Poisson distribution, capped to a maximum density.
-
-# References
-1. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E.,
-     Castro-Sanguino, C., Condie, S. A., Puotinen, M.,
-     Thompson, A., & Mumby, P. J. (2022).
-   Cumulative impacts across Australia's Great Barrier Reef:
-     A mechanistic evaluation.
-   Ecological Monographs, 92(1), e01494.
-   https://doi.org/10.1002/ecm.1494
+Area covered by recruited larvae (in m²)
 """
-function recruitment(larval_pool, max_density::Float64; α=2.5, β=5000.0)
-    return min.(recruitment_rate(larval_pool; α, β), max_density)
+function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basal_area_per_settler)
+    # Send larvae out into the world
+    actual_fecundity = (fec_scope .* sf)
+    larval_pool = (actual_fecundity * TP_data)  # larval pool for each site (in larvae/m²)
+
+    # Larvae have landed, work out how many are recruited
+    λ = recruitment(larval_pool, leftover_space; α=max_density)  # recruits per m^2 per site
+
+    # Determine area covered by recruited larvae (settler cover)
+    return λ .* basal_area_per_settler  # area in m² for each settler across all sites
 end
