@@ -37,12 +37,12 @@ using Distributions
     total_area_coral_CA_out = sum(area_CA)
    
     # index of max proportion for available space
-    max_ind_out = findfirst(item -> item == maximum(seed_dist.TA), seed_dist.TA)
-    max_ind = findfirst(item -> item == maximum(available_space[prefseedsites] ),available_space[prefseedsites])
+    max_ind_out = findfirst(item -> item == maximum(seed_dist.TA.*total_site_area[prefseedsites]), seed_dist.TA.*total_site_area[prefseedsites])
+    max_ind = findfirst(item -> item == maximum(available_area[prefseedsites] ),available_area[prefseedsites])
 
     # index of min proportion for available space
-    min_ind_out = findfirst(item -> item == minimum(seed_dist.TA), seed_dist.TA)
-    min_ind = findfirst(item -> item == minimum(available_space[prefseedsites]), available_space[prefseedsites])
+    min_ind_out = findfirst(item -> item == minimum(seed_dist.TA.*total_site_area[prefseedsites]), seed_dist.TA.*total_site_area[prefseedsites])
+    min_ind = findfirst(item -> item == minimum(available_area[prefseedsites]), available_area[prefseedsites])
 
     # run tests
     @test ((total_area_coral_TA - total_area_coral_TA_out) < 10^-5) && ((total_area_coral_CA - total_area_coral_CA_out) < 10^-5) || "Area of corals seeded not equal to (colony area) * (number or corals)"
