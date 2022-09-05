@@ -240,7 +240,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
-    rnd_seed_val = floor(Int, sum([copy(getindex(param_set, i)) for i in 1:26]))
+    rnd_seed_val = floor(Int, sum(values(param_set)))
     Random.seed!(rnd_seed_val)
 
     ### TODO: All cached arrays/values to be moved to outer function and passed in
