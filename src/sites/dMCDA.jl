@@ -15,9 +15,9 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     heatstressprob  # ::A
     sumcover  # ::F
     maxcover  # ::V
-    coralcolarea # ::V
-    ncoralseed # ::V
+    areatoseed # ::F
     area  # ::M
+    covertol # ::F
     risktol  # ::F
     wtinconnseed  # ::F
     wtoutconnseed  # ::F
@@ -78,6 +78,7 @@ function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vecto
 
     # Skip first column as this holds site index ids
     S[:, 2:end] = mcda_normalize(S[:, 2:end])
+
     S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
     s_order = mcda_func(S)
 
@@ -315,6 +316,8 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     wtlocover = d_vars.wtlocover
     wtpredecseed = d_vars.wtpredecseed
     wtpredecshade = d_vars.wtpredecshade
+    area_to_seed = d_vars.areatoseed
+    cover_tol = d_vars.covertol
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
@@ -343,7 +346,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # if shading, create shading specific decision matrix
     if log_shade
-        SH, wsh = create_shade_matrix(A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+        SH, wsh = create_shade_matrix(A, area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     end
 
     if alg_ind == 1
