@@ -1,4 +1,6 @@
 using Test
+using Distributions
+using Infiltrator
 import ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_shade_matrix
 
 @testset "Create decision matrix" begin
@@ -25,7 +27,7 @@ import ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create
 
     A = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
 
-    @test all(0.0 .<= A[:, 2:end] .<= 1.0) || "`A` decision matrix out of bounds"
+    @test all(0.0 .<= A[:, 2:end-1] .<= 1.0) || "`A` decision matrix out of bounds"
 
     @test !any(isnan.(A)) || "NaNs found in decision matrix"
     @test !any(isinf.(A)) || "Infs found in decision matrix"
@@ -55,6 +57,7 @@ end
 
     sumcover = [0.3, 0.5, 0.9, 0.6, 0.0]
     maxcover = [0.8, 0.75, 0.6, 0.77, 0.0]
+    min_area = rand(Uniform(100,400),1)
 
     A = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
 
@@ -89,6 +92,7 @@ end
 
     sumcover = [0.75, 0.5, 0.3, 0.7, 0.0]
     maxcover = [0.8, 0.75, 0.6, 0.77, 0.0]
+    area_maxcover = maxcover.*area
 
     A = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
 
