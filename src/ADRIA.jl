@@ -38,9 +38,9 @@ include("sites/dMCDA.jl")
 include("interventions/seeding.jl")
 
 include("io/ResultSet.jl")
-include("metrics/metrics.jl")
 include("io/result_io.jl")
 include("io/result_post_processing.jl")
+include("metrics/metrics.jl")
 
 include("scenario.jl")
 

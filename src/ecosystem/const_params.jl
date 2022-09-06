@@ -67,5 +67,8 @@ Base.@kwdef mutable struct SimConstants
 
     max_settler_density = 2.5;                      # used by Bozec et al 2021 for Acropora
     # density_ratio_of_settlers_to_larvae = 1 / 2000  # Bozec et al. 2021
-    basal_area_per_settler = pi * ((1.25 / 100.0)^2)   # in m^2 assuming 1cm diameter
+
+    # Based on median value between smallest size class bin (1cm and 3.5cm = 1.25cm^2 diameter)
+    # Resulting value is in m², see definition in Ecosystem.jl::colony_areas()
+    basal_area_per_settler = pi * ((1.25 / 100.0)^2)
 end

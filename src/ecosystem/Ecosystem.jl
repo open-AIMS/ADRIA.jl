@@ -4,7 +4,6 @@ using DataFrames
 using ModelParameters
 import ModelParameters: update!, Model
 
-
 abstract type EcoModel end
 
 
@@ -192,18 +191,18 @@ Generate colony area data based on Bozec et al., [1].
      https://doi.org/10.13140/RG.2.2.26976.20482
 """
 function colony_areas()
-    size_class_means_from_cm2 = Float64[1; 3.5; 7.5; 15; 30; 60]  # in cm^2
-    size_class_means_to_cm2 = Float64[size_class_means_from_cm2[2:end]; 100.0];  # in cm^2
+    size_class_means_lower_cm2 = Float64[1; 3.5; 7.5; 15; 30; 60]
+    size_class_means_upper_cm2 = Float64[size_class_means_lower_cm2[2:end]; 100.0];
 
-    nclasses::Int64 = length(size_class_means_from_cm2)
+    nclasses::Int64 = length(size_class_means_lower_cm2)
 
     # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
     # To convert to cover we locate bin means and calculate bin mean areas
-    colony_diam_means_from_cm2 = repeat(size_class_means_from_cm2', nclasses, 1)
-    colony_diam_means_to_cm2 = repeat(size_class_means_to_cm2', nclasses', 1)
+    colony_diam_means_lower_cm2 = repeat(size_class_means_lower_cm2', nclasses, 1)
+    colony_diam_means_upper_cm2 = repeat(size_class_means_upper_cm2', nclasses', 1)
 
-    colony_area_upper_m2 = @. pi * ((colony_diam_means_from_cm2 / 2)^2) / (10^4)
-    colony_area_lower_cm2 = @. pi * ((colony_diam_means_to_cm2 / 2)^2)
+    colony_area_lower_cm2 = @. pi * ((colony_diam_means_lower_cm2 / 2)^2)
+    colony_area_upper_m2 = @. pi * ((colony_diam_means_upper_cm2 / 2)^2) / (10^4)
 
     return colony_area_lower_cm2, colony_area_upper_m2
 end
