@@ -358,9 +358,13 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         wtpredecseed = param_set.seed_priority # weight for the importance of seeding sites that are predecessors of priority reefs
         wtpredecshade = param_set.shade_priority # weight for the importance of shading sites that are predecessors of priority reefs
         risktol = param_set.deployed_coral_risk_tol # risk tolerance
+        covertol = param_set.coral_cover_tol
 
         # Defaults to considering all sites if depth cannot be considered.
         depth_priority = collect(1:nrow(site_data))
+
+        # calculate total area to seed
+        area_to_seed = (col_area_seed_TA.*n_TA_to_seed)+(col_area_seed_CA.*n_CA_to_seed)
 
         # Filter out sites outside of desired depth range
         if .!all(site_data.depth_med .== 0)
@@ -391,9 +395,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             dhw_scen[1, :],  # heatstressprob
             Y_cover[1, :, :],  # sumcover
             max_cover,
-            [col_area_seed_TA,col_area_seed_CA],
-            [n_TA_to_seed,n_CA_to_seed],
+            area_to_seed,
             total_site_area,
+            covertol,
             risktol,
             wtinconnseed,
             wtoutconnseed,
