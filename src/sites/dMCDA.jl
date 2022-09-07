@@ -215,6 +215,14 @@ function create_seed_matrix(A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtp
     SE[:, 5] .= 1.0 .- A[:, 5]  # compliment of heat risk
     SE[:, 6:7] .= A[:, 6:7]  # priority predecessors, coral real estate relative to max capacity
 
+    SE[:, 1:2] .= A[:, 1:2]  # sites column (remaining), centrality
+    SE[:, 3] .= 1.0 .- A[:, 3]  # compliment of wave damage risk
+    SE[:, 4] .= 1.0 .- A[:, 4]  # compliment of heat stress  risk
+    SE[:, 5] .= A[:, 5]  # priority predecessors
+   
+    # coral real estate as total area, sites with =<20% of area to be seeded available filtered out
+    SE[vec(A[:, 6].> min_area), 6] .= A[vec(A[:, 6].> min_area),6]
+
     # remove sites at maximum carrying capacity, take inverse log to emphasize importance of space for seeding
     SE = SE[vec(A[:, 7] .> 0), :]
     SE[:, 7] .= (10 .^ SE[:, 7]) ./ maximum(10 .^ SE[:, 7])
@@ -259,11 +267,13 @@ function create_shade_matrix(A, area, wtconshade, wtwaves, wtheat, wtpredecshade
     wsh = [wtconshade, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
     wsh .= mcda_normalize(wsh)
 
-    SH[:, 1:3] = A[:, 1:3] # sites column (remaining), absolute centrality
-    SH[:, 4] = 1.0 .- A[:, 4] # compliment of wave damage risk
-    SH[:, 5:6] = A[:, 5:6] # compliment of heat damage risk and priority predecessors
-    SH[:, 7] = 1.0 .- A[:, 7] # coral cover relative to max capacity
-    SH[SH[:,7] .> 1.0, 7] .= 1  # scale any sites above capacity back to 1
+    SH[:, 1:2] = A[:, 1:2] # sites column (remaining), absolute centrality
+    SH[:, 3] = (1.0 .- A[:, 3]) # complimentary of wave damage risk
+    SH[:, 4:5] = A[:, 4:5] # complimentary of heat damage risk, priority predecessors
+
+    SH[:, 6] = (area_max_cover .- A[:, 6]) # total area of coral cover
+    @infiltrate
+    SH[SH[:,6] .<0, 6] .= 0  # if any negative, scale back to zero
     return SH, wsh
 end
 
@@ -316,9 +326,8 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     wtlocover = d_vars.wtlocover
     wtpredecseed = d_vars.wtpredecseed
     wtpredecshade = d_vars.wtpredecshade
-    area_to_seed = d_vars.areatoseed
-    cover_tol = d_vars.covertol
-
+    min_area = d_vars.minarea
+    @infiltrate
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
 
