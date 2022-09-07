@@ -463,12 +463,15 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         p.rec[:, :] .= area_settled ./ total_site_area
 
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
+        if is_guided
+            # Update dMCDA values
+            mcda_vars.heatstressprob .= dhw_t
+            mcda_vars.damprob .= @view mwaves[tstep, :, :]
+        end
+
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
         if is_guided && in_seed_years
-            # Update dMCDA values
-            mcda_vars.damprob .= @view mwaves[tstep, :, :]
-            mcda_vars.heatstressprob .= dhw_t
 
             mcda_vars.sumcover .= site_coral_cover
             (prefseedsites, prefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
