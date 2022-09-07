@@ -28,7 +28,7 @@ struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Flo
     env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
     TP_data::D     # site connectivity data
-    conn_ranks::V  # site rank
+    conn_ranks::V  # sites ranked by connectivity strength
     strongpred::I  # strongest predecessor
     site_data::D   # table of site data (depth, carrying capacity, etc)
     site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
