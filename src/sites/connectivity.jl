@@ -144,7 +144,8 @@ strongest predecessor.
 
 # Returns
 NamedTuple:
-- conn_ranks : sites ranked by connectivity
+- in_conn : sites ranked by incoming connectivity
+- out_conn : sites ranked by outgoing connectivity
 - strongest_predecessor : strongest predecessor for each site
 """
 function connectivity_strength(TP_base::DataFrame)::NamedTuple
@@ -154,7 +155,8 @@ function connectivity_strength(TP_base::DataFrame)::NamedTuple
     # ew_base = weights(g)  # commented out ew_base are all equally weighted anyway...
 
     # Measure centrality based on number of incoming connections
-    C1 = outdegree_centrality(g)
+    C1 = indegree_centrality(g)
+    C2 = outdegree_centrality(g)
 
     # For each edge, find strongly connected predecessor (by number of connections)
     strongpred = zeros(Int64, size(C1)...)
@@ -176,5 +178,5 @@ function connectivity_strength(TP_base::DataFrame)::NamedTuple
         end
     end
 
-    return (conn_ranks=C1, strongest_predecessor=strongpred)
+    return (in_conn=C1, out_conn=C2, strongest_predecessor=strongpred)
 end
