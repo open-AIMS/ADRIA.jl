@@ -69,6 +69,8 @@ end
 function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vector
     # Filter out all non-preferred sites
     selector = vec(.!all(S[:, 2:end] .== 0, dims=1))
+
+    # weights in order of: in_conn, out_conn, wave, heat, predecessors, low cover
     weights = weights[selector]
     S = S[:, Bool[1, selector...]]
 
@@ -180,24 +182,24 @@ Create seeding specific decision matrix from criteria matrix. The weight criteri
 # Returns
 Tuple (SE, wse)
     - SE : Matrix of shape [n sites considered, 7]
-           1. Site index ID
-           2. Incoming Centrality
-           3. Outgoing Centrality
-           4. Damage risk (higher values = less risk)
-           5. Wave risk (higher values = less risk)
-           6. Priority predecessors relating to coral real estate relative to max capacity
-           7. Available space
+        1. Site index ID
+        2. Incoming Centrality
+        3. Outgoing Centrality
+        4. Wave risk (higher values = less risk)
+        5. Damage risk (higher values = less risk)
+        6. Priority predecessors relating to coral real estate relative to max capacity
+        7. Available space
     - wse : 5-element vector of criteria weights
         1. incoming connectivity
-        1. outgoing connectivity
-        2. wave
-        3. heat
-        4. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
-        5. low cover (weights importance of sites with low cover/high available real estate to plant corals)
+        2. outgoing connectivity
+        3. wave
+        4. heat
+        5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
+        6. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
 function create_seed_matrix(A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     # Set up decision matrix to be same size as A
-    SE = zeros(size(A, 1), 7)
+    SE = zeros(size(A))
 
     wse = [wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover]
     wse .= mcda_normalize(wse)
@@ -232,13 +234,14 @@ Create shading specific decision matrix and apply weightings.
 
 # Returns
 Tuple (SH, wsh)
-    - SH : Matrix of shape [n sites considered, 6]
-           1. Site index ID
-           2. Centrality
-           3. Damage risk (higher values = less risk)
-           4. Wave risk (higher values = less risk)
-           5. Priority predecessors relating to coral real estate relative to max capacity
-           6. Available space
+    - SH : Matrix of shape [n sites considered, 7]
+        1. Site index ID
+        2. Incoming Centrality
+        3. Outgoing Centrality
+        4. Wave risk (higher values = less risk)
+        5. Damage risk (higher values = less risk)
+        6. Priority predecessors relating to coral real estate relative to max capacity
+        7. Available space
     - wsh : 5-element vector of criteria weights
         1. shade connectivity
         2. wave
