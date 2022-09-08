@@ -339,8 +339,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         wtwaves = param_set.wave_stress # weight of wave damage in MCDA
         wtheat = param_set.heat_stress # weight of heat damage in MCDA
         wtconshade = param_set.shade_connectivity # weight of connectivity for shading in MCDA
-        wtinconnseed = param_set.in_seed_connectivity # weight of connectivity for seeding in MCDA
-        wtoutconnseed = param_set.out_seed_connectivity # weight of connectivity for seeding in MCDA
+        wtinconnseed = param_set.in_seed_connectivity # weight for seed sites with high number of incoming connections
+        wtoutconnseed = param_set.out_seed_connectivity # weight for seed sites with high number of outgoing connections
 
         wthicover = param_set.coral_cover_high # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
         wtlocover = param_set.coral_cover_low # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
