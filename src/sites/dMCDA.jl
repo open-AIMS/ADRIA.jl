@@ -207,8 +207,8 @@ function create_seed_matrix(A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtp
     # Define seeding decision matrix
     SE[:, 1:3] .= A[:, 1:3]  # sites column (remaining), centrality
 
-    SE[:, 4] .= 1.0 .- A[:, 4]  # compliment of damage risk
-    SE[:, 5] .= 1.0 .- A[:, 5]  # compliment of wave risk
+    SE[:, 4] .= 1.0 .- A[:, 4]  # compliment of wave risk
+    SE[:, 5] .= 1.0 .- A[:, 5]  # compliment of heat risk
     SE[:, 6:7] .= A[:, 6:7]  # priority predecessors, coral real estate relative to max capacity
 
     # remove sites at maximum carrying capacity, take inverse log to emphasize importance of space for seeding
@@ -251,15 +251,15 @@ Tuple (SH, wsh)
 """
 function create_shade_matrix(A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     # Set up decision matrix to be same size as A
-    SH = zeros(size(A, 1), 6)
-    wsh = [wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
+    SH = zeros(size(A, 1), 7)
+    wsh = [wtconshade, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
     wsh .= mcda_normalize(wsh)
 
-    SH[:, 1:2] = A[:, 1:2] # sites column (remaining), absolute centrality
-    SH[:, 3] = (1.0 .- A[:, 3]) # complimentary of wave damage risk
-    SH[:, 4:5] = A[:, 4:5] # complimentary of heat damage risk, priority predecessors
-    SH[:, 6] = (1.0 .- A[:, 6]) # coral cover relative to max capacity
-    SH[SH[:,6] .> 1.0, 6] .= 1  # scale any sites above capacity back to 1
+    SH[:, 1:3] = A[:, 1:3] # sites column (remaining), absolute centrality
+    SH[:, 4] = 1.0 .- A[:, 4] # compliment of wave damage risk
+    SH[:, 5:6] = A[:, 5:6] # compliment of heat damage risk and priority predecessors
+    SH[:, 7] = 1.0 .- A[:, 7] # coral cover relative to max capacity
+    SH[SH[:,7] .> 1.0, 7] .= 1  # scale any sites above capacity back to 1
     return SH, wsh
 end
 
