@@ -127,10 +127,12 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, Str
 
     if con_cutoff > 0.0
         tmp = Matrix(TP_base)
-        max_cutoff = maximum(tmp) * con_cutoff
-        tmp[tmp .< max_cutoff] .= 0.0
+        # max_cutoff = maximum(tmp) * con_cutoff
+        tmp[tmp .< con_cutoff] .= 0.0
         TP_base[:, :] = tmp
     end
+
+    @assert all(0.0 .<= Matrix(TP_base) .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
     return (TP_base=TP_base, truncated=invalid_ids, site_ids=conn_ids)
 end
