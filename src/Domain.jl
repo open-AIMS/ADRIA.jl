@@ -28,7 +28,8 @@ struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Flo
     env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
     TP_data::D     # site connectivity data
-    conn_ranks::V  # sites ranked by connectivity strength
+    in_conn::V  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
+    out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     strongpred::I  # strongest predecessor
     site_data::D   # table of site data (depth, carrying capacity, etc)
     site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
@@ -49,9 +50,10 @@ end
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
-function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::DataFrame, conn_ranks::Vector{Float64}, strongest_predecessor::Vector{Int64},
-    site_data::DataFrame, site_id_col::String, unique_site_id_col::String, init_coral_cover::NamedMatrix, coral_growth::CoralGrowth,
-    site_ids::Vector{String}, removed_sites::Vector{String}, DHWs::Union{NamedArray, Matrix}, waves::Union{NamedArray, Matrix})::Domain
+function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::DataFrame, in_conn::Vector{Float64}, out_conn::Vector{Float64},
+    strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_id_col::String, unique_site_id_col::String,
+    init_coral_cover::NamedMatrix, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
+    DHWs::Union{NamedArray, Matrix}, waves::Union{NamedArray, Matrix})::Domain
 
     # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
     criteria = Criteria()
@@ -66,7 +68,7 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::DataFr
 
     model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
     sim_constants::SimConstants = SimConstants()
-    return Domain(name, rcp, env_layers, "", TP_base, conn_ranks, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
+    return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)
 end
@@ -155,7 +157,7 @@ function Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::Stri
 
     @assert length(timeframe) == size(dhw, 1) == size(waves, 1) "Provided time frame must match timesteps in DHW and wave data"
 
-    return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.conn_ranks, conns.strongest_predecessor,
+    return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.in_conn, conns.out_conn, conns.strongest_predecessor,
         site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
         site_conn.site_ids, site_conn.truncated, dhw, waves)
 end
@@ -298,14 +300,16 @@ last dimension indicates: site_id, seeding rank, shading rank
 function site_selection(domain::Domain, criteria::DataFrame, ts::Int, n_reps::Int, alg_ind::Int)
     # Site Data
     site_d = domain.site_data
-    sr = domain.conn_ranks
+    sr = domain.in_conn
+    so = domain.out_conn
     area = site_area(domain)
 
     # Weights for connectivity , waves (ww), high cover (whc) and low
     wtwaves = criteria.wave_stress           # weight of wave damage in MCDA
     wtheat = criteria.heat_stress            # weight of heat damage in MCDA
     wtconshade = criteria.shade_connectivity # weight of connectivity for shading in MCDA
-    wtconseed = criteria.seed_connectivity   # weight of connectivity for seeding in MCDA
+    wtinconnseed = criteria.in_seed_connectivity   # weight of connectivity for seeding in MCDA
+    wtoutconnseed = criteria.out_seed_connectivity   # weight of connectivity for seeding in MCDA
     wthicover = criteria.coral_cover_high    # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
     wtlocover = criteria.coral_cover_low     # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
     wtpredecseed = criteria.seed_priority    # weight for the importance of seeding sites that are predecessors of priority reefs
@@ -348,13 +352,15 @@ function site_selection(domain::Domain, criteria::DataFrame, ts::Int, n_reps::In
             domain.sim_constants.prioritysites,
             domain.strongpred,
             sr,  # sr.C1
+            so,
             damprob,
             heatstressprob,
             sumcover,
             max_cover,
             area,
             risktol,
-            wtconseed,
+            wtoutconnseed,
+            wtinconnseed,
             wtconshade,
             wtwaves,
             wtheat,

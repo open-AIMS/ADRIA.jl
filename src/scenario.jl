@@ -339,7 +339,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         wtwaves = param_set.wave_stress # weight of wave damage in MCDA
         wtheat = param_set.heat_stress # weight of heat damage in MCDA
         wtconshade = param_set.shade_connectivity # weight of connectivity for shading in MCDA
-        wtconseed = param_set.seed_connectivity # weight of connectivity for seeding in MCDA
+        wtinconnseed = param_set.in_seed_connectivity # weight for seed sites with high number of incoming connections
+        wtoutconnseed = param_set.out_seed_connectivity # weight for seed sites with high number of outgoing connections
+
         wthicover = param_set.coral_cover_high # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
         wtlocover = param_set.coral_cover_low # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
         wtpredecseed = param_set.seed_priority # weight for the importance of seeding sites that are predecessors of priority reefs
@@ -372,14 +374,16 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             nsiteint,
             sim_params.prioritysites,
             domain.strongpred,
-            domain.conn_ranks,
+            domain.in_conn,
+            domain.out_conn,
             zeros(n_species, n_sites),  # dam prob
             dhw_scen[1, :],  # heatstressprob
             Y_cover[1, :, :],  # sumcover
             max_cover,
             total_site_area,
             risktol,
-            wtconseed,
+            wtinconnseed,
+            wtoutconnseed,
             wtconshade,
             wtwaves,
             wtheat,
@@ -458,13 +462,17 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Gets used in ODE
         p.rec[:, :] .= area_settled ./ total_site_area
 
-        @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
-        if is_guided && in_seed_years
+
+        @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
+        if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
-            mcda_vars.damprob .= @view mwaves[tstep, :, :]
             mcda_vars.heatstressprob .= dhw_t
+            mcda_vars.damprob .= @view mwaves[tstep, :, :]
+        end
+
+        if is_guided && in_seed_years
 
             mcda_vars.sumcover .= site_coral_cover
             (prefseedsites, prefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
@@ -489,7 +497,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         if (srm > 0.0) && in_shade_years
             Yshade[tstep, :] .= srm
 
-            # Apply reduction in DHW due to shading
+            # Apply reduction in DHW due to SRM
             adjusted_dhw::Vector{Float64} = max.(0.0, dhw_t .- srm)
         else
             adjusted_dhw = dhw_t
@@ -500,7 +508,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                 # Always fog where sites are selected if possible
                 site_locs::Vector{Int64} = prefseedsites
             elseif has_shade_sites
-                # Otherwise, if no sites are selected, fog selected shade sites
+                # Otherwise, if no sites are selected, fog selected sites
                 site_locs = prefshadesites
             end
 
@@ -533,8 +541,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             alg_hints=[:nonstiff], abstol=1e-9, reltol=1e-8)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        # Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
-        Y_cover[tstep, :, :] .= sol.u[end]
+        Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
+        # Y_cover[tstep, :, :] .= sol.u[end]
     end
 
     # Avoid placing importance on sites that were not considered
