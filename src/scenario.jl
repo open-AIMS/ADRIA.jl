@@ -462,15 +462,16 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Gets used in ODE
         p.rec[:, :] .= area_settled ./ total_site_area
 
+        in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
+        in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
+
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
-        if is_guided
+        if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
             mcda_vars.heatstressprob .= dhw_t
             mcda_vars.damprob .= @view mwaves[tstep, :, :]
         end
 
-        in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
-        in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
         if is_guided && in_seed_years
 
             mcda_vars.sumcover .= site_coral_cover
@@ -496,7 +497,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         if (srm > 0.0) && in_shade_years
             Yshade[tstep, :] .= srm
 
-            # Apply reduction in DHW due to shading
+            # Apply reduction in DHW due to SRM
             adjusted_dhw::Vector{Float64} = max.(0.0, dhw_t .- srm)
         else
             adjusted_dhw = dhw_t
@@ -507,7 +508,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                 # Always fog where sites are selected if possible
                 site_locs::Vector{Int64} = prefseedsites
             elseif has_shade_sites
-                # Otherwise, if no sites are selected, fog selected shade sites
+                # Otherwise, if no sites are selected, fog selected sites
                 site_locs = prefshadesites
             end
 
