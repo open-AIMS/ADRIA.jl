@@ -107,11 +107,13 @@ Sets up an on-disk result store.
 │   ├───relative_shelter_volume
 │   └───absolute_shelter_volume
 ├───site_data
+├───model_spec
 └───inputs
 ```
 
 - `inputs` : includes domain specification metadata including what connectivity/DHW/wave data was used.
 - `site_data` : contains a copy of the spatial domain data (as geopackage).
+- `model_spec` : contains a copy of the ADRIA model specification (as CSV).
 
 # Notes
 - `domain` is replaced with an identical copy with an updated scenario invoke time.
@@ -148,6 +150,10 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     cp(attrs[:site_data_file], joinpath(log_location, "site_data", basename(attrs[:site_data_file])), force=true)
 
     inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
+
+    # Store copy of model specification as CSV
+    mkdir(joinpath(log_location, "model_spec"))
+    model_spec(domain, joinpath(log_location, "model_spec", "model_spec.csv"))
 
     # Store post-processed table of input parameters.
     # +1 skips the RCP column
@@ -236,6 +242,7 @@ function load_results(result_loc::String)::ResultSet
     end
 
     site_data = GeoDataFrames.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"]*".gpkg"))
+    model_spec = CSV.read(joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#")
 
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
     t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
@@ -261,7 +268,7 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["timeframe"]
     )
 
-    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data)
+    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data, model_spec)
 end
 function load_results(domain::Domain)::ResultSet
     log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCPs$(domain.RCP)__$(domain.scenario_invoke_time)")
