@@ -540,8 +540,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             alg_hints=[:nonstiff], abstol=1e-9, reltol=1e-8)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        # Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
-        Y_cover[tstep, :, :] .= sol.u[end]
+        Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
+        # Y_cover[tstep, :, :] .= sol.u[end]
     end
 
     # Avoid placing importance on sites that were not considered
