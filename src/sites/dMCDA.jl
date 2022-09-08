@@ -145,7 +145,7 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover,
     A[:, 6] .= predec[:, 3]
 
     # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 7] = (maxcover - sumcover) ./ maxcover
+    A[:, 7] = max.((maxcover - sumcover), 0.0) ./ maxcover
 
     # set any infs to zero
     A[maxcover .== 0, 7] .= 0.0
