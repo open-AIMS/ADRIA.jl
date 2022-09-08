@@ -155,7 +155,7 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover,
     # Filter out sites that have high risk of wave damage, specifically
     # exceeding the risk tolerance
     A[A[:, 4] .> risktol, 4] .= NaN
-    rule = (A[:, 4] .<= risktol) .& (A[:, 4] .> risktol)
+    rule = (A[:, 4] .<= risktol) .& (A[:, 5] .> risktol)
     A[rule, 5] .= NaN
 
     # remove rows with NaNs
