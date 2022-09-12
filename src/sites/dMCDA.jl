@@ -15,9 +15,8 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     heatstressprob  # ::A
     sumcover  # ::F
     maxcover  # ::V
-    areatoseed # ::F
     area  # ::M
-    covertol # ::F
+    min_area # ::F
     risktol  # ::F
     wtinconnseed  # ::F
     wtoutconnseed  # ::F
@@ -150,7 +149,7 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover,
     A[:, 6] .= predec[:, 3]
 
     # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 7] = max.((maxcover - sumcover), 0.0) ./ maxcover
+    A[:, 7] = max.((maxcover - sumcover), 0.0) .*area
 
     # set any infs to zero
     A[maxcover .== 0, 7] .= 0.0
@@ -201,7 +200,7 @@ Tuple (SE, wse)
         5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
         6. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
-function create_seed_matrix(A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+function create_seed_matrix(A, min_area, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     # Set up decision matrix to be same size as A
     SE = zeros(size(A))
 
@@ -213,19 +212,14 @@ function create_seed_matrix(A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtp
 
     SE[:, 4] .= 1.0 .- A[:, 4]  # compliment of wave risk
     SE[:, 5] .= 1.0 .- A[:, 5]  # compliment of heat risk
-    SE[:, 6:7] .= A[:, 6:7]  # priority predecessors, coral real estate relative to max capacity
+    SE[:, 6] .= A[:, 6]  # priority predecessors
 
-    SE[:, 1:2] .= A[:, 1:2]  # sites column (remaining), centrality
-    SE[:, 3] .= 1.0 .- A[:, 3]  # compliment of wave damage risk
-    SE[:, 4] .= 1.0 .- A[:, 4]  # compliment of heat stress  risk
-    SE[:, 5] .= A[:, 5]  # priority predecessors
-   
     # coral real estate as total area, sites with =<20% of area to be seeded available filtered out
-    SE[vec(A[:, 6].> min_area), 6] .= A[vec(A[:, 6].> min_area),6]
+    SE[vec(A[:, 7].> min_area), 7] .= A[vec(A[:, 7].> min_area),7]
 
     # remove sites at maximum carrying capacity, take inverse log to emphasize importance of space for seeding
-    SE = SE[vec(A[:, 7] .> 0), :]
-    SE[:, 7] .= (10 .^ SE[:, 7]) ./ maximum(10 .^ SE[:, 7])
+    #SE = SE[vec(A[:, 7] .> 0), :]
+    #SE[:, 7] .= (10 .^ SE[:, 7]) ./ maximum(10 .^ SE[:, 7])
 
     return SE, wse
 end
@@ -261,19 +255,19 @@ Tuple (SH, wsh)
         4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
         5. high cover (weights importance of sites with high cover of coral to shade)
 """
-function create_shade_matrix(A, area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+function create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     # Set up decision matrix to be same size as A
     SH = zeros(size(A, 1), 7)
     wsh = [wtconshade, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
     wsh .= mcda_normalize(wsh)
 
-    SH[:, 1:2] = A[:, 1:2] # sites column (remaining), absolute centrality
-    SH[:, 3] = (1.0 .- A[:, 3]) # complimentary of wave damage risk
-    SH[:, 4:5] = A[:, 4:5] # complimentary of heat damage risk, priority predecessors
+    SH[:, 1:3] = A[:, 1:3] # sites column (remaining), absolute centrality
+    SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
+    SH[:, 5:6] = A[:, 5:6] # complimentary of heat damage risk, priority predecessors
 
-    SH[:, 6] = (area_max_cover .- A[:, 6]) # total area of coral cover
-    @infiltrate
-    SH[SH[:,6] .<0, 6] .= 0  # if any negative, scale back to zero
+    SH[:, 7] = (max_area .- A[:, 7]) # total area of coral cover
+
+    SH[SH[:,7] .<0, 7] .= 0  # if any negative, scale back to zero
     return SH, wsh
 end
 
@@ -326,8 +320,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     wtlocover = d_vars.wtlocover
     wtpredecseed = d_vars.wtpredecseed
     wtpredecshade = d_vars.wtpredecshade
-    min_area = d_vars.minarea
-    @infiltrate
+    
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
 
@@ -350,12 +343,14 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_seed_matrix(A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+        min_area = d_vars.min_area
+        SE, wse = create_seed_matrix(A, min_area, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        SH, wsh = create_shade_matrix(A, area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+        max_area = area.*maxcover
+        SH, wsh = create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     end
 
     if alg_ind == 1

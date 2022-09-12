@@ -224,7 +224,6 @@ function run_scenario(param_df::DataFrameRow, domain::Domain)::NamedTuple
         Matrix{Float64}(domain.wave_scens[1:tf, :, wave_rep_id]), cache)
 end
 
-
 """
     run_scenario(domain, param_set, corals, sim_params, site_data, p::NamedTuple,
                  dhw_scen::Array, wave_scen::Array, cache::NamedTuple)::NamedTuple
@@ -365,6 +364,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # calculate total area to seed
         area_to_seed = (col_area_seed_TA.*n_TA_to_seed)+(col_area_seed_CA.*n_CA_to_seed)
+        min_area = covertol*area_to_seed
 
         # Filter out sites outside of desired depth range
         if .!all(site_data.depth_med .== 0)
@@ -382,7 +382,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
-
+        @infiltrate
         # Prep site selection
         mcda_vars = DMCDA_vars(
             depth_priority,
@@ -395,9 +395,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             dhw_scen[1, :],  # heatstressprob
             Y_cover[1, :, :],  # sumcover
             max_cover,
-            area_to_seed,
             total_site_area,
-            covertol,
+            min_area,
             risktol,
             wtinconnseed,
             wtoutconnseed,
@@ -445,11 +444,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # Flag indicating whether to seed or not to seed
     seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
 
-    # extract colony areas for sites selected and convert to m^2
-    col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
-    col_area_seed_CA = corals.colony_area_cm2[seed_sc_CA] / 10^4
-
-    growth::ODEProblem = ODEProblem{true}(growthODE, cov_tmp, tspan, p)
     absolute_k_area = vec(total_site_area' .* max_cover)  # max possible coral area in m^2
     growth::ODEProblem = ODEProblem{true}(growthODE, Y_cover[1, :, :], tspan, p)
     @inbounds for tstep::Int64 in 2:tf
