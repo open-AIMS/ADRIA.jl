@@ -1,5 +1,6 @@
-Script to create a Julia system image (a "sysimage") that holds precompiled versions of package dependencies.
-Helps reduce start up time.
+Script to create a Julia system image (a "sysimage") that holds precompiled versions of ADRIA dependencies.
+It does not compile ADRIA itself.
+
 
 ## Usage
 
