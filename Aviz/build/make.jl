@@ -8,10 +8,8 @@ cd(here)
 
 if "app" in ARGS
     @info "Compiling application..."
-
-    cd("../..")
-
-    create_app("Aviz", "adria"; include_lazy_artifacts=true, force=true, incremental=true)
+    Pkg.precompile()
+    create_app("..", "adria"; include_lazy_artifacts=true, force=true)
     exit()
 end
 

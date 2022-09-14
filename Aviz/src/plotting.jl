@@ -72,14 +72,14 @@ function pairplot!(display, data, names)
                 t.ylabel = "$r_m"
             end
 
-            if row == 1 && col != 2
-                # show y-axis on second plot on first row
-                if col > 1
+            if 1 <= col <= n_outcomes
+                if row == 1 & col != 2
+                    # show y-axis on second plot on first row
+                    hideydecorations!(t, grid=false, ticks=false)
+                elseif row > 1 && col > 1
+                    # show y-axis only in first column
                     hideydecorations!(t, grid=false, ticks=false)
                 end
-            elseif row > 1 && col > 1
-                # show y-axis only in first column
-                hideydecorations!(t, grid=false, ticks=false)
             end
 
             if row < n_outcomes
@@ -104,7 +104,7 @@ function pairplot!(display, data, names)
                 continue
             end
 
-            scatter!(t, vec(c_out), vec(r_out), markersize=1)
+            scatter!(t, vec(c_out), vec(r_out))
         end
     end
 
@@ -158,12 +158,11 @@ Parallel Coordinate Plot
 
 # Arguments
 - ax : Axis
-- data : Matrix
+- data : Observable{Matrix}
 - names : Vector or Tuple of names (for x-axis)
-- color : Color tuple or Vector of colors
 """
 function pcp!(ax, data, names::Union{Vector, Tuple}; color=(:blue, 0.1))
-    n = size(data, 2)
+    n = size(data[], 2)
 
     vlines!(ax, 1:n; color=:black)
     series!(ax, 1:n, data, color=color)
