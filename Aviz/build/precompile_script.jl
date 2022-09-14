@@ -1,0 +1,25 @@
+using CSV, DataFrames, GeoDataFrames, GeoInterface
+using Statistics, Distributions
+using GLMakie.GeometryBasics
+using ADRIA, GLMakie, Aviz
+
+precompile(CSV.read, (String, DataFrame))
+precompile(GeoDataFrames.read, (String, ))
+
+precompile(ADRIA.load_domain, (String, String))
+precompile(ADRIA.load_results, (String, ))
+
+precompile(Figure, ())
+precompile(Axis, (Figure, ))
+precompile(lines!, (Axis, Array))
+precompile(scatter!, (Axis, Array))
+precompile(series!, (Axis, Array))
+
+precompile(hist!, (Axis, Array))
+precompile(hist!, (Axis, Array, Int64))
+precompile(violin!, (Axis, Array, Array))
+
+precompile(Aviz.launch_analysis, (String, ))
+precompile(Aviz.launch_analysis, (ADRIA.ResultSet, ))
+
+# precompile(EnvLayer, (String, String, String, String, String, String, String))
