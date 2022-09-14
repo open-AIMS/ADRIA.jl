@@ -282,12 +282,23 @@ end
 
 
 """
-Extract parameters for a specific model component
+    component_params(m::Model, component::Type)::DataFrame
+    component_params(spec::DataFrame, component::Type)::DataFrame
+
+Extract parameters for a specific model component.
 """
 function component_params(m::Model, component::Type)::DataFrame
     df::DataFrame = DataFrame(m)
-    return df[df.component.==component, :]
+    return component_params(df, component)
 end
+function component_params(spec::DataFrame, component::Type)::DataFrame
+    return spec[spec.component .== string(component), :]
+end
+function component_params(spec::DataFrame, components::Array{Type})::DataFrame
+    return spec[spec.component .∈ string.(components), :]
+end
+
+
 
 
 """

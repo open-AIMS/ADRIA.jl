@@ -251,6 +251,16 @@ function timesteps(rs::ResultSet)
     return rs.env_layer_md.timeframe
 end
 
+"""
+    component_params(spec::DataFrame, component::Type)::DataFrame
+
+Extract parameters for a specific model component from exported model specification.
+"""
+function component_params(rs::ResultSet, component::Type)::DataFrame
+    spec = rs.model_spec
+    return spec[spec.component.==string(component), :]
+end
+
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
