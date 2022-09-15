@@ -158,11 +158,12 @@ Parallel Coordinate Plot
 
 # Arguments
 - ax : Axis
-- data : Observable{Matrix}
+- data : Matrix
 - names : Vector or Tuple of names (for x-axis)
+- color : Color tuple or Vector of colors
 """
 function pcp!(ax, data, names::Union{Vector, Tuple}; color=(:blue, 0.1))
-    n = size(data[], 2)
+    n = size(data, 2)
 
     vlines!(ax, 1:n; color=:black)
     series!(ax, 1:n, data, color=color)

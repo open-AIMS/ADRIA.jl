@@ -121,7 +121,7 @@ function gui_analysis(rs::ADRIA.ResultSet)
     obs_ug_scen_dist = Observable(ug_scen_dist)
     obs_g_scen_dist = Observable(g_scen_dist)
 
-    # Color transparency
+    # Color transparency for density plots
     # Note: Density plots currently cannot handle empty datasets
     #       as what might happen if user selects a region with no results.
     #       so instead we set alpha to 0.0 to hide it.
@@ -215,10 +215,9 @@ function gui_analysis(rs::ADRIA.ResultSet)
     series!(traj_display, timesteps(rs), tac_data, color=@lift($obs_color[:]))  # , solid_color=(:blue, 0.1)
 
     # Legend(traj_display)  legend=["Counterfactual", "Unguided", "Guided"]
-    @info obs_color[]
-    density!(scen_hist, @lift($obs_cf_scen_dist[:]), direction=:y, color=(:red, @lift($cf_hist_alpha[:])))
-    density!(scen_hist, @lift($obs_ug_scen_dist[:]), direction=:y, color=(:green, @lift($ug_hist_alpha[:])))
-    density!(scen_hist, @lift($obs_g_scen_dist[:]), direction=:y, color=(:blue, @lift($g_hist_alpha[:])))
+    density!(scen_hist, @lift($obs_cf_scen_dist[:]), direction=:y, color=(:red, @lift($cf_hist_alpha[])))
+    density!(scen_hist, @lift($obs_ug_scen_dist[:]), direction=:y, color=(:green, @lift($ug_hist_alpha[])))
+    density!(scen_hist, @lift($obs_g_scen_dist[:]), direction=:y, color=(:blue, @lift($g_hist_alpha[])))
     # density!(scen_hist, scen_dist, direction=:y)
     hidedecorations!(scen_hist)
     hidespines!(scen_hist)
