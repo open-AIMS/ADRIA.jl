@@ -117,19 +117,17 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, Str
         TP_base[:, :] .= coalesce.(tmp, 0.0)
     else
         if any(ismissing.(Matrix(con_file1)))
-            tmp = Matrix(con_file1)
-            tmp[ismissing.(tmp)] .= 0.0
-            con_file1[:, :] = coalesce.(tmp, 0.0)
+            con_file1[:, :] .= coalesce.(Matrix(con_file1), 0.0)
         end
 
         TP_base = con_file1
     end
 
     if con_cutoff > 0.0
-        tmp = Matrix(TP_base)
+        tmp = coalesce.(Matrix(TP_base), 0.0)
         # max_cutoff = maximum(tmp) * con_cutoff
         tmp[tmp .< con_cutoff] .= 0.0
-        TP_base[:, :] = tmp
+        TP_base[:, :] .= tmp
     end
 
     @assert all(0.0 .<= Matrix(TP_base) .<= 1.0) "Connectivity data not scaled between 0 - 1"
@@ -158,7 +156,12 @@ function connectivity_strength(TP_base::DataFrame)::NamedTuple
 
     # Measure centrality based on number of incoming connections
     C1 = indegree_centrality(g)
+    # C2 = radiality_centrality(g)
+    # C2 = stress_centrality(g)
+    # C2 = (C2 .- minimum(C2)) ./ (maximum(C2) - minimum(C2))
     C2 = outdegree_centrality(g)
+    # C2 = local_clustering_coefficient(g, collect(vertices(g)))
+    # C2 = (C2 .- minimum(C2)) ./ (maximum(C2) - minimum(C2))
 
     # For each edge, find strongly connected predecessor (by number of connections)
     strongpred = zeros(Int64, size(C1)...)

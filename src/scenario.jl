@@ -435,8 +435,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         @views mwaves[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :, :]
     end
 
-    mwaves[mwaves.<0.0] .= 0.0
-    mwaves[mwaves.>1.0] .= 1.0
+    clamp!(mwaves, 0.0, 1.0)
 
     Sw_t = 1.0 .- mwaves
 
@@ -515,7 +514,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
                 site_locs = prefshadesites
             end
 
-            adjusted_dhw[site_locs] .= adjusted_dhw[site_locs] .* (1.0 - fogging)
+            adjusted_dhw[site_locs] .= adjusted_dhw[site_locs] .* (1.0 .- fogging)
             Yfog[tstep, site_locs] .= fogging
         end
 

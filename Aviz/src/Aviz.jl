@@ -15,16 +15,6 @@ include("./theme.jl")
 
 """Main entry point for app."""
 function julia_main()::Cint
-    # For dev only, set a default result set
-    # To be removed.
-    # if length(ARGS) > 0
-    #     result_pkg = ARGS[1]
-    # else
-    #     error("No result set specified!")
-    # end
-    
-    # launch_analysis(result_pkg)
-
     main_menu()
 
     return 0
@@ -33,10 +23,10 @@ end
 function main_menu()
     f = Figure()
 
-    img = load(assetpath("../assets/ADRIA_logo.png"))
-    logo = image(f[1,1], img)
-    hidedecorations!(logo)
-    hidespines!(logo)
+    # img = load(assetpath("../assets/ADRIA_logo.png"))
+    # logo = image(f[1,1], img)
+    # hidedecorations!(logo)
+    # hidespines!(logo)
 
     Label(f[1,1], "Enter ADRIA Result Set to analyze")
     rs_path_tb = Textbox(f[2, 1], placeholder="./Moore_RS")  # placeholder="Path to ADRIA Result Set"
@@ -143,7 +133,7 @@ function gui_analysis(rs::ADRIA.ResultSet)
     interv_criteria = ms[(ms.component .== "EnvironmentalLayer") .| (ms.component .== "Intervention") .| (ms.component .== "Criteria"), [:fieldname, :full_bounds]]
     input_names = vcat(["RCP", interv_criteria.fieldname...])
     in_pcp_data = normalize(Matrix(rs.inputs[:, input_names]))
-    in_pcp_lines = Observable(in_pcp_data)
+    # in_pcp_lines = Observable(in_pcp_data)
 
 
     # Get mean outcomes for each scenario
@@ -155,29 +145,31 @@ function gui_analysis(rs::ADRIA.ResultSet)
     disp_names = ["TAC", "RC", "ASV"]
 
     out_pcp_data = normalize(outcome_pcp_data)
-    out_pcp_lines = Observable(out_pcp_data)
+    # out_pcp_lines = Observable(out_pcp_data)
 
-
+    # Specify interactive elements and behavior
     lift(tac_slider.interval) do intv
         # Trajectories
         tac_idx = (mean_tac_outcomes .>= intv[1]-0.5) .& (mean_tac_outcomes .<= intv[2]+0.5)
-        invert = Bool.(ones(Int64, length(tac_idx)) .⊻ tac_idx)
+
+        # Boolean index of scenarios to hide
+        hide = Bool.(ones(Int64, length(tac_idx)) .⊻ tac_idx)
 
         t = copy(tac_data)
         out_pcp = copy(out_pcp_data)
         in_pcp = copy(in_pcp_data)
         s_dist = copy(scen_dist)
 
-        if !all(invert .== 0)
+        if !all(hide .== 0)
             # Hide scenarios that were filtered out
-            t[invert, :] .= NaN
+            t[hide, :] .= NaN
 
             cf_dist = s_dist[tac_idx .& scen_types.counterfactual]
             ug_dist = s_dist[tac_idx .& scen_types.unguided]
             g_dist = s_dist[tac_idx .& scen_types.guided]
 
-            in_pcp[invert, :] .= NaN
-            out_pcp[invert, :] .= NaN
+            in_pcp[hide, :] .= NaN
+            out_pcp[hide, :] .= NaN
         else
             cf_dist = s_dist[scen_types.counterfactual]
             ug_dist = s_dist[scen_types.unguided]
@@ -185,7 +177,6 @@ function gui_analysis(rs::ADRIA.ResultSet)
         end
 
         tac_traj[] = t
-        # notify(tac_traj)
 
         # Update scenario density plot
         if !isempty(cf_dist)
@@ -210,22 +201,24 @@ function gui_analysis(rs::ADRIA.ResultSet)
         end
 
         # Update PCPs
-        in_pcp_lines[] = in_pcp
-        out_pcp_lines[] = out_pcp
+        # in_pcp_lines[] = in_pcp
+        # out_pcp_lines[] = out_pcp
         # notify(out_pcp_lines)
 
         min_step = (1/0.05)
         color_weight = (1.0 / (count(tac_idx .> 0) / min_step))
 
-        obs_color[] = scenario_colors(rs, color_weight)
+        obs_color[] = scenario_colors(rs, color_weight, hide)
     end
 
     # Trajectories
-    series!(traj_display, timesteps(rs), @lift($tac_traj[:, :]), color=@lift($obs_color[:]))  # , solid_color=(:blue, 0.1)
+    series!(traj_display, timesteps(rs), tac_data, color=@lift($obs_color[:]))  # , solid_color=(:blue, 0.1)
+
     # Legend(traj_display)  legend=["Counterfactual", "Unguided", "Guided"]
-    density!(scen_hist, @lift($obs_cf_scen_dist[:]), direction=:y, color=(:red, @lift($cf_hist_alpha[])))
-    density!(scen_hist, @lift($obs_ug_scen_dist[:]), direction=:y, color=(:green, @lift($ug_hist_alpha[])))
-    density!(scen_hist, @lift($obs_g_scen_dist[:]), direction=:y, color=(:blue, @lift($g_hist_alpha[])))
+    @info obs_color[]
+    density!(scen_hist, @lift($obs_cf_scen_dist[:]), direction=:y, color=(:red, @lift($cf_hist_alpha[:])))
+    density!(scen_hist, @lift($obs_ug_scen_dist[:]), direction=:y, color=(:green, @lift($ug_hist_alpha[:])))
+    density!(scen_hist, @lift($obs_g_scen_dist[:]), direction=:y, color=(:blue, @lift($g_hist_alpha[:])))
     # density!(scen_hist, scen_dist, direction=:y)
     hidedecorations!(scen_hist)
     hidespines!(scen_hist)
@@ -239,8 +232,8 @@ function gui_analysis(rs::ADRIA.ResultSet)
     pairplot!(pair_display, outcome_pcp_data, disp_names)
 
     # Parallel Coordinate Plot
-    pcp!(interv_pcp_display, @lift($in_pcp_lines[:, :]), input_names; color=@lift($obs_color[:]))
-    pcp!(outcome_pcp_display, @lift($out_pcp_lines[:, :]), disp_names; color=@lift($obs_color[:]))
+    pcp!(interv_pcp_display, in_pcp_data, input_names; color=@lift($obs_color[:]))
+    pcp!(outcome_pcp_display, out_pcp_data, disp_names; color=@lift($obs_color[:]))
 
     gl_screen = display(f)
     DataInspector()
