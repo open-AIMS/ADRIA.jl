@@ -9,7 +9,13 @@ cd(here)
 if "app" in ARGS
     @info "Compiling application..."
     Pkg.precompile()
-    create_app("..", "adria"; include_lazy_artifacts=true, force=true)
+
+    cd("../..")
+
+    # pkg_dir = abspath(joinpath(@__DIR__, ".."))
+    # compile_dir = abspath(joinpath(@__DIR__, "adria"))
+
+    create_app("Aviz", "adria"; include_lazy_artifacts=true, force=true)
     exit()
 end
 
