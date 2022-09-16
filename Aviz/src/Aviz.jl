@@ -54,7 +54,7 @@ function main_menu()
             else
                 # Clear current figure and launch new display
                 empty!(f)
-                Aviz.gui_analysis(rs)
+                gui_analysis(rs)
             end
         else
             rs_path_tb.bordercolor = :red
@@ -108,7 +108,6 @@ function gui_analysis(rs::ADRIA.ResultSet)
 
     scen_tac = ADRIA.metrics.scenario_total_cover(rs)
     tac_data = Matrix(scen_tac')
-    tac_traj = Observable(tac_data)
 
     # tac = ADRIA.metrics.total_absolute_cover(rs);
     tac = ADRIA.metrics.scenario_total_cover(rs);
@@ -145,44 +144,30 @@ function gui_analysis(rs::ADRIA.ResultSet)
     # Get mean outcomes for each scenario
     outcome_pcp_data = hcat([
         mean_tac_outcomes, 
-        vec(mean(ADRIA.metrics.scenario_relative_cover(rs), dims=1)),
+        vec(mean(ADRIA.metrics.scenario_rsv(rs), dims=1)),
         vec(mean(ADRIA.metrics.scenario_asv(rs), dims=1))
     ]...)
-    disp_names = ["TAC", "RC", "ASV"]
+    disp_names = ["TAC", "RSV", "ASV"]
 
     out_pcp_data = normalize(outcome_pcp_data)
-    # out_pcp_lines = Observable(out_pcp_data)
 
     # Specify interactive elements and behavior
     lift(tac_slider.interval) do intv
         # Trajectories
         tac_idx = (mean_tac_outcomes .>= intv[1]-0.5) .& (mean_tac_outcomes .<= intv[2]+0.5)
 
-        # Boolean index of scenarios to hide
+        # Boolean index of scenarios to hide (inverse of tac_idx)
         hide = Bool.(ones(Int64, length(tac_idx)) .⊻ tac_idx)
-
-        t = copy(tac_data)
-        out_pcp = copy(out_pcp_data)
-        in_pcp = copy(in_pcp_data)
-        s_dist = copy(scen_dist)
-
         if !all(hide .== 0)
             # Hide scenarios that were filtered out
-            t[hide, :] .= NaN
-
-            cf_dist = s_dist[tac_idx .& scen_types.counterfactual]
-            ug_dist = s_dist[tac_idx .& scen_types.unguided]
-            g_dist = s_dist[tac_idx .& scen_types.guided]
-
-            in_pcp[hide, :] .= NaN
-            out_pcp[hide, :] .= NaN
+            cf_dist = scen_dist[tac_idx .& scen_types.counterfactual]
+            ug_dist = scen_dist[tac_idx .& scen_types.unguided]
+            g_dist = scen_dist[tac_idx .& scen_types.guided]
         else
-            cf_dist = s_dist[scen_types.counterfactual]
-            ug_dist = s_dist[scen_types.unguided]
-            g_dist = s_dist[scen_types.guided]
+            cf_dist = scen_dist[scen_types.counterfactual]
+            ug_dist = scen_dist[scen_types.unguided]
+            g_dist = scen_dist[scen_types.guided]
         end
-
-        tac_traj[] = t
 
         # Update scenario density plot
         if !isempty(cf_dist)
@@ -206,25 +191,21 @@ function gui_analysis(rs::ADRIA.ResultSet)
             g_hist_alpha[] = 0.0
         end
 
-        # Update PCPs
-        # in_pcp_lines[] = in_pcp
-        # out_pcp_lines[] = out_pcp
-        # notify(out_pcp_lines)
-
+        # Determine level of transparency for each line
         min_step = (1/0.05)
-        color_weight = (1.0 / (count(tac_idx .> 0) / min_step))
+        color_weight = min((1.0 / (count(tac_idx .> 0) / min_step)), 0.6)
 
         obs_color[] = scenario_colors(rs, color_weight, hide)
     end
 
     # Trajectories
-    series!(traj_display, timesteps(rs), tac_data, color=@lift($obs_color[:]))  # , solid_color=(:blue, 0.1)
+    series!(traj_display, timesteps(rs), tac_data, color=@lift($obs_color[:]))
 
     # Legend(traj_display)  legend=["Counterfactual", "Unguided", "Guided"]
     density!(scen_hist, @lift($obs_cf_scen_dist[:]), direction=:y, color=(:red, @lift($cf_hist_alpha[])))
     density!(scen_hist, @lift($obs_ug_scen_dist[:]), direction=:y, color=(:green, @lift($ug_hist_alpha[])))
     density!(scen_hist, @lift($obs_g_scen_dist[:]), direction=:y, color=(:blue, @lift($g_hist_alpha[])))
-    # density!(scen_hist, scen_dist, direction=:y)
+
     hidedecorations!(scen_hist)
     hidespines!(scen_hist)
 
@@ -246,8 +227,7 @@ function gui_analysis(rs::ADRIA.ResultSet)
     wait(gl_screen);
 end
 function gui_analysis(rs_path::String)
-    rs = ADRIA.load_results(rs_path)
-    gui_analysis(rs)
+    gui_analysis(ADRIA.load_results(rs_path))
 end
 
 end
@@ -257,6 +237,6 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     if "analyze" in ARGS
         rs_pkg = ARGS[2]
-        Aviz.gui_analysis(rs_pkg)
+        gui_analysis(rs_pkg)
     end
 end
