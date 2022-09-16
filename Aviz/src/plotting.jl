@@ -72,14 +72,14 @@ function pairplot!(display, data, names)
                 t.ylabel = "$r_m"
             end
 
-            if 1 <= col <= n_outcomes
-                if row == 1 & col != 2
-                    # show y-axis on second plot on first row
-                    hideydecorations!(t, grid=false, ticks=false)
-                elseif row > 1 && col > 1
-                    # show y-axis only in first column
+            if row == 1 && col != 2
+                # show y-axis on second plot on first row
+                if col > 1
                     hideydecorations!(t, grid=false, ticks=false)
                 end
+            elseif row > 1 && col > 1
+                # show y-axis only in first column
+                hideydecorations!(t, grid=false, ticks=false)
             end
 
             if row < n_outcomes
@@ -104,7 +104,7 @@ function pairplot!(display, data, names)
                 continue
             end
 
-            scatter!(t, vec(c_out), vec(r_out))
+            scatter!(t, vec(c_out), vec(r_out), markersize=1)
         end
     end
 
