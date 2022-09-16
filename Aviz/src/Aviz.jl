@@ -15,6 +15,12 @@ include("./theme.jl")
 
 """Main entry point for app."""
 function julia_main()::Cint
+    if "analyze" in ARGS
+        rs_pkg = ARGS[2]
+        gui_analysis(rs_pkg)
+        return 0
+    end
+
     main_menu()
 
     return 0
