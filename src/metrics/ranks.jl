@@ -1,6 +1,8 @@
 using NamedArrays, NamedDims
 import ADRIA: timesteps, metrics
 
+using Infiltrator 
+
 """
     _get_ranks(rs::ResultSet, intervention::Int64; kwargs...)
 
@@ -101,7 +103,7 @@ end
 
 # Arguments
 - rs : ResultSet
-- metric_function : named dimensions to slice across
+- kwargs : named dimensions to slice across
 
 # Returns
 NamedArray[timesteps, sites, scenarios]
@@ -117,12 +119,12 @@ function shade_ranks(rs::ResultSet; kwargs...)
 end
 
 """
-        best_N_sites(rs::ResultSet; N::Int64; output_metric::Function=_relative_cover)
+        top_N_sites(rs::ResultSet; N::Int64; output_metric::Function=_relative_cover)
 
 # Arguments
 - rs : ResultSet
 - N : No. of best performing sites to be selected
-- output_metric : function of metric to use to order sites from best to worst, 
+- metric : metric to use to order sites from best to worst, 
            must take ResultSet as input
 
 # Returns
@@ -133,19 +135,14 @@ Matrix[scenarios,N]
 ADRIA.metrics.best_N_sites(rs;5)
 ```
 """
-function best_N_sites(rs::ResultSet, N::Int64, output_metric::Function=_relative_cover)
-
+function top_N_sites(rs::ResultSet, N::Int64, metric=relative_cover)
+    @infiltrate
     # use function to convert results and average over timesteps
-    metric = output_metric(rs)
-    metric = dropdims(mean(metric, dims = [:timesteps]),dims = 1)
+    metric = dropdims(mean(metric(rs), dims = [:timesteps]),dims = :timesteps)
 
-    # container for top sites
     top_N_sites = Array{Int64}(zeros(size(metric)[2],N))
-    # number of scenarios
-    nscens = size(metric)[2]
 
-    # loop over scenarios
-    for scen in 1:nscens
+    for scen in axes(metric, 3)
 
         # sort each scenario according to metric and get indexes
         inds = sortperm(metric[:,scen],rev=true)
