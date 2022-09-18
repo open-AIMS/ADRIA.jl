@@ -117,7 +117,7 @@ function shade_ranks(rs::ResultSet; kwargs...)
 end
 
 """
-        top_N_sites(rs::ResultSet; N::Int64; output_metric::Function=_relative_cover)
+        top_N_sites(rs::ResultSet; N::Int64; metric::relative_cover)
 
 # Arguments
 - rs : ResultSet
@@ -126,11 +126,11 @@ end
            must take ResultSet as input
 
 # Returns
-Matrix[scenarios,N]
+NamedDimsArray[:scenarios,:site_order]
 
 # Example
 ```julia
-ADRIA.metrics.best_N_sites(rs;5)
+ADRIA.metrics.best_N_sites(rs,5)
 ```
 """
 function top_N_sites(rs::ResultSet, N::Int64, metric=relative_cover)
