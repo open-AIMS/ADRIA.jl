@@ -1,11 +1,15 @@
 module Aviz
 
+using RelocatableFolders, FileIO
 using GLMakie
 using GLMakie.GeometryBasics
 using Statistics, Distributions
 using GeoDataFrames, GeoInterface
 
 using ADRIA
+
+const ASSETS = @path joinpath(@__DIR__, "../assets")
+const LOGO = @path joinpath(ASSETS, "imgs", "ADRIA_logo.png")
 
 
 include("./plotting.jl")
@@ -29,17 +33,21 @@ end
 function main_menu()
     f = Figure()
 
-    # img = load(assetpath("../assets/ADRIA_logo.png"))
-    # logo = image(f[1,1], img)
-    # hidedecorations!(logo)
-    # hidespines!(logo)
+    logo = image(
+        f[1,1],
+        rotr90(load(convert(String, LOGO))),
+        axis=(aspect=DataAspect(), )
+    )
 
-    Label(f[1,1], "Enter ADRIA Result Set to analyze")
-    rs_path_tb = Textbox(f[2, 1], placeholder="./Moore_RS")  # placeholder="Path to ADRIA Result Set"
+    hidedecorations!(f.content[1])
+    hidespines!(f.content[1])
+
+    Label(f[2,1], "Enter ADRIA Result Set to analyze")
+    rs_path_tb = Textbox(f[3, 1], placeholder="./Moore_RS")  # placeholder="Path to ADRIA Result Set"
     rs_path_tb.stored_string[] = "./Moore_RS"
-    status_label = Label(f[3,1], "")
+    status_label = Label(f[4,1], "")
 
-    launch_button = Button(f[4,1], label="Analyze")
+    launch_button = Button(f[5,1], label="Analyze")
 
     on(launch_button.clicks) do c
         rs_path = rs_path_tb.stored_string[]
@@ -95,7 +103,7 @@ function gui_analysis(rs::ADRIA.ResultSet)
     tac_min_max = (minimum(mean_tac_outcomes), maximum(mean_tac_outcomes))
 
     tac_label = Label(controls[1,1], "Mean TAC (m²)")
-    tac_slider = IntervalSlider(controls[2,1], 
+    tac_slider = IntervalSlider(controls[2,1],
                                 range=LinRange(floor(Int64, tac_min_max[1])-1, ceil(Int64, tac_min_max[2])+1, Int(5e5)),
                                 startvalues=tac_min_max,
                                 width=350)
@@ -143,7 +151,7 @@ function gui_analysis(rs::ADRIA.ResultSet)
 
     # Get mean outcomes for each scenario
     outcome_pcp_data = hcat([
-        mean_tac_outcomes, 
+        mean_tac_outcomes,
         vec(mean(ADRIA.metrics.scenario_rsv(rs), dims=1)),
         vec(mean(ADRIA.metrics.scenario_asv(rs), dims=1))
     ]...)
