@@ -1,8 +1,6 @@
 using NamedArrays, NamedDims
 import ADRIA: timesteps, metrics
 
-using Infiltrator 
-
 """
     _get_ranks(rs::ResultSet, intervention::Int64; kwargs...)
 
@@ -136,7 +134,7 @@ ADRIA.metrics.best_N_sites(rs;5)
 ```
 """
 function top_N_sites(rs::ResultSet, N::Int64, metric=relative_cover)
-    @infiltrate
+
     # use function to convert results and average over timesteps
     metric = dropdims(mean(metric(rs), dims = [:timesteps]),dims = :timesteps)
 
