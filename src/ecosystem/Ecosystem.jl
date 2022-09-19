@@ -76,7 +76,7 @@ Base.@kwdef struct Criteria{P} <: EcoModel
     coral_cover_low::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    coral_cover_tol::P = Param(0.2,ptype="real", bounds=(0.0,1.0), dists="unif") # % of seeded corals area tolerance for low space when seeding
+    coral_cover_tol::P = Param(0.2,ptype="real", bounds=(0.0, 1.0), dists="unif")  # % of seeded corals area tolerance for low space when seeding
     deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif")     # minimum depth
     depth_offset::P = Param(5.0, ptype="real", bounds=(5.0, 6.0), dists="unif")  # offset from minimum depth to indicate maximum depth**
@@ -180,8 +180,8 @@ end
 Generate colony area data based on Bozec et al., [1].
 
 # Returns
-- colony_area_cm2 : upper colony areas in cm^2
-- colony_area_m2_from_ha : lower colony area in m^2
+- colony_area_lower_cm2 : lower colony areas in cm^2
+- colony_area_upper_m2 : upper colony area in m^2
 
 
 # References
