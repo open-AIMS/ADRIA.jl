@@ -167,46 +167,45 @@ end
 
 
 """
-    create_seed_matrix(SE, A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+    create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat, predec, low_cover)
 
 Create seeding specific decision matrix from criteria matrix. The weight criteria and filter.
 
 # Arguments
-- A : Criteria  matrix
-- wtinconnseed : Seed connectivity weight for seeding
-- wtoutconnseed : Seed connectivity weight for seeding
-- wtwaves : Wave stress weight
-- wtheat : Heat stress weight
-- wtpredecseed : Priority predecessor weight
-- wtlocover : Weighting for low coral cover (coral real estate), when seeding
+- A : Criteria matrix
+- min_area : Minimum available area for a site to be considered
+- inconn_seed : Seed connectivity weight for seeding
+- outconn_seed : Seed connectivity weight for seeding
+- waves : Wave stress weight
+- heat : Heat stress weight
+- predec : Priority predecessor weight
+- low_cover : Weighting for low coral cover (coral real estate), when seeding
 
 # Returns
 Tuple (SE, wse)
-    - SE : Matrix of shape [n sites considered, 7]
-        1. Site index ID
-        2. Incoming Centrality
-        3. Outgoing Centrality
-        4. Wave risk (higher values = less risk)
-        5. Damage risk (higher values = less risk)
-        6. Priority predecessors relating to coral real estate relative to max capacity
-        7. Available space
-    - wse : 5-element vector of criteria weights
-        1. incoming connectivity
-        2. outgoing connectivity
-        3. wave
-        4. heat
-        5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
-        6. low cover (weights importance of sites with low cover/high available real estate to plant corals)
+- SE : Matrix of shape [n sites considered, 7]
+    1. Site index ID
+    2. Incoming Centrality
+    3. Outgoing Centrality
+    4. Wave risk (higher values = less risk)
+    5. Damage risk (higher values = less risk)
+    6. Priority predecessors relating to coral real estate relative to max capacity
+    7. Available space
+- wse : 5-element vector of criteria weights
+    1. incoming connectivity
+    2. outgoing connectivity
+    3. wave
+    4. heat
+    5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
+    6. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
-function create_seed_matrix(A, min_area, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
-    # Set up decision matrix to be same size as A
-    SE = zeros(size(A))
-
-    wse = [wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover]
-    wse .= mcda_normalize(wse)
-
-    # Define seeding decision matrix
+function create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat, predec, low_cover)
+    # Define seeding decision matrix, based on copy of A
     SE = copy(A)
+
+    wse = [inconn_seed, outconn_seed, waves, heat, predec, low_cover]
+    wse .= mcda_normalize(wse)
+    
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
 
@@ -233,29 +232,28 @@ Create shading specific decision matrix and apply weightings.
 
 # Returns
 Tuple (SH, wsh)
-    - SH : Matrix of shape [n sites considered, 7]
-        1. Site index ID
-        2. Incoming Centrality
-        3. Outgoing Centrality
-        4. Wave risk (higher values = less risk)
-        5. Damage risk (higher values = less risk)
-        6. Priority predecessors relating to coral real estate relative to max capacity
-        7. Available space
-    - wsh : 5-element vector of criteria weights
-        1. shade connectivity
-        2. wave
-        3. heat
-        4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
-        5. high cover (weights importance of sites with high cover of coral to shade)
+- SH : Matrix of shape [n sites considered, 7]
+    1. Site index ID
+    2. Incoming Centrality
+    3. Outgoing Centrality
+    4. Wave risk (higher values = less risk)
+    5. Damage risk (higher values = less risk)
+    6. Priority predecessors relating to coral real estate relative to max capacity
+    7. Available space
+- wsh : 5-element vector of criteria weights
+    1. shade connectivity
+    2. wave
+    3. heat
+    4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
+    5. high cover (weights importance of sites with high cover of coral to shade)
 """
-function create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, high_cover)
     # Set up decision matrix to be same size as A
-
-    SH = zeros(size(A, 1), 7)
-    wsh = [wtconshade, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
-    wsh .= mcda_normalize(wsh)
-
     SH = copy(A)
+
+    wsh = [conn_shade, conn_shade, waves, heat, predec, high_cover]
+    wsh .= mcda_normalize(wsh)
+    
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
     SH[:, 7] = (max_area .- A[:, 7]) # total area of coral cover
 
