@@ -219,8 +219,8 @@ function run_scenario(param_df::DataFrameRow, domain::Domain)::NamedTuple
     cache = setup_cache(domain)
     return run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
         domain.coral_growth.ode_p,
-        Matrix{Float64}(domain.dhw_scens[1:tf, :, dhw_rep_id]),
-        Matrix{Float64}(domain.wave_scens[1:tf, :, wave_rep_id]), cache)
+        Matrix{Float64}(domain.dhw_scens[:, :, dhw_rep_id]),
+        Matrix{Float64}(domain.wave_scens[:, :, wave_rep_id]), cache)
 end
 
 """
