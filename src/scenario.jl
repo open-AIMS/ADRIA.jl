@@ -390,9 +390,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             domain.strongpred,
             domain.in_conn,
             domain.out_conn,
-            zeros(n_species, n_sites),  # dam prob
-            dhw_scen[1, :],  # heatstressprob
-            Y_cover[1, :, :],  # sumcover
+            zeros(n_species, n_sites),  # wave stress
+            dhw_scen[1, :],  # heat stress
+            sum(Y_cover[1, :, :], dims=1),  # sum coral cover
             max_cover,
             total_site_area,
             min_area,
