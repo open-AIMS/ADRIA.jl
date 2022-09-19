@@ -57,18 +57,18 @@ end
 
     sumcover = [0.3, 0.5, 0.9, 0.6, 0.0]
     maxcover = [0.8, 0.75, 0.6, 0.77, 0.0]
-    min_area = rand(Uniform(100,400),1)
+    min_area = 20
 
     A = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
 
-    SE, wse = create_seed_matrix(A, wtconseedin, wtconseedout, wtwaves, wtheat, wtpredecseed, wtlocover)
+    SE, wse = create_seed_matrix(A, min_area, wtconseedin, wtconseedout, wtwaves, wtheat, wtpredecseed, wtlocover)
 
-    @test size(SE, 1) == (size(A, 1) - 2) || "Site where cover > carrying capacity not filtered out"
-    @test maximum(SE[:, 1]) != maximum(A[:, 1]) || "Last site should be filtered out due to no space"
-    @test SE[1, 7] == 1.0 || "Largest site with lots of space should have highest score"
+    @test  (n_sites-1) == size(A, 1) || "Site where heat stress > risktol not filtered out"
+    @test size(SE,1) == size(A,1)-2 || "Sites where space available<min_area not filtered out"
+    @test A[3,7] == 0.0 || "Site with k<coral cover should be set to space = 0"
 
     # After normalization, all entries for seeding decision matrix should be ∈ [0,1]
-    @test all(0.0 .<= SE[:, 2:end] .<= 1.0) || "Seeding Decision matrix values out of bounds"
+    @test all(0.0 .<= SE[:, 2:6] .<= 1.0) || "Seeding Decision matrix values out of bounds"
 end
 
 @testset "MCDA shade matrix creation" begin
@@ -96,10 +96,10 @@ end
 
     A = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
 
-    SH, wsh = create_shade_matrix(A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+    SH, wsh = create_shade_matrix(A, area_maxcover, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     
-    @test SH[4, 7] == 1.0 || "Largest site with most coral should have highest score"
+    @test maximum(SH[:, 7])==(maximum(area_maxcover[convert(Vector{Int64},A[:,1])] .- A[:, 7])) || "Largest site with most coral should have highest score"
 
     # After normalization, all entries for seeding decision matrix should be ∈ [0,1] 
-    @test all(0.0 .<= SH[:, 2:end] .<= 1.0) || "Shading Decision matrix values out of bounds"
+    @test all(0.0 .<= SH[:, 2:6] .<= 1.0) || "Shading Decision matrix values out of bounds"
 end
