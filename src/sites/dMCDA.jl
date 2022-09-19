@@ -2,7 +2,6 @@
 
 
 using StatsBase
-using Infiltrator
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
@@ -151,10 +150,6 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover,
     # Proportion of empty space (no coral) compared to max possible cover
     A[:, 7] = max.((maxcover - sumcover), 0.0) .*area
 
-    # set any infs to zero
-    A[maxcover .== 0, 7] .= 0.0
-
-
     # Filter out sites that have high risk of wave damage, specifically
     # exceeding the risk tolerance
     A[A[:, 4] .> risktol, 4] .= NaN
@@ -206,17 +201,18 @@ function create_seed_matrix(A, min_area, wtinconnseed, wtoutconnseed, wtwaves, w
 
     wse = [wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover]
     wse .= mcda_normalize(wse)
-
+  
     # Define seeding decision matrix
     SE[:, 1:3] .= A[:, 1:3]  # sites column (remaining), centrality
 
     SE[:, 4] .= 1.0 .- A[:, 4]  # compliment of wave risk
     SE[:, 5] .= 1.0 .- A[:, 5]  # compliment of heat risk
     SE[:, 6] .= A[:, 6]  # priority predecessors
+    SE[:,7] .= A[:,7]
 
     # coral real estate as total area, sites with =<20% of area to be seeded available filtered out
-    SE[vec(A[:, 7].> min_area), 7] .= A[vec(A[:, 7].> min_area),7]
-
+    SE[vec(A[:, 7].<= min_area), 7] .= NaN
+    SE = SE[vec(.!any(isnan.(SE), dims=2)), :]
     # remove sites at maximum carrying capacity, take inverse log to emphasize importance of space for seeding
     #SE = SE[vec(A[:, 7] .> 0), :]
     #SE[:, 7] .= (10 .^ SE[:, 7]) ./ maximum(10 .^ SE[:, 7])
@@ -257,6 +253,7 @@ Tuple (SH, wsh)
 """
 function create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     # Set up decision matrix to be same size as A
+
     SH = zeros(size(A, 1), 7)
     wsh = [wtconshade, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
     wsh .= mcda_normalize(wsh)
@@ -265,7 +262,7 @@ function create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecs
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
     SH[:, 5:6] = A[:, 5:6] # complimentary of heat damage risk, priority predecessors
 
-    SH[:, 7] = (max_area .- A[:, 7]) # total area of coral cover
+    SH[:, 7] = (max_area[convert(Vector{Int64},A[:,1])] .- A[:, 7]) # total area of coral cover
 
     SH[SH[:,7] .<0, 7] .= 0  # if any negative, scale back to zero
     return SH, wsh
