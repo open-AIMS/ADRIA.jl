@@ -73,7 +73,6 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
 
     r_ids = rs.site_data.reef_siteid
     min_rank = length(r_ids) + 1
-    # ranked_sites[ranked_sites .== min_rank]
 
     c_ranks = mean(ranked_sites, dims=1)
     top_sites = Array{Union{String, Int32, Float32, Missing}}(undef, n, 3, size(ranked_sites, 3))
@@ -133,21 +132,17 @@ NamedDimsArray[:scenarios,:site_order]
 ADRIA.metrics.best_N_sites(rs,5)
 ```
 """
-function top_N_sites(rs::ResultSet, N::Int64, metric=relative_cover)
+function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover)
 
-    # use function to convert results and average over timesteps
-    metric = dropdims(mean(metric(rs), dims = [:timesteps]),dims = :timesteps)
+    metric = dropdims(mean(metric(rs), dims=:timesteps), dims=:timesteps)
 
-    top_N_sites = Array{Int64}(zeros(size(metric)[2],N))
-
+    top_N_sites = Array{Int64}(zeros(size(metric, 2), N))
     for scen in axes(metric, 3)
-
         # sort each scenario according to metric and get indexes
-        inds = sortperm(metric[:,scen],rev=true)
+        inds = sortperm(metric[:,scen], rev=true)
         top_N_sites[scen,:] = inds[1:N]
-
     end
 
-    return NamedDimsArray(top_N_sites,(:scenarios,:site_order))
+    return NamedDimsArray(top_N_sites, (:scenarios,:site_order))
 end
 
