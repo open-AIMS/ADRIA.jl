@@ -294,7 +294,7 @@ function coral_spec()::NamedTuple
     # size classes and growth rates as linear extention (in cm per year).
 
     colony_area_lower_cm², colony_area_upper_m² = colony_areas()
-    params.colony_area_cm2 = reshape(colony_area_lower_cm²', nspecies)
+    params.colony_area_cm2 = reshape(colony_area_lower_cm²', nspecies)[:]
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 Table S2)
     # we assume similar growth rates for enhanced and unenhanced corals
