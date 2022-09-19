@@ -295,21 +295,21 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     strongpred = d_vars.strongpred[site_ids, :]
     in_conn = d_vars.in_conn[site_ids]
     out_conn = d_vars.out_conn[site_ids]
-    damprob = d_vars.damprob[site_ids]
-    heatstressprob = d_vars.heatstressprob[site_ids]
-    sumcover = d_vars.sumcover[site_ids]
-    maxcover = d_vars.maxcover[site_ids]
+    wave_stress = d_vars.damprob[site_ids]
+    heat_stress = d_vars.heatstressprob[site_ids]
+    sum_cover = d_vars.sumcover[site_ids]
+    max_cover = d_vars.maxcover[site_ids]
     area = d_vars.area[site_ids]
-    risktol = d_vars.risktol
-    wtinconnseed = d_vars.wtinconnseed
-    wtoutconnseed = d_vars.wtoutconnseed
-    wtconshade = d_vars.wtconshade
-    wtwaves = d_vars.wtwaves
-    wtheat = d_vars.wtheat
-    wthicover = d_vars.wthicover
-    wtlocover = d_vars.wtlocover
-    wtpredecseed = d_vars.wtpredecseed
-    wtpredecshade = d_vars.wtpredecshade
+    risk_tol = d_vars.risktol
+    w_inconn = d_vars.wtinconnseed
+    w_outconn = d_vars.wtoutconnseed
+    w_shade_conn = d_vars.wtconshade
+    w_waves = d_vars.wtwaves
+    w_heat = d_vars.wtheat
+    w_high_cover = d_vars.wthicover
+    w_low_cover = d_vars.wtlocover
+    w_predec_seed = d_vars.wtpredecseed
+    w_predec_shade = d_vars.wtpredecshade
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
@@ -322,7 +322,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     predec[predprior, 3] .= 1.0
 
-    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
+    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return prefseedsites, prefshadesites, rankings
@@ -333,13 +333,13 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_seed_matrix(A, d_vars.min_area, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+        SE, wse = create_seed_matrix(A, d_vars.min_area, w_inconn, w_outconn, w_waves, w_heat, w_predec_seed, w_low_cover)
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        max_area = (area.*maxcover)[filtered_sites]
-        SH, wsh = create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+        max_area = (area.*max_cover)[filtered_sites]
+        SH, wsh = create_shade_matrix(A, max_area, w_shade_conn, w_waves, w_heat, w_predec_shade, w_high_cover)
     end
 
     if alg_ind == 1
