@@ -382,7 +382,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
-        @infiltrate
+
         # Prep site selection
         mcda_vars = DMCDA_vars(
             depth_priority,
