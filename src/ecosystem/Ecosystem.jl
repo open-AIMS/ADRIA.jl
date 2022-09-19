@@ -291,7 +291,7 @@ function coral_spec()::NamedTuple
     # Ecological parameters
     # To be more consistent with parameters in ReefMod, IPMF and RRAP
     # interventions, we express coral abundance as colony numbers in different
-    # size classes and growth rates as linear extention (in cm per year).
+    # size classes and growth rates as linear extension (in cm per year).
 
     colony_area_lower_cm², colony_area_upper_m² = colony_areas()
     params.colony_area_cm2 = reshape(colony_area_lower_cm²', nspecies)[:]
