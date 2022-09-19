@@ -297,7 +297,7 @@ Matrix : n_reps * sites * 3
 
 last dimension indicates: site_id, seeding rank, shading rank
 """
-function site_selection(domain::Domain, criteria::DataFrame, areatoseed::Float64, ts::Int, n_reps::Int, alg_ind::Int)
+function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int)
     # Site Data
     site_d = domain.site_data
     sr = domain.in_conn
@@ -315,7 +315,7 @@ function site_selection(domain::Domain, criteria::DataFrame, areatoseed::Float64
     wtpredecseed = criteria.seed_priority    # weight for the importance of seeding sites that are predecessors of priority reefs
     wtpredecshade = criteria.shade_priority  # weight for the importance of shading sites that are predecessors of priority reefs
     risktol = criteria.deployed_coral_risk_tol # risk tolerance
-    coralcovertol = criteria.coral_cover_tol
+    coral_cover_tol = criteria.coral_cover_tol
     depth_min = criteria.depth_min
     depth_offset = criteria.depth_offset
 
@@ -358,9 +358,8 @@ function site_selection(domain::Domain, criteria::DataFrame, areatoseed::Float64
             heatstressprob,
             sumcover,
             max_cover,
-            areatoseed,
             area,
-            coralcovertol,
+            area_to_seed*coral_cover_tol,
             risktol,
             wtoutconnseed,
             wtinconnseed,
