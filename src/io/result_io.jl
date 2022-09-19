@@ -248,7 +248,7 @@ function load_results(result_loc::String)::ResultSet
     t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
 
     if r_vers_id != t_vers_id
-        msg = """Results were produced with an older version of ADRIA ($(r_vers_id)). The installed version of ADRIA is $(t_vers_id).\n
+        msg = """Results were produced with a different version of ADRIA ($(r_vers_id)). The version of ADRIA in use is $(t_vers_id).\n
         Errors may occur when analyzing data."""
 
         @warn msg
