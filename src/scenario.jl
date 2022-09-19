@@ -2,7 +2,6 @@
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
 
-
 """
     setup_cache(domain::Domain)::NamedTuple
 
@@ -224,7 +223,6 @@ function run_scenario(param_df::DataFrameRow, domain::Domain)::NamedTuple
         Matrix{Float64}(domain.wave_scens[1:tf, :, wave_rep_id]), cache)
 end
 
-
 """
     run_scenario(domain, param_set, corals, sim_params, site_data, p::NamedTuple,
                  dhw_scen::Array, wave_scen::Array, cache::NamedTuple)::NamedTuple
@@ -334,6 +332,17 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
     Y_cover[1, :, :] .= proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
 
+    # Define constant table location for seed values
+    tabular_enhanced::BitArray = corals.taxa_id .== 1
+    corymbose_enhanced::BitArray = corals.taxa_id .== 3
+    target_class_id::BitArray = corals.class_id .== 1  # seed smallest size class
+    seed_sc_TA::Int64 = first(findall(tabular_enhanced .& target_class_id))  # size class indices for TA and CA
+    seed_sc_CA::Int64 = first(findall(corymbose_enhanced .& target_class_id))
+
+    # extract colony areas for sites selected and convert to m^2
+    col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
+    col_area_seed_CA = corals.colony_area_cm2[seed_sc_CA] / 10^4
+
     if is_guided
         ## Weights for connectivity , waves (ww), high cover (whc) and low
         wtwaves = param_set.wave_stress # weight of wave damage in MCDA
@@ -347,9 +356,14 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         wtpredecseed = param_set.seed_priority # weight for the importance of seeding sites that are predecessors of priority reefs
         wtpredecshade = param_set.shade_priority # weight for the importance of shading sites that are predecessors of priority reefs
         risktol = param_set.deployed_coral_risk_tol # risk tolerance
+        covertol = param_set.coral_cover_tol
 
         # Defaults to considering all sites if depth cannot be considered.
         depth_priority = collect(1:nrow(site_data))
+
+        # calculate total area to seed
+        area_to_seed = (col_area_seed_TA.*n_TA_to_seed)+(col_area_seed_CA.*n_CA_to_seed)
+        min_area = covertol*area_to_seed
 
         # Filter out sites outside of desired depth range
         if .!all(site_data.depth_med .== 0)
@@ -381,6 +395,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             Y_cover[1, :, :],  # sumcover
             max_cover,
             total_site_area,
+            min_area,
             risktol,
             wtinconnseed,
             wtoutconnseed,
@@ -393,13 +408,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             wtpredecshade
         )
     end
-
-    # Define constant table location for seed values
-    tabular_enhanced::BitArray = corals.taxa_id .== 1
-    corymbose_enhanced::BitArray = corals.taxa_id .== 3
-    target_class_id::BitArray = corals.class_id .== 1  # seed smallest size class
-    seed_sc_TA::Int64 = first(findall(tabular_enhanced .& target_class_id))  # size class indices for TA and CA
-    seed_sc_CA::Int64 = first(findall(corymbose_enhanced .& target_class_id))
 
     #### End coral constants
 
@@ -434,10 +442,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     # Flag indicating whether to seed or not to seed
     seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
-
-    # extract colony areas for sites selected and convert to m^2
-    col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
-    col_area_seed_CA = corals.colony_area_cm2[seed_sc_CA] / 10^4
 
     absolute_k_area = vec(total_site_area' .* max_cover)  # max possible coral area in m^2
     growth::ODEProblem = ODEProblem{true}(growthODE, Y_cover[1, :, :], tspan, p)

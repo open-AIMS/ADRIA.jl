@@ -1,8 +1,6 @@
 """Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
 
-
 using StatsBase
-
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
@@ -16,6 +14,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     sumcover  # ::F
     maxcover  # ::V
     area  # ::M
+    min_area # ::F
     risktol  # ::F
     wtinconnseed  # ::F
     wtoutconnseed  # ::F
@@ -34,7 +33,7 @@ end
 
 Normalize a Matrix (SE/SH) or Vector (wse/wsh) for MCDA.
 """
-function mcda_normalize(x::Union{Matrix, Vector})::Union{Matrix, Vector}
+function mcda_normalize(x::Union{Matrix,Vector})::Union{Matrix,Vector}
     return x ./ sqrt(sum(x .^ 2))
 end
 
@@ -76,6 +75,7 @@ function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vecto
 
     # Skip first column as this holds site index ids
     S[:, 2:end] = mcda_normalize(S[:, 2:end])
+
     S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
     s_order = mcda_func(S)
 
@@ -110,6 +110,7 @@ Columns indicate:
 5. Heat Stress Probability
 6. Priority Predecessors
 7. Available Area (relative to max cover)
+8. Coral cover area
 
 # Arguments
 - site_ids : vector of site ids
@@ -147,21 +148,19 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover,
     A[:, 6] .= predec[:, 3]
 
     # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 7] = max.((maxcover - sumcover), 0.0) ./ maxcover
-
-    # set any infs to zero
-    A[maxcover .== 0, 7] .= 0.0
+    A[:, 7] = max.((maxcover - sumcover), 0.0) .* area
 
     # Filter out sites that have high risk of wave damage, specifically
     # exceeding the risk tolerance
-    A[A[:, 4] .> risktol, 4] .= NaN
+    A[A[:, 4].>risktol, 4] .= NaN
     rule = (A[:, 4] .<= risktol) .& (A[:, 5] .> risktol)
     A[rule, 5] .= NaN
 
+    filtered = vec(.!any(isnan.(A), dims=2))
     # remove rows with NaNs
-    A = A[vec(.!any(isnan.(A), dims=2)), :]
+    A = A[filtered, :]
 
-    return A
+    return A, filtered
 end
 
 
@@ -197,7 +196,7 @@ Tuple (SE, wse)
         5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
         6. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
-function create_seed_matrix(A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+function create_seed_matrix(A, min_area, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     # Set up decision matrix to be same size as A
     SE = zeros(size(A))
 
@@ -205,15 +204,13 @@ function create_seed_matrix(A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtp
     wse .= mcda_normalize(wse)
 
     # Define seeding decision matrix
-    SE[:, 1:3] .= A[:, 1:3]  # sites column (remaining), centrality
+    SE = copy(A)
+    SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
+    SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
 
-    SE[:, 4] .= 1.0 .- A[:, 4]  # compliment of wave risk
-    SE[:, 5] .= 1.0 .- A[:, 5]  # compliment of heat risk
-    SE[:, 6:7] .= A[:, 6:7]  # priority predecessors, coral real estate relative to max capacity
-
-    # remove sites at maximum carrying capacity, take inverse log to emphasize importance of space for seeding
-    SE = SE[vec(A[:, 7] .> 0), :]
-    SE[:, 7] .= (10 .^ SE[:, 7]) ./ maximum(10 .^ SE[:, 7])
+    # coral real estate as total area, sites with =<20% of area to be seeded available filtered out
+    SE[vec(A[:, 7] .<= min_area), 7] .= NaN
+    SE = SE[vec(.!any(isnan.(SE), dims=2)), :]
 
     return SE, wse
 end
@@ -249,17 +246,18 @@ Tuple (SH, wsh)
         4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
         5. high cover (weights importance of sites with high cover of coral to shade)
 """
-function create_shade_matrix(A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+function create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     # Set up decision matrix to be same size as A
+
     SH = zeros(size(A, 1), 7)
     wsh = [wtconshade, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
     wsh .= mcda_normalize(wsh)
 
-    SH[:, 1:3] = A[:, 1:3] # sites column (remaining), absolute centrality
-    SH[:, 4] = 1.0 .- A[:, 4] # compliment of wave damage risk
-    SH[:, 5:6] = A[:, 5:6] # compliment of heat damage risk and priority predecessors
-    SH[:, 7] = 1.0 .- A[:, 7] # coral cover relative to max capacity
-    SH[SH[:,7] .> 1.0, 7] .= 1  # scale any sites above capacity back to 1
+    SH = copy(A)
+    SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
+    SH[:, 7] = (max_area .- A[:, 7]) # total area of coral cover
+
+    SH[SH[:, 7].<0, 7] .= 0  # if any negative, scale back to zero
     return SH, wsh
 end
 
@@ -286,8 +284,9 @@ Tuple :
         0 indicates sites that were not considered
 """
 function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool,
-               prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int},
-               rankingsin::Matrix{Int64})::Tuple
+    prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int},
+    rankingsin::Matrix{Int64})::Tuple
+
     site_ids::Array{Int64} = d_vars.site_ids
     nsites::Int64 = length(site_ids)
     nsiteint::Int64 = d_vars.nsiteint
@@ -323,7 +322,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     predec[predprior, 3] .= 1.0
 
-    A = create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
+    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return prefseedsites, prefshadesites, rankings
@@ -334,12 +333,13 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_seed_matrix(A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+        SE, wse = create_seed_matrix(A, d_vars.min_area, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        SH, wsh = create_shade_matrix(A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+        max_area = (area.*maxcover)[filtered_sites]
+        SH, wsh = create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     end
 
     if alg_ind == 1
@@ -348,8 +348,6 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         mcda_func = topsis
     elseif alg_ind == 3
         mcda_func = vikor
-        # elseif alg_ind == 4
-        #     mcda_func = multi_GA
     else
         error("Unknown MCDA algorithm selected. Valid options are 1 (Order Ranking), 2 (TOPSIS) and 3 (VIKOR).")
     end
@@ -394,9 +392,9 @@ Then orders sites from highest aggregate score to lowest.
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
 """
-function order_ranking(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
-    n::Int64 = size(S,1)
-    s_order::Array = Union{Float64, Int64}[zeros(Int, n) zeros(Float64, n) zeros(Int, n)]
+function order_ranking(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
+    n::Int64 = size(S, 1)
+    s_order::Array = Union{Float64,Int64}[zeros(Int, n) zeros(Float64, n) zeros(Int, n)]
 
     # Simple ranking - add criteria weighted values for each sites
     # Third column is derived from the number of sites for situations where
@@ -406,7 +404,7 @@ function order_ranking(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
     @views s_order[:, 2] .= sum(S[:, 2:end], dims=2)
 
     # Reorder ranks (highest to lowest)
-    s_order .= sortslices(s_order, dims=1, by=x->x[2], rev=true)
+    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=true)
 
     @views s_order[:, 3] .= Int.(1:size(S, 1))
 
@@ -445,7 +443,7 @@ S_p  = √{∑(criteria .- NIS)²}
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
 """
-function topsis(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
+function topsis(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
 
     # compute the set of positive ideal solutions for each criteria
     PIS = maximum(S[:, 2:end], dims=1)
@@ -464,10 +462,10 @@ function topsis(S::Array{Float64, 2})::Array{Union{Float64, Int64}, 2}
     # Third column is derived from the number of sites for situations where
     # a subset of sites are being investigated (and so using their site IDs
     # will be inappropriate)
-    s_order = Union{Float64, Int64}[Int.(S[:, 1]) C 1:size(S, 1)]
+    s_order = Union{Float64,Int64}[Int.(S[:, 1]) C 1:size(S, 1)]
 
     # Reorder ranks (highest to lowest)
-    s_order .= sortslices(s_order, dims=1, by=x->x[2], rev=true)
+    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=true)
     @views s_order[:, 3] .= Int.(1:size(S, 1))
 
     return s_order
@@ -518,7 +516,7 @@ Details of this aggregation method in, for example [1]
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
 """
-function vikor(S::Array{Float64, 2}; v::Float64=0.5)::Array{Union{Float64, Int64}, 2}
+function vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},2}
 
     F_s = maximum(S[:, 2:end])
 
@@ -536,10 +534,10 @@ function vikor(S::Array{Float64, 2}; v::Float64=0.5)::Array{Union{Float64, Int64
 
     # Create matrix where rank ids are integers (for use as indexers later)
     # Third column is necessary as a subset of sites will not match their Index IDs.
-    s_order = Union{Float64, Int64}[Int.(S[:, 1]) Q zeros(size(Q, 1))]
+    s_order = Union{Float64,Int64}[Int.(S[:, 1]) Q zeros(size(Q, 1))]
 
     # sort Q by rank score in descending order
-    s_order .= sortslices(s_order, dims=1, by=x->x[2], rev=true)
+    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=true)
     @views s_order[:, 3] .= Int.(1:size(S, 1))
 
     return s_order
@@ -578,5 +576,5 @@ function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shad
         prefshadesites[1:s_nsiteint] .= StatsBase.sample(candidate_sites, s_nsiteint; replace=false)
     end
 
-    return prefseedsites[prefseedsites .> 0], prefshadesites[prefshadesites .> 0]
+    return prefseedsites[prefseedsites.>0], prefshadesites[prefshadesites.>0]
 end
