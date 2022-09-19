@@ -1,7 +1,6 @@
 """Scenario running functions"""
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
-using Infiltrator
 
 """
     setup_cache(domain::Domain)::NamedTuple
