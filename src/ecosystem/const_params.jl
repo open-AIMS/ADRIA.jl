@@ -30,8 +30,6 @@ Struct of simulation constants for ADRIA
    https://doi.org/10.1002/ecm.1494
 """
 Base.@kwdef mutable struct SimConstants
-
-    ## Base scenario parameters
     nsiteint = 5; # max number of sites we intervene on in a given year.
 
     # Default percent thresholds of max connectivity to filter out weak connections in connectivity network.
@@ -44,8 +42,8 @@ Base.@kwdef mutable struct SimConstants
     DHWmaxtot = 50;
 
     # Bleaching stress and coral fecundity parameters
-    LPdhwcoeff = 0.4; # shape parameters relating dhw affecting cover to larval production
-    LPDprm2 = 5; # parameter offsetting LPD curve
+    LPdhwcoeff = 0.4;  # shape parameters relating dhw affecting cover to larval production
+    LPDprm2 = 5;  # parameter offsetting LPD curve
 
     # competition: probability that large tabular Acropora overtop small massives
     comp = 0.3;
@@ -69,7 +67,7 @@ Base.@kwdef mutable struct SimConstants
     max_settler_density = [2.5, 2.5, 2.5, 2.5, 1.5, 1.5]
     # density_ratio_of_settlers_to_larvae = 1 / 2000  # Bozec et al. 2021
 
-    # Based on median value between smallest size class bin (1cm and 3.5cm = 1.25cm^2 diameter)
+    # Based on median value between smallest size class bin values (1cm and 3.5cm = 2.25cm diameter)
     # Resulting value is in m², see definition in Ecosystem.jl::colony_areas()
-    basal_area_per_settler = pi * ((1.25 / 100.0)^2)
+    basal_area_per_settler = pi * ((2.25 / 100.0)^2)
 end
