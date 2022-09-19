@@ -64,6 +64,9 @@ end
 - rankings : vector of site ranks to update
 - nsiteint : number of sites to select for interventions
 - rank_col : column to fill with rankings (2 for seed, 3 for shade)
+
+# Returns
+prefsites : sites in order of their rankings
 """
 function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vector
     # Filter out all non-preferred sites
@@ -95,43 +98,42 @@ function rank_shade_sites!(S, weights, rankings, nsiteint, mcda_func)::Vector
 end
 
 """
-    create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec)
+    create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
 
 Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
 Sites are then filtered based on heat and wave stress risk.
 
-Where no sites are filtered, size of ``A := n_sites × 6 criteria``.
+Where no sites are filtered, size of ``A := n_sites × 7 criteria``.
 
 Columns indicate:
 1. Site ID
 2. Incoming Node Connectivity Centrality
 3. Outgoing Node Connectivity Centrality
-4. Wave Damage Probability
-5. Heat Stress Probability
+4. Wave stress
+5. Heat stress
 6. Priority Predecessors
 7. Available Area (relative to max cover)
-8. Coral cover area
 
 # Arguments
 - site_ids : vector of site ids
 - in_conn : site incoming centrality (relative strength of connectivity) (0 <= c <= 1.0)
 - out_conn : site outgoing centrality (relative strength of connectivity) (0 <= c <= 1.0)
-- sumcover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
-- maxcover : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
+- sum_cover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
+- max_cover : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
 - area : total absolute area (in m²) for each site
-- damprob : Probability of wave damage
-- heatstressprob : Probability of site being affected by heat stress
+- wave_stress : Probability of wave damage
+- heat_stress : Probability of site being affected by heat stress
 - predec : list of priority predecessors (sites strongly connected to priority sites)
-- risktol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
+- risk_tol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
 """
-function create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
+function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
     A = zeros(length(site_ids), 7)
 
     A[:, 1] .= site_ids  # Column of site ids
 
     # Account for cases where no coral cover
-    c_cov_area = in_conn .* sumcover .* area
-    o_cov_area = out_conn .* sumcover .* area
+    c_cov_area = in_conn .* sum_cover .* area
+    o_cov_area = out_conn .* sum_cover .* area
 
     # node connectivity centrality, need to instead work out strongest predecessors to priority sites
     A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
@@ -139,21 +141,21 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover,
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
-    A[:, 4] .= maximum(damprob) != 0 ? (damprob .- minimum(damprob)) ./ (maximum(damprob) - minimum(damprob)) : damprob
+    A[:, 4] .= maximum(wave_stress) != 0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : wave_stress
 
     # risk from heat exposure
-    A[:, 5] .= maximum(heatstressprob) != 0 ? (heatstressprob .- minimum(heatstressprob)) ./ (maximum(heatstressprob) - minimum(heatstressprob)) : heatstressprob
+    A[:, 5] .= maximum(heat_stress) != 0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : heat_stress
 
     # priority predecessors
     A[:, 6] .= predec[:, 3]
 
     # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 7] = max.((maxcover - sumcover), 0.0) .* area
+    A[:, 7] = max.((max_cover - sum_cover), 0.0) .* area
 
     # Filter out sites that have high risk of wave damage, specifically
     # exceeding the risk tolerance
-    A[A[:, 4].>risktol, 4] .= NaN
-    rule = (A[:, 4] .<= risktol) .& (A[:, 5] .> risktol)
+    A[A[:, 4].>risk_tol, 4] .= NaN
+    rule = (A[:, 4] .<= risk_tol) .& (A[:, 5] .> risk_tol)
     A[rule, 5] .= NaN
 
     filtered = vec(.!any(isnan.(A), dims=2))
