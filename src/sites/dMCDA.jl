@@ -1,6 +1,7 @@
 """Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
 
 using StatsBase
+using Infiltrator 
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
@@ -110,6 +111,7 @@ Columns indicate:
 5. Heat Stress Probability
 6. Priority Predecessors
 7. Available Area (relative to max cover)
+8. Coral cover area
 
 # Arguments
 - site_ids : vector of site ids
@@ -155,10 +157,11 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover,
     rule = (A[:, 4] .<= risktol) .& (A[:, 5] .> risktol)
     A[rule, 5] .= NaN
 
+    filtered = vec(.!any(isnan.(A), dims=2))
     # remove rows with NaNs
-    A = A[vec(.!any(isnan.(A), dims=2)), :]
+    A = A[filtered, :]
 
-    return A
+    return A,filtered
 end
 
 
@@ -261,7 +264,7 @@ function create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecs
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
     SH[:, 5:6] = A[:, 5:6] # complimentary of heat damage risk, priority predecessors
 
-    SH[:, 7] = (max_area[convert(Vector{Int64},A[:,1])] .- A[:, 7]) # total area of coral cover
+    SH[:, 7] = (max_area .- A[:, 7]) # total area of coral cover
 
     SH[SH[:,7] .<0, 7] .= 0  # if any negative, scale back to zero
     return SH, wsh
@@ -328,7 +331,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     predec[predprior, 3] .= 1.0
 
-    A = create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
+    A,filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return prefseedsites, prefshadesites, rankings
@@ -346,7 +349,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     # if shading, create shading specific decision matrix
     if log_shade
         max_area = area.*maxcover
-        SH, wsh = create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+        SH, wsh = create_shade_matrix(A, max_area[filtered_sites], wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     end
 
     if alg_ind == 1
