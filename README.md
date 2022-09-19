@@ -93,55 +93,22 @@ julia> ]test
 ## Notes
 
 The very first import of the ADRIA package will be very slow as it attempts to precompile common functions to reduce later start up time.
-This slow initial precompilation has to be repeated if the package is modified, but will remain "fast" if no changes are made.
-
-```julia
-# First time importing ADRIA
-julia> @time using ADRIA
- 25.599935 seconds (40.47 M allocations: 2.990 GiB, 6.53% gc time, 22.64% compilation time)
-
-# After precompilation
-julia> @time using ADRIA
-  0.002528 seconds (429 allocations: 27.859 KiB)
-```
-
-The same applies when running ADRIA for the first time:
-
-```julia
-# Running the first time
-julia> @time include("running_scenarios.jl")
-[ Info: Loading data package
-[ Info: Loading example scenarios
-[ Info: Setting up and running scenarios
-441.297525 seconds (402.13 M allocations: 24.268 GiB, 2.05% gc time, 53.47% compilation time)
-
-# Running a second time
-julia> @time include("running_scenarios.jl")
-[ Info: Loading data package
-[ Info: Loading example scenarios
-[ Info: Setting up and running scenarios
-  5.066090 seconds (1.66 M allocations: 2.145 GiB, 6.70% gc time, 0.00% compilation time)
-```
+The same applies when running ADRIA for the first time. This slow initial precompilation has to be repeated if the package is modified, but will remain "fast" if no changes are made.
 
 To ameliorate this start-up cost while developing, use the [Revise package](https://github.com/timholy/Revise.jl).
 
-# App
-
-[IN PROGRESS]
-
-A command-line application can be created with PackageCompiler.jl
+A custom [sysimage](https://julialang.github.io/PackageCompiler.jl/dev/sysimages.html) can also be created to reduce start up times.
+See the documentation [here](https://github.com/open-AIMS/ADRIA.jl/tree/main/build) for a quick how to.
+Note: compilation time to create a sysimage can be upwards of 30mins, and has to be repeated if the included packages are to be updated.
 
 ```julia
-create_app("./", "app"; include_lazy_artifacts=true, force=true)
-```
+# Timings here were taken with Julia v1.8
 
-```bash
-# Run scenarios and generate png of indicative results
-$ app/bin/ADRIA.exe run [path to data package] [RCP scenario] [CSV of scenarios to run]
+# Without custom sysimage
+julia> @time using ADRIA
+ 97.883173 seconds (101.72 M allocations: 7.155 GiB, 4.22% gc time, 15.10% compilation time: 78% of which was recompilation)
 
-# Re-create plot of indicative results
-$ app/bin/ADRIA.exe load [path to result set]
-
-# Display options
-$ app/bin/ADRIA.exe help
+# With custom sysimage
+julia> @time using ADRIA
+ 0.012177 seconds (702 allocations: 40.648 KiB)
 ```

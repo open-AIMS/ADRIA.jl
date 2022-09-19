@@ -4,7 +4,6 @@ using DataFrames
 using ModelParameters
 import ModelParameters: update!, Model
 
-
 abstract type EcoModel end
 
 
@@ -48,18 +47,18 @@ function update!(m::Model, vals::Union{Vector,Tuple,Array})::Nothing
 end
 
 
-Base.@kwdef struct Intervention{N,P} <: EcoModel
+Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
     # Intervention Parameters
     # Integer values have a +1 offset to allow for discrete value mapping (see `set() method`)
     guided::N = Param(0, ptype="integer", bounds=(0, 3+1), dists="unif") # Guided, choice of MCDA approach
     seed_TA::N = Param(0, ptype="integer", bounds=(0, 500000+1), dists="unif") # Seed1, integer, number of Enhanced TA to seed
     seed_CA::N = Param(0, ptype="integer", bounds=(0, 500000+1), dists="unif") # Seed2, integer, number of Enhanced CA to seed
-    fogging::P = Param(0.2, ptype="real", bounds=(0.0, 0.3), dists="unif") # fogging, float, assumed percent reduction in bleaching mortality
-    SRM::P = Param(0.0, ptype="real", bounds=(0.0, 12.0), dists="unif") # SRM, float, reduction in DHWs due to shading
-    a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 12.0), dists="unif") # Aadpt, float, float, increased adaptation rate
-    n_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif") # Natad, float, natural adaptation rate
-    seed_years::N = Param(10, ptype="integer", bounds=(5, 15+1), dists="unif") # Seedyrs, integer, years into simulation during which seeding is considered
-    shade_years::N = Param(10, ptype="integer", bounds=(5, 74+1), dists="unif") # Shadeyrs, integer, years into simulation during which shading is considered
+    fogging::P = Param(0.16, ptype="real", bounds=(0.0, 0.3, 0.16/0.3), dists="triang") # fogging, float, assumed percent reduction in bleaching mortality
+    SRM::P = Param(0.0, ptype="real", bounds=(0.0, 7.0, 0.0), dists="triang") # SRM, float, reduction in DHWs due to shading
+    a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 8.0, 0.0), dists="triang") # Aadpt, float, float, increased adaptation rate
+    n_adapt::N2 = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif") # Natad, float, natural adaptation rate
+    seed_years::P2 = Param(10, ptype="integer", bounds=(5, 15+1, 5/15), dists="triang") # Seedyrs, integer, years into simulation during which seeding is considered
+    shade_years::P2 = Param(10, ptype="integer", bounds=(5, 74+1, 5/74), dists="triang") # Shadeyrs, integer, years into simulation during which shading is considered
     seed_freq::N = Param(5, ptype="integer", bounds=(0, 5+1), dists="unif") # Seedfreq, integer, yearly intervals to adjust seeding site selection (0 is set and forget)
     shade_freq::N = Param(1, ptype="integer", bounds=(0, 5+1), dists="unif") # Shadefreq, integer, yearly intervals to adjust shading (fogging) site selection (0 is set and forget)
     seed_year_start::N = Param(2, ptype="integer", bounds=(2, 25+1), dists="unif") # Seedyr_start, integer, seed intervention start offset from simulation start
@@ -71,11 +70,13 @@ Base.@kwdef struct Criteria{P} <: EcoModel
     wave_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     heat_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     shade_connectivity::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    in_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    out_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     coral_cover_high::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     coral_cover_low::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    coral_cover_tol::P = Param(0.2,ptype="real", bounds=(0.0,1.0), dists="unif") # % of seeded corals area tolerance for low space when seeding
     deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif")     # minimum depth
     depth_offset::P = Param(5.0, ptype="real", bounds=(5.0, 6.0), dists="unif")  # offset from minimum depth to indicate maximum depth**
@@ -192,20 +193,20 @@ Generate colony area data based on Bozec et al., [1].
      https://doi.org/10.13140/RG.2.2.26976.20482
 """
 function colony_areas()
-    size_class_means_from_cm2 = Float64[1; 3.5; 7.5; 15; 30; 60]  # in cm^2
-    size_class_means_to_cm2 = Float64[size_class_means_from_cm2[2:end]; 100.0];  # in cm^2
+    size_class_means_lower_cm2 = Float64[1; 3.5; 7.5; 15; 30; 60]
+    size_class_means_upper_cm2 = Float64[size_class_means_lower_cm2[2:end]; 100.0];
 
-    nclasses::Int64 = length(size_class_means_from_cm2)
+    nclasses::Int64 = length(size_class_means_lower_cm2)
 
     # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
     # To convert to cover we locate bin means and calculate bin mean areas
-    colony_diam_means_from_cm2 = repeat(size_class_means_from_cm2', nclasses, 1)
-    colony_diam_means_to_cm2 = repeat(size_class_means_to_cm2', nclasses', 1)
+    colony_diam_means_lower_cm2 = repeat(size_class_means_lower_cm2', nclasses, 1)
+    colony_diam_means_upper_cm2 = repeat(size_class_means_upper_cm2', nclasses', 1)
 
-    colony_area_m2_from_ha = @. pi * ((colony_diam_means_from_cm2 / 2)^2) / (10^4)
-    colony_area_cm2 = @. pi * ((colony_diam_means_to_cm2 / 2)^2)
+    colony_area_lower_cm2 = @. pi * ((colony_diam_means_lower_cm2 / 2)^2)
+    colony_area_upper_m2 = @. pi * ((colony_diam_means_upper_cm2 / 2)^2) / (10^4)
 
-    return colony_area_cm2, colony_area_m2_from_ha
+    return colony_area_lower_cm2, colony_area_upper_m2
 end
 
 
@@ -228,21 +229,29 @@ between bleaching years come from [1].
            names, and parameter values for each coral taxa, group and size class
 
 # References
-1. Lough, J.M., Anderson, K.D. and Hughes, T.P. (2018)
-       'Increasing thermal stress for tropical coral reefs: 1871-2017',
-       Scientific Reports, 8(1), p. 6079.
-       doi: 10.1038/s41598-018-24530-9.
+1. Lough, J. M., Anderson, K. D., & Hughes, T. P. (2018).
+    Increasing thermal stress for tropical coral reefs: 1871-2017.
+    Scientific Reports, 8(1), 6079.
+    https://doi.org/10.1038/s41598-018-24530-9
 
-2. Bozec, Y.-M., Rowell, D., Harrison, L., Gaskell, J., Hock, K.,
-     Callaghan, D., Gorton, R., Kovacs, E. M., Lyons, M., Mumby, P.,
-     & Roelfsema, C. (2021).
-       Baseline mapping to support reef restoration and resilience-based
-       management in the Whitsundays.
-     https://doi.org/10.13140/RG.2.2.26976.20482
+2. Hall, V.R. & Hughes, T.P. 1996. 
+   Reproductive strategies of modular organisms: 
+     comparative studies of reef-building corals. 
+   Ecology, 77: 950 - 963.
+   https://dx.doi.org/10.2307/2265514
 
-3. Hall, V.R. & Hughes, T.P. 1996. Reproductive strategies of modular
-      organisms: comparative studies of reef-building corals. Ecology,
-      77: 950 - 963.
+3. Bozec, Y.-M., Rowell, D., Harrison, L., Gaskell, J., Hock, K.,
+    Callaghan, D., Gorton, R., Kovacs, E. M., Lyons, M., Mumby, P.,
+    & Roelfsema, C. (2021).
+   Baseline mapping to support reef restoration and
+     resilience-based management in the Whitsundays.
+   https://doi.org/10.13140/RG.2.2.26976.20482
+
+4. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E., Castro-Sanguino, C.,
+    Condie, S. A., Puotinen, M., Thompson, A., & Mumby, P. J. (2022).
+   Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation. 
+   Ecological Monographs, 92(1), e01494.
+   https://doi.org/10.1002/ecm.1494
 """
 function coral_spec()::NamedTuple
     # Below parameters pertaining to species are new. We now add size classes
@@ -284,12 +293,12 @@ function coral_spec()::NamedTuple
     # interventions, we express coral abundance as colony numbers in different
     # size classes and growth rates as linear extention (in cm per year).
 
-    colony_area_cm2, colony_area_m2_from_ha = colony_areas()
-    params.colony_area_cm2 = reshape(colony_area_cm2', nspecies)
-    colony_area_to_m2 = colony_area_cm2 ./ 10^4
+    colony_area_lower_cm², colony_area_upper_m² = colony_areas()
+    params.colony_area_cm2 = reshape(colony_area_lower_cm²', nspecies)
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 Table S2)
     # we assume similar growth rates for enhanced and unenhanced corals
+    # all values in cm²
     linear_extension =
        Float64[1 3 3 4.4 4.4 4.4;  # Tabular Acropora Enhanced
         1 3 3 4.4 4.4 4.4;   # Tabular Acropora Unenhanced
@@ -302,12 +311,15 @@ function coral_spec()::NamedTuple
     # First calculate what proportion of coral numbers that change size class
     # given linear extensions. This is based on the simple assumption that
     # coral sizes are evenly distributed within each bin
-    bin_widths = Float64[2, 3, 5, 10, 20, 40];
+    bin_widths = Float64[2, 3, 5, 10, 20, 40];  # cm^2
     diam_bin_widths = repeat(bin_widths, nclasses, 1)
-    prop_change = @views linear_extension'[:] ./ diam_bin_widths
+    prop_change_cm² = @views linear_extension'[:] ./ diam_bin_widths
 
     # Second, growth as transitions of cover to higher bins is estimated as
-    params.growth_rate = vec(prop_change .* (colony_area_to_m2'[:] ./ colony_area_m2_from_ha'[:]))
+    colony_area_m² = colony_area_lower_cm² ./ 10^4
+
+    # growth rate in m²
+    params.growth_rate = vec((prop_change_cm² ./ 10^4) .* (colony_area_m²'[:] ./ colony_area_upper_m²'[:]))
 
     # note that we use proportion of bin widths and linear extension to estimate
     # number of corals changing size class, but we use the bin means to estimate
@@ -320,11 +332,11 @@ function coral_spec()::NamedTuple
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
-    fec = exp.(fec_par_a .+ fec_par_b .* log.(colony_area_m2_from_ha * 10^4))
+    fec = exp.(fec_par_a .+ fec_par_b .* log.(colony_area_upper_m² * 10^4))
 
     # then convert to number of larvae produced per m2
-    fec_m2 = fec ./ colony_area_m2_from_ha;  # convert from per colony area to per m2
-    params.fecundity = fec_m2'[:];
+    fec_m² = fec ./ colony_area_upper_m²;  # convert from per colony area to per m2
+    params.fecundity = fec_m²'[:];
 
     ## Mortality
     # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
@@ -362,12 +374,11 @@ function coral_spec()::NamedTuple
         0.0 0.0 0.0 0.0 0.0 0.0;  # Corymbose Acropora Unenhanced
         1.5 1.5 1.5 1.5 1.5 1.5;  # Small massives and encrusting
         1.0 1.0 1.0 1.0 1.0 1.0]; # Large massives 
-
     params.bleach_resist = bleach_resist'[:];
 
     # Get perturbable coral parameters
+    # i.e., the parameter names not defined in the second list
     param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "size_cm", "coral_id"])
-    # param_names = ["growth_rate", "fecundity", "wavemort90", "mb_rate", "bleach_resist", "colony_area_cm2"]
 
     return (taxa_names=taxa_names, param_names=param_names, params=params)
 end

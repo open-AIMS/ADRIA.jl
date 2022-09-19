@@ -1,3 +1,43 @@
+using JSON
+
+
+"""
+    _check_compat(dpkg_details::Dict)
+
+Checks for version compatibility.
+
+# Arguments
+- dpkg_details : Datapackage spec
+"""
+function _check_compat(dpkg_details::Dict)
+    if haskey(dpkg_details, "version") || haskey(dpkg_details, "dpkg_version")
+        dpkg_version = dpkg_details["version"]
+        if dpkg_version ∉ COMPAT_DPKG
+            error("Incompatible Domain data package.")
+        end
+    else
+        error("Incompatible Domain data package.")
+    end
+end
+
+"""
+    _load_dpkg(dpkg_path::String)
+
+Load and parse datapackage.
+
+# Arguments
+- dpkg_path : path to datapackage
+"""
+function _load_dpkg(dpkg_path::String)
+    dpkg_md = nothing
+    open(joinpath(dpkg_path, "datapackage.json"), "r") do fp
+        dpkg_md = JSON.parse(read(fp, String))
+    end
+    _check_compat(dpkg_md)
+
+    return dpkg_md
+end
+
 """
     load_domain(path::String, rcp::Int64)
     load_domain(path::String, rcp::String)
@@ -14,6 +54,26 @@ function load_domain(path::String, rcp::String)::Domain
         domain_name = basename(dirname(path))
     end
 
+    dpkg_details = _load_dpkg(path)
+    dpkg_version = dpkg_details["version"]
+
+    # Handle compatibility
+    this_version = parse(VersionNumber, dpkg_version)
+    if this_version >= v"0.2.1"
+        # Extract the time frame represented in this data package
+        timeframe = dpkg_details["simulation_metadata"]["timeframe"]
+    else
+        # Default to 2025-2099
+        timeframe = (2025, 2099)
+    end
+    
+    if length(timeframe) == 2
+        @assert timeframe[1] < timeframe[2] "Start date/year specified in data package must be < end date/year"
+        # If only two elements, assume a range is specified.
+        # Collate the time steps as a full list if necessary
+        timeframe = collect(timeframe[1]:timeframe[2])
+    end
+
     conn_path::String = joinpath(path, "connectivity/")
     site_data::String = joinpath(path, "site_data")
 
@@ -26,6 +86,7 @@ function load_domain(path::String, rcp::String)::Domain
     return Domain(
         domain_name,
         rcp,
+        timeframe,
         site_path,
         "site_id",
         "reef_siteid",

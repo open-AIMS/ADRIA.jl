@@ -49,7 +49,7 @@ end
 @testset "proportional adjustment" begin
     Y = rand(5, 36, 20)
     tmp = zeros(20)
-    max_cover = rand(1, 20)
+    max_cover = rand(20)
 
     for i in axes(Y,1)
         adjusted = ADRIA.proportional_adjustment!(Y[i, :, :], tmp, max_cover)
@@ -59,5 +59,8 @@ end
 end
 
 include("site_selection.jl")
-
+include("seeding.jl")
 include("metrics.jl")
+include("growth.jl")
+
+include("example_run.jl")

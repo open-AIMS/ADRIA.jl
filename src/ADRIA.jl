@@ -35,9 +35,12 @@ include("io/inputs.jl")
 include("sites/connectivity.jl")
 include("sites/dMCDA.jl")
 
+include("interventions/seeding.jl")
+
 include("io/ResultSet.jl")
-include("metrics/metrics.jl")
 include("io/result_io.jl")
+include("io/result_post_processing.jl")
+include("metrics/metrics.jl")
 
 include("scenario.jl")
 
@@ -49,7 +52,7 @@ export growthODE
 export run_scenario, coral_spec
 export create_coral_struct, Intervention, Criteria, Corals, SimConstants
 export site_area
-export Domain, metrics, select
+export Domain, metrics, select, timesteps
 
 # metric helper methods
 export dims, ndims
@@ -61,6 +64,10 @@ if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the pac
     precompile(Domain, (String, Int64, String, String, String, String, String, String, String))
     precompile(EnvLayer, (String, String, String, String, String, String, String))
 end
+
+
+# List out compatible domain datapackages
+const COMPAT_DPKG = ["v0.2", "v0.2.1"]
 
 
 # Precompile as the final step of the module definition:

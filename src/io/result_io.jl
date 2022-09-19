@@ -36,6 +36,7 @@ function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_
         :connectivity_file => env_layer.connectivity_fn,
         :DHW_file => env_layer.DHW_fn,
         :wave_file => env_layer.wave_fn,
+        :timeframe => env_layer.timeframe,
         :sim_constants => sim_constants,
         :site_ids => unique_sites,
         :site_area => area,
@@ -65,6 +66,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 2, n_sites, n_scens)
 
     attrs = Dict(
+        # Here, "intervention" refers to seeding or shading
         :structure=> ("timesteps", "sites", "intervention", "scenarios"),
         :unique_site_ids=>unique_sites,
     )
@@ -105,11 +107,13 @@ Sets up an on-disk result store.
 │   ├───relative_shelter_volume
 │   └───absolute_shelter_volume
 ├───site_data
+├───model_spec
 └───inputs
 ```
 
 - `inputs` : includes domain specification metadata including what connectivity/DHW/wave data was used.
 - `site_data` : contains a copy of the spatial domain data (as geopackage).
+- `model_spec` : contains a copy of the ADRIA model specification (as CSV).
 
 # Notes
 - `domain` is replaced with an identical copy with an updated scenario invoke time.
@@ -147,6 +151,10 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
 
     inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
 
+    # Store copy of model specification as CSV
+    mkdir(joinpath(log_location, "model_spec"))
+    model_spec(domain, joinpath(log_location, "model_spec", "model_spec.csv"))
+
     # Store post-processed table of input parameters.
     # +1 skips the RCP column
     integer_params = findall(domain.model[:ptype] .== "integer")
@@ -154,7 +162,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     inputs[:, :] = Matrix(param_df)
 
     # Set up stores for each metric
-    tf, n_sites = domain.sim_constants.tf::Int64, domain.coral_growth.n_sites::Int64
+    tf, n_sites, _ = size(domain.dhw_scens)
 
     function dim_lengths(metric_structure)
         dl = []
@@ -234,6 +242,7 @@ function load_results(result_loc::String)::ResultSet
     end
 
     site_data = GeoDataFrames.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"]*".gpkg"))
+    model_spec = CSV.read(joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#")
 
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
     t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
@@ -255,10 +264,11 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["init_coral_cover_file"],
         input_set.attrs["connectivity_file"],
         input_set.attrs["DHW_file"],
-        input_set.attrs["wave_file"]
+        input_set.attrs["wave_file"],
+        input_set.attrs["timeframe"]
     )
 
-    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data)
+    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data, model_spec)
 end
 function load_results(domain::Domain)::ResultSet
     log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCPs$(domain.RCP)__$(domain.scenario_invoke_time)")

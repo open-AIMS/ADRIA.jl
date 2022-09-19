@@ -1,4 +1,5 @@
 using Test
+using Distributions
 import ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_shade_matrix
 
 @testset "Create decision matrix" begin
@@ -6,7 +7,8 @@ import ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create
     # Dummy data to create decision matrix from
     n_sites = 5
     area = [1000.0, 800.0, 600.0, 200.0, 200.0]
-    centr = [1.0, 0.5, 0.5, 0.5, 0.5]
+    centr_out = [1.0, 0.5, 0.5, 0.5, 0.5]
+    centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
     damprob = [0.05, 0.1, 0.1, 0.5, 0.0]
     heatstressprob = [0.05, 0.1, 0.1, 0.5, 0.0]
 
@@ -22,9 +24,9 @@ import ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create
     sumcover = [0.3, 0.5, 0.9, 0.6, 0.0]
     maxcover = [0.8, 0.75, 0.95, 0.7, 0.0]
 
-    A = create_decision_matrix(1:n_sites, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
+    A,filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
 
-    @test all(0.0 .<= A[:, 2:end] .<= 1.0) || "`A` decision matrix out of bounds"
+    @test all(0.0 .<= A[:, 2:end-1] .<= 1.0) || "`A` decision matrix out of bounds"
 
     @test !any(isnan.(A)) || "NaNs found in decision matrix"
     @test !any(isinf.(A)) || "Infs found in decision matrix"
@@ -34,12 +36,13 @@ end
 
 
 @testset "MCDA seed matrix creation" begin
-    wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover = [1.0, 0.7, 1.0, 0.6, 0.6]
+    wtconseedout, wtconseedin, wtwaves, wtheat, wtpredecseed, wtlocover = [1.0, 1.0, 0.7, 1.0, 0.6, 0.6]
 
     # Combine decision criteria into decision matrix A
     n_sites = 5
     area = [1000.0, 800.0, 600.0, 200.0, 200.0]
-    centr = [1.0, 0.5, 0.5, 0.5, 0.5]
+    centr_out = [1.0, 0.5, 0.5, 0.5, 0.5]
+    centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
     damprob = [0.05, 0.1, 0.1, 0.5, 0.0]
     heatstressprob = [0.05, 0.1, 0.1, 0.5, 0.0]
 
@@ -53,18 +56,17 @@ end
 
     sumcover = [0.3, 0.5, 0.9, 0.6, 0.0]
     maxcover = [0.8, 0.75, 0.6, 0.77, 0.0]
+    min_area = 20
 
-    A = create_decision_matrix(1:n_sites, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
+    A,filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
 
-    SE = zeros(size(A, 1), 6)
-    SE, wse = create_seed_matrix(SE, A, wtconseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+    SE, wse = create_seed_matrix(A, min_area, wtconseedin, wtconseedout, wtwaves, wtheat, wtpredecseed, wtlocover)
 
-    @test size(SE, 1) == (size(A, 1) - 2) || "Site where cover > carrying capacity not filtered out"
-    @test maximum(SE[:, 1]) != maximum(A[:, 1]) || "Last site should be filtered out due to no space"
-    @test SE[1, 6] == 1.0 || "Largest site with lots of space should have highest score"
+    @test  (sum(filtered)) == size(A, 1) || "Site where heat stress > risktol not filtered out"
+    @test size(SE,1) == size(A,1)-2 || "Sites where space available<min_area not filtered out"
+    @test A[3,7] == 0.0 || "Site with k<coral cover should be set to space = 0"
 
-    # After normalization, all entries for seeding decision matrix should be ∈ [0,1]
-    @test all(0.0 .<= SE[:, 2:end] .<= 1.0) || "Seeding Decision matrix values out of bounds"
+    @test all(0.0 .<= SE[:, 2:6] .<= 1.0) || "Seeding Decision matrix values out of bounds"
 end
 
 @testset "MCDA shade matrix creation" begin
@@ -73,7 +75,8 @@ end
     # Combine decision criteria into decision matrix A
     n_sites = 5
     area = [1000.0, 800.0, 600.0, 200.0, 200.0]
-    centr = [1.0, 0.5, 0.5, 0.5, 0.5]
+    centr_out = [1.0, 0.5, 0.5, 0.5, 0.5]
+    centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
     damprob = [0.05, 0.1, 0.1, 0.5, 0.0]
     heatstressprob = [0.05, 0.1, 0.1, 0.5, 0.0]
     
@@ -87,14 +90,13 @@ end
 
     sumcover = [0.75, 0.5, 0.3, 0.7, 0.0]
     maxcover = [0.8, 0.75, 0.6, 0.77, 0.0]
+    area_maxcover = maxcover.*area
 
-    A = create_decision_matrix(1:n_sites, centr, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
+    A,filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
 
-    SH = zeros(size(A, 1), 6)
-    SH, wsh = create_shade_matrix(SH, A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+    SH, wsh = create_shade_matrix(A, area_maxcover[filtered], wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
     
-    @test SH[4, 6] == 1.0 || "Largest site with most coral should have highest score"
+    @test maximum(SH[:, 7])==(maximum(area_maxcover[convert(Vector{Int64},A[:,1])] .- A[:, 7])) || "Largest site with most coral area should have highest score"
 
-    # After normalization, all entries for seeding decision matrix should be ∈ [0,1] 
-    @test all(0.0 .<= SH[:, 2:end] .<= 1.0) || "Shading Decision matrix values out of bounds"
+    @test all(0.0 .<= SH[:, 2:6] .<= 1.0) || "Shading Decision matrix values out of bounds"
 end

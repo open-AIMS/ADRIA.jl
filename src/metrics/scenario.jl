@@ -8,18 +8,22 @@ TODO: Produce summary stats. Currently returns just the mean.
 
 
 """
-    scenario_total_cover(data::NamedDimsArray, areas; kwargs...)
+    scenario_total_cover(rs::ResultSet; kwargs...)
 
 Calculate the cluster-wide total absolute coral cover for each individual scenario.
 """
-function scenario_total_cover(data::NamedDimsArray, areas; kwargs...)
-    sites = haskey(kwargs, :sites) ? kwargs[:sites] : (:)
-    tac = call_metric(_total_absolute_cover, data, areas[sites]; kwargs...)
-
-    return dropdims(sum(tac, dims=:sites), dims=:sites)
-end
 function scenario_total_cover(rs::ResultSet; kwargs...)
-    return scenario_total_cover(rs.outcomes[:relative_cover], rs.site_area; kwargs...)
+    return dropdims(sum(slice_results(total_absolute_cover(rs); kwargs...), dims=:sites), dims=:sites)
+end
+
+
+"""
+    scenario_relative_cover(rs::ResultSet; kwargs...)
+
+Calculate the cluster-wide total absolute coral cover for each individual scenario.
+"""
+function scenario_relative_cover(rs::ResultSet; kwargs...)
+    return dropdims(sum(slice_results(relative_cover(rs); kwargs...), dims=:sites), dims=:sites)
 end
 
 
@@ -38,19 +42,30 @@ end
 
 
 """
-    scenario_shelter_volume(data::NamedDimsArray, inputs; kwargs...)
+    scenario_asv(sv::NamedDimsArray; kwargs...)
+    scenario_asv(rs::ResultSet; kwargs...)
 
 Calculate the cluster-wide absolute shelter volume for each individual scenario.
 """
-function scenario_shelter_volume(data::NamedDimsArray, area, max_cover, inputs; kwargs...)
-    sv = call_metric(absolute_shelter_volume, data, area, max_cover, inputs; kwargs...)
-    return dropdims(sum(sv, dims=:sites), dims=:sites)
-end
-
-function scenario_shelter_volume(sv::NamedDimsArray; kwargs...)
+function scenario_asv(sv::NamedDimsArray; kwargs...)
     sv_sliced = slice_results(sv; kwargs...)
     return dropdims(sum(sv_sliced, dims=:sites), dims=:sites)
 end
-function scenario_shelter_volume(rs::ResultSet; kwargs...)
-    return scenario_shelter_volume(rs.outcomes[:absolute_shelter_volume]; kwargs...)
+function scenario_asv(rs::ResultSet; kwargs...)
+    return scenario_asv(rs.outcomes[:absolute_shelter_volume]; kwargs...)
+end
+
+
+"""
+    scenario_rsv(sv::NamedDimsArray; kwargs...)
+    scenario_rsv(rs::ResultSet; kwargs...)
+
+Calculate the cluster-wide relative shelter volumes for each individual scenario.
+"""
+function scenario_rsv(sv::NamedDimsArray; kwargs...)
+    sv_sliced = slice_results(sv; kwargs...)
+    return dropdims(sum(sv_sliced, dims=:sites), dims=:sites)
+end
+function scenario_rsv(rs::ResultSet; kwargs...)
+    return scenario_rsv(rs.outcomes[:relative_shelter_volume]; kwargs...)
 end

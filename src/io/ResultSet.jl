@@ -11,6 +11,7 @@ const RESULTS = "results"
 const LOG_GRP = "logs"
 const INPUTS = "inputs"
 const SITE_DATA = "site_data"
+const MODEL_SPEC = "model_spec"
 
 
 struct ResultSet{S, T1, T2, F, A, B, C, G}
@@ -18,6 +19,7 @@ struct ResultSet{S, T1, T2, F, A, B, C, G}
     RCP::S
     invoke_time::S
     ADRIA_VERSION::S
+
     site_ids::T1
     site_area::F
     site_max_coral_cover::F
@@ -27,6 +29,7 @@ struct ResultSet{S, T1, T2, F, A, B, C, G}
 
     inputs::G
     sim_constants::Dict
+    model_spec::DataFrame
 
     # raw::AbstractArray
     outcomes::Dict
@@ -37,7 +40,10 @@ struct ResultSet{S, T1, T2, F, A, B, C, G}
 end
 
 
-function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::DataFrame, outcomes::Dict, log_set::Zarr.ZGroup, site_data::DataFrame)::ResultSet
+function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, 
+    inputs_used::DataFrame, outcomes::Dict, log_set::Zarr.ZGroup, 
+    site_data::DataFrame, model_spec::DataFrame)::ResultSet
+
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
     ResultSet(input_set.attrs["name"],
               string(rcp),
@@ -51,6 +57,7 @@ function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::
               site_data,
               inputs_used,
               input_set.attrs["sim_constants"],
+              model_spec,
               outcomes,
               NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
               NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
@@ -69,7 +76,7 @@ Note: Results are stored in Zarr format. Combining data sets can be
 """
 function combine_results(result_sets...)::ResultSet
     # Make sure results are all for the same domain
-    @assert length(Set([rs.name for rs in result_sets])) == 1
+    # @assert length(Set([rs.name for rs in result_sets])) == 1
 
     # Ensure all sim constants are identical
     @assert all([result_sets[i].sim_constants == result_sets[i+1].sim_constants for i in 1:length(result_sets)-1])
@@ -96,7 +103,7 @@ function combine_results(result_sets...)::ResultSet
     envlayer = rs1.env_layer_md
     env_md = EnvLayer(envlayer.site_data_fn, envlayer.site_id_col, envlayer.unique_site_id_col,
                       envlayer.init_coral_cov_fn, envlayer.connectivity_fn,
-                      dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn))
+                      dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn), envlayer.timeframe)
 
     all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
     input_dims = size(all_inputs)
@@ -104,9 +111,13 @@ function combine_results(result_sets...)::ResultSet
                                 rs1.site_ids, rs1.site_area, rs1.site_max_coral_cover, rs1.site_centroids)
 
     # Copy site data into result set
-    mkdir(joinpath(new_loc, "site_data"))
-    cp(attrs[:site_data_file], joinpath(new_loc, "site_data", basename(attrs[:site_data_file])), force=true)
+    mkdir(joinpath(new_loc, SITE_DATA))
+    cp(attrs[:site_data_file], joinpath(new_loc, SITE_DATA, basename(attrs[:site_data_file])), force=true)
 
+    # Store copy of model specification as CSV
+    mkdir(joinpath(new_loc, MODEL_SPEC))
+    CSV.write(joinpath(new_loc, MODEL_SPEC, "model_spec.csv"), rs1.model_spec)
+    # model_spec(dom, joinpath(log_location, joinpath(new_loc, MODEL_SPEC, "model_spec.csv")))
 
     input_loc::String = joinpath(z_store.folder, INPUTS)
     # TODO: Fix issue - ERROR: UndefRefError: access to undefined reference
@@ -228,6 +239,19 @@ function select(r::ResultSet, op::String)
 end
 
 
+"""
+    timesteps(rs::ResultSet)
+
+Retrieve the time steps represented in the result set.
+
+# Arguments
+- rs : ResultSet
+"""
+function timesteps(rs::ResultSet)
+    return rs.env_layer_md.timeframe
+end
+
+
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
     vers_id = rs.ADRIA_VERSION
@@ -252,6 +276,12 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     ------------""")
 
     for fn in fieldnames(typeof(rs.env_layer_md))
+        if fn == :timeframe
+            tf = getfield(rs.env_layer_md, fn)
+            println("$(fn) : $(tf[1]) - $(tf[end])")
+            continue
+        end
+
         println("$(fn) : $(getfield(rs.env_layer_md, fn))")
     end
 end

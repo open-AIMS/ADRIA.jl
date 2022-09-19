@@ -36,7 +36,7 @@ NamedTuple:
 ```
 """
 function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, String}}, unique_site_ids::Vector{String}, site_order::Vector{Union{Missing, Int64}}; 
-    con_cutoff::Float64=0.02, agg_func::Function=mean, swap::Bool=false)::NamedTuple
+    con_cutoff::Float64=0.01, agg_func::Function=mean, swap::Bool=false)::NamedTuple
     
     # Remove any row marked as missing
     if any(ismissing.(conn_ids))
@@ -59,7 +59,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, Str
 
     # Get site ids from first file
     con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap)
-    con_site_ids::Vector{String} = con_file1[:, "source_site"]  # names(con_file1)[2:end]
+    con_site_ids::Vector{String} = string.(con_file1[:, "source_site"])  # names(con_file1)[2:end]
     con_site_ids = [x[1] for x in split.(con_site_ids, "_v"; limit=2)]
 
     # Get IDs missing in con_site_ids
@@ -111,7 +111,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, Str
         end
 
         # Fill missing values with 0.0
-        TP_base = similar(con_file1)
+        TP_base = copy(con_file1)
         tmp::Matrix{Union{Missing, Float64}} = agg_func(cat(map(Matrix, con_data), dims=3))
 
         TP_base[:, :] .= coalesce.(tmp, 0.0)
@@ -127,10 +127,12 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, Str
 
     if con_cutoff > 0.0
         tmp = Matrix(TP_base)
-        max_cutoff = maximum(tmp) * con_cutoff
-        tmp[tmp .< max_cutoff] .= 0.0
+        # max_cutoff = maximum(tmp) * con_cutoff
+        tmp[tmp .< con_cutoff] .= 0.0
         TP_base[:, :] = tmp
     end
+
+    @assert all(0.0 .<= Matrix(TP_base) .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
     return (TP_base=TP_base, truncated=invalid_ids, site_ids=conn_ids)
 end
@@ -144,7 +146,8 @@ strongest predecessor.
 
 # Returns
 NamedTuple:
-- conn_ranks : sites ranked by connectivity
+- in_conn : sites ranked by incoming connectivity
+- out_conn : sites ranked by outgoing connectivity
 - strongest_predecessor : strongest predecessor for each site
 """
 function connectivity_strength(TP_base::DataFrame)::NamedTuple
@@ -154,10 +157,11 @@ function connectivity_strength(TP_base::DataFrame)::NamedTuple
     # ew_base = weights(g)  # commented out ew_base are all equally weighted anyway...
 
     # Measure centrality based on number of incoming connections
-    C1 = outdegree_centrality(g)
+    C1 = indegree_centrality(g)
+    C2 = outdegree_centrality(g)
 
     # For each edge, find strongly connected predecessor (by number of connections)
-    strongpred = similar(C1, Int64)
+    strongpred = zeros(Int64, size(C1)...)
     for v_id in vertices(g)
         incoming = inneighbors(g, v_id)
 
@@ -176,5 +180,5 @@ function connectivity_strength(TP_base::DataFrame)::NamedTuple
         end
     end
 
-    return (conn_ranks=C1, strongest_predecessor=strongpred)
+    return (in_conn=C1, out_conn=C2, strongest_predecessor=strongpred)
 end

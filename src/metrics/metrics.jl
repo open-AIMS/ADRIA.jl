@@ -99,7 +99,7 @@ function slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(
     f_dims = (timesteps=timesteps, species=species, sites=sites, scenarios=scenarios)
 
     s_names = keys(f_dims)
-    d_names = dimnames(data)
+    d_names = NamedDims.dimnames(data)
     common_dims = intersect(s_names, d_names)
 
     selected_slice = (; zip(common_dims, [getfield(f_dims, k) for k in common_dims])...)
@@ -128,7 +128,7 @@ end
     _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 The Total Absolute Coral Cover.
-Sum of proportional area taken up by all corals, multiplied by site area.
+Sum of proportional area taken up by all corals, multiplied by total site area.
 
 # Arguments
 - X : Matrix of raw model results
@@ -582,6 +582,7 @@ end
 include("temporal.jl")
 include("site_level.jl")
 include("scenario.jl")
+include("ranks.jl")
 
 
 # Wrap base metric functions with dimension metadata

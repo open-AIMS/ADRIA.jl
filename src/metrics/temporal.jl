@@ -7,14 +7,21 @@ import Interpolations: GriddedInterpolation
 
 
 function summarize_trajectory(data::NamedDimsArray)::Dict{Symbol, AbstractArray{<:Real}}
+    squash = nothing
     if :sites in dimnames(data)
         squash = (:scenarios, :sites)
-    else
+    elseif :scenarios in dimnames(data) && (size(data, :scenarios) > 1)
         squash = (:scenarios, )
     end
 
-    summarized::Dict{Symbol, AbstractArray{<:Real}} = Dict(Symbol(f) => collect(dropdims(f(data, dims=squash), dims=squash))
-                                                           for f in [mean, median, std, minimum, maximum])
+    if !isnothing(squash)
+        summarized::Dict{Symbol, AbstractArray{<:Real}} = Dict(Symbol(f) => collect(dropdims(f(data, dims=squash), dims=squash))
+                                                            for f in [mean, median, std, minimum, maximum])
+    else
+        # Only a single scenario so don't bother doing anything
+        summarized = Dict(Symbol(f) => data for f in [mean, median, minimum, maximum])
+        summarized[:std] = repeat([0.0], length(data))
+    end
 
     # Calculate quantiles (doesn't support `dims` so have to loop directly)
     q_series::Array{Float32} = fill(0.0, size(data, 1), 8)
@@ -127,6 +134,22 @@ function summarize_absolute_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbo
     sv_sliced = slice_results(rs.outcomes[:absolute_shelter_volume]; kwargs...)
     return summarize_trajectory(sv_sliced)
 end
+
+
+"""
+    summarize_relative_shelter_volume(sv::AbstractArray{<:Real}, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+    summarize_relative_shelter_volume(rs::ResultSet, kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+
+Calculate summarized coral evenness.
+"""
+function summarize_relative_shelter_volume(sv::NamedDimsArray; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
+    return summarize_trajectory(slice_results(sv; kwargs...))
+end
+function summarize_relative_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
+    sv_sliced = slice_results(rs.outcomes[:relative_shelter_volume]; kwargs...)
+    return summarize_trajectory(sv_sliced)
+end
+
 
 
 function summarize_trajectories(rs, ts_name; kwargs...)
