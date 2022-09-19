@@ -118,6 +118,8 @@ end
 """
         top_N_sites(rs::ResultSet; N::Int64; metric::relative_cover)
 
+Return the top `N` sites according to the provided metric (defaulting to `relative_cover`).
+
 # Arguments
 - rs : ResultSet
 - N : No. of best performing sites to be selected
@@ -129,7 +131,8 @@ NamedDimsArray[:scenarios,:site_order]
 
 # Example
 ```julia
-ADRIA.metrics.best_N_sites(rs,5)
+ADRIA.metrics.top_N_sites(rs, 5)
+ADRIA.metrics.top_N_sites(rs, 5; metric=ADRIA.metric.relative_cover)
 ```
 """
 function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover)
@@ -143,6 +146,6 @@ function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover)
         top_N_sites[scen,:] = inds[1:N]
     end
 
-    return NamedDimsArray(top_N_sites, (:scenarios,:site_order))
+    return NamedDimsArray(top_N_sites, (:scenarios, :site_order))
 end
 
