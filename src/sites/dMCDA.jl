@@ -314,7 +314,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
 
-    # work out which priority predecssors are connected to priority sites
+    # work out which priority predecessors are connected to priority sites
     predec::Array{Float64} = zeros(nsites, 3)
     predec[:, 1:2] .= strongpred
     predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
