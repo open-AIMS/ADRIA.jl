@@ -28,20 +28,20 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
 end
 
 """
-    vector_normalize(x::Vector)::Vector
+    mcda_normalize(x::Vector)::Vector
 
 Normalize a Vector (wse/wsh) for MCDA.
 """
-function vector_normalize(x::Vector)::Vector
+function mcda_normalize(x::Vector)::Vector
     return x ./ sum(x)
 end
 
 """
-    matrix_normalize(x::Matrix)::Matrix
+    mcda_normalize(x::Matrix)::Matrix
 
 Normalize a Matrix (SE/SH) for MCDA.
 """
-function matrix_normalize(x::Matrix)::Matrix
+function mcda_normalize(x::Matrix)::Matrix
     return x ./ sqrt.(sum(x .^ 2, dims=1))
 end
 
@@ -83,7 +83,7 @@ function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vecto
     S = S[:, Bool[1, selector...]]
 
     # Skip first column as this holds site index ids
-    S[:, 2:end] = matrix_normalize(S[:, 2:end])
+    S[:, 2:end] = mcda_normalize(S[:, 2:end])
     S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
     s_order = mcda_func(S)
 
@@ -209,7 +209,7 @@ function create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat,
     SE = copy(A)
 
     wse = [inconn_seed, outconn_seed, waves, heat, predec, low_cover]
-    wse .= vector_normalize(wse)
+    wse .= mcda_normalize(wse)
 
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
@@ -257,7 +257,7 @@ function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, high_
     SH = copy(A)
 
     wsh = [conn_shade, conn_shade, waves, heat, predec, high_cover]
-    wsh .= vector_normalize(wsh)
+    wsh .= mcda_normalize(wsh)
 
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
     SH[:, 7] = (max_area .- A[:, 7]) # total area of coral cover
