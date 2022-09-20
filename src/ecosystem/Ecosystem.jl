@@ -315,8 +315,8 @@ function coral_spec()::NamedTuple
     # Second, growth as transitions of cover to higher bins is estimated as
     colony_area_m² = colony_area_lower_cm² ./ 10^4
 
-    # growth rate in m²
-    params.growth_rate = vec((prop_change_cm² ./ 10^4) .* (colony_area_m²'[:] ./ colony_area_upper_m²'[:]))
+    # rate of growth per year
+    params.growth_rate = vec((prop_change_per_year) .* (colony_area_m²'[:] ./ colony_area_upper_m²'[:]))
 
     # note that we use proportion of bin widths and linear extension to estimate
     # number of corals changing size class, but we use the bin means to estimate
