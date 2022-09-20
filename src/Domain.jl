@@ -287,8 +287,13 @@ end
 Extract parameters for a specific model component
 """
 function component_params(m::Model, component::Type)::DataFrame
-    df::DataFrame = DataFrame(m)
-    return df[df.component.==component, :]
+    return component_params(model_spec(m), component)
+end
+function component_params(spec::DataFrame, component::Type)::DataFrame
+    return spec[spec.component .== replace.(string(component), "ADRIA."=>""), :]
+end
+function component_params(spec::DataFrame, components::Array{Type})::DataFrame
+    return spec[spec.component .∈ replace.(string.(components), "ADRIA."=>""), :]
 end
 
 
