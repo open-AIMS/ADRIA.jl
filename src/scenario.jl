@@ -271,7 +271,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     total_site_area::Array{Float64,2} = cache.site_area
 
-    fec_params_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
+    fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
     TP_data = cache.TP_data
@@ -453,7 +453,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
 
         # Calculates scope for coral fedundity for each size class and at each site.
-        fecundity_scope!(fec_scope, fec_all, fec_params_m², Y_pstep, total_site_area)
+        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, total_site_area)
 
         site_coral_cover = sum(Y_pstep, dims=1)  # dims: nsites * 1
         absolute_site_coral_cover = site_coral_cover .* total_site_area  # in m²
