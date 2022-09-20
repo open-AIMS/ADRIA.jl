@@ -219,8 +219,8 @@ function run_scenario(param_df::DataFrameRow, domain::Domain)::NamedTuple
     cache = setup_cache(domain)
     return run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
         domain.coral_growth.ode_p,
-        Matrix{Float64}(domain.dhw_scens[1:tf, :, dhw_rep_id]),
-        Matrix{Float64}(domain.wave_scens[1:tf, :, wave_rep_id]), cache)
+        Matrix{Float64}(domain.dhw_scens[:, :, dhw_rep_id]),
+        Matrix{Float64}(domain.wave_scens[:, :, wave_rep_id]), cache)
 end
 
 """
@@ -271,7 +271,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     total_site_area::Array{Float64,2} = cache.site_area
 
-    fec_params::Vector{Float64} = corals.fecundity
+    fec_params_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
     TP_data = cache.TP_data
@@ -390,9 +390,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             domain.strongpred,
             domain.in_conn,
             domain.out_conn,
-            zeros(n_species, n_sites),  # dam prob
-            dhw_scen[1, :],  # heatstressprob
-            Y_cover[1, :, :],  # sumcover
+            zeros(n_species, n_sites),  # wave stress
+            dhw_scen[1, :],  # heat stress
+            sum(Y_cover[1, :, :], dims=1),  # sum coral cover
             max_cover,
             total_site_area,
             min_area,
@@ -453,7 +453,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
 
         # Calculates scope for coral fedundity for each size class and at each site.
-        fecundity_scope!(fec_scope, fec_all, fec_params, Y_pstep, total_site_area)
+        fecundity_scope!(fec_scope, fec_all, fec_params_m², Y_pstep, total_site_area)
 
         site_coral_cover = sum(Y_pstep, dims=1)  # dims: nsites * 1
         absolute_site_coral_cover = site_coral_cover .* total_site_area  # in m²
@@ -477,7 +477,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         if is_guided && in_seed_years
-
             mcda_vars.sumcover .= site_coral_cover
             (prefseedsites, prefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],

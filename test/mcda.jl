@@ -100,3 +100,20 @@ end
 
     @test all(0.0 .<= SH[:, 2:6] .<= 1.0) || "Shading Decision matrix values out of bounds"
 end
+
+@testset "MCDA normalisation" begin
+    # randomised weights
+    w = vec(rand(Uniform(0,1),7))
+
+    # randomised decision matrix
+    A = zeros(5,7)
+    A[:,1] = [1.0, 2.0, 3.0, 4.0, 5.0]
+    A[:,2:6] = rand(Uniform(0,1),(5,5))
+    A[:,7] = rand(Uniform(100,1000),(5,1))
+
+    norm_A = mcda_normalize(A[:,2:end])
+    norm_w = mcda_normalize(w)
+
+    @test sqrt.(sum(norm_A.^2, dims = 1)) .== 1.0 || "Decision matrix normalization not giving column sums = 1."
+    @test (sum(norm_w) - 1.0)<=0.001 || "MCDA weights not summing to one."
+end

@@ -76,7 +76,7 @@ Base.@kwdef struct Criteria{P} <: EcoModel
     coral_cover_low::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    coral_cover_tol::P = Param(0.2,ptype="real", bounds=(0.0,1.0), dists="unif") # % of seeded corals area tolerance for low space when seeding
+    coral_cover_tol::P = Param(0.2,ptype="real", bounds=(0.0, 1.0), dists="unif")  # % of seeded corals area tolerance for low space when seeding
     deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif")     # minimum depth
     depth_offset::P = Param(5.0, ptype="real", bounds=(5.0, 6.0), dists="unif")  # offset from minimum depth to indicate maximum depth**
@@ -180,8 +180,8 @@ end
 Generate colony area data based on Bozec et al., [1].
 
 # Returns
-- colony_area_cm2 : upper colony areas in cm^2
-- colony_area_m2_from_ha : lower colony area in m^2
+- colony_area_lower_cm2 : lower colony areas in cm^2
+- colony_area_upper_m2 : upper colony area in m^2
 
 
 # References
@@ -271,30 +271,26 @@ function coral_spec()::NamedTuple
         "large_massives"
         ];
 
-    tn = repeat(taxa_names, 6, 1)
-
-    size_cm = Float64[2; 5; 10; 20; 40; 80]
-
     # total number of "species" modelled in the current version.
-    nclasses::Int64 = length(size_cm);
-    nspecies::Int64 = length(taxa_names) * nclasses;
+    n_classes::Int64 = 6;
+    n_species::Int64 = length(taxa_names) * n_classes;
+
+    tn = repeat(taxa_names, n_classes, 1)
 
     # Create combinations of taxa names and size classes
     params.name = human_readable_name(tn, true);
-    params.taxa_id = repeat(1:nclasses, inner=nclasses);
+    params.taxa_id = repeat(1:n_classes, inner=n_classes);
 
-    params.class_id = repeat(1:nclasses, nclasses);
-    params.size_cm = repeat(size_cm, nclasses);
-
+    params.class_id = repeat(1:n_classes, n_classes);
     params.coral_id = String["$(x[1])_$(x[2])_$(x[3])" for x in zip(tn, params.taxa_id, params.class_id)]
 
     # Ecological parameters
     # To be more consistent with parameters in ReefMod, IPMF and RRAP
     # interventions, we express coral abundance as colony numbers in different
-    # size classes and growth rates as linear extention (in cm per year).
+    # size classes and growth rates as linear extension (in cm per year).
 
     colony_area_lower_cm², colony_area_upper_m² = colony_areas()
-    params.colony_area_cm2 = reshape(colony_area_lower_cm²', nspecies)
+    params.colony_area_cm2 = reshape(colony_area_lower_cm²', n_species)[:]
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 Table S2)
     # we assume similar growth rates for enhanced and unenhanced corals
@@ -312,7 +308,7 @@ function coral_spec()::NamedTuple
     # given linear extensions. This is based on the simple assumption that
     # coral sizes are evenly distributed within each bin
     bin_widths = Float64[2, 3, 5, 10, 20, 40];  # cm^2
-    diam_bin_widths = repeat(bin_widths, nclasses, 1)
+    diam_bin_widths = repeat(bin_widths, n_classes, 1)
     prop_change_cm² = @views linear_extension'[:] ./ diam_bin_widths
 
     # Second, growth as transitions of cover to higher bins is estimated as
@@ -360,11 +356,6 @@ function coral_spec()::NamedTuple
 
     params.mb_rate = mb'[:];
 
-    # Background rates of natural adaptation. User-defined natad rates will be
-    # added to these
-    # natad = zeros(36);
-    # params.n_adapt = natad;
-
     # Estimated bleaching resistance (as DHW) relative to the assemblage
     # response for 2016 bleaching on the GBR (based on Hughes et al. 2018).
     bleach_resist = Float64[
@@ -378,7 +369,7 @@ function coral_spec()::NamedTuple
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list
-    param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "size_cm", "coral_id"])
+    param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "coral_id"])
 
     return (taxa_names=taxa_names, param_names=param_names, params=params)
 end
