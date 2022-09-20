@@ -271,8 +271,6 @@ function coral_spec()::NamedTuple
         "large_massives"
         ];
 
-    size_cm = Float64[2; 5; 10; 20; 40; 80]
-
     # total number of "species" modelled in the current version.
     n_classes::Int64 = 6;
     n_species::Int64 = length(taxa_names) * n_classes;
@@ -376,7 +374,7 @@ function coral_spec()::NamedTuple
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list
-    param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "size_cm", "coral_id"])
+    param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "coral_id"])
 
     return (taxa_names=taxa_names, param_names=param_names, params=params)
 end
