@@ -193,20 +193,9 @@ Get model specification as DataFrame with lower and upper bounds.
 If a filepath is provided, writes the specification out to file with ADRIA metadata.
 """
 function model_spec(d::Domain)::DataFrame
-    spec = DataFrame(d.model)
-    bnds = spec[:, :bounds]
-    spec[:, :lower_bound] = [x[1] for x in bnds]
-    spec[:, :upper_bound] = [x[2] for x in bnds]
-    spec[:, :full_bounds] = bnds
-    spec[!, :component] = replace.(string.(spec[:, :component]), "ADRIA."=>"")
-    spec[:, :is_constant] = spec[:, :lower_bound] .== spec[:, :upper_bound]
-
-    select!(spec, Not(:bounds))
-
-    return spec
+    return model_spec(d.model)
 end
 function model_spec(d::Domain, filepath::String)::Nothing
-
     version = PkgVersion.Version(@__MODULE__)
     vers_id = "v$(version)"
 
@@ -217,6 +206,19 @@ function model_spec(d::Domain, filepath::String)::Nothing
     model_spec(d) |> CSV.write(filepath, writeheader=true, append=true)
 
     return
+end
+function model_spec(m::Model)
+    spec = DataFrame(m)
+    bnds = spec[:, :bounds]
+    spec[:, :lower_bound] = [x[1] for x in bnds]
+    spec[:, :upper_bound] = [x[2] for x in bnds]
+    spec[:, :full_bounds] = bnds
+    spec[!, :component] = replace.(string.(spec[:, :component]), "ADRIA."=>"")
+    spec[:, :is_constant] = spec[:, :lower_bound] .== spec[:, :upper_bound]
+
+    select!(spec, Not(:bounds))
+
+    return spec
 end
 
 
