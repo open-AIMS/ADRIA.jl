@@ -356,11 +356,6 @@ function coral_spec()::NamedTuple
 
     params.mb_rate = mb'[:];
 
-    # Background rates of natural adaptation. User-defined natad rates will be
-    # added to these
-    # natad = zeros(36);
-    # params.n_adapt = natad;
-
     # Estimated bleaching resistance (as DHW) relative to the assemblage
     # response for 2016 bleaching on the GBR (based on Hughes et al. 2018).
     bleach_resist = Float64[
