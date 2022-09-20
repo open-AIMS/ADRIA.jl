@@ -270,7 +270,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     ### END TODO
 
     total_site_area::Array{Float64,2} = cache.site_area
-
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
