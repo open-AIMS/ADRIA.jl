@@ -228,24 +228,32 @@ end
 Update given domain with new parameter values.
 Maps sampled continuous values to discrete values for categorical variables.
 """
-function update_params!(d::Domain, params::DataFrameRow)
-    p_df = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
+function update_params!(d::Domain, params::DataFrameRow)::Nothing
+    p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
 
+    # @info "Vals" size(p_df) size(params) size(params[Not(:RCP)])
     try
         p_df[!, :val] .= collect(params[Not("RCP")])
     catch err
-        error("Error occurred loading scenario samples.")
+        if isa(err, ArgumentError)
+            if !occursin("RCP", "$err")
+                error("Error occurred loading scenario samples.")
+            else
+                p_df[!, :val] .= collect(params)
+            end
+        end
     end
 
     to_floor = (p_df.ptype .== "integer")
     if any(to_floor)
         v = p_df[to_floor, :val]
-
         p_df[to_floor, :val] .= map_to_discrete.(v, getindex.(p_df[to_floor, :bounds], 2))
     end
 
     # Update with new parameters
     update!(d.model, p_df)
+
+    return nothing
 end
 
 

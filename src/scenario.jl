@@ -85,11 +85,13 @@ end
 
 
 """
-    run_scenarios(scen::Tuple{Int, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple, metrics=[])
+    run_scenarios(scen::Tuple{Int, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)
+    run_scenario(scen::Tuple{Int, DataFrameRow}, domain::Domain, data_store::NamedTuple)
 
 Run individual scenarios for a given domain.
 
 Stores results on disk in Zarr format at pre-configured location.
+Sets up a new `cache` if not provided.
 
 # Notes
 Logs of site ranks only store the mean site rankings over all environmental scenarios.
@@ -198,29 +200,31 @@ end
 
 
 """
-    run_scenario(param_df, domain)
+    run_scenario(param_row::DataFrameRow, domain::Domain)::NamedTuple
+    run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
 
 Run a single scenario and return results.
 """
-function run_scenario(param_df::DataFrameRow, domain::Domain)::NamedTuple
-    has_setup()
-
-    # Update model with values in given DF row
-    update_params!(domain, param_df)
-
-    param_set = NamedTuple{domain.model[:fieldname]}(domain.model[:val])
+function run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
 
     # Expand coral model to include its specifications across all taxa/species/groups
     coral_params = to_spec(component_params(domain.model, Coral))
 
-    dhw_rep_id = param_df.dhw_scenario
-    wave_rep_id = param_df.wave_scenario
+    dhw_rep_id = param_set.dhw_scenario
+    wave_rep_id = param_set.wave_scenario
 
     cache = setup_cache(domain)
     return run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
         domain.coral_growth.ode_p,
         Matrix{Float64}(domain.dhw_scens[:, :, dhw_rep_id]),
         Matrix{Float64}(domain.wave_scens[:, :, wave_rep_id]), cache)
+end
+function run_scenario(param_row::DataFrameRow, domain::Domain)::NamedTuple
+    # Update model with values in given DF row
+    update_params!(domain, param_row)
+    param_set = NamedTuple{domain.model[:fieldname]}(domain.model[:val])
+
+    return run_scenario(param_set, domain)
 end
 
 """
