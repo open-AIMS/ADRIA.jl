@@ -292,9 +292,9 @@ function coral_spec()::NamedTuple
     colony_area_lower_cm², colony_area_upper_m² = colony_areas()
     params.colony_area_cm2 = reshape(colony_area_lower_cm²', n_species)[:]
 
-    ## Coral growth rates as linear extensions (Bozec et al 2021 Table S2)
+    ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
     # we assume similar growth rates for enhanced and unenhanced corals
-    # all values in cm²
+    # all values in cm/year
     linear_extension =
        Float64[1 3 3 4.4 4.4 4.4;  # Tabular Acropora Enhanced
         1 3 3 4.4 4.4 4.4;   # Tabular Acropora Unenhanced
@@ -307,15 +307,16 @@ function coral_spec()::NamedTuple
     # First calculate what proportion of coral numbers that change size class
     # given linear extensions. This is based on the simple assumption that
     # coral sizes are evenly distributed within each bin
-    bin_widths = Float64[2, 3, 5, 10, 20, 40];  # cm^2
+
+    bin_widths = Float64[2, 3, 5, 10, 20, 40];
     diam_bin_widths = repeat(bin_widths, n_classes, 1)
-    prop_change_cm² = @views linear_extension'[:] ./ diam_bin_widths
+    prop_change_per_year = linear_extension'[:] ./ diam_bin_widths
 
     # Second, growth as transitions of cover to higher bins is estimated as
     colony_area_m² = colony_area_lower_cm² ./ 10^4
 
-    # growth rate in m²
-    params.growth_rate = vec((prop_change_cm² ./ 10^4) .* (colony_area_m²'[:] ./ colony_area_upper_m²'[:]))
+    # rate of growth per year
+    params.growth_rate = vec((prop_change_per_year) .* (colony_area_m²'[:] ./ colony_area_upper_m²'[:]))
 
     # note that we use proportion of bin widths and linear extension to estimate
     # number of corals changing size class, but we use the bin means to estimate
@@ -323,12 +324,15 @@ function coral_spec()::NamedTuple
     # over the year (used in 'growthODE4()').
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
-    fec_par_a = Float64[1.02; 1.02; 1.69; 1.69; 0.86; 0.86]; # fecundity parameter a
-    fec_par_b = Float64[1.28; 1.28; 1.05; 1.05; 1.21; 1.21]; # fecundity parameter b
+    fec_par_a = Float64[1.02; 1.02; 1.69; 1.69; 0.86; 0.86];  # fecundity parameter a
+    fec_par_b = Float64[1.28; 1.28; 1.05; 1.05; 1.21; 1.21];  # fecundity parameter b
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
     fec = exp.(fec_par_a .+ fec_par_b .* log.(colony_area_upper_m² * 10^4))
+
+    # Smallest size class do not reproduce
+    fec[:, 1] .= 0.0
 
     # then convert to number of larvae produced per m2
     fec_m² = fec ./ colony_area_upper_m²;  # convert from per colony area to per m2
