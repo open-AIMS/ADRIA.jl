@@ -25,6 +25,23 @@ function julia_main()::Cint
         return 0
     end
 
+    if "run" in ARGS
+        domain_loc = ARGS[2]
+        rcp_id = ARGS[3]
+        input_set = ARGS[4]
+
+        # Run for specified RCP (TODO: Run for all...)
+        # Needs another run_scenario() to suppor this
+        # using combine_results()
+        dom = ADRIA.load_domain(domain_loc, rcp_id)
+        p_df = ADRIA.load_scenarios(dom, input_set)
+
+        dom = ADRIA.run_scenarios(p_df, dom)
+        rs = ADRIA.load_results(dom)
+        gui_analysis(rs)
+        return 0
+    end
+
     main_menu()
 
     return 0
