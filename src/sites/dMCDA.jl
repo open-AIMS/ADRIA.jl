@@ -293,6 +293,14 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     rankingsin::Matrix{Int64})::Tuple
 
     site_ids::Array{Int64} = d_vars.site_ids
+
+    # Force different sites to be selected
+    alt_site_ids = setdiff(site_ids, prefseedsites)
+    mod_n_ranks = min(size(rankingsin, 1), length(alt_site_ids))
+    if mod_n_ranks < length(alt_site_ids)
+        rankingsin = rankingsin[1:mod_n_ranks, :]
+    end
+
     nsites::Int64 = length(site_ids)
     nsiteint::Int64 = d_vars.nsiteint
     prioritysites::Array{Int64} = d_vars.prioritysites[in.(d_vars.prioritysites, [site_ids])]
