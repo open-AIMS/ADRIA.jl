@@ -14,6 +14,7 @@ using PkgVersion
 
 using ProgressMeter
 
+using SnoopPrecompile, RelocatableFolders
 
 include("utils/text_display.jl")  # need better name for this file
 include("utils/setup.jl")
@@ -57,49 +58,28 @@ export Domain, metrics, select, timesteps
 # metric helper methods
 export dims, ndims
 
-
-if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the package
-    precompile(load_results, (String, ))
-    precompile(load_domain, (String, Int64))
-    precompile(Domain, (String, Int64, String, String, String, String, String, String, String))
-    precompile(EnvLayer, (String, String, String, String, String, String, String))
-end
-
-
 # List out compatible domain datapackages
 const COMPAT_DPKG = ["v0.2", "v0.2.1"]
 
+@precompile_all_calls begin
+    ex_dir = @path joinpath(@__DIR__, "../examples")
 
-# Precompile as the final step of the module definition:
-# if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the package
-#     precompile(load_domain, (String, Int64))
-#     precompile(Domain, (String, Int64, String, String, String, String, String, String, String))
-#     precompile(EnvLayer, (String, String, String, String, String, String, String))
+    f() = begin 
+        @showprogress 1 for _ in 1:10
+        end
+    end
+    b = redirect_stdout(f, devnull);
 
-#     precompile(Domain, (String, Int, EnvLayer, DataFrame, Vector{Float64}, Vector{Int64}, DataFrame, String, String, NamedMatrix, CoralGrowth,
-#         Vector{String}, Vector{String}, NamedArray, NamedArray))
+    ex_domain = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), 45)
+    p_df = ADRIA.load_scenarios(ex_domain, joinpath(ex_dir, "example_scenarios.csv"))
 
-#     # let
-#     #     here = @__DIR__
-#     #     ex_dir = joinpath(here, "../examples")
-#     #     @debug "Pre-running examples to reduce future spin-up time"
+    ENV["ADRIA_THRESHOLD"] = 1e-6
+    run_scenario(p_df[1, :], ex_domain)
+    run_scenario(p_df[end, :], ex_domain)
+    delete!(ENV, "ADRIA_THRESHOLD")
 
-#     #     f() = begin 
-#     #         @showprogress 1 for _ in 1:10
-#     #         end
-#     #     end
-#     #     b = redirect_stdout(f, devnull);
-
-#     #     ex_domain = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), 45)
-#     #     p_df = ADRIA.load_scenarios(ex_domain, joinpath(ex_dir, "example_scenarios.csv"))
-
-#     #     ENV["ADRIA_THRESHOLD"] = 1e-6
-#     #     ex_domain.sim_constants.tf = 3
-#     #     ds = (raw=nothing, site_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
-#     #     run_scenario((1, p_df[1, :]), ex_domain, 1, ds)
-#     #     run_scenario((1, p_df[end, :]), ex_domain, 1, ds)
-#     #     delete!(ENV, "ADRIA_THRESHOLD")
-#     # end
-# end
+    precompile(load_results, (String, ))
+    precompile(EnvLayer, (String, String, String, String, String, String, String))
+end
 
 end
