@@ -157,8 +157,12 @@ function connectivity_strength(TP_base::DataFrame)::NamedTuple
     # ew_base = weights(g)  # commented out ew_base are all equally weighted anyway...
 
     # Measure centrality based on number of incoming connections
-    C1 = indegree_centrality(g)
-    C2 = outdegree_centrality(g)
+    # C1 = indegree_centrality(g)
+    # C2 = outdegree_centrality(g)
+    C1 = betweenness_centrality(g)
+    C2 = 1.0 .- katz_centrality(g)
+
+    # strongpred = closeness_centrality(g)
 
     # For each edge, find strongly connected predecessor (by number of connections)
     strongpred = zeros(Int64, size(C1)...)
