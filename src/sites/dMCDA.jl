@@ -1,6 +1,7 @@
 """Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
 
 using StatsBase
+using Infiltrator
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
@@ -153,7 +154,7 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
 
     # risk from heat exposure
     A[:, 5] .= maximum(heat_stress) != 0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : heat_stress
-
+    @infiltrate
     # priority predecessors
     A[:, 6] .= predec[:, 3]
 
@@ -172,7 +173,7 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     filtered = vec(.!any(isnan.(A), dims=2))
     # remove rows with NaNs
     A = A[filtered, :]
-
+    @infiltrate
     return A, filtered
 end
 
@@ -223,7 +224,7 @@ function create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat,
     # coral real estate as total area, sites with =<20% of area to be seeded available filtered out
     SE[vec(A[:, 8] .<= min_area), 8] .= NaN
     SE = SE[vec(.!any(isnan.(SE), dims=2)), :]
-
+    @infiltrate
     return SE, wse
 end
 
@@ -345,18 +346,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     predec[predprior, 3] .= 1.0
 
-    # for zones, find strongest predecessors
-    zone_ids = unique(zones)
-    zone_preds = zeros(nsites, 1)
-
-    for k in axes(zone_ids, 1)
-         zone_preds_temp = strongpred[zones.==k]
-         for s in zone_preds_temp
-             zone_preds[site_ids.==s] .= zone_preds[site_ids.==s].+1
-         end
-    end
-
-    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zone_preds, risk_tol)
+    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return prefseedsites, prefshadesites, rankings
