@@ -41,12 +41,12 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     sXr = @view p.sXr[:, :]
     X_mb = @view p.X_mb[:, :]
     sX_sel_en = @view p.sX_sel_en[:, :]
-    X_tab = @view p.X_tab[:, :]
+    M_sm = @view p.M_sm[:, :]
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb    # current cover * background mortality
 
     @views @. sX_sel_en = s * X[p.sel_en, :]
-    @views @. X_tab = (p.mb[26] + p.comp * (X[6, :] + X[12, :])')
+    @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :] + X[12, :])')
 
     r_comp = @views p.r[p.sel_en] .+ (p.comp .* sum(X[p.small_massives, :]))
 
@@ -55,7 +55,7 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
 
     @views @. du[p.encrusting, :] = p.rec[p.enc, :] - sXr[p.encrusting, :] - X_mb[p.encrusting, :]
 
-    @views @. du[p.small_massives, :] = sXr[p.small_massives - 1, :] - sXr[p.small_massives, :] - X[p.small_massives, :] * X_tab
+    @views @. du[p.small_massives, :] = sXr[p.small_massives - 1, :] - sXr[p.small_massives, :] - M_sm
 
     @views @. du[p.small, :] = p.rec[p.small_r, :] - sXr[p.small, :] - X_mb[p.small, :]
     @views @. du[p.mid, :] = sXr[p.mid - 1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
@@ -125,7 +125,7 @@ function slow_ODE(Y, X, p, t)
 
     # Small massives and encrusting Unenhanced
     Y[25, :] = k_rec[5, :] - k .* X[25, :] .* r[25] - X_mb[25,:];
-    Y[26:28, :] = k_X_r[25:27, :] - k_X_r[26:28, :] - X[26:28, :] .* (mb[26] + comp .* X_tabular);
+    Y[26:28, :] = k_X_r[25:27, :] - k_X_r[26:28, :] - X[26:28, :] .* (mb[26:28] + comp .* X_tabular);
 
     # Small size classes
     Y[[1,7,19,31], :] = k_rec[[1,2,4,6], :] - k_X_r[[1,7,19,31], :] - X_mb[[1,7,19,31], :];
