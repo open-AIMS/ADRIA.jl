@@ -38,6 +38,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
             k::Vector{Float64},   # max carrying capacity
             mb::Matrix{Float64},  # background mortality
             comp::Float64,        # competition between small and large 
+            r_comp::Matrix{Float64},  # tmp store for competition between tab and small massives
             small_massives::StaticArrays.SVector{3, Int64},  # index locations for small massives
             small::StaticArrays.SVector{4, Int64},           # indices for small size classes
             mid::StaticArrays.SVector{19, Int64},            # indices for mid-size corals
@@ -50,18 +51,22 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
             rec::Matrix{Float64},                            # recruitment values
             sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
             sX_sel_en::Matrix{Float64},                      # cache store for k * X_{sel_en}, where `k` relates to available space (not max carrying capacity)
-            X_tab::Matrix{Float64},                          # Coral cover of tabular corals
+            M_sm::Matrix{Float64},                           # Coral cover of tabular corals
             sXr::Matrix{Float64},                            # k * X * r
             X_mb::Matrix{Float64},                           # X * mb
             cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
-        zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1), 0.3,
+        # r, k, mb, comp, r_comp
+        zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1), 0.3, zeros(2, n_sites),
+
 
         # cached indices
         small_massives, small, mid, large,
         sel_en, sel_unen, encrusting, small_r, enc,
 
         # cache matrices
-        zeros(n_groups, n_sites), zeros(1, n_sites), zeros(2, n_sites), zeros(1, n_sites),
+        # rec, sigma, sX_sel_en, M_sm, 
+        # sXr, X_mb, cover
+        zeros(n_groups, n_sites), zeros(1, n_sites), zeros(2, n_sites), zeros(3, n_sites),
         zeros(n_species, n_sites), zeros(n_species, n_sites), zeros(n_sites)
     ))
 
