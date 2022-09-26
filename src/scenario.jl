@@ -366,7 +366,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # calculate total area to seed
         area_to_seed = (col_area_seed_TA.*n_TA_to_seed)+(col_area_seed_CA.*n_CA_to_seed)
-        min_area = covertol*area_to_seed
+        min_area = covertol * area_to_seed
 
         # Filter out sites outside of desired depth range
         if .!all(site_data.depth_med .== 0)
@@ -466,7 +466,11 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # Recruitment should represent additional cover, relative to total site area
         # Gets used in ODE
-        p.rec[:, :] .= area_settled ./ total_site_area
+        # p.rec[:, :] .= (area_settled ./ total_site_area)
+        tmp = (area_settled ./ absolute_k_area')
+        tmp[isnan.(tmp)] .= 0.0
+        tmp[isinf.(tmp)] .= 0.0
+        p.rec[:, :] .= tmp
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
@@ -541,13 +545,24 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
-        growth.u0[:, :] .= Y_pstep[:, :] .* prop_loss[:, :]  # update initial condition
+        
+        tmp = ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area'
+        tmp[isnan.(tmp)] .= 0.0
+        tmp[isinf.(tmp)] .= 0.0
+        growth.u0[:, :] .= tmp
+        # growth.u0[:, :] .= Y_pstep[:, :] .* prop_loss[:, :]
+        
+        #   # update initial condition
+        # growthODE_expanded
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=[:nonstiff], abstol=1e-9, reltol=1e-8)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
+        # Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
         # Y_cover[tstep, :, :] .= sol.u[end]
+
+        Y_cover[tstep, :, :] .= (sol.u[end] .* absolute_k_area') ./ total_site_area
+        
     end
 
     # Avoid placing importance on sites that were not considered
