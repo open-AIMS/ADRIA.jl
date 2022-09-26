@@ -45,7 +45,7 @@ Base.@kwdef mutable struct SimConstants
     LPdhwcoeff = 0.4;  # shape parameters relating dhw affecting cover to larval production
     LPDprm2 = 5;  # parameter offsetting LPD curve
 
-    # competition: probability that large tabular Acropora overtop small massives
+    # competition: probability that large Tabular Acropora overtop small massives
     comp = 0.3;
 
     # Bleaching sensitivity of each coral group
@@ -67,7 +67,7 @@ Base.@kwdef mutable struct SimConstants
     max_settler_density = [2.5, 2.5, 2.5, 2.5, 1.5, 1.5]
     # density_ratio_of_settlers_to_larvae = 1 / 2000  # Bozec et al. 2021
 
-    # Based on median value between smallest size class bin values (1cm and 3.5cm = 2.25cm diameter)
+    # Value of smallest size class (1cm diameter)
     # Resulting value is in m², see definition in Ecosystem.jl::colony_areas()
-    basal_area_per_settler = pi * ((2.25 / 100.0)^2)
+    basal_area_per_settler = pi * ((1.0 / 2 / 100.0)^2)
 end
