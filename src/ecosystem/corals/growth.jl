@@ -4,6 +4,9 @@
 using Distributions
 
 
+include("growth_expanded.jl")
+
+
 """
     proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
 
@@ -37,19 +40,29 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     s = @view p.sigma[:, :]
     s .= max.(p.k' .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
 
+    # p.small_massives = [26, 27, 28]
+    # p.small_r = [1, 2, 4, 6]
+    # p.small = [1, 7, 19, 31]
+    # p.mid = [2:4; 8:10; 14:17; 20:23; 29; 32:35]
+    # p.large = [18, 24, 30, 36]
+    # p.enc = [3, 5]
+    # p.encrusting = [13, 25]
+    # p.sel_en = [5, 11]
+    # p.sel_unen = [6, 12]
+
     # Use temporary caches
     sXr = @view p.sXr[:, :]
     X_mb = @view p.X_mb[:, :]
     sX_sel_en = @view p.sX_sel_en[:, :]
     M_sm = @view p.M_sm[:, :]
+    r_comp = @view p.r_comp[:, :]
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb    # current cover * background mortality
 
     @views @. sX_sel_en = s * X[p.sel_en, :]
     @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :] + X[12, :])')
 
-    r_comp = @views p.r[p.sel_en] .+ (p.comp .* sum(X[p.small_massives, :]))
-
+    r_comp .= p.r[p.sel_en] .+ (p.comp .* sum(X[p.small_massives, :], dims=1))
     @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sX_sel_en * r_comp - X_mb[p.sel_en, :]
     @views @. du[p.sel_unen, :] = sX_sel_en * r_comp + sXr[p.sel_unen, :] - X_mb[p.sel_unen, :]
 
@@ -57,7 +70,7 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
 
     @views @. du[p.small_massives, :] = sXr[p.small_massives - 1, :] - sXr[p.small_massives, :] - M_sm
 
-    @views @. du[p.small, :] = p.rec[p.small_r, :] - sXr[p.small, :] - X_mb[p.small, :]
+    @views @. du[p.small, :] = (s * p.rec[p.small_r, :]) - sXr[p.small, :] - X_mb[p.small, :]
     @views @. du[p.mid, :] = sXr[p.mid - 1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
     @views @. du[p.large, :] = sXr[p.large - 1 , :] + sXr[p.large, :] - X_mb[p.large, :]
 
