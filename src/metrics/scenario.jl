@@ -10,7 +10,7 @@ TODO: Produce summary stats. Currently returns just the mean.
 """
     scenario_total_cover(rs::ResultSet; kwargs...)
 
-Calculate the cluster-wide total absolute coral cover for each individual scenario.
+Calculate the cluster-wide total absolute coral cover for each scenario.
 """
 function scenario_total_cover(rs::ResultSet; kwargs...)
     return dropdims(sum(slice_results(total_absolute_cover(rs); kwargs...), dims=:sites), dims=:sites)
@@ -33,7 +33,7 @@ end
 """
     scenario_juveniles(data::NamedDimsArray; kwargs...)
 
-Calculate the cluster-wide juvenile population for each individual scenario.
+Calculate the cluster-wide juvenile population for individual scenarios.
 """
 function scenario_juveniles(data::NamedDimsArray; kwargs...)
     juv = call_metric(juveniles, data; kwargs...)
@@ -48,7 +48,7 @@ end
     scenario_asv(sv::NamedDimsArray; kwargs...)
     scenario_asv(rs::ResultSet; kwargs...)
 
-Calculate the cluster-wide absolute shelter volume for each individual scenario.
+Calculate the cluster-wide absolute shelter volume for each scenario.
 """
 function scenario_asv(sv::NamedDimsArray; kwargs...)
     sv_sliced = slice_results(sv; kwargs...)
@@ -63,7 +63,7 @@ end
     scenario_rsv(sv::NamedDimsArray; kwargs...)
     scenario_rsv(rs::ResultSet; kwargs...)
 
-Calculate the cluster-wide mean relative shelter volumes for each individual scenario.
+Calculate the cluster-wide mean relative shelter volumes for each scenario.
 """
 function scenario_rsv(sv::NamedDimsArray; kwargs...)
     sv_sliced = slice_results(sv; kwargs...)
