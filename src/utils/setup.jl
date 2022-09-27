@@ -1,5 +1,4 @@
 function setup()::Nothing
-    _setup_workers()
     if has_setup()
         return
     end
@@ -21,6 +20,8 @@ function setup()::Nothing
         ENV["ADRIA_DEBUG"] = false
     end
 
+    _setup_workers()
+
     return
 end
 
@@ -30,11 +31,11 @@ function has_setup()
     try
         ENV["ADRIA_OUTPUT_DIR"]
     catch err
-        if isa(err, KeyError)
-            error("Setup has not been run.")
-        else
+        if !isa(err, KeyError)
             rethrow(err)
         end
+
+        return false
     end
 
     return true
