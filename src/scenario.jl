@@ -45,7 +45,9 @@ Run scenarios defined by the parameter table storing results to disk.
 Scenarios are run in parallel where the number of scenarios > 256.
 
 # Notes
-Returned `domain` holds scenario invoke time used as unique result set identifier.
+- Returned `domain` holds scenario invoke time used as unique result set identifier.
+- If multiple RCPs are specified, this method will temporarily use double the disk space
+  to consolidate results into a single ResultSet.
 
 # Examples
 ```julia-repl
