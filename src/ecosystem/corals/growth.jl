@@ -58,6 +58,7 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb    # current cover * background mortality
 
+    rec = min.(p.rec,repeat(s,6))
     @views @. sX_sel_en = s * X[p.sel_en, :]
     @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :]+X[12,:])')
 
@@ -65,11 +66,11 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sX_sel_en * r_comp - X_mb[p.sel_en, :]
     @views @. du[p.sel_unen, :] = sX_sel_en * r_comp + sXr[p.sel_unen, :] - X_mb[p.sel_unen, :]
 
-    @views @. du[p.encrusting, :] = p.rec[p.enc, :] - sXr[p.encrusting, :] - X_mb[p.encrusting, :]
+    @views @. du[p.encrusting, :] = rec[p.enc, :] - sXr[p.encrusting, :] - X_mb[p.encrusting, :]
 
     @views @. du[p.small_massives, :] = sXr[p.small_massives - 1, :] - sXr[p.small_massives, :] - M_sm
 
-    @views @. du[p.small, :] = (s * p.rec[p.small_r, :]) - sXr[p.small, :] - X_mb[p.small, :]
+    @views @. du[p.small, :] = (s * rec[p.small_r, :]) - sXr[p.small, :] - X_mb[p.small, :]
     @views @. du[p.mid, :] = sXr[p.mid - 1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
     @views @. du[p.large, :] = sXr[p.large - 1 , :] + sXr[p.large, :] - X_mb[p.large, :]
 
@@ -391,6 +392,5 @@ function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basa
     λ = recruitment(larval_pool, leftover_space; α=max_density)  # recruits per m^2 per site
 
     # Determine area covered by recruited larvae (settler cover)
-    area_settled = min.(λ .* basal_area_per_settler,repeat(leftover_space,6))
-    return area_settled
+    return λ .* basal_area_per_settler
 end
