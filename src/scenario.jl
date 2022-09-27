@@ -82,13 +82,12 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; paralle
     run_msg = "Running $(nrow(param_df)) scenarios for RCP $RCP"
 
     # Batch run scenarios
+    func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
     if parallel
         @eval @everywhere using ADRIA
 
-        func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
         @showprogress run_msg 4 pmap(func, enumerate(eachrow(param_df)))
     else
-        func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
         @showprogress run_msg 1 map(func, enumerate(eachrow(param_df)))
     end
 
