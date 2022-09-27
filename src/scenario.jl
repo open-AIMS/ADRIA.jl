@@ -116,22 +116,27 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
 
         push!(tmp_result_dirs, result_location(domain))
 
-        msg = run_msg * "for RCP $RCP"
-
         # Batch run scenarios
+        func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
+        msg = run_msg * "for RCP $RCP"
         if parallel
             @eval @everywhere using ADRIA
 
-            func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
             @showprogress msg 4 pmap(func, enumerate(eachrow(param_df)))
         else
-            func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
             @showprogress msg 1 map(func, enumerate(eachrow(param_df)))
         end
     end
 
     ENV["ADRIA_OUTPUT_DIR"] = output_dir
-    return combine_results(tmp_result_dirs)
+    rs = combine_results(tmp_result_dirs)
+
+    # Remove temporary result dirs
+    for t in tmp_result_dirs
+        rm(t; force=true, recursive=true)
+    end
+
+    return rs
 end
 
 
