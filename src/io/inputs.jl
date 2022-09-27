@@ -41,12 +41,13 @@ end
 """
     load_domain(path::String, rcp::Int64)
     load_domain(path::String, rcp::String)
+    load_domain(path::String)
 
 Load domain specification from data package.
 
 # Arguments
 - path : location of data package
-- rcp : RCP scenario to run
+- rcp : RCP scenario to run. If none provided, no data path is set.
 """
 function load_domain(path::String, rcp::String)::Domain
     domain_name::String = basename(path)
@@ -77,14 +78,20 @@ function load_domain(path::String, rcp::String)::Domain
     conn_path::String = joinpath(path, "connectivity/")
     site_data::String = joinpath(path, "site_data")
 
-    dhw::String = joinpath(path, "DHWs", "dhwRCP$(rcp).mat")
-
     site_path::String = joinpath(site_data, "$(domain_name).gpkg")
     init_coral_cov::String = joinpath(site_data, "coral_cover.mat")
-    wave::String = joinpath(path, "waves/wave_RCP$(rcp).mat")
+
+    if !isempty(rcp)
+        dhw::String = joinpath(path, "DHWs", "dhwRCP$(rcp).mat")
+        wave::String = joinpath(path, "waves", "wave_RCP$(rcp).mat")
+    else
+        dhw = ""
+        wave = ""
+    end
 
     return Domain(
         domain_name,
+        path,
         rcp,
         timeframe,
         site_path,
@@ -98,6 +105,9 @@ function load_domain(path::String, rcp::String)::Domain
 end
 function load_domain(path::String, rcp::Int)::Domain
     return load_domain(path, "$rcp")
+end
+function load_domain(path::String)::Domain
+    return load_domain(path, "")
 end
 
 
