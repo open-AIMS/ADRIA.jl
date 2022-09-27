@@ -83,6 +83,7 @@ Convenience constructor for Domain.
 
 # Arguments
 - name : Name of domain
+- dpkg_path : location of data package
 - rcp : RCP scenario represented
 - timeframe : Time steps represented
 - site_data_fn : File name of spatial data used
@@ -93,10 +94,10 @@ Convenience constructor for Domain.
 - dhw_fn : Filename of DHW data cube in use
 - wave_fn : Filename of wave data cube
 """
-function Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
+function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
     conn_path::String, dhw_fn::String, wave_fn::String)::Domain
 
-    env_layer_md::EnvLayer = EnvLayer(site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn, timeframe)
+    env_layer_md::EnvLayer = EnvLayer(dpkg_path, site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn, timeframe)
 
     site_data::DataFrame = DataFrame()
     try
