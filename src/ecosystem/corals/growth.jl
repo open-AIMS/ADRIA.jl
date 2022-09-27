@@ -391,6 +391,6 @@ function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basa
     λ = recruitment(larval_pool, leftover_space; α=max_density)  # recruits per m^2 per site
 
     # Determine area covered by recruited larvae (settler cover)
-    area_settled = minimum(λ .* basal_area_per_settler,repeat(leftoverspace,6))
-    return   area_settled
+    area_settled = minimum(λ .* basal_area_per_settler,repeat(leftover_space,6))
+    return area_settled
 end
