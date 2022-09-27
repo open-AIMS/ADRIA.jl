@@ -2,7 +2,6 @@
 
 
 using Distributions
-using Infiltrator
 
 include("growth_expanded.jl")
 
@@ -39,7 +38,7 @@ Base coral growth function.
 function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _::Real)::Nothing
     s = @view p.sigma[:, :]
     s .= max.(p.k' .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
-    @infiltrate
+
     # p.small_massives = [26, 27, 28]
     # p.small_r = [1, 2, 4, 6]
     # p.small = [1, 7, 19, 31]
@@ -60,7 +59,7 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     @. X_mb = X * p.mb    # current cover * background mortality
 
     @views @. sX_sel_en = s * X[p.sel_en, :]
-    @views @. M_sm = X[p.small_massives, :] .* (p.mb[p.small_massives] .+ p.comp * sum(X[p.sel_unen, :],dims=1))
+    @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :]+X[12,:])')
 
     r_comp .= p.r[p.sel_en] .+ (p.comp .* sum(X[p.small_massives, :], dims=1))
     @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sX_sel_en * r_comp - X_mb[p.sel_en, :]
@@ -392,5 +391,6 @@ function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basa
     λ = recruitment(larval_pool, leftover_space; α=max_density)  # recruits per m^2 per site
 
     # Determine area covered by recruited larvae (settler cover)
-    return λ .* basal_area_per_settler  # area in m² for each settler across all sites
+    area_settled = minimum(λ .* basal_area_per_settler,repeat(leftoverspace,6))
+    return   area_settled
 end
