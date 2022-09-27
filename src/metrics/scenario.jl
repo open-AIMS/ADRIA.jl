@@ -20,10 +20,13 @@ end
 """
     scenario_relative_cover(rs::ResultSet; kwargs...)
 
-Calculate the cluster-wide mean relative coral cover for each individual scenario.
+Calculate the cluster-wide relative coral cover for each scenario.
 """
 function scenario_relative_cover(rs::ResultSet; kwargs...)
-    return dropdims(mean(slice_results(relative_cover(rs); kwargs...), dims=:sites), dims=:sites)
+    target_sites = haskey(kwargs, :sites) ? kwargs[:sites] : (:)
+    target_area = sum(((rs.site_max_coral_cover / 100.0) .* rs.site_area)[target_sites])
+
+    return scenario_total_cover(rs; kwargs...) ./ target_area
 end
 
 
