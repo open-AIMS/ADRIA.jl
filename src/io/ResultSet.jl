@@ -67,7 +67,8 @@ end
 
 
 """
-    combine(result_sets...)
+    combine(result_sets...)::ResultSet
+    combine_results(result_set_locs::Array{String})::ResultSet
 
 Combine arbitrary number of ADRIA result sets into a single data store.
 
@@ -80,7 +81,6 @@ function combine_results(result_sets...)::ResultSet
 
     # Ensure all sim constants are identical
     @assert all([result_sets[i].sim_constants == result_sets[i+1].sim_constants for i in 1:length(result_sets)-1])
-
 
     # Ensure all result sets were from the same version of ADRIA
     if length(Set([rs.ADRIA_VERSION for rs in result_sets])) != 1
@@ -101,7 +101,7 @@ function combine_results(result_sets...)::ResultSet
     n_scenarios = sum(map((rs) -> size(rs.inputs, 1), result_sets))
 
     envlayer = rs1.env_layer_md
-    env_md = EnvLayer(envlayer.site_data_fn, envlayer.site_id_col, envlayer.unique_site_id_col,
+    env_md = EnvLayer(envlayer.dpkg_path, envlayer.site_data_fn, envlayer.site_id_col, envlayer.unique_site_id_col,
                       envlayer.init_coral_cov_fn, envlayer.connectivity_fn,
                       dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn), envlayer.timeframe)
 
