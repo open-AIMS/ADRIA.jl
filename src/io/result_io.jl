@@ -271,6 +271,14 @@ function load_results(result_loc::String)::ResultSet
     return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data, model_spec)
 end
 function load_results(domain::Domain)::ResultSet
-    log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCPs$(domain.RCP)__$(domain.scenario_invoke_time)")
-    return load_results(log_location)
+    return load_results(result_location(domain))
+end
+
+"""
+    result_location(d::Domain)::String
+
+Generate path to the data store of results for the given Domain.
+"""
+function result_location(d::Domain)::String
+    return joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(d.name)__RCPs$(d.RCP)__$(d.scenario_invoke_time)")
 end
