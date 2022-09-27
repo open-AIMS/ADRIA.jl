@@ -52,7 +52,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
             sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
             sX_sel_en::Matrix{Float64},                      # cache store for k * X_{sel_en}, where `k` relates to available space (not max carrying capacity)
             M_sm::Matrix{Float64},                           # Coral cover of tabular corals
-            sXr::Matrix{Float64},                            # k * X * r
+            sXr::Matrix{Float64},                            # s * X * r
             X_mb::Matrix{Float64},                           # X * mb
             cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
         # r, k, mb, comp, r_comp

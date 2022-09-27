@@ -375,7 +375,7 @@ end
 # Arguments
 - fec_scope : fecundity scope
 - sf : stressed fecundity 
-- TP_data : Trans
+- TP_data : Transition probability
 - leftover_space : difference between sites' maximum carrying capacity and current coral cover (k - C_s)
 - max_density : number of settlers / m²
 - basal_area_per_settler : area taken up by a single settler
