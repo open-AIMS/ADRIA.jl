@@ -8,8 +8,6 @@ and the output location to store results in.
 using ADRIA
 
 
-ADRIA.setup()  # Load and apply configuration options
-
 @info "Loading data package"
 here = @__DIR__
 ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"))
