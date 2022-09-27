@@ -53,4 +53,6 @@ function _setup_workers()::Nothing
             addprocs(active_cores, exeflags="--project")
         end
     end
+
+    return
 end
