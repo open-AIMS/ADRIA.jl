@@ -7,6 +7,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     nsiteint  # ::I
     prioritysites  # ::V
+    zones # ::V
     strongpred  # ::V
     in_conn  # ::v
     out_conn  # ::v
@@ -26,6 +27,8 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wtlocover  # ::F
     wtpredecseed  # ::F
     wtpredecshade  # ::F
+    wtzonesseed # ::F
+    wtzonesshade # ::F
 end
 
 """
@@ -151,7 +154,7 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
 
     # risk from heat exposure
     A[:, 5] .= maximum(heat_stress) != 0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : heat_stress
-    @infiltrate
+
     # priority predecessors
     A[:, 6] .= predec[:, 3]
 
@@ -170,7 +173,7 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     filtered = vec(.!any(isnan.(A), dims=2))
     # remove rows with NaNs
     A = A[filtered, :]
-    @infiltrate
+
     return A, filtered
 end
 
@@ -312,7 +315,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     strongpred = d_vars.strongpred[site_ids, :]
     in_conn = d_vars.in_conn[site_ids]
     out_conn = d_vars.out_conn[site_ids]
-    #zones = d_vars.zones
+    zones = d_vars.zones
     wave_stress = d_vars.damprob[site_ids]
     heat_stress = d_vars.heatstressprob[site_ids]
     sum_cover = d_vars.sumcover[site_ids]
@@ -328,6 +331,8 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     w_low_cover = d_vars.wtlocover
     w_predec_seed = d_vars.wtpredecseed
     w_predec_shade = d_vars.wtpredecshade
+    w_predec_zones_seed = d_vars.wtzonesseed
+    w_predec_zones_shade = d_vars.wtzonesshade
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
@@ -339,13 +344,8 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     predprior = [x for x in predprior if !isnan(x)]
 
     predec[predprior, 3] .= 1.0
-    w_predec_zones_seed = 1.0
-    w_predec_zones_shade = 1.0
+
     # for zones, find strongest predecessors
-    zones = zeros(Int64,nsites,1)
-    zones[1:nsites-10].=1
-    zones[nsites-9:nsites-6].=2
-    zones[nsites-5:nsites].=3
     zone_ids = unique(zones)
     zone_preds = zeros(nsites, 1)
     @infiltrate
