@@ -313,7 +313,8 @@ function coral_spec()::NamedTuple
 
     bin_widths = Float64[2, 3, 5, 10, 20, 40];  # These bin widths have to line up with values in colony_areas()
     diam_bin_widths = repeat(bin_widths, n_classes, 1)
-    prop_change_per_year = linear_extension'[:] ./ diam_bin_widths
+ 
+    prop_change_per_year = (2*linear_extension'[:]) ./ diam_bin_widths
 
     # # Second, growth as transitions of cover to higher bins is estimated as
     # colony_area_m² = colony_area_lower_cm² ./ 10^4
