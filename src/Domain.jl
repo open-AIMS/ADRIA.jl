@@ -139,14 +139,12 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     if endswith(dhw_fn, ".mat")
         dhw::NamedArray = loader(dhw_fn, "dhw"::String)
     else
-        @warn "Using empty DHW data"
         dhw = NamedArray(zeros(74, n_sites, 50))
     end
 
     if endswith(wave_fn, ".mat")
         waves::NamedArray = loader(wave_fn, "wave"::String)
     else
-        @warn "Using empty wave data"
         waves = NamedArray(zeros(74, n_sites, 50))
     end
 
@@ -266,6 +264,7 @@ function load_mat_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
 
     try
         site_order = Vector{String}(vec(data["reef_siteid"]))
+        loaded = NamedArray(data[attr])
     catch err
         if isa(err, KeyError)
             @warn "Provided file $(data_fn) did not have reef_siteid! There may be a mismatch in sites."
@@ -281,7 +280,6 @@ function load_mat_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
     end
 
     # Attach site names to each column
-    loaded = NamedArray(data[attr])
     setnames!(loaded, site_order, 2)
     setdimnames!(loaded, "Source", 1)
     setdimnames!(loaded, "Receiving", 2)
