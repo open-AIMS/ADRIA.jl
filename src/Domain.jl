@@ -411,8 +411,32 @@ function site_area(domain::Domain)::Vector{Float64}
     return domain.site_data.area
 end
 
+"""Extract the time steps represented in the data package."""
 function timesteps(domain::Domain)
     return domain.env_layer_md.timeframe
+end
+
+"""Get the path to the DHW data associated with the domain."""
+function get_DHW_data(d::Domain, RCP::String)
+    return joinpath(d.env_layer_md.dpkg_path, "DHWs", "dhwRCP$(RCP).mat")
+end
+
+"""Get the path to the wave data associated with the domain."""
+function get_wave_data(d::Domain, RCP::String)
+    return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).mat")
+end
+
+
+function switch_RCPs!(d::Domain, RCP::String)
+    d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
+    d.env_layer_md.wave_fn = get_wave_data(d, RCP)
+    d.RCP = RCP
+
+    n_sites::Int64 = d.coral_growth.n_sites
+    loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
+
+    @set! d.dhw_scens = loader(d.env_layer_md.DHW_fn, "dhw")
+    @set! d.wave_scens = loader(d.env_layer_md.wave_fn, "wave")
 end
 
 
