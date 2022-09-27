@@ -177,6 +177,9 @@ function combine_results(result_sets...)::ResultSet
 
     return load_results(z_store.folder)
 end
+function combine_results(result_set_locs::Array{String})::ResultSet
+    return combine_results(load_results.(result_set_locs)...)
+end
 
 
 """
