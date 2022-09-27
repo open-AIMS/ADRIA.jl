@@ -3,15 +3,16 @@
 
 Store environmental data layers used for scenario
 """
-struct EnvLayer{S<:AbstractString, TF}
+mutable struct EnvLayer{S<:AbstractString, TF}
+    dpkg_path::S
     site_data_fn::S
-    site_id_col::S
-    unique_site_id_col::S
+    const site_id_col::S
+    const unique_site_id_col::S
     init_coral_cov_fn::S
     connectivity_fn::S
     DHW_fn::S
     wave_fn::S
-    timeframe::TF
+    const timeframe::TF
 end
 
 
@@ -20,10 +21,10 @@ end
 
 Core ADRIA domain. Represents study area.
 """
-struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray}
+mutable struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray}
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
-    name::S           # human-readable name
+    const name::S           # human-readable name
     RCP::S            # RCP scenario represented
     env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
@@ -32,14 +33,14 @@ struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Flo
     out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     strongpred::I  # strongest predecessor
     site_data::D   # table of site data (depth, carrying capacity, etc)
-    site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
-    unique_site_id_col::S  # column of unique site ids
+    const site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
+    const unique_site_id_col::S  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
-    coral_growth::CoralGrowth  # coral
-    site_ids::T  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
-    removed_sites::T  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
+    const coral_growth::CoralGrowth  # coral
+    const site_ids::T  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
+    const removed_sites::T  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
     dhw_scens::X  # DHW scenarios
-    wave_scens::X # wave scenarios
+    wave_scens::Y # wave scenarios
 
     # Parameters
     model::Model  # core model
