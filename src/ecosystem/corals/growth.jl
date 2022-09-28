@@ -59,12 +59,14 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     @. X_mb = X * p.mb    # current cover * background mortality
 
     rec = min.(p.rec,repeat(s,6))
+
     @views @. sX_sel_en = s * X[p.sel_en, :]
     @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :]+X[12,:])')
 
-    r_comp .= p.r[p.sel_en] .+ (p.comp .* sum(X[p.small_massives, :], dims=1))
-    @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sX_sel_en * r_comp - X_mb[p.sel_en, :]
-    @views @. du[p.sel_unen, :] = sX_sel_en * r_comp + sXr[p.sel_unen, :] - X_mb[p.sel_unen, :]
+    r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
+
+    @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sXr[p.sel_en,:] - r_comp*X[p.sel_en]- X_mb[p.sel_en, :]
+    @views @. du[p.sel_unen, :] = sXr[p.sel_en, :] + r_comp*X[p.sel_en] - X_mb[p.sel_unen, :]
 
     @views @. du[p.encrusting, :] = rec[p.enc, :] - sXr[p.encrusting, :] - X_mb[p.encrusting, :]
 
