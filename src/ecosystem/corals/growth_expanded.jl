@@ -1,4 +1,9 @@
 """
+Not intended for use in production.
+
+The ODE defined here is identical to `growth.jl::growthODE()` in function.
+The terms are expanded out to cover each coral taxa/size class.
+
 # Arguments
 du : matrix holding derivatives
 X : Current coral cover, relative to `k`
