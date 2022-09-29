@@ -310,18 +310,9 @@ function coral_spec()::NamedTuple
     bin_widths = Float64[2, 3, 5, 10, 20, 40];  # These bin widths have to line up with values in colony_areas()
     diam_bin_widths = repeat(bin_widths, n_classes, 1)
 
-    prop_change_per_year = (2*linear_extension'[:]) ./ diam_bin_widths
-
-    # # Second, growth as transitions of cover to higher bins is estimated as
-    # colony_area_m² = colony_area_lower_cm² ./ 10^4
-
+    # Second, growth as transitions of cover to higher bins is estimated as
     # rate of growth per year
-    params.growth_rate .= prop_change_per_year  # vec(prop_change_per_year .* mean_colony_diameter_m'[:])
-
-    # note that we use proportion of bin widths and linear extension to estimate
-    # number of corals changing size class, but we use the bin means to estimate
-    # the cover equivalent because we assume coral sizes shift from edges to mean
-    # over the year (used in 'growthODE4()').
+    params.growth_rate .= (2*linear_extension'[:]) ./ diam_bin_widths
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.02; 1.02; 1.69; 1.69; 0.86; 0.86];  # fecundity parameter a
@@ -330,13 +321,13 @@ function coral_spec()::NamedTuple
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
     cm_diameter = mean_colony_diameter_m .* 10^4
-    fec = exp.(fec_par_a .+ fec_par_b .* log.(pi .* ((cm_diameter ./ 2.0).^2)))  # log.(mean_colony_diameter_m * 10^4)
+    fec = exp.(fec_par_a .+ fec_par_b .* log.(pi .* ((cm_diameter ./ 2.0).^2)))
 
     # Smallest size class do not reproduce
     fec[:, 1] .= 0.0
 
     # then convert to number of larvae produced per m2
-    fec_m² = fec ./ (pi .* (mean_colony_diameter_m ./ 2.0).^2)  # mean_colony_diameter_m;  # convert from per colony area to per m2
+    fec_m² = fec ./ (pi .* (mean_colony_diameter_m ./ 2.0).^2)  # convert from per colony area to per m2
     params.fecundity = fec_m²'[:];
 
     ## Mortality
