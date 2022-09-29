@@ -50,7 +50,7 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
     # Use temporary caches
     sXr = @view p.sXr[:, :]
     X_mb = @view p.X_mb[:, :]
-    sX_acr_5_11 = @view p.sX_acr_5[:, :]
+    sX_acr_5_11 = @view p.sX_acr_5_11[:, :]
     M_sm = @view p.M_sm[:, :]
     r_comp = @view p.r_comp[:, :]
     srec = @view p.srec[:, :]
