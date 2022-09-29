@@ -39,13 +39,14 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
     s = @view p.sigma[:, :]
     s .= max.(p.k' .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
 
-    # p.small_massives = [26, 27, 28]
-    # p.small_r = [1, 2, 3, 4, 5, 6]
-    # p.small = [1, 7, 13, 19, 25, 31]
-    # p.mid = [2:4; 8:10; 14:17; 20:23; 29; 32:35]
-    # p.large = [18, 24, 30, 36]
-    # p.acr_5_11 = [5, 11]
-    # p.acr_6_12 = [6, 12]
+    # Indices
+    # p.small_massives := [26, 27, 28]
+    # p.small_r := [1, 2, 3, 4, 5, 6]
+    # p.small := [1, 7, 13, 19, 25, 31]
+    # p.mid := [2:4; 8:10; 14:17; 20:23; 29; 32:35]
+    # p.large := [18, 24, 30, 36]
+    # p.acr_5_11 := [5, 11]
+    # p.acr_6_12 := [6, 12]
 
     # Use temporary caches
     sXr = @view p.sXr[:, :]
