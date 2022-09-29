@@ -68,8 +68,6 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sXr[p.sel_en,:] + r_comp*X[p.sel_en]- X_mb[p.sel_en, :]
     @views @. du[p.sel_unen, :] = sXr[p.sel_en, :] + sXr[p.sel_unen, :] + r_comp*X[p.sel_en] - X_mb[p.sel_unen, :]
 
-    @views @. du[p.encrusting, :] = srec[p.enc, :] - sXr[p.encrusting, :] - X_mb[p.encrusting, :]
-
     @views @. du[p.small_massives, :] = sXr[p.small_massives - 1, :] - sXr[p.small_massives, :] - M_sm
 
     @views @. du[p.small, :] = srec[p.small_r, :] - sXr[p.small, :] - X_mb[p.small, :]

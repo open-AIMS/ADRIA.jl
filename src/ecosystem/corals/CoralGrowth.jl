@@ -23,15 +23,13 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
     # Store specific indices for use in growth ODE function
     # These are specific to the 36 "species"/ 6 group formulation
     small_massives::SVector = SVector{3}(collect(26:28))
-    small_r::SVector = @SVector [1, 2, 4, 6]
-    small::SVector = @SVector [1, 7, 19, 31]
+    small_r::SVector = @SVector [1, 2, 3, 4, 5, 6]
+    small::SVector = @SVector [1, 7, 13, 19, 25, 31]
     mid::SVector = SVector{19}(collect([2:4; 8:10; 14:17; 20:23; 29; 32:35]))
     large::SVector = @SVector [18, 24, 30, 36]
 
-    enc::SVector = @SVector [3, 5]
-    encrusting::SVector = @SVector [13, 25]
-    sel_en::SVector = @SVector [5, 11]
-    sel_unen::SVector = @SVector [6, 12]
+    acr_5::SVector = @SVector [5, 11]
+    acr_6::SVector = @SVector [6, 12]
 
     p = @NamedTuple{
             r::Matrix{Float64},   # growth rate
@@ -43,14 +41,12 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
             small::StaticArrays.SVector{4, Int64},           # indices for small size classes
             mid::StaticArrays.SVector{19, Int64},            # indices for mid-size corals
             large::StaticArrays.SVector{4, Int64},           # indices for large corals
-            sel_en::StaticArrays.SVector{2, Int64},          # specific size classes for enhanced corals
-            sel_unen::StaticArrays.SVector{2, Int64},        # specific size classes for unenhanced corals
-            encrusting::StaticArrays.SVector{2, Int64},      # encrusting corals
+            acr_5::StaticArrays.SVector{2, Int64},          # size 5 Tabular Acropora (enhanced and unenhanced)
+            acr_6::StaticArrays.SVector{2, Int64},        # size 6 Tabular Acropora (enhanced and unenhanced)
             small_r::StaticArrays.SVector{4, Int64},         # growth rate for small corals
-            enc::StaticArrays.SVector{2, Int64},             # encrusting (values for what?)
             rec::Matrix{Float64},                            # recruitment values
             sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
-            sX_sel_en::Matrix{Float64},                      # cache store for k * X_{sel_en}, where `k` relates to available space (not max carrying capacity)
+            sX_acr_5::Matrix{Float64},                      # cache store for k * X_{sel_en}, where `k` relates to available space (not max carrying capacity)
             M_sm::Matrix{Float64},                           # Coral cover of tabular corals
             sXr::Matrix{Float64},                            # s * X * r
             X_mb::Matrix{Float64},                           # X * mb
@@ -61,7 +57,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
 
         # cached indices
         small_massives, small, mid, large,
-        sel_en, sel_unen, encrusting, small_r, enc,
+        acr_5, acr_6, small_r,
 
         # cache matrices
         # rec, sigma, sX_sel_en, M_sm, 
