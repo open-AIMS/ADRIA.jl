@@ -66,17 +66,17 @@ julia> rs_all = ADRIA.run_scenarios(p_df, dom)
 ResultSet
 """
 function run_scenarios(param_df::DataFrame, domain::Domain)::ResultSet
-    run_parallel = (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
 
     # Identify available data
     avail_data::Vector{String} = readdir(joinpath(domain.env_layer_md.dpkg_path, "DHWs"))
     RCP_ids = replace.(avail_data, "dhwRCP"=>"", ".mat"=>"")
 
     @info "Running scenarios for RCPs: $(RCP_ids)"
-    return run_scenarios(param_df, domain, RCP_ids::Array{String}; parallel=run_parallel)
+    return run_scenarios(param_df, domain, RCP_ids::Array{String})
 end
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; parallel=true)::ResultSet
+function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String)::ResultSet
     setup()
+    parallel = (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
 
     switch_RCPs!(domain, RCP)
     domain, data_store = ADRIA.setup_result_store!(domain, param_df)
@@ -95,8 +95,9 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; paralle
 
     return load_results(domain)
 end
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String}; parallel=true)::ResultSet
+function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String})::ResultSet
     setup()
+    parallel = (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
 
     if length(unique(RCP_ids)) != length(RCP_ids)
         # Disallow running duplicate RCP scenarios
