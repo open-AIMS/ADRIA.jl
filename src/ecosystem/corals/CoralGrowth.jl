@@ -46,7 +46,6 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
         rec_small::StaticArrays.SVector{6,Int64},         # growth rate for small corals
         rec::Matrix{Float64},                            # recruitment values, where `s` relates to available space (not max carrying capacity)
         sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
-        sX_acr_5_11::Matrix{Float64},                      # cache store for s * X_{acr_5_11}
         M_sm::Matrix{Float64},                           # mortality for small massive corals due to competition and background mortality
         sXr::Matrix{Float64},                            # s * X * r
         X_mb::Matrix{Float64},                           # X * mb
@@ -60,9 +59,9 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
         acr_5_11, acr_6_12, rec_small,
 
         # cache matrices
-        # rec, sigma, sX_acr_5_11, M_sm, 
+        # rec, sigma, M_sm, 
         # sXr, X_mb, cover
-        zeros(n_groups, n_sites), zeros(1, n_sites), zeros(2, n_sites), zeros(3, n_sites),
+        zeros(n_groups, n_sites), zeros(1, n_sites), zeros(3, n_sites),
         zeros(n_species, n_sites), zeros(n_species, n_sites), zeros(n_sites)
     ))
 
