@@ -288,7 +288,7 @@ function coral_spec()::NamedTuple
     # interventions, we express coral abundance as colony numbers in different
     # size classes and growth rates as linear extension (in cm per year).
 
-    colony_area_mean_cm², mean_colony_diameter_m² = colony_areas()
+    colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
     params.colony_area_cm2 = reshape(colony_area_mean_cm²', n_species)[:]
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
@@ -320,14 +320,14 @@ function coral_spec()::NamedTuple
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
-    cm_diameter = mean_colony_diameter_m² .* 10^4
+    cm_diameter = mean_colony_diameter_m .* 10^4
     fec = exp.(fec_par_a .+ fec_par_b .* log.(pi .* ((cm_diameter ./ 2.0).^2)))
 
     # Smallest size class do not reproduce
     fec[:, 1] .= 0.0
 
     # then convert to number of larvae produced per m2
-    fec_m² = fec ./ (pi .* (mean_colony_diameter_m² ./ 2.0).^2)  # convert from per colony area to per m2
+    fec_m² = fec ./ (pi .* (mean_colony_diameter_m ./ 2.0).^2)  # convert from per colony area to per m2
     params.fecundity = fec_m²'[:];
 
     ## Mortality
