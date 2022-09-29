@@ -461,7 +461,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         absolute_site_coral_cover = site_coral_cover .* total_site_area  # in m²
         leftover_space_m² = max.(absolute_k_area' .- absolute_site_coral_cover, 0.0)
 
-        area_settled = settler_cover(fec_scope, sf, TP_data, leftover_space_m², 
+        area_settled = settler_cover(fec_scope, sf, TP_data, leftover_space_m²,
                                      sim_params.max_settler_density, sim_params.basal_area_per_settler)
 
         # Recruitment should represent additional cover, relative to total site area
@@ -526,7 +526,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         # Calculate and apply bleaching mortality
-        bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw, 
+        bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw,
             a_adapt, n_adapt, bleach_resist)
 
         # Apply seeding
@@ -545,13 +545,13 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
-        
+
         tmp = ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area'
         tmp[isnan.(tmp)] .= 0.0
         tmp[isinf.(tmp)] .= 0.0
         growth.u0[:, :] .= tmp
         # growth.u0[:, :] .= Y_pstep[:, :] .* prop_loss[:, :]
-        
+
         #   # update initial condition
         # growthODE_expanded
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
@@ -562,7 +562,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Y_cover[tstep, :, :] .= sol.u[end]
 
         Y_cover[tstep, :, :] .= (sol.u[end] .* absolute_k_area') ./ total_site_area
-        
+
     end
 
     # Avoid placing importance on sites that were not considered
