@@ -153,16 +153,16 @@ function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_
 
     r_raw = result_set.raw
     vals = relative_cover(r_raw)
-    vals[vals .< threshold] .= 0.0
+    vals[vals.<threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
     p_tbl = param_table(domain)
     vals .= absolute_shelter_volume(r_raw, site_area(domain), p_tbl)
-    vals[vals .< threshold] .= 0.0
+    vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
     vals .= relative_shelter_volume(r_raw, site_area(domain), p_tbl)
-    vals[vals .< threshold] .= 0.0
+    vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
     # Store raw results if no metrics specified
@@ -365,8 +365,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         depth_priority = collect(1:nrow(site_data))
 
         # calculate total area to seed
-        area_to_seed = (col_area_seed_TA.*n_TA_to_seed)+(col_area_seed_CA.*n_CA_to_seed)
-        min_area = covertol*area_to_seed
+        area_to_seed = (col_area_seed_TA .* n_TA_to_seed) + (col_area_seed_CA .* n_CA_to_seed)
+        min_area = covertol * area_to_seed
 
         # Filter out sites outside of desired depth range
         if .!all(site_data.depth_med .== 0)
@@ -461,12 +461,16 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         absolute_site_coral_cover = site_coral_cover .* total_site_area  # in m²
         leftover_space_m² = max.(absolute_k_area' .- absolute_site_coral_cover, 0.0)
 
-        area_settled = settler_cover(fec_scope, sf, TP_data, leftover_space_m², 
-                                     sim_params.max_settler_density, sim_params.basal_area_per_settler)
+        area_settled = settler_cover(fec_scope, sf, TP_data, leftover_space_m²,
+            sim_params.max_settler_density, sim_params.basal_area_per_settler)
 
         # Recruitment should represent additional cover, relative to total site area
         # Gets used in ODE
-        p.rec[:, :] .= area_settled ./ total_site_area
+        # p.rec[:, :] .= (area_settled ./ total_site_area)
+        tmp = (area_settled ./ absolute_k_area')
+        tmp[isnan.(tmp)] .= 0.0
+        tmp[isinf.(tmp)] .= 0.0
+        p.rec[:, :] .= tmp
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
@@ -522,13 +526,13 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         # Calculate and apply bleaching mortality
-        bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw, 
+        bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw,
             a_adapt, n_adapt, bleach_resist)
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
             # Calculate proportion to seed based on current available space
-            seeded_area = (TA=n_TA_to_seed*col_area_seed_TA, CA=n_CA_to_seed*col_area_seed_CA)
+            seeded_area = (TA=n_TA_to_seed * col_area_seed_TA, CA=n_CA_to_seed * col_area_seed_CA)
             scaled_seed = distribute_seeded_corals(vec(total_site_area), prefseedsites, vec(leftover_space_m²), seeded_area)
 
             # Seed each site with TA or CA
@@ -541,13 +545,24 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
-        growth.u0[:, :] .= Y_pstep[:, :] .* prop_loss[:, :]  # update initial condition
+
+        tmp = ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area'
+        tmp[isnan.(tmp)] .= 0.0
+        tmp[isinf.(tmp)] .= 0.0
+        growth.u0[:, :] .= tmp
+        # growth.u0[:, :] .= Y_pstep[:, :] .* prop_loss[:, :]
+
+        #   # update initial condition
+        # growthODE_expanded
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=[:nonstiff], abstol=1e-9, reltol=1e-8)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
+        # Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
         # Y_cover[tstep, :, :] .= sol.u[end]
+
+        Y_cover[tstep, :, :] .= (sol.u[end] .* absolute_k_area') ./ total_site_area
+
     end
 
     # Avoid placing importance on sites that were not considered
