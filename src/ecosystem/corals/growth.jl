@@ -59,7 +59,7 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
 
     @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :] + X[12, :])')
 
-    r_comp .= p.comp .* @view sum(X[p.small_massives, :], dims=1)
+    r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
     @views @. du[p.acr_5_11, :] = sXr[p.acr_5_11-1, :] - sXr[p.acr_5_11, :] + r_comp * X[p.acr_5_11] - X_mb[p.acr_5_11, :]
     @views @. du[p.acr_6_12, :] = sXr[p.acr_5_11, :] + sXr[p.acr_6_12, :] + r_comp * X[p.acr_6_12] - X_mb[p.acr_6_12, :]
 
