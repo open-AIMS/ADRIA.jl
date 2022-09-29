@@ -52,7 +52,7 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     # Use temporary caches
     sXr = @view p.sXr[:, :]
     X_mb = @view p.X_mb[:, :]
-    sX_sel_en = @view p.sX_sel_en[:, :]
+    sX_acr_5 = @view p.sX_acr_5[:, :]
     M_sm = @view p.M_sm[:, :]
     r_comp = @view p.r_comp[:, :]
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
@@ -60,13 +60,13 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
 
     srec = s.*min.(p.rec,repeat(s,6))
 
-    @views @. sX_sel_en = s * X[p.sel_en, :]
+    @views @. sX_acr_5 = s * X[p.acr_5, :]
     @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :]+X[12,:])')
 
     r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
   
-    @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sXr[p.sel_en,:] + r_comp*X[p.sel_en]- X_mb[p.sel_en, :]
-    @views @. du[p.sel_unen, :] = sXr[p.sel_en, :] + sXr[p.sel_unen, :] + r_comp*X[p.sel_en] - X_mb[p.sel_unen, :]
+    @views @. du[p.acr_5, :] = sXr[p.acr_5 - 1, :] - sXr[p.acr_5,:] + r_comp*X[p.acr_5]- X_mb[p.acr_5, :]
+    @views @. du[p.acr_6, :] = sXr[p.acr_6, :] + sXr[p.acr_6, :] + r_comp*X[p.acr_6] - X_mb[p.acr_6, :]
 
     @views @. du[p.small_massives, :] = sXr[p.small_massives - 1, :] - sXr[p.small_massives, :] - M_sm
 
