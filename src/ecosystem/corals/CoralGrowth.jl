@@ -23,12 +23,12 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
     # Store specific indices for use in growth ODE function
     # These are specific to the 36 "species"/ 6 group formulation
     small_massives::SVector = SVector{3}(collect(26:28))
-    small_r::SVector = @SVector [1, 2, 3, 4, 5, 6]
+    rec_small::SVector = @SVector [1, 2, 3, 4, 5, 6]
     small::SVector = @SVector [1, 7, 13, 19, 25, 31]
     mid::SVector = SVector{19}(collect([2:4; 8:10; 14:17; 20:23; 29; 32:35]))
     large::SVector = @SVector [18, 24, 30, 36]
 
-    acr_5::SVector = @SVector [5, 11]
+    acr_5_11::SVector = @SVector [5, 11]
     acr_6::SVector = @SVector [6, 12]
 
     p = @NamedTuple{
@@ -43,7 +43,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
             large::StaticArrays.SVector{4, Int64},           # indices for large corals
             acr_5::StaticArrays.SVector{2, Int64},          # size 5 Tabular Acropora (enhanced and unenhanced)
             acr_6::StaticArrays.SVector{2, Int64},        # size 6 Tabular Acropora (enhanced and unenhanced)
-            small_r::StaticArrays.SVector{6, Int64},         # growth rate for small corals
+            rec_small::StaticArrays.SVector{6, Int64},         # growth rate for small corals
             rec::Matrix{Float64},                            # recruitment values
             sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
             sX_acr_5::Matrix{Float64},                      # cache store for k * X_{sel_en}, where `k` relates to available space (not max carrying capacity)
@@ -57,7 +57,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
 
         # cached indices
         small_massives, small, mid, large,
-        acr_5, acr_6, small_r,
+        acr_5_11, acr_6_12, rec_small,
 
         # cache matrices
         # rec, sigma, sX_sel_en, M_sm, 
