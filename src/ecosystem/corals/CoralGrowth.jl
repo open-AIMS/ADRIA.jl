@@ -44,14 +44,14 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
             acr_5_11::StaticArrays.SVector{2, Int64},          # size 5 Tabular Acropora (enhanced and unenhanced)
             acr_6_12::StaticArrays.SVector{2, Int64},        # size 6 Tabular Acropora (enhanced and unenhanced)
             rec_small::StaticArrays.SVector{6, Int64},         # growth rate for small corals
-            rec::Matrix{Float64},                            # recruitment values
+            srec::Matrix{Float64},                            # s * recruitment values, where `s` relates to available space (not max carrying capacity)
             sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
             sX_acr_5_11::Matrix{Float64},                      # cache store for s * X_{acr_5_11}
-            M_sm::Matrix{Float64},                           # Coral cover of tabular corals
+            M_sm::Matrix{Float64},                           # mortality for small massive corals due to competition and background mortality
             sXr::Matrix{Float64},                            # s * X * r
             X_mb::Matrix{Float64},                           # X * mb
             cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
-        # r, k, mb, comp, r_comp
+        # r, s, mb, comp, r_comp
         zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1), 0.3, zeros(2, n_sites),
 
 
