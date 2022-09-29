@@ -6,7 +6,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     nsiteint  # ::I
     prioritysites  # ::V
-    zones # ::V
+    #zones # ::V
     strongpred  # ::V
     in_conn  # ::v
     out_conn  # ::v
@@ -134,7 +134,7 @@ Columns indicate:
 - predec : list of priority predecessors (sites strongly connected to priority sites)
 - risk_tol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
 """
-function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zone_preds, risk_tol)
+function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
     A = zeros(length(site_ids), 8)
 
     A[:, 1] .= site_ids  # Column of site ids
@@ -158,7 +158,7 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     A[:, 6] .= predec[:, 3]
 
     # zone predecessors
-    A[:, 7] .= zone_preds
+    #A[:, 7] .= zone_preds
 
     # Proportion of empty space (no coral) compared to max possible cover
     A[:, 8] = max.((max_cover - sum_cover), 0.0) .* area
@@ -314,7 +314,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     strongpred = d_vars.strongpred[site_ids, :]
     in_conn = d_vars.in_conn[site_ids]
     out_conn = d_vars.out_conn[site_ids]
-    zones = d_vars.zones
+    #zones = d_vars.zones
     wave_stress = d_vars.damprob[site_ids]
     heat_stress = d_vars.heatstressprob[site_ids]
     sum_cover = d_vars.sumcover[site_ids]
@@ -346,17 +346,17 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     predec[predprior, 3] .= 1.0
 
     # for zones, find strongest predecessors
-    zone_ids = unique(zones)
-    zone_preds = zeros(nsites, 1)
+    # zone_ids = unique(zones)
+    # zone_preds = zeros(nsites, 1)
 
-    for k in axes(zone_ids, 1)
-        zone_preds_temp = strongpred[zones.==k]
-        for s in zone_preds_temp
-            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s].+1
-        end
-    end
+    # for k in axes(zone_ids, 1)
+    #     zone_preds_temp = strongpred[zones.==k]
+    #     for s in zone_preds_temp
+    #         zone_preds[site_ids.==s] .= zone_preds[site_ids.==s].+1
+    #     end
+    # end
 
-    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zone_preds, risk_tol)
+    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return prefseedsites, prefshadesites, rankings
