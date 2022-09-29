@@ -35,7 +35,7 @@ end
 
 Base coral growth function.
 """
-function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _::Real)::Nothing
+function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
     s = @view p.sigma[:, :]
     s .= max.(p.k' .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
 
@@ -56,22 +56,22 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb    # current cover * background mortality
 
-    srec = s.*p.rec
+    srec = s .* p.rec
 
     @views @. sX_acr_5 = s * X[p.acr_5, :]
-    @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :]+X[12,:])')
+    @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :] + X[12, :])')
 
     r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
-  
-    @views @. du[p.acr_5, :] = sXr[p.acr_5 - 1, :] - sXr[p.acr_5,:] + r_comp*X[p.acr_5]- X_mb[p.acr_5, :]
-    @views @. du[p.acr_6, :] = sXr[p.acr_5, :] + sXr[p.acr_6, :] + r_comp*X[p.acr_6] - X_mb[p.acr_6, :]
 
-    @views @. du[p.small_massives, :] = sXr[p.small_massives - 1, :] - sXr[p.small_massives, :] - M_sm
+    @views @. du[p.acr_5, :] = sXr[p.acr_5-1, :] - sXr[p.acr_5, :] + r_comp * X[p.acr_5] - X_mb[p.acr_5, :]
+    @views @. du[p.acr_6, :] = sXr[p.acr_5, :] + sXr[p.acr_6, :] + r_comp * X[p.acr_6] - X_mb[p.acr_6, :]
+
+    @views @. du[p.small_massives, :] = sXr[p.small_massives-1, :] - sXr[p.small_massives, :] - M_sm
 
     @views @. du[p.small, :] = srec[p.small_r, :] - sXr[p.small, :] - X_mb[p.small, :]
-    @views @. du[p.mid, :] = sXr[p.mid - 1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
-    @views @. du[p.large, :] = sXr[p.large - 1 , :] + sXr[p.large, :] - X_mb[p.large, :]
-  
+    @views @. du[p.mid, :] = sXr[p.mid-1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
+    @views @. du[p.large, :] = sXr[p.large-1, :] + sXr[p.large, :] - X_mb[p.large, :]
+
     # Ensure no non-negative values
     du .= max.(du, 0.0)
     # du .= proportional_adjustment!(du, p.cover, p.k)
@@ -109,46 +109,46 @@ function slow_ODE(Y, X, p, t)
     # This sets the carrying capacity k := 0.0 <= k <= P
     # resulting in a matrix of (species * sites)
     # ensuring that density dependence is applied per site
-    k = max(P - sum(X, 1), 0.0);
+    k = max(P - sum(X, 1), 0.0)
 
     # Total cover of small massives and encrusting
-    X_sm = sum(X[26:28, :]);
+    X_sm = sum(X[26:28, :])
 
     # Total cover of largest tabular Acropora
-    X_tabular = (X[6, :] + X[12, :]); # this is for enhanced and unenhanced
+    X_tabular = (X[6, :] + X[12, :]) # this is for enhanced and unenhanced
 
-    k_X_r = k .* X .* r;
-    k_rec = k .* rec;
-    X_mb = X .* mb;
+    k_X_r = k .* X .* r
+    k_rec = k .* rec
+    X_mb = X .* mb
 
     # Tabular Acropora Enhanced
     kX5 = k .* X[5, :]
-    Y[5, :] = k_X_r[4, :] - kX5 .* (r[5] + comp .* X_sm) - X_mb[5, :];
-    Y[6, :] = kX5 .* (r[5] + comp .* X_sm) + k_X_r[6, :] - X_mb[6, :];
+    Y[5, :] = k_X_r[4, :] - kX5 .* (r[5] + comp .* X_sm) - X_mb[5, :]
+    Y[6, :] = kX5 .* (r[5] + comp .* X_sm) + k_X_r[6, :] - X_mb[6, :]
 
     # Tabular Acropora Unenhanced
     kX11 = k .* X[11, :]
-    Y[11, :] = k_X_r[10, :] - kX11 .* (r[11] + comp .* X_sm) - X_mb[11, :];
-    Y[12, :] = kX11 .* (r[11] + comp .* X_sm) + k_X_r[12, :] - X_mb[12, :];
+    Y[11, :] = k_X_r[10, :] - kX11 .* (r[11] + comp .* X_sm) - X_mb[11, :]
+    Y[12, :] = kX11 .* (r[11] + comp .* X_sm) + k_X_r[12, :] - X_mb[12, :]
 
     # Corymbose Acropora Enhanced
-    Y[13, :] = k_rec[3, :] - k .* X[13, :] .* r[13] - X_mb[13,:];
+    Y[13, :] = k_rec[3, :] - k .* X[13, :] .* r[13] - X_mb[13, :]
 
     # Small massives and encrusting Unenhanced
-    Y[25, :] = k_rec[5, :] - k .* X[25, :] .* r[25] - X_mb[25,:];
-    Y[26:28, :] = k_X_r[25:27, :] - k_X_r[26:28, :] - X[26:28, :] .* (mb[26:28] + comp .* X_tabular);
+    Y[25, :] = k_rec[5, :] - k .* X[25, :] .* r[25] - X_mb[25, :]
+    Y[26:28, :] = k_X_r[25:27, :] - k_X_r[26:28, :] - X[26:28, :] .* (mb[26:28] + comp .* X_tabular)
 
     # Small size classes
-    Y[[1,7,19,31], :] = k_rec[[1,2,4,6], :] - k_X_r[[1,7,19,31], :] - X_mb[[1,7,19,31], :];
+    Y[[1, 7, 19, 31], :] = k_rec[[1, 2, 4, 6], :] - k_X_r[[1, 7, 19, 31], :] - X_mb[[1, 7, 19, 31], :]
 
     # Mid size classes
-    Y[[2:4,8:10,14:17,20:23,29,32:35], :] = k_X_r[[1:3,7:9,13:16,19:22,28,31:34], :] - k_X_r[[2:4,8:10,14:17,20:23,29,32:35], :] - X_mb[[2:4,8:10,14:17,20:23,29,32:35], :];
+    Y[[2:4, 8:10, 14:17, 20:23, 29, 32:35], :] = k_X_r[[1:3, 7:9, 13:16, 19:22, 28, 31:34], :] - k_X_r[[2:4, 8:10, 14:17, 20:23, 29, 32:35], :] - X_mb[[2:4, 8:10, 14:17, 20:23, 29, 32:35], :]
 
     # Larger size classes
-    Y[[18,24,30,36], :] = k_X_r[[17,23,29,35], :] + k_X_r[[18,24,30,36], :] - X_mb[[18,24,30,36], :];
+    Y[[18, 24, 30, 36], :] = k_X_r[[17, 23, 29, 35], :] + k_X_r[[18, 24, 30, 36], :] - X_mb[[18, 24, 30, 36], :]
 
     # Ensure no non-negative values
-    Y = max(Y, 0);
+    Y = max(Y, 0)
 end
 
 
@@ -207,11 +207,11 @@ function bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Fl
     # initial bleaching mortality (models from Bozec et al., 2022)
     # `m_init` as initially formulated produces values as a percentage (i.e., 0 - 100)
     # and so we divide by 100 again to arrive at values 0 - 1.
-    depth_coeff = ℯ.^(-0.07551 .* (depth .- 2.0))
-    m_init = min.(((depth_coeff .* s')' .* ℯ.^(0.17.+0.35 .* capped_dhw)) / 100.0 / 100.0, 1.0)
+    depth_coeff = ℯ .^ (-0.07551 .* (depth .- 2.0))
+    m_init = min.(((depth_coeff .* s')' .* ℯ .^ (0.17 .+ 0.35 .* capped_dhw)) / 100.0 / 100.0, 1.0)
 
     # How much coral survives bleaching event
-    Y .= (1.0 .- m_init).^6
+    Y .= (1.0 .- m_init) .^ 6
 
     return
 end
@@ -240,12 +240,12 @@ fecundities across size classes.
 # Returns
 Matrix[n_classes, n_sites] : fecundity per m² of coral
 """
-function fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64},
-                          Y_pstep::Array{Float64, 2}, site_area::Array{Float64})::Nothing
+function fecundity_scope!(fec_groups::Array{Float64,2}, fec_all::Array{Float64,2}, fec_params::Array{Float64},
+    Y_pstep::Array{Float64,2}, site_area::Array{Float64})::Nothing
     ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
     nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
 
-    fec_all .= fec_params .* Y_pstep .* site_area;
+    fec_all .= fec_params .* Y_pstep .* site_area
     for (i, (s, e)) in enumerate(zip(1:ngroups:nclasses, ngroups:ngroups:nclasses+1))
         @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
@@ -287,18 +287,18 @@ of 0.9 inside sf(i, j) indicates that species i at site j can only produce
 sf : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
 """
 function stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)::Matrix{Float64}
-    ad::Vector{Float64} = @. a_adapt + tstep * n_adapt;
+    ad::Vector{Float64} = @. a_adapt + tstep * n_adapt
 
     # using half of DHWmaxtot as a placeholder
     # for the maximum capacity for thermal adaptation
-    tmp_ad::Vector{Float64} = @. (1.0 - ad / (DHWmaxtot/2));
+    tmp_ad::Vector{Float64} = @. (1.0 - ad / (DHWmaxtot / 2))
 
     # One way around dimensional issue - tmp_ad for each class as the averaged
     # of the enhanced and unenhanced corals in that class
     # KA note: this works as it averages over size classes and not across groups.
-    tmp_ad2::Array{Float64} = mean(reshape(tmp_ad, Int64(length(tmp_ad)/n_groups), n_groups), dims=1);
+    tmp_ad2::Array{Float64} = mean(reshape(tmp_ad, Int64(length(tmp_ad) / n_groups), n_groups), dims=1)
 
-    return 1.0 .- exp.(-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2' .- LPDprm2))));
+    return 1.0 .- exp.(-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2' .- LPDprm2))))
 end
 
 
@@ -372,7 +372,7 @@ end
 
 # Arguments
 - fec_scope : fecundity scope
-- sf : stressed fecundity 
+- sf : stressed fecundity
 - TP_data : Transition probability
 - leftover_space : difference between sites' maximum carrying capacity and current coral cover (k - C_s)
 - max_density : number of settlers / m²
@@ -390,7 +390,7 @@ function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basa
     λ = recruitment(larval_pool, leftover_space; α=max_density)  # recruits per m^2 per site
 
     # Determine area covered by recruited larvae (settler cover) and constrain to available space
-    area_settled = min.(λ .* basal_area_per_settler,repeat(leftover_space,6))
-    
+    area_settled = min.(λ .* basal_area_per_settler, repeat(leftover_space, 6))
+
     return area_settled
 end
