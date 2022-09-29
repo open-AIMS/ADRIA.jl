@@ -144,7 +144,7 @@ Generates Coral struct using the default parameter spec.
 
 # Example
 ```julia
-# Define coral struct with auto-generated parameter ranges 
+# Define coral struct with auto-generated parameter ranges
 # (default in ADRIA is ± 10%, triangular distribution with peak at 0.5)
 create_coral_struct()
 coral = Coral()
@@ -180,8 +180,8 @@ end
 Generate colony area data based on Bozec et al., [1].
 
 # Returns
-- colony_area_lower_cm2 : lower colony areas in cm^2
-- colony_area_upper_m2 : upper colony area in m^2
+- colony_area_mean_cm2 : mean colony areas in cm²
+- colony_diam_means_m : mean colony diameter (in meters)
 
 
 # References
@@ -202,14 +202,10 @@ function colony_areas()
 
     # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
     # To convert to cover we locate bin means and calculate bin mean areas
-    colony_diam_means_mean_cm2 = repeat(mean_cm_diameters', nclasses, 1)
+    colony_diam_means = repeat(mean_cm_diameters', nclasses, 1)
+    colony_area_mean_cm2 = @. pi * ((colony_diam_means / 2)^2)
 
-    # colony_diam_means_upper_cm2 = repeat(size_class_means_upper_cm', nclasses', 1)
-
-    colony_area_mean_cm2 = @. pi * ((colony_diam_means_mean_cm2 / 2)^2)
-    # colony_area_upper_m2 = @. pi * ((colony_diam_means_upper_cm2 / 2)^2) / (10^4)
-
-    return colony_area_mean_cm2, (colony_diam_means_mean_cm2 ./ 10^4)
+    return colony_area_mean_cm2, (colony_diam_means ./ 10^4)
 end
 
 
@@ -228,7 +224,7 @@ Values for the historical, temporal patterns of degree heating weeks
 between bleaching years come from [1].
 
 # Returns
-- params : NamedTuple[taxa_names, param_names, params], taxa names, parameter 
+- params : NamedTuple[taxa_names, param_names, params], taxa names, parameter
            names, and parameter values for each coral taxa, group and size class
 
 # References
@@ -237,9 +233,9 @@ between bleaching years come from [1].
     Scientific Reports, 8(1), 6079.
     https://doi.org/10.1038/s41598-018-24530-9
 
-2. Hall, V.R. & Hughes, T.P. 1996. 
-   Reproductive strategies of modular organisms: 
-     comparative studies of reef-building corals. 
+2. Hall, V.R. & Hughes, T.P. 1996.
+   Reproductive strategies of modular organisms:
+     comparative studies of reef-building corals.
    Ecology, 77: 950 - 963.
    https://dx.doi.org/10.2307/2265514
 
@@ -252,7 +248,7 @@ between bleaching years come from [1].
 
 4. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E., Castro-Sanguino, C.,
     Condie, S. A., Puotinen, M., Thompson, A., & Mumby, P. J. (2022).
-   Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation. 
+   Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation.
    Ecological Monographs, 92(1), e01494.
    https://doi.org/10.1002/ecm.1494
 """
@@ -294,7 +290,7 @@ function coral_spec()::NamedTuple
 
     colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
     params.colony_area_cm2 = reshape(colony_area_mean_cm²', n_species)[:]
-    
+
     ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
     # we assume similar growth rates for enhanced and unenhanced corals
     # all values in cm/year
@@ -313,7 +309,7 @@ function coral_spec()::NamedTuple
 
     bin_widths = Float64[2, 3, 5, 10, 20, 40];  # These bin widths have to line up with values in colony_areas()
     diam_bin_widths = repeat(bin_widths, n_classes, 1)
- 
+
     prop_change_per_year = (2*linear_extension'[:]) ./ diam_bin_widths
 
     # # Second, growth as transitions of cover to higher bins is estimated as
@@ -373,7 +369,7 @@ function coral_spec()::NamedTuple
         0.0 0.0 0.0 0.0 0.0 0.0;  # Corymbose Acropora Enhanced
         0.0 0.0 0.0 0.0 0.0 0.0;  # Corymbose Acropora Unenhanced
         1.5 1.5 1.5 1.5 1.5 1.5;  # Small massives and encrusting
-        1.0 1.0 1.0 1.0 1.0 1.0]; # Large massives 
+        1.0 1.0 1.0 1.0 1.0 1.0]; # Large massives
     params.bleach_resist = bleach_resist'[:];
 
     # Get perturbable coral parameters
