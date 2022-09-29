@@ -38,12 +38,12 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
             comp::Float64,        # competition between small and large 
             r_comp::Matrix{Float64},  # tmp store for competition between tab and small massives
             small_massives::StaticArrays.SVector{3, Int64},  # index locations for small massives
-            small::StaticArrays.SVector{4, Int64},           # indices for small size classes
+            small::StaticArrays.SVector{6, Int64},           # indices for small size classes
             mid::StaticArrays.SVector{19, Int64},            # indices for mid-size corals
             large::StaticArrays.SVector{4, Int64},           # indices for large corals
             acr_5::StaticArrays.SVector{2, Int64},          # size 5 Tabular Acropora (enhanced and unenhanced)
             acr_6::StaticArrays.SVector{2, Int64},        # size 6 Tabular Acropora (enhanced and unenhanced)
-            small_r::StaticArrays.SVector{4, Int64},         # growth rate for small corals
+            small_r::StaticArrays.SVector{6, Int64},         # growth rate for small corals
             rec::Matrix{Float64},                            # recruitment values
             sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
             sX_acr_5::Matrix{Float64},                      # cache store for k * X_{sel_en}, where `k` relates to available space (not max carrying capacity)
