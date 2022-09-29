@@ -53,7 +53,7 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
     sX_acr_5_11 = @view p.sX_acr_5[:, :]
     M_sm = @view p.M_sm[:, :]
     r_comp = @view p.r_comp[:, :]
-    srec = @view p.srec[:,:]
+    srec = @view p.srec[:, :]
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb    # current cover * background mortality
     @. srec = s * p.rec

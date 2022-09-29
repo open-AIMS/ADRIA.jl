@@ -3,7 +3,7 @@
 
 Coral growth specification for growth ODE model.
 """
-struct CoralGrowth{A<:Integer, T<:NamedTuple}
+struct CoralGrowth{A<:Integer,T<:NamedTuple}
     n_sites::A
     n_species::A
     n_groups::A
@@ -32,25 +32,25 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
     acr_6_12::SVector = @SVector [6, 12]
 
     p = @NamedTuple{
-            r::Matrix{Float64},   # growth rate
-            k::Vector{Float64},   # max carrying capacity
-            mb::Matrix{Float64},  # background mortality
-            comp::Float64,        # competition between small and large 
-            r_comp::Matrix{Float64},  # tmp store for competition between tab and small massives
-            small_massives::StaticArrays.SVector{3, Int64},  # index locations for small massives
-            small::StaticArrays.SVector{6, Int64},           # indices for small size classes
-            mid::StaticArrays.SVector{19, Int64},            # indices for mid-size corals
-            large::StaticArrays.SVector{4, Int64},           # indices for large corals
-            acr_5_11::StaticArrays.SVector{2, Int64},          # size 5 Tabular Acropora (enhanced and unenhanced)
-            acr_6_12::StaticArrays.SVector{2, Int64},        # size 6 Tabular Acropora (enhanced and unenhanced)
-            rec_small::StaticArrays.SVector{6, Int64},         # growth rate for small corals
-            srec::Matrix{Float64},                            # s * recruitment values, where `s` relates to available space (not max carrying capacity)
-            sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
-            sX_acr_5_11::Matrix{Float64},                      # cache store for s * X_{acr_5_11}
-            M_sm::Matrix{Float64},                           # mortality for small massive corals due to competition and background mortality
-            sXr::Matrix{Float64},                            # s * X * r
-            X_mb::Matrix{Float64},                           # X * mb
-            cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
+        r::Matrix{Float64},   # growth rate
+        k::Vector{Float64},   # max carrying capacity
+        mb::Matrix{Float64},  # background mortality
+        comp::Float64,        # competition between small and large 
+        r_comp::Matrix{Float64},  # tmp store for competition between tab and small massives
+        small_massives::StaticArrays.SVector{3,Int64},  # index locations for small massives
+        small::StaticArrays.SVector{6,Int64},           # indices for small size classes
+        mid::StaticArrays.SVector{19,Int64},            # indices for mid-size corals
+        large::StaticArrays.SVector{4,Int64},           # indices for large corals
+        acr_5_11::StaticArrays.SVector{2,Int64},          # size 5 Tabular Acropora (enhanced and unenhanced)
+        acr_6_12::StaticArrays.SVector{2,Int64},        # size 6 Tabular Acropora (enhanced and unenhanced)
+        rec_small::StaticArrays.SVector{6,Int64},         # growth rate for small corals
+        srec::Matrix{Float64},                            # s * recruitment values, where `s` relates to available space (not max carrying capacity)
+        sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
+        sX_acr_5_11::Matrix{Float64},                      # cache store for s * X_{acr_5_11}
+        M_sm::Matrix{Float64},                           # mortality for small massive corals due to competition and background mortality
+        sXr::Matrix{Float64},                            # s * X * r
+        X_mb::Matrix{Float64},                           # X * mb
+        cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
         # r, s, mb, comp, r_comp
         zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1), 0.3, zeros(2, n_sites),
 

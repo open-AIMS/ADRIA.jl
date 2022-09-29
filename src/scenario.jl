@@ -153,16 +153,16 @@ function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_
 
     r_raw = result_set.raw
     vals = relative_cover(r_raw)
-    vals[vals .< threshold] .= 0.0
+    vals[vals.<threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
     p_tbl = param_table(domain)
     vals .= absolute_shelter_volume(r_raw, site_area(domain), p_tbl)
-    vals[vals .< threshold] .= 0.0
+    vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
     vals .= relative_shelter_volume(r_raw, site_area(domain), p_tbl)
-    vals[vals .< threshold] .= 0.0
+    vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
     # Store raw results if no metrics specified
@@ -365,7 +365,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         depth_priority = collect(1:nrow(site_data))
 
         # calculate total area to seed
-        area_to_seed = (col_area_seed_TA.*n_TA_to_seed)+(col_area_seed_CA.*n_CA_to_seed)
+        area_to_seed = (col_area_seed_TA .* n_TA_to_seed) + (col_area_seed_CA .* n_CA_to_seed)
         min_area = covertol * area_to_seed
 
         # Filter out sites outside of desired depth range
@@ -462,7 +462,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         leftover_space_m² = max.(absolute_k_area' .- absolute_site_coral_cover, 0.0)
 
         area_settled = settler_cover(fec_scope, sf, TP_data, leftover_space_m²,
-                                     sim_params.max_settler_density, sim_params.basal_area_per_settler)
+            sim_params.max_settler_density, sim_params.basal_area_per_settler)
 
         # Recruitment should represent additional cover, relative to total site area
         # Gets used in ODE
@@ -532,7 +532,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
             # Calculate proportion to seed based on current available space
-            seeded_area = (TA=n_TA_to_seed*col_area_seed_TA, CA=n_CA_to_seed*col_area_seed_CA)
+            seeded_area = (TA=n_TA_to_seed * col_area_seed_TA, CA=n_CA_to_seed * col_area_seed_CA)
             scaled_seed = distribute_seeded_corals(vec(total_site_area), prefseedsites, vec(leftover_space_m²), seeded_area)
 
             # Seed each site with TA or CA
