@@ -470,7 +470,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         tmp = (area_settled ./ absolute_k_area')
         tmp[isnan.(tmp)] .= 0.0
         tmp[isinf.(tmp)] .= 0.0
-        p.rec[:, :] .= tmp
+        p.srec[:, :] .= tmp
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
