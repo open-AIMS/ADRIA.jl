@@ -58,24 +58,24 @@ function growthODE(du::Array{Float64, 2}, X::Array{Float64, 2}, p::NamedTuple, _
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb    # current cover * background mortality
 
-    rec = min.(p.rec,repeat(s,6))
+    srec = s.*min.(p.rec,repeat(s,6))
 
     @views @. sX_sel_en = s * X[p.sel_en, :]
     @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :]+X[12,:])')
 
     r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
+  
+    @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sXr[p.sel_en,:] + r_comp*X[p.sel_en]- X_mb[p.sel_en, :]
+    @views @. du[p.sel_unen, :] = sXr[p.sel_en, :] + sXr[p.sel_unen, :] + r_comp*X[p.sel_en] - X_mb[p.sel_unen, :]
 
-    @views @. du[p.sel_en, :] = sXr[p.sel_en - 1, :] - sXr[p.sel_en,:] - r_comp*X[p.sel_en]- X_mb[p.sel_en, :]
-    @views @. du[p.sel_unen, :] = sXr[p.sel_en, :] + r_comp*X[p.sel_en] - X_mb[p.sel_unen, :]
-
-    @views @. du[p.encrusting, :] = rec[p.enc, :] - sXr[p.encrusting, :] - X_mb[p.encrusting, :]
+    @views @. du[p.encrusting, :] = srec[p.enc, :] - sXr[p.encrusting, :] - X_mb[p.encrusting, :]
 
     @views @. du[p.small_massives, :] = sXr[p.small_massives - 1, :] - sXr[p.small_massives, :] - M_sm
 
-    @views @. du[p.small, :] = rec[p.small_r, :] - sXr[p.small, :] - X_mb[p.small, :]
+    @views @. du[p.small, :] = srec[p.small_r, :] - sXr[p.small, :] - X_mb[p.small, :]
     @views @. du[p.mid, :] = sXr[p.mid - 1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
     @views @. du[p.large, :] = sXr[p.large - 1 , :] + sXr[p.large, :] - X_mb[p.large, :]
-
+  
     # Ensure no non-negative values
     du .= max.(du, 0.0)
     # du .= proportional_adjustment!(du, p.cover, p.k)
