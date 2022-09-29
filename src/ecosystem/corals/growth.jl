@@ -44,27 +44,25 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
     # p.small = [1, 7, 13, 19, 25, 31]
     # p.mid = [2:4; 8:10; 14:17; 20:23; 29; 32:35]
     # p.large = [18, 24, 30, 36]
-    # p.acr_5 = [5, 11]
-    # p.acr_6 = [6, 12]
+    # p.acr_5_11 = [5, 11]
+    # p.acr_6_12 = [6, 12]
 
     # Use temporary caches
     sXr = @view p.sXr[:, :]
     X_mb = @view p.X_mb[:, :]
-    sX_acr_5 = @view p.sX_acr_5[:, :]
+    sX_acr_5_11 = @view p.sX_acr_5[:, :]
     M_sm = @view p.M_sm[:, :]
     r_comp = @view p.r_comp[:, :]
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb    # current cover * background mortality
 
-    srec = s .* p.rec
-
-    @views @. sX_acr_5 = s * X[p.acr_5, :]
+    @views @. sX_acr_5_11 = s * X[p.acr_5_11, :]
     @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :] + X[12, :])')
 
     r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
 
-    @views @. du[p.acr_5, :] = sXr[p.acr_5-1, :] - sXr[p.acr_5, :] + r_comp * X[p.acr_5] - X_mb[p.acr_5, :]
-    @views @. du[p.acr_6, :] = sXr[p.acr_5, :] + sXr[p.acr_6, :] + r_comp * X[p.acr_6] - X_mb[p.acr_6, :]
+    @views @. du[p.acr_5_11, :] = sXr[p.acr_5_11-1, :] - sXr[p.acr_5_11, :] + r_comp * X[p.acr_5_11] - X_mb[p.acr_5_11, :]
+    @views @. du[p.acr_6_12, :] = sXr[p.acr_5_11, :] + sXr[p.acr_6_12, :] + r_comp * X[p.acr_6_12] - X_mb[p.acr_6_12, :]
 
     @views @. du[p.small_massives, :] = sXr[p.small_massives-1, :] - sXr[p.small_massives, :] - M_sm
 

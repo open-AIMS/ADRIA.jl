@@ -29,7 +29,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
     large::SVector = @SVector [18, 24, 30, 36]
 
     acr_5_11::SVector = @SVector [5, 11]
-    acr_6::SVector = @SVector [6, 12]
+    acr_6_12::SVector = @SVector [6, 12]
 
     p = @NamedTuple{
             r::Matrix{Float64},   # growth rate
@@ -41,12 +41,12 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
             small::StaticArrays.SVector{6, Int64},           # indices for small size classes
             mid::StaticArrays.SVector{19, Int64},            # indices for mid-size corals
             large::StaticArrays.SVector{4, Int64},           # indices for large corals
-            acr_5::StaticArrays.SVector{2, Int64},          # size 5 Tabular Acropora (enhanced and unenhanced)
-            acr_6::StaticArrays.SVector{2, Int64},        # size 6 Tabular Acropora (enhanced and unenhanced)
+            acr_5_11::StaticArrays.SVector{2, Int64},          # size 5 Tabular Acropora (enhanced and unenhanced)
+            acr_6_12::StaticArrays.SVector{2, Int64},        # size 6 Tabular Acropora (enhanced and unenhanced)
             rec_small::StaticArrays.SVector{6, Int64},         # growth rate for small corals
             rec::Matrix{Float64},                            # recruitment values
             sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
-            sX_acr_5::Matrix{Float64},                      # cache store for k * X_{sel_en}, where `k` relates to available space (not max carrying capacity)
+            sX_acr_5_11::Matrix{Float64},                      # cache store for s * X_{acr_5_11}
             M_sm::Matrix{Float64},                           # Coral cover of tabular corals
             sXr::Matrix{Float64},                            # s * X * r
             X_mb::Matrix{Float64},                           # X * mb
@@ -60,7 +60,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
         acr_5_11, acr_6_12, rec_small,
 
         # cache matrices
-        # rec, sigma, sX_sel_en, M_sm, 
+        # rec, sigma, sX_acr_5_11, M_sm, 
         # sXr, X_mb, cover
         zeros(n_groups, n_sites), zeros(1, n_sites), zeros(2, n_sites), zeros(3, n_sites),
         zeros(n_species, n_sites), zeros(n_species, n_sites), zeros(n_sites)
