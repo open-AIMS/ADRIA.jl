@@ -2,11 +2,7 @@
   "name": "Example_domain",
   "title": "Example reef cluster data package",
   "description": "Example data package for ADRIA",
-  "version": "v0.2.1",
   "sources": [],
-  "simulation_metadata": {
-    "timeframe": [2026, 2099]
-  },
   "contributors": [
     {
       "title": "Joe Smith",
@@ -25,40 +21,18 @@
     {
       "name": "coral_cover",
       "description": "Initial coral cover",
-      "data": [
-        "reef_siteid",
-        "covers"
-      ],
       "path": "site_data/coral_cover.mat",
-      "format": "MAT v7.3"
-    },
-    {
-      "name": "DHWs",
-      "description": "Stochastic degree heating week data for the Moore Cluster. Data for RCP 4.5",
-      "data": [
-        "reef_siteid",
-        "dhw"
-      ],
-      "path": "DHWs/dhwRCP45.mat",
       "format": "MAT v7.3"
     },
     {
       "name": "waves",
       "description": "Stochastic wave data for the Example cluster",
-      "data": [
-        "reef_siteid",
-        "wave"
-      ],
       "path": "waves/wave_RCP45.mat",
       "format": "MAT v7.3"
     },
     {
       "name": "connectivity",
       "description": "Example connectivity data for specific days across years, grouped by year",
-      "data": [
-        "row_source",
-        "col_receiving"
-      ],
       "path": "connectivity",
       "format": "CSV"
     }
