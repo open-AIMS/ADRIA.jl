@@ -75,7 +75,7 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
     min_rank = length(r_ids) + 1
 
     c_ranks = mean(ranked_sites, dims=1)
-    top_sites = Array{Union{String, Int32, Float32, Missing}}(undef, n, 3, size(ranked_sites, 3))
+    top_sites = Array{Union{String,Int32,Float32,Missing}}(undef, n, 3, size(ranked_sites, 3))
     for scen in axes(ranked_sites, 3)
         flat = vec(c_ranks[1, :, scen])
 
@@ -125,7 +125,7 @@ Return the top `N` sites according to the provided metric (defaulting to `mean` 
 # Arguments
 - rs : ResultSet
 - N : No. of best performing sites to be selected
-- metric : metric to use to order sites from best to worst, 
+- metric : metric to use to order sites from best to worst,
            must take ResultSet as input
 
 # Returns
@@ -147,10 +147,9 @@ function top_N_sites(data::AbstractArray{<:Real}, N::Int64; stat=mean)
     top_N_sites = zeros(Int64, size(stat_m, :scenarios), N)
     for scen in axes(stat_m, :scenarios)
         # sort each scenario according to metric and get indexes
-        inds = sortperm(stat_m[:,scen], rev=true)
-        top_N_sites[scen,:] = inds[1:N]
+        inds = sortperm(stat_m[:, scen], rev=true)
+        top_N_sites[scen, :] = inds[1:N]
     end
 
     return NamedDimsArray(top_N_sites, (:scenarios, :site_ids))
 end
-
