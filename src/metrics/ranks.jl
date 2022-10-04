@@ -116,9 +116,10 @@ function shade_ranks(rs::ResultSet; kwargs...)
 end
 
 """
-        top_N_sites(rs::ResultSet; N::Int64; metric::relative_cover)
+    top_N_sites(rs::ResultSet; N::Int64; metric::relative_cover)
+    top_N_sites(data::AbstractArray{Real}, N::Int64; stat=mean)
 
-Return the top `N` sites according to the provided metric (defaulting to `relative_cover`).
+Return the top `N` sites according to the provided metric (defaulting to `mean` of `relative_cover`).
 
 # Arguments
 - rs : ResultSet
@@ -127,7 +128,7 @@ Return the top `N` sites according to the provided metric (defaulting to `relati
            must take ResultSet as input
 
 # Returns
-NamedDimsArray[:scenarios,:site_order]
+NamedDimsArray[:scenarios,:site_ids]
 
 # Example
 ```julia
@@ -149,6 +150,6 @@ function top_N_sites(data::AbstractArray{<:Real}, N::Int64; stat=mean)
         top_N_sites[scen,:] = inds[1:N]
     end
 
-    return NamedDimsArray(top_N_sites, (:scenarios, :site_order))
+    return NamedDimsArray(top_N_sites, (:scenarios, :site_ids))
 end
 
