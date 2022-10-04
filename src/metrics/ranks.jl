@@ -121,6 +121,7 @@ end
 
 Return the top `N` sites according to the provided metric (defaulting to `mean` of `relative_cover`).
 
+
 # Arguments
 - rs : ResultSet
 - N : No. of best performing sites to be selected
@@ -128,7 +129,7 @@ Return the top `N` sites according to the provided metric (defaulting to `mean` 
            must take ResultSet as input
 
 # Returns
-NamedDimsArray[:scenarios,:site_ids]
+NamedDimsArray[:scenarios,:site_ids], where `site_ids` indicates order of site ranking as well.
 
 # Example
 ```julia
