@@ -355,7 +355,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
              zone_preds[site_ids.==s] .= zone_preds[site_ids.==s].+1
          end
     end
-
+    #Main.@infiltrate
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zone_preds, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
