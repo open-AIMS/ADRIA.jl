@@ -137,12 +137,12 @@ ADRIA.metrics.top_N_sites(rs, 5; metric=ADRIA.metric.relative_cover)
 """
 function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover)
 
-    metric = dropdims(mean(metric(rs), dims=:timesteps), dims=:timesteps)
+    metric_μ = dropdims(mean(metric(rs), dims=:timesteps), dims=:timesteps)
 
-    top_N_sites = Array{Int64}(zeros(size(metric, 2), N))
+    top_N_sites = Array{Int64}(zeros(size(metric_μ, 2), N))
     for scen in axes(metric, 3)
         # sort each scenario according to metric and get indexes
-        inds = sortperm(metric[:,scen], rev=true)
+        inds = sortperm(metric_μ[:,scen], rev=true)
         top_N_sites[scen,:] = inds[1:N]
     end
 
