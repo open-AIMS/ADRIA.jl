@@ -312,7 +312,7 @@ function coral_spec()::NamedTuple
 
     # Second, growth as transitions of cover to higher bins is estimated as
     # rate of growth per year
-    params.growth_rate .= (2 * linear_extension'[:]) ./ diam_bin_widths
+    #params.growth_rate .= (2 * linear_extension'[:]) ./ diam_bin_widths
     bin_shift = reshape((2 * linear_extension'[:]) ./ diam_bin_widths,6,6)'
     bin_shift[bin_shift .> 1] .= 1
     mean_diameter_ratio = (mean_colony_diameter_m[:,2:end]./mean_colony_diameter_m[:,1:end-1]).^2
