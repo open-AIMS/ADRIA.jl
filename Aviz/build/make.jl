@@ -21,7 +21,7 @@ if "sysimage" in ARGS
     sysimage_fn = "app_image.dll"
     if "dev" in ARGS
         @info "Adding dev packages"
-        dev_pkgs = ["Revise", "Infiltrator"]
+        dev_pkgs = ["Revise", "Infiltrator", "Plots"]
         Pkg.add(dev_pkgs)
 
         sysimage_fn = "app_image_dev.dll"
