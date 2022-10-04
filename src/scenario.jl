@@ -446,13 +446,18 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
-        Main.@infiltrate
+        #Main.@infiltrate
+        zones = site_data.zone_type
+        # zone_encode = zeros(Int,size(zones))
+        # for col in 1:length(unique(zones))
+        #     zone_encode[zones.==unique(zones)[col]] .= col
+        # end
         # Prep site selection
         mcda_vars = DMCDA_vars(
             depth_priority,
             nsiteint,
             sim_params.prioritysites,
-            site_data.zone_type,
+            zones,
             domain.strongpred,
             domain.in_conn,
             domain.out_conn,
