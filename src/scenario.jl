@@ -351,6 +351,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
     Y_cover[1, :, :] .= cache.init_cov[:, :]
+    ode_u = zeros(n_species, n_sites)
     cover_tmp = p.cover  # pre-allocated matrix used to avoid memory allocations
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
@@ -504,7 +505,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
 
     absolute_k_area = vec(total_site_area' .* max_cover)  # max possible coral area in m^2
-    growth::ODEProblem = ODEProblem{true}(growthODE, Y_cover[1, :, :], tspan, p)
+    growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
@@ -525,10 +526,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Recruitment should represent additional cover, relative to total site area
         # Gets used in ODE
         # p.rec[:, :] .= (area_settled ./ total_site_area)
-        tmp = (area_settled ./ absolute_k_area')
-        tmp[isnan.(tmp)] .= 0.0
-        tmp[isinf.(tmp)] .= 0.0
-        p.rec[:, :] .= tmp
+        p.rec[:, :] .= replace((area_settled ./ absolute_k_area'), Inf=>0.0, NaN=>0.0)
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
@@ -604,21 +602,16 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
 
+        # update initial condition
         tmp = ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area'
-        tmp[isnan.(tmp)] .= 0.0
-        tmp[isinf.(tmp)] .= 0.0
-        growth.u0[:, :] .= tmp
-        # growth.u0[:, :] .= Y_pstep[:, :] .* prop_loss[:, :]
+        growth.u0[:, :] .= replace(tmp, Inf=>0.0, NaN=>0.0)
 
-        #   # update initial condition
-        # growthODE_expanded
+        # growth.u0[:, :] .= Y_pstep[:, :] .* prop_loss[:, :]
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=[:nonstiff], abstol=1e-9, reltol=1e-8)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        # Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end], cover_tmp, max_cover)
-        # Y_cover[tstep, :, :] .= sol.u[end]
-
+        # Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end] .* absolute_k_area' ./ total_site_area, cover_tmp, max_cover)
         Y_cover[tstep, :, :] .= (sol.u[end] .* absolute_k_area') ./ total_site_area
 
     end
