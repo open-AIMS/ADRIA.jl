@@ -1,10 +1,13 @@
 module Aviz
 
 using RelocatableFolders, FileIO
-using GLMakie
+using GLMakie, GeoMakie
 using GLMakie.GeometryBasics
 using Statistics, Distributions
-using GeoDataFrames, GeoInterface
+using GeoInterface
+import GeoDataFrames as GDF
+import GeoFormatTypes as GFT
+
 
 using ADRIA
 
@@ -19,9 +22,9 @@ include("./theme.jl")
 
 """Main entry point for app."""
 function julia_main()::Cint
-    if "analyze" in ARGS
+    if "explore" in ARGS
         rs_pkg = ARGS[2]
-        gui_analysis(rs_pkg)
+        explore(rs_pkg)
         return 0
     end
 
@@ -30,15 +33,12 @@ function julia_main()::Cint
         rcp_id = ARGS[3]
         input_set = ARGS[4]
 
-        # Run for specified RCP (TODO: Run for all...)
-        # Needs another run_scenario() to suppor this
-        # using combine_results()
         dom = ADRIA.load_domain(domain_loc, rcp_id)
         p_df = ADRIA.load_scenarios(dom, input_set)
 
         dom = ADRIA.run_scenarios(p_df, dom)
         rs = ADRIA.load_results(dom)
-        gui_analysis(rs)
+        explore(rs)
         return 0
     end
 
@@ -60,11 +60,11 @@ function main_menu()
     hidespines!(f.content[1])
 
     Label(f[2,1], "Enter ADRIA Result Set to analyze")
-    rs_path_tb = Textbox(f[3, 1], placeholder="./Moore_RS")  # placeholder="Path to ADRIA Result Set"
+    rs_path_tb = Textbox(f[3, 1], placeholder="./Moore_RS")
     rs_path_tb.stored_string[] = "./Moore_RS"
     status_label = Label(f[4,1], "")
 
-    launch_button = Button(f[5,1], label="Analyze")
+    launch_button = Button(f[5,1], label="Explore")
 
     on(launch_button.clicks) do c
         rs_path = rs_path_tb.stored_string[]
@@ -79,7 +79,7 @@ function main_menu()
             else
                 # Clear current figure and launch new display
                 empty!(f)
-                gui_analysis(rs)
+                explore(rs)
             end
         else
             rs_path_tb.bordercolor = :red
@@ -92,12 +92,15 @@ function main_menu()
 end
 
 
-function gui_analysis(rs::ADRIA.ResultSet)
-    layout = create_layout(resolution=(1920,1080))
+function explore(rs::ADRIA.ResultSet)
+    layout = modeler_layout(resolution=(1920,1080))
 
     f = layout.figure
-    controls = layout.controls
-    traj_display = layout.trajectory
+    # controls = layout.controls
+    traj_display = layout.trajectory.temporal
+    traj_outcome_sld = layout.trajectory.outcome_slider
+    traj_time_sld = layout.trajectory.time_slider
+
     scen_hist = layout.scen_hist
     map_display = layout.map
 
@@ -111,25 +114,57 @@ function gui_analysis(rs::ADRIA.ResultSet)
     color_map = scenario_colors(rs)
     obs_color = Observable(color_map)
 
+    n_visible_scenarios = Observable(size(rs.inputs, 1))
+
     # Controls
     ms = rs.model_spec
     # intervention_components = ms[ms.component .== "Intervention", [:fieldname, :full_bounds]]
 
     tac_scens = ADRIA.metrics.scenario_total_cover(rs)
+    # rc_scens = ADRIA.metrics.scenario_relative_cover(rs)
     mean_tac_outcomes = vec(mean(tac_scens, dims=1))
-    tac_min_max = (minimum(mean_tac_outcomes), maximum(mean_tac_outcomes))
+    # mean_rc_outcomes = vec(mean(rc_scens, dims=1))
+    tac_min_max = (minimum(tac_scens), maximum(tac_scens))
 
-    tac_label = Label(controls[1,1], "Mean TAC (m²)")
-    tac_slider = IntervalSlider(controls[2,1],
-                                range=LinRange(floor(Int64, tac_min_max[1])-1, ceil(Int64, tac_min_max[2])+1, Int(5e5)),
+    # tac_label = Label(traj_outcome_sld[1,1], "Mean TAC (m²)")  # , rotation = pi/2
+    num_steps = Int(ceil((tac_min_max[2] - tac_min_max[1]) + 1))
+    tac_slider = IntervalSlider(traj_outcome_sld[2,1],
+                                range=LinRange(floor(Int64, tac_min_max[1])-1, ceil(Int64, tac_min_max[2])+1, num_steps),
                                 startvalues=tac_min_max,
-                                width=350)
+                                horizontal=false
+                                # width=350
+                                )
 
     # Dynamic label text for TAC slider
-    tac_lbl_txt = lift(tac_slider.interval) do intv
-        string(round.(intv ./ 1e6, digits=4)) * "M"
-    end
-    Label(controls[2,1], tac_lbl_txt)
+    tac_bot_val = Observable(floor(tac_min_max[1])-1)
+    tac_top_val = Observable(ceil(tac_min_max[2])+1)
+    # tac_lbl_bot = lift(tac_slider.interval) do intv
+    #     string(round(intv[1] ./ 1e6, digits=4)) * "M"
+    # end
+    # tac_lbl_top = lift(tac_slider.interval) do intv
+    #     string(round(intv[2] ./ 1e6, digits=4)) * "M"
+    # end
+    tac_bot = @lift("$(round($tac_bot_val / 1e6, digits=2))")
+    tac_top = @lift("$(round($tac_top_val / 1e6, digits=2))")
+    Label(traj_outcome_sld[1,1], tac_top)
+    Label(traj_outcome_sld[3,1], tac_bot)
+
+    # Time slider
+    years = timesteps(rs)
+    year_range = first(years), last(years)
+    time_slider = IntervalSlider(
+        traj_time_sld[1,2],
+        range=LinRange(year_range[1], year_range[2], (year_range[2] - year_range[1])+1),
+        startvalues=year_range
+    )
+
+    # Dynamic label text for TAC slider
+    left_year_val = Observable("$(year_range[1])")
+    right_year_val = Observable("$(year_range[2])")
+    traj_year_left = @lift("$($left_year_val)")
+    traj_year_right = @lift("$($right_year_val)")
+    Label(traj_time_sld[1,1], traj_year_left)
+    Label(traj_time_sld[1,3], traj_year_right)
 
     scen_tac = ADRIA.metrics.scenario_total_cover(rs)
     tac_data = Matrix(scen_tac')
@@ -169,25 +204,44 @@ function gui_analysis(rs::ADRIA.ResultSet)
     # Get mean outcomes for each scenario
     outcome_pcp_data = hcat([
         mean_tac_outcomes,
-        vec(mean(ADRIA.metrics.scenario_rsv(rs), dims=1)),
-        vec(mean(ADRIA.metrics.scenario_asv(rs), dims=1))
+        vec(mean(ADRIA.metrics.scenario_asv(rs), dims=1)),
+        vec(mean(ADRIA.metrics.scenario_rsv(rs), dims=1))
     ]...)
-    disp_names = ["TAC", "RSV", "ASV"]
+    disp_names = ["TAC", "ASV", "RSV"]
 
     out_pcp_data = normalize(outcome_pcp_data)
 
     # Specify interactive elements and behavior
-    lift(tac_slider.interval) do intv
+    # TODO: Lift on data to be plotted
+    #       Controls simply update transparency settings etc, and update the dataset to be plotted
+    #       All other elements simply update when the underlying dataset updates
+    # https://discourse.julialang.org/t/interactive-plot-with-makielayout/48843
+    onany(time_slider.interval, tac_slider.interval) do time_val, tac_val
+        # Update slider labels
+        tac_bot_val[] = tac_val[1]
+        tac_top_val[] = tac_val[2]
+
+        left_year_val[] = "$(Int(floor(time_val[1])))"
+        right_year_val[] = "$(Int(ceil(time_val[2])))"
+
         # Trajectories
-        tac_idx = (mean_tac_outcomes .>= intv[1]-0.5) .& (mean_tac_outcomes .<= intv[2]+0.5)
+        # tac_idx = (mean_tac_outcomes .>= tac_val[1]-0.5) .& (mean_tac_outcomes .<= tac_val[2]+0.5)
+
+        # Convert time ranges to index values
+        t_idx = Int(time_val[1] - (year_range[1]) + 1), Int(time_val[2] - (year_range[1]) + 1)
+
+        hide_idx = vec(all((tac_val[1] .<= tac_scens[t_idx[1]:t_idx[2], :] .<= tac_val[2]) .== 0, dims=1))
+        show_idx = Bool.(zeros(Int64, length(hide_idx)) .⊻ hide_idx)  # inverse of hide
+
+        scen_dist = dropdims(mean(tac[timesteps=t_idx[1]:t_idx[2]], dims=:timesteps), dims=:timesteps)
 
         # Boolean index of scenarios to hide (inverse of tac_idx)
-        hide = Bool.(ones(Int64, length(tac_idx)) .⊻ tac_idx)
-        if !all(hide .== 0)
+        # hide_idx = Bool.(ones(Int64, length(tac_idx)) .⊻ tac_idx)
+        if !all(hide_idx .== 0)
             # Hide scenarios that were filtered out
-            cf_dist = scen_dist[tac_idx .& scen_types.counterfactual]
-            ug_dist = scen_dist[tac_idx .& scen_types.unguided]
-            g_dist = scen_dist[tac_idx .& scen_types.guided]
+            cf_dist = scen_dist[show_idx .& scen_types.counterfactual]
+            ug_dist = scen_dist[show_idx .& scen_types.unguided]
+            g_dist = scen_dist[show_idx .& scen_types.guided]
         else
             cf_dist = scen_dist[scen_types.counterfactual]
             ug_dist = scen_dist[scen_types.unguided]
@@ -216,11 +270,11 @@ function gui_analysis(rs::ADRIA.ResultSet)
             g_hist_alpha[] = 0.0
         end
 
-        # Determine level of transparency for each line
+        # Determine level of transparency for each line (maximum of 0.6)
         min_step = (1/0.05)
-        color_weight = min((1.0 / (count(tac_idx .> 0) / min_step)), 0.6)
+        color_weight = min((1.0 / (count(show_idx .> 0) / min_step)), 0.6)
 
-        obs_color[] = scenario_colors(rs, color_weight, hide)
+        obs_color[] = scenario_colors(rs, color_weight, hide_idx)
     end
 
     # Trajectories
@@ -234,9 +288,29 @@ function gui_analysis(rs::ADRIA.ResultSet)
     hidedecorations!(scen_hist)
     hidespines!(scen_hist)
 
+    # TODO: Separate this out into own function
+    # Make temporary copy of GeoPackage as GeoJSON
+    tmpdir = mktempdir()
+    geo_fn = GDF.write(joinpath(tmpdir, "Aviz_$(rs.name).geojson"), rs.site_data; driver="geojson")
+    geodata = GeoMakie.GeoJSON.read(read(geo_fn))
+
+    # Get bounds to display
+    centroids = rs.site_centroids
+    lon = [c[1] for c in centroids]
+    lat = [c[2] for c in centroids]
+    
     # Display map
-    map_coords = GeoInterface.coordinates.(ADRIA.get_geometry(rs.site_data))
-    plot_poly!.(map_display, map_coords)
+    mean_rc_sites = mean(ADRIA.metrics.relative_cover(rs), dims=(:scenarios, :timesteps))
+    map_buffer = 0.005
+    spatial = GeoAxis(
+        map_display;  # any cell of the figure's layout
+        lonlims=(minimum(lon) - map_buffer, maximum(lon) + map_buffer),
+        latlims=(minimum(lat) - map_buffer, maximum(lat) + map_buffer),
+        xlabel="Long",
+        ylabel="Lat"
+    )
+    # datalims!(spatial)  # auto-adjust limits (doesn't work if there are Infs...)
+    poly!(spatial, geodata, color=vec(mean_rc_sites), colormap=:plasma)
 
     # Fill pairplot
     # Get mean outcomes for each scenario
@@ -251,8 +325,8 @@ function gui_analysis(rs::ADRIA.ResultSet)
 
     wait(gl_screen);
 end
-function gui_analysis(rs_path::String)
-    gui_analysis(ADRIA.load_results(rs_path))
+function explore(rs_path::String)
+    explore(ADRIA.load_results(rs_path))
 end
 
 end
@@ -260,8 +334,8 @@ end
 
 # Allow use from terminal if this file is run directly
 if abspath(PROGRAM_FILE) == @__FILE__
-    if "analyze" in ARGS
+    if "explore" in ARGS
         rs_pkg = ARGS[2]
-        gui_analysis(rs_pkg)
+        Aviz.explore(rs_pkg)
     end
 end
