@@ -133,16 +133,19 @@ NamedDimsArray[:scenarios,:site_order]
 ```julia
 ADRIA.metrics.top_N_sites(rs, 5)
 ADRIA.metrics.top_N_sites(rs, 5; metric=ADRIA.metric.relative_cover)
+ADRIA.metrics.top_N_sites(rs, 5; metric=ADRIA.metric.relative_cover, stat=median)
 ```
 """
-function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover)
+function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover, stat=mean)
+    return top_N_sites(metric(rs), N; stat=stat)
+end
+function top_N_sites(data::AbstractArray{<:Real}, N::Int64; stat=mean)
+    stat_m = dropdims(stat(data, dims=:timesteps), dims=:timesteps)
 
-    metric_μ = dropdims(mean(metric(rs), dims=:timesteps), dims=:timesteps)
-
-    top_N_sites = Array{Int64}(zeros(size(metric_μ, 2), N))
-    for scen in axes(metric_μ, 2)
+    top_N_sites = zeros(Int64, size(stat_m, :scenarios), N)
+    for scen in axes(stat_m, :scenarios)
         # sort each scenario according to metric and get indexes
-        inds = sortperm(metric_μ[:,scen], rev=true)
+        inds = sortperm(stat_m[:,scen], rev=true)
         top_N_sites[scen,:] = inds[1:N]
     end
 
