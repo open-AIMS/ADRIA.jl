@@ -75,7 +75,7 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
     min_rank = length(r_ids) + 1
 
     c_ranks = mean(ranked_sites, dims=1)
-    top_sites = Array{Union{String, Int32, Float32, Missing}}(undef, n, 3, size(ranked_sites, 3))
+    top_sites = Array{Union{String,Int32,Float32,Missing}}(undef, n, 3, size(ranked_sites, 3))
     for scen in axes(ranked_sites, 3)
         flat = vec(c_ranks[1, :, scen])
 
@@ -96,7 +96,7 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
 end
 
 """
-    seed_ranks(rs::ResultSet; kwargs...)
+    shade_ranks(rs::ResultSet; kwargs...)
 
 # Arguments
 - rs : ResultSet
@@ -116,36 +116,40 @@ function shade_ranks(rs::ResultSet; kwargs...)
 end
 
 """
-        top_N_sites(rs::ResultSet; N::Int64; metric::relative_cover)
+    top_N_sites(rs::ResultSet; N::Int64; metric::relative_cover)
+    top_N_sites(data::AbstractArray{Real}, N::Int64; stat=mean)
 
-Return the top `N` sites according to the provided metric (defaulting to `relative_cover`).
+Return the top `N` sites according to the provided metric (defaulting to `mean` of `relative_cover`).
+
 
 # Arguments
 - rs : ResultSet
 - N : No. of best performing sites to be selected
-- metric : metric to use to order sites from best to worst, 
+- metric : metric to use to order sites from best to worst,
            must take ResultSet as input
 
 # Returns
-NamedDimsArray[:scenarios,:site_order]
+NamedDimsArray[:scenarios,:site_ids], where `site_ids` indicates order of site ranking as well.
 
 # Example
 ```julia
 ADRIA.metrics.top_N_sites(rs, 5)
 ADRIA.metrics.top_N_sites(rs, 5; metric=ADRIA.metric.relative_cover)
+ADRIA.metrics.top_N_sites(rs, 5; metric=ADRIA.metric.relative_cover, stat=median)
 ```
 """
-function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover)
+function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover, stat=mean)
+    return top_N_sites(metric(rs), N; stat=stat)
+end
+function top_N_sites(data::AbstractArray{<:Real}, N::Int64; stat=mean)
+    stat_m = dropdims(stat(data, dims=:timesteps), dims=:timesteps)
 
-    metric = dropdims(mean(metric(rs), dims=:timesteps), dims=:timesteps)
-
-    top_N_sites = Array{Int64}(zeros(size(metric, 2), N))
-    for scen in axes(metric, 3)
+    top_N_sites = zeros(Int64, size(stat_m, :scenarios), N)
+    for scen in axes(stat_m, :scenarios)
         # sort each scenario according to metric and get indexes
-        inds = sortperm(metric[:,scen], rev=true)
-        top_N_sites[scen,:] = inds[1:N]
+        inds = sortperm(stat_m[:, scen], rev=true)
+        top_N_sites[scen, :] = inds[1:N]
     end
 
-    return NamedDimsArray(top_N_sites, (:scenarios, :site_order))
+    return NamedDimsArray(top_N_sites, (:scenarios, :site_ids))
 end
-
