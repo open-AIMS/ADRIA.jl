@@ -312,7 +312,11 @@ function coral_spec()::NamedTuple
 
     # Second, growth as transitions of cover to higher bins is estimated as
     # rate of growth per year
-    params.growth_rate .= growth_rate(linear_extension, diam_bin_widths)
+    params.growth_rate .= (2 * linear_extension'[:]) ./ diam_bin_widths
+    bin_shift = reshape((2 * linear_extension'[:]) ./ diam_bin_widths,6,6)'
+    bin_shift[bin_shift .> 1] .= 1
+    mean_diameter_ratio = (mean_colony_diameter_m[:,2:end]./mean_colony_diameter_m[:,1:end-1]).^2
+    params.growth_rate .= mean_diameter_ratio.*bin_shift[:,1:end-1]
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
