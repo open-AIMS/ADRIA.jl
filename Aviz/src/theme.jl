@@ -18,7 +18,7 @@ end
 
 function scenario_colors(rs, weight::Float64, hide::BitVector)
     inputs = rs.inputs
-    color_map = [(:blue, weight) for _ in 1:size(inputs, 1)]
+    color_map = repeat([(:blue, weight)], size(inputs, 1))
     scen_type = scenario_type(rs)
     counterfactual = scen_type.counterfactual
     unguided = scen_type.unguided
@@ -32,7 +32,7 @@ end
 function scenario_colors(rs, weight::Float64)
     inputs = rs.inputs
 
-    color_map = [(:blue, weight) for _ in 1:size(inputs, 1)]
+    color_map = repeat([(:blue, weight)], size(inputs, 1))
 
     scen_type = scenario_type(rs)
     counterfactual = scen_type.counterfactual
