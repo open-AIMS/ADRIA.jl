@@ -123,15 +123,17 @@ function load_scenarios(domain::Domain, filepath::String)::DataFrame
     if "RCP" in names(df)
         df = df[!, Not("RCP")]
     end
+    process_inputs!(domain, df)
 
-    bnds = domain.model[:bounds]
+    return df
+end
 
-    p_types = domain.model[:ptype]
+function process_inputs!(d::Domain, df::DataFrame)
+    bnds = d.model[:bounds]
+    p_types = d.model[:ptype]
     for (i, dt) in enumerate(p_types)
         if dt == "integer"
             df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
         end
     end
-
-    return df
 end
