@@ -96,7 +96,7 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
 end
 
 """
-    seed_ranks(rs::ResultSet; kwargs...)
+    shade_ranks(rs::ResultSet; kwargs...)
 
 # Arguments
 - rs : ResultSet
