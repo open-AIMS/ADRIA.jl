@@ -11,7 +11,7 @@ if "app" in ARGS
 
     cd("../..")
 
-    create_app("Aviz", "adria"; include_lazy_artifacts=true, force=true, incremental=true)
+    create_app("Aviz", "adria_aviz"; include_lazy_artifacts=true, force=true, incremental=true)
     exit()
 end
 
