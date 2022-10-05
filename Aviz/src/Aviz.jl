@@ -7,6 +7,7 @@ using Statistics, Distributions
 using GeoInterface
 import GeoDataFrames as GDF
 import GeoFormatTypes as GFT
+import GeoMakie.GeoJSON.FeatureCollection as FC
 
 
 using ADRIA
@@ -18,6 +19,7 @@ const LOGO = @path joinpath(ASSETS, "imgs", "ADRIA_logo.png")
 include("./plotting.jl")
 include("./layout.jl")
 include("./theme.jl")
+include("./spatial.jl")
 
 
 """Main entry point for app."""
@@ -92,6 +94,216 @@ function main_menu()
 end
 
 
+function _get_seeded_sites(seed_log, ts, scens; N=5)
+    t = dropdims(sum(seed_log[timesteps=ts, scenarios=scens], dims=:timesteps), dims=:timesteps)
+    site_scores = dropdims(sum(t, dims=:scenarios), dims=:scenarios)
+
+    # @info "Scores", site_scores
+    if length(unique(site_scores)) == 1
+        return zeros(Int64, N)
+    end
+
+    return sortperm(site_scores)[1:N]
+end
+
+
+function comms(rs::ADRIA.ResultSet)
+    layout = comms_layout(resolution=(1920,1080))
+
+    f = layout.figure
+    # controls = layout.controls
+    traj_display = layout.trajectory.temporal
+    traj_outcome_sld = layout.trajectory.outcome_slider
+    traj_time_sld = layout.trajectory.time_slider
+
+    # Generate trajectory
+    tac_scens = ADRIA.metrics.scenario_total_cover(rs)
+    tac_data = Matrix(tac_scens')
+    tac_min_max = (minimum(tac_scens), maximum(tac_scens))
+
+    scen_hist = layout.scen_hist
+
+    # Generate trajectory controls
+    num_steps = Int(ceil((tac_min_max[2] - tac_min_max[1]) + 1))
+    tac_slider = IntervalSlider(traj_outcome_sld[2,1],
+                                range=LinRange(floor(Int64, tac_min_max[1])-1, ceil(Int64, tac_min_max[2])+1, num_steps),
+                                startvalues=tac_min_max,
+                                horizontal=false
+    )
+
+    # Dynamic label text for TAC slider
+    tac_bot_val = Observable(floor(tac_min_max[1])-1)
+    tac_top_val = Observable(ceil(tac_min_max[2])+1)
+    Label(traj_outcome_sld[1,1], @lift("$(round($tac_top_val / 1e6, digits=2)) M (m²)"))
+    Label(traj_outcome_sld[3,1], @lift("$(round($tac_bot_val / 1e6, digits=2)) M (m²)"))
+
+    # Time slider
+    years = timesteps(rs)
+    year_range = first(years), last(years)
+    time_slider = IntervalSlider(
+        traj_time_sld[1,2:3],
+        range=LinRange(year_range[1], year_range[2], (year_range[2] - year_range[1])+1),
+        startvalues=year_range
+    )
+
+    # Dynamic label text for TAC slider
+    left_year_val = Observable("$(year_range[1])")
+    right_year_val = Observable("$(year_range[2])")
+    Label(traj_time_sld[1,1], @lift("$($left_year_val)"))
+    Label(traj_time_sld[1,4], @lift("$($right_year_val)"))
+
+    # Generate map
+    map_display = layout.map
+
+    # Get bounds to display
+    centroids = rs.site_centroids
+    mean_rc_sites = ADRIA.metrics.relative_cover(rs)
+    obs_mean_rc_sites = Observable(vec(mean(mean_rc_sites, dims=(:scenarios, :timesteps))))
+
+    # Placeholder store to control which trajectories are visible
+    color_map = scenario_colors(rs)
+    obs_color = Observable(color_map)
+    scen_types = scenario_type(rs)
+
+    # Trajectories
+    series!(traj_display, years, tac_data, color=@lift($obs_color[:]))
+
+    # Density (TODO: Separate into own function)
+    scen_dist = dropdims(mean(tac_scens, dims=:timesteps), dims=:timesteps)
+    obs_cf_scen_dist = Observable(scen_dist[scen_types.counterfactual])
+    obs_ug_scen_dist = Observable(scen_dist[scen_types.unguided])
+    obs_g_scen_dist = Observable(scen_dist[scen_types.guided])
+
+    # Color transparency for density plots
+    # Note: Density plots currently cannot handle empty datasets
+    #       as what might happen if user selects a region with no results.
+    #       so instead we set alpha to 0.0 to hide it.
+    cf_hist_alpha = Observable(0.5)
+    ug_hist_alpha = Observable(0.5)
+    g_hist_alpha = Observable(0.5)
+
+    # Legend(traj_display)  legend=["Counterfactual", "Unguided", "Guided"]
+    density!(scen_hist, @lift($obs_cf_scen_dist[:]), direction=:y, color=(:red, @lift($cf_hist_alpha[])))
+    density!(scen_hist, @lift($obs_ug_scen_dist[:]), direction=:y, color=(:green, @lift($ug_hist_alpha[])))
+    density!(scen_hist, @lift($obs_g_scen_dist[:]), direction=:y, color=(:blue, @lift($g_hist_alpha[])))
+    hidedecorations!(scen_hist)
+    hidespines!(scen_hist)
+
+    # Prep seed log
+    seed_log = rs.seed_log[:, 1, :, :]
+    n_sites = size(seed_log, :sites)
+    seed_log[seed_log .== 0.0] .= n_sites+1
+
+    # site_highlight = repeat([(:blue, 0.1)], n_sites)
+
+    # TODO: Separate this out into own function
+    # Make temporary copy of GeoPackage as GeoJSON
+    tmpdir = mktempdir()
+    geo_fn = GDF.write(joinpath(tmpdir, "Aviz_$(rs.name).geojson"), rs.site_data; driver="geojson")
+    geodata = GeoMakie.GeoJSON.read(read(geo_fn))
+
+    map_disp = create_map!(map_display, geodata, @lift($obs_mean_rc_sites[:]), (:black, 0.05), centroids)
+    curr_highlighted_sites = _get_seeded_sites(seed_log, (:), (:))
+
+    # obs_site_highlight = FC(geodata[@lift($curr_highlighted_sites[:]), :][:])
+
+    obs_site_sel = FC(geodata[curr_highlighted_sites, :][:])
+    obs_site_sel = Observable(obs_site_sel)
+    obs_site_highlight = Observable((:red, 1.0))
+    overlay_site = poly!(map_disp, obs_site_sel, color=(:white, 0.0), strokecolor=obs_site_highlight, strokewidth=3, overdraw=true)
+
+    onany(time_slider.interval, tac_slider.interval) do time_val, tac_val
+        # Update slider labels
+        left_year_val[] = "$(Int(floor(time_val[1])))"
+        right_year_val[] = "$(Int(ceil(time_val[2])))"
+        tac_bot_val[] = tac_val[1]
+        tac_top_val[] = tac_val[2]
+
+        # Convert time ranges to index values
+        timespan = floor(Int, time_val[1] - (year_range[1]) + 1):ceil(Int, time_val[2] - (year_range[1]) + 1)
+        hide_idx = vec(all((tac_val[1] .<= tac_scens[timespan, :] .<= tac_val[2]) .== 0, dims=1))
+        show_idx = Bool.(ones(Int64, length(hide_idx)) .⊻ hide_idx)  # inverse of hide
+
+        scen_dist = dropdims(mean(tac_scens[timespan, :], dims=:timesteps), dims=:timesteps)
+
+        # Update map
+        obs_mean_rc_sites[] = vec(mean(mean_rc_sites[timesteps=timespan][scenarios=findall(show_idx)], dims=(:scenarios, :timesteps)))
+
+        # obs_site_highlight[][seeded_sites] .= repeat([(:blue, 1.0)], 5)
+        # poly!(map_display, FC(geodata[seeded_sites, :][:]), strokecolor=site_highlight, strokewidth=1)
+        seeded_sites = _get_seeded_sites(seed_log, (:), show_idx)
+        if seeded_sites != curr_highlighted_sites
+            # Highlight seeded sites
+            if !all(seeded_sites .== 0.0)
+                obs_site_sel[] = FC(geodata[seeded_sites, :][:])
+                obs_site_highlight[] = (:red, 1.0)
+                curr_highlighted_sites .= seeded_sites
+            end
+            
+            if all(show_idx .== 0)
+                obs_site_highlight[] = (:red, 0.0)
+            end
+
+            @info curr_highlighted_sites
+        else
+            if all(seeded_sites .== 0.0) || all(show_idx .== 0)
+                obs_site_highlight[] = (:red, 0.0)
+            end
+        end
+
+        # Boolean index of scenarios to hide (inverse of tac_idx)
+        if !all(hide_idx .== 0)
+            # Hide scenarios that were filtered out
+            cf_dist = scen_dist[show_idx .& scen_types.counterfactual]
+            ug_dist = scen_dist[show_idx .& scen_types.unguided]
+            g_dist = scen_dist[show_idx .& scen_types.guided]
+        else
+            cf_dist = scen_dist[scen_types.counterfactual]
+            ug_dist = scen_dist[scen_types.unguided]
+            g_dist = scen_dist[scen_types.guided]
+        end
+
+        # Update scenario density plot
+        if !isempty(cf_dist)
+            obs_cf_scen_dist[] = cf_dist
+            cf_hist_alpha[] = 0.5
+        else
+            cf_hist_alpha[] = 0.0
+        end
+
+        if !isempty(ug_dist)
+            obs_ug_scen_dist[] = ug_dist
+            ug_hist_alpha[] = 0.5
+        else
+            ug_hist_alpha[] = 0.0
+        end
+
+        if !isempty(g_dist)
+            obs_g_scen_dist[] = g_dist
+            g_hist_alpha[] = 0.5
+        else
+            g_hist_alpha[] = 0.0
+        end
+
+        # Determine level of transparency for each line (maximum of 0.6)
+        min_step = (1.0/0.05)
+        color_weight = min((1.0 / (count(show_idx .> 0) / min_step)), 0.6)
+
+        # Update visible trajectories
+        scenario_colors!(obs_color, scen_types, color_weight, hide_idx)
+    end
+
+
+    gl_screen = display(f)
+    DataInspector()
+
+    wait(gl_screen);
+end
+function comms(rs_path::String)
+    comms(ADRIA.load_results(rs_path))
+end
+
+
 function explore(rs::ADRIA.ResultSet)
     layout = modeler_layout(resolution=(1920,1080))
 
@@ -115,6 +327,8 @@ function explore(rs::ADRIA.ResultSet)
     obs_color = Observable(color_map)
 
     n_visible_scenarios = Observable(size(rs.inputs, 1))
+
+    seed_log = rs.seed_log[:, 1, :, :]
 
     # Controls
     ms = rs.model_spec
@@ -298,7 +512,7 @@ function explore(rs::ADRIA.ResultSet)
     centroids = rs.site_centroids
     lon = [c[1] for c in centroids]
     lat = [c[2] for c in centroids]
-    
+
     # Display map
     mean_rc_sites = mean(ADRIA.metrics.relative_cover(rs), dims=(:scenarios, :timesteps))
     map_buffer = 0.005
