@@ -46,3 +46,19 @@ end
 function scenario_colors(rs)
     return scenario_colors(rs, 0.1)
 end
+
+
+"""
+    scenario_colors!(obs_color, scen_types::NamedTuple, weight::Float64, hide::BitVector)
+
+Hide selected scenarios by changing transparency.
+"""
+function scenario_colors!(obs_color, scen_types::NamedTuple, weight::Float64, hide::BitVector)
+    color_map = repeat([(:blue, weight)], size(obs_color[], 1))
+    color_map[scen_types.counterfactual] .= ((:red, weight), )
+    color_map[scen_types.unguided] .= ((:green, weight), )
+    color_map[scen_types.guided] .= ((:blue, weight), )
+    color_map[hide] .= ((:white, 0.0), )
+
+    obs_color[] = color_map
+end
