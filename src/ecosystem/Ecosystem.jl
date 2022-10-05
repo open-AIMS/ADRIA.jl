@@ -315,8 +315,9 @@ function coral_spec()::NamedTuple
     #params.growth_rate .= (2 * linear_extension'[:]) ./ diam_bin_widths
     bin_shift = reshape((2 * linear_extension'[:]) ./ diam_bin_widths,6,6)'
     bin_shift[bin_shift .> 1] .= 1
-    mean_diameter_ratio = (mean_colony_diameter_m[:,2:end]./mean_colony_diameter_m[:,1:end-1]).^2
-    params.growth_rate .= mean_diameter_ratio.*bin_shift[:,1:end-1]
+    class_6_growth_rate = mean_colony_diameter_m[:,end].+(diam_bin_widths[end]/(2*10^4))./mean_colony_diameter_m[:,end]
+    mean_diameter_ratio = hcat((mean_colony_diameter_m[:,2:end]./mean_colony_diameter_m[:,1:end-1]).^2,class_6_growth_rate)
+    params.growth_rate .= mean_diameter_ratio.*bin_shift
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
