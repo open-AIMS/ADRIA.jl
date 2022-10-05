@@ -25,19 +25,22 @@
 function comms_layout(; resolution=(1920, 1080))
     f = Figure(resolution=resolution)
 
-    main = f[1:4, 1:5] = GridLayout()
+    main = f[1:5, 1:5] = GridLayout()
 
-    controls = main[1:4, 1]
-    trajectory = main[1, 2:3] = GridLayout()
-    scen_hist = main[1, 4]
+    controls = main[1:5, 1] = GridLayout()
+    controls.width = 200
 
-    map = main[2:4, 2]
-    outcome_view = main[2:4, 3]
-    econ_view = main[2:3, 4]
-    econ_ctrl = main[4, 4]
+    trajectory = main[1:2, 2:4] = GridLayout()
+    scen_hist = main[1, 5]
 
+    map = main[3:5, 2] = GridLayout()
+    outcome_view = main[3:4, 3]
+    econ_view = main[3:4, 4]
+    econ_ctrl = main[5, 4]
+
+    # Trajectories and density plot
     temporal = Axis(
-        trajectory[1, 2:3],
+        trajectory[1, 2:4],
         title="Scenario Trajectories",
         xlabel="Year",
         ylabel="Mean TAC (m²)"
@@ -45,28 +48,30 @@ function comms_layout(; resolution=(1920, 1080))
 
     # Time slider for trajectory
     traj_outcome_sld = trajectory[1, 1]
-    traj_time_sld = trajectory[2, 2:3]
+    traj_time_sld = trajectory[2, 2:4]
 
     # Show y-axis in millions
     temporal.ytickformat = xs -> ["$(x/1e6)M" for x in xs]
 
     scen_hist = Axis(
-        trajectory[1,4]
+        trajectory[1,5]
     )
     colgap!(trajectory, 5)
 
-    # TODO: Up to here.
+    # Outcome probabilities and feature importance
     outcomes = Axis(
         outcome_view,
         title="Outcomes"
     )
 
+    # Economics
     econ_disp = Axis(econ_view)
 
     return (figure=f,
             controls=controls,
             trajectory=(temporal=temporal, outcome_slider=traj_outcome_sld, time_slider=traj_time_sld),
-            scen_hist=scen_hist, map=spatial,
+            scen_hist=scen_hist,
+            map=map[1,1],
             outcomes=outcomes,
             econ_view=econ_disp,
             econ_ctrl=econ_ctrl)
