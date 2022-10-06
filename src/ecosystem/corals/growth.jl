@@ -66,7 +66,7 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
 
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb    # current cover * background mortality
-
+  
     @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :] + X[12, :])')
 
     r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
