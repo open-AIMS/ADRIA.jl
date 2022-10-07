@@ -205,7 +205,7 @@ function colony_areas()
     colony_diam_means = repeat(mean_cm_diameters', nclasses, 1)
     colony_area_mean_cm2 = @. pi * ((colony_diam_means / 2)^2)
 
-    return colony_area_mean_cm2, (colony_diam_means ./ 100)
+    return colony_area_mean_cm2, (colony_diam_means ./ 100.0)
 end
 
 
@@ -325,7 +325,7 @@ function coral_spec()::NamedTuple
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
-    cm_diameter = mean_colony_diameter_m .* 100
+    cm_diameter = mean_colony_diameter_m .* 100.0
     fec = exp.(fec_par_a .+ fec_par_b .* log.(pi .* ((cm_diameter ./ 2.0) .^ 2)))
 
     # Smallest size class do not reproduce
@@ -337,13 +337,13 @@ function coral_spec()::NamedTuple
 
     ## Mortality
     # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
-    wavemort90 = Array{Float64,2}([
-        0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Enhanced
-        0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Unenhanced
-        0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Enhanced
-        0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Unenhanced
-        0 0 0.0 0.0 0.0 0.0   # Small massives
-        0 0 0.0 0.0 0.0 0.0])  # Large massives)
+    wavemort90 = Array{Float64, 2}([
+            0 0 0.0 0.0 0.0 0.0;   # Tabular Acropora Enhanced
+            0 0 0.0 0.0 0.0 0.0;   # Tabular Acropora Unenhanced
+            0 0 0.0 0.0 0.0 0.0;   # Corymbose Acropora Enhanced
+            0 0 0.0 0.0 0.0 0.0;   # Corymbose Acropora Unenhanced
+            0 0 0.0 0.0 0.0 0.0;   # Small massives
+            0 0 0.0 0.0 0.0 0.0])  # Large massives)
 
     params.wavemort90 = wavemort90'[:]
 
