@@ -23,7 +23,7 @@ scaled_seed : NamedTuple (TA = scaled_seed_TA, CA = scaled_seed_CA), where:
 function distribute_seeded_corals(total_site_area::Vector{Float64},
     prefseedsites::Vector{Int64}, available_space::Vector{Float64},
     seeded_area::NamedTuple{(:TA, :CA),Tuple{Float64,Float64}})::NamedTuple{(:TA, :CA),Tuple{Vector{Float64},Vector{Float64}}}
- 
+
     # extract site area for sites selected
     site_area_seed = total_site_area[prefseedsites]
 
