@@ -41,12 +41,13 @@ end
 """
     load_domain(path::String, rcp::Int64)
     load_domain(path::String, rcp::String)
+    load_domain(path::String)
 
 Load domain specification from data package.
 
 # Arguments
 - path : location of data package
-- rcp : RCP scenario to run
+- rcp : RCP scenario to run. If none provided, no data path is set.
 """
 function load_domain(path::String, rcp::String)::Domain
     domain_name::String = basename(path)
@@ -77,14 +78,20 @@ function load_domain(path::String, rcp::String)::Domain
     conn_path::String = joinpath(path, "connectivity/")
     site_data::String = joinpath(path, "site_data")
 
-    dhw::String = joinpath(path, "DHWs", "dhwRCP$(rcp).mat")
-
     site_path::String = joinpath(site_data, "$(domain_name).gpkg")
     init_coral_cov::String = joinpath(site_data, "coral_cover.mat")
-    wave::String = joinpath(path, "waves/wave_RCP$(rcp).mat")
+
+    if !isempty(rcp)
+        dhw::String = joinpath(path, "DHWs", "dhwRCP$(rcp).mat")
+        wave::String = joinpath(path, "waves", "wave_RCP$(rcp).mat")
+    else
+        dhw = ""
+        wave = ""
+    end
 
     return Domain(
         domain_name,
+        path,
         rcp,
         timeframe,
         site_path,
@@ -98,6 +105,9 @@ function load_domain(path::String, rcp::String)::Domain
 end
 function load_domain(path::String, rcp::Int)::Domain
     return load_domain(path, "$rcp")
+end
+function load_domain(path::String)::Domain
+    return load_domain(path, "")
 end
 
 
@@ -113,15 +123,17 @@ function load_scenarios(domain::Domain, filepath::String)::DataFrame
     if "RCP" in names(df)
         df = df[!, Not("RCP")]
     end
+    process_inputs!(domain, df)
 
-    bnds = domain.model[:bounds]
+    return df
+end
 
-    p_types = domain.model[:ptype]
+function process_inputs!(d::Domain, df::DataFrame)
+    bnds = d.model[:bounds]
+    p_types = d.model[:ptype]
     for (i, dt) in enumerate(p_types)
         if dt == "integer"
             df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
         end
     end
-
-    return df
 end

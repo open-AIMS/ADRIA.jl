@@ -125,12 +125,13 @@ Sets up an on-disk result store.
 
 # Returns
 domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, site_ranks, seed_log, fog_log, shade_log)
-
 """
 function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     if "RCP" in names(param_df)
         param_df = param_df[:, Not("RCP")]  # Ignore RCP column if it exists
     end
+
+    # TODO: Support setting up a combined result store.
 
     # Insert RCP column and populate with this dataset's RCP
     insertcols!(param_df, 1, :RCP => parse(Float64, domain.RCP))
@@ -258,6 +259,7 @@ function load_results(result_loc::String)::ResultSet
     inputs_used::DataFrame = DataFrame(input_set[:, :], input_cols)
 
     env_layer_md::EnvLayer = EnvLayer(
+        result_loc,
         input_set.attrs["site_data_file"],
         input_set.attrs["site_id_col"],
         input_set.attrs["unique_site_id_col"],
@@ -271,6 +273,14 @@ function load_results(result_loc::String)::ResultSet
     return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data, model_spec)
 end
 function load_results(domain::Domain)::ResultSet
-    log_location = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCPs$(domain.RCP)__$(domain.scenario_invoke_time)")
-    return load_results(log_location)
+    return load_results(result_location(domain))
+end
+
+"""
+    result_location(d::Domain)::String
+
+Generate path to the data store of results for the given Domain.
+"""
+function result_location(d::Domain)::String
+    return joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(d.name)__RCPs$(d.RCP)__$(d.scenario_invoke_time)")
 end

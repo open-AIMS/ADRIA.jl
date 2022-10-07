@@ -1,4 +1,8 @@
 function setup()::Nothing
+    if has_setup()
+        return
+    end
+
     try
         # Load in configuration settings
         config = TOML.parsefile(joinpath(pwd(), "config.toml"))
@@ -16,6 +20,8 @@ function setup()::Nothing
         ENV["ADRIA_DEBUG"] = false
     end
 
+    _setup_workers()
+
     return
 end
 
@@ -25,10 +31,28 @@ function has_setup()
     try
         ENV["ADRIA_OUTPUT_DIR"]
     catch err
-        if isa(err, KeyError)
-            error("Setup has not been run.")
-        else
+        if !isa(err, KeyError)
             rethrow(err)
         end
+
+        return false
     end
+
+    return true
+end
+
+"""Spin up workers if needed."""
+function _setup_workers()::Nothing
+    if nprocs() == 1 && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+        active_cores = parse(Int, ENV["ADRIA_NUM_CORES"])
+        if active_cores <= 0
+            active_cores = cpucores()
+        end
+
+        if active_cores > 1
+            addprocs(active_cores, exeflags="--project")
+        end
+    end
+
+    return
 end

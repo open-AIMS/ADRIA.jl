@@ -8,18 +8,19 @@ and the output location to store results in.
 using ADRIA
 
 
-ADRIA.setup()  # Load and apply configuration options
-
 @info "Loading data package"
 here = @__DIR__
-ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"), "45")
+ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"))
 
 @info "Loading example scenarios"
 p_df = ADRIA.load_scenarios(ex_domain, joinpath(here, "example_scenarios.csv"))
 
 # Batch run scenarios. Returns an updated domain object with the run ID used to gather results later.
 @info "Setting up and running scenarios"
-ex_domain = ADRIA.run_scenarios(p_df, ex_domain)
+ex_domain = ADRIA.run_scenarios(p_df, ex_domain, "45")
+
+# Multiple RCPs can be specified, so long as the data is available.
+# ex_domain = ADRIA.run_scenarios(p_df, ex_domain, ["45", "60"])
 
 # Single scenario run (returns NamedTuple of results for a single environmental/intervention scenario).
 # See documentation for more detail.

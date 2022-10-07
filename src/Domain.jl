@@ -3,15 +3,16 @@
 
 Store environmental data layers used for scenario
 """
-struct EnvLayer{S<:AbstractString, TF}
+mutable struct EnvLayer{S<:AbstractString, TF}
+    dpkg_path::S
     site_data_fn::S
-    site_id_col::S
-    unique_site_id_col::S
+    const site_id_col::S
+    const unique_site_id_col::S
     init_coral_cov_fn::S
     connectivity_fn::S
     DHW_fn::S
     wave_fn::S
-    timeframe::TF
+    const timeframe::TF
 end
 
 
@@ -20,10 +21,10 @@ end
 
 Core ADRIA domain. Represents study area.
 """
-struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray}
+mutable struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray}
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
-    name::S           # human-readable name
+    const name::S           # human-readable name
     RCP::S            # RCP scenario represented
     env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
@@ -32,14 +33,14 @@ struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Flo
     out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     strongpred::I  # strongest predecessor
     site_data::D   # table of site data (depth, carrying capacity, etc)
-    site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
-    unique_site_id_col::S  # column of unique site ids
+    const site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
+    const unique_site_id_col::S  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
-    coral_growth::CoralGrowth  # coral
-    site_ids::T  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
-    removed_sites::T  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
+    const coral_growth::CoralGrowth  # coral
+    const site_ids::T  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
+    const removed_sites::T  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
     dhw_scens::X  # DHW scenarios
-    wave_scens::X # wave scenarios
+    wave_scens::Y # wave scenarios
 
     # Parameters
     model::Model  # core model
@@ -82,6 +83,7 @@ Convenience constructor for Domain.
 
 # Arguments
 - name : Name of domain
+- dpkg_path : location of data package
 - rcp : RCP scenario represented
 - timeframe : Time steps represented
 - site_data_fn : File name of spatial data used
@@ -92,10 +94,10 @@ Convenience constructor for Domain.
 - dhw_fn : Filename of DHW data cube in use
 - wave_fn : Filename of wave data cube
 """
-function Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
+function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
     conn_path::String, dhw_fn::String, wave_fn::String)::Domain
 
-    env_layer_md::EnvLayer = EnvLayer(site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn, timeframe)
+    env_layer_md::EnvLayer = EnvLayer(dpkg_path, site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn, timeframe)
 
     site_data::DataFrame = DataFrame()
     try
@@ -137,14 +139,12 @@ function Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::Stri
     if endswith(dhw_fn, ".mat")
         dhw::NamedArray = loader(dhw_fn, "dhw"::String)
     else
-        @warn "Using empty DHW data"
         dhw = NamedArray(zeros(74, n_sites, 50))
     end
 
     if endswith(wave_fn, ".mat")
         waves::NamedArray = loader(wave_fn, "wave"::String)
     else
-        @warn "Using empty wave data"
         waves = NamedArray(zeros(74, n_sites, 50))
     end
 
@@ -264,6 +264,7 @@ function load_mat_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
 
     try
         site_order = Vector{String}(vec(data["reef_siteid"]))
+        loaded = NamedArray(data[attr])
     catch err
         if isa(err, KeyError)
             @warn "Provided file $(data_fn) did not have reef_siteid! There may be a mismatch in sites."
@@ -279,7 +280,6 @@ function load_mat_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
     end
 
     # Attach site names to each column
-    loaded = NamedArray(data[attr])
     setnames!(loaded, site_order, 2)
     setdimnames!(loaded, "Source", 1)
     setdimnames!(loaded, "Receiving", 2)
@@ -410,8 +410,32 @@ function site_area(domain::Domain)::Vector{Float64}
     return domain.site_data.area
 end
 
+"""Extract the time steps represented in the data package."""
 function timesteps(domain::Domain)
     return domain.env_layer_md.timeframe
+end
+
+"""Get the path to the DHW data associated with the domain."""
+function get_DHW_data(d::Domain, RCP::String)
+    return joinpath(d.env_layer_md.dpkg_path, "DHWs", "dhwRCP$(RCP).mat")
+end
+
+"""Get the path to the wave data associated with the domain."""
+function get_wave_data(d::Domain, RCP::String)
+    return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).mat")
+end
+
+
+function switch_RCPs!(d::Domain, RCP::String)
+    d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
+    d.env_layer_md.wave_fn = get_wave_data(d, RCP)
+    d.RCP = RCP
+
+    n_sites::Int64 = d.coral_growth.n_sites
+    loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
+
+    @set! d.dhw_scens = loader(d.env_layer_md.DHW_fn, "dhw")
+    @set! d.wave_scens = loader(d.env_layer_md.wave_fn, "wave")
 end
 
 
