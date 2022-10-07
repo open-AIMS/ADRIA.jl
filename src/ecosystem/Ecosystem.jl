@@ -205,7 +205,7 @@ function colony_areas()
     colony_diam_means = repeat(mean_cm_diameters', nclasses, 1)
     colony_area_mean_cm2 = @. pi * ((colony_diam_means / 2)^2)
 
-    return colony_area_mean_cm2, (colony_diam_means ./ 10^4)
+    return colony_area_mean_cm2, (colony_diam_means ./ 100)
 end
 
 
@@ -312,20 +312,19 @@ function coral_spec()::NamedTuple
 
     # Second, growth as transitions of cover to higher bins is estimated as
     # rate of growth per year
-    
+
     bin_shift = (2 * linear_extension'[:]) ./ diam_bin_widths
     bin_shift[bin_shift .> 1] .= 1
-    class_6_diameter_ratio = (mean_colony_diameter_m[:,end].+(diam_bin_widths[end]/(2*10^4)))./mean_colony_diameter_m[:,end]
+    class_6_diameter_ratio = (mean_colony_diameter_m[:,end].+(diam_bin_widths[end]/(2*100)))./mean_colony_diameter_m[:,end]
     mean_diameter_ratio = hcat((mean_colony_diameter_m[:,2:end]./mean_colony_diameter_m[:,1:end-1]).^2,class_6_diameter_ratio.^2)
-    params.growth_rate .= mean_diameter_ratio'[:].*bin_shift
-
+    params.growth_rate .= (mean_diameter_ratio'[:].*bin_shift)
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.02; 1.02; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
     fec_par_b = Float64[1.28; 1.28; 1.05; 1.05; 1.21; 1.21]  # fecundity parameter b
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
-    cm_diameter = mean_colony_diameter_m .* 10^4
+    cm_diameter = mean_colony_diameter_m .* 100
     fec = exp.(fec_par_a .+ fec_par_b .* log.(pi .* ((cm_diameter ./ 2.0) .^ 2)))
 
     # Smallest size class do not reproduce
