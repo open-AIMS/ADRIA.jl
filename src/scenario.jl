@@ -366,20 +366,22 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     seed_decision_years = repeat([false], tf)
     shade_decision_years = repeat([false], tf)
 
+    seed_start_year = max(seed_start_year, 2)
     if param_set.seed_freq > 0
         max_consider = min(seed_start_year + seed_years - 1, tf)
         seed_decision_years[seed_start_year:param_set.seed_freq:max_consider] .= true
     else
         # Start at year 2 or the given specified seed start year
-        seed_decision_years[max(seed_start_year, 2)] = true
+        seed_decision_years[seed_start_year] = true
     end
 
+    shade_start_year = max(shade_start_year, 2)
     if param_set.shade_freq > 0
         max_consider = min(shade_start_year + shade_years - 1, tf)
         shade_decision_years[shade_start_year:param_set.shade_freq:max_consider] .= true
     else
         # Start at year 2 or the given specified shade start year
-        shade_decision_years[max(shade_start_year, 2)] = true
+        shade_decision_years[shade_start_year] = true
     end
 
     prefseedsites::Vector{Int64} = zeros(Int, nsiteint)
