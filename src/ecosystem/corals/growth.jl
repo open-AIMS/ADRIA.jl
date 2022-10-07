@@ -289,14 +289,14 @@ function stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHW
 
     # using half of DHWmaxtot as a placeholder
     # for the maximum capacity for thermal adaptation
-    tmp_ad::Vector{Float64} = @. (1.0 - ad / (DHWmaxtot / 2))
+    tmp_ad::Vector{Float64} = @. (1.0 - (ad / (DHWmaxtot / 2)))
 
     # One way around dimensional issue - tmp_ad for each class as the averaged
     # of the enhanced and unenhanced corals in that class
     # KA note: this works as it averages over size classes and not across groups.
-    tmp_ad2::Array{Float64} = mean(reshape(tmp_ad, Int64(length(tmp_ad) / n_groups), n_groups), dims=1)
+    tmp_ad2::Array{Float64} = vec(mean(reshape(tmp_ad, Int64(length(tmp_ad) / n_groups), n_groups), dims=1))
 
-    return 1.0 .- exp.(-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2' .- LPDprm2))))
+    return 1.0 .- exp.(-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2 .- LPDprm2))))
 end
 
 
