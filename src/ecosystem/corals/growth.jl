@@ -273,12 +273,13 @@ of 0.9 inside sf(i, j) indicates that species i at site j can only produce
 
 # Arguments
 - tstep : int,
-- assistadapt : array, DHW
+- a_adapt : array, DHW
 - n_adapt : array, DHWs per year for all species
 - stresspast : array, DHW at previous time step for each site
 - LPdhwcoeff : float,
 - DHWmaxtot : int, maximum DHW
 - LPDprm2 : int, larval production parameter 2
+- n_groups : int, number of groups
 
 # Returns
 sf : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
