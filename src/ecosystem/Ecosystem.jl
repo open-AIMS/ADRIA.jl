@@ -324,7 +324,7 @@ function coral_spec()::NamedTuple
     fec = exp.(fec_par_a .+ fec_par_b .* log.(pi .* ((cm_diameter ./ 2.0) .^ 2)))
 
     # Smallest size class do not reproduce
-    fec[:, 1] .= 0.0
+    fec[:, 1:2] .= 0.0
 
     # then convert to number of larvae produced per m2
     fec_m² = fec ./ (pi .* (mean_colony_diameter_m ./ 2.0) .^ 2)  # convert from per colony area to per m2
