@@ -399,7 +399,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # Define constant table location for seed values
     tabular_enhanced::BitArray = corals.taxa_id .== 1
     corymbose_enhanced::BitArray = corals.taxa_id .== 3
-    target_class_id::BitArray = corals.class_id .== 1  # seed smallest size class
+    target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
     seed_sc_TA::Int64 = first(findall(tabular_enhanced .& target_class_id))  # size class indices for TA and CA
     seed_sc_CA::Int64 = first(findall(corymbose_enhanced .& target_class_id))
 
