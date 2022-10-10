@@ -317,11 +317,13 @@ function coral_spec()::NamedTuple
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
     fec_par_b = Float64[1.28; 1.28; 1.05; 1.05; 1.21; 1.21]  # fecundity parameter b
+    min_size_full_fec_cm2 = Float64[123.0; 123.0; 134.0; 134.0; 38.0; 38.0]
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
-    cm_diameter = mean_colony_diameter_m .* 100.0
-    fec = exp.(fec_par_a .+ fec_par_b .* log.(pi .* ((cm_diameter ./ 2.0) .^ 2)))
+    colony_area_cm2 = pi .* ((mean_colony_diameter_m .* 100.0) ./ 2.0) .^ 2
+    fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2))
+    fec[colony_area_cm2 .< min_size_full_fec_cm2] .= 0
 
     # Smallest size class do not reproduce
     fec[:, 1:2] .= 0.0
