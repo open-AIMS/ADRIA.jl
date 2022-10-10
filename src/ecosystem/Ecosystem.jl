@@ -315,7 +315,7 @@ function coral_spec()::NamedTuple
     params.growth_rate .= growth_rate(linear_extension, diam_bin_widths, mean_colony_diameter_m)
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
-    fec_par_a = Float64[1.02; 1.02; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
+    fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
     fec_par_b = Float64[1.28; 1.28; 1.05; 1.05; 1.21; 1.21]  # fecundity parameter b
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
