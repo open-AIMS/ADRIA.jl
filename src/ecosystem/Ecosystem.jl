@@ -322,7 +322,7 @@ function coral_spec()::NamedTuple
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
     colony_area_cm2 = pi .* ((mean_colony_diameter_m .* 100.0) ./ 2.0) .^ 2
-    fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2))
+    fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2))./0.1
     fec[colony_area_cm2 .< min_size_full_fec_cm2] .= 0
 
     # Smallest size class do not reproduce
