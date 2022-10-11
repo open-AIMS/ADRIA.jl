@@ -1,3 +1,13 @@
+function get_geometry(df::DataFrame)
+    if "geometry" in names(df)
+        return df.geometry
+    elseif "geom" in names(df)
+        return df.geom
+    end
+
+    error("No geometry data found")
+end
+
 """
     centroids(df::DataFrame)
 
@@ -10,7 +20,7 @@ df : GeoDataFrame
 Array of tuples (x, y), where x and y relate to long and lat respectively.
 """
 function centroids(df::DataFrame)::Array
-    site_centroids = AG.centroid.(df.geometry)
+    site_centroids = AG.centroid.(get_geometry(df::DataFrame))
     return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
 end
 
