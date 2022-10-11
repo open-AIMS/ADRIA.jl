@@ -149,8 +149,8 @@ function comms(rs::ADRIA.ResultSet)
     # Dynamic label text for TAC slider
     left_year_val = Observable("$(year_range[1])")
     right_year_val = Observable("$(year_range[2])")
-    Label(traj_time_sld[1,1], @lift("$($left_year_val)"))
-    Label(traj_time_sld[1,4], @lift("$($right_year_val)"))
+    Label(traj_time_sld[1,1], left_year_val)
+    Label(traj_time_sld[1,4], right_year_val)
 
     # Generate map
     map_display = layout.map
@@ -183,9 +183,9 @@ function comms(rs::ADRIA.ResultSet)
     g_hist_alpha = Observable(0.5)
 
     # Legend(traj_display)  legend=["Counterfactual", "Unguided", "Guided"]
-    density!(scen_hist, @lift($obs_cf_scen_dist[:]), direction=:y, color=(:red, @lift($cf_hist_alpha[])))
-    density!(scen_hist, @lift($obs_ug_scen_dist[:]), direction=:y, color=(:green, @lift($ug_hist_alpha[])))
-    density!(scen_hist, @lift($obs_g_scen_dist[:]), direction=:y, color=(:blue, @lift($g_hist_alpha[])))
+    density!(scen_hist, obs_cf_scen_dist, direction=:y, color=(:red, cf_hist_alpha))
+    density!(scen_hist, obs_ug_scen_dist, direction=:y, color=(:green, ug_hist_alpha))
+    density!(scen_hist, obs_g_scen_dist, direction=:y, color=(:blue, g_hist_alpha))
     hidedecorations!(scen_hist)
     hidespines!(scen_hist)
 
@@ -200,7 +200,7 @@ function comms(rs::ADRIA.ResultSet)
     geo_fn = GDF.write(joinpath(tmpdir, "Aviz_$(rs.name).geojson"), rs.site_data; driver="geojson")
     geodata = GeoMakie.GeoJSON.read(read(geo_fn))
 
-    map_disp = create_map!(map_display, geodata, @lift($obs_mean_rc_sites[:]), (:black, 0.05), centroids)
+    map_disp = create_map!(map_display, geodata, obs_mean_rc_sites, (:black, 0.05), centroids)
     curr_highlighted_sites = _get_seeded_sites(seed_log, (:), (:))
 
     obs_site_sel = FC(geodata[curr_highlighted_sites, :][:])
@@ -224,16 +224,15 @@ function comms(rs::ADRIA.ResultSet)
 
         # Update map
         obs_mean_rc_sites[] = vec(mean(mean_rc_sites[timesteps=timespan][scenarios=findall(show_idx)], dims=(:scenarios, :timesteps)))
+
         seeded_sites = _get_seeded_sites(seed_log, (:), show_idx)
         if seeded_sites != curr_highlighted_sites
             # Highlight seeded sites
-            if !all(seeded_sites .== 0.0)
+            if !all(seeded_sites .== 0.0) && !all(show_idx .== 0)
                 obs_site_sel[] = FC(geodata[seeded_sites, :][:])
                 obs_site_highlight[] = (:red, 1.0)
                 curr_highlighted_sites .= seeded_sites
-            end
-            
-            if all(show_idx .== 0)
+            else
                 obs_site_highlight[] = (:red, 0.0)
             end
 
