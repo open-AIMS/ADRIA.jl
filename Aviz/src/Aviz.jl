@@ -194,8 +194,6 @@ function comms(rs::ADRIA.ResultSet)
     n_sites = size(seed_log, :sites)
     seed_log[seed_log .== 0.0] .= n_sites+1
 
-    # site_highlight = repeat([(:blue, 0.1)], n_sites)
-
     # TODO: Separate this out into own function
     # Make temporary copy of GeoPackage as GeoJSON
     tmpdir = mktempdir()
@@ -204,8 +202,6 @@ function comms(rs::ADRIA.ResultSet)
 
     map_disp = create_map!(map_display, geodata, @lift($obs_mean_rc_sites[:]), (:black, 0.05), centroids)
     curr_highlighted_sites = _get_seeded_sites(seed_log, (:), (:))
-
-    # obs_site_highlight = FC(geodata[@lift($curr_highlighted_sites[:]), :][:])
 
     obs_site_sel = FC(geodata[curr_highlighted_sites, :][:])
     obs_site_sel = Observable(obs_site_sel)
@@ -228,9 +224,6 @@ function comms(rs::ADRIA.ResultSet)
 
         # Update map
         obs_mean_rc_sites[] = vec(mean(mean_rc_sites[timesteps=timespan][scenarios=findall(show_idx)], dims=(:scenarios, :timesteps)))
-
-        # obs_site_highlight[][seeded_sites] .= repeat([(:blue, 1.0)], 5)
-        # poly!(map_display, FC(geodata[seeded_sites, :][:]), strokecolor=site_highlight, strokewidth=1)
         seeded_sites = _get_seeded_sites(seed_log, (:), show_idx)
         if seeded_sites != curr_highlighted_sites
             # Highlight seeded sites
