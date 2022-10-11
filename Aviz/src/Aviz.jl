@@ -235,7 +235,7 @@ function gui_analysis(rs::ADRIA.ResultSet)
     hidespines!(scen_hist)
 
     # Display map
-    map_coords = GeoInterface.coordinates.(rs.site_data.geometry)
+    map_coords = GeoInterface.coordinates.(ADRIA.get_geometry(rs.site_data))
     plot_poly!.(map_display, map_coords)
 
     # Fill pairplot
