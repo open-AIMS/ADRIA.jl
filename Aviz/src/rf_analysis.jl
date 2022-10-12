@@ -60,13 +60,32 @@ function _permutation_importance(
 
     ThreadsX.foreach(enumerate(eachcol(features))) do (i, col)
         origin = copy(col)
-        scores[i, :] = map(1:n_iter) do i
+        scores[i, :] = map(1:n_iter) do _
             shuffle!(rng, col)
             base - score(trees, labels, features)
         end
 
         @inbounds features[:, i] = origin
     end
+
+    # origin = similar(features[:, 1], Any)
+    # non_constants = map(d -> !all(d .== d[1]), eachcol(features))
+    # for (i, col) in enumerate(eachcol(features))
+        # if non_constants[i] == 0
+        #     scores[i, :] .= 0.0
+        #     continue
+        # end
+
+    #     origin .= copy(col)
+    #     scores[i, :] .= map(1:n_iter) do _
+    #         shuffle!(rng, col)
+    #         base - score(trees, labels, features)
+    #     end
+
+    #     features[:, i] .= origin
+    # end
+
+    # Main.@infiltrate
 
     (mean = reshape(mapslices(scores, dims = 2) do im
         mean(im)
@@ -87,14 +106,12 @@ function ft_importance(model::Ensemble{Float64, Any}, X::DataFrame, p::Vector; r
 
     # DecisionTree.accuracy(y, apply_forest(model, X))
     # apply_forest_proba(model, X, y)
-    @time p1 = _permutation_importance(model, p, Matrix(X_base), _accuracy, 10; rng=rng)
+    @time p1 = _permutation_importance(model, p, Matrix(X_base), _accuracy, 25; rng=rng)
 
     norm = replace(p1.mean ./ (maximum(p1.mean) - minimum(p1.mean)), Inf=>0.0, NaN=>0.0)
 
     feat_importance = DataFrame((param=names(X_base), mean=p1.mean, std=p1.std, norm=norm))
     sort!(feat_importance, :norm, rev=true)
-
-    @info "Norm?" feat_importance.norm
 
     dummy_idx = findall(feat_importance.param .== "dummy")[1]
     if dummy_idx == 1

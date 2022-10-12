@@ -44,6 +44,7 @@ include("io/result_io.jl")
 include("io/result_post_processing.jl")
 include("io/sampling.jl")
 include("metrics/metrics.jl")
+include("metrics/sensitivity.jl")
 
 include("scenario.jl")
 

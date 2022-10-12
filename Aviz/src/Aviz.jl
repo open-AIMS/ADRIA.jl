@@ -3,14 +3,19 @@ module Aviz
 using RelocatableFolders, FileIO
 using GLMakie, GeoMakie
 using GLMakie.GeometryBasics
-using Statistics, Distributions
+using Statistics, Distributions, ThreadsX, Random
+
+using DataFrames, Bootstrap, DecisionTree
+
 using GeoInterface
 import GeoDataFrames as GDF
 import GeoFormatTypes as GFT
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
-
 using ADRIA
+
+
+Random.seed!(101)
 
 const ASSETS = @path joinpath(@__DIR__, "../assets")
 const LOGO = @path joinpath(ASSETS, "imgs", "ADRIA_logo.png")
@@ -20,6 +25,8 @@ include("./plotting.jl")
 include("./layout.jl")
 include("./theme.jl")
 include("./spatial.jl")
+include("./rf_analysis.jl")
+include("./analysis.jl")
 
 
 """Main entry point for app."""
@@ -121,8 +128,6 @@ function comms(rs::ADRIA.ResultSet)
     tac_data = Matrix(tac_scens')
     tac_min_max = (minimum(tac_scens), maximum(tac_scens))
 
-    scen_hist = layout.scen_hist
-
     # Generate trajectory controls
     num_steps = Int(ceil((tac_min_max[2] - tac_min_max[1]) + 1))
     tac_slider = IntervalSlider(traj_outcome_sld[2,1],
@@ -165,14 +170,16 @@ function comms(rs::ADRIA.ResultSet)
     obs_color = Observable(color_map)
     scen_types = scenario_type(rs)
 
+    seed_log = rs.seed_log[:, 1, :, :]
+
     # Trajectories
-    series!(traj_display, years, tac_data, color=@lift($obs_color[:]))
+    series!(traj_display, years, tac_data, color=obs_color)
 
     # Density (TODO: Separate into own function)
-    scen_dist = dropdims(mean(tac_scens, dims=:timesteps), dims=:timesteps)
-    obs_cf_scen_dist = Observable(scen_dist[scen_types.counterfactual])
-    obs_ug_scen_dist = Observable(scen_dist[scen_types.unguided])
-    obs_g_scen_dist = Observable(scen_dist[scen_types.guided])
+    tac_scen_dist = dropdims(mean(tac_scens, dims=:timesteps), dims=:timesteps)
+    obs_cf_scen_dist = Observable(tac_scen_dist[scen_types.counterfactual])
+    obs_ug_scen_dist = Observable(tac_scen_dist[scen_types.unguided])
+    obs_g_scen_dist = Observable(tac_scen_dist[scen_types.guided])
 
     # Color transparency for density plots
     # Note: Density plots currently cannot handle empty datasets
@@ -183,6 +190,7 @@ function comms(rs::ADRIA.ResultSet)
     g_hist_alpha = Observable(0.5)
 
     # Legend(traj_display)  legend=["Counterfactual", "Unguided", "Guided"]
+    scen_hist = layout.scen_hist
     density!(scen_hist, obs_cf_scen_dist, direction=:y, color=(:red, cf_hist_alpha))
     density!(scen_hist, obs_ug_scen_dist, direction=:y, color=(:green, ug_hist_alpha))
     density!(scen_hist, obs_g_scen_dist, direction=:y, color=(:blue, g_hist_alpha))
@@ -190,9 +198,65 @@ function comms(rs::ADRIA.ResultSet)
     hidespines!(scen_hist)
 
     # Prep seed log
-    seed_log = rs.seed_log[:, 1, :, :]
-    n_sites = size(seed_log, :sites)
-    seed_log[seed_log .== 0.0] .= n_sites+1
+    seed_rank_log = rs.ranks[:, :, 1, :]
+    n_sites = size(rs.site_data, 1)
+
+    # Random forest stuff
+    # Feature importance
+    # layout.outcomes
+    ft_import = layout.importance
+
+    # https://github.dev/JuliaAI/DecisionTree.jl
+    X = Matrix(rs.inputs)
+    p = outcome_probability(tac_scen_dist)
+    model = build_forest(p, X, ceil(Int, sqrt(size(X, 1))), 30, 0.7, -1; rng=101)
+    p_tbl = probability_table(model, X, p)
+    # @time ft_tbl = ft_importance(model, rs.inputs, p; rng=101)
+
+    asv_scens = ADRIA.metrics.scenario_asv(rs);
+    asv_scen_dist = dropdims(mean(asv_scens, dims=:timesteps), dims=:timesteps)
+
+    interv_names = ADRIA.component_params(rs.model_spec, Intervention).fieldname
+    interv_idx = findall(x -> x in interv_names, names(rs.inputs))
+    @time begin
+        mean_tac_med = relative_sensitivities(X, Array(tac_scen_dist))
+        mean_tac_med = mean_tac_med[interv_idx]
+
+        mean_asv_med = relative_sensitivities(X, Array(asv_scen_dist))
+        mean_asv_med = mean_asv_med[interv_idx]
+    end
+
+    ft_import = Axis(
+        layout.importance[1,1],
+        xticks=([1, 2], ["Mean TAC", "Mean ASV"]),
+        yticks=(1:length(interv_names), interv_names)
+    )
+    ft_import.yreversed = true
+
+    sensitivities = Observable(hcat(mean_tac_med, mean_asv_med)')
+    heatmap!(ft_import, sensitivities)
+    Colorbar(layout.importance[1,2]; colorrange=(0.0, 1.0))
+
+    outcomes_ax = layout.outcomes
+    barplot!(
+        outcomes_ax,
+        eachindex(p_tbl.mean),
+        p_tbl.mean,
+        bar_labels=p_tbl.Outcome,
+        flip_labels_at=maximum(p_tbl.mean) - minimum(p_tbl.mean),
+        direction=:x
+    )
+    hideydecorations!(outcomes_ax)
+    
+    # xticks!(outcomes, 1:size(p_tbl,1), p_tbl[:, :Outcome])
+    # ytick=(1:size(p_tbl,1), p_tbl[:, :Outcome])
+    # xaxis="Probability", yaxis="TAC Outcome", legend=false
+    # xerror!(a1, p_tbl[:, :mean], 1:nrow(p_tbl), xerror=(p_tbl[:, :lower], p_tbl[:, :upper]))
+
+    # tac_ts = vec(mean(tac_outcomes[timesteps=50:60], dims=:timesteps)')
+    # tac_dist = fit(Normal, tac_ts)
+    # p_tac_outcomes = cdf.(tac_dist, tac_ts)
+
 
     # TODO: Separate this out into own function
     # Make temporary copy of GeoPackage as GeoJSON
@@ -205,8 +269,8 @@ function comms(rs::ADRIA.ResultSet)
 
     obs_site_sel = FC(geodata[curr_highlighted_sites, :][:])
     obs_site_sel = Observable(obs_site_sel)
-    obs_site_highlight = Observable((:red, 1.0))
-    overlay_site = poly!(map_disp, obs_site_sel, color=(:white, 0.0), strokecolor=obs_site_highlight, strokewidth=3, overdraw=true)
+    obs_site_highlight = Observable((:green, 1.0))
+    overlay_site = poly!(map_disp, obs_site_sel, color=(:white, 0.0), strokecolor=obs_site_highlight, strokewidth=0.75, overdraw=true)
 
     onany(time_slider.interval, tac_slider.interval) do time_val, tac_val
         # Update slider labels
@@ -230,16 +294,14 @@ function comms(rs::ADRIA.ResultSet)
             # Highlight seeded sites
             if !all(seeded_sites .== 0.0) && !all(show_idx .== 0)
                 obs_site_sel[] = FC(geodata[seeded_sites, :][:])
-                obs_site_highlight[] = (:red, 1.0)
+                obs_site_highlight[] = (:green, 1.0)
                 curr_highlighted_sites .= seeded_sites
             else
-                obs_site_highlight[] = (:red, 0.0)
+                obs_site_highlight[] = (:green, 0.0)
             end
-
-            @info curr_highlighted_sites
         else
             if all(seeded_sites .== 0.0) || all(show_idx .== 0)
-                obs_site_highlight[] = (:red, 0.0)
+                obs_site_highlight[] = (:green, 0.0)
             end
         end
 
@@ -283,6 +345,18 @@ function comms(rs::ADRIA.ResultSet)
 
         # Update visible trajectories
         scenario_colors!(obs_color, scen_types, color_weight, hide_idx)
+
+        # Update sensitivities
+        
+        sel_tac_scens = dropdims(mean(tac_scens[timesteps=timespan, scenarios=show_idx], dims=:timesteps), dims=:timesteps)
+        mean_tac_med = relative_sensitivities(X[show_idx, :], Array(sel_tac_scens))
+        mean_tac_med = mean_tac_med[interv_idx]
+
+        sel_asv_scens = dropdims(mean(asv_scens[timesteps=timespan, scenarios=show_idx], dims=:timesteps), dims=:timesteps)
+        mean_asv_med = relative_sensitivities(X[show_idx, :], Array(sel_asv_scens))
+        mean_asv_med = mean_asv_med[interv_idx]
+
+        sensitivities[] = hcat(mean_tac_med, mean_asv_med)'
     end
 
 
@@ -344,12 +418,7 @@ function explore(rs::ADRIA.ResultSet)
     # Dynamic label text for TAC slider
     tac_bot_val = Observable(floor(tac_min_max[1])-1)
     tac_top_val = Observable(ceil(tac_min_max[2])+1)
-    # tac_lbl_bot = lift(tac_slider.interval) do intv
-    #     string(round(intv[1] ./ 1e6, digits=4)) * "M"
-    # end
-    # tac_lbl_top = lift(tac_slider.interval) do intv
-    #     string(round(intv[2] ./ 1e6, digits=4)) * "M"
-    # end
+
     tac_bot = @lift("$(round($tac_bot_val / 1e6, digits=2))")
     tac_top = @lift("$(round($tac_top_val / 1e6, digits=2))")
     Label(traj_outcome_sld[1,1], tac_top)
@@ -367,16 +436,13 @@ function explore(rs::ADRIA.ResultSet)
     # Dynamic label text for TAC slider
     left_year_val = Observable("$(year_range[1])")
     right_year_val = Observable("$(year_range[2])")
-    traj_year_left = @lift("$($left_year_val)")
-    traj_year_right = @lift("$($right_year_val)")
-    Label(traj_time_sld[1,1], traj_year_left)
-    Label(traj_time_sld[1,3], traj_year_right)
+    Label(traj_time_sld[1,1], left_year_val)
+    Label(traj_time_sld[1,3], right_year_val)
 
-    scen_tac = ADRIA.metrics.scenario_total_cover(rs)
-    tac_data = Matrix(scen_tac')
-
-    # tac = ADRIA.metrics.total_absolute_cover(rs);
     tac = ADRIA.metrics.scenario_total_cover(rs);
+    tac_data = Matrix(tac')
+
+    asv = ADRIA.metrics.scenario_asv(rs);
 
     # Histogram/Density plot
     scen_types = scenario_type(rs)
