@@ -392,6 +392,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     # Set other params for ODE
     p.r .= corals.growth_rate  # Assumed growth_rate
+    p.mb .= corals.mb_rate  # background mortality
 
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
     Y_cover[1, :, :] .= proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
