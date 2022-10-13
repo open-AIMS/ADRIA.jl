@@ -226,6 +226,13 @@ function comms(rs::ADRIA.ResultSet)
         mean_asv_med = mean_asv_med[interv_idx]
     end
 
+    Main.@infiltrate
+
+    sample_cv = std(tac_scen_dist) ./ mean(tac_scen_dist)
+    cf_cv = std(tac_scen_dist[scen_types.counterfactual]) ./ mean(tac_scen_dist[scen_types.counterfactual])
+    ug_cv = std(tac_scen_dist[scen_types.unguided]) ./ mean(tac_scen_dist[scen_types.unguided])
+    g_cv = std(tac_scen_dist[scen_types.guided]) ./ mean(tac_scen_dist[scen_types.guided])
+
     ft_import = Axis(
         layout.importance[1,1],
         xticks=([1, 2], ["Mean TAC", "Mean ASV"]),
@@ -347,14 +354,19 @@ function comms(rs::ADRIA.ResultSet)
         scenario_colors!(obs_color, scen_types, color_weight, hide_idx)
 
         # Update sensitivities
-        
-        sel_tac_scens = dropdims(mean(tac_scens[timesteps=timespan, scenarios=show_idx], dims=:timesteps), dims=:timesteps)
-        mean_tac_med = relative_sensitivities(X[show_idx, :], Array(sel_tac_scens))
-        mean_tac_med = mean_tac_med[interv_idx]
+        if !all(show_idx .== 0)
+            sel_tac_scens = dropdims(mean(tac_scens[timesteps=timespan, scenarios=show_idx], dims=:timesteps), dims=:timesteps)
+            mean_tac_med = relative_sensitivities(X[show_idx, :], Array(sel_tac_scens))
+            mean_tac_med = mean_tac_med[interv_idx]
 
-        sel_asv_scens = dropdims(mean(asv_scens[timesteps=timespan, scenarios=show_idx], dims=:timesteps), dims=:timesteps)
-        mean_asv_med = relative_sensitivities(X[show_idx, :], Array(sel_asv_scens))
-        mean_asv_med = mean_asv_med[interv_idx]
+            sel_asv_scens = dropdims(mean(asv_scens[timesteps=timespan, scenarios=show_idx], dims=:timesteps), dims=:timesteps)
+            mean_asv_med = relative_sensitivities(X[show_idx, :], Array(sel_asv_scens))
+            mean_asv_med = mean_asv_med[interv_idx]
+        else
+            # Display nothing if no data is available
+            mean_tac_med = fill(NaN, length(interv_idx))
+            mean_asv_med = fill(NaN, length(interv_idx))
+        end
 
         sensitivities[] = hcat(mean_tac_med, mean_asv_med)'
     end
