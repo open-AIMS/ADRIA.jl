@@ -32,9 +32,11 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
 
     p = @NamedTuple{
         r::Matrix{Float64},   # growth rate
+        diam_ratio::Matrix{Float64}, # diameter ratios
         k::Vector{Float64},   # max carrying capacity
         mb::Matrix{Float64},  # background mortality
-        comp::Float64,        # competition between small and large 
+        ac_comp::Matrix{Float64},    # competition factor for acropora with small massives
+        sm_comp::Matrix{Float64},    # competition factor for small massives with acropora
         r_comp::Matrix{Float64},  # tmp store for competition between tab and small massives
         small_massives::StaticArrays.SVector{3,Int64},  # index locations for small massives
         small::StaticArrays.SVector{6,Int64},           # indices for small size classes
@@ -48,8 +50,8 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
         sXr::Matrix{Float64},                            # s * X * r
         X_mb::Matrix{Float64},                           # X * mb
         cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
-        # r, s, mb, comp, r_comp
-        zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1), 0.3, zeros(2, n_sites),
+        # r, diam_ratio, s, mb, comp, r_comp
+        zeros(n_species, 1), zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1),zeros(3, n_sites), zeros(1, n_sites), zeros(1, n_sites),
 
 
         # cached indices
