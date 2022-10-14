@@ -46,7 +46,7 @@ Base.@kwdef mutable struct SimConstants
     LPDprm2 = 5;  # parameter offsetting LPD curve
 
     # competition: probability that large Tabular Acropora overtop small massives
-    comp = 0.3;
+    #comp = zeros();
 
     # Bleaching sensitivity of each coral group
     # Bozec et al., (2022)
