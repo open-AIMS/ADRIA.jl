@@ -539,6 +539,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Gets used in ODE
         # p.rec[:, :] .= (area_settled ./ total_site_area)
         p.rec[:, :] .= replace((area_settled ./ absolute_k_area), Inf=>0.0, NaN=>0.0)
+
+        # calculate rates and assign
         mean_diameters_cm = [1 3.5 7.5 15 30 60]
         p.diam_ratio .= repeat(vcat(0,(mean_diameters_cm[2:end]./mean_diameters_cm[1:end-1]).^2),1,6)[:]
         comp_factor = ((0.3.*absolute_k_area')./(π.*(mean_diameters_cm/2).^2))
