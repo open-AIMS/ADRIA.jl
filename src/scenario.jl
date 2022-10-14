@@ -539,6 +539,11 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Gets used in ODE
         # p.rec[:, :] .= (area_settled ./ total_site_area)
         p.rec[:, :] .= replace((area_settled ./ absolute_k_area), Inf=>0.0, NaN=>0.0)
+        mean_diameters_cm = [1 3.5 7.5 15 30 60]
+        p.diam_ratio .= repeat(vcat(0,(mean_diameters_cm[2:end]./mean_diameters_cm[1:end-1]).^2),1,6)[:]
+        comp_factor = ((0.3.*absolute_k_area')./(π.*(mean_diameters_cm/2).^2))
+        p.ac_comp .= comp_factor[:,2:4]'
+        p.sm_comp .= comp_factor[:,6]'
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
