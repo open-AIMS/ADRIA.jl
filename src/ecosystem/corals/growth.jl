@@ -7,8 +7,8 @@ include("growth_expanded.jl")
 
 
 function growth_rate(linear_extension, diam_bin_widths)
-    bin_shift = ((2.0 * linear_extension'[:]) ./ diam_bin_widths).^2
-    bin_shift[bin_shift .> 1] .= 1
+    bin_shift = ((2.0 * linear_extension'[:]) ./ diam_bin_widths)
+    bin_shift[bin_shift.>1] .= 1
     return bin_shift
 end
 
@@ -63,17 +63,17 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
 
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb    # current cover * background mortality
-
-    @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.sm_comp*(X[6, :] + X[12, :])')
+    @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.sm_comp * (X[6, :] + X[12, :])')
     r_comp .= sum(p.ac_comp .* X[p.small_massives, :], dims=1)
-    @views @. du[p.acr_5_11, :] = p.diam_ratio[p.acr_5_11]*sXr[p.acr_5_11-1, :] - sXr[p.acr_5_11, :] + r_comp * X[p.acr_5_11,:] - X_mb[p.acr_5_11, :]
-    @views @. du[p.acr_6_12, :] = p.diam_ratio[p.acr_5_11]*sXr[p.acr_6_12-1, :] + sXr[p.acr_6_12, :] + r_comp * X[p.acr_6_12,:] - X_mb[p.acr_6_12, :]
 
-    @views @. du[p.small_massives, :] = p.diam_ratio[p.small_massives]*sXr[p.small_massives-1, :] - sXr[p.small_massives, :] - M_sm
+    @views @. du[p.acr_5_11, :] = p.diam_ratio[p.acr_5_11] * sXr[p.acr_5_11-1, :] - sXr[p.acr_5_11, :] + r_comp * X[p.acr_5_11, :] - X_mb[p.acr_5_11, :]
+    @views @. du[p.acr_6_12, :] = p.diam_ratio[p.acr_5_11] * sXr[p.acr_6_12-1, :] + sXr[p.acr_6_12, :] + r_comp * X[p.acr_6_12, :] - X_mb[p.acr_6_12, :]
+
+    @views @. du[p.small_massives, :] = p.diam_ratio[p.small_massives] * sXr[p.small_massives-1, :] - sXr[p.small_massives, :] - M_sm
 
     @views @. du[p.small, :] = s * p.rec[p.rec_small, :] - sXr[p.small, :] - X_mb[p.small, :]
-    @views @. du[p.mid, :] = p.diam_ratio[p.mid]*sXr[p.mid-1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
-    @views @. du[p.large, :] = p.diam_ratio[p.large]*sXr[p.large-1, :] + sXr[p.large, :] - X_mb[p.large, :]
+    @views @. du[p.mid, :] = p.diam_ratio[p.mid] * sXr[p.mid-1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
+    @views @. du[p.large, :] = p.diam_ratio[p.large] * sXr[p.large-1, :] + sXr[p.large, :] - X_mb[p.large, :]
 
     # Ensure no non-negative values
     # du .= max.(du, 0.0)
