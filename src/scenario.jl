@@ -394,12 +394,11 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # Set other params for ODE
     p.r .= corals.growth_rate  # Assumed growth_rate
     p.mb .= corals.mb_rate  # background mortality
-    
     mean_diameters_cm = [1 3.5 7.5 15 30 60] # mean diameters of size classes
-    comp_factor = ((0.3 .* absolute_k_area')./(π .* (mean_diameters_cm/2).^2)) # competition rate plus scaling for no. corals to relative cover
+    comp_factor = ((0.3.*absolute_k_area')./(π.*(mean_diameters_cm/2).^2))
 
-    # mean diameter scaling for transforming from no. corals to relative cover
-    p.diam_ratio .= repeat(vcat(0,(mean_diameters_cm[2:end] ./ mean_diameters_cm[1:end-1]).^2),1,6)[:]
+    # mean diameter scaling for transforming from no, corals to relative
+    p.diam_ratio .= repeat(vcat(0,(mean_diameters_cm[2:end]./mean_diameters_cm[1:end-1]).^2),1,6)[:]
     p.ac_comp .= comp_factor[:,2:4]' # competition factor for acropora with small massives
     p.sm_comp .= comp_factor[:,6]' # competition factor for small massives with acropora
 
@@ -516,7 +515,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # Flag indicating whether to seed or not to seed
     seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
 
-    absolute_k_area = vec(total_site_area' .* max_cover)'  # max possible coral area in m^2
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
@@ -539,13 +537,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Gets used in ODE
         # p.rec[:, :] .= (area_settled ./ total_site_area)
         p.rec[:, :] .= replace((area_settled ./ absolute_k_area), Inf=>0.0, NaN=>0.0)
-
-        # calculate rates and assign
-        mean_diameters_cm = [1 3.5 7.5 15 30 60]
-        p.diam_ratio .= repeat(vcat(0,(mean_diameters_cm[2:end]./mean_diameters_cm[1:end-1]).^2),1,6)[:]
-        comp_factor = ((0.3.*absolute_k_area')./(π.*(mean_diameters_cm/2).^2))
-        p.ac_comp .= comp_factor[:,2:4]'
-        p.sm_comp .= comp_factor[:,6]'
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
