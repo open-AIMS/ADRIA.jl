@@ -51,7 +51,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
         X_mb::Matrix{Float64},                           # X * mb
         cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
         # r, diam_ratio, s, mb, comp, r_comp
-        zeros(n_species, 1), zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1),zeros(3, n_sites), zeros(1, n_sites), zeros(1, n_sites),
+        zeros(n_species, 1), zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1), zeros(3, n_sites), zeros(1, n_sites), zeros(1, n_sites),
 
 
         # cached indices
