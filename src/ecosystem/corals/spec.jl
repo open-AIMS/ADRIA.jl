@@ -18,7 +18,7 @@ function to_spec(m::Coral)::DataFrame
         target_names = map(String, fnames[target])
         for tn in target_names
             c_id = rsplit(tn, "_$p", keepempty=false)
-            res[res.coral_id .== c_id, p] = val_df[val_df.fieldname .== Symbol(tn), :val]
+            res[res.coral_id.==c_id, p] = val_df[val_df.fieldname.==Symbol(tn), :val]
         end
     end
 
@@ -41,7 +41,7 @@ function to_spec(coral_df::DataFrame)::DataFrame
         target_names = map(String, fnames[target])
         for tn in target_names
             c_id = rsplit(tn, "_$p", keepempty=false)
-            res[res.coral_id .== c_id, p] = coral_df[coral_df.fieldname .== Symbol(tn), :val]
+            res[res.coral_id.==c_id, p] = coral_df[coral_df.fieldname.==Symbol(tn), :val]
         end
     end
 

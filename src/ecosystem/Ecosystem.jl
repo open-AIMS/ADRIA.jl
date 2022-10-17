@@ -322,8 +322,8 @@ function coral_spec()::NamedTuple
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
     colony_area_cm2 = pi .* ((mean_colony_diameter_m .* 100.0) ./ 2.0) .^ 2
-    fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2))./0.1
-    fec[colony_area_cm2 .< min_size_full_fec_cm2] .= 0
+    fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
+    fec[colony_area_cm2.<min_size_full_fec_cm2] .= 0
 
     # Smallest size class do not reproduce
     fec[:, 1:2] .= 0.0
@@ -334,13 +334,13 @@ function coral_spec()::NamedTuple
 
     ## Mortality
     # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
-    wavemort90 = Array{Float64, 2}([
-            0 0 0.0 0.0 0.0 0.0;   # Tabular Acropora Enhanced
-            0 0 0.0 0.0 0.0 0.0;   # Tabular Acropora Unenhanced
-            0 0 0.0 0.0 0.0 0.0;   # Corymbose Acropora Enhanced
-            0 0 0.0 0.0 0.0 0.0;   # Corymbose Acropora Unenhanced
-            0 0 0.0 0.0 0.0 0.0;   # Small massives
-            0 0 0.0 0.0 0.0 0.0])  # Large massives)
+    wavemort90 = Array{Float64,2}([
+        0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Enhanced
+        0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Unenhanced
+        0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Enhanced
+        0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Unenhanced
+        0 0 0.0 0.0 0.0 0.0   # Small massives
+        0 0 0.0 0.0 0.0 0.0])  # Large massives)
 
     params.wavemort90 = wavemort90'[:]
 
