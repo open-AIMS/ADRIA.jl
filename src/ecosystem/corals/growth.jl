@@ -390,12 +390,19 @@ end
 
 # Returns
 Area covered by recruited larvae (in m²)
+
+# References
+1. Connolly, S.R., Baird, A.H. (2010).
+   Estimating dispersal potential for marine larvae: dynamic models 
+    applied to scleractinian corals.
+   Ecology, 91(2), 3572–3583.
+   https://doi.org/10.1890/10-0143.1
 """
 function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basal_area_per_settler)
     # Send larvae out into the world
     actual_fecundity = (fec_scope .* sf)
 
-    Mwater = 0.95
+    Mwater = 0.95 # in-water egg-and-larvae mortality, estimated from page 3579 in Connolly and Baird (2010)
     larval_pool = (actual_fecundity * TP_data) .* (1 - Mwater)  # larval pool for each site (in larvae/m²)
 
     # β is stock of larvae required to produce 50% of the maximum settlement
