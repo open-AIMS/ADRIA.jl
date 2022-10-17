@@ -75,8 +75,6 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
     @views @. du[p.mid, :] = p.diam_ratio[p.mid] * sXr[p.mid-1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
     @views @. du[p.large, :] = p.diam_ratio[p.large] * sXr[p.large-1, :] + sXr[p.large, :] - X_mb[p.large, :]
 
-    #du .= proportional_adjustment!(du, p.cover, p.k)
-    # du .= max.(du, 0.0)
     # du .= proportional_adjustment!(du, p.cover, p.k)
 
     return
