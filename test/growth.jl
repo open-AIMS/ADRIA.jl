@@ -1,7 +1,7 @@
 using Test
 using Distributions
 using ADRIA
-
+using DifferentialEquations
 
 @testset "Fecundity" begin
     fec_groups = zeros(6, 216)
