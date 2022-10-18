@@ -135,7 +135,7 @@ Columns indicate:
 - predec : list of priority predecessors (sites strongly connected to priority sites)
 - risk_tol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
 """
-function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zone_preds, risk_tol)
+function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_crieteria, risk_tol)
     A = zeros(length(site_ids), 8)
 
     A[:, 1] .= site_ids  # Column of site ids
@@ -158,8 +158,8 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     # priority predecessors
     A[:, 6] .= predec[:, 3]
 
-    # zone predecessors
-    A[:, 7] .= zone_preds
+    # priority zone predecessors and sites
+    A[:, 7] .= zones_criteria
 
     # Proportion of empty space (no coral) compared to max possible cover
     A[:, 8] = max.((max_cover - sum_cover), 0.0) .* area
@@ -211,11 +211,11 @@ Tuple (SE, wse)
     5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
     6. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
-function create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat, predec, predec_zones, low_cover)
+function create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover)
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
-    wse = [inconn_seed, outconn_seed, waves, heat, predec, predec_zones, low_cover]
+    wse = [inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover]
     wse .= mcda_normalize(wse)
 
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
@@ -259,11 +259,11 @@ Tuple (SH, wsh)
     4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
     5. high cover (weights importance of sites with high cover of coral to shade)
 """
-function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, predec_zones, high_cover)
+function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, predec_zones_shade, high_cover)
     # Set up decision matrix to be same size as A
     SH = copy(A)
 
-    wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones, high_cover]
+    wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones_shade, high_cover]
     wsh .= mcda_normalize(wsh)
 
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
@@ -311,11 +311,12 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     nsites::Int64 = length(site_ids)
     nsiteint::Int64 = d_vars.nsiteint
     prioritysites::Array{Int64} = d_vars.prioritysites[in.(d_vars.prioritysites, [site_ids])]
+    priorityzones::Array{String} = d_vars.priorityzones
 
     strongpred = d_vars.strongpred[site_ids, :]
     in_conn = d_vars.in_conn[site_ids]
     out_conn = d_vars.out_conn[site_ids]
-    zones = d_vars.zones
+    zones = d_vars.zones[site_ids]
     wave_stress = d_vars.damprob[site_ids]
     heat_stress = d_vars.heatstressprob[site_ids]
     sum_cover = d_vars.sumcover[site_ids]
@@ -347,17 +348,19 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     predec[predprior, 3] .= 1.0
 
     # for zones, find strongest predecessors
-    zone_ids = unique(zones)
+    zone_ids = intersect(priorityzones,unique(zones))
     zone_preds = zeros(nsites, 1)
-
+    zones_sites = zeros(nsites,1)
     for k in axes(zone_ids, 1)
-         zone_preds_temp = strongpred[zones.==k]
-         for s in zone_preds_temp
-             zone_preds[site_ids.==s] .= zone_preds[site_ids.==s].+1
-         end
+        zone_preds_temp = strongpred[zones.==zone_ids[k]]
+          for s in zone_preds_temp
+              zone_preds[site_ids.==s] .= zone_preds[site_ids.==s].+1
+          end
+        zones_sites[zones.==zone_ids[k]].= k
     end
-    #Main.@infiltrate
-    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zone_preds, risk_tol)
+    zones_criteria = zones_pred .+ zones_sites
+    Main.@infiltrate
+    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_criteria, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return prefseedsites, prefshadesites, rankings
