@@ -34,8 +34,9 @@ Base.@kwdef mutable struct SimConstants
 
     # Default percent thresholds of max connectivity to filter out weak connections in connectivity network.
     # Suggest we keep this low
-    con_cutoff = 0.01
-    prioritysites = []  # sites to prioritize when seeding or shading
+    con_cutoff = 0.01;
+    prioritysites = []; # sites to prioritize when seeding or shading
+    priorityzones = ["DarkBlue","Green"] # zones to prioritize when seeding or shading, in order of preference
 
     ## Environmental parameters
     # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
