@@ -452,16 +452,14 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
         #Main.@infiltrate
         zones = site_data.zone_type
-        zone_encode = zeros(Int,size(zones))
-        for col in 1:length(unique(zones))
-            zone_encode[zones.==unique(zones)[col]] .= col
-        end
+        Main.@infiltrate
         # Prep site selection
         mcda_vars = DMCDA_vars(
             depth_priority,
             nsiteint,
             sim_params.prioritysites,
-            zone_encode,
+            ["Yellow","Green"],
+            zones,
             domain.strongpred,
             domain.in_conn,
             domain.out_conn,
@@ -482,7 +480,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             wtpredecseed,
             wtpredecshade,
             wtzonesseed,
-            wtzonesshade
+            wtzonesshade,
         )
     end
 
