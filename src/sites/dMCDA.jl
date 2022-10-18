@@ -6,6 +6,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     nsiteint  # ::I
     prioritysites  # ::V
+    priorityzones # ::V
     zones # ::V
     strongpred  # ::V
     in_conn  # ::v
