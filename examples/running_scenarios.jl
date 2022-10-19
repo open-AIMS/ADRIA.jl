@@ -34,8 +34,7 @@ rs = ADRIA.run_scenarios(p_df, ex_domain, "45")
 @info ADRIA.store_location(rs)
 # "[some location]/Example_domain__RCPs45__2022-10-19_12_01_26_965"
 
-
-# Can also load results using a string
+# Can also load results using a path to the stored result set.
 # rs = ADRIA.load_results("path to result set")
 
 # Specific metrics found in the `metrics` submodule.
