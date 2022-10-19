@@ -396,6 +396,11 @@ function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basa
     # β is stock of larvae required to produce 50% of the maximum settlement
     β = replace((max_density .* leftover_space) ./ 2.0, Inf => 0.0, NaN => 0.0)
 
+    larval_pool = (actual_fecundity * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
+
+    # β is stock of larvae required to produce 50% of the maximum settlement
+    β = replace((max_density .* leftover_space) ./ 2.0, Inf => 0.0, NaN => 0.0)
+
     # Larvae have landed, work out how many are recruited
     λ = recruitment(larval_pool, leftover_space; α=max_density, β=β)  # recruits per m^2 per site
 
