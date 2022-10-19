@@ -30,16 +30,16 @@ Struct of simulation constants for ADRIA
    https://doi.org/10.1002/ecm.1494
 """
 Base.@kwdef mutable struct SimConstants
-    nsiteint = 5; # max number of sites we intervene on in a given year.
+    nsiteint = 5 # max number of sites we intervene on in a given year.
 
     # Default percent thresholds of max connectivity to filter out weak connections in connectivity network.
     # Suggest we keep this low
-    con_cutoff = 0.01;
-    prioritysites = []; # sites to prioritize when seeding or shading
+    con_cutoff = 0.01
+    prioritysites = []  # sites to prioritize when seeding or shading
 
     ## Environmental parameters
     # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
-    DHWmaxtot = 50;
+    DHWmaxtot = 50
 
     # Bleaching stress and coral fecundity parameters
     LPdhwcoeff = 0.4;  # shape parameters relating dhw affecting cover to larval production
@@ -57,11 +57,11 @@ Base.@kwdef mutable struct SimConstants
         1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Corymbose Acropora Enhanced
         1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Corymbose Acropora Unenhanced
         0.25, 0.25, 0.25, 0.25, 0.25, 0.25,  # Small massives and encrusting
-        0.25, 0.25, 0.25, 0.25, 0.25, 0.25]; # Large massives
+        0.25, 0.25, 0.25, 0.25, 0.25, 0.25] # Large massives
 
     # True/False indicating Wwhether or not to mimic IPMF by loading only two coral types
     # currently unused
-    mimic_IPMF = Int8(0);  # Use 0 or 1 as booleans cannot be stored in netCDF
+    mimic_IPMF = Int8(0)  # Use 0 or 1 as booleans cannot be stored in netCDF
 
     # Used by Bozec et al 2021 for Acropora, small massives and large massives
     max_settler_density = [2.5, 2.5, 2.5, 2.5, 1.5, 1.5]
@@ -69,5 +69,5 @@ Base.@kwdef mutable struct SimConstants
 
     # Value of smallest size class (1cm diameter)
     # Resulting value is in m², see definition in Ecosystem.jl::colony_areas()
-    basal_area_per_settler = pi * ((1.0 / 2 / 100.0)^2)
+    basal_area_per_settler = pi * ((1.0 / 2.0 / 100.0)^2)
 end
