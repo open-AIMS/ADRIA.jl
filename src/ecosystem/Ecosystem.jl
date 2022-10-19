@@ -366,6 +366,9 @@ function coral_spec()::NamedTuple
         1.0 1.0 1.0 1.0 1.0 1.0]) # Large massives
     params.bleach_resist = bleach_resist'[:]
 
+    # eggs and larvae in-water motality estimate
+    params.Mwater .= 0.95
+
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list
     param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "coral_id"])

@@ -531,7 +531,8 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         leftover_space_m² = max.(absolute_k_area .- absolute_site_coral_cover, 0.0)
 
         area_settled = settler_cover(fec_scope, sf, TP_data, leftover_space_m²,
-            sim_params.max_settler_density, sim_params.basal_area_per_settler)
+            sim_params.max_settler_density, sim_params.basal_area_per_settler,
+            corals.Mwater)
 
         # Recruitment should represent additional cover, relative to total site area
         # Gets used in ODE
