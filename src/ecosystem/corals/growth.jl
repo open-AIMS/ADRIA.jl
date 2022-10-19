@@ -52,7 +52,6 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
 
     # Indices
     # p.small_massives := [26, 27, 28]
-    # p.rec_small := [1, 2, 3, 4, 5, 6]
     # p.small := [1, 7, 13, 19, 25, 31]
     # p.mid := [2:4; 8:10; 14:17; 20:23; 29; 32:35]
     # p.large := [18, 24, 30, 36]
