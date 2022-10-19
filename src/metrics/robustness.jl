@@ -17,7 +17,6 @@ function norm(vals::AbstractArray{<:Real})
 end
 
 
-
 """
     temporal_variability(x::AbstractVector{<:Real})
     temporal_variability(x::AbstractArray{<:Real})
@@ -31,7 +30,7 @@ If this is not the case, consider normalizing values first.
 function temporal_variability(x::AbstractVector{<:Real})
     return (mean(x) + (1.0 .- gini(x))) ./ 2
 end
-function temporal_variability(x::AbstractArray{<:Real, 2})
+function temporal_variability(x::AbstractArray{<:Real,2})
     return temporal_variability.(eachcol(x))
 end
 
@@ -41,6 +40,10 @@ end
 
 Obtain an indication of intervention effort for each scenario.
 This is referred to as \$F\$.
+
+# Arguments
+- ms : model spec
+- inputs_i : inputs used for scenarios of interest
 """
 function intervention_effort(ms, inputs_i)
     interv_cols = ["seed_TA", "seed_CA", "fogging", "SRM"]
@@ -59,6 +62,10 @@ Obtain an indication of intervention diversity for a scenario.
 Higher values indicate a greater of mix of interventions options were applied.
 
 This is referred to as \$D\$.
+
+# Arguments
+- ms : model spec
+- inputs_i : inputs used for scenarios of interest
 """
 function intervention_diversity(ms, inputs_i)
     return mean(1.0 .- gini(intervention_effort(ms, inputs_i)))
@@ -69,12 +76,14 @@ end
     environmental_diversity(ms, inputs_i)
 
 Obtain an indication of environmental factor diversity for a scenario set.
-Higher values indicate the scenario set 
-a greater of mix of environmental conditions were
+Higher values indicate a greater of mix of environmental conditions were
+experienced between scenarios.
 
-.
+This is referred to as \$E\$.
 
-This is referred to as \$D\$.
+# Arguments
+- ms : model spec
+- inputs_i : inputs used for scenarios of interest
 """
 function environmental_diversity(ms, inputs_i)
     env_cols = ADRIA.component_params(ms, ADRIA.EnvironmentalLayer).fieldname
@@ -87,7 +96,7 @@ function environmental_diversity(ms, inputs_i)
     if all(isnan.(Et))
         return 0.0
     elseif any(isnan.(Et))
-        replace!(Et, NaN=>0.0)
+        replace!(Et, NaN => 0.0)
     end
 
     return mean(Et)
@@ -107,16 +116,19 @@ Gini coefficient.
 
 2. https://en.wikipedia.org/wiki/Gini_coefficient#Generalized_inequality_indices
 """
-function gini(vals::AbstractVector{<:Real})::Float64 
+function gini(vals::AbstractVector{<:Real})::Float64
     sv = sort(vals)
     n = length(vals)
-    g = (2.0 * sum([x*i for (i,x) in enumerate(sv)]) / sum(sv) - (n+1))/n
+    g = (2.0 * sum([x * i for (i, x) in enumerate(sv)]) / sum(sv) - (n + 1)) / n
     if isnan(g)
         return 0.0
     end
 
     return g
 end
-function gini(vals::AbstractArray{<:Real, 2})
+function gini(vals::AbstractArray{<:Real,2})
     return gini.(eachcol(vals))
 end
+
+
+end  # module
