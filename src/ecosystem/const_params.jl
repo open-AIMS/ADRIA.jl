@@ -45,8 +45,6 @@ Base.@kwdef mutable struct SimConstants
     LPdhwcoeff = 0.4;  # shape parameters relating dhw affecting cover to larval production
     LPDprm2 = 5;  # parameter offsetting LPD curve
 
-    # competition: probability that large Tabular Acropora overtop small massives
-
     # Bleaching sensitivity of each coral group
     # Bozec et al., (2022)
     # TODO: Make these uncertain parameters rather than constants
