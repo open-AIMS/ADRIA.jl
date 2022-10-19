@@ -36,7 +36,7 @@ function proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::Abstra
         @views Yout[:, exceeded] .= (Yout[:, exceeded] ./ cover_tmp[exceeded]') .* max_cover[exceeded]'
     end
 
-    return Yout
+    return max.(Yout, 0.0)
 end
 
 
