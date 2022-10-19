@@ -60,20 +60,20 @@ function main_menu()
     f = Figure()
 
     logo = image(
-        f[1,1],
+        f[1, 1],
         rotr90(load(convert(String, LOGO))),
-        axis=(aspect=DataAspect(), )
+        axis=(aspect=DataAspect(),)
     )
 
     hidedecorations!(f.content[1])
     hidespines!(f.content[1])
 
-    Label(f[2,1], "Enter ADRIA Result Set to analyze")
+    Label(f[2, 1], "Enter ADRIA Result Set to analyze")
     rs_path_tb = Textbox(f[3, 1], placeholder="./Moore_RS")
     rs_path_tb.stored_string[] = "./Moore_RS"
-    status_label = Label(f[4,1], "")
+    status_label = Label(f[4, 1], "")
 
-    launch_button = Button(f[5,1], label="Explore")
+    launch_button = Button(f[5, 1], label="Explore")
 
     on(launch_button.clicks) do c
         rs_path = rs_path_tb.stored_string[]
@@ -115,7 +115,7 @@ end
 
 
 function comms(rs::ADRIA.ResultSet)
-    layout = comms_layout(resolution=(1920,1080))
+    layout = comms_layout(resolution=(1920, 1080))
 
     f = layout.figure
     # controls = layout.controls
@@ -130,32 +130,32 @@ function comms(rs::ADRIA.ResultSet)
 
     # Generate trajectory controls
     num_steps = Int(ceil((tac_min_max[2] - tac_min_max[1]) + 1))
-    tac_slider = IntervalSlider(traj_outcome_sld[2,1],
-                                range=LinRange(floor(Int64, tac_min_max[1])-1, ceil(Int64, tac_min_max[2])+1, num_steps),
-                                startvalues=tac_min_max,
-                                horizontal=false
+    tac_slider = IntervalSlider(traj_outcome_sld[2, 1],
+        range=LinRange(floor(Int64, tac_min_max[1]) - 1, ceil(Int64, tac_min_max[2]) + 1, num_steps),
+        startvalues=tac_min_max,
+        horizontal=false
     )
 
     # Dynamic label text for TAC slider
-    tac_bot_val = Observable(floor(tac_min_max[1])-1)
-    tac_top_val = Observable(ceil(tac_min_max[2])+1)
-    Label(traj_outcome_sld[1,1], @lift("$(round($tac_top_val / 1e6, digits=2)) M (m²)"))
-    Label(traj_outcome_sld[3,1], @lift("$(round($tac_bot_val / 1e6, digits=2)) M (m²)"))
+    tac_bot_val = Observable(floor(tac_min_max[1]) - 1)
+    tac_top_val = Observable(ceil(tac_min_max[2]) + 1)
+    Label(traj_outcome_sld[1, 1], @lift("$(round($tac_top_val / 1e6, digits=2)) M (m²)"))
+    Label(traj_outcome_sld[3, 1], @lift("$(round($tac_bot_val / 1e6, digits=2)) M (m²)"))
 
     # Time slider
     years = timesteps(rs)
     year_range = first(years), last(years)
     time_slider = IntervalSlider(
-        traj_time_sld[1,2:3],
-        range=LinRange(year_range[1], year_range[2], (year_range[2] - year_range[1])+1),
+        traj_time_sld[1, 2:3],
+        range=LinRange(year_range[1], year_range[2], (year_range[2] - year_range[1]) + 1),
         startvalues=year_range
     )
 
     # Dynamic label text for TAC slider
     left_year_val = Observable("$(year_range[1])")
     right_year_val = Observable("$(year_range[2])")
-    Label(traj_time_sld[1,1], left_year_val)
-    Label(traj_time_sld[1,4], right_year_val)
+    Label(traj_time_sld[1, 1], left_year_val)
+    Label(traj_time_sld[1, 4], right_year_val)
 
     # Generate map
     map_display = layout.map
@@ -213,7 +213,7 @@ function comms(rs::ADRIA.ResultSet)
     p_tbl = probability_table(model, X, p)
     # @time ft_tbl = ft_importance(model, rs.inputs, p; rng=101)
 
-    asv_scens = ADRIA.metrics.scenario_asv(rs);
+    asv_scens = ADRIA.metrics.scenario_asv(rs)
     asv_scen_dist = dropdims(mean(asv_scens, dims=:timesteps), dims=:timesteps)
 
     interv_names = ADRIA.component_params(rs.model_spec, Intervention).fieldname
@@ -226,15 +226,13 @@ function comms(rs::ADRIA.ResultSet)
         mean_asv_med = mean_asv_med[interv_idx]
     end
 
-    Main.@infiltrate
-
     sample_cv = std(tac_scen_dist) ./ mean(tac_scen_dist)
     cf_cv = std(tac_scen_dist[scen_types.counterfactual]) ./ mean(tac_scen_dist[scen_types.counterfactual])
     ug_cv = std(tac_scen_dist[scen_types.unguided]) ./ mean(tac_scen_dist[scen_types.unguided])
     g_cv = std(tac_scen_dist[scen_types.guided]) ./ mean(tac_scen_dist[scen_types.guided])
 
     ft_import = Axis(
-        layout.importance[1,1],
+        layout.importance[1, 1],
         xticks=([1, 2], ["Mean TAC", "Mean ASV"]),
         yticks=(1:length(interv_names), interv_names)
     )
@@ -242,7 +240,7 @@ function comms(rs::ADRIA.ResultSet)
 
     sensitivities = Observable(hcat(mean_tac_med, mean_asv_med)')
     heatmap!(ft_import, sensitivities)
-    Colorbar(layout.importance[1,2]; colorrange=(0.0, 1.0))
+    Colorbar(layout.importance[1, 2]; colorrange=(0.0, 1.0))
 
     outcomes_ax = layout.outcomes
     barplot!(
@@ -254,7 +252,7 @@ function comms(rs::ADRIA.ResultSet)
         direction=:x
     )
     hideydecorations!(outcomes_ax)
-    
+
     # xticks!(outcomes, 1:size(p_tbl,1), p_tbl[:, :Outcome])
     # ytick=(1:size(p_tbl,1), p_tbl[:, :Outcome])
     # xaxis="Probability", yaxis="TAC Outcome", legend=false
@@ -315,9 +313,9 @@ function comms(rs::ADRIA.ResultSet)
         # Boolean index of scenarios to hide (inverse of tac_idx)
         if !all(hide_idx .== 0)
             # Hide scenarios that were filtered out
-            cf_dist = scen_dist[show_idx .& scen_types.counterfactual]
-            ug_dist = scen_dist[show_idx .& scen_types.unguided]
-            g_dist = scen_dist[show_idx .& scen_types.guided]
+            cf_dist = scen_dist[show_idx.&scen_types.counterfactual]
+            ug_dist = scen_dist[show_idx.&scen_types.unguided]
+            g_dist = scen_dist[show_idx.&scen_types.guided]
         else
             cf_dist = scen_dist[scen_types.counterfactual]
             ug_dist = scen_dist[scen_types.unguided]
@@ -347,7 +345,7 @@ function comms(rs::ADRIA.ResultSet)
         end
 
         # Determine level of transparency for each line (maximum of 0.6)
-        min_step = (1.0/0.05)
+        min_step = (1.0 / 0.05)
         color_weight = min((1.0 / (count(show_idx .> 0) / min_step)), 0.6)
 
         # Update visible trajectories
@@ -375,7 +373,7 @@ function comms(rs::ADRIA.ResultSet)
     gl_screen = display(f)
     DataInspector()
 
-    wait(gl_screen);
+    wait(gl_screen)
 end
 function comms(rs_path::String)
     comms(ADRIA.load_results(rs_path))
@@ -383,7 +381,7 @@ end
 
 
 function explore(rs::ADRIA.ResultSet)
-    layout = modeler_layout(resolution=(1920,1080))
+    layout = modeler_layout(resolution=(1920, 1080))
 
     f = layout.figure
     # controls = layout.controls
@@ -420,41 +418,41 @@ function explore(rs::ADRIA.ResultSet)
 
     # tac_label = Label(traj_outcome_sld[1,1], "Mean TAC (m²)")  # , rotation = pi/2
     num_steps = Int(ceil((tac_min_max[2] - tac_min_max[1]) + 1))
-    tac_slider = IntervalSlider(traj_outcome_sld[2,1],
-                                range=LinRange(floor(Int64, tac_min_max[1])-1, ceil(Int64, tac_min_max[2])+1, num_steps),
-                                startvalues=tac_min_max,
-                                horizontal=false
-                                # width=350
-                                )
+    tac_slider = IntervalSlider(traj_outcome_sld[2, 1],
+        range=LinRange(floor(Int64, tac_min_max[1]) - 1, ceil(Int64, tac_min_max[2]) + 1, num_steps),
+        startvalues=tac_min_max,
+        horizontal=false
+        # width=350
+    )
 
     # Dynamic label text for TAC slider
-    tac_bot_val = Observable(floor(tac_min_max[1])-1)
-    tac_top_val = Observable(ceil(tac_min_max[2])+1)
+    tac_bot_val = Observable(floor(tac_min_max[1]) - 1)
+    tac_top_val = Observable(ceil(tac_min_max[2]) + 1)
 
     tac_bot = @lift("$(round($tac_bot_val / 1e6, digits=2))")
     tac_top = @lift("$(round($tac_top_val / 1e6, digits=2))")
-    Label(traj_outcome_sld[1,1], tac_top)
-    Label(traj_outcome_sld[3,1], tac_bot)
+    Label(traj_outcome_sld[1, 1], tac_top)
+    Label(traj_outcome_sld[3, 1], tac_bot)
 
     # Time slider
     years = timesteps(rs)
     year_range = first(years), last(years)
     time_slider = IntervalSlider(
-        traj_time_sld[1,2],
-        range=LinRange(year_range[1], year_range[2], (year_range[2] - year_range[1])+1),
+        traj_time_sld[1, 2],
+        range=LinRange(year_range[1], year_range[2], (year_range[2] - year_range[1]) + 1),
         startvalues=year_range
     )
 
     # Dynamic label text for TAC slider
     left_year_val = Observable("$(year_range[1])")
     right_year_val = Observable("$(year_range[2])")
-    Label(traj_time_sld[1,1], left_year_val)
-    Label(traj_time_sld[1,3], right_year_val)
+    Label(traj_time_sld[1, 1], left_year_val)
+    Label(traj_time_sld[1, 3], right_year_val)
 
-    tac = ADRIA.metrics.scenario_total_cover(rs);
+    tac = ADRIA.metrics.scenario_total_cover(rs)
     tac_data = Matrix(tac')
 
-    asv = ADRIA.metrics.scenario_asv(rs);
+    asv = ADRIA.metrics.scenario_asv(rs)
 
     # Histogram/Density plot
     scen_types = scenario_type(rs)
@@ -479,7 +477,7 @@ function explore(rs::ADRIA.ResultSet)
     g_hist_alpha = Observable(0.5)
 
     # Get intervention/criteria inputs for each scenario
-    interv_criteria = ms[(ms.component .== "EnvironmentalLayer") .| (ms.component .== "Intervention") .| (ms.component .== "Criteria"), [:fieldname, :full_bounds]]
+    interv_criteria = ms[(ms.component.=="EnvironmentalLayer").|(ms.component.=="Intervention").|(ms.component.=="Criteria"), [:fieldname, :full_bounds]]
     input_names = vcat(["RCP", interv_criteria.fieldname...])
     in_pcp_data = normalize(Matrix(rs.inputs[:, input_names]))
     # in_pcp_lines = Observable(in_pcp_data)
@@ -523,9 +521,9 @@ function explore(rs::ADRIA.ResultSet)
         # hide_idx = Bool.(ones(Int64, length(tac_idx)) .⊻ tac_idx)
         if !all(hide_idx .== 0)
             # Hide scenarios that were filtered out
-            cf_dist = scen_dist[show_idx .& scen_types.counterfactual]
-            ug_dist = scen_dist[show_idx .& scen_types.unguided]
-            g_dist = scen_dist[show_idx .& scen_types.guided]
+            cf_dist = scen_dist[show_idx.&scen_types.counterfactual]
+            ug_dist = scen_dist[show_idx.&scen_types.unguided]
+            g_dist = scen_dist[show_idx.&scen_types.guided]
         else
             cf_dist = scen_dist[scen_types.counterfactual]
             ug_dist = scen_dist[scen_types.unguided]
@@ -555,7 +553,7 @@ function explore(rs::ADRIA.ResultSet)
         end
 
         # Determine level of transparency for each line (maximum of 0.6)
-        min_step = (1/0.05)
+        min_step = (1 / 0.05)
         color_weight = min((1.0 / (count(show_idx .> 0) / min_step)), 0.6)
 
         obs_color[] = scenario_colors(rs, color_weight, hide_idx)
@@ -607,7 +605,7 @@ function explore(rs::ADRIA.ResultSet)
     gl_screen = display(f)
     DataInspector()
 
-    wait(gl_screen);
+    wait(gl_screen)
 end
 function explore(rs_path::String)
     explore(ADRIA.load_results(rs_path))
