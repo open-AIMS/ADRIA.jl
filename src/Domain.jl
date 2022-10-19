@@ -3,7 +3,7 @@
 
 Store environmental data layers used for scenario
 """
-mutable struct EnvLayer{S<:AbstractString, TF}
+mutable struct EnvLayer{S<:AbstractString,TF}
     dpkg_path::S
     site_data_fn::S
     const site_id_col::S
@@ -54,7 +54,7 @@ Barrier function to create Domain struct without specifying Intervention/Criteri
 function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::DataFrame, in_conn::Vector{Float64}, out_conn::Vector{Float64},
     strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_id_col::String, unique_site_id_col::String,
     init_coral_cover::NamedMatrix, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
-    DHWs::Union{NamedArray, Matrix}, waves::Union{NamedArray, Matrix})::Domain
+    DHWs::Union{NamedArray,Matrix}, waves::Union{NamedArray,Matrix})::Domain
 
     # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
     criteria = Criteria()
@@ -62,7 +62,7 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::DataFr
         min_depth = minimum(site_data.depth_med)
         fields = fieldnames(typeof(criteria))
         c_spec = (; zip(fields, [getfield(criteria, f) for f in fields])...)
-        @set! c_spec.depth_min.bounds = (min_depth, minimum(min_depth+2.0, maximum(site_data.depth_med)))
+        @set! c_spec.depth_min.bounds = (min_depth, minimum(min_depth + 2.0, maximum(site_data.depth_med)))
 
         criteria = Criteria(c_spec...)
     end
@@ -123,7 +123,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     site_data.row_id = 1:nrow(site_data)
     site_data._siteref_id = groupindices(groupby(site_data, Symbol(site_id_col)))
 
-    conn_ids::Vector{Union{Missing, String}} = site_data[:, site_id_col]
+    conn_ids::Vector{Union{Missing,String}} = site_data[:, site_id_col]
     site_conn::NamedTuple = site_connectivity(conn_path, conn_ids, u_sids, site_data._siteref_id)
     conns::NamedTuple = connectivity_strength(site_conn.TP_base)
 
@@ -213,7 +213,7 @@ function model_spec(m::Model)
     spec[:, :lower_bound] = [x[1] for x in bnds]
     spec[:, :upper_bound] = [x[2] for x in bnds]
     spec[:, :full_bounds] = bnds
-    spec[!, :component] = replace.(string.(spec[:, :component]), "ADRIA."=>"")
+    spec[!, :component] = replace.(string.(spec[:, :component]), "ADRIA." => "")
     spec[:, :is_constant] = spec[:, :lower_bound] .== spec[:, :upper_bound]
 
     select!(spec, Not(:bounds))
@@ -231,7 +231,6 @@ Maps sampled continuous values to discrete values for categorical variables.
 function update_params!(d::Domain, params::DataFrameRow)::Nothing
     p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
 
-    # @info "Vals" size(p_df) size(params) size(params[Not(:RCP)])
     try
         p_df[!, :val] .= collect(params[Not("RCP")])
     catch err
@@ -301,10 +300,10 @@ function component_params(m::Model, component::Type)::DataFrame
     return component_params(model_spec(m), component)
 end
 function component_params(spec::DataFrame, component::Type)::DataFrame
-    return spec[spec.component .== replace.(string(component), "ADRIA."=>""), :]
+    return spec[spec.component.==replace.(string(component), "ADRIA." => ""), :]
 end
 function component_params(spec::DataFrame, components::Array{Type})::DataFrame
-    return spec[spec.component .∈ replace.(string.(components), "ADRIA."=>""), :]
+    return spec[spec.component.∈replace.(string.(components), "ADRIA." => ""), :]
 end
 
 
@@ -379,7 +378,7 @@ function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float
             sumcover,
             max_cover,
             area,
-            area_to_seed*coral_cover_tol,
+            area_to_seed * coral_cover_tol,
             risktol,
             wtoutconnseed,
             wtinconnseed,
