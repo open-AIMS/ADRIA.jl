@@ -135,7 +135,7 @@ Columns indicate:
 - predec : list of priority predecessors (sites strongly connected to priority sites)
 - risk_tol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
 """
-function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_crieteria, risk_tol)
+function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_criteria, risk_tol)
     A = zeros(length(site_ids), 8)
 
     A[:, 1] .= site_ids  # Column of site ids
@@ -347,19 +347,26 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     predec[predprior, 3] .= 1.0
 
-    # for zones, find strongest predecessors
+    # for zones, find sites which are zones and strongest predecessors of sites in zones
     zone_ids = intersect(priorityzones,unique(zones))
+    zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
     zone_preds = zeros(nsites, 1)
-    zones_sites = zeros(nsites,1)
+    zone_sites = zeros(nsites,1)
+
     for k in axes(zone_ids, 1)
+        # find sites which are strongest predecessors of sites in the zone
         zone_preds_temp = strongpred[zones.==zone_ids[k]]
-          for s in zone_preds_temp
-              zone_preds[site_ids.==s] .= zone_preds[site_ids.==s].+1
+          for s in unique(zone_preds_temp)
+            # for each predecessor site, add zone_weights* (no. of zone sites the site is a strongest predecessor for)
+            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k]).*sum(zone_preds_temp.==s)
           end
-        zones_sites[zones.==zone_ids[k]].= k
+        # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)        
+        zone_sites[zones.==zone_ids[k]].= zone_weights[k]
     end
-    zones_criteria = zones_pred .+ zones_sites
-    Main.@infiltrate
+
+    # add weights for strongest predecessors and zones to get zone criteria
+    zones_criteria = zone_preds .+ zone_sites
+
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_criteria, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
