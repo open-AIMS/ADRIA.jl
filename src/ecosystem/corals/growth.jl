@@ -395,7 +395,7 @@ function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basa
     # Send larvae out into the world
     actual_fecundity = (fec_scope .* sf)
 
-    larval_pool = (actual_fecundity * TP_data) .* (1 - Mwater)  # larval pool for each site (in larvae/m²)
+    larval_pool = (actual_fecundity * TP_data) .* (1 .- Mwater)  # larval pool for each site (in larvae/m²)
 
     # β is stock of larvae required to produce 50% of the maximum settlement
     β = replace((max_density .* leftover_space) ./ 2.0, Inf => 0.0, NaN => 0.0)

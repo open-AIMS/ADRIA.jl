@@ -367,7 +367,14 @@ function coral_spec()::NamedTuple
     params.bleach_resist = bleach_resist'[:]
 
     # eggs and larvae in-water motality estimate
-    params.Mwater .= 0.95
+    Mwater = Array{Float64,2}([
+        0.95 0.0 0.0 0.0 0.0 0.0  # Tabular Acropora Enhanced
+        0.95 0.0 0.0 0.0 0.0 0.0  # Tabular Acropora Unenhanced
+        0.95 0.0 0.0 0.0 0.0 0.0  # Corymbose Acropora Enhanced
+        0.95 0.0 0.0 0.0 0.0 0.0  # Corymbose Acropora Unenhanced
+        0.95 0.0 0.0 0.0 0.0 0.0  # Small massives and encrusting
+        0.95 0.0 0.0 0.0 0.0 0.0]) # Large massives
+    params.Mwater .= Mwater'[:]
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list
