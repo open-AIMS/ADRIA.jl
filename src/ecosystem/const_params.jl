@@ -42,8 +42,8 @@ Base.@kwdef mutable struct SimConstants
     DHWmaxtot = 50
 
     # Bleaching stress and coral fecundity parameters
-    LPdhwcoeff = 0.4;  # shape parameters relating dhw affecting cover to larval production
-    LPDprm2 = 5;  # parameter offsetting LPD curve
+    LPdhwcoeff = 0.4  # shape parameters relating dhw affecting cover to larval production
+    LPDprm2 = 5  # parameter offsetting LPD curve
 
     # Bleaching sensitivity of each coral group
     # Bozec et al., (2022)
