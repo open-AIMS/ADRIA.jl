@@ -395,7 +395,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     p.mb .= corals.mb_rate  # background mortality
 
     mean_diameters_cm = [1 3.5 7.5 15 30 60] # mean diameters of size classes
-    comp_factor = ((0.3 .* absolute_k_area') ./ (π .* (mean_diameters_cm / 2) .^ 2)) # competition rate plus scaling for no. corals to relative cover
+    comp_factor = ((0.3 .* absolute_k_area') ./ (π .* (mean_diameters_cm .* 100 / 2) .^ 2)) # competition rate plus scaling for no. corals to relative cover
 
     # mean diameter scaling for transforming from no. corals to relative cover
     p.diam_ratio .= repeat(vcat(0, (mean_diameters_cm[2:end] ./ mean_diameters_cm[1:end-1]) .^ 2), 1, 6)[:]
