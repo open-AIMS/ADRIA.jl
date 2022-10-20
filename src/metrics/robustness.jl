@@ -59,7 +59,7 @@ Assumes \$x\$ is bound between 0 and 1.
 If this is not the case, consider normalizing values first.
 """
 function temporal_variability(x::AbstractVector{<:Real})
-    return (mean(x) + (1.0 .- gini(x))) ./ 2
+    return (mean(x) + (1.0 .- gini(x))) ./ 2.0
 end
 function temporal_variability(x::AbstractArray{<:Real,2})
     return temporal_variability.(eachcol(x))
@@ -99,7 +99,7 @@ This is referred to as \$D\$.
 - inputs_i : inputs used for scenarios of interest
 """
 function intervention_diversity(ms, inputs_i)
-    return mean(1.0 .- gini(intervention_effort(ms, inputs_i)))
+    return mean(gini(intervention_effort(ms, inputs_i)))
 end
 
 
@@ -123,7 +123,7 @@ function environmental_diversity(ms, inputs_i)
     ub = env_s[:, "upper_bound"]
     lb = env_s[:, "lower_bound"]
 
-    Et = 1 .- gini(Matrix((inputs_i[:, env_cols] .- lb') ./ (ub .- lb)'))
+    Et = gini(Matrix((inputs_i[:, env_cols] .- lb') ./ (ub .- lb)'))
     if all(isnan.(Et))
         return 0.0
     elseif any(isnan.(Et))
