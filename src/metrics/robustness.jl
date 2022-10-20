@@ -50,7 +50,7 @@ end
 
 """
     temporal_variability(x::AbstractVector{<:Real})
-    temporal_variability(x::AbstractArray{<:Real})
+    temporal_variability(x::AbstractArray{<:Real, 2})
 
 The V meta-metric.
 
