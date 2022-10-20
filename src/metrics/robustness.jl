@@ -18,6 +18,37 @@ end
 
 
 """
+    gini(vals::AbstractVector{<:Real})::Float64 
+    gini(vals::AbstractArray{<:Real, 2})
+
+Gini coefficient.
+
+Lower values is greater consistency/equality.
+Higher values indicates greater variability/inequality.
+
+# References
+1. Hurley, N. P., & Rickard, S. T. (2009). 
+   Comparing Measures of Sparsity (arXiv:0811.4706). 
+   arXiv. http://arxiv.org/abs/0811.4706
+
+2. https://en.wikipedia.org/wiki/Gini_coefficient#Generalized_inequality_indices
+"""
+function gini(vals::AbstractVector{<:Real})::Float64
+    sv = sort(vals)
+    n = length(vals)
+    g = (2.0 * sum([x * i for (i, x) in enumerate(sv)]) / sum(sv) - (n + 1)) / n
+    if isnan(g)
+        return 0.0
+    end
+
+    return g
+end
+function gini(vals::AbstractArray{<:Real,2})
+    return gini.(eachcol(vals))
+end
+
+
+"""
     temporal_variability(x::AbstractVector{<:Real})
     temporal_variability(x::AbstractArray{<:Real})
 
@@ -100,34 +131,6 @@ function environmental_diversity(ms, inputs_i)
     end
 
     return mean(Et)
-end
-
-
-"""
-    gini(vals::AbstractVector{<:Real})::Float64 
-    gini(vals::AbstractArray{<:Real})
-
-Gini coefficient.
-
-# References
-1. Hurley, N. P., & Rickard, S. T. (2009). 
-   Comparing Measures of Sparsity (arXiv:0811.4706). 
-   arXiv. http://arxiv.org/abs/0811.4706
-
-2. https://en.wikipedia.org/wiki/Gini_coefficient#Generalized_inequality_indices
-"""
-function gini(vals::AbstractVector{<:Real})::Float64
-    sv = sort(vals)
-    n = length(vals)
-    g = (2.0 * sum([x * i for (i, x) in enumerate(sv)]) / sum(sv) - (n + 1)) / n
-    if isnan(g)
-        return 0.0
-    end
-
-    return g
-end
-function gini(vals::AbstractArray{<:Real,2})
-    return gini.(eachcol(vals))
 end
 
 
