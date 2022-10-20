@@ -76,13 +76,17 @@ This is referred to as \$F\$.
 - ms : model spec
 - inputs_i : inputs used for scenarios of interest
 """
-function intervention_effort(ms, inputs_i)
+function intervention_effort(X, ub, lb)
+    return (X .- lb) ./ (ub .- lb)
+end
+function intervention_effort(ms::DataFrame, X::DataFrame)
     interv_cols = ["seed_TA", "seed_CA", "fogging", "SRM"]
     interv_s = ms[findall(in(interv_cols), ms.fieldname), ["fieldname", "lower_bound", "upper_bound"]]
     ub = interv_s[:, "upper_bound"]
     lb = interv_s[:, "lower_bound"]
 
-    return mean.(eachrow((inputs_i[:, interv_cols] .- lb') ./ (ub .- lb)'))
+    return hcat([intervention_effort(values(X[:, interv_cols[i]]), ub[i], lb[i])
+                 for i in eachindex(interv_cols)]...)
 end
 
 
