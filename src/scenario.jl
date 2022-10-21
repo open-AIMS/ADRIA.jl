@@ -69,7 +69,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain)::ResultSet
 
     # Identify available data
     avail_data::Vector{String} = readdir(joinpath(domain.env_layer_md.dpkg_path, "DHWs"))
-    RCP_ids = replace.(avail_data, "dhwRCP"=>"", ".mat"=>"")
+    RCP_ids = replace.(avail_data, "dhwRCP" => "", ".mat" => "")
 
     @info "Running scenarios for RCPs: $(RCP_ids)"
     return run_scenarios(param_df, domain, RCP_ids::Array{String})
@@ -529,7 +529,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         # Recruitment should represent additional cover, relative to total site area
         # Gets used in ODE
         # p.rec[:, :] .= (area_settled ./ total_site_area)
-        p.rec[:, :] .= replace((area_settled ./ absolute_k_area), Inf=>0.0, NaN=>0.0)
+        p.rec[:, :] .= replace((area_settled ./ absolute_k_area), Inf => 0.0, NaN => 0.0)
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
@@ -608,7 +608,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # update initial condition
         tmp = ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area
-        growth.u0[:, :] .= replace(tmp, Inf=>0.0, NaN=>0.0)
+        growth.u0[:, :] .= replace(tmp, Inf => 0.0, NaN => 0.0)
 
         # growth.u0[:, :] .= Y_pstep[:, :] .* prop_loss[:, :]
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,

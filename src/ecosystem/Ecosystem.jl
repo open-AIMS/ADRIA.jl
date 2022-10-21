@@ -294,13 +294,13 @@ function coral_spec()::NamedTuple
     ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
     # we assume similar growth rates for enhanced and unenhanced corals
     # all values in cm/year
-    linear_extension = Array{Float64, 2}([
-            1 3 3 4.4 4.4 4.4;   # Tabular Acropora Enhanced
-            1 3 3 4.4 4.4 4.4;   # Tabular Acropora Unenhanced
-            1 3 3 3 3 3;         # Corymbose Acropora Enhanced
-            1 3 3 3 3 3;         # Corymbose Acropora Unenhanced
-            1 1 1 1 0.8 0.8;     # small massives
-            1 1 1 1 1.2 1.2;])   # large massives
+    linear_extension = Array{Float64,2}([
+        1 3 3 4.4 4.4 4.4   # Tabular Acropora Enhanced
+        1 3 3 4.4 4.4 4.4   # Tabular Acropora Unenhanced
+        1 3 3 3 3 3         # Corymbose Acropora Enhanced
+        1 3 3 3 3 3         # Corymbose Acropora Unenhanced
+        1 1 1 1 0.8 0.8     # small massives
+        1 1 1 1 1.2 1.2])   # large massives
 
     # Convert linear extensions to delta coral in two steps.
     # First calculate what proportion of coral numbers that change size class
@@ -322,8 +322,8 @@ function coral_spec()::NamedTuple
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
     colony_area_cm2 = pi .* ((mean_colony_diameter_m .* 100.0) ./ 2.0) .^ 2
-    fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2))./0.1
-    fec[colony_area_cm2 .< min_size_full_fec_cm2] .= 0
+    fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
+    fec[colony_area_cm2.<min_size_full_fec_cm2] .= 0
 
     # Smallest size class do not reproduce
     fec[:, 1:2] .= 0.0
@@ -334,35 +334,35 @@ function coral_spec()::NamedTuple
 
     ## Mortality
     # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
-    wavemort90 = Array{Float64, 2}([
-            0 0 0.0 0.0 0.0 0.0;   # Tabular Acropora Enhanced
-            0 0 0.0 0.0 0.0 0.0;   # Tabular Acropora Unenhanced
-            0 0 0.0 0.0 0.0 0.0;   # Corymbose Acropora Enhanced
-            0 0 0.0 0.0 0.0 0.0;   # Corymbose Acropora Unenhanced
-            0 0 0.0 0.0 0.0 0.0;   # Small massives
-            0 0 0.0 0.0 0.0 0.0])  # Large massives)
+    wavemort90 = Array{Float64,2}([
+        0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Enhanced
+        0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Unenhanced
+        0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Enhanced
+        0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Unenhanced
+        0 0 0.0 0.0 0.0 0.0   # Small massives
+        0 0 0.0 0.0 0.0 0.0])  # Large massives)
 
     params.wavemort90 = wavemort90'[:]
 
     # Background mortality taken from Bozec et al. 2021 (Table S2)
-    mb = Array{Float64, 2}([
-        0.20 0.19 0.15 0.098 0.098 0.098;    # Tabular Acropora Enhanced
-        0.20 0.19 0.15 0.098 0.098 0.098;    # Tabular Acropora Unenhanced
-        0.20 0.17 0.12 0.088 0.088 0.088;    # Corymbose Acropora Enhanced
-        0.20 0.17 0.12 0.088 0.088 0.088;    # Corymbose Acropora Unenhanced
-        0.20 0.10 0.04 0.030 0.020 0.020;    # Small massives and encrusting
+    mb = Array{Float64,2}([
+        0.20 0.19 0.15 0.098 0.098 0.098    # Tabular Acropora Enhanced
+        0.20 0.19 0.15 0.098 0.098 0.098    # Tabular Acropora Unenhanced
+        0.20 0.17 0.12 0.088 0.088 0.088    # Corymbose Acropora Enhanced
+        0.20 0.17 0.12 0.088 0.088 0.088    # Corymbose Acropora Unenhanced
+        0.20 0.10 0.04 0.030 0.020 0.020    # Small massives and encrusting
         0.20 0.10 0.04 0.030 0.020 0.020])   # Large massives
 
     params.mb_rate = mb'[:]
 
     # Estimated bleaching resistance (as DHW) relative to the assemblage
     # response for 2016 bleaching on the GBR (based on Hughes et al. 2018).
-    bleach_resist = Array{Float64, 2}([
-        0.0 0.0 0.0 0.0 0.0 0.0;  # Tabular Acropora Enhanced
-        0.0 0.0 0.0 0.0 0.0 0.0;  # Tabular Acropora Unenhanced
-        0.0 0.0 0.0 0.0 0.0 0.0;  # Corymbose Acropora Enhanced
-        0.0 0.0 0.0 0.0 0.0 0.0;  # Corymbose Acropora Unenhanced
-        1.5 1.5 1.5 1.5 1.5 1.5;  # Small massives and encrusting
+    bleach_resist = Array{Float64,2}([
+        0.0 0.0 0.0 0.0 0.0 0.0  # Tabular Acropora Enhanced
+        0.0 0.0 0.0 0.0 0.0 0.0  # Tabular Acropora Unenhanced
+        0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose Acropora Enhanced
+        0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose Acropora Unenhanced
+        1.5 1.5 1.5 1.5 1.5 1.5  # Small massives and encrusting
         1.0 1.0 1.0 1.0 1.0 1.0]) # Large massives
     params.bleach_resist = bleach_resist'[:]
 
