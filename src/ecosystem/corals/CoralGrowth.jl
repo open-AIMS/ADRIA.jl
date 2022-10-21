@@ -64,18 +64,5 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
         zeros(n_species, n_sites), zeros(n_species, n_sites), zeros(n_sites)
     ))
 
-    # p = (
-    #     # static inputs
-    #     r=rand(n_species, 1), P=0.3, mb=rand(n_species, 1), comp=0.3,
-
-    #     # cached indices
-    #     small_massives=small_massives, small=small, mid=mid, large=large,
-    #     sel_en=sel_en, sel_unen=sel_unen, encrusting=encrusting, small_r=small_r, enc=enc,
-
-    #     # cache matrices
-    #     rec=zeros(n_groups, n_sites), k=zeros(1, n_sites), kX_sel_en=zeros(2, n_sites), X_tab=zeros(1, n_sites),
-    #     kXr=zeros(n_species, n_sites), k_rec=zeros(n_groups, n_sites), X_mb=zeros(n_species, n_sites)
-    # )
-
     return CoralGrowth(n_sites, n_species, n_groups, p)
 end
