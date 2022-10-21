@@ -18,6 +18,15 @@ function normalize(vals::AbstractArray{<:Real})
     return (vals .- minimum(vals)) ./ (maximum(vals) - minimum(vals))
 end
 
+"""
+    probability(vals::AbstractArray{<:Real})
+
+Calculate probability of individual trajectories, given a scenario ensemble \$S\$.
+"""
+function probability(S::AbstractArray{<:Real})
+    return cdf.(fit(Normal, S), S)
+end
+
 
 """
     gini(vals::AbstractVector{<:Real})::Float64 
