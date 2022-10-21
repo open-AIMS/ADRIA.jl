@@ -29,7 +29,7 @@ end
 
 
 """
-    gini(vals::AbstractVector{<:Real})::Float64 
+    gini(vals::AbstractVector{<:Real})::Float64
     gini(vals::AbstractArray{<:Real, 2})
 
 Gini coefficient.
@@ -110,8 +110,7 @@ This is referred to as \$F\$.
 function intervention_effort(X, ub, lb)
     return (X .- lb) ./ (ub .- lb)
 end
-function intervention_effort(ms::DataFrame, X::DataFrame)
-    interv_cols = ["seed_TA", "seed_CA", "fogging", "SRM"]
+function intervention_effort(ms::DataFrame, X::DataFrame; interv_cols=["seed_TA", "seed_CA", "fogging", "SRM"])
     interv_s = ms[findall(in(interv_cols), ms.fieldname), ["fieldname", "lower_bound", "upper_bound"]]
     ub = interv_s[:, "upper_bound"]
     lb = interv_s[:, "lower_bound"]
