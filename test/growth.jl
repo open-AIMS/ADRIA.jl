@@ -52,3 +52,56 @@ end
     larval_pool = rand(1.0:5e11, 6, 216)
     @test any(ADRIA.recruitment(larval_pool, area) .> 10^4) || "Total corals recruited should be > 10,000"
 end
+
+
+@testset "growthODE" begin
+    here = @__DIR__
+    dom = ADRIA.load_domain(joinpath(here, "../examples/Example_domain"), "45")
+    p = dom.coral_growth.ode_p
+
+    du = zeros(36, 216)
+    absolute_k_area = rand(1e3:1e6, 1, 216)
+    total_site_area = rand(1e4:2.5e6, 1, 216)
+    cover_tmp = zeros(216)
+    max_cover = min.(vec(absolute_k_area ./ total_site_area), 0.5)
+
+    # Test magnitude of change are within bounds
+    Y_cover = zeros(2, 36, 216)
+    population = rand(1e3:1e6, 36, 216)
+    Y_cover[1, :, :] = ADRIA.proportional_adjustment!(population ./ total_site_area, cover_tmp, max_cover)
+    growthODE(du, Y_cover[1, :, :], p, 1)
+    @test !any(abs.(du) .> 1.0) || "growth function is producing inappropriate values (abs(du) > 1.0)"
+
+
+    # Test zero recruit and coverage conditions
+    Y_cover = zeros(2, 36, 216)
+    p.rec .= zeros(6, 216)
+    growthODE(du, Y_cover[1, :, :], p, 1)
+    @test all(du .== 0.0) || "Growth produces non-zero values with zero recuitment and zero initial cover."
+
+
+    # Test direction and magnitude of change
+    p.rec .= rand(0:0.001:0.5, 6, 216)
+    Y_cover = zeros(10, 36, 216)
+    Y_cover[1, :, :] = ADRIA.proportional_adjustment!(rand(1e3:1e6, 36, 216), cover_tmp, max_cover)
+    for tstep = 2:10
+        growthODE(du, Y_cover[tstep-1, :, :], p, 1)
+        Y_cover[tstep, :, :] .= Y_cover[tstep-1, :, :] .+ du
+        Y_cover[tstep, :, :] .= ADRIA.proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
+    end
+    @test any(diff(Y_cover, dims=1) .< 0) || "ODE never decreases, du being restricted to >=0."
+    @test any(diff(Y_cover, dims=1) .>= 0) || "ODE never increases, du being restricted to <=0."
+    @test all(abs.(diff(Y_cover, dims=1)) .< 1.0) || "ODE more than doubles or halves area."
+
+
+    # Test change in smallest size class under no recruitment
+    p.rec .= zeros(6, 216)
+    Y_cover = zeros(10, 36, 216)
+    Y_cover[1, :, :] = ADRIA.proportional_adjustment!(rand(1e3:1e6, 36, 216), cover_tmp, max_cover)
+    for tstep = 2:10
+        growthODE(du, Y_cover[tstep-1, :, :], p, 1)
+        Y_cover[tstep, :, :] .= Y_cover[tstep-1, :, :] .+ du
+        Y_cover[tstep, :, :] .= ADRIA.proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
+    end
+    @test all((diff(Y_cover[:, [1, 7, 13, 19, 25, 31], :], dims=1) .<= 0)) || "Smallest size class growing with no recruitment.."
+end
