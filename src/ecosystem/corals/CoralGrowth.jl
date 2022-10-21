@@ -23,7 +23,6 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
     # Store specific indices for use in growth ODE function
     # These are specific to the 36 "species"/ 6 group formulation
     small_massives::SVector = SVector{3}(collect(26:28))
-    rec_small::SVector = @SVector [1, 2, 3, 4, 5, 6]
     small::SVector = @SVector [1, 7, 13, 19, 25, 31]
     mid::SVector = SVector{19}(collect([2:4; 8:10; 14:17; 20:23; 29; 32:35]))
     large::SVector = @SVector [18, 24, 30, 36]
