@@ -29,11 +29,11 @@ Lower values is greater consistency/equality.
 Higher values indicates greater variability/inequality.
 
 # References
-1. Hurley, N. P., & Rickard, S. T. (2009). 
-   Comparing Measures of Sparsity (arXiv:0811.4706). 
+1. Hurley, N. P., & Rickard, S. T. (2009).
+   Comparing Measures of Sparsity (arXiv:0811.4706).
    arXiv. http://arxiv.org/abs/0811.4706
 
-2. https://en.wikipedia.org/wiki/Gini_coefficient#Generalized_inequality_indices
+2. https://en.wikipedia.org/wiki/Gini_coefficient#Alternative_expressions
 """
 function gini(vals::AbstractVector{<:Real})::Float64
     sv = sort(vals)
