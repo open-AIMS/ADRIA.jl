@@ -7,10 +7,10 @@ include("growth_expanded.jl")
 
 
 function growth_rate(linear_extension, diam_bin_widths, mean_colony_diameter_m)
-    bin_shift = ((2.0 * linear_extension'[:]) ./ diam_bin_widths).^2
-    bin_shift[bin_shift .> 1] .= 1
-    class_6_diameter_ratio = (mean_colony_diameter_m[:,end] .+ (diam_bin_widths[end]/(2*100))) ./ mean_colony_diameter_m[:,end]
-    mean_diameter_ratio = hcat((mean_colony_diameter_m[:,2:end] ./ mean_colony_diameter_m[:,1:end-1]).^2, class_6_diameter_ratio.^2)
+    bin_shift = ((2.0 * linear_extension'[:]) ./ diam_bin_widths) .^ 2
+    bin_shift[bin_shift.>1] .= 1
+    class_6_diameter_ratio = (mean_colony_diameter_m[:, end] .+ (diam_bin_widths[end] / (2 * 100))) ./ mean_colony_diameter_m[:, end]
+    mean_diameter_ratio = hcat((mean_colony_diameter_m[:, 2:end] ./ mean_colony_diameter_m[:, 1:end-1]) .^ 2, class_6_diameter_ratio .^ 2)
 
     return (mean_diameter_ratio'[:] .* bin_shift)
 end
@@ -47,9 +47,9 @@ Base coral growth function.
 """
 function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
     s = @view p.sigma[:, :]
-    s .= max.( 1 .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
-    s[p.k' .== 0.0] .= 0.0 
-#p.k'
+    s .= max.(1 .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
+    s[p.k'.==0.0] .= 0.0
+
     # Indices
     # p.small_massives := [26, 27, 28]
     # p.rec_small := [1, 2, 3, 4, 5, 6]
@@ -67,7 +67,7 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
 
     @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
     @. X_mb = X * p.mb    # current cover * background mortality
-  
+
     @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :] + X[12, :])')
 
     r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
@@ -351,8 +351,8 @@ end
 λ, coral recruitment for each coral taxa based on a Poisson distribution.
 """
 function recruitment_rate(larval_pool; α=2.5, β=5000.0)
-    sd = replace(settler_density.(α, β, larval_pool), Inf=>0.0, NaN=>0.0)
-    sd[sd .> 0.0] .= rand.(Poisson.(sd[sd .> 0.0]))
+    sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0)
+    sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
     return sd
 end
 
@@ -394,10 +394,10 @@ function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basa
     actual_fecundity = (fec_scope .* sf)
 
     Mwater = 0.95
-    larval_pool = (actual_fecundity * TP_data).*(1-Mwater)  # larval pool for each site (in larvae/m²)
+    larval_pool = (actual_fecundity * TP_data) .* (1 - Mwater)  # larval pool for each site (in larvae/m²)
 
     # β is stock of larvae required to produce 50% of the maximum settlement
-    β = replace((max_density .* leftover_space) ./ 2.0, Inf=>0.0, NaN=>0.0)
+    β = replace((max_density .* leftover_space) ./ 2.0, Inf => 0.0, NaN => 0.0)
 
     # Larvae have landed, work out how many are recruited
     λ = recruitment(larval_pool, leftover_space; α=max_density, β=β)  # recruits per m^2 per site
