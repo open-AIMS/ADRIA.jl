@@ -42,7 +42,6 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
         large::StaticArrays.SVector{4,Int64},           # indices for large corals
         acr_5_11::StaticArrays.SVector{2,Int64},          # size 5 Tabular Acropora (enhanced and unenhanced)
         acr_6_12::StaticArrays.SVector{2,Int64},        # size 6 Tabular Acropora (enhanced and unenhanced)
-        rec_small::StaticArrays.SVector{6,Int64},         # growth rate for small corals
         rec::Matrix{Float64},                            # recruitment values, where `s` relates to available space (not max carrying capacity)
         sigma::Matrix{Float64},                          # available space, i.e., [max carrying cap] - [current coral cover]
         M_sm::Matrix{Float64},                           # mortality for small massive corals due to competition and background mortality
@@ -55,7 +54,7 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
 
         # cached indices
         small_massives, small, mid, large,
-        acr_5_11, acr_6_12, rec_small,
+        acr_5_11, acr_6_12,
 
         # cache matrices
         # rec, sigma, M_sm, 
