@@ -37,9 +37,7 @@ function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_
         :RCP => RCP,
         :columns => input_cols,
         :invoke_time => invoke_time,
-        :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)),
-
-        :site_data_file => env_layer.site_data_fn,
+        :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)), :site_data_file => env_layer.site_data_fn,
         :site_id_col => env_layer.site_id_col,
         :unique_site_id_col => env_layer.unique_site_id_col,
         :init_coral_cover_file => env_layer.init_coral_cov_fn,
@@ -57,9 +55,9 @@ function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_
     return attrs
 end
 function scenario_attributes(domain::Domain, param_df::DataFrame)
-    return scenario_attributes(domain.name, domain.RCP, names(param_df), domain.scenario_invoke_time, 
-                domain.env_layer_md, domain.sim_constants,
-                unique_sites(domain), domain.site_data.area, domain.site_data.k, centroids(domain.site_data))
+    return scenario_attributes(domain.name, domain.RCP, names(param_df), domain.scenario_invoke_time,
+        domain.env_layer_md, domain.sim_constants,
+        unique_sites(domain), domain.site_data.area, domain.site_data.k, centroids(domain.site_data))
 end
 
 
@@ -77,20 +75,20 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
 
     attrs = Dict(
         # Here, "intervention" refers to seeding or shading
-        :structure=> ("timesteps", "sites", "intervention", "scenarios"),
-        :unique_site_ids=>unique_sites,
+        :structure => ("timesteps", "sites", "intervention", "scenarios"),
+        :unique_site_ids => unique_sites,
     )
     ranks = zcreate(Float32, rank_dims...; name="rankings", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
-        :structure=> ("timesteps", "coral_id", "sites", "scenarios"),
-        :unique_site_ids=>unique_sites,
+        :structure => ("timesteps", "coral_id", "sites", "scenarios"),
+        :unique_site_ids => unique_sites,
     )
     seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(seed_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
-        :structure=> ("timesteps", "sites", "scenarios"),
-        :unique_site_ids=>unique_sites,
+        :structure => ("timesteps", "sites", "scenarios"),
+        :unique_site_ids => unique_sites,
     )
     fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
     shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
@@ -146,7 +144,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     # Insert RCP column and populate with this dataset's RCP
     insertcols!(param_df, 1, :RCP => parse(Float64, domain.RCP))
 
-    @set! domain.scenario_invoke_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
+    @set! domain.scenario_invoke_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
     log_location::String = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCPs$(domain.RCP)__$(domain.scenario_invoke_time)")
 
     z_store = DirectoryStore(log_location)
@@ -169,7 +167,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     # Store post-processed table of input parameters.
     # +1 skips the RCP column
     integer_params = findall(domain.model[:ptype] .== "integer")
-    map_to_discrete!(param_df[:, integer_params .+ 1], getindex.(domain.model[:bounds], 2)[integer_params])
+    map_to_discrete!(param_df[:, integer_params.+1], getindex.(domain.model[:bounds], 2)[integer_params])
     inputs[:, :] = Matrix(param_df)
 
     # Set up stores for each metric
@@ -189,7 +187,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             end
         end
 
-        return (dl..., )
+        return (dl...,)
     end
 
     compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
@@ -204,10 +202,10 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     # Create stores for each metric
     stores = [
         zcreate(Float32, result_dims...;
-                fill_value=nothing, fill_as_missing=false,
-                path=joinpath(z_store.folder, "results", string(m_name)), chunks=(result_dims[1:end-1]..., 1),
-                attrs=dim_struct,
-                compressor=compressor)
+            fill_value=nothing, fill_as_missing=false,
+            path=joinpath(z_store.folder, "results", string(m_name)), chunks=(result_dims[1:end-1]..., 1),
+            attrs=dim_struct,
+            compressor=compressor)
         for m_name in met_names
     ]
 
@@ -235,7 +233,7 @@ function load_results(result_loc::String)::ResultSet
         end
     end
 
-    outcomes = Dict{Symbol, NamedDimsArray}()
+    outcomes = Dict{Symbol,NamedDimsArray}()
     subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS), join=true))
     for sd in subdirs
         if !(occursin(LOG_GRP, sd)) && !(occursin(INPUTS, sd))
@@ -247,12 +245,12 @@ function load_results(result_loc::String)::ResultSet
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
 
-    result_loc = replace(result_loc, "\\"=>"/")
+    result_loc = replace(result_loc, "\\" => "/")
     if endswith(result_loc, "/")
         result_loc = result_loc[1:end-1]
     end
 
-    site_data = GeoDataFrames.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"]*".gpkg"))
+    site_data = GeoDataFrames.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
     model_spec = CSV.read(joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#")
 
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
