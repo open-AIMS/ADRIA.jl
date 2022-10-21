@@ -51,18 +51,38 @@ end
 """
     temporal_variability(x::AbstractVector{<:Real})
     temporal_variability(x::AbstractArray{<:Real, 2})
+    temporal_variability(x::AbstractArray{<:Real}, func_or_data...)
 
 The V meta-metric.
 
-Assumes \$x\$ is bound between 0 and 1.
-
+As a meta-metric, it can be applied to any combination of
+metrics (including itself), assuming \$x\$ is bound between 0 and 1.
 If this is not the case, consider normalizing values first.
+
+# Examples
+```julia-repl
+# Apply V to a time series
+julia> temporal_variability(rand(50))
+
+# Apply V to an ensemble of of time series
+julia> x = rand(50, 200)
+julia> temporal_variability(x)
+
+# Create and apply a modified V metric to an ensemble of of time series.
+# Where the argument is not a function, the data is used directly
+# and so it is assumed all matrices are of the same size and shape.
+julia> temporal_variability(x, temporal_variabilty, temporal_variability(P(x)))
+julia> temporal_variability(x, temporal_variabilty, P(x), D(x), E(x))
+```
 """
 function temporal_variability(x::AbstractVector{<:Real})
     return (mean(x) + (1.0 .- gini(x))) ./ 2.0
 end
 function temporal_variability(x::AbstractArray{<:Real,2})
     return temporal_variability.(eachcol(x))
+end
+function temporal_variability(x::AbstractArray{<:Real}, func_or_data...)
+    return mean(map(f -> f isa Function ? f(x) : f, func_or_data))
 end
 
 
