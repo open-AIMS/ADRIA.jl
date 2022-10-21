@@ -1,14 +1,16 @@
 module robustness
 
-using Statistics, Distributions
+using Statistics, Distributions, DataFrames
+using ADRIA
 
 
 """
-    norm(vals::AbstractArray{<:Real})
+    normalize(vals::AbstractArray{<:Real})
 
-Normalizes values between 0 and 1, where 1 is the maximum value found.
+Normalize values using feature scaling such that values are bound
+between 0 and 1, where 1 is equivalent to the maximum value found.
 """
-function norm(vals::AbstractArray{<:Real})
+function normalize(vals::AbstractArray{<:Real})
     if (maximum(vals) - minimum(vals)) == 0.0
         return 0.0
     end
