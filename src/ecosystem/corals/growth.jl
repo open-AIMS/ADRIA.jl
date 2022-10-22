@@ -44,7 +44,11 @@ Base coral growth function.
 """
 function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
     s = @view p.sigma[:, :]
-    s .= max.(p.k' .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
+
+    # X is cover relative to `k` (max. carrying capacity)
+    # So we subtract from 1.0 to get leftover/available space, relative to `k`
+    s .= max.(1.0 .- sum(X, dims=1), 0.0)
+    s[p.k'.==0.0] .= 0.0
 
     # Indices
     # p.small_massives := [26, 27, 28]
