@@ -67,15 +67,16 @@ end
 
 
 Base.@kwdef struct Criteria{P} <: EcoModel
-    wave_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    heat_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    shade_connectivity::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    in_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    out_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    coral_cover_high::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    coral_cover_low::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
-    shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    wave_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for wave stress criteria
+    heat_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for heat stress criteria
+    shade_connectivity::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for site connectivity criteria while shading
+    in_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for site in-coming connectivity criteria while seeding
+    out_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for site out-going connectivity criteria while seeding
+    coral_cover_high::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for coral cover criteria while seeding
+    seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for coral cover criteria while shading
+    shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for priority predecessor criteria while shading
+    zone_seed::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for zoning criteria while seeding
+    zone_shade::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for zoning criteria while shading
     coral_cover_tol::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif")  # % of seeded corals area tolerance for low space when seeding
     deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
     depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif")     # minimum depth
