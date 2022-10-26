@@ -113,18 +113,26 @@ end
 """
     intervention_effort(ms, inputs_i)
 
-Obtain an indication of intervention effort for each scenario.
+Obtain an indication of intervention effort for each scenario and intervention type.
 This is referred to as \$F\$.
 
 # Arguments
 - ms : model spec
 - inputs_i : inputs used for scenarios of interest
+
+# Returns
+Matrix of `s * 6`, where `s` is the number of scenarios and columns are:
+`seed_TA`, `seed_CA`, `fogging`, `SRM`, `seed_years`, `shade_years`
 """
 function intervention_effort(X, ub, lb)
     return (X .- lb) ./ (ub .- lb)
 end
-function intervention_effort(ms::DataFrame, X::DataFrame; interv_cols=["seed_TA", "seed_CA", "fogging", "SRM"])
-    interv_s = ms[findall(in(interv_cols), ms.fieldname), ["fieldname", "lower_bound", "upper_bound"]]
+function intervention_effort(ms::DataFrame, X::DataFrame;
+    interv_cols=Symbol.(["seed_TA", "seed_CA", "fogging", "SRM", "seed_years", "shade_years"]))
+
+    interv_s = ms[findall(in(interv_cols), Symbol.(ms.fieldname)), ["fieldname", "lower_bound", "upper_bound"]]
+    @assert nrow(interv_s) > 0 "No parameters for $(interv_cols) found."
+
     ub = interv_s[:, "upper_bound"]
     lb = interv_s[:, "lower_bound"]
 
