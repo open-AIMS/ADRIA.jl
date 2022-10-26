@@ -72,7 +72,7 @@ Base.@kwdef struct Criteria{P} <: EcoModel
     shade_connectivity::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for site connectivity criteria while shading
     in_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for site in-coming connectivity criteria while seeding
     out_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for site out-going connectivity criteria while seeding
-    coral_cover_low::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for coral cover criteria while seeding
+    coral_cover_low::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for coral cover criteria while seeding
     coral_cover_high::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for coral cover criteria while seeding
     seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for coral cover criteria while shading
     shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for priority predecessor criteria while shading
