@@ -57,33 +57,34 @@ end
 @testset "growth model" begin
     here = @__DIR__
     dom = ADRIA.load_domain(joinpath(here, "../examples/Example_domain"), "45")
+    n_sites = nrow(dom.site_data)
     p = dom.coral_growth.ode_p
 
-    du = zeros(36, 216)
-    absolute_k_area = rand(1e3:1e6, 1, 216)
-    total_site_area = rand(1e4:2.5e6, 1, 216)
-    cover_tmp = zeros(216)
+    du = zeros(36, n_sites)
+    absolute_k_area = rand(1e3:1e6, 1, n_sites)
+    total_site_area = rand(1e4:2.5e6, 1, n_sites)
+    cover_tmp = zeros(n_sites)
     max_cover = min.(vec(absolute_k_area ./ total_site_area), 0.5)
 
     # Test magnitude of change are within bounds
-    Y_cover = zeros(2, 36, 216)
-    population = rand(1e3:1e6, 36, 216)
+    Y_cover = zeros(2, 36, n_sites)
+    population = rand(1e3:1e6, 36, n_sites)
     Y_cover[1, :, :] = ADRIA.proportional_adjustment!(population ./ total_site_area, cover_tmp, max_cover)
     growthODE(du, Y_cover[1, :, :], p, 1)
     @test !any(abs.(du) .> 1.0) || "growth function is producing inappropriate values (abs(du) > 1.0)"
 
 
     # Test zero recruit and coverage conditions
-    Y_cover = zeros(2, 36, 216)
-    p.rec .= zeros(6, 216)
+    Y_cover = zeros(2, 36, n_sites)
+    p.rec .= zeros(6, n_sites)
     growthODE(du, Y_cover[1, :, :], p, 1)
     @test all(du .== 0.0) || "Growth produces non-zero values with zero recuitment and zero initial cover."
 
 
     # Test direction and magnitude of change
-    p.rec .= rand(0:0.001:0.5, 6, 216)
-    Y_cover = zeros(10, 36, 216)
-    Y_cover[1, :, :] = ADRIA.proportional_adjustment!(rand(1e3:1e6, 36, 216), cover_tmp, max_cover)
+    p.rec .= rand(0:0.001:0.5, 6, n_sites)
+    Y_cover = zeros(10, 36, n_sites)
+    Y_cover[1, :, :] = ADRIA.proportional_adjustment!(rand(1e3:1e6, 36, n_sites), cover_tmp, max_cover)
     for tstep = 2:10
         growthODE(du, Y_cover[tstep-1, :, :], p, 1)
         Y_cover[tstep, :, :] .= Y_cover[tstep-1, :, :] .+ du
@@ -95,9 +96,9 @@ end
 
 
     # Test change in smallest size class under no recruitment
-    p.rec .= zeros(6, 216)
-    Y_cover = zeros(10, 36, 216)
-    Y_cover[1, :, :] = ADRIA.proportional_adjustment!(rand(1e3:1e6, 36, 216), cover_tmp, max_cover)
+    p.rec .= zeros(6, n_sites)
+    Y_cover = zeros(10, 36, n_sites)
+    Y_cover[1, :, :] = ADRIA.proportional_adjustment!(rand(1e3:1e6, 36, n_sites), cover_tmp, max_cover)
     for tstep = 2:10
         growthODE(du, Y_cover[tstep-1, :, :], p, 1)
         Y_cover[tstep, :, :] .= Y_cover[tstep-1, :, :] .+ du
