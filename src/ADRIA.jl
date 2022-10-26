@@ -7,8 +7,9 @@ using NamedArrays, SparseArrayKit, DifferentialEquations
 using MAT  # Package to read in `.mat` files
 
 using Setfield, ModelParameters, DataStructures
-using DataFrames, GeoDataFrames, Graphs, CSV
+using DataFrames, Graphs, CSV
 import ArchGDAL as AG
+import GeoDataFrames
 
 using PkgVersion
 
