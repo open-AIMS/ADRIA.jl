@@ -404,9 +404,11 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     seed_sc_TA::Int64 = first(findall(tabular_enhanced .& target_class_id))  # size class indices for TA and CA
     seed_sc_CA::Int64 = first(findall(corymbose_enhanced .& target_class_id))
 
-    # extract colony areas for sites selected and convert to m^2
+    # Extract colony areas for sites selected and convert to m^2
     col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
     col_area_seed_CA = corals.colony_area_cm2[seed_sc_CA] / 10^4
+
+    bleaching_sensitivity = corals.bleaching_sensitivity
 
     if is_guided
         ## Weights for connectivity , waves (ww), high cover (whc) and low
