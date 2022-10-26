@@ -1,6 +1,6 @@
 module robustness
 
-using Statistics, Distributions, DataFrames
+using Statistics, Distributions, DataFrames, StatsBase
 using ADRIA
 
 
@@ -18,6 +18,7 @@ function normalize(vals::AbstractArray{<:Real})
     return (vals .- minimum(vals)) ./ (maximum(vals) - minimum(vals))
 end
 
+
 """
     probability(vals::AbstractArray{<:Real})
 
@@ -29,33 +30,45 @@ end
 
 
 """
-    gini(vals::AbstractVector{<:Real})::Float64
-    gini(vals::AbstractArray{<:Real, 2})
+    gmd(vals::AbstractVector{<:Real})::Float64
+    gmd(vals::AbstractMatrix{<:Real})
 
-Gini coefficient.
+Gini's Mean Difference.
 
-Lower values is greater consistency/equality.
-Higher values indicates greater variability/inequality.
+The absolute mean of all pairwise distances between elements in a given set.
 
 # References
-1. Hurley, N. P., & Rickard, S. T. (2009).
-   Comparing Measures of Sparsity (arXiv:0811.4706).
-   arXiv. http://arxiv.org/abs/0811.4706
+1. La Haye, R., & Zizler, P. (2019). 
+   The Gini mean difference and variance. 
+   METRON, 77(1), 43-52. 
+   https://doi.org/10.1007/s40300-019-00149-2
 
-2. https://en.wikipedia.org/wiki/Gini_coefficient#Alternative_expressions
+2. Yitzhaki, S. (2003). 
+   Gini's Mean difference: A superior measure of variability for non-normal
+     distributions. 
+   Metron - International Journal of Statistics, LXI(2), 285-316.
+   https://ideas.repec.org/a/mtn/ancoec/030208.html
+
+3. Kashif, M., Aslam, M., Al-Marshadi, A. H., & Jun, C.-H. (2016).
+   Capability Indices for Non-Normal Distribution Using Gini's Mean Difference as Measure of Variability. 
+   IEEE Access, 4, 7322-7330.
+   https://doi.org/10.1109/ACCESS.2016.2620241
 """
-function gini(vals::AbstractVector{<:Real})::Float64
-    sv = sort(vals)
+function gmd(vals::AbstractVector{<:Real})::Float64
     n = length(vals)
-    g = (2.0 * sum([x * i for (i, x) in enumerate(sv)]) / sum(sv) - (n + 1)) / n
-    if isnan(g)
-        return 0.0
-    end
-
-    return g
+    sv = sort(vals)
+    return (2 / (n * (n - 1))) .* sum(([((2 * i) - 50 - 1) * sv[i] for i in 1:n]))
 end
-function gini(vals::AbstractArray{<:Real,2})
-    return gini.(eachcol(vals))
+
+
+
+function gmd(vals::AbstractVector{<:Real})::Float64
+    n = length(vals)
+    w = 4 .* ((1:n) .- (n - 1) ./ 2) / n / (n - 1)
+    return sum(w .* sort(vals .- mean(vals)))
+end
+function gmd(vals::AbstractMatrix{<:Real})
+    return gmd.(eachcol(vals))
 end
 
 
@@ -80,20 +93,20 @@ julia> x = rand(50, 200)
 julia> temporal_variability(x)
 
 # Create and apply a modified V metric to an ensemble of of time series.
-# Where the argument is not a function, the data is used directly
+# Where the argument is an array and not a function, the data is used directly
 # and so it is assumed all matrices are of the same size and shape.
 julia> temporal_variability(x, temporal_variabilty, temporal_variability(P(x)))
 julia> temporal_variability(x, temporal_variabilty, P(x), D(x), E(x))
 ```
 """
-function temporal_variability(x::AbstractVector{<:Real})
-    return (mean(x) + (1.0 .- gini(x))) ./ 2.0
+function temporal_variability(x::AbstractVector{<:Real}; w=[0.5, 0.5])
+    return mean([median(x), 1.0 - gmd(x)], weights(w))
 end
 function temporal_variability(x::AbstractArray{<:Real,2})
     return temporal_variability.(eachcol(x))
 end
 function temporal_variability(x::AbstractArray{<:Real}, func_or_data...)
-    return mean(map(f -> f isa Function ? f(x) : f, func_or_data))
+    return mean([map(f -> f isa Function ? f(x) : f, func_or_data)...])
 end
 
 
@@ -133,7 +146,7 @@ This is referred to as \$D\$.
 - inputs_i : inputs used for scenarios of interest
 """
 function intervention_diversity(ms, inputs_i)
-    return mean(gini(intervention_effort(ms, inputs_i)))
+    return mean(gmd(intervention_effort(ms, inputs_i)))
 end
 
 
@@ -151,20 +164,24 @@ This is referred to as \$E\$.
 - inputs_i : inputs used for scenarios of interest
 """
 function environmental_diversity(ms, inputs_i)
-    env_cols = ADRIA.component_params(ms, ADRIA.EnvironmentalLayer).fieldname
+    env_cols = Symbol.(ADRIA.component_params(ms, ADRIA.EnvironmentalLayer).fieldname)
+    env_s = ms[findall(in(env_cols), Symbol.(ms.fieldname)), ["fieldname", "lower_bound", "upper_bound"]]
+    @assert nrow(env_s) > 0 "No parameters for $(env_cols) found."
 
-    env_s = ms[findall(in(env_cols), ms.fieldname), ["fieldname", "lower_bound", "upper_bound"]]
+    push!(env_s, ["RCP", 26, 85])
+    push!(env_cols, :RCP)
+
     ub = env_s[:, "upper_bound"]
     lb = env_s[:, "lower_bound"]
 
-    Et = gini(Matrix((inputs_i[:, env_cols] .- lb') ./ (ub .- lb)'))
+    Et = gmd.(eachcol((inputs_i[:, env_cols] .- lb') ./ (ub .- lb)'))
     if all(isnan.(Et))
         return 0.0
     elseif any(isnan.(Et))
         replace!(Et, NaN => 0.0)
     end
 
-    return mean(Et)
+    return mean(mean(Et, dims=1))
 end
 
 
