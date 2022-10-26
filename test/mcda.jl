@@ -66,9 +66,9 @@ end
 
     @test (sum(filtered)) == size(A, 1) || "Site where heat stress > risktol not filtered out"
     @test size(SE, 1) == size(A, 1) - 2 || "Sites where space available<min_area not filtered out"
-    @test A[3, 7] == 0.0 || "Site with k<coral cover should be set to space = 0"
+    @test A[3, 8] == 0.0 || "Site with k<coral cover should be set to space = 0"
 
-    @test all(0.0 .<= SE[:, 2:6] .<= 1.0) || "Seeding Decision matrix values out of bounds"
+    @test all(0.0 .<= SE[:, 2:end-2] .<= 1.0) || "Seeding Decision matrix values out of bounds"
 end
 
 @testset "MCDA shade matrix creation" begin
@@ -99,9 +99,9 @@ end
 
     SH, wsh = create_shade_matrix(A, area_maxcover[filtered], wtconshade, wtwaves, wtheat, wtpredecshade, wtzonesshade, wthicover)
 
-    @test maximum(SH[:, 7]) == (maximum(area_maxcover[convert(Vector{Int64}, A[:, 1])] .- A[:, 7])) || "Largest site with most coral area should have highest score"
+    @test maximum(SH[:, 8]) == (maximum(area_maxcover[convert(Vector{Int64}, A[:, 1])] .- A[:, 8])) || "Largest site with most coral area should have highest score"
 
-    @test all(0.0 .<= SH[:, 2:6] .<= 1.0) || "Shading Decision matrix values out of bounds"
+    @test all(0.0 .<= SH[:, 2:end-2] .<= 1.0) || "Shading Decision matrix values out of bounds"
 end
 
 @testset "MCDA normalisation" begin
@@ -117,6 +117,6 @@ end
     norm_A = mcda_normalize(A[:, 2:end])
     norm_w = mcda_normalize(w)
 
-    @test sqrt.(sum(norm_A .^ 2, dims=1)) .== 1.0 || "Decision matrix normalization not giving column sums = 1."
+    @test all((sqrt.(sum(norm_A .^ 2, dims=1)) .- 1.0) .< 0.0001) || "Decision matrix normalization not giving column sums = 1."
     @test (sum(norm_w) - 1.0) <= 0.001 || "MCDA weights not summing to one."
 end
