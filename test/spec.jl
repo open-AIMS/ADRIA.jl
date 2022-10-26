@@ -1,4 +1,4 @@
-@testset "component_extraction" begin
+@testset "Extracting component parameters" begin
     orig_loc = pwd()
     this_loc = @__DIR__
     cd(this_loc)
@@ -11,12 +11,13 @@
 
     dom = ADRIA.load_domain("../examples/Example_domain", "45")
 
-    x = component_params(dom.model, Intervention)
+    x = ADRIA.component_params(dom.model, Intervention)
     @test size(x, 1) > 0
 
-    x = component_params(dom.model, Coral)
+    x = ADRIA.component_params(dom.model, ADRIA.Coral)
     @test size(x, 1) > 0
 
-    x = component_params(dom.model, Criteria)
+    x = ADRIA.component_params(dom.model, Criteria)
     @test size(x, 1) > 0
+
 end
