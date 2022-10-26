@@ -67,7 +67,7 @@ function load_domain(path::String, rcp::String)::Domain
         # Default to 2025-2099
         timeframe = (2025, 2099)
     end
-    
+
     if length(timeframe) == 2
         @assert timeframe[1] < timeframe[2] "Start date/year specified in data package must be < end date/year"
         # If only two elements, assume a range is specified.
@@ -131,7 +131,7 @@ end
 function process_inputs!(d::Domain, df::DataFrame)
     bnds = d.model[:bounds]
     p_types = d.model[:ptype]
-    for (i, dt) in enumerate(p_types)
+    @inbounds for (i, dt) in enumerate(p_types)
         if dt == "integer"
             df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
         end
