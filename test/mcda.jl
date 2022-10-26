@@ -27,7 +27,7 @@ import ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create
 
     A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, zones_criteria, risktol)
 
-    @test all(0.0 .<= A[:, 2:end-1] .<= 1.0) || "`A` decision matrix out of bounds"
+    @test all(0.0 .<= A[:, 2:end-2] .<= 1.0) || "`A` decision matrix out of bounds"
 
     @test !any(isnan.(A)) || "NaNs found in decision matrix"
     @test !any(isinf.(A)) || "Infs found in decision matrix"
@@ -37,7 +37,7 @@ end
 
 
 @testset "MCDA seed matrix creation" begin
-    wtconseedout, wtconseedin, wtwaves, wtheat, wtpredecseed, wtlocover = [1.0, 1.0, 0.7, 1.0, 0.6, 0.6]
+    wtconseedout, wtconseedin, wtwaves, wtheat, wtpredecseed, wtzonesseed, wtlocover = [1.0, 1.0, 0.7, 1.0, 0.6, 0.6, 0.6]
 
     # Combine decision criteria into decision matrix A
     n_sites = 5
@@ -46,6 +46,7 @@ end
     centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
     damprob = [0.05, 0.1, 0.1, 0.5, 0.0]
     heatstressprob = [0.05, 0.1, 0.1, 0.5, 0.0]
+    zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
 
     # Dummy priority predecssors
     prioritysites = zeros(n_sites)
@@ -59,9 +60,9 @@ end
     maxcover = [0.8, 0.75, 0.6, 0.77, 0.0]
     min_area = 20
 
-    A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
+    A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, zones_criteria, 0.8)
 
-    SE, wse = create_seed_matrix(A, min_area, wtconseedin, wtconseedout, wtwaves, wtheat, wtpredecseed, wtlocover)
+    SE, wse = create_seed_matrix(A, min_area, wtconseedin, wtconseedout, wtwaves, wtheat, wtpredecseed, wtzonesseed, wtlocover)
 
     @test (sum(filtered)) == size(A, 1) || "Site where heat stress > risktol not filtered out"
     @test size(SE, 1) == size(A, 1) - 2 || "Sites where space available<min_area not filtered out"
@@ -71,7 +72,7 @@ end
 end
 
 @testset "MCDA shade matrix creation" begin
-    wtconshade, wtwaves, wtheat, wtpredecshade, wthicover = [1.0, 0.7, 1.0, 0.6, 0.6]
+    wtconshade, wtwaves, wtheat, wtpredecshade, wtzonesshade, wthicover = [1.0, 0.7, 1.0, 0.6, 0.6, 0.6]
 
     # Combine decision criteria into decision matrix A
     n_sites = 5
@@ -80,6 +81,7 @@ end
     centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
     damprob = [0.05, 0.1, 0.1, 0.5, 0.0]
     heatstressprob = [0.05, 0.1, 0.1, 0.5, 0.0]
+    zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
 
     # Dummy priority predecssors
     prioritysites = zeros(n_sites)
@@ -93,9 +95,9 @@ end
     maxcover = [0.8, 0.75, 0.6, 0.77, 0.0]
     area_maxcover = maxcover .* area
 
-    A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, 0.8)
+    A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, maxcover, area, damprob, heatstressprob, predec, zones_criteria, 0.8)
 
-    SH, wsh = create_shade_matrix(A, area_maxcover[filtered], wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+    SH, wsh = create_shade_matrix(A, area_maxcover[filtered], wtconshade, wtwaves, wtheat, wtpredecshade, wtzonesshade, wthicover)
 
     @test maximum(SH[:, 7]) == (maximum(area_maxcover[convert(Vector{Int64}, A[:, 1])] .- A[:, 7])) || "Largest site with most coral area should have highest score"
 
