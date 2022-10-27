@@ -348,20 +348,20 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     predec[predprior, 3] .= 1.0
 
     # for zones, find sites which are zones and strongest predecessors of sites in zones
-    zone_ids = intersect(priorityzones,unique(zones))
+    zone_ids = intersect(priorityzones, unique(zones))
     zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
     zone_preds = zeros(nsites, 1)
-    zone_sites = zeros(nsites,1)
+    zone_sites = zeros(nsites, 1)
 
     for k in axes(zone_ids, 1)
         # find sites which are strongest predecessors of sites in the zone
         zone_preds_temp = strongpred[zones.==zone_ids[k]]
-          for s in unique(zone_preds_temp)
+        for s in unique(zone_preds_temp)
             # for each predecessor site, add zone_weights* (no. of zone sites the site is a strongest predecessor for)
-            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k]).*sum(zone_preds_temp.==s)
-          end
+            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k]) .* sum(zone_preds_temp .== s)
+        end
         # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)        
-        zone_sites[zones.==zone_ids[k]].= zone_weights[k]
+        zone_sites[zones.==zone_ids[k]] .= zone_weights[k]
     end
 
     # add weights for strongest predecessors and zones to get zone criteria
