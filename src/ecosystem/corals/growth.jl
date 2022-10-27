@@ -9,10 +9,7 @@ include("growth_expanded.jl")
 function growth_rate(linear_extension, diam_bin_widths, mean_colony_diameter_m)
     bin_shift = ((2.0 * linear_extension'[:]) ./ diam_bin_widths) .^ 2
     bin_shift[bin_shift.>1] .= 1
-    class_6_diameter_ratio = (mean_colony_diameter_m[:, end] .+ (diam_bin_widths[end] / (2 * 100))) ./ mean_colony_diameter_m[:, end]
-    mean_diameter_ratio = hcat((mean_colony_diameter_m[:, 2:end] ./ mean_colony_diameter_m[:, 1:end-1]) .^ 2, class_6_diameter_ratio .^ 2)
-
-    return (mean_diameter_ratio'[:] .* bin_shift)
+    return bin_shift
 end
 
 
