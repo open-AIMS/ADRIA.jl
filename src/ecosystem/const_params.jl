@@ -55,7 +55,6 @@ Base.@kwdef mutable struct SimConstants
 
     # Used by Bozec et al 2021 for Acropora, small massives and large massives
     max_settler_density = [2.5, 2.5, 2.5, 2.5, 1.5, 1.5]
-    # density_ratio_of_settlers_to_larvae = 1 / 2000  # Bozec et al. 2021
 
     # Value of smallest size class (1cm diameter)
     # Resulting value is in m², see definition in Ecosystem.jl::colony_areas()
