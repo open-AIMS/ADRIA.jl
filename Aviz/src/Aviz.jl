@@ -266,7 +266,13 @@ function comms(rs::ADRIA.ResultSet)
     # TODO: Separate this out into own function
     # Make temporary copy of GeoPackage as GeoJSON
     tmpdir = mktempdir()
-    geo_fn = GDF.write(joinpath(tmpdir, "Aviz_$(rs.name).geojson"), rs.site_data; driver="geojson")
+
+    local geo_fn = joinpath(tmpdir, "Aviz_$(rs.name).geojson")
+    try
+        GDF.write(geo_fn, rs.site_data; driver="geojson")
+    catch
+        GDF.write(geo_fn, rs.site_data; geom_columns=(:geom,), driver="geojson")
+    end
     geodata = GeoMakie.GeoJSON.read(read(geo_fn))
 
     map_disp = create_map!(map_display, geodata, obs_mean_rc_sites, (:black, 0.05), centroids)
