@@ -13,9 +13,9 @@ using ADRIA
     # Use a temporary directory for result location
     ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
 
-    ex_domain = ADRIA.load_domain("../examples/Example_domain", "45")
+    ex_domain = ADRIA.load_domain("../examples/Example_domain")
     p_df = ADRIA.load_scenarios(ex_domain, "../examples/example_scenarios.csv")
-    ex_domain = ADRIA.run_scenarios(p_df, ex_domain)
+    ex_domain = ADRIA.run_scenarios(p_df, ex_domain, "45")
     rs = ADRIA.load_results(ex_domain)
 
     cd(orig_loc)

@@ -14,12 +14,10 @@ const TEST_DATA_DIR = joinpath(@__DIR__, "data")
     test_scens = CSV.read(scen_path, DataFrame)
 
     p_df = ADRIA.param_table(dom)
-    # @test length(names(p_df)) == length(names(test_scens)) || "Number of parameters do not match those found in test scenarios"
     @test p_df isa DataFrame
 
-
-@testset "Config" begin
-    ADRIA.setup()
+    @testset "Config" begin
+        ADRIA.setup()
 
         # Ensure environment variables are set
         @test haskey(ENV, "ADRIA_OUTPUT_DIR")
@@ -28,17 +26,18 @@ const TEST_DATA_DIR = joinpath(@__DIR__, "data")
     end
 
 
-@testset "Discrete parameters" begin
-    site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
-    conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
-    scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
-
+    @testset "Discrete parameters" begin
+        site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
+        conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
+        scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
+        
         dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"))
 
-    test_scens = CSV.read(scen_path, DataFrame)
-    # ADRIA.update_params!(dom, test_scens[5, :])
+        test_scens = CSV.read(scen_path, DataFrame)
+        # ADRIA.update_params!(dom, test_scens[5, :])
 
-    # @test all(ADRIA.param_table(dom).seed_TA .== 500000)
+        # @test all(ADRIA.param_table(dom).seed_TA .== 500000)
+    end
 end
 
 
@@ -47,12 +46,13 @@ end
     tmp = zeros(20)
     max_cover = rand(20)
 
-    for i in axes(Y,1)
+    for i in axes(Y, 1)
         adjusted = ADRIA.proportional_adjustment!(Y[i, :, :], tmp, max_cover)
 
         @test all(0.0 .<= adjusted .<= 1.0)
     end
 end
+
 
 include("site_selection.jl")
 include("seeding.jl")
@@ -61,4 +61,4 @@ include("growth.jl")
 include("spec.jl")
 include("sampling.jl")
 
-include("example_run.jl")
+# include("example_run.jl")
