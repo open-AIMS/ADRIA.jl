@@ -46,20 +46,42 @@ Note: assumes all parameters are independent.
 - n : Int
 - sampler : Domain
 """
-function sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dict(
+function sample(dom::Domain, n::Int, sampler=SobolSample())
+    n_cf = Int(ceil(n / 4))
+    n_samp = n - n_cf
+
+    scens_cf = sample_cf(dom, n_cf, sampler)
+    scens = _sample(dom, n_samp, sampler)
+
+    return vcat(scens_cf, scens)
+end
+
+
+"""
+    _sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists))::DataFrame
+
+Internal sampling function.
+"""
+function _sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dict(
     "triang" => TriangularDist,
     "norm" => TruncatedNormal,
     "unif" => Uniform
 ))::DataFrame
+    n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
+
     spec = model_spec(dom)
+
+    # Select non-constant params
     vary_vars = spec[spec.is_constant.==false, ["dists", "full_bounds"]]
 
+    # Update range
     triang_params = vary_vars[vary_vars.dists.=="triang", "full_bounds"]
     vary_vars[vary_vars.dists.=="triang", "full_bounds"] .= map(x -> (x[1], x[2], (x[2] - x[1]) * x[3] + x[1]), triang_params)
     vary_dists = map((x) -> supported_dists[x.dists](x.full_bounds...), eachrow(vary_vars))
 
     # Create sample for uncertain parameters
     n_vary_params = size(vary_vars, 1)
+    n_vary_params > 0 ? n_vary_params : throw(DomainError(n_vary_params, "Number of parameters to perturb must be > 0"))
     samples = sample(n, zeros(n_vary_params), ones(n_vary_params), sampler)
 
     df::DataFrame = DataFrame(samples)
