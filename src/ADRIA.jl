@@ -48,6 +48,7 @@ include("metrics/sensitivity.jl")
 
 include("scenario.jl")
 
+include("../Aviz/src/Aviz.jl")
 # include("main_app.jl")
 
 
