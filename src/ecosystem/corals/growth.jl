@@ -7,10 +7,8 @@ using Distributions
 include("growth_expanded.jl")
 
 
-function growth_rate(linear_extension, diam_bin_widths, mean_colony_diameter_m)
-    bin_shift = ((2.0 * linear_extension'[:]) ./ diam_bin_widths) .^ 2
-    bin_shift[bin_shift.>1] .= 1
-    return bin_shift
+function growth_rate(linear_extension, diam_bin_widths)
+    return min.(((2.0 * linear_extension'[:]) ./ diam_bin_widths), 1.0)
 end
 
 
