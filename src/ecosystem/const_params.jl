@@ -42,22 +42,11 @@ Base.@kwdef mutable struct SimConstants
     DHWmaxtot = 50
 
     # Bleaching stress and coral fecundity parameters
-    LPdhwcoeff = 0.4;  # shape parameters relating dhw affecting cover to larval production
-    LPDprm2 = 5;  # parameter offsetting LPD curve
+    LPdhwcoeff = 0.4  # shape parameters relating dhw affecting cover to larval production
+    LPDprm2 = 5  # parameter offsetting LPD curve
 
     # competition: probability that large Tabular Acropora overtop small massives
-    comp = 0.3;
-
-    # Bleaching sensitivity of each coral group
-    # Bozec et al., (2022)
-    # TODO: Make these uncertain parameters rather than constants
-    bleaching_sensitivity = Float64[
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Tabular Acropora Enhanced (assumed same as Corymbose)
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Tabular Acropora Unenhanced
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Corymbose Acropora Enhanced
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Corymbose Acropora Unenhanced
-        0.25, 0.25, 0.25, 0.25, 0.25, 0.25,  # Small massives and encrusting
-        0.25, 0.25, 0.25, 0.25, 0.25, 0.25] # Large massives
+    comp = 0.3
 
     # True/False indicating Wwhether or not to mimic IPMF by loading only two coral types
     # currently unused

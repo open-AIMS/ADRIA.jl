@@ -355,16 +355,16 @@ function coral_spec()::NamedTuple
 
     params.mb_rate = mb'[:]
 
-    # Estimated bleaching resistance (as DHW) relative to the assemblage
-    # response for 2016 bleaching on the GBR (based on Hughes et al. 2018).
-    bleach_resist = Array{Float64,2}([
-        0.0 0.0 0.0 0.0 0.0 0.0  # Tabular Acropora Enhanced
-        0.0 0.0 0.0 0.0 0.0 0.0  # Tabular Acropora Unenhanced
-        0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose Acropora Enhanced
-        0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose Acropora Unenhanced
-        1.5 1.5 1.5 1.5 1.5 1.5  # Small massives and encrusting
-        1.0 1.0 1.0 1.0 1.0 1.0]) # Large massives
-    params.bleach_resist = bleach_resist'[:]
+    # Bleaching sensitivity of each coral group
+    # Bozec et al., (2022)
+    bleaching_sensitivity = Float64[
+        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Tabular Acropora Enhanced (assumed same as Corymbose)
+        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Tabular Acropora Unenhanced
+        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Corymbose Acropora Enhanced
+        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Corymbose Acropora Unenhanced
+        0.25, 0.25, 0.25, 0.25, 0.25, 0.25,  # Small massives and encrusting
+        0.25, 0.25, 0.25, 0.25, 0.25, 0.25] # Large massives
+    params.bleaching_sensitivity = bleaching_sensitivity'[:]
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list
