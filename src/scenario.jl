@@ -422,8 +422,11 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         wtlocover = param_set.coral_cover_low # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
         wtpredecseed = param_set.seed_priority # weight for the importance of seeding sites that are predecessors of priority reefs
         wtpredecshade = param_set.shade_priority # weight for the importance of shading sites that are predecessors of priority reefs
+        wtzonesseed = param_set.zone_seed # weight for the importance of seeding sites that are predecessors of management zones
+        wtzonesshade = param_set.zone_shade # weight for the importance of shading sites that are predecessors of management zones
+
         risktol = param_set.deployed_coral_risk_tol # risk tolerance
-        covertol = param_set.coral_cover_tol
+        covertol = param_set.coral_cover_tol # tolerance for minimum available space to still seed at a site
 
         # Defaults to considering all sites if depth cannot be considered.
         depth_priority = collect(1:nrow(site_data))
@@ -448,12 +451,15 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
+        zones = site_data.zone_type
 
         # Prep site selection
         mcda_vars = DMCDA_vars(
             depth_priority,
             nsiteint,
             sim_params.prioritysites,
+            sim_params.priorityzones,
+            zones,
             domain.strongpred,
             domain.in_conn,
             domain.out_conn,
@@ -472,7 +478,9 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
             wthicover,
             wtlocover,
             wtpredecseed,
-            wtpredecshade
+            wtpredecshade,
+            wtzonesseed,
+            wtzonesshade,
         )
     end
 
