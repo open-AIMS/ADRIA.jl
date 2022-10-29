@@ -9,7 +9,7 @@ import ADRIA: coral_spec, ResultSet
 abstract type Outcome end
 
 
-struct Metric{F<:Function, T<:Tuple} <: Outcome
+struct Metric{F<:Function,T<:Tuple} <: Outcome
     func::F
     dims::T
 end
@@ -44,7 +44,7 @@ end
 Get name of metric as a string.
 """
 function metric_name(m::Metric)::String
-    return replace(String(Symbol(m.func)), "_"=>"", count=1)
+    return replace(String(Symbol(m.func)), "_" => "", count=1)
 end
 
 
@@ -208,6 +208,7 @@ end
 Juvenile coral cover in absolute terms.
 """
 function _juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    # Juveniles, 51.8 as max juveniles for metric
     screen = (x, idx) -> findall(x .== idx)
     _, _, cs_p::DataFrame = coral_spec()
 
@@ -262,7 +263,7 @@ Helper function to convert coral colony values from Litres/cm² to m³/m²
 # Returns
 Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
 """
-function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame, DataFrameRow})::Tuple
+function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame,DataFrameRow})::Tuple
     _, _, cs_p::DataFrame = coral_spec()
     n_corals::Int64 = length(unique(cs_p.taxa_id))
 
@@ -270,20 +271,21 @@ function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame, DataFrameRow})::Tuple
     # Have to be careful to extract data in the correct order, matching coral id
     colony_area_cm2 = nothing
     try
-        colony_area_cm2 = Array{Float64}(inputs[:, cs_p.coral_id .* "_colony_area_cm2"])'
+        colony_area_cm2 = Array{Float64}(inputs[:, cs_p.coral_id.*"_colony_area_cm2"])'
     catch
         # Get from DataFrameRow instead
-        colony_area_cm2 = Array{Float64}(inputs[cs_p.coral_id .* "_colony_area_cm2"])
+        colony_area_cm2 = Array{Float64}(inputs[cs_p.coral_id.*"_colony_area_cm2"])
     end
 
     # Colony planar area parameters (see second column of Table 1 in Urbina-Barreto et al., [1])
-    pa_params::Array{Float64} = Float64[
-        -8.32 1.50;   # tabular from Urbina-Barretto 2021
-        -8.32 1.50;   # tabular from Urbina-Barretto 2021
-        -7.37 1.34;   # columnar from Urbina-Barretto 2021, assumed similar for Corymbose Acropora
-        -7.37 1.34;   # columnar from Urbina-Barretto 2021, assumed similar for Corymbose Acropora
-        -9.69 1.49;   # massives from Urbina-Barretto 2021, assumed similar for encrusting and small massives
-        -9.69 1.49]   # massives from Urbina-Barretto 2021,  assumed similar for large massives
+    pa_params::Array{Float64,2} = Array{Float64,2}([
+        -8.32 1.50   # tabular from Urbina-Barretto 2021
+        -8.32 1.50   # tabular from Urbina-Barretto 2021
+        -7.37 1.34   # columnar from Urbina-Barretto 2021, assumed similar for Corymbose Acropora
+        -7.37 1.34   # columnar from Urbina-Barretto 2021, assumed similar for Corymbose Acropora
+        -9.69 1.49   # massives from Urbina-Barretto 2021, assumed similar for encrusting and small massives
+        -9.69 1.49   # massives from Urbina-Barretto 2021,  assumed similar for large massives
+    ])
 
     # Expand planar area parameters defined above to cover all coral taxa/size classes
     # Order follows the coral types listed above, repeated 6 times to cover size classes.
@@ -328,7 +330,7 @@ e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, siz
 - max_colony_vol_m3_per_m2 : theoretical maximum volume per m² of coverage for each taxa (6)
 - site_area : area of site in m²
 """
-function _shelter_species_loop(X::AbstractArray{T1, 3}, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, max_colony_vol_m3_per_m2, site_area) where {T1}
+function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, max_colony_vol_m3_per_m2, site_area) where {T1}
     # Calculate absolute shelter volumes first
     ASV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X)...))
     _shelter_species_loop!(X, ASV, nspecies, scen, colony_vol_m3_per_m2, site_area)
@@ -336,7 +338,7 @@ function _shelter_species_loop(X::AbstractArray{T1, 3}, nspecies::Int64, scen::I
     MSV = _total_absolute_cover(X, site_area) .* maximum(max_colony_vol_m3_per_m2, dims=1)  # in m³
     # Ensure zero division does not occur
     # ASV should be 0.0 where MSV is 0.0 so the end result is 0.0 / 1.0
-    MSV[MSV .== 0.0] .= 1.0
+    MSV[MSV.==0.0] .= 1.0
 
     RSV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X[species=1:6])...))
     taxa_max_map = zip([i:i+5 for i in 1:6:36], 1:6)
@@ -346,7 +348,7 @@ function _shelter_species_loop(X::AbstractArray{T1, 3}, nspecies::Int64, scen::I
 
     return RSV
 end
-function _shelter_species_loop(X::AbstractArray{T1, 4}, nspecies::Int64, scen::Int64, colony_vol, max_colony_vol, site_area) where {T1}
+function _shelter_species_loop(X::AbstractArray{T1,4}, nspecies::Int64, scen::Int64, colony_vol, max_colony_vol, site_area) where {T1}
     return _shelter_species_loop(X[scenarios=scen], nspecies, scen, colony_vol, max_colony_vol, site_area)
 end
 
@@ -364,12 +366,12 @@ Helper method to calculate absolute shelter volume metric across each species/si
 - colony_vol_m3_per_m2 : estimated cubic volume per m² of coverage for each species/size class (36)
 - site_area : area of site in m²
 """
-function _shelter_species_loop!(X::AbstractArray{T1, 3}, ASV::AbstractArray{T1, 3}, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, site_area) where {T1}
+function _shelter_species_loop!(X::AbstractArray{T1,3}, ASV::AbstractArray{T1,3}, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, site_area) where {T1}
     covered_area = nothing
     @inbounds for sp::Int64 in 1:nspecies
         covered_area = reduce(hcat,
-                            [X[species=sp, sites=s] .* site_area[s]
-                                for s in eachindex(site_area)])
+            [X[species=sp, sites=s] .* site_area[s]
+             for s in eachindex(site_area)])
 
         covered_area = NamedDims.rename(covered_area, (:timesteps, :sites))
 
@@ -383,7 +385,7 @@ function _shelter_species_loop!(X::AbstractArray{T1, 3}, ASV::AbstractArray{T1, 
 
     clamp!(ASV, 0.0, maximum(ASV))
 end
-function _shelter_species_loop!(X::AbstractArray{T1, 4}, ASV::AbstractArray{T1, 4}, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, site_area) where {T1}
+function _shelter_species_loop!(X::AbstractArray{T1,4}, ASV::AbstractArray{T1,4}, nspecies::Int64, scen::Int64, colony_vol_m3_per_m2, site_area) where {T1}
     return _shelter_species_loop!(X[scenarios=scen], ASV[scenarios=scen], nspecies, scen, colony_vol_m3_per_m2, site_area)
 end
 
@@ -548,7 +550,7 @@ function _reef_condition_index(rc::AbstractArray{<:Real}, E::AbstractArray{<:Rea
     juv_func::GriddedInterpolation{Float64,1,Float64,Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 1.0],), Float64[0, 0.1, 0.5, 0.9, 1.0], lin_grid)
 
     rc_i::AbstractArray{<:Real} = TC_func.(rc)
-    # E_i::T = E_func.(E);
+    # E_i::T = E_func.(E)
     SV_i::AbstractArray{<:Real} = SV_func.(SV)
     juv_i::AbstractArray{<:Real} = juv_func.(juveniles)
 
