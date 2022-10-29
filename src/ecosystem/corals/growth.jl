@@ -9,10 +9,7 @@ include("growth_expanded.jl")
 function growth_rate(linear_extension, diam_bin_widths, mean_colony_diameter_m)
     bin_shift = ((2.0 * linear_extension'[:]) ./ diam_bin_widths) .^ 2
     bin_shift[bin_shift.>1] .= 1
-    class_6_diameter_ratio = (mean_colony_diameter_m[:, end] .+ (diam_bin_widths[end] / (2 * 100))) ./ mean_colony_diameter_m[:, end]
-    mean_diameter_ratio = hcat((mean_colony_diameter_m[:, 2:end] ./ mean_colony_diameter_m[:, 1:end-1]) .^ 2, class_6_diameter_ratio .^ 2)
-
-    return (mean_diameter_ratio'[:] .* bin_shift)
+    return bin_shift
 end
 
 
@@ -47,7 +44,10 @@ Base coral growth function.
 """
 function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
     s = @view p.sigma[:, :]
-    s .= max.(1 .- sum(X, dims=1), 0.0)  # space left over in site, relative to P (max. carrying capacity)
+
+    # X is cover relative to `k` (max. carrying capacity)
+    # So we subtract from 1.0 to get leftover/available space, relative to `k`
+    s .= max.(1.0 .- sum(X, dims=1), 0.0)
     s[p.k'.==0.0] .= 0.0
 
     # Indices
@@ -157,8 +157,7 @@ end
 
 """
     bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
-        s::Vector{Float64}, dhw::Float64, a_adapt::Float64, n_adapt::Float64,
-        bleach_resist::Vector{Float64})
+        s::Vector{Float64}, dhw::Float64, a_adapt::Float64, n_adapt::Float64)
 
 Calculates bleaching mortality taking into account depth and bleaching sensitivity of corals.
 Model is adapted from Bozec et al., [2], itself based on data from Hughes et al., [3]
@@ -172,7 +171,6 @@ Model is adapted from Bozec et al., [2], itself based on data from Hughes et al.
 - dhw : Degree Heating Week experienced at site
 - a_adapt : Level of assisted adaptation (DHW reduction)
 - n_adapt : Level of natural adaptation (DHW reduction linearly scaled over time)
-- bleach_resist : Level of bleaching resistance (inherent resilience to DHW)
 
 # Returns
 Nothing
@@ -199,11 +197,10 @@ Nothing
    https://doi.org/10.1038/s41586-018-0041-2
 """
 function bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
-    s::Vector{Float64}, dhw::Vector{Float64}, a_adapt::Vector{Float64}, n_adapt::Float64,
-    bleach_resist::Vector{Float64})::Nothing
+    s::Vector{Float64}, dhw::Vector{Float64}, a_adapt::Vector{Float64}, n_adapt::Float64)::Nothing
 
     # Incorporate adaptation effect but maximum reduction is to 0
-    ad::Array{Float64} = a_adapt .+ bleach_resist .+ (tstep .* n_adapt)
+    ad::Array{Float64} = a_adapt .+ (tstep .* n_adapt)
     capped_dhw::Array{Float64} = max.(0.0, dhw' .- ad)
 
     # Estimate long-term bleaching mortality with an estimated depth coefficient and

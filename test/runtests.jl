@@ -15,34 +15,34 @@ const TEST_DATA_DIR = joinpath(@__DIR__, "data")
 
     p_df = ADRIA.param_table(dom)
     @test length(names(p_df)) == length(names(test_scens)) || "Number of parameters do not match those found in test scenarios"
-end
 
 
-@testset "Config" begin
-    ADRIA.setup()
+    @testset "Config" begin
+        ADRIA.setup()
 
-    # Ensure environment variables are set
-    @test haskey(ENV, "ADRIA_OUTPUT_DIR")
-    @test haskey(ENV, "ADRIA_NUM_CORES")
-    @test haskey(ENV, "ADRIA_THRESHOLD")
+        # Ensure environment variables are set
+        @test haskey(ENV, "ADRIA_OUTPUT_DIR")
+        @test haskey(ENV, "ADRIA_NUM_CORES")
+        @test haskey(ENV, "ADRIA_THRESHOLD")
 
-    # Check that the correct number of processors have been spun up.
-    @eval using Distributed
-    @test nprocs() == parse(Int, ENV["ADRIA_NUM_CORES"])
-end
+        # Check that the correct number of processors have been spun up.
+        @eval using Distributed
+        @test nprocs() == parse(Int, ENV["ADRIA_NUM_CORES"])
+    end
 
 
-@testset "Discrete parameters" begin
-    site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
-    conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
-    scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
+    @testset "Discrete parameters" begin
+        site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
+        conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
+        scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
 
-    dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
+        dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
 
-    test_scens = CSV.read(scen_path, DataFrame)
-    # ADRIA.update_params!(dom, test_scens[5, :])
+        test_scens = CSV.read(scen_path, DataFrame)
+        # ADRIA.update_params!(dom, test_scens[5, :])
 
-    # @test all(ADRIA.param_table(dom).seed_TA .== 500000)
+        # @test all(ADRIA.param_table(dom).seed_TA .== 500000)
+    end
 end
 
 
@@ -58,10 +58,11 @@ end
     end
 end
 
+
 include("site_selection.jl")
 include("seeding.jl")
 include("metrics.jl")
 include("growth.jl")
 include("spec.jl")
 
-include("example_run.jl")
+# include("example_run.jl")

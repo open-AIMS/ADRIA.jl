@@ -404,9 +404,11 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     seed_sc_TA::Int64 = first(findall(tabular_enhanced .& target_class_id))  # size class indices for TA and CA
     seed_sc_CA::Int64 = first(findall(corymbose_enhanced .& target_class_id))
 
-    # extract colony areas for sites selected and convert to m^2
+    # Extract colony areas for sites selected and convert to m^2
     col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
     col_area_seed_CA = corals.colony_area_cm2[seed_sc_CA] / 10^4
+
+    bleaching_sensitivity = corals.bleaching_sensitivity
 
     if is_guided
         ## Weights for connectivity , waves (ww), high cover (whc) and low
@@ -492,8 +494,6 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
 
     # Level of natural coral adaptation
     n_adapt = param_set.n_adapt
-    bleach_resist = corals.bleach_resist
-    bleaching_sensitivity = sim_params.bleaching_sensitivity
 
     ## Extract other parameters
     LPdhwcoeff = sim_params.LPdhwcoeff # shape parameters relating dhw affecting cover to larval production
@@ -593,8 +593,7 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         end
 
         # Calculate and apply bleaching mortality
-        bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw,
-            a_adapt, n_adapt, bleach_resist)
+        bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw, a_adapt, n_adapt)
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
@@ -618,13 +617,11 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         tmp = ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area
         growth.u0[:, :] .= replace(tmp, Inf => 0.0, NaN => 0.0)
 
-        # growth.u0[:, :] .= Y_pstep[:, :] .* prop_loss[:, :]
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=[:nonstiff], abstol=1e-9, reltol=1e-8)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
         Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end] .* absolute_k_area ./ total_site_area, cover_tmp, max_cover)
-        # Y_cover[tstep, :, :] .= (sol.u[end] .* absolute_k_area) ./ total_site_area
 
     end
 
