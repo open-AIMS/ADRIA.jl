@@ -89,14 +89,14 @@ function _sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dic
     # Scale values to indicated distributions
     df .= hcat(map((ix) -> quantile.(vary_dists[ix[1]], ix[2]), enumerate(eachcol(df)))...)
 
-    # Insert columns for constants
-    const_idx = findall(spec.is_constant .== true)
-    @inbounds for idx in const_idx
-        insertcols!(df, idx, Symbol("c$idx") => spec[idx, "val"]; after=true)
-    end
+    # Combine varying and constant values
+    full_df = zeros(n, size(spec, 1))
+    full_df[:, findall(spec.is_constant .== false)] .= Matrix(df)
 
-    # Revert column names to fieldnames
-    rename!(df, spec.fieldname)
+    # Fill in constant values (these may not be zero)
+    full_df[:, findall(spec.is_constant .== true)] = reduce(hcat, [repeat([spec[spec.is_constant.==true, :val]], n)...])'
+
+    df = DataFrame(full_df, spec.fieldname)
 
     # Adjust samples for discrete values using flooring trick
     # Ensure unguided scenarios do not have superfluous parameter values
@@ -123,7 +123,7 @@ end
     
     Generate only counterfactual scenarios using any sampler from QuasiMonteCarlo.jl
 """
-function sample_guided(d::Domain, n::Int, sampler=SobolSampler())::DataFrame
+function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     spec_df = model_spec(d)
 
     # Remove unguided scenarios as an option
@@ -139,9 +139,15 @@ function sample_guided(d::Domain, n::Int, sampler=SobolSampler())::DataFrame
 
     # Sample without unguided, then revert back to original model spec
     ADRIA.update!(d.model, mod_df)
-    samples = sample(d, n, sampler)
+    samples = _sample(d, n, sampler)
     samples = adjust_samples(d, samples)
-    ADRIA.update!(d.model, spec_df)
+
+    # Note: updating with spec_df does not work.
+    mod_df[guided_col, :val] .= 0
+    mod_df[guided_col, :lower_bound] .= 0
+    mod_df[guided_col, :bounds] .= [(0, g_upper)]
+    mod_df[guided_col, :full_bounds] .= [(0, g_upper)]
+    ADRIA.update!(d.model, mod_df)
 
     return samples
 end
