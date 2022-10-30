@@ -49,11 +49,11 @@ Notes:
 - sampler : Sampling method
 """
 function sample(dom::Domain, n::Int, sampler=SobolSample())
-    n_cf = Int(ceil(n / 4))
+    n_cf = Int(ceil(n / 5))
     n_samp = n - n_cf
 
     scens_cf = sample_cf(dom, n_cf, sampler)
-    scens = _sample(dom, n_samp, sampler)
+    scens = _sample(dom, n_samp, sampler)  # sample both unguided and guided
 
     return vcat(scens_cf, scens)
 end
