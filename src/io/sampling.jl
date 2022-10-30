@@ -34,6 +34,20 @@ function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
 end
 
 
+function adjust_cf_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
+    # Get intervention columns that aren't "n_adapt"
+    # and make them == 0
+    intervs = component_params(spec, Intervention)
+    cols = collect(skipmissing([fn != :n_adapt ? fn : missing for fn in intervs.fieldname]))
+    df[:, cols] .= 0.0
+
+    return adjust_samples(d, df)
+end
+function adjust_cf_samples(d::Domain, df::DataFrame)::DataFrame
+    return adjust_cf_samples(d, model_spec(d), df)
+end
+
+
 """
     sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
 
@@ -113,9 +127,7 @@ Generate only counterfactual scenarios using any sampler from QuasiMonteCarlo.jl
 """
 function sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     df::DataFrame = _sample(d, n, sampler)
-    df[:, [:guided, :seed_TA, :seed_CA, :fogging, :SRM]] .= 0
-
-    return adjust_samples(d, df)
+    return adjust_cf_samples(d, df)
 end
 
 
