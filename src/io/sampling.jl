@@ -35,16 +35,18 @@ end
 
 
 """
-    sample(dom::Domain, n::Int, sampler)::DataFrame
+    sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
 
 Create samples using provided sampler, and rescale to distribution defined in the model spec.
 
-Note: assumes all parameters are independent.
+Notes:
+- assumes all parameters are independent.
+- ensures that ≈ 20% of samples are counterfactuals
 
 # Arguments
 - dom : Domain
 - n : Int
-- sampler : Domain
+- sampler : Sampling method
 """
 function sample(dom::Domain, n::Int, sampler=SobolSample())
     n_cf = Int(ceil(n / 4))
@@ -105,7 +107,7 @@ end
 
 
 """
-    sample_cf(d::Domain, n::Int, sampler)::DataFrame
+    sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     
 Generate only counterfactual scenarios using any sampler from QuasiMonteCarlo.jl
 """
@@ -119,9 +121,9 @@ end
 
 
 """
-    sample_guided(d::Domain, n::Int, sampler)::DataFrame
+    sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     
-    Generate only counterfactual scenarios using any sampler from QuasiMonteCarlo.jl
+Generate only guided scenarios using any sampler from QuasiMonteCarlo.jl
 """
 function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     spec_df = model_spec(d)
@@ -159,14 +161,11 @@ _unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
 """
 Check specified bounds for validity.
 
-Parameters
-----------
-problem : dict
-    The problem definition
+Raises error if lower bound values are greater than upper bounds.
 
-Returns
--------
-tuple : containing upper and lower bounds
+# Arguments
+- lower : lower bounds
+- upper : upper bound values
 """
 function _check_bounds(lower, upper)
     if any(lower .> upper)
@@ -178,14 +177,14 @@ end
 _offdiag_iter(A) = collect(ι for ι in CartesianIndices(A) if ι[1] ≠ ι[2])
 
 """
-    offdiag(A)
+    offdiag(A::AbstractArray)
 
 Get off-diagonal values of matrix `A`.
 """
 offdiag(A::AbstractArray) = A[_offdiag_iter(A)]
 
 """
-    max_offdiag(A)
+    max_offdiag(A::AbstractArray)
 
 Get the maximum off-diagonal values in matrix `A`.
 """
@@ -195,7 +194,7 @@ function max_offdiag(df::DataFrame)
 end
 
 """
-    max_maindiag(A)
+    max_maindiag(A::AbstractArray)
 
 Get the maximum diagonal values in matrix `A`.
 """
