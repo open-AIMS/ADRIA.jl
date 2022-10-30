@@ -189,7 +189,7 @@ Get the maximum off-diagonal values in matrix `A`.
 """
 max_offdiag(A::AbstractArray) = maximum(offdiag(A))
 function max_offdiag(df::DataFrame)
-    return maximum(offdiag(cov(Matrix(df))))
+    return max_offdiag(cov(Matrix(df)))
 end
 
 """
@@ -199,6 +199,5 @@ Get the maximum diagonal values in matrix `A`.
 """
 max_maindiag(A::AbstractArray) = maximum(Matrix(I, size(A)...) .* A)
 function max_maindiag(df::DataFrame)
-    A = cov(Matrix(df))
-    return maximum(Matrix(I, size(A)...) .* A)
+    return max_maindiag(cov(Matrix(df)))
 end
