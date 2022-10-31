@@ -145,15 +145,15 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     o_cov_area = out_conn .* sum_cover .* area
 
     # node connectivity centrality, need to instead work out strongest predecessors to priority sites
-    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
-    A[:, 3] .= maximum(o_cov_area) != 0.0 ? o_cov_area / maximum(o_cov_area) : o_cov_area
+    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : 0.0
+    A[:, 3] .= maximum(o_cov_area) != 0.0 ? o_cov_area / maximum(o_cov_area) : 0.0
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
-    A[:, 4] .= maximum(wave_stress) != 0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : wave_stress
+    A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
 
     # risk from heat exposure
-    A[:, 5] .= maximum(heat_stress) != 0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : heat_stress
+    A[:, 5] .= maximum(heat_stress) != 0.0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : 0.0
 
     # priority predecessors
     A[:, 6] .= predec[:, 3]
