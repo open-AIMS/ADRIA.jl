@@ -14,8 +14,7 @@ const TEST_DATA_DIR = joinpath(@__DIR__, "data")
     test_scens = CSV.read(scen_path, DataFrame)
 
     p_df = ADRIA.param_table(dom)
-    @test length(names(p_df)) == length(names(test_scens)) || "Number of parameters do not match those found in test scenarios"
-
+    @test p_df isa DataFrame
 
     @testset "Config" begin
         ADRIA.setup()
@@ -24,10 +23,6 @@ const TEST_DATA_DIR = joinpath(@__DIR__, "data")
         @test haskey(ENV, "ADRIA_OUTPUT_DIR")
         @test haskey(ENV, "ADRIA_NUM_CORES")
         @test haskey(ENV, "ADRIA_THRESHOLD")
-
-        # Check that the correct number of processors have been spun up.
-        @eval using Distributed
-        @test nprocs() == parse(Int, ENV["ADRIA_NUM_CORES"])
     end
 
 
@@ -35,8 +30,8 @@ const TEST_DATA_DIR = joinpath(@__DIR__, "data")
         site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
         conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
         scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
-
-        dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
+        
+        dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"))
 
         test_scens = CSV.read(scen_path, DataFrame)
         # ADRIA.update_params!(dom, test_scens[5, :])
@@ -64,5 +59,6 @@ include("seeding.jl")
 include("metrics.jl")
 include("growth.jl")
 include("spec.jl")
+include("sampling.jl")
 
 # include("example_run.jl")

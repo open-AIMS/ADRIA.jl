@@ -7,8 +7,9 @@ using NamedArrays, SparseArrayKit, DifferentialEquations
 using MAT  # Package to read in `.mat` files
 
 using Setfield, ModelParameters, DataStructures
-using DataFrames, GeoDataFrames, Graphs, CSV
+using DataFrames, Graphs, CSV
 import ArchGDAL as AG
+import GeoDataFrames
 
 using PkgVersion
 
@@ -41,6 +42,7 @@ include("interventions/seeding.jl")
 include("io/ResultSet.jl")
 include("io/result_io.jl")
 include("io/result_post_processing.jl")
+include("io/sampling.jl")
 include("metrics/metrics.jl")
 
 include("scenario.jl")
