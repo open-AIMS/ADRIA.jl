@@ -299,16 +299,25 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int},
     rankingsin::Matrix{Int64})::Tuple
 
-    site_ids::Array{Int64} = d_vars.site_ids
+    site_ids::Array{Int64} = copy(d_vars.site_ids)
 
     # Force different sites to be selected
-    alt_site_ids = setdiff(site_ids, prefseedsites)
-    mod_n_ranks = min(size(rankingsin, 1), length(alt_site_ids))
-    if mod_n_ranks < length(alt_site_ids)
-        rankingsin = rankingsin[1:mod_n_ranks, :]
+    site_ids = setdiff(site_ids, vcat(prefseedsites, prefshadesites))
+    mod_n_ranks = min(size(rankingsin, 1), length(site_ids))
+    if mod_n_ranks < length(d_vars.site_ids) && length(rankingsin) != 0
+        rankingsin = rankingsin[in.(rankingsin[:, 1], [site_ids]), :]
+        site_ids = rankingsin[in.(rankingsin[:, 1], [site_ids]), 1]
+    elseif length(rankingsin) != 0
+        rankingsin = [site_ids zeros(Int64, length(site_ids)) zeros(Int64, length(site_ids))]
     end
 
     nsites::Int64 = length(site_ids)
+
+    # if no sites are available, abort
+    if nsites == 0
+        return prefseedsites, prefshadesites, rankingsin
+    end
+
     nsiteint::Int64 = d_vars.nsiteint
     prioritysites::Array{Int64} = d_vars.prioritysites[in.(d_vars.prioritysites, [site_ids])]
     priorityzones::Array{String} = d_vars.priorityzones
