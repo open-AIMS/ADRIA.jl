@@ -306,7 +306,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     mod_n_ranks = min(size(rankingsin, 1), length(site_ids))
     if mod_n_ranks < length(d_vars.site_ids) && length(rankingsin) != 0
         rankingsin = rankingsin[in.(rankingsin[:, 1], [site_ids]), :]
-        site_ids = rankingsin[in.(rankingsin[:, 1], [site_ids]), 1]
+        site_ids = rankingsin[:, 1]
     elseif length(rankingsin) != 0
         rankingsin = [site_ids zeros(Int64, length(site_ids)) zeros(Int64, length(site_ids))]
     end
