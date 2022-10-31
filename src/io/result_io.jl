@@ -169,9 +169,16 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     map_to_discrete!(param_df[:, integer_params.+1], getindex.(domain.model[:bounds], 2)[integer_params])
     inputs[:, :] = Matrix(param_df)
 
-    # Set up stores for each metric
     tf, n_sites, _ = size(domain.dhw_scens)
 
+    # create summary statistics table for unique RCP and dhw scenarios run
+    dhw_unique_scens = unique(param_df[:, [:RCP, :dhw_scenario]])
+    dhw_sum_stats = DataFrame(RCP=dhw_unique_scens.RCP ./ 10, dhw_scenario=dhw_unique_scens.dhw_scenario,
+        mean=convert(Array, dropdims(mean(domain.dhw_scens[:, :, dhw_unique_scens[:, :dhw_scenario]], dims=[1, 2]), dims=1)[:]),
+        std=convert(Array, dropdims(std(mean(domain.dhw_scens[:, :, dhw_unique_scens[:, :dhw_scenario]], dims=2), dims=1), dims=1)[:]))
+    append!(domain.dhw_sum_stats, dhw_sum_stats)
+
+    # Set up stores for each metric
     function dim_lengths(metric_structure)
         dl = []
         for d in metric_structure

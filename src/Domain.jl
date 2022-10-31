@@ -40,6 +40,7 @@ mutable struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Ve
     const site_ids::T  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
     const removed_sites::T  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
     dhw_scens::X  # DHW scenarios
+    dhw_sum_stats::D
     wave_scens::Y # wave scenarios
 
     # Parameters
