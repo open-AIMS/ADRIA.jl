@@ -34,6 +34,13 @@ function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
 end
 
 
+function adjust_cf_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
+    # Get intervention columns that aren't "n_adapt"
+    # and make them == 0
+    intervs = component_params(spec, Intervention)
+    cols = collect(skipmissing([fn != :n_adapt ? fn : missing for fn in intervs.fieldname]))
+    df[:, cols] .= 0.0
+
     return adjust_samples(d, df)
 end
 function adjust_cf_samples(d::Domain, df::DataFrame)::DataFrame
