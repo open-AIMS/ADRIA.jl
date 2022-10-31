@@ -419,11 +419,11 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
-    if (sum(rankings[:, 2]) == 0.0) && (length(prefseedsites) != 0)
+    if sum(prefseedsites) == 0
         rankings[:, 2] .= rankingsin[:, 2]
     end
 
-    if (sum(rankings[:, 3]) == 0.0) && (length(prefshadesites) != 0)
+    if sum(prefshadesites) == 0
         rankings[:, 3] .= rankingsin[:, 3]
     end
 
