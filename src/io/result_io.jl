@@ -96,7 +96,6 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     return ranks, seed_log, fog_log, shade_log
 end
 
-
 """
     setup_result_store!(domain::Domain, param_df::DataFrame; metrics::Array=[])
 
@@ -213,7 +212,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     stores = [stores..., setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
 
     # NamedTuple{(Symbol.(metrics)..., :site_ranks, :seed_log, :fog_log, :shade_log)}(stores)
-    return domain, (; zip((met_names..., :site_ranks, :seed_log, :fog_log, :shade_log), stores)...)
+    return domain, (; zip((met_names..., :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
 end
 
 

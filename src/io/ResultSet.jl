@@ -14,7 +14,7 @@ const SITE_DATA = "site_data"
 const MODEL_SPEC = "model_spec"
 
 
-struct ResultSet{S, T1, T2, F, A, B, C, G}
+struct ResultSet{S,T1,T2,F,A,B,C,G}
     name::S
     RCP::S
     invoke_time::S
@@ -40,29 +40,28 @@ struct ResultSet{S, T1, T2, F, A, B, C, G}
 end
 
 
-function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, 
-    inputs_used::DataFrame, outcomes::Dict, log_set::Zarr.ZGroup, 
-    site_data::DataFrame, model_spec::DataFrame)::ResultSet
+function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::DataFrame, outcomes::Dict,
+    log_set::Zarr.ZGroup, site_data::DataFrame, model_spec::DataFrame)::ResultSet
 
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
     ResultSet(input_set.attrs["name"],
-              string(rcp),
-              input_set.attrs["invoke_time"],
-              input_set.attrs["ADRIA_VERSION"],
-              input_set.attrs["site_ids"],
-              convert.(Float64, input_set.attrs["site_area"]),
-              convert.(Float64, input_set.attrs["site_max_coral_cover"]),
-              input_set.attrs["site_centroids"],
-              env_layer_md,
-              site_data,
-              inputs_used,
-              input_set.attrs["sim_constants"],
-              model_spec,
-              outcomes,
-              NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
-              NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
-              NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
-              NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]))
+        string(rcp),
+        input_set.attrs["invoke_time"],
+        input_set.attrs["ADRIA_VERSION"],
+        input_set.attrs["site_ids"],
+        convert.(Float64, input_set.attrs["site_area"]),
+        convert.(Float64, input_set.attrs["site_max_coral_cover"]),
+        input_set.attrs["site_centroids"],
+        env_layer_md,
+        site_data,
+        inputs_used,
+        input_set.attrs["sim_constants"],
+        model_spec,
+        outcomes,
+        NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
+        NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
+        NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
+        NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]))
 end
 
 
@@ -89,7 +88,7 @@ function combine_results(result_sets...)::ResultSet
 
     rs1 = result_sets[1]
     canonical_name = rs1.name
-    combined_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
+    combined_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
 
     rcps = join(unique([rs.RCP for rs in result_sets]), "_")
 
@@ -102,13 +101,13 @@ function combine_results(result_sets...)::ResultSet
 
     envlayer = rs1.env_layer_md
     env_md = EnvLayer(envlayer.dpkg_path, envlayer.site_data_fn, envlayer.site_id_col, envlayer.unique_site_id_col,
-                      envlayer.init_coral_cov_fn, envlayer.connectivity_fn,
-                      dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn), envlayer.timeframe)
+        envlayer.init_coral_cov_fn, envlayer.connectivity_fn,
+        dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn), envlayer.timeframe)
 
     all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
     input_dims = size(all_inputs)
     attrs = scenario_attributes(canonical_name, rcps, names(all_inputs), combined_time, env_md, rs1.sim_constants,
-                                rs1.site_ids, rs1.site_area, rs1.site_max_coral_cover, rs1.site_centroids)
+        rs1.site_ids, rs1.site_area, rs1.site_max_coral_cover, rs1.site_centroids)
 
     # Copy site data into result set
     mkdir(joinpath(new_loc, SITE_DATA))
@@ -143,7 +142,7 @@ function combine_results(result_sets...)::ResultSet
                 n_log[:, :, :, scen_id:scen_id+(rs_scen_len-1)] .= s_log
             end
 
-            scen_id = scen_id+rs_scen_len
+            scen_id = scen_id + rs_scen_len
         end
     end
 
@@ -171,7 +170,7 @@ function combine_results(result_sets...)::ResultSet
                 m_store[:, :, :, scen_id:scen_id+(rs_scen_len-1)] .= rs.outcomes[m_name]
             end
 
-            scen_id = scen_id+rs_scen_len
+            scen_id = scen_id + rs_scen_len
         end
     end
 
@@ -210,7 +209,7 @@ function store_location(rs::ResultSet)::String
         end
     end
 
-    return replace(store, "\\"=>"/")
+    return replace(store, "\\" => "/")
 end
 
 
