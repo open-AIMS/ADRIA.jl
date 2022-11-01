@@ -207,12 +207,26 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             compressor=compressor)
         for m_name in met_names
     ]
+    unique_scens = unique(param_df[:, [:dhw_scenario]])
+
+    dhws = domain.dhw_scens[:, :, convert.(Int64, unique_scens[:, :dhw_scenario])]
+    dhw_stats = Array(zeros(2, result_dims[3]))
+    dhw_stats[1, :] .= dropdims(mean(dhws, dims=[1, 2]), dims=1)[:]
+    dhw_stats[2, :] .= dropdims(std(mean(dhws, dims=2), dims=1), dims=1)[:]
+
+    dhw_stats_store = zcreate(Float32, (2, result_dims[3])...;
+        fill_value=nothing, fill_as_missing=false,
+        path=joinpath(z_store.folder, RESULTS, DHW_STATS),
+        attrs=Dict(:structure => ("stat", "dhw_scenario")),
+        compressor=compressor)
+
+    dhw_stats_store[:, :] .= dhw_stats
 
     # Set up logs for site ranks, seed/fog log
-    stores = [stores..., setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
+    stores = [stores..., dhw_stats_store, setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
 
     # NamedTuple{(Symbol.(metrics)..., :site_ranks, :seed_log, :fog_log, :shade_log)}(stores)
-    return domain, (; zip((met_names..., :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
+    return domain, (; zip((met_names..., :dhw_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
 end
 
 
@@ -240,9 +254,10 @@ function load_results(result_loc::String)::ResultSet
             outcomes[Symbol(basename(sd))] = NamedDimsArray{Symbol.(Tuple(res.attrs["structure"]))}(res)
         end
     end
-
+    #Main.@infiltrate
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
+    dhw_stat_set = zopen(joinpath(result_loc, RESULTS, DHW_STATS), fill_as_missing=false)
 
     result_loc = replace(result_loc, "\\" => "/")
     if endswith(result_loc, "/")
@@ -265,14 +280,6 @@ function load_results(result_loc::String)::ResultSet
     input_cols::Array{String} = input_set.attrs["columns"]
     inputs_used::DataFrame = DataFrame(input_set[:, :], input_cols)
 
-    unique_scens = unique(inputs_used[:, [:RCP, :dhw_scenario]])
-    scens = [k for k in 1:size(unique_scens)[1]]
-    dhws = matread(input_set.attrs["DHW_file"])["dhw"][:, :, convert.(Int64, unique_scens[:, :dhw_scenario])]
-    dhw_stats = NamedArray(zeros(size(unique_scens)[1], 4), (scens, [:rcp, :dhw_scenario, :mean, :std]), ("Rows", "Cols"))
-    dhw_stats[:, [:rcp, :dhw_scenario]] .= unique_scens[:, [:RCP, :dhw_scenario]]
-    dhw_stats[:, [:mean]] .= dropdims(mean(dhws, dims=[1, 2]), dims=1)[:]
-    dhw_stats[:, [:std]] .= dropdims(std(mean(dhws, dims=2), dims=1), dims=1)[:]
-
     env_layer_md::EnvLayer = EnvLayer(
         result_loc,
         input_set.attrs["site_data_file"],
@@ -285,7 +292,7 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["timeframe"]
     )
 
-    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data, dhw_stats, model_spec)
+    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, dhw_stat_set, site_data, model_spec)
 end
 function load_results(domain::Domain)::ResultSet
     return load_results(result_location(domain))
