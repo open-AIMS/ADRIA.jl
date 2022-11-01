@@ -254,7 +254,7 @@ function load_results(result_loc::String)::ResultSet
             outcomes[Symbol(basename(sd))] = NamedDimsArray{Symbol.(Tuple(res.attrs["structure"]))}(res)
         end
     end
-    #Main.@infiltrate
+
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
     dhw_stat_set = zopen(joinpath(result_loc, RESULTS, DHW_STATS), fill_as_missing=false)
