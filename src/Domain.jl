@@ -40,7 +40,6 @@ mutable struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Ve
     const site_ids::T  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
     const removed_sites::T  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
     dhw_scens::X  # DHW scenarios
-    dhw_sum_stats::D
     wave_scens::Y # wave scenarios
 
     # Parameters
@@ -71,7 +70,7 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::DataFr
     model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
     sim_constants::SimConstants = SimConstants()
     return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
-        init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, DataFrame(), waves,
+        init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)
 end
 

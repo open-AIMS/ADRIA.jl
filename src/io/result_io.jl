@@ -171,13 +171,6 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
 
     tf, n_sites, _ = size(domain.dhw_scens)
 
-    # create summary statistics table for unique RCP and dhw scenarios run
-    dhw_unique_scens = unique(param_df[:, [:RCP, :dhw_scenario]])
-    dhw_sum_stats = DataFrame(RCP=dhw_unique_scens.RCP ./ 10, dhw_scenario=dhw_unique_scens.dhw_scenario,
-        mean=convert(Array, dropdims(mean(domain.dhw_scens[:, :, dhw_unique_scens[:, :dhw_scenario]], dims=[1, 2]), dims=1)[:]),
-        std=convert(Array, dropdims(std(mean(domain.dhw_scens[:, :, dhw_unique_scens[:, :dhw_scenario]], dims=2), dims=1), dims=1)[:]))
-    append!(domain.dhw_sum_stats, dhw_sum_stats)
-
     # Set up stores for each metric
     function dim_lengths(metric_structure)
         dl = []
@@ -272,6 +265,14 @@ function load_results(result_loc::String)::ResultSet
     input_cols::Array{String} = input_set.attrs["columns"]
     inputs_used::DataFrame = DataFrame(input_set[:, :], input_cols)
 
+    unique_scens = unique(inputs_used[:, [:RCP, :dhw_scenario]])
+    scens = [k for k in 1:size(unique_scens)[1]]
+    dhws = matread(input_set.attrs["DHW_file"])["dhw"][:, :, convert.(Int64, unique_scens[:, :dhw_scenario])]
+    dhw_stats = NamedArray(zeros(size(unique_scens)[1], 4), (scens, [:rcp, :dhw_scenario, :mean, :std]), ("Rows", "Cols"))
+    dhw_stats[:, [:rcp, :dhw_scenario]] .= unique_scens[:, [:RCP, :dhw_scenario]]
+    dhw_stats[:, [:mean]] .= dropdims(mean(dhws, dims=[1, 2]), dims=1)[:]
+    dhw_stats[:, [:std]] .= dropdims(std(mean(dhws, dims=2), dims=1), dims=1)[:]
+
     env_layer_md::EnvLayer = EnvLayer(
         result_loc,
         input_set.attrs["site_data_file"],
@@ -284,7 +285,7 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["timeframe"]
     )
 
-    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data, model_spec)
+    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data, dhw_stats, model_spec)
 end
 function load_results(domain::Domain)::ResultSet
     return load_results(result_location(domain))
