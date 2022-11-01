@@ -229,6 +229,13 @@ Inverse Simpsons diversity indicator.
 
 # Notes
 Number of taxa (distinct groups with enhanced lumped with unenhanced) is hardcoded in this function.
+
+# References
+1. Hill, M. O. (1973). 
+    Diversity and Evenness: A Unifying Notation and Its Consequences. 
+   Ecology, 54(2), 427-432.
+   https://doi.org/10.2307/1934352
+
 """
 function _coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     x::AbstractArray{<:Real} = min.(max.(X, 0.0), 1.0)
@@ -515,6 +522,13 @@ end
 
 Translates coral metrics in ADRIA to a Reef Condition Metrics.
 
+# Notes
+Juveniles are made relative to maximum observed juvenile density (51.8/m²)
+See email correspondence 
+from: Dr. A Thompson; to: Dr. K. Anthony
+Subject: RE: Max density of juvenile corals on the GBR
+Sent: Friday, 14 October 2022 2:58 PM
+
 # Arguments
 - TC        : Total relative coral cover across all groups
 - E         : Evenness across four coral groups
@@ -571,7 +585,8 @@ function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
     # Divide across sites by the max possible proportional coral cover
     rc .= mapslices((s) -> s ./ (rs.site_max_coral_cover / 100.0), rc, dims=2)
 
-    juv::AbstractArray{<:Real} = _juveniles(rs)
+    # Juveniles, 51.8 as max juveniles for metric
+    juv::AbstractArray{<:Real} = _juveniles(rs) ./ 51.8
     # E::AbstractArray{<:Real} = _coral_evenness(rs)
     E = Array(Float32[])
     SV::AbstractArray{<:Real} = _relative_shelter_volume(rs)
