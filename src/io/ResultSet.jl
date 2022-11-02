@@ -12,6 +12,7 @@ const LOG_GRP = "logs"
 const INPUTS = "inputs"
 const SITE_DATA = "site_data"
 const DHW_STATS = "dhw_stats"
+const WAVE_STATS = "wave_stats"
 const MODEL_SPEC = "model_spec"
 
 
@@ -27,6 +28,7 @@ struct ResultSet{S,T1,T2,F,A,B,C,D,G}
     site_centroids::T2
     env_layer_md::EnvLayer
     dhw_stats::D
+    wave_stats::D
     site_data::G
 
     inputs::G
@@ -43,7 +45,7 @@ end
 
 
 function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::DataFrame, outcomes::Dict,
-    log_set::Zarr.ZGroup, dhw_stats_set::Zarr.ZArray, site_data::DataFrame, model_spec::DataFrame)::ResultSet
+    log_set::Zarr.ZGroup, dhw_stats_set::Zarr.ZArray, wave_stats_set::Zarr.ZArray, site_data::DataFrame, model_spec::DataFrame)::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
     ResultSet(input_set.attrs["name"],
         string(rcp),
@@ -54,7 +56,8 @@ function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::
         convert.(Float64, input_set.attrs["site_max_coral_cover"]),
         input_set.attrs["site_centroids"],
         env_layer_md,
-        NamedDimsArray{Symbol.(Tuple(dhw_stats_set.attrs["structure"]))}(NamedArray(dhw_stats_set))
+        NamedDimsArray{Symbol.(Tuple(dhw_stats_set.attrs["structure"]))}(dhw_stats_set),
+        NamedDimsArray{Symbol.(Tuple(dhw_stats_set.attrs["structure"]))}(wave_stats_set),
         site_data,
         inputs_used,
         input_set.attrs["sim_constants"],
