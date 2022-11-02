@@ -11,8 +11,7 @@ const RESULTS = "results"
 const LOG_GRP = "logs"
 const INPUTS = "inputs"
 const SITE_DATA = "site_data"
-const DHW_STATS = "dhw_stats"
-const WAVE_STATS = "wave_stats"
+const ENV_STATS = "env_stats"
 const MODEL_SPEC = "model_spec"
 
 
@@ -67,6 +66,24 @@ function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, inputs_used::
         NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
         NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
         NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]))
+end
+
+
+"""
+    _copy_env_stats(src::String, dst::String, subdir::String)::Nothing
+
+Helper function to copy environmental data layer statistics from data store.
+"""
+function _copy_env_stats(src::String, dst::String, subdir::String)::Nothing
+    src_dir = joinpath(src, ENV_STATS, subdir)
+    dst_dir = joinpath(dst, ENV_STATS, subdir)
+    mkpath(dst_dir)
+    src_ds = filter(d -> isdir(joinpath(src_dir, d)), readdir(src_dir))
+    for ds in src_ds
+        cp(joinpath(src_dir, ds), joinpath(dst_dir, ds), force=true)
+    end
+
+    return
 end
 
 
@@ -177,6 +194,14 @@ function combine_results(result_sets...)::ResultSet
 
             scen_id = scen_id + rs_scen_len
         end
+    end
+
+    # Copy env stats
+    mkdir(joinpath(new_loc, ENV_STATS))
+    for rs in result_sets
+        loc::String = rs.env_layer_md.dpkg_path
+        _copy_env_stats(loc, new_loc, "dhw")
+        _copy_env_stats(loc, new_loc, "wave")
     end
 
     return load_results(z_store.folder)
