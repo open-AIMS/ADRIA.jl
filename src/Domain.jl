@@ -309,7 +309,6 @@ Load netCDF data as a NamedArray.
 """
 function load_nc_data(data_fn::String, attr::String, check_sites::Int)::NamedArray
     local loaded::NamedArray
-    local site_order::Vector{String}
 
     ds = Dataset(data_fn, "r")
     data = ds[attr][:, :]
@@ -366,10 +365,12 @@ function load_env_data(data_fn::String, attr::String, check_sites::Int)::NamedAr
     close(ds)
 
     # Attach dimension names
-    setnames!(loaded, site_order, 2)
-    setdimnames!(loaded, :timesteps, 1)
-    setdimnames!(loaded, :sites, 2)
-    setdimnames!(loaded, :scenarios, 3)
+    setnames!(data, site_order, 2)
+    setdimnames!(data, :timesteps, 1)
+    setdimnames!(data, :sites, 2)
+    setdimnames!(data, :scenarios, 3)
+
+    return data
 end
 
 
@@ -499,12 +500,12 @@ end
 
 """Get the path to the DHW data associated with the domain."""
 function get_DHW_data(d::Domain, RCP::String)
-    return joinpath(d.env_layer_md.dpkg_path, "DHWs", "dhwRCP$(RCP).mat")
+    return joinpath(d.env_layer_md.dpkg_path, "DHWs", "dhwRCP$(RCP).nc")
 end
 
 """Get the path to the wave data associated with the domain."""
 function get_wave_data(d::Domain, RCP::String)
-    return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).mat")
+    return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).nc")
 end
 
 
