@@ -24,6 +24,22 @@ function centroids(df::DataFrame)::Array
     return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
 end
 
+
+"""
+    summarize_env_data(data_cube::AbstractArray)
+
+Summarize environmental data layers (mean and standard deviation).
+
+# Returns
+Matrix{Float64, 2}, of mean and standard deviation for each environmental scenario.
+"""
+function summarize_env_data(data::AbstractArray)::Array
+    # TODO: Update once
+    dc_mean = dropdims(mean(data, dims=(1, 2)), dims=(1, 2))'
+    dc_std = dropdims(std(data, dims=(1, 2)), dims=(1, 2))'
+
+    return Array{Float64}(vcat(dc_mean, dc_std))
+end
 """
     calculate_wave_dhw_summary(dhw_df::DataFrame,wave_df::DataFrame,param_df::DataFrame)
 
