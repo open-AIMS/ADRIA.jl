@@ -143,7 +143,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     elseif endswith(dhw_fn, ".nc")
         dhw = load_env_data(dhw_fn, "dhw", n_sites)
     else
-        dhw = NamedArray(zeros(74, n_sites, 50))
+        dhw = NamedArray(zeros(length(timeframe), n_sites, 50))
     end
 
     if endswith(wave_fn, ".mat")
@@ -151,7 +151,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     elseif endswith(wave_fn, ".nc")
         waves = load_env_data(dhw_fn, "Ub", n_sites)
     else
-        waves = NamedArray(zeros(74, n_sites, 50))
+        waves = NamedArray(zeros(length(timeframe), n_sites, 50))
     end
 
     if endswith(init_coral_fn, ".mat")
@@ -163,7 +163,10 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
         coral_cover = NamedArray(rand(coral_growth.n_species, n_sites))
     end
 
-    @assert length(timeframe) == size(dhw, 1) == size(waves, 1) "Provided time frame must match timesteps in DHW and wave data"
+    msg = "Provided time frame must match timesteps in DHW and wave data"
+    msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
+
+    @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
     return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.in_conn, conns.out_conn, conns.strongest_predecessor,
         site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
