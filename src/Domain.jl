@@ -436,6 +436,8 @@ function switch_RCPs!(d::Domain, RCP::String)
 
     @set! d.dhw_scens = loader(d.env_layer_md.DHW_fn, "dhw")
     @set! d.wave_scens = loader(d.env_layer_md.wave_fn, "wave")
+
+    return d
 end
 
 

@@ -78,7 +78,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String)::Result
     setup()
     parallel = (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
 
-    switch_RCPs!(domain, RCP)
+    domain = switch_RCPs!(domain, RCP)
     domain, data_store = ADRIA.setup_result_store!(domain, param_df)
 
     cache = setup_cache(domain)
@@ -110,7 +110,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
     tmp_result_dirs::Vector{String} = String[]
 
     for RCP in RCP_ids
-        switch_RCPs!(domain, RCP)
+        domain = switch_RCPs!(domain, RCP)
         tmp_dir = mktempdir(prefix="ADRIA_")
         ENV["ADRIA_OUTPUT_DIR"] = tmp_dir
 
