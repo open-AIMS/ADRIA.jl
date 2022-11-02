@@ -14,7 +14,7 @@ end
 Extract and return long/lat from a GeoDataFrame.
 
 # Arguments
-df : GeoDataFrame
+- df : GeoDataFrame
 
 # Returns
 Array of tuples (x, y), where x and y relate to long and lat respectively.
@@ -24,6 +24,58 @@ function centroids(df::DataFrame)::Array
     return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
 end
 
+
+"""
+    summarize_env_data(data_cube::AbstractArray)
+
+Summarize environmental data layers (mean and standard deviation).
+
+# Returns
+Matrix{Float64, 2}, of mean and standard deviation for each environmental scenario.
+"""
+function summarize_env_data(data::AbstractArray)::Array
+    # TODO: Update once
+    dc_mean = dropdims(mean(data, dims=(1, 2)), dims=(1, 2))'
+    dc_std = dropdims(std(data, dims=(1, 2)), dims=(1, 2))'
+
+    return Array{Float64}(vcat(dc_mean, dc_std))
+end
+
+"""
+    store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, compressor::Zarr.Compressor)
+
+Retrieve summary statistics matrices from DataFrames of dhws and waves.
+Produce summary statistics (mean/std) for given data cube saved to a Zarr data store.
+
+# Arguments
+- data_cube : data to summarize
+- type : dimension identifier to use
+- file_loc : path for Zarr data store
+
+# Returns
+Zarr data store holding a 2*N matrix.
+
+First row is mean over time
+Second row is the std over time
+N is the number of dhw/wave scenarios.
+"""
+function store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)
+    stats = summarize_env_data(data_cube)
+
+    stats_store = zcreate(Float32, (2, size(stats, 2))...;
+        fill_value=nothing, fill_as_missing=false,
+        path=joinpath(file_loc, rcp),
+        attrs=Dict(
+            :structure => ("stat", type),
+            :rows => ["mean", "std"],
+            :cols => string.(1:size(stats, 2)),
+            :rcp => rcp),
+        compressor=compressor)
+
+    stats_store[:, :] .= stats
+
+    return stats_store
+end
 
 """
     scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k)
@@ -96,9 +148,8 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     return ranks, seed_log, fog_log, shade_log
 end
 
-
 """
-    setup_result_store!(domain::Domain, param_df::DataFrame; metrics::Array=[])
+    setup_result_store!(domain::Domain, param_df::DataFrame)
 
 Sets up an on-disk result store.
 
@@ -127,7 +178,7 @@ Sets up an on-disk result store.
 - `domain` is replaced with an identical copy with an updated scenario invoke time.
 - -9999.0 is used as an arbitrary fill value.
 
-# Inputs
+# Arguments
 - domain : ADRIA scenario domain
 - param_df : ADRIA scenario specification
 
@@ -170,9 +221,9 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     map_to_discrete!(param_df[:, integer_params.+1], getindex.(domain.model[:bounds], 2)[integer_params])
     inputs[:, :] = Matrix(param_df)
 
-    # Set up stores for each metric
     tf, n_sites, _ = size(domain.dhw_scens)
 
+    # Set up stores for each metric
     function dim_lengths(metric_structure)
         dl = []
         for d in metric_structure
@@ -203,17 +254,47 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     stores = [
         zcreate(Float32, result_dims...;
             fill_value=nothing, fill_as_missing=false,
-            path=joinpath(z_store.folder, "results", string(m_name)), chunks=(result_dims[1:end-1]..., 1),
+            path=joinpath(z_store.folder, RESULTS, string(m_name)), chunks=(result_dims[1:end-1]..., 1),
             attrs=dim_struct,
             compressor=compressor)
         for m_name in met_names
     ]
+    dhw_stats_store = store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), domain.RCP, compressor)
+    wave_stats_store = store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), domain.RCP, compressor)
 
-    # Set up logs for site ranks, seed/fog log
-    stores = [stores..., setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
+    # Group all data stores
+    stores = [stores..., dhw_stats_store, wave_stats_store, setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
 
-    # NamedTuple{(Symbol.(metrics)..., :site_ranks, :seed_log, :fog_log, :shade_log)}(stores)
-    return domain, (; zip((met_names..., :site_ranks, :seed_log, :fog_log, :shade_log), stores)...)
+    return domain, (; zip((met_names..., :dhw_stats, :wave_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
+end
+
+"""
+    _recreate_stats_from_store(zarr_store_path::String)::Dict{String, AbstractArray}
+
+Recreate data structure holding scenario summary statistics from Zarr store.
+"""
+function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,AbstractArray}
+    rcp_dirs = filter(d -> isdir(joinpath(zarr_store_path, d)), readdir(zarr_store_path))
+    rcp_stat_dirs = joinpath.(zarr_store_path, rcp_dirs)
+
+    stat_d = Dict{String,AbstractArray}()
+    for (i, sd) in enumerate(rcp_stat_dirs)
+        store = zopen(sd, fill_as_missing=false)
+
+        dims = store.attrs["structure"]
+        row_names = string.(store.attrs["rows"])
+        col_names = string.(store.attrs["cols"])
+        stat_set = NamedArray(store[:, :])
+        for (i, n) in enumerate(dims)
+            setdimnames!(stat_set, n, i)
+        end
+        setnames!(stat_set, row_names, 1)
+        setnames!(stat_set, col_names, 2)
+
+        stat_d[rcp_dirs[i]] = stat_set
+    end
+
+    return stat_d
 end
 
 
@@ -244,6 +325,9 @@ function load_results(result_loc::String)::ResultSet
 
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
+
+    dhw_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "dhw"))
+    wave_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "wave"))
 
     result_loc = replace(result_loc, "\\" => "/")
     if endswith(result_loc, "/")
@@ -278,7 +362,7 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["timeframe"]
     )
 
-    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, site_data, model_spec)
+    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, dhw_stat_set, wave_stat_set, site_data, model_spec)
 end
 function load_results(domain::Domain)::ResultSet
     return load_results(result_location(domain))

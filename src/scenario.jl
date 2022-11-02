@@ -78,8 +78,9 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String)::Result
     setup()
     parallel = (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
 
-    switch_RCPs!(domain, RCP)
+    domain = switch_RCPs!(domain, RCP)
     domain, data_store = ADRIA.setup_result_store!(domain, param_df)
+
     cache = setup_cache(domain)
     run_msg = "Running $(nrow(param_df)) scenarios for RCP $RCP"
 
@@ -109,11 +110,12 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
     tmp_result_dirs::Vector{String} = String[]
 
     for RCP in RCP_ids
-        switch_RCPs!(domain, RCP)
+        domain = switch_RCPs!(domain, RCP)
         tmp_dir = mktempdir(prefix="ADRIA_")
         ENV["ADRIA_OUTPUT_DIR"] = tmp_dir
 
         domain, data_store = ADRIA.setup_result_store!(domain, param_df)
+
         cache = setup_cache(domain)
 
         push!(tmp_result_dirs, result_location(domain))
@@ -131,6 +133,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
     end
 
     ENV["ADRIA_OUTPUT_DIR"] = output_dir
+
     rs = combine_results(tmp_result_dirs)
 
     # Remove temporary result dirs
@@ -628,6 +631,5 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
     # Avoid placing importance on sites that were not considered
     # (lower values are higher importance)
     site_ranks[site_ranks.==0.0] .= n_sites + 1
-
     return (raw=Y_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks)
 end
