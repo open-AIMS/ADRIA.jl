@@ -1,3 +1,5 @@
+using NCDatasets
+
 """
     EnvLayer{S, TF}
 
@@ -138,18 +140,24 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
         dhw::NamedArray = loader(dhw_fn, "dhw"::String)
+    elseif endswith(dhw_fn, ".nc")
+        dhw = load_env_data(dhw_fn, "dhw", n_sites)
     else
         dhw = NamedArray(zeros(74, n_sites, 50))
     end
 
     if endswith(wave_fn, ".mat")
         waves::NamedArray = loader(wave_fn, "wave"::String)
+    elseif endswith(wave_fn, ".nc")
+        waves = load_env_data(dhw_fn, "Ub", n_sites)
     else
         waves = NamedArray(zeros(74, n_sites, 50))
     end
 
     if endswith(init_coral_fn, ".mat")
         coral_cover::NamedArray = loader(init_coral_fn, "covers"::String)
+    elseif endswith(init_coral_fn, ".nc")
+        coral_cover = load_covers(init_coral_fn, "covers", n_sites)
     else
         @warn "Using random initial coral cover"
         coral_cover = NamedArray(rand(coral_growth.n_species, n_sites))
@@ -288,6 +296,77 @@ function load_mat_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
     loaded = selectdim(loaded, 2, site_order)
 
     return loaded
+end
+
+
+"""
+    load_nc_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
+
+Load netCDF data as a NamedArray.
+"""
+function load_nc_data(data_fn::String, attr::String, check_sites::Int)::NamedArray
+    local loaded::NamedArray
+    local site_order::Vector{String}
+
+    ds = Dataset(data_fn, "r")
+    data = ds[attr][:, :]
+    close(ds)
+
+    try
+        loaded = NamedArray(data)
+    catch err
+        if isa(err, KeyError)
+            @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, members)."
+            if n_sites != check_sites
+                error("Mismatch in number of sites ($(data_fn)). Expected $(check_sites), got $(n_sites)")
+            end
+        else
+            rethrow(err)
+        end
+    end
+
+    return loaded
+end
+
+
+"""
+    load_covers(data_fn::String, attr::String, check_sites::Int)::NamedArray
+
+Load initial coral cover data from netCDF.
+"""
+function load_covers(data_fn::String, attr::String, check_sites::Int)::NamedArray
+    data = load_nc_data(data_fn, attr, check_sites)
+
+    ds = Dataset(data_fn, "r")
+    site_order = string.(ds["reef_siteid"][:])
+    close(ds)
+
+    # Attach site names to each column
+    setnames!(data, site_order, 2)
+    setdimnames!(data, :species, 1)
+    setdimnames!(data, :sites, 2)
+
+    return data
+end
+
+
+"""
+    load_env_data(data_fn::String, attr::String, check_sites::Int)::NamedArray
+
+Load environmental data layers (DHW, Wave) from netCDF.
+"""
+function load_env_data(data_fn::String, attr::String, check_sites::Int)::NamedArray
+    data = load_nc_data(data_fn, attr, check_sites)
+
+    ds = Dataset(data_fn, "r")
+    site_order = string.(ds["reef_siteid"][:])
+    close(ds)
+
+    # Attach dimension names
+    setnames!(loaded, site_order, 2)
+    setdimnames!(loaded, :timesteps, 1)
+    setdimnames!(loaded, :sites, 2)
+    setdimnames!(loaded, :scenarios, 3)
 end
 
 
@@ -432,7 +511,7 @@ function switch_RCPs!(d::Domain, RCP::String)
     d.RCP = RCP
 
     n_sites::Int64 = d.coral_growth.n_sites
-    loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
+    loader = (fn::String, attr::String) -> load_env_data(fn, attr, n_sites)
 
     @set! d.dhw_scens = loader(d.env_layer_md.DHW_fn, "dhw")
     @set! d.wave_scens = loader(d.env_layer_md.wave_fn, "wave")
