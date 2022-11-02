@@ -63,7 +63,7 @@ export Domain, metrics, select, timesteps, env_stats
 export dims, ndims
 
 # List out compatible domain datapackages
-const COMPAT_DPKG = ["v0.2", "v0.2.1"]
+const COMPAT_DPKG = ["v0.2", "v0.2.1", "v0.3.0"]
 
 @precompile_all_calls begin
     ex_dir = @path joinpath(@__DIR__, "../examples")
