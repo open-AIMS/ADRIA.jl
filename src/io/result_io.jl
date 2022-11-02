@@ -40,21 +40,26 @@ function summarize_env_data(data::AbstractArray)::Array
 
     return Array{Float64}(vcat(dc_mean, dc_std))
 end
+
 """
-    calculate_wave_dhw_summary(dhw_df::DataFrame,wave_df::DataFrame,param_df::DataFrame)
+    store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, compressor::Zarr.Compressor)
 
 Retrieve summary statistics matrices from DataFrames of dhws and waves.
+Produce summary statistics (mean/std) for given data cube saved to a Zarr data store.
 
 # Arguments
-dhw_df : DataFrame of dhw data.
-waves_df : DataFrame of dhw data.
-param_df : DataFrame of scenario parameters.
+- data_cube : data to summarize
+- type : dimension identifier to use
+- file_loc : path for Zarr data store
 
 # Returns
-dhw_stats, wave_stats: two 2*N matrices where the first row is mean over time and sites and 2nd row is the std over time and mean of sites.
-N is the number of unique dhw/wave scenarios being run.
+Zarr data store holding a 2*N matrix.
+
+First row is mean over time
+Second row is the std over time
+N is the number of dhw/wave scenarios.
 """
-function store_wave_dhw_summary(data_cube::NamedArray, param_df::DataFrame, type::String, file_loc::String, compressor::Zarr.Compressor)
+function store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)
     unique_scens = unique(param_df[:, [Symbol(type)]])
 
     scens = data_cube[:, :, convert.(Int64, unique_scens[:, Symbol(type)])]
