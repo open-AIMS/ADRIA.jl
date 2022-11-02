@@ -236,7 +236,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     stores = [
         zcreate(Float32, result_dims...;
             fill_value=nothing, fill_as_missing=false,
-            path=joinpath(z_store.folder, "results", string(m_name)), chunks=(result_dims[1:end-1]..., 1),
+            path=joinpath(z_store.folder, RESULTS, string(m_name)), chunks=(result_dims[1:end-1]..., 1),
             attrs=dim_struct,
             compressor=compressor)
         for m_name in met_names
