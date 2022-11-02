@@ -434,8 +434,8 @@ function switch_RCPs!(d::Domain, RCP::String)
     n_sites::Int64 = d.coral_growth.n_sites
     loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
 
-    d.dhw_scens .= loader(d.env_layer_md.DHW_fn, "dhw")
-    d.wave_scens .= loader(d.env_layer_md.wave_fn, "wave")
+    @set! d.dhw_scens = loader(d.env_layer_md.DHW_fn, "dhw")
+    @set! d.wave_scens = loader(d.env_layer_md.wave_fn, "wave")
 end
 
 
