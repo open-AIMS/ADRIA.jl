@@ -24,6 +24,40 @@ function centroids(df::DataFrame)::Array
     return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
 end
 
+"""
+    calculate_wave_dhw_summary(dhw_df::DataFrame,wave_df::DataFrame,param_df::DataFrame)
+
+Retrieve summary statistics matrices from DataFrames of dhws and waves.
+
+# Arguments
+dhw_df : DataFrame of dhw data.
+waves_df : DataFrame of dhw data.
+param_df : DataFrame of scenario parameters.
+
+# Returns
+dhw_stats, wave_stats: two 2*N matrices where the first row is mean over time and sites and 2nd row is the std over time and mean of sites.
+N is the number of unique dhw/wave scenarios being run.
+"""
+function store_wave_dhw_summary(data_cube::NamedArray, param_df::DataFrame, type::String, file_loc::String, compressor::Zarr.Compressor)
+    unique_scens = unique(param_df[:, [Symbol(type)]])
+
+    scens = data_cube[:, :, convert.(Int64, unique_scens[:, Symbol(type)])]
+
+    scens_stats = vcat(dropdims(mean(scens, dims=[1, 2]), dims=1),
+        dropdims(std(mean(scens, dims=2), dims=1), dims=1))
+
+    stats_store = zcreate(Float32, (2, size(unique_scens)[1])...;
+        fill_value=nothing, fill_as_missing=false,
+        path=file_loc,
+        attrs=Dict(:structure => ("stat", type),
+            :rows => ["mean", "std"],
+            :cols => unique_scens[:, Symbol(type)]),
+        compressor=compressor)
+
+    stats_store[:, :] .= scens_stats
+
+    return stats_store
+end
 
 """
     scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k)
@@ -207,26 +241,14 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             compressor=compressor)
         for m_name in met_names
     ]
-    unique_scens = unique(param_df[:, [:dhw_scenario]])
-
-    dhws = domain.dhw_scens[:, :, convert.(Int64, unique_scens[:, :dhw_scenario])]
-    dhw_stats = Array(zeros(2, result_dims[3]))
-    dhw_stats[1, :] .= dropdims(mean(dhws, dims=[1, 2]), dims=1)[:]
-    dhw_stats[2, :] .= dropdims(std(mean(dhws, dims=2), dims=1), dims=1)[:]
-
-    dhw_stats_store = zcreate(Float32, (2, result_dims[3])...;
-        fill_value=nothing, fill_as_missing=false,
-        path=joinpath(z_store.folder, RESULTS, DHW_STATS),
-        attrs=Dict(:structure => ("stat", "dhw_scenario")),
-        compressor=compressor)
-
-    dhw_stats_store[:, :] .= dhw_stats
+    dhw_stats_store = store_wave_dhw_summary(domain.dhw_scens, param_df, "dhw_scenario", joinpath(z_store.folder, RESULTS, DHW_STATS), compressor)
+    wave_stats_store = store_wave_dhw_summary(domain.wave_scens, param_df, "wave_scenario", joinpath(z_store.folder, RESULTS, WAVE_STATS), compressor)
 
     # Set up logs for site ranks, seed/fog log
-    stores = [stores..., dhw_stats_store, setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
+    stores = [stores..., dhw_stats_store, wave_stats_store, setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
 
     # NamedTuple{(Symbol.(metrics)..., :site_ranks, :seed_log, :fog_log, :shade_log)}(stores)
-    return domain, (; zip((met_names..., :dhw_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
+    return domain, (; zip((met_names..., :dhw_stats, :wave_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
 end
 
 
@@ -258,6 +280,7 @@ function load_results(result_loc::String)::ResultSet
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
     dhw_stat_set = zopen(joinpath(result_loc, RESULTS, DHW_STATS), fill_as_missing=false)
+    wave_stat_set = zopen(joinpath(result_loc, RESULTS, WAVE_STATS), fill_as_missing=false)
 
     result_loc = replace(result_loc, "\\" => "/")
     if endswith(result_loc, "/")
@@ -292,7 +315,7 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["timeframe"]
     )
 
-    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, dhw_stat_set, site_data, model_spec)
+    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, dhw_stat_set, wave_stat_set, site_data, model_spec)
 end
 function load_results(domain::Domain)::ResultSet
     return load_results(result_location(domain))
