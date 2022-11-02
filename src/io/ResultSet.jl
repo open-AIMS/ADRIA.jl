@@ -212,6 +212,24 @@ end
 
 
 """
+    env_stats(rs::ResultSet, s_name::String, rcp::String)
+    env_stats(rs::ResultSet, s_name::String, rcp::String, member::Int)
+    env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, member::Int)
+
+Extract statistics for a given environmental layer ("DHW" or "wave")
+"""
+function env_stats(rs::ResultSet, s_name::String, rcp::String)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp]
+end
+function env_stats(rs::ResultSet, s_name::String, rcp::String, member::Int)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp][:, member]
+end
+function env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, member::Int)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp][stat, member]
+end
+
+
+"""
     store_name(r::ResultSet)::String
 
 Get name of result set.

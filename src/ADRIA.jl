@@ -57,7 +57,7 @@ export growthODE
 export run_scenario, coral_spec
 export create_coral_struct, Intervention, Criteria, Corals, SimConstants
 export site_area
-export Domain, metrics, select, timesteps
+export Domain, metrics, select, timesteps, env_stats
 
 # metric helper methods
 export dims, ndims
