@@ -60,22 +60,19 @@ Second row is the std over time
 N is the number of dhw/wave scenarios.
 """
 function store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)
-    unique_scens = unique(param_df[:, [Symbol(type)]])
+    stats = summarize_env_data(data_cube)
 
-    scens = data_cube[:, :, convert.(Int64, unique_scens[:, Symbol(type)])]
-
-    scens_stats = vcat(dropdims(mean(scens, dims=[1, 2]), dims=1),
-        dropdims(std(mean(scens, dims=2), dims=1), dims=1))
-
-    stats_store = zcreate(Float32, (2, size(unique_scens)[1])...;
+    stats_store = zcreate(Float32, (2, size(stats, 2))...;
         fill_value=nothing, fill_as_missing=false,
-        path=file_loc,
-        attrs=Dict(:structure => ("stat", type),
+        path=joinpath(file_loc, rcp),
+        attrs=Dict(
+            :structure => ("stat", type),
             :rows => ["mean", "std"],
-            :cols => unique_scens[:, Symbol(type)]),
+            :cols => string.(1:size(stats, 2)),
+            :rcp => rcp),
         compressor=compressor)
 
-    stats_store[:, :] .= scens_stats
+    stats_store[:, :] .= stats
 
     return stats_store
 end
