@@ -259,13 +259,12 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             compressor=compressor)
         for m_name in met_names
     ]
-    dhw_stats_store = store_wave_dhw_summary(domain.dhw_scens, param_df, "dhw_scenario", joinpath(z_store.folder, RESULTS, DHW_STATS), compressor)
-    wave_stats_store = store_wave_dhw_summary(domain.wave_scens, param_df, "wave_scenario", joinpath(z_store.folder, RESULTS, WAVE_STATS), compressor)
+    dhw_stats_store = store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), domain.RCP, compressor)
+    wave_stats_store = store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), domain.RCP, compressor)
 
-    # Set up logs for site ranks, seed/fog log
+    # Group all data stores
     stores = [stores..., dhw_stats_store, wave_stats_store, setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
 
-    # NamedTuple{(Symbol.(metrics)..., :site_ranks, :seed_log, :fog_log, :shade_log)}(stores)
     return domain, (; zip((met_names..., :dhw_stats, :wave_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
 end
 
