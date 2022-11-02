@@ -14,7 +14,7 @@ end
 Extract and return long/lat from a GeoDataFrame.
 
 # Arguments
-df : GeoDataFrame
+- df : GeoDataFrame
 
 # Returns
 Array of tuples (x, y), where x and y relate to long and lat respectively.
@@ -149,7 +149,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
 end
 
 """
-    setup_result_store!(domain::Domain, param_df::DataFrame; metrics::Array=[])
+    setup_result_store!(domain::Domain, param_df::DataFrame)
 
 Sets up an on-disk result store.
 
@@ -178,7 +178,7 @@ Sets up an on-disk result store.
 - `domain` is replaced with an identical copy with an updated scenario invoke time.
 - -9999.0 is used as an arbitrary fill value.
 
-# Inputs
+# Arguments
 - domain : ADRIA scenario domain
 - param_df : ADRIA scenario specification
 
