@@ -268,6 +268,35 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     return domain, (; zip((met_names..., :dhw_stats, :wave_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
 end
 
+"""
+    _recreate_stats_from_store(zarr_store_path::String)::Dict{String, AbstractArray}
+
+Recreate data structure holding scenario summary statistics from Zarr store.
+"""
+function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,AbstractArray}
+    rcp_dirs = filter(d -> isdir(joinpath(zarr_store_path, d)), readdir(zarr_store_path))
+    rcp_stat_dirs = joinpath.(zarr_store_path, rcp_dirs)
+
+    stat_d = Dict{String,AbstractArray}()
+    for (i, sd) in enumerate(rcp_stat_dirs)
+        store = zopen(sd, fill_as_missing=false)
+
+        dims = store.attrs["structure"]
+        row_names = string.(store.attrs["rows"])
+        col_names = string.(store.attrs["cols"])
+        stat_set = NamedArray(store[:, :])
+        for (i, n) in enumerate(dims)
+            setdimnames!(stat_set, n, i)
+        end
+        setnames!(stat_set, row_names, 1)
+        setnames!(stat_set, col_names, 2)
+
+        stat_d[rcp_dirs[i]] = stat_set
+    end
+
+    return stat_d
+end
+
 
 """
     load_results(result_loc::String)::ResultSet
@@ -296,8 +325,9 @@ function load_results(result_loc::String)::ResultSet
 
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
-    dhw_stat_set = zopen(joinpath(result_loc, RESULTS, DHW_STATS), fill_as_missing=false)
-    wave_stat_set = zopen(joinpath(result_loc, RESULTS, WAVE_STATS), fill_as_missing=false)
+
+    dhw_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "dhw"))
+    wave_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "wave"))
 
     result_loc = replace(result_loc, "\\" => "/")
     if endswith(result_loc, "/")
