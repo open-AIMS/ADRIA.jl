@@ -145,15 +145,15 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     o_cov_area = out_conn .* sum_cover .* area
 
     # node connectivity centrality, need to instead work out strongest predecessors to priority sites
-    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
-    A[:, 3] .= maximum(o_cov_area) != 0.0 ? o_cov_area / maximum(o_cov_area) : o_cov_area
+    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : 0.0
+    A[:, 3] .= maximum(o_cov_area) != 0.0 ? o_cov_area / maximum(o_cov_area) : 0.0
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
-    A[:, 4] .= maximum(wave_stress) != 0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : wave_stress
+    A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
 
     # risk from heat exposure
-    A[:, 5] .= maximum(heat_stress) != 0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : heat_stress
+    A[:, 5] .= maximum(heat_stress) != 0.0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : 0.0
 
     # priority predecessors
     A[:, 6] .= predec[:, 3]
@@ -299,16 +299,25 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int},
     rankingsin::Matrix{Int64})::Tuple
 
-    site_ids::Array{Int64} = d_vars.site_ids
+    site_ids::Array{Int64} = copy(d_vars.site_ids)
 
     # Force different sites to be selected
-    alt_site_ids = setdiff(site_ids, prefseedsites)
-    mod_n_ranks = min(size(rankingsin, 1), length(alt_site_ids))
-    if mod_n_ranks < length(alt_site_ids)
-        rankingsin = rankingsin[1:mod_n_ranks, :]
+    site_ids = setdiff(site_ids, vcat(prefseedsites, prefshadesites))
+    mod_n_ranks = min(size(rankingsin, 1), length(site_ids))
+    if mod_n_ranks < length(d_vars.site_ids) && length(rankingsin) != 0
+        rankingsin = rankingsin[in.(rankingsin[:, 1], [site_ids]), :]
+        site_ids = rankingsin[:, 1]
+    elseif length(rankingsin) != 0
+        rankingsin = [site_ids zeros(Int64, length(site_ids)) zeros(Int64, length(site_ids))]
     end
 
     nsites::Int64 = length(site_ids)
+
+    # if no sites are available, abort
+    if nsites == 0
+        return prefseedsites, prefshadesites, rankingsin
+    end
+
     nsiteint::Int64 = d_vars.nsiteint
     prioritysites::Array{Int64} = d_vars.prioritysites[in.(d_vars.prioritysites, [site_ids])]
     priorityzones::Array{String} = d_vars.priorityzones
@@ -410,11 +419,11 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
-    if (sum(rankings[:, 2]) == 0.0) && (length(prefseedsites) != 0)
+    if sum(prefseedsites) == 0
         rankings[:, 2] .= rankingsin[:, 2]
     end
 
-    if (sum(rankings[:, 3]) == 0.0) && (length(prefshadesites) != 0)
+    if sum(prefshadesites) == 0
         rankings[:, 3] .= rankingsin[:, 3]
     end
 
