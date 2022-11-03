@@ -345,8 +345,8 @@ end
 # Returns
 λ, coral recruitment for each coral taxa based on a Poisson distribution.
 """
-function recruitment_rate(larval_pool; α=2.5, β=5000.0)
-    sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0)
+function recruitment_rate(larval_pool, A; α=2.5, β=5000.0)
+    sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
     sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
     return sd
 end
@@ -367,7 +367,7 @@ Total coral recruitment for each coral taxa and site based on a Poisson distribu
 """
 function recruitment(larval_pool, A::Matrix{<:Real}; α=2.5, β=5000.0)
     # Minimum of recruited settler density (`recruitment_rate`) and max possible settler density (α)
-    return min.(recruitment_rate(larval_pool; α, β), α) .* A
+    return min.(recruitment_rate(larval_pool, A; α, β), α)
 end
 
 """
@@ -397,6 +397,6 @@ function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basa
     # Larvae have landed, work out how many are recruited
     λ = recruitment(larval_pool, leftover_space; α=max_density, β=β)  # recruits per m^2 per site
 
-    # Determine area covered by recruited larvae (settler cover) and constrain to available space
+    # Determine area covered by recruited larvae (settler cover) per m^2
     return min.(λ .* basal_area_per_settler, leftover_space)
 end
