@@ -8,7 +8,7 @@ include("growth_expanded.jl")
 
 
 function growth_rate(linear_extension, diam_bin_widths)
-    return min.(((2.0 * linear_extension'[:]) ./ diam_bin_widths) .^ 2, 1.0)
+    return min.(((2.0 * linear_extension) ./ diam_bin_widths')'[:], 1.0)
 end
 
 
