@@ -359,12 +359,12 @@ function coral_spec()::NamedTuple
     # Bleaching sensitivity of each coral group
     # Bozec et al., (2022)
     bleaching_sensitivity = Float64[
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Tabular Acropora Enhanced (assumed same as Corymbose)
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Tabular Acropora Unenhanced
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Corymbose Acropora Enhanced
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Corymbose Acropora Unenhanced
-        0.25, 0.25, 0.25, 0.25, 0.25, 0.25,  # Small massives and encrusting
-        0.25, 0.25, 0.25, 0.25, 0.25, 0.25] # Large massives
+        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Enhanced (assumed same as Corymbose)
+        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Unenhanced
+        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Enhanced
+        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Unenhanced
+        0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
+        0.25 0.25 0.25 0.25 0.25 0.25] # Large massives
     params.bleaching_sensitivity = bleaching_sensitivity'[:]
 
     # Get perturbable coral parameters
