@@ -40,11 +40,11 @@ using ADRIA
     # check each size class parameter matches that stored for it's size class
     for i = 1:6
         # check growth rate
-        @test all(stored_growth_rate[coral_params.class_id.==i] .== growth_rates[:, i]) || string("Growth rates incorrect for size class ", string(i), ".")
+        @test all(stored_growth_rate[coral_params.class_id.==i] .== growth_rates[:, i]) || "Growth rates incorrect for size class $i ."
         # check background mortality
-        @test all(stored_mb_rate[coral_params.class_id.==i] .== mb[:, i]) || string("Background mortality rates incorrect for size class ", string(i), ".")
+        @test all(stored_mb_rate[coral_params.class_id.==i] .== mb[:, i]) || "Background mortality rates incorrect for size class $i."
         # check bleaching sensitivity
-        @test all(stored_bleaching_sensitivity[coral_params.class_id.==i] .== bleaching_sensitivity[:, i]) || string("Bleaching sensitivity incorrect for size class ", string(i), ".")
+        @test all(stored_bleaching_sensitivity[coral_params.class_id.==i] .== bleaching_sensitivity[:, i]) || "Bleaching sensitivity incorrect for size class $i."
     end
 
     # check all growth rates are <=1 and >0
@@ -58,9 +58,9 @@ using ADRIA
     # check coral mortalities and growth rates decrease with increasing size class
     for j = 1:5
         # check growth rate
-        @test all(stored_growth_rate[coral_params.class_id.==j] .>= stored_growth_rate[coral_params.class_id.==j+1]) || string("Growth rates for size class ", string(j), " is less than that for size class ", string(j + 1), ".")
+        @test all(stored_growth_rate[coral_params.class_id.==j] .>= stored_growth_rate[coral_params.class_id.==j+1]) || "Growth rates for size class $j is less than that for size class $(j + 1)."
         # check background mortality
-        @test all(stored_mb_rate[coral_params.class_id.==j] .>= stored_mb_rate[coral_params.class_id.==j+1]) || string("Background mortality rates for size class ", string(j), " is less than that for size class ", string(j + 1), ".")
+        @test all(stored_mb_rate[coral_params.class_id.==j] .>= stored_mb_rate[coral_params.class_id.==j+1]) || "Background mortality rates for size class $j is less than that for size class $(j + 1)."
     end
 
     bin_edges_cm = [0, 2, 5, 10, 20, 40, 80]
@@ -69,8 +69,8 @@ using ADRIA
 
     # check colony areas in cm^2 are within bounds designated by bin edges
     for k = 1:6
-        @test all(stored_colony_mean_areas[coral_params.class_id.==k] .>= bin_edge_diameters_cm2[k]) || string("Some colony areas for size class ", string(k), " are larger than the size class upper bound.")
-        @test all(stored_colony_mean_areas[coral_params.class_id.==k] .>= bin_edge_diameters_cm2[k]) || string("Some colony areas for size class ", string(k), " are smaller than the size class lower bound.")
+        @test all(stored_colony_mean_areas[coral_params.class_id.==k] .>= bin_edge_diameters_cm2[k]) || "Some colony areas for size class $k are larger than the size class upper bound."
+        @test all(stored_colony_mean_areas[coral_params.class_id.==k] .>= bin_edge_diameters_cm2[k]) || "Some colony areas for size class $k are smaller than the size class lower bound."
     end
 end
 
