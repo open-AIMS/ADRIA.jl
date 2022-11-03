@@ -2,6 +2,77 @@ using Test
 using Distributions
 using ADRIA
 
+@testset "Coral Spec" begin
+
+    linear_extension = Array{Float64,2}([
+        1 3 3 4.4 4.4 4.4   # Tabular Acropora Enhanced
+        1 3 3 4.4 4.4 4.4   # Tabular Acropora Unenhanced
+        1 3 3 3 3 3         # Corymbose Acropora Enhanced
+        1 3 3 3 3 3         # Corymbose Acropora Unenhanced
+        1 1 1 1 0.8 0.8     # small massives
+        1 1 1 1 1.2 1.2])   # large massives
+
+    bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
+
+    growth_rates = min.((2 * linear_extension) ./ bin_widths, 1.0) # growth rates as calculated without growth_rate(), maintaining species x size_class structure
+
+    mb = Array{Float64,2}([
+        0.20 0.19 0.15 0.098 0.098 0.098    # Tabular Acropora Enhanced
+        0.20 0.19 0.15 0.098 0.098 0.098    # Tabular Acropora Unenhanced
+        0.20 0.17 0.12 0.088 0.088 0.088    # Corymbose Acropora Enhanced
+        0.20 0.17 0.12 0.088 0.088 0.088    # Corymbose Acropora Unenhanced
+        0.20 0.10 0.04 0.030 0.020 0.020    # Small massives and encrusting
+        0.20 0.10 0.04 0.030 0.020 0.020])   # Large massives
+
+    bleaching_sensitivity = Float64[
+        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Enhanced (assumed same as Corymbose)
+        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Unenhanced
+        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Enhanced
+        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Unenhanced
+        0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
+        0.25 0.25 0.25 0.25 0.25 0.25] # Large massives
+
+    coral_params = ADRIA.coral_spec().params
+    stored_growth_rate = coral_params.growth_rate
+    stored_mb_rate = coral_params.mb_rate
+    stored_bleaching_sensitivity = coral_params.bleaching_sensitivity
+
+    # check each size class parameter matches that stored for it's size class
+    for i = 1:6
+        # check growth rate
+        @test all(stored_growth_rate[coral_params.class_id.==i] .== growth_rates[:, i]) || "Growth rates incorrect for size class $i ."
+        # check background mortality
+        @test all(stored_mb_rate[coral_params.class_id.==i] .== mb[:, i]) || "Background mortality rates incorrect for size class $i."
+        # check bleaching sensitivity
+        @test all(stored_bleaching_sensitivity[coral_params.class_id.==i] .== bleaching_sensitivity[:, i]) || "Bleaching sensitivity incorrect for size class $i."
+    end
+
+    # check all growth rates are <=1 and >0
+    @test all(stored_growth_rate .<= 1.0) || "Some coral growth rates are >1."
+    @test all(stored_growth_rate .> 0.0) || "Some coral growth rates are <=0"
+
+    # check all background mortalities are <=1 and >0
+    @test all(stored_mb_rate .<= 1.0) || "Some coral background mortality rates are >1."
+    @test all(stored_mb_rate .> 0.0) || "Some coral background mortality rates are <=0"
+
+    # check coral mortalities and growth rates decrease with increasing size class
+    for j = 1:5
+        # check growth rate
+        @test all(stored_growth_rate[coral_params.class_id.==j] .>= stored_growth_rate[coral_params.class_id.==j+1]) || "Growth rates for size class $j is less than that for size class $(j + 1)."
+        # check background mortality
+        @test all(stored_mb_rate[coral_params.class_id.==j] .>= stored_mb_rate[coral_params.class_id.==j+1]) || "Background mortality rates for size class $j is less than that for size class $(j + 1)."
+    end
+
+    bin_edges_cm = [0, 2, 5, 10, 20, 40, 80]
+    bin_edge_diameters_cm2 = pi .* (bin_edges ./ 2) .^ 2
+    stored_colony_mean_areas = coral_params.colony_area_cm2
+
+    # check colony areas in cm^2 are within bounds designated by bin edges
+    for k = 1:6
+        @test all(stored_colony_mean_areas[coral_params.class_id.==k] .>= bin_edge_diameters_cm2[k]) || "Some colony areas for size class $k are larger than the size class upper bound."
+        @test all(stored_colony_mean_areas[coral_params.class_id.==k] .>= bin_edge_diameters_cm2[k]) || "Some colony areas for size class $k are smaller than the size class lower bound."
+    end
+end
 
 @testset "Fecundity" begin
     fec_groups = zeros(6, 216)

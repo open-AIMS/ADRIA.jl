@@ -310,11 +310,10 @@ function coral_spec()::NamedTuple
     # coral sizes are evenly distributed within each bin
 
     bin_widths = Float64[2, 3, 5, 10, 20, 40]  # These bin widths have to line up with values in colony_areas()
-    diam_bin_widths = repeat(bin_widths, n_classes, 1)
 
     # Second, growth as transitions of cover to higher bins is estimated as
     # rate of growth per year
-    params.growth_rate .= growth_rate(linear_extension, diam_bin_widths)
+    params.growth_rate .= growth_rate(linear_extension, bin_widths)
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
@@ -360,12 +359,12 @@ function coral_spec()::NamedTuple
     # Bleaching sensitivity of each coral group
     # Bozec et al., (2022)
     bleaching_sensitivity = Float64[
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Tabular Acropora Enhanced (assumed same as Corymbose)
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Tabular Acropora Unenhanced
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Corymbose Acropora Enhanced
-        1.4, 1.4, 1.4, 1.4, 1.4, 1.4,  # Corymbose Acropora Unenhanced
-        0.25, 0.25, 0.25, 0.25, 0.25, 0.25,  # Small massives and encrusting
-        0.25, 0.25, 0.25, 0.25, 0.25, 0.25] # Large massives
+        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Enhanced (assumed same as Corymbose)
+        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Unenhanced
+        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Enhanced
+        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Unenhanced
+        0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
+        0.25 0.25 0.25 0.25 0.25 0.25] # Large massives
     params.bleaching_sensitivity = bleaching_sensitivity'[:]
 
     # Get perturbable coral parameters
