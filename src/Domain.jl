@@ -35,6 +35,7 @@ mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame
     const out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strongpred::I  # strongest predecessor
     site_data::D   # table of site data (depth, carrying capacity, etc)
+    site_distances::Z # matrix of unique distances between sites
     const site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
     const unique_site_id_col::S  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
@@ -71,7 +72,7 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedM
 
     model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
     sim_constants::SimConstants = SimConstants()
-    return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
+    return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_dists, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)
 end
@@ -132,6 +133,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     site_data = site_data[coalesce.(in.(conn_ids, [site_conn.site_ids]), false), :]
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
+    site_dists::Matrix{Float64} = site_distances(site_data)
     n_sites::Int64 = coral_growth.n_sites
 
     loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
@@ -168,7 +170,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
     return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.in_conn, conns.out_conn, conns.strongest_predecessor,
-        site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
+        site_data, site_dists, site_id_col, unique_site_id_col, coral_cover, coral_growth,
         site_conn.site_ids, site_conn.truncated, dhw, waves)
 end
 
@@ -337,6 +339,10 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
 end
 
 
+"""
+    site_distance(site_data::DataFrame)::Matrix
+
+Calculate matrix of unique distances between sites.
 """
     component_params(m::Model, component::Type)::DataFrame
     component_params(spec::DataFrame, component::Type)::DataFrame
