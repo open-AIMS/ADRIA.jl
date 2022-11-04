@@ -1,3 +1,5 @@
+using NCDatasets
+
 """
     EnvLayer{S, TF}
 
@@ -138,24 +140,33 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
         dhw::NamedArray = loader(dhw_fn, "dhw"::String)
+    elseif endswith(dhw_fn, ".nc")
+        dhw = load_env_data(dhw_fn, "dhw", n_sites)
     else
-        dhw = NamedArray(zeros(74, n_sites, 50))
+        dhw = NamedArray(zeros(length(timeframe), n_sites, 50))
     end
 
     if endswith(wave_fn, ".mat")
         waves::NamedArray = loader(wave_fn, "wave"::String)
+    elseif endswith(wave_fn, ".nc")
+        waves = load_env_data(dhw_fn, "Ub", n_sites)
     else
-        waves = NamedArray(zeros(74, n_sites, 50))
+        waves = NamedArray(zeros(length(timeframe), n_sites, 50))
     end
 
     if endswith(init_coral_fn, ".mat")
         coral_cover::NamedArray = loader(init_coral_fn, "covers"::String)
+    elseif endswith(init_coral_fn, ".nc")
+        coral_cover = load_covers(init_coral_fn, "covers", n_sites)
     else
         @warn "Using random initial coral cover"
         coral_cover = NamedArray(rand(coral_growth.n_species, n_sites))
     end
 
-    @assert length(timeframe) == size(dhw, 1) == size(waves, 1) "Provided time frame must match timesteps in DHW and wave data"
+    msg = "Provided time frame must match timesteps in DHW and wave data"
+    msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
+
+    @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
     return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.in_conn, conns.out_conn, conns.strongest_predecessor,
         site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
@@ -292,6 +303,99 @@ end
 
 
 """
+    load_nc_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
+
+Load netCDF data as a NamedArray.
+"""
+function load_nc_data(data_fn::String, attr::String, check_sites::Int)::NamedArray
+    local loaded::NamedArray
+
+    ds = Dataset(data_fn, "r")
+    data = ds[attr][:, :]
+    close(ds)
+
+    try
+        loaded = NamedArray(data)
+    catch err
+        if isa(err, KeyError)
+            @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, members)."
+            if n_sites != check_sites
+                error("Mismatch in number of sites ($(data_fn)). Expected $(check_sites), got $(n_sites)")
+            end
+        else
+            rethrow(err)
+        end
+    end
+
+    return loaded
+end
+
+"""
+    _char_to_string(vals)::Vector{String}
+
+Convert character array entries in netCDFs to string.
+"""
+function _char_to_string(vals)::Vector{String}
+    if vals isa Matrix
+        vals = map(x -> join(skipmissing(x)), eachcol(vals))
+    end
+
+    # R's ncdf4 package does not yet support string values
+    # so strip the null terminator from the joined character array.
+    vals = replace.(vals, "\0" => "")
+
+    return vals
+end
+
+
+"""
+    load_covers(data_fn::String, attr::String, check_sites::Int)::NamedArray
+
+Load initial coral cover data from netCDF.
+"""
+function load_covers(data_fn::String, attr::String, check_sites::Int)::NamedArray
+    data = load_nc_data(data_fn, attr, check_sites)
+
+    ds = Dataset(data_fn, "r")
+    site_order = string.(ds["reef_siteid"][:])
+    close(ds)
+
+    site_order = _char_to_string(site_order)
+
+    # Attach site names to each column
+    setnames!(data, site_order, 2)
+    setdimnames!(data, :species, 1)
+    setdimnames!(data, :sites, 2)
+
+    return data
+end
+
+
+"""
+    load_env_data(data_fn::String, attr::String, check_sites::Int)::NamedArray
+
+Load environmental data layers (DHW, Wave) from netCDF.
+"""
+function load_env_data(data_fn::String, attr::String, check_sites::Int)::NamedArray
+    data = load_nc_data(data_fn, attr, check_sites)
+
+    ds = Dataset(data_fn, "r")
+    site_order = string.(ds["reef_siteid"][:])
+    close(ds)
+
+    site_order = _char_to_string(site_order)
+
+    # Attach dimension names
+    setnames!(data, site_order, 2)
+    setdimnames!(data, :timesteps, 1)
+    setdimnames!(data, :sites, 2)
+    setdimnames!(data, :scenarios, 3)
+
+    return data
+end
+
+
+"""
     component_params(m::Model, component::Type)::DataFrame
     component_params(spec::DataFrame, component::Type)::DataFrame
 
@@ -306,8 +410,6 @@ end
 function component_params(spec::DataFrame, components::Array{Type})::DataFrame
     return spec[spec.component.∈replace.(string.(components), "ADRIA." => ""), :]
 end
-
-
 
 
 """
@@ -417,25 +519,25 @@ end
 
 """Get the path to the DHW data associated with the domain."""
 function get_DHW_data(d::Domain, RCP::String)
-    return joinpath(d.env_layer_md.dpkg_path, "DHWs", "dhwRCP$(RCP).mat")
+    return joinpath(d.env_layer_md.dpkg_path, "DHWs", "dhwRCP$(RCP).nc")
 end
 
 """Get the path to the wave data associated with the domain."""
 function get_wave_data(d::Domain, RCP::String)
-    return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).mat")
+    return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).nc")
 end
 
 
-function switch_RCPs!(d::Domain, RCP::String)
+function switch_RCPs!(d::Domain, RCP::String)::Domain
     d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
     d.env_layer_md.wave_fn = get_wave_data(d, RCP)
     d.RCP = RCP
 
     n_sites::Int64 = d.coral_growth.n_sites
-    loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
+    loader = (fn::String, attr::String) -> load_env_data(fn, attr, n_sites)
 
     @set! d.dhw_scens = loader(d.env_layer_md.DHW_fn, "dhw")
-    @set! d.wave_scens = loader(d.env_layer_md.wave_fn, "wave")
+    @set! d.wave_scens = loader(d.env_layer_md.wave_fn, "Ub")
 
     return d
 end

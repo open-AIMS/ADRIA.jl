@@ -79,11 +79,11 @@ function load_domain(path::String, rcp::String)::Domain
     site_data::String = joinpath(path, "site_data")
 
     site_path::String = joinpath(site_data, "$(domain_name).gpkg")
-    init_coral_cov::String = joinpath(site_data, "coral_cover.mat")
+    init_coral_cov::String = joinpath(site_data, "coral_cover.nc")
 
     if !isempty(rcp)
-        dhw::String = joinpath(path, "DHWs", "dhwRCP$(rcp).mat")
-        wave::String = joinpath(path, "waves", "wave_RCP$(rcp).mat")
+        dhw::String = joinpath(path, "DHWs", "dhwRCP$(rcp).nc")
+        wave::String = joinpath(path, "waves", "wave_RCP$(rcp).nc")
     else
         dhw = ""
         wave = ""
