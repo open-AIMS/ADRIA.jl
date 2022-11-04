@@ -1,6 +1,8 @@
 """Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
 
 using StatsBase
+using Distances
+using Combinatorics
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
@@ -18,6 +20,9 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     area  # ::M
     min_area # ::F
     risktol  # ::F
+    dist # ::M
+    dist_thresh # ::Float64
+    top_n # ::Int64
     wtinconnseed  # ::F
     wtoutconnseed  # ::F
     wtconshade  # ::F
@@ -49,6 +54,7 @@ function mcda_normalize(x::Matrix)::Matrix
     return x ./ sqrt.(sum(x .^ 2, dims=1))
 end
 
+
 """
     align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 
@@ -78,7 +84,7 @@ end
 # Returns
 prefsites : sites in order of their rankings
 """
-function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vector
+function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
     selector = vec(.!all(S[:, 2:end] .== 0, dims=1))
 
@@ -97,12 +103,13 @@ function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vecto
     # Match by site_id and assign rankings to log
     align_rankings!(rankings, s_order, rank_col)
 
-    return prefsites
+    return prefsites, s_order
 end
-function rank_seed_sites!(S, weights, rankings, nsiteint, mcda_func)::Vector
+
+function rank_seed_sites!(S, weights, rankings, nsiteint, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     rank_sites!(S, weights, rankings, nsiteint, mcda_func, 2)
 end
-function rank_shade_sites!(S, weights, rankings, nsiteint, mcda_func)::Vector
+function rank_shade_sites!(S, weights, rankings, nsiteint, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     rank_sites!(S, weights, rankings, nsiteint, mcda_func, 3)
 end
 
@@ -409,13 +416,13 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     if log_seed && isempty(SE)
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
-        prefseedsites = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
+        prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
     end
 
     if log_shade && isempty(SH)
         prefshadesites = repeat([0], nsiteint)
     elseif log_shade
-        prefshadesites = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
+        prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
@@ -426,10 +433,64 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     if sum(prefshadesites) == 0
         rankings[:, 3] .= rankingsin[:, 3]
     end
+    #Main.@infiltrate
+    dist = d_vars.dist
+    dist_thresh = d_vars.dist_thresh
+    top_n = d_vars.top_n
+    Main.@infiltrate
+    #distance_sorting(prefseedsites, s_order_seed[:,1], dist, dist_thresh, top_n)
+    #distance_sorting!(prefshadesites, s_order_shade[:,1],, dist, dist_thresh, top_n)
 
     return prefseedsites, prefshadesites, rankings
 end
 
+"""
+function distance_sorting(dist, ranks, prefsites, dist_thresh, top_n)
+
+Find selected sites with distances between each other< median distance-dist_thresh*(median distance).
+Replaces these sites with sites in the top_n ranks if the distance between these sites is greater.
+
+# Arguments
+- site_order : current order of ranked sites in terms of numerical site ID.
+- prefsites : original n highest ranked sites selected for seeding or shading.
+- dist : Matrix of unique distances between sites.
+- dist_thresh : threshold for minimum deviance below the median distance between sites for selected sites.
+- top_n : number of top ranked sites to re-select from.
+
+# Returns
+- prefsites : new set of selected sites for seeding or shading.
+"""
+function distance_sorting(prefsites::AbstractArray{Int}, site_order::Vector{Union{Float64,Int64}}, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
+    #site_order_store = site_order
+    left_over_sites = setdiff(site_order, prefsites)
+    min_dist = median(dist[.!isnan.(dist)]) - dist_thresh * median(dist[.!isnan.(dist)])
+
+    # find all selected sites closer than the min distance
+    pref_dists = findall(dist[prefsites, prefsites] .< min_dist)
+    inds = unique(reinterpret(Int64, pref_dists))
+
+    # select the same number of sites from the highest ranks of unselected sites
+    select_ind = min(length(inds), top_n)
+    alts = left_over_sites[1:select_ind]
+
+    # find all sites within these highly ranked but unselected sites which are further apart
+    alt_dists = findall(dist[alts, alts] .> maximum(dist[prefsites[inds], prefsites[inds]]))
+    inds_alt = unique(reinterpret(Int64, alt_dists))
+
+    # select these further apart sites as replacements
+    rep_sites = alts[inds_alt]
+
+    # remove sites from ranks being used
+    setdiff!(site_order, prefsites[inds[inds_alt]])
+    # remove from preferred sites
+    setdiff!(prefsites, prefsites[inds[inds_alt]])
+    # replace with identified further apat sites
+    prefsites = vcat(prefsites, rep_sites)
+    # reassign left over sites
+    left_over_sites = setdiff(site_order, prefsites)
+
+    return prefsites
+end
 
 """
     order_ranking(S::Array{Float64, 2})
