@@ -330,6 +330,23 @@ function load_nc_data(data_fn::String, attr::String, check_sites::Int)::NamedArr
     return loaded
 end
 
+"""
+    _char_to_string(vals)::Vector{String}
+
+Convert character array entries in netCDFs to string.
+"""
+function _char_to_string(vals)::Vector{String}
+    if vals isa Matrix
+        vals = map(x -> join(skipmissing(x)), eachcol(vals))
+    end
+
+    # R's ncdf4 package does not yet support string values
+    # so strip the null terminator from the joined character array.
+    vals = replace.(vals, "\0" => "")
+
+    return vals
+end
+
 
 """
     load_covers(data_fn::String, attr::String, check_sites::Int)::NamedArray
@@ -342,6 +359,8 @@ function load_covers(data_fn::String, attr::String, check_sites::Int)::NamedArra
     ds = Dataset(data_fn, "r")
     site_order = string.(ds["reef_siteid"][:])
     close(ds)
+
+    site_order = _char_to_string(site_order)
 
     # Attach site names to each column
     setnames!(data, site_order, 2)
@@ -363,6 +382,8 @@ function load_env_data(data_fn::String, attr::String, check_sites::Int)::NamedAr
     ds = Dataset(data_fn, "r")
     site_order = string.(ds["reef_siteid"][:])
     close(ds)
+
+    site_order = _char_to_string(site_order)
 
     # Attach dimension names
     setnames!(data, site_order, 2)
@@ -389,8 +410,6 @@ end
 function component_params(spec::DataFrame, components::Array{Type})::DataFrame
     return spec[spec.component.∈replace.(string.(components), "ADRIA." => ""), :]
 end
-
-
 
 
 """
@@ -509,7 +528,7 @@ function get_wave_data(d::Domain, RCP::String)
 end
 
 
-function switch_RCPs!(d::Domain, RCP::String)
+function switch_RCPs!(d::Domain, RCP::String)::Domain
     d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
     d.env_layer_md.wave_fn = get_wave_data(d, RCP)
     d.RCP = RCP
