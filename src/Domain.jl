@@ -518,7 +518,7 @@ function switch_RCPs!(d::Domain, RCP::String)
     loader = (fn::String, attr::String) -> load_env_data(fn, attr, n_sites)
 
     @set! d.dhw_scens = loader(d.env_layer_md.DHW_fn, "dhw")
-    @set! d.wave_scens = loader(d.env_layer_md.wave_fn, "wave")
+    @set! d.wave_scens = loader(d.env_layer_md.wave_fn, "Ub")
 
     return d
 end
