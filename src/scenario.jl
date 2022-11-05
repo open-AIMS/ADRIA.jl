@@ -219,6 +219,10 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
+    vals .= juveniles(r_raw, site_k_area(domain))
+    vals[vals.<threshold] .= 0.0
+    data_store.juveniles[:, :, idx] .= vals
+
     # Store raw results if no metrics specified
     # if length(metrics) == 0
     #     data_store.raw[:, :, :, idx] .= r.raw
