@@ -213,10 +213,20 @@ function _juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     # Cover of juvenile corals (< 5cm diameter)
     juv_groups::AbstractArray{<:Real} = X[species=cs_p.class_id .== 1] .+ X[species=cs_p.class_id .== 2]
 
+    cs1_idx = cs_p.class_id .== 1
+    cs2_idx = cs_p.class_id .== 2
+    cs1 = X[:, cs1_idx, :] ./ ((cs_p[cs1_idx, "colony_area_cm2"] ./ 10^4) * 51.8)'
+    cs2 = X[:, cs2_idx, :] ./ ((cs_p[cs2_idx, "colony_area_cm2"] ./ 10^4) * 51.8)'
+
+    # juv_groups
+    # 51.8*(π*())
+    # cs_p[cs_p.class_id .== 2, "colony_area_cm2"] / 10^4
+    # Main.@infiltrate
+
     return dropdims(sum(juv_groups, dims=:species), dims=:species)
 end
 function _juveniles(rs::ResultSet)::AbstractArray{<:Real}
-    return _juveniles(rs.raw)
+    return _juveniles(rs.raw, rs.site_area)
 end
 
 
@@ -544,7 +554,7 @@ function _reef_condition_index(rc::AbstractArray{<:Real}, E::AbstractArray{<:Rea
     # Compare outputs against reef condition criteria provided by experts
 
     # These are median values for 7 experts. TODO: draw from distributions
-    #  Condition        TC       E       SV      Juv
+    #  Condition        RC       E       SV      Juv
     # {'VeryGood'}      0.45     0.45    0.45    0.35
     # {'Good'    }      0.35     0.35    0.35    0.25
     # {'Fair'    }      0.25     0.25    0.30    0.25
