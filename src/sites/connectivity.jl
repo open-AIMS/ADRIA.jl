@@ -35,9 +35,9 @@ NamedTuple:
     site_connectivity("MooreTPmean.csv", site_order; con_cutoff=0.02, agg_func=mean, swap=true)
 ```
 """
-function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, String}}, unique_site_ids::Vector{String}, site_order::Vector{Union{Missing, Int64}}; 
+function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing,String}}, unique_site_ids::Vector{String}, site_order::Vector{Union{Missing,Int64}};
     con_cutoff::Float64=0.01, agg_func::Function=mean, swap::Bool=false)::NamedTuple
-    
+
     # Remove any row marked as missing
     if any(ismissing.(conn_ids))
         @warn "Removing entries marked as `missing` from provided list of sites."
@@ -112,7 +112,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, Str
 
         # Fill missing values with 0.0
         TP_base = copy(con_file1)
-        tmp::Matrix{Union{Missing, Float64}} = agg_func(cat(map(Matrix, con_data), dims=3))
+        tmp::Matrix{Union{Missing,Float64}} = agg_func(cat(map(Matrix, con_data), dims=3))
 
         TP_base[:, :] .= coalesce.(tmp, 0.0)
     else
@@ -126,7 +126,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing, Str
     if con_cutoff > 0.0
         tmp = coalesce.(Matrix(TP_base), 0.0)
         # max_cutoff = maximum(tmp) * con_cutoff
-        tmp[tmp .< con_cutoff] .= 0.0
+        tmp[tmp.<con_cutoff] .= 0.0
         TP_base[:, :] .= tmp
     end
 
