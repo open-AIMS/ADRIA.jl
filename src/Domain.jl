@@ -133,7 +133,8 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     site_data = site_data[coalesce.(in.(conn_ids, [site_conn.site_ids]), false), :]
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
-    site_dists::Matrix{Float64} = site_distances(site_data)
+    site_dists::Matrix{Float64} = zeros(coral_growth.n_sites, coral_growth.n_sites)
+    #site_distances(site_data)
     n_sites::Int64 = coral_growth.n_sites
 
     loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
