@@ -58,8 +58,9 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing,Stri
     end
 
     # Get site ids from first file
-    con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap)
-    con_site_ids::Vector{String} = string.(con_file1[:, "source_site"])  # names(con_file1)[2:end]
+    # We skip the first column (with drop=[1]) as this is the source site index column
+    con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap, types=Float64, drop=[1])
+    con_site_ids::Vector{String} = names(con_file1)
     con_site_ids = [x[1] for x in split.(con_site_ids, "_v"; limit=2)]
 
     # Get IDs missing in con_site_ids
@@ -75,10 +76,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing,Stri
     # Align IDs
     conn_ids = coalesce(conn_ids[valid_idx])
     unique_site_ids = coalesce(unique_site_ids[valid_idx])
-    site_order = coalesce(site_order[valid_idx])
-
-    # Use marked missing elements array to align unique_id and site_order list
-    # ...
+    site_order = [findfirst(c_id .== con_site_ids) for c_id in conn_ids]
 
     if length(invalid_ids) > 0
         if length(invalid_ids) >= length(con_site_ids)
@@ -96,9 +94,10 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing,Stri
     # align_df = (target_df) -> target_df[indexin(conn_ids, names(target_df)) .- 1, conn_ids]
 
     # Recreate Dataframe, duplicating rows/cols by indicated order of unique sites
-    # We skip the first column (with `2:end`) as this is the source site index column
-    align_df = (df) -> DataFrame(Dict(c => v for (c, v) in 
-                        zip(unique_site_ids, eachcol(Matrix(df[:, 2:end])[site_order, site_order]))))
+
+    # Align df with order given by conn_ids and attach unique reef_siteid
+    align_df = (df) -> DataFrame(Dict(c => v for (c, v) in
+                                      zip(unique_site_ids, eachcol(Matrix(df)[site_order, site_order]))))
 
     # Reorder all data into expected form
     con_file1 = align_df(con_file1)
@@ -106,7 +105,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing,Stri
         # More than 1 file, so read all these in
         con_data = [con_file1]
         for cf in con_files[2:end]
-            df = CSV.read(cf, DataFrame, comment="#", missingstring=["NA"], transpose=swap)
+            df = CSV.read(cf, DataFrame, comment="#", missingstring=["NA"], transpose=swap, types=Float64, drop=[1])
             push!(con_data, align_df(df))
         end
 
