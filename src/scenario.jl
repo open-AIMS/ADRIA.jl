@@ -533,16 +533,18 @@ function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, 
         site_coral_cover = sum(Y_pstep, dims=1)  # dims: nsites * 1
         absolute_site_coral_cover = site_coral_cover .* total_site_area  # in m²
         leftover_space_m² = max.(absolute_k_area .- absolute_site_coral_cover, 0.0)
-
         leftover_space_prop = max.(max_cover' .- site_coral_cover, 0.0)
 
+        # basal_area_per_settler is the area in m^2 of a size class one coral 
+        basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==6] ./ (100) .^ 2
+
         area_settled = settler_cover(fec_scope, sf, TP_data, leftover_space_prop,
-            sim_params.max_settler_density, sim_params.basal_area_per_settler)
+            sim_params.max_settler_density, basal_area_per_settler)
 
         # Recruitment should represent additional cover, relative to total site area
         # Gets used in ODE
         # p.rec[:, :] .= (area_settled ./ total_site_area)
-        p.rec[:, :] .= replace((area_settled ./ absolute_k_area), Inf => 0.0, NaN => 0.0)
+        p.rec[:, :] .= replace(area_settled, Inf => 0.0, NaN => 0.0)
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
