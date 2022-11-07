@@ -53,7 +53,7 @@ end
 
 
 include("site_selection.jl")
-include("connectivity.jl")
+include("data_loading.jl")
 include("seeding.jl")
 include("metrics.jl")
 include("growth.jl")
