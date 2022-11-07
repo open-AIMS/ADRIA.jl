@@ -1,3 +1,6 @@
+using NamedArrays
+
+
 """
     site_connectivity(file_loc, site_order; con_cutoff=0.02, agg_func=mean, swap=false)::NamedTuple
 
@@ -118,7 +121,8 @@ function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_si
         TP_base[:, :] .= tmp
     end
 
-    @assert all(0.0 .<= Matrix(TP_base) .<= 1.0) "Connectivity data not scaled between 0 - 1"
+    TP_base = NamedArray(Matrix{Float32}(TP_base), (unique_site_ids, unique_site_ids), ("Source", "Receiving"))
+    @assert all(0.0 .<= TP_base .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
     return (TP_base=TP_base, truncated=invalid_ids, site_ids=conn_ids)
 end
@@ -141,7 +145,7 @@ end
 
 
 """
-    connectivity_strength(TP_base::DataFrame)::NamedTuple
+    connectivity_strength(TP_base::AbstractArray)::NamedTuple
 
 Generate array of outdegree connectivity strength for each node and its
 strongest predecessor.
@@ -152,9 +156,9 @@ NamedTuple:
 - out_conn : sites ranked by outgoing connectivity
 - strongest_predecessor : strongest predecessor for each site
 """
-function connectivity_strength(TP_base::DataFrame)::NamedTuple
+function connectivity_strength(TP_base::AbstractArray)::NamedTuple
 
-    g = SimpleDiGraph(Matrix(TP_base))
+    g = SimpleDiGraph(TP_base)
 
     # ew_base = weights(g)  # commented out ew_base are all equally weighted anyway...
 
