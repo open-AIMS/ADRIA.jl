@@ -196,7 +196,7 @@ Nothing
    https://doi.org/10.1038/s41586-018-0041-2
 """
 function bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
-    s::Vector{Float64}, dhw::Vector{Float64}, a_adapt::Vector{Float64}, n_adapt::Float64)::Nothing
+    s::Vector{Float64}, dhw::Vector{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
 
     # Incorporate adaptation effect but maximum reduction is to 0
     ad::Array{Float64} = a_adapt .+ (tstep .* n_adapt)
