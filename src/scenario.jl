@@ -189,18 +189,14 @@ end
 
 
 """
-    run_scenario(domain::Domain; idx=1, dhw=1, wave=1, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
+    run_direct(domain, cache)
 
-Convenience function to directly run a scenario for a Domain with pre-set values.
+Run coral model directly with pre-set model values and provided cache.
 
-Stores results on disk in Zarr format at pre-configured location.
-
-# Notes
-Logs of site ranks only store the mean site rankings over all environmental scenarios.
-This is to reduce the volume of data stored.
+# Returns
+NamedTuple of collated results
 """
-function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_store::NamedTuple, cache::NamedTuple)
-
+function run_direct(domain::Domain, cache::NamedTuple)::NamedTuple
     # Extract non-coral parameters
     df = DataFrame(domain.model)
     not_coral_params = df[!, :component] .!== Coral
@@ -213,13 +209,36 @@ function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_
     all_dhws = Array{Float64}(domain.dhw_scens)
     all_waves = Array{Float64}(domain.wave_scens)
 
-    result_set = run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
+    # Extract DHW/Wave IDs
+    dhw = param_set.dhw_scenario
+    wave = param_set.wave_scenario
+
+    results = run_model(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
         domain.coral_growth.ode_p,
         all_dhws[:, :, dhw], all_waves[:, :, wave], cache)
 
+    return results
+end
+
+
+"""
+    run_scenario(domain::Domain; idx=1, dhw=1, wave=1, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
+
+Convenience function to directly run a scenario for a Domain with pre-set values.
+
+Stores results on disk in Zarr format at pre-configured location.
+
+# Notes
+Logs of site ranks only store the mean site rankings over all environmental scenarios.
+This is to reduce the volume of data stored.
+"""
+function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_store::NamedTuple, cache::NamedTuple)
+
+    result_set = run_direct(domain, cache)
+
     # Capture results to disk
     # Set values below threshold to 0 to save space
-    tf = size(all_dhws, 1)
+    tf = size(domain.dhw_scens, 1)
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
     tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
@@ -287,7 +306,7 @@ function run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
     wave_rep_id = param_set.wave_scenario
 
     cache = setup_cache(domain)
-    return run_scenario(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
+    return run_model(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
         domain.coral_growth.ode_p,
         Matrix{Float64}(domain.dhw_scens[:, :, dhw_rep_id]),
         Matrix{Float64}(domain.wave_scens[:, :, wave_rep_id]), cache)
@@ -301,15 +320,18 @@ function run_scenario(param_row::DataFrameRow, domain::Domain)::NamedTuple
 end
 
 """
-    run_scenario(domain, param_set, corals, sim_params, site_data, p::NamedTuple,
+    run_model(domain, param_set, corals, sim_params, site_data, p::NamedTuple,
                  dhw_scen::Array, wave_scen::Array, cache::NamedTuple)::NamedTuple
 
 Core scenario running function.
 
 # Notes
 Only the mean site rankings are kept
+
+# Returns
+NamedTuple of collated results
 """
-function run_scenario(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim_params::SimConstants, site_data::DataFrame,
+function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim_params::SimConstants, site_data::DataFrame,
     p::NamedTuple, dhw_scen::Matrix{Float64},
     wave_scen::Matrix{Float64}, cache::NamedTuple)::NamedTuple
 
