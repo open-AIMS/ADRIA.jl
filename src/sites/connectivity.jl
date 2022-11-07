@@ -8,32 +8,29 @@ NOTE: Transposes transitional probability matrix if `swap == true`
       If multiple files are read in, this assumes all file rows/cols
       follow the same order as the first file read in.
 
-
-# Arguments
-file_loc   : str, path to data file (or datasets) to load.
-                If a folder, searches subfolders as well.
-conn_ids : Vector, of connectivity IDs indicating order
-                of TP values
-unique_ids : Vector, of unique site ids
-site_order : Vector, of indices mapping duplicate conn_ids to their unique ID positions
-con_cutoff : float, percent thresholds of max for weak connections in
-                network (defined by user or defaults in simConstants)
-agg_func   : function_handle, defaults to `mean`.
-swap       : boolean, whether to transpose data.
-
-
-# Returns
-NamedTuple:
-    TP_data : DataFrame, containing the transition probability for all sites
-    truncated : ID of sites removed
-    site_ids : ID of sites kept
-
-
 # Examples
 ```julia
     site_connectivity("MooreTPmean.csv", site_order)
     site_connectivity("MooreTPmean.csv", site_order; con_cutoff=0.02, agg_func=mean, swap=true)
 ```
+
+# Arguments
+- file_loc : str, path to data file (or datasets) to load.
+               If a folder, searches subfolders as well.
+- conn_ids : Vector, of connectivity IDs indicating order
+              of TP values
+- unique_ids : Vector, of unique site ids
+- site_order : Vector, of indices mapping duplicate conn_ids to their unique ID positions
+- con_cutoff : float, percent thresholds of max for weak connections in
+                network (defined by user or defaults in simConstants)
+- agg_func : function_handle, defaults to `mean`.
+- swap : boolean, whether to transpose data.
+
+# Returns
+NamedTuple:
+- TP_data : Matrix, containing the transition probability for all sites
+- truncated : ID of sites removed
+- site_ids : ID of sites kept
 """
 function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing,String}}, unique_site_ids::Vector{String}, site_order::Vector{Union{Missing,Int64}};
     con_cutoff::Float64=0.01, agg_func::Function=mean, swap::Bool=false)::NamedTuple
