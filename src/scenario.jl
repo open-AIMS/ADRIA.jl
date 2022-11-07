@@ -74,7 +74,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain)::ResultSet
     @info "Running scenarios for RCPs: $(RCP_ids)"
     return run_scenarios(param_df, domain, RCP_ids::Array{String})
 end
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String)::ResultSet
+function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true)::ResultSet
     setup()
     parallel = (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
 
@@ -89,9 +89,17 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String)::Result
     if parallel
         @eval @everywhere using ADRIA
 
-        @showprogress run_msg 4 pmap(func, enumerate(eachrow(param_df)))
+        if show_progress
+            @showprogress run_msg 4 pmap(func, enumerate(eachrow(param_df)))
+        else
+            pmap(func, enumerate(eachrow(param_df)))
+        end
     else
-        @showprogress run_msg 1 map(func, enumerate(eachrow(param_df)))
+        if show_progress
+            @showprogress run_msg 4 map(func, enumerate(eachrow(param_df)))
+        else
+            map(func, enumerate(eachrow(param_df)))
+        end
     end
 
     return load_results(domain)
