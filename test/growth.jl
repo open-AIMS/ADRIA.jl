@@ -17,12 +17,12 @@ using ADRIA
     growth_rates = min.((2 * linear_extension) ./ bin_widths, 1.0) # growth rates as calculated without growth_rate(), maintaining species x size_class structure
 
     mb = Array{Float64,2}([
-        0.20 0.19 0.15 0.098 0.098 0.098    # Tabular Acropora Enhanced
-        0.20 0.19 0.15 0.098 0.098 0.098    # Tabular Acropora Unenhanced
-        0.20 0.17 0.12 0.088 0.088 0.088    # Corymbose Acropora Enhanced
-        0.20 0.17 0.12 0.088 0.088 0.088    # Corymbose Acropora Unenhanced
-        0.20 0.10 0.04 0.030 0.020 0.020    # Small massives and encrusting
-        0.20 0.10 0.04 0.030 0.020 0.020])   # Large massives
+        0.2 0.2 0.19 0.19 0.098 0.098    # Tabular Acropora Enhanced
+        0.2 0.2 0.19 0.19 0.098 0.098    # Tabular Acropora Unenhanced
+        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora Enhanced
+        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora Unenhanced
+        0.2 0.2 0.04 0.04 0.02 0.02    # Small massives and encrusting
+        0.2 0.2 0.04 0.04 0.02 0.02])   # Large massives
 
     bleaching_sensitivity = Float64[
         1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Enhanced (assumed same as Corymbose)
@@ -39,11 +39,10 @@ using ADRIA
 
     # check each size class parameter matches that stored for it's size class
     for i = 1:6
-        # check growth rate
         @test all(stored_growth_rate[coral_params.class_id.==i] .== growth_rates[:, i]) || "Growth rates incorrect for size class $i ."
-        # check background mortality
+
         @test all(stored_mb_rate[coral_params.class_id.==i] .== mb[:, i]) || "Background mortality rates incorrect for size class $i."
-        # check bleaching sensitivity
+
         @test all(stored_bleaching_sensitivity[coral_params.class_id.==i] .== bleaching_sensitivity[:, i]) || "Bleaching sensitivity incorrect for size class $i."
     end
 
@@ -57,14 +56,12 @@ using ADRIA
 
     # check coral mortalities and growth rates decrease with increasing size class
     for j = 1:5
-        # check growth rate
         @test all(stored_growth_rate[coral_params.class_id.==j] .>= stored_growth_rate[coral_params.class_id.==j+1]) || "Growth rates for size class $j is less than that for size class $(j + 1)."
-        # check background mortality
         @test all(stored_mb_rate[coral_params.class_id.==j] .>= stored_mb_rate[coral_params.class_id.==j+1]) || "Background mortality rates for size class $j is less than that for size class $(j + 1)."
     end
 
     bin_edges_cm = [0, 2, 5, 10, 20, 40, 80]
-    bin_edge_diameters_cm2 = pi .* (bin_edges ./ 2) .^ 2
+    bin_edge_diameters_cm2 = pi .* (bin_edges_cm ./ 2) .^ 2
     stored_colony_mean_areas = coral_params.colony_area_cm2
 
     # check colony areas in cm^2 are within bounds designated by bin edges
