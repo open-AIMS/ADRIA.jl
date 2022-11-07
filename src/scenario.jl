@@ -102,6 +102,8 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
         end
     end
 
+    _remove_workers()
+
     return load_results(domain)
 end
 function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String})::ResultSet
@@ -135,6 +137,8 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
             @eval @everywhere using ADRIA
 
             @showprogress msg 4 pmap(func, enumerate(eachrow(param_df)))
+
+            _remove_workers()
         else
             @showprogress msg 1 map(func, enumerate(eachrow(param_df)))
         end
