@@ -470,11 +470,12 @@ function distance_sorting(prefsites::AbstractArray{Int}, site_order::Vector{Unio
     inds = unique(reinterpret(Int64, pref_dists))
 
     # select the same number of sites from the highest ranks of unselected sites
-    select_ind = min(length(inds), top_n)
-    alts = left_over_sites[1:select_ind]
+    select_ind = length(inds)
+    alts = left_over_sites[1:top_n]
 
+    comp_dists = dist[prefsites[inds], prefsites[inds]]
     # find all sites within these highly ranked but unselected sites which are further apart
-    alt_dists = findall(dist[alts, alts] .> maximum(dist[prefsites[inds], prefsites[inds]]))
+    alt_dists = findall(dist[alts, alts] .> maximum(comp_dists[.!isnan.(comp_dists)]))
     inds_alt = unique(reinterpret(Int64, alt_dists))
 
     # select these further apart sites as replacements
