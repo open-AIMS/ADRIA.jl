@@ -346,7 +346,7 @@ end
 # Returns
 λ, coral recruitment for each coral taxa based on a Poisson distribution.
 """
-function recruitment_rate(larval_pool, A; α=2.5, β=5000.0)
+function recruitment_rate(larval_pool::AbstractArray{<:Real}, A::AbstractArray{<:Real}; α=2.5, β=5000.0)::AbstractArray{<:Real}
     sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
     sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
     return sd
@@ -386,7 +386,7 @@ end
 # Returns
 Area covered by recruited larvae (in m²)
 """
-function settler_cover(fec_scope, sf, TP_data, leftover_space, α, β, basal_area_per_settler)
+function settler_cover(fec_scope::AbstractArray{<:Real}, sf::AbstractArray{<:Real}, TP_data::AbstractArray{<:Real}, leftover_space, α, β, basal_area_per_settler)::AbstractArray{<:Real}
     # Send larvae out into the world
     actual_fecundity = (fec_scope .* sf)
 
