@@ -32,16 +32,8 @@ NamedTuple:
 - truncated : ID of sites removed
 - site_ids : ID of sites kept
 """
-function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing,String}}, unique_site_ids::Vector{String}, site_order::Vector{Union{Missing,Int64}};
+function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_site_ids::Vector{String};
     con_cutoff::Float64=0.01, agg_func::Function=mean, swap::Bool=false)::NamedTuple
-
-    # Remove any row marked as missing
-    if any(ismissing.(conn_ids))
-        @warn "Removing entries marked as `missing` from provided list of sites."
-        unique_site_ids::Vector{String} = String.(unique_site_ids[.!ismissing.(conn_ids)])
-        site_order = site_order[.!ismissing.(conn_ids)]
-        conn_ids::Vector{String} = String.(conn_ids[.!ismissing.(conn_ids)])
-    end
 
     if isdir(file_loc)
         con_files::Vector{String} = String[]
@@ -129,6 +121,22 @@ function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing,Stri
     @assert all(0.0 .<= Matrix(TP_base) .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
     return (TP_base=TP_base, truncated=invalid_ids, site_ids=conn_ids)
+end
+function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing,T}}, unique_site_ids::Vector{T};
+    con_cutoff::Float64=0.01, agg_func::Function=mean, swap::Bool=false)::NamedTuple where {T<:AbstractString}
+
+    # Remove any row marked as missing
+    if any(ismissing.(conn_ids))
+        @warn "Removing entries marked as `missing` from provided list of sites."
+        unique_site_ids::Vector{String} = String.(unique_site_ids[.!ismissing.(conn_ids)])
+        conn_ids::Vector{String} = String.(collect(skipmissing(conn_ids)))
+    else
+        unique_site_ids = String.(unique_site_ids)
+        conn_ids = String.(conn_ids)
+    end
+
+    return site_connectivity(file_loc, conn_ids, unique_site_ids;
+        con_cutoff=con_cutoff, agg_func=agg_func, swap=swap)
 end
 
 
