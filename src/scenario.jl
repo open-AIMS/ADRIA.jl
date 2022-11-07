@@ -344,7 +344,7 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
 
     tspan::Tuple = (0.0, 1.0)
-    solver::RK4 = RK4()
+    solver::BS3 = BS3()
 
     MCDA_approach::Int64 = param_set.guided
 
@@ -554,6 +554,7 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
 
     absolute_k_area = vec(total_site_area' .* max_cover)'  # max possible coral area in m^2
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
+    tmp = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
@@ -654,11 +655,11 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
         @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
 
         # update initial condition
-        tmp = ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area
+        tmp .= ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area
         growth.u0[:, :] .= replace(tmp, Inf => 0.0, NaN => 0.0)
 
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-            alg_hints=[:nonstiff], abstol=1e-9, reltol=1e-8)  # , adaptive=false, dt=1.0
+            alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-4)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
         Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end] .* absolute_k_area ./ total_site_area, cover_tmp, max_cover)
