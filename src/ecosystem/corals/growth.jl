@@ -358,8 +358,9 @@ end
 
 # Arguments
 - larval_pool : Available larval pool
-- A : proportional space (in m²) covered by cropped algal turf,
-        i.e., the substratum that is suitable for coral recruitment
+- A : available space (0 - 1) relative to maximum area covered by
+      cropped algal turf, i.e., the substratum that is suitable 
+      for coral recruitment
 - α : maximum achievable density (settlers/m²) for a 100% free space
 - β : stock of larvae required to produce 50% of the maximum settlement
 
