@@ -57,14 +57,12 @@ using ADRIA
 
     # check coral mortalities and growth rates decrease with increasing size class
     for j = 1:5
-        # check growth rate
         @test all(stored_growth_rate[coral_params.class_id.==j] .>= stored_growth_rate[coral_params.class_id.==j+1]) || "Growth rates for size class $j is less than that for size class $(j + 1)."
-        # check background mortality
         @test all(stored_mb_rate[coral_params.class_id.==j] .>= stored_mb_rate[coral_params.class_id.==j+1]) || "Background mortality rates for size class $j is less than that for size class $(j + 1)."
     end
 
     bin_edges_cm = [0, 2, 5, 10, 20, 40, 80]
-    bin_edge_diameters_cm2 = pi .* (bin_edges ./ 2) .^ 2
+    bin_edge_diameters_cm2 = pi .* (bin_edges_cm ./ 2) .^ 2
     stored_colony_mean_areas = coral_params.colony_area_cm2
 
     # check colony areas in cm^2 are within bounds designated by bin edges
