@@ -467,19 +467,30 @@ function distance_sorting(prefsites::AbstractArray{Int}, site_order::Vector{Unio
 
     # find all selected sites closer than the min distance
     pref_dists = findall(dist[prefsites, prefsites] .< min_dist)
-    inds = unique(reinterpret(Int64, pref_dists))
-
-    # select the same number of sites from the highest ranks of unselected sites
+    inds_rep = unique(reinterpret(Int64, pref_dists))
     select_ind = length(inds)
+    inds_keep = [k for k in 1:length(prefsites)]
+    inds_keep = setdiff(inds_keep, inds_rep)
+    rep = 0
+    # select the same number of sites from the highest ranks of unselected sites
+
     alts = left_over_sites[1:top_n]
-
-    comp_dists = dist[prefsites[inds], prefsites[inds]]
-    # find all sites within these highly ranked but unselected sites which are further apart
-    alt_dists = findall(dist[alts, alts] .> maximum(comp_dists[.!isnan.(comp_dists)]))
-    inds_alt = unique(reinterpret(Int64, alt_dists))
-
-    # select these further apart sites as replacements
-    rep_sites = alts[inds_alt]
+    start = 1
+    Main.@infiltrate
+    while (rep < select_ind) && (start + select_ind < top_n)
+        test_sites = [prefsites[inds_keep]; alts[start:start+select_ind-1]]
+        comp_dists = dist[prefsites[inds_rep], prefsites[inds_rep]]
+        # find all sites within these highly ranked but unselected sites which are further apart
+        alt_dists = dist[test_sites, test_sites] .> maximum(comp_dists[.!isnan.(comp_dists)])
+        for kk = 1:nsites
+            if sum(alt_dists[kk,:])==nsites-1
+            inds_alt = unique(reinterpret(Int64, alt_dists))
+            # select these further apart sites as replacements
+            rep_sites = test_sites[inds_alt]
+            rep += length(inds_alt)
+            start += length(inds_alt)
+        end
+    end
 
     # remove sites from ranks being used
     setdiff!(site_order, prefsites[inds[inds_alt]])
