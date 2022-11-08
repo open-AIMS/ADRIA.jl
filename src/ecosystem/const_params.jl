@@ -40,11 +40,11 @@ Base.@kwdef mutable struct SimConstants
 
     ## Environmental parameters
     # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
-    DHWmaxtot = 50
+    DHWmaxtot = 50.0
 
     # Bleaching stress and coral fecundity parameters
     LPdhwcoeff = 0.4  # shape parameters relating dhw affecting cover to larval production
-    LPDprm2 = 5  # parameter offsetting LPD curve
+    LPDprm2 = 5.0  # parameter offsetting LPD curve
 
     # competition: probability that large Tabular Acropora overtop small massives
     comp = 0.3
