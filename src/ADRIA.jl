@@ -45,6 +45,7 @@ include("io/result_post_processing.jl")
 include("io/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/sensitivity.jl")
+include("metrics/performance.jl")
 
 include("scenario.jl")
 
@@ -63,32 +64,32 @@ export Domain, metrics, select, timesteps, env_stats
 export dims, ndims
 
 # List out compatible domain datapackages
-const COMPAT_DPKG = ["v0.2", "v0.2.1"]
+const COMPAT_DPKG = ["v0.2", "v0.2.1", "v0.3.0"]
 
-@precompile_all_calls begin
-    ex_dir = @path joinpath(@__DIR__, "../examples")
+# @precompile_all_calls begin
+#     ex_dir = @path joinpath(@__DIR__, "../examples")
 
-    f() = begin
-        @showprogress 1 for _ in 1:10
-        end
-    end
-    b = redirect_stdout(f, devnull)
+#     f() = begin
+#         @showprogress 1 for _ in 1:10
+#         end
+#     end
+#     b = redirect_stdout(f, devnull)
 
-    dom = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), "45")
-    p_df = ADRIA.param_table(dom)
-    p_df = repeat(p_df, 5)
-    p_df[:, :dhw_scenario] .= 50
-    p_df[:, :guided] .= [0, 0, 1, 2, 3]
-    p_df[:, :seed_TA] .= [0, 5e5, 5e5, 5e5, 5e5]
-    p_df[:, :seed_CA] .= [0, 5e5, 5e5, 5e5, 5e5]
+#     dom = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), "45")
+#     p_df = ADRIA.param_table(dom)
+#     p_df = repeat(p_df, 5)
+#     p_df[:, :dhw_scenario] .= 50
+#     p_df[:, :guided] .= [0, 0, 1, 2, 3]
+#     p_df[:, :seed_TA] .= [0, 5e5, 5e5, 5e5, 5e5]
+#     p_df[:, :seed_CA] .= [0, 5e5, 5e5, 5e5, 5e5]
 
-    ENV["ADRIA_THRESHOLD"] = 1e-6
-    run_scenario(p_df[1, :], dom)
-    run_scenario(p_df[end, :], dom)
-    delete!(ENV, "ADRIA_THRESHOLD")
+#     ENV["ADRIA_THRESHOLD"] = 1e-6
+#     run_scenario(p_df[1, :], dom)
+#     run_scenario(p_df[end, :], dom)
+#     delete!(ENV, "ADRIA_THRESHOLD")
 
-    precompile(load_results, (String,))
-    precompile(EnvLayer, (String, String, String, String, String, String, String))
-end
+#     precompile(load_results, (String,))
+#     precompile(EnvLayer, (String, String, String, String, String, String, String))
+# end
 
 end

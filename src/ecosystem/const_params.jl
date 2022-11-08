@@ -53,6 +53,8 @@ Base.@kwdef mutable struct SimConstants
   # currently unused
   mimic_IPMF = Int8(0)  # Use 0 or 1 as booleans cannot be stored in netCDF
 
-  # Used by Bozec et al 2021 for Acropora, small massives and large massives
-  max_settler_density = [2.5, 2.5, 2.5, 2.5, 1.5, 1.5]
+    # Used by Bozec et al 2021 for Acropora, small massives and large massives
+    max_settler_density = [2.5, 2.5, 2.5, 2.5, 1.5, 1.5]
+
+    max_larval_density = [5000.0, 5000.0, 5000.0, 5000.0, 5000.0, 5000.0]
 end

@@ -335,24 +335,36 @@ function coral_spec()::NamedTuple
 
     ## Mortality
     # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
+    # wavemort90 = Array{Float64,2}([
+    #     0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Enhanced
+    #     0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Unenhanced
+    #     0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Enhanced
+    #     0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Unenhanced
+    #     0 0 0.0 0.0 0.0 0.0   # Small massives
+    #     0 0 0.0 0.0 0.0 0.0])  # Large massives)
+
     wavemort90 = Array{Float64,2}([
-        0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Enhanced
-        0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Unenhanced
-        0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Enhanced
-        0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Unenhanced
-        0 0 0.0 0.0 0.0 0.0   # Small massives
-        0 0 0.0 0.0 0.0 0.0])  # Large massives)
+        0.0 0.0 0.0 0.02 0.05 0.1  # Tabular Acropora Enhanced
+        0.0 0.0 0.0 0.02 0.05 0.1  # Tabular Acropora Unenhanced
+        0.0 0.0 0.0 0.02 0.03 0.05  # Corymbose Acropora Enhanced
+        0.0 0.0 0.0 0.02 0.04 0.05  # Corymbose Acropora Unenhanced
+        0.0 0.0 0.0 0.02 0.02 0.02  # small massives and encrusting
+        0.0 0.0 0.0 0.02 0.01 0.01])  # large massives
 
     params.wavemort90 = wavemort90'[:]
 
-    # Background mortality taken from Bozec et al. 2021 (Table S2)
+    # Background mortality taken from Bozec et al. 2022 (Table S2)
+    # Using values for:
+    # - juvenile mortality (first two columns)
+    # - < 250cm² (Columns 3 and 4)
+    # - > 250cm² (Columns 5 and 6)
     mb = Array{Float64,2}([
-        0.20 0.19 0.15 0.098 0.098 0.098    # Tabular Acropora Enhanced
-        0.20 0.19 0.15 0.098 0.098 0.098    # Tabular Acropora Unenhanced
-        0.20 0.17 0.12 0.088 0.088 0.088    # Corymbose Acropora Enhanced
-        0.20 0.17 0.12 0.088 0.088 0.088    # Corymbose Acropora Unenhanced
-        0.20 0.10 0.04 0.030 0.020 0.020    # Small massives and encrusting
-        0.20 0.10 0.04 0.030 0.020 0.020])   # Large massives
+        0.2 0.2 0.19 0.19 0.098 0.098    # Tabular Acropora Enhanced
+        0.2 0.2 0.19 0.19 0.098 0.098    # Tabular Acropora Unenhanced
+        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora Enhanced
+        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora Unenhanced
+        0.2 0.2 0.04 0.04 0.02 0.02    # Small massives and encrusting
+        0.2 0.2 0.04 0.04 0.02 0.02])   # Large massives
 
     params.mb_rate = mb'[:]
 

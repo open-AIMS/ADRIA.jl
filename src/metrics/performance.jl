@@ -1,4 +1,4 @@
-module robustness
+module performance
 
 using Statistics, Distributions, DataFrames, StatsBase
 using ADRIA
@@ -17,6 +17,9 @@ function normalize(vals::AbstractArray{<:Real})
 
     return (vals .- minimum(vals)) ./ (maximum(vals) - minimum(vals))
 end
+
+"""Root Mean Square Error"""
+RMSE(obs, sim) = (sum((sim .- obs) .^ 2) / length(sim))^0.5
 
 
 """
@@ -57,15 +60,7 @@ The absolute mean of all pairwise distances between elements in a given set.
 function gmd(vals::AbstractVector{<:Real})::Float64
     n = length(vals)
     sv = sort(vals)
-    return (2 / (n * (n - 1))) .* sum(([((2 * i) - 50 - 1) * sv[i] for i in 1:n]))
-end
-
-
-
-function gmd(vals::AbstractVector{<:Real})::Float64
-    n = length(vals)
-    w = 4 .* ((1:n) .- (n - 1) ./ 2) / n / (n - 1)
-    return sum(w .* sort(vals .- mean(vals)))
+    return (2 / (n * (n - 1))) .* sum(([((2 * i) - n - 1) * sv[i] for i in 1:n]))
 end
 function gmd(vals::AbstractMatrix{<:Real})
     return gmd.(eachcol(vals))
@@ -176,7 +171,7 @@ function environmental_diversity(ms, inputs_i)
     env_s = ms[findall(in(env_cols), Symbol.(ms.fieldname)), ["fieldname", "lower_bound", "upper_bound"]]
     @assert nrow(env_s) > 0 "No parameters for $(env_cols) found."
 
-    push!(env_s, ["RCP", 26, 85])
+    push!(env_s, [:RCP, 26, 85])  # Add lower/upper bound
     push!(env_cols, :RCP)
 
     ub = env_s[:, "upper_bound"]

@@ -6,17 +6,17 @@ Provides summary statistics across selected scenarios.
 import Interpolations: GriddedInterpolation
 
 
-function summarize_trajectory(data::NamedDimsArray)::Dict{Symbol, AbstractArray{<:Real}}
+function summarize_trajectory(data::NamedDimsArray)::Dict{Symbol,AbstractArray{<:Real}}
     squash = nothing
-    if :sites in dimnames(data)
+    if :sites in NamedDims.dimnames(data)
         squash = (:scenarios, :sites)
-    elseif :scenarios in dimnames(data) && (size(data, :scenarios) > 1)
-        squash = (:scenarios, )
+    elseif :scenarios in NamedDims.dimnames(data) && (size(data, :scenarios) > 1)
+        squash = (:scenarios,)
     end
 
     if !isnothing(squash)
-        summarized::Dict{Symbol, AbstractArray{<:Real}} = Dict(Symbol(f) => collect(dropdims(f(data, dims=squash), dims=squash))
-                                                            for f in [mean, median, std, minimum, maximum])
+        summarized::Dict{Symbol,AbstractArray{<:Real}} = Dict(Symbol(f) => collect(dropdims(f(data, dims=squash), dims=squash))
+                                                              for f in [mean, median, std, minimum, maximum])
     else
         # Only a single scenario so don't bother doing anything
         summarized = Dict(Symbol(f) => data for f in [mean, median, minimum, maximum])
@@ -31,7 +31,7 @@ function summarize_trajectory(data::NamedDimsArray)::Dict{Symbol, AbstractArray{
     end
 
     target_keys = Symbol[:lower_95, :lower_75, :lower_50, :lower_25,
-                         :upper_25, :upper_50, :upper_75, :upper_95]
+        :upper_25, :upper_50, :upper_75, :upper_95]
     @inbounds for (i, k) in enumerate(target_keys)
         summarized[k] = q_series[:, i]
     end
@@ -101,7 +101,7 @@ function summarize_relative_cover(rc::NamedDimsArray; kwargs...)::Dict{Symbol,Ab
     rc_sliced = slice_results(rc; kwargs...)
     return summarize_trajectory(rc_sliced)
 end
-function summarize_relative_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}    
+function summarize_relative_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     return summarize_relative_cover(rs.outcomes[:relative_cover]; kwargs...)
 end
 
@@ -127,10 +127,10 @@ end
 
 Calculate summarized coral evenness.
 """
-function summarize_absolute_shelter_volume(sv::NamedDimsArray; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
+function summarize_absolute_shelter_volume(sv::NamedDimsArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     return summarize_trajectory(slice_results(sv; kwargs...))
 end
-function summarize_absolute_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
+function summarize_absolute_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     sv_sliced = slice_results(rs.outcomes[:absolute_shelter_volume]; kwargs...)
     return summarize_trajectory(sv_sliced)
 end
@@ -142,10 +142,10 @@ end
 
 Calculate summarized coral evenness.
 """
-function summarize_relative_shelter_volume(sv::NamedDimsArray; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
+function summarize_relative_shelter_volume(sv::NamedDimsArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     return summarize_trajectory(slice_results(sv; kwargs...))
 end
-function summarize_relative_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol, AbstractArray{<:Real}}
+function summarize_relative_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     sv_sliced = slice_results(rs.outcomes[:relative_shelter_volume]; kwargs...)
     return summarize_trajectory(sv_sliced)
 end

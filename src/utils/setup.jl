@@ -50,9 +50,19 @@ function _setup_workers()::Nothing
         end
 
         if active_cores > 1
-            addprocs(active_cores, exeflags="--project")
+            addprocs(active_cores; exeflags="--project=$(Base.active_project())")
         end
     end
 
     return
 end
+
+"""Remove workers and free up memory."""
+function _remove_workers()::Nothing
+    if nprocs() > 1
+        rmprocs(workers()...)
+    end
+
+    return
+end
+

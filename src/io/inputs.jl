@@ -79,11 +79,11 @@ function load_domain(path::String, rcp::String)::Domain
     site_data::String = joinpath(path, "site_data")
 
     site_path::String = joinpath(site_data, "$(domain_name).gpkg")
-    init_coral_cov::String = joinpath(site_data, "coral_cover.mat")
+    init_coral_cov::String = joinpath(site_data, "coral_cover.nc")
 
     if !isempty(rcp)
-        dhw::String = joinpath(path, "DHWs", "dhwRCP$(rcp).mat")
-        wave::String = joinpath(path, "waves", "wave_RCP$(rcp).mat")
+        dhw::String = joinpath(path, "DHWs", "dhwRCP$(rcp).nc")
+        wave::String = joinpath(path, "waves", "wave_RCP$(rcp).nc")
     else
         dhw = ""
         wave = ""
@@ -120,7 +120,7 @@ Parameters intended to be of Integer type or casted as such.
 function load_scenarios(domain::Domain, filepath::String)::DataFrame
     df = CSV.read(filepath, DataFrame, comment="#")
 
-    if "RCP" in names(df)
+    if "RCP" in names(df) || :RCP in names(df)
         df = df[!, Not("RCP")]
     end
     process_inputs!(domain, df)

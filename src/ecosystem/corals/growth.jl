@@ -7,7 +7,7 @@ using Distributions
 include("growth_expanded.jl")
 
 
-function growth_rate(linear_extension, diam_bin_widths)
+function growth_rate(linear_extension::Array, diam_bin_widths::Array)::Vector{Real}
     return min.(((2.0 * linear_extension) ./ diam_bin_widths')'[:], 1.0)
 end
 
@@ -196,7 +196,7 @@ Nothing
    https://doi.org/10.1038/s41586-018-0041-2
 """
 function bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
-    s::Vector{Float64}, dhw::Vector{Float64}, a_adapt::Vector{Float64}, n_adapt::Float64)::Nothing
+    s::Vector{Float64}, dhw::Vector{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
 
     # Incorporate adaptation effect but maximum reduction is to 0
     ad::Array{Float64} = a_adapt .+ (tstep .* n_adapt)
@@ -339,13 +339,14 @@ end
 
 # Arguments
 - larval_pool : Available larval pool
+- A : Proportion of available area
 - α : maximum achievable density (settlers/m²) for a 100% free space
 - β : stock of larvae required to produce 50% of the maximum settlement
 
 # Returns
 λ, coral recruitment for each coral taxa based on a Poisson distribution.
 """
-function recruitment_rate(larval_pool, A; α=2.5, β=5000.0)
+function recruitment_rate(larval_pool::AbstractArray{<:Real}, A::AbstractArray{<:Real}; α=2.5, β=5000.0)::AbstractArray{<:Real}
     sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
     sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
     return sd
@@ -371,31 +372,29 @@ function recruitment(larval_pool, A::Matrix{<:Real}; α=2.5, β=5000.0)
 end
 
 """
-    settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basal_area_per_settler)
+    settler_cover(fec_scope, sf, TP_data, leftover_space, α, β, basal_area_per_settler)
 
 # Arguments
 - fec_scope : fecundity scope
 - sf : stressed fecundity
 - TP_data : Transition probability
 - leftover_space : difference between sites' maximum carrying capacity and current coral cover (k - C_s)
-- max_density : number of settlers / m²
+- α : max number of settlers / m²
+- β : larvae / m² required to produce 50% of maximum settlement (default: 5000.0)
 - basal_area_per_settler : area taken up by a single settler
 
 # Returns
 Area covered by recruited larvae (in m²)
 """
-function settler_cover(fec_scope, sf, TP_data, leftover_space, max_density, basal_area_per_settler)
+function settler_cover(fec_scope::AbstractArray{<:Real}, sf::AbstractArray{<:Real}, TP_data::AbstractArray{<:Real}, leftover_space, α, β, basal_area_per_settler)::AbstractArray{<:Real}
     # Send larvae out into the world
     actual_fecundity = (fec_scope .* sf)
 
     Mwater = 0.95
     larval_pool = (actual_fecundity * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
-    # β is stock of larvae required to produce 50% of the maximum settlement
-    β = replace((max_density .* leftover_space) ./ 2.0, Inf => 0.0, NaN => 0.0)
-
     # Larvae have landed, work out how many are recruited
-    λ = recruitment(larval_pool, leftover_space; α=max_density, β=β)  # recruits per m^2 per site
+    λ = recruitment(larval_pool, leftover_space; α=α, β=β)  # recruits per m^2 per site
 
     # Determine area covered by recruited larvae (settler cover) per m^2
     return min.(λ .* basal_area_per_settler, leftover_space)
