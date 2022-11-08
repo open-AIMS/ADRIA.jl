@@ -135,6 +135,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     site_dists::Matrix{Float64} = site_distances(site_data)
     #zeros(coral_growth.n_sites, coral_growth.n_sites)
+    #
     n_sites::Int64 = coral_growth.n_sites
 
     loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
@@ -344,6 +345,22 @@ end
     site_distance(site_data::DataFrame)::Matrix
 
 Calculate matrix of unique distances between sites.
+"""
+function site_distances(site_data::DataFrame)::Matrix{Float64}
+    latitudes = site_data.lat
+    longitudes = site_data.long
+
+    nsites = size(site_data)[1]
+    dist = zeros(nsites, nsites)
+    for jj = 1:nsites
+        for ii = 1:nsites
+            dist[ii, jj] = euclidean([latitudes[ii], longitudes[ii]], [latitudes[jj], longitudes[jj]])
+        end
+    end
+    dist[dist.==0] .= NaN
+    return dist
+end
+
 """
     component_params(m::Model, component::Type)::DataFrame
     component_params(spec::DataFrame, component::Type)::DataFrame
