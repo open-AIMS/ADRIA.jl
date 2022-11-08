@@ -462,46 +462,37 @@ Replaces these sites with sites in the top_n ranks if the distance between these
 """
 function distance_sorting(prefsites::AbstractArray{Int}, site_order::Vector{Union{Float64,Int64}}, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
     #site_order_store = site_order
+    nsites = length(prefsites)
     left_over_sites = setdiff(site_order, prefsites)
     min_dist = median(dist[.!isnan.(dist)]) - dist_thresh * median(dist[.!isnan.(dist)])
 
     # find all selected sites closer than the min distance
     pref_dists = findall(dist[prefsites, prefsites] .< min_dist)
-    inds_rep = unique(reinterpret(Int64, pref_dists))
-    select_ind = length(inds)
+    inds_rep = sort(unique(reinterpret(Int64, pref_dists)))
+    select_ind = length(inds_rep)
     inds_keep = [k for k in 1:length(prefsites)]
     inds_keep = setdiff(inds_keep, inds_rep)
-    rep = 0
     # select the same number of sites from the highest ranks of unselected sites
-
+    test_sites = prefsites
     alts = left_over_sites[1:top_n]
     start = 1
     Main.@infiltrate
-    while (rep < select_ind) && (start + select_ind < top_n)
-        test_sites = [prefsites[inds_keep]; alts[start:start+select_ind-1]]
-        comp_dists = dist[prefsites[inds_rep], prefsites[inds_rep]]
+    comp_dists = dist[prefsites[inds_rep], prefsites[inds_rep]]
+    while (length(alts) .> select_ind)
+        global test_sites = [test_sites[findall(inds_keep)]; alts[1:select_ind]]
         # find all sites within these highly ranked but unselected sites which are further apart
         alt_dists = dist[test_sites, test_sites] .> maximum(comp_dists[.!isnan.(comp_dists)])
-        for kk = 1:nsites
-            if sum(alt_dists[kk,:])==nsites-1
-            inds_alt = unique(reinterpret(Int64, alt_dists))
-            # select these further apart sites as replacements
-            rep_sites = test_sites[inds_alt]
-            rep += length(inds_alt)
-            start += length(inds_alt)
+
+        global inds_keep = sum(alt_dists, dims=2) .== nsites - 1
+        if sum(inds_keep) == 5
+            break
+        else
+            global alts = setdiff(alts, alts[1:select_ind])
+            global select_ind = sum(.!inds_keep)
         end
     end
 
-    # remove sites from ranks being used
-    setdiff!(site_order, prefsites[inds[inds_alt]])
-    # remove from preferred sites
-    setdiff!(prefsites, prefsites[inds[inds_alt]])
-    # replace with identified further apat sites
-    prefsites = vcat(prefsites, rep_sites)
-    # reassign left over sites
-    left_over_sites = setdiff(site_order, prefsites)
-
-    return prefsites
+    return test_sites
 end
 
 """
