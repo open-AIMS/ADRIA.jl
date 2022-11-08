@@ -571,10 +571,10 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
         leftover_space_prop = max.(max_cover' .- site_coral_cover, 0.0)
 
         # basal_area_per_settler is the area in m^2 of a size class one coral 
-        basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ (100) .^ 2
+        basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ 100 .^ 2
 
         area_settled = settler_cover(fec_scope, sf, TP_data, leftover_space_prop,
-            sim_params.max_settler_density, basal_area_per_settler)
+            sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
 
         # Recruitment should represent additional cover, relative to total site area
         # Gets used in ODE
