@@ -25,14 +25,15 @@ Modifies arrays in-place.
 """
 function proportional_adjustment!(covers::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})::Nothing
     # Proportionally adjust initial covers
-    cover_tmp .= vec(sum(Yout, dims=1))
+    @views cover_tmp[:] .= vec(sum(covers, dims=1))
     if any(cover_tmp .> max_cover)
-        exceeded::Vector{Int32} = findall(cover_tmp .> max_cover)
+        exceeded::Vector{Int64} = findall(cover_tmp .> max_cover)
 
-        @views Yout[:, exceeded] .= (Yout[:, exceeded] ./ cover_tmp[exceeded]') .* max_cover[exceeded]'
+        @views @. covers[:, exceeded] = (covers[:, exceeded] / cover_tmp[exceeded]') * max_cover[exceeded]'
     end
 
-    return max.(Yout, 0.0)
+    covers .= max.(covers, 0.0)
+
     return
 end
 
@@ -200,18 +201,18 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractA
     s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
 
     # Incorporate adaptation effect but maximum reduction is to 0
-    ad::Array{Float64} = a_adapt .+ (tstep .* n_adapt)
-    capped_dhw::Array{Float64} = max.(0.0, dhw' .- ad)
+    @. capped_dhw = ℯ^(0.17 + 0.35 * max.(0.0, dhw' - (a_adapt + (tstep * n_adapt))))
+    @. depth_coeff = ℯ^(-0.07551 * (depth - 2.0))
 
     # Estimate long-term bleaching mortality with an estimated depth coefficient and
     # initial bleaching mortality (models from Bozec et al., 2022)
-    # `m_init` as initially formulated produces values as a percentage (i.e., 0 - 100)
-    # and so we divide by 100 again to arrive at values 0 - 1.
-    depth_coeff = ℯ .^ (-0.07551 .* (depth .- 2.0))
-    m_init = min.(((depth_coeff .* s')' .* ℯ .^ (0.17 .+ 0.35 .* capped_dhw)) / 100.0 / 100.0, 1.0)
+    # Bozec et al., formulated the model to produce initial mortality (`m_init`) values
+    # as a percentage (i.e., 0 - 100) and so we divide by 100 again to arrive at values 0 - 1.
+    # m_init::Array{Float64} = min.(((depth_coeff .* s')' .* ℯ .^ (0.17 .+ 0.35 .* capped_dhw)) / 100.0 / 100.0, 1.0)
 
     # How much coral survives bleaching event
-    Y .= (1.0 .- m_init) .^ 6
+    # Y .= (1.0 .- m_init) .^ 6
+    @. Y = (1.0 - min.(((depth_coeff' * s) * capped_dhw) / 100.0 / 100.0, 1.0))^6
 
     return
 end
@@ -393,11 +394,14 @@ function settler_cover(fec_scope::T, sf::T,
     TP_data::T, leftover_space::Matrix{Float64},
     α::V, β::V, basal_area_per_settler::V)::Matrix{Float64} where {T<:AbstractArray{<:Real,2},V<:Vector{Float64}}
 
+    # Send larvae out into the world (reuse fec_scope to reduce allocations)
+    fec_scope .= (fec_scope .* sf)
+
     Mwater = 0.95
-    larval_pool = (actual_fecundity * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
+    fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
     # Larvae have landed, work out how many are recruited
-    λ = recruitment(larval_pool, leftover_space; α=α, β=β)  # recruits per m^2 per site
+    λ = recruitment(fec_scope, leftover_space; α=α, β=β)  # recruits per m^2 per site
 
     # Determine area covered by recruited larvae (settler cover) per m^2
     return min.(λ .* basal_area_per_settler, leftover_space)
