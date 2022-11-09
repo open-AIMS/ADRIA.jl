@@ -9,7 +9,7 @@ using Distributions
 
     # extract inputs for function
     total_site_area = site_area(dom)
-    k = dom.site_data.k / 100
+    k = site_k(dom)
     current_cover = zeros(size(total_site_area))
 
     # calculate available space

@@ -425,7 +425,7 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
     prefshadesites::Vector{Int64} = zeros(Int, nsiteint)
 
     # Max coral cover at each site. Divided by 100 to convert to proportion
-    max_cover = site_data.k / 100.0
+    max_cover = site_k(domain)
 
     # Set other params for ODE
     p.r .= corals.growth_rate  # Assumed growth_rate
