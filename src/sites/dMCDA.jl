@@ -420,14 +420,21 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         dist = d_vars.dist
         dist_thresh = d_vars.dist_thresh
         top_n = d_vars.top_n
-
-        prefseedsites .= distance_sorting(prefseedsites, s_order_seed[:, 1], dist, dist_thresh, top_n)
+        if dist_thresh != 1
+            prefseedsites .= distance_sorting(prefseedsites, s_order_seed[:, 1], dist, dist_thresh, top_n)
+        end
     end
 
     if log_shade && isempty(SH)
         prefshadesites = repeat([0], nsiteint)
     elseif log_shade
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
+        dist = d_vars.dist
+        dist_thresh = d_vars.dist_thresh
+        top_n = d_vars.top_n
+        if dist_thresh != 1
+            prefshadesites .= distance_sorting(prefshadesites, s_order_shade[:, 1], dist, dist_thresh, top_n)
+        end
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
@@ -438,9 +445,6 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     if sum(prefshadesites) == 0
         rankings[:, 3] .= rankingsin[:, 3]
     end
-
-
-    #prefshadesites .= distance_sorting(prefshadesites, s_order_shade[:, 1], dist, dist_thresh, top_n)
 
     return prefseedsites, prefshadesites, rankings
 end
@@ -480,13 +484,14 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Uni
     inds_keep = [k for k in 1:length(pref_sites)]
     inds_keep = setdiff(inds_keep, inds_rep)
 
+    # storage for new set of sites
     test_sites = pref_sites
-    # distances of originally selected sites to be replaced
+    # distances of originally selected sites to be replaced (will only select sites further apart than max dist here)
     comp_dists = dist[pref_sites[inds_rep], pref_sites[inds_rep]]
 
     while (length(alt_sites) .> select_n)
         test_sites = [test_sites[inds_keep[:]]; alt_sites[1:select_n]]
-
+        #SMain.@infiltrate
         # find all sites within these highly ranked but unselected sites which are further apart
         alt_dists = dist[test_sites, test_sites] .> maximum(comp_dists[.!isnan.(comp_dists)])
 
