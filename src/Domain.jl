@@ -456,6 +456,24 @@ function site_area(domain::Domain)::Vector{Float64}
     return domain.site_data.area
 end
 
+"""
+    site_k_area(domain::Domain)::Vector{Float64}
+
+Get maximum coral cover area for the given domain in absolute area.
+"""
+function site_k_area(domain::Domain)::Vector{Float64}
+    return site_k(domain::Domain) .* domain.site_data.area
+end
+
+"""
+    site_k(domain::Domain)::Vector{Float64}
+
+Get maximum coral cover area as a proportion of site area.
+"""
+function site_k(domain::Domain)::Vector{Float64}
+    return domain.site_data.k ./ 100.0
+end
+
 """Extract the time steps represented in the data package."""
 function timesteps(domain::Domain)
     return domain.env_layer_md.timeframe
