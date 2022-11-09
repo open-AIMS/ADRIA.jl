@@ -116,7 +116,6 @@ function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_si
 
     if con_cutoff > 0.0
         tmp = coalesce.(Matrix(TP_base), 0.0)
-        # max_cutoff = maximum(tmp) * con_cutoff
         tmp[tmp.<con_cutoff] .= 0.0
         TP_base[:, :] .= tmp
     end
