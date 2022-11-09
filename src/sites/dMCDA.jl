@@ -417,6 +417,11 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
+        dist = d_vars.dist
+        dist_thresh = d_vars.dist_thresh
+        top_n = d_vars.top_n
+
+        prefseedsites .= distance_sorting(prefseedsites, s_order_seed[:, 1], dist, dist_thresh, top_n)
     end
 
     if log_shade && isempty(SH)
