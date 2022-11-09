@@ -340,6 +340,9 @@ end
 """
     component_params(m::Model, component::Type)::DataFrame
     component_params(spec::DataFrame, component::Type)::DataFrame
+    component_params(m::Model, components::Vector)::DataFrame
+    component_params(spec::DataFrame, components::Vector)::DataFrame
+
 
 Extract parameters for a specific model component.
 """
@@ -349,8 +352,11 @@ end
 function component_params(spec::DataFrame, component::Type)::DataFrame
     return spec[spec.component.==replace.(string(component), "ADRIA." => ""), :]
 end
-function component_params(spec::DataFrame, components::Array{Type})::DataFrame
-    return spec[spec.component.∈replace.(string.(components), "ADRIA." => ""), :]
+function component_params(m::Model, components::Vector)::DataFrame
+    return component_params(model_spec(m), components)
+end
+function component_params(spec::DataFrame, components::Vector)::DataFrame
+    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
 
