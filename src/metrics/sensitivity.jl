@@ -15,8 +15,20 @@ Normalize metrics such that the values ∈ [0, 1].
 # Returns
 Normalized values of same shape as x.
 """
-function relative_importance(x)
+function relative_importance(x::AbstractVector{<:Real})
+    if (maximum(x) - minimum(x)) == 0.0
+        return 0.0
+    end
+
     return (x .- minimum(x)) ./ (maximum(x) - minimum(x))
+end
+function relative_importance(x::AbstractArray)
+    S = copy(x)
+    for idx in axes(x, 2)
+        S[:, idx] .= relative_importance(x[:, idx])
+    end
+
+    return S
 end
 
 
