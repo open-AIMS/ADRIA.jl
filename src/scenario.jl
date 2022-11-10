@@ -18,16 +18,18 @@ function setup_cache(domain::Domain)::NamedTuple
     init_cov::Matrix{Float64} = sparse(Matrix{Float64}(domain.init_coral_cover))
 
     cache = (
-        sf=zeros(n_groups, n_sites),
-        fec_all=zeros(size(init_cov)...),
-        fec_scope=zeros(n_groups, n_sites),
-        prop_loss=zeros(n_species, n_sites),
-        Sbl=zeros(n_species, n_sites),
-        dhw_step=zeros(n_sites),
-        init_cov=init_cov,
-        cov_tmp=zeros(size(init_cov)...),
-        site_area=Array{Float64}(domain.site_data.area'),
-        TP_data=Array{Float64,2}(domain.TP_data)
+        sf=zeros(n_groups, n_sites),  # stressed fecundity
+        fec_all=zeros(size(init_cov)...),  # all fecundity
+        fec_scope=zeros(n_groups, n_sites),  # fecundity scope
+        prop_loss=zeros(n_species, n_sites),  # proportional loss
+        Sbl=zeros(n_species, n_sites),   # bleaching survivors
+        dhw_step=zeros(n_sites),  # DHW each time step
+        init_cov=init_cov,  # initial cover
+        cov_tmp=zeros(size(init_cov)...),  # Cover for previous timestep
+        felt_dhw=zeros(size(init_cov)...),  # Store for felt DHW (DHW after reductions)
+        depth_coeff=zeros(n_sites),  # store for depth coefficient
+        site_area=Matrix{Float64}(domain.site_data.area'),  # site areas
+        TP_data=Matrix{Float64}(domain.TP_data)  # transition probabilities
     )
 
     return cache
