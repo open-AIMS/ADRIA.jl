@@ -23,14 +23,14 @@ end
 
 Core ADRIA domain. Represents study area.
 """
-mutable struct Domain{M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray}
+mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray}
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
     const name::S           # human-readable name
     RCP::S            # RCP scenario represented
     env_layer_md::EnvLayer   # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
-    const TP_data::M     # site connectivity data
+    const TP_data::Σ     # site connectivity data
     const in_conn::V  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
     const out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strongpred::I  # strongest predecessor
@@ -291,12 +291,22 @@ function model_spec(d::Domain, filepath::String)::Nothing
 end
 function model_spec(m::Model)
     spec = DataFrame(m)
+<<<<<<< HEAD
     bnds = spec[:, :bounds]
     spec[:, :lower_bound] = [x[1] for x in bnds]
     spec[:, :upper_bound] = [x[2] for x in bnds]
     spec[:, :full_bounds] = bnds
     spec[!, :component] = replace.(string.(spec[:, :component]), "ADRIA." => "")
     spec[:, :is_constant] = spec[:, :lower_bound] .== spec[:, :upper_bound]
+=======
+    bnds = spec[!, :bounds]
+    spec[!, :full_bounds] = bnds
+    spec[!, :lower_bound] = first.(bnds)
+    spec[!, :upper_bound] = Float64[x[2] for x in bnds]
+
+    spec[!, :component] = replace.(string.(spec[!, :component]), "ADRIA." => "")
+    spec[!, :is_constant] = spec[!, :lower_bound] .== spec[!, :upper_bound]
+>>>>>>> cadf73b... Set initial cover matrix as a sparse matrix
 
     select!(spec, Not(:bounds))
 
