@@ -37,9 +37,9 @@ end
 
 
 """
-    run_scenarios(param_df::DataFrame, domain::Domain)
-    run_scenarios(param_df::DataFrame, domain::Domain, rcp::String)
-    run_scenarios(param_df::DataFrame, domain::Domain, rcp::Array{String})
+    run_scenarios(param_df::DataFrame, domain::Domain; remove_workers=true)
+    run_scenarios(param_df::DataFrame, domain::Domain, rcp::String; remove_workers=true)
+    run_scenarios(param_df::DataFrame, domain::Domain, rcp::Array{String}; remove_workers=true)
 
 Run scenarios defined by the parameter table storing results to disk.
 Scenarios are run in parallel where the number of scenarios > 256.
@@ -61,22 +61,23 @@ julia> rs_all = ADRIA.run_scenarios(p_df, dom)
 - param_df : DataFrame of scenarios to run
 - domain : Domain, to run scenarios with
 - rcp : ID of RCP(s) to run scenarios under.
+- remove_workers : if running in parallel, removes workers after completion
 
 # Returns
 ResultSet
 """
-function run_scenarios(param_df::DataFrame, domain::Domain)::ResultSet
+function run_scenarios(param_df::DataFrame, domain::Domain; remove_workers=true)::ResultSet
 
     # Identify available data
     avail_data::Vector{String} = readdir(joinpath(domain.env_layer_md.dpkg_path, "DHWs"))
     RCP_ids = replace.(avail_data, "dhwRCP" => "", ".mat" => "")
 
     @info "Running scenarios for RCPs: $(RCP_ids)"
-    return run_scenarios(param_df, domain, RCP_ids::Array{String})
+    return run_scenarios(param_df, domain, RCP_ids::Array{String}; remove_workers=remove_workers)
 end
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true)::ResultSet
+function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)::ResultSet
     setup()
-    parallel = (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(param_df) > 2048) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
 
     domain = switch_RCPs!(domain, RCP)
     domain, data_store = ADRIA.setup_result_store!(domain, param_df)
@@ -85,14 +86,18 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
     run_msg = "Running $(nrow(param_df)) scenarios for RCP $RCP"
 
     # Batch run scenarios
-    func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
+    func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
     if parallel
-        @eval @everywhere using ADRIA
+        _setup_workers()
 
         if show_progress
             @showprogress run_msg 4 pmap(func, enumerate(eachrow(param_df)))
         else
             pmap(func, enumerate(eachrow(param_df)))
+        end
+
+        if remove_workers
+            _remove_workers()
         end
     else
         if show_progress
@@ -102,13 +107,11 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
         end
     end
 
-    _remove_workers()
-
     return load_results(domain)
 end
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String})::ResultSet
+function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String}; remove_workers=true)::ResultSet
     setup()
-    parallel = (nrow(param_df) > 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(param_df) > 2048) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
 
     if length(unique(RCP_ids)) != length(RCP_ids)
         # Disallow running duplicate RCP scenarios
@@ -119,6 +122,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
     output_dir = ENV["ADRIA_OUTPUT_DIR"]
     tmp_result_dirs::Vector{String} = String[]
 
+    # TODO: Standardize and clean this up.
     for RCP in RCP_ids
         domain = switch_RCPs!(domain, RCP)
         tmp_dir = mktempdir(prefix="ADRIA_")
@@ -131,17 +135,20 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
         push!(tmp_result_dirs, result_location(domain))
 
         # Batch run scenarios
-        func = (dfx) -> run_scenario(dfx, domain, data_store, cache)
+        func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
         msg = run_msg * "for RCP $RCP"
         if parallel
-            @eval @everywhere using ADRIA
+            _setup_workers()
 
             @showprogress msg 4 pmap(func, enumerate(eachrow(param_df)))
 
-            _remove_workers()
         else
             @showprogress msg 1 map(func, enumerate(eachrow(param_df)))
         end
+    end
+
+    if remove_workers
+        _remove_workers()
     end
 
     ENV["ADRIA_OUTPUT_DIR"] = output_dir
