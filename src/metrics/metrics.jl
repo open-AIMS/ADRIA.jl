@@ -229,6 +229,29 @@ function _juveniles(rs::ResultSet)::AbstractArray{<:Real}
     return _juveniles(rs.raw, rs.site_area)
 end
 
+function _relative_juveniles(X::AbstractArray{<:Real}, site_area::AbstractArray{<:Real})::AbstractArray{<:Real}
+    # Juveniles, 51.8 as max juveniles for metric
+    _, _, cs_p::DataFrame = coral_spec()
+
+    abs_sc1 = X[species=cs_p.class_id .== 1]
+    abs_sc2 = X[species=cs_p.class_id .== 2]
+    for sp in axes(abs_sc1, dim(abs_sc1, :species))
+        abs_sc1[species=sp] .*= site_area'
+        abs_sc2[species=sp] .*= site_area'
+    end
+
+    sc1_area_m² = mean(cs_p[cs_p.class_id.==1, :colony_area_cm2] ./ 10^4)
+    sc2_area_m² = mean(cs_p[cs_p.class_id.==2, :colony_area_cm2] ./ 10^4)
+
+    juv_sc1 = (abs_sc1 ./ sc1_area_m²) ./ (abs_sc1 .* 51.8)
+    juv_sc2 = (abs_sc2 ./ sc2_area_m²) ./ (abs_sc2 .* 51.8)
+
+    # Cover of juvenile corals (< 5cm diameter)
+    juv_groups::AbstractArray{<:Real} = mean([juv_sc1, juv_sc2])
+
+    return dropdims(sum(juv_groups, dims=:species), dims=:species)
+end
+
 
 """
     _coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
@@ -618,6 +641,7 @@ absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, 
 relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
 coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
 juveniles = Metric(_juveniles, (:timesteps, :sites, :scenarios))
+relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios))
 reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 
