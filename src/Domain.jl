@@ -400,15 +400,18 @@ function get_wave_data(d::Domain, RCP::String)
 end
 
 
+"""
+    switch_RCPs!(d::Domain, RCP::String)::Domain
+
+Switch environmental datasets to represent the given RCP.
+"""
 function switch_RCPs!(d::Domain, RCP::String)::Domain
     d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
     d.env_layer_md.wave_fn = get_wave_data(d, RCP)
     d.RCP = RCP
 
-    loader = (fn::String, attr::String) -> load_env_data(fn, attr, d.site_data)
-
-    @set! d.dhw_scens = loader(d.env_layer_md.DHW_fn, "dhw")
-    @set! d.wave_scens = loader(d.env_layer_md.wave_fn, "Ub")
+    @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw", d.site_data)
+    @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub", d.site_data)
 
     return d
 end
