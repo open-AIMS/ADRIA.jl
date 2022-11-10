@@ -522,12 +522,10 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, cac
         leftover_space_prop = relative_leftover_space(site_k_prop, site_coral_cover)
         leftover_space_m² = leftover_space_prop .* total_site_area
 
+        # Recruitment represents additional cover, relative to total site area
+        # Gets used in ODE
         p.rec .= settler_cover(fec_scope, sf, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
-
-        # Recruitment should represent additional cover, relative to total site area
-        # Gets used in ODE
-        # p.rec .= area_settled
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
