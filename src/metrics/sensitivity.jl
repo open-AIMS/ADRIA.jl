@@ -1,7 +1,7 @@
 module sensitivity
 
 using Logging
-using Statistics, Distributions, HypothesisTests, NamedArrays
+using Statistics, Distributions, HypothesisTests, NamedArrays, DataFrames
 
 
 """
@@ -66,7 +66,7 @@ NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
    Combining variance- and distribution-based global sensitivity analysis
    https://github.com/baronig/GSA-cvd
 """
-function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}; S=10)::NamedArray
+function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}, dimnames::Vector{String}; S::Int64=10)::NamedArray
     N, D = size(X)
     step = 1 / S
 
@@ -103,7 +103,10 @@ function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}; S=10)::NamedArray
 
     replace!(results, NaN => 0.0, Inf => 0.0)
 
-    return NamedArray(results, (1:D, [:min, :mean, :median, :max, :std, :cv]))
+    return NamedArray(results, (dimnames, [:min, :mean, :median, :max, :std, :cv]))
+end
+function pawn(X::DataFrame, Y::Vector{<:Real}; S::Int=10)::NamedArray
+    return pawn(Matrix(X), Y, names(X); S=S)
 end
 
 end
