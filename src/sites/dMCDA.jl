@@ -418,7 +418,6 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     elseif log_seed
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
         dist = d_vars.dist
-        dist_thresh = d_vars.dist_thresh
         top_n = d_vars.top_n
         if dist_thresh != 1
             prefseedsites .= distance_sorting(prefseedsites, s_order_seed[:, 1], dist, dist_thresh, top_n)
@@ -430,7 +429,6 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     elseif log_shade
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
         dist = d_vars.dist
-        dist_thresh = d_vars.dist_thresh
         top_n = d_vars.top_n
         if dist_thresh != 1
             prefshadesites .= distance_sorting(prefshadesites, s_order_shade[:, 1], dist, dist_thresh, top_n)
@@ -466,11 +464,10 @@ Replaces these sites with sites in the top_n ranks if the distance between these
 - prefsites : new set of selected sites for seeding or shading.
 """
 function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Union{Float64,Int64}}, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
-
     # set-up 
     nsites = length(pref_sites)
     # sites to select alternatives from
-    alt_sites = setdiff(site_order, pref_sites)[1:top_n]
+    alt_sites = setdiff(site_order, pref_sites)[1:min(top_n, length(site_order) - nsites)]
     # minimum distance for filtering selected sites (within dist_thesh of median)
     min_dist = median(dist[.!isnan.(dist)]) - dist_thresh * median(dist[.!isnan.(dist)])
 
@@ -486,24 +483,32 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Uni
 
     # storage for new set of sites
     test_sites = pref_sites
-    # distances of originally selected sites to be replaced (will only select sites further apart than max dist here)
-    comp_dists = dist[pref_sites[inds_rep], pref_sites[inds_rep]]
 
     while (length(alt_sites) .> select_n)
         test_sites = [test_sites[inds_keep[:]]; alt_sites[1:select_n]]
         #SMain.@infiltrate
         # find all sites within these highly ranked but unselected sites which are further apart
         alt_dists = dist[test_sites, test_sites] .> maximum(comp_dists[.!isnan.(comp_dists)])
+        alt_dists = dist[test_sites, test_sites] .> min_dist
 
         # select from these sites those far enough away from all sites
         inds_keep = sum(alt_dists, dims=2) .== nsites - 1
+        # keep those sites that were far enough away last iteration
+        inds_keep[1:end-select_n] .= true
         if length(inds_keep) == nsites
+            select_n = 0
             break
         else
             # remove checked alt_sites
             alt_sites = setdiff(alt_sites, alt_sites[1:select_n])
             select_n = sum(.!inds_keep)
         end
+    end
+
+    # if not all sites could be replaced, just use highest ranked remaining pref_sites
+    if select_n != 0
+        rem_pref_sites = setdiff(test_sites, pref_sites)
+        test_sites[end-select_n:end] .= rem_pref_sites[1:select_n]
     end
 
     return test_sites
