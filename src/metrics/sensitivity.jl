@@ -105,7 +105,7 @@ function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}, dimnames::Vector{Stri
 
     return NamedArray(results, (dimnames, [:min, :mean, :median, :max, :std, :cv]))
 end
-function pawn(X::DataFrame, Y::Vector{<:Real}; S::Int=10)::NamedArray
+function pawn(X::DataFrame, Y::Vector{<:Real}; S::Int64=10)::NamedArray
     return pawn(Matrix(X), Y, names(X); S=S)
 end
 
