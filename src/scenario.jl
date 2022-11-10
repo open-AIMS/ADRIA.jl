@@ -165,83 +165,23 @@ end
 
 
 """
-    run_scenarios(scen::Tuple{Int, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)
-    run_scenario(scen::Tuple{Int, DataFrameRow}, domain::Domain, data_store::NamedTuple)
+    run_scenario(idx, param_set::DataFrameRow, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
+    run_scenario(idx, param_set::DataFrameRow, domain::Domain, data_store::NamedTuple)::NamedTuple
+    run_scenario(param_set::DataFrameRow, domain::Domain, cache::NamedTuple)::NamedTuple
+    run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
 
-Run individual scenarios for a given domain.
-
-Stores results on disk in Zarr format at pre-configured location.
+Run individual scenarios for a given domain, saving results to a Zarr data store.
+Results are stored in Zarr format at a pre-configured location.
 Sets up a new `cache` if not provided.
 
 # Notes
 Logs of site ranks only store the mean site rankings over all environmental scenarios.
 This is to reduce the volume of data stored.
 """
-function run_scenario(scen::Tuple{Int,DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)
-    # Update model with values in given DF row
-    update_params!(domain, scen[2])
+function run_scenario(idx::Int64, param_set::DataFrameRow, domain::Domain,
+    data_store::NamedTuple, cache::NamedTuple)
 
-    dhw_scen = scen[2].dhw_scenario
-    wave_scen = scen[2].wave_scenario
-
-    # TODO: Modify all scenario constants here to avoid repeated allocations
-    @set! domain.coral_growth.ode_p.k = (domain.site_data.k::Vector{Float64} / 100.0)  # Max possible cover at site
-    @set! domain.coral_growth.ode_p.comp = domain.sim_constants.comp::Float64  # competition rate between two mature coral groups
-
-    run_scenario(domain; idx=scen[1], dhw=dhw_scen, wave=wave_scen, data_store=data_store, cache=cache)
-end
-function run_scenario(scen::Tuple{Int,DataFrameRow}, domain::Domain, data_store::NamedTuple)
-    run_scenario(scen, domain, data_store, setup_cache(domain))
-end
-
-
-"""
-    run_direct(domain, cache)
-
-Run coral model directly with pre-set model values and provided cache.
-
-# Returns
-NamedTuple of collated results
-"""
-function run_direct(domain::Domain, cache::NamedTuple)::NamedTuple
-    # Extract non-coral parameters
-    df = DataFrame(domain.model)
-    not_coral_params = df[!, :component] .!== Coral
-    param_set = NamedTuple{tuple(df[not_coral_params, :fieldname]...)}(df[not_coral_params, :val])
-
-    # Expand coral model to include its specifications across all taxa/species/groups
-    coral_params = to_spec(component_params(domain.model, Coral))
-
-    # Pass in environmental layer data stripped of named dimensions.
-    all_dhws = Array{Float64}(domain.dhw_scens)
-    all_waves = Array{Float64}(domain.wave_scens)
-
-    # Extract DHW/Wave IDs
-    dhw = param_set.dhw_scenario
-    wave = param_set.wave_scenario
-
-    results = run_model(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
-        domain.coral_growth.ode_p,
-        all_dhws[:, :, dhw], all_waves[:, :, wave], cache)
-
-    return results
-end
-
-
-"""
-    run_scenario(domain::Domain; idx=1, dhw=1, wave=1, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
-
-Convenience function to directly run a scenario for a Domain with pre-set values.
-
-Stores results on disk in Zarr format at pre-configured location.
-
-# Notes
-Logs of site ranks only store the mean site rankings over all environmental scenarios.
-This is to reduce the volume of data stored.
-"""
-function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_store::NamedTuple, cache::NamedTuple)
-
-    result_set = run_direct(domain, cache)
+    result_set = run_scenario(param_set, domain, cache)
 
     # Capture results to disk
     # Set values below threshold to 0 to save space
@@ -296,39 +236,32 @@ function run_scenario(domain::Domain; idx::Int=1, dhw::Int=1, wave::Int=1, data_
         data_store.site_ranks[:, :, :, idx] .= tmp_site_ranks
     end
 end
-
-
-"""
-    run_scenario(param_row::DataFrameRow, domain::Domain)::NamedTuple
-    run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
-
-Run a single scenario and return results.
-"""
-function run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
+function run_scenario(idx::Int64, param_set::DataFrameRow, domain::Domain, data_store::NamedTuple)
+    cache = setup_cache(domain)
+    return run_scenario(idx, param_set, domain, data_store, cache)
+end
+function run_scenario(param_set::DataFrameRow, domain::Domain, cache::NamedTuple)
+    update_params!(domain, param_set)
+    # TODO: Update coral params based on param_set
 
     # Expand coral model to include its specifications across all taxa/species/groups
     coral_params = to_spec(component_params(domain.model, Coral))
 
-    dhw_rep_id = param_set.dhw_scenario
-    wave_rep_id = param_set.wave_scenario
-
+    return run_model(domain, NamedTuple(param_set), coral_params, cache)
+end
+function run_scenario(param_set::DataFrameRow, domain::Domain)::NamedTuple
     cache = setup_cache(domain)
-    return run_model(domain, param_set, coral_params, domain.sim_constants, domain.site_data,
-        domain.coral_growth.ode_p,
-        Matrix{Float64}(domain.dhw_scens[:, :, dhw_rep_id]),
-        Matrix{Float64}(domain.wave_scens[:, :, wave_rep_id]), cache)
+    return run_scenario(param_set, domain, cache)
 end
-function run_scenario(param_row::DataFrameRow, domain::Domain)::NamedTuple
-    # Update model with values in given DF row
-    update_params!(domain, param_row)
-    param_set = NamedTuple{domain.model[:fieldname]}(domain.model[:val])
+function run_scenario(param_set::DataFrameRow, domain::Domain, RCP::String)::NamedTuple
+    domain = switch_RCPs!(domain, RCP)
+    cache = setup_cache(domain)
+    return run_scenario(param_set, domain, cache)
+end
 
-    return run_scenario(param_set, domain)
-end
 
 """
-    run_model(domain, param_set, corals, sim_params, site_data, p::NamedTuple,
-                 dhw_scen::Array, wave_scen::Array, cache::NamedTuple)::NamedTuple
+    run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, cache::NamedTuple)::NamedTuple
 
 Core scenario running function.
 
@@ -338,9 +271,11 @@ Only the mean site rankings are kept
 # Returns
 NamedTuple of collated results
 """
-function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim_params::SimConstants, site_data::DataFrame,
-    p::NamedTuple, dhw_scen::Matrix{Float64},
-    wave_scen::Matrix{Float64}, cache::NamedTuple)::NamedTuple
+function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, cache::NamedTuple)::NamedTuple
+
+    sim_params = domain.sim_constants
+    site_data = domain.site_data
+    p = domain.coral_growth.ode_p
 
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
@@ -349,6 +284,11 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
 
     ### TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
+    dhw_idx = param_set.dhw_scenario
+    wave_idx = param_set.wave_scenario
+
+    dhw_scen::Matrix{Float64} = domain.dhw_scens[:, :, dhw_idx]
+    wave_scen::Matrix{Float64} = domain.dhw_scens[:, :, wave_idx]
 
     tspan::Tuple = (0.0, 1.0)
     solver::BS3 = BS3()
@@ -356,9 +296,9 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
     MCDA_approach::Int64 = param_set.guided
 
     # sim constants
-    n_sites::Int64 = domain.coral_growth.n_sites
-    nsiteint::Int64 = sim_params.nsiteint
     tf::Int64 = size(dhw_scen, 1)
+    nsiteint::Int64 = sim_params.nsiteint
+    n_sites::Int64 = domain.coral_growth.n_sites
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
 
@@ -379,22 +319,20 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
-    TP_data = cache.TP_data
-    # fec_all::Array{Float64,2} = zeros(size(init_cov)...)
-    # fec_scope::Array{Float64,2} = zeros(n_groups, n_sites)
-    # prop_loss::Array{Float64,2} = zeros(n_species, n_sites)
-    # Sbl::Array{Float64,2} = zeros(n_species, n_sites)
-    # dhw_step::Vector{Float64} = zeros(n_sites)
-    sf = cache.sf[:, :]
-    fec_all = cache.fec_all[:, :]
-    fec_scope = cache.fec_scope[:, :]
-    prop_loss = cache.prop_loss[:, :]
-    Sbl = cache.Sbl[:, :]
-    dhw_t = cache.dhw_step[:]
-    Y_pstep = cache.cov_tmp[:, :]
+    TP_data = @view cache.TP_data[:, :]
+    sf = @view cache.sf[:, :]
+    fec_all = @view cache.fec_all[:, :]
+    fec_scope = @view cache.fec_scope[:, :]
+    area_settled = copy(fec_scope)
+    prop_loss = @view cache.prop_loss[:, :]
+    Sbl = @view cache.Sbl[:, :]
+    dhw_t = @view cache.dhw_step[:, :]
+    Y_pstep = @view cache.cov_tmp[:, :]
+    felt_dhw = @view cache.felt_dhw[:, :]
+    depth_coeff = @view cache.depth_coeff[:, :]
 
     Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
-    Y_cover[1, :, :] .= cache.init_cov[:, :]
+    Y_cover[1, :, :] .= cache.init_cov
     ode_u = zeros(n_species, n_sites)
     cover_tmp = p.cover  # pre-allocated matrix used to avoid memory allocations
 
@@ -437,9 +375,11 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
     # Set other params for ODE
     p.r .= corals.growth_rate  # Assumed growth_rate
     p.mb .= corals.mb_rate  # background mortality
+    @set! p.k = max_cover  # max coral cover
+    @set! p.comp = sim_params.comp  # competition rate
 
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
-    Y_cover[1, :, :] .= proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
+    proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
 
     # Define constant table location for seed values
     tabular_enhanced::BitArray = corals.taxa_id .== 1
@@ -562,7 +502,10 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
     site_k_prop = max_cover'
     absolute_k_area = total_site_area .* site_k_prop  # max possible coral area in m^2
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
-    tmp = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
+    tmp::Matrix{Float64} = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
+
+    # basal_area_per_settler is the area in m^2 of a size class one coral 
+    basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ 100 .^ 2
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
@@ -577,15 +520,12 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
         leftover_space_prop = relative_leftover_space(site_k_prop, site_coral_cover)
         leftover_space_m² = leftover_space_prop .* total_site_area
 
-        # basal_area_per_settler is the area in m^2 of a size class one coral 
-        basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ 100 .^ 2
-
-        area_settled = settler_cover(fec_scope, sf, TP_data, leftover_space_prop,
+        p.rec .= settler_cover(fec_scope, sf, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
 
         # Recruitment should represent additional cover, relative to total site area
         # Gets used in ODE
-        p.rec[:, :] .= area_settled
+        # p.rec .= area_settled
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
@@ -622,9 +562,7 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
             Yshade[tstep, :] .= srm
 
             # Apply reduction in DHW due to SRM
-            adjusted_dhw::Vector{Float64} = max.(0.0, dhw_t .- srm)
-        else
-            adjusted_dhw = dhw_t
+            dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
         if (fogging > 0.0) && in_shade_years && (has_seed_sites || has_shade_sites)
@@ -636,12 +574,13 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
                 site_locs = prefshadesites
             end
 
-            adjusted_dhw[site_locs] .= adjusted_dhw[site_locs] .* (1.0 .- fogging)
+            dhw_t[site_locs] .= dhw_t[site_locs] .* (1.0 .- fogging)
             Yfog[tstep, site_locs] .= fogging
         end
 
         # Calculate and apply bleaching mortality
-        bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw, a_adapt, n_adapt)
+        # bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw, a_adapt, n_adapt)
+        bleaching_mortality!(Sbl, felt_dhw, depth_coeff, tstep, site_data.depth_med, bleaching_sensitivity, dhw_t, a_adapt, n_adapt)
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
@@ -659,18 +598,19 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
             Yseed[tstep, 2, prefseedsites] .= scaled_seed.CA
         end
 
-        @views prop_loss = Sbl[:, :] .* Sw_t[p_step, :, :]
+        @views @. prop_loss[:, :] = Sbl[:, :] * Sw_t[p_step, :, :]
 
         # update initial condition
-        tmp .= ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area
-        growth.u0[:, :] .= replace(tmp, Inf => 0.0, NaN => 0.0)
+        @views tmp[:, :] .= ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area
+        @views growth.u0[:, :] .= replace(tmp, Inf => 0.0, NaN => 0.0)
 
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-4)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        Y_cover[tstep, :, :] .= proportional_adjustment!(sol.u[end] .* absolute_k_area ./ total_site_area, cover_tmp, max_cover)
 
+        @views Y_cover[tstep, :, :] .= sol.u[end] .* absolute_k_area ./ total_site_area
+        proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
     end
 
     # Avoid placing importance on sites that were not considered
