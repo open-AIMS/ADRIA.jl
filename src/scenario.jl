@@ -333,6 +333,21 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, cac
     felt_dhw = @view cache.felt_dhw[:, :]
     depth_coeff = @view cache.depth_coeff[:, :]
 
+    felt_dhw = @view cache.felt_dhw[:, :]
+    depth_coeff = @view cache.depth_coeff[:, :]
+    # TP_data = cache.TP_data[:, :]
+    # sf = cache.sf[:, :]
+    # fec_all = cache.fec_all[:, :]
+    # fec_scope = cache.fec_scope[:, :]
+    # area_settled = copy(fec_scope)
+    # prop_loss = cache.prop_loss[:, :]
+    # Sbl = cache.Sbl[:, :]
+    # dhw_t = cache.dhw_step[:, :]
+    # Y_pstep = cache.cov_tmp[:, :]
+
+    # felt_dhw = cache.felt_dhw[:, :]
+    # depth_coeff = cache.depth_coeff[:, :]
+
     Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
     Y_cover[1, :, :] .= cache.init_cov
     ode_u = zeros(n_species, n_sites)
