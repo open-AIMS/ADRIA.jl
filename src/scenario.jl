@@ -325,7 +325,6 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, cac
     sf = @view cache.sf[:, :]
     fec_all = @view cache.fec_all[:, :]
     fec_scope = @view cache.fec_scope[:, :]
-    area_settled = copy(fec_scope)
     prop_loss = @view cache.prop_loss[:, :]
     Sbl = @view cache.Sbl[:, :]
     dhw_t = @view cache.dhw_step[:, :]
