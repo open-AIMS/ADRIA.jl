@@ -475,6 +475,15 @@ function relative_leftover_space(domain::Domain, site_coral_cover::Matrix{Float6
 end
 
 """
+    relative_leftover_space(domain::Domain)::Vector{Float64}
+
+Get proportion of leftover space, given site_k and proportional cover on each site, summed over species.
+"""
+function relative_leftover_space(domain::Domain, site_coral_cover::Matrix{Float64})::Matrix{Float64}
+    return max.(site_k(domain)' .- site_coral_cover, 0.0)
+end
+
+"""
     site_k(domain::Domain)::Vector{Float64}
 
 Get maximum coral cover area as a proportion of site area.
