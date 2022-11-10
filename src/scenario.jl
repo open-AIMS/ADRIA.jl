@@ -566,9 +566,8 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, total_site_area)
 
         site_coral_cover = sum(Y_pstep, dims=1)  # dims: nsites * 1
-        absolute_site_coral_cover = site_coral_cover .* total_site_area  # in m²
-        leftover_space_m² = max.(absolute_k_area .- absolute_site_coral_cover, 0.0)
-        leftover_space_prop = max.(max_cover' .- site_coral_cover, 0.0)
+        leftover_space_prop = relative_leftover_space(domain, site_coral_cover)
+        leftover_space_m² = leftover_space_prop .* total_site_area
 
         # basal_area_per_settler is the area in m^2 of a size class one coral 
         basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ 100 .^ 2
