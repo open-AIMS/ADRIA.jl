@@ -21,7 +21,7 @@ Modifies arrays in-place.
 # Arguments
 - Yout : Coral cover result set
 - cover_tmp : Temporary cache matrix used to hold sum over species. Avoids memory allocations
-- max_cover : maximum possible coral cover for each site
+- max_cover : Maximum possible coral cover for each site
 """
 function proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
     # Proportionally adjust initial covers
@@ -164,9 +164,9 @@ Model is adapted from Bozec et al., [2], itself based on data from Hughes et al.
 
 # Arguments
 - Y : Matrix to save results into
-- tstep : current time step
-- depth : mean site depth (m) for each site
-- s : bleaching sensitivity of corals (relative values) for each taxa/size class
+- tstep : Current time step
+- depth : Mean site depth (m) for each site
+- s : Bleaching sensitivity of corals (relative values) for each taxa/size class
 - dhw : Degree Heating Week experienced at site
 - a_adapt : Level of assisted adaptation (DHW reduction)
 - n_adapt : Level of natural adaptation (DHW reduction linearly scaled over time)
@@ -274,14 +274,14 @@ of 0.9 inside sf(i, j) indicates that species i at site j can only produce
 90% of its usual larval output.
 
 # Arguments
-- tstep : int,
-- a_adapt : array, DHW
-- n_adapt : array, DHWs per year for all species
-- stresspast : array, DHW at previous time step for each site
-- LPdhwcoeff : float,
-- DHWmaxtot : int, maximum DHW
-- LPDprm2 : int, larval production parameter 2
-- n_groups : int, number of groups
+- tstep : Current time step
+- a_adapt : DHW reduction of enhanced corals
+- n_adapt : DHWs reduction (linearly scales with `tstep`)
+- stresspast : DHW at previous time step for each site
+- LPdhwcoeff : 
+- DHWmaxtot : Maximum DHW
+- LPDprm2 : Larval production parameter 2
+- n_groups : Number of groups
 
 # Returns
 sf : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
@@ -309,10 +309,10 @@ Note for β: "For corals, the actual number of 6-month old recruits for each cor
     is generated [...] following a Poisson distribution with recruitment event rate λ.
 
 # Arguments
-- α : maximum achievable density (settlers/m²) for a 100% free space (set to 2.5 in [1] for Corymbose)
-- β : stock of larvae required to produce one-half the maximum settlement (larvae/m²),
+- α : Maximum achievable density (settlers/m²) for a 100% free space (set to 2.5 in [1] for Corymbose)
+- β : Stock of larvae required to produce one-half the maximum settlement (larvae/m²),
         i.e., α/2(m²), set to 5000 in [1].
-- L : available larval pool
+- L : Available larval pool
 
 # Returns
 Settler density (settlers / m²)
@@ -340,8 +340,8 @@ end
 # Arguments
 - larval_pool : Available larval pool
 - A : Proportion of available area
-- α : maximum achievable density (settlers/m²) for a 100% free space
-- β : stock of larvae required to produce 50% of the maximum settlement
+- α : Maximum achievable density (settlers/m²) for a 100% free space
+- β : Stock of larvae required to produce 50% of the maximum settlement
 
 # Returns
 λ, coral recruitment for each coral taxa based on a Poisson distribution.
@@ -358,10 +358,11 @@ end
 
 # Arguments
 - larval_pool : Available larval pool
-- A : proportional space (in m²) covered by cropped algal turf,
-        i.e., the substratum that is suitable for coral recruitment
-- α : maximum achievable density (settlers/m²) for a 100% free space
-- β : stock of larvae required to produce 50% of the maximum settlement
+- A : Available space (0 - 1) relative to maximum area covered by
+      cropped algal turf, i.e., the substratum that is suitable 
+      for coral recruitment
+- α : Maximum achievable density (settlers/m²) for a 100% free space
+- β : Stock of larvae required to produce 50% of the maximum settlement
 
 # Returns
 Total coral recruitment for each coral taxa and site based on a Poisson distribution.
