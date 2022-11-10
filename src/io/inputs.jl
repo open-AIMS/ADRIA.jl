@@ -55,7 +55,7 @@ function load_scenarios(domain::D, filepath::String)::DataFrame where {D}
     return df
 end
 
-function process_inputs!(d::Domain, df::DataFrame)
+function process_inputs!(d::D, df::DataFrame)::Nothing where {D}
     bnds = d.model[:bounds]
     p_types = d.model[:ptype]
     @inbounds for (i, dt) in enumerate(p_types)
@@ -63,7 +63,10 @@ function process_inputs!(d::Domain, df::DataFrame)
             df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
         end
     end
+
+    return nothing
 end
+
 
 function load_mat_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
     data = matread(data_fn)
