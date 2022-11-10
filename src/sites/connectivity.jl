@@ -1,6 +1,3 @@
-using NamedArrays
-
-
 """
     site_connectivity(file_loc, site_order; con_cutoff=0.02, agg_func=mean, swap=false)::NamedTuple
 
@@ -120,7 +117,7 @@ function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_si
         TP_base[:, :] .= tmp
     end
 
-    TP_base = NamedArray(Matrix{Float32}(TP_base), (unique_site_ids, unique_site_ids), ("Source", "Receiving"))
+    TP_base = NamedArray(sparse(Matrix(TP_base)), (unique_site_ids, unique_site_ids), ("Source", "Receiving"))
     @assert all(0.0 .<= TP_base .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
     return (TP_base=TP_base, truncated=invalid_ids, site_ids=conn_ids)
