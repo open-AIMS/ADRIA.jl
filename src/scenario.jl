@@ -1,7 +1,7 @@
 """Scenario running functions"""
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
-
+import ADRIA.metrics: juveniles
 """
     setup_cache(domain::Domain)::NamedTuple
 
@@ -15,7 +15,7 @@ function setup_cache(domain::Domain)::NamedTuple
     n_groups::Int64 = domain.coral_growth.n_groups
 
     # Strip names from NamedArrays
-    init_cov = Matrix{Float64}(domain.init_coral_cover)
+    init_cov::Matrix{Float64} = sparse(Matrix{Float64}(domain.init_coral_cover))
 
     cache = (
         sf=zeros(n_groups, n_sites),
