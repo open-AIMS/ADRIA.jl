@@ -55,6 +55,16 @@ function load_scenarios(domain::D, filepath::String)::DataFrame where {D}
     return df
 end
 
+"""
+    process_inputs!(d::D, df::DataFrame)::Nothing where {D}
+
+Map sampled values in `df` back to discrete bounds for parameters
+indicated to be of integer type in the Domain spec.
+
+# Arguments
+- d : Domain type
+- df : DataFrame
+"""
 function process_inputs!(d::D, df::DataFrame)::Nothing where {D}
     bnds = d.model[:bounds]
     p_types = d.model[:ptype]
