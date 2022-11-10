@@ -80,7 +80,7 @@ function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}; S=10)::NamedArray
         X_di .= X[:, d_i]
         X_q .= quantile(X_di, seq)
         for s in 1:S-1
-            Y_sel = Y[(X_di .>= X_q[s]) .& (X_di .< X_q[s + 1])]
+            Y_sel = Y[(X_di.>=X_q[s]).&(X_di.<X_q[s+1])]
             if length(Y_sel) == 0
                 continue  # no available samples
             end
@@ -101,7 +101,7 @@ function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}; S=10)::NamedArray
         results[d_i, :] .= [p_min, p_mean, p_med, p_max, p_sdv, p_cv]
     end
 
-    replace!(results, NaN=>0.0, Inf=>0.0)
+    replace!(results, NaN => 0.0, Inf => 0.0)
 
     return NamedArray(results, (1:D, [:min, :mean, :median, :max, :std, :cv]))
 end
