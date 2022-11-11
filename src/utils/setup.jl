@@ -20,8 +20,6 @@ function setup()::Nothing
         ENV["ADRIA_DEBUG"] = false
     end
 
-    _setup_workers()
-
     return
 end
 
@@ -51,6 +49,10 @@ function _setup_workers()::Nothing
 
         if active_cores > 1
             addprocs(active_cores; exeflags="--project=$(Base.active_project())")
+
+            @eval @everywhere using ADRIA
+
+            sleep(2)  # wait a bit while workers spin-up
         end
     end
 

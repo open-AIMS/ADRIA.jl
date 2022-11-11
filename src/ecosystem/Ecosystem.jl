@@ -283,7 +283,7 @@ function coral_spec()::NamedTuple
     params.taxa_id = repeat(1:n_classes, inner=n_classes)
 
     params.class_id = repeat(1:n_classes, n_classes)
-    params.coral_id = String["$(x[1])_$(x[2])_$(x[3])" for x in zip(tn, params.taxa_id, params.class_id)]
+    params.coral_id = String[join(x, "_") for x in zip(tn, params.taxa_id, params.class_id)]
 
     # Ecological parameters
     # To be more consistent with parameters in ReefMod, IPMF and RRAP

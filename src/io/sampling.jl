@@ -99,17 +99,15 @@ function _sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dic
     n_vary_params > 0 ? n_vary_params : throw(DomainError(n_vary_params, "Number of parameters to perturb must be > 0"))
     samples = sample(n, zeros(n_vary_params), ones(n_vary_params), sampler)
 
-    df::DataFrame = DataFrame(samples)
+    # Convert vector of tuples to matrix
+    samples = permutedims(hcat([collect(s) for s in samples]...))
 
     # Scale values to indicated distributions
-    df .= hcat(map((ix) -> quantile.(vary_dists[ix[1]], ix[2]), enumerate(eachcol(df)))...)
+    samples .= permutedims(hcat(map(ix -> quantile.(vary_dists[ix], samples[:, ix]), 1:size(samples, 2))...))'
 
     # Combine varying and constant values
     full_df = zeros(n, size(spec, 1))
-    full_df[:, findall(spec.is_constant .== false)] .= Matrix(df)
-
-    # Fill in constant values (these may not be zero)
-    full_df[:, findall(spec.is_constant .== true)] = reduce(hcat, [repeat([spec[spec.is_constant.==true, :val]], n)...])'
+    full_df[:, findall(spec.is_constant .== false)] .= samples
 
     df = DataFrame(full_df, spec.fieldname)
 

@@ -23,16 +23,18 @@ Modifies arrays in-place.
 - cover_tmp : Temporary cache matrix used to hold sum over species. Avoids memory allocations
 - max_cover : Maximum possible coral cover for each site
 """
-function proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
+function proportional_adjustment!(covers::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})::Nothing
     # Proportionally adjust initial covers
-    cover_tmp .= vec(sum(Yout, dims=1))
+    @views cover_tmp[:] .= vec(sum(covers, dims=1))
     if any(cover_tmp .> max_cover)
-        exceeded::Vector{Int32} = findall(cover_tmp .> max_cover)
+        exceeded::Vector{Int64} = findall(cover_tmp .> max_cover)
 
-        @views Yout[:, exceeded] .= (Yout[:, exceeded] ./ cover_tmp[exceeded]') .* max_cover[exceeded]'
+        @views @. covers[:, exceeded] = (covers[:, exceeded] / cover_tmp[exceeded]') * max_cover[exceeded]'
     end
 
-    return max.(Yout, 0.0)
+    covers .= max.(covers, 0.0)
+
+    return
 end
 
 
@@ -195,22 +197,22 @@ Nothing
    Nature, 556(7702), 492-496.
    https://doi.org/10.1038/s41586-018-0041-2
 """
-function bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
-    s::Vector{Float64}, dhw::Vector{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
+function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractArray{Float64,2}, depth_coeff::AbstractArray{Float64}, tstep::Int64, depth::Vector{Float64},
+    s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
 
     # Incorporate adaptation effect but maximum reduction is to 0
-    ad::Array{Float64} = a_adapt .+ (tstep .* n_adapt)
-    capped_dhw::Array{Float64} = max.(0.0, dhw' .- ad)
+    @. capped_dhw = ℯ^(0.17 + 0.35 * max.(0.0, dhw' - (a_adapt + (tstep * n_adapt))))
+    @. depth_coeff = ℯ^(-0.07551 * (depth - 2.0))
 
     # Estimate long-term bleaching mortality with an estimated depth coefficient and
     # initial bleaching mortality (models from Bozec et al., 2022)
-    # `m_init` as initially formulated produces values as a percentage (i.e., 0 - 100)
-    # and so we divide by 100 again to arrive at values 0 - 1.
-    depth_coeff = ℯ .^ (-0.07551 .* (depth .- 2.0))
-    m_init = min.(((depth_coeff .* s')' .* ℯ .^ (0.17 .+ 0.35 .* capped_dhw)) / 100.0 / 100.0, 1.0)
+    # Bozec et al., formulated the model to produce initial mortality (`m_init`) values
+    # as a percentage (i.e., 0 - 100) and so we divide by 100 again to arrive at values 0 - 1.
+    # m_init::Array{Float64} = min.(((depth_coeff .* s')' .* ℯ .^ (0.17 .+ 0.35 .* capped_dhw)) / 100.0 / 100.0, 1.0)
 
     # How much coral survives bleaching event
-    Y .= (1.0 .- m_init) .^ 6
+    # Y .= (1.0 .- m_init) .^ 6
+    @. Y = (1.0 - min.(((depth_coeff' * s) * capped_dhw) / 100.0 / 100.0, 1.0))^6
 
     return
 end
@@ -239,8 +241,8 @@ fecundities across size classes.
 # Returns
 Matrix[n_classes, n_sites] : fecundity per m² of coral
 """
-function fecundity_scope!(fec_groups::Array{Float64,2}, fec_all::Array{Float64,2}, fec_params::Array{Float64},
-    Y_pstep::Array{Float64,2}, site_area::Array{Float64})::Nothing
+function fecundity_scope!(fec_groups::AbstractArray{Float64,2}, fec_all::AbstractArray{Float64,2}, fec_params::AbstractArray{Float64},
+    Y_pstep::AbstractArray{Float64,2}, site_area::AbstractArray{Float64})::Nothing
     ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
     nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
 
@@ -286,17 +288,18 @@ of 0.9 inside sf(i, j) indicates that species i at site j can only produce
 # Returns
 sf : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
 """
-function stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)::Matrix{Float64}
+function stressed_fecundity(tstep::Int64, a_adapt::Vector{Float64}, n_adapt::Float64,
+    stresspast::Vector{Float64}, LPdhwcoeff::Float64, DHWmaxtot::Float64, LPDprm2::Float64, n_groups::Int64)::Matrix{Float64}
     ad::Vector{Float64} = @. a_adapt + tstep * n_adapt
 
     # using half of DHWmaxtot as a placeholder
     # for the maximum capacity for thermal adaptation
-    tmp_ad::Vector{Float64} = @. (1.0 - (ad / (DHWmaxtot / 2)))
+    tmp_ad::Vector{Float64} = @. (1.0 - (ad / (DHWmaxtot / 2.0)))
 
     # One way around dimensional issue - tmp_ad for each class as the averaged
     # of the enhanced and unenhanced corals in that class
     # KA note: this works as it averages over size classes and not across groups.
-    tmp_ad2::Array{Float64} = vec(mean(reshape(tmp_ad, Int64(length(tmp_ad) / n_groups), n_groups), dims=1))
+    tmp_ad2::Vector{Float64} = vec(mean(reshape(tmp_ad, Int64(length(tmp_ad) / n_groups), n_groups), dims=1))
 
     return 1.0 .- exp.(-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2 .- LPDprm2))))
 end
@@ -367,7 +370,7 @@ end
 # Returns
 Total coral recruitment for each coral taxa and site based on a Poisson distribution.
 """
-function recruitment(larval_pool, A::Matrix{<:Real}; α=2.5, β=5000.0)
+function recruitment(larval_pool::AbstractArray{<:Real,2}, A::Matrix{<:Real}; α=2.5, β=5000.0)::Matrix{<:Real}
     # Minimum of recruited settler density (`recruitment_rate`) and max possible settler density (α)
     return min.(recruitment_rate(larval_pool, A; α, β), α)
 end
@@ -387,15 +390,18 @@ end
 # Returns
 Area covered by recruited larvae (in m²)
 """
-function settler_cover(fec_scope::AbstractArray{<:Real}, sf::AbstractArray{<:Real}, TP_data::AbstractArray{<:Real}, leftover_space, α, β, basal_area_per_settler)::AbstractArray{<:Real}
-    # Send larvae out into the world
-    actual_fecundity = (fec_scope .* sf)
+function settler_cover(fec_scope::T, sf::T,
+    TP_data::T, leftover_space::Matrix{Float64},
+    α::V, β::V, basal_area_per_settler::V)::Matrix{Float64} where {T<:AbstractArray{<:Real,2},V<:Vector{Float64}}
+
+    # Send larvae out into the world (reuse fec_scope to reduce allocations)
+    fec_scope .= (fec_scope .* sf)
 
     Mwater = 0.95
-    larval_pool = (actual_fecundity * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
+    fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
     # Larvae have landed, work out how many are recruited
-    λ = recruitment(larval_pool, leftover_space; α=α, β=β)  # recruits per m^2 per site
+    λ = recruitment(fec_scope, leftover_space; α=α, β=β)  # recruits per m^2 per site
 
     # Determine area covered by recruited larvae (settler cover) per m^2
     return min.(λ .* basal_area_per_settler, leftover_space)
