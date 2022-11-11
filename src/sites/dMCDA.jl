@@ -309,7 +309,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     site_ids::Array{Int64} = copy(d_vars.site_ids)
 
     dist_thresh = d_vars.dist_thresh
-    if dist_thresh == 1
+    if dist_thresh == 1.0
         # Force different sites to be selected
         site_ids = setdiff(site_ids, vcat(prefseedsites, prefshadesites))
         mod_n_ranks = min(size(rankingsin, 1), length(site_ids))
@@ -422,7 +422,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
         dist = d_vars.dist
         top_n = d_vars.top_n
-        if dist_thresh != 1
+        if dist_thresh != 1.0
             prefseedsites .= distance_sorting(prefseedsites, s_order_seed[:, 1], dist, dist_thresh, top_n)
         end
     end
@@ -433,7 +433,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
         dist = d_vars.dist
         top_n = d_vars.top_n
-        if dist_thresh != 1
+        if dist_thresh != 1.0
             prefshadesites .= distance_sorting(prefshadesites, s_order_shade[:, 1], dist, dist_thresh, top_n)
         end
     end
@@ -491,7 +491,7 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Uni
         test_sites = [test_sites[inds_keep[:]]; alt_sites[1:select_n]]
         #SMain.@infiltrate
         # find all sites within these highly ranked but unselected sites which are further apart
-        alt_dists = dist[test_sites, test_sites] .> maximum(comp_dists[.!isnan.(comp_dists)])
+        #alt_dists = dist[test_sites, test_sites] .> maximum(comp_dists[.!isnan.(comp_dists)])
         alt_dists = dist[test_sites, test_sites] .> min_dist
 
         # select from these sites those far enough away from all sites
@@ -510,8 +510,8 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Uni
 
     # if not all sites could be replaced, just use highest ranked remaining pref_sites
     if select_n != 0
-        rem_pref_sites = setdiff(test_sites, pref_sites)
-        test_sites[end-select_n:end] .= rem_pref_sites[1:select_n]
+        rem_pref_sites = setdiff(pref_sites, test_sites)
+        test_sites[end-select_n+1:end] .= rem_pref_sites[1:select_n]
     end
 
     return test_sites
