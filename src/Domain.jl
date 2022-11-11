@@ -295,6 +295,8 @@ function model_spec(m::Model)
     spec[!, :full_bounds] = bnds
     spec[!, :lower_bound] = first.(bnds)
     spec[!, :upper_bound] = Float64[x[2] for x in bnds]
+    spec[!, :component] = replace.(string.(spec[:, :component]), "ADRIA." => "")
+    spec[!, :is_constant] = spec[:, :lower_bound] .== spec[:, :upper_bound]
 
     select!(spec, Not(:bounds))
 
@@ -311,7 +313,6 @@ Maps sampled continuous values to discrete values for categorical variables.
 function update_params!(d::Domain, params::DataFrameRow)::Nothing
     p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
 
-    # @info "Vals" size(p_df) size(params) size(params[Not(:RCP)])
     try
         p_df[!, :val] .= collect(params[Not("RCP")])
     catch err
