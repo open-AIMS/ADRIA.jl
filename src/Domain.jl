@@ -58,7 +58,7 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedM
     strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_dists::Matrix{Float64}, site_id_col::String, unique_site_id_col::String,
     init_coral_cover::NamedMatrix, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
     DHWs::Union{NamedArray,Matrix}, waves::Union{NamedArray,Matrix})::Domain
-    #Main.@infiltrate
+
     # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
     criteria = Criteria()
     if criteria.depth_min.bounds[1] > maximum(site_data.depth_med)
@@ -134,8 +134,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     site_dists::Matrix{Float64} = site_distances(site_data)
-    #zeros(coral_growth.n_sites, coral_growth.n_sites)
-    #
+
     n_sites::Int64 = coral_growth.n_sites
 
     loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
@@ -347,8 +346,9 @@ end
 Calculate matrix of unique distances between sites.
 """
 function site_distances(site_data::DataFrame)::Matrix{Float64}
-    latitudes = site_data.lat
-    longitudes = site_data.long
+    site_centroids = centroids(site_data)
+    longitudes = first.(site_centroids)
+    latitudes = last.(site_centroids)
 
     nsites = size(site_data)[1]
     dist = zeros(nsites, nsites)
