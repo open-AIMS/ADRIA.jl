@@ -552,7 +552,8 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
     # Flag indicating whether to seed or not to seed
     seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
 
-    absolute_k_area = vec(total_site_area' .* max_cover)'  # max possible coral area in m^2
+    site_k_prop = max_cover'
+    absolute_k_area = total_site_area .* site_k_prop  # max possible coral area in m^2
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     tmp = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
     @inbounds for tstep::Int64 in 2:tf
@@ -566,7 +567,7 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, sim
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, total_site_area)
 
         site_coral_cover = sum(Y_pstep, dims=1)  # dims: nsites * 1
-        leftover_space_prop = relative_leftover_space(domain, site_coral_cover)
+        leftover_space_prop = relative_leftover_space(site_k_prop, site_coral_cover)
         leftover_space_m² = leftover_space_prop .* total_site_area
 
         # basal_area_per_settler is the area in m^2 of a size class one coral 
