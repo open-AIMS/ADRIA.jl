@@ -70,13 +70,13 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
 
     r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
     @views @. du[p.acr_5_11, :] = sXr[p.acr_5_11-1, :] - sXr[p.acr_5_11, :] + r_comp * X[p.acr_5_11, :] - X_mb[p.acr_5_11, :]
-    @views @. du[p.acr_6_12, :] = sXr[p.acr_6_12-1, :] + r_comp * X[p.acr_6_12, :] - X_mb[p.acr_6_12, :]
+    @views @. du[p.acr_6_12, :] = sXr[p.acr_6_12-1, :] + sXr[p.acr_6_12, :] + r_comp * X[p.acr_6_12, :] - X_mb[p.acr_6_12, :]
 
     @views @. du[p.small_massives, :] = sXr[p.small_massives-1, :] - sXr[p.small_massives, :] - M_sm
 
     @views @. du[p.small, :] = s * p.rec - sXr[p.small, :] - X_mb[p.small, :]
     @views @. du[p.mid, :] = sXr[p.mid-1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
-    @views @. du[p.large, :] = sXr[p.large-1, :] - X_mb[p.large, :]
+    @views @. du[p.large, :] = sXr[p.large-1, :] + sXr[p.large, :] - X_mb[p.large, :]
 
     return
 end
