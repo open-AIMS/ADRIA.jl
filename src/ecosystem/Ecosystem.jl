@@ -344,12 +344,12 @@ function coral_spec()::NamedTuple
     #     0 0 0.0 0.0 0.0 0.0])  # Large massives)
 
     wavemort90 = Array{Float64,2}([
-        0.0 0.0 0.0 0.02 0.05 0.1  # Tabular Acropora Enhanced
-        0.0 0.0 0.0 0.02 0.05 0.1  # Tabular Acropora Unenhanced
-        0.0 0.0 0.0 0.02 0.03 0.05  # Corymbose Acropora Enhanced
-        0.0 0.0 0.0 0.02 0.04 0.05  # Corymbose Acropora Unenhanced
-        0.0 0.0 0.0 0.02 0.02 0.02  # small massives and encrusting
-        0.0 0.0 0.0 0.02 0.01 0.01])  # large massives
+        0.0 0.0 0.0 0.0 0.05 0.1  # Tabular Acropora Enhanced
+        0.0 0.0 0.0 0.0 0.05 0.1  # Tabular Acropora Unenhanced
+        0.0 0.0 0.0 0.0 0.03 0.05  # Corymbose Acropora Enhanced
+        0.0 0.0 0.0 0.0 0.04 0.05  # Corymbose Acropora Unenhanced
+        0.0 0.0 0.0 0.0 0.0 0.0  # small massives and encrusting
+        0.0 0.0 0.0 0.0 0.0 0.0])  # large massives
 
     params.wavemort90 = wavemort90'[:]
 
