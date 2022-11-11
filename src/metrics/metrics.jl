@@ -411,13 +411,13 @@ function _absolute_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, 
         ASV = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(size(X)...))
         for scen::Int64 in 1:nscens
             colony_vol, _ = _colony_Lcm2_to_m3m2(inputs[scen, :])
-            _shelter_species_loop!(X[scenarios=scen], ASV, nspecies, colony_vol[:, scen], site_area)
+            _shelter_species_loop!(X[scenarios=scen], ASV, nspecies, colony_vol, site_area)
         end
     else
         # Collate for a single scenario
         ASV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X)...))
         colony_vol, _ = _colony_Lcm2_to_m3m2(inputs)
-        _shelter_species_loop!(X[scenarios=1], ASV, nspecies, colony_vol[:, 1], site_area)
+        _shelter_species_loop!(X, ASV, nspecies, colony_vol, site_area)
     end
 
     # Sum over groups and size classes to estimate total shelter volume per site
@@ -471,7 +471,7 @@ function _relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, 
     if inputs isa DataFrameRow || nrow(inputs) == 1
         # Collate for a single scenario
         colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs)
-        RSV = _shelter_species_loop(X[scenarios=1], nspecies, colony_vol, max_colony_vol, site_area)
+        RSV = _shelter_species_loop(X, nspecies, colony_vol, max_colony_vol, site_area)
     else
         @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
         nscens::Int64 = size(X, :scenarios)
