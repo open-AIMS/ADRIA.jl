@@ -294,7 +294,7 @@ function model_spec(m::Model)
     bnds = spec[!, :bounds]
     spec[!, :full_bounds] = bnds
     spec[!, :lower_bound] = first.(bnds)
-    spec[!, :upper_bound] = Float64[x[2] for x in bnds]
+    spec[!, :upper_bound] = getindex.(bnds, 2)
     spec[!, :component] = replace.(string.(spec[:, :component]), "ADRIA." => "")
     spec[!, :is_constant] = spec[:, :lower_bound] .== spec[:, :upper_bound]
 
@@ -311,7 +311,7 @@ Update given domain with new parameter values.
 Maps sampled continuous values to discrete values for categorical variables.
 """
 function update_params!(d::Domain, params::DataFrameRow)::Nothing
-    p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
+    p_df::DataFrame = DataFrame(d.model)[!, [:fieldname, :val, :ptype, :bounds]]
 
     try
         p_df[!, :val] .= collect(params[Not("RCP")])
