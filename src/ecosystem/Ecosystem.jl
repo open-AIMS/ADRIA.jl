@@ -314,7 +314,6 @@ function coral_spec()::NamedTuple
     # Second, growth as transitions of cover to higher bins is estimated as
     # rate of growth per year
     params.growth_rate .= growth_rate(linear_extension, bin_widths)
-    params.growth_rate[params.class_id.==6] .= 0.8 .* params.growth_rate[params.class_id.==6]
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
