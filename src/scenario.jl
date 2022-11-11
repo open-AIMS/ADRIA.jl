@@ -29,7 +29,8 @@ function setup_cache(domain::Domain)::NamedTuple
         felt_dhw=zeros(size(init_cov)...),  # Store for felt DHW (DHW after reductions)
         depth_coeff=zeros(n_sites),  # store for depth coefficient
         site_area=Matrix{Float64}(domain.site_data.area'),  # site areas
-        TP_data=Matrix{Float64}(domain.TP_data)  # transition probabilities
+        TP_data=Matrix{Float64}(domain.TP_data),  # transition probabilities
+        waves=zeros(length(timesteps(domain)), n_species, n_sites)
     )
 
     return cache
@@ -249,7 +250,7 @@ function run_scenario(param_set::DataFrameRow, domain::Domain, cache::NamedTuple
     # Expand coral model to include its specifications across all taxa/species/groups
     coral_params = to_spec(component_params(domain.model, Coral))
 
-    return run_model(domain, NamedTuple(param_set), coral_params, cache)
+    return run_model(domain, param_set, coral_params, cache)
 end
 function run_scenario(param_set::DataFrameRow, domain::Domain)::NamedTuple
     cache = setup_cache(domain)
@@ -263,7 +264,7 @@ end
 
 
 """
-    run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, cache::NamedTuple)::NamedTuple
+    run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, corals::DataFrame, cache::NamedTuple)::NamedTuple
 
 Core scenario running function.
 
@@ -273,7 +274,7 @@ Only the mean site rankings are kept
 # Returns
 NamedTuple of collated results
 """
-function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, cache::NamedTuple)::NamedTuple
+function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, corals::DataFrame, cache::NamedTuple)::NamedTuple
 
     sim_params = domain.sim_constants
     site_data = domain.site_data
@@ -486,7 +487,7 @@ function run_model(domain::Domain, param_set::NamedTuple, corals::DataFrame, cac
     LPDprm2 = sim_params.LPDprm2 # parameter offsetting LPD curve
 
     # Wave stress
-    mwaves::Array{Float64,3} = zeros(tf, n_species, n_sites)
+    mwaves::Array{Float64,3} = cache.waves
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
 
     @inbounds for sp::Int64 in 1:n_species

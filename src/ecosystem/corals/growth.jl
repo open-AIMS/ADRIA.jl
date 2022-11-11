@@ -201,7 +201,7 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractA
     s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
 
     # Incorporate adaptation effect but maximum reduction is to 0
-    @. capped_dhw = ℯ^(0.17 + 0.35 * max.(0.0, dhw' - (a_adapt + (tstep * n_adapt))))
+    @. capped_dhw = ℯ^(0.17 + 0.35 * max.(0.0, dhw' .- (a_adapt + (tstep * n_adapt))))
     @. depth_coeff = ℯ^(-0.07551 * (depth - 2.0))
 
     # Estimate long-term bleaching mortality with an estimated depth coefficient and
@@ -212,7 +212,7 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractA
 
     # How much coral survives bleaching event
     # Y .= (1.0 .- m_init) .^ 6
-    @. Y = (1.0 - min.(((depth_coeff' * s) * capped_dhw) / 100.0 / 100.0, 1.0))^6
+    @. Y = (1.0 .- min.(((depth_coeff' * s) * capped_dhw) ./ 100.0 ./ 100.0, 1.0))^6
 
     return
 end
@@ -301,7 +301,7 @@ function stressed_fecundity(tstep::Int64, a_adapt::Vector{Float64}, n_adapt::Flo
     # KA note: this works as it averages over size classes and not across groups.
     tmp_ad2::Vector{Float64} = vec(mean(reshape(tmp_ad, Int64(length(tmp_ad) / n_groups), n_groups), dims=1))
 
-    return 1.0 .- exp.(-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2 .- LPDprm2))))
+    return 1.0 .- exp.(.-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2 .- LPDprm2))))
 end
 
 
@@ -370,7 +370,7 @@ end
 # Returns
 Total coral recruitment for each coral taxa and site based on a Poisson distribution.
 """
-function recruitment(larval_pool::AbstractArray{<:Real,2}, A::Matrix{<:Real}; α=2.5, β=5000.0)::Matrix{<:Real}
+function recruitment(larval_pool::AbstractArray{<:Real,2}, A::Matrix{<:Real}; α::T=2.5, β::S=5000.0)::Matrix{<:Real} where {T,S}
     # Minimum of recruited settler density (`recruitment_rate`) and max possible settler density (α)
     return min.(recruitment_rate(larval_pool, A; α, β), α)
 end

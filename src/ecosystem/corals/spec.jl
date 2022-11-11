@@ -5,7 +5,7 @@ import ModelParameters: Model
 """
     to_spec(m::Model)::DataFrame
 
-Convert Coral Model specification to a DataFrame of coral parameters
+Convert Coral Model specification to a coral spec DataFrame
 """
 function to_spec(m::Coral)::DataFrame
     _, pnames, spec = coral_spec()
@@ -18,7 +18,7 @@ end
 """
     to_spec(coral_df::DataFrame)::DataFrame
 
-Convert Coral Model specification to a DataFrame of coral parameters
+Convert dataframe of model parameters to a coral spec.
 """
 function to_spec(coral_df::DataFrame)::DataFrame
     _, pnames, spec = coral_spec()
@@ -28,12 +28,11 @@ end
 
 function _update_coral_spec(spec::DataFrame, pnames::Vector{String}, coral_params::DataFrame)::DataFrame
     fnames = String.(coral_params[!, :fieldname])
-    for p in pnames
-        target = [occursin(p, fn) for fn in fnames]
-        target_names = map(String, fnames[target])
-        for tn in target_names
-            c_id = rsplit(tn, "_$p", keepempty=false)
-            spec[spec.coral_id.==c_id, p] = coral_params[coral_params.fieldname.==Symbol(tn), :val]
+    Threads.@threads for p in pnames
+        target = occursin.(p, fnames)
+        for (tn, sym_tn) in zip(fnames[target], Symbol.(fnames[target]))
+            idx = spec.coral_id .== rsplit(tn, "_$p", keepempty=false)
+            spec[idx, p] = coral_params[coral_params.fieldname.==sym_tn, :val]
         end
     end
 
