@@ -55,10 +55,10 @@ end
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
 function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedMatrix, in_conn::Vector{Float64}, out_conn::Vector{Float64},
-    strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_id_col::String, unique_site_id_col::String,
+    strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_dists::Matrix{Float64}, site_id_col::String, unique_site_id_col::String,
     init_coral_cover::NamedMatrix, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
     DHWs::Union{NamedArray,Matrix}, waves::Union{NamedArray,Matrix})::Domain
-
+    #Main.@infiltrate
     # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
     criteria = Criteria()
     if criteria.depth_min.bounds[1] > maximum(site_data.depth_med)
@@ -359,6 +359,102 @@ function site_distances(site_data::DataFrame)::Matrix{Float64}
     end
     dist[dist.==0] .= NaN
     return dist
+end
+
+
+"""
+    load_nc_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
+Load netCDF data as a NamedArray.
+"""
+function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
+    local loaded::NamedArray
+
+    ds = Dataset(data_fn, "r")
+    data = ds[attr][:, :]
+    close(ds)
+
+    try
+        loaded = NamedArray(data)
+    catch err
+        if isa(err, KeyError)
+            n_sites = size(data, 2)
+            @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, members)."
+            if n_sites != nrow(site_data)
+                error("Mismatch in number of sites ($(data_fn)). Expected $(nrow(site_data)), got $(n_sites)")
+            end
+        else
+            rethrow(err)
+        end
+    end
+
+    return loaded
+end
+
+"""
+    _char_to_string(vals)::Vector{String}
+Convert character array entries in netCDFs to string.
+"""
+function _char_to_string(vals)::Vector{String}
+    if vals isa Matrix
+        vals = map(x -> join(skipmissing(x)), eachcol(vals))
+    end
+
+    # R's ncdf4 package does not yet support string values
+    # so strip the null terminator from the joined character array.
+    vals = replace.(vals, "\0" => "")
+
+    return vals
+end
+
+
+"""
+    load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
+Load initial coral cover data from netCDF.
+"""
+function load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
+    data = load_nc_data(data_fn, attr, site_data)
+
+    ds = Dataset(data_fn, "r")
+    site_order = string.(ds["reef_siteid"][:])
+    close(ds)
+
+    site_order = _char_to_string(site_order)
+
+    # Attach site names to each column
+    setnames!(data, site_order, 2)
+    setdimnames!(data, :species, 1)
+    setdimnames!(data, :sites, 2)
+
+    # Reorder sites for alignment
+    data = data[:, site_data.reef_siteid]
+
+    return data
+end
+
+
+"""
+    load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
+Load environmental data layers (DHW, Wave) from netCDF.
+"""
+function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
+    data = load_nc_data(data_fn, attr, site_data)
+
+    ds = Dataset(data_fn, "r")
+    site_order = string.(ds["reef_siteid"][:])
+    close(ds)
+
+    site_order = _char_to_string(site_order)
+
+    # Attach dimension names
+    setnames!(data, site_order, 2)
+    setdimnames!(data, :timesteps, 1)
+    setdimnames!(data, :sites, 2)
+    setdimnames!(data, :scenarios, 3)
+
+    # Reorder sites so they align
+    data = data[:, site_data.reef_siteid, :]
+
+    return data
 end
 
 """
