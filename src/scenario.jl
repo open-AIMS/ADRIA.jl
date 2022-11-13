@@ -95,15 +95,16 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
     cache = setup_cache(domain)
     run_msg = "Running $(nrow(param_df)) scenarios for RCP $RCP"
 
+    # Convert to named matrix for faster iteration
+    scen_mat = NamedArray(Matrix(param_df), (1:nrow(param_df), names(param_df)))
+
     # Batch run scenarios
     func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
     if parallel
-        _setup_workers()
-
         if show_progress
-            @showprogress run_msg 4 pmap(func, enumerate(eachrow(param_df)))
+            @showprogress run_msg 4 pmap(func, enumerate(eachrow(scen_mat)))
         else
-            pmap(func, enumerate(eachrow(param_df)))
+            pmap(func, enumerate(eachrow(scen_mat)))
         end
 
         if remove_workers
@@ -111,9 +112,9 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
         end
     else
         if show_progress
-            @showprogress run_msg 4 map(func, enumerate(eachrow(param_df)))
+            @showprogress run_msg 4 map(func, enumerate(eachrow(scen_mat)))
         else
-            map(func, enumerate(eachrow(param_df)))
+            map(func, enumerate(eachrow(scen_mat)))
         end
     end
 
@@ -137,6 +138,9 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
     output_dir = ENV["ADRIA_OUTPUT_DIR"]
     tmp_result_dirs::Vector{String} = String[]
 
+    # Convert to named matrix for faster iteration
+    scen_mat = NamedArray(Matrix(param_df), (1:nrow(param_df), names(param_df)))
+
     # TODO: Standardize and clean this up.
     for RCP in RCP_ids
         domain = switch_RCPs!(domain, RCP)
@@ -152,12 +156,9 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
         func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
         msg = run_msg * "for RCP $RCP"
         if parallel
-            _setup_workers()
-
-            @showprogress msg 4 pmap(func, enumerate(eachrow(param_df)))
-
+            @showprogress msg 4 pmap(func, enumerate(eachrow(scen_mat)))
         else
-            @showprogress msg 1 map(func, enumerate(eachrow(param_df)))
+            @showprogress msg 1 map(func, enumerate(eachrow(scen_mat)))
         end
     end
 
@@ -179,9 +180,9 @@ end
 
 
 """
-    run_scenario(idx, param_set::DataFrameRow, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
-    run_scenario(idx, param_set::DataFrameRow, domain::Domain, data_store::NamedTuple)::NamedTuple
-    run_scenario(param_set::DataFrameRow, domain::Domain, cache::NamedTuple)::NamedTuple
+    run_scenario(idx, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
+    run_scenario(idx, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::NamedTuple
+    run_scenario(param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, cache::NamedTuple)::NamedTuple
     run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
 
 Run individual scenarios for a given domain, saving results to a Zarr data store.
@@ -192,7 +193,7 @@ Sets up a new `cache` if not provided.
 Logs of site ranks only store the mean site rankings over all environmental scenarios.
 This is to reduce the volume of data stored.
 """
-function run_scenario(idx::Int64, param_set::DataFrameRow, domain::Domain,
+function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain,
     data_store::NamedTuple, cache::NamedTuple)
 
     result_set = run_scenario(param_set, domain, cache)
@@ -250,11 +251,11 @@ function run_scenario(idx::Int64, param_set::DataFrameRow, domain::Domain,
         data_store.site_ranks[:, :, :, idx] .= tmp_site_ranks
     end
 end
-function run_scenario(idx::Int64, param_set::DataFrameRow, domain::Domain, data_store::NamedTuple)
+function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, data_store::NamedTuple)
     cache = setup_cache(domain)
     return run_scenario(idx, param_set, domain, data_store, cache)
 end
-function run_scenario(param_set::DataFrameRow, domain::Domain, cache::NamedTuple)
+function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, cache::NamedTuple)
     update_params!(domain, param_set)
     # TODO: Update coral params based on param_set
 
@@ -263,14 +264,13 @@ function run_scenario(param_set::DataFrameRow, domain::Domain, cache::NamedTuple
 
     return run_model(domain, param_set, coral_params, cache)
 end
-function run_scenario(param_set::DataFrameRow, domain::Domain)::NamedTuple
+function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain)::NamedTuple
     cache = setup_cache(domain)
     return run_scenario(param_set, domain, cache)
 end
-function run_scenario(param_set::DataFrameRow, domain::Domain, RCP::String)::NamedTuple
+function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, RCP::String)::NamedTuple
     domain = switch_RCPs!(domain, RCP)
-    cache = setup_cache(domain)
-    return run_scenario(param_set, domain, cache)
+    return run_scenario(param_set, domain)
 end
 
 
@@ -285,7 +285,7 @@ Only the mean site rankings are kept
 # Returns
 NamedTuple of collated results
 """
-function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, corals::DataFrame, cache::NamedTuple)::NamedTuple
+function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,AbstractVector}, corals::DataFrame, cache::NamedTuple)::NamedTuple
 
     sim_params = domain.sim_constants
     site_data = domain.site_data
@@ -298,8 +298,8 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, co
 
     ### TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
-    dhw_idx = param_set.dhw_scenario
-    wave_idx = param_set.wave_scenario
+    dhw_idx = Int(param_set["dhw_scenario"])
+    wave_idx = Int(param_set["wave_scenario"])
 
     dhw_scen::Matrix{Float64} = domain.dhw_scens[:, :, dhw_idx]
     wave_scen::Matrix{Float64} = domain.dhw_scens[:, :, wave_idx]
@@ -307,7 +307,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, co
     tspan::Tuple = (0.0, 1.0)
     solver::BS3 = BS3()
 
-    MCDA_approach::Int64 = param_set.guided
+    MCDA_approach::Int64 = param_set["guided"]
 
     # sim constants
     tf::Int64 = size(dhw_scen, 1)
@@ -317,15 +317,15 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, co
     n_groups::Int64 = domain.coral_growth.n_groups
 
     # years to start seeding/shading
-    seed_start_year::Int64 = param_set.seed_year_start
-    shade_start_year::Int64 = param_set.shade_year_start
+    seed_start_year::Int64 = param_set["seed_year_start"]
+    shade_start_year::Int64 = param_set["shade_year_start"]
 
-    n_TA_to_seed::Int64 = param_set.seed_TA  # tabular Acropora size class 2, per year per species per cluster
-    n_CA_to_seed::Int64 = param_set.seed_CA  # corymbose Acropora size class 2, per year per species per cluster
-    fogging::Real = param_set.fogging  # percent reduction in bleaching mortality through fogging
-    srm::Real = param_set.SRM  # DHW equivalents reduced by some shading mechanism
-    seed_years::Int64 = param_set.seed_years  # number of years to seed
-    shade_years::Int64 = param_set.shade_years  # number of years to shade
+    n_TA_to_seed::Int64 = param_set["seed_TA"]  # tabular Acropora size class 2, per year per species per cluster
+    n_CA_to_seed::Int64 = param_set["seed_CA"]  # corymbose Acropora size class 2, per year per species per cluster
+    fogging::Real = param_set["fogging"]  # percent reduction in bleaching mortality through fogging
+    srm::Real = param_set["SRM"]  # DHW equivalents reduced by some shading mechanism
+    seed_years::Int64 = param_set["seed_years"]  # number of years to seed
+    shade_years::Int64 = param_set["shade_years"]  # number of years to shade
 
     ### END TODO
 
@@ -355,25 +355,25 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, co
     Yseed = SparseArray(zeros(tf, 2, n_sites))  # 2 = the two enhanced coral types
 
     # Intervention strategy: 0 is random, > 0 is guided
-    is_guided = param_set.guided > 0
+    is_guided = param_set["guided"] > 0
 
     # Years at which to reassess seeding site selection
     seed_decision_years = repeat([false], tf)
     shade_decision_years = repeat([false], tf)
 
     seed_start_year = max(seed_start_year, 2)
-    if param_set.seed_freq > 0
+    if param_set["seed_freq"] > 0
         max_consider = min(seed_start_year + seed_years - 1, tf)
-        seed_decision_years[seed_start_year:param_set.seed_freq:max_consider] .= true
+        seed_decision_years[seed_start_year:Int(param_set["seed_freq"]):max_consider] .= true
     else
         # Start at year 2 or the given specified seed start year
         seed_decision_years[seed_start_year] = true
     end
 
     shade_start_year = max(shade_start_year, 2)
-    if param_set.shade_freq > 0
+    if param_set["shade_freq"] > 0
         max_consider = min(shade_start_year + shade_years - 1, tf)
-        shade_decision_years[shade_start_year:param_set.shade_freq:max_consider] .= true
+        shade_decision_years[shade_start_year:Int(param_set["shade_freq"]):max_consider] .= true
     else
         # Start at year 2 or the given specified shade start year
         shade_decision_years[shade_start_year] = true
@@ -408,41 +408,25 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, co
     bleaching_sensitivity = corals.bleaching_sensitivity
 
     if is_guided
-        ## Weights for connectivity , waves (ww), high cover (whc) and low
-        wtwaves = param_set.wave_stress # weight of wave damage in MCDA
-        wtheat = param_set.heat_stress # weight of heat damage in MCDA
-        wtconshade = param_set.shade_connectivity # weight of connectivity for shading in MCDA
-        wtinconnseed = param_set.in_seed_connectivity # weight for seed sites with high number of incoming connections
-        wtoutconnseed = param_set.out_seed_connectivity # weight for seed sites with high number of outgoing connections
-
-        wthicover = param_set.coral_cover_high # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
-        wtlocover = param_set.coral_cover_low # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
-        wtpredecseed = param_set.seed_priority # weight for the importance of seeding sites that are predecessors of priority reefs
-        wtpredecshade = param_set.shade_priority # weight for the importance of shading sites that are predecessors of priority reefs
-        wtzonesseed = param_set.zone_seed # weight for the importance of seeding sites that are predecessors of management zones
-        wtzonesshade = param_set.zone_shade # weight for the importance of shading sites that are predecessors of management zones
-
-        risktol = param_set.deployed_coral_risk_tol # risk tolerance
-        covertol = param_set.coral_cover_tol # tolerance for minimum available space to still seed at a site
 
         # Defaults to considering all sites if depth cannot be considered.
         depth_priority = collect(1:nrow(site_data))
 
-        # calculate total area to seed
+        # calculate total area to seed respecting tolerance for minimum available space to still seed at a site
         area_to_seed = (col_area_seed_TA .* n_TA_to_seed) + (col_area_seed_CA .* n_CA_to_seed)
-        min_area = covertol * area_to_seed
+        min_area = param_set["coral_cover_tol"] * area_to_seed
 
         # Filter out sites outside of desired depth range
         if .!all(site_data.depth_med .== 0)
-            max_depth::Float64 = param_set.depth_min + param_set.depth_offset
-            depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set.depth_min) .& (site_data.depth_med .<= max_depth)
+            max_depth::Float64 = param_set["depth_min"] + param_set["depth_offset"]
+            depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set["depth_min"]) .& (site_data.depth_med .<= max_depth)
 
             # TODO: Include this change in MATLAB version as well
             if any(depth_criteria .> 0)
                 # If sites can be filtered based on depth, do so. Otherwise if no sites can be filtered, remove depth as a criterion.
                 depth_priority = depth_priority[depth_criteria]
             else
-                @warn "No sites within provided depth range of $(param_set.depth_min) - $(max_depth) meters. Considering all sites."
+                @warn "No sites within provided depth range of $(param_set["depth_min"]) - $(max_depth) meters. Considering all sites."
             end
         end
 
@@ -466,18 +450,18 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, co
             max_cover,
             total_site_area,
             min_area,
-            risktol,
-            wtinconnseed,
-            wtoutconnseed,
-            wtconshade,
-            wtwaves,
-            wtheat,
-            wthicover,
-            wtlocover,
-            wtpredecseed,
-            wtpredecshade,
-            wtzonesseed,
-            wtzonesshade,
+            param_set["deployed_coral_risk_tol"],  # risk tolerance
+            param_set["in_seed_connectivity"], # weight for seed sites with high number of incoming connections
+            param_set["out_seed_connectivity"], # weight for seed sites with high number of outgoing connections
+            param_set["shade_connectivity"],  # weight of connectivity for shading in MCDA
+            param_set["wave_stress"],  # weight of wave damage in MCDA
+            param_set["heat_stress"],  # weight of heat damage in MCDA
+            param_set["coral_cover_high"],  # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
+            param_set["coral_cover_low"],  # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
+            param_set["seed_priority"],  # weight for the importance of seeding sites that are predecessors of priority reefs
+            param_set["shade_priority"],  # weight for the importance of shading sites that are predecessors of priority reefs
+            param_set["zone_seed"],  # weight for the importance of seeding sites that are predecessors of management zones
+            param_set["zone_shade"],  # weight for the importance of shading sites that are predecessors of management zones
         )
     end
 
@@ -486,11 +470,11 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, co
     ## Update ecological parameters based on intervention option
     # Set up assisted adaptation values
     a_adapt = zeros(n_species)
-    a_adapt[tabular_enhanced] .= param_set.a_adapt
-    a_adapt[corymbose_enhanced] .= param_set.a_adapt
+    a_adapt[tabular_enhanced] .= param_set["a_adapt"]
+    a_adapt[corymbose_enhanced] .= param_set["a_adapt"]
 
     # Level of natural coral adaptation
-    n_adapt = param_set.n_adapt
+    n_adapt = param_set["n_adapt"]
 
     ## Extract other parameters
     LPdhwcoeff = sim_params.LPdhwcoeff # shape parameters relating dhw affecting cover to larval production
