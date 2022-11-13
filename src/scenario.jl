@@ -74,13 +74,20 @@ function run_scenarios(param_df::DataFrame, domain::Domain; remove_workers=true)
     # Identify available data
     avail_data::Vector{String} = readdir(joinpath(domain.env_layer_md.dpkg_path, "DHWs"))
     RCP_ids = replace.(avail_data, "dhwRCP" => "", ".mat" => "")
+    RCP_ids = replace.(RCP_ids, "dhwRCP" => "", ".nc" => "")
 
     @info "Running scenarios for RCPs: $(RCP_ids)"
     return run_scenarios(param_df, domain, RCP_ids::Array{String}; remove_workers=remove_workers)
 end
 function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)::ResultSet
     setup()
-    parallel = (nrow(param_df) > 2048) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(param_df) > 4096) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    if parallel
+        _setup_workers()
+        sleep(2)  # wait a bit while workers spin-up
+        @eval @everywhere using ADRIA
+
+    end
 
     domain = switch_RCPs!(domain, RCP)
     domain, data_store = ADRIA.setup_result_store!(domain, param_df)
@@ -114,7 +121,12 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
 end
 function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String}; remove_workers=true)::ResultSet
     setup()
-    parallel = (nrow(param_df) > 2048) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(param_df) > 4096) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    if parallel
+        _setup_workers()
+        sleep(2)  # wait a bit while workers spin-up
+        @eval @everywhere using ADRIA
+    end
 
     if length(unique(RCP_ids)) != length(RCP_ids)
         # Disallow running duplicate RCP scenarios
@@ -132,7 +144,6 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
         ENV["ADRIA_OUTPUT_DIR"] = tmp_dir
 
         domain, data_store = ADRIA.setup_result_store!(domain, param_df)
-
         cache = setup_cache(domain)
 
         push!(tmp_result_dirs, result_location(domain))
