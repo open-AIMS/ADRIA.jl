@@ -349,7 +349,7 @@ end
 # Returns
 λ, coral recruitment for each coral taxa based on a Poisson distribution.
 """
-function recruitment_rate(larval_pool::AbstractArray{<:Real}, A::AbstractArray{<:Real}; α=2.5, β=5000.0)::AbstractArray{<:Real}
+function recruitment_rate(larval_pool::AbstractArray{<:Real,2}, A::AbstractArray{<:Real}; α=2.5, β=5000.0)::AbstractArray{<:Real}
     sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
     sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
     return sd
