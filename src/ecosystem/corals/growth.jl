@@ -372,7 +372,8 @@ Total coral recruitment for each coral taxa and site based on a Poisson distribu
 """
 function recruitment(larval_pool::AbstractArray{<:Real,2}, A::Matrix{<:Real}; α::T=2.5, β::S=5000.0)::Matrix{<:Real} where {T,S}
     # Minimum of recruited settler density (`recruitment_rate`) and max possible settler density (α)
-    return min.(recruitment_rate(larval_pool, A; α, β), α)
+    # return min.(recruitment_rate(larval_pool, A; α, β), α)
+    return recruitment_rate(larval_pool, A; α, β)
 end
 
 """
@@ -398,6 +399,7 @@ function settler_cover(fec_scope::T, sf::T,
     fec_scope .= (fec_scope .* sf)
 
     Mwater = 0.95
+    # rs1 = ADRIA.run_scenario(scens[1, :], dom)
     fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
     # Larvae have landed, work out how many are recruited

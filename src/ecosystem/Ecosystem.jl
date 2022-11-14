@@ -315,7 +315,7 @@ function coral_spec()::NamedTuple
     # rate of growth per year
     params.growth_rate .= growth_rate(linear_extension, bin_widths)
     # adjust within size class growth rate for largest size classes
-    params.growth_rate[params.class_id.==6] .= 0.8 .* params.growth_rate[params.class_id.==6]
+    params.growth_rate[params.class_id.==6] .= 1.0 .* params.growth_rate[params.class_id.==6]
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
@@ -355,9 +355,10 @@ function coral_spec()::NamedTuple
 
     params.wavemort90 = wavemort90'[:]
 
-    # Background mortality taken from Bozec et al. 2022 (Table S2)
+    # Background mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
     # Using values for:
     # - juvenile mortality (first two columns)
+    # - < 5cm² (Columns 1 and 2)
     # - < 250cm² (Columns 3 and 4)
     # - > 250cm² (Columns 5 and 6)
     mb = Array{Float64,2}([

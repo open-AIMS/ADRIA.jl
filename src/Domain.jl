@@ -125,7 +125,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     site_data.row_id = 1:nrow(site_data)
 
     conn_ids::Vector{String} = site_data[:, site_id_col]
-    site_conn::NamedTuple = site_connectivity(conn_path, conn_ids, u_sids)
+    site_conn::NamedTuple = site_connectivity(conn_path, u_sids)
     conns::NamedTuple = connectivity_strength(site_conn.TP_base)
 
     # Filter out missing entries
@@ -229,7 +229,7 @@ function load_domain(path::String, rcp::String)::Domain
         rcp,
         timeframe,
         site_path,
-        "site_id",
+        "reef_siteid",
         "reef_siteid",
         init_coral_cov,
         conn_path,
