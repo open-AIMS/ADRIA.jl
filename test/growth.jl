@@ -15,6 +15,7 @@ using ADRIA
     bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
 
     growth_rates = min.((2 * linear_extension) ./ bin_widths, 1.0) # growth rates as calculated without growth_rate(), maintaining species x size_class structure
+    growth_rates[:, 6] .= 0.8 * growth_rates[:, 6]
 
     mb = Array{Float64,2}([
         0.2 0.2 0.19 0.19 0.098 0.098    # Tabular Acropora Enhanced
@@ -134,7 +135,7 @@ end
 @testset "growth model" begin
     here = @__DIR__
     dom = ADRIA.load_domain(joinpath(here, "../examples/Example_domain"), "45")
-    n_sites = nrow(dom.site_data)
+    n_sites = size(dom.site_data)[1]
     p = dom.coral_growth.ode_p
 
     du = zeros(36, n_sites)
