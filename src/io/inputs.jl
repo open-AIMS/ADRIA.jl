@@ -13,7 +13,7 @@ function _check_compat(dpkg_details::Dict)
     if haskey(dpkg_details, "version") || haskey(dpkg_details, "dpkg_version")
         dpkg_version = dpkg_details["version"]
         if dpkg_version ∉ COMPAT_DPKG
-            error("Incompatible Domain data package.")
+            error("Incompatible Domain data package. Detected $(dpkg_version), but only support one of $(COMPAT_DPKG)")
         end
     else
         error("Incompatible Domain data package.")
