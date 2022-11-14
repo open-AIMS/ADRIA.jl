@@ -8,7 +8,7 @@ include("growth_expanded.jl")
 
 
 function growth_rate(linear_extension::Array, diam_bin_widths::Array)::Vector{Real}
-    return min.(((2.0 * linear_extension) ./ diam_bin_widths')'[:], 1.0)
+    return ((2.0 * linear_extension) ./ diam_bin_widths')'[:]
 end
 
 
@@ -74,7 +74,7 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
 
     @views @. du[p.small_massives, :] = sXr[p.small_massives-1, :] - sXr[p.small_massives, :] - M_sm
 
-    @views @. du[p.small, :] = s * p.rec - sXr[p.small, :] - X_mb[p.small, :]
+    @views @. du[p.small, :] = p.rec - sXr[p.small, :] - X_mb[p.small, :]
     @views @. du[p.mid, :] = sXr[p.mid-1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
     @views @. du[p.large, :] = sXr[p.large-1, :] + sXr[p.large, :] - X_mb[p.large, :]
 
