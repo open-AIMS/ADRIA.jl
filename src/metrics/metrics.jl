@@ -471,7 +471,7 @@ function _relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, 
     if inputs isa DataFrameRow || nrow(inputs) == 1
         # Collate for a single scenario
         colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs)
-        RSV = _shelter_species_loop(X, nspecies, colony_vol, max_colony_vol, site_area)
+        RSV = _shelter_species_loop(X[scenarios=1], nspecies, colony_vol, max_colony_vol, site_area)
     else
         @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
         nscens::Int64 = size(X, :scenarios)
