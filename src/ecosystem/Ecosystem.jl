@@ -353,9 +353,10 @@ function coral_spec()::NamedTuple
 
     params.wavemort90 = wavemort90'[:]
 
-    # Background mortality taken from Bozec et al. 2022 (Table S2)
+    # Background mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
     # Using values for:
     # - juvenile mortality (first two columns)
+    # - < 5cm² (Columns 1 and 2)
     # - < 250cm² (Columns 3 and 4)
     # - > 250cm² (Columns 5 and 6)
     mb = Array{Float64,2}([

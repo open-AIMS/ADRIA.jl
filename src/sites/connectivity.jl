@@ -17,9 +17,7 @@ NOTE: Transposes transitional probability matrix if `swap == true`
 # Arguments
 - file_loc : str, path to data file (or datasets) to load.
                If a folder, searches subfolders as well.
-- conn_ids : Vector, of connectivity IDs indicating order
-              of TP values
-- unique_ids : Vector, of unique site ids
+- unique_ids : Vector, of unique site ids in their expected order
 - site_order : Vector, of indices mapping duplicate conn_ids to their unique ID positions
 - con_cutoff : float, percent thresholds of max for weak connections in
                 network (defined by user or defaults in simConstants)
@@ -32,40 +30,64 @@ NamedTuple:
 - truncated : ID of sites removed
 - site_ids : ID of sites kept
 """
-function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_site_ids::Vector{String};
-    con_cutoff::Float64=0.01, agg_func::Function=mean, swap::Bool=false)::NamedTuple
+function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
+    con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
 
+    local extracted_TP = []
     if isdir(file_loc)
+        con_file1 = nothing
         con_files::Vector{String} = String[]
         for (root, _, files) in walkdir(file_loc)
             append!(con_files, map((x) -> joinpath(root, x), files))
+            conn_data = [
+                # We skip the first column (with drop=[1]) as this is the source site index column
+                Matrix(CSV.read(fn, DataFrame, comment="#", missingstring=["NA"], transpose=swap, types=Float64, drop=[1]))
+                for fn in con_files
+            ]
+
+            if length(conn_data) > 0
+                # Add mean TP for a single year
+                push!(extracted_TP, agg_func(conn_data))
+            end
+
+            if isnothing(con_file1) && length(con_files) > 0
+                # Keep first file
+                # We skip the first column (with drop=[1]) as this is the source site index column
+                con_file1 = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap, types=Float64, drop=[1])
+            end
+
+            con_files = String[]
         end
+
+        # Mean of across all years
+        extracted_TP = agg_func(extracted_TP)
+
     elseif isfile(file_loc)
         con_files = String[file_loc]
+
+        con_file1 = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap, types=Float64, drop=[1])
+        extracted_TP = Matrix(file1)
     else
         error("Could not find location: $(file_loc)")
     end
 
     # Get site ids from first file
-    # We skip the first column (with drop=[1]) as this is the source site index column
-    con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap, types=Float64, drop=[1])
     con_site_ids::Vector{String} = names(con_file1)
     con_site_ids = [x[1] for x in split.(con_site_ids, "_v"; limit=2)]
 
     # Get IDs missing in con_site_ids
-    invalid_ids::Vector{String} = setdiff(con_site_ids, conn_ids)
+    invalid_ids::Vector{String} = setdiff(con_site_ids, unique_site_ids)
 
     # Get IDs missing in site_order
-    append!(invalid_ids, setdiff(conn_ids, con_site_ids))
+    append!(invalid_ids, setdiff(unique_site_ids, con_site_ids))
 
     # Identify IDs that do not appear in `invalid_ids`
-    valid_ids = [x ∉ invalid_ids ? x : missing for x in conn_ids]
+    valid_ids = [x ∉ invalid_ids ? x : missing for x in unique_site_ids]
     valid_idx = .!ismissing.(valid_ids)
 
     # Align IDs
-    conn_ids = coalesce(conn_ids[valid_idx])
     unique_site_ids = coalesce(unique_site_ids[valid_idx])
-    site_order = [findfirst(c_id .== con_site_ids) for c_id in conn_ids]
+    site_order = [findfirst(c_id .== con_site_ids) for c_id in unique_site_ids]
 
     if length(invalid_ids) > 0
         if length(invalid_ids) >= length(con_site_ids)
@@ -75,67 +97,31 @@ function site_connectivity(file_loc::String, conn_ids::Vector{String}, unique_si
         @warn "The following sites (n=$(length(invalid_ids))) were not found in site_ids and were removed:\n$(invalid_ids)"
     end
 
-    # Helper method to align/reorder data
-    # Here, we use the column index to align the rows.
-    # Columns should match order of rows, except that Julia DFs treats the
-    # index column as the first data column. To account for this, we subtract 1
-    # from the list of row indices to get things to line up properly.
-    # align_df = (target_df) -> target_df[indexin(conn_ids, names(target_df)) .- 1, conn_ids]
-
-    # Recreate Dataframe, duplicating rows/cols by indicated order of unique sites
-
-    # Align df with order given by conn_ids and attach unique reef_siteid
-    align_df = (df) -> DataFrame(Dict(c => v for (c, v) in
-                                      zip(unique_site_ids, eachcol(Matrix(df)[site_order, site_order]))))
-
     # Reorder all data into expected form
-    con_file1 = align_df(con_file1)
-    if length(con_files) > 1
-        # More than 1 file, so read all these in
-        con_data = [con_file1]
-        for cf in con_files[2:end]
-            df = CSV.read(cf, DataFrame, comment="#", missingstring=["NA"], transpose=swap, types=Float64, drop=[1])
-            push!(con_data, align_df(df))
-        end
-
-        # Fill missing values with 0.0
-        TP_base = copy(con_file1)
-        tmp::Matrix{Union{Missing,Float64}} = agg_func(cat(map(Matrix, con_data), dims=3))
-
-        TP_base[:, :] .= coalesce.(tmp, 0.0)
-    else
-        if any(ismissing.(Matrix(con_file1)))
-            con_file1[:, :] .= coalesce.(Matrix(con_file1), 0.0)
-        end
-
-        TP_base = con_file1
-    end
+    extracted_TP = extracted_TP[site_order, site_order]
 
     if con_cutoff > 0.0
-        tmp = coalesce.(Matrix(TP_base), 0.0)
-        tmp[tmp.<con_cutoff] .= 0.0
-        TP_base[:, :] .= tmp
+        extracted_TP[extracted_TP.<con_cutoff] .= 0.0
     end
 
-    TP_base = NamedArray(sparse(Matrix(TP_base)), (unique_site_ids, unique_site_ids), ("Source", "Receiving"))
+    # Main.@infiltrate
+    TP_base = NamedArray(sparse(extracted_TP), (unique_site_ids, unique_site_ids), ("Source", "Receiving"))
     @assert all(0.0 .<= TP_base .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
-    return (TP_base=TP_base, truncated=invalid_ids, site_ids=conn_ids)
+    return (TP_base=TP_base, truncated=invalid_ids, site_ids=unique_site_ids)
 end
-function site_connectivity(file_loc::String, conn_ids::Vector{Union{Missing,T}}, unique_site_ids::Vector{T};
-    con_cutoff::Float64=0.01, agg_func::Function=mean, swap::Bool=false)::NamedTuple where {T<:AbstractString}
+function site_connectivity(file_loc::String, unique_site_ids::Vector{T};
+    con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple where {T<:AbstractString}
 
     # Remove any row marked as missing
-    if any(ismissing.(conn_ids))
+    if any(ismissing.(unique_site_ids))
         @warn "Removing entries marked as `missing` from provided list of sites."
-        unique_site_ids::Vector{String} = String.(unique_site_ids[.!ismissing.(conn_ids)])
-        conn_ids::Vector{String} = String.(collect(skipmissing(conn_ids)))
+        unique_site_ids::Vector{String} = String.(unique_site_ids[.!ismissing.(unique_site_ids)])
     else
         unique_site_ids = String.(unique_site_ids)
-        conn_ids = String.(conn_ids)
     end
 
-    return site_connectivity(file_loc, conn_ids, unique_site_ids;
+    return site_connectivity(file_loc, unique_site_ids;
         con_cutoff=con_cutoff, agg_func=agg_func, swap=swap)
 end
 
