@@ -1,7 +1,7 @@
 """Scenario running functions"""
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
-import ADRIA.metrics: juveniles
+import ADRIA.metrics: relative_juveniles
 """
     setup_cache(domain::Domain)::NamedTuple
 
@@ -219,9 +219,9 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
-    vals .= juveniles(r_raw, site_k_area(domain))
+    vals .= relative_juveniles(r_raw)
     vals[vals.<threshold] .= 0.0
-    data_store.juveniles[:, :, idx] .= vals
+    data_store.relative_juveniles[:, :, idx] .= vals
 
     # Store raw results if no metrics specified
     # if length(metrics) == 0
