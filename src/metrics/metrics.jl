@@ -589,31 +589,19 @@ function _reef_condition_index(rc::AbstractArray{<:Real}, E::AbstractArray{<:Rea
     # {'Poor'    }      0.15     0.25    0.30    0.25
     # {'VeryPoor'}      0.05     0.15    0.18    0.15
 
-    rc .= min.(rc, 1.0)
-    SV .= min.(SV, 1.0)
-    juveniles .= min.(juveniles, 1.0)
+    # Ignoring evenness for now
 
     # Note that the scores for evenness and juveniles are slightly different
     lin_grid::Gridded{Linear{Throw{OnGrid}}} = Gridded(Linear())
-    TC_func::GriddedInterpolation{Float64,1,Float64,Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.05, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0], lin_grid)
-    # E_func::GriddedInterpolation{Float64, 1, Float64, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.5, 0.7, 0.9, 1.0], lin_grid)
-    SV_func::GriddedInterpolation{Float64,1,Float64,Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.18, 0.30, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.9, 1.0], lin_grid)
-    juv_func::GriddedInterpolation{Float64,1,Float64,Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 1.0],), Float64[0, 0.1, 0.5, 0.9, 1.0], lin_grid)
+    TC_func::GriddedInterpolation{Float64,1,Vector{Float64},Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.05, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0], lin_grid)
+    # E_func::GriddedInterpolation{Float64, 1, Vector{Float64}, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.5, 0.7, 0.9, 1.0], lin_grid)
+    SV_func::GriddedInterpolation{Float64,1,Vector{Float64},Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.18, 0.30, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.9, 1.0], lin_grid)
+    juv_func::GriddedInterpolation{Float64,1,Vector{Float64},Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 1.0],), Float64[0, 0.1, 0.5, 0.9, 1.0], lin_grid)
 
     rc_i::AbstractArray{<:Real} = TC_func.(rc)
     # E_i::T = E_func.(E)
     SV_i::AbstractArray{<:Real} = SV_func.(SV)
     juv_i::AbstractArray{<:Real} = juv_func.(juveniles)
-
-    # Original
-    # Y = (rc_i + E_i + SV_i + juv_i) ./ 4;
-
-    # Weighted, giving evenness 10#  weight
-    # Y = (rc_i*0.3) + (E_i*0.1) + (SV_i*0.3) + (juv_i*0.3);
-
-    # Removing evenness completely
-    # Y = mean([rc_i, SV_i, juv_i])
-    # Y = (rc_i .+ SV_i .+ juv_i) ./ 3;
 
     return mean([rc_i, SV_i, juv_i])
 end
@@ -621,10 +609,9 @@ function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
     rc::AbstractArray{<:Real} = _relative_cover(rs)
 
     # Divide across sites by the max possible proportional coral cover
-    rc .= mapslices((s) -> s ./ (rs.site_max_coral_cover / 100.0), rc, dims=2)
+    rc = mapslices((s) -> s ./ (rs.site_max_coral_cover ./ 100.0), rc, dims=2)
 
-    # Juveniles, 51.8 as max juveniles for metric
-    juv::AbstractArray{<:Real} = _juveniles(rs) ./ 51.8
+    juv::AbstractArray{<:Real} = _juvenile_indicator(rs)
     # E::AbstractArray{<:Real} = _coral_evenness(rs)
     E = Array(Float32[])
     SV::AbstractArray{<:Real} = _relative_shelter_volume(rs)
