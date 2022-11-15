@@ -314,21 +314,20 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
     p_df::DataFrame = DataFrame(d.model)[!, [:fieldname, :val, :ptype, :bounds]]
 
     try
-        p_df[!, :val] = params[Not("RCP")]
+        p_df[!, :val] .= collect(params[Not("RCP")])
     catch err
         if isa(err, ArgumentError)
             if !occursin("RCP", "$err")
                 error("Error occurred loading scenario samples. $err")
             else
-                p_df[!, :val] .= params
+                p_df[!, :val] .= collect(params)
             end
         end
     end
 
     to_floor = (p_df.ptype .== "integer")
     if any(to_floor)
-        v = p_df[to_floor, :val]
-        p_df[to_floor, :val] .= map_to_discrete.(v, getindex.(p_df[to_floor, :bounds], 2))
+        p_df[to_floor, :val] .= map_to_discrete.(p_df[to_floor, :val], getindex.(p_df[to_floor, :bounds], 2))
     end
 
     # Update with new parameters

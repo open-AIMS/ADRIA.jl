@@ -256,11 +256,10 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     return run_scenario(idx, param_set, domain, data_store, cache)
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, cache::NamedTuple)
-    update_params!(domain, param_set)
-    # TODO: Update coral params based on param_set
+    # update_params!(domain, param_set)
 
-    # Expand coral model to include its specifications across all taxa/species/groups
-    coral_params = to_spec(component_params(domain.model, Coral))
+    # Extract coral only parameters
+    coral_params = to_spec(param_set)
 
     return run_model(domain, param_set, coral_params, cache)
 end
