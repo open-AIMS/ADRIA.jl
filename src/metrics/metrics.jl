@@ -180,7 +180,7 @@ function coral_cover(X::AbstractArray{<:Real})::NamedTuple
     C4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 6), :, :, :]  # Large massives
 
     # Cover of juvenile corals (< 5cm diameter)
-    juv_all = _juveniles(X)
+    juv_all = _absolute_juveniles(X)
 
     large_corals::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 5), :, :, :] + X[:, screen(cs_p.class_id, 6), :, :, :]
     large_all::AbstractArray{<:Real} = dropdims(sum(large_corals, dims=2), dims=2)
@@ -202,54 +202,59 @@ end
 
 
 """
-    _juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
-    _juveniles(rs::ResultSet)::AbstractArray{<:Real}
+    _relative_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real}
 
-Juvenile coral cover in absolute terms.
+Juvenile coral cover relative to total site area.
 """
-function _juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+function _relative_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     _, _, cs_p::DataFrame = coral_spec()
 
     # Cover of juvenile corals (< 5cm diameter)
     juv_groups::AbstractArray{<:Real} = X[species=cs_p.class_id .== 1] .+ X[species=cs_p.class_id .== 2]
 
-    cs1_idx = cs_p.class_id .== 1
-    cs2_idx = cs_p.class_id .== 2
-    cs1 = X[:, cs1_idx, :] ./ ((cs_p[cs1_idx, "colony_area_cm2"] ./ 10^4) * 51.8)'
-    cs2 = X[:, cs2_idx, :] ./ ((cs_p[cs2_idx, "colony_area_cm2"] ./ 10^4) * 51.8)'
-
-    # juv_groups
-    # 51.8*(π*())
-    # cs_p[cs_p.class_id .== 2, "colony_area_cm2"] / 10^4
-    # Main.@infiltrate
-
     return dropdims(sum(juv_groups, dims=:species), dims=:species)
 end
-function _juveniles(rs::ResultSet)::AbstractArray{<:Real}
-    return _juveniles(rs.raw, rs.site_area)
+function _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real}
+    return rs.outcomes[:relative_juveniles]
 end
 
-function _relative_juveniles(X::AbstractArray{<:Real}, site_area::AbstractArray{<:Real})::AbstractArray{<:Real}
-    # Juveniles, 51.8 as max juveniles for metric
-    _, _, cs_p::DataFrame = coral_spec()
 
-    abs_sc1 = X[species=cs_p.class_id .== 1]
-    abs_sc2 = X[species=cs_p.class_id .== 2]
-    for sp in axes(abs_sc1, dim(abs_sc1, :species))
-        abs_sc1[species=sp] .*= site_area'
-        abs_sc2[species=sp] .*= site_area'
-    end
+"""
+    _absolute_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real}
 
-    sc1_area_m² = mean(cs_p[cs_p.class_id.==1, :colony_area_cm2] ./ 10^4)
-    sc2_area_m² = mean(cs_p[cs_p.class_id.==2, :colony_area_cm2] ./ 10^4)
+Juvenile coral cover in m^2.
+"""
+function _absolute_juveniles(X::AbstractArray{<:Real}, area::AbstractVector{<:Real})::AbstractArray{<:Real}
+    return _relative_juveniles(X) .* area'
+end
+function _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real}
+    return rs.outcomes[:relative_juveniles] .* rs.site_area'
+end
 
-    juv_sc1 = (abs_sc1 ./ sc1_area_m²) ./ (abs_sc1 .* 51.8)
-    juv_sc2 = (abs_sc2 ./ sc2_area_m²) ./ (abs_sc2 .* 51.8)
 
-    # Cover of juvenile corals (< 5cm diameter)
-    juv_groups::AbstractArray{<:Real} = mean([juv_sc1, juv_sc2])
+function _max_juvenile_density(max_juv_density=51.8)
+    cs_p::DataFrame = coral_spec().params
 
-    return dropdims(sum(juv_groups, dims=:species), dims=:species)
+    max_size_m² = maximum(cs_p[cs_p.class_id.==2, :colony_area_cm2]) ./ 10^4
+    return max_juv_density * max_size_m²
+end
+
+"""
+    _juvenile_indicator(X::AbstractArray{<:Real})
+    _juvenile_indicator(rs::ResultSet)
+
+Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretical density 
+for juveniles have been achieved.
+
+Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm diameter.
+"""
+function _juvenile_indicator(X::AbstractArray{<:Real})
+    return _relative_juveniles(X) ./ _max_juvenile_density()
+end
+function _juvenile_indicator(rs::ResultSet)
+    return rs.outcomes[:relative_juveniles] ./ _max_juvenile_density()
 end
 
 
@@ -640,8 +645,9 @@ total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scena
 absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :scenarios))
 relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
 coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
-juveniles = Metric(_juveniles, (:timesteps, :sites, :scenarios))
+absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios))
 relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios))
+juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios))
 reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 
