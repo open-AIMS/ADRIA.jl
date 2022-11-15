@@ -464,24 +464,35 @@ maximum shelter volume possible.
    Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
-function _relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{<:Real}
+function _relative_shelter_volume(X::AbstractArray{<:Real,3}, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{<:Real}
     nspecies::Int64 = size(X, :species)
 
-    # Calculate shelter volume of groups and size classes and multiply with covers
-    if inputs isa DataFrameRow || nrow(inputs) == 1
-        # Collate for a single scenario
-        colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs)
-        RSV = _shelter_species_loop(X[scenarios=1], nspecies, colony_vol, max_colony_vol, site_area)
-    else
-        @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
-        nscens::Int64 = size(X, :scenarios)
+    # Collate for a single scenario
 
-        # Result template - six entries, one for each taxa
-        RSV = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(size(X[:, 1:6, :, :])...))
-        for scen::Int64 in 1:nscens
-            colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs[scen, :])
-            RSV[scenarios=scen] .= _shelter_species_loop(X[scenarios=scen], nspecies, colony_vol, max_colony_vol, site_area)
-        end
+    # Calculate shelter volume of groups and size classes and multiply with covers
+    colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs)
+    RSV = _shelter_species_loop(X, nspecies, colony_vol, max_colony_vol, site_area)
+
+    @assert !any(RSV .> 1.1)  # Error out in cases where RSV significantly .> 1.0
+
+    # Sum over groups and size classes to estimate total shelter volume
+    # proportional to the theoretical maximum (per site)
+    RSV = dropdims(sum(RSV, dims=:species), dims=:species)
+
+    clamp!(RSV, 0.0, 1.0)
+    return RSV
+end
+function _relative_shelter_volume(X::AbstractArray{<:Real,4}, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{<:Real}
+    @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
+
+    nspecies::Int64 = size(X, :species)
+    nscens::Int64 = size(X, :scenarios)
+
+    # Result template - six entries, one for each taxa
+    RSV = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(zeros(size(X[:, 1:6, :, :])...))
+    for scen::Int64 in 1:nscens
+        colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs[scen, :])
+        RSV[scenarios=scen] .= _shelter_species_loop(X[scenarios=scen], nspecies, colony_vol, max_colony_vol, site_area)
     end
 
     @assert !any(RSV .> 1.1)  # Error out in cases where RSV significantly .> 1.0
