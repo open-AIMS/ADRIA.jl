@@ -2,7 +2,6 @@ using NCDatasets
 
 """
     EnvLayer{S, TF}
-
 Store environmental data layers used for scenario
 """
 mutable struct EnvLayer{S<:AbstractString,TF}
@@ -17,10 +16,8 @@ mutable struct EnvLayer{S<:AbstractString,TF}
     const timeframe::TF
 end
 
-
 """
     Domain{M,I,D,S,V,T,X}
-
 Core ADRIA domain. Represents study area.
 """
 mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray}
@@ -35,7 +32,7 @@ mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame
     const out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strongpred::I  # strongest predecessor
     site_data::D   # table of site data (depth, carrying capacity, etc)
-    site_distances::Z # matrix of unique distances between sites
+    site_distances::Z # Matrix of distances between each site
     const site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
     const unique_site_id_col::S  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
@@ -50,12 +47,11 @@ mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame
     sim_constants::SimConstants
 end
 
-
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
 function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedMatrix, in_conn::Vector{Float64}, out_conn::Vector{Float64},
-    strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_dists::Matrix{Float64}, site_id_col::String, unique_site_id_col::String,
+    strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_distances::Matrix{Float64}, site_id_col::String, unique_site_id_col::String,
     init_coral_cover::NamedMatrix, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
     DHWs::Union{NamedArray,Matrix}, waves::Union{NamedArray,Matrix})::Domain
 
@@ -72,18 +68,37 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedM
 
     model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
     sim_constants::SimConstants = SimConstants()
-    return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_dists, site_id_col, unique_site_id_col,
+    return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_distances, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)
 end
 
+"""
+    site_distance(site_data::DataFrame)::Matrix
+
+Calculate matrix of unique distances between sites.
+"""
+
+function site_distances(site_data::DataFrame)::Matrix{Float64}
+    site_centroids = centroids(site_data)
+    longitudes = first.(site_centroids)
+    latitudes = last.(site_centroids)
+
+    nsites = size(site_data)[1]
+    dist = zeros(nsites, nsites)
+    for jj = 1:nsites
+        for ii = 1:nsites
+            dist[ii, jj] = euclidean([latitudes[ii], longitudes[ii]], [latitudes[jj], longitudes[jj]])
+        end
+    end
+    dist[dist.==0] .= NaN
+    return dist
+end
 
 """
     Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
            conn_path::String, dhw_fn::String, wave_fn::String)::Domain
-
 Convenience constructor for Domain.
-
 # Arguments
 - name : Name of domain
 - dpkg_path : location of data package
@@ -131,10 +146,9 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 
     # Filter out missing entries
     site_data = site_data[coalesce.(in.(conn_ids, [site_conn.site_ids]), false), :]
-
-    coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     site_dists::Matrix{Float64} = site_distances(site_data)
 
+    coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
 
     loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
@@ -179,9 +193,7 @@ end
     load_domain(path::String, rcp::Int64)
     load_domain(path::String, rcp::String)
     load_domain(path::String)
-
 Load domain specification from data package.
-
 # Arguments
 - path : location of data package
 - rcp : RCP scenario to run. If none provided, no data path is set.
@@ -255,7 +267,6 @@ end
 
 """
     param_table(d::Domain)::DataFrame
-
 Get model fieldnames and their parameter values.
 """
 function param_table(d::Domain)::DataFrame
@@ -272,9 +283,7 @@ end
 """
     model_spec(d::Domain)::DataFrame
     model_spec(d::Domain, filepath::String)::Nothing
-
 Get model specification as DataFrame with lower and upper bounds.
-
 If a filepath is provided, writes the specification out to file with ADRIA metadata.
 """
 function model_spec(d::Domain)::DataFrame
@@ -309,7 +318,6 @@ end
 
 """
     update_params!(d::Domain, params::DataFrameRow)
-
 Update given domain with new parameter values.
 Maps sampled continuous values to discrete values for categorical variables.
 """
@@ -341,129 +349,10 @@ end
 
 
 """
-    site_distance(site_data::DataFrame)::Matrix
-
-Calculate matrix of unique distances between sites.
-"""
-function site_distances(site_data::DataFrame)::Matrix{Float64}
-    site_centroids = centroids(site_data)
-    longitudes = first.(site_centroids)
-    latitudes = last.(site_centroids)
-
-    nsites = size(site_data)[1]
-    dist = zeros(nsites, nsites)
-    for jj = 1:nsites
-        for ii = 1:nsites
-            dist[ii, jj] = euclidean([latitudes[ii], longitudes[ii]], [latitudes[jj], longitudes[jj]])
-        end
-    end
-    dist[dist.==0] .= NaN
-    return dist
-end
-
-
-"""
-    load_nc_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
-Load netCDF data as a NamedArray.
-"""
-function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
-    local loaded::NamedArray
-
-    ds = Dataset(data_fn, "r")
-    data = ds[attr][:, :]
-    close(ds)
-
-    try
-        loaded = NamedArray(data)
-    catch err
-        if isa(err, KeyError)
-            n_sites = size(data, 2)
-            @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, members)."
-            if n_sites != nrow(site_data)
-                error("Mismatch in number of sites ($(data_fn)). Expected $(nrow(site_data)), got $(n_sites)")
-            end
-        else
-            rethrow(err)
-        end
-    end
-
-    return loaded
-end
-
-"""
-    _char_to_string(vals)::Vector{String}
-Convert character array entries in netCDFs to string.
-"""
-function _char_to_string(vals)::Vector{String}
-    if vals isa Matrix
-        vals = map(x -> join(skipmissing(x)), eachcol(vals))
-    end
-
-    # R's ncdf4 package does not yet support string values
-    # so strip the null terminator from the joined character array.
-    vals = replace.(vals, "\0" => "")
-
-    return vals
-end
-
-
-"""
-    load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
-Load initial coral cover data from netCDF.
-"""
-function load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
-    data = load_nc_data(data_fn, attr, site_data)
-
-    ds = Dataset(data_fn, "r")
-    site_order = string.(ds["reef_siteid"][:])
-    close(ds)
-
-    site_order = _char_to_string(site_order)
-
-    # Attach site names to each column
-    setnames!(data, site_order, 2)
-    setdimnames!(data, :species, 1)
-    setdimnames!(data, :sites, 2)
-
-    # Reorder sites for alignment
-    data = data[:, site_data.reef_siteid]
-
-    return data
-end
-
-
-"""
-    load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
-Load environmental data layers (DHW, Wave) from netCDF.
-"""
-function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
-    data = load_nc_data(data_fn, attr, site_data)
-
-    ds = Dataset(data_fn, "r")
-    site_order = string.(ds["reef_siteid"][:])
-    close(ds)
-
-    site_order = _char_to_string(site_order)
-
-    # Attach dimension names
-    setnames!(data, site_order, 2)
-    setdimnames!(data, :timesteps, 1)
-    setdimnames!(data, :sites, 2)
-    setdimnames!(data, :scenarios, 3)
-
-    # Reorder sites so they align
-    data = data[:, site_data.reef_siteid, :]
-
-    return data
-end
-
-"""
     component_params(m::Model, component::Type)::DataFrame
     component_params(spec::DataFrame, component::Type)::DataFrame
     component_params(m::Model, components::Vector)::DataFrame
     component_params(spec::DataFrame, components::Vector)::DataFrame
-
-
 Extract parameters for a specific model component.
 """
 function component_params(m::Model, component::Type)::DataFrame
@@ -479,12 +368,9 @@ function component_params(spec::DataFrame, components::Vector)::DataFrame
     return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
-
 """
-
 # Returns
 Matrix : n_reps * sites * 3
-
 last dimension indicates: site_id, seeding rank, shading rank
 """
 function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int)
@@ -573,7 +459,6 @@ end
 
 """
     site_area(domain::Domain)::Vector{Float64}
-
 Get site area for the given domain.
 """
 function site_area(domain::Domain)::Vector{Float64}
@@ -582,7 +467,6 @@ end
 
 """
     site_k_area(domain::Domain)::Vector{Float64}
-
 Get maximum coral cover area for the given domain in absolute area.
 """
 function site_k_area(domain::Domain)::Vector{Float64}
@@ -592,7 +476,6 @@ end
 """
     relative_leftover_space(domain::Domain)::Vector{Float64}
     relative_leftover_space(site_k::Matrix{Float64}, site_coral_cover::Matrix{Float64})::Matrix{Float64}
-
 Get proportion of leftover space, given site_k and proportional cover on each site, summed over species.
 """
 function relative_leftover_space(domain::Domain, site_coral_cover::Matrix{Float64})::Matrix{Float64}
@@ -605,7 +488,6 @@ end
 
 """
     site_k(domain::Domain)::Vector{Float64}
-
 Get maximum coral cover area as a proportion of site area.
 """
 function site_k(domain::Domain)::Vector{Float64}
@@ -629,7 +511,6 @@ end
 
 """
     switch_RCPs!(d::Domain, RCP::String)::Domain
-
 Switch environmental datasets to represent the given RCP.
 """
 function switch_RCPs!(d::Domain, RCP::String)::Domain
