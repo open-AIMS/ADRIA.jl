@@ -146,8 +146,10 @@ end
 
     # Test magnitude of change are within bounds
     Y_cover = zeros(2, 36, n_sites)
-    population = rand(1e3:1e6, 36, n_sites)
-    Y_cover[1, :, :] = population ./ total_site_area
+
+    # Generate initial cover
+    Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
+
     ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
     growthODE(du, Y_cover[1, :, :], p, 1)
     @test !any(abs.(du) .> 1.0) || "growth function is producing inappropriate values (abs(du) > 1.0)"
@@ -161,7 +163,7 @@ end
     # Test direction and magnitude of change
     p.rec .= rand(0:0.001:0.5, 6, n_sites)
     Y_cover = zeros(10, 36, n_sites)
-    Y_cover[1, :, :] = rand(1e3:1e6, 36, n_sites)
+    Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
     ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
     for tstep = 2:10
         growthODE(du, Y_cover[tstep-1, :, :], p, 1)
@@ -170,13 +172,13 @@ end
     end
     @test any(diff(Y_cover, dims=1) .< 0) || "ODE never decreases, du being restricted to >=0."
     @test any(diff(Y_cover, dims=1) .>= 0) || "ODE never increases, du being restricted to <=0."
-    @test all(abs.(diff(Y_cover, dims=1)) .< 1.0) || "ODE more than doubles or halves area."
 
+    @test all(abs.(diff(Y_cover, dims=1)) .< 1.0) || "ODE more than doubles or halves area."
 
     # Test change in smallest size class under no recruitment
     p.rec .= zeros(6, n_sites)
     Y_cover = zeros(10, 36, n_sites)
-    Y_cover[1, :, :] = rand(1e3:1e6, 36, n_sites)
+    Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
     ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
     for tstep = 2:10
         growthODE(du, Y_cover[tstep-1, :, :], p, 1)
