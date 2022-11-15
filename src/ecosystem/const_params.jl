@@ -1,6 +1,7 @@
 """
-Struct of simulation constants for ADRIA
+    SimConstants
 
+Struct of simulation constants for ADRIA
 
 # References
 1. Lough, J. M., Anderson, K. D., & Hughes, T. P. (2018).
@@ -32,9 +33,6 @@ Struct of simulation constants for ADRIA
 Base.@kwdef mutable struct SimConstants
     nsiteint = 5 # max number of sites we intervene on in a given year.
 
-    # Default percent thresholds of max connectivity to filter out weak connections in connectivity network.
-    # Suggest we keep this low
-    con_cutoff = 0.01
     prioritysites = [] # sites to prioritize when seeding or shading
     priorityzones = ["DarkBlue", "Green"] # zones to prioritize when seeding or shading, in order of preference
 
