@@ -276,11 +276,11 @@ function coral_spec()::NamedTuple
     n_classes::Int64 = 6
     n_species::Int64 = length(taxa_names) * n_classes
 
-    tn = repeat(taxa_names, n_classes, 1)
+    tn = repeat(taxa_names; inner=n_classes)
 
     # Create combinations of taxa names and size classes
     params.name = human_readable_name(tn, true)
-    params.taxa_id = repeat(1:n_classes, inner=n_classes)
+    params.taxa_id = repeat(1:n_classes; inner=n_classes)
 
     params.class_id = repeat(1:n_classes, n_classes)
     params.coral_id = String[join(x, "_") for x in zip(tn, params.taxa_id, params.class_id)]

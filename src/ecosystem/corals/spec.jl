@@ -32,8 +32,20 @@ function _update_coral_spec(spec::DataFrame, pnames::Vector{String}, coral_param
         target = occursin.(p, fnames)
         for (tn, sym_tn) in zip(fnames[target], Symbol.(fnames[target]))
             idx = spec.coral_id .== rsplit(tn, "_$p", keepempty=false)
-            spec[idx, p] = coral_params[coral_params.fieldname.==sym_tn, :val]
+            spec[idx, [p]] .= coral_params[coral_params.fieldname.==sym_tn, :val]
         end
+    end
+
+    return spec
+end
+
+function to_spec(inputs::Union{DataFrameRow,NamedVector})::DataFrame
+    _, pnames, spec = coral_spec()
+
+    coral_ids = spec[:, :coral_id]
+    for p in pnames
+        # wrapping `p` in an array is necessary so update of DF works
+        spec[!, [p]] .= Array(inputs[coral_ids.*"_".*p])
     end
 
     return spec
