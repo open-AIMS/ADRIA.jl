@@ -621,8 +621,6 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
         # proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
     end
 
-    # Main.@infiltrate
-
     # Avoid placing importance on sites that were not considered
     # (lower values are higher importance)
     site_ranks[site_ranks.==0.0] .= n_sites + 1
