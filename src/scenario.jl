@@ -215,7 +215,7 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(r_raw, site_area(domain), p_tbl)
+    vals .= relative_shelter_volume(r_raw, site_area(domain), site_k_area(domain), p_tbl)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
