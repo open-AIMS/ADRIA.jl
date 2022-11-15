@@ -308,7 +308,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     site_ids::Array{Int64} = copy(d_vars.site_ids)
 
-    dist_thresh = d_vars.dist_thresh
+    dist_thresh::Float64 = d_vars.dist_thresh
     if dist_thresh == 1.0
         # Force different sites to be selected
         site_ids = setdiff(site_ids, vcat(prefseedsites, prefshadesites))
@@ -420,8 +420,8 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
-        dist = d_vars.dist
-        top_n = d_vars.top_n
+        dist::Matrix{Float64} = d_vars.dist
+        top_n::Int64 = d_vars.top_n
         if dist_thresh != 1.0
             prefseedsites .= distance_sorting(prefseedsites, s_order_seed[:, 1], dist, dist_thresh, top_n)
         end
@@ -487,7 +487,7 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Uni
     # storage for new set of sites
     test_sites = pref_sites
 
-    while (length(alt_sites) .> select_n)
+    while (length(alt_sites) .>= select_n)
         test_sites = [test_sites[inds_keep[:]]; alt_sites[1:select_n]]
         #SMain.@infiltrate
         # find all sites within these highly ranked but unselected sites which are further apart
@@ -509,7 +509,7 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Uni
     end
 
     # if not all sites could be replaced, just use highest ranked remaining pref_sites
-    if select_n != 0
+    if (select_n != 0) && !isempty(setdiff(pref_sites, test_sites))
         rem_pref_sites = setdiff(pref_sites, test_sites)
         test_sites[end-select_n+1:end] .= rem_pref_sites[1:select_n]
     end
