@@ -13,7 +13,7 @@ using Statistics
     site_order = shuffle(rng, Vector(1:n_sites))
     prefsites = site_order[1:5]
     dists = rand(n_sites, n_sites)
-    dists[dists.==diag(dists)] .= NaN
+    dists[diagind(dists)] .= NaN
 
     min_dist = median(dists[.!isnan.(dists)]) - dist_thresh * median(dists[.!isnan.(dists)])
     # only prefsites are < min_dist so only these should be replaced
