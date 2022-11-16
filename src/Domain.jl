@@ -86,8 +86,8 @@ function site_distances(site_data::DataFrame)::Matrix{Float64}
 
     nsites = size(site_data)[1]
     dist = zeros(nsites, nsites)
-    for jj = 1:nsites
-        for ii = 1:nsites
+    @inbounds for jj = 1:nsites
+        @inbounds for ii = 1:nsites
             dist[ii, jj] = euclidean([latitudes[ii], longitudes[ii]], [latitudes[jj], longitudes[jj]])
         end
     end
