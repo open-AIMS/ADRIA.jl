@@ -11,10 +11,11 @@ const RESULTS = "results"
 const LOG_GRP = "logs"
 const INPUTS = "inputs"
 const SITE_DATA = "site_data"
+const ENV_STATS = "env_stats"
 const MODEL_SPEC = "model_spec"
 
 
-struct ResultSet{S, T1, T2, F, A, B, C, G}
+struct ResultSet{S,T1,T2,F,A,B,C,D,G}
     name::S
     RCP::S
     invoke_time::S
@@ -25,6 +26,8 @@ struct ResultSet{S, T1, T2, F, A, B, C, G}
     site_max_coral_cover::F
     site_centroids::T2
     env_layer_md::EnvLayer
+    dhw_stats::D
+    wave_stats::D
     site_data::G
 
     inputs::G
@@ -40,34 +43,53 @@ struct ResultSet{S, T1, T2, F, A, B, C, G}
 end
 
 
-function ResultSet(input_set::Zarr.ZArray, env_layer_md::EnvLayer, 
-    inputs_used::DataFrame, outcomes::Dict, log_set::Zarr.ZGroup, 
-    site_data::DataFrame, model_spec::DataFrame)::ResultSet
-
+function ResultSet(input_set::AbstractArray, env_layer_md::EnvLayer, inputs_used::DataFrame, outcomes::Dict,
+    log_set::Zarr.ZGroup, dhw_stats_set::Dict, wave_stats_set::Dict, site_data::DataFrame, model_spec::DataFrame)::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
     ResultSet(input_set.attrs["name"],
-              string(rcp),
-              input_set.attrs["invoke_time"],
-              input_set.attrs["ADRIA_VERSION"],
-              input_set.attrs["site_ids"],
-              convert.(Float64, input_set.attrs["site_area"]),
-              convert.(Float64, input_set.attrs["site_max_coral_cover"]),
-              input_set.attrs["site_centroids"],
-              env_layer_md,
-              site_data,
-              inputs_used,
-              input_set.attrs["sim_constants"],
-              model_spec,
-              outcomes,
-              NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
-              NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
-              NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
-              NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]))
+        string(rcp),
+        input_set.attrs["invoke_time"],
+        input_set.attrs["ADRIA_VERSION"],
+        input_set.attrs["site_ids"],
+        convert.(Float64, input_set.attrs["site_area"]),
+        convert.(Float64, input_set.attrs["site_max_coral_cover"]),
+        input_set.attrs["site_centroids"],
+        env_layer_md,
+        dhw_stats_set,
+        wave_stats_set,
+        site_data,
+        inputs_used,
+        input_set.attrs["sim_constants"],
+        model_spec,
+        outcomes,
+        NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
+        NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
+        NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
+        NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]))
 end
 
 
 """
-    combine(result_sets...)
+    _copy_env_stats(src::String, dst::String, subdir::String)::Nothing
+
+Helper function to copy environmental data layer statistics from data store.
+"""
+function _copy_env_stats(src::String, dst::String, subdir::String)::Nothing
+    src_dir = joinpath(src, ENV_STATS, subdir)
+    dst_dir = joinpath(dst, ENV_STATS, subdir)
+    mkpath(dst_dir)
+    src_ds = filter(d -> isdir(joinpath(src_dir, d)), readdir(src_dir))
+    for ds in src_ds
+        cp(joinpath(src_dir, ds), joinpath(dst_dir, ds), force=true)
+    end
+
+    return
+end
+
+
+"""
+    combine(result_sets...)::ResultSet
+    combine_results(result_set_locs::Array{String})::ResultSet
 
 Combine arbitrary number of ADRIA result sets into a single data store.
 
@@ -81,7 +103,6 @@ function combine_results(result_sets...)::ResultSet
     # Ensure all sim constants are identical
     @assert all([result_sets[i].sim_constants == result_sets[i+1].sim_constants for i in 1:length(result_sets)-1])
 
-
     # Ensure all result sets were from the same version of ADRIA
     if length(Set([rs.ADRIA_VERSION for rs in result_sets])) != 1
         @warn "Results were created with different versions of ADRIA so errors may occur!"
@@ -89,7 +110,7 @@ function combine_results(result_sets...)::ResultSet
 
     rs1 = result_sets[1]
     canonical_name = rs1.name
-    combined_time = replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_")
+    combined_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
 
     rcps = join(unique([rs.RCP for rs in result_sets]), "_")
 
@@ -101,14 +122,14 @@ function combine_results(result_sets...)::ResultSet
     n_scenarios = sum(map((rs) -> size(rs.inputs, 1), result_sets))
 
     envlayer = rs1.env_layer_md
-    env_md = EnvLayer(envlayer.site_data_fn, envlayer.site_id_col, envlayer.unique_site_id_col,
-                      envlayer.init_coral_cov_fn, envlayer.connectivity_fn,
-                      dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn), envlayer.timeframe)
+    env_md = EnvLayer(envlayer.dpkg_path, envlayer.site_data_fn, envlayer.site_id_col, envlayer.unique_site_id_col,
+        envlayer.init_coral_cov_fn, envlayer.connectivity_fn,
+        dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn), envlayer.timeframe)
 
     all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
     input_dims = size(all_inputs)
     attrs = scenario_attributes(canonical_name, rcps, names(all_inputs), combined_time, env_md, rs1.sim_constants,
-                                rs1.site_ids, rs1.site_area, rs1.site_max_coral_cover, rs1.site_centroids)
+        rs1.site_ids, rs1.site_area, rs1.site_max_coral_cover, rs1.site_centroids)
 
     # Copy site data into result set
     mkdir(joinpath(new_loc, SITE_DATA))
@@ -143,7 +164,7 @@ function combine_results(result_sets...)::ResultSet
                 n_log[:, :, :, scen_id:scen_id+(rs_scen_len-1)] .= s_log
             end
 
-            scen_id = scen_id+rs_scen_len
+            scen_id = scen_id + rs_scen_len
         end
     end
 
@@ -157,7 +178,7 @@ function combine_results(result_sets...)::ResultSet
     for m_name in metrics
         m_store = zcreate(Float32, result_dims...;
             fill_value=nothing, fill_as_missing=false,
-            path=joinpath(z_store.folder, "results", string(m_name)), chunks=(result_dims[1:end-1]..., 1),
+            path=joinpath(z_store.folder, RESULTS, string(m_name)), chunks=(result_dims[1:end-1]..., 1),
             attrs=dim_struct,
             compressor=compressor)
 
@@ -171,11 +192,40 @@ function combine_results(result_sets...)::ResultSet
                 m_store[:, :, :, scen_id:scen_id+(rs_scen_len-1)] .= rs.outcomes[m_name]
             end
 
-            scen_id = scen_id+rs_scen_len
+            scen_id = scen_id + rs_scen_len
         end
     end
 
+    # Copy env stats
+    mkdir(joinpath(new_loc, ENV_STATS))
+    for rs in result_sets
+        loc::String = rs.env_layer_md.dpkg_path
+        _copy_env_stats(loc, new_loc, "dhw")
+        _copy_env_stats(loc, new_loc, "wave")
+    end
+
     return load_results(z_store.folder)
+end
+function combine_results(result_set_locs::Array{String})::ResultSet
+    return combine_results(load_results.(result_set_locs)...)
+end
+
+
+"""
+    env_stats(rs::ResultSet, s_name::String, rcp::String)
+    env_stats(rs::ResultSet, s_name::String, rcp::String, member::Int)
+    env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, member::Int)
+
+Extract statistics for a given environmental layer ("DHW" or "wave")
+"""
+function env_stats(rs::ResultSet, s_name::String, rcp::String)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp]
+end
+function env_stats(rs::ResultSet, s_name::String, rcp::String, member::Int)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp][:, member]
+end
+function env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, member::Int)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp][stat, member]
 end
 
 
@@ -207,7 +257,7 @@ function store_location(rs::ResultSet)::String
         end
     end
 
-    return replace(store, "\\"=>"/")
+    return replace(store, "\\" => "/")
 end
 
 
@@ -249,6 +299,16 @@ Retrieve the time steps represented in the result set.
 """
 function timesteps(rs::ResultSet)
     return rs.env_layer_md.timeframe
+end
+
+"""
+    component_params(spec::DataFrame, component::Type)::DataFrame
+
+Extract parameters for a specific model component from exported model specification.
+"""
+function component_params(rs::ResultSet, component::Type)::DataFrame
+    spec = rs.model_spec
+    return spec[spec.component.==string(component), :]
 end
 
 

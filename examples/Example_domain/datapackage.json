@@ -2,10 +2,10 @@
   "name": "Example_domain",
   "title": "Example reef cluster data package",
   "description": "Example data package for ADRIA",
-  "version": "v0.2.1",
+  "version": "0.3.1",
   "sources": [],
   "simulation_metadata": {
-    "timeframe": [2026, 2099]
+    "timeframe": [2025, 2099]
   },
   "contributors": [
     {
@@ -29,8 +29,8 @@
         "reef_siteid",
         "covers"
       ],
-      "path": "site_data/coral_cover.mat",
-      "format": "MAT v7.3"
+      "path": "site_data/coral_cover.nc",
+      "format": "netCDF"
     },
     {
       "name": "DHWs",
@@ -39,18 +39,18 @@
         "reef_siteid",
         "dhw"
       ],
-      "path": "DHWs/dhwRCP45.mat",
-      "format": "MAT v7.3"
+      "path": "DHWs/dhwRCP45.nc",
+      "format": "netCDF"
     },
     {
       "name": "waves",
       "description": "Stochastic wave data for the Example cluster",
       "data": [
         "reef_siteid",
-        "wave"
+        "Ub"
       ],
       "path": "waves/wave_RCP45.mat",
-      "format": "MAT v7.3"
+      "format": "netCDF"
     },
     {
       "name": "connectivity",

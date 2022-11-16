@@ -5,15 +5,18 @@ using StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
 using NamedArrays, SparseArrayKit, DifferentialEquations
 
 using MAT  # Package to read in `.mat` files
-
+using Combinatorics
+using Distances
 using Setfield, ModelParameters, DataStructures
-using DataFrames, GeoDataFrames, Graphs, CSV
+using DataFrames, Graphs, CSV
 import ArchGDAL as AG
+import GeoDataFrames
 
 using PkgVersion
 
 using ProgressMeter
 
+using SnoopPrecompile, RelocatableFolders
 
 include("utils/text_display.jl")  # need better name for this file
 include("utils/setup.jl")
@@ -29,8 +32,9 @@ create_coral_struct()
 include("ecosystem/corals/spec.jl")
 include("ecosystem/const_params.jl")
 
-include("Domain.jl")
 include("io/inputs.jl")
+include("Domain.jl")
+
 
 include("sites/connectivity.jl")
 include("sites/dMCDA.jl")
@@ -40,10 +44,15 @@ include("interventions/seeding.jl")
 include("io/ResultSet.jl")
 include("io/result_io.jl")
 include("io/result_post_processing.jl")
+include("io/sampling.jl")
 include("metrics/metrics.jl")
+include("metrics/sensitivity.jl")
+include("metrics/performance.jl")
 
 include("scenario.jl")
+include("optimization.jl")
 
+include("../Aviz/src/Aviz.jl")
 # include("main_app.jl")
 
 
@@ -51,55 +60,39 @@ export fecundity_scope!, bleaching_mortality!
 export growthODE
 export run_scenario, coral_spec
 export create_coral_struct, Intervention, Criteria, Corals, SimConstants
-export site_area
-export Domain, metrics, select, timesteps
+export site_area, site_k_area
+export Domain, metrics, select, timesteps, env_stats
 
 # metric helper methods
 export dims, ndims
 
-
-if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the package
-    precompile(load_results, (String, ))
-    precompile(load_domain, (String, Int64))
-    precompile(Domain, (String, Int64, String, String, String, String, String, String, String))
-    precompile(EnvLayer, (String, String, String, String, String, String, String))
-end
-
-
 # List out compatible domain datapackages
-const COMPAT_DPKG = ["v0.2", "v0.2.1"]
+const COMPAT_DPKG = ["0.3.1"]
 
+# @precompile_all_calls begin
+#     ex_dir = @path joinpath(@__DIR__, "../examples")
 
-# Precompile as the final step of the module definition:
-# if ccall(:jl_generating_output, Cint, ()) == 1   # if we're precompiling the package
-#     precompile(load_domain, (String, Int64))
-#     precompile(Domain, (String, Int64, String, String, String, String, String, String, String))
+#     f() = begin
+#         @showprogress 1 for _ in 1:10
+#         end
+#     end
+#     b = redirect_stdout(f, devnull)
+
+#     dom = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), "45")
+#     p_df = ADRIA.param_table(dom)
+#     p_df = repeat(p_df, 5)
+#     p_df[:, :dhw_scenario] .= 50
+#     p_df[:, :guided] .= [0, 0, 1, 2, 3]
+#     p_df[:, :seed_TA] .= [0, 5e5, 5e5, 5e5, 5e5]
+#     p_df[:, :seed_CA] .= [0, 5e5, 5e5, 5e5, 5e5]
+
+#     ENV["ADRIA_THRESHOLD"] = 1e-6
+#     run_scenario(p_df[1, :], dom)
+#     run_scenario(p_df[end, :], dom)
+#     delete!(ENV, "ADRIA_THRESHOLD")
+
+#     precompile(load_results, (String,))
 #     precompile(EnvLayer, (String, String, String, String, String, String, String))
-
-#     precompile(Domain, (String, Int, EnvLayer, DataFrame, Vector{Float64}, Vector{Int64}, DataFrame, String, String, NamedMatrix, CoralGrowth,
-#         Vector{String}, Vector{String}, NamedArray, NamedArray))
-
-#     # let
-#     #     here = @__DIR__
-#     #     ex_dir = joinpath(here, "../examples")
-#     #     @debug "Pre-running examples to reduce future spin-up time"
-
-#     #     f() = begin 
-#     #         @showprogress 1 for _ in 1:10
-#     #         end
-#     #     end
-#     #     b = redirect_stdout(f, devnull);
-
-#     #     ex_domain = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), 45)
-#     #     p_df = ADRIA.load_scenarios(ex_domain, joinpath(ex_dir, "example_scenarios.csv"))
-
-#     #     ENV["ADRIA_THRESHOLD"] = 1e-6
-#     #     ex_domain.sim_constants.tf = 3
-#     #     ds = (raw=nothing, site_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
-#     #     run_scenario((1, p_df[1, :]), ex_domain, 1, ds)
-#     #     run_scenario((1, p_df[end, :]), ex_domain, 1, ds)
-#     #     delete!(ENV, "ADRIA_THRESHOLD")
-#     # end
 # end
 
 end

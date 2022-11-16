@@ -7,3 +7,5 @@ examples/Outputs/
 /build/*.dll
 /build/*.so
 .vscode/
+
+adria/

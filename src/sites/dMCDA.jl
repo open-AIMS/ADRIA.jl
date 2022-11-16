@@ -1,11 +1,15 @@
 """Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
 
 using StatsBase
+using Distances
+using Combinatorics
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     nsiteint  # ::I
     prioritysites  # ::V
+    priorityzones # ::V
+    zones # ::V
     strongpred  # ::V
     in_conn  # ::v
     out_conn  # ::v
@@ -16,6 +20,9 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     area  # ::M
     min_area # ::F
     risktol  # ::F
+    dist # ::M
+    dist_thresh # ::Float64
+    top_n # ::Int64
     wtinconnseed  # ::F
     wtoutconnseed  # ::F
     wtconshade  # ::F
@@ -25,16 +32,26 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wtlocover  # ::F
     wtpredecseed  # ::F
     wtpredecshade  # ::F
+    wtzonesseed # ::F
+    wtzonesshade # ::F
 end
 
+"""
+    mcda_normalize(x::Vector)::Vector
+
+Normalize a Vector (wse/wsh) for MCDA.
+"""
+function mcda_normalize(x::Vector)::Vector
+    return x ./ sum(x)
+end
 
 """
-    mcda_normalize(x::Union{Matrix, Vector})::Union{Matrix, Vector}
+    mcda_normalize(x::Matrix)::Matrix
 
-Normalize a Matrix (SE/SH) or Vector (wse/wsh) for MCDA.
+Normalize a Matrix (SE/SH) for MCDA.
 """
-function mcda_normalize(x::Union{Matrix,Vector})::Union{Matrix,Vector}
-    return x ./ sqrt(sum(x .^ 2))
+function mcda_normalize(x::Matrix)::Matrix
+    return x ./ sqrt.(sum(x .^ 2, dims=1))
 end
 
 
@@ -52,7 +69,6 @@ function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     return
 end
 
-
 """
     rank_sites!(S, weights, rankings, nsiteint, rank_col)
     rank_seed_sites!(S, weights, rankings, nsiteint)
@@ -64,8 +80,11 @@ end
 - rankings : vector of site ranks to update
 - nsiteint : number of sites to select for interventions
 - rank_col : column to fill with rankings (2 for seed, 3 for shade)
+
+# Returns
+prefsites : sites in order of their rankings
 """
-function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vector
+function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
     selector = vec(.!all(S[:, 2:end] .== 0, dims=1))
 
@@ -75,7 +94,6 @@ function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vecto
 
     # Skip first column as this holds site index ids
     S[:, 2:end] = mcda_normalize(S[:, 2:end])
-
     S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
     s_order = mcda_func(S)
 
@@ -85,75 +103,78 @@ function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Vecto
     # Match by site_id and assign rankings to log
     align_rankings!(rankings, s_order, rank_col)
 
-    return prefsites
+    return prefsites, s_order
 end
-function rank_seed_sites!(S, weights, rankings, nsiteint, mcda_func)::Vector
+
+function rank_seed_sites!(S, weights, rankings, nsiteint, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     rank_sites!(S, weights, rankings, nsiteint, mcda_func, 2)
 end
-function rank_shade_sites!(S, weights, rankings, nsiteint, mcda_func)::Vector
+function rank_shade_sites!(S, weights, rankings, nsiteint, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     rank_sites!(S, weights, rankings, nsiteint, mcda_func, 3)
 end
 
 """
-    create_decision_matrix(site_ids, centr, sumcover, maxcover, area, damprob, heatstressprob, predec)
+    create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
 
 Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
 Sites are then filtered based on heat and wave stress risk.
 
-Where no sites are filtered, size of ``A := n_sites × 6 criteria``.
+Where no sites are filtered, size of ``A := n_sites × 7 criteria``.
 
 Columns indicate:
 1. Site ID
 2. Incoming Node Connectivity Centrality
 3. Outgoing Node Connectivity Centrality
-4. Wave Damage Probability
-5. Heat Stress Probability
+4. Wave stress
+5. Heat stress
 6. Priority Predecessors
 7. Available Area (relative to max cover)
-8. Coral cover area
 
 # Arguments
 - site_ids : vector of site ids
 - in_conn : site incoming centrality (relative strength of connectivity) (0 <= c <= 1.0)
 - out_conn : site outgoing centrality (relative strength of connectivity) (0 <= c <= 1.0)
-- sumcover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
-- maxcover : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
+- sum_cover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
+- max_cover : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
 - area : total absolute area (in m²) for each site
-- damprob : Probability of wave damage
-- heatstressprob : Probability of site being affected by heat stress
+- wave_stress : Probability of wave damage
+- heat_stress : Probability of site being affected by heat stress
 - predec : list of priority predecessors (sites strongly connected to priority sites)
-- risktol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
+- risk_tol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
 """
-function create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
-    A = zeros(length(site_ids), 7)
+function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_criteria, risk_tol)
+    A = zeros(length(site_ids), 8)
 
     A[:, 1] .= site_ids  # Column of site ids
 
     # Account for cases where no coral cover
-    c_cov_area = in_conn .* sumcover .* area
-    o_cov_area = out_conn .* sumcover .* area
+    c_cov_area = in_conn .* sum_cover .* area
+    o_cov_area = out_conn .* sum_cover .* area
 
     # node connectivity centrality, need to instead work out strongest predecessors to priority sites
-    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : c_cov_area
-    A[:, 3] .= maximum(o_cov_area) != 0.0 ? o_cov_area / maximum(o_cov_area) : o_cov_area
+    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : 0.0
+    A[:, 3] .= maximum(o_cov_area) != 0.0 ? o_cov_area / maximum(o_cov_area) : 0.0
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
-    A[:, 4] .= maximum(damprob) != 0 ? (damprob .- minimum(damprob)) ./ (maximum(damprob) - minimum(damprob)) : damprob
+    A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
 
     # risk from heat exposure
-    A[:, 5] .= maximum(heatstressprob) != 0 ? (heatstressprob .- minimum(heatstressprob)) ./ (maximum(heatstressprob) - minimum(heatstressprob)) : heatstressprob
+    A[:, 5] .= maximum(heat_stress) != 0.0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : 0.0
 
     # priority predecessors
     A[:, 6] .= predec[:, 3]
 
+    # priority zone predecessors and sites
+    A[:, 7] .= zones_criteria
+
     # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 7] = max.((maxcover - sumcover), 0.0) .* area
+    A[:, 8] = max.((max_cover - sum_cover), 0.0) .* area
 
     # Filter out sites that have high risk of wave damage, specifically
     # exceeding the risk tolerance
-    A[A[:, 4].>risktol, 4] .= NaN
-    rule = (A[:, 4] .<= risktol) .& (A[:, 5] .> risktol)
+    A[A[:, 4].>risk_tol, 4] .= NaN
+    rule = (A[:, 4] .<= risk_tol) .& (A[:, 5] .> risk_tol)
     A[rule, 5] .= NaN
 
     filtered = vec(.!any(isnan.(A), dims=2))
@@ -165,51 +186,50 @@ end
 
 
 """
-    create_seed_matrix(SE, A, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+    create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat, predec, low_cover)
 
 Create seeding specific decision matrix from criteria matrix. The weight criteria and filter.
 
 # Arguments
-- A : Criteria  matrix
-- wtinconnseed : Seed connectivity weight for seeding
-- wtoutconnseed : Seed connectivity weight for seeding
-- wtwaves : Wave stress weight
-- wtheat : Heat stress weight
-- wtpredecseed : Priority predecessor weight
-- wtlocover : Weighting for low coral cover (coral real estate), when seeding
+- A : Criteria matrix
+- min_area : Minimum available area for a site to be considered
+- inconn_seed : Seed connectivity weight for seeding
+- outconn_seed : Seed connectivity weight for seeding
+- waves : Wave stress weight
+- heat : Heat stress weight
+- predec : Priority predecessor weight
+- low_cover : Weighting for low coral cover (coral real estate), when seeding
 
 # Returns
 Tuple (SE, wse)
-    - SE : Matrix of shape [n sites considered, 7]
-        1. Site index ID
-        2. Incoming Centrality
-        3. Outgoing Centrality
-        4. Wave risk (higher values = less risk)
-        5. Damage risk (higher values = less risk)
-        6. Priority predecessors relating to coral real estate relative to max capacity
-        7. Available space
-    - wse : 5-element vector of criteria weights
-        1. incoming connectivity
-        2. outgoing connectivity
-        3. wave
-        4. heat
-        5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
-        6. low cover (weights importance of sites with low cover/high available real estate to plant corals)
+- SE : Matrix of shape [n sites considered, 7]
+    1. Site index ID
+    2. Incoming Centrality
+    3. Outgoing Centrality
+    4. Wave risk (higher values = less risk)
+    5. Damage risk (higher values = less risk)
+    6. Priority predecessors relating to coral real estate relative to max capacity
+    7. Available space
+- wse : 5-element vector of criteria weights
+    1. incoming connectivity
+    2. outgoing connectivity
+    3. wave
+    4. heat
+    5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
+    6. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
-function create_seed_matrix(A, min_area, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
-    # Set up decision matrix to be same size as A
-    SE = zeros(size(A))
+function create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover)
+    # Define seeding decision matrix, based on copy of A
+    SE = copy(A)
 
-    wse = [wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover]
+    wse = [inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover]
     wse .= mcda_normalize(wse)
 
-    # Define seeding decision matrix
-    SE = copy(A)
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
 
     # coral real estate as total area, sites with =<20% of area to be seeded available filtered out
-    SE[vec(A[:, 7] .<= min_area), 7] .= NaN
+    SE[vec(A[:, 8] .<= min_area), 8] .= NaN
     SE = SE[vec(.!any(isnan.(SE), dims=2)), :]
 
     return SE, wse
@@ -231,33 +251,32 @@ Create shading specific decision matrix and apply weightings.
 
 # Returns
 Tuple (SH, wsh)
-    - SH : Matrix of shape [n sites considered, 7]
-        1. Site index ID
-        2. Incoming Centrality
-        3. Outgoing Centrality
-        4. Wave risk (higher values = less risk)
-        5. Damage risk (higher values = less risk)
-        6. Priority predecessors relating to coral real estate relative to max capacity
-        7. Available space
-    - wsh : 5-element vector of criteria weights
-        1. shade connectivity
-        2. wave
-        3. heat
-        4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
-        5. high cover (weights importance of sites with high cover of coral to shade)
+- SH : Matrix of shape [n sites considered, 7]
+    1. Site index ID
+    2. Incoming Centrality
+    3. Outgoing Centrality
+    4. Wave risk (higher values = less risk)
+    5. Damage risk (higher values = less risk)
+    6. Priority predecessors relating to coral real estate relative to max capacity
+    7. Available space
+- wsh : 5-element vector of criteria weights
+    1. shade connectivity
+    2. wave
+    3. heat
+    4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
+    5. high cover (weights importance of sites with high cover of coral to shade)
 """
-function create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, predec_zones_shade, high_cover)
     # Set up decision matrix to be same size as A
+    SH = copy(A)
 
-    SH = zeros(size(A, 1), 7)
-    wsh = [wtconshade, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover]
+    wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones_shade, high_cover]
     wsh .= mcda_normalize(wsh)
 
-    SH = copy(A)
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
-    SH[:, 7] = (max_area .- A[:, 7]) # total area of coral cover
+    SH[:, 8] = (max_area .- A[:, 8]) # total area of coral cover
 
-    SH[SH[:, 7].<0, 7] .= 0  # if any negative, scale back to zero
+    SH[SH[:, 8].<0, 8] .= 0  # if any negative, scale back to zero
     return SH, wsh
 end
 
@@ -287,34 +306,59 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int},
     rankingsin::Matrix{Int64})::Tuple
 
-    site_ids::Array{Int64} = d_vars.site_ids
+    site_ids::Array{Int64} = copy(d_vars.site_ids)
+
+    dist_thresh::Float64 = d_vars.dist_thresh
+    if dist_thresh == 1.0
+        # Force different sites to be selected
+        site_ids = setdiff(site_ids, vcat(prefseedsites, prefshadesites))
+        mod_n_ranks = min(size(rankingsin, 1), length(site_ids))
+        if mod_n_ranks < length(d_vars.site_ids) && length(rankingsin) != 0
+            rankingsin = rankingsin[in.(rankingsin[:, 1], [site_ids]), :]
+            site_ids = rankingsin[:, 1]
+        elseif length(rankingsin) != 0
+            rankingsin = [site_ids zeros(Int64, length(site_ids)) zeros(Int64, length(site_ids))]
+        end
+    end
+
     nsites::Int64 = length(site_ids)
+
+    # if no sites are available, abort
+    if nsites == 0
+        return prefseedsites, prefshadesites, rankingsin
+    end
+
     nsiteint::Int64 = d_vars.nsiteint
     prioritysites::Array{Int64} = d_vars.prioritysites[in.(d_vars.prioritysites, [site_ids])]
+    priorityzones::Array{String} = d_vars.priorityzones
 
     strongpred = d_vars.strongpred[site_ids, :]
     in_conn = d_vars.in_conn[site_ids]
     out_conn = d_vars.out_conn[site_ids]
-    damprob = d_vars.damprob[site_ids]
-    heatstressprob = d_vars.heatstressprob[site_ids]
-    sumcover = d_vars.sumcover[site_ids]
-    maxcover = d_vars.maxcover[site_ids]
+    zones = d_vars.zones[site_ids]
+    wave_stress = d_vars.damprob[site_ids]
+    heat_stress = d_vars.heatstressprob[site_ids]
+    sum_cover = d_vars.sumcover[site_ids]
+    max_cover = d_vars.maxcover[site_ids]
     area = d_vars.area[site_ids]
-    risktol = d_vars.risktol
-    wtinconnseed = d_vars.wtinconnseed
-    wtoutconnseed = d_vars.wtoutconnseed
-    wtconshade = d_vars.wtconshade
-    wtwaves = d_vars.wtwaves
-    wtheat = d_vars.wtheat
-    wthicover = d_vars.wthicover
-    wtlocover = d_vars.wtlocover
-    wtpredecseed = d_vars.wtpredecseed
-    wtpredecshade = d_vars.wtpredecshade
+
+    risk_tol = d_vars.risktol
+    w_inconn = d_vars.wtinconnseed
+    w_outconn = d_vars.wtoutconnseed
+    w_shade_conn = d_vars.wtconshade
+    w_waves = d_vars.wtwaves
+    w_heat = d_vars.wtheat
+    w_high_cover = d_vars.wthicover
+    w_low_cover = d_vars.wtlocover
+    w_predec_seed = d_vars.wtpredecseed
+    w_predec_shade = d_vars.wtpredecshade
+    w_predec_zones_seed = d_vars.wtzonesseed
+    w_predec_zones_shade = d_vars.wtzonesshade
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
 
-    # work out which priority predecssors are connected to priority sites
+    # work out which priority predecessors are connected to priority sites
     predec::Array{Float64} = zeros(nsites, 3)
     predec[:, 1:2] .= strongpred
     predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
@@ -322,7 +366,27 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     predec[predprior, 3] .= 1.0
 
-    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sumcover, maxcover, area, damprob, heatstressprob, predec, risktol)
+    # for zones, find sites which are zones and strongest predecessors of sites in zones
+    zone_ids = intersect(priorityzones, unique(zones))
+    zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
+    zone_preds = zeros(nsites, 1)
+    zone_sites = zeros(nsites, 1)
+
+    for k in axes(zone_ids, 1)
+        # find sites which are strongest predecessors of sites in the zone
+        zone_preds_temp = strongpred[zones.==zone_ids[k]]
+        for s in unique(zone_preds_temp)
+            # for each predecessor site, add zone_weights* (no. of zone sites the site is a strongest predecessor for)
+            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k]) .* sum(zone_preds_temp .== s)
+        end
+        # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)        
+        zone_sites[zones.==zone_ids[k]] .= zone_weights[k]
+    end
+
+    # add weights for strongest predecessors and zones to get zone criteria
+    zones_criteria = zone_preds .+ zone_sites
+
+    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_criteria, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return prefseedsites, prefshadesites, rankings
@@ -333,13 +397,13 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_seed_matrix(A, d_vars.min_area, wtinconnseed, wtoutconnseed, wtwaves, wtheat, wtpredecseed, wtlocover)
+        SE, wse = create_seed_matrix(A, d_vars.min_area, w_inconn, w_outconn, w_waves, w_heat, w_predec_seed, w_predec_zones_seed, w_low_cover)
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        max_area = (area.*maxcover)[filtered_sites]
-        SH, wsh = create_shade_matrix(A, max_area, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+        max_area = (area.*max_cover)[filtered_sites]
+        SH, wsh = create_shade_matrix(A, max_area, w_shade_conn, w_waves, w_heat, w_predec_shade, w_predec_zones_shade, w_high_cover)
     end
 
     if alg_ind == 1
@@ -355,27 +419,103 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     if log_seed && isempty(SE)
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
-        prefseedsites = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
+        prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
+        dist::Matrix{Float64} = d_vars.dist
+        top_n::Int64 = d_vars.top_n
+        if dist_thresh != 1.0
+            prefseedsites .= distance_sorting(prefseedsites, s_order_seed[:, 1], dist, dist_thresh, top_n)
+        end
     end
 
     if log_shade && isempty(SH)
         prefshadesites = repeat([0], nsiteint)
     elseif log_shade
-        prefshadesites = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
+        prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
+        dist = d_vars.dist
+        top_n = d_vars.top_n
+        if dist_thresh != 1.0
+            prefshadesites .= distance_sorting(prefshadesites, s_order_shade[:, 1], dist, dist_thresh, top_n)
+        end
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
-    if (sum(rankings[:, 2]) == 0.0) && (length(prefseedsites) != 0)
+    if sum(prefseedsites) == 0
         rankings[:, 2] .= rankingsin[:, 2]
     end
 
-    if (sum(rankings[:, 3]) == 0.0) && (length(prefshadesites) != 0)
+    if sum(prefshadesites) == 0
         rankings[:, 3] .= rankingsin[:, 3]
     end
 
     return prefseedsites, prefshadesites, rankings
 end
 
+"""
+function distance_sorting(pref_sites, site_order, dist, dist_thresh, top_n)
+
+Find selected sites with distances between each other < median distance-dist_thresh*(median distance).
+Replaces these sites with sites in the top_n ranks if the distance between these sites is greater.
+
+# Arguments
+- pref_sites : original n highest ranked sites selected for seeding or shading.
+- site_order : current order of ranked sites in terms of numerical site ID.
+- dist : Matrix of unique distances between sites.
+- dist_thresh : threshold for minimum deviance below the median distance between sites for selected sites.
+- top_n : number of top ranked sites to re-select from.
+
+# Returns
+- prefsites : new set of selected sites for seeding or shading.
+"""
+function distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
+    # set-up
+    nsites = length(pref_sites)
+    # sites to select alternatives from
+    alt_sites = setdiff(site_order, pref_sites)[1:min(top_n, length(site_order) - nsites)]
+    # minimum distance for filtering selected sites (within dist_thesh of median)
+    min_dist = median(dist[.!isnan.(dist)]) - dist_thresh * median(dist[.!isnan.(dist)])
+
+    # find all selected sites closer than the min distance
+    pref_dists = findall(dist[pref_sites, pref_sites] .< min_dist)
+    # indices to replace
+    inds_rep = sort(unique(reinterpret(Int64, pref_dists)))
+    # number of sites to replace
+    select_n = length(inds_rep)
+    # indices to keep
+    inds_keep = [k for k in 1:length(pref_sites)]
+    inds_keep = setdiff(inds_keep, inds_rep)
+
+    # storage for new set of sites
+    rep_sites = pref_sites
+
+    while (length(alt_sites) .>= select_n)
+        rep_sites = [rep_sites[inds_keep[:]]; alt_sites[1:select_n]]
+
+        # Find all sites within these highly ranked but unselected sites which are further apart
+        alt_dists = dist[rep_sites, rep_sites] .> min_dist
+
+        # Select from these sites those far enough away from all sites
+        inds_keep = sum(alt_dists, dims=2) .== nsites - 1
+
+        # Keep sites that were far enough away last iteration
+        inds_keep[1:end-select_n] .= true
+        if length(inds_keep) == nsites
+            select_n = 0
+            break
+        else
+            # remove checked alt_sites
+            alt_sites = setdiff(alt_sites, alt_sites[1:select_n])
+            select_n = sum(.!inds_keep)
+        end
+    end
+
+    # If not all sites could be replaced, just use highest ranked remaining pref_sites
+    if (select_n != 0) && !isempty(setdiff(pref_sites, rep_sites))
+        rem_pref_sites = setdiff(pref_sites, rep_sites)
+        rep_sites[end-select_n+1:end] .= rem_pref_sites[1:select_n]
+    end
+
+    return rep_sites
+end
 
 """
     order_ranking(S::Array{Float64, 2})

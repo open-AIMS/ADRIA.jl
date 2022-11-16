@@ -1,5 +1,5 @@
 using ADRIA
-import ADRIA: distribute_seeded_corals
+import ADRIA: distribute_seeded_corals, site_k
 using Test
 using Distributions
 
@@ -9,7 +9,7 @@ using Distributions
 
     # extract inputs for function
     total_site_area = site_area(dom)
-    k = dom.site_data.k / 100
+    k = site_k(dom)
     current_cover = zeros(size(total_site_area))
 
     # calculate available space
@@ -24,7 +24,7 @@ using Distributions
 
         # evaluate seeding distributions
         seed_dist = distribute_seeded_corals(total_site_area, prefseedsites,
-                        available_space, seeded_area)
+            available_space, seeded_area)
 
         # proportions of coral
         total_area_coral_TA = seeded_area[1]

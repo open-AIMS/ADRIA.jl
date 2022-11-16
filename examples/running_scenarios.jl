@@ -8,27 +8,33 @@ and the output location to store results in.
 using ADRIA
 
 
-ADRIA.setup()  # Load and apply configuration options
-
 @info "Loading data package"
 here = @__DIR__
-ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"), "45")
+ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"))
 
 @info "Loading example scenarios"
 p_df = ADRIA.load_scenarios(ex_domain, joinpath(here, "example_scenarios.csv"))
 
-# Batch run scenarios. Returns an updated domain object with the run ID used to gather results later.
+# Batch run scenarios. Returns a ResultSet.
 @info "Setting up and running scenarios"
-ex_domain = ADRIA.run_scenarios(p_df, ex_domain)
+rs = ADRIA.run_scenarios(p_df, ex_domain, "45")
+
+# Multiple RCPs can be specified, so long as the data is available.
+#rs = ADRIA.run_scenarios(p_df, ex_domain, ["45", "60"])
 
 # Single scenario run (returns NamedTuple of results for a single environmental/intervention scenario).
 # See documentation for more detail.
 # result = ADRIA.run_scenario(param_df::DataFrameRow, domain::Domain; rep_id=1)::NamedTuple
 
-@info "Reloading results and saving figure"
-rs = ADRIA.load_results(ex_domain)
 
-# Can also load results using a string
+# The location of the outputs stored on disk
+@info ADRIA.store_name(rs)
+# "Example_domain__RCPs45__2022-10-19_12_01_26_965"
+
+@info ADRIA.store_location(rs)
+# "[some location]/Example_domain__RCPs45__2022-10-19_12_01_26_965"
+
+# Can also load results using a path to the stored result set.
 # rs = ADRIA.load_results("path to result set")
 
 # Specific metrics found in the `metrics` submodule.
