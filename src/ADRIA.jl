@@ -59,7 +59,7 @@ export fecundity_scope!, bleaching_mortality!
 export growthODE
 export run_scenario, coral_spec
 export create_coral_struct, Intervention, Criteria, Corals, SimConstants
-export site_area
+export site_area, site_k_area
 export Domain, metrics, select, timesteps, env_stats
 
 # metric helper methods

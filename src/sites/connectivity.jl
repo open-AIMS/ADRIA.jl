@@ -104,7 +104,6 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
         extracted_TP[extracted_TP.<con_cutoff] .= 0.0
     end
 
-    # Main.@infiltrate
     TP_base = NamedArray(sparse(extracted_TP), (unique_site_ids, unique_site_ids), ("Source", "Receiving"))
     @assert all(0.0 .<= TP_base .<= 1.0) "Connectivity data not scaled between 0 - 1"
 

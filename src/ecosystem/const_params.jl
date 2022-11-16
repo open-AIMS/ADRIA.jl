@@ -1,6 +1,7 @@
 """
-Struct of simulation constants for ADRIA
+    SimConstants
 
+Struct of simulation constants for ADRIA
 
 # References
 1. Lough, J. M., Anderson, K. D., & Hughes, T. P. (2018).
@@ -30,34 +31,31 @@ Struct of simulation constants for ADRIA
    https://doi.org/10.1002/ecm.1494
 """
 Base.@kwdef mutable struct SimConstants
-  nsiteint = 5 # max number of sites we intervene on in a given year.
+    nsiteint = 5 # max number of sites we intervene on in a given year.
 
-  # Default percent thresholds of max connectivity to filter out weak connections in connectivity network.
-  # Suggest we keep this low
-  con_cutoff = 0.01
-  prioritysites = [] # sites to prioritize when seeding or shading
-  priorityzones = ["DarkBlue", "Green"] # zones to prioritize when seeding or shading, in order of preference
+    prioritysites = [] # sites to prioritize when seeding or shading
+    priorityzones = ["DarkBlue", "Green"] # zones to prioritize when seeding or shading, in order of preference
 
-  ## Environmental parameters
-  # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
-  DHWmaxtot = 50.0
+    ## Environmental parameters
+    # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
+    DHWmaxtot = 50.0
 
-  # Bleaching stress and coral fecundity parameters
-  LPdhwcoeff = 0.4  # shape parameters relating dhw affecting cover to larval production
-  LPDprm2 = 5.0  # parameter offsetting LPD curve
+    # Bleaching stress and coral fecundity parameters
+    LPdhwcoeff = 0.4  # shape parameters relating dhw affecting cover to larval production
+    LPDprm2 = 5.0  # parameter offsetting LPD curve
 
-  # competition: probability that large Tabular Acropora overtop small massives
-  comp = 0.3
+    # competition: probability that large Tabular Acropora overtop small massives
+    comp = 0.3
 
-  # True/False indicating Wwhether or not to mimic IPMF by loading only two coral types
-  # currently unused
-  mimic_IPMF = Int8(0)  # Use 0 or 1 as booleans cannot be stored in netCDF
+    # True/False indicating Wwhether or not to mimic IPMF by loading only two coral types
+    # currently unused
+    mimic_IPMF = Int8(0)  # Use 0 or 1 as booleans cannot be stored in netCDF
 
-  # Used by Bozec et al 2021 for Acropora, small massives and large massives
-  # max_settler_density = [2.5, 2.5, 2.5, 2.5, 1.5, 1.5]
+    # Used by Bozec et al 2021 for Acropora, small massives and large massives
+    # max_settler_density = [2.5, 2.5, 2.5, 2.5, 1.5, 1.5]
 
-  # Modified for use in ADRIA
-  max_settler_density = [100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
+    # Modified for use in ADRIA
+    max_settler_density = [100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
 
-  max_larval_density = [5000.0, 5000.0, 5000.0, 5000.0, 5000.0, 5000.0]
+    max_larval_density = [5000.0, 5000.0, 5000.0, 5000.0, 5000.0, 5000.0]
 end
