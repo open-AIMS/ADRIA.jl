@@ -414,7 +414,9 @@ function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_v
 
     # Work out RSV for each taxa
     @inbounds for (sp, sq) in taxa_max_map
-        RSV[species=sq] .= dropdims(sum(ASV[species=sp], dims=:species), dims=:species) ./ MSV[sq]
+        for site in 1:size(ASV, :sites)
+            RSV[species=sq, sites=site] .= dropdims(sum(ASV[species=sp, sites=site], dims=:species), dims=:species) ./ MSV[sq, site]
+        end
     end
 
     return RSV
