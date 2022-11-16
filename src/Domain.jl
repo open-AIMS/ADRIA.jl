@@ -66,8 +66,20 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedM
         criteria = Criteria(c_spec...)
     end
 
-    model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
     sim_constants::SimConstants = SimConstants()
+
+    max_top_n = ceil(Int64, 2 * length(site_ids) ./ 3)
+    if (criteria.top_n.bounds[2] > max_top_n) || (criteria.top_n.bounds[1] < sim_constants.nsiteint)
+
+        fields = fieldnames(typeof(criteria))
+        c_spec = (; zip(fields, [getfield(criteria, f) for f in fields])...)
+        @set! c_spec.top_n.bounds = (sim_constants.nsiteint, minimum(10, max_top_n))
+
+        criteria = Criteria(c_spec...)
+    end
+
+    model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
+
     return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_distances, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)
