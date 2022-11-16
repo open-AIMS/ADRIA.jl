@@ -456,6 +456,9 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
             total_site_area,
             min_area,
             param_set["deployed_coral_risk_tol"],  # risk tolerance
+            domain.site_distances,
+            param_set["dist_thresh"],
+            param_set["top_n"],
             param_set["in_seed_connectivity"], # weight for seed sites with high number of incoming connections
             param_set["out_seed_connectivity"], # weight for seed sites with high number of outgoing connections
             param_set["shade_connectivity"],  # weight of connectivity for shading in MCDA

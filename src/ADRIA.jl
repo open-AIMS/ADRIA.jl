@@ -5,7 +5,8 @@ using StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
 using NamedArrays, SparseArrayKit, DifferentialEquations
 
 using MAT  # Package to read in `.mat` files
-
+using Combinatorics
+using Distances
 using Setfield, ModelParameters, DataStructures
 using DataFrames, Graphs, CSV
 import ArchGDAL as AG

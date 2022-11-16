@@ -2,7 +2,6 @@ using NCDatasets
 
 """
     EnvLayer{S, TF}
-
 Store environmental data layers used for scenario
 """
 mutable struct EnvLayer{S<:AbstractString,TF}
@@ -17,13 +16,11 @@ mutable struct EnvLayer{S<:AbstractString,TF}
     const timeframe::TF
 end
 
-
 """
     Domain{M,I,D,S,V,T,X}
-
 Core ADRIA domain. Represents study area.
 """
-mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray}
+mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray}
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
     const name::S           # human-readable name
@@ -35,6 +32,7 @@ mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame
     const out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strongpred::I  # strongest predecessor
     site_data::D   # table of site data (depth, carrying capacity, etc)
+    site_distances::Z # Matrix of distances between each site
     const site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
     const unique_site_id_col::S  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
@@ -49,12 +47,11 @@ mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame
     sim_constants::SimConstants
 end
 
-
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
 function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedMatrix, in_conn::Vector{Float64}, out_conn::Vector{Float64},
-    strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_id_col::String, unique_site_id_col::String,
+    strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_distances::Matrix{Float64}, site_id_col::String, unique_site_id_col::String,
     init_coral_cover::NamedMatrix, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
     DHWs::Union{NamedArray,Matrix}, waves::Union{NamedArray,Matrix})::Domain
 
@@ -64,18 +61,52 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedM
         min_depth = minimum(site_data.depth_med)
         fields = fieldnames(typeof(criteria))
         c_spec = (; zip(fields, [getfield(criteria, f) for f in fields])...)
-        @set! c_spec.depth_min.bounds = (min_depth, minimum(min_depth + 2.0, maximum(site_data.depth_med)))
+        @set! c_spec.depth_min.bounds = (min_depth, minimum([min_depth + 2.0, maximum(site_data.depth_med)]))
+
+        criteria = Criteria(c_spec...)
+    end
+
+    sim_constants::SimConstants = SimConstants()
+
+    # Update number of sites to consider for distance-based spreading
+    max_top_n = ceil(Int64, 2 * length(site_ids) ./ 3)
+    if (criteria.top_n.bounds[2] > max_top_n) || (criteria.top_n.bounds[1] < sim_constants.nsiteint)
+
+        fields = fieldnames(typeof(criteria))
+        c_spec = (; zip(fields, [getfield(criteria, f) for f in fields])...)
+        @set! c_spec.top_n.bounds = (sim_constants.nsiteint, minimum([10, max_top_n]))
 
         criteria = Criteria(c_spec...)
     end
 
     model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
-    sim_constants::SimConstants = SimConstants()
-    return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_id_col, unique_site_id_col,
+
+    return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_distances, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)
 end
 
+"""
+    site_distance(site_data::DataFrame)::Matrix
+
+Calculate matrix of unique distances between sites.
+"""
+
+function site_distances(site_data::DataFrame)::Matrix{Float64}
+    site_centroids = centroids(site_data)
+    longitudes = first.(site_centroids)
+    latitudes = last.(site_centroids)
+
+    nsites = size(site_data)[1]
+    dist = zeros(nsites, nsites)
+    @inbounds for jj = 1:nsites
+        @inbounds for ii = 1:nsites
+            dist[ii, jj] = euclidean([latitudes[ii], longitudes[ii]], [latitudes[jj], longitudes[jj]])
+        end
+    end
+    dist[diagind(dist)] .= NaN
+    return dist
+end
 
 """
     Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
@@ -130,6 +161,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 
     # Filter out missing entries
     site_data = site_data[coalesce.(in.(conn_ids, [site_conn.site_ids]), false), :]
+    site_dists::Matrix{Float64} = site_distances(site_data)
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
@@ -168,7 +200,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
     return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.in_conn, conns.out_conn, conns.strongest_predecessor,
-        site_data, site_id_col, unique_site_id_col, coral_cover, coral_growth,
+        site_data, site_dists, site_id_col, unique_site_id_col, coral_cover, coral_growth,
         site_conn.site_ids, site_conn.truncated, dhw, waves)
 end
 
@@ -271,7 +303,6 @@ end
     model_spec(d::Domain, filepath::String)::Nothing
 
 Get model specification as DataFrame with lower and upper bounds.
-
 If a filepath is provided, writes the specification out to file with ADRIA metadata.
 """
 function model_spec(d::Domain)::DataFrame
@@ -343,7 +374,6 @@ end
     component_params(m::Model, components::Vector)::DataFrame
     component_params(spec::DataFrame, components::Vector)::DataFrame
 
-
 Extract parameters for a specific model component.
 """
 function component_params(m::Model, component::Type)::DataFrame
@@ -359,12 +389,11 @@ function component_params(spec::DataFrame, components::Vector)::DataFrame
     return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
-
 """
+    site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int)
 
 # Returns
 Matrix : n_reps * sites * 3
-
 last dimension indicates: site_id, seeding rank, shading rank
 """
 function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int)
@@ -453,7 +482,6 @@ end
 
 """
     site_area(domain::Domain)::Vector{Float64}
-
 Get site area for the given domain.
 """
 function site_area(domain::Domain)::Vector{Float64}
@@ -462,7 +490,6 @@ end
 
 """
     site_k_area(domain::Domain)::Vector{Float64}
-
 Get maximum coral cover area for the given domain in absolute area.
 """
 function site_k_area(domain::Domain)::Vector{Float64}
