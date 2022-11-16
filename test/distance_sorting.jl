@@ -2,6 +2,7 @@ using Test
 using ADRIA: distance_sorting
 using LinearAlgebra
 using Random
+using Statistics
 
 @testset "Distance Sorting" begin
     rng = MersenneTwister(1234)
@@ -14,7 +15,7 @@ using Random
     dists = rand(n_sites, n_sites)
     dists[dists.==diag(dists)] .= NaN
 
-    min_dist = ADRIA.median(dists[.!isnan.(dists)]) - dist_thresh * ADRIA.median(dists[.!isnan.(dists)])
+    min_dist = median(dists[.!isnan.(dists)]) - dist_thresh * median(dists[.!isnan.(dists)])
     # only prefsites are < min_dist so only these should be replaced
     dists[dists.<min_dist] .= min_dist + 0.1
     dists[prefsites, prefsites] .= min_dist - 0.1
