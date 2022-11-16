@@ -86,8 +86,8 @@ function site_distances(site_data::DataFrame)::Matrix{Float64}
 
     nsites = size(site_data)[1]
     dist = zeros(nsites, nsites)
-    for jj = 1:nsites
-        for ii = 1:nsites
+    @inbounds for jj = 1:nsites
+        @inbounds for ii = 1:nsites
             dist[ii, jj] = euclidean([latitudes[ii], longitudes[ii]], [latitudes[jj], longitudes[jj]])
         end
     end
@@ -98,7 +98,9 @@ end
 """
     Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
            conn_path::String, dhw_fn::String, wave_fn::String)::Domain
+
 Convenience constructor for Domain.
+
 # Arguments
 - name : Name of domain
 - dpkg_path : location of data package
@@ -193,7 +195,9 @@ end
     load_domain(path::String, rcp::Int64)
     load_domain(path::String, rcp::String)
     load_domain(path::String)
+
 Load domain specification from data package.
+
 # Arguments
 - path : location of data package
 - rcp : RCP scenario to run. If none provided, no data path is set.
@@ -267,6 +271,7 @@ end
 
 """
     param_table(d::Domain)::DataFrame
+
 Get model fieldnames and their parameter values.
 """
 function param_table(d::Domain)::DataFrame
@@ -283,6 +288,7 @@ end
 """
     model_spec(d::Domain)::DataFrame
     model_spec(d::Domain, filepath::String)::Nothing
+
 Get model specification as DataFrame with lower and upper bounds.
 If a filepath is provided, writes the specification out to file with ADRIA metadata.
 """
@@ -318,6 +324,7 @@ end
 
 """
     update_params!(d::Domain, params::DataFrameRow)
+
 Update given domain with new parameter values.
 Maps sampled continuous values to discrete values for categorical variables.
 """
@@ -353,6 +360,7 @@ end
     component_params(spec::DataFrame, component::Type)::DataFrame
     component_params(m::Model, components::Vector)::DataFrame
     component_params(spec::DataFrame, components::Vector)::DataFrame
+
 Extract parameters for a specific model component.
 """
 function component_params(m::Model, component::Type)::DataFrame
@@ -369,6 +377,8 @@ function component_params(spec::DataFrame, components::Vector)::DataFrame
 end
 
 """
+    site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int)
+
 # Returns
 Matrix : n_reps * sites * 3
 last dimension indicates: site_id, seeding rank, shading rank
@@ -476,6 +486,7 @@ end
 """
     relative_leftover_space(domain::Domain)::Vector{Float64}
     relative_leftover_space(site_k::Matrix{Float64}, site_coral_cover::Matrix{Float64})::Matrix{Float64}
+
 Get proportion of leftover space, given site_k and proportional cover on each site, summed over species.
 """
 function relative_leftover_space(domain::Domain, site_coral_cover::Matrix{Float64})::Matrix{Float64}
@@ -488,6 +499,7 @@ end
 
 """
     site_k(domain::Domain)::Vector{Float64}
+
 Get maximum coral cover area as a proportion of site area.
 """
 function site_k(domain::Domain)::Vector{Float64}
@@ -511,6 +523,7 @@ end
 
 """
     switch_RCPs!(d::Domain, RCP::String)::Domain
+
 Switch environmental datasets to represent the given RCP.
 """
 function switch_RCPs!(d::Domain, RCP::String)::Domain

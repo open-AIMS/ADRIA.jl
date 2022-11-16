@@ -19,8 +19,8 @@ Extract and return long/lat from a GeoDataFrame.
 # Returns
 Array of tuples (x, y), where x and y relate to long and lat respectively.
 """
-function centroids(df::DataFrame)::Array
-    site_centroids = AG.centroid.(get_geometry(df::DataFrame))
+function centroids(df::DataFrame)::Vector{Tuple{Float64,Float64}}
+    site_centroids::Vector = AG.centroid.(get_geometry(df))
     return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
 end
 
@@ -243,7 +243,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
 
     compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
 
-    met_names = (:relative_cover, :relative_shelter_volume, :absolute_shelter_volume)
+    met_names = (:relative_cover, :relative_shelter_volume, :absolute_shelter_volume, :relative_juveniles)
     dim_struct = Dict(
         :structure => string.((:timesteps, :sites, :scenarios)),
         :unique_site_ids => unique_sites(domain)
