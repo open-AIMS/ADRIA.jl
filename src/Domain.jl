@@ -103,7 +103,7 @@ function site_distances(site_data::DataFrame)::Matrix{Float64}
             dist[ii, jj] = euclidean([latitudes[ii], longitudes[ii]], [latitudes[jj], longitudes[jj]])
         end
     end
-    dist[dist.==0] .= NaN
+    dist[diagind(dist)] .= NaN
     return dist
 end
 
