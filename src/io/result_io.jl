@@ -19,8 +19,8 @@ Extract and return long/lat from a GeoDataFrame.
 # Returns
 Array of tuples (x, y), where x and y relate to long and lat respectively.
 """
-function centroids(df::DataFrame)::Array
-    site_centroids = AG.centroid.(get_geometry(df::DataFrame))
+function centroids(df::DataFrame)::Vector{Tuple{Float64,Float64}}
+    site_centroids::Vector = AG.centroid.(get_geometry(df))
     return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
 end
 
