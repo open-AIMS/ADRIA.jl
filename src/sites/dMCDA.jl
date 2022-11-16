@@ -451,14 +451,14 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 end
 
 """
-function distance_sorting(dist, ranks, prefsites, dist_thresh, top_n)
+function distance_sorting(pref_sites, site_order, dist, dist_thresh, top_n)
 
 Find selected sites with distances between each other < median distance-dist_thresh*(median distance).
 Replaces these sites with sites in the top_n ranks if the distance between these sites is greater.
 
 # Arguments
+- pref_sites : original n highest ranked sites selected for seeding or shading.
 - site_order : current order of ranked sites in terms of numerical site ID.
-- prefsites : original n highest ranked sites selected for seeding or shading.
 - dist : Matrix of unique distances between sites.
 - dist_thresh : threshold for minimum deviance below the median distance between sites for selected sites.
 - top_n : number of top ranked sites to re-select from.
@@ -485,13 +485,13 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVe
     inds_keep = setdiff(inds_keep, inds_rep)
 
     # storage for new set of sites
-    test_sites = pref_sites
+    rep_sites = pref_sites
 
     while (length(alt_sites) .>= select_n)
-        test_sites = [test_sites[inds_keep[:]]; alt_sites[1:select_n]]
+        rep_sites = [rep_sites[inds_keep[:]]; alt_sites[1:select_n]]
 
         # Find all sites within these highly ranked but unselected sites which are further apart
-        alt_dists = dist[test_sites, test_sites] .> min_dist
+        alt_dists = dist[rep_sites, rep_sites] .> min_dist
 
         # Select from these sites those far enough away from all sites
         inds_keep = sum(alt_dists, dims=2) .== nsites - 1
@@ -509,12 +509,12 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVe
     end
 
     # If not all sites could be replaced, just use highest ranked remaining pref_sites
-    if (select_n != 0) && !isempty(setdiff(pref_sites, test_sites))
-        rem_pref_sites = setdiff(pref_sites, test_sites)
-        test_sites[end-select_n+1:end] .= rem_pref_sites[1:select_n]
+    if (select_n != 0) && !isempty(setdiff(pref_sites, rep_sites))
+        rem_pref_sites = setdiff(pref_sites, rep_sites)
+        rep_sites[end-select_n+1:end] .= rem_pref_sites[1:select_n]
     end
 
-    return test_sites
+    return rep_sites
 end
 
 """
