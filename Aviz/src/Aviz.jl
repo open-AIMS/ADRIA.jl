@@ -207,10 +207,11 @@ function comms(rs::ADRIA.ResultSet)
     ft_import = layout.importance
 
     # https://github.dev/JuliaAI/DecisionTree.jl
-    X = Matrix(rs.inputs)
+    # X = Matrix(rs.inputs)
+    X = rs.inputs
     p = outcome_probability(tac_scen_dist)
-    model = build_forest(p, X, ceil(Int, sqrt(size(X, 1))), 30, 0.7, -1; rng=101)
-    p_tbl = probability_table(model, X, p)
+    # model = build_forest(p, X, ceil(Int, sqrt(size(X, 1))), 30, 0.7, -1; rng=101)
+    # p_tbl = probability_table(model, X, p)
     # @time ft_tbl = ft_importance(model, rs.inputs, p; rng=101)
 
     asv_scens = ADRIA.metrics.scenario_asv(rs)
@@ -243,14 +244,14 @@ function comms(rs::ADRIA.ResultSet)
     Colorbar(layout.importance[1, 2]; colorrange=(0.0, 1.0))
 
     outcomes_ax = layout.outcomes
-    barplot!(
-        outcomes_ax,
-        eachindex(p_tbl.mean),
-        p_tbl.mean,
-        bar_labels=p_tbl.Outcome,
-        flip_labels_at=maximum(p_tbl.mean) - minimum(p_tbl.mean),
-        direction=:x
-    )
+    # barplot!(
+    #     outcomes_ax,
+    #     eachindex(p_tbl.mean),
+    #     p_tbl.mean,
+    #     bar_labels=p_tbl.Outcome,
+    #     flip_labels_at=maximum(p_tbl.mean) - minimum(p_tbl.mean),
+    #     direction=:x
+    # )
     hideydecorations!(outcomes_ax)
 
     # xticks!(outcomes, 1:size(p_tbl,1), p_tbl[:, :Outcome])

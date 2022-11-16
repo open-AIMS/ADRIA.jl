@@ -108,5 +108,8 @@ end
 function pawn(X::DataFrame, Y::Vector{<:Real}; S::Int64=10)::NamedArray
     return pawn(Matrix(X), Y, names(X); S=S)
 end
+function pawn(X::Matrix, Y::Vector{<:Real}; S::Int64=10)::NamedArray
+    return pawn(X, Y, names(X); S=S)
+end
 
 end
