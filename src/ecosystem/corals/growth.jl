@@ -399,7 +399,7 @@ function settler_cover(fec_scope::T, sf::T,
     fec_scope .= (fec_scope .* sf)
 
     Mwater = 0.95
-    # rs1 = ADRIA.run_scenario(scens[1, :], dom)
+
     fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
     # Larvae have landed, work out how many are recruited
