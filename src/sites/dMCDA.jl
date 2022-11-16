@@ -466,8 +466,8 @@ Replaces these sites with sites in the top_n ranks if the distance between these
 # Returns
 - prefsites : new set of selected sites for seeding or shading.
 """
-function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Union{Float64,Int64}}, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
-    # set-up 
+function distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
+    # set-up
     nsites = length(pref_sites)
     # sites to select alternatives from
     alt_sites = setdiff(site_order, pref_sites)[1:min(top_n, length(site_order) - nsites)]
@@ -489,9 +489,8 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Uni
 
     while (length(alt_sites) .>= select_n)
         test_sites = [test_sites[inds_keep[:]]; alt_sites[1:select_n]]
-        #SMain.@infiltrate
+
         # find all sites within these highly ranked but unselected sites which are further apart
-        #alt_dists = dist[test_sites, test_sites] .> maximum(comp_dists[.!isnan.(comp_dists)])
         alt_dists = dist[test_sites, test_sites] .> min_dist
 
         # select from these sites those far enough away from all sites
