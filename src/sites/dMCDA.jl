@@ -453,7 +453,7 @@ end
 """
 function distance_sorting(dist, ranks, prefsites, dist_thresh, top_n)
 
-Find selected sites with distances between each other< median distance-dist_thresh*(median distance).
+Find selected sites with distances between each other < median distance-dist_thresh*(median distance).
 Replaces these sites with sites in the top_n ranks if the distance between these sites is greater.
 
 # Arguments
@@ -489,14 +489,14 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Uni
 
     while (length(alt_sites) .>= select_n)
         test_sites = [test_sites[inds_keep[:]]; alt_sites[1:select_n]]
-        #SMain.@infiltrate
-        # find all sites within these highly ranked but unselected sites which are further apart
-        #alt_dists = dist[test_sites, test_sites] .> maximum(comp_dists[.!isnan.(comp_dists)])
+
+        # Find all sites within these highly ranked but unselected sites which are further apart
         alt_dists = dist[test_sites, test_sites] .> min_dist
 
-        # select from these sites those far enough away from all sites
+        # Select from these sites those far enough away from all sites
         inds_keep = sum(alt_dists, dims=2) .== nsites - 1
-        # keep those sites that were far enough away last iteration
+
+        # Keep sites that were far enough away last iteration
         inds_keep[1:end-select_n] .= true
         if length(inds_keep) == nsites
             select_n = 0
@@ -508,7 +508,7 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::Vector{Uni
         end
     end
 
-    # if not all sites could be replaced, just use highest ranked remaining pref_sites
+    # If not all sites could be replaced, just use highest ranked remaining pref_sites
     if (select_n != 0) && !isempty(setdiff(pref_sites, test_sites))
         rem_pref_sites = setdiff(pref_sites, test_sites)
         test_sites[end-select_n+1:end] .= rem_pref_sites[1:select_n]
