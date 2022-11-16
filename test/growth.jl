@@ -18,12 +18,12 @@ using ADRIA
     # growth_rates[:, 6] .= 0.8 * growth_rates[:, 6]
 
     mb = Array{Float64,2}([
-        0.2 0.2 0.19 0.19 0.098 0.098    # Tabular Acropora Enhanced
-        0.2 0.2 0.19 0.19 0.098 0.098    # Tabular Acropora Unenhanced
-        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora Enhanced
-        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora Unenhanced
-        0.2 0.2 0.04 0.04 0.02 0.02    # Small massives and encrusting
-        0.2 0.2 0.04 0.04 0.02 0.02])   # Large massives
+        0.2 0.2 0.19 0.125 0.098 0.098    # Tabular Acropora Enhanced
+        0.2 0.2 0.19 0.125 0.098 0.098    # Tabular Acropora Unenhanced
+        0.2 0.2 0.172 0.113 0.088 0.088    # Corymbose Acropora Enhanced
+        0.2 0.2 0.172 0.113 0.088 0.088    # Corymbose Acropora Unenhanced
+        0.2 0.2 0.04 0.026 0.02 0.02    # Small massives and encrusting
+        0.2 0.2 0.04 0.026 0.02 0.02])   # Large massives
 
     bleaching_sensitivity = Float64[
         1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Enhanced (assumed same as Corymbose)
