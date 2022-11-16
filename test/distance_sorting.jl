@@ -5,12 +5,11 @@ using Random
 using Statistics
 
 @testset "Distance Sorting" begin
-    rng = MersenneTwister(1234)
 
     n_sites = 30
     top_n = 15
     dist_thresh = 0.1
-    site_order = shuffle(rng, Vector(1:n_sites))
+    site_order = shuffle(Vector(1:n_sites))
     prefsites = site_order[1:5]
     dists = rand(n_sites, n_sites)
     dists[diagind(dists)] .= NaN
