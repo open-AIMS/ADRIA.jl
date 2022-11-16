@@ -451,7 +451,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 end
 
 """
-function distance_sorting(pref_sites, site_order, dist, dist_thresh, top_n)
+    distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
 
 Find selected sites with distances between each other < median distance-dist_thresh*(median distance).
 Replaces these sites with sites in the top_n ranks if the distance between these sites is greater.
