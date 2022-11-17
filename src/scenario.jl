@@ -309,7 +309,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
     wave_idx = Int(param_set["wave_scenario"])
 
     dhw_scen::Matrix{Float64} = domain.dhw_scens[:, :, dhw_idx]
-    wave_scen::Matrix{Float64} = domain.dhw_scens[:, :, wave_idx]
+    wave_scen::Matrix{Float64} = domain.wave_scens[:, :, wave_idx]
 
     tspan::Tuple = (0.0, 1.0)
     solver::BS3 = BS3()
