@@ -361,14 +361,13 @@ function coral_spec()::NamedTuple
         0.2 0.2 0.172 0.113 0.088 0.088    # Corymbose Acropora Unenhanced
         0.2 0.2 0.04 0.026 0.02 0.02    # Small massives and encrusting
         0.2 0.2 0.04 0.026 0.02 0.02])   # Large massives
-
     params.mb_rate = mb'[:]
 
     # Bleaching sensitivity of each coral group
     # Bozec et al., (2022)
     bleaching_sensitivity = Float64[
-        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Enhanced (assumed same as Corymbose)
-        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Unenhanced
+        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Enhanced (Arborescent staghorn corals)
+        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Unenhanced
         1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Enhanced
         1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Unenhanced
         0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
