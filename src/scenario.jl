@@ -493,7 +493,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
     mwaves::Array{Float64,3} = cache.waves
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
 
-    @inbounds for sp::Int64 in 1:n_species
+    Threads.@threads for sp::Int64 in 1:n_species
         @views mwaves[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :, :]
     end
 
@@ -511,10 +511,10 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
 
     # basal_area_per_settler is the area in m^2 of a size class one coral 
     basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ 100 .^ 2
-    debug_log = zeros(tf, n_sites)
-    rec_log = zeros(tf, 6, n_sites)
-    juv_log = zeros(tf, 12, n_sites)
-    juves = [1, 2, 7, 8, 13, 14, 19, 20, 25, 26, 31, 32]
+    # debug_log = zeros(tf, n_sites)
+    # rec_log = zeros(tf, 6, n_sites)
+    # juv_log = zeros(tf, 12, n_sites)
+    # juves = [1, 2, 7, 8, 13, 14, 19, 20, 25, 26, 31, 32]
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
@@ -534,7 +534,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
         p.rec .= settler_cover(fec_scope, sf, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
 
-        rec_log[tstep, :, :] .= p.rec
+        # rec_log[tstep, :, :] .= p.rec
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
@@ -617,8 +617,8 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
             alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-4)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        debug_log[tstep, :] = sum(sol.u[end] .* absolute_k_area ./ total_site_area, dims=1)
-        juv_log[tstep, :, :] = (sol.u[end].*absolute_k_area./total_site_area)[juves, :]
+        # debug_log[tstep, :] = sum(sol.u[end] .* absolute_k_area ./ total_site_area, dims=1)
+        # juv_log[tstep, :, :] = (sol.u[end].*absolute_k_area./total_site_area)[juves, :]
 
         @views Y_cover[tstep, :, :] .= sol.u[end] .* absolute_k_area ./ total_site_area
         # proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
