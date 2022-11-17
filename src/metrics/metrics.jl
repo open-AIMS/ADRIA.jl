@@ -22,7 +22,7 @@ function (f::Metric)(raw, args...; kwargs...)
     try
         return f.func(NamedDimsArray{(:timesteps, :species, :sites, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
     catch
-        raw = NamedDimsArray{(f.dims...)}(raw)
+        raw = NamedDimArray{(f.dims...)}(raw)
 
         return f.func(raw, args...; kwargs...)
     end
