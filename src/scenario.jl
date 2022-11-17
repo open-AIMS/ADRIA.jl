@@ -495,7 +495,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
 
     Threads.@threads for sp::Int64 in 1:n_species
-        @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :, :]
+        @views mwaves[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :, :]
     end
 
     clamp!(Sw_t, 0.0, 1.0)
