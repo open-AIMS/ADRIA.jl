@@ -2,6 +2,8 @@
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
 import ADRIA.metrics: relative_juveniles, relative_taxa_cover
+
+
 """
     setup_cache(domain::Domain)::NamedTuple
 
@@ -35,8 +37,6 @@ function setup_cache(domain::Domain)::NamedTuple
 
     return cache
 end
-
-
 
 
 """
