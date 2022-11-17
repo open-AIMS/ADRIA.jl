@@ -74,7 +74,7 @@ function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}, dimnames::Vector{Stri
     X_q = zeros(S)
     pawn_t = zeros(S, D)
     results = zeros(D, 6)
-    for d_i in 1:D
+    Threads.@threads for d_i in 1:D
         seq = 0:step:1-step  # To check
 
         X_di .= X[:, d_i]
