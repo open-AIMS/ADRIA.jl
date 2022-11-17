@@ -396,11 +396,12 @@ function settler_cover(fec_scope::T, sf::T,
     α::V, β::V, basal_area_per_settler::V)::Matrix{Float64} where {T<:AbstractArray{<:Real,2},V<:Vector{Float64}}
 
     # Send larvae out into the world (reuse fec_scope to reduce allocations)
-    fec_scope .= (fec_scope .* sf)
+    # fec_scope .= (fec_scope .* sf)
 
     Mwater = 0.95
-
-    fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
+    mul!(fec_scope, (fec_scope .* sf), TP_data)
+    fec_scope .= fec_scope .* (1.0 .- Mwater)
+    # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
     # Larvae have landed, work out how many are recruited
     λ = recruitment(fec_scope, leftover_space; α=α, β=β)  # recruits per m^2 per site
