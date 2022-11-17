@@ -22,13 +22,7 @@ function (f::Metric)(raw, args...; kwargs...)
     try
         return f.func(NamedDimsArray{(:timesteps, :species, :sites, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
     catch
-        if ndims(raw) == 3
-            raw = NamedDimsArray{(:timesteps, :species, :sites)}(raw)
-        elseif ndims(raw) == 4
-            raw = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(raw)
-        else
-            error("Unknown result structure")
-        end
+        raw = NamedDimArray{(f.dims...)}(raw)
 
         return f.func(raw, args...; kwargs...)
     end
@@ -139,6 +133,35 @@ function _total_absolute_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Rea
 end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
     return _relative_cover(rs) .* rs.site_area'
+end
+
+
+"""
+    taxa_cover(X::AbstractArray{<:Real})
+
+Results grouped by taxa/species.
+
+TODO: Uses hardcoded index values, to be replaced by something more generic.
+
+# Arguments
+- X : Raw model results for a single scenario
+
+# Returns
+Coral cover, grouped by taxa for the given scenario.
+"""
+function _relative_taxa_cover(X::AbstractArray{<:Real,3})
+    nsteps, nspecies, _ = size(X)
+
+    taxa_cover = zeros(nsteps, 6)
+    for (taxa_id, grp) in enumerate([i:i+5 for i in 1:6:nspecies])
+        # Sum over groups
+        taxa_cover[:, taxa_id] = dropdims(mean(sum(X[:, grp, :], dims=2), dims=3), dims=3)
+    end
+
+    return taxa_cover
+end
+function _relative_taxa_cover(rs)
+    return rs.outcomes[:relative_taxa_cover]
 end
 
 
@@ -669,6 +692,7 @@ coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
 absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios))
 relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios))
 juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios))
+relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenarios))
 reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 

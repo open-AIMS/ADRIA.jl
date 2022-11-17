@@ -243,7 +243,9 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
 
     compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
 
-    met_names = (:relative_cover, :relative_shelter_volume, :absolute_shelter_volume, :relative_juveniles)
+    met_names = [:relative_cover, :relative_shelter_volume,
+        :absolute_shelter_volume, :relative_juveniles]
+
     dim_struct = Dict(
         :structure => string.((:timesteps, :sites, :scenarios)),
         :unique_site_ids => unique_sites(domain)
@@ -259,6 +261,21 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             compressor=compressor)
         for m_name in met_names
     ]
+
+    push!(
+        stores,
+        zcreate(Float32, (result_dims[1], 6, result_dims[3])...;
+            fill_value=nothing, fill_as_missing=false,
+            path=joinpath(z_store.folder, RESULTS, "relative_taxa_cover"), chunks=((result_dims[1], 6)..., 1),
+            attrs=Dict(
+                :structure => string.((:timesteps, :taxa, :scenarios)),
+                :unique_site_ids => unique_sites(domain)
+            ),
+            compressor=compressor)
+    )
+    push!(met_names, :relative_taxa_cover)
+
+
     dhw_stats_store = store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), domain.RCP, compressor)
     wave_stats_store = store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), domain.RCP, compressor)
 

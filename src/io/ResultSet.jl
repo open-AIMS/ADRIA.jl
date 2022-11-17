@@ -176,6 +176,7 @@ function combine_results(result_sets...)::ResultSet
         :unique_site_ids => rs1.site_ids
     )
     for m_name in metrics
+        result_dims = (size(rs1.outcomes[m_name], 1), size(rs1.outcomes[m_name], 2), n_scenarios)
         m_store = zcreate(Float32, result_dims...;
             fill_value=nothing, fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, string(m_name)), chunks=(result_dims[1:end-1]..., 1),
