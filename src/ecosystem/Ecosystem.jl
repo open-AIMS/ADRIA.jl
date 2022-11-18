@@ -355,10 +355,10 @@ function coral_spec()::NamedTuple
     # - > 250cm² (Columns 5 and 6)
     # Values for size class 4 are then interpolated by K.A
     mb = Array{Float64,2}([
-        0.2 0.2 0.19 0.125 0.098 0.098    # Tabular Acropora Enhanced
-        0.2 0.2 0.19 0.125 0.098 0.098    # Tabular Acropora Unenhanced
-        0.2 0.2 0.172 0.113 0.088 0.088    # Corymbose Acropora Enhanced
-        0.2 0.2 0.172 0.113 0.088 0.088    # Corymbose Acropora Unenhanced
+        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Enhanced
+        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Unenhanced
+        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Enhanced
+        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Unenhanced
         0.2 0.2 0.04 0.026 0.02 0.02    # Small massives and encrusting
         0.2 0.2 0.04 0.026 0.02 0.02])   # Large massives
     params.mb_rate = mb'[:]
