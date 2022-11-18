@@ -51,8 +51,8 @@ Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
     # Intervention Parameters
     # Integer values have a +1 offset to allow for discrete value mapping (see `set() method`)
     guided::N = Param(0, ptype="integer", bounds=(0, 3 + 1), dists="unif") # Guided, choice of MCDA approach
-    seed_TA::N = Param(0, ptype="integer", bounds=(0, 500000 + 1), dists="unif") # Seed1, integer, number of Enhanced TA to seed
-    seed_CA::N = Param(0, ptype="integer", bounds=(0, 500000 + 1), dists="unif") # Seed2, integer, number of Enhanced CA to seed
+    seed_TA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif") # Seed1, integer, number of Enhanced TA to seed
+    seed_CA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif") # Seed2, integer, number of Enhanced CA to seed
     fogging::P = Param(0.16, ptype="real", bounds=(0.0, 0.3, 0.16 / 0.3), dists="triang") # fogging, float, assumed percent reduction in bleaching mortality
     SRM::P = Param(0.0, ptype="real", bounds=(0.0, 7.0, 0.0), dists="triang") # SRM, float, reduction in DHWs due to shading
     a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 8.0, 0.0), dists="triang") # Aadpt, float, float, increased adaptation rate
