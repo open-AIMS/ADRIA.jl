@@ -16,9 +16,7 @@ function setup_cache(domain::Domain)::NamedTuple
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
 
-    # Strip names from NamedArrays
-    init_cov::Matrix{Float64} = sparse(Matrix{Float64}(domain.init_coral_cover))
-
+    init_cov = domain.init_coral_cover
     cache = (
         sf=zeros(n_groups, n_sites),  # stressed fecundity
         fec_all=zeros(size(init_cov)...),  # all fecundity
@@ -26,7 +24,6 @@ function setup_cache(domain::Domain)::NamedTuple
         prop_loss=zeros(n_species, n_sites),  # proportional loss
         Sbl=zeros(n_species, n_sites),   # bleaching survivors
         dhw_step=zeros(n_sites),  # DHW each time step
-        init_cov=init_cov,  # initial cover
         cov_tmp=zeros(size(init_cov)...),  # Cover for previous timestep
         felt_dhw=zeros(size(init_cov)...),  # Store for felt DHW (DHW after reductions)
         depth_coeff=zeros(n_sites),  # store for depth coefficient
@@ -352,7 +349,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
     depth_coeff = @view cache.depth_coeff[:, :]
 
     Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
-    Y_cover[1, :, :] .= cache.init_cov
+    Y_cover[1, :, :] .= domain.init_coral_cover
     ode_u = zeros(n_species, n_sites)
     cover_tmp = p.cover  # pre-allocated matrix used to avoid memory allocations
 
