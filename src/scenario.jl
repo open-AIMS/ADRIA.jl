@@ -491,16 +491,16 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
     LPDprm2 = sim_params.LPDprm2 # parameter offsetting LPD curve
 
     # Wave stress
-    mwaves::Array{Float64,3} = cache.waves
+    Sw_t::Array{Float64,3} = cache.waves
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
 
     Threads.@threads for sp::Int64 in 1:n_species
-        @views mwaves[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :, :]
+        @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :, :]
     end
 
-    clamp!(mwaves, 0.0, 1.0)
+    clamp!(Sw_t, 0.0, 1.0)
 
-    Sw_t = 1.0 .- mwaves
+    Sw_t .= 1.0 .- Sw_t
 
     # Flag indicating whether to seed or not to seed
     seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
@@ -544,7 +544,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
         if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
             mcda_vars.heatstressprob .= dhw_t
-            mcda_vars.damprob .= @view mwaves[tstep, :, :]
+            mcda_vars.damprob .= @view Sw_t[tstep, :, :]
         end
 
         if is_guided && in_seed_years
