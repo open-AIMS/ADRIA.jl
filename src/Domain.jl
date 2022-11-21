@@ -166,11 +166,9 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
 
-    loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
-
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
-        dhw::NamedArray = loader(dhw_fn, "dhw"::String)
+        dhw::NamedArray = load_mat_data(dhw_fn, "dhw", site_data)
     elseif endswith(dhw_fn, ".nc")
         dhw = load_env_data(dhw_fn, "dhw", site_data)
     else
@@ -178,7 +176,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     end
 
     if endswith(wave_fn, ".mat")
-        waves::NamedArray = loader(wave_fn, "wave"::String)
+        waves::NamedArray = load_mat_data(wave_fn, "wave", site_data)
     elseif endswith(wave_fn, ".nc")
         waves = load_env_data(wave_fn, "Ub", site_data)
     else
@@ -186,7 +184,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     end
 
     if endswith(init_coral_fn, ".mat")
-        coral_cover::NamedArray = loader(init_coral_fn, "covers"::String)
+        coral_cover::NamedArray = load_mat_data(init_coral_fn, "covers", site_data)
     elseif endswith(init_coral_fn, ".nc")
         coral_cover = load_covers(init_coral_fn, "covers", site_data)
     else
@@ -525,12 +523,12 @@ function timesteps(domain::Domain)
 end
 
 """Get the path to the DHW data associated with the domain."""
-function get_DHW_data(d::Domain, RCP::String)
+function get_DHW_data(d::Domain, RCP::String)::String
     return joinpath(d.env_layer_md.dpkg_path, "DHWs", "dhwRCP$(RCP).nc")
 end
 
 """Get the path to the wave data associated with the domain."""
-function get_wave_data(d::Domain, RCP::String)
+function get_wave_data(d::Domain, RCP::String)::String
     return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).nc")
 end
 
@@ -540,9 +538,9 @@ end
 Switch environmental datasets to represent the given RCP.
 """
 function switch_RCPs!(d::Domain, RCP::String)::Domain
-    d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
-    d.env_layer_md.wave_fn = get_wave_data(d, RCP)
-    d.RCP = RCP
+    @set! d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
+    @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
+    @set! d.RCP = RCP
 
     @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw", d.site_data)
     @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub", d.site_data)
