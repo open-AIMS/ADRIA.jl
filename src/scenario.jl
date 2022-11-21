@@ -310,8 +310,10 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
         has_RCP = "RCP" in names(param_set, 1)
     end
 
-    if has_RCP
+    if has_RCP && (param_set isa DataFrameRow)
         rnd_seed_val = floor(Int, sum(values(param_set[Not(:RCP)])))
+    elseif has_RCP
+        rnd_seed_val = floor(Int, sum(values(param_set[2:end])))
     else
         rnd_seed_val = floor(Int, sum(values(param_set)))
     end
