@@ -203,9 +203,9 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
 
     r_raw = result_set.raw
-    vals = relative_cover(r_raw)
+    vals = total_absolute_cover(r_raw, site_area(domain))
     vals[vals.<threshold] .= 0.0
-    data_store.relative_cover[:, :, idx] .= vals
+    data_store.total_absolute_cover[:, :, idx] .= vals
 
     p_tbl = param_table(domain)
     vals .= absolute_shelter_volume(r_raw, site_area(domain), p_tbl)

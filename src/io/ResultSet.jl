@@ -170,7 +170,11 @@ function combine_results(result_sets...)::ResultSet
 
     compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
     metrics = keys(rs1.outcomes)
-    result_dims = (size(rs1.outcomes[:relative_cover], :timesteps), size(rs1.outcomes[:relative_cover], :sites), n_scenarios)
+    result_dims = (
+        size(rs1.outcomes[:total_absolute_cover], :timesteps),
+        size(rs1.outcomes[:total_absolute_cover], :sites),
+        n_scenarios
+    )
     dim_struct = Dict(
         :structure => ("timesteps", "sites", "scenarios"), # string.((:timesteps, :sites, :scenarios)),
         :unique_site_ids => rs1.site_ids
@@ -317,7 +321,7 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
     vers_id = rs.ADRIA_VERSION
 
-    tf, sites, scens = size(rs.outcomes[:relative_cover])
+    tf, sites, scens = size(rs.outcomes[:total_absolute_cover])
     # Species/size groups represented: $(species)
 
     rcps = join(split(rs.RCP, "_"), ", ")
