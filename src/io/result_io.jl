@@ -1,7 +1,7 @@
 function get_geometry(df::DataFrame)
-    if "geometry" in names(df)
+    if columnindex(df, :geometry) > 0
         return df.geometry
-    elseif "geom" in names(df)
+    elseif columnindex(df, :geom) > 0
         return df.geom
     end
 
