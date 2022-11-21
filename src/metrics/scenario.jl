@@ -24,7 +24,7 @@ Calculate the cluster-wide relative coral cover for each scenario.
 """
 function scenario_relative_cover(rs::ResultSet; kwargs...)
     target_sites = haskey(kwargs, :sites) ? kwargs[:sites] : (:)
-    target_area = sum(((rs.site_max_coral_cover / 100.0) .* rs.site_area)[target_sites])
+    target_area = sum(((rs.site_max_coral_cover./100.0).*rs.site_area)[target_sites])
 
     return scenario_total_cover(rs; kwargs...) ./ target_area
 end
@@ -36,11 +36,11 @@ end
 Calculate the cluster-wide juvenile population for individual scenarios.
 """
 function scenario_juveniles(data::NamedDimsArray; kwargs...)
-    juv = call_metric(juveniles, data; kwargs...)
+    juv = call_metric(relative_juveniles, data; kwargs...)
     return dropdims(sum(juv, dims=:sites), dims=:sites)
 end
 function scenario_juveniles(rs::ResultSet; kwargs...)
-    return scenario_juveniles(rs.raw; kwargs...)
+    return dropdims(sum(slice_results(rs.outcomes[:relative_juveniles]; kwargs...), dims=:sites), dims=:sites)
 end
 
 
