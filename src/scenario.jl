@@ -296,7 +296,7 @@ Only the mean site rankings are kept
 # Returns
 NamedTuple of collated results
 """
-function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,AbstractVector}, corals::DataFrame, cache::NamedTuple)::NamedTuple
+function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}, corals::DataFrame, cache::NamedTuple)::NamedTuple
 
     sim_params = domain.sim_constants
     site_data = domain.site_data
