@@ -47,7 +47,7 @@ Parameters intended to be of Integer type or casted as such.
 function load_scenarios(domain::D, filepath::String)::DataFrame where {D}
     df = CSV.read(filepath, DataFrame, comment="#")
 
-    if "RCP" in names(df) || :RCP in names(df)
+    if columnindex(df, :RCP) > 0
         df = df[!, Not("RCP")]
     end
     process_inputs!(domain, df)
