@@ -261,15 +261,22 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     return run_scenario(idx, param_set, domain, data_store, cache)
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, cache::NamedTuple)
-    # update_params!(domain, param_set)
-
     # Extract coral only parameters
     coral_params = to_spec(param_set)
+    if domain.RCP == ""
+        throw("No RCP set for domain. Use `ADRIA.switch_RCPs!() to select an RCP to run scenarios with.")
+    end
 
     return run_model(domain, param_set, coral_params, cache)
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain)::NamedTuple
     cache = setup_cache(domain)
+
+    # Switch RCP datasets if required
+    if "RCP" in names(param_set, 1) && (param_set["RCP"] != domain.RCP)
+        domain = switch_RCPs!(domain, domain.RCP)
+    end
+
     return run_scenario(param_set, domain, cache)
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, RCP::String)::NamedTuple
