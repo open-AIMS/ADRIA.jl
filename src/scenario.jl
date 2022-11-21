@@ -322,8 +322,13 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
     dhw_idx = Int(param_set["dhw_scenario"])
     wave_idx = Int(param_set["wave_scenario"])
 
-    dhw_scen::Matrix{Float64} = domain.dhw_scens[:, :, dhw_idx]
-    wave_scen::Matrix{Float64} = domain.wave_scens[:, :, wave_idx]
+    dhw_scen::Matrix{Float64} = @view domain.dhw_scens[:, :, dhw_idx]
+
+    # TODO: Better conversion of Ub to wave mortality
+    #       Currently scaling significant wave height by its max to non-dimensionalize values
+    #       Conversion to Matrix is to avoid broadcasting error
+    #       https://github.com/davidavdav/NamedArrays.jl/issues/119
+    wave_scen::Matrix{Float64} = Matrix{Float64}(domain.wave_scens[:, :, wave_idx]) ./ maximum(domain.wave_scens[:, :, wave_idx])
 
     tspan::Tuple = (0.0, 1.0)
     solver::BS3 = BS3()
@@ -512,7 +517,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
 
     Threads.@threads for sp::Int64 in 1:n_species
-        @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :, :]
+        @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :]
     end
 
     clamp!(Sw_t, 0.0, 1.0)
