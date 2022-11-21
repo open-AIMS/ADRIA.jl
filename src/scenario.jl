@@ -304,7 +304,17 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
-    rnd_seed_val = floor(Int, sum(values(param_set)))
+    if param_set isa DataFrameRow
+        has_RCP = columnindex(param_set, :RCP) > 0
+    else
+        has_RCP = "RCP" in names(param_set, 1)
+    end
+
+    if has_RCP
+        rnd_seed_val = floor(Int, sum(values(param_set[Not(:RCP)])))
+    else
+        rnd_seed_val = floor(Int, sum(values(param_set)))
+    end
     Random.seed!(rnd_seed_val)
 
     ### TODO: All cached arrays/values to be moved to outer function and passed in
