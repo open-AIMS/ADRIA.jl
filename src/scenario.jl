@@ -359,16 +359,16 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
-    TP_data = @view cache.TP_data[:, :]
-    sf = @view cache.sf[:, :]
-    fec_all = @view cache.fec_all[:, :]
-    fec_scope = @view cache.fec_scope[:, :]
-    prop_loss = @view cache.prop_loss[:, :]
-    Sbl = @view cache.Sbl[:, :]
-    dhw_t = @view cache.dhw_step[:, :]
-    Y_pstep = @view cache.cov_tmp[:, :]
-    felt_dhw = @view cache.felt_dhw[:, :]
-    depth_coeff = @view cache.depth_coeff[:, :]
+    TP_data = cache.TP_data
+    sf = cache.sf
+    fec_all = cache.fec_all
+    fec_scope = cache.fec_scope
+    prop_loss = cache.prop_loss
+    Sbl = cache.Sbl
+    dhw_t = cache.dhw_step
+    Y_pstep = cache.cov_tmp
+    felt_dhw = cache.felt_dhw
+    depth_coeff = cache.depth_coeff
 
     Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
     Y_cover[1, :, :] .= domain.init_coral_cover
@@ -611,7 +611,6 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
         end
 
         # Calculate and apply bleaching mortality
-        # bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw, a_adapt, n_adapt)
         bleaching_mortality!(Sbl, felt_dhw, depth_coeff, tstep, site_data.depth_med, bleaching_sensitivity, dhw_t, a_adapt, n_adapt)
 
         # Apply seeding
@@ -630,11 +629,16 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
             Yseed[tstep, 2, prefseedsites] .= scaled_seed.CA
         end
 
-        @views @. prop_loss[:, :] = Sbl[:, :] * Sw_t[p_step, :, :]
+        # Calculate survivors from bleaching and wave stress
+        @views @. prop_loss = Sbl * Sw_t[p_step, :, :]
 
         # update initial condition
-        @views tmp[:, :] .= ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area
-        @views growth.u0[:, :] .= replace(tmp, Inf => 0.0, NaN => 0.0)
+        @. tmp = ((Y_pstep * prop_loss) * total_site_area) / absolute_k_area
+        growth.u0 .= replace(tmp, Inf => 0.0, NaN => 0.0)
+
+        # X is cover relative to `k` (max. carrying capacity)
+        # So we subtract from 1.0 to get leftover/available space, relative to `k`
+        p.sigma .= max.(1.0 .- sum(growth.u0, dims=1), 0.0)
 
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-4)  # , adaptive=false, dt=1.0
