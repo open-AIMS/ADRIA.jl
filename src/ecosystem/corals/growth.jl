@@ -13,22 +13,21 @@ end
 
 
 """
-    proportional_adjustment!(Yout::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
+    proportional_adjustment!(covers::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
 
 Helper method to proportionally adjust coral cover.
 Modifies arrays in-place.
 
 # Arguments
-- Yout : Coral cover result set
+- covers : Coral cover result set
 - cover_tmp : Temporary cache matrix used to hold sum over species. Avoids memory allocations
 - max_cover : Maximum possible coral cover for each site
 """
 function proportional_adjustment!(covers::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})::Nothing
     # Proportionally adjust initial covers
-    @views cover_tmp[:] .= vec(sum(covers, dims=1))
+    cover_tmp .= vec(sum(covers, dims=1))
     if any(cover_tmp .> max_cover)
         exceeded::Vector{Int64} = findall(cover_tmp .> max_cover)
-
         @views @. covers[:, exceeded] = (covers[:, exceeded] / cover_tmp[exceeded]') * max_cover[exceeded]'
     end
 
@@ -44,12 +43,11 @@ end
 Base coral growth function.
 """
 function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
-    s = @view p.sigma[:, :]
-
+    # This now done outside function to avoid repeated allocations
     # X is cover relative to `k` (max. carrying capacity)
     # So we subtract from 1.0 to get leftover/available space, relative to `k`
-    s .= max.(1.0 .- sum(X, dims=1), 0.0)
-    s[p.k'.==0.0] .= 0.0
+    # p.sigma .= max.(1.0 .- sum(X, dims=1), 0.0)
+    # p.sigma[p.k'.==0.0] .= 0.0
 
     # Indices
     # p.small_massives := [26, 27, 28]
@@ -60,25 +58,20 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
     # p.acr_6_12 := [6, 12]
 
     # Use temporary caches
-    sXr = @view p.sXr[:, :]
-    X_mb = @view p.X_mb[:, :]
-    M_sm = @view p.M_sm[:, :]
-    r_comp = @view p.r_comp[:, :]
+    @. p.sXr = p.sigma * X * p.r  # leftover space * current cover * growth_rate
+    @. p.X_mb = X * p.mb    # current cover * background mortality
 
-    @. sXr = s * X * p.r  # leftover space * current cover * growth_rate
-    @. X_mb = X * p.mb    # current cover * background mortality
+    @views @. p.M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :] + X[12, :])')
 
-    @views @. M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :] + X[12, :])')
+    p.r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
+    @views @. du[p.acr_5_11, :] = p.sXr[p.acr_5_11-1, :] - p.sXr[p.acr_5_11, :] + p.r_comp * X[p.acr_5_11, :] - p.X_mb[p.acr_5_11, :]
+    @views @. du[p.acr_6_12, :] = p.sXr[p.acr_6_12-1, :] + p.sXr[p.acr_6_12, :] + p.r_comp * X[p.acr_6_12, :] - p.X_mb[p.acr_6_12, :]
 
-    r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
-    @views @. du[p.acr_5_11, :] = sXr[p.acr_5_11-1, :] - sXr[p.acr_5_11, :] + r_comp * X[p.acr_5_11, :] - X_mb[p.acr_5_11, :]
-    @views @. du[p.acr_6_12, :] = sXr[p.acr_6_12-1, :] + sXr[p.acr_6_12, :] + r_comp * X[p.acr_6_12, :] - X_mb[p.acr_6_12, :]
+    @views @. du[p.small_massives, :] = p.sXr[p.small_massives-1, :] - p.sXr[p.small_massives, :] - p.M_sm
 
-    @views @. du[p.small_massives, :] = sXr[p.small_massives-1, :] - sXr[p.small_massives, :] - M_sm
-
-    @views @. du[p.small, :] = p.rec - sXr[p.small, :] - X_mb[p.small, :]
-    @views @. du[p.mid, :] = sXr[p.mid-1, :] - sXr[p.mid, :] - X_mb[p.mid, :]
-    @views @. du[p.large, :] = sXr[p.large-1, :] + sXr[p.large, :] - X_mb[p.large, :]
+    @views @. du[p.small, :] = p.rec - p.sXr[p.small, :] - p.X_mb[p.small, :]
+    @views @. du[p.mid, :] = p.sXr[p.mid-1, :] - p.sXr[p.mid, :] - p.X_mb[p.mid, :]
+    @views @. du[p.large, :] = p.sXr[p.large-1, :] + p.sXr[p.large, :] - p.X_mb[p.large, :]
 
     return
 end
@@ -201,7 +194,7 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractA
     s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
 
     # Incorporate adaptation effect but maximum reduction is to 0
-    @. capped_dhw = ℯ^(0.17 + 0.35 * max.(0.0, dhw' .- (a_adapt + (tstep * n_adapt))))
+    @. capped_dhw = ℯ^(0.17 + 0.35 * max(0.0, dhw' - (a_adapt + (tstep * n_adapt))))
     @. depth_coeff = ℯ^(-0.07551 * (depth - 2.0))
 
     # Estimate long-term bleaching mortality with an estimated depth coefficient and
@@ -212,7 +205,7 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractA
 
     # How much coral survives bleaching event
     # Y .= (1.0 .- m_init) .^ 6
-    @. Y = (1.0 .- min.(((depth_coeff' * s) * capped_dhw) ./ 100.0 ./ 100.0, 1.0))^6
+    @. Y = (1.0 - min(((depth_coeff' * s) * capped_dhw) / 100.0 / 100.0, 1.0))^6.0
 
     return
 end
@@ -351,7 +344,8 @@ end
 """
 function recruitment_rate(larval_pool::AbstractArray{<:Real,2}, A::AbstractArray{<:Real}; α=2.5, β=5000.0)::AbstractArray{<:Real}
     sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
-    sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
+    sel = sd .> 0.0
+    sd[sel] .= rand.(Poisson.(sd[sel]))
     return sd
 end
 
@@ -397,15 +391,17 @@ function settler_cover(fec_scope::T, sf::T,
 
     # Send larvae out into the world (reuse fec_scope to reduce allocations)
     # fec_scope .= (fec_scope .* sf)
+    # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
+    # As above, but more performant, less readable.
     Mwater = 0.95
     mul!(fec_scope, (fec_scope .* sf), TP_data)
     fec_scope .= fec_scope .* (1.0 .- Mwater)
-    # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
     # Larvae have landed, work out how many are recruited
-    λ = recruitment(fec_scope, leftover_space; α=α, β=β)  # recruits per m^2 per site
+    # recruits per m^2 per site multiplied by area per settler
+    fec_scope .= recruitment(fec_scope, leftover_space; α=α, β=β) .* basal_area_per_settler
 
     # Determine area covered by recruited larvae (settler cover) per m^2
-    return min.(λ .* basal_area_per_settler, leftover_space)
+    return min.(fec_scope, leftover_space)
 end

@@ -681,6 +681,7 @@ include("temporal.jl")
 include("site_level.jl")
 include("scenario.jl")
 include("ranks.jl")
+include("pareto.jl")
 
 
 # Wrap base metric functions with dimension metadata

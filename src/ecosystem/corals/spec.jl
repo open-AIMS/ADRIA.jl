@@ -42,7 +42,7 @@ end
 function to_spec(inputs::Union{DataFrameRow,NamedVector})::DataFrame
     _, pnames, spec = coral_spec()
 
-    coral_ids = spec[:, :coral_id]
+    coral_ids::Vector{String} = spec[:, :coral_id]
     for p in pnames
         # wrapping `p` in an array is necessary so update of DF works
         spec[!, [p]] .= Array(inputs[coral_ids.*"_".*p])

@@ -1,7 +1,7 @@
 function get_geometry(df::DataFrame)
-    if "geometry" in names(df)
+    if columnindex(df, :geometry) > 0
         return df.geometry
-    elseif "geom" in names(df)
+    elseif columnindex(df, :geom) > 0
         return df.geom
     end
 
@@ -33,7 +33,7 @@ Summarize environmental data layers (mean and standard deviation).
 # Returns
 Matrix{Float64, 2}, of mean and standard deviation for each environmental scenario.
 """
-function summarize_env_data(data::AbstractArray)::Array
+function summarize_env_data(data::AbstractArray)::Array{Float64}
     # TODO: Update once
     dc_mean = dropdims(mean(data, dims=(1, 2)), dims=(1, 2))'
     dc_std = dropdims(std(data, dims=(1, 2)), dims=(1, 2))'
