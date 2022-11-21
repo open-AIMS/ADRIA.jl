@@ -102,18 +102,18 @@ end
 
 
 """
-    _relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
     _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 # Arguments
 - X : Matrix of raw model results
 """
-function _relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+function _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
     # sum over all species and size classes
-    return dropdims(sum(X, dims=:species), dims=:species)
+    return dropdims(sum(X, dims=:species), dims=:species) ./ k_area'
 end
-function _relative_cover(rs::ResultSet)
-    return rs.outcomes[:relative_cover]
+function _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
+    return rs.outcomes[:total_absolute_cover] ./ ((rs.site_max_coral_cover ./ 100.0) .* rs.site_area)'
 end
 
 
@@ -129,10 +129,10 @@ Sum of proportional area taken up by all corals, multiplied by total site area.
 - site_area : Vector of site areas, with sites following the same order as given indicated in X.
 """
 function _total_absolute_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
-    return _relative_cover(X) .* site_area'
+    return dropdims(sum(X, dims=:species), dims=:species) .* site_area'
 end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
-    return _relative_cover(rs) .* rs.site_area'
+    return rs.outcomes[:total_absolute_cover]
 end
 
 
@@ -160,7 +160,7 @@ function _relative_taxa_cover(X::AbstractArray{<:Real,3})
 
     return taxa_cover
 end
-function _relative_taxa_cover(rs)
+function _relative_taxa_cover(rs)::AbstractArray{<:Real}
     return rs.outcomes[:relative_taxa_cover]
 end
 
@@ -276,7 +276,7 @@ Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm di
 function _juvenile_indicator(X::AbstractArray{<:Real})
     return _relative_juveniles(X) ./ _max_juvenile_density()
 end
-function _juvenile_indicator(rs::ResultSet)
+function _juvenile_indicator(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:relative_juveniles] ./ _max_juvenile_density()
 end
 

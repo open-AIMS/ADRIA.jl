@@ -243,7 +243,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
 
     compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
 
-    met_names = [:relative_cover, :relative_shelter_volume,
+    met_names = [:total_absolute_cover, :relative_shelter_volume,
         :absolute_shelter_volume, :relative_juveniles]
 
     dim_struct = Dict(
