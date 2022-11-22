@@ -462,7 +462,6 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
     if is_guided
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
-        zones = site_data.zone_type
 
         # Prep site selection
         mcda_vars = DMCDA_vars(
@@ -470,7 +469,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
             nsiteint,
             sim_params.prioritysites,
             sim_params.priorityzones,
-            zones,
+            site_data.zone_type,
             domain.strongpred,
             domain.in_conn,
             domain.out_conn,
