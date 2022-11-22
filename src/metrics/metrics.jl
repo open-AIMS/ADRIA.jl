@@ -113,7 +113,8 @@ function _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::Abst
     return dropdims(sum(X, dims=:species), dims=:species) ./ k_area'
 end
 function _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
-    return rs.outcomes[:total_absolute_cover] ./ ((rs.site_max_coral_cover ./ 100.0) .* rs.site_area)'
+    denom = replace(((rs.site_max_coral_cover ./ 100.0) .* rs.site_area), 0.0 => 1.0)'
+    return rs.outcomes[:total_absolute_cover] ./ denom
 end
 
 
