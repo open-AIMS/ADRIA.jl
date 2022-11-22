@@ -584,7 +584,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
             prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                nsiteint, vec(leftover_space_m²))
+                nsiteint, vec(leftover_space_m²), depth_priority)
 
             site_ranks[tstep, prefseedsites, 1] .= 1.0
             site_ranks[tstep, prefshadesites, 2] .= 1.0
