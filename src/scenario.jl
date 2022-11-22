@@ -437,29 +437,29 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
     bleaching_sensitivity = corals.bleaching_sensitivity
 
-    if is_guided
+    # Defaults to considering all sites if depth cannot be considered.
+    depth_priority = collect(1:nrow(site_data))
 
-        # Defaults to considering all sites if depth cannot be considered.
-        depth_priority = collect(1:nrow(site_data))
+    # calculate total area to seed respecting tolerance for minimum available space to still seed at a site
+    area_to_seed = (col_area_seed_TA .* n_TA_to_seed) + (col_area_seed_CA .* n_CA_to_seed)
+    min_area = param_set["coral_cover_tol"] * area_to_seed
 
-        # calculate total area to seed respecting tolerance for minimum available space to still seed at a site
-        area_to_seed = (col_area_seed_TA .* n_TA_to_seed) + (col_area_seed_CA .* n_CA_to_seed)
-        min_area = param_set["coral_cover_tol"] * area_to_seed
+    # Filter out sites outside of desired depth range
+    if .!all(site_data.depth_med .== 0)
+        max_depth::Float64 = param_set["depth_min"] + param_set["depth_offset"]
+        depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set["depth_min"]) .& (site_data.depth_med .<= max_depth)
 
-        # Filter out sites outside of desired depth range
-        if .!all(site_data.depth_med .== 0)
-            max_depth::Float64 = param_set["depth_min"] + param_set["depth_offset"]
-            depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set["depth_min"]) .& (site_data.depth_med .<= max_depth)
-
-            # TODO: Include this change in MATLAB version as well
-            if any(depth_criteria .> 0)
-                # If sites can be filtered based on depth, do so. Otherwise if no sites can be filtered, remove depth as a criterion.
-                depth_priority = depth_priority[depth_criteria]
-            else
-                @warn "No sites within provided depth range of $(param_set["depth_min"]) - $(max_depth) meters. Considering all sites."
-            end
+        # TODO: Include this change in MATLAB version as well
+        if any(depth_criteria .> 0)
+            # If sites can be filtered based on depth, do so.
+            depth_priority = depth_priority[depth_criteria]
+        else
+            # Otherwise if no sites can be filtered, remove depth as a criterion.
+            @warn "No sites within provided depth range of $(param_set["depth_min"]) - $(max_depth) meters. Considering all sites."
         end
+    end
 
+    if is_guided
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
         zones = site_data.zone_type
