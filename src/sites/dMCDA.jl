@@ -389,7 +389,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_criteria, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
-        return prefseedsites, prefshadesites, rankings
+        return prefseedsites, prefshadesites, rankingsin
     end
 
     # cap to number of sites left after risk filtration
