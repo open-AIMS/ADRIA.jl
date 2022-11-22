@@ -127,6 +127,7 @@ Return the top `N` sites according to the provided metric (defaulting to `mean` 
 - N : No. of best performing sites to be selected
 - metric : metric to use to order sites from best to worst,
            must take ResultSet as input
+- stat : summary statistic to use for comparison (default: mean)
 
 # Returns
 NamedDimsArray[:scenarios,:site_ids], where `site_ids` indicates order of site ranking as well.
