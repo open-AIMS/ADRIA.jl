@@ -696,13 +696,14 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - shade_years : bool, indicating whether to shade this year or not
 - nsiteint : int, number of sites to intervene on
 - available_space : vector/matrix : space available at each site (`k` value)
+- depth : vector of site ids found to be within desired depth range
 """
-function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, available_space)
+function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, available_space, depth)
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.1
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
     # Select sites (without replacement to avoid duplicate sites)
-    candidate_sites = findall(available_space .> 0.0)
+    candidate_sites = depth[(available_space.>0.0)[depth]]  # Filter down to site ids to be considered
     num_sites = length(candidate_sites)
     s_nsiteint = num_sites < nsiteint ? num_sites : nsiteint
 
