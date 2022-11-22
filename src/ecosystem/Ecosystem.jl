@@ -79,7 +79,7 @@ Base.@kwdef struct Criteria{P,N} <: EcoModel
     zone_seed::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for zoning criteria while seeding
     zone_shade::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for zoning criteria while shading
     coral_cover_tol::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif")  # % of seeded corals area tolerance for low space when seeding
-    deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif")
     dist_thresh::P = Param(0.1, ptype="real", bounds=(0.0, 1.0), dists="unif") # distance threshold, sites selected by MCDA must be further apart than median(dist)-dist_thresh*median(dist)
     top_n::N = Param(10, ptype="integer", bounds=(5, 50 + 1), dists="unif") # sites in prefseedsites or prefshadesites will be replaced with sites within top_n ranked sites if not satisfying distance threshold
     depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif")     # minimum depth
