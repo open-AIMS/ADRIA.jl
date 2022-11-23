@@ -74,31 +74,28 @@ function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}, dimnames::Vector{Stri
     X_q = zeros(S)
     pawn_t = zeros(S, D)
     results = zeros(D, 6)
-    Threads.@threads for d_i in 1:D
-        seq = 0:step:1-step  # To check
+    # Hide warnings from HypothesisTests
+    with_logger(NullLogger()) do
+        for d_i in 1:D
+            seq = 0:step:1-step  # To check
 
-        X_di .= X[:, d_i]
-        X_q .= quantile(X_di, seq)
-        for s in 1:S-1
-            Y_sel = Y[(X_di.>=X_q[s]).&(X_di.<X_q[s+1])]
-            if length(Y_sel) == 0
-                continue  # no available samples
-            end
+            X_di .= X[:, d_i]
+            X_q .= quantile(X_di, seq)
+            for s in 1:S-1
+                Y_sel = Y[(X_di.>=X_q[s]).&(X_di.<X_q[s+1])]
+                if length(Y_sel) == 0
+                    continue  # no available samples
+                end
 
-            # Hide warnings from HypothesisTests
-            with_logger(NullLogger()) do
                 pawn_t[s, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, Y))
             end
-        end
 
-        p_ind = pawn_t[:, d_i]
-        p_min = minimum(p_ind)
-        p_mean = mean(p_ind)
-        p_med = median(p_ind)
-        p_max = maximum(p_ind)
-        p_sdv = std(p_ind)
-        p_cv = p_sdv ./ p_mean
-        results[d_i, :] .= [p_min, p_mean, p_med, p_max, p_sdv, p_cv]
+            p_ind = pawn_t[:, d_i]
+            p_mean = mean(p_ind)
+            p_sdv = std(p_ind)
+            p_cv = p_sdv ./ p_mean
+            results[d_i, :] .= [minimum(p_ind), p_mean, median(p_ind), maximum(p_ind), p_sdv, p_cv]
+        end
     end
 
     replace!(results, NaN => 0.0, Inf => 0.0)
