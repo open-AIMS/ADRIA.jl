@@ -17,7 +17,7 @@ end
     seed_years = true
     shade_years = true
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
-    depth_priority = [1 3 4 5]
+    depth_priority = collect(1:5)
 
     prefseedsites, prefshadesites = ADRIA.unguided_site_selection(prefseedsites, prefshadesites, true, true, 5, max_cover, depth_priority)
 
