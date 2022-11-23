@@ -456,7 +456,7 @@ Replaces these sites with sites in the top_n ranks if the distance between these
 - pref_sites : original n highest ranked sites selected for seeding or shading.
 - site_order : current order of ranked sites in terms of numerical site ID.
 - dist : Matrix of unique distances between sites.
-- dist_thresh : threshold for minimum deviance below the median distance between sites for selected sites.
+- min_dist : minimum distance between sites for selected sites.
 - top_n : number of top ranked sites to re-select from.
 
 # Returns
