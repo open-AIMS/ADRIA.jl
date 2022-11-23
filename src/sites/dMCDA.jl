@@ -223,8 +223,6 @@ Tuple (SE, wse)
 function create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover)
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
-    #remove consideration site depth
-    SE = SE[:, 1:end-1]
 
     wse = [inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover, heat]
     wse .= mcda_normalize(wse)
@@ -273,6 +271,8 @@ Tuple (SH, wsh)
 function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, predec_zones_shade, high_cover)
     # Set up decision matrix to be same size as A
     SH = copy(A)
+    #remove consideration site depth
+    SH = SH[:, 1:end-1]
 
     wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones_shade, high_cover, heat]
     wsh .= mcda_normalize(wsh)
