@@ -476,6 +476,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
             domain.out_conn,
             zeros(n_species, n_sites),  # wave stress
             dhw_scen[1, :],  # heat stress
+            site_data.depth_med,
             sum(Y_cover[1, :, :], dims=1),  # sum coral cover
             max_cover,
             total_site_area,

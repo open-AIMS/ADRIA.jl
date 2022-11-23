@@ -15,6 +15,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     out_conn  # ::v
     damprob  # ::A
     heatstressprob  # ::A
+    sitedepth #::V
     sumcover  # ::F
     maxcover  # ::V
     area  # ::M
@@ -142,8 +143,8 @@ Columns indicate:
 - predec : list of priority predecessors (sites strongly connected to priority sites)
 - risk_tol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
 """
-function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_criteria, risk_tol)
-    A = zeros(length(site_ids), 8)
+function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
+    A = zeros(length(site_ids), 9)
 
     A[:, 1] .= site_ids  # Column of site ids
 
@@ -171,6 +172,8 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     # Proportion of empty space (no coral) compared to max possible cover
     A[:, 8] = max.((max_cover - sum_cover), 0.0) .* area
 
+    A[:, 9] = site_depth
+
     # Filter out sites that have high risk of wave damage, specifically
     # exceeding the risk tolerance
     A[A[:, 4].>risk_tol, 4] .= NaN
@@ -180,7 +183,6 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     filtered = vec(.!any(isnan.(A), dims=2))
     # remove rows with NaNs
     A = A[filtered, :]
-
     return A, filtered
 end
 
@@ -222,7 +224,7 @@ function create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat,
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
-    wse = [inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover]
+    wse = [inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover, heat]
     wse .= mcda_normalize(wse)
 
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
@@ -270,7 +272,7 @@ function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, prede
     # Set up decision matrix to be same size as A
     SH = copy(A)
 
-    wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones_shade, high_cover]
+    wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones_shade, high_cover, heat]
     wsh .= mcda_normalize(wsh)
 
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
@@ -337,6 +339,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     zones = d_vars.zones[site_ids]
     wave_stress = d_vars.damprob[site_ids]
     heat_stress = d_vars.heatstressprob[site_ids]
+    site_depth = d_vars.sitedepth[site_ids]
     sum_cover = d_vars.sumcover[site_ids]
     max_cover = d_vars.maxcover[site_ids]
     area = d_vars.area[site_ids]
@@ -385,7 +388,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     # add weights for strongest predecessors and zones to get zone criteria
     zones_criteria = zone_preds .+ zone_sites
 
-    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_criteria, risk_tol)
+    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return prefseedsites, prefshadesites, rankingsin
