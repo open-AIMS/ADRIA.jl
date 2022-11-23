@@ -352,6 +352,8 @@ function load_results(result_loc::String)::ResultSet
     end
 
     site_data = GeoDataFrames.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
+    sort!(site_data, [Symbol(input_set.attrs["unique_site_id_col"])])
+
     model_spec = CSV.read(joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#")
 
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
