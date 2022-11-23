@@ -21,7 +21,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     min_area # ::F
     risktol  # ::F
     dist # ::M
-    dist_thresh # ::Float64
+    min_dist # ::Float64
     top_n # ::Int64
     wtinconnseed  # ::F
     wtoutconnseed  # ::F
@@ -308,7 +308,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     site_ids::Array{Int64} = copy(d_vars.site_ids)
 
-    dist_thresh::Float64 = d_vars.dist_thresh
+    min_dist::Float64 = d_vars.min_dist
 
     # Force different sites to be selected
     site_ids = setdiff(site_ids, vcat(prefseedsites, prefshadesites))
@@ -418,9 +418,10 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     if log_seed && isempty(SE)
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
+
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
-        if dist_thresh != 1.0
-            prefseedsites .= distance_sorting(prefseedsites, s_order_seed[:, 1], d_vars.dist, dist_thresh, Int64(d_vars.top_n))
+        if min_dist != 0.0
+            prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 2)
         end
     end
 
@@ -428,8 +429,8 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         prefshadesites = repeat([0], nsiteint)
     elseif log_shade
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
-        if dist_thresh != 1.0
-            prefshadesites .= distance_sorting(prefshadesites, s_order_shade[:, 1], d_vars.dist, dist_thresh, Int64(d_vars.top_n))
+        if min_dist != 0.0
+            prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade[:, 1], d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 3)
         end
     end
 
@@ -461,13 +462,14 @@ Replaces these sites with sites in the top_n ranks if the distance between these
 # Returns
 - prefsites : new set of selected sites for seeding or shading.
 """
-function distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
+function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
+    min_dist::Float64, top_n::Int64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
     nsites = length(pref_sites)
+    site_order = s_order[:, 1]
+
     # sites to select alternatives from
     alt_sites = setdiff(site_order, pref_sites)[1:min(top_n, length(site_order) - nsites)]
-    # minimum distance for filtering selected sites (within dist_thesh of median)
-    min_dist = median(dist[.!isnan.(dist)]) - dist_thresh * median(dist[.!isnan.(dist)])
 
     # find all selected sites closer than the min distance
     pref_dists = findall(dist[pref_sites, pref_sites] .< min_dist)
@@ -476,7 +478,7 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVe
     # number of sites to replace
     select_n = length(inds_rep)
     # indices to keep
-    inds_keep = [k for k in 1:length(pref_sites)]
+    inds_keep = collect(1:length(pref_sites))
     inds_keep = setdiff(inds_keep, inds_rep)
 
     # storage for new set of sites
@@ -509,7 +511,13 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVe
         rep_sites[end-select_n+1:end] .= rem_pref_sites[1:select_n]
     end
 
-    return rep_sites
+    new_site_order = setdiff(site_order, rep_sites)
+    new_site_order = [rep_sites; new_site_order]
+    s_order[:, 1] .= new_site_order
+    # Match by site_id and assign rankings to log
+    align_rankings!(rankings, s_order, rank_col)
+    Main.@infiltrate
+    return rep_sites, rankings
 end
 
 """
