@@ -430,7 +430,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     elseif log_shade
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
         if min_dist != 0.0
-            prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade[:, 1], d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 3)
+            prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 3)
         end
     end
 
