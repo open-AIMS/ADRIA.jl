@@ -463,6 +463,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
 
+        min_distance = domain.median_site_distance - domain.median_site_distance * param_set["dist_thresh"]
         # Prep site selection
         mcda_vars = DMCDA_vars(
             depth_priority,
@@ -481,7 +482,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
             min_area,
             param_set["deployed_coral_risk_tol"],  # risk tolerance
             domain.site_distances,
-            param_set["dist_thresh"],
+            min_distance,
             param_set["top_n"],
             param_set["in_seed_connectivity"], # weight for seed sites with high number of incoming connections
             param_set["out_seed_connectivity"], # weight for seed sites with high number of outgoing connections
