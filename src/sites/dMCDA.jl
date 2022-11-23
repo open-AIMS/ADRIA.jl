@@ -516,7 +516,7 @@ function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{
     s_order[:, 1] .= new_site_order
     # Match by site_id and assign rankings to log
     align_rankings!(rankings, s_order, rank_col)
-    Main.@infiltrate
+
     return rep_sites, rankings
 end
 
