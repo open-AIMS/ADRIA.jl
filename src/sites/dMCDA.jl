@@ -274,7 +274,7 @@ function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, prede
     # remove consideration of site depth as shading not accounted for in bleaching model yet
     SH = SH[:, 1:end-1]
 
-    wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones_shade, high_cover, heat]
+    wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones_shade, high_cover]
     wsh .= mcda_normalize(wsh)
 
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
