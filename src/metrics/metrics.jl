@@ -110,7 +110,7 @@ end
 """
 function _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
     # sum over all species and size classes
-    return dropdims(sum(X, dims=:species), dims=:species) ./ k_area'
+    return dropdims(sum(X, dims=:species), dims=:species) ./ replace(k_area, 0.0 => 1.0)'
 end
 function _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
     denom = replace(((rs.site_max_coral_cover ./ 100.0) .* rs.site_area), 0.0 => 1.0)'
