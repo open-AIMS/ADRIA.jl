@@ -18,7 +18,7 @@ function per_site(metric, data::NamedDimsArray)
     num_sites = size(data, dim(data, :sites))
     met = zeros(num_sites)
 
-    @inbounds Threads.@threads for i in 1:num_sites
+    @inbounds for i in 1:num_sites
         met[i] = metric(data[sites=i])
     end
 

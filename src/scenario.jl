@@ -519,7 +519,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
     Sw_t::Array{Float64,3} = cache.waves
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
 
-    Threads.@threads for sp::Int64 in 1:n_species
+    for sp::Int64 in 1:n_species
         @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :]
     end
 
