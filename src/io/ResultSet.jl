@@ -312,8 +312,11 @@ end
 Extract parameters for a specific model component from exported model specification.
 """
 function component_params(rs::ResultSet, component::Type)::DataFrame
+    return spec[rs.model_spec.component.==string(component), :]
+end
+function component_params(rs::ResultSet, components::Vector)::DataFrame
     spec = rs.model_spec
-    return spec[spec.component.==string(component), :]
+    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
 
