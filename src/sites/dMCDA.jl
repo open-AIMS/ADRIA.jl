@@ -271,7 +271,7 @@ Tuple (SH, wsh)
 function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, predec_zones_shade, high_cover)
     # Set up decision matrix to be same size as A
     SH = copy(A)
-    #remove consideration site depth
+    # remove consideration of site depth (re)
     SH = SH[:, 1:end-1]
 
     wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones_shade, high_cover, heat]
