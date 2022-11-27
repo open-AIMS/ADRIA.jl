@@ -35,9 +35,9 @@ X : outcomes, where rows are scenarios and columns are metric results.
 dist : distance from front, where 0 is on the frontier.
 
 # Returns
-Vector of Vectors with row indices for each `dist` from frontier.
+Vector of Vectors with row indices for each `dist` from frontier, where 0 is on the frontier.
 """
-function nds(X::Matrix{<:Real}, dist::Int64=0)::Vector{Vector{<:Int}}
+function nds(X::AbstractArray{<:Real}, dist::Int64=0)::Vector{Vector{<:Int}}
     fronts = Vector{Int64}[]
     ind = collect(axes(X, 1))
     a = SVector{size(X, 2)}.(eachrow(X))

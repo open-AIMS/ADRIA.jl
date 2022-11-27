@@ -5,9 +5,13 @@ using Statistics, Distributions, HypothesisTests, NamedArrays, DataFrames
 
 
 """
-    relative_importance(x)
+    relative_importance(x::AbstractVector{<:Real})
+    relative_importance(x::AbstractArray)
 
 Normalize metrics such that the values ∈ [0, 1].
+
+Note: If a matrix is passed in, this calculates the relative importance
+for each column.
 
 # Arguments
 - x : metric values
