@@ -1,22 +1,22 @@
 module ADRIA
 
+using Requires
 using Random, TOML, Dates, CpuId
 using StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
 using NamedArrays, SparseArrayKit, DifferentialEquations
 
-using MAT  # Package to read in `.mat` files
-using Combinatorics
-using Distances
+using MAT
+using Combinatorics, Distances
 using Setfield, ModelParameters, DataStructures
 using DataFrames, Graphs, CSV
 import ArchGDAL as AG
 import GeoDataFrames
 
 using PkgVersion
-
 using ProgressMeter
 
 using SnoopPrecompile, RelocatableFolders
+
 
 include("utils/text_display.jl")  # need better name for this file
 include("utils/setup.jl")
@@ -52,7 +52,10 @@ include("metrics/performance.jl")
 include("scenario.jl")
 include("optimization.jl")
 
-include("../Aviz/src/Aviz.jl")
+function __init__()
+    @require GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a" include("../Aviz/src/Aviz.jl")
+end
+
 # include("main_app.jl")
 
 
