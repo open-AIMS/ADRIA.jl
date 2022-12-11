@@ -27,7 +27,7 @@ function relative_importance(x::AbstractVector{<:Real})
     return (x .- minimum(x)) ./ (maximum(x) - minimum(x))
 end
 function relative_importance(x::AbstractArray)
-    S = copy(x)
+    S = similar(x)
     for idx in axes(x, 2)
         S[:, idx] .= relative_importance(x[:, idx])
     end
@@ -75,30 +75,31 @@ function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}, dimnames::Vector{Stri
     step = 1 / S
 
     X_di = zeros(N)
-    X_q = zeros(S)
-    pawn_t = zeros(S, D)
+    X_q = zeros(S + 1)
+    pawn_t = zeros(S + 1, D)
     results = zeros(D, 6)
     # Hide warnings from HypothesisTests
     with_logger(NullLogger()) do
         for d_i in 1:D
-            seq = 0:step:1-step  # To check
+            seq = 0:step:1
 
             X_di .= X[:, d_i]
             X_q .= quantile(X_di, seq)
-            for s in 1:S-1
+            for s in 1:S
                 Y_sel = Y[(X_di.>=X_q[s]).&(X_di.<X_q[s+1])]
                 if length(Y_sel) == 0
+                    pawn_t[s, d_i] = 0.0
                     continue  # no available samples
                 end
 
                 pawn_t[s, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, Y))
             end
 
-            p_ind = pawn_t[:, d_i]
-            p_mean = mean(p_ind)
-            p_sdv = std(p_ind)
+            # p_ind = pawn_t[:, d_i]
+            p_mean = mean(pawn_t[:, d_i])
+            p_sdv = std(pawn_t[:, d_i])
             p_cv = p_sdv ./ p_mean
-            results[d_i, :] .= [minimum(p_ind), p_mean, median(p_ind), maximum(p_ind), p_sdv, p_cv]
+            results[d_i, :] .= (minimum(pawn_t[:, d_i]), p_mean, median(pawn_t[:, d_i]), maximum(pawn_t[:, d_i]), p_sdv, p_cv)
         end
     end
 
@@ -109,8 +110,8 @@ end
 function pawn(X::DataFrame, Y::Vector{<:Real}; S::Int64=10)::NamedArray
     return pawn(Matrix(X), Y, names(X); S=S)
 end
-function pawn(X::Matrix, Y::Vector{<:Real}; S::Int64=10)::NamedArray
-    return pawn(X, Y, names(X); S=S)
-end
+# function pawn(X::Matrix, Y::Vector{<:Real}; S::Int64=10)::NamedArray
+#     return pawn(X, Y, names(X); S=S)
+# end
 
 end
