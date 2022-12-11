@@ -319,6 +319,15 @@ function component_params(rs::ResultSet, components::Vector)::DataFrame
     return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
+"""
+    model_spec(rs::ResultSet)::DataFrame
+
+Extract model specification from Result Set.
+"""
+function model_spec(rs::ResultSet)::DataFrame
+    return rs.model_spec
+end
+
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
