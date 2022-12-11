@@ -163,10 +163,14 @@ function comms(rs::ADRIA.ResultSet)
     # Get bounds to display
     centroids = rs.site_centroids
     mean_rc_sites = ADRIA.metrics.relative_cover(rs)
-    obs_mean_rc_sites = Observable(vec(mean(mean_rc_sites, dims=(:scenarios, :timesteps))))
+    obs_rc = vec(mean(mean_rc_sites, dims=(:scenarios, :timesteps)))
+    obs_mean_rc_sites = Observable(obs_rc)
 
     # Placeholder store to control which trajectories are visible
-    color_map = scenario_colors(rs)
+    X = rs.inputs
+    min_color_step = (1.0 / 0.05)
+    init_weight = (1.0 / (size(X, 1) / min_color_step))
+    color_map = scenario_colors(rs, init_weight)
     obs_color = Observable(color_map)
     scen_types = scenario_type(rs)
 
@@ -185,31 +189,27 @@ function comms(rs::ADRIA.ResultSet)
     # Note: Density plots currently cannot handle empty datasets
     #       as what might happen if user selects a region with no results.
     #       so instead we set alpha to 0.0 to hide it.
-    cf_hist_alpha = Observable(0.5)
-    ug_hist_alpha = Observable(0.5)
-    g_hist_alpha = Observable(0.5)
+    cf_hist_alpha = Observable((:red, 0.5))
+    ug_hist_alpha = Observable((:green, 0.5))  # Observable(0.5)
+    g_hist_alpha = Observable((:blue, 0.5))
 
     # Legend(traj_display)  legend=["Counterfactual", "Unguided", "Guided"]
     scen_hist = layout.scen_hist
-    density!(scen_hist, obs_cf_scen_dist, direction=:y, color=(:red, cf_hist_alpha))
-    density!(scen_hist, obs_ug_scen_dist, direction=:y, color=(:green, ug_hist_alpha))
-    density!(scen_hist, obs_g_scen_dist, direction=:y, color=(:blue, g_hist_alpha))
+    density!(scen_hist, obs_cf_scen_dist, direction=:y, color=cf_hist_alpha)
+    density!(scen_hist, obs_ug_scen_dist, direction=:y, color=ug_hist_alpha)
+    density!(scen_hist, obs_g_scen_dist, direction=:y, color=g_hist_alpha)
     hidedecorations!(scen_hist)
     hidespines!(scen_hist)
-
-    # Prep seed log
-    seed_rank_log = rs.ranks[:, :, 1, :]
-    n_sites = size(rs.site_data, 1)
+    ylims!(scen_hist, 0.0, maximum(tac_scen_dist))
 
     # Random forest stuff
     # Feature importance
     # layout.outcomes
-    ft_import = layout.importance
+    # ft_import = layout.importance
 
     # https://github.dev/JuliaAI/DecisionTree.jl
     # X = Matrix(rs.inputs)
-    X = rs.inputs
-    p = outcome_probability(tac_scen_dist)
+    # p = outcome_probability(tac_scen_dist)
     # model = build_forest(p, X, ceil(Int, sqrt(size(X, 1))), 30, 0.7, -1; rng=101)
     # p_tbl = probability_table(model, X, p)
     # @time ft_tbl = ft_importance(model, rs.inputs, p; rng=101)
@@ -217,29 +217,45 @@ function comms(rs::ADRIA.ResultSet)
     asv_scens = ADRIA.metrics.scenario_asv(rs)
     asv_scen_dist = dropdims(mean(asv_scens, dims=:timesteps), dims=:timesteps)
 
-    interv_names = ADRIA.component_params(rs.model_spec, Intervention).fieldname
-    interv_idx = findall(x -> x in interv_names, names(rs.inputs))
-    @time begin
-        mean_tac_med = relative_sensitivities(X, Array(tac_scen_dist))
-        mean_tac_med = mean_tac_med[interv_idx]
+    juves_scens = ADRIA.metrics.scenario_juveniles(rs)
+    juves_scen_dist = dropdims(mean(juves_scens, dims=:timesteps), dims=:timesteps)
 
-        mean_asv_med = relative_sensitivities(X, Array(asv_scen_dist))
-        mean_asv_med = mean_asv_med[interv_idx]
+    ms = rs.model_spec
+    intervention_components = ms[(ms.component.=="Intervention").&(ms.fieldname.!="guided"), [:fieldname, :full_bounds]]
+    interv_names = intervention_components.fieldname
+    interv_idx = findall(x -> x in interv_names, names(X))
+
+    # Adjust unguided scenarios so scenario values are not 0 (to avoid these getting removed in display)
+    for (i, n) in enumerate(interv_names)
+        fb = intervention_components[i, :full_bounds]
+        x = eval(Meta.parse(fb))
+        X[X.guided.<0, n] .= x[1]
     end
 
-    sample_cv = std(tac_scen_dist) ./ mean(tac_scen_dist)
-    cf_cv = std(tac_scen_dist[scen_types.counterfactual]) ./ mean(tac_scen_dist[scen_types.counterfactual])
-    ug_cv = std(tac_scen_dist[scen_types.unguided]) ./ mean(tac_scen_dist[scen_types.unguided])
-    g_cv = std(tac_scen_dist[scen_types.guided]) ./ mean(tac_scen_dist[scen_types.guided])
+    mean_tac_med = relative_sensitivities(X, Array(tac_scen_dist))
+    mean_tac_med = mean_tac_med[interv_idx]
+
+    mean_asv_med = relative_sensitivities(X, Array(asv_scen_dist))
+    mean_asv_med = mean_asv_med[interv_idx]
+
+    mean_juves_med = relative_sensitivities(X, Array(juves_scen_dist))
+    mean_juves_med = mean_juves_med[interv_idx]
+
+    # sample_cv = std(tac_scen_dist) ./ mean(tac_scen_dist)
+    # cf_cv = std(tac_scen_dist[scen_types.counterfactual]) ./ mean(tac_scen_dist[scen_types.counterfactual])
+    # ug_cv = std(tac_scen_dist[scen_types.unguided]) ./ mean(tac_scen_dist[scen_types.unguided])
+    # g_cv = std(tac_scen_dist[scen_types.guided]) ./ mean(tac_scen_dist[scen_types.guided])
 
     ft_import = Axis(
         layout.importance[1, 1],
-        xticks=([1, 2], ["Mean TAC", "Mean ASV"]),
-        yticks=(1:length(interv_names), interv_names)
+        xticks=([1, 2, 3], ["Mean TAC", "Mean ASV", "Mean Juveniles"]),
+        yticks=(1:length(interv_names), interv_names),
+        title="Relative Importance"
     )
     ft_import.yreversed = true
 
-    sensitivities = Observable(hcat(mean_tac_med, mean_asv_med)')
+    S_data = hcat(mean_tac_med, mean_asv_med, mean_juves_med)'
+    sensitivities = Observable(S_data)
     heatmap!(ft_import, sensitivities)
     Colorbar(layout.importance[1, 2]; colorrange=(0.0, 1.0))
 
@@ -281,10 +297,57 @@ function comms(rs::ADRIA.ResultSet)
 
     obs_site_sel = FC(geodata[curr_highlighted_sites, :][:])
     obs_site_sel = Observable(obs_site_sel)
-    obs_site_highlight = Observable((:green, 1.0))
+    obs_site_highlight = Observable((:lightgreen, 1.0))
     overlay_site = poly!(map_disp, obs_site_sel, color=(:white, 0.0), strokecolor=obs_site_highlight, strokewidth=0.75, overdraw=true)
 
-    onany(time_slider.interval, tac_slider.interval) do time_val, tac_val
+    # Add control grid
+    # Controls for RCPs
+    t_toggles = [Toggle(f, active=active) for active in [true, true, true, true, true, true]]
+    t_toggle_map = zip(
+        t_toggles,
+        ["RCP 4.5", "RCP 6.0", "RCP 8.5", "Counterfactual", "Unguided", "Guided"],
+        [:black, :black, :black, :red, :green, :blue]
+    )
+    labels = [Label(f, "$l", color=lift(x -> x ? c : :gray, t.active)) for (t, l, c) in t_toggle_map]
+    layout.controls[1:2, 1] = grid!(hcat(t_toggles, labels), tellheight=false)
+
+    # Controls for guided type
+    guide_toggle_map = zip(
+        t_toggles[3:end],
+        ["Counterfactual", "Unguided", "Guided"],
+        [:red, :green, :blue]
+    )
+
+    # Controls for interventions
+    interv_sliders = []
+    interv_labels = []
+    lc = layout.controls[3:6, 1] = GridLayout()
+    for (i, v) in enumerate(eachrow(intervention_components))
+        fn = v[1]
+        x = eval(Meta.parse(v[2]))
+
+        l1 = Observable("$(round(x[1], digits=2))")
+        l2 = Observable("$(round(x[2], digits=2))")
+        push!(interv_sliders,
+            IntervalSlider(
+                lc[i, 2],
+                range=LinRange(x[1], x[2], 10),
+                startvalues=(x[1], x[2])
+            )
+        )
+
+        push!(interv_labels, [l1, l2])
+
+        Label(lc[i, 2], fn)
+        Label(lc[i, 1], l1)
+        Label(lc[i, 3], l2)
+    end
+
+    scen_dist = tac_scen_dist
+    hide_idx = falses(size(X, 1))
+    show_idx = trues(size(X, 1))
+
+    function update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val)
         # Update slider labels
         left_year_val[] = "$(Int(floor(time_val[1])))"
         right_year_val[] = "$(Int(ceil(time_val[2])))"
@@ -293,95 +356,145 @@ function comms(rs::ADRIA.ResultSet)
 
         # Convert time ranges to index values
         timespan = floor(Int, time_val[1] - (year_range[1]) + 1):ceil(Int, time_val[2] - (year_range[1]) + 1)
-        hide_idx = vec(all((tac_val[1] .<= tac_scens[timespan, :] .<= tac_val[2]) .== 0, dims=1))
-        show_idx = Bool.(ones(Int64, length(hide_idx)) .⊻ hide_idx)  # inverse of hide
 
-        scen_dist = dropdims(mean(tac_scens[timespan, :], dims=:timesteps), dims=:timesteps)
+        show_idx .= trues(size(X, 1))
+
+        # Update according to intervention slider values
+        # Hide scenarios that do not meet selections based on selected intervention values
+        disp_vals = [i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val]
+        for (intv, bnds) in enumerate(interv_labels)
+            bnds[1][] = "$(round(disp_vals[intv][1], digits=2))"
+            bnds[2][] = "$(round(disp_vals[intv][2], digits=2))"
+
+            show_idx .= show_idx .& ((X[:, interv_names[intv]] .>= disp_vals[intv][1]) .& (X[:, interv_names[intv]] .<= disp_vals[intv][2]))
+        end
+
+        # Hide/display scenario types
+        if c_tog
+            show_idx .= show_idx .| (X.guided .== -1.0)
+        else
+            show_idx .= show_idx .& (X.guided .!= -1.0)
+        end
+
+        if !u_tog
+            show_idx .= show_idx .& (X.guided .!= 0.0)
+        end
+        if !g_tog
+            show_idx .= show_idx .& (X.guided .<= 0.0)
+        end
+
+        if !rcp45
+            show_idx .= show_idx .& (X.RCP .!= 45)
+        end
+
+        if !rcp60
+            show_idx .= show_idx .& (X.RCP .!= 60)
+        end
+
+        if !rcp85
+            show_idx .= show_idx .& (X.RCP .!= 85)
+        end
+
+        # Update hidden scenarios with inverse of show
+        hide_idx .= Bool.(ones(Int64, length(hide_idx)) .⊻ show_idx)
 
         # Update map
-        obs_mean_rc_sites[] = vec(mean(mean_rc_sites[timesteps=timespan][scenarios=findall(show_idx)], dims=(:scenarios, :timesteps)))
+        obs_mean_rc_sites[] = vec(mean(mean_rc_sites[timesteps=timespan][scenarios=show_idx], dims=(:scenarios, :timesteps)))
 
         seeded_sites = _get_seeded_sites(seed_log, (:), show_idx)
+        site_alpha = 1.0
         if seeded_sites != curr_highlighted_sites
             # Highlight seeded sites
-            if !all(seeded_sites .== 0.0) && !all(show_idx .== 0)
-                obs_site_sel[] = FC(geodata[seeded_sites, :][:])
-                obs_site_highlight[] = (:green, 1.0)
+            if any(seeded_sites .> 0.0) && any(show_idx)
+                obs_site_sel[] = FC(geodata[seeded_sites, :])
+                site_alpha = 1.0
                 curr_highlighted_sites .= seeded_sites
             else
-                obs_site_highlight[] = (:green, 0.0)
+                site_alpha = 0.0
             end
-        else
-            if all(seeded_sites .== 0.0) || all(show_idx .== 0)
-                obs_site_highlight[] = (:green, 0.0)
-            end
+        elseif all(seeded_sites .== 0.0) || all(show_idx .== 0)
+            site_alpha = 0.0
         end
 
-        # Boolean index of scenarios to hide (inverse of tac_idx)
-        if !all(hide_idx .== 0)
-            # Hide scenarios that were filtered out
-            cf_dist = scen_dist[show_idx.&scen_types.counterfactual]
-            ug_dist = scen_dist[show_idx.&scen_types.unguided]
-            g_dist = scen_dist[show_idx.&scen_types.guided]
-        else
-            cf_dist = scen_dist[scen_types.counterfactual]
-            ug_dist = scen_dist[scen_types.unguided]
-            g_dist = scen_dist[scen_types.guided]
-        end
+        obs_site_highlight[] = (:lightgreen, site_alpha)
 
-        # Update scenario density plot
-        if !isempty(cf_dist)
+        # Update scenario density
+        scen_dist = dropdims(mean(tac_scens[timesteps=timespan], dims=:timesteps), dims=:timesteps)
+        # Hide scenarios that were filtered out
+        cf_dist = scen_dist[show_idx.&scen_types.counterfactual]
+        ug_dist = scen_dist[show_idx.&scen_types.unguided]
+        g_dist = scen_dist[show_idx.&scen_types.guided]
+
+        if c_tog && !isempty(cf_dist)
             obs_cf_scen_dist[] = cf_dist
-            cf_hist_alpha[] = 0.5
+            cf_hist_alpha[] = (:red, 0.5)
         else
-            cf_hist_alpha[] = 0.0
+            cf_hist_alpha[] = (:red, 0.0)
         end
 
-        if !isempty(ug_dist)
+        if u_tog && !isempty(ug_dist)
             obs_ug_scen_dist[] = ug_dist
-            ug_hist_alpha[] = 0.5
+            ug_hist_alpha[] = (:green, 0.5)
         else
-            ug_hist_alpha[] = 0.0
+            ug_hist_alpha[] = (:green, 0.0)
         end
 
-        if !isempty(g_dist)
+        if g_tog && !isempty(g_dist)
             obs_g_scen_dist[] = g_dist
-            g_hist_alpha[] = 0.5
+            g_hist_alpha[] = (:blue, 0.5)
         else
-            g_hist_alpha[] = 0.0
+            g_hist_alpha[] = (:blue, 0.0)
         end
 
-        # Determine level of transparency for each line (maximum of 0.6)
-        min_step = (1.0 / 0.05)
-        color_weight = min((1.0 / (count(show_idx .> 0) / min_step)), 0.6)
+        # Update limits of density plot
+        # autolimits!(scen_hist)
+        ylims!(scen_hist, 0.0, maximum(scen_dist))
+        # limits!(scen_hist, 0.0, maximum(tac_scen_dist), 0.0, maximum(max(length(cf_dist), length(ug_dist), length(g_dist))))
 
         # Update visible trajectories
-        scenario_colors!(obs_color, scen_types, color_weight, hide_idx)
+        # Determine level of transparency for each line (maximum of 0.5)
+        color_weight = min((1.0 / (count(show_idx .> 0) / min_color_step)), 0.5)
+        scenario_colors!(obs_color, color_map, scen_types, color_weight, hide_idx, guide_toggle_map)
 
-        # Update sensitivities
-        if !all(show_idx .== 0)
-            sel_tac_scens = dropdims(mean(tac_scens[timesteps=timespan, scenarios=show_idx], dims=:timesteps), dims=:timesteps)
-            mean_tac_med = relative_sensitivities(X[show_idx, :], Array(sel_tac_scens))
-            mean_tac_med = mean_tac_med[interv_idx]
+        # Update sensitivities (if there's enough samples...)
+        if count(show_idx) > 16
+            mean_tac_med = relative_sensitivities(X[show_idx, :], scen_dist[show_idx])[interv_idx]
 
             sel_asv_scens = dropdims(mean(asv_scens[timesteps=timespan, scenarios=show_idx], dims=:timesteps), dims=:timesteps)
-            mean_asv_med = relative_sensitivities(X[show_idx, :], Array(sel_asv_scens))
-            mean_asv_med = mean_asv_med[interv_idx]
+            mean_asv_med = relative_sensitivities(X[show_idx, :], sel_asv_scens)[interv_idx]
+
+            sel_juves_scens = dropdims(mean(juves_scens[timesteps=timespan, scenarios=show_idx], dims=:timesteps), dims=:timesteps)
+            mean_juves_med = relative_sensitivities(X[show_idx, :], sel_juves_scens)[interv_idx]
         else
             # Display nothing if no data is available
             mean_tac_med = fill(NaN, length(interv_idx))
             mean_asv_med = fill(NaN, length(interv_idx))
+            mean_juves_med = fill(NaN, length(interv_idx))
         end
 
-        sensitivities[] = hcat(mean_tac_med, mean_asv_med)'
+        S_data[1, :] .= mean_tac_med
+        S_data[2, :] .= mean_asv_med
+        S_data[3, :] .= mean_juves_med
+        sensitivities[] = S_data
     end
 
+    # Trigger update only after some time since last interaction
+    # TODO: Add update notification (spinner animation or something...)
+    up_timer = Timer(x -> x, 0.25)
+    onany(time_slider.interval, tac_slider.interval,
+        [t.active for t in t_toggles]...,
+        [sld.interval for sld in interv_sliders]...) do time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val
+
+        close(up_timer)
+        up_timer = Timer(x -> update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val), 2)
+    end
 
     gl_screen = display(f)
-    DataInspector()
+    # DataInspector()
 
     wait(gl_screen)
 end
+
 function comms(rs_path::String)
     comms(ADRIA.load_results(rs_path))
 end
@@ -409,14 +522,10 @@ function explore(rs::ADRIA.ResultSet)
     color_map = scenario_colors(rs)
     obs_color = Observable(color_map)
 
-    n_visible_scenarios = Observable(size(rs.inputs, 1))
+    # n_visible_scenarios = Observable(size(rs.inputs, 1))
+    # seed_log = rs.seed_log[:, 1, :, :]
 
-    seed_log = rs.seed_log[:, 1, :, :]
-
-    # Controls
-    ms = rs.model_spec
-    # intervention_components = ms[ms.component .== "Intervention", [:fieldname, :full_bounds]]
-
+    # Temporal controls
     tac_scens = ADRIA.metrics.scenario_total_cover(rs)
     # rc_scens = ADRIA.metrics.scenario_relative_cover(rs)
     mean_tac_outcomes = vec(mean(tac_scens, dims=1))
@@ -459,7 +568,7 @@ function explore(rs::ADRIA.ResultSet)
     tac = ADRIA.metrics.scenario_total_cover(rs)
     tac_data = Matrix(tac')
 
-    asv = ADRIA.metrics.scenario_asv(rs)
+    # asv = ADRIA.metrics.scenario_asv(rs)
 
     # Histogram/Density plot
     scen_types = scenario_type(rs)
@@ -567,12 +676,13 @@ function explore(rs::ADRIA.ResultSet)
     end
 
     # Trajectories
-    series!(traj_display, timesteps(rs), tac_data, color=@lift($obs_color[:]))
+    # series!(traj_display, timesteps(rs), tac_data, color=@lift($obs_color[:]))
+    series!(traj_display, timesteps(rs), tac_data, color=obs_color)
 
     # Legend(traj_display)  legend=["Counterfactual", "Unguided", "Guided"]
-    density!(scen_hist, @lift($obs_cf_scen_dist[:]), direction=:y, color=(:red, @lift($cf_hist_alpha[])))
-    density!(scen_hist, @lift($obs_ug_scen_dist[:]), direction=:y, color=(:green, @lift($ug_hist_alpha[])))
-    density!(scen_hist, @lift($obs_g_scen_dist[:]), direction=:y, color=(:blue, @lift($g_hist_alpha[])))
+    density!(scen_hist, @lift($obs_cf_scen_dist[:]), direction=:y, color=(:red, cf_hist_alpha))
+    density!(scen_hist, @lift($obs_ug_scen_dist[:]), direction=:y, color=(:green, ug_hist_alpha))
+    density!(scen_hist, @lift($obs_g_scen_dist[:]), direction=:y, color=(:blue, g_hist_alpha))
 
     hidedecorations!(scen_hist)
     hidespines!(scen_hist)
@@ -585,8 +695,8 @@ function explore(rs::ADRIA.ResultSet)
 
     # Get bounds to display
     centroids = rs.site_centroids
-    lon = [c[1] for c in centroids]
-    lat = [c[2] for c in centroids]
+    lon = first.(centroids)
+    lat = last.(centroids)
 
     # Display map
     mean_rc_sites = mean(ADRIA.metrics.relative_cover(rs), dims=(:scenarios, :timesteps))
@@ -596,10 +706,12 @@ function explore(rs::ADRIA.ResultSet)
         lonlims=(minimum(lon) - map_buffer, maximum(lon) + map_buffer),
         latlims=(minimum(lat) - map_buffer, maximum(lat) + map_buffer),
         xlabel="Long",
-        ylabel="Lat"
+        ylabel="Lat",
+        dest="+proj=latlong +datum=WGS84"
     )
-    # datalims!(spatial)  # auto-adjust limits (doesn't work if there are Infs...)
+
     poly!(spatial, geodata, color=vec(mean_rc_sites), colormap=:plasma)
+    datalims!(spatial)
 
     # Fill pairplot
     # Get mean outcomes for each scenario
