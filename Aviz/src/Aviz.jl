@@ -101,7 +101,7 @@ function main_menu()
 end
 
 
-function _get_seeded_sites(seed_log, ts, scens; N=5)
+function _get_seeded_sites(seed_log, ts, scens; N=10)
     t = dropdims(sum(seed_log[timesteps=ts, scenarios=scens], dims=:timesteps), dims=:timesteps)
     site_scores = dropdims(sum(t, dims=:scenarios), dims=:scenarios)
 
