@@ -288,7 +288,7 @@ end
 """
     _recreate_stats_from_store(zarr_store_path::String)::Dict{String, AbstractArray}
 
-Recreate data structure holding scenario summary statistics from Zarr store.
+Recreate data structure holding RCP summary statistics from Zarr store.
 """
 function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,AbstractArray}
     rcp_dirs = filter(d -> isdir(joinpath(zarr_store_path, d)), readdir(zarr_store_path))

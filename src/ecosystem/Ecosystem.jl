@@ -57,8 +57,8 @@ Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
     SRM::P = Param(0.0, ptype="real", bounds=(0.0, 7.0, 0.0), dists="triang") # SRM, float, reduction in DHWs due to shading
     a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 8.0, 0.0), dists="triang") # Aadpt, float, float, increased adaptation rate
     n_adapt::N2 = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif") # Natad, float, natural adaptation rate
-    seed_years::P2 = Param(10, ptype="integer", bounds=(5, 15 + 1, 5 / 15), dists="triang") # Seedyrs, integer, years into simulation during which seeding is considered
-    shade_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 74), dists="triang") # Shadeyrs, integer, years into simulation during which shading is considered
+    seed_years::P2 = Param(10, ptype="integer", bounds=(5, 15 + 1, 5 / 10), dists="triang") # Seedyrs, integer, years into simulation during which seeding is considered
+    shade_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 69), dists="triang") # Shadeyrs, integer, years into simulation during which shading is considered
     seed_freq::N = Param(5, ptype="integer", bounds=(0, 5 + 1), dists="unif") # Seedfreq, integer, yearly intervals to adjust seeding site selection (0 is set and forget)
     shade_freq::N = Param(1, ptype="integer", bounds=(0, 5 + 1), dists="unif") # Shadefreq, integer, yearly intervals to adjust shading (fogging) site selection (0 is set and forget)
     seed_year_start::N = Param(2, ptype="integer", bounds=(2, 25 + 1), dists="unif") # Seedyr_start, integer, seed intervention start offset from simulation start
