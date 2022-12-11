@@ -1,48 +1,46 @@
 """
-┌──────────┐  ┌───────────────────────────────────────────┐ ┌──────┐
-│          │  │                                           │ │      │
-│          │  │                                           │ │  H   │
-│          │  │                                           │ │  i   │
-│          │  │   Trajectories with control sliders       │ │  s   │
-│          │  │                                           │ │  t   │
-│          │  │                                           │ │      │
-│          │  └───────────────────────────────────────────┘ └──────┘
-│   C      │
-│   o      │  ┌───────────────────────┐ ┌─────────────────┐ ┌───────┐
-│   n      │  │                       │ │                 │ │       │
-│   t      │  │                       │ │                 │ │ Econ  │
-│   r      │  │                       │ │                 │ │       │
-│   o      │  │                       │ │  Outcome Matrix │ │       │
-│   l      │  │                       │ │                 │ └───────┘
-│   s      │  │    Map                │ │                 │
-│          │  │                       │ │                 │ ┌───────┐
-│          │  │                       │ │                 │ │       │
-│          │  │                       │ └─────────────────┘ │ Econ  │
-│          │  │                       │ ┌─────────────────┐ │control│
-│          │  │                       │ │   Message       │ │       │
-└──────────┘  └───────────────────────┘ └─────────────────┘ └───────┘
+
+
+┌─────┐ ┌───────────────────────────────────────────────────────────┐
+│     │ │                                                           │
+│     │ │                                                           │
+│     │ │                                                           │
+│  C  │ │                                                           │
+│  o  │ │           Trajectories with control sliders               │
+│  n  │ │                                                           │
+│  t  │ │                                                           │
+│  r  │ │                                                           │
+│  o  │ └───────────────────────────────────────────────────────────┘
+│  l  │ ┌────────────────┐ ┌───────────────────────────┐  ┌─────────┐
+│  s  │ │                │ │                           │  │         │
+│     │ │                │ │   Relative Importance     │  │ Probas  │
+│     │ │                │ │                           │  │         │
+│     │ │    Map         │ │                           │  │         │
+│     │ │                │ └───────────────────────────┘  └─────────┘
+│     │ │                │ ┌────────────────────────────────────────┐
+│     │ │                │ │         Message                        │
+└─────┘ └────────────────┘ └────────────────────────────────────────┘
+
+
 """
 function comms_layout(; resolution=(1920, 1080))
     f = Figure(resolution=resolution)
 
-    main = f[1:5, 1:5] = GridLayout()
+    main = f[1:6, 1:8] = GridLayout()
 
-    controls = main[1:5, 1] = GridLayout()
-    controls.width = 200
-
-    map = main[3:5, 2] = GridLayout()
+    controls = main[1:6, 1] = GridLayout()
+    controls.width = 300
 
     # Trajectories and density plot
-    trajectory = main[1:2, 2:4] = GridLayout()
-    scen_hist = Axis(
-        trajectory[1,4]
-    )
-
+    trajectory = main[1:2, 2:8] = GridLayout()
     temporal = Axis(
-        trajectory[1, 2:3],
+        trajectory[1, 2:7],
         title="Scenario Trajectories",
         xlabel="Year",
         ylabel="Mean TAC (m²)"
+    )
+    scen_hist = Axis(
+        trajectory[1, 8]
     )
 
     # Show y-axis in millions
@@ -50,36 +48,36 @@ function comms_layout(; resolution=(1920, 1080))
 
     # Time slider for trajectory
     traj_outcome_sld = trajectory[1, 1]
-    traj_time_sld = trajectory[2, 2:3]
+    traj_time_sld = trajectory[2, 2:7]
 
-    # Outcome probabilities
-    outcome_view = trajectory[1, 5]
-    outcomes = Axis(
-        outcome_view,
-        title="Outcomes",
-        xlabel="Probability"
-    )
+    map = main[3:6, 2:4] = GridLayout()
 
     # Importance
     # feat_importance = Axis(
     #     main[3:4, 3],
     #     title="Relative Importance (Top 10)"
     # )
-    feat_importance = main[3:4, 3]
+    feat_importance = main[3:5, 5:6]
 
-    # Economics
-    econ_disp = Axis(main[3:4, 4])
-    econ_ctrl = main[5, 4]
+    # # Economics
+    # econ_disp = Axis(main[3:4, 4])
+    # econ_ctrl = main[5, 4]
+
+    # Outcome probabilities
+    outcome_view = main[3:5, 7:8]
+    outcomes = Axis(
+        outcome_view,
+        title="Outcomes",
+        xlabel="Probability"
+    )
 
     return (figure=f,
-            controls=controls,
-            trajectory=(temporal=temporal, outcome_slider=traj_outcome_sld, time_slider=traj_time_sld),
-            scen_hist=scen_hist,
-            map=map[1,1],
-            outcomes=outcomes,
-            importance=feat_importance,
-            econ_view=econ_disp,
-            econ_ctrl=econ_ctrl)
+        controls=controls,
+        trajectory=(temporal=temporal, outcome_slider=traj_outcome_sld, time_slider=traj_time_sld),
+        scen_hist=scen_hist,
+        map=map[1, 1],
+        importance=feat_importance,
+        outcomes=outcomes)
 end
 
 
@@ -117,7 +115,7 @@ function modeler_layout(; resolution=(1920, 1080))
     spatial_temporal = main[1, 1:6] = GridLayout()
 
     # Time slider for trajectory
-    traj_outcome_sld = spatial_temporal[1,1]
+    traj_outcome_sld = spatial_temporal[1, 1]
 
     temporal = Axis(
         spatial_temporal[1, 2:4],
@@ -128,10 +126,10 @@ function modeler_layout(; resolution=(1920, 1080))
     # Show y-axis in millions
     temporal.ytickformat = xs -> ["$(x/1e6)M" for x in xs]
 
-    traj_time_sld = spatial_temporal[2,1:4]
+    traj_time_sld = spatial_temporal[2, 1:4]
 
     scen_hist = Axis(
-        spatial_temporal[1,5]
+        spatial_temporal[1, 5]
     )
     colgap!(spatial_temporal, 5)
 
@@ -143,18 +141,18 @@ function modeler_layout(; resolution=(1920, 1080))
     )
 
     outcomes = main[3, 1:6] = GridLayout()
-    pairplot = outcomes[1:3,1:3] = GridLayout()
+    pairplot = outcomes[1:3, 1:3] = GridLayout()
     outcome_pcp = Axis(
         outcomes[1:3, 4:6],
         title="Outcomes"
     )
 
     return (figure=f,
-            # controls=controls,
-            trajectory=(temporal=temporal, outcome_slider=traj_outcome_sld, time_slider=traj_time_sld),
-            scen_hist=scen_hist, map=spatial,
-            interv_pcp=interv_pcp, 
-            pairplot=pairplot, outcome_pcp=outcome_pcp)
+        # controls=controls,
+        trajectory=(temporal=temporal, outcome_slider=traj_outcome_sld, time_slider=traj_time_sld),
+        scen_hist=scen_hist, map=spatial,
+        interv_pcp=interv_pcp,
+        pairplot=pairplot, outcome_pcp=outcome_pcp)
 end
 
 
