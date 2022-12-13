@@ -20,8 +20,6 @@
 │     │ │                │ ┌────────────────────────────────────────┐
 │     │ │                │ │         Message                        │
 └─────┘ └────────────────┘ └────────────────────────────────────────┘
-
-
 """
 function comms_layout(; resolution=(1920, 1080))
     f = Figure(resolution=resolution)
@@ -67,9 +65,22 @@ function comms_layout(; resolution=(1920, 1080))
     outcome_view = main[3:5, 7:8]
     outcomes = Axis(
         outcome_view,
-        title="Outcomes",
-        xlabel="Probability"
+        title="Probability Occurrence",
+        xlabel="Outcomes",
+        xticks=([1, 2, 3, 4, 5],
+            ["Very High\n> 80%", "High\n70 - 80%", "Medium\n50 - 70%", "Low\n20 - 50%", "Very Low\n< 20%"])
     )
+
+    messages = Axis(main[6, 4:8])
+    hidedecorations!(messages)
+    hidespines!(messages)
+    text!(messages,
+        0.0,
+        0.5,
+        text="Zoom: Mouse wheel\nPan: Hold right-click\nReset view: Ctrl + Left-click",
+        align=(:left, :center),
+        justification=:left,
+        fontsize=10)
 
     return (figure=f,
         controls=controls,
@@ -77,7 +88,8 @@ function comms_layout(; resolution=(1920, 1080))
         scen_hist=scen_hist,
         map=map[1, 1],
         importance=feat_importance,
-        outcomes=outcomes)
+        outcomes=outcomes,
+        messages)
 end
 
 
