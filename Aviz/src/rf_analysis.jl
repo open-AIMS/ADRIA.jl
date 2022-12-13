@@ -1,15 +1,50 @@
-function outcome_probability(data)
+"""
+    outcome_probability(data::AbstractVector)::NamedTuple
+
+Determine probability occurrence.
+"""
+function outcome_probability(data::AbstractVector)::NamedTuple
     p_outcomes = cdf.(fit(Distributions.Normal, data), data)
 
-    p = Vector{Any}(p_outcomes)
-    p[p_outcomes.>0.70] .= "High (70 - 85%)"
-    p[p_outcomes.>0.85] .= "Very High (> 85%)"
-    p[p_outcomes.<0.55] .= "Low (15 - 55%)"
-    p[p_outcomes.<0.15] .= "Very Low (< 15%)"
-    p[(p_outcomes.>=0.55).&(p_outcomes.<=0.70)] .= "Medium (55 - 70%)"
+    # p = Vector{Any}(p_outcomes)
+    # p[p_outcomes.>0.70] .= "High (70 - 85%)"
+    # p[p_outcomes.>0.85] .= "Very High (> 85%)"
+    # p[(p_outcomes.>=0.55).&(p_outcomes.<=0.70)] .= "Medium (55 - 70%)"
+    # p[(p_outcomes.>0.15).&(p_outcomes.<0.55)] .= "Low (15 - 55%)"
+    # p[p_outcomes.<0.15] .= "Very Low (< 15%)"
+    # return p
 
-    return p
+    # return (
+    #     very_high=count(p_outcomes .> 0.85),
+    #     high=count((p_outcomes .> 0.70) .& (p_outcomes .<= 0.85)),
+    #     medium=count((p_outcomes .>= 0.55) .& (p_outcomes .<= 0.70)),
+    #     low=count((p_outcomes .> 0.15) .& (p_outcomes .< 0.55)),
+    #     very_low=count(p_outcomes .< 0.15)
+    # )
+
+    n = length(data)
+    return (
+        values=[
+            count(p_outcomes .> 0.80) / n,
+            count((p_outcomes .> 0.70) .& (p_outcomes .<= 0.80)) / n,
+            count((p_outcomes .>= 0.50) .& (p_outcomes .<= 0.70)) / n,
+            count((p_outcomes .> 0.20) .& (p_outcomes .< 0.50)) / n,
+            count(p_outcomes .< 0.20) / n],
+        labels=["Very High\n> 80%", "High\n70 - 80%", "Medium\n50 - 70%", "Low\n20 - 50%", "Very Low\n< 20%"]
+    )
 end
+# function outcome_probability(data::AbstractArray)
+#     p_outcomes = cdf.(fit(Distributions.Normal, data), data)
+
+#     p = Vector{Any}(p_outcomes)
+#     p[p_outcomes.>0.70] .= "High (70 - 85%)"
+#     p[p_outcomes.>0.85] .= "Very High (> 85%)"
+#     p[(p_outcomes.>=0.55).&(p_outcomes.<=0.70)] .= "Medium (55 - 70%)"
+#     p[(p_outcomes.>0.15).&(p_outcomes.<0.55)] .= "Low (15 - 55%)"
+#     p[p_outcomes.<0.15] .= "Very Low (< 15%)"
+
+#     return p
+# end
 
 function probability_table(
     model, X, y;
@@ -46,13 +81,13 @@ end
 
 
 function _permutation_importance(
-    trees   :: U,
-    labels  :: AbstractVector{T},
-    features:: AbstractVecOrMat{S},
-    score   :: Function,
-    n_iter  :: Int = 3;
-    rng     =  Random.GLOBAL_RNG
-    ) where {S, T, U <: Union{<: DecisionTree.Ensemble{S, T}, <: DecisionTree.Root{S, T}, <: DecisionTree.LeafOrNode{S, T}, Tuple{<: DecisionTree.Ensemble{S, T}, AbstractVector{Float64}}}}
+    trees::U,
+    labels::AbstractVector{T},
+    features::AbstractVecOrMat{S},
+    score::Function,
+    n_iter::Int=3;
+    rng=Random.GLOBAL_RNG
+) where {S,T,U<:Union{<:DecisionTree.Ensemble{S,T},<:DecisionTree.Root{S,T},<:DecisionTree.LeafOrNode{S,T},Tuple{<:DecisionTree.Ensemble{S,T},AbstractVector{Float64}}}}
 
     base = score(trees, labels, features)
     scores = Matrix{Float64}(undef, size(features, 2), n_iter)
@@ -71,10 +106,10 @@ function _permutation_importance(
     # origin = similar(features[:, 1], Any)
     # non_constants = map(d -> !all(d .== d[1]), eachcol(features))
     # for (i, col) in enumerate(eachcol(features))
-        # if non_constants[i] == 0
-        #     scores[i, :] .= 0.0
-        #     continue
-        # end
+    # if non_constants[i] == 0
+    #     scores[i, :] .= 0.0
+    #     continue
+    # end
 
     #     origin .= copy(col)
     #     scores[i, :] .= map(1:n_iter) do _
@@ -87,28 +122,28 @@ function _permutation_importance(
 
     # Main.@infiltrate
 
-    (mean = reshape(mapslices(scores, dims = 2) do im
-        mean(im)
-    end, :),
-    std = reshape(mapslices(scores, dims = 2) do im
-        std(im)
-    end, :),
-    scores = scores)
+    (mean=reshape(mapslices(scores, dims=2) do im
+            mean(im)
+        end, :),
+        std=reshape(mapslices(scores, dims=2) do im
+            std(im)
+        end, :),
+        scores=scores)
 end
 
 
 """
 Extract feature importance from random forest.
 """
-function ft_importance(model::Ensemble{Float64, Any}, X::DataFrame, p::Vector; rng::Int64=101)::DataFrame
+function ft_importance(model::Ensemble{Float64,Any}, X::DataFrame, p::Vector; rng::Int64=101)::DataFrame
     X_base = copy(X)
-    insertcols!(X_base, 1, :dummy=>zeros(nrow(X_base)))
+    insertcols!(X_base, 1, :dummy => zeros(nrow(X_base)))
 
     # DecisionTree.accuracy(y, apply_forest(model, X))
     # apply_forest_proba(model, X, y)
     @time p1 = _permutation_importance(model, p, Matrix(X_base), _accuracy, 25; rng=rng)
 
-    norm = replace(p1.mean ./ (maximum(p1.mean) - minimum(p1.mean)), Inf=>0.0, NaN=>0.0)
+    norm = replace(p1.mean ./ (maximum(p1.mean) - minimum(p1.mean)), Inf => 0.0, NaN => 0.0)
 
     feat_importance = DataFrame((param=names(X_base), mean=p1.mean, std=p1.std, norm=norm))
     sort!(feat_importance, :norm, rev=true)
