@@ -21,6 +21,7 @@ Random.seed!(101)
 
 const ASSETS = @path joinpath(@__DIR__, "../assets")
 const LOGO = @path joinpath(ASSETS, "imgs", "ADRIA_logo.png")
+const LOADER = @path joinpath(ASSETS, "imgs", "ADRIA_loader.gif")
 
 
 include("./plotting.jl")
@@ -115,6 +116,21 @@ function _get_seeded_sites(seed_log, ts, scens; N=10)
     return sortperm(site_scores)[1:N]
 end
 
+function display_loader(fig, anim)
+    a = image(fig[1, 1], anim[:, :, 1])
+    hidedecorations!(a.axis)
+    hidespines!(a.axis)
+
+    for i in cycle(axes(anim, 3))
+        image!(a.axis, anim[:, :, i])
+
+        sleep(0.1)
+    end
+end
+function remove_loader(fig, task)
+    Base.throwto(task, InterruptException())
+    empty!(fig)
+end
 
 function comms(rs::ADRIA.ResultSet)
     layout = comms_layout(resolution=(1920, 1080))
@@ -261,27 +277,6 @@ function comms(rs::ADRIA.ResultSet)
     heatmap!(ft_import, sensitivities)
     Colorbar(layout.importance[1, 2]; colorrange=(0.0, 1.0))
 
-    outcomes_ax = layout.outcomes
-    # barplot!(
-    #     outcomes_ax,
-    #     eachindex(p_tbl.mean),
-    #     p_tbl.mean,
-    #     bar_labels=p_tbl.Outcome,
-    #     flip_labels_at=maximum(p_tbl.mean) - minimum(p_tbl.mean),
-    #     direction=:x
-    # )
-    hideydecorations!(outcomes_ax)
-
-    # xticks!(outcomes, 1:size(p_tbl,1), p_tbl[:, :Outcome])
-    # ytick=(1:size(p_tbl,1), p_tbl[:, :Outcome])
-    # xaxis="Probability", yaxis="TAC Outcome", legend=false
-    # xerror!(a1, p_tbl[:, :mean], 1:nrow(p_tbl), xerror=(p_tbl[:, :lower], p_tbl[:, :upper]))
-
-    # tac_ts = vec(mean(tac_outcomes[timesteps=50:60], dims=:timesteps)')
-    # tac_dist = fit(Normal, tac_ts)
-    # p_tac_outcomes = cdf.(tac_dist, tac_ts)
-
-
     # TODO: Separate this out into own function
     # Make temporary copy of GeoPackage as GeoJSON
     tmpdir = mktempdir()
@@ -349,12 +344,26 @@ function comms(rs::ADRIA.ResultSet)
     hide_idx = falses(size(X, 1))
     show_idx = trues(size(X, 1))
 
+    outcomes_ax = layout.outcomes
+    probas = Observable(outcome_probability(scen_dist))
+    barplot!(
+        outcomes_ax,
+        @lift($(probas).values),
+        bar_labels=:y,
+        direction=:y,
+        flip_labels_at=@lift(maximum($(probas).values) * 0.9),
+        color_over_bar=:white,
+        grid=false,
+        xticklabelsize=12
+    )
+    hideydecorations!(outcomes_ax)
+
+    # Image file for loading animation
+    # loader_anim = load(LOADER)
+
     function update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val)
-        # Update slider labels
-        left_year_val[] = "$(Int(floor(time_val[1])))"
-        right_year_val[] = "$(Int(ceil(time_val[2])))"
-        tac_bot_val[] = tac_val[1]
-        tac_top_val[] = tac_val[2]
+        # Display loading animation
+        # load_anim_display = @async display_loader(traj_display[2, 1], loader_anim)
 
         # Convert time ranges to index values
         timespan = floor(Int, time_val[1] - (year_range[1]) + 1):ceil(Int, time_val[2] - (year_range[1]) + 1)
@@ -449,9 +458,7 @@ function comms(rs::ADRIA.ResultSet)
         end
 
         # Update limits of density plot
-        # autolimits!(scen_hist)
-        ylims!(scen_hist, 0.0, maximum(scen_dist))
-        # limits!(scen_hist, 0.0, maximum(tac_scen_dist), 0.0, maximum(max(length(cf_dist), length(ug_dist), length(g_dist))))
+        autolimits!(scen_hist)
 
         # Update visible trajectories
         # Determine level of transparency for each line (maximum of 0.5)
@@ -478,6 +485,13 @@ function comms(rs::ADRIA.ResultSet)
         S_data[2, :] .= mean_asv_med
         S_data[3, :] .= mean_juves_med
         sensitivities[] = S_data
+
+        # Update bar plot of outcome probability
+        probas[] = outcome_probability(scen_dist[show_idx])
+        ylims!(layout.outcomes, minimum(probas[].values), maximum(probas[].values))
+
+        # Clear loading animation
+        # remove_loader(traj_display[2, 1], loader_anim_display)
     end
 
     # Trigger update only after some time since last interaction
@@ -486,6 +500,12 @@ function comms(rs::ADRIA.ResultSet)
     onany(time_slider.interval, tac_slider.interval,
         [t.active for t in t_toggles]...,
         [sld.interval for sld in interv_sliders]...) do time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val
+
+        # Update slider labels
+        left_year_val[] = "$(Int(floor(time_val[1])))"
+        right_year_val[] = "$(Int(ceil(time_val[2])))"
+        tac_bot_val[] = tac_val[1]
+        tac_top_val[] = tac_val[2]
 
         close(up_timer)
         up_timer = Timer(x -> update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val), 2)
