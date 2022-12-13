@@ -1,6 +1,8 @@
 module Aviz
 
-using RelocatableFolders, FileIO
+using Base.Iterators
+
+using RelocatableFolders, FileIO, ImageMagick
 using GLMakie, GeoMakie
 using GLMakie.GeometryBasics
 using Statistics, Distributions, ThreadsX, Random
