@@ -50,15 +50,15 @@ end
 Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
     # Intervention Parameters
     # Integer values have a +1 offset to allow for discrete value mapping (see `set() method`)
-    guided::N = Param(0, ptype="integer", bounds=(0, 3 + 1), dists="unif") # Guided, choice of MCDA approach
-    seed_TA::N = Param(0, ptype="integer", bounds=(0, 500000 + 1), dists="unif") # Seed1, integer, number of Enhanced TA to seed
-    seed_CA::N = Param(0, ptype="integer", bounds=(0, 500000 + 1), dists="unif") # Seed2, integer, number of Enhanced CA to seed
+    guided::N = Param(0, ptype="integer", bounds=(-1, 3 + 1), dists="unif") # Guided, choice of MCDA approach
+    seed_TA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif") # Seed1, integer, number of Enhanced TA to seed
+    seed_CA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif") # Seed2, integer, number of Enhanced CA to seed
     fogging::P = Param(0.16, ptype="real", bounds=(0.0, 0.3, 0.16 / 0.3), dists="triang") # fogging, float, assumed percent reduction in bleaching mortality
     SRM::P = Param(0.0, ptype="real", bounds=(0.0, 7.0, 0.0), dists="triang") # SRM, float, reduction in DHWs due to shading
     a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 8.0, 0.0), dists="triang") # Aadpt, float, float, increased adaptation rate
     n_adapt::N2 = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif") # Natad, float, natural adaptation rate
-    seed_years::P2 = Param(10, ptype="integer", bounds=(5, 15 + 1, 5 / 15), dists="triang") # Seedyrs, integer, years into simulation during which seeding is considered
-    shade_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 74), dists="triang") # Shadeyrs, integer, years into simulation during which shading is considered
+    seed_years::P2 = Param(10, ptype="integer", bounds=(5, 15 + 1, 5 / 10), dists="triang") # Seedyrs, integer, years into simulation during which seeding is considered
+    shade_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 69), dists="triang") # Shadeyrs, integer, years into simulation during which shading is considered
     seed_freq::N = Param(5, ptype="integer", bounds=(0, 5 + 1), dists="unif") # Seedfreq, integer, yearly intervals to adjust seeding site selection (0 is set and forget)
     shade_freq::N = Param(1, ptype="integer", bounds=(0, 5 + 1), dists="unif") # Shadefreq, integer, yearly intervals to adjust shading (fogging) site selection (0 is set and forget)
     seed_year_start::N = Param(2, ptype="integer", bounds=(2, 25 + 1), dists="unif") # Seedyr_start, integer, seed intervention start offset from simulation start
@@ -79,11 +79,11 @@ Base.@kwdef struct Criteria{P,N} <: EcoModel
     zone_seed::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for zoning criteria while seeding
     zone_shade::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for zoning criteria while shading
     coral_cover_tol::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif")  # % of seeded corals area tolerance for low space when seeding
-    deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif")
+    deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif")
     dist_thresh::P = Param(0.1, ptype="real", bounds=(0.0, 1.0), dists="unif") # distance threshold, sites selected by MCDA must be further apart than median(dist)-dist_thresh*median(dist)
     top_n::N = Param(10, ptype="integer", bounds=(5, 50 + 1), dists="unif") # sites in prefseedsites or prefshadesites will be replaced with sites within top_n ranked sites if not satisfying distance threshold
     depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif")     # minimum depth
-    depth_offset::P = Param(5.0, ptype="real", bounds=(5.0, 6.0), dists="unif")  # offset from minimum depth to indicate maximum depth**
+    depth_offset::P = Param(10.0, ptype="real", bounds=(10.0, 25.0), dists="unif")  # offset from minimum depth to indicate maximum depth**
 end
 # **This is simply to avoid parameterization/implementation
 #   that requires one parameter to be greater than another.
@@ -326,7 +326,7 @@ function coral_spec()::NamedTuple
     # unit is number of larvae per colony
     colony_area_cm2 = pi .* ((mean_colony_diameter_m .* 100.0) ./ 2.0) .^ 2
     fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
-    fec[colony_area_cm2.<min_size_full_fec_cm2] .= 0
+    fec[colony_area_cm2.<min_size_full_fec_cm2] .= 0.0
 
     # Smallest size class do not reproduce
     fec[:, 1:2] .= 0.0
@@ -337,14 +337,6 @@ function coral_spec()::NamedTuple
 
     ## Mortality
     # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
-    # wavemort90 = Array{Float64,2}([
-    #     0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Enhanced
-    #     0 0 0.0 0.0 0.0 0.0   # Tabular Acropora Unenhanced
-    #     0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Enhanced
-    #     0 0 0.0 0.0 0.0 0.0   # Corymbose Acropora Unenhanced
-    #     0 0 0.0 0.0 0.0 0.0   # Small massives
-    #     0 0 0.0 0.0 0.0 0.0])  # Large massives)
-
     wavemort90 = Array{Float64,2}([
         0.0 0.0 0.0 0.0 0.05 0.1  # Tabular Acropora Enhanced
         0.0 0.0 0.0 0.0 0.05 0.1  # Tabular Acropora Unenhanced
@@ -363,20 +355,19 @@ function coral_spec()::NamedTuple
     # - > 250cm² (Columns 5 and 6)
     # Values for size class 4 are then interpolated by K.A
     mb = Array{Float64,2}([
-        0.2 0.2 0.19 0.125 0.098 0.098    # Tabular Acropora Enhanced
-        0.2 0.2 0.19 0.125 0.098 0.098    # Tabular Acropora Unenhanced
-        0.2 0.2 0.172 0.113 0.088 0.088    # Corymbose Acropora Enhanced
-        0.2 0.2 0.172 0.113 0.088 0.088    # Corymbose Acropora Unenhanced
+        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Enhanced
+        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Unenhanced
+        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Enhanced
+        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Unenhanced
         0.2 0.2 0.04 0.026 0.02 0.02    # Small massives and encrusting
         0.2 0.2 0.04 0.026 0.02 0.02])   # Large massives
-
     params.mb_rate = mb'[:]
 
     # Bleaching sensitivity of each coral group
     # Bozec et al., (2022)
     bleaching_sensitivity = Float64[
-        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Enhanced (assumed same as Corymbose)
-        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Unenhanced
+        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Enhanced (Arborescent staghorn corals)
+        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Unenhanced
         1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Enhanced
         1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Unenhanced
         0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting

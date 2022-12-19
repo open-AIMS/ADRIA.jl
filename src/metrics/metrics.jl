@@ -22,13 +22,7 @@ function (f::Metric)(raw, args...; kwargs...)
     try
         return f.func(NamedDimsArray{(:timesteps, :species, :sites, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
     catch
-        if ndims(raw) == 3
-            raw = NamedDimsArray{(:timesteps, :species, :sites)}(raw)
-        elseif ndims(raw) == 4
-            raw = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)}(raw)
-        else
-            error("Unknown result structure")
-        end
+        raw = NamedDimsArray{(f.dims...)}(raw)
 
         return f.func(raw, args...; kwargs...)
     end
@@ -108,18 +102,19 @@ end
 
 
 """
-    _relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
     _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 # Arguments
 - X : Matrix of raw model results
 """
-function _relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+function _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
     # sum over all species and size classes
-    return dropdims(sum(X, dims=:species), dims=:species)
+    return dropdims(sum(X, dims=:species), dims=:species) ./ replace(k_area, 0.0 => 1.0)'
 end
-function _relative_cover(rs::ResultSet)
-    return rs.outcomes[:relative_cover]
+function _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
+    denom = replace(((rs.site_max_coral_cover ./ 100.0) .* rs.site_area), 0.0 => 1.0)'
+    return rs.outcomes[:total_absolute_cover] ./ denom
 end
 
 
@@ -135,10 +130,39 @@ Sum of proportional area taken up by all corals, multiplied by total site area.
 - site_area : Vector of site areas, with sites following the same order as given indicated in X.
 """
 function _total_absolute_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
-    return _relative_cover(X) .* site_area'
+    return dropdims(sum(X, dims=:species), dims=:species) .* site_area'
 end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
-    return _relative_cover(rs) .* rs.site_area'
+    return rs.outcomes[:total_absolute_cover]
+end
+
+
+"""
+    taxa_cover(X::AbstractArray{<:Real})
+
+Results grouped by taxa/species.
+
+TODO: Uses hardcoded index values, to be replaced by something more generic.
+
+# Arguments
+- X : Raw model results for a single scenario
+
+# Returns
+Coral cover, grouped by taxa for the given scenario.
+"""
+function _relative_taxa_cover(X::AbstractArray{<:Real,3})
+    nsteps, nspecies, _ = size(X)
+
+    taxa_cover = zeros(nsteps, 6)
+    for (taxa_id, grp) in enumerate([i:i+5 for i in 1:6:nspecies])
+        # Sum over groups
+        taxa_cover[:, taxa_id] = dropdims(mean(sum(X[:, grp, :], dims=2), dims=3), dims=3)
+    end
+
+    return taxa_cover
+end
+function _relative_taxa_cover(rs)::AbstractArray{<:Real}
+    return rs.outcomes[:relative_taxa_cover]
 end
 
 
@@ -253,7 +277,7 @@ Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm di
 function _juvenile_indicator(X::AbstractArray{<:Real})
     return _relative_juveniles(X) ./ _max_juvenile_density()
 end
-function _juvenile_indicator(rs::ResultSet)
+function _juvenile_indicator(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:relative_juveniles] ./ _max_juvenile_density()
 end
 
@@ -658,6 +682,7 @@ include("temporal.jl")
 include("site_level.jl")
 include("scenario.jl")
 include("ranks.jl")
+include("pareto.jl")
 
 
 # Wrap base metric functions with dimension metadata
@@ -669,6 +694,7 @@ coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
 absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios))
 relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios))
 juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios))
+relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenarios))
 reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 

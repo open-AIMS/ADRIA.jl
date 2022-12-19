@@ -9,3 +9,7 @@ examples/Outputs/
 .vscode/
 
 adria/
+
+JuliaSysimage.dll
+
+docs/build/

@@ -33,6 +33,7 @@ mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame
     const strongpred::I  # strongest predecessor
     site_data::D   # table of site data (depth, carrying capacity, etc)
     site_distances::Z # Matrix of distances between each site
+    median_site_distance::Float64
     const site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
     const unique_site_id_col::S  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
@@ -51,7 +52,7 @@ end
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
 function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedMatrix, in_conn::Vector{Float64}, out_conn::Vector{Float64},
-    strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_distances::Matrix{Float64}, site_id_col::String, unique_site_id_col::String,
+    strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_distances::Matrix{Float64}, median_site_distance::Float64, site_id_col::String, unique_site_id_col::String,
     init_coral_cover::NamedMatrix, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
     DHWs::Union{NamedArray,Matrix}, waves::Union{NamedArray,Matrix})::Domain
 
@@ -81,7 +82,7 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedM
 
     model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
 
-    return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_distances, site_id_col, unique_site_id_col,
+    return Domain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_distances, median_site_distance, site_id_col, unique_site_id_col,
         init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
         model, sim_constants)
 end
@@ -92,7 +93,7 @@ end
 Calculate matrix of unique distances between sites.
 """
 
-function site_distances(site_data::DataFrame)::Matrix{Float64}
+function site_distances(site_data::DataFrame)::Tuple{Matrix{Float64},Float64}
     site_centroids = centroids(site_data)
     longitudes = first.(site_centroids)
     latitudes = last.(site_centroids)
@@ -105,7 +106,8 @@ function site_distances(site_data::DataFrame)::Matrix{Float64}
         end
     end
     dist[diagind(dist)] .= NaN
-    return dist
+    median_site_dist = median(dist[.!isnan.(dist)])
+    return dist, median_site_dist
 end
 
 """
@@ -161,16 +163,14 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 
     # Filter out missing entries
     site_data = site_data[coalesce.(in.(conn_ids, [site_conn.site_ids]), false), :]
-    site_dists::Matrix{Float64} = site_distances(site_data)
+    site_dists::Matrix{Float64}, median_site_distance::Float64 = site_distances(site_data)
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
 
-    loader = (fn::String, attr::String) -> load_mat_data(fn, attr, n_sites)
-
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
-        dhw::NamedArray = loader(dhw_fn, "dhw"::String)
+        dhw::NamedArray = load_mat_data(dhw_fn, "dhw", site_data)
     elseif endswith(dhw_fn, ".nc")
         dhw = load_env_data(dhw_fn, "dhw", site_data)
     else
@@ -178,7 +178,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     end
 
     if endswith(wave_fn, ".mat")
-        waves::NamedArray = loader(wave_fn, "wave"::String)
+        waves::NamedArray = load_mat_data(wave_fn, "wave", site_data)
     elseif endswith(wave_fn, ".nc")
         waves = load_env_data(wave_fn, "Ub", site_data)
     else
@@ -186,7 +186,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     end
 
     if endswith(init_coral_fn, ".mat")
-        coral_cover::NamedArray = loader(init_coral_fn, "covers"::String)
+        coral_cover::NamedArray = load_mat_data(init_coral_fn, "covers", site_data)
     elseif endswith(init_coral_fn, ".nc")
         coral_cover = load_covers(init_coral_fn, "covers", site_data)
     else
@@ -200,7 +200,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
     return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.in_conn, conns.out_conn, conns.strongest_predecessor,
-        site_data, site_dists, site_id_col, unique_site_id_col, coral_cover, coral_growth,
+        site_data, site_dists, median_site_distance, site_id_col, unique_site_id_col, coral_cover, coral_growth,
         site_conn.site_ids, site_conn.truncated, dhw, waves)
 end
 
@@ -525,12 +525,12 @@ function timesteps(domain::Domain)
 end
 
 """Get the path to the DHW data associated with the domain."""
-function get_DHW_data(d::Domain, RCP::String)
+function get_DHW_data(d::Domain, RCP::String)::String
     return joinpath(d.env_layer_md.dpkg_path, "DHWs", "dhwRCP$(RCP).nc")
 end
 
 """Get the path to the wave data associated with the domain."""
-function get_wave_data(d::Domain, RCP::String)
+function get_wave_data(d::Domain, RCP::String)::String
     return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).nc")
 end
 
@@ -540,9 +540,9 @@ end
 Switch environmental datasets to represent the given RCP.
 """
 function switch_RCPs!(d::Domain, RCP::String)::Domain
-    d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
-    d.env_layer_md.wave_fn = get_wave_data(d, RCP)
-    d.RCP = RCP
+    @set! d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
+    @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
+    @set! d.RCP = RCP
 
     @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw", d.site_data)
     @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub", d.site_data)

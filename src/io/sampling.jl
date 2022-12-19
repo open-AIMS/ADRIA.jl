@@ -17,9 +17,15 @@ end
 function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
     process_inputs!(d, df)
     crit = component_params(spec, Criteria)
+    interv = component_params(spec, Intervention)
 
-    # If unguided, make all preference criteria 0.
-    df[df.guided.==0, crit.fieldname] .= 0.0
+    # If counterfactual, set all intervention options to 0.0
+    df[df.guided.==-1.0, filter(x -> x ∉ [:guided, :n_adapt], interv.fieldname)] .= 0.0
+
+    # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
+    non_depth = filter(x -> x ∉ [:depth_min, :depth_offset], crit.fieldname)
+    df[df.guided.==0.0, non_depth] .= 0.0
+    df[df.guided.==-1.0, non_depth] .= 0.0
 
     # If no seeding is to occur, set related variables to 0
     not_seeded = (df.seed_TA .== 0) .& (df.seed_CA .== 0.0)
@@ -39,6 +45,7 @@ function adjust_cf_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
     intervs = component_params(spec, Intervention)
     cols = collect(skipmissing([fn != :n_adapt ? fn : missing for fn in intervs.fieldname]))
     df[:, cols] .= 0.0
+    df[:, [:guided]] .= -1.0  # Mark counterfactuals as -1
 
     return adjust_samples(d, df)
 end
@@ -54,30 +61,13 @@ Create samples using provided sampler, and rescale to distribution defined in th
 
 Notes:
 - assumes all parameters are independent.
-- ensures that ≈ 20% of samples are counterfactuals
 
 # Arguments
 - dom : Domain
 - n : Int
 - sampler : Sampling method
 """
-function sample(dom::Domain, n::Int, sampler=SobolSample())
-    n_cf = Int(ceil(n / 5))
-    n_samp = n - n_cf
-
-    scens_cf = sample_cf(dom, n_cf, sampler)
-    scens = _sample(dom, n_samp, sampler)  # sample both unguided and guided
-
-    return vcat(scens_cf, scens)
-end
-
-
-"""
-    _sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists))::DataFrame
-
-Internal sampling function.
-"""
-function _sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dict(
+function sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dict(
     "triang" => TriangularDist,
     "norm" => TruncatedNormal,
     "unif" => Uniform

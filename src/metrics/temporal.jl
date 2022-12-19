@@ -26,7 +26,7 @@ function summarize_trajectory(data::NamedDimsArray)::Dict{Symbol,AbstractArray{<
     # Calculate quantiles (doesn't support `dims` so have to loop directly)
     q_series::Array{Float32} = fill(0.0, size(data, 1), 8)
     qs::Array{Float32} = Float32[0.025, 0.125, 0.25, 0.375, 0.625, 0.75, 0.875, 0.975]
-    @inbounds Threads.@threads for i in 1:size(data, 1)
+    @inbounds for i in 1:size(data, 1)
         q_series[i, :] = quantile(vec(collect(selectdim(data, 1, i))), qs)
     end
 

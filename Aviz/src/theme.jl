@@ -17,29 +17,26 @@ function scenario_type(rs)
 end
 
 function scenario_colors(rs, weight::Float64, hide::BitVector)
-    inputs = rs.inputs
-    color_map = repeat([(:blue, weight)], size(inputs, 1))
+    color_map = repeat([(:blue, weight)], size(rs.inputs, 1))
     scen_type = scenario_type(rs)
     counterfactual = scen_type.counterfactual
     unguided = scen_type.unguided
 
-    color_map[counterfactual] .= ((:red, weight), )
-    color_map[unguided] .= ((:green, weight), )
-    color_map[hide] .= ((:white, 0.0), )
+    color_map[counterfactual] .= ((:red, weight),)
+    color_map[unguided] .= ((:green, weight),)
+    color_map[hide] .= ((:white, 0.0),)
 
     return color_map
 end
 function scenario_colors(rs, weight::Float64)
-    inputs = rs.inputs
-
-    color_map = repeat([(:blue, weight)], size(inputs, 1))
+    color_map = repeat([(:blue, weight)], size(rs.inputs, 1))
 
     scen_type = scenario_type(rs)
     counterfactual = scen_type.counterfactual
     unguided = scen_type.unguided
 
-    color_map[counterfactual] .= ((:red, weight), )
-    color_map[unguided] .= ((:green, weight), )
+    color_map[counterfactual] .= ((:red, weight),)
+    color_map[unguided] .= ((:green, weight),)
 
     return color_map
 end
@@ -53,12 +50,20 @@ end
 
 Hide selected scenarios by changing transparency.
 """
-function scenario_colors!(obs_color, scen_types::NamedTuple, weight::Float64, hide::BitVector)
-    color_map = repeat([(:blue, weight)], size(obs_color[], 1))
-    color_map[scen_types.counterfactual] .= ((:red, weight), )
-    color_map[scen_types.unguided] .= ((:green, weight), )
-    color_map[scen_types.guided] .= ((:blue, weight), )
-    color_map[hide] .= ((:white, 0.0), )
+function scenario_colors!(obs_color::Observable, color_map::Vector, scen_types::NamedTuple, weight::Float64, hide::BitVector, guide_toggle_map)
+    color_map .= obs_color[]
+    for (t, l, c) in guide_toggle_map
+        if !t.active[]
+            continue
+        end
 
+        display_color = t.active[] ? c : :gray
+        display_weight = t.active[] ? weight : 0.05
+
+        scen_t = getfield(scen_types, Symbol(lowercase(l)))
+        color_map[scen_t.&.!hide] .= ((display_color, display_weight),)
+    end
+
+    color_map[hide] .= ((:white, 0.0),)
     obs_color[] = color_map
 end

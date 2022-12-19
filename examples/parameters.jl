@@ -25,9 +25,6 @@ model_spec = ADRIA.model_spec(scenario_domain)
 # Export model specification to CSV
 ADRIA.model_spec(scenario_domain, "model_spec.csv")
 
-# Update a domain spec with new values from row of DataFrame
-update_params!(scenario_domain, param_df[1, :])
-
 
 # Get parameter details
 
