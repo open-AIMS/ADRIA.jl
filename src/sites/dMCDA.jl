@@ -15,13 +15,14 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     out_conn  # ::v
     damprob  # ::A
     heatstressprob  # ::A
+    sitedepth #::V
     sumcover  # ::F
     maxcover  # ::V
     area  # ::M
     min_area # ::F
     risktol  # ::F
     dist # ::M
-    dist_thresh # ::Float64
+    min_dist # ::Float64
     top_n # ::Int64
     wtinconnseed  # ::F
     wtoutconnseed  # ::F
@@ -142,8 +143,8 @@ Columns indicate:
 - predec : list of priority predecessors (sites strongly connected to priority sites)
 - risk_tol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
 """
-function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_criteria, risk_tol)
-    A = zeros(length(site_ids), 8)
+function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
+    A = zeros(length(site_ids), 9)
 
     A[:, 1] .= site_ids  # Column of site ids
 
@@ -171,6 +172,8 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     # Proportion of empty space (no coral) compared to max possible cover
     A[:, 8] = max.((max_cover - sum_cover), 0.0) .* area
 
+    A[:, 9] = site_depth
+
     # Filter out sites that have high risk of wave damage, specifically
     # exceeding the risk tolerance
     A[A[:, 4].>risk_tol, 4] .= NaN
@@ -180,7 +183,6 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     filtered = vec(.!any(isnan.(A), dims=2))
     # remove rows with NaNs
     A = A[filtered, :]
-
     return A, filtered
 end
 
@@ -222,7 +224,7 @@ function create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat,
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
-    wse = [inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover]
+    wse = [inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover, heat]
     wse .= mcda_normalize(wse)
 
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
@@ -269,6 +271,8 @@ Tuple (SH, wsh)
 function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, predec_zones_shade, high_cover)
     # Set up decision matrix to be same size as A
     SH = copy(A)
+    # remove consideration of site depth as shading not accounted for in bleaching model yet
+    SH = SH[:, 1:end-1]
 
     wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones_shade, high_cover]
     wsh .= mcda_normalize(wsh)
@@ -308,17 +312,16 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 
     site_ids::Array{Int64} = copy(d_vars.site_ids)
 
-    dist_thresh::Float64 = d_vars.dist_thresh
-    if dist_thresh == 1.0
-        # Force different sites to be selected
-        site_ids = setdiff(site_ids, vcat(prefseedsites, prefshadesites))
-        mod_n_ranks = min(size(rankingsin, 1), length(site_ids))
-        if mod_n_ranks < length(d_vars.site_ids) && length(rankingsin) != 0
-            rankingsin = rankingsin[in.(rankingsin[:, 1], [site_ids]), :]
-            site_ids = rankingsin[:, 1]
-        elseif length(rankingsin) != 0
-            rankingsin = [site_ids zeros(Int64, length(site_ids)) zeros(Int64, length(site_ids))]
-        end
+    min_dist::Float64 = d_vars.min_dist
+
+    # Force different sites to be selected
+    site_ids = setdiff(site_ids, vcat(prefseedsites, prefshadesites))
+    mod_n_ranks = min(size(rankingsin, 1), length(site_ids))
+    if mod_n_ranks < length(d_vars.site_ids) && length(rankingsin) != 0
+        rankingsin = rankingsin[in.(rankingsin[:, 1], [site_ids]), :]
+        site_ids = rankingsin[:, 1]
+    elseif length(rankingsin) != 0
+        rankingsin = [site_ids zeros(Int64, length(site_ids)) zeros(Int64, length(site_ids))]
     end
 
     nsites::Int64 = length(site_ids)
@@ -338,6 +341,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     zones = d_vars.zones[site_ids]
     wave_stress = d_vars.damprob[site_ids]
     heat_stress = d_vars.heatstressprob[site_ids]
+    site_depth = d_vars.sitedepth[site_ids]
     sum_cover = d_vars.sumcover[site_ids]
     max_cover = d_vars.maxcover[site_ids]
     area = d_vars.area[site_ids]
@@ -386,10 +390,10 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     # add weights for strongest predecessors and zones to get zone criteria
     zones_criteria = zone_preds .+ zone_sites
 
-    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, zones_criteria, risk_tol)
+    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
-        return prefseedsites, prefshadesites, rankings
+        return prefseedsites, prefshadesites, rankingsin
     end
 
     # cap to number of sites left after risk filtration
@@ -419,11 +423,10 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
     if log_seed && isempty(SE)
         prefseedsites = repeat([0], nsiteint)
     elseif log_seed
+
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
-        dist::Matrix{Float64} = d_vars.dist
-        top_n::Int64 = d_vars.top_n
-        if dist_thresh != 1.0
-            prefseedsites .= distance_sorting(prefseedsites, s_order_seed[:, 1], dist, dist_thresh, top_n)
+        if min_dist != 0.0
+            prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 2)
         end
     end
 
@@ -431,10 +434,8 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
         prefshadesites = repeat([0], nsiteint)
     elseif log_shade
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
-        dist = d_vars.dist
-        top_n = d_vars.top_n
-        if dist_thresh != 1.0
-            prefshadesites .= distance_sorting(prefshadesites, s_order_shade[:, 1], dist, dist_thresh, top_n)
+        if min_dist != 0.0
+            prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 3)
         end
     end
 
@@ -451,7 +452,7 @@ function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bo
 end
 
 """
-function distance_sorting(pref_sites, site_order, dist, dist_thresh, top_n)
+    distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
 
 Find selected sites with distances between each other < median distance-dist_thresh*(median distance).
 Replaces these sites with sites in the top_n ranks if the distance between these sites is greater.
@@ -460,19 +461,20 @@ Replaces these sites with sites in the top_n ranks if the distance between these
 - pref_sites : original n highest ranked sites selected for seeding or shading.
 - site_order : current order of ranked sites in terms of numerical site ID.
 - dist : Matrix of unique distances between sites.
-- dist_thresh : threshold for minimum deviance below the median distance between sites for selected sites.
+- min_dist : minimum distance between sites for selected sites.
 - top_n : number of top ranked sites to re-select from.
 
 # Returns
 - prefsites : new set of selected sites for seeding or shading.
 """
-function distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
+function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
+    min_dist::Float64, top_n::Int64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
     nsites = length(pref_sites)
+    site_order = s_order[:, 1]
+
     # sites to select alternatives from
     alt_sites = setdiff(site_order, pref_sites)[1:min(top_n, length(site_order) - nsites)]
-    # minimum distance for filtering selected sites (within dist_thesh of median)
-    min_dist = median(dist[.!isnan.(dist)]) - dist_thresh * median(dist[.!isnan.(dist)])
 
     # find all selected sites closer than the min distance
     pref_dists = findall(dist[pref_sites, pref_sites] .< min_dist)
@@ -481,7 +483,7 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVe
     # number of sites to replace
     select_n = length(inds_rep)
     # indices to keep
-    inds_keep = [k for k in 1:length(pref_sites)]
+    inds_keep = collect(1:length(pref_sites))
     inds_keep = setdiff(inds_keep, inds_rep)
 
     # storage for new set of sites
@@ -514,7 +516,13 @@ function distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVe
         rep_sites[end-select_n+1:end] .= rem_pref_sites[1:select_n]
     end
 
-    return rep_sites
+    new_site_order = setdiff(site_order, rep_sites)
+    new_site_order = [rep_sites; new_site_order]
+    s_order[:, 1] .= new_site_order
+    # Match by site_id and assign rankings to log
+    align_rankings!(rankings, s_order, rank_col)
+
+    return rep_sites, rankings
 end
 
 """
@@ -696,13 +704,14 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - shade_years : bool, indicating whether to shade this year or not
 - nsiteint : int, number of sites to intervene on
 - available_space : vector/matrix : space available at each site (`k` value)
+- depth : vector of site ids found to be within desired depth range
 """
-function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, available_space)
+function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, available_space, depth)
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.1
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
     # Select sites (without replacement to avoid duplicate sites)
-    candidate_sites = findall(available_space .> 0.0)
+    candidate_sites = depth[(available_space.>0.0)[depth]]  # Filter down to site ids to be considered
     num_sites = length(candidate_sites)
     s_nsiteint = num_sites < nsiteint ? num_sites : nsiteint
 

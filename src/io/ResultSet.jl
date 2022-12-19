@@ -170,12 +170,17 @@ function combine_results(result_sets...)::ResultSet
 
     compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
     metrics = keys(rs1.outcomes)
-    result_dims = (size(rs1.outcomes[:relative_cover], :timesteps), size(rs1.outcomes[:relative_cover], :sites), n_scenarios)
+    result_dims = (
+        size(rs1.outcomes[:total_absolute_cover], :timesteps),
+        size(rs1.outcomes[:total_absolute_cover], :sites),
+        n_scenarios
+    )
     dim_struct = Dict(
         :structure => ("timesteps", "sites", "scenarios"), # string.((:timesteps, :sites, :scenarios)),
         :unique_site_ids => rs1.site_ids
     )
     for m_name in metrics
+        result_dims = (size(rs1.outcomes[m_name], 1), size(rs1.outcomes[m_name], 2), n_scenarios)
         m_store = zcreate(Float32, result_dims...;
             fill_value=nothing, fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, string(m_name)), chunks=(result_dims[1:end-1]..., 1),
@@ -307,8 +312,20 @@ end
 Extract parameters for a specific model component from exported model specification.
 """
 function component_params(rs::ResultSet, component::Type)::DataFrame
+    return spec[rs.model_spec.component.==string(component), :]
+end
+function component_params(rs::ResultSet, components::Vector)::DataFrame
     spec = rs.model_spec
-    return spec[spec.component.==string(component), :]
+    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
+end
+
+"""
+    model_spec(rs::ResultSet)::DataFrame
+
+Extract model specification from Result Set.
+"""
+function model_spec(rs::ResultSet)::DataFrame
+    return rs.model_spec
 end
 
 
@@ -316,7 +333,7 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
     vers_id = rs.ADRIA_VERSION
 
-    tf, sites, scens = size(rs.outcomes[:relative_cover])
+    tf, sites, scens = size(rs.outcomes[:total_absolute_cover])
     # Species/size groups represented: $(species)
 
     rcps = join(split(rs.RCP, "_"), ", ")

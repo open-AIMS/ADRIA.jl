@@ -1,22 +1,22 @@
 module ADRIA
 
+using Requires
 using Random, TOML, Dates, CpuId
 using StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
 using NamedArrays, SparseArrayKit, DifferentialEquations
 
-using MAT  # Package to read in `.mat` files
-using Combinatorics
-using Distances
+using MAT
+using Combinatorics, Distances
 using Setfield, ModelParameters, DataStructures
 using DataFrames, Graphs, CSV
 import ArchGDAL as AG
 import GeoDataFrames
 
 using PkgVersion
-
 using ProgressMeter
 
 using SnoopPrecompile, RelocatableFolders
+
 
 include("utils/text_display.jl")  # need better name for this file
 include("utils/setup.jl")
@@ -52,7 +52,10 @@ include("metrics/performance.jl")
 include("scenario.jl")
 include("optimization.jl")
 
-include("../Aviz/src/Aviz.jl")
+function __init__()
+    @require GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a" include("../Aviz/src/Aviz.jl")
+end
+
 # include("main_app.jl")
 
 
@@ -69,30 +72,32 @@ export dims, ndims
 # List out compatible domain datapackages
 const COMPAT_DPKG = ["0.3.1"]
 
-# @precompile_all_calls begin
-#     ex_dir = @path joinpath(@__DIR__, "../examples")
 
-#     f() = begin
-#         @showprogress 1 for _ in 1:10
-#         end
-#     end
-#     b = redirect_stdout(f, devnull)
+@precompile_all_calls begin
+    ex_dir = @path joinpath(@__DIR__, "../examples")
 
-#     dom = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), "45")
-#     p_df = ADRIA.param_table(dom)
-#     p_df = repeat(p_df, 5)
-#     p_df[:, :dhw_scenario] .= 50
-#     p_df[:, :guided] .= [0, 0, 1, 2, 3]
-#     p_df[:, :seed_TA] .= [0, 5e5, 5e5, 5e5, 5e5]
-#     p_df[:, :seed_CA] .= [0, 5e5, 5e5, 5e5, 5e5]
+    f() = begin
+        @showprogress 1 for _ in 1:10
+        end
+    end
+    b = redirect_stdout(f, devnull)
 
-#     ENV["ADRIA_THRESHOLD"] = 1e-6
-#     run_scenario(p_df[1, :], dom)
-#     run_scenario(p_df[end, :], dom)
-#     delete!(ENV, "ADRIA_THRESHOLD")
+    dom = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), "45")
+    p_df = ADRIA.param_table(dom)
+    # p_df = repeat(p_df, 5)
+    # p_df[:, :dhw_scenario] .= 50
+    # p_df[:, :guided] .= [0, 0, 1, 2, 3]
+    # p_df[:, :seed_TA] .= [0, 5e5, 5e5, 5e5, 5e5]
+    # p_df[:, :seed_CA] .= [0, 5e5, 5e5, 5e5, 5e5]
+    rs1 = ADRIA.run_scenario(p_df[1, :], dom)
 
-#     precompile(load_results, (String,))
-#     precompile(EnvLayer, (String, String, String, String, String, String, String))
-# end
+    # ENV["ADRIA_THRESHOLD"] = 1e-6
+    # run_scenario(p_df[1, :], dom)
+    # run_scenario(p_df[end, :], dom)
+    # delete!(ENV, "ADRIA_THRESHOLD")
+
+    # precompile(load_results, (String,))
+    # precompile(EnvLayer, (String, String, String, String, String, String, String))
+end
 
 end

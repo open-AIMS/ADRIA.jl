@@ -1,7 +1,7 @@
 function get_geometry(df::DataFrame)
-    if "geometry" in names(df)
+    if columnindex(df, :geometry) > 0
         return df.geometry
-    elseif "geom" in names(df)
+    elseif columnindex(df, :geom) > 0
         return df.geom
     end
 
@@ -33,7 +33,7 @@ Summarize environmental data layers (mean and standard deviation).
 # Returns
 Matrix{Float64, 2}, of mean and standard deviation for each environmental scenario.
 """
-function summarize_env_data(data::AbstractArray)::Array
+function summarize_env_data(data::AbstractArray)::Array{Float64}
     # TODO: Update once
     dc_mean = dropdims(mean(data, dims=(1, 2)), dims=(1, 2))'
     dc_std = dropdims(std(data, dims=(1, 2)), dims=(1, 2))'
@@ -243,7 +243,9 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
 
     compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
 
-    met_names = (:relative_cover, :relative_shelter_volume, :absolute_shelter_volume, :relative_juveniles)
+    met_names = [:total_absolute_cover, :relative_shelter_volume,
+        :absolute_shelter_volume, :relative_juveniles]
+
     dim_struct = Dict(
         :structure => string.((:timesteps, :sites, :scenarios)),
         :unique_site_ids => unique_sites(domain)
@@ -259,6 +261,21 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             compressor=compressor)
         for m_name in met_names
     ]
+
+    push!(
+        stores,
+        zcreate(Float32, (result_dims[1], 6, result_dims[3])...;
+            fill_value=nothing, fill_as_missing=false,
+            path=joinpath(z_store.folder, RESULTS, "relative_taxa_cover"), chunks=((result_dims[1], 6)..., 1),
+            attrs=Dict(
+                :structure => string.((:timesteps, :taxa, :scenarios)),
+                :unique_site_ids => unique_sites(domain)
+            ),
+            compressor=compressor)
+    )
+    push!(met_names, :relative_taxa_cover)
+
+
     dhw_stats_store = store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), domain.RCP, compressor)
     wave_stats_store = store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), domain.RCP, compressor)
 
@@ -271,7 +288,7 @@ end
 """
     _recreate_stats_from_store(zarr_store_path::String)::Dict{String, AbstractArray}
 
-Recreate data structure holding scenario summary statistics from Zarr store.
+Recreate data structure holding RCP summary statistics from Zarr store.
 """
 function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,AbstractArray}
     rcp_dirs = filter(d -> isdir(joinpath(zarr_store_path, d)), readdir(zarr_store_path))
@@ -335,6 +352,8 @@ function load_results(result_loc::String)::ResultSet
     end
 
     site_data = GeoDataFrames.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
+    sort!(site_data, [Symbol(input_set.attrs["unique_site_id_col"])])
+
     model_spec = CSV.read(joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#")
 
     r_vers_id = input_set.attrs["ADRIA_VERSION"]

@@ -15,19 +15,19 @@ using ADRIA
     bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
 
     growth_rates = (2 * linear_extension) ./ bin_widths  # growth rates as calculated without growth_rate(), maintaining species x size_class structure
-    # growth_rates[:, 6] .= 0.8 * growth_rates[:, 6]
+    #growth_rates[:, 6] .= 0.8 * growth_rates[:, 6]
 
     mb = Array{Float64,2}([
-        0.2 0.2 0.19 0.125 0.098 0.098    # Tabular Acropora Enhanced
-        0.2 0.2 0.19 0.125 0.098 0.098    # Tabular Acropora Unenhanced
-        0.2 0.2 0.172 0.113 0.088 0.088    # Corymbose Acropora Enhanced
-        0.2 0.2 0.172 0.113 0.088 0.088    # Corymbose Acropora Unenhanced
+        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Enhanced
+        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Unenhanced
+        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Enhanced
+        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Unenhanced
         0.2 0.2 0.04 0.026 0.02 0.02    # Small massives and encrusting
         0.2 0.2 0.04 0.026 0.02 0.02])   # Large massives
 
     bleaching_sensitivity = Float64[
-        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Enhanced (assumed same as Corymbose)
-        1.40 1.40 1.40 1.40 1.40 1.40  # Tabular Acropora Unenhanced
+        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Enhanced (Arborescent staghorn corals)
+        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Unenhanced
         1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Enhanced
         1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Unenhanced
         0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
@@ -53,7 +53,7 @@ using ADRIA
 
     # check all background mortalities are <=1 and >0
     @test all(stored_mb_rate .<= 1.0) || "Some coral background mortality rates are >1."
-    @test all(stored_mb_rate .> 0.0) || "Some coral background mortality rates are <=0"
+    @test all(stored_mb_rate .>= 0.0) || "Some coral background mortality rates are <=0"
 
     # check coral mortalities and growth rates decrease with increasing size class
     for j = 1:5

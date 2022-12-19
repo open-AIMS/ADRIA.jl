@@ -33,13 +33,17 @@ rs = ADRIA.run_scenarios(scens, ex_domain, "45")
 
 # Single scenario run (returns NamedTuple of results for a single environmental/intervention scenario).
 # See documentation for more detail.
-# result = ADRIA.run_scenario(param_df::DataFrameRow, domain::Domain; rep_id=1)::NamedTuple
+# switch_RCPs!(domain, "45")
+# res1 = ADRIA.run_scenario(scens[1, :], domain)
+# res2 = ADRIA.run_scenario(scens[2, :], domain)
+# res3 = ADRIA.run_scenario(scens[3, :], domain, "60")  # run for a different RCP
 
 
-# The location of the outputs stored on disk
+# Name of result store
 @info ADRIA.store_name(rs)
 # "Example_domain__RCPs45__2022-10-19_12_01_26_965"
 
+# The location of the outputs stored on disk
 @info ADRIA.store_location(rs)
 # "[some location]/Example_domain__RCPs45__2022-10-19_12_01_26_965"
 

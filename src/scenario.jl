@@ -1,7 +1,9 @@
 """Scenario running functions"""
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
-import ADRIA.metrics: relative_juveniles
+import ADRIA.metrics: relative_juveniles, relative_taxa_cover
+
+
 """
     setup_cache(domain::Domain)::NamedTuple
 
@@ -14,9 +16,7 @@ function setup_cache(domain::Domain)::NamedTuple
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
 
-    # Strip names from NamedArrays
-    init_cov::Matrix{Float64} = sparse(Matrix{Float64}(domain.init_coral_cover))
-
+    init_cov = domain.init_coral_cover
     cache = (
         sf=zeros(n_groups, n_sites),  # stressed fecundity
         fec_all=zeros(size(init_cov)...),  # all fecundity
@@ -24,7 +24,6 @@ function setup_cache(domain::Domain)::NamedTuple
         prop_loss=zeros(n_species, n_sites),  # proportional loss
         Sbl=zeros(n_species, n_sites),   # bleaching survivors
         dhw_step=zeros(n_sites),  # DHW each time step
-        init_cov=init_cov,  # initial cover
         cov_tmp=zeros(size(init_cov)...),  # Cover for previous timestep
         felt_dhw=zeros(size(init_cov)...),  # Store for felt DHW (DHW after reductions)
         depth_coeff=zeros(n_sites),  # store for depth coefficient
@@ -35,8 +34,6 @@ function setup_cache(domain::Domain)::NamedTuple
 
     return cache
 end
-
-
 
 
 """
@@ -206,9 +203,9 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
 
     r_raw = result_set.raw
-    vals = relative_cover(r_raw)
+    vals = total_absolute_cover(r_raw, site_area(domain))
     vals[vals.<threshold] .= 0.0
-    data_store.relative_cover[:, :, idx] .= vals
+    data_store.total_absolute_cover[:, :, idx] .= vals
 
     p_tbl = param_table(domain)
     vals .= absolute_shelter_volume(r_raw, site_area(domain), p_tbl)
@@ -222,6 +219,10 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     vals .= relative_juveniles(r_raw)
     vals[vals.<threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
+
+    vals = relative_taxa_cover(r_raw)
+    vals[vals.<threshold] .= 0.0
+    data_store.relative_taxa_cover[:, :, idx] .= vals
 
     # Store raw results if no metrics specified
     # if length(metrics) == 0
@@ -260,15 +261,22 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     return run_scenario(idx, param_set, domain, data_store, cache)
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, cache::NamedTuple)
-    # update_params!(domain, param_set)
-
     # Extract coral only parameters
     coral_params = to_spec(param_set)
+    if domain.RCP == ""
+        throw("No RCP set for domain. Use `ADRIA.switch_RCPs!() to select an RCP to run scenarios with.")
+    end
 
     return run_model(domain, param_set, coral_params, cache)
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain)::NamedTuple
     cache = setup_cache(domain)
+
+    # Switch RCP datasets if required
+    if "RCP" in names(param_set, 1) && (param_set["RCP"] != domain.RCP)
+        domain = switch_RCPs!(domain, domain.RCP)
+    end
+
     return run_scenario(param_set, domain, cache)
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, RCP::String)::NamedTuple
@@ -288,7 +296,7 @@ Only the mean site rankings are kept
 # Returns
 NamedTuple of collated results
 """
-function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,AbstractVector}, corals::DataFrame, cache::NamedTuple)::NamedTuple
+function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}, corals::DataFrame, cache::NamedTuple)::NamedTuple
 
     sim_params = domain.sim_constants
     site_data = domain.site_data
@@ -296,7 +304,19 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
 
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
-    rnd_seed_val = floor(Int, sum(values(param_set)))
+    if param_set isa DataFrameRow
+        has_RCP = columnindex(param_set, :RCP) > 0
+    else
+        has_RCP = "RCP" in names(param_set, 1)
+    end
+
+    if has_RCP && (param_set isa DataFrameRow)
+        rnd_seed_val = floor(Int, sum(values(param_set[Not(:RCP)])))
+    elseif has_RCP
+        rnd_seed_val = floor(Int, sum(values(param_set[2:end])))
+    else
+        rnd_seed_val = floor(Int, sum(values(param_set)))
+    end
     Random.seed!(rnd_seed_val)
 
     ### TODO: All cached arrays/values to be moved to outer function and passed in
@@ -304,8 +324,13 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
     dhw_idx = Int(param_set["dhw_scenario"])
     wave_idx = Int(param_set["wave_scenario"])
 
-    dhw_scen::Matrix{Float64} = domain.dhw_scens[:, :, dhw_idx]
-    wave_scen::Matrix{Float64} = domain.dhw_scens[:, :, wave_idx]
+    dhw_scen::Matrix{Float64} = @view domain.dhw_scens[:, :, dhw_idx]
+
+    # TODO: Better conversion of Ub to wave mortality
+    #       Currently scaling significant wave height by its max to non-dimensionalize values
+    #       Conversion to Matrix is to avoid broadcasting error
+    #       https://github.com/davidavdav/NamedArrays.jl/issues/119
+    wave_scen::Matrix{Float64} = Matrix{Float64}(domain.wave_scens[:, :, wave_idx]) ./ maximum(domain.wave_scens[:, :, wave_idx])
 
     tspan::Tuple = (0.0, 1.0)
     solver::BS3 = BS3()
@@ -336,19 +361,19 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
-    TP_data = @view cache.TP_data[:, :]
-    sf = @view cache.sf[:, :]
-    fec_all = @view cache.fec_all[:, :]
-    fec_scope = @view cache.fec_scope[:, :]
-    prop_loss = @view cache.prop_loss[:, :]
-    Sbl = @view cache.Sbl[:, :]
-    dhw_t = @view cache.dhw_step[:, :]
-    Y_pstep = @view cache.cov_tmp[:, :]
-    felt_dhw = @view cache.felt_dhw[:, :]
-    depth_coeff = @view cache.depth_coeff[:, :]
+    TP_data = cache.TP_data
+    sf = cache.sf
+    fec_all = cache.fec_all
+    fec_scope = cache.fec_scope
+    prop_loss = cache.prop_loss
+    Sbl = cache.Sbl
+    dhw_t = cache.dhw_step
+    Y_pstep = cache.cov_tmp
+    felt_dhw = cache.felt_dhw
+    depth_coeff = cache.depth_coeff
 
     Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
-    Y_cover[1, :, :] .= cache.init_cov
+    Y_cover[1, :, :] .= domain.init_coral_cover
     ode_u = zeros(n_species, n_sites)
     cover_tmp = p.cover  # pre-allocated matrix used to avoid memory allocations
 
@@ -390,7 +415,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
 
     # Set other params for ODE
     p.r .= corals.growth_rate  # Assumed growth_rate
-    p.r[corals.class_id.==6] .= 0.2 .* p.r[corals.class_id.==6]
+    p.r[corals.class_id.==6] .= 0.2 .* p.r[corals.class_id.==6]  # TODO: Finalize rates and update coral spec
 
     p.mb .= corals.mb_rate  # background mortality
     @set! p.k = max_cover  # max coral cover
@@ -412,52 +437,53 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
 
     bleaching_sensitivity = corals.bleaching_sensitivity
 
-    if is_guided
+    # Defaults to considering all sites if depth cannot be considered.
+    depth_priority = collect(1:nrow(site_data))
 
-        # Defaults to considering all sites if depth cannot be considered.
-        depth_priority = collect(1:nrow(site_data))
+    # calculate total area to seed respecting tolerance for minimum available space to still seed at a site
+    area_to_seed = (col_area_seed_TA .* n_TA_to_seed) + (col_area_seed_CA .* n_CA_to_seed)
+    min_area = param_set["coral_cover_tol"] * area_to_seed
 
-        # calculate total area to seed respecting tolerance for minimum available space to still seed at a site
-        area_to_seed = (col_area_seed_TA .* n_TA_to_seed) + (col_area_seed_CA .* n_CA_to_seed)
-        min_area = param_set["coral_cover_tol"] * area_to_seed
+    # Filter out sites outside of desired depth range
+    if .!all(site_data.depth_med .== 0)
+        max_depth::Float64 = param_set["depth_min"] + param_set["depth_offset"]
+        depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set["depth_min"]) .& (site_data.depth_med .<= max_depth)
 
-        # Filter out sites outside of desired depth range
-        if .!all(site_data.depth_med .== 0)
-            max_depth::Float64 = param_set["depth_min"] + param_set["depth_offset"]
-            depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set["depth_min"]) .& (site_data.depth_med .<= max_depth)
-
-            # TODO: Include this change in MATLAB version as well
-            if any(depth_criteria .> 0)
-                # If sites can be filtered based on depth, do so. Otherwise if no sites can be filtered, remove depth as a criterion.
-                depth_priority = depth_priority[depth_criteria]
-            else
-                @warn "No sites within provided depth range of $(param_set["depth_min"]) - $(max_depth) meters. Considering all sites."
-            end
+        # TODO: Include this change in MATLAB version as well
+        if any(depth_criteria .> 0)
+            # If sites can be filtered based on depth, do so.
+            depth_priority = depth_priority[depth_criteria]
+        else
+            # Otherwise if no sites can be filtered, remove depth as a criterion.
+            @warn "No sites within provided depth range of $(param_set["depth_min"]) - $(max_depth) meters. Considering all sites."
         end
+    end
 
+    if is_guided
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
-        zones = site_data.zone_type
 
+        min_distance = domain.median_site_distance - domain.median_site_distance * param_set["dist_thresh"]
         # Prep site selection
         mcda_vars = DMCDA_vars(
             depth_priority,
             nsiteint,
             sim_params.prioritysites,
             sim_params.priorityzones,
-            zones,
+            site_data.zone_type,
             domain.strongpred,
             domain.in_conn,
             domain.out_conn,
             zeros(n_species, n_sites),  # wave stress
             dhw_scen[1, :],  # heat stress
+            site_data.depth_med,
             sum(Y_cover[1, :, :], dims=1),  # sum coral cover
             max_cover,
             total_site_area,
             min_area,
             param_set["deployed_coral_risk_tol"],  # risk tolerance
             domain.site_distances,
-            param_set["dist_thresh"],
+            min_distance,
             param_set["top_n"],
             param_set["in_seed_connectivity"], # weight for seed sites with high number of incoming connections
             param_set["out_seed_connectivity"], # weight for seed sites with high number of outgoing connections
@@ -490,16 +516,16 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
     LPDprm2 = sim_params.LPDprm2 # parameter offsetting LPD curve
 
     # Wave stress
-    mwaves::Array{Float64,3} = cache.waves
+    Sw_t::Array{Float64,3} = cache.waves
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
 
-    @inbounds for sp::Int64 in 1:n_species
-        @views mwaves[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :, :]
+    for sp::Int64 in 1:n_species
+        @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :]
     end
 
-    clamp!(mwaves, 0.0, 1.0)
+    clamp!(Sw_t, 0.0, 1.0)
 
-    Sw_t = 1.0 .- mwaves
+    Sw_t .= 1.0 .- Sw_t
 
     # Flag indicating whether to seed or not to seed
     seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
@@ -511,10 +537,10 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
 
     # basal_area_per_settler is the area in m^2 of a size class one coral 
     basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ 100 .^ 2
-    debug_log = zeros(tf, n_sites)
-    rec_log = zeros(tf, 6, n_sites)
-    juv_log = zeros(tf, 12, n_sites)
-    juves = [1, 2, 7, 8, 13, 14, 19, 20, 25, 26, 31, 32]
+    # debug_log = zeros(tf, n_sites)
+    # rec_log = zeros(tf, 6, n_sites)
+    # juv_log = zeros(tf, 12, n_sites)
+    # juves = [1, 2, 7, 8, 13, 14, 19, 20, 25, 26, 31, 32]
     @inbounds for tstep::Int64 in 2:tf
         p_step = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
@@ -534,7 +560,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
         p.rec .= settler_cover(fec_scope, sf, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
 
-        rec_log[tstep, :, :] .= p.rec
+        # rec_log[tstep, :, :] .= p.rec
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
@@ -543,7 +569,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
         if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
             mcda_vars.heatstressprob .= dhw_t
-            mcda_vars.damprob .= @view mwaves[tstep, :, :]
+            mcda_vars.damprob .= @view Sw_t[tstep, :, :]
         end
 
         if is_guided && in_seed_years
@@ -559,7 +585,7 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
             prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                nsiteint, vec(leftover_space_m²))
+                nsiteint, vec(leftover_space_m²), depth_priority)
 
             site_ranks[tstep, prefseedsites, 1] .= 1.0
             site_ranks[tstep, prefshadesites, 2] .= 1.0
@@ -588,7 +614,6 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
         end
 
         # Calculate and apply bleaching mortality
-        # bleaching_mortality!(Sbl, tstep, site_data.depth_med, bleaching_sensitivity, adjusted_dhw, a_adapt, n_adapt)
         bleaching_mortality!(Sbl, felt_dhw, depth_coeff, tstep, site_data.depth_med, bleaching_sensitivity, dhw_t, a_adapt, n_adapt)
 
         # Apply seeding
@@ -607,18 +632,23 @@ function run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow,Abst
             Yseed[tstep, 2, prefseedsites] .= scaled_seed.CA
         end
 
-        @views @. prop_loss[:, :] = Sbl[:, :] * Sw_t[p_step, :, :]
+        # Calculate survivors from bleaching and wave stress
+        @views @. prop_loss = Sbl * Sw_t[p_step, :, :]
 
         # update initial condition
-        @views tmp[:, :] .= ((Y_pstep[:, :] .* prop_loss[:, :]) .* total_site_area) ./ absolute_k_area
-        @views growth.u0[:, :] .= replace(tmp, Inf => 0.0, NaN => 0.0)
+        @. tmp = ((Y_pstep * prop_loss) * total_site_area) / absolute_k_area
+        growth.u0 .= replace(tmp, Inf => 0.0, NaN => 0.0)
+
+        # X is cover relative to `k` (max. carrying capacity)
+        # So we subtract from 1.0 to get leftover/available space, relative to `k`
+        p.sigma .= max.(1.0 .- sum(growth.u0, dims=1), 0.0)
 
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-4)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        debug_log[tstep, :] = sum(sol.u[end] .* absolute_k_area ./ total_site_area, dims=1)
-        juv_log[tstep, :, :] = (sol.u[end].*absolute_k_area./total_site_area)[juves, :]
+        # debug_log[tstep, :] = sum(sol.u[end] .* absolute_k_area ./ total_site_area, dims=1)
+        # juv_log[tstep, :, :] = (sol.u[end].*absolute_k_area./total_site_area)[juves, :]
 
         @views Y_cover[tstep, :, :] .= sol.u[end] .* absolute_k_area ./ total_site_area
         # proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
