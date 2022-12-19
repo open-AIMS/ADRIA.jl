@@ -171,7 +171,7 @@ function environmental_diversity(ms, inputs_i)
     env_s = ms[findall(in(env_cols), Symbol.(ms.fieldname)), ["fieldname", "lower_bound", "upper_bound"]]
     @assert nrow(env_s) > 0 "No parameters for $(env_cols) found."
 
-    push!(env_s, [:RCP, 26, 85])  # Add lower/upper bound
+    push!(env_s, ["RCP", 26, 85])  # Add lower/upper bound
     push!(env_cols, :RCP)
 
     ub = env_s[:, "upper_bound"]
