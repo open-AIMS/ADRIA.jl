@@ -56,7 +56,7 @@ Note: compilation time to create a sysimage can be upwards of 30mins, and has to
     VS Code now has (experimental support) for generating a custom sysimage for its REPL.
     The same caveats as above apply (it has to be recreated if the project specification has changed for any reason).
 
-    See: https://www.julia-vscode.org/docs/dev/userguide/compilesysimage/
+    See: [This guide](https://www.julia-vscode.org/docs/dev/userguide/compilesysimage/)
 
 
 ```julia
