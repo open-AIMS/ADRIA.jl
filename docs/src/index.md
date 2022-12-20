@@ -26,6 +26,3 @@ rs = ADRIA.run_scenarios(scens, dom, ["45", "60", "85"])
 # then extract metrics for analysis
 tac = ADRIA.metrics.total_absolute_cover(rs)
 ```
-
-- [Synopsis](@ref)
-- [Release Guide](@ref)
