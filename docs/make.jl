@@ -5,7 +5,8 @@ using Documenter, ADRIA
 
 makedocs(sitename="ADRIA Documentation",
     format=Documenter.HTML(
-        prettyurls=get(ENV, "CI", nothing) == "true"
+        prettyurls=get(ENV, "CI", nothing) == "true",
+        sidebar_sitename=false
     ),
     pages=[
         "index.md",
@@ -18,9 +19,10 @@ makedocs(sitename="ADRIA Documentation",
         #     "advanced_showcase.md"
         # ],
         "Development" => [
-            "development_setup.md",
-            "architecture.md",
-        ],
+            "development/development_setup.md",
+            "development/architecture.md",
+            "development/release_guide.md",
+            "development/building_docs.md"],
         "API.md"
     ]
 )
