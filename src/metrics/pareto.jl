@@ -21,7 +21,7 @@ end
 
 
 """
-    nds(X::Matrix{<:Real}, dist=1)::Vector{Vector{<:Int}}
+    nds(X::AbstractArray{<:Real}, dist::Int64=0)::Vector{Vector{<:Int}}
 
 Naive n-dimensional non-dominated sorting.
 
