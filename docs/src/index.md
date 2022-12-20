@@ -13,6 +13,7 @@ To specify user-specific options, a `config.toml` file should be created with th
 [operation]
 num_cores = 2     # No. of cores to use. Values <= 0 will use all available cores.
 threshold = 1e-6  # Result values below this will be set to 0.0
+debug = false     # Disable multi-processing to allow error messages to be shown
 
 [results]
 output_dir = "./Outputs"  # Change this to point to where you want to store results
