@@ -26,3 +26,7 @@ makedocs(sitename="ADRIA Documentation",
         "API.md"
     ]
 )
+
+deploydocs(
+    repo="github.com/open-AIMS/ADRIA.jl.git",
+)
