@@ -53,7 +53,9 @@ include("scenario.jl")
 include("optimization.jl")
 
 function __init__()
-    @require GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a" include("../Aviz/src/Aviz.jl")
+    @require GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a" begin
+        @require GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6" include("../Aviz/src/Aviz.jl")
+    end
 end
 
 # include("main_app.jl")
