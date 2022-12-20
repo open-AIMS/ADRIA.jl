@@ -18,6 +18,12 @@ threshold = 1e-6  # Result values below this will be set to 0.0
 output_dir = "./Outputs"  # Change this to point to where you want to store results
 ```
 
+!!! tip "Performance"
+    ADRIA uses an on-disk data store to hold results from model runs.
+    Setting `output_dir` to a directory on an SSD (Solid State Drive)
+    will maximize performance.
+
+
 ### Usage
 
 ```julia
