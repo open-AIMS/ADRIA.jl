@@ -28,3 +28,4 @@ tac = ADRIA.metrics.total_absolute_cover(rs)
 ```
 
 - [Synopsis](@ref)
+- [Release Guide](@ref)
