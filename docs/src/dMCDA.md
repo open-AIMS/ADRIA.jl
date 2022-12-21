@@ -18,9 +18,10 @@ These criteria are used within methods based on multi-criteria decision analysis
 here = @__DIR__
 ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"))
 
-@info "Creating 100 scenarios based on parameter bounds using the Sobol' method"
+@info "Creating 5 scenarios based on parameter bounds using the Sobol' method"
 scens = ADRIA.sample(ex_domain, 5)
 
+@info "Adjusting heat_stress and wave_stress weightings"
 scens.wave_stress .= [0.7,0.6,0.1,0.4]
 scens.heat_stress .= [0.0,0.2,0.1,0.7]
 
@@ -57,10 +58,31 @@ The final decision matrix used in decision algorithms in ADRIA has the form,
 $$X_{i,j} = w_j x_{i,j}$$
 
 The particular MCDA technique chosen prescribes a strategy for aggregating the values measures in the decision matrix and forming rankings of alternatives. Perhaps the simplest way to aggregate criteria values, referred to here as ‘order ranking’, is to simply add up the criteria values for each alternative. This additive score can then be ordered from highest to lowest, giving an order of preference for the alternatives considered in the decision. Simply adding criteria values, however, can mask trade-offs between different criteria. Many ‘compensatory aggregation’ algorithms exist to combat this issue, including TOPSIS and VIKOR. 
+
+
 TOPSIS, or Technique for Order of Preference by Similarity to Ideal Solution, ranks alternatives by comparing them to the ‘Positive Ideal Solution’ (PIS) and ‘Negative Ideal Solution’ (NIS). The PIS is the value of the highest valued alternative for a criterium we want to maximise (or lowest if we want to minimise). The NIS is the value of the lowest valued alternative for a criterium we want to maximise (or highest if we want to minimise). TOPSIS ranks alternatives according to a ratio calculated from the geometric distance of the alternative to the PIS and NIS in each of the criteria. This allows alternatives which perform poorly under some criteria to balance their ranking with a high performance in other criteria, providing a measure of trade-offs between criteria. If it is desired to avoid a very bad performance in all criteria, however, this method can mask alternatives which perform very badly in only a few criteria but very well in others.
+
 VIKOR is another very popular MCDA algorithm which attempts to combat the hidden extremes issue of TOPSIS in its formulation. It does this using two distance formulations; the Manhattan distance (or L1 distance) and Chebyshev distance. The Manhattan distance, S, for each alternative is the sum over all criteria of the distance between each criteria’s value and its PIS, giving a measure of the overall utility of each alternative when considering all criteria. I.e. this is the general performance of an alternative when considering all criteria, with possible hidden trade-offs. The Chebyshev distance, R, is the maximum distance between the PIS and the value of a criteria for each alternative, giving a measure of the maximum deviance from the best solution for that alternative. I.e. this gives a measure of the worst hidden trade-off in the Manhattan Distance (which is not considered in TOPSIS). The final ranking is calculated from a linear combination of R and S where the weightings of R and S are determined by the balance of ‘group utility’ (measured by S) and ‘individual regret’ (measured by R) a decision maker wants to incorporate in their decision solution. Additional steps to the algorithm give guidelines for choosing between a single best alternative and n (n>1) best alternatives.
 
 The decision strategies for each of these algorithms can be summarised as follows:
 * Order ranking: when overall performance matters and trade-offs between criteria need not be considered (also least computationally expensive).
 * TOPSIS: when trade-offs between criteria should be considered, but it is not necessary to avoid hidden value extremes.
 * VIKOR: When trade-offs between criteria should be considered and the decision-maker wants to weight against hidden very poorly performing criteria.
+
+The algorithm used in an ADRIA run is set using the 'guided' parameter, as in the example below.
+
+```julia
+@info "Loading data package"
+here = @__DIR__
+ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"))
+
+@info "Creating 5 scenarios based on parameter bounds using the Sobol' method"
+scens = ADRIA.sample(ex_domain, 5)
+
+@info "Setting the guided parameter for each run"
+scens.guided[1] = -1.0 # counterfactual run
+scens.guided[2] = 0.0 # unguided selection (randomised)
+scens.guided[3] = 1.0 # order ranking
+scens.guided[4] = 2.0 # TOPSIS
+scens.guided[5] = 3.0 # VIKOR
+```
