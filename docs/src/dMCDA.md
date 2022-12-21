@@ -86,3 +86,35 @@ scens.guided[3] = 1.0 # order ranking
 scens.guided[4] = 2.0 # TOPSIS
 scens.guided[5] = 3.0 # VIKOR
 ```
+
+## Using site selection separately
+ADRIA's site selection algorithms can also be used outside of the ecological model, using the site_selection function. The user provides data layers representing the selection criteria and weights to produce a set of site ranks for seeding and/or shading. An example of the function's usage is shown below.
+
+```julia
+@info "Loading data package"
+here = @__DIR__
+ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"))
+
+alg_ind = 2.0 # use TOPSIS
+
+# define weights for criteria
+criteria = DataFrame(wave_stress = 0.2,
+                    heat_stress = 0.4,
+                    shade_connectivity = 0.5,
+                    out_seed_connectivity = 0.4,
+                    in_seed_connectivity = 0.8,
+                    coral_cover_high = 0.8,
+                    coral_cover_low = 0.6,
+                    seed_priority = 0.5,
+                    shade_priority = 0.6,
+                    coral_cover_tol = 0.2,
+                    deployed_coral_risk_tol = 1.0,
+                    depth_min = 5,
+                    depth_offset = 10)
+
+area_to_seed = 5/10^6 # area to seed in km^2
+ts = 5 # year/time step you want to make a decision at
+n_reps = 50 # number of dhw/wave replicates
+
+ranks = site_selection(ex_domain, criteria, area_to_seed, ts, n_reps, alg_ind)
+```
