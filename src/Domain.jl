@@ -403,19 +403,20 @@ function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float
     area = site_area(domain)
 
     # Weights for connectivity , waves (ww), high cover (whc) and low
-    wtwaves = criteria.wave_stress           # weight of wave damage in MCDA
-    wtheat = criteria.heat_stress            # weight of heat damage in MCDA
-    wtconshade = criteria.shade_connectivity # weight of connectivity for shading in MCDA
-    wtinconnseed = criteria.in_seed_connectivity   # weight of connectivity for seeding in MCDA
-    wtoutconnseed = criteria.out_seed_connectivity   # weight of connectivity for seeding in MCDA
-    wthicover = criteria.coral_cover_high    # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
-    wtlocover = criteria.coral_cover_low     # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
-    wtpredecseed = criteria.seed_priority    # weight for the importance of seeding sites that are predecessors of priority reefs
-    wtpredecshade = criteria.shade_priority  # weight for the importance of shading sites that are predecessors of priority reefs
-    risktol = criteria.deployed_coral_risk_tol # risk tolerance
-    coral_cover_tol = criteria.coral_cover_tol
-    depth_min = criteria.depth_min
-    depth_offset = criteria.depth_offset
+    wtwaves = criteria.wave_stress[scen_ind]           # weight of wave damage in MCDA
+    wtheat = criteria.heat_stress[scen_ind]            # weight of heat damage in MCDA
+    wtconshade = criteria.shade_connectivity[scen_ind] # weight of connectivity for shading in MCDA
+    wtinconnseed = criteria.in_seed_connectivity[scen_ind]   # weight of connectivity for seeding in MCDA
+    wtoutconnseed = criteria.out_seed_connectivity[scen_ind]   # weight of connectivity for seeding in MCDA
+    wthicover = criteria.coral_cover_high[scen_ind]    # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
+    wtlocover = criteria.coral_cover_low[scen_ind]     # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
+    wtpredecseed = criteria.seed_priority[scen_ind]    # weight for the importance of seeding sites that are predecessors of priority reefs
+    wtpredecshade = criteria.shade_priority[scen_ind]  # weight for the importance of shading sites that are predecessors of priority reefs
+    wtzonesseed = criteria.zone_seed[scen_ind]    # weight for the importance of seeding sites that are predecessors of priority reefs
+    wtzonesshade = criteria.zone_shade[scen_ind]  # weight for the importance of shading sites that are predecessors of priority reefs
+
+    depth_min = criteria.depth_min[scen_ind]
+    depth_offset = criteria.depth_offset[scen_ind]
 
     # Filter out sites outside of desired depth range
     max_depth = depth_min + depth_offset
@@ -449,16 +450,23 @@ function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float
             depth_priority,
             n_siteint,
             domain.sim_constants.prioritysites,
+            domain.sim_constants.priorityzones,
+            site_d.zone_type,
             domain.strongpred,
-            sr,  # sr.C1
+            sr,
             so,
             damprob,
             heatstressprob,
+            site_d.depth_med,
             sumcover,
             max_cover,
             area,
-            area_to_seed * coral_cover_tol,
-            risktol,
+            area_to_seed * criteria.coral_cover_tol[scen_ind],
+            criteria.deployed_coral_risk_tol[scen_ind],
+            domain.site_distances,
+            criteria.dist_thresh[scen_ind],
+            criteria.top_n[scen_ind],
+            wtinconnseed,
             wtoutconnseed,
             wtinconnseed,
             wtconshade,
@@ -467,7 +475,9 @@ function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float
             wthicover,
             wtlocover,
             wtpredecseed,
-            wtpredecshade
+            wtpredecshade,
+            wtzonesseed,
+            wtzonesshade
         )
 
         # dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesites, rankingsin)
