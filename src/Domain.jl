@@ -391,9 +391,17 @@ end
 """
     site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int)
 
+# Arguments
+- domain : ADRIA Domain type, indicating geographical domain to perform site selection over.
+- criteria : DataFrame of criteria weightings and thresholds (can be a scenario DataFrame).
+- area_to_seed : area of coral to be seeded at each time step in km^2
+- ts : time step at which seeding and/or shading is being undertaken.
+- n_reps : number of dhw/wave replicates to use in site selection.
+- scen_ind : scenario id for criteria (if using a scenario DataFrame, otherwise use scen_id = 1).
+- alg_ind : MCDA algorithm to use in site selection.
+
 # Returns
-Matrix : n_reps * sites * 3
-last dimension indicates: site_id, seeding rank, shading rank
+- Matrix : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
 """
 function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int64)
     # Site Data
@@ -422,7 +430,7 @@ function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float
     max_depth = depth_min + depth_offset
     depth_criteria = (site_d.depth_med .<= max_depth) .& (site_d.depth_med .>= depth_min)
 
-    depth_priority = collect(1:nrow(site_d))[depth_criteria]
+    depth_priority = collect(1:size(site_d, 1))[depth_criteria]
 
     max_cover = site_d.k / 100.0  # Max coral cover at each site
 
@@ -437,12 +445,13 @@ function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float
 
     for i = 1:n_reps
         # site_id, seeding rank, shading rank
-        rankingsin = [depth_priority zeros(length(depth_priority), 1) zeros(length(depth_priority), 1)]
-        prefseedsites = zeros(1, n_siteint)
-        prefshadesites = zeros(1, n_siteint)
+        rankingsin = [depth_priority zeros(Int64, (length(depth_priority), 1)) zeros(Int64, (length(depth_priority), 1))]
+        prefseedsites = zeros(Int64, (1, n_siteint))
+        prefshadesites = zeros(Int64, (1, n_siteint))
         dhw_step = dhw_scen[ts, :, i]
         heatstressprob = dhw_step
 
+        # create DMCA structure
         w_step = w_scens[ts, :, i]
         damprob = w_step
 
@@ -468,7 +477,6 @@ function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float
             criteria.top_n[scen_ind],
             wtinconnseed,
             wtoutconnseed,
-            wtinconnseed,
             wtconshade,
             wtwaves,
             wtheat,
@@ -480,8 +488,7 @@ function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float
             wtzonesshade
         )
 
-        # dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesites, rankingsin)
-        (_, _, _, _, rankings) = dMCDA(mcda_vars, alg_ind, false, false, prefseedsites, prefshadesites, rankingsin)
+        (_, _, rankings) = dMCDA(mcda_vars, alg_ind, false, false, prefseedsites, prefshadesites, rankingsin)
         ranks[i, :, :] = rankings
     end
 
