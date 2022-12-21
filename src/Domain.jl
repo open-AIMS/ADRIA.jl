@@ -419,7 +419,7 @@ function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float
 
     # Filter out sites outside of desired depth range
     max_depth = depth_min + depth_offset
-    depth_criteria = (site_d.depth_med .>= -max_depth) .& (site_d.depth_med .<= -depth_min)
+    depth_criteria = (site_d.depth_med .<= max_depth) .& (site_d.depth_med .>= depth_min)
 
     depth_priority = collect(1:nrow(site_d))[depth_criteria]
 
