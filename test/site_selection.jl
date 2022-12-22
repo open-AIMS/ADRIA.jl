@@ -40,8 +40,9 @@ end
 
     ranks = site_selection(dom, criteria_df, area_to_seed, ts, nreps, scen, alg_ind)
 
-    # Check that only 4 sites make it through depth and heat/wave risk filter    @test size(ranks, 2) == 4 || "Sites which should have been filtered have still been ranked."
+    # Check that only 4 sites make it through depth and heat/wave risk filter    
+    @test size(ranks, 2) == 4 || "Sites which should have been filtered have still been ranked."
     @test size(ranks, 1) == nreps || "Specified number of replicates was not carried out."
-    @test all(ranks[:, [2, 3]] .== 0.0) || "No ranks assigned for any replicates."
+    @test sum(ranks[:, :, [2, 3]]) .!= 0.0 || "No ranks assigned for any replicates."
 
 end
