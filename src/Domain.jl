@@ -488,10 +488,8 @@ function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float
             wtzonesshade
         )
 
-        (prefseedsites, prefshadesites, rankings) = guided_site_selection(mcda_vars, alg_ind, true, true, prefseedsites, prefshadesites, rankingsin)
-        prefseed[i, :] .= prefseedsites
-        prefshade[i, :] .= prefshadesites
-        ranks[i, :, :] .= rankings
+        (_, _, rankings) = guided_site_selection(mcda_vars, alg_ind, true, true, prefseedsites, prefshadesites, rankingsin)
+        ranks[i, :, :] = rankings
     end
 
     return ranks
