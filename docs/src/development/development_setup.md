@@ -1,5 +1,9 @@
 # Development setup
 
+First, clone the repository.
+
+Then navigate to the project folder and start Julia.
+
 ```bash
 # Start julia specifying the current directory as the project
 $ julia --project=.
