@@ -11,6 +11,7 @@ makedocs(sitename="ADRIA Documentation",
     pages=[
         "index.md",
         "synopsis.md",
+        "usage.md",
         "dMCDA.md",
         # "Examples" => [
         #     "Usage" => [

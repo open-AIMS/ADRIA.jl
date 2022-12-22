@@ -15,6 +15,24 @@
 
 Click "Publish release" (green button at the bottom)
 
+Finally, register the updated package with the Julia registry by:
+
+1. Opening a new issue. The title can be anything, but something along the lines of "Register [version number]"  
+   e.g., Register v1.0
+2. State in the comment: `@JuliaRegistrator register`  
+
+Release notes should also be included when appropriate, like so:
+
+```
+@JuliaRegistrator register
+
+Release notes:
+
+Some details of new features!
+```
+
+See Julia Registrator usage notes [here](https://github.com/JuliaComputing/Registrator.jl?installation_id=32448289&setup_action=install#details-for-triggering-juliaregistrator-for-step-2-above) for more details.
+
 
 ## Development Release
 
