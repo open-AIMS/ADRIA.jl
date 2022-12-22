@@ -30,7 +30,7 @@ end
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
-    criteria_df = ADRIA.sample(dom, 1) # get scenario dataframe
+    criteria_df = ADRIA.sample(dom, 5) # get scenario dataframe
     criteria_df.dist_thresh .= 1.0
     area_to_seed = 1.5 * 10^-6 # area of seeded corals in km^2
     nreps = 30 # number of dhw and wave replicates you want to use
