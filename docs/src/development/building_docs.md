@@ -1,5 +1,8 @@
 # Building Documentation
 
+ADRIA documentation is built using [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).
+
+
 ## Building documentation locally
 
 From the ADRIA project directory:
