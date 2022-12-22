@@ -28,3 +28,20 @@ end
     @test all([in(sid, [2, 3]) for sid in prefseedsites[prefseedsites.>0]])
     @test all([in(sid, [2, 3]) for sid in prefshadesites[prefshadesites.>0]])
 end
+
+@testset "Guided site selection without ADRIA ecological model" begin
+    criteria_df = ADRIA.sample(dom, 1) # get scenario dataframe
+    criteria_df.dist_thresh .= 1.0
+    area_to_seed = 1.5 * 10^-6 # area of seeded corals in km^2
+    nreps = 30 # number of dhw and wave replicates you want to use
+    ts = 5 # time step to perform site selection at
+    scen = 5
+    alg_ind = criteria_df.guided[scen]# MCDA algorithm to use (1-3)
+
+    ranks = site_selection(dom, criteria_df, area_to_seed, ts, nreps, scen, alg_ind)
+
+    # Check that only 4 sites make it through depth and heat/wave risk filter    @test size(ranks, 2) == 4 || "Sites which should have been filtered have still been ranked."
+    @test size(ranks, 1) == nreps || "Specified number of replicates was not carried out."
+    @test all(ranks[:, [2, 3]] .== 0.0) || "No ranks assigned for any replicates."
+
+end
