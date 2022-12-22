@@ -30,7 +30,7 @@ end
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
-    criteria_df = ADRIA.sample(dom, 5) # get scenario dataframe
+    criteria_df = ADRIA.sample(dom, 1) # get scenario dataframe
     criteria_df.dist_thresh .= 1.0
     area_to_seed = 1.5 * 10^-6 # area of seeded corals in km^2
     nreps = 30 # number of dhw and wave replicates you want to use
@@ -40,9 +40,8 @@ end
 
     ranks = site_selection(dom, criteria_df, area_to_seed, ts, nreps, scen, alg_ind)
 
-    # Check that only 4 sites make it through depth and heat/wave risk filter    
-    @test size(ranks, 2) == 4 || "Sites which should have been filtered have still been ranked."
+    # Check that only 4 sites make it through depth and heat/wave risk filter    @test size(ranks, 2) == 4 || "Sites which should have been filtered have still been ranked."
     @test size(ranks, 1) == nreps || "Specified number of replicates was not carried out."
-    @test sum(ranks[:, :, [2, 3]]) .!= 0.0 || "No ranks assigned for any replicates."
+    @test all(ranks[:, [2, 3]] .== 0.0) || "No ranks assigned for any replicates."
 
 end
