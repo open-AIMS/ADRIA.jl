@@ -572,7 +572,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
         if is_guided && in_seed_years
             mcda_vars.sumcover .= site_coral_cover
-            (prefseedsites, prefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
+            (prefseedsites, prefshadesites, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
                 prefseedsites, prefshadesites, rankings)
 

@@ -306,7 +306,7 @@ Tuple :
     - rankings : nsitesx3 matrix holding [site_id, seeding_rank, shading_rank],
         0 indicates sites that were not considered
 """
-function dMCDA(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool,
+function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool,
     prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int},
     rankingsin::Matrix{Int64})::Tuple
 
