@@ -4,7 +4,7 @@ using StatsBase
 using Distances
 using Combinatorics
 
-struct DMCDA_vars  # {V, I, F, M} where V <: Vector
+mutable struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     nsiteint  # ::I
     prioritysites  # ::V
