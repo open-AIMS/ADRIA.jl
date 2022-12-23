@@ -691,6 +691,131 @@ function vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},
     return s_order
 end
 
+"""
+    site_selection_scens(domain::Domain, criteria::DataFrame, depth::DataFrame, cover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
+
+# Arguments
+- domain : ADRIA Domain type, indicating geographical domain to perform site selection over.
+- criteria : DataFrame of criteria weightings and thresholds (can be a scenario DataFrame).
+- cover : array of size (number of scenarios * species * number of sites) containing the coral cover for each site selection scenario.
+- area_to_seed : area of coral to be seeded at each time step in km^2
+- ts : time step at which seeding and/or shading is being undertaken.
+- n_reps : number of dhw/wave replicates to use in site selection.
+
+# Returns
+- ranks_store : dictionary where each entry is n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
+    containing ranks for each scenario run.
+"""
+function site_selection_scens(domain::Domain, criteria::DataFrame, depth::DataFrame, cover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
+    # Site Data
+    site_d = domain.site_data
+    nsites = size(site_d, 1)
+    area = site_area(domain)
+
+    # Filter out sites outside of desired depth range
+    max_depth = depth.depth_min + depth.depth_offset
+    depth_criteria = (site_d.depth_med .<= max_depth) .& (site_d.depth_med .>= depth.depth_min)
+    depth_priority = collect(1:size(site_d, 1))[depth_criteria]
+
+    mcda_vars = DMCDA_vars(
+        depth_priority,
+        domain.sim_constants.nsiteint,
+        domain.sim_constants.prioritysites,
+        domain.sim_constants.priorityzones,
+        site_d.zone_type,
+        domain.strongpred,
+        domain.in_conn,
+        domain.out_conn,
+        zeros(1, nsites),
+        zeros(1, nsites),
+        site_d.depth_med,
+        zeros(1, nsites),
+        site_d.k / 100.0,
+        area,
+        [],
+        [],
+        domain.site_distances,
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+    )
+
+    w_scens = domain.wave_scens
+    dhw_scens = domain.dhw_scens
+
+    ranks_store = Dict()
+    for (cover_ind, scen_criteria) in enumerate(eachrow(criteria))
+        sumcover = sum(cover[cover_ind, :, :], dims=1) ./ 100
+        ranks_store["scen_$cover_ind"] = site_selection(scen_criteria, mcda_vars, w_scens, dhw_scens, sumcover, area_to_seed, ts, n_reps)
+    end
+    return ranks_store
+end
+
+"""
+    site_selection(criteria::DataFrameRow{DataFrame,DataFrames.Index}, mcda_vars::DMCDA_vars, w_scens::NamedArray, dhw_scens::NamedArray, sumcover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
+
+# Arguments
+- criteria : contains criteria weightings and thresholds (can be a scenario DataFrame) for a single scenario.
+- mcda_vars : site selection criteria and weightings structure
+- w_scens : wave scenarios for RCP being run.
+- dhw_scens : dhw scenarios for RCP being run.
+- sumcover : summed cover (over species) for single scenario being run, for each site.
+- area_to_seed : area of coral to be seeded at each time step in km^2
+- ts : time step at which seeding and/or shading is being undertaken.
+- n_reps : number of dhw/wave replicates to use in site selection.
+
+# Returns
+- ranks: n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
+    containing ranks for single scenario.
+"""
+function site_selection(criteria::DataFrameRow{DataFrame,DataFrames.Index}, mcda_vars::DMCDA_vars, w_scens::NamedArray, dhw_scens::NamedArray, sumcover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
+
+    # Weights for connectivity , waves (ww), high cover (whc) and low
+    mcda_vars.wtwaves = criteria.wave_stress # weight of wave damage in MCDA
+    mcda_vars.wtheat = criteria.heat_stress # weight of heat damage in MCDA
+    mcda_vars.wtconshade = criteria.shade_connectivity # weight of connectivity for shading in MCDA
+    mcda_vars.wtinconnseed = criteria.in_seed_connectivity # weight of connectivity for seeding in MCDA
+    mcda_vars.wtoutconnseed = criteria.out_seed_connectivity # weight of connectivity for seeding in MCDA
+    mcda_vars.wthicover = criteria.coral_cover_high # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
+    mcda_vars.wtlocover = criteria.coral_cover_low # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
+    mcda_vars.wtpredecseed = criteria.seed_priority # weight for the importance of seeding sites that are predecessors of priority reefs
+    mcda_vars.wtpredecshade = criteria.shade_priority # weight for the importance of shading sites that are predecessors of priority reefs
+    mcda_vars.wtzonesseed = criteria.zone_seed # weight for the importance of seeding sites that are predecessors of priority reefs
+    mcda_vars.wtzonesshade = criteria.zone_shade # weight for the importance of shading sites that are predecessors of priority reefs
+
+    nsites = length(mcda_vars.site_ids)
+    ranks = zeros(n_reps, nsites, 3)
+    # site_id, seeding rank, shading rank
+    rankingsin = [mcda_vars.site_ids zeros(Int64, (nsites, 1)) zeros(Int64, (nsites, 1))]
+    prefseedsites = zeros(Int64, (1, mcda_vars.nsiteint))
+    prefshadesites = zeros(Int64, (1, mcda_vars.nsiteint))
+
+    mcda_vars.sumcover .= sumcover
+    mcda_vars.min_area = criteria.coral_cover_tol .* area_to_seed
+    mcda_vars.risktol = criteria.deployed_coral_risk_tol
+    mcda_vars.min_dist = criteria.dist_thresh
+    mcda_vars.top_n = criteria.top_n
+
+    for i = 1:n_reps
+        mcda_vars.heatstressprob = vec(dhw_scens[ts, :, i])
+        mcda_vars.damprob = vec(w_scens[ts, :, i])
+        (_, _, rankings) = guided_site_selection(mcda_vars, criteria.guided, true, true, prefseedsites, prefshadesites, rankingsin)
+        ranks[i, :, :] = rankings
+    end
+    return ranks
+end
+
+
 
 """
     unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)
