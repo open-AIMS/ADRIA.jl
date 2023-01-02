@@ -755,7 +755,7 @@ function site_selection_scens(domain::Domain, criteria::DataFrame, depth::DataFr
 
     ranks_store = Dict()
     for (cover_ind, scen_criteria) in enumerate(eachrow(criteria))
-        sumcover = sum(cover[cover_ind, :, :], dims=1) ./ 100
+        sumcover = sum(cover[cover_ind, :, :], dims=1)
         ranks_store["scen_$cover_ind"] = site_selection(scen_criteria, mcda_vars, w_scens, dhw_scens, sumcover, area_to_seed, ts, n_reps)
     end
     return ranks_store
