@@ -14,5 +14,5 @@ nreps = 30 # number of dhw and wave replicates you want to use
 ts = 5 # time step to perform site selection at
 depth = DataFrame(depth_min=5, depth_offset=10)
 
-cover = 0.1 .* ones(sum(criteria_df.guided .> 0), 36, size(ex_domain.site_data, 1)) # cover has size scenarios * species * sites
+cover = 0.05 .* ones(sum(criteria_df.guided .> 0), 36, size(ex_domain.site_data, 1)) # cover has size scenarios * species * sites
 ranks = site_selection_scens(ex_domain, criteria_df[criteria_df.guided.>0, :], depth, cover, area_to_seed, ts, n_reps)
