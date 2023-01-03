@@ -730,7 +730,7 @@ function run_site_selection(domain::Domain, criteria::DataFrame, depth::DataFram
         zeros(1, nsites),
         site_d.depth_med,
         zeros(1, nsites),
-        site_d.k / 100.0,
+        site_k(domain),
         area,
         [],
         [],
