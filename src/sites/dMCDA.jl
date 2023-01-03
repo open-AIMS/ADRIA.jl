@@ -37,6 +37,53 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wtzonesshade # ::F
 end
 
+function dmcda_vars(domain::Domain, criteria::DataFrameRow, sumcover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+    # Site Data
+    site_d = domain.site_data
+    nsites = size(site_d, 1)
+    area = site_area(domain)
+
+    # Filter out sites outside of desired depth range
+    max_depth = criteria.depth_min + criteria.depth_offset
+    depth_criteria = (site_d.depth_med .<= max_depth) .& (site_d.depth_med .>= criteria.depth_min)
+    depth_priority = collect(1:size(site_d, 1))[depth_criteria]
+
+    mcda_vars = DMCDA_vars(
+        depth_priority,
+        domain.sim_constants.nsiteint,
+        domain.sim_constants.prioritysites,
+        domain.sim_constants.priorityzones,
+        site_d.zone_type,
+        domain.strongpred,
+        domain.in_conn,
+        domain.out_conn,
+        zeros(1, nsites),
+        zeros(1, nsites),
+        site_d.depth_med,
+        sumcover,
+        site_k(domain),
+        area,
+        criteria.coral_cover_tol .* area_to_seed,
+        criteria.deployed_coral_risk_tol,
+        domain.site_distances,
+        criteria.dist_thresh,
+        criteria.top_n,
+        criteria.in_seed_connectivity,
+        criteria.out_seed_connectivity,
+        criteria.shade_connectivity,
+        criteria.wave_stress,
+        criteria.heat_stress,
+        criteria.coral_cover_high,
+        criteria.coral_cover_low,
+        criteria.seed_priority,
+        criteria.shade_priority,
+        criteria.zone_seed,
+        criteria.zone_shade
+    )
+
+    return mcda_vars
+end
+
 """
     mcda_normalize(x::Vector)::Vector
 
