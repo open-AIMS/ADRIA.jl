@@ -57,8 +57,8 @@ function DMCDA_vars(domain::Domain, criteria::NamedVector, site_ids::AbstractArr
         domain.strongpred,
         domain.in_conn,
         domain.out_conn,
-        zeros(1, nsites),
-        zeros(1, nsites),
+        zeros(nsites, 1),
+        zeros(nsites, 1),
         site_d.depth_med,
         sumcover,
         site_k(domain),
@@ -815,8 +815,8 @@ function site_selection(domain::Domain, criteria::DataFrameRow, w_scens::NamedAr
     prefseedsites = zeros(Int64, (1, mcda_vars.nsiteint))
     prefshadesites = zeros(Int64, (1, mcda_vars.nsiteint))
 
-    mcda_vars.heatstressprob .= dhw_scens'
-    mcda_vars.damprob .= w_scens'
+    mcda_vars.heatstressprob .= dhw_scens
+    mcda_vars.damprob .= w_scens
     (_, _, ranks) = guided_site_selection(mcda_vars, criteria.guided, true, true, prefseedsites, prefshadesites, rankingsin)
 
     return ranks
