@@ -753,58 +753,19 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - ranks_store : number of scenarios * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(domain::Domain, criteria::DataFrame, depth::DataFrame, cover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
-    # Site Data
-    site_d = domain.site_data
-    nsites = size(site_d, 1)
-    area = site_area(domain)
+function run_site_selection(domain::Domain, criteria::DataFrame, sumcover::AbstractArray, area_to_seed::Float64, ts::Int64)
 
-    # Filter out sites outside of desired depth range
-    max_depth = depth.depth_min + depth.depth_offset
-    depth_criteria = (site_d.depth_med .<= max_depth) .& (site_d.depth_med .>= depth.depth_min)
-    depth_priority = collect(1:size(site_d, 1))[depth_criteria]
-
-    mcda_vars = DMCDA_vars(
-        depth_priority,
-        domain.sim_constants.nsiteint,
-        domain.sim_constants.prioritysites,
-        domain.sim_constants.priorityzones,
-        site_d.zone_type,
-        domain.strongpred,
-        domain.in_conn,
-        domain.out_conn,
-        zeros(1, nsites),
-        zeros(1, nsites),
-        site_d.depth_med,
-        zeros(1, nsites),
-        site_k(domain),
-        area,
-        [],
-        [],
-        domain.site_distances,
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        []
-    )
-
-    w_scens = domain.wave_scens
+    ranks_store = NamedArray(zeros(size(criteria, 1), domain.sim_constants.nsiteint, 3))
+    idx_rows = ["scen_$i" for i = 1:size(criteria, 1)]
+    setnames!(ranks_store, idx_rows, 1)
     dhw_scens = domain.dhw_scens
+    wave_scens = domain.wave_scens
 
-    ranks_store = Dict()
     for (cover_ind, scen_criteria) in enumerate(eachrow(criteria))
-        sumcover = sum(cover[cover_ind, :, :], dims=1)
-        ranks_store["scen_$cover_ind"] = site_selection(scen_criteria, mcda_vars, w_scens, dhw_scens, sumcover, area_to_seed, ts, n_reps)
+        ranks_temp = site_selection(domain, scen_criteria, wave_scens[ts, :, criteria.wave_scenario[cover_ind]], dhw_scens[ts, :, criteria.wave_scenario[cover_ind]], sumcover[cover_ind, :, :], area_to_seed)
+        ranks_store[cover_ind, 1:size(ranks_temp, 1), :] = ranks_temp
     end
+
     return ranks_store
 end
 
