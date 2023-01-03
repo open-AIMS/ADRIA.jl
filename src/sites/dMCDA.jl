@@ -739,18 +739,18 @@ function vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},
 end
 
 """
-    site_selection_scens(domain::Domain, criteria::DataFrame, depth::DataFrame, cover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
+    site_selection_scens(domain::Domain, criteria::DataFrame, sumcover::AbstractArray, area_to_seed::Float64, ts::Int64)
 
+Perform site selection for a given domain for multiple scenarios defined in a dataframe.
 # Arguments
 - domain : ADRIA Domain type, indicating geographical domain to perform site selection over.
 - criteria : DataFrame of criteria weightings and thresholds (can be a DataFrame loaded from an ADRIA scenario csv).
-- cover : array of size (number of scenarios * species * number of sites) containing the coral cover for each site selection scenario.
+- sumcover : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
 - area_to_seed : area of coral to be seeded at each time step in km^2
 - ts : time step at which seeding and/or shading is being undertaken.
-- n_reps : number of dhw/wave replicates to use in site selection.
 
 # Returns
-- ranks_store : dictionary where each entry is n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
+- ranks_store : number of scenarios * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for each scenario run.
 """
 function run_site_selection(domain::Domain, criteria::DataFrame, depth::DataFrame, cover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
