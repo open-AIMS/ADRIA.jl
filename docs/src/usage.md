@@ -11,10 +11,17 @@ Julia may be installed through the package manager or from the github repository
 ```julia-repl
 julia> ]add ADRIA
 
-# OR
+# OR, to install the latest development version:
 
 julia> ]add https://github.com/open-AIMS/ADRIA.jl.git
 ```
+
+Similarly, ADRIA can be updated as new releases are made:
+
+```julia-repl
+julia> ]up ADRIA
+```
+
 
 Create a directory for your project. 
 
