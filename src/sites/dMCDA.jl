@@ -809,17 +809,17 @@ function run_site_selection(domain::Domain, criteria::DataFrame, depth::DataFram
 end
 
 """
-    site_selection(criteria::DataFrameRow{DataFrame,DataFrames.Index}, mcda_vars::DMCDA_vars, w_scens::NamedArray, dhw_scens::NamedArray, sumcover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
+    site_selection(domain::Domain, criteria::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::NamedArray, dhw_scens::NamedArray, sumcover::AbstractArray, area_to_seed::Float64)
+
+Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
 
 # Arguments
 - criteria : contains criteria weightings and thresholds (can be a scenario DataFrame) for a single scenario.
 - mcda_vars : site selection criteria and weightings structure
-- w_scens : wave scenarios for RCP being run.
-- dhw_scens : dhw scenarios for RCP being run.
+- w_scens : array of length nsites containing wave scenario.
+- dhw_scens : array of length nsites containing dhw scenario.
 - sumcover : summed cover (over species) for single scenario being run, for each site.
 - area_to_seed : area of coral to be seeded at each time step in km^2
-- ts : time step at which seeding and/or shading is being undertaken.
-- n_reps : number of dhw/wave replicates to use in site selection.
 
 # Returns
 - ranks: n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
