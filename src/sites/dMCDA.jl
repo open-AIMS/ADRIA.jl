@@ -706,7 +706,7 @@ end
 - ranks_store : dictionary where each entry is n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for each scenario run.
 """
-function site_selection_scens(domain::Domain, criteria::DataFrame, depth::DataFrame, cover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
+function run_site_selection(domain::Domain, criteria::DataFrame, depth::DataFrame, cover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
     # Site Data
     site_d = domain.site_data
     nsites = size(site_d, 1)
