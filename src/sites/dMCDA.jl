@@ -786,40 +786,20 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
 - ranks: n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
-function site_selection(criteria::DataFrameRow{DataFrame,DataFrames.Index}, mcda_vars::DMCDA_vars, w_scens::NamedArray, dhw_scens::NamedArray, sumcover::AbstractArray, area_to_seed::Float64, ts::Int, n_reps::Int)
+function site_selection(domain::Domain, criteria::DataFrameRow, w_scens::NamedArray, dhw_scens::NamedArray, sumcover::AbstractArray, area_to_seed::Float64)
 
-    # Weights for connectivity , waves (ww), high cover (whc) and low
-    mcda_vars.wtwaves = criteria.wave_stress # weight of wave damage in MCDA
-    mcda_vars.wtheat = criteria.heat_stress # weight of heat damage in MCDA
-    mcda_vars.wtconshade = criteria.shade_connectivity # weight of connectivity for shading in MCDA
-    mcda_vars.wtinconnseed = criteria.in_seed_connectivity # weight of connectivity for seeding in MCDA
-    mcda_vars.wtoutconnseed = criteria.out_seed_connectivity # weight of connectivity for seeding in MCDA
-    mcda_vars.wthicover = criteria.coral_cover_high # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
-    mcda_vars.wtlocover = criteria.coral_cover_low # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
-    mcda_vars.wtpredecseed = criteria.seed_priority # weight for the importance of seeding sites that are predecessors of priority reefs
-    mcda_vars.wtpredecshade = criteria.shade_priority # weight for the importance of shading sites that are predecessors of priority reefs
-    mcda_vars.wtzonesseed = criteria.zone_seed # weight for the importance of seeding sites that are predecessors of priority reefs
-    mcda_vars.wtzonesshade = criteria.zone_shade # weight for the importance of shading sites that are predecessors of priority reefs
+    mcda_vars = dmcda_vars(domain, criteria, sumcover, area_to_seed)
 
     nsites = length(mcda_vars.site_ids)
-    ranks = zeros(n_reps, nsites, 3)
     # site_id, seeding rank, shading rank
     rankingsin = [mcda_vars.site_ids zeros(Int64, (nsites, 1)) zeros(Int64, (nsites, 1))]
     prefseedsites = zeros(Int64, (1, mcda_vars.nsiteint))
     prefshadesites = zeros(Int64, (1, mcda_vars.nsiteint))
 
-    mcda_vars.sumcover .= sumcover
-    mcda_vars.min_area = criteria.coral_cover_tol .* area_to_seed
-    mcda_vars.risktol = criteria.deployed_coral_risk_tol
-    mcda_vars.min_dist = criteria.dist_thresh
-    mcda_vars.top_n = criteria.top_n
+    mcda_vars.heatstressprob .= dhw_scens'
+    mcda_vars.damprob .= w_scens'
+    (_, _, ranks) = guided_site_selection(mcda_vars, criteria.guided, true, true, prefseedsites, prefshadesites, rankingsin)
 
-    for i = 1:n_reps
-        mcda_vars.heatstressprob = vec(dhw_scens[ts, :, i])
-        mcda_vars.damprob = vec(w_scens[ts, :, i])
-        (_, _, rankings) = guided_site_selection(mcda_vars, criteria.guided, true, true, prefseedsites, prefshadesites, rankingsin)
-        ranks[i, :, :] = rankings
-    end
     return ranks
 end
 
