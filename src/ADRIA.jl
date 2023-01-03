@@ -56,7 +56,9 @@ include("analysis/sensitivity.jl")
 function __init__()
     @require GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a" begin
         @require GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6" begin
-            @require DecisionTree = "7806a523-6efd-50cb-b5f6-3fa6f1930dbb" include("../Aviz/src/Aviz.jl")
+            @require GeoInterfaces = "cf35fbd7-0cd7-5166-be24-54bfbe79505f" begin
+                @require DecisionTree = "7806a523-6efd-50cb-b5f6-3fa6f1930dbb" include("../Aviz/src/Aviz.jl")
+            end
         end
     end
 end
