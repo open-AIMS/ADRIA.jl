@@ -566,7 +566,6 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
-            Main.@infiltrate
             mcda_vars.heatstressprob .= dhw_t
             mcda_vars.damprob .= sum(Sw_t[tstep, :, :], dims=1)'
         end
