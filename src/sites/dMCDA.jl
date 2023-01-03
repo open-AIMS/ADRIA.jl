@@ -696,7 +696,7 @@ end
 
 # Arguments
 - domain : ADRIA Domain type, indicating geographical domain to perform site selection over.
-- criteria : DataFrame of criteria weightings and thresholds (can be a scenario DataFrame).
+- criteria : DataFrame of criteria weightings and thresholds (can be a DataFrame loaded from an ADRIA scenario csv).
 - cover : array of size (number of scenarios * species * number of sites) containing the coral cover for each site selection scenario.
 - area_to_seed : area of coral to be seeded at each time step in km^2
 - ts : time step at which seeding and/or shading is being undertaken.
