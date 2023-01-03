@@ -34,6 +34,9 @@ julia> ]activate .
 
 Development scripts/functions can then be worked on in the `sandbox` folder without these polluting the ADRIA project itself.
 
+We recommend [VS Code](https://code.visualstudio.com/) with its Julia extension when developing ADRIA.
+We also recommend the built-in Julia REPL within VS Code be used (see the notes below).
+
 
 ## Testing
 
@@ -57,8 +60,10 @@ See the documentation [here](https://github.com/open-AIMS/ADRIA.jl/tree/main/bui
 Note: compilation time to create a sysimage can be upwards of 30mins, and has to be repeated if the included packages are to be updated.
 
 !!! note "VS Code"
-    VS Code now has (experimental support) for generating a custom sysimage for its REPL.
-    The same caveats as above apply (it has to be recreated if the project specification has changed for any reason).
+    VS Code now has (experimental) support for generating a custom sysimage for its REPL.
+    The same caveats as above apply: the sysimage has to be recreated if the project specification has changed for any reason.
+
+    It is highly recommended that this sysimage be built and used.
 
     See: [This guide](https://www.julia-vscode.org/docs/dev/userguide/compilesysimage/)
 
