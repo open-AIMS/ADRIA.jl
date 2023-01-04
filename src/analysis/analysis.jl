@@ -20,6 +20,7 @@ end
 
 
 include("pareto.jl")
+include("sensitivity.jl")
 
 
 end
