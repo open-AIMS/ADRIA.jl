@@ -24,7 +24,7 @@ end
 
 # Arguments
 - X : Model inputs
-- Y : Outputs
+- y : Outputs
 - S : Number of slides (default: 10)
 
 # Returns
@@ -41,7 +41,7 @@ NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
    Combining variance- and distribution-based global sensitivity analysis
    https://github.com/baronig/GSA-cvd
 """
-function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}, dimnames::Vector{String}; S::Int64=10)::NamedArray
+function pawn(X::AbstractArray{<:Real}, y::Vector{<:Real}, dimnames::Vector{String}; S::Int64=10)::NamedArray
     N, D = size(X)
     step = 1 / S
     seq = 0:step:1
@@ -56,13 +56,13 @@ function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}, dimnames::Vector{Stri
             X_di .= X[:, d_i]
             X_q .= quantile(X_di, seq)
             for s in 2:S
-                Y_sel = Y[(X_q[s-1].<X_di).&(X_di.<=X_q[s])]
+                Y_sel = y[(X_q[s-1].<X_di).&(X_di.<=X_q[s])]
                 if length(Y_sel) == 0
                     pawn_t[s, d_i] = 0.0
                     continue  # no available samples
                 end
 
-                pawn_t[s, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, Y))
+                pawn_t[s, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, y))
             end
 
             p_ind = pawn_t[:, d_i]
@@ -77,11 +77,11 @@ function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}, dimnames::Vector{Stri
 
     return NamedArray(results, (dimnames, [:min, :mean, :median, :max, :std, :cv]))
 end
-function pawn(X::DataFrame, Y::Vector{<:Real}; S::Int64=10)::NamedArray
-    return pawn(Matrix(X), Y, names(X); S=S)
+function pawn(X::DataFrame, y::Vector{<:Real}; S::Int64=10)::NamedArray
+    return pawn(Matrix(X), y, names(X); S=S)
 end
-function pawn(X::NamedArray, Y::Vector{<:Real}; S::Int64=10)::NamedArray
-    return pawn(X, Y, names(X, 2); S=S)
+function pawn(X::NamedArray, y::Vector{<:Real}; S::Int64=10)::NamedArray
+    return pawn(X, y, names(X, 2); S=S)
 end
 
 """
@@ -163,6 +163,93 @@ function rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedArray
     end
 
     return r_s
+end
+
+
+"""
+    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedArray
+
+Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
+
+Produces a matrix indicating the range of (normalized) outcomes across factor space for
+each dimension (the model inputs). This is similar to a Regional Sensitivity Analysis,
+except that the model outputs are examined directly as opposed to a measure of sensitivity.
+
+Note:
+- `y` is normalized on a per-column basis prior to the analysis
+- Empty areas of factor space (those that do not have any desired outcomes)
+  will be assigned `NaN`
+
+# Arguments
+- `X` : scenario specification
+- `y` : Vector or Matrix of outcomes corresponding to scenarios in `X`
+- `rule` : a callable defining a "desirable" scenario outcome
+- `target_factors` : list of factors of interest to perform analyses on
+- `S` : number of slices of factor space. Higher values equate to finer granularity
+- `n_boot` : number of bootstraps (default: 100)
+- `conf` : confidence interval (default: 0.95)
+
+# Returns
+3-dimensional NamedMatrix, of S ⋅ D ⋅ 3, where:
+- \$S\$ is the slices,
+- \$D\$ is the number of dimensions, with
+- boostrapped mean (dim 1) and the lower/upper 95% confidence interval (dims 2 and 3).
+
+# Examples
+```julia
+# Factors of interest
+foi = [:SRM, :fogging, :a_adapt]
+
+# Find scenarios where all metrics are above their median
+rule = y -> all(y .> 0.5)
+
+# Map input values where to their outcomes
+ADRIA.sensitivity.outcome_map(X, y, rule, foi)
+```
+"""
+function outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedArray
+    step_size = 1 / S
+    steps = collect(0.0:step_size:1.0)
+
+    p_table = NamedArray(fill(NaN, length(steps) - 1, length(target_factors), 3))
+    setnames!(p_table, ["$(round(i, digits=2))" for i in steps[2:end]], 1)
+    setnames!(p_table, String.(target_factors), 2)
+    setnames!(p_table, ["mean", "lower", "upper"], 3)
+    setdimnames!(p_table, [:bins, :factors, :CI])
+
+    # Normalize each column in y
+    y = normalize(y)
+
+    all_p_rule = findall(rule, eachrow(y))
+    num_p_rule = length(all_p_rule)
+    if num_p_rule == 0
+        @info "Empty result set"
+        return p_table
+    end
+
+    n_scens = size(X, 1)
+    behave = zeros(Bool, n_scens)
+    behave[all_p_rule] .= true
+
+    X_q = zeros(S + 1)
+    for (j, fact_t) in enumerate(target_factors)
+        X_q .= quantile(X[:, fact_t], steps)
+        for (i, s) in enumerate(X_q[1:end-1])
+            b = (X_q[i] .< X[:, fact_t]) .& (X[:, fact_t] .<= X_q[i+1]) .& behave
+            if count(b) == 0
+                continue
+            end
+
+            bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
+            ci = confint(bs, PercentileConfInt(conf))[1]
+
+            p_table[i, j, 1] = ci[1]
+            p_table[i, j, 2] = ci[2]
+            p_table[i, j, 3] = ci[3]
+        end
+    end
+
+    return p_table
 end
 
 end
