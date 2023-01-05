@@ -6,14 +6,20 @@ import ADRIA: ResultSet
 
 
 """
-    normalize(data::Matrix)::Matrix
+    normalize(data::AbstractArray)::AbstractArray
+    normalize(data::Vector)::Vector
 
-Normalize a matrix so that the data is ∈ [0, 1] relative to values in each column.
+Normalize a matrix (∈ [0, 1]) on a per-column basis.
 """
-function normalize(data::Matrix)::Matrix
-    limits = extrema.(eachcol(data))
+function normalize(data::AbstractMatrix)::AbstractMatrix
+    return hcat(normalize.(eachcol(data))...)
+end
+function normalize(data::AbstractVector)::AbstractVector
+    limits = extrema(data)
+    scaled = let (mi, ma) = limits
+        (data .- mi) ./ (ma - mi)
+    end
 
-    scaled = hcat([(d .- mi) ./ (ma - mi) for (d, (mi, ma)) in zip(eachcol(data), limits)]...)
     replace!(scaled, NaN => 0.0)
     return scaled
 end
