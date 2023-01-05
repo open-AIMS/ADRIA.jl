@@ -20,15 +20,26 @@ end
 
 
 """
-    Calculates the PAWN sensitivity index.
+    pawn(X::AbstractArray{<:Real}, y::Vector{<:Real}, dimnames::Vector{String}; S::Int64=10)::NamedArray
+
+Calculates the PAWN sensitivity index.
+
+The PAWN method (by Pianosi and Wagener) is a moment-independent approach to Global Sensitivity Analysis.
+Outputs are characterized by their Cumulative Distribution Function (CDF), quantifying the variation in
+the output distribution after conditioning an input over "slices" (\$S\$) - the conditioning intervals.
+If both distributions coincide at all slices (i.e., the distributions are similar or identical), then
+the factor is deemed non-influential.
+
+This implementation applies the Kolmogorov-Smirnov test as the distance measure and returns summary
+statistics (min, mean, median, max, std, and cv) over the slices.
 
 # Arguments
-- X : Model inputs
-- y : Outputs
-- S : Number of slides (default: 10)
+- `X` : Model inputs
+- `y` : Model outputs
+- `S` : Number of slides (default: 10)
 
 # Returns
-NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
+NamedArray, of min, mean, median, max, std, and cv summary statistics.
 
 # References
 1. Pianosi, F., Wagener, T., 2018.
@@ -138,7 +149,8 @@ Regional Sensitivity Analysis is a Monte Carlo Filtering approach which aims to
 identify which (group of) factors drive model outputs within or outside of a specified bound.
 Outputs which fall inside the bounds are regarded as "behavioral", whereas those outside
 are "non-behavioral". The distribution of behavioral/non-behavioral subsets are compared for each factor.
-If the subsets are not similar, then the factor is influential.
+If the subsets are not similar, then the factor is influential. The sensitivity index is simply the
+maximum distance between the two distributions, with larger values indicating greater sensitivity.
 
 The implemented approach slices factor space into \$S\$ bins and iteratively assesses
 behavioral and non-behavioral subsets with the non-parametric \$k\$-sample Anderson-Darling test.
@@ -156,11 +168,11 @@ Increasing the value of \$S\$ increases the granularity of the analysis.
 - `S` : number of bins to slice factor space into (default: 20)
 
 # Returns
-NamedArray, [factor names, upper bound of bins]
+NamedArray, [bin values, factors]
 
 # Examples
 ```julia
-ADRIA.sensitivity.rsa(X, y)
+ADRIA.sensitivity.rsa(X, y; S=20)
 ```
 
 # References
@@ -235,7 +247,7 @@ Note:
 - `conf` : confidence interval (default: 0.95)
 
 # Returns
-3-dimensional NamedMatrix, of S ⋅ D ⋅ 3, where:
+3-dimensional NamedMatrix, of shape \$S\$ ⋅ \$D\$ ⋅ 3, where:
 - \$S\$ is the slices,
 - \$D\$ is the number of dimensions, with
 - boostrapped mean (dim 1) and the lower/upper 95% confidence interval (dims 2 and 3).
@@ -249,7 +261,7 @@ foi = [:SRM, :fogging, :a_adapt]
 rule = y -> all(y .> 0.5)
 
 # Map input values where to their outcomes
-ADRIA.sensitivity.outcome_map(X, y, rule, foi)
+ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 ```
 """
 function outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedArray
