@@ -7,7 +7,7 @@
 3. Submit PR from development branch into `main` and request code review/approval
 4. Once PR is merged into main, go to the [releases page](https://github.com/open-AIMS/ADRIA.jl/releases) and draft a new release
 5. Under "choose a tag" create a new tag "on publish"  
-   Note version numbers should follow Semantic Versioning: https://semver.org/
+   Note version numbers should follow [Semantic Versioning](https://semver.org/)
 6. Click the "Generate release notes" button (top-right of textbox).  
    Under "Whats new" add a short description of the major changes.  
    Explicitly note any major breaking changes (i.e., anything that results obtained with previous versions of ADRIA incompatible)
@@ -43,7 +43,7 @@ Deploying a Development Release follows the same steps as "Public" releases, exc
 
 1. Add "-dev.x" to the version number.  
    e.g., v1.2.3-dev.1; v1.2.3-dev.2 for the second development release, etc.
-2. Untick the "Set as the latest release" option and tick the "Set as a pre-release" option.
+2. Untick "Set as the latest release" and tick the "Set as a pre-release" option.
 
 
 ## Release Candidates
@@ -55,5 +55,5 @@ Deploying a Release Candidate follows the same steps as "Public" releases, excep
 
 1. Add "-rc.x" to the version number.  
    e.g., v1.2.3-rc.1; v1.2.3-rc.2 for the second release candidate, etc.
-2. Untick the "Set as the latest release" option and tick the "Set as a pre-release" option.
+2. Untick "Set as the latest release" and tick the "Set as a pre-release" option.
 

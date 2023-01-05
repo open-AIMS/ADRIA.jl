@@ -32,7 +32,7 @@ julia> ]activate .
 # Press ctrl+c to exit the package manager
 ```
 
-Development scripts/functions can then be worked on in the `sandbox` folder without these polluting the ADRIA project itself.
+Development scripts/functions can then be worked on in the `sandbox` folder, and its sub-folders, without these polluting the ADRIA project itself.
 
 We recommend [VS Code](https://code.visualstudio.com/) with its Julia extension when developing ADRIA.
 We also recommend the built-in Julia REPL within VS Code be used (see the notes below).
