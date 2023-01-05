@@ -1,7 +1,7 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 authors = ["Takuya Iwanaga", "Rose Crocker", "Ken Anthony"]
-version = "0.4.3"
+version = "0.4.4"
 
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
@@ -85,6 +85,7 @@ OnlineStats = "1.5"
 PkgVersion = "0.2, 0.3"
 ProgressMeter = "1"
 RelocatableFolders = "1"
+Requires = "1"
 SciMLBase = "1"
 Setfield = "0.8, 1"
 SnoopPrecompile = "1"

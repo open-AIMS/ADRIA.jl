@@ -11,6 +11,7 @@ makedocs(sitename="ADRIA Documentation",
     pages=[
         "index.md",
         "synopsis.md",
+        "usage.md",
         "dMCDA.md",
         # "Examples" => [
         #     "Usage" => [
@@ -31,5 +32,5 @@ deploydocs(
     repo="github.com/open-AIMS/ADRIA.jl.git",
     devbranch="main",
     target="build",
-    push_preview=true
+    push_preview=false
 )
