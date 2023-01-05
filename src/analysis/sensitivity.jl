@@ -85,6 +85,51 @@ function pawn(X::NamedArray, y::Vector{<:Real}; S::Int64=10)::NamedArray
 end
 
 """
+    tsa(X::DataFrame, y::AbstractMatrix)::NamedArray
+
+Perform Temporal (or time-varying) Sensitivity Analysis using the PAWN sensitivity index.
+
+The sensitivity index value for time \$t\$ is inclusive of all time steps prior to \$t\$.
+Alternate approaches use a moving window, or only data for time \$t\$.
+
+# Arguments
+- `X` : Scenario specification
+- `y` : scenario outcomes over time
+
+# Returns
+NamedArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
+- \$D\$ is the number of dimensions/factors
+- 6, corresponds to the min, mean, median, max, std, and cv of the PAWN indices
+- \$T\$, the number of time steps
+
+# Examples
+```julia
+rs = ADRIA.load_results("a ResultSet of interest")
+
+# Get scenario outcomes over time (shape: `time ⋅ scenarios`)
+y_tac = ADRIA.metrics.scenario_total_cover(rs)
+
+# Calculate sensitivity of outcome to factors for each time step
+ADRIA.sensitivity.tsa(rs.inputs, y_tac)
+```
+"""
+function tsa(X::DataFrame, y::AbstractMatrix)::NamedArray
+    t_pawn_idx = NamedArray(
+        zeros(ncol(X), 6, size(y, 1)),
+        (names(X), ["min", "mean", "median", "max", "std", "cv"], string.(1:size(y, 1))),
+        ("factors", "pawn", "timesteps")
+    )
+
+    for t in axes(y, 1)
+        t_pawn_idx[:, :, t] .= normalize(
+            pawn(X, vec(mean(y[1:t, :], dims=1)))
+        )
+    end
+
+    return t_pawn_idx
+end
+
+"""
     rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedArray
 
 Perform Regional Sensitivity Analysis.
