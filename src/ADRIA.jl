@@ -35,7 +35,6 @@ include("ecosystem/const_params.jl")
 include("io/inputs.jl")
 include("Domain.jl")
 
-
 include("sites/connectivity.jl")
 include("sites/dMCDA.jl")
 
@@ -46,12 +45,12 @@ include("io/result_io.jl")
 include("io/result_post_processing.jl")
 include("io/sampling.jl")
 include("metrics/metrics.jl")
-include("metrics/sensitivity.jl")
 include("metrics/performance.jl")
 
 include("scenario.jl")
 include("optimization.jl")
 include("analysis/analysis.jl")
+include("analysis/sensitivity.jl")
 
 
 function __init__()
@@ -61,8 +60,6 @@ function __init__()
         end
     end
 end
-
-# include("main_app.jl")
 
 
 export fecundity_scope!, bleaching_mortality!

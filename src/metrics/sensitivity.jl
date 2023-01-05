@@ -5,38 +5,6 @@ using Statistics, Distributions, HypothesisTests, NamedArrays, DataFrames
 
 
 """
-    relative_importance(x::AbstractVector{<:Real})
-    relative_importance(x::AbstractArray)
-
-Normalize metrics such that the values ∈ [0, 1].
-
-Note: If a matrix is passed in, this calculates the relative importance
-for each column.
-
-# Arguments
-- x : metric values
-
-# Returns
-Normalized values of same shape as x.
-"""
-function relative_importance(x::AbstractVector{<:Real})
-    if (maximum(x) - minimum(x)) == 0.0
-        return 0.0
-    end
-
-    return (x .- minimum(x)) ./ (maximum(x) - minimum(x))
-end
-function relative_importance(x::AbstractArray)
-    S = similar(x)
-    for idx in axes(x, 2)
-        S[:, idx] .= relative_importance(x[:, idx])
-    end
-
-    return S
-end
-
-
-"""
     ks_statistic(ks)
 
 Calculate the Kolmogorov-Smirnov test statistic.
@@ -46,7 +14,6 @@ function ks_statistic(ks)
 
     return sqrt(n) * ks.δ
 end
-
 
 """
     Calculates the PAWN sensitivity index.
