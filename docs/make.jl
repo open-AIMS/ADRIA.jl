@@ -32,5 +32,5 @@ deploydocs(
     repo="github.com/open-AIMS/ADRIA.jl.git",
     devbranch="main",
     target="build",
-    push_preview=true
+    push_preview=false
 )
