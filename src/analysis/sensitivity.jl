@@ -1,7 +1,8 @@
 module sensitivity
 
 using Logging
-using Statistics, Distributions, HypothesisTests, NamedArrays, DataFrames
+using Statistics, Distributions, HypothesisTests, Bootstrap
+using NamedArrays, DataFrames
 
 import ADRIA.analysis: normalize
 
@@ -54,8 +55,8 @@ function pawn(X::AbstractArray{<:Real}, Y::Vector{<:Real}, dimnames::Vector{Stri
         for d_i in 1:D
             X_di .= X[:, d_i]
             X_q .= quantile(X_di, seq)
-            for s in 1:S
-                Y_sel = Y[(X_di.>=X_q[s]).&(X_di.<X_q[s+1])]
+            for s in 2:S
+                Y_sel = Y[(X_q[s-1].<X_di).&(X_di.<=X_q[s])]
                 if length(Y_sel) == 0
                     pawn_t[s, d_i] = 0.0
                     continue  # no available samples
