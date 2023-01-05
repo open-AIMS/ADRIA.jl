@@ -49,8 +49,8 @@ include("metrics/performance.jl")
 
 include("scenario.jl")
 include("optimization.jl")
-include("analysis/sensitivity.jl")
 include("analysis/analysis.jl")
+include("analysis/sensitivity.jl")
 
 
 function __init__()
