@@ -85,67 +85,83 @@ function pawn(X::NamedArray, Y::Vector{<:Real}; S::Int64=10)::NamedArray
 end
 
 """
-    rsa(X::DataFrame, Y::Vector{<:Real}; S=20)
+    rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedArray
 
 Perform Regional Sensitivity Analysis.
 
 Regional Sensitivity Analysis is a Monte Carlo Filtering approach which aims to
 identify which (group of) factors drive model outputs within or outside of a specified bound.
 Outputs which fall inside the bounds are regarded as "behavioral", whereas those outside
-are "non-behavioral". These behavioral/non-behavioral subsets are compared for each factor.
+are "non-behavioral". The distribution of behavioral/non-behavioral subsets are compared for each factor.
 If the subsets are not similar, then the factor is influential.
 
-The implemented approach splits factor space into \$S\$ bins and iteratively assesses 
-behavioral and non-behavioral subsets. The non-parametric \$k\$-sample Anderson-Darling test is
-applied to compare the subsets, where larger values indicate greater dissimilarity. 
-The Anderson-Darling test places more weight on the tails compared to the 
-Kolmogorov-Smirnov test.
+The implemented approach slices factor space into \$S\$ bins and iteratively assesses
+behavioral and non-behavioral subsets with the non-parametric \$k\$-sample Anderson-Darling test.
+Larger values indicate greater dissimilarity (thus, sensitivity). The Anderson-Darling test
+places more weight on the tails compared to the Kolmogorov-Smirnov test.
 
-This RSA can indicate where in factor space model sensitivities may be.
+RSA can indicate where in factor space model sensitivities may be, and contributes to a
+Value-of-Information (VoI) analysis.
+
 Increasing the value of \$S\$ increases the granularity of the analysis.
 
+# Arguments
+- `X` : scenario specification
+- `y` : scenario outcomes
+- `S` : number of bins to slice factor space into (default: 20)
+
+# Returns
+NamedArray, [factor names, upper bound of bins]
+
+# Examples
+```julia
+ADRIA.sensitivity.rsa(X, y)
+```
+
 # References
-1. Pianosi, F., K. Beven, J. Freer, J. W. Hall, J. Rougier, D. B. Stephenson, and 
-   T. Wagener. 2016. 
-   Sensitivity analysis of environmental models: 
-   A systematic review with practical workflow. 
+1. Pianosi, F., K. Beven, J. Freer, J. W. Hall, J. Rougier, D. B. Stephenson, and
+   T. Wagener. 2016.
+   Sensitivity analysis of environmental models:
+   A systematic review with practical workflow.
    Environmental Modelling & Software 79:214-232.
    https://dx.doi.org/10.1016/j.envsoft.2016.02.008
 
-2. Saltelli, A., M. Ratto, T. Andres, F. Campolongo, J. Cariboni, D. Gatelli, 
-   M. Saisana, and S. Tarantola. 2008. 
+2. Saltelli, A., M. Ratto, T. Andres, F. Campolongo, J. Cariboni, D. Gatelli,
+   M. Saisana, and S. Tarantola. 2008.
    Global Sensitivity Analysis: The Primer.
    Wiley, West Sussex, U.K.
    https://dx.doi.org/10.1002/9780470725184
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
-function rsa2(X::DataFrame, Y::Vector{<:Real}; S=20)
-    dimnames = names(X)
+function rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedArray
+    factor_names = names(X)
     N, D = size(X)
     step = 1 / S
     seq = 0:step:1
 
     X_di = zeros(N)
     X_q = zeros(S + 1)
+    r_s = NamedArray(zeros(S, D))
 
-    r_s = zeros(D, S)
+    setnames!(r_s, string.(collect(seq)[2:end]), 1)  # label with upper bounds
+    setnames!(r_s, factor_names, 2)
+    setdimnames!(r_s, [:bins, :factors])
 
     for d_i in 1:D
         X_di .= X[:, d_i]
         X_q .= quantile(X_di, seq)
-        for s in 1:S
-            sel = (X_di.>=X_q[s]).&(X_di.<X_q[s+1])
-            Y_sel = Y[sel]
+        Threads.@threads for s in 2:S
+            sel = (X_q[s-1] .< X_di) .& (X_di .<= X_q[s])
+            Y_sel = y[sel]
             if length(Y_sel) == 0
-                r_s[d_i, s] = 0.0
+                r_s[s, d_i] = 0.0
                 continue  # no available samples
             end
 
-            r_s[d_i, s] = KSampleADTest(Y_sel, Y[Not(sel)]).A²k
+            r_s[s, d_i] = KSampleADTest(Y_sel, y[Not(sel)]).A²k
         end
     end
 
-    # TODO: Return NamedArray
     return r_s
 end
 
