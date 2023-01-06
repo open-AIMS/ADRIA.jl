@@ -9,10 +9,12 @@ import ADRIA: coral_spec, ResultSet
 abstract type Outcome end
 
 
-struct Metric{F<:Function,T<:Tuple} <: Outcome
+struct Metric{F<:Function,T<:Tuple,S<:String} <: Outcome
     func::F
     dims::T
+    unit::S
 end
+Metric(f, d) = Metric(f, d, "")
 
 
 """
@@ -38,7 +40,34 @@ end
 Get name of metric as a string.
 """
 function metric_name(m::Metric)::String
-    return replace(String(Symbol(m.func)), "_" => "", count=1)
+    return metric_name(m.func)
+end
+function metric_name(f::Function)::String
+    return join(split(String(Symbol(f))[2:end], "_"), " ")
+end
+
+"""
+    metric_label(m::Metric)::String
+    metric_label(f::Function, unit::String)
+
+Return name of metric in the format: "Title Case [Unit]", suitable for use as a label.
+
+# Example
+```julia
+m_label = metric_label(scenario_total_cover)
+# "Scenario Total Cover [m²]"
+```
+"""
+function metric_label(m::Metric)::String
+    return metric_label(m.func, m.unit)
+end
+function metric_label(f::Function, unit::String)
+    n = titlecase(metric_name(f))
+    if length(unit) > 0
+        n *= " [$unit]"
+    end
+
+    return n
 end
 
 
@@ -102,25 +131,26 @@ end
 
 
 """
-    _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
-    _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
+    relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
+    relative_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 # Arguments
 - X : Matrix of raw model results
 """
 function _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
     # sum over all species and size classes
-    return dropdims(sum(X, dims=:species), dims=:species) ./ replace(k_area, 0.0 => 1.0)'
+    return (dropdims(sum(X, dims=:species), dims=:species) ./ replace(k_area, 0.0 => 1.0)')
 end
 function _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
     denom = replace(((rs.site_max_coral_cover ./ 100.0) .* rs.site_area), 0.0 => 1.0)'
-    return rs.outcomes[:total_absolute_cover] ./ denom
+    return (rs.outcomes[:total_absolute_cover] ./ denom)
 end
+relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
 
 
 """
-    _total_absolute_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
-    _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
+    total_absolute_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
+    total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 The Total Absolute Coral Cover.
 Sum of proportional area taken up by all corals, multiplied by total site area.
@@ -135,10 +165,11 @@ end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:total_absolute_cover]
 end
+total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scenarios), "m²")
 
 
 """
-    taxa_cover(X::AbstractArray{<:Real})
+    relative_taxa_cover(X::AbstractArray{<:Real})
 
 Results grouped by taxa/species.
 
@@ -164,70 +195,71 @@ end
 function _relative_taxa_cover(rs)::AbstractArray{<:Real}
     return rs.outcomes[:relative_taxa_cover]
 end
+relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenarios))
+
+
+# """
+#     coral_cover(X::AbstractArray{<:Real})::NamedTuple
+#     coral_cover(rs::ResultSet)
+
+# Converts outputs from scenario runs to relative cover of the four different coral taxa.
+
+# # Returns
+# NamedTuple
+#     - relative_cover : relative coral cover
+#     - enhanced_tab_acr : cover of enhanced tabular acropora
+#     - unenhanced_tab_acr : area covered by unenhanced tabular acropora
+#     - enhanced_cor_acr : area covered by enhanced corymbose acropora
+#     - unenhanced_cor_acr : area covered by unenhanced corymbose acropora
+#     - tab_acr : cover of tabular acropora
+#     - cor_acr : cover of corymbose acropora
+#     - small_enc : cover of small encrusting
+#     - large_mass : cover of large massives
+#     - juveniles : area covered by juveniles
+#     - large : area covered by large mature corals
+# """
+# function coral_cover(X::AbstractArray{<:Real})::NamedTuple
+#     rc::AbstractArray{<:Real} = _relative_cover(X)  # sum over all species and size classes
+
+#     _, _, cs_p::DataFrame = coral_spec()
+
+#     screen = (x, idx) -> findall(x .== idx)
+
+#     sc1::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 1), :, :, :]
+#     sc2::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 2), :, :, :]
+#     sc3::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 3), :, :, :]
+#     sc4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 4), :, :, :]
+
+#     C1::AbstractArray{<:Real} = sc1 .+ sc2  # enhanced to unenhanced tabular Acropora
+#     C2::AbstractArray{<:Real} = sc3 .+ sc4  # enhanced to unenhanced corymbose Acropora
+#     C3::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 5), :, :, :]  # Encrusting and small massives
+#     C4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 6), :, :, :]  # Large massives
+
+#     # Cover of juvenile corals (< 5cm diameter)
+#     juv_all = _absolute_juveniles(X)
+
+#     large_corals::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 5), :, :, :] + X[:, screen(cs_p.class_id, 6), :, :, :]
+#     large_all::AbstractArray{<:Real} = dropdims(sum(large_corals, dims=2), dims=2)
+
+#     covers = (relative_cover=rc,
+#         enhanced_tab_acr=sc1,
+#         unenhanced_tab_acr=sc2,
+#         enhanced_cor_acr=sc3,
+#         unenhanced_cor_acr=sc4,
+#         tab_acr=C1, cor_acr=C2,
+#         small_enc=C3, large_mass=C4,
+#         juveniles=juv_all, large=large_all)
+
+#     return covers
+# end
+# function coral_cover(rs::ResultSet)::NamedTuple
+#     return coral_cover(rs.raw)
+# end
 
 
 """
-    coral_cover(X::AbstractArray{<:Real})::NamedTuple
-    coral_cover(rs::ResultSet)
-
-Converts outputs from scenario runs to relative cover of the four different coral taxa.
-
-# Returns
-NamedTuple
-    - relative_cover : relative coral cover
-    - enhanced_tab_acr : cover of enhanced tabular acropora
-    - unenhanced_tab_acr : area covered by unenhanced tabular acropora
-    - enhanced_cor_acr : area covered by enhanced corymbose acropora
-    - unenhanced_cor_acr : area covered by unenhanced corymbose acropora
-    - tab_acr : cover of tabular acropora
-    - cor_acr : cover of corymbose acropora
-    - small_enc : cover of small encrusting
-    - large_mass : cover of large massives
-    - juveniles : area covered by juveniles
-    - large : area covered by large mature corals
-"""
-function coral_cover(X::AbstractArray{<:Real})::NamedTuple
-    rc::AbstractArray{<:Real} = _relative_cover(X)  # sum over all species and size classes
-
-    _, _, cs_p::DataFrame = coral_spec()
-
-    screen = (x, idx) -> findall(x .== idx)
-
-    sc1::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 1), :, :, :]
-    sc2::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 2), :, :, :]
-    sc3::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 3), :, :, :]
-    sc4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 4), :, :, :]
-
-    C1::AbstractArray{<:Real} = sc1 .+ sc2  # enhanced to unenhanced tabular Acropora
-    C2::AbstractArray{<:Real} = sc3 .+ sc4  # enhanced to unenhanced corymbose Acropora
-    C3::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 5), :, :, :]  # Encrusting and small massives
-    C4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 6), :, :, :]  # Large massives
-
-    # Cover of juvenile corals (< 5cm diameter)
-    juv_all = _absolute_juveniles(X)
-
-    large_corals::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 5), :, :, :] + X[:, screen(cs_p.class_id, 6), :, :, :]
-    large_all::AbstractArray{<:Real} = dropdims(sum(large_corals, dims=2), dims=2)
-
-    covers = (relative_cover=rc,
-        enhanced_tab_acr=sc1,
-        unenhanced_tab_acr=sc2,
-        enhanced_cor_acr=sc3,
-        unenhanced_cor_acr=sc4,
-        tab_acr=C1, cor_acr=C2,
-        small_enc=C3, large_mass=C4,
-        juveniles=juv_all, large=large_all)
-
-    return covers
-end
-function coral_cover(rs::ResultSet)::NamedTuple
-    return coral_cover(rs.raw)
-end
-
-
-"""
-    _relative_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
-    _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real}
+    relative_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    relative_juveniles(rs::ResultSet)::AbstractArray{<:Real}
 
 Juvenile coral cover relative to total site area.
 """
@@ -242,13 +274,14 @@ end
 function _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:relative_juveniles]
 end
+relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios))
 
 
 """
-    _absolute_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
-    _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real}
+    absolute_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real}
 
-Juvenile coral cover in m^2.
+Juvenile coral cover in m².
 """
 function _absolute_juveniles(X::AbstractArray{<:Real}, area::AbstractVector{<:Real})::AbstractArray{<:Real}
     return _relative_juveniles(X) .* area'
@@ -256,6 +289,7 @@ end
 function _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:relative_juveniles] .* rs.site_area'
 end
+absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios), "m²")
 
 
 function _max_juvenile_density(max_juv_density=51.8)
@@ -265,9 +299,10 @@ function _max_juvenile_density(max_juv_density=51.8)
     return max_juv_density * max_size_m²
 end
 
+
 """
-    _juvenile_indicator(X::AbstractArray{<:Real})
-    _juvenile_indicator(rs::ResultSet)
+    juvenile_indicator(X::AbstractArray{<:Real})
+    juvenile_indicator(rs::ResultSet)
 
 Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretical density 
 for juveniles have been achieved.
@@ -280,11 +315,12 @@ end
 function _juvenile_indicator(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:relative_juveniles] ./ _max_juvenile_density()
 end
+juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios))
 
 
 """
-    _coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
-    _coral_evenness(rs::ResultSet)::AbstractArray{<:Real}
+    coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    coral_evenness(rs::ResultSet)::AbstractArray{<:Real}
 
 Calculates evenness across functional coral groups in ADRIA.
 Inverse Simpsons diversity indicator.
@@ -317,6 +353,7 @@ end
 function _coral_evenness(rs::ResultSet)::AbstractArray{<:Real}
     return _coral_evenness(rs.raw)
 end
+coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
 
 
 """
@@ -476,8 +513,8 @@ end
 
 
 """
-    _absolute_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})
-    _absolute_shelter_volume(rs::ResultSet)
+    absolute_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})
+    absolute_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume in volume of cubic meters.
 
@@ -530,11 +567,12 @@ end
 function _absolute_shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:absolute_shelter_volume]
 end
+absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :scenarios))
 
 
 """
-    _relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::DataFrame)
-    _relative_shelter_volume(rs::ResultSet)
+    relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::DataFrame)
+    relative_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume relative to theoretical maximum volume for
 the area covered by coral.
@@ -610,6 +648,7 @@ end
 function _relative_shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:relative_shelter_volume]
 end
+relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
 
 
 """
@@ -676,6 +715,7 @@ function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
 
     return _reef_condition_index(rc, E, SV, juv)
 end
+reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 
 include("temporal.jl")
@@ -683,19 +723,6 @@ include("site_level.jl")
 include("scenario.jl")
 include("ranks.jl")
 include("pareto.jl")
-
-
-# Wrap base metric functions with dimension metadata
-relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
-total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scenarios))
-absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :scenarios))
-relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
-coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
-absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios))
-relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios))
-juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios))
-relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenarios))
-reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 
 # """
