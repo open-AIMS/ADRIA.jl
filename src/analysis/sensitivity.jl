@@ -59,15 +59,15 @@ function pawn(X::AbstractArray{<:Real}, y::Vector{<:Real}, dimnames::Vector{Stri
 
     X_di = zeros(N)
     X_q = zeros(S + 1)
-    pawn_t = zeros(S + 1, D)
+    pawn_t = zeros(S, D)
     results = zeros(D, 6)
     # Hide warnings from HypothesisTests
     with_logger(NullLogger()) do
         for d_i in 1:D
             X_di .= X[:, d_i]
             X_q .= quantile(X_di, seq)
-            for s in 2:S
-                Y_sel = y[(X_q[s-1].<X_di).&(X_di.<=X_q[s])]
+            for s in 1:S
+                Y_sel = y[(X_q[s].<X_di).&(X_di.<=X_q[s+1])]
                 if length(Y_sel) == 0
                     pawn_t[s, d_i] = 0.0
                     continue  # no available samples
