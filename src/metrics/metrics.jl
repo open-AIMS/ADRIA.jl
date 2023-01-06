@@ -40,7 +40,34 @@ end
 Get name of metric as a string.
 """
 function metric_name(m::Metric)::String
-    return replace(String(Symbol(m.func)), "_" => "", count=1)
+    return metric_name(m.func)
+end
+function metric_name(f::Function)::String
+    return join(split(String(Symbol(f))[2:end], "_"), " ")
+end
+
+"""
+    metric_label(m::Metric)::String
+    metric_label(f::Function, unit::String)
+
+Return name of metric in the format: "Title Case [Unit]", suitable for use as a label.
+
+# Example
+```julia
+m_label = metric_label(scenario_total_cover)
+# "Scenario Total Cover [m²]"
+```
+"""
+function metric_label(m::Metric)::String
+    return metric_label(m.func, m.unit)
+end
+function metric_label(f::Function, unit::String)
+    n = titlecase(metric_name(f))
+    if length(unit) > 0
+        n *= " [$unit]"
+    end
+
+    return n
 end
 
 
