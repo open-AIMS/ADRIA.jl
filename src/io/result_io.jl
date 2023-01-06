@@ -268,11 +268,10 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             fill_value=nothing, fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, "relative_taxa_cover"), chunks=((result_dims[1], 6)..., 1),
             attrs=Dict(
-                :structure => string.((:timesteps, :taxa, :scenarios)),
+                :structure => string.(ADRIA.metrics.relative_taxa_cover.dims),
                 :unique_site_ids => unique_sites(domain)
             ),
-            compressor=compressor)
-    )
+            compressor=compressor))
     push!(met_names, :relative_taxa_cover)
 
 
