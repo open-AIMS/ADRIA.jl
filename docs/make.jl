@@ -28,6 +28,7 @@ makedocs(sitename="ADRIA Documentation",
         "Development" => [
             "development/development_setup.md",
             "development/architecture.md",
+            "development/metrics.md",
             "development/release_guide.md",
             "development/building_docs.md"],
         "API.md"
