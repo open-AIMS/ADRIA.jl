@@ -1,8 +1,10 @@
 # Development setup
 
-First, clone the repository.
+Install Julia if not already done so.
 
-Then navigate to the project folder and start Julia.
+It may be worthwhile to use the [juliaup](https://github.com/JuliaLang/juliaup) tool to ease managing Julia versions.
+
+Once installed, clone the ADRIA.jl repository, navigate to the project folder, and start Julia.
 
 ```bash
 # Start julia specifying the current directory as the project
@@ -48,6 +50,13 @@ julia> ]test
 ```
 
 
+## Code Style
+
+Follow the standard Julia [style guide](https://docs.julialang.org/en/v1/manual/style-guide/) as much as possible.
+
+In most cases, simply auto-formatting the code is enough.
+
+
 ## Notes
 
 The very first import of the ADRIA package will be very slow as it attempts to precompile common functions to reduce later start up time.
@@ -66,7 +75,6 @@ Note: compilation time to create a sysimage can be upwards of 30mins, and has to
     It is highly recommended that this sysimage be built and used.
 
     See: [This guide](https://www.julia-vscode.org/docs/dev/userguide/compilesysimage/)
-
 
 ```julia
 # Timings here were taken with Julia v1.8.1 for ADRIA v0.4.0
