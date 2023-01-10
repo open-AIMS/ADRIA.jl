@@ -1,15 +1,5 @@
-"""
-    normalize(data::Matrix)::Matrix
+import ADRIA.analysis: normalize
 
-Normalize a matrix so that the data is ∈ [0, 1] relative to values in each column.
-"""
-function normalize(data::Matrix)::Matrix
-    limits = extrema.(eachcol(data))
-
-    scaled = hcat([(d .- mi) ./ (ma - mi) for (d, (mi, ma)) in zip(eachcol(data), limits)]...)
-    replace!(scaled, NaN=>0.5)
-    return scaled
-end
 
 function pairplot!(display, outcomes::NamedTuple)
     n_outcomes = length(outcomes)
