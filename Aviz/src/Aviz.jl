@@ -3,13 +3,13 @@ module Aviz
 using Base.Iterators
 using Reexport
 
-using RelocatableFolders, FileIO, ImageMagick
+using RelocatableFolders, FileIO
 using ImageMagick
 @reexport using GLMakie, GeoMakie
 using GLMakie.GeometryBasics
 using Statistics, Distributions, ThreadsX, Random
 
-using DataFrames, Bootstrap, DecisionTree
+using DataFrames, Bootstrap  # , DecisionTree
 
 using GeoInterface
 import GeoDataFrames as GDF
@@ -30,7 +30,7 @@ include("./plotting.jl")
 include("./layout.jl")
 include("./theme.jl")
 include("./spatial.jl")
-include("./rf_analysis.jl")
+# include("./rf_analysis.jl")
 include("./analysis.jl")
 
 
