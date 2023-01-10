@@ -9,7 +9,7 @@ import ADRIA: ResultSet
     normalize(data::AbstractArray)::AbstractArray
     normalize(data::Vector)::Vector
 
-Normalize a matrix (∈ [0, 1]) on a per-column basis.
+Normalize a matrix or vector on a per-column basis (∈ [0, 1]).
 """
 function normalize(data::AbstractMatrix{T})::AbstractMatrix{T} where {T<:Real}
     return hcat(normalize.(eachcol(data))...)
