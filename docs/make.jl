@@ -6,12 +6,19 @@ using Documenter, ADRIA
 makedocs(sitename="ADRIA Documentation",
     format=Documenter.HTML(
         prettyurls=get(ENV, "CI", nothing) == "true",
-        sidebar_sitename=false
+        sidebar_sitename=false,
+        assets=["assets/favicon.png"]
     ),
     pages=[
         "index.md",
         "synopsis.md",
-        "usage.md",
+        "Usage" => [
+            "getting_started.md",
+            "domain.md",
+            "scenario_generation.md",
+            "scenario_runs.md",
+            "analysis.md",
+        ],
         "dMCDA.md",
         # "Examples" => [
         #     "Usage" => [
@@ -22,6 +29,7 @@ makedocs(sitename="ADRIA Documentation",
         "Development" => [
             "development/development_setup.md",
             "development/architecture.md",
+            "development/metrics.md",
             "development/release_guide.md",
             "development/building_docs.md"],
         "API.md"
