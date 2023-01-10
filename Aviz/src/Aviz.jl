@@ -1,9 +1,11 @@
 module Aviz
 
 using Base.Iterators
+using Reexport
 
 using RelocatableFolders, FileIO, ImageMagick
-using GLMakie, GeoMakie
+using ImageMagick
+@reexport using GLMakie, GeoMakie
 using GLMakie.GeometryBasics
 using Statistics, Distributions, ThreadsX, Random
 
