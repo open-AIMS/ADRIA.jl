@@ -7,17 +7,17 @@ makedocs(sitename="ADRIA Documentation",
     format=Documenter.HTML(
         prettyurls=get(ENV, "CI", nothing) == "true",
         sidebar_sitename=false,
-        assets=["assets/favicon.png"]
+        assets=["assets/favicon.ico"]
     ),
     pages=[
         "index.md",
         "synopsis.md",
         "Usage" => [
-            "getting_started.md",
-            "domain.md",
-            "scenario_generation.md",
-            "scenario_runs.md",
-            "analysis.md",
+            "usage/getting_started.md",
+            "usage/domain.md",
+            "usage/scenario_generation.md",
+            "usage/scenario_runs.md",
+            "usage/analysis.md",
         ],
         "dMCDA.md",
         # "Examples" => [
