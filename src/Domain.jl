@@ -553,15 +553,17 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", d::Domain)
 
-    println("Domain: $(d.name)")
-    println("Number of sites: $(nrow(d.site_data))")
+    println("""
+    Domain: $(d.name)
 
-    println("Site data file: $(d.env_layer_md.site_data_fn)")
-    println("Connectivity file: $(d.env_layer_md.connectivity_fn)")
-    println("DHW file: $(d.env_layer_md.DHW_fn)")
-    println("Wave file: $(d.env_layer_md.wave_fn)")
-    println("Timeframe: $(d.env_layer_md.timeframe[1]) - $(d.env_layer_md.timeframe[end])")
+    Number of sites: $(nrow(d.site_data))
+    Site data file: $(d.env_layer_md.site_data_fn)
+    Connectivity file: $(d.env_layer_md.connectivity_fn)
+    DHW file: $(d.env_layer_md.DHW_fn)
+    Wave file: $(d.env_layer_md.wave_fn)
+    Timeframe: $(d.env_layer_md.timeframe[1]) - $(d.env_layer_md.timeframe[end])
+    """)
 
-    println("\nEcosystem model specification")
-    show(io, mime, d.model)
+    println("\nEcosystem model specification:")
+    show(io, mime, model_spec(d)[:, [:component, :fieldname, :val, :full_bounds, :dists, :is_constant]])
 end
