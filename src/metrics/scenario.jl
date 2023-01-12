@@ -53,7 +53,7 @@ scenario_juveniles = Metric(_scenario_juveniles, (:scenario, :timesteps))
 
 Calculate the cluster-wide absolute shelter volume for each scenario.
 """
-function _scenario_asv(sv::NamedDimsArray; kwargs...)
+function _scenario_asv(sv::NamedDimsArray{<:Real}; kwargs...)
     sv_sliced = slice_results(sv; kwargs...)
     return dropdims(sum(sv_sliced, dims=:sites), dims=:sites)
 end

@@ -7,13 +7,13 @@ using Distributions
 include("growth_expanded.jl")
 
 
-function growth_rate(linear_extension::Array, diam_bin_widths::Array)::Vector{Real}
+function growth_rate(linear_extension::Array{Float64}, diam_bin_widths::Array{Float64})::Vector{Float64}
     return ((2.0 * linear_extension) ./ diam_bin_widths')'[:]
 end
 
 
 """
-    proportional_adjustment!(covers::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
+    proportional_adjustment!(covers::AbstractArray{T}, cover_tmp::AbstractArray{T}, max_cover::AbstractArray{T})::Nothing where {T<:Real}
 
 Helper method to proportionally adjust coral cover.
 Modifies arrays in-place.
@@ -23,7 +23,7 @@ Modifies arrays in-place.
 - cover_tmp : Temporary cache matrix used to hold sum over species. Avoids memory allocations
 - max_cover : Maximum possible coral cover for each site
 """
-function proportional_adjustment!(covers::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})::Nothing
+function proportional_adjustment!(covers::AbstractArray{T}, cover_tmp::AbstractArray{T}, max_cover::AbstractArray{T})::Nothing where {T<:Float64}
     # Proportionally adjust initial covers
     cover_tmp .= vec(sum(covers, dims=1))
     if any(cover_tmp .> max_cover)
@@ -234,8 +234,8 @@ fecundities across size classes.
 # Returns
 Matrix[n_classes, n_sites] : fecundity per m² of coral
 """
-function fecundity_scope!(fec_groups::AbstractArray{Float64,2}, fec_all::AbstractArray{Float64,2}, fec_params::AbstractArray{Float64},
-    Y_pstep::AbstractArray{Float64,2}, site_area::AbstractArray{Float64})::Nothing
+function fecundity_scope!(fec_groups::AbstractArray{T,2}, fec_all::AbstractArray{T,2}, fec_params::AbstractArray{T},
+    Y_pstep::AbstractArray{T,2}, site_area::AbstractArray{T})::Nothing where {T<:Float64}
     ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
     nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
 
@@ -281,8 +281,8 @@ of 0.9 inside sf(i, j) indicates that species i at site j can only produce
 # Returns
 sf : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
 """
-function stressed_fecundity(tstep::Int64, a_adapt::Vector{Float64}, n_adapt::Float64,
-    stresspast::Vector{Float64}, LPdhwcoeff::Float64, DHWmaxtot::Float64, LPDprm2::Float64, n_groups::Int64)::Matrix{Float64}
+function stressed_fecundity(tstep::Int64, a_adapt::Vector{T}, n_adapt::T,
+    stresspast::Vector{T}, LPdhwcoeff::T, DHWmaxtot::T, LPDprm2::T, n_groups::Int64)::Matrix{T} where {T<:Float64}
     ad::Vector{Float64} = @. a_adapt + tstep * n_adapt
 
     # using half of DHWmaxtot as a placeholder
@@ -342,7 +342,7 @@ end
 # Returns
 λ, coral recruitment for each coral taxa based on a Poisson distribution.
 """
-function recruitment_rate(larval_pool::AbstractArray{<:Real,2}, A::AbstractArray{<:Real}; α=2.5, β=5000.0)::AbstractArray{<:Real}
+function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T}; α=2.5, β=5000.0)::AbstractArray{T} where {T<:Float64}
     sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
     sel = sd .> 0.0
     sd[sel] .= rand.(Poisson.(sd[sel]))
@@ -364,7 +364,7 @@ end
 # Returns
 Total coral recruitment for each coral taxa and site based on a Poisson distribution.
 """
-function recruitment(larval_pool::AbstractArray{<:Real,2}, A::Matrix{<:Real}; α::T=2.5, β::S=5000.0)::Matrix{<:Real} where {T,S}
+function recruitment(larval_pool::AbstractArray{T,2}, A::Matrix{T}; α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::Matrix{T} where {T<:Float64}
     # Minimum of recruited settler density (`recruitment_rate`) and max possible settler density (α)
     # return min.(recruitment_rate(larval_pool, A; α, β), α)
     return recruitment_rate(larval_pool, A; α, β)

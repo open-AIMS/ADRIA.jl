@@ -59,7 +59,7 @@ First row is mean over time
 Second row is the std over time
 N is the number of dhw/wave scenarios.
 """
-function store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)
+function store_env_summary(data_cube::AbstractArray{<:Real}, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)
     stats = summarize_env_data(data_cube)
 
     stats_store = zcreate(Float32, (2, size(stats, 2))...;

@@ -1,3 +1,16 @@
+const COLORS::Dict{Symbol,Symbol} = Dict(
+    :RCP45 => :darkblue,
+    :RCP60 => :seagreen,
+    :RCP85 => :orangered,
+    :counterfactual => :red,
+    :unguided => :lawngreen,
+    :guided => :dodgerblue,
+    :order => :dodgerblue,
+    :topsis => :deepskyblue4,
+    :vikor => :midnightblue
+)
+
+
 function scenario_type(rs)
     inputs = rs.inputs
 

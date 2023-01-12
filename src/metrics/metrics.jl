@@ -459,7 +459,7 @@ e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, siz
 - site_area : total area of site in m²
 - k_area : habitable area of site in m² (i.e., `k` area)
 """
-function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2::Array{Float64}, max_colony_vol_m3_per_m2::Array{Float64}, site_area::Array{Float64}, k_area::Array{Float64}) where {T1}
+function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2::Array{Float64}, max_colony_vol_m3_per_m2::Array{Float64}, site_area::Array{Float64}, k_area::Array{Float64}) where {T1<:Real}
     # Calculate absolute shelter volumes first
     ASV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X)...))
     _shelter_species_loop!(X, ASV, nspecies, colony_vol_m3_per_m2, site_area)
@@ -498,7 +498,7 @@ Helper method to calculate absolute shelter volume metric across each species/si
 - site_area : area of site in m²
 - k_area : habitable area of site in m²
 """
-function _shelter_species_loop!(X::AbstractArray{T1,3}, ASV::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2, site_area) where {T1}
+function _shelter_species_loop!(X::AbstractArray{T1,3}, ASV::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2, site_area) where {T1<:Real}
     covered_area = nothing
 
     @inbounds for sp::Int64 in 1:nspecies
@@ -538,7 +538,7 @@ shelter volume (a 3D metric).
    Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
-function _absolute_shelter_volume(X::AbstractArray{<:Real,4}, site_area::Vector{<:Real}, inputs::DataFrame)::AbstractArray{<:Real}
+function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
     nspecies::Int64 = size(X, :species)
 
     # Calculate shelter volume of groups and size classes and multiply with area covered
@@ -552,7 +552,7 @@ function _absolute_shelter_volume(X::AbstractArray{<:Real,4}, site_area::Vector{
     # Sum over groups and size classes to estimate total shelter volume per site
     return dropdims(sum(ASV, dims=:species), dims=:species)
 end
-function _absolute_shelter_volume(X::AbstractArray{<:Real,3}, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{<:Real}
+function _absolute_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
 
@@ -571,7 +571,7 @@ absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, 
 
 
 """
-    relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::DataFrame)
+    relative_shelter_volume(X::AbstractArray, site_area::Vector{<:Real}, inputs::DataFrame)
     relative_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume relative to theoretical maximum volume for
@@ -606,7 +606,7 @@ maximum shelter volume possible.
    Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
-function _relative_shelter_volume(X::AbstractArray{<:Real,3}, site_area::Vector{<:Real}, k_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{<:Real}
+function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
 
@@ -623,7 +623,7 @@ function _relative_shelter_volume(X::AbstractArray{<:Real,3}, site_area::Vector{
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(X::AbstractArray{<:Real,4}, site_area::Vector{<:Real}, k_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{<:Real}
+function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
     @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
 
     nspecies::Int64 = size(X, :species)
@@ -675,7 +675,7 @@ Input dimensions: timesteps, species, sites, repeats, scenarios
 # Returns
 Dimensions: timesteps, sites, repeats, scenarios
 """
-function _reef_condition_index(rc::AbstractArray{<:Real}, E::AbstractArray{<:Real}, SV::AbstractArray{<:Real}, juveniles::AbstractArray{<:Real})::AbstractArray{<:Real}
+function _reef_condition_index(rc::AbstractArray{T}, E::AbstractArray{T}, SV::AbstractArray{T}, juveniles::AbstractArray{T})::AbstractArray{T} where {T<:Real}
     # Compare outputs against reef condition criteria provided by experts
 
     # These are median values for 7 experts. TODO: draw from distributions
