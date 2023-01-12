@@ -86,6 +86,7 @@ const COMPAT_DPKG = ["0.3.1"]
     b = redirect_stdout(f, devnull)
 
     dom = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), "45")
+
     p_df = ADRIA.param_table(dom)
     # p_df = repeat(p_df, 5)
     # p_df[:, :dhw_scenario] .= 50
@@ -98,9 +99,9 @@ const COMPAT_DPKG = ["0.3.1"]
     # run_scenario(p_df[1, :], dom)
     # run_scenario(p_df[end, :], dom)
     # delete!(ENV, "ADRIA_THRESHOLD")
-
-    # precompile(load_results, (String,))
-    # precompile(EnvLayer, (String, String, String, String, String, String, String))
+    # precompile(EnvLayer, (String, String, String, String, String, String, String, String, Any))
 end
+
+precompile(load_results, (String,))
 
 end

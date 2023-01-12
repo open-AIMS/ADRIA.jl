@@ -11,10 +11,10 @@ import ADRIA: ResultSet
 
 Normalize a matrix (∈ [0, 1]) on a per-column basis.
 """
-function normalize(data::AbstractMatrix)::AbstractMatrix
+function normalize(data::AbstractMatrix{T})::AbstractMatrix{T} where {T<:Real}
     return hcat(normalize.(eachcol(data))...)
 end
-function normalize(data::AbstractVector)::AbstractVector
+function normalize(data::AbstractVector{T})::AbstractVector{T} where {T<:Real}
     limits = extrema(data)
     scaled = let (mi, ma) = limits
         (data .- mi) ./ (ma - mi)

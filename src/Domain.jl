@@ -20,7 +20,7 @@ end
     Domain{M,I,D,S,V,T,X}
 Core ADRIA domain. Represents study area.
 """
-mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray}
+mutable struct Domain{Σ<:NamedMatrix,M<:NamedMatrix,I<:Vector{Int},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray{<:Real},Y<:AbstractArray{<:Real},Z<:AbstractArray{<:Real}}
     # Matrix{Float64, 2}, Vector{Int}, DataFrame, String, Vector{Float64}, Vector{String}, Matrix{Float64, 3}
 
     const name::S           # human-readable name
@@ -396,7 +396,7 @@ end
 Matrix : n_reps * sites * 3
 last dimension indicates: site_id, seeding rank, shading rank
 """
-function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int)
+function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int64)
     # Site Data
     site_d = domain.site_data
     sr = domain.in_conn
