@@ -162,6 +162,8 @@ Value-of-Information (VoI) analysis.
 
 Increasing the value of \$S\$ increases the granularity of the analysis.
 
+Note: Returned NaN values indicate insufficient samples in the region.
+
 # Arguments
 - `X` : scenario specification
 - `y` : scenario outcomes
@@ -209,13 +211,13 @@ function rsa(X::DataFrame, y::Vector{T}; S=20)::NamedArray{T} where {T<:Real}
         X_q .= quantile(X_di, seq)
         Threads.@threads for s in 2:S
             sel = (X_q[s-1] .< X_di) .& (X_di .<= X_q[s])
-            Y_sel = y[sel]
-            if length(Y_sel) == 0
-                r_s[s, d_i] = 0.0
-                continue  # no available samples
+            if count(sel) == 0
+                # no available samples
+                r_s[s, d_i] = NaN
+                continue
             end
 
-            r_s[s, d_i] = KSampleADTest(Y_sel, y[Not(sel)]).A²k
+            r_s[s, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
     end
 
