@@ -20,7 +20,7 @@ end
 
 
 """
-    pawn(X::AbstractArray{<:Real}, y::Vector{<:Real}, dimnames::Vector{String}; S::Int64=10)::NamedArray
+    pawn(X::AbstractArray{T}, y::Vector{T}, dimnames::Vector{String}; S::Int64=10)::NamedArray{T} where {T<:Real}
 
 Calculates the PAWN sensitivity index.
 
@@ -52,7 +52,7 @@ NamedArray, of min, mean, median, max, std, and cv summary statistics.
    Combining variance- and distribution-based global sensitivity analysis
    https://github.com/baronig/GSA-cvd
 """
-function pawn(X::AbstractArray{<:Real}, y::Vector{<:Real}, dimnames::Vector{String}; S::Int64=10)::NamedArray
+function pawn(X::AbstractArray{T}, y::Vector{T}, dimnames::Vector{String}; S::Int64=10)::NamedArray{T} where {T<:Real}
     N, D = size(X)
     step = 1 / S
     seq = 0:step:1
@@ -88,10 +88,10 @@ function pawn(X::AbstractArray{<:Real}, y::Vector{<:Real}, dimnames::Vector{Stri
 
     return NamedArray(results, (dimnames, [:min, :mean, :median, :max, :std, :cv]))
 end
-function pawn(X::DataFrame, y::Vector{<:Real}; S::Int64=10)::NamedArray
+function pawn(X::DataFrame, y::Vector{T}; S::Int64=10)::NamedArray{T} where {T<:Real}
     return pawn(Matrix(X), y, names(X); S=S)
 end
-function pawn(X::NamedArray, y::Vector{<:Real}; S::Int64=10)::NamedArray
+function pawn(X::NamedArray, y::Vector{T}; S::Int64=10)::NamedArray{T} where {T<:Real}
     return pawn(X, y, names(X, 2); S=S)
 end
 
@@ -124,7 +124,7 @@ y_tac = ADRIA.metrics.scenario_total_cover(rs)
 ADRIA.sensitivity.tsa(rs.inputs, y_tac)
 ```
 """
-function tsa(X::DataFrame, y::AbstractMatrix)::NamedArray
+function tsa(X::DataFrame, y::AbstractMatrix{T})::NamedArray{T} where {T<:Real}
     t_pawn_idx = NamedArray(
         zeros(ncol(X), 6, size(y, 1)),
         (names(X), ["min", "mean", "median", "max", "std", "cv"], string.(1:size(y, 1))),
@@ -190,7 +190,7 @@ ADRIA.sensitivity.rsa(X, y; S=20)
    https://dx.doi.org/10.1002/9780470725184
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
-function rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedArray
+function rsa(X::DataFrame, y::Vector{T}; S=20)::NamedArray{T} where {T<:Real}
     factor_names = names(X)
     N, D = size(X)
     step = 1 / S
@@ -264,7 +264,7 @@ rule = y -> all(y .> 0.5)
 ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 ```
 """
-function outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedArray
+function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedArray{T} where {T<:Real}
     step_size = 1 / S
     steps = collect(0.0:step_size:1.0)
 

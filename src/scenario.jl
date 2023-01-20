@@ -177,8 +177,8 @@ end
 
 
 """
-    run_scenario(idx, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
-    run_scenario(idx, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::NamedTuple
+    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
+    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::NamedTuple
     run_scenario(param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, cache::NamedTuple)::NamedTuple
     run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
 
