@@ -184,8 +184,8 @@ end
 Generate colony area data based on Bozec et al., [1].
 
 # Returns
-- colony_area_mean_cm2 : mean colony areas in cm²
-- colony_diam_means_m : mean colony diameter (in meters)
+- `colony_area_mean_cm2` : mean colony areas in cm²
+- `colony_diam_means_m` : mean colony diameter (in meters)
 
 
 # References
@@ -228,7 +228,7 @@ Values for the historical, temporal patterns of degree heating weeks
 between bleaching years come from [1].
 
 # Returns
-- params : NamedTuple[taxa_names, param_names, params], taxa names, parameter
+- `params` : NamedTuple[taxa_names, param_names, params], taxa names, parameter
            names, and parameter values for each coral taxa, group and size class
 
 # References
