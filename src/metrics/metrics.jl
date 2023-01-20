@@ -97,10 +97,10 @@ end
 Convenience method that slices the data in the specified manner.
 
 # Arguments
-- metric : Function, the metric function to apply to "raw" data.
-- data    : NamedDimsArray, data to pass into `metric`
-- args   : Additional positional arguments to pass into `metric`
-- dims   : dummy keyword argument, not used but defined to allow use with other methods
+- `metric` : Function, the metric function to apply to "raw" data.
+- `data` : NamedDimsArray, data to pass into `metric`
+- `args` : Additional positional arguments to pass into `metric`
+- `dims` : dummy keyword argument, not used but defined to allow use with other methods
 """
 function call_metric(metric::Function, data::NamedDimsArray, args...; kwargs...)
     dims = haskey(kwargs, :dims) ? kwargs[:dims] : nothing
@@ -135,7 +135,7 @@ end
     relative_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 # Arguments
-- X : Matrix of raw model results
+- `X` : Matrix of raw model results
 """
 function _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
     # sum over all species and size classes
@@ -156,8 +156,8 @@ The Total Absolute Coral Cover.
 Sum of proportional area taken up by all corals, multiplied by total site area.
 
 # Arguments
-- X : Matrix of raw model results
-- site_area : Vector of site areas, with sites following the same order as given indicated in X.
+- `X` : Matrix of raw model results
+- `site_area` : Vector of site areas, with sites following the same order as given indicated in X.
 """
 function _total_absolute_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
     return dropdims(sum(X, dims=:species), dims=:species) .* site_area'
@@ -176,7 +176,7 @@ Results grouped by taxa/species.
 TODO: Uses hardcoded index values, to be replaced by something more generic.
 
 # Arguments
-- X : Raw model results for a single scenario
+- `X` : Raw model results for a single scenario
 
 # Returns
 Coral cover, grouped by taxa for the given scenario.
@@ -362,7 +362,7 @@ coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
 Helper function to convert coral colony values from Litres/cm² to m³/m²
 
 # Arguments
-- inputs : Scenario values for the simulation
+- `inputs` : Scenario values for the simulation
 
 # Returns
 Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
@@ -451,13 +451,13 @@ Note: Species dimension is an amalgamation of taxa and size class.
 e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, size class 1-6, etc.
 
 # Arguments
-- X : raw results (proportional coral cover relative to full site area)
-- nspecies : number of species (taxa and size classes) considered
-- scen : scenario number to calculate metric for
-- colony_vol_m3_per_m2 : estimated cubic volume per m² of coverage for each species/size class (36)
-- max_colony_vol_m3_per_m2 : theoretical maximum volume per m² of coverage for each taxa (6)
-- site_area : total area of site in m²
-- k_area : habitable area of site in m² (i.e., `k` area)
+- `X` : raw results (proportional coral cover relative to full site area)
+- `nspecies` : number of species (taxa and size classes) considered
+- `scen` : scenario number to calculate metric for
+- `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class (36)
+- `max_colony_vol_m3_per_m2` : theoretical maximum volume per m² of coverage for each taxa (6)
+- `site_area` : total area of site in m²
+- `k_area` : habitable area of site in m² (i.e., `k` area)
 """
 function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2::Array{Float64}, max_colony_vol_m3_per_m2::Array{Float64}, site_area::Array{Float64}, k_area::Array{Float64}) where {T1<:Real}
     # Calculate absolute shelter volumes first
@@ -490,13 +490,13 @@ end
 Helper method to calculate absolute shelter volume metric across each species/size class for a given scenario.
 
 # Arguments
-- X : raw results (proportional coral cover relative to full site area)
-- ASV : matrix to hold shelter volume results
-- nspecies : number of species (taxa and size classes) considered
-- scen : scenario number to calculate metric for
-- colony_vol_m3_per_m2 : estimated cubic volume per m² of coverage for each species/size class (36)
-- site_area : area of site in m²
-- k_area : habitable area of site in m²
+- `X` : raw results (proportional coral cover relative to full site area)
+- `ASV` : matrix to hold shelter volume results
+- `nspecies` : number of species (taxa and size classes) considered
+- `scen` : scenario number to calculate metric for
+- `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class (36)
+- `site_area` : area of site in m²
+- `k_area` : habitable area of site in m²
 """
 function _shelter_species_loop!(X::AbstractArray{T1,3}, ASV::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2, site_area) where {T1<:Real}
     covered_area = nothing
@@ -524,10 +524,10 @@ shelter volume (a 3D metric).
 
 
 # Arguments
-- X : raw results
-- site_area : area in m^2 for each site
-- max_cover : maximum possible coral cover for each site (in percentage of site_area)
-- inputs : DataFrame of scenario inputs
+- `X` : raw results
+- `site_area` : area in m^2 for each site
+- `max_cover` : maximum possible coral cover for each site (in percentage of site_area)
+- `inputs` : DataFrame of scenario inputs
 
 # References
 1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V.,
@@ -593,9 +593,9 @@ maximum shelter volume possible.
 
 
 # Arguments
-- X : raw results
-- site_area : area in m^2 for each site
-- inputs : DataFrame of scenario inputs
+- `X` : raw results
+- `site_area` : area in m^2 for each site
+- `inputs` : DataFrame of scenario inputs
 
 # References
 1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V.,
@@ -665,10 +665,10 @@ Subject: RE: Max density of juvenile corals on the GBR
 Sent: Friday, 14 October 2022 2:58 PM
 
 # Arguments
-- TC        : Total relative coral cover across all groups
-- E         : Evenness across four coral groups
-- SV        : Shelter volume based coral sizes and abundances
-- juveniles : Abundance of coral juveniles < 5 cm diameter
+- `TC`        : Total relative coral cover across all groups
+- `E`         : Evenness across four coral groups
+- `SV`        : Shelter volume based coral sizes and abundances
+- `juveniles` : Abundance of coral juveniles < 5 cm diameter
 
 Input dimensions: timesteps, species, sites, repeats, scenarios
 

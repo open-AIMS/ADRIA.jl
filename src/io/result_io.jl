@@ -14,7 +14,7 @@ end
 Extract and return long/lat from a GeoDataFrame.
 
 # Arguments
-- df : GeoDataFrame
+- `df` : GeoDataFrame
 
 # Returns
 Array of tuples (x, y), where x and y relate to long and lat respectively.
@@ -48,9 +48,9 @@ Retrieve summary statistics matrices from DataFrames of dhws and waves.
 Produce summary statistics (mean/std) for given data cube saved to a Zarr data store.
 
 # Arguments
-- data_cube : data to summarize
-- type : dimension identifier to use
-- file_loc : path for Zarr data store
+- `data_cube` : data to summarize
+- `type` : dimension identifier to use
+- `file_loc` : path for Zarr data store
 
 # Returns
 Zarr data store holding a 2*N matrix.
@@ -179,8 +179,8 @@ Sets up an on-disk result store.
 - -9999.0 is used as an arbitrary fill value.
 
 # Arguments
-- domain : ADRIA scenario domain
-- param_df : ADRIA scenario specification
+- `domain` : ADRIA scenario domain
+- `param_df` : ADRIA scenario specification
 
 # Returns
 domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, site_ranks, seed_log, fog_log, shade_log)

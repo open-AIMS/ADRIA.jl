@@ -117,17 +117,17 @@ end
 Convenience constructor for Domain.
 
 # Arguments
-- name : Name of domain
-- dpkg_path : location of data package
-- rcp : RCP scenario represented
-- timeframe : Time steps represented
-- site_data_fn : File name of spatial data used
-- site_id_col : Column holding name of reef the site is associated with (non-unique)
-- unique_site_id_col : Column holding unique site names/ids
-- init_coral_fn : Name of file holding initial coral cover values
-- conn_path : Path to directory holding connectivity data
-- dhw_fn : Filename of DHW data cube in use
-- wave_fn : Filename of wave data cube
+- `name` : Name of domain
+- `dpkg_path` : location of data package
+- `rcp` : RCP scenario represented
+- `timeframe` : Time steps represented
+- `site_data_fn` : File name of spatial data used
+- `site_id_col` : Column holding name of reef the site is associated with (non-unique)
+- `unique_site_id_col` : Column holding unique site names/ids
+- `init_coral_fn` : Name of file holding initial coral cover values
+- `conn_path` : Path to directory holding connectivity data
+- `dhw_fn` : Filename of DHW data cube in use
+- `wave_fn` : Filename of wave data cube
 """
 function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
     conn_path::String, dhw_fn::String, wave_fn::String)::Domain
@@ -212,8 +212,8 @@ end
 Load domain specification from data package.
 
 # Arguments
-- path : location of data package
-- rcp : RCP scenario to run. If none provided, no data path is set.
+- `path` : location of data package
+- `rcp` : RCP scenario to run. If none provided, no data path is set.
 """
 function load_domain(path::String, rcp::String)::Domain
     domain_name::String = basename(path)

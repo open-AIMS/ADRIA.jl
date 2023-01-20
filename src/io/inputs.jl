@@ -7,7 +7,7 @@ using JSON
 Checks for version compatibility.
 
 # Arguments
-- dpkg_details : Datapackage spec
+- `dpkg_details` : Datapackage spec
 """
 function _check_compat(dpkg_details::Dict)
     if haskey(dpkg_details, "version") || haskey(dpkg_details, "dpkg_version")
@@ -26,7 +26,7 @@ end
 Load and parse datapackage.
 
 # Arguments
-- dpkg_path : path to datapackage
+- `dpkg_path` : path to datapackage
 """
 function _load_dpkg(dpkg_path::String)
     dpkg_md = nothing
@@ -62,8 +62,8 @@ Map sampled values in `df` back to discrete bounds for parameters
 indicated to be of integer type in the Domain spec.
 
 # Arguments
-- d : Domain type
-- df : DataFrame
+- `d` : Domain type
+- `df` : DataFrame
 """
 function process_inputs!(d::D, df::DataFrame)::Nothing where {D}
     bnds = d.model[:bounds]
