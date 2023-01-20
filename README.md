@@ -39,7 +39,7 @@ using ADRIA
 dom = ADRIA.load_domain("path to Input Set")
 
 # Generate 100 scenarios based on available environmental data layers and model parameters
-scens = ADRIA.sample(dom, 100)
+scens = ADRIA.sample(dom, 128)
 
 # Run sampled scenarios for a given RCP
 rs = ADRIA.run_scenarios(scens, dom, "45")
