@@ -485,7 +485,7 @@ end
 
 
 """
-    _shelter_species_loop!(X::AbstractArray{T1,3}, ASV::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2, site_area) where {T1}
+    _shelter_species_loop!(X::NamedDimsArray{T1,3}, ASV::NamedDimsArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2, site_area) where {T1<:Real}
 
 Helper method to calculate absolute shelter volume metric across each species/size class for a given scenario.
 
@@ -571,7 +571,7 @@ absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, 
 
 
 """
-    relative_shelter_volume(X::AbstractArray, site_area::Vector{<:Real}, inputs::DataFrame)
+    _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
     relative_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume relative to theoretical maximum volume for
@@ -623,7 +623,7 @@ function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray{T} where {T<:Real}
     @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
 
     nspecies::Int64 = size(X, :species)
@@ -645,10 +645,10 @@ function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(rs::ResultSet)::AbstractArray
+function _relative_shelter_volume(rs::ResultSet)::NamedDimsArray
     return rs.outcomes[:relative_shelter_volume]
 end
-relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
+relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :species, :sites, :scenarios))
 
 
 """
