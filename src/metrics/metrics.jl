@@ -498,8 +498,8 @@ Helper method to calculate absolute shelter volume metric across each species/si
 - `site_area` : area of site in m²
 - `k_area` : habitable area of site in m²
 """
-function _shelter_species_loop!(X::AbstractArray{T1,3}, ASV::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2, site_area) where {T1<:Real}
-    covered_area = nothing
+function _shelter_species_loop!(X::T1, ASV::T1, nspecies::Int64, colony_vol_m3_per_m2::V, site_area::V) where {T1<:NamedDims.NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},V<:AbstractVector{<:Float64}}
+    local covered_area::NamedDimsArray
 
     @inbounds for sp::Int64 in 1:nspecies
         covered_area = X[species=sp] .* site_area'
