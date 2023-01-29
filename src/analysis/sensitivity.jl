@@ -196,7 +196,7 @@ function rsa(X::DataFrame, y::Vector{T}; S=20)::NamedArray{T} where {T<:Real}
     factor_names = names(X)
     N, D = size(X)
     step = 1 / S
-    seq = 0:step:1
+    seq = 0:step:1.0
 
     X_di = zeros(N)
     X_q = zeros(S + 1)
@@ -210,14 +210,17 @@ function rsa(X::DataFrame, y::Vector{T}; S=20)::NamedArray{T} where {T<:Real}
         X_di .= X[:, d_i]
         X_q .= quantile(X_di, seq)
         Threads.@threads for s in 2:S
-            sel = (X_q[s-1] .< X_di) .& (X_di .<= X_q[s])
+            sel = s > 2 ? (X_q[s-1] .< X_di .<= X_q[s]) : (X_q[s-1] .<= X_di .<= X_q[s])
             if count(sel) == 0
                 # no available samples
                 r_s[s, d_i] = NaN
                 continue
             end
 
-            r_s[s, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+            # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
+            # ci = confint(bs, PercentileConfInt(conf))[1]
+
+            r_s[s-1, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
     end
 
@@ -268,7 +271,7 @@ ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 """
 function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedArray{T} where {T<:Real}
     step_size = 1 / S
-    steps = collect(0.0:step_size:1.0)
+    steps = collect(0:step_size:1.0)
 
     p_table = NamedArray(fill(NaN, length(steps) - 1, length(target_factors), 3))
     setnames!(p_table, ["$(round(i, digits=2))" for i in steps[2:end]], 1)
