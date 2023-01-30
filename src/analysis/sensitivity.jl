@@ -52,7 +52,7 @@ NamedArray, of min, mean, median, max, std, and cv summary statistics.
    Combining variance- and distribution-based global sensitivity analysis
    https://github.com/baronig/GSA-cvd
 """
-function pawn(X::AbstractArray{T}, y::Vector{T}, dimnames::Vector{String}; S::Int64=10)::NamedArray{T} where {T<:Real}
+function pawn(X::AbstractArray{T1}, y::Vector{T2}, dimnames::Vector{String}; S::Int64=10)::NamedArray{T1} where {T1<:Real,T2<:Real}
     N, D = size(X)
     step = 1 / S
     seq = 0:step:1
@@ -162,6 +162,8 @@ Value-of-Information (VoI) analysis.
 
 Increasing the value of \$S\$ increases the granularity of the analysis.
 
+Note: Returned NaN values indicate insufficient samples in the region.
+
 # Arguments
 - `X` : scenario specification
 - `y` : scenario outcomes
@@ -194,7 +196,7 @@ function rsa(X::DataFrame, y::Vector{T}; S=20)::NamedArray{T} where {T<:Real}
     factor_names = names(X)
     N, D = size(X)
     step = 1 / S
-    seq = 0:step:1
+    seq = 0:step:1.0
 
     X_di = zeros(N)
     X_q = zeros(S + 1)
@@ -208,14 +210,17 @@ function rsa(X::DataFrame, y::Vector{T}; S=20)::NamedArray{T} where {T<:Real}
         X_di .= X[:, d_i]
         X_q .= quantile(X_di, seq)
         Threads.@threads for s in 2:S
-            sel = (X_q[s-1] .< X_di) .& (X_di .<= X_q[s])
-            Y_sel = y[sel]
-            if length(Y_sel) == 0
-                r_s[s, d_i] = 0.0
-                continue  # no available samples
+            sel = s > 2 ? (X_q[s-1] .< X_di .<= X_q[s]) : (X_q[s-1] .<= X_di .<= X_q[s])
+            if count(sel) == 0
+                # no available samples
+                r_s[s, d_i] = NaN
+                continue
             end
 
-            r_s[s, d_i] = KSampleADTest(Y_sel, y[Not(sel)]).A²k
+            # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
+            # ci = confint(bs, PercentileConfInt(conf))[1]
+
+            r_s[s-1, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
     end
 
@@ -266,7 +271,7 @@ ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 """
 function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedArray{T} where {T<:Real}
     step_size = 1 / S
-    steps = collect(0.0:step_size:1.0)
+    steps = collect(0:step_size:1.0)
 
     p_table = NamedArray(fill(NaN, length(steps) - 1, length(target_factors), 3))
     setnames!(p_table, ["$(round(i, digits=2))" for i in steps[2:end]], 1)

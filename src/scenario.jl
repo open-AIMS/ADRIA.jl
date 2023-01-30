@@ -200,27 +200,25 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     tf = size(domain.dhw_scens, 1)
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
-    tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
-
-    r_raw = result_set.raw
-    vals = total_absolute_cover(r_raw, site_area(domain))
+    rs_raw = result_set.raw
+    vals = total_absolute_cover(rs_raw, site_area(domain))
     vals[vals.<threshold] .= 0.0
     data_store.total_absolute_cover[:, :, idx] .= vals
 
     p_tbl = param_table(domain)
-    vals .= absolute_shelter_volume(r_raw, site_area(domain), p_tbl)
+    vals .= absolute_shelter_volume(rs_raw, site_area(domain), p_tbl)
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(r_raw, site_area(domain), site_k_area(domain), p_tbl)
+    vals .= relative_shelter_volume(rs_raw, site_area(domain), site_k_area(domain), p_tbl)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_juveniles(r_raw)
+    vals .= relative_juveniles(rs_raw)
     vals[vals.<threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
 
-    vals = relative_taxa_cover(r_raw)
+    vals = relative_taxa_cover(rs_raw)
     vals[vals.<threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
@@ -230,6 +228,7 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     # end
 
     # Store logs
+    tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
     c_dim = Base.ndims(result_set.raw) + 1
     log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log)
     for k in log_stores

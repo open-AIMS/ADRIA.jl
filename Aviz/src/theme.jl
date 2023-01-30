@@ -37,7 +37,10 @@ function scenario_colors(rs, weight::Float64, hide::BitVector)
 
     color_map[counterfactual] .= ((:red, weight),)
     color_map[unguided] .= ((:green, weight),)
-    color_map[hide] .= ((:white, 0.0),)
+
+    if length(hide) > 0
+        color_map[hide] .= ((:white, 0.0),)
+    end
 
     return color_map
 end

@@ -102,7 +102,7 @@ Convenience method that slices the data in the specified manner.
 - `args` : Additional positional arguments to pass into `metric`
 - `dims` : dummy keyword argument, not used but defined to allow use with other methods
 """
-function call_metric(metric::Function, data::NamedDimsArray{T}, args...; kwargs...) where {T<:Real}
+function call_metric(metric::Function, data::NamedDimsArray, args...; kwargs...)
     dims = haskey(kwargs, :dims) ? kwargs[:dims] : nothing
     if isnothing(dims)
         return metric(slice_results(data; kwargs...), args...)
@@ -113,12 +113,12 @@ end
 
 
 """
-    slice_results(data::NamedDimsArray{T}; timesteps=(:), species=(:), sites=(:), scenarios=(:)) where {T<:Real}
+    slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))
 
 Slice data as indicated.
 Dimensions not found in target data are ignored.
 """
-function slice_results(data::NamedDimsArray{T}; timesteps=(:), species=(:), sites=(:), scenarios=(:)) where {T<:Real}
+function slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))
     f_dims = (timesteps=timesteps, species=species, sites=sites, scenarios=scenarios)
 
     s_names = keys(f_dims)
@@ -485,7 +485,7 @@ end
 
 
 """
-    _shelter_species_loop!(X::AbstractArray{T1,3}, ASV::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2, site_area) where {T1}
+    _shelter_species_loop!(X::T1, ASV::T1, nspecies::Int64, colony_vol_m3_per_m2::V, site_area::V) where {T1<:NamedDims.NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},V<:AbstractVector{<:Float64}}
 
 Helper method to calculate absolute shelter volume metric across each species/size class for a given scenario.
 
@@ -498,8 +498,8 @@ Helper method to calculate absolute shelter volume metric across each species/si
 - `site_area` : area of site in m²
 - `k_area` : habitable area of site in m²
 """
-function _shelter_species_loop!(X::AbstractArray{T1,3}, ASV::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2, site_area) where {T1<:Real}
-    covered_area = nothing
+function _shelter_species_loop!(X::T1, ASV::T1, nspecies::Int64, colony_vol_m3_per_m2::V, site_area::V) where {T1<:NamedDims.NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},V<:AbstractVector{<:Float64}}
+    local covered_area::NamedDimsArray
 
     @inbounds for sp::Int64 in 1:nspecies
         covered_area = X[species=sp] .* site_area'
@@ -571,7 +571,7 @@ absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, 
 
 
 """
-    relative_shelter_volume(X::AbstractArray, site_area::Vector{<:Real}, inputs::DataFrame)
+    _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
     relative_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume relative to theoretical maximum volume for
@@ -623,7 +623,7 @@ function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray where {T<:Real}
     @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
 
     nspecies::Int64 = size(X, :species)
@@ -645,10 +645,10 @@ function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(rs::ResultSet)::AbstractArray
+function _relative_shelter_volume(rs::ResultSet)::NamedDimsArray
     return rs.outcomes[:relative_shelter_volume]
 end
-relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
+relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :species, :sites, :scenarios))
 
 
 """
