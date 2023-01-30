@@ -414,7 +414,6 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
     # Set other params for ODE
     p.r .= corals.growth_rate  # Assumed growth_rate
-    p.r[corals.class_id.==6] .= 0.2 .* p.r[corals.class_id.==6]  # TODO: Finalize rates and update coral spec
 
     p.mb .= corals.mb_rate  # background mortality
     @set! p.k = max_cover  # max coral cover

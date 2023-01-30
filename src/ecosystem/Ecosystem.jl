@@ -343,6 +343,9 @@ function coral_spec()::NamedTuple
     # rate of growth per year
     params.growth_rate .= growth_rate(linear_extension, bin_widths)
 
+    # Adjust growth rate for size class 6 to 20% of assumed value.
+    params.growth_rate[params.class_id.==6] .= params.growth_rate[corals.class_id.==6] .* 0.2
+
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
     fec_par_b = Float64[1.28; 1.28; 1.05; 1.05; 1.21; 1.21]  # fecundity parameter b
