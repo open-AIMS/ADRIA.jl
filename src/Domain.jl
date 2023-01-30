@@ -326,6 +326,10 @@ function model_spec(m::Model)
 
     select!(spec, Not(:bounds))
 
+    # Reorder so name/description appears at end
+    # makes viewing as CSV a little nicer given description can be very long
+    select!(spec, Not([:name, :description]), [:name, :description])
+
     return spec
 end
 
