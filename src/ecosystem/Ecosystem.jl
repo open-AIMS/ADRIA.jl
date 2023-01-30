@@ -325,12 +325,12 @@ function coral_spec()::NamedTuple
     # we assume similar growth rates for enhanced and unenhanced corals
     # all values in cm/year
     linear_extension = Array{Float64,2}([
-        1 3 3 4.4 4.4 4.4   # Tabular Acropora Enhanced
-        1 3 3 4.4 4.4 4.4   # Tabular Acropora Unenhanced
-        1 3 3 3 3 3         # Corymbose Acropora Enhanced
-        1 3 3 3 3 3         # Corymbose Acropora Unenhanced
-        1 1 1 1 0.8 0.8     # small massives
-        1 1 1 1 1.2 1.2])   # large massives
+        1.0 3.0 3.0 4.4 4.4 4.4   # Tabular Acropora Enhanced
+        1.0 3.0 3.0 4.4 4.4 4.4   # Tabular Acropora Unenhanced
+        1.0 3.0 3.0 3.0 3.0 3.0         # Corymbose Acropora Enhanced
+        1.0 3.0 3.0 3.0 3.0 3.0         # Corymbose Acropora Unenhanced
+        1.0 1.0 1.0 1.0 0.8 0.8     # small massives
+        1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
 
     # Convert linear extensions to delta coral in two steps.
     # First calculate what proportion of coral numbers that change size class
