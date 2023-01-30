@@ -11,25 +11,20 @@
 6. Click the "Generate release notes" button (top-right of textbox).  
    Under "Whats new" add a short description of the major changes.  
    Explicitly note any major breaking changes (i.e., anything that results obtained with previous versions of ADRIA incompatible)
-7. Release title should match the version number.
-
-Click "Publish release" (green button at the bottom)
-
-Finally, register the updated package with the Julia registry by:
-
-1. Opening a new issue. The title can be anything, but something along the lines of "Register [version number]"  
-   e.g., Register v1.0
-2. State in the comment: `@JuliaRegistrator register`  
-
-Release notes should also be included when appropriate, like so:
+   DO NOT click "Publish release". Instead, copy the generated text
+7. Register the updated package by opening a new issue with the title "Register [version number]"  
+   e.g., `Register v1.0`
+8. State in the comment: `@JuliaRegistrator register`
+   Paste in the generated text from step 6 (an example is shown below)
 
 ```
 @JuliaRegistrator register
 
 Release notes:
 
-Some details of new features!
+Paste the generated release notes here.
 ```
+
 
 See Julia Registrator usage notes [here](https://github.com/JuliaComputing/Registrator.jl?installation_id=32448289&setup_action=install#details-for-triggering-juliaregistrator-for-step-2-above) for more details.
 
