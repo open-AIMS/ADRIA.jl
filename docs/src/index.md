@@ -32,8 +32,8 @@ output_dir = "./Outputs"  # Change this to point to where you want to store resu
 using ADRIA
 
 
-# Load input dataset ("Input Set") for a spatial domain
-dom = ADRIA.load_domain("path to Input Set")
+# Load data for a spatial domain
+dom = ADRIA.load_domain("path to domain data package")
 
 # Generate 128 scenarios based on available environmental data layers and model parameters
 scens = ADRIA.sample(dom, 128)

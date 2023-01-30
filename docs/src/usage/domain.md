@@ -10,5 +10,5 @@ A `Domain` may be loaded with the `load_domain` function.
 By convention we assign the `Domain` to `dom`, although this variable can be named anything.
 
 ```julia
-dom = ADRIA.load_domain("path to Input Set")
+dom = ADRIA.load_domain("path to domain data package")
 ```
