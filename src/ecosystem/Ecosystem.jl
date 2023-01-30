@@ -124,8 +124,8 @@ end
 
 function EnvironmentalLayer(dhw::AbstractArray, wave::AbstractArray)
     return EnvironmentalLayer(
-        Param(1, bounds=(1, size(dhw, 3) + 1), ptype="integer", dists="unif"),
-        Param(1, bounds=(1, size(wave, 3) + 1), ptype="integer", dists="unif")
+        Param(1, bounds=(1, size(dhw, 3) + 1), ptype="integer", dists="unif", name="DHW Scenario", description="DHW scenario member identifier"),
+        Param(1, bounds=(1, size(wave, 3) + 1), ptype="integer", dists="unif", name="Wave Scenario", description="Wave scenario member identifier")
     )
 end
 
