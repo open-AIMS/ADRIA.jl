@@ -325,12 +325,12 @@ function coral_spec()::NamedTuple
     # we assume similar growth rates for enhanced and unenhanced corals
     # all values in cm/year
     linear_extension = Array{Float64,2}([
-        1 3 3 4.4 4.4 4.4   # Tabular Acropora Enhanced
-        1 3 3 4.4 4.4 4.4   # Tabular Acropora Unenhanced
-        1 3 3 3 3 3         # Corymbose Acropora Enhanced
-        1 3 3 3 3 3         # Corymbose Acropora Unenhanced
-        1 1 1 1 0.8 0.8     # small massives
-        1 1 1 1 1.2 1.2])   # large massives
+        1.0 3.0 3.0 4.4 4.4 4.4   # Tabular Acropora Enhanced
+        1.0 3.0 3.0 4.4 4.4 4.4   # Tabular Acropora Unenhanced
+        1.0 3.0 3.0 3.0 3.0 3.0         # Corymbose Acropora Enhanced
+        1.0 3.0 3.0 3.0 3.0 3.0         # Corymbose Acropora Unenhanced
+        1.0 1.0 1.0 1.0 0.8 0.8     # small massives
+        1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
 
     # Convert linear extensions to delta coral in two steps.
     # First calculate what proportion of coral numbers that change size class
@@ -342,6 +342,9 @@ function coral_spec()::NamedTuple
     # Second, growth as transitions of cover to higher bins is estimated as
     # rate of growth per year
     params.growth_rate .= growth_rate(linear_extension, bin_widths)
+
+    # Adjust growth rate for size class 6 to 20% of assumed value.
+    params.growth_rate[params.class_id.==6] .= params.growth_rate[corals.class_id.==6] .* 0.2
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
