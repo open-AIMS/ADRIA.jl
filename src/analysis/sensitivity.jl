@@ -52,7 +52,7 @@ NamedArray, of min, mean, median, max, std, and cv summary statistics.
    Combining variance- and distribution-based global sensitivity analysis
    https://github.com/baronig/GSA-cvd
 """
-function pawn(X::AbstractArray{T}, y::Vector{T}, dimnames::Vector{String}; S::Int64=10)::NamedArray{T} where {T<:Real}
+function pawn(X::AbstractArray{T1}, y::Vector{T2}, dimnames::Vector{String}; S::Int64=10)::NamedArray{T1} where {T1<:Real,T2<:Real}
     N, D = size(X)
     step = 1 / S
     seq = 0:step:1
