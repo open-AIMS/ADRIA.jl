@@ -50,45 +50,71 @@ end
 Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
     # Intervention Parameters
     # Integer values have a +1 offset to allow for discrete value mapping (see `set() method`)
-    guided::N = Param(0, ptype="integer", bounds=(-1, 3 + 1), dists="unif") # Guided, choice of MCDA approach
-    seed_TA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif") # Seed1, integer, number of Enhanced TA to seed
-    seed_CA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif") # Seed2, integer, number of Enhanced CA to seed
-    fogging::P = Param(0.16, ptype="real", bounds=(0.0, 0.3, 0.16 / 0.3), dists="triang") # fogging, float, assumed percent reduction in bleaching mortality
-    SRM::P = Param(0.0, ptype="real", bounds=(0.0, 7.0, 0.0), dists="triang") # SRM, float, reduction in DHWs due to shading
-    a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 8.0, 0.0), dists="triang") # Aadpt, float, float, increased adaptation rate
-    n_adapt::N2 = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif") # Natad, float, natural adaptation rate
-    seed_years::P2 = Param(10, ptype="integer", bounds=(5, 15 + 1, 5 / 10), dists="triang") # Seedyrs, integer, years into simulation during which seeding is considered
-    shade_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 69), dists="triang") # Shadeyrs, integer, years into simulation during which shading is considered
-    seed_freq::N = Param(5, ptype="integer", bounds=(0, 5 + 1), dists="unif") # Seedfreq, integer, yearly intervals to adjust seeding site selection (0 is set and forget)
-    shade_freq::N = Param(1, ptype="integer", bounds=(0, 5 + 1), dists="unif") # Shadefreq, integer, yearly intervals to adjust shading (fogging) site selection (0 is set and forget)
-    seed_year_start::N = Param(2, ptype="integer", bounds=(2, 25 + 1), dists="unif") # Seedyr_start, integer, seed intervention start offset from simulation start
-    shade_year_start::N = Param(2, ptype="integer", bounds=(2, 25 + 1), dists="unif") # Shadeyr_start, integer, shade intervention start offset from simulation start
+    guided::N = Param(0, ptype="integer", bounds=(-1, 3 + 1), dists="unif",
+        name="Guided", description="Choice of MCDA approach.")
+    seed_TA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif",
+        name="Seeded Tabular Acropora", description="Number of enhanced Tabular Acropora to seed per deployment year.")
+    seed_CA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif",
+        name="Seeded Corymbose Acropora", description="Number of enhanced Corymbose Acropora to seed per deployment year.")
+    fogging::P = Param(0.16, ptype="real", bounds=(0.0, 0.3, 0.16 / 0.3), dists="triang",
+        name="Fogging", description="Assumed reduction in bleaching mortality.")
+    SRM::P = Param(0.0, ptype="real", bounds=(0.0, 7.0, 0.0), dists="triang",
+        name="SRM", description="Reduction in DHWs due to shading.")
+    a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 8.0, 0.0), dists="triang",
+        name="Assisted Adaptation", description="Assisted adaptation in terms of DHW resistance.")
+    n_adapt::N2 = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif",
+        name="Natural Adaptation", description="Natural adaptation rate (yearly increase).")
+    seed_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 69), dists="triang",
+        name="Years to Seed", description="Number of years to seed for.")
+    shade_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 69), dists="triang",
+        name="Years to Shade", description="Number of years to shade for.")
+    seed_freq::N = Param(5, ptype="integer", bounds=(0, 5 + 1), dists="unif",
+        name="Seeding Frequency", description="Frequency of seeding site selection (0 is set and forget).")
+    shade_freq::N = Param(1, ptype="integer", bounds=(0, 5 + 1), dists="unif",
+        name="Shading Frequency", description="Frequency of shading site selection (0 is set and forget).")
+    seed_year_start::N = Param(2, ptype="integer", bounds=(2, 25 + 1), dists="unif",
+        name="Seeding Start Year", description="Start seeding deployments after this number of years has elapsed.")
+    shade_year_start::N = Param(2, ptype="integer", bounds=(2, 25 + 1), dists="unif",
+        name="Shading Start Year", description="Start of shading deployments after this number of years has elapsed.")
 end
 
 
 Base.@kwdef struct Criteria{P,N} <: EcoModel
-    wave_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for wave stress criteria
-    heat_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for heat stress criteria
-    shade_connectivity::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for site connectivity criteria while shading
-    in_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for site in-coming connectivity criteria while seeding
-    out_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for site out-going connectivity criteria while seeding
-    coral_cover_low::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for coral cover criteria while seeding
-    coral_cover_high::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for coral cover criteria while seeding
-    seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for coral cover criteria while shading
-    shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for priority predecessor criteria while shading
-    zone_seed::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for zoning criteria while seeding
-    zone_shade::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif") # MCDA weight for zoning criteria while shading
-    coral_cover_tol::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif")  # % of seeded corals area tolerance for low space when seeding
-    deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif")
-    dist_thresh::P = Param(0.1, ptype="real", bounds=(0.0, 1.0), dists="unif") # distance threshold, sites selected by MCDA must be further apart than median(dist)-dist_thresh*median(dist)
-    top_n::N = Param(10, ptype="integer", bounds=(5, 50 + 1), dists="unif") # sites in prefseedsites or prefshadesites will be replaced with sites within top_n ranked sites if not satisfying distance threshold
-    depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif")     # minimum depth
-    depth_offset::P = Param(10.0, ptype="real", bounds=(10.0, 25.0), dists="unif")  # offset from minimum depth to indicate maximum depth**
+    wave_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Wave Stress", description="Importance of avoiding wave stress. Higher values places more weight on areas with low wave stress.")
+    heat_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Heat Stress", description="Importance of avoiding heat stress. Higher values places more weight on areas with low heat stress.")
+    shade_connectivity::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Shade Connectivity", description="Higher values give preference to locations with high connectivity for shading deployments.")
+    in_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Incoming Connectivity (Seed)", description="Higher values give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for enhanced coral deployments.")
+    out_seed_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Outgoing Connectivity (Seed)", description="Higher values give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for enhanced coral deployments.")
+    coral_cover_low::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Low Coral Cover", description="Higher values give greater preference to sites with low coral cover for seeding deployments.")
+    coral_cover_high::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="High Coral Cover", description="Higher values give preference to sites with high coral cover for shading deployments.")
+    seed_priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Predecessor Priority (Seed)", description="Importance of seeding sites that provide larvae to priority reefs.")
+    shade_priority::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Predecessor Priority (Shade)", description="Importance of shading sites that provide larvae to priority reefs.")
+    zone_seed::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Zone Predecessor (Seed)", description="Importance of seeding sites that provide larvae to priority (target) zones.")
+    zone_shade::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Zone Predecessor (Shade)", description="Importance of shading sites that provide larvae to priority (target) zones.")
+    coral_cover_tol::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Low Area Tolerance", description="Tolerance for low proportional space for seeding deployments.")
+    deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
+        name="Risk Tolerance", description="Filters out sites with heat/wave stress above threshold.")
+    dist_thresh::P = Param(0.1, ptype="real", bounds=(0.0, 1.0), dists="unif",
+        name="Distance Threshold", description="Sites selected by MCDA must be further apart than median(dist)-dist_thresh*median(dist).")
+    top_n::N = Param(10, ptype="integer", bounds=(5, 50 + 1), dists="unif",
+        name="Top N", description="Replaces a given deployment site with a top-ranked site if it does not satisfy the minimum distance threshold.")
+    depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif",
+        name="Minimum Depth", description="Minimum depth for a site to be included for consideration.\nNote: This value will be replaced with the shallowest depth value found if all sites are found to be deeper than `depth_min + depth_offset`.")
+    depth_offset::P = Param(10.0, ptype="real", bounds=(10.0, 25.0), dists="unif", name="Depth Offset",
+        description="Offset from minimum depth, used to indicate maximum depth.")
 end
-# **This is simply to avoid parameterization/implementation
-#   that requires one parameter to be greater than another.
-# Note: `depth_min` will be replaced with the shallowest depth value found for a given domain
-#       if all sites are found to be deeper than depth_min+depth_offset
 
 
 struct EnvironmentalLayer{P} <: EcoModel
@@ -98,8 +124,8 @@ end
 
 function EnvironmentalLayer(dhw::AbstractArray, wave::AbstractArray)
     return EnvironmentalLayer(
-        Param(1, bounds=(1, size(dhw, 3) + 1), ptype="integer", dists="unif"),
-        Param(1, bounds=(1, size(wave, 3) + 1), ptype="integer", dists="unif")
+        Param(1, bounds=(1, size(dhw, 3) + 1), ptype="integer", dists="unif", name="DHW Scenario", description="DHW scenario member identifier."),
+        Param(1, bounds=(1, size(wave, 3) + 1), ptype="integer", dists="unif", name="Wave Scenario", description="Wave scenario member identifier.")
     )
 end
 
