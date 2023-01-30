@@ -5,7 +5,7 @@ using Aviz: scenario_type, scenario_colors, COLORS
 
 
 """
-    scenario(f::GridPosition, rs::ADRIA.ResultSet, metric, metric_args=Dict(); opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    scenario!(f::GridPosition, rs::ADRIA.ResultSet, metric, metric_args=Dict(); opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
 Add figure to a given figure GridPosition.
 
@@ -84,7 +84,7 @@ function scenario!(f::GridPosition, rs::ResultSet, metric, metric_args::Dict=Dic
 end
 
 """
-    scenario!(rs::ADRIA.ResultSet, metric, metric_args=Dict(); opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+    scenario(rs::ADRIA.ResultSet, metric, metric_args=Dict(); opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
 
 # Arguments
 - `rs` : ResultSet
