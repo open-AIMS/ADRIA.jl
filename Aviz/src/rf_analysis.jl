@@ -1,26 +1,19 @@
 """
+Deprecated collection of functions for use with Random Forests
+(from the DecisionTree.jl package).
+
+No longer used as RFs take too long to build in the context of the
+app. Can't afford to wait 1-2mins every time the data slice is
+updated.
+"""
+
+"""
     outcome_probability(data::AbstractVector)::NamedTuple
 
 Determine probability occurrence.
 """
 function outcome_probability(data::AbstractVector)::NamedTuple
     p_outcomes = cdf.(fit(Distributions.Normal, data), data)
-
-    # p = Vector{Any}(p_outcomes)
-    # p[p_outcomes.>0.70] .= "High (70 - 85%)"
-    # p[p_outcomes.>0.85] .= "Very High (> 85%)"
-    # p[(p_outcomes.>=0.55).&(p_outcomes.<=0.70)] .= "Medium (55 - 70%)"
-    # p[(p_outcomes.>0.15).&(p_outcomes.<0.55)] .= "Low (15 - 55%)"
-    # p[p_outcomes.<0.15] .= "Very Low (< 15%)"
-    # return p
-
-    # return (
-    #     very_high=count(p_outcomes .> 0.85),
-    #     high=count((p_outcomes .> 0.70) .& (p_outcomes .<= 0.85)),
-    #     medium=count((p_outcomes .>= 0.55) .& (p_outcomes .<= 0.70)),
-    #     low=count((p_outcomes .> 0.15) .& (p_outcomes .< 0.55)),
-    #     very_low=count(p_outcomes .< 0.15)
-    # )
 
     n = length(data)
     return (
@@ -33,18 +26,6 @@ function outcome_probability(data::AbstractVector)::NamedTuple
         labels=["Very High\n> 80%", "High\n70 - 80%", "Medium\n50 - 70%", "Low\n20 - 50%", "Very Low\n< 20%"]
     )
 end
-# function outcome_probability(data::AbstractArray)
-#     p_outcomes = cdf.(fit(Distributions.Normal, data), data)
-
-#     p = Vector{Any}(p_outcomes)
-#     p[p_outcomes.>0.70] .= "High (70 - 85%)"
-#     p[p_outcomes.>0.85] .= "Very High (> 85%)"
-#     p[(p_outcomes.>=0.55).&(p_outcomes.<=0.70)] .= "Medium (55 - 70%)"
-#     p[(p_outcomes.>0.15).&(p_outcomes.<0.55)] .= "Low (15 - 55%)"
-#     p[p_outcomes.<0.15] .= "Very Low (< 15%)"
-
-#     return p
-# end
 
 function probability_table(
     model, X, y;
@@ -103,25 +84,6 @@ function _permutation_importance(
         @inbounds features[:, i] = origin
     end
 
-    # origin = similar(features[:, 1], Any)
-    # non_constants = map(d -> !all(d .== d[1]), eachcol(features))
-    # for (i, col) in enumerate(eachcol(features))
-    # if non_constants[i] == 0
-    #     scores[i, :] .= 0.0
-    #     continue
-    # end
-
-    #     origin .= copy(col)
-    #     scores[i, :] .= map(1:n_iter) do _
-    #         shuffle!(rng, col)
-    #         base - score(trees, labels, features)
-    #     end
-
-    #     features[:, i] .= origin
-    # end
-
-    # Main.@infiltrate
-
     (mean=reshape(mapslices(scores, dims=2) do im
             mean(im)
         end, :),
@@ -139,9 +101,7 @@ function ft_importance(model::Ensemble{Float64,Any}, X::DataFrame, p::Vector; rn
     X_base = copy(X)
     insertcols!(X_base, 1, :dummy => zeros(nrow(X_base)))
 
-    # DecisionTree.accuracy(y, apply_forest(model, X))
-    # apply_forest_proba(model, X, y)
-    @time p1 = _permutation_importance(model, p, Matrix(X_base), _accuracy, 25; rng=rng)
+    p1 = _permutation_importance(model, p, Matrix(X_base), _accuracy, 25; rng=rng)
 
     norm = replace(p1.mean ./ (maximum(p1.mean) - minimum(p1.mean)), Inf => 0.0, NaN => 0.0)
 
@@ -154,7 +114,6 @@ function ft_importance(model::Ensemble{Float64,Any}, X::DataFrame, p::Vector; rn
     else
         imp = feat_importance[1:min(10, dummy_idx - 1), [:param, :norm]]
     end
-    # sort!(imp, :norm, rev=true)
 
     return imp
 end
