@@ -97,7 +97,7 @@ function site_distances(site_data::DataFrame)::Tuple{Matrix{Float64},Float64}
     dist = zeros(nsites, nsites)
     @inbounds for jj = 1:nsites
         @inbounds for ii = 1:nsites
-            dist[ii, jj] = euclidean([latitudes[ii], longitudes[ii]], [latitudes[jj], longitudes[jj]])
+            dist[ii, jj] = haversine([longitudes[ii], latitudes[ii]], [longitudes[jj], latitudes[jj]])
         end
     end
     dist[diagind(dist)] .= NaN
