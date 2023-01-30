@@ -194,7 +194,8 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
         for p in base_coral_params
             f_name = c_id * "_" * p
             f_val = x[x.coral_id.==c_id, p][1]
-            struct_fields[f_name] = Param(f_val, ptype="real", bounds=(f_val * bounds[1], f_val * bounds[2], 0.5), dists="triang")
+            struct_fields[f_name] = Param(f_val, ptype="real", bounds=(f_val * bounds[1], f_val * bounds[2], 0.5), dists="triang",
+                name=human_readable_name(f_name, title_case=true), description="")
         end
     end
 
@@ -307,7 +308,7 @@ function coral_spec()::NamedTuple
     tn = repeat(taxa_names; inner=n_classes)
 
     # Create combinations of taxa names and size classes
-    params.name = human_readable_name(tn, true)
+    params.name = human_readable_name(tn; title_case=true)
     params.taxa_id = repeat(1:n_classes; inner=n_classes)
 
     params.class_id = repeat(1:n_classes, n_classes)
@@ -325,10 +326,10 @@ function coral_spec()::NamedTuple
     # we assume similar growth rates for enhanced and unenhanced corals
     # all values in cm/year
     linear_extension = Array{Float64,2}([
-        1.0 3.0 3.0 4.4 4.4 4.4   # Tabular Acropora Enhanced
-        1.0 3.0 3.0 4.4 4.4 4.4   # Tabular Acropora Unenhanced
-        1.0 3.0 3.0 3.0 3.0 3.0         # Corymbose Acropora Enhanced
-        1.0 3.0 3.0 3.0 3.0 3.0         # Corymbose Acropora Unenhanced
+        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora Enhanced
+        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora Unenhanced
+        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora Enhanced
+        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora Unenhanced
         1.0 1.0 1.0 1.0 0.8 0.8     # small massives
         1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
 
@@ -344,7 +345,7 @@ function coral_spec()::NamedTuple
     params.growth_rate .= growth_rate(linear_extension, bin_widths)
 
     # Adjust growth rate for size class 6 to 20% of assumed value.
-    params.growth_rate[params.class_id.==6] .= params.growth_rate[corals.class_id.==6] .* 0.2
+    params.growth_rate[params.class_id.==6] .= params.growth_rate[params.class_id.==6] .* 0.2
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a

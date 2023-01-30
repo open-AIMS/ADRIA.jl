@@ -552,6 +552,7 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", d::Domain)
 
+    df = model_spec(d)
     println("""
     Domain: $(d.name)
 
@@ -561,8 +562,12 @@ function Base.show(io::IO, mime::MIME"text/plain", d::Domain)
     DHW file: $(d.env_layer_md.DHW_fn)
     Wave file: $(d.env_layer_md.wave_fn)
     Timeframe: $(d.env_layer_md.timeframe[1]) - $(d.env_layer_md.timeframe[end])
+
+    Model Specification:
+    - Parameters: $(nrow(df))
+    - Number of constants: $(nrow(df[df.is_constant .== true, :]))
     """)
 
-    println("\nEcosystem model specification:")
-    show(io, mime, model_spec(d)[:, [:component, :fieldname, :val, :full_bounds, :dists, :is_constant]])
+    # println("\nEcosystem model specification:")
+    # show(io, mime, model_spec(d)[:, [:component, :fieldname, :val, :full_bounds, :dists, :is_constant]])
 end
