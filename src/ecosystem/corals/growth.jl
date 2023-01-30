@@ -7,23 +7,23 @@ using Distributions
 include("growth_expanded.jl")
 
 
-function growth_rate(linear_extension::Array, diam_bin_widths::Array)::Vector{Real}
+function growth_rate(linear_extension::Array{Float64}, diam_bin_widths::Array{Float64})::Vector{Float64}
     return ((2.0 * linear_extension) ./ diam_bin_widths')'[:]
 end
 
 
 """
-    proportional_adjustment!(covers::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})
+    proportional_adjustment!(covers::AbstractArray{T}, cover_tmp::AbstractArray{T}, max_cover::AbstractArray{T})::Nothing where {T<:Real}
 
 Helper method to proportionally adjust coral cover.
 Modifies arrays in-place.
 
 # Arguments
-- covers : Coral cover result set
-- cover_tmp : Temporary cache matrix used to hold sum over species. Avoids memory allocations
-- max_cover : Maximum possible coral cover for each site
+- `covers` : Coral cover result set
+- `cover_tmp` : Temporary cache matrix used to hold sum over species. Avoids memory allocations
+- `max_cover` : Maximum possible coral cover for each site
 """
-function proportional_adjustment!(covers::AbstractArray{<:Real}, cover_tmp::AbstractArray{<:Real}, max_cover::AbstractArray{<:Real})::Nothing
+function proportional_adjustment!(covers::AbstractArray{T}, cover_tmp::AbstractArray{T}, max_cover::AbstractArray{T})::Nothing where {T<:Float64}
     # Proportionally adjust initial covers
     cover_tmp .= vec(sum(covers, dims=1))
     if any(cover_tmp .> max_cover)
@@ -158,13 +158,13 @@ Model is adapted from Bozec et al., [2], itself based on data from Hughes et al.
 (bleaching sensitivity) and Baird et al., [1] (relationship between bleaching and depth).
 
 # Arguments
-- Y : Matrix to save results into
-- tstep : Current time step
-- depth : Mean site depth (m) for each site
-- s : Bleaching sensitivity of corals (relative values) for each taxa/size class
-- dhw : Degree Heating Week experienced at site
-- a_adapt : Level of assisted adaptation (DHW reduction)
-- n_adapt : Level of natural adaptation (DHW reduction linearly scaled over time)
+- `Y` : Matrix to save results into
+- `tstep` : Current time step
+- `depth` : Mean site depth (m) for each site
+- `s` : Bleaching sensitivity of corals (relative values) for each taxa/size class
+- `dhw` : Degree Heating Week experienced at site
+- `a_adapt` : Level of assisted adaptation (DHW reduction)
+- `n_adapt` : Level of natural adaptation (DHW reduction linearly scaled over time)
 
 # Returns
 Nothing
@@ -225,17 +225,17 @@ Total relative fecundity of a group is then calculated as the sum of
 fecundities across size classes.
 
 # Arguments
-- fec_groups : Matrix[n_classes, n_sites], memory cache to place results into
-- fec_all : Matrix[n_taxa, n_sites], temporary cache to place intermediate fecundity values into
-- fec_params : Vector, coral fecundity parameters (in per m²) for each species/size class
-- Y_pstep : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
-- site_area : Vector[n_sites], total site area in m²
+- `fec_groups` : Matrix[n_classes, n_sites], memory cache to place results into
+- `fec_all` : Matrix[n_taxa, n_sites], temporary cache to place intermediate fecundity values into
+- `fec_params` : Vector, coral fecundity parameters (in per m²) for each species/size class
+- `Y_pstep` : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
+- `site_area` : Vector[n_sites], total site area in m²
 
 # Returns
 Matrix[n_classes, n_sites] : fecundity per m² of coral
 """
-function fecundity_scope!(fec_groups::AbstractArray{Float64,2}, fec_all::AbstractArray{Float64,2}, fec_params::AbstractArray{Float64},
-    Y_pstep::AbstractArray{Float64,2}, site_area::AbstractArray{Float64})::Nothing
+function fecundity_scope!(fec_groups::AbstractArray{T,2}, fec_all::AbstractArray{T,2}, fec_params::AbstractArray{T},
+    Y_pstep::AbstractArray{T,2}, site_area::AbstractArray{T})::Nothing where {T<:Float64}
     ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
     nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
 
@@ -269,20 +269,20 @@ of 0.9 inside sf(i, j) indicates that species i at site j can only produce
 90% of its usual larval output.
 
 # Arguments
-- tstep : Current time step
-- a_adapt : DHW reduction of enhanced corals
-- n_adapt : DHWs reduction (linearly scales with `tstep`)
-- stresspast : DHW at previous time step for each site
-- LPdhwcoeff : 
-- DHWmaxtot : Maximum DHW
-- LPDprm2 : Larval production parameter 2
-- n_groups : Number of groups
+- `tstep` : Current time step
+- `a_adapt` : DHW reduction of enhanced corals
+- `n_adapt` : DHWs reduction (linearly scales with `tstep`)
+- `stresspast` : DHW at previous time step for each site
+- `LPdhwcoeff` : 
+- `DHWmaxtot` : Maximum DHW
+- `LPDprm2` : Larval production parameter 2
+- `n_groups` : Number of groups
 
 # Returns
 sf : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
 """
-function stressed_fecundity(tstep::Int64, a_adapt::Vector{Float64}, n_adapt::Float64,
-    stresspast::Vector{Float64}, LPdhwcoeff::Float64, DHWmaxtot::Float64, LPDprm2::Float64, n_groups::Int64)::Matrix{Float64}
+function stressed_fecundity(tstep::Int64, a_adapt::Vector{T}, n_adapt::T,
+    stresspast::Vector{T}, LPdhwcoeff::T, DHWmaxtot::T, LPDprm2::T, n_groups::Int64)::Matrix{T} where {T<:Float64}
     ad::Vector{Float64} = @. a_adapt + tstep * n_adapt
 
     # using half of DHWmaxtot as a placeholder
@@ -305,10 +305,10 @@ Note for β: "For corals, the actual number of 6-month old recruits for each cor
     is generated [...] following a Poisson distribution with recruitment event rate λ.
 
 # Arguments
-- α : Maximum achievable density (settlers/m²) for a 100% free space (set to 2.5 in [1] for Corymbose)
-- β : Stock of larvae required to produce one-half the maximum settlement (larvae/m²),
+- `α` : Maximum achievable density (settlers/m²) for a 100% free space (set to 2.5 in [1] for Corymbose)
+- `β` : Stock of larvae required to produce one-half the maximum settlement (larvae/m²),
         i.e., α/2(m²), set to 5000 in [1].
-- L : Available larval pool
+- `L` : Available larval pool
 
 # Returns
 Settler density (settlers / m²)
@@ -334,15 +334,15 @@ end
     recruitment_rate(larval_pool, α=2.5, β=5000.0)
 
 # Arguments
-- larval_pool : Available larval pool
-- A : Proportion of available area
-- α : Maximum achievable density (settlers/m²) for a 100% free space
-- β : Stock of larvae required to produce 50% of the maximum settlement
+- `larval_pool` : Available larval pool
+- `A` : Proportion of available area
+- `α` : Maximum achievable density (settlers/m²) for a 100% free space
+- `β` : Stock of larvae required to produce 50% of the maximum settlement
 
 # Returns
 λ, coral recruitment for each coral taxa based on a Poisson distribution.
 """
-function recruitment_rate(larval_pool::AbstractArray{<:Real,2}, A::AbstractArray{<:Real}; α=2.5, β=5000.0)::AbstractArray{<:Real}
+function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T}; α=2.5, β=5000.0)::AbstractArray{T} where {T<:Float64}
     sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
     sel = sd .> 0.0
     sd[sel] .= rand.(Poisson.(sd[sel]))
@@ -354,17 +354,17 @@ end
     recruitment(larval_pool, A::Matrix{<:Real}; α=2.5, β=5000.0)
 
 # Arguments
-- larval_pool : Available larval pool
-- A : Available space (0 - 1) relative to maximum area covered by
+- `larval_pool` : Available larval pool
+- `A` : Available space (0 - 1) relative to maximum area covered by
       cropped algal turf, i.e., the substratum that is suitable 
       for coral recruitment
-- α : Maximum achievable density (settlers/m²) for a 100% free space
-- β : Stock of larvae required to produce 50% of the maximum settlement
+- `α` : Maximum achievable density (settlers/m²) for a 100% free space
+- `β` : Stock of larvae required to produce 50% of the maximum settlement
 
 # Returns
 Total coral recruitment for each coral taxa and site based on a Poisson distribution.
 """
-function recruitment(larval_pool::AbstractArray{<:Real,2}, A::Matrix{<:Real}; α::T=2.5, β::S=5000.0)::Matrix{<:Real} where {T,S}
+function recruitment(larval_pool::AbstractArray{T,2}, A::Matrix{T}; α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::Matrix{T} where {T<:Float64}
     # Minimum of recruited settler density (`recruitment_rate`) and max possible settler density (α)
     # return min.(recruitment_rate(larval_pool, A; α, β), α)
     return recruitment_rate(larval_pool, A; α, β)
@@ -374,13 +374,13 @@ end
     settler_cover(fec_scope, sf, TP_data, leftover_space, α, β, basal_area_per_settler)
 
 # Arguments
-- fec_scope : fecundity scope
-- sf : stressed fecundity
-- TP_data : Transition probability
-- leftover_space : difference between sites' maximum carrying capacity and current coral cover (k - C_s)
-- α : max number of settlers / m²
-- β : larvae / m² required to produce 50% of maximum settlement (default: 5000.0)
-- basal_area_per_settler : area taken up by a single settler
+- `fec_scope` : fecundity scope
+- `sf` : stressed fecundity
+- `TP_data` : Transition probability
+- `leftover_space` : difference between sites' maximum carrying capacity and current coral cover (k - C_s)
+- `α` : max number of settlers / m²
+- `β` : larvae / m² required to produce 50% of maximum settlement (default: 5000.0)
+- `basal_area_per_settler` : area taken up by a single settler
 
 # Returns
 Area covered by recruited larvae (in m²)

@@ -7,13 +7,31 @@
 3. Submit PR from development branch into `main` and request code review/approval
 4. Once PR is merged into main, go to the [releases page](https://github.com/open-AIMS/ADRIA.jl/releases) and draft a new release
 5. Under "choose a tag" create a new tag "on publish"  
-   Note version numbers should follow Semantic Versioning: https://semver.org/
+   Note version numbers should follow [Semantic Versioning](https://semver.org/)
 6. Click the "Generate release notes" button (top-right of textbox).  
    Under "Whats new" add a short description of the major changes.  
    Explicitly note any major breaking changes (i.e., anything that results obtained with previous versions of ADRIA incompatible)
 7. Release title should match the version number.
 
 Click "Publish release" (green button at the bottom)
+
+Finally, register the updated package with the Julia registry by:
+
+1. Opening a new issue. The title can be anything, but something along the lines of "Register [version number]"  
+   e.g., Register v1.0
+2. State in the comment: `@JuliaRegistrator register`  
+
+Release notes should also be included when appropriate, like so:
+
+```
+@JuliaRegistrator register
+
+Release notes:
+
+Some details of new features!
+```
+
+See Julia Registrator usage notes [here](https://github.com/JuliaComputing/Registrator.jl?installation_id=32448289&setup_action=install#details-for-triggering-juliaregistrator-for-step-2-above) for more details.
 
 
 ## Development Release
@@ -25,7 +43,7 @@ Deploying a Development Release follows the same steps as "Public" releases, exc
 
 1. Add "-dev.x" to the version number.  
    e.g., v1.2.3-dev.1; v1.2.3-dev.2 for the second development release, etc.
-2. Untick the "Set as the latest release" option and tick the "Set as a pre-release" option.
+2. Untick "Set as the latest release" and tick the "Set as a pre-release" option.
 
 
 ## Release Candidates
@@ -37,5 +55,5 @@ Deploying a Release Candidate follows the same steps as "Public" releases, excep
 
 1. Add "-rc.x" to the version number.  
    e.g., v1.2.3-rc.1; v1.2.3-rc.2 for the second release candidate, etc.
-2. Untick the "Set as the latest release" option and tick the "Set as a pre-release" option.
+2. Untick "Set as the latest release" and tick the "Set as a pre-release" option.
 

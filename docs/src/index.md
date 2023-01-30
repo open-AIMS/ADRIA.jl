@@ -12,7 +12,7 @@ To specify user-specific options, a `config.toml` file should be created with th
 ```toml
 [operation]
 num_cores = 2     # No. of cores to use. Values <= 0 will use all available cores.
-threshold = 1e-6  # Result values below this will be set to 0.0
+threshold = 1e-8  # Result values below this will be set to 0.0 (to save disk space)
 debug = false     # Disable multi-processing to allow error messages to be shown
 
 [results]
@@ -35,8 +35,8 @@ using ADRIA
 # Load input dataset ("Input Set") for a spatial domain
 dom = ADRIA.load_domain("path to Input Set")
 
-# Generate 100 scenarios based on available environmental data layers and model parameters
-scens = ADRIA.sample(dom, 100)
+# Generate 128 scenarios based on available environmental data layers and model parameters
+scens = ADRIA.sample(dom, 128)
 
 # Run sampled scenarios for a given RCP
 rs = ADRIA.run_scenarios(scens, dom, "45")

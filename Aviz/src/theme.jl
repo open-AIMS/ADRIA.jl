@@ -1,3 +1,16 @@
+const COLORS::Dict{Symbol,Symbol} = Dict(
+    :RCP45 => :darkblue,
+    :RCP60 => :seagreen,
+    :RCP85 => :orangered,
+    :counterfactual => :red,
+    :unguided => :lawngreen,
+    :guided => :dodgerblue,
+    :order => :dodgerblue,
+    :topsis => :deepskyblue4,
+    :vikor => :midnightblue
+)
+
+
 function scenario_type(rs)
     inputs = rs.inputs
 
@@ -24,7 +37,10 @@ function scenario_colors(rs, weight::Float64, hide::BitVector)
 
     color_map[counterfactual] .= ((:red, weight),)
     color_map[unguided] .= ((:green, weight),)
-    color_map[hide] .= ((:white, 0.0),)
+
+    if length(hide) > 0
+        color_map[hide] .= ((:white, 0.0),)
+    end
 
     return color_map
 end

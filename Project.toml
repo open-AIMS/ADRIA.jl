@@ -1,7 +1,7 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 authors = ["Takuya Iwanaga", "Rose Crocker", "Ken Anthony"]
-version = "0.4.3"
+version = "0.4.4"
 
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
@@ -40,7 +40,6 @@ PkgVersion = "eebad327-c553-4316-9ea0-9fa01ccd7688"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
-Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SnoopPrecompile = "66db9d55-30c0-4569-8b51-7e840670fc0c"
@@ -55,7 +54,7 @@ ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 
 [compat]
-ArchGDAL = "0.9, 1"
+ArchGDAL = "0.9, 0.10"
 BlackBoxOptim = "0.6"
 Bootstrap = "2"
 CSV = "0.10"

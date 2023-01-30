@@ -8,9 +8,9 @@ be seeded at each of the nsiteint seeding sites selected. Distributes seeded
 corals according to current available space at each selected site.
 
 # Arguments
-- total_site_area : nsites*1, total area at each site in m^2.
+- total_site_area : nsites*1, total area at each site in m²  .
 - prefseedsites : nsiteint*1, indices for the selected seeding sites.
-- available_space : nsites*1, current available space at each site in m^2.
+- available_space : nsites*1, current available space at each site in m².
 - seeded_area : area (in m²) of each coral type to be seeded with
     - TA : colony area of a TA.
     - CA : colony area of a CA.

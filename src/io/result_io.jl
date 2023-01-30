@@ -14,7 +14,7 @@ end
 Extract and return long/lat from a GeoDataFrame.
 
 # Arguments
-- df : GeoDataFrame
+- `df` : GeoDataFrame
 
 # Returns
 Array of tuples (x, y), where x and y relate to long and lat respectively.
@@ -48,9 +48,9 @@ Retrieve summary statistics matrices from DataFrames of dhws and waves.
 Produce summary statistics (mean/std) for given data cube saved to a Zarr data store.
 
 # Arguments
-- data_cube : data to summarize
-- type : dimension identifier to use
-- file_loc : path for Zarr data store
+- `data_cube` : data to summarize
+- `type` : dimension identifier to use
+- `file_loc` : path for Zarr data store
 
 # Returns
 Zarr data store holding a 2*N matrix.
@@ -59,7 +59,7 @@ First row is mean over time
 Second row is the std over time
 N is the number of dhw/wave scenarios.
 """
-function store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)
+function store_env_summary(data_cube::AbstractArray{<:Real}, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)
     stats = summarize_env_data(data_cube)
 
     stats_store = zcreate(Float32, (2, size(stats, 2))...;
@@ -179,8 +179,8 @@ Sets up an on-disk result store.
 - -9999.0 is used as an arbitrary fill value.
 
 # Arguments
-- domain : ADRIA scenario domain
-- param_df : ADRIA scenario specification
+- `domain` : ADRIA scenario domain
+- `param_df` : ADRIA scenario specification
 
 # Returns
 domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, site_ranks, seed_log, fog_log, shade_log)
@@ -268,11 +268,10 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             fill_value=nothing, fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, "relative_taxa_cover"), chunks=((result_dims[1], 6)..., 1),
             attrs=Dict(
-                :structure => string.((:timesteps, :taxa, :scenarios)),
+                :structure => string.(ADRIA.metrics.relative_taxa_cover.dims),
                 :unique_site_ids => unique_sites(domain)
             ),
-            compressor=compressor)
-    )
+            compressor=compressor))
     push!(met_names, :relative_taxa_cover)
 
 

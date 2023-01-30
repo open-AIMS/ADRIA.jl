@@ -9,10 +9,12 @@ import ADRIA: coral_spec, ResultSet
 abstract type Outcome end
 
 
-struct Metric{F<:Function,T<:Tuple} <: Outcome
+struct Metric{F<:Function,T<:Tuple,S<:String} <: Outcome
     func::F
     dims::T
+    unit::S
 end
+Metric(f, d) = Metric(f, d, "")
 
 
 """
@@ -38,7 +40,34 @@ end
 Get name of metric as a string.
 """
 function metric_name(m::Metric)::String
-    return replace(String(Symbol(m.func)), "_" => "", count=1)
+    return metric_name(m.func)
+end
+function metric_name(f::Function)::String
+    return join(split(String(Symbol(f))[2:end], "_"), " ")
+end
+
+"""
+    metric_label(m::Metric)::String
+    metric_label(f::Function, unit::String)
+
+Return name of metric in the format: "Title Case [Unit]", suitable for use as a label.
+
+# Example
+```julia
+m_label = metric_label(scenario_total_cover)
+# "Scenario Total Cover [m²]"
+```
+"""
+function metric_label(m::Metric)::String
+    return metric_label(m.func, m.unit)
+end
+function metric_label(f::Function, unit::String)::String
+    n = titlecase(metric_name(f))
+    if length(unit) > 0
+        n *= " [$unit]"
+    end
+
+    return n
 end
 
 
@@ -68,10 +97,10 @@ end
 Convenience method that slices the data in the specified manner.
 
 # Arguments
-- metric : Function, the metric function to apply to "raw" data.
-- data    : NamedDimsArray, data to pass into `metric`
-- args   : Additional positional arguments to pass into `metric`
-- dims   : dummy keyword argument, not used but defined to allow use with other methods
+- `metric` : Function, the metric function to apply to "raw" data.
+- `data` : NamedDimsArray, data to pass into `metric`
+- `args` : Additional positional arguments to pass into `metric`
+- `dims` : dummy keyword argument, not used but defined to allow use with other methods
 """
 function call_metric(metric::Function, data::NamedDimsArray, args...; kwargs...)
     dims = haskey(kwargs, :dims) ? kwargs[:dims] : nothing
@@ -101,56 +130,58 @@ function slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(
 end
 
 
-"""
-    _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
-    _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
+""" 
+    relative_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray{T} where {T}
+    relative_cover(rs::ResultSet)::AbstractArray
 
 # Arguments
-- X : Matrix of raw model results
+- `X` : Matrix of raw model results
 """
-function _relative_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
+function _relative_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray{T} where {T<:Real}
     # sum over all species and size classes
-    return dropdims(sum(X, dims=:species), dims=:species) ./ replace(k_area, 0.0 => 1.0)'
+    return (dropdims(sum(X, dims=:species), dims=:species) ./ replace(k_area, 0.0 => 1.0)')
 end
-function _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
+function _relative_cover(rs::ResultSet)::AbstractArray
     denom = replace(((rs.site_max_coral_cover ./ 100.0) .* rs.site_area), 0.0 => 1.0)'
-    return rs.outcomes[:total_absolute_cover] ./ denom
+    return (rs.outcomes[:total_absolute_cover] ./ denom)
 end
+relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
 
 
 """
-    _total_absolute_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
-    _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
+    total_absolute_cover(X::AbstractArray{T}, site_area::Vector{T})::AbstractArray{T} where {T}
+    total_absolute_cover(rs::ResultSet)::AbstractArray{T} where {T}
 
 The Total Absolute Coral Cover.
 Sum of proportional area taken up by all corals, multiplied by total site area.
 
 # Arguments
-- X : Matrix of raw model results
-- site_area : Vector of site areas, with sites following the same order as given indicated in X.
+- `X` : Matrix of raw model results
+- `site_area` : Vector of site areas, with sites following the same order as given indicated in X.
 """
-function _total_absolute_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
+function _total_absolute_cover(X::AbstractArray{T}, site_area::Vector{T})::AbstractArray{T} where {T<:Real}
     return dropdims(sum(X, dims=:species), dims=:species) .* site_area'
 end
-function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
+function _total_absolute_cover(rs::ResultSet)::AbstractArray
     return rs.outcomes[:total_absolute_cover]
 end
+total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scenarios), "m²")
 
 
 """
-    taxa_cover(X::AbstractArray{<:Real})
+    relative_taxa_cover(X::AbstractArray{T,3}) where {T<:Real}
 
 Results grouped by taxa/species.
 
 TODO: Uses hardcoded index values, to be replaced by something more generic.
 
 # Arguments
-- X : Raw model results for a single scenario
+- `X` : Raw model results for a single scenario
 
 # Returns
 Coral cover, grouped by taxa for the given scenario.
 """
-function _relative_taxa_cover(X::AbstractArray{<:Real,3})
+function _relative_taxa_cover(X::AbstractArray{T,3}) where {T<:Real}
     nsteps, nspecies, _ = size(X)
 
     taxa_cover = zeros(nsteps, 6)
@@ -161,77 +192,78 @@ function _relative_taxa_cover(X::AbstractArray{<:Real,3})
 
     return taxa_cover
 end
-function _relative_taxa_cover(rs)::AbstractArray{<:Real}
+function _relative_taxa_cover(rs)::AbstractArray
     return rs.outcomes[:relative_taxa_cover]
 end
+relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenarios))
+
+
+# """
+#     coral_cover(X::AbstractArray{T})::NamedTuple where {T<:Real}
+#     coral_cover(rs::ResultSet)
+
+# Converts outputs from scenario runs to relative cover of the four different coral taxa.
+
+# # Returns
+# NamedTuple
+#     - relative_cover : relative coral cover
+#     - enhanced_tab_acr : cover of enhanced tabular acropora
+#     - unenhanced_tab_acr : area covered by unenhanced tabular acropora
+#     - enhanced_cor_acr : area covered by enhanced corymbose acropora
+#     - unenhanced_cor_acr : area covered by unenhanced corymbose acropora
+#     - tab_acr : cover of tabular acropora
+#     - cor_acr : cover of corymbose acropora
+#     - small_enc : cover of small encrusting
+#     - large_mass : cover of large massives
+#     - juveniles : area covered by juveniles
+#     - large : area covered by large mature corals
+# """
+# function coral_cover(X::AbstractArray{<:Real})::NamedTuple
+#     rc::AbstractArray{<:Real} = _relative_cover(X)  # sum over all species and size classes
+
+#     _, _, cs_p::DataFrame = coral_spec()
+
+#     screen = (x, idx) -> findall(x .== idx)
+
+#     sc1::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 1), :, :, :]
+#     sc2::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 2), :, :, :]
+#     sc3::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 3), :, :, :]
+#     sc4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 4), :, :, :]
+
+#     C1::AbstractArray{<:Real} = sc1 .+ sc2  # enhanced to unenhanced tabular Acropora
+#     C2::AbstractArray{<:Real} = sc3 .+ sc4  # enhanced to unenhanced corymbose Acropora
+#     C3::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 5), :, :, :]  # Encrusting and small massives
+#     C4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 6), :, :, :]  # Large massives
+
+#     # Cover of juvenile corals (< 5cm diameter)
+#     juv_all = _absolute_juveniles(X)
+
+#     large_corals::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 5), :, :, :] + X[:, screen(cs_p.class_id, 6), :, :, :]
+#     large_all::AbstractArray{<:Real} = dropdims(sum(large_corals, dims=2), dims=2)
+
+#     covers = (relative_cover=rc,
+#         enhanced_tab_acr=sc1,
+#         unenhanced_tab_acr=sc2,
+#         enhanced_cor_acr=sc3,
+#         unenhanced_cor_acr=sc4,
+#         tab_acr=C1, cor_acr=C2,
+#         small_enc=C3, large_mass=C4,
+#         juveniles=juv_all, large=large_all)
+
+#     return covers
+# end
+# function coral_cover(rs::ResultSet)::NamedTuple
+#     return coral_cover(rs.raw)
+# end
 
 
 """
-    coral_cover(X::AbstractArray{<:Real})::NamedTuple
-    coral_cover(rs::ResultSet)
-
-Converts outputs from scenario runs to relative cover of the four different coral taxa.
-
-# Returns
-NamedTuple
-    - relative_cover : relative coral cover
-    - enhanced_tab_acr : cover of enhanced tabular acropora
-    - unenhanced_tab_acr : area covered by unenhanced tabular acropora
-    - enhanced_cor_acr : area covered by enhanced corymbose acropora
-    - unenhanced_cor_acr : area covered by unenhanced corymbose acropora
-    - tab_acr : cover of tabular acropora
-    - cor_acr : cover of corymbose acropora
-    - small_enc : cover of small encrusting
-    - large_mass : cover of large massives
-    - juveniles : area covered by juveniles
-    - large : area covered by large mature corals
-"""
-function coral_cover(X::AbstractArray{<:Real})::NamedTuple
-    rc::AbstractArray{<:Real} = _relative_cover(X)  # sum over all species and size classes
-
-    _, _, cs_p::DataFrame = coral_spec()
-
-    screen = (x, idx) -> findall(x .== idx)
-
-    sc1::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 1), :, :, :]
-    sc2::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 2), :, :, :]
-    sc3::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 3), :, :, :]
-    sc4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 4), :, :, :]
-
-    C1::AbstractArray{<:Real} = sc1 .+ sc2  # enhanced to unenhanced tabular Acropora
-    C2::AbstractArray{<:Real} = sc3 .+ sc4  # enhanced to unenhanced corymbose Acropora
-    C3::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 5), :, :, :]  # Encrusting and small massives
-    C4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 6), :, :, :]  # Large massives
-
-    # Cover of juvenile corals (< 5cm diameter)
-    juv_all = _absolute_juveniles(X)
-
-    large_corals::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 5), :, :, :] + X[:, screen(cs_p.class_id, 6), :, :, :]
-    large_all::AbstractArray{<:Real} = dropdims(sum(large_corals, dims=2), dims=2)
-
-    covers = (relative_cover=rc,
-        enhanced_tab_acr=sc1,
-        unenhanced_tab_acr=sc2,
-        enhanced_cor_acr=sc3,
-        unenhanced_cor_acr=sc4,
-        tab_acr=C1, cor_acr=C2,
-        small_enc=C3, large_mass=C4,
-        juveniles=juv_all, large=large_all)
-
-    return covers
-end
-function coral_cover(rs::ResultSet)::NamedTuple
-    return coral_cover(rs.raw)
-end
-
-
-"""
-    _relative_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
-    _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real}
+    relative_juveniles(X::AbstractArray{T})::AbstractArray{T} where {T}
+    relative_juveniles(rs::ResultSet)::AbstractArray
 
 Juvenile coral cover relative to total site area.
 """
-function _relative_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+function _relative_juveniles(X::AbstractArray{T})::AbstractArray{T} where {T<:Real}
     _, _, cs_p::DataFrame = coral_spec()
 
     # Cover of juvenile corals (< 5cm diameter)
@@ -239,23 +271,25 @@ function _relative_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
 
     return dropdims(sum(juv_groups, dims=:species), dims=:species)
 end
-function _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real}
+function _relative_juveniles(rs::ResultSet)::AbstractArray
     return rs.outcomes[:relative_juveniles]
 end
+relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios))
 
 
 """
-    _absolute_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
-    _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real}
+    absolute_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real}
 
-Juvenile coral cover in m^2.
+Juvenile coral cover in m².
 """
-function _absolute_juveniles(X::AbstractArray{<:Real}, area::AbstractVector{<:Real})::AbstractArray{<:Real}
+function _absolute_juveniles(X::AbstractArray{T}, area::AbstractVector{T})::AbstractArray{T} where {T<:Real}
     return _relative_juveniles(X) .* area'
 end
-function _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real}
+function _absolute_juveniles(rs::ResultSet)::AbstractArray
     return rs.outcomes[:relative_juveniles] .* rs.site_area'
 end
+absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios), "m²")
 
 
 function _max_juvenile_density(max_juv_density=51.8)
@@ -265,26 +299,28 @@ function _max_juvenile_density(max_juv_density=51.8)
     return max_juv_density * max_size_m²
 end
 
+
 """
-    _juvenile_indicator(X::AbstractArray{<:Real})
-    _juvenile_indicator(rs::ResultSet)
+    juvenile_indicator(X::AbstractArray{T}) where {T<:Real}
+    juvenile_indicator(rs::ResultSet)
 
 Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretical density 
 for juveniles have been achieved.
 
 Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm diameter.
 """
-function _juvenile_indicator(X::AbstractArray{<:Real})
+function _juvenile_indicator(X::AbstractArray{T})::AbstractArray{T} where {T<:Real}
     return _relative_juveniles(X) ./ _max_juvenile_density()
 end
-function _juvenile_indicator(rs::ResultSet)::AbstractArray{<:Real}
+function _juvenile_indicator(rs::ResultSet)::AbstractArray
     return rs.outcomes[:relative_juveniles] ./ _max_juvenile_density()
 end
+juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios))
 
 
 """
-    _coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
-    _coral_evenness(rs::ResultSet)::AbstractArray{<:Real}
+    coral_evenness(X::AbstractArray{T})::AbstractArray{T} where {T<:Real}
+    coral_evenness(rs::ResultSet)::AbstractArray{T} where {T}
 
 Calculates evenness across functional coral groups in ADRIA.
 Inverse Simpsons diversity indicator.
@@ -299,7 +335,7 @@ Number of taxa (distinct groups with enhanced lumped with unenhanced) is hardcod
    https://doi.org/10.2307/1934352
 
 """
-function _coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+function _coral_evenness(X::AbstractArray{T})::AbstractArray{T} where {T<:Real}
     x::AbstractArray{<:Real} = min.(max.(X, 0.0), 1.0)
     covers::NamedTuple = coral_cover(x)
 
@@ -314,9 +350,10 @@ function _coral_evenness(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     simpson_D::AbstractArray{<:Real} = 1 ./ sum_psqr  # Hill 1973, Ecology 54:427-432
     return simpson_D ./ n  # Group evenness
 end
-function _coral_evenness(rs::ResultSet)::AbstractArray{<:Real}
+function _coral_evenness(rs::ResultSet)::AbstractArray
     return _coral_evenness(rs.raw)
 end
+coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
 
 
 """
@@ -325,7 +362,7 @@ end
 Helper function to convert coral colony values from Litres/cm² to m³/m²
 
 # Arguments
-- inputs : Scenario values for the simulation
+- `inputs` : Scenario values for the simulation
 
 # Returns
 Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
@@ -414,15 +451,15 @@ Note: Species dimension is an amalgamation of taxa and size class.
 e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, size class 1-6, etc.
 
 # Arguments
-- X : raw results (proportional coral cover relative to full site area)
-- nspecies : number of species (taxa and size classes) considered
-- scen : scenario number to calculate metric for
-- colony_vol_m3_per_m2 : estimated cubic volume per m² of coverage for each species/size class (36)
-- max_colony_vol_m3_per_m2 : theoretical maximum volume per m² of coverage for each taxa (6)
-- site_area : total area of site in m²
-- k_area : habitable area of site in m² (i.e., `k` area)
+- `X` : raw results (proportional coral cover relative to full site area)
+- `nspecies` : number of species (taxa and size classes) considered
+- `scen` : scenario number to calculate metric for
+- `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class (36)
+- `max_colony_vol_m3_per_m2` : theoretical maximum volume per m² of coverage for each taxa (6)
+- `site_area` : total area of site in m²
+- `k_area` : habitable area of site in m² (i.e., `k` area)
 """
-function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2::Array{Float64}, max_colony_vol_m3_per_m2::Array{Float64}, site_area::Array{Float64}, k_area::Array{Float64}) where {T1}
+function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2::Array{F}, max_colony_vol_m3_per_m2::Array{F}, site_area::Array{F}, k_area::Array{F}) where {T1<:Real,F<:Float64}
     # Calculate absolute shelter volumes first
     ASV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X)...))
     _shelter_species_loop!(X, ASV, nspecies, colony_vol_m3_per_m2, site_area)
@@ -448,21 +485,21 @@ end
 
 
 """
-    _shelter_species_loop!(X::AbstractArray{T1,3}, ASV::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2, site_area) where {T1}
+    _shelter_species_loop!(X::T1, ASV::T1, nspecies::Int64, colony_vol_m3_per_m2::V, site_area::V) where {T1<:NamedDims.NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},V<:AbstractVector{<:Float64}}
 
 Helper method to calculate absolute shelter volume metric across each species/size class for a given scenario.
 
 # Arguments
-- X : raw results (proportional coral cover relative to full site area)
-- ASV : matrix to hold shelter volume results
-- nspecies : number of species (taxa and size classes) considered
-- scen : scenario number to calculate metric for
-- colony_vol_m3_per_m2 : estimated cubic volume per m² of coverage for each species/size class (36)
-- site_area : area of site in m²
-- k_area : habitable area of site in m²
+- `X` : raw results (proportional coral cover relative to full site area)
+- `ASV` : matrix to hold shelter volume results
+- `nspecies` : number of species (taxa and size classes) considered
+- `scen` : scenario number to calculate metric for
+- `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class (36)
+- `site_area` : area of site in m²
+- `k_area` : habitable area of site in m²
 """
-function _shelter_species_loop!(X::AbstractArray{T1,3}, ASV::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2, site_area) where {T1}
-    covered_area = nothing
+function _shelter_species_loop!(X::T1, ASV::T1, nspecies::Int64, colony_vol_m3_per_m2::V, site_area::V) where {T1<:NamedDims.NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},V<:AbstractVector{<:Float64}}
+    local covered_area::NamedDimsArray
 
     @inbounds for sp::Int64 in 1:nspecies
         covered_area = X[species=sp] .* site_area'
@@ -476,8 +513,8 @@ end
 
 
 """
-    _absolute_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})
-    _absolute_shelter_volume(rs::ResultSet)
+    absolute_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})
+    absolute_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume in volume of cubic meters.
 
@@ -487,10 +524,10 @@ shelter volume (a 3D metric).
 
 
 # Arguments
-- X : raw results
-- site_area : area in m^2 for each site
-- max_cover : maximum possible coral cover for each site (in percentage of site_area)
-- inputs : DataFrame of scenario inputs
+- `X` : raw results
+- `site_area` : area in m^2 for each site
+- `max_cover` : maximum possible coral cover for each site (in percentage of site_area)
+- `inputs` : DataFrame of scenario inputs
 
 # References
 1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V.,
@@ -501,7 +538,7 @@ shelter volume (a 3D metric).
    Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
-function _absolute_shelter_volume(X::AbstractArray{<:Real,4}, site_area::Vector{<:Real}, inputs::DataFrame)::AbstractArray{<:Real}
+function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
     nspecies::Int64 = size(X, :species)
 
     # Calculate shelter volume of groups and size classes and multiply with area covered
@@ -515,7 +552,7 @@ function _absolute_shelter_volume(X::AbstractArray{<:Real,4}, site_area::Vector{
     # Sum over groups and size classes to estimate total shelter volume per site
     return dropdims(sum(ASV, dims=:species), dims=:species)
 end
-function _absolute_shelter_volume(X::AbstractArray{<:Real,3}, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{<:Real}
+function _absolute_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
 
@@ -527,14 +564,15 @@ function _absolute_shelter_volume(X::AbstractArray{<:Real,3}, site_area::Vector{
     # Sum over groups and size classes to estimate total shelter volume per site
     return dropdims(sum(ASV, dims=:species), dims=:species)
 end
-function _absolute_shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
+function _absolute_shelter_volume(rs::ResultSet)::AbstractArray
     return rs.outcomes[:absolute_shelter_volume]
 end
+absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :scenarios))
 
 
 """
-    _relative_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::DataFrame)
-    _relative_shelter_volume(rs::ResultSet)
+    _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+    relative_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume relative to theoretical maximum volume for
 the area covered by coral.
@@ -555,9 +593,9 @@ maximum shelter volume possible.
 
 
 # Arguments
-- X : raw results
-- site_area : area in m^2 for each site
-- inputs : DataFrame of scenario inputs
+- `X` : raw results
+- `site_area` : area in m^2 for each site
+- `inputs` : DataFrame of scenario inputs
 
 # References
 1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V.,
@@ -568,7 +606,7 @@ maximum shelter volume possible.
    Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
-function _relative_shelter_volume(X::AbstractArray{<:Real,3}, site_area::Vector{<:Real}, k_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{<:Real}
+function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
 
@@ -585,7 +623,7 @@ function _relative_shelter_volume(X::AbstractArray{<:Real,3}, site_area::Vector{
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(X::AbstractArray{<:Real,4}, site_area::Vector{<:Real}, k_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{<:Real}
+function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray where {T<:Real}
     @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
 
     nspecies::Int64 = size(X, :species)
@@ -607,9 +645,10 @@ function _relative_shelter_volume(X::AbstractArray{<:Real,4}, site_area::Vector{
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(rs::ResultSet)::AbstractArray{<:Real}
+function _relative_shelter_volume(rs::ResultSet)::NamedDimsArray
     return rs.outcomes[:relative_shelter_volume]
 end
+relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :species, :sites, :scenarios))
 
 
 """
@@ -626,17 +665,17 @@ Subject: RE: Max density of juvenile corals on the GBR
 Sent: Friday, 14 October 2022 2:58 PM
 
 # Arguments
-- TC        : Total relative coral cover across all groups
-- E         : Evenness across four coral groups
-- SV        : Shelter volume based coral sizes and abundances
-- juveniles : Abundance of coral juveniles < 5 cm diameter
+- `TC`        : Total relative coral cover across all groups
+- `E`         : Evenness across four coral groups
+- `SV`        : Shelter volume based coral sizes and abundances
+- `juveniles` : Abundance of coral juveniles < 5 cm diameter
 
 Input dimensions: timesteps, species, sites, repeats, scenarios
 
 # Returns
 Dimensions: timesteps, sites, repeats, scenarios
 """
-function _reef_condition_index(rc::AbstractArray{<:Real}, E::AbstractArray{<:Real}, SV::AbstractArray{<:Real}, juveniles::AbstractArray{<:Real})::AbstractArray{<:Real}
+function _reef_condition_index(rc::AbstractArray{T}, E::AbstractArray{T}, SV::AbstractArray{T}, juveniles::AbstractArray{T})::AbstractArray{T} where {T<:Real}
     # Compare outputs against reef condition criteria provided by experts
 
     # These are median values for 7 experts. TODO: draw from distributions
@@ -676,6 +715,7 @@ function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
 
     return _reef_condition_index(rc, E, SV, juv)
 end
+reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 
 include("temporal.jl")
@@ -683,19 +723,6 @@ include("site_level.jl")
 include("scenario.jl")
 include("ranks.jl")
 include("pareto.jl")
-
-
-# Wrap base metric functions with dimension metadata
-relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
-total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scenarios))
-absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :scenarios))
-relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
-coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
-absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios))
-relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios))
-juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios))
-relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenarios))
-reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 
 # """

@@ -7,9 +7,9 @@ using JSON
 Checks for version compatibility.
 
 # Arguments
-- dpkg_details : Datapackage spec
+- `dpkg_details` : Datapackage spec
 """
-function _check_compat(dpkg_details::Dict)
+function _check_compat(dpkg_details::Dict{String,Any})::Nothing
     if haskey(dpkg_details, "version") || haskey(dpkg_details, "dpkg_version")
         dpkg_version = dpkg_details["version"]
         if dpkg_version ∉ COMPAT_DPKG
@@ -18,6 +18,8 @@ function _check_compat(dpkg_details::Dict)
     else
         error("Incompatible Domain data package.")
     end
+
+    return nothing
 end
 
 """
@@ -26,10 +28,10 @@ end
 Load and parse datapackage.
 
 # Arguments
-- dpkg_path : path to datapackage
+- `dpkg_path` : path to datapackage
 """
-function _load_dpkg(dpkg_path::String)
-    dpkg_md = nothing
+function _load_dpkg(dpkg_path::String)::Dict{String,Any}
+    local dpkg_md::Dict{String,Any}
     open(joinpath(dpkg_path, "datapackage.json"), "r") do fp
         dpkg_md = JSON.parse(read(fp, String))
     end
@@ -62,8 +64,8 @@ Map sampled values in `df` back to discrete bounds for parameters
 indicated to be of integer type in the Domain spec.
 
 # Arguments
-- d : Domain type
-- df : DataFrame
+- `d` : Domain type
+- `df` : DataFrame
 """
 function process_inputs!(d::D, df::DataFrame)::Nothing where {D}
     bnds = d.model[:bounds]
@@ -78,9 +80,9 @@ function process_inputs!(d::D, df::DataFrame)::Nothing where {D}
 end
 
 
-function load_mat_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
+function load_mat_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray{Float32}
     data = matread(data_fn)
-    local loaded::NamedArray
+    local loaded::NamedArray{Float32}
     local site_order::Vector{String}
 
     try
@@ -117,8 +119,8 @@ end
 
 Load netCDF data as a NamedArray.
 """
-function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
-    local loaded::NamedArray
+function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray{Float32}
+    local loaded::NamedArray{Float32}
 
     ds = Dataset(data_fn, "r")
     data = ds[attr][:, :]
@@ -146,7 +148,7 @@ end
 
 Convert character array entries in netCDFs to string.
 """
-function _char_to_string(vals)::Vector{String}
+function _char_to_string(vals::AbstractVecOrMat)::Vector{String}
     if vals isa Matrix
         vals = map(x -> join(skipmissing(x)), eachcol(vals))
     end
@@ -164,8 +166,8 @@ end
 
 Load initial coral cover data from netCDF.
 """
-function load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
-    data = load_nc_data(data_fn, attr, site_data)
+function load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedArray{Float32}
+    data::NamedArray{Float32} = load_nc_data(data_fn, attr, site_data)
 
     ds = Dataset(data_fn, "r")
     site_order = string.(ds["reef_siteid"][:])
@@ -190,8 +192,8 @@ end
 
 Load environmental data layers (DHW, Wave) from netCDF.
 """
-function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
-    data = load_nc_data(data_fn, attr, site_data)
+function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray{Float32}
+    data::NamedArray{Float32} = load_nc_data(data_fn, attr, site_data)
 
     ds = Dataset(data_fn, "r")
     site_order = string.(ds["reef_siteid"][:])

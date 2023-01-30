@@ -5,6 +5,7 @@
 ```@autodocs
 Modules = [ADRIA.metrics]
 Order   = [:function, :type]
+Private = false
 ```
 
 ## Performance indicators
@@ -26,5 +27,6 @@ Order   = [:function, :type]
 ```@autodocs
 Modules = [ADRIA]
 Order   = [:function, :type]
+Private = false
 ```
 

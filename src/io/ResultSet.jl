@@ -300,7 +300,7 @@ end
 Retrieve the time steps represented in the result set.
 
 # Arguments
-- rs : ResultSet
+- `rs` : ResultSet
 """
 function timesteps(rs::ResultSet)
     return rs.env_layer_md.timeframe

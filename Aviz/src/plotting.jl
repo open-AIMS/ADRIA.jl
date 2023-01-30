@@ -1,15 +1,5 @@
-"""
-    normalize(data::Matrix)::Matrix
+import ADRIA.analysis: normalize
 
-Normalize a matrix so that the data is ∈ [0, 1] relative to values in each column.
-"""
-function normalize(data::Matrix)::Matrix
-    limits = extrema.(eachcol(data))
-
-    scaled = hcat([(d .- mi) ./ (ma - mi) for (d, (mi, ma)) in zip(eachcol(data), limits)]...)
-    replace!(scaled, NaN=>0.5)
-    return scaled
-end
 
 function pairplot!(display, outcomes::NamedTuple)
     n_outcomes = length(outcomes)
@@ -33,8 +23,8 @@ function pairplot!(display, outcomes::NamedTuple)
             if row < n_outcomes
                 # Hide x-axis for all except for the last row
                 # and second-last row of the final column
-                if col == n_outcomes 
-                    if row != n_outcomes-1
+                if col == n_outcomes
+                    if row != n_outcomes - 1
                         hidexdecorations!(t, grid=false, ticks=false)
                     end
                 else
@@ -85,8 +75,8 @@ function pairplot!(display, data, names)
             if row < n_outcomes
                 # Hide x-axis for all except for the last row
                 # and second-last row of the final column
-                if col == n_outcomes 
-                    if row != n_outcomes-1
+                if col == n_outcomes
+                    if row != n_outcomes - 1
                         hidexdecorations!(t, grid=false, ticks=false)
                     end
                 else
@@ -162,7 +152,7 @@ Parallel Coordinate Plot
 - names : Vector or Tuple of names (for x-axis)
 - color : Color tuple or Vector of colors
 """
-function pcp!(ax, data, names::Union{Vector, Tuple}; color=(:blue, 0.1))
+function pcp!(ax, data, names::Union{Vector,Tuple}; color=(:blue, 0.1))
     n = size(data, 2)
 
     vlines!(ax, 1:n; color=:black)
