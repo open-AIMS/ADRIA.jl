@@ -30,7 +30,7 @@ function scenario!(f::GridPosition, rs::ResultSet, metric, metric_args::Dict=Dic
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
 
     ax = Axis(
-        f[1, 1],
+        f,
         xticks=xtick_vals,
         xticklabelrotation=xtick_rot;
         axis_opts...
@@ -98,5 +98,8 @@ Figure
 """
 function scenario(rs::ResultSet, metric, metric_args::Dict=Dict();
     opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
-    return scenario!(Figure(fig_opts...), rs, metric, metric_args; opts, axis_opts, series_opts)
+    f = Figure()
+    scenario!(f[1, 1], rs, metric, metric_args; opts, axis_opts, series_opts)
+
+    return f
 end
