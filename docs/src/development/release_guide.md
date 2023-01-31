@@ -39,6 +39,7 @@ Deploying a Development Release follows the same steps as "Public" releases, exc
 1. Add "-dev.x" to the version number.  
    e.g., v1.2.3-dev.1; v1.2.3-dev.2 for the second development release, etc.
 2. Untick "Set as the latest release" and tick the "Set as a pre-release" option.
+3. DO click "Publish release", and DO NOT trigger the `JuliaRegistrator` bot.
 
 
 ## Release Candidates
@@ -51,4 +52,5 @@ Deploying a Release Candidate follows the same steps as "Public" releases, excep
 1. Add "-rc.x" to the version number.  
    e.g., v1.2.3-rc.1; v1.2.3-rc.2 for the second release candidate, etc.
 2. Untick "Set as the latest release" and tick the "Set as a pre-release" option.
+3. DO click "Publish release", and DO NOT trigger the `JuliaRegistrator` bot.
 
