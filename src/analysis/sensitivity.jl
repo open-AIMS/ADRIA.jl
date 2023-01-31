@@ -132,7 +132,7 @@ function tsa(X::DataFrame, y::AbstractMatrix{T})::NamedArray{T} where {T<:Real}
     )
 
     for t in axes(y, 1)
-        t_pawn_idx[:, :, t] .= normalize(
+        t_pawn_idx[:, :, t] .= col_normalize(
             pawn(X, vec(mean(y[1:t, :], dims=1)))
         )
     end
@@ -280,7 +280,7 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors:
     setdimnames!(p_table, [:bins, :factors, :CI])
 
     # Normalize each column in y
-    y = normalize(y)
+    y = col_normalize(y)
 
     all_p_rule = findall(rule, eachrow(y))
     num_p_rule = length(all_p_rule)
