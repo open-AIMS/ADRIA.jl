@@ -321,6 +321,7 @@ end
 Create interface to a given Zarr result set.
 """
 function load_results(result_loc::String)::ResultSet
+    # Read in results
     raw_set = nothing
     try
         raw_set = zopen(joinpath(result_loc, RESULTS), fill_as_missing=false)
@@ -339,6 +340,7 @@ function load_results(result_loc::String)::ResultSet
         end
     end
 
+    # Read in logs
     log_set = zopen(joinpath(result_loc, LOG_GRP), fill_as_missing=false)
     input_set = zopen(joinpath(result_loc, INPUTS), fill_as_missing=false)
 
@@ -350,9 +352,11 @@ function load_results(result_loc::String)::ResultSet
         result_loc = result_loc[1:end-1]
     end
 
+    # Spatial data
     site_data = GeoDataFrames.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
     sort!(site_data, [Symbol(input_set.attrs["unique_site_id_col"])])
 
+    # Model specification
     model_spec = CSV.read(joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#")
 
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
@@ -365,9 +369,11 @@ function load_results(result_loc::String)::ResultSet
         @warn msg
     end
 
+    # The inputs used
     input_cols::Array{String} = input_set.attrs["columns"]
     inputs_used::DataFrame = DataFrame(input_set[:, :], input_cols)
 
+    # Details of the environmental data layer used for the sims
     env_layer_md::EnvLayer = EnvLayer(
         result_loc,
         input_set.attrs["site_data_file"],

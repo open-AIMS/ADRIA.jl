@@ -15,7 +15,7 @@ const ENV_STATS = "env_stats"
 const MODEL_SPEC = "model_spec"
 
 
-struct ResultSet{S,T1,T2,F,A,B,C,D,G}
+struct ResultSet{S,T1,T2,F,A,B,C,D,G,D1,D2,DF}
     name::S
     RCP::S
     invoke_time::S
@@ -31,11 +31,11 @@ struct ResultSet{S,T1,T2,F,A,B,C,D,G}
     site_data::G
 
     inputs::G
-    sim_constants::Dict
-    model_spec::DataFrame
+    sim_constants::D1
+    model_spec::DF
 
     # raw::AbstractArray
-    outcomes::Dict
+    outcomes::D2
     ranks::A
     seed_log::B  # Values stored in m^2
     fog_log::C   # Reduction in bleaching mortality (0.0 - 1.0)
