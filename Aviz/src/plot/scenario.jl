@@ -1,9 +1,3 @@
-using GLMakie
-
-using ADRIA: ResultSet, metrics.metric_label, timesteps
-using Aviz: scenario_type, scenario_colors, COLORS
-
-
 """
     scenario!(f::GridPosition, rs::ADRIA.ResultSet, metric, metric_args=Dict(); opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
