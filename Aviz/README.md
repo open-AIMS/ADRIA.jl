@@ -11,13 +11,15 @@ using Aviz
 # Load some results
 rs = ADRIA.load_results("...")
 
+# Display a single figure
 Aviz.scenario(rs, ADRIA.metrics.scenario_total_cover)
 
+# Compose subplots
 tf = Figure(resolution=(1600, 600))  # resolution in pixels
 Aviz.plot.scenario!(tf[1, 1], rs, ADRIA.metrics.scenario_total_cover; opts=Dict(:by_RCP => false), axis_opts=Dict(:title => "TAC"));
 Aviz.plot.scenario!(tf[1, 2], rs, ADRIA.metrics.scenario_juveniles; opts=Dict(:by_RCP => false), axis_opts=Dict(:title => "Juveniles"));
 
-tf  # show figure
+tf  # show figure with subplots
 ```
 
 ![Quick scenario plots](assets/imgs/aviz_scenario.png?raw=true "Quick scenario plots")
