@@ -60,8 +60,7 @@ Display heatmap of sensitivity analysis.
 GLMakie figure
 """
 function pawn(Si::NamedMatrix; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    res = get(fig_opts, :resolution, (800, 500))
-    f = Figure(resolution=res)
+    f = Figure(; fig_opts...)
     pawn!(f[1, 1], Si; opts, axis_opts)
 
     return f
