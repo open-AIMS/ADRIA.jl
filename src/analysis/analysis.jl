@@ -1,27 +1,44 @@
 module analysis
 
-using Statistics, DataFrames
+using Statistics, DataFrames, NamedArrays
 using ADRIA
 import ADRIA: ResultSet
 
 
 """
     col_normalize(data::AbstractArray)::AbstractArray
-    col_normalize(data::Vector)::Vector
 
-Normalize a matrix or vector on a per-column basis (∈ [0, 1]).
+Normalize a matrix on a per-column basis (∈ [0, 1]).
 """
 function col_normalize(data::AbstractMatrix{T})::AbstractMatrix{T} where {T<:Real}
-    return hcat(col_normalize.(eachcol(data))...)
-end
-function col_normalize(data::AbstractVector{T})::AbstractVector{T} where {T<:Real}
-    limits = extrema(data)
-    scaled = let (mi, ma) = limits
-        (data .- mi) ./ (ma - mi)
+    d = copy(data)
+    Threads.@threads for ax in axes(d, 2)
+        d[:, ax] .= normalize!(d[:, ax])
     end
 
-    replace!(scaled, NaN => 0.0)
-    return scaled
+    return d
+end
+
+"""
+    normalize(data::AbstractArray{T})::AbstractArray{T} where {T<:Real}
+
+Normalize a matrix or vector (∈ [0, 1]).
+"""
+function normalize(data::AbstractArray{T})::AbstractArray{T} where {T<:Real}
+    return normalize!(copy(data))
+end
+
+"""
+    normalize!(data::AbstractArray{T})::AbstractArray{T} where {T<:Real}
+
+Normalize a matrix or vector (∈ [0, 1]) in place.
+"""
+function normalize!(data::AbstractArray{T})::AbstractArray{T} where {T<:Real}
+    (mi, ma) = extrema(data)
+    data .= (data .- mi) ./ (ma - mi)
+
+    replace!(data, NaN => 0.0)
+    return data
 end
 
 """
