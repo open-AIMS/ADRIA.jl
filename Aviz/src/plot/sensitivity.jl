@@ -5,6 +5,8 @@
 - `f` : Figure GridPosition
 - `Si` : Sensitivity analysis results from `pawn()`
 - `opts` : Additional figure customization options
+    - `normalize` : Normalize each column ∈ [0, 1] to obtain relative sensitivity
+    - `factors` : List of factors to display (factors are filtered after normalization)
 - `axis_opts` : Additional options to pass to adjust Axis attributes  
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 
@@ -47,9 +49,9 @@ Display heatmap of sensitivity analysis.
 # Arguments
 - `Si` : Results from sensitivity analysis
 - `opts` : Additional figure customization options  
-           normalize : column-wise normalization of values prior to figure display
-           factors   : list (of strings) naming factors of interest to display from `Si`
-- `fig_opts` : Additional options to pass to adjust Figure attributes  
+    - `normalize` : Normalize each column ∈ [0, 1] to obtain relative sensitivity
+    - `factors` : List of factors to display (factors are filtered after normalization)
+- `fig_opts` : Additional options to pass to adjust Figure creation  
   See: https://docs.makie.org/v0.19/api/index.html#Figure
 - `axis_opts` : Additional options to pass to adjust Axis attributes  
   See: https://docs.makie.org/v0.19/api/index.html#Axis
