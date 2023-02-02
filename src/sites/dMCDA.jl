@@ -754,6 +754,7 @@ end
     run_site_selection(domain::Domain, criteria::DataFrame, sumcover::AbstractArray, area_to_seed::Float64, time_step::Int64)
 
 Perform site selection for a given domain for multiple scenarios defined in a dataframe.
+    
 # Arguments
 - domain : ADRIA Domain type, indicating geographical domain to perform site selection over.
 - criteria : DataFrame of criteria weightings and thresholds.
