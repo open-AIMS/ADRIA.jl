@@ -756,7 +756,7 @@ end
 Perform site selection for a given domain for multiple scenarios defined in a dataframe.
 # Arguments
 - domain : ADRIA Domain type, indicating geographical domain to perform site selection over.
-- criteria : DataFrame of criteria weightings and thresholds (can be a DataFrame loaded from an ADRIA scenario csv).
+- criteria : DataFrame of criteria weightings and thresholds.
 - sumcover : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
 - area_to_seed : area of coral to be seeded at each time step in km^2
 - time_step : time step at which seeding and/or shading is being undertaken.
@@ -794,7 +794,7 @@ end
 Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
 
 # Arguments
-- criteria : contains criteria weightings and thresholds (can be a scenario DataFrame) for a single scenario.
+- criteria : contains criteria weightings and thresholds for a single scenario.
 - mcda_vars : site selection criteria and weightings structure
 - w_scens : array of length nsites containing wave scenario.
 - dhw_scens : array of length nsites containing dhw scenario.
