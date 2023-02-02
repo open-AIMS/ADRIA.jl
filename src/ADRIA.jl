@@ -1,17 +1,16 @@
 module ADRIA
 
-using Random, TOML, Dates, CpuId
-using StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
-using NamedArrays, SparseArrayKit, DifferentialEquations
+using TOML, CpuId, PkgVersion
+using Random, StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
+using NamedArrays, NamedDims, AxisKeys, SparseArrayKit, DifferentialEquations
 
 using MAT
 using Combinatorics, Distances
 using Setfield, ModelParameters, DataStructures
-using DataFrames, Graphs, CSV
+using DataFrames, Graphs, CSV, Dates
 import ArchGDAL as AG
 import GeoDataFrames
 
-using PkgVersion
 using ProgressMeter
 
 using SnoopPrecompile, RelocatableFolders
