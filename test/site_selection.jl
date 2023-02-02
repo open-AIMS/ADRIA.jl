@@ -1,3 +1,4 @@
+using Distributions
 @testset "site selection" begin
     # TODO: Complete tests with @tests
 
@@ -30,19 +31,28 @@ end
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
-    criteria_df = ADRIA.sample(dom, 5) # get scenario dataframe
-    criteria_df.dist_thresh .= 1.0
+    dom = ADRIA.load_domain(joinpath(here, "Example_domain"))
+
+    criteria_df = ADRIA.sample(ex_domain, 5) # get scenario dataframe
+
     area_to_seed = 1.5 * 10^-6 # area of seeded corals in km^2
-    nreps = 30 # number of dhw and wave replicates you want to use
     ts = 5 # time step to perform site selection at
-    scen = 5
-    alg_ind = criteria_df.guided[scen]# MCDA algorithm to use (1-3)
 
-    ranks = site_selection(dom, criteria_df, area_to_seed, ts, nreps, scen, alg_ind)
+    sumcover = 0.1 .* ones(5, size(dom.site_data, 1))
+    ranks = run_site_selection(dom, criteria_df[criteria_df.guided.>0, :], sumcover, area_to_seed, ts)
 
-    # Check that only 4 sites make it through depth and heat/wave risk filter    
-    @test size(ranks, 2) == 4 || "Sites which should have been filtered have still been ranked."
-    @test size(ranks, 1) == nreps || "Specified number of replicates was not carried out."
-    @test sum(ranks[:, :, [2, 3]]) .!= 0.0 || "No ranks assigned for any replicates."
+    # Check that only 4 sites make it through depth and heat/wave risk filter  
+    for nscen in 1:size(ranks, 1)
+        @test all(ranks["scen_$nscen", 5, :] .== 0.0) || "Sites which should have been filtered in scenario $nscen have still been ranked."
+    end
+
+    @test size(ranks, 1) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
+
+    sel_sites = unique(ranks)
+    sel_sites = sel_sites[sel_sites.!=0.0]
+    site_ids = collect(Float64, 1:size(dom.site_data, 1))
+    for ss in sel_sites
+        @test in.(ss, site_ids) || "Sites outsite of site id set have been ranked."
+    end
 
 end
