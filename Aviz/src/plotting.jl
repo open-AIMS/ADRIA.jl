@@ -1,4 +1,4 @@
-import ADRIA.analysis: normalize
+import ADRIA.analysis: col_normalize
 
 
 function pairplot!(display, outcomes::NamedTuple)

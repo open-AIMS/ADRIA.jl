@@ -4,7 +4,7 @@ using Logging
 using Statistics, Distributions, HypothesisTests, Bootstrap
 using NamedArrays, DataFrames
 
-import ADRIA.analysis: normalize
+import ADRIA.analysis: col_normalize
 
 
 """

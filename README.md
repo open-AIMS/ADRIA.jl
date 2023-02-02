@@ -38,7 +38,7 @@ using ADRIA
 # Load data for a spatial domain
 dom = ADRIA.load_domain("path to domain data package")
 
-# Generate 100 scenarios based on available environmental data layers and model parameters
+# Generate 128 scenarios based on available environmental data layers and model parameters
 scens = ADRIA.sample(dom, 128)
 
 # Run sampled scenarios for a given RCP
