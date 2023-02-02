@@ -168,7 +168,7 @@ function combine_results(result_sets...)::ResultSet
         end
     end
 
-    compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
+    compressor = Zarr.BloscCompressor(cname="zstd", clevel=4, shuffle=true)
     metrics = keys(rs1.outcomes)
     result_dims = (
         size(rs1.outcomes[:total_absolute_cover], :timesteps),
