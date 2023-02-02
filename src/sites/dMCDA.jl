@@ -751,7 +751,7 @@ function vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},
 end
 
 """
-    site_selection_scens(domain::Domain, criteria::DataFrame, sumcover::AbstractArray, area_to_seed::Float64, ts::Int64)
+    run_site_selection(domain::Domain, criteria::DataFrame, sumcover::AbstractArray, area_to_seed::Float64, time_step::Int64)
 
 Perform site selection for a given domain for multiple scenarios defined in a dataframe.
 # Arguments
@@ -759,13 +759,13 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - criteria : DataFrame of criteria weightings and thresholds (can be a DataFrame loaded from an ADRIA scenario csv).
 - sumcover : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
 - area_to_seed : area of coral to be seeded at each time step in km^2
-- ts : time step at which seeding and/or shading is being undertaken.
+- time_step : time step at which seeding and/or shading is being undertaken.
 
 # Returns
 - ranks_store : number of scenarios * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(domain::Domain, criteria::DataFrame, sumcover::AbstractArray, area_to_seed::Float64, ts::Int64)
+function run_site_selection(domain::Domain, criteria::DataFrame, sumcover::AbstractArray, area_to_seed::Float64, time_step::Int64)
 
     ranks_store = NamedArray(zeros(size(criteria, 1), domain.sim_constants.nsiteint, 3))
     idx_rows = ["scen_$i" for i = 1:size(criteria, 1)]
@@ -781,7 +781,7 @@ function run_site_selection(domain::Domain, criteria::DataFrame, sumcover::Abstr
         depth_criteria = (site_data.depth_med .<= max_depth) .& (site_data.depth_med .>= scen_criteria.depth_min)
         depth_priority = collect(1:size(site_data, 1))[depth_criteria]
 
-        ranks_temp = site_selection(domain, scen_criteria, wave_scens[ts, :, criteria.wave_scenario[cover_ind]], dhw_scens[ts, :, criteria.wave_scenario[cover_ind]], depth_priority, sumcover[cover_ind, :, :], area_to_seed)
+        ranks_temp = site_selection(domain, scen_criteria, wave_scens[time_step, :, criteria.wave_scenario[cover_ind]], dhw_scens[time_step, :, criteria.wave_scenario[cover_ind]], depth_priority, sumcover[cover_ind, :, :], area_to_seed)
         ranks_store[cover_ind, 1:size(ranks_temp, 1), :] = ranks_temp
     end
 
