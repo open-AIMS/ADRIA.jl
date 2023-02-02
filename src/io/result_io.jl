@@ -268,12 +268,10 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             fill_value=nothing, fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, "relative_taxa_cover"), chunks=((result_dims[1], 6)..., 1),
             attrs=Dict(
-                :structure => string.(ADRIA.metrics.relative_taxa_cover.dims),
-                :unique_site_ids => unique_sites(domain)
+                :structure => string.(ADRIA.metrics.relative_taxa_cover.dims)
             ),
             compressor=compressor))
     push!(met_names, :relative_taxa_cover)
-
 
     dhw_stats_store = store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), domain.RCP, compressor)
     wave_stats_store = store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), domain.RCP, compressor)
@@ -322,21 +320,12 @@ Create interface to a given Zarr result set.
 """
 function load_results(result_loc::String)::ResultSet
     # Read in results
-    raw_set = nothing
+    local raw_set
     try
         raw_set = zopen(joinpath(result_loc, RESULTS), fill_as_missing=false)
     catch err
         if !occursin("ArgumentError", sprint(showerror, err))
             rethrow(err)
-        end
-    end
-
-    outcomes = Dict{Symbol,NamedDimsArray}()
-    subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS), join=true))
-    for sd in subdirs
-        if !(occursin(LOG_GRP, sd)) && !(occursin(INPUTS, sd))
-            res = zopen(sd, fill_as_missing=false)
-            outcomes[Symbol(basename(sd))] = NamedDimsArray{Symbol.(Tuple(res.attrs["structure"]))}(res)
         end
     end
 
@@ -385,6 +374,42 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["wave_file"],
         input_set.attrs["timeframe"]
     )
+
+    outcomes = Dict{Symbol,NamedDimsArray}()
+    subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS), join=true))
+    for sd in subdirs
+        if !(occursin(LOG_GRP, sd)) && !(occursin(INPUTS, sd))
+            res = zopen(sd, fill_as_missing=false)
+            sz = size(res)
+
+            # Construct dimension names and metadata
+            st = []
+            for (i, s) in enumerate(res.attrs["structure"])
+                if s == "timesteps"
+                    push!(st, input_set.attrs["timeframe"])
+                elseif s == "sites"
+                    push!(st, res.attrs["unique_site_ids"])
+                else
+                    push!(st, 1:sz[i])
+                end
+            end
+
+            try
+                outcomes[Symbol(basename(sd))] = NamedDimsArray(res; zip(Symbol.(res.attrs["structure"]), st)...)
+            catch err
+                if err isa ArgumentError
+                    @warn """Unable to resolve result structure, reverting to numbered keys.
+                    For group $(sd)
+                    Got: $(size(res))
+                    Structure: $(res.attrs["structure"])
+                    Generated: $(Array([i[1] for i in size.(st)]))
+                    """
+                else
+                    rethrow(err)
+                end
+            end
+        end
+    end
 
     return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, dhw_stat_set, wave_stat_set, site_data, model_spec)
 end
