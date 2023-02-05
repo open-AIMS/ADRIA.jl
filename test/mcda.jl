@@ -2,6 +2,7 @@ using Test
 using Distributions
 import ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_shade_matrix
 
+
 @testset "Create decision matrix" begin
 
     # Dummy data to create decision matrix from
