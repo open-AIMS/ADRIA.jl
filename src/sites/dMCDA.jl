@@ -135,14 +135,14 @@ end
     rank_shade_sites!(S, weights, rankings, nsiteint)
 
 # Arguments
-- S : Matrix, Site preference values
-- weights : weights to apply
-- rankings : vector of site ranks to update
-- nsiteint : number of sites to select for interventions
-- rank_col : column to fill with rankings (2 for seed, 3 for shade)
+- `S` : Matrix, Site preference values
+- `weights` : weights to apply
+- `rankings` : vector of site ranks to update
+- `nsiteint` : number of sites to select for interventions
+- `rank_col` : column to fill with rankings (2 for seed, 3 for shade)
 
 # Returns
-prefsites : sites in order of their rankings
+- `prefsites` : sites in order of their rankings
 """
 function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
@@ -191,16 +191,16 @@ Columns indicate:
 7. Available Area (relative to max cover)
 
 # Arguments
-- site_ids : vector of site ids
-- in_conn : site incoming centrality (relative strength of connectivity) (0 <= c <= 1.0)
-- out_conn : site outgoing centrality (relative strength of connectivity) (0 <= c <= 1.0)
-- sum_cover : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
-- max_cover : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
-- area : total absolute area (in m²) for each site
-- wave_stress : Probability of wave damage
-- heat_stress : Probability of site being affected by heat stress
-- predec : list of priority predecessors (sites strongly connected to priority sites)
-- risk_tol : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
+- `site_ids` : vector of site ids
+- `in_conn` : site incoming centrality (relative strength of connectivity) (0 <= c <= 1.0)
+- `out_conn` : site outgoing centrality (relative strength of connectivity) (0 <= c <= 1.0)
+- `sum_cover` : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
+- `max_cover` : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
+- `area` : total absolute area (in m²) for each site
+- `wave_stress` : Probability of wave damage
+- `heat_stress` : Probability of site being affected by heat stress
+- `predec` : list of priority predecessors (sites strongly connected to priority sites)
+- `risk_tol` : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
 """
 function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
     A = zeros(length(site_ids), 9)
@@ -252,18 +252,18 @@ end
 Create seeding specific decision matrix from criteria matrix. The weight criteria and filter.
 
 # Arguments
-- A : Criteria matrix
-- min_area : Minimum available area for a site to be considered
-- inconn_seed : Seed connectivity weight for seeding
-- outconn_seed : Seed connectivity weight for seeding
-- waves : Wave stress weight
-- heat : Heat stress weight
-- predec : Priority predecessor weight
-- low_cover : Weighting for low coral cover (coral real estate), when seeding
+- `A` : Criteria matrix
+- `min_area` : Minimum available area for a site to be considered
+- `inconn_seed` : Seed connectivity weight for seeding
+- `outconn_seed` : Seed connectivity weight for seeding
+- `waves` : Wave stress weight
+- `heat` : Heat stress weight
+- `predec` : Priority predecessor weight
+- `low_cover` : Weighting for low coral cover (coral real estate), when seeding
 
 # Returns
 Tuple (SE, wse)
-- SE : Matrix of shape [n sites considered, 7]
+- `SE` : Matrix of shape [n sites considered, 7]
     1. Site index ID
     2. Incoming Centrality
     3. Outgoing Centrality
@@ -271,7 +271,7 @@ Tuple (SE, wse)
     5. Damage risk (higher values = less risk)
     6. Priority predecessors relating to coral real estate relative to max capacity
     7. Available space
-- wse : 5-element vector of criteria weights
+- `wse` : 5-element vector of criteria weights
     1. incoming connectivity
     2. outgoing connectivity
     3. wave
@@ -303,16 +303,16 @@ end
 Create shading specific decision matrix and apply weightings.
 
 # Arguments
-- A : Criteria  matrix
-- wtconshade : Shading connectivity weight
-- wtwaves : Wave stress weight
-- wtheat : Heat stress weight
-- wtpredecshade : Priority predecessor weight for shading
-- wthicover : Weighting for high coral cover when shading
+- `A` : Criteria  matrix
+- `wtconshade` : Shading connectivity weight
+- `wtwaves` : Wave stress weight
+- `wtheat` : Heat stress weight
+- `wtpredecshade` : Priority predecessor weight for shading
+- `wthicover` : Weighting for high coral cover when shading
 
 # Returns
 Tuple (SH, wsh)
-- SH : Matrix of shape [n sites considered, 7]
+- `SH` : Matrix of shape [n sites considered, 7]
     1. Site index ID
     2. Incoming Centrality
     3. Outgoing Centrality
@@ -320,7 +320,7 @@ Tuple (SH, wsh)
     5. Damage risk (higher values = less risk)
     6. Priority predecessors relating to coral real estate relative to max capacity
     7. Available space
-- wsh : 5-element vector of criteria weights
+- `wsh` : 5-element vector of criteria weights
     1. shade connectivity
     2. wave
     3. heat
@@ -348,21 +348,21 @@ end
     guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, rankingsin::Matrix{Int64})
 
 # Arguments
-- d_vars : DMCDA_vars type struct containing weightings and criteria values for site selection.
-- alg_ind : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
-- log_seed : boolean ideicating whether seeding sites are being re-assesed at current time
-- log_shade : boolean ideicating whether shading/fogging sites are being re-assesed at current time
-- prefshadesites : previous time step's selection of sites for shading
-- prefseedsites : previous time step's selection of sites for seeding
-- rankingsin : storage for site rankings
+- `d_vars` : DMCDA_vars type struct containing weightings and criteria values for site selection.
+- `alg_ind` : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
+- `log_seed` : boolean ideicating whether seeding sites are being re-assesed at current time
+- `log_shade` : boolean ideicating whether shading/fogging sites are being re-assesed at current time
+- `prefshadesites` : previous time step's selection of sites for shading
+- `prefseedsites` : previous time step's selection of sites for seeding
+- `rankingsin` : storage for site rankings
 
 # Returns
 Tuple :
-    - prefseedsites : nsiteint highest ranked seeding sites
-    - prefshadesites : nsiteint highest ranked shading/fogging sites
-    - number of seed sites : nprefseedsites
-    - nprefshadesites : number of shade sites
-    - rankings : nsitesx3 matrix holding [site_id, seeding_rank, shading_rank],
+    - `prefseedsites` : nsiteint highest ranked seeding sites
+    - `prefshadesites` : nsiteint highest ranked shading/fogging sites
+    - `number of seed` sites : nprefseedsites
+    - `nprefshadesites` : number of shade sites
+    - `rankings` : nsitesx3 matrix holding [site_id, seeding_rank, shading_rank],
         0 indicates sites that were not considered
 """
 function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool,
@@ -517,14 +517,14 @@ Find selected sites with distances between each other < median distance-dist_thr
 Replaces these sites with sites in the top_n ranks if the distance between these sites is greater.
 
 # Arguments
-- pref_sites : original n highest ranked sites selected for seeding or shading.
-- site_order : current order of ranked sites in terms of numerical site ID.
-- dist : Matrix of unique distances between sites.
-- min_dist : minimum distance between sites for selected sites.
-- top_n : number of top ranked sites to re-select from.
+- `pref_sites` : original n highest ranked sites selected for seeding or shading.
+- `site_order` : current order of ranked sites in terms of numerical site ID.
+- `dist` : Matrix of unique distances between sites.
+- `min_dist` : minimum distance between sites for selected sites.
+- `top_n` : number of top ranked sites to re-select from.
 
 # Returns
-- prefsites : new set of selected sites for seeding or shading.
+- `prefsites` : new set of selected sites for seeding or shading.
 """
 function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
     min_dist::Float64, top_n::Int64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
@@ -591,10 +591,10 @@ Uses simple summation as aggregation method for decision criteria.
 Then orders sites from highest aggregate score to lowest.
 
 # Arguments
-- S : Decision matrix (seeding or shading)
+- `S` : Decision matrix (seeding or shading)
 
 # Returns
-- s_order : nsites × 3 matrix with columns
+- `s_order` : nsites × 3 matrix with columns
     1. site ids
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
@@ -642,10 +642,10 @@ S_p  = √{∑(criteria .- NIS)²}
     https://doi.org/10.1016/S0377-2217(03)00020-1.
 
 # Arguments
-- S : Decision matrix (seeding or shading)
+- `S` : Decision matrix (seeding or shading)
 
 # Returns
-- s_order :
+- `s_order` :
     1. site ids
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
@@ -714,11 +714,11 @@ Details of this aggregation method in, for example [1]
     https://doi.org/10.3390/jrfm14060271
 
 # Arguments
-- S : Matrix
-- v : Real
+- `S` : Matrix
+- `v` : Real
 
 # Returns
-- s_order :
+- `s_order` :
     1. site ids
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
@@ -756,14 +756,14 @@ end
 Perform site selection for a given domain for multiple scenarios defined in a dataframe.
     
 # Arguments
-- domain : ADRIA Domain type, indicating geographical domain to perform site selection over.
-- criteria : DataFrame of criteria weightings and thresholds.
-- sum_cover : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
-- area_to_seed : area of coral to be seeded at each time step in km^2
-- time_step : time step at which seeding and/or shading is being undertaken.
+- `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
+- `criteria` : DataFrame of criteria weightings and thresholds.
+- `sum_cover` : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
+- `area_to_seed` : area of coral to be seeded at each time step in km^2
+- `time_step` : time step at which seeding and/or shading is being undertaken.
 
 # Returns
-- ranks_store : number of scenarios * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
+- `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for each scenario run.
 """
 function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
@@ -795,15 +795,15 @@ end
 Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
 
 # Arguments
-- criteria : contains criteria weightings and thresholds for a single scenario.
-- mcda_vars : site selection criteria and weightings structure
-- w_scens : array of length nsites containing wave scenario.
-- dhw_scens : array of length nsites containing dhw scenario.
-- sum_cover : summed cover (over species) for single scenario being run, for each site.
-- area_to_seed : area of coral to be seeded at each time step in km^2
+- `criteria` : contains criteria weightings and thresholds for a single scenario.
+- `mcda_vars` : site selection criteria and weightings structure
+- `w_scens` : array of length nsites containing wave scenario.
+- `dhw_scens` : array of length nsites containing dhw scenario.
+- `sum_cover` : summed cover (over species) for single scenario being run, for each site.
+- `area_to_seed` : area of coral to be seeded at each time step in km^2
 
 # Returns
-- ranks: n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
+- `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
 function site_selection(domain::Domain, criteria::DataFrameRow, w_scens::NamedArray, dhw_scens::NamedArray, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)
@@ -832,12 +832,12 @@ Randomly select seed/shade site locations for the given year, constraining to si
 Here, `max_cover` represents the max. carrying capacity for each site (the `k` value).
 
 # Arguments
-- prefseedsites : Previously selected sites
-- seed_years : bool, indicating whether to seed this year or not
-- shade_years : bool, indicating whether to shade this year or not
-- nsiteint : int, number of sites to intervene on
-- available_space : vector/matrix : space available at each site (`k` value)
-- depth : vector of site ids found to be within desired depth range
+- `prefseedsites` : Previously selected sites
+- `seed_years` : bool, indicating whether to seed this year or not
+- `shade_years` : bool, indicating whether to shade this year or not
+- `nsiteint` : int, number of sites to intervene on
+- `available_space` : vector/matrix : space available at each site (`k` value)
+- `depth` : vector of site ids found to be within desired depth range
 """
 function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, available_space, depth)
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.1
