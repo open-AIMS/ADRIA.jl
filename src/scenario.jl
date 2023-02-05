@@ -463,38 +463,6 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
         # Prep site selection
         mcda_vars = DMCDA_vars(domain, param_set, depth_priority, sum(Y_cover[1, :, :], dims=1), area_to_seed)
 
-        # = DMCDA_vars(
-        #     depth_priority,
-        #     nsiteint,
-        #     sim_params.prioritysites,
-        #     sim_params.priorityzones,
-        #     site_data.zone_type,
-        #     domain.strongpred,
-        #     domain.in_conn,
-        #     domain.out_conn,
-        #     zeros(n_species, n_sites),  # wave stress
-        #     dhw_scen[1, :],  # heat stress
-        #     site_data.depth_med,
-        #     sum(Y_cover[1, :, :], dims=1),  # sum coral cover
-        #     max_cover,
-        #     total_site_area,
-        #     min_area,
-        #     param_set["deployed_coral_risk_tol"],  # risk tolerance
-        #     domain.site_distances,
-        #     min_distance,
-        #     param_set["top_n"],
-        #     param_set["in_seed_connectivity"], # weight for seed sites with high number of incoming connections
-        #     param_set["out_seed_connectivity"], # weight for seed sites with high number of outgoing connections
-        #     param_set["shade_connectivity"],  # weight of connectivity for shading in MCDA
-        #     param_set["wave_stress"],  # weight of wave damage in MCDA
-        #     param_set["heat_stress"],  # weight of heat damage in MCDA
-        #     param_set["coral_cover_high"],  # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
-        #     param_set["coral_cover_low"],  # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
-        #     param_set["seed_priority"],  # weight for the importance of seeding sites that are predecessors of priority reefs
-        #     param_set["shade_priority"],  # weight for the importance of shading sites that are predecessors of priority reefs
-        #     param_set["zone_seed"],  # weight for the importance of seeding sites that are predecessors of management zones
-        #     param_set["zone_shade"],  # weight for the importance of shading sites that are predecessors of management zones
-        # )
     end
 
     #### End coral constants
