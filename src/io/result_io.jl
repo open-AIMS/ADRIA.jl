@@ -84,7 +84,7 @@ end
 Generate dictionary of scenario attributes.
 """
 function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k, centroids)::Dict
-    attrs::Dict = Dict(
+    attrs::Dict{Symbol,Any} = Dict(
         :name => name,
         :RCP => RCP,
         :columns => input_cols,
