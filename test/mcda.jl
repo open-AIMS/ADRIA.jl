@@ -15,18 +15,18 @@ import ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create
     zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
 
     # Dummy priority predecessors
-    prioritysites = zeros(n_sites)
+    priority_sites = zeros(n_sites)
     predec = zeros(n_sites, 3)
     predec[:, 1:2] .= rand(n_sites, 2)
-    predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
+    predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
     predprior = [x for x in predprior if !isnan(x)]
     predec[predprior, 3] .= 1.0
     risk_tol = 0.8
 
-    sumcover = [0.3, 0.5, 0.9, 0.6, 0.0]
+    sum_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
     max_cover = [0.8, 0.75, 0.95, 0.7, 0.0]
 
-    A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, max_cover, area, dam_prob, heat_stress_prob, predec, zones_criteria, risk_tol)
+    A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sum_cover, max_cover, area, dam_prob, heat_stress_prob, predec, zones_criteria, risk_tol)
 
     @test all(0.0 .<= A[:, 2:end-2] .<= 1.0) || "`A` decision matrix out of bounds"
 
@@ -38,7 +38,7 @@ end
 
 
 @testset "MCDA seed matrix creation" begin
-    wtconseedout, wtconseedin, wt_wavess, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover = [1.0, 1.0, 0.7, 1.0, 0.6, 0.6, 0.6]
+    wtconseedout, wtconseedin, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover = [1.0, 1.0, 0.7, 1.0, 0.6, 0.6, 0.6]
 
     # Combine decision criteria into decision matrix A
     n_sites = 5
@@ -50,20 +50,20 @@ end
     zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
 
     # Dummy priority predecssors
-    prioritysites = zeros(n_sites)
+    priority_sites = zeros(n_sites)
     predec = zeros(n_sites, 3)
     predec[:, 1:2] .= rand(n_sites, 2)
-    predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
+    predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
     predprior = [x for x in predprior if !isnan(x)]
     predec[predprior, 3] .= 1.0
 
-    sumcover = [0.3, 0.5, 0.9, 0.6, 0.0]
+    sum_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
     max_cover = [0.8, 0.75, 0.6, 0.77, 0.0]
     min_area = 20
 
-    A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, max_cover, area, dam_prob, heat_stress_prob, predec, zones_criteria, 0.8)
+    A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sum_cover, max_cover, area, dam_prob, heat_stress_prob, predec, zones_criteria, 0.8)
 
-    SE, wse = create_seed_matrix(A, min_area, wtconseedin, wtconseedout, wt_wavess, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover)
+    SE, wse = create_seed_matrix(A, min_area, wtconseedin, wtconseedout, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover)
 
     @test (sum(filtered)) == size(A, 1) || "Site where heat stress > risk_tol not filtered out"
     @test size(SE, 1) == size(A, 1) - 2 || "Sites where space available<min_area not filtered out"
@@ -73,7 +73,7 @@ end
 end
 
 @testset "MCDA shade matrix creation" begin
-    wt_con_shade, wt_wavess, wt_heat, wt_predec_shade, wt_zones_shade, wt_hi_cover = [1.0, 0.7, 1.0, 0.6, 0.6, 0.6]
+    wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_zones_shade, wt_hi_cover = [1.0, 0.7, 1.0, 0.6, 0.6, 0.6]
 
     # Combine decision criteria into decision matrix A
     n_sites = 5
@@ -85,20 +85,20 @@ end
     zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
 
     # Dummy priority predecssors
-    prioritysites = zeros(n_sites)
+    priority_sites = zeros(n_sites)
     predec = zeros(n_sites, 3)
     predec[:, 1:2] .= rand(n_sites, 2)
-    predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
+    predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
     predprior = [x for x in predprior if !isnan(x)]
     predec[predprior, 3] .= 1.0
 
-    sumcover = [0.75, 0.5, 0.3, 0.7, 0.0]
+    sum_cover = [0.75, 0.5, 0.3, 0.7, 0.0]
     max_cover = [0.8, 0.75, 0.6, 0.77, 0.0]
     area_max_cover = max_cover .* area
 
-    A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sumcover, max_cover, area, dam_prob, heat_stress_prob, predec, zones_criteria, 0.8)
+    A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sum_cover, max_cover, area, dam_prob, heat_stress_prob, predec, zones_criteria, 0.8)
 
-    SH, wsh = create_shade_matrix(A, area_max_cover[filtered], wt_con_shade, wt_wavess, wt_heat, wt_predec_shade, wt_zones_shade, wt_hi_cover)
+    SH, wsh = create_shade_matrix(A, area_max_cover[filtered], wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_zones_shade, wt_hi_cover)
 
     @test maximum(SH[:, 8]) == (maximum(area_max_cover[convert(Vector{Int64}, A[:, 1])] .- A[:, 8])) || "Largest site with most coral area should have highest score"
 

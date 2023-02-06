@@ -26,7 +26,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     top_n # ::Int64
     wt_in_conn_seed  # ::F
     wt_out_conn_seed  # ::F
-    wt_con_shade  # ::F
+    wt_conn_shade  # ::F
     wt_waves # ::F
     wt_heat  # ::F
     wt_hi_cover  # ::F
@@ -51,8 +51,8 @@ function DMCDA_vars(domain::Domain, criteria::NamedVector, site_ids::AbstractArr
     mcda_vars = DMCDA_vars(
         site_ids,
         domain.sim_constants.n_site_int,
-        domain.sim_constants.prioritysites,
-        domain.sim_constants.priorityzones,
+        domain.sim_constants.priority_sites,
+        domain.sim_constants.priority_zones,
         site_d.zone_type,
         domain.strong_pred,
         domain.in_conn,
@@ -300,13 +300,13 @@ end
 
 
 """
-    create_shade_matrix(A, wt_con_shade, wt_waves, wt_heat, wt_predec_shade, wt_hi_cover)
+    create_shade_matrix(A, wt_conn_shade , wt_waves, wt_heat, wt_predec_shade, wt_hi_cover)
 
 Create shading specific decision matrix and apply weightings.
 
 # Arguments
 - `A` : Criteria  matrix
-- `wt_con_shade` : Shading connectivity weight
+- `wt_conn_shade ` : Shading connectivity weight
 - `wt_waves` : Wave stress weight
 - `wt_heat` : Heat stress weight
 - `wt_predec_zones_shade` : Priority zones weight for shading
@@ -396,8 +396,8 @@ function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Boo
     end
 
     n_site_int::Int64 = d_vars.n_site_int
-    prioritysites::Array{Int64} = d_vars.prioritysites[in.(d_vars.prioritysites, [site_ids])]
-    priorityzones::Array{String} = d_vars.priorityzones
+    priority_sites::Array{Int64} = d_vars.priority_sites[in.(d_vars.priority_sites, [site_ids])]
+    priority_zones::Array{String} = d_vars.priority_zones
 
     strong_pred = d_vars.strong_pred[site_ids, :]
     in_conn = d_vars.in_conn[site_ids]
@@ -405,16 +405,16 @@ function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Boo
     zones = d_vars.zones[site_ids]
     wave_stress = d_vars.dam_prob[site_ids]
     heat_stress = d_vars.heat_stress_prob[site_ids]
-    site_depth = d_vars.sitedepth[site_ids]
-    sum_cover = d_vars.sumcover[site_ids]
+    site_depth = d_vars.site_depth[site_ids]
+    sum_cover = d_vars.sum_cover[site_ids]
     max_cover = d_vars.max_cover[site_ids]
     area = d_vars.area[site_ids]
 
     risk_tol = d_vars.risk_tol
     w_in_conn = d_vars.wt_in_conn_seed
     w_out_conn = d_vars.wt_out_conn_seed
-    w_shade_conn = d_vars.wt_con_shade
-    w_waves = d_vars.wt_wavess
+    w_shade_conn = d_vars.wt_conn_shade
+    w_waves = d_vars.wt_waves
     w_heat = d_vars.wt_heat
     w_high_cover = d_vars.wt_hi_cover
     w_low_cover = d_vars.wt_lo_cover
@@ -429,13 +429,13 @@ function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Boo
     # work out which priority predecessors are connected to priority sites
     predec::Array{Float64} = zeros(nsites, 3)
     predec[:, 1:2] .= strong_pred
-    predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
+    predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
     predprior = [x for x in predprior if !isnan(x)]
 
     predec[predprior, 3] .= 1.0
 
     # for zones, find sites which are zones and strongest predecessors of sites in zones
-    zone_ids = intersect(priorityzones, unique(zones))
+    zone_ids = intersect(priority_zones, unique(zones))
     zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
     zone_preds = zeros(nsites, 1)
     zone_sites = zeros(nsites, 1)
@@ -455,6 +455,7 @@ function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Boo
     zones_criteria = zone_preds .+ zone_sites
 
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
+    Main.@infiltrate
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return prefseedsites, prefshadesites, rankingsin
