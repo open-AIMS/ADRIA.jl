@@ -205,39 +205,34 @@ ADRIA.sensitivity.rsa(X, y; S=20)
    https://dx.doi.org/10.1002/9780470725184
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
-function rsa(X::DataFrame, y::Vector{T}; S=20)::NamedArray{T} where {T<:Real}
+function rsa(X::DataFrame, y::Vector{T}; S::Int64=20)::NamedDimsArray where {T<:Real}
     factor_names = names(X)
     N, D = size(X)
     step = 1 / S
-    seq = 0:step:1.0
+    seq = 0.0:step:1.0
 
     X_di = zeros(N)
     X_q = zeros(S + 1)
-    r_s = NamedArray(zeros(S, D))
-
-    setnames!(r_s, string.(collect(seq)[2:end]), 1)  # label with upper bounds
-    setnames!(r_s, factor_names, 2)
-    setdimnames!(r_s, [:bins, :factors])
+    r_s = zeros(S, D)
 
     for d_i in 1:D
         X_di .= X[:, d_i]
         X_q .= quantile(X_di, seq)
-        Threads.@threads for s in 2:S
+        for s in 2:S
             sel = s > 2 ? (X_q[s-1] .< X_di .<= X_q[s]) : (X_q[s-1] .<= X_di .<= X_q[s])
-            if count(sel) == 0
-                # no available samples
-                r_s[s, d_i] = NaN
+            if count(sel) == 0 || length(y[Not(sel)]) == 0
+                # not enough samples
+                r_s[s-1, d_i] = NaN
                 continue
             end
 
             # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
             # ci = confint(bs, PercentileConfInt(conf))[1]
-
             r_s[s-1, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
     end
 
-    return r_s
+    return col_normalize(NamedDimsArray(r_s; bins=string.(collect(seq)[2:end]), factors=factor_names))
 end
 
 
