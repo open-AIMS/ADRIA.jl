@@ -33,6 +33,7 @@ end
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
+    dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
     criteria_df = ADRIA.sample(dom, 5)  # get scenario dataframe
 
     area_to_seed = 1.5 * 10^-6  # area of seeded corals in km^2
