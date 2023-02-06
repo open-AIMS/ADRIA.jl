@@ -254,12 +254,13 @@ Create seeding specific decision matrix from criteria matrix. The weight criteri
 # Arguments
 - `A` : Criteria matrix
 - `min_area` : Minimum available area for a site to be considered
-- `in_conn_seed` : Seed connectivity weight for seeding
-- `out_conn_seed` : Seed connectivity weight for seeding
-- `waves` : Wave stress weight
-- `heat` : Heat stress weight
-- `predec` : Priority predecessor weight
-- `low_cover` : Weighting for low coral cover (coral real estate), when seeding
+- `wt_in_conn_seed` : Seed connectivity weight for seeding
+- `wt_out_conn_seed` : Seed connectivity weight for seeding
+- `wt_waves` : Wave stress weight
+- `wt_heat` : Heat stress weight
+- `wt_predec_seed` : Priority predecessor weight
+- `wt_predec_zones_seed` : Priority zones weight for seeding
+- `wt_low_cover` : Weighting for low coral cover (coral real estate), when seeding
 
 # Returns
 Tuple (SE, wse)
@@ -277,13 +278,14 @@ Tuple (SE, wse)
     3. wave
     4. heat
     5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
-    6. low cover (weights importance of sites with low cover/high available real estate to plant corals)
+    6. seed zones (weights importance of sites highly connected to or within priority zones for seeding)
+    7. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
-function create_seed_matrix(A, min_area, in_conn_seed, out_conn_seed, waves, heat, predec, predec_zones_seed, low_cover)
+function create_seed_matrix(A, min_area, wt_in_conn_seed, wt_out_conn_seed, wt_waves, wt_heat, wt_predec_seed, wt_predec_zones_seed, wt_lo_cover)
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
-    wse = [in_conn_seed, out_conn_seed, waves, heat, predec, predec_zones_seed, low_cover, heat]
+    wse = [wt_in_conn_seed, wt_out_conn_seed, wt_waves, wt_heat, wt_predec_seed, wt_predec_zones_seed, wt_lo_cover, wt_heat]
     wse .= mcda_normalize(wse)
 
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
@@ -298,15 +300,16 @@ end
 
 
 """
-    create_shade_matrix(A, wt_con_shade, wt_wavess, wt_heat, wt_predec_shade, wt_hi_cover)
+    create_shade_matrix(A, wt_con_shade, wt_waves, wt_heat, wt_predec_shade, wt_hi_cover)
 
 Create shading specific decision matrix and apply weightings.
 
 # Arguments
 - `A` : Criteria  matrix
 - `wt_con_shade` : Shading connectivity weight
-- `wt_wavess` : Wave stress weight
+- `wt_waves` : Wave stress weight
 - `wt_heat` : Heat stress weight
+- `wt_predec_zones_shade` : Priority zones weight for shading
 - `wt_predec_shade` : Priority predecessor weight for shading
 - `wt_hi_cover` : Weighting for high coral cover when shading
 
@@ -325,15 +328,17 @@ Tuple (SH, wsh)
     2. wave
     3. heat
     4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
+    4. shade zones (weights importance of sites highly connected to or within priority zones)
     5. high cover (weights importance of sites with high cover of coral to shade)
 """
-function create_shade_matrix(A, max_area, conn_shade, waves, heat, predec, predec_zones_shade, high_cover)
+
+function create_shade_matrix(A, max_area, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover)
     # Set up decision matrix to be same size as A
     SH = copy(A)
     # remove consideration of site depth as shading not accounted for in bleaching model yet
     SH = SH[:, 1:end-1]
 
-    wsh = [conn_shade, conn_shade, waves, heat, predec, predec_zones_shade, high_cover]
+    wsh = [wt_conn_shade, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover]
     wsh .= mcda_normalize(wsh)
 
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
