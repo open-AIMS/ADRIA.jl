@@ -20,7 +20,7 @@ end
 
 
 """
-    pawn(X::AbstractArray{T}, y::Vector{T}, dimnames::Vector{String}; S::Int64=10)::NamedArray{T} where {T<:Real}
+    pawn(X::AbstractArray{T1}, y::Vector{T2}, dimnames::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:Real,T2<:Real}
 
 Calculates the PAWN sensitivity index.
 
@@ -36,10 +36,11 @@ statistics (min, mean, median, max, std, and cv) over the slices.
 # Arguments
 - `X` : Model inputs
 - `y` : Model outputs
+- `factor_names` : Names of each factor represented by columns in `X`
 - `S` : Number of slides (default: 10)
 
 # Returns
-NamedArray, of min, mean, median, max, std, and cv summary statistics.
+NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
 
 # References
 1. Pianosi, F., Wagener, T., 2018.
@@ -96,22 +97,12 @@ function pawn(X::NamedDimsArray, y::Vector{T}; S::Int64=10)::NamedDimsArray wher
 end
 
 """
-    tsa(X::DataFrame, y::AbstractMatrix)::NamedArray
+    tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
 
 Perform Temporal (or time-varying) Sensitivity Analysis using the PAWN sensitivity index.
 
 The sensitivity index value for time \$t\$ is inclusive of all time steps prior to \$t\$.
 Alternate approaches use a moving window, or only data for time \$t\$.
-
-# Arguments
-- `X` : Scenario specification
-- `y` : scenario outcomes over time
-
-# Returns
-NamedArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
-- \$D\$ is the number of dimensions/factors
-- 6, corresponds to the min, mean, median, max, std, and cv of the PAWN indices
-- \$T\$, the number of time steps
 
 # Examples
 ```julia
@@ -123,6 +114,16 @@ y_tac = ADRIA.metrics.scenario_total_cover(rs)
 # Calculate sensitivity of outcome to factors for each time step
 ADRIA.sensitivity.tsa(rs.inputs, y_tac)
 ```
+
+# Arguments
+- `X` : Scenario specification
+- `y` : scenario outcomes over time
+
+# Returns
+NamedDimsArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
+- \$D\$ is the number of dimensions/factors
+- 6 corresponds to the min, mean, median, max, std, and cv of the PAWN indices
+- \$T\$ is the number of time steps
 """
 function tsa(X::DataFrame, y::NamedDimsArray)::NamedDimsArray
     local ts
@@ -153,7 +154,7 @@ function tsa(X::DataFrame, y::NamedDimsArray)::NamedDimsArray
 end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedArray
+    rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedDimsArray
 
 Perform Regional Sensitivity Analysis.
 
@@ -182,7 +183,7 @@ Note: Returned NaN values indicate insufficient samples in the region.
 - `S` : number of bins to slice factor space into (default: 20)
 
 # Returns
-NamedArray, [bin values, factors]
+NamedDimsArray, [bin values, factors]
 
 # Examples
 ```julia
@@ -241,7 +242,7 @@ end
 
 
 """
-    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedArray
+    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedDimsArray
 
 Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
 

@@ -39,7 +39,7 @@ end
 - kwargs : named dimensions to slice across
 
 # Returns
-NamedArray[timesteps, sites, scenarios]
+NamedDimsArray[timesteps, sites, scenarios]
 
 # Example
 ```julia
@@ -100,7 +100,7 @@ end
 - kwargs : named dimensions to slice across
 
 # Returns
-NamedArray[timesteps, sites, scenarios]
+NamedDimsArray[timesteps, sites, scenarios]
 
 # Example
 ```julia
