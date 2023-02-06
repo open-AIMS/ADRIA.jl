@@ -87,6 +87,9 @@ end
     site_distance(site_data::DataFrame)::Matrix
 
 Calculate matrix of unique distances between sites.
+
+# Returns
+tuple, matrix of distance between sites, median site distance for domain
 """
 
 function site_distances(site_data::DataFrame)::Tuple{Matrix{Float64},Float64}
