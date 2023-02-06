@@ -355,11 +355,11 @@ end
 # Arguments
 - `d_vars` : DMCDA_vars type struct containing weightings and criteria values for site selection.
 - `alg_ind` : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
-- `log_seed` : boolean ideicating whether seeding sites are being re-assesed at current time
-- `log_shade` : boolean ideicating whether shading/fogging sites are being re-assesed at current time
+- `log_seed` : boolean indicating whether seeding sites are being re-assesed at current time
+- `log_shade` : boolean indicating whether shading/fogging sites are being re-assesed at current time
 - `prefshadesites` : previous time step's selection of sites for shading
 - `prefseedsites` : previous time step's selection of sites for seeding
-- `rankingsin` : storage for site rankings
+- `rankingsin` : pre-allocated store for site rankings
 
 # Returns
 Tuple :
@@ -367,8 +367,8 @@ Tuple :
     - `prefshadesites` : n_site_int highest ranked shading/fogging sites
     - `number of seed` sites : nprefseedsites
     - `nprefshadesites` : number of shade sites
-    - `rankings` : nsitesx3 matrix holding [site_id, seeding_rank, shading_rank],
-        0 indicates sites that were not considered
+    - `rankings` : n_sites ⋅ 3 matrix holding [site_id, seeding_rank, shading_rank],
+        Values of 0 indicate sites that were not considered
 """
 function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool,
     prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int},
