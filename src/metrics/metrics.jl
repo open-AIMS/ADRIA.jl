@@ -725,6 +725,17 @@ include("ranks.jl")
 include("pareto.jl")
 
 
+if ccall(:jl_generating_output, Cint, ()) == 1
+    Base.precompile(Tuple{Metric{typeof(_relative_shelter_volume),NTuple{4,Symbol},String},Array{Float64,3},Vector{Float64},Vararg{Any}})   # time: 1.6421927
+    Base.precompile(Tuple{Metric{typeof(_relative_juveniles),Tuple{Symbol,Symbol,Symbol},String},Array{Float64,3}})   # time: 0.4322211
+    Base.precompile(Tuple{Metric{typeof(_absolute_shelter_volume),Tuple{Symbol,Symbol,Symbol},String},Array{Float64,3},Vector{Float64},Vararg{Any}})   # time: 0.3056465
+    Base.precompile(Tuple{Metric{typeof(_total_absolute_cover),Tuple{Symbol,Symbol,Symbol},String},Array{Float64,3},Vector{Float64}})   # time: 0.2397704
+    Base.precompile(Tuple{Metric{typeof(_relative_taxa_cover),Tuple{Symbol,Symbol,Symbol},String},Array{Float64,3}})   # time: 0.1171238
+    Base.precompile(Tuple{typeof(_shelter_species_loop),NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},Int64,Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64}})   # time: 0.0916976
+    Base.precompile(Tuple{typeof(_absolute_shelter_volume),NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},Vector{Float64},DataFrame})   # time: 0.0089155
+    Base.precompile(Tuple{typeof(_relative_shelter_volume),NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},Vector{Float64},Vector{Float64},DataFrame})   # time: 0.0080667
+end
+
 # """
 #     @extend_metric(name, m, args)
 
