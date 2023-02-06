@@ -30,7 +30,7 @@ mutable struct Domain{Σ<:NamedMatrix{<:Real},M<:NamedMatrix{<:Real},I<:Vector{I
     const TP_data::Σ  # site connectivity data
     const in_conn::V  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
     const out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
-    const strongpred::I  # strongest predecessor
+    const strong_pred::I  # strongest predecessor
     site_data::D  # table of site data (depth, carrying capacity, etc)
     site_distances::Z  # Matrix of distances between each site
     median_site_distance::Float64
@@ -68,8 +68,8 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedM
 
         # Update number of sites to consider for distance-based spreading
         max_top_n = ceil(Int64, 2.0 * length(site_ids) ./ 3.0)
-        if (criteria.top_n.bounds[2] > max_top_n) || (criteria.top_n.bounds[1] < sim_constants.nsiteint)
-            @set! c_spec.top_n.bounds = (sim_constants.nsiteint, minimum([10, max_top_n]))
+        if (criteria.top_n.bounds[2] > max_top_n) || (criteria.top_n.bounds[1] < sim_constants.n_site_int)
+            @set! c_spec.top_n.bounds = (sim_constants.n_site_int, minimum([10, max_top_n]))
         end
 
         criteria = Criteria(c_spec...)

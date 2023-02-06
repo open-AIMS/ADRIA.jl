@@ -6,35 +6,35 @@ using Combinatorics
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
-    nsiteint  # ::I
-    prioritysites  # ::V
-    priorityzones # ::V
+    n_site_int  # ::I
+    priority_sites  # ::V
+    priority_zones # ::V
     zones # ::V
-    strongpred  # ::V
+    strong_pred  # ::V
     in_conn  # ::v
     out_conn  # ::v
-    damprob  # ::A
-    heatstressprob  # ::A
-    sitedepth #::V
-    sumcover  # ::F
-    maxcover  # ::V
+    dam_prob  # ::A
+    heat_stress_prob  # ::A
+    site_depth #::V
+    sum_cover  # ::F
+    max_cover  # ::V
     area  # ::M
     min_area # ::F
-    risktol  # ::F
+    risk_tol  # ::F
     dist # ::M
     min_dist # ::Float64
     top_n # ::Int64
-    wtinconnseed  # ::F
-    wtoutconnseed  # ::F
-    wtconshade  # ::F
-    wtwaves  # ::F
-    wtheat  # ::F
-    wthicover  # ::F
-    wtlocover  # ::F
-    wtpredecseed  # ::F
-    wtpredecshade  # ::F
-    wtzonesseed # ::F
-    wtzonesshade # ::F
+    wt_in_conn_seed  # ::F
+    wt_out_conn_seed  # ::F
+    wt_con_shade  # ::F
+    wt_waves # ::F
+    wt_heat  # ::F
+    wt_hi_cover  # ::F
+    wt_lo_cover  # ::F
+    wt_predec_seed  # ::F
+    wt_predec_shade  # ::F
+    wt_zones_seed # ::F
+    wt_zones_shade # ::F
 end
 
 """
@@ -50,11 +50,11 @@ function DMCDA_vars(domain::Domain, criteria::NamedVector, site_ids::AbstractArr
 
     mcda_vars = DMCDA_vars(
         site_ids,
-        domain.sim_constants.nsiteint,
+        domain.sim_constants.n_site_int,
         domain.sim_constants.prioritysites,
         domain.sim_constants.priorityzones,
         site_d.zone_type,
-        domain.strongpred,
+        domain.strong_pred,
         domain.in_conn,
         domain.out_conn,
         zeros(nsites, 1),
@@ -130,21 +130,21 @@ function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 end
 
 """
-    rank_sites!(S, weights, rankings, nsiteint, rank_col)
-    rank_seed_sites!(S, weights, rankings, nsiteint)
-    rank_shade_sites!(S, weights, rankings, nsiteint)
+    rank_sites!(S, weights, rankings, n_site_int, rank_col)
+    rank_seed_sites!(S, weights, rankings, n_site_int)
+    rank_shade_sites!(S, weights, rankings, n_site_int)
 
 # Arguments
 - `S` : Matrix, Site preference values
 - `weights` : weights to apply
 - `rankings` : vector of site ranks to update
-- `nsiteint` : number of sites to select for interventions
+- `n_site_int` : number of sites to select for interventions
 - `rank_col` : column to fill with rankings (2 for seed, 3 for shade)
 
 # Returns
 - `prefsites` : sites in order of their rankings
 """
-function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
     selector = vec(.!all(S[:, 2:end] .== 0, dims=1))
 
@@ -157,7 +157,7 @@ function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Tuple
     S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
     s_order = mcda_func(S)
 
-    last_idx = min(nsiteint, size(s_order, 1))
+    last_idx = min(n_site_int, size(s_order, 1))
     prefsites = Int.(s_order[1:last_idx, 1])
 
     # Match by site_id and assign rankings to log
@@ -166,11 +166,11 @@ function rank_sites!(S, weights, rankings, nsiteint, mcda_func, rank_col)::Tuple
     return prefsites, s_order
 end
 
-function rank_seed_sites!(S, weights, rankings, nsiteint, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_sites!(S, weights, rankings, nsiteint, mcda_func, 2)
+function rank_seed_sites!(S, weights, rankings, n_site_int, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+    rank_sites!(S, weights, rankings, n_site_int, mcda_func, 2)
 end
-function rank_shade_sites!(S, weights, rankings, nsiteint, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_sites!(S, weights, rankings, nsiteint, mcda_func, 3)
+function rank_shade_sites!(S, weights, rankings, n_site_int, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+    rank_sites!(S, weights, rankings, n_site_int, mcda_func, 3)
 end
 
 """
@@ -200,7 +200,7 @@ Columns indicate:
 - `wave_stress` : Probability of wave damage
 - `heat_stress` : Probability of site being affected by heat stress
 - `predec` : list of priority predecessors (sites strongly connected to priority sites)
-- `risk_tol` : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risktol are filtered out.
+- `risk_tol` : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risk_tol are filtered out.
 """
 function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
     A = zeros(length(site_ids), 9)
@@ -247,15 +247,15 @@ end
 
 
 """
-    create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat, predec, low_cover)
+    create_seed_matrix(A, min_area, in_conn_seed, out_conn_seed, waves, heat, predec, low_cover)
 
 Create seeding specific decision matrix from criteria matrix. The weight criteria and filter.
 
 # Arguments
 - `A` : Criteria matrix
 - `min_area` : Minimum available area for a site to be considered
-- `inconn_seed` : Seed connectivity weight for seeding
-- `outconn_seed` : Seed connectivity weight for seeding
+- `in_conn_seed` : Seed connectivity weight for seeding
+- `out_conn_seed` : Seed connectivity weight for seeding
 - `waves` : Wave stress weight
 - `heat` : Heat stress weight
 - `predec` : Priority predecessor weight
@@ -279,11 +279,11 @@ Tuple (SE, wse)
     5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
     6. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
-function create_seed_matrix(A, min_area, inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover)
+function create_seed_matrix(A, min_area, in_conn_seed, out_conn_seed, waves, heat, predec, predec_zones_seed, low_cover)
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
-    wse = [inconn_seed, outconn_seed, waves, heat, predec, predec_zones_seed, low_cover, heat]
+    wse = [in_conn_seed, out_conn_seed, waves, heat, predec, predec_zones_seed, low_cover, heat]
     wse .= mcda_normalize(wse)
 
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
@@ -298,17 +298,17 @@ end
 
 
 """
-    create_shade_matrix(A, wtconshade, wtwaves, wtheat, wtpredecshade, wthicover)
+    create_shade_matrix(A, wt_con_shade, wt_wavess, wt_heat, wt_predec_shade, wt_hi_cover)
 
 Create shading specific decision matrix and apply weightings.
 
 # Arguments
 - `A` : Criteria  matrix
-- `wtconshade` : Shading connectivity weight
-- `wtwaves` : Wave stress weight
-- `wtheat` : Heat stress weight
-- `wtpredecshade` : Priority predecessor weight for shading
-- `wthicover` : Weighting for high coral cover when shading
+- `wt_con_shade` : Shading connectivity weight
+- `wt_wavess` : Wave stress weight
+- `wt_heat` : Heat stress weight
+- `wt_predec_shade` : Priority predecessor weight for shading
+- `wt_hi_cover` : Weighting for high coral cover when shading
 
 # Returns
 Tuple (SH, wsh)
@@ -358,8 +358,8 @@ end
 
 # Returns
 Tuple :
-    - `prefseedsites` : nsiteint highest ranked seeding sites
-    - `prefshadesites` : nsiteint highest ranked shading/fogging sites
+    - `prefseedsites` : n_site_int highest ranked seeding sites
+    - `prefshadesites` : n_site_int highest ranked shading/fogging sites
     - `number of seed` sites : nprefseedsites
     - `nprefshadesites` : number of shade sites
     - `rankings` : nsitesx3 matrix holding [site_id, seeding_rank, shading_rank],
@@ -390,40 +390,40 @@ function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Boo
         return prefseedsites, prefshadesites, rankingsin
     end
 
-    nsiteint::Int64 = d_vars.nsiteint
+    n_site_int::Int64 = d_vars.n_site_int
     prioritysites::Array{Int64} = d_vars.prioritysites[in.(d_vars.prioritysites, [site_ids])]
     priorityzones::Array{String} = d_vars.priorityzones
 
-    strongpred = d_vars.strongpred[site_ids, :]
+    strong_pred = d_vars.strong_pred[site_ids, :]
     in_conn = d_vars.in_conn[site_ids]
     out_conn = d_vars.out_conn[site_ids]
     zones = d_vars.zones[site_ids]
-    wave_stress = d_vars.damprob[site_ids]
-    heat_stress = d_vars.heatstressprob[site_ids]
+    wave_stress = d_vars.dam_prob[site_ids]
+    heat_stress = d_vars.heat_stress_prob[site_ids]
     site_depth = d_vars.sitedepth[site_ids]
     sum_cover = d_vars.sumcover[site_ids]
-    max_cover = d_vars.maxcover[site_ids]
+    max_cover = d_vars.max_cover[site_ids]
     area = d_vars.area[site_ids]
 
-    risk_tol = d_vars.risktol
-    w_inconn = d_vars.wtinconnseed
-    w_outconn = d_vars.wtoutconnseed
-    w_shade_conn = d_vars.wtconshade
-    w_waves = d_vars.wtwaves
-    w_heat = d_vars.wtheat
-    w_high_cover = d_vars.wthicover
-    w_low_cover = d_vars.wtlocover
-    w_predec_seed = d_vars.wtpredecseed
-    w_predec_shade = d_vars.wtpredecshade
-    w_predec_zones_seed = d_vars.wtzonesseed
-    w_predec_zones_shade = d_vars.wtzonesshade
+    risk_tol = d_vars.risk_tol
+    w_in_conn = d_vars.wt_in_conn_seed
+    w_out_conn = d_vars.wt_out_conn_seed
+    w_shade_conn = d_vars.wt_con_shade
+    w_waves = d_vars.wt_wavess
+    w_heat = d_vars.wt_heat
+    w_high_cover = d_vars.wt_hi_cover
+    w_low_cover = d_vars.wt_lo_cover
+    w_predec_seed = d_vars.wt_predec_seed
+    w_predec_shade = d_vars.wt_predec_shade
+    w_predec_zones_seed = d_vars.wt_zones_seed
+    w_predec_zones_shade = d_vars.wt_zones_shade
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
 
     # work out which priority predecessors are connected to priority sites
     predec::Array{Float64} = zeros(nsites, 3)
-    predec[:, 1:2] .= strongpred
+    predec[:, 1:2] .= strong_pred
     predprior = predec[in.(predec[:, 1], [prioritysites']), 2]
     predprior = [x for x in predprior if !isnan(x)]
 
@@ -437,7 +437,7 @@ function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Boo
 
     for k in axes(zone_ids, 1)
         # find sites which are strongest predecessors of sites in the zone
-        zone_preds_temp = strongpred[zones.==zone_ids[k]]
+        zone_preds_temp = strong_pred[zones.==zone_ids[k]]
         for s in unique(zone_preds_temp)
             # for each predecessor site, add zone_weights* (no. of zone sites the site is a strongest predecessor for)
             zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k]) .* sum(zone_preds_temp .== s)
@@ -456,11 +456,11 @@ function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Boo
     end
 
     # cap to number of sites left after risk filtration
-    nsiteint = min(nsiteint, length(A[:, 1]))
+    n_site_int = min(n_site_int, length(A[:, 1]))
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_seed_matrix(A, d_vars.min_area, w_inconn, w_outconn, w_waves, w_heat, w_predec_seed, w_predec_zones_seed, w_low_cover)
+        SE, wse = create_seed_matrix(A, d_vars.min_area, w_in_conn, w_out_conn, w_waves, w_heat, w_predec_seed, w_predec_zones_seed, w_low_cover)
     end
 
     # if shading, create shading specific decision matrix
@@ -480,19 +480,19 @@ function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Boo
     end
 
     if log_seed && isempty(SE)
-        prefseedsites = repeat([0], nsiteint)
+        prefseedsites = repeat([0], n_site_int)
     elseif log_seed
 
-        prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, nsiteint, mcda_func)
+        prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, n_site_int, mcda_func)
         if min_dist != 0.0
             prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 2)
         end
     end
 
     if log_shade && isempty(SH)
-        prefshadesites = repeat([0], nsiteint)
+        prefshadesites = repeat([0], n_site_int)
     elseif log_shade
-        prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, nsiteint, mcda_func)
+        prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, n_site_int, mcda_func)
         if min_dist != 0.0
             prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 3)
         end
@@ -768,7 +768,7 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 """
 function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
 
-    ranks_store = NamedArray(zeros(size(criteria, 1), domain.sim_constants.nsiteint, 3))
+    ranks_store = NamedArray(zeros(size(criteria, 1), domain.sim_constants.n_site_int, 3))
     idx_rows = ["scen_$i" for i = 1:size(criteria, 1)]
     setnames!(ranks_store, idx_rows, 1)
     dhw_scens = domain.dhw_scens
@@ -813,11 +813,11 @@ function site_selection(domain::Domain, criteria::DataFrameRow, w_scens::NamedAr
     nsites = length(mcda_vars.site_ids)
     # site_id, seeding rank, shading rank
     rankingsin = [mcda_vars.site_ids zeros(Int64, (nsites, 1)) zeros(Int64, (nsites, 1))]
-    prefseedsites = zeros(Int64, (1, mcda_vars.nsiteint))
-    prefshadesites = zeros(Int64, (1, mcda_vars.nsiteint))
+    prefseedsites = zeros(Int64, (1, mcda_vars.n_site_int))
+    prefshadesites = zeros(Int64, (1, mcda_vars.n_site_int))
 
-    mcda_vars.heatstressprob .= dhw_scens
-    mcda_vars.damprob .= w_scens
+    mcda_vars.heat_stress_prob .= dhw_scens
+    mcda_vars.dam_prob .= w_scens
     (_, _, ranks) = guided_site_selection(mcda_vars, criteria.guided, true, true, prefseedsites, prefshadesites, rankingsin)
 
     return ranks
@@ -826,7 +826,7 @@ end
 
 
 """
-    unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, max_cover)
+    unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, max_cover)
 
 Randomly select seed/shade site locations for the given year, constraining to sites with max. carrying capacity > 0.
 Here, `max_cover` represents the max. carrying capacity for each site (the `k` value).
@@ -835,27 +835,27 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - `prefseedsites` : Previously selected sites
 - `seed_years` : bool, indicating whether to seed this year or not
 - `shade_years` : bool, indicating whether to shade this year or not
-- `nsiteint` : int, number of sites to intervene on
+- `n_site_int` : int, number of sites to intervene on
 - `available_space` : vector/matrix : space available at each site (`k` value)
 - `depth` : vector of site ids found to be within desired depth range
 """
-function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, nsiteint, available_space, depth)
+function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, available_space, depth)
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.1
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
     # Select sites (without replacement to avoid duplicate sites)
     candidate_sites = depth[(available_space.>0.0)[depth]]  # Filter down to site ids to be considered
     num_sites = length(candidate_sites)
-    s_nsiteint = num_sites < nsiteint ? num_sites : nsiteint
+    s_n_site_int = num_sites < n_site_int ? num_sites : n_site_int
 
     if seed_years
-        prefseedsites = zeros(Int64, nsiteint)
-        prefseedsites[1:s_nsiteint] .= StatsBase.sample(candidate_sites, s_nsiteint; replace=false)
+        prefseedsites = zeros(Int64, n_site_int)
+        prefseedsites[1:s_n_site_int] .= StatsBase.sample(candidate_sites, s_n_site_int; replace=false)
     end
 
     if shade_years
-        prefshadesites = zeros(Int64, nsiteint)
-        prefshadesites[1:s_nsiteint] .= StatsBase.sample(candidate_sites, s_nsiteint; replace=false)
+        prefshadesites = zeros(Int64, n_site_int)
+        prefshadesites[1:s_n_site_int] .= StatsBase.sample(candidate_sites, s_n_site_int; replace=false)
     end
 
     return prefseedsites[prefseedsites.>0], prefshadesites[prefshadesites.>0]

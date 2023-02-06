@@ -338,7 +338,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
     # sim constants
     tf::Int64 = size(dhw_scen, 1)
-    nsiteint::Int64 = sim_params.nsiteint
+    n_site_int::Int64 = sim_params.n_site_int
     n_sites::Int64 = domain.coral_growth.n_sites
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
@@ -406,8 +406,8 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
         shade_decision_years[shade_start_year] = true
     end
 
-    prefseedsites::Vector{Int64} = zeros(Int, nsiteint)
-    prefshadesites::Vector{Int64} = zeros(Int, nsiteint)
+    prefseedsites::Vector{Int64} = zeros(Int, n_site_int)
+    prefshadesites::Vector{Int64} = zeros(Int, n_site_int)
 
     # Max coral cover at each site. Divided by 100 to convert to proportion
     max_cover = site_k(domain)
@@ -534,8 +534,8 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
-            mcda_vars.heatstressprob .= dhw_t
-            mcda_vars.damprob .= sum(Sw_t[tstep, :, :], dims=1)'
+            mcda_vars.heat_stress_prob .= dhw_t
+            mcda_vars.dam_prob .= sum(Sw_t[tstep, :, :], dims=1)'
         end
 
         if is_guided && in_seed_years
@@ -551,7 +551,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
             prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                nsiteint, vec(leftover_space_m²), depth_priority)
+                n_site_int, vec(leftover_space_m²), depth_priority)
 
             site_ranks[tstep, prefseedsites, 1] .= 1.0
             site_ranks[tstep, prefshadesites, 2] .= 1.0

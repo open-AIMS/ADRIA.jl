@@ -149,10 +149,10 @@ function connectivity_strength(TP_base::AbstractArray)::NamedTuple
     C1 = betweenness_centrality(g)
     C2 = 1.0 .- katz_centrality(g)
 
-    # strongpred = closeness_centrality(g)
+    # strong_pred = closeness_centrality(g)
 
     # For each edge, find strongly connected predecessor (by number of connections)
-    strongpred = zeros(Int64, size(C1)...)
+    strong_pred = zeros(Int64, size(C1)...)
     for v_id in vertices(g)
         incoming = inneighbors(g, v_id)
 
@@ -165,11 +165,11 @@ function connectivity_strength(TP_base::AbstractArray)::NamedTuple
             # (use `first` to get the first match in case of a tie)
             most_conns = maximum(in_conns)
             idx = first(findall(in_conns .== most_conns))
-            strongpred[v_id] = incoming[idx]
+            strong_pred[v_id] = incoming[idx]
         else
-            strongpred[v_id] = 0
+            strong_pred[v_id] = 0
         end
     end
 
-    return (in_conn=C1, out_conn=C2, strongest_predecessor=strongpred)
+    return (in_conn=C1, out_conn=C2, strongest_predecessor=strong_pred)
 end
