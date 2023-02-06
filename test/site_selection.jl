@@ -52,9 +52,9 @@ end
 
     sel_sites = unique(ranks)
     sel_sites = sel_sites[sel_sites.!=0.0]
-    site_ids = collect(Float64, 1:size(dom.site_data, 1))
+    possible_ranks = collect(Float64, 1:size(dom.site_data, 1)+1.0)
     for ss in sel_sites
-        @test in.(ss, site_ids) || "Sites outsite of site id set have been ranked."
+        @test in.(ss, possible_ranks) || "Impossible rank assigned."
     end
 
 end
