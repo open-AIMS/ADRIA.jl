@@ -306,7 +306,7 @@ Create shading specific decision matrix and apply weightings.
 
 # Arguments
 - `A` : Criteria  matrix
-- `wt_conn_shade ` : Shading connectivity weight
+- `wt_conn_shade` : Shading connectivity weight
 - `wt_waves` : Wave stress weight
 - `wt_heat` : Heat stress weight
 - `wt_predec_zones_shade` : Priority zones weight for shading
@@ -455,7 +455,6 @@ function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Boo
     zones_criteria = zone_preds .+ zone_sites
 
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
-    Main.@infiltrate
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return prefseedsites, prefshadesites, rankingsin
