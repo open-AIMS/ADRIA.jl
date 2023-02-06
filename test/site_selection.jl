@@ -1,6 +1,7 @@
 using Distributions
 using Test
 
+
 @testset "site selection" begin
     # TODO: Complete tests with @tests
 
@@ -11,7 +12,6 @@ using Test
 
     # ranks = ADRIA.site_selection(dom, p_tbl, 1, 10, 1)
 end
-
 
 @testset "Unguided site selection" begin
     n_intervention_sites = 5
@@ -40,7 +40,7 @@ end
     ts = 5  # time step to perform site selection at
 
     sum_cover = 0.1 .* ones(5, size(dom.site_data, 1))
-    ranks = run_site_selection(dom, criteria_df[criteria_df.guided.>0, :], sum_cover, area_to_seed, ts)
+    ranks = ADRIA.run_site_selection(dom, criteria_df[criteria_df.guided.>0, :], sum_cover, area_to_seed, ts)
 
     @test size(ranks, 1) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
 
@@ -49,6 +49,4 @@ end
     possible_ranks = collect(Float64, 1:size(dom.site_data, 1)+1.0)
 
     @test all([in(ss, possible_ranks) for ss in sel_sites]) || "Impossible rank assigned."
-
-
 end
