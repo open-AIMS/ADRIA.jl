@@ -59,7 +59,7 @@ First row is mean over time
 Second row is the std over time
 N is the number of dhw/wave scenarios.
 """
-function store_env_summary(data_cube::AbstractArray{<:Real}, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)
+function store_env_summary(data_cube::NamedDimsArray, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)::ZArray
     stats = summarize_env_data(data_cube)
 
     stats_store = zcreate(Float32, (2, size(stats, 2))...;
@@ -298,12 +298,7 @@ function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,Abstra
         dims = store.attrs["structure"]
         row_names = string.(store.attrs["rows"])
         col_names = string.(store.attrs["cols"])
-        stat_set = NamedArray(store[:, :])
-        for (i, n) in enumerate(dims)
-            setdimnames!(stat_set, n, i)
-        end
-        setnames!(stat_set, row_names, 1)
-        setnames!(stat_set, col_names, 2)
+        stat_set = NamedDimsArray(store[:, :]; zip(Symbol.(dims), [row_names, col_names])...)
 
         stat_d[rcp_dirs[i]] = stat_set
     end

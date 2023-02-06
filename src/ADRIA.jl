@@ -2,7 +2,7 @@ module ADRIA
 
 using TOML, CpuId, PkgVersion
 using Random, StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
-using NamedArrays, NamedDims, AxisKeys, SparseArrayKit, DifferentialEquations
+using NamedDims, AxisKeys, SparseArrayKit, DifferentialEquations
 
 using MAT
 using Combinatorics, Distances

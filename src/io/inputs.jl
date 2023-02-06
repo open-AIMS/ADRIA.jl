@@ -80,14 +80,15 @@ function process_inputs!(d::Domain, df::DataFrame)::Nothing
 end
 
 
-function load_mat_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray{Float32}
+function load_mat_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray{Float32}
     data = matread(data_fn)
-    local loaded::NamedArray{Float32}
+    local loaded::NamedDimsArray{Float32}
     local site_order::Vector{String}
 
+    # Attach site names to each dimension
     try
         site_order = Vector{String}(vec(data["reef_siteid"]))
-        loaded = NamedArray(data[attr])
+        loaded = NamedDimsArray(data[attr]; Source=site_order, Receiving=site_order)
     catch err
         if isa(err, KeyError)
             @warn "Provided file $(data_fn) did not have reef_siteid! There may be a mismatch in sites."
@@ -95,39 +96,52 @@ function load_mat_data(data_fn::String, attr::String, site_data::DataFrame)::Nam
                 @warn "Mismatch in number of sites ($(data_fn)).\nTruncating so that data size matches!"
 
                 # Subset down to number of sites
-                loaded = selectdim(data[attr], 2, 1:nrow(site_data))
+                tmp = selectdim(data[attr], 2, 1:nrow(site_data))
+                loaded = NamedDimsArray(tmp; Source=site_order, Receiving=site_order)
             end
         else
             rethrow(err)
         end
     end
 
-    # Attach site names to each column
-    setnames!(loaded, site_order, 2)
-    setdimnames!(loaded, "Source", 1)
-    setdimnames!(loaded, "Receiving", 2)
-
-    # Reorder sites so they match with spatial data
-    loaded = selectdim(loaded, 2, site_order)
-
     return loaded
 end
 
 
 """
-    load_nc_data(data_fn::String, attr::String, n_sites::Int)::NamedArray
+    load_nc_data(data_fn::String, attr::String, n_sites::Int)::NamedDimsArray
 
-Load netCDF data as a NamedArray.
+Load netCDF data as a NamedDimsArray.
 """
-function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray{Float32}
-    local loaded::NamedArray{Float32}
+function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    local loaded::NamedDimsArray
 
     ds = Dataset(data_fn, "r")
+    dim_names = reverse(Symbol.(keys(ds.dim)))
+    # if length(dim_names) == 2 && :species in dim_names
+    #     if :species != dim_names[1]
+    #         dim_names = reverse(dim_names)
+    #     end
+    # end
     data = ds[attr][:, :]
+
+    if "reef_siteid" in keys(ds)
+        sites = ds["reef_siteid"][:]
+        sites = _char_to_string(sites)
+    else
+        sites = 1:size(data, 2)
+    end
     close(ds)
 
+    # Note: cannot trust indicated dimension metadata
+    # because this can be incorrect!
+    # instead, match by number of sites
+    dim_keys = Any[1:n for n in size(data)]
+    i = first(findall(size(data) .== length(sites)))
+    dim_keys[i] = sites
+
     try
-        loaded = NamedArray(data)
+        loaded = NamedDimsArray(data; zip(dim_names, dim_keys)...)
     catch err
         if isa(err, KeyError)
             n_sites = size(data, 2)
@@ -162,53 +176,34 @@ end
 
 
 """
-    load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
+    load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
 
 Load initial coral cover data from netCDF.
 """
-function load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedArray{Float32}
-    data::NamedArray{Float32} = load_nc_data(data_fn, attr, site_data)
+function load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    data::NamedDimsArray = load_nc_data(data_fn, attr, site_data)
+    data = NamedDims.rename(data, :covers => :species, :reef_siteid => :sites)
 
-    ds = Dataset(data_fn, "r")
-    site_order = string.(ds["reef_siteid"][:])
-    close(ds)
-
-    site_order = _char_to_string(site_order)
-
-    # Attach site names to each column
-    setnames!(data, site_order, 2)
-    setdimnames!(data, :species, 1)
-    setdimnames!(data, :sites, 2)
-
-    # Reorder sites for alignment
-    data = data[:, site_data.reef_siteid]
+    # Reorder sites to match site_data
+    data = data[sites=Key(site_data[:, :reef_siteid])]
 
     return data
 end
 
 
 """
-    load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray
+    load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
 
 Load environmental data layers (DHW, Wave) from netCDF.
 """
-function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedArray{Float32}
-    data::NamedArray{Float32} = load_nc_data(data_fn, attr, site_data)
+function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    data::NamedDimsArray = load_nc_data(data_fn, attr, site_data)
 
-    ds = Dataset(data_fn, "r")
-    site_order = string.(ds["reef_siteid"][:])
-    close(ds)
+    # Re-attach correct dimension names
+    data = NamedDims.rename(data, (:timesteps, :sites, :scenarios))
 
-    site_order = _char_to_string(site_order)
-
-    # Attach dimension names
-    setnames!(data, site_order, 2)
-    setdimnames!(data, :timesteps, 1)
-    setdimnames!(data, :sites, 2)
-    setdimnames!(data, :scenarios, 3)
-
-    # Reorder sites so they align
-    data = data[:, site_data.reef_siteid, :]
+    # Reorder sites to match site_data
+    data = data[sites=Key(site_data[:, :reef_siteid])]
 
     return data
 end

@@ -1,7 +1,7 @@
 module analysis
 
-using Statistics, DataFrames, NamedArrays
-using ADRIA
+using Statistics, DataFrames
+using NamedDims, AxisKeys
 import ADRIA: ResultSet
 
 

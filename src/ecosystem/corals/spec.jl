@@ -39,13 +39,18 @@ function _update_coral_spec(spec::DataFrame, pnames::Vector{String}, coral_param
     return spec
 end
 
-function to_spec(inputs::Union{DataFrameRow,NamedVector})::DataFrame
+function to_spec(inputs::Union{DataFrameRow,NamedDimsArray})::DataFrame
     _, pnames, spec = coral_spec()
 
     coral_ids::Vector{String} = spec[:, :coral_id]
     for p in pnames
         # wrapping `p` in an array is necessary so update of DF works
-        spec[!, [p]] .= Array(inputs[coral_ids.*"_".*p])
+        try
+            spec[!, [p]] .= Array(inputs(coral_ids .* "_" .* p))
+        catch
+            # Handle DataFrameRow
+            spec[!, [p]] .= Array(inputs[:, coral_ids.*"_".*p])
+        end
     end
 
     return spec

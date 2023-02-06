@@ -3,7 +3,7 @@ module metrics
 using Interpolations, Statistics, OnlineStats, NamedDims
 
 using DataFrames
-import ADRIA: coral_spec, ResultSet
+import ADRIA: coral_spec, ResultSet, timesteps
 
 
 abstract type Outcome end
