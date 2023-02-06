@@ -46,7 +46,7 @@ end
 Load and pre-process scenario values.
 Parameters intended to be of Integer type or casted as such.
 """
-function load_scenarios(domain::D, filepath::String)::DataFrame where {D}
+function load_scenarios(domain::Domain, filepath::String)::DataFrame
     df = CSV.read(filepath, DataFrame, comment="#")
 
     if columnindex(df, :RCP) > 0
@@ -58,16 +58,16 @@ function load_scenarios(domain::D, filepath::String)::DataFrame where {D}
 end
 
 """
-    process_inputs!(d::D, df::DataFrame)::Nothing where {D}
+    process_inputs!(d::Domain, df::DataFrame)::Nothing
 
 Map sampled values in `df` back to discrete bounds for parameters
 indicated to be of integer type in the Domain spec.
 
 # Arguments
-- `d` : Domain type
+- `d` : Domain
 - `df` : DataFrame
 """
-function process_inputs!(d::D, df::DataFrame)::Nothing where {D}
+function process_inputs!(d::Domain, df::DataFrame)::Nothing
     bnds = d.model[:bounds]
     p_types = d.model[:ptype]
     @inbounds for (i, dt) in enumerate(p_types)

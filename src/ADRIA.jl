@@ -30,8 +30,8 @@ create_coral_struct()
 include("ecosystem/corals/spec.jl")
 include("ecosystem/const_params.jl")
 
-include("io/inputs.jl")
 include("Domain.jl")
+include("io/inputs.jl")
 
 include("sites/connectivity.jl")
 include("sites/dMCDA.jl")
