@@ -18,6 +18,9 @@ function col_normalize(data::AbstractMatrix{T})::AbstractMatrix{T} where {T<:Rea
 
     return d
 end
+function col_normalize(data::AbstractVector{T})::AbstractVector{T} where {T<:Real}
+    return normalize!(copy(data))
+end
 
 """
     normalize(data::AbstractArray{T})::AbstractArray{T} where {T<:Real}
