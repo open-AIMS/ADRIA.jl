@@ -1,18 +1,21 @@
+using NamedArrays
+
+
 """
-    seeded_sites_frequency(rs::ResultSet,scens::NamedTuple, rcps::Vector{Int})::NamedTuple
+    seeded_sites_frequency(rs::ResultSet,scens::NamedTuple)::NamedTuple
 
 Count frequency of seeded sites for scenarios satisfying a condition.
 
 # Arguments
 - 'rs' : ResultSet
 - `scens` : contains scenario ids for scenarios satisfying the condition of interest.
-- `rcps` : RCP ids as integers (e.g., 45, 60, 85)
 
 # Returns
-NamedTuple, where each entry relates to an RCP of interest, e.g., `(RCP45=[... scenario ids ...], RCP60=[ ...scenario_ids ...])`
+NamedArray, where each entry relates to an RCP of interest, e.g., `[RCP45=[... frequency of selection for each site ...]; 
+RCP60=[ ... frequency of selection for each site ...]]`
 
 """
-function seeded_sites_frequency(rs::ResultSet, scens::NamedTuple, rcps::Vector{Int})::NamedTuple
+function seeded_sites_frequency(rs::ResultSet, scens::NamedTuple)::NamedTuple
 
     rcps = split(rs.RCP, "_")
     seeded_sites_store = NamedArray(zeros(length(rcps), size(rs.site_data, 1)))
