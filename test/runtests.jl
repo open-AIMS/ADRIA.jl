@@ -5,10 +5,11 @@ import ADRIA.metrics: total_absolute_cover
 
 const TEST_DATA_DIR = joinpath(@__DIR__, "data")
 const ADRIA_DIR = pkgdir(ADRIA)
+const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 
 
 @testset "Domain loading" begin
-    dom = ADRIA.load_domain(joinpath(ADRIA_DIR, "examples", "Example_domain"), 45)
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
 
     scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
 
