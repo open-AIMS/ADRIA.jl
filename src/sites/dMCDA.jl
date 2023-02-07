@@ -759,32 +759,28 @@ end
     run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
 
 Perform site selection for a given domain for multiple scenarios defined in a dataframe.
-    
+
 # Arguments
 - `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
 - `criteria` : DataFrame of criteria weightings and thresholds.
 - `sum_cover` : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
 - `area_to_seed` : area of coral to be seeded at each time step in km^2
-- `time_step` : time step at which seeding and/or shading is being undertaken.
+- `timestep` : time step at which seeding and/or shading is being undertaken.
 
 # Returns
 - `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
-
-    idx_rows = ["scen_$i" for i = 1:size(criteria, 1)]
+function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, timestep::Int64)
     ranks_store = NamedDimsArray(
-        zeros(size(criteria, 1), domain.sim_constants.n_site_int, 3),
-        scenarios=idx_rows,
+        zeros(nrow(criteria), domain.sim_constants.n_site_int, 3),
+        scenarios=1:nrow(criteria),
         sites=1:domain.sim_constants.n_site_int,
         ranks=["site_id", "seed_rank", "shade_rank"],
     )
 
-    setnames!(ranks_store, idx_rows, 1)
     dhw_scens = domain.dhw_scens
     wave_scens = domain.wave_scens
-
     site_data = domain.site_data
 
     for (cover_ind, scen_criteria) in enumerate(eachrow(criteria))
