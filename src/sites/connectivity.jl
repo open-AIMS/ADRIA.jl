@@ -1,5 +1,6 @@
 """
-    site_connectivity(file_loc, site_order; con_cutoff=0.02, agg_func=mean, swap=false)::NamedTuple
+site_connectivity(file_loc::String, unique_site_ids::Vector{String};
+                  con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
 
 Create transitional probability matrix indicating connectivity between
 sites, level of centrality, and the strongest predecessor for each site.
@@ -15,20 +16,19 @@ NOTE: Transposes transitional probability matrix if `swap == true`
 ```
 
 # Arguments
-- file_loc : str, path to data file (or datasets) to load.
-               If a folder, searches subfolders as well.
-- unique_ids : Vector, of unique site ids in their expected order
-- site_order : Vector, of indices mapping duplicate conn_ids to their unique ID positions
-- con_cutoff : float, percent thresholds of max for weak connections in
-                network (defined by user or defaults in simConstants)
-- agg_func : function_handle, defaults to `mean`.
-- swap : boolean, whether to transpose data.
+- `file_loc` : Path to data file (or datasets) to load
+               If a folder, searches subfolders as well
+- `unique_site_ids` : Unique site ids in their expected order
+- `con_cutoff` : Percent thresholds of max for weak connections in
+                 network (defined by user or defaults in `SimConstants`)
+- `agg_func` : Summary statistic to take (defaults to `mean`)
+- `swap` : Whether to transpose data (defaults to `false`)
 
 # Returns
 NamedTuple:
-- TP_data : Matrix, containing the transition probability for all sites
-- truncated : ID of sites removed
-- site_ids : ID of sites kept
+- `TP_data` : Matrix, containing the transition probability for all sites
+- `truncated` : ID of sites removed
+- `site_ids` : ID of sites kept
 """
 function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
     con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
@@ -133,9 +133,9 @@ strongest predecessor.
 
 # Returns
 NamedTuple:
-- in_conn : sites ranked by incoming connectivity
-- out_conn : sites ranked by outgoing connectivity
-- strongest_predecessor : strongest predecessor for each site
+- `in_conn` : sites ranked by incoming connectivity
+- `out_conn` : sites ranked by outgoing connectivity
+- `strongest_predecessor` : strongest predecessor for each site
 """
 function connectivity_strength(TP_base::AbstractArray)::NamedTuple
 

@@ -111,7 +111,7 @@ end
 """
     load_nc_data(data_fn::String, attr::String, n_sites::Int)::NamedDimsArray
 
-Load netCDF data as a NamedDimsArray.
+Load cluster-level data for a given attribute in a netCDF as a NamedDimsArray.
 """
 function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
     local loaded::NamedDimsArray
@@ -156,6 +156,9 @@ end
     _char_to_string(vals)::Vector{String}
 
 Convert character array entries in netCDFs to string.
+
+Some packages used to write out netCDFs do not yet support
+string values, and instead reverts to writing out character arrays.
 """
 function _char_to_string(vals::AbstractVecOrMat)::Vector{String}
     if vals isa Matrix
