@@ -1,40 +1,31 @@
-using Combinatorics
-
-
 """
-    seeded_sites_robust_scens(rs::ResultSet, y::AbstractArray, rcps::Vector{Int} offset::Int=0)    
+    seeded_sites_frequency(rs::ResultSet,scens::NamedTuple, rcps::Vector{Int})::NamedTuple
 
-Count frequency of seeded sites for robust and non-robust scenarios where robustness is defined by a 
-    level of output metric(s) achieved.
+Count frequency of seeded sites for scenarios satisfying a condition.
 
 # Arguments
-- `rs` : ResultSet
-- `y` : scenario outcomes
+- 'rs' : ResultSet
+- `scens` : contains scenario ids for scenarios satisfying the condition of interest.
 - `rcps` : RCP ids as integers (e.g., 45, 60, 85)
-- `offset` : include scenarios that are some distance from pareto front, where 0 refers to
-             the pareto front itself.
 
 # Returns
 NamedTuple, where each entry relates to an RCP of interest, e.g., `(RCP45=[... scenario ids ...], RCP60=[ ...scenario_ids ...])`
 
 """
-function seeded_sites_robust_scens(scens::NamedTuple, nscens::Int64, rcps::Vector{Int})::NamedTuple
+function seeded_sites_frequency(rs::ResultSet, scens::NamedTuple, rcps::Vector{Int})::NamedTuple
+
+    rcps = split(rs.RCP, "_")
+    seeded_sites_store = NamedArray(zeros(length(rcps), size(rs.site_data, 1)))
+    idx_rows = ["RCP$i" for i = rcps]
+    setnames!(seeded_sites_store, idx_rows, 1)
 
     for rcp in rcps
-        ind_metrics_robust = scens["RCP$rcp"]
-        ind_metrics_not_robust = setdiff(collect(Int64, 1:nscens), ind_metrics_robust)
+        ind_cond_temp = scens["RCP$rcp"]
 
-        seed_log = dropdims(sum(rs.seed_log, dims=2), dims=2)
-        seeded_sites = zeros(Int64, (size(seed_log)[1], 5, size(seed_log)[3]))
-
-        for k in 1:size(seed_log)[1]
-            for j in 1:size(seed_log)[3]
-                sites = findall(seed_log[k, :, j] .> 0)
-                if !isempty(sites)
-                    seeded_sites[k, 1:length(sites), j] .= sites
-                end
-            end
-        end
+        seed_log = dropdims(sum(rs.seed_log[:, :, :, ind_cond_temp], dims=2), dims=2)
+        site_seeded_count = dropdims(sum(seed_log .> 0, dims=[1, 3]), dims=3)
+        seeded_sites_store["RCP$rcp"] .= site_seeded_count
     end
 
+    return seeded_sites_store
 end
