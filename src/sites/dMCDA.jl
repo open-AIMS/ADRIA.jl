@@ -783,13 +783,22 @@ function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::Abst
     wave_scens = domain.wave_scens
     site_data = domain.site_data
 
+    # Pre-calculate maximum depth to consider
+    criteria[:, "max_depth"] .= criteria.depth_min .+ criteria.depth_offset
+
     for (cover_ind, scen_criteria) in enumerate(eachrow(criteria))
+        depth_criteria = (site_data.depth_med .<= scen_criteria.max_depth) .& (site_data.depth_med .>= scen_criteria.depth_min)
+        depth_priority = (1:nrow(site_data))[depth_criteria]
 
-        max_depth = scen_criteria.depth_min + scen_criteria.depth_offset
-        depth_criteria = (site_data.depth_med .<= max_depth) .& (site_data.depth_med .>= scen_criteria.depth_min)
-        depth_priority = collect(1:size(site_data, 1))[depth_criteria]
-
-        ranks_temp = site_selection(domain, scen_criteria, wave_scens[time_step, :, criteria.wave_scenario[cover_ind]], dhw_scens[time_step, :, criteria.wave_scenario[cover_ind]], depth_priority, sum_cover[cover_ind, :, :], area_to_seed)
+        ranks_temp = site_selection(
+            domain,
+            scen_criteria,
+            wave_scens[timestep, :, criteria.wave_scenario[cover_ind]],
+            dhw_scens[timestep, :, criteria.dhw_scenario[cover_ind]],
+            depth_priority,
+            sum_cover[cover_ind, :, :],
+            area_to_seed
+        )
         ranks_store[cover_ind, 1:size(ranks_temp, 1), :] = ranks_temp
     end
 
