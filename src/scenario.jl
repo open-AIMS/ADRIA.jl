@@ -460,7 +460,6 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
         # Prep site selection
         mcda_vars = DMCDA_vars(domain, param_set, depth_priority, sum(Y_cover[1, :, :], dims=1), area_to_seed)
-
     end
 
     #### End coral constants

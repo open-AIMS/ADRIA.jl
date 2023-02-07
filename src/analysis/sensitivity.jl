@@ -260,7 +260,7 @@ Note:
 - `conf` : confidence interval (default: 0.95)
 
 # Returns
-3-dimensional NamedMatrix, of shape \$S\$ ⋅ \$D\$ ⋅ 3, where:
+3-dimensional NamedDimsArray, of shape \$S\$ ⋅ \$D\$ ⋅ 3, where:
 - \$S\$ is the slices,
 - \$D\$ is the number of dimensions, with
 - boostrapped mean (dim 1) and the lower/upper 95% confidence interval (dims 2 and 3).
