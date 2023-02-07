@@ -1,5 +1,6 @@
 using NCDatasets
 
+
 """
     EnvLayer{S, TF}
 
@@ -30,7 +31,7 @@ mutable struct Domain{Σ<:NamedMatrix{<:Real},M<:NamedMatrix{<:Real},I<:Vector{I
     const TP_data::Σ  # site connectivity data
     const in_conn::V  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
     const out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
-    const strongpred::I  # strongest predecessor
+    const strong_pred::I  # strongest predecessor
     site_data::D  # table of site data (depth, carrying capacity, etc)
     site_distances::Z  # Matrix of distances between each site
     median_site_distance::Float64
@@ -68,8 +69,8 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedM
 
         # Update number of sites to consider for distance-based spreading
         max_top_n = ceil(Int64, 2.0 * length(site_ids) ./ 3.0)
-        if (criteria.top_n.bounds[2] > max_top_n) || (criteria.top_n.bounds[1] < sim_constants.nsiteint)
-            @set! c_spec.top_n.bounds = (sim_constants.nsiteint, minimum([10, max_top_n]))
+        if (criteria.top_n.bounds[2] > max_top_n) || (criteria.top_n.bounds[1] < sim_constants.n_site_int)
+            @set! c_spec.top_n.bounds = (sim_constants.n_site_int, minimum([10, max_top_n]))
         end
 
         criteria = Criteria(c_spec...)
@@ -86,6 +87,9 @@ end
     site_distance(site_data::DataFrame)::Matrix
 
 Calculate matrix of unique distances between sites.
+
+# Returns
+tuple, matrix of distance between sites, median site distance for domain
 """
 
 function site_distances(site_data::DataFrame)::Tuple{Matrix{Float64},Float64}
@@ -386,96 +390,6 @@ function component_params(m::Model, components::Vector)::DataFrame
 end
 function component_params(spec::DataFrame, components::Vector)::DataFrame
     return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
-end
-
-"""
-    site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int)
-
-# Returns
-Matrix : n_reps * sites * 3
-last dimension indicates: site_id, seeding rank, shading rank
-"""
-function site_selection(domain::Domain, criteria::DataFrame, area_to_seed::Float64, ts::Int, n_reps::Int, alg_ind::Int64)
-    # Site Data
-    site_d = domain.site_data
-    sr = domain.in_conn
-    so = domain.out_conn
-    area = site_area(domain)
-
-    # Weights for connectivity , waves (ww), high cover (whc) and low
-    wtwaves = criteria.wave_stress           # weight of wave damage in MCDA
-    wtheat = criteria.heat_stress            # weight of heat damage in MCDA
-    wtconshade = criteria.shade_connectivity # weight of connectivity for shading in MCDA
-    wtinconnseed = criteria.in_seed_connectivity   # weight of connectivity for seeding in MCDA
-    wtoutconnseed = criteria.out_seed_connectivity   # weight of connectivity for seeding in MCDA
-    wthicover = criteria.coral_cover_high    # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
-    wtlocover = criteria.coral_cover_low     # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
-    wtpredecseed = criteria.seed_priority    # weight for the importance of seeding sites that are predecessors of priority reefs
-    wtpredecshade = criteria.shade_priority  # weight for the importance of shading sites that are predecessors of priority reefs
-    risktol = criteria.deployed_coral_risk_tol # risk tolerance
-    coral_cover_tol = criteria.coral_cover_tol
-    depth_min = criteria.depth_min
-    depth_offset = criteria.depth_offset
-
-    # Filter out sites outside of desired depth range
-    max_depth = depth_min + depth_offset
-    depth_criteria = (site_d.depth_med .>= -max_depth) .& (site_d.depth_med .<= -depth_min)
-
-    depth_priority = collect(1:nrow(site_d))[depth_criteria]
-
-    max_cover = site_d.k / 100.0  # Max coral cover at each site
-
-    n_siteint = domain.sim_constants.nsiteint
-    w_scens = domain.wave_scens
-    dhw_scen = domain.dhw_scens
-
-    sumcover = sum(domain.init_coral_cover, dims=2)
-    sumcover = sumcover / 100.0
-
-    ranks = zeros(n_reps, length(depth_priority), 3)
-
-    for i = 1:n_reps
-        # site_id, seeding rank, shading rank
-        rankingsin = [depth_priority zeros(length(depth_priority), 1) zeros(length(depth_priority), 1)]
-        prefseedsites = zeros(1, n_siteint)
-        prefshadesites = zeros(1, n_siteint)
-        dhw_step = dhw_scen[ts, :, i]
-        heatstressprob = dhw_step
-
-        w_step = w_scens[ts, :, i]
-        damprob = w_step
-
-        mcda_vars = DMCDA_vars(
-            depth_priority,
-            n_siteint,
-            domain.sim_constants.prioritysites,
-            domain.strongpred,
-            sr,  # sr.C1
-            so,
-            damprob,
-            heatstressprob,
-            sumcover,
-            max_cover,
-            area,
-            area_to_seed * coral_cover_tol,
-            risktol,
-            wtoutconnseed,
-            wtinconnseed,
-            wtconshade,
-            wtwaves,
-            wtheat,
-            wthicover,
-            wtlocover,
-            wtpredecseed,
-            wtpredecshade
-        )
-
-        # dMCDA(d_vars, alg_ind, log_seed, log_shade, prefseedsites, prefshadesites, rankingsin)
-        (_, _, _, _, rankings) = dMCDA(mcda_vars, alg_ind, false, false, prefseedsites, prefshadesites, rankingsin)
-        ranks[i, :, :] = rankings
-    end
-
-    return ranks
 end
 
 

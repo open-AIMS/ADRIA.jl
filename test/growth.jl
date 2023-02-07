@@ -40,20 +40,24 @@ using ADRIA
 
     # check each size class parameter matches that stored for it's size class
     for i = 1:6
-        @test all(stored_growth_rate[coral_params.class_id.==i] .== growth_rates[:, i]) || "Growth rates incorrect for size class $i ."
+        if i != 6
+            @test all(stored_growth_rate[coral_params.class_id.==i] .== growth_rates[:, i]) || "Growth rates incorrect for size class $i."
+        end
 
         @test all(stored_mb_rate[coral_params.class_id.==i] .== mb[:, i]) || "Background mortality rates incorrect for size class $i."
 
         @test all(stored_bleaching_sensitivity[coral_params.class_id.==i] .== bleaching_sensitivity[:, i]) || "Bleaching sensitivity incorrect for size class $i."
     end
 
-    # check all growth rates are <=1 and >0
-    # @test all(stored_growth_rate .<= 1.0) || "Some coral growth rates are >1."
+    # Test growth rate values for size class 6 (should be ~20% of given value)
+    @test all(stored_growth_rate[coral_params.class_id.==6] .== (growth_rates[:, 6] * 0.2)) || "Growth rates incorrect for size class $i."
+
+    # Check all growth rates are > 0
     @test all(stored_growth_rate .> 0.0) || "Some coral growth rates are <=0"
 
-    # check all background mortalities are <=1 and >0
-    @test all(stored_mb_rate .<= 1.0) || "Some coral background mortality rates are >1."
-    @test all(stored_mb_rate .>= 0.0) || "Some coral background mortality rates are <=0"
+    # check all background mortalities are <=1 and > 0
+    @test all(stored_mb_rate .<= 1.0) || "Some coral background mortality rates are > 1."
+    @test all(stored_mb_rate .>= 0.0) || "Some coral background mortality rates are <= 0."
 
     # check coral mortalities and growth rates decrease with increasing size class
     for j = 1:5

@@ -338,7 +338,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
     # sim constants
     tf::Int64 = size(dhw_scen, 1)
-    nsiteint::Int64 = sim_params.nsiteint
+    n_site_int::Int64 = sim_params.n_site_int
     n_sites::Int64 = domain.coral_growth.n_sites
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
@@ -406,8 +406,8 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
         shade_decision_years[shade_start_year] = true
     end
 
-    prefseedsites::Vector{Int64} = zeros(Int, nsiteint)
-    prefshadesites::Vector{Int64} = zeros(Int, nsiteint)
+    prefseedsites::Vector{Int64} = zeros(Int, n_site_int)
+    prefshadesites::Vector{Int64} = zeros(Int, n_site_int)
 
     # Max coral cover at each site. Divided by 100 to convert to proportion
     max_cover = site_k(domain)
@@ -440,7 +440,6 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
     # calculate total area to seed respecting tolerance for minimum available space to still seed at a site
     area_to_seed = (col_area_seed_TA .* n_TA_to_seed) + (col_area_seed_CA .* n_CA_to_seed)
-    min_area = param_set["coral_cover_tol"] * area_to_seed
 
     # Filter out sites outside of desired depth range
     if .!all(site_data.depth_med .== 0)
@@ -461,40 +460,9 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
 
-        min_distance = domain.median_site_distance - domain.median_site_distance * param_set["dist_thresh"]
         # Prep site selection
-        mcda_vars = DMCDA_vars(
-            depth_priority,
-            nsiteint,
-            sim_params.prioritysites,
-            sim_params.priorityzones,
-            site_data.zone_type,
-            domain.strongpred,
-            domain.in_conn,
-            domain.out_conn,
-            zeros(n_species, n_sites),  # wave stress
-            dhw_scen[1, :],  # heat stress
-            site_data.depth_med,
-            sum(Y_cover[1, :, :], dims=1),  # sum coral cover
-            max_cover,
-            total_site_area,
-            min_area,
-            param_set["deployed_coral_risk_tol"],  # risk tolerance
-            domain.site_distances,
-            min_distance,
-            param_set["top_n"],
-            param_set["in_seed_connectivity"], # weight for seed sites with high number of incoming connections
-            param_set["out_seed_connectivity"], # weight for seed sites with high number of outgoing connections
-            param_set["shade_connectivity"],  # weight of connectivity for shading in MCDA
-            param_set["wave_stress"],  # weight of wave damage in MCDA
-            param_set["heat_stress"],  # weight of heat damage in MCDA
-            param_set["coral_cover_high"],  # weight of high coral cover in MCDA (high cover gives preference for seeding corals but high for SRM)
-            param_set["coral_cover_low"],  # weight of low coral cover in MCDA (low cover gives preference for seeding corals but high for SRM)
-            param_set["seed_priority"],  # weight for the importance of seeding sites that are predecessors of priority reefs
-            param_set["shade_priority"],  # weight for the importance of shading sites that are predecessors of priority reefs
-            param_set["zone_seed"],  # weight for the importance of seeding sites that are predecessors of management zones
-            param_set["zone_shade"],  # weight for the importance of shading sites that are predecessors of management zones
-        )
+        mcda_vars = DMCDA_vars(domain, param_set, depth_priority, sum(Y_cover[1, :, :], dims=1), area_to_seed)
+
     end
 
     #### End coral constants
@@ -566,13 +534,13 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
-            mcda_vars.heatstressprob .= dhw_t
-            mcda_vars.damprob .= @view Sw_t[tstep, :, :]
+            mcda_vars.heat_stress_prob .= dhw_t
+            mcda_vars.dam_prob .= sum(Sw_t[tstep, :, :], dims=1)'
         end
 
         if is_guided && in_seed_years
-            mcda_vars.sumcover .= site_coral_cover
-            (prefseedsites, prefshadesites, rankings) = dMCDA(mcda_vars, MCDA_approach,
+            mcda_vars.sum_cover .= site_coral_cover
+            (prefseedsites, prefshadesites, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
                 prefseedsites, prefshadesites, rankings)
 
@@ -583,7 +551,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
             prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                nsiteint, vec(leftover_space_m²), depth_priority)
+                n_site_int, vec(leftover_space_m²), depth_priority)
 
             site_ranks[tstep, prefseedsites, 1] .= 1.0
             site_ranks[tstep, prefshadesites, 2] .= 1.0

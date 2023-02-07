@@ -31,10 +31,10 @@ Struct of simulation constants for ADRIA
    https://doi.org/10.1002/ecm.1494
 """
 Base.@kwdef mutable struct SimConstants
-    nsiteint = 5 # max number of sites we intervene on in a given year.
+    n_site_int = 5 # max number of sites we intervene on in a given year.
 
-    prioritysites = [] # sites to prioritize when seeding or shading
-    priorityzones = ["DarkBlue", "Green"] # zones to prioritize when seeding or shading, in order of preference
+    priority_sites = [] # sites to prioritize when seeding or shading
+    priority_zones = ["DarkBlue", "Green"] # zones to prioritize when seeding or shading, in order of preference
 
     ## Environmental parameters
     # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
