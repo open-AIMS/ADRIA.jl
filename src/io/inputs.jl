@@ -117,12 +117,7 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
     local loaded::NamedDimsArray
 
     ds = Dataset(data_fn, "r")
-    dim_names = reverse(Symbol.(keys(ds.dim)))
-    # if length(dim_names) == 2 && :species in dim_names
-    #     if :species != dim_names[1]
-    #         dim_names = reverse(dim_names)
-    #     end
-    # end
+    dim_names = keys(dimsize(ds[attr]))
     data = ds[attr][:, :]
 
     if "reef_siteid" in keys(ds)
