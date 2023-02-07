@@ -121,8 +121,7 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
     data = ds[attr][:, :]
 
     if "reef_siteid" in keys(ds)
-        sites = ds["reef_siteid"][:]
-        sites = _char_to_string(sites)
+        sites = _char_to_string(ds["reef_siteid"][:])
     else
         sites = 1:size(data, 2)
     end
@@ -131,7 +130,7 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
     # Note: cannot trust indicated dimension metadata
     # because this can be incorrect!
     # instead, match by number of sites
-    dim_keys = Any[1:n for n in size(data)]
+    dim_keys = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
     i = first(findall(size(data) .== length(sites)))
     dim_keys[i] = sites
 
