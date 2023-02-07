@@ -17,17 +17,19 @@ RCP60=[ ... frequency of selection for each site ...]]`
 """
 function seeded_sites_frequency(rs::ResultSet, scens::NamedTuple)::NamedTuple
 
-    rcps = split(rs.RCP, "_")
+    # retrieve RCPs
+    rcps = keys(scens)
+    # create frequencies storage container
     seeded_sites_store = NamedArray(zeros(length(rcps), size(rs.site_data, 1)))
-    idx_rows = ["RCP$i" for i = rcps]
+    idx_rows = [String(i) for i = rcps]
     setnames!(seeded_sites_store, idx_rows, 1)
 
     for rcp in rcps
-        ind_cond_temp = scens["RCP$rcp"]
+        ind_cond_temp = scens[rcp]
 
+        # select scenarios satisfying condition and sum up selection tally for each site
         seed_log = dropdims(sum(rs.seed_log[:, :, :, ind_cond_temp], dims=2), dims=2)
-        site_seeded_count = dropdims(sum(seed_log .> 0, dims=[1, 3]), dims=3)
-        seeded_sites_store["RCP$rcp"] .= site_seeded_count
+        seeded_sites_store[String(rcp), :] .= vec(dropdims(sum(seed_log .> 0, dims=[1, 3]), dims=3))
     end
 
     return seeded_sites_store
