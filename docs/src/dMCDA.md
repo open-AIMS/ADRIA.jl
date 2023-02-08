@@ -55,7 +55,7 @@ Commonly, comparison of criteria in MCDA is acheived through the construction of
 
 $$\sum_{i=1}^N\sqrt{x_{i,j}^2}=1 \forall j.$$
 
-The user also weights each criterium with a weighting representing it's relative importance in the decison problem (which could, for example, be decided through stakeholder engagement or expert opinion). These weightings $w_j, j =1,..,M$, are also normalised so that
+The user also weights each criterium with a weighting representing it's relative importance in the decison problem (which could, for example, be decided through stakeholder engagement or expert opinion). These weightings $w_j, j =1,...,M$, are also normalised so that
 $$\sum_{j=1}^M w_j=1.$$
 
 The final decision matrix used in the criteria ranking algorithms in ADRIA has the form,
@@ -90,16 +90,15 @@ The simplest method available in ADRIA is referred to as ‘order ranking’, wh
 
 $$r_i = \sum_{j=1}^M X_{i,j}.$$
 
-Simply adding criteria values, however, can mask trade-offs between different criteria. Many ‘compensatory aggregation’ algorithms exist to combat this issue, including TOPSIS and VIKOR. 
+Simply adding criteria values, however, can mask trade-offs between different criteria. Many ‘compensatory aggregation' algorithms exist to combat this issue, including TOPSIS and VIKOR. 
 
 
 TOPSIS, or Technique for Order of Preference by Similarity to Ideal Solution, ranks alternatives by comparing them to the ‘Positive Ideal Solution’ ($PIS$) and ‘Negative Ideal Solution’ ($NIS$). The $PIS$ is the value of the highest valued alternative for a criterium we want to maximise (or lowest if we want to minimise). The $NIS$ is the value of the lowest valued alternative for a criterium we want to maximise (or highest if we want to minimise). TOPSIS ranks alternatives according to a ratio calculated from the geometric distance of the alternative to the $PIS$ and $NIS$ in each of the criteria. 
 
-The PIS and NIS for each criteria $j$ can be defined as,
+The $PIS$ and $NIS$ for each criteria $j$ can be defined as,
 
 $$PIS_j = \textbf{max}_{i} X_{i,j},$$
-
-$$NIS_j = \extbf{min}_{i} X_{i,j}.$$
+$$NIS_j = \textbf{min}_{i} X_{i,j}.$$
 
 The final aggregate score in TOPSIS uses the $L^2$ distance between alternative $i$ and the NIS and PIS:
 
