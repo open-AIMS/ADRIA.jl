@@ -33,47 +33,48 @@ NamedTuple:
 function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
     con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
 
-    local extracted_TP = []
-    if isdir(file_loc)
-        con_file1 = nothing
-        con_files::Vector{String} = String[]
-        for (root, _, files) in walkdir(file_loc)
-            append!(con_files, map((x) -> joinpath(root, x), files))
-            conn_data = [
-                # We skip the first column (with drop=[1]) as this is the source site index column
-                Matrix(CSV.read(fn, DataFrame, comment="#", missingstring=["NA"], transpose=swap, types=Float64, drop=[1]))
-                for fn in con_files
-            ]
-
-            if length(conn_data) > 0
-                # Add mean TP for a single year
-                push!(extracted_TP, agg_func(conn_data))
-            end
-
-            if isnothing(con_file1) && length(con_files) > 0
-                # Keep first file
-                # We skip the first column (with drop=[1]) as this is the source site index column
-                con_file1 = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap, types=Float64, drop=[1])
-            end
-
-            con_files = String[]
-        end
-
-        # Mean of across all years
-        extracted_TP = agg_func(extracted_TP)
-
-    elseif isfile(file_loc)
-        con_files = String[file_loc]
-
-        con_file1 = CSV.read(con_files[1], DataFrame, comment="#", missingstring=["NA"], transpose=swap, types=Float64, drop=[1])
-        extracted_TP = Matrix(file1)
-    else
+    if !isdir(file_loc) && !isfile(file_loc)
         error("Could not find location: $(file_loc)")
     end
 
+    local extracted_TP::Matrix{Float64}
+    if isfile(file_loc)
+        con_files::Vector{String} = String[file_loc]
+    elseif isdir(file_loc)
+        # Get connectivity years available in data store
+        years::Vector{String} = getindex(first(walkdir(file_loc)), 2)
+        year_conn_fns = NamedTuple{Tuple(Symbol.(years))}(
+            [[joinpath.(first(fl), last(fl))
+              for fl in walkdir(joinpath(file_loc, yr))][1]
+             for yr in years]
+        )
+
+        con_files = vcat([x for x in values(year_conn_fns)]...)
+
+        # Pre-allocate store
+        tmp_store::Vector{Matrix{Float64}} = Vector{Matrix{Float64}}(undef, length(years))
+
+        # Get average connectivity for each represented year
+        for (i, yr) in enumerate(Symbol.(years))
+            conn_data::Vector{Matrix{Float64}} = [
+                Matrix(CSV.read(fn, DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1]))
+                for fn in year_conn_fns[yr]
+            ]
+
+            tmp_store[i] = agg_func(conn_data)
+        end
+
+        # Mean of across all years
+        extracted_TP = agg_func(tmp_store)
+    end
+
     # Get site ids from first file
-    con_site_ids::Vector{String} = names(con_file1)
-    con_site_ids = [x[1] for x in split.(con_site_ids, "_v"; limit=2)]
+    con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1])
+    con_site_ids::Vector{String} = String[x[1] for x in split.(names(con_file1), "_v"; limit=2)]
+
+    if isfile(file_loc)
+        extracted_TP = Matrix{Float64}(con_file1)
+    end
 
     # Get IDs missing in con_site_ids
     invalid_ids::Vector{String} = setdiff(con_site_ids, unique_site_ids)
@@ -82,11 +83,11 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
     append!(invalid_ids, setdiff(unique_site_ids, con_site_ids))
 
     # Identify IDs that do not appear in `invalid_ids`
-    valid_ids = [x ∉ invalid_ids ? x : missing for x in unique_site_ids]
+    valid_ids::Vector{String} = [x ∉ invalid_ids ? x : missing for x in unique_site_ids]
     valid_idx = .!ismissing.(valid_ids)
 
     # Align IDs
-    unique_site_ids = coalesce(unique_site_ids[valid_idx])
+    unique_site_ids::Vector{String} = coalesce(unique_site_ids[valid_idx])
     site_order = [findfirst(c_id .== con_site_ids) for c_id in unique_site_ids]
 
     if length(invalid_ids) > 0

@@ -97,14 +97,18 @@ function site_distances(site_data::DataFrame)::Tuple{Matrix{Float64},Float64}
     longitudes = first.(site_centroids)
     latitudes = last.(site_centroids)
 
-    nsites = size(site_data)[1]
-    dist = zeros(nsites, nsites)
-    @inbounds for jj = 1:nsites
-        @inbounds for ii = 1:nsites
-            dist[ii, jj] = haversine([longitudes[ii], latitudes[ii]], [longitudes[jj], latitudes[jj]])
+    nsites = size(site_data, 1)
+    dist = fill(NaN, nsites, nsites)
+    for jj in axes(dist, 2)
+        for ii in axes(dist, 1)
+            if ii == jj
+                continue
+            end
+
+            @inbounds dist[ii, jj] = haversine((longitudes[ii], latitudes[ii]), (longitudes[jj], latitudes[jj]))
         end
     end
-    dist[diagind(dist)] .= NaN
+
     median_site_dist = median(dist[.!isnan.(dist)])
     return dist, median_site_dist
 end
@@ -224,20 +228,23 @@ function load_domain(path::String, rcp::String)::Domain
     dpkg_version = dpkg_details["version"]
 
     # Handle compatibility
-    this_version = parse(VersionNumber, dpkg_version)
+    this_version::VersionNumber = parse(VersionNumber, dpkg_version)
     if this_version >= v"0.2.1"
         # Extract the time frame represented in this data package
-        timeframe = dpkg_details["simulation_metadata"]["timeframe"]
+        md_timeframe::Tuple{Int64,Int64} = Tuple(dpkg_details["simulation_metadata"]["timeframe"])
     else
         # Default to 2025-2099
-        timeframe = (2025, 2099)
+        md_timeframe = (2025, 2099)
     end
 
-    if length(timeframe) == 2
-        @assert timeframe[1] < timeframe[2] "Start date/year specified in data package must be < end date/year"
+    if length(md_timeframe) == 2
+        @assert md_timeframe[1] < md_timeframe[2] "Start date/year specified in data package must be < end date/year"
         # If only two elements, assume a range is specified.
         # Collate the time steps as a full list if necessary
-        timeframe = collect(timeframe[1]:timeframe[2])
+        timeframe::Vector{Int64} = collect(md_timeframe[1]:md_timeframe[2])
+    else
+        # Otherwise assume entry specifies yearly timesteps
+        timeframe = parse.(Int64, md_timeframe)
     end
 
     conn_path::String = joinpath(path, "connectivity/")
@@ -246,13 +253,8 @@ function load_domain(path::String, rcp::String)::Domain
     site_path::String = joinpath(site_data, "$(domain_name).gpkg")
     init_coral_cov::String = joinpath(site_data, "coral_cover.nc")
 
-    if !isempty(rcp)
-        dhw::String = joinpath(path, "DHWs", "dhwRCP$(rcp).nc")
-        wave::String = joinpath(path, "waves", "wave_RCP$(rcp).nc")
-    else
-        dhw = ""
-        wave = ""
-    end
+    dhw::String = !isempty(rcp) ? joinpath(path, "DHWs", "dhwRCP$(rcp).nc") : ""
+    wave::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
 
     return Domain(
         domain_name,
