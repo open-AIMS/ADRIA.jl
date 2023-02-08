@@ -146,7 +146,7 @@ function scenario!(f::GridPosition, rs::ResultSet, y::AbstractArray;
         end
 
         # Add legend
-        Legend(f[1, 2], eles, labels)
+        Legend(f[1, 2], eles, labels, halign=:left, valign=:top, margin=(10, 10, 10, 10))
     end
 
     ls = series!(ax, ts, y'; series_opts...)
