@@ -20,7 +20,7 @@ end
 
 
 """
-    pawn(X::AbstractArray{T1}, y::Vector{T2}, dimnames::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:Real,T2<:Real}
+    pawn(X::T1, y::T2, dimnames::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:AbstractArray{<:Real},T2<:AbstractVector{<:Real}}
 
 Calculates the PAWN sensitivity index.
 
@@ -53,7 +53,7 @@ NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
    Combining variance- and distribution-based global sensitivity analysis
    https://github.com/baronig/GSA-cvd
 """
-function pawn(X::AbstractArray{T1}, y::Vector{T2}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:Real,T2<:Real}
+function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:AbstractArray{<:Real},T2<:AbstractVector{<:Real}}
     N, D = size(X)
     step = 1 / S
     seq = 0.0:step:1.0
@@ -92,14 +92,21 @@ function pawn(X::AbstractArray{T1}, y::Vector{T2}, factor_names::Vector{String};
 
     replace!(results, NaN => 0.0, Inf => 0.0)
 
-    return NamedDimsArray(results; factors=factor_names, Si=["min", "mean", "median", "max", "std", "cv"])
+    return NamedDimsArray(results; factors=Symbol.(factor_names), Si=[:min, :mean, :median, :max, :std, :cv])
 end
-function pawn(X::DataFrame, y::Vector{T}; S::Int64=10)::NamedDimsArray where {T<:Real}
+function pawn(X::AbstractArray{<:Real}, y::NamedDimsArray, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
+    return pawn(X, vec(y), factor_names; S=S)
+end
+function pawn(X::DataFrame, y::AbstractVector; S::Int64=10)::NamedDimsArray
     return pawn(Matrix(X), y, names(X); S=S)
 end
-function pawn(X::NamedDimsArray, y::Vector{T}; S::Int64=10)::NamedDimsArray where {T<:Real}
+function pawn(X::NamedDimsArray, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector}}
     return pawn(X, y, axiskeys(X, 2); S=S)
 end
+function pawn(rs::RS, y::T; S::Int64=10)::NamedDimsArray where {RS,T<:Union{NamedDimsArray,AbstractVector}}
+    return pawn(Matrix(rs.inputs), y, names(rs.inputs); S=S)
+end
+
 
 """
     tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
@@ -130,7 +137,7 @@ NamedDimsArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
 - 6 corresponds to the min, mean, median, max, std, and cv of the PAWN indices
 - \$T\$ is the number of time steps
 """
-function tsa(X::DataFrame, y::NamedDimsArray)::NamedDimsArray
+function tsa(X::DataFrame, y::AbstractArray)::NamedDimsArray
     local ts
     try
         ts = axiskeys(y, 1)
@@ -156,6 +163,9 @@ function tsa(X::DataFrame, y::NamedDimsArray)::NamedDimsArray
     end
 
     return t_pawn_idx
+end
+function tsa(rs::RS, y::AbstractArray)::NamedDimsArray where {RS}
+    return tsa(rs.inputs, y)
 end
 
 """
@@ -238,6 +248,9 @@ function rsa(X::DataFrame, y::Vector{T}; S::Int64=20)::NamedDimsArray where {T<:
     end
 
     return col_normalize(NamedDimsArray(r_s; bins=string.(collect(seq)[2:end]), factors=factor_names))
+end
+function rsa(rs::RS, y::AbstractArray; S::Int64=20)::NamedDimsArray where {RS}
+    return rsa(rs.inputs, vec(y); S=S)
 end
 
 
@@ -325,6 +338,15 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors:
     end
 
     return p_table
+end
+function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real}
+    return outcome_map(X, y, rule, names(X); S, n_boot, conf)
+end
+function outcome_map(rs::RS, y::AbstractArray, rule, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {RS}
+    return outcome_map(rs.inputs, y, rule, target_factors; S, n_boot, conf)
+end
+function outcome_map(rs::RS, y::AbstractArray, rule; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {RS}
+    return outcome_map(rs.inputs, y, rule, names(rs.inputs); S, n_boot, conf)
 end
 
 end
