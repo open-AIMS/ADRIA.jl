@@ -38,11 +38,23 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
 end
 
 """
-    DMCDA_vars(domain::Domain, criteria::NamedVector, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
- 
-Constuctor for DMCDA variable type, where criteria are defined as a NamedVector.
+    DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
+               site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64,
+               waves::AbstractArray, dhws::AbstractArray)::DMCDA_vars
+    DMCDA_vars(domain::Domain, criteria::NamedDimsArray, site_ids::AbstractArray,
+               sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+    DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
+               sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+    DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
+               sum_cover::AbstractArray, area_to_seed::Float64,
+               waves::AbstractArray, dhw::AbstractArray)::DMCDA_vars
+
+Constuctors for DMCDA variables.
 """
-function DMCDA_vars(domain::Domain, criteria::NamedVector, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
+    site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64,
+    waves::AbstractArray, dhws::AbstractArray)::DMCDA_vars
+
     # Site Data
     site_d = domain.site_data
     nsites = size(site_d, 1)
@@ -57,42 +69,44 @@ function DMCDA_vars(domain::Domain, criteria::NamedVector, site_ids::AbstractArr
         domain.strong_pred,
         domain.in_conn,
         domain.out_conn,
-        zeros(nsites, 1),
-        zeros(nsites, 1),
+        waves,
+        dhws,
         site_d.depth_med,
         sum_cover,
         site_k(domain),
         area,
-        criteria["coral_cover_tol"] .* area_to_seed,
-        criteria["deployed_coral_risk_tol"],
+        criteria("coral_cover_tol") .* area_to_seed,
+        criteria("deployed_coral_risk_tol"),
         domain.site_distances,
-        domain.median_site_distance - domain.median_site_distance * criteria["dist_thresh"],
-        criteria["top_n"],
-        criteria["in_seed_connectivity"],
-        criteria["out_seed_connectivity"],
-        criteria["shade_connectivity"],
-        criteria["wave_stress"],
-        criteria["heat_stress"],
-        criteria["coral_cover_high"],
-        criteria["coral_cover_low"],
-        criteria["seed_priority"],
-        criteria["shade_priority"],
-        criteria["zone_seed"],
-        criteria["zone_shade"]
+        domain.median_site_distance - domain.median_site_distance * criteria("dist_thresh"),
+        criteria("top_n"),
+        criteria("in_seed_connectivity"),
+        criteria("out_seed_connectivity"),
+        criteria("shade_connectivity"),
+        criteria("wave_stress"),
+        criteria("heat_stress"),
+        criteria("coral_cover_high"),
+        criteria("coral_cover_low"),
+        criteria("seed_priority"),
+        criteria("shade_priority"),
+        criteria("zone_seed"),
+        criteria("zone_shade")
     )
 
     return mcda_vars
 end
-
-"""
-    DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
- 
-Constuctor for DMCDA variable type, where criteria are defined as a DataFrameRow.
-"""
-function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
-    rows = names(criteria)
-    criteria_vec::NamedVector = collect(criteria)
-    setnames!(criteria_vec, rows, 1)
+function DMCDA_vars(domain::Domain, criteria::NamedDimsArray, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+    nsites = size(domain.site_data, 1)
+    return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(nsites, 1), zeros(nsites, 1))
+end
+function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
+    sum_cover::AbstractArray, area_to_seed::Float64, waves::AbstractArray, dhw::AbstractArray)::DMCDA_vars
+    criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
+    return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed, waves, dhw)
+end
+function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
+    sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+    criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed)
 end
 
@@ -350,7 +364,7 @@ end
 
 
 """
-    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int}, rankingsin::Matrix{Int64})
+    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int64}, prefshadesites::AbstractArray{Int64}, rankingsin::Matrix{Int64})
 
 # Arguments
 - `d_vars` : DMCDA_vars type struct containing weightings and criteria values for site selection.
@@ -365,17 +379,17 @@ end
 Tuple :
     - `prefseedsites` : n_site_int highest ranked seeding sites
     - `prefshadesites` : n_site_int highest ranked shading/fogging sites
-    - `number of seed` sites : nprefseedsites
-    - `nprefshadesites` : number of shade sites
     - `rankings` : n_sites ⋅ 3 matrix holding [site_id, seeding_rank, shading_rank],
         Values of 0 indicate sites that were not considered
 """
-function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool,
-    prefseedsites::AbstractArray{Int}, prefshadesites::AbstractArray{Int},
-    rankingsin::Matrix{Int64})::Tuple
+function guided_site_selection(
+    d_vars::DMCDA_vars, alg_ind::T,
+    log_seed::B, log_shade::B,
+    prefseedsites::IA, prefshadesites::IA,
+    rankingsin::Matrix{T}
+)::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},B<:Bool}
 
     site_ids::Array{Int64} = copy(d_vars.site_ids)
-
     min_dist::Float64 = d_vars.min_dist
 
     # Force different sites to be selected
@@ -447,7 +461,7 @@ function guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Boo
             # for each predecessor site, add zone_weights* (no. of zone sites the site is a strongest predecessor for)
             zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k]) .* sum(zone_preds_temp .== s)
         end
-        # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)        
+        # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)
         zone_sites[zones.==zone_ids[k]] .= zone_weights[k]
     end
 
@@ -759,35 +773,46 @@ end
     run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
 
 Perform site selection for a given domain for multiple scenarios defined in a dataframe.
-    
+
 # Arguments
 - `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
 - `criteria` : DataFrame of criteria weightings and thresholds.
 - `sum_cover` : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
 - `area_to_seed` : area of coral to be seeded at each time step in km^2
-- `time_step` : time step at which seeding and/or shading is being undertaken.
+- `timestep` : time step at which seeding and/or shading is being undertaken.
 
 # Returns
-- `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
+- `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
+function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, timestep::Int64)
+    ranks_store = NamedDimsArray(
+        zeros(nrow(criteria), domain.sim_constants.n_site_int, 3),
+        scenarios=1:nrow(criteria),
+        sites=1:domain.sim_constants.n_site_int,
+        ranks=["site_id", "seed_rank", "shade_rank"],
+    )
 
-    ranks_store = NamedArray(zeros(size(criteria, 1), domain.sim_constants.n_site_int, 3))
-    idx_rows = ["scen_$i" for i = 1:size(criteria, 1)]
-    setnames!(ranks_store, idx_rows, 1)
     dhw_scens = domain.dhw_scens
     wave_scens = domain.wave_scens
-
     site_data = domain.site_data
 
+    # Pre-calculate maximum depth to consider
+    criteria[:, "max_depth"] .= criteria.depth_min .+ criteria.depth_offset
+
     for (cover_ind, scen_criteria) in enumerate(eachrow(criteria))
+        depth_criteria = (site_data.depth_med .<= scen_criteria.max_depth) .& (site_data.depth_med .>= scen_criteria.depth_min)
+        depth_priority = (1:nrow(site_data))[depth_criteria]
 
-        max_depth = scen_criteria.depth_min + scen_criteria.depth_offset
-        depth_criteria = (site_data.depth_med .<= max_depth) .& (site_data.depth_med .>= scen_criteria.depth_min)
-        depth_priority = collect(1:size(site_data, 1))[depth_criteria]
-
-        ranks_temp = site_selection(domain, scen_criteria, wave_scens[time_step, :, criteria.wave_scenario[cover_ind]], dhw_scens[time_step, :, criteria.wave_scenario[cover_ind]], depth_priority, sum_cover[cover_ind, :, :], area_to_seed)
+        ranks_temp = site_selection(
+            domain,
+            scen_criteria,
+            wave_scens[timestep, :, criteria.wave_scenario[cover_ind]],
+            dhw_scens[timestep, :, criteria.dhw_scenario[cover_ind]],
+            depth_priority,
+            sum_cover[cover_ind, :, :],
+            area_to_seed
+        )
         ranks_store[cover_ind, 1:size(ranks_temp, 1), :] = ranks_temp
     end
 
@@ -795,7 +820,7 @@ function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::Abst
 end
 
 """
-    site_selection(domain::Domain, criteria::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::NamedArray, dhw_scens::NamedArray, sum_cover::AbstractArray, area_to_seed::Float64)
+    site_selection(domain::Domain, criteria::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray, sum_cover::AbstractArray, area_to_seed::Float64)
 
 Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
 
@@ -811,9 +836,9 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
 - `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
-function site_selection(domain::Domain, criteria::DataFrameRow, w_scens::NamedArray, dhw_scens::NamedArray, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)
+function site_selection(domain::Domain, criteria::DataFrameRow, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::Matrix{Int64}
 
-    mcda_vars = DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed)
+    mcda_vars = DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, w_scens, dhw_scens)
 
     nsites = length(mcda_vars.site_ids)
     # site_id, seeding rank, shading rank
@@ -821,8 +846,6 @@ function site_selection(domain::Domain, criteria::DataFrameRow, w_scens::NamedAr
     prefseedsites = zeros(Int64, (1, mcda_vars.n_site_int))
     prefshadesites = zeros(Int64, (1, mcda_vars.n_site_int))
 
-    mcda_vars.heat_stress_prob .= dhw_scens
-    mcda_vars.dam_prob .= w_scens
     (_, _, ranks) = guided_site_selection(mcda_vars, criteria.guided, true, true, prefseedsites, prefshadesites, rankingsin)
 
     return ranks

@@ -1,8 +1,8 @@
 module sensitivity
 
 using Logging
-using Statistics, Distributions, HypothesisTests, Bootstrap
-using NamedArrays, DataFrames
+using DataFrames, NamedDims, AxisKeys
+using Distributions, HypothesisTests, Bootstrap
 
 import ADRIA.analysis: col_normalize
 
@@ -20,7 +20,7 @@ end
 
 
 """
-    pawn(X::AbstractArray{T}, y::Vector{T}, dimnames::Vector{String}; S::Int64=10)::NamedArray{T} where {T<:Real}
+    pawn(X::AbstractArray{T1}, y::Vector{T2}, dimnames::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:Real,T2<:Real}
 
 Calculates the PAWN sensitivity index.
 
@@ -36,10 +36,11 @@ statistics (min, mean, median, max, std, and cv) over the slices.
 # Arguments
 - `X` : Model inputs
 - `y` : Model outputs
+- `factor_names` : Names of each factor represented by columns in `X`
 - `S` : Number of slides (default: 10)
 
 # Returns
-NamedArray, of min, mean, median, max, std, and cv summary statistics.
+NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
 
 # References
 1. Pianosi, F., Wagener, T., 2018.
@@ -52,7 +53,7 @@ NamedArray, of min, mean, median, max, std, and cv summary statistics.
    Combining variance- and distribution-based global sensitivity analysis
    https://github.com/baronig/GSA-cvd
 """
-function pawn(X::AbstractArray{T1}, y::Vector{T2}, dimnames::Vector{String}; S::Int64=10)::NamedArray{T1} where {T1<:Real,T2<:Real}
+function pawn(X::AbstractArray{T1}, y::Vector{T2}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:Real,T2<:Real}
     N, D = size(X)
     step = 1 / S
     seq = 0:step:1
@@ -86,32 +87,22 @@ function pawn(X::AbstractArray{T1}, y::Vector{T2}, dimnames::Vector{String}; S::
 
     replace!(results, NaN => 0.0, Inf => 0.0)
 
-    return NamedArray(results, (dimnames, [:min, :mean, :median, :max, :std, :cv]))
+    return NamedDimsArray(results; zip([:factors, :Si], [factor_names, ["min", "mean", "median", "max", "std", "cv"]])...)
 end
-function pawn(X::DataFrame, y::Vector{T}; S::Int64=10)::NamedArray{T} where {T<:Real}
+function pawn(X::DataFrame, y::Vector{T}; S::Int64=10)::NamedDimsArray where {T<:Real}
     return pawn(Matrix(X), y, names(X); S=S)
 end
-function pawn(X::NamedArray, y::Vector{T}; S::Int64=10)::NamedArray{T} where {T<:Real}
-    return pawn(X, y, names(X, 2); S=S)
+function pawn(X::NamedDimsArray, y::Vector{T}; S::Int64=10)::NamedDimsArray where {T<:Real}
+    return pawn(X, y, axiskeys(X, 2); S=S)
 end
 
 """
-    tsa(X::DataFrame, y::AbstractMatrix)::NamedArray
+    tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
 
 Perform Temporal (or time-varying) Sensitivity Analysis using the PAWN sensitivity index.
 
 The sensitivity index value for time \$t\$ is inclusive of all time steps prior to \$t\$.
 Alternate approaches use a moving window, or only data for time \$t\$.
-
-# Arguments
-- `X` : Scenario specification
-- `y` : scenario outcomes over time
-
-# Returns
-NamedArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
-- \$D\$ is the number of dimensions/factors
-- 6, corresponds to the min, mean, median, max, std, and cv of the PAWN indices
-- \$T\$, the number of time steps
 
 # Examples
 ```julia
@@ -123,12 +114,34 @@ y_tac = ADRIA.metrics.scenario_total_cover(rs)
 # Calculate sensitivity of outcome to factors for each time step
 ADRIA.sensitivity.tsa(rs.inputs, y_tac)
 ```
+
+# Arguments
+- `X` : Scenario specification
+- `y` : scenario outcomes over time
+
+# Returns
+NamedDimsArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
+- \$D\$ is the number of dimensions/factors
+- 6 corresponds to the min, mean, median, max, std, and cv of the PAWN indices
+- \$T\$ is the number of time steps
 """
-function tsa(X::DataFrame, y::AbstractMatrix{T})::NamedArray{T} where {T<:Real}
-    t_pawn_idx = NamedArray(
-        zeros(ncol(X), 6, size(y, 1)),
-        (names(X), ["min", "mean", "median", "max", "std", "cv"], string.(1:size(y, 1))),
-        ("factors", "pawn", "timesteps")
+function tsa(X::DataFrame, y::NamedDimsArray)::NamedDimsArray
+    local ts
+    try
+        ts = axiskeys(y, 1)
+    catch err
+        if err isa MethodError
+            ts = 1:size(y, 1)
+        else
+            rethrow(err)
+        end
+    end
+
+    t_pawn_idx = NamedDimsArray(
+        zeros(ncol(X), 6, size(y, 1));
+        factors=names(X),
+        Si=["min", "mean", "median", "max", "std", "cv"],
+        timesteps=ts
     )
 
     for t in axes(y, 1)
@@ -141,7 +154,7 @@ function tsa(X::DataFrame, y::AbstractMatrix{T})::NamedArray{T} where {T<:Real}
 end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedArray
+    rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedDimsArray
 
 Perform Regional Sensitivity Analysis.
 
@@ -170,7 +183,7 @@ Note: Returned NaN values indicate insufficient samples in the region.
 - `S` : number of bins to slice factor space into (default: 20)
 
 # Returns
-NamedArray, [bin values, factors]
+NamedDimsArray, [bin values, factors]
 
 # Examples
 ```julia
@@ -192,44 +205,39 @@ ADRIA.sensitivity.rsa(X, y; S=20)
    https://dx.doi.org/10.1002/9780470725184
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
-function rsa(X::DataFrame, y::Vector{T}; S=20)::NamedArray{T} where {T<:Real}
+function rsa(X::DataFrame, y::Vector{T}; S::Int64=20)::NamedDimsArray where {T<:Real}
     factor_names = names(X)
     N, D = size(X)
     step = 1 / S
-    seq = 0:step:1.0
+    seq = 0.0:step:1.0
 
     X_di = zeros(N)
     X_q = zeros(S + 1)
-    r_s = NamedArray(zeros(S, D))
-
-    setnames!(r_s, string.(collect(seq)[2:end]), 1)  # label with upper bounds
-    setnames!(r_s, factor_names, 2)
-    setdimnames!(r_s, [:bins, :factors])
+    r_s = zeros(S, D)
 
     for d_i in 1:D
         X_di .= X[:, d_i]
         X_q .= quantile(X_di, seq)
-        Threads.@threads for s in 2:S
+        for s in 2:S
             sel = s > 2 ? (X_q[s-1] .< X_di .<= X_q[s]) : (X_q[s-1] .<= X_di .<= X_q[s])
-            if count(sel) == 0
-                # no available samples
-                r_s[s, d_i] = NaN
+            if count(sel) == 0 || length(y[Not(sel)]) == 0
+                # not enough samples
+                r_s[s-1, d_i] = NaN
                 continue
             end
 
             # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
             # ci = confint(bs, PercentileConfInt(conf))[1]
-
             r_s[s-1, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
     end
 
-    return r_s
+    return col_normalize(NamedDimsArray(r_s; bins=string.(collect(seq)[2:end]), factors=factor_names))
 end
 
 
 """
-    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedArray
+    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedDimsArray
 
 Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
 
@@ -252,7 +260,7 @@ Note:
 - `conf` : confidence interval (default: 0.95)
 
 # Returns
-3-dimensional NamedMatrix, of shape \$S\$ ⋅ \$D\$ ⋅ 3, where:
+3-dimensional NamedDimsArray, of shape \$S\$ ⋅ \$D\$ ⋅ 3, where:
 - \$S\$ is the slices,
 - \$D\$ is the number of dimensions, with
 - boostrapped mean (dim 1) and the lower/upper 95% confidence interval (dims 2 and 3).
@@ -269,17 +277,17 @@ rule = y -> all(y .> 0.5)
 ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 ```
 """
-function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedArray{T} where {T<:Real}
+function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real}
     step_size = 1 / S
     steps = collect(0:step_size:1.0)
 
-    p_table = NamedArray(fill(NaN, length(steps) - 1, length(target_factors), 3))
-    setnames!(p_table, ["$(round(i, digits=2))" for i in steps[2:end]], 1)
-    setnames!(p_table, String.(target_factors), 2)
-    setnames!(p_table, ["mean", "lower", "upper"], 3)
-    setdimnames!(p_table, [:bins, :factors, :CI])
+    p_table = NamedDimsArray(
+        fill(NaN, length(steps) - 1, length(target_factors), 3);
+        bins=["$(round(i, digits=2))" for i in steps[2:end]],
+        factors=String.(target_factors),
+        CI=["mean", "lower", "upper"]
+    )
 
-    # Normalize each column in y
     y = col_normalize(y)
 
     all_p_rule = findall(rule, eachrow(y))

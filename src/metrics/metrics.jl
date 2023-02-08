@@ -3,7 +3,7 @@ module metrics
 using Interpolations, Statistics, OnlineStats, NamedDims
 
 using DataFrames
-import ADRIA: coral_spec, ResultSet
+import ADRIA: coral_spec, ResultSet, timesteps
 
 
 abstract type Outcome end
@@ -181,7 +181,7 @@ TODO: Uses hardcoded index values, to be replaced by something more generic.
 # Returns
 Coral cover, grouped by taxa for the given scenario.
 """
-function _relative_taxa_cover(X::AbstractArray{T,3}) where {T<:Real}
+function _relative_taxa_cover(X::AbstractArray{T,3})::AbstractArray where {T<:Real}
     nsteps, nspecies, _ = size(X)
 
     taxa_cover = zeros(nsteps, 6)
@@ -192,7 +192,7 @@ function _relative_taxa_cover(X::AbstractArray{T,3}) where {T<:Real}
 
     return taxa_cover
 end
-function _relative_taxa_cover(rs)::AbstractArray
+function _relative_taxa_cover(rs::ResultSet)::AbstractArray
     return rs.outcomes[:relative_taxa_cover]
 end
 relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenarios))

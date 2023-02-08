@@ -168,19 +168,18 @@ function combine_results(result_sets...)::ResultSet
         end
     end
 
-    compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
+    compressor = Zarr.BloscCompressor(cname="zstd", clevel=4, shuffle=true)
     metrics = keys(rs1.outcomes)
-    result_dims = (
-        size(rs1.outcomes[:total_absolute_cover], :timesteps),
-        size(rs1.outcomes[:total_absolute_cover], :sites),
-        n_scenarios
-    )
-    dim_struct = Dict(
-        :structure => ("timesteps", "sites", "scenarios"), # string.((:timesteps, :sites, :scenarios)),
-        :unique_site_ids => rs1.site_ids
-    )
     for m_name in metrics
-        result_dims = (size(rs1.outcomes[m_name], 1), size(rs1.outcomes[m_name], 2), n_scenarios)
+        m_dim_names = NamedDims.dimnames(rs1.outcomes[m_name])
+        dim_struct = Dict{Symbol,Any}(
+            :structure => m_dim_names,
+        )
+        if :sites in m_dim_names
+            dim_struct[:unique_site_ids] = rs1.site_ids
+        end
+
+        result_dims = (size(rs1.outcomes[m_name])[1:end-1]..., n_scenarios)
         m_store = zcreate(Float32, result_dims...;
             fill_value=nothing, fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, string(m_name)), chunks=(result_dims[1:end-1]..., 1),

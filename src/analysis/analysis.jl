@@ -1,7 +1,7 @@
 module analysis
 
-using Statistics, DataFrames, NamedArrays
-using ADRIA
+using Statistics, DataFrames
+using NamedDims, AxisKeys
 import ADRIA: ResultSet
 
 
@@ -17,6 +17,9 @@ function col_normalize(data::AbstractMatrix{T})::AbstractMatrix{T} where {T<:Rea
     end
 
     return d
+end
+function col_normalize(data::AbstractVector{T})::AbstractVector{T} where {T<:Real}
+    return normalize!(copy(data))
 end
 
 """
@@ -57,7 +60,7 @@ function discretize_outcomes(y; S=20)
     y_s_hat = col_normalize(y)
     y_disc = zeros(size(y)...)
     for i in axes(steps, 1)[2:end]
-        for j in size(y_s_hat, 2)
+        Threads.@threads for j in size(y_s_hat, 2)
             y_disc[steps[i-1].<y_s_hat[:, j].<=steps[i], j] .= steps[i-j]
         end
     end
@@ -65,9 +68,7 @@ function discretize_outcomes(y; S=20)
     return y_disc
 end
 
-
 include("pareto.jl")
 include("sensitivity.jl")
-
 
 end

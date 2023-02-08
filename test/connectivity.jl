@@ -4,9 +4,6 @@ using CSV
 
 
 @testset "Connectivity loading" begin
-    # dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
-    # "C:/development/ADRIA_data/data_packages/Moore_2022-11-02/site_data/Moore_2022-11-02.gpkg"
-
     site_data = GDF.read(joinpath(@__DIR__, "..", "examples", "Example_domain", "site_data", "Example_domain.gpkg"))
     sort!(site_data, [:reef_siteid])
 

@@ -5,6 +5,7 @@ version = "0.4.5"
 
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
+AxisKeys = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 Bootstrap = "e28b5b4c-05e8-5b66-bc03-6f0c0a0a06e0"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"

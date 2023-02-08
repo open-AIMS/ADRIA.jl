@@ -1,6 +1,3 @@
-using NamedArrays, NamedDims
-import ADRIA: timesteps, metrics
-
 """
     _get_ranks(rs::ResultSet, intervention::Int64; kwargs...)
 
@@ -15,7 +12,7 @@ end
 
 Collates ranks into seed/shade ranking results into a common structure.
 """
-function _collate_ranks(rs, selected; kwargs...)
+function _collate_ranks(rs::ResultSet, selected; kwargs...)::NamedDimsArray
     nsteps, nsites = size(selected)
 
     ts = timesteps(rs)
@@ -30,7 +27,7 @@ function _collate_ranks(rs, selected; kwargs...)
         @warn "Length of reef ids do not match number of sites"
     end
 
-    return NamedArray(unname(selected), (ts, r_ids, collect(1:size(selected, 3))), ("timesteps", "sites", "scenarios"))
+    return NamedDimsArray(selected; zip((:timesteps, :sites, :scenarios), (ts, r_ids, 1:size(selected, 3)))...)
 end
 
 
@@ -42,7 +39,7 @@ end
 - kwargs : named dimensions to slice across
 
 # Returns
-NamedArray[timesteps, sites, scenarios]
+NamedDimsArray[timesteps, sites, scenarios]
 
 # Example
 ```julia
@@ -103,7 +100,7 @@ end
 - kwargs : named dimensions to slice across
 
 # Returns
-NamedArray[timesteps, sites, scenarios]
+NamedDimsArray[timesteps, sites, scenarios]
 
 # Example
 ```julia
@@ -139,7 +136,7 @@ ADRIA.metrics.top_N_sites(rs, 5; metric=ADRIA.metric.relative_cover)
 ADRIA.metrics.top_N_sites(rs, 5; metric=ADRIA.metric.relative_cover, stat=median)
 ```
 """
-function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover, stat=mean)
+function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover, stat=mean)::NamedDimsArray
     return top_N_sites(metric(rs), N; stat=stat)
 end
 function top_N_sites(data::AbstractArray{<:Real}, N::Int64; stat=mean)

@@ -23,7 +23,7 @@ end
 
 Core ADRIA domain. Represents study area.
 """
-mutable struct Domain{Σ<:NamedMatrix{<:Real},M<:NamedMatrix{<:Real},I<:Vector{Int64},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray{<:Real},Y<:AbstractArray{<:Real},Z<:AbstractArray{<:Real}}
+mutable struct Domain{Σ<:NamedDimsArray,M<:NamedDimsArray,I<:Vector{Int64},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray{<:Real}}
     const name::S  # human-readable name
     RCP::S  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
@@ -52,10 +52,10 @@ end
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
-function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::NamedMatrix{<:T}, in_conn::Vector{Float64}, out_conn::Vector{Float64},
+function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::AbstractMatrix{<:T}, in_conn::Vector{Float64}, out_conn::Vector{Float64},
     strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_distances::Matrix{Float64}, median_site_distance::Float64, site_id_col::String, unique_site_id_col::String,
-    init_coral_cover::NamedMatrix{<:T}, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
-    DHWs::AbstractArray{<:T}, waves::AbstractArray{<:T})::Domain where {T<:Real}
+    init_coral_cover::NamedDimsArray, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
+    DHWs::NamedDimsArray, waves::NamedDimsArray)::Domain where {T<:Real}
 
     # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
     criteria::Criteria = Criteria()
@@ -169,28 +169,28 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
-        dhw::NamedArray{Float32} = load_mat_data(dhw_fn, "dhw", site_data)
+        dhw::NamedDimsArray = load_mat_data(dhw_fn, "dhw", site_data)
     elseif endswith(dhw_fn, ".nc")
         dhw = load_env_data(dhw_fn, "dhw", site_data)
     else
-        dhw = NamedArray(zeros(Float32, length(timeframe), n_sites, 50))
+        dhw = NamedDimsArray(zeros(Float32, length(timeframe), n_sites, 50); timesteps=timeframe, sites=conn_ids, scenarios=1:50)
     end
 
     if endswith(wave_fn, ".mat")
-        waves::NamedArray{Float32} = load_mat_data(wave_fn, "wave", site_data)
+        waves::NamedDimsArray = load_mat_data(wave_fn, "wave", site_data)
     elseif endswith(wave_fn, ".nc")
         waves = load_env_data(wave_fn, "Ub", site_data)
     else
-        waves = NamedArray(zeros(Float32, length(timeframe), n_sites, 50))
+        waves = NamedDimsArray(zeros(Float32, length(timeframe), n_sites, 50); timesteps=timeframe, sites=conn_ids, scenarios=1:50)
     end
 
     if endswith(init_coral_fn, ".mat")
-        coral_cover::NamedArray{Float32} = load_mat_data(init_coral_fn, "covers", site_data)
+        coral_cover::NamedDimsArray = load_mat_data(init_coral_fn, "covers", site_data)
     elseif endswith(init_coral_fn, ".nc")
         coral_cover = load_covers(init_coral_fn, "covers", site_data)
     else
         @warn "Using random initial coral cover"
-        coral_cover = NamedArray(rand(Float32, coral_growth.n_species, n_sites))
+        coral_cover = NamedDimsArray(rand(Float32, coral_growth.n_species, n_sites); species=1:coral_growth.n_species, sites=1:n_sites)
     end
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
@@ -345,12 +345,12 @@ Update given domain with new parameter values.
 Maps sampled continuous values to discrete values for categorical variables.
 """
 function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
-    p_df::DataFrame = DataFrame(d.model)[!, [:fieldname, :val, :ptype, :bounds]]
+    p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
 
     try
         p_df[!, :val] .= collect(params[Not("RCP")])
     catch err
-        if isa(err, ArgumentError)
+        if isa(err, ArgumentError) || isa(err, DimensionMismatch)
             if !occursin("RCP", "$err")
                 error("Error occurred loading scenario samples. $err")
             else

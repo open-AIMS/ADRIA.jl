@@ -1,49 +1,51 @@
-using ADRIA, DataFrames, CSV
+using ADRIA, DataFrames, CSV, NamedDims, AxisKeys
 import GeoDataFrames as GDF
 using CSV
 
 
-@testset "Connectivity loading" begin
-    # dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
-    # "C:/development/ADRIA_data/data_packages/Moore_2022-11-02/site_data/Moore_2022-11-02.gpkg"
+if !@isdefined(ADRIA_DIR)
+    const ADRIA_DIR = pkgdir(ADRIA)
+    const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
+end
 
-    site_data = GDF.read(joinpath(@__DIR__, "..", "examples", "Example_domain", "site_data", "Example_domain.gpkg"))
+
+@testset "Connectivity loading" begin
+    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Example_domain.gpkg"))
     sort!(site_data, :reef_siteid)
 
     unique_site_ids = site_data.reef_siteid
 
-    conn_files = joinpath(@__DIR__, "..", "examples", "Example_domain", "connectivity")
+    conn_files = joinpath(EXAMPLE_DOMAIN_PATH, "connectivity")
     conn_data = CSV.read(joinpath(conn_files, "2000", "example_conn.csv"), DataFrame, comment="#", drop=[1], types=Float64)
 
     conn_details = ADRIA.site_connectivity(conn_files, unique_site_ids)
 
     TP_data = conn_details.TP_base
-    @test all(names(TP_data, 2) .== site_data.reef_siteid) || "Sites do not match expected order!"
+    @test all(axiskeys(TP_data, 1) .== axiskeys(TP_data, 2)) || "Site order does not match between rows/columns."
+    @test all(axiskeys(TP_data, 2) .== site_data.reef_siteid) || "Sites do not match expected order."
     @test all(unique_site_ids .== conn_details.site_ids) || "Included site ids do not match length/order in geospatial file."
 end
 
 @testset "Environmental data" begin
-    site_data = GDF.read(joinpath(@__DIR__, "..", "examples", "Example_domain", "site_data", "Example_domain.gpkg"))
-
-    # site_data = GDF.read("C:/development/ADRIA_data/data_packages/Moore_2022-11-02/site_data/Moore_2022-11-02.gpkg")
+    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Example_domain.gpkg"))
 
     sort!(site_data, :reef_siteid)
 
-    wave_fn = joinpath(@__DIR__, "..", "examples", "Example_domain", "waves", "wave_RCP45.nc")
+    wave_fn = joinpath(EXAMPLE_DOMAIN_PATH, "waves", "wave_RCP45.nc")
     waves = ADRIA.load_env_data(wave_fn, "Ub", site_data)
-    @test all(names(waves, 2) .== site_data.reef_siteid) || "Wave data not aligned with order specified in geospatial data"
+    @test all(axiskeys(waves, 2) .== site_data.reef_siteid) || "Wave data not aligned with order specified in geospatial data"
 
-    dhw_fn = joinpath(@__DIR__, "..", "examples", "Example_domain", "DHWs", "dhwRCP45.nc")
+    dhw_fn = joinpath(EXAMPLE_DOMAIN_PATH, "DHWs", "dhwRCP45.nc")
     dhw = ADRIA.load_env_data(dhw_fn, "dhw", site_data)
-    @test all(names(dhw, 2) .== site_data.reef_siteid) || "Wave data not aligned with order specified in geospatial data"
+    @test all(axiskeys(dhw, 2) .== site_data.reef_siteid) || "Wave data not aligned with order specified in geospatial data"
 end
 
 @testset "Initial covers" begin
-    site_data = GDF.read(joinpath(@__DIR__, "..", "examples", "Example_domain", "site_data", "Example_domain.gpkg"))
+    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Example_domain.gpkg"))
     sort!(site_data, :reef_siteid)
 
-    coral_cover_fn = joinpath(@__DIR__, "..", "examples", "Example_domain", "site_data", "coral_cover.nc")
+    coral_cover_fn = joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "coral_cover.nc")
     coral_covers = ADRIA.load_covers(coral_cover_fn, "covers", site_data)
 
-    @test all(names(coral_covers, 2) .== site_data.reef_siteid) || "Coral cover data not aligned with order specified in geospatial data"
+    @test all(axiskeys(coral_covers, 2) .== site_data.reef_siteid) || "Coral cover data not aligned with order specified in geospatial data"
 end

@@ -93,7 +93,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
     run_msg = "Running $(nrow(param_df)) scenarios for RCP $RCP"
 
     # Convert to named matrix for faster iteration
-    scen_mat = NamedArray(Matrix(param_df), (1:nrow(param_df), names(param_df)))
+    scen_mat = NamedDimsArray(Matrix(param_df); scenarios=1:nrow(param_df), factors=names(param_df))
 
     # Batch run scenarios
     func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
@@ -136,7 +136,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
     tmp_result_dirs::Vector{String} = String[]
 
     # Convert to named matrix for faster iteration
-    scen_mat = NamedArray(Matrix(param_df), (1:nrow(param_df), names(param_df)))
+    scen_mat = NamedDimsArray(Matrix(param_df); scenarios=1:nrow(param_df), factors=names(param_df))
 
     # TODO: Standardize and clean this up.
     for RCP in RCP_ids
@@ -272,7 +272,7 @@ function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Dom
     cache = setup_cache(domain)
 
     # Switch RCP datasets if required
-    if "RCP" in names(param_set, 1) && (param_set["RCP"] != domain.RCP)
+    if "RCP" in names(param_set, 1) && (param_set("RCP") != domain.RCP)
         domain = switch_RCPs!(domain, domain.RCP)
     end
 
@@ -306,11 +306,11 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
     if param_set isa DataFrameRow
         has_RCP = columnindex(param_set, :RCP) > 0
     else
-        has_RCP = "RCP" in names(param_set, 1)
+        has_RCP = "RCP" in axiskeys(param_set, 1)
     end
 
     if has_RCP && (param_set isa DataFrameRow)
-        rnd_seed_val = floor(Int, sum(values(param_set[Not(:RCP)])))
+        rnd_seed_val = floor(Int, sum(values(param_set(!=("RCP")))))
     elseif has_RCP
         rnd_seed_val = floor(Int, sum(values(param_set[2:end])))
     else
@@ -320,21 +320,19 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
     ### TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
-    dhw_idx = Int(param_set["dhw_scenario"])
-    wave_idx = Int(param_set["wave_scenario"])
+    dhw_idx = Int(param_set("dhw_scenario"))
+    wave_idx = Int(param_set("wave_scenario"))
 
     dhw_scen::Matrix{Float64} = @view domain.dhw_scens[:, :, dhw_idx]
 
     # TODO: Better conversion of Ub to wave mortality
     #       Currently scaling significant wave height by its max to non-dimensionalize values
-    #       Conversion to Matrix is to avoid broadcasting error
-    #       https://github.com/davidavdav/NamedArrays.jl/issues/119
     wave_scen::Matrix{Float64} = Matrix{Float64}(domain.wave_scens[:, :, wave_idx]) ./ maximum(domain.wave_scens[:, :, wave_idx])
 
     tspan::Tuple = (0.0, 1.0)
     solver::BS3 = BS3()
 
-    MCDA_approach::Int64 = param_set["guided"]
+    MCDA_approach::Int64 = param_set("guided")
 
     # sim constants
     tf::Int64 = size(dhw_scen, 1)
@@ -344,15 +342,15 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
     n_groups::Int64 = domain.coral_growth.n_groups
 
     # years to start seeding/shading
-    seed_start_year::Int64 = param_set["seed_year_start"]
-    shade_start_year::Int64 = param_set["shade_year_start"]
+    seed_start_year::Int64 = param_set("seed_year_start")
+    shade_start_year::Int64 = param_set("shade_year_start")
 
-    n_TA_to_seed::Int64 = param_set["seed_TA"]  # tabular Acropora size class 2, per year per species per cluster
-    n_CA_to_seed::Int64 = param_set["seed_CA"]  # corymbose Acropora size class 2, per year per species per cluster
-    fogging::Real = param_set["fogging"]  # percent reduction in bleaching mortality through fogging
-    srm::Real = param_set["SRM"]  # DHW equivalents reduced by some shading mechanism
-    seed_years::Int64 = param_set["seed_years"]  # number of years to seed
-    shade_years::Int64 = param_set["shade_years"]  # number of years to shade
+    n_TA_to_seed::Int64 = param_set("seed_TA")  # tabular Acropora size class 2, per year per species per cluster
+    n_CA_to_seed::Int64 = param_set("seed_CA")  # corymbose Acropora size class 2, per year per species per cluster
+    fogging::Real = param_set("fogging")  # percent reduction in bleaching mortality through fogging
+    srm::Real = param_set("SRM")  # DHW equivalents reduced by some shading mechanism
+    seed_years::Int64 = param_set("seed_years")  # number of years to seed
+    shade_years::Int64 = param_set("shade_years")  # number of years to shade
 
     ### END TODO
 
@@ -382,25 +380,25 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
     Yseed = SparseArray(zeros(tf, 2, n_sites))  # 2 = the two enhanced coral types
 
     # Intervention strategy: 0 is random, > 0 is guided
-    is_guided = param_set["guided"] > 0
+    is_guided = param_set("guided") > 0
 
     # Years at which to reassess seeding site selection
     seed_decision_years = repeat([false], tf)
     shade_decision_years = repeat([false], tf)
 
     seed_start_year = max(seed_start_year, 2)
-    if param_set["seed_freq"] > 0
+    if param_set("seed_freq") > 0
         max_consider = min(seed_start_year + seed_years - 1, tf)
-        seed_decision_years[seed_start_year:Int(param_set["seed_freq"]):max_consider] .= true
+        seed_decision_years[seed_start_year:Int(param_set("seed_freq")):max_consider] .= true
     else
         # Start at year 2 or the given specified seed start year
         seed_decision_years[seed_start_year] = true
     end
 
     shade_start_year = max(shade_start_year, 2)
-    if param_set["shade_freq"] > 0
+    if param_set("shade_freq") > 0
         max_consider = min(shade_start_year + shade_years - 1, tf)
-        shade_decision_years[shade_start_year:Int(param_set["shade_freq"]):max_consider] .= true
+        shade_decision_years[shade_start_year:Int(param_set("shade_freq")):max_consider] .= true
     else
         # Start at year 2 or the given specified shade start year
         shade_decision_years[shade_start_year] = true
@@ -443,8 +441,8 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
     # Filter out sites outside of desired depth range
     if .!all(site_data.depth_med .== 0)
-        max_depth::Float64 = param_set["depth_min"] + param_set["depth_offset"]
-        depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set["depth_min"]) .& (site_data.depth_med .<= max_depth)
+        max_depth::Float64 = param_set("depth_min") + param_set("depth_offset")
+        depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set("depth_min")) .& (site_data.depth_med .<= max_depth)
 
         # TODO: Include this change in MATLAB version as well
         if any(depth_criteria .> 0)
@@ -452,7 +450,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
             depth_priority = depth_priority[depth_criteria]
         else
             # Otherwise if no sites can be filtered, remove depth as a criterion.
-            @warn "No sites within provided depth range of $(param_set["depth_min"]) - $(max_depth) meters. Considering all sites."
+            @warn "No sites within provided depth range of $(param_set("depth_min")) - $(max_depth) meters. Considering all sites."
         end
     end
 
@@ -462,7 +460,6 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
 
         # Prep site selection
         mcda_vars = DMCDA_vars(domain, param_set, depth_priority, sum(Y_cover[1, :, :], dims=1), area_to_seed)
-
     end
 
     #### End coral constants
@@ -470,11 +467,11 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}
     ## Update ecological parameters based on intervention option
     # Set up assisted adaptation values
     a_adapt = zeros(n_species)
-    a_adapt[tabular_enhanced] .= param_set["a_adapt"]
-    a_adapt[corymbose_enhanced] .= param_set["a_adapt"]
+    a_adapt[tabular_enhanced] .= param_set("a_adapt")
+    a_adapt[corymbose_enhanced] .= param_set("a_adapt")
 
     # Level of natural coral adaptation
-    n_adapt = param_set["n_adapt"]
+    n_adapt = param_set("n_adapt")
 
     ## Extract other parameters
     LPdhwcoeff = sim_params.LPdhwcoeff # shape parameters relating dhw affecting cover to larval production
