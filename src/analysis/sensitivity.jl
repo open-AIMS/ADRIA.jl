@@ -144,8 +144,8 @@ function tsa(X::DataFrame, y::NamedDimsArray)::NamedDimsArray
 
     t_pawn_idx = NamedDimsArray(
         zeros(ncol(X), 6, size(y, 1));
-        factors=names(X),
-        Si=["min", "mean", "median", "max", "std", "cv"],
+        factors=Symbol.(names(X)),
+        Si=[:min, :mean, :median, :max, :std, :cv],
         timesteps=ts
     )
 
@@ -211,7 +211,7 @@ ADRIA.sensitivity.rsa(X, y; S=20)
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
 function rsa(X::DataFrame, y::Vector{T}; S::Int64=20)::NamedDimsArray where {T<:Real}
-    factor_names = names(X)
+    factor_names = Symbol.(names(X))
     N, D = size(X)
     step = 1 / S
     seq = 0.0:step:1.0
@@ -289,8 +289,8 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors:
     p_table = NamedDimsArray(
         fill(NaN, length(steps) - 1, length(target_factors), 3);
         bins=["$(round(i, digits=2))" for i in steps[2:end]],
-        factors=String.(target_factors),
-        CI=["mean", "lower", "upper"]
+        factors=Symbol.(target_factors),
+        CI=[:mean, :lower, :upper]
     )
 
     y = col_normalize(y)
