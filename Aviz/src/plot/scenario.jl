@@ -101,12 +101,7 @@ function scenario!(f::GridPosition, rs::ResultSet, y::AbstractArray;
     opts::Dict=Dict(:by_RCP => false), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
 
     # Ensure last year is always shown in x-axis
-    ts = timesteps(rs)
-    xtick_vals = (
-        push!(ts[1:5:end], ts[end]),  # xtick positions
-        push!(string.(ts[1:5:end]), string(ts[end]))  # displayed vals
-    )
-    xtick_vals = get(axis_opts, :xticks, xtick_vals)
+    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(rs)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
 
     ax = Axis(
@@ -149,7 +144,7 @@ function scenario!(f::GridPosition, rs::ResultSet, y::AbstractArray;
         Legend(f[1, 2], eles, labels, halign=:left, valign=:top, margin=(10, 10, 10, 10))
     end
 
-    ls = series!(ax, ts, y'; series_opts...)
+    ls = series!(ax, y'; series_opts...)
     # ax.ylabel = metric_label(metric)
     ax.xlabel = "Year"
 
