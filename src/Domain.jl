@@ -97,14 +97,18 @@ function site_distances(site_data::DataFrame)::Tuple{Matrix{Float64},Float64}
     longitudes = first.(site_centroids)
     latitudes = last.(site_centroids)
 
-    nsites = size(site_data)[1]
-    dist = zeros(nsites, nsites)
-    @inbounds for jj = 1:nsites
-        @inbounds for ii = 1:nsites
-            dist[ii, jj] = haversine([longitudes[ii], latitudes[ii]], [longitudes[jj], latitudes[jj]])
+    nsites = size(site_data, 1)
+    dist = fill(NaN, nsites, nsites)
+    for jj in axes(dist, 2)
+        for ii in axes(dist, 1)
+            if ii == jj
+                continue
+            end
+
+            @inbounds dist[ii, jj] = haversine((longitudes[ii], latitudes[ii]), (longitudes[jj], latitudes[jj]))
         end
     end
-    dist[diagind(dist)] .= NaN
+
     median_site_dist = median(dist[.!isnan.(dist)])
     return dist, median_site_dist
 end
