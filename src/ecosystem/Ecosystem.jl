@@ -107,7 +107,7 @@ Base.@kwdef struct Criteria{P,N} <: EcoModel
     deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
         name="Risk Tolerance", description="Filters out sites with heat/wave stress above threshold.")
     use_dist::N = Param(0, ptype="integer", bounds=(0, 1 + 1), dists="unif",
-        name="Use Distance", description="Turns using distance sorting on and off.")
+        name="Use Distance Threshold", description="Turns distance sorting on or off.")
     dist_thresh::P = Param(0.1, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Distance Threshold", description="Sites selected by MCDA must be further apart than median(dist)-dist_thresh*median(dist).")
     top_n::N = Param(10, ptype="integer", bounds=(5, 50 + 1), dists="unif",
