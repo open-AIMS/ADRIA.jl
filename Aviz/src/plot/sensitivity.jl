@@ -1,5 +1,5 @@
 """
-    pawn!(f::GridPosition, Si::NamedMatrix; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    pawn!(f::GridPosition, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 # Arguments
 - `f` : Figure GridPosition
@@ -13,7 +13,7 @@
 # Returns
 GLMakie figure
 """
-function pawn!(f::GridPosition, Si::NamedMatrix; opts::Dict=Dict(), axis_opts::Dict=Dict())
+function pawn!(f::GridPosition, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
 
     norm = get(opts, :normalize, true)
@@ -26,7 +26,7 @@ function pawn!(f::GridPosition, Si::NamedMatrix; opts::Dict=Dict(), axis_opts::D
         Si = Si[string.(foi), :]
     end
 
-    y, x = names(Si)
+    y, x = axiskeys(Si)
     ax = Axis(
         f,
         xticks=(1:length(x), string.(x)),
@@ -42,7 +42,7 @@ function pawn!(f::GridPosition, Si::NamedMatrix; opts::Dict=Dict(), axis_opts::D
 end
 
 """
-    pawn(Si::NamedMatrix; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Display heatmap of sensitivity analysis.
 
@@ -59,7 +59,7 @@ Display heatmap of sensitivity analysis.
 # Returns
 GLMakie figure
 """
-function pawn(Si::NamedMatrix; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     pawn!(f[1, 1], Si; opts, axis_opts)
 
