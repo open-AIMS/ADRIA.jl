@@ -33,8 +33,14 @@ NamedTuple:
 function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
     con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
 
+    if !isdir(file_loc) && !isfile(file_loc)
+        error("Could not find location: $(file_loc)")
+    end
+
     local extracted_TP::Matrix{Float64}
-    if isdir(file_loc)
+    if isfile(file_loc)
+        con_files::Vector{String} = String[file_loc]
+    elseif isdir(file_loc)
         # Get connectivity years available in data store
         years::Vector{String} = getindex(first(walkdir(file_loc)), 2)
         year_conn_fns = NamedTuple{Tuple(Symbol.(years))}(
@@ -43,15 +49,14 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
              for yr in years]
         )
 
-        con_files::Vector{String} = vcat([x for x in values(year_conn_fns)]...)
-        con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1])
+        con_files = vcat([x for x in values(year_conn_fns)]...)
 
         # Pre-allocate store
         tmp_store::Vector{Matrix{Float64}} = Vector{Matrix{Float64}}(undef, length(years))
 
         # Get average connectivity for each represented year
         for (i, yr) in enumerate(Symbol.(years))
-            conn_data::Vector{Matrix} = [
+            conn_data::Vector{Matrix{Float64}} = [
                 Matrix(CSV.read(fn, DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1]))
                 for fn in year_conn_fns[yr]
             ]
@@ -61,17 +66,15 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
 
         # Mean of across all years
         extracted_TP = agg_func(tmp_store)
-
-    elseif isfile(file_loc)
-        con_files = String[file_loc]
-        con_file1 = CSV.read(con_files[1], DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1])
-        extracted_TP = Matrix(con_file1)
-    else
-        error("Could not find location: $(file_loc)")
     end
 
     # Get site ids from first file
-    con_site_ids::Vector{String} = [x[1] for x in split.(names(con_file1), "_v"; limit=2)]
+    con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1])
+    con_site_ids::Vector{String} = String[x[1] for x in split.(names(con_file1), "_v"; limit=2)]
+
+    if isfile(file_loc)
+        extracted_TP = Matrix{Float64}(con_file1)
+    end
 
     # Get IDs missing in con_site_ids
     invalid_ids::Vector{String} = setdiff(con_site_ids, unique_site_ids)
