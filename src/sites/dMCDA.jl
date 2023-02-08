@@ -22,6 +22,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     min_area # ::F
     risk_tol  # ::F
     dist # ::M
+    use_dist # ::Int64
     min_dist # ::Float64
     top_n # ::Int64
     wt_in_conn_seed  # ::F
@@ -78,6 +79,7 @@ function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
         criteria("coral_cover_tol") .* area_to_seed,
         criteria("deployed_coral_risk_tol"),
         domain.site_distances,
+        criteria("use_dist"),
         domain.median_site_distance - domain.median_site_distance * criteria("dist_thresh"),
         criteria("top_n"),
         criteria("in_seed_connectivity"),
@@ -390,6 +392,7 @@ function guided_site_selection(
 )::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},B<:Bool}
 
     site_ids::Array{Int64} = copy(d_vars.site_ids)
+    use_dist::Int64 = d_vars.use_dist
     min_dist::Float64 = d_vars.min_dist
 
     # Force different sites to be selected
@@ -503,7 +506,7 @@ function guided_site_selection(
     elseif log_seed
 
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, n_site_int, mcda_func)
-        if min_dist != 0.0
+        if use_dist != 0
             prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 2)
         end
     end
@@ -512,7 +515,7 @@ function guided_site_selection(
         prefshadesites = repeat([0], n_site_int)
     elseif log_shade
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, n_site_int, mcda_func)
-        if min_dist != 0.0
+        if use_dist != 0
             prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 3)
         end
     end
