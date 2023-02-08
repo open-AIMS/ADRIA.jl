@@ -65,3 +65,31 @@ function pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis
 
     return f
 end
+
+
+function tsa!(f::GridPosition, tsa::NamedDimsArray, stat::Symbol=:median; opts, axis_opts)
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
+    xlabel = get(axis_opts, :xlabel, "Years")
+    ylabel = get(axis_opts, :ylabel, L"\text{PAWN}_\text{%$(stat)}")
+
+    factors, Si, timesteps = axiskeys(tsa)
+    x_tickpos, x_ticklabel = _time_labels(timesteps)
+    ax = Axis(
+        f,
+        xticks=(x_tickpos, x_ticklabel),
+        xticklabelrotation=xtick_rot,
+        xlabel=xlabel,
+        ylabel=ylabel;
+        axis_opts...
+    )
+
+    series!(ax, tsa(Si=stat), labels=factors, color=distinguishable_colors(length(factors)))
+
+    return f
+end
+function tsa(tsa::NamedDimsArray, stat=:median; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    f = Figure(; fig_opts...)
+    tsa!(f[1, 1], tsa, stat; opts, axis_opts)
+
+    return f
+end
