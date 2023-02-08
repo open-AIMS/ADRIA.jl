@@ -345,12 +345,12 @@ Update given domain with new parameter values.
 Maps sampled continuous values to discrete values for categorical variables.
 """
 function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
-    p_df::DataFrame = DataFrame(d.model)[!, [:fieldname, :val, :ptype, :bounds]]
+    p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
 
     try
         p_df[!, :val] .= collect(params[Not("RCP")])
     catch err
-        if isa(err, ArgumentError)
+        if isa(err, ArgumentError) || isa(err, DimensionMismatch)
             if !occursin("RCP", "$err")
                 error("Error occurred loading scenario samples. $err")
             else

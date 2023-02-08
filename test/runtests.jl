@@ -32,11 +32,11 @@ const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
         site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
         conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
         scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
-        dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"))
+        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
         test_scens = CSV.read(scen_path, DataFrame)
-        # ADRIA.update_params!(dom, test_scens[5, :])
+        ADRIA.update_params!(dom, test_scens[5, :])
 
-        # @test all(ADRIA.param_table(dom).seed_TA .== 500000)
+        @test all(ADRIA.param_table(dom).seed_TA .== 500000)
     end
 end
 
