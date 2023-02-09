@@ -474,9 +474,9 @@ function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_v
     taxa_max_map = zip([i:i+5 for i in 1:6:36], 1:6)  # map maximum SV for each group
 
     # Work out RSV for each taxa
-    @inbounds for (sp, sq) in taxa_max_map
-        for site in 1:size(ASV, :sites)
-            RSV[species=sq, sites=site] .= dropdims(sum(ASV[species=sp, sites=site], dims=:species), dims=:species) ./ MSV[sq, site]
+    for (sp, sq) in taxa_max_map
+        Threads.@threads for site in 1:size(ASV, :sites)
+            @inbounds RSV[species=sq, sites=site] .= dropdims(sum(ASV[species=sp, sites=site], dims=:species), dims=:species) ./ MSV[sq, site]
         end
     end
 
@@ -501,11 +501,9 @@ Helper method to calculate absolute shelter volume metric across each species/si
 function _shelter_species_loop!(X::T1, ASV::T1, nspecies::Int64, colony_vol_m3_per_m2::V, site_area::V) where {T1<:NamedDims.NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},V<:AbstractVector{<:Float64}}
     local covered_area::NamedDimsArray
 
-    @inbounds for sp::Int64 in 1:nspecies
-        covered_area = X[species=sp] .* site_area'
-
+    Threads.@threads for sp::Int64 in 1:nspecies
         # SV represents absolute shelter volume in cubic meters
-        ASV[species=sp] .= covered_area .* colony_vol_m3_per_m2[sp]
+        @inbounds ASV[species=sp] .= (X[species=sp] .* site_area') .* colony_vol_m3_per_m2[sp]
     end
 
     clamp!(ASV, 0.0, maximum(ASV))
