@@ -114,46 +114,18 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
 
     return load_results(domain)
 end
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String}; remove_workers=true)::ResultSet
+function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String}; show_progress=true, remove_workers=true)::ResultSet
+    @info "Running $(nrow(param_df)) scenarios across $(length(RCP_ids)) RCPs"
+
     setup()
-    parallel = (nrow(param_df) > 4096) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
-    if parallel
-        _setup_workers()
-        sleep(2)  # wait a bit while workers spin-up
-        @eval @everywhere using ADRIA
-    end
-
-    if length(unique(RCP_ids)) != length(RCP_ids)
-        # Disallow running duplicate RCP scenarios
-        error("Duplicate RCP ids specified")
-    end
-
-    run_msg = "Running $(nrow(param_df)) scenarios "
     output_dir = ENV["ADRIA_OUTPUT_DIR"]
-    tmp_result_dirs::Vector{String} = String[]
 
-    # Convert to named matrix for faster iteration
-    scen_mat = NamedDimsArray(Matrix(param_df); scenarios=1:nrow(param_df), factors=names(param_df))
-
-    # TODO: Standardize and clean this up.
-    for RCP in RCP_ids
-        domain = switch_RCPs!(domain, RCP)
+    result_sets::Vector{ResultSet} = Vector{ResultSet}(undef, length(RCP_ids))
+    for (i, RCP) in enumerate(RCP_ids)
         tmp_dir = mktempdir(prefix="ADRIA_")
         ENV["ADRIA_OUTPUT_DIR"] = tmp_dir
 
-        domain, data_store = ADRIA.setup_result_store!(domain, param_df)
-        cache = setup_cache(domain)
-
-        push!(tmp_result_dirs, result_location(domain))
-
-        # Batch run scenarios
-        func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
-        msg = run_msg * "for RCP $RCP"
-        if parallel
-            @showprogress msg 4 pmap(func, enumerate(eachrow(scen_mat)))
-        else
-            @showprogress msg 1 map(func, enumerate(eachrow(scen_mat)))
-        end
+        result_sets[i] = run_scenarios(param_df, domain, RCP; show_progress=show_progress, remove_workers=false)
     end
 
     if remove_workers
@@ -162,7 +134,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
 
     ENV["ADRIA_OUTPUT_DIR"] = output_dir
 
-    rs = combine_results(tmp_result_dirs)
+    rs = combine_results(result_sets...)
 
     # Remove temporary result dirs
     for t in result_sets
@@ -267,12 +239,6 @@ function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Dom
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain)::NamedTuple
     cache = setup_cache(domain)
-
-    # Switch RCP datasets if required
-    if "RCP" in names(param_set, 1) && (param_set("RCP") != domain.RCP)
-        domain = switch_RCPs!(domain, domain.RCP)
-    end
-
     return run_scenario(param_set, domain, cache)
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, RCP::String)::NamedTuple
