@@ -168,8 +168,8 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
     rs = combine_results(tmp_result_dirs)
 
     # Remove temporary result dirs
-    for t in tmp_result_dirs
-        rm(t; force=true, recursive=true)
+    for t in result_sets
+        rm(result_location(t); force=true, recursive=true)
     end
 
     return rs

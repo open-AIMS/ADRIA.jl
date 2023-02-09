@@ -44,7 +44,7 @@ rs = ADRIA.run_scenarios(scens, ex_domain, "45")
 # "Example_domain__RCPs45__2022-10-19_12_01_26_965"
 
 # The location of the outputs stored on disk
-@info ADRIA.store_location(rs)
+@info ADRIA.result_location(rs)
 # "[some location]/Example_domain__RCPs45__2022-10-19_12_01_26_965"
 
 # Can also load results using a path to the stored result set.

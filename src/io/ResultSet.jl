@@ -244,11 +244,16 @@ end
 
 
 """
-    store_location(r::ResultSet)::String
+    store_location(rs::ResultSet)::String
+    result_location(rs::ResultSet)::String
 
 Get location of result set.
 """
 function store_location(rs::ResultSet)::String
+    @warn "`store_location()` is deprecated and will be removed in future versions. Use `result_location()` instead."
+    return result_location(rs)
+end
+function result_location(rs::ResultSet)::String
     store = ""
     try
         store = joinpath(ENV["ADRIA_OUTPUT_DIR"], store_name(rs))
@@ -341,7 +346,7 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     Domain: $(rs.name)
 
     Run with ADRIA $(vers_id) on $(rs.invoke_time)
-    Results stored at: $(store_location(rs))
+    Results stored at: $(result_location(rs))
 
     RCP(s) represented: $(rcps)
     Intervention scenarios run: $(scens)
