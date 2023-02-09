@@ -397,6 +397,7 @@ end
 
 """
     site_area(domain::Domain)::Vector{Float64}
+
 Get site area for the given domain.
 """
 function site_area(domain::Domain)::Vector{Float64}
@@ -405,10 +406,21 @@ end
 
 """
     site_k_area(domain::Domain)::Vector{Float64}
+
 Get maximum coral cover area for the given domain in absolute area.
 """
 function site_k_area(domain::Domain)::Vector{Float64}
     return site_k(domain) .* site_area(domain)
+end
+
+
+"""
+    n_locations(domain::Domain)::Int64
+
+Returns the number of locations (sites/reefs/clusters) represented within the domain.
+"""
+function n_locations(domain::Domain)::Int64
+    return size(domain.site_data, 1)
 end
 
 """

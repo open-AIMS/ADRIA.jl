@@ -58,7 +58,7 @@ function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
 
     # Site Data
     site_d = domain.site_data
-    nsites = size(site_d, 1)
+    n_sites = n_locations(domain)
     area = site_area(domain)
 
     mcda_vars = DMCDA_vars(
@@ -98,16 +98,18 @@ function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
     return mcda_vars
 end
 function DMCDA_vars(domain::Domain, criteria::NamedDimsArray, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
-    nsites = size(domain.site_data, 1)
-    return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(nsites, 1), zeros(nsites, 1))
+    num_sites = n_locations(domain)
+    return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(num_sites, 1), zeros(num_sites, 1))
 end
 function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
     sum_cover::AbstractArray, area_to_seed::Float64, waves::AbstractArray, dhw::AbstractArray)::DMCDA_vars
+
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed, waves, dhw)
 end
 function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
     sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed)
 end
