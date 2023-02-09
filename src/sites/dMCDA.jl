@@ -58,7 +58,7 @@ function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
 
     # Site Data
     site_d = domain.site_data
-    nsites = size(site_d, 1)
+    n_sites = n_locations(domain)
     area = site_area(domain)
 
     mcda_vars = DMCDA_vars(
@@ -98,16 +98,18 @@ function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
     return mcda_vars
 end
 function DMCDA_vars(domain::Domain, criteria::NamedDimsArray, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
-    nsites = size(domain.site_data, 1)
-    return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(nsites, 1), zeros(nsites, 1))
+    num_sites = n_locations(domain)
+    return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(num_sites, 1), zeros(num_sites, 1))
 end
 function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
     sum_cover::AbstractArray, area_to_seed::Float64, waves::AbstractArray, dhw::AbstractArray)::DMCDA_vars
+
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed, waves, dhw)
 end
 function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
     sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed)
 end
@@ -405,10 +407,10 @@ function guided_site_selection(
         rankingsin = [site_ids zeros(Int64, length(site_ids)) zeros(Int64, length(site_ids))]
     end
 
-    nsites::Int64 = length(site_ids)
+    n_sites::Int64 = length(site_ids)
 
     # if no sites are available, abort
-    if nsites == 0
+    if n_sites == 0
         return prefseedsites, prefshadesites, rankingsin
     end
 
@@ -441,10 +443,10 @@ function guided_site_selection(
     w_predec_zones_shade = d_vars.wt_zones_shade
 
     # site_id, seeding rank, shading rank
-    rankings = Int64[site_ids zeros(Int64, nsites) zeros(Int64, nsites)]
+    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
     # work out which priority predecessors are connected to priority sites
-    predec::Array{Float64} = zeros(nsites, 3)
+    predec::Array{Float64} = zeros(n_sites, 3)
     predec[:, 1:2] .= strong_pred
     predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
     predprior = [x for x in predprior if !isnan(x)]
@@ -454,8 +456,8 @@ function guided_site_selection(
     # for zones, find sites which are zones and strongest predecessors of sites in zones
     zone_ids = intersect(priority_zones, unique(zones))
     zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
-    zone_preds = zeros(nsites, 1)
-    zone_sites = zeros(nsites, 1)
+    zone_preds = zeros(n_sites, 1)
+    zone_sites = zeros(n_sites, 1)
 
     for k in axes(zone_ids, 1)
         # find sites which are strongest predecessors of sites in the zone
@@ -551,11 +553,11 @@ Replaces these sites with sites in the top_n ranks if the distance between these
 function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
     min_dist::Float64, top_n::Int64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
-    nsites = length(pref_sites)
+    n_sites = length(pref_sites)
     site_order = s_order[:, 1]
 
     # sites to select alternatives from
-    alt_sites = setdiff(site_order, pref_sites)[1:min(top_n, length(site_order) - nsites)]
+    alt_sites = setdiff(site_order, pref_sites)[1:min(top_n, length(site_order) - n_sites)]
 
     # find all selected sites closer than the min distance
     pref_dists = findall(dist[pref_sites, pref_sites] .< min_dist)
@@ -577,11 +579,11 @@ function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{
         alt_dists = dist[rep_sites, rep_sites] .> min_dist
 
         # Select from these sites those far enough away from all sites
-        inds_keep = sum(alt_dists, dims=2) .== nsites - 1
+        inds_keep = sum(alt_dists, dims=2) .== n_sites - 1
 
         # Keep sites that were far enough away last iteration
         inds_keep[1:end-select_n] .= true
-        if length(inds_keep) == nsites
+        if length(inds_keep) == n_sites
             select_n = 0
             break
         else
@@ -843,9 +845,9 @@ function site_selection(domain::Domain, criteria::DataFrameRow, w_scens::NamedDi
 
     mcda_vars = DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, w_scens, dhw_scens)
 
-    nsites = length(mcda_vars.site_ids)
+    n_sites = length(mcda_vars.site_ids)
     # site_id, seeding rank, shading rank
-    rankingsin = [mcda_vars.site_ids zeros(Int64, (nsites, 1)) zeros(Int64, (nsites, 1))]
+    rankingsin = [mcda_vars.site_ids zeros(Int64, (n_sites, 1)) zeros(Int64, (n_sites, 1))]
     prefseedsites = zeros(Int64, (1, mcda_vars.n_site_int))
     prefshadesites = zeros(Int64, (1, mcda_vars.n_site_int))
 

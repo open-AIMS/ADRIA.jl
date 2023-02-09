@@ -139,7 +139,7 @@ end
 @testset "growth model" begin
     here = @__DIR__
     dom = ADRIA.load_domain(joinpath(here, "../examples/Example_domain"), "45")
-    n_sites = ADRIA.GeoDataFrames.nrow(dom.site_data)
+    n_sites = ADRIA.n_locations(dom)
     p = dom.coral_growth.ode_p
 
     du = zeros(36, n_sites)

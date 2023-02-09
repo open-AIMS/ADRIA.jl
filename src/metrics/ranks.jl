@@ -13,17 +13,17 @@ end
 Collates ranks into seed/shade ranking results into a common structure.
 """
 function _collate_ranks(rs::ResultSet, selected; kwargs...)::NamedDimsArray
-    nsteps, nsites = size(selected)
+    n_steps, n_sites = size(selected)
 
     ts = timesteps(rs)
-    @assert length(ts) == nsteps
+    @assert length(ts) == n_steps
 
     r_ids = rs.site_data.reef_siteid
     if haskey(kwargs, :sites)
         r_ids = r_ids[kwargs[:sites]]
     end
 
-    if length(r_ids) != nsites
+    if length(r_ids) != n_sites
         @warn "Length of reef ids do not match number of sites"
     end
 
