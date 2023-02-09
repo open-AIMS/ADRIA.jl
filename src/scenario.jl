@@ -258,33 +258,24 @@ Only the mean site rankings are kept
 # Returns
 NamedTuple of collated results
 """
-function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}, corals::DataFrame, cache::NamedTuple)::NamedTuple
-
+function run_model(domain::Domain, param_set::DataFrameRow, corals::DataFrame, cache::NamedTuple)::NamedTuple
+    ps = NamedDimsArray(Vector(param_set), factors=names(param_set))
+    return run_model(domain, ps, corals, cache)
+end
+function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame, cache::NamedTuple)::NamedTuple
     sim_params = domain.sim_constants
     site_data = domain.site_data
     p = domain.coral_growth.ode_p
 
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
-    if param_set isa DataFrameRow
-        has_RCP = columnindex(param_set, :RCP) > 0
-    else
-        has_RCP = "RCP" in axiskeys(param_set, 1)
-    end
-
-    if has_RCP && (param_set isa DataFrameRow)
-        rnd_seed_val = floor(Int, sum(values(param_set(!=("RCP")))))
-    elseif has_RCP
-        rnd_seed_val = floor(Int, sum(values(param_set[2:end])))
-    else
-        rnd_seed_val = floor(Int, sum(values(param_set)))
-    end
+    rnd_seed_val::Int64 = floor(Int64, sum(param_set(!=("RCP"))))  # select everything except RCP
     Random.seed!(rnd_seed_val)
 
     ### TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
-    dhw_idx = Int(param_set("dhw_scenario"))
-    wave_idx = Int(param_set("wave_scenario"))
+    dhw_idx::Int64 = Int64(param_set("dhw_scenario"))
+    wave_idx::Int64 = Int64(param_set("wave_scenario"))
 
     dhw_scen::Matrix{Float64} = @view domain.dhw_scens[:, :, dhw_idx]
 
