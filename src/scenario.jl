@@ -83,7 +83,6 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
         _setup_workers()
         sleep(2)  # wait a bit while workers spin-up
         @eval @everywhere using ADRIA
-
     end
 
     domain = switch_RCPs!(domain, RCP)

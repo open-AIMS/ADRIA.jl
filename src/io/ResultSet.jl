@@ -234,12 +234,12 @@ end
 
 
 """
-    store_name(r::ResultSet)::String
+    store_name(rs::ResultSet)::String
 
 Get name of result set.
 """
-function store_name(r::ResultSet)::String
-    return "$(r.name)__RCPs$(r.RCP)__$(r.invoke_time)"
+function store_name(rs::ResultSet)::String
+    return "$(rs.name)__RCPs$(rs.RCP)__$(rs.invoke_time)"
 end
 
 
@@ -334,7 +334,6 @@ end
 
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
-
     vers_id = rs.ADRIA_VERSION
 
     tf, sites, scens = size(rs.outcomes[:total_absolute_cover])
