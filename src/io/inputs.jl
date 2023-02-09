@@ -109,7 +109,7 @@ end
 
 
 """
-    load_nc_data(data_fn::String, attr::String, n_sites::Int)::NamedDimsArray
+    load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
 
 Load cluster-level data for a given attribute in a netCDF as a NamedDimsArray.
 """
