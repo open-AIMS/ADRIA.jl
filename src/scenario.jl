@@ -67,11 +67,9 @@ julia> rs_all = ADRIA.run_scenarios(p_df, dom)
 ResultSet
 """
 function run_scenarios(param_df::DataFrame, domain::Domain; remove_workers=true)::ResultSet
-
     # Identify available data
     avail_data::Vector{String} = readdir(joinpath(domain.env_layer_md.dpkg_path, "DHWs"))
-    RCP_ids = replace.(avail_data, "dhwRCP" => "", ".mat" => "")
-    RCP_ids = replace.(RCP_ids, "dhwRCP" => "", ".nc" => "")
+    RCP_ids = replace.(avail_data, "dhwRCP" => "", ".nc" => "")
 
     @info "Running scenarios for RCPs: $(RCP_ids)"
     return run_scenarios(param_df, domain, RCP_ids::Array{String}; remove_workers=remove_workers)
