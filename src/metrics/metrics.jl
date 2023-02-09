@@ -459,7 +459,7 @@ e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, siz
 - `site_area` : total area of site in m²
 - `k_area` : habitable area of site in m² (i.e., `k` area)
 """
-function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2::Array{F}, max_colony_vol_m3_per_m2::Array{F}, site_area::Array{F}, k_area::Array{F}) where {T1<:Real,F<:Float64}
+function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2::Array{F}, max_colony_vol_m3_per_m2::Array{F}, site_area::Array{F}, k_area::Array{F})::NamedDimsArray where {T1<:Real,F<:Float64}
     # Calculate absolute shelter volumes first
     ASV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X)...))
     _shelter_species_loop!(X, ASV, nspecies, colony_vol_m3_per_m2, site_area)
@@ -611,8 +611,8 @@ function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k
     nspecies::Int64 = size(X, :species)
 
     # Calculate shelter volume of groups and size classes and multiply with covers
-    colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs)
-    RSV = _shelter_species_loop(X, nspecies, colony_vol, max_colony_vol, site_area, k_area)
+    colony_vol::Array{Float64}, max_colony_vol::Array{Float64} = _colony_Lcm2_to_m3m2(inputs)
+    RSV::NamedDimsArray = _shelter_species_loop(X, nspecies, colony_vol, max_colony_vol, site_area, k_area)
 
     # @assert !any(RSV .> 1.1)  # Error out in cases where RSV significantly .> 1.0
 
