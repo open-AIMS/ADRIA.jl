@@ -31,7 +31,7 @@ rs = ADRIA.run_scenarios(p_df, dom, "45")
 @info ADRIA.store_name(rs)
 # "Example_domain__RCPs45__2022-10-19_12_01_26_965"
 
-@info ADRIA.store_location(rs)
+@info ADRIA.result_location(rs)
 # "[some location]/Example_domain__RCPs45__2022-10-19_12_01_26_965"
 
 # Can also load results using a path to the stored result set.

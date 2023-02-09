@@ -234,21 +234,26 @@ end
 
 
 """
-    store_name(r::ResultSet)::String
+    store_name(rs::ResultSet)::String
 
 Get name of result set.
 """
-function store_name(r::ResultSet)::String
-    return "$(r.name)__RCPs$(r.RCP)__$(r.invoke_time)"
+function store_name(rs::ResultSet)::String
+    return "$(rs.name)__RCPs$(rs.RCP)__$(rs.invoke_time)"
 end
 
 
 """
-    store_location(r::ResultSet)::String
+    store_location(rs::ResultSet)::String
+    result_location(rs::ResultSet)::String
 
 Get location of result set.
 """
 function store_location(rs::ResultSet)::String
+    @warn "`store_location()` is deprecated and will be removed in future versions. Use `result_location()` instead."
+    return result_location(rs)
+end
+function result_location(rs::ResultSet)::String
     store = ""
     try
         store = joinpath(ENV["ADRIA_OUTPUT_DIR"], store_name(rs))
@@ -329,7 +334,6 @@ end
 
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
-
     vers_id = rs.ADRIA_VERSION
 
     tf, sites, scens = size(rs.outcomes[:total_absolute_cover])
@@ -341,7 +345,7 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     Domain: $(rs.name)
 
     Run with ADRIA $(vers_id) on $(rs.invoke_time)
-    Results stored at: $(store_location(rs))
+    Results stored at: $(result_location(rs))
 
     RCP(s) represented: $(rcps)
     Intervention scenarios run: $(scens)

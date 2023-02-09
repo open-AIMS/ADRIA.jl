@@ -97,8 +97,8 @@ function site_distances(site_data::DataFrame)::Tuple{Matrix{Float64},Float64}
     longitudes = first.(site_centroids)
     latitudes = last.(site_centroids)
 
-    nsites = size(site_data, 1)
-    dist = fill(NaN, nsites, nsites)
+    n_sites = size(site_data, 1)
+    dist = fill(NaN, n_sites, n_sites)
     for jj in axes(dist, 2)
         for ii in axes(dist, 1)
             if ii == jj

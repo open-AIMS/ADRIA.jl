@@ -67,7 +67,7 @@ function adria_cmd_run()
 
     res = ADRIA.load_results(d)
 
-    println("Results stored in: $(ADRIA.store_location(res))")
+    println("Results stored in: $(ADRIA.result_location(res))")
 
     _indicative_result_display(res)
 end

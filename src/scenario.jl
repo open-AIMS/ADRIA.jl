@@ -67,11 +67,9 @@ julia> rs_all = ADRIA.run_scenarios(p_df, dom)
 ResultSet
 """
 function run_scenarios(param_df::DataFrame, domain::Domain; remove_workers=true)::ResultSet
-
     # Identify available data
     avail_data::Vector{String} = readdir(joinpath(domain.env_layer_md.dpkg_path, "DHWs"))
-    RCP_ids = replace.(avail_data, "dhwRCP" => "", ".mat" => "")
-    RCP_ids = replace.(RCP_ids, "dhwRCP" => "", ".nc" => "")
+    RCP_ids = replace.(avail_data, "dhwRCP" => "", ".nc" => "")
 
     @info "Running scenarios for RCPs: $(RCP_ids)"
     return run_scenarios(param_df, domain, RCP_ids::Array{String}; remove_workers=remove_workers)
@@ -83,7 +81,6 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
         _setup_workers()
         sleep(2)  # wait a bit while workers spin-up
         @eval @everywhere using ADRIA
-
     end
 
     domain = switch_RCPs!(domain, RCP)
@@ -117,46 +114,18 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
 
     return load_results(domain)
 end
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String}; remove_workers=true)::ResultSet
+function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String}; show_progress=true, remove_workers=true)::ResultSet
+    @info "Running $(nrow(param_df)) scenarios across $(length(RCP_ids)) RCPs"
+
     setup()
-    parallel = (nrow(param_df) > 4096) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
-    if parallel
-        _setup_workers()
-        sleep(2)  # wait a bit while workers spin-up
-        @eval @everywhere using ADRIA
-    end
-
-    if length(unique(RCP_ids)) != length(RCP_ids)
-        # Disallow running duplicate RCP scenarios
-        error("Duplicate RCP ids specified")
-    end
-
-    run_msg = "Running $(nrow(param_df)) scenarios "
     output_dir = ENV["ADRIA_OUTPUT_DIR"]
-    tmp_result_dirs::Vector{String} = String[]
 
-    # Convert to named matrix for faster iteration
-    scen_mat = NamedDimsArray(Matrix(param_df); scenarios=1:nrow(param_df), factors=names(param_df))
-
-    # TODO: Standardize and clean this up.
-    for RCP in RCP_ids
-        domain = switch_RCPs!(domain, RCP)
+    result_sets::Vector{ResultSet} = Vector{ResultSet}(undef, length(RCP_ids))
+    for (i, RCP) in enumerate(RCP_ids)
         tmp_dir = mktempdir(prefix="ADRIA_")
         ENV["ADRIA_OUTPUT_DIR"] = tmp_dir
 
-        domain, data_store = ADRIA.setup_result_store!(domain, param_df)
-        cache = setup_cache(domain)
-
-        push!(tmp_result_dirs, result_location(domain))
-
-        # Batch run scenarios
-        func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
-        msg = run_msg * "for RCP $RCP"
-        if parallel
-            @showprogress msg 4 pmap(func, enumerate(eachrow(scen_mat)))
-        else
-            @showprogress msg 1 map(func, enumerate(eachrow(scen_mat)))
-        end
+        result_sets[i] = run_scenarios(param_df, domain, RCP; show_progress=show_progress, remove_workers=false)
     end
 
     if remove_workers
@@ -165,11 +134,11 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
 
     ENV["ADRIA_OUTPUT_DIR"] = output_dir
 
-    rs = combine_results(tmp_result_dirs)
+    rs = combine_results(result_sets...)
 
     # Remove temporary result dirs
-    for t in tmp_result_dirs
-        rm(t; force=true, recursive=true)
+    for t in result_sets
+        rm(result_location(t); force=true, recursive=true)
     end
 
     return rs
@@ -270,12 +239,6 @@ function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Dom
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain)::NamedTuple
     cache = setup_cache(domain)
-
-    # Switch RCP datasets if required
-    if "RCP" in names(param_set, 1) && (param_set("RCP") != domain.RCP)
-        domain = switch_RCPs!(domain, domain.RCP)
-    end
-
     return run_scenario(param_set, domain, cache)
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, RCP::String)::NamedTuple
@@ -295,33 +258,24 @@ Only the mean site rankings are kept
 # Returns
 NamedTuple of collated results
 """
-function run_model(domain::Domain, param_set::Union{DataFrameRow,AbstractVector}, corals::DataFrame, cache::NamedTuple)::NamedTuple
-
+function run_model(domain::Domain, param_set::DataFrameRow, corals::DataFrame, cache::NamedTuple)::NamedTuple
+    ps = NamedDimsArray(Vector(param_set), factors=names(param_set))
+    return run_model(domain, ps, corals, cache)
+end
+function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame, cache::NamedTuple)::NamedTuple
     sim_params = domain.sim_constants
     site_data = domain.site_data
     p = domain.coral_growth.ode_p
 
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
-    if param_set isa DataFrameRow
-        has_RCP = columnindex(param_set, :RCP) > 0
-    else
-        has_RCP = "RCP" in axiskeys(param_set, 1)
-    end
-
-    if has_RCP && (param_set isa DataFrameRow)
-        rnd_seed_val = floor(Int, sum(values(param_set(!=("RCP")))))
-    elseif has_RCP
-        rnd_seed_val = floor(Int, sum(values(param_set[2:end])))
-    else
-        rnd_seed_val = floor(Int, sum(values(param_set)))
-    end
+    rnd_seed_val::Int64 = floor(Int64, sum(param_set(!=("RCP"))))  # select everything except RCP
     Random.seed!(rnd_seed_val)
 
     ### TODO: All cached arrays/values to be moved to outer function and passed in
     # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
-    dhw_idx = Int(param_set("dhw_scenario"))
-    wave_idx = Int(param_set("wave_scenario"))
+    dhw_idx::Int64 = Int64(param_set("dhw_scenario"))
+    wave_idx::Int64 = Int64(param_set("wave_scenario"))
 
     dhw_scen::Matrix{Float64} = @view domain.dhw_scens[:, :, dhw_idx]
 
