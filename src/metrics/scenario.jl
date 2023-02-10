@@ -43,8 +43,20 @@ function _scenario_juveniles(data::NamedDimsArray; kwargs...)
 end
 function _scenario_juveniles(rs::ResultSet; kwargs...)
     return dropdims(sum(slice_results(rs.outcomes[:relative_juveniles]; kwargs...), dims=:sites), dims=:sites)
+"""
+    _scenario_juvenile_indicator(data::NamedDimsArray, coral_spec::DataFrame, area::V, k_area::V; kwargs...) where {V<:AbstractVector{<:Real}}
+    _scenario_juvenile_indicator(rs::ResultSet; kwargs...)::AbstractArray
+
+Determine juvenile indicator ∈ [0, 1], where 1 indicates maximum mean juvenile density (51.8) has been achieved.
+"""
+function _scenario_juvenile_indicator(data::NamedDimsArray, coral_spec::DataFrame, area::V, k_area::V; kwargs...) where {V<:AbstractVector{<:Real}}
+    juv = call_metric(juvenile_indicator, data, coral_spec, area, k_area; kwargs...)
+    return dropdims(mean(juv, dims=:sites), dims=:sites) / sum(area)
 end
-scenario_juveniles = Metric(_scenario_juveniles, (:scenario, :timesteps))
+function _scenario_juvenile_indicator(rs::ResultSet; kwargs...)::AbstractArray
+    return dropdims(mean(juvenile_indicator(rs), dims=:sites), dims=:sites)
+end
+scenario_juvenile_indicator = Metric(_scenario_juvenile_indicator, (:timesteps, :scenario))
 
 
 """

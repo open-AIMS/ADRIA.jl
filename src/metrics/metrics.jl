@@ -263,11 +263,9 @@ relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenario
 
 Juvenile coral cover relative to total site area.
 """
-function _relative_juveniles(X::AbstractArray{T})::AbstractArray{T} where {T<:Real}
-    _, _, cs_p::DataFrame = coral_spec()
-
+function _relative_juveniles(X::AbstractArray{T}, coral_spec::DataFrame)::AbstractArray{T} where {T<:Real}
     # Cover of juvenile corals (< 5cm diameter)
-    juv_groups::AbstractArray{<:Real} = X[species=cs_p.class_id .== 1] .+ X[species=cs_p.class_id .== 2]
+    juv_groups::AbstractArray{<:Real} = X[species=coral_spec.class_id .== 1] .+ X[species=coral_spec.class_id .== 2]
 
     return dropdims(sum(juv_groups, dims=:species), dims=:species)
 end
@@ -278,13 +276,13 @@ relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios
 
 
 """
-    absolute_juveniles(X::AbstractArray{<:Real})::AbstractArray{<:Real}
-    absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real}
+    absolute_juveniles(X::AbstractArray{T}, coral_spec::DataFrame, area::AbstractVector{T})::AbstractArray{T} where {T<:Real}
+    absolute_juveniles(rs::ResultSet)::AbstractArray
 
 Juvenile coral cover in m².
 """
-function _absolute_juveniles(X::AbstractArray{T}, area::AbstractVector{T})::AbstractArray{T} where {T<:Real}
-    return _relative_juveniles(X) .* area'
+function _absolute_juveniles(X::AbstractArray{T}, coral_spec::DataFrame, area::AbstractVector{T})::AbstractArray{T} where {T<:Real}
+    return _relative_juveniles(X, coral_spec) .* area'
 end
 function _absolute_juveniles(rs::ResultSet)::AbstractArray
     return rs.outcomes[:relative_juveniles] .* rs.site_area'
@@ -292,16 +290,19 @@ end
 absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios), "m²")
 
 
-function _max_juvenile_density(max_juv_density=51.8)
-    cs_p::DataFrame = coral_spec().params
+"""
+    _max_juvenile_area(coral_params::DataFrame, max_juv_density::Float64=51.8)
 
-    max_size_m² = maximum(cs_p[cs_p.class_id.==2, :colony_area_cm2]) ./ 10^4
+Calculate the maximum possible area that can be covered by juveniles for a given m².
+"""
+function _max_juvenile_area(coral_params::DataFrame, max_juv_density::Float64=51.8)
+    max_size_m² = maximum(coral_params[coral_params.class_id.==2, :colony_area_cm2]) / 10^4
     return max_juv_density * max_size_m²
 end
 
 
 """
-    juvenile_indicator(X::AbstractArray{T}) where {T<:Real}
+    juvenile_indicator(X::AbstractArray{T}, coral_params::DataFrame, area::Vector{Float64}, k_area::Vector{Float64}) where {T<:Real}
     juvenile_indicator(rs::ResultSet)
 
 Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretical density 
@@ -309,11 +310,15 @@ for juveniles have been achieved.
 
 Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm diameter.
 """
-function _juvenile_indicator(X::AbstractArray{T})::AbstractArray{T} where {T<:Real}
-    return _relative_juveniles(X) ./ _max_juvenile_density()
+function _juvenile_indicator(X::AbstractArray{T}, coral_params::DataFrame,
+    abs_area::V, k_area::V)::AbstractArray{T} where {T<:Real,V<:Vector{Float64}}
+    # Replace 0 k areas with 1.0 to avoid zero-division error
+    usable_k_area = Float64[k > 0.0 ? k : 1.0 for k in k_area]'
+
+    return _absolute_juveniles(X, coral_params, abs_area) ./ (_max_juvenile_area(coral_params) .* usable_k_area)
 end
 function _juvenile_indicator(rs::ResultSet)::AbstractArray
-    return rs.outcomes[:relative_juveniles] ./ _max_juvenile_density()
+    return rs.outcomes[:juvenile_indicator]
 end
 juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios))
 
