@@ -35,14 +35,55 @@ scenario_relative_cover = Metric(_scenario_relative_cover, (:timesteps, :scenari
 """
     scenario_juveniles(data::NamedDimsArray; kwargs...)
 
-Calculate the cluster-wide juvenile population for individual scenarios.
+Calculate the cluster-wide relative juvenile population for individual scenarios.
+
+!!! warning DEPRECATED.
+    This function is now deprecated. Use `_scenario_relative_juveniles()` instead.
 """
-function _scenario_juveniles(data::NamedDimsArray; kwargs...)
-    juv = call_metric(relative_juveniles, data; kwargs...)
-    return dropdims(sum(juv, dims=:sites), dims=:sites)
+function _scenario_juveniles(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
+    @warn "`scenario_juveniles()` is deprecated and will be removed in future versions. Use `_scenario_relative_juveniles()` instead."
+    return _scenario_rjuves(data, coral_spec, area; kwargs...)
 end
 function _scenario_juveniles(rs::ResultSet; kwargs...)
-    return dropdims(sum(slice_results(rs.outcomes[:relative_juveniles]; kwargs...), dims=:sites), dims=:sites)
+    @warn "`scenario_juveniles()` is deprecated and will be removed in future versions. Use `_scenario_relative_juveniles()` instead."
+    return scenario_rjuves(rs)
+end
+scenario_juveniles = Metric(_scenario_juveniles, (:timesteps, :scenario))
+
+
+"""
+    scenario_rjuves(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
+
+Calculate the relative cluster-wide juvenile population for individual scenarios.
+"""
+function _scenario_relative_juveniles(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
+    ajuv = call_metric(absolute_juveniles, data, coral_spec; kwargs...)
+    return dropdims(sum(ajuv, dims=:sites), dims=:sites) / sum(area)
+end
+function _scenario_relative_juveniles(rs::ResultSet; kwargs...)
+    # Calculate relative domain-wide cover based on absolute values
+    return dropdims(sum(absolute_juveniles(rs), dims=:sites), dims=:sites) / sum(rs.site_area)
+end
+_scenario_relative_juveniles = Metric(_scenario_relative_juveniles, (:timesteps, :scenario))
+
+
+"""
+    scenario_absolute_juveniles(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
+    scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray
+
+Calculate the absolute cluster-wide juvenile population for individual scenarios.
+"""
+function _scenario_absolute_juveniles(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
+    juv = call_metric(absolute_juveniles, data, coral_spec; kwargs...)
+    return dropdims(sum(juv, dims=:sites), dims=:sites) / sum(area)
+end
+function _scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray
+    # Calculate relative domain-wide cover based on absolute values
+    return dropdims(sum(absolute_juveniles(rs), dims=:sites), dims=:sites)
+end
+scenario_absjuves = Metric(_scenario_absolute_juveniles, (:timesteps, :scenario))
+
+
 """
     _scenario_juvenile_indicator(data::NamedDimsArray, coral_spec::DataFrame, area::V, k_area::V; kwargs...) where {V<:AbstractVector{<:Real}}
     _scenario_juvenile_indicator(rs::ResultSet; kwargs...)::AbstractArray
