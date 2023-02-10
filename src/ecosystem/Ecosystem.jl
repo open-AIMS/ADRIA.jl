@@ -49,7 +49,8 @@ end
 
 Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
     # Intervention Parameters
-    # Integer values have a +1 offset to allow for discrete value mapping (see `set() method`)
+    # Integer values have a +1 offset to allow for discrete value mapping
+    # (see `set()` and `map_to_discrete()` methods)
     guided::N = Param(0, ptype="integer", bounds=(-1, 3 + 1), dists="unif",
         name="Guided", description="Choice of MCDA approach.")
     seed_TA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif",
