@@ -64,7 +64,7 @@ function _scenario_relative_juveniles(rs::ResultSet; kwargs...)
     # Calculate relative domain-wide cover based on absolute values
     return dropdims(sum(absolute_juveniles(rs), dims=:sites), dims=:sites) / sum(rs.site_area)
 end
-_scenario_relative_juveniles = Metric(_scenario_relative_juveniles, (:timesteps, :scenario))
+scenario_relative_juveniles = Metric(_scenario_relative_juveniles, (:timesteps, :scenario))
 
 
 """
@@ -81,7 +81,7 @@ function _scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray
     # Calculate relative domain-wide cover based on absolute values
     return dropdims(sum(absolute_juveniles(rs), dims=:sites), dims=:sites)
 end
-scenario_absjuves = Metric(_scenario_absolute_juveniles, (:timesteps, :scenario))
+scenario_absolute_juveniles = Metric(_scenario_absolute_juveniles, (:timesteps, :scenario))
 
 
 """
