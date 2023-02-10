@@ -220,7 +220,7 @@ ADRIA.sensitivity.rsa(X, y; S=20)
    https://dx.doi.org/10.1002/9780470725184
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
-function rsa(X::DataFrame, y::Vector{T}; S::Int64=20)::NamedDimsArray where {T<:Real}
+function rsa(X::DataFrame, y::AbstractVector{T}; S::Int64=20)::NamedDimsArray where {T<:Real}
     factor_names = Symbol.(names(X))
     N, D = size(X)
     step = 1 / S
