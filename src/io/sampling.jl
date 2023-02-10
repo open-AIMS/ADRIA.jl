@@ -28,13 +28,16 @@ function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
     df[df.guided.==-1.0, non_depth] .= 0.0
 
     # If no seeding is to occur, set related variables to 0
-    not_seeded = (df.seed_TA .== 0) .& (df.seed_CA .== 0.0)
+    not_seeded = (df.seed_TA .== 0.0) .& (df.seed_CA .== 0.0)
     df[not_seeded, contains.(names(df), "seed_")] .= 0.0
     df[not_seeded, :a_adapt] .= 0.0
 
     # Same for fogging/shading
     not_fogged = (df.fogging .== 0) .& (df.SRM .== 0)
     df[not_fogged, contains.(names(df), "shade_")] .= 0.0
+
+    # If use of distance threshold is off, set `dist_thresh` to 0.0
+    df[df.use_dist.==0, :dist_thresh] .= 0.0
 
     return df
 end
