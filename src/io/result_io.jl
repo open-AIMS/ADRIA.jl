@@ -244,7 +244,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
 
     met_names = [:total_absolute_cover, :relative_shelter_volume,
-        :absolute_shelter_volume, :relative_juveniles]
+        :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator]
 
     dim_struct = Dict(
         :structure => string.((:timesteps, :sites, :scenarios)),
@@ -262,6 +262,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
         for m_name in met_names
     ]
 
+    # Handle special case for relative taxa cover
     push!(
         stores,
         zcreate(Float32, (result_dims[1], 6, result_dims[3])...;

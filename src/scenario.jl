@@ -1,7 +1,7 @@
 """Scenario running functions"""
 
 import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
-import ADRIA.metrics: relative_juveniles, relative_taxa_cover
+import ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
 
 
 """
@@ -183,9 +183,14 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_juveniles(rs_raw)
+    coral_spec::DataFrame = to_coral_spec(param_set)
+    vals .= relative_juveniles(rs_raw, coral_spec)
     vals[vals.<threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
+
+    vals .= juvenile_indicator(rs_raw, coral_spec, site_area(domain), site_k_area(domain))
+    vals[vals.<threshold] .= 0.0
+    data_store.juvenile_indicator[:, :, idx] .= vals
 
     vals = relative_taxa_cover(rs_raw)
     vals[vals.<threshold] .= 0.0
@@ -230,7 +235,7 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, cache::NamedTuple)
     # Extract coral only parameters
-    coral_params = to_spec(param_set)
+    coral_params = to_coral_spec(param_set)
     if domain.RCP == ""
         throw("No RCP set for domain. Use `ADRIA.switch_RCPs!() to select an RCP to run scenarios with.")
     end
@@ -552,7 +557,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Calculate survivors from bleaching and wave stress
         @views @. prop_loss = Sbl * Sw_t[p_step, :, :]
 
-        # update initial condition
+        # Note: ODE is run relative to `k` area, but values are otherwise recorded
+        #       in relative to absolute area.
+        # Update initial condition
         @. tmp = ((Y_pstep * prop_loss) * total_site_area) / absolute_k_area
         growth.u0 .= replace(tmp, Inf => 0.0, NaN => 0.0)
 
