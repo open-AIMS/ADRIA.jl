@@ -557,7 +557,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Calculate survivors from bleaching and wave stress
         @views @. prop_loss = Sbl * Sw_t[p_step, :, :]
 
-        # update initial condition
+        # Note: ODE is run relative to `k` area, but values are otherwise recorded
+        #       in relative to absolute area.
+        # Update initial condition
         @. tmp = ((Y_pstep * prop_loss) * total_site_area) / absolute_k_area
         growth.u0 .= replace(tmp, Inf => 0.0, NaN => 0.0)
 
