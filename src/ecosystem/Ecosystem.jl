@@ -49,7 +49,8 @@ end
 
 Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
     # Intervention Parameters
-    # Integer values have a +1 offset to allow for discrete value mapping (see `set() method`)
+    # Integer values have a +1 offset to allow for discrete value mapping
+    # (see `set()` and `map_to_discrete()` methods)
     guided::N = Param(0, ptype="integer", bounds=(-1, 3 + 1), dists="unif",
         name="Guided", description="Choice of MCDA approach.")
     seed_TA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif",
@@ -64,9 +65,9 @@ Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
         name="Assisted Adaptation", description="Assisted adaptation in terms of DHW resistance.")
     n_adapt::N2 = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif",
         name="Natural Adaptation", description="Natural adaptation rate (yearly increase).")
-    seed_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 69), dists="triang",
+    seed_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 70), dists="triang",
         name="Years to Seed", description="Number of years to seed for.")
-    shade_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 69), dists="triang",
+    shade_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 70), dists="triang",
         name="Years to Shade", description="Number of years to shade for.")
     seed_freq::N = Param(5, ptype="integer", bounds=(0, 5 + 1), dists="unif",
         name="Seeding Frequency", description="Frequency of seeding site selection (0 is set and forget).")
