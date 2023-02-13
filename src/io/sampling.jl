@@ -77,12 +77,34 @@ Notes:
 - n : Int
 - sampler : Sampling method
 """
-function sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dict(
+function sample(dom::Domain, n::Int)::DataFrame
+    n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
+
+    spec = model_spec(dom)
+    df = sample(spec, n)
+
+    # Adjust samples for discrete values using flooring trick
+    # Ensure unguided scenarios do not have superfluous parameter values
+    return adjust_samples(dom, spec, df)
+end
+
+function sample(dom::Domain, n::Int, component::Type)::DataFrame
+    n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
+
+    spec = component_params(dom.model, component)
+    df = sample(spec, n)
+    process_inputs!(dom, df)
+
+    # Adjust samples for discrete values using flooring trick
+    # Ensure unguided scenarios do not have superfluous parameter values
+    return df
+end
+
+function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=Dict(
     "triang" => TriangularDist,
     "norm" => TruncatedNormal,
     "unif" => Uniform
 ))::DataFrame
-    n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
 
     if Symbol(sampler) == Symbol("QuasiMonteCarlo.SobolSample()")
         ispow2(n) ? n : throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
@@ -117,8 +139,9 @@ function sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dict
 
     # Adjust samples for discrete values using flooring trick
     # Ensure unguided scenarios do not have superfluous parameter values
-    return adjust_samples(dom, spec, df)
+    return df
 end
+
 
 
 """
