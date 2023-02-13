@@ -38,6 +38,11 @@ function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
     not_fogged = (df.fogging .== 0) .& (df.SRM .== 0)
     df[not_fogged, contains.(names(df), "shade_")] .= 0.0
 
+    if nrow(unique(df)) < nrow(df)
+        perc = "$(@sprintf("%.3f", (nrow(unique(df)) / nrow(df)) * 100.0))%"
+        @warn "Non-unique samples created: $perc of the samples are duplicates."
+    end
+
     return df
 end
 
