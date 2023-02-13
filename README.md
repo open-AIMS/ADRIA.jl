@@ -1,7 +1,19 @@
 # ADRIA.jl
 ![Tests](https://github.com/open-AIMS/ADRIA.jl/actions/workflows/ci.yml/badge.svg?branch=main)
 
-Julia implementation of ADRIA: the Adaptive Dynamic Reef Intervention Algorithm.
+ADRIA: the Adaptive Dynamic Reef Intervention Algorithm.
+
+ADRIA is a decision-support tool designed to help reef managers, modellers and decision-makers
+address the challenges of adapting to climate change in coral reefs. It provides line of sight
+to conservation solutions in complex settings where multiple objectives need to be considered,
+and helps investors identify which options represent the highest likelihood of providing
+returns on investment. ADRIA uses a set of dynamic Multi-Criteria Decision Analyses (dMCDA)
+which simulates a reef decision maker to identify candidate locations for intervention
+deployment which consider ecological, economic and social benefits.
+
+ADRIA also includes a simplified coral ecosystem model to allow exploration of outcomes as a 
+result of intervention decisions made across a wide range of possible future conditions.
+
 
 Scripts showcasing example usage are found in the `examples` directory.
 
