@@ -28,7 +28,7 @@ function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
     df[df.guided.==-1.0, non_depth] .= 0.0
 
     # If no seeding is to occur, set related variables to 0
-    not_seeded = (df.seed_TA .== 0.0) .& (df.seed_CA .== 0.0)
+    not_seeded = (df.seed_TA .== 0) .& (df.seed_CA .== 0)
     df[not_seeded, contains.(names(df), "seed_")] .= 0.0
     df[not_seeded, :a_adapt] .= 0.0
 
