@@ -1,7 +1,9 @@
+using Printf
 using DataFrames, Distributions, LinearAlgebra
 using ADRIA
 import ADRIA: model_spec, process_inputs!, component_params
-import Surrogates: QuasiMonteCarlo.SobolSample, sample
+import Surrogates: sample
+import Surrogates.QuasiMonteCarlo: SobolSample
 
 
 """
@@ -73,6 +75,10 @@ function sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dict
     "unif" => Uniform
 ))::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
+
+    if Symbol(sampler) == Symbol("QuasiMonteCarlo.SobolSample()")
+        ispow2(n) ? n : throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
+    end
 
     spec = model_spec(dom)
 
