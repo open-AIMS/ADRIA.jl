@@ -78,7 +78,17 @@ function process_inputs!(d::Domain, df::DataFrame)::Nothing
 
     return nothing
 end
+function process_inputs!(df::DataFrame)::Nothing
+    bnds = df[:, :full_bounds]
+    p_types = df[:, :ptype]
+    @inbounds for (i, dt) in enumerate(p_types)
+        if dt == "integer"
+            df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
+        end
+    end
 
+    return nothing
+end
 
 function load_mat_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray{Float32}
     data = matread(data_fn)
