@@ -1,7 +1,9 @@
+using Printf
 using DataFrames, Distributions, LinearAlgebra
 using ADRIA
 import ADRIA: model_spec, process_inputs!, component_params
-import Surrogates: QuasiMonteCarlo.SobolSample, sample
+import Surrogates: sample
+import Surrogates.QuasiMonteCarlo: SobolSample
 
 
 """
@@ -38,6 +40,11 @@ function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
 
     # If use of distance threshold is off, set `dist_thresh` to 0.0
     df[df.use_dist.==0, :dist_thresh] .= 0.0
+
+    if nrow(unique(df)) < nrow(df)
+        perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(df)) / nrow(df))) * 100.0))%"
+        @warn "Non-unique samples created: $perc of the samples are duplicates."
+    end
 
     return df
 end
@@ -76,6 +83,10 @@ function sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dict
     "unif" => Uniform
 ))::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
+
+    if Symbol(sampler) == Symbol("QuasiMonteCarlo.SobolSample()")
+        ispow2(n) ? n : throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
+    end
 
     spec = model_spec(dom)
 
