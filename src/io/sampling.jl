@@ -202,6 +202,19 @@ function sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     return adjust_cf_samples(d, df)
 end
 
+"""
+    adjust_guided_bounds(guided_spec::DataFrame, lower::Int64)::DataFrame
+    
+Adjust lower bound of guided parameter spec to alter sampling range.
+"""
+function adjust_guided_bounds(guided_spec::DataFrame, lower::Int64)::DataFrame
+    guided_col = guided_spec.fieldname .== :guided
+    g_upper = guided_spec[:, :upper_bound][1]
+    guided_spec[guided_col, :val] .= lower
+    guided_spec[guided_col, :lower_bound] .= lower
+    guided_spec[guided_col, :full_bounds] .= [(lower, g_upper)]
+    return guided_spec
+end
 
 """
     sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
