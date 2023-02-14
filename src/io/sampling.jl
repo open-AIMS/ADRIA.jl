@@ -181,6 +181,7 @@ function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFr
     env_sample = sample(env_spec, n, sampler)
 
     int_spec = component_params(d.model, Intervention)
+    insertcols!(int_spec, :val, :bounds => copy([int_spec[:, :full_bounds]...]))
     guided_spec = adjust_guided_bounds(int_spec[int_spec[:, :fieldname].==:guided, :], 1)
     guided_sample = sample(guided_spec, n, sampler)
 
@@ -212,6 +213,7 @@ function adjust_guided_bounds(guided_spec::DataFrame, lower::Int64)::DataFrame
     g_upper = guided_spec[:, :upper_bound][1]
     guided_spec[guided_col, :val] .= lower
     guided_spec[guided_col, :lower_bound] .= lower
+    guided_spec[guided_col, :bounds] .= [(lower, g_upper)]
     guided_spec[guided_col, :full_bounds] .= [(lower, g_upper)]
     return guided_spec
 end
