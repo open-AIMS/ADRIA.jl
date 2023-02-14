@@ -164,7 +164,33 @@ function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=
     return df
 end
 
+"""
+    sample_site_selection(d::Domain, n::Int)::DataFrame
 
+Create samples of only site selection parameters and rescale to distribution defined in the model spec.
+
+# Arguments
+- d : Domain.
+- n : number of samples to generate.
+
+"""
+function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+    crit_df = sample(d, n, Criteria, sampler)
+
+    env_spec = component_params(d.model, EnvironmentalLayer)
+    env_sample = sample(env_spec, n, sampler)
+
+    int_spec = component_params(d.model, Intervention)
+    guided_spec = adjust_guided_bounds(int_spec[int_spec[:, :fieldname].==:guided, :], 1)
+    guided_sample = sample(guided_spec, n, sampler)
+
+    process_inputs!(guided_spec, guided_sample)
+    process_inputs!(env_spec, env_sample)
+    crit_df[!, :guided] = guided_sample[:, :guided]
+    crit_df[!, :wave_scenario] = env_sample[:, :wave_scenario]
+    crit_df[!, :dhw_scenario] = env_sample[:, :dhw_scenario]
+    return crit_df
+end
 
 """
     sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
