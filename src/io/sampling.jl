@@ -179,7 +179,7 @@ function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFr
 
     int_spec = component_params(d.model, Intervention)
     insertcols!(int_spec, :val, :bounds => copy([int_spec[:, :full_bounds]...]))
-    guided_spec = adjust_guided_bounds(int_spec[int_spec[:, :fieldname].==:guided, :], 1)
+    guided_spec = _adjust_guided_lower_bound(int_spec[int_spec[:, :fieldname].==:guided, :], 1)
     select!(guided_spec, Not(:bounds))
 
     sample_df = vcat(vcat(env_spec, guided_spec), crit_spec)
@@ -204,14 +204,12 @@ end
     
 Adjust lower bound of guided parameter spec to alter sampling range.
 """
-function adjust_guided_bounds(guided_spec::DataFrame, lower::Int64)::DataFrame
-    guided_col = guided_spec.fieldname .== :guided
-    g_upper = guided_spec[:, :upper_bound][1]
-    guided_spec[guided_col, :val] .= lower
-    guided_spec[guided_col, :lower_bound] .= lower
-    guided_spec[guided_col, :bounds] .= [(lower, g_upper)]
-    guided_spec[guided_col, :full_bounds] .= [(lower, g_upper)]
-    return guided_spec
+function _adjust_guided_lower_bound(spec_df::DataFrame, lower::Int64)::DataFrame
+    guided_col = spec_df.fieldname .== :guided
+    g_upper = spec_df[:, :upper_bound][1]
+    spec_df[guided_col, [:val, :lower_bound, :bounds, :full_bounds]] .= [lower, lower, (lower, g_upper), (lower, g_upper)]
+
+    return spec_df
 end
 
 """
@@ -226,15 +224,15 @@ function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     mod_df = copy(spec_df)
 
     insertcols!(mod_df, :val, :bounds => copy([d.model[:bounds]...]))
-    mod_df = adjust_guided_bounds(mod_df, 1)
+    mod_df = _adjust_guided_lower_bound(mod_df, 1)
 
     # Sample without unguided, then revert back to original model spec
     ADRIA.update!(d.model, mod_df)
-    samples = _sample(d, n, sampler)
+    samples = sample(d, n, sampler)
     samples = adjust_samples(d, samples)
 
     # Note: updating with spec_df does not work.
-    mod_df = adjust_guided_bounds(mod_df, 0)
+    mod_df = _adjust_guided_lower_bound(mod_df, 0)
 
     ADRIA.update!(d.model, mod_df)
 
