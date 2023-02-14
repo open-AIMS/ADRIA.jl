@@ -186,7 +186,7 @@ function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFr
     site_selection_sample = sample(sample_df, n, sampler)
 
     process_inputs!(sample_df, site_selection_sample)
-    return sample_df
+    return site_selection_sample
 end
 
 """
