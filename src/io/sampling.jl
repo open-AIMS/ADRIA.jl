@@ -132,8 +132,6 @@ function _sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists
         ispow2(n) ? n : throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
     end
 
-    spec = model_spec(dom)
-
     # Select non-constant params
     vary_vars = spec[spec.is_constant.==false, ["dists", "full_bounds"]]
 
