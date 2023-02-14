@@ -163,32 +163,30 @@ function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=
 end
 
 """
-    sample_site_selection(d::Domain, n::Int)::DataFrame
+    sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
 
 Create samples of only site selection parameters and rescale to distribution defined in the model spec.
 
 # Arguments
 - d : Domain.
 - n : number of samples to generate.
-
+- sampler : type of sampler to use.
 """
 function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
-    crit_df = sample(d, n, Criteria, sampler)
 
+    crit_spec = component_params(d.model, Criteria)
     env_spec = component_params(d.model, EnvironmentalLayer)
-    env_sample = sample(env_spec, n, sampler)
 
     int_spec = component_params(d.model, Intervention)
     insertcols!(int_spec, :val, :bounds => copy([int_spec[:, :full_bounds]...]))
     guided_spec = adjust_guided_bounds(int_spec[int_spec[:, :fieldname].==:guided, :], 1)
-    guided_sample = sample(guided_spec, n, sampler)
+    select!(guided_spec, Not(:bounds))
 
-    process_inputs!(guided_spec, guided_sample)
-    process_inputs!(env_spec, env_sample)
-    crit_df[!, :guided] = guided_sample[:, :guided]
-    crit_df[!, :wave_scenario] = env_sample[:, :wave_scenario]
-    crit_df[!, :dhw_scenario] = env_sample[:, :dhw_scenario]
-    return crit_df
+    sample_df = vcat(vcat(env_spec, guided_spec), crit_spec)
+    site_selection_sample = sample(sample_df, n, sampler)
+
+    process_inputs!(sample_df, site_selection_sample)
+    return sample_df
 end
 
 """
