@@ -70,17 +70,39 @@ indicated to be of integer type in the Domain spec.
 function process_inputs!(d::Domain, df::DataFrame)::Nothing
     bnds = d.model[:bounds]
     p_types = d.model[:ptype]
-    @inbounds for (i, dt) in enumerate(p_types)
-        if dt == "integer"
-            df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
-        end
-    end
-
+    process_inputs!(bnds, p_types, df)
     return nothing
 end
+
+"""
+    process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
+
+Map sampled values in `df` back to discrete bounds for parameters
+indicated to be of integer type in the DataFrame spec.
+
+# Arguments
+- `spec` : DataFrame
+- `df` : DataFrame
+"""
 function process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
     bnds = spec[:, :full_bounds]
     p_types = spec[:, :ptype]
+    process_inputs!(bnds, p_types, df)
+    return nothing
+end
+
+"""
+    process_inputs!(bnds::AbstractArray, p_types::AbstractArray, df::DataFrame)::Nothing
+
+Map sampled values in `df` back to discrete bounds for parameters
+indicated to be of integer type in the Domain spec.
+
+# Arguments
+- `bnds` : AbstractArray containing list of parameter bounds (lower,upper).
+- `p_types` : AbstractArray containing list of parameter types as strings.
+- `df` : DataFrame
+"""
+function process_inputs!(bnds::AbstractArray, p_types::AbstractArray, df::DataFrame)::Nothing
     @inbounds for (i, dt) in enumerate(p_types)
         if dt == "integer"
             df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
