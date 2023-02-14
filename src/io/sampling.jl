@@ -207,7 +207,7 @@ Adjust lower bound of guided parameter spec to alter sampling range.
 function _adjust_guided_lower_bound(spec_df::DataFrame, lower::Int64)::DataFrame
     guided_col = spec_df.fieldname .== :guided
     g_upper = spec_df[:, :upper_bound][1]
-    spec_df[guided_col, [:val, :lower_bound, :bounds, :full_bounds]] .= [lower, lower, (lower, g_upper), (lower, g_upper)]
+    spec_df[guided_col, [:val, :lower_bound, :bounds, :full_bounds]] .= reshape([lower, lower, (lower, g_upper), (lower, g_upper)], (1, 4))
 
     return spec_df
 end
