@@ -226,14 +226,9 @@ function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
 
     # Remove unguided scenarios as an option
     mod_df = copy(spec_df)
-    guided_col = mod_df.fieldname .== :guided
-    g_upper = mod_df[guided_col, :upper_bound][1]
 
     insertcols!(mod_df, :val, :bounds => copy([d.model[:bounds]...]))
-    mod_df[guided_col, :val] .= 1
-    mod_df[guided_col, :lower_bound] .= 1
-    mod_df[guided_col, :bounds] .= [(1, g_upper)]
-    mod_df[guided_col, :full_bounds] .= [(1, g_upper)]
+    mod_df = adjust_guided_bounds(mod_df, 1)
 
     # Sample without unguided, then revert back to original model spec
     ADRIA.update!(d.model, mod_df)
@@ -241,10 +236,8 @@ function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     samples = adjust_samples(d, samples)
 
     # Note: updating with spec_df does not work.
-    mod_df[guided_col, :val] .= 0
-    mod_df[guided_col, :lower_bound] .= 0
-    mod_df[guided_col, :bounds] .= [(0, g_upper)]
-    mod_df[guided_col, :full_bounds] .= [(0, g_upper)]
+    mod_df = adjust_guided_spec(mod_df, 0)
+
     ADRIA.update!(d.model, mod_df)
 
     return samples
