@@ -195,7 +195,7 @@ end
 Generate only counterfactual scenarios using any sampler from QuasiMonteCarlo.jl
 """
 function sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
-    df::DataFrame = _sample(d, n, sampler)
+    df::DataFrame = sample(d, n, sampler)
     return adjust_cf_samples(d, df)
 end
 
