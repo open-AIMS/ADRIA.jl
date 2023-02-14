@@ -236,7 +236,7 @@ function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     samples = adjust_samples(d, samples)
 
     # Note: updating with spec_df does not work.
-    mod_df = adjust_guided_spec(mod_df, 0)
+    mod_df = adjust_guided_bounds(mod_df, 0)
 
     ADRIA.update!(d.model, mod_df)
 
