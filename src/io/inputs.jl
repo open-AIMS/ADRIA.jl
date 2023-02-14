@@ -78,9 +78,9 @@ function process_inputs!(d::Domain, df::DataFrame)::Nothing
 
     return nothing
 end
-function process_inputs!(df::DataFrame)::Nothing
-    bnds = df[:, :full_bounds]
-    p_types = df[:, :ptype]
+function process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
+    bnds = spec[:, :full_bounds]
+    p_types = spec[:, :ptype]
     @inbounds for (i, dt) in enumerate(p_types)
         if dt == "integer"
             df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
