@@ -11,21 +11,21 @@ using Aviz
 # Load some results
 rs = ADRIA.load_results("...")
 
-# Scenario-level metrics
-
-# Quick display of scenario results.
-# Infers figure x/y labels from metric and ResultSet
-Aviz.scenario(rs, ADRIA.metrics.scenario_total_cover)
-
-# As above, but requires user to provide data and 
-# specific axis options
+# Obtain data to plot (scenario-level metrics)
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
+
+# Infers figure x/y labels from metric and ResultSet
+# specific axis options
 Aviz.plot.scenario(rs, s_tac; axis_opts=Dict(:ylabel=>"Example Metric"))
 
 # Can also compose subplots
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
+
+# Compose figure
 tf = Figure(resolution=(1600, 600))  # resolution in pixels
-Aviz.plot.scenario!(tf[1, 1], rs, ADRIA.metrics.scenario_total_cover; opts=Dict(:by_RCP => false), axis_opts=Dict(:title => "TAC"));
-Aviz.plot.scenario!(tf[1, 2], rs, ADRIA.metrics.scenario_juveniles; opts=Dict(:by_RCP => false), axis_opts=Dict(:title => "Juveniles"));
+Aviz.plot.scenario!(tf[1, 1], rs, s_tac; opts=Dict(:by_RCP => false), axis_opts=Dict(:title => "TAC"));
+Aviz.plot.scenario!(tf[1, 2], rs, s_juves; opts=Dict(:by_RCP => false), axis_opts=Dict(:title => "Juveniles"));
 
 tf  # show figure with subplots
 
