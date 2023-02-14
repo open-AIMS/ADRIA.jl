@@ -65,7 +65,7 @@ end
 
 
 """
-    _sample(dom::Domain, n::Int)::DataFrame
+    sample(dom::Domain, n::Int)::DataFrame
 
 Create samples and rescale to distribution defined in the model spec.
 
@@ -76,7 +76,7 @@ Notes:
 - dom : Domain
 - n : Int
 """
-function _sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
+function sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
 
     spec = model_spec(dom)
@@ -88,7 +88,7 @@ function _sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
 end
 
 """
-    _sample(dom::Domain, n::Int, component::Type)::DataFrame
+    sample(dom::Domain, n::Int, component::Type)::DataFrame
 
 Create samples and rescale to distribution defined in the model spec.
 
@@ -100,7 +100,7 @@ Notes:
 - n : Int
 - component : Type, e.g. Criteria
 """
-function _sample(dom::Domain, n::Int, component::Type, sampler=SobolSample())::DataFrame
+function sample(dom::Domain, n::Int, component::Type, sampler=SobolSample())::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
 
     spec = component_params(dom.model, component)
@@ -113,7 +113,7 @@ function _sample(dom::Domain, n::Int, component::Type, sampler=SobolSample())::D
 end
 
 """
-    _sample(spec::DataFrame, n::Int, sampler=SobolSample())::DataFrame
+    sample(spec::DataFrame, n::Int, sampler=SobolSample())::DataFrame
 
 Create samples and rescale to distribution defined in the model spec.
 
@@ -122,7 +122,7 @@ Create samples and rescale to distribution defined in the model spec.
 - n : number of samples to generate.
 - sampler : type of sampler to use.
 """
-function _sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=Dict(
+function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=Dict(
     "triang" => TriangularDist,
     "norm" => TruncatedNormal,
     "unif" => Uniform
