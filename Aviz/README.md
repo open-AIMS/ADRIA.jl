@@ -18,16 +18,17 @@ s_tac = ADRIA.metrics.scenario_total_cover(rs)
 # specific axis options
 Aviz.plot.scenario(rs, s_tac; axis_opts=Dict(:ylabel=>"Example Metric"))
 
-# Can also compose subplots
+# Can also compose a figure with subplots
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
 
-# Compose figure
 tf = Figure(resolution=(1600, 600))  # resolution in pixels
+
+# Implicitly create a single figure with 2 columns
 Aviz.plot.scenario!(tf[1, 1], rs, s_tac; opts=Dict(:by_RCP => false), axis_opts=Dict(:title => "TAC"));
 Aviz.plot.scenario!(tf[1, 2], rs, s_juves; opts=Dict(:by_RCP => false), axis_opts=Dict(:title => "Juveniles"));
 
-tf  # show figure with subplots
+tf  # display the figure
 
 # Sensitivity (to mean of scenario outcomes)
 tac_Si = ADRIA.sensitivity.pawn(rs.inputs, vec(mean(s_tac, dims=1)))
