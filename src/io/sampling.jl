@@ -73,8 +73,8 @@ Notes:
 - assumes all parameters are independent.
 
 # Arguments
-- dom : Domain
-- n : Int
+- `dom` : Domain
+- `n` : Int
 """
 function sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
@@ -96,19 +96,19 @@ Notes:
 - assumes all parameters are independent.
 
 # Arguments
-- dom : Domain
-- n : Int
-- component : Type, e.g. Criteria
+- `dom` : Domain
+- `n` : Int
+- `component` : Type, e.g. Criteria
 """
 function sample(dom::Domain, n::Int, component::Type, sampler=SobolSample())::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
 
     spec = component_params(dom.model, component)
     df = sample(spec, n, sampler)
-    process_inputs!(spec, df)
-
     # Adjust samples for discrete values using flooring trick
     # Ensure unguided scenarios do not have superfluous parameter values
+    process_inputs!(spec, df)
+
     return df
 end
 
@@ -118,9 +118,9 @@ end
 Create samples and rescale to distribution defined in the model spec.
 
 # Arguments
-- spec : DataFrame containing model parameter specifications.
-- n : number of samples to generate.
-- sampler : type of sampler to use.
+- `spec` : DataFrame containing model parameter specifications.
+- `n` : number of samples to generate.
+- `sampler` : type of sampler to use.
 """
 function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=Dict(
     "triang" => TriangularDist,
@@ -168,9 +168,9 @@ end
 Create samples of only site selection parameters and rescale to distribution defined in the model spec.
 
 # Arguments
-- d : Domain.
-- n : number of samples to generate.
-- sampler : type of sampler to use.
+- `d` : Domain.
+- `n` : number of samples to generate.
+- `sampler` : type of sampler to use.
 """
 function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
 
@@ -249,8 +249,8 @@ Check specified bounds for validity.
 Raises error if lower bound values are greater than upper bounds.
 
 # Arguments
-- lower : lower bounds
-- upper : upper bound values
+- `lower` : lower bounds
+- `upper` : upper bound values
 """
 function _check_bounds(lower, upper)
     if any(lower .> upper)
