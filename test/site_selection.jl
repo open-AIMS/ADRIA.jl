@@ -39,7 +39,7 @@ end
     area_to_seed = 1.5 * 10^-6  # area of seeded corals in km^2
     ts = 5  # time step to perform site selection at
 
-    sum_cover = 0.1 .* fill(0.1, N, ADRIA.n_locations(dom))
+    sum_cover = fill(0.1, N, ADRIA.n_locations(dom))
     ranks = ADRIA.run_site_selection(dom, criteria_df, sum_cover, area_to_seed, ts)
 
     @test size(ranks, 1) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
