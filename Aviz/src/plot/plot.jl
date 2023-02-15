@@ -2,7 +2,7 @@ module plot
 
 using GLMakie, DataFrames
 
-using ADRIA: ResultSet, metrics.metric_label, timesteps, sensitivity, analysis.col_normalize
+using ADRIA: ResultSet, metrics.metric_label, sensitivity, analysis.col_normalize
 using ADRIA.NamedDims, ADRIA.AxisKeys
 using Aviz: scenario_type, scenario_colors, COLORS
 using GLMakie.Colors
