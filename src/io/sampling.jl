@@ -1,7 +1,7 @@
 using Printf
 using DataFrames, Distributions, LinearAlgebra
 using ADRIA
-import ADRIA: model_spec, process_inputs!, component_params
+import ADRIA: model_spec, _process_inputs!, component_params
 import Surrogates: sample
 import Surrogates.QuasiMonteCarlo: SobolSample
 
@@ -17,7 +17,7 @@ function adjust_samples(d::Domain, df::DataFrame)::DataFrame
     return adjust_samples(d, model_spec(d), df)
 end
 function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
-    process_inputs!(d, df)
+    _process_inputs!(d, df)
     crit = component_params(spec, Criteria)
     interv = component_params(spec, Intervention)
 
@@ -109,7 +109,7 @@ function sample(dom::Domain, n::Int, component::Type, sampler=SobolSample())::Da
     df = sample(spec, n, sampler)
     # Adjust samples for discrete values using flooring trick
     # Ensure unguided scenarios do not have superfluous parameter values
-    process_inputs!(spec, df)
+    _process_inputs!(spec, df)
 
     return df
 end
@@ -187,7 +187,7 @@ function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFr
     sample_df = vcat(vcat(env_spec, guided_spec), crit_spec)
     site_selection_sample = sample(sample_df, n, sampler)
 
-    process_inputs!(sample_df, site_selection_sample)
+    _process_inputs!(sample_df, site_selection_sample)
     return site_selection_sample
 end
 

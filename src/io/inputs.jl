@@ -52,15 +52,15 @@ function load_scenarios(domain::Domain, filepath::String)::DataFrame
     if columnindex(df, :RCP) > 0
         df = df[!, Not("RCP")]
     end
-    process_inputs!(domain, df)
+    _process_inputs!(domain, df)
 
     return df
 end
 
 """
-    process_inputs!(d::Domain, df::DataFrame)::Nothing
-    process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
-    process_inputs!(bnds::AbstractArray, p_types::AbstractArray, df::DataFrame)::Nothing
+    _process_inputs!(d::Domain, df::DataFrame)::Nothing
+    _process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
+    _process_inputs!(bnds::AbstractArray, p_types::AbstractArray, df::DataFrame)::Nothing
     
 Map sampled values in `df` back to discrete bounds for parameters
 indicated to be of integer type in the Domain spec.
@@ -71,17 +71,17 @@ indicated to be of integer type in the Domain spec.
 - `spec` : DataFrame specifying parameter bounds, types and distributions.
 - `df` : DataFrame
 """
-function process_inputs!(d::Domain, df::DataFrame)::Nothing
-    process_inputs!(d.model[:bounds], d.model[:ptype], df)
+function _process_inputs!(d::Domain, df::DataFrame)::Nothing
+    _process_inputs!(d.model[:bounds], d.model[:ptype], df)
     return nothing
 end
 
-function process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
-    process_inputs!(Tuple(spec[:, :full_bounds]), Tuple(spec[:, :ptype]), df)
+function _process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
+    _process_inputs!(Tuple(spec[:, :full_bounds]), Tuple(spec[:, :ptype]), df)
     return nothing
 end
 
-function process_inputs!(bnds::Tuple, p_types::Tuple, df::DataFrame)::Nothing
+function _process_inputs!(bnds::Tuple, p_types::Tuple, df::DataFrame)::Nothing
     @inbounds for (i, dt) in enumerate(p_types)
         if dt == "integer"
             df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
