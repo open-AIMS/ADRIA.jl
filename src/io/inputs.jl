@@ -59,50 +59,29 @@ end
 
 """
     process_inputs!(d::Domain, df::DataFrame)::Nothing
-
+    process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
+    process_inputs!(bnds::AbstractArray, p_types::AbstractArray, df::DataFrame)::Nothing
+    
 Map sampled values in `df` back to discrete bounds for parameters
 indicated to be of integer type in the Domain spec.
 
 # Arguments
 - `d` : Domain
+- `bnds` : Tuple containing list of parameter bounds (lower,upper).
+- `spec` : DataFrame specifying parameter bounds, types and distributions.
 - `df` : DataFrame
 """
 function process_inputs!(d::Domain, df::DataFrame)::Nothing
-    bnds = d.model[:bounds]
-    p_types = d.model[:ptype]
-    process_inputs!(bnds, p_types, df)
+    process_inputs!(d.model[:bounds], d.model[:ptype], df)
     return nothing
 end
 
-"""
-    process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
-
-Map sampled values in `df` back to discrete bounds for parameters
-indicated to be of integer type in the DataFrame spec.
-
-# Arguments
-- `spec` : DataFrame
-- `df` : DataFrame
-"""
 function process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
-    bnds = spec[:, :full_bounds]
-    p_types = spec[:, :ptype]
-    process_inputs!(bnds, p_types, df)
+    process_inputs!(Tuple(spec[:, :full_bounds]), Tuple(spec[:, :ptype]), df)
     return nothing
 end
 
-"""
-    process_inputs!(bnds::AbstractArray, p_types::AbstractArray, df::DataFrame)::Nothing
-
-Map sampled values in `df` back to discrete bounds for parameters
-indicated to be of integer type in the Domain spec.
-
-# Arguments
-- `bnds` : AbstractArray containing list of parameter bounds (lower,upper).
-- `p_types` : AbstractArray containing list of parameter types as strings.
-- `df` : DataFrame
-"""
-function process_inputs!(bnds::AbstractArray, p_types::AbstractArray, df::DataFrame)::Nothing
+function process_inputs!(bnds::Tuple, p_types::Tuple, df::DataFrame)::Nothing
     @inbounds for (i, dt) in enumerate(p_types)
         if dt == "integer"
             df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
