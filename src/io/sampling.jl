@@ -228,8 +228,7 @@ function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
 
     # Sample without unguided, then revert back to original model spec
     ADRIA.update!(d.model, mod_df)
-    samples = sample(d, n, sampler)
-    samples = adjust_samples(d, samples)
+    samples = adjust_samples(d, sample(d, n, sampler))
 
     # Note: updating with spec_df does not work.
     mod_df = _adjust_guided_lower_bound(mod_df, 0)
