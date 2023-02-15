@@ -65,7 +65,7 @@ end
 
 
 """
-    sample(dom::Domain, n::Int)::DataFrame
+    sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
 
 Create samples and rescale to distribution defined in the model spec.
 
@@ -75,6 +75,7 @@ Notes:
 # Arguments
 - `dom` : Domain
 - `n` : Int
+- `sampler` : type of sampler to use.
 """
 function sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
@@ -99,6 +100,7 @@ Notes:
 - `dom` : Domain
 - `n` : Int
 - `component` : Type, e.g. Criteria
+- `sampler` : type of sampler to use.
 """
 function sample(dom::Domain, n::Int, component::Type, sampler=SobolSample())::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
