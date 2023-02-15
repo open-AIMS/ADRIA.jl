@@ -2,7 +2,7 @@
 
 ADRIA: the Adaptive Dynamic Reef Intervention Algorithm.
 
-[![Release](https://img.shields.io/github/v/release/open-AIMS/ADRIA.jl)](https://github.com/open-AIMS/ADRIA.jl/releases)
+[![Release](https://img.shields.io/github/v/release/open-AIMS/ADRIA.jl)](https://github.com/open-AIMS/ADRIA.jl/releases)  [![Documentation](https://img.shields.io/badge/docs-stable-blue)](https://open-aims.github.io/ADRIA.jl/stable/)
 
 ADRIA is a decision-support tool designed to help reef managers, modellers and decision-makers
 address the challenges of adapting to climate change in coral reefs. It provides line of sight
