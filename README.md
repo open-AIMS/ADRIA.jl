@@ -1,6 +1,6 @@
 # ADRIA.jl
 
-ADRIA: the Adaptive Dynamic Reef Intervention Algorithm.
+ADRIA: Adaptive Dynamic Reef Intervention Algorithms.
 
 [![Release](https://img.shields.io/github/v/release/open-AIMS/ADRIA.jl)](https://github.com/open-AIMS/ADRIA.jl/releases)  [![Documentation](https://img.shields.io/badge/docs-stable-blue)](https://open-aims.github.io/ADRIA.jl/stable/)
 
