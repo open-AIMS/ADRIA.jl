@@ -72,13 +72,11 @@ indicated to be of integer type in the Domain spec.
 - `df` : DataFrame
 """
 function _process_inputs!(d::Domain, df::DataFrame)::Nothing
-    _process_inputs!(d.model[:bounds], d.model[:ptype], df)
-    return nothing
+    return _process_inputs!(d.model[:bounds], d.model[:ptype], df)
 end
 
 function _process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
-    _process_inputs!(Tuple(spec[:, :full_bounds]), Tuple(spec[:, :ptype]), df)
-    return nothing
+    return _process_inputs!(Tuple(spec[:, :full_bounds]), Tuple(spec[:, :ptype]), df)
 end
 
 function _process_inputs!(bnds::Tuple, p_types::Tuple, df::DataFrame)::Nothing
@@ -87,7 +85,6 @@ function _process_inputs!(bnds::Tuple, p_types::Tuple, df::DataFrame)::Nothing
             df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
         end
     end
-
     return nothing
 end
 
