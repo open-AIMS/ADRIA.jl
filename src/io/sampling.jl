@@ -206,12 +206,11 @@ end
     
 Adjust lower bound of guided parameter spec to alter sampling range.
 """
-function _adjust_guided_lower_bound(spec_df::DataFrame, lower::Int64)::DataFrame
+function _adjust_guided_lower_bound!(spec_df::DataFrame, lower::Int64)::DataFrame
     guided_col = spec_df.fieldname .== :guided
     g_upper = spec_df[guided_col, :upper_bound]
     spec_df[guided_col, [:val, :lower_bound, :bounds, :full_bounds]] .= reshape([lower, lower, (lower, g_upper), (lower, g_upper)], (1, 4))
-
-    return spec_df
+    return nothing
 end
 
 """
@@ -226,14 +225,14 @@ function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     mod_df = copy(spec_df)
 
     insertcols!(mod_df, :val, :bounds => copy([d.model[:bounds]...]))
-    mod_df = _adjust_guided_lower_bound(mod_df, 1)
+    _adjust_guided_lower_bound!(mod_df, 1)
 
     # Sample without unguided, then revert back to original model spec
     ADRIA.update!(d.model, mod_df)
     samples = adjust_samples(d, sample(d, n, sampler))
 
     # Note: updating with spec_df does not work.
-    mod_df = _adjust_guided_lower_bound(mod_df, 0)
+    _adjust_guided_lower_bound!(mod_df, 0)
 
     ADRIA.update!(d.model, mod_df)
 
