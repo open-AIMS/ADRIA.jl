@@ -15,8 +15,7 @@ deployment which consider ecological, economic and social benefits.
 ADRIA also includes a simplified coral ecosystem model to allow exploration of outcomes as a 
 result of intervention decisions made across a wide range of possible future conditions.
 
-
-Scripts showcasing example usage are found in the `examples` directory.
+Usage is demonstrated in the [documentation](https://open-aims.github.io/ADRIA.jl/stable/usage/getting_started/)
 
 
 ## Quick start
