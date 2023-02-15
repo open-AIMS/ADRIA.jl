@@ -1,4 +1,5 @@
 using NamedArrays
+using ADRIA: ResultSet
 
 
 """
@@ -15,7 +16,7 @@ NamedArray, where each entry relates to an RCP of interest, e.g., `[RCP45=[... f
 RCP60=[ ... frequency of selection for each site ...]]`
 
 """
-function seeded_sites_frequency(rs::ResultSet, scens::NamedTuple)::NamedTuple
+function seeded_sites_frequency(rs::ResultSet, scens::NamedTuple)::NamedArray
 
     # retrieve RCPs
     rcps = keys(scens)
@@ -23,7 +24,6 @@ function seeded_sites_frequency(rs::ResultSet, scens::NamedTuple)::NamedTuple
     seeded_sites_store = NamedArray(zeros(length(rcps), size(rs.site_data, 1)))
     idx_rows = [String(i) for i = rcps]
     setnames!(seeded_sites_store, idx_rows, 1)
-
     for rcp in rcps
         ind_cond_temp = scens[rcp]
 
