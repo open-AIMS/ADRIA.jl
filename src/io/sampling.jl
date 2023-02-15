@@ -176,15 +176,16 @@ Create samples of only site selection parameters and rescale to distribution def
 """
 function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
 
-    crit_spec = component_params(d.model, Criteria)
-    env_spec = component_params(d.model, EnvironmentalLayer)
+    env_crit_spec = component_params(d.model, [EnvironmentalLayer, Criteria])
 
     int_spec = component_params(d.model, Intervention)
     insertcols!(int_spec, :val, :bounds => copy([int_spec[:, :full_bounds]...]))
-    guided_spec = _adjust_guided_lower_bound(int_spec[int_spec[:, :fieldname].==:guided, :], 1)
+
+    guided_spec = int_spec[int_spec[:, :fieldname].==:guided, :]
+    _adjust_guided_lower_bound!(guided_spec, 1)
     select!(guided_spec, Not(:bounds))
 
-    sample_df = vcat(vcat(env_spec, guided_spec), crit_spec)
+    sample_df = vcat(env_crit_spec, guided_spec)
     site_selection_sample = sample(sample_df, n, sampler)
 
     _process_inputs!(sample_df, site_selection_sample)
