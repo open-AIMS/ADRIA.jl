@@ -159,8 +159,6 @@ function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=
 
     df = DataFrame(full_df, spec.fieldname)
 
-    # Adjust samples for discrete values using flooring trick
-    # Ensure unguided scenarios do not have superfluous parameter values
     return df
 end
 
