@@ -190,18 +190,29 @@ Generate only counterfactual scenarios.
 Scenario specification
 """
 function sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
-    return adjust_cf_samples(d, sample(d, n, sampler))
+    spec_df = model_spec(d)
+
+    # Unguided scenarios only
+    guided_col = spec_df.fieldname .== :guided
+    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [-1 -1 -1 (-1.0, -1.0) true]
+
+    # Remove intervention scenarios as an option
+    _deactivate_interventions(spec_df)
+
+    return sample(spec_df, n, sampler)
 end
 
 """
-    adjust_guided_bounds(guided_spec::DataFrame, lower::Int64)::DataFrame
+    _adjust_guided_lower_bound!(guided_spec::DataFrame, lower::Int64)::DataFrame
     
 Adjust lower bound of guided parameter spec to alter sampling range.
 """
 function _adjust_guided_lower_bound!(spec_df::DataFrame, lower::Int64)::DataFrame
     guided_col = spec_df.fieldname .== :guided
     g_upper = spec_df[guided_col, :upper_bound][1]
-    spec_df[guided_col, [:val, :lower_bound, :bounds, :full_bounds]] .= [lower lower (lower, g_upper) (lower, g_upper)]
+
+    # Update entries, standardizing values for bounds as floats
+    spec_df[guided_col, [:val, :lower_bound, :bounds]] .= [lower Float64(lower) (Float64(lower), g_upper)]
     return spec_df
 end
 
@@ -222,21 +233,58 @@ function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     spec_df = model_spec(d)
 
     # Remove unguided scenarios as an option
-    mod_df = copy(spec_df)
+    # Sample without unguided (i.e., values >= 1), then revert back to original model spec
+    _adjust_guided_lower_bound!(spec_df, 1)
 
-    insertcols!(mod_df, :val, :bounds => copy([d.model[:bounds]...]))
-    _adjust_guided_lower_bound!(mod_df, 1)
+    return sample(spec_df, n, sampler)
+end
 
-    # Sample without unguided, then revert back to original model spec
-    ADRIA.update!(d.model, mod_df)
-    samples = adjust_samples(d, sample(d, n, sampler))
+"""
+    sample_unguided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+    
+Generate only unguided scenarios.
 
-    # Note: updating with spec_df does not work.
-    _adjust_guided_lower_bound!(mod_df, 0)
+# Arguments
+- `d` : Domain.
+- `n` : number of samples to generate.
+- `sampler` : type of sampler to use.
 
-    ADRIA.update!(d.model, mod_df)
+# Returns
+Scenario specification
+"""
+function sample_unguided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+    spec_df = model_spec(d)
 
-    return samples
+    # Fix guided factor to 0 (i.e., unguided scenarios only)
+    guided_col = spec_df.fieldname .== :guided
+    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [0 0 0 (0.0, 0.0) true]
+
+    return sample(spec_df, n, sampler)
+end
+
+"""
+    _deactivate_interventions(to_update::DataFrame)::Nothing
+
+Deactivate all intervention factors (excluding `guided` and `n_adapt`) by settings these to 0.0
+
+# Arguments
+- `to_update` : model specification to modify/update
+
+# Returns
+Scenario specification
+"""
+function _deactivate_interventions(to_update::DataFrame)::Nothing
+    intervs = component_params(to_update, Intervention)
+    cols = Symbol[fn for fn in intervs.fieldname if fn != :n_adapt && fn != :guided]
+    for c in cols
+        _row = to_update.fieldname .== c
+        _bnds = length(to_update[_row, :bounds][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
+
+        dval = to_update[_row, :ptype][1] == "integer" ? 0 : 0.0
+        to_update[_row, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [dval 0.0 0.0 _bnds true]
+    end
+
+    return nothing
 end
 
 
