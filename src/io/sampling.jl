@@ -63,6 +63,9 @@ Notes:
 - `dom` : Domain
 - `n` : Int
 - `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
 """
 function sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
@@ -88,6 +91,9 @@ Notes:
 - `n` : Int
 - `component` : Type, e.g. Criteria
 - `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
 """
 function sample(dom::Domain, n::Int, component::Type, sampler=SobolSample())::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
@@ -110,6 +116,9 @@ Create samples and rescale to distribution defined in the model spec.
 - `spec` : DataFrame containing model parameter specifications.
 - `n` : number of samples to generate.
 - `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
 """
 function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=Dict(
     "triang" => TriangularDist,
@@ -152,12 +161,16 @@ end
 """
     sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
 
-Create samples of only site selection parameters and rescale to distribution defined in the model spec.
+Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, Criteria).
+All other parameters are set to their default values.
 
 # Arguments
 - `d` : Domain.
 - `n` : number of samples to generate.
 - `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
 """
 function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
 
@@ -180,7 +193,15 @@ end
 """
     sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     
-Generate only counterfactual scenarios using any sampler from QuasiMonteCarlo.jl
+Generate only counterfactual scenarios.
+
+# Arguments
+- `d` : Domain.
+- `n` : number of samples to generate.
+- `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
 """
 function sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     return adjust_cf_samples(d, sample(d, n, sampler))
@@ -201,7 +222,15 @@ end
 """
     sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     
-Generate only guided scenarios using any sampler from QuasiMonteCarlo.jl
+Generate only guided scenarios.
+
+# Arguments
+- `d` : Domain.
+- `n` : number of samples to generate.
+- `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
 """
 function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     spec_df = model_spec(d)
