@@ -1,9 +1,13 @@
 using ADRIA
 
 
-@testset "sample" begin
+if !@isdefined(ADRIA_DIR)
+    const ADRIA_DIR = pkgdir(ADRIA)
+    const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
+end
 
-    dom = ADRIA.load_domain("../examples/Example_domain")
+@testset "sample" begin
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
     num_samples = 32
     scens = ADRIA.sample(dom, num_samples)
 

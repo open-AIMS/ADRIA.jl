@@ -1,10 +1,16 @@
 using Distributions
 using Test
 
+
+if !@isdefined(ADRIA_DIR)
+    const ADRIA_DIR = pkgdir(ADRIA)
+    const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
+end
+
 @testset "site selection" begin
     # TODO: Complete tests with @tests
 
-    dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
     p_tbl = ADRIA.param_table(dom)
 
     p_tbl[:, :depth_offset] .= 7.0
@@ -32,7 +38,7 @@ end
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
-    dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
     N = 2^3
     criteria_df = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
 
