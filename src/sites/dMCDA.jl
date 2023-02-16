@@ -5,36 +5,22 @@ using Distances
 using Combinatorics
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
-    site_ids  # ::V
     n_site_int  # ::I
-    priority_sites  # ::V
-    priority_zones # ::V
-    zones # ::V
-    strong_pred  # ::V
-    conn
-    dam_prob  # ::A
-    heat_stress_prob  # ::A
-    site_depth #::V
-    sum_cover  # ::F
-    max_cover  # ::V
-    area  # ::M
-    min_area # ::F
-    risk_tol  # ::F
-    dist # ::M
-    use_dist # ::Int64
-    min_dist # ::Float64
-    top_n # ::Int64
-    wt_in_conn_seed  # ::F
-    wt_out_conn_seed  # ::F
-    wt_conn_shade  # ::F
-    wt_waves # ::F
-    wt_heat  # ::F
-    wt_hi_cover  # ::F
-    wt_lo_cover  # ::F
-    wt_predec_seed  # ::F
-    wt_predec_shade  # ::F
-    wt_zones_seed # ::F
-    wt_zones_shade # ::F
+    crit_seed_names #::V
+    crit_shade_names #::V
+    weights #::V
+    thesholds #::V
+    distances #::M
+    use_dist #::I
+    min_dist #::I
+    top_n #::I
+end
+
+function create_criteria_df(site_ids::AbstractArray, crit_names::Vector{String}, criteria...)
+    criteria_df = DataFrame(site_ids=site_ids)
+    for crit_ind = 1:length(crit_names)
+        criteria_df[!, Symbol(crit_names(crit_ind))] = criteria[crit_ind]
+    end
 end
 
 """
@@ -51,65 +37,21 @@ end
 
 Constuctors for DMCDA variables.
 """
-function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
-    site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64,
-    waves::AbstractArray, dhws::AbstractArray)::DMCDA_vars
-
-    # Site Data
-    site_d = domain.site_data
-    n_sites = n_locations(domain)
-    area = site_area(domain)
+function DMCDA_vars(domain::Domain, seed_crit_names::Vector{String}, shade_crit_names::Vector{String}, dist_vars)::DMCDA_vars
 
     mcda_vars = DMCDA_vars(
-        site_ids,
         domain.sim_constants.n_site_int,
-        domain.sim_constants.priority_sites,
-        domain.sim_constants.priority_zones,
-        site_d.zone_type,
-        domain.strong_pred,
-        domain.TP_data .* site_k_area(domain),
-        waves,
-        dhws,
-        site_d.depth_med,
-        sum_cover,
-        site_k(domain),
-        area,
-        criteria("coral_cover_tol") .* area_to_seed,
-        criteria("deployed_coral_risk_tol"),
-        domain.site_distances,
-        criteria("use_dist"),
-        domain.median_site_distance - domain.median_site_distance * criteria("dist_thresh"),
-        criteria("top_n"),
-        criteria("in_seed_connectivity"),
-        criteria("out_seed_connectivity"),
-        criteria("shade_connectivity"),
-        criteria("wave_stress"),
-        criteria("heat_stress"),
-        criteria("coral_cover_high"),
-        criteria("coral_cover_low"),
-        criteria("seed_priority"),
-        criteria("shade_priority"),
-        criteria("zone_seed"),
-        criteria("zone_shade")
+        seed_crit_names,
+        shade_crit_names,
+        weights,
+        thresholds,
+        domain.distances,
+        dist_vars.use_dist,
+        dist_vars.min_dist,
+        dist_vars.top_n
     )
 
     return mcda_vars
-end
-function DMCDA_vars(domain::Domain, criteria::NamedDimsArray, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
-    num_sites = n_locations(domain)
-    return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(num_sites, 1), zeros(num_sites, 1))
-end
-function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
-    sum_cover::AbstractArray, area_to_seed::Float64, waves::AbstractArray, dhw::AbstractArray)::DMCDA_vars
-
-    criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
-    return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed, waves, dhw)
-end
-function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
-    sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
-
-    criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
-    return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed)
 end
 
 """
