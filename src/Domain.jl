@@ -374,23 +374,23 @@ end
 
 
 """
-    component_params(m::Model, component::Type)::DataFrame
-    component_params(spec::DataFrame, component::Type)::DataFrame
+    component_params(m::Model, component)::DataFrame
+    component_params(spec::DataFrame, component)::DataFrame
     component_params(m::Model, components::Vector)::DataFrame
     component_params(spec::DataFrame, components::Vector)::DataFrame
 
 Extract parameters for a specific model component.
 """
-function component_params(m::Model, component::Type)::DataFrame
+function component_params(m::Model, component)::DataFrame
     return component_params(model_spec(m), component)
 end
-function component_params(spec::DataFrame, component::Type)::DataFrame
+function component_params(spec::DataFrame, component)::DataFrame
     return spec[spec.component.==replace.(string(component), "ADRIA." => ""), :]
 end
-function component_params(m::Model, components::Vector)::DataFrame
+function component_params(m::Model, components::Vector{T})::DataFrame where {T}
     return component_params(model_spec(m), components)
 end
-function component_params(spec::DataFrame, components::Vector)::DataFrame
+function component_params(spec::DataFrame, components::Vector{T})::DataFrame where {T}
     return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
