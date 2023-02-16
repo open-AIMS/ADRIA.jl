@@ -51,21 +51,6 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     return df
 end
 
-function adjust_cf_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
-    # Get intervention columns that aren't "n_adapt"
-    # and make them == 0
-    intervs = component_params(spec, Intervention)
-    cols = collect(skipmissing([fn != :n_adapt ? fn : missing for fn in intervs.fieldname]))
-    df[:, cols] .= 0.0
-    df[:, [:guided]] .= -1.0  # Mark counterfactuals as -1
-
-    return adjust_samples(d, df)
-end
-function adjust_cf_samples(d::Domain, df::DataFrame)::DataFrame
-    return adjust_cf_samples(d, model_spec(d), df)
-end
-
-
 """
     sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
 
