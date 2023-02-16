@@ -69,13 +69,7 @@ Scenario specification
 """
 function sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
-
-    spec = model_spec(dom)
-    df = sample(spec, n, sampler)
-
-    # Adjust samples for discrete values using flooring trick
-    # Ensure unguided scenarios do not have superfluous parameter values
-    return adjust_samples(dom, spec, df)
+    return sample(model_spec(dom), n, sampler)
 end
 
 """
@@ -99,12 +93,7 @@ function sample(dom::Domain, n::Int, component::Type, sampler=SobolSample())::Da
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
 
     spec = component_params(dom.model, component)
-    df = sample(spec, n, sampler)
-    # Adjust samples for discrete values using flooring trick
-    # Ensure unguided scenarios do not have superfluous parameter values
-    _process_inputs!(spec, df)
-
-    return df
+    return sample(spec, n, sampler)
 end
 
 """
