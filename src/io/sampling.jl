@@ -8,16 +8,18 @@ import Surrogates.QuasiMonteCarlo: SobolSample
 
 """
     adjust_samples(d::Domain, df::DataFrame)::DataFrame
-    adjust_samples!(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
+    adjust_samples!(spec::DataFrame, df::DataFrame)::DataFrame
 
 Adjust given samples to ensure parameter value combinations for unguided
 scenarios are plausible.
 """
 function adjust_samples(d::Domain, df::DataFrame)::DataFrame
-    return adjust_samples(d, model_spec(d), df)
+    return adjust_samples(model_spec(d), df)
 end
-function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
-    _process_inputs!(d, df)
+function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
+    # Map sampled values back to their discrete if necessary
+    _process_inputs!(spec, df)
+
     crit = component_params(spec, Criteria)
     interv = component_params(spec, Intervention)
 
