@@ -34,3 +34,10 @@ function priority_predecessor_criteria(strong_pred::AbstractArray, priority_site
     predec[predprior, 3] .= 1.0
     return predec
 end
+
+function coral_cover_criteria(site_data, coral_cover)
+    max_area = site_data.k .* site_data.area
+    coral_cover_area = max_area .* coral_cover
+    coral_cover_space = max_area .- coral_cover_area
+    return coral_cover_area, coral_cover_space
+end
