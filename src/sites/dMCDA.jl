@@ -205,62 +205,12 @@ function guided_site_selection(
     end
 
     n_site_int::Int64 = d_vars.n_site_int
-    priority_sites::Array{Int64} = d_vars.priority_sites[in.(d_vars.priority_sites, [site_ids])]
-    priority_zones::Array{String} = d_vars.priority_zones
-
-    zones = d_vars.zones[site_ids]
-    wave_stress = d_vars.dam_prob[site_ids]
-    heat_stress = d_vars.heat_stress_prob[site_ids]
-    site_depth = d_vars.site_depth[site_ids]
-    sum_cover = d_vars.sum_cover[site_ids]
-    max_cover = d_vars.max_cover[site_ids]
-    area = d_vars.area[site_ids]
-
-    risk_tol = d_vars.risk_tol
-    w_in_conn = d_vars.wt_in_conn_seed
-    w_out_conn = d_vars.wt_out_conn_seed
-    w_shade_conn = d_vars.wt_conn_shade
-    w_waves = d_vars.wt_waves
-    w_heat = d_vars.wt_heat
-    w_high_cover = d_vars.wt_hi_cover
-    w_low_cover = d_vars.wt_lo_cover
-    w_predec_seed = d_vars.wt_predec_seed
-    w_predec_shade = d_vars.wt_predec_shade
-    w_predec_zones_seed = d_vars.wt_zones_seed
-    w_predec_zones_shade = d_vars.wt_zones_shade
-
+    tolerances = d_vars.tolerances
+    weights = d_vars.weights
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
-    # work out which priority predecessors are connected to priority sites
-    predec::Matrix{Float64} = zeros(n_sites, 3)
-    predec[:, 1:2] .= strong_pred
-    predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
-    predprior = Int64[x for x in predprior if !isnan(x)]
-
-    predec[predprior, 3] .= 1.0
-
-    # for zones, find sites which are zones and strongest predecessors of sites in zones
-    zone_ids = intersect(priority_zones, unique(zones))
-    zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
-    zone_preds = zeros(n_sites)
-    zone_sites = zeros(n_sites)
-
-    for (k::Int64, z_name::String) in enumerate(zone_ids)
-        # find sites which are strongest predecessors of sites in the zone
-        zone_preds_temp::Vector{Int64} = strong_pred[zones.==z_name]
-        for s::Int64 in unique(zone_preds_temp)
-            # for each predecessor site, add zone_weights * (no. of zone sites the site is a strongest predecessor for)
-            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k] .* sum(zone_preds_temp .== s))
-        end
-        # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)
-        zone_sites[zones.==z_name] .= zone_weights[k]
-    end
-
-    # add weights for strongest predecessors and zones to get zone criteria
-    zones_criteria = zone_preds .+ zone_sites
-
-    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
+    A, filtered_sites = create_decision_matrix(criteria_df, tolerances)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
