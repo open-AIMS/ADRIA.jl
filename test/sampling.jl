@@ -29,3 +29,80 @@ end
         end
     end
 end
+
+@testset "Targeted sampling" begin
+    @testset "Counterfactual sampling" begin
+        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        num_samples = 32
+        scens = ADRIA.sample_cf(dom, num_samples)
+
+        @test all(scens.guided .== -1) || "Intervention scenarios found"
+
+        # Get Intervention params
+        interv_params = string.(ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname)
+
+        # Ignore n_adapt and guided
+        # TODO: Move n_adapt to Coral parameters
+
+        # Ensure all interventions are deactivated
+        interv_params = String[ip for ip in interv_params if ip != "n_adapt" && ip != "guided"]
+        @test all(all.(==(0), eachcol(scens[:, interv_params]))) || "Intervention factors with values > 0 found"
+    end
+
+    @testset "Guided sampling" begin
+        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        num_samples = 32
+        scens = ADRIA.sample_guided(dom, num_samples)
+
+        @test all(scens.guided .> 0) || "Non-intervention scenarios found"
+
+        # Get Intervention params
+        interv_params = string.(ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname)
+
+        # Ignore n_adapt and guided
+        interv_params = String[ip for ip in interv_params if ip != "n_adapt" && ip != "guided"]
+
+        # Ensure at least one intervention is active
+        @test all(any.(>(0), eachcol(scens[:, interv_params]))) || "All intervention factors had values <= 0"
+    end
+
+    @testset "Unguided sampling" begin
+        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        num_samples = 32
+        scens = ADRIA.sample_unguided(dom, num_samples)
+
+        @test all(scens.guided .== 0) || "Intervention or counterfactual scenarios found"
+
+        # Get Intervention params
+        interv_params = string.(ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname)
+
+        # Ignore n_adapt and guided
+        interv_params = String[ip for ip in interv_params if ip != "n_adapt" && ip != "guided"]
+
+        # Ensure at least one intervention is active
+        @test all(any.(>(0), eachcol(scens[:, interv_params]))) || "All intervention factors had values <= 0"
+    end
+
+    @testset "Site selection sampling" begin
+        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        num_samples = 32
+        scens = ADRIA.sample_site_selection(dom, num_samples)
+
+        @test all(scens.guided .> 0) || "Intervention or counterfactual scenarios found"
+
+        # Get Intervention params
+        ms = ADRIA.model_spec(dom)
+        target_params = string.(ADRIA.component_params(ms, [ADRIA.EnvironmentalLayer, ADRIA.Intervention, ADRIA.Criteria]).fieldname)
+
+        # Ignore n_adapt and guided
+        target_params = String[ip for ip in target_params if ip != "n_adapt" && ip != "guided"]
+
+        # Ensure at least one intervention is active
+        @test all(any.(>(0), eachcol(scens[:, target_params]))) || "All target factors had values <= 0"
+
+        # Check that all coral parameters are set to their nominated default values
+        coral_params = ADRIA.component_params(ms, ADRIA.Coral).fieldname
+
+        @test all([all(scens[:, c] .== ms[ms.fieldname.==c, :val][1]) for c in coral_params]) || "Non-default coral parameter value found"
+    end
+end
