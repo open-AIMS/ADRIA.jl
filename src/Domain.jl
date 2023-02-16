@@ -477,6 +477,23 @@ function switch_RCPs!(d::Domain, RCP::String)::Domain
     return d
 end
 
+"""
+    update!(dom::Domain, spec::DataFrame)::Nothing
+
+Update a Domain model with new values specified in spec.
+Assumes all `val` and `bounds` are to be updated.
+
+# Arguments
+- `dom` : Domain
+- `spec` : updated model specification
+"""
+function update!(dom::Domain, spec::DataFrame)::Nothing
+    # ModelParameters.update!(dom.model, spec)
+    dom.model[:val] = spec.val
+    dom.model[:bounds] = spec.bounds
+
+    return nothing
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", d::Domain)
 
