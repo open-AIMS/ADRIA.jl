@@ -185,15 +185,13 @@ Tuple :
         Values of 0 indicate sites that were not considered
 """
 function guided_site_selection(
-    d_vars::DMCDA_vars, alg_ind::T,
-    log_seed::B, log_shade::B,
-    prefseedsites::IA, prefshadesites::IB,
-    rankingsin::Matrix{T},
-    in_conn::Vector{Float64},
-    out_conn::Vector{Float64},
-    strong_pred::Vector{Int64}
+    d_vars::DMCDA_vars, criteria_df::DataFrame,
+    alg_ind::T, log_seed::B, log_shade::B,
+    prefseedsites::IA, prefshadesites::IA,
+    rankingsin::Matrix{T}
 )::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool}
 
+    site_ids::Array{Int64} = criteria_df[:, :site_ids]
     use_dist::Int64 = d_vars.use_dist
     min_dist::Float64 = d_vars.min_dist
     site_ids = copy(d_vars.site_ids)
@@ -221,13 +219,12 @@ function guided_site_selection(
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_seed_matrix(A, d_vars.min_area, w_in_conn, w_out_conn, w_waves, w_heat, w_predec_seed, w_predec_zones_seed, w_low_cover)
+        SE, wse = create_intervention_matrix(A, weights, criteria_df, d_vars.seed_crit_names)
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        max_area = (area.*max_cover)[filtered_sites]
-        SH, wsh = create_shade_matrix(A, max_area, w_shade_conn, w_waves, w_heat, w_predec_shade, w_predec_zones_shade, w_high_cover)
+        SH, wsh = create_intervention_matrix(A, weights, criteria_df, d_vars.shade_crit_names)
     end
 
     if alg_ind == 1
