@@ -39,14 +39,6 @@ function map_to_discrete!(df::DataFrame, u::Union{AbstractArray,Tuple})::Nothing
 end
 
 
-"""Update a given model with new uncertain parameter values."""
-function update!(m::Model, vals::Union{Vector,Tuple,Array})::Nothing
-    m[:val] = map((x) -> set(x...), zip(params(m), vals))
-
-    return
-end
-
-
 Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
     # Intervention Parameters
     # Integer values have a +1 offset to allow for discrete value mapping
