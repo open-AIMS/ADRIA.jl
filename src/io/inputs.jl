@@ -80,9 +80,9 @@ function _process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
 end
 
 function _process_inputs!(bnds::Tuple, p_types::Tuple, df::DataFrame)::Nothing
-    @inbounds for (i, dt) in enumerate(p_types)
-        if dt == "integer"
-            df[!, i] .= map_to_discrete.(df[!, i], bnds[i][2])
+    for (i, dt) in enumerate(p_types)
+        if dt == "integer" && (bnds[i][1] < bnds[i][2])
+            @inbounds df[!, i] .= map_to_discrete.(df[!, i], Int64(bnds[i][2]))
         end
     end
     return nothing

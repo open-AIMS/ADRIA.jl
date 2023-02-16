@@ -22,8 +22,8 @@ end
 
 For integer/categorical parameters, take floor of `v`, capping to `u - 1`
 """
-function map_to_discrete(v::Number, u::Int)::Int
-    return Int(min(floor(v), u - 1))
+function map_to_discrete(v::Number, u::Int64)::Int64
+    return Int64(min(floor(v), u - 1))
 end
 
 """

@@ -363,7 +363,7 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
 
     to_floor = (p_df.ptype .== "integer")
     if any(to_floor)
-        p_df[to_floor, :val] .= map_to_discrete.(p_df[to_floor, :val], getindex.(p_df[to_floor, :bounds], 2))
+        p_df[to_floor, :val] .= map_to_discrete.(p_df[to_floor, :val], Int64.(getindex.(p_df[to_floor, :bounds], 2)))
     end
 
     # Update with new parameters

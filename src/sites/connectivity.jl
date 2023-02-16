@@ -56,7 +56,7 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
 
         # Get average connectivity for each represented year
         for (i, yr) in enumerate(Symbol.(years))
-            conn_data::Vector{Matrix{Float64}} = [
+            conn_data::Vector{Matrix{Float64}} = Matrix{Float64}[
                 Matrix(CSV.read(fn, DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1]))
                 for fn in year_conn_fns[yr]
             ]
@@ -64,7 +64,7 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
             tmp_store[i] = agg_func(conn_data)
         end
 
-        # Mean of across all years
+        # Mean across all years
         extracted_TP = agg_func(tmp_store)
     end
 
@@ -110,8 +110,8 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
 
     return (TP_base=TP_base, truncated=invalid_ids, site_ids=unique_site_ids)
 end
-function site_connectivity(file_loc::String, unique_site_ids::Vector{T};
-    con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple where {T<:AbstractString}
+function site_connectivity(file_loc::String, unique_site_ids::Vector{Union{Missing,String}};
+    con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
 
     # Remove any row marked as missing
     if any(ismissing.(unique_site_ids))
