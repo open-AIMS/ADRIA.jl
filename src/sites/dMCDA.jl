@@ -131,69 +131,19 @@ function rank_shade_sites!(S, weights, rankings, n_site_int, mcda_func)::Tuple{V
     rank_sites!(S, weights, rankings, n_site_int, mcda_func, 3)
 end
 
-"""
-    create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
+function create_decision_matrix(criteria_df::DataFrame, tolerances::Vector{Tuple{String,String,Float64}})
+    A = Matrix(criteria_df)
+    crit_col = criteria_df.fieldname .== tolerances[tt][1]
+    for tt = 1:length(tolerances)
+        if tolerances[tt][2] .== "gt"
+            rule = A[:, crit_col] .> tolerances[tt][3]
+        elseif tolerances[tt][2] .== "lt"
+            rule = A[:, crit_col] .<= tolerances[tt][3]
+        end
+        A[rule, crit_col] .= NaN
+    end
 
-Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
-Sites are then filtered based on heat and wave stress risk.
-
-Where no sites are filtered, size of ``A := n_sites × 7 criteria``.
-
-Columns indicate:
-1. Site ID
-2. Incoming Node Connectivity Centrality
-3. Outgoing Node Connectivity Centrality
-4. Wave stress
-5. Heat stress
-6. Priority Predecessors
-7. Available Area (relative to max cover)
-
-# Arguments
-- `site_ids` : vector of site ids
-- `in_conn` : site incoming centrality (relative strength of connectivity) (0 <= c <= 1.0)
-- `out_conn` : site outgoing centrality (relative strength of connectivity) (0 <= c <= 1.0)
-- `sum_cover` : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
-- `max_cover` : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
-- `area` : total absolute area (in m²) for each site
-- `wave_stress` : Probability of wave damage
-- `heat_stress` : Probability of site being affected by heat stress
-- `predec` : list of priority predecessors (sites strongly connected to priority sites)
-- `risk_tol` : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risk_tol are filtered out.
-"""
-function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
-    A = zeros(length(site_ids), 9)
-    A[:, 1] .= site_ids  # Column of site ids
-
-    # node connectivity centrality, need to instead work out strongest predecessors to priority sites
-    A[:, 2] .= maximum(in_conn) != 0.0 ? in_conn / maximum(in_conn) : 0.0
-    A[:, 3] .= maximum(out_conn) != 0.0 ? out_conn / maximum(out_conn) : 0.0
-
-    # Wave damage, account for cases where no chance of damage or heat stress
-    # if max > 0 then use damage probability from wave exposure
-    # A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
-    A[:, 4] .= wave_stress ./ maximum(wave_stress)
-
-    # risk from heat exposure
-    # A[:, 5] .= maximum(heat_stress) != 0.0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : 0.0
-    A[:, 5] .= min.(heat_stress ./ 20.0, 1.0)
-
-    # priority predecessors
-    A[:, 6] .= predec[:, 3]
-
-    # priority zone predecessors and sites
-    A[:, 7] .= zones_criteria
-
-    # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 8] = max.((max_cover - sum_cover), 0.0) .* area
-
-    A[:, 9] = site_depth
-
-    # Filter out sites that have high risk of wave damage, specifically
-    # exceeding the risk tolerance
-    A[A[:, 4].>risk_tol, 4] .= NaN
-    rule = (A[:, 4] .<= risk_tol) .& (A[:, 5] .> risk_tol)
-    A[rule, 5] .= NaN
-
+    # Filter out sites not satisfying the tolerances
     filtered = vec(.!any(isnan.(A), dims=2))
     # remove rows with NaNs
     A = A[filtered, :]
@@ -201,116 +151,19 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
 end
 
 
-"""
-    create_seed_matrix(A, min_area, in_conn_seed, out_conn_seed, waves, heat, predec, low_cover)
 
-Create seeding specific decision matrix from criteria matrix. The weight criteria and filter.
-
-# Arguments
-- `A` : Criteria matrix
-- `min_area` : Minimum available area for a site to be considered
-- `wt_in_conn_seed` : Seed connectivity weight for seeding
-- `wt_out_conn_seed` : Seed connectivity weight for seeding
-- `wt_waves` : Wave stress weight
-- `wt_heat` : Heat stress weight
-- `wt_predec_seed` : Priority predecessor weight
-- `wt_predec_zones_seed` : Priority zones weight for seeding
-- `wt_low_cover` : Weighting for low coral cover (coral real estate), when seeding
-
-# Returns
-Tuple (SE, wse)
-- `SE` : Matrix of shape [n sites considered, 7]
-    1. Site index ID
-    2. Incoming Centrality
-    3. Outgoing Centrality
-    4. Wave risk (higher values = less risk)
-    5. Damage risk (higher values = less risk)
-    6. Priority predecessors relating to coral real estate relative to max capacity
-    7. Available space
-- `wse` : 5-element vector of criteria weights
-    1. incoming connectivity
-    2. outgoing connectivity
-    3. wave
-    4. heat
-    5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
-    6. seed zones (weights importance of sites highly connected to or within priority zones for seeding)
-    7. low cover (weights importance of sites with low cover/high available real estate to plant corals)
-"""
-function create_seed_matrix(A, min_area, wt_in_conn_seed, wt_out_conn_seed, wt_waves, wt_heat, wt_predec_seed, wt_predec_zones_seed, wt_lo_cover)
-    # Define seeding decision matrix, based on copy of A
-    SE = copy(A)
-
-    wse = [wt_in_conn_seed, wt_out_conn_seed, wt_waves, wt_heat, wt_predec_seed, wt_predec_zones_seed, wt_lo_cover, wt_heat]
-    # wse .= mcda_normalize(wse)
-
-    SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
-    SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
-
-    # Coral real estate as total area, sites with ≤ min_area to be seeded available filtered out
-    SE[vec(A[:, 8] .<= min_area), 8] .= NaN
-
-    # Mark "hot" locations for filter
-    SE[vec(A[:, 5] .>= 0.75), 5] .= NaN
-
-    # Filter out identified locations
-    SE = SE[vec(.!any(isnan.(SE), dims=2)), :]
-
-    return SE, wse
+function create_intervention_matrix(A, weights, criteria_df, int_crit_names)
+    # Define intervention decision matrix
+    crit_names = names(criteria_df)
+    int_ind = [findall(crit_names .== int_crit_names[ind]) for ind = 1:length(int_crit_names)]
+    S = A[:, int_ind]
+    ws = normalize(weights[int_ind])
+    return S, ws
 end
 
 
 """
-    create_shade_matrix(A, wt_conn_shade , wt_waves, wt_heat, wt_predec_shade, wt_hi_cover)
-
-Create shading specific decision matrix and apply weightings.
-
-# Arguments
-- `A` : Criteria  matrix
-- `wt_conn_shade` : Shading connectivity weight
-- `wt_waves` : Wave stress weight
-- `wt_heat` : Heat stress weight
-- `wt_predec_zones_shade` : Priority zones weight for shading
-- `wt_predec_shade` : Priority predecessor weight for shading
-- `wt_hi_cover` : Weighting for high coral cover when shading
-
-# Returns
-Tuple (SH, wsh)
-- `SH` : Matrix of shape [n sites considered, 7]
-    1. Site index ID
-    2. Incoming Centrality
-    3. Outgoing Centrality
-    4. Wave risk (higher values = less risk)
-    5. Damage risk (higher values = less risk)
-    6. Priority predecessors relating to coral real estate relative to max capacity
-    7. Available space
-- `wsh` : 5-element vector of criteria weights
-    1. shade connectivity
-    2. wave
-    3. heat
-    4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
-    4. shade zones (weights importance of sites highly connected to or within priority zones)
-    5. high cover (weights importance of sites with high cover of coral to shade)
-"""
-
-function create_shade_matrix(A, max_area, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover)
-    # Set up decision matrix to be same size as A
-    SH = copy(A)
-    # remove consideration of site depth as shading not accounted for in bleaching model yet
-    SH = SH[:, 1:end-1]
-
-    wsh = [wt_conn_shade, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover]
-    wsh .= mcda_normalize(wsh)
-
-    SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
-    SH[:, 8] = (max_area .- A[:, 8]) # total area of coral cover
-
-    SH[SH[:, 8].<0, 8] .= 0  # if any negative, scale back to zero
-    return SH, wsh
-end
-
-
-"""
-    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int64}, prefshadesites::AbstractArray{Int64}, rankingsin::Matrix{Int64})
+    guided_site_selection(d_vars::DMCDA_vars, criteria_df::DataFrame, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int64}, prefshadesites::AbstractArray{Int64}, rankingsin::Matrix{Int64})
 
 # Arguments
 - `d_vars` : DMCDA_vars type struct containing weightings and criteria values for site selection.
