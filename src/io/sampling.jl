@@ -138,13 +138,13 @@ function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=
     # Scale values to indicated distributions
     samples .= permutedims(hcat(map(ix -> quantile.(vary_dists[ix], samples[:, ix]), 1:size(samples, 2))...))'
 
-    # Combine varying and constant values
-    full_df = zeros(n, size(spec, 1))
-    full_df[:, findall(spec.is_constant .== false)] .= samples
+    # Combine varying and constant values (constant params use their indicated default vals)
+    full_df = hcat(fill.(spec.val, n)...)
+    full_df[:, spec.is_constant.==false] .= samples
 
-    df = DataFrame(full_df, spec.fieldname)
-
-    return df
+    # Adjust samples for discrete values using flooring trick
+    # Ensure unguided scenarios do not have superfluous parameter values
+    return adjust_samples(spec, DataFrame(full_df, spec.fieldname))
 end
 
 """
@@ -162,21 +162,18 @@ All other parameters are set to their default values.
 Scenario specification
 """
 function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+    subset_spec = component_params(d.model, [EnvironmentalLayer, Intervention, Criteria])
 
-    env_crit_spec = component_params(d.model, [EnvironmentalLayer, Criteria])
+    # Only sample guided intervention scenarios
+    _adjust_guided_lower_bound!(subset_spec, 1)
 
-    int_spec = component_params(d.model, Intervention)
-    insertcols!(int_spec, :val, :bounds => copy([int_spec[:, :full_bounds]...]))
+    # Create and fill scenario spec
+    # Only Intervention, EnvironmentalLayer and Criteria factors are perturbed,
+    # all other factors are fixed to their default values
+    scens = repeat(param_table(d), n)
+    scens[:, subset_spec.fieldname] .= sample(subset_spec, n, sampler)
 
-    guided_spec = int_spec[int_spec[:, :fieldname].==:guided, :]
-    _adjust_guided_lower_bound!(guided_spec, 1)
-    select!(guided_spec, Not(:bounds))
-
-    sample_df = vcat(env_crit_spec, guided_spec)
-    site_selection_sample = sample(sample_df, n, sampler)
-
-    _process_inputs!(sample_df, site_selection_sample)
-    return site_selection_sample
+    return scens
 end
 
 """
