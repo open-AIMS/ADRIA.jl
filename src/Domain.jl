@@ -321,16 +321,17 @@ function model_spec(d::Domain, filepath::String)::Nothing
 
     return
 end
-function model_spec(m::Model)
+function model_spec(m::Model)::DataFrame
     spec = DataFrame(m)
     bnds = spec[!, :bounds]
-    spec[!, :full_bounds] = bnds
-    spec[!, :lower_bound] = first.(bnds)
-    spec[!, :upper_bound] = getindex.(bnds, 2)
-    spec[!, :component] = replace.(string.(spec[:, :component]), "ADRIA." => "")
-    spec[!, :is_constant] = spec[:, :lower_bound] .== spec[:, :upper_bound]
 
-    select!(spec, Not(:bounds))
+    DataFrames.hcat!(spec, DataFrame(
+        :lower_bound => first.(bnds),
+        :upper_bound => getindex.(bnds, 2)
+    ))
+
+    spec[!, :component] .= replace.(string.(spec[!, :component]), "ADRIA." => "")
+    spec[!, :is_constant] .= spec[!, :lower_bound] .== spec[!, :upper_bound]
 
     # Reorder so name/description appears at end
     # makes viewing as CSV a little nicer given description can be very long

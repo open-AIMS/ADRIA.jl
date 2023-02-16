@@ -68,17 +68,15 @@ indicated to be of integer type in the Domain spec.
 # Arguments
 - `d` : Domain
 - `bnds` : Tuple containing list of parameter bounds (lower,upper).
-- `spec` : DataFrame specifying parameter bounds, types and distributions.
-- `df` : DataFrame
+- `spec` : Model specification defining parameter bounds, types and distributions.
+- `df` : parameter sets defining scenarios
 """
 function _process_inputs!(d::Domain, df::DataFrame)::Nothing
     return _process_inputs!(d.model[:bounds], d.model[:ptype], df)
 end
-
 function _process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
-    return _process_inputs!(Tuple(spec[:, :full_bounds]), Tuple(spec[:, :ptype]), df)
+    return _process_inputs!(Tuple(spec[:, :bounds]), Tuple(spec[:, :ptype]), df)
 end
-
 function _process_inputs!(bnds::Tuple, p_types::Tuple, df::DataFrame)::Nothing
     for (i, dt) in enumerate(p_types)
         if dt == "integer" && (bnds[i][1] < bnds[i][2])

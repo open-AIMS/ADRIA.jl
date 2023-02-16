@@ -122,12 +122,12 @@ function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=
     end
 
     # Select non-constant params
-    vary_vars = spec[spec.is_constant.==false, ["dists", "full_bounds"]]
+    vary_vars = spec[spec.is_constant.==false, ["dists", "bounds"]]
 
     # Update range
-    triang_params = vary_vars[vary_vars.dists.=="triang", "full_bounds"]
-    vary_vars[vary_vars.dists.=="triang", "full_bounds"] .= map(x -> (x[1], x[2], (x[2] - x[1]) * x[3] + x[1]), triang_params)
-    vary_dists = map((x) -> supported_dists[x.dists](x.full_bounds...), eachrow(vary_vars))
+    triang_params = vary_vars[vary_vars.dists.=="triang", "bounds"]
+    vary_vars[vary_vars.dists.=="triang", "bounds"] .= map(x -> (x[1], x[2], (x[2] - x[1]) * x[3] + x[1]), triang_params)
+    vary_dists = map((x) -> supported_dists[x.dists](x.bounds...), eachrow(vary_vars))
 
     # Create sample for uncertain parameters
     n_vary_params = size(vary_vars, 1)
