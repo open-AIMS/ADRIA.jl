@@ -22,8 +22,8 @@ end
 
 For integer/categorical parameters, take floor of `v`, capping to `u - 1`
 """
-function map_to_discrete(v::Number, u::Int)::Int
-    return Int(min(floor(v), u - 1))
+function map_to_discrete(v::Number, u::Int64)::Int64
+    return Int64(min(floor(v), u - 1))
 end
 
 """
@@ -39,23 +39,16 @@ function map_to_discrete!(df::DataFrame, u::Union{AbstractArray,Tuple})::Nothing
 end
 
 
-"""Update a given model with new uncertain parameter values."""
-function update!(m::Model, vals::Union{Vector,Tuple,Array})::Nothing
-    m[:val] = map((x) -> set(x...), zip(params(m), vals))
-
-    return
-end
-
-
 Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
     # Intervention Parameters
     # Integer values have a +1 offset to allow for discrete value mapping
     # (see `set()` and `map_to_discrete()` methods)
-    guided::N = Param(0, ptype="integer", bounds=(-1, 3 + 1), dists="unif",
+    # Bounds are defined as floats to maintain type stability
+    guided::N = Param(0, ptype="integer", bounds=(-1.0, 3.0 + 1.0), dists="unif",
         name="Guided", description="Choice of MCDA approach.")
-    seed_TA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif",
+    seed_TA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
         name="Seeded Tabular Acropora", description="Number of enhanced Tabular Acropora to seed per deployment year.")
-    seed_CA::N = Param(0, ptype="integer", bounds=(0, 1000000 + 1), dists="unif",
+    seed_CA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
         name="Seeded Corymbose Acropora", description="Number of enhanced Corymbose Acropora to seed per deployment year.")
     fogging::P = Param(0.16, ptype="real", bounds=(0.0, 0.3, 0.16 / 0.3), dists="triang",
         name="Fogging", description="Assumed reduction in bleaching mortality.")
@@ -65,17 +58,17 @@ Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
         name="Assisted Adaptation", description="Assisted adaptation in terms of DHW resistance.")
     n_adapt::N2 = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif",
         name="Natural Adaptation", description="Natural adaptation rate (yearly increase).")
-    seed_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 70), dists="triang",
+    seed_years::P2 = Param(10, ptype="integer", bounds=(5.0, 74.0 + 1.0, 5 / 70), dists="triang",
         name="Years to Seed", description="Number of years to seed for.")
-    shade_years::P2 = Param(10, ptype="integer", bounds=(5, 74 + 1, 5 / 70), dists="triang",
+    shade_years::P2 = Param(10, ptype="integer", bounds=(5.0, 74.0 + 1.0, 5 / 70), dists="triang",
         name="Years to Shade", description="Number of years to shade for.")
-    seed_freq::N = Param(5, ptype="integer", bounds=(0, 5 + 1), dists="unif",
+    seed_freq::N = Param(5, ptype="integer", bounds=(0.0, 5.0 + 1.0), dists="unif",
         name="Seeding Frequency", description="Frequency of seeding site selection (0 is set and forget).")
-    shade_freq::N = Param(1, ptype="integer", bounds=(0, 5 + 1), dists="unif",
+    shade_freq::N = Param(1, ptype="integer", bounds=(0.0, 5.0 + 1.0), dists="unif",
         name="Shading Frequency", description="Frequency of shading site selection (0 is set and forget).")
-    seed_year_start::N = Param(2, ptype="integer", bounds=(2, 25 + 1), dists="unif",
+    seed_year_start::N = Param(2, ptype="integer", bounds=(2.0, 25.0 + 1.0), dists="unif",
         name="Seeding Start Year", description="Start seeding deployments after this number of years has elapsed.")
-    shade_year_start::N = Param(2, ptype="integer", bounds=(2, 25 + 1), dists="unif",
+    shade_year_start::N = Param(2, ptype="integer", bounds=(2.0, 25.0 + 1.0), dists="unif",
         name="Shading Start Year", description="Start of shading deployments after this number of years has elapsed.")
 end
 
@@ -107,11 +100,11 @@ Base.@kwdef struct Criteria{P,N} <: EcoModel
         name="Low Area Tolerance", description="Tolerance for low proportional space for seeding deployments.")
     deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
         name="Risk Tolerance", description="Filters out sites with heat/wave stress above threshold.")
-    use_dist::N = Param(0, ptype="integer", bounds=(0, 1 + 1), dists="unif",
+    use_dist::N = Param(0, ptype="integer", bounds=(0.0, 1.0 + 1.0), dists="unif",
         name="Use Distance Threshold", description="Turns distance sorting on or off.")
     dist_thresh::P = Param(0.1, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Distance Threshold", description="Sites selected by MCDA must be further apart than median(dist)-dist_thresh*median(dist).")
-    top_n::N = Param(10, ptype="integer", bounds=(5, 50 + 1), dists="unif",
+    top_n::N = Param(10, ptype="integer", bounds=(5.0, 50.0 + 1.0), dists="unif",
         name="Top N", description="Replaces a given deployment site with a top-ranked site if it does not satisfy the minimum distance threshold.")
     depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif",
         name="Minimum Depth", description="Minimum depth for a site to be included for consideration.\nNote: This value will be replaced with the shallowest depth value found if all sites are found to be deeper than `depth_min + depth_offset`.")
@@ -127,8 +120,8 @@ end
 
 function EnvironmentalLayer(dhw::AbstractArray, wave::AbstractArray)
     return EnvironmentalLayer(
-        Param(1, bounds=(1, size(dhw, 3) + 1), ptype="integer", dists="unif", name="DHW Scenario", description="DHW scenario member identifier."),
-        Param(1, bounds=(1, size(wave, 3) + 1), ptype="integer", dists="unif", name="Wave Scenario", description="Wave scenario member identifier.")
+        Param(1, bounds=(1.0, Float64(size(dhw, 3)) + 1.0), ptype="integer", dists="unif", name="DHW Scenario", description="DHW scenario member identifier."),
+        Param(1, bounds=(1.0, Float64(size(wave, 3)) + 1.0), ptype="integer", dists="unif", name="Wave Scenario", description="Wave scenario member identifier.")
     )
 end
 

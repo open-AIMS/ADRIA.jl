@@ -9,14 +9,15 @@ const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 
 
 @testset "Domain loading" begin
-    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
 
-    scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
+    @testset "Domain DataFrame" begin
+        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
+        scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
+        test_scens = CSV.read(scen_path, DataFrame)
 
-    test_scens = CSV.read(scen_path, DataFrame)
-
-    p_df = ADRIA.param_table(dom)
-    @test p_df isa DataFrame
+        p_df = ADRIA.param_table(dom)
+        @test p_df isa DataFrame
+    end
 
     @testset "Config" begin
         ADRIA.setup()

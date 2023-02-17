@@ -2,10 +2,15 @@ using Distributions
 using Test
 
 
+if !@isdefined(ADRIA_DIR)
+    const ADRIA_DIR = pkgdir(ADRIA)
+    const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
+end
+
 @testset "site selection" begin
     # TODO: Complete tests with @tests
 
-    dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
     p_tbl = ADRIA.param_table(dom)
 
     p_tbl[:, :depth_offset] .= 7.0
@@ -33,20 +38,21 @@ end
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
-    dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
-    criteria_df = ADRIA.sample(dom, 5)  # get scenario dataframe
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
+    N = 2^3
+    criteria_df = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
 
     area_to_seed = 1.5 * 10^-6  # area of seeded corals in km^2
     ts = 5  # time step to perform site selection at
 
-    sum_cover = 0.1 .* ones(5, size(dom.site_data, 1))
-    ranks = ADRIA.run_site_selection(dom, criteria_df[criteria_df.guided.>0, :], sum_cover, area_to_seed, ts)
+    sum_cover = fill(0.1, N, ADRIA.n_locations(dom))
+    ranks = ADRIA.run_site_selection(dom, criteria_df, sum_cover, area_to_seed, ts)
 
     @test size(ranks, 1) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
 
     sel_sites = unique(ranks)
     sel_sites = sel_sites[sel_sites.!=0.0]
-    possible_ranks = collect(Float64, 1:size(dom.site_data, 1)+1.0)
+    possible_ranks = collect(Float64, 1:ADRIA.n_locations(dom)+1.0)
 
     @test all([in(ss, possible_ranks) for ss in sel_sites]) || "Impossible rank assigned."
 end

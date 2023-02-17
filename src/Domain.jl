@@ -321,16 +321,17 @@ function model_spec(d::Domain, filepath::String)::Nothing
 
     return
 end
-function model_spec(m::Model)
+function model_spec(m::Model)::DataFrame
     spec = DataFrame(m)
     bnds = spec[!, :bounds]
-    spec[!, :full_bounds] = bnds
-    spec[!, :lower_bound] = first.(bnds)
-    spec[!, :upper_bound] = getindex.(bnds, 2)
-    spec[!, :component] = replace.(string.(spec[:, :component]), "ADRIA." => "")
-    spec[!, :is_constant] = spec[:, :lower_bound] .== spec[:, :upper_bound]
 
-    select!(spec, Not(:bounds))
+    DataFrames.hcat!(spec, DataFrame(
+        :lower_bound => first.(bnds),
+        :upper_bound => getindex.(bnds, 2)
+    ))
+
+    spec[!, :component] .= replace.(string.(spec[!, :component]), "ADRIA." => "")
+    spec[!, :is_constant] .= spec[!, :lower_bound] .== spec[!, :upper_bound]
 
     # Reorder so name/description appears at end
     # makes viewing as CSV a little nicer given description can be very long
@@ -363,7 +364,7 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
 
     to_floor = (p_df.ptype .== "integer")
     if any(to_floor)
-        p_df[to_floor, :val] .= map_to_discrete.(p_df[to_floor, :val], getindex.(p_df[to_floor, :bounds], 2))
+        p_df[to_floor, :val] .= map_to_discrete.(p_df[to_floor, :val], Int64.(getindex.(p_df[to_floor, :bounds], 2)))
     end
 
     # Update with new parameters
@@ -374,23 +375,23 @@ end
 
 
 """
-    component_params(m::Model, component::Type)::DataFrame
-    component_params(spec::DataFrame, component::Type)::DataFrame
+    component_params(m::Model, component)::DataFrame
+    component_params(spec::DataFrame, component)::DataFrame
     component_params(m::Model, components::Vector)::DataFrame
     component_params(spec::DataFrame, components::Vector)::DataFrame
 
 Extract parameters for a specific model component.
 """
-function component_params(m::Model, component::Type)::DataFrame
+function component_params(m::Model, component)::DataFrame
     return component_params(model_spec(m), component)
 end
-function component_params(spec::DataFrame, component::Type)::DataFrame
+function component_params(spec::DataFrame, component)::DataFrame
     return spec[spec.component.==replace.(string(component), "ADRIA." => ""), :]
 end
-function component_params(m::Model, components::Vector)::DataFrame
+function component_params(m::Model, components::Vector{T})::DataFrame where {T}
     return component_params(model_spec(m), components)
 end
-function component_params(spec::DataFrame, components::Vector)::DataFrame
+function component_params(spec::DataFrame, components::Vector{T})::DataFrame where {T}
     return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
@@ -477,6 +478,23 @@ function switch_RCPs!(d::Domain, RCP::String)::Domain
     return d
 end
 
+"""
+    update!(dom::Domain, spec::DataFrame)::Nothing
+
+Update a Domain model with new values specified in spec.
+Assumes all `val` and `bounds` are to be updated.
+
+# Arguments
+- `dom` : Domain
+- `spec` : updated model specification
+"""
+function update!(dom::Domain, spec::DataFrame)::Nothing
+    # ModelParameters.update!(dom.model, spec)
+    dom.model[:val] = spec.val
+    dom.model[:bounds] = spec.bounds
+
+    return nothing
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", d::Domain)
 

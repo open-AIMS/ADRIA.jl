@@ -1,23 +1,25 @@
 using Printf
 using DataFrames, Distributions, LinearAlgebra
 using ADRIA
-import ADRIA: model_spec, process_inputs!, component_params
+import ADRIA: model_spec, _process_inputs!, component_params
 import Surrogates: sample
 import Surrogates.QuasiMonteCarlo: SobolSample
 
 
 """
     adjust_samples(d::Domain, df::DataFrame)::DataFrame
-    adjust_samples!(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
+    adjust_samples!(spec::DataFrame, df::DataFrame)::DataFrame
 
 Adjust given samples to ensure parameter value combinations for unguided
 scenarios are plausible.
 """
 function adjust_samples(d::Domain, df::DataFrame)::DataFrame
-    return adjust_samples(d, model_spec(d), df)
+    return adjust_samples(model_spec(d), df)
 end
-function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
-    process_inputs!(d, df)
+function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
+    # Map sampled values back to their discrete if necessary
+    _process_inputs!(spec, df)
+
     crit = component_params(spec, Criteria)
     interv = component_params(spec, Intervention)
 
@@ -49,54 +51,81 @@ function adjust_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
     return df
 end
 
-function adjust_cf_samples(d::Domain, spec::DataFrame, df::DataFrame)::DataFrame
-    # Get intervention columns that aren't "n_adapt"
-    # and make them == 0
-    intervs = component_params(spec, Intervention)
-    cols = collect(skipmissing([fn != :n_adapt ? fn : missing for fn in intervs.fieldname]))
-    df[:, cols] .= 0.0
-    df[:, [:guided]] .= -1.0  # Mark counterfactuals as -1
-
-    return adjust_samples(d, df)
-end
-function adjust_cf_samples(d::Domain, df::DataFrame)::DataFrame
-    return adjust_cf_samples(d, model_spec(d), df)
-end
-
-
 """
     sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
 
-Create samples using provided sampler, and rescale to distribution defined in the model spec.
+Create samples and rescale to distribution defined in the model spec.
 
 Notes:
 - assumes all parameters are independent.
 
 # Arguments
-- dom : Domain
-- n : Int
-- sampler : Sampling method
+- `dom` : Domain
+- `n` : Int
+- `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
 """
-function sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dict(
+function sample(dom::Domain, n::Int, sampler=SobolSample())::DataFrame
+    n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
+    return sample(model_spec(dom), n, sampler)
+end
+
+"""
+    sample(dom::Domain, n::Int, component::Type)::DataFrame
+
+Create samples and rescale to distribution defined in the model spec.
+
+Notes:
+- assumes all parameters are independent.
+
+# Arguments
+- `dom` : Domain
+- `n` : Int
+- `component` : Type, e.g. Criteria
+- `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
+"""
+function sample(dom::Domain, n::Int, component::Type, sampler=SobolSample())::DataFrame
+    n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
+
+    spec = component_params(dom.model, component)
+    return sample(spec, n, sampler)
+end
+
+"""
+    sample(spec::DataFrame, n::Int, sampler=SobolSample())::DataFrame
+
+Create samples and rescale to distribution defined in the model spec.
+
+# Arguments
+- `spec` : DataFrame containing model parameter specifications.
+- `n` : number of samples to generate.
+- `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
+"""
+function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=Dict(
     "triang" => TriangularDist,
     "norm" => TruncatedNormal,
     "unif" => Uniform
 ))::DataFrame
-    n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
 
     if Symbol(sampler) == Symbol("QuasiMonteCarlo.SobolSample()")
         ispow2(n) ? n : throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
     end
 
-    spec = model_spec(dom)
-
     # Select non-constant params
-    vary_vars = spec[spec.is_constant.==false, ["dists", "full_bounds"]]
+    vary_vars = spec[spec.is_constant.==false, ["dists", "bounds"]]
 
     # Update range
-    triang_params = vary_vars[vary_vars.dists.=="triang", "full_bounds"]
-    vary_vars[vary_vars.dists.=="triang", "full_bounds"] .= map(x -> (x[1], x[2], (x[2] - x[1]) * x[3] + x[1]), triang_params)
-    vary_dists = map((x) -> supported_dists[x.dists](x.full_bounds...), eachrow(vary_vars))
+    triang_params = vary_vars[vary_vars.dists.=="triang", "bounds"]
+    vary_vars[vary_vars.dists.=="triang", "bounds"] .= map(x -> (x[1], x[2], (x[2] - x[1]) * x[3] + x[1]), triang_params)
+    vary_dists = map((x) -> supported_dists[x.dists](x.bounds...), eachrow(vary_vars))
 
     # Create sample for uncertain parameters
     n_vary_params = size(vary_vars, 1)
@@ -109,61 +138,153 @@ function sample(dom::Domain, n::Int, sampler=SobolSample(); supported_dists=Dict
     # Scale values to indicated distributions
     samples .= permutedims(hcat(map(ix -> quantile.(vary_dists[ix], samples[:, ix]), 1:size(samples, 2))...))'
 
-    # Combine varying and constant values
-    full_df = zeros(n, size(spec, 1))
-    full_df[:, findall(spec.is_constant .== false)] .= samples
-
-    df = DataFrame(full_df, spec.fieldname)
+    # Combine varying and constant values (constant params use their indicated default vals)
+    full_df = hcat(fill.(spec.val, n)...)
+    full_df[:, spec.is_constant.==false] .= samples
 
     # Adjust samples for discrete values using flooring trick
     # Ensure unguided scenarios do not have superfluous parameter values
-    return adjust_samples(dom, spec, df)
+    return adjust_samples(spec, DataFrame(full_df, spec.fieldname))
 end
 
+"""
+    sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+
+Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, Criteria).
+All other parameters are set to their default values.
+
+# Arguments
+- `d` : Domain.
+- `n` : number of samples to generate.
+- `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
+"""
+function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+    subset_spec = component_params(d.model, [EnvironmentalLayer, Intervention, Criteria])
+
+    # Only sample guided intervention scenarios
+    _adjust_guided_lower_bound!(subset_spec, 1)
+
+    # Create and fill scenario spec
+    # Only Intervention, EnvironmentalLayer and Criteria factors are perturbed,
+    # all other factors are fixed to their default values
+    scens = repeat(param_table(d), n)
+    scens[:, subset_spec.fieldname] .= sample(subset_spec, n, sampler)
+
+    return scens
+end
 
 """
     sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     
-Generate only counterfactual scenarios using any sampler from QuasiMonteCarlo.jl
+Generate only counterfactual scenarios.
+
+# Arguments
+- `d` : Domain.
+- `n` : number of samples to generate.
+- `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
 """
 function sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
-    df::DataFrame = _sample(d, n, sampler)
-    return adjust_cf_samples(d, df)
+    spec_df = model_spec(d)
+
+    # Unguided scenarios only
+    guided_col = spec_df.fieldname .== :guided
+    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [-1 -1 -1 (-1.0, -1.0) true]
+
+    # Remove intervention scenarios as an option
+    _deactivate_interventions(spec_df)
+
+    return sample(spec_df, n, sampler)
 end
 
+"""
+    _adjust_guided_lower_bound!(guided_spec::DataFrame, lower::Int64)::DataFrame
+    
+Adjust lower bound of guided parameter spec to alter sampling range.
+"""
+function _adjust_guided_lower_bound!(spec_df::DataFrame, lower::Int64)::DataFrame
+    guided_col = spec_df.fieldname .== :guided
+    g_upper = spec_df[guided_col, :upper_bound][1]
+
+    # Update entries, standardizing values for bounds as floats
+    spec_df[guided_col, [:val, :lower_bound, :bounds]] .= [lower Float64(lower) (Float64(lower), g_upper)]
+    return spec_df
+end
 
 """
     sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     
-Generate only guided scenarios using any sampler from QuasiMonteCarlo.jl
+Generate only guided scenarios.
+
+# Arguments
+- `d` : Domain.
+- `n` : number of samples to generate.
+- `sampler` : type of sampler to use.
+
+# Returns
+Scenario specification
 """
 function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     spec_df = model_spec(d)
 
     # Remove unguided scenarios as an option
-    mod_df = copy(spec_df)
-    guided_col = mod_df.fieldname .== :guided
-    g_upper = mod_df[guided_col, :upper_bound][1]
+    # Sample without unguided (i.e., values >= 1), then revert back to original model spec
+    _adjust_guided_lower_bound!(spec_df, 1)
 
-    insertcols!(mod_df, :val, :bounds => copy([d.model[:bounds]...]))
-    mod_df[guided_col, :val] .= 1
-    mod_df[guided_col, :lower_bound] .= 1
-    mod_df[guided_col, :bounds] .= [(1, g_upper)]
-    mod_df[guided_col, :full_bounds] .= [(1, g_upper)]
+    return sample(spec_df, n, sampler)
+end
 
-    # Sample without unguided, then revert back to original model spec
-    ADRIA.update!(d.model, mod_df)
-    samples = _sample(d, n, sampler)
-    samples = adjust_samples(d, samples)
+"""
+    sample_unguided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+    
+Generate only unguided scenarios.
 
-    # Note: updating with spec_df does not work.
-    mod_df[guided_col, :val] .= 0
-    mod_df[guided_col, :lower_bound] .= 0
-    mod_df[guided_col, :bounds] .= [(0, g_upper)]
-    mod_df[guided_col, :full_bounds] .= [(0, g_upper)]
-    ADRIA.update!(d.model, mod_df)
+# Arguments
+- `d` : Domain.
+- `n` : number of samples to generate.
+- `sampler` : type of sampler to use.
 
-    return samples
+# Returns
+Scenario specification
+"""
+function sample_unguided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+    spec_df = model_spec(d)
+
+    # Fix guided factor to 0 (i.e., unguided scenarios only)
+    guided_col = spec_df.fieldname .== :guided
+    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [0 0 0 (0.0, 0.0) true]
+
+    return sample(spec_df, n, sampler)
+end
+
+"""
+    _deactivate_interventions(to_update::DataFrame)::Nothing
+
+Deactivate all intervention factors (excluding `guided` and `n_adapt`) by settings these to 0.0
+
+# Arguments
+- `to_update` : model specification to modify/update
+
+# Returns
+Scenario specification
+"""
+function _deactivate_interventions(to_update::DataFrame)::Nothing
+    intervs = component_params(to_update, Intervention)
+    cols = Symbol[fn for fn in intervs.fieldname if fn != :n_adapt && fn != :guided]
+    for c in cols
+        _row = to_update.fieldname .== c
+        _bnds = length(to_update[_row, :bounds][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
+
+        dval = to_update[_row, :ptype][1] == "integer" ? 0 : 0.0
+        to_update[_row, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [dval 0.0 0.0 _bnds true]
+    end
+
+    return nothing
 end
 
 
@@ -176,8 +297,8 @@ Check specified bounds for validity.
 Raises error if lower bound values are greater than upper bounds.
 
 # Arguments
-- lower : lower bounds
-- upper : upper bound values
+- `lower` : lower bounds
+- `upper` : upper bound values
 """
 function _check_bounds(lower, upper)
     if any(lower .> upper)
