@@ -1,5 +1,5 @@
-using NamedArrays
-using ADRIA: ResultSet
+using NamedDims
+using ADRIA: ResultSet, n_locations
 
 
 """
