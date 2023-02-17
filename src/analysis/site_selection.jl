@@ -48,7 +48,7 @@ function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple)::NamedD
     seeded_sites_store = NamedDimsArray(zeros(n_locations(rs), length(rcps)), (:locations, :rcps))
     for (indx, rcp) in enumerate(rcps)
         # select scenarios satisfying condition and sum up selection tally for each site
-        seed_log = dropdims(sum(rs.seed_log[:, :, :, scen_indices[rcp]], dims=2), dims=2)
+        seed_log = dropdims(sum(rs.seed_log[scenarios=scen_indices[rcp]], dims=2), dims=2)
         seeded_sites_store[rcps=indx] .= vec(dropdims(sum(seed_log .> 0, dims=[1, 3]), dims=3))
     end
 
