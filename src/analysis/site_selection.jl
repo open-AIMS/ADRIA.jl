@@ -12,11 +12,7 @@ Count frequency of seeded sites for scenarios satisfying a condition.
 - `scens` : contains scenario ids for scenarios satisfying the condition of interest.
 
 # Returns
-NamedDimsArray, where each entry relates to an RCP of interest, e.g., 
-[
-    RCP45=[... frequency of selection for each site ...]; 
-    RCP60=[ ... frequency of selection for each site ...]
-]
+NamedDimsArray(:locations,:rcps)
 
 # Example
 ```julia
