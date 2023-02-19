@@ -39,9 +39,9 @@ robust = ADRIA.analysis.find_robust(rs, y, rule_func, [45, 60])
 # find site selection frequencies for all robust scenarios
 robust_selection_frequencies = intervention_frequency(rs, scen_indices)
 """
-function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::NamedDimsArray
+function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::String)::NamedDimsArray
 
-    occursin(log_type, [:seed, :shade, :fog]) || ValueError("Unsupported log")
+    occursin(log_type, "seed shade fog") || ValueError("Unsupported log")
 
     interv_log = getfield(rs, Symbol("$(log_type)_log"))
     # retrieve RCPs
