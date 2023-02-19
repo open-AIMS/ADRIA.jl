@@ -155,7 +155,7 @@ end
 function create_intervention_matrix(A, weights, criteria_df, int_crit_names)
     # Define intervention decision matrix
     crit_names = names(criteria_df)
-    int_ind = [findall(crit_names .== int_crit_names[ind]) for ind = 1:length(int_crit_names)]
+    int_ind = [findall(crit_names .== int_crit_names[ind]) for ind in eachindex(int_crit_names)]
     S = A[:, int_ind]
     ws = normalize(weights[int_ind])
     return S, ws
