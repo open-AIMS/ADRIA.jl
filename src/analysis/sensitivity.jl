@@ -295,7 +295,7 @@ rule = y -> all(y .> 0.5)
 ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 ```
 """
-function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real}
+function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real,V<:Union{Function,BitVector,Vector{Int64}}}
     step_size = 1 / S
     steps = collect(0:step_size:1.0)
 
@@ -306,15 +306,13 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors:
         CI=[:mean, :lower, :upper]
     )
 
-    y = col_normalize(y)
-
-    all_p_rule = findall(rule, eachrow(y))
-    num_p_rule = length(all_p_rule)
-    if num_p_rule == 0
+    all_p_rule = _map_outcomes(y, rule)
+    if length(all_p_rule) == 0
         @info "Empty result set"
         return p_table
     end
 
+    # Identify behavioural 
     n_scens = size(X, 1)
     behave = zeros(Bool, n_scens)
     behave[all_p_rule] .= true
@@ -339,14 +337,24 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors:
 
     return p_table
 end
-function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real}
+function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real,V<:Union{Function,BitVector,Vector{Int64}}}
     return outcome_map(X, y, rule, names(X); S, n_boot, conf)
 end
-function outcome_map(rs::RS, y::AbstractArray, rule, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {RS}
+function outcome_map(rs::RS, y::AbstractArray, rule::V, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {RS,V<:Union{Function,BitVector,Vector{Int64}}}
     return outcome_map(rs.inputs, y, rule, target_factors; S, n_boot, conf)
 end
-function outcome_map(rs::RS, y::AbstractArray, rule; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {RS}
+function outcome_map(rs::RS, y::AbstractArray, rule::V; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {RS,V<:Union{Function,BitVector,Vector{Int64}}}
     return outcome_map(rs.inputs, y, rule, names(rs.inputs); S, n_boot, conf)
+end
+
+function _map_outcomes(y::AbstractArray, rule::Union{BitVector,Vector{Int64}})
+    return rule
+end
+function _map_outcomes(y::AbstractArray, rule::Function)
+    _y = col_normalize(y)
+    all_p_rule = findall(rule, eachrow(_y))
+
+    return all_p_rule
 end
 
 end
