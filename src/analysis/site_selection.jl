@@ -1,15 +1,16 @@
-using NamedDims
+using NamedDims, AxisKeys
 using ADRIA: ResultSet, n_locations
 
 
 """
-    seeded_sites_frequency(rs::ResultSet,scens::NamedTuple)::NamedTuple
+    seeded_sites_frequency(rs::ResultSet,scens::NamedTuple, log_type::String)::NamedDimsArray
 
 Count frequency of seeded sites for scenarios satisfying a condition.
 
 # Arguments
 - 'rs' : ResultSet
 - `scens` : contains scenario ids for scenarios satisfying the condition of interest.
+- 'log_type` : "seed", "shade" or "fog" indicating the intervention log to use in calculating frequencies.
 
 # Returns
 NamedDimsArray(:locations,:rcps)
