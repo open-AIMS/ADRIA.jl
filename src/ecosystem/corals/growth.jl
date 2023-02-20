@@ -387,7 +387,7 @@ Area covered by recruited larvae (in m²)
 """
 function settler_cover(fec_scope::T, sf::T,
     TP_data::T, leftover_space::Matrix{Float64},
-    α::V, β::V, basal_area_per_settler::V)::Matrix{Float64} where {T<:AbstractArray{<:Real,2},V<:Vector{Float64}}
+    α::V, β::V, basal_area_per_settler::V)::Matrix{Float64} where {T<:AbstractArray{<:Float64,2},V<:Vector{Float64}}
 
     # Send larvae out into the world (reuse fec_scope to reduce allocations)
     # fec_scope .= (fec_scope .* sf)
