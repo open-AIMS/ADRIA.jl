@@ -321,7 +321,7 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V, target_facto
     for (j, fact_t) in enumerate(target_factors)
         X_q .= quantile(X[:, fact_t], steps)
         for (i, s) in enumerate(X_q[1:end-1])
-            b = (X_q[i] .< X[:, fact_t]) .& (X[:, fact_t] .<= X_q[i+1]) .& behave
+            b = (X_q[i] .< X[:, fact_t] .<= X_q[i+1]) .& behave
             if count(b) == 0
                 continue
             end
