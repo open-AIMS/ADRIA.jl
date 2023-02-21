@@ -408,32 +408,18 @@ function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame,NamedDimsArray})::Tuple
         -9.69 1.49   # massives from Urbina-Barretto 2021, assumed similar for encrusting and small massives
         -9.69 1.49   # massives from Urbina-Barretto 2021,  assumed similar for large massives
     ])
-
-    log_colony = zeros(n_species)
+    pa_params = repeat(pa_params, n_corals)
 
     # Estimate log colony volume (litres) based on relationship
     # established by Urbina-Barretto 2021, for each taxa/size class and scenario
     # Excuse the dodgy hardcoded indexing
-
-    # Do acropora first ...
-    coral_subsets = [i:i+n_corals-1 for i in 1:n_corals:n_species-12]
-    for (taxa_id, c_ss) in zip(1:4, coral_subsets)
-        c_areas = cs_p[cs_p.taxa_id.==taxa_id, :colony_area_cm2]
-        log_colony[c_ss] = pa_params[:, 1] .+ pa_params[:, 2] .* log.(c_areas)
-    end
-
-    # ... then massives
-    coral_subsets = [i:i+n_corals-1 for i in 25:n_corals:n_species]
-    for (taxa_id, c_ss) in zip(5:6, coral_subsets)
-        c_areas = cs_p[cs_p.taxa_id.==taxa_id, :colony_area_cm2]
-        log_colony[c_ss] = pa_params[:, 1] .+ pa_params[:, 2] .* log.(c_areas)
-    end
+    log_colony = pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_area_cm2)
 
     # Maximum colony area for each species and scenario, using largest size class
     if ndims(colony_area_cm2) == 1
-        max_log_colony = pa_params[6:6:end, 1] .+ pa_params[6:6:end, 2] .* log.(colony_area_cm2[6:6:end])
+        max_log_colony = pa_params[n_sizes:n_sizes:end, 1] .+ pa_params[n_sizes:n_sizes:end, 2] .* log.(colony_area_cm2[n_sizes:n_sizes:end])
     else
-        max_log_colony = vec(pa_params[6:6:end, 1] .+ pa_params[6:6:end, 2] .* log.(colony_area_cm2[6:6:end, :]))
+        max_log_colony = vec(pa_params[n_sizes:n_sizes:end, 1] .+ pa_params[n_sizes:n_sizes:end, 2] .* log.(colony_area_cm2[n_sizes:n_sizes:end, :]))
     end
 
     colony_litres_per_cm2 = 10.0 .^ log_colony
