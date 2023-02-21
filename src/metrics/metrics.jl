@@ -1,6 +1,6 @@
 module metrics
 
-using Interpolations, Statistics, OnlineStats, NamedDims
+using Interpolations, Statistics, OnlineStats, NamedDims, AxisKeys
 
 using DataFrames
 import ADRIA: coral_spec, ResultSet, timesteps
@@ -627,7 +627,7 @@ function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k
     return _relative_shelter_volume(X, site_area, k_area, ins)
 end
 function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
-    @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
+    @assert size(inputs, :scenarios) == size(X, :scenarios)  # Number of results should match number of scenarios
 
     nspecies::Int64 = size(X, :species)
     nscens::Int64 = size(X, :scenarios)
@@ -649,7 +649,7 @@ function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k
     return RSV
 end
 function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray where {T<:Real}
-    ins = NamedDimsArray(inputs, scenarios=1:size(inputs, 1), factors=names(inputs))
+    ins = NamedDimsArray(Matrix(inputs), scenarios=1:size(inputs, 1), factors=names(inputs))
     return _relative_shelter_volume(X, site_area, k_area, ins)
 end
 
