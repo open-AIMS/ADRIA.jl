@@ -3,6 +3,7 @@ module analysis
 using Statistics, DataFrames
 using NamedDims, AxisKeys
 import ADRIA: ResultSet
+using ADRIA.metrics: nds
 
 
 """

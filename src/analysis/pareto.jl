@@ -38,7 +38,7 @@ optimal = ADRIA.analysis.find_pareto_optimal(rs, y, [45, 60])
 """
 function find_pareto_optimal(scens::DataFrame, y::AbstractArray, rcps::Vector{Int}; offset::Int=0)::NamedTuple
     x_idx = [scens.RCP .== rcp for rcp in rcps]
-    r_rcp = [reduce(vcat, ADRIA.metrics.nds(y[rcp_idx, :], offset)) for rcp_idx in x_idx]
+    r_rcp = [reduce(vcat, nds(y[rcp_idx, :], offset)) for rcp_idx in x_idx]
 
     scen_ids = [findall(rcp_idx)[r_idx] for (rcp_idx, r_idx) in zip(x_idx, r_rcp)]
 
