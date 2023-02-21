@@ -402,7 +402,9 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
         -9.69 1.49   # massives from Urbina-Barretto 2021, assumed similar for encrusting and small massives
         -9.69 1.49   # massives from Urbina-Barretto 2021,  assumed similar for large massives
     ])
-    pa_params = repeat(pa_params, n_corals)
+
+    # Repeat each entry `n_szes` times to cover the number size classes represented
+    pa_params = repeat(pa_params, inner=(n_sizes, 1))
 
     # Estimate log colony volume (litres) based on relationship
     # established by Urbina-Barretto 2021, for each taxa/size class and scenario
