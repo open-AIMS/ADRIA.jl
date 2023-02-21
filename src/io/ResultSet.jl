@@ -311,6 +311,18 @@ function timesteps(rs::ResultSet)
 end
 
 """
+    n_locations(rs::ResultSet)
+
+Retrieve the number of locations represented in the result set.
+
+# Arguments
+- `rs` : ResultSet
+"""
+function n_locations(rs::ResultSet)
+    return size(rs.site_ids, 1)
+end
+
+"""
     component_params(spec::DataFrame, component::Type)::DataFrame
 
 Extract parameters for a specific model component from exported model specification.

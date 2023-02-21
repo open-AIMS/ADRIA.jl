@@ -1,5 +1,5 @@
 """
-    find_pareto_optimal(rs::ResultSet, y::AbstractArray, rcps::Vector{Int} offset::Int=0)    
+    find_pareto_optimal(rs::ResultSet, y::AbstractArray, rcps::Vector{Int} offset::Int=0)
     find_pareto_optimal(scens::DataFrame, y::AbstractArray, rcps::Vector{Int}; offset::Int=0)
 
 Identify the scenarios (by position) that are determined to be pareto optimal.
@@ -38,7 +38,7 @@ optimal = ADRIA.analysis.find_pareto_optimal(rs, y, [45, 60])
 """
 function find_pareto_optimal(scens::DataFrame, y::AbstractArray, rcps::Vector{Int}; offset::Int=0)::NamedTuple
     x_idx = [scens.RCP .== rcp for rcp in rcps]
-    r_rcp = [reduce(vcat, ADRIA.metrics.nds(y[rcp_idx, :], offset)) for rcp_idx in x_idx]
+    r_rcp = [reduce(vcat, nds(y[rcp_idx, :], offset)) for rcp_idx in x_idx]
 
     scen_ids = [findall(rcp_idx)[r_idx] for (rcp_idx, r_idx) in zip(x_idx, r_rcp)]
 
@@ -49,7 +49,7 @@ function find_pareto_optimal(rs::ResultSet, y::AbstractArray, rcps::Vector; offs
 end
 
 """
-    find_robust(rs::ResultSet, y::AbstractArray, rule, rcps::Vector{Int} offset::Int=0)    
+    find_robust(rs::ResultSet, y::AbstractArray, rule, rcps::Vector{Int} offset::Int=0)
     find_robust(scens::DataFrame, y::AbstractArray, rule, rcps::Vector{Int}; offset::Int=0)
 
 Identify the scenarios (by position) that are determined to be robust and pareto optimal.
@@ -57,7 +57,7 @@ Identify the scenarios (by position) that are determined to be robust and pareto
 # Arguments
 - `rs` : ResultSet
 - `y` : scenario outcomes
-- `rule` : a function 
+- `rule` : a function
 - `rcps` : RCP ids as integers (e.g., 45, 60, 85)
 - `offset` : include scenarios that are some distance from pareto front, where 0 refers to
              the pareto front itself.
