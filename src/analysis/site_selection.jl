@@ -48,8 +48,8 @@ function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_typ
 
     for rcp in rcps
         # select scenarios satisfying condition and sum up selection tally for each site
-        seed_log = dropdims(sum(interv_log[scenarios=scen_indices[rcp]], dims=2), dims=2)
-        seeded_sites_store(rcp) .= vec(dropdims(sum(seed_log .> 0, dims=[1, 3]), dims=3))
+        seed_log = dropdims(sum(interv_log[scenarios=scen_indices[rcp]], dims=:coral_id), dims=:coral_id)
+        seeded_sites_store(rcp) .= vec(dropdims(sum(seed_log .> 0, dims=[:timesteps, :scenarios]), dims=:timesteps))
     end
 
     return seeded_sites_store
