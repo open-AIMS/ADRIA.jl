@@ -8,7 +8,7 @@ abstract type EcoModel end
 
 
 """Set a model parameter value directly."""
-function set(p::Param, val::Number)
+function set(p::Param, val::Union{Int64,Float64})
     if hasproperty(p, :ptype) && p.ptype == "integer" && !isinteger(val)
         val = map_to_discrete(val, p.bounds[2])
     end
@@ -18,11 +18,11 @@ end
 
 
 """
-    map_to_discrete(v::Number, u::Int)::Int
+    map_to_discrete(v::Union{Int64,Float64}, u::Union{Int64,Float64})::Int64
 
 For integer/categorical parameters, take floor of `v`, capping to `u - 1`
 """
-function map_to_discrete(v::Number, u::Int64)::Int64
+function map_to_discrete(v::Union{Int64,Float64}, u::Union{Int64,Float64})::Int64
     return Int64(min(floor(v), u - 1))
 end
 
