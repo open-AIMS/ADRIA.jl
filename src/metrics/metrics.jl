@@ -381,7 +381,7 @@ Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical
    https://doi.org/10.1016/j.ecolind.2020.107151
 
 """
-function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame,NamedDimsArray})::Tuple
+function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vector{Float64}}
     _, _, cs_p::DataFrame = coral_spec()
     n_corals::Int64 = length(unique(cs_p.taxa_id))
     n_species::Int64 = length(unique(cs_p.coral_id))
@@ -422,15 +422,19 @@ function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame,NamedDimsArray})::Tuple
         max_log_colony = vec(pa_params[n_sizes:n_sizes:end, 1] .+ pa_params[n_sizes:n_sizes:end, 2] .* log.(colony_area_cm2[n_sizes:n_sizes:end, :]))
     end
 
-    colony_litres_per_cm2 = 10.0 .^ log_colony
-    max_colony_litres_per_cm2 = 10.0 .^ max_log_colony
+    colony_litres_per_cm2::Vector{Float64} = 10.0 .^ log_colony
+    max_colony_litres_per_cm2::Vector{Float64} = 10.0 .^ max_log_colony
 
     # Convert from dm^3 to m^3
-    cm2_m3_per_m2::Float64 = 10^-3
-    colony_vol_m3_per_m2::Array{Float64} = colony_litres_per_cm2 * cm2_m3_per_m2
-    max_colony_vol_m3_per_m2::Array{Float64} = max_colony_litres_per_cm2 * cm2_m3_per_m2
+    cm2_to_m3_per_m2::Float64 = 10^-3
+    colony_vol_m3_per_m2::Vector{Float64} = colony_litres_per_cm2 * cm2_to_m3_per_m2
+    max_colony_vol_m3_per_m2::Vector{Float64} = max_colony_litres_per_cm2 * cm2_to_m3_per_m2
 
     return colony_vol_m3_per_m2, max_colony_vol_m3_per_m2
+end
+function _colony_Lcm2_to_m3m2(inputs::DataFrame)::Tuple
+    nd = NamedDimsArray(Matrix(inputs), scenarios=1:nrow(inputs), factors=names(inputs))
+    return _colony_Lcm2_to_m3m2(nd)
 end
 
 
