@@ -12,22 +12,55 @@ end
     scens = ADRIA.sample(dom, num_samples)
 
     ms = ADRIA.model_spec(dom)
-    @test all(values(scens[1, ms.is_constant.==true]) == values(scens[end, ms.is_constant.==true])) || "Constant params are not constant!"
+    constant_params = ms.is_constant .== true
+    @test all(values(scens[1, constant_params]) .== values(scens[end, constant_params])) || "Constant params are not constant!"
 
+    eco = (ms.component .== "Coral") .& .!(constant_params)
+    interv = (ms.component .== "Intervention") .& .!(constant_params)
     min_x = values(ms[:, :lower_bound])
     max_x = values(ms[:, :upper_bound])
-    eco = findall((ms.component .== "Coral") .& (ms.is_constant .== false))
+
+    msg = "Sampled values were not in expected bounds!"
+    coral_msg = "Sampled coral values were not in expected bounds!"
     for i in 1:num_samples
-        msg = "Sampled values were not in expected bounds! Expected "
         x = values(scens[i, :])
 
         if scens[i, :guided] > 0
-            @test all(min_x .<= x .<= max_x) || "Sampled values were not in expected bounds! $(min_x .<= x .<= max_x)"
-        else
-            # When guided == 0, intervention parameters are set to 0 so only check ecological values
-            @test all(min_x[eco] .<= x[eco] .<= max_x[eco]) || "Sampled coral values were not in expected bounds! $(min_x[eco] .<= x[eco] .<= max_x[eco])"
+            cond = min_x .<= x .<= max_x
+            @test all(cond) || "$msg | $(ms[.!(cond), :]) | $(x[.!(cond)])"
+            continue
         end
+
+        # When no interventions are used, e.g., for counterfactual or unguided scenarios
+        # (guided ∈ [-1, 0]) intervention parameters are set to 0 so only check ecological values
+        cond = min_x[eco] .<= x[eco] .<= max_x[eco]
+        @test all(cond) || "$coral_msg | $(ms[.!(cond), :]) | $(x[eco][.!(cond)])"
+
+        # Note: Test to ensure all intervention factors are set to 0 is covered by the guided
+        # sampling test below
     end
+end
+
+@testset "Flooring trick" begin
+    # Check that continous sampled values are correctly mapped
+    # to corresponding discrete values.
+
+    @test ADRIA.map_to_discrete(50.7, 51) == 50
+
+    @test ADRIA.map_to_discrete(10.9, 11) == 10
+
+    # Test value capped to upper bound
+    @test ADRIA.map_to_discrete(4, 4) == 3
+
+    x = rand(1:0.01:20, 25)
+    expect = min.(floor.(Int64, x), ceil.(Int64, x) .- 1)
+    calc = ADRIA.map_to_discrete.(x, Int64.(ceil.(x)))
+    msg = """
+    Flooring trick failed to produce discrete values
+    Expected: $(expect)
+    Received: $(calc)
+    """
+    @test all(expect .== calc) || msg
 end
 
 @testset "Targeted sampling" begin
