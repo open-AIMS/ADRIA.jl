@@ -31,7 +31,7 @@ rule_func = x -> all(x .>= 0.9)
 robust_scens = ADRIA.analysis.find_robust(rs, y, rule_func, [45, 60])
 
 # Retrieve seeding intervention frequency for robust scenarios
-robust_selection_frequencies = intervention_frequency(rs, robust_scens, :seed)
+robust_selection_frequencies = ADRIA.analysis.intervention_frequency(rs, robust_scens, :seed)
 """
 function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::NamedDimsArray
     log_type ∈ [:seed, :shade, :fog] || ValueError("Unsupported log")
