@@ -41,9 +41,8 @@ function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_typ
 
     interv_log = getfield(rs, Symbol("$(log_type)_log"))
     # retrieve RCPs
-    rcps = Symbol.(keys(scen_indices))
+    rcps = collect(Symbol.(keys(scen_indices)))
     n_locs = n_locations(rs)
-
     # create frequencies storage container
     seeded_sites_store = NamedDimsArray(KeyedArray(zeros(n_locs, length(rcps)), (1:n_locs, [rcps[k] for k in eachindex(rcps)])), (:locations, :rcps))
 
