@@ -40,6 +40,12 @@ robust_selection_frequencies = intervention_frequency(rs, robust_scens, :seed)
 function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::NamedDimsArray
     log_type ∈ [:seed, :shade, :fog] || ValueError("Unsupported log")
 
+    # Get requested log
+    interv_log = getfield(rs, Symbol("$(log_type)_log"))
+    rcps = collect(Symbol.(keys(scen_indices)))
+    n_locs = n_locations(rs)
+
+    interv_freq = NamedDimsArray(zeros(n_locs, length(rcps)), locations=rs.site_ids, rcps=rcps)
     interv_log = getfield(rs, Symbol("$(log_type)_log"))
     # retrieve RCPs
     rcps = collect(Symbol.(keys(scen_indices)))
