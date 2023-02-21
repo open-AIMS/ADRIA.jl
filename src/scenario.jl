@@ -174,12 +174,11 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     vals[vals.<threshold] .= 0.0
     data_store.total_absolute_cover[:, :, idx] .= vals
 
-    p_tbl = param_table(domain)
-    vals .= absolute_shelter_volume(rs_raw, site_area(domain), p_tbl)
+    vals .= absolute_shelter_volume(rs_raw, site_area(domain), param_set)
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(rs_raw, site_area(domain), site_k_area(domain), p_tbl)
+    vals .= relative_shelter_volume(rs_raw, site_area(domain), site_k_area(domain), param_set)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
