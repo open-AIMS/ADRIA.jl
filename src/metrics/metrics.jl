@@ -389,7 +389,7 @@ function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame,NamedDimsArray})::Tuple
 
     # Extract assumed colony area (in cm^2) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
-    colony_area_cm2 = nothing
+    local colony_area_cm2::Array{Float64}
     try
         colony_area_cm2 = Array{Float64}(inputs[:, cs_p.coral_id.*"_colony_area_cm2"])'
     catch
