@@ -2,7 +2,7 @@ module analysis
 
 using Statistics, DataFrames
 using NamedDims, AxisKeys
-import ADRIA: ResultSet
+import ADRIA: ResultSet, n_locations
 using ADRIA.metrics: nds
 
 
@@ -71,5 +71,6 @@ end
 
 include("pareto.jl")
 include("sensitivity.jl")
+include("intervention.jl")
 
 end
