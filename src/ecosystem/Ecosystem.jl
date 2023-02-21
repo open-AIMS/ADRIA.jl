@@ -32,7 +32,7 @@ end
 Update a dataframe of parameters.
 Length of `u` is expected to match number of columns in `df`.
 """
-function map_to_discrete!(df::DataFrame, u::Union{AbstractArray,Tuple})::Nothing
+function map_to_discrete!(df::DataFrame, u::Union{AbstractVector,Tuple})::Nothing
     for (idx, b) in enumerate(u)
         df[!, idx] .= map_to_discrete.(df[!, idx], b)
     end
