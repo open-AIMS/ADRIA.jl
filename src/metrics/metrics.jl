@@ -389,13 +389,7 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
 
     # Extract assumed colony area (in cm^2) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
-    local colony_area_cm2::Array{Float64}
-    try
-        colony_area_cm2 = Array{Float64}(inputs[:, cs_p.coral_id.*"_colony_area_cm2"])'
-    catch
-        # Get from NamedDimsArray instead
-        colony_area_cm2 = Array{Float64}(inputs(cs_p.coral_id .* "_colony_area_cm2"))
-    end
+    colony_area_cm2::Array{Float64} = Array{Float64}(inputs(cs_p.coral_id .* "_colony_area_cm2"))
 
     # Colony planar area parameters (see second column of Table 1 in Urbina-Barreto et al., [1])
     # First column is `b`, second column is `a`
@@ -416,11 +410,7 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
     log_colony = pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_area_cm2)
 
     # Maximum colony area for each species and scenario, using largest size class
-    if ndims(colony_area_cm2) == 1
-        max_log_colony = pa_params[n_sizes:n_sizes:end, 1] .+ pa_params[n_sizes:n_sizes:end, 2] .* log.(colony_area_cm2[n_sizes:n_sizes:end])
-    else
-        max_log_colony = vec(pa_params[n_sizes:n_sizes:end, 1] .+ pa_params[n_sizes:n_sizes:end, 2] .* log.(colony_area_cm2[n_sizes:n_sizes:end, :]))
-    end
+    max_log_colony::Vector{Float64} = pa_params[n_sizes:n_sizes:end, 1] .+ pa_params[n_sizes:n_sizes:end, 2] .* log.(colony_area_cm2[n_sizes:n_sizes:end])
 
     colony_litres_per_cm2::Vector{Float64} = 10.0 .^ log_colony
     max_colony_litres_per_cm2::Vector{Float64} = 10.0 .^ max_log_colony
