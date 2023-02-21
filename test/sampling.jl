@@ -12,22 +12,34 @@ end
     scens = ADRIA.sample(dom, num_samples)
 
     ms = ADRIA.model_spec(dom)
-    @test all(values(scens[1, ms.is_constant.==true]) == values(scens[end, ms.is_constant.==true])) || "Constant params are not constant!"
+    constant_params = ms.is_constant .== true
+    @test all(values(scens[1, constant_params]) .== values(scens[end, constant_params])) || "Constant params are not constant!"
 
+    eco = (ms.component .== "Coral") .& .!(constant_params)
+    interv = (ms.component .== "Intervention") .& .!(constant_params)
     min_x = values(ms[:, :lower_bound])
     max_x = values(ms[:, :upper_bound])
-    eco = findall((ms.component .== "Coral") .& (ms.is_constant .== false))
+
+    msg = "Sampled values were not in expected bounds!"
+    coral_msg = "Sampled coral values were not in expected bounds!"
     for i in 1:num_samples
-        msg = "Sampled values were not in expected bounds! Expected "
         x = values(scens[i, :])
 
         if scens[i, :guided] > 0
-            @test all(min_x .<= x .<= max_x) || "Sampled values were not in expected bounds! $(min_x .<= x .<= max_x)"
-        else
-            # When guided == 0, intervention parameters are set to 0 so only check ecological values
-            @test all(min_x[eco] .<= x[eco] .<= max_x[eco]) || "Sampled coral values were not in expected bounds! $(min_x[eco] .<= x[eco] .<= max_x[eco])"
+            cond = min_x .<= x .<= max_x
+            @test all(cond) || "$msg | $(ms[.!(cond), :]) | $(x[.!(cond)])"
+            continue
         end
+
+        # When no interventions are used, e.g., for counterfactual or unguided scenarios
+        # (guided ∈ [-1, 0]) intervention parameters are set to 0 so only check ecological values
+        cond = min_x[eco] .<= x[eco] .<= max_x[eco]
+        @test all(cond) || "$coral_msg | $(ms[.!(cond), :]) | $(x[eco][.!(cond)])"
+
+        # Note: Test to ensure all intervention factors are set to 0 is covered by the guided
+        # sampling test below
     end
+end
 end
 
 @testset "Targeted sampling" begin
