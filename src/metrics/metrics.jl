@@ -381,10 +381,11 @@ Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical
    https://doi.org/10.1016/j.ecolind.2020.107151
 
 """
-function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame,DataFrameRow})::Tuple
+function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame,NamedDimsArray})::Tuple
     _, _, cs_p::DataFrame = coral_spec()
     n_corals::Int64 = length(unique(cs_p.taxa_id))
     n_species::Int64 = length(unique(cs_p.coral_id))
+    n_sizes::Int64 = length(unique(cs_p.class_id))
 
     # Extract assumed colony area (in cm^2) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
@@ -392,8 +393,8 @@ function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame,DataFrameRow})::Tuple
     try
         colony_area_cm2 = Array{Float64}(inputs[:, cs_p.coral_id.*"_colony_area_cm2"])'
     catch
-        # Get from DataFrameRow instead
-        colony_area_cm2 = Array{Float64}(inputs[cs_p.coral_id.*"_colony_area_cm2"])
+        # Get from NamedDimsArray instead
+        colony_area_cm2 = Array{Float64}(inputs(cs_p.coral_id .* "_colony_area_cm2"))
     end
 
     # Colony planar area parameters (see second column of Table 1 in Urbina-Barreto et al., [1])
@@ -541,7 +542,7 @@ shelter volume (a 3D metric).
    Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
-function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
+function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, inputs::NamedDimsArray)::AbstractArray{T} where {T<:Real}
     nspecies::Int64 = size(X, :species)
 
     # Calculate shelter volume of groups and size classes and multiply with area covered
@@ -555,7 +556,15 @@ function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, i
     # Sum over groups and size classes to estimate total shelter volume per site
     return dropdims(sum(ASV, dims=:species), dims=:species)
 end
-function _absolute_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
+    ins = NamedDimsArray(Matrix(inputs), scenarios=1:size(inputs, 1), factors=names(inputs))
+    return _absolute_shelter_volume(X, site_area, ins)
+end
+function _absolute_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
+    ins = NamedDimsArray(Matrix(inputs), scenarios=1:1, params=names(df))
+    return _absolute_shelter_volume(X, site_area, ins)
+end
+function _absolute_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, inputs::NamedDimsArray)::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
 
@@ -609,7 +618,7 @@ maximum shelter volume possible.
    Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
-function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
 
@@ -626,7 +635,12 @@ function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray where {T<:Real}
+function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+    # Collate for a single scenario
+    ins = NamedDimsArray(inputs, scenarios=1:size(inputs, 1), factors=names(inputs))
+    return _relative_shelter_volume(X, site_area, k_area, ins)
+end
+function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
     @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
 
     nspecies::Int64 = size(X, :species)
@@ -648,6 +662,11 @@ function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
+function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray where {T<:Real}
+    ins = NamedDimsArray(inputs, scenarios=1:size(inputs, 1), factors=names(inputs))
+    return _relative_shelter_volume(X, site_area, k_area, ins)
+end
+
 function _relative_shelter_volume(rs::ResultSet)::NamedDimsArray
     return rs.outcomes[:relative_shelter_volume]
 end
