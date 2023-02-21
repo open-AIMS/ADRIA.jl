@@ -3,17 +3,18 @@ using ADRIA: ResultSet, n_locations
 
 
 """
-    seeded_sites_frequency(rs::ResultSet,scens::NamedTuple, log_type::String)::NamedDimsArray
+    intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::NamedDimsArray
 
+Count number of times a location of selected for intervention
 Count frequency of seeded sites for scenarios satisfying a condition.
 
 # Arguments
 - 'rs' : ResultSet
-- `scens` : contains scenario ids for scenarios satisfying the condition of interest.
-- 'log_type` : "seed", "shade" or "fog" indicating the intervention log to use in calculating frequencies.
+- `scen_indices` : rcp_id => scenario id that satisfy a condition of interest.
+- 'log_type` : the intervention log to use in calculating frequencies (one of :seed, :shade or :fog).
 
 # Returns
-NamedDimsArray(:locations,:rcps)
+NamedDimsArray(:locations, :rcps)
 
 # Example
 ```julia
@@ -31,10 +32,10 @@ y = hcat(mean_tac, mean_sv)
 
 # Find all pareto optimal scenarios where all metrics >= 0.9
 rule_func = x -> all(x .>= 0.9)
-robust = ADRIA.analysis.find_robust(rs, y, rule_func, [45, 60])
+robust_scens = ADRIA.analysis.find_robust(rs, y, rule_func, [45, 60])
 
-# find site selection frequencies for all robust scenarios
-robust_selection_frequencies = intervention_frequency(rs, scen_indices)
+# Retrieve seeding intervention frequency for robust scenarios
+robust_selection_frequencies = intervention_frequency(rs, robust_scens, :seed)
 """
 function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::NamedDimsArray
     log_type ∈ [:seed, :shade, :fog] || ValueError("Unsupported log")
