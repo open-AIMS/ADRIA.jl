@@ -459,7 +459,7 @@ function _shelter_species_loop(X::AbstractArray{T1,3}, n_species::Int64, colony_
 
     # Loop over each taxa group
     RSV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X[species=1:6])...))
-    taxa_max_map = zip([i:i+5 for i in 1:6:36], 1:6)  # map maximum SV for each group
+    taxa_max_map = zip([i:i+5 for i in 1:6:n_species], 1:6)  # map maximum SV for each group
 
     # Work out RSV for each taxa
     for (sp, sq) in taxa_max_map
