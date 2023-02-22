@@ -440,17 +440,17 @@ e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, siz
 
 # Arguments
 - `X` : raw results (proportional coral cover relative to full site area)
-- `nspecies` : number of species (taxa and size classes) considered
+- `n_species` : number of species (taxa and size classes) considered
 - `scen` : scenario number to calculate metric for
 - `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class (36)
 - `max_colony_vol_m3_per_m2` : theoretical maximum volume per m² of coverage for each taxa (6)
 - `site_area` : total area of site in m²
 - `k_area` : habitable area of site in m² (i.e., `k` area)
 """
-function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2::Array{F}, max_colony_vol_m3_per_m2::Array{F}, site_area::Array{F}, k_area::Array{F})::NamedDimsArray where {T1<:Real,F<:Float64}
+function _shelter_species_loop(X::AbstractArray{T1,3}, n_species::Int64, colony_vol_m3_per_m2::Array{F}, max_colony_vol_m3_per_m2::Array{F}, site_area::Array{F}, k_area::Array{F})::NamedDimsArray where {T1<:Real,F<:Float64}
     # Calculate absolute shelter volumes first
     ASV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X)...))
-    _shelter_species_loop!(X, ASV, nspecies, colony_vol_m3_per_m2, site_area)
+    _shelter_species_loop!(X, ASV, n_species, colony_vol_m3_per_m2, site_area)
 
     MSV::Matrix{Float64} = k_area' .* max_colony_vol_m3_per_m2  # in m³
     # Ensure zero division does not occur
