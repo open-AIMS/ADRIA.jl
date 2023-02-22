@@ -403,24 +403,21 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
         -9.69 1.49   # massives from Urbina-Barretto 2021,  assumed similar for large massives
     ])
 
-    # Repeat each entry `n_szes` times to cover the number size classes represented
+    # Repeat each entry `n_sizes` times to cover the number size classes represented
     pa_params = repeat(pa_params, inner=(n_sizes, 1))
 
-    # Estimate log colony volume (litres) based on relationship
+    # Estimate colony volume (litres) based on relationship
     # established by Urbina-Barretto 2021, for each taxa/size class and scenario
-    # Excuse the dodgy hardcoded indexing
-    log_colony = pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_area_cm2)
-
-    # Maximum colony area for each species and scenario, using largest size class
-    max_log_colony::Vector{Float64} = pa_params[n_sizes:n_sizes:end, 1] .+ pa_params[n_sizes:n_sizes:end, 2] .* log.(colony_area_cm2[n_sizes:n_sizes:end])
-
-    colony_litres_per_cm2::Vector{Float64} = 10.0 .^ log_colony
-    max_colony_litres_per_cm2::Vector{Float64} = 10.0 .^ max_log_colony
+    # Urbina-Barretto model is a (natural) log-log relationship so we
+    # apply `exp()` to transform back to dm³
+    colony_litres_per_cm2::Vector{Float64} = exp.(pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_area_cm2))
 
     # Convert from dm^3 to m^3
     cm2_to_m3_per_m2::Float64 = 10^-3
     colony_vol_m3_per_m2::Vector{Float64} = colony_litres_per_cm2 * cm2_to_m3_per_m2
-    max_colony_vol_m3_per_m2::Vector{Float64} = max_colony_litres_per_cm2 * cm2_to_m3_per_m2
+
+    # Assumed maximum colony area for each species and scenario, using largest size class
+    max_colony_vol_m3_per_m2::Vector{Float64} = colony_vol_m3_per_m2[n_sizes:n_sizes:end]
 
     return colony_vol_m3_per_m2, max_colony_vol_m3_per_m2
 end
