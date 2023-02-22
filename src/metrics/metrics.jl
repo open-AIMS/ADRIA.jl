@@ -130,7 +130,7 @@ function slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(
 end
 
 
-""" 
+"""
     relative_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray{T} where {T}
     relative_cover(rs::ResultSet)::AbstractArray
 
@@ -305,7 +305,7 @@ end
     juvenile_indicator(X::AbstractArray{T}, coral_params::DataFrame, area::Vector{Float64}, k_area::Vector{Float64}) where {T<:Real}
     juvenile_indicator(rs::ResultSet)
 
-Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretical density 
+Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretical density
 for juveniles have been achieved.
 
 Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm diameter.
@@ -334,8 +334,8 @@ Inverse Simpsons diversity indicator.
 Number of taxa (distinct groups with enhanced lumped with unenhanced) is hardcoded in this function.
 
 # References
-1. Hill, M. O. (1973). 
-    Diversity and Evenness: A Unifying Notation and Its Consequences. 
+1. Hill, M. O. (1973).
+    Diversity and Evenness: A Unifying Notation and Its Consequences.
    Ecology, 54(2), 427-432.
    https://doi.org/10.2307/1934352
 
@@ -373,11 +373,11 @@ Helper function to convert coral colony values from Litres/cm² to m³/m²
 Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
 
 # References
-1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V., Elise, S., Kulbicki, M., Quod, J.-P., 
-     Dutrieux, E., Garnier, R., Henrich Bruggemann, J., Penin, L., & Adjeroud, M. (2021). 
-   Quantifying the shelter capacity of coral reefs using photogrammetric 3D modeling: 
-     From colonies to reefscapes. 
-   Ecological Indicators, 121, 107151. 
+1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V., Elise, S., Kulbicki, M., Quod, J.-P.,
+     Dutrieux, E., Garnier, R., Henrich Bruggemann, J., Penin, L., & Adjeroud, M. (2021).
+   Quantifying the shelter capacity of coral reefs using photogrammetric 3D modeling:
+     From colonies to reefscapes.
+   Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 
 """
@@ -661,7 +661,7 @@ Translates coral metrics in ADRIA to a Reef Condition Metrics.
 
 # Notes
 Juveniles are made relative to maximum observed juvenile density (51.8/m²)
-See email correspondence 
+See email correspondence
 from: Dr. A Thompson; to: Dr. K. Anthony
 Subject: RE: Max density of juvenile corals on the GBR
 Sent: Friday, 14 October 2022 2:58 PM
