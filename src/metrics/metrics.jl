@@ -1,6 +1,6 @@
 module metrics
 
-using Interpolations, Statistics, OnlineStats, NamedDims
+using Interpolations, Statistics, OnlineStats, NamedDims, AxisKeys
 
 using DataFrames
 import ADRIA: coral_spec, ResultSet, timesteps
@@ -130,7 +130,7 @@ function slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(
 end
 
 
-""" 
+"""
     relative_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray{T} where {T}
     relative_cover(rs::ResultSet)::AbstractArray
 
@@ -305,7 +305,7 @@ end
     juvenile_indicator(X::AbstractArray{T}, coral_params::DataFrame, area::Vector{Float64}, k_area::Vector{Float64}) where {T<:Real}
     juvenile_indicator(rs::ResultSet)
 
-Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretical density 
+Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretical density
 for juveniles have been achieved.
 
 Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm diameter.
@@ -334,8 +334,8 @@ Inverse Simpsons diversity indicator.
 Number of taxa (distinct groups with enhanced lumped with unenhanced) is hardcoded in this function.
 
 # References
-1. Hill, M. O. (1973). 
-    Diversity and Evenness: A Unifying Notation and Its Consequences. 
+1. Hill, M. O. (1973).
+    Diversity and Evenness: A Unifying Notation and Its Consequences.
    Ecology, 54(2), 427-432.
    https://doi.org/10.2307/1934352
 
@@ -373,28 +373,23 @@ Helper function to convert coral colony values from Litres/cm² to m³/m²
 Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
 
 # References
-1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V., Elise, S., Kulbicki, M., Quod, J.-P., 
-     Dutrieux, E., Garnier, R., Henrich Bruggemann, J., Penin, L., & Adjeroud, M. (2021). 
-   Quantifying the shelter capacity of coral reefs using photogrammetric 3D modeling: 
-     From colonies to reefscapes. 
-   Ecological Indicators, 121, 107151. 
+1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V., Elise, S., Kulbicki, M., Quod, J.-P.,
+     Dutrieux, E., Garnier, R., Henrich Bruggemann, J., Penin, L., & Adjeroud, M. (2021).
+   Quantifying the shelter capacity of coral reefs using photogrammetric 3D modeling:
+     From colonies to reefscapes.
+   Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 
 """
-function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame,DataFrameRow})::Tuple
+function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vector{Float64}}
     _, _, cs_p::DataFrame = coral_spec()
     n_corals::Int64 = length(unique(cs_p.taxa_id))
     n_species::Int64 = length(unique(cs_p.coral_id))
+    n_sizes::Int64 = length(unique(cs_p.class_id))
 
     # Extract assumed colony area (in cm^2) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
-    colony_area_cm2 = nothing
-    try
-        colony_area_cm2 = Array{Float64}(inputs[:, cs_p.coral_id.*"_colony_area_cm2"])'
-    catch
-        # Get from DataFrameRow instead
-        colony_area_cm2 = Array{Float64}(inputs[cs_p.coral_id.*"_colony_area_cm2"])
-    end
+    colony_area_cm2::Array{Float64} = Array{Float64}(inputs(cs_p.coral_id .* "_colony_area_cm2"))
 
     # Colony planar area parameters (see second column of Table 1 in Urbina-Barreto et al., [1])
     # First column is `b`, second column is `a`
@@ -408,42 +403,27 @@ function _colony_Lcm2_to_m3m2(inputs::Union{DataFrame,DataFrameRow})::Tuple
         -9.69 1.49   # massives from Urbina-Barretto 2021,  assumed similar for large massives
     ])
 
-    log_colony = zeros(n_species)
+    # Repeat each entry `n_sizes` times to cover the number size classes represented
+    pa_params = repeat(pa_params, inner=(n_sizes, 1))
 
-    # Estimate log colony volume (litres) based on relationship
+    # Estimate colony volume (litres) based on relationship
     # established by Urbina-Barretto 2021, for each taxa/size class and scenario
-    # Excuse the dodgy hardcoded indexing
-
-    # Do acropora first ...
-    coral_subsets = [i:i+n_corals-1 for i in 1:n_corals:n_species-12]
-    for (taxa_id, c_ss) in zip(1:4, coral_subsets)
-        c_areas = cs_p[cs_p.taxa_id.==taxa_id, :colony_area_cm2]
-        log_colony[c_ss] = pa_params[:, 1] .+ pa_params[:, 2] .* log.(c_areas)
-    end
-
-    # ... then massives
-    coral_subsets = [i:i+n_corals-1 for i in 25:n_corals:n_species]
-    for (taxa_id, c_ss) in zip(5:6, coral_subsets)
-        c_areas = cs_p[cs_p.taxa_id.==taxa_id, :colony_area_cm2]
-        log_colony[c_ss] = pa_params[:, 1] .+ pa_params[:, 2] .* log.(c_areas)
-    end
-
-    # Maximum colony area for each species and scenario, using largest size class
-    if ndims(colony_area_cm2) == 1
-        max_log_colony = pa_params[6:6:end, 1] .+ pa_params[6:6:end, 2] .* log.(colony_area_cm2[6:6:end])
-    else
-        max_log_colony = vec(pa_params[6:6:end, 1] .+ pa_params[6:6:end, 2] .* log.(colony_area_cm2[6:6:end, :]))
-    end
-
-    colony_litres_per_cm2 = 10.0 .^ log_colony
-    max_colony_litres_per_cm2 = 10.0 .^ max_log_colony
+    # Urbina-Barretto model is a (natural) log-log relationship so we
+    # apply `exp()` to transform back to dm³
+    colony_litres_per_cm2::Vector{Float64} = exp.(pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_area_cm2))
 
     # Convert from dm^3 to m^3
-    cm2_m3_per_m2::Float64 = 10^-3
-    colony_vol_m3_per_m2::Array{Float64} = colony_litres_per_cm2 * cm2_m3_per_m2
-    max_colony_vol_m3_per_m2::Array{Float64} = max_colony_litres_per_cm2 * cm2_m3_per_m2
+    cm2_to_m3_per_m2::Float64 = 10^-3
+    colony_vol_m3_per_m2::Vector{Float64} = colony_litres_per_cm2 * cm2_to_m3_per_m2
+
+    # Assumed maximum colony area for each species and scenario, using largest size class
+    max_colony_vol_m3_per_m2::Vector{Float64} = colony_vol_m3_per_m2[n_sizes:n_sizes:end]
 
     return colony_vol_m3_per_m2, max_colony_vol_m3_per_m2
+end
+function _colony_Lcm2_to_m3m2(inputs::DataFrame)::Tuple
+    nd = NamedDimsArray(Matrix(inputs), scenarios=1:nrow(inputs), factors=names(inputs))
+    return _colony_Lcm2_to_m3m2(nd)
 end
 
 
@@ -457,17 +437,17 @@ e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, siz
 
 # Arguments
 - `X` : raw results (proportional coral cover relative to full site area)
-- `nspecies` : number of species (taxa and size classes) considered
+- `n_species` : number of species (taxa and size classes) considered
 - `scen` : scenario number to calculate metric for
 - `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class (36)
 - `max_colony_vol_m3_per_m2` : theoretical maximum volume per m² of coverage for each taxa (6)
 - `site_area` : total area of site in m²
 - `k_area` : habitable area of site in m² (i.e., `k` area)
 """
-function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_vol_m3_per_m2::Array{F}, max_colony_vol_m3_per_m2::Array{F}, site_area::Array{F}, k_area::Array{F})::NamedDimsArray where {T1<:Real,F<:Float64}
+function _shelter_species_loop(X::AbstractArray{T1,3}, n_species::Int64, colony_vol_m3_per_m2::Array{F}, max_colony_vol_m3_per_m2::Array{F}, site_area::Array{F}, k_area::Array{F})::NamedDimsArray where {T1<:Real,F<:Float64}
     # Calculate absolute shelter volumes first
     ASV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X)...))
-    _shelter_species_loop!(X, ASV, nspecies, colony_vol_m3_per_m2, site_area)
+    _shelter_species_loop!(X, ASV, n_species, colony_vol_m3_per_m2, site_area)
 
     MSV::Matrix{Float64} = k_area' .* max_colony_vol_m3_per_m2  # in m³
     # Ensure zero division does not occur
@@ -476,7 +456,7 @@ function _shelter_species_loop(X::AbstractArray{T1,3}, nspecies::Int64, colony_v
 
     # Loop over each taxa group
     RSV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X[species=1:6])...))
-    taxa_max_map = zip([i:i+5 for i in 1:6:36], 1:6)  # map maximum SV for each group
+    taxa_max_map = zip([i:i+5 for i in 1:6:n_species], 1:6)  # map maximum SV for each group
 
     # Work out RSV for each taxa
     for (sp, sq) in taxa_max_map
@@ -504,8 +484,6 @@ Helper method to calculate absolute shelter volume metric across each species/si
 - `k_area` : habitable area of site in m²
 """
 function _shelter_species_loop!(X::T1, ASV::T1, nspecies::Int64, colony_vol_m3_per_m2::V, site_area::V) where {T1<:NamedDims.NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},V<:AbstractVector{<:Float64}}
-    local covered_area::NamedDimsArray
-
     Threads.@threads for sp::Int64 in 1:nspecies
         # SV represents absolute shelter volume in cubic meters
         @inbounds ASV[species=sp] .= (X[species=sp] .* site_area') .* colony_vol_m3_per_m2[sp]
@@ -541,7 +519,7 @@ shelter volume (a 3D metric).
    Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
-function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
+function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, inputs::NamedDimsArray)::AbstractArray{T} where {T<:Real}
     nspecies::Int64 = size(X, :species)
 
     # Calculate shelter volume of groups and size classes and multiply with area covered
@@ -555,7 +533,15 @@ function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, i
     # Sum over groups and size classes to estimate total shelter volume per site
     return dropdims(sum(ASV, dims=:species), dims=:species)
 end
-function _absolute_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
+    ins = NamedDimsArray(Matrix(inputs), scenarios=1:size(inputs, 1), factors=names(inputs))
+    return _absolute_shelter_volume(X, site_area, ins)
+end
+function _absolute_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
+    ins = NamedDimsArray(Matrix(inputs), scenarios=1:1, params=names(df))
+    return _absolute_shelter_volume(X, site_area, ins)
+end
+function _absolute_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, inputs::NamedDimsArray)::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
 
@@ -609,7 +595,7 @@ maximum shelter volume possible.
    Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
-function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
 
@@ -626,8 +612,13 @@ function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray where {T<:Real}
-    @assert nrow(inputs) == size(X, :scenarios)  # Number of results should match number of scenarios
+function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+    # Collate for a single scenario
+    ins = NamedDimsArray(inputs, scenarios=1:size(inputs, 1), factors=names(inputs))
+    return _relative_shelter_volume(X, site_area, k_area, ins)
+end
+function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
+    @assert size(inputs, :scenarios) == size(X, :scenarios)  # Number of results should match number of scenarios
 
     nspecies::Int64 = size(X, :species)
     nscens::Int64 = size(X, :scenarios)
@@ -648,6 +639,11 @@ function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
+function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray where {T<:Real}
+    ins = NamedDimsArray(Matrix(inputs), scenarios=1:size(inputs, 1), factors=names(inputs))
+    return _relative_shelter_volume(X, site_area, k_area, ins)
+end
+
 function _relative_shelter_volume(rs::ResultSet)::NamedDimsArray
     return rs.outcomes[:relative_shelter_volume]
 end
@@ -662,7 +658,7 @@ Translates coral metrics in ADRIA to a Reef Condition Metrics.
 
 # Notes
 Juveniles are made relative to maximum observed juvenile density (51.8/m²)
-See email correspondence 
+See email correspondence
 from: Dr. A Thompson; to: Dr. K. Anthony
 Subject: RE: Max density of juvenile corals on the GBR
 Sent: Friday, 14 October 2022 2:58 PM
