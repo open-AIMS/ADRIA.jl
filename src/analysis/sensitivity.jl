@@ -100,10 +100,10 @@ end
 function pawn(X::DataFrame, y::AbstractVector; S::Int64=10)::NamedDimsArray
     return pawn(Matrix(X), y, names(X); S=S)
 end
-function pawn(X::NamedDimsArray, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector}}
+function pawn(X::NamedDimsArray, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
     return pawn(X, y, axiskeys(X, 2); S=S)
 end
-function pawn(rs::RS, y::T; S::Int64=10)::NamedDimsArray where {RS,T<:Union{NamedDimsArray,AbstractVector}}
+function pawn(rs::RS, y::T; S::Int64=10)::NamedDimsArray where {RS,T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
     return pawn(Matrix(rs.inputs), y, names(rs.inputs); S=S)
 end
 
@@ -137,7 +137,7 @@ NamedDimsArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
 - 6 corresponds to the min, mean, median, max, std, and cv of the PAWN indices
 - \$T\$ is the number of time steps
 """
-function tsa(X::DataFrame, y::AbstractArray)::NamedDimsArray
+function tsa(X::DataFrame, y::AbstractArray{<:Real})::NamedDimsArray
     local ts
     try
         ts = axiskeys(y, 1)
@@ -164,7 +164,7 @@ function tsa(X::DataFrame, y::AbstractArray)::NamedDimsArray
 
     return t_pawn_idx
 end
-function tsa(rs::RS, y::AbstractArray)::NamedDimsArray where {RS}
+function tsa(rs::RS, y::AbstractArray{<:Real})::NamedDimsArray where {RS}
     return tsa(rs.inputs, y)
 end
 
@@ -220,7 +220,7 @@ ADRIA.sensitivity.rsa(X, y; S=20)
    https://dx.doi.org/10.1002/9780470725184
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
-function rsa(X::DataFrame, y::AbstractVector{T}; S::Int64=20)::NamedDimsArray where {T<:Real}
+function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=20)::NamedDimsArray
     factor_names = Symbol.(names(X))
     N, D = size(X)
     step = 1 / S
@@ -249,7 +249,7 @@ function rsa(X::DataFrame, y::AbstractVector{T}; S::Int64=20)::NamedDimsArray wh
 
     return col_normalize(NamedDimsArray(r_s; bins=string.(collect(seq)[2:end]), factors=factor_names))
 end
-function rsa(rs::RS, y::AbstractArray; S::Int64=20)::NamedDimsArray where {RS}
+function rsa(rs::RS, y::AbstractArray{<:Real}; S::Int64=20)::NamedDimsArray where {RS}
     return rsa(rs.inputs, vec(y); S=S)
 end
 
