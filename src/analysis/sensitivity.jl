@@ -56,7 +56,7 @@ NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
 function pawn(X::AbstractArray{T1}, y::Vector{T2}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:Real,T2<:Real}
     N, D = size(X)
     step = 1 / S
-    seq = 0:step:1
+    seq = 0.0:step:1.0
 
     X_di = zeros(N)
     X_q = zeros(S + 1)
@@ -67,10 +67,15 @@ function pawn(X::AbstractArray{T1}, y::Vector{T2}, factor_names::Vector{String};
         for d_i in 1:D
             X_di .= X[:, d_i]
             X_q .= quantile(X_di, seq)
-            for s in 1:S
-                Y_sel = y[(X_q[s].<X_di).&(X_di.<=X_q[s+1])]
+
+            Y_sel = y[X_q[1].<=X_di.<=X_q[2]]
+            if length(Y_sel) > 0
+                pawn_t[1, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, y))
+            end
+
+            for s in 2:S
+                Y_sel = y[X_q[s].<X_di.<=X_q[s+1]]
                 if length(Y_sel) == 0
-                    pawn_t[s, d_i] = 0.0
                     continue  # no available samples
                 end
 
@@ -87,7 +92,7 @@ function pawn(X::AbstractArray{T1}, y::Vector{T2}, factor_names::Vector{String};
 
     replace!(results, NaN => 0.0, Inf => 0.0)
 
-    return NamedDimsArray(results; zip([:factors, :Si], [factor_names, ["min", "mean", "median", "max", "std", "cv"]])...)
+    return NamedDimsArray(results; factors=factor_names, Si=["min", "mean", "median", "max", "std", "cv"])
 end
 function pawn(X::DataFrame, y::Vector{T}; S::Int64=10)::NamedDimsArray where {T<:Real}
     return pawn(Matrix(X), y, names(X); S=S)
