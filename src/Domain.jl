@@ -18,12 +18,16 @@ mutable struct EnvLayer{S<:AbstractString,TF}
     const timeframe::TF
 end
 
+
+abstract type Domain end
+
+
 """
-    Domain{M,I,D,S,V,T,X}
+    ADRIADomain{M,I,D,S,V,T,X}
 
 Core ADRIA domain. Represents study area.
 """
-mutable struct Domain{Σ<:NamedDimsArray,M<:NamedDimsArray,I<:Vector{Int64},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray{<:Real}}
+mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,I<:Vector{Int64},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray{<:Real}} <: Domain
     const name::S  # human-readable name
     RCP::S  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
@@ -55,7 +59,7 @@ Barrier function to create Domain struct without specifying Intervention/Criteri
 function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::AbstractMatrix{<:T}, in_conn::Vector{Float64}, out_conn::Vector{Float64},
     strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_distances::Matrix{Float64}, median_site_distance::Float64, site_id_col::String, unique_site_id_col::String,
     init_coral_cover::NamedDimsArray, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
-    DHWs::NamedDimsArray, waves::NamedDimsArray)::Domain where {T<:Real}
+    DHWs::NamedDimsArray, waves::NamedDimsArray)::ADRIADomain where {T<:Real}
 
     # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
     criteria::Criteria = Criteria()
@@ -133,7 +137,7 @@ Convenience constructor for Domain.
 - `wave_fn` : Filename of wave data cube
 """
 function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
-    conn_path::String, dhw_fn::String, wave_fn::String)::Domain
+    conn_path::String, dhw_fn::String, wave_fn::String)::ADRIADomain
 
     env_layer_md::EnvLayer = EnvLayer(dpkg_path, site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn, timeframe)
 
@@ -218,7 +222,7 @@ Load domain specification from data package.
 - `path` : location of data package
 - `rcp` : RCP scenario to run. If none provided, no data path is set.
 """
-function load_domain(path::String, rcp::String)::Domain
+function load_domain(path::String, rcp::String)::ADRIADomain
     domain_name::String = basename(path)
     if length(domain_name) == 0
         domain_name = basename(dirname(path))
@@ -270,21 +274,21 @@ function load_domain(path::String, rcp::String)::Domain
         wave
     )
 end
-function load_domain(path::String, rcp::Int64)::Domain
+function load_domain(path::String, rcp::Int64)::ADRIADomain
     return load_domain(path, "$rcp")
 end
-function load_domain(path::String)::Domain
+function load_domain(path::String)::ADRIADomain
     return load_domain(path, "")
 end
 
 
-function unique_sites(d::Domain)::Vector{String}
+function unique_sites(d::ADRIADomain)::Vector{String}
     return d.site_data[:, d.unique_site_id_col]
 end
 
 
 """
-    param_table(d::Domain)::DataFrame
+    param_table(d::ADRIADomain)::DataFrame
 
 Get model fieldnames and their parameter values.
 """
@@ -300,16 +304,16 @@ end
 
 
 """
-    model_spec(d::Domain)::DataFrame
-    model_spec(d::Domain, filepath::String)::Nothing
+    model_spec(d::ADRIADomain)::DataFrame
+    model_spec(d::ADRIADomain, filepath::String)::Nothing
 
 Get model specification as DataFrame with lower and upper bounds.
 If a filepath is provided, writes the specification out to file with ADRIA metadata.
 """
-function model_spec(d::Domain)::DataFrame
+function model_spec(d::ADRIADomain)::DataFrame
     return model_spec(d.model)
 end
-function model_spec(d::Domain, filepath::String)::Nothing
+function model_spec(d::ADRIADomain, filepath::String)::Nothing
     version = PkgVersion.Version(@__MODULE__)
     vers_id = "v$(version)"
 
@@ -347,7 +351,7 @@ end
 Update given domain with new parameter values.
 Maps sampled continuous values to discrete values for categorical variables.
 """
-function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
+function update_params!(d::ADRIADomain, params::Union{AbstractVector,DataFrameRow})::Nothing
     p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
 
     try
@@ -401,7 +405,7 @@ end
 
 Get site area for the given domain.
 """
-function site_area(domain::Domain)::Vector{Float64}
+function site_area(domain::ADRIADomain)::Vector{Float64}
     return domain.site_data.area
 end
 
@@ -410,7 +414,7 @@ end
 
 Get maximum coral cover area for the given domain in absolute area.
 """
-function site_k_area(domain::Domain)::Vector{Float64}
+function site_k_area(domain::ADRIADomain)::Vector{Float64}
     return site_k(domain) .* site_area(domain)
 end
 
@@ -425,12 +429,12 @@ function n_locations(domain::Domain)::Int64
 end
 
 """
-    relative_leftover_space(domain::Domain)::Vector{Float64}
+    relative_leftover_space(domain::ADRIADomain)::Vector{Float64}
     relative_leftover_space(site_k::Matrix{Float64}, site_coral_cover::Matrix{Float64})::Matrix{Float64}
 
 Get proportion of leftover space, given site_k and proportional cover on each site, summed over species.
 """
-function relative_leftover_space(domain::Domain, site_coral_cover::Matrix{Float64})::Matrix{Float64}
+function relative_leftover_space(domain::ADRIADomain, site_coral_cover::Matrix{Float64})::Matrix{Float64}
     return relative_leftover_space(site_k(domain)', site_coral_cover)
 end
 function relative_leftover_space(site_k::AbstractArray{Float64,2}, site_coral_cover::Matrix{Float64})::Matrix{Float64}
@@ -467,7 +471,7 @@ end
 
 Switch environmental datasets to represent the given RCP.
 """
-function switch_RCPs!(d::Domain, RCP::String)::Domain
+function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     @set! d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
     @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
     @set! d.RCP = RCP
@@ -488,7 +492,7 @@ Assumes all `val` and `bounds` are to be updated.
 - `dom` : Domain
 - `spec` : updated model specification
 """
-function update!(dom::Domain, spec::DataFrame)::Nothing
+function update!(dom::ADRIADomain, spec::DataFrame)::Nothing
     # ModelParameters.update!(dom.model, spec)
     dom.model[:val] = spec.val
     dom.model[:bounds] = spec.bounds
@@ -496,13 +500,13 @@ function update!(dom::Domain, spec::DataFrame)::Nothing
     return nothing
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", d::Domain)
+function Base.show(io::IO, mime::MIME"text/plain", d::ADRIADomain)
 
     df = model_spec(d)
     println("""
     Domain: $(d.name)
 
-    Number of sites: $(nrow(d.site_data))
+    Number of sites: $(n_locations(d))
     Site data file: $(d.env_layer_md.site_data_fn)
     Connectivity file: $(d.env_layer_md.connectivity_fn)
     DHW file: $(d.env_layer_md.DHW_fn)
