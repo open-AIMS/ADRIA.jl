@@ -304,16 +304,16 @@ end
 
 
 """
-    model_spec(d::ADRIADomain)::DataFrame
-    model_spec(d::ADRIADomain, filepath::String)::Nothing
+    model_spec(d::Domain)::DataFrame
+    model_spec(d::Domain, filepath::String)::Nothing
 
 Get model specification as DataFrame with lower and upper bounds.
 If a filepath is provided, writes the specification out to file with ADRIA metadata.
 """
-function model_spec(d::ADRIADomain)::DataFrame
+function model_spec(d::Domain)::DataFrame
     return model_spec(d.model)
 end
-function model_spec(d::ADRIADomain, filepath::String)::Nothing
+function model_spec(d::Domain, filepath::String)::Nothing
     version = PkgVersion.Version(@__MODULE__)
     vers_id = "v$(version)"
 
