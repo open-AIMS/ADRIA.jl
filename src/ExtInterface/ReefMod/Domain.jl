@@ -3,7 +3,7 @@ using CSV, DataFrames, Statistics
 import GeoDataFrames as GDF
 
 using ModelParameters
-using ADRIA: Domain, site_distances
+using ADRIA: SimConstants, Domain, site_distances
 
 
 mutable struct ReefModDomain <: Domain
@@ -21,9 +21,13 @@ mutable struct ReefModDomain <: Domain
     init_coral_cover
     const site_ids
     dhw_scens
-    cyc_scens
+
+    # `wave_scens` Actually holds cyclones, but to maintain compatibility with
+    # ADRIA's dMCDA methods
+    wave_scens
 
     model
+    sim_constants::SimConstants
 end
 
 
@@ -241,7 +245,8 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
         site_id_col, unique_site_id_col,
         init_coral_cover,
         site_ids,
-        dhw_scens, cyc_scens, model)
+        dhw_scens, cyc_scens,
+        model, SimConstants())
 end
 
 
