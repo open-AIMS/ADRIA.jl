@@ -807,7 +807,7 @@ function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::Abst
 
     for (cover_ind, scen_criteria) in enumerate(eachrow(criteria))
         depth_criteria = (site_data.depth_med .<= scen_criteria.max_depth) .& (site_data.depth_med .>= scen_criteria.depth_min)
-        depth_priority = (1:nrow(site_data))[depth_criteria]
+        depth_priority = findall(depth_criteria)
 
         ranks_temp = site_selection(
             domain,
