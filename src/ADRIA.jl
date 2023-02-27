@@ -87,32 +87,34 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(setup_cache),Domain})   # time: 0.1060752
 end
 
-# @precompile_all_calls begin
-#     ex_dir = @path joinpath(@__DIR__, "../examples")
 
-#     f() = begin
-#         @showprogress 1 for _ in 1:10
-#         end
-#     end
-#     b = redirect_stdout(f, devnull)
+@precompile_setup begin
+    # Putting some things in `setup` can reduce the size of the
+    # precompile file and potentially make loading faster.
+    ADRIA_DIR = pkgdir(ADRIA)
+    EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 
-#     dom = ADRIA.load_domain(joinpath(ex_dir, "Example_domain"), "45")
+    @precompile_all_calls begin
 
-#     p_df = ADRIA.param_table(dom)
-#     # p_df = repeat(p_df, 5)
-#     # p_df[:, :dhw_scenario] .= 50
-#     # p_df[:, :guided] .= [0, 0, 1, 2, 3]
-#     # p_df[:, :seed_TA] .= [0, 5e5, 5e5, 5e5, 5e5]
-#     # p_df[:, :seed_CA] .= [0, 5e5, 5e5, 5e5, 5e5]
-#     rs1 = ADRIA.run_scenario(p_df[1, :], dom)
+        f() = begin
+            @showprogress 1 for _ in 1:10
+            end
+        end
+        b = redirect_stdout(f, devnull)
 
-#     # ENV["ADRIA_THRESHOLD"] = 1e-6
-#     # run_scenario(p_df[1, :], dom)
-#     # run_scenario(p_df[end, :], dom)
-#     # delete!(ENV, "ADRIA_THRESHOLD")
-#     # precompile(EnvLayer, (String, String, String, String, String, String, String, String, Any))
-# end
+        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
+        ADRIA.model_spec(dom)
 
-# precompile(load_results, (String,))
+        p_df = ADRIA.param_table(dom)
+        rs1 = ADRIA.run_scenario(p_df[1, :], dom)
+
+        # ENV["ADRIA_THRESHOLD"] = 1e-6
+        # run_scenario(p_df[1, :], dom)
+        # run_scenario(p_df[end, :], dom)
+        # delete!(ENV, "ADRIA_THRESHOLD")
+        # precompile(EnvLayer, (String, String, String, String, String, String, String, String, Any))
+        # precompile(load_results, (String,))
+    end
+end
 
 end
