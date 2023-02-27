@@ -49,6 +49,7 @@ end
     ranks = ADRIA.run_site_selection(dom, criteria_df, sum_cover, area_to_seed, ts)
 
     @test size(ranks, 1) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
+    @test size(ranks, 2) == length(dom.site_ids) || "Ranks storage is not correct size for this domain."
 
     sel_sites = unique(ranks)
     sel_sites = sel_sites[sel_sites.!=0.0]
