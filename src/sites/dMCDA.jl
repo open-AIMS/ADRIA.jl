@@ -818,7 +818,7 @@ function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::Abst
             sum_cover[cover_ind, :, :],
             area_to_seed
         )
-        ranks_store[cover_ind, 1:size(ranks_temp, 1), :] = ranks_temp
+        ranks_store[cover_ind, depth_priority, :] = ranks_temp
     end
 
     return ranks_store
