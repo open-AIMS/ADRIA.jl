@@ -792,9 +792,9 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 """
 function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, timestep::Int64)
     ranks_store = NamedDimsArray(
-        zeros(nrow(criteria), domain.sim_constants.n_site_int, 3),
+        zeros(nrow(criteria), length(domain.site_ids), 3),
         scenarios=1:nrow(criteria),
-        sites=1:domain.sim_constants.n_site_int,
+        sites=1:length(domain.site_ids),
         ranks=["site_id", "seed_rank", "shade_rank"],
     )
 
