@@ -794,7 +794,7 @@ function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::Abst
     ranks_store = NamedDimsArray(
         zeros(nrow(criteria), length(domain.site_ids), 3),
         scenarios=1:nrow(criteria),
-        sites=1:length(domain.site_ids),
+        sites=domain.site_ids,
         ranks=["site_id", "seed_rank", "shade_rank"],
     )
 
@@ -818,7 +818,7 @@ function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::Abst
             sum_cover[cover_ind, :, :],
             area_to_seed
         )
-        ranks_store[cover_ind, depth_priority, :] = ranks_temp
+        ranks_store(scenarios=cover_ind, sites=domain.site_ids[depth_criteria]) .= ranks_temp
     end
 
     return ranks_store
