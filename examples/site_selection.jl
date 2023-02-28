@@ -7,7 +7,7 @@ using DataFrames
 here = @__DIR__
 dom = ADRIA.load_domain(joinpath(here, "Example_domain"))
 
-criteria_df = ADRIA.sample(dom, 8) # get scenario dataframe
+criteria_df = ADRIA.sample_site_selection(dom, 8) # get scenario dataframe
 
 area_to_seed = 1.5 * 10^-6  # area of seeded corals in km^2
 ts = 5  # time step to perform site selection at
