@@ -815,7 +815,7 @@ function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::Abst
             wave_scens[timestep, :, criteria.wave_scenario[cover_ind]],
             dhw_scens[timestep, :, criteria.dhw_scenario[cover_ind]],
             depth_priority,
-            sum_cover[cover_ind, :, :],
+            sum_cover[cover_ind, :],
             area_to_seed
         )
         ranks_store(scenarios=cover_ind, sites=domain.site_ids[depth_criteria]) .= ranks_temp
