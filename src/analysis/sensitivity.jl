@@ -178,33 +178,36 @@ Perform Regional Sensitivity Analysis.
 Regional Sensitivity Analysis is a Monte Carlo Filtering approach which aims to
 identify which (group of) factors drive model outputs within or outside of a specified bound.
 Outputs which fall inside the bounds are regarded as "behavioral", whereas those outside
-are "non-behavioral". The distribution of behavioral/non-behavioral subsets are compared for each factor.
-If the subsets are not similar, then the factor is influential. The sensitivity index is simply the
-maximum distance between the two distributions, with larger values indicating greater sensitivity.
+are "non-behavioral". The distribution of behavioral/non-behavioral subsets are compared for each
+factor. If the subsets are not similar, then the factor is influential. The sensitivity index is
+simply the maximum distance between the two distributions, with larger values indicating greater
+sensitivity.
 
 The implemented approach slices factor space into \$S\$ bins and iteratively assesses
-behavioral and non-behavioral subsets with the non-parametric \$k\$-sample Anderson-Darling test.
-Larger values indicate greater dissimilarity (thus, sensitivity). The Anderson-Darling test
-places more weight on the tails compared to the Kolmogorov-Smirnov test.
+behavioral (samples within the bin) and non-behavioral (out of bin samples) subsets with the
+non-parametric \$k\$-sample Anderson-Darling test. Larger values indicate greater dissimilarity
+(thus, sensitivity). The Anderson-Darling test places more weight on the tails compared to the
+Kolmogorov-Smirnov test.
 
 RSA can indicate where in factor space model sensitivities may be, and contributes to a
 Value-of-Information (VoI) analysis.
 
-Increasing the value of \$S\$ increases the granularity of the analysis.
+Increasing the value of \$S\$ increases the granularity of the analysis, but necessitates larger
+sample sizes.
 
-Note: Returned NaN values indicate insufficient samples in the region.
+Note: Values of type `missing` indicate a lack of samples in the region.
 
 # Arguments
 - `X` : scenario specification
 - `y` : scenario outcomes
-- `S` : number of bins to slice factor space into (default: 20)
+- `S` : number of bins to slice factor space into (default: 10)
 
 # Returns
 NamedDimsArray, [bin values, factors]
 
 # Examples
 ```julia
-ADRIA.sensitivity.rsa(X, y; S=20)
+ADRIA.sensitivity.rsa(X, y; S=10)
 ```
 
 # References
@@ -222,8 +225,7 @@ ADRIA.sensitivity.rsa(X, y; S=20)
    https://dx.doi.org/10.1002/9780470725184
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
-function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=20)::NamedDimsArray
-    factor_names = Symbol.(names(X))
+function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
     N, D = size(X)
     seq = collect(0.0:(1/S):1.0)
 
