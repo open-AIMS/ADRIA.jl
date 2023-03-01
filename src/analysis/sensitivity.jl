@@ -2,7 +2,7 @@ module sensitivity
 
 using Logging
 using DataFrames, NamedDims, AxisKeys
-using Distributions, HypothesisTests, Bootstrap
+using Distributions, HypothesisTests, Bootstrap, StaticArrays
 
 using ADRIA.ResultSet
 using ADRIA.analysis: col_normalize
@@ -59,10 +59,10 @@ function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDim
     step = 1 / S
     seq = 0.0:step:1.0
 
-    X_di = zeros(N)
-    X_q = zeros(S + 1)
-    pawn_t = zeros(S, D)
-    results = zeros(D, 6)
+    X_di = @MVector zeros(N)
+    X_q = @MVector zeros(S + 1)
+    pawn_t = @MArray zeros(S, D)
+    results = @MArray zeros(D, 6)
     # Hide warnings from HypothesisTests
     with_logger(NullLogger()) do
         for d_i in 1:D
@@ -226,10 +226,9 @@ function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=20)::NamedDimsArr
     factor_names = Symbol.(names(X))
     N, D = size(X)
     seq = collect(0.0:(1/S):1.0)
-    seq = 0.0:step:1.0
 
-    X_di = zeros(N)
-    X_q = zeros(S + 1)
+    X_di = @MVector zeros(N)
+    X_q = @MVector zeros(S + 1)
     r_s = zeros(Union{Missing,Float64}, S, D)
     sel = trues(N)
 
@@ -250,7 +249,7 @@ function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=20)::NamedDimsArr
         end
     end
 
-    return col_normalize(NamedDimsArray(r_s; bins=string.(collect(seq)[2:end]), factors=factor_names))
+    return col_normalize(NamedDimsArray(r_s; bins=string.(seq[2:end]), factors=Symbol.(names(X))))
 end
 function rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
     return rsa(rs.inputs, vec(y); S=S)
