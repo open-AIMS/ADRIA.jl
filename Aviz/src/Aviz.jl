@@ -5,8 +5,9 @@ using Reexport
 
 using RelocatableFolders, FileIO
 using ImageMagick
-@reexport using GLMakie, GeoMakie
-using GLMakie.GeometryBasics
+using GLMakie
+@reexport using GeoMakie
+# using GLMakie.GeometryBasics
 using Statistics, Distributions, ThreadsX, Random
 
 using DataFrames, Bootstrap  # , DecisionTree
