@@ -138,7 +138,7 @@ NamedDimsArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
 - 6 corresponds to the min, mean, median, max, std, and cv of the PAWN indices
 - \$T\$ is the number of time steps
 """
-function tsa(X::DataFrame, y::AbstractArray{<:Real})::NamedDimsArray
+function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
     local ts
     try
         ts = axiskeys(y, 1)
