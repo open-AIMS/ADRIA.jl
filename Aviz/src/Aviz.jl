@@ -32,7 +32,7 @@ include("./theme.jl")
 include("./spatial.jl")
 # include("./rf_analysis.jl")
 include("./analysis.jl")
-include("./plot/plot.jl")
+include("./viz/viz.jl")
 
 
 """Main entry point for app."""
