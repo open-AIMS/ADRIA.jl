@@ -1,9 +1,7 @@
-module plot
-
 using GLMakie, DataFrames
 
-using ADRIA: ResultSet, metrics.metric_label, sensitivity, analysis.col_normalize
-using ADRIA.NamedDims, ADRIA.AxisKeys
+using ADRIA: ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
+using NamedDims, AxisKeys
 using Aviz: scenario_type, scenario_colors, COLORS
 using GLMakie.Colors
 
@@ -48,8 +46,3 @@ end
 
 include("scenario.jl")
 include("sensitivity.jl")
-
-export scenario
-export pawn
-
-end
