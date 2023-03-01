@@ -223,21 +223,22 @@ ADRIA.sensitivity.rsa(X, y; S=20)
 function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=20)::NamedDimsArray
     factor_names = Symbol.(names(X))
     N, D = size(X)
-    step = 1 / S
+    seq = collect(0.0:(1/S):1.0)
     seq = 0.0:step:1.0
 
     X_di = zeros(N)
     X_q = zeros(S + 1)
-    r_s = zeros(S, D)
+    r_s = zeros(Union{Missing,Float64}, S, D)
+    sel = trues(N)
 
     for d_i in 1:D
         X_di .= X[:, d_i]
         X_q .= quantile(X_di, seq)
         for s in 2:S
-            sel = s > 2 ? (X_q[s-1] .< X_di .<= X_q[s]) : (X_q[s-1] .<= X_di .<= X_q[s])
-            if count(sel) == 0 || length(y[Not(sel)]) == 0
-                # not enough samples
-                r_s[s-1, d_i] = NaN
+            sel .= X_q[s] .< X_di .<= X_q[s+1]
+            if count(sel) == 0 || length(y[Not(sel)]) == 0 || all(y[sel] .== 0.0)
+                # not enough samples, or inactive area of factor space
+                r_s[s, d_i] = missing
                 continue
             end
 
@@ -300,7 +301,7 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V, target_facto
     steps = collect(0:step_size:1.0)
 
     p_table = NamedDimsArray(
-        fill(NaN, length(steps) - 1, length(target_factors), 3);
+        zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
         bins=["$(round(i, digits=2))" for i in steps[2:end]],
         factors=Symbol.(target_factors),
         CI=[:mean, :lower, :upper]
@@ -312,7 +313,7 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V, target_facto
         return p_table
     end
 
-    # Identify behavioural 
+    # Identify behavioural
     n_scens = size(X, 1)
     behave = zeros(Bool, n_scens)
     behave[all_p_rule] .= true
@@ -321,8 +322,11 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V, target_facto
     for (j, fact_t) in enumerate(target_factors)
         X_q .= quantile(X[:, fact_t], steps)
         for (i, s) in enumerate(X_q[1:end-1])
-            b = (X_q[i] .< X[:, fact_t] .<= X_q[i+1]) .& behave
+            b = i == 1 ? (X_q[i] .<= X[:, fact_t] .<= X_q[i+1]) .& behave : (X_q[i] .< X[:, fact_t] .<= X_q[i+1]) .& behave
             if count(b) == 0
+                p_table[i, j, 1] = missing
+                p_table[i, j, 2] = missing
+                p_table[i, j, 3] = missing
                 continue
             end
 
