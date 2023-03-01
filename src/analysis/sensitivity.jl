@@ -4,7 +4,8 @@ using Logging
 using DataFrames, NamedDims, AxisKeys
 using Distributions, HypothesisTests, Bootstrap
 
-import ADRIA.analysis: col_normalize
+using ADRIA.ResultSet
+using ADRIA.analysis: col_normalize
 
 
 """
@@ -103,8 +104,8 @@ end
 function pawn(X::NamedDimsArray, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
     return pawn(X, y, axiskeys(X, 2); S=S)
 end
-function pawn(rs::RS, y::T; S::Int64=10)::NamedDimsArray where {RS,T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
-    return pawn(Matrix(rs.inputs), y, names(rs.inputs); S=S)
+function pawn(rs::ResultSet, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
+    return pawn(rs.inputs, y; S=S)
 end
 
 
@@ -164,12 +165,13 @@ function tsa(X::DataFrame, y::AbstractArray{<:Real})::NamedDimsArray
 
     return t_pawn_idx
 end
-function tsa(rs::RS, y::AbstractArray{<:Real})::NamedDimsArray where {RS}
+function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
     return tsa(rs.inputs, y)
 end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedDimsArray
+    rsa(X::DataFrame, y::Vector{<:Real}; S=10)::NamedDimsArray
+    rsa(rs::ResultSet, y::AbstractArray{<:Real}; S::Int64=10)::NamedDimsArray
 
 Perform Regional Sensitivity Analysis.
 
@@ -250,7 +252,7 @@ function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=20)::NamedDimsArr
 
     return col_normalize(NamedDimsArray(r_s; bins=string.(collect(seq)[2:end]), factors=factor_names))
 end
-function rsa(rs::RS, y::AbstractArray{<:Real}; S::Int64=20)::NamedDimsArray where {RS}
+function rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
     return rsa(rs.inputs, vec(y); S=S)
 end
 
@@ -344,10 +346,10 @@ end
 function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real,V<:Union{Function,BitVector,Vector{Int64}}}
     return outcome_map(X, y, rule, names(X); S, n_boot, conf)
 end
-function outcome_map(rs::RS, y::AbstractArray, rule::V, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {RS,V<:Union{Function,BitVector,Vector{Int64}}}
+function outcome_map(rs::ResultSet, y::AbstractArray, rule::V, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {V<:Union{Function,BitVector,Vector{Int64}}}
     return outcome_map(rs.inputs, y, rule, target_factors; S, n_boot, conf)
 end
-function outcome_map(rs::RS, y::AbstractArray, rule::V; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {RS,V<:Union{Function,BitVector,Vector{Int64}}}
+function outcome_map(rs::ResultSet, y::AbstractArray, rule::V; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {V<:Union{Function,BitVector,Vector{Int64}}}
     return outcome_map(rs.inputs, y, rule, names(rs.inputs); S, n_boot, conf)
 end
 
