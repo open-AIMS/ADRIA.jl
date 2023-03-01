@@ -237,6 +237,15 @@ function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArr
     for d_i in 1:D
         X_di .= X[:, d_i]
         X_q .= quantile(X_di, seq)
+
+        sel .= X_q[1] .<= X_di .<= X_q[2]
+        if count(sel) == 0 || length(y[Not(sel)]) == 0 || all(y[sel] .== 0.0)
+            # not enough samples, or inactive area of factor space
+            r_s[1, d_i] = missing
+        else
+            r_s[1, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+        end
+
         for s in 2:S
             sel .= X_q[s] .< X_di .<= X_q[s+1]
             if count(sel) == 0 || length(y[Not(sel)]) == 0 || all(y[sel] .== 0.0)
@@ -247,7 +256,7 @@ function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArr
 
             # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
             # ci = confint(bs, PercentileConfInt(conf))[1]
-            r_s[s-1, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+            r_s[s, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
     end
 
@@ -312,7 +321,7 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V, target_facto
 
     all_p_rule = _map_outcomes(y, rule)
     if length(all_p_rule) == 0
-        @info "Empty result set"
+        @warn "Empty result set"
         return p_table
     end
 
