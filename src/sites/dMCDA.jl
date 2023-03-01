@@ -37,7 +37,8 @@ end
 
 Constuctors for DMCDA variables.
 """
-function DMCDA_vars(domain::Domain, seed_crit_names::Vector{String}, shade_crit_names::Vector{String}, dist_vars)::DMCDA_vars
+function DMCDA_vars(domain::Domain, seed_crit_names::Vector{String}, shade_crit_names::Vector{String},
+    dist_vars::DataFrame, weights::DataFrame, thresholds::DataFrame)::DMCDA_vars
 
     mcda_vars = DMCDA_vars(
         domain.sim_constants.n_site_int,

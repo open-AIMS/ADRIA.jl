@@ -415,9 +415,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     if is_guided
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
-
+        weights = DataFrame()
         # Prep site selection
-        mcda_vars = DMCDA_vars(domain, param_set, depth_priority, sum(Y_cover[1, :, :], dims=1), area_to_seed)
+        mcda_vars = DMCDA_vars(domain, sim_params.seed_criteria_names, sim_params.shade_criteria_names, dist_vars, weights, thresholds)
     end
 
     #### End coral constants
