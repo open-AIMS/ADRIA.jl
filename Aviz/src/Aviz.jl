@@ -17,7 +17,7 @@ import GeoDataFrames as GDF
 import GeoFormatTypes as GFT
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
-using ADRIA
+using ADRIA: load_results, load_domain, ResultSet, run_scenarios
 
 
 Random.seed!(101)
@@ -138,11 +138,11 @@ end
 
 """
     explore(rs::String)
-    explore(rs::ADRIA.ResultSet)
+    explore(rs::ResultSet)
 
 Display GUI for quick visualization and analysis of results.
 """
-function explore(rs::ADRIA.ResultSet)
+function explore(rs::ResultSet)
     layout = comms_layout(resolution=(1920, 1080))
 
     f = layout.figure
