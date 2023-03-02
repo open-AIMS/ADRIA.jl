@@ -118,6 +118,7 @@ Aviz.outcome_map!(
     axis_opts=Dict(:title => "Regions which lead to Top 50th Percentile Outcomes", :ylabel => "TAC [m²]")
 )
 
+# Indicate factor values that are in the top 30 percentile
 tac_om_70 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.7); S=20)
 Aviz.outcome_map!(
     tf[2, 1],
@@ -134,11 +135,10 @@ save("outcome_map.png", tf)
 # GUI
 
 A GUI for quick visualization and analysis is also provided.
-This can be launched programmatically, however, a standalone app will also be made available.
+This can be launched programmatically from the REPL, however, a standalone app will also be made available.
 
 ```
-using ADRIA
-using Aviz
+using ADRIA, Aviz
 
 # Load some results
 rs = ADRIA.load_results("...")
