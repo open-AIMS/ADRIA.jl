@@ -1,7 +1,28 @@
 """
-    scenario!(f::GridPosition, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    
 
-Add figure to a given figure GridPosition.
+# Arguments
+- `rs` : ResultSet
+- `y` : scenario outcomes
+- `opts` : Aviz options  
+    - `by_RCP`, color by RCP otherwise color by scenario type. Defaults to false.
+- `fig_opts` : Additional options to pass to adjust Figure creation  
+  See: https://docs.makie.org/v0.19/api/index.html#Figure
+- `axis_opts` : Additional options to pass to adjust Axis attributes  
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+- `series_opts` : Additional options to pass to adjust Series attributes  
+  See: https://docs.makie.org/v0.19/api/index.html#series!
+
+# Returns
+Figure
+"""
+
+
+"""
+    scenario(rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())    
+    scenario!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+
+Plot scenario outcomes over time.
 
 # Arguments
 - `rs` : ResultSet
@@ -16,7 +37,7 @@ Add figure to a given figure GridPosition.
 # Returns
 GridPosition
 """
-function scenario!(f::GridPosition, rs::ResultSet, y::NamedDimsArray;
+function scenario!(f::Union{GridLayout,GridPosition}, rs::ResultSet, y::NamedDimsArray;
     opts::Dict=Dict(:by_RCP => false), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
 
     # Ensure last year is always shown in x-axis
@@ -69,28 +90,10 @@ function scenario!(f::GridPosition, rs::ResultSet, y::NamedDimsArray;
 
     return f
 end
-
-"""
-    scenario(rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-
-# Arguments
-- `rs` : ResultSet
-- `y` : scenario outcomes
-- `opts` : Aviz options  
-    - `by_RCP`, color by RCP otherwise color by scenario type. Defaults to false.
-- `fig_opts` : Additional options to pass to adjust Figure creation  
-  See: https://docs.makie.org/v0.19/api/index.html#Figure
-- `axis_opts` : Additional options to pass to adjust Axis attributes  
-  See: https://docs.makie.org/v0.19/api/index.html#Axis
-- `series_opts` : Additional options to pass to adjust Series attributes  
-  See: https://docs.makie.org/v0.19/api/index.html#series!
-
-# Returns
-Figure
-"""
 function scenario(rs::ResultSet, y::NamedDimsArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
     f = Figure(; fig_opts...)
-    scenario!(f[1, 1], rs, y; opts, axis_opts, series_opts)
+    g = f[1, 1] = GridLayout()
+    scenario!(g, rs, y; opts, axis_opts, series_opts)
 
     return f
 end
