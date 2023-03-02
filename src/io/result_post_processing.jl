@@ -3,7 +3,7 @@ Functions for post-processing ADRIA results.
 """
 
 using ADRIA
-import ADRIA: ResultSet
+using ADRIA: ResultSet
 using Statistics
 using CSV
 using DataFrames
@@ -42,7 +42,7 @@ Saves as csv at `file_loc`.
 """
 function create_BI_format_file(rs::ResultSet, file_loc::String)
     model = "ADRIA"
-    
+
     # extract RCP and convert to SSP
     rcp = rs.RCP
     ssp = RCP_to_SSP(rcp)

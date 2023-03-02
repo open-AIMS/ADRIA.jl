@@ -1,7 +1,7 @@
 using Printf
 using DataFrames, Distributions, LinearAlgebra
 using ADRIA
-import ADRIA: model_spec, _process_inputs!, component_params
+using ADRIA: model_spec, _process_inputs!, component_params
 import Surrogates: sample
 import Surrogates.QuasiMonteCarlo: SobolSample
 

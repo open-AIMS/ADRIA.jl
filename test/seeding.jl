@@ -1,5 +1,5 @@
 using ADRIA
-import ADRIA: distribute_seeded_corals, site_k
+using ADRIA: distribute_seeded_corals, site_k
 using Test
 using Distributions
 

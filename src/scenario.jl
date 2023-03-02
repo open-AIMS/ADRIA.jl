@@ -1,7 +1,7 @@
 """Scenario running functions"""
 
-import ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
-import ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
+using ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
+using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
 
 
 """
