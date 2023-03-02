@@ -11,16 +11,16 @@ using ADRIA.metrics: nds
 
 Normalize a matrix on a per-column basis (∈ [0, 1]).
 """
-function col_normalize(data::AbstractMatrix{T})::AbstractMatrix{T} where {T<:Real}
+function col_normalize(data::AbstractMatrix{T})::AbstractMatrix{T} where {T<:Union{Missing,Real}}
     d = copy(data)
     Threads.@threads for ax in axes(d, 2)
-        d[:, ax] .= normalize!(d[:, ax])
+        @inbounds d[:, ax] .= normalize!(d[:, ax])
     end
 
     return d
 end
-function col_normalize(data::AbstractVector{T})::AbstractVector{T} where {T<:Real}
-    return normalize!(copy(data))
+function col_normalize(data::AbstractVector{T})::AbstractVector{T} where {T<:Union{Missing,Real}}
+    return normalize(data)
 end
 
 """
@@ -28,8 +28,11 @@ end
 
 Normalize a matrix or vector (∈ [0, 1]).
 """
-function normalize(data::AbstractArray{T})::AbstractArray{T} where {T<:Real}
-    return normalize!(copy(data))
+function normalize(data::AbstractArray{T})::AbstractArray{T} where {T<:Union{Missing,Real}}
+    d = copy(data)
+    normalize!(d)
+
+    return d
 end
 
 """
@@ -37,12 +40,20 @@ end
 
 Normalize a matrix or vector (∈ [0, 1]) in place.
 """
-function normalize!(data::AbstractArray{T})::AbstractArray{T} where {T<:Real}
-    (mi, ma) = extrema(data)
-    data .= (data .- mi) ./ (ma - mi)
+function normalize!(data::AbstractArray{T})::AbstractArray{T} where {T<:Union{Missing,Real}}
+    if count(!ismissing, data) == 0
+        data .= zeros(size(data)...)
+        return data
+    end
 
-    replace!(data, NaN => 0.0)
-    return data
+    (mi, ma) = extrema(skipmissing(data))
+    if mi == ma
+        pos = findall(!ismissing, data)
+        data[pos] .= zeros(typeof(data[pos][1]), size(data[pos])...)
+        return data
+    end
+
+    data .= (data .- mi) ./ (ma - mi)
 end
 
 """

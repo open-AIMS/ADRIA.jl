@@ -523,10 +523,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         if (fogging > 0.0) && in_shade_years && (has_seed_sites || has_shade_sites)
             if has_seed_sites
-                # Always fog where sites are selected if possible
+                # Always fog seeded locations if they are selected
                 site_locs::Vector{Int64} = prefseedsites
             elseif has_shade_sites
-                # Otherwise, if no sites are selected, fog selected sites
+                # Use locations selected for fogging otherwise
                 site_locs = prefshadesites
             end
 

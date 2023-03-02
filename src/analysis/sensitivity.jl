@@ -2,9 +2,10 @@ module sensitivity
 
 using Logging
 using DataFrames, NamedDims, AxisKeys
-using Distributions, HypothesisTests, Bootstrap
+using Distributions, HypothesisTests, Bootstrap, StaticArrays
 
-import ADRIA.analysis: col_normalize
+using ADRIA: ResultSet
+using ADRIA.analysis: col_normalize
 
 
 """
@@ -20,7 +21,7 @@ end
 
 
 """
-    pawn(X::AbstractArray{T1}, y::Vector{T2}, dimnames::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:Real,T2<:Real}
+    pawn(X::T1, y::T2, dimnames::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:AbstractArray{<:Real},T2<:AbstractVector{<:Real}}
 
 Calculates the PAWN sensitivity index.
 
@@ -53,15 +54,15 @@ NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
    Combining variance- and distribution-based global sensitivity analysis
    https://github.com/baronig/GSA-cvd
 """
-function pawn(X::AbstractArray{T1}, y::Vector{T2}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:Real,T2<:Real}
+function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:AbstractArray{<:Real},T2<:AbstractVector{<:Real}}
     N, D = size(X)
     step = 1 / S
     seq = 0.0:step:1.0
 
-    X_di = zeros(N)
-    X_q = zeros(S + 1)
-    pawn_t = zeros(S, D)
-    results = zeros(D, 6)
+    X_di = @MVector zeros(N)
+    X_q = @MVector zeros(S + 1)
+    pawn_t = @MArray zeros(S, D)
+    results = @MArray zeros(D, 6)
     # Hide warnings from HypothesisTests
     with_logger(NullLogger()) do
         for d_i in 1:D
@@ -92,14 +93,21 @@ function pawn(X::AbstractArray{T1}, y::Vector{T2}, factor_names::Vector{String};
 
     replace!(results, NaN => 0.0, Inf => 0.0)
 
-    return NamedDimsArray(results; factors=factor_names, Si=["min", "mean", "median", "max", "std", "cv"])
+    return NamedDimsArray(results; factors=Symbol.(factor_names), Si=[:min, :mean, :median, :max, :std, :cv])
 end
-function pawn(X::DataFrame, y::Vector{T}; S::Int64=10)::NamedDimsArray where {T<:Real}
+function pawn(X::AbstractArray{<:Real}, y::NamedDimsArray, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
+    return pawn(X, vec(y), factor_names; S=S)
+end
+function pawn(X::DataFrame, y::AbstractVector; S::Int64=10)::NamedDimsArray
     return pawn(Matrix(X), y, names(X); S=S)
 end
-function pawn(X::NamedDimsArray, y::Vector{T}; S::Int64=10)::NamedDimsArray where {T<:Real}
+function pawn(X::NamedDimsArray, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
     return pawn(X, y, axiskeys(X, 2); S=S)
 end
+function pawn(rs::ResultSet, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
+    return pawn(rs.inputs, y; S=S)
+end
+
 
 """
     tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
@@ -130,7 +138,7 @@ NamedDimsArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
 - 6 corresponds to the min, mean, median, max, std, and cv of the PAWN indices
 - \$T\$ is the number of time steps
 """
-function tsa(X::DataFrame, y::NamedDimsArray)::NamedDimsArray
+function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
     local ts
     try
         ts = axiskeys(y, 1)
@@ -144,8 +152,8 @@ function tsa(X::DataFrame, y::NamedDimsArray)::NamedDimsArray
 
     t_pawn_idx = NamedDimsArray(
         zeros(ncol(X), 6, size(y, 1));
-        factors=names(X),
-        Si=["min", "mean", "median", "max", "std", "cv"],
+        factors=Symbol.(names(X)),
+        Si=[:min, :mean, :median, :max, :std, :cv],
         timesteps=ts
     )
 
@@ -157,42 +165,49 @@ function tsa(X::DataFrame, y::NamedDimsArray)::NamedDimsArray
 
     return t_pawn_idx
 end
+function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
+    return tsa(rs.inputs, y)
+end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}; S=20)::NamedDimsArray
+    rsa(X::DataFrame, y::Vector{<:Real}; S=10)::NamedDimsArray
+    rsa(rs::ResultSet, y::AbstractArray{<:Real}; S::Int64=10)::NamedDimsArray
 
 Perform Regional Sensitivity Analysis.
 
 Regional Sensitivity Analysis is a Monte Carlo Filtering approach which aims to
 identify which (group of) factors drive model outputs within or outside of a specified bound.
 Outputs which fall inside the bounds are regarded as "behavioral", whereas those outside
-are "non-behavioral". The distribution of behavioral/non-behavioral subsets are compared for each factor.
-If the subsets are not similar, then the factor is influential. The sensitivity index is simply the
-maximum distance between the two distributions, with larger values indicating greater sensitivity.
+are "non-behavioral". The distribution of behavioral/non-behavioral subsets are compared for each
+factor. If the subsets are not similar, then the factor is influential. The sensitivity index is
+simply the maximum distance between the two distributions, with larger values indicating greater
+sensitivity.
 
 The implemented approach slices factor space into \$S\$ bins and iteratively assesses
-behavioral and non-behavioral subsets with the non-parametric \$k\$-sample Anderson-Darling test.
-Larger values indicate greater dissimilarity (thus, sensitivity). The Anderson-Darling test
-places more weight on the tails compared to the Kolmogorov-Smirnov test.
+behavioral (samples within the bin) and non-behavioral (out of bin samples) subsets with the
+non-parametric \$k\$-sample Anderson-Darling test. Larger values indicate greater dissimilarity
+(thus, sensitivity). The Anderson-Darling test places more weight on the tails compared to the
+Kolmogorov-Smirnov test.
 
 RSA can indicate where in factor space model sensitivities may be, and contributes to a
 Value-of-Information (VoI) analysis.
 
-Increasing the value of \$S\$ increases the granularity of the analysis.
+Increasing the value of \$S\$ increases the granularity of the analysis, but necessitates larger
+sample sizes.
 
-Note: Returned NaN values indicate insufficient samples in the region.
+Note: Values of type `missing` indicate a lack of samples in the region.
 
 # Arguments
 - `X` : scenario specification
 - `y` : scenario outcomes
-- `S` : number of bins to slice factor space into (default: 20)
+- `S` : number of bins to slice factor space into (default: 10)
 
 # Returns
 NamedDimsArray, [bin values, factors]
 
 # Examples
 ```julia
-ADRIA.sensitivity.rsa(X, y; S=20)
+ADRIA.sensitivity.rsa(X, y; S=10)
 ```
 
 # References
@@ -210,34 +225,45 @@ ADRIA.sensitivity.rsa(X, y; S=20)
    https://dx.doi.org/10.1002/9780470725184
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
-function rsa(X::DataFrame, y::Vector{T}; S::Int64=20)::NamedDimsArray where {T<:Real}
-    factor_names = names(X)
+function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
     N, D = size(X)
-    step = 1 / S
-    seq = 0.0:step:1.0
+    seq = collect(0.0:(1/S):1.0)
 
-    X_di = zeros(N)
-    X_q = zeros(S + 1)
-    r_s = zeros(S, D)
+    X_di = @MVector zeros(N)
+    X_q = @MVector zeros(S + 1)
+    r_s = zeros(Union{Missing,Float64}, S, D)
+    sel = trues(N)
 
     for d_i in 1:D
         X_di .= X[:, d_i]
         X_q .= quantile(X_di, seq)
+
+        sel .= X_q[1] .<= X_di .<= X_q[2]
+        if count(sel) == 0 || length(y[Not(sel)]) == 0 || all(y[sel] .== 0.0)
+            # not enough samples, or inactive area of factor space
+            r_s[1, d_i] = missing
+        else
+            r_s[1, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+        end
+
         for s in 2:S
-            sel = s > 2 ? (X_q[s-1] .< X_di .<= X_q[s]) : (X_q[s-1] .<= X_di .<= X_q[s])
-            if count(sel) == 0 || length(y[Not(sel)]) == 0
-                # not enough samples
-                r_s[s-1, d_i] = NaN
+            sel .= X_q[s] .< X_di .<= X_q[s+1]
+            if count(sel) == 0 || length(y[Not(sel)]) == 0 || all(y[sel] .== 0.0)
+                # not enough samples, or inactive area of factor space
+                r_s[s, d_i] = missing
                 continue
             end
 
             # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
             # ci = confint(bs, PercentileConfInt(conf))[1]
-            r_s[s-1, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+            r_s[s, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
     end
 
-    return col_normalize(NamedDimsArray(r_s; bins=string.(collect(seq)[2:end]), factors=factor_names))
+    return col_normalize(NamedDimsArray(r_s; bins=string.(seq[2:end]), factors=Symbol.(names(X))))
+end
+function rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
+    return rsa(rs.inputs, vec(y); S=S)
 end
 
 
@@ -282,26 +308,24 @@ rule = y -> all(y .> 0.5)
 ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 ```
 """
-function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real}
+function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real,V<:Union{Function,BitVector,Vector{Int64}}}
     step_size = 1 / S
     steps = collect(0:step_size:1.0)
 
     p_table = NamedDimsArray(
-        fill(NaN, length(steps) - 1, length(target_factors), 3);
+        zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
         bins=["$(round(i, digits=2))" for i in steps[2:end]],
-        factors=String.(target_factors),
-        CI=["mean", "lower", "upper"]
+        factors=Symbol.(target_factors),
+        CI=[:mean, :lower, :upper]
     )
 
-    y = col_normalize(y)
-
-    all_p_rule = findall(rule, eachrow(y))
-    num_p_rule = length(all_p_rule)
-    if num_p_rule == 0
-        @info "Empty result set"
+    all_p_rule = _map_outcomes(y, rule)
+    if length(all_p_rule) == 0
+        @warn "Empty result set"
         return p_table
     end
 
+    # Identify behavioural
     n_scens = size(X, 1)
     behave = zeros(Bool, n_scens)
     behave[all_p_rule] .= true
@@ -310,8 +334,11 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors:
     for (j, fact_t) in enumerate(target_factors)
         X_q .= quantile(X[:, fact_t], steps)
         for (i, s) in enumerate(X_q[1:end-1])
-            b = (X_q[i] .< X[:, fact_t]) .& (X[:, fact_t] .<= X_q[i+1]) .& behave
+            b = i == 1 ? (X_q[i] .<= X[:, fact_t] .<= X_q[i+1]) .& behave : (X_q[i] .< X[:, fact_t] .<= X_q[i+1]) .& behave
             if count(b) == 0
+                p_table[i, j, 1] = missing
+                p_table[i, j, 2] = missing
+                p_table[i, j, 3] = missing
                 continue
             end
 
@@ -325,6 +352,25 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule, target_factors:
     end
 
     return p_table
+end
+function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real,V<:Union{Function,BitVector,Vector{Int64}}}
+    return outcome_map(X, y, rule, names(X); S, n_boot, conf)
+end
+function outcome_map(rs::ResultSet, y::AbstractArray, rule::V, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {V<:Union{Function,BitVector,Vector{Int64}}}
+    return outcome_map(rs.inputs, y, rule, target_factors; S, n_boot, conf)
+end
+function outcome_map(rs::ResultSet, y::AbstractArray, rule::V; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {V<:Union{Function,BitVector,Vector{Int64}}}
+    return outcome_map(rs.inputs, y, rule, names(rs.inputs); S, n_boot, conf)
+end
+
+function _map_outcomes(y::AbstractArray, rule::Union{BitVector,Vector{Int64}})
+    return rule
+end
+function _map_outcomes(y::AbstractArray, rule::Function)
+    _y = col_normalize(y)
+    all_p_rule = findall(rule, eachrow(_y))
+
+    return all_p_rule
 end
 
 end
