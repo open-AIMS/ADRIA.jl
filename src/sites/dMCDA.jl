@@ -4,6 +4,10 @@ using StatsBase
 using Distances
 using Combinatorics
 
+macro Name(arg)
+    string(arg)
+end
+
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     n_site_int  # ::I
     crit_seed_names #::V
@@ -16,10 +20,15 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     top_n #::I
 end
 
-function create_criteria_df(site_ids::AbstractArray, crit_names::Vector{String}, criteria...)
-    criteria_df = DataFrame(site_ids=site_ids)
-    for crit_ind = 1:length(crit_names)
-        criteria_df[!, Symbol(crit_names(crit_ind))] = criteria[crit_ind]
+function create_criteria_df(site_ids::AbstractArray, coral_cover::AbstractArray,
+    coral_space::AbstractArray, connectivity::AbstractArray, heat_stress::AbstractArray,
+    wave_stress::AbstractArray, criteria...)::DataFrame
+
+    criteria_df = DataFrame(site_ids=site_ids, coral_cover=coral_cover, coral_space=coral_space,
+        connectivity=connectivity, heat_stress=heat_stress, wave_stress=wave_stress)
+
+    for crit_temp in criteria
+        criteria_df[!, @Name(crit_temp)] = crit_temp
     end
 end
 
