@@ -18,8 +18,8 @@ is the number of factors (columns).
     The sampling method is compatible with any sampler supported by the 
     [Surrogates.jl](https://github.com/SciML/Surrogates.jl) package.
 
-    The default sampler is Sobol'. Below is an example of
-    using Latin Hypercube sampling.
+    The default sampler is Sobol'. Below is an example using 
+    Latin Hypercube sampling.
 
     ```julia
     import Surrogates.QuasiMonteCarlo: LatinHypercubeSample
