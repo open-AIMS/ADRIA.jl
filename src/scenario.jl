@@ -416,10 +416,19 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
         weights = DataFrame()
+
+        # initialize criteria
+        out_conn = domain.out_conn
+        zones = zones_criteria(site_data.zone_type, sim_params.priority_zones)
+        predec = priority_predecessor_criteria(domain.strong_pred, sim_params.priority_sites)
+        coral_cover, coral_space = coral_cover_criteria(site_data, sum(Y_cover[1, :, :], dims=:species))
+        heat_stress = zeros(1, n_sites)
+        wave_stress = zeros(1, n_sites)
+
         # Prep site selection
         mcda_vars = DMCDA_vars(domain, sim_params.seed_criteria_names, sim_params.shade_criteria_names, dist_vars, weights, thresholds)
         criteria_df = create_criteria_df(site_ids, coral_cover,
-            coral_space, conn_in, heat_stress, wave_stress, conn_out, zones, predec)
+            coral_space, domain.in_conn, heat_stress, wave_stress, out_conn, zones, predec)
     end
 
     #### End coral constants
