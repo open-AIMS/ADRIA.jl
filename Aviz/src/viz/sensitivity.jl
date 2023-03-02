@@ -4,7 +4,7 @@ using Printf
 
 """
     pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    pawn!(f::GridPosition, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    pawn!(f::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Display heatmap of sensitivity analysis.
 
@@ -30,7 +30,7 @@ See: https://docs.makie.org/v0.19/api/index.html#Axis
 # Returns
 GLMakie figure
 """
-function pawn!(f::GridPosition, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
+function pawn!(g::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
 
     norm = get(opts, :normalize, true)
@@ -49,7 +49,7 @@ function pawn!(f::GridPosition, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts
 
     y, x = axiskeys(Si)
     ax = Axis(
-        f,
+        g[1, 1],
         xticks=(1:length(x), string.(x)),
         yticks=(1:length(y), string.(y)),
         xticklabelrotation=xtick_rot;
@@ -59,18 +59,19 @@ function pawn!(f::GridPosition, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts
 
     heatmap!(ax, Matrix(Si'))
 
-    return f
+    return g
 end
 function pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
-    pawn!(f[1, 1], Si; opts, axis_opts)
+    g = f[1, 1] = GridLayout()
+    pawn!(g, Si; opts, axis_opts)
 
     return f
 end
 
 """
     tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    tsa!(f::GridPosition, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
+    tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
 
 Display temporal sensitivity analysis
 
@@ -87,7 +88,7 @@ Display temporal sensitivity analysis
 # Returns
 GLMakie figure
 """
-function tsa!(f::GridLayout, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
+function tsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
     stat = get(opts, :stat, :median)
 
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
@@ -97,7 +98,7 @@ function tsa!(f::GridLayout, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
     factors, Si, timesteps = axiskeys(si)
     x_tickpos, x_ticklabel = _time_labels(timesteps)
     ax = Axis(
-        f[1, 1],
+        g[1, 1],
         xticks=(x_tickpos, x_ticklabel),
         xticklabelrotation=xtick_rot,
         xlabel=xlabel,
@@ -126,13 +127,13 @@ function tsa!(f::GridLayout, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
         for (i, _cmp) in enumerate(comps)
     ]
 
-    Legend(f[1, 2], lns, comps)
+    Legend(g[1, 2], lns, comps)
 
-    return f
+    return g
 end
 function tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
-    g = f[1, 1:2] = GridLayout()
+    g = f[1, 1] = GridLayout()
     tsa!(g, rs, si; opts, axis_opts)
 
     return f
@@ -167,7 +168,7 @@ end
 
 """
     rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    rsa!(f::GridPosition, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+    rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
 
 Plot regional sensitivities of up to 30 factors.
 
@@ -183,7 +184,7 @@ Plot regional sensitivities of up to 30 factors.
 # Returns
 GLMakie figure
 """
-function rsa!(g::GridLayout, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+function rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
     n_factors::Int64 = length(factors)
     if n_factors > 30
         ArgumentError("Too many factors to plot. Maximum number supported is 30.")
@@ -263,7 +264,7 @@ function rsa!(g::GridLayout, rs::ResultSet, si::NamedDimsArray, factors::Vector{
 end
 function rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
-    g = f[1, 1:2] = GridLayout()
+    g = f[1, 1] = GridLayout()
     rsa!(g, rs, si, factors; opts, axis_opts)
 
     return f
@@ -273,7 +274,7 @@ end
 
 """
     rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    rsa!(f::GridPosition, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+    rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
 
 Plot outcomes mapped to factor regions for up to 30 factors.
 
@@ -379,7 +380,8 @@ function outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes
 end
 function outcome_map(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
-    outcome_map!(f[1, 1], rs, si, factors; opts, axis_opts)
+    g = f[1, 1] = GridLayout()
+    outcome_map!(g, rs, si, factors; opts, axis_opts)
 
     return f
 end
