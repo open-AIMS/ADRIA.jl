@@ -4,7 +4,7 @@ using Logging
 using DataFrames, NamedDims, AxisKeys
 using Distributions, HypothesisTests, Bootstrap, StaticArrays
 
-using ADRIA.ResultSet
+using ADRIA: ResultSet
 using ADRIA.analysis: col_normalize
 
 
