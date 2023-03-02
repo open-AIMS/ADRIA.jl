@@ -1,9 +1,9 @@
-import ADRIA.analysis: col_normalize
-import ADRIA.sensitivity: pawn
+using ADRIA.analysis: col_normalize
+using ADRIA.sensitivity
 
 
 function relative_sensitivities(X, y; S=10, stat=:median)::Vector{Float64}
-    return col_normalize(pawn(X, Array(y); S=S)[:, stat])
+    return col_normalize(ADRIA.sensitivity.pawn(X, Array(y); S=S)[:, stat])
 end
 
 """
