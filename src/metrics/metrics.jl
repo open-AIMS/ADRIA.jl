@@ -3,7 +3,7 @@ module metrics
 using Interpolations, Statistics, OnlineStats, NamedDims, AxisKeys
 
 using DataFrames
-import ADRIA: coral_spec, ResultSet, timesteps
+using ADRIA: coral_spec, ResultSet, timesteps
 
 
 abstract type Outcome end
@@ -748,7 +748,7 @@ end
 # # Example
 
 # ```julia
-# import ADRIA.metrics: total_absolute_cover
+# using ADRIA.metrics: total_absolute_cover
 # extended_metric = @extend_metric(example_func, total_absolute_cover, [site_area(domain)])
 
 # Y = extended_metric(raw_results)  # Equivalent to total_absolute_cover(raw_results, site_area(domain))

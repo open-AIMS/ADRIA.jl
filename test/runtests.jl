@@ -1,6 +1,6 @@
 using Test
 using TOML, CSV, DataFrames, ADRIA
-import ADRIA.metrics: total_absolute_cover
+using ADRIA.metrics: total_absolute_cover
 
 
 const TEST_DATA_DIR = joinpath(@__DIR__, "data")

@@ -37,7 +37,7 @@ Plot scenario outcomes over time.
 # Returns
 GridPosition
 """
-function scenario!(f::Union{GridLayout,GridPosition}, rs::ResultSet, y::NamedDimsArray;
+function scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y::NamedDimsArray;
     opts::Dict=Dict(:by_RCP => false), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
 
     # Ensure last year is always shown in x-axis
@@ -45,7 +45,7 @@ function scenario!(f::Union{GridLayout,GridPosition}, rs::ResultSet, y::NamedDim
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
 
     ax = Axis(
-        f,
+        g[1, 1],
         xticks=xtick_vals,
         xticklabelrotation=xtick_rot;
         axis_opts...
@@ -62,16 +62,16 @@ function scenario!(f::Union{GridLayout,GridPosition}, rs::ResultSet, y::NamedDim
 
             cf = LineElement(color=COLORS[:counterfactual], linestyle=nothing)
             ug = LineElement(color=COLORS[:unguided], linestyle=nothing)
-            g = LineElement(color=COLORS[:guided], linestyle=nothing)
+            gu = LineElement(color=COLORS[:guided], linestyle=nothing)
 
-            eles = [cf, ug, g]
+            eles = [cf, ug, gu]
             labels = ["No Intervention", "Unguided", "Guided"]
         else
             rcp_ids = sort(Int.(unique(rs.inputs[:, :RCP])))
             c = [COLORS[_r] for _r in [Symbol("RCP$(r_id)") for r_id in rcp_ids]]
-            r_s = [Symbol("RCP$(r_id)") for r_id in rcp_ids]
+            r_s = Symbol[Symbol("RCP$(r_id)") for r_id in rcp_ids]
 
-            eles = [
+            eles = LineElement[
                 LineElement(color=_c, linestyle=nothing)
                 for _c in [COLORS[_r] for _r in r_s]
             ]
@@ -81,14 +81,14 @@ function scenario!(f::Union{GridLayout,GridPosition}, rs::ResultSet, y::NamedDim
         end
 
         # Add legend
-        Legend(f[1, 2], eles, labels, halign=:left, valign=:top, margin=(10, 10, 10, 10))
+        Legend(g[1, 2], eles, labels, halign=:left, valign=:top, margin=(10, 10, 10, 10))
     end
 
     ls = series!(ax, y'; series_opts...)
     # ax.ylabel = metric_label(metric)
     ax.xlabel = "Year"
 
-    return f
+    return g
 end
 function scenario(rs::ResultSet, y::NamedDimsArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
     f = Figure(; fig_opts...)

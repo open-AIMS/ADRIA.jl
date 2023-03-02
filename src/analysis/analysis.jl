@@ -2,7 +2,7 @@ module analysis
 
 using Statistics, DataFrames
 using NamedDims, AxisKeys
-import ADRIA: ResultSet, n_locations
+using ADRIA: ResultSet, n_locations
 using ADRIA.metrics: nds
 
 
