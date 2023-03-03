@@ -521,20 +521,21 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
-            horizon = tstep:tstep+Int64(param_set("plan_horizon"))
+            wave_stress = sum(Sw_t[tstep, :, :], dims=1)'
+            criteria_df["wave_stress"] .= env_stress_criteria(wave_stress)
+            criteria_df["heat_stress"] .= env_stress_criteria(dhw_t)
+            criteria_df["connectivity_in"] .= connectivity_criteria(domain.in_conn)
+            criteria_df["connectivity_out"] .= connectivity_criteria(domain.out_conn)
 
-            env_horizon .= dhw_scen[horizon, :]
-            env_horizon[1, :] .= dhw_t
-            mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
-
-            mcda_vars.dam_prob .= vec(sum(dropdims((mean(Sw_t[horizon, :, :], dims=1) .+ std(Sw_t[horizon, :, :], dims=1)) .* 0.5, dims=1), dims=1))
         end
         if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= site_coral_cover
 
-            # Determine connectivity strength
-            # Account for cases where no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), vec(site_coral_cover))
+        if is_guided && in_seed_years
+            coral_cover, coral_space = coral_cover_criteria(site_data, site_coral_cover)
+            criteria_df["coral_space"] .= coral_space
+            criteria_df["coral_cover"] .= coral_cover
+
             (prefseedsites, prefshadesites, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
                 criteria_df, seed_decision_years[tstep], shade_decision_years[tstep],
                 prefseedsites, prefshadesites, rankings)
