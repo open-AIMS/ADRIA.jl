@@ -21,15 +21,46 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
 end
 
 function create_criteria_df(site_ids::AbstractArray, coral_cover::AbstractArray,
-    coral_space::AbstractArray, connectivity::AbstractArray, heat_stress::AbstractArray,
-    wave_stress::AbstractArray, criteria...)::DataFrame
+    coral_space::AbstractArray, connectivity_in::AbstractArray, connectivity_out::AbstractArray,
+    heat_stress::AbstractArray, wave_stress::AbstractArray, criteria...)::DataFrame
 
     criteria_df = DataFrame(site_ids=site_ids, coral_cover=coral_cover, coral_space=coral_space,
-        connectivity=connectivity, heat_stress=heat_stress, wave_stress=wave_stress)
+        connectivity_in=connectivity_in, connectivity_out=connectivity_out,
+        heat_stress=heat_stress, wave_stress=wave_stress)
 
     for crit_temp in criteria
         criteria_df[!, @Name(crit_temp)] = crit_temp
     end
+    return criteria_df
+end
+
+function create_weights_df(coral_cover_wt::Float64, coral_space_wt::Float64,
+    in_seed_connectivity_wt::Float64, out_seed_connectivity_wt::Float64,
+    shade_connectivity_wt::Float64, heat_stress_wt::Float64,
+    wave_stress_wt::Float64, weights...)::DataFrame
+
+    weights_df = DataFrame(coral_cover_wt=coral_cover_wt, coral_space_wt=coral_space_wt,
+        in_seed_connectivity_wt=in_seed_connectivity_wt,
+        out_seed_connectivity_wt=out_seed_connectivity_wt,
+        shade_connectivity_wt=shade_connectivity_wt, heat_stress_wt=heat_stress_wt,
+        wave_stress_wt=wave_stress_wt)
+
+    for wt_temp in weights
+        weights_df[!, @Name(wt_temp)] = wt_temp
+    end
+    return weights_df
+end
+
+function create_thesholds_df(coral_space_th::Float64, heat_stress_th::Float64,
+    wave_stress_th::Float64, thresholds...)::DataFrame
+
+    thresholds_df = DataFrame(coral_space_th=coral_space_th, heat_stress_th=heat_stress_th,
+        wave_stress_th=wave_stress_th)
+
+    for th_temp in thresholds
+        thresholds_df[!, @Name(th_temp)] = th_temp
+    end
+    return thresholds_df
 end
 
 """
