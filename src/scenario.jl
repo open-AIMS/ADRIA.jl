@@ -415,7 +415,21 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     if is_guided
         # pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
-        weights = DataFrame()
+
+        # initialize weights
+        predec_shade = param_set("shade_priority")
+        predec_seed = param_set("seed_priority")
+        zones_seed = param_set("zone_seed")
+        zones_shade = param_set("zone_shade")
+
+        weights = create_weights_df(param_set("coral_cover_high"), param_set("coral_cover_low"),
+            param_set("in_seed_connectivity"), param_set("out_seed_connectivity"), param_set("shade_connectivity"),
+            param_set("heat_stress"), param_set("wave_stress"), predec_shade, predec_seed,
+            zones_seed, zones_shade)
+
+        # initialize thresholds
+        thresholds = create_thresholds_df([param_set("coral_cover_tol") .* area_to_seed, "gt"],
+            [param_set("deployed_coral_risk_tol"), "lt"], [param_set("deployed_coral_risk_tol"), "lt"])
 
         # initialize criteria
         out_conn = domain.out_conn
@@ -426,9 +440,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         wave_stress = zeros(1, n_sites)
 
         # Prep site selection
-        mcda_vars = DMCDA_vars(domain, sim_params.seed_criteria_names, sim_params.shade_criteria_names, dist_vars, weights, thresholds)
-        criteria_df = create_criteria_df(site_ids, coral_cover,
-            coral_space, domain.in_conn, heat_stress, wave_stress, out_conn, zones, predec)
+        mcda_vars = DMCDA_vars(domain, sim_params.seed_criteria_names, sim_params.shade_criteria_names,
+            param_set("use_dist"), domain.median_site_distance - domain.median_site_distance * param_set("dist_thresh"),
+            param_set("top_n"), weights, thresholds)
+        criteria_df = create_criteria_df(site_ids, coral_cover, coral_space, domain.in_conn,
+            heat_stress, wave_stress, out_conn, zones, predec)
     end
 
     #### End coral constants
