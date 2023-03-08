@@ -239,7 +239,7 @@ function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArr
         X_q .= quantile(X_di, seq)
 
         sel .= X_q[1] .<= X_di .<= X_q[2]
-        if count(sel) == 0 || length(y[Not(sel)]) == 0 || all(y[sel] .== 0.0)
+        if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
             # not enough samples, or inactive area of factor space
             r_s[1, d_i] = missing
         else
@@ -248,7 +248,7 @@ function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArr
 
         for s in 2:S
             sel .= X_q[s] .< X_di .<= X_q[s+1]
-            if count(sel) == 0 || length(y[Not(sel)]) == 0 || all(y[sel] .== 0.0)
+            if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
                 # not enough samples, or inactive area of factor space
                 r_s[s, d_i] = missing
                 continue
