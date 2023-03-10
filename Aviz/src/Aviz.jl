@@ -17,7 +17,8 @@ import GeoDataFrames as GDF
 import GeoFormatTypes as GFT
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
-using ADRIA: load_results, load_domain, ResultSet, run_scenarios
+using ADRIA: load_results, load_domain, ResultSet, run_scenarios, metrics
+import ADRIA: timesteps as AD_timesteps
 
 
 Random.seed!(101)
@@ -152,7 +153,7 @@ function explore(rs::ResultSet)
     traj_time_sld = layout.trajectory.time_slider
 
     # Generate trajectory
-    tac_scens = ADRIA.metrics.scenario_total_cover(rs)
+    tac_scens = metrics.scenario_total_cover(rs)
     tac_data = Matrix(tac_scens')
     tac_min_max = (minimum(tac_scens), maximum(tac_scens))
 
@@ -171,7 +172,7 @@ function explore(rs::ResultSet)
     Label(traj_outcome_sld[3, 1], @lift("$(round($tac_bot_val / 1e6, digits=2)) M (m²)"))
 
     # Time slider
-    years = timesteps(rs)
+    years = AD_timesteps(rs)
     year_range = first(years), last(years)
     time_slider = IntervalSlider(
         traj_time_sld[1, 2:3],
@@ -245,17 +246,17 @@ function explore(rs::ResultSet)
     asv_scens = ADRIA.metrics.scenario_asv(rs)
     asv_scen_dist = dropdims(mean(asv_scens, dims=:timesteps), dims=:timesteps)
 
-    juves_scens = ADRIA.metrics.scenario_juveniles(rs)
+    juves_scens = ADRIA.metrics.scenario_relative_juveniles(rs)
     juves_scen_dist = dropdims(mean(juves_scens, dims=:timesteps), dims=:timesteps)
 
     ms = rs.model_spec
-    intervention_components = ms[(ms.component.=="Intervention").&(ms.fieldname.!="guided"), [:fieldname, :full_bounds]]
+    intervention_components = ms[(ms.component.=="Intervention").&(ms.fieldname.!="guided"), [:fieldname, :bounds]]
     interv_names = intervention_components.fieldname
     interv_idx = findall(x -> x in interv_names, names(X))
 
     # Adjust unguided scenarios so scenario values are not 0 (to avoid these getting removed in display)
     for (i, n) in enumerate(interv_names)
-        fb = intervention_components[i, :full_bounds]
+        fb = intervention_components[i, :bounds]
         x = eval(Meta.parse(fb))
         X[X.guided.<0, n] .= x[1]
     end
