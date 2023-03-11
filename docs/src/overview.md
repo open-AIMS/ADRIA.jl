@@ -1,4 +1,4 @@
-# ADRIA Architecture
+# An overview of ADRIA
 
 ADRIA consists of three overarching components:
 
@@ -11,7 +11,7 @@ This page documents the underlying architectural implementation of ADRIA, detail
 components interact.
 
 
-## Overview
+## General Structure
 
 The primary purpose of ADRIA is to support reef restoration and adaptation through the development
 of robust intervention strategies under deep uncertainty. Here, "robustness" refers to the ability
@@ -45,7 +45,7 @@ Post-processing is the analysis and visualization step.
 
 ## Model Factors
 
-ADRIA are defined across four sub-components:
+Factors in ADRIA are defined across four sub-components:
 
 1. Intervention
 2. Criteria
