@@ -26,9 +26,12 @@ makedocs(sitename="ADRIA Documentation",
         #     "simple_showcase.md",
         #     "advanced_showcase.md"
         # ],
+        "Architecture" => [
+            "architecture/architecture.md",
+            "architecture/domain_and_resultsets.md"
+        ],
         "Development" => [
             "development/development_setup.md",
-            "development/architecture.md",
             "development/metrics.md",
             "development/release_guide.md",
             "development/building_docs.md"],
