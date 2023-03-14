@@ -35,8 +35,8 @@ Base.@kwdef mutable struct SimConstants
 
     priority_sites = [] # sites to prioritize when seeding or shading
     priority_zones = ["DarkBlue", "Green"] # zones to prioritize when seeding or shading, in order of preference
-    seed_criteria_names = ["site_ids", "heat_stress", "wave_stress", "connectivity", "cover_space"]
-    shade_criteria_names = ["site_ids", "heat_stress", "wave_stress", "connectivity", "coral_cover"]
+    seed_criteria_names = ["site_ids", "heat_stress", "wave_stress", "connectivity_in", "connectivity_out", "cover_space"]
+    shade_criteria_names = ["site_ids", "heat_stress", "wave_stress", "connectivity_in", "coral_cover"]
 
     ## Environmental parameters
     # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
