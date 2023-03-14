@@ -4,10 +4,6 @@ using StatsBase
 using Distances
 using Combinatorics
 
-macro Name(arg)
-    string(arg)
-end
-
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     n_site_int  # ::I
     crit_seed_names #::V
