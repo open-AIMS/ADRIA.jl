@@ -24,8 +24,9 @@ function create_criteria_df(site_ids::AbstractArray, coral_cover::AbstractArray,
         connectivity_in=connectivity_in, connectivity_out=connectivity_out,
         heat_stress=heat_stress, wave_stress=wave_stress)
 
+    #Main.@infiltrate
     for crit_temp in criteria
-        criteria_df[!, @Name(crit_temp)] = crit_temp
+        criteria_df[!, crit_temp[2]] = crit_temp[1]
     end
     return criteria_df
 end
@@ -42,19 +43,19 @@ function create_weights_df(coral_cover_wt::Float64, coral_space_wt::Float64,
         wave_stress_wt=wave_stress_wt)
 
     for wt_temp in weights
-        weights_df[!, @Name(wt_temp)] = wt_temp
+        weights_df[!, wt_temp[2]] = [wt_temp[1]]
     end
     return weights_df
 end
 
-function create_thesholds_df(coral_space_th::Float64, heat_stress_th::Float64,
-    wave_stress_th::Float64, thresholds...)::DataFrame
+function create_thresholds_df(coral_space_th::AbstractArray, heat_stress_th::AbstractArray,
+    wave_stress_th::AbstractArray, thresholds...)::DataFrame
 
     thresholds_df = DataFrame(coral_space_th=coral_space_th, heat_stress_th=heat_stress_th,
         wave_stress_th=wave_stress_th)
-
+    Main.@infiltrate
     for th_temp in thresholds
-        thresholds_df[!, @Name(th_temp)] = th_temp
+        thresholds_df[!, th_temp[2]] = th_temp[1]
     end
     return thresholds_df
 end
