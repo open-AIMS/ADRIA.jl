@@ -45,7 +45,56 @@ function env_stress_criteria(env_stress)
     return maximum(env_stress) != 0.0 ? (env_stress .- minimum(env_stress)) ./ (maximum(env_stress) - minimum(env_stress)) : zeros(Float64, size(env_stress))
 end
 
-function connectivity_criteria(conn)
+function connectivity_criteria(conn, sum_cover, area)
     cov_area = conn .* sum_cover .* area
-    return maximum(cov_area) != 0.0 ? cov_area / maximum(cov_area) : 0.0
+    return maximum(cov_area) != 0.0 ? cov_area / maximum(cov_area) : zeros(Float64, size(cov_area))
+end
+
+function initialize_mcda(domain, param_set, sim_params, site_data, depth_priority, init_sum_cover, area_to_seed)
+    n_sites = length(site_data.site_id)
+    rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
+
+    # initialize weights
+    weights = create_weights_df(param_set("coral_cover_high"), param_set("coral_cover_low"),
+        param_set("in_seed_connectivity"), param_set("out_seed_connectivity"),
+        param_set("shade_connectivity"), param_set("heat_stress"), param_set("wave_stress"),
+        (param_set("shade_priority"), "predec_shade_wt"),
+        (param_set("seed_priority"), "predec_seed_wt"),
+        (param_set("zone_seed"), "zones_seed_wt"),
+        (param_set("zone_shade"), "zones_shade_wt"))
+
+    # initialize thresholds
+    thresholds = create_thresholds_df([param_set("coral_cover_tol") .* area_to_seed, "gt"],
+        [param_set("deployed_coral_risk_tol"), "lt"],
+        [param_set("deployed_coral_risk_tol"), "lt"])
+
+    # initialize criteria
+    zones = zones_criteria(site_data.zone_type, sim_params.priority_zones, domain.strong_pred, collect(1:n_sites))
+    predec = priority_predecessor_criteria(domain.strong_pred, sim_params.priority_sites)
+    coral_cover, coral_space = coral_cover_criteria(site_data, init_sum_cover)
+    heat_stress = zeros(1, n_sites)
+    wave_stress = zeros(1, n_sites)
+
+    # Prep site selection
+    mcda_vars = DMCDA_vars(domain, sim_params.seed_criteria_names, sim_params.shade_criteria_names,
+        param_set("use_dist"), domain.median_site_distance - domain.median_site_distance * param_set("dist_thresh"),
+        Int(param_set("top_n")), weights, thresholds)
+
+    criteria_df = create_criteria_df(depth_priority, coral_cover, coral_space,
+        domain.in_conn, domain.out_conn, heat_stress, wave_stress,
+        ("zones", zones), ("predec", predec))
+
+    return rankings, mcda_vars, criteria_df
+
+end
+
+function update_criteria_df!(criteria_df, wave_stress, heat_stress, in_conn, out_conn, site_area, site_coral_cover, site_data, depth_priority)
+    criteria_df[:, "wave_stress"] .= env_stress_criteria(wave_stress)[depth_priority]
+    criteria_df[:, "heat_stress"] .= env_stress_criteria(heat_stress)[depth_priority]
+    criteria_df[:, "connectivity_in"] .= connectivity_criteria(in_conn, site_coral_cover, site_area)[depth_priority]
+    criteria_df[:, "connectivity_out"] .= connectivity_criteria(out_conn, site_coral_cover, site_area)[depth_priority]
+    coral_cover, coral_space = coral_cover_criteria(site_data, site_coral_cover)
+    criteria_df[:, "coral_cover"] .= coral_cover[depth_priority]
+    criteria_df[:, "coral_space"] .= coral_space[depth_priority]
+    return criteria_df
 end
