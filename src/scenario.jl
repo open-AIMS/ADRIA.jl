@@ -414,40 +414,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     if is_guided
         # pre-allocate rankings
-        rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
-
-        # initialize weights
-        weights = create_weights_df(param_set("coral_cover_high"), param_set("coral_cover_low"),
-            param_set("in_seed_connectivity"), param_set("out_seed_connectivity"),
-            param_set("shade_connectivity"), param_set("heat_stress"), param_set("wave_stress"),
-            (param_set("shade_priority"), "predec_shade_wt"),
-            (param_set("seed_priority"), "predec_seed_wt"),
-            (param_set("zone_seed"), "zones_seed_wt"),
-            (param_set("zone_shade"), "zones_shade_wt"))
-
-        # initialize thresholds
-        thresholds = create_thresholds_df([param_set("coral_cover_tol") .* area_to_seed, "gt"],
-            [param_set("deployed_coral_risk_tol"), "lt"],
-            [param_set("deployed_coral_risk_tol"), "lt"])
-
-        # initialize criteria
-        connectivity_out = domain.out_conn
-        zones = zones_criteria(site_data.zone_type, sim_params.priority_zones)
-        predec = priority_predecessor_criteria(domain.strong_pred, sim_params.priority_sites)
-        coral_cover, coral_space = coral_cover_criteria(site_data, sum(Y_cover[1, :, :], dims=:species))
-        heat_stress = zeros(1, n_sites)
-        wave_stress = zeros(1, n_sites)
-        #Main.@infiltrate
-        # Prep site selection
-        #Main.@infiltrate
-        mcda_vars = DMCDA_vars(domain, sim_params.seed_criteria_names, sim_params.shade_criteria_names,
-            param_set("use_dist"), domain.median_site_distance - domain.median_site_distance * param_set("dist_thresh"),
-            param_set("top_n"), weights, thresholds)
-        #Main.@infiltrate
-
-        criteria_df = create_criteria_df(site_ids, coral_cover, coral_space, domain.in_conn,
-            heat_stress, wave_stress, ("connectivity_out", connectivity_out),
-            ("zones", zones), ("predec", predec))
+        rankings, mcda_vars, criteria_df = initialize_mcda(domain, param_set, sim_params, site_data,
+            depth_priority, sum(Y_cover[1, :, :], dims=2), area_to_seed)
     end
 
     #### End coral constants
