@@ -221,16 +221,34 @@ function rank_shade_sites!(S, weights, rankings, n_site_int, mcda_func)::Tuple{V
     rank_sites!(S, weights, rankings, n_site_int, mcda_func, 3)
 end
 
-function create_decision_matrix(criteria_df::DataFrame, tolerances::Vector{Tuple{String,String,Float64}})
+"""
+    create_decision_matrix(criteria_df::DataFrame, tolerances::DataFrame)
+
+# Arguments
+- `criteria_df` : contains criteria in each column for sites in each row.
+- `tolerances` : contains thresholds for specified criteria, with names matching those in criteria_df.
+                First row is the threshold value, second is 'gt' if criteria should be greater
+                than threshold and 'lt' if criteria should be less than.
+
+# Returns
+- `A` : Decision matrix
+- 'filtered': indices for sites not filtered due to threshold specifications.
+"""
+function create_decision_matrix(criteria_df::DataFrame, tolerances::DataFrame)
     A = Matrix(criteria_df)
-    crit_col = criteria_df.fieldname .== tolerances[tt][1]
-    for tt = 1:length(tolerances)
-        if tolerances[tt][2] .== "gt"
-            rule = A[:, crit_col] .> tolerances[tt][3]
-        elseif tolerances[tt][2] .== "lt"
-            rule = A[:, crit_col] .<= tolerances[tt][3]
+    crit_cols = names(criteria_df)
+    tol_cols = names(tolerances)
+
+    for tt = 1:size(tol_cols, 2)
+        crit_ind = findall(crit_cols .== tol_cols[tt])
+        if !isempty(crit_ind)
+            if tolerances[2, tt] == "gt"
+                rule = vec(A[:, crit_ind]) .<= tolerances[1, tt]
+            elseif tolerances[2, tt] == "lt"
+                rule = vec(A[:, crit_ind]) .> tolerances[1, tt]
+            end
+            A[findall(rule), crit_ind] .= NaN
         end
-        A[rule, crit_col] .= NaN
     end
 
     # Filter out sites not satisfying the tolerances
