@@ -135,7 +135,7 @@ function DMCDA_vars(domain::Domain, seed_crit_names::Vector{String}, shade_crit_
         shade_crit_names,
         weights,
         thresholds,
-        domain.distances,
+        domain.site_distances,
         use_dist,
         min_dist,
         top_n
