@@ -37,11 +37,12 @@ end
 
 function coral_cover_criteria(site_data, coral_cover)
     max_area = site_data.k .* site_data.area
-    return max.(max_area .* coral_cover, 0.0), max.(max_area .- coral_cover_area, 0.0)
+    coral_cover_area = site_data.area .* coral_cover'
+    return max.(coral_cover_area, 0.0), max.(max_area .- coral_cover_area, 0.0)
 end
 
 function env_stress_criteria(env_stress)
-    return maximum(env_stress) != 0.0 ? (env_stress .- minimum(env_stress)) ./ (maximum(env_stress) - minimum(env_stress)) : 0.0
+    return maximum(env_stress) != 0.0 ? (env_stress .- minimum(env_stress)) ./ (maximum(env_stress) - minimum(env_stress)) : zeros(Float64, size(env_stress))
 end
 
 function connectivity_criteria(conn)
