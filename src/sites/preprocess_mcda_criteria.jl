@@ -1,7 +1,7 @@
-using ADRIA: mcda_normalize
+using ADRIA: mcda_normalize, DMCDA_vars
 
 
-function zones_criteria(zones::Vector{String}, priority_zones::Vector{String})::AbstractArray
+function zones_criteria(zones, priority_zones, strong_pred, site_ids)
     n_sites = size(zones, 1)
     zone_ids = intersect(priority_zones, unique(zones))
     zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
