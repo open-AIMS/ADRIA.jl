@@ -326,12 +326,12 @@ function guided_site_selection(
     end
 
     n_site_int::Int64 = d_vars.n_site_int
-    tolerances = d_vars.tolerances
+    thresholds = d_vars.thresholds
     weights = d_vars.weights
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
-    A, filtered_sites = create_decision_matrix(criteria_df, tolerances)
+    A, filtered_sites = create_decision_matrix(criteria_df, thresholds)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
