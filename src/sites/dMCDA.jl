@@ -365,7 +365,7 @@ function guided_site_selection(
     elseif log_seed
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, n_site_int, mcda_func)
         if use_dist != 0
-            prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 2)
+            prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, d_vars.distances, min_dist, Int64(d_vars.top_n), rankings, 2)
         end
     end
 
@@ -374,7 +374,7 @@ function guided_site_selection(
     elseif log_shade
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, n_site_int, mcda_func)
         if use_dist != 0
-            prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 3)
+            prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, d_vars.dist, min_distances, Int64(d_vars.top_n), rankings, 3)
         end
     end
 
