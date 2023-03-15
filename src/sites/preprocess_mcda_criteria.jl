@@ -24,9 +24,9 @@ function zones_criteria(zones, priority_zones, strong_pred, site_ids)
     return zones_criteria
 end
 
-function priority_predecessor_criteria(strong_pred::AbstractArray, priority_sites::AbstractArray)::AbstractArray
+function priority_predecessor_criteria(strong_pred, priority_sites)
     # # work out which priority predecessors are connected to priority sites
-    predec::Array{Float64} = zeros(n_sites, 3)
+    predec::Array{Float64} = zeros(length(strong_pred), 3)
     predec[:, 1:2] .= strong_pred
     predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
     predprior = [x for x in predprior if !isnan(x)]
