@@ -258,14 +258,29 @@ function create_decision_matrix(criteria_df::DataFrame, tolerances::DataFrame)
     return A, filtered
 end
 
+"""
+    create_intervention_matrix(A::Matrix, weights::DataFrame, criteria_df::DataFrame, int_crit_names::Vector{String})
 
+# Arguments
+- `A` : Criteria_df as a Matrix and filtered according to criteria thresholds set in tolerances.
+- `weights` : contains weights for all criteria in criteria_df (not including site_ids).
+- 
 
-function create_intervention_matrix(A, weights, criteria_df, int_crit_names)
+# Returns
+- `A` : Decision matrix
+- 'filtered': indices for sites not filtered due to threshold specifications.
+- `criteria_df` : contains criteria for site selection in each column for sites in each row.
+- 'int_crit_names': specifies criteria to be use in this decision instance (seeding, shading etc).
+                    Must be a subset of the columns of criteria_df.
+
+"""
+function create_intervention_matrix(A::Matrix, weights::DataFrame, criteria_df::DataFrame, int_crit_names::Vector{String})
     # Define intervention decision matrix
     crit_names = names(criteria_df)
-    int_ind = [findall(crit_names .== int_crit_names[ind]) for ind in eachindex(int_crit_names)]
+    int_ind = [findall(crit_names .== int_crit_names[ind])[1] for ind in eachindex(int_crit_names)]
+
     S = A[:, int_ind]
-    ws = normalize(weights[int_ind])
+    ws = normalize(Array(weights[1, int_ind[2:end]]))
     return S, ws
 end
 
