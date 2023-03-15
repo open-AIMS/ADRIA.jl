@@ -342,12 +342,12 @@ function guided_site_selection(
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_intervention_matrix(A, weights, criteria_df, d_vars.seed_crit_names)
+        SE, wse = create_intervention_matrix(A, weights, criteria_df, d_vars.crit_seed_names)
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        SH, wsh = create_intervention_matrix(A, weights, criteria_df, d_vars.shade_crit_names)
+        SH, wsh = create_intervention_matrix(A, weights, criteria_df, d_vars.crit_shade_names)
     end
 
     if alg_ind == 1
