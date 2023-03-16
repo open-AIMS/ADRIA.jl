@@ -97,7 +97,7 @@ end
 - `wave_stress_th` : Array containing [threshold,"operation string"].
                     where theshold is the threshold for wave stress and 
                     operation string is "gt" if greater than and "lt" if less than.
-- `thresholds...` : ANy number of additional thresholds as Tuples ("criteria name", [threshold array]).
+- `thresholds...` : Any number of additional thresholds as Tuples ("criteria name", [threshold array]).
 
 """
 function create_thresholds_df(coral_space_th::AbstractArray, heat_stress_th::AbstractArray,
