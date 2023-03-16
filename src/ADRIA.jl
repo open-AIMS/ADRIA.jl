@@ -51,6 +51,7 @@ include("analysis/analysis.jl")
 include("analysis/sensitivity.jl")
 
 include("ExtInterface/ReefMod/Domain.jl")
+include("ExtInterface/ReefMod/scenarios.jl")
 
 
 export
