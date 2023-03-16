@@ -36,7 +36,7 @@ include("io/inputs.jl")
 
 include("sites/connectivity.jl")
 include("sites/dMCDA.jl")
-include("sites/preprocess_mcda_criteria.jl")
+include("sites/mcda_io.jl")
 
 include("interventions/seeding.jl")
 
