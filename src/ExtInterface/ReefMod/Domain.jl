@@ -38,7 +38,7 @@ Filter files found in given path down to those that have the provided identifier
 
 # Arguments
 - `fn_path` : directory of files
-- `ident` : filter out files which do not have this in their filename.
+- `ident` : keep files with `ident` in their filename.
 """
 function _get_relevant_files(fn_path::String, ident::String)
     valid_files = filter(isfile, readdir(fn_path; join=true))
