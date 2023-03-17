@@ -8,7 +8,8 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     n_site_int  # ::I
     crit_seed_names #::V
     crit_shade_names #::V
-    weights #::V
+    weights_seed #::V
+    weights_shade #::V
     thresholds #::V
     distances #::M
     use_dist #::I
