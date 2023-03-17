@@ -135,24 +135,24 @@ function initialize_mcda(domain::Domain, param_set::NamedDimsArray, sim_params::
     site_data::DataFrame, depth_priority::Vector{Int64}, init_sum_cover::Array{Float64},
     area_to_seed::Float64)
 
-    criteria_names = [:coral_cover, :coral_space, :in_connecticity, :out_connectivty, :heat_stress, :wave_stress, :zones, :predec]
-    criteria_seed_names = [:coral_space, :in_connecticity, :out_connectivty, :heat_stress, :wave_stress, :zones, :predec]
-    criteria_shade_names = [:coral_cover, :in_connecticity, :heat_stress, :wave_stress, :zones, :predec]
     n_sites = length(site_data.site_id)
     rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
 
     # initialize weights
-    weights_shade = create_weights_store(criteria_shade_names, param_set("coral_cover_high"),
-        param_set("shade_connectivity"), param_set("heat_stress"), param_set("wave_stress"),
-        param_set("shade_priority"), param_set("zone_shade"))
-    weights_seed = create_weights_store(criteria_seed_names, param_set("coral_cover_low"),
-        param_set("in_seed_connectivity"), param_set("out_seed_connectivity"),
-        param_set("heat_stress"), param_set("wave_stress"), param_set("seed_priority"),
-        param_set("zone_seed"))
+    weights_shade = (coral_space=param_set("coral_cover_high"),
+        in_connectivity=param_set("shade_connectivity"), heat_stress=param_set("heat_stress"),
+        wave_stress=param_set("wave_stress"), predec=param_set("shade_priority"),
+        zones=param_set("zone_shade"))
+    weights_seed = (coral_cover=param_set("coral_cover_low"),
+        in_connectivity=param_set("in_seed_connectivity"),
+        out_connectivity=param_set("out_seed_connectivity"), heat_stress=param_set("heat_stress"),
+        wave_stress=param_set("wave_stress"), predec=param_set("seed_priority"),
+        zones=param_set("zone_seed"))
+
     # initialize thresholds
-    thresholds = create_thresholds_df([param_set("coral_cover_tol") .* area_to_seed, "gt"],
-        [param_set("deployed_coral_risk_tol"), "lt"],
-        [param_set("deployed_coral_risk_tol"), "lt"])
+    thresholds = create_tolerances_store(coral_cover=(param_set("coral_cover_tol") .* area_to_seed, >),
+        heat_stress=(param_set("deployed_coral_risk_tol"), <),
+        wave_stress=(param_set("deployed_coral_risk_tol"), <))
 
     # calculate values for criteria which do not change over time
     zones = zones_criteria(site_data.zone_type, sim_params.priority_zones, domain.strong_pred, collect(1:n_sites))
