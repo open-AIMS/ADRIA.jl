@@ -37,67 +37,19 @@ end
                     ("criteria name", [criteria array]).
 
 """
-function create_criteria_store(site_ids::AbstractArray, criteria_names, criteria...)::DataFrame
+function create_criteria_store(site_ids::AbstractArray; criteria...)
 
     criteria_matrix = site_ids
-    for crit_temp in criteria
-        criteria_matrix = hcat(criteria_matrix, crit_temp[site_ids])
+    for crit_key in keys(criteria)
+        criteria_matrix = hcat(criteria_matrix, criteria[crit_key][site_ids])
     end
+    return KeyedArray(criteria_matrix[:, 2:end], reefs=site_ids, criteria=collect(keys(criteria)))
 
-    criteria_store = KeyedArray(criteria_matrix[:, 2:end], reefs=site_ids, criteria=criteria_names)
-    return criteria_store
 end
 
-"""
-    create_weights_df(coral_cover_wt::Float64, coral_space_wt::Float64,
-            in_seed_connectivity_wt::Float64, out_seed_connectivity_wt::Float64,
-            heat_stress_wt::Float64, wave_stress_wt::Float64, weights...)::DataFrame 
-
-    Constructs the weightings dataframe for performing site selection.
-# Arguments
-- `coral_cover_wt` : weighting for importance of coral cover in shading site selection.
-- `coral_space_wt` : weighting for importance of space for coral in seeding site selection.
-- `in_seed_connectivity_wt` : weighting for in-coming connectivity in site selection.
-- `out_seed_connectivity_wt` : weighting for out-going connectivity in site selection.
-- `heat_stress_wt` : weighting for heat stress in site selection.
-- `wave_stress_wt` : weighting for wave stress in site selection.
-- `weights...` : additional weights as floats for any additional criteria added while constructing criteria_df.
-
-"""
-function create_weights_store(weight_names, weights...)::DataFrame
-    weights_vec = collect(weights)
-    weights_store = NamedDimsArray(weight_names, weights_vec)
-    return weights_store
-end
-
-"""
-    create_thresholds_df(coral_space_th::AbstractArray, heat_stress_th::AbstractArray,
-            wave_stress_th::AbstractArray, thresholds...)::DataFrame
-
-    Constructs the thesholds dataframe for performing site selection.
-# Arguments
-- `coral_space_th` : Array containing [threshold,"operation string"].
-                    where theshold is the threshold for coral space when seeding and 
-                    operation string is "gt" if greater than and "lt" if less than.
-- `heat_stress_th` : Array containing [threshold,"operation string"].
-                    where theshold is the threshold for heat stress and 
-                    operation string is "gt" if greater than and "lt" if less than.
-- `wave_stress_th` : Array containing [threshold,"operation string"].
-                    where theshold is the threshold for wave stress and 
-                    operation string is "gt" if greater than and "lt" if less than.
-- `thresholds...` : Any number of additional thresholds as Tuples ("criteria name", [threshold array]).
-
-"""
-function create_thresholds_df(coral_space_th::AbstractArray, heat_stress_th::AbstractArray,
-    wave_stress_th::AbstractArray, thresholds...)::DataFrame
-
-    thresholds_df = DataFrame(coral_space=coral_space_th, heat_stress=heat_stress_th,
-        wave_stress=wave_stress_th)
-
-    for th_temp in thresholds
-        thresholds_df[!, th_temp[2]] = th_temp[1]
-    end
-    return thresholds_df
+function create_tolerances_store(; tolerances...)
+    tol_store = [x -> tolerances[tol_key][2](x, tolerances[tol_key][1]) for tol_key in keys(tolerances)]
+    return KeyedArray(tol_store, tols=collect(keys(tolerances)))
 end
 
 """
