@@ -197,18 +197,18 @@ Updates variable strucutres required for dynamic site selection in ADRIA.
 - `depth_priority` : Depth filtered set of site ids as integers.
 
 """
-function update_criteria_df!(criteria_df::DataFrame, wave_stress::AbstractArray,
+function update_criteria_store!(criteria_store::KeyedArray, wave_stress::AbstractArray,
     heat_stress::AbstractArray, in_conn::AbstractArray, out_conn::AbstractArray,
     site_area::AbstractArray, site_coral_cover::AbstractArray, site_data::DataFrame,
     depth_priority::AbstractArray)
 
-    criteria_df[:, "wave_stress"] .= env_stress_criteria(wave_stress)[depth_priority]
-    criteria_df[:, "heat_stress"] .= env_stress_criteria(heat_stress)[depth_priority]
-    criteria_df[:, "connectivity_in"] .= connectivity_criteria(in_conn, site_coral_cover, site_area)[depth_priority]
-    criteria_df[:, "connectivity_out"] .= connectivity_criteria(out_conn, site_coral_cover, site_area)[depth_priority]
+    criteria_store(:wave_stress) .= env_stress_criteria(wave_stress)[depth_priority]
+    criteria_store(:heat_stress) .= env_stress_criteria(heat_stress)[depth_priority]
+    criteria_store(:in_connectivity) .= connectivity_criteria(in_conn, site_coral_cover, site_area)[depth_priority]
+    criteria_store(:in_connectivity) .= connectivity_criteria(out_conn, site_coral_cover, site_area)[depth_priority]
     coral_cover, coral_space = coral_cover_criteria(site_data, site_coral_cover)
-    criteria_df[:, "coral_cover"] .= coral_cover[depth_priority]
-    criteria_df[:, "coral_space"] .= coral_space[depth_priority]
+    criteria_store(:coral_cover) .= coral_cover[depth_priority]
+    criteria_store(:coral_space) .= coral_space[depth_priority]
 
-    return criteria_df
+    return criteria_store
 end
