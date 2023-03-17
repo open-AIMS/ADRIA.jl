@@ -272,7 +272,7 @@ function guided_site_selection(
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_intervention_matrix(A, weights, criteria_df, d_vars.crit_seed_names)
+        SE, wse = create_intervention_matrix(criteria_store, weights_seed)
     end
 
     # if shading, create shading specific decision matrix
