@@ -176,28 +176,14 @@ end
 - `A` : Decision matrix
 - 'filtered': indices for sites not filtered due to threshold specifications.
 """
-function create_decision_matrix(criteria_df::DataFrame, tolerances::DataFrame)
-    A = Matrix(criteria_df)
-    crit_cols = names(criteria_df)
-    tol_cols = names(tolerances)
+function create_decision_matrix(criteria_store::KeyedArray, tolerances::KeyedArray)
 
-    for tt = 1:size(tol_cols, 2)
-        crit_ind = findall(crit_cols .== tol_cols[tt])
-        if !isempty(crit_ind)
-            if tolerances[2, tt] == "gt"
-                rule = vec(A[:, crit_ind]) .<= tolerances[1, tt]
-            elseif tolerances[2, tt] == "lt"
-                rule = vec(A[:, crit_ind]) .> tolerances[1, tt]
-            end
-            A[findall(rule), crit_ind] .= NaN
-        end
+    for tol_key in tolerances.tols
+        rule = map(tolerances(tol_key), criteria_store(tol_key))
+        criteria_store = criteria_store[rule, :]
     end
 
-    # Filter out sites not satisfying the tolerances
-    filtered = vec(.!any(isnan.(A), dims=2))
-    # remove rows with NaNs
-    A = A[filtered, :]
-    return A, filtered
+    return criteria_store
 end
 
 """
