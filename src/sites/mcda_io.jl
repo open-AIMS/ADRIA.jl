@@ -164,14 +164,14 @@ function initialize_mcda(domain::Domain, param_set::NamedDimsArray, sim_params::
     # Prep other variables for site selection
     mcda_vars = DMCDA_vars(domain, sim_params.seed_criteria_names, sim_params.shade_criteria_names,
         param_set("use_dist"), domain.median_site_distance - domain.median_site_distance * param_set("dist_thresh"),
-        Int(param_set("top_n")), weights, thresholds)
+        Int(param_set("top_n")), weights_seed, weights_shade, thresholds)
 
     # initialize criteria
-    criteria_df = create_criteria_store(depth_priority, criteria_names, coral_cover,
-        coral_space, domain.in_conn, domain.out_conn, heat_stress, wave_stress,
-        zones, predec)
+    criteria_store = create_criteria_store(depth_priority, coral_cover=coral_cover,
+        coral_space=coral_space, in_connectivity=domain.in_conn, out_connectivity=domain.out_conn,
+        heat_stress=heat_stress, wave_stress=wave_stress, predec=predec, zones=zones)
 
-    return rankings, mcda_vars, criteria_df
+    return rankings, mcda_vars, criteria_store
 
 end
 
