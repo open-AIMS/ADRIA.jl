@@ -236,13 +236,13 @@ Tuple :
         Values of 0 indicate sites that were not considered
 """
 function guided_site_selection(
-    d_vars::DMCDA_vars, criteria_df::DataFrame,
+    d_vars::DMCDA_vars, criteria_store::KeyedArray,
     alg_ind::T, log_seed::B, log_shade::B,
     prefseedsites::IA, prefshadesites::IA,
     rankingsin::Matrix{T}
 )::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool}
 
-    site_ids::Array{Int64} = criteria_df[:, :site_ids]
+    site_ids::Array{Int64} = criteria_store.reefs
     use_dist::Int64 = d_vars.use_dist
     min_dist::Float64 = d_vars.min_dist
     site_ids = copy(d_vars.site_ids)
