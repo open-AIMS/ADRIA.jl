@@ -36,18 +36,15 @@ end
                     ("criteria name", [criteria array]).
 
 """
-function create_criteria_df(site_ids::AbstractArray, coral_cover::AbstractArray,
-    coral_space::AbstractArray, connectivity_in::AbstractArray, connectivity_out::AbstractArray,
-    heat_stress::AbstractArray, wave_stress::AbstractArray, criteria...)::DataFrame
+function create_criteria_store(site_ids::AbstractArray, criteria_names, criteria...)::DataFrame
 
-    criteria_df = DataFrame(site_ids=site_ids, coral_cover=coral_cover[site_ids], coral_space=coral_space[site_ids],
-        connectivity_in=connectivity_in[site_ids], connectivity_out=connectivity_out[site_ids],
-        heat_stress=heat_stress[site_ids], wave_stress=wave_stress[site_ids])
-
+    criteria_matrix = site_ids
     for crit_temp in criteria
-        criteria_df[!, crit_temp[1]] = crit_temp[2][site_ids]
+        criteria_matrix = hcat(criteria_matrix, crit_temp[site_ids])
     end
-    return criteria_df
+
+    criteria_store = KeyedArray(criteria_matrix[:, 2:end], reefs=site_ids, criteria=criteria_names)
+    return criteria_store
 end
 
 """
