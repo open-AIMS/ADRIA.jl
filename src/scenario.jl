@@ -414,7 +414,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     if is_guided
         # pre-allocate rankings
-        rankings, mcda_vars, criteria_df = initialize_mcda(domain, param_set, sim_params, site_data,
+        rankings, mcda_vars, criteria_store = initialize_mcda(domain, param_set, sim_params, site_data,
             depth_priority, sum(Y_cover[1, :, :], dims=2), area_to_seed)
     end
 
@@ -492,8 +492,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
-            wave_stress = sum(Sw_t[tstep, :, :], dims=1)'
-            update_criteria_df!(criteria_df, wave_stress, dhw_t, domain.in_conn, domain.out_conn,
+            update_criteria_store!(criteria_store, sum(Sw_t[tstep, :, :], dims=1)', dhw_t, domain.in_conn, domain.out_conn,
                 total_site_area, site_coral_cover, domain.site_data, depth_priority)
 
         end
@@ -503,7 +502,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         if is_guided && in_seed_years
 
             (prefseedsites, prefshadesites, rankings) = guided_site_selection(mcda_vars,
-                criteria_df, MCDA_approach, seed_decision_years[tstep], shade_decision_years[tstep],
+                criteria_store, MCDA_approach, seed_decision_years[tstep], shade_decision_years[tstep],
                 prefseedsites, prefshadesites, rankings)
 
             # Log site ranks
