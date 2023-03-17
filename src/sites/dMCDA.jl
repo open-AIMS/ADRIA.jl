@@ -63,20 +63,10 @@ end
 - `weights...` : additional weights as floats for any additional criteria added while constructing criteria_df.
 
 """
-function create_weights_df(coral_cover_wt::Float64, coral_space_wt::Float64,
-    in_seed_connectivity_wt::Float64, out_seed_connectivity_wt::Float64,
-    shade_connectivity_wt::Float64, heat_stress_wt::Float64,
-    wave_stress_wt::Float64, weights...)::DataFrame
-
-    weights_df = DataFrame(coral_cover=coral_cover_wt, coral_space=coral_space_wt,
-        in_seed_connectivity=in_seed_connectivity_wt,
-        out_seed_connectivity=out_seed_connectivity_wt,
-        heat_stress=heat_stress_wt, wave_stress=wave_stress_wt)
-
-    for wt_temp in weights
-        weights_df[!, wt_temp[2]] = [wt_temp[1]]
-    end
-    return weights_df
+function create_weights_store(weight_names, weights...)::DataFrame
+    weights_vec = collect(weights)
+    weights_store = NamedDimsArray(weight_names, weights_vec)
+    return weights_store
 end
 
 """
