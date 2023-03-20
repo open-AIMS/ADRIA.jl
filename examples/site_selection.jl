@@ -9,7 +9,7 @@ dom = ADRIA.load_domain(joinpath(here, "Example_domain"))
 
 criteria_df = ADRIA.sample_site_selection(dom, 8) # get scenario dataframe
 
-area_to_seed = 1.5 * 10^-6  # area of seeded corals in km^2
+area_to_seed = 962.11  # area of seeded corals in m^2
 ts = 5  # time step to perform site selection at
 
 # initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of sites))
