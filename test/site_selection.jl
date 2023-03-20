@@ -58,7 +58,7 @@ end
     N = 2^3
     criteria_df = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
 
-    area_to_seed = 1.5 * 10^-6  # area of seeded corals in km^2
+    area_to_seed = 662.11  # area of seeded corals in m^2
     ts = 5  # time step to perform site selection at
 
     sum_cover = fill(0.1, N, ADRIA.n_locations(dom))
