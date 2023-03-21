@@ -236,11 +236,20 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
 
     id_list = CSV.read(joinpath(data_files, "id", "id_list_Dec_2022_151222.csv"), DataFrame, header=false)
 
+    # Re-order spatial data to match RME dataset
+    # MANUAL CORRECTION
+    site_data[site_data.LABEL_ID.=="20198", :LABEL_ID] .= "20-198"
+    id_order = [first(findall(x .== site_data.LABEL_ID)) for x in string.(id_list[:, 1])]
+    site_data = site_data[id_order, :]
+
+    # Check that the two lists of location ids are identical
+    @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
+
     # Convert area in km² to m²
-    site_data[:, "area"] .= id_list[:, 2] * 1e6
+    site_data[:, :area] .= id_list[:, 2] * 1e6
 
     # Calculate `k` area (1.0 - "ungrazable" area)
-    site_data[:, "k"] .= 1.0 .- id_list[:, 3]
+    site_data[:, :k] .= 1.0 .- id_list[:, 3]
 
     # Set all site depths to 20m below sea level
     # (ReefMod does not account for depth)
