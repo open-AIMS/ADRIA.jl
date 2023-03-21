@@ -59,7 +59,7 @@ Loads ReefMod DHW data as a datacube.
 function load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::NamedDimsArray
     dhw_path = joinpath(data_path, "dhw")
     rcp_files = _get_relevant_files(dhw_path, rcp)
-    if length(rcp_files) == 0
+    if isempty(rcp_files)
         ArgumentError("No DHW data files found in: $(dhw_path)")
     end
 
@@ -120,7 +120,7 @@ Loads the average connectivity matrix.
 function load_connectivity(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::NamedDimsArray
     conn_path = joinpath(data_path, "con_bin")
     conn_files = _get_relevant_files(conn_path, "CONNECT_ACRO")
-    if length(conn_files) == 0
+    if isempty(conn_files)
         ArgumentError("No DHW data files found in: $(conn_path)")
     end
 
@@ -194,7 +194,7 @@ NamedDimsArray[locations, species, members]
 function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::NamedDimsArray
     icc_path = joinpath(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
-    if length(icc_files) == 0
+    if isempty(icc_files)
         ArgumentError("No cyclone data files found in: $(icc_path)")
     end
 
