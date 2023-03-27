@@ -61,43 +61,21 @@ function create_criteria_store(site_ids::AbstractArray; criteria...)
 
 end
 
+function create_criteria_store(site_ids::AbstractArray, domain::Domain, criteria::DataFrame)
+    criteria_names = collect(criteria.columns)
+
+    criteria_names = replace.(replace.(criteria_names, "_seed" => ""), "_shade" => "")
+    criteria_names = Symbol.(unique(criteria_names[!occursin.("tol", criteria_names)]))
+    criteria_values = Tuple(getproperty(domain, criteria_n) for criteria_n in criteria_names)
+    criteria = (; zip(criteria_names, criteria_values)...)
+
+    return create_criteria_store(site_ids; criteria)
+end
+
+
 function create_tolerances_store(; tolerances...)
     tol_store = [x -> tolerances[tol_key][2](x, tolerances[tol_key][1]) for tol_key in keys(tolerances)]
     return KeyedArray(tol_store, tols=collect(keys(tolerances)))
-end
-
-"""
-    DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
-               site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64,
-               waves::AbstractArray, dhws::AbstractArray)::DMCDA_vars
-    DMCDA_vars(domain::Domain, criteria::NamedDimsArray, site_ids::AbstractArray,
-               sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
-    DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
-               sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
-    DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
-               sum_cover::AbstractArray, area_to_seed::Float64,
-               waves::AbstractArray, dhw::AbstractArray)::DMCDA_vars
-
-Constuctors for DMCDA variables.
-"""
-function DMCDA_vars(domain::Domain, seed_crit_names::Vector{String}, shade_crit_names::Vector{String},
-    use_dist::Float64, min_dist::Float64, top_n::Int64, weights_seed::NamedTuple, weights_shade::NamedTuple,
-    thresholds::KeyedArray)::DMCDA_vars
-
-    mcda_vars = DMCDA_vars(
-        domain.sim_constants.n_site_int,
-        seed_crit_names,
-        shade_crit_names,
-        weights_seed,
-        weights_shade,
-        thresholds,
-        domain.site_distances,
-        use_dist,
-        min_dist,
-        top_n
-    )
-
-    return mcda_vars
 end
 
 """
