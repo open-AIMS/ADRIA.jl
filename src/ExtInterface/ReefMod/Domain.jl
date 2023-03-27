@@ -55,6 +55,9 @@ Loads ReefMod DHW data as a datacube.
 - `data_path` : path to ReefMod data
 - `rcp` : RCP identifier
 - `timeframe` : range of years to represent.
+
+# Returns
+NamedDimsArray[timesteps, locs, member]
 """
 function load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::NamedDimsArray
     dhw_path = joinpath(data_path, "dhw")
@@ -116,6 +119,9 @@ Loads the average connectivity matrix.
 - `ReefModDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
+
+# Returns
+NamedDimsArray[source, sinks]
 """
 function load_connectivity(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::NamedDimsArray
     conn_path = joinpath(data_path, "con_bin")
@@ -157,7 +163,7 @@ end
 - `loc_ids` : location ids
 
 # Returns
-NamedDimsArray[locations, years, members]
+NamedDimsArray[locs, years, scenarios]
 """
 function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::NamedDimsArray
     # NOTE: This reads from the provided CSV files
@@ -177,7 +183,7 @@ function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector
     end
 
     # Mean over all years
-    return NamedDimsArray(cyc_data, locs=loc_ids, years=1:num_years, members=1:length(cyc_files))
+    return NamedDimsArray(cyc_data, locs=loc_ids, years=1:num_years, scenarios=1:length(cyc_files))
 end
 
 """
@@ -189,7 +195,7 @@ end
 - `loc_ids` : location ids
 
 # Returns
-NamedDimsArray[locations, species, members]
+NamedDimsArray[locs, species]
 """
 function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::NamedDimsArray
     icc_path = joinpath(data_path, "initial")
@@ -203,9 +209,13 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     for (i, fn) in enumerate(icc_files)
         icc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false))
     end
+    
+    # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT)
+    # Convert from percent to relative values
+    icc_data = dropdims(mean(icc_data, dims=2), dims=2) ./ 100.0
 
-    # Reorder dims to: locations, species, members
-    return NamedDimsArray(permutedims(icc_data, (1, 3, 2)), locs=loc_ids, species=1:length(icc_files), members=1:20)
+    # Reorder dims to: locations, species
+    return NamedDimsArray(icc_data, locs=loc_ids, species=1:length(icc_files))
 end
 
 
@@ -218,6 +228,9 @@ Load a Domain for use with ReefMod.
 - `ReefModDomain`
 - `fn_path`
 - `RCP`
+
+# Returns
+ReefModDomain
 """
 function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefModDomain
     data_files = joinpath(fn_path, "data_files")
