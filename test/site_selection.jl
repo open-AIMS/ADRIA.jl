@@ -17,7 +17,23 @@ end
 
     # ranks = ADRIA.site_selection(dom, p_tbl, 1, 10, 1)
 end
+@testset "MCDA variable constructor" begin
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
+    criteria_df = ADRIA.sample_site_selection(dom, 1) # get scenario dataframe
+    site_ids = collect(1:length(dom.site_ids))
+    sum_cover = fill(0.1, nrow(criteria_df), nrow(dom.site_data))
 
+    area_to_seed = 1.5 * 10^-6  # area of seeded corals in km^2
+    dhw_scens = dom.dhw_scens[1, :, criteria_df.dhw_scenario[1]]
+    wave_scens = dom.wave_scens[1, :, criteria_df.wave_scenario[1]]
+
+    mcda_vars = ADRIA.DMCDA_vars(dom, criteria_df[1, :], site_ids, sum_cover, area_to_seed, wave_scens, dhw_scens)
+    n_sites = length(mcda_vars.site_ids)
+    @test (length(mcda_vars.in_conn) == n_sites) && (length(mcda_vars.out_conn) == n_sites) || "Connectivity input is incorrect size."
+    @test length(mcda_vars.dam_prob) == n_sites || "Wave damage input is incorrect size."
+    @test length(mcda_vars.heat_stress_prob) == n_sites || "Heat stress input is incorrect size."
+    @test length(mcda_vars.sum_cover) == n_sites || "Initial cover input is incorrect size."
+end
 @testset "Unguided site selection" begin
     n_intervention_sites = 5
     prefseedsites = zeros(Int, n_intervention_sites)
@@ -42,13 +58,14 @@ end
     N = 2^3
     criteria_df = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
 
-    area_to_seed = 1.5 * 10^-6  # area of seeded corals in km^2
+    area_to_seed = 662.11  # area of seeded corals in m^2
     ts = 5  # time step to perform site selection at
 
     sum_cover = fill(0.1, N, ADRIA.n_locations(dom))
     ranks = ADRIA.run_site_selection(dom, criteria_df, sum_cover, area_to_seed, ts)
 
     @test size(ranks, 1) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
+    @test size(ranks, 2) == length(dom.site_ids) || "Ranks storage is not correct size for this domain."
 
     sel_sites = unique(ranks)
     sel_sites = sel_sites[sel_sites.!=0.0]

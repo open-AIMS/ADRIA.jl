@@ -775,13 +775,13 @@ function vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},
 end
 
 """
-    run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
+    run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
 
 Perform site selection for a given domain for multiple scenarios defined in a dataframe.
 
 # Arguments
 - `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
-- `criteria` : DataFrame of criteria weightings and thresholds.
+- `scenarios` : DataFrame of criteria weightings and thresholds for each scenario.
 - `sum_cover` : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
 - `area_to_seed` : area of coral to be seeded at each time step in km^2
 - `timestep` : time step at which seeding and/or shading is being undertaken.
@@ -803,8 +803,7 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
     wave_scens = dom.wave_scens
 
     # Pre-calculate maximum depth to consider
-    criteria[:, "max_depth"] .= criteria.depth_min .+ criteria.depth_offset
-
+    scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
     target_site_ids = Int64[]
     if !isnothing(target_seed_sites)
         append!(target_site_ids, target_seed_sites)
@@ -823,8 +822,8 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
         ranks_store(scenarios=cover_ind, sites=dom.site_ids[considered_sites]) .= site_selection(
             dom,
             scen,
-            mean(wave_scens, dims=(:timesteps, :scenarios)) .+ std(wave_scens, dims=(:timesteps, :scenarios)),
-            mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ std(dhw_scens, dims=(:timesteps, :scenarios)),
+            mean(wave_scens, dims=(:timesteps, :scenarios)) .+ var(wave_scens, dims=(:timesteps, :scenarios)),
+            mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ var(dhw_scens, dims=(:timesteps, :scenarios)),
             considered_sites,
             sum_cover[cover_ind, :],
             area_to_seed
@@ -835,12 +834,12 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
 end
 
 """
-    site_selection(domain::Domain, criteria::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray, sum_cover::AbstractArray, area_to_seed::Float64)
+    site_selection(domain::Domain, scenario::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray, sum_cover::AbstractArray, area_to_seed::Float64)
 
 Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
 
 # Arguments
-- `criteria` : contains criteria weightings and thresholds for a single scenario.
+- `scenario` : contains criteria weightings and thresholds for a single scenario.
 - `mcda_vars` : site selection criteria and weightings structure
 - `w_scens` : array of length nsites containing wave scenario.
 - `dhw_scens` : array of length nsites containing dhw scenario.
@@ -854,9 +853,9 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
 function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray,
     site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::Matrix{Int64}
 
-    mcda_vars = DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, w_scens, dhw_scens)
-
+    mcda_vars = DMCDA_vars(domain, scenario, site_ids, sum_cover, area_to_seed, w_scens, dhw_scens)
     n_sites = length(mcda_vars.site_ids)
+
     # site_id, seeding rank, shading rank
     rankingsin = [mcda_vars.site_ids zeros(Int64, (n_sites, 1)) zeros(Int64, (n_sites, 1))]
 
