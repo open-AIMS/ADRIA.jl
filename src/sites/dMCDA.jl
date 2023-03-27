@@ -3,19 +3,33 @@
 using StatsBase
 using Distances
 using Combinatorics
+using JMcDM
+using ADRIA: order_ranking, mcda_vikor, mcda_topsis
 
-struct DMCDA_vars  # {V, I, F, M} where V <: Vector
-    n_site_int  # ::I
-    crit_seed_names #::V
-    crit_shade_names #::V
-    weights_seed #::V
-    weights_shade #::V
-    thresholds #::V
-    distances #::M
-    use_dist #::I
-    min_dist #::I
-    top_n #::I
-end
+global mcda_methods = [
+    order_ranking,
+    mcda_vikor,
+    mcda_topsis,
+    [ArasMethod(), true],
+    [CocosoMethod(), true],
+    [CodasMethod(), true],
+    [CoprasMethod(), false],
+    [EdasMethod(), true],
+    [GreyMethod(), true],
+    [MabacMethod(), true],
+    [MaircaMethod(), false],
+    [MarcosMethod(), true],
+    [MooraMethod(), true],
+    [MoosraMethod(), true],
+    [PIVMethod(), true],
+    [PSIMethod(), true],
+    [ROVMethod(), true],
+    [SawMethod(), true],
+    [TopsisMethod(), true],
+    [VikorMethod(), false],
+    [WPMMethod(), true],
+    [WaspasMethod(), true]
+]
 
 """
     create_criteria_df(site_ids::AbstractArray, coral_cover::AbstractArray,
