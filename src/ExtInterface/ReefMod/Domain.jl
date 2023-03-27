@@ -271,6 +271,35 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
 end
 
 
+"""
+    site_k(dom::ReefModDomain)::Vector{Float64}
+
+Get maximum coral cover area as a proportion of site area.
+"""
+function site_k(dom::ReefModDomain)::Vector{Float64}
+    return dom.site_data.k
+end
+
+
+# """
+#     switch_RCPs!(d::ReefModDomain, RCP::String)::Domain
+
+# Switch environmental datasets to represent the given RCP.
+# """
+# function switch_RCPs!(d::ReefModDomain, RCP::String)::ADRIADomain
+#     @set! d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
+#     @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
+#     @set! d.RCP = RCP
+
+#     load_DHW(ReefModDomain, data_files, RCP)
+
+#     @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw", d.site_data)
+#     @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub", d.site_data)
+
+#     return d
+# end
+
+
 function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)
 
     # df = model_spec(d)
