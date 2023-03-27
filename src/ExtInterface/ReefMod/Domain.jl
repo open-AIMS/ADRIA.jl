@@ -82,7 +82,7 @@ function load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timefra
         d = CSV.read(rcp_data_fn, DataFrame)[:, 2:end]
 
         if size(d, 1) == 0
-            @info "empty file?" rcp_data_fn
+            @info "Empty file?" rcp_data_fn
             continue
         end
 
@@ -233,6 +233,25 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     unique_site_id_col = "LOC_NAME_S"
     init_coral_cover = load_initial_cover(ReefModDomain, data_files, loc_ids)
     site_ids = site_data[:, unique_site_id_col]
+
+    id_list = CSV.read(joinpath(data_files, "id", "id_list_Dec_2022_151222.csv"), DataFrame, header=false)
+
+    # Convert area in km² to m²
+    site_data[:, "area"] .= id_list[:, 2] * 1e6
+
+    # Calculate `k` area (1.0 - "ungrazable" area)
+    site_data[:, "k"] .= 1.0 .- id_list[:, 3]
+
+    # Set all site depths to 20m below sea level
+    # (ReefMod does not account for depth)
+    site_data[:, :depth_med] .= 20
+
+    # Add GBRMPA zone type info as well
+    gbr_zt_path = joinpath(data_files, "region", "gbrmpa_zone_type.csv")
+    gbr_zone_types = CSV.read(gbr_zt_path, DataFrame; types=String)
+    missing_rows = ismissing.(gbr_zone_types[:, "GBRMPA Zone Types"])
+    gbr_zone_types[missing_rows, "GBRMPA Zone Types"] .= ""
+    site_data[:, :zone_type] .= gbr_zone_types[:, "GBRMPA Zone Types"]
 
     cyc_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
 
