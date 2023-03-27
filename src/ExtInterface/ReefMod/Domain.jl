@@ -264,9 +264,9 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     # Calculate `k` area (1.0 - "ungrazable" area)
     site_data[:, :k] .= 1.0 .- id_list[:, 3]
 
-    # Set all site depths to 20m below sea level
+    # Set all site depths to 6m below sea level
     # (ReefMod does not account for depth)
-    site_data[:, :depth_med] .= 20
+    site_data[:, :depth_med] .= 6.0
 
     # Add GBRMPA zone type info as well
     gbr_zt_path = joinpath(data_files, "region", "gbrmpa_zone_type.csv")
