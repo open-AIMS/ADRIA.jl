@@ -320,13 +320,13 @@ Replaces these sites with sites in the top_n ranks if the distance between these
 - `prefsites` : new set of selected sites for seeding or shading.
 """
 function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
-    min_dist::Float64, top_n::Int64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
+    min_dist::Float64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
     n_sites = length(pref_sites)
     site_order = s_order[:, 1]
 
     # sites to select alternatives from
-    alt_sites = setdiff(site_order, pref_sites)[1:min(top_n, length(site_order) - n_sites)]
+    alt_sites = setdiff(site_order, pref_sites)[1:length(site_order)-n_sites]
 
     # find all selected sites closer than the min distance
     pref_dists = findall(dist[pref_sites, pref_sites] .< min_dist)
