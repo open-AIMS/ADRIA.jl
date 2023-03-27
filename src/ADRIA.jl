@@ -50,13 +50,20 @@ include("optimization.jl")
 include("analysis/analysis.jl")
 include("analysis/sensitivity.jl")
 
+include("ExtInterface/ReefMod/Domain.jl")
 
-export fecundity_scope!, bleaching_mortality!
-export growthODE
-export run_scenario, coral_spec
-export create_coral_struct, Intervention, Criteria, Corals, SimConstants
-export site_area, site_k_area
-export Domain, metrics, select, timesteps, env_stats
+
+export
+    growthODE,
+    run_scenario, coral_spec,
+    create_coral_struct, Intervention, Criteria, Corals, SimConstants,
+    site_area, site_k_area,
+    Domain, ADRIADomain,
+    metrics, select, timesteps, env_stats
+
+
+# External Interfaces
+export ReefModDomain
 
 # metric helper methods
 export dims, ndims
