@@ -823,8 +823,8 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
         ranks_store(scenarios=cover_ind, sites=dom.site_ids[considered_sites]) .= site_selection(
             dom,
             scen,
-            wave_scens[timestep, :, scen.wave_scenario],
-            dhw_scens[timestep, :, scen.dhw_scenario],
+            mean(wave_scens, dims=(:timesteps, :scenarios)) .+ std(wave_scens, dims=(:timesteps, :scenarios)),
+            mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ std(dhw_scens, dims=(:timesteps, :scenarios)),
             considered_sites,
             sum_cover[cover_ind, :],
             area_to_seed
