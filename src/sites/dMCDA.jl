@@ -141,7 +141,7 @@ Align a vector of site rankings to match the indicated order in `s_order`.
 function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # Fill target ranking column
     for (i, site_id) in enumerate(s_order[:, 1])
-        rankings[findall(rankings[:, 1] .== site_id), col] .= s_order[i, 3]
+        rankings[rankings[:, 1].==site_id, col] .= s_order[i, 3]
     end
 
     return
@@ -805,20 +805,19 @@ function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::Abst
     # Pre-calculate maximum depth to consider
     criteria[:, "max_depth"] .= criteria.depth_min .+ criteria.depth_offset
 
-    for (cover_ind, scen_criteria) in enumerate(eachrow(criteria))
+    for (cover_ind, scen) in enumerate(eachrow(criteria))
         depth_criteria = (site_data.depth_med .<= scen_criteria.max_depth) .& (site_data.depth_med .>= scen_criteria.depth_min)
         depth_priority = (1:nrow(site_data))[depth_criteria]
 
-        ranks_temp = site_selection(
-            domain,
-            scen_criteria,
-            wave_scens[timestep, :, criteria.wave_scenario[cover_ind]],
-            dhw_scens[timestep, :, criteria.dhw_scenario[cover_ind]],
+        ranks_store(scenarios=cover_ind, sites=dom.site_ids[depth_criteria]) .= site_selection(
+            dom,
+            scen,
+            wave_scens[timestep, :, scen.wave_scenario],
+            dhw_scens[timestep, :, scen.dhw_scenario],
             depth_priority,
             sum_cover[cover_ind, :, :],
             area_to_seed
         )
-        ranks_store[cover_ind, 1:size(ranks_temp, 1), :] = ranks_temp
     end
 
     return ranks_store
