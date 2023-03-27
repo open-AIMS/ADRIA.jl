@@ -265,22 +265,12 @@ function guided_site_selection(criteria_store::KeyedArray,
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_intervention_matrix(criteria_store, weights_seed)
+        SE, wse = create_seed_matrix(A, criteria_df)
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        SH, wsh = create_intervention_matrix(A, weights, criteria_df, d_vars.crit_shade_names)
-    end
-
-    if alg_ind == 1
-        mcda_func = order_ranking
-    elseif alg_ind == 2
-        mcda_func = topsis
-    elseif alg_ind == 3
-        mcda_func = vikor
-    else
-        error("Unknown MCDA algorithm selected. Valid options are 1 (Order Ranking), 2 (TOPSIS) and 3 (VIKOR).")
+        SH, wsh = create_shade_matrix(A, criteria_df)
     end
 
     if log_seed && isempty(SE)
@@ -288,7 +278,7 @@ function guided_site_selection(criteria_store::KeyedArray,
     elseif log_seed
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, n_site_int, mcda_func)
         if use_dist != 0
-            prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, d_vars.distances, min_dist, Int64(d_vars.top_n), rankings, 2)
+            prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, distances, minimum_distance, rankings, 2)
         end
     end
 
@@ -297,7 +287,7 @@ function guided_site_selection(criteria_store::KeyedArray,
     elseif log_shade
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, n_site_int, mcda_func)
         if use_dist != 0
-            prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, d_vars.dist, min_distances, Int64(d_vars.top_n), rankings, 3)
+            prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, distances, minimum_distance, rankings, 3)
         end
     end
 
