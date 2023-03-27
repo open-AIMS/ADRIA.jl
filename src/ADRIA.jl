@@ -50,6 +50,7 @@ include("optimization.jl")
 include("analysis/analysis.jl")
 include("analysis/sensitivity.jl")
 
+include("ExtInterface/ReefMod/Domain.jl")
 
 export fecundity_scope!, bleaching_mortality!
 export growthODE
