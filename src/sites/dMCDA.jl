@@ -141,7 +141,7 @@ Align a vector of site rankings to match the indicated order in `s_order`.
 function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # Fill target ranking column
     for (i, site_id) in enumerate(s_order[:, 1])
-        rankings[findall(rankings[:, 1] .== site_id), col] .= s_order[i, 3]
+        rankings[rankings[:, 1].==site_id, col] .= s_order[i, 3]
     end
 
     return
@@ -389,16 +389,16 @@ Tuple :
 function guided_site_selection(
     d_vars::DMCDA_vars, alg_ind::T,
     log_seed::B, log_shade::B,
-    prefseedsites::IA, prefshadesites::IA,
+    prefseedsites::IA, prefshadesites::IB,
     rankingsin::Matrix{T}
-)::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},B<:Bool}
+)::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool}
 
-    site_ids::Array{Int64} = copy(d_vars.site_ids)
     use_dist::Int64 = d_vars.use_dist
     min_dist::Float64 = d_vars.min_dist
+    site_ids = copy(d_vars.site_ids)
 
     # Force different sites to be selected
-    site_ids = setdiff(site_ids, vcat(prefseedsites, prefshadesites))
+    site_ids = setdiff(site_ids, hcat(prefseedsites, prefshadesites))
     mod_n_ranks = min(size(rankingsin, 1), length(site_ids))
     if mod_n_ranks < length(d_vars.site_ids) && length(rankingsin) != 0
         rankingsin = rankingsin[in.(rankingsin[:, 1], [site_ids]), :]
@@ -449,7 +449,7 @@ function guided_site_selection(
     predec::Array{Float64} = zeros(n_sites, 3)
     predec[:, 1:2] .= strong_pred
     predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
-    predprior = [x for x in predprior if !isnan(x)]
+    predprior = Int64[x for x in predprior if !isnan(x)]
 
     predec[predprior, 3] .= 1.0
 
@@ -790,35 +790,45 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, timestep::Int64)
+function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, timestep::Int64;
+    target_seed_sites=nothing, target_shade_sites=nothing)
     ranks_store = NamedDimsArray(
-        zeros(nrow(criteria), domain.sim_constants.n_site_int, 3),
-        scenarios=1:nrow(criteria),
-        sites=1:domain.sim_constants.n_site_int,
+        zeros(nrow(scenarios), length(dom.site_ids), 3),
+        scenarios=1:nrow(scenarios),
+        sites=dom.site_ids,
         ranks=["site_id", "seed_rank", "shade_rank"],
     )
 
-    dhw_scens = domain.dhw_scens
-    wave_scens = domain.wave_scens
-    site_data = domain.site_data
+    dhw_scens = dom.dhw_scens
+    wave_scens = dom.wave_scens
 
     # Pre-calculate maximum depth to consider
     criteria[:, "max_depth"] .= criteria.depth_min .+ criteria.depth_offset
 
-    for (cover_ind, scen_criteria) in enumerate(eachrow(criteria))
-        depth_criteria = (site_data.depth_med .<= scen_criteria.max_depth) .& (site_data.depth_med .>= scen_criteria.depth_min)
-        depth_priority = (1:nrow(site_data))[depth_criteria]
+    target_site_ids = Int64[]
+    if !isnothing(target_seed_sites)
+        append!(target_site_ids, target_seed_sites)
+    end
 
-        ranks_temp = site_selection(
-            domain,
-            scen_criteria,
-            wave_scens[timestep, :, criteria.wave_scenario[cover_ind]],
-            dhw_scens[timestep, :, criteria.dhw_scenario[cover_ind]],
-            depth_priority,
-            sum_cover[cover_ind, :, :],
+    if !isnothing(target_shade_sites)
+        append!(target_site_ids, target_shade_sites)
+    end
+
+    for (cover_ind, scen) in enumerate(eachrow(scenarios))
+        depth_criteria = (dom.site_data.depth_med .<= scen.max_depth) .& (dom.site_data.depth_med .>= scen.depth_min)
+        depth_priority = findall(depth_criteria)
+
+        considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
+
+        ranks_store(scenarios=cover_ind, sites=dom.site_ids[considered_sites]) .= site_selection(
+            dom,
+            scen,
+            mean(wave_scens, dims=(:timesteps, :scenarios)) .+ std(wave_scens, dims=(:timesteps, :scenarios)),
+            mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ std(dhw_scens, dims=(:timesteps, :scenarios)),
+            considered_sites,
+            sum_cover[cover_ind, :],
             area_to_seed
         )
-        ranks_store[cover_ind, 1:size(ranks_temp, 1), :] = ranks_temp
     end
 
     return ranks_store
@@ -841,17 +851,19 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
 - `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
-function site_selection(domain::Domain, criteria::DataFrameRow, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::Matrix{Int64}
+function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray,
+    site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::Matrix{Int64}
 
     mcda_vars = DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, w_scens, dhw_scens)
 
     n_sites = length(mcda_vars.site_ids)
     # site_id, seeding rank, shading rank
     rankingsin = [mcda_vars.site_ids zeros(Int64, (n_sites, 1)) zeros(Int64, (n_sites, 1))]
-    prefseedsites = zeros(Int64, (1, mcda_vars.n_site_int))
-    prefshadesites = zeros(Int64, (1, mcda_vars.n_site_int))
 
-    (_, _, ranks) = guided_site_selection(mcda_vars, criteria.guided, true, true, prefseedsites, prefshadesites, rankingsin)
+    prefseedsites::Matrix{Int64} = zeros(Int64, (1, mcda_vars.n_site_int))
+    prefshadesites::Matrix{Int64} = zeros(Int64, (1, mcda_vars.n_site_int))
+
+    (_, _, ranks) = guided_site_selection(mcda_vars, scenario.guided, true, true, prefseedsites, prefshadesites, rankingsin)
 
     return ranks
 end
