@@ -194,14 +194,21 @@ end
                     Must be a subset of the columns of criteria_df.
 
 """
-function create_intervention_matrix(A::Matrix, weights::DataFrame, criteria_df::DataFrame, int_crit_names::Vector{String})
+function create_intervention_matrix(A::Matrix, criteria_df::DataFrame, intervention::String)
     # Define intervention decision matrix
+    int_crit_names = criteria_names[!occursin.(intervention, criteria_names)]
     crit_names = names(criteria_df)
     int_ind = [findall(crit_names .== int_crit_names[ind])[1] for ind in eachindex(int_crit_names)]
 
     S = A[:, int_ind]
-    ws = normalize(Array(weights[1, int_ind[2:end]]))
+    ws = normalize(Array(criteria_df[int_crit_names]))
     return S, ws
+end
+function create_seed_matrix(A::Matrix, criteria_df::DataFrame)
+    return create_intervention_matrix(A, criteria_df, "seed")
+end
+function create_shade_matrix(A::Matrix, criteria_df::DataFrame)
+    return create_intervention_matrix(A, criteria_df, "shade")
 end
 
 
