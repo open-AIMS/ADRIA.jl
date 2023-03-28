@@ -9,6 +9,7 @@ using ADRIA: SimConstants, Domain, site_distances
 mutable struct ReefModDomain <: Domain
     const name::String
     RCP::String
+    env_layer_md
     const TP_data
     const in_conn
     const out_conn
@@ -209,7 +210,7 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     for (i, fn) in enumerate(icc_files)
         icc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false))
     end
-    
+
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT)
     # Convert from percent to relative values
     icc_data = dropdims(mean(icc_data, dims=2), dims=2) ./ 100.0
@@ -240,7 +241,8 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(conn_data)
 
-    site_data = GDF.read(joinpath(data_files, "region", "reefmod_gbr.gpkg"))
+    site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
+    site_data = GDF.read(site_data_path)
     site_dist, med_site_dist = ADRIA.site_distances(site_data)
     site_id_col = "LOC_NAME_S"
     unique_site_id_col = "LOC_NAME_S"
@@ -279,10 +281,23 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
 
     cyc_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
 
+    env_md = EnvLayer(
+        fn_path,
+        site_data_path,
+        site_id_col,
+        unique_site_id_col,
+        "",
+        "",
+        "",
+        "",
+        (2022, 2099)
+    )
+
     model::Model = Model((EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), Criteria()))
 
     return ReefModDomain(
         "ReefMod", RCP,
+        env_md,
         conn_data, in_conn, out_conn, strong_pred,
         site_data, site_dist, med_site_dist,
         site_id_col, unique_site_id_col,
@@ -297,29 +312,30 @@ end
     site_k(dom::ReefModDomain)::Vector{Float64}
 
 Get maximum coral cover area as a proportion of site area.
+
+Note: ReefMod `k` area is already ∈ [0, 1] so no adjustment is necessary.
 """
 function site_k(dom::ReefModDomain)::Vector{Float64}
     return dom.site_data.k
 end
 
 
-# """
-#     switch_RCPs!(d::ReefModDomain, RCP::String)::Domain
+"""
+    switch_RCPs!(d::ReefModDomain, RCP::String)::Domain
 
-# Switch environmental datasets to represent the given RCP.
-# """
-# function switch_RCPs!(d::ReefModDomain, RCP::String)::ADRIADomain
-#     @set! d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
-#     @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
-#     @set! d.RCP = RCP
+Switch environmental datasets to represent the given RCP.
+"""
+function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
+    @set! d.RCP = RCP
+    data_files = joinpath(d.env_layer_md.dpkg_path, "data_files")
+    @set! d.dhw_scens = load_DHW(ReefModDomain, data_files, RCP)
 
-#     load_DHW(ReefModDomain, data_files, RCP)
+    # Cyclones are not RCP-specific?
+    # loc_ids = axiskeys(d.dhw_scens)[2]
+    # @set! d.wave_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
 
-#     @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw", d.site_data)
-#     @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub", d.site_data)
-
-#     return d
-# end
+    return d
+end
 
 
 function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)
