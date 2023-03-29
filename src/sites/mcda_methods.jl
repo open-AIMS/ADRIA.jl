@@ -14,17 +14,7 @@ Then orders sites from highest aggregate score to lowest.
     3. site order id
 """
 function order_ranking(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
-    n::Int64 = size(S, 1)
-    s_order::Array = Union{Float64,Int64}[zeros(Int, n) zeros(Float64, n) zeros(Int, n)]
-
-    # Simple ranking - add criteria weighted values for each sites
-    # Third column is derived from the number of sites for situations where
-    # a subset of sites are being investigated (and so using their site IDs
-    # will be inappropriate)
-    @views s_order[:, 1] .= Int.(S[:, 1])
-    @views s_order[:, 2] .= sum(S[:, 2:end], dims=2)
-
-    return s_order
+    return sum(S, dims=2)
 end
 
 
@@ -62,24 +52,19 @@ S_p  = √{∑(criteria .- NIS)²}
 function mcda_topsis(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
 
     # compute the set of positive ideal solutions for each criteria
-    PIS = maximum(S[:, 2:end], dims=1)
+    PIS = maximum(S, dims=1)
 
     # compute the set of negative ideal solutions for each criteria
-    NIS = minimum(S[:, 2:end], dims=1)
+    NIS = minimum(S, dims=1)
 
     # calculate separation distance from the ideal and non-ideal solutions
-    S_p = sqrt.(sum((S[:, 2:end] .- PIS) .^ 2, dims=2))
-    S_n = sqrt.(sum((S[:, 2:end] .- NIS) .^ 2, dims=2))
+    S_p = sqrt.(sum((S .- PIS) .^ 2, dims=2))
+    S_n = sqrt.(sum((S .- NIS) .^ 2, dims=2))
 
     # final ranking measure of relative closeness C
     C = S_n ./ (S_p + S_n)
 
-    # Create matrix where rank ids are integers (for use as indexers later)
-    # Third column is derived from the number of sites for situations where
-    # a subset of sites are being investigated (and so using their site IDs
-    # will be inappropriate)
-    s_order = Union{Float64,Int64}[Int.(S[:, 1]) C 1:size(S, 1)]
-    return s_order
+    return C
 end
 
 
@@ -129,22 +114,19 @@ Details of this aggregation method in, for example [1]
 """
 function mcda_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},2}
 
-    F_s = maximum(S[:, 2:end])
+    F_s = maximum(S)
 
     # Compute utility of the majority Sr (Manhatten Distance)
     # Compute individual regret R (Chebyshev distance)
-    sr_arg = (F_s .- S[:, 2:end])
-    Sr = [S[:, 1] sum(sr_arg, dims=2)]
-    R = [S[:, 1] maximum(sr_arg, dims=2)]
+    sr_arg = (F_s .- S)
+    Sr = sum(sr_arg, dims=2)
+    R = maximum(sr_arg, dims=2)
 
     # Compute the VIKOR compromise Q
-    S_s, S_h = maximum(Sr[:, 2]), minimum(Sr[:, 2])
-    R_s, R_h = maximum(R[:, 2]), minimum(R[:, 2])
-    Q = @. v * (Sr[:, 2] - S_h) / (S_s - S_h) + (1 - v) * (R[:, 2] - R_h) / (R_s - R_h)
+    S_s, S_h = maximum(Sr), minimum(Sr)
+    R_s, R_h = maximum(R), minimum(R)
+    Q = @. v * (Sr - S_h) / (S_s - S_h) + (1 - v) * (R - R_h) / (R_s - R_h)
     Q .= 1.0 .- Q  # Invert rankings so higher values = higher rank
 
-    # Create matrix where rank ids are integers (for use as indexers later)
-    # Third column is necessary as a subset of sites will not match their Index IDs.
-    s_order = Union{Float64,Int64}[Int.(S[:, 1]) Q zeros(size(Q, 1))]
-    return s_order
+    return Q
 end
