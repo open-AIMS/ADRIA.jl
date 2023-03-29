@@ -258,12 +258,12 @@ function guided_site_selection(criteria_store::NamedDimsArray,
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_seed_matrix(A, criteria_df)
+        SE, wse = create_intervention_matrix(criteria_store, params, "seed")
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        SH, wsh = create_shade_matrix(A, criteria_df)
+        SH, wsh = create_intervention_matrix(criteria_store, params, "shade")
     end
 
     if log_seed && isempty(SE)
