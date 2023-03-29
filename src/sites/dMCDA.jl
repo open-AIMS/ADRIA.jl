@@ -165,7 +165,7 @@ end
 - `A` : Decision matrix
 - 'filtered': indices for sites not filtered due to threshold specifications.
 """
-function create_decision_matrix(criteria_store::KeyedArray, tolerances::KeyedArray)
+function create_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedDimsArray)
 
     for tol_key in tolerances.tols
         rule = map(tolerances(tol_key), criteria_store(tol_key))
@@ -191,21 +191,15 @@ end
                     Must be a subset of the columns of criteria_df.
 
 """
-function create_intervention_matrix(A::Matrix, criteria_df::DataFrame, intervention::String)
+function create_intervention_matrix(criteria_store::NamedDimsArray, params::NamedDimsArray, int_type::String)
     # Define intervention decision matrix
-    int_crit_names = criteria_names[!occursin.(intervention, criteria_names)]
-    crit_names = names(criteria_df)
-    int_ind = [findall(crit_names .== int_crit_names[ind])[1] for ind in eachindex(int_crit_names)]
+    weights_ind = occursin.("iv__", params.factors) .& occursin.(int_type, params.factors)
+    temp_names = split.(params.factors[weights_ind], "__")
+    crit_names = [findall(criteria_store.criteria .== Symbol(temp_name[2]))[1] for temp_name in temp_names]
 
-    S = A[:, int_ind]
-    ws = normalize(Array(criteria_df[int_crit_names]))
+    ws = mcda_normalize(Array(params[factors=findall(weights_ind)]))
+    S = Matrix(criteria_store[criteria=crit_names])
     return S, ws
-end
-function create_seed_matrix(A::Matrix, criteria_df::DataFrame)
-    return create_intervention_matrix(A, criteria_df, "seed")
-end
-function create_shade_matrix(A::Matrix, criteria_df::DataFrame)
-    return create_intervention_matrix(A, criteria_df, "shade")
 end
 
 
