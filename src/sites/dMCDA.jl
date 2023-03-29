@@ -128,7 +128,7 @@ end
 """
 function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
-    selector = vec(.!all(S[:, 2:end] .== 0, dims=1))
+    selector = vec(.!all(S .== 0, dims=1))
 
     # weights in order of: in_conn, out_conn, wave, heat, predecessors, low cover
     weights = weights[selector]
@@ -372,20 +372,20 @@ function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{
     return rep_sites, rankings
 end
 
-function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Function)
-    S[:, 2:end] = mcda_normalize(S[:, 2:end])
-    S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
-    s_order = mcda_func(S)
-    return retrieve_ranks(S, s_order, true)
+function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Function, site_ids::Array{Int64})
+    S = mcda_normalize(S)
+    S .= S .* repeat(weights', size(S, 1), 1)
+    scores = mcda_func(S)
+    return retrieve_ranks(S, scores, true, site_ids)
 end
-function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Vector)
+function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Vector, site_ids::Array{Int64})
     fns = repeat([maximum], length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func[1])
-    s_order = Union{Float64,Int64}[Int.(site_ids) results.scores 1:size(S, 1)]
 
-    return retrieve_ranks(S, s_order, mcda_func[2])
+    return retrieve_ranks(S, results.scores, mcda_func[2], site_ids)
 end
-function retrieve_ranks(S::Matrix, s_order::Array{Union{Float64,Int64},2}, rev_val::Bool)
+function retrieve_ranks(S::Matrix, scores::Array{Float64}, rev_val::Bool, site_ids::Array{Int64})
+    s_order = Union{Float64,Int64}[Int.(site_ids) scores 1:size(S, 1)]
     s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=rev_val)
     @views s_order[:, 3] .= Int.(1:size(S, 1))
 
