@@ -138,17 +138,6 @@ function initialize_mcda(domain::Domain, param_set::NamedDimsArray, sim_params::
     n_sites = length(site_data.site_id)
     rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
 
-    # initialize weights
-    weights_shade = (coral_space=param_set("coral_cover_high"),
-        in_connectivity=param_set("shade_connectivity"), heat_stress=param_set("heat_stress"),
-        wave_stress=param_set("wave_stress"), predec=param_set("shade_priority"),
-        zones=param_set("zone_shade"))
-    weights_seed = (coral_cover=param_set("coral_cover_low"),
-        in_connectivity=param_set("in_seed_connectivity"),
-        out_connectivity=param_set("out_seed_connectivity"), heat_stress=param_set("heat_stress"),
-        wave_stress=param_set("wave_stress"), predec=param_set("seed_priority"),
-        zones=param_set("zone_seed"))
-
     # initialize thresholds
     thresholds = create_tolerances_store(coral_cover=(param_set("coral_cover_tol") .* area_to_seed, >),
         heat_stress=(param_set("deployed_coral_risk_tol"), <),
@@ -160,18 +149,14 @@ function initialize_mcda(domain::Domain, param_set::NamedDimsArray, sim_params::
     coral_cover, coral_space = coral_cover_criteria(site_data, init_sum_cover)
     heat_stress = zeros(1, n_sites)
     wave_stress = zeros(1, n_sites)
-
-    # Prep other variables for site selection
-    mcda_vars = DMCDA_vars(domain, sim_params.seed_criteria_names, sim_params.shade_criteria_names,
-        param_set("use_dist"), domain.median_site_distance - domain.median_site_distance * param_set("dist_thresh"),
-        Int(param_set("top_n")), weights_seed, weights_shade, thresholds)
+    min_distance = domain.median_site_distance .* param_set("dist_thresh")
 
     # initialize criteria
     criteria_store = create_criteria_store(depth_priority, coral_cover=coral_cover,
         coral_space=coral_space, in_connectivity=domain.in_conn, out_connectivity=domain.out_conn,
-        heat_stress=heat_stress, wave_stress=wave_stress, predec=predec, zones=zones)
+        heat_stress=heat_stress, wave_stress=wave_stress, priority=predec, zone=zones)
 
-    return rankings, mcda_vars, criteria_store
+    return rankings, criteria_store, thresholds, min_distance
 
 end
 
@@ -197,7 +182,7 @@ Updates variable strucutres required for dynamic site selection in ADRIA.
 - `depth_priority` : Depth filtered set of site ids as integers.
 
 """
-function update_criteria_store!(criteria_store::KeyedArray, wave_stress::AbstractArray,
+function update_criteria_store!(criteria_store::NamedDimsArray, wave_stress::AbstractArray,
     heat_stress::AbstractArray, in_conn::AbstractArray, out_conn::AbstractArray,
     site_area::AbstractArray, site_coral_cover::AbstractArray, site_data::DataFrame,
     depth_priority::AbstractArray)
