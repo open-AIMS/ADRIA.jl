@@ -57,7 +57,7 @@ function create_criteria_store(site_ids::AbstractArray; criteria...)
     for crit_key in keys(criteria)
         criteria_matrix = hcat(criteria_matrix, criteria[crit_key][site_ids])
     end
-    return KeyedArray(criteria_matrix[:, 2:end], reefs=site_ids, criteria=collect(keys(criteria)))
+    return NamedDimsArray(criteria_matrix[:, 2:end], reefs=site_ids, criteria=collect(keys(criteria)))
 
 end
 
@@ -75,7 +75,7 @@ end
 
 function create_tolerances_store(; tolerances...)
     tol_store = [x -> tolerances[tol_key][2](x, tolerances[tol_key][1]) for tol_key in keys(tolerances)]
-    return KeyedArray(tol_store, tols=collect(keys(tolerances)))
+    return NamedDimsArray(tol_store, tols=collect(keys(tolerances)))
 end
 
 """
