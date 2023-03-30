@@ -139,9 +139,9 @@ function initialize_mcda(domain::Domain, param_set::NamedDimsArray, sim_params::
     rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
 
     # initialize thresholds
-    thresholds = create_tolerances_store(coral_cover=(param_set("coral_cover_tol") .* area_to_seed, >),
-        heat_stress=(param_set("deployed_coral_risk_tol"), <),
-        wave_stress=(param_set("deployed_coral_risk_tol"), <))
+    thresholds = create_tolerances_store(iv__coral_cover=(>, param_set("coral_cover_tol") .* area_to_seed),
+        iv__heat_stress=(<, param_set("deployed_coral_risk_tol")),
+        iv__wave_stress=(<, param_set("deployed_coral_risk_tol")))
 
     # calculate values for criteria which do not change over time
     zones = zones_criteria(site_data.zone_type, sim_params.priority_zones, domain.strong_pred, collect(1:n_sites))
@@ -152,9 +152,9 @@ function initialize_mcda(domain::Domain, param_set::NamedDimsArray, sim_params::
     min_distance = domain.median_site_distance .* param_set("dist_thresh")
 
     # initialize criteria
-    criteria_store = create_criteria_store(depth_priority, coral_cover=coral_cover,
-        coral_space=coral_space, in_connectivity=domain.in_conn, out_connectivity=domain.out_conn,
-        heat_stress=heat_stress, wave_stress=wave_stress, priority=predec, zone=zones)
+    criteria_store = create_criteria_store(depth_priority, iv__coral_cover=coral_cover,
+        iv__coral_space=coral_space, iv__in_connectivity=domain.in_conn, iv__out_connectivity=domain.out_conn,
+        iv__heat_stress=heat_stress, iv__wave_stress=wave_stress, iv__priority=predec, iv__zone=zones)
 
     return rankings, criteria_store, thresholds, min_distance
 
@@ -187,13 +187,13 @@ function update_criteria_store!(criteria_store::NamedDimsArray, wave_stress::Abs
     site_area::AbstractArray, site_coral_cover::AbstractArray, site_data::DataFrame,
     depth_priority::AbstractArray)
 
-    criteria_store(:wave_stress) .= env_stress_criteria(wave_stress)[depth_priority]
-    criteria_store(:heat_stress) .= env_stress_criteria(heat_stress)[depth_priority]
-    criteria_store(:in_connectivity) .= connectivity_criteria(in_conn, site_coral_cover, site_area)[depth_priority]
-    criteria_store(:in_connectivity) .= connectivity_criteria(out_conn, site_coral_cover, site_area)[depth_priority]
+    criteria_store(:iv__wave_stress) .= env_stress_criteria(wave_stress)[depth_priority]
+    criteria_store(:iv__heat_stress) .= env_stress_criteria(heat_stress)[depth_priority]
+    criteria_store(:iv__in_connectivity) .= connectivity_criteria(in_conn, site_coral_cover, site_area)[depth_priority]
+    criteria_store(:iv__in_connectivity) .= connectivity_criteria(out_conn, site_coral_cover, site_area)[depth_priority]
     coral_cover, coral_space = coral_cover_criteria(site_data, site_coral_cover)
-    criteria_store(:coral_cover) .= coral_cover[depth_priority]
-    criteria_store(:coral_space) .= coral_space[depth_priority]
+    criteria_store(:iv__coral_cover) .= coral_cover[depth_priority]
+    criteria_store(:iv__coral_space) .= coral_space[depth_priority]
 
     return criteria_store
 end
