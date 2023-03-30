@@ -249,14 +249,14 @@ function guided_site_selection(criteria_store::NamedDimsArray,
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
     mcda_func = mcda_methods[Int(params("guided"))]
 
-    A = create_decision_matrix(criteria_store, thresholds)
-    if isempty(A)
+    criteria_store = create_decision_matrix(criteria_store, thresholds)
+    if isempty(criteria_store)
         # if all rows have nans and A is empty, abort mission
         return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
     end
 
     # cap to number of sites left after risk filtration
-    n_site_int = min(n_site_int, length(A[:, 1]))
+    n_site_int = min(n_site_int, length(criteria_store.locations))
 
     # if seeding, create seeding specific decision matrix
     if log_seed
