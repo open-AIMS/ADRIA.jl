@@ -98,7 +98,7 @@ function env_stress_criteria(env_stress::AbstractArray)
 end
 
 """
-    connectivity_criteria(conn::Vector{Float64}, sum_cover::Matrix{Float64},
+    connectivity_criteria(conn::Vector{Float64}, sum_cover::Matrix,
         area::Matrix{Float64})
 
 Calculates connectivity criterium for each reef/site as connectivity*(area of coral at site).
@@ -110,7 +110,7 @@ Calculates connectivity criterium for each reef/site as connectivity*(area of co
 
 """
 function connectivity_criteria(conn::Vector{Float64}, sum_cover::Matrix,
-    area::Matrix{Float64})
+    area::Array{Float64})
     cov_area = conn .* sum_cover .* area
     return maximum(cov_area) != 0.0 ? cov_area / maximum(cov_area) : zeros(Float64, size(cov_area))
 end
