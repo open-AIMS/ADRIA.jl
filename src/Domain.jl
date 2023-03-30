@@ -1,6 +1,5 @@
 using NCDatasets
 
-
 """
     EnvLayer{S, TF}
 
@@ -48,6 +47,9 @@ mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,I<:Vector{Int64}
     dhw_scens::X  # DHW scenarios
     wave_scens::Y  # wave scenarios
 
+    # Named tuple holding all criteria to be used in mcda
+    mcda_criteria::NamedTuple
+
     # Parameters
     model::Model  # core model
     sim_constants::SimConstants
@@ -80,10 +82,26 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::Abstra
         criteria = Criteria(c_spec...)
     end
 
+    # Initialize MCDA criteria
+    n_sites = length(site_ids)
+    zones = zones_criteria(site_data.zone_type, sim_constants.priority_zones, strongest_predecessor, collect(1:n_sites))
+    priority = priority_predecessor_criteria(strongest_predecessor, sim_constants.priority_sites)
+    init_sum_cover = Matrix(sum(init_coral_cover, dims=:species))
+    coral_cover, coral_space = coral_cover_criteria(site_data, init_sum_cover)
+    in_connectivity = connectivity_criteria(in_conn, init_sum_cover, site_data.area)
+    out_connectivity = connectivity_criteria(out_conn, init_sum_cover, site_data.area)
+    heat_stress = zeros(1, n_sites)
+    wave_stress = zeros(1, n_sites)
+
+    mcda_criteria = (iv__coral_cover=coral_cover, iv__coral_space=coral_space, iv__heat_stress=heat_stress,
+        iv__wave_stress=wave_stress, iv__out_connectivity=out_connectivity, iv__in_connectivity=in_connectivity,
+        iv__zones=zones, iv__priority=priority)
+
+
     model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
 
     return ADRIADomain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_distances, median_site_distance, site_id_col, unique_site_id_col,
-        init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
+        init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves, mcda_criteria,
         model, sim_constants)
 end
 
