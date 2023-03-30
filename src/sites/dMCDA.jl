@@ -74,8 +74,8 @@ end
 
 
 function create_tolerances_store(; tolerances...)
-    tol_store = [x -> tolerances[tol_key][2](x, tolerances[tol_key][1]) for tol_key in keys(tolerances)]
-    return NamedDimsArray(tol_store, tols=collect(keys(tolerances)))
+    tol_store = [x -> tolerances[tol_key][1](x, tolerances[tol_key][2]) for tol_key in keys(tolerances)]
+    return NamedDimsArray(tol_store, criteria=collect(keys(tolerances)))
 end
 
 """
