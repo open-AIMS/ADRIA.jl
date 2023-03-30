@@ -77,7 +77,7 @@ each reef/site.
 - `coral_cover` : Proportional cover at each site/reef.
 
 """
-function coral_cover_criteria(site_data::DataFrame, coral_cover::Matrix{Float64})
+function coral_cover_criteria(site_data::DataFrame, coral_cover::Matrix)
     max_area = site_data.k .* site_data.area
     coral_cover_area = site_data.area .* coral_cover'
     return max.(coral_cover_area, 0.0), max.(max_area .- coral_cover_area, 0.0)
@@ -109,7 +109,7 @@ Calculates connectivity criterium for each reef/site as connectivity*(area of co
 - `area` : Area of each site (m^2).
 
 """
-function connectivity_criteria(conn::Vector{Float64}, sum_cover::Matrix{Float64},
+function connectivity_criteria(conn::Vector{Float64}, sum_cover::Matrix,
     area::Matrix{Float64})
     cov_area = conn .* sum_cover .* area
     return maximum(cov_area) != 0.0 ? cov_area / maximum(cov_area) : zeros(Float64, size(cov_area))
@@ -131,30 +131,20 @@ Initialises variable strucutres required for dynamic site selection in ADRIA.
 - `area_to_seed` : Area in m^2 to be covered by seeding coral at a single time step.
 
 """
-function initialize_mcda(domain::Domain, param_set::NamedDimsArray, sim_params::SimConstants,
-    site_data::DataFrame, depth_priority::Vector{Int64}, init_sum_cover::Array{Float64},
-    area_to_seed::Float64)
+function initialize_mcda(domain::Domain, param_set::NamedDimsArray, site_ids::Vector{Int64},
+    tolerances::NamedTuple)
 
-    n_sites = length(site_data.site_id)
-    rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
+    n_sites = length(site_ids)
+    rankings = [site_ids zeros(Int, length(site_ids)) zeros(Int, length(site_ids))]
 
     # initialize thresholds
-    thresholds = create_tolerances_store(iv__coral_cover=(>, param_set("coral_cover_tol") .* area_to_seed),
-        iv__heat_stress=(<, param_set("deployed_coral_risk_tol")),
-        iv__wave_stress=(<, param_set("deployed_coral_risk_tol")))
+    thresholds = create_tolerances_store(tolerances)
 
     # calculate values for criteria which do not change over time
-    zones = zones_criteria(site_data.zone_type, sim_params.priority_zones, domain.strong_pred, collect(1:n_sites))
-    predec = priority_predecessor_criteria(domain.strong_pred, sim_params.priority_sites)
-    coral_cover, coral_space = coral_cover_criteria(site_data, init_sum_cover)
-    heat_stress = zeros(1, n_sites)
-    wave_stress = zeros(1, n_sites)
     min_distance = domain.median_site_distance .* param_set("dist_thresh")
 
     # initialize criteria
-    criteria_store = create_criteria_store(depth_priority, iv__coral_cover=coral_cover,
-        iv__coral_space=coral_space, iv__in_connectivity=domain.in_conn, iv__out_connectivity=domain.out_conn,
-        iv__heat_stress=heat_stress, iv__wave_stress=wave_stress, iv__priority=predec, iv__zone=zones)
+    criteria_store = create_criteria_store(site_ids, domain.mcda_criteria)
 
     return rankings, criteria_store, thresholds, min_distance
 
