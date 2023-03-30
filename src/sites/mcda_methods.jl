@@ -13,7 +13,7 @@ Then orders sites from highest aggregate score to lowest.
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
 """
-function order_ranking(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
+function order_ranking(S::Array{Float64,2})::Array{Float64}
     return sum(S, dims=2)
 end
 
@@ -49,7 +49,7 @@ S_p  = √{∑(criteria .- NIS)²}
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
 """
-function mcda_topsis(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
+function mcda_topsis(S::Array{Float64,2})::Array{Float64}
 
     # compute the set of positive ideal solutions for each criteria
     PIS = maximum(S, dims=1)
@@ -112,7 +112,7 @@ Details of this aggregation method in, for example [1]
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
 """
-function mcda_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},2}
+function mcda_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Float64,Int64}
 
     F_s = maximum(S)
 
