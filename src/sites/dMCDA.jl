@@ -167,13 +167,14 @@ end
 """
 function create_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedDimsArray)
 
-    for tol_key in tolerances.tols
+    for tol_key in tolerances.criteria
         rule = map(tolerances(tol_key), criteria_store(tol_key))
         criteria_store = criteria_store[rule, :]
     end
 
     return criteria_store
 end
+
 
 """
     create_intervention_matrix(A::Matrix, weights::DataFrame, criteria_df::DataFrame, int_crit_names::Vector{String})
@@ -194,11 +195,12 @@ end
 function create_intervention_matrix(criteria_store::NamedDimsArray, params::NamedDimsArray, int_type::String)
     # Define intervention decision matrix
     weights_ind = occursin.("iv__", params.factors) .& occursin.(int_type, params.factors)
-    temp_names = split.(params.factors[weights_ind], "__")
-    crit_names = [findall(criteria_store.criteria .== Symbol(temp_name[2]))[1] for temp_name in temp_names]
+
+    crit_inds = findall.([occursin.(String(crit_name), params.factors[weights_ind]) for crit_name in criteria_store.criteria])
+    crit_inds = [crit_inds...;]
 
     ws = mcda_normalize(Array(params[factors=findall(weights_ind)]))
-    S = Matrix(criteria_store[criteria=crit_names])
+    S = Matrix(criteria_store[criteria=crit_inds])
     return S, ws
 end
 
