@@ -57,7 +57,7 @@ function create_criteria_store(site_ids::AbstractArray; criteria...)
     for crit_key in keys(criteria)
         criteria_matrix = hcat(criteria_matrix, criteria[crit_key][site_ids])
     end
-    return NamedDimsArray(criteria_matrix[:, 2:end], reefs=site_ids, criteria=collect(keys(criteria)))
+    return NamedDimsArray(criteria_matrix[:, 2:end], locations=site_ids, criteria=collect(keys(criteria)))
 
 end
 
