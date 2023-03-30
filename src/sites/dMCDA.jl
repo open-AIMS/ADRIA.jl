@@ -52,8 +52,12 @@ global mcda_methods = [
 
 """
 function create_criteria_store(site_ids::AbstractArray; criteria...)
+    return create_criteria_store(site_ids, criteria)
+end
 
+function create_criteria_store(site_ids::AbstractArray, criteria::NamedTuple)
     criteria_matrix = site_ids
+
     for crit_key in keys(criteria)
         criteria_matrix = hcat(criteria_matrix, criteria[crit_key][site_ids])
     end
@@ -61,19 +65,8 @@ function create_criteria_store(site_ids::AbstractArray; criteria...)
 
 end
 
-function create_criteria_store(site_ids::AbstractArray, domain::Domain, criteria::DataFrame)
-    criteria_names = collect(criteria.columns)
 
-    criteria_names = replace.(replace.(criteria_names, "_seed" => ""), "_shade" => "")
-    criteria_names = Symbol.(unique(criteria_names[!occursin.("tol", criteria_names)]))
-    criteria_values = Tuple(getproperty(domain, criteria_n) for criteria_n in criteria_names)
-    criteria = (; zip(criteria_names, criteria_values)...)
-
-    return create_criteria_store(site_ids; criteria)
-end
-
-
-function create_tolerances_store(; tolerances...)
+function create_tolerances_store(tolerances::NamedTuple)
     tol_store = [x -> tolerances[tol_key][1](x, tolerances[tol_key][2]) for tol_key in keys(tolerances)]
     return NamedDimsArray(tol_store, criteria=collect(keys(tolerances)))
 end
