@@ -189,8 +189,7 @@ function create_intervention_matrix(criteria_store::NamedDimsArray, params::Name
     # Define intervention decision matrix
     weights_ind = occursin.("iv__", params.factors) .& occursin.(int_type, params.factors)
 
-    crit_inds = findall.([occursin.(String(crit_name), params.factors[weights_ind]) for crit_name in criteria_store.criteria])
-    crit_inds = [crit_inds...;]
+    crit_inds = [findall.([occursin.(String(crit_name), params.factors[weights_ind]) for crit_name in criteria_store.criteria])...;]
 
     ws = mcda_normalize(Array(params[factors=findall(weights_ind)]))
     S = Matrix(criteria_store[criteria=crit_inds])
