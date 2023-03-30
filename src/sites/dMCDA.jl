@@ -126,15 +126,15 @@ end
 # Returns
 - `prefsites` : sites in order of their rankings
 """
-function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+function rank_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
     selector = vec(.!all(S .== 0, dims=1))
 
     # weights in order of: in_conn, out_conn, wave, heat, predecessors, low cover
     weights = weights[selector]
-    S = S[:, Bool[1, selector...]]
+    S = S[:, selector]
 
-    s_order = retrieve_ranks(S, weights, mcda_func)
+    s_order = retrieve_ranks(S, weights, mcda_func, site_ids)
 
     last_idx = min(n_site_int, size(s_order, 1))
     prefsites = Int.(s_order[1:last_idx, 1])
@@ -145,11 +145,11 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
     return prefsites, s_order
 end
 
-function rank_seed_sites!(S, weights, rankings, n_site_int, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_sites!(S, weights, rankings, n_site_int, mcda_func, 2)
+function rank_seed_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+    rank_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func, 2)
 end
-function rank_shade_sites!(S, weights, rankings, n_site_int, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_sites!(S, weights, rankings, n_site_int, mcda_func, 3)
+function rank_shade_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+    rank_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func, 3)
 end
 
 """
