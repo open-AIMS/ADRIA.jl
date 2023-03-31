@@ -97,9 +97,11 @@ Base.@kwdef struct Criteria{P,N} <: EcoModel
         name="Zone Predecessor (Seed)", description="Importance of seeding sites that provide larvae to priority (target) zones.")
     iv__zone__shade::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Zone Predecessor (Shade)", description="Importance of shading sites that provide larvae to priority (target) zones.")
-    coral_cover_tol::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    iv__coral_cover__tol::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Low Area Tolerance", description="Tolerance for low proportional space for seeding deployments.")
-    deployed_coral_risk_tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
+    iv__heat_stress__tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
+        name="Risk Tolerance", description="Filters out sites with heat/wave stress above threshold.")
+    iv__wave_stress__tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
         name="Risk Tolerance", description="Filters out sites with heat/wave stress above threshold.")
     use_dist::N = Param(1, ptype="integer", bounds=(0.0, 1.0 + 1.0), dists="unif",
         name="Use Distance Threshold", description="Turns distance sorting on or off.")
