@@ -10,6 +10,7 @@ mutable struct ReefModDomain <: Domain
     const name::String
     RCP::String
     env_layer_md
+    scenario_invoke_time::String  # time latest set of scenarios were run
     const TP_data
     const in_conn
     const out_conn
@@ -20,6 +21,7 @@ mutable struct ReefModDomain <: Domain
     const site_id_col
     const unique_site_id_col
     init_coral_cover
+    const coral_growth::CoralGrowth
     const site_ids
     dhw_scens
 
@@ -180,7 +182,7 @@ function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector
     cyc_data = zeros(length(loc_ids), num_years, length(cyc_files))
     for (i, fn) in enumerate(cyc_files)
         # Read each cyclone trajectory
-        cyc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false))
+        cyc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false, comment="#"))
     end
 
     # Mean over all years
@@ -202,13 +204,13 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     icc_path = joinpath(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
     if isempty(icc_files)
-        ArgumentError("No cyclone data files found in: $(icc_path)")
+        ArgumentError("No coral cover data files found in: $(icc_path)")
     end
 
     # Shape is locations, members, species
     icc_data = zeros(length(loc_ids), 20, length(icc_files))
     for (i, fn) in enumerate(icc_files)
-        icc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false))
+        icc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false, comment="#"))
     end
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT)
@@ -249,7 +251,7 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     init_coral_cover = load_initial_cover(ReefModDomain, data_files, loc_ids)
     site_ids = site_data[:, unique_site_id_col]
 
-    id_list = CSV.read(joinpath(data_files, "id", "id_list_Dec_2022_151222.csv"), DataFrame, header=false)
+    id_list = CSV.read(joinpath(data_files, "id", "id_list_2023_03_30.csv"), DataFrame, header=false, comment="#")
 
     # Re-order spatial data to match RME dataset
     # MANUAL CORRECTION
@@ -290,18 +292,20 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
         "",
         "",
         "",
-        (2022, 2099)
+        2022:2100
     )
 
-    model::Model = Model((EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), Criteria()))
+    model::Model = Model((EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), Criteria(), Coral()))
 
     return ReefModDomain(
         "ReefMod", RCP,
         env_md,
+        "",
         conn_data, in_conn, out_conn, strong_pred,
         site_data, site_dist, med_site_dist,
         site_id_col, unique_site_id_col,
         init_coral_cover,
+        CoralGrowth(nrow(site_data)),
         site_ids,
         dhw_scens, cyc_scens,
         model, SimConstants())
