@@ -318,6 +318,96 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
 end
 
 """
+    load_domain(::Type{ReefModDomain}, fn_path, RCP)::ReefModDomain
+
+Load a Domain for use with ReefMod.
+
+# Arguments
+- `ReefModDomain`
+- `fn_path`
+- `RCP`
+
+# Returns
+ReefModDomain
+"""
+function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefModDomain
+    data_files = joinpath(fn_path, "data_files")
+    dhw_scens = load_DHW(ReefModDomain, data_files, RCP)
+    loc_ids = axiskeys(dhw_scens)[2]
+
+    conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
+    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(conn_data)
+
+    site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
+    site_data = GDF.read(site_data_path)
+    site_dist, med_site_dist = ADRIA.site_distances(site_data)
+    site_id_col = "LOC_NAME_S"
+    unique_site_id_col = "LOC_NAME_S"
+    init_coral_cover = load_initial_cover(ReefModDomain, data_files, loc_ids)
+    site_ids = site_data[:, unique_site_id_col]
+
+    id_list = CSV.read(joinpath(data_files, "id", "id_list_2023_03_30.csv"), DataFrame, header=false, comment="#")
+
+    # Re-order spatial data to match RME dataset
+    # MANUAL CORRECTION
+    site_data[site_data.LABEL_ID.=="20198", :LABEL_ID] .= "20-198"
+    id_order = [first(findall(x .== site_data.LABEL_ID)) for x in string.(id_list[:, 1])]
+    site_data = site_data[id_order, :]
+
+    # Check that the two lists of location ids are identical
+    @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
+
+    # Convert area in km² to m²
+    site_data[:, :area] .= id_list[:, 2] * 1e6
+
+    # Calculate `k` area (1.0 - "ungrazable" area)
+    site_data[:, :k] .= 1.0 .- id_list[:, 3]
+
+    # Set all site depths to 6m below sea level
+    # (ReefMod does not account for depth)
+    site_data[:, :depth_med] .= 6.0
+
+    # Add GBRMPA zone type info as well
+    gbr_zt_path = joinpath(data_files, "region", "gbrmpa_zone_type.csv")
+    gbr_zone_types = CSV.read(gbr_zt_path, DataFrame; types=String)
+    missing_rows = ismissing.(gbr_zone_types[:, "GBRMPA Zone Types"])
+    gbr_zone_types[missing_rows, "GBRMPA Zone Types"] .= ""
+    zones = gbr_zone_types[:, "GBRMPA Zone Types"]
+    zones = replace.(zones, "Zone" => "", " " => "")
+    site_data[:, :zone_type] .= zones
+
+    cyc_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
+
+    env_md = EnvLayer(
+        fn_path,
+        site_data_path,
+        site_id_col,
+        unique_site_id_col,
+        "",
+        "",
+        "",
+        "",
+        2022:2100
+    )
+
+    model::Model = Model((EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), Criteria(), Coral()))
+
+    return ReefModDomain(
+        "ReefMod", RCP,
+        env_md,
+        "",
+        conn_data, in_conn, out_conn, strong_pred,
+        site_data, site_dist, med_site_dist,
+        site_id_col, unique_site_id_col,
+        init_coral_cover,
+        CoralGrowth(nrow(site_data)),
+        site_ids,
+        dhw_scens, cyc_scens,
+        model, SimConstants())
+end
+
+
+"""
     site_k(dom::ReefModDomain)::Vector{Float64}
 
 Get maximum coral cover area as a proportion of site area.
