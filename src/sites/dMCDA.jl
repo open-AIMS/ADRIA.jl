@@ -56,12 +56,12 @@ function create_criteria_store(site_ids::AbstractArray; criteria...)
 end
 
 function create_criteria_store(site_ids::AbstractArray, criteria::NamedTuple)
-    criteria_matrix = site_ids
+    criteria_matrix = zeros(length(site_ids), length(criteria))
 
-    for crit_key in keys(criteria)
-        criteria_matrix = hcat(criteria_matrix, criteria[crit_key][site_ids])
+    for (ind, crit_key) in enumerate(keys(criteria))
+        criteria_matrix[:, ind] .= criteria[crit_key][site_ids]
     end
-    return NamedDimsArray(criteria_matrix[:, 2:end], locations=site_ids, criteria=collect(keys(criteria)))
+    return NamedDimsArray(criteria_matrix, locations=site_ids, criteria=collect(keys(criteria)))
 
 end
 
