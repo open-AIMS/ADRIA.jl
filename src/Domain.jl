@@ -492,7 +492,7 @@ Assumes all `val` and `bounds` are to be updated.
 - `dom` : Domain
 - `spec` : updated model specification
 """
-function update!(dom::ADRIADomain, spec::DataFrame)::Nothing
+function update!(dom::Domain, spec::DataFrame)::Nothing
     # ModelParameters.update!(dom.model, spec)
     dom.model[:val] = spec.val
     dom.model[:bounds] = spec.bounds
