@@ -205,9 +205,18 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     input_dims::Tuple{Int64,Int64} = size(param_df)
     attrs::Dict = scenario_attributes(domain, param_df)
 
-    # Copy site data into result set
+    # Write a copy of spatial data to the result set
     mkdir(joinpath(log_location, "site_data"))
-    cp(attrs[:site_data_file], joinpath(log_location, "site_data", basename(attrs[:site_data_file])), force=true)
+    geo_fn = joinpath(log_location, "site_data", basename(attrs[:name]) * ".gpkg")
+    try
+        GDF.write(geo_fn, domain.site_data; driver="geojson")
+    catch err
+        if !isa(err, ArgumentError)
+            rethrow(err)
+        end
+
+        GDF.write(geo_fn, domain.site_data; geom_columns=(:geom,), driver="geojson")
+    end
 
     inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
 
@@ -338,7 +347,7 @@ function load_results(result_loc::String)::ResultSet
     end
 
     # Spatial data
-    site_data = GeoDataFrames.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
+    site_data = GDF.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
     sort!(site_data, [Symbol(input_set.attrs["unique_site_id_col"])])
 
     # Model specification
