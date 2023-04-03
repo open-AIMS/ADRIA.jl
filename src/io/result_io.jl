@@ -400,6 +400,7 @@ function load_results(result_loc::String)::ResultSet
                     Structure: $(res.attrs["structure"])
                     Generated: $(Array([i[1] for i in size.(st)]))
                     """
+                    outcomes[Symbol(basename(sd))] = NamedDimsArray(res; zip(Symbol.(res.attrs["structure"]), [1:s for s in size(res)])...)
                 else
                     rethrow(err)
                 end
