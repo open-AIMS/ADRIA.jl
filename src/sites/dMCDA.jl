@@ -405,20 +405,20 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
 - `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
-function site_selection(domain::Domain, criteria::DataFrameRow, tolerances::Tuple, site_ids::AbstractArray)::Matrix{Int64}
+function site_selection(criteria_store::NamedDimsArray, scenario::NamedDimsArray, tolerances::NamedTuple,
+    site_ids::AbstractArray, site_distances::Matrix, med_site_distance::Float64, n_site_int::Int64)
 
-    criteria_store = create_criteria_store(domain, criteria, site_ids)
-    tolerances_store = create_tolerance_store(tolerances)
-
-    min_distance = domain.median_site_distance .* criteria.min_dist
+    tolerances_store = create_tolerances_store(tolerances)
+    min_distance = med_site_distance .* scenario("dist_thresh")
     n_sites = length(site_ids)
+
     # site_id, seeding rank, shading rank
     rankingsin = [site_ids zeros(Int64, (n_sites, 1)) zeros(Int64, (n_sites, 1))]
-    prefseedsites = zeros(Int64, (1, domain.sim_constants.n_site_int))
-    prefshadesites = zeros(Int64, (1, domain.sim_constants.n_site_int))
+    prefseedsites = zeros(Int64, (1, n_site_int))
+    prefshadesites = zeros(Int64, (1, n_site_int))
 
-    (_, _, ranks) = guided_site_selection(criteria_store, criteria, tolerances_store, domain.site_distances,
-        min_distance, true, true, prefseedsites, prefshadesites, rankingsin)
+    (_, _, ranks) = guided_site_selection(criteria_store, scenario, tolerances_store, n_site_int,
+        site_distances, min_distance, true, true, prefseedsites, prefshadesites, rankingsin)
     return ranks
 end
 
