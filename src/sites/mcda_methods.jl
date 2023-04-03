@@ -112,7 +112,7 @@ Details of this aggregation method in, for example [1]
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
 """
-function mcda_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Float64,Int64}
+function mcda_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Float64}
 
     F_s = maximum(S)
 
