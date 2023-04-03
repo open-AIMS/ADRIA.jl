@@ -468,12 +468,36 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::Na
         append!(target_site_ids, target_shade_sites)
     end
 
-        ranks_temp = site_selection(
-            domain,
-            scen_criteria,
-            tolerances,
+    # Pre-calculate maximum depth to consider
+    scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
+    criteria_store = create_criteria_store(collect(1:length(domain.site_ids)), domain.mcda_criteria)
+
+    criteria_store(:iv__wave_stress) .= env_stress_criteria(Array(dropdims(mean(wave_scens, dims=(:timesteps, :scenarios)) .+ var(wave_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
+    criteria_store(:iv__heat_stress) .= env_stress_criteria(Array(dropdims(mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ var(dhw_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
+
+    for (cover_ind, scen) in enumerate(eachrow(scenarios))
+
+        tol_temp = ()
+        for tol = keys(tolerances)
+            tol_temp = (; tol_temp..., tol => (tolerances[tol][1], map(tolerances[tol][2], scen[string(String(tol), "__tol")])))
+        end
+
+        depth_criteria = (domain.site_data.depth_med .<= scen.max_depth) .& (domain.site_data.depth_med .>= scen.depth_min)
+        depth_priority = findall(depth_criteria)
+
+        considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
+        scen_set = NamedDimsArray(Vector(scen), factors=names(scen))
+
+        ranks_store(scenarios=cover_ind, sites=domain.site_ids[depth_priority]) .= site_selection(
+            criteria_store[locations=depth_priority],
+            scen_set,
+            tol_temp,
             depth_priority,
+            domain.site_distances,
+            domain.median_site_distance,
+            domain.sim_constants.n_site_int
         )
+
     end
 
     return ranks_store
