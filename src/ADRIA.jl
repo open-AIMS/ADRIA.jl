@@ -9,7 +9,7 @@ using Combinatorics, Distances
 using Setfield, ModelParameters, DataStructures
 using DataFrames, Graphs, CSV, Dates
 import ArchGDAL as AG
-import GeoDataFrames
+import GeoDataFrames as GDF
 
 using ProgressMeter
 
