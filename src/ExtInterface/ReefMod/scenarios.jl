@@ -25,10 +25,10 @@ function run_scenarios(::Type{ReefModDomain}, scens::DataFrame, dom::ReefModDoma
     ])
 
     covers = repeat(cover_prop[:], 1, n_locations(dom))
-    covers = covers .* ((site_k_area(dom) ./ 100.0)' .* site_area(dom)') ./ site_area(dom)'
+    covers = covers .* (site_k_area(dom) ./ site_area(dom))'
     covers = NamedDimsArray(covers, species=1:size(covers, 1), sites=dom.site_ids)
 
-    orig_cover = dom.init_coral_cover[:, :]
+    orig_cover = dom.init_coral_cover[:, :]  # take a copy of the original data set
 
     dom.init_coral_cover = covers
     rs = run_scenarios(scens, dom, rcp)
