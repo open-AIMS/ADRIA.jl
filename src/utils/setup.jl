@@ -1,3 +1,9 @@
+"""
+    setup()::Nothing
+
+Initialize ADRIA configuration options from `config.toml` 
+or load defaults if not found.
+"""
 function setup()::Nothing
     if has_setup()
         return
