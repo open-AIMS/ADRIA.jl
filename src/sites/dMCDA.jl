@@ -440,11 +440,12 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(domain::Domain, criteria::DataFrame, tolerances::Tuple)
+function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::NamedTuple, time_step::Int64;
+    target_seed_sites=nothing, target_shade_sites=nothing)
     ranks_store = NamedDimsArray(
-        zeros(nrow(scenarios), length(dom.site_ids), 3),
+        zeros(nrow(scenarios), length(domain.site_ids), 3),
         scenarios=1:nrow(scenarios),
-        sites=dom.site_ids,
+        sites=domain.site_ids,
         ranks=["site_id", "seed_rank", "shade_rank"],
     )
 
@@ -456,6 +457,9 @@ function run_site_selection(domain::Domain, criteria::DataFrame, tolerances::Tup
     target_wave_scens = unique(scenarios[:, "wave_scenario"])
 
     target_site_ids = Int64[]
+    dhw_scens = domain.dhw_scens
+    wave_scens = domain.wave_scens
+
     if !isnothing(target_seed_sites)
         append!(target_site_ids, target_seed_sites)
     end
