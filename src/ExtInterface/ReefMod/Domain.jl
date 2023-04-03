@@ -282,7 +282,7 @@ function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector
     # Cut down to the given time frame assuming the first entry represents the first index
     cyc_data = permutedims(cyc_data, (2, 1, 3))[1:(tf[2]-tf[1])+1, :, :]
 
-    return NamedDimsArray(sparse(cyc_data), years=tf[1]:tf[2], locs=loc_ids, scenarios=1:length(cyc_files))
+    return NamedDimsArray(cyc_data, years=tf[1]:tf[2], locs=loc_ids, scenarios=1:length(cyc_files))
 end
 
 """

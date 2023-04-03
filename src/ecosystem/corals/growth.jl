@@ -4,16 +4,16 @@
 using Distributions
 
 
-include("growth_expanded.jl")
+# include("growth_expanded.jl")
 
 
 function growth_rate(linear_extension::Array{Float64}, diam_bin_widths::Array{Float64})::Vector{Float64}
-    return ((2.0 * linear_extension) ./ diam_bin_widths')'[:]
+    return vec(((2.0 * linear_extension) ./ diam_bin_widths')')
 end
 
 
 """
-    proportional_adjustment!(covers::AbstractArray{T}, cover_tmp::AbstractArray{T}, max_cover::AbstractArray{T})::Nothing where {T<:Real}
+    proportional_adjustment!(covers::Matrix{T}, cover_tmp::Vector{T}, max_cover::Array{T})::Nothing where {T<:Real}
 
 Helper method to proportionally adjust coral cover.
 Modifies arrays in-place.
@@ -23,7 +23,7 @@ Modifies arrays in-place.
 - `cover_tmp` : Temporary cache matrix used to hold sum over species. Avoids memory allocations
 - `max_cover` : Maximum possible coral cover for each site
 """
-function proportional_adjustment!(covers::AbstractArray{T}, cover_tmp::AbstractArray{T}, max_cover::AbstractArray{T})::Nothing where {T<:Float64}
+function proportional_adjustment!(covers::Matrix{T}, cover_tmp::Vector{T}, max_cover::Array{T})::Nothing where {T<:Float64}
     # Proportionally adjust initial covers
     cover_tmp .= vec(sum(covers, dims=1))
     if any(cover_tmp .> max_cover)
@@ -41,14 +41,19 @@ end
     growthODE(du, X, p, _)
 
 Base coral growth function.
-"""
-function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
-    # This now done outside function to avoid repeated allocations
-    # X is cover relative to `k` (max. carrying capacity)
-    # So we subtract from 1.0 to get leftover/available space, relative to `k`
-    # p.sigma .= max.(1.0 .- sum(X, dims=1), 0.0)
-    # p.sigma[p.k'.==0.0] .= 0.0
 
+Proportion of corals within a size class are modeled to transition to the
+next size class up. Assumes colony sizes are evenly distributed within each
+size bin. Transitions are a ratio of the change in colony size to the width
+of the bin. See `coral_spec()` for further detail.
+
+Note that recruitment pertains to coral groups (\$n = 6\$) and represents
+the contribution to the cover of the smallest size class within each
+group.  While growth and mortality metrics pertain to groups (6) as well
+as size classes (6) across all sites (total of 36 by \$n_sites\$), recruitment is
+a 6 by \$n_sites\$ array.
+"""
+function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Float64)::Nothing
     # Indices
     # p.small_massives := [26, 27, 28]
     # p.small := [1, 7, 13, 19, 25, 31]
@@ -57,15 +62,16 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
     # p.acr_5_11 := [5, 11]
     # p.acr_6_12 := [6, 12]
 
-    # Use temporary caches
-    @. p.sXr = p.sigma * X * p.r  # leftover space * current cover * growth_rate
-    @. p.X_mb = X * p.mb    # current cover * background mortality
+    # Intermediate values are now calculated outside of ODE function
+    # To avoid repeat calculations
+    # sXr : available space (sigma) * current cover (X) * growth rate (r)
+    # X_mb : current cover (X) * background mortality (mb)
+    # sm_comp : competition factor * area taken up by small massives (represents gain via competition with small massives)
+    # M_sm : Mortality of small massives (background mortality + competition with acroporas)
+    # rec : recruitment factors for each coral group (6 by n_sites)
 
-    @views @. p.M_sm = X[p.small_massives, :] * (p.mb[p.small_massives] + p.comp * (X[6, :] + X[12, :])')
-
-    p.r_comp .= p.comp .* sum(X[p.small_massives, :], dims=1)
-    @views @. du[p.acr_5_11, :] = p.sXr[p.acr_5_11-1, :] - p.sXr[p.acr_5_11, :] + p.r_comp * X[p.acr_5_11, :] - p.X_mb[p.acr_5_11, :]
-    @views @. du[p.acr_6_12, :] = p.sXr[p.acr_6_12-1, :] + p.sXr[p.acr_6_12, :] + p.r_comp * X[p.acr_6_12, :] - p.X_mb[p.acr_6_12, :]
+    @views @. du[p.acr_5_11, :] = p.sXr[p.acr_5_11-1, :] - p.sXr[p.acr_5_11, :] + (p.sm_comp * X[p.acr_5_11, :]) - p.X_mb[p.acr_5_11, :]
+    @views @. du[p.acr_6_12, :] = p.sXr[p.acr_6_12-1, :] + p.sXr[p.acr_6_12, :] + (p.sm_comp * X[p.acr_6_12, :]) - p.X_mb[p.acr_6_12, :]
 
     @views @. du[p.small_massives, :] = p.sXr[p.small_massives-1, :] - p.sXr[p.small_massives, :] - p.M_sm
 
@@ -394,7 +400,7 @@ function settler_cover(fec_scope::T, sf::T,
     # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
     # As above, but more performant, less readable.
-    Mwater = 0.95
+    Mwater::Float64 = 0.95
     mul!(fec_scope, (fec_scope .* sf), TP_data)
     fec_scope .= fec_scope .* (1.0 .- Mwater)
 

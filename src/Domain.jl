@@ -59,7 +59,7 @@ Barrier function to create Domain struct without specifying Intervention/Criteri
 function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::AbstractMatrix{<:T}, in_conn::Vector{Float64}, out_conn::Vector{Float64},
     strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_distances::Matrix{Float64}, median_site_distance::Float64, site_id_col::String, unique_site_id_col::String,
     init_coral_cover::NamedDimsArray, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
-    DHWs::NamedDimsArray, waves::NamedDimsArray)::ADRIADomain where {T<:Real}
+    DHWs::NamedDimsArray, waves::NamedDimsArray)::ADRIADomain where {T<:Union{Float32,Float64}}
 
     # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
     criteria::Criteria = Criteria()
@@ -143,7 +143,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 
     local site_data::DataFrame
     try
-        site_data = GeoDataFrames.read(site_data_fn)
+        site_data = GDF.read(site_data_fn)
     catch err
         if !isfile(site_data_fn)
             error("Provided site data path is not valid or missing: $(site_data_fn).")
