@@ -94,7 +94,7 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     zones = replace.(zones, "Zone" => "", " " => "")
     site_data[:, :zone_type] .= zones
 
-    timeframe = (2022, 2099)
+    timeframe = (2022, 2100)
     cyc_scens = load_cyclones(ReefModDomain, data_files, loc_ids, timeframe)
 
     env_md = EnvLayer(
