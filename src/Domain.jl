@@ -282,7 +282,7 @@ function load_domain(path::String)::ADRIADomain
 end
 
 
-function unique_sites(d::ADRIADomain)::Vector{String}
+function unique_sites(d::Domain)::Vector{String}
     return d.site_data[:, d.unique_site_id_col]
 end
 
