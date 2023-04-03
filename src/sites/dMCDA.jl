@@ -403,7 +403,6 @@ function guided_site_selection(
     use_dist::Int64 = d_vars.use_dist
     min_dist::Float64 = d_vars.min_dist
     site_ids = copy(d_vars.site_ids)
-
     n_sites::Int64 = length(site_ids)
 
     # if no sites are available, abort
@@ -453,8 +452,8 @@ function guided_site_selection(
     # for zones, find sites which are zones and strongest predecessors of sites in zones
     zone_ids = intersect(priority_zones, unique(zones))
     zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
-    zone_preds = zeros(n_sites, 1)
-    zone_sites = zeros(n_sites, 1)
+    zone_preds = zeros(n_sites)
+    zone_sites = zeros(n_sites)
 
     for (k::Int64, z_name::String) in enumerate(zone_ids)
         # find sites which are strongest predecessors of sites in the zone
