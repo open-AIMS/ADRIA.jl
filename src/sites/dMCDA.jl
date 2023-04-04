@@ -483,6 +483,11 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::Na
     scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
     criteria_store = create_criteria_store(collect(1:length(domain.site_ids)), domain.mcda_criteria)
 
+    coral_cover, coral_space = coral_cover_criteria(domain.site_data, coral_covers)
+
+    in_connectivity = connectivity_criteria(domain.in_conn, coral_covers, domain.site_data.area)
+    out_connectivity = connectivity_criteria(domain.out_conn, coral_covers, domain.site_data.area)
+
     criteria_store(:iv__wave_stress) .= env_stress_criteria(Array(dropdims(mean(wave_scens, dims=(:timesteps, :scenarios)) .+ var(wave_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
     criteria_store(:iv__heat_stress) .= env_stress_criteria(Array(dropdims(mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ var(dhw_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
 
@@ -495,6 +500,11 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::Na
 
         depth_criteria = (domain.site_data.depth_med .<= scen.max_depth) .& (domain.site_data.depth_med .>= scen.depth_min)
         depth_priority = findall(depth_criteria)
+
+        criteria_store(:iv__coral_cover) .= coral_cover[scenarios=cover_ind]
+        criteria_store(:iv__coral_space) .= coral_space[scenarios=cover_ind]
+        criteria_store(:iv__in_connectivity) .= in_connectivity[scenarios=cover_ind]
+        criteria_store(:iv__out_connectivity) .= out_connectivity[scenarios=cover_ind]
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
         scen_set = NamedDimsArray(Vector(scen), factors=names(scen))
