@@ -32,29 +32,22 @@ global mcda_methods = [
 ]
 
 """
-    create_criteria_df(site_ids::AbstractArray, coral_cover::AbstractArray,
-                coral_space::AbstractArray, connectivity_in::AbstractArray, 
-                connectivity_out::AbstractArray, heat_stress::AbstractArray, 
-                wave_stress::AbstractArray, criteria...)    
+    create_criteria_store(site_ids::AbstractArray, criteria::NamedTuple) 
 
-    Constructs the criteria dataframe for performing site selection.
+    Constructs the criteria NamedDimsArray for performing site selection. 
+    This is used to construct decision matrices for the mcda methods.
 
 # Arguments
 - `site_ids` : site ids as integers.
-- `coral_cover` : array containing coral cover (m^2) summed across species for each site.
-- `coral_space` : array containing space available for coral (m^2) for each site.
-- `connectivity_in` : array containing in-coming connectivity for each site.
-- `connectivity_out` : array containing out-going connectivity for each site.
-- `heat_stress` : array containing heat stress for each site.
-- `wave_stress` : array containing wave stress for each site.
-- `criteria...` : any number of additional criteria to use in site selection, input as Tuples
-                    ("criteria name", [criteria array]).
-
+- `criteria` : NamedTuple of vectors of length nsites containing criteria values to 
+be used to construct mcda matrices. Keys should correspond to weight names and begin with "iv__".
+Can also be entered as named varargs.
+E.g. the criteria for heat stress will be iv__heat_stress and it's weight will be iv__heat_stress__seed_shade,
+indicating it is used for seeding and shading.
 """
 function create_criteria_store(site_ids::AbstractArray; criteria...)
     return create_criteria_store(site_ids, criteria)
 end
-
 function create_criteria_store(site_ids::AbstractArray, criteria::NamedTuple)
     criteria_matrix = zeros(length(site_ids), length(criteria))
 
@@ -65,7 +58,16 @@ function create_criteria_store(site_ids::AbstractArray, criteria::NamedTuple)
 
 end
 
+"""
+    create_tolerances_store(tolerances::NamedTuple)  
 
+    Constructs the tolerances NamedDimsArray which is used to filter the decision matrix.
+
+# Arguments
+- `tolerances` : NamedTuple with format (criteria_name1=(operation,value),criteria_name2=(operation,value),...)
+where operation is < or > and value is the tolerance value.
+
+"""
 function create_tolerances_store(tolerances::NamedTuple)
     tol_store = [x -> tolerances[tol_key][1](x, tolerances[tol_key][2]) for tol_key in keys(tolerances)]
     return NamedDimsArray(tol_store, criteria=collect(keys(tolerances)))
