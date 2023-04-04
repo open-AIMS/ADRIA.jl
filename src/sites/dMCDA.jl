@@ -161,7 +161,7 @@ end
 """
 function filter_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedDimsArray)
 
-    rule = sum(map.(tolerances.data, criteria_store(tolerances.criteria)'), dims=1) .== length(tolerances.criteria)
+    rule = sum(map.(tolerances.data, criteria_store(tolerances.criteria)'), dims=:criteria) .== length(tolerances.criteria)
     criteria_store = criteria_store[rule[criteria=1], :]
 
     return criteria_store
