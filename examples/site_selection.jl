@@ -1,9 +1,4 @@
 using ADRIA
-using ADRIA: run_site_selection
-using DataFrames
-
-
-using ADRIA
 
 @info "Loading data package"
 here = @__DIR__
@@ -23,4 +18,4 @@ f_coral_cover(param) = area_to_seed * param
 tolerances = (iv__coral_cover=(>, x -> f_coral_cover(x)),
     iv__heat_stress=(<, x -> x),
     iv__wave_stress=(<, x -> x))
-ranks = run_site_selection(dom, criteria_df, tolerances, ts)
+ranks = ADRIA.run_site_selection(dom, criteria_df, tolerances, ts)
