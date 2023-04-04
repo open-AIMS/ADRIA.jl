@@ -186,3 +186,12 @@ function update_criteria_store!(criteria_store::NamedDimsArray, wave_stress::Abs
 
     return criteria_store
 end
+
+function ranks_to_frequencies(ranks)
+    rank_frequencies = NamedDimsArray(zeros(size(ranks, 2), size(ranks, 2)), locations=ranks.sites, ranks=1:size(ranks, 2))
+
+    for rank in collect(range(1, size(ranks, 1), size(ranks, 1)))
+        rank_frequencies[ranks=Int(rank)] = sum(ranks(:, :, "seed_rank") .== rank, dims=:scenarios)
+    end
+    return rank_frequencies
+end
