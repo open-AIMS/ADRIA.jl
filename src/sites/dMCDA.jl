@@ -6,6 +6,7 @@ using Combinatorics
 using JMcDM
 using ADRIA: order_ranking, mcda_vikor, mcda_topsis
 
+
 global mcda_methods = [
     order_ranking,
     mcda_vikor,
