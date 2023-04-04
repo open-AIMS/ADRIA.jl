@@ -134,7 +134,6 @@ Initialises variable strucutres required for dynamic site selection in ADRIA.
 function initialize_mcda(domain::Domain, param_set::NamedDimsArray, site_ids::Vector{Int64},
     tolerances::NamedTuple)
 
-    n_sites = length(site_ids)
     rankings = [site_ids zeros(Int, length(site_ids)) zeros(Int, length(site_ids))]
 
     # initialize thresholds
