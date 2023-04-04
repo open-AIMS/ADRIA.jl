@@ -148,52 +148,44 @@ function rank_shade_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func
 end
 
 """
-    create_decision_matrix(criteria_df::DataFrame, tolerances::DataFrame)
+    filter_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedDimsArray)  
 
 # Arguments
-- `criteria_df` : contains criteria in each column for sites in each row.
-- `tolerances` : contains thresholds for specified criteria, with names matching those in criteria_df.
-                First row is the threshold value, second is 'gt' if criteria should be greater
-                than threshold and 'lt' if criteria should be less than.
+- `criteria_store` : contains criteria in each column for sites in each row.
+- `tolerances` : contains thresholds for specified criteria, with keys matching those in criteria_store.
+                Each key specifies the operation function >tolerance or <tolerance.
 
 # Returns
-- `A` : Decision matrix
-- 'filtered': indices for sites not filtered due to threshold specifications.
+- `criteria_store` : filtered version of criteria_store input.
 """
-function create_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedDimsArray)
+function filter_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedDimsArray)
 
-    for tol_key in tolerances.criteria
-        rule = map(tolerances(tol_key), criteria_store(tol_key))
-        criteria_store = criteria_store[rule, :]
-    end
+    rule = sum(map.(tolerances.data, criteria_store(tolerances.criteria)'), dims=1) .== length(tolerances.criteria)
+    criteria_store = criteria_store[rule[criteria=1], :]
 
     return criteria_store
 end
 
 
 """
-    create_intervention_matrix(A::Matrix, weights::DataFrame, criteria_df::DataFrame, int_crit_names::Vector{String})
-
+    create_intervention_matrix(criteria_store::NamedDimsArray, params::NamedDimsArray, int_type::String)
+  
 # Arguments
-- `A` : Criteria_df as a Matrix and filtered according to criteria thresholds set in tolerances.
-- `weights` : contains weights for all criteria in criteria_df (not including site_ids).
-- 
+- `criteria_store` : pre-filtered criteria to be used in the decision matrix for mcda.
+- `params` : scenario parameters, must include weights for criteria for the intervention of interest.
+- `int_type` : intervention type indicated as a string. Used to find relevant weights in `params`.
 
 # Returns
-- `A` : Decision matrix
-- 'filtered': indices for sites not filtered due to threshold specifications.
-- `criteria_df` : contains criteria for site selection in each column for sites in each row.
-- 'int_crit_names': specifies criteria to be use in this decision instance (seeding, shading etc).
-                    Must be a subset of the columns of criteria_df.
+- `S` : decision matrix for use in mcda technique of choice.
+- 'ws': weights for each of the criteria in the decision matrix.
 
 """
 function create_intervention_matrix(criteria_store::NamedDimsArray, params::NamedDimsArray, int_type::String)
     # Define intervention decision matrix
-    weights_ind = occursin.("iv__", params.factors) .& occursin.(int_type, params.factors)
+    int_params = params.factors[occursin.("iv__", params.factors).&occursin.(int_type, params.factors)]
+    crit_inds = [findall.([occursin.(String(crit_name), int_params) for crit_name in criteria_store.criteria])...;]
 
-    crit_inds = [findall.([occursin.(String(crit_name), params.factors[weights_ind]) for crit_name in criteria_store.criteria])...;]
-
-    ws = mcda_normalize(Array(params[factors=findall(weights_ind)]))
+    ws = mcda_normalize(Array(params(int_params)))
     S = Matrix(criteria_store[criteria=crit_inds])
     return S, ws
 end
