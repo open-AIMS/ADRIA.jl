@@ -360,6 +360,21 @@ function distance_sorting(pref_locations::AbstractArray{Int}, location_order::Ma
     return rep_locations, rankings
 end
 
+
+"""
+    retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
+
+Get location ranks using mcda technique specified in mcda_func, weights and a decision matrix S.
+
+# Arguments
+- `S` : decision matrix containing criteria values for each location (n locations)*(m criteria)
+- `weights` : importance weights for each criteria. 
+- `mcda_func` : function to use for mcda, specified as an element from mcda_methods.
+- `site_ids` : array of integers indicating site ids still remaining after filtering.
+
+# Returns
+- `s_order` : [site_ids, criteria values, ranks]
+"""
 function retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
     S = mcda_normalize(S)
     S .= S .* repeat(weights', size(S, 1), 1)
