@@ -303,11 +303,11 @@ Replaces these locations with locations in the top_n ranks if the distance betwe
 # Returns
 - `rep_locations` : new set of selected locations for seeding or shading.
 """
-function distance_sorting(pref_locations::AbstractArray{Int}, location_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
+function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
     min_dist::Float64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
     n_locations = length(pref_locations)
-    location_order = location_order[:, 1]
+    location_order = l_order[:, 1]
 
     # locations to select alternatives from
     alt_locations = setdiff(location_order, pref_locations)[1:length(location_order)-n_locations]
@@ -354,9 +354,10 @@ function distance_sorting(pref_locations::AbstractArray{Int}, location_order::Ma
 
     new_location_order = setdiff(location_order, rep_locations)
     new_location_order = [rep_locations; new_location_order]
-    s_order[:, 1] .= new_location_order
+    l_order[:, 1] .= new_location_order
     # Match by site_id and assign rankings to log
-    align_rankings!(rankings, location_order, rank_col)
+
+    align_rankings!(rankings, l_order, rank_col)
 
     return rep_locations, rankings
 end
