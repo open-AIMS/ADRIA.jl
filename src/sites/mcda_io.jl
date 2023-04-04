@@ -77,9 +77,9 @@ each reef/site.
 - `coral_cover` : Proportional cover at each site/reef.
 
 """
-function coral_cover_criteria(site_data::DataFrame, coral_cover::Matrix)
+function coral_cover_criteria(site_data::DataFrame, coral_cover::AbstractArray)
     max_area = site_data.k .* site_data.area
-    coral_cover_area = site_data.area .* coral_cover'
+    coral_cover_area = site_data.area .* coral_cover
     return max.(coral_cover_area, 0.0), max.(max_area .- coral_cover_area, 0.0)
 end
 
@@ -109,7 +109,7 @@ Calculates connectivity criterium for each reef/site as connectivity*(area of co
 - `area` : Area of each site (m^2).
 
 """
-function connectivity_criteria(conn::Vector{Float64}, sum_cover::Matrix,
+function connectivity_criteria(conn::Vector{Float64}, sum_cover::AbstractArray,
     area::Array{Float64})
     cov_area = conn .* sum_cover .* area
     return maximum(cov_area) != 0.0 ? cov_area / maximum(cov_area) : zeros(Float64, size(cov_area))
@@ -180,7 +180,7 @@ function update_criteria_store!(criteria_store::NamedDimsArray, wave_stress::Abs
     criteria_store(:iv__heat_stress) .= env_stress_criteria(heat_stress)[depth_priority]
     criteria_store(:iv__in_connectivity) .= connectivity_criteria(in_conn, site_coral_cover, site_area)[depth_priority]
     criteria_store(:iv__in_connectivity) .= connectivity_criteria(out_conn, site_coral_cover, site_area)[depth_priority]
-    coral_cover, coral_space = coral_cover_criteria(site_data, site_coral_cover)
+    coral_cover, coral_space = coral_cover_criteria(site_data, site_coral_cover')
     criteria_store(:iv__coral_cover) .= coral_cover[depth_priority]
     criteria_store(:iv__coral_space) .= coral_space[depth_priority]
 
