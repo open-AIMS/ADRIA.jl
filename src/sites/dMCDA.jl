@@ -288,77 +288,76 @@ end
 
 
 """
-    distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
+    distance_sorting(pref_locations::AbstractArray{Int}, location_order::AbstractVector, dist::Array{Float64}, dist_thresh::Float64)::AbstractArray{Int}
 
-Find selected sites with distances between each other < median distance-dist_thresh*(median distance).
-Replaces these sites with sites in the top_n ranks if the distance between these sites is greater.
+Find selected locations with distances between each other < dist_thresh*(median distance).
+Replaces these locations with locations in the top_n ranks if the distance between these locations is greater.
 
 # Arguments
-- `pref_sites` : original n highest ranked sites selected for seeding or shading.
-- `site_order` : current order of ranked sites in terms of numerical site ID.
-- `dist` : Matrix of unique distances between sites.
-- `min_dist` : minimum distance between sites for selected sites.
-- `top_n` : number of top ranked sites to re-select from.
+- `pref_locations` : original n highest ranked locations selected for seeding or shading.
+- `location_order` : current order of ranked locations in terms of numerical site ID.
+- `dist` : Matrix of unique distances between locations.
+- `min_dist` : minimum distance between locations for selected locations.
 
 # Returns
-- `prefsites` : new set of selected sites for seeding or shading.
+- `rep_locations` : new set of selected locations for seeding or shading.
 """
-function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
+function distance_sorting(pref_locations::AbstractArray{Int}, location_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
     min_dist::Float64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
-    n_sites = length(pref_sites)
-    site_order = s_order[:, 1]
+    n_locations = length(pref_locations)
+    location_order = location_order[:, 1]
 
-    # sites to select alternatives from
-    alt_sites = setdiff(site_order, pref_sites)[1:length(site_order)-n_sites]
+    # locations to select alternatives from
+    alt_locations = setdiff(location_order, pref_locations)[1:length(location_order)-n_locations]
 
-    # find all selected sites closer than the min distance
-    pref_dists = findall(dist[pref_sites, pref_sites] .< min_dist)
+    # find all selected locations closer than the min distance
+    pref_dists = findall(dist[pref_locations, pref_locations] .< min_dist)
     # indices to replace
     inds_rep = sort(unique(reinterpret(Int64, pref_dists)))
-    # number of sites to replace
+    # number of locations to replace
     select_n = length(inds_rep)
     # indices to keep
-    inds_keep = collect(1:length(pref_sites))
+    inds_keep = collect(1:length(pref_locations))
     inds_keep = setdiff(inds_keep, inds_rep)
 
-    # storage for new set of sites
-    rep_sites = pref_sites
+    # storage for new set of locations
+    rep_locations = pref_locations
 
-    while (length(alt_sites) .>= select_n)
-        rep_sites = [rep_sites[inds_keep[:]]; alt_sites[1:select_n]]
+    while (length(alt_locations) .>= select_n)
+        rep_locations = [rep_locations[inds_keep[:]]; alt_locations[1:select_n]]
 
-        # Find all sites within these highly ranked but unselected sites which are further apart
-        alt_dists = dist[rep_sites, rep_sites] .> min_dist
+        # Find all locations within these highly ranked but unselected locations which are further apart
+        alt_dists = dist[rep_locations, rep_locations] .> min_dist
 
-        # Select from these sites those far enough away from all sites
-        inds_keep = sum(alt_dists, dims=2) .== n_sites - 1
+        # Select from these locations those far enough away from all locations
+        inds_keep = sum(alt_dists, dims=2) .== n_locations - 1
 
-        # Keep sites that were far enough away last iteration
+        # Keep locations that were far enough away last iteration
         inds_keep[1:end-select_n] .= true
-        if length(inds_keep) == n_sites
+        if length(inds_keep) == n_locations
             select_n = 0
             break
         else
-            # remove checked alt_sites
-            alt_sites = setdiff(alt_sites, alt_sites[1:select_n])
+            # remove checked alt_locations
+            alt_locations = setdiff(alt_locations, alt_locations[1:select_n])
             select_n = sum(.!inds_keep)
         end
     end
 
-    # If not all sites could be replaced, just use highest ranked remaining pref_sites
-    if (select_n != 0) && !isempty(setdiff(pref_sites, rep_sites))
-        rem_pref_sites = setdiff(pref_sites, rep_sites)
-        rep_sites[end-select_n+1:end] .= rem_pref_sites[1:select_n]
+    # If not all locations could be replaced, just use highest ranked remaining pref_locations
+    if (select_n != 0) && !isempty(setdiff(pref_locations, rep_locations))
+        rem_pref_locations = setdiff(pref_locations, rep_locations)
+        rep_locations[end-select_n+1:end] .= rem_pref_locations[1:select_n]
     end
 
-    new_site_order = setdiff(site_order, rep_sites)
-    new_site_order = [rep_sites; new_site_order]
-    s_order[:, 1] .= new_site_order
+    new_location_order = setdiff(location_order, rep_locations)
+    new_location_order = [rep_locations; new_location_order]
+    s_order[:, 1] .= new_location_order
     # Match by site_id and assign rankings to log
-    align_rankings!(rankings, s_order, rank_col)
+    align_rankings!(rankings, location_order, rank_col)
 
-    return rep_sites, rankings
+    return rep_locations, rankings
 end
 
 function retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
