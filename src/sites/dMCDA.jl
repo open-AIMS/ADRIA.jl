@@ -235,7 +235,8 @@ function guided_site_selection(criteria_store::NamedDimsArray,
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
     mcda_func = mcda_methods[Int(params("guided"))]
 
-    criteria_store = create_decision_matrix(criteria_store, thresholds)
+    criteria_store = filter_decision_matrix(criteria_store, thresholds)
+
     if isempty(criteria_store)
         # if all rows have nans and A is empty, abort mission
         return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
