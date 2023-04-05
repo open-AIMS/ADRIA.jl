@@ -459,7 +459,7 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `aggregated_ranks_store` : if aggregation method is selected, the aggregated ranks_store output.
 """
 function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::NamedTuple, coral_covers::NamedDimsArray;
-    target_seed_sites=nothing, target_shade_sites=nothing)
+    aggregation_method=nothing, target_seed_sites=nothing, target_shade_sites=nothing)
     ranks_store = NamedDimsArray(
         zeros(nrow(scenarios), length(domain.site_ids), 3),
         scenarios=1:nrow(scenarios),
@@ -516,7 +516,7 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::Na
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
         scen_set = NamedDimsArray(Vector(scen), factors=names(scen))
 
-        ranks_store(scenarios=cover_ind, sites=domain.site_ids[depth_priority]) .= site_selection(
+        ranks_store(scenarios=cover_ind, locations=domain.site_ids[depth_priority]) .= site_selection(
             criteria_store[locations=depth_priority],
             scen_set,
             tol_temp,
@@ -527,8 +527,11 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::Na
         )
 
     end
-
-    return ranks_store
+    if !isnothing(aggregation_method)
+        return ranks_store, aggregation_method[1](ranks_store, aggregation_method[2])
+    else
+        return ranks_store
+    end
 end
 
 """
@@ -600,3 +603,5 @@ function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shad
 
     return prefseedsites[prefseedsites.>0], prefshadesites[prefshadesites.>0]
 end
+
+
