@@ -152,7 +152,7 @@ Loads ReefMod DHW data as a datacube.
 - `timeframe` : range of years to represent.
 
 # Returns
-NamedDimsArray[timesteps, locs, member]
+NamedDimsArray[timesteps, locs, scenarios]
 """
 function load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::NamedDimsArray
     dhw_path = joinpath(data_path, "dhw")
@@ -194,15 +194,15 @@ function load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timefra
             end
 
             @warn "Building DHW: Could not find matching time frame, skipping $rcp_data_fn"
-            keep_ds[i] = false  # mark member for removal
+            keep_ds[i] = false  # mark scenario for removal
             continue
         end
 
         data_cube[:, :, i+1] .= Matrix(d[:, tf_start:tf_end])'
     end
 
-    # Only return valid members
-    return NamedDimsArray(data_cube[:, :, keep_ds], timesteps=timeframe[1]:timeframe[2], locs=loc_ids, member=rcp_files[keep_ds])
+    # Only return valid scenarios
+    return NamedDimsArray(data_cube[:, :, keep_ds], timesteps=timeframe[1]:timeframe[2], locs=loc_ids, scenarios=rcp_files[keep_ds])
 end
 
 """
@@ -260,7 +260,7 @@ end
     Subsets the data in cases where `tf[2] < length(data)` such that only `1:(tf[2] - tf[1])+1` is read in.
 
 # Returns
-NamedDimsArray[locs, years, scenarios]
+NamedDimsArray[timesteps, locs, scenarios]
 """
 function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, tf::Tuple{Int64,Int64})::NamedDimsArray
     # NOTE: This reads from the provided CSV files
@@ -282,7 +282,7 @@ function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector
     # Cut down to the given time frame assuming the first entry represents the first index
     cyc_data = permutedims(cyc_data, (2, 1, 3))[1:(tf[2]-tf[1])+1, :, :]
 
-    return NamedDimsArray(cyc_data, years=tf[1]:tf[2], locs=loc_ids, scenarios=1:length(cyc_files))
+    return NamedDimsArray(cyc_data, timesteps=tf[1]:tf[2], locs=loc_ids, scenarios=1:length(cyc_files))
 end
 
 """
@@ -303,7 +303,7 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
         ArgumentError("No coral cover data files found in: $(icc_path)")
     end
 
-    # Shape is locations, members, species
+    # Shape is locations, scenarios, species
     icc_data = zeros(length(loc_ids), 20, length(icc_files))
     for (i, fn) in enumerate(icc_files)
         icc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false, comment="#"))
