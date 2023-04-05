@@ -187,11 +187,47 @@ function update_criteria_store!(criteria_store::NamedDimsArray, wave_stress::Abs
     return criteria_store
 end
 
-function ranks_to_frequencies(ranks)
-    rank_frequencies = NamedDimsArray(zeros(size(ranks, 2), size(ranks, 2)), locations=ranks.sites, ranks=1:size(ranks, 2))
+"""
+    ranks_to_location_order(ranks::NamedDimsArray, int_type::String)
 
-    for rank in collect(range(1, size(ranks, 1), size(ranks, 1)))
-        rank_frequencies[ranks=Int(rank)] = sum(ranks(:, :, "seed_rank") .== rank, dims=:scenarios)
+
+Post-processing function for location ranks output of `run_site_selection()`. Gives the order 
+of location preference for each scenario as location ids.
+
+# Arguments
+- `ranks` : Contains location ranks for each scenario of location selection, as created by 
+    `run_site_selection()`.
+- `int_type` : String indicating the intervention type to perform aggregation on.
+
+"""
+function ranks_to_location_order(ranks::NamedDimsArray, int_type::String)
+    ranks_set = ranks(:, :, string(int_type, "_rank"))
+    location_orders = NamedDimsArray(repeat([""], size(ranks, 1), size(ranks, 2)), scenarios=1:size(ranks, 1), ranks=1:size(ranks, 2))
+
+    for scen in collect(1:size(ranks, 1))
+        location_orders[scenarios=scen, ranks=1:sum(ranks_set[scenarios=scen] .!= 0.0)] .= sort(Int.(ranks_set[scenarios=scen][ranks_set[scenarios=scen].!=0.0])).locations
+    end
+    return location_orders
+end
+
+"""
+    ranks_to_frequencies(ranks::NamedDimsArray, int_type::String)
+
+
+Post-processing function for location ranks output of `run_site_selection()`. Gives the frequency 
+with which each location was selected at each rank across the location selection scenarios.
+
+# Arguments
+- `ranks` : Contains location ranks for each scenario of location selection, as created by 
+    `run_site_selection()`.
+- `int_type` : String indicating the intervention type to perform aggregation on.
+
+"""
+function ranks_to_frequencies(ranks::NamedDimsArray, int_type::String)
+    rank_frequencies = NamedDimsArray(zeros(size(ranks, 2), size(ranks, 2)), locations=ranks.locations, ranks=1:size(ranks, 2))
+
+    for rank in collect(range(1, size(ranks, 2), size(ranks, 2)))
+        rank_frequencies[ranks=Int(rank)] .= sum(ranks(:, :, string(int_type, "_rank")) .== rank, dims=:scenarios)[scenarios=1]
     end
     return rank_frequencies
 end
