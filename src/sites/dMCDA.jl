@@ -804,6 +804,9 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
 
     # Pre-calculate maximum depth to consider
     scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
+    target_dhw_scens = unique(scenarios[:, "dhw_scenario"])
+    target_wave_scens = unique(scenarios[:, "wave_scenario"])
+
     target_site_ids = Int64[]
     if !isnothing(target_seed_sites)
         append!(target_site_ids, target_seed_sites)
@@ -822,8 +825,8 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
         ranks_store(scenarios=cover_ind, sites=dom.site_ids[considered_sites]) .= site_selection(
             dom,
             scen,
-            mean(wave_scens, dims=(:timesteps, :scenarios)) .+ var(wave_scens, dims=(:timesteps, :scenarios)),
-            mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ var(dhw_scens, dims=(:timesteps, :scenarios)),
+            (mean(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5,
+            (mean(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios))) .* 0.5,
             considered_sites,
             sum_cover[cover_ind, :],
             area_to_seed
