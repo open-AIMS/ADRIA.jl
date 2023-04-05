@@ -400,17 +400,20 @@ end
 
 
 """
-    site_selection(domain::Domain, criteria::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray, sum_cover::AbstractArray, area_to_seed::Float64)
+    site_selection(criteria_store::NamedDimsArray, scenario::NamedDimsArray, tolerances::NamedTuple,
+        site_ids::AbstractArray, site_distances::Matrix, med_site_distance::Float64, n_site_int::Int64)
 
-Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
-
+Perform site selection using a set of criteria, tolerances, locations and location distances.
 # Arguments
-- `criteria` : contains criteria weightings and thresholds for a single scenario.
-- `mcda_vars` : site selection criteria and weightings structure
-- `w_scens` : array of length nsites containing wave scenario.
-- `dhw_scens` : array of length nsites containing dhw scenario.
-- `sum_cover` : summed cover (over species) for single scenario being run, for each site.
-- `area_to_seed` : area of coral to be seeded at each time step in km^2
+- `criteria_store` : contains criteria for a single location selection instance.
+- `scenario` : contains parameters for a single location selection instance, including tolerance values 
+and parameters for distance sorting.
+- `tolerances` : specifies criteria tolerances and has keys with names corresponding to criteria in criteria_store. 
+For example, (iv__heat_stress=(<,0.5)), implies the criteria "iv__heat_stress" must not have values greater than 0.5.
+- `location_ids` : array of length nlocations containing indices of locations to be selected from.
+- `site_distances` : Matrix of distances between locations.
+- `med_site_distance` : Median distance between locations in the site_distances matrix.
+- `n_site_int` : number of locations to select to perform intervention.
 
 # Returns
 - `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
