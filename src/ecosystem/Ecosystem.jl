@@ -45,7 +45,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
     # Integer values have a +1 offset to allow for discrete value mapping
     # (see `set()` and `map_to_discrete()` methods)
     # Bounds are defined as floats to maintain type stability
-    guided::N = Param(0, ptype="integer", bounds=(-1.0, 22.0 + 1.0), dists="unif",
+    guided::N = Param(0, ptype="integer", bounds=(-1.0, 21.0 + 1.0), dists="unif",
         name="Guided", description="Choice of MCDA approach.")
     seed_TA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
         name="Seeded Tabular Acropora", description="Number of enhanced Tabular Acropora to seed per deployment year.")
