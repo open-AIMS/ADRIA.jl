@@ -436,23 +436,27 @@ function site_selection(criteria_store::NamedDimsArray, scenario::NamedDimsArray
     return ranks
 end
 
-
 """
-    run_site_selection(domain::Domain, criteria::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
+    run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::NamedTuple, coral_covers::NamedDimsArray;
+        aggregation_method=nothing, target_seed_sites=nothing, target_shade_sites=nothing)
 
 Perform site selection for a given domain for multiple scenarios defined in a dataframe.
 
 # Arguments
 - `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
 - `scenarios` : DataFrame of criteria weightings and thresholds for each scenario.
-- `sum_cover` : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
-- `area_to_seed` : area of coral to be seeded at each time step in km^2
-- `target_seed_sites` : list of candidate locations for seeding (indices)
-- `target_shade_sites` : list of candidate location to shade (indices)
+- `tolerances` : NamedTuple specifying tolerances for pre-selection filtering. E.g. `tolerances = (iv__coral_cover=(>, x -> f_coral_cover(x)),
+    iv__heat_stress=(<, x -> x), iv__wave_stress=(<, x -> x))`, where the keys correspond to criteria names in the Domain,
+    the first element difines the filtering operation (> or <) and the second element defines the operation on the tolerance parameter
+    (x->x is directly using parameter value). Tolerance values in `scenarios` DataFrame will have names "iv__"+(criteria name)+"__tol".
+- `coral_covers` : contains coral covers for each selection scenario, size (N locations, M scenarios).
+- `target_seed_sites` : optional additional set of sites to only consider during seeding (must be a subset of the location ids in site data in Domain).
+- `target_shade_sites` : optional additional set of sites to only consider during shading (must be a subset of the location ids in site data in Domain).
 
 # Returns
 - `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
+- `aggregated_ranks_store` : if aggregation method is selected, the aggregated ranks_store output.
 """
 function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::NamedTuple, coral_covers::NamedDimsArray;
     target_seed_sites=nothing, target_shade_sites=nothing)
