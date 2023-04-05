@@ -217,19 +217,19 @@ end
 
 """
     env_stats(rs::ResultSet, s_name::String, rcp::String)
-    env_stats(rs::ResultSet, s_name::String, rcp::String, member::Int)
-    env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, member::Int)
+    env_stats(rs::ResultSet, s_name::String, rcp::String, scenario::Int)
+    env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, scenario::Int)
 
 Extract statistics for a given environmental layer ("DHW" or "wave")
 """
 function env_stats(rs::ResultSet, s_name::String, rcp::String)
     return getfield(rs, Symbol("$(s_name)_stats"))[rcp]
 end
-function env_stats(rs::ResultSet, s_name::String, rcp::String, member::Int)
-    return getfield(rs, Symbol("$(s_name)_stats"))[rcp][:, member]
+function env_stats(rs::ResultSet, s_name::String, rcp::String, scenario::Int)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp][:, scenario]
 end
-function env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, member::Int)
-    return getfield(rs, Symbol("$(s_name)_stats"))[rcp][stat, member]
+function env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, scenario::Int)
+    return getfield(rs, Symbol("$(s_name)_stats"))[rcp][stat, scenario]
 end
 
 
