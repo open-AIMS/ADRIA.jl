@@ -150,17 +150,17 @@ function initialize_mcda(domain::Domain, param_set::NamedDimsArray, site_ids::Ve
 end
 
 """
-    update_criteria_df!(criteria_df::DataFrame, wave_stress::AbstractArray,
+    update_criteria_store!(criteria_store::NamedDimsArray, wave_stress::AbstractArray,
         heat_stress::AbstractArray, in_conn::AbstractArray, out_conn::AbstractArray,
         site_area::AbstractArray, site_coral_cover::AbstractArray, site_data::DataFrame,
         depth_priority::AbstractArray)
 
 
-Updates variable strucutres required for dynamic site selection in ADRIA.
+Updates NamedDimsArray of criteria values required for dynamic site selection in ADRIA.
 
 # Arguments
-- `criteria_df` : Containing names and values of selection criteria, as created by 
-    `create_criteria_df()`.
+- `criteria_store` : Containing values of selection criteria, as created by 
+    `create_criteria_store()`.
 - `wave_stress` : Current wave stress values (not normalized).
 - `heat_stress` : Current heat stress values (not normalized).
 - `in_conn` : In-coming connectivity for each site/reef.
