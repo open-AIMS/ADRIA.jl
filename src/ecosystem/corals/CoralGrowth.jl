@@ -1,10 +1,10 @@
 """
-    CoralGrowth(n_sites::Integer, n_species::Integer, n_groups::Integer, ode_p::NamedTuple)
+    CoralGrowth(n_locations::Integer, n_species::Integer, n_groups::Integer, ode_p::NamedTuple)
 
 Coral growth specification for growth ODE model.
 """
 struct CoralGrowth{A<:Integer,T<:NamedTuple}
-    n_sites::A
+    n_locations::A
     n_species::A
     n_groups::A
 
@@ -13,11 +13,11 @@ end
 
 
 """
-    CoralGrowth(n_sites)
+    CoralGrowth(n_locations)
 
 Implements temporary hardcoded caches for a scenario with 36 'species' (split into 6 groups).
 """
-function CoralGrowth(n_sites::Int64)::CoralGrowth
+function CoralGrowth(n_locations::Int64)::CoralGrowth
     n_species, n_groups = 36, 6
 
     # Store specific indices for use in growth ODE function
@@ -47,8 +47,8 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
         sXr::Matrix{Float64},                            # s * X * r
         X_mb::Matrix{Float64},                           # X * mb
         cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
-        # r, s, mb, comp, sm_comp
-        zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1), 0.3, zeros(2, n_sites),
+        # r, s, mb, comp, r_comp
+        zeros(n_species, 1), zeros(n_locations), zeros(n_species, 1), 0.3, zeros(2, n_locations),
 
 
         # cached indices
@@ -58,9 +58,9 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
         # cache matrices
         # rec, M_sm, 
         # sXr, X_mb, cover
-        zeros(n_groups, n_sites), zeros(3, n_sites),
-        zeros(n_species, n_sites), zeros(n_species, n_sites), zeros(n_sites)
+        zeros(n_groups, n_locations), zeros(1, n_locations), zeros(3, n_locations),
+        zeros(n_species, n_locations), zeros(n_species, n_locations), zeros(n_locations)
     ))
 
-    return CoralGrowth(n_sites, n_species, n_groups, p)
+    return CoralGrowth(n_locations, n_species, n_groups, p)
 end

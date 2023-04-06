@@ -11,7 +11,7 @@ p : additional parameters
 t : time, unused, so marking with `_`
 """
 function growthODE_expanded(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
-    # `s` refers to sigma holding leftover space for each site in form of: 1 x n_sites
+    # `s` refers to sigma holding leftover space for each location in form of: 1 x n_locations
     s = p.sigma[:, :]
 
     s .= max.(p.k' .- sum(X, dims=1), 0.0)  # Make relative to k (max. carrying capacity)
