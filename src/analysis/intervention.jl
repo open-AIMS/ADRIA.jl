@@ -2,7 +2,7 @@
     intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::NamedDimsArray
 
 Count number of times a location of selected for intervention
-Count frequency of seeded sites for scenarios satisfying a condition.
+Count frequency of seeded locations for scenarios satisfying a condition.
 
 # Arguments
 - 'rs' : ResultSet
@@ -41,7 +41,7 @@ function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_typ
     rcps = collect(Symbol.(keys(scen_indices)))
     n_locs = n_locations(rs)
 
-    interv_freq = NamedDimsArray(zeros(n_locs, length(rcps)), locations=rs.site_ids, rcps=rcps)
+    interv_freq = NamedDimsArray(zeros(n_locs, length(rcps)), locations=rs.location_ids, rcps=rcps)
     for rcp in rcps
         # Select scenarios satisfying condition and tally selection for each location
         logged_data = dropdims(sum(interv_log[scenarios=scen_indices[rcp]], dims=:coral_id), dims=:coral_id)

@@ -3,7 +3,7 @@ using CSV, DataFrames, Statistics
 import GeoDataFrames as GDF
 
 using ModelParameters
-using ADRIA: SimConstants, Domain, site_distances
+using ADRIA: SimConstants, Domain, location_distances
 
 
 mutable struct ReefModDomain <: Domain
@@ -15,14 +15,14 @@ mutable struct ReefModDomain <: Domain
     const in_conn
     const out_conn
     const strong_pred
-    const site_data
-    const site_distances
-    const median_site_distance
-    const site_id_col
-    const unique_site_id_col
+    const location_data
+    const location_distances
+    const median_location_distance
+    const location_id_col
+    const unique_location_id_col
     init_coral_cover
     const coral_growth::CoralGrowth
-    const site_ids
+    const location_ids
     dhw_scens
 
     # `wave_scens` Actually holds cyclones, but to maintain compatibility with
@@ -318,14 +318,86 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
 end
 
 """
-    site_k(dom::ReefModDomain)::Vector{Float64}
+    load_domain(::Type{ReefModDomain}, fn_path, RCP)::ReefModDomain
 
-Get maximum coral cover area as a proportion of site area.
+Load a Domain for use with ReefMod.
 
-Note: ReefMod `k` area is already ∈ [0, 1] so no adjustment is necessary.
+# Arguments
+- `ReefModDomain`
+- `fn_path`
+- `RCP`
+
+# Returns
+ReefModDomain
 """
-function site_k(dom::ReefModDomain)::Vector{Float64}
-    return dom.site_data.k
+function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefModDomain
+    data_files = joinpath(fn_path, "data_files")
+    dhw_scens = load_DHW(ReefModDomain, data_files, RCP)
+    loc_ids = axiskeys(dhw_scens)[2]
+
+    conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
+    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(conn_data)
+
+    location_data = GDF.read(joinpath(data_files, "region", "reefmod_gbr.gpkg"))
+    location_dist, med_location_dist = ADRIA.location_distances(location_data)
+    location_id_col = "LOC_NAME_S"
+    unique_location_id_col = "LOC_NAME_S"
+    init_coral_cover = load_initial_cover(ReefModDomain, data_files, loc_ids)
+    location_ids = location_data[:, unique_location_id_col]
+
+    id_list = CSV.read(joinpath(data_files, "id", "id_list_Dec_2022_151222.csv"), DataFrame, header=false)
+
+    # Re-order spatial data to match RME dataset
+    # MANUAL CORRECTION
+    location_data[location_data.LABEL_ID.=="20198", :LABEL_ID] .= "20-198"
+    id_order = [first(findall(x .== location_data.LABEL_ID)) for x in string.(id_list[:, 1])]
+    location_data = location_data[id_order, :]
+
+    # Check that the two lists of location ids are identical
+    @assert isempty(findall(location_data.LABEL_ID .!= id_list[:, 1]))
+
+    # Convert area in km² to m²
+    location_data[:, :area] .= id_list[:, 2] * 1e6
+
+    # Calculate `k` area (1.0 - "ungrazable" area)
+    location_data[:, :k] .= 1.0 .- id_list[:, 3]
+
+    # Set all location depths to 6m below sea level
+    # (ReefMod does not account for depth)
+    location_data[:, :depth_med] .= 6.0
+
+    # Add GBRMPA zone type info as well
+    gbr_zt_path = joinpath(data_files, "region", "gbrmpa_zone_type.csv")
+    gbr_zone_types = CSV.read(gbr_zt_path, DataFrame; types=String)
+    missing_rows = ismissing.(gbr_zone_types[:, "GBRMPA Zone Types"])
+    gbr_zone_types[missing_rows, "GBRMPA Zone Types"] .= ""
+    zones = gbr_zone_types[:, "GBRMPA Zone Types"]
+    zones = replace.(zones, "Zone" => "", " " => "")
+    location_data[:, :zone_type] .= zones
+
+    cyc_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
+
+    model::Model = Model((EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), Criteria()))
+
+    return ReefModDomain(
+        "ReefMod", RCP,
+        conn_data, in_conn, out_conn, strong_pred,
+        location_data, location_dist, med_location_dist,
+        location_id_col, unique_location_id_col,
+        init_coral_cover,
+        location_ids,
+        dhw_scens, cyc_scens,
+        model, SimConstants())
+end
+
+
+"""
+    location_k(dom::ReefModDomain)::Vector{Float64}
+
+Get maximum coral cover area as a proportion of location area.
+"""
+function location_k(dom::ReefModDomain)::Vector{Float64}
+    return dom.location_data.k
 end
 
 
@@ -347,13 +419,14 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
 end
 
 
+
 function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)
 
     # df = model_spec(d)
     println("""
     ReefMod Domain: $(d.name)
 
-    Number of sites: $(n_locations(d))
+    Number of locationsionsions: $(n_locations(d))
     """)
 end
 

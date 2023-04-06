@@ -1,9 +1,9 @@
 """
-site_connectivity(file_loc::String, unique_site_ids::Vector{String};
+location_connectivity(file_loc::String, unique_location_ids::Vector{String};
                   con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
 
 Create transitional probability matrix indicating connectivity between
-sites, level of centrality, and the strongest predecessor for each site.
+locations, level of centrality, and the strongest predecessor for each location.
 
 NOTE: Transposes transitional probability matrix if `swap == true`
       If multiple files are read in, this assumes all file rows/cols
@@ -11,14 +11,14 @@ NOTE: Transposes transitional probability matrix if `swap == true`
 
 # Examples
 ```julia
-    site_connectivity("MooreTPmean.csv", site_order)
-    site_connectivity("MooreTPmean.csv", site_order; con_cutoff=0.02, agg_func=mean, swap=true)
+    location_connectivity("MooreTPmean.csv", location_order)
+    location_connectivity("MooreTPmean.csv", location_order; con_cutoff=0.02, agg_func=mean, swap=true)
 ```
 
 # Arguments
 - `file_loc` : Path to data file (or datasets) to load
                If a folder, searches subfolders as well
-- `unique_site_ids` : Unique site ids in their expected order
+- `unique_location_ids` : Unique location ids in their expected order
 - `con_cutoff` : Percent thresholds of max for weak connections in
                  network (defined by user or defaults in `SimConstants`)
 - `agg_func` : Summary statistic to take (defaults to `mean`)
@@ -26,11 +26,11 @@ NOTE: Transposes transitional probability matrix if `swap == true`
 
 # Returns
 NamedTuple:
-- `TP_data` : Matrix, containing the transition probability for all sites
-- `truncated` : ID of sites removed
-- `site_ids` : ID of sites kept
+- `TP_data` : Matrix, containing the transition probability for all locations
+- `truncated` : ID of locations removed
+- `location_ids` : ID of locations kept
 """
-function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
+function location_connectivity(file_loc::String, unique_location_ids::Vector{String};
     con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
 
     if !isdir(file_loc) && !isfile(file_loc)
@@ -68,60 +68,60 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
         extracted_TP = agg_func(tmp_store)
     end
 
-    # Get site ids from first file
+    # Get location ids from first file
     con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1])
-    con_site_ids::Vector{String} = String[x[1] for x in split.(names(con_file1), "_v"; limit=2)]
+    con_location_ids::Vector{String} = String[x[1] for x in split.(names(con_file1), "_v"; limit=2)]
 
     if isfile(file_loc)
         extracted_TP = Matrix{Float64}(con_file1)
     end
 
-    # Get IDs missing in con_site_ids
-    invalid_ids::Vector{String} = setdiff(con_site_ids, unique_site_ids)
+    # Get IDs missing in con_location_ids
+    invalid_ids::Vector{String} = setdiff(con_location_ids, unique_location_ids)
 
-    # Get IDs missing in site_order
-    append!(invalid_ids, setdiff(unique_site_ids, con_site_ids))
+    # Get IDs missing in location_order
+    append!(invalid_ids, setdiff(unique_location_ids, con_location_ids))
 
     # Identify IDs that do not appear in `invalid_ids`
-    valid_ids::Vector{String} = [x ∉ invalid_ids ? x : missing for x in unique_site_ids]
+    valid_ids::Vector{String} = [x ∉ invalid_ids ? x : missing for x in unique_location_ids]
     valid_idx = .!ismissing.(valid_ids)
 
     # Align IDs
-    unique_site_ids::Vector{String} = coalesce(unique_site_ids[valid_idx])
-    site_order = [findfirst(c_id .== con_site_ids) for c_id in unique_site_ids]
+    unique_location_ids::Vector{String} = coalesce(unique_location_ids[valid_idx])
+    location_order = [findfirst(c_id .== con_location_ids) for c_id in unique_location_ids]
 
     if length(invalid_ids) > 0
-        if length(invalid_ids) >= length(con_site_ids)
-            error("All sites appear to be missing from data set. Aborting.")
+        if length(invalid_ids) >= length(con_location_ids)
+            error("All locations appear to be missing from data set. Aborting.")
         end
 
-        @warn "The following sites (n=$(length(invalid_ids))) were not found in site_ids and were removed:\n$(invalid_ids)"
+        @warn "The following locations (n=$(length(invalid_ids))) were not found in location_ids and were removed:\n$(invalid_ids)"
     end
 
     # Reorder all data into expected form
-    extracted_TP = extracted_TP[site_order, site_order]
+    extracted_TP = extracted_TP[location_order, location_order]
 
     if con_cutoff > 0.0
         extracted_TP[extracted_TP.<con_cutoff] .= 0.0
     end
 
-    TP_base = NamedDimsArray(sparse(extracted_TP), Source=unique_site_ids, Receiving=unique_site_ids)
+    TP_base = NamedDimsArray(sparse(extracted_TP), Source=unique_location_ids, Receiving=unique_location_ids)
     @assert all(0.0 .<= TP_base .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
-    return (TP_base=TP_base, truncated=invalid_ids, site_ids=unique_site_ids)
+    return (TP_base=TP_base, truncated=invalid_ids, location_ids=unique_location_ids)
 end
-function site_connectivity(file_loc::String, unique_site_ids::Vector{Union{Missing,String}};
+function location_connectivity(file_loc::String, unique_location_ids::Vector{Union{Missing,String}};
     con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
 
     # Remove any row marked as missing
-    if any(ismissing.(unique_site_ids))
-        @warn "Removing entries marked as `missing` from provided list of sites."
-        unique_site_ids::Vector{String} = String.(unique_site_ids[.!ismissing.(unique_site_ids)])
+    if any(ismissing.(unique_location_ids))
+        @warn "Removing entries marked as `missing` from provided list of locations."
+        unique_location_ids::Vector{String} = String.(unique_location_ids[.!ismissing.(unique_location_ids)])
     else
-        unique_site_ids = String.(unique_site_ids)
+        unique_location_ids = String.(unique_location_ids)
     end
 
-    return site_connectivity(file_loc, unique_site_ids;
+    return location_connectivity(file_loc, unique_location_ids;
         con_cutoff=con_cutoff, agg_func=agg_func, swap=swap)
 end
 
@@ -139,9 +139,9 @@ Create in/out degree centralities for all nodes, and vector of their strongest p
 
 # Returns
 NamedTuple:
-- `in_conn` : sites ranked by incoming connectivity
-- `out_conn` : sites ranked by outgoing connectivity
-- `strongest_predecessor` : strongest predecessor for each site
+- `in_conn` : locations ranked by incoming connectivity
+- `out_conn` : locations ranked by outgoing connectivity
+- `strongest_predecessor` : strongest predecessor for each location
 """
 function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
 

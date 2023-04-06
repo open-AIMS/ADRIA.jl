@@ -12,24 +12,24 @@ Establish tuple of matrices/vectors for use as reusable data stores to avoid rep
 function setup_cache(domain::Domain)::NamedTuple
 
     # sim constants
-    n_sites::Int64 = domain.coral_growth.n_sites
+    n_locations::Int64 = domain.coral_growth.n_locations
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
 
     init_cov = domain.init_coral_cover
     cache = (
-        sf=zeros(n_groups, n_sites),  # stressed fecundity
+        sf=zeros(n_groups, n_locations),  # stressed fecundity
         fec_all=zeros(size(init_cov)...),  # all fecundity
-        fec_scope=zeros(n_groups, n_sites),  # fecundity scope
-        prop_loss=zeros(n_species, n_sites),  # proportional loss
-        Sbl=zeros(n_species, n_sites),   # bleaching survivors
-        dhw_step=zeros(n_sites),  # DHW each time step
+        fec_scope=zeros(n_groups, n_locations),  # fecundity scope
+        prop_loss=zeros(n_species, n_locations),  # proportional loss
+        Sbl=zeros(n_species, n_locations),   # bleaching survivors
+        dhw_step=zeros(n_locations),  # DHW each time step
         cov_tmp=zeros(size(init_cov)...),  # Cover for previous timestep
         felt_dhw=zeros(size(init_cov)...),  # Store for felt DHW (DHW after reductions)
-        depth_coeff=zeros(n_sites),  # store for depth coefficient
-        site_area=Matrix{Float64}(site_area(domain)'),  # site areas
+        depth_coeff=zeros(n_locations),  # store for depth coefficient
+        location_area=Matrix{Float64}(domain.location_data.area'),  # location areas
         TP_data=Matrix{Float64}(domain.TP_data),  # transition probabilities
-        waves=zeros(length(timesteps(domain)), n_species, n_sites)
+        waves=zeros(length(timesteps(domain)), n_species, n_locations)
     )
 
     return cache
@@ -156,7 +156,7 @@ Results are stored in Zarr format at a pre-configured location.
 Sets up a new `cache` if not provided.
 
 # Notes
-Logs of site ranks only store the mean site rankings over all environmental scenarios.
+Logs of location ranks only store the mean location rankings over all environmental scenarios.
 This is to reduce the volume of data stored.
 """
 function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain,
@@ -170,15 +170,15 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
     rs_raw = result_set.raw
-    vals = total_absolute_cover(rs_raw, site_area(domain))
+    vals = total_absolute_cover(rs_raw, location_area(domain))
     vals[vals.<threshold] .= 0.0
     data_store.total_absolute_cover[:, :, idx] .= vals
 
-    vals .= absolute_shelter_volume(rs_raw, site_area(domain), param_set)
+    vals .= absolute_shelter_volume(rs_raw, location_area(domain), param_set)
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(rs_raw, site_area(domain), site_k_area(domain), param_set)
+    vals .= relative_shelter_volume(rs_raw, location_area(domain), location_k_area(domain), param_set)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
@@ -187,7 +187,7 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     vals[vals.<threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
 
-    vals .= juvenile_indicator(rs_raw, coral_spec, site_area(domain), site_k_area(domain))
+    vals .= juvenile_indicator(rs_raw, coral_spec, location_area(domain), location_k_area(domain))
     vals[vals.<threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
@@ -201,11 +201,11 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     # end
 
     # Store logs
-    tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
+    tmp_location_ranks = zeros(Float32, tf, nrow(domain.location_data), 2)
     c_dim = Base.ndims(result_set.raw) + 1
-    log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log)
+    log_stores = (:location_ranks, :seed_log, :fog_log, :shade_log)
     for k in log_stores
-        if k == :seed_log || k == :site_ranks
+        if k == :seed_log || k == :location_ranks
             concat_dim = c_dim
         else
             concat_dim = c_dim - 1
@@ -216,16 +216,16 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
 
         if k == :seed_log
             getfield(data_store, k)[:, :, :, idx] .= vals
-        elseif k == :site_ranks
-            tmp_site_ranks[:, :, :] .= vals
+        elseif k == :location_ranks
+            tmp_location_ranks[:, :, :] .= vals
         else
             getfield(data_store, k)[:, :, idx] .= vals
         end
     end
 
-    if !isnothing(data_store.site_ranks)
-        # Squash site ranks down to average rankings over environmental repeats
-        data_store.site_ranks[:, :, :, idx] .= tmp_site_ranks
+    if !isnothing(data_store.location_ranks)
+        # Squash location ranks down to average rankings over environmental repeats
+        data_store.location_ranks[:, :, :, idx] .= tmp_location_ranks
     end
 end
 function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, data_store::NamedTuple)
@@ -257,7 +257,7 @@ end
 Core scenario running function.
 
 # Notes
-Only the mean site rankings are kept
+Only the mean location rankings are kept
 
 # Returns
 NamedTuple of collated results
@@ -268,7 +268,7 @@ function run_model(domain::Domain, param_set::DataFrameRow, corals::DataFrame, c
 end
 function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame, cache::NamedTuple)::NamedTuple
     sim_params = domain.sim_constants
-    site_data = domain.site_data
+    location_data = domain.location_data
     p = domain.coral_growth.ode_p
 
     # Set random seed using intervention values
@@ -294,8 +294,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # sim constants
     tf::Int64 = size(dhw_scen, 1)
-    n_site_int::Int64 = sim_params.n_site_int
-    n_sites::Int64 = domain.coral_growth.n_sites
+    n_location_int::Int64 = sim_params.n_location_int
+    n_locations::Int64 = domain.coral_growth.n_locations
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
 
@@ -312,7 +312,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     ### END TODO
 
-    total_site_area::Array{Float64,2} = cache.site_area
+    total_location_area::Array{Float64,2} = cache.location_area
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
@@ -327,20 +327,20 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     felt_dhw = cache.felt_dhw
     depth_coeff = cache.depth_coeff
 
-    Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
+    Y_cover::Array{Float64,3} = zeros(tf, n_species, n_locations)  # Coral cover relative to total location area
     Y_cover[1, :, :] .= domain.init_coral_cover
-    ode_u = zeros(n_species, n_sites)
+    ode_u = zeros(n_species, n_locations)
     cover_tmp = p.cover  # pre-allocated matrix used to avoid memory allocations
 
-    site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
-    Yshade = SparseArray(spzeros(tf, n_sites))
-    Yfog = SparseArray(spzeros(tf, n_sites))
-    Yseed = SparseArray(zeros(tf, 2, n_sites))  # 2 = the two enhanced coral types
+    location_ranks = SparseArray(zeros(tf, n_locations, 2)) # log seeding/fogging/shading ranks
+    Yshade = SparseArray(spzeros(tf, n_locations))
+    Yfog = SparseArray(spzeros(tf, n_locations))
+    Yseed = SparseArray(zeros(tf, 2, n_locations))  # 2 = the two enhanced coral types
 
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
     is_guided = param_set("guided") > 0
 
-    # Years at which to reassess seeding site selection
+    # Years at which to reassess seeding location selection
     seed_decision_years = repeat([false], tf)
     shade_decision_years = repeat([false], tf)
 
@@ -362,11 +362,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         shade_decision_years[shade_start_year] = true
     end
 
-    prefseedsites::Vector{Int64} = zeros(Int, n_site_int)
-    prefshadesites::Vector{Int64} = zeros(Int, n_site_int)
+    prefseedlocations::Vector{Int64} = zeros(Int, n_location_int)
+    prefshadelocations::Vector{Int64} = zeros(Int, n_location_int)
 
-    # Max coral cover at each site (0 - 1).
-    max_cover = site_k(domain)
+    # Max coral cover at each location. Divided by 100 to convert to proportion
+    max_cover = location_k(domain)
 
     # Set other params for ODE
     p.r .= corals.growth_rate  # Assumed growth_rate
@@ -385,30 +385,30 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_sc_TA::Int64 = first(findall(tabular_enhanced .& target_class_id))  # size class indices for TA and CA
     seed_sc_CA::Int64 = first(findall(corymbose_enhanced .& target_class_id))
 
-    # Extract colony areas for sites selected and convert to m^2
+    # Extract colony areas for locations selected and convert to m^2
     col_area_seed_TA = corals.colony_area_cm2[seed_sc_TA] / 10^4
     col_area_seed_CA = corals.colony_area_cm2[seed_sc_CA] / 10^4
 
     bleaching_sensitivity = corals.bleaching_sensitivity
 
-    # Defaults to considering all sites if depth cannot be considered.
-    depth_priority = collect(1:nrow(site_data))
+    # Defaults to considering all locations if depth cannot be considered.
+    depth_priority = collect(1:nrow(location_data))
 
-    # calculate total area to seed respecting tolerance for minimum available space to still seed at a site
+    # calculate total area to seed respecting tolerance for minimum available space to still seed at a location
     area_to_seed = (col_area_seed_TA .* n_TA_to_seed) + (col_area_seed_CA .* n_CA_to_seed)
 
-    # Filter out sites outside of desired depth range
-    if .!all(site_data.depth_med .== 0)
+    # Filter out locations outside of desired depth range
+    if .!all(location_data.depth_med .== 0)
         max_depth::Float64 = param_set("depth_min") + param_set("depth_offset")
-        depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set("depth_min")) .& (site_data.depth_med .<= max_depth)
+        depth_criteria::BitArray{1} = (location_data.depth_med .>= param_set("depth_min")) .& (location_data.depth_med .<= max_depth)
 
         # TODO: Include this change in MATLAB version as well
         if any(depth_criteria .> 0)
-            # If sites can be filtered based on depth, do so.
+            # If locations can be filtered based on depth, do so.
             depth_priority = depth_priority[depth_criteria]
         else
-            # Otherwise if no sites can be filtered, remove depth as a criterion.
-            @warn "No sites within provided depth range of $(param_set("depth_min")) - $(max_depth) meters. Considering all sites."
+            # Otherwise if no locations can be filtered, remove depth as a criterion.
+            @warn "No locations within provided depth range of $(param_set("depth_min")) - $(max_depth) meters. Considering all locations."
         end
     end
 
@@ -452,8 +452,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Flag indicating whether to seed or not to seed
     seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
 
-    site_k_prop = max_cover'
-    absolute_k_area = site_k_area(domain)'  # max possible coral area in m^2
+    location_k_prop = max_cover'
+    absolute_k_area = total_location_area .* location_k_prop  # max possible coral area in m^2
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     tmp::Matrix{Float64} = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
 
@@ -461,6 +461,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # basal_area_per_settler is the area in m^2 of a size class one coral 
     basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ 100 .^ 2
+    # debug_log = zeros(tf, n_sites)
+    # rec_log = zeros(tf, 6, n_sites)
+    # juv_log = zeros(tf, 12, n_sites)
+    # juves = [1, 2, 7, 8, 13, 14, 19, 20, 25, 26, 31, 32]
     @inbounds for tstep::Int64 in 2:tf
         p_step::Int64 = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
@@ -468,14 +472,14 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         sf .= stressed_fecundity(tstep, a_adapt, n_adapt, dhw_scen[p_step, :],
             LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
 
-        # Calculates scope for coral fedundity for each size class and at each site.
-        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, total_site_area)
+        # Calculates scope for coral fedundity for each size class and at each location.
+        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, total_location_area)
 
-        site_coral_cover = sum(Y_pstep, dims=1)  # dims: nsites * 1
-        leftover_space_prop = relative_leftover_space(site_k_prop, site_coral_cover)
-        leftover_space_m² = leftover_space_prop .* total_site_area
+        location_coral_cover = sum(Y_pstep, dims=1)  # dims: nlocations * 1
+        leftover_space_prop = relative_leftover_space(location_k_prop, location_coral_cover)
+        leftover_space_m² = leftover_space_prop .* total_location_area
 
-        # Recruitment represents additional cover, relative to total site area
+        # Recruitment represents additional cover, relative to total location area
         # Gets used in ODE
         p.rec .= settler_cover(fec_scope, sf, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
@@ -496,7 +500,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
             update_criteria_store!(criteria_store, sum(Sw_t[tstep, :, :], dims=1)', dhw_t, domain.in_conn, domain.out_conn,
-                total_site_area, site_coral_cover, domain.site_data, depth_priority)
+                total_location_area, location_coral_cover, domain.location_data, depth_priority)
 
         end
         if is_guided && (in_seed_years || in_shade_years)
@@ -504,51 +508,51 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         if is_guided && in_seed_years
 
-            (prefseedsites, prefshadesites, rankings) = guided_site_selection(criteria_store,
-                param_set, thresholds_store, n_site_int, domain.site_distances, min_distance,
+            (prefseedlocations, prefshadelocations, rankings) = guided_location_selection(criteria_store,
+                param_set, thresholds_store, n_location_int, domain.location_distances, min_distance,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                prefseedsites, prefshadesites, rankings)
+                prefseedlocations, prefshadelocations, rankings)
 
-            # Log site ranks
-            # First col only holds site index ids so skip (with 2:end)
-            site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
+            # Log location ranks
+            # First col only holds location index ids so skip (with 2:end)
+            location_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
         elseif seed_corals && (in_seed_years || in_shade_years)
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
-            prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
+            prefseedlocations, prefshadelocations = unguided_location_selection(prefseedlocations, prefshadelocations,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                n_site_int, vec(leftover_space_m²), depth_priority)
+                n_location_int, vec(leftover_space_m²), depth_priority)
 
-            site_ranks[tstep, prefseedsites, 1] .= 1.0
-            site_ranks[tstep, prefshadesites, 2] .= 1.0
+            location_ranks[tstep, prefseedlocations, 1] .= 1.0
+            location_ranks[tstep, prefshadelocations, 2] .= 1.0
         end
 
-        has_shade_sites::Bool = !all(prefshadesites .== 0)
-        has_seed_sites::Bool = !all(prefseedsites .== 0)
+        has_shade_locations::Bool = !all(prefshadelocations .== 0)
+        has_seed_locations::Bool = !all(prefseedlocations .== 0)
 
         # Fog selected locations
         if (fogging > 0.0) && in_shade_years && has_shade_sites
-            site_locs = prefshadesites
+            locs = prefshadesites
 
-            dhw_t[site_locs] .= dhw_t[site_locs] .* (1.0 .- fogging)
-            Yfog[tstep, site_locs] .= fogging
+            dhw_t[locs] .= dhw_t[locs] .* (1.0 .- fogging)
+            Yfog[tstep, locs] .= fogging
         end
 
         # Calculate and apply bleaching mortality
-        bleaching_mortality!(Sbl, felt_dhw, depth_coeff, tstep, site_data.depth_med, bleaching_sensitivity, dhw_t, a_adapt, n_adapt)
+        bleaching_mortality!(Sbl, felt_dhw, depth_coeff, tstep, location_data.depth_med, bleaching_sensitivity, dhw_t, a_adapt, n_adapt)
 
         # Apply seeding
-        if seed_corals && in_seed_years && has_seed_sites
+        if seed_corals && in_seed_years && has_seed_locations
             # Calculate proportion to seed based on current available space
             seeded_area = (TA=n_TA_to_seed * col_area_seed_TA, CA=n_CA_to_seed * col_area_seed_CA)
-            scaled_seed = distribute_seeded_corals(vec(total_site_area), prefseedsites, vec(leftover_space_m²), seeded_area)
+            scaled_seed = distribute_seeded_corals(vec(total_location_area), prefseedlocations, vec(leftover_space_m²), seeded_area)
 
-            # Seed each site with TA or CA
-            @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed.TA
-            @views Y_pstep[seed_sc_CA, prefseedsites] .= Y_pstep[seed_sc_CA, prefseedsites] .+ scaled_seed.CA
+            # Seed each location with TA or CA
+            @views Y_pstep[seed_sc_TA, prefseedlocations] .= Y_pstep[seed_sc_TA, prefseedlocations] .+ scaled_seed.TA
+            @views Y_pstep[seed_sc_CA, prefseedlocations] .= Y_pstep[seed_sc_CA, prefseedlocations] .+ scaled_seed.CA
 
-            # Log seed values/sites (these values are relative to site area)
-            Yseed[tstep, 1, prefseedsites] .= scaled_seed.TA
-            Yseed[tstep, 2, prefseedsites] .= scaled_seed.CA
+            # Log seed values/locations (these values are relative to location area)
+            Yseed[tstep, 1, prefseedlocations] .= scaled_seed.TA
+            Yseed[tstep, 2, prefseedlocations] .= scaled_seed.CA
         end
 
         # Calculate survivors from bleaching and wave stress
@@ -576,11 +580,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-6)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_site_area, 0.0, 1.0)
+        @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_location_area, 0.0, 1.0)
     end
 
-    # Avoid placing importance on sites that were not considered
+    # Avoid placing importance on locations that were not considered
     # (lower values are higher importance)
-    site_ranks[site_ranks.==0.0] .= n_sites + 1
-    return (raw=Y_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks)
+    location_ranks[location_ranks.==0.0] .= n_locations + 1
+    return (raw=Y_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, location_ranks=location_ranks)
 end
