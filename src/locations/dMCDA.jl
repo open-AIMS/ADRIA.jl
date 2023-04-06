@@ -33,29 +33,29 @@ global mcda_methods = [
 ]
 
 """
-    create_criteria_store(site_ids::AbstractArray, criteria::NamedTuple) 
+    create_criteria_store(location_ids::AbstractArray, criteria::NamedTuple) 
 
-    Constructs the criteria NamedDimsArray for performing site selection. 
+    Constructs the criteria NamedDimsArray for performing location selection. 
     This is used to construct decision matrices for the mcda methods.
 
 # Arguments
-- `site_ids` : site ids as integers.
-- `criteria` : NamedTuple of vectors of length nsites containing criteria values to 
+- `location_ids` : location ids as integers.
+- `criteria` : NamedTuple of vectors of length nlocations containing criteria values to 
 be used to construct mcda matrices. Keys should correspond to weight names and begin with "iv__".
 Can also be entered as named varargs.
 E.g. the criteria for heat stress will be iv__heat_stress and it's weight will be iv__heat_stress__seed_shade,
 indicating it is used for seeding and shading.
 """
-function create_criteria_store(site_ids::AbstractArray; criteria...)
-    return create_criteria_store(site_ids, criteria)
+function create_criteria_store(location_ids::AbstractArray; criteria...)
+    return create_criteria_store(location_ids, criteria)
 end
-function create_criteria_store(site_ids::AbstractArray, criteria::NamedTuple)
-    criteria_matrix = zeros(length(site_ids), length(criteria))
+function create_criteria_store(location_ids::AbstractArray, criteria::NamedTuple)
+    criteria_matrix = zeros(length(location_ids), length(criteria))
 
     for (ind, crit_key) in enumerate(keys(criteria))
-        criteria_matrix[:, ind] .= criteria[crit_key][site_ids]
+        criteria_matrix[:, ind] .= criteria[crit_key][location_ids]
     end
-    return NamedDimsArray(criteria_matrix, locations=site_ids, criteria=collect(keys(criteria)))
+    return NamedDimsArray(criteria_matrix, locations=location_ids, criteria=collect(keys(criteria)))
 
 end
 
@@ -96,63 +96,63 @@ end
 """
     align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 
-Align a vector of site rankings to match the indicated order in `s_order`.
+Align a vector of location rankings to match the indicated order in `s_order`.
 """
 function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # Fill target ranking column
-    for (i, site_id) in enumerate(s_order[:, 1])
-        rankings[rankings[:, 1].==site_id, col] .= s_order[i, 3]
+    for (i, location_id) in enumerate(s_order[:, 1])
+        rankings[rankings[:, 1].==location_id, col] .= s_order[i, 3]
     end
 
     return
 end
 
 """
-    rank_sites!(S, weights, rankings, n_site_int, rank_col)
-    rank_seed_sites!(S, weights, rankings, n_site_int)
-    rank_shade_sites!(S, weights, rankings, n_site_int)
+    rank_locations!(S, weights, rankings, n_location_int, rank_col)
+    rank_seed_locations!(S, weights, rankings, n_location_int)
+    rank_shade_locations!(S, weights, rankings, n_location_int)
 
 # Arguments
 - `S` : Matrix, Site preference values
 - `weights` : weights to apply
-- `rankings` : vector of site ranks to update
-- `n_site_int` : number of sites to select for interventions
+- `rankings` : vector of location ranks to update
+- `n_location_int` : number of locations to select for interventions
 - `rank_col` : column to fill with rankings (2 for seed, 3 for shade)
 
 # Returns
-- `prefsites` : sites in order of their rankings
+- `preflocations` : locations in order of their rankings
 """
-function rank_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    # Filter out all non-preferred sites
+function rank_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+    # Filter out all non-preferred locations
     selector = vec(.!all(S .== 0, dims=1))
 
     # weights in order of: in_conn, out_conn, wave, heat, predecessors, low cover
     weights = weights[selector]
     S = S[:, selector]
 
-    s_order = retrieve_ranks(S, weights, mcda_func, site_ids)
+    s_order = retrieve_ranks(S, weights, mcda_func, location_ids)
 
-    last_idx = min(n_site_int, size(s_order, 1))
-    prefsites = Int.(s_order[1:last_idx, 1])
+    last_idx = min(n_location_int, size(s_order, 1))
+    preflocations = Int.(s_order[1:last_idx, 1])
 
-    # Match by site_id and assign rankings to log
+    # Match by location_id and assign rankings to log
     align_rankings!(rankings, s_order, rank_col)
 
-    return prefsites, s_order
+    return preflocations, s_order
 end
 
-function rank_seed_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func, 2)
+function rank_seed_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+    rank_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func, 2)
 end
-function rank_shade_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_sites!(S, weights, rankings, n_site_int, site_ids, mcda_func, 3)
+function rank_shade_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+    rank_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func, 3)
 end
 
 """
     filter_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedDimsArray)  
 
 # Arguments
-- `criteria_store` : contains criteria in each column for sites in each row.
+- `criteria_store` : contains criteria in each column for locations in each row.
 - `tolerances` : contains thresholds for specified criteria, with keys matching those in criteria_store.
                 Each key specifies the operation function >tolerance or <tolerance.
 
@@ -193,11 +193,12 @@ end
 
 
 """
-    guided_site_selection(d_vars::DMCDA_vars, criteria_df::DataFrame, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int64}, prefshadesites::AbstractArray{Int64}, rankingsin::Matrix{Int64})
+    guided_location_selection(d_vars::DMCDA_vars, criteria_df::DataFrame, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedlocations::AbstractArray{Int64}, prefshadelocations::AbstractArray{Int64}, rankingsin::Matrix{Int64})
 
 # Arguments
-- `d_vars` : DMCDA_vars type struct containing weightings and criteria values for site selection.
+- `d_vars` : DMCDA_vars type struct containing weightings and criteria values for location selection.
 - `alg_ind` : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
+<<<<<<< main:src/sites/dMCDA.jl
 - `log_seed` : boolean indicating whether seeding sites are being re-assesed at current time
 - `log_shade` : boolean indicating whether shading/fogging sites are being re-assesed at current time
 - `prefshadesites` : previous time step's selection of sites for shading
@@ -206,21 +207,29 @@ end
 - `in_conn` : in-degree centrality
 - `out_conn` : out-degree centrality
 - `strong_pred` : strongest predecessors
+=======
+- `log_seed` : boolean indicating whether seeding locations are being re-assesed at current time
+- `log_shade` : boolean indicating whether shading/fogging locations are being re-assesed at current time
+- `prefshadelocations` : previous time step's selection of locations for shading
+- `prefseedlocations` : previous time step's selection of locations for seeding
+- `rankingsin` : pre-allocated store for location rankings
+>>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
 
 # Returns
 Tuple :
-    - `prefseedsites` : n_site_int highest ranked seeding sites
-    - `prefshadesites` : n_site_int highest ranked shading/fogging sites
-    - `rankings` : n_sites ⋅ 3 matrix holding [site_id, seeding_rank, shading_rank],
-        Values of 0 indicate sites that were not considered
+    - `prefseedlocations` : n_location_int highest ranked seeding locations
+    - `prefshadelocations` : n_location_int highest ranked shading/fogging locations
+    - `rankings` : n_locations ⋅ 3 matrix holding [location_id, seeding_rank, shading_rank],
+        Values of 0 indicate locations that were not considered
 """
-function guided_site_selection(criteria_store::NamedDimsArray,
-    params::NamedDimsArray, thresholds::NamedDimsArray, n_site_int::Int64,
+function guided_location_selection(criteria_store::NamedDimsArray,
+    params::NamedDimsArray, thresholds::NamedDimsArray, n_location_int::Int64,
     distances::Matrix, minimum_distance::Float64, log_seed::B, log_shade::B,
-    prefseedsites::IA, prefshadesites::IA,
+    prefseedlocations::IA, prefshadelocations::IA,
     rankingsin::Matrix{T}
 )::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool}
 
+<<<<<<< main:src/sites/dMCDA.jl
     site_ids::Array{Int64} = criteria_store.reefs
     use_dist::Int64 = d_vars.use_dist
     min_dist::Float64 = d_vars.min_dist
@@ -230,21 +239,46 @@ function guided_site_selection(criteria_store::NamedDimsArray,
     # if no sites are available, abort
     if n_sites == 0
         return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
+=======
+    location_ids::Array{Int64} = criteria_store.locations
+    use_dist::Int64 = params("use_dist")
+
+    # Force different locations to be selected
+    location_ids = setdiff(location_ids, vcat(prefseedlocations, prefshadelocations))
+    mod_n_ranks = min(size(rankingsin, 1), length(location_ids))
+    if mod_n_ranks < length(criteria_store.locations) && length(rankingsin) != 0
+        rankingsin = rankingsin[in.(rankingsin[:, 1], [location_ids]), :]
+        location_ids = rankingsin[:, 1]
+    elseif length(rankingsin) != 0
+        rankingsin = [location_ids zeros(Int64, length(location_ids)) zeros(Int64, length(location_ids))]
     end
 
-    # site_id, seeding rank, shading rank
-    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+    criteria_store = criteria_store[in.(criteria_store.locations, [location_ids]), :]
+    n_locations::Int64 = length(location_ids)
+
+    # if no locations are available, abort
+    if n_locations == 0
+        return prefseedlocations, prefshadelocations, rankingsin
+>>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
+    end
+
+    # location_id, seeding rank, shading rank
+    rankings = Int64[location_ids zeros(Int64, n_locations) zeros(Int64, n_locations)]
     mcda_func = mcda_methods[Int(params("guided"))]
 
     criteria_store = filter_decision_matrix(criteria_store, thresholds)
 
     if isempty(criteria_store)
         # if all rows have nans and A is empty, abort mission
+<<<<<<< main:src/sites/dMCDA.jl
         return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
+=======
+        return prefseedlocations, prefshadelocations, rankingsin
+>>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
     end
 
-    # cap to number of sites left after risk filtration
-    n_site_int = min(n_site_int, length(criteria_store.locations))
+    # cap to number of locations left after risk filtration
+    n_location_int = min(n_location_int, length(criteria_store.locations))
 
     # if seeding, create seeding specific decision matrix
     if log_seed
@@ -257,34 +291,42 @@ function guided_site_selection(criteria_store::NamedDimsArray,
     end
 
     if log_seed && isempty(SE)
+<<<<<<< main:src/sites/dMCDA.jl
         prefseedsites = zeros(Int64, n_site_int)
+=======
+        prefseedlocations = repeat([0], n_location_int)
+>>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
     elseif log_seed
-        prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, n_site_int, criteria_store.locations, mcda_func)
+        prefseedlocations, s_order_seed = rank_seed_locations!(SE, wse, rankings, n_location_int, criteria_store.locations, mcda_func)
         if use_dist != 0
-            prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, distances, minimum_distance, rankings, 2)
+            prefseedlocations, rankings = distance_sorting(prefseedlocations, s_order_seed, distances, minimum_distance, rankings, 2)
         end
     end
 
     if log_shade && isempty(SH)
+<<<<<<< main:src/sites/dMCDA.jl
         prefshadesites = zeros(Int64, n_site_int)
+=======
+        prefshadelocations = repeat([0], n_location_int)
+>>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
     elseif log_shade
-        prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, n_site_int, criteria_store.locations, mcda_func)
+        prefshadelocations, s_order_shade = rank_shade_locations!(SH, wsh, rankings, n_location_int, criteria_store.locations, mcda_func)
 
         if use_dist != 0
-            prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, distances, minimum_distance, rankings, 3)
+            prefshadelocations, rankings = distance_sorting(prefshadelocations, s_order_shade, distances, minimum_distance, rankings, 3)
         end
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
-    if sum(prefseedsites) == 0
+    if sum(prefseedlocations) == 0
         rankings[:, 2] .= rankingsin[:, 2]
     end
 
-    if sum(prefshadesites) == 0
+    if sum(prefshadelocations) == 0
         rankings[:, 3] .= rankingsin[:, 3]
     end
 
-    return prefseedsites, prefshadesites, rankings
+    return prefseedlocations, prefshadelocations, rankings
 end
 
 
@@ -296,7 +338,7 @@ Replaces these locations with locations in the top_n ranks if the distance betwe
 
 # Arguments
 - `pref_locations` : original n highest ranked locations selected for seeding or shading.
-- `location_order` : current order of ranked locations in terms of numerical site ID.
+- `location_order` : current order of ranked locations in terms of numerical location ID.
 - `dist` : Matrix of unique distances between locations.
 - `min_dist` : minimum distance between locations for selected locations.
 
@@ -355,7 +397,7 @@ function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Un
     new_location_order = setdiff(location_order, rep_locations)
     new_location_order = [rep_locations; new_location_order]
     l_order[:, 1] .= new_location_order
-    # Match by site_id and assign rankings to log
+    # Match by location_id and assign rankings to log
 
     align_rankings!(rankings, l_order, rank_col)
 
@@ -364,7 +406,7 @@ end
 
 
 """
-    retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
+    retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, location_ids::Array{Int64})
 
 Get location ranks using mcda technique specified in mcda_func, weights and a decision matrix S.
 
@@ -372,26 +414,26 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 - `S` : decision matrix containing criteria values for each location (n locations)*(m criteria)
 - `weights` : importance weights for each criteria. 
 - `mcda_func` : function to use for mcda, specified as an element from mcda_methods.
-- `site_ids` : array of integers indicating site ids still remaining after filtering.
+- `location_ids` : array of integers indicating location ids still remaining after filtering.
 
 # Returns
-- `s_order` : [site_ids, criteria values, ranks]
+- `s_order` : [location_ids, criteria values, ranks]
 """
-function retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
+function retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, location_ids::Array{Int64})
     S = mcda_normalize(S)
     S .= S .* repeat(weights', size(S, 1), 1)
     scores = mcda_func(S)
 
-    return retrieve_ranks(S, scores, true, site_ids)
+    return retrieve_ranks(S, scores, true, location_ids)
 end
-function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Vector, site_ids::Array{Int64})
+function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Vector, location_ids::Array{Int64})
     fns = repeat([maximum], length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func[1])
 
-    return retrieve_ranks(S, results.scores, mcda_func[2], site_ids)
+    return retrieve_ranks(S, results.scores, mcda_func[2], location_ids)
 end
-function retrieve_ranks(S::Matrix, scores::Array, rev_val::Bool, site_ids::Array{Int64})
-    s_order = Union{Float64,Int64}[Int.(site_ids) scores 1:size(S, 1)]
+function retrieve_ranks(S::Matrix, scores::Array, rev_val::Bool, location_ids::Array{Int64})
+    s_order = Union{Float64,Int64}[Int.(location_ids) scores 1:size(S, 1)]
     s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=rev_val)
     @views s_order[:, 3] .= Int.(1:size(S, 1))
 
@@ -400,10 +442,10 @@ end
 
 
 """
-    site_selection(criteria_store::NamedDimsArray, scenario::NamedDimsArray, tolerances::NamedTuple,
-        site_ids::AbstractArray, site_distances::Matrix, med_site_distance::Float64, n_site_int::Int64)
+    location_selection(criteria_store::NamedDimsArray, scenario::NamedDimsArray, tolerances::NamedTuple,
+        location_ids::AbstractArray, location_distances::Matrix, med_location_distance::Float64, n_location_int::Int64)
 
-Perform site selection using a set of criteria, tolerances, locations and location distances.
+Perform location selection using a set of criteria, tolerances, locations and location distances.
 # Arguments
 - `criteria_store` : contains criteria for a single location selection instance.
 - `scenario` : contains parameters for a single location selection instance, including tolerance values 
@@ -411,62 +453,71 @@ and parameters for distance sorting.
 - `tolerances` : specifies criteria tolerances and has keys with names corresponding to criteria in criteria_store. 
 For example, (iv__heat_stress=(<,0.5)), implies the criteria "iv__heat_stress" must not have values greater than 0.5.
 - `location_ids` : array of length nlocations containing indices of locations to be selected from.
-- `site_distances` : Matrix of distances between locations.
-- `med_site_distance` : Median distance between locations in the site_distances matrix.
-- `n_site_int` : number of locations to select to perform intervention.
+- `location_distances` : Matrix of distances between locations.
+- `med_location_distance` : Median distance between locations in the location_distances matrix.
+- `n_location_int` : number of locations to select to perform intervention.
 
 # Returns
-- `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
+- `ranks` : n_reps * locations * 3 (last dimension indicates: location_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
-function site_selection(criteria_store::NamedDimsArray, scenario::NamedDimsArray, tolerances::NamedTuple,
-    site_ids::AbstractArray, site_distances::Matrix, med_site_distance::Float64, n_site_int::Int64)
+function location_selection(criteria_store::NamedDimsArray, scenario::NamedDimsArray, tolerances::NamedTuple,
+    location_ids::AbstractArray, location_distances::Matrix, med_location_distance::Float64, n_location_int::Int64)
 
     tolerances_store = create_tolerances_store(tolerances)
-    min_distance = med_site_distance .* scenario("dist_thresh")
-    n_sites = length(site_ids)
+    min_distance = med_location_distance .* scenario("dist_thresh")
+    n_locations = length(location_ids)
 
-    # site_id, seeding rank, shading rank
-    rankingsin = [site_ids zeros(Int64, (n_sites, 1)) zeros(Int64, (n_sites, 1))]
-    prefseedsites = zeros(Int64, (1, n_site_int))
-    prefshadesites = zeros(Int64, (1, n_site_int))
+    # location_id, seeding rank, shading rank
+    rankingsin = [location_ids zeros(Int64, (n_locations, 1)) zeros(Int64, (n_locations, 1))]
+    prefseedlocations = zeros(Int64, (1, n_location_int))
+    prefshadelocations = zeros(Int64, (1, n_location_int))
 
-    (_, _, ranks) = guided_site_selection(criteria_store, scenario, tolerances_store, n_site_int,
-        site_distances, min_distance, true, true, prefseedsites, prefshadesites, rankingsin)
+    (_, _, ranks) = guided_location_selection(criteria_store, scenario, tolerances_store, n_location_int,
+        location_distances, min_distance, true, true, prefseedlocations, prefshadelocations, rankingsin)
     return ranks
 end
 
 """
-    run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::NamedTuple, coral_covers::NamedDimsArray;
-        aggregation_method=nothing, target_seed_sites=nothing, target_shade_sites=nothing)
+    run_location_selection(domain::Domain, scenarios::DataFrame, tolerances::NamedTuple, coral_covers::NamedDimsArray;
+        aggregation_method=nothing, target_seed_locations=nothing, target_shade_locations=nothing)
 
-Perform site selection for a given domain for multiple scenarios defined in a dataframe.
+Perform location selection for a given domain for multiple scenarios defined in a dataframe.
 
 # Arguments
-- `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
+- `domain` : ADRIA Domain type, indicating geographical domain to perform location selection over.
 - `scenarios` : DataFrame of criteria weightings and thresholds for each scenario.
 - `tolerances` : NamedTuple specifying tolerances for pre-selection filtering. E.g. `tolerances = (iv__coral_cover=(>, x -> f_coral_cover(x)),
     iv__heat_stress=(<, x -> x), iv__wave_stress=(<, x -> x))`, where the keys correspond to criteria names in the Domain,
     the first element difines the filtering operation (> or <) and the second element defines the operation on the tolerance parameter
     (x->x is directly using parameter value). Tolerance values in `scenarios` DataFrame will have names "iv__"+(criteria name)+"__tol".
 - `coral_covers` : contains coral covers for each selection scenario, size (N locations, M scenarios).
+<<<<<<< main:src/sites/dMCDA.jl
 - `target_seed_sites` : optional additional set of sites to only consider during seeding (must be a subset of the location ids in site data in Domain).
 - `target_shade_sites` : optional additional set of sites to only consider during shading (must be a subset of the location ids in site data in Domain).
+=======
+- `aggregation_method` : optional, specifies an additional aggregation method to apply on the output ranks,
+    (e.g. `ranks_to_location_order` or `ranks_to_frequencies` ). Format is [aggregation_function, intervention_type], where
+    intervention_type is a string (e.g. "seed").
+- `target_seed_locations` : optional additional set of locations to only consider during seeding (must be a subset of the location ids in location data in Domain).
+- `target_shade_locations` : optional additional set of locations to only consider during shading (must be a subset of the location ids in location data in Domain).
+>>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
 
 # Returns
-- `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
+- `ranks_store` : number of scenarios * locations * 3 (last dimension indicates: location_id, seed rank, shade rank)
     containing ranks for each scenario run.
 - `aggregated_ranks_store` : if aggregation method is selected, the aggregated ranks_store output.
 """
-function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::NamedTuple, coral_covers::NamedDimsArray;
-    aggregation_method=nothing, target_seed_sites=nothing, target_shade_sites=nothing)
+function run_location_selection(domain::Domain, scenarios::DataFrame, tolerances::NamedTuple, coral_covers::NamedDimsArray;
+    aggregation_method=nothing, target_seed_locations=nothing, target_shade_locations=nothing)
     ranks_store = NamedDimsArray(
-        zeros(nrow(scenarios), length(domain.site_ids), 3),
+        zeros(nrow(scenarios), length(domain.location_ids), 3),
         scenarios=1:nrow(scenarios),
-        locations=domain.site_ids,
-        ranks=["site_id", "seed_rank", "shade_rank"],
+        locations=domain.location_ids,
+        ranks=["location_id", "seed_rank", "shade_rank"],
     )
 
+<<<<<<< main:src/sites/dMCDA.jl
     site_data = domain.site_data
 
     # Pre-calculate maximum depth to consider
@@ -475,25 +526,28 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::Na
     target_wave_scens = unique(scenarios[:, "wave_scenario"])
 
     target_site_ids = Int64[]
+=======
+    target_location_ids = Int64[]
+>>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
     dhw_scens = domain.dhw_scens
     wave_scens = domain.wave_scens
 
-    if !isnothing(target_seed_sites)
-        append!(target_site_ids, target_seed_sites)
+    if !isnothing(target_seed_locations)
+        append!(target_location_ids, target_seed_locations)
     end
 
-    if !isnothing(target_shade_sites)
-        append!(target_site_ids, target_shade_sites)
+    if !isnothing(target_shade_locations)
+        append!(target_location_ids, target_shade_locations)
     end
 
     # Pre-calculate maximum depth to consider
     scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
-    criteria_store = create_criteria_store(collect(1:length(domain.site_ids)), domain.mcda_criteria)
+    criteria_store = create_criteria_store(collect(1:length(domain.location_ids)), domain.mcda_criteria)
 
-    coral_cover, coral_space = coral_cover_criteria(domain.site_data, coral_covers)
+    coral_cover, coral_space = coral_cover_criteria(domain.location_data, coral_covers)
 
-    in_connectivity = connectivity_criteria(domain.in_conn, coral_covers, domain.site_data.area)
-    out_connectivity = connectivity_criteria(domain.out_conn, coral_covers, domain.site_data.area)
+    in_connectivity = connectivity_criteria(domain.in_conn, coral_covers, domain.location_data.area)
+    out_connectivity = connectivity_criteria(domain.out_conn, coral_covers, domain.location_data.area)
 
     criteria_store(:iv__wave_stress) .= env_stress_criteria(Array(dropdims(mean(wave_scens, dims=(:timesteps, :scenarios)) .+ var(wave_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
     criteria_store(:iv__heat_stress) .= env_stress_criteria(Array(dropdims(mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ var(dhw_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
@@ -505,7 +559,7 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::Na
             tol_temp = (; tol_temp..., tol => (tolerances[tol][1], map(tolerances[tol][2], scen[string(String(tol), "__tol")])))
         end
 
-        depth_criteria = (domain.site_data.depth_med .<= scen.max_depth) .& (domain.site_data.depth_med .>= scen.depth_min)
+        depth_criteria = (domain.location_data.depth_med .<= scen.max_depth) .& (domain.location_data.depth_med .>= scen.depth_min)
         depth_priority = findall(depth_criteria)
 
         criteria_store(:iv__coral_cover) .= coral_cover[scenarios=cover_ind]
@@ -513,17 +567,17 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, tolerances::Na
         criteria_store(:iv__in_connectivity) .= in_connectivity[scenarios=cover_ind]
         criteria_store(:iv__out_connectivity) .= out_connectivity[scenarios=cover_ind]
 
-        considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
+        considered_locations = target_location_ids[findall(in(depth_priority), target_location_ids)]
         scen_set = NamedDimsArray(Vector(scen), factors=names(scen))
 
-        ranks_store(scenarios=cover_ind, locations=domain.site_ids[depth_priority]) .= site_selection(
+        ranks_store(scenarios=cover_ind, locations=domain.location_ids[depth_priority]) .= location_selection(
             criteria_store[locations=depth_priority],
             scen_set,
             tol_temp,
             depth_priority,
-            domain.site_distances,
-            domain.median_site_distance,
-            domain.sim_constants.n_site_int
+            domain.location_distances,
+            domain.median_location_distance,
+            domain.sim_constants.n_location_int
         )
 
     end
@@ -569,39 +623,45 @@ function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDi
 end
 
 """
-    unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, max_cover)
+    unguided_location_selection(prefseedlocations, prefshadelocations, seed_years, shade_years, n_location_int, max_cover)
 
-Randomly select seed/shade site locations for the given year, constraining to sites with max. carrying capacity > 0.
-Here, `max_cover` represents the max. carrying capacity for each site (the `k` value).
+Randomly select seed/shade location locations for the given year, constraining to locations with max. carrying capacity > 0.
+Here, `max_cover` represents the max. carrying capacity for each location (the `k` value).
 
 # Arguments
-- `prefseedsites` : Previously selected sites
+- `prefseedlocations` : Previously selected locations
 - `seed_years` : bool, indicating whether to seed this year or not
 - `shade_years` : bool, indicating whether to shade this year or not
-- `n_site_int` : int, number of sites to intervene on
-- `available_space` : vector/matrix : space available at each site (`k` value)
-- `depth` : vector of site ids found to be within desired depth range
+- `n_location_int` : int, number of locations to intervene on
+- `available_space` : vector/matrix : space available at each location (`k` value)
+- `depth` : vector of location ids found to be within desired depth range
 """
+<<<<<<< main:src/sites/dMCDA.jl
 function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, available_space, depth)
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.0
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
+=======
+function unguided_location_selection(prefseedlocations, prefshadelocations, seed_years, shade_years, n_location_int, available_space, depth)
+    # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.1
+    # Only locations that have available space are considered, otherwise a zero-division error may occur later on.
+>>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
 
-    # Select sites (without replacement to avoid duplicate sites)
-    candidate_sites = depth[(available_space.>0.0)[depth]]  # Filter down to site ids to be considered
-    num_sites = length(candidate_sites)
-    s_n_site_int = num_sites < n_site_int ? num_sites : n_site_int
+    # Select locations (without replacement to avoid duplicate locations)
+    candidate_locations = depth[(available_space.>0.0)[depth]]  # Filter down to location ids to be considered
+    num_locations = length(candidate_locations)
+    s_n_location_int = num_locations < n_location_int ? num_locations : n_location_int
 
     if seed_years
-        prefseedsites = zeros(Int64, n_site_int)
-        prefseedsites[1:s_n_site_int] .= StatsBase.sample(candidate_sites, s_n_site_int; replace=false)
+        prefseedlocations = zeros(Int64, n_location_int)
+        prefseedlocations[1:s_n_location_int] .= StatsBase.sample(candidate_locations, s_n_location_int; replace=false)
     end
 
     if shade_years
-        prefshadesites = zeros(Int64, n_site_int)
-        prefshadesites[1:s_n_site_int] .= StatsBase.sample(candidate_sites, s_n_site_int; replace=false)
+        prefshadelocations = zeros(Int64, n_location_int)
+        prefshadelocations[1:s_n_location_int] .= StatsBase.sample(candidate_locations, s_n_location_int; replace=false)
     end
 
-    return prefseedsites[prefseedsites.>0], prefshadesites[prefshadesites.>0]
+    return prefseedlocations[prefseedlocations.>0], prefshadelocations[prefshadelocations.>0]
 end
 
 
