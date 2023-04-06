@@ -94,7 +94,7 @@ stress across reefs/locations.
 
 """
 function env_stress_criteria(env_stress::AbstractArray)
-    return maximum(env_stress) != 0.0 ? (env_stress .- minimum(env_stress)) ./ (maximum(env_stress) - minimum(env_stress)) : zeros(Float64, size(env_stress))
+    return maximum(env_stress) != 0.0 ? 1.0 .- ((env_stress .- minimum(env_stress)) ./ (maximum(env_stress) - minimum(env_stress))) : ones(Float64, size(env_stress))
 end
 
 """
