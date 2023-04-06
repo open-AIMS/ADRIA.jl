@@ -151,9 +151,9 @@ function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=
 end
 
 """
-    sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+    sample_location_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
 
-Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, Criteria).
+Create guided samples of parameters relevant to location selection (EnvironmentalLayers, Intervention, Criteria).
 All other parameters are set to their default values.
 
 # Arguments
@@ -164,7 +164,7 @@ All other parameters are set to their default values.
 # Returns
 Scenario specification
 """
-function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+function sample_location_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
     subset_spec = component_params(d.model, [EnvironmentalLayer, Intervention, Criteria])
 
     # Only sample guided intervention scenarios
