@@ -148,7 +148,7 @@ function connectivity_strength(TP_base::AbstractArray)::NamedTuple
     # C1 = indegree_centrality(g)
     # C2 = outdegree_centrality(g)
     C1 = betweenness_centrality(g)
-    C2 = 1.0 .- katz_centrality(g)
+    C2 = stress_centrality(g)
 
     # strong_pred = closeness_centrality(g)
 
