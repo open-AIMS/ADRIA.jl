@@ -8,8 +8,8 @@ import Interpolations: GriddedInterpolation
 
 function summarize_trajectory(data::NamedDimsArray)::Dict{Symbol,AbstractArray{<:Real}}
     squash = nothing
-    if :sites in NamedDims.dimnames(data)
-        squash = (:scenarios, :sites)
+    if :locations in NamedDims.dimnames(data)
+        squash = (:scenarios, :locations)
     elseif :scenarios in NamedDims.dimnames(data) && (size(data, :scenarios) > 1)
         squash = (:scenarios,)
     end
@@ -57,8 +57,8 @@ end
 function summarize_rci(rs::ResultSet; kwargs...)
     rc::AbstractArray{<:Real} = call_metric(relative_cover, X; kwargs...)
 
-    # Divide across sites by the max possible proportional coral cover
-    rc .= mapslices((s) -> s ./ (rs.site_max_coral_cover / 100.0), rc, dims=:sites)
+    # Divide across locations by the max possible proportional coral cover
+    rc .= mapslices((s) -> s ./ (rs.location_max_coral_cover / 100.0), rc, dims=:locations)
 
     # Empty representation of evenness - currently ignored
     E::AbstractArray{<:Real} = Array(Float32[])
@@ -80,13 +80,13 @@ end
 Calculate summarized total absolute cover.
 """
 function summarize_total_cover(raw::NamedDimsArray, areas::AbstractArray{<:Real}; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
-    sites = haskey(kwargs, :sites) ? kwargs[:sites] : (:)
-    tac = call_metric(total_absolute_cover, raw, areas[sites]; kwargs...)
-    tac = dropdims(sum(tac, dims=:sites), dims=:sites)
+    locations = haskey(kwargs, :locations) ? kwargs[:locations] : (:)
+    tac = call_metric(total_absolute_cover, raw, areas[locations]; kwargs...)
+    tac = dropdims(sum(tac, dims=:locations), dims=:locations)
     return summarize_trajectory(tac)
 end
 function summarize_total_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
-    tac = dropdims(sum(slice_results(_total_absolute_cover(rs); kwargs...), dims=:sites), dims=:sites)
+    tac = dropdims(sum(slice_results(_total_absolute_cover(rs); kwargs...), dims=:locations), dims=:locations)
     return summarize_trajectory(tac)
 end
 
