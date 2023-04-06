@@ -175,11 +175,10 @@ function update_criteria_store!(criteria_store::NamedDimsArray, wave_stress::Abs
     heat_stress::AbstractArray, in_conn::AbstractArray, out_conn::AbstractArray,
     location_area::AbstractArray, location_coral_cover::AbstractArray, location_data::DataFrame,
     depth_priority::AbstractArray)
-
     criteria_store(:iv__wave_stress) .= env_stress_criteria(wave_stress)[depth_priority]
     criteria_store(:iv__heat_stress) .= env_stress_criteria(heat_stress)[depth_priority]
     criteria_store(:iv__in_connectivity) .= connectivity_criteria(in_conn, location_coral_cover, location_area)[depth_priority]
-    criteria_store(:iv__in_connectivity) .= connectivity_criteria(out_conn, location_coral_cover, location_area)[depth_priority]
+    criteria_store(:iv__out_connectivity) .= connectivity_criteria(out_conn, location_coral_cover, location_area)[depth_priority]
     coral_cover, coral_space = coral_cover_criteria(location_data, location_coral_cover')
     criteria_store(:iv__coral_cover) .= coral_cover[depth_priority]
     criteria_store(:iv__coral_space) .= coral_space[depth_priority]
