@@ -95,7 +95,7 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::Abstra
 
     mcda_criteria = (iv__coral_cover=coral_cover, iv__coral_space=coral_space, iv__heat_stress=heat_stress,
         iv__wave_stress=wave_stress, iv__out_connectivity=out_connectivity, iv__in_connectivity=in_connectivity,
-        iv__zone=zone, iv__priority=priority)
+        iv__zone=zone, iv__priority=priority, iv__depth=location_data.depth_med)
 
 
     model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
