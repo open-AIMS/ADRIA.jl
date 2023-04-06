@@ -20,8 +20,8 @@ Extract and return long/lat from a GeoDataFrame.
 Array of tuples (x, y), where x and y relate to long and lat respectively.
 """
 function centroids(df::DataFrame)::Vector{Tuple{Float64,Float64}}
-    site_centroids::Vector = AG.centroid.(get_geometry(df))
-    return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
+    location_centroids::Vector = AG.centroid.(get_geometry(df))
+    return collect(zip(AG.getx.(location_centroids, 0), AG.gety.(location_centroids, 0)))
 end
 
 
@@ -78,30 +78,30 @@ function store_env_summary(data_cube::NamedDimsArray, type::String, file_loc::St
 end
 
 """
-    scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k)
+    scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_locations, area, k)
     scenario_attributes(domain::Domain, param_df::DataFrame)
 
 Generate dictionary of scenario attributes.
 """
-function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k, centroids)::Dict
+function scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_locations, area, k, centroids)::Dict
     attrs::Dict{Symbol,Any} = Dict(
         :name => name,
         :RCP => RCP,
         :columns => input_cols,
         :invoke_time => invoke_time,
-        :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)), :site_data_file => env_layer.site_data_fn,
-        :site_id_col => env_layer.site_id_col,
-        :unique_site_id_col => env_layer.unique_site_id_col,
+        :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)), :location_data_file => env_layer.location_data_fn,
+        :location_id_col => env_layer.location_id_col,
+        :unique_location_id_col => env_layer.unique_location_id_col,
         :init_coral_cover_file => env_layer.init_coral_cov_fn,
         :connectivity_file => env_layer.connectivity_fn,
         :DHW_file => env_layer.DHW_fn,
         :wave_file => env_layer.wave_fn,
         :timeframe => env_layer.timeframe,
         :sim_constants => sim_constants,
-        :site_ids => unique_sites,
-        :site_area => area,
-        :site_max_coral_cover => k,
-        :site_centroids => centroids
+        :location_ids => unique_locations,
+        :location_area => area,
+        :location_max_coral_cover => k,
+        :location_centroids => centroids
     )
 
     return attrs
@@ -109,38 +109,38 @@ end
 function scenario_attributes(domain::Domain, param_df::DataFrame)
     return scenario_attributes(domain.name, domain.RCP, names(param_df), domain.scenario_invoke_time,
         domain.env_layer_md, domain.sim_constants,
-        unique_sites(domain), site_area(domain), domain.site_data.k, centroids(domain.site_data))
+        unique_locations(domain), domain.location_data.area, domain.location_data.k, centroids(domain.location_data))
 end
 
 
-function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
-    # Set up logs for site ranks, seed/fog log
+function setup_logs(z_store, unique_locations, n_scens, tf, n_locations)
+    # Set up logs for location ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
 
-    # Store ranked sites
-    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_sites, 2, n_scens)  # sites, site id and rank, no. scenarios
-    fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_sites, n_scens)  # timeframe, sites, no. scenarios
+    # Store ranked locations
+    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locations, 2, n_scens)  # locations, location id and rank, no. scenarios
+    fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_locations, n_scens)  # timeframe, locations, no. scenarios
 
-    # tf, no. intervention sites, site id and rank, no. scenarios
-    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 2, n_sites, n_scens)
+    # tf, no. intervention locations, location id and rank, no. scenarios
+    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 2, n_locations, n_scens)
 
     attrs = Dict(
         # Here, "intervention" refers to seeding or shading
-        :structure => ("timesteps", "sites", "intervention", "scenarios"),
-        :unique_site_ids => unique_sites,
+        :structure => ("timesteps", "locations", "intervention", "scenarios"),
+        :unique_location_ids => unique_locations,
     )
     ranks = zcreate(Float32, rank_dims...; name="rankings", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(rank_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
-        :structure => ("timesteps", "coral_id", "sites", "scenarios"),
-        :unique_site_ids => unique_sites,
+        :structure => ("timesteps", "coral_id", "locations", "scenarios"),
+        :unique_location_ids => unique_locations,
     )
     seed_log = zcreate(Float32, seed_dims...; name="seed", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(seed_dims[1:3]..., 1), attrs=attrs)
 
     attrs = Dict(
-        :structure => ("timesteps", "sites", "scenarios"),
-        :unique_site_ids => unique_sites,
+        :structure => ("timesteps", "locations", "scenarios"),
+        :unique_location_ids => unique_locations,
     )
     fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
     shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
@@ -165,13 +165,13 @@ Sets up an on-disk result store.
 │   ├───relative_cover
 │   ├───relative_shelter_volume
 │   └───absolute_shelter_volume
-├───site_data
+├───location_data
 ├───model_spec
 └───inputs
 ```
 
 - `inputs` : includes domain specification metadata including what connectivity/DHW/wave data was used.
-- `site_data` : contains a copy of the spatial domain data (as geopackage).
+- `location_data` : contains a copy of the spatial domain data (as geopackage).
 - `model_spec` : contains a copy of the ADRIA model specification (as CSV).
 
 # Notes
@@ -183,7 +183,7 @@ Sets up an on-disk result store.
 - `param_df` : ADRIA scenario specification
 
 # Returns
-domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, site_ranks, seed_log, fog_log, shade_log)
+domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, location_ranks, seed_log, fog_log, shade_log)
 """
 function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     if "RCP" in names(param_df)
@@ -205,15 +205,9 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     input_dims::Tuple{Int64,Int64} = size(param_df)
     attrs::Dict = scenario_attributes(domain, param_df)
 
-    # Write a copy of spatial data to the result set
-    mkdir(joinpath(log_location, "site_data"))
-    geo_fn = joinpath(log_location, "site_data", basename(attrs[:name]) * ".gpkg")
-    try
-        GDF.write(geo_fn, domain.site_data; driver="geojson")
-    catch err
-        if !isa(err, ArgumentError)
-            rethrow(err)
-        end
+    # Copy location data into result set
+    mkdir(joinpath(log_location, "location_data"))
+    cp(attrs[:location_data_file], joinpath(log_location, "location_data", basename(attrs[:location_data_file])), force=true)
 
         GDF.write(geo_fn, domain.site_data; geom_columns=(:geom,), driver="geojson")
     end
@@ -230,7 +224,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     map_to_discrete!(param_df[:, integer_params.+1], getindex.(domain.model[:bounds], 2)[integer_params])
     inputs[:, :] = Matrix(param_df)
 
-    tf, n_sites, _ = size(domain.dhw_scens)
+    tf, n_locations, _ = size(domain.dhw_scens)
 
     # Set up stores for each metric
     function dim_lengths(metric_structure)
@@ -240,8 +234,8 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
                 append!(dl, tf)
             elseif d == "species"
                 append!(dl, domain.coral_growth.n_species)
-            elseif d == "sites"
-                append!(dl, n_sites)
+            elseif d == "locations"
+                append!(dl, n_locations)
             elseif d == "scenarios"
                 append!(dl, nrow(param_df))
             end
@@ -256,8 +250,8 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
         :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator]
 
     dim_struct = Dict(
-        :structure => string.((:timesteps, :sites, :scenarios)),
-        :unique_site_ids => unique_sites(domain)
+        :structure => string.((:timesteps, :locations, :scenarios)),
+        :unique_location_ids => unique_locations(domain)
     )
     result_dims::Tuple{Int64,Int64,Int64} = dim_lengths(dim_struct[:structure])
 
@@ -287,9 +281,9 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     wave_stats_store = store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), domain.RCP, compressor)
 
     # Group all data stores
-    stores = [stores..., dhw_stats_store, wave_stats_store, setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
+    stores = [stores..., dhw_stats_store, wave_stats_store, setup_logs(z_store, unique_locations(domain), nrow(param_df), tf, n_locations)...]
 
-    return domain, (; zip((met_names..., :dhw_stats, :wave_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
+    return domain, (; zip((met_names..., :dhw_stats, :wave_stats, :location_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
 end
 
 """
@@ -347,8 +341,8 @@ function load_results(result_loc::String)::ResultSet
     end
 
     # Spatial data
-    site_data = GDF.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
-    sort!(site_data, [Symbol(input_set.attrs["unique_site_id_col"])])
+    location_data = GeoDataFrames.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
+    sort!(location_data, [Symbol(input_set.attrs["unique_location_id_col"])])
 
     # Model specification
     model_spec = CSV.read(joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#")
@@ -370,9 +364,9 @@ function load_results(result_loc::String)::ResultSet
     # Details of the environmental data layer used for the sims
     env_layer_md::EnvLayer = EnvLayer(
         result_loc,
-        input_set.attrs["site_data_file"],
-        input_set.attrs["site_id_col"],
-        input_set.attrs["unique_site_id_col"],
+        input_set.attrs["location_data_file"],
+        input_set.attrs["location_id_col"],
+        input_set.attrs["unique_location_id_col"],
         input_set.attrs["init_coral_cover_file"],
         input_set.attrs["connectivity_file"],
         input_set.attrs["DHW_file"],
@@ -392,8 +386,8 @@ function load_results(result_loc::String)::ResultSet
             for (i, s) in enumerate(res.attrs["structure"])
                 if s == "timesteps"
                     push!(st, input_set.attrs["timeframe"])
-                elseif s == "sites"
-                    push!(st, res.attrs["unique_site_ids"])
+                elseif s == "locations"
+                    push!(st, res.attrs["unique_location_ids"])
                 else
                     push!(st, 1:sz[i])
                 end
@@ -417,7 +411,7 @@ function load_results(result_loc::String)::ResultSet
         end
     end
 
-    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, dhw_stat_set, wave_stat_set, site_data, model_spec)
+    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, dhw_stat_set, wave_stat_set, location_data, model_spec)
 end
 function load_results(domain::Domain)::ResultSet
     return load_results(result_location(domain))

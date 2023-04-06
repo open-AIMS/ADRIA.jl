@@ -10,7 +10,7 @@ using ADRIA: Domain, EnvLayer
 const RESULTS = "results"
 const LOG_GRP = "logs"
 const INPUTS = "inputs"
-const SITE_DATA = "site_data"
+const SITE_DATA = "location_data"
 const ENV_STATS = "env_stats"
 const MODEL_SPEC = "model_spec"
 
@@ -21,14 +21,14 @@ struct ResultSet{S,T1,T2,F,A,B,C,D,G,D1,D2,DF}
     invoke_time::S
     ADRIA_VERSION::S
 
-    site_ids::T1
-    site_area::F
-    site_max_coral_cover::F
-    site_centroids::T2
+    location_ids::T1
+    location_area::F
+    location_max_coral_cover::F
+    location_centroids::T2
     env_layer_md::EnvLayer
     dhw_stats::D
     wave_stats::D
-    site_data::G
+    location_data::G
 
     inputs::G
     sim_constants::D1
@@ -44,20 +44,20 @@ end
 
 
 function ResultSet(input_set::AbstractArray, env_layer_md::EnvLayer, inputs_used::DataFrame, outcomes::Dict,
-    log_set::Zarr.ZGroup, dhw_stats_set::Dict, wave_stats_set::Dict, site_data::DataFrame, model_spec::DataFrame)::ResultSet
+    log_set::Zarr.ZGroup, dhw_stats_set::Dict, wave_stats_set::Dict, location_data::DataFrame, model_spec::DataFrame)::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
     ResultSet(input_set.attrs["name"],
         string(rcp),
         input_set.attrs["invoke_time"],
         input_set.attrs["ADRIA_VERSION"],
-        input_set.attrs["site_ids"],
-        convert.(Float64, input_set.attrs["site_area"]),
-        convert.(Float64, input_set.attrs["site_max_coral_cover"]),
-        input_set.attrs["site_centroids"],
+        input_set.attrs["location_ids"],
+        convert.(Float64, input_set.attrs["location_area"]),
+        convert.(Float64, input_set.attrs["location_max_coral_cover"]),
+        input_set.attrs["location_centroids"],
         env_layer_md,
         dhw_stats_set,
         wave_stats_set,
-        site_data,
+        location_data,
         inputs_used,
         input_set.attrs["sim_constants"],
         model_spec,
@@ -122,18 +122,18 @@ function combine_results(result_sets...)::ResultSet
     n_scenarios = sum(map((rs) -> size(rs.inputs, 1), result_sets))
 
     envlayer = rs1.env_layer_md
-    env_md = EnvLayer(envlayer.dpkg_path, envlayer.site_data_fn, envlayer.site_id_col, envlayer.unique_site_id_col,
+    env_md = EnvLayer(envlayer.dpkg_path, envlayer.location_data_fn, envlayer.location_id_col, envlayer.unique_location_id_col,
         envlayer.init_coral_cov_fn, envlayer.connectivity_fn,
         dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn), envlayer.timeframe)
 
     all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
     input_dims = size(all_inputs)
     attrs = scenario_attributes(canonical_name, rcps, names(all_inputs), combined_time, env_md, rs1.sim_constants,
-        rs1.site_ids, rs1.site_area, rs1.site_max_coral_cover, rs1.site_centroids)
+        rs1.location_ids, rs1.location_area, rs1.location_max_coral_cover, rs1.location_centroids)
 
-    # Copy site data into result set
+    # Copy location data into result set
     mkdir(joinpath(new_loc, SITE_DATA))
-    cp(attrs[:site_data_file], joinpath(new_loc, SITE_DATA, basename(attrs[:site_data_file])), force=true)
+    cp(attrs[:location_data_file], joinpath(new_loc, SITE_DATA, basename(attrs[:location_data_file])), force=true)
 
     # Store copy of model specification as CSV
     mkdir(joinpath(new_loc, MODEL_SPEC))
@@ -148,7 +148,7 @@ function combine_results(result_sets...)::ResultSet
     input_set[:, :] = Matrix(all_inputs)
 
     logs = (; zip([:ranks, :seed_log, :fog_log, :shade_log],
-        setup_logs(z_store, rs1.site_ids, nrow(all_inputs), size(rs1.seed_log, :timesteps), size(rs1.seed_log, :sites)))...)
+        setup_logs(z_store, rs1.location_ids, nrow(all_inputs), size(rs1.seed_log, :timesteps), size(rs1.seed_log, :locations)))...)
 
     # Copy logs over
     for log in keys(logs)
@@ -175,8 +175,8 @@ function combine_results(result_sets...)::ResultSet
         dim_struct = Dict{Symbol,Any}(
             :structure => m_dim_names,
         )
-        if :sites in m_dim_names
-            dim_struct[:unique_site_ids] = rs1.site_ids
+        if :locations in m_dim_names
+            dim_struct[:unique_location_ids] = rs1.location_ids
         end
 
         result_dims = (size(rs1.outcomes[m_name])[1:end-1]..., n_scenarios)
@@ -319,7 +319,7 @@ Retrieve the number of locations represented in the result set.
 - `rs` : ResultSet
 """
 function n_locations(rs::ResultSet)
-    return size(rs.site_ids, 1)
+    return size(rs.location_ids, 1)
 end
 
 """
@@ -348,7 +348,7 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     vers_id = rs.ADRIA_VERSION
 
-    tf, sites, scens = size(rs.outcomes[:total_absolute_cover])
+    tf, locations, scens = size(rs.outcomes[:total_absolute_cover])
     # Species/size groups represented: $(species)
 
     rcps = join(split(rs.RCP, "_"), ", ")
@@ -361,7 +361,7 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
     RCP(s) represented: $(rcps)
     Intervention scenarios run: $(scens)
-    Number of sites: $(sites)
+    Number of locations: $(locations)
     Timesteps: $(tf)
 
     Input layers

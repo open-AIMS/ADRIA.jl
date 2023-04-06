@@ -86,24 +86,24 @@ function _process_inputs!(bnds::Tuple, p_types::Tuple, df::DataFrame)::Nothing
     return nothing
 end
 
-function load_mat_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray{Float32}
+function load_mat_data(data_fn::String, attr::String, location_data::DataFrame)::NamedDimsArray{Float32}
     data = matread(data_fn)
     local loaded::NamedDimsArray{Float32}
-    local site_order::Vector{String}
+    local location_order::Vector{String}
 
-    # Attach site names to each dimension
+    # Attach location names to each dimension
     try
-        site_order = Vector{String}(vec(data["reef_siteid"]))
-        loaded = NamedDimsArray(data[attr]; Source=site_order, Receiving=site_order)
+        location_order = Vector{String}(vec(data["reef_siteid"]))
+        loaded = NamedDimsArray(data[attr]; Source=location_order, Receiving=location_order)
     catch err
         if isa(err, KeyError)
-            @warn "Provided file $(data_fn) did not have reef_siteid! There may be a mismatch in sites."
-            if size(loaded, 2) != nrow(site_data)
-                @warn "Mismatch in number of sites ($(data_fn)).\nTruncating so that data size matches!"
+            @warn "Provided file $(data_fn) did not have reef_siteid! There may be a mismatch in locations."
+            if size(loaded, 2) != nrow(location_data)
+                @warn "Mismatch in number of locations ($(data_fn)).\nTruncating so that data size matches!"
 
-                # Subset down to number of sites
-                tmp = selectdim(data[attr], 2, 1:nrow(site_data))
-                loaded = NamedDimsArray(tmp; Source=site_order, Receiving=site_order)
+                # Subset down to number of locations
+                tmp = selectdim(data[attr], 2, 1:nrow(location_data))
+                loaded = NamedDimsArray(tmp; Source=location_order, Receiving=location_order)
             end
         else
             rethrow(err)
@@ -115,11 +115,11 @@ end
 
 
 """
-    load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    load_nc_data(data_fn::String, attr::String, location_data::DataFrame)::NamedDimsArray
 
 Load cluster-level data for a given attribute in a netCDF as a NamedDimsArray.
 """
-function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+function load_nc_data(data_fn::String, attr::String, location_data::DataFrame)::NamedDimsArray
     local loaded::NamedDimsArray
 
     ds = Dataset(data_fn, "r")
@@ -127,27 +127,27 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
     data = ds[attr][:, :]
 
     if "reef_siteid" in keys(ds)
-        sites = _char_to_string(ds["reef_siteid"][:])
+        locations = _char_to_string(ds["reef_siteid"][:])
     else
-        sites = 1:size(data, 2)
+        locations = 1:size(data, 2)
     end
     close(ds)
 
     # Note: cannot trust indicated dimension metadata
     # because this can be incorrect!
-    # instead, match by number of sites
+    # instead, match by number of locations
     dim_keys = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
-    i = first(findall(size(data) .== length(sites)))
-    dim_keys[i] = sites
+    i = first(findall(size(data) .== length(locations)))
+    dim_keys[i] = locations
 
     try
         loaded = NamedDimsArray(data; zip(dim_names, dim_keys)...)
     catch err
         if isa(err, KeyError)
-            n_sites = size(data, 2)
-            @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, scenarios)."
-            if n_sites != nrow(site_data)
-                error("Mismatch in number of sites ($(data_fn)). Expected $(nrow(site_data)), got $(n_sites)")
+            n_locations = size(data, 2)
+            @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, members)."
+            if n_locations != nrow(location_data)
+                error("Mismatch in number of locations ($(data_fn)). Expected $(nrow(location_data)), got $(n_locations)")
             end
         else
             rethrow(err)
@@ -179,34 +179,34 @@ end
 
 
 """
-    load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    load_covers(data_fn::String, attr::String, location_data::DataFrame)::NamedDimsArray
 
 Load initial coral cover data from netCDF.
 """
-function load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    data::NamedDimsArray = load_nc_data(data_fn, attr, site_data)
-    data = NamedDims.rename(data, :covers => :species, :reef_siteid => :sites)
+function load_covers(data_fn::String, attr::String, location_data::DataFrame)::NamedDimsArray
+    data::NamedDimsArray = load_nc_data(data_fn, attr, location_data)
+    data = NamedDims.rename(data, :covers => :species, :reef_siteid => :locations)
 
-    # Reorder sites to match site_data
-    data = data[sites=Key(site_data[:, :reef_siteid])]
+    # Reorder locations to match location_data
+    data = data[locations=Key(location_data[:, :reef_siteid])]
 
     return data
 end
 
 
 """
-    load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    load_env_data(data_fn::String, attr::String, location_data::DataFrame)::NamedDimsArray
 
 Load environmental data layers (DHW, Wave) from netCDF.
 """
-function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    data::NamedDimsArray = load_nc_data(data_fn, attr, site_data)
+function load_env_data(data_fn::String, attr::String, location_data::DataFrame)::NamedDimsArray
+    data::NamedDimsArray = load_nc_data(data_fn, attr, location_data)
 
     # Re-attach correct dimension names
-    data = NamedDims.rename(data, (:timesteps, :sites, :scenarios))
+    data = NamedDims.rename(data, (:timesteps, :locations, :scenarios))
 
-    # Reorder sites to match site_data
-    data = data[sites=Key(site_data[:, :reef_siteid])]
+    # Reorder locations to match location_data
+    data = data[locations=Key(location_data[:, :reef_siteid])]
 
     return data
 end
