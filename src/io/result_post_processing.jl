@@ -53,20 +53,20 @@ function create_BI_format_file(rs::ResultSet, file_loc::String)
     #rci = dropdims(mean(ADRIA.metrics.reef_condition_index(res),dims=:reps),dims=:reps)
     sheltervol = ADRIA.metrics.relative_shelter_volume(rs)
 
-    tf, n_sites, n_scens = size(rel_cover)
+    tf, n_locations, n_scens = size(rel_cover)
 
-    # extract key site data
-    site_ids = rs.site_ids
-    centroids = rs.site_centroids
-    kvals = rs.site_max_coral_cover
-    sitearea = rs.site_area
+    # extract key location data
+    location_ids = rs.location_ids
+    centroids = rs.location_centroids
+    kvals = rs.location_max_coral_cover
+    locationarea = rs.location_area
 
     # set up for extract at 5-yearly slices
     years = collect(2025:5:2025+tf)
     years_ints = collect(1:5:tf)
     n_years = length(years_ints)
 
-    perms = n_years * n_sites * n_scens
+    perms = n_years * n_locations * n_scens
     # storage dataframe
     data_sum_df = DataFrame(Model=repeat([""], outer=perms), SSP=repeat([""], outer=perms),
         SiteID=repeat([""], outer=perms), Latitude=repeat([0.0], outer=perms),
@@ -86,7 +86,7 @@ function create_BI_format_file(rs::ResultSet, file_loc::String)
     counter_ind = rownumber.(eachrow(rs.inputs[cond, :]))
     count = 1
     for t in collect(1:n_years)
-        for si in collect(1:n_sites)
+        for si in collect(1:n_locations)
             for sce in collect(1:n_scens)
 
                 # guided or unguided
@@ -97,8 +97,8 @@ function create_BI_format_file(rs::ResultSet, file_loc::String)
                 rs.inputs.fogging[sce] > 0 ? fog = 1 : fog = 0
 
                 # add scenario to structure
-                data_sum_df[count, :] = (model, ssp, site_ids[si], centroids[si][2, 1], centroids[si][1, 1], years[t], Int(rs.inputs.seed_year_start[sce] + 2024),
-                    seed, rs.inputs.a_adapt[sce], fog, sitearea[si], kvals[si], guided,
+                data_sum_df[count, :] = (model, ssp, location_ids[si], centroids[si][2, 1], centroids[si][1, 1], years[t], Int(rs.inputs.seed_year_start[sce] + 2024),
+                    seed, rs.inputs.a_adapt[sce], fog, locationarea[si], kvals[si], guided,
                     rel_cover[years_ints[t], si, sce] * 100, (rel_cover[years_ints[t], si, sce].-rel_cover[years_ints[t], si, counter_ind])[1] * 100,
                     sheltervol[years_ints[t], si, sce] * 100, (sheltervol[years_ints[t], si, sce].-sheltervol[years_ints[t], si, counter_ind])[1] * 100)
                 #juveniles[years_ints[t],si,sce],juveniles[years_ints[t],si,sce]-juveniles[years_ints[t],si,0],
