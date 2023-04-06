@@ -63,7 +63,7 @@ function priority_predecessor_criteria(strong_pred::Vector{Int64}, priority_loca
     predprior = [x for x in predprior if !isnan(x)]
 
     predec[predprior, 3] .= 1.0
-    return predec
+    return predec[:, 3]
 end
 
 """
