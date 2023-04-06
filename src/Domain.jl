@@ -27,14 +27,14 @@ abstract type Domain end
 
 Core ADRIA domain. Represents study area.
 """
-mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,I<:Vector{Int64},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray{<:Real}} <: Domain
+mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,I<:Vector{Int64},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray{<:Float64}} <: Domain
     const name::S  # human-readable name
     RCP::S  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
     scenario_invoke_time::S  # time latest set of scenarios were run
     const TP_data::Σ  # site connectivity data
     const in_conn::V  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
-    const out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
+    const out_conn::I  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strong_pred::I  # strongest predecessor
     site_data::D  # table of site data (depth, carrying capacity, etc)
     site_distances::Z  # Matrix of distances between each site
@@ -56,7 +56,7 @@ end
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
-function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::AbstractMatrix{<:T}, in_conn::Vector{Float64}, out_conn::Vector{Float64},
+function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::AbstractMatrix{<:T}, in_conn::Vector{Float64}, out_conn::Vector{Int64},
     strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_distances::Matrix{Float64}, median_site_distance::Float64, site_id_col::String, unique_site_id_col::String,
     init_coral_cover::NamedDimsArray, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
     DHWs::NamedDimsArray, waves::NamedDimsArray)::ADRIADomain where {T<:Union{Float32,Float64}}
