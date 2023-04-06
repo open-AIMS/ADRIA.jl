@@ -27,7 +27,7 @@ const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 
 
     @testset "Discrete parameters" begin
-        site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
+        location_path = joinpath(TEST_DATA_DIR, "test_location_data.gpkg")
         conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
         scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
         dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
@@ -52,7 +52,7 @@ end
 end
 
 
-include("site_selection.jl")
+include("location_selection.jl")
 include("data_loading.jl")
 include("seeding.jl")
 include("metrics.jl")

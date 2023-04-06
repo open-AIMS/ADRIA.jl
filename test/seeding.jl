@@ -1,5 +1,5 @@
 using ADRIA
-using ADRIA: distribute_seeded_corals, site_k
+using ADRIA: distribute_seeded_corals, location_k
 using Test
 using Distributions
 
@@ -8,40 +8,40 @@ using Distributions
     dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
 
     # extract inputs for function
-    total_site_area = site_area(dom)
-    k = site_k(dom)
-    current_cover = zeros(size(total_site_area))
+    total_location_area = location_area(dom)
+    k = location_k(dom)
+    current_cover = zeros(size(total_location_area))
 
     # calculate available space
-    available_space = vec((total_site_area .* k) .- current_cover)
+    available_space = vec((total_location_area .* k) .- current_cover)
 
     @testset "Test for Seeding Distribtion ($i)" for i in 1:10
-        prefseedsites = rand(1:length(total_site_area), 5)
+        prefseedlocations = rand(1:length(total_location_area), 5)
 
         # Randomly generate seeded area
         tmp = rand(Uniform(0.0, 500.0), 2)
         seeded_area = (TA=tmp[1], CA=tmp[2])
 
         # evaluate seeding distributions
-        seed_dist = distribute_seeded_corals(total_site_area, prefseedsites,
+        seed_dist = distribute_seeded_corals(total_location_area, prefseedlocations,
             available_space, seeded_area)
 
         # proportions of coral
         total_area_coral_TA = seeded_area[1]
         total_area_coral_CA = seeded_area[2]
 
-        # Area to be seeded for each site
-        area_TA = seed_dist.TA .* total_site_area[prefseedsites]
-        area_CA = seed_dist.CA .* total_site_area[prefseedsites]
+        # Area to be seeded for each location
+        area_TA = seed_dist.TA .* total_location_area[prefseedlocations]
+        area_CA = seed_dist.CA .* total_location_area[prefseedlocations]
 
         # total area of seeded corals
         total_area_coral_TA_out = sum(area_TA)
         total_area_coral_CA_out = sum(area_CA)
 
-        # absolute available area to seed for selected sites
-        selected_avail_space = available_space[prefseedsites]
+        # absolute available area to seed for selected locations
+        selected_avail_space = available_space[prefseedlocations]
 
-        abs_seed_area = seed_dist.TA .* total_site_area[prefseedsites]
+        abs_seed_area = seed_dist.TA .* total_location_area[prefseedlocations]
 
         # index of max proportion for available space
         max_ind_out = findfirst(abs_seed_area .== maximum(abs_seed_area))

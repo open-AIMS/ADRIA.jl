@@ -119,7 +119,7 @@ end
     @testset "Site selection sampling" begin
         dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
         num_samples = 32
-        scens = ADRIA.sample_site_selection(dom, num_samples)
+        scens = ADRIA.sample_location_selection(dom, num_samples)
 
         @test all(scens.guided .> 0) || "Intervention or counterfactual scenarios found"
 
