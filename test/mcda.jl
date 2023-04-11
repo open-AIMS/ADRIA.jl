@@ -1,108 +1,56 @@
 using Test
 using Distributions
-using ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_shade_matrix
+using ADRIA: mcda_normalize, filter_decision_matrix, create_intervention_matrix, create_criteria_store, create_tolerances_store
 
 
 @testset "Create decision matrix" begin
 
     # Dummy data to create decision matrix from
-    n_locations = 5
-    area = [1000.0, 800.0, 600.0, 200.0, 200.0]
-    centr_out = [1.0, 0.5, 0.5, 0.5, 0.5]
-    centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
-    dam_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    heat_stress_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
+    n_locations = rand(5:30)
+    area = rand(Uniform(100.0, 3000.0), 1, n_locations)
+    centr_out = rand(1, n_locations)
+    centr_in = rand(1, n_locations)
 
-    # Dummy priority predecessors
-    priority_locations = zeros(n_locations)
-    predec = zeros(n_locations, 3)
-    predec[:, 1:2] .= rand(n_locations, 2)
-    predprior = predec[in.(predec[:, 1], [priority_locations']), 2]
-    predprior = [x for x in predprior if !isnan(x)]
-    predec[predprior, 3] .= 1.0
-    risk_tol = 0.8
+    sum_cover = rand(1, n_locations)
+    max_cover = rand(1, n_locations)
 
-    sum_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
-    max_cover = [0.8, 0.75, 0.95, 0.7, 0.0]
+    centr_out = sum_cover .* area .* centr_out
+    centr_in = sum_cover .* area .* centr_in
+    coral_space = (max_cover .- sum_cover) .* area
+    coral_space[coral_space.<0] .= 0.0
+    location_ids = collect(1:n_locations)
+    args = (iv__heat_stress=rand(1, n_locations),
+        iv__wave_stress=rand(1, n_locations), iv__zones=rand(Uniform(0.0, 2.0), 1, n_locations),
+        iv__coral_space=coral_space, iv__in_connectivity=centr_in, iv__out_connectivity=centr_out,
+        iv__priority=zeros(n_locations))
+    criteria_store = create_criteria_store(location_ids, args)
 
-    A, filtered = create_decision_matrix(1:n_locations, centr_in, centr_out, sum_cover, max_cover, area, dam_prob, heat_stress_prob, predec, zones_criteria, risk_tol)
+    @test size(criteria_store, 1) == n_locations || "Some locations missing in decision matrix storage."
+    @test size(criteria_store, 2) == length(args) || "Some criteria missing in decision matrix storage."
+    @test all(criteria_store.locations .== location_ids) || "Location names do not match location ids."
+    @test all(criteria_store.criteria .== keys(args)) || "Criteria names do not match input criteria names."
 
-    @test all(0.0 .<= A[:, 2:end-2] .<= 1.0) || "`A` decision matrix out of bounds"
+    param_set = NamedDimsArray(rand(Float64, 4), factors=["iv__heat_stress__seed_shade", "iv__wave_stress__seed_shade", "iv__coral_space__seed", "iv__in_connectivity__seed"])
+    area_to_seed = 962.11  # area of seeded corals in m^2
 
-    @test !any(isnan.(A)) || "NaNs found in decision matrix"
-    @test !any(isinf.(A)) || "Infs found in decision matrix"
+    # define functions for tolerances
+    f_coral_cover(param) = area_to_seed * param
 
-    @test A[end, 6] == 0.0 || "Site with 0 max cover should be ignored but was not"
-end
+    tolerances = (iv__coral_space=(>, f_coral_cover(rand())),
+        iv__heat_stress=(>, 1 - rand()),
+        iv__wave_stress=(>, 1 - rand()))
 
+    tolerances = create_tolerances_store(tolerances)
+    filtered = findall(tolerances(:iv__coral_space).(criteria_store(:iv__coral_space)) .& tolerances(:iv__heat_stress).(criteria_store(:iv__heat_stress)) .& tolerances(:iv__wave_stress).(criteria_store(:iv__wave_stress)))
+    filtered_criteria_store = ADRIA.filter_decision_matrix(criteria_store, tolerances)
 
-@testset "MCDA seed matrix creation" begin
-    wtconseedout, wtconseedin, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover = [1.0, 1.0, 0.7, 1.0, 0.6, 0.6, 0.6]
+    @test all(filtered_criteria_store.locations .== filtered) || "Some locations which should have been filtered out were not filtered."
 
-    # Combine decision criteria into decision matrix A
-    n_locations = 5
-    area = [1000.0, 800.0, 600.0, 200.0, 200.0]
-    centr_out = [1.0, 0.5, 0.5, 0.5, 0.5]
-    centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
-    dam_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    heat_stress_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
+    SE, wse = create_intervention_matrix(filtered_criteria_store, param_set, "seed")
 
-    # Dummy priority predecssors
-    priority_locations = zeros(n_locations)
-    predec = zeros(n_locations, 3)
-    predec[:, 1:2] .= rand(n_locations, 2)
-    predprior = predec[in.(predec[:, 1], [priority_locations']), 2]
-    predprior = [x for x in predprior if !isnan(x)]
-    predec[predprior, 3] .= 1.0
+    @test size(SE, 2) == size(criteria_store, 2) - 3 || "More or less criteria included for intervention than required."
+    @test size(SE, 1) == size(filtered_criteria_store, 1) || "Number of locations in filtered set and decision matrix do not match."
 
-    sum_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
-    max_cover = [0.8, 0.75, 0.6, 0.77, 0.0]
-    min_area = 20
-
-    A, filtered = create_decision_matrix(1:n_locations, centr_in, centr_out, sum_cover, max_cover, area, dam_prob, heat_stress_prob, predec, zones_criteria, 0.8)
-
-    SE, wse = create_seed_matrix(A, min_area, wtconseedin, wtconseedout, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover)
-
-    @test (sum(filtered)) == size(A, 1) || "Site where heat stress > risk_tol not filtered out"
-    @test size(SE, 1) == size(A, 1) - 2 || "Sites where space available<min_area not filtered out"
-    @test A[3, 8] == 0.0 || "Site with k<coral cover should be set to space = 0"
-
-    @test all(0.0 .<= SE[:, 2:end-2] .<= 1.0) || "Seeding Decision matrix values out of bounds"
-end
-
-@testset "MCDA shade matrix creation" begin
-    wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_zones_shade, wt_hi_cover = [1.0, 0.7, 1.0, 0.6, 0.6, 0.6]
-
-    # Combine decision criteria into decision matrix A
-    n_locations = 5
-    area = [1000.0, 800.0, 600.0, 200.0, 200.0]
-    centr_out = [1.0, 0.5, 0.5, 0.5, 0.5]
-    centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
-    dam_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    heat_stress_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
-
-    # Dummy priority predecssors
-    priority_locations = zeros(n_locations)
-    predec = zeros(n_locations, 3)
-    predec[:, 1:2] .= rand(n_locations, 2)
-    predprior = predec[in.(predec[:, 1], [priority_locations']), 2]
-    predprior = [x for x in predprior if !isnan(x)]
-    predec[predprior, 3] .= 1.0
-
-    sum_cover = [0.75, 0.5, 0.3, 0.7, 0.0]
-    max_cover = [0.8, 0.75, 0.6, 0.77, 0.0]
-    area_max_cover = max_cover .* area
-
-    A, filtered = create_decision_matrix(1:n_locations, centr_in, centr_out, sum_cover, max_cover, area, dam_prob, heat_stress_prob, predec, zones_criteria, 0.8)
-
-    SH, wsh = create_shade_matrix(A, area_max_cover[filtered], wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_zones_shade, wt_hi_cover)
-
-    @test maximum(SH[:, 8]) == (maximum(area_max_cover[convert(Vector{Int64}, A[:, 1])] .- A[:, 8])) || "Largest location with most coral area should have highest score"
-
-    @test all(0.0 .<= SH[:, 2:end-2] .<= 1.0) || "Shading Decision matrix values out of bounds"
 end
 
 @testset "MCDA normalisation" begin
