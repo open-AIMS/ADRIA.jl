@@ -508,7 +508,7 @@ Perform location selection for a given domain for multiple scenarios defined in 
     containing ranks for each scenario run.
 - `aggregated_ranks_store` : if aggregation method is selected, the aggregated ranks_store output.
 """
-function run_location_selection(domain::Domain, scenarios::DataFrame, tolerances::NamedTuple, coral_covers::NamedDimsArray;
+function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, tolerances::NamedTuple, coral_covers::NamedDimsArray;
     aggregation_method=nothing, target_seed_locations=nothing, target_shade_locations=nothing)
     ranks_store = NamedDimsArray(
         zeros(nrow(scenarios), length(domain.location_ids), 3),
