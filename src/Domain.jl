@@ -86,7 +86,8 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::Abstra
     n_locations = length(location_ids)
     zone = zones_criteria(location_data.zone_type, sim_constants.priority_zones, strongest_predecessor, collect(1:n_locations))
     priority = priority_predecessor_criteria(strongest_predecessor, sim_constants.priority_locations)
-    init_sum_cover = Matrix(sum(init_coral_cover, dims=:species))
+    init_sum_cover = Matrix(sum(init_coral_cover, dims=:species))'
+
     coral_cover, coral_space = coral_cover_criteria(location_data, init_sum_cover)
     in_connectivity = connectivity_criteria(in_conn, init_sum_cover, location_data.area)
     out_connectivity = connectivity_criteria(out_conn, init_sum_cover, location_data.area)
@@ -270,7 +271,7 @@ function load_domain(path::String, rcp::String)::ADRIADomain
     end
 
     conn_path::String = joinpath(path, "connectivity/")
-    location_data::String = joinpath(path, "site_data")
+    location_data::String = joinpath(path, "location_data")
 
     location_path::String = joinpath(location_data, "$(domain_name).gpkg")
     init_coral_cov::String = joinpath(location_data, "coral_cover.nc")
