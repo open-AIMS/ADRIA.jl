@@ -1,5 +1,6 @@
 using Distributions
 using Test
+using NamedDims
 
 
 if !@isdefined(ADRIA_DIR)
@@ -8,31 +9,40 @@ if !@isdefined(ADRIA_DIR)
 end
 
 @testset "location selection" begin
-    # TODO: Complete tests with @tests
 
+    n_location_int = 5
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
-    p_tbl = ADRIA.param_table(dom)
+    scen = ADRIA.sample_location_selection(dom, 1)
+    scen = NamedDimsArray(Vector(scen[1, :]), factors=names(scen))
 
-    p_tbl[:, :depth_offset] .= 7.0
+    area_to_seed = 962.11
 
-    # ranks = ADRIA.location_selection(dom, p_tbl, 1, 10, 1)
-end
-@testset "MCDA variable constructor" begin
-    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
-    criteria_df = ADRIA.sample_location_selection(dom, 1) # get scenario dataframe
     location_ids = collect(1:length(dom.location_ids))
-    sum_cover = fill(0.1, nrow(criteria_df), nrow(dom.location_data))
+    criteria_store = ADRIA.create_criteria_store(location_ids, dom.mcda_criteria)
+    tolerances = (iv__coral_space=(>, scen("iv__coral_space__tol") .* area_to_seed),
+        iv__heat_stress=(>, 1 - scen("iv__heat_stress__tol")),
+        iv__wave_stress=(>, 1 - scen("iv__wave_stress__tol")))
 
-    area_to_seed = 1.5 * 10^-6  # area of seeded corals in km^2
-    dhw_scens = dom.dhw_scens[1, :, criteria_df.dhw_scenario[1]]
-    wave_scens = dom.wave_scens[1, :, criteria_df.wave_scenario[1]]
+    dhw_scens = dom.dhw_scens
+    wave_scens = dom.wave_scens
+    criteria_store(:iv__wave_stress) .= ADRIA.env_stress_criteria(Array(dropdims(ADRIA.mean(wave_scens, dims=(:timesteps, :scenarios)) .+ ADRIA.var(wave_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
+    criteria_store(:iv__heat_stress) .= ADRIA.env_stress_criteria(Array(dropdims(ADRIA.mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ ADRIA.var(dhw_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
 
-    mcda_vars = ADRIA.DMCDA_vars(dom, criteria_df[1, :], location_ids, sum_cover, area_to_seed, wave_scens, dhw_scens)
-    n_locations = length(mcda_vars.location_ids)
-    @test (length(mcda_vars.in_conn) == n_locations) && (length(mcda_vars.out_conn) == n_locations) || "Connectivity input is incorrect size."
-    @test length(mcda_vars.dam_prob) == n_locations || "Wave damage input is incorrect size."
-    @test length(mcda_vars.heat_stress_prob) == n_locations || "Heat stress input is incorrect size."
-    @test length(mcda_vars.sum_cover) == n_locations || "Initial cover input is incorrect size."
+    ranks = ADRIA.location_selection(criteria_store, scen, tolerances,
+        location_ids, dom.location_distances, dom.median_location_distance, n_location_int)
+
+    @test all([in(r, collect(0:length(dom.location_ids)+1)) for r in ranks[:, 2]]) || "Some seed ranks outside of possible ranks (0-n_locations+1)"
+    @test all([in(r, collect(0:length(dom.location_ids)+1)) for r in ranks[:, 3]]) || "Some shade ranks outside of possible ranks (0-n_locations+1)"
+    @test (length(ranks[:, 2]) - length(unique(sort(ranks[:, 2])))) == sum(ranks[:, 2] .== 0) - 1 || " Some filtered locations not set to zero."
+
+end
+@testset "MCDA variable in Domain" begin
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
+    n_locations = length(dom.location_ids)
+    mcda_criteria = dom.mcda_criteria
+    for crit in keys(mcda_criteria)
+        @test (length(mcda_criteria[crit]) == n_locations) || "The criteria $crit has the wrong size."
+    end
 end
 @testset "Unguided location selection" begin
     n_intervention_locations = 5
@@ -58,11 +68,17 @@ end
     N = 2^3
     criteria_df = ADRIA.sample_location_selection(dom, N)  # get scenario dataframe
 
-    area_to_seed = 662.11  # area of seeded corals in m^2
-    ts = 5  # time step to perform location selection at
+    area_to_seed = 962.11  # area of seeded corals in m^2
+    # define functions for tolerances
+    f_coral_cover(param) = area_to_seed * param
 
-    sum_cover = fill(0.1, N, ADRIA.n_locations(dom))
-    ranks = ADRIA.run_location_selection(dom, criteria_df, sum_cover, area_to_seed, ts)
+    coral_cover = NamedDims.rename(repeat(sum(dom.init_coral_cover, dims=:species), size(criteria_df, 1)), (:scenarios, :locations))
+    # initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of locations))
+    tolerances = (iv__coral_space=(>, x -> f_coral_cover(x)),
+        iv__heat_stress=(>, x -> 1 - x),
+        iv__wave_stress=(>, x -> 1 - x))
+
+    ranks = ADRIA.run_location_selection(dom, criteria_df, tolerances, coral_cover')
 
     @test size(ranks, 1) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
     @test size(ranks, 2) == length(dom.location_ids) || "Ranks storage is not correct size for this domain."
