@@ -8,10 +8,7 @@ Then orders locations from highest aggregate score to lowest.
 - `S` : Decision matrix (seeding or shading)
 
 # Returns
-- `s_order` : nlocations × 3 matrix with columns
-    1. location ids
-    2. calculated location rank score (higher values = higher ranked)
-    3. location order id
+- Aggregate score
 """
 function order_ranking(S::Array{Float64,2})::Array{Float64}
     return sum(S, dims=2)
@@ -44,10 +41,7 @@ S_p  = √{∑(criteria .- NIS)²}
 - `S` : Decision matrix (seeding or shading)
 
 # Returns
-- `s_order` :
-    1. location ids
-    2. calculated location rank score (higher values = higher ranked)
-    3. location order id
+- `C` : Aggregate score
 """
 function mcda_topsis(S::Array{Float64,2})::Array{Float64}
 
@@ -107,10 +101,7 @@ Details of this aggregation method in, for example [1]
 - `v` : Real
 
 # Returns
-- `s_order` :
-    1. location ids
-    2. calculated location rank score (higher values = higher ranked)
-    3. location order id
+- `Q` : Aggregate score
 """
 function mcda_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Float64}
 
