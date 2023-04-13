@@ -94,14 +94,14 @@ end
 
 
 """
-    align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
+    align_rankings!(rankings::Array, l_order::Matrix, col::Int64)::Nothing
 
-Align a vector of location rankings to match the indicated order in `s_order`.
+Align a vector of location rankings to match the indicated order in `l_order`.
 """
-function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
+function align_rankings!(rankings::Array, l_order::Matrix, col::Int64)::Nothing
     # Fill target ranking column
-    for (i, location_id) in enumerate(s_order[:, 1])
-        rankings[rankings[:, 1].==location_id, col] .= s_order[i, 3]
+    for (i, location_id) in enumerate(l_order[:, 1])
+        rankings[rankings[:, 1].==location_id, col] .= l_order[i, 3]
     end
 
     return
@@ -130,15 +130,15 @@ function rank_locations!(S, weights, rankings, n_location_int, location_ids, mcd
     weights = weights[selector]
     S = S[:, selector]
 
-    s_order = retrieve_ranks(S, weights, mcda_func, location_ids)
+    l_order = retrieve_ranks(S, weights, mcda_func, location_ids)
 
-    last_idx = min(n_location_int, size(s_order, 1))
-    preflocations = Int.(s_order[1:last_idx, 1])
+    last_idx = min(n_location_int, size(l_order, 1))
+    preflocations = Int.(l_order[1:last_idx, 1])
 
     # Match by location_id and assign rankings to log
-    align_rankings!(rankings, s_order, rank_col)
+    align_rankings!(rankings, l_order, rank_col)
 
-    return preflocations, s_order
+    return preflocations, l_order
 end
 
 function rank_seed_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
@@ -297,9 +297,9 @@ function guided_location_selection(criteria_store::NamedDimsArray,
         prefseedlocations = repeat([0], n_location_int)
 >>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
     elseif log_seed
-        prefseedlocations, s_order_seed = rank_seed_locations!(SE, wse, rankings, n_location_int, criteria_store.locations, mcda_func)
+        prefseedlocations, l_order_seed = rank_seed_locations!(SE, wse, rankings, n_location_int, criteria_store.locations, mcda_func)
         if use_dist != 0
-            prefseedlocations, rankings = distance_sorting(prefseedlocations, s_order_seed, distances, minimum_distance, rankings, 2)
+            prefseedlocations, rankings = distance_sorting(prefseedlocations, l_order_seed, distances, minimum_distance, rankings, 2)
         end
     end
 
@@ -310,10 +310,10 @@ function guided_location_selection(criteria_store::NamedDimsArray,
         prefshadelocations = repeat([0], n_location_int)
 >>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
     elseif log_shade
-        prefshadelocations, s_order_shade = rank_shade_locations!(SH, wsh, rankings, n_location_int, criteria_store.locations, mcda_func)
+        prefshadelocations, l_order_shade = rank_shade_locations!(SH, wsh, rankings, n_location_int, criteria_store.locations, mcda_func)
 
         if use_dist != 0
-            prefshadelocations, rankings = distance_sorting(prefshadelocations, s_order_shade, distances, minimum_distance, rankings, 3)
+            prefshadelocations, rankings = distance_sorting(prefshadelocations, l_order_shade, distances, minimum_distance, rankings, 3)
         end
     end
 
@@ -417,7 +417,7 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 - `location_ids` : array of integers indicating location ids still remaining after filtering.
 
 # Returns
-- `s_order` : [location_ids, criteria values, ranks]
+- `l_order` : [location_ids, criteria values, ranks]
 """
 function retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, location_ids::Array{Int64})
     S = mcda_normalize(S)
@@ -433,11 +433,11 @@ function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Vector, location_i
     return retrieve_ranks(S, results.scores, mcda_func[2], location_ids)
 end
 function retrieve_ranks(S::Matrix, scores::Array, rev_val::Bool, location_ids::Array{Int64})
-    s_order = Union{Float64,Int64}[Int.(location_ids) scores 1:size(S, 1)]
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=rev_val)
-    @views s_order[:, 3] .= Int.(1:size(S, 1))
+    l_order = Union{Float64,Int64}[Int.(location_ids) scores 1:size(S, 1)]
+    l_order .= sortslices(l_order, dims=1, by=x -> x[2], rev=rev_val)
+    @views l_order[:, 3] .= Int.(1:size(S, 1))
 
-    return s_order
+    return l_order
 end
 
 
