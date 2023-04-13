@@ -53,6 +53,7 @@ end
 
 
 include("location_selection.jl")
+include("distance_sorting.jl")
 include("data_loading.jl")
 include("seeding.jl")
 include("metrics.jl")
