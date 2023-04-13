@@ -348,59 +348,64 @@ Replaces these locations with locations in the top_n ranks if the distance betwe
 function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
     min_dist::Float64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
-    n_locations = length(pref_locations)
     location_order = l_order[:, 1]
-
     # locations to select alternatives from
-    alt_locations = setdiff(location_order, pref_locations)[1:length(location_order)-n_locations]
+    alt_locations = setdiff(location_order, pref_locations)
 
     # find all selected locations closer than the min distance
     pref_dists = findall(dist[pref_locations, pref_locations] .< min_dist)
-    # indices to replace
-    inds_rep = sort(unique(reinterpret(Int64, pref_dists)))
-    # number of locations to replace
-    select_n = length(inds_rep)
-    # indices to keep
-    inds_keep = collect(1:length(pref_locations))
-    inds_keep = setdiff(inds_keep, inds_rep)
+    if isempty(pref_dists)
+        @warn "All locations further apart than min distance, no distance sorting occured."
+        return pref_locations, rankings
+    else
+        # find indices to replace, replace maximum (lowest ranked) only
+        inds_rep = maximum(sort(unique(reinterpret(Int64, pref_dists))))
+        # number of locations to replace at each iteration
+        select_n = 1
 
-    # storage for new set of locations
-    rep_locations = pref_locations
+        # indices to keep
+        inds_keep = collect(1:length(pref_locations))
+        inds_keep = setdiff(inds_keep, inds_rep)
 
-    while (length(alt_locations) .>= select_n)
-        rep_locations = [rep_locations[inds_keep[:]]; alt_locations[1:select_n]]
+        # storage for new set of locations
+        rep_locations = pref_locations
 
-        # Find all locations within these highly ranked but unselected locations which are further apart
-        alt_dists = dist[rep_locations, rep_locations] .> min_dist
+        while !isempty(alt_locations)
 
-        # Select from these locations those far enough away from all locations
-        inds_keep = sum(alt_dists, dims=2) .== n_locations - 1
+            rep_locations = [rep_locations[inds_keep[:]]; alt_locations[select_n]]
+            # find all locations in current selection which are closer than allowed
+            pref_dists = findall(dist[rep_locations, rep_locations] .< min_dist)
+            if isempty(pref_dists)
+                # if none break
+                select_n = 0
+                break
+            else
+                # Find index of the lowest ranked site which is too close
+                inds_rep = maximum(sort(unique(reinterpret(Int64, pref_dists))))
 
-        # Keep locations that were far enough away last iteration
-        inds_keep[1:end-select_n] .= true
-        if length(inds_keep) == n_locations
-            select_n = 0
-            break
-        else
-            # remove checked alt_locations
-            alt_locations = setdiff(alt_locations, alt_locations[1:select_n])
-            select_n = sum(.!inds_keep)
+                # Remove this location from the keeping set
+                inds_keep = collect(1:length(pref_locations))
+                inds_keep = setdiff(inds_keep, inds_rep)
+
+                # remove checked locations from set of alternatives
+                alt_locations = setdiff(alt_locations, alt_locations[1:select_n])
+
+            end
         end
     end
 
     # If not all locations could be replaced, just use highest ranked remaining pref_locations
-    if (select_n != 0) && !isempty(setdiff(pref_locations, rep_locations))
+    if select_n != 0
         rem_pref_locations = setdiff(pref_locations, rep_locations)
         rep_locations[end-select_n+1:end] .= rem_pref_locations[1:select_n]
     end
 
     new_location_order = setdiff(location_order, rep_locations)
     new_location_order = [rep_locations; new_location_order]
+
+    # add new location order to rankings
     l_order[:, 1] .= new_location_order
-    # Match by location_id and assign rankings to log
-
     align_rankings!(rankings, l_order, rank_col)
-
     return rep_locations, rankings
 end
 
