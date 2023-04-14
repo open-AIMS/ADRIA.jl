@@ -368,7 +368,7 @@ function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Un
         inds_keep = setdiff(inds_keep, inds_rep)
 
         # storage for new set of locations
-        rep_locations = pref_locations
+        rep_locations = copy(pref_locations)
 
         while !isempty(alt_locations)
 
