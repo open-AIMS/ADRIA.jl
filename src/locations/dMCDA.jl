@@ -354,6 +354,10 @@ function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Un
 
     # find all selected locations closer than the min distance
     pref_dists = findall(dist[pref_locations, pref_locations] .< min_dist)
+
+    # storage for new set of locations
+    rep_locations = copy(pref_locations)
+
     if isempty(pref_dists)
         @warn "All locations further apart than min distance, no distance sorting occured."
         return pref_locations, rankings
@@ -367,11 +371,7 @@ function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Un
         inds_keep = collect(1:length(pref_locations))
         inds_keep = setdiff(inds_keep, inds_rep)
 
-        # storage for new set of locations
-        rep_locations = copy(pref_locations)
-
         while !isempty(alt_locations)
-
             rep_locations = [rep_locations[inds_keep[:]]; alt_locations[select_n]]
             # find all locations in current selection which are closer than allowed
             pref_dists = findall(dist[rep_locations, rep_locations] .< min_dist)
@@ -399,12 +399,12 @@ function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Un
         rem_pref_locations = setdiff(pref_locations, rep_locations)
         rep_locations[end-select_n+1:end] .= rem_pref_locations[1:select_n]
     end
-
     new_location_order = setdiff(location_order, rep_locations)
     new_location_order = [rep_locations; new_location_order]
 
     # add new location order to rankings
     l_order[:, 1] .= new_location_order
+
     align_rankings!(rankings, l_order, rank_col)
     return rep_locations, rankings
 end
