@@ -1,7 +1,7 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 authors = ["Takuya Iwanaga", "Rose Crocker", "Ken Anthony"]
-version = "0.4.5"
+version = "0.4.6"
 
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
@@ -76,7 +76,7 @@ IJulia = "1.20"
 Interpolations = "0.14"
 JSON = "0.21.3"
 MAT = "0.10"
-ModelParameters = "0.3"
+ModelParameters = "0.4"
 NCDatasets = "0.12"
 NamedDims = "1"
 OnlineStats = "1.5"
