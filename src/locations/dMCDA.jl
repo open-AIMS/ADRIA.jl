@@ -575,11 +575,11 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
         considered_locations = target_location_ids[findall(in(depth_priority), target_location_ids)]
         scen_set = NamedDimsArray(Vector(scen), factors=names(scen))
 
-        ranks_store(scenarios=cover_ind, locations=domain.location_ids[depth_priority]) .= location_selection(
-            criteria_store[locations=depth_priority],
+        ranks_store(scenarios=cover_ind, locations=domain.location_ids[considered_locations]) .= location_selection(
+            criteria_store[locations=considered_locations],
             scen_set,
             tol_temp,
-            depth_priority,
+            considered_locations,
             domain.location_distances,
             domain.median_location_distance,
             domain.sim_constants.n_location_int
