@@ -19,5 +19,5 @@ tolerances = (iv__coral_cover=(>, x -> f_coral_cover(x)),
     iv__heat_stress=(>, x -> 1 - x),
     iv__wave_stress=(>, x -> 1 - x))
 
-ranks, rank_frequencies = run_location_selection(dom, criteria_df, tolerances, coral_cover', aggregation_method=[ranks_to_frequencies, "seed"])
-Main.@infiltrate
+target_seed_locations = collect(1:length(dom.location_ids))
+ranks, rank_frequencies = run_location_selection(dom, criteria_df, tolerances, coral_cover', target_seed_locations=target_seed_locations, aggregation_method=[ranks_to_frequencies, "seed"])
