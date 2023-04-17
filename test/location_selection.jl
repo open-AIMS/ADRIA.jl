@@ -72,13 +72,15 @@ end
     # define functions for tolerances
     f_coral_cover(param) = area_to_seed * param
 
+    location_ids = collect(1:dom.location_ids)
+
     coral_cover = NamedDims.rename(repeat(sum(dom.init_coral_cover, dims=:species), size(criteria_df, 1)), (:scenarios, :locations))
     # initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of locations))
     tolerances = (iv__coral_space=(>, x -> f_coral_cover(x)),
         iv__heat_stress=(>, x -> 1 - x),
         iv__wave_stress=(>, x -> 1 - x))
 
-    ranks = ADRIA.run_location_selection(dom, criteria_df, tolerances, coral_cover')
+    ranks = ADRIA.run_location_selection(dom, criteria_df, tolerances, coral_cover', target_seed_locations=location_ids, target_shade_locations=location_ids)
 
     @test size(ranks, 1) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
     @test size(ranks, 2) == length(dom.location_ids) || "Ranks storage is not correct size for this domain."
