@@ -301,7 +301,6 @@ end
 function load_domain(path::String)::ADRIADomain
     return load_domain(path, "")
 end
-
 function unique_locations(d::ADRIADomain)::Vector{String}
     return d.location_data[:, d.unique_location_id_col]
 end
