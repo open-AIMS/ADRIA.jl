@@ -362,8 +362,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         shade_decision_years[shade_start_year] = true
     end
 
-    prefseedlocations::Vector{Int64} = zeros(Int, n_location_int)
-    prefshadelocations::Vector{Int64} = zeros(Int, n_location_int)
+    int_log = NamedDimsArray(hcat(seed_decision_years, shade_decision_years, shade_decision_years), year=1:tf, log=[:seed, :fog, :shade])
+    pref_locations = (seed=zeros(Int, n_location_int), shade=zeros(Int, n_location_int), fog=zeros(Int, n_location_int))
 
     # Max coral cover at each location. Divided by 100 to convert to proportion
     max_cover = location_k(domain)
