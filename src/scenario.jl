@@ -509,14 +509,14 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         if is_guided && in_seed_years
 
-            (prefseedlocations, prefshadelocations, rankings) = guided_location_selection(criteria_store,
-                param_set, thresholds_store, n_location_int, domain.location_distances, min_distance,
-                seed_decision_years[tstep], shade_decision_years[tstep],
-                prefseedlocations, prefshadelocations, rankings)
+            (pref_locations, rankings) = guided_location_selection(criteria_store, domain.interventions,
+                param_set, thresholds_store, n_location_int, domain.location_distances, min_distance, use_dist,
+                int_log(year=tstep), pref_locations, rankings)
 
             # Log location ranks
             # First col only holds location index ids so skip (with 2:end)
-            location_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
+            location_ranks[tstep, rankings[:seed][:, 1], 1] .= rankings[:seed][:, 2:end]
+            location_ranks[tstep, rankings[:fog][:, 1], 2] .= rankings[:fog][:, 2:end]
         elseif seed_corals && (in_seed_years || in_shade_years)
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
             prefseedlocations, prefshadelocations = unguided_location_selection(prefseedlocations, prefshadelocations,
