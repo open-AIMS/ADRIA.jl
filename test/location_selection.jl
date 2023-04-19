@@ -48,21 +48,21 @@ end
 end
 @testset "Unguided location selection" begin
     n_intervention_locations = 5
-    prefseedlocations = zeros(Int, n_intervention_locations)
-    prefshadelocations = zeros(Int, n_intervention_locations)
+    int_logs = NamedDimsArray([true true false], scenarios=[1], log=[:seed, :fog, :shade])
+    pref_locations = (seed=zeros(Int, n_intervention_locations), shade=zeros(Int, n_intervention_locations))
     seed_years = true
     shade_years = true
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
     depth_priority = collect(1:5)
 
-    prefseedlocations, prefshadelocations = ADRIA.unguided_location_selection(prefseedlocations, prefshadelocations, true, true, 5, max_cover, depth_priority)
+    pref_locations = ADRIA.unguided_location_selection(pref_locations, int_logs[scenarios=1], 5, max_cover, depth_priority)
 
     # Check that only two locations are selected (the locations where k > 0.0)
-    @test length(prefseedlocations[prefseedlocations.>0]) == 2
-    @test length(prefshadelocations[prefshadelocations.>0]) == 2
+    @test length(pref_locations.seed[pref_locations.seed.>0]) == 2
+    @test length(pref_locations.fog[pref_locations.fog.>0]) == 2
 
-    @test all([in(sid, [2, 3]) for sid in prefseedlocations[prefseedlocations.>0]])
-    @test all([in(sid, [2, 3]) for sid in prefshadelocations[prefshadelocations.>0]])
+    @test all([in(sid, [2, 3]) for sid in pref_locations.seed[pref_locations.seed.>0]])
+    @test all([in(sid, [2, 3]) for sid in pref_locations.shade[pref_locations.shade.>0]])
 end
 
 @testset "Guided location selection without ADRIA ecological model" begin
