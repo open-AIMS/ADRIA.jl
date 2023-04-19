@@ -86,7 +86,7 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(scenario_attributes),String,String,Vector{String},String,EnvLayer{String,Vector{Int64}},SimConstants,Vector{String},Vector{Float64},Vector{Float64},Vector{Tuple{Float64,Float64}}})   # time: 0.2140636
     Base.precompile(Tuple{typeof(model_spec),Model})   # time: 0.1997914
     Base.precompile(Tuple{typeof(bleaching_mortality!),Matrix{Float64},Matrix{Float64},Vector{Float64},Int64,Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Float64})   # time: 0.1940948
-    Base.precompile(Tuple{typeof(rank_seed_locations!),Matrix{Float64},Vector{Float64},Matrix{Int64},Int64,Function})   # time: 0.1931881
+    Base.precompile(Tuple{typeof(rank_locations!),Matrix{Float64},Vector{Float64},Matrix{Int64},Int64,Function})   # time: 0.1931881
     Base.precompile(Tuple{typeof(filter_decision_matrix),Vector{Int64},Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Matrix{Float64},Matrix{Float64},Float64})   # time: 0.1929096
     Base.precompile(Tuple{typeof(scenario_attributes),String,String,Vector{String},String,EnvLayer{String,Vector{Any}},Dict{String,Any},Vector{Any},Vector{Float64},Vector{Float64},Vector{Any}})   # time: 0.1755622
     Base.precompile(Tuple{typeof(proportional_adjustment!),Matrix{Float64},Vector{Float64},Vector{Float64}})   # time: 0.1680073
