@@ -418,7 +418,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             iv__heat_stress=(>, 1 - param_set("iv__heat_stress__tol")),
             iv__wave_stress=(>, 1 - param_set("iv__wave_stress__tol")))
 
-        rankings, criteria_store, thresholds_store, min_distance = initialize_mcda(domain, param_set, depth_priority, tolerances)
+        rankings, criteria_store, thresholds_store, min_distance, use_dist = initialize_mcda(domain, param_set, depth_priority, tolerances)
+
     end
 
     #### End coral constants
