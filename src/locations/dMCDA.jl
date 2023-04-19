@@ -339,7 +339,7 @@ function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Un
     end
 
     # If not all locations could be replaced, just use highest ranked remaining pref_locations
-    if select_n != 0
+    if select_n != 0 && !all(pref_locations .== rep_locations)
         rem_pref_locations = setdiff(pref_locations, rep_locations)
         rep_locations[end-select_n+1:end] .= rem_pref_locations[1:select_n]
     end
@@ -349,7 +349,7 @@ function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Un
     # add new location order to rankings
     l_order[:, 1] .= new_location_order
 
-    align_rankings!(rankings, l_order, rank_col)
+    align_rankings!(rankings, l_order)
     return rep_locations, rankings
 end
 
