@@ -98,10 +98,10 @@ end
 
 Align a vector of location rankings to match the indicated order in `l_order`.
 """
-function align_rankings!(rankings::Array, l_order::Matrix, col::Int64)::Nothing
+function align_rankings!(rankings::Array, l_order::Matrix)::Nothing
     # Fill target ranking column
     for (i, location_id) in enumerate(l_order[:, 1])
-        rankings[rankings[:, 1].==location_id, col] .= l_order[i, 3]
+        rankings[rankings[:, 1].==location_id, 2] .= l_order[i, 3]
     end
 
     return
@@ -122,7 +122,7 @@ end
 # Returns
 - `preflocations` : locations in order of their rankings
 """
-function rank_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+function rank_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred locations
     selector = vec(.!all(S .== 0, dims=1))
 
@@ -136,16 +136,9 @@ function rank_locations!(S, weights, rankings, n_location_int, location_ids, mcd
     preflocations = Int.(l_order[1:last_idx, 1])
 
     # Match by location_id and assign rankings to log
-    align_rankings!(rankings, l_order, rank_col)
+    align_rankings!(rankings, l_order)
 
     return preflocations, l_order
-end
-
-function rank_seed_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func, 2)
-end
-function rank_shade_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func, 3)
 end
 
 """
@@ -297,7 +290,7 @@ Replaces these locations with locations in the top_n ranks if the distance betwe
 - `rep_locations` : new set of selected locations for seeding or shading.
 """
 function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
-    min_dist::Float64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
+    min_dist::Float64, rankings::Matrix{Int64})::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
     location_order = l_order[:, 1]
     # locations to select alternatives from
