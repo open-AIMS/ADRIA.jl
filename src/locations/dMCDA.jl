@@ -410,20 +410,21 @@ For example, (iv__heat_stress=(<,0.5)), implies the criteria "iv__heat_stress" m
 - `ranks` : n_reps * locations * 3 (last dimension indicates: location_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
-function location_selection(criteria_store::NamedDimsArray, scenario::NamedDimsArray, tolerances::NamedTuple,
-    location_ids::AbstractArray, location_distances::Matrix, med_location_distance::Float64, n_location_int::Int64)
+function location_selection(criteria_store::NamedDimsArray, interventions::NamedTuple, scenario::NamedDimsArray,
+    tolerances::NamedTuple, int_logs::NamedDimsArray, location_ids::AbstractArray, location_distances::Matrix,
+    med_location_distance::Float64, n_location_int::Int64)
 
     tolerances_store = create_tolerances_store(tolerances)
     min_distance = med_location_distance .* scenario("dist_thresh")
     n_locations = length(location_ids)
 
     # location_id, seeding rank, shading rank
-    rankingsin = [location_ids zeros(Int64, (n_locations, 1)) zeros(Int64, (n_locations, 1))]
-    prefseedlocations = zeros(Int64, (1, n_location_int))
-    prefshadelocations = zeros(Int64, (1, n_location_int))
+    rankingsin = (seed=[location_ids zeros(Int64, (n_locations, 1))], fog=[location_ids zeros(Int64, (n_locations, 1))])
+    pref_locations = (seed=zeros(Int, n_location_int), shade=zeros(Int, n_location_int), fog=zeros(Int, n_location_int))
 
-    (_, _, ranks) = guided_location_selection(criteria_store, scenario, tolerances_store, n_location_int,
-        location_distances, min_distance, true, true, prefseedlocations, prefshadelocations, rankingsin)
+    (_, ranks) = guided_location_selection(criteria_store, interventions, scenario, tolerances_store, n_location_int,
+        location_distances, min_distance, (seed=true, fog=true, shade=false), int_logs,
+        pref_locations, rankingsin)
     return ranks
 end
 
