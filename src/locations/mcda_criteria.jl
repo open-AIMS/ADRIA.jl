@@ -41,6 +41,28 @@ function zones_criteria(zones::Vector{String}, priority_zones::Vector{String},
     return zones_criteria
 end
 
+
+"""
+    reef_cluster_criteria(reef_data::Vector{String})
+
+Converts reef cluster names for each site into float categories.
+
+# Arguments
+- `reef_data` : Reef cluster name/identifier for each location considered in mcda.
+
+# # Returns
+# - `clusters` : Vector of floats indicating cluster for each reef/location.
+
+"""
+function reef_cluster_criteria(reef_data::Vector{String})
+    clusters = zeros(1, length(reef_data))
+    for (k, reef) in enumerate(unique(reef_data))
+        clusters[reef_data.==reef] .= k
+    end
+    return clusters
+end
+
+
 """
     priority_predecessor_criteria(strong_pred::Vector{Int64}, priority_locations::Vector{Any})
 
