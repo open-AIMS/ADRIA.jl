@@ -460,11 +460,12 @@ Perform location selection for a given domain for multiple scenarios defined in 
 """
 function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, tolerances::NamedTuple, coral_covers::NamedDimsArray;
     aggregation_method=nothing, target_seed_locations=nothing, target_shade_locations=nothing)
+
     ranks_store = NamedDimsArray(
         zeros(nrow(scenarios), length(domain.location_ids), 3),
         scenarios=1:nrow(scenarios),
         locations=domain.location_ids,
-        ranks=["location_id", "seed_rank", "shade_rank"],
+        ranks=["location_id", "seed_rank", "fog_rank"],
     )
 
 <<<<<<< main:src/sites/dMCDA.jl
@@ -489,6 +490,9 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
     if !isnothing(target_shade_locations)
         append!(target_location_ids, target_shade_locations)
     end
+
+    int_logs = NamedDimsArray([(scenarios.seed_CA .> 0) .& (scenarios.seed_TA .> 0) scenarios.fogging .> 0 Bool.(zeros(length(scenarios.fogging)))],
+        scenarios=1:length(scenarios.fogging), log=[:seed, :fog, :shade])
 
     # Pre-calculate maximum depth to consider
     scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
@@ -520,15 +524,19 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
         considered_locations = target_location_ids[findall(in(depth_priority), target_location_ids)]
         scen_set = NamedDimsArray(Vector(scen), factors=names(scen))
 
-        ranks_store(scenarios=cover_ind, locations=domain.location_ids[considered_locations]) .= location_selection(
-            criteria_store[locations=considered_locations],
+        temp_ranks = location_selection(criteria_store[locations=considered_locations],
+            domain.interventions,
             scen_set,
             tol_temp,
+            int_logs[scenarios=cover_ind],
             considered_locations,
             domain.location_distances,
             domain.median_location_distance,
             domain.sim_constants.n_location_int
         )
+
+        ranks_store(scenarios=cover_ind, locations=domain.location_ids[considered_locations], ranks="seed_rank") .= temp_ranks[:seed][:, 2]
+        ranks_store(scenarios=cover_ind, locations=domain.location_ids[considered_locations], ranks="fog_rank") .= temp_ranks[:fog][:, 2]
 
     end
     if !isnothing(aggregation_method)
