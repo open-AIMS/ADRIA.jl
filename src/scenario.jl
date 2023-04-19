@@ -563,15 +563,15 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         if seed_corals && in_seed_years && has_seed_locations
             # Calculate proportion to seed based on current available space
             seeded_area = (TA=n_TA_to_seed * col_area_seed_TA, CA=n_CA_to_seed * col_area_seed_CA)
-            scaled_seed = distribute_seeded_corals(vec(total_location_area), prefseedlocations, vec(leftover_space_m²), seeded_area)
+            scaled_seed = distribute_seeded_corals(vec(total_location_area), pref_locations.seed, vec(leftover_space_m²), seeded_area)
 
             # Seed each location with TA or CA
-            @views Y_pstep[seed_sc_TA, prefseedlocations] .= Y_pstep[seed_sc_TA, prefseedlocations] .+ scaled_seed.TA
-            @views Y_pstep[seed_sc_CA, prefseedlocations] .= Y_pstep[seed_sc_CA, prefseedlocations] .+ scaled_seed.CA
+            @views Y_pstep[seed_sc_TA, pref_locations.seed] .= Y_pstep[seed_sc_TA, pref_locations.seed] .+ scaled_seed.TA
+            @views Y_pstep[seed_sc_CA, pref_locations.seed] .= Y_pstep[seed_sc_CA, pref_locations.seed] .+ scaled_seed.CA
 
             # Log seed values/locations (these values are relative to location area)
-            Yseed[tstep, 1, prefseedlocations] .= scaled_seed.TA
-            Yseed[tstep, 2, prefseedlocations] .= scaled_seed.CA
+            Yseed[tstep, 1, pref_locations.seed] .= scaled_seed.TA
+            Yseed[tstep, 2, pref_locations.seed] .= scaled_seed.CA
         end
 
         # Calculate survivors from bleaching and wave stress
