@@ -28,12 +28,14 @@ end
     criteria_store(:iv__wave_stress) .= ADRIA.env_stress_criteria(Array(dropdims(ADRIA.mean(wave_scens, dims=(:timesteps, :scenarios)) .+ ADRIA.var(wave_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
     criteria_store(:iv__heat_stress) .= ADRIA.env_stress_criteria(Array(dropdims(ADRIA.mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ ADRIA.var(dhw_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
 
-    ranks = ADRIA.location_selection(criteria_store, scen, tolerances,
+    int_logs = NamedDimsArray([true true false], scenarios=[1], log=[:seed, :fog, :shade])
+
+    ranks = ADRIA.location_selection(criteria_store, dom.interventions, scen, tolerances, int_logs[scenarios=1],
         location_ids, dom.location_distances, dom.median_location_distance, n_location_int)
 
-    @test all([in(r, collect(0:length(dom.location_ids)+1)) for r in ranks[:, 2]]) || "Some seed ranks outside of possible ranks (0-n_locations+1)"
-    @test all([in(r, collect(0:length(dom.location_ids)+1)) for r in ranks[:, 3]]) || "Some shade ranks outside of possible ranks (0-n_locations+1)"
-    @test (length(ranks[:, 2]) - length(unique(sort(ranks[:, 2])))) == sum(ranks[:, 2] .== 0) - 1 || " Some filtered locations not set to zero."
+    @test all([in(r, collect(0:length(dom.location_ids)+1)) for r in ranks[:seed][:, 2]]) || "Some seed ranks outside of possible ranks (0-n_locations+1)"
+    @test all([in(r, collect(0:length(dom.location_ids)+1)) for r in ranks[:fog][:, 2]]) || "Some shade ranks outside of possible ranks (0-n_locations+1)"
+    @test (length(ranks[:seed][:, 2]) - length(unique(sort(ranks[:seed][:, 2])))) == sum(ranks[:seed][:, 2] .== 0) - 1 || " Some filtered locations not set to zero."
 
 end
 @testset "MCDA variable in Domain" begin
