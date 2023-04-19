@@ -49,6 +49,7 @@ mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,I<:Vector{Int64}
 
     # Named tuple holding all criteria to be used in mcda
     mcda_criteria::NamedTuple
+    interventions::NamedTuple
 
     # Parameters
     model::Model  # core model
@@ -93,16 +94,18 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::Abstra
     out_connectivity = connectivity_criteria(out_conn, init_sum_cover, location_data.area)
     heat_stress = zeros(1, n_locations)
     wave_stress = zeros(1, n_locations)
+    clusters = reef_cluster_criteria(location_data.Reef)
 
     mcda_criteria = (iv__coral_cover=coral_cover, iv__coral_space=coral_space, iv__heat_stress=heat_stress,
         iv__wave_stress=wave_stress, iv__out_connectivity=out_connectivity, iv__in_connectivity=in_connectivity,
-        iv__zone=zone, iv__priority=priority, iv__depth=location_data.depth_med)
+        iv__zone=zone, iv__priority=priority, iv__depth=location_data.depth_med, iv__clusters=clusters)
 
+    interventions = (seed=(x -> x), fog=(x -> x), shade=(x -> shade_aggregation(x)))
 
     model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
 
     return ADRIADomain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, location_data, location_distances, median_location_distance, location_id_col, unique_location_id_col,
-        init_coral_cover, coral_growth, location_ids, removed_locations, DHWs, waves, mcda_criteria,
+        init_coral_cover, coral_growth, location_ids, removed_locations, DHWs, waves, mcda_criteria, interventions,
         model, sim_constants)
 end
 
@@ -127,7 +130,6 @@ function location_distances(location_data::DataFrame)::Tuple{Matrix{Float64},Flo
             if ii == jj
                 continue
             end
-
             @inbounds dist[ii, jj] = haversine((longitudes[ii], latitudes[ii]), (longitudes[jj], latitudes[jj]))
         end
     end
@@ -299,7 +301,6 @@ end
 function load_domain(path::String)::ADRIADomain
     return load_domain(path, "")
 end
-
 
 function unique_locations(d::ADRIADomain)::Vector{String}
     return d.location_data[:, d.unique_location_id_col]
