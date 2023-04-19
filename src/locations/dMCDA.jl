@@ -198,104 +198,46 @@ end
 # Arguments
 - `d_vars` : DMCDA_vars type struct containing weightings and criteria values for location selection.
 - `alg_ind` : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
-<<<<<<< main:src/sites/dMCDA.jl
-- `log_seed` : boolean indicating whether seeding sites are being re-assesed at current time
-- `log_shade` : boolean indicating whether shading/fogging sites are being re-assesed at current time
-- `prefshadesites` : previous time step's selection of sites for shading
-- `prefseedsites` : previous time step's selection of sites for seeding
-- `rankingsin` : pre-allocated store for site rankings
-- `in_conn` : in-degree centrality
-- `out_conn` : out-degree centrality
-- `strong_pred` : strongest predecessors
-=======
-- `log_seed` : boolean indicating whether seeding locations are being re-assesed at current time
-- `log_shade` : boolean indicating whether shading/fogging locations are being re-assesed at current time
-- `prefshadelocations` : previous time step's selection of locations for shading
-- `prefseedlocations` : previous time step's selection of locations for seeding
+- `int_logs` : booleans indicating whether locations for each intervention are being re-assesed at current time
+- `pref_locations` : previous time step's selection of locations for each intervention.
 - `rankingsin` : pre-allocated store for location rankings
->>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
 
 # Returns
 Tuple :
-    - `prefseedlocations` : n_location_int highest ranked seeding locations
-    - `prefshadelocations` : n_location_int highest ranked shading/fogging locations
+    - `pref_locations` : n_location_int highest ranked locations for each intervention.
     - `rankings` : n_locations ⋅ 3 matrix holding [location_id, seeding_rank, shading_rank],
         Values of 0 indicate locations that were not considered
 """
-function guided_location_selection(criteria_store::NamedDimsArray,
+function guided_location_selection(criteria_store::NamedDimsArray, interventions::NamedTuple,
     params::NamedDimsArray, thresholds::NamedDimsArray, n_location_int::Int64,
-    distances::Matrix, minimum_distance::Float64, log_seed::B, log_shade::B,
-    prefseedlocations::IA, prefshadelocations::IA,
-    rankingsin::Matrix{T}
-)::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool}
-
-<<<<<<< main:src/sites/dMCDA.jl
-    site_ids::Array{Int64} = criteria_store.reefs
-    use_dist::Int64 = d_vars.use_dist
-    min_dist::Float64 = d_vars.min_dist
-    site_ids = copy(d_vars.site_ids)
-    n_sites::Int64 = length(site_ids)
-
-    # if no sites are available, abort
-    if n_sites == 0
-        return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
-=======
-    location_ids::Array{Int64} = criteria_store.locations
-    use_dist::Int64 = params("use_dist")
-
-    # Force different locations to be selected
-    location_ids = setdiff(location_ids, vcat(prefseedlocations, prefshadelocations))
-    mod_n_ranks = min(size(rankingsin, 1), length(location_ids))
-    if mod_n_ranks < length(criteria_store.locations) && length(rankingsin) != 0
-        rankingsin = rankingsin[in.(rankingsin[:, 1], [location_ids]), :]
-        location_ids = rankingsin[:, 1]
-    elseif length(rankingsin) != 0
-        rankingsin = [location_ids zeros(Int64, length(location_ids)) zeros(Int64, length(location_ids))]
-    end
-
-    criteria_store = criteria_store[in.(criteria_store.locations, [location_ids]), :]
-    n_locations::Int64 = length(location_ids)
-
-    # if no locations are available, abort
-    if n_locations == 0
-        return prefseedlocations, prefshadelocations, rankingsin
->>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
-    end
-
+    distances::Matrix, minimum_distance::Float64, use_dist::NamedTuple, int_logs::NamedDimsArray,
+    pref_locations::NamedTuple, rankingsin::NamedTuple
+)::Tuple
     # location_id, seeding rank, shading rank
-    rankings = Int64[location_ids zeros(Int64, n_locations) zeros(Int64, n_locations)]
     mcda_func = mcda_methods[Int(params("guided"))]
-
+    # filter criteria prior to decision making
     criteria_store = filter_decision_matrix(criteria_store, thresholds)
 
     if isempty(criteria_store)
         # if all rows have nans and A is empty, abort mission
-<<<<<<< main:src/sites/dMCDA.jl
-        return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
-=======
-        return prefseedlocations, prefshadelocations, rankingsin
->>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
+        @warn "All locations were filtered during risk filtering, so original set of locations was used."
+        return pref_locations, rankingsin
     end
 
-    # cap to number of locations left after risk filtration
-    n_location_int = min(n_location_int, length(criteria_store.locations))
+    for int_key in keys(interventions)
 
-    # if seeding, create seeding specific decision matrix
-    if log_seed
-        SE, wse = create_intervention_matrix(criteria_store, params, "seed")
-    end
+        # if seeding, create seeding specific decision matrix
+        if int_logs(int_key)
+            # get criteria matrix aggregation for particular intervention
+            criteria_store_temp = interventions[int_key](criteria_store)
 
-    # if shading, create shading specific decision matrix
-    if log_shade
-        SH, wsh = create_intervention_matrix(criteria_store, params, "shade")
-    end
+            # cap to number of locations left after risk filtration
+            n_location_int = min(n_location_int, length(criteria_store_temp.locations))
+            location_ids::Array{Int64} = criteria_store_temp.locations
+            location_ids = setdiff(location_ids, pref_locations[int_key])
 
     if log_seed && isempty(SE)
-<<<<<<< main:src/sites/dMCDA.jl
-        prefseedsites = zeros(Int64, n_site_int)
-=======
         prefseedlocations = repeat([0], n_location_int)
->>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
     elseif log_seed
         prefseedlocations, l_order_seed = rank_seed_locations!(SE, wse, rankings, n_location_int, criteria_store.locations, mcda_func)
         if use_dist != 0
@@ -304,29 +246,38 @@ function guided_location_selection(criteria_store::NamedDimsArray,
     end
 
     if log_shade && isempty(SH)
-<<<<<<< main:src/sites/dMCDA.jl
-        prefshadesites = zeros(Int64, n_site_int)
-=======
         prefshadelocations = repeat([0], n_location_int)
->>>>>>> Change references to sites in MCDA files to locations:src/locations/dMCDA.jl
     elseif log_shade
         prefshadelocations, l_order_shade = rank_shade_locations!(SH, wsh, rankings, n_location_int, criteria_store.locations, mcda_func)
 
-        if use_dist != 0
-            prefshadelocations, rankings = distance_sorting(prefshadelocations, l_order_shade, distances, minimum_distance, rankings, 3)
+            criteria_store_temp = criteria_store_temp[in.(criteria_store_temp.locations, [location_ids]), :]
+            n_locations_all::Int64 = length(location_ids)
+
+            # if no locations are available, abort
+            if n_locations_all !== 0
+                S, ws = create_intervention_matrix(criteria_store_temp, params, String(int_key))
+
+                if int_logs(int_key) && isempty(S)
+                    pref_locations[int_key] .= repeat([0], n_location_int)
+
+                elseif int_logs(int_key)
+                    pref_locations_temp, l_order = rank_locations!(S, ws, rankings, n_location_int, criteria_store_temp.locations, mcda_func)
+
+                    if use_dist[int_key] != 0
+                        pref_locations_temp, rankings = distance_sorting(pref_locations_temp, l_order, distances, minimum_distance, rankings)
+
+                    end
+                    pref_locations[int_key] .= pref_locations_temp
+                end
+            end
+
+            if sum(pref_locations[int_key]) !== 0
+                rankingsin[int_key][Bool.(dropdims(sum(in.(rankings[:, 1]', rankingsin[int_key][:, 1]), dims=2), dims=2)), 2] .= rankings[:, 2]
+            end
         end
     end
 
-    # Replace with input rankings if seeding or shading rankings have not been filled
-    if sum(prefseedlocations) == 0
-        rankings[:, 2] .= rankingsin[:, 2]
-    end
-
-    if sum(prefshadelocations) == 0
-        rankings[:, 3] .= rankingsin[:, 3]
-    end
-
-    return prefseedlocations, prefshadelocations, rankings
+    return pref_locations, rankingsin
 end
 
 
