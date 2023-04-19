@@ -186,6 +186,15 @@ function update_criteria_store!(criteria_store::NamedDimsArray, wave_stress::Abs
     return criteria_store
 end
 
+function shade_aggregation(criteria_store::NamedDimsArray)
+    criteria_store_shade = copy(criteria_store)[1:length(unique(criteria_store(:iv__clusters))), :]
+    criteria_store_shade.locations .= unique(criteria_store(:iv__clusters))
+    for k in unique(criteria_store(:iv__clusters))
+        criteria_store_shade[locations=Int(k)] .= dropdims(median(criteria_store[criteria_store(:iv__clusters).==k, :], dims=:locations), dims=:locations)
+    end
+    return criteria_store_shade
+end
+
 """
     ranks_to_location_order(ranks::NamedDimsArray, int_type::String)
 
