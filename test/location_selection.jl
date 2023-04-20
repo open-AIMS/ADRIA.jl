@@ -49,13 +49,11 @@ end
 @testset "Unguided location selection" begin
     n_intervention_locations = 5
     int_logs = NamedDimsArray([true true false], scenarios=[1], log=[:seed, :fog, :shade])
-    pref_locations = (seed=zeros(Int, n_intervention_locations), shade=zeros(Int, n_intervention_locations))
-    seed_years = true
-    shade_years = true
+    pref_locations = (seed=zeros(Int, n_intervention_locations), fog=shade = zeros(Int, n_intervention_locations), shade=zeros(Int, n_intervention_locations))
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
     depth_priority = collect(1:5)
-
-    pref_locations = ADRIA.unguided_location_selection(pref_locations, int_logs[scenarios=1], 5, max_cover, depth_priority)
+    clusters = [1.0, 2.0, 3.0, 4.0, 5.0]
+    pref_locations_new = ADRIA.unguided_location_selection(pref_locations, int_logs[scenarios=1], 5, max_cover, depth_priority, clusters)
 
     # Check that only two locations are selected (the locations where k > 0.0)
     @test length(pref_locations.seed[pref_locations.seed.>0]) == 2
@@ -74,7 +72,7 @@ end
     # define functions for tolerances
     f_coral_cover(param) = area_to_seed * param
 
-    location_ids = collect(1:dom.location_ids)
+    location_ids = collect(1:length(dom.location_ids))
 
     coral_cover = NamedDims.rename(repeat(sum(dom.init_coral_cover, dims=:species), size(criteria_df, 1)), (:scenarios, :locations))
     # initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of locations))
