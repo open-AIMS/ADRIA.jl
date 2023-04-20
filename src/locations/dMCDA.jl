@@ -535,7 +535,7 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
         criteria_store(:iv__in_connectivity) .= in_connectivity[scenarios=cover_ind]
         criteria_store(:iv__out_connectivity) .= out_connectivity[scenarios=cover_ind]
 
-        considered_locations = target_location_ids[findall(in(depth_priority), target_location_ids)]
+        considered_locations = unique(target_location_ids[findall(in(depth_priority), target_location_ids)])
         scen_set = NamedDimsArray(Vector(scen), factors=names(scen))
 
         temp_ranks = location_selection(criteria_store[locations=considered_locations],
@@ -601,14 +601,14 @@ Randomly select seed/shade location locations for the given year, constraining t
 Here, `max_cover` represents the max. carrying capacity for each location (the `k` value).
 
 # Arguments
-- `prefseedlocations` : Previously selected locations
-- `seed_years` : bool, indicating whether to seed this year or not
-- `shade_years` : bool, indicating whether to shade this year or not
+- `pref_locations` : Previously selected locations
+- `int_log` : bool, indicating whether each intervention occurs this year or not.
 - `n_location_int` : int, number of locations to intervene on
 - `available_space` : vector/matrix : space available at each location (`k` value)
-- `depth` : vector of location ids found to be within desired depth range
+- `depth` : vector of location ids found to be within desired depth range.
+- 'clusters' : vector of cluster identifiers.
 """
-function unguided_location_selection(pref_locations, int_log, n_location_int, available_space, depth)
+function unguided_location_selection(pref_locations, int_logs, n_location_int, available_space, depth, clusters)
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.1
     # Only locations that have available space are considered, otherwise a zero-division error may occur later on.
 
@@ -616,13 +616,18 @@ function unguided_location_selection(pref_locations, int_log, n_location_int, av
     candidate_locations = depth[(available_space.>0.0)[depth]]  # Filter down to location ids to be considered
     num_locations = length(candidate_locations)
     s_n_location_int = num_locations < n_location_int ? num_locations : n_location_int
+    s_n_location_int_shade = length(clusters) < n_location_int ? length(clusters) : n_location_int
 
-    for int_key in keys(int_log)
-        if int_log[int_key]
+    for int_key in [:seed, :fog]
+        if int_logs(int_key)
             pref_locations[int_key] .= zeros(Int64, n_location_int)
             pref_locations[int_key][1:s_n_location_int] .= StatsBase.sample(candidate_locations, s_n_location_int; replace=false)
-            pref_locations[int_key] .= pref_locations[int_key][pref_locations[int_key].>0]
+
         end
+    end
+
+    if int_logs(:shade)
+        pref_locations[:shade] .= StatsBase.sample(clusters, s_n_location_int_shade; replace=false)
     end
 
     return pref_locations
