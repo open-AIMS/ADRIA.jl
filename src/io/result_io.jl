@@ -119,7 +119,7 @@ function setup_logs(z_store, unique_locations, n_scens, tf, n_locations)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
 
     # Store ranked locations
-    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locations, 2, n_scens)  # locations, location id and rank, no. scenarios
+    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locations, 3, n_scens)  # locations, location id and rank, no. scenarios
     fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_locations, n_scens)  # timeframe, locations, no. scenarios
 
     # tf, no. intervention locations, location id and rank, no. scenarios

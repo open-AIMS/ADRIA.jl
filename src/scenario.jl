@@ -201,7 +201,7 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     # end
 
     # Store logs
-    tmp_location_ranks = zeros(Float32, tf, nrow(domain.location_data), 2)
+    tmp_location_ranks = zeros(Float32, tf, nrow(domain.location_data), length(domain.interventions))
     c_dim = Base.ndims(result_set.raw) + 1
     log_stores = (:location_ranks, :seed_log, :fog_log, :shade_log)
     for k in log_stores
@@ -332,7 +332,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     ode_u = zeros(n_species, n_locations)
     cover_tmp = p.cover  # pre-allocated matrix used to avoid memory allocations
 
-    location_ranks = SparseArray(zeros(tf, n_locations, 2)) # log seeding/fogging/shading ranks
+    location_ranks = SparseArray(zeros(tf, n_locations, length(domain.interventions))) # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_locations))
     Yfog = SparseArray(spzeros(tf, n_locations))
     Yseed = SparseArray(zeros(tf, 2, n_locations))  # 2 = the two enhanced coral types
