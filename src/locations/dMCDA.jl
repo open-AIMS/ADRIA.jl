@@ -182,6 +182,7 @@ function create_intervention_matrix(criteria_store::NamedDimsArray, params::Name
     ws = mcda_normalize(Array(params(int_params)))
     S = Matrix(criteria_store[criteria=crit_inds])
     return S, ws
+
 end
 
 
@@ -260,7 +261,7 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
                 # create intervention matrix
                 S, ws = create_intervention_matrix(criteria_store_temp, params, String(int_key))
 
-                # pad with zeros incase less sites than n_location_int
+                # pad with zeros incase less locations than n_location_int are suitable
                 pref_locations[int_key] .= repeat([0], length(pref_locations[int_key]))
 
                 if !isempty(S)
@@ -268,7 +269,7 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
                     pref_locations_temp, l_order = rank_locations!(S, ws, rankings, n_location_int, criteria_store_temp.locations, mcda_func)
 
                     if use_dist[int_key] != 0
-                        # sort sites for distance requirements
+                        # sort locations for distance requirements
                         pref_locations_temp, rankings = distance_sorting(pref_locations_temp, l_order, distances, minimum_distance, rankings)
 
                     end
@@ -276,7 +277,7 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
                     pref_locations[int_key][1:length(pref_locations_temp)] .= pref_locations_temp
                 end
             end
-            # Replace in put rankings if the selected locations exist
+            # Replace input rankings if locations have been selected
             if sum(pref_locations[int_key]) !== 0
                 rankingsin[int_key][Bool.(dropdims(sum(in.(rankings[:, 1]', rankingsin[int_key][:, 1]), dims=2), dims=2)), 2] .= rankings[:, 2]
             end
@@ -432,7 +433,7 @@ function location_selection(criteria_store::NamedDimsArray, interventions::Named
     min_distance = med_location_distance .* scenario("dist_thresh")
     n_locations = length(location_ids)
 
-    # location_id, seeding rank, shading rank
+    # set up rankings and pref_locations structures
     rankingsin = (seed=[location_ids zeros(Int64, (n_locations, 1))], fog=[location_ids zeros(Int64, (n_locations, 1))])
     pref_locations = (seed=zeros(Int, n_location_int), shade=zeros(Int, n_location_int), fog=zeros(Int, n_location_int))
 
@@ -505,11 +506,14 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
         append!(target_location_ids, target_shade_locations)
     end
 
+    # set up intervention logging structure (years by number of interventions)
     int_logs = NamedDimsArray([(scenarios.seed_CA .> 0) .& (scenarios.seed_TA .> 0) scenarios.fogging .> 0 Bool.(zeros(length(scenarios.fogging)))],
         scenarios=1:length(scenarios.fogging), log=[:seed, :fog, :shade])
 
     # Pre-calculate maximum depth to consider
     scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
+
+    # set-up criteria storage
     criteria_store = create_criteria_store(collect(1:length(domain.location_ids)), domain.mcda_criteria)
 
     coral_cover, coral_space = coral_cover_criteria(domain.location_data, coral_covers)
@@ -517,6 +521,7 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
     in_connectivity = connectivity_criteria(domain.in_conn, coral_covers, domain.location_data.area)
     out_connectivity = connectivity_criteria(domain.out_conn, coral_covers, domain.location_data.area)
 
+    # use mean wave and dhw scenarios (+var)
     criteria_store(:iv__wave_stress) .= env_stress_criteria(Array(dropdims(mean(wave_scens, dims=(:timesteps, :scenarios)) .+ var(wave_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
     criteria_store(:iv__heat_stress) .= env_stress_criteria(Array(dropdims(mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ var(dhw_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
 
@@ -527,9 +532,11 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
             tol_temp = (; tol_temp..., tol => (tolerances[tol][1], map(tolerances[tol][2], scen[string(String(tol), "__tol")])))
         end
 
+        # update depth 
         depth_criteria = (domain.location_data.depth_med .<= scen.max_depth) .& (domain.location_data.depth_med .>= scen.depth_min)
         depth_priority = findall(depth_criteria)
 
+        # update scenario dependent criteria
         criteria_store(:iv__coral_cover) .= coral_cover[scenarios=cover_ind]
         criteria_store(:iv__coral_space) .= coral_space[scenarios=cover_ind]
         criteria_store(:iv__in_connectivity) .= in_connectivity[scenarios=cover_ind]
@@ -538,6 +545,7 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
         considered_locations = unique(target_location_ids[findall(in(depth_priority), target_location_ids)])
         scen_set = NamedDimsArray(Vector(scen), factors=names(scen))
 
+        # perform location selection
         temp_ranks = location_selection(criteria_store[locations=considered_locations],
             domain.interventions,
             scen_set,
@@ -549,6 +557,7 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
             domain.sim_constants.n_location_int
         )
 
+        # store
         ranks_store(scenarios=cover_ind, locations=domain.location_ids[considered_locations], ranks="seed_rank") .= temp_ranks[:seed][:, 2]
         ranks_store(scenarios=cover_ind, locations=domain.location_ids[considered_locations], ranks="fog_rank") .= temp_ranks[:fog][:, 2]
 
