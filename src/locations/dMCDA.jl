@@ -186,14 +186,24 @@ end
 
 
 """
-    guided_location_selection(d_vars::DMCDA_vars, criteria_df::DataFrame, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedlocations::AbstractArray{Int64}, prefshadelocations::AbstractArray{Int64}, rankingsin::Matrix{Int64})
+    function guided_location_selection(criteria_store::NamedDimsArray, interventions::NamedTuple,
+        params::NamedDimsArray, thresholds::NamedDimsArray, n_location_int::Int64,
+        distances::Matrix, minimum_distance::Float64, use_dist::NamedTuple, int_logs::NamedDimsArray,
+        pref_locations::NamedTuple, rankingsin::NamedTuple
+    )::Tuple
 
 # Arguments
-- `d_vars` : DMCDA_vars type struct containing weightings and criteria values for location selection.
-- `alg_ind` : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
-- `int_logs` : booleans indicating whether locations for each intervention are being re-assesed at current time
+- `criteria_store` : contains all criteria for all intervention types.
+- `interventions` : has intervention type names as keys and specifies aggregation function for criteria_store for each intervention.
+- `params` : parameters for particular scenario run of the model.
 - `pref_locations` : previous time step's selection of locations for each intervention.
-- `rankingsin` : pre-allocated store for location rankings
+- `thresholds` : specifies risk filter thresholds for criteria_store.
+- `n_location_int` : specifies number of locations to apply intervention at.
+- `distances` : n_locations*n_locations, specifies Haversine distance between each location in the set.
+- `minimum_distance` : specifies minimum allowed distance between selected locations.
+- `use_dist` : specifies whether distance sorting should be used for each intervention.
+- `int_logs` : specifies whether location selection should be performed for each intervention.
+- `rankingsin` : pre-allocated store for location rankings for each intervention.
 
 # Returns
 Tuple :
@@ -282,9 +292,10 @@ Replaces these locations with locations in the top_n ranks if the distance betwe
 
 # Arguments
 - `pref_locations` : original n highest ranked locations selected for seeding or shading.
-- `location_order` : current order of ranked locations in terms of numerical location ID.
+- `l_order` : current order of ranked locations in terms of numerical location ID.
 - `dist` : Matrix of unique distances between locations.
 - `min_dist` : minimum distance between locations for selected locations.
+- `rankings` : contains rankings for location selection prior to distance sorting.
 
 # Returns
 - `rep_locations` : new set of selected locations for seeding or shading.
@@ -391,12 +402,13 @@ end
 
 
 """
-    location_selection(criteria_store::NamedDimsArray, scenario::NamedDimsArray, tolerances::NamedTuple,
+    location_selection(criteria_store::NamedDimsArray,  interventions::NamedTuple, scenario::NamedDimsArray, tolerances::NamedTuple,
         location_ids::AbstractArray, location_distances::Matrix, med_location_distance::Float64, n_location_int::Int64)
 
 Perform location selection using a set of criteria, tolerances, locations and location distances.
 # Arguments
 - `criteria_store` : contains criteria for a single location selection instance.
+- `interventions` : keys give keynames for each intervention to be used and aggregation functions for the decision matrix.
 - `scenario` : contains parameters for a single location selection instance, including tolerance values 
 and parameters for distance sorting.
 - `tolerances` : specifies criteria tolerances and has keys with names corresponding to criteria in criteria_store. 
