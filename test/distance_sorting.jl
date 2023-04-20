@@ -25,7 +25,7 @@ using Statistics
 
     rankings = zeros(Int64, length(location_order[:, 3]), 2)
     rankings .= location_order[:, 3]
-    new_preflocations, new_rankings = distance_sorting(preflocations, location_order, dists, dist_thresh, rankings, 2)
+    new_preflocations, new_rankings = distance_sorting(preflocations, location_order, dists, dist_thresh, rankings)
 
     n_diff_locations = length(setdiff(preflocations, new_preflocations))
     @test n_diff_locations == length(rep_locations) || "Some locations which should have been replaced have not been replaced."
@@ -37,14 +37,14 @@ using Statistics
     pref_dists = findall(dists[preflocations, preflocations] .< min_dist)
     rep_locations = sort(unique(reinterpret(Int64, pref_dists)))
 
-    new_preflocations, new_rankings = distance_sorting(preflocations, location_order, dists, dist_thresh, rankings, 2)
+    new_preflocations, new_rankings = distance_sorting(preflocations, location_order, dists, dist_thresh, rankings)
     @test all(new_preflocations .== preflocations) || "All locations were sufficiently far apart but some were still replaced."
 
     # set all distances below threshold and check none are replaced.
     dists .= min_dist - 0.1
     pref_dists = findall(dists[preflocations, preflocations] .< min_dist)
     rep_locations = sort(unique(reinterpret(Int64, pref_dists)))
-    new_preflocations, new_rankings = distance_sorting(preflocations, location_order, dists, dist_thresh, rankings, 2)
+    new_preflocations, new_rankings = distance_sorting(preflocations, location_order, dists, dist_thresh, rankings)
 
     @test all(new_preflocations .== preflocations) || "All locations were too close according to the threshold but some were still replaced."
 end
