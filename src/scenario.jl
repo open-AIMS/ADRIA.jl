@@ -515,28 +515,30 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
             # Log location ranks
             # First col only holds location index ids so skip (with 2:end)
-            location_ranks[tstep, rankings[:seed][:, 1], 1] .= rankings[:seed][:, 2:end]
-            location_ranks[tstep, rankings[:fog][:, 1], 2] .= rankings[:fog][:, 2:end]
+            location_ranks[tstep, rankings[:seed][:, 1], 1] .= rankings[:seed][:, 2]
+            location_ranks[tstep, rankings[:fog][:, 1], 2] .= rankings[:fog][:, 2]
+            if int_log(year=tstep, log=:shade)
+                for cluster in eachrow(rankings[:shade])
+                    location_ranks[tstep, dropdims(domain.mcda_criteria.iv__clusters .== cluster[1], dims=1), 3] .= cluster[2]
+                end
+            end
         elseif seed_corals && (in_seed_years || in_shade_years)
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
             pref_locations = unguided_location_selection(pref_locations, int_log(year=tstep),
-                n_location_int, vec(leftover_space_m²), depth_priority)
+                n_location_int, vec(leftover_space_m²), depth_priority, unique(domain.mcda_criteria.iv__clusters))
 
-            location_ranks[tstep, pref_locations.seed, 1] .= 1.0
-            location_ranks[tstep, pref_locations.fog, 2] .= 1.0
-            location_ranks[tstep, pref_locations.shade, 3] .= 1.0
+            location_ranks[tstep, pref_locations.seed[pref_locations.seed.>0], 1] .= 1.0
+            location_ranks[tstep, pref_locations.fog[pref_locations.fog.>0], 2] .= 1.0
+            locations_in_clusters = Bool.(dropdims(sum(in.(pref_locations.shade, domain.mcda_criteria.iv__clusters), dims=1), dims=1))
+            location_ranks[tstep, locations_in_clusters, 3] .= 1.0
         end
 
         has_fog_locations::Bool = !all(pref_locations.fog .== 0)
         has_seed_locations::Bool = !all(pref_locations.seed .== 0)
-        has_shade_locations::Bool = !all(pref_locations.shade .== 0)
 
         if (srm > 0.0) && in_shade_years
-            if has_shade_locations
-                locations_in_clusters = Bool.(dropdims(sum(in.(pref_locations.shade, domain.mcda_criteria.iv__clusters), dims=1), dims=1))
-            else
-                locations_in_clusters = Bool.(ones(n_locations))
-            end
+            locations_in_clusters = Bool.(dropdims(sum(in.(pref_locations.shade, domain.mcda_criteria.iv__clusters), dims=1), dims=1))
+
             Yshade[tstep, locations_in_clusters] .= srm
 
             # Apply reduction in DHW due to SRM
