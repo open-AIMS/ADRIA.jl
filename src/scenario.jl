@@ -548,10 +548,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         if (fogging > 0.0) && in_shade_years && (has_seed_locations || has_fog_locations)
             if has_seed_locations
                 # Always fog seeded locations if they are selected
-                location_locs::Vector{Int64} = pref_locations.seed
+                location_locs::Vector{Int64} = pref_locations.seed[pref_locations.seed.>0]
             elseif has_fog_locations
                 # Use locations selected for fogging otherwise
-                location_locs = pref_locations.fog
+                location_locs = pref_locations.fog[pref_locations.fog.>0]
             end
 
             dhw_t[location_locs] .= dhw_t[location_locs] .* (1.0 .- fogging)
@@ -565,15 +565,16 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         if seed_corals && in_seed_years && has_seed_locations
             # Calculate proportion to seed based on current available space
             seeded_area = (TA=n_TA_to_seed * col_area_seed_TA, CA=n_CA_to_seed * col_area_seed_CA)
-            scaled_seed = distribute_seeded_corals(vec(total_location_area), pref_locations.seed, vec(leftover_space_m²), seeded_area)
+            pref_location_seed = pref_locations.seed[pref_locations.seed.>0]
+            scaled_seed = distribute_seeded_corals(vec(total_location_area), pref_location_seed, vec(leftover_space_m²), seeded_area)
 
             # Seed each location with TA or CA
-            @views Y_pstep[seed_sc_TA, pref_locations.seed] .= Y_pstep[seed_sc_TA, pref_locations.seed] .+ scaled_seed.TA
-            @views Y_pstep[seed_sc_CA, pref_locations.seed] .= Y_pstep[seed_sc_CA, pref_locations.seed] .+ scaled_seed.CA
+            @views Y_pstep[seed_sc_TA, pref_location_seed] .= Y_pstep[seed_sc_TA, pref_location_seed] .+ scaled_seed.TA
+            @views Y_pstep[seed_sc_CA, pref_location_seed] .= Y_pstep[seed_sc_CA, pref_location_seed] .+ scaled_seed.CA
 
             # Log seed values/locations (these values are relative to location area)
-            Yseed[tstep, 1, pref_locations.seed] .= scaled_seed.TA
-            Yseed[tstep, 2, pref_locations.seed] .= scaled_seed.CA
+            Yseed[tstep, 1, pref_location_seed] .= scaled_seed.TA
+            Yseed[tstep, 2, pref_location_seed] .= scaled_seed.CA
         end
 
         # Calculate survivors from bleaching and wave stress
