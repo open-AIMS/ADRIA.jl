@@ -222,15 +222,15 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
     criteria_store = filter_decision_matrix(criteria_store, thresholds)
 
     if isempty(criteria_store)
-        # if all rows have nans and A is empty, abort mission
-        @warn "All locations were filtered during risk filtering, so original set of locations was used."
+        # if all rows filtered in risk filtering, abort
         return pref_locations, rankingsin
     end
 
     for int_key in keys(interventions)
 
-        # if seeding, create seeding specific decision matrix
+        # if using intervention, create specific decision matrix
         if int_logs(int_key)
+
             # get criteria matrix aggregation for particular intervention
             criteria_store_temp = interventions[int_key](criteria_store)
 
@@ -256,24 +256,27 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
             criteria_store_temp = criteria_store_temp[in.(criteria_store_temp.locations, [location_ids]), :]
             n_locations_all::Int64 = length(location_ids)
 
-            # if no locations are available, abort
             if n_locations_all !== 0
+                # create intervention matrix
                 S, ws = create_intervention_matrix(criteria_store_temp, params, String(int_key))
 
-                if int_logs(int_key) && isempty(S)
-                    pref_locations[int_key] .= repeat([0], n_location_int)
+                # pad with zeros incase less sites than n_location_int
+                pref_locations[int_key] .= repeat([0], length(pref_locations[int_key]))
 
-                elseif int_logs(int_key)
+                if !isempty(S)
+                    # get ranks for applying mcda_func to S
                     pref_locations_temp, l_order = rank_locations!(S, ws, rankings, n_location_int, criteria_store_temp.locations, mcda_func)
 
                     if use_dist[int_key] != 0
+                        # sort sites for distance requirements
                         pref_locations_temp, rankings = distance_sorting(pref_locations_temp, l_order, distances, minimum_distance, rankings)
 
                     end
-                    pref_locations[int_key] .= pref_locations_temp
+
+                    pref_locations[int_key][1:length(pref_locations_temp)] .= pref_locations_temp
                 end
             end
-
+            # Replace in put rankings if the selected locations exist
             if sum(pref_locations[int_key]) !== 0
                 rankingsin[int_key][Bool.(dropdims(sum(in.(rankings[:, 1]', rankingsin[int_key][:, 1]), dims=2), dims=2)), 2] .= rankings[:, 2]
             end
@@ -314,7 +317,6 @@ function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Un
     rep_locations = copy(pref_locations)
 
     if isempty(pref_dists)
-        @warn "All locations further apart than min distance, no distance sorting occured."
         return pref_locations, rankings
     else
         # find indices to replace, replace maximum (lowest ranked) only
