@@ -51,9 +51,6 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     dhw_scens = load_DHW(ReefModDomain, data_files, RCP)
     loc_ids = axiskeys(dhw_scens)[2]
 
-    conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
-    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(conn_data)
-
     site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
     site_data = GDF.read(site_data_path)
     site_dist, med_site_dist = ADRIA.site_distances(site_data)
@@ -78,6 +75,9 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
 
     # Calculate `k` area (1.0 - "ungrazable" area)
     site_data[:, :k] .= 1.0 .- id_list[:, 3]
+
+    conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
+    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(conn_data, vec(site_data.area .* site_data.k))
 
     # Set all site depths to 6m below sea level
     # (ReefMod does not account for depth)
