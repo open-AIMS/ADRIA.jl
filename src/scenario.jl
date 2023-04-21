@@ -83,7 +83,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_pr
         @eval @everywhere using ADRIA
     end
 
-    # domain = switch_RCPs!(domain, RCP)
+    domain = switch_RCPs!(domain, RCP)
     domain, data_store = ADRIA.setup_result_store!(domain, param_df)
 
     cache = setup_cache(domain)
