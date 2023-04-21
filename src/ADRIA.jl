@@ -63,11 +63,11 @@ export
     metrics, select, timesteps, env_stats
 
 
-# External Interfaces
+# Interfaces for external models
 export ReefModDomain
 
 # metric helper methods
-export dims, ndims
+# export dims, ndims
 
 # List out compatible domain datapackages
 const COMPAT_DPKG = ["0.3.1"]
