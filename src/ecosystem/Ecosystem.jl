@@ -40,7 +40,7 @@ function map_to_discrete!(df::DataFrame, u::Union{AbstractVector,Tuple})::Nothin
 end
 
 
-Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
+Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
     # Intervention Parameters
     # Integer values have a +1 offset to allow for discrete value mapping
     # (see `set()` and `map_to_discrete()` methods)
@@ -57,8 +57,6 @@ Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
         name="SRM", description="Reduction in DHWs due to shading.")
     a_adapt::P = Param(0.0, ptype="real", bounds=(0.0, 8.0, 0.0), dists="triang",
         name="Assisted Adaptation", description="Assisted adaptation in terms of DHW resistance.")
-    n_adapt::N2 = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif",
-        name="Natural Adaptation", description="Natural adaptation rate (yearly increase).")
     seed_years::P2 = Param(10, ptype="integer", bounds=(5.0, 74.0 + 1.0, 5 / 70), dists="triang",
         name="Years to Seed", description="Number of years to seed for.")
     shade_years::P2 = Param(10, ptype="integer", bounds=(5.0, 74.0 + 1.0, 5 / 70), dists="triang",
@@ -128,9 +126,9 @@ end
 
 
 """
-_coral_struct(field_defs::Dict)::Nothing
+    _coral_struct(field_defs::Dict)::Nothing
 
-Helper function to dynamically create structs
+Helper function to dynamically create coral struct.
 
 https://stackoverflow.com/a/27084705/2694952
 https://stackoverflow.com/questions/27083816/is-it-possible-to-create-types-in-julia-at-runtime
@@ -140,7 +138,7 @@ https://stackoverflow.com/questions/27083816/is-it-possible-to-create-types-in-j
 
 ```julia
 # Generate Coral struct with single attribute "a"
-_coral_struct(Dict("a"=>200))
+_coral_struct(OrderedDict("a"=>200))
 
 y = Coral()
 # Coral{Int64}(200)
@@ -149,11 +147,16 @@ y.a
 # 200
 ```
 """
-function _coral_struct(field_defs::Dict)::Nothing
+function _coral_struct(field_defs::OrderedDict)::Nothing
     s = IOBuffer()
-    write(s, "Base.@kwdef struct Coral{P} <: EcoModel\n")
+    write(s, "Base.@kwdef struct Coral{P,P2} <: EcoModel\n")
 
     for (f, v) in field_defs
+        if f == "n_adapt"
+            write(s, "$(f)::P2 = $(v)\n")
+            continue
+        end
+
         write(s, "$(f)::P = $(v)\n")
     end
 
@@ -182,15 +185,16 @@ coral = Coral()
 ```
 """
 function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
-    _, base_coral_params, x = coral_spec()
+    _, base_coral_params, p_vals = coral_spec()
 
-    coral_ids = x.coral_id
+    struct_fields = OrderedDict{String,Param}()
+    struct_fields["n_adapt"] = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif",
+        name="Natural Adaptation", description="Natural adaptation rate (yearly increase).")
 
-    struct_fields = Dict()
-    for c_id in coral_ids
+    for c_id in p_vals.coral_id
         for p in base_coral_params
-            f_name = c_id * "_" * p
-            f_val = x[x.coral_id.==c_id, p][1]
+            f_name::String = c_id * "_" * p
+            f_val = p_vals[p_vals.coral_id.==c_id, p][1]
             struct_fields[f_name] = Param(f_val, ptype="real", bounds=(f_val * bounds[1], f_val * bounds[2], 0.5), dists="triang",
                 name=human_readable_name(f_name, title_case=true), description="")
         end
