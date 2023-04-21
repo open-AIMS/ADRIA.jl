@@ -437,6 +437,12 @@ function guided_site_selection(
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
+    # Determine connectivity strength factoring in location k area and coral cover
+    in_conn, out_conn, strong_pred = connectivity_strength(d_vars.conn, vec(d_vars.sum_cover))
+    in_conn = in_conn[site_ids]
+    out_conn = out_conn[site_ids]
+    strong_pred = strong_pred[site_ids]
+
     # work out which priority predecessors are connected to priority sites
     predec::Matrix{Float64} = zeros(n_sites, 3)
     predec[:, 1:2] .= strong_pred
