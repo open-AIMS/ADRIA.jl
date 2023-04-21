@@ -36,8 +36,8 @@ end
 end
 @testset "Unguided site selection" begin
     n_intervention_sites = 5
-    prefseedsites = zeros(Int, n_intervention_sites)
-    prefshadesites = zeros(Int, n_intervention_sites)
+    prefseedsites = zeros(Int64, n_intervention_sites)
+    prefshadesites = zeros(Int64, n_intervention_sites)
     seed_years = true
     shade_years = true
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
