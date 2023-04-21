@@ -128,9 +128,14 @@ end
 
 """
     connectivity_strength(TP_base::AbstractArray)::NamedTuple
+    connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64})::NamedTuple
 
-Generate array of outdegree connectivity strength for each node and its
-strongest predecessor.
+Create in/out degree centralities for all nodes, and vector of their strongest predecessors.
+
+# Arguments
+- `TP_base` : Base transfer probability matrix to create Directed Graph from.
+- `area_weighted_TP` : Transfer probability matrix weighted by location `k` area
+- `cover` : total coral cover at location
 
 # Returns
 NamedTuple:
@@ -138,21 +143,15 @@ NamedTuple:
 - `out_conn` : sites ranked by outgoing connectivity
 - `strongest_predecessor` : strongest predecessor for each site
 """
-function connectivity_strength(TP_base::AbstractArray)::NamedTuple
+function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
 
     g = SimpleDiGraph(TP_base)
 
-    # ew_base = weights(g)  # commented out ew_base are all equally weighted anyway...
-
     # Measure centrality based on number of incoming connections
-    # C1 = indegree_centrality(g)
-    # C2 = outdegree_centrality(g)
-    C1 = betweenness_centrality(g)
-    C2 = stress_centrality(g)
+    C1 = indegree_centrality(g)
+    C2 = outdegree_centrality(g)
 
-    # strong_pred = closeness_centrality(g)
-
-    # For each edge, find strongly connected predecessor (by number of connections)
+    # For each node, find strongly connected predecessor (by number of connections)
     strong_pred = zeros(Int64, size(C1)...)
     for v_id in vertices(g)
         incoming = inneighbors(g, v_id)
@@ -173,4 +172,12 @@ function connectivity_strength(TP_base::AbstractArray)::NamedTuple
     end
 
     return (in_conn=C1, out_conn=C2, strongest_predecessor=strong_pred)
+end
+function connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64})::NamedTuple
+
+    # Accounts for cases where there is no coral cover
+    tp = (area_weighted_TP .* cover)
+    tp .= tp ./ maximum(tp)
+
+    return connectivity_strength(tp)
 end
