@@ -6,8 +6,9 @@ using NamedDims, AxisKeys, SparseArrayKit, DifferentialEquations
 
 using MAT
 using Combinatorics, Distances
+using OrderedCollections
 using Setfield, ModelParameters, DataStructures
-using DataFrames, Graphs, CSV, Dates
+using DataFrames, Graphs, SimpleWeightedGraphs, CSV, Dates
 import ArchGDAL as AG
 import GeoDataFrames as GDF
 
