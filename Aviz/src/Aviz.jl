@@ -17,7 +17,7 @@ import GeoDataFrames as GDF
 import GeoFormatTypes as GFT
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
-using ADRIA: load_results, load_domain, ResultSet, run_scenarios, metrics
+using ADRIA: load_results, load_domain, load_scenarios, ResultSet, run_scenarios, metrics
 import ADRIA: timesteps as AD_timesteps
 
 
@@ -50,11 +50,10 @@ function julia_main()::Cint
         rcp_id = ARGS[3]
         input_set = ARGS[4]
 
-        dom = ADRIA.load_domain(domain_loc, rcp_id)
-        p_df = ADRIA.load_scenarios(dom, input_set)
+        dom = load_domain(domain_loc, rcp_id)
+        p_df = load_scenarios(dom, input_set)
 
-        dom = ADRIA.run_scenarios(p_df, dom)
-        rs = ADRIA.load_results(dom)
+        rs = run_scenarios(p_df, dom)
         explore(rs)
         return 0
     end
@@ -89,7 +88,7 @@ function main_menu()
             status_label.text[] = "Loading Result Set..."
             rs = nothing
             try
-                rs = ADRIA.load_results(rs_path)
+                rs = load_results(rs_path)
             catch
                 rs_path_tb.bordercolor = :red
                 status_label.text[] = "Invalid ADRIA Result Set"
@@ -191,7 +190,7 @@ function explore(rs::ResultSet)
 
     # Get bounds to display
     centroids = rs.site_centroids
-    mean_rc_sites = ADRIA.metrics.relative_cover(rs)
+    mean_rc_sites = metrics.relative_cover(rs)
     obs_rc = vec(mean(mean_rc_sites, dims=(:scenarios, :timesteps)))
     obs_mean_rc_sites = Observable(obs_rc)
 
@@ -243,10 +242,10 @@ function explore(rs::ResultSet)
     # p_tbl = probability_table(model, X, p)
     # @time ft_tbl = ft_importance(model, rs.inputs, p; rng=101)
 
-    asv_scens = ADRIA.metrics.scenario_asv(rs)
+    asv_scens = metrics.scenario_asv(rs)
     asv_scen_dist = dropdims(mean(asv_scens, dims=:timesteps), dims=:timesteps)
 
-    juves_scens = ADRIA.metrics.scenario_relative_juveniles(rs)
+    juves_scens = metrics.scenario_relative_juveniles(rs)
     juves_scen_dist = dropdims(mean(juves_scens, dims=:timesteps), dims=:timesteps)
 
     ms = rs.model_spec
@@ -327,7 +326,7 @@ function explore(rs::ResultSet)
     )
 
     # Controls for interventions
-    interv_sliders = []
+    interv_sliders = IntervalSlider[]
     interv_labels = []
     lc = layout.controls[3:6, 1] = GridLayout()
     for (i, v) in enumerate(eachrow(intervention_components))
@@ -372,7 +371,7 @@ function explore(rs::ResultSet)
     # Image file for loading animation
     # loader_anim = load(LOADER)
 
-    function update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val)
+    function update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, disp_vals...)
         # Display loading animation
         # load_anim_display = @async display_loader(traj_display[2, 1], loader_anim)
 
@@ -383,7 +382,7 @@ function explore(rs::ResultSet)
 
         # Update according to intervention slider values
         # Hide scenarios that do not meet selections based on selected intervention values
-        disp_vals = [i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val]
+        # disp_vals = [i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val]
         for (intv, bnds) in enumerate(interv_labels)
             bnds[1][] = "$(round(disp_vals[intv][1], digits=2))"
             bnds[2][] = "$(round(disp_vals[intv][2], digits=2))"
@@ -510,7 +509,7 @@ function explore(rs::ResultSet)
     up_timer = Timer(x -> x, 0.25)
     onany(time_slider.interval, tac_slider.interval,
         [t.active for t in t_toggles]...,
-        [sld.interval for sld in interv_sliders]...) do time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val
+        [sld.interval for sld in interv_sliders]...) do time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val
 
         # Update slider labels
         left_year_val[] = "$(Int(floor(time_val[1])))"
@@ -519,7 +518,7 @@ function explore(rs::ResultSet)
         tac_top_val[] = tac_val[2]
 
         close(up_timer)
-        up_timer = Timer(x -> update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val), 2)
+        up_timer = Timer(x -> update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val), 2)
     end
 
     gl_screen = display(f)

@@ -3,7 +3,7 @@ using ADRIA.sensitivity
 
 
 function relative_sensitivities(X, y; S=10, stat=:median)::Vector{Float64}
-    return col_normalize(ADRIA.sensitivity.pawn(X, Array(y); S=S)(Si=stat))
+    return col_normalize(sensitivity.pawn(X, Array(y); S=S)(Si=stat))
 end
 
 """
