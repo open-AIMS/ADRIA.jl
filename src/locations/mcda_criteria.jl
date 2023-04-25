@@ -258,7 +258,7 @@ with which each location was selected at each rank across the location selection
 function ranks_to_frequencies(ranks::NamedDimsArray, int_type::String)
     rank_frequencies = NamedDimsArray(zeros(size(ranks, 2), size(ranks, 2)), locations=ranks.locations, ranks=1:size(ranks, 2))
 
-    for rank in collect(range(1, size(ranks, 2), size(ranks, 2)))
+    for rank in range(1, size(ranks, 2), size(ranks, 2))
         rank_frequencies[ranks=Int(rank)] .= sum(ranks(:, :, string(int_type, "_rank")) .== rank, dims=:scenarios)[scenarios=1]
     end
     return rank_frequencies
