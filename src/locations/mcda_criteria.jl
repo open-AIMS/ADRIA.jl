@@ -236,7 +236,7 @@ function ranks_to_location_order(ranks::NamedDimsArray, int_type::String)
     ranks_set = ranks(:, :, string(int_type, "_rank"))
     location_orders = NamedDimsArray(repeat([""], size(ranks, 1), size(ranks, 2)), scenarios=1:size(ranks, 1), ranks=1:size(ranks, 2))
 
-    for scen in collect(1:size(ranks, 1))
+    for scen in 1:size(ranks, 1)
         location_orders[scenarios=scen, ranks=1:sum(ranks_set[scenarios=scen] .!= 0.0)] .= sort(Int.(ranks_set[scenarios=scen][ranks_set[scenarios=scen].!=0.0])).locations
     end
     return location_orders
