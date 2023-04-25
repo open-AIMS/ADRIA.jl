@@ -160,18 +160,29 @@ Convenience constructor for Domain.
 function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector, location_data_fn::String, location_id_col::String, unique_location_id_col::String, init_coral_fn::String,
     conn_path::String, dhw_fn::String, wave_fn::String)::ADRIADomain
 
-    env_layer_md::EnvLayer = EnvLayer(dpkg_path, location_data_fn, location_id_col, unique_location_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn, timeframe)
-
     local location_data::DataFrame
     try
         site_data = GDF.read(site_data_fn)
     catch err
         if !isfile(location_data_fn)
-            error("Provided location data path is not valid or missing: $(location_data_fn).")
+            try
+                location_data_fn = string(dpkg_path, "\\site_data\\", last(split(location_data_fn, "\\")))
+                init_coral_fn = string(dpkg_path, "\\site_data\\", last(split(init_coral_fn, "\\")))
+                location_data = GeoDataFrames.read(location_data_fn)
+            catch err
+                if !isfile(location_data_fn)
+                    error("Provided location data path is not valid or missing: $(location_data_fn).")
+                else
+                    rethrow(err)
+                end
+            end
+            @warn "Provided location data path is from a previous version, try changing site_data to location_data."
         else
             rethrow(err)
         end
     end
+
+    env_layer_md::EnvLayer = EnvLayer(dpkg_path, location_data_fn, location_id_col, unique_location_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn, timeframe)
 
     # Sort data to maintain consistent order
     sort!(location_data, Symbol[Symbol(unique_location_id_col)])
