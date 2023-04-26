@@ -238,22 +238,8 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
             # cap to number of locations left after risk filtration
             n_location_int = min(n_location_int, length(criteria_store_temp.locations))
             location_ids::Array{Int64} = criteria_store_temp.locations
-            location_ids = setdiff(location_ids, pref_locations[int_key])
 
-    if log_seed && isempty(SE)
-        prefseedlocations = repeat([0], n_location_int)
-    elseif log_seed
-        prefseedlocations, l_order_seed = rank_seed_locations!(SE, wse, rankings, n_location_int, criteria_store.locations, mcda_func)
-        if use_dist != 0
-            prefseedlocations, rankings = distance_sorting(prefseedlocations, l_order_seed, distances, minimum_distance, rankings, 2)
-        end
-    end
-
-    if log_shade && isempty(SH)
-        prefshadelocations = repeat([0], n_location_int)
-    elseif log_shade
-        prefshadelocations, l_order_shade = rank_shade_locations!(SH, wsh, rankings, n_location_int, criteria_store.locations, mcda_func)
-
+            rankings = rankingsin[int_key]
             criteria_store_temp = criteria_store_temp[in.(criteria_store_temp.locations, [location_ids]), :]
             n_locations_all::Int64 = length(location_ids)
 
