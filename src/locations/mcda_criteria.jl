@@ -214,7 +214,7 @@ function shade_aggregation(criteria_store::NamedDimsArray)
     criteria_store_shade = copy(criteria_store)[1:length(unique(criteria_store(:iv__clusters))), :]
     criteria_store_shade.locations .= unique(criteria_store(:iv__clusters))
     for k in unique(criteria_store(:iv__clusters))
-        criteria_store_shade[locations=Int(k)] .= dropdims(median(criteria_store[criteria_store(:iv__clusters).==k, :], dims=:locations), dims=:locations)
+        criteria_store_shade(locations=Int(k)) .= dropdims(median(criteria_store[criteria_store(:iv__clusters).==k, :], dims=:locations), dims=:locations)
     end
     return criteria_store_shade
 end
