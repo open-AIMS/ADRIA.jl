@@ -13,7 +13,7 @@ import GeoDataFrames
 
 using ProgressMeter
 
-using SnoopPrecompile, RelocatableFolders
+using PrecompileTools, RelocatableFolders
 
 
 include("utils/text_display.jl")  # need better name for this file
@@ -95,13 +95,13 @@ if ccall(:jl_generating_output, Cint, ()) == 1
 end
 
 
-@precompile_setup begin
+@setup_workload begin
     # Putting some things in `setup` can reduce the size of the
     # precompile file and potentially make loading faster.
     ADRIA_DIR = pkgdir(ADRIA)
     EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 
-    @precompile_all_calls begin
+    @compile_workload begin
 
         f() = begin
             @showprogress 1 for _ in 1:10
