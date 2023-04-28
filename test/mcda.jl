@@ -1,6 +1,6 @@
 using Test
 using Distributions
-using ADRIA: mcda_normalize, filter_decision_matrix, create_intervention_matrix, create_criteria_store, create_tolerances_store
+using ADRIA: mcda_normalize, filter_decision_matrix, create_intervention_matrix, create_criteria_store
 
 
 @testset "Create decision matrix" begin
@@ -35,13 +35,13 @@ using ADRIA: mcda_normalize, filter_decision_matrix, create_intervention_matrix,
 
     # define functions for tolerances
     f_coral_cover(param) = area_to_seed * param
+    tolerances = (
+        iv__coral_space=x -> >(x, f_coral_cover(x)),
+        iv__heat_stress=x -> >(x, 1 - x),
+        iv__wave_stress=x -> >(x, 1 - x),
+    )
 
-    tolerances = (iv__coral_space=(>, f_coral_cover(rand())),
-        iv__heat_stress=(>, 1 - rand()),
-        iv__wave_stress=(>, 1 - rand()))
-
-    tolerances = create_tolerances_store(tolerances)
-    filtered = findall(tolerances(:iv__coral_space).(criteria_store(:iv__coral_space)) .& tolerances(:iv__heat_stress).(criteria_store(:iv__heat_stress)) .& tolerances(:iv__wave_stress).(criteria_store(:iv__wave_stress)))
+    filtered = findall(tolerances.iv__coral_space.(criteria_store(:iv__coral_space)) .& tolerances.iv__heat_stress.(criteria_store(:iv__heat_stress)) .& tolerances.iv__wave_stress.(criteria_store(:iv__wave_stress)))
     filtered_criteria_store = ADRIA.filter_decision_matrix(criteria_store, tolerances)
 
     @test all(filtered_criteria_store.locations .== filtered) || "Some locations which should have been filtered out were not filtered."

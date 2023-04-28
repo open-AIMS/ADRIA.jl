@@ -10,7 +10,7 @@ end
 
 @testset "location selection" begin
 
-    n_location_int = 5
+    n_iv_locs = 5
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
     scen = ADRIA.sample_location_selection(dom, 1)
     scen = NamedDimsArray(Vector(scen[1, :]), factors=names(scen))
@@ -19,9 +19,12 @@ end
 
     location_ids = collect(1:length(dom.location_ids))
     criteria_store = ADRIA.create_criteria_store(location_ids, dom.mcda_criteria)
-    tolerances = (iv__coral_space=(>, scen("iv__coral_space__tol") .* area_to_seed),
-        iv__heat_stress=(>, 1 - scen("iv__heat_stress__tol")),
-        iv__wave_stress=(>, 1 - scen("iv__wave_stress__tol")))
+
+    tolerances = (
+        iv__coral_space=x -> >(x, param_set("iv__tol__coral_space") .* area_to_seed),
+        iv__heat_stress=x -> >(x, 1 - param_set("iv__tol__heat_stress")),
+        iv__wave_stress=x -> >(x, 1 - param_set("iv__tol__wave_stress")),
+    )
 
     dhw_scens = dom.dhw_scens
     wave_scens = dom.wave_scens
@@ -31,7 +34,7 @@ end
     int_logs = NamedDimsArray([true true false], scenarios=[1], log=[:seed, :fog, :shade])
 
     ranks = ADRIA.location_selection(criteria_store, dom.interventions, scen, tolerances, int_logs[scenarios=1],
-        location_ids, dom.location_distances, dom.median_location_distance, n_location_int)
+        location_ids, dom.location_distances, dom.median_location_distance, n_iv_locs)
 
     @test all([in(r, collect(0:length(dom.location_ids)+1)) for r in ranks[:seed][:, 2]]) || "Some seed ranks outside of possible ranks (0-n_locations+1)"
     @test all([in(r, collect(0:length(dom.location_ids)+1)) for r in ranks[:fog][:, 2]]) || "Some shade ranks outside of possible ranks (0-n_locations+1)"
@@ -76,9 +79,14 @@ end
 
     coral_cover = NamedDims.rename(repeat(sum(dom.init_coral_cover, dims=:species), size(criteria_df, 1)), (:scenarios, :locations))
     # initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of locations))
-    tolerances = (iv__coral_space=(>, x -> f_coral_cover(x)),
-        iv__heat_stress=(>, x -> 1 - x),
-        iv__wave_stress=(>, x -> 1 - x))
+    # tolerances = (iv__coral_space=(>, x -> f_coral_cover(x)),
+    #     iv__heat_stress=(>, x -> 1 - x),
+    #     iv__wave_stress=(>, x -> 1 - x))
+    tolerances = (
+        iv__coral_space=x -> >(x, f_coral_cover(x)),
+        iv__heat_stress=x -> >(x, 1 - x),
+        iv__wave_stress=x -> >(x, 1 - x),
+    )
 
     ranks = ADRIA.run_location_selection(dom, criteria_df, tolerances, coral_cover', target_seed_locations=location_ids, target_shade_locations=location_ids)
 
