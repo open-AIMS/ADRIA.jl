@@ -20,23 +20,22 @@ scaled_seed : NamedTuple (TA = scaled_seed_TA, CA = scaled_seed_CA), where:
     - `TA` : n_iv_locs elements, proportions of TA coral to seed at preferred locations
     - `CA` : n_iv_locs elements, proportions of CA coral to seed at preferred locations.
 """
-function distribute_seeded_corals(total_location_area::Vector{Float64},
-    prefseedlocations::Vector{Int64}, available_space::Vector{Float64},
+function distribute_seeded_corals(total_area::Vector{Float64},
+    preferred_locs::Vector{Int64}, available_space::Vector{Float64},
     seeded_area::NamedTuple{(:TA, :CA),Tuple{Float64,Float64}})::NamedTuple{(:TA, :CA),Tuple{Vector{Float64},Vector{Float64}}}
 
-    # extract location area for locations selected
-    location_area_seed = total_location_area[prefseedlocations]
+    # Extract area for selected locations
+    area_seed_loc = total_area[preferred_locs]
 
-    # proportion of available space on each location relative to total space available on these locations
-    # prop_area_avail = available_space ./ sum(available_space)
-    prop_area_avail = available_space[prefseedlocations] ./ sum(available_space[prefseedlocations])
+    # Proportion of available space on each location relative to total space available on these locations
+    prop_area_avail = available_space[preferred_locs] ./ sum(available_space[preferred_locs])
 
     # distribute seeded corals (as area) across locations according to available space proportions
     # proportion*(area of 1 coral * num seeded corals)
     # convert to relative cover proportion by dividing by location area
 
-    scaled_seed_TA = (prop_area_avail .* seeded_area.TA) ./ location_area_seed
-    scaled_seed_CA = (prop_area_avail .* seeded_area.CA) ./ location_area_seed
+    scaled_seed_TA = (prop_area_avail .* seeded_area.TA) ./ area_seed_loc
+    scaled_seed_CA = (prop_area_avail .* seeded_area.CA) ./ area_seed_loc
 
     return (TA=scaled_seed_TA, CA=scaled_seed_CA)
 end
