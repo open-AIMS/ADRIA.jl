@@ -221,45 +221,45 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
         return pref_locations, rankingsin
     end
 
-    for int_key in keys(interventions)
+    for iv_key in keys(interventions)
 
         # if using intervention, create specific decision matrix
-        if iv_logs(int_key)
+        if iv_logs(iv_key)
 
             # get criteria matrix aggregation for particular intervention
-            criteria_store_temp = interventions[int_key](criteria_store)
+            criteria_store_temp = interventions[iv_key](criteria_store)
 
             # cap to number of locations left after risk filtration
             n_iv_locs = min(n_iv_locs, length(criteria_store_temp.locations))
             location_ids::Array{Int64} = criteria_store_temp.locations
 
-            rankings = rankingsin[int_key]
+            rankings = rankingsin[iv_key]
             criteria_store_temp = criteria_store_temp[in.(criteria_store_temp.locations, [location_ids]), :]
             n_locations_all::Int64 = length(location_ids)
 
             if n_locations_all != 0
                 # create intervention matrix
-                S, ws = create_intervention_matrix(criteria_store_temp, params, String(int_key))
+                S, ws = create_intervention_matrix(criteria_store_temp, params, String(iv_key))
 
                 # pad with zeros incase less locations than n_iv_locs are suitable
-                pref_locations[int_key] .= repeat([0], length(pref_locations[int_key]))
+                pref_locations[iv_key] .= repeat([0], length(pref_locations[iv_key]))
 
                 if !isempty(S)
                     # get ranks for applying mcda_func to S
                     pref_locations_temp, l_order = rank_locations!(S, ws, rankings, n_iv_locs, criteria_store_temp.locations, mcda_func)
 
-                    if use_dist[int_key] != 0
+                    if use_dist[iv_key] != 0
                         # sort locations for distance requirements
                         pref_locations_temp, rankings = distance_sorting(pref_locations_temp, l_order, distances, minimum_distance, rankings)
 
                     end
 
-                    pref_locations[int_key][1:length(pref_locations_temp)] .= pref_locations_temp
+                    pref_locations[iv_key][1:length(pref_locations_temp)] .= pref_locations_temp
                 end
             end
             # Replace input rankings if locations have been selected
-            if sum(pref_locations[int_key]) !== 0
-                rankingsin[int_key][Bool.(dropdims(sum(in.(rankings[:, 1]', rankingsin[int_key][:, 1]), dims=2), dims=2)), 2] .= rankings[:, 2]
+            if sum(pref_locations[iv_key]) !== 0
+                rankingsin[iv_key][Bool.(dropdims(sum(in.(rankings[:, 1]', rankingsin[iv_key][:, 1]), dims=2), dims=2)), 2] .= rankings[:, 2]
             end
         end
     end
