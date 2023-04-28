@@ -153,7 +153,7 @@ end
 """
     sample_location_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
 
-Create guided samples of parameters relevant to location selection (EnvironmentalLayers, Intervention, Criteria).
+Create guided samples of parameters relevant to intervention location selection (EnvironmentalLayers, Intervention, Criteria).
 All other parameters are set to their default values.
 
 # Arguments

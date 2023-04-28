@@ -166,7 +166,7 @@ Model is adapted from Bozec et al., [2], itself based on data from Hughes et al.
 # Arguments
 - `Y` : Matrix to save results into
 - `tstep` : Current time step
-- `depth` : Mean location depth (m) for each location
+- `depth` : Mean depth (m) for each location
 - `s` : Bleaching sensitivity of corals (relative values) for each taxa/size class
 - `dhw` : Degree Heating Week experienced at location
 - `a_adapt` : Level of assisted adaptation (DHW reduction)

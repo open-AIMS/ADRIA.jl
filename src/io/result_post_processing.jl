@@ -113,4 +113,3 @@ function create_BI_format_file(rs::ResultSet, file_loc::String)
     file_loc = replace(file_loc, "\\" => "/")
     CSV.write(file_loc * "/" * "data_summary_" * "ADRIA" * rs.ADRIA_VERSION * "_" * rs.invoke_time * "_" * cluster * "_" * ssp * ".csv", data_sum_df)
 end
-

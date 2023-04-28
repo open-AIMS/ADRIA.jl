@@ -1,5 +1,6 @@
 using ADRIA: mcda_normalize
 
+
 """
     zones_criteria(zones::Vector{String}, priority_zones::Vector{String},
         strong_pred::Vector{Int64}, location_ids::Vector{Int64})

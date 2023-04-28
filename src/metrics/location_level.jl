@@ -18,7 +18,7 @@ function per_location(metric, data::NamedDimsArray)
     num_locations = size(data, dim(data, :locations))
     met = zeros(num_locations)
 
-    @inbounds for i in 1:num_locations
+    for i in 1:num_locations
         met[i] = metric(data[locations=i])
     end
 

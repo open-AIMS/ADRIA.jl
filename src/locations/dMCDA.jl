@@ -33,18 +33,25 @@ global mcda_methods = [
 ]
 
 """
-    create_criteria_store(location_ids::AbstractArray, criteria::NamedTuple) 
+    create_criteria_store(location_ids::AbstractArray, criteria::NamedTuple)
 
-    Constructs the criteria NamedDimsArray for performing location selection. 
-    This is used to construct decision matrices for the mcda methods.
+Constructs the criteria NamedDimsArray for performing location selection.
+This is used to construct decision matrices for the mcda methods.
 
 # Arguments
 - `location_ids` : location ids as integers.
-- `criteria` : NamedTuple of vectors of length nlocations containing criteria values to 
-be used to construct mcda matrices. Keys should correspond to weight names and begin with "iv__".
-Can also be entered as named varargs.
-E.g. the criteria for heat stress will be iv__heat_stress and it's weight will be iv__heat_stress__seed_shade,
+- `criteria` : NamedTuple of vectors of length nlocations containing criteria
+               values. Used to construct MCDA matrices. Keys should correspond
+               to weight names and begin with `iv__`, followed by the relevant
+               interventions, and finally its criteria name.
+
+E.g. the criteria for heat stress will be `iv__heat_stress` and it's weight will be `iv__seed_shade__heat_stress`,
 indicating it is used for seeding and shading.
+
+# Example
+```julia
+create_criteria_store(location_ids; iv__seed_shade__heat_stress=[1.0, 1.0, 0.0])
+```
 """
 function create_criteria_store(location_ids::AbstractArray; criteria...)
     return create_criteria_store(location_ids, criteria)
