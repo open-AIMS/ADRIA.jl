@@ -339,7 +339,7 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(conn_data)
 
     location_data = GDF.read(joinpath(data_files, "region", "reefmod_gbr.gpkg"))
-    location_dist, med_location_dist = ADRIA.location_distances(location_data)
+    dist_matrix, median_distances = ADRIA.location_distances(location_data)
     location_id_col = "LOC_NAME_S"
     unique_location_id_col = "LOC_NAME_S"
     init_coral_cover = load_initial_cover(ReefModDomain, data_files, loc_ids)
@@ -382,7 +382,7 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     return ReefModDomain(
         "ReefMod", RCP,
         conn_data, in_conn, out_conn, strong_pred,
-        location_data, location_dist, med_location_dist,
+        location_data, dist_matrix, median_distances,
         location_id_col, unique_location_id_col,
         init_coral_cover,
         location_ids,
