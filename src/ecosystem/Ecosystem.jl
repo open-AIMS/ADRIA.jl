@@ -99,7 +99,7 @@ Base.@kwdef struct Criteria{P,N} <: EcoModel
         name="Zone Predecessor (Shade)", description="Importance of shading locations that provide larvae to priority (target) zones.")
     iv__seed__depth::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Zone Predecessor (Shade)", description="Importance of shading locations that provide larvae to priority (target) zones.")
-    iv__tol__coral_spac::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    iv__tol__coral_space::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Low Area Tolerance", description="Tolerance for low proportional space for seeding deployments.")
     iv__tol__heat_stress::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
         name="Risk Tolerance", description="Filters out locations with heat/wave stress above threshold.")
