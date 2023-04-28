@@ -414,12 +414,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     if is_guided
         # pre-allocate rankings
-        tolerances = (iv__coral_space=(>, param_set("iv__coral_space__tol") .* area_to_seed),
-            iv__heat_stress=(>, 1 - param_set("iv__heat_stress__tol")),
-            iv__wave_stress=(>, 1 - param_set("iv__wave_stress__tol")))
-
-        rankings, criteria_store, thresholds_store, min_distance, use_dist = initialize_mcda(domain, param_set, depth_priority, tolerances)
-
+        rankings, criteria_store, thresholds_store, min_distance, use_dist = initialize_mcda(domain, param_set, depth_priority, area_to_seed)
     end
 
     #### End coral constants

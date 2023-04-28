@@ -154,24 +154,27 @@ Initialises variable strucutres required for dynamic location selection in ADRIA
 - `area_to_seed` : Area in m^2 to be covered by seeding coral at a single time step.
 
 """
-function initialize_mcda(domain::Domain, param_set::NamedDimsArray, location_ids::Vector{Int64}, tolerances::NamedTuple)
+function initialize_mcda(domain::Domain, param_set::NamedDimsArray, location_ids::Vector{Int64}, area_to_seed::Float64)
 
     rankings_seed_fog = [location_ids zeros(Int, length(location_ids))]
     rankings_shade = [unique(domain.mcda_criteria.iv__clusters) zeros(Int, length(unique(domain.mcda_criteria.iv__clusters)))]
     rankings = (seed=rankings_seed_fog, fog=rankings_seed_fog, shade=rankings_shade)
 
-    # initialize thresholds
-    thresholds = create_tolerances_store(tolerances)
+    thresholds = (
+        iv__coral_space=x -> >(x, param_set("iv__tol__coral_space") .* area_to_seed),
+        iv__heat_stress=x -> >(x, 1 - param_set("iv__tol__heat_stress")),
+        iv__wave_stress=x -> >(x, 1 - param_set("iv__tol__wave_stress")),
+    )
 
     # calculate values for criteria which do not change over time
     min_distance = domain.median_location_distance .* param_set("dist_thresh")
     use_dist = (seed=param_set("use_dist"), fog=param_set("use_dist"), shade=0)
 
     # initialize criteria
+    Main.@infiltrate
     criteria_store = create_criteria_store(location_ids, domain.mcda_criteria)
 
     return rankings, criteria_store, thresholds, min_distance, use_dist
-
 end
 
 """

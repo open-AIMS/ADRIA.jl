@@ -64,22 +64,6 @@ function create_criteria_store(location_ids::AbstractArray, criteria::NamedTuple
     end
 
     return NamedDimsArray(criteria_matrix, locations=location_ids, criteria=collect(keys(criteria)))
-
-end
-
-"""
-    create_tolerances_store(tolerances::NamedTuple)  
-
-    Constructs the tolerances NamedDimsArray which is used to filter the decision matrix.
-
-# Arguments
-- `tolerances` : NamedTuple with format (criteria_name1=(operation,value),criteria_name2=(operation,value),...)
-where operation is < or > and value is the tolerance value.
-
-"""
-function create_tolerances_store(tolerances::NamedTuple)
-    tol_store = [x -> tolerances[tol_key][1](x, tolerances[tol_key][2]) for tol_key in keys(tolerances)]
-    return NamedDimsArray(tol_store, criteria=collect(keys(tolerances)))
 end
 
 """
@@ -150,20 +134,21 @@ function rank_locations!(S, weights, rankings, n_iv_locs, location_ids, mcda_fun
 end
 
 """
-    filter_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedDimsArray)  
+    filter_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedTuple)
+
+Remove locations that do not satisfy tolerances.
 
 # Arguments
 - `criteria_store` : contains criteria in each column for locations in each row.
-- `tolerances` : contains thresholds for specified criteria, with keys matching those in criteria_store.
-                Each key specifies the operation function >tolerance or <tolerance.
+- `tolerances` : contains thresholds for specified criteria.
+                 Each key specifies an operator indicating the direction of the threshold (e.g., > or <).
 
 # Returns
 - `criteria_store` : filtered version of criteria_store input.
 """
-function filter_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedDimsArray)
-
-    rule = sum(map.(tolerances.data, criteria_store(tolerances.criteria)'), dims=:criteria) .== length(tolerances.criteria)
-    criteria_store = criteria_store[rule[criteria=1], :]
+function filter_decision_matrix(criteria_store::NamedDimsArray, tolerances::NamedTuple)
+    rule = sum(map.(values(tolerances), eachcol(criteria_store(criteria=[keys(tolerances)...])))) .== length(keys(tolerances))
+    criteria_store = criteria_store[collect(rule .== 1), :]
 
     return criteria_store
 end
@@ -182,12 +167,12 @@ end
 - 'ws': weights for each of the criteria in the decision matrix.
 
 """
-function create_intervention_matrix(criteria_store::NamedDimsArray, params::NamedDimsArray, int_type::String)
+function create_intervention_matrix(criteria_store::NamedDimsArray, params::NamedDimsArray, iv_type::String)
     # Define intervention decision matrix
-    int_params = params.factors[occursin.("iv__", params.factors).&occursin.(int_type, params.factors)]
-    crit_inds = [findall.([occursin.(String(crit_name), int_params) for crit_name in criteria_store.criteria])...;]
+    iv_params = params.factors[occursin.("iv__", params.factors).&occursin.(iv_type, params.factors)]
+    crit_inds = [findall.([occursin.(crit_name, iv_params) for crit_name in string.(criteria_store.criteria)])...;]
 
-    ws = mcda_normalize(Array(params(int_params)))
+    ws = mcda_normalize(Array(params(iv_params)))
     S = Matrix(criteria_store[criteria=crit_inds])
     return S, ws
 
@@ -216,17 +201,18 @@ end
 
 # Returns
 Tuple :
-    - `pref_locations` : n_location_int highest ranked locations for each intervention.
+    - `pref_locations` : n_iv_locs highest ranked locations for each intervention.
     - `rankings` : n_locations ⋅ 3 matrix holding [location_id, seeding_rank, shading_rank],
         Values of 0 indicate locations that were not considered
 """
 function guided_location_selection(criteria_store::NamedDimsArray, interventions::NamedTuple,
-    params::NamedDimsArray, thresholds::NamedDimsArray, n_location_int::Int64,
-    distances::Matrix, minimum_distance::Float64, use_dist::NamedTuple, int_logs::NamedDimsArray,
+    params::NamedDimsArray, thresholds::NamedTuple, n_iv_locs::Int64,
+    distances::Matrix, minimum_distance::Float64, use_dist::NamedTuple, iv_logs::NamedDimsArray,
     pref_locations::NamedTuple, rankingsin::NamedTuple
 )::Tuple
     # location_id, seeding rank, shading rank
-    mcda_func = mcda_methods[Int(params("guided"))]
+    mcda_func = mcda_methods[Int64(params("guided"))]
+
     # filter criteria prior to decision making
     criteria_store = filter_decision_matrix(criteria_store, thresholds)
 
@@ -238,29 +224,29 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
     for int_key in keys(interventions)
 
         # if using intervention, create specific decision matrix
-        if int_logs(int_key)
+        if iv_logs(int_key)
 
             # get criteria matrix aggregation for particular intervention
             criteria_store_temp = interventions[int_key](criteria_store)
 
             # cap to number of locations left after risk filtration
-            n_location_int = min(n_location_int, length(criteria_store_temp.locations))
+            n_iv_locs = min(n_iv_locs, length(criteria_store_temp.locations))
             location_ids::Array{Int64} = criteria_store_temp.locations
 
             rankings = rankingsin[int_key]
             criteria_store_temp = criteria_store_temp[in.(criteria_store_temp.locations, [location_ids]), :]
             n_locations_all::Int64 = length(location_ids)
 
-            if n_locations_all !== 0
+            if n_locations_all != 0
                 # create intervention matrix
                 S, ws = create_intervention_matrix(criteria_store_temp, params, String(int_key))
 
-                # pad with zeros incase less locations than n_location_int are suitable
+                # pad with zeros incase less locations than n_iv_locs are suitable
                 pref_locations[int_key] .= repeat([0], length(pref_locations[int_key]))
 
                 if !isempty(S)
                     # get ranks for applying mcda_func to S
-                    pref_locations_temp, l_order = rank_locations!(S, ws, rankings, n_location_int, criteria_store_temp.locations, mcda_func)
+                    pref_locations_temp, l_order = rank_locations!(S, ws, rankings, n_iv_locs, criteria_store_temp.locations, mcda_func)
 
                     if use_dist[int_key] != 0
                         # sort locations for distance requirements
@@ -421,17 +407,16 @@ For example, (iv__heat_stress=(<,0.5)), implies the criteria "iv__heat_stress" m
 """
 function location_selection(criteria_store::NamedDimsArray, interventions::NamedTuple, scenario::NamedDimsArray,
     tolerances::NamedTuple, int_logs::NamedDimsArray, location_ids::AbstractArray, location_distances::Matrix,
-    med_location_distance::Float64, n_location_int::Int64)
+    med_location_distance::Float64, n_iv_locs::Int64)
 
-    tolerances_store = create_tolerances_store(tolerances)
     min_distance = med_location_distance .* scenario("dist_thresh")
     n_locations = length(location_ids)
 
     # set up rankings and pref_locations structures
     rankingsin = (seed=[location_ids zeros(Int64, (n_locations, 1))], fog=[location_ids zeros(Int64, (n_locations, 1))])
-    pref_locations = (seed=zeros(Int, n_location_int), shade=zeros(Int, n_location_int), fog=zeros(Int, n_location_int))
+    pref_locations = (seed=zeros(Int, n_iv_locs), shade=zeros(Int, n_iv_locs), fog=zeros(Int, n_iv_locs))
 
-    (_, ranks) = guided_location_selection(criteria_store, interventions, scenario, tolerances_store, n_location_int,
+    (_, ranks) = guided_location_selection(criteria_store, interventions, scenario, tolerances, n_iv_locs,
         location_distances, min_distance, (seed=true, fog=true, shade=false), int_logs,
         pref_locations, rankingsin)
     return ranks
