@@ -171,7 +171,6 @@ function initialize_mcda(domain::Domain, param_set::NamedDimsArray, location_ids
     use_dist = (seed=param_set("use_dist"), fog=param_set("use_dist"), shade=0)
 
     # initialize criteria
-    Main.@infiltrate
     criteria_store = create_criteria_store(location_ids, domain.mcda_criteria)
 
     return rankings, criteria_store, thresholds, min_distance, use_dist
