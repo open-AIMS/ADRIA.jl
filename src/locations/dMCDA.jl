@@ -59,9 +59,10 @@ end
 function create_criteria_store(location_ids::AbstractArray, criteria::NamedTuple)
     criteria_matrix = zeros(length(location_ids), length(criteria))
 
-    for (ind, crit_key) in enumerate(keys(criteria))
-        criteria_matrix[:, ind] .= criteria[crit_key][location_ids]
+    for (ind, val) in enumerate(criteria)
+        criteria_matrix[:, ind] .= val[location_ids]
     end
+
     return NamedDimsArray(criteria_matrix, locations=location_ids, criteria=collect(keys(criteria)))
 
 end
