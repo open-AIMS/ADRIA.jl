@@ -31,7 +31,7 @@ Struct of simulation constants for ADRIA
    https://doi.org/10.1002/ecm.1494
 """
 Base.@kwdef mutable struct SimConstants
-    n_location_int = 5 # max number of locations we intervene on in a given year.
+    n_iv_locs = 5 # max number of locations we intervene on in a given year.
 
     priority_locations = [] # locations to prioritize when seeding or shading
     priority_zones = ["Pink", "Green", "Yellow", "DarkBlue", "LightBlue"] # zones to prioritize when seeding or shading, in order of preference

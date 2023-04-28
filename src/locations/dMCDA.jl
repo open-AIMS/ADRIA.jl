@@ -115,21 +115,21 @@ function align_rankings!(rankings::Array, l_order::Matrix)::Nothing
 end
 
 """
-    rank_locations!(S, weights, rankings, n_location_int, rank_col)
-    rank_seed_locations!(S, weights, rankings, n_location_int)
-    rank_shade_locations!(S, weights, rankings, n_location_int)
+    rank_locations!(S, weights, rankings, n_iv_locs, rank_col)
+    rank_seed_locations!(S, weights, rankings, n_iv_locs)
+    rank_shade_locations!(S, weights, rankings, n_iv_locs)
 
 # Arguments
 - `S` : Matrix, Site preference values
 - `weights` : weights to apply
 - `rankings` : vector of location ranks to update
-- `n_location_int` : number of locations to select for interventions
+- `n_iv_locs` : number of locations to select for interventions
 - `rank_col` : column to fill with rankings (2 for seed, 3 for shade)
 
 # Returns
 - `preflocations` : locations in order of their rankings
 """
-function rank_locations!(S, weights, rankings, n_location_int, location_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+function rank_locations!(S, weights, rankings, n_iv_locs, location_ids, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred locations
     selector = vec(.!all(S .== 0, dims=1))
 
@@ -139,7 +139,7 @@ function rank_locations!(S, weights, rankings, n_location_int, location_ids, mcd
 
     l_order = retrieve_ranks(S, weights, mcda_func, location_ids)
 
-    last_idx = min(n_location_int, size(l_order, 1))
+    last_idx = min(n_iv_locs, size(l_order, 1))
     preflocations = Int.(l_order[1:last_idx, 1])
 
     # Match by location_id and assign rankings to log
@@ -170,7 +170,7 @@ end
 
 """
     create_intervention_matrix(criteria_store::NamedDimsArray, params::NamedDimsArray, int_type::String)
-  
+
 # Arguments
 - `criteria_store` : pre-filtered criteria to be used in the decision matrix for mcda.
 - `params` : scenario parameters, must include weights for criteria for the intervention of interest.
@@ -194,8 +194,8 @@ end
 
 
 """
-    function guided_location_selection(criteria_store::NamedDimsArray, interventions::NamedTuple,
-        params::NamedDimsArray, thresholds::NamedDimsArray, n_location_int::Int64,
+    guided_location_selection(criteria_store::NamedDimsArray, interventions::NamedTuple,
+        params::NamedDimsArray, thresholds::NamedDimsArray, n_iv_locs::Int64,
         distances::Matrix, minimum_distance::Float64, use_dist::NamedTuple, int_logs::NamedDimsArray,
         pref_locations::NamedTuple, rankingsin::NamedTuple
     )::Tuple
@@ -206,7 +206,7 @@ end
 - `params` : parameters for particular scenario run of the model.
 - `pref_locations` : previous time step's selection of locations for each intervention.
 - `thresholds` : specifies risk filter thresholds for criteria_store.
-- `n_location_int` : specifies number of locations to apply intervention at.
+- `n_iv_locs` : specifies number of locations to apply intervention at.
 - `distances` : n_locations*n_locations, specifies Haversine distance between each location in the set.
 - `minimum_distance` : specifies minimum allowed distance between selected locations.
 - `use_dist` : specifies whether distance sorting should be used for each intervention.
@@ -368,7 +368,7 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 
 # Arguments
 - `S` : decision matrix containing criteria values for each location (n locations)*(m criteria)
-- `weights` : importance weights for each criteria. 
+- `weights` : importance weights for each criteria.
 - `mcda_func` : function to use for mcda, specified as an element from mcda_methods.
 - `location_ids` : array of integers indicating location ids still remaining after filtering.
 
@@ -399,20 +399,20 @@ end
 
 """
     location_selection(criteria_store::NamedDimsArray,  interventions::NamedTuple, scenario::NamedDimsArray, tolerances::NamedTuple,
-        location_ids::AbstractArray, location_distances::Matrix, med_location_distance::Float64, n_location_int::Int64)
+        location_ids::AbstractArray, location_distances::Matrix, med_location_distance::Float64, n_iv_locs::Int64)
 
 Perform location selection using a set of criteria, tolerances, locations and location distances.
 # Arguments
 - `criteria_store` : contains criteria for a single location selection instance.
 - `interventions` : keys give keynames for each intervention to be used and aggregation functions for the decision matrix.
-- `scenario` : contains parameters for a single location selection instance, including tolerance values 
+- `scenario` : contains parameters for a single location selection instance, including tolerance values
 and parameters for distance sorting.
-- `tolerances` : specifies criteria tolerances and has keys with names corresponding to criteria in criteria_store. 
+- `tolerances` : specifies criteria tolerances and has keys with names corresponding to criteria in criteria_store.
 For example, (iv__heat_stress=(<,0.5)), implies the criteria "iv__heat_stress" must not have values greater than 0.5.
 - `location_ids` : array of length nlocations containing indices of locations to be selected from.
 - `location_distances` : Matrix of distances between locations.
 - `med_location_distance` : Median distance between locations in the location_distances matrix.
-- `n_location_int` : number of locations to select to perform intervention.
+- `n_iv_locs` : number of locations to select to perform intervention.
 
 # Returns
 - `ranks` : n_reps * locations * 3 (last dimension indicates: location_id, seeding rank, shading rank)
@@ -525,7 +525,7 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
             tol_temp = (; tol_temp..., tol => (tolerances[tol][1], map(tolerances[tol][2], scen[string(String(tol), "__tol")])))
         end
 
-        # update depth 
+        # update depth
         depth_criteria = (domain.location_data.depth_med .<= scen.max_depth) .& (domain.location_data.depth_med .>= scen.depth_min)
         depth_priority = findall(depth_criteria)
 
@@ -547,7 +547,7 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
             considered_locations,
             domain.location_distances,
             domain.median_location_distance,
-            domain.sim_constants.n_location_int
+            domain.sim_constants.n_iv_locs
         )
 
         # store
@@ -597,7 +597,7 @@ function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDi
 end
 
 """
-    unguided_location_selection(prefseedlocations, prefshadelocations, seed_years, shade_years, n_location_int, max_cover)
+    unguided_location_selection(prefseedlocations, prefshadelocations, seed_years, shade_years, n_iv_locs, max_cover)
 
 Randomly select seed/shade location locations for the given year, constraining to locations with max. carrying capacity > 0.
 Here, `max_cover` represents the max. carrying capacity for each location (the `k` value).
@@ -605,34 +605,32 @@ Here, `max_cover` represents the max. carrying capacity for each location (the `
 # Arguments
 - `pref_locations` : Previously selected locations
 - `int_log` : bool, indicating whether each intervention occurs this year or not.
-- `n_location_int` : int, number of locations to intervene on
+- `n_iv_locs` : int, number of locations to intervene on
 - `available_space` : vector/matrix : space available at each location (`k` value)
 - `depth` : vector of location ids found to be within desired depth range.
 - 'clusters' : vector of cluster identifiers.
 """
-function unguided_location_selection(pref_locations, int_logs, n_location_int, available_space, depth, clusters)
+function unguided_location_selection(pref_locations, int_logs, n_iv_locs, available_space, depth, clusters)
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.1
     # Only locations that have available space are considered, otherwise a zero-division error may occur later on.
 
     # Select locations (without replacement to avoid duplicate locations)
     candidate_locations = depth[(available_space.>0.0)[depth]]  # Filter down to location ids to be considered
     num_locations = length(candidate_locations)
-    s_n_location_int = num_locations < n_location_int ? num_locations : n_location_int
-    s_n_location_int_shade = length(clusters) < n_location_int ? length(clusters) : n_location_int
+    s_n_iv_locs = num_locations < n_iv_locs ? num_locations : n_iv_locs
+    s_n_iv_locs_shade = length(clusters) < n_iv_locs ? length(clusters) : n_iv_locs
 
     for int_key in [:seed, :fog]
         if int_logs(int_key)
-            pref_locations[int_key] .= zeros(Int64, n_location_int)
-            pref_locations[int_key][1:s_n_location_int] .= StatsBase.sample(candidate_locations, s_n_location_int; replace=false)
+            pref_locations[int_key] .= zeros(Int64, n_iv_locs)
+            pref_locations[int_key][1:s_n_iv_locs] .= StatsBase.sample(candidate_locations, s_n_iv_locs; replace=false)
 
         end
     end
 
     if int_logs(:shade)
-        pref_locations[:shade] .= StatsBase.sample(clusters, s_n_location_int_shade; replace=false)
+        pref_locations[:shade] .= StatsBase.sample(clusters, s_n_iv_locs_shade; replace=false)
     end
 
     return pref_locations
 end
-
-

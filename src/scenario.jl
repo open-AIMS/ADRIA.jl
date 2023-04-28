@@ -294,8 +294,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # sim constants
     tf::Int64 = size(dhw_scen, 1)
-    n_location_int::Int64 = sim_params.n_location_int
-    n_locations::Int64 = domain.coral_growth.n_locations
+    n_iv_locs::Int64 = sim_params.n_iv_locs
+    n_locs::Int64 = domain.coral_growth.n_locations
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
 
@@ -327,15 +327,15 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     felt_dhw = cache.felt_dhw
     depth_coeff = cache.depth_coeff
 
-    Y_cover::Array{Float64,3} = zeros(tf, n_species, n_locations)  # Coral cover relative to total location area
+    Y_cover::Array{Float64,3} = zeros(tf, n_species, n_locs)  # Coral cover relative to total location area
     Y_cover[1, :, :] .= domain.init_coral_cover
-    ode_u = zeros(n_species, n_locations)
+    ode_u = zeros(n_species, n_locs)
     cover_tmp = p.cover  # pre-allocated matrix used to avoid memory allocations
 
-    location_ranks = SparseArray(zeros(tf, n_locations, length(domain.interventions))) # log seeding/fogging/shading ranks
-    Yshade = SparseArray(spzeros(tf, n_locations))
-    Yfog = SparseArray(spzeros(tf, n_locations))
-    Yseed = SparseArray(zeros(tf, 2, n_locations))  # 2 = the two enhanced coral types
+    location_ranks = SparseArray(zeros(tf, n_locs, length(domain.interventions))) # log seeding/fogging/shading ranks
+    Yshade = SparseArray(spzeros(tf, n_locs))
+    Yfog = SparseArray(spzeros(tf, n_locs))
+    Yseed = SparseArray(zeros(tf, 2, n_locs))  # 2 = the two enhanced coral types
 
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
     is_guided = param_set("guided") > 0
@@ -363,7 +363,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     int_log = NamedDimsArray(hcat(seed_decision_years, shade_decision_years, shade_decision_years), year=1:tf, log=[:seed, :fog, :shade])
-    pref_locations = (seed=zeros(Int, n_location_int), shade=zeros(Int, n_location_int), fog=zeros(Int, n_location_int))
+    pref_locations = (seed=zeros(Int64, n_iv_locs), shade=zeros(Int64, n_iv_locs), fog=zeros(Int64, n_iv_locs))
 
     # Max coral cover at each location. Divided by 100 to convert to proportion
     max_cover = location_k(domain)
@@ -502,15 +502,13 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Update dMCDA values
             update_criteria_store!(criteria_store, sum(Sw_t[tstep, :, :], dims=1)', dhw_t, domain.in_conn, domain.out_conn,
                 total_location_area, location_coral_cover, domain.location_data, depth_priority)
-
         end
         if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= site_coral_cover
 
         if is_guided && in_seed_years
-
             (pref_locations, rankings) = guided_location_selection(criteria_store, domain.interventions,
-                param_set, thresholds_store, n_location_int, domain.location_distances, min_distance, use_dist,
+                param_set, thresholds_store, n_iv_locs, domain.location_distances, min_distance, use_dist,
                 int_log(year=tstep), pref_locations, rankings)
 
             # Log location ranks
@@ -525,7 +523,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         elseif seed_corals && (in_seed_years || in_shade_years)
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
             pref_locations = unguided_location_selection(pref_locations, int_log(year=tstep),
-                n_location_int, vec(leftover_space_m²), depth_priority, unique(domain.mcda_criteria.iv__clusters))
+                n_iv_locs, vec(leftover_space_m²), depth_priority, unique(domain.mcda_criteria.iv__clusters))
 
             location_ranks[tstep, pref_locations.seed[pref_locations.seed.>0], 1] .= 1.0
             location_ranks[tstep, pref_locations.fog[pref_locations.fog.>0], 2] .= 1.0
@@ -607,6 +605,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Avoid placing importance on locations that were not considered
     # (lower values are higher importance)
-    location_ranks[location_ranks.==0.0] .= n_locations + 1
+    location_ranks[location_ranks.==0.0] .= n_locs + 1
     return (raw=Y_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, location_ranks=location_ranks)
 end
