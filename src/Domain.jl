@@ -164,20 +164,16 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     try
         site_data = GDF.read(site_data_fn)
     catch err
-        if !isfile(location_data_fn)
-            try
-                location_data_fn = string(dpkg_path, "\\site_data\\", last(split(location_data_fn, "\\")))
-                init_coral_fn = string(dpkg_path, "\\site_data\\", last(split(init_coral_fn, "\\")))
-                location_data = GeoDataFrames.read(location_data_fn)
-            catch err
-                if !isfile(location_data_fn)
-                    error("Provided location data path is not valid or missing: $(location_data_fn).")
-                else
-                    rethrow(err)
-                end
-            end
-            @warn "Provided location data path is from a previous version, try changing site_data to location_data."
-        else
+        if isfile(location_data_fn)
+            rethrow(err)
+        end
+
+        @warn "Domain data package < v0.3.0 detected. Update by renaming the `site_data` directory to `location_data`."
+        try
+            location_data_fn = string(dpkg_path, "\\site_data\\", last(split(location_data_fn, "\\")))
+            init_coral_fn = string(dpkg_path, "\\site_data\\", last(split(init_coral_fn, "\\")))
+            location_data = GeoDataFrames.read(location_data_fn)
+        catch err
             rethrow(err)
         end
     end
