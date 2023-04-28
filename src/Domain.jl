@@ -198,7 +198,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 
     # Filter out missing entries
     location_data = location_data[coalesce.(in.(conn_ids, [location_conn.location_ids]), false), :]
-    location_dists::Matrix{Float64}, median_location_distance::Float64 = location_distances(location_data)
+    loc_matrix::Matrix{Float64}, median_dist::Float64 = location_distances(location_data)
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(location_data))
     n_locations::Int64 = coral_growth.n_locations
@@ -235,7 +235,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
     return Domain(name, rcp, env_layer_md, location_conn.TP_base, conns.in_conn, conns.out_conn, conns.strongest_predecessor,
-        location_data, location_dists, median_location_distance, location_id_col, unique_location_id_col, coral_cover, coral_growth,
+        location_data, loc_matrix, median_dist, location_id_col, unique_location_id_col, coral_cover, coral_growth,
         location_conn.location_ids, location_conn.truncated, dhw, waves)
 end
 
