@@ -174,8 +174,8 @@ function create_intervention_matrix(criteria_store::NamedDimsArray, params::Name
 
     ws = mcda_normalize(Array(params(iv_params)))
     S = Matrix(criteria_store[criteria=crit_inds])
-    return S, ws
 
+    return S, ws
 end
 
 
