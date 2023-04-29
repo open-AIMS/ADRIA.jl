@@ -258,7 +258,7 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
                 end
             end
             # Replace input rankings if locations have been selected
-            if sum(pref_locations[iv_key]) !== 0
+            if sum(pref_locations[iv_key]) != 0
                 rankingsin[iv_key][Bool.(dropdims(sum(in.(rankings[:, 1]', rankingsin[iv_key][:, 1]), dims=2), dims=2)), 2] .= rankings[:, 2]
             end
         end
