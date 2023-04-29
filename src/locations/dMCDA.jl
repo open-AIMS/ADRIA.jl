@@ -242,7 +242,7 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
                 S, ws = create_intervention_matrix(criteria_store_temp, params, String(iv_key))
 
                 # pad with zeros incase less locations than n_iv_locs are suitable
-                pref_locations[iv_key] .= repeat([0], length(pref_locations[iv_key]))
+                pref_locations[iv_key] .= zeros(length(pref_locations[iv_key]))
 
                 if !isempty(S)
                     # get ranks for applying mcda_func to S
