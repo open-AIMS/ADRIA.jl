@@ -505,8 +505,7 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
     criteria_store(:iv__heat_stress) .= env_stress_criteria(Array(dropdims(mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ var(dhw_scens, dims=(:timesteps, :scenarios)), dims=:timesteps)))
 
     for (cover_ind, scen) in enumerate(eachrow(scenarios))
-
-        tol_temp = ()
+        local tol_temp
         for tol = keys(tolerances)
             tol_temp = (; tol_temp..., tol => (tolerances[tol][1], map(tolerances[tol][2], scen[string(String(tol), "__tol")])))
         end
@@ -541,11 +540,12 @@ function run_location_selection(domain::ADRIADomain, scenarios::DataFrame, toler
         ranks_store(scenarios=cover_ind, locations=domain.location_ids[considered_locations], ranks="fog_rank") .= temp_ranks[:fog][:, 2]
 
     end
+
     if !isnothing(aggregation_method)
         return ranks_store, aggregation_method[1](ranks_store, aggregation_method[2])
-    else
-        return ranks_store
     end
+
+    return ranks_store
 end
 
 """
