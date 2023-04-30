@@ -283,6 +283,7 @@ Replaces these locations with locations in the top_n ranks if the distance betwe
 
 # Returns
 - `rep_locations` : new set of selected locations for seeding or shading.
+- `rankings` : rankings of selected locations
 """
 function distance_sorting(pref_locations::AbstractArray{Int}, l_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
     min_dist::Float64, rankings::Matrix{Int64})::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
@@ -610,7 +611,6 @@ function unguided_location_selection(pref_locations, int_logs, n_iv_locs, availa
         if int_logs(int_key)
             pref_locations[int_key] .= zeros(Int64, n_iv_locs)
             pref_locations[int_key][1:s_n_iv_locs] .= StatsBase.sample(candidate_locations, s_n_iv_locs; replace=false)
-
         end
     end
 

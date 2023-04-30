@@ -16,7 +16,6 @@ connector for a priority zone.
 
 # Returns
 - `zone_criteria` : Vector of floats indicating value of each reef/location for priority zones.
-
 """
 function zones_criteria(zones::Vector{String}, priority_zones::Vector{String},
     strong_pred::Vector{Int64}, location_ids::Vector{Int64})
@@ -55,7 +54,6 @@ connector for a priority location.
 
 # Returns
 - `predec` : Vector of floats indicating value of each reef/location for priority locations.
-
 """
 function priority_predecessor_criteria(strong_pred::Vector{Int64}, priority_locations::Vector{Any})
     # work out which priority predecessors are connected to priority locations
@@ -77,7 +75,6 @@ each reef/location.
 # Arguments
 - `location_data` : DataFrame containing location/reef k values and area.
 - `coral_cover` : Proportional cover at each location/reef.
-
 """
 function coral_cover_criteria(location_data::DataFrame, coral_cover::AbstractArray)
     max_area = location_data.k .* location_data.area
@@ -93,7 +90,6 @@ stress across reefs/locations.
 
 # Arguments
 - `env_stress` : e.g. heat_stress as dhws, wave_stress as probabilities etc.
-
 """
 function env_stress_criteria(env_stress::AbstractArray)
     return maximum(env_stress) != 0.0 ? 1.0 .- ((env_stress .- minimum(env_stress)) ./ (maximum(env_stress) - minimum(env_stress))) : ones(Float64, size(env_stress))
@@ -109,7 +105,6 @@ Calculates connectivity criterium for each reef/location as connectivity*(area o
 - `conn` : In-coming or out-going connectivity for each reef/location.
 - `sum_cover` : Proportional coral cover for each reef/location.
 - `area` : Area of each location (m^2).
-
 """
 function connectivity_criteria(conn::Vector{Float64}, sum_cover::AbstractArray,
     area::Array{Float64})
@@ -173,7 +168,6 @@ Updates NamedDimsArray of criteria values required for dynamic location selectio
 - `location_coral_cover` : Current proportional coral cover at each location/reef.
 - `location_data` : Containing location area, k values etc.
 - `depth_priority` : Depth filtered set of location ids as integers.
-
 """
 function update_criteria_store!(criteria_store::NamedDimsArray, wave_stress::AbstractArray,
     heat_stress::AbstractArray, in_conn::AbstractArray, out_conn::AbstractArray,
@@ -210,8 +204,7 @@ of location preference for each scenario as location ids.
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
-- `int_type` : String indicating the intervention type to perform aggregation on.
-
+- `iv_type` : String indicating the intervention type to perform aggregation on.
 """
 function ranks_to_location_order(ranks::NamedDimsArray, int_type::String)
     ranks_set = ranks(:, :, string(int_type, "_rank"))
