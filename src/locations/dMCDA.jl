@@ -378,7 +378,7 @@ end
 function retrieve_ranks(S::Matrix, scores::Array, rev_val::Bool, location_ids::Array{Int64})
     l_order = Union{Float64,Int64}[Int.(location_ids) scores 1:size(S, 1)]
     l_order .= sortslices(l_order, dims=1, by=x -> x[2], rev=rev_val)
-    @views l_order[:, 3] .= Int.(1:size(S, 1))
+    @views l_order[:, 3] .= Int64.(1:size(S, 1))
 
     return l_order
 end
@@ -414,10 +414,10 @@ function location_selection(criteria_store::NamedDimsArray, interventions::Named
 
     # set up rankings and pref_locations structures
     rankingsin = (seed=[location_ids zeros(Int64, (n_locations, 1))], fog=[location_ids zeros(Int64, (n_locations, 1))])
-    pref_locations = (seed=zeros(Int, n_iv_locs), shade=zeros(Int, n_iv_locs), fog=zeros(Int, n_iv_locs))
+    pref_locations = (seed=zeros(Int64, n_iv_locs), shade=zeros(Int64, n_iv_locs), fog=zeros(Int64, n_iv_locs))
 
     (_, ranks) = guided_location_selection(criteria_store, interventions, scenario, tolerances, n_iv_locs,
-        location_distances, min_distance, (seed=true, fog=true, shade=false), int_logs,
+        location_distances, min_distance, (seed=true, fog=true, shade=false), iv_logs,
         pref_locations, rankingsin)
     return ranks
 end

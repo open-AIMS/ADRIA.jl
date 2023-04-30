@@ -152,12 +152,10 @@ Initialises variable strucutres required for dynamic location selection in ADRIA
 - `depth_priority` : Depth filtered set of location ids as integers.
 - `init_sum_cover` : Initial proportional coral cover.
 - `area_to_seed` : Area in m^2 to be covered by seeding coral at a single time step.
-
 """
 function initialize_mcda(domain::Domain, param_set::NamedDimsArray, location_ids::Vector{Int64}, area_to_seed::Float64)
-
-    rankings_seed_fog = [location_ids zeros(Int, length(location_ids))]
-    rankings_shade = [unique(domain.mcda_criteria.iv__clusters) zeros(Int, length(unique(domain.mcda_criteria.iv__clusters)))]
+    rankings_seed_fog = [location_ids zeros(Int64, length(location_ids))]
+    rankings_shade = [unique(cluster_ids(domain)) zeros(Int64, n_clusters(domain))]
     rankings = (seed=rankings_seed_fog, fog=rankings_seed_fog, shade=rankings_shade)
 
     thresholds = (
@@ -217,13 +215,14 @@ function shade_aggregation(criteria_store::NamedDimsArray)
     criteria_store_shade = copy(criteria_store)[1:length(unique(criteria_store(:iv__clusters))), :]
     criteria_store_shade.locations .= unique(criteria_store(:iv__clusters))
     for k in unique(criteria_store(:iv__clusters))
-        criteria_store_shade(locations=Int(k)) .= dropdims(median(criteria_store[criteria_store(:iv__clusters).==k, :], dims=:locations), dims=:locations)
+        criteria_store_shade(locations=Int64(k)) .= dropdims(median(criteria_store[criteria_store(:iv__clusters).==k, :], dims=:locations), dims=:locations)
     end
+
     return criteria_store_shade
 end
 
 """
-    ranks_to_location_order(ranks::NamedDimsArray, int_type::String)
+    ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
 
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the order 
@@ -246,7 +245,7 @@ function ranks_to_location_order(ranks::NamedDimsArray, int_type::String)
 end
 
 """
-    ranks_to_frequencies(ranks::NamedDimsArray, int_type::String)
+    ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
 
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the frequency 
@@ -255,14 +254,13 @@ with which each location was selected at each rank across the location selection
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
-- `int_type` : String indicating the intervention type to perform aggregation on.
-
+- `iv_type` : String indicating the intervention type to perform aggregation on.
 """
-function ranks_to_frequencies(ranks::NamedDimsArray, int_type::String)
+function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
     rank_frequencies = NamedDimsArray(zeros(size(ranks, 2), size(ranks, 2)), locations=ranks.locations, ranks=1:size(ranks, 2))
 
     for rank in range(1, size(ranks, 2), size(ranks, 2))
-        rank_frequencies[ranks=Int(rank)] .= sum(ranks(:, :, string(int_type, "_rank")) .== rank, dims=:scenarios)[scenarios=1]
+        rank_frequencies[ranks=Int64(rank)] .= sum(ranks(:, :, string(iv_type, "_rank")) .== rank, dims=:scenarios)[scenarios=1]
     end
     return rank_frequencies
 end
