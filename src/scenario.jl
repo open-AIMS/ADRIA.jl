@@ -512,17 +512,17 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             location_ranks[tstep, rankings[:fog][:, 1], 2] .= rankings[:fog][:, 2]
             if int_log(year=tstep, log=:shade)
                 for cluster in eachrow(rankings[:shade])
-                    location_ranks[tstep, dropdims(domain.mcda_criteria.iv__clusters .== cluster[1], dims=1), 3] .= cluster[2]
+                    location_ranks[tstep, dropdims(cluster_ids(domain) .== cluster[1], dims=1), 3] .= cluster[2]
                 end
             end
         elseif seed_corals && (in_seed_years || in_shade_years)
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
             pref_locations = unguided_location_selection(pref_locations, int_log(year=tstep),
-                n_iv_locs, vec(leftover_space_m²), depth_priority, unique(domain.mcda_criteria.iv__clusters))
+                n_iv_locs, vec(leftover_space_m²), depth_priority, unique(cluster_ids(domain)))
 
             location_ranks[tstep, pref_locations.seed[pref_locations.seed.>0], 1] .= 1.0
             location_ranks[tstep, pref_locations.fog[pref_locations.fog.>0], 2] .= 1.0
-            locations_in_clusters = Bool.(dropdims(sum(in.(pref_locations.shade, domain.mcda_criteria.iv__clusters), dims=1), dims=1))
+            locations_in_clusters = Bool.(dropdims(sum(in.(pref_locations.shade, cluster_ids(domain)), dims=1), dims=1))
             location_ranks[tstep, locations_in_clusters, 3] .= 1.0
         end
 
@@ -530,7 +530,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         has_seed_locations::Bool = !all(pref_locations.seed .== 0)
 
         if (srm > 0.0) && in_shade_years
-            locations_in_clusters = Bool.(dropdims(sum(in.(pref_locations.shade, domain.mcda_criteria.iv__clusters), dims=1), dims=1))
+            locations_in_clusters = Bool.(dropdims(sum(in.(pref_locations.shade, cluster_ids(domain)), dims=1), dims=1))
 
             Yshade[tstep, locations_in_clusters] .= srm
 

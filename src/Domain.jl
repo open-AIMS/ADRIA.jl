@@ -448,10 +448,45 @@ end
 """
     n_locations(domain::Domain)::Int64
 
-Returns the number of locations (locations/reefs/clusters) represented within the domain.
+Returns the number of locations (which may be sites/reefs/clusters) represented within the domain.
 """
 function n_locations(domain::Domain)::Int64
     return size(domain.location_data, 1)
+end
+
+"""
+    n_clusters(domain::Domain)::Int64
+
+Returns the number of clusters as represented within the domain.
+"""
+function n_clusters(domain::Domain)::Int64
+    return length(unique(domain.location_data.Reef))
+end
+
+"""
+    clusters(domain::Domain)::Int64
+
+Returns the clusters represented within the domain.
+"""
+function clusters(domain::Domain)::Vector{String}
+    return domain.location_data.Reef
+end
+
+"""
+    cluster_ids(domain::Domain)::Vector{Int64}
+
+Returns unique ids associated with the clusters represented within the domain.
+"""
+function cluster_ids(domain::Domain)::Vector{Int64}
+    return cluster_ids(clusters(domain))
+end
+function cluster_ids(cluster_data::Vector{String})::Vector{Int64}
+    c = zeros(Int64, length(cluster_data))
+    for (k, reef) in enumerate(unique(cluster_data))
+        c[cluster_data.==reef] .= k
+    end
+
+    return c
 end
 
 """
