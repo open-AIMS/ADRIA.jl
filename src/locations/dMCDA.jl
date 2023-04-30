@@ -364,8 +364,7 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 - `l_order` : [location_ids, criteria values, ranks]
 """
 function retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, location_ids::Array{Int64})
-    S = mcda_normalize(S)
-    S .= S .* repeat(weights', size(S, 1), 1)
+    S = mcda_normalize(S) .* weights'
     scores = mcda_func(S)
 
     return retrieve_ranks(S, scores, true, location_ids)
