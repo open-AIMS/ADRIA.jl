@@ -407,7 +407,7 @@ For example, (iv__heat_stress=(<,0.5)), implies the criteria "iv__heat_stress" m
     containing ranks for single scenario.
 """
 function location_selection(criteria_store::NamedDimsArray, interventions::NamedTuple, scenario::NamedDimsArray,
-    tolerances::NamedTuple, int_logs::NamedDimsArray, location_ids::AbstractArray, location_distances::Matrix,
+    tolerances::NamedTuple, iv_logs::NamedDimsArray, location_ids::AbstractArray, location_distances::Matrix,
     med_location_distance::Float64, n_iv_locs::Int64)
 
     min_distance = med_location_distance .* scenario("dist_thresh")
