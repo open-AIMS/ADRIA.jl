@@ -73,42 +73,41 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         name="Shading Start Year", description="Start of shading deployments after this number of years has elapsed.")
 end
 
-
 Base.@kwdef struct Criteria{P,N} <: EcoModel
-    iv__seed_fog_shade__wave_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    wave_stress__seed_fog_shade::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Wave Stress", description="Importance of avoiding wave stress. Higher values places more weight on areas with low wave stress.")
-    iv__seed_fog_shade__heat_stress::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    heat_stress__seed_fog_shade::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Heat Stress", description="Importance of avoiding heat stress. Higher values places more weight on areas with low heat stress.")
-    iv__fog_shade__in_connectivity::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    in_connectivity__fog_shade::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Shade Connectivity", description="Higher values give preference to locations with high connectivity for shading deployments.")
-    iv__seed__in_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    in_connectivity__seed::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Incoming Connectivity (Seed)", description="Higher values give preference to locations with high incoming connectivity (i.e., receives larvae from other locations) for enhanced coral deployments.")
-    iv__seed__out_connectivity::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    out_connectivity__seed::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Outgoing Connectivity (Seed)", description="Higher values give preference to locations with high outgoing connectivity (i.e., provides larvae to other locations) for enhanced coral deployments.")
-    iv__seed__coral_space::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    coral_space__seed::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Low Coral Cover", description="Higher values give greater preference to locations with low coral cover for seeding deployments.")
-    iv__fog_shade__coral_cover::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    coral_cover__fog_shade::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="High Coral Cover", description="Higher values give preference to locations with high coral cover for shading deployments.")
-    iv__seed__priority::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    priority__seed::P = Param(1.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Predecessor Priority (Seed)", description="Importance of seeding locations that provide larvae to priority reefs.")
-    iv__fog_shade::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    shade__fog::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Predecessor Priority (Shade)", description="Importance of shading locations that provide larvae to priority reefs.")
-    iv__seed__zone::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    zone__seed::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Zone Predecessor (Seed)", description="Importance of seeding locations that provide larvae to priority (target) zones.")
-    iv__fog_shade__zone::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    zone__fog_shade::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Zone Predecessor (Shade)", description="Importance of shading locations that provide larvae to priority (target) zones.")
-    iv__seed__depth::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    depth__seed::P = Param(0.0, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Zone Predecessor (Shade)", description="Importance of shading locations that provide larvae to priority (target) zones.")
-    iv__tol__coral_space::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif",
+    coral_space__tol::P = Param(0.2, ptype="real", bounds=(0.0, 1.0), dists="unif",
         name="Low Area Tolerance", description="Tolerance for low proportional space for seeding deployments.")
-    iv__tol__heat_stress::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
+    heat_stress__tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
         name="Risk Tolerance", description="Filters out locations with heat/wave stress above threshold.")
-    iv__tol__wave_stress::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
+    wave_stress__tol::P = Param(1.0, ptype="real", bounds=(0.75, 1.0), dists="unif",
         name="Risk Tolerance", description="Filters out locations with heat/wave stress above threshold.")
     use_dist::N = Param(1, ptype="integer", bounds=(0.0, 1.0 + 1.0), dists="unif",
-        name="Use Distance Threshold", description="Turns distance sorting on or off.")
+        name="Use Distance Threshold", description="Applies distance threshold (`dist_thresh`) on or off.")
     dist_thresh::P = Param(0.1, ptype="real", bounds=(0.0, 1.0), dists="unif",
-        name="Distance Threshold", description="Sites selected by MCDA must be further apart than median(dist)-dist_thresh*median(dist).")
+        name="Distance Threshold", description="Sites selected by MCDA must be further apart than median(dist)*dist_thresh.")
     top_n::N = Param(10, ptype="integer", bounds=(5.0, 50.0 + 1.0), dists="unif",
         name="Top N", description="Replaces a given deployment location with a top-ranked location if it does not satisfy the minimum distance threshold.")
     depth_min::P = Param(5.0, ptype="real", bounds=(3.0, 5.0), dists="unif",
@@ -116,7 +115,6 @@ Base.@kwdef struct Criteria{P,N} <: EcoModel
     depth_offset::P = Param(10.0, ptype="real", bounds=(10.0, 25.0), dists="unif", name="Depth Offset",
         description="Offset from minimum depth, used to indicate maximum depth.")
 end
-
 
 struct EnvironmentalLayer{P} <: EcoModel
     dhw_scenario::P
