@@ -221,46 +221,46 @@ function guided_location_selection(criteria_store::NamedDimsArray, interventions
         return pref_locations, rankingsin
     end
 
-    for iv_key in keys(interventions)
+    for (iv_key, func) in interventions
+        if !iv_logs(iv_key)
+            continue
+        end
 
-        # if using intervention, create specific decision matrix
-        if iv_logs(iv_key)
+        # Apply filter for the given intervention
+        criteria_store_temp = func(criteria_store)
 
-            # get criteria matrix aggregation for particular intervention
-            criteria_store_temp = interventions[iv_key](criteria_store)
+        # Cap to number of locations left after risk filtration
+        n_iv_locs = min(n_iv_locs, length(criteria_store_temp.locations))
+        location_ids::Array{Int64} = criteria_store_temp.locations
 
-            # cap to number of locations left after risk filtration
-            n_iv_locs = min(n_iv_locs, length(criteria_store_temp.locations))
-            location_ids::Array{Int64} = criteria_store_temp.locations
+        rankings = rankingsin[iv_key]
 
-            rankings = rankingsin[iv_key]
-            criteria_store_temp = criteria_store_temp[in.(criteria_store_temp.locations, [location_ids]), :]
-            n_locations_all::Int64 = length(location_ids)
+        criteria_store_temp = criteria_store_temp[in.(criteria_store_temp.locations, [location_ids]), :]
+        n_locations_all::Int64 = length(location_ids)
 
-            if n_locations_all != 0
-                # create intervention matrix
-                S, ws = create_intervention_matrix(criteria_store_temp, params, String(iv_key))
+        if n_locations_all != 0
+            # create intervention matrix
+            S, ws = create_intervention_matrix(criteria_store_temp, params, String(iv_key))
 
-                # pad with zeros incase less locations than n_iv_locs are suitable
-                pref_locations[iv_key] .= zeros(length(pref_locations[iv_key]))
+            # pad with zeros in case suitable locations are less than n_iv_locs
+            pref_locations[iv_key] .= zeros(length(pref_locations[iv_key]))
 
-                if !isempty(S)
-                    # get ranks for applying mcda_func to S
-                    pref_locations_temp, l_order = rank_locations!(S, ws, rankings, n_iv_locs, criteria_store_temp.locations, mcda_func)
+            if !isempty(S)
+                # get ranks for applying mcda_func to S
+                pref_locations_temp, l_order = rank_locations!(S, ws, rankings, n_iv_locs, criteria_store_temp.locations, mcda_func)
 
-                    if use_dist[iv_key] != 0
-                        # sort locations for distance requirements
-                        pref_locations_temp, rankings = distance_sorting(pref_locations_temp, l_order, distances, minimum_distance, rankings)
-
-                    end
-
-                    pref_locations[iv_key][1:length(pref_locations_temp)] .= pref_locations_temp
+                if use_dist[iv_key] != 0
+                    # sort locations for distance requirements
+                    pref_locations_temp, rankings = distance_sorting(pref_locations_temp, l_order, distances, minimum_distance, rankings)
                 end
+
+                pref_locations[iv_key][1:length(pref_locations_temp)] .= pref_locations_temp
             end
-            # Replace input rankings if locations have been selected
-            if sum(pref_locations[iv_key]) != 0
-                rankingsin[iv_key][Bool.(dropdims(sum(in.(rankings[:, 1]', rankingsin[iv_key][:, 1]), dims=2), dims=2)), 2] .= rankings[:, 2]
-            end
+        end
+
+        # Replace input rankings if locations have been selected
+        if sum(pref_locations[iv_key]) != 0
+            rankingsin[iv_key][Bool.(dropdims(sum(in.(rankings[:, 1]', rankingsin[iv_key][:, 1]), dims=2), dims=2)), 2] .= rankings[:, 2]
         end
     end
 
