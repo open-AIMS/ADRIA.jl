@@ -413,7 +413,7 @@ function guided_site_selection(
 
     # if no sites are available, abort
     if n_sites == 0
-        return prefseedsites, prefshadesites, rankingsin
+        return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
     end
 
     n_site_int::Int64 = d_vars.n_site_int
@@ -478,7 +478,7 @@ function guided_site_selection(
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
-        return prefseedsites, prefshadesites, rankingsin
+        return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
     end
 
     # cap to number of sites left after risk filtration
