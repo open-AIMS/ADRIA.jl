@@ -311,8 +311,13 @@ function create_seed_matrix(A, min_area, wt_in_conn_seed, wt_out_conn_seed, wt_w
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
 
-    # coral real estate as total area, sites with =<20% of area to be seeded available filtered out
+    # Coral real estate as total area, sites with ≤ min_area to be seeded available filtered out
     SE[vec(A[:, 8] .<= min_area), 8] .= NaN
+
+    # Mark "hot" locations for filter
+    SE[vec(A[:, 5] .>= 0.75), 5] .= NaN
+
+    # Filter out identified locations
     SE = SE[vec(.!any(isnan.(SE), dims=2)), :]
 
     return SE, wse
