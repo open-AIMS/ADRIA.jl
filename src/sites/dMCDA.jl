@@ -172,7 +172,7 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
 
     # Skip first column as this holds site index ids
     S[:, 2:end] = mcda_normalize(S[:, 2:end])
-    S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
+    S[:, 2:end] .= S[:, 2:end] .* weights'
     s_order = mcda_func(S)
 
     last_idx = min(n_site_int, size(s_order, 1))
@@ -405,7 +405,7 @@ function guided_site_selection(
     if mod_n_ranks < length(d_vars.site_ids) && length(rankingsin) != 0
         rankingsin = rankingsin[in.(rankingsin[:, 1], [site_ids]), :]
         site_ids = rankingsin[:, 1]
-    elseif length(rankingsin) != 0
+    if length(rankingsin) != 0
         rankingsin = [site_ids zeros(Int64, length(site_ids)) zeros(Int64, length(site_ids))]
     end
 
@@ -461,15 +461,15 @@ function guided_site_selection(
     zone_preds = zeros(n_sites, 1)
     zone_sites = zeros(n_sites, 1)
 
-    for k in axes(zone_ids, 1)
+    for (k::Int64, z_name::String) in enumerate(zone_ids)
         # find sites which are strongest predecessors of sites in the zone
-        zone_preds_temp = strong_pred[zones.==zone_ids[k]]
-        for s in unique(zone_preds_temp)
-            # for each predecessor site, add zone_weights* (no. of zone sites the site is a strongest predecessor for)
-            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k]) .* sum(zone_preds_temp .== s)
+        zone_preds_temp::Vector{Int64} = strong_pred[zones.==z_name]
+        for s::Int64 in unique(zone_preds_temp)
+            # for each predecessor site, add zone_weights * (no. of zone sites the site is a strongest predecessor for)
+            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k] .* sum(zone_preds_temp .== s))
         end
         # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)
-        zone_sites[zones.==zone_ids[k]] .= zone_weights[k]
+        zone_sites[zones.==z_name] .= zone_weights[k]
     end
 
     # add weights for strongest predecessors and zones to get zone criteria
@@ -506,7 +506,7 @@ function guided_site_selection(
     end
 
     if log_seed && isempty(SE)
-        prefseedsites = repeat([0], n_site_int)
+        prefseedsites = zeros(Int64, n_site_int)
     elseif log_seed
 
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, n_site_int, mcda_func)
@@ -516,7 +516,7 @@ function guided_site_selection(
     end
 
     if log_shade && isempty(SH)
-        prefshadesites = repeat([0], n_site_int)
+        prefshadesites = zeros(Int64, n_site_int)
     elseif log_shade
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, n_site_int, mcda_func)
         if use_dist != 0
