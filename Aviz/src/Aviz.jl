@@ -207,25 +207,39 @@ function explore(rs::ResultSet)
     # Trajectories
     series!(traj_display, years, tac_data, color=obs_color)
 
-    # Density (TODO: Separate into own function)
-    tac_scen_dist = dropdims(mean(tac_scens, dims=:timesteps), dims=:timesteps)
-    obs_cf_scen_dist = Observable(tac_scen_dist[scen_types.counterfactual])
-    obs_ug_scen_dist = Observable(tac_scen_dist[scen_types.unguided])
-    obs_g_scen_dist = Observable(tac_scen_dist[scen_types.guided])
+    # Legend(traj_display)  legend=["Counterfactual", "Unguided", "Guided"]
+    scen_hist = layout.scen_hist
 
     # Color transparency for density plots
     # Note: Density plots currently cannot handle empty datasets
     #       as what might happen if user selects a region with no results.
     #       so instead we set alpha to 0.0 to hide it.
     cf_hist_alpha = Observable((:red, 0.5))
-    ug_hist_alpha = Observable((:green, 0.5))  # Observable(0.5)
+    ug_hist_alpha = Observable((:green, 0.5))
     g_hist_alpha = Observable((:blue, 0.5))
 
-    # Legend(traj_display)  legend=["Counterfactual", "Unguided", "Guided"]
-    scen_hist = layout.scen_hist
-    density!(scen_hist, obs_cf_scen_dist, direction=:y, color=cf_hist_alpha)
-    density!(scen_hist, obs_ug_scen_dist, direction=:y, color=ug_hist_alpha)
-    density!(scen_hist, obs_g_scen_dist, direction=:y, color=g_hist_alpha)
+    has_cf = count(scen_types.counterfactual) > 0
+    has_ug = count(scen_types.unguided) > 0
+    has_g = count(scen_types.guided) > 0
+
+    # Density (TODO: Separate into own function)
+    tac_scen_dist = dropdims(mean(tac_scens, dims=:timesteps), dims=:timesteps)
+    obs_cf_scen_dist = Observable(tac_scen_dist[scen_types.counterfactual])
+
+    if has_cf
+        density!(scen_hist, obs_cf_scen_dist, direction=:y, color=cf_hist_alpha)
+    end
+
+    obs_ug_scen_dist = Observable(tac_scen_dist[scen_types.unguided])
+    if has_ug
+        density!(scen_hist, obs_ug_scen_dist, direction=:y, color=ug_hist_alpha)
+    end
+
+    obs_g_scen_dist = Observable(tac_scen_dist[scen_types.guided])
+    if has_g
+        density!(scen_hist, obs_g_scen_dist, direction=:y, color=g_hist_alpha)
+    end
+
     hidedecorations!(scen_hist)
     hidespines!(scen_hist)
     ylims!(scen_hist, 0.0, maximum(tac_scen_dist))
@@ -249,16 +263,14 @@ function explore(rs::ResultSet)
     juves_scen_dist = dropdims(mean(juves_scens, dims=:timesteps), dims=:timesteps)
 
     ms = rs.model_spec
-    intervention_components = ms[(ms.component.=="Intervention").&(ms.fieldname.!="guided"), [:fieldname, :bounds]]
+    intervention_components = ms[(ms.component.=="Intervention").&(ms.fieldname.!="guided"), [:name, :fieldname, :lower_bound, :upper_bound]]
     interv_names = intervention_components.fieldname
     interv_idx = findall(x -> x in interv_names, names(X))
 
-    # Adjust unguided scenarios so scenario values are not 0 (to avoid these getting removed in display)
-    for (i, n) in enumerate(interv_names)
-        fb = intervention_components[i, :bounds]
-        x = eval(Meta.parse(fb))
-        X[X.guided.<0, n] .= x[1]
-    end
+    # Adjust no intervention scenarios so intervention values are not 0 (to avoid these getting removed in display)
+    # for r in eachrow(intervention_components)
+    #     X[X.guided.<0, r.fieldname] .= r.lower_bound
+    # end
 
     mean_tac_med = relative_sensitivities(X, Array(tac_scen_dist))
     mean_tac_med = mean_tac_med[interv_idx]
@@ -277,7 +289,7 @@ function explore(rs::ResultSet)
     ft_import = Axis(
         layout.importance[1, 1],
         xticks=([1, 2, 3], ["Mean TAC", "Mean ASV", "Mean Juveniles"]),
-        yticks=(1:length(interv_names), interv_names),
+        yticks=(1:length(interv_names), intervention_components.name),
         title="Relative Importance"
     )
     ft_import.yreversed = true
@@ -309,7 +321,10 @@ function explore(rs::ResultSet)
 
     # Add control grid
     # Controls for RCPs
-    t_toggles = [Toggle(f, active=active) for active in [true, true, true, true, true, true]]
+    has_45 = count(X.RCP .== 45) > 0
+    has_60 = count(X.RCP .== 60) > 0
+    has_85 = count(X.RCP .== 85) > 0
+    t_toggles = [Toggle(f, active=active) for active in [has_45, has_60, has_85, has_cf, has_ug, has_g]]
     t_toggle_map = zip(
         t_toggles,
         ["RCP 4.5", "RCP 6.0", "RCP 8.5", "Counterfactual", "Unguided", "Guided"],
@@ -330,9 +345,9 @@ function explore(rs::ResultSet)
     interv_labels = []
     lc = layout.controls[3:6, 1] = GridLayout()
     for (i, v) in enumerate(eachrow(intervention_components))
-        fn = v[1]
-        x = eval(Meta.parse(v[2]))
+        fn = v.name
 
+        x = (v.lower_bound, v.upper_bound)
         l1 = Observable("$(round(x[1], digits=2))")
         l2 = Observable("$(round(x[2], digits=2))")
         push!(interv_sliders,
@@ -427,7 +442,7 @@ function explore(rs::ResultSet)
         if seeded_sites != curr_highlighted_sites
             # Highlight seeded sites
             if any(seeded_sites .> 0.0) && any(show_idx)
-                obs_site_sel[] = FC(geodata[seeded_sites, :])
+                obs_site_sel[] = FC(geodata[seeded_sites, :][:])
                 site_alpha = 1.0
                 curr_highlighted_sites .= seeded_sites
             else
@@ -509,7 +524,7 @@ function explore(rs::ResultSet)
     up_timer = Timer(x -> x, 0.25)
     onany(time_slider.interval, tac_slider.interval,
         [t.active for t in t_toggles]...,
-        [sld.interval for sld in interv_sliders]...) do time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val
+        [sld.interval for sld in interv_sliders]...) do time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val
 
         # Update slider labels
         left_year_val[] = "$(Int(floor(time_val[1])))"
@@ -518,7 +533,7 @@ function explore(rs::ResultSet)
         tac_top_val[] = tac_val[2]
 
         close(up_timer)
-        up_timer = Timer(x -> update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val), 2)
+        up_timer = Timer(x -> update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val), 2)
     end
 
     gl_screen = display(f)
