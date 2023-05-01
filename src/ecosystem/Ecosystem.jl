@@ -62,9 +62,11 @@ Base.@kwdef struct Intervention{N,P,N2,P2} <: EcoModel
         name="Years to Seed", description="Number of years to seed for.")
     shade_years::P2 = Param(10, ptype="integer", bounds=(5.0, 74.0 + 1.0, 5 / 70), dists="triang",
         name="Years to Shade", description="Number of years to shade for.")
-    seed_freq::N = Param(5, ptype="integer", bounds=(0.0, 5.0 + 1.0), dists="unif",
+    plan_horizon::N = Param(5, ptype="integer", bounds=(0.0, 40.0 + 1.0), dists="unif",
+        name="Planning Horizon", description="How many years of projected data to take into account when selecting intervention locations (0 only accounts for current year).")
+    seed_freq::N = Param(5, ptype="integer", bounds=(0.0, 15.0 + 1.0), dists="unif",
         name="Seeding Frequency", description="Frequency of seeding site selection (0 is set and forget).")
-    shade_freq::N = Param(1, ptype="integer", bounds=(0.0, 5.0 + 1.0), dists="unif",
+    shade_freq::N = Param(1, ptype="integer", bounds=(0.0, 15.0 + 1.0), dists="unif",
         name="Shading Frequency", description="Frequency of shading site selection (0 is set and forget).")
     seed_year_start::N = Param(2, ptype="integer", bounds=(2.0, 25.0 + 1.0), dists="unif",
         name="Seeding Start Year", description="Start seeding deployments after this number of years has elapsed.")

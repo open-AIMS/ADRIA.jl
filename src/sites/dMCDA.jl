@@ -172,7 +172,7 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
 
     # Skip first column as this holds site index ids
     S[:, 2:end] = mcda_normalize(S[:, 2:end])
-    S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
+    S[:, 2:end] .= S[:, 2:end] .* weights'
     s_order = mcda_func(S)
 
     last_idx = min(n_site_int, size(s_order, 1))
@@ -235,10 +235,12 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
-    A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
+    # A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
+    A[:, 4] .= wave_stress ./ maximum(wave_stress)
 
     # risk from heat exposure
-    A[:, 5] .= maximum(heat_stress) != 0.0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : 0.0
+    # A[:, 5] .= maximum(heat_stress) != 0.0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : 0.0
+    A[:, 5] .= min.(heat_stress ./ 20.0, 1.0)
 
     # priority predecessors
     A[:, 6] .= predec[:, 3]
@@ -304,13 +306,18 @@ function create_seed_matrix(A, min_area, wt_in_conn_seed, wt_out_conn_seed, wt_w
     SE = copy(A)
 
     wse = [wt_in_conn_seed, wt_out_conn_seed, wt_waves, wt_heat, wt_predec_seed, wt_predec_zones_seed, wt_lo_cover, wt_heat]
-    wse .= mcda_normalize(wse)
+    # wse .= mcda_normalize(wse)
 
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
 
-    # coral real estate as total area, sites with =<20% of area to be seeded available filtered out
+    # Coral real estate as total area, sites with ≤ min_area to be seeded available filtered out
     SE[vec(A[:, 8] .<= min_area), 8] .= NaN
+
+    # Mark "hot" locations for filter
+    SE[vec(A[:, 5] .>= 0.75), 5] .= NaN
+
+    # Filter out identified locations
     SE = SE[vec(.!any(isnan.(SE), dims=2)), :]
 
     return SE, wse
@@ -403,7 +410,7 @@ function guided_site_selection(
     if mod_n_ranks < length(d_vars.site_ids) && length(rankingsin) != 0
         rankingsin = rankingsin[in.(rankingsin[:, 1], [site_ids]), :]
         site_ids = rankingsin[:, 1]
-    elseif length(rankingsin) != 0
+    if length(rankingsin) != 0
         rankingsin = [site_ids zeros(Int64, length(site_ids)) zeros(Int64, length(site_ids))]
     end
 
@@ -411,7 +418,7 @@ function guided_site_selection(
 
     # if no sites are available, abort
     if n_sites == 0
-        return prefseedsites, prefshadesites, rankingsin
+        return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
     end
 
     n_site_int::Int64 = d_vars.n_site_int
@@ -459,15 +466,15 @@ function guided_site_selection(
     zone_preds = zeros(n_sites, 1)
     zone_sites = zeros(n_sites, 1)
 
-    for k in axes(zone_ids, 1)
+    for (k::Int64, z_name::String) in enumerate(zone_ids)
         # find sites which are strongest predecessors of sites in the zone
-        zone_preds_temp = strong_pred[zones.==zone_ids[k]]
-        for s in unique(zone_preds_temp)
-            # for each predecessor site, add zone_weights* (no. of zone sites the site is a strongest predecessor for)
-            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k]) .* sum(zone_preds_temp .== s)
+        zone_preds_temp::Vector{Int64} = strong_pred[zones.==z_name]
+        for s::Int64 in unique(zone_preds_temp)
+            # for each predecessor site, add zone_weights * (no. of zone sites the site is a strongest predecessor for)
+            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k] .* sum(zone_preds_temp .== s))
         end
         # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)
-        zone_sites[zones.==zone_ids[k]] .= zone_weights[k]
+        zone_sites[zones.==z_name] .= zone_weights[k]
     end
 
     # add weights for strongest predecessors and zones to get zone criteria
@@ -476,7 +483,7 @@ function guided_site_selection(
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
-        return prefseedsites, prefshadesites, rankingsin
+        return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
     end
 
     # cap to number of sites left after risk filtration
@@ -504,7 +511,7 @@ function guided_site_selection(
     end
 
     if log_seed && isempty(SE)
-        prefseedsites = repeat([0], n_site_int)
+        prefseedsites = zeros(Int64, n_site_int)
     elseif log_seed
 
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, n_site_int, mcda_func)
@@ -514,7 +521,7 @@ function guided_site_selection(
     end
 
     if log_shade && isempty(SH)
-        prefshadesites = repeat([0], n_site_int)
+        prefshadesites = zeros(Int64, n_site_int)
     elseif log_shade
         prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, n_site_int, mcda_func)
         if use_dist != 0
