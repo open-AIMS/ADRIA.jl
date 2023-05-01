@@ -378,6 +378,9 @@ end
 - `prefshadesites` : previous time step's selection of sites for shading
 - `prefseedsites` : previous time step's selection of sites for seeding
 - `rankingsin` : pre-allocated store for site rankings
+- `in_conn` : in-degree centrality
+- `out_conn` : out-degree centrality
+- `strong_pred` : strongest predecessors
 
 # Returns
 Tuple :
@@ -390,7 +393,10 @@ function guided_site_selection(
     d_vars::DMCDA_vars, alg_ind::T,
     log_seed::B, log_shade::B,
     prefseedsites::IA, prefshadesites::IB,
-    rankingsin::Matrix{T}
+    rankingsin::Matrix{T},
+    in_conn::Vector{Float64},
+    out_conn::Vector{Float64},
+    strong_pred::Vector{Int64}
 )::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool}
 
     use_dist::Int64 = d_vars.use_dist
@@ -430,12 +436,6 @@ function guided_site_selection(
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
-
-    # Determine connectivity strength factoring in location k area and coral cover
-    in_conn, out_conn, strong_pred = connectivity_strength(d_vars.conn, vec(d_vars.sum_cover))
-    in_conn = in_conn[site_ids]
-    out_conn = out_conn[site_ids]
-    strong_pred = strong_pred[site_ids]
 
     # work out which priority predecessors are connected to priority sites
     predec::Array{Float64} = zeros(n_sites, 3)
@@ -831,7 +831,7 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
 end
 
 """
-    site_selection(domain::Domain, scenario::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray, sum_cover::AbstractArray, area_to_seed::Float64)
+    site_selection(domain::Domain, scenario::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray, site_ids::Vector{Int64}, sum_cover::AbstractArray, area_to_seed::Float64)
 
 Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
 
@@ -840,6 +840,7 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
 - `mcda_vars` : site selection criteria and weightings structure
 - `w_scens` : array of length nsites containing wave scenario.
 - `dhw_scens` : array of length nsites containing dhw scenario.
+- `site_ids` : locations to consider
 - `sum_cover` : summed cover (over species) for single scenario being run, for each site.
 - `area_to_seed` : area of coral to be seeded at each time step in km^2
 
@@ -848,7 +849,7 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
     containing ranks for single scenario.
 """
 function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray,
-    site_ids::AbstractArray, sum_cover::Vector{Float64}, area_to_seed::Float64)::Matrix{Int64}
+    site_ids::Vector{Int64}, sum_cover::Vector{Float64}, area_to_seed::Float64)::Matrix{Int64}
 
     mcda_vars = DMCDA_vars(domain, scenario, site_ids, sum_cover, area_to_seed, w_scens, dhw_scens)
     n_sites = length(mcda_vars.site_ids)
