@@ -851,13 +851,13 @@ function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDi
     site_ids::Vector{Int64}, sum_cover::Vector{Float64}, area_to_seed::Float64)::Matrix{Int64}
 
     mcda_vars = DMCDA_vars(domain, scenario, site_ids, sum_cover, area_to_seed, w_scens, dhw_scens)
-    n_sites = length(mcda_vars.site_ids)
+    n_sites = length(site_ids)
 
     # site_id, seeding rank, shading rank
-    rankingsin = [mcda_vars.site_ids zeros(Int64, (n_sites, 1)) zeros(Int64, (n_sites, 1))]
+    rankingsin = [mcda_vars.site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
-    prefseedsites::Matrix{Int64} = zeros(Int64, (1, mcda_vars.n_site_int))
-    prefshadesites::Matrix{Int64} = zeros(Int64, (1, mcda_vars.n_site_int))
+    prefseedsites::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
+    prefshadesites::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
 
     # Determine connectivity strength
     # Account for cases where no coral cover
@@ -870,7 +870,6 @@ function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDi
 
     return ranks
 end
-
 
 
 """
