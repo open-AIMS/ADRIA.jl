@@ -306,7 +306,7 @@ function create_seed_matrix(A, min_area, wt_in_conn_seed, wt_out_conn_seed, wt_w
     SE = copy(A)
 
     wse = [wt_in_conn_seed, wt_out_conn_seed, wt_waves, wt_heat, wt_predec_seed, wt_predec_zones_seed, wt_lo_cover, wt_heat]
-    wse .= mcda_normalize(wse)
+    # wse .= mcda_normalize(wse)
 
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
