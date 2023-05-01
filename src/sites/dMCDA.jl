@@ -235,10 +235,12 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
-    A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
+    # A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
+    A[:, 4] .= wave_stress ./ maximum(wave_stress)
 
     # risk from heat exposure
-    A[:, 5] .= maximum(heat_stress) != 0.0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : 0.0
+    # A[:, 5] .= maximum(heat_stress) != 0.0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : 0.0
+    A[:, 5] .= min.(heat_stress ./ 20.0, 1.0)
 
     # priority predecessors
     A[:, 6] .= predec[:, 3]
