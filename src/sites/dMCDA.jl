@@ -775,7 +775,6 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `scenarios` : DataFrame of criteria weightings and thresholds for each scenario.
 - `sum_cover` : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
 - `area_to_seed` : area of coral to be seeded at each time step in km^2
-- `timestep` : time step at which seeding and/or shading is being undertaken.
 - `target_seed_sites` : list of candidate locations for seeding (indices)
 - `target_shade_sites` : list of candidate location to shade (indices)
 
@@ -783,7 +782,7 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, timestep::Int64;
+function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64;
     target_seed_sites=nothing, target_shade_sites=nothing)
     ranks_store = NamedDimsArray(
         zeros(nrow(scenarios), length(dom.site_ids), 3),
