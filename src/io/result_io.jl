@@ -109,7 +109,7 @@ end
 function scenario_attributes(domain::Domain, param_df::DataFrame)
     return scenario_attributes(domain.name, domain.RCP, names(param_df), domain.scenario_invoke_time,
         domain.env_layer_md, domain.sim_constants,
-        unique_sites(domain), domain.site_data.area, domain.site_data.k, centroids(domain.site_data))
+        unique_sites(domain), site_area(domain), domain.site_data.k, centroids(domain.site_data))
 end
 
 
