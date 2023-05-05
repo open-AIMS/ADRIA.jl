@@ -27,7 +27,7 @@ function setup_cache(domain::Domain)::NamedTuple
         cov_tmp=zeros(size(init_cov)...),  # Cover for previous timestep
         felt_dhw=zeros(size(init_cov)...),  # Store for felt DHW (DHW after reductions)
         depth_coeff=zeros(n_sites),  # store for depth coefficient
-        site_area=Matrix{Float64}(domain.site_data.area'),  # site areas
+        site_area=Matrix{Float64}(site_area(domain)'),  # site areas
         TP_data=Matrix{Float64}(domain.TP_data),  # transition probabilities
         waves=zeros(length(timesteps(domain)), n_species, n_sites)
     )
