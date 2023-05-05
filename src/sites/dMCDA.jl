@@ -438,7 +438,7 @@ function guided_site_selection(
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
     # work out which priority predecessors are connected to priority sites
-    predec::Array{Float64} = zeros(n_sites, 3)
+    predec::Matrix{Float64} = zeros(n_sites, 3)
     predec[:, 1:2] .= strong_pred
     predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
     predprior = Int64[x for x in predprior if !isnan(x)]

@@ -498,10 +498,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
             # Determine connectivity strength
             # Account for cases where no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), site_coral_cover)
+            in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), vec(site_coral_cover))
             (prefseedsites, prefshadesites, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                prefseedsites, prefshadesites, rankings, in_conn, out_conn, strong_pred)
+                prefseedsites, prefshadesites, rankings, in_conn[mcda_vars.site_ids], out_conn[mcda_vars.site_ids], strong_pred[mcda_vars.site_ids])
 
             # Log site ranks
             # First col only holds site index ids so skip (with 2:end)
