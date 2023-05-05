@@ -545,7 +545,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         if seed_corals && in_seed_years && has_seed_sites
             # Calculate proportion to seed based on current available space
             seeded_area = (TA=n_TA_to_seed * col_area_seed_TA, CA=n_CA_to_seed * col_area_seed_CA)
-
             scaled_seed = distribute_seeded_corals(vec(total_site_area), prefseedsites, vec(leftover_space_m²), seeded_area)
 
             # Seed each site with TA or CA
