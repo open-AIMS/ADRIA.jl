@@ -12,7 +12,7 @@ function run_scenarios(::Type{ReefModDomain}, scens::DataFrame, dom::ReefModDoma
     # - Unenhanced Tabular Acropora, 
     # - Enhanced Corymbose Acropora, 
     # - Unenhanced Corymbose Acropora 
-    # - Smalll Massives
+    # - Small Massives
     # - Large Massives
     # Values interpolated by K. Anthony.
     cover_prop = Array{Float64,2}([
