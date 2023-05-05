@@ -11,8 +11,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     priority_zones # ::V
     zones # ::V
     strong_pred  # ::V
-    in_conn  # ::v
-    out_conn  # ::v
+    conn
     dam_prob  # ::A
     heat_stress_prob  # ::A
     site_depth #::V
@@ -68,8 +67,7 @@ function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
         domain.sim_constants.priority_zones,
         site_d.zone_type,
         domain.strong_pred,
-        domain.in_conn,
-        domain.out_conn,
+        domain.TP_data .* site_k_area(domain),
         waves,
         dhws,
         site_d.depth_med,
@@ -222,16 +220,11 @@ Columns indicate:
 """
 function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
     A = zeros(length(site_ids), 9)
-
     A[:, 1] .= site_ids  # Column of site ids
 
-    # Account for cases where no coral cover
-    c_cov_area = in_conn .* sum_cover .* area
-    o_cov_area = out_conn .* sum_cover .* area
-
     # node connectivity centrality, need to instead work out strongest predecessors to priority sites
-    A[:, 2] .= maximum(c_cov_area) != 0.0 ? c_cov_area / maximum(c_cov_area) : 0.0
-    A[:, 3] .= maximum(o_cov_area) != 0.0 ? o_cov_area / maximum(o_cov_area) : 0.0
+    A[:, 2] .= maximum(in_conn) != 0.0 ? in_conn / maximum(in_conn) : 0.0
+    A[:, 3] .= maximum(out_conn) != 0.0 ? out_conn / maximum(out_conn) : 0.0
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
@@ -385,6 +378,9 @@ end
 - `prefshadesites` : previous time step's selection of sites for shading
 - `prefseedsites` : previous time step's selection of sites for seeding
 - `rankingsin` : pre-allocated store for site rankings
+- `in_conn` : in-degree centrality
+- `out_conn` : out-degree centrality
+- `strong_pred` : strongest predecessors
 
 # Returns
 Tuple :
@@ -397,13 +393,15 @@ function guided_site_selection(
     d_vars::DMCDA_vars, alg_ind::T,
     log_seed::B, log_shade::B,
     prefseedsites::IA, prefshadesites::IB,
-    rankingsin::Matrix{T}
+    rankingsin::Matrix{T},
+    in_conn::Vector{Float64},
+    out_conn::Vector{Float64},
+    strong_pred::Vector{Int64}
 )::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool}
 
     use_dist::Int64 = d_vars.use_dist
     min_dist::Float64 = d_vars.min_dist
     site_ids = copy(d_vars.site_ids)
-
     n_sites::Int64 = length(site_ids)
 
     # if no sites are available, abort
@@ -415,9 +413,6 @@ function guided_site_selection(
     priority_sites::Array{Int64} = d_vars.priority_sites[in.(d_vars.priority_sites, [site_ids])]
     priority_zones::Array{String} = d_vars.priority_zones
 
-    strong_pred = d_vars.strong_pred[site_ids, :]
-    in_conn = d_vars.in_conn[site_ids]
-    out_conn = d_vars.out_conn[site_ids]
     zones = d_vars.zones[site_ids]
     wave_stress = d_vars.dam_prob[site_ids]
     heat_stress = d_vars.heat_stress_prob[site_ids]
@@ -443,7 +438,7 @@ function guided_site_selection(
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
     # work out which priority predecessors are connected to priority sites
-    predec::Array{Float64} = zeros(n_sites, 3)
+    predec::Matrix{Float64} = zeros(n_sites, 3)
     predec[:, 1:2] .= strong_pred
     predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
     predprior = Int64[x for x in predprior if !isnan(x)]
@@ -453,8 +448,8 @@ function guided_site_selection(
     # for zones, find sites which are zones and strongest predecessors of sites in zones
     zone_ids = intersect(priority_zones, unique(zones))
     zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
-    zone_preds = zeros(n_sites, 1)
-    zone_sites = zeros(n_sites, 1)
+    zone_preds = zeros(n_sites)
+    zone_sites = zeros(n_sites)
 
     for (k::Int64, z_name::String) in enumerate(zone_ids)
         # find sites which are strongest predecessors of sites in the zone
@@ -503,7 +498,6 @@ function guided_site_selection(
     if log_seed && isempty(SE)
         prefseedsites = zeros(Int64, n_site_int)
     elseif log_seed
-
         prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, n_site_int, mcda_func)
         if use_dist != 0
             prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 2)
@@ -781,13 +775,14 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `scenarios` : DataFrame of criteria weightings and thresholds for each scenario.
 - `sum_cover` : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
 - `area_to_seed` : area of coral to be seeded at each time step in km^2
-- `timestep` : time step at which seeding and/or shading is being undertaken.
+- `target_seed_sites` : list of candidate locations for seeding (indices)
+- `target_shade_sites` : list of candidate location to shade (indices)
 
 # Returns
 - `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, timestep::Int64;
+function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64;
     target_seed_sites=nothing, target_shade_sites=nothing)
     ranks_store = NamedDimsArray(
         zeros(nrow(scenarios), length(dom.site_ids), 3),
@@ -801,6 +796,9 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
 
     # Pre-calculate maximum depth to consider
     scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
+    target_dhw_scens = unique(scenarios[:, "dhw_scenario"])
+    target_wave_scens = unique(scenarios[:, "wave_scenario"])
+
     target_site_ids = Int64[]
     if !isnothing(target_seed_sites)
         append!(target_site_ids, target_seed_sites)
@@ -810,19 +808,20 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
         append!(target_site_ids, target_shade_sites)
     end
 
-    for (cover_ind, scen) in enumerate(eachrow(scenarios))
+    n_sites = length(dom.site_ids)
+    for (scen_idx, scen) in enumerate(eachrow(scenarios))
         depth_criteria = (dom.site_data.depth_med .<= scen.max_depth) .& (dom.site_data.depth_med .>= scen.depth_min)
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
 
-        ranks_store(scenarios=cover_ind, sites=dom.site_ids[considered_sites]) .= site_selection(
+        ranks_store(scenarios=scen_idx, sites=dom.site_ids[considered_sites]) .= site_selection(
             dom,
             scen,
-            mean(wave_scens, dims=(:timesteps, :scenarios)) .+ var(wave_scens, dims=(:timesteps, :scenarios)),
-            mean(dhw_scens, dims=(:timesteps, :scenarios)) .+ var(dhw_scens, dims=(:timesteps, :scenarios)),
+            (mean(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5,
+            (mean(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios))) .* 0.5,
             considered_sites,
-            sum_cover[cover_ind, :],
+            sum_cover[scen_idx, :],
             area_to_seed
         )
     end
@@ -831,7 +830,7 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
 end
 
 """
-    site_selection(domain::Domain, scenario::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray, sum_cover::AbstractArray, area_to_seed::Float64)
+    site_selection(domain::Domain, scenario::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray, site_ids::Vector{Int64}, sum_cover::AbstractArray, area_to_seed::Float64)
 
 Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
 
@@ -840,6 +839,7 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
 - `mcda_vars` : site selection criteria and weightings structure
 - `w_scens` : array of length nsites containing wave scenario.
 - `dhw_scens` : array of length nsites containing dhw scenario.
+- `site_ids` : locations to consider
 - `sum_cover` : summed cover (over species) for single scenario being run, for each site.
 - `area_to_seed` : area of coral to be seeded at each time step in km^2
 
@@ -848,22 +848,28 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
     containing ranks for single scenario.
 """
 function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray,
-    site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::Matrix{Int64}
+    site_ids::Vector{Int64}, sum_cover::Vector{Float64}, area_to_seed::Float64)::Matrix{Int64}
 
     mcda_vars = DMCDA_vars(domain, scenario, site_ids, sum_cover, area_to_seed, w_scens, dhw_scens)
-    n_sites = length(mcda_vars.site_ids)
+    n_sites = length(site_ids)
 
     # site_id, seeding rank, shading rank
-    rankingsin = [mcda_vars.site_ids zeros(Int64, (n_sites, 1)) zeros(Int64, (n_sites, 1))]
+    rankingsin = [mcda_vars.site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
-    prefseedsites::Matrix{Int64} = zeros(Int64, (1, mcda_vars.n_site_int))
-    prefshadesites::Matrix{Int64} = zeros(Int64, (1, mcda_vars.n_site_int))
+    prefseedsites::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
+    prefshadesites::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
 
-    (_, _, ranks) = guided_site_selection(mcda_vars, scenario.guided, true, true, prefseedsites, prefshadesites, rankingsin)
+    # Determine connectivity strength
+    # Account for cases where no coral cover
+    in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), sum_cover)
+    in_conn = in_conn[site_ids]
+    out_conn = out_conn[site_ids]
+    strong_pred = strong_pred[site_ids]
+
+    (_, _, ranks) = guided_site_selection(mcda_vars, scenario.guided, true, true, prefseedsites, prefshadesites, rankingsin, in_conn, out_conn, strong_pred)
 
     return ranks
 end
-
 
 
 """
@@ -881,7 +887,7 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - `depth` : vector of site ids found to be within desired depth range
 """
 function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, available_space, depth)
-    # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.1
+    # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.0
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
     # Select sites (without replacement to avoid duplicate sites)

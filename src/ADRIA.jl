@@ -6,10 +6,11 @@ using NamedDims, AxisKeys, SparseArrayKit, DifferentialEquations
 
 using MAT
 using Combinatorics, Distances
+using OrderedCollections
 using Setfield, ModelParameters, DataStructures
-using DataFrames, Graphs, CSV, Dates
+using DataFrames, Graphs, SimpleWeightedGraphs, CSV, Dates
 import ArchGDAL as AG
-import GeoDataFrames
+import GeoDataFrames as GDF
 
 using ProgressMeter
 
@@ -51,6 +52,7 @@ include("analysis/analysis.jl")
 include("analysis/sensitivity.jl")
 
 include("ExtInterface/ReefMod/Domain.jl")
+include("ExtInterface/ReefMod/scenarios.jl")
 
 
 export
@@ -62,11 +64,11 @@ export
     metrics, select, timesteps, env_stats
 
 
-# External Interfaces
+# Interfaces for external models
 export ReefModDomain
 
 # metric helper methods
-export dims, ndims
+# export dims, ndims
 
 # List out compatible domain datapackages
 const COMPAT_DPKG = ["0.3.1"]
@@ -75,7 +77,7 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(load_domain),String})   # time: 19.120537
     Base.precompile(Tuple{typeof(setup_result_store!),Domain,DataFrame})   # time: 4.6720815
     Base.precompile(Tuple{typeof(combine_results),Vector{String}})   # time: 4.0178256
-    Base.precompile(Tuple{typeof(growthODE),Matrix{Float64},Matrix{Float64},NamedTuple{(:r, :k, :mb, :comp, :r_comp, :small_massives, :small, :mid, :large, :acr_5_11, :acr_6_12, :rec, :sigma, :M_sm, :sXr, :X_mb, :cover),Tuple{Matrix{Float64},Vector{Float64},Matrix{Float64},Float64,Matrix{Float64},SVector{3,Int64},SVector{6,Int64},SVector{19,Int64},SVector{4,Int64},SVector{2,Int64},SVector{2,Int64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Vector{Float64}}},Float64})   # time: 1.4354926
+    Base.precompile(Tuple{typeof(growthODE),Matrix{Float64},Matrix{Float64},NamedTuple{(:r, :k, :mb, :comp, :sm_comp, :small_massives, :small, :mid, :large, :acr_5_11, :acr_6_12, :rec, :sigma, :M_sm, :sXr, :X_mb, :cover),Tuple{Matrix{Float64},Vector{Float64},Matrix{Float64},Float64,Matrix{Float64},SVector{3,Int64},SVector{6,Int64},SVector{19,Int64},SVector{4,Int64},SVector{2,Int64},SVector{2,Int64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Vector{Float64}}},Float64})   # time: 1.4354926
     Base.precompile(Tuple{typeof(combine_results),ResultSet{String,Vector{Any},Vector{Any},Vector{Float64},NamedDimsArray{(:timesteps, :sites, :intervention, :scenarios),Float32,4,ZArray{Float32,4,Zarr.BloscCompressor,DirectoryStore}},NamedDimsArray{(:timesteps, :coral_id, :sites, :scenarios),Float32,4,ZArray{Float32,4,Zarr.BloscCompressor,DirectoryStore}},NamedDimsArray{(:timesteps, :sites, :scenarios),Float32,3,ZArray{Float32,3,Zarr.BloscCompressor,DirectoryStore}},Dict{String,AbstractArray},DataFrame}})   # time: 0.9439985
     Base.precompile(Tuple{typeof(rank_sites!),Matrix{Float64},Vector{Float64},Matrix{Int64},Int64,typeof(topsis),Int64})   # time: 0.3518593
     Base.precompile(Tuple{typeof(rank_sites!),Matrix{Float64},Vector{Float64},Matrix{Int64},Int64,typeof(vikor),Int64})   # time: 0.3170264
@@ -110,6 +112,7 @@ end
         b = redirect_stdout(f, devnull)
 
         dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
+        ADRIA.sample(dom, 16)
         ADRIA.model_spec(dom)
 
         p_df = ADRIA.param_table(dom)

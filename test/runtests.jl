@@ -3,8 +3,8 @@ using TOML, CSV, DataFrames, ADRIA
 using ADRIA.metrics: total_absolute_cover
 
 
-const TEST_DATA_DIR = joinpath(@__DIR__, "data")
 const ADRIA_DIR = pkgdir(ADRIA)
+const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
 const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 
 
@@ -12,9 +12,6 @@ const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 
     @testset "Domain DataFrame" begin
         dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
-        scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
-        test_scens = CSV.read(scen_path, DataFrame)
-
         p_df = ADRIA.param_table(dom)
         @test p_df isa DataFrame
     end

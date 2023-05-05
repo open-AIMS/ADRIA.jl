@@ -27,7 +27,7 @@ abstract type Domain end
 
 Core ADRIA domain. Represents study area.
 """
-mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,I<:Vector{Int64},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray{<:Real}} <: Domain
+mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,I<:Vector{Int64},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray{<:Float64}} <: Domain
     const name::S  # human-readable name
     RCP::S  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
@@ -59,7 +59,7 @@ Barrier function to create Domain struct without specifying Intervention/Criteri
 function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::AbstractMatrix{<:T}, in_conn::Vector{Float64}, out_conn::Vector{Float64},
     strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_distances::Matrix{Float64}, median_site_distance::Float64, site_id_col::String, unique_site_id_col::String,
     init_coral_cover::NamedDimsArray, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
-    DHWs::NamedDimsArray, waves::NamedDimsArray)::ADRIADomain where {T<:Real}
+    DHWs::NamedDimsArray, waves::NamedDimsArray)::ADRIADomain where {T<:Union{Float32,Float64}}
 
     # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
     criteria::Criteria = Criteria()
@@ -143,7 +143,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 
     local site_data::DataFrame
     try
-        site_data = GeoDataFrames.read(site_data_fn)
+        site_data = GDF.read(site_data_fn)
     catch err
         if !isfile(site_data_fn)
             error("Provided site data path is not valid or missing: $(site_data_fn).")
@@ -282,7 +282,7 @@ function load_domain(path::String)::ADRIADomain
 end
 
 
-function unique_sites(d::ADRIADomain)::Vector{String}
+function unique_sites(d::Domain)::Vector{String}
     return d.site_data[:, d.unique_site_id_col]
 end
 
@@ -304,16 +304,16 @@ end
 
 
 """
-    model_spec(d::ADRIADomain)::DataFrame
-    model_spec(d::ADRIADomain, filepath::String)::Nothing
+    model_spec(d::Domain)::DataFrame
+    model_spec(d::Domain, filepath::String)::Nothing
 
 Get model specification as DataFrame with lower and upper bounds.
 If a filepath is provided, writes the specification out to file with ADRIA metadata.
 """
-function model_spec(d::ADRIADomain)::DataFrame
+function model_spec(d::Domain)::DataFrame
     return model_spec(d.model)
 end
-function model_spec(d::ADRIADomain, filepath::String)::Nothing
+function model_spec(d::Domain, filepath::String)::Nothing
     version = PkgVersion.Version(@__MODULE__)
     vers_id = "v$(version)"
 
@@ -405,7 +405,7 @@ end
 
 Get site area for the given domain.
 """
-function site_area(domain::ADRIADomain)::Vector{Float64}
+function site_area(domain::Domain)::Vector{Float64}
     return domain.site_data.area
 end
 
@@ -414,7 +414,7 @@ end
 
 Get maximum coral cover area for the given domain in absolute area.
 """
-function site_k_area(domain::ADRIADomain)::Vector{Float64}
+function site_k_area(domain::Domain)::Vector{Float64}
     return site_k(domain) .* site_area(domain)
 end
 
@@ -492,7 +492,7 @@ Assumes all `val` and `bounds` are to be updated.
 - `dom` : Domain
 - `spec` : updated model specification
 """
-function update!(dom::ADRIADomain, spec::DataFrame)::Nothing
+function update!(dom::Domain, spec::DataFrame)::Nothing
     # ModelParameters.update!(dom.model, spec)
     dom.model[:val] = spec.val
     dom.model[:bounds] = spec.bounds

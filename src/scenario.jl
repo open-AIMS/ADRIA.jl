@@ -365,7 +365,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     prefseedsites::Vector{Int64} = zeros(Int, n_site_int)
     prefshadesites::Vector{Int64} = zeros(Int, n_site_int)
 
-    # Max coral cover at each site. Divided by 100 to convert to proportion
+    # Max coral cover at each site (0 - 1).
     max_cover = site_k(domain)
 
     # Set other params for ODE
@@ -441,7 +441,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
 
     for sp::Int64 in 1:n_species
-        @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen[:, :]
+        @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen
     end
 
     clamp!(Sw_t, 0.0, 1.0)
@@ -452,7 +452,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
 
     site_k_prop = max_cover'
-    absolute_k_area = total_site_area .* site_k_prop  # max possible coral area in m^2
+    absolute_k_area = site_k_area(domain)'  # max possible coral area in m^2
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     tmp::Matrix{Float64} = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
 
@@ -504,9 +504,13 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
         if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= site_coral_cover
+
+            # Determine connectivity strength
+            # Account for cases where no coral cover
+            in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), vec(site_coral_cover))
             (prefseedsites, prefshadesites, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                prefseedsites, prefshadesites, rankings)
+                prefseedsites, prefshadesites, rankings, in_conn[mcda_vars.site_ids], out_conn[mcda_vars.site_ids], strong_pred[mcda_vars.site_ids])
 
             # Log site ranks
             # First col only holds site index ids so skip (with 2:end)
@@ -539,7 +543,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         if seed_corals && in_seed_years && has_seed_sites
             # Calculate proportion to seed based on current available space
             seeded_area = (TA=n_TA_to_seed * col_area_seed_TA, CA=n_CA_to_seed * col_area_seed_CA)
-
             scaled_seed = distribute_seeded_corals(vec(total_site_area), prefseedsites, vec(leftover_space_m²), seeded_area)
 
             # Seed each site with TA or CA
@@ -558,14 +561,22 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #       in relative to absolute area.
         # Update initial condition
         @. tmp = ((Y_pstep * prop_loss) * total_site_area) / absolute_k_area
-        growth.u0 .= replace(tmp, Inf => 0.0, NaN => 0.0)
+        replace!(tmp, Inf => 0.0, NaN => 0.0)
+        growth.u0 .= tmp
 
         # X is cover relative to `k` (max. carrying capacity)
         # So we subtract from 1.0 to get leftover/available space, relative to `k`
-        p.sigma .= max.(1.0 .- sum(growth.u0, dims=1), 0.0)
+        p.sXr .= max.(1.0 .- sum(tmp, dims=1), 0.0) .* tmp .* p.r  # leftover space * current cover * growth_rate
+        p.X_mb .= tmp .* p.mb    # current cover * background mortality
+
+        # Background mortality of small massives (incorporates competition with larger tabular acroporas)
+        p.M_sm .= tmp[p.small_massives, :] .* (p.mb[p.small_massives] .+ p.comp .* sum(tmp[p.acr_6_12, :], dims=1))
+
+        # Space gained from small massives due to competition
+        p.sm_comp .= p.comp .* sum(tmp[p.small_massives, :], dims=1)
 
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-            alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-4)  # , adaptive=false, dt=1.0
+            alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-6)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_site_area, 0.0, 1.0)

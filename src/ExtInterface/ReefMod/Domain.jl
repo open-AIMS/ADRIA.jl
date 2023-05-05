@@ -9,6 +9,8 @@ using ADRIA: SimConstants, Domain, site_distances
 mutable struct ReefModDomain <: Domain
     const name::String
     RCP::String
+    env_layer_md
+    scenario_invoke_time::String  # time latest set of scenarios were run
     const TP_data
     const in_conn
     const out_conn
@@ -19,6 +21,7 @@ mutable struct ReefModDomain <: Domain
     const site_id_col
     const unique_site_id_col
     init_coral_cover
+    const coral_growth::CoralGrowth
     const site_ids
     dhw_scens
 
@@ -30,6 +33,98 @@ mutable struct ReefModDomain <: Domain
     sim_constants::SimConstants
 end
 
+"""
+    load_domain(::Type{ReefModDomain}, fn_path, RCP)::ReefModDomain
+
+Load a Domain for use with ReefMod.
+
+# Arguments
+- `ReefModDomain`
+- `fn_path`
+- `RCP`
+
+# Returns
+ReefModDomain
+"""
+function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefModDomain
+    data_files = joinpath(fn_path, "data_files")
+    dhw_scens = load_DHW(ReefModDomain, data_files, RCP)
+    loc_ids = axiskeys(dhw_scens)[2]
+
+    site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
+    site_data = GDF.read(site_data_path)
+    site_dist, med_site_dist = ADRIA.site_distances(site_data)
+    site_id_col = "LOC_NAME_S"
+    unique_site_id_col = "LOC_NAME_S"
+    init_coral_cover = load_initial_cover(ReefModDomain, data_files, loc_ids)
+    site_ids = site_data[:, unique_site_id_col]
+
+    id_list = CSV.read(joinpath(data_files, "id", "id_list_2023_03_30.csv"), DataFrame, header=false, comment="#")
+
+    # Re-order spatial data to match RME dataset
+    # MANUAL CORRECTION
+    site_data[site_data.LABEL_ID.=="20198", :LABEL_ID] .= "20-198"
+    id_order = [first(findall(x .== site_data.LABEL_ID)) for x in string.(id_list[:, 1])]
+    site_data = site_data[id_order, :]
+
+    # Check that the two lists of location ids are identical
+    @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
+
+    # Convert area in km² to m²
+    site_data[:, :area] .= id_list[:, 2] * 1e6
+
+    # Calculate `k` area (1.0 - "ungrazable" area)
+    site_data[:, :k] .= 1.0 .- id_list[:, 3]
+
+    conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
+    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(conn_data, vec(site_data.area .* site_data.k))
+
+    # Set all site depths to 6m below sea level
+    # (ReefMod does not account for depth)
+    # Ensure column is of float type
+    site_data[:, :depth_med] .= 6.0
+    site_data[!, :depth_med] = convert.(Float64, site_data[!, :depth_med])
+
+    # Add GBRMPA zone type info as well
+    gbr_zt_path = joinpath(data_files, "region", "gbrmpa_zone_type.csv")
+    gbr_zone_types = CSV.read(gbr_zt_path, DataFrame; types=String)
+    missing_rows = ismissing.(gbr_zone_types[:, "GBRMPA Zone Types"])
+    gbr_zone_types[missing_rows, "GBRMPA Zone Types"] .= ""
+    zones = gbr_zone_types[:, "GBRMPA Zone Types"]
+    zones = replace.(zones, "Zone" => "", " " => "")
+    site_data[:, :zone_type] .= zones
+
+    timeframe = (2022, 2100)
+    cyc_scens = load_cyclones(ReefModDomain, data_files, loc_ids, timeframe)
+
+    env_md = EnvLayer(
+        fn_path,
+        site_data_path,
+        site_id_col,
+        unique_site_id_col,
+        "",
+        "",
+        "",
+        "",
+        timeframe[1]:timeframe[2]
+    )
+
+    model::Model = Model((EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), Criteria(), Coral()))
+
+    return ReefModDomain(
+        "ReefMod",
+        RCP,
+        env_md,
+        "",
+        conn_data, in_conn, out_conn, strong_pred,
+        site_data, site_dist, med_site_dist,
+        site_id_col, unique_site_id_col,
+        init_coral_cover,
+        CoralGrowth(nrow(site_data)),
+        site_ids,
+        dhw_scens, cyc_scens,
+        model, SimConstants())
+end
 
 """
     _get_relevant_files(fn_path, ident)
@@ -57,7 +152,7 @@ Loads ReefMod DHW data as a datacube.
 - `timeframe` : range of years to represent.
 
 # Returns
-NamedDimsArray[timesteps, locs, member]
+NamedDimsArray[timesteps, locs, scenarios]
 """
 function load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::NamedDimsArray
     dhw_path = joinpath(data_path, "dhw")
@@ -99,15 +194,15 @@ function load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timefra
             end
 
             @warn "Building DHW: Could not find matching time frame, skipping $rcp_data_fn"
-            keep_ds[i] = false  # mark member for removal
+            keep_ds[i] = false  # mark scenario for removal
             continue
         end
 
         data_cube[:, :, i+1] .= Matrix(d[:, tf_start:tf_end])'
     end
 
-    # Only return valid members
-    return NamedDimsArray(data_cube[:, :, keep_ds], timesteps=timeframe[1]:timeframe[2], locs=loc_ids, member=rcp_files[keep_ds])
+    # Only return valid scenarios
+    return NamedDimsArray(data_cube[:, :, keep_ds], timesteps=timeframe[1]:timeframe[2], locs=loc_ids, scenarios=rcp_files[keep_ds])
 end
 
 """
@@ -155,17 +250,19 @@ function load_connectivity(::Type{ReefModDomain}, data_path::String, loc_ids::Ve
 end
 
 """
-    load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::NamedDimsArray
+    load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, tf::Tuple{Int64, Int64})::NamedDimsArray
 
 # Arguments
 - `ReefModDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
+- `tf` : the time frame represented by the dataset. 
+    Subsets the data in cases where `tf[2] < length(data)` such that only `1:(tf[2] - tf[1])+1` is read in.
 
 # Returns
-NamedDimsArray[locs, years, scenarios]
+NamedDimsArray[timesteps, locs, scenarios]
 """
-function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::NamedDimsArray
+function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, tf::Tuple{Int64,Int64})::NamedDimsArray
     # NOTE: This reads from the provided CSV files
     #       Replace with approach that reads directly from binary files
     #       Currently cannot get values in binary files to match
@@ -179,11 +276,13 @@ function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector
     cyc_data = zeros(length(loc_ids), num_years, length(cyc_files))
     for (i, fn) in enumerate(cyc_files)
         # Read each cyclone trajectory
-        cyc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false))
+        cyc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false, comment="#"))
     end
 
-    # Mean over all years
-    return NamedDimsArray(cyc_data, locs=loc_ids, years=1:num_years, scenarios=1:length(cyc_files))
+    # Cut down to the given time frame assuming the first entry represents the first index
+    cyc_data = permutedims(cyc_data, (2, 1, 3))[1:(tf[2]-tf[1])+1, :, :]
+
+    return NamedDimsArray(cyc_data, timesteps=tf[1]:tf[2], locs=loc_ids, scenarios=1:length(cyc_files))
 end
 
 """
@@ -201,15 +300,15 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     icc_path = joinpath(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
     if isempty(icc_files)
-        ArgumentError("No cyclone data files found in: $(icc_path)")
+        ArgumentError("No coral cover data files found in: $(icc_path)")
     end
 
-    # Shape is locations, members, species
+    # Shape is locations, scenarios, species
     icc_data = zeros(length(loc_ids), 20, length(icc_files))
     for (i, fn) in enumerate(icc_files)
-        icc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false))
+        icc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false, comment="#"))
     end
-    
+
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT)
     # Convert from percent to relative values
     icc_data = dropdims(mean(icc_data, dims=2), dims=2) ./ 100.0
@@ -218,108 +317,34 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     return NamedDimsArray(icc_data, locs=loc_ids, species=1:length(icc_files))
 end
 
-
-"""
-    load_domain(::Type{ReefModDomain}, fn_path, RCP)::ReefModDomain
-
-Load a Domain for use with ReefMod.
-
-# Arguments
-- `ReefModDomain`
-- `fn_path`
-- `RCP`
-
-# Returns
-ReefModDomain
-"""
-function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefModDomain
-    data_files = joinpath(fn_path, "data_files")
-    dhw_scens = load_DHW(ReefModDomain, data_files, RCP)
-    loc_ids = axiskeys(dhw_scens)[2]
-
-    conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
-    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(conn_data)
-
-    site_data = GDF.read(joinpath(data_files, "region", "reefmod_gbr.gpkg"))
-    site_dist, med_site_dist = ADRIA.site_distances(site_data)
-    site_id_col = "LOC_NAME_S"
-    unique_site_id_col = "LOC_NAME_S"
-    init_coral_cover = load_initial_cover(ReefModDomain, data_files, loc_ids)
-    site_ids = site_data[:, unique_site_id_col]
-
-    id_list = CSV.read(joinpath(data_files, "id", "id_list_Dec_2022_151222.csv"), DataFrame, header=false)
-
-    # Re-order spatial data to match RME dataset
-    # MANUAL CORRECTION
-    site_data[site_data.LABEL_ID.=="20198", :LABEL_ID] .= "20-198"
-    id_order = [first(findall(x .== site_data.LABEL_ID)) for x in string.(id_list[:, 1])]
-    site_data = site_data[id_order, :]
-
-    # Check that the two lists of location ids are identical
-    @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
-
-    # Convert area in km² to m²
-    site_data[:, :area] .= id_list[:, 2] * 1e6
-
-    # Calculate `k` area (1.0 - "ungrazable" area)
-    site_data[:, :k] .= 1.0 .- id_list[:, 3]
-
-    # Set all site depths to 6m below sea level
-    # (ReefMod does not account for depth)
-    site_data[:, :depth_med] .= 6.0
-
-    # Add GBRMPA zone type info as well
-    gbr_zt_path = joinpath(data_files, "region", "gbrmpa_zone_type.csv")
-    gbr_zone_types = CSV.read(gbr_zt_path, DataFrame; types=String)
-    missing_rows = ismissing.(gbr_zone_types[:, "GBRMPA Zone Types"])
-    gbr_zone_types[missing_rows, "GBRMPA Zone Types"] .= ""
-    zones = gbr_zone_types[:, "GBRMPA Zone Types"]
-    zones = replace.(zones, "Zone" => "", " " => "")
-    site_data[:, :zone_type] .= zones
-
-    cyc_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
-
-    model::Model = Model((EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), Criteria()))
-
-    return ReefModDomain(
-        "ReefMod", RCP,
-        conn_data, in_conn, out_conn, strong_pred,
-        site_data, site_dist, med_site_dist,
-        site_id_col, unique_site_id_col,
-        init_coral_cover,
-        site_ids,
-        dhw_scens, cyc_scens,
-        model, SimConstants())
-end
-
-
 """
     site_k(dom::ReefModDomain)::Vector{Float64}
 
 Get maximum coral cover area as a proportion of site area.
+
+Note: ReefMod `k` area is already ∈ [0, 1] so no adjustment is necessary.
 """
 function site_k(dom::ReefModDomain)::Vector{Float64}
     return dom.site_data.k
 end
 
 
-# """
-#     switch_RCPs!(d::ReefModDomain, RCP::String)::Domain
+"""
+    switch_RCPs!(d::ReefModDomain, RCP::String)::Domain
 
-# Switch environmental datasets to represent the given RCP.
-# """
-# function switch_RCPs!(d::ReefModDomain, RCP::String)::ADRIADomain
-#     @set! d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
-#     @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
-#     @set! d.RCP = RCP
+Switch environmental datasets to represent the given RCP.
+"""
+function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
+    @set! d.RCP = RCP
+    data_files = joinpath(d.env_layer_md.dpkg_path, "data_files")
+    @set! d.dhw_scens = load_DHW(ReefModDomain, data_files, RCP)
 
-#     load_DHW(ReefModDomain, data_files, RCP)
+    # Cyclones are not RCP-specific?
+    # loc_ids = axiskeys(d.dhw_scens)[2]
+    # @set! d.wave_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
 
-#     @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw", d.site_data)
-#     @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub", d.site_data)
-
-#     return d
-# end
+    return d
+end
 
 
 function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)
