@@ -31,6 +31,9 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[df.guided.==0.0, non_depth] .= 0.0
     df[df.guided.==-1.0, non_depth] .= 0.0
 
+    # If unguided, set planning horizon to 0.
+    df[df.guided.==0.0, :plan_horizon] .= 0.0
+
     # If no seeding is to occur, set related variables to 0
     not_seeded = (df.seed_TA .== 0) .& (df.seed_CA .== 0)
     df[not_seeded, contains.(names(df), "seed_")] .= 0.0
