@@ -337,7 +337,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     Yfog = SparseArray(spzeros(tf, n_sites))
     Yseed = SparseArray(zeros(tf, 2, n_sites))  # 2 = the two enhanced coral types
 
-    # Intervention strategy: 0 is random, > 0 is guided
+    # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
     is_guided = param_set("guided") > 0
 
     # Years at which to reassess seeding site selection
@@ -347,7 +347,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_start_year = max(seed_start_year, 2)
     if param_set("seed_freq") > 0
         max_consider = min(seed_start_year + seed_years - 1, tf)
-        seed_decision_years[seed_start_year:Int(param_set("seed_freq")):max_consider] .= true
+        seed_decision_years[seed_start_year:Int64(param_set("seed_freq")):max_consider] .= true
     else
         # Start at year 2 or the given specified seed start year
         seed_decision_years[seed_start_year] = true
@@ -356,7 +356,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     shade_start_year = max(shade_start_year, 2)
     if param_set("shade_freq") > 0
         max_consider = min(shade_start_year + shade_years - 1, tf)
-        shade_decision_years[shade_start_year:Int(param_set("shade_freq")):max_consider] .= true
+        shade_decision_years[shade_start_year:Int64(param_set("shade_freq")):max_consider] .= true
     else
         # Start at year 2 or the given specified shade start year
         shade_decision_years[shade_start_year] = true
@@ -456,14 +456,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     tmp::Matrix{Float64} = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
 
+    env_horizon = zeros(Int64(param_set("plan_horizon") + 1), n_sites)  # temporary cache for planning horizon
+
     # basal_area_per_settler is the area in m^2 of a size class one coral 
     basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ 100 .^ 2
-    # debug_log = zeros(tf, n_sites)
-    # rec_log = zeros(tf, 6, n_sites)
-    # juv_log = zeros(tf, 12, n_sites)
-    # juves = [1, 2, 7, 8, 13, 14, 19, 20, 25, 26, 31, 32]
     @inbounds for tstep::Int64 in 2:tf
-        p_step = tstep - 1
+        p_step::Int64 = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
 
         sf .= stressed_fecundity(tstep, a_adapt, n_adapt, dhw_scen[p_step, :],
@@ -481,19 +479,30 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         p.rec .= settler_cover(fec_scope, sf, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
 
-        # rec_log[tstep, :, :] .= p.rec
-
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
 
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
-        if is_guided && (in_seed_years || in_shade_years)
-            # Update dMCDA values
-            mcda_vars.heat_stress_prob .= dhw_t
-            mcda_vars.dam_prob .= sum(Sw_t[tstep, :, :], dims=1)'
+
+        # Apply regional cooling effect before selecting locations to seed
+        if (srm > 0.0) && in_shade_years
+            Yshade[tstep, :] .= srm
+
+            # Apply reduction in DHW due to SRM
+            dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
-        if is_guided && in_seed_years
+        if is_guided && (in_seed_years || in_shade_years)
+            # Update dMCDA values
+            horizon = tstep:tstep+Int64(param_set("plan_horizon"))
+
+            env_horizon .= dhw_scen[horizon, :]
+            env_horizon[1, :] .= dhw_t
+            mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
+
+            mcda_vars.dam_prob .= vec(sum(dropdims((mean(Sw_t[horizon, :, :], dims=1) .+ std(Sw_t[horizon, :, :], dims=1)) .* 0.5, dims=1), dims=1))
+        end
+        if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= site_coral_cover
             (prefseedsites, prefshadesites, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
@@ -502,7 +511,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Log site ranks
             # First col only holds site index ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
-        elseif seed_corals && in_seed_years
+        elseif seed_corals && (in_seed_years || in_shade_years)
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
             prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
                 seed_decision_years[tstep], shade_decision_years[tstep],
@@ -514,21 +523,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         has_shade_sites::Bool = !all(prefshadesites .== 0)
         has_seed_sites::Bool = !all(prefseedsites .== 0)
-        if (srm > 0.0) && in_shade_years
-            Yshade[tstep, :] .= srm
 
-            # Apply reduction in DHW due to SRM
-            dhw_t .= max.(0.0, dhw_t .- srm)
-        end
-
-        if (fogging > 0.0) && in_shade_years && (has_seed_sites || has_shade_sites)
-            if has_seed_sites
-                # Always fog seeded locations if they are selected
-                site_locs::Vector{Int64} = prefseedsites
-            elseif has_shade_sites
-                # Use locations selected for fogging otherwise
-                site_locs = prefshadesites
-            end
+        # Fog selected locations
+        if (fogging > 0.0) && in_shade_years && has_shade_sites
+            site_locs = prefshadesites
 
             dhw_t[site_locs] .= dhw_t[site_locs] .* (1.0 .- fogging)
             Yfog[tstep, site_locs] .= fogging
@@ -570,11 +568,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-4)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
-        # debug_log[tstep, :] = sum(sol.u[end] .* absolute_k_area ./ total_site_area, dims=1)
-        # juv_log[tstep, :, :] = (sol.u[end].*absolute_k_area./total_site_area)[juves, :]
-
-        @views Y_cover[tstep, :, :] .= sol.u[end] .* absolute_k_area ./ total_site_area
-        # proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
+        @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_site_area, 0.0, 1.0)
     end
 
     # Avoid placing importance on sites that were not considered
