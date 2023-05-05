@@ -313,9 +313,7 @@ fix_factor!(dom; guided=3, seed_TA=1e6)
 """
 function fix_factor!(d::Domain, factor::Symbol)::Nothing
     params = DataFrame(d.model)
-    default_val = params[params.fieldname.==factor, :val]
-    params[params.fieldname.==factor, :lower_bound] .= default_val
-    params[params.fieldname.==factor, :upper_bound] .= default_val
+    default_val = params[params.fieldname.==factor, :val][1]
 
     bnds = params[params.fieldname.==factor, :bounds][1]
     new_bnds = Tuple(fill(default_val, length(bnds)))
