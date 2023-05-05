@@ -53,7 +53,7 @@ group.  While growth and mortality metrics pertain to groups (6) as well
 as size classes (6) across all sites (total of 36 by \$n_sites\$), recruitment is
 a 6 by \$n_sites\$ array.
 """
-function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Float64)::Nothing
+function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
     # Indices
     # p.small_massives := [26, 27, 28]
     # p.small := [1, 7, 13, 19, 25, 31]

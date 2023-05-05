@@ -110,7 +110,7 @@ end
         interv_params = string.(ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname)
 
         # Ignore n_adapt and guided
-        interv_params = String[ip for ip in interv_params if ip != "n_adapt" && ip != "guided"]
+        interv_params = String[ip for ip in interv_params if ip != "plan_horizon" && ip != "guided"]
 
         # Ensure at least one intervention is active
         @test all(any.(>(0), eachcol(scens[:, interv_params]))) || "All intervention factors had values <= 0"

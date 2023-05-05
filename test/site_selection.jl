@@ -29,7 +29,7 @@ end
 
     mcda_vars = ADRIA.DMCDA_vars(dom, criteria_df[1, :], site_ids, sum_cover, area_to_seed, wave_scens, dhw_scens)
     n_sites = length(mcda_vars.site_ids)
-    @test (length(mcda_vars.in_conn) == n_sites) && (length(mcda_vars.out_conn) == n_sites) || "Connectivity input is incorrect size."
+    @test (size(mcda_vars.conn, 1) == n_sites) && (size(mcda_vars.conn, 2) == n_sites) || "Connectivity input is incorrect size."
     @test length(mcda_vars.dam_prob) == n_sites || "Wave damage input is incorrect size."
     @test length(mcda_vars.heat_stress_prob) == n_sites || "Heat stress input is incorrect size."
     @test length(mcda_vars.sum_cover) == n_sites || "Initial cover input is incorrect size."
@@ -59,10 +59,9 @@ end
     criteria_df = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
 
     area_to_seed = 662.11  # area of seeded corals in m^2
-    ts = 5  # time step to perform site selection at
 
     sum_cover = fill(0.1, N, ADRIA.n_locations(dom))
-    ranks = ADRIA.run_site_selection(dom, criteria_df, sum_cover, area_to_seed, ts)
+    ranks = ADRIA.run_site_selection(dom, criteria_df, sum_cover, area_to_seed)
 
     @test size(ranks, 1) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
     @test size(ranks, 2) == length(dom.site_ids) || "Ranks storage is not correct size for this domain."

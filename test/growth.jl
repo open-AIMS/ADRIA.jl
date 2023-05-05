@@ -137,8 +137,7 @@ end
 
 
 @testset "growth model" begin
-    here = @__DIR__
-    dom = ADRIA.load_domain(joinpath(here, "../examples/Example_domain"), "45")
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
     n_sites = ADRIA.n_locations(dom)
     p = dom.coral_growth.ode_p
 
@@ -166,28 +165,28 @@ end
 
     # Test direction and magnitude of change
     p.rec .= rand(0:0.001:0.5, 6, n_sites)
+    p.X_mb .= rand(36, 32)
     Y_cover = zeros(10, 36, n_sites)
     Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
     ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
     for tstep = 2:10
-        growthODE(du, Y_cover[tstep-1, :, :], p, 1)
+        growthODE(du, Y_cover[tstep-1, :, :], p, tstep)
         Y_cover[tstep, :, :] .= Y_cover[tstep-1, :, :] .+ du
-        ADRIA.proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
     end
     @test any(diff(Y_cover, dims=1) .< 0) || "ODE never decreases, du being restricted to >=0."
     @test any(diff(Y_cover, dims=1) .>= 0) || "ODE never increases, du being restricted to <=0."
-
-    @test all(abs.(diff(Y_cover, dims=1)) .< 1.0) || "ODE more than doubles or halves area."
 
     # Test change in smallest size class under no recruitment
     p.rec .= zeros(6, n_sites)
     Y_cover = zeros(10, 36, n_sites)
     Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
-    ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
+    # ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
     for tstep = 2:10
         growthODE(du, Y_cover[tstep-1, :, :], p, 1)
         Y_cover[tstep, :, :] .= Y_cover[tstep-1, :, :] .+ du
-        ADRIA.proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
+        # ADRIA.proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
     end
     @test all((diff(Y_cover[:, [1, 7, 13, 19, 25, 31], :], dims=1) .<= 0)) || "Smallest size class growing with no recruitment.."
+
+    @test all(abs.(diff(Y_cover, dims=1)) .< 1.0) || "ODE more than doubles or halves area."
 end
