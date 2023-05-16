@@ -31,10 +31,14 @@ Struct of simulation constants for ADRIA
    https://doi.org/10.1002/ecm.1494
 """
 Base.@kwdef mutable struct SimConstants
-    n_site_int = 5 # max number of sites we intervene on in a given year.
+    n_site_int = 5  # max number of sites we intervene on in a given year.
 
-    priority_sites = [] # sites to prioritize when seeding or shading
-    priority_zones = ["DarkBlue", "Green"] # zones to prioritize when seeding or shading, in order of preference
+    priority_sites = []  # sites to prioritize when seeding or shading
+
+    # Zones to prioritize when seeding or shading, in order of preference
+    # https://github.com/open-AIMS/ADRIA.jl/issues/231#issuecomment-1340138255
+    # https://www2.gbrmpa.gov.au/access/zoning/interpreting-zones
+    priority_zones = ["Pink", "Green", "Yellow", "DarkBlue", "LightBlue"]
 
     ## Environmental parameters
     # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
@@ -47,15 +51,7 @@ Base.@kwdef mutable struct SimConstants
     # competition: probability that large Tabular Acropora overtop small massives
     comp = 0.3
 
-    # True/False indicating Wwhether or not to mimic IPMF by loading only two coral types
-    # currently unused
-    mimic_IPMF = Int8(0)  # Use 0 or 1 as booleans cannot be stored in netCDF
-
-    # Used by Bozec et al 2021 for Acropora, small massives and large massives
-    # max_settler_density = [2.5, 2.5, 2.5, 2.5, 1.5, 1.5]
-
     # Modified for use in ADRIA
     max_settler_density = [100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
-
     max_larval_density = [5000.0, 5000.0, 5000.0, 5000.0, 5000.0, 5000.0]
 end
