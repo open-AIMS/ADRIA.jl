@@ -2,24 +2,6 @@ using NCDatasets
 
 
 """
-    EnvLayer{S, TF}
-
-Store environmental data layers used for scenario
-"""
-mutable struct EnvLayer{S<:AbstractString,TF}
-    dpkg_path::S
-    site_data_fn::S
-    const site_id_col::S
-    const unique_site_id_col::S
-    init_coral_cov_fn::S
-    connectivity_fn::S
-    DHW_fn::S
-    wave_fn::S
-    const timeframe::TF
-end
-
-
-"""
     ADRIADomain{M,I,D,S,V,T,X}
 
 Core ADRIA domain. Represents study area.
@@ -180,16 +162,15 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 end
 
 """
-    load_domain(path::String, rcp::Int64)
+    load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
     load_domain(path::String, rcp::String)
-    load_domain(path::String)
-
+    load_domain(path::String, rcp::Int64)
 
 # Arguments
 - `path` : location of data package
 - `rcp` : RCP scenario to run. If none provided, no data path is set.
 """
-function load_domain(path::String, rcp::String)::ADRIADomain
+function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
     domain_name::String = basename(path)
     if length(domain_name) == 0
         domain_name = basename(dirname(path))
@@ -241,119 +222,11 @@ function load_domain(path::String, rcp::String)::ADRIADomain
         wave
     )
 end
-
-
-function unique_sites(d::Domain)::Vector{String}
-    return d.site_data[:, d.unique_site_id_col]
+function load_domain(path::String, rcp::String)::ADRIADomain
+    return load_domain(ADRIADomain, path, rcp)
 end
-
-
-"""
-    param_table(d::ADRIADomain)::DataFrame
-
-Get model fieldnames and their parameter values.
-"""
-function param_table(d::Domain)::DataFrame
-    f_names::Vector{String} = collect(string.(d.model[:fieldname]))
-    vals::Vector{<:Real} = collect(d.model[:val])
-    p_df::DataFrame = DataFrame(OrderedDict(k => v for (k, v) in zip(f_names, vals)))
-
-    p_df[!, :RCP] .= d.RCP  # Add entry to indicate which RCP scenario was used
-
-    return p_df
-end
-
-
-"""
-    model_spec(d::Domain)::DataFrame
-    model_spec(d::Domain, filepath::String)::Nothing
-
-Get model specification as DataFrame with lower and upper bounds.
-If a filepath is provided, writes the specification out to file with ADRIA metadata.
-"""
-function model_spec(d::Domain)::DataFrame
-    return model_spec(d.model)
-end
-function model_spec(d::Domain, filepath::String)::Nothing
-    version = PkgVersion.Version(@__MODULE__)
-    vers_id = "v$(version)"
-
-    open(filepath, "w") do io
-        write(io, "# Generated with ADRIA.jl $(vers_id) on $(replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_"))\n")
-    end
-
-    model_spec(d) |> CSV.write(filepath, writeheader=true, append=true)
-
-    return
-end
-function model_spec(m::Model)::DataFrame
-    spec = DataFrame(m)
-    bnds = spec[!, :bounds]
-
-    DataFrames.hcat!(spec, DataFrame(
-        :lower_bound => first.(bnds),
-        :upper_bound => getindex.(bnds, 2)
-    ))
-
-    spec[!, :component] .= replace.(string.(spec[!, :component]), "ADRIA." => "")
-    spec[!, :is_constant] .= spec[!, :lower_bound] .== spec[!, :upper_bound]
-
-    # Reorder so name/description appears at end
-    # makes viewing as CSV a little nicer given description can be very long
-    select!(spec, Not([:name, :description]), [:name, :description])
-
-    return spec
-end
-
-
-"""
-    component_params(m::Model, component)::DataFrame
-    component_params(spec::DataFrame, component)::DataFrame
-    component_params(m::Model, components::Vector)::DataFrame
-    component_params(spec::DataFrame, components::Vector)::DataFrame
-
-Extract parameters for a specific model component.
-"""
-function component_params(m::Model, component)::DataFrame
-    return component_params(model_spec(m), component)
-end
-function component_params(spec::DataFrame, component)::DataFrame
-    return spec[spec.component.==replace.(string(component), "ADRIA." => ""), :]
-end
-function component_params(m::Model, components::Vector{T})::DataFrame where {T}
-    return component_params(model_spec(m), components)
-end
-function component_params(spec::DataFrame, components::Vector{T})::DataFrame where {T}
-    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
-end
-
-
-"""
-    site_area(domain::Domain)::Vector{Float64}
-
-Get site area for the given domain.
-"""
-function site_area(domain::Domain)::Vector{Float64}
-    return domain.site_data.area
-end
-
-"""
-    site_k_area(domain::Domain)::Vector{Float64}
-
-Get maximum coral cover area for the given domain in absolute area.
-"""
-function site_k_area(domain::Domain)::Vector{Float64}
-    return site_k(domain) .* site_area(domain)
-end
-
-
-"""
-    n_locations(domain::Domain)::Int64
-
-Returns the number of locations (sites/reefs/clusters) represented within the domain.
-"""
-function n_locations(domain::Domain)::Int64
-    return size(domain.site_data, 1)
+function load_domain(path::String, rcp::Int64)::ADRIADomain
+    return load_domain(ADRIADomain, path, string(rcp))
 end
 
 
@@ -390,24 +263,6 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub", d.site_data)
 
     return d
-end
-
-"""
-    update!(dom::Domain, spec::DataFrame)::Nothing
-
-Update a Domain model with new values specified in spec.
-Assumes all `val` and `bounds` are to be updated.
-
-# Arguments
-- `dom` : Domain
-- `spec` : updated model specification
-"""
-function update!(dom::Domain, spec::DataFrame)::Nothing
-    # ModelParameters.update!(dom.model, spec)
-    dom.model[:val] = spec.val
-    dom.model[:bounds] = spec.bounds
-
-    return nothing
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", d::ADRIADomain)

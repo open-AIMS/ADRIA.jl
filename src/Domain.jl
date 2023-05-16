@@ -54,23 +54,15 @@ end
 
 
 """
-    load_domain(path::String, rcp::Int64)
-    load_domain(path::String, rcp::String)
     load_domain(path::String)
 
 Load ADRIA domain specification from data package.
+No SSP/RCP data is preset.
 
 # Arguments
-- `path` : location of data package
-- `rcp` : RCP scenario to run. If none provided, no data path is set.
+- `path` : location of data package.
 """
-function load_domain(path::String, rcp::String)::ADRIADomain
-    return load_domain(ADRIADomain, path, RCP)
-end
-function load_domain(path::String, rcp::Int64)::ADRIADomain
-    return load_domain(path, "$rcp")
-end
-function load_domain(path::String)::ADRIADomain
+function load_domain(path::String)::Domain
     return load_domain(path, "")
 end
 
