@@ -32,6 +32,8 @@ include("ecosystem/corals/spec.jl")
 include("ecosystem/const_params.jl")
 
 include("Domain.jl")
+include("ExtInterface/ADRIA/Domain.jl")
+
 include("io/inputs.jl")
 
 include("sites/connectivity.jl")
