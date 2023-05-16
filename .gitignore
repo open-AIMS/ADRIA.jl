@@ -8,8 +8,6 @@ examples/Outputs/
 /build/*.so
 .vscode/
 
-adria/
-
 JuliaSysimage.dll
 
 docs/build/
