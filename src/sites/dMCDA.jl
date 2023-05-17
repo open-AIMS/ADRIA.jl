@@ -206,35 +206,40 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
 end
 
 """
-    retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
+    retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::Function, site_ids::Vector)
+    retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::Vector{Any}, site_ids::Vector)
+    retrieve_ranks(S::Matrix, scores::Vector, rev_val::Bool, site_ids::Vector)
 
 Get location ranks using mcda technique specified in mcda_func, weights and a decision matrix S.
 
 # Arguments
 - `S` : decision matrix containing criteria values for each location (n locations)*(m criteria)
 - `weights` : importance weights for each criteria. 
-- `mcda_func` : function to use for mcda, specified as an element from mcda_methods.
-- `site_ids` : array of integers indicating site ids still remaining after filtering.
+- `mcda_func` : function/[function bool] array to use for mcda, specified as an element from method.
+- `site_ids` : array of site ids still remaining after filtering.
+- `scores` : set of scores derived from applying an mcda ranking method.
+- `rev_val` : Boolean indicating whether a mcda method is maximising score (true), or minimising (false). 
 
 # Returns
 - `s_order` : [site_ids, criteria values, ranks]
 """
-function retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
+function retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::Function, site_ids::Vector)
     S = mcda_normalize(S)
     S .= S .* repeat(weights', size(S, 1), 1)
     scores = mcda_func(S)
 
-    return retrieve_ranks(S, scores, true, site_ids)
+    return retrieve_ranks(S, vec(scores), true, site_ids)
 end
-function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Vector)
+function retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::Vector{Any}, site_ids::Vector)
     fns = repeat([maximum], length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func[1])
-    s_order = Union{Float64,Int64}[Int.(site_ids) results.scores 1:size(S, 1)]
 
-    return retrieve_ranks(S, s_order, mcda_func[2])
+    return retrieve_ranks(S, results.scores, mcda_func[2], site_ids)
 end
-function retrieve_ranks(S::Matrix, scores::Array{Float64}, rev_val::Bool, site_ids::Array{Int64})
+function retrieve_ranks(S::Matrix, scores::Vector, rev_val::Bool, site_ids::Vector)
+
     s_order = Union{Float64,Int64}[Int.(site_ids) scores 1:size(S, 1)]
+
     s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=rev_val)
     @views s_order[:, 3] .= Int.(1:size(S, 1))
 
@@ -281,8 +286,8 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
-    # A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
-    A[:, 4] .= wave_stress ./ maximum(wave_stress)
+    A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
+    #A[:, 4] .= wave_stress ./ maximum(wave_stress)
 
     # risk from heat exposure
     # A[:, 5] .= maximum(heat_stress) != 0.0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : 0.0
@@ -518,6 +523,8 @@ function guided_site_selection(
     # add weights for strongest predecessors and zones to get zone criteria
     zones_criteria = zone_preds .+ zone_sites
 
+    mcda_func = method[alg_ind]
+
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
@@ -550,7 +557,7 @@ function guided_site_selection(
     if log_shade && isempty(SH)
         prefshadesites = zeros(Int64, n_site_int)
     elseif log_shade
-        prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, n_site_int, mcda_func, 3)
+        prefshadesites, s_order_shade = rank_sites!(SH, wsh, rankings, n_site_int, mcda_func, 3)
         if use_dist != 0
             prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 3)
         end
