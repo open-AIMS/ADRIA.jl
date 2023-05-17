@@ -205,13 +205,6 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
     return prefsites, s_order
 end
 
-function rank_seed_sites!(S, weights, rankings, n_site_int, alg_ind)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_sites!(S, weights, rankings, n_site_int, alg_ind, 2)
-end
-function rank_shade_sites!(S, weights, rankings, n_site_int, alg_ind)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_sites!(S, weights, rankings, n_site_int, alg_ind, 3)
-end
-
 """
     retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
 
@@ -652,15 +645,6 @@ end
 
 """
     order_ranking(S::Array{Float64, 2})
-function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Function, site_ids::Array{Int64})
-    S = mcda_normalize(S)
-    S .= S .* repeat(weights', size(S, 1), 1)
-    scores = mcda_func(S)
-    return retrieve_ranks(S, scores, true, site_ids)
-end
-function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Vector, site_ids::Array{Int64})
-    fns = repeat([maximum], length(weights))
-    results = mcdm(MCDMSetting(S, weights, fns), mcda_func[1])
 
 Uses simple summation as aggregation method for decision criteria.
 Then orders sites from highest aggregate score to lowest.
@@ -673,12 +657,7 @@ Then orders sites from highest aggregate score to lowest.
 """
 function order_ranking(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
     return sum(S, dims=2)
-    return retrieve_ranks(S, results.scores, mcda_func[2], site_ids)
 end
-function retrieve_ranks(S::Matrix, scores::Array{Float64}, rev_val::Bool, site_ids::Array{Int64})
-    s_order = Union{Float64,Int64}[Int.(site_ids) scores 1:size(S, 1)]
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=rev_val)
-    @views s_order[:, 3] .= Int.(1:size(S, 1))
 
 """
     adria_topsis(S::Array{Float64, 2})
