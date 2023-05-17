@@ -168,10 +168,7 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
     weights = weights[selector]
     S = S[:, Bool[1, selector...]]
 
-    # Skip first column as this holds site index ids
-    S[:, 2:end] = mcda_normalize(S[:, 2:end])
-    S[:, 2:end] .= S[:, 2:end] .* weights'
-    s_order = mcda_func(S)
+    s_order = retrieve_ranks(S, weights, mcda_func)
 
     last_idx = min(n_site_int, size(s_order, 1))
     prefsites = Int.(s_order[1:last_idx, 1])
@@ -599,35 +596,21 @@ function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{
     return rep_sites, rankings
 end
 
-"""
-    order_ranking(S::Array{Float64, 2})
+function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Function)
+    S[:, 2:end] = mcda_normalize(S[:, 2:end])
+    S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
+    s_order = mcda_func(S)
+    return retrieve_ranks(S, s_order, true)
+end
+function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Vector)
+    fns = repeat([maximum], length(weights))
+    results = mcdm(MCDMSetting(S, weights, fns), mcda_func[1])
+    s_order = Union{Float64,Int64}[Int.(site_ids) results.scores 1:size(S, 1)]
 
-Uses simple summation as aggregation method for decision criteria.
-Then orders sites from highest aggregate score to lowest.
-
-# Arguments
-- `S` : Decision matrix (seeding or shading)
-
-# Returns
-- `s_order` : nsites × 3 matrix with columns
-    1. site ids
-    2. calculated site rank score (higher values = higher ranked)
-    3. site order id
-"""
-function order_ranking(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
-    n::Int64 = size(S, 1)
-    s_order::Array = Union{Float64,Int64}[zeros(Int, n) zeros(Float64, n) zeros(Int, n)]
-
-    # Simple ranking - add criteria weighted values for each sites
-    # Third column is derived from the number of sites for situations where
-    # a subset of sites are being investigated (and so using their site IDs
-    # will be inappropriate)
-    @views s_order[:, 1] .= Int.(S[:, 1])
-    @views s_order[:, 2] .= sum(S[:, 2:end], dims=2)
-
-    # Reorder ranks (highest to lowest)
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=true)
-
+    return retrieve_ranks(S, s_order, mcda_func[2])
+end
+function retrieve_ranks(S::Matrix, s_order::Array{Union{Float64,Int64},2}, rev_val::Bool)
+    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=rev_val)
     @views s_order[:, 3] .= Int.(1:size(S, 1))
 
     return s_order
