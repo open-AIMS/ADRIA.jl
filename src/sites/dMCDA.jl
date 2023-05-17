@@ -509,6 +509,7 @@ function guided_site_selection(
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+    mcda_func = mcda_methods[alg_ind]
 
     # work out which priority predecessors are connected to priority sites
     predec::Matrix{Float64} = zeros(n_sites, 3)
