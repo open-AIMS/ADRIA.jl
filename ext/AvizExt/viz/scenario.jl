@@ -19,8 +19,8 @@ Figure
 
 
 """
-    scenario(rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())    
-    scenario!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.scenario(rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())    
+    ADRIA.viz.scenario!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
 Plot scenario outcomes over time.
 
@@ -37,7 +37,7 @@ Plot scenario outcomes over time.
 # Returns
 GridPosition
 """
-function scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y::NamedDimsArray;
+function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y::NamedDimsArray;
     opts::Dict=Dict(:by_RCP => false), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
 
     # Ensure last year is always shown in x-axis
@@ -90,10 +90,10 @@ function scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y::NamedDim
 
     return g
 end
-function scenario(rs::ResultSet, y::NamedDimsArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
+function ADRIA.viz.scenario(rs::ResultSet, y::NamedDimsArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    scenario!(g, rs, y; opts, axis_opts, series_opts)
+    ADRIA.viz.scenario!(g, rs, y; opts, axis_opts, series_opts)
 
     return f
 end

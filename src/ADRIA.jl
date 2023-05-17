@@ -10,7 +10,8 @@ using OrderedCollections
 using Setfield, ModelParameters, DataStructures
 using DataFrames, Graphs, SimpleWeightedGraphs, CSV, Dates
 import ArchGDAL as AG
-import GeoDataFrames as GDF
+import GeoDataFrames as GDF, GeoFormatTypes as GFT
+using FileIO, ImageMagick, Reexport, GeoInterface
 
 using ProgressMeter
 
@@ -56,6 +57,7 @@ include("analysis/sensitivity.jl")
 include("ExtInterface/ReefMod/Domain.jl")
 include("ExtInterface/ReefMod/scenarios.jl")
 
+include("viz/viz.jl")
 
 export
     growthODE,
@@ -63,8 +65,7 @@ export
     create_coral_struct, Intervention, Criteria, Corals, SimConstants,
     site_area, site_k_area,
     Domain, ADRIADomain,
-    metrics, select, timesteps, env_stats
-
+    metrics, select, timesteps, env_stats, viz
 
 # Interfaces for external models
 export ReefModDomain

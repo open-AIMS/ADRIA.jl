@@ -24,13 +24,13 @@
 function comms_layout(; resolution=(1920, 1080))
     f = Figure(resolution=resolution)
 
-    main = f[1:6, 1:8] = GridLayout()
+    main = f[1:6, 1:9] = GridLayout()
 
-    controls = main[1:6, 1] = GridLayout()
-    controls.width = 300
+    controls = main[1:6, 1:2] = GridLayout()
+    # controls.width = 400
 
     # Trajectories and density plot
-    trajectory = main[1:2, 2:8] = GridLayout()
+    trajectory = main[1:2, 3:8] = GridLayout()
     temporal = Axis(
         trajectory[1, 2:7],
         title="Scenario Trajectories",
@@ -48,21 +48,21 @@ function comms_layout(; resolution=(1920, 1080))
     traj_outcome_sld = trajectory[1, 1]
     traj_time_sld = trajectory[2, 2:7]
 
-    map = main[3:6, 2:4] = GridLayout()
+    map = main[3:5, 3:5] = GridLayout()
 
     # Importance
     # feat_importance = Axis(
     #     main[3:4, 3],
     #     title="Relative Importance (Top 10)"
     # )
-    feat_importance = main[3:5, 5:6]
+    feat_importance = main[3:5, 6:7]
 
     # # Economics
     # econ_disp = Axis(main[3:4, 4])
     # econ_ctrl = main[5, 4]
 
     # Outcome probabilities
-    outcome_view = main[3:5, 7:8]
+    outcome_view = main[3:5, 8:9]
     outcomes = Axis(
         outcome_view,
         title="Probability Occurrence",
@@ -71,7 +71,7 @@ function comms_layout(; resolution=(1920, 1080))
             ["Very High\n> 80%", "High\n70 - 80%", "Medium\n50 - 70%", "Low\n20 - 50%", "Very Low\n< 20%"])
     )
 
-    messages = Axis(main[6, 4:8])
+    messages = Axis(main[6, 5:9])
     hidedecorations!(messages)
     hidespines!(messages)
     text!(messages,
