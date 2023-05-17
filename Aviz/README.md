@@ -137,7 +137,7 @@ save("outcome_map.png", tf)
 A GUI for quick visualization and analysis is also provided.
 This can be launched programmatically from the REPL, however, a standalone app will also be made available.
 
-```
+```julia
 using ADRIA, Aviz
 
 # Load some results
