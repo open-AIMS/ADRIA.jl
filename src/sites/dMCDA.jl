@@ -173,15 +173,14 @@ function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 end
 
 """
-    rank_sites!(S, weights, rankings, n_site_int, rank_col)
-    rank_seed_sites!(S, weights, rankings, n_site_int)
-    rank_shade_sites!(S, weights, rankings, n_site_int)
+    rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)
 
 # Arguments
 - `S` : Matrix, Site preference values
 - `weights` : weights to apply
 - `rankings` : vector of site ranks to update
 - `n_site_int` : number of sites to select for interventions
+- `mcda_func` : element of method, designates mcda method to use
 - `rank_col` : column to fill with rankings (2 for seed, 3 for shade)
 
 # Returns
