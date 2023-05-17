@@ -11,7 +11,7 @@ Then orders sites from highest aggregate score to lowest.
 # Returns
 - aggregate score for ranking.
 """
-function order_ranking(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
+function order_ranking(S::Array{Float64,2})::Array{Float64}
     return sum(S, dims=2)
 end
 
@@ -44,7 +44,7 @@ S_p  = √{∑(criteria .- NIS)²}
 - `C` : aggregate score for ranking.
 
 """
-function adria_topsis(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
+function adria_topsis(S::Array{Float64,2})::Array{Float64}
 
     # compute the set of positive ideal solutions for each criteria
     PIS = maximum(S, dims=1)
@@ -104,7 +104,7 @@ Details of this aggregation method in, for example [1]
 # Returns
 - `Q` : aggregate score for ranking.
 """
-function adria_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},2}
+function adria_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Float64}
 
     F_s = maximum(S)
 
