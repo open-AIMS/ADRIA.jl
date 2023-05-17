@@ -635,7 +635,7 @@ end
 
 
 """
-    topsis(S::Array{Float64, 2})
+    adria_topsis(S::Array{Float64, 2})
 
 Calculates ranks using the aggregation method of the TOPSIS MCDA algorithm.
 Rank for a particular site is calculated as a ratio
@@ -665,7 +665,7 @@ S_p  = √{∑(criteria .- NIS)²}
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
 """
-function topsis(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
+function adria_topsis(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
 
     # compute the set of positive ideal solutions for each criteria
     PIS = maximum(S[:, 2:end], dims=1)
@@ -695,7 +695,7 @@ end
 
 
 """
-    vikor(S; v=0.5)
+    adria_vikor(S; v=0.5)
 
 Calculates ranks using the aggregation method of the VIKOR MCDA algorithm.
 Rank for a particular site is calculated as a linear combination of ratios,
@@ -738,7 +738,7 @@ Details of this aggregation method in, for example [1]
     2. calculated site rank score (higher values = higher ranked)
     3. site order id
 """
-function vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},2}
+function adria_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},2}
 
     F_s = maximum(S[:, 2:end])
 
