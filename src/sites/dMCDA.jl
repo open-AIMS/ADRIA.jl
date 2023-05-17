@@ -16,7 +16,7 @@ global method = [
     [MaircaMethod(), false],
     [MarcosMethod(), true],
     [MooraMethod(), true],
-    [MoosraMethod(), true],
+    #[MoosraMethod(), true],
     [PIVMethod(), true],
     [PSIMethod(), true],
     [ROVMethod(), true],
