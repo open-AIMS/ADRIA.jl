@@ -6,6 +6,9 @@ using Combinatorics
 using JMcDM
 
 global method = [
+    order_ranking,
+    adria_vikor,
+    adria_topsis,
     [ArasMethod(), true],
     [CocosoMethod(), true],
     [CodasMethod(), true],
