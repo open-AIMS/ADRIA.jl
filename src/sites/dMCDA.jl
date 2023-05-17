@@ -186,29 +186,16 @@ end
 # Returns
 - `prefsites` : sites in order of their rankings
 """
-function rank_sites!(S, weights, rankings, n_site_int, alg_ind, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
-    selector = vec(.!all(S .== 0, dims=1))
+    selector = vec(.!all(S[:, 2:end] .== 0, dims=1))
 
     # weights in order of: in_conn, out_conn, wave, heat, predecessors, low cover
     weights = weights[selector]
     S = S[:, Bool[1, selector...]]
 
-    s_order = retrieve_ranks(S, weights, mcda_func)
+    s_order = retrieve_ranks(S[:, 2:end], weights, mcda_func, S[:, 1])
 
-    if in(alg_ind, [1, 2, 3])
-        # Skip first column as this holds site index ids
-        S[:, 2:end] = mcda_normalize(S[:, 2:end])
-        S[:, 2:end] .= S[:, 2:end] .* repeat(weights', size(S[:, 2:end], 1), 1)
-        s_order = mcda_func(S)
-    elseif in(alg_ind, [16, 17])
-        fns = repeat([maximum], length(weights))
-        results = mcdm(MCDMSetting(S[:, 2:end], weights, fns), mcda_func[1])
-        s_order = Union{Float64,Int64}[Int.(S[:, 1]) results.scores 1:size(S, 1)]
-
-        # Reorder ranks (highest to lowest)
-        s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=mcda_func[2])
-    end
     last_idx = min(n_site_int, size(s_order, 1))
     prefsites = Int.(s_order[1:last_idx, 1])
 
@@ -509,7 +496,6 @@ function guided_site_selection(
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
-    mcda_func = mcda_methods[alg_ind]
 
     # work out which priority predecessors are connected to priority sites
     predec::Matrix{Float64} = zeros(n_sites, 3)
