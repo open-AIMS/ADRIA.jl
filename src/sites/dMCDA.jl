@@ -226,6 +226,43 @@ function rank_shade_sites!(S, weights, rankings, n_site_int, alg_ind)::Tuple{Vec
 end
 
 """
+    retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
+
+Get location ranks using mcda technique specified in mcda_func, weights and a decision matrix S.
+
+# Arguments
+- `S` : decision matrix containing criteria values for each location (n locations)*(m criteria)
+- `weights` : importance weights for each criteria. 
+- `mcda_func` : function to use for mcda, specified as an element from mcda_methods.
+- `site_ids` : array of integers indicating site ids still remaining after filtering.
+
+# Returns
+- `s_order` : [site_ids, criteria values, ranks]
+"""
+function retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
+    S = mcda_normalize(S)
+    S .= S .* repeat(weights', size(S, 1), 1)
+    scores = mcda_func(S)
+
+    return retrieve_ranks(S, scores, true, site_ids)
+end
+function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Vector)
+    fns = repeat([maximum], length(weights))
+    results = mcdm(MCDMSetting(S, weights, fns), mcda_func[1])
+    s_order = Union{Float64,Int64}[Int.(site_ids) results.scores 1:size(S, 1)]
+
+    return retrieve_ranks(S, s_order, mcda_func[2])
+end
+function retrieve_ranks(S::Matrix, scores::Array{Float64}, rev_val::Bool, site_ids::Array{Int64})
+    s_order = Union{Float64,Int64}[Int.(site_ids) scores 1:size(S, 1)]
+    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=rev_val)
+    @views s_order[:, 3] .= Int.(1:size(S, 1))
+
+    return s_order
+end
+
+
+"""
     create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
 
 Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
@@ -626,43 +663,21 @@ function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{
     return rep_sites, rankings
 end
 
-
 """
-    retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
+    order_ranking(S::Array{Float64, 2})
 
-Get location ranks using mcda technique specified in mcda_func, weights and a decision matrix S.
+Uses simple summation as aggregation method for decision criteria.
+Then orders sites from highest aggregate score to lowest.
 
 # Arguments
-- `S` : decision matrix containing criteria values for each location (n locations)*(m criteria)
-- `weights` : importance weights for each criteria. 
-- `mcda_func` : function to use for mcda, specified as an element from mcda_methods.
-- `site_ids` : array of integers indicating site ids still remaining after filtering.
+- `S` : Decision matrix (seeding or shading)
 
 # Returns
-- `s_order` : [site_ids, criteria values, ranks]
+- aggregate score for ranking.
 """
-function retrieve_ranks(S::Matrix, weights::Array{Float64}, mcda_func::Function, site_ids::Array{Int64})
-    S = mcda_normalize(S)
-    S .= S .* repeat(weights', size(S, 1), 1)
-    scores = mcda_func(S)
-
-    return retrieve_ranks(S, scores, true, site_ids)
+function order_ranking(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
+    return sum(S, dims=2)
 end
-function retrieve_ranks(S::Matrix, weights::Array, mcda_func::Vector)
-    fns = repeat([maximum], length(weights))
-    results = mcdm(MCDMSetting(S, weights, fns), mcda_func[1])
-    s_order = Union{Float64,Int64}[Int.(site_ids) results.scores 1:size(S, 1)]
-
-    return retrieve_ranks(S, s_order, mcda_func[2])
-end
-function retrieve_ranks(S::Matrix, scores::Array{Float64}, rev_val::Bool, site_ids::Array{Int64})
-    s_order = Union{Float64,Int64}[Int.(site_ids) scores 1:size(S, 1)]
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=rev_val)
-    @views s_order[:, 3] .= Int.(1:size(S, 1))
-
-    return s_order
-end
-
 
 """
     adria_topsis(S::Array{Float64, 2})
@@ -690,37 +705,25 @@ S_p  = √{∑(criteria .- NIS)²}
 - `S` : Decision matrix (seeding or shading)
 
 # Returns
-- `s_order` :
-    1. site ids
-    2. calculated site rank score (higher values = higher ranked)
-    3. site order id
+- `C` : aggregate score for ranking.
+
 """
 function adria_topsis(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
 
     # compute the set of positive ideal solutions for each criteria
-    PIS = maximum(S[:, 2:end], dims=1)
+    PIS = maximum(S, dims=1)
 
     # compute the set of negative ideal solutions for each criteria
-    NIS = minimum(S[:, 2:end], dims=1)
+    NIS = minimum(S, dims=1)
 
     # calculate separation distance from the ideal and non-ideal solutions
-    S_p = sqrt.(sum((S[:, 2:end] .- PIS) .^ 2, dims=2))
-    S_n = sqrt.(sum((S[:, 2:end] .- NIS) .^ 2, dims=2))
+    S_p = sqrt.(sum((S .- PIS) .^ 2, dims=2))
+    S_n = sqrt.(sum((S .- NIS) .^ 2, dims=2))
 
     # final ranking measure of relative closeness C
     C = S_n ./ (S_p + S_n)
 
-    # Create matrix where rank ids are integers (for use as indexers later)
-    # Third column is derived from the number of sites for situations where
-    # a subset of sites are being investigated (and so using their site IDs
-    # will be inappropriate)
-    s_order = Union{Float64,Int64}[Int.(S[:, 1]) C 1:size(S, 1)]
-
-    # Reorder ranks (highest to lowest)
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=true)
-    @views s_order[:, 3] .= Int.(1:size(S, 1))
-
-    return s_order
+    return C
 end
 
 
@@ -763,36 +766,25 @@ Details of this aggregation method in, for example [1]
 - `v` : Real
 
 # Returns
-- `s_order` :
-    1. site ids
-    2. calculated site rank score (higher values = higher ranked)
-    3. site order id
+- `Q` : aggregate score for ranking.
 """
 function adria_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},2}
 
-    F_s = maximum(S[:, 2:end])
+    F_s = maximum(S)
 
     # Compute utility of the majority Sr (Manhatten Distance)
     # Compute individual regret R (Chebyshev distance)
-    sr_arg = (F_s .- S[:, 2:end])
-    Sr = [S[:, 1] sum(sr_arg, dims=2)]
-    R = [S[:, 1] maximum(sr_arg, dims=2)]
+    sr_arg = (F_s .- S)
+    Sr = sum(sr_arg, dims=2)
+    R = maximum(sr_arg, dims=2)
 
     # Compute the VIKOR compromise Q
-    S_s, S_h = maximum(Sr[:, 2]), minimum(Sr[:, 2])
-    R_s, R_h = maximum(R[:, 2]), minimum(R[:, 2])
-    Q = @. v * (Sr[:, 2] - S_h) / (S_s - S_h) + (1 - v) * (R[:, 2] - R_h) / (R_s - R_h)
+    S_s, S_h = maximum(Sr), minimum(Sr)
+    R_s, R_h = maximum(R), minimum(R)
+    Q = @. v * (Sr - S_h) / (S_s - S_h) + (1 - v) * (R - R_h) / (R_s - R_h)
     Q .= 1.0 .- Q  # Invert rankings so higher values = higher rank
 
-    # Create matrix where rank ids are integers (for use as indexers later)
-    # Third column is necessary as a subset of sites will not match their Index IDs.
-    s_order = Union{Float64,Int64}[Int.(S[:, 1]) Q zeros(size(Q, 1))]
-
-    # sort Q by rank score in descending order
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=true)
-    @views s_order[:, 3] .= Int.(1:size(S, 1))
-
-    return s_order
+    return Q
 end
 
 """
