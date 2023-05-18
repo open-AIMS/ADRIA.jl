@@ -14,7 +14,7 @@ using ImageMagick, GeoInterface
 
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
-using ADRIA.FileIO, ADRIA.GDF, ADRIA.GFT
+import ADRIA.FileIO, ADRIA.GDF, ADRIA.GFT
 using ADRIA:
     load_results, load_domain, load_scenarios,
     ResultSet, run_scenarios, metrics, viz.explore
