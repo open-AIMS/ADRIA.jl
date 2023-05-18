@@ -75,6 +75,10 @@ The Makie.jl ecosystem is used to produce figures.
 using GLMakie, GeoMakie, GraphMakie
 # [ Info: Precompiling AvizExt [7cc86020-4844-5174-99c6-5a0a5943f024]
 
+# If using VS Code, you may need to deactivate the inline plotting feature
+# to make figures appear.
+Makie.inline!(false)
+
 using ADRIA
 ```
 
