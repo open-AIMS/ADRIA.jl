@@ -48,7 +48,7 @@ function comms_layout(; resolution=(1920, 1080))
     traj_outcome_sld = trajectory[1, 1]
     traj_time_sld = trajectory[2, 2:7]
 
-    map = main[3:5, 3:5] = GridLayout()
+    map = main[3:6, 3:5] = GridLayout()
 
     # Importance
     # feat_importance = Axis(
