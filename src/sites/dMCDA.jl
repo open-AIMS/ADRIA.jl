@@ -194,7 +194,7 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
     weights = weights[selector]
     S = S[:, Bool[1, selector...]]
 
-    s_order = retrieve_ranks(S[:, 2:end], weights, mcda_func, S[:, 1])
+    s_order = retrieve_ranks(S[:, 2:end], S[:, 1], weights, mcda_func)
 
     last_idx = min(n_site_int, size(s_order, 1))
     prefsites = Int.(s_order[1:last_idx, 1])
@@ -223,25 +223,21 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 # Returns
 - `s_order` : [site_ids, criteria values, ranks]
 """
-function retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::Function, site_ids::Vector)
-    S = mcda_normalize(S)
-    S .= S .* repeat(weights', size(S, 1), 1)
+function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Function)
+    S = mcda_normalize(S) .* weights'
     scores = mcda_func(S)
 
-    return retrieve_ranks(S, vec(scores), true, site_ids)
+    return retrieve_ranks(S, site_ids, vec(scores), true)
 end
-function retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::Vector{Any}, site_ids::Vector)
-    fns = repeat([maximum], length(weights))
+function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Vector{Any})
+    fns = fill(maximum, length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func[1])
 
-    return retrieve_ranks(S, results.scores, mcda_func[2], site_ids)
+    return retrieve_ranks(S, site_ids, results.scores, mcda_func[2])
 end
-function retrieve_ranks(S::Matrix, scores::Vector, rev_val::Bool, site_ids::Vector)
-
-    s_order = Union{Float64,Int64}[Int.(site_ids) scores 1:size(S, 1)]
-
+function retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, rev_val::Bool)
+    s_order = Union{Float64,Int64}[Int64.(site_ids) scores Int64.(1:size(S, 1))]
     s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=rev_val)
-    @views s_order[:, 3] .= Int.(1:size(S, 1))
 
     return s_order
 end
