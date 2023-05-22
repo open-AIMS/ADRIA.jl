@@ -1,6 +1,6 @@
 """
-    ADRIA.viz.map(rs::ADRIA.ResultSet; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map(rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
     ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
 Plot spatial outcomes.
@@ -95,7 +95,7 @@ end
     make_geojson_copy(ds::Union{ResultSet,Domain})::String
 
 # Arguments
-ds : Domain or ResultSet containing spatial data
+`ds` : Domain or ResultSet containing spatial data
 
 # Returns
 Path to temporary copy of GeoJSON file.
