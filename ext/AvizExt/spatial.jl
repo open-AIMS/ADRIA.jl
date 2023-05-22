@@ -11,7 +11,6 @@ function create_map!(f, geodata, data, highlight, centroids)
         xlabel="Longitude",
         ylabel="Latitude",
         dest="+proj=latlong +datum=WGS84"
-        # xticklabelsize=14
     )
     spatial.xticklabelsize = 12
     spatial.yticklabelsize = 12

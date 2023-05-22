@@ -40,6 +40,11 @@ include("./analysis.jl")
 include("./viz/viz.jl")
 
 
+function __init__()
+    ADRIA.viz.tmpdir = mktempdir()
+end
+
+
 """Main entry point for app."""
 function julia_main()::Cint
     if "explore" in ARGS
@@ -304,14 +309,7 @@ function ADRIA.viz.explore(rs::ResultSet)
 
     # TODO: Separate this out into own function
     # Make temporary copy of GeoPackage as GeoJSON
-    tmpdir = mktempdir()
-
-    local geo_fn = joinpath(tmpdir, "Aviz_$(rs.name).geojson")
-    try
-        GDF.write(geo_fn, rs.site_data; driver="geojson")
-    catch
-        GDF.write(geo_fn, rs.site_data; geom_columns=(:geom,), driver="geojson")
-    end
+    geo_fn = make_geojson_copy(rs)
     geodata = GeoMakie.GeoJSON.read(read(geo_fn))
 
     map_disp = create_map!(map_display, geodata, obs_mean_rc_sites, (:black, 0.05), centroids)
