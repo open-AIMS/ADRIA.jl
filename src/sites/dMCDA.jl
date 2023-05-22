@@ -213,7 +213,6 @@ function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, m
 end
 function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::JMcDM.MCDMMethod)
     fns = fill(maximum, length(weights))
-    results = mcdm(MCDMSetting(S, weights, fns), mcda_func[1])
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func)
 
     rev_val = results.bestIndex == findall(results.scores .== maximum(results.scores))
@@ -504,7 +503,6 @@ function guided_site_selection(
 
     # add weights for strongest predecessors and zones to get zone criteria
     zones_criteria = zone_preds .+ zone_sites
-
     mcda_func = methods_mcda[alg_ind]
 
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
