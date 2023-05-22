@@ -94,6 +94,8 @@ end
 """
     make_geojson_copy(ds::Union{ResultSet,Domain})::String
 
+Make a temporary copy of GeoPackage as GeoJSON.
+
 # Arguments
 `ds` : Domain or ResultSet containing spatial data
 
@@ -101,7 +103,6 @@ end
 Path to temporary copy of GeoJSON file.
 """
 function make_geojson_copy(ds::Union{ResultSet,Domain})::String
-    # Make temporary copy of GeoPackage as GeoJSON
     tmpdir = ADRIA.viz.tmpdir
     local geo_fn = joinpath(tmpdir, "Aviz_$(ds.name).geojson")
     if !isfile(geo_fn)

@@ -307,8 +307,6 @@ function ADRIA.viz.explore(rs::ResultSet)
     heatmap!(ft_import, sensitivities)
     Colorbar(layout.importance[1, 2]; colorrange=(0.0, 1.0))
 
-    # TODO: Separate this out into own function
-    # Make temporary copy of GeoPackage as GeoJSON
     geo_fn = make_geojson_copy(rs)
     geodata = GeoMakie.GeoJSON.read(read(geo_fn))
 
