@@ -4,32 +4,9 @@ using StatsBase
 using Distances
 using Combinatorics
 using JMcDM
+using InteractiveUtils: subtypes
 using ADRIA: order_ranking, adria_vikor, adria_topsis
 
-global method = [
-    order_ranking,
-    adria_vikor,
-    adria_topsis,
-    [ArasMethod(), true],
-    [CocosoMethod(), true],
-    [CodasMethod(), true],
-    [CoprasMethod(), false],
-    [EdasMethod(), true],
-    [GreyMethod(), true],
-    [MabacMethod(), true],
-    [MaircaMethod(), false],
-    [MarcosMethod(), true],
-    [MooraMethod(), true],
-    #[MoosraMethod(), true],
-    [PIVMethod(), true],
-    [PSIMethod(), true],
-    [ROVMethod(), true],
-    [SawMethod(), true],
-    [TopsisMethod(), true],
-    [VikorMethod(), false],
-    [WPMMethod(), true],
-    [WaspasMethod(), true]
-]
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
@@ -63,6 +40,11 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wt_zones_seed # ::F
     wt_zones_shade # ::F
 end
+
+const methods_mcda = [order_ranking,
+    adria_vikor,
+    adria_topsis,
+    subtypes(MCDMMethod)[(subtypes(MCDMMethod).!=[JMcDM.CRITIC.CriticMethod]).&(subtypes(MCDMMethod).!=[JMcDM.MOOSRA.MoosraMethod]).&(subtypes(MCDMMethod).!=[JMcDM.MEREC.MERECMethod]).&(subtypes(MCDMMethod).!=[JMcDM.ELECTRE.ElectreMethod])]...]
 
 """
     DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
@@ -229,11 +211,14 @@ function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, m
 
     return retrieve_ranks(S, site_ids, vec(scores), true)
 end
-function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Vector{Any})
+function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::JMcDM.MCDMMethod)
     fns = fill(maximum, length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func[1])
+    results = mcdm(MCDMSetting(S, weights, fns), mcda_func)
 
-    return retrieve_ranks(S, site_ids, results.scores, mcda_func[2])
+    rev_val = results.bestIndex == findall(results.scores .== maximum(results.scores))
+
+    return retrieve_ranks(S, site_ids, results.scores, rev_val)
 end
 function retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, rev_val::Bool)
     s_order = Union{Float64,Int64}[Int64.(site_ids) scores Int64.(1:size(S, 1))]
@@ -450,7 +435,8 @@ function guided_site_selection(
     rankingsin::Matrix{T},
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
-    strong_pred::Vector{Int64}
+    strong_pred::Vector{Int64};
+    methods_mcda=methods_mcda
 )::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool}
 
     use_dist::Int64 = d_vars.use_dist
@@ -519,7 +505,7 @@ function guided_site_selection(
     # add weights for strongest predecessors and zones to get zone criteria
     zones_criteria = zone_preds .+ zone_sites
 
-    mcda_func = method[alg_ind]
+    mcda_func = methods_mcda[alg_ind]
 
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
     if isempty(A)
