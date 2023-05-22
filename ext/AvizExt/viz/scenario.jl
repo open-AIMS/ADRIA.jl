@@ -69,7 +69,6 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
             labels = ["No Intervention", "Unguided", "Guided"]
         else
             rcp_ids = sort(Int.(unique(rs.inputs[:, :RCP])))
-            c = [COLORS[_r] for _r in [Symbol("RCP$(r_id)") for r_id in rcp_ids]]
             r_s = Symbol[Symbol("RCP$(r_id)") for r_id in rcp_ids]
 
             eles = LineElement[
