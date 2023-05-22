@@ -159,9 +159,10 @@ end
     bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
         s::Vector{Float64}, dhw::Float64, a_adapt::Float64, n_adapt::Float64)
 
-Calculates bleaching mortality taking into account depth and bleaching sensitivity of corals.
-Model is adapted from Bozec et al., [2], itself based on data from Hughes et al., [3]
-(bleaching sensitivity) and Baird et al., [1] (relationship between bleaching and depth).
+Calculates and applies bleaching mortality, taking into account depth and bleaching
+sensitivity of corals. Model is adapted from Bozec et al., [2], itself based on data
+from Hughes et al., [3] (bleaching sensitivity) and Baird et al., [1] (relationship
+between bleaching and depth).
 
 # Arguments
 - `Y` : Matrix to save results into
@@ -199,19 +200,30 @@ Nothing
 function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractArray{Float64,2}, depth_coeff::AbstractArray{Float64}, tstep::Int64, depth::Vector{Float64},
     s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
 
-    # Incorporate adaptation effect but maximum reduction is to 0
-    @. capped_dhw = ℯ^(0.17 + 0.35 * max(0.0, dhw' - (a_adapt + (tstep * n_adapt))))
+    # Initial mortality
+    # Bozec et al., (2022) derive their model from Hughes et al., (2018, Fig 2C).
+    # They digitized data from the figure and fit a linear model to obtain
+    # intercept of 0.168 and slope of 0.347 (rounded below).
+    # In exponential form, this is: `InitMort(%) = exp(0.168+0.347*DHW) - 1.`
+    # Bozec et al., state this is valid for DHW values 0 - 10, but also
+    # assume it remains valid for values > 10.0
+    # A depth coefficient is also introduced to account for the reduced
+    # experienced heat at greater depths.
+
+    # The model is modified to incorporate adaptation effect but maximum 
+    # reduction is to capped to 0.
+    @. capped_dhw = min.(ℯ^(0.17 + 0.35 * max(0.0, dhw' - (a_adapt + (tstep * n_adapt)))) - 1.0, 100.0)
     @. depth_coeff = ℯ^(-0.07551 * (depth - 2.0))
 
     # Estimate long-term bleaching mortality with an estimated depth coefficient and
     # initial bleaching mortality (models from Bozec et al., 2022)
-    # Bozec et al., formulated the model to produce initial mortality (`m_init`) values
-    # as a percentage (i.e., 0 - 100) and so we divide by 100 again to arrive at values 0 - 1.
-    # m_init::Array{Float64} = min.(((depth_coeff .* s')' .* ℯ .^ (0.17 .+ 0.35 .* capped_dhw)) / 100.0 / 100.0, 1.0)
-
-    # How much coral survives bleaching event
-    # Y .= (1.0 .- m_init) .^ 6
-    @. Y = (1.0 - min(((depth_coeff' * s) * capped_dhw) / 100.0 / 100.0, 1.0))^6.0
+    #
+    # BleachMort(%) = 100*(1-(1-capped_dhw/100)^6)
+    #
+    # As we want values between 0 - 1 rather than %, we drop the by `100 *`
+    # We also want remaining population, so we also drop the initial `1 - `
+    # End result is how much coral survives a bleaching event.
+    @. Y = (1.0 - ((depth_coeff' * s) * (capped_dhw / 100.0)))^6.0
 
     return
 end
@@ -279,7 +291,7 @@ of 0.9 inside sf(i, j) indicates that species i at site j can only produce
 - `a_adapt` : DHW reduction of enhanced corals
 - `n_adapt` : DHWs reduction (linearly scales with `tstep`)
 - `stresspast` : DHW at previous time step for each site
-- `LPdhwcoeff` : 
+- `LPdhwcoeff` :
 - `DHWmaxtot` : Maximum DHW
 - `LPDprm2` : Larval production parameter 2
 - `n_groups` : Number of groups
@@ -362,7 +374,7 @@ end
 # Arguments
 - `larval_pool` : Available larval pool
 - `A` : Available space (0 - 1) relative to maximum area covered by
-      cropped algal turf, i.e., the substratum that is suitable 
+      cropped algal turf, i.e., the substratum that is suitable
       for coral recruitment
 - `α` : Maximum achievable density (settlers/m²) for a 100% free space
 - `β` : Stock of larvae required to produce 50% of the maximum settlement
