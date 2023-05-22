@@ -51,9 +51,10 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
         axis_opts...
     )
 
-    min_step = (1 / 0.05)
-    color_weight = min((1.0 / (size(y, 1) / min_step)), 0.6)
+    min_step = (1.0 / 0.05)
+    color_weight = max(min((1.0 / (size(y, 2) / min_step)), 0.6), 0.05)
 
+    # Create legend for each guided scenario type
     if :color ∉ keys(series_opts)
         hide_idx = get(series_opts, :hide_series, BitVector())
 
