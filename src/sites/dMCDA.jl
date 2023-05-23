@@ -387,11 +387,11 @@ Tuple (SH, wsh)
     4. shade zones (weights importance of sites highly connected to or within priority zones)
     5. high cover (weights importance of sites with high cover of coral to shade)
 """
-
 function create_shade_matrix(A, max_area, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover)
     # Set up decision matrix to be same size as A
     SH = copy(A)
-    # remove consideration of site depth as shading not accounted for in bleaching model yet
+
+    # Remove consideration of site depth as shading not accounted for in bleaching model yet
     SH = SH[:, 1:end-1]
 
     wsh = [wt_conn_shade, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover]
