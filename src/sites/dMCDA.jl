@@ -197,17 +197,17 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
 end
 
 """
-    retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::DataType, site_ids::Vector)
-    retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::Vector{Any}, site_ids::Vector)
-    retrieve_ranks(S::Matrix, scores::Vector, rev_val::Bool, site_ids::Vector)
+    retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::DataType)
+    retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Vector{Any})
+    retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, rev_val::Bool)
 
 Get location ranks using mcda technique specified in mcda_func, weights and a decision matrix S.
 
 # Arguments
 - `S` : decision matrix containing criteria values for each location (n locations)*(m criteria)
+- `site_ids` : array of site ids still remaining after filtering.
 - `weights` : importance weights for each criteria. 
 - `mcda_func` : function/JMcDM DataType to use for mcda, specified as an element from methods_mcda.
-- `site_ids` : array of site ids still remaining after filtering.
 - `scores` : set of scores derived from applying an mcda ranking method.
 - `rev_val` : Boolean indicating whether a mcda method is maximising score (true), or minimising (false). 
 
