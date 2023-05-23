@@ -223,8 +223,7 @@ end
 function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Type{<:MCDMMethod})
     fns = fill(maximum, length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func())
-
-    rev_val = results.bestIndex == findall(results.scores .== maximum(results.scores))
+    rev_val = results.bestIndex == findall(results.scores .== maximum(results.scores))[1]
 
     return retrieve_ranks(S, site_ids, results.scores, rev_val)
 end
