@@ -42,17 +42,20 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
 end
 
 const jmcdm_methods = subtypes(MCDMMethod)
+
+jmcdm_ignore = [
+    JMcDM.CRITIC.CriticMethod, 
+    JMcDM.MOOSRA.MoosraMethod,
+    JMcDM.MEREC.MERECMethod,
+    JMcDM.ELECTRE.ElectreMethod,
+    JMcDM.PROMETHEE.PrometheeMethod
+]
+
 const methods_mcda = [
     order_ranking,
     adria_vikor,
     adria_topsis,
-    jmcdm_methods[(
-        (jmcdm_methods.!=[JMcDM.CRITIC.CriticMethod])
-    .&(jmcdm_methods.!=[JMcDM.MOOSRA.MoosraMethod])
-    .&(jmcdm_methods.!=[JMcDM.MEREC.MERECMethod])
-    .&(jmcdm_methods.!=[JMcDM.ELECTRE.ElectreMethod])
-    .&(jmcdm_methods.!=[JMcDM.PROMETHEE.PrometheeMethod])
-    )]...
+    setdiff(jmcdm_methods, jmcdm_ignore)...
 ]
 
 """
