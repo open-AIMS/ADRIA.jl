@@ -51,6 +51,7 @@ const methods_mcda = [
     .&(jmcdm_methods.!=[JMcDM.MOOSRA.MoosraMethod])
     .&(jmcdm_methods.!=[JMcDM.MEREC.MERECMethod])
     .&(jmcdm_methods.!=[JMcDM.ELECTRE.ElectreMethod])
+    .&(jmcdm_methods.!=[JMcDM.PROMETHEE.PrometheeMethod])
     )]...
 ]
 
