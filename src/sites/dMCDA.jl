@@ -171,7 +171,7 @@ end
 - `weights` : weights to apply
 - `rankings` : vector of site ranks to update
 - `n_site_int` : number of sites to select for interventions
-- `mcda_func` : element of method, designates mcda method to use
+- `mcda_func` : function or JMcDM DataType, designates mcda method to use
 - `rank_col` : column to fill with rankings (2 for seed, 3 for shade)
 
 # Returns
@@ -197,7 +197,7 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
 end
 
 """
-    retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::Function, site_ids::Vector)
+    retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::DataType, site_ids::Vector)
     retrieve_ranks(S::Matrix, weights::Vector{Float64}, mcda_func::Vector{Any}, site_ids::Vector)
     retrieve_ranks(S::Matrix, scores::Vector, rev_val::Bool, site_ids::Vector)
 
@@ -206,7 +206,7 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 # Arguments
 - `S` : decision matrix containing criteria values for each location (n locations)*(m criteria)
 - `weights` : importance weights for each criteria. 
-- `mcda_func` : function/[function bool] array to use for mcda, specified as an element from method.
+- `mcda_func` : function/JMcDM DataType to use for mcda, specified as an element from methods_mcda.
 - `site_ids` : array of site ids still remaining after filtering.
 - `scores` : set of scores derived from applying an mcda ranking method.
 - `rev_val` : Boolean indicating whether a mcda method is maximising score (true), or minimising (false). 
