@@ -41,10 +41,18 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wt_zones_shade # ::F
 end
 
-const methods_mcda = [order_ranking,
+const jmcdm_methods = subtypes(MCDMMethod)
+const methods_mcda = [
+    order_ranking,
     adria_vikor,
     adria_topsis,
-    subtypes(MCDMMethod)[(subtypes(MCDMMethod).!=[JMcDM.CRITIC.CriticMethod]).&(subtypes(MCDMMethod).!=[JMcDM.MOOSRA.MoosraMethod]).&(subtypes(MCDMMethod).!=[JMcDM.MEREC.MERECMethod]).&(subtypes(MCDMMethod).!=[JMcDM.ELECTRE.ElectreMethod])]...]
+    jmcdm_methods[(
+        (jmcdm_methods.!=[JMcDM.CRITIC.CriticMethod])
+    .&(jmcdm_methods.!=[JMcDM.MOOSRA.MoosraMethod])
+    .&(jmcdm_methods.!=[JMcDM.MEREC.MERECMethod])
+    .&(jmcdm_methods.!=[JMcDM.ELECTRE.ElectreMethod])
+    )]...
+]
 
 """
     DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
