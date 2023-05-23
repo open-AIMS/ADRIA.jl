@@ -324,6 +324,8 @@ end
 Create interface to a given Zarr result set.
 """
 function load_results(result_loc::String)::ResultSet
+    !isdir(result_loc) ? error("Not a directory: $(result_loc)") : nothing
+
     # Read in results
     local raw_set
     try

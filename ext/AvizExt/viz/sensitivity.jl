@@ -3,8 +3,8 @@ using Printf
 
 
 """
-    pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    pawn!(f::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.pawn!(f::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Display heatmap of sensitivity analysis.
 
@@ -30,7 +30,7 @@ See: https://docs.makie.org/v0.19/api/index.html#Axis
 # Returns
 GLMakie figure
 """
-function pawn!(g::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.pawn!(g::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
 
     norm = get(opts, :normalize, true)
@@ -61,17 +61,17 @@ function pawn!(g::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict
 
     return g
 end
-function pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    pawn!(g, Si; opts, axis_opts)
+    ADRIA.viz.pawn!(g, Si; opts, axis_opts)
 
     return f
 end
 
 """
-    tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
+    ADRIA.viz.tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
 
 Display temporal sensitivity analysis
 
@@ -88,7 +88,7 @@ Display temporal sensitivity analysis
 # Returns
 GLMakie figure
 """
-function tsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
+function ADRIA.viz.tsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
     stat = get(opts, :stat, :median)
 
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
@@ -131,10 +131,10 @@ function tsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArr
 
     return g
 end
-function tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    tsa!(g, rs, si; opts, axis_opts)
+    ADRIA.viz.tsa!(g, rs, si; opts, axis_opts)
 
     return f
 end
@@ -167,8 +167,8 @@ function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
 end
 
 """
-    rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+    ADRIA.viz.rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
 
 Plot regional sensitivities of up to 30 factors.
 
@@ -184,7 +184,7 @@ Plot regional sensitivities of up to 30 factors.
 # Returns
 GLMakie figure
 """
-function rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+function ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
     n_factors::Int64 = length(factors)
     if n_factors > 30
         ArgumentError("Too many factors to plot. Maximum number supported is 30.")
@@ -262,10 +262,10 @@ function rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArr
 
     return g
 end
-function rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    rsa!(g, rs, si, factors; opts, axis_opts)
+    ADRIA.viz.rsa!(g, rs, si, factors; opts, axis_opts)
 
     return f
 end
@@ -273,8 +273,8 @@ end
 
 
 """
-    rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+    ADRIA.viz.outcome_map(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
 
 Plot outcomes mapped to factor regions for up to 30 factors.
 
@@ -291,7 +291,7 @@ Plot outcomes mapped to factor regions for up to 30 factors.
 # Returns
 GLMakie figure
 """
-function outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), axis_opts::Dict=Dict())
     # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
     #       found in `rsa()`
     n_factors::Int64 = length(factors)
@@ -378,10 +378,10 @@ function outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes
 
     return g
 end
-function outcome_map(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.outcome_map(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    outcome_map!(g, rs, si, factors; opts, axis_opts)
+    ADRIA.viz.outcome_map!(g, rs, si, factors; opts, axis_opts)
 
     return f
 end

@@ -1,29 +1,32 @@
-module Aviz
+module AvizExt
 
 using Base.Iterators
 using Reexport
 
-using RelocatableFolders, FileIO
-using ImageMagick
+using RelocatableFolders
 using GLMakie
 @reexport using GeoMakie
-# using GLMakie.GeometryBasics
+
 using Statistics, Distributions, ThreadsX, Random
+using DataFrames, Bootstrap
 
-using DataFrames, Bootstrap  # , DecisionTree
+using ImageMagick, GeoInterface
 
-using GeoInterface
-import GeoDataFrames as GDF
-import GeoFormatTypes as GFT
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
-using ADRIA: load_results, load_domain, load_scenarios, ResultSet, run_scenarios, metrics
+import ADRIA.FileIO, ADRIA.GDF, ADRIA.GFT
+using ADRIA:
+    load_results, load_domain, load_scenarios,
+    ResultSet, run_scenarios, metrics, viz.explore
+
+using ADRIA
 import ADRIA: timesteps as AD_timesteps
+import ADRIA.viz: explore
 
 
 Random.seed!(101)
 
-const ASSETS = @path joinpath(@__DIR__, "../assets")
+const ASSETS = @path joinpath(pkgdir(ADRIA), "assets")
 const LOGO = @path joinpath(ASSETS, "imgs", "ADRIA_logo.png")
 const LOADER = @path joinpath(ASSETS, "imgs", "ADRIA_loader.gif")
 
@@ -41,7 +44,7 @@ include("./viz/viz.jl")
 function julia_main()::Cint
     if "explore" in ARGS
         rs_pkg = ARGS[2]
-        explore(rs_pkg)
+        ADRIA.viz.explore(rs_pkg)
         return 0
     end
 
@@ -54,7 +57,7 @@ function julia_main()::Cint
         p_df = load_scenarios(dom, input_set)
 
         rs = run_scenarios(p_df, dom)
-        explore(rs)
+        ADRIA.viz.explore(rs)
         return 0
     end
 
@@ -95,7 +98,7 @@ function main_menu()
             else
                 # Clear current figure and launch new display
                 empty!(f)
-                explore(rs)
+                ADRIA.explore(rs)
             end
         else
             rs_path_tb.bordercolor = :red
@@ -136,17 +139,17 @@ function remove_loader(fig, task)
     empty!(fig)
 end
 
+
 """
-    explore(rs::String)
-    explore(rs::ResultSet)
+    ADRIA.viz.explore(rs::String)
+    ADRIA.viz.explore(rs::ResultSet)
 
 Display GUI for quick visualization and analysis of results.
 """
-function explore(rs::ResultSet)
+function ADRIA.viz.explore(rs::ResultSet)
     layout = comms_layout(resolution=(1920, 1080))
 
     f = layout.figure
-    # controls = layout.controls
     traj_display = layout.trajectory.temporal
     traj_outcome_sld = layout.trajectory.outcome_slider
     traj_time_sld = layout.trajectory.time_slider
@@ -331,7 +334,7 @@ function explore(rs::ResultSet)
         [:black, :black, :black, :red, :green, :blue]
     )
     labels = [Label(f, "$l", color=lift(x -> x ? c : :gray, t.active)) for (t, l, c) in t_toggle_map]
-    layout.controls[1:2, 1] = grid!(hcat(t_toggles, labels), tellheight=false)
+    layout.controls[1:2, 1:2] = grid!(hcat(t_toggles, labels), tellheight=false)
 
     # Controls for guided type
     guide_toggle_map = zip(
@@ -343,7 +346,7 @@ function explore(rs::ResultSet)
     # Controls for interventions
     interv_sliders = IntervalSlider[]
     interv_labels = []
-    lc = layout.controls[3:6, 1] = GridLayout()
+    lc = layout.controls[3:6, 2] = GridLayout()
     for (i, v) in enumerate(eachrow(intervention_components))
         fn = v.name
 
@@ -541,8 +544,8 @@ function explore(rs::ResultSet)
 
     wait(gl_screen)
 end
-function explore(rs_path::String)
-    explore(ADRIA.load_results(rs_path))
+function ADRIA.viz.explore(rs_path::String)
+    return ADRIA.viz.explore(load_results(rs_path))
 end
 
 
@@ -776,13 +779,13 @@ end
 #     explore(ADRIA.load_results(rs_path))
 # end
 
-end
+end  # module
 
 
 # Allow use from terminal if this file is run directly
-if abspath(PROGRAM_FILE) == @__FILE__
-    if "explore" in ARGS
-        rs_pkg = ARGS[2]
-        Aviz.explore(rs_pkg)
-    end
-end
+# if abspath(PROGRAM_FILE) == @__FILE__
+#     if "explore" in ARGS
+#         rs_pkg = ARGS[2]
+#         ADRIA.explore(rs_pkg)
+#     end
+# end
