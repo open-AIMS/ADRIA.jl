@@ -188,7 +188,7 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
     s_order = retrieve_ranks(S[:, 2:end], S[:, 1], weights, mcda_func)
 
     last_idx = min(n_site_int, size(s_order, 1))
-    prefsites = Int.(s_order[1:last_idx, 1])
+    prefsites = Int64.(s_order[1:last_idx, 1])
 
     # Match by site_id and assign rankings to log
     align_rankings!(rankings, s_order, rank_col)
