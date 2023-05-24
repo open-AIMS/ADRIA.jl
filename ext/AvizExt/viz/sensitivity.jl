@@ -347,7 +347,7 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
             )
 
             band!(ax,
-                unique(fv_s[findall(!ismissing, outcomes(factors=f_name, CI=:lower))]),
+                fv_s[.!ismissing.(outcomes(factors=f_name, CI=:lower))],
                 collect(skipmissing(outcomes(factors=f_name, CI=:lower))),
                 collect(skipmissing(outcomes(factors=f_name, CI=:upper)))
             )
