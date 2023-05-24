@@ -200,9 +200,9 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
 end
 
 """
-    retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::DataType)
-    retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Vector{Any})
-    retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, rev_val::Bool)
+    retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Function)
+    retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Type{<:MCDMMethod})
+    retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, maximize::Bool)
 
 Get location ranks using mcda technique specified in mcda_func, weights and a decision matrix S.
 
@@ -212,7 +212,7 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 - `weights` : importance weights for each criteria. 
 - `mcda_func` : function/JMcDM DataType to use for mcda, specified as an element from methods_mcda.
 - `scores` : set of scores derived from applying an mcda ranking method.
-- `rev_val` : Boolean indicating whether a mcda method is maximising score (true), or minimising (false). 
+- `maximize` : Boolean indicating whether a mcda method is maximizing score (true), or minimizing (false). 
 
 # Returns
 - `s_order` : [site_ids, criteria values, ranks]
@@ -226,13 +226,13 @@ end
 function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Type{<:MCDMMethod})
     fns = fill(maximum, length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func())
-    rev_val = results.bestIndex == findall(results.scores .== maximum(results.scores))[1]
+    maximize = results.bestIndex == findall(results.scores .== maximum(results.scores))[1]
 
-    return retrieve_ranks(S, site_ids, results.scores, rev_val)
+    return retrieve_ranks(S, site_ids, results.scores, maximize)
 end
-function retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, rev_val::Bool)
+function retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, maximize::Bool)
     s_order = Union{Float64,Int64}[Int64.(site_ids) scores Int64.(1:size(S, 1))]
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=rev_val)
+    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=maximize)
 
     return s_order
 end
