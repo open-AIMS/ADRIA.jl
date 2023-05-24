@@ -3,6 +3,10 @@
 using StatsBase
 using Distances
 using Combinatorics
+using JMcDM
+using InteractiveUtils: subtypes
+using ADRIA: order_ranking, adria_vikor, adria_topsis
+
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
@@ -36,6 +40,23 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wt_zones_seed # ::F
     wt_zones_shade # ::F
 end
+
+const jmcdm_methods = subtypes(MCDMMethod)
+
+jmcdm_ignore = [
+    JMcDM.CRITIC.CriticMethod,
+    JMcDM.MOOSRA.MoosraMethod,
+    JMcDM.MEREC.MERECMethod,
+    JMcDM.ELECTRE.ElectreMethod,
+    JMcDM.PROMETHEE.PrometheeMethod
+]
+
+const methods_mcda = [
+    order_ranking,
+    adria_vikor,
+    adria_topsis,
+    setdiff(jmcdm_methods, jmcdm_ignore)...
+]
 
 """
     DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
@@ -146,15 +167,14 @@ function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 end
 
 """
-    rank_sites!(S, weights, rankings, n_site_int, rank_col)
-    rank_seed_sites!(S, weights, rankings, n_site_int)
-    rank_shade_sites!(S, weights, rankings, n_site_int)
+    rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)
 
 # Arguments
 - `S` : Matrix, Site preference values
 - `weights` : weights to apply
 - `rankings` : vector of site ranks to update
 - `n_site_int` : number of sites to select for interventions
+- `mcda_func` : function or JMcDM DataType, designates mcda method to use
 - `rank_col` : column to fill with rankings (2 for seed, 3 for shade)
 
 # Returns
@@ -168,13 +188,10 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
     weights = weights[selector]
     S = S[:, Bool[1, selector...]]
 
-    # Skip first column as this holds site index ids
-    S[:, 2:end] = mcda_normalize(S[:, 2:end])
-    S[:, 2:end] .= S[:, 2:end] .* weights'
-    s_order = mcda_func(S)
+    s_order = retrieve_ranks(S[:, 2:end], S[:, 1], weights, mcda_func)
 
     last_idx = min(n_site_int, size(s_order, 1))
-    prefsites = Int.(s_order[1:last_idx, 1])
+    prefsites = Int64.(s_order[1:last_idx, 1])
 
     # Match by site_id and assign rankings to log
     align_rankings!(rankings, s_order, rank_col)
@@ -182,12 +199,44 @@ function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tup
     return prefsites, s_order
 end
 
-function rank_seed_sites!(S, weights, rankings, n_site_int, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_sites!(S, weights, rankings, n_site_int, mcda_func, 2)
+"""
+    retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Function)
+    retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Type{<:MCDMMethod})
+    retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, maximize::Bool)
+
+Get location ranks using mcda technique specified in mcda_func, weights and a decision matrix S.
+
+# Arguments
+- `S` : decision matrix containing criteria values for each location (n locations)*(m criteria)
+- `site_ids` : array of site ids still remaining after filtering.
+- `weights` : importance weights for each criteria. 
+- `mcda_func` : function/JMcDM DataType to use for mcda, specified as an element from methods_mcda.
+- `scores` : set of scores derived from applying an mcda ranking method.
+- `maximize` : Boolean indicating whether a mcda method is maximizing score (true), or minimizing (false). 
+
+# Returns
+- `s_order` : [site_ids, criteria values, ranks]
+"""
+function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Function)
+    S = mcda_normalize(S) .* weights'
+    scores = mcda_func(S)
+
+    return retrieve_ranks(S, site_ids, vec(scores), true)
 end
-function rank_shade_sites!(S, weights, rankings, n_site_int, mcda_func)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
-    rank_sites!(S, weights, rankings, n_site_int, mcda_func, 3)
+function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Type{<:MCDMMethod})
+    fns = fill(maximum, length(weights))
+    results = mcdm(MCDMSetting(S, weights, fns), mcda_func())
+    maximize = results.bestIndex == findall(results.scores .== maximum(results.scores))[1]
+
+    return retrieve_ranks(S, site_ids, results.scores, maximize)
 end
+function retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, maximize::Bool)
+    s_order = Union{Float64,Int64}[Int64.(site_ids) scores Int64.(1:size(S, 1))]
+    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=maximize)
+
+    return s_order
+end
+
 
 """
     create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
@@ -228,8 +277,8 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
 
     # Wave damage, account for cases where no chance of damage or heat stress
     # if max > 0 then use damage probability from wave exposure
-    # A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
-    A[:, 4] .= wave_stress ./ maximum(wave_stress)
+    A[:, 4] .= maximum(wave_stress) != 0.0 ? (wave_stress .- minimum(wave_stress)) ./ (maximum(wave_stress) - minimum(wave_stress)) : 0.0
+    #A[:, 4] .= wave_stress ./ maximum(wave_stress)
 
     # risk from heat exposure
     # A[:, 5] .= maximum(heat_stress) != 0.0 ? (heat_stress .- minimum(heat_stress)) ./ (maximum(heat_stress) - minimum(heat_stress)) : 0.0
@@ -349,11 +398,11 @@ Tuple (SH, wsh)
     4. shade zones (weights importance of sites highly connected to or within priority zones)
     5. high cover (weights importance of sites with high cover of coral to shade)
 """
-
 function create_shade_matrix(A, max_area, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover)
     # Set up decision matrix to be same size as A
     SH = copy(A)
-    # remove consideration of site depth as shading not accounted for in bleaching model yet
+
+    # Remove consideration of site depth as shading not accounted for in bleaching model yet
     SH = SH[:, 1:end-1]
 
     wsh = [wt_conn_shade, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover]
@@ -396,7 +445,8 @@ function guided_site_selection(
     rankingsin::Matrix{T},
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
-    strong_pred::Vector{Int64}
+    strong_pred::Vector{Int64};
+    methods_mcda=methods_mcda
 )::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool}
 
     use_dist::Int64 = d_vars.use_dist
@@ -464,6 +514,7 @@ function guided_site_selection(
 
     # add weights for strongest predecessors and zones to get zone criteria
     zones_criteria = zone_preds .+ zone_sites
+    mcda_func = methods_mcda[alg_ind]
 
     A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
     if isempty(A)
@@ -485,20 +536,10 @@ function guided_site_selection(
         SH, wsh = create_shade_matrix(A, max_area, w_shade_conn, w_waves, w_heat, w_predec_shade, w_predec_zones_shade, w_high_cover)
     end
 
-    if alg_ind == 1
-        mcda_func = order_ranking
-    elseif alg_ind == 2
-        mcda_func = topsis
-    elseif alg_ind == 3
-        mcda_func = vikor
-    else
-        error("Unknown MCDA algorithm selected. Valid options are 1 (Order Ranking), 2 (TOPSIS) and 3 (VIKOR).")
-    end
-
     if log_seed && isempty(SE)
         prefseedsites = zeros(Int64, n_site_int)
     elseif log_seed
-        prefseedsites, s_order_seed = rank_seed_sites!(SE, wse, rankings, n_site_int, mcda_func)
+        prefseedsites, s_order_seed = rank_sites!(SE, wse, rankings, n_site_int, mcda_func, 2)
         if use_dist != 0
             prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 2)
         end
@@ -507,7 +548,7 @@ function guided_site_selection(
     if log_shade && isempty(SH)
         prefshadesites = zeros(Int64, n_site_int)
     elseif log_shade
-        prefshadesites, s_order_shade = rank_shade_sites!(SH, wsh, rankings, n_site_int, mcda_func)
+        prefshadesites, s_order_shade = rank_sites!(SH, wsh, rankings, n_site_int, mcda_func, 3)
         if use_dist != 0
             prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 3)
         end
@@ -599,171 +640,6 @@ function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{
     return rep_sites, rankings
 end
 
-"""
-    order_ranking(S::Array{Float64, 2})
-
-Uses simple summation as aggregation method for decision criteria.
-Then orders sites from highest aggregate score to lowest.
-
-# Arguments
-- `S` : Decision matrix (seeding or shading)
-
-# Returns
-- `s_order` : nsites × 3 matrix with columns
-    1. site ids
-    2. calculated site rank score (higher values = higher ranked)
-    3. site order id
-"""
-function order_ranking(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
-    n::Int64 = size(S, 1)
-    s_order::Array = Union{Float64,Int64}[zeros(Int, n) zeros(Float64, n) zeros(Int, n)]
-
-    # Simple ranking - add criteria weighted values for each sites
-    # Third column is derived from the number of sites for situations where
-    # a subset of sites are being investigated (and so using their site IDs
-    # will be inappropriate)
-    @views s_order[:, 1] .= Int.(S[:, 1])
-    @views s_order[:, 2] .= sum(S[:, 2:end], dims=2)
-
-    # Reorder ranks (highest to lowest)
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=true)
-
-    @views s_order[:, 3] .= Int.(1:size(S, 1))
-
-    return s_order
-end
-
-
-"""
-    topsis(S::Array{Float64, 2})
-
-Calculates ranks using the aggregation method of the TOPSIS MCDA algorithm.
-Rank for a particular site is calculated as a ratio
-
-    C = S_n/(S_p + S_n)
-
-S_n = √{∑(criteria .- NIS)²}
-    is the squareroot of the summed differences between the criteria for a site and the
-    Negative Ideal Solution (NIS), or worst performing site in each criteria.
-S_p  = √{∑(criteria .- NIS)²}
-    is the squareroot of the summed differences between the criteria for a site and the
-    Positive Ideal Solution (PIS), or best performing site in each criteria.
-
-    Details of this aggregation method in, for example [1].
-
-# References
-1. Opricovic, Serafim & Tzeng, Gwo-Hshiung. (2004) European Journal of Operational Research.
-    Vol. 156. pp. 445.
-    https://doi.org/10.1016/S0377-2217(03)00020-1.
-
-# Arguments
-- `S` : Decision matrix (seeding or shading)
-
-# Returns
-- `s_order` :
-    1. site ids
-    2. calculated site rank score (higher values = higher ranked)
-    3. site order id
-"""
-function topsis(S::Array{Float64,2})::Array{Union{Float64,Int64},2}
-
-    # compute the set of positive ideal solutions for each criteria
-    PIS = maximum(S[:, 2:end], dims=1)
-
-    # compute the set of negative ideal solutions for each criteria
-    NIS = minimum(S[:, 2:end], dims=1)
-
-    # calculate separation distance from the ideal and non-ideal solutions
-    S_p = sqrt.(sum((S[:, 2:end] .- PIS) .^ 2, dims=2))
-    S_n = sqrt.(sum((S[:, 2:end] .- NIS) .^ 2, dims=2))
-
-    # final ranking measure of relative closeness C
-    C = S_n ./ (S_p + S_n)
-
-    # Create matrix where rank ids are integers (for use as indexers later)
-    # Third column is derived from the number of sites for situations where
-    # a subset of sites are being investigated (and so using their site IDs
-    # will be inappropriate)
-    s_order = Union{Float64,Int64}[Int.(S[:, 1]) C 1:size(S, 1)]
-
-    # Reorder ranks (highest to lowest)
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=true)
-    @views s_order[:, 3] .= Int.(1:size(S, 1))
-
-    return s_order
-end
-
-
-"""
-    vikor(S; v=0.5)
-
-Calculates ranks using the aggregation method of the VIKOR MCDA algorithm.
-Rank for a particular site is calculated as a linear combination of ratios,
-weighted by v:
-    Q = v(Sr - S_h) / (S_s - S_h) + (1 - v)(R - R_h) / (R_s - R_h)
-
-where
-- Sr = ∑(PIS-criteria) for each site, summed over criteria.
-- R = max(PIS-criteria) for each site, with the max over criteria.
-- S_h = min(∑(PIS-criteria)) over sites, the minimum summed distance from
-    the positive ideal solution.
-- S_s = max(∑(PIS-criteria)) over sites, maximum summed distance from
-    the positive ideal solution.
-- R_h = min(max(PIS-criteria)) over sites, the minimum max distance from
-    the positive ideal solution.
-- R_s = max(max(PIS-criteria)) over sites, the maximum max distance from
-    the positive ideal solution.
-- v = weighting, representing different decision-making strategies,
-    or level of compromise between utility (overall performance)
-    and regret (risk of performing very badly in one criteria despite
-    exceptional performance in others)
-    - v = 0.5 is consensus
-    - v < 0.5 is minimal regret
-    - v > 0.5 is max group utility (majority rules)
-
-Details of this aggregation method in, for example [1]
-
-# References
-1. Alidrisi H. (2021) Journal of Risk and Financial Management.
-    Vol. 14. No. 6. pp. 271.
-    https://doi.org/10.3390/jrfm14060271
-
-# Arguments
-- `S` : Matrix
-- `v` : Real
-
-# Returns
-- `s_order` :
-    1. site ids
-    2. calculated site rank score (higher values = higher ranked)
-    3. site order id
-"""
-function vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Union{Float64,Int64},2}
-
-    F_s = maximum(S[:, 2:end])
-
-    # Compute utility of the majority Sr (Manhatten Distance)
-    # Compute individual regret R (Chebyshev distance)
-    sr_arg = (F_s .- S[:, 2:end])
-    Sr = [S[:, 1] sum(sr_arg, dims=2)]
-    R = [S[:, 1] maximum(sr_arg, dims=2)]
-
-    # Compute the VIKOR compromise Q
-    S_s, S_h = maximum(Sr[:, 2]), minimum(Sr[:, 2])
-    R_s, R_h = maximum(R[:, 2]), minimum(R[:, 2])
-    Q = @. v * (Sr[:, 2] - S_h) / (S_s - S_h) + (1 - v) * (R[:, 2] - R_h) / (R_s - R_h)
-    Q .= 1.0 .- Q  # Invert rankings so higher values = higher rank
-
-    # Create matrix where rank ids are integers (for use as indexers later)
-    # Third column is necessary as a subset of sites will not match their Index IDs.
-    s_order = Union{Float64,Int64}[Int.(S[:, 1]) Q zeros(size(Q, 1))]
-
-    # sort Q by rank score in descending order
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=true)
-    @views s_order[:, 3] .= Int.(1:size(S, 1))
-
-    return s_order
-end
 
 """
     run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
