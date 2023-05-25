@@ -45,6 +45,7 @@ const jmcdm_methods = subtypes(MCDMMethod)
 
 jmcdm_ignore = [
     JMcDM.CRITIC.CriticMethod,
+    JMcDM.COPRAS.CoprasMethod,
     JMcDM.MOOSRA.MoosraMethod,
     JMcDM.MEREC.MERECMethod,
     JMcDM.ELECTRE.ElectreMethod,
