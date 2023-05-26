@@ -33,7 +33,6 @@ include("ecosystem/corals/spec.jl")
 include("ecosystem/const_params.jl")
 
 include("Domain.jl")
-include("ExtInterface/ADRIA/Domain.jl")
 
 include("io/inputs.jl")
 
@@ -55,6 +54,7 @@ include("optimization.jl")
 include("analysis/analysis.jl")
 include("analysis/sensitivity.jl")
 
+include("ExtInterface/ADRIA/Domain.jl")
 include("ExtInterface/ReefMod/Domain.jl")
 include("ExtInterface/ReefMod/scenarios.jl")
 

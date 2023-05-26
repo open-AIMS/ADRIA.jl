@@ -8,6 +8,25 @@ using InteractiveUtils: subtypes
 using ADRIA: order_ranking, adria_vikor, adria_topsis
 
 
+jmcdm_ignore = [
+    JMcDM.CRITIC.CriticMethod,
+    JMcDM.COPRAS.CoprasMethod,
+    JMcDM.MOOSRA.MoosraMethod,
+    JMcDM.MEREC.MERECMethod,
+    JMcDM.ELECTRE.ElectreMethod,
+    JMcDM.PROMETHEE.PrometheeMethod,
+    JMcDM.Topsis.TopsisMethod,
+    JMcDM.VIKOR.VikorMethod
+]
+
+const jmcdm_methods = subtypes(MCDMMethod)
+const methods_mcda = [
+    order_ranking,
+    adria_vikor,
+    adria_topsis,
+    setdiff(jmcdm_methods, jmcdm_ignore)...
+]
+
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
     n_site_int  # ::I
@@ -41,22 +60,6 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wt_zones_shade # ::F
 end
 
-const jmcdm_methods = subtypes(MCDMMethod)
-
-jmcdm_ignore = [
-    JMcDM.CRITIC.CriticMethod,
-    JMcDM.MOOSRA.MoosraMethod,
-    JMcDM.MEREC.MERECMethod,
-    JMcDM.ELECTRE.ElectreMethod,
-    JMcDM.PROMETHEE.PrometheeMethod
-]
-
-const methods_mcda = [
-    order_ranking,
-    adria_vikor,
-    adria_topsis,
-    setdiff(jmcdm_methods, jmcdm_ignore)...
-]
 
 """
     DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
@@ -226,7 +229,7 @@ end
 function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Type{<:MCDMMethod})
     fns = fill(maximum, length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func())
-    maximize = results.bestIndex == findall(results.scores .== maximum(results.scores))[1]
+    maximize = results.bestIndex == argmax(results.scores)
 
     return retrieve_ranks(S, site_ids, results.scores, maximize)
 end
