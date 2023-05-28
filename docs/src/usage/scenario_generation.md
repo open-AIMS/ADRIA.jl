@@ -72,6 +72,55 @@ model_spec = ADRIA.model_spec(scenario_domain)
 ADRIA.model_spec(scenario_domain, "model_spec.csv")
 ```
 
+## Constrained sampling
+
+At times, it is necessary to create samples while holding some model factors constant.
+
+Although a scenario set could be modified to make specific factors constant, doing so
+runs the risk of creating (many) identical scenarios, thereby wasting computational
+effort. A more efficient approach is to modify the model specification itself to treat
+those factors as constants. These then get ignored for the purpose of scenario
+generation.
+
+```julia
+dom = ADRIA.load_domain()
+
+# Could keep a copy of the original model parameters/bounds
+# to reset to later.
+# orig_spec = DataFrame(dom.model)
+
+# Make the assisted adaptation factor a constant
+ADRIA.fix_factor!(dom, :a_adapt)
+
+# Set the assisted adaptation factor to a given constant value
+ADRIA.fix_factor!(dom, :a_adapt, 3.0)
+
+# Pass in factor names and their constant values as named arguments
+# to fix a set of factors.
+ADRIA.fix_factor!(dom;
+    seed_TA=Int64(5e5),
+    seed_CA=Int64(5e5),
+    SRM=0.0,  # Never fog/shade
+    fogging=0.0,
+    a_adapt=3.0,  # only deploy +3 DHW enhanced corals
+    seed_years=5,
+    shade_years=0,
+    seed_freq=0,
+    shade_freq=0,
+    seed_year_start=3,
+    shade_year_start=3,
+    coral_cover_tol=1.0
+)
+```
+
+## Sampling counterfactuals only
+
+A convenience function to create scenarios with no interventions (counterfactuals).
+
+```julia
+cf_scens = ADRIA.sample_cf(dom, 1024)
+```
+
 
 # References
 
