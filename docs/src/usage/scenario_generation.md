@@ -25,9 +25,9 @@ sample values _a posteriori_ to restrict sampled values to their plausible
 combinations, and to map continuous values to their expected discrete factor
 values (where necessary), as is in the case with categorical factors. The Sobol'
 scheme is therefore disrupted due to the adjustment and so a Sobol' sensitivity
-analysis cannot be relied on. Subsequent assessment of uncertainty and sensitivity
-is instead conducted with the distribution-based PAWN method (Pianosi and 
-Wagener 2015, 2018).
+analysis may exhibit comparatively poor convergence. Subsequent assessment of 
+uncertainty and sensitivity is instead conducted with the distribution-based 
+PAWN method (Pianosi and Wagener 2015, 2018).
 
 !!! note "Sobol' samples"
     The convergence properties of the Sobol' sequence is only valid if the number of
