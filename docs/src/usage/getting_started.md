@@ -32,7 +32,8 @@ To setup ADRIA for development, see the [Development Setup](@ref) page.
 
 ## Visualizations
 
-The Makie package ecosystem is used for plotting and need to be installed if visualizations are desired:
+The Makie package ecosystem is used for producing plots.
+These are optional, and only necessary if visualizations are desired.
 
 ```julia-repl
 julia> ]add GLMakie GeoMakie GraphMakie

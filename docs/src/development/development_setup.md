@@ -1,6 +1,10 @@
 # Development setup
 
-Install Julia if not already done so.
+Install Julia if not already done so, preferably using [juliaup](https://github.com/JuliaLang/juliaup).
+
+There may be issues installing juliaup from the Windows Store (or otherwise undesirable).
+In such cases, use the alternate MSIX App installer (https://install.julialang.org/Julia.appinstaller)
+
 
 ## Recommendations
 
@@ -12,9 +16,11 @@ Install Julia if not already done so.
 ## Initial Setup
 
 Once installed, clone the ADRIA.jl repository, navigate to the project folder, and start Julia.
+**This only needs to be done once**.
 
 ```bash
-# Start julia specifying the current directory as the project
+# If not using the VS Code REPL, start julia specifying the current directory as the project environment
+# Assumes you have started the terminal in the ADRIA directory.
 $ julia --project=.
 
 # Instantiate project. Sets up project packages. Only need to do this once.
@@ -27,15 +33,15 @@ The steps below assumes you are in the ADRIA.jl project folder.
 ```bash
 $ mkdir sandbox
 $ cd sandbox
-$ julia
+$ julia --project=.
 
-# Switch to package management (`]`) and activate sandbox environment
-julia> ]activate .
+# Switch to the package manager (`]`)
+julia> ]
 
 # Add ADRIA.jl as a local package under development
 (sandbox) pkg> dev ../
 
-# Additional packages for visualizations
+# Install additional packages for visualizations
 (sandbox) pkg> add GLMakie GeoMakie GraphMakie
 
 # Add additional debugging tools to sandbox environment
