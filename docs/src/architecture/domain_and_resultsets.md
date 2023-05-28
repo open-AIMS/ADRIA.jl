@@ -152,4 +152,4 @@ Example_domain__RCP45_60_85__2023-03-11_19_00_00_000
 ```
 
 
-![Domain-Results Diagram](assets/imgs/ADRIA_Input_Output_diagram.png "Domain-Results Diagram")
+![Domain-Results Diagram](../assets/imgs/ADRIA_Input_Output_diagram.png "Domain-Results Diagram")
