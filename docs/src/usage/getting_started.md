@@ -28,6 +28,17 @@ Similarly, ADRIA can be updated as new releases are made:
 julia> ]up ADRIA
 ```
 
+To setup ADRIA for development, see the [Development Setup](@ref) page.
+
+## Visualizations
+
+The Makie package ecosystem is used for plotting and need to be installed if visualizations are desired:
+
+```julia-repl
+julia> ]add GLMakie GeoMakie GraphMakie
+```
+
+## Running ADRIA simulations
 
 Before anything can be done, a `config.toml` file is needed.
 Create a `config.toml` file inside your project directory
@@ -84,3 +95,5 @@ rs = ADRIA.run_scenarios(scens, dom, ["45", "60", "85"])
 # Obtain metrics
 s_tac = ADRIA.metrics.scenario_tac(rs)
 ```
+
+See [Analysis](@ref) for further examples.
