@@ -12,6 +12,7 @@ scens = ADRIA.sample(dom, 128)
 
 Here, the `scens` variable holds a DataFrame of scenarios of shape $N$ by $D$, where
 $N$ is the number of scenarios (rows) and $D$ is the number of factors (columns).
+Because it is a DataFrame, it can be modified after the fact.
 
 The Sobol' method (Sobol' 1993, 2001) is the default sampling approach. It is a
 deterministic low-discrepancy quasi-monte carlo sampler. Samples are described as
