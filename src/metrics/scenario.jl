@@ -12,6 +12,9 @@ TODO: Produce summary stats. Currently returns just the mean.
 
 Calculate the cluster-wide total absolute coral cover for each scenario.
 """
+function _scenario_total_cover(X::AbstractArray; kwargs...)
+    return dropdims(sum(slice_results(X; kwargs...), dims=:sites), dims=:sites)
+end
 function _scenario_total_cover(rs::ResultSet; kwargs...)
     return dropdims(sum(slice_results(total_absolute_cover(rs); kwargs...), dims=:sites), dims=:sites)
 end

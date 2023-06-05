@@ -21,13 +21,23 @@ Metric(f, d) = Metric(f, d, "")
 Make Metric callable with arbitary arguments that are passed to associated function.
 """
 function (f::Metric)(raw, args...; kwargs...)
+    local res
     try
-        return f.func(NamedDimsArray{(:timesteps, :species, :sites, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
+        res = f.func(NamedDimsArray{(:timesteps, :species, :sites, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
     catch
-        raw = NamedDimsArray{(f.dims...)}(raw)
+        res = f.func(raw, args...; kwargs...)
 
-        return f.func(raw, args...; kwargs...)
+        try
+            # Try renaming dimensions to match expectations
+            res = NamedDimsArray{(f.dims...)}(res)
+        catch err
+            if !(err isa MethodError)
+                rethrow(err)
+            end
+        end
     end
+
+    return res
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)
     return f.func(rs, args...; kwargs...)
@@ -102,7 +112,7 @@ Convenience method that slices the data in the specified manner.
 - `args` : Additional positional arguments to pass into `metric`
 - `dims` : dummy keyword argument, not used but defined to allow use with other methods
 """
-function call_metric(metric::Function, data::NamedDimsArray, args...; kwargs...)
+function call_metric(metric::Union{Function,Metric}, data::NamedDimsArray, args...; kwargs...)
     dims = haskey(kwargs, :dims) ? kwargs[:dims] : nothing
     if isnothing(dims)
         return metric(slice_results(data; kwargs...), args...)
@@ -389,7 +399,7 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
 
     # Extract assumed colony area (in cm^2) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
-    colony_area_cm2::Array{Float64} = Array{Float64}(inputs(cs_p.coral_id .* "_colony_area_cm2"))
+    colony_area_cm2::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_colony_area_cm2"))
 
     # Colony planar area parameters (see second column of Table 1 in Urbina-Barreto et al., [1])
     # First column is `b`, second column is `a`
@@ -538,7 +548,7 @@ function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, i
     return _absolute_shelter_volume(X, site_area, ins)
 end
 function _absolute_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
-    ins = NamedDimsArray(Matrix(inputs), scenarios=1:1, params=names(df))
+    ins = NamedDimsArray(Matrix(Vector(inputs)'), scenarios=1:1, params=names(inputs))
     return _absolute_shelter_volume(X, site_area, ins)
 end
 function _absolute_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, inputs::NamedDimsArray)::AbstractArray{T} where {T<:Real}
@@ -614,7 +624,8 @@ function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k
 end
 function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
-    ins = NamedDimsArray(inputs, scenarios=1:size(inputs, 1), factors=names(inputs))
+    nscens = inputs isa DataFrameRow ? 1 : size(inputs, 1)
+    ins = NamedDimsArray(Matrix(Vector(inputs)'), scenarios=1:nscens, factors=names(inputs))
     return _relative_shelter_volume(X, site_area, k_area, ins)
 end
 function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
@@ -640,7 +651,8 @@ function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k
     return RSV
 end
 function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray where {T<:Real}
-    ins = NamedDimsArray(Matrix(inputs), scenarios=1:size(inputs, 1), factors=names(inputs))
+    nscens = inputs <: DataFrameRow ? 1 : size(inputs, 1)
+    ins = NamedDimsArray(Matrix(inputs), scenarios=1:nscens, factors=names(inputs))
     return _relative_shelter_volume(X, site_area, k_area, ins)
 end
 
