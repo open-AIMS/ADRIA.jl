@@ -1,5 +1,15 @@
 # Inputs and Outputs
 
+ADRIA seeks to use [Data Packages](https://specs.frictionlessdata.io/#what%E2%80%99s-a-data-package) to define
+a standard structure, format, and naming convention for its inputs and outputs. By definition, a Data Package
+is a directory holding the required data for ADRIA to run, or results from model runs.
+
+Data specifications are outlined/stored in this repository: https://github.com/open-AIMS/ADRIA-data-specs
+
+The overall structure and data formats of the data packages are illustrated in the diagram below.
+
+![Domain-Results Diagram](../assets/imgs/ADRIA_Input_Output_diagram.png?raw=true "Domain-Results Diagram")
+
 ## Domain data package
 
 Prior to running the ADRIA coral ecosystem model, the first step (after importing the package) is to load domain data.
@@ -9,11 +19,6 @@ dom = ADRIA.load_domain("path to some domain")
 ```
 
 As the naming suggests, inputs are taken to represent a given spatial area, and so are referred to as a `Domain`.
-
-ADRIA seeks to use [Data Packages](https://specs.frictionlessdata.io/#what%E2%80%99s-a-data-package) to define
-a standard structure, format, and naming convention for its inputs and outputs.
-
-By definition, a Data Package is a directory holding the required data for ADRIA to run.
 
 The `Domain` data package consists of:
 
@@ -31,7 +36,7 @@ Geospatial data consists of:
 ### Naming conventions
 
 By convention, the directory name is typically the name of the reef or reef cluster.
-Where multiple datasets for the same spatial domain are expected, appending a unique suffix is 
+Where multiple datasets for the same spatial domain are expected, appending a unique suffix is
 recommended, such as the date of creation, such as "Moore\_2022-11-17".
 
 The geopackage is expected to have the same filename as its Domain. For example, if
@@ -101,8 +106,8 @@ Example_domain
 
 ## ResultSets
 
-The directory holding results is also treated as a data package referred to as a `ResultSet`. 
-Scenario outcomes are written out to disk as they complete to a directory located in the 
+The directory holding results is also treated as a data package referred to as a `ResultSet`.
+Scenario outcomes are written out to disk as they complete to a directory located in the
 user-defined `Output` directory (see [Getting started](@ref Getting started)).
 
 The directory name follows the convention of `[Domain Name]__[IDs of RCPs]__[date/time of run]`.
@@ -150,6 +155,3 @@ Example_domain__RCP45_60_85__2023-03-11_19_00_00_000
 │   └───total_absolute_cover
 └───site_data
 ```
-
-
-![Domain-Results Diagram](assets/imgs/ADRIA_Input_Output_diagram.png "Domain-Results Diagram")

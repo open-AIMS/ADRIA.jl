@@ -12,6 +12,7 @@ scens = ADRIA.sample(dom, 128)
 
 Here, the `scens` variable holds a DataFrame of scenarios of shape $N$ by $D$, where
 $N$ is the number of scenarios (rows) and $D$ is the number of factors (columns).
+Because it is a DataFrame, it can be modified after the fact.
 
 The Sobol' method (Sobol' 1993, 2001) is the default sampling approach. It is a
 deterministic low-discrepancy quasi-monte carlo sampler. Samples are described as
@@ -24,9 +25,9 @@ sample values _a posteriori_ to restrict sampled values to their plausible
 combinations, and to map continuous values to their expected discrete factor
 values (where necessary), as is in the case with categorical factors. The Sobol'
 scheme is therefore disrupted due to the adjustment and so a Sobol' sensitivity
-analysis cannot be relied on. Subsequent assessment of uncertainty and sensitivity
-is instead conducted with the distribution-based PAWN method (Pianosi and 
-Wagener 2015, 2018).
+analysis may exhibit comparatively poor convergence. Subsequent assessment of 
+uncertainty and sensitivity is instead conducted with the distribution-based 
+PAWN method (Pianosi and Wagener 2015, 2018).
 
 !!! note "Sobol' samples"
     The convergence properties of the Sobol' sequence is only valid if the number of
@@ -69,6 +70,55 @@ model_spec = ADRIA.model_spec(scenario_domain)
 
 # Sometimes it is useful to export the model specification to CSV
 ADRIA.model_spec(scenario_domain, "model_spec.csv")
+```
+
+## Constrained sampling
+
+At times, it is necessary to create samples while holding some model factors constant.
+
+Although a scenario set could be modified to make specific factors constant, doing so
+runs the risk of creating (many) identical scenarios, thereby wasting computational
+effort. A more efficient approach is to modify the model specification itself to treat
+those factors as constants. These then get ignored for the purpose of scenario
+generation.
+
+```julia
+dom = ADRIA.load_domain()
+
+# Could keep a copy of the original model parameters/bounds
+# to reset to later.
+# orig_spec = DataFrame(dom.model)
+
+# Make the assisted adaptation factor a constant
+ADRIA.fix_factor!(dom, :a_adapt)
+
+# Set the assisted adaptation factor to a given constant value
+ADRIA.fix_factor!(dom, :a_adapt, 3.0)
+
+# Pass in factor names and their constant values as named arguments
+# to fix a set of factors.
+ADRIA.fix_factor!(dom;
+    seed_TA=Int64(5e5),
+    seed_CA=Int64(5e5),
+    SRM=0.0,  # Never fog/shade
+    fogging=0.0,
+    a_adapt=3.0,  # only deploy +3 DHW enhanced corals
+    seed_years=5,
+    shade_years=0,
+    seed_freq=0,
+    shade_freq=0,
+    seed_year_start=3,
+    shade_year_start=3,
+    coral_cover_tol=1.0
+)
+```
+
+## Sampling counterfactuals only
+
+A convenience function to create scenarios with no interventions (counterfactuals).
+
+```julia
+cf_scens = ADRIA.sample_cf(dom, 1024)
 ```
 
 
