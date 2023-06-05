@@ -336,7 +336,16 @@ function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
 end
 function fix_factor!(d::Domain; factors...)
     for (factor, val) in factors
-        fix_factor!(d, factor, val)
+        try
+            fix_factor!(d, factor, val)
+        catch err
+            if !(err isa MethodError)
+                rethrow(err)
+            end
+
+            # Try setting value as an integer
+            fix_factor!(d, factor, Int64(val))
+        end
     end
 end
 

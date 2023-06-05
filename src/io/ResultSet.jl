@@ -328,7 +328,8 @@ end
 Extract parameters for a specific model component from exported model specification.
 """
 function component_params(rs::ResultSet, component::T)::DataFrame where {T}
-    return spec[rs.model_spec.component.==string(component), :]
+    spec = rs.model_spec
+    return spec[spec.component.==string(component), :]
 end
 function component_params(rs::ResultSet, components::Vector{T})::DataFrame where {T}
     spec = rs.model_spec
