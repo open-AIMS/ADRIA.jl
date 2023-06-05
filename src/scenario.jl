@@ -76,7 +76,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain; remove_workers=true)
 end
 function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)::ResultSet
     setup()
-    parallel = (nrow(param_df) > 4096) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(param_df) > 128) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
     if parallel
         _setup_workers()
         sleep(2)  # wait a bit while workers spin-up
