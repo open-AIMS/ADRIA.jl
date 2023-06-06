@@ -205,7 +205,7 @@ end
 """
     retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Function)
     retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Type{<:MCDMMethod})
-    retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, maximize::Bool)
+    retrieve_ranks(site_ids::Vector, scores::Vector, maximize::Bool)
 
 Get location ranks using mcda technique specified in mcda_func, weights and a decision matrix S.
 
@@ -224,16 +224,16 @@ function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, m
     S = mcda_normalize(S) .* weights'
     scores = mcda_func(S)
 
-    return retrieve_ranks(S, site_ids, vec(scores), true)
+    return retrieve_ranks(site_ids, vec(scores), true)
 end
 function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Type{<:MCDMMethod})
     fns = fill(maximum, length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func())
     maximize = results.bestIndex == argmax(results.scores)
 
-    return retrieve_ranks(S, site_ids, results.scores, maximize)
+    return retrieve_ranks(site_ids, results.scores, maximize)
 end
-function retrieve_ranks(S::Matrix, site_ids::Vector, scores::Vector, maximize::Bool)
+function retrieve_ranks(site_ids::Vector, scores::Vector, maximize::Bool)
     s_order = Union{Float64,Int64}[Int64.(site_ids) scores Int64.(1:size(S, 1))]
     s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=maximize)
 
