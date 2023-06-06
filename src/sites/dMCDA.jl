@@ -163,7 +163,7 @@ Align a vector of site rankings to match the indicated order in `s_order`.
 function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # Fill target ranking column
     for (i, site_id) in enumerate(s_order[:, 1])
-        rankings[rankings[:, 1].==site_id, col] .= s_order[i, 3]
+        rankings[rankings[:, 1].==site_id, col] .= i
     end
 
     return
@@ -234,7 +234,7 @@ function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, m
     return retrieve_ranks(site_ids, results.scores, maximize)
 end
 function retrieve_ranks(site_ids::Vector, scores::Vector, maximize::Bool)
-    s_order = Union{Float64,Int64}[Int64.(site_ids) scores Int64.(1:size(S, 1))]
+    s_order = Union{Float64,Int64}[Int64.(site_ids) scores]
     s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=maximize)
 
     return s_order
