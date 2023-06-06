@@ -88,6 +88,6 @@ end
 
     prefsites, s_order = ADRIA.rank_sites!(S, weights, rankings, n_site_int, mcda_func, 2)
 
-    @test all([rankings[rankings[:, 1].==s_order[rank, 1], 2] .== rank for rank in 1:size(s_order, 1)]) || "Ranking does not match mcda score ordering"
+    @test all([(rankings[rankings[:, 1].==s_order[rank, 1], 2].==rank)[1] for rank in 1:size(s_order, 1)]) || "Ranking does not match mcda score ordering"
 
 end
