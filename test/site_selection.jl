@@ -72,3 +72,22 @@ end
 
     @test all([in(ss, possible_ranks) for ss in sel_sites]) || "Impossible rank assigned."
 end
+
+@testset "Test ranks line up with ordering" begin
+    mcda_func = ADRIA.methods_mcda[rand(1:length(ADRIA.methods_mcda))]
+    n_sites = 20
+
+    S = ADRIA.mcda_normalize(rand(Uniform(0, 1), n_sites, 6))
+
+    weights = ADRIA.mcda_normalize(rand(Uniform(0, 1), 6))
+    n_site_int = 5
+    site_ids = collect(1:n_sites)
+    S = hcat(site_ids, S)
+
+    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+
+    prefsites, s_order = ADRIA.rank_sites!(S, weights, rankings, n_site_int, mcda_func, 2)
+
+    @test all([rankings[rankings[:, 1].==s_order[rank, 1], 2] .== rank for rank in 1:size(s_order, 1)]) || "Ranking does not match mcda score ordering"
+
+end
