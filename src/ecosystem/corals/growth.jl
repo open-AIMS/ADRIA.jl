@@ -220,7 +220,7 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractA
     #
     # BleachMort(%) = 100*(1-(1-capped_dhw/100)^6)
     #
-    # As we want values between 0 - 1 rather than %, we drop the by `100 *`
+    # As we want values between 0 - 1 rather than %, we drop the `100 *`
     # We also want remaining population, so we also drop the initial `1 - `
     # End result is how much coral survives a bleaching event.
     @. Y = (1.0 - ((depth_coeff' * s) * (capped_dhw / 100.0)))^6.0
@@ -248,9 +248,6 @@ fecundities across size classes.
 - `fec_params` : Vector, coral fecundity parameters (in per m²) for each species/size class
 - `Y_pstep` : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
 - `site_area` : Vector[n_sites], total site area in m²
-
-# Returns
-Matrix[n_classes, n_sites] : fecundity per m² of coral
 """
 function fecundity_scope!(fec_groups::AbstractArray{T,2}, fec_all::AbstractArray{T,2}, fec_params::AbstractArray{T},
     Y_pstep::AbstractArray{T,2}, site_area::AbstractArray{T})::Nothing where {T<:Float64}
