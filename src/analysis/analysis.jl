@@ -83,5 +83,6 @@ end
 include("pareto.jl")
 include("sensitivity.jl")
 include("intervention.jl")
+include("clustering.jl")
 
 end
