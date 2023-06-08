@@ -59,5 +59,6 @@ include("metrics.jl")
 include("growth.jl")
 include("spec.jl")
 include("sampling.jl")
+include("clustering.jl")
 
 # include("example_run.jl")
