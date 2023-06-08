@@ -651,7 +651,7 @@ function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k
     return RSV
 end
 function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray where {T<:Real}
-    nscens = inputs <: DataFrameRow ? 1 : size(inputs, 1)
+    nscens = inputs isa DataFrameRow ? 1 : size(inputs, 1)
     ins = NamedDimsArray(Matrix(inputs), scenarios=1:nscens, factors=names(inputs))
     return _relative_shelter_volume(X, site_area, k_area, ins)
 end
