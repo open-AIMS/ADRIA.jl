@@ -109,7 +109,7 @@ StaticArrays = "1"
 StatsBase = "0.33, 0.34"
 Surrogates = "6"
 ThreadsX = "0.1"
-Zarr = "0.7, 0.8, 1"
+Zarr = "0.7, 0.8, 1, 0.9"
 julia = "1"
 
 [extras]
