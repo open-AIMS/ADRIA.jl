@@ -80,7 +80,7 @@ tf  # display the figure
 save("aviz_scenario.png", tf)  # save the figure to a file
 ```
 
-![Quick scenario plots](/ADRIA.jl/assets/imgs/aviz_scenario.png?raw=true "Quick scenario plots")
+![Quick scenario plots](/ADRIA.jl/dev/assets/imgs/aviz_scenario.png?raw=true "Quick scenario plots")
 
 # Other visualizations
 
@@ -118,7 +118,7 @@ pawn_fig = ADRIA.viz.pawn(
 save("pawn_si.png", pawn_fig)
 ```
 
-![PAWN sensitivity plots](/ADRIA.jl/assets/imgs/pawn_si.png?raw=true "PAWN sensitivity plots")
+![PAWN sensitivity plots](/ADRIA.jl/dev/assets/imgs/pawn_si.png?raw=true "PAWN sensitivity plots")
 
 ## Temporal Sensitivity Analysis
 
@@ -137,7 +137,7 @@ tsa_fig = ADRIA.viz.tsa(
 save("tsa.png", tsa_fig)
 ```
 
-![Plots of Temporal Sensitivities](/ADRIA.jl/assets/imgs/tsa.png?raw=true "Temporal Sensitivity Analysis")
+![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/tsa.png?raw=true "Temporal Sensitivity Analysis")
 
 ## Regional Sensitivity Analysis
 
@@ -156,7 +156,7 @@ rsa_fig = ADRIA.viz.rsa(
 save("rsa.png", rsa_fig)
 ```
 
-![Plots of Regional Sensitivities](/ADRIA.jl/assets/imgs/rsa.png?raw=true "Regional Sensitivity Analysis")
+![Plots of Regional Sensitivities](/ADRIA.jl/dev/assets/imgs/rsa.png?raw=true "Regional Sensitivity Analysis")
 
 ## Outcome mapping
 
@@ -190,7 +190,7 @@ ADRIA.viz.outcome_map!(
 save("outcome_map.png", tf)
 ```
 
-![Outcome mapping](/ADRIA.jl/assets/imgs/outcome_map.png?raw=true "Outcome mapping")
+![Outcome mapping](/ADRIA.jl/dev/assets/imgs/outcome_map.png?raw=true "Outcome mapping")
 
 ## GUI for high-level exploration (prototype only!)
 
@@ -202,5 +202,5 @@ ADRIA.viz.explore("path to Result Set")
 # ADRIA.viz.explore(rs)
 ```
 
-![Standalone app for data exploration](/ADRIA.jl/assets/imgs/aviz_app.png?raw=true "Data Exploration App")
+![Standalone app for data exploration](/ADRIA.jl/dev/assets/imgs/aviz_app.png?raw=true "Data Exploration App")
 
