@@ -139,6 +139,39 @@ save("tsa.png", tsa_fig)
 
 ![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/tsa.png?raw=true "Temporal Sensitivity Analysis")
 
+
+## Time Series Clustering
+
+Time Series Clustering generate clusters of time series based on Euclidian distance weighted 
+by a correlation factor that takes into account the quotient between their complexities.
+
+```julia
+# Extract metric from scenarios
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+
+# Cluster scenarios
+n_clusters = 6
+clusters = ADRIA.analysis.time_series_clustering(s_tac, n_clusters)
+
+axis_opts = Dict(
+    :title => "Time Series Clustering with $n_clusters clusters",
+    :ylabel => "TAC [m²]",
+    :xlabel => "Timesteps [years]"
+)
+tsc_fig = ADRIA.viz.ts_cluster(
+    s_tac, 
+    clusters;
+    fig_opts=fig_opts, 
+    axis_opts=axis_opts
+)
+
+# save final figure
+save("tsc.png", tsc_fig)
+```
+
+![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true "Time Series Cluster")
+
+
 ## Regional Sensitivity Analysis
 
 Regional Sensitivity Analysis is a monte-carlo filtering approach. The aim of RSA is to aid in
