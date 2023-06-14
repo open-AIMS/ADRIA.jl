@@ -9,13 +9,11 @@ for existing functions/methods.
 """
 
 # GUI
-function explore()
-end
+function explore() end
 
 # Scenario plotting methods
 function scenario() end
 function scenario!() end
-
 
 # Sensitivity analyses
 function pawn() end
@@ -27,5 +25,9 @@ function rsa!() end
 
 function outcome_map() end
 function outcome_map!() end
+
+# Clustering
+function ts_cluster() end
+function ts_cluster!() end
 
 end  # module
