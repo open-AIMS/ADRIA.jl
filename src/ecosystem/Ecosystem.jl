@@ -326,13 +326,12 @@ function coral_spec()::NamedTuple
     params.colony_area_cm2 = reshape(colony_area_mean_cm²', n_species)[:]
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
-    # we assume similar growth rates for enhanced and unenhanced corals
     # all values in cm/year
     linear_extension = Array{Float64,2}([
-        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora Enhanced
-        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora Unenhanced
-        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora Enhanced
-        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora Unenhanced
+        1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora 
+        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora 
+        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora 
+        1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
         1.0 1.0 1.0 1.0 0.8 0.8     # small massives
         1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
 
@@ -351,8 +350,8 @@ function coral_spec()::NamedTuple
     params.growth_rate[params.class_id.==6] .= params.growth_rate[params.class_id.==6] .* 0.2
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
-    fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
-    fec_par_b = Float64[1.28; 1.28; 1.05; 1.05; 1.21; 1.21]  # fecundity parameter b
+    fec_par_a = Float64[1.03; 1.03; 1.69; -1.20; 0.86; 0.86]  # fecundity parameter a
+    fec_par_b = Float64[1.28; 1.28; 1.05; 2.27; 1.21; 1.21]  # fecundity parameter b
     min_size_full_fec_cm2 = Float64[123.0; 123.0; 134.0; 134.0; 38.0; 38.0]
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
