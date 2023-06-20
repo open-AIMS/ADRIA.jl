@@ -296,10 +296,10 @@ function coral_spec()::NamedTuple
 
     # Coral species are divided into taxa and size classes
     taxa_names = String[
-        "tabular_acropora_enhanced"
-        "tabular_acropora_unenhanced"
-        "corymbose_acropora_enhanced"
-        "corymbose_acropora_unenhanced"
+        "abhorescent_acropora"
+        "tabular_acropora"
+        "corymbose_acropora"
+        "corymbose_non_acropora"
         "small_massives"
         "large_massives"
     ]
