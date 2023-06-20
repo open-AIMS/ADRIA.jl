@@ -368,7 +368,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     p.mb .= corals.mb_rate  # background mortality
     @set! p.k = max_cover  # max coral cover
-    @set! p.comp = sim_params.comp  # competition rate
 
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
     proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
