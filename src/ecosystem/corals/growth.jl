@@ -55,25 +55,16 @@ a 6 by \$n_sites\$ array.
 """
 function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
     # Indices
-    # p.small_massives := [26, 27, 28]
-    # p.small := [1, 7, 13, 19, 25, 31]
-    # p.mid := [2:4; 8:10; 14:17; 20:23; 29; 32:35]
-    # p.large := [18, 24, 30, 36]
-    # p.acr_5_11 := [5, 11]
-    # p.acr_6_12 := [6, 12]
+
+    # small = [1, 7, 13, 19, 25, 31]
+    # mid = [2:5; 8:11; 14:17; 20:23; 26:29; 32:35]
+    # large = [6, 12, 18, 24, 30, 36]
 
     # Intermediate values are now calculated outside of ODE function
     # To avoid repeat calculations
     # sXr : available space (sigma) * current cover (X) * growth rate (r)
     # X_mb : current cover (X) * background mortality (mb)
-    # sm_comp : competition factor * area taken up by small massives (represents gain via competition with small massives)
-    # M_sm : Mortality of small massives (background mortality + competition with acroporas)
     # rec : recruitment factors for each coral group (6 by n_sites)
-
-    @views @. du[p.acr_5_11, :] = p.sXr[p.acr_5_11-1, :] - p.sXr[p.acr_5_11, :] + (p.sm_comp * X[p.acr_5_11, :]) - p.X_mb[p.acr_5_11, :]
-    @views @. du[p.acr_6_12, :] = p.sXr[p.acr_6_12-1, :] + p.sXr[p.acr_6_12, :] + (p.sm_comp * X[p.acr_6_12, :]) - p.X_mb[p.acr_6_12, :]
-
-    @views @. du[p.small_massives, :] = p.sXr[p.small_massives-1, :] - p.sXr[p.small_massives, :] - p.M_sm
 
     @views @. du[p.small, :] = p.rec - p.sXr[p.small, :] - p.X_mb[p.small, :]
     @views @. du[p.mid, :] = p.sXr[p.mid-1, :] - p.sXr[p.mid, :] - p.X_mb[p.mid, :]
