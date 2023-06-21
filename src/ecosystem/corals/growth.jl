@@ -7,7 +7,22 @@ using Distributions
 # include("growth_expanded.jl")
 
 
-function growth_rate(linear_extension::Array{Float64}, diam_bin_widths::Array{Float64})::Vector{Float64}
+"""
+    growth_rate(linear_extension::Array{Float64}, diam_bin_widths::Array{Float64})::Vector{Float64}
+
+Determine the rate of growth representing the proportion of each size class that moves
+up a size class each (yearly) time step. Values > 1 indicate transitions to higher size
+classes occurs more than once per time step.
+
+# Arguments
+- `linear_extension` : Linear extension in cm/year
+- `diam_bin_widths` : diameter of each size class (bin) in cm
+
+# Returns
+Vector, of size \$N = [n_species ⋅ n_size_classes]\$ indicating proportional growth rates 
+for each.
+"""
+function growth_rate(linear_extension::Matrix{Float64}, diam_bin_widths::Vector{Float64})::Vector{Float64}
     return vec(((2.0 * linear_extension) ./ diam_bin_widths')')
 end
 
