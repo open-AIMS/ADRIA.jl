@@ -19,7 +19,7 @@ classes occurs more than once per time step.
 - `diam_bin_widths` : diameter of each size class (bin) in cm
 
 # Returns
-Vector, of size \$N = [n_species ⋅ n_size_classes]\$ indicating proportional growth rates 
+Vector, of size \$N = [n_{species} ⋅ n_{classes}]\$ indicating proportional growth rates
 for each.
 """
 function growth_rate(linear_extension::Matrix{Float64}, diam_bin_widths::Vector{Float64})::Vector{Float64}
