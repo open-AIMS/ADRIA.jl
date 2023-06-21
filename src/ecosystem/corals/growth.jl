@@ -229,7 +229,7 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2},
     # A depth coefficient is also introduced to account for the reduced
     # experienced heat at greater depths.
 
-    # The model is modified to incorporate adaptation effect but maximum 
+    # The model is modified to incorporate adaptation effect but maximum
     # reduction is to capped to 0.
     @. capped_dhw = min.(ℯ^(0.17 + 0.35 * max(0.0, dhw' - (a_adapt + (tstep * n_adapt)))) - 1.0, 100.0)
     @. depth_coeff = ℯ^(-0.07551 * (depth - 2.0))
