@@ -368,18 +368,7 @@ function coral_spec()::NamedTuple
     params.fecundity = fec_m²'[:]
 
     ## Mortality
-    # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
-    wavemort90 = Array{Float64,2}([
-        0.0 0.0 0.0 0.0 0.05 0.1  # Tabular Acropora Enhanced
-        0.0 0.0 0.0 0.0 0.05 0.1  # Tabular Acropora Unenhanced
-        0.0 0.0 0.0 0.0 0.02 0.05  # Corymbose Acropora Enhanced
-        0.0 0.0 0.0 0.0 0.02 0.05  # Corymbose Acropora Unenhanced
-        0.0 0.0 0.0 0.0 0.0 0.0  # small massives and encrusting
-        0.0 0.0 0.0 0.0 0.0 0.0])  # large massives
-
-    params.wavemort90 = wavemort90'[:]
-
-    # Background mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
+    # Background + wave mortality mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
     # Using values for:
     # - juvenile mortality (first two columns)
     # - < 5cm² (Columns 1 and 2)
@@ -387,24 +376,25 @@ function coral_spec()::NamedTuple
     # - > 250cm² (Columns 5 and 6)
     # Values for size class 4 are then interpolated by K.A
     mb = Array{Float64,2}([
-        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Enhanced
-        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Unenhanced
-        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Enhanced
-        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Unenhanced
-        0.2 0.2 0.04 0.026 0.02 0.02    # Small massives and encrusting
-        0.2 0.2 0.04 0.026 0.02 0.02])   # Large massives
+        0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora 
+        0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora 
+        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora 
+        0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora 
+        0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
+        0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
     params.mb_rate = mb'[:]
-
+    
     # Bleaching sensitivity of each coral group
     # Bozec et al., (2022)
     bleaching_sensitivity = Float64[
-        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Enhanced (Arborescent staghorn corals)
-        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Unenhanced
-        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Enhanced
-        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Unenhanced
+        1.50 1.50 1.50 1.50 1.50 1.50  # Arborescent Acropora 
+        1.60 1.60 1.60 1.60 1.60 1.60  # Tabular Acropora 
+        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora 
+        1.70 1.70 1.70 1.70 1.70 1.70  # Corymbose non-Acropora 
         0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
         0.25 0.25 0.25 0.25 0.25 0.25] # Large massives
     params.bleaching_sensitivity = bleaching_sensitivity'[:]
+
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list
