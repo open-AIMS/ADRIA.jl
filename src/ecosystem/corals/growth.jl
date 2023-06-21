@@ -171,8 +171,10 @@ end
 
 
 """
-    bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
-        s::Vector{Float64}, dhw::Float64, a_adapt::Float64, n_adapt::Float64)
+    bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractArray{Float64,2},
+        depth_coeff::AbstractArray{Float64}, tstep::Int64, depth::Vector{Float64},
+        s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64},
+        n_adapt::Real)::Nothing
 
 Calculates and applies bleaching mortality, taking into account depth and bleaching
 sensitivity of corals. Model is adapted from Bozec et al., [2], itself based on data
@@ -180,7 +182,7 @@ from Hughes et al., [3] (bleaching sensitivity) and Baird et al., [1] (relations
 between bleaching and depth).
 
 # Arguments
-- `Y` : Matrix to save results into
+- `Y` : Matrix to save results into, of shape \$n_{species} ⋅ n_{locations}\$
 - `tstep` : Current time step
 - `depth` : Mean site depth (m) for each site
 - `s` : Bleaching sensitivity of corals (relative values) for each taxa/size class
@@ -212,8 +214,10 @@ Nothing
    Nature, 556(7702), 492-496.
    https://doi.org/10.1038/s41586-018-0041-2
 """
-function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractArray{Float64,2}, depth_coeff::AbstractArray{Float64}, tstep::Int64, depth::Vector{Float64},
-    s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
+function bleaching_mortality!(Y::AbstractArray{Float64,2},
+    capped_dhw::AbstractArray{Float64,2}, depth_coeff::AbstractArray{Float64},
+    tstep::Int64, depth::Vector{Float64}, s::Vector{Float64},
+    dhw::AbstractArray{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
 
     # Initial mortality
     # Bozec et al., (2022) derive their model from Hughes et al., (2018, Fig 2C).
