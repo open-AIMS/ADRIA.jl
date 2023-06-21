@@ -51,9 +51,10 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
         axis_opts...
     )
 
-    min_step = (1 / 0.05)
-    color_weight = min((1.0 / (size(y, 1) / min_step)), 0.6)
+    min_step = (1.0 / 0.05)
+    color_weight = max(min((1.0 / (size(y, 2) / min_step)), 0.6), 0.05)
 
+    # Create legend for each guided scenario type
     if :color ∉ keys(series_opts)
         hide_idx = get(series_opts, :hide_series, BitVector())
 
@@ -68,7 +69,6 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
             labels = ["No Intervention", "Unguided", "Guided"]
         else
             rcp_ids = sort(Int.(unique(rs.inputs[:, :RCP])))
-            c = [COLORS[_r] for _r in [Symbol("RCP$(r_id)") for r_id in rcp_ids]]
             r_s = Symbol[Symbol("RCP$(r_id)") for r_id in rcp_ids]
 
             eles = LineElement[
@@ -81,17 +81,54 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
         end
 
         # Add legend
-        Legend(g[1, 2], eles, labels, halign=:left, valign=:top, margin=(10, 10, 10, 10))
+        Legend(g[1, 3], eles, labels, halign=:left, valign=:top, margin=(5, 5, 5, 5))
     end
 
-    ls = series!(ax, y'; series_opts...)
+    series!(ax, y'; series_opts...)
+
+    # Density (TODO: Separate into own function)
+    scen_types = scenario_type(rs)
+    scen_dist = dropdims(mean(y, dims=:timesteps), dims=:timesteps)
+    ax2 = Axis(g[1, 2], width=100)
+    if count(scen_types.counterfactual) > 0
+        density!(ax2, scen_dist[scen_types.counterfactual],
+            direction=:y,
+            color=(COLORS[:counterfactual], 0.6),
+            strokearound=true,
+            strokewidth=1.5,
+            strokecolor=COLORS[:counterfactual])
+    end
+
+    if count(scen_types.unguided) > 0
+        density!(ax2, scen_dist[scen_types.unguided],
+            direction=:y,
+            color=(COLORS[:unguided], 0.6),
+            strokearound=true,
+            strokewidth=1.5,
+            strokecolor=COLORS[:unguided])
+    end
+
+    if count(scen_types.guided) > 0
+        density!(ax2, scen_dist[scen_types.guided],
+            direction=:y,
+            color=(COLORS[:guided], 0.6),
+            strokearound=true,
+            strokewidth=1.5,
+            strokecolor=COLORS[:guided])
+    end
+
+    hidedecorations!(ax2)
+    hidespines!(ax2)
+    ylims!(ax2, -10.0, maximum(scen_dist) + 10.0)
+
     # ax.ylabel = metric_label(metric)
     ax.xlabel = "Year"
 
     return g
 end
 function ADRIA.viz.scenario(rs::ResultSet, y::NamedDimsArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
-    f = Figure(; fig_opts...)
+    resolution = pop!(fig_opts, :resolution, (1000, 600))
+    f = Figure(resolution=resolution; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.scenario!(g, rs, y; opts, axis_opts, series_opts)
 
