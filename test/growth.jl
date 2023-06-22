@@ -5,12 +5,12 @@ using ADRIA
 @testset "Coral Spec" begin
 
     linear_extension = Array{Float64,2}([
-        1 3 3 4.4 4.4 4.4   # Tabular Acropora Enhanced
-        1 3 3 4.4 4.4 4.4   # Tabular Acropora Unenhanced
-        1 3 3 3 3 3         # Corymbose Acropora Enhanced
-        1 3 3 3 3 3         # Corymbose Acropora Unenhanced
-        1 1 1 1 0.8 0.8     # small massives
-        1 1 1 1 1.2 1.2])   # large massives
+        1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora 
+        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora 
+        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora 
+        1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
+        1.0 1.0 1.0 1.0 0.8 0.8     # small massives
+        1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
 
     bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
 
