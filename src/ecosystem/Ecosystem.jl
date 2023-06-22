@@ -368,7 +368,17 @@ function coral_spec()::NamedTuple
     params.fecundity = fec_m²'[:]
 
     ## Mortality
-    # Background + wave mortality mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
+    # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
+    wavemort90 = Array{Float64,2}([
+        0.0 0.0 0.0 0.0 0.0 0.0  # Abhorescent Acropora
+        0.0 0.0 0.0 0.0 0.0 0.0  # Tabular Acropora 
+        0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose Acropora 
+        0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose non-Acropora 
+        0.0 0.0 0.0 0.0 0.0 0.0  # small massives and encrusting
+        0.0 0.0 0.0 0.0 0.0 0.0])  # large massives
+
+    params.wavemort90 = wavemort90'[:]
+    # Background mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
     # Using values for:
     # - juvenile mortality (first two columns)
     # - < 5cm² (Columns 1 and 2)
