@@ -144,6 +144,54 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{Strin
     return rs
 end
 
+function new_run_scenarios(param_df::DataFrame, domain::Domain, rcps::Array{String}; show_progress=true, remove_workers=true)::ResultSet
+    # Initialize ADRIA configuration options
+    setup()
+
+    @info "Running $(nrow(param_df)) scenarios across $(length(rcps)) RCPs"
+
+    # Cross product between rcps and param_df to have every row of param_df for each rcp
+    rcps_df = DataFrame(RCP=parse.(Int, rcps))
+    scenarios_df = crossjoin(param_df, rcps_df)
+    sort!(scenarios_df, :RCP)
+
+    # Setup result directory and create zarrays (data_store)
+    domain, data_store = ADRIA.setup_result_store!(domain, scenarios_df)
+
+    # Convert DataFrame to named matrix for faster iteration
+    scenarios_matrix = NamedDimsArray(
+        Matrix(scenarios_df);
+        scenarios=1:nrow(scenarios_df),
+        factors=names(scenarios_df)
+    )
+
+    # Setup_result_store!(..., RCPs)
+    current_rcp = "" #cenarios_matrix(1, "RCP")
+    for (idx, scenario) in enumerate(eachrow(scenarios_matrix))
+        @info "Running scenarios"
+        if current_rcp != string(Int(scenario("RCP")))
+            # Update current_rcp
+            current_rcp = string(Int(scenario("RCP")))
+            println("RCP", current_rcp)
+
+            @info "Running scenarios for RCP $current_rcp"
+
+            # Switch RCPs to setup dhw and wave stats for each RCP
+            domain = switch_RCPs!(domain, current_rcp)
+            setup_dhw_store(domain::Domain, rcps)
+            setup_wave_stats_store(domain::Domain, rcps)
+        end
+
+        # Setup cache before running each scenario
+        cache = setup_cache(domain)
+
+        # Run scenario
+        run_scenario(idx, scenario, domain, data_store, cache)
+    end
+
+    # Return a ResultSet
+    load_results(domain, rcps)
+end
 
 """
     run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
@@ -458,7 +506,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     env_horizon = zeros(Int64(param_set("plan_horizon") + 1), n_sites)  # temporary cache for planning horizon
 
-    # basal_area_per_settler is the area in m^2 of a size class one coral 
+    # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ 100 .^ 2
     @inbounds for tstep::Int64 in 2:tf
         p_step::Int64 = tstep - 1

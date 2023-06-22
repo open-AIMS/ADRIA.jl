@@ -183,20 +183,21 @@ Sets up an on-disk result store.
 - `param_df` : ADRIA scenario specification
 
 # Returns
-domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, site_ranks, seed_log, fog_log, shade_log)
+domain, (total_absolute_cover, relative_shelter_volume, absolute_shelter_volume, relative_juveniles,
+    juvenile_indicator, relative_taxa_cover, site_ranks, seed_log, fog_log, shade_log)
 """
 function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
-    if "RCP" in names(param_df)
-        param_df = param_df[:, Not("RCP")]  # Ignore RCP column if it exists
-    end
+    #if "RCP" in names(param_df)
+    #    param_df = param_df[:, Not("RCP")]  # Ignore RCP column if it exists
+    #end
 
     # TODO: Support setting up a combined result store.
 
     # Insert RCP column and populate with this dataset's RCP
-    insertcols!(param_df, 1, :RCP => parse(Float64, domain.RCP))
-
+    #insertcols!(param_df, 1, :RCP => parse(Float64, domain.RCP))
     @set! domain.scenario_invoke_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
-    log_location::String = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCPs$(domain.RCP)__$(domain.scenario_invoke_time)")
+    rcps = string.(unique(param_df, "RCP")[!, "RCP"])
+    log_location::String = result_location(domain, rcps)
 
     z_store = DirectoryStore(log_location)
 
@@ -283,13 +284,36 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             compressor=compressor))
     push!(met_names, :relative_taxa_cover)
 
-    dhw_stats_store = store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), domain.RCP, compressor)
-    wave_stats_store = store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), domain.RCP, compressor)
+    # dhw and wave zarrays
+    #dhw_stats_store = store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), domain.RCP, compressor)
+    #wave_stats_store = store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), domain.RCP, compressor)
 
     # Group all data stores
-    stores = [stores..., dhw_stats_store, wave_stats_store, setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
+    # stores = [stores..., dhw_stats_store, wave_stats_store, setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
+    stores = [stores..., setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
 
-    return domain, (; zip((met_names..., :dhw_stats, :wave_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
+    # return domain, (; zip((met_names..., :dhw_stats, :wave_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
+    return domain, (; zip((met_names..., :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
+end
+
+const COMPRESSOR = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
+
+"""
+    setup_dhw_store(domain::Domain, rcps::Array{String})
+"""
+function setup_dhw_store(domain::Domain, rcps::Array{String})
+    dhw_path = joinpath(result_location(domain, rcps), ENV_STATS, "dhw")
+    store_env_summary(domain.dhw_scens, "dhw_scenario", dhw_path, domain.RCP, COMPRESSOR)
+    #return (:dhw_stats, dhw_stats_store)
+end
+
+"""
+    setup_wave_stats_store(domain::Domain, rcps::Array{String})
+"""
+function setup_wave_stats_store(domain::Domain, rcps::Array{String})
+    wave_path = joinpath(result_location(domain, rcps), ENV_STATS, "wave")
+    store_env_summary(domain.wave_scens, "wave_scenario", wave_path, domain.RCP, COMPRESSOR)
+    #return (:wave_stats, wave_stats_store)
 end
 
 """
@@ -320,6 +344,7 @@ end
 """
     load_results(result_loc::String)::ResultSet
     load_results(domain::Domain)::ResultSet
+    load_results(domain::Domain, rcps::Array{String})::ResultSet
 
 Create interface to a given Zarr result set.
 """
@@ -424,12 +449,19 @@ end
 function load_results(domain::Domain)::ResultSet
     return load_results(result_location(domain))
 end
+function load_results(domain::Domain, rcps::Array{String})::ResultSet
+    return load_results(result_location(domain, rcps))
+end
 
 """
     result_location(d::Domain)::String
+    result_location(d::Domain, rcps::Array{String})::String
 
 Generate path to the data store of results for the given Domain.
 """
 function result_location(d::Domain)::String
     return joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(d.name)__RCPs$(d.RCP)__$(d.scenario_invoke_time)")
+end
+function result_location(d::Domain, rcps::Array{String})::String
+    return joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(d.name)__RCPs_$(join(rcps, "_"))__$(d.scenario_invoke_time)")
 end
