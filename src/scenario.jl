@@ -563,12 +563,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         p.sXr .= max.(1.0 .- sum(tmp, dims=1), 0.0) .* tmp .* p.r  # leftover space * current cover * growth_rate
         p.X_mb .= tmp .* p.mb    # current cover * background mortality
 
-        # Background mortality of small massives (incorporates competition with larger tabular acroporas)
-        p.M_sm .= tmp[p.small_massives, :] .* (p.mb[p.small_massives] .+ p.comp .* sum(tmp[p.acr_6_12, :], dims=1))
-
-        # Space gained from small massives due to competition
-        p.sm_comp .= p.comp .* sum(tmp[p.small_massives, :], dims=1)
-
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-6)  # , adaptive=false, dt=1.0
         # Using the last step from ODE above, proportionally adjust site coral cover
