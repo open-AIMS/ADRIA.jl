@@ -1,3 +1,6 @@
+const COMPRESSOR = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
+
+
 function get_geometry(df::DataFrame)
     if columnindex(df, :geometry) > 0
         return df.geometry
@@ -251,8 +254,6 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
         return (dl...,)
     end
 
-    compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
-
     met_names = [:total_absolute_cover, :relative_shelter_volume,
         :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator]
 
@@ -296,7 +297,6 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     return domain, (; zip((met_names..., :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
 end
 
-const COMPRESSOR = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
 
 """
     setup_dhw_store(domain::Domain, rcps::Array{String})
