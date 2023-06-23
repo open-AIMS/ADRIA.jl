@@ -165,7 +165,10 @@ Sets up an on-disk result store.
 │   ├───seed
 │   └───shade
 ├───results
-│   ├───relative_cover
+|   ├───juvenile_indicator
+|   ├───relative_juveniles
+│   ├───relative_taxa_cover
+│   ├───total_absolute_cover
 │   ├───relative_shelter_volume
 │   └───absolute_shelter_volume
 ├───site_data
