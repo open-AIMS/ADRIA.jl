@@ -63,7 +63,7 @@ end
 
 """Remove workers and free up memory."""
 function _remove_workers()::Nothing
-    if nprocs() > 1
+    if nworkers() > 1
         rmprocs(workers()...)
     end
 
