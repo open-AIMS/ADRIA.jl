@@ -284,34 +284,23 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     push!(met_names, :relative_taxa_cover)
 
     # dhw and wave zarrays
-    #dhw_stats_store = store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), domain.RCP, compressor)
-    #wave_stats_store = store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), domain.RCP, compressor)
+    dhw_stats = []
+    wave_stats = []
+    dhw_stat_names = []
+    wave_stat_names = []
+    for rcp in rcps
+        push!(dhw_stats, store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), rcp, COMPRESSOR))
+        push!(wave_stats, store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), rcp, COMPRESSOR))
+
+        push!(dhw_stat_names, Symbol("dhw_stat_$rcp"))
+        push!(wave_stat_names, Symbol("wave_stat_$rcp"))
+    end
+    stat_store_names = vcat(dhw_stat_names, wave_stat_names)
 
     # Group all data stores
-    # stores = [stores..., dhw_stats_store, wave_stats_store, setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
-    stores = [stores..., setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
+    stores = [stores..., dhw_stats..., wave_stats..., setup_logs(z_store, unique_sites(domain), nrow(scen_spec), tf, n_sites)...]
 
-    # return domain, (; zip((met_names..., :dhw_stats, :wave_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
-    return domain, (; zip((met_names..., :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
-end
-
-
-"""
-    setup_dhw_store(domain::Domain, rcps::Array{String})
-"""
-function setup_dhw_store(domain::Domain, rcps::Array{String})
-    dhw_path = joinpath(result_location(domain, rcps), ENV_STATS, "dhw")
-    store_env_summary(domain.dhw_scens, "dhw_scenario", dhw_path, domain.RCP, COMPRESSOR)
-    #return (:dhw_stats, dhw_stats_store)
-end
-
-"""
-    setup_wave_stats_store(domain::Domain, rcps::Array{String})
-"""
-function setup_wave_stats_store(domain::Domain, rcps::Array{String})
-    wave_path = joinpath(result_location(domain, rcps), ENV_STATS, "wave")
-    store_env_summary(domain.wave_scens, "wave_scenario", wave_path, domain.RCP, COMPRESSOR)
-    #return (:wave_stats, wave_stats_store)
+    return domain, (; zip((met_names..., stat_store_names..., :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
 end
 
 """
@@ -337,7 +326,6 @@ function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,Abstra
 
     return stat_d
 end
-
 
 """
     load_results(result_loc::String)::ResultSet
