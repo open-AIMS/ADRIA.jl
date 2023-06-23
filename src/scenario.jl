@@ -148,14 +148,14 @@ function new_run_scenarios(param_df::DataFrame, domain::Domain, rcps::Array{Stri
     # Initialize ADRIA configuration options
     setup()
 
-    @info "Running $(nrow(param_df)) scenarios across $(length(rcps)) RCPs"
+    @info "Running $(nrow(param_df)) scenarios over $(length(rcps)) RCPs: $rcps"
 
     # Cross product between rcps and param_df to have every row of param_df for each rcp
-    rcps_df = DataFrame(RCP=parse.(Int, rcps))
+    rcps_df = DataFrame(RCP=parse.(Int64, rcps))
     scenarios_df = crossjoin(param_df, rcps_df)
     sort!(scenarios_df, :RCP)
 
-    # Setup result directory and create zarrays (data_store)
+    @info "Setting up Result Set"
     domain, data_store = ADRIA.setup_result_store!(domain, scenarios_df)
 
     # Convert DataFrame to named matrix for faster iteration
@@ -165,32 +165,52 @@ function new_run_scenarios(param_df::DataFrame, domain::Domain, rcps::Array{Stri
         factors=names(scenarios_df)
     )
 
-    # Setup_result_store!(..., RCPs)
-    current_rcp = "" #cenarios_matrix(1, "RCP")
-    for (idx, scenario) in enumerate(eachrow(scenarios_matrix))
-        @info "Running scenarios"
-        if current_rcp != string(Int(scenario("RCP")))
-            # Update current_rcp
-            current_rcp = string(Int(scenario("RCP")))
-            println("RCP", current_rcp)
+    # Setup cache to reuse for each scenario run
+    cache = setup_cache(domain)
 
-            @info "Running scenarios for RCP $current_rcp"
+    parallel = (nrow(param_df) >= 1024) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    if parallel && nworkers() == 1
+        @info "Setting up parallel processing..."
+        spinup_time = @elapsed begin
+            _setup_workers()
+            sleep(2)  # wait a bit while workers spin-up
 
-            # Switch RCPs to setup dhw and wave stats for each RCP
-            domain = switch_RCPs!(domain, current_rcp)
-            setup_dhw_store(domain::Domain, rcps)
-            setup_wave_stats_store(domain::Domain, rcps)
+            # load ADRIA on workers and define helper function
+            @everywhere @eval using ADRIA
+            @everywhere @eval func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
         end
 
-        # Setup cache before running each scenario
-        cache = setup_cache(domain)
+        @info "Time taken to spin up workers: $(spinup_time)"
 
-        # Run scenario
-        run_scenario(idx, scenario, domain, data_store, cache)
+        # Define number of scenarios to run before returning results to main
+        # https://discourse.julialang.org/t/parallelism-understanding-pmap-and-the-batch-size-parameter/15604/2
+        # https://techytok.com/lesson-parallel-computing/
+        b_size = 4
+    else
+        b_size = 1
     end
 
-    # Return a ResultSet
-    load_results(domain, rcps)
+    # Define local helper
+    func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
+
+    for rcp in rcps
+        run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
+
+        # Switch RCPs so correct data is loaded
+        domain = switch_RCPs!(domain, rcp)
+        target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
+        if show_progress
+            @showprogress run_msg 4 pmap(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])), batch_size=b_size)
+        else
+            pmap(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])), batch_size=b_size)
+        end
+    end
+
+    if parallel && remove_workers
+        _remove_workers()
+    end
+
+    return load_results(domain, rcps)
 end
 
 """
