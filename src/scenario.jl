@@ -180,7 +180,7 @@ function new_run_scenarios(param_df::DataFrame, domain::Domain, rcps::Array{Stri
             @everywhere @eval func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
         end
 
-        @info "Time taken to spin up workers: $(spinup_time)"
+        @info "Time taken to spin up workers: $(spinup_time) seconds"
 
         # Define number of scenarios to run before returning results to main
         # https://discourse.julialang.org/t/parallelism-understanding-pmap-and-the-batch-size-parameter/15604/2
