@@ -264,7 +264,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             fill_value=nothing, fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, string(m_name)), chunks=(result_dims[1:end-1]..., 1),
             attrs=dim_struct,
-            compressor=compressor)
+            compressor=COMPRESSOR)
         for m_name in met_names
     ]
 
@@ -277,7 +277,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             attrs=Dict(
                 :structure => string.(ADRIA.metrics.relative_taxa_cover.dims)
             ),
-            compressor=compressor))
+            compressor=COMPRESSOR))
     push!(met_names, :relative_taxa_cover)
 
     # dhw and wave zarrays
