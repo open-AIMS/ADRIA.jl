@@ -183,31 +183,25 @@ Sets up an on-disk result store.
 
 # Arguments
 - `domain` : ADRIA scenario domain
-- `param_df` : ADRIA scenario specification
+- `scen_spec` : ADRIA scenario specification
 
 # Returns
 domain, (total_absolute_cover, relative_shelter_volume, absolute_shelter_volume, relative_juveniles,
     juvenile_indicator, relative_taxa_cover, site_ranks, seed_log, fog_log, shade_log)
 """
-function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
-    #if "RCP" in names(param_df)
-    #    param_df = param_df[:, Not("RCP")]  # Ignore RCP column if it exists
-    #end
-
-    # TODO: Support setting up a combined result store.
-
-    # Insert RCP column and populate with this dataset's RCP
-    #insertcols!(param_df, 1, :RCP => parse(Float64, domain.RCP))
+function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     @set! domain.scenario_invoke_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
-    rcps = string.(unique(param_df, "RCP")[!, "RCP"])
+
+    # Collect defined RCPs
+    rcps = string.(unique(scen_spec, "RCP")[!, "RCP"])
     log_location::String = result_location(domain, rcps)
 
     z_store = DirectoryStore(log_location)
 
     # Store copy of inputs
     input_loc::String = joinpath(z_store.folder, INPUTS)
-    input_dims::Tuple{Int64,Int64} = size(param_df)
-    attrs::Dict = scenario_attributes(domain, param_df)
+    input_dims::Tuple{Int64,Int64} = size(scen_spec)
+    attrs::Dict = scenario_attributes(domain, scen_spec)
 
     # Write a copy of spatial data to the result set
     mkdir(joinpath(log_location, "site_data"))
@@ -232,8 +226,8 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
     # Store post-processed table of input parameters.
     # +1 skips the RCP column
     integer_params = findall(domain.model[:ptype] .== "integer")
-    map_to_discrete!(param_df[:, integer_params.+1], getindex.(domain.model[:bounds], 2)[integer_params])
-    inputs[:, :] = Matrix(param_df)
+    map_to_discrete!(scen_spec[:, integer_params.+1], getindex.(domain.model[:bounds], 2)[integer_params])
+    inputs[:, :] = Matrix(scen_spec)
 
     tf, n_sites, _ = size(domain.dhw_scens)
 
@@ -248,7 +242,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             elseif d == "sites"
                 append!(dl, n_sites)
             elseif d == "scenarios"
-                append!(dl, nrow(param_df))
+                append!(dl, nrow(scen_spec))
             end
         end
 
