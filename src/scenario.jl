@@ -168,7 +168,7 @@ function new_run_scenarios(param_df::DataFrame, domain::Domain, rcps::Array{Stri
     # Setup cache to reuse for each scenario run
     cache = setup_cache(domain)
 
-    parallel = (nrow(param_df) >= 1024) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(param_df) >= 4096) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
