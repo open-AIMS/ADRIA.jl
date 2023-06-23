@@ -222,11 +222,12 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
         GDF.write(geo_fn, domain.site_data; geom_columns=(:geom,), driver="geojson")
     end
 
-    inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
-
     # Store copy of model specification as CSV
     mkdir(joinpath(log_location, "model_spec"))
     model_spec(domain, joinpath(log_location, "model_spec", "model_spec.csv"))
+
+    # Create store for scenario spec
+    inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
 
     # Store post-processed table of input parameters.
     # +1 skips the RCP column
