@@ -1,3 +1,6 @@
+const COMPRESSOR = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
+
+
 function get_geometry(df::DataFrame)
     if columnindex(df, :geometry) > 0
         return df.geometry
@@ -162,7 +165,10 @@ Sets up an on-disk result store.
 │   ├───seed
 │   └───shade
 ├───results
-│   ├───relative_cover
+|   ├───juvenile_indicator
+|   ├───relative_juveniles
+│   ├───relative_taxa_cover
+│   ├───total_absolute_cover
 │   ├───relative_shelter_volume
 │   └───absolute_shelter_volume
 ├───site_data
@@ -180,30 +186,25 @@ Sets up an on-disk result store.
 
 # Arguments
 - `domain` : ADRIA scenario domain
-- `param_df` : ADRIA scenario specification
+- `scen_spec` : ADRIA scenario specification
 
 # Returns
-domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, site_ranks, seed_log, fog_log, shade_log)
+domain, (total_absolute_cover, relative_shelter_volume, absolute_shelter_volume, relative_juveniles,
+    juvenile_indicator, relative_taxa_cover, site_ranks, seed_log, fog_log, shade_log)
 """
-function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
-    if "RCP" in names(param_df)
-        param_df = param_df[:, Not("RCP")]  # Ignore RCP column if it exists
-    end
-
-    # TODO: Support setting up a combined result store.
-
-    # Insert RCP column and populate with this dataset's RCP
-    insertcols!(param_df, 1, :RCP => parse(Float64, domain.RCP))
-
+function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     @set! domain.scenario_invoke_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
-    log_location::String = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(domain.name)__RCPs$(domain.RCP)__$(domain.scenario_invoke_time)")
+
+    # Collect defined RCPs
+    rcps = string.(unique(scen_spec, "RCP")[!, "RCP"])
+    log_location::String = _result_location(domain, rcps)
 
     z_store = DirectoryStore(log_location)
 
     # Store copy of inputs
     input_loc::String = joinpath(z_store.folder, INPUTS)
-    input_dims::Tuple{Int64,Int64} = size(param_df)
-    attrs::Dict = scenario_attributes(domain, param_df)
+    input_dims::Tuple{Int64,Int64} = size(scen_spec)
+    attrs::Dict = scenario_attributes(domain, scen_spec)
 
     # Write a copy of spatial data to the result set
     mkdir(joinpath(log_location, "site_data"))
@@ -218,17 +219,18 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
         GDF.write(geo_fn, domain.site_data; geom_columns=(:geom,), driver="geojson")
     end
 
-    inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
-
     # Store copy of model specification as CSV
     mkdir(joinpath(log_location, "model_spec"))
     model_spec(domain, joinpath(log_location, "model_spec", "model_spec.csv"))
 
+    # Create store for scenario spec
+    inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
+
     # Store post-processed table of input parameters.
     # +1 skips the RCP column
     integer_params = findall(domain.model[:ptype] .== "integer")
-    map_to_discrete!(param_df[:, integer_params.+1], getindex.(domain.model[:bounds], 2)[integer_params])
-    inputs[:, :] = Matrix(param_df)
+    map_to_discrete!(scen_spec[:, integer_params.+1], getindex.(domain.model[:bounds], 2)[integer_params])
+    inputs[:, :] = Matrix(scen_spec)
 
     tf, n_sites, _ = size(domain.dhw_scens)
 
@@ -243,14 +245,12 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             elseif d == "sites"
                 append!(dl, n_sites)
             elseif d == "scenarios"
-                append!(dl, nrow(param_df))
+                append!(dl, nrow(scen_spec))
             end
         end
 
         return (dl...,)
     end
-
-    compressor = Zarr.BloscCompressor(cname="zstd", clevel=2, shuffle=true)
 
     met_names = [:total_absolute_cover, :relative_shelter_volume,
         :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator]
@@ -267,7 +267,7 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             fill_value=nothing, fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, string(m_name)), chunks=(result_dims[1:end-1]..., 1),
             attrs=dim_struct,
-            compressor=compressor)
+            compressor=COMPRESSOR)
         for m_name in met_names
     ]
 
@@ -280,16 +280,27 @@ function setup_result_store!(domain::Domain, param_df::DataFrame)::Tuple
             attrs=Dict(
                 :structure => string.(ADRIA.metrics.relative_taxa_cover.dims)
             ),
-            compressor=compressor))
+            compressor=COMPRESSOR))
     push!(met_names, :relative_taxa_cover)
 
-    dhw_stats_store = store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), domain.RCP, compressor)
-    wave_stats_store = store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), domain.RCP, compressor)
+    # dhw and wave zarrays
+    dhw_stats = []
+    wave_stats = []
+    dhw_stat_names = []
+    wave_stat_names = []
+    for rcp in rcps
+        push!(dhw_stats, store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), rcp, COMPRESSOR))
+        push!(wave_stats, store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), rcp, COMPRESSOR))
+
+        push!(dhw_stat_names, Symbol("dhw_stat_$rcp"))
+        push!(wave_stat_names, Symbol("wave_stat_$rcp"))
+    end
+    stat_store_names = vcat(dhw_stat_names, wave_stat_names)
 
     # Group all data stores
-    stores = [stores..., dhw_stats_store, wave_stats_store, setup_logs(z_store, unique_sites(domain), nrow(param_df), tf, n_sites)...]
+    stores = [stores..., dhw_stats..., wave_stats..., setup_logs(z_store, unique_sites(domain), nrow(scen_spec), tf, n_sites)...]
 
-    return domain, (; zip((met_names..., :dhw_stats, :wave_stats, :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
+    return domain, (; zip((met_names..., stat_store_names..., :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
 end
 
 """
@@ -315,7 +326,6 @@ function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,Abstra
 
     return stat_d
 end
-
 
 """
     load_results(result_loc::String)::ResultSet
@@ -432,4 +442,13 @@ Generate path to the data store of results for the given Domain.
 """
 function result_location(d::Domain)::String
     return joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(d.name)__RCPs$(d.RCP)__$(d.scenario_invoke_time)")
+end
+
+"""
+    _result_location(d::Domain, rcps::Vector{String})::String
+
+Generate path to the data store of results for the given Domain and RCPs names.
+"""
+function _result_location(d::Domain, rcps::Vector{String})::String
+    return joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(d.name)__RCPs_$(join(rcps, "_"))__$(d.scenario_invoke_time)")
 end

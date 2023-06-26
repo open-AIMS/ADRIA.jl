@@ -37,9 +37,8 @@ end
 
 
 """
-    run_scenarios(param_df::DataFrame, domain::Domain; remove_workers=true)
-    run_scenarios(param_df::DataFrame, domain::Domain, rcp::String; remove_workers=true)
-    run_scenarios(param_df::DataFrame, domain::Domain, rcp::Array{String}; remove_workers=true)
+    run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)
+    run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String}; show_progress=true, remove_workers=true)
 
 Run scenarios defined by the parameter table storing results to disk.
 Scenarios are run in parallel where the number of scenarios > 256.
@@ -54,96 +53,92 @@ Scenarios are run in parallel where the number of scenarios > 256.
 ...
 julia> rs_45 = ADRIA.run_scenarios(p_df, dom, "45")
 julia> rs_45_60 = ADRIA.run_scenarios(p_df, dom, ["45", "60"])
-julia> rs_all = ADRIA.run_scenarios(p_df, dom)
 ```
 
 # Arguments
 - param_df : DataFrame of scenarios to run
 - domain : Domain, to run scenarios with
-- rcp : ID of RCP(s) to run scenarios under.
-- remove_workers : if running in parallel, removes workers after completion
+- RCP : ID or list of of RCP(s) to run scenarios under.
+- show_progress : Display progress
+- remove_workers : If running in parallel, removes workers after completion
 
 # Returns
 ResultSet
 """
-function run_scenarios(param_df::DataFrame, domain::Domain; remove_workers=true)::ResultSet
-    # Identify available data
-    avail_data::Vector{String} = readdir(joinpath(domain.env_layer_md.dpkg_path, "DHWs"))
-    RCP_ids = replace.(avail_data, "dhwRCP" => "", ".nc" => "")
-
-    @info "Running scenarios for RCPs: $(RCP_ids)"
-    return run_scenarios(param_df, domain, RCP_ids::Array{String}; remove_workers=remove_workers)
-end
 function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)::ResultSet
-    setup()
-    parallel = (nrow(param_df) > 128) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
-    if parallel
-        _setup_workers()
-        sleep(2)  # wait a bit while workers spin-up
-        @eval @everywhere using ADRIA
-    end
-
-    domain = switch_RCPs!(domain, RCP)
-    domain, data_store = ADRIA.setup_result_store!(domain, param_df)
-
-    cache = setup_cache(domain)
-    run_msg = "Running $(nrow(param_df)) scenarios for RCP $RCP"
-
-    # Convert to named matrix for faster iteration
-    scen_mat = NamedDimsArray(Matrix(param_df); scenarios=1:nrow(param_df), factors=names(param_df))
-
-    # Batch run scenarios
-    func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
-    if parallel
-        if show_progress
-            @showprogress run_msg 4 pmap(func, enumerate(eachrow(scen_mat)))
-        else
-            pmap(func, enumerate(eachrow(scen_mat)))
-        end
-
-        if remove_workers
-            _remove_workers()
-        end
-    else
-        if show_progress
-            @showprogress run_msg 4 map(func, enumerate(eachrow(scen_mat)))
-        else
-            map(func, enumerate(eachrow(scen_mat)))
-        end
-    end
-
-    return load_results(domain)
+    return run_scenarios(param_df, domain, [RCP]; show_progress, remove_workers)
 end
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP_ids::Array{String}; show_progress=true, remove_workers=true)::ResultSet
-    @info "Running $(nrow(param_df)) scenarios across $(length(RCP_ids)) RCPs"
-
+function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String}; show_progress=true, remove_workers=true)::ResultSet
+    # Initialize ADRIA configuration options
     setup()
-    output_dir = ENV["ADRIA_OUTPUT_DIR"]
+    
+    # Sort RCPs so the dataframe order match the output filepath 
+    RCP = sort(RCP)
 
-    result_sets::Vector{ResultSet} = Vector{ResultSet}(undef, length(RCP_ids))
-    for (i, RCP) in enumerate(RCP_ids)
-        tmp_dir = mktempdir(prefix="ADRIA_")
-        ENV["ADRIA_OUTPUT_DIR"] = tmp_dir
+    @info "Running $(nrow(param_df)) scenarios over $(length(RCP)) RCPs: $RCP"
 
-        result_sets[i] = run_scenarios(param_df, domain, RCP; show_progress=show_progress, remove_workers=false)
+    # Cross product between rcps and param_df to have every row of param_df for each rcp
+    rcps_df = DataFrame(RCP=parse.(Int64, RCP))
+    scenarios_df = crossjoin(param_df, rcps_df)
+    sort!(scenarios_df, :RCP)
+
+    @info "Setting up Result Set"
+    domain, data_store = ADRIA.setup_result_store!(domain, scenarios_df)
+
+    # Convert DataFrame to named matrix for faster iteration
+    scenarios_matrix = NamedDimsArray(
+        Matrix(scenarios_df);
+        scenarios=1:nrow(scenarios_df),
+        factors=names(scenarios_df)
+    )
+
+    # Setup cache to reuse for each scenario run
+    cache = setup_cache(domain)
+
+    parallel = (nrow(param_df) >= 4096) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    if parallel && nworkers() == 1
+        @info "Setting up parallel processing..."
+        spinup_time = @elapsed begin
+            _setup_workers()
+            sleep(2)  # wait a bit while workers spin-up
+
+            # load ADRIA on workers and define helper function
+            @everywhere @eval using ADRIA
+            @everywhere @eval func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
+        end
+
+        @info "Time taken to spin up workers: $(spinup_time) seconds"
+
+        # Define number of scenarios to run before returning results to main
+        # https://discourse.julialang.org/t/parallelism-understanding-pmap-and-the-batch-size-parameter/15604/2
+        # https://techytok.com/lesson-parallel-computing/
+        b_size = 4
+    else
+        b_size = 1
     end
 
-    if remove_workers
+    # Define local helper
+    func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
+
+    for rcp in RCP
+        run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
+
+        # Switch RCPs so correct data is loaded
+        domain = switch_RCPs!(domain, rcp)
+        target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
+        if show_progress
+            @showprogress run_msg 4 pmap(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])), batch_size=b_size)
+        else
+            pmap(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])), batch_size=b_size)
+        end
+    end
+
+    if parallel && remove_workers
         _remove_workers()
     end
 
-    ENV["ADRIA_OUTPUT_DIR"] = output_dir
-
-    rs = combine_results(result_sets...)
-
-    # Remove temporary result dirs
-    for t in result_sets
-        rm(result_location(t); force=true, recursive=true)
-    end
-
-    return rs
+    return load_results(_result_location(domain, RCP))
 end
-
 
 """
     run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
@@ -458,7 +453,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     env_horizon = zeros(Int64(param_set("plan_horizon") + 1), n_sites)  # temporary cache for planning horizon
 
-    # basal_area_per_settler is the area in m^2 of a size class one coral 
+    # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = corals.colony_area_cm2[corals.class_id.==1] ./ 100 .^ 2
     @inbounds for tstep::Int64 in 2:tf
         p_step::Int64 = tstep - 1
