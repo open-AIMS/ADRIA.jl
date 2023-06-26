@@ -197,7 +197,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
 
     # Collect defined RCPs
     rcps = string.(unique(scen_spec, "RCP")[!, "RCP"])
-    log_location::String = result_location(domain, rcps)
+    log_location::String = _result_location(domain, rcps)
 
     z_store = DirectoryStore(log_location)
 
