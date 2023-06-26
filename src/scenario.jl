@@ -137,7 +137,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         _remove_workers()
     end
 
-    return load_results(domain, rcps)
+    return load_results(_result_location(domain, RCP))
 end
 
 """

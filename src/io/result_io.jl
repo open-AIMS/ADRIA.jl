@@ -330,7 +330,6 @@ end
 """
     load_results(result_loc::String)::ResultSet
     load_results(domain::Domain)::ResultSet
-    load_results(domain::Domain, rcps::Array{String})::ResultSet
 
 Create interface to a given Zarr result set.
 """
@@ -435,19 +434,21 @@ end
 function load_results(domain::Domain)::ResultSet
     return load_results(result_location(domain))
 end
-function load_results(domain::Domain, rcps::Array{String})::ResultSet
-    return load_results(result_location(domain, rcps))
-end
 
 """
     result_location(d::Domain)::String
-    result_location(d::Domain, rcps::Array{String})::String
 
 Generate path to the data store of results for the given Domain.
 """
 function result_location(d::Domain)::String
     return joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(d.name)__RCPs$(d.RCP)__$(d.scenario_invoke_time)")
 end
-function result_location(d::Domain, rcps::Array{String})::String
+
+"""
+    _result_location(d::Domain, rcps::Vector{String})::String
+
+Generate path to the data store of results for the given Domain and RCPs names.
+"""
+function _result_location(d::Domain, rcps::Vector{String})::String
     return joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(d.name)__RCPs_$(join(rcps, "_"))__$(d.scenario_invoke_time)")
 end
