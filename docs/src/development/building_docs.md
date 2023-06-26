@@ -5,7 +5,16 @@ ADRIA documentation is built using [Documenter.jl](https://github.com/JuliaDocs/
 
 ## Building documentation locally
 
-From the ADRIA project directory:
+As the documentation is build from a separate environment, it must be maintained/updated
+to incorporate any changes to ADRIA.
+
+```bash
+$ julia --project=docs
+(docs) pkg> resolve
+(docs) pkg> up
+```
+
+If no changes to the environment are necessary, simply run `make.jl` from the `docs` folder:
 
 ```bash
 $ cd docs
@@ -13,7 +22,6 @@ $ julia --project=. make.jl
 ```
 
 Locally generated documentation can be found under `docs/build`. Open the `index.html` file with any web browser.
-
 
 ## Documentation deployment
 
