@@ -1,3 +1,4 @@
+# Add ADRIA src directory to PATH so files are found
 push!(LOAD_PATH, "../src/")
 
 using Documenter, ADRIA
@@ -18,7 +19,7 @@ makedocs(sitename="ADRIA Documentation",
             "usage/scenario_generation.md",
             "usage/scenario_runs.md",
             "usage/analysis.md",
-            "usage/scenario_discovery.md"
+            # "usage/scenario_discovery.md"
         ],
         "dMCDA.md",
         # "Examples" => [
