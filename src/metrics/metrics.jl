@@ -397,7 +397,7 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
 
     # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
-    colony_area_cm2::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_colony_diam_means_m"))./100
+    colony_mean_diams_cm::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_colony_diam_means_m"))./100
 
     # Colony planar area parameters (see Fig 2B in Aston et al., [1])
     # First column is `b`, second column is `a`
@@ -418,7 +418,7 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
     # established by Urbina-Barretto 2021, for each taxa/size class and scenario
     # Urbina-Barretto model is a (natural) log-log relationship so we
     # apply `exp()` to transform back to dm³
-    colony_litres_per_cm2::Vector{Float64} = exp.(pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_area_cm2))
+    colony_litres_per_cm2::Vector{Float64} = exp.(pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_mean_diams_cm))
 
     # Convert from dm^3 to m^3
     cm2_to_m3_per_m2::Float64 = 10^-3
