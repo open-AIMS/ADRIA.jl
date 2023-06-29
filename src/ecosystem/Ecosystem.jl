@@ -350,7 +350,8 @@ function coral_spec()::NamedTuple
     params.growth_rate[params.class_id.==6] .= params.growth_rate[params.class_id.==6] .* 0.2
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
-    fec_par_a = Float64[1.03; 1.03; 1.69; -1.20; 0.86; 0.86]  # fecundity parameter a
+    # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
+    fec_par_a = Float64[1.03; 1.03; 1.69; 0.02; 0.86; 0.86]  # fecundity parameter a
     fec_par_b = Float64[1.28; 1.28; 1.05; 2.27; 1.21; 1.21]  # fecundity parameter b
     min_size_full_fec_cm2 = Float64[123.0; 123.0; 134.0; 134.0; 38.0; 38.0]
 
