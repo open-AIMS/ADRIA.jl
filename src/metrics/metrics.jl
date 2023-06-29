@@ -383,12 +383,10 @@ Helper function to convert coral colony values from Litres/cm² to m³/m²
 Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
 
 # References
-1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V., Elise, S., Kulbicki, M., Quod, J.-P.,
-     Dutrieux, E., Garnier, R., Henrich Bruggemann, J., Penin, L., & Adjeroud, M. (2021).
-   Quantifying the shelter capacity of coral reefs using photogrammetric 3D modeling:
-     From colonies to reefscapes.
-   Ecological Indicators, 121, 107151.
-   https://doi.org/10.1016/j.ecolind.2020.107151
+1. Aston Eoghan A., Duce Stephanie, Hoey Andrew S., Ferrari Renata (2022).
+    A Protocol for Extracting Structural Metrics From 3D Reconstructions of Corals.
+    Frontiers in Marine Science, 9.
+    https://doi.org/10.3389/fmars.2022.854395    
 
 """
 function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vector{Float64}}
@@ -399,18 +397,18 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
 
     # Extract assumed colony area (in cm^2) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
-    colony_area_cm2::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_colony_area_cm2"))
+    colony_area_cm2::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_colony_diam_means_m"))./100
 
-    # Colony planar area parameters (see second column of Table 1 in Urbina-Barreto et al., [1])
+    # Colony planar area parameters (see Fig 2B in Aston et al., [1])
     # First column is `b`, second column is `a`
     # log(S) = b + a * log(x)
     pa_params::Array{Float64,2} = Array{Float64,2}([
-        -8.32 1.50   # tabular from Urbina-Barretto 2021
-        -8.32 1.50   # tabular from Urbina-Barretto 2021
-        -7.37 1.34   # columnar from Urbina-Barretto 2021, assumed similar for Corymbose Acropora
-        -7.37 1.34   # columnar from Urbina-Barretto 2021, assumed similar for Corymbose Acropora
-        -9.69 1.49   # massives from Urbina-Barretto 2021, assumed similar for encrusting and small massives
-        -9.69 1.49   # massives from Urbina-Barretto 2021,  assumed similar for large massives
+        -8.97 3.14   # Abhorescent Acropora (using branching porites parameters as similar method of growing ever expanding colonies).
+        -8.95 2.80   # Tabular Acropora
+        -9.13 2.94   # Corymbose Acropora
+        -7.37 1.34   # Corymbose non-Acropora
+        -8.87 2.30   # Small massives
+        -8.87 2.30   # Large massives
     ])
 
     # Repeat each entry `n_sizes` times to cover the number size classes represented
