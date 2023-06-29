@@ -395,7 +395,7 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
     n_species::Int64 = length(unique(cs_p.coral_id))
     n_sizes::Int64 = length(unique(cs_p.class_id))
 
-    # Extract assumed colony area (in cm^2) for each taxa/size class from scenario inputs
+    # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
     colony_area_cm2::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_colony_diam_means_m"))./100
 
@@ -406,7 +406,7 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
         -8.97 3.14   # Abhorescent Acropora (using branching porites parameters as similar method of growing ever expanding colonies).
         -8.95 2.80   # Tabular Acropora
         -9.13 2.94   # Corymbose Acropora
-        -7.37 1.34   # Corymbose non-Acropora
+        -8.90 2.94   # Corymbose non-Acropora (using branching pocillopora values from fig2B)
         -8.87 2.30   # Small massives
         -8.87 2.30   # Large massives
     ])
