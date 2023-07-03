@@ -7,7 +7,22 @@ using Distributions
 # include("growth_expanded.jl")
 
 
-function growth_rate(linear_extension::Array{Float64}, diam_bin_widths::Array{Float64})::Vector{Float64}
+"""
+    growth_rate(linear_extension::Array{Float64}, diam_bin_widths::Array{Float64})::Vector{Float64}
+
+Determine the rate of growth representing the proportion of each size class that moves
+up a size class each (yearly) time step. Values > 1 indicate transitions to higher size
+classes occurs more than once per time step.
+
+# Arguments
+- `linear_extension` : Linear extension in cm/year
+- `diam_bin_widths` : diameter of each size class (bin) in cm
+
+# Returns
+Vector, of size \$N = [n_{species} ⋅ n_{classes}]\$ indicating proportional growth rates
+for each.
+"""
+function growth_rate(linear_extension::Matrix{Float64}, diam_bin_widths::Vector{Float64})::Vector{Float64}
     return vec(((2.0 * linear_extension) ./ diam_bin_widths')')
 end
 
@@ -156,8 +171,10 @@ end
 
 
 """
-    bleaching_mortality!(Y::Matrix{Float64}, tstep::Int64, depth::Vector{Float64},
-        s::Vector{Float64}, dhw::Float64, a_adapt::Float64, n_adapt::Float64)
+    bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractArray{Float64,2},
+        depth_coeff::AbstractArray{Float64}, tstep::Int64, depth::Vector{Float64},
+        s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64},
+        n_adapt::Real)::Nothing
 
 Calculates and applies bleaching mortality, taking into account depth and bleaching
 sensitivity of corals. Model is adapted from Bozec et al., [2], itself based on data
@@ -165,7 +182,7 @@ from Hughes et al., [3] (bleaching sensitivity) and Baird et al., [1] (relations
 between bleaching and depth).
 
 # Arguments
-- `Y` : Matrix to save results into
+- `Y` : Matrix to save results into, of shape \$n_{species} ⋅ n_{locations}\$
 - `tstep` : Current time step
 - `depth` : Mean site depth (m) for each site
 - `s` : Bleaching sensitivity of corals (relative values) for each taxa/size class
@@ -197,8 +214,10 @@ Nothing
    Nature, 556(7702), 492-496.
    https://doi.org/10.1038/s41586-018-0041-2
 """
-function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractArray{Float64,2}, depth_coeff::AbstractArray{Float64}, tstep::Int64, depth::Vector{Float64},
-    s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
+function bleaching_mortality!(Y::AbstractArray{Float64,2},
+    capped_dhw::AbstractArray{Float64,2}, depth_coeff::AbstractArray{Float64},
+    tstep::Int64, depth::Vector{Float64}, s::Vector{Float64},
+    dhw::AbstractArray{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
 
     # Initial mortality
     # Bozec et al., (2022) derive their model from Hughes et al., (2018, Fig 2C).
@@ -210,7 +229,7 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractA
     # A depth coefficient is also introduced to account for the reduced
     # experienced heat at greater depths.
 
-    # The model is modified to incorporate adaptation effect but maximum 
+    # The model is modified to incorporate adaptation effect but maximum
     # reduction is to capped to 0.
     @. capped_dhw = min.(ℯ^(0.17 + 0.35 * max(0.0, dhw' - (a_adapt + (tstep * n_adapt)))) - 1.0, 100.0)
     @. depth_coeff = ℯ^(-0.07551 * (depth - 2.0))
