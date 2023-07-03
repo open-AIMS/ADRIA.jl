@@ -24,7 +24,6 @@ using ADRIA
         0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora 
         0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
         0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
-    params.mb_rate = mb'[:]
     
     # Bleaching sensitivity of each coral group
     # Bozec et al., (2022)
@@ -64,7 +63,7 @@ using ADRIA
 
     bin_edges_cm = [0, 2, 5, 10, 20, 40, 80]
     bin_edge_diameters_cm2 = pi .* (bin_edges_cm ./ 2) .^ 2
-    stored_colony_mean_areas = coral_params.colony_area_cm2
+    stored_colony_mean_areas = pi.*((coral_params.mean_colony_diameter_m.*100)./2).^2
 
     # check colony areas in cm^2 are within bounds designated by bin edges
     for k = 1:6
