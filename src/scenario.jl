@@ -379,9 +379,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_sc_TA::Int64 = first(findall(tabular_enhanced .& target_class_id))  # size class indices for TA and CA
     seed_sc_CA::Int64 = first(findall(corymbose_enhanced .& target_class_id))
 
-    # Extract colony areas for sites selected and convert to m^2
-    col_area_seed_TA = pi *(corals.mean_colony_diameter_m[seed_sc_TA]/2)^2
-    col_area_seed_CA = pi *(corals.mean_colony_diameter_m[seed_sc_CA]/2)^2
+    # Extract colony areas for sites selected in m^2
+    col_area_seed_TA = colony_mean_area(corals.mean_colony_diameter_m[seed_sc_TA])
+    col_area_seed_CA = colony_mean_area(corals.mean_colony_diameter_m[seed_sc_CA])
 
     bleaching_sensitivity = corals.bleaching_sensitivity
 
@@ -453,7 +453,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     env_horizon = zeros(Int64(param_set("plan_horizon") + 1), n_sites)  # temporary cache for planning horizon
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
-    basal_area_per_settler = pi.*(corals.mean_colony_diameter_m[corals.class_id.==1]./2).^2
+    basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==1])
     @inbounds for tstep::Int64 in 2:tf
         p_step::Int64 = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]

@@ -62,8 +62,8 @@ using ADRIA
     @test all(stored_mb_rate .>= 0.0) || "Some coral background mortality rates are <= 0."
 
     bin_edges_cm = [0, 2, 5, 10, 20, 40, 80]
-    bin_edge_diameters_cm2 = pi .* (bin_edges_cm ./ 2) .^ 2
-    stored_colony_mean_areas = pi.*((coral_params.mean_colony_diameter_m.*100)./2).^2
+    bin_edge_diameters_cm2 = ADRIA.colony_mean_area(bin_edges_cm)
+    stored_colony_mean_areas = ADRIA.colony_mean_area(coral_params.mean_colony_diameter_m.*100.0)
 
     # check colony areas in cm^2 are within bounds designated by bin edges
     for k = 1:6

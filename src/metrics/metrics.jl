@@ -3,7 +3,7 @@ module metrics
 using Interpolations, Statistics, OnlineStats, NamedDims, AxisKeys
 
 using DataFrames
-using ADRIA: coral_spec, ResultSet, timesteps
+using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps
 
 
 abstract type Outcome end
@@ -306,7 +306,7 @@ absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios
 Calculate the maximum possible area that can be covered by juveniles for a given m².
 """
 function _max_juvenile_area(coral_params::DataFrame, max_juv_density::Float64=51.8)
-    max_size_m² = maximum((pi.*coral_params[coral_params.class_id.==2, :mean_colony_diameter_m]./2).^2)
+    max_size_m² = maximum(colony_mean_area(coral_params[coral_params.class_id.==2, :mean_colony_diameter_m]))
     return max_juv_density * max_size_m²
 end
 
@@ -397,7 +397,7 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
 
     # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
-    colony_mean_diams_cm::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_mean_colony_diameter_m"))./100
+    colony_mean_diams_cm::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_mean_colony_diameter_m"))./100.0
 
     # Colony planar area parameters (see Fig 2B in Aston et al., [1])
     # First column is `b`, second column is `a`

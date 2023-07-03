@@ -207,6 +207,18 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
     return
 end
 
+"""
+    colony_areas(colony_diam_means)
+
+Generate colony areas for each size class.
+
+# Arguments
+- `colony_diam_means_m` : mean colony diameter (in meters)
+
+"""
+function colony_mean_area(colony_diam_means)
+    return pi .* ((colony_diam_means ./ 2.0).^2)
+end
 
 """
     colony_areas()
@@ -237,11 +249,10 @@ function colony_areas()
     # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
     # To convert to cover we locate bin means and calculate bin mean areas
     colony_diam_means = repeat(mean_cm_diameters', nclasses, 1)
-    colony_area_mean_cm2 = @. pi * ((colony_diam_means / 2)^2)
+    colony_area_mean_cm2 = colony_mean_area(colony_diam_means)
 
     return colony_area_mean_cm2, (colony_diam_means ./ 100.0)
 end
-
 
 """
     coral_spec()
@@ -357,7 +368,7 @@ function coral_spec()::NamedTuple
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
-    colony_area_cm2 = pi .* ((mean_colony_diameter_m .* 100.0) ./ 2.0) .^ 2
+    colony_area_cm2 = colony_mean_area(mean_colony_diameter_m .* 100.0)
     fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
     fec[colony_area_cm2.<min_size_full_fec_cm2] .= 0.0
 
@@ -365,7 +376,7 @@ function coral_spec()::NamedTuple
     fec[:, 1:2] .= 0.0
 
     # then convert to number of larvae produced per m2
-    fec_m² = fec ./ (pi .* (mean_colony_diameter_m ./ 2.0) .^ 2)  # convert from per colony area to per m2
+    fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
     params.fecundity = fec_m²'[:]
 
     ## Mortality
