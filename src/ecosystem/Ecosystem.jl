@@ -213,7 +213,7 @@ end
 Generate colony areas for each size class.
 
 # Arguments
-- `colony_diam_means_m` : mean colony diameter (in meters)
+- `colony_diam_means` : mean colony diameter (in meters)
 
 """
 function colony_mean_area(colony_diam_means)
