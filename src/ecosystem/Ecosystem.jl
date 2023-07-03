@@ -323,7 +323,7 @@ function coral_spec()::NamedTuple
     # size classes and growth rates as linear extension (in cm per year).
 
     colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
-    params.colony_area_cm2 = reshape(colony_area_mean_cm²', n_species)[:]
+    params.mean_colony_diameter_m= reshape(mean_colony_diameter_m', n_species)[:]
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
     # all values in cm/year
