@@ -89,6 +89,31 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
 end
 
 """
+    depth_coefficient(d::Union{Int64,Float64})::Float64
+
+Model by Baird et al., [1] providing an indication of a relationship between bleaching
+and depth.
+
+# Arguments
+- `d` : median depth of location in meters
+
+# Returns
+Proportion of population affected by bleaching at depth `x`.
+Values are constrained such that 0.0 <= x <= 1.0
+
+# References
+1. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
+     Precoda, K., Torres-Pulliza, D., Woods, R., Zawada, K., & Hughes, T. (2018).
+   A decline in bleaching suggests that depth can provide a refuge from global
+     warming in most coral taxa.
+   Marine Ecology Progress Series, 603, 257-264.
+   https://doi.org/10.3354/meps12732
+"""
+function depth_coefficient(d::Union{Int64,Float64})::Float64
+    return max(min(exp(-0.07551 * (d - 2.0)), 1.0), 0.0)
+end
+
+"""
     bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractArray{Float64,2},
         depth_coeff::AbstractArray{Float64}, tstep::Int64, depth::Vector{Float64},
         s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64},
