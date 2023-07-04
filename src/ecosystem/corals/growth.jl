@@ -176,15 +176,6 @@ function fecundity_scope!(fec_groups::AbstractArray{T,2}, fec_all::AbstractArray
     for (i, (s, e)) in enumerate(zip(1:ngroups:nclasses, ngroups:ngroups:nclasses+1))
         @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
-
-    # Above is equivalent to the below, but generic to any group/class size
-    # @views fec_groups[1, :] = sum(fec_all[1:6, :], dims=1);   # Tabular Acropora enhanced
-    # @views fec_groups[2, :] = sum(fec_all[7:12, :], dims=1);  # Tabular Acropora unenhanced
-    # @views fec_groups[3, :] = sum(fec_all[13:18, :], dims=1); # Corymbose Acropora enhanced
-    # @views fec_groups[4, :] = sum(fec_all[19:24, :], dims=1); # Corymbose Acropora unenhanced
-    # @views fec_groups[5, :] = sum(fec_all[25:30, :], dims=1); # Small massives and encrusting
-    # @views fec_groups[6, :] = sum(fec_all[31:36, :], dims=1); # Large massives
-
     return nothing
 end
 
