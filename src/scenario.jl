@@ -494,7 +494,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             env_horizon[1, :] .= dhw_t
             mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
 
-            #mcda_vars.dam_prob .= vec(sum(dropdims((mean(Sw_t[horizon, :, :], dims=1) .+ std(Sw_t[horizon, :, :], dims=1)) .* 0.5, dims=1), dims=1))
+            # mcda_vars.dam_prob .= vec(sum(dropdims((mean(Sw_t[horizon, :, :], dims=1) .+ std(Sw_t[horizon, :, :], dims=1)) .* 0.5, dims=1), dims=1))
         end
         if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= site_coral_cover
@@ -549,7 +549,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Calculate survivors from bleaching and wave stress
-        #@views @. prop_loss = Sbl * Sw_t[p_step, :, :]
+        # @views @. prop_loss = Sbl * Sw_t[p_step, :, :]
 
         # Note: ODE is run relative to `k` area, but values are otherwise recorded
         #       in relative to absolute area.
