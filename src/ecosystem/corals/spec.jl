@@ -2,6 +2,8 @@ using DataFrames
 import ModelParameters: Model
 
 
+const HEAT_UB = 20.0
+
 """
     to_coral_spec(m::Model)::DataFrame
 
