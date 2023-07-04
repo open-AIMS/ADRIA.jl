@@ -271,8 +271,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     rnd_seed_val::Int64 = floor(Int64, sum(param_set(!=("RCP"))))  # select everything except RCP
     Random.seed!(rnd_seed_val)
 
-    ### TODO: All cached arrays/values to be moved to outer function and passed in
-    # to reduce overall allocations (e.g., sim constants don't change across all scenarios)
     dhw_idx::Int64 = Int64(param_set("dhw_scenario"))
     wave_idx::Int64 = Int64(param_set("wave_scenario"))
 
@@ -302,8 +300,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     srm::Real = param_set("SRM")  # DHW equivalents reduced by some shading mechanism
     seed_years::Int64 = param_set("seed_years")  # number of years to seed
     shade_years::Int64 = param_set("shade_years")  # number of years to shade
-
-    ### END TODO
 
     total_site_area::Array{Float64,2} = cache.site_area
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²

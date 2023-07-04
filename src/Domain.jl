@@ -91,6 +91,7 @@ end
 """
     model_spec(d::Domain)::DataFrame
     model_spec(d::Domain, filepath::String)::Nothing
+    model_spec(m::Model)::DataFrame
 
 Get model specification as DataFrame with lower and upper bounds.
 If a filepath is provided, writes the specification out to file with ADRIA metadata.
