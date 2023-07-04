@@ -3,7 +3,7 @@ using Setfield
 using DataFrames
 using ModelParameters
 import ModelParameters: update!, Model
-
+using Distributions
 
 abstract type EcoModel end
 
@@ -298,6 +298,13 @@ between bleaching years come from [1].
    Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation.
    Ecological Monographs, 92(1), e01494.
    https://doi.org/10.1002/ecm.1494
+
+5. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021. 
+   Coral adaptation to climate change: Meta-analysis reveals high heritability across 
+     multiple traits. 
+   Global Change Biology 27, 5694-5710. 
+   https://doi.org/10.1111/gcb.15829
+
 """
 function coral_spec()::NamedTuple
     # Below parameters pertaining to species are new. We now add size classes
@@ -327,7 +334,7 @@ function coral_spec()::NamedTuple
     params.name = human_readable_name(tn; title_case=true)
     params.taxa_id = repeat(1:n_classes; inner=n_classes)
 
-    params.class_id = repeat(1:n_classes, n_classes)
+    params.class_id = repeat(1:n_classes, n_classes)::Vector{Int64}
     params.coral_id = String[join(x, "_") for x in zip(tn, params.taxa_id, params.class_id)]
 
     # Ecological parameters
@@ -416,9 +423,29 @@ function coral_spec()::NamedTuple
         1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora 
         1.70 1.70 1.70 1.70 1.70 1.70  # Corymbose non-Acropora 
         0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
-        0.25 0.25 0.25 0.25 0.25 0.25] # Large massives
+        0.25 0.25 0.25 0.25 0.25 0.25]) # Large massives
     params.bleaching_sensitivity = bleaching_sensitivity'[:]
 
+    # Natural adaptation / heritability
+    # Values here informed by Bairos-Novak et al., (2022).
+    # Mean and std (i.e., sqrt of variance) for each species (row) and size class (cols)
+    params.dist_mean = repeat(Float64[
+            3.345484656,  # arborescent Acropora
+            3.751612251,  # tabular Acropora
+            4.081622683,  # corymbose Acropora
+            5.496906809,  # Pocillopora + non-Acropora corymbose
+            6.477249125,  # Small massives and encrusting
+            7.153507902   # Large massives
+        ], inner=n_classes)
+
+    params.dist_std = repeat(Float64[
+            sqrt(6.708186388),  # arborescent Acropora
+            sqrt(8.435734979),  # tabular Acropora
+            sqrt(9.985107528),  # corymbose Acropora
+            sqrt(18.11022246),  # Pocillopora + non-Acropora corymbose
+            sqrt(25.14596104),  # Small massives and encrusting
+            sqrt(30.67080388)   # Large massives
+        ], inner=n_classes)
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list
