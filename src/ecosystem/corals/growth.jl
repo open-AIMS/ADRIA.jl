@@ -428,7 +428,7 @@ of 0.9 inside sf(i, j) indicates that species i at site j can only produce
 - `n_groups` : Number of groups
 
 # Returns
-sf : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
+`sf` : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
 """
 function stressed_fecundity(tstep::Int64, a_adapt::Vector{T}, n_adapt::T,
     stresspast::Vector{T}, LPdhwcoeff::T, DHWmaxtot::T, LPDprm2::T, n_groups::Int64)::Matrix{T} where {T<:Float64}
