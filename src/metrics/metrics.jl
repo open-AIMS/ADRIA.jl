@@ -415,9 +415,8 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
     pa_params = repeat(pa_params, inner=(n_sizes, 1))
 
     # Estimate colony volume (litres) based on relationship
-    # established by Urbina-Barretto 2021, for each taxa/size class and scenario
-    # Urbina-Barretto model is a (natural) log-log relationship so we
-    # apply `exp()` to transform back to dm³
+    # established by Aston et al. 2022, for each taxa/size class and scenario
+    # Aston et. al. log-log relationship so we apply `exp()` to transform back to dm³
     colony_litres_per_cm2::Vector{Float64} = exp.(pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_mean_diams_cm))
 
     # Convert from dm^3 to m^3
