@@ -316,6 +316,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     felt_dhw = cache.felt_dhw
     depth_coeff = cache.depth_coeff
 
+    depth_coeff .= depth_coefficient.(site_data.depth_med)
+
     Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
     Y_cover[1, :, :] .= domain.init_coral_cover
     ode_u = zeros(n_species, n_sites)
@@ -326,6 +328,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     Yfog = SparseArray(spzeros(tf, n_sites))
     Yseed = SparseArray(zeros(tf, 3, n_sites))  # 3 = the number of seeded coral types
 
+    # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
     is_guided = param_set("guided") > 0
 
@@ -420,6 +423,20 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Prep site selection
         mcda_vars = DMCDA_vars(domain, param_set, depth_priority, sum(Y_cover[1, :, :], dims=1), area_to_seed)
     end
+
+    # Set up distributions for natural adaptation/heritability
+    c_dist::Matrix{Truncated} = repeat(
+        TruncatedNormal.(corals.dist_mean, corals.dist_std, 0.0, corals.dist_mean .+ HEAT_UB),
+        1, n_sites
+    )
+    c_dist_t1 = copy(c_dist)
+
+    # Identify juvenile classes
+    # juveniles = corals.class_id .∈ [[1, 2]]
+
+    # Cache for proportional mortality and coral population increases
+    bleaching_mort = zeros(tf, n_species, n_sites)
+    c_increase = zeros(n_groups)
 
     #### End coral constants
 
@@ -533,7 +550,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Calculate and apply bleaching mortality
-        bleaching_mortality!(Sbl, felt_dhw, depth_coeff, tstep, site_data.depth_med, bleaching_sensitivity, dhw_t, a_adapt, n_adapt)
+        # bleaching_mortality!(Sbl, felt_dhw, depth_coeff, tstep, site_data.depth_med, bleaching_sensitivity, dhw_t, a_adapt, n_adapt)
+        Sbl .= Y_pstep[:, :]
+        bleaching_mortality!(Sbl, dhw_t, depth_coeff, c_dist, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
@@ -546,12 +565,13 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Calculate survivors from bleaching and wave stress
-        @views @. prop_loss = Sbl * Sw_t[p_step, :, :]
+        # @views @. prop_loss = Sbl * Sw_t[p_step, :, :]
 
         # Note: ODE is run relative to `k` area, but values are otherwise recorded
         #       in relative to absolute area.
         # Update initial condition
-        @. tmp = ((Y_pstep * prop_loss) * total_site_area) / absolute_k_area
+        # @. tmp = ((Y_pstep * prop_loss) * total_site_area) / absolute_k_area
+        @. tmp = (Sbl * total_site_area) / absolute_k_area
         replace!(tmp, Inf => 0.0, NaN => 0.0)
         growth.u0 .= tmp
 
@@ -565,10 +585,14 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_site_area, 0.0, 1.0)
+
+        if tstep < tf
+            adjust_population_distribution!(Y_cover, n_groups, c_dist, c_dist_t1, tstep, c_increase)
+        end
     end
 
     # Avoid placing importance on sites that were not considered
     # (lower values are higher importance)
     site_ranks[site_ranks.==0.0] .= n_sites + 1
-    return (raw=Y_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks)
+    return (raw=Y_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks, bleaching_mortality=bleaching_mort)
 end
