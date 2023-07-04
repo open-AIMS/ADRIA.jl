@@ -196,12 +196,12 @@ end
         prop_mort::AbstractArray{Float64})::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
-all non-Juvenile (> 5cm²) size classes. Distributions are informed by data from
-Bairos-Novak et al., [1]. Juvenile mortality is assumed to be primarily represented by other
-factors (i.e., background mortality; see Álvarez-Noriega et al., [2]). The proportion of 
-the population which bleached is estimated with the Cumulative Density Function. 
-Bleaching mortality is then estimated with a depth-adjusted coefficient (from Baird et al., 
-[3]).
+all non-Juvenile (> 5cm²) size classes. Distributions are informed by learnings from
+Bairos-Novak et al., [1] and (unpublished) data referred to in Hughes et al., [2]. Juvenile
+mortality is assumed to be primarily represented by other factors (i.e., background
+mortality; see Álvarez-Noriega et al., [3]). The proportion of the population which bleached
+is estimated with the Cumulative Density Function. Bleaching mortality is then estimated
+with a depth-adjusted coefficient (from Baird et al., [4]).
 
 # Arguments
 - `cover` : Coral cover for current timestep
@@ -220,7 +220,14 @@ Bleaching mortality is then estimated with a depth-adjusted coefficient (from Ba
    Global Change Biology 27, 5694-5710.
    https://doi.org/10.1111/gcb.15829
 
-2. Álvarez-Noriega, M., Baird, A.H., Bridge, T.C.L., Dornelas, M., Fontoura, L.,
+2. Hughes, T.P., Kerry, J.T., Baird, A.H., Connolly, S.R., Dietzel, A., Eakin, C.M.,
+     Heron, S.F., Hoey, A.S., Hoogenboom, M.O., Liu, G., McWilliam, M.J., Pears, R.J.,
+     Pratchett, M.S., Skirving, W.J., Stella, J.S., Torda, G., 2018.
+   Global warming transforms coral reef assemblages.
+   Nature 556, 492-496.
+   https://doi.org/10.1038/s41586-018-0041-2
+
+3. Álvarez-Noriega, M., Baird, A.H., Bridge, T.C.L., Dornelas, M., Fontoura, L.,
      Pizarro, O., Precoda, K., Torres-Pulliza, D., Woods, R.M., Zawada, K.,
      Madin, J.S., 2018.
    Contrasting patterns of changes in abundance following a bleaching event between
@@ -228,7 +235,7 @@ Bleaching mortality is then estimated with a depth-adjusted coefficient (from Ba
    Coral Reefs 37, 527-532.
    https://doi.org/10.1007/s00338-018-1677-y
 
-3. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
+4. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
      Precoda, K., Torres-Pulliza, D., Woods, R., Zawada, K., & Hughes, T. (2018).
    A decline in bleaching suggests that depth can provide a refuge from global
      warming in most coral taxa.
