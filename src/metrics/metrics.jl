@@ -397,7 +397,7 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
 
     # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
-    colony_mean_diams_cm::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_mean_colony_diameter_m"))./100.0
+    colony_mean_diams_cm::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_mean_colony_diameter_m")).*100.0
 
     # Colony planar area parameters (see Fig 2B in Aston et al., [1])
     # First column is `b`, second column is `a`
