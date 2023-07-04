@@ -4,6 +4,7 @@ using TOML, CpuId, PkgVersion
 using Random, StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
 using NamedDims, AxisKeys, SparseArrayKit, DifferentialEquations
 
+using FLoops
 using MAT
 using Combinatorics, Distances
 using OrderedCollections
