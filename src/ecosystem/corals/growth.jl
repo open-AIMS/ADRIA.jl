@@ -282,7 +282,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
 end
 
 """
-    _merge_distributions!(c_t, c_t1, dists, dists_t1, c_increase)
+    _merge_distributions!(c_t, c_t1, dists_t, dists_t1, c_increase)
 
 Combine distributions using the weighted average approach for all size classes above 1.
 If a positive change in cover (between \$t\$ and \$t+1\$) is found for a given size
@@ -293,14 +293,14 @@ Where a negative change has occurred, it is assumed mortalities overcame growth.
 # Arguments
 - `c_t` : Cover for given size class, location at timestep \$t\$
 - `c_t1` : Cover for given size class, location at timestep \$t+1\$
-- `dists` : Critical DHW threshold distribution for timestep \$t\$
+- `dists_t` : Critical DHW threshold distribution for timestep \$t\$
 - `dists_t1` : Critical DHW threshold distribution for timestep \$t+1\$
 - `c_increase` : Cache matrix to temporarily store difference between \$c_t\$ and \$c_t1\$
 
 # Returns
 Nothing
 """
-function _merge_distributions!(c_t, c_t1, dists, dists_t1, c_increase)::Nothing
+function _merge_distributions!(c_t, c_t1, dists_t, dists_t1, c_increase)::Nothing
     # Identify size class populations that increased in cover.
     # Assume an increase means the previous size class moved up (i.e., there was growth).
     c_increase .= max.(c_t1 .- c_t, 0.0)
@@ -317,11 +317,11 @@ function _merge_distributions!(c_t, c_t1, dists, dists_t1, c_increase)::Nothing
     w2[isnan.(w2)] .= 0.0
 
     # Weight distributions according to their relative contributions.
-    μ1::Vector{Float64} = mean.(dists[moved.-1]) .* w1[moved.-1]
-    σ1::Vector{Float64} = std.(dists[moved.-1]) .* w1[moved.-1]
+    μ1::Vector{Float64} = mean.(dists_t[moved.-1]) .* w1[moved.-1]
+    σ1::Vector{Float64} = std.(dists_t[moved.-1]) .* w1[moved.-1]
 
-    μ2::Vector{Float64} = mean.(dists[moved]) .* w2[moved]
-    σ2::Vector{Float64} = std.(dists[moved]) .* w2[moved]
+    μ2::Vector{Float64} = mean.(dists_t[moved]) .* w2[moved]
+    σ2::Vector{Float64} = std.(dists_t[moved]) .* w2[moved]
 
     dists_t1[moved] .= TruncatedNormal.(μ1 .+ μ2, σ1 .+ σ2, 0.0, (μ1 .+ μ2) .+ HEAT_UB)
 
