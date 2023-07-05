@@ -323,7 +323,7 @@ function _merge_distributions!(c_t, c_t1, dists, dists_t1, c_increase)::Nothing
     μ2::Vector{Float64} = mean.(dists[moved]) .* w2[moved]
     σ2::Vector{Float64} = std.(dists[moved]) .* w2[moved]
 
-    dists_t1[moved] .= TruncatedNormal.(μ1 .+ μ2, σ1 .+ σ2, 0.0, (μ1 .+ μ2) .+ 20.0)
+    dists_t1[moved] .= TruncatedNormal.(μ1 .+ μ2, σ1 .+ σ2, 0.0, (μ1 .+ μ2) .+ HEAT_UB)
 
     return
 end
