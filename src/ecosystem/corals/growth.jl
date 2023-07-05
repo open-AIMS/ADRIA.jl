@@ -367,10 +367,10 @@ function adjust_population_distribution!(cover, n_groups, dist, dist_t1, tstep, 
         # The new distribution mean for size class 1 is then: (S⋅h²)
         S::Float64 = mean(dist_t1[sc1+step, loc]) - mean(dist[sc1+step, loc])
         if S != 0.0
-            μ_t1::Float64 = mean(dist[sc1+step, loc]) + (S * 0.3)  # h² := 0.3
+            μ_t1::Float64 = mean(dist[sc1+step, loc]) + (S * 0.3)  # h² := 0.3, TODO: Make this a perturbable factor.
             σ_t1::Float64 = std(dist_t1[sc1+step, loc])::Float64
 
-            # The standard deviation is assumed to remain the same as the parents (?)
+            # The standard deviation is assumed to remain the same as the parents
             dist_t1[sc1, loc] = TruncatedNormal(μ_t1, σ_t1, 0.0, μ_t1 + HEAT_UB)
         end
     end
