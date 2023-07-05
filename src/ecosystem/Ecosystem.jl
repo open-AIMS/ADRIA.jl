@@ -427,7 +427,8 @@ function coral_spec()::NamedTuple
     params.bleaching_sensitivity = bleaching_sensitivity'[:]
 
     # Natural adaptation / heritability
-    # Values here informed by Bairos-Novak et al., (2022).
+    # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
+    # Hughes et al., (2018)
     # Mean and std (i.e., sqrt of variance) for each species (row) and size class (cols)
     params.dist_mean = repeat(Float64[
             3.345484656,  # arborescent Acropora
