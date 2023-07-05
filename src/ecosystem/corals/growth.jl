@@ -316,7 +316,6 @@ function _merge_distributions!(c_t, c_t1, dists_t, dists_t1, c_increase)::Nothin
 
     # Mix distributions, weighted according to their relative contributions.
     dists_t1[moved] .= MixtureModel.(Vector{Distribution}[dists_t[moved.-1], dists_t[moved]], Vector{Float64}[w1, w2])
-
     return
 end
 
