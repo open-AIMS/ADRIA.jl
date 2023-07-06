@@ -29,24 +29,25 @@ function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::Abstract
         axis_opts...
     )
 
+    # Filter clusters and data for non-zero clusters
+    filtered_clusters = filter(c -> c != 0, clusters)
+    filtered_data = data[:, clusters .> 0]
+
     # TODO: Separate into own function
     # Calculate minimum opacity
     min_step = (1 / 0.05)
-    n_clusters = length(unique(clusters))
+    n_clusters = length(unique(filtered_clusters))
 
     cat_colors = categorical_colors(:seaborn_bright, n_clusters)
     leg_entry = Any[]
-    for clst in unique(clusters)
-        n_scens = count(clusters .== clst)
+    for clst in unique(filtered_clusters)
+        n_scens = count(filtered_clusters .== clst)
         color_weight = max(min((1.0 / (n_scens / min_step)), 0.6), 0.1)
 
-        push!(leg_entry, series!(ax, data[:, clusters .== clst]', solid_color=(cat_colors[clst], color_weight)))
+        push!(leg_entry, series!(ax, filtered_data[:, filtered_clusters .== clst]', solid_color=(cat_colors[clst], color_weight)))
     end
 
     Legend(g[1,2], leg_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
 
     return g
 end
-
-
-

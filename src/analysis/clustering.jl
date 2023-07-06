@@ -118,3 +118,10 @@ function time_series_clustering(data::AbstractMatrix{T}, n_clusters::Int64)::Vec
     # Hierarchical clustering with n_clusters clusters
     return cutree(dendogram, k=n_clusters)
 end
+function time_series_clustering(result_set::ResultSet, data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
+    # find sites with k > 0.0
+    non_null_sites = result_set.site_data.k .> 0.0
+    filtered_data = data[:, non_null_sites]
+    clusters = time_series_clustering(filtered_data, n_clusters)
+    return [s != 0 ? popfirst!(clusters) : 0 for s in non_null_sites]
+end
