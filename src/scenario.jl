@@ -433,6 +433,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Identify juvenile classes
     # juveniles = corals.class_id .∈ [[1, 2]]
+    # deployed_size_class = corals.class_id .∈ 2
 
     # Cache for proportional mortality and coral population increases
     bleaching_mort = zeros(tf, n_species, n_sites)
@@ -441,6 +442,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     #### End coral constants
 
     ## Update ecological parameters based on intervention option
+
+    # Treat as enhancement from mean of "natural" DHW tolerance
+    a_adapt[a_adapt.>0.0] .+= corals.dist_mean[a_adapt.>0.0]
 
     # Level of natural coral adaptation
     n_adapt = param_set("n_adapt")
