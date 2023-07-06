@@ -214,10 +214,10 @@ function ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::Na
     # Hacky special case handling for SSP/RCP
     if :RCP in factors || :SSP in factors
         loc = first(findall((factors .== :RCP) .|| (factors .== :SSP)))
-        insert!(all_comps, locs, "EnvironmentalLayer")
-        insert!(f_names, locs, "RCP")
-        insert!(h_names, locs, "SSP/RCP")
-        insert!(bounds, locs, (1, length(unique(rs.inputs.RCP))))
+        insert!(all_comps, loc, "EnvironmentalLayer")
+        insert!(f_names, loc, "RCP")
+        insert!(h_names, loc, "SSP/RCP")
+        insert!(bounds, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
     # comps = unique(all_comps)
@@ -273,8 +273,8 @@ end
 
 
 """
-    ADRIA.viz.outcome_map(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
 
 Plot outcomes mapped to factor regions for up to 30 factors.
 
@@ -322,10 +322,10 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
     # Hacky special case handling for SSP/RCP
     if :RCP in factors || :SSP in factors
         loc = first(findall((factors .== :RCP) .|| (factors .== :SSP)))
-        insert!(all_comps, locs, "EnvironmentalLayer")
-        insert!(f_names, locs, "RCP")
-        insert!(h_names, locs, "SSP/RCP")
-        insert!(bounds, locs, (1, length(unique(rs.inputs.RCP))))
+        insert!(all_comps, loc, "EnvironmentalLayer")
+        insert!(f_names, loc, "RCP")
+        insert!(h_names, loc, "SSP/RCP")
+        insert!(bounds, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
     sub_g = g[1, 1] = GridLayout()
