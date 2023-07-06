@@ -425,11 +425,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_dist::Matrix{Truncated} = repeat(
+    c_dist_t::Matrix{Distribution} = repeat(
         TruncatedNormal.(corals.dist_mean, corals.dist_std, 0.0, corals.dist_mean .+ HEAT_UB),
         1, n_sites
     )
-    c_dist_t1 = copy(c_dist)
+    c_dist_t1 = copy(c_dist_t)
 
     # Identify juvenile classes
     # juveniles = corals.class_id .∈ [[1, 2]]
@@ -552,7 +552,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Calculate and apply bleaching mortality
         # bleaching_mortality!(Sbl, felt_dhw, depth_coeff, tstep, site_data.depth_med, bleaching_sensitivity, dhw_t, a_adapt, n_adapt)
         Sbl .= Y_pstep[:, :]
-        bleaching_mortality!(Sbl, dhw_t, depth_coeff, c_dist, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Sbl, dhw_t, depth_coeff, c_dist_t, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
@@ -587,7 +587,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_site_area, 0.0, 1.0)
 
         if tstep < tf
-            adjust_population_distribution!(Y_cover, n_groups, c_dist, c_dist_t1, tstep, c_increase)
+            adjust_population_distribution!(Y_cover, n_groups, c_dist_t, c_dist_t1, tstep, c_increase)
         end
     end
 
