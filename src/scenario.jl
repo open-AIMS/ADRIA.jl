@@ -112,7 +112,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         # Define number of scenarios to run before returning results to main
         # https://discourse.julialang.org/t/parallelism-understanding-pmap-and-the-batch-size-parameter/15604/2
         # https://techytok.com/lesson-parallel-computing/
-        b_size = 4
+        b_size = 2
     else
         b_size = 1
     end
@@ -153,9 +153,12 @@ Sets up a new `cache` if not provided.
 # Notes
 Logs of site ranks only store the mean site rankings over all environmental scenarios.
 This is to reduce the volume of data stored.
+
+# Returns
+Nothing
 """
 function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain,
-    data_store::NamedTuple, cache::NamedTuple)
+    data_store::NamedTuple, cache::NamedTuple)::Nothing
 
     result_set = run_scenario(param_set, domain, cache)
 
@@ -222,10 +225,14 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
         # Squash site ranks down to average rankings over environmental repeats
         data_store.site_ranks[:, :, :, idx] .= tmp_site_ranks
     end
+
+    return nothing
 end
-function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, data_store::NamedTuple)
+function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
     cache = setup_cache(domain)
-    return run_scenario(idx, param_set, domain, data_store, cache)
+    run_scenario(idx, param_set, domain, data_store, cache)
+
+    return nothing
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, cache::NamedTuple)
     # Extract coral only parameters
