@@ -192,8 +192,8 @@ end
 
 """
     bleaching_mortality!(Y::AbstractArray{Float64,2}, dhw::AbstractArray{Float64},
-        depth_coeff::Vector{Float64}, dist::Matrix{Truncated}, dist_t1::Matrix{Truncated},
-        prop_mort::AbstractArray{Float64})::Nothing
+        depth_coeff::Vector{Float64}, dist::Matrix{Distribution}, 
+        dist_t1::Matrix{Distribution}, prop_mort::AbstractArray{Float64})::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
 all non-Juvenile (> 5cm²) size classes. Distributions are informed by learnings from
@@ -243,19 +243,19 @@ with a depth-adjusted coefficient (from Baird et al., [4]).
    https://doi.org/10.3354/meps12732
 """
 function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
-    depth_coeff::Vector{Float64}, dist::Matrix{Truncated}, dist_t1::Matrix{Truncated},
-    prop_mort::SubArray{Float64})::Nothing
+    depth_coeff::Vector{Float64}, dist_t::Matrix{Distribution},
+    dist_t1::Matrix{Distribution}, prop_mort::SubArray{Float64})::Nothing
     n_sp_sc, n_locs = size(cover)
 
     # Adjust distributions for all locations, ignoring juveniles
     # we assume the high background mortality of juveniles
     @floop for (sp_sc, loc) in Iterators.product(3:n_sp_sc, 1:n_locs)
         # Skip if location experiences no heat stress or there is no population
-        if dhw[loc] == 0.0 || cover[sp_sc, loc] == 0.0
+        if dhw[loc] <= 3.0 || cover[sp_sc, loc] == 0.0
             continue
         end
 
-        affected_pop::Float64 = cdf(dist[sp_sc, loc], dhw[loc])
+        affected_pop::Float64 = cdf(dist_t[sp_sc, loc], dhw[loc])
         mort_pop::Float64 = 0.0
         if affected_pop > 0.0
             # Calculate depth-adjusted bleaching mortality
@@ -271,7 +271,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
         prop_mort[sp_sc, loc] = mort_pop
         if mort_pop > 0.0
             # Re-create distribution
-            d = censored(dist[sp_sc, loc]; lower=mort_pop)
+            d::Distribution = censored(dist_t[sp_sc, loc]; lower=mort_pop)
             μ::Float64 = mean(d)
             dist_t1[sp_sc, loc] = TruncatedNormal(μ, std(d), 0.0, μ + HEAT_UB)
 
@@ -311,19 +311,17 @@ function _merge_distributions!(c_t, c_t1, dists_t, dists_t1, c_increase)::Nothin
     moved = findall(c_increase[2:end] .> 0.0) .+ 1
 
     # Calculate weights
-    w1::Vector{Float64} = c_increase ./ c_t1
-    w1[isnan.(w1)] .= 0.0
-    w2::Vector{Float64} = c_t ./ c_t1
-    w2[isnan.(w2)] .= 0.0
+    w1::Vector{Float64} = replace!(c_increase ./ c_t1, NaN => 0.0)
+    w2::Vector{Float64} = replace!(c_t ./ c_t1, NaN => 0.0)
 
     # Weight distributions according to their relative contributions.
-    μ1::Vector{Float64} = mean.(dists_t[moved.-1]) .* w1[moved.-1]
-    σ1::Vector{Float64} = std.(dists_t[moved.-1]) .* w1[moved.-1]
+    # μ1::Vector{Float64} = mean.(dists_t[moved.-1]) .* w1[moved.-1]
+    # σ1::Vector{Float64} = std.(dists_t[moved.-1]) .* w1[moved.-1]
 
-    μ2::Vector{Float64} = mean.(dists_t[moved]) .* w2[moved]
-    σ2::Vector{Float64} = std.(dists_t[moved]) .* w2[moved]
-
-    dists_t1[moved] .= TruncatedNormal.(μ1 .+ μ2, σ1 .+ σ2, 0.0, (μ1 .+ μ2) .+ HEAT_UB)
+    # μ2::Vector{Float64} = mean.(dists_t[moved]) .* w2[moved]
+    # σ2::Vector{Float64} = std.(dists_t[moved]) .* w2[moved]
+    # dists_t1[moved] .= TruncatedNormal.(μ1 .+ μ2, σ1 .+ σ2, 0.0, (μ1 .+ μ2) .+ HEAT_UB)
+    dists_t1[moved] .= MixtureModel.(Vector{Distribution}[dists_t[moved.-1], dists_t[moved]], Vector{Float64}[w1, w2])
 
     return
 end
