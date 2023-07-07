@@ -3,14 +3,12 @@ function ADRIA.viz.spatial_clustering(rs::Union{Domain,ResultSet},
     clusters::Vector{Int64};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict())
+    axis_opts::Dict=Dict())
     return spatial_clustering!(rs, data, clusters; opts=opts)
 end
 function spatial_clustering!(rs, data, clusters; opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict())
+    axis_opts::Dict=Dict())
 
     opts[:highlight] = get(opts, :highlight, cluster_colors(clusters))
 
