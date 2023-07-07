@@ -45,6 +45,8 @@ function create_map!(f, geodata, data, highlight, centroids, c_label)
     poly!(spatial, geodata, color=data, colormap=:plasma, colorrange=(0.0, m_b[]), strokecolor=(:black, 0.05))
 
     # Overlay locations to be highlighted
+    # `poly!()` cannot handle multiple strokecolors being specified at the moment
+    # so we instead overlay each cluster.
     if !isnothing(highlight)
         hl_groups = unique(highlight)
         for clr in hl_groups
@@ -60,7 +62,7 @@ function create_map!(f, geodata, data, highlight, centroids, c_label)
     Colorbar(f[1, 2]; colorrange=(0.0, m_b[]),
         colormap=:plasma, label=c_label, height=Relative(0.65))
 
-    return spatial
+    return f
 end
 
 
@@ -108,7 +110,7 @@ function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,Resu
 
     c_label = get(opts, :colorbar_label, "Relative Cover")
     highlight = get(opts, :highlight, nothing)
-    create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label)
+    return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label)
 end
 
 
