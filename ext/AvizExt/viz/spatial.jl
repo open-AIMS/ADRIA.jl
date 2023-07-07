@@ -90,24 +90,24 @@ Plot spatial choropleth of outcomes.
 # Returns
 GridPosition
 """
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
+function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    ADRIA.viz.map!(g, rs, collect(y); opts, axis_opts, series_opts)
+    ADRIA.viz.map!(g, rs, collect(y); opts, axis_opts)
 
     return f
 end
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
+function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    ADRIA.viz.map!(g, rs, rs.site_data.k; opts, axis_opts, series_opts)
+    ADRIA.viz.map!(g, rs, rs.site_data.k; opts, axis_opts)
 
     return f
 end
 function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, y::Vector;
-    opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
+    opts::Dict=Dict(), axis_opts::Dict=Dict())
 
     geo_fn = make_geojson_copy(rs)
     geodata = GeoMakie.GeoJSON.read(read(geo_fn))
