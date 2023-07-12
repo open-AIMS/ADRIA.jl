@@ -33,7 +33,7 @@ function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::Abstract
 
     # Filter clusters and data for non-zero clusters
     clusters_filtered = filter(c -> c != 0, clusters)
-    data_filtered = data[:, clusters .> 0]
+    data_filtered = data[:, clusters.>0]
 
     # Compute cluster colors
     clusters_colors = _clusters_colors(clusters_filtered)
@@ -46,14 +46,14 @@ function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::Abstract
             leg_entry,
             series!(
                 ax,
-                data_filtered[:, clusters_filtered .== cluster]',
+                data_filtered[:, clusters_filtered.==cluster]',
                 solid_color=cluster_color
             )
         )
     end
 
     n_clusters = length(unique(clusters_filtered))
-    Legend(g[1,2], leg_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
+    Legend(g[1, 2], leg_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
 
     return g
 end
@@ -128,8 +128,8 @@ Color parameter for current cluster weighted by number of scenarios
 Tuple{RGBA{Float32}, Float64}
 """
 function _cluster_color(unique_cluster_colors::Vector{RGBA{Float32}},
-    clusters::Vector{Int64}, cluster::Int64)::Tuple{RGBA{Float32}, Float64}
-    # Number of scenarios on that cluster
+    clusters::Vector{Int64}, cluster::Int64)::Tuple{RGBA{Float32},Float64}
+    # Number of scenarios for a cluster
     n_scens = count(clusters .== cluster)
 
     # Compute line weight

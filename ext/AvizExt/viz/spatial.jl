@@ -80,11 +80,11 @@ Plot spatial choropleth of outcomes.
 # Arguments
 - `rs` : ResultSet
 - `y` : results of scenario metric
-- `opts` : Aviz options 
+- `opts` : Aviz options
     - `colorbar_label`, label for colorbar. Defaults to "Relative Cover".
-- `axis_opts` : Additional options to pass to adjust Axis attributes  
+- `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
-- `series_opts` : Additional options to pass to adjust Series attributes  
+- `series_opts` : Additional options to pass to adjust Series attributes
   See: https://docs.makie.org/v0.19/api/index.html#series!
 
 # Returns
