@@ -306,8 +306,7 @@ function ADRIA.viz.explore(rs::ResultSet)
     heatmap!(ft_import, sensitivities)
     Colorbar(layout.importance[1, 2]; colorrange=(0.0, 1.0))
 
-    geo_fn = make_geojson_copy(rs)
-    geodata = GeoMakie.GeoJSON.read(read(geo_fn))
+    geodata = get_geojson_copy(rs)
 
     map_disp = create_map!(map_display, geodata, obs_mean_rc_sites, (:black, 0.05), centroids)
     curr_highlighted_sites = _get_seeded_sites(seed_log, (:), (:))
