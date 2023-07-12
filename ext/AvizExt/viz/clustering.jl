@@ -10,7 +10,8 @@ Visualize clustered time series of scenarios.
 # Returns
 Figure
 """
-function ADRIA.viz.ts_cluster(data::AbstractMatrix, clusters::Vector{Int64}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.ts_cluster(data::AbstractMatrix, clusters::Vector{Int64};
+    fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -18,7 +19,8 @@ function ADRIA.viz.ts_cluster(data::AbstractMatrix, clusters::Vector{Int64}; fig
 
     return f
 end
-function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; axis_opts::Dict=Dict())
+function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix,
+    clusters::Vector{Int64}; axis_opts::Dict=Dict())
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(data)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
@@ -38,10 +40,16 @@ function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::Abstract
     unique_cluster_colors = unique(clusters_colors)
 
     leg_entry = Any[]
-    for clst in unique(clusters_filtered)
-        cluster_color = _cluster_color(unique_cluster_colors, clusters_filtered, clst)
-
-        push!(leg_entry, series!(ax, data_filtered[:, clusters_filtered .== clst]', solid_color=cluster_color))
+    for cluster in unique(clusters_filtered)
+        cluster_color = _cluster_color(unique_cluster_colors, clusters_filtered, cluster)
+        push!(
+            leg_entry,
+            series!(
+                ax,
+                data_filtered[:, clusters_filtered .== cluster]',
+                solid_color=cluster_color
+            )
+        )
     end
 
     n_clusters = length(unique(clusters_filtered))
@@ -108,19 +116,19 @@ function _clusters_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
 end
 
 """
-    _cluster_color(clusters_colors::Vector{RGBA{FLoat32}}, clusters::Vector{Int64}, cluster::Int64)
+    _cluster_color(unique_cluster_colors::Vector{RGBA{FLoat32}}, clusters::Vector{Int64}, cluster::Int64)
 
-Vector of cluster colors.
+Color parameter for current cluster weighted by number of scenarios
 
-- `clusters_colors` :
+- `unique_cluster_colors` : Vector of all cluster options that are being used
 - `clusters` : Vector of numbers corresponding to clusters
-- `cluster` :
+- `cluster` : Current cluster
 
 # Returns
-Vector
+Tuple{RGBA{Float32}, Float64}
 """
-function _cluster_color(unique_cluster_colors::Vector{RGBA{Float32}}, clusters::Vector{Int64},
-    cluster::Int64)
+function _cluster_color(unique_cluster_colors::Vector{RGBA{Float32}},
+    clusters::Vector{Int64}, cluster::Int64)::Tuple{RGBA{Float32}, Float64}
     # Number of scenarios on that cluster
     n_scens = count(clusters .== cluster)
 
