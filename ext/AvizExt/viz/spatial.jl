@@ -109,8 +109,7 @@ end
 function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, y::Vector;
     opts::Dict=Dict(), axis_opts::Dict=Dict())
 
-    geo_fn = make_geojson_copy(rs)
-    geodata = GeoMakie.GeoJSON.read(read(geo_fn))
+    geodata = get_geojson_copy(rs)
     data = Observable(y)
 
     c_label = get(opts, :colorbar_label, "")
@@ -142,4 +141,30 @@ function make_geojson_copy(ds::Union{ResultSet,Domain})::String
     end
 
     return geo_fn
+end
+
+"""
+    get_geojson(ds::Union{ResultSet,Domain})::FC
+
+Retrieves a temporary copy of spatial data associated with the given Domain or ResultSet as
+a FeatureCollection.
+
+# Arguments
+- `ds` : The dataset with which the spatial data is associated with
+
+# Returns
+FeatureCollection of polygons
+"""
+function get_geojson_copy(ds::Union{ResultSet,Domain})::FC
+    fn = make_geojson_copy(ds)
+
+    # Only return the set Features if filepaths match
+    if isdefined(ADRIA.viz, :tmp_geojson)
+        if ADRIA.viz.tmpdir == dirname(fn)
+            return ADRIA.viz.tmp_geojson
+        end
+    end
+
+    ADRIA.viz.tmp_geojson = GeoMakie.GeoJSON.read(read(fn))
+    return ADRIA.viz.tmp_geojson
 end
