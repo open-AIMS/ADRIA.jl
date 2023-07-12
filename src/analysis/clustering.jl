@@ -119,13 +119,13 @@ function time_series_clustering(data::AbstractMatrix{T}, n_clusters::Int64)::Vec
     return cutree(dendogram, k=n_clusters)
 end
 function time_series_clustering(result_set::ResultSet, data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
-    # Find sites with k > 0.0 
+    # Find sites with k > 0.0
     non_null_sites = result_set.site_data.k .> 0.0
     filtered_data = data[:, non_null_sites]
 
     # Apply time series cluster for filtered data
     clusters = time_series_clustering(filtered_data, n_clusters)
 
-    # Assign cluster 0 for filtered sites to use same indexing as the input data 
+    # Assign cluster 0 for filtered sites to use same indexing as the input data
     return [site != 0 ? popfirst!(clusters) : 0 for site in non_null_sites]
 end

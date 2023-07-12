@@ -32,15 +32,15 @@ function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::Abstract
     # Filter clusters and data for non-zero clusters
     clusters_filtered = filter(c -> c != 0, clusters)
     data_filtered = data[:, clusters .> 0]
-    
+
     # Compute cluster colors
     clusters_colors = _clusters_colors(clusters_filtered)
     unique_cluster_colors = unique(clusters_colors)
-    
+
     leg_entry = Any[]
     for clst in unique(clusters_filtered)
         cluster_color = _cluster_color(unique_cluster_colors, clusters_filtered, clst)
-        
+
         push!(leg_entry, series!(ax, data_filtered[:, clusters_filtered .== clst]', solid_color=cluster_color))
     end
 
@@ -63,8 +63,8 @@ Visualize clustered time series for each site and map.
 # Returns
 Figure
 """
-function ADRIA.viz.ts_spatial_cluster(rs::Union{Domain,ResultSet}, data::AbstractMatrix, 
-    clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), 
+function ADRIA.viz.ts_spatial_cluster(rs::Union{Domain,ResultSet}, data::AbstractMatrix,
+    clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict())
 
     f = Figure(; fig_opts...)
@@ -73,8 +73,8 @@ function ADRIA.viz.ts_spatial_cluster(rs::Union{Domain,ResultSet}, data::Abstrac
 
     return f
 end
-function ADRIA.viz.ts_spatial_cluster!(g::Union{GridLayout,GridPosition}, 
-    rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::Vector{Int64}; 
+function ADRIA.viz.ts_spatial_cluster!(g::Union{GridLayout,GridPosition},
+    rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::Vector{Int64};
     opts::Dict=Dict(), axis_opts::Dict=Dict())
 
     opts[:highlight] = get(opts, :highlight, _clusters_colors(clusters))
@@ -112,14 +112,14 @@ end
 
 Vector of cluster colors.
 
-- `clusters_colors` : 
+- `clusters_colors` :
 - `clusters` : Vector of numbers corresponding to clusters
-- `cluster` : 
+- `cluster` :
 
 # Returns
 Vector
 """
-function _cluster_color(unique_cluster_colors::Vector{RGBA{Float32}}, clusters::Vector{Int64}, 
+function _cluster_color(unique_cluster_colors::Vector{RGBA{Float32}}, clusters::Vector{Int64},
     cluster::Int64)
     # Number of scenarios on that cluster
     n_scens = count(clusters .== cluster)
