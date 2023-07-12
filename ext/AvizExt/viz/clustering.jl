@@ -60,8 +60,8 @@ function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::Abstract
 end
 
 """
-    ts_spatial_cluster(rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ts_spatial_cluster!(g, rs, data, clusters; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    map(rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    map(g, rs, data, clusters; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Visualize clustered time series for each site and map.
 
@@ -69,28 +69,33 @@ Visualize clustered time series for each site and map.
 - `rs` : ResultSet
 - `data` : Matrix of scenario data for each location
 - `clusters` : Vector of numbers corresponding to clusters
+- `opts` : Options specific to this plotting method
+    - `highlight` : Vector of colors indicating cluster membership for each location.
+    - `summary` : function (which must support the `dims` keyword) to summarize data with.
+                  Default: `mean`
 
 # Returns
 Figure
 """
-function ADRIA.viz.ts_spatial_cluster(rs::Union{Domain,ResultSet}, data::AbstractMatrix,
+function ADRIA.viz.map(rs::Union{Domain,ResultSet}, data::AbstractMatrix,
     clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict())
 
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    ADRIA.viz.ts_spatial_cluster!(g, rs, data, clusters; opts=opts, axis_opts=axis_opts)
+    ADRIA.viz.map!(g, rs, data, clusters; opts=opts, axis_opts=axis_opts)
 
     return f
 end
-function ADRIA.viz.ts_spatial_cluster!(g::Union{GridLayout,GridPosition},
+function ADRIA.viz.map!(g::Union{GridLayout,GridPosition},
     rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::Vector{Int64};
     opts::Dict=Dict(), axis_opts::Dict=Dict())
 
     opts[:highlight] = get(opts, :highlight, _clusters_colors(clusters))
+    opts[:summary] = get(opts, :summary, mean)
 
-    d = collect(dropdims(mean(data, dims=:timesteps), dims=:timesteps))
-    ADRIA.viz.map!(g, rs, d; opts=opts)
+    d = collect(dropdims(opts[:summary](data, dims=:timesteps), dims=:timesteps))
+    ADRIA.viz.map!(g, rs, d; opts=opts, axis_opts=axis_opts)
 
     return g
 end
