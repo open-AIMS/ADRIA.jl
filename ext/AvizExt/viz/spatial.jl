@@ -57,8 +57,8 @@ function create_map!(f, geodata, data, highlight, centroids, c_label, axis_opts)
             m = findall(highlight .== [clr])
             subset_feat = FC(; features=geodata[m])
             poly!(spatial, subset_feat, color=data[][m], colormap=:plasma,
-                colorrange=(0.0, m_b[]), strokecolor=clr, strokewidth=4.0,
-                linestyle=:dashdot, overdraw=true)
+                colorrange=(0.0, m_b[]), strokecolor=clr, strokewidth=1.0,
+                linestyle=:solid, overdraw=true)
         end
     end
     # datalims!(spatial)  # auto-adjust limits (doesn't work if there are Infs...)
