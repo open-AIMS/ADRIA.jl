@@ -4,6 +4,7 @@
 
 Visualize clustered time series of scenarios.
 
+# Arguments
 - `data` : Matrix of scenario data
 - `clusters` : Vector of numbers corresponding to clusters
 
@@ -64,8 +65,9 @@ end
 
 Visualize clustered time series for each site and map.
 
+# Arguments
 - `rs` : ResultSet
-- `data` : Matrix of scenario data
+- `data` : Matrix of scenario data for each location
 - `clusters` : Vector of numbers corresponding to clusters
 
 # Returns
@@ -98,6 +100,7 @@ end
 
 Vector of cluster colors.
 
+# Arguments
 - `clusters` : Vector of numbers corresponding to clusters
 
 # Returns
@@ -120,6 +123,7 @@ end
 
 Color parameter for current cluster weighted by number of scenarios
 
+# Arguments
 - `unique_cluster_colors` : Vector of all cluster options that are being used
 - `clusters` : Vector of numbers corresponding to clusters
 - `cluster` : Current cluster
