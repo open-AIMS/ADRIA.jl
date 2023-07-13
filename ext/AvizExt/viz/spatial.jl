@@ -20,7 +20,10 @@ Create a spatial choropleth figure.
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 """
-function create_map!(f, geodata, data, highlight, centroids, c_label, axis_opts)
+function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{2, Float32}, 
+    data::Observable{Vector{Float32}}, highlight::Vector{RGBA{Float32}}, 
+    centroids::Vector{Tuple{Float64, Float64}}, colorbar_label::String, 
+    legend_params::Tuple, axis_opts::Dict)
     lon = first.(centroids)
     lat = last.(centroids)
 
@@ -46,25 +49,44 @@ function create_map!(f, geodata, data, highlight, centroids, c_label, axis_opts)
     spatial.ytickalign = 10
     m_b = @lift(maximum($data))
 
-    poly!(spatial, geodata, color=data, colormap=:plasma, colorrange=(0.0, m_b[]), strokecolor=(:black, 0.05))
+    # Plot geodata polygons using data as internal color
+    poly!(
+        spatial, 
+        geodata, 
+        color=data, 
+        colormap=:grayC, 
+        colorrange=(0.0, m_b[]),
+        strokecolor=(:black, 0.05)
+    )
 
     # Overlay locations to be highlighted
     # `poly!()` cannot handle multiple strokecolors being specified at the moment
     # so we instead overlay each cluster.
     if !isnothing(highlight)
         hl_groups = unique(highlight)
-        for clr in hl_groups
-            m = findall(highlight .== [clr])
+
+        for color in hl_groups
+            m = findall(highlight .== [color])
             subset_feat = FC(; features=geodata[m])
-            poly!(spatial, subset_feat, color=data[][m], colormap=:plasma,
-                colorrange=(0.0, m_b[]), strokecolor=clr, strokewidth=1.0,
-                linestyle=:solid, overdraw=true)
+
+            poly!(
+                spatial, 
+                subset_feat, 
+                color="transparent", 
+                strokecolor=color, 
+                strokewidth=0.5,
+                linestyle=:solid, 
+                overdraw=true
+            )
         end
+
+        # Plot Legend only if highlight colors are present
+        Legend(f[1, 3], legend_params..., framevisible=false)
     end
     # datalims!(spatial)  # auto-adjust limits (doesn't work if there are Infs...)
 
-    Colorbar(f[1, 2]; colorrange=(0.0, m_b[]),
-        colormap=:plasma, label=c_label, height=Relative(0.65))
+    Colorbar(f[1, 2]; colorrange=(0.0, m_b[]), colormap=:grayC, label=colorbar_label, 
+        height=Relative(0.65))
 
     return f
 end
@@ -90,7 +112,8 @@ Plot spatial choropleth of outcomes.
 # Returns
 GridPosition
 """
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dict=Dict(), 
+    fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -98,7 +121,8 @@ function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dic
 
     return f
 end
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts::Dict=Dict(), 
+    axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -106,15 +130,17 @@ function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts:
 
     return f
 end
-function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, y::Vector;
-    opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, 
+    y::Vector; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
     geodata = get_geojson_copy(rs)
     data = Observable(y)
 
-    c_label = get(opts, :colorbar_label, "")
     highlight = get(opts, :highlight, nothing)
-    return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label, axis_opts)
+    c_label = get(opts, :colorbar_label, "Relative Cover")
+    legend_params = get(opts, :legend_params, nothing)
+
+    return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label, legend_params, axis_opts)
 end
 
 

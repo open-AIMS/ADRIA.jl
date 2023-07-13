@@ -53,6 +53,7 @@ function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::Abstract
         )
     end
 
+    # Plot Legend
     n_clusters = length(unique(clusters_filtered))
     Legend(g[1, 2], leg_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
 
@@ -91,11 +92,17 @@ function ADRIA.viz.map!(g::Union{GridLayout,GridPosition},
     rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::Vector{Int64};
     opts::Dict=Dict(), axis_opts::Dict=Dict())
 
-    opts[:highlight] = get(opts, :highlight, _clusters_colors(clusters))
+    # Vector of summary statistics (default is mean) computed over timesteps
     opts[:summary] = get(opts, :summary, mean)
+    data_stats = collect(dropdims(opts[:summary](data, dims=:timesteps), dims=:timesteps))
 
-    d = collect(dropdims(opts[:summary](data, dims=:timesteps), dims=:timesteps))
-    ADRIA.viz.map!(g, rs, d; opts=opts, axis_opts=axis_opts)
+    cluster_colors = _clusters_colors(clusters)
+    legend_params = _cluster_legend_params(clusters, cluster_colors, data_stats)
+
+    opts[:highlight] = get(opts, :highlight, cluster_colors)
+    opts[:legend_params] = get(opts, :legend_params, legend_params)
+
+    ADRIA.viz.map!(g, rs, data_stats; opts=opts, axis_opts=axis_opts)
 
     return g
 end
@@ -145,4 +152,42 @@ function _cluster_color(unique_cluster_colors::Vector{RGBA{Float32}},
     color_weight = max(min((1.0 / (n_scens * 0.05)), 0.6), 0.1)
 
     return (unique_cluster_colors[cluster], color_weight)
+end
+
+"""
+    _cluster_legend_params(clusters::Vector{Int64}, clusters_colors::Vector{RGBA{Float32}}, data_statistics::Vector{Float32})
+
+Color parameter for current cluster weighted by number of scenarios
+
+# Arguments
+- `clusters` : Vector of numbers corresponding to clusters
+- `cluster_colors` : Vector of all cluster options that are being used
+- `data_statistics` : Vector of statistics for each site (default is mean)
+
+# Returns
+Tuple{RGBA{Float32}, Float64}
+"""
+function _cluster_legend_params(clusters::Vector{Int64}, 
+    clusters_colors::Vector{RGBA{Float32}}, data_statistics::Vector{Float32})::Tuple
+    # Filter non-zero clusters from clusters, colors and data
+    non_zero_clusters = clusters .!= 0
+    clusters_filtered = clusters[non_zero_clusters]
+    colors_filtered = clusters_colors[non_zero_clusters]
+    statistics_filtered = data_statistics[non_zero_clusters]
+
+    # Fill legend entries colors
+    legend_entries = [PolyElement(color = color, strokecolor = :transparent) for 
+        color in unique(colors_filtered)]
+
+    # Fill legend labels
+    legend_labels = String[]
+    clusters_numbers = unique(clusters_filtered)
+    for cluster in clusters_numbers
+        stat_mean = mean(statistics_filtered[cluster .== clusters_filtered])
+        stat_mean_formatted = @sprintf "%.1e" stat_mean
+        push!(legend_labels, "Cluster $(cluster): $stat_mean_formatted")
+    end
+
+    legend_title = "Clusters mean value"
+    return (legend_entries, legend_labels, legend_title)
 end
