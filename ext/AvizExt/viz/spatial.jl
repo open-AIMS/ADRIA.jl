@@ -108,7 +108,7 @@ function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,Resu
     geodata = GeoMakie.GeoJSON.read(read(geo_fn))
     data = Observable(y)
 
-    c_label = get(opts, :colorbar_label, "Relative Cover")
+    c_label = get(opts, :colorbar_label, "")
     highlight = get(opts, :highlight, nothing)
     return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label)
 end
