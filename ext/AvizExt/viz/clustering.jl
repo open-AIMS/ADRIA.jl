@@ -167,7 +167,7 @@ Color parameter for current cluster weighted by number of scenarios
 # Returns
 Tuple{RGBA{Float32}, Float64}
 """
-function _cluster_legend_params(clusters::Vector{Int64}, 
+function _cluster_legend_params(clusters::Vector{Int64},
     clusters_colors::Vector{RGBA{Float32}}, data_statistics::Vector{Float32})::Tuple
     # Filter non-zero clusters from clusters, colors and data
     non_zero_clusters = clusters .!= 0
@@ -176,14 +176,14 @@ function _cluster_legend_params(clusters::Vector{Int64},
     statistics_filtered = data_statistics[non_zero_clusters]
 
     # Fill legend entries colors
-    legend_entries = [PolyElement(color = color, strokecolor = :transparent) for 
-        color in unique(colors_filtered)]
+    legend_entries = [PolyElement(color=color, strokecolor=:transparent) for
+                      color in unique(colors_filtered)]
 
     # Fill legend labels
     legend_labels = String[]
     clusters_numbers = unique(clusters_filtered)
     for cluster in clusters_numbers
-        stat_mean = mean(statistics_filtered[cluster .== clusters_filtered])
+        stat_mean = mean(statistics_filtered[cluster.==clusters_filtered])
         stat_mean_formatted = @sprintf "%.1e" stat_mean
         push!(legend_labels, "Cluster $(cluster): $stat_mean_formatted")
     end

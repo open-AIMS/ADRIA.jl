@@ -6,7 +6,7 @@ Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
 
 
 """
-    create_map!(f, geodata, data, highlight, centroids, c_label)
+	create_map!(f, geodata, data, highlight, centroids, c_label)
 
 Create a spatial choropleth figure.
 
@@ -74,13 +74,13 @@ function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{
             subset_feat = FC(; features=geodata[m])
 
             poly!(
-                spatial, 
-                subset_feat, 
-                color="transparent", 
-                strokecolor=color, 
+                spatial,
+                subset_feat,
+                color="transparent",
+                strokecolor=color,
                 strokewidth=0.5,
-                linestyle=:solid, 
-                overdraw=true
+                linestyle=:solid,
+                overdraw=true,
             )
         end
 
@@ -95,9 +95,9 @@ end
 
 
 """
-    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map(rs::ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+	ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+	ADRIA.viz.map(rs::ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+	ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
 Plot spatial choropleth of outcomes.
 
@@ -105,7 +105,7 @@ Plot spatial choropleth of outcomes.
 - `rs` : ResultSet
 - `y` : results of scenario metric
 - `opts` : Aviz options
-    - `colorbar_label`, label for colorbar. Defaults to "Relative Cover".
+	- `colorbar_label`, label for colorbar. Defaults to "Relative Cover".
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 - `series_opts` : Additional options to pass to adjust Series attributes
@@ -114,7 +114,7 @@ Plot spatial choropleth of outcomes.
 # Returns
 GridPosition
 """
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dict=Dict(), 
+function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dict=Dict(),
     fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -123,7 +123,7 @@ function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dic
 
     return f
 end
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts::Dict=Dict(), 
+function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict())
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -132,7 +132,7 @@ function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts:
 
     return f
 end
-function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, 
+function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet},
     y::Vector; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
     geodata = get_geojson_copy(rs)
@@ -147,7 +147,7 @@ end
 
 
 """
-    make_geojson_copy(ds::Union{ResultSet,Domain})::String
+	make_geojson_copy(ds::Union{ResultSet,Domain})::String
 
 Make a temporary copy of GeoPackage as GeoJSON.
 
@@ -172,7 +172,7 @@ function make_geojson_copy(ds::Union{ResultSet,Domain})::String
 end
 
 """
-    get_geojson(ds::Union{ResultSet,Domain})::FC
+	get_geojson(ds::Union{ResultSet,Domain})::FC
 
 Retrieves a temporary copy of spatial data associated with the given Domain or ResultSet as
 a FeatureCollection.
