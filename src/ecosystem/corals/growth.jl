@@ -274,27 +274,9 @@ end
 
 
 """
-    recruitment_rate(larval_pool, α=2.5, β=5000.0)
+    recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T}; α=2.5, β=5000.0)
 
-# Arguments
-- `larval_pool` : Available larval pool
-- `A` : Proportion of available area
-- `α` : Maximum achievable density (settlers/m²) for a 100% free space
-- `β` : Stock of larvae required to produce 50% of the maximum settlement
-
-# Returns
-λ, coral recruitment for each coral taxa based on a Poisson distribution.
-"""
-function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T}; α=2.5, β=5000.0)::AbstractArray{T} where {T<:Float64}
-    sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
-    sel = sd .> 0.0
-    sd[sel] .= rand.(Poisson.(sd[sel]))
-    return sd
-end
-
-
-"""
-    recruitment(larval_pool, A::Matrix{<:Real}; α=2.5, β=5000.0)
+Calculates coral recruitment for each species/group and location.
 
 # Arguments
 - `larval_pool` : Available larval pool
@@ -305,13 +287,15 @@ end
 - `β` : Stock of larvae required to produce 50% of the maximum settlement
 
 # Returns
-Total coral recruitment for each coral taxa and site based on a Poisson distribution.
+λ, total coral recruitment for each coral taxa and location based on a Poisson distribution.
 """
-function recruitment(larval_pool::AbstractArray{T,2}, A::Matrix{T}; α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::Matrix{T} where {T<:Float64}
-    # Minimum of recruited settler density (`recruitment_rate`) and max possible settler density (α)
-    # return min.(recruitment_rate(larval_pool, A; α, β), α)
-    return recruitment_rate(larval_pool, A; α, β)
+function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
+    α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::AbstractArray{T} where {T<:Float64}
+    sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
+    sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
+    return sd
 end
+
 
 """
     settler_cover(fec_scope, sf, TP_data, leftover_space, α, β, basal_area_per_settler)
@@ -343,7 +327,7 @@ function settler_cover(fec_scope::T, sf::T,
 
     # Larvae have landed, work out how many are recruited
     # recruits per m^2 per site multiplied by area per settler
-    fec_scope .= recruitment(fec_scope, leftover_space; α=α, β=β) .* basal_area_per_settler
+    fec_scope .= recruitment_rate(fec_scope, leftover_space; α=α, β=β) .* basal_area_per_settler
 
     # Determine area covered by recruited larvae (settler cover) per m^2
     return min.(fec_scope, leftover_space)
