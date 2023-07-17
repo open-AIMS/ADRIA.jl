@@ -124,7 +124,7 @@ end
 
     larval_pool = rand(1.0:5e11, 6, 216)
 
-    recruits_per_m² = ADRIA.recruitment(larval_pool, avail_area)
+    recruits_per_m² = ADRIA.recruitment_rate(larval_pool, avail_area)
     abs_recruits = recruits_per_m² .* (avail_area' .* max_cover .* total_site_area)'
 
     @test any(abs_recruits .> 10^4) || "At least some recruitment values should be > 10,000"
