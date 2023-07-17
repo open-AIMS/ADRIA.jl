@@ -530,7 +530,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             mcda_vars.sum_cover .= site_coral_cover
 
             # Determine connectivity strength
-            # Account for cases where no coral cover
+            # Account for cases where there is no coral cover
             in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), vec(site_coral_cover))
             (prefseedsites, prefshadesites, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
@@ -573,6 +573,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Seed each site
             @views Y_pstep[seed_sc, prefseedsites] .+= scaled_seed
             Yseed[tstep, :, prefseedsites] .= scaled_seed
+
+            # seed_corals!(Y_pstep, a_adapt, vec(total_site_area), prefseedsites, vec(leftover_space_m²),
+            #     seeded_area, @view(Yseed[tstep, :, :]), seed_sc_TA, seed_sc_CA, c_dist_t)
         end
 
         # Calculate survivors from bleaching and wave stress
@@ -593,8 +596,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=[:nonstiff], adaptive=false, dt=0.5) 
-        # Using the last step from ODE above, proportionally adjust site coral cover
-        # if any are above the maximum possible (i.e., the site `k` value)
+
+        # Ensure values are ∈ [0, 1]
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_site_area, 0.0, 1.0)
 
         if tstep < tf

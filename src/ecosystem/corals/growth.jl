@@ -314,13 +314,7 @@ function _merge_distributions!(c_t, c_t1, dists_t, dists_t1, c_increase)::Nothin
     w1::Vector{Float64} = replace!(c_increase ./ c_t1, NaN => 0.0)
     w2::Vector{Float64} = replace!(c_t ./ c_t1, NaN => 0.0)
 
-    # Weight distributions according to their relative contributions.
-    # μ1::Vector{Float64} = mean.(dists_t[moved.-1]) .* w1[moved.-1]
-    # σ1::Vector{Float64} = std.(dists_t[moved.-1]) .* w1[moved.-1]
-
-    # μ2::Vector{Float64} = mean.(dists_t[moved]) .* w2[moved]
-    # σ2::Vector{Float64} = std.(dists_t[moved]) .* w2[moved]
-    # dists_t1[moved] .= TruncatedNormal.(μ1 .+ μ2, σ1 .+ σ2, 0.0, (μ1 .+ μ2) .+ HEAT_UB)
+    # Mix distributions, weighted according to their relative contributions.
     dists_t1[moved] .= MixtureModel.(Vector{Distribution}[dists_t[moved.-1], dists_t[moved]], Vector{Float64}[w1, w2])
 
     return
