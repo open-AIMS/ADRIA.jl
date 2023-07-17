@@ -2,9 +2,9 @@
 
 
 """
-    per_site(metric, data::NamedDimsArray)
+    per_loc(metric, data::NamedDimsArray{D,T,3,A})::NamedDimsArray where {D,T,A}
 
-Get metric results applied to the site-level at indicated time (or across timesteps).
+Get metric results applied to the location-level at indicated time (or across timesteps).
 
 # Arguments
 - metric : Any function (nominally from the Statistics package) to be applied to `data`
@@ -14,9 +14,7 @@ Get metric results applied to the site-level at indicated time (or across timest
 # Returns
 Named Vector of \$N\$ elements, where \$N\$ is the number of sites.
 """
-function per_site(metric, data::NamedDimsArray)::NamedDimsArray
-    ndims(data) > 3 ? ArgumentError("site level metrics only possible for a maximum of 3 dimensions") : true
-
+function per_loc(metric, data::NamedDimsArray{D,T,3,A})::NamedDimsArray where {D,T,A}
     # Get length of timestep dimension directly
     #   `map` erroneously extracts every single element from the NamedDimsArray
     #   so we use `tf` to subset the dataset.
@@ -30,6 +28,53 @@ function per_site(metric, data::NamedDimsArray)::NamedDimsArray
 
     return NamedDimsArray(s, sites=axiskeys(data, :sites))
 end
-function per_site(metric, data::NamedDimsArray, timesteps::Union{UnitRange,Int64,Vector{Int64}})::NamedDimsArray
-    return per_site(metric, data[timesteps=timesteps])
+function per_loc(metric, data::NamedDimsArray{D,T,3,A}, timesteps::Union{UnitRange,Int64})::NamedDimsArray where {D,T,A}
+    return per_loc(metric, data[timesteps=timesteps])
+end
+
+"""
+    loc_trajectory(metric, data::NamedDimsArray{D,T,3,A})::NamedDimsArray where {D,T,A}
+
+Collate trajectory for each location.
+
+# Examples
+```julia
+using Statistics
+
+
+rs = ADRIA.load_results("some results")
+tac = ADRIA.metrics.total_absolute_cover(rs)
+
+# Get median trajectory for each site
+ADRIA.metrics.loc_trajectory(median, tac)
+# 2-dimensional NamedDimsArray(KeyedArray(...)) with keys:
+# ↓   timesteps ∈ 75-element Vector{Any}
+# →   sites ∈ 216-element Vector{Any}
+# And data, 75×216 Matrix{Float32}:
+
+# Get upper 95% CI for each site
+ADRIA.metrics.loc_trajectory(x -> quantile(x, 0.975), tac)
+# 2-dimensional NamedDimsArray(KeyedArray(...)) with keys:
+# ↓   timesteps ∈ 75-element Vector{Any}
+# →   sites ∈ 216-element Vector{Any}
+# And data, 75×216 Matrix{Float32}:
+```
+
+# Arguments
+- metric : Any function (nominally from the Statistics package) to be applied to `data`
+- data : Data set to apply metric to
+
+# Returns
+Vector of \$N\$ elements, where \$N\$ is the number of sites.
+"""
+function loc_trajectory(metric, data::NamedDimsArray{D,T,3,A})::NamedDimsArray where {D,T,A}
+    tf = axes(data, :timesteps)  # Note: use axes instead of axiskeys for speed
+    s::Matrix{eltype(data)} = map(metric,
+        JuliennedArrays.Slices(data[timesteps=tf], dim(data, :scenarios))
+    )
+
+    return NamedDimsArray(s, timesteps=axiskeys(data, :timesteps), sites=axiskeys(data, :sites))
+end
+function loc_trajectory(metric, data::NamedDimsArray{D,T,3,A}, timesteps::Union{UnitRange,Int64})::NamedDimsArray where {D,T,A}
+    return per_loc(metric, data[timesteps=timesteps])
 end
