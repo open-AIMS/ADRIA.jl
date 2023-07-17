@@ -50,14 +50,18 @@ function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{
     m_b = @lift(maximum($data))
 
     # Plot geodata polygons using data as internal color
+    color_range = (0.2, m_b[])
+    color_map = :linear_grey_10_95_c0_n256
     poly!(
-        spatial, 
-        geodata, 
-        color=data, 
-        colormap=:grayC, 
-        colorrange=(0.0, m_b[]),
-        strokecolor=(:black, 0.05)
+        spatial,
+        geodata,
+        color=data,
+        colormap=color_map,
+        colorrange=color_range,
+        strokecolor=(:black, 0.05),
     )
+    Colorbar(f[1, 2]; colorrange=color_range, colormap=color_map, label=colorbar_label,
+        height=Relative(0.65))
 
     # Overlay locations to be highlighted
     # `poly!()` cannot handle multiple strokecolors being specified at the moment
@@ -85,8 +89,6 @@ function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{
     end
     # datalims!(spatial)  # auto-adjust limits (doesn't work if there are Infs...)
 
-    Colorbar(f[1, 2]; colorrange=(0.0, m_b[]), colormap=:grayC, label=colorbar_label, 
-        height=Relative(0.65))
 
     return f
 end
