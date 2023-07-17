@@ -434,18 +434,18 @@ function coral_spec()::NamedTuple
             3.345484656,  # arborescent Acropora
             3.751612251,  # tabular Acropora
             4.081622683,  # corymbose Acropora
-            5.496906809,  # Pocillopora + non-Acropora corymbose
-            6.477249125,  # Small massives and encrusting
+            4.487465256,  # Pocillopora + non-Acropora corymbose
+            6.165751937,  # Small massives and encrusting
             7.153507902   # Large massives
         ], inner=n_classes)
 
     params.dist_std = repeat(Float64[
-            sqrt(6.708186388),  # arborescent Acropora
-            sqrt(8.435734979),  # tabular Acropora
-            sqrt(9.985107528),  # corymbose Acropora
-            sqrt(18.11022246),  # Pocillopora + non-Acropora corymbose
-            sqrt(25.14596104),  # Small massives and encrusting
-            sqrt(30.67080388)   # Large massives
+            2.590016677,  # arborescent Acropora
+            2.904433676,  # tabular Acropora
+            3.159922076,  # corymbose Acropora
+            3.474118416,  # Pocillopora + non-Acropora corymbose
+            4.773419097,  # Small massives and encrusting
+            5.538122776   # Large massives
         ], inner=n_classes)
 
     # Get perturbable coral parameters
