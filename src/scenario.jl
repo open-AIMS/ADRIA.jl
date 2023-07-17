@@ -562,8 +562,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Calculate and apply bleaching mortality
         # bleaching_mortality!(Sbl, felt_dhw, depth_coeff, tstep, site_data.depth_med, bleaching_sensitivity, dhw_t, a_adapt, n_adapt)
+
+        # This: dhw_t .* (1.0 .- wave_scen[p_step, :])
+        # attempts to account for the cooling effect of storms / high wave activity
         Sbl .= Y_pstep[:, :]
-        bleaching_mortality!(Sbl, dhw_t, depth_coeff, c_dist_t, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Sbl, dhw_t .* (1.0 .- wave_scen[p_step, :]), depth_coeff, c_dist_t, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
