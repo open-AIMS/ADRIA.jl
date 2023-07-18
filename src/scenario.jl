@@ -298,8 +298,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_start_year::Int64 = param_set("seed_year_start")
     shade_start_year::Int64 = param_set("shade_year_start")
 
-    n_TA_to_seed::Int64 = param_set("seed_TA")  # tabular Acropora size class 2, per year per species per cluster
-    n_CA_to_seed::Int64 = param_set("seed_CA")  # corymbose Acropora size class 2, per year per species per cluster
     fogging::Real = param_set("fogging")  # percent reduction in bleaching mortality through fogging
     srm::Real = param_set("SRM")  # DHW equivalents reduced by some shading mechanism
     seed_years::Int64 = param_set("seed_years")  # number of years to seed
@@ -330,7 +328,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
     Yfog = SparseArray(spzeros(tf, n_sites))
-    Yseed = SparseArray(zeros(tf, 2, n_sites))  # 2 = the two enhanced coral types
+    Yseed = SparseArray(zeros(tf, 3, n_sites))  # 2 = the two enhanced coral types
 
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
     is_guided = param_set("guided") > 0
@@ -371,17 +369,30 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
     proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
+    
+    # Define constant table location for seed values and seeded coral types
+    taxa_to_seed = [2,3,5]
+    taxa_names = ["seed_CA","seed_TA","seed_SM"]
 
-    # Define constant table location for seed values
-    tabular ::BitArray = corals.taxa_id .== 2
-    corymbose ::BitArray = corals.taxa_id .== 3
+    seeded_area = NamedDimsArray(zeros(length(taxa_to_seed)),taxa=taxa_names)
+    taxa_to_seed_ids = NamedDimsArray(corals.taxa_id .== taxa_to_seed',species=1:n_species,taxa=taxa_names)
+
     target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
-    seed_sc_TA::Int64 = first(findall(tabular .& target_class_id))  # size class indices for TA and CA
-    seed_sc_CA::Int64 = first(findall(corymbose .& target_class_id))
+    seed_sc = taxa_to_seed_ids .& target_class_id # size class indices for TA, CA and SM
 
+    # Set up assisted adaptation values
+    a_adapt = zeros(n_species)
+
+    seed_corals = false
     # Extract colony areas for sites selected in m^2
-    col_area_seed_TA = colony_mean_area(corals.mean_colony_diameter_m[seed_sc_TA])
-    col_area_seed_CA = colony_mean_area(corals.mean_colony_diameter_m[seed_sc_CA])
+    for taxa in seeded_area.taxa
+        seeded_area[seeded_area.taxa.==taxa] .= colony_mean_area(corals.mean_colony_diameter_m[findall(seed_sc(taxa))])[1].*param_set(taxa)
+        a_adapt[taxa_to_seed_ids(taxa)] .= param_set("a_adapt")
+        if param_set(taxa).>0
+            # Flag indicating whether to seed or not to seed
+            seed_corals = true
+        end
+    end
 
     bleaching_sensitivity = corals.bleaching_sensitivity
 
@@ -389,7 +400,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     depth_priority = collect(1:nrow(site_data))
 
     # calculate total area to seed respecting tolerance for minimum available space to still seed at a site
-    area_to_seed = (col_area_seed_TA .* n_TA_to_seed) + (col_area_seed_CA .* n_CA_to_seed)
+    area_to_seed = sum(seeded_area)
 
     # Filter out sites outside of desired depth range
     if .!all(site_data.depth_med .== 0)
@@ -417,10 +428,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     #### End coral constants
 
     ## Update ecological parameters based on intervention option
-    # Set up assisted adaptation values
-    a_adapt = zeros(n_species)
-    a_adapt[tabular] .= param_set("a_adapt")
-    a_adapt[corymbose] .= param_set("a_adapt")
 
     # Level of natural coral adaptation
     n_adapt = param_set("n_adapt")
@@ -441,9 +448,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # clamp!(Sw_t, 0.0, 1.0)
 
     # Sw_t .= 1.0 .- Sw_t
-
-    # Flag indicating whether to seed or not to seed
-    seed_corals::Bool = (n_TA_to_seed > 0) || (n_CA_to_seed > 0)
 
     site_k_prop = max_cover'
     absolute_k_area = site_k_area(domain)'  # max possible coral area in m^2
@@ -536,16 +540,14 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
             # Calculate proportion to seed based on current available space
-            seeded_area = (TA=n_TA_to_seed * col_area_seed_TA, CA=n_CA_to_seed * col_area_seed_CA)
             scaled_seed = distribute_seeded_corals(vec(total_site_area), prefseedsites, vec(leftover_space_m²), seeded_area)
+            # Seed each site
+            for (taxa_ind,taxa) in enumerate(seeded_area.taxa)
+                @views Y_pstep[seed_sc(taxa), prefseedsites] .= Y_pstep[seed_sc(taxa), prefseedsites] .+ scaled_seed(taxa)'
+                 # Log seed values/sites (these values are relative to site area)
+                Yseed[tstep, taxa_ind, prefseedsites] .= scaled_seed(taxa)
+            end
 
-            # Seed each site with TA or CA
-            @views Y_pstep[seed_sc_TA, prefseedsites] .= Y_pstep[seed_sc_TA, prefseedsites] .+ scaled_seed.TA
-            @views Y_pstep[seed_sc_CA, prefseedsites] .= Y_pstep[seed_sc_CA, prefseedsites] .+ scaled_seed.CA
-
-            # Log seed values/sites (these values are relative to site area)
-            Yseed[tstep, 1, prefseedsites] .= scaled_seed.TA
-            Yseed[tstep, 2, prefseedsites] .= scaled_seed.CA
         end
 
         # Calculate survivors from bleaching and wave stress
