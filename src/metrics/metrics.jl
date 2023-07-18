@@ -1,6 +1,6 @@
 module metrics
 
-using Interpolations, Statistics, OnlineStats, NamedDims, AxisKeys
+using Interpolations, Statistics, OnlineStats, NamedDims, AxisKeys, JuliennedArrays
 
 using DataFrames
 using ADRIA: coral_spec, ResultSet, timesteps

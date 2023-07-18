@@ -30,4 +30,8 @@ function outcome_map!() end
 function ts_cluster() end
 function ts_cluster!() end
 
+# Spatial
+function map() end
+function map!() end
+
 end  # module

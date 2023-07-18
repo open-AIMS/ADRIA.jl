@@ -47,3 +47,4 @@ end
 include("scenario.jl")
 include("sensitivity.jl")
 include("clustering.jl")
+include("spatial.jl")

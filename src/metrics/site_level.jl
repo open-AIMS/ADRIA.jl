@@ -1,4 +1,4 @@
-using Statistics, OnlineStats
+"""Functions and methods to produce location-level summaries."""
 
 
 """
@@ -7,20 +7,29 @@ using Statistics, OnlineStats
 Get metric results applied to the site-level at indicated time (or across timesteps).
 
 # Arguments
-- metric : Any function from the Statistics package to be applied to `data`
+- metric : Any function (nominally from the Statistics package) to be applied to `data`
 - data : Data set to apply metric to
-- timestep : Target time step, or time frame
+- timesteps : timesteps to apply `metric` across
 
 # Returns
-Vector of N elements, where N is the number of sites.
+Named Vector of \$N\$ elements, where \$N\$ is the number of sites.
 """
-function per_site(metric, data::NamedDimsArray)
-    num_sites = size(data, dim(data, :sites))
-    met = zeros(num_sites)
+function per_site(metric, data::NamedDimsArray)::NamedDimsArray
+    ndims(data) > 3 ? ArgumentError("site level metrics only possible for a maximum of 3 dimensions") : true
 
-    @inbounds for i in 1:num_sites
-        met[i] = metric(data[sites=i])
-    end
+    # Get length of timestep dimension directly
+    #   `map` erroneously extracts every single element from the NamedDimsArray
+    #   so we use `tf` to subset the dataset.
+    # Use of JuliennedArrays is in an attempt to speed up calculation of summary statistics.
+    #   We see a small but still worthwhile improvement in practice.
+    #   see: https://stackoverflow.com/a/62040897
+    tf = axes(data, :timesteps)
+    s::Vector{eltype(data)} = map(metric,
+        JuliennedArrays.Slices(data[timesteps=tf], dim(data, :timesteps), dim(data, :scenarios))
+    )
 
-    return met
+    return NamedDimsArray(s, sites=axiskeys(data, :sites))
+end
+function per_site(metric, data::NamedDimsArray, timesteps::Union{UnitRange,Int64,Vector{Int64}})::NamedDimsArray
+    return per_site(metric, data[timesteps=timesteps])
 end

@@ -26,6 +26,9 @@ function centroids(df::DataFrame)::Vector{Tuple{Float64,Float64}}
     site_centroids::Vector = AG.centroid.(get_geometry(df))
     return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
 end
+function centroids(ds::Union{Domain,ResultSet})::Vector{Tuple{Float64,Float64}}
+    return centroids(ds.site_data)
+end
 
 
 """
