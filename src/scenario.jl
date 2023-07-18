@@ -372,7 +372,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     
     # Define constant table location for seed values and seeded coral types
     taxa_to_seed = [2,3,5]
-    taxa_names = param_set.factors[occursin.("n_seed_",param_set.factors)]
+    taxa_names = param_set.factors[occursin.("N_seed_",param_set.factors)]
 
     taxa_to_seed_ids = NamedDimsArray(corals.taxa_id .== taxa_to_seed',species=1:n_species,taxa=taxa_names)
 
