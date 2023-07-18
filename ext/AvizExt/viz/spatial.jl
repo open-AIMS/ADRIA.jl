@@ -100,8 +100,9 @@ function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dic
 end
 function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
     f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
 
-    ADRIA.viz.map!(f, rs, rs.site_data.k; opts, axis_opts, series_opts)
+    ADRIA.viz.map!(g, rs, rs.site_data.k; opts, axis_opts, series_opts)
 
     return f
 end
