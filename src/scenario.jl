@@ -382,14 +382,14 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Set up assisted adaptation values
     a_adapt = zeros(n_species)
-
+    # Flag indicating whether to seed or not to seed
     seed_corals = false
-    # Extract colony areas for sites selected in m^2
+    
+    # Extract colony areas for sites selected in m^2 and add adaptation values
     for taxa in seeded_area.taxa
         seeded_area[seeded_area.taxa.==taxa] .= colony_mean_area(corals.mean_colony_diameter_m[findall(seed_sc(taxa))])[1].*param_set(taxa)
         a_adapt[taxa_to_seed_ids(taxa)] .= param_set("a_adapt")
         if param_set(taxa).>0
-            # Flag indicating whether to seed or not to seed
             seed_corals = true
         end
     end
