@@ -126,7 +126,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_sites, n_scens)  # timeframe, sites, no. scenarios
 
     # tf, no. intervention sites, site id and rank, no. scenarios
-    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 2, n_sites, n_scens)
+    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 3, n_sites, n_scens)
 
     attrs = Dict(
         # Here, "intervention" refers to seeding or shading
