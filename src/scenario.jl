@@ -383,8 +383,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     a_adapt = zeros(n_species)
     # Flag indicating whether to seed or not to seed
     seed_corals = any(param_set(factors=seeded_area.taxa) .> 0.0)
-    
-    Main.@infiltrate
+
     # Extract colony areas for sites selected in m^2 and add adaptation values
     a_adapt[sum(taxa_to_seed_ids,dims=2)[taxa=1].>0] .= param_set("a_adapt")
     bleaching_sensitivity = corals.bleaching_sensitivity
