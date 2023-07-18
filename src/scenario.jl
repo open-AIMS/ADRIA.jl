@@ -430,16 +430,16 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     LPDprm2 = sim_params.LPDprm2 # parameter offsetting LPD curve
 
     # Wave stress
-    # Sw_t::Array{Float64,3} = cache.waves
+    Sw_t::Array{Float64,3} = cache.waves
     wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
 
-    # for sp::Int64 in 1:n_species
-    #     @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen
-    # end
+    for sp::Int64 in 1:n_species
+        @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen
+    end
 
-    # clamp!(Sw_t, 0.0, 1.0)
+    clamp!(Sw_t, 0.0, 1.0)
 
-    # Sw_t .= 1.0 .- Sw_t
+    Sw_t .= 1.0 .- Sw_t
 
     site_k_prop = max_cover'
     absolute_k_area = site_k_area(domain)'  # max possible coral area in m^2
@@ -490,7 +490,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             env_horizon[1, :] .= dhw_t
             mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
 
-            # mcda_vars.dam_prob .= vec(sum(dropdims((mean(Sw_t[horizon, :, :], dims=1) .+ std(Sw_t[horizon, :, :], dims=1)) .* 0.5, dims=1), dims=1))
+            mcda_vars.dam_prob .= vec(sum(dropdims((mean(Sw_t[horizon, :, :], dims=1) .+ std(Sw_t[horizon, :, :], dims=1)) .* 0.5, dims=1), dims=1))
         end
         if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= site_coral_cover
@@ -543,12 +543,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Calculate survivors from bleaching and wave stress
-        # @views @. prop_loss = Sbl * Sw_t[p_step, :, :]
+        @views @. prop_loss = Sbl * Sw_t[p_step, :, :]
 
         # Note: ODE is run relative to `k` area, but values are otherwise recorded
         #       in relative to absolute area.
         # Update initial condition
-        @. tmp = ((Y_pstep * Sbl) * total_site_area) / absolute_k_area
+        @. tmp = ((Y_pstep * prop_loss) * total_site_area) / absolute_k_area
         replace!(tmp, Inf => 0.0, NaN => 0.0)
         growth.u0 .= tmp
 
