@@ -372,22 +372,24 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     
     # Define constant table location for seed values and seeded coral types
     taxa_to_seed = [2,3,5]
-    #taxa_names = occursin.("N_seed_",param_set.factors)
-    taxa_names = ["N_seed_TA","N_seed_CA","N_seed_SM"]
+
+    taxa_names = param_set.factors[occursin.("N_seed_",param_set.factors)]
 
     taxa_to_seed_ids = NamedDimsArray(corals.taxa_id .== taxa_to_seed',species=1:n_species,taxa=taxa_names)
 
     target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
     seed_sc = taxa_to_seed_ids .& target_class_id  # size class indices for TA, CA and SM
-    #seeded_area = NamedDimsArray(colony_mean_area(repeat(corals.mean_colony_diameter_m,1,3)[seed_sc]).*param_set(taxa_names),taxa=taxa_names)
-    seeded_area = NamedDimsArray(zeros(3),taxa=taxa_names)
+
+    # Extract colony areas for sites selected in m^2 and add adaptation values
+    seeded_area = colony_mean_area(repeat(corals.mean_colony_diameter_m,1,3)[seed_sc]).*param_set(taxa_names)
+
     # Set up assisted adaptation values
     a_adapt = zeros(n_species)
+    a_adapt[sum(taxa_to_seed_ids,dims=2)[taxa=1].>0] .= param_set("a_adapt")
+
     # Flag indicating whether to seed or not to seed
     seed_corals = any(param_set(factors=taxa_names) .> 0.0)
 
-    # Extract colony areas for sites selected in m^2 and add adaptation values
-    a_adapt[sum(taxa_to_seed_ids,dims=2)[taxa=1].>0] .= param_set("a_adapt")
     bleaching_sensitivity = corals.bleaching_sensitivity
 
     # Defaults to considering all sites if depth cannot be considered.
@@ -536,7 +538,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Calculate proportion to seed based on current available space
             scaled_seed = distribute_seeded_corals(vec(total_site_area), prefseedsites, vec(leftover_space_m²), seeded_area)
             # Seed each site
-            for (taxa_ind,taxa) in enumerate(seeded_area.taxa)
+            for (taxa_ind,taxa) in enumerate(seeded_area.factors)
                 @views Y_pstep[seed_sc(taxa), prefseedsites] .= Y_pstep[seed_sc(taxa), prefseedsites] .+ scaled_seed(taxa)'
                  # Log seed values/sites (these values are relative to site area)
                 Yseed[tstep, taxa_ind, prefseedsites] .= scaled_seed(taxa)
