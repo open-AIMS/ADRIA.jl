@@ -328,7 +328,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
     Yfog = SparseArray(spzeros(tf, n_sites))
-    Yseed = SparseArray(zeros(tf, 3, n_sites))  # 2 = the two enhanced coral types
+    Yseed = SparseArray(zeros(tf, 3, n_sites))  # 3 = the number of seeded coral types
 
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
     is_guided = param_set("guided") > 0
@@ -384,7 +384,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     a_adapt = zeros(n_species)
     # Flag indicating whether to seed or not to seed
     seed_corals = false
-    
+
     # Extract colony areas for sites selected in m^2 and add adaptation values
     for taxa in seeded_area.taxa
         seeded_area[seeded_area.taxa.==taxa] .= colony_mean_area(corals.mean_colony_diameter_m[findall(seed_sc(taxa))])[1].*param_set(taxa)
