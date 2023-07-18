@@ -6,23 +6,27 @@ Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
 
 
 """
-	create_map!(f, geodata, data, highlight, centroids, c_label)
+create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{2, Float32}, 
+            data::Observable{Vector{Float32}}, highlight::Vector{RGBA{Float32}}, 
+            centroids::Vector{Tuple{Float64, Float64}}, colorbar_label::String, 
+            legend_params::Tuple, axis_opts::Dict)
 
 Create a spatial choropleth figure.
 
 # Arguments
 - `f` : GLMakie figure to create plot in
 - `geodata` : FeatureCollection, Geospatial data to display
-- `data` : Vector, values to use for choropleth
-- `highlight` : Vector, stroke colors for each location
+- `data` : Values to use for choropleth
+- `highlight` : Stroke colors for each location
 - `centroids` : Vector{Tuple}, of lon and lats
-- `c_label` : String, label to use for color bar
+- `colorbar_label` : Label to use for color bar
+- `legend_params` : Legend parameters
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 """
-function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{2, Float32}, 
-    data::Observable{Vector{Float32}}, highlight::Vector{RGBA{Float32}}, 
-    centroids::Vector{Tuple{Float64, Float64}}, colorbar_label::String, 
+function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{2,Float32},
+    data::Observable{Vector{Float32}}, highlight::Vector{RGBA{Float32}},
+    centroids::Vector{Tuple{Float64,Float64}}, colorbar_label::String,
     legend_params::Tuple, axis_opts::Dict)
     lon = first.(centroids)
     lat = last.(centroids)
@@ -88,7 +92,6 @@ function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{
         Legend(f[1, 3], legend_params..., framevisible=false)
     end
     # datalims!(spatial)  # auto-adjust limits (doesn't work if there are Infs...)
-
 
     return f
 end
