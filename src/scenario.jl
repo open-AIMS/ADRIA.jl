@@ -374,7 +374,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     taxa_to_seed = [2,3,5]
     taxa_names = ["seed_CA","seed_TA","seed_SM"]
 
-    seeded_area = NamedDimsArray(zeros(length(taxa_to_seed)),taxa=taxa_names)
     taxa_to_seed_ids = NamedDimsArray(corals.taxa_id .== taxa_to_seed',species=1:n_species,taxa=taxa_names)
 
     target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
@@ -383,17 +382,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Set up assisted adaptation values
     a_adapt = zeros(n_species)
     # Flag indicating whether to seed or not to seed
-    seed_corals = false
-
+    seed_corals = any(param_set(factors=seeded_area.taxa) .> 0.0)
+    
+    Main.@infiltrate
     # Extract colony areas for sites selected in m^2 and add adaptation values
-    for taxa in seeded_area.taxa
-        seeded_area[seeded_area.taxa.==taxa] .= colony_mean_area(corals.mean_colony_diameter_m[findall(seed_sc(taxa))])[1].*param_set(taxa)
-        a_adapt[taxa_to_seed_ids(taxa)] .= param_set("a_adapt")
-        if param_set(taxa).>0
-            seed_corals = true
-        end
-    end
-
+    a_adapt[sum(taxa_to_seed_ids,dims=2)[taxa=1].>0] .= param_set("a_adapt")
     bleaching_sensitivity = corals.bleaching_sensitivity
 
     # Defaults to considering all sites if depth cannot be considered.
