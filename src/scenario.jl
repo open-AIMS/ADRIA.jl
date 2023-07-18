@@ -373,11 +373,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
 
     # Define constant table location for seed values
-    tabular_enhanced::BitArray = corals.taxa_id .== 1
-    corymbose_enhanced::BitArray = corals.taxa_id .== 3
+    tabular ::BitArray = corals.taxa_id .== 2
+    corymbose ::BitArray = corals.taxa_id .== 3
     target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
-    seed_sc_TA::Int64 = first(findall(tabular_enhanced .& target_class_id))  # size class indices for TA and CA
-    seed_sc_CA::Int64 = first(findall(corymbose_enhanced .& target_class_id))
+    seed_sc_TA::Int64 = first(findall(tabular .& target_class_id))  # size class indices for TA and CA
+    seed_sc_CA::Int64 = first(findall(corymbose .& target_class_id))
 
     # Extract colony areas for sites selected in m^2
     col_area_seed_TA = colony_mean_area(corals.mean_colony_diameter_m[seed_sc_TA])
@@ -419,8 +419,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     ## Update ecological parameters based on intervention option
     # Set up assisted adaptation values
     a_adapt = zeros(n_species)
-    a_adapt[tabular_enhanced] .= param_set("a_adapt")
-    a_adapt[corymbose_enhanced] .= param_set("a_adapt")
+    a_adapt[tabular] .= param_set("a_adapt")
+    a_adapt[corymbose] .= param_set("a_adapt")
 
     # Level of natural coral adaptation
     n_adapt = param_set("n_adapt")
