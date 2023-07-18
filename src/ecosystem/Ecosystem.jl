@@ -47,11 +47,11 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
     # Bounds are defined as floats to maintain type stability
     guided::N = Param(0, ptype="integer", bounds=(-1.0, length(methods_mcda) + 1.0), dists="unif",
         name="Guided", description="Choice of MCDA approach.")
-    seed_TA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
+    n_seed_TA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
         name="Seeded Tabular Acropora", description="Number of Tabular Acropora to seed per deployment year.")
-    seed_CA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
+    n_seed_CA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
         name="Seeded Corymbose Acropora", description="Number of Corymbose Acropora to seed per deployment year.")
-    seed_SM::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
+    n_seed_SM::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
         name="Seeded Small Massives", description="Number of small massives/encrusting to seed per deployment year.")
     fogging::P = Param(0.16, ptype="real", bounds=(0.0, 0.3, 0.16 / 0.3), dists="triang",
         name="Fogging", description="Assumed reduction in bleaching mortality.")
