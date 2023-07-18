@@ -17,20 +17,24 @@ Create a spatial choropleth figure.
 - `highlight` : Vector, stroke colors for each location
 - `centroids` : Vector{Tuple}, of lon and lats
 - `c_label` : String, label to use for color bar
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
 """
-function create_map!(f, geodata, data, highlight, centroids, c_label)
+function create_map!(f, geodata, data, highlight, centroids, c_label, axis_opts)
     lon = first.(centroids)
     lat = last.(centroids)
+
+    axis_opts[:title] = get(axis_opts, :title, "Study Area")
+    axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
+    axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
 
     map_buffer = 0.025
     spatial = GeoAxis(
         f[1, 1];
         lonlims=(minimum(lon) - map_buffer, maximum(lon) + map_buffer),
         latlims=(minimum(lat) - map_buffer, maximum(lat) + map_buffer),
-        title="Study Area",
-        xlabel="Longitude",
-        ylabel="Latitude",
-        dest="+proj=latlong +datum=WGS84"
+        dest="+proj=latlong +datum=WGS84",
+        axis_opts...
     )
     spatial.xticklabelsize = 12
     spatial.yticklabelsize = 12
@@ -110,7 +114,7 @@ function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,Resu
 
     c_label = get(opts, :colorbar_label, "")
     highlight = get(opts, :highlight, nothing)
-    return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label)
+    return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label, axis_opts)
 end
 
 
