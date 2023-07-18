@@ -20,7 +20,7 @@ using NamedDims
         prefseedsites = rand(1:length(total_site_area), 5)
 
         # Randomly generate seeded area
-        seeded_area = NamedDimsArray(rand(Uniform(0.0, 500.0), 3),taxa=["seed_TA","seed_CA","seed_SM"])
+        seeded_area = NamedDimsArray(rand(Uniform(0.0, 500.0), 3),taxa=["N_seed_TA","N_seed_CA","N_seed_SM"])
 
         # evaluate seeding distributions
         seed_dist = distribute_seeded_corals(total_site_area, prefseedsites,available_space, seeded_area)
@@ -34,7 +34,7 @@ using NamedDims
         # absolute available area to seed for selected sites
         selected_avail_space = available_space[prefseedsites]
 
-        abs_seed_area = seed_dist("seed_TA") .* total_site_area[prefseedsites]
+        abs_seed_area = seed_dist("N_seed_TA") .* total_site_area[prefseedsites]
 
         # index of max proportion for available space
         max_ind_out = findfirst(abs_seed_area .== maximum(abs_seed_area))
@@ -44,10 +44,10 @@ using NamedDims
         min_ind_out = findfirst(abs_seed_area .== minimum(abs_seed_area))
         min_ind = findfirst(selected_avail_space .== minimum(selected_avail_space))
 
-        @test (abs(seeded_area("seed_TA") - total_area_coral_out("seed_TA")) < 10^-5) && (abs(seeded_area("seed_CA") - total_area_coral_out("seed_CA")) < 10^-5) && (abs(seeded_area("seed_SM") - total_area_coral_out("seed_SM")) < 10^-5) || "Area of corals seeded not equal to (colony area) * (number or corals)"
-        @test all((seed_dist("seed_TA") .< 1) .&& (seed_dist("seed_CA") .< 1) .&& (seed_dist("seed_SM") .< 1)) || "Some proportions of seeded corals greater than 1"
-        @test all((seed_dist("seed_TA") .>= 0) .&& (seed_dist("seed_CA").>= 0) .&& (seed_dist("seed_SM").>= 0)) || "Some proportions of seeded corals less than zero"
-        @test all((seeded_area("seed_TA").<= selected_avail_space) .&& (seeded_area("seed_CA") .<= selected_avail_space) .&& (seeded_area("seed_SM") .<= selected_avail_space)) || "Area seeded greater than available area"
+        @test (abs(seeded_area("N_seed_TA") - total_area_coral_out("N_seed_TA")) < 10^-5) && (abs(seeded_area("N_seed_CA") - total_area_coral_out("N_seed_CA")) < 10^-5) && (abs(seeded_area("N_seed_SM") - total_area_coral_out("N_seed_SM")) < 10^-5) || "Area of corals seeded not equal to (colony area) * (number or corals)"
+        @test all((seed_dist("N_seed_TA") .< 1) .&& (seed_dist("N_seed_CA") .< 1) .&& (seed_dist("N_seed_SM") .< 1)) || "Some proportions of seeded corals greater than 1"
+        @test all((seed_dist("N_seed_TA") .>= 0) .&& (seed_dist("seed_CA").>= 0) .&& (seed_dist("N_seed_SM").>= 0)) || "Some proportions of seeded corals less than zero"
+        @test all((seeded_area("N_seed_TA").<= selected_avail_space) .&& (seeded_area("N_seed_CA") .<= selected_avail_space) .&& (seeded_area("seed_SM") .<= selected_avail_space)) || "Area seeded greater than available area"
         @test (max_ind_out == max_ind) || "Maximum distributed proportion of seeded coral not seeded in largest available area."
         @test (min_ind_out == min_ind) || "Minimum distributed proportion of seeded coral not seeded in smallest available area."
     end

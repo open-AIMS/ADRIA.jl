@@ -82,7 +82,7 @@ function create_BI_format_file(rs::ResultSet, file_loc::String)
     #RCI=Float64[],DiffRCI=Float64[])
 
     # find conterfactual index
-    cond = ((rs.inputs.guided .== 0) .& (rs.inputs.seed_TA .== 0) .& (rs.inputs.seed_CA .== 0) .& (rs.inputs.fogging .== 0) .& (rs.inputs.SRM .== 0) .& (rs.inputs.a_adapt .== 0) .& (rs.inputs.n_adapt .== 0))
+    cond = ((rs.inputs.guided .== 0) .& (rs.inputs.N_seed_TA .== 0) .& (rs.inputs.N_seed_CA .== 0) .& (rs.inputs.N_seed_SM .== 0) .& (rs.inputs.fogging .== 0) .& (rs.inputs.SRM .== 0) .& (rs.inputs.a_adapt .== 0) .& (rs.inputs.n_adapt .== 0))
     counter_ind = rownumber.(eachrow(rs.inputs[cond, :]))
     count = 1
     for t in collect(1:n_years)
@@ -92,7 +92,7 @@ function create_BI_format_file(rs::ResultSet, file_loc::String)
                 # guided or unguided
                 rs.inputs.guided[sce] > 0 ? guided = 1 : guided = 0
                 # seeding level including both species
-                seed = rs.inputs.seed_TA[sce] + rs.inputs.seed_CA[sce]
+                seed = rs.inputs.N_seed_TA[sce] + rs.inputs.N_seed_CA[sce] + rs.inputs.N_seed_SM[sce]
                 # fogging or no fogging
                 rs.inputs.fogging[sce] > 0 ? fog = 1 : fog = 0
 

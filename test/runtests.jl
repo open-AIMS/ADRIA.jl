@@ -34,7 +34,7 @@ const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
         test_scens = CSV.read(scen_path, DataFrame)
         ADRIA.update_params!(dom, test_scens[5, :])
 
-        @test all(ADRIA.param_table(dom).seed_TA .== 500000)
+        @test all(ADRIA.param_table(dom).N_seed_TA .== 500000)
     end
 end
 
