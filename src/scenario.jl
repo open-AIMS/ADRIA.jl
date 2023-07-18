@@ -377,7 +377,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     taxa_to_seed_ids = NamedDimsArray(corals.taxa_id .== taxa_to_seed',species=1:n_species,taxa=taxa_names)
 
     target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
-    seed_sc = taxa_to_seed_ids .& target_class_id # size class indices for TA, CA and SM
+    seed_sc = taxa_to_seed_ids .& target_class_id  # size class indices for TA, CA and SM
 
     # Set up assisted adaptation values
     a_adapt = zeros(n_species)
