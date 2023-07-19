@@ -337,7 +337,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
-    α = 0.99
+    α = 0.95
     decay = α .^ (1:Int64(param_set("plan_horizon"))+1)
 
     # Years at which to reassess seeding site selection
