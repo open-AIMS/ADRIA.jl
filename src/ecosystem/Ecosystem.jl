@@ -47,10 +47,12 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
     # Bounds are defined as floats to maintain type stability
     guided::N = Param(0, ptype="integer", bounds=(-1.0, length(methods_mcda) + 1.0), dists="unif",
         name="Guided", description="Choice of MCDA approach.")
-    seed_TA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
-        name="Seeded Tabular Acropora", description="Number of enhanced Tabular Acropora to seed per deployment year.")
-    seed_CA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
-        name="Seeded Corymbose Acropora", description="Number of enhanced Corymbose Acropora to seed per deployment year.")
+    N_seed_TA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
+        name="Seeded Tabular Acropora", description="Number of Tabular Acropora to seed per deployment year.")
+    N_seed_CA::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
+        name="Seeded Corymbose Acropora", description="Number of Corymbose Acropora to seed per deployment year.")
+    N_seed_SM::N = Param(0, ptype="integer", bounds=(0.0, 1000000.0 + 1.0), dists="unif",
+        name="Seeded Small Massives", description="Number of small massives/encrusting to seed per deployment year.")
     fogging::P = Param(0.16, ptype="real", bounds=(0.0, 0.3, 0.16 / 0.3), dists="triang",
         name="Fogging", description="Assumed reduction in bleaching mortality.")
     SRM::P = Param(0.0, ptype="real", bounds=(0.0, 7.0, 0.0), dists="triang",
@@ -207,6 +209,18 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
     return
 end
 
+"""
+    colony_areas(colony_diam_means)
+
+Generate colony areas for given colny diameter(s).
+
+# Arguments
+- `colony_diam_means` : mean colony diameter (in meters)
+
+"""
+function colony_mean_area(colony_diam_means)
+    return pi .* ((colony_diam_means ./ 2.0).^2)
+end
 
 """
     colony_areas()
@@ -237,11 +251,10 @@ function colony_areas()
     # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
     # To convert to cover we locate bin means and calculate bin mean areas
     colony_diam_means = repeat(mean_cm_diameters', nclasses, 1)
-    colony_area_mean_cm2 = @. pi * ((colony_diam_means / 2)^2)
+    colony_area_mean_cm2 = colony_mean_area(colony_diam_means)
 
     return colony_area_mean_cm2, (colony_diam_means ./ 100.0)
 end
-
 
 """
     coral_spec()
@@ -296,10 +309,10 @@ function coral_spec()::NamedTuple
 
     # Coral species are divided into taxa and size classes
     taxa_names = String[
-        "tabular_acropora_enhanced"
-        "tabular_acropora_unenhanced"
-        "corymbose_acropora_enhanced"
-        "corymbose_acropora_unenhanced"
+        "abhorescent_acropora"
+        "tabular_acropora"
+        "corymbose_acropora"
+        "corymbose_non_acropora"
         "small_massives"
         "large_massives"
     ]
@@ -323,16 +336,15 @@ function coral_spec()::NamedTuple
     # size classes and growth rates as linear extension (in cm per year).
 
     colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
-    params.colony_area_cm2 = reshape(colony_area_mean_cm²', n_species)[:]
+    params.mean_colony_diameter_m= reshape(mean_colony_diameter_m', n_species)[:]
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
-    # we assume similar growth rates for enhanced and unenhanced corals
     # all values in cm/year
     linear_extension = Array{Float64,2}([
-        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora Enhanced
-        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora Unenhanced
-        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora Enhanced
-        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora Unenhanced
+        1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora 
+        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora 
+        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora 
+        1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
         1.0 1.0 1.0 1.0 0.8 0.8     # small massives
         1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
 
@@ -351,13 +363,14 @@ function coral_spec()::NamedTuple
     params.growth_rate[params.class_id.==6] .= params.growth_rate[params.class_id.==6] .* 0.2
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
-    fec_par_a = Float64[1.03; 1.03; 1.69; 1.69; 0.86; 0.86]  # fecundity parameter a
-    fec_par_b = Float64[1.28; 1.28; 1.05; 1.05; 1.21; 1.21]  # fecundity parameter b
+    # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
+    fec_par_a = Float64[1.03; 1.03; 1.69; 0.02; 0.86; 0.86]  # fecundity parameter a
+    fec_par_b = Float64[1.28; 1.28; 1.05; 2.27; 1.21; 1.21]  # fecundity parameter b
     min_size_full_fec_cm2 = Float64[123.0; 123.0; 134.0; 134.0; 38.0; 38.0]
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
-    colony_area_cm2 = pi .* ((mean_colony_diameter_m .* 100.0) ./ 2.0) .^ 2
+    colony_area_cm2 = colony_mean_area(mean_colony_diameter_m .* 100.0)
     fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
     fec[colony_area_cm2.<min_size_full_fec_cm2] .= 0.0
 
@@ -365,21 +378,20 @@ function coral_spec()::NamedTuple
     fec[:, 1:2] .= 0.0
 
     # then convert to number of larvae produced per m2
-    fec_m² = fec ./ (pi .* (mean_colony_diameter_m ./ 2.0) .^ 2)  # convert from per colony area to per m2
+    fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
     params.fecundity = fec_m²'[:]
 
     ## Mortality
     # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
     wavemort90 = Array{Float64,2}([
-        0.0 0.0 0.0 0.0 0.05 0.1  # Tabular Acropora Enhanced
-        0.0 0.0 0.0 0.0 0.05 0.1  # Tabular Acropora Unenhanced
-        0.0 0.0 0.0 0.0 0.02 0.05  # Corymbose Acropora Enhanced
-        0.0 0.0 0.0 0.0 0.02 0.05  # Corymbose Acropora Unenhanced
+        0.0 0.0 0.0 0.0 0.0 0.0  # Abhorescent Acropora
+        0.0 0.0 0.0 0.0 0.0 0.0  # Tabular Acropora 
+        0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose Acropora 
+        0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose non-Acropora 
         0.0 0.0 0.0 0.0 0.0 0.0  # small massives and encrusting
         0.0 0.0 0.0 0.0 0.0 0.0])  # large massives
 
     params.wavemort90 = wavemort90'[:]
-
     # Background mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
     # Using values for:
     # - juvenile mortality (first two columns)
@@ -388,24 +400,25 @@ function coral_spec()::NamedTuple
     # - > 250cm² (Columns 5 and 6)
     # Values for size class 4 are then interpolated by K.A
     mb = Array{Float64,2}([
-        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Enhanced
-        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Unenhanced
-        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Enhanced
-        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Unenhanced
-        0.2 0.2 0.04 0.026 0.02 0.02    # Small massives and encrusting
-        0.2 0.2 0.04 0.026 0.02 0.02])   # Large massives
+        0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora 
+        0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora 
+        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora 
+        0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora 
+        0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
+        0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
     params.mb_rate = mb'[:]
-
+    
     # Bleaching sensitivity of each coral group
     # Bozec et al., (2022)
     bleaching_sensitivity = Float64[
-        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Enhanced (Arborescent staghorn corals)
-        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Unenhanced
-        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Enhanced
-        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Unenhanced
+        1.50 1.50 1.50 1.50 1.50 1.50  # Arborescent Acropora 
+        1.60 1.60 1.60 1.60 1.60 1.60  # Tabular Acropora 
+        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora 
+        1.70 1.70 1.70 1.70 1.70 1.70  # Corymbose non-Acropora 
         0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
         0.25 0.25 0.25 0.25 0.25 0.25] # Large massives
     params.bleaching_sensitivity = bleaching_sensitivity'[:]
+
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list

@@ -3,7 +3,7 @@ module metrics
 using Interpolations, Statistics, OnlineStats, NamedDims, AxisKeys, JuliennedArrays
 
 using DataFrames
-using ADRIA: coral_spec, ResultSet, timesteps
+using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps
 
 
 abstract type Outcome end
@@ -306,7 +306,7 @@ absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios
 Calculate the maximum possible area that can be covered by juveniles for a given m².
 """
 function _max_juvenile_area(coral_params::DataFrame, max_juv_density::Float64=51.8)
-    max_size_m² = maximum(coral_params[coral_params.class_id.==2, :colony_area_cm2]) / 10^4
+    max_size_m² = maximum(colony_mean_area(coral_params[coral_params.class_id.==2, :mean_colony_diameter_m]))
     return max_juv_density * max_size_m²
 end
 
@@ -383,12 +383,10 @@ Helper function to convert coral colony values from Litres/cm² to m³/m²
 Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
 
 # References
-1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V., Elise, S., Kulbicki, M., Quod, J.-P.,
-     Dutrieux, E., Garnier, R., Henrich Bruggemann, J., Penin, L., & Adjeroud, M. (2021).
-   Quantifying the shelter capacity of coral reefs using photogrammetric 3D modeling:
-     From colonies to reefscapes.
-   Ecological Indicators, 121, 107151.
-   https://doi.org/10.1016/j.ecolind.2020.107151
+1. Aston Eoghan A., Duce Stephanie, Hoey Andrew S., Ferrari Renata (2022).
+    A Protocol for Extracting Structural Metrics From 3D Reconstructions of Corals.
+    Frontiers in Marine Science, 9.
+    https://doi.org/10.3389/fmars.2022.854395    
 
 """
 function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vector{Float64}}
@@ -397,30 +395,29 @@ function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vec
     n_species::Int64 = length(unique(cs_p.coral_id))
     n_sizes::Int64 = length(unique(cs_p.class_id))
 
-    # Extract assumed colony area (in cm^2) for each taxa/size class from scenario inputs
+    # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
-    colony_area_cm2::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_colony_area_cm2"))
+    colony_mean_diams_cm::Vector{Float64} = vec(inputs(cs_p.coral_id .* "_mean_colony_diameter_m")).*100.0
 
-    # Colony planar area parameters (see second column of Table 1 in Urbina-Barreto et al., [1])
+    # Colony planar area parameters (see Fig 2B in Aston et al., [1])
     # First column is `b`, second column is `a`
     # log(S) = b + a * log(x)
     pa_params::Array{Float64,2} = Array{Float64,2}([
-        -8.32 1.50   # tabular from Urbina-Barretto 2021
-        -8.32 1.50   # tabular from Urbina-Barretto 2021
-        -7.37 1.34   # columnar from Urbina-Barretto 2021, assumed similar for Corymbose Acropora
-        -7.37 1.34   # columnar from Urbina-Barretto 2021, assumed similar for Corymbose Acropora
-        -9.69 1.49   # massives from Urbina-Barretto 2021, assumed similar for encrusting and small massives
-        -9.69 1.49   # massives from Urbina-Barretto 2021,  assumed similar for large massives
+        -8.97 3.14   # Abhorescent Acropora (using branching porites parameters as similar method of growing ever expanding colonies).
+        -8.95 2.80   # Tabular Acropora
+        -9.13 2.94   # Corymbose Acropora
+        -8.90 2.94   # Corymbose non-Acropora (using branching pocillopora values from fig2B)
+        -8.87 2.30   # Small massives
+        -8.87 2.30   # Large massives
     ])
 
     # Repeat each entry `n_sizes` times to cover the number size classes represented
     pa_params = repeat(pa_params, inner=(n_sizes, 1))
 
     # Estimate colony volume (litres) based on relationship
-    # established by Urbina-Barretto 2021, for each taxa/size class and scenario
-    # Urbina-Barretto model is a (natural) log-log relationship so we
-    # apply `exp()` to transform back to dm³
-    colony_litres_per_cm2::Vector{Float64} = exp.(pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_area_cm2))
+    # established by Aston et al. 2022, for each taxa/size class and scenario
+    # Aston et. al. log-log relationship so we apply `exp()` to transform back to dm³
+    colony_litres_per_cm2::Vector{Float64} = exp.(pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_mean_diams_cm))
 
     # Convert from dm^3 to m^3
     cm2_to_m3_per_m2::Float64 = 10^-3

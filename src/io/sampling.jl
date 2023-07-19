@@ -35,7 +35,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[df.guided.==0.0, :plan_horizon] .= 0.0
 
     # If no seeding is to occur, set related variables to 0
-    not_seeded = (df.seed_TA .== 0) .& (df.seed_CA .== 0)
+    not_seeded = (df.N_seed_TA .== 0) .& (df.N_seed_CA .== 0) .& (df.N_seed_SM .== 0)
     df[not_seeded, contains.(names(df), "seed_")] .= 0.0
     df[not_seeded, :a_adapt] .= 0.0
 
@@ -311,7 +311,7 @@ fix_factor!(dom, :guided)
 fix_factor!(dom, :guided, 3)
 
 # Fix specified factors to provided values
-fix_factor!(dom; guided=3, seed_TA=1e6)
+fix_factor!(dom; guided=3, N_seed_TA=1e6)
 ```
 """
 function fix_factor!(d::Domain, factor::Symbol)::Nothing

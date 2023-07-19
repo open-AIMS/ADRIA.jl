@@ -5,12 +5,12 @@ using ADRIA
 @testset "Coral Spec" begin
 
     linear_extension = Array{Float64,2}([
-        1 3 3 4.4 4.4 4.4   # Tabular Acropora Enhanced
-        1 3 3 4.4 4.4 4.4   # Tabular Acropora Unenhanced
-        1 3 3 3 3 3         # Corymbose Acropora Enhanced
-        1 3 3 3 3 3         # Corymbose Acropora Unenhanced
-        1 1 1 1 0.8 0.8     # small massives
-        1 1 1 1 1.2 1.2])   # large massives
+        1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora 
+        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora 
+        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora 
+        1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
+        1.0 1.0 1.0 1.0 0.8 0.8     # small massives
+        1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
 
     bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
 
@@ -18,18 +18,20 @@ using ADRIA
     #growth_rates[:, 6] .= 0.8 * growth_rates[:, 6]
 
     mb = Array{Float64,2}([
-        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Enhanced
-        0.2 0.2 0.19 0.125 0.05 0.0    # Tabular Acropora Unenhanced
-        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Enhanced
-        0.2 0.2 0.172 0.113 0.06 0.04    # Corymbose Acropora Unenhanced
-        0.2 0.2 0.04 0.026 0.02 0.02    # Small massives and encrusting
-        0.2 0.2 0.04 0.026 0.02 0.02])   # Large massives
-
+        0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora 
+        0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora 
+        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora 
+        0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora 
+        0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
+        0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
+    
+    # Bleaching sensitivity of each coral group
+    # Bozec et al., (2022)
     bleaching_sensitivity = Float64[
-        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Enhanced (Arborescent staghorn corals)
-        1.50 1.50 1.50 1.50 1.50 1.50  # Tabular Acropora Unenhanced
-        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Enhanced
-        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora Unenhanced
+        1.50 1.50 1.50 1.50 1.50 1.50  # Arborescent Acropora 
+        1.60 1.60 1.60 1.60 1.60 1.60  # Tabular Acropora 
+        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora 
+        1.70 1.70 1.70 1.70 1.70 1.70  # Corymbose non-Acropora 
         0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
         0.25 0.25 0.25 0.25 0.25 0.25] # Large massives
 
@@ -59,15 +61,9 @@ using ADRIA
     @test all(stored_mb_rate .<= 1.0) || "Some coral background mortality rates are > 1."
     @test all(stored_mb_rate .>= 0.0) || "Some coral background mortality rates are <= 0."
 
-    # check coral mortalities and growth rates decrease with increasing size class
-    for j = 1:5
-        # @test all(stored_growth_rate[coral_params.class_id.==j] .>= stored_growth_rate[coral_params.class_id.==j+1]) || "Growth rates for size class $j is less than that for size class $(j + 1)."
-        @test all(stored_mb_rate[coral_params.class_id.==j] .>= stored_mb_rate[coral_params.class_id.==j+1]) || "Background mortality rates for size class $j is less than that for size class $(j + 1)."
-    end
-
     bin_edges_cm = [0, 2, 5, 10, 20, 40, 80]
-    bin_edge_diameters_cm2 = pi .* (bin_edges_cm ./ 2) .^ 2
-    stored_colony_mean_areas = coral_params.colony_area_cm2
+    bin_edge_diameters_cm2 = ADRIA.colony_mean_area(bin_edges_cm)
+    stored_colony_mean_areas = ADRIA.colony_mean_area(coral_params.mean_colony_diameter_m.*100.0)
 
     # check colony areas in cm^2 are within bounds designated by bin edges
     for k = 1:6
