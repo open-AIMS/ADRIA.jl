@@ -71,7 +71,7 @@ end
 function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String}; show_progress=true, remove_workers=true)::ResultSet
     # Initialize ADRIA configuration options
     setup()
-    
+
     # Sort RCPs so the dataframe order match the output filepath 
     RCP = sort(RCP)
 
