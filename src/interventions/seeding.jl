@@ -37,37 +37,31 @@ function distribute_seeded_corals(total_site_area::Vector{Float64},
 end
 
 
-function seed_corals!(Y_pstep, a_adapt, total_location_area, prefseedsites, leftover_space_m²,
-    seeded_area, Yseed, seed_sc_TA, seed_sc_CA, c_dist_t)
+function seed_corals!(Y_pstep, a_adapt, total_location_area, prefseedsites,
+    leftover_space_m², seeded_area, Yseed, seed_sc, c_dist_t)
+
     # Calculate proportion to seed based on current available space
-    scaled_seed = distribute_seeded_corals(total_location_area, prefseedsites, leftover_space_m², seeded_area)
+    scaled_seed = distribute_seeded_corals(total_location_area, prefseedsites, vec(leftover_space_m²), seeded_area)
 
-    # Seed each site with TA or CA
-    @views Y_pstep[seed_sc_TA, prefseedsites] .+= scaled_seed.TA
-    @views Y_pstep[seed_sc_CA, prefseedsites] .+= scaled_seed.CA
+    # Seed each site and log
+    @views Y_pstep[seed_sc, prefseedsites] .+= scaled_seed
+    Yseed[:, prefseedsites] .= scaled_seed
 
-    # Log seed values/sites (these values are relative to site area)
-    Yseed[1, prefseedsites] .= scaled_seed.TA
-    Yseed[2, prefseedsites] .= scaled_seed.CA
-
-    w_TA::Vector{Float64} = scaled_seed.TA ./ Y_pstep[seed_sc_TA, prefseedsites]
-    w_CA::Vector{Float64} = scaled_seed.CA ./ Y_pstep[seed_sc_CA, prefseedsites]
+    w_taxa::Matrix{Float64} = scaled_seed ./ Y_pstep[seed_sc, prefseedsites]
 
     # Update critical DHW distribution for deployed size classes
     @floop for (i, loc) in enumerate(prefseedsites)
         # Previous distributions
-        TA_c_dist_t = c_dist_t[seed_sc_TA, loc]
-        CA_c_dist_t = c_dist_t[seed_sc_CA, loc]
+        c_dist = c_dist_t[seed_sc, loc]
 
-        # Priors
-        wta = Float64[w_TA[i], 1.0-w_TA[i]]
-        wca = Float64[w_CA[i], 1.0-w_CA[i]]
+        # Priors (weights based on cover for each species)
+        wta = collect(zip(w_taxa[:, i], 1.0 .- w_taxa[:, i]))
 
-        # TN distributions for deployed corals
-        TN_TA = TruncatedNormal(a_adapt[seed_sc_TA], std.(TA_c_dist_t), 0.0, maximum(TA_c_dist_t))
-        TN_CA = TruncatedNormal(a_adapt[seed_sc_CA], std.(CA_c_dist_t), 0.0, maximum(CA_c_dist_t))
+        # Truncated normal distributions for deployed corals
+        # assume same stdev and bounds as original
+        tn = TruncatedNormal.(a_adapt[seed_sc], std.(c_dist), 0.0, maximum.(c_dist))
 
-        c_dist_t[seed_sc_TA, loc] = MixtureModel([TA_c_dist_t, TN_TA], wta)
-        c_dist_t[seed_sc_CA, loc] = MixtureModel([CA_c_dist_t, TN_CA], wca)
+        # Create new distributions by mixing previous and current distributions
+        c_dist_t[seed_sc, loc] = map((t, t1, w) -> MixtureModel([t, t1], [w...]), c_dist, tn, wta)
     end
 end

@@ -21,11 +21,8 @@ function setup_cache(domain::Domain)::NamedTuple
         sf=zeros(n_groups, n_sites),  # stressed fecundity
         fec_all=zeros(size(init_cov)...),  # all fecundity
         fec_scope=zeros(n_groups, n_sites),  # fecundity scope
-        prop_loss=zeros(n_species, n_sites),  # proportional loss
-        Sbl=zeros(n_species, n_sites),   # bleaching survivors
         dhw_step=zeros(n_sites),  # DHW each time step
         cov_tmp=zeros(size(init_cov)...),  # Cover for previous timestep
-        felt_dhw=zeros(size(init_cov)...),  # Store for felt DHW (DHW after reductions)
         depth_coeff=zeros(n_sites),  # store for depth coefficient
         site_area=Matrix{Float64}(site_area(domain)'),  # site areas
         TP_data=Matrix{Float64}(domain.TP_data),  # transition probabilities
@@ -316,11 +313,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     sf = cache.sf
     fec_all = cache.fec_all
     fec_scope = cache.fec_scope
-    prop_loss = cache.prop_loss
-    Sbl = cache.Sbl
     dhw_t = cache.dhw_step
     Y_pstep = cache.cov_tmp
-    felt_dhw = cache.felt_dhw
     depth_coeff = cache.depth_coeff
 
     depth_coeff .= depth_coefficient.(site_data.depth_med)
@@ -398,8 +392,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Flag indicating whether to seed or not to seed
     seed_corals = any(param_set(taxa_names) .> 0.0)
-
-    bleaching_sensitivity = corals.bleaching_sensitivity
 
     # Defaults to considering all sites if depth cannot be considered.
     depth_priority = collect(1:nrow(site_data))
