@@ -29,6 +29,8 @@ function outcome_map!() end
 # Clustering
 function ts_cluster() end
 function ts_cluster!() end
+function ts_spatial_cluster() end
+function ts_spatial_cluster!() end
 
 # Spatial
 function map() end

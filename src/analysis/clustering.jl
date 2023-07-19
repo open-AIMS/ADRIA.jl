@@ -8,6 +8,7 @@ using Clustering
 Compute Complexity (CE) of an Matrix `x` of shape \$T ⋅ S\$, where \$T\$ is total number of
 time steps and \$S\$ is number of scenarios.
 
+# Arguments
 - `x` : series matrix of shape \$T ⋅ S\$
 
 # Return
@@ -29,6 +30,7 @@ end
 
 Compute Correlation Factor (CF) between two time series complexities `ce_i` and `ce_j`.
 
+# Arguments
 - `ce_i` : Time series `i`
 - `ce_j` : Time series `j`
 
@@ -54,6 +56,7 @@ shape \$T ⋅ S\$. The distance between every two series is the weighted euclidi
 multiplied by the correlation factor, which takes into account the ration between the two
 series complexities. Returns a matrix of distances (\$S ⋅ S\$).
 
+# Arguments
 - `data` : Matrix of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is number of scenarios
 
 # Returns
@@ -90,6 +93,7 @@ end
 
 Hierarchical clustering between \$S\$ scenarios with \$T\$ time steps each.
 
+# Arguments
 - `data` : Matrix of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is
   number of scenarios
 - `n_clusters` : Number of clusters determined _a priori_.
@@ -117,4 +121,15 @@ function time_series_clustering(data::AbstractMatrix{T}, n_clusters::Int64)::Vec
 
     # Hierarchical clustering with n_clusters clusters
     return cutree(dendogram, k=n_clusters)
+end
+function time_series_clustering(result_set::ResultSet, data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
+    # Find sites with k > 0.0
+    non_null_sites = result_set.site_data.k .> 0.0
+    filtered_data = data[:, non_null_sites]
+
+    # Apply time series cluster for filtered data
+    clusters = time_series_clustering(filtered_data, n_clusters)
+
+    # Assign cluster 0 for filtered sites to use same indexing as the input data
+    return [site != 0 ? popfirst!(clusters) : 0 for site in non_null_sites]
 end

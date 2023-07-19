@@ -165,12 +165,46 @@ tsc_fig = ADRIA.viz.ts_cluster(
     axis_opts=axis_opts
 )
 
-# save final figure
+# Save final figure
 save("tsc.png", tsc_fig)
 ```
 
 ![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true "Time Series Cluster")
 
+## Time Series Clustering Map
+
+When using Time Series Clustering to cluster among multiple sites using some metric, it is 
+possible to visualize the result as a map.
+
+```julia
+# Load data for a spatial domain
+# dom = ADRIA.load_domain("path to domain data")
+
+# Generate scenarios
+# scens = ADRIA.sample(dom, 128)
+
+# Run sampled scenarios for multiple RCP (Representative Concentration Pathway)
+rcp = "45"
+rs = ADRIA.run_scenarios(scens, dom, rcp)
+
+# Extract metric from scenarios
+tac = ADRIA.metrics.total_absolute_cover(rs)
+
+# Summarize scenarios for each site
+m_tac = ADRIA.metrics.loc_trajectory(median, tac)
+
+# Cluster scenarios
+n_clusters = 6
+loc_clusters = ADRIA.analysis.time_series_clustering(rs, m_tac, n_clusters)
+
+# Plot figure
+tsc_map_fig = ADRIA.viz.map(rs, m_tac, loc_clusters)
+
+# Save final figure
+save("tsc_map.png", tsc_map_fig)
+```
+
+![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/tsc_map.png?raw=true "Spatial Time Series Cluster")
 
 ## Regional Sensitivity Analysis
 
