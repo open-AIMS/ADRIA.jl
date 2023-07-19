@@ -20,8 +20,8 @@ Vector{Float64}:
  2
  5
 """
-function complexity(x::AbstractMatrix{T})::Vector{Float64} where {T <: Real}
-    return vec(sqrt.(sum(diff(Matrix(x), dims = 1) .^ 2, dims = 1)))
+function complexity(x::AbstractMatrix{T})::Vector{Float64} where {T<:Real}
+    return vec(sqrt.(sum(diff(Matrix(x), dims=1) .^ 2, dims=1)))
 end
 
 """
@@ -42,7 +42,7 @@ julia> CF(ce[1], ce[2])
 Float64:
  2.5
 """
-function correlation_factor(ce_i::T, ce_j::T)::Float64 where {T <: Real}
+function correlation_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
     return max(ce_i, ce_j) / min(ce_i, ce_j)
 end
 
@@ -59,7 +59,7 @@ series complexities. Returns a matrix of distances (\$S ⋅ S\$).
 # Returns
 Matrix of complexity invariance distances
 """
-function complexity_invariance_distance(data::AbstractMatrix{T})::AbstractMatrix{Float64} where {T <: Real}
+function complexity_invariance_distance(data::AbstractMatrix{T})::AbstractMatrix{Float64} where {T<:Real}
     ce = complexity(data)
 
     # Create empty Matrix
@@ -113,8 +113,8 @@ function time_series_clustering(data::AbstractMatrix{T}, n_clusters::Int64)::Vec
     distances = complexity_invariance_distance(data)
 
     # Create dendogram using distantes matrix
-    dendogram = hclust(distances, linkage = :average)
+    dendogram = hclust(distances, linkage=:average)
 
     # Hierarchical clustering with n_clusters clusters
-    return cutree(dendogram, k = n_clusters)
+    return cutree(dendogram, k=n_clusters)
 end
