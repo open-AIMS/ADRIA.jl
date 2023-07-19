@@ -219,7 +219,7 @@ Generate colony areas for given colny diameter(s).
 
 """
 function colony_mean_area(colony_diam_means)
-    return pi .* ((colony_diam_means ./ 2.0).^2)
+    return pi .* ((colony_diam_means ./ 2.0) .^ 2)
 end
 
 """
@@ -343,7 +343,7 @@ function coral_spec()::NamedTuple
     # size classes and growth rates as linear extension (in cm per year).
 
     colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
-    params.mean_colony_diameter_m= reshape(mean_colony_diameter_m', n_species)[:]
+    params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_species)[:]
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
     # all values in cm/year
@@ -397,8 +397,8 @@ function coral_spec()::NamedTuple
         0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose non-Acropora 
         0.0 0.0 0.0 0.0 0.0 0.0  # small massives and encrusting
         0.0 0.0 0.0 0.0 0.0 0.0])  # large massives
-
     params.wavemort90 = wavemort90'[:]
+
     # Background mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
     # Using values for:
     # - juvenile mortality (first two columns)
@@ -414,17 +414,6 @@ function coral_spec()::NamedTuple
         0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
         0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
     params.mb_rate = mb'[:]
-    
-    # Bleaching sensitivity of each coral group
-    # Bozec et al., (2022)
-    bleaching_sensitivity = Float64[
-        1.50 1.50 1.50 1.50 1.50 1.50  # Arborescent Acropora 
-        1.60 1.60 1.60 1.60 1.60 1.60  # Tabular Acropora 
-        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora 
-        1.70 1.70 1.70 1.70 1.70 1.70  # Corymbose non-Acropora 
-        0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
-        0.25 0.25 0.25 0.25 0.25 0.25]) # Large massives
-    params.bleaching_sensitivity = bleaching_sensitivity'[:]
 
     # Natural adaptation / heritability
     # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
