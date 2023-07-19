@@ -553,34 +553,24 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Calculate and apply bleaching mortality
-        # bleaching_mortality!(Sbl, felt_dhw, depth_coeff, tstep, site_data.depth_med, bleaching_sensitivity, dhw_t, a_adapt, n_adapt)
-
-        # This: dhw_t .* (1.0 .- wave_scen[p_step, :])
-        # attempts to account for the cooling effect of storms / high wave activity
-        Sbl .= Y_pstep[:, :]
-        bleaching_mortality!(Sbl, dhw_t .* (1.0 .- wave_scen[p_step, :]), depth_coeff, c_dist_t, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
+        #    This: `dhw_t .* (1.0 .- wave_scen[p_step, :])`
+        #    attempts to account for the cooling effect of storms / high wave activity
+        # `wave_scen` is normalized to the maximum value found for the given wave scenario
+        # so what causes 100% mortality can differ between runs.
+        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- wave_scen[p_step, :]), depth_coeff, c_dist_t, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
-            # Calculate proportion to seed based on current available space
-            scaled_seed = distribute_seeded_corals(vec(total_site_area), prefseedsites, vec(leftover_space_m²), seeded_area)
-
-            # Seed each site
-            @views Y_pstep[seed_sc, prefseedsites] .+= scaled_seed
-            Yseed[tstep, :, prefseedsites] .= scaled_seed
-
-            # seed_corals!(Y_pstep, a_adapt, vec(total_site_area), prefseedsites, vec(leftover_space_m²),
-            #     seeded_area, @view(Yseed[tstep, :, :]), seed_sc_TA, seed_sc_CA, c_dist_t)
+            # Seed each selected site
+            seed_corals!(Y_pstep, a_adapt, vec(total_site_area), prefseedsites,
+                vec(leftover_space_m²), seeded_area, @view(Yseed[tstep, :, :]), seed_sc,
+                c_dist_t)
         end
-
-        # Calculate survivors from bleaching and wave stress
-        # @views @. prop_loss = Sbl * Sw_t[p_step, :, :]
 
         # Note: ODE is run relative to `k` area, but values are otherwise recorded
         #       in relative to absolute area.
         # Update initial condition
-        # @. tmp = ((Y_pstep * prop_loss) * total_site_area) / absolute_k_area
-        @. tmp = (Sbl * total_site_area) / absolute_k_area
+        @. tmp = (Y_pstep * total_site_area) / absolute_k_area
         replace!(tmp, Inf => 0.0, NaN => 0.0)
         growth.u0 .= tmp
 
