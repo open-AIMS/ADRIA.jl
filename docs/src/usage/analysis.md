@@ -191,7 +191,7 @@ rs = ADRIA.run_scenarios(scens, dom, rcp)
 tac = ADRIA.metrics.total_absolute_cover(rs)
 
 # Summarize scenarios for each site
-m_tac = dropdims(median(tac, dims=:scenarios), dims=:scenarios)
+m_tac = ADRIA.metrics.loc_trajectory(median, tac)
 
 # Cluster scenarios
 n_clusters = 6
