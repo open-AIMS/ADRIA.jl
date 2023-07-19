@@ -271,9 +271,9 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
         prop_mort[sp_sc, loc] = mort_pop
         if mort_pop > 0.0
             # Re-create distribution
-            d::Distribution = censored(dist_t[sp_sc, loc]; lower=mort_pop)
+            d::Distribution = dist_t[sp_sc, loc]
             μ::Float64 = mean(d)
-            dist_t1[sp_sc, loc] = TruncatedNormal(μ, std(d), 0.0, μ + HEAT_UB)
+            dist_t1[sp_sc, loc] = TruncatedNormal(μ, std(d), mort_pop, μ + HEAT_UB)
 
             # Update population
             cover[sp_sc, loc] = cover[sp_sc, loc] * (1.0 - mort_pop)
