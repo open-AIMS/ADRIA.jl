@@ -14,7 +14,7 @@ Get metric results applied to the location-level at indicated time (or across ti
 # Returns
 Named Vector of \$N\$ elements, where \$N\$ is the number of sites.
 """
-function per_loc(metric, data::NamedDimsArray{D,T,3,A})::NamedDimsArray where {D,T,A}
+function per_loc(metric, data::NamedDimsArray{D,T,N,A})::NamedDimsArray where {D,T,A}
     # Get length of timestep dimension directly
     #   `map` erroneously extracts every single element from the NamedDimsArray
     #   so we use `tf` to subset the dataset.

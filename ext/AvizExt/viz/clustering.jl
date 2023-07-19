@@ -94,7 +94,7 @@ function ADRIA.viz.map!(g::Union{GridLayout,GridPosition},
 
     # Vector of summary statistics (default is mean) computed over timesteps
     opts[:summary] = get(opts, :summary, mean)
-    data_stats = collect(dropdims(opts[:summary](data, dims=:timesteps), dims=:timesteps))
+    data_stats = ADRIA.metrics.per_loc(opts[:summary], data)
 
     cluster_colors = _clusters_colors(clusters)
     legend_params = _cluster_legend_params(clusters, cluster_colors, data_stats)
