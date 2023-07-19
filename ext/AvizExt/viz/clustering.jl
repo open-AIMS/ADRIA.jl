@@ -78,7 +78,7 @@ Visualize clustered time series for each site and map.
 # Returns
 Figure
 """
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}, data::AbstractMatrix,
+function ADRIA.viz.map(rs::Union{Domain,ResultSet}, data::AbstractArray,
     clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict())
 
@@ -89,12 +89,12 @@ function ADRIA.viz.map(rs::Union{Domain,ResultSet}, data::AbstractMatrix,
     return f
 end
 function ADRIA.viz.map!(g::Union{GridLayout,GridPosition},
-    rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::Vector{Int64};
+    rs::Union{Domain,ResultSet}, data::AbstractArray, clusters::Vector{Int64};
     opts::Dict=Dict(), axis_opts::Dict=Dict())
 
     # Vector of summary statistics (default is mean) computed over timesteps
     opts[:summary] = get(opts, :summary, mean)
-    data_stats = ADRIA.metrics.per_loc(opts[:summary], data)
+    data_stats = collect(ADRIA.metrics.per_loc(opts[:summary], data))
 
     cluster_colors = _clusters_colors(clusters)
     legend_params = _cluster_legend_params(clusters, cluster_colors, data_stats)
@@ -168,7 +168,7 @@ Color parameter for current cluster weighted by number of scenarios
 Tuple{RGBA{Float32}, Float64}
 """
 function _cluster_legend_params(clusters::Vector{Int64},
-    clusters_colors::Vector{RGBA{Float32}}, data_statistics::Vector{Float32})::Tuple
+    clusters_colors::Vector{RGBA{Float32}}, data_statistics::AbstractArray)::Tuple
     # Filter non-zero clusters from clusters, colors and data
     non_zero_clusters = clusters .!= 0
     clusters_filtered = clusters[non_zero_clusters]
