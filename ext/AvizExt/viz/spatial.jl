@@ -55,7 +55,7 @@ function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{
 
     # Plot geodata polygons using data as internal color
     color_range = (0.2, m_b[])
-    color_map = :linear_grey_10_95_c0_n256
+    color_map = :grayC
     poly!(
         spatial,
         geodata,
