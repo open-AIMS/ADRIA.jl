@@ -2,7 +2,7 @@
 
 
 """
-    per_loc(metric, data::NamedDimsArray{D,T,3,A})::NamedDimsArray where {D,T,A}
+    per_loc(metric, data::NamedDimsArray{D,T,N,A})::NamedDimsArray where {D,T,N,A}
 
 Get metric results applied to the location-level at indicated time (or across timesteps).
 
@@ -33,7 +33,7 @@ function per_loc(metric, data::NamedDimsArray{D,T,N,A}, timesteps::Union{UnitRan
 end
 
 """
-    loc_trajectory(metric, data::NamedDimsArray{D,T,3,A})::NamedDimsArray where {D,T,A}
+    loc_trajectory(metric, data::NamedDimsArray{D,T,N,A})::NamedDimsArray where {D,T,N,A}
 
 Collate trajectory for each location.
 
@@ -67,7 +67,7 @@ ADRIA.metrics.loc_trajectory(x -> quantile(x, 0.975), tac)
 # Returns
 2D array of of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is number of sites
 """
-function loc_trajectory(metric, data::NamedDimsArray{D,T,3,A})::NamedDimsArray where {D,T,A}
+function loc_trajectory(metric, data::NamedDimsArray{D,T,N,A})::NamedDimsArray where {D,T,N,A}
     tf = axes(data, :timesteps)  # Note: use axes instead of axiskeys for speed
     s::Matrix{eltype(data)} = map(metric,
         JuliennedArrays.Slices(data[timesteps=tf], dim(data, :scenarios))
@@ -75,6 +75,6 @@ function loc_trajectory(metric, data::NamedDimsArray{D,T,3,A})::NamedDimsArray w
 
     return NamedDimsArray(s, timesteps=axiskeys(data, :timesteps), sites=axiskeys(data, :sites))
 end
-function loc_trajectory(metric, data::NamedDimsArray{D,T,3,A}, timesteps::Union{UnitRange,Int64})::NamedDimsArray where {D,T,A}
+function loc_trajectory(metric, data::NamedDimsArray{D,T,N,A}, timesteps::Union{UnitRange,Int64})::NamedDimsArray where {D,T,N,A}
     return per_loc(metric, data[timesteps=timesteps])
 end
