@@ -71,8 +71,8 @@ end
 function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String}; show_progress=true, remove_workers=true)::ResultSet
     # Initialize ADRIA configuration options
     setup()
-    
-    # Sort RCPs so the dataframe order match the output filepath 
+
+    # Sort RCPs so the dataframe order match the output filepath
     RCP = sort(RCP)
 
     @info "Running $(nrow(param_df)) scenarios over $(length(RCP)) RCPs: $RCP"
@@ -335,6 +335,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
     is_guided = param_set("guided") > 0
 
+    # Decisions should place more weight on environmental conditions
+    # closer to the decision point
+    α = 0.95
+    decay = α .^ (1:Int64(param_set("plan_horizon"))+1)
+
     # Years at which to reassess seeding site selection
     seed_decision_years = repeat([false], tf)
     shade_decision_years = repeat([false], tf)
@@ -441,6 +446,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     clamp!(Sw_t, 0.0, 1.0)
 
+    # Wave damage survival
     Sw_t .= 1.0 .- Sw_t
 
     # Flag indicating whether to seed or not to seed
@@ -491,11 +497,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Update dMCDA values
             horizon = tstep:tstep+Int64(param_set("plan_horizon"))
 
-            env_horizon .= dhw_scen[horizon, :]
-            env_horizon[1, :] .= dhw_t
+            # Put more weight on projected conditions closer to the decision point
+            env_horizon .= decay .* dhw_scen[horizon, :]
             mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
 
-            mcda_vars.dam_prob .= vec(sum(dropdims((mean(Sw_t[horizon, :, :], dims=1) .+ std(Sw_t[horizon, :, :], dims=1)) .* 0.5, dims=1), dims=1))
+            env_horizon .= decay .* wave_scen[horizon, :]
+            mcda_vars.dam_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
         end
         if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= site_coral_cover
