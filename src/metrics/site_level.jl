@@ -65,7 +65,7 @@ ADRIA.metrics.loc_trajectory(x -> quantile(x, 0.975), tac)
 - data : Data set to apply metric to
 
 # Returns
-Vector of \$N\$ elements, where \$N\$ is the number of sites.
+2D array of of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is number of sites
 """
 function loc_trajectory(metric, data::NamedDimsArray{D,T,3,A})::NamedDimsArray where {D,T,A}
     tf = axes(data, :timesteps)  # Note: use axes instead of axiskeys for speed
