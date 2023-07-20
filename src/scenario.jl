@@ -543,10 +543,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Fog selected locations
         if (fogging > 0.0) && in_shade_years && has_shade_sites
-            site_locs = prefshadesites
-
-            dhw_t[site_locs] .= dhw_t[site_locs] .* (1.0 .- fogging)
-            Yfog[tstep, site_locs] .= fogging
+            fog_locations!(Yfog, prefshadesites, dhw_t, fogging)
         end
 
         # Calculate and apply bleaching mortality
