@@ -521,19 +521,20 @@ end
 """
     settler_cover(fec_scope, sf, TP_data, leftover_space, α, β, basal_area_per_settler)
 
+Determine area settled by recruited larvae (in m²).
+
 # Arguments
 - `fec_scope` : fecundity scope
-- `sf` : stressed fecundity
 - `TP_data` : Transition probability
-- `leftover_space` : difference between sites' maximum carrying capacity and current coral cover (k - C_s)
+- `leftover_space` : difference between sites' maximum carrying capacity and current coral cover (\$k - C_s\$)
 - `α` : max number of settlers / m²
-- `β` : larvae / m² required to produce 50% of maximum settlement (default: 5000.0)
+- `β` : larvae / m² required to produce 50% of maximum settlement
 - `basal_area_per_settler` : area taken up by a single settler
 
 # Returns
 Area covered by recruited larvae (in m²)
 """
-function settler_cover(fec_scope::T, sf::T,
+function settler_cover(fec_scope::T,
     TP_data::T, leftover_space::Matrix{Float64},
     α::V, β::V, basal_area_per_settler::V)::Matrix{Float64} where {T<:AbstractArray{<:Float64,2},V<:Vector{Float64}}
 
@@ -543,8 +544,9 @@ function settler_cover(fec_scope::T, sf::T,
 
     # As above, but more performant, less readable.
     Mwater::Float64 = 0.95
-    mul!(fec_scope, (fec_scope .* sf), TP_data)
-    fec_scope .= fec_scope .* (1.0 .- Mwater)
+    fec_scope *= TP_data
+    fec_scope .*= (1.0 .- Mwater)
+    # mul!(fec_scope, fec_scope .* TP_data, (1.0 .- Mwater))
 
     # Larvae have landed, work out how many are recruited
     # recruits per m^2 per site multiplied by area per settler
