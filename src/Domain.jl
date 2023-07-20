@@ -146,9 +146,9 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
         if isa(err, ArgumentError) || isa(err, DimensionMismatch)
             if !occursin("RCP", "$err")
                 error("Error occurred loading scenario samples. $err")
-            else
-                p_df[!, :val] .= collect(params)
             end
+
+            p_df[!, :val] .= collect(params)
         end
     end
 
