@@ -23,10 +23,10 @@ using NamedDims
         seeded_area = NamedDimsArray(rand(Uniform(0.0, 500.0), 3), taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"])
 
         # evaluate seeding distributions
-        seed_dist = distribute_seeded_corals(total_site_area, prefseedsites, available_space, seeded_area)
+        seed_dist = distribute_seeded_corals(total_site_area[prefseedsites], available_space[prefseedsites], seeded_area)
 
         # Area to be seeded for each site
-        total_area_seed = seed_dist'.* total_site_area[prefseedsites]
+        total_area_seed = seed_dist' .* total_site_area[prefseedsites]
 
         # total area of seeded corals
         total_area_coral_out = sum(total_area_seed, dims=1)(1)
