@@ -15,16 +15,17 @@ Note: version numbers should follow [Semantic Versioning](https://semver.org/).
    and click the "Draft a new release" button at the top right
 5. Under "Choose a tag" on the left, enter the new version number (e.g., "v0.99.0") and then  
    select "Create new tag: <TAG-NAME> on publish"
-6. Click the "Generate release notes" button (at the top-right of the textbox).  
-   Under "What's Changed" add a short description of the major changes.  
+6. At the top-right of the textbox, select the last full release then click the 
+   "Generate release notes" button (at the top-right of the textbox).
+7. Under "What's Changed" add a short description of the major changes.  
    Explicitly note any major breaking changes (i.e., anything that results obtained with previous versions of ADRIA incompatible)
    Copy the release notes (for step 8).
    Click "Publish release".
-7. Register the updated package by opening a new issue with the title "Register [version number]"  
+8. Register the updated package by opening a new issue with the title "Register [version number]"  
    e.g., `Register v1.0`
-8. State in the comment: `@JuliaRegistrator register`
+9. State in the comment: `@JuliaRegistrator register`
    Paste in the generated text from step 6 (an example is shown below)
-9. Submit the issue. The JuliaRegistrator bot should take care of the rest.
+10. Submit the issue. The JuliaRegistrator bot should take care of the rest.
 
 ```
 @JuliaRegistrator register
@@ -48,7 +49,7 @@ Deploying a Development Release follows the same steps as "Public" releases, exc
 - Add "-dev.x" to the version number.  
    e.g., v1.2.3-dev.1; v1.2.3-dev.2 for the second development release, etc.
 - Untick "Set as the latest release" and tick the "Set as a pre-release" option.
-- Ignore Step 7 through 9; DO NOT trigger the `JuliaRegistrator` bot.
+- Ignore Step 8 through 10; DO NOT trigger the `JuliaRegistrator` bot.
 
 ## Release Candidates
 
@@ -60,5 +61,5 @@ Deploying a Release Candidate follows the same steps as "Public" releases, excep
 - Add "-rc.x" to the version number.  
    e.g., v1.2.3-rc.1; v1.2.3-rc.2 for the second release candidate, etc.
 - Untick "Set as the latest release" and tick the "Set as a pre-release" option.
-- Ignore Step 7 through 9; DO NOT trigger the `JuliaRegistrator` bot.
+- Ignore Step 8 through 10; DO NOT trigger the `JuliaRegistrator` bot.
 
