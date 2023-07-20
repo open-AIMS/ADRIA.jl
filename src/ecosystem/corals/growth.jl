@@ -273,7 +273,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             # Re-create distribution
             d::Distribution = dist_t[sp_sc, loc]
             μ::Float64 = mean(d)
-            dist_t1[sp_sc, loc] = TruncatedNormal(μ, std(d), mort_pop, μ + HEAT_UB)
+            dist_t1[sp_sc, loc] = truncated(Normal(μ, std(d)), mort_pop, μ + HEAT_UB)
 
             # Update population
             cover[sp_sc, loc] = cover[sp_sc, loc] * (1.0 - mort_pop)
@@ -363,7 +363,7 @@ function adjust_population_distribution!(cover, n_groups, dist, dist_t1, tstep, 
             σ_t1::Float64 = std(dist_t1[sc1+step, loc])::Float64
 
             # The standard deviation is assumed to remain the same as the parents
-            dist_t1[sc1, loc] = TruncatedNormal(μ_t1, σ_t1, 0.0, μ_t1 + HEAT_UB)
+            dist_t1[sc1, loc] = truncated(Normal(μ_t1, σ_t1), 0.0, μ_t1 + HEAT_UB)
         end
     end
 
