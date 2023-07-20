@@ -51,6 +51,7 @@ Deploying a Development Release follows the same steps as "Public" releases, exc
 - Untick "Set as the latest release" and tick the "Set as a pre-release" option.
 - Ignore Step 8 through 10; DO NOT trigger the `JuliaRegistrator` bot.
 
+
 ## Release Candidates
 
 Release candidates are releases that are not yet "final" but are close to it. Release candidates provide a "last chance" opportunity
@@ -62,4 +63,3 @@ Deploying a Release Candidate follows the same steps as "Public" releases, excep
    e.g., v1.2.3-rc.1; v1.2.3-rc.2 for the second release candidate, etc.
 - Untick "Set as the latest release" and tick the "Set as a pre-release" option.
 - Ignore Step 8 through 10; DO NOT trigger the `JuliaRegistrator` bot.
-
