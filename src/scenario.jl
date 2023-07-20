@@ -479,9 +479,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         p_step::Int64 = tstep - 1
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
 
-        sf .= stressed_fecundity(tstep, a_adapt, n_adapt, dhw_scen[p_step, :],
-            LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
-
         # Calculates scope for coral fedundity for each size class and at each site.
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, total_site_area)
 
@@ -491,11 +488,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Recruitment represents additional cover, relative to total site area
         # Gets used in ODE
-        p.rec .= settler_cover(fec_scope, sf, TP_data, leftover_space_prop,
+        p.rec .= settler_cover(fec_scope, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
-        in_seed_years = ((seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1)))
+        in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
 
         @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
 
