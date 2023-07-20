@@ -42,6 +42,7 @@ include("sites/mcda_methods.jl")
 include("sites/dMCDA.jl")
 
 include("interventions/seeding.jl")
+include("interventions/fogging.jl")
 
 include("io/ResultSet.jl")
 include("io/result_io.jl")
