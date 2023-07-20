@@ -55,7 +55,8 @@ function seed_corals!(Y_pstep::Matrix{Float64}, a_adapt::Vector{Float64}, total_
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
-        tn = TruncatedNormal.(a_adapt[seed_sc], std.(c_dist), 0.0, maximum.(c_dist))
+        tn = truncated.(Normal.(a_adapt[seed_sc], std.(c_dist)), 0.0, maximum.(c_dist))
+
 
         # Create new distributions by mixing previous and current distributions
         c_dist_t[seed_sc, loc] = map((t, t1, w) -> MixtureModel([t, t1], [w...]), c_dist, tn, wta)
