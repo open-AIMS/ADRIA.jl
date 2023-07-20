@@ -565,7 +565,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         p.X_mb .= tmp .* p.mb    # current cover * background mortality
 
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-            alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-6,dt=0.5)  # , adaptive=false, dt=1.0
+            alg_hints=[:nonstiff], abstol=1e-6, reltol=1e-6, dt=0.5) 
         # Using the last step from ODE above, proportionally adjust site coral cover
         # if any are above the maximum possible (i.e., the site `k` value)
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_site_area, 0.0, 1.0)
