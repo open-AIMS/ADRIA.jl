@@ -81,7 +81,6 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float6
         # Assume same stdev and bounds as original
         tn = truncated.(Normal.(a_adapt[seed_sc], std.(c_dist_t)), 0.0, maximum.(c_dist_t))
 
-
         # Create new distributions by mixing previous and current distributions
         c_dist_t1[seed_sc, loc] = map((t, t1, w) -> MixtureModel([t, t1], [w...]), c_dist_t, tn, eachrow(wta))
     end
