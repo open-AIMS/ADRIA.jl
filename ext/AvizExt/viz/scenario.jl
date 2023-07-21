@@ -71,30 +71,27 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
     scen_dist = dropdims(mean(y, dims=:timesteps), dims=:timesteps)
     ax2 = Axis(g[1, 2], width=100)
     if count(scen_types.counterfactual) > 0
-        density!(ax2, scen_dist[scen_types.counterfactual],
-            direction=:y,
-            color=(COLORS[:counterfactual], 0.6),
-            strokearound=true,
-            strokewidth=1.5,
-            strokecolor=COLORS[:counterfactual])
+        hist!(ax2, scen_dist[scen_types.counterfactual],
+            direction=:x,
+            color=(COLORS[:counterfactual], 0.8),
+            bins=30,
+            normalization=:pdf)
     end
 
     if count(scen_types.unguided) > 0
-        density!(ax2, scen_dist[scen_types.unguided],
-            direction=:y,
-            color=(COLORS[:unguided], 0.6),
-            strokearound=true,
-            strokewidth=1.5,
-            strokecolor=COLORS[:unguided])
+        hist!(ax2, scen_dist[scen_types.unguided],
+            direction=:x,
+            color=(COLORS[:unguided], 0.7),
+            bins=30,
+            normalization=:pdf)
     end
 
     if count(scen_types.guided) > 0
-        density!(ax2, scen_dist[scen_types.guided],
-            direction=:y,
+        hist!(ax2, scen_dist[scen_types.guided],
+            direction=:x,
             color=(COLORS[:guided], 0.6),
-            strokearound=true,
-            strokewidth=1.5,
-            strokecolor=COLORS[:guided])
+            bins=30,
+            normalization=:pdf)
     end
 
     hidedecorations!(ax2)
