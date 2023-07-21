@@ -280,10 +280,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     dhw_scen::Matrix{Float64} = @view domain.dhw_scens[:, :, dhw_idx]
 
-    # TODO: Better conversion of Ub to wave mortality
-    #       Currently scaling significant wave height by its max to non-dimensionalize values
-    wave_scen::Matrix{Float64} = Matrix{Float64}(domain.wave_scens[:, :, wave_idx]) ./ maximum(domain.wave_scens[:, :, wave_idx])
-
     tspan::Tuple = (0.0, 1.0)
     solver::Euler = Euler()
 
@@ -445,26 +441,17 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Treat as enhancement from mean of "natural" DHW tolerance
     a_adapt[a_adapt.>0.0] .+= corals.dist_mean[a_adapt.>0.0]
 
-    # Level of natural coral adaptation
-    n_adapt = param_set("n_adapt")
-
     ## Extract other parameters
     LPdhwcoeff = sim_params.LPdhwcoeff # shape parameters relating dhw affecting cover to larval production
     DHWmaxtot = sim_params.DHWmaxtot # max assumed DHW for all scenarios.  Will be obsolete when we move to new, shared inputs for DHW projections
     LPDprm2 = sim_params.LPDprm2 # parameter offsetting LPD curve
 
-    # Wave stress
-    Sw_t::Array{Float64,3} = cache.waves
-    wavemort90::Vector{Float64} = corals.wavemort90::Vector{Float64}  # 90th percentile wave mortality
+    # TODO: Better conversion of Ub to wave mortality
+    #       Currently scaling significant wave height by its max to non-dimensionalize values
+    wave_scen::Matrix{Float64} = Matrix{Float64}(domain.wave_scens[:, :, wave_idx]) ./ maximum(domain.wave_scens[:, :, wave_idx])
 
-    for sp::Int64 in 1:n_species
-        @views Sw_t[:, sp, :] .= wavemort90[sp] .* wave_scen
-    end
-
-    clamp!(Sw_t, 0.0, 1.0)
-
-    # Wave damage survival
-    Sw_t .= 1.0 .- Sw_t
+    # Pre-calculate proportion of survivers from wave stress
+    # Sw_t = wave_damage!(cache.waves, wave_scen, corals.wavemort90, n_species)
 
     site_k_prop = max_cover'
     absolute_k_area = site_k_area(domain)'  # max possible coral area in m^2
