@@ -531,7 +531,7 @@ function settler_cover(fec_scope::T,
     Mwater::Float64 = 0.95
     fec_scope *= TP_data
     fec_scope .*= (1.0 .- Mwater)
-    # mul!(fec_scope, fec_scope .* TP_data, (1.0 .- Mwater))
+
 
     # Larvae have landed, work out how many are recruited
     # recruits per m^2 per site multiplied by area per settler
