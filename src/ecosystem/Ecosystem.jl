@@ -156,7 +156,7 @@ function _coral_struct(field_defs::OrderedDict)::Nothing
     write(s, "Base.@kwdef struct Coral{P,P2} <: EcoModel\n")
 
     for (f, v) in field_defs
-        if f == "n_adapt"
+        if f == "heritability"
             write(s, "$(f)::P2 = $(v)\n")
             continue
         end
@@ -192,8 +192,8 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
     _, base_coral_params, p_vals = coral_spec()
 
     struct_fields = OrderedDict{String,Param}()
-    struct_fields["n_adapt"] = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif",
-        name="Natural Adaptation", description="Natural adaptation rate (yearly increase).")
+    struct_fields["heritability"] = Param(0.3, ptype="real", bounds=(0.25, 0.5), dists="unif",
+        name="Heritability", description="Heritability of DHW tolerance.")
 
     for c_id in p_vals.coral_id
         for p in base_coral_params
@@ -408,7 +408,7 @@ function coral_spec()::NamedTuple
     # Natural adaptation / heritability
     # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
     # Hughes et al., (2018)
-    # Mean and std (i.e., sqrt of variance) for each species (row) and size class (cols)
+    # Mean and std for each species (row) and size class (cols)
     params.dist_mean = repeat(Float64[
             3.345484656,  # arborescent Acropora
             3.751612251,  # tabular Acropora
