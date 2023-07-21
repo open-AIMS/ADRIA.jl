@@ -24,21 +24,10 @@ using ADRIA
         0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora 
         0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
         0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
-    
-    # Bleaching sensitivity of each coral group
-    # Bozec et al., (2022)
-    bleaching_sensitivity = Float64[
-        1.50 1.50 1.50 1.50 1.50 1.50  # Arborescent Acropora 
-        1.60 1.60 1.60 1.60 1.60 1.60  # Tabular Acropora 
-        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora 
-        1.70 1.70 1.70 1.70 1.70 1.70  # Corymbose non-Acropora 
-        0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
-        0.25 0.25 0.25 0.25 0.25 0.25] # Large massives
 
     coral_params = ADRIA.coral_spec().params
     stored_growth_rate = coral_params.growth_rate
     stored_mb_rate = coral_params.mb_rate
-    stored_bleaching_sensitivity = coral_params.bleaching_sensitivity
 
     # check each size class parameter matches that stored for it's size class
     for i = 1:6
@@ -47,8 +36,6 @@ using ADRIA
         end
 
         @test all(stored_mb_rate[coral_params.class_id.==i] .== mb[:, i]) || "Background mortality rates incorrect for size class $i."
-
-        @test all(stored_bleaching_sensitivity[coral_params.class_id.==i] .== bleaching_sensitivity[:, i]) || "Bleaching sensitivity incorrect for size class $i."
     end
 
     # Test growth rate values for size class 6 (should be ~20% of given value)
@@ -63,7 +50,7 @@ using ADRIA
 
     bin_edges_cm = [0, 2, 5, 10, 20, 40, 80]
     bin_edge_diameters_cm2 = ADRIA.colony_mean_area(bin_edges_cm)
-    stored_colony_mean_areas = ADRIA.colony_mean_area(coral_params.mean_colony_diameter_m.*100.0)
+    stored_colony_mean_areas = ADRIA.colony_mean_area(coral_params.mean_colony_diameter_m .* 100.0)
 
     # check colony areas in cm^2 are within bounds designated by bin edges
     for k = 1:6
@@ -176,11 +163,10 @@ end
     p.rec .= zeros(6, n_sites)
     Y_cover = zeros(10, 36, n_sites)
     Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
-    # ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
+
     for tstep = 2:10
         growthODE(du, Y_cover[tstep-1, :, :], p, 1)
         Y_cover[tstep, :, :] .= Y_cover[tstep-1, :, :] .+ du
-        # ADRIA.proportional_adjustment!(Y_cover[tstep, :, :], cover_tmp, max_cover)
     end
     @test all((diff(Y_cover[:, [1, 7, 13, 19, 25, 31], :], dims=1) .<= 0)) || "Smallest size class growing with no recruitment.."
 

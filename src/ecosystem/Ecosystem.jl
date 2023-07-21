@@ -3,7 +3,7 @@ using Setfield
 using DataFrames
 using ModelParameters
 import ModelParameters: update!, Model
-
+using Distributions
 
 abstract type EcoModel end
 
@@ -156,7 +156,7 @@ function _coral_struct(field_defs::OrderedDict)::Nothing
     write(s, "Base.@kwdef struct Coral{P,P2} <: EcoModel\n")
 
     for (f, v) in field_defs
-        if f == "n_adapt"
+        if f == "heritability"
             write(s, "$(f)::P2 = $(v)\n")
             continue
         end
@@ -192,8 +192,8 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
     _, base_coral_params, p_vals = coral_spec()
 
     struct_fields = OrderedDict{String,Param}()
-    struct_fields["n_adapt"] = Param(0.0, ptype="real", bounds=(0.0, 0.05), dists="unif",
-        name="Natural Adaptation", description="Natural adaptation rate (yearly increase).")
+    struct_fields["heritability"] = Param(0.3, ptype="real", bounds=(0.25, 0.5), dists="unif",
+        name="Heritability", description="Heritability of DHW tolerance.")
 
     for c_id in p_vals.coral_id
         for p in base_coral_params
@@ -219,7 +219,7 @@ Generate colony areas for given colny diameter(s).
 
 """
 function colony_mean_area(colony_diam_means)
-    return pi .* ((colony_diam_means ./ 2.0).^2)
+    return pi .* ((colony_diam_means ./ 2.0) .^ 2)
 end
 
 """
@@ -298,6 +298,13 @@ between bleaching years come from [1].
    Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation.
    Ecological Monographs, 92(1), e01494.
    https://doi.org/10.1002/ecm.1494
+
+5. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021. 
+   Coral adaptation to climate change: Meta-analysis reveals high heritability across 
+     multiple traits. 
+   Global Change Biology 27, 5694-5710. 
+   https://doi.org/10.1111/gcb.15829
+
 """
 function coral_spec()::NamedTuple
     # Below parameters pertaining to species are new. We now add size classes
@@ -327,7 +334,7 @@ function coral_spec()::NamedTuple
     params.name = human_readable_name(tn; title_case=true)
     params.taxa_id = repeat(1:n_classes; inner=n_classes)
 
-    params.class_id = repeat(1:n_classes, n_classes)
+    params.class_id = repeat(1:n_classes, n_classes)::Vector{Int64}
     params.coral_id = String[join(x, "_") for x in zip(tn, params.taxa_id, params.class_id)]
 
     # Ecological parameters
@@ -336,7 +343,7 @@ function coral_spec()::NamedTuple
     # size classes and growth rates as linear extension (in cm per year).
 
     colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
-    params.mean_colony_diameter_m= reshape(mean_colony_diameter_m', n_species)[:]
+    params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_species)[:]
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
     # all values in cm/year
@@ -382,16 +389,6 @@ function coral_spec()::NamedTuple
     params.fecundity = fec_m²'[:]
 
     ## Mortality
-    # Wave mortality risk : wave damage for the 90 percentile of routine wave stress
-    wavemort90 = Array{Float64,2}([
-        0.0 0.0 0.0 0.0 0.0 0.0  # Abhorescent Acropora
-        0.0 0.0 0.0 0.0 0.0 0.0  # Tabular Acropora 
-        0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose Acropora 
-        0.0 0.0 0.0 0.0 0.0 0.0  # Corymbose non-Acropora 
-        0.0 0.0 0.0 0.0 0.0 0.0  # small massives and encrusting
-        0.0 0.0 0.0 0.0 0.0 0.0])  # large massives
-
-    params.wavemort90 = wavemort90'[:]
     # Background mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
     # Using values for:
     # - juvenile mortality (first two columns)
@@ -407,18 +404,28 @@ function coral_spec()::NamedTuple
         0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
         0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
     params.mb_rate = mb'[:]
-    
-    # Bleaching sensitivity of each coral group
-    # Bozec et al., (2022)
-    bleaching_sensitivity = Float64[
-        1.50 1.50 1.50 1.50 1.50 1.50  # Arborescent Acropora 
-        1.60 1.60 1.60 1.60 1.60 1.60  # Tabular Acropora 
-        1.40 1.40 1.40 1.40 1.40 1.40  # Corymbose Acropora 
-        1.70 1.70 1.70 1.70 1.70 1.70  # Corymbose non-Acropora 
-        0.25 0.25 0.25 0.25 0.25 0.25  # Small massives and encrusting
-        0.25 0.25 0.25 0.25 0.25 0.25] # Large massives
-    params.bleaching_sensitivity = bleaching_sensitivity'[:]
 
+    # Natural adaptation / heritability
+    # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
+    # Hughes et al., (2018)
+    # Mean and std for each species (row) and size class (cols)
+    params.dist_mean = repeat(Float64[
+            3.345484656,  # arborescent Acropora
+            3.751612251,  # tabular Acropora
+            4.081622683,  # corymbose Acropora
+            4.487465256,  # Pocillopora + non-Acropora corymbose
+            6.165751937,  # Small massives and encrusting
+            7.153507902   # Large massives
+        ], inner=n_classes)
+
+    params.dist_std = repeat(Float64[
+            2.590016677,  # arborescent Acropora
+            2.904433676,  # tabular Acropora
+            3.159922076,  # corymbose Acropora
+            3.474118416,  # Pocillopora + non-Acropora corymbose
+            4.773419097,  # Small massives and encrusting
+            5.538122776   # Large massives
+        ], inner=n_classes)
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list

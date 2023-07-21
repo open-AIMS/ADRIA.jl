@@ -49,7 +49,7 @@ function find_pareto_optimal(rs::ResultSet, y::AbstractArray, rcps::Vector; offs
 end
 
 """
-    find_robust(rs::ResultSet, y::AbstractArray, rule, rcps::Vector{Int} offset::Int=0)
+    find_robust(rs::ResultSet, y::AbstractArray, rule, rcps::Vector{Int}; offset::Int=0)
     find_robust(scens::DataFrame, y::AbstractArray, rule, rcps::Vector{Int}; offset::Int=0)
 
 Identify the scenarios (by position) that are determined to be robust and pareto optimal.
@@ -88,12 +88,12 @@ robust = ADRIA.analysis.find_robust(rs, y, rule_func, [45, 60])
 # (RCP45 = [13, 65], RCP60 = [274, 455])
 ```
 """
-function find_robust(scens::DataFrame, y::AbstractArray, rule, rcps::Vector{Int}; offset::Int=0)::NamedTuple
+function find_robust(scens::DataFrame, y::AbstractArray, rule, rcps::Vector{Int64}; offset::Int64=0)::NamedTuple
     y = col_normalize(copy(y))
 
     opt = find_pareto_optimal(scens, y, rcps; offset=offset)
 
-    vals = Vector{Int}[]
+    vals = Vector{Int64}[]
     sizehint!(vals, length(opt))
     for o in opt
         r = map(rule, eachrow(y[o, :]))
@@ -102,11 +102,11 @@ function find_robust(scens::DataFrame, y::AbstractArray, rule, rcps::Vector{Int}
             continue
         end
 
-        push!(vals, Int[])
+        push!(vals, Int64[])
     end
 
     return NamedTuple{keys(opt)}(vals)
 end
-function find_robust(rs::ResultSet, y::AbstractArray, rule, rcps::Vector{Int}; offset::Int=0)::NamedTuple
+function find_robust(rs::ResultSet, y::AbstractArray, rule, rcps::Vector{Int64}; offset::Int64=0)::NamedTuple
     return find_robust(rs.inputs, y, rule, rcps; offset=offset)
 end

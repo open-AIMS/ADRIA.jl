@@ -89,6 +89,31 @@ function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::
 end
 
 """
+    depth_coefficient(d::Union{Int64,Float64})::Float64
+
+Model by Baird et al., [1] providing an indication of a relationship between bleaching
+and depth.
+
+# Arguments
+- `d` : median depth of location in meters
+
+# Returns
+Proportion of population affected by bleaching at depth `x`.
+Values are constrained such that 0.0 <= x <= 1.0
+
+# References
+1. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
+     Precoda, K., Torres-Pulliza, D., Woods, R., Zawada, K., & Hughes, T. (2018).
+   A decline in bleaching suggests that depth can provide a refuge from global
+     warming in most coral taxa.
+   Marine Ecology Progress Series, 603, 257-264.
+   https://doi.org/10.3354/meps12732
+"""
+function depth_coefficient(d::Union{Int64,Float64})::Float64
+    return max(min(exp(-0.07551 * (d - 2.0)), 1.0), 0.0)
+end
+
+"""
     bleaching_mortality!(Y::AbstractArray{Float64,2}, capped_dhw::AbstractArray{Float64,2},
         depth_coeff::AbstractArray{Float64}, tstep::Int64, depth::Vector{Float64},
         s::Vector{Float64}, dhw::AbstractArray{Float64}, a_adapt::Vector{Float64},
@@ -165,6 +190,187 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2},
     return
 end
 
+"""
+    bleaching_mortality!(Y::AbstractArray{Float64,2}, dhw::AbstractArray{Float64},
+        depth_coeff::Vector{Float64}, dist::Matrix{Distribution}, 
+        dist_t1::Matrix{Distribution}, prop_mort::AbstractArray{Float64})::Nothing
+
+Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
+all non-Juvenile (> 5cm²) size classes. Distributions are informed by learnings from
+Bairos-Novak et al., [1] and (unpublished) data referred to in Hughes et al., [2]. Juvenile
+mortality is assumed to be primarily represented by other factors (i.e., background
+mortality; see Álvarez-Noriega et al., [3]). The proportion of the population which bleached
+is estimated with the Cumulative Density Function. Bleaching mortality is then estimated
+with a depth-adjusted coefficient (from Baird et al., [4]).
+
+# Arguments
+- `cover` : Coral cover for current timestep
+- `dhw` : DHW for all represented locations
+- `depth_coeff` : Pre-calculated depth coefficient for all locations
+- `dist` : Critical DHW threshold distribution for current timestep, for all species and
+           locations
+- `dist_t1` : Critical DHW threshold distribution for next timestep, for all species and
+              locations
+- `prop_mort` : Cache to store records of bleaching mortality
+
+# References
+1. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021.
+     Coral adaptation to climate change: Meta-analysis reveals high heritability across
+     multiple traits.
+   Global Change Biology 27, 5694-5710.
+   https://doi.org/10.1111/gcb.15829
+
+2. Hughes, T.P., Kerry, J.T., Baird, A.H., Connolly, S.R., Dietzel, A., Eakin, C.M.,
+     Heron, S.F., Hoey, A.S., Hoogenboom, M.O., Liu, G., McWilliam, M.J., Pears, R.J.,
+     Pratchett, M.S., Skirving, W.J., Stella, J.S., Torda, G., 2018.
+   Global warming transforms coral reef assemblages.
+   Nature 556, 492-496.
+   https://doi.org/10.1038/s41586-018-0041-2
+
+3. Álvarez-Noriega, M., Baird, A.H., Bridge, T.C.L., Dornelas, M., Fontoura, L.,
+     Pizarro, O., Precoda, K., Torres-Pulliza, D., Woods, R.M., Zawada, K.,
+     Madin, J.S., 2018.
+   Contrasting patterns of changes in abundance following a bleaching event between
+     juvenile and adult scleractinian corals.
+   Coral Reefs 37, 527-532.
+   https://doi.org/10.1007/s00338-018-1677-y
+
+4. Baird, A., Madin, J., Álvarez-Noriega, M., Fontoura, L., Kerry, J., Kuo, C.,
+     Precoda, K., Torres-Pulliza, D., Woods, R., Zawada, K., & Hughes, T. (2018).
+   A decline in bleaching suggests that depth can provide a refuge from global
+     warming in most coral taxa.
+   Marine Ecology Progress Series, 603, 257-264.
+   https://doi.org/10.3354/meps12732
+"""
+function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
+    depth_coeff::Vector{Float64}, dist_t::Matrix{Distribution},
+    dist_t1::Matrix{Distribution}, prop_mort::SubArray{Float64})::Nothing
+    n_sp_sc, n_locs = size(cover)
+
+    # Adjust distributions for all locations, ignoring juveniles
+    # we assume the high background mortality of juveniles includes DHW mortality
+    @floop for (sp_sc, loc) in Iterators.product(3:n_sp_sc, 1:n_locs)
+        # Skip if location experiences no heat stress or there is no population
+        if dhw[loc] == 0.0 || cover[sp_sc, loc] == 0.0
+            continue
+        end
+
+        affected_pop::Float64 = cdf(dist_t[sp_sc, loc], dhw[loc])
+        mort_pop::Float64 = 0.0
+        if affected_pop > 0.0
+            # Calculate depth-adjusted bleaching mortality
+            mort_pop = affected_pop * depth_coeff[loc]
+
+            # Set values close to 0.0 (e.g., 1e-214) to 0.0
+            # https://github.com/JuliaLang/julia/issues/23376#issuecomment-324649815
+            if (mort_pop + one(mort_pop)) ≈ one(mort_pop)
+                mort_pop = 0.0
+            end
+        end
+
+        prop_mort[sp_sc, loc] = mort_pop
+        if mort_pop > 0.0
+            # Re-create distribution
+            d::Distribution = dist_t[sp_sc, loc]
+            μ::Float64 = mean(d)
+            dist_t1[sp_sc, loc] = truncated(Normal(μ, std(d)), mort_pop, μ + HEAT_UB)
+
+            # Update population
+            cover[sp_sc, loc] = cover[sp_sc, loc] * (1.0 - mort_pop)
+        end
+    end
+end
+
+"""
+    _merge_distributions!(c_t, c_t1, dists_t, dists_t1, c_increase)
+
+Combine distributions using the weighted average approach for all size classes above 1.
+If a positive change in cover (between \$t\$ and \$t+1\$) is found for a given size
+class, the distribution of the previous size class is weighted by the difference, and the
+distribution of the current size class is weighted by [current cover - difference].
+Where a negative change has occurred, it is assumed mortalities overcame growth.
+
+# Arguments
+- `c_t` : Cover for given size class, location at timestep \$t\$
+- `c_t1` : Cover for given size class, location at timestep \$t+1\$
+- `dists_t` : Critical DHW threshold distribution for timestep \$t\$
+- `dists_t1` : Critical DHW threshold distribution for timestep \$t+1\$
+- `c_increase` : Cache matrix to temporarily store difference between \$c_t\$ and \$c_t1\$
+
+# Returns
+Nothing
+"""
+function _merge_distributions!(c_t, c_t1, dists_t, dists_t1, c_increase)::Nothing
+    # Identify size class populations that increased in cover.
+    # Assume an increase means the previous size class moved up (i.e., there was growth).
+    c_increase .= max.(c_t1 .- c_t, 0.0)
+    if all(c_increase .== 0.0)
+        return
+    end
+
+    moved = findall(c_increase[2:end] .> 0.0) .+ 1
+
+    # Calculate weights
+    w1::Vector{Float64} = replace!(c_increase ./ c_t1, NaN => 0.0)
+    w2::Vector{Float64} = replace!(c_t ./ c_t1, NaN => 0.0)
+
+    # Mix distributions, weighted according to their relative contributions.
+    dists_t1[moved] .= MixtureModel.(Vector{Distribution}[dists_t[moved.-1], dists_t[moved]], Vector{Float64}[w1, w2])
+
+    return
+end
+
+"""
+adjust_DHW_distribution!(cover, n_groups, dist, dist_t1, tstep, c_increase)
+
+Adjust critical DHW thresholds for a given species/size class distribution as mortalities
+affect the distribution over time, and corals mature (moving up size classes).
+
+# Arguments
+- `cover` : Coral cover
+- `n_groups` : Number of coral groups represented
+- `dist` : Distributions for timestep \$t\$
+- `dist_t1` : Distributions for timestep \$t+1\$
+- `h²` : heritability value
+- `c_increase` : Cache matrix to temporarily store difference between \$c_t\$ and \$c_t1\$
+"""
+function adjust_DHW_distribution!(cover, n_groups, dist, dist_t1, tstep, h², c_increase)::Nothing
+    _, n_sp_sc, n_locs = size(cover)
+
+    step::Int64 = n_groups - 1
+
+    # Adjust population distribution
+    @floop for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
+        # Combine distributions using the weighted average approach for all size
+        # classes above 1.
+        _merge_distributions!(
+            @view(cover[tstep, sc1:sc1+step, loc]),
+            @view(cover[tstep+1, sc1:sc1+step, loc]),
+            @view(dist[sc1:sc1+step, loc]),
+            dist_t1[sc1:sc1+step, loc],
+            c_increase
+        )
+
+        # A new distribution for size class 1 is then determined by taking the
+        # distribution of size class 6 (at time t+1) and 6 (at time t), and applying
+        # the S⋅h² calculation, where:
+        # - $S$ is the distance between the means of the gaussian distributions
+        # - $h$ is heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
+        #
+        # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
+        S::Float64 = mean(dist_t1[sc1+step, loc]) - mean(dist[sc1+step, loc])
+        if S != 0.0
+            μ_t1::Float64 = mean(dist[sc1+step, loc]) + (S * h²)  # nominally, h² := 0.3
+            σ_t1::Float64 = std(dist_t1[sc1+step, loc])::Float64
+
+            # The standard deviation is assumed to remain the same as the parents
+            dist_t1[sc1, loc] = truncated(Normal(μ_t1, σ_t1), 0.0, μ_t1 + HEAT_UB)
+        end
+    end
+
+    return nothing
+end
+
 
 """
     fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64},
@@ -222,7 +428,7 @@ of 0.9 inside sf(i, j) indicates that species i at site j can only produce
 - `n_groups` : Number of groups
 
 # Returns
-sf : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
+`sf` : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
 """
 function stressed_fecundity(tstep::Int64, a_adapt::Vector{T}, n_adapt::T,
     stresspast::Vector{T}, LPdhwcoeff::T, DHWmaxtot::T, LPDprm2::T, n_groups::Int64)::Matrix{T} where {T<:Float64}
@@ -316,19 +522,22 @@ end
 """
     settler_cover(fec_scope, sf, TP_data, leftover_space, α, β, basal_area_per_settler)
 
+Determine area settled by recruited larvae.
+
+Note: Units for all areas are assumed to be in m².
+
 # Arguments
 - `fec_scope` : fecundity scope
-- `sf` : stressed fecundity
 - `TP_data` : Transition probability
-- `leftover_space` : difference between sites' maximum carrying capacity and current coral cover (k - C_s)
+- `leftover_space` : difference between sites' maximum carrying capacity and current coral cover (\$k - C_s\$)
 - `α` : max number of settlers / m²
-- `β` : larvae / m² required to produce 50% of maximum settlement (default: 5000.0)
+- `β` : larvae / m² required to produce 50% of maximum settlement
 - `basal_area_per_settler` : area taken up by a single settler
 
 # Returns
 Area covered by recruited larvae (in m²)
 """
-function settler_cover(fec_scope::T, sf::T,
+function settler_cover(fec_scope::T,
     TP_data::T, leftover_space::Matrix{Float64},
     α::V, β::V, basal_area_per_settler::V)::Matrix{Float64} where {T<:AbstractArray{<:Float64,2},V<:Vector{Float64}}
 
@@ -338,8 +547,8 @@ function settler_cover(fec_scope::T, sf::T,
 
     # As above, but more performant, less readable.
     Mwater::Float64 = 0.95
-    mul!(fec_scope, (fec_scope .* sf), TP_data)
-    fec_scope .= fec_scope .* (1.0 .- Mwater)
+    fec_scope *= TP_data
+    fec_scope .*= (1.0 .- Mwater)
 
     # Larvae have landed, work out how many are recruited
     # recruits per m^2 per site multiplied by area per settler

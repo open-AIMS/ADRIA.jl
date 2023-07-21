@@ -4,6 +4,7 @@ using TOML, CpuId, PkgVersion
 using Random, StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
 using NamedDims, AxisKeys, SparseArrayKit, DifferentialEquations
 
+using FLoops
 using MAT
 using Combinatorics, Distances
 using OrderedCollections
@@ -24,6 +25,7 @@ include("utils/setup.jl")
 include("ecosystem/corals/growth.jl")
 include("ecosystem/corals/CoralGrowth.jl")
 include("ecosystem/Ecosystem.jl")
+include("ecosystem/waves.jl")
 
 # Generate base coral struct from default spec.
 # Have to call this before including specification methods
@@ -41,6 +43,7 @@ include("sites/mcda_methods.jl")
 include("sites/dMCDA.jl")
 
 include("interventions/seeding.jl")
+include("interventions/fogging.jl")
 
 include("io/ResultSet.jl")
 include("io/result_io.jl")

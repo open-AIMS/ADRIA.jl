@@ -151,6 +151,13 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     fog_log = zcreate(Float32, fog_dims...; name="fog", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
     shade_log = zcreate(Float32, fog_dims...; name="shade", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
 
+    # TODO: Could log bleaching mortality
+    # attrs = Dict(
+    #     :structure => ("timesteps", "sites", "scenarios"),
+    #     :unique_site_ids => unique_sites,
+    # )
+    # bleach_log = zcreate(Float32, fog_dims...; name="bleaching_mortality", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
+
     return ranks, seed_log, fog_log, shade_log
 end
 

@@ -74,11 +74,8 @@ end
         # Get Intervention params
         interv_params = string.(ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname)
 
-        # Ignore n_adapt and guided
-        # TODO: Move n_adapt to Coral parameters
-
-        # Ensure all interventions are deactivated
-        interv_params = String[ip for ip in interv_params if ip != "n_adapt" && ip != "guided"]
+        # Ensure all interventions are deactivated (ignoring the "guided" factor)
+        interv_params = String[ip for ip in interv_params if ip != "guided"]
         @test all(all.(==(0), eachcol(scens[:, interv_params]))) || "Intervention factors with values > 0 found"
     end
 
@@ -92,8 +89,8 @@ end
         # Get Intervention params
         interv_params = string.(ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname)
 
-        # Ignore n_adapt and guided
-        interv_params = String[ip for ip in interv_params if ip != "n_adapt" && ip != "guided"]
+        # Ignore guided
+        interv_params = String[ip for ip in interv_params if ip != "guided"]
 
         # Ensure at least one intervention is active
         @test all(any.(>(0), eachcol(scens[:, interv_params]))) || "All intervention factors had values <= 0"
@@ -109,7 +106,7 @@ end
         # Get Intervention params
         interv_params = string.(ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname)
 
-        # Ignore n_adapt and guided
+        # Ignore guided and planning horizon
         interv_params = String[ip for ip in interv_params if ip != "plan_horizon" && ip != "guided"]
 
         # Ensure at least one intervention is active
@@ -127,8 +124,8 @@ end
         ms = ADRIA.model_spec(dom)
         target_params = string.(ADRIA.component_params(ms, [ADRIA.EnvironmentalLayer, ADRIA.Intervention, ADRIA.Criteria]).fieldname)
 
-        # Ignore n_adapt and guided
-        target_params = String[ip for ip in target_params if ip != "n_adapt" && ip != "guided"]
+        # Ignore guided
+        target_params = String[ip for ip in target_params if ip != "guided"]
 
         # Ensure at least one intervention is active
         @test all(any.(>(0), eachcol(scens[:, target_params]))) || "All target factors had values <= 0"

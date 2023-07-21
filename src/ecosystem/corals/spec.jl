@@ -2,6 +2,9 @@ using DataFrames
 import ModelParameters: Model
 
 
+# Upper bound offset to use when re-creating critical DHW distributions
+const HEAT_UB = 20.0
+
 """
     to_coral_spec(m::Model)::DataFrame
 

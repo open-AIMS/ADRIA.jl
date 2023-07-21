@@ -14,12 +14,12 @@ const COLORS::Dict{Symbol,Symbol} = Dict(
 function scenario_type(rs)
     inputs = rs.inputs
 
-    no_seed = (inputs.seed_TA .== 0) .& (inputs.seed_CA .== 0)
+    no_seed = (inputs.N_seed_TA .== 0) .& (inputs.N_seed_CA .== 0) .& (inputs.N_seed_SM .== 0)
     no_fog = inputs.fogging .== 0
     no_SRM = inputs.SRM .== 0
     counterfactual = no_seed .& no_fog .& no_SRM
 
-    has_seed = (inputs.seed_TA .> 0) .| (inputs.seed_CA .> 0)
+    has_seed = (inputs.N_seed_TA .> 0) .| (inputs.N_seed_CA .> 0) .| (inputs.N_seed_SM .> 0)
     has_shade = (inputs.fogging .> 0) .| (inputs.SRM .> 0)
     unguided = (inputs.guided .== 0) .& (has_seed .| has_shade)
 
