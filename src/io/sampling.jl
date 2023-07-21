@@ -24,7 +24,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     interv = component_params(spec, Intervention)
 
     # If counterfactual, set all intervention options to 0.0
-    df[df.guided.==-1.0, filter(x -> x ∉ [:guided, :n_adapt], interv.fieldname)] .= 0.0
+    df[df.guided.==-1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .= 0.0
 
     # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
     non_depth = filter(x -> x ∉ [:depth_min, :depth_offset], crit.fieldname)
@@ -268,7 +268,7 @@ end
 """
     _deactivate_interventions(to_update::DataFrame)::Nothing
 
-Deactivate all intervention factors (excluding `guided` and `n_adapt`) by settings these to 0.0
+Deactivate all intervention factors (excluding `guided`) by settings these to 0.0
 
 # Arguments
 - `to_update` : model specification to modify/update
@@ -278,7 +278,7 @@ Scenario specification
 """
 function _deactivate_interventions(to_update::DataFrame)::Nothing
     intervs = component_params(to_update, Intervention)
-    cols = Symbol[fn for fn in intervs.fieldname if fn != :n_adapt && fn != :guided]
+    cols = Symbol[fn for fn in intervs.fieldname if fn != :guided]
     for c in cols
         _row = to_update.fieldname .== c
         _bnds = length(to_update[_row, :bounds][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
