@@ -25,6 +25,7 @@ include("utils/setup.jl")
 include("ecosystem/corals/growth.jl")
 include("ecosystem/corals/CoralGrowth.jl")
 include("ecosystem/Ecosystem.jl")
+include("ecosystem/waves.jl")
 
 # Generate base coral struct from default spec.
 # Have to call this before including specification methods
