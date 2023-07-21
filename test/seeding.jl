@@ -5,7 +5,7 @@ using NamedDims, Distributions
 using ADRIA
 using ADRIA: distribute_seeded_corals, site_k, seed_corals!
 
-@testset "Seeding distribution" begin
+@testset "Seeding" begin
     # first test function on example domain
     dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
 
@@ -17,7 +17,7 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
     # calculate available space
     available_space = vec((total_site_area .* k) .- current_cover)
 
-    @testset "Test for Seeding Distribtion ($i)" for i in 1:10
+    @testset "Check coral seed distribution ($i)" for i in 1:10
         prefseedsites = rand(1:length(total_site_area), 5)
 
         # Randomly generate seeded area
