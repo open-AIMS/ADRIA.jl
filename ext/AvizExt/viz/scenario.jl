@@ -1,24 +1,4 @@
 """
-    
-
-# Arguments
-- `rs` : ResultSet
-- `y` : scenario outcomes
-- `opts` : Aviz options  
-    - `by_RCP`, color by RCP otherwise color by scenario type. Defaults to false.
-- `fig_opts` : Additional options to pass to adjust Figure creation  
-  See: https://docs.makie.org/v0.19/api/index.html#Figure
-- `axis_opts` : Additional options to pass to adjust Axis attributes  
-  See: https://docs.makie.org/v0.19/api/index.html#Axis
-- `series_opts` : Additional options to pass to adjust Series attributes  
-  See: https://docs.makie.org/v0.19/api/index.html#series!
-
-# Returns
-Figure
-"""
-
-
-"""
     ADRIA.viz.scenario(rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())    
     ADRIA.viz.scenario!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
