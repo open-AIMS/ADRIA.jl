@@ -567,7 +567,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_site_area, 0.0, 1.0)
 
         if tstep < tf
-            adjust_population_distribution!(Y_cover, n_groups, c_dist_t, c_dist_t1, tstep, c_increase)
+            adjust_DHW_distribution!(Y_cover, n_groups, c_dist_t, c_dist_t1, tstep,
+                param_set("heritability"), c_increase)
         end
     end
 

@@ -321,7 +321,7 @@ function _merge_distributions!(c_t, c_t1, dists_t, dists_t1, c_increase)::Nothin
 end
 
 """
-    adjust_population_distribution!(cover, n_groups, dist, dist_t1, tstep, c_increase)
+adjust_DHW_distribution!(cover, n_groups, dist, dist_t1, tstep, c_increase)
 
 Adjust critical DHW thresholds for a given species/size class distribution as mortalities
 affect the distribution over time, and corals mature (moving up size classes).
@@ -331,9 +331,10 @@ affect the distribution over time, and corals mature (moving up size classes).
 - `n_groups` : Number of coral groups represented
 - `dist` : Distributions for timestep \$t\$
 - `dist_t1` : Distributions for timestep \$t+1\$
+- `h²` : heritability value
 - `c_increase` : Cache matrix to temporarily store difference between \$c_t\$ and \$c_t1\$
 """
-function adjust_population_distribution!(cover, n_groups, dist, dist_t1, tstep, c_increase)::Nothing
+function adjust_DHW_distribution!(cover, n_groups, dist, dist_t1, tstep, h², c_increase)::Nothing
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
