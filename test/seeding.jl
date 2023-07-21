@@ -1,8 +1,9 @@
-using ADRIA
-using ADRIA: distribute_seeded_corals, site_k
 using Test
-using Distributions
-using NamedDims
+
+using NamedDims, Distributions
+
+using ADRIA
+using ADRIA: distribute_seeded_corals, site_k, seed_corals!
 
 @testset "Seeding distribution" begin
     # first test function on example domain
