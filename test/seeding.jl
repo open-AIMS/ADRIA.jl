@@ -52,4 +52,29 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
         @test (max_ind_out == max_ind) || "Maximum distributed proportion of seeded coral not seeded in largest available area."
         @test (min_ind_out == min_ind) || "Minimum distributed proportion of seeded coral not seeded in smallest available area."
     end
+
+    @testset "DHW distribution priors" begin
+        Y_pstep = rand(36, 10)  # size class, locations
+        a_adapt = rand(1.0:6.0, 36)
+        total_location_area = fill(100.0, 10)
+        seed_locs = rand(1:10, 5)  # pick 5 random locations
+        leftover_space_m² = fill(0.5, 10)
+        seeded_area = NamedDimsArray(rand((0.0:0.01:0.5), 3, 5), seed_species=1:3, locs=1:5)
+        Yseed = rand(10, 3, 10)
+        seed_sc = BitVector([i ∈ [2, 8, 15] for i in 1:36])
+
+        # Initial distributions
+        c_dist_t::Matrix{Distribution} = fill(truncated(Normal(1.0, 0.1), 0.0, 2.0), 36, 10)
+
+        seed_corals!(Y_pstep, total_location_area, leftover_space_m², seed_locs, seeded_area, seed_sc,
+            a_adapt, @view(Yseed[1, :, :]), c_dist_t)
+
+        # Ensure correct priors/weightings for each location
+        for loc in seed_locs
+            for (i, sc) in enumerate(findall(seed_sc))
+                prior1 = Yseed[1, i, loc] ./ Y_pstep[sc, loc]
+                @test c_dist_t[sc, loc].prior.p == [prior1, 1.0 - prior1]
+            end
+        end
+    end
 end
