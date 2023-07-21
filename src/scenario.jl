@@ -421,8 +421,13 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Set up distributions for natural adaptation/heritability
     c_dist_t::Matrix{Distribution} = repeat(
-        TruncatedNormal.(corals.dist_mean, corals.dist_std, 0.0, corals.dist_mean .+ HEAT_UB),
-        1, n_sites
+        truncated.(
+            Normal.(corals.dist_mean, corals.dist_std),
+            0.0,
+            corals.dist_mean .+ HEAT_UB
+        ),
+        1,
+        n_sites
     )
     c_dist_t1 = copy(c_dist_t)
 
