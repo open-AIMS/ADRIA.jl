@@ -41,24 +41,26 @@ Deploy thermally enhanced corals to indicated locations ("seeding" or "outplanti
 Increases indicated area covered by the given coral taxa and determines the modified
 distribution of critical DHW thresholds.
 
+Note: Units for all areas are expected to be identical, and are assumed to be in m².
+
 # Arguments
 - `cover` : Area currently covered by coral
 - `total_location_area` : Total area for each location
-- `leftover_space_m²` : Currently available area at each location
+- `leftover_space` : Currently available area at each location
 - `seed_locs` : Selected locations to seed
-- `seeded_area` : Area (in m²) to seed
+- `seeded_area` : Area to seed
 - `seed_sc` : Indicates in-matrix locations of the coral size classes to seed
 - `a_adapt` : Mean of thermal enhancement in terms of DHW
 - `Yseed` : Log of seeded locations to update
 - `c_dist_t` : Critical DHW distributions of corals to update
 """
 function seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float64},
-    leftover_space_m²::Vector{Float64}, seed_locs::Vector{Int64},
+    leftover_space::Vector{Float64}, seed_locs::Vector{Int64},
     seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::Vector{Float64},
     Yseed::SubArray, c_dist_t1::Matrix{Distribution})::Nothing
 
     # Calculate proportion to seed based on current available space
-    scaled_seed = distribute_seeded_corals(total_location_area[seed_locs], leftover_space_m²[seed_locs], seeded_area)
+    scaled_seed = distribute_seeded_corals(total_location_area[seed_locs], leftover_space[seed_locs], seeded_area)
 
     # Seed each site and log
     @views cover[seed_sc, seed_locs] .+= scaled_seed
