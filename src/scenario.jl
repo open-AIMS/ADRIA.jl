@@ -301,7 +301,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_years::Int64 = param_set("seed_years")  # number of years to seed
     shade_years::Int64 = param_set("shade_years")  # number of years to shade
 
-    total_site_area::Array{Float64,2} = cache.site_area
+    total_loc_area::Array{Float64,2} = cache.site_area
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
@@ -356,8 +356,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         shade_decision_years[shade_start_year] = true
     end
 
-    prefseedsites::Vector{Int64} = zeros(Int, n_site_int)
-    prefshadesites::Vector{Int64} = zeros(Int, n_site_int)
+    seed_locs::Vector{Int64} = zeros(Int, n_site_int)
+    shade_locs::Vector{Int64} = zeros(Int, n_site_int)
 
     # Max coral cover at each site (0 - 1).
     max_cover = site_k(domain)
@@ -426,10 +426,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     )
     c_dist_t1 = copy(c_dist_t)
 
-    # Identify juvenile classes
-    # juveniles = corals.class_id .∈ [[1, 2]]
-    # deployed_size_class = corals.class_id .∈ 2
-
     # Cache for proportional mortality and coral population increases
     bleaching_mort = zeros(tf, n_species, n_sites)
     c_increase = zeros(n_groups)
@@ -467,11 +463,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         Y_pstep[:, :] .= Y_cover[p_step, :, :]
 
         # Calculates scope for coral fedundity for each size class and at each site.
-        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, total_site_area)
+        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, total_loc_area)
 
         site_coral_cover = sum(Y_pstep, dims=1)  # dims: nsites * 1
         leftover_space_prop = relative_leftover_space(site_k_prop, site_coral_cover)
-        leftover_space_m² = leftover_space_prop .* total_site_area
+        leftover_space_m² = leftover_space_prop .* total_loc_area
 
         # Recruitment represents additional cover, relative to total site area
         # Gets used in ODE
@@ -508,29 +504,29 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Determine connectivity strength
             # Account for cases where there is no coral cover
             in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), vec(site_coral_cover))
-            (prefseedsites, prefshadesites, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
+            (seed_locs, shade_locs, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                prefseedsites, prefshadesites, rankings, in_conn[mcda_vars.site_ids], out_conn[mcda_vars.site_ids], strong_pred[mcda_vars.site_ids])
+                seed_locs, shade_locs, rankings, in_conn[mcda_vars.site_ids], out_conn[mcda_vars.site_ids], strong_pred[mcda_vars.site_ids])
 
             # Log site ranks
             # First col only holds site index ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
         elseif seed_corals && (in_seed_years || in_shade_years)
             # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
-            prefseedsites, prefshadesites = unguided_site_selection(prefseedsites, prefshadesites,
+            seed_locs, shade_locs = unguided_site_selection(seed_locs, shade_locs,
                 seed_decision_years[tstep], shade_decision_years[tstep],
                 n_site_int, vec(leftover_space_m²), depth_priority)
 
-            site_ranks[tstep, prefseedsites, 1] .= 1.0
-            site_ranks[tstep, prefshadesites, 2] .= 1.0
+            site_ranks[tstep, seed_locs, 1] .= 1.0
+            site_ranks[tstep, shade_locs, 2] .= 1.0
         end
 
-        has_shade_sites::Bool = !all(prefshadesites .== 0)
-        has_seed_sites::Bool = !all(prefseedsites .== 0)
+        has_shade_sites::Bool = !all(shade_locs .== 0)
+        has_seed_sites::Bool = !all(seed_locs .== 0)
 
         # Fog selected locations
         if (fogging > 0.0) && in_shade_years && has_shade_sites
-            fog_locations!(@views(Yfog[tstep, :]), prefshadesites, dhw_t, fogging)
+            fog_locations!(@views(Yfog[tstep, :]), shade_locs, dhw_t, fogging)
         end
 
         # Calculate and apply bleaching mortality
@@ -543,15 +539,15 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
             # Seed each selected site
-            seed_corals!(Y_pstep, a_adapt, vec(total_site_area), prefseedsites,
-                vec(leftover_space_m²), seeded_area, @view(Yseed[tstep, :, :]), seed_sc,
+            seed_corals!(Y_pstep, vec(total_loc_area), vec(leftover_space_m²),
+                seed_locs, seeded_area, seed_sc, a_adapt, @view(Yseed[tstep, :, :]),
                 c_dist_t)
         end
 
         # Note: ODE is run relative to `k` area, but values are otherwise recorded
         #       in relative to absolute area.
         # Update initial condition
-        @. tmp = (Y_pstep * total_site_area) / absolute_k_area
+        @. tmp = (Y_pstep * total_loc_area) / absolute_k_area
         replace!(tmp, Inf => 0.0, NaN => 0.0)
         growth.u0 .= tmp
 
@@ -561,10 +557,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         p.X_mb .= tmp .* p.mb    # current cover * background mortality
 
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-            alg_hints=[:nonstiff], adaptive=false, dt=0.5) 
+            alg_hints=[:nonstiff], adaptive=false, dt=0.5)
 
         # Ensure values are ∈ [0, 1]
-        @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_site_area, 0.0, 1.0)
+        @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_loc_area, 0.0, 1.0)
 
         if tstep < tf
             adjust_DHW_distribution!(Y_cover, n_groups, c_dist_t, c_dist_t1, tstep,
