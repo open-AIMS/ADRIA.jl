@@ -8,7 +8,8 @@ Plot scenario outcomes over time.
 - `rs` : ResultSet
 - `y` : results of scenario metric
 - `opts` : Aviz options 
-    - `by_RCP`, color by RCP otherwise color by scenario type. Defaults to false.
+    - `by_RCP` : color by RCP otherwise color by scenario type. Defaults to false.
+    - `legend` : show legend. Defaults to true.
 - `axis_opts` : Additional options to pass to adjust Axis attributes  
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 - `series_opts` : Additional options to pass to adjust Series attributes  
@@ -18,7 +19,7 @@ Plot scenario outcomes over time.
 GridPosition
 """
 function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y::NamedDimsArray;
-    opts::Dict=Dict(:by_RCP => false), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
+    opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())
 
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(y)))
@@ -61,7 +62,9 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
         end
 
         # Add legend
-        Legend(g[1, 3], eles, labels, halign=:left, valign=:top, margin=(5, 5, 5, 5))
+        if get(opts, :legend, true)
+            Legend(g[1, 3], eles, labels, halign=:left, valign=:top, margin=(5, 5, 5, 5))
+        end
     end
 
     series!(ax, y'; series_opts...)
