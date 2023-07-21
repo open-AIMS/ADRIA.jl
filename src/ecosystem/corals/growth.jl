@@ -248,7 +248,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
     n_sp_sc, n_locs = size(cover)
 
     # Adjust distributions for all locations, ignoring juveniles
-    # we assume the high background mortality of juveniles
+    # we assume the high background mortality of juveniles includes DHW mortality
     @floop for (sp_sc, loc) in Iterators.product(3:n_sp_sc, 1:n_locs)
         # Skip if location experiences no heat stress or there is no population
         if dhw[loc] == 0.0 || cover[sp_sc, loc] == 0.0
