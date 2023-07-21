@@ -55,12 +55,36 @@ Development scripts/functions can then be worked on in the `sandbox` folder, and
 
 ## Testing
 
-To run tests:
+To run the full test suite, rebuilding the environment as necessary:
 
 ```bash
 $ julia --project=.
 julia> ]test 
 ```
+
+Rebuilding the environment can be unnecessary for every test run during development.
+It such cases, `include()` the `runtests.jl` file directly.
+
+```bash
+# Assuming the current working directory is the project root.
+# Adjust the filepath as necessary if this is not the case.
+include("test/runtests.jl")
+```
+
+If a specific test case is being run, write the test file to be a standalone script
+(importing all necessary packages, including `Test`) and run it directly.
+
+Doing so allows use of debugging packages if necessary.
+
+```bash
+include("test/some_test_file.jl")
+```
+
+Once the test is complete, put the tests in a `testset` as and if required.
+If a new file is added to the test suite, `include()` it in `test/runtests.jl`
+
+See [the Test documentation](https://docs.julialang.org/en/v1/stdlib/Test/#Basic-Unit-Tests)
+for further details.
 
 
 ## Code Style
