@@ -96,7 +96,7 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
 
     hidedecorations!(ax2)
     hidespines!(ax2)
-    ylims!(ax2, -10.0, maximum(scen_dist) + 10.0)
+    ylims!(ax2, 0.0, maximum(scen_dist) + quantile(scen_dist, 0.05))
 
     # ax.ylabel = metric_label(metric)
     ax.xlabel = "Year"
