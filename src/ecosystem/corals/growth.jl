@@ -522,7 +522,9 @@ end
 """
     settler_cover(fec_scope, sf, TP_data, leftover_space, α, β, basal_area_per_settler)
 
-Determine area settled by recruited larvae (in m²).
+Determine area settled by recruited larvae.
+
+Note: Units for all areas are assumed to be in m².
 
 # Arguments
 - `fec_scope` : fecundity scope
