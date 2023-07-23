@@ -73,8 +73,8 @@ s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
 tf = Figure(resolution=(1600, 600))  # resolution in pixels
 
 # Implicitly create a single figure with 2 columns
-ADRIA.viz.scenario!(tf[1, 1], rs, s_tac; opts=Dict(:by_RCP => false), axis_opts=Dict(:title => "TAC [m²]"));
-ADRIA.viz.scenario!(tf[1, 2], rs, s_juves; opts=Dict(:by_RCP => false), axis_opts=Dict(:title => "Juveniles [%]"));
+ADRIA.viz.scenario!(tf[1, 1], rs, s_tac; opts=Dict(:by_RCP => false, :legend=>false), axis_opts=Dict(:title => "TAC [m²]"));
+ADRIA.viz.scenario!(tf[1, 2], rs, s_juves; axis_opts=Dict(:title => "Juveniles [%]"));
 
 tf  # display the figure
 save("aviz_scenario.png", tf)  # save the figure to a file
