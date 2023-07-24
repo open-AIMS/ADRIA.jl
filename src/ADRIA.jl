@@ -25,23 +25,18 @@ include("utils/setup.jl")
 include("ecosystem/corals/growth.jl")
 include("ecosystem/corals/CoralGrowth.jl")
 include("ecosystem/Ecosystem.jl")
-include("ecosystem/waves.jl")
-
-# Generate base coral struct from default spec.
-# Have to call this before including specification methods
-create_coral_struct()
-
-include("ecosystem/corals/spec.jl")
+include("ecosystem/corals/Corals.jl")
 include("ecosystem/const_params.jl")
+include("ecosystem/connectivity.jl")
 
 include("Domain.jl")
-
 include("io/inputs.jl")
 
-include("sites/connectivity.jl")
-include("sites/mcda_methods.jl")
-include("sites/dMCDA.jl")
+include("decision/mcda_methods.jl")
+include("decision/Criteria.jl")
+include("decision/dMCDA.jl")
 
+include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
 
