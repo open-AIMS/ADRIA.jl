@@ -3,7 +3,6 @@ using Distributions
 using ADRIA
 
 @testset "Coral Spec" begin
-
     linear_extension = Array{Float64,2}([
         1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora 
         1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora 
@@ -48,7 +47,7 @@ using ADRIA
     @test all(stored_mb_rate .<= 1.0) || "Some coral background mortality rates are > 1."
     @test all(stored_mb_rate .>= 0.0) || "Some coral background mortality rates are <= 0."
 
-    bin_edges_cm = [0, 2, 5, 10, 20, 40, 80]
+    bin_edges_cm = Float64[0, 2, 5, 10, 20, 40, 80]
     bin_edge_diameters_cm2 = ADRIA.colony_mean_area(bin_edges_cm)
     stored_colony_mean_areas = ADRIA.colony_mean_area(coral_params.mean_colony_diameter_m .* 100.0)
 
