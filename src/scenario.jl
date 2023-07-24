@@ -535,7 +535,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Calculate and apply bleaching mortality
-        #    This: `dhw_t .* (1.0 .- wave_scen[p_step, :])`
+        #    This: `dhw_t .* (1.0 .- wave_scen[tstep, :])`
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
