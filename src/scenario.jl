@@ -539,7 +539,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- wave_scen[p_step, :]), depth_coeff, c_dist_t, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- wave_scen[tstep, :]), depth_coeff, c_dist_t, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
