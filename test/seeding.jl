@@ -57,10 +57,13 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
         Y_pstep = rand(36, 10)  # size class, locations
         a_adapt = rand(1.0:6.0, 36)
         total_location_area = fill(100.0, 10)
-        seed_locs = rand(1:10, 5)  # pick 5 random locations
+
+        seed_locs = rand(1:10, 5)  # Pick 5 random locations
+
         leftover_space_m² = fill(0.5, 10)
-        seeded_area = NamedDimsArray(rand((0.0:0.01:0.5), 3, 5), seed_species=1:3, locs=1:5)
-        Yseed = rand(10, 3, 10)
+        seeded_area = NamedDimsArray(rand(Uniform(0.0, 500.0), 3), taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"])
+
+        Yseed = zeros(2, 3, 10)
         seed_sc = BitVector([i ∈ [2, 8, 15] for i in 1:36])
 
         # Initial distributions
@@ -73,7 +76,8 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
         for loc in seed_locs
             for (i, sc) in enumerate(findall(seed_sc))
                 prior1 = Yseed[1, i, loc] ./ Y_pstep[sc, loc]
-                @test c_dist_t[sc, loc].prior.p == [prior1, 1.0 - prior1]
+                expected = [prior1, 1.0 - prior1]
+                @test c_dist_t[sc, loc].prior.p == expected || "Expected $(expected) but got $(c_dist_t[sc, loc].prior.p) | SC: $sc ; Location: $loc"
             end
         end
     end
