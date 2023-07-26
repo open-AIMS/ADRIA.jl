@@ -76,5 +76,5 @@ function loc_trajectory(metric, data::NamedDimsArray{D,T,N,A})::NamedDimsArray w
     return NamedDimsArray(s, timesteps=axiskeys(data, :timesteps), sites=axiskeys(data, :sites))
 end
 function loc_trajectory(metric, data::NamedDimsArray{D,T,N,A}, timesteps::Union{UnitRange,Int64})::NamedDimsArray where {D,T,N,A}
-    return per_loc(metric, data[timesteps=timesteps])
+    return loc_trajectory(metric, data[timesteps=timesteps])
 end
