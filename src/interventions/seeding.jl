@@ -66,7 +66,7 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float6
     @views cover[seed_sc, seed_locs] .+= scaled_seed
     Yseed[:, seed_locs] .= scaled_seed
 
-    # Calculate w_taxa using vectorized operations
+    # Calculate w_taxa using proportion of area (used as priors for MixtureModel)
     w_taxa::Matrix{Float64} = scaled_seed ./ cover[seed_sc, seed_locs]
 
     # Update critical DHW distribution for deployed size classes
