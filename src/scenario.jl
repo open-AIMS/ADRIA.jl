@@ -104,14 +104,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
             @everywhere @eval func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
         end
 
-        @info "Time taken to spin up workers: $(spinup_time) seconds"
-
-        # Define number of scenarios to run before returning results to main
-        # https://discourse.julialang.org/t/parallelism-understanding-pmap-and-the-batch-size-parameter/15604/2
-        # https://techytok.com/lesson-parallel-computing/
-        b_size = 2
-    else
-        b_size = 1
+        @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
     end
 
     # Define local helper
@@ -124,9 +117,9 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         domain = switch_RCPs!(domain, rcp)
         target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
         if show_progress
-            @showprogress run_msg 4 pmap(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])), batch_size=b_size)
+            @showprogress run_msg 4 pmap(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
         else
-            pmap(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])), batch_size=b_size)
+            pmap(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
         end
     end
 
