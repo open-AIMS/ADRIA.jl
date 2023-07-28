@@ -97,7 +97,6 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
             _setup_workers()
-            sleep(2)  # wait a bit while workers spin-up
 
             # load ADRIA on workers and define helper function
             @everywhere @eval using ADRIA
