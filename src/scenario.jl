@@ -435,9 +435,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     a_adapt[a_adapt.>0.0] .+= corals.dist_mean[a_adapt.>0.0]
 
     ## Extract other parameters
-    LPdhwcoeff = sim_params.LPdhwcoeff # shape parameters relating dhw affecting cover to larval production
-    DHWmaxtot = sim_params.DHWmaxtot # max assumed DHW for all scenarios.  Will be obsolete when we move to new, shared inputs for DHW projections
-    LPDprm2 = sim_params.LPDprm2 # parameter offsetting LPD curve
+    # LPdhwcoeff = sim_params.LPdhwcoeff # shape parameters relating dhw affecting cover to larval production
+    # DHWmaxtot = sim_params.DHWmaxtot # max assumed DHW for all scenarios.  Will be obsolete when we move to new, shared inputs for DHW projections
+    # LPDprm2 = sim_params.LPDprm2 # parameter offsetting LPD curve
 
     # TODO: Better conversion of Ub to wave mortality
     #       Currently scaling significant wave height by its max to non-dimensionalize values
