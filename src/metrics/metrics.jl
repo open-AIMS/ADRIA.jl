@@ -29,7 +29,7 @@ function (f::Metric)(raw, args...; kwargs...)
 
         try
             # Try renaming dimensions to match expectations
-            res = NamedDimsArray{(f.dims...)}(res)
+            res = NamedDims.rename(res, f.dims)
         catch err
             if !(err isa MethodError)
                 rethrow(err)
@@ -40,7 +40,7 @@ function (f::Metric)(raw, args...; kwargs...)
     return res
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)
-    return f.func(rs, args...; kwargs...)
+    return NamedDims.rename(f.func(rs, args...; kwargs...), f.dims)
 end
 
 
@@ -192,9 +192,11 @@ TODO: Uses hardcoded index values, to be replaced by something more generic.
 
 # Arguments
 - `X` : Raw model results for a single scenario
+- `k_area` : the coral habitable area
+- `area` : total location area
 
 # Returns
-Coral cover, grouped by taxa for the given scenario.
+Coral cover, grouped by taxa for the given scenario, relative to location k area.
 """
 function _relative_taxa_cover(X::AbstractArray{T,3})::AbstractArray where {T<:Real}
     nsteps, nspecies, _ = size(X)
@@ -315,7 +317,6 @@ function _max_juvenile_area(coral_params::DataFrame, max_juv_density::Float64=51
     return max_juv_density * max_size_m²
 end
 
-
 """
     juvenile_indicator(X::AbstractArray{T}, coral_params::DataFrame, area::Vector{Float64}, k_area::Vector{Float64}) where {T<:Real}
     juvenile_indicator(rs::ResultSet)
@@ -323,7 +324,12 @@ end
 Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretical density
 for juveniles have been achieved.
 
+# Notes
 Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm diameter.
+See email correspondence
+from: Dr. A Thompson; to: Dr. K. Anthony
+Subject: RE: Max density of juvenile corals on the GBR
+Sent: Friday, 14 October 2022 2:58 PM
 """
 function _juvenile_indicator(X::AbstractArray{T}, coral_params::DataFrame,
     abs_area::V, k_area::V)::AbstractArray{T} where {T<:Real,V<:Vector{Float64}}
@@ -342,11 +348,8 @@ juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios
     coral_evenness(X::AbstractArray{T})::AbstractArray{T} where {T<:Real}
     coral_evenness(rs::ResultSet)::AbstractArray{T} where {T}
 
-Calculates evenness across functional coral groups in ADRIA.
+Calculates evenness across functional coral groups in ADRIA as a diversity metric.
 Inverse Simpsons diversity indicator.
-
-# Notes
-Number of taxa (distinct groups with enhanced lumped with unenhanced) is hardcoded in this function.
 
 # References
 1. Hill, M. O. (1973).
