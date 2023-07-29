@@ -691,73 +691,7 @@ end
 relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
 
 
-"""
-    reef_condition_index(TC, E, SV, juveniles)
-    reef_condition_index(rs)
-
-Translates coral metrics in ADRIA to a Reef Condition Metrics.
-
-# Notes
-Juveniles are made relative to maximum observed juvenile density (51.8/m²)
-See email correspondence
-from: Dr. A Thompson; to: Dr. K. Anthony
-Subject: RE: Max density of juvenile corals on the GBR
-Sent: Friday, 14 October 2022 2:58 PM
-
-# Arguments
-- `TC`        : Total relative coral cover across all groups
-- `E`         : Evenness across four coral groups
-- `SV`        : Shelter volume based coral sizes and abundances
-- `juveniles` : Abundance of coral juveniles < 5 cm diameter
-
-Input dimensions: timesteps, species, sites, repeats, scenarios
-
-# Returns
-Dimensions: timesteps, sites, repeats, scenarios
-"""
-function _reef_condition_index(rc::AbstractArray{T}, E::AbstractArray{T}, SV::AbstractArray{T}, juveniles::AbstractArray{T})::AbstractArray{T} where {T<:Real}
-    # Compare outputs against reef condition criteria provided by experts
-
-    # These are median values for 7 experts. TODO: draw from distributions
-    #  Condition        RC       E       SV      Juv
-    # {'VeryGood'}      0.45     0.45    0.45    0.35
-    # {'Good'    }      0.35     0.35    0.35    0.25
-    # {'Fair'    }      0.25     0.25    0.30    0.25
-    # {'Poor'    }      0.15     0.25    0.30    0.25
-    # {'VeryPoor'}      0.05     0.15    0.18    0.15
-
-    # Ignoring evenness for now
-
-    # Note that the scores for evenness and juveniles are slightly different
-    lin_grid::Gridded{Linear{Throw{OnGrid}}} = Gridded(Linear())
-    TC_func::GriddedInterpolation{Float64,1,Vector{Float64},Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.05, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0], lin_grid)
-    # E_func::GriddedInterpolation{Float64, 1, Vector{Float64}, Gridded{Linear{Throw{OnGrid}}}, Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.5, 0.7, 0.9, 1.0], lin_grid)
-    SV_func::GriddedInterpolation{Float64,1,Vector{Float64},Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.18, 0.30, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.9, 1.0], lin_grid)
-    juv_func::GriddedInterpolation{Float64,1,Vector{Float64},Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 1.0],), Float64[0, 0.1, 0.5, 0.9, 1.0], lin_grid)
-
-    rc_i::AbstractArray{<:Real} = TC_func.(rc)
-    # E_i::T = E_func.(E)
-    SV_i::AbstractArray{<:Real} = SV_func.(SV)
-    juv_i::AbstractArray{<:Real} = juv_func.(juveniles)
-
-    return mean([rc_i, SV_i, juv_i])
-end
-function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
-    rc::AbstractArray{<:Real} = _relative_cover(rs)
-
-    # Divide across sites by the max possible proportional coral cover
-    rc = mapslices((s) -> s ./ (rs.site_max_coral_cover ./ 100.0), rc, dims=2)
-
-    juv::AbstractArray{<:Real} = _juvenile_indicator(rs)
-    # E::AbstractArray{<:Real} = _coral_evenness(rs)
-    E = Array(Float32[])
-    SV::AbstractArray{<:Real} = _relative_shelter_volume(rs)
-
-    return _reef_condition_index(rc, E, SV, juv)
-end
-reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
-
-
+include("reef_indices.jl")
 include("temporal.jl")
 include("site_level.jl")
 include("scenario.jl")
