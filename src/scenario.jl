@@ -1,8 +1,8 @@
 """Scenario running functions"""
 
-using ADRIA.metrics: relative_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
+using ADRIA.metrics: relative_cover, relative_loc_taxa_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
 using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
-
+using ADRIA.metrics: coral_evenness
 
 """
     setup_cache(domain::Domain)::NamedTuple
@@ -178,9 +178,14 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     vals[vals.<threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
-    vals = relative_taxa_cover(rs_raw)
+    vals = relative_taxa_cover(rs_raw, site_k_area(domain), site_area(domain))
     vals[vals.<threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
+
+    vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain), site_area(domain))
+    vals = coral_evenness(vals)
+    vals[vals.<threshold] .= 0.0
+    data_store.coral_evenness[:, :, idx] .= vals
 
     # Store raw results if no metrics specified
     # if length(metrics) == 0
