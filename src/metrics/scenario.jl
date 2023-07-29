@@ -45,11 +45,11 @@ Calculate the cluster-wide relative juvenile population for individual scenarios
 """
 function _scenario_juveniles(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
     @warn "`scenario_juveniles()` is deprecated and will be removed in future versions. Use `scenario_relative_juveniles()` instead."
-    return _scenario_rjuves(data, coral_spec, area; kwargs...)
+    return _scenario_relative_juveniles(data, coral_spec, area; kwargs...)
 end
 function _scenario_juveniles(rs::ResultSet; kwargs...)
     @warn "`scenario_juveniles()` is deprecated and will be removed in future versions. Use `scenario_relative_juveniles()` instead."
-    return scenario_rjuves(rs)
+    return _scenario_relative_juveniles(rs)
 end
 scenario_juveniles = Metric(_scenario_juveniles, (:timesteps, :scenario))
 
