@@ -383,23 +383,22 @@ Inverse Simpsons diversity indicator.
    https://doi.org/10.2307/1934352
 
 """
-function _coral_evenness(X::AbstractArray{T})::AbstractArray{T} where {T<:Real}
-    x::AbstractArray{<:Real} = min.(max.(X, 0.0), 1.0)
-    covers::NamedTuple = coral_cover(x)
-
+function _coral_evenness(r_taxa_cover::AbstractArray{T})::Array{T} where {T<:Real}
     # Evenness as a functional diversity metric
-    n::Int64 = 4  # number of taxa
-    p1::AbstractArray{<:Real} = dropdims(sum(covers.tab_acr, dims=2), dims=2) ./ covers.relative_cover
-    p2::AbstractArray{<:Real} = dropdims(sum(covers.cor_acr, dims=2), dims=2) ./ covers.relative_cover
-    p3::AbstractArray{<:Real} = dropdims(sum(covers.small_enc, dims=2), dims=2) ./ covers.relative_cover
-    p4::AbstractArray{<:Real} = dropdims(sum(covers.large_mass, dims=2), dims=2) ./ covers.relative_cover
+    n_steps, n_grps, n_locs = size(r_taxa_cover)
 
-    sum_psqr::AbstractArray{<:Real} = p1 .^ 2 + p2 .^ 2 + p3 .^ 2 + p4 .^ 2  # functional diversity
-    simpson_D::AbstractArray{<:Real} = 1 ./ sum_psqr  # Hill 1973, Ecology 54:427-432
-    return simpson_D ./ n  # Group evenness
+    # Sum across groups represents functional diversity
+    # Group evenness (Hill 1973, Ecology 54:427-432)
+    loc_cover = dropdims(sum(r_taxa_cover, dims=2), dims=2)
+    simpson_D = zeros(n_steps, n_locs)
+    for loc in axes(loc_cover, 2)
+        simpson_D[:, loc] = 1.0 ./ sum((r_taxa_cover[:, :, loc] ./ loc_cover[:, loc]) .^ 2, dims=2)
+    end
+    # simpson_D::Vector{T} = 1.0 ./ vec((r_taxa_cover ./ loc_cover) .^ 2)
+    return replace!(simpson_D, NaN => 0.0, Inf => 0.0) ./ n_grps
 end
 function _coral_evenness(rs::ResultSet)::AbstractArray
-    return _coral_evenness(rs.raw)
+    return rs.outcomes[:coral_evenness]
 end
 coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
 
