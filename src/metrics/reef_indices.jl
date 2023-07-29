@@ -98,11 +98,11 @@ reef_tourism_index = Metric(_reef_tourism_index, (:timesteps, :sites, :scenarios
     reef_fish_index(rs::ResultSet)
 
 The Reef Fish Index (RFI) estimates fish biomass from relative coral cover.
-The relationship is developed by R. Heneghan (QUT) by digitizing Figures 4a and 6b
-from Graham & Nash (2013; see [1])
 
-A linear regression (developed by R. Heneghan, Queensland University of Technology) 
+A linear regression (developed by Dr. R. Heneghan, Queensland University of Technology) 
 is used to indicate the relationship between coral cover and fish biomass.
+The regression was developed with digitized data from Figures 4a and 6b in 
+Graham & Nash (2013; see [1]).
 
 Values are provided ∈ [0, 1], where 1 indicates maximum fish biomass.
 
