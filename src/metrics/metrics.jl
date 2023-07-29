@@ -147,13 +147,18 @@ end
 # Arguments
 - `X` : Matrix of raw model results
 """
-function _relative_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray{T} where {T<:Real}
+function _relative_cover(X::AbstractArray{U}, total_area::Vector{T}, k_area::Vector{T})::AbstractArray{T} where {T<:Real,U<:Real}
     # sum over all species and size classes
-    return (dropdims(sum(X, dims=:species), dims=:species) ./ replace(k_area, 0.0 => 1.0)')
+    return (dropdims(sum(X, dims=2), dims=2) .* total_area') ./ replace(k_area, 0.0 => 1.0)'
 end
 function _relative_cover(rs::ResultSet)::AbstractArray
-    denom = replace(((rs.site_max_coral_cover ./ 100.0) .* rs.site_area), 0.0 => 1.0)'
-    return (rs.outcomes[:total_absolute_cover] ./ denom)
+    k_area = site_k_area(rs)'
+    tac = rs.outcomes[:total_absolute_cover]
+    rc = cat(map(s -> s ./ k_area,
+            JuliennedArrays.Slices(tac, dim(tac, :timesteps), dim(tac, :sites))
+        )..., dims=3)
+
+    return replace!(rc, NaN => 0.0, Inf => 0.0)
 end
 relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
 
