@@ -188,7 +188,7 @@ total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scena
 
 Results grouped by taxa/species.
 
-TODO: Uses hardcoded index values, to be replaced by something more generic.
+TODO: Number of size classes is hard coded.
 
 # Arguments
 - `X` : Raw model results for a single scenario
