@@ -239,66 +239,6 @@ function _relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, area::
 end
 relative_loc_taxa_cover = Metric(_relative_loc_taxa_cover, (:timesteps, :taxa, :location, :scenarios))
 
-
-# """
-#     coral_cover(X::AbstractArray{T})::NamedTuple where {T<:Real}
-#     coral_cover(rs::ResultSet)
-
-# Converts outputs from scenario runs to relative cover of the four different coral taxa.
-
-# # Returns
-# NamedTuple
-#     - relative_cover : relative coral cover
-#     - enhanced_tab_acr : cover of enhanced tabular acropora
-#     - unenhanced_tab_acr : area covered by unenhanced tabular acropora
-#     - enhanced_cor_acr : area covered by enhanced corymbose acropora
-#     - unenhanced_cor_acr : area covered by unenhanced corymbose acropora
-#     - tab_acr : cover of tabular acropora
-#     - cor_acr : cover of corymbose acropora
-#     - small_enc : cover of small encrusting
-#     - large_mass : cover of large massives
-#     - juveniles : area covered by juveniles
-#     - large : area covered by large mature corals
-# """
-# function coral_cover(X::AbstractArray{<:Real})::NamedTuple
-#     rc::AbstractArray{<:Real} = _relative_cover(X)  # sum over all species and size classes
-
-#     _, _, cs_p::DataFrame = coral_spec()
-
-#     screen = (x, idx) -> findall(x .== idx)
-
-#     sc1::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 1), :, :, :]
-#     sc2::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 2), :, :, :]
-#     sc3::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 3), :, :, :]
-#     sc4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 4), :, :, :]
-
-#     C1::AbstractArray{<:Real} = sc1 .+ sc2  # enhanced to unenhanced tabular Acropora
-#     C2::AbstractArray{<:Real} = sc3 .+ sc4  # enhanced to unenhanced corymbose Acropora
-#     C3::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 5), :, :, :]  # Encrusting and small massives
-#     C4::AbstractArray{<:Real} = X[:, screen(cs_p.taxa_id, 6), :, :, :]  # Large massives
-
-#     # Cover of juvenile corals (< 5cm diameter)
-#     juv_all = _absolute_juveniles(X)
-
-#     large_corals::AbstractArray{<:Real} = X[:, screen(cs_p.class_id, 5), :, :, :] + X[:, screen(cs_p.class_id, 6), :, :, :]
-#     large_all::AbstractArray{<:Real} = dropdims(sum(large_corals, dims=2), dims=2)
-
-#     covers = (relative_cover=rc,
-#         enhanced_tab_acr=sc1,
-#         unenhanced_tab_acr=sc2,
-#         enhanced_cor_acr=sc3,
-#         unenhanced_cor_acr=sc4,
-#         tab_acr=C1, cor_acr=C2,
-#         small_enc=C3, large_mass=C4,
-#         juveniles=juv_all, large=large_all)
-
-#     return covers
-# end
-# function coral_cover(rs::ResultSet)::NamedTuple
-#     return coral_cover(rs.raw)
-# end
-
-
 """
     relative_juveniles(X::AbstractArray{T})::AbstractArray{T} where {T}
     relative_juveniles(rs::ResultSet)::AbstractArray
