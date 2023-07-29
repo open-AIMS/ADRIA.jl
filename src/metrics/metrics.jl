@@ -198,13 +198,19 @@ TODO: Uses hardcoded index values, to be replaced by something more generic.
 # Returns
 Coral cover, grouped by taxa for the given scenario, relative to location k area.
 """
-function _relative_taxa_cover(X::AbstractArray{T,3})::AbstractArray where {T<:Real}
-    nsteps, nspecies, _ = size(X)
+function _relative_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, area::Vector{T})::AbstractArray where {T<:Real}
+    n_steps, n_species, n_locs = size(X)
+    n_sc = 6
 
-    taxa_cover = zeros(nsteps, 6)
-    for (taxa_id, grp) in enumerate([i:i+5 for i in 1:6:nspecies])
-        # Sum over groups
-        taxa_cover[:, taxa_id] = dropdims(mean(sum(X[:, grp, :], dims=2), dims=3), dims=3)
+    taxa_cover = zeros(n_steps, n_sc)
+    k_cover = zeros(n_steps, n_sc, n_locs)
+    for (taxa_id, grp) in enumerate([i:i+(n_sc-1) for i in 1:n_sc:n_species])
+        for (loc, a) in enumerate(area)
+            k_cover[:, :, loc] .= X[:, grp, loc] .* a
+        end
+
+        # Sum over size class groups
+        taxa_cover[:, taxa_id] = vec(sum(k_cover, dims=(2, 3))) ./ sum(k_area)
     end
 
     return taxa_cover
