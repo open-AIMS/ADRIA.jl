@@ -220,6 +220,25 @@ function _relative_taxa_cover(rs::ResultSet)::AbstractArray
 end
 relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenarios))
 
+function _relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, area::Vector{T})::AbstractArray where {T<:Real}
+    n_steps, n_species, n_locs = size(X)
+    n_sc = 6
+
+    taxa_cover = zeros(n_steps, n_sc, n_locs)
+    k_cover = zeros(n_steps, n_sc)
+    for (taxa_id, grp) in enumerate([i:i+(n_sc-1) for i in 1:n_sc:n_species])
+        for (loc, a) in enumerate(area)
+            k_cover .= X[:, grp, loc] .* a
+
+            # Sum over size class groups
+            taxa_cover[:, taxa_id, loc] = vec(sum(k_cover, dims=2)) ./ k_area[loc]
+        end
+    end
+
+    return replace!(taxa_cover, NaN => 0.0)
+end
+relative_loc_taxa_cover = Metric(_relative_loc_taxa_cover, (:timesteps, :taxa, :location, :scenarios))
+
 
 # """
 #     coral_cover(X::AbstractArray{T})::NamedTuple where {T<:Real}
