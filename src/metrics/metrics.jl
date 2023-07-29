@@ -1,9 +1,9 @@
 module metrics
 
-using Interpolations, Statistics, OnlineStats, NamedDims, AxisKeys, JuliennedArrays
+using Distributions, Statistics, Interpolations
+using DataFrames, OnlineStats, NamedDims, AxisKeys, JuliennedArrays
 
-using DataFrames
-using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps
+using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, site_k_area, site_area
 
 
 abstract type Outcome end
