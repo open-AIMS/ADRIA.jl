@@ -24,10 +24,10 @@ Create a spatial choropleth figure.
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 """
-function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{2,Float32},
-    data::Observable{Vector{Float32}}, highlight::Vector{RGBA{Float32}},
-    centroids::Vector{Tuple{Float64,Float64}}, colorbar_label::String,
-    legend_params::Tuple, axis_opts::Dict)
+function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection,
+    data::Observable, highlight::Union{Vector,Nothing},
+    centroids::Vector, colorbar_label::String,
+    legend_params::Union{Tuple,Nothing}, axis_opts::Dict)
     lon = first.(centroids)
     lat = last.(centroids)
 
