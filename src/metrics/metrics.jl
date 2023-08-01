@@ -152,7 +152,7 @@ function _relative_cover(X::AbstractArray{U}, total_area::Vector{T}, k_area::Vec
     return (dropdims(sum(X, dims=2), dims=2) .* total_area') ./ replace(k_area, 0.0 => 1.0)'
 end
 function _relative_cover(rs::ResultSet)::AbstractArray
-    k_area = site_k_area(rs)'
+    k_area = (site_k_area(rs) .* site_area(rs))'
     tac = rs.outcomes[:total_absolute_cover]
     rc = cat(map(s -> s ./ k_area,
             JuliennedArrays.Slices(tac, dim(tac, :timesteps), dim(tac, :sites))
@@ -268,7 +268,7 @@ function _absolute_juveniles(X::AbstractArray{T}, coral_spec::DataFrame, area::A
     return _relative_juveniles(X, coral_spec) .* area'
 end
 function _absolute_juveniles(rs::ResultSet)::AbstractArray
-    return rs.outcomes[:relative_juveniles] .* rs.site_area'
+    return rs.outcomes[:relative_juveniles] .* site_area(rs)'
 end
 absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios), "m²")
 
