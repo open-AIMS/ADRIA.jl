@@ -6,6 +6,27 @@ Note: Aggregates across the `site` dimension so trajectories over time for each 
 TODO: Produce summary stats. Currently returns just the mean.
 """
 
+"""
+    scenario_trajectory(data::AbstractArray; metric=mean)
+
+Produce scenario trajectories using the provided metric/aggregation function.
+
+# Arguments
+- `data` : Results to aggregate
+- `metric` : Function or Callable used to summarize data
+
+# Returns
+Matrix[timesteps ⋅ scenarios]
+"""
+function scenario_trajectory(data::AbstractArray; metric=mean)
+    tf = axes(data, :timesteps)
+    s::Matrix{eltype(data)} = map(metric,
+        JuliennedArrays.Slices(data[timesteps=tf], NamedDims.dim(data, :sites))
+    )
+
+    return NamedDimsArray(s, timesteps=axiskeys(data, :timesteps), scenarios=1:size(s, 2))
+end
+
 
 """
     scenario_total_cover(rs::ResultSet; kwargs...)
