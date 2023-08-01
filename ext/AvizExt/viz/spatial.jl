@@ -131,6 +131,7 @@ function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts:
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
+    opts[:colorbar_label] = get(opts, :colorbar_label, "Coral Real Estate [%]")
     ADRIA.viz.map!(g, rs, rs.site_data.k; opts, axis_opts)
 
     return f
@@ -142,7 +143,7 @@ function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,Resu
     data = Observable(y)
 
     highlight = get(opts, :highlight, nothing)
-    c_label = get(opts, :colorbar_label, "Relative Cover")
+    c_label = get(opts, :colorbar_label, "")
     legend_params = get(opts, :legend_params, nothing)
 
     return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label, legend_params, axis_opts)
