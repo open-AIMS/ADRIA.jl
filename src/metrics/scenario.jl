@@ -139,7 +139,7 @@ end
 function _scenario_asv(rs::ResultSet; kwargs...)
     return _scenario_asv(rs.outcomes[:absolute_shelter_volume]; kwargs...)
 end
-scenario_asv = Metric(_scenario_asv, (:scenario, :timesteps), "m³/m²")
+scenario_asv = Metric(_scenario_asv, (:timesteps, :scenario), "m³/m²")
 
 
 """
@@ -155,4 +155,4 @@ end
 function _scenario_rsv(rs::ResultSet; kwargs...)
     return _scenario_rsv(rs.outcomes[:relative_shelter_volume]; kwargs...)
 end
-scenario_rsv = Metric(_scenario_rsv, (:scenario, :timesteps))
+scenario_rsv = Metric(_scenario_rsv, (:timesteps, :scenario))
