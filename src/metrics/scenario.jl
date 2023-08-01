@@ -156,3 +156,19 @@ function _scenario_rsv(rs::ResultSet; kwargs...)
     return _scenario_rsv(rs.outcomes[:relative_shelter_volume]; kwargs...)
 end
 scenario_rsv = Metric(_scenario_rsv, (:timesteps, :scenario))
+
+"""
+    scenario_evenness(ev::NamedDimsArray; kwargs...)
+    scenario_evenness(rs::ResultSet; kwargs...)
+
+Calculate the mean coral evenness for each scenario for the entire domain.
+"""
+function _scenario_evenness(ev::NamedDimsArray; kwargs...)
+    ev_sliced = slice_results(ev; kwargs...)
+    return scenario_trajectory(ev_sliced)
+    # return dropdims(mean(ev_sliced, dims=:sites), dims=:sites)
+end
+function _scenario_evenness(rs::ResultSet; kwargs...)
+    return _scenario_evenness(rs.outcomes[:coral_evenness]; kwargs...)
+end
+scenario_evenness = Metric(_scenario_evenness, (:timesteps, :scenario))
