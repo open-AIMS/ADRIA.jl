@@ -160,7 +160,11 @@ function _relative_cover(rs::ResultSet)::AbstractArray
     k_area = (site_k_area(rs) .* site_area(rs))'
     tac = rs.outcomes[:total_absolute_cover]
     rc = cat(map(s -> s ./ k_area,
-            JuliennedArrays.Slices(tac, dim(tac, :timesteps), dim(tac, :sites))
+            JuliennedArrays.Slices(
+                tac,
+                NamedDims.dim(tac, :timesteps),
+                NamedDims.dim(tac, :sites)
+            )
         )..., dims=3)
 
     return replace!(rc, NaN => 0.0, Inf => 0.0)
