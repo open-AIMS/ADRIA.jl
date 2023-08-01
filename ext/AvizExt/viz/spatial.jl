@@ -24,10 +24,10 @@ Create a spatial choropleth figure.
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 """
-function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{2,Float32},
-    data::Observable{Vector{Float32}}, highlight::Vector{RGBA{Float32}},
-    centroids::Vector{Tuple{Float64,Float64}}, colorbar_label::String,
-    legend_params::Tuple, axis_opts::Dict)
+function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection,
+    data::Observable, highlight::Union{Vector,Nothing},
+    centroids::Vector, colorbar_label::String,
+    legend_params::Union{Tuple,Nothing}, axis_opts::Dict)
     lon = first.(centroids)
     lat = last.(centroids)
 
@@ -131,6 +131,7 @@ function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts:
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
+    opts[:colorbar_label] = get(opts, :colorbar_label, "Coral Real Estate [%]")
     ADRIA.viz.map!(g, rs, rs.site_data.k; opts, axis_opts)
 
     return f
@@ -142,7 +143,7 @@ function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,Resu
     data = Observable(y)
 
     highlight = get(opts, :highlight, nothing)
-    c_label = get(opts, :colorbar_label, "Relative Cover")
+    c_label = get(opts, :colorbar_label, "")
     legend_params = get(opts, :legend_params, nothing)
 
     return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label, legend_params, axis_opts)
