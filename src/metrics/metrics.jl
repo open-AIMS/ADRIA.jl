@@ -20,7 +20,7 @@ Metric(f, d) = Metric(f, d, "")
 """
 Make Metric callable with arbitary arguments that are passed to associated function.
 """
-function (f::Metric)(raw, args...; kwargs...)
+function (f::Metric)(raw, args...; kwargs...)::NamedDimsArray
     local res
     try
         res = f.func(NamedDimsArray{(:timesteps, :species, :sites, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
@@ -39,8 +39,13 @@ function (f::Metric)(raw, args...; kwargs...)
 
     return res
 end
-function (f::Metric)(rs::ResultSet, args...; kwargs...)
-    return NamedDims.rename(f.func(rs, args...; kwargs...), f.dims)
+function (f::Metric)(rs::ResultSet, args...; kwargs...)::NamedDimsArray
+    met = f.func(rs, args...; kwargs...)
+    try
+        return NamedDimsArray(met, f.dims)
+    catch
+        return NamedDims.rename(met, f.dims)
+    end
 end
 
 
