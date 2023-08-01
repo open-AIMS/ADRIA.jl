@@ -1,5 +1,5 @@
 """
-    reef_condition_index(rc, E, SV, juveniles)
+    reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
     reef_condition_index(rs)
 
 Estimates a Reef Condition Index (RCI) providing a single value that indicates the condition
@@ -24,28 +24,40 @@ NamedArray[timesteps ⋅ locations ⋅ scenarios]
 """
 function _reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
     # Compare outputs against reef condition criteria provided by experts
+    # These are median values for 8 experts.
+    criteria = NamedDimsArray([
+            0.0 0.0 0.0 0.0
+            0.05 0.15 0.175 0.15  # Very Poor
+            0.15 0.25 0.3 0.25   # Poor
+            0.25 0.25 0.3 0.25   # Fair
+            0.35 0.35 0.35 0.25  # Good
+            0.45 0.45 0.45 0.35  # Very Good
+            Inf Inf Inf Inf      # Note: some metrics might return a value > 1.0
+        ],
+        condition=[:lower, :very_poor, :poor, :fair, :good, :very_good, :upper],
+        metric=[:RC, :E, :SV, :Juv]
+    )
 
-    # These are median values for 7 experts. TODO: draw from distributions
-    #  Condition        RC       E       SV      Juv
-    # 'VeryGood'        0.45     0.45    0.45    0.35
-    # 'Good'            0.35     0.35    0.35    0.25
-    # 'Fair'            0.25     0.25    0.30    0.25
-    # 'Poor'            0.15     0.25    0.30    0.25
-    # 'VeryPoor'        0.05     0.15    0.18    0.15
+    index_metrics = []
+    for (idx, met) in enumerate([rc, evenness, sv, juves])
+        lower = collect(criteria[1:end-1, idx])
+        upper = collect(criteria[2:end, idx])
+        met_cp = map(x -> criteria[2:end, idx][lower.<=x.<=upper][1], met)
+        replace!(met_cp, Inf => 1.0)
+        push!(index_metrics, met_cp)
+    end
 
-    # Note that the scores for evenness and juveniles are slightly different
-    lin_grid::Gridded{Linear{Throw{OnGrid}}} = Gridded(Linear())
-    TC_func::GriddedInterpolation{Float64,1,Vector{Float64},Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.05, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0], lin_grid)
-    E_func::GriddedInterpolation{Float64,1,Vector{Float64},Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.5, 0.7, 0.9, 1.0], lin_grid)
-    SV_func::GriddedInterpolation{Float64,1,Vector{Float64},Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.18, 0.30, 0.35, 0.45, 1.0],), Float64[0, 0.1, 0.3, 0.5, 0.9, 1.0], lin_grid)
-    juv_func::GriddedInterpolation{Float64,1,Vector{Float64},Gridded{Linear{Throw{OnGrid}}},Tuple{Vector{Float64}}} = interpolate((Float64[0, 0.15, 0.25, 0.35, 1.0],), Float64[0, 0.1, 0.5, 0.9, 1.0], lin_grid)
+    # Threshold for how many criteria need to be met for category to be satisfied.
+    # (0.6 if 6 metrics; 0.1 for each metric)
+    # We only have 4 metrics in ADRIA, so threshold is 0.4
+    criteria_threshold = 0.1 * length(index_metrics)
+    rci = mean(index_metrics)
 
-    rc_i::AbstractArray{<:Real} = TC_func.(rc)
-    E_i::AbstractArray{<:Real} = E_func.(evenness)
-    SV_i::AbstractArray{<:Real} = SV_func.(sv)
-    juv_i::AbstractArray{<:Real} = juv_func.(juves)
+    # Set value to 0.0 in cases where mean contribution does not meet threshold.
+    rci[rci.<criteria_threshold] .= 0.0
 
-    return mean([rc_i, E_i, SV_i, juv_i])
+    # TODO: bootstrap to cover expert uncertainty
+    return clamp!(rci, 0.1, 0.9)
 end
 function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
     rc::AbstractArray{<:Real} = relative_cover(rs)
@@ -56,6 +68,21 @@ function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
     return _reef_condition_index(rc, evenness, sv, juves)
 end
 reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
+
+"""
+    scenario_rci(rci::NamedDimsArray; kwargs...)
+    scenario_rci(rs::ResultSet; kwargs...)
+
+Calculate the mean Reef Fish Index for each scenario for the entire domain.
+"""
+function _scenario_rci(rti::NamedDimsArray; kwargs...)
+    rti_sliced = slice_results(rti; kwargs...)
+    return scenario_trajectory(rti_sliced)
+end
+function _scenario_rci(rs::ResultSet; kwargs...)
+    return _scenario_rci(reef_condition_index(rs); kwargs...)
+end
+scenario_rci = Metric(_scenario_rci, (:timesteps, :scenario))
 
 """
     reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
@@ -69,15 +96,18 @@ Estimate tourism index.
 - `sv` : Shelter volume based on coral sizes and abundances
 - `juves` : Abundance of coral juveniles < 5 cm diameter
 """
-function _reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray; intcp_u=0.0)::AbstractArray
-    intcp = -0.498 + intcp_u
-    rti = (intcp .+ (0.291 .* rc) .+
-           (0.056 .* evenness) .+
-           (0.628 .* sv) .+
-           (1.335 .* juves)
-    )
+function _reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray, intcp_u::Vector)::AbstractArray
+    intcp = -0.498 .+ intcp_u
 
-    return clamp.(rti, 0.1, 0.9)
+    # TODO: Ryan to reinterpolate to account for no CoTS and no rubble
+    # Apply unique intercepts for each scenario
+    rti = cat(map(axe -> (intcp[axe] .+ (0.291 .* rc[:, :, axe]) .+
+                          (0.056 .* evenness[:, :, axe]) .+
+                          (0.628 .* sv[:, :, axe]) .+
+                          (1.335 .* juves[:, :, axe])
+            ), axes(rc, 3))..., dims=3)
+
+    return round.(clamp.(rti, 0.1, 0.9), digits=2)
 end
 function _reef_tourism_index(rs::ResultSet; intcp_u::Bool=true)::AbstractArray
     rc::AbstractArray{<:Real} = relative_cover(rs)
@@ -85,13 +115,28 @@ function _reef_tourism_index(rs::ResultSet; intcp_u::Bool=true)::AbstractArray
     evenness::AbstractArray{<:Real} = coral_evenness(rs)
     sv::AbstractArray{<:Real} = relative_shelter_volume(rs)
 
-    if intcp_u
-        intcp = rand(Normal(0.0, 0.163))
-    end
+    n_scens = size(rc, :scenarios)
+    intcp = intcp_u ? rand(Normal(0.0, 0.163), n_scens) : zeros(n_scens)
 
-    return _reef_tourism_index(rc, evenness, sv, juves; intcp_u=intcp)
+    return _reef_tourism_index(rc, evenness, sv, juves, intcp)
 end
 reef_tourism_index = Metric(_reef_tourism_index, (:timesteps, :sites, :scenarios))
+
+"""
+    scenario_rti(rti::NamedDimsArray; kwargs...)
+    scenario_rti(rs::ResultSet; kwargs...)
+
+Calculate the mean Reef Fish Index for each scenario for the entire domain.
+"""
+function _scenario_rti(rti::NamedDimsArray; kwargs...)
+    rti_sliced = slice_results(rti; kwargs...)
+    return scenario_trajectory(rti_sliced)
+end
+function _scenario_rti(rs::ResultSet; kwargs...)
+    return _scenario_rti(reef_tourism_index(rs); kwargs...)
+end
+scenario_rti = Metric(_scenario_rti, (:timesteps, :scenario))
+
 
 """
     reef_fish_index(rc::AbstractArray)
@@ -112,7 +157,7 @@ Note: Coral cover here is relative to coral habitable area (\$k\$ area).
 - `rc` : Relative cover
 
 # Returns
-NamedArray[timesteps ⋅ locations ⋅ scenarios]
+NamedArray[timesteps ⋅ locations ⋅ scenarios], values in kg/km²
 
 # References
 1. Graham, N.A.J., Nash, K.L., 2013. 
@@ -120,19 +165,46 @@ The importance of structural complexity in coral reef ecosystems.
 Coral Reefs 32, 315–326. 
 https://doi.org/10.1007/s00338-012-0984-y
 """
-function _reef_fish_index(rc::AbstractArray; intcp_u1=0.0, intcp_u2=0.0)
-    intcp1 = 1.232 + intcp_u1
-    intcp2 = -1623.6 + intcp_u2
+function _reef_fish_index(rc::AbstractArray, intcp_u1, intcp_u2)
+    intcp1 = 1.232 .+ intcp_u1
+    intcp2 = -1623.6 .+ intcp_u2
 
     slope1 = 0.007476
     slope2 = 1883.3
 
-    return 0.01 * (intcp2 .+ slope2 .* (intcp1 .+ slope1 .* (rc .* 100.0))) ./ 100.0
+    # Apply unique intercepts for each scenario
+    rfi = cat(map(axe -> 0.01 .* (
+                intcp2[axe] .+ slope2 .*
+                               (intcp1[axe] .+ slope1 .* (rc[:, :, axe] .* 100.0))
+            ),
+            axes(rc, 3))...,
+        dims=3)
+
+    # Calculate total fish biomass, kg km2
+    # 0.01 coefficient is to convert from kg ha to kg km2
+    return round.(rfi, digits=2)
 end
 function _reef_fish_index(rs::ResultSet; intcp_u1::Bool=true, intcp_u2::Bool=true)
-    icp1 = intcp_u1 ? rand(Normal(0.0, 0.195)) : 0.0
-    icp2 = intcp_u2 ? rand(Normal(0.0, 533)) : 0.0
+    rc = relative_cover(rs)
+    n_scens = size(rc, :scenarios)
+    icp1 = intcp_u1 ? rand(Normal(0.0, 0.195), n_scens) : zeros(n_scens)
+    icp2 = intcp_u2 ? rand(Normal(0.0, 533), n_scens) : zeros(n_scens)
 
-    return _reef_fish_index(_relative_cover(rs); intcp_u1=icp1, intcp_u2=icp2)
+    return _reef_fish_index(rc, icp1, icp2)
 end
 reef_fish_index = Metric(_reef_fish_index, (:timesteps, :sites, :scenarios))
+
+"""
+    scenario_rfi(rfi::NamedDimsArray; kwargs...)
+    scenario_rfi(rs::ResultSet; kwargs...)
+
+Calculate the mean Reef Fish Index for each scenario for the entire domain.
+"""
+function _scenario_rfi(rfi::NamedDimsArray; kwargs...)
+    rfi_sliced = slice_results(rfi; kwargs...)
+    return scenario_trajectory(rfi_sliced)
+end
+function _scenario_rfi(rs::ResultSet; kwargs...)
+    return _scenario_rfi(reef_fish_index(rs); kwargs...)
+end
+scenario_rfi = Metric(_scenario_rfi, (:timesteps, :scenario))
