@@ -153,7 +153,6 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
 
     # Capture results to disk
     # Set values below threshold to 0 to save space
-    tf = size(domain.dhw_scens, 1)
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
     rs_raw = result_set.raw
@@ -188,6 +187,7 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     # end
 
     # Store logs
+    tf = size(domain.dhw_scens, 1)  # time frame
     tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
     c_dim = Base.ndims(result_set.raw) + 1
     log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log)
@@ -258,8 +258,6 @@ function run_model(domain::Domain, param_set::DataFrameRow, corals::DataFrame, c
     return run_model(domain, ps, corals, cache)
 end
 function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame, cache::NamedTuple)::NamedTuple
-    sim_params = domain.sim_constants
-    site_data = domain.site_data
     p = domain.coral_growth.ode_p
 
     # Set random seed using intervention values
@@ -270,7 +268,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     dhw_idx::Int64 = Int64(param_set("dhw_scenario"))
     wave_idx::Int64 = Int64(param_set("wave_scenario"))
 
-    dhw_scen::Matrix{Float64} = @view domain.dhw_scens[:, :, dhw_idx]
+    dhw_scen::Matrix{Float64} = copy(domain.dhw_scens[:, :, dhw_idx])
 
     tspan::Tuple = (0.0, 1.0)
     solver::Euler = Euler()
@@ -294,7 +292,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_years::Int64 = param_set("seed_years")  # number of years to seed
     shade_years::Int64 = param_set("shade_years")  # number of years to shade
 
-    total_loc_area::Array{Float64,2} = cache.site_area
+    total_loc_area::Matrix{Float64} = cache.site_area
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
@@ -306,14 +304,19 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     Y_pstep = cache.cov_tmp
     depth_coeff = cache.depth_coeff
 
+    site_data = domain.site_data
     depth_coeff .= depth_coefficient.(site_data.depth_med)
 
     Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
     Y_cover[1, :, :] .= domain.init_coral_cover
     ode_u = zeros(n_species, n_sites)
     cover_tmp = p.cover  # pre-allocated matrix used to avoid memory allocations
+    max_cover = site_k(domain)  # Max coral cover at each site (0 - 1).
 
-    site_ranks = SparseArray(zeros(tf, n_sites, 2)) # log seeding/fogging/shading ranks
+    # Proportionally adjust initial cover (handles inappropriate initial conditions)
+    proportional_adjustment!(@view(Y_cover[1, :, :]), cover_tmp, max_cover)
+
+    site_ranks = SparseArray(zeros(tf, n_sites, 2))  # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
     Yfog = SparseArray(spzeros(tf, n_sites))
     Yseed = SparseArray(zeros(tf, 3, n_sites))  # 3 = the number of seeded coral types
@@ -328,8 +331,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     decay = α .^ (1:Int64(param_set("plan_horizon"))+1)
 
     # Years at which to reassess seeding site selection
-    seed_decision_years = repeat([false], tf)
-    shade_decision_years = repeat([false], tf)
+    seed_decision_years = fill(false, tf)
+    shade_decision_years = fill(false, tf)
 
     seed_start_year = max(seed_start_year, 2)
     if param_set("seed_freq") > 0
@@ -352,17 +355,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_locs::Vector{Int64} = zeros(Int, n_site_int)
     shade_locs::Vector{Int64} = zeros(Int, n_site_int)
 
-    # Max coral cover at each site (0 - 1).
-    max_cover = site_k(domain)
-
     # Set other params for ODE
     p.r .= corals.growth_rate  # Assumed growth_rate
-
     p.mb .= corals.mb_rate  # background mortality
     @set! p.k = max_cover  # max coral cover
-
-    # Proportionally adjust initial cover (handles inappropriate initial conditions)
-    proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
 
     # Define taxa and size class to seed, and identify their factor names
     taxa_to_seed = [2, 3, 5]
@@ -383,7 +379,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_corals = any(param_set(taxa_names) .> 0.0)
 
     # Defaults to considering all sites if depth cannot be considered.
-    depth_priority = collect(1:nrow(site_data))
+    depth_priority = collect(1:n_sites)
 
     # Calculate total area to seed respecting tolerance for minimum available space to still
     # seed at a site
@@ -518,7 +514,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Fog selected locations
         if (fogging > 0.0) && in_shade_years && has_shade_sites
-            fog_locations!(@views(Yfog[tstep, :]), shade_locs, dhw_t, fogging)
+            fog_locations!(@view(Yfog[tstep, :]), shade_locs, dhw_t, fogging)
         end
 
         # Calculate and apply bleaching mortality
