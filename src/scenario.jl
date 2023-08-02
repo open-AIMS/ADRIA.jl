@@ -89,36 +89,64 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         factors=names(scenarios_df)
     )
 
-    # Setup cache to reuse for each scenario run
-    cache = setup_cache(domain)
-
     parallel = (nrow(param_df) >= 4096) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
             _setup_workers()
 
-            # load ADRIA on workers and define helper function
-            @everywhere @eval using ADRIA
-            @everywhere @eval func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
+            # Load ADRIA on workers and define helper function
+            # Note: Workers do not share the same cache in parallel workloads.
+            #       Previously, cache would be reserialized so each worker has access to
+            #       a separate cache.
+            #       Using CachingPool() resolves the the repeated reserialization but it
+            #       seems each worker was then attempting to use the same cache, causing the
+            #       Julia kernel to crash in multi-processing contexts.
+            #       Getting each worker to create its own cache reduces serialization time
+            #       (at the cost of increased run time) but resolves the kernel crash issue.
+            @everywhere @eval begin
+                using ADRIA
+                func = (dfx) -> run_scenario(dfx..., domain, data_store)
+            end
         end
 
         @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
+
+        # Define local helper
+        func = dfx -> run_scenario(dfx..., domain, data_store)
     end
 
-    # Define local helper
-    func = (dfx) -> run_scenario(dfx..., domain, data_store, cache)
+    if parallel
+        for rcp in RCP
+            run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
 
-    for rcp in RCP
-        run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
+            # Switch RCPs so correct data is loaded
+            domain = switch_RCPs!(domain, rcp)
+            target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
+            if show_progress
+                @showprogress run_msg 4 pmap(func, CachingPool(workers()), zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+            else
+                pmap(func, CachingPool(workers()), zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+            end
+        end
+    else
+        # Cache to reuse during scenario runs
+        cache = setup_cache(domain)
 
-        # Switch RCPs so correct data is loaded
-        domain = switch_RCPs!(domain, rcp)
-        target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
-        if show_progress
-            @showprogress run_msg 4 pmap(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
-        else
-            pmap(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+        # Define local helper
+        func = dfx -> run_scenario(dfx..., domain, data_store, cache)
+
+        for rcp in RCP
+            run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
+
+            # Switch RCPs so correct data is loaded
+            domain = switch_RCPs!(domain, rcp)
+            target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
+            if show_progress
+                @showprogress run_msg 4 map(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+            else
+                map(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+            end
         end
     end
 
@@ -149,7 +177,12 @@ Nothing
 function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain,
     data_store::NamedTuple, cache::NamedTuple)::Nothing
 
-    result_set = run_scenario(param_set, domain, cache)
+    coral_params = to_coral_spec(param_set)
+    if domain.RCP == ""
+        throw("No RCP set for domain. Use `ADRIA.switch_RCPs!() to select an RCP to run scenarios with.")
+    end
+
+    result_set = run_model(domain, param_set, coral_params, cache)
 
     # Capture results to disk
     # Set values below threshold to 0 to save space
@@ -215,26 +248,21 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
         data_store.site_ranks[:, :, :, idx] .= tmp_site_ranks
     end
 
+    # There seems to be an issue when using `pmap` for distributed tasks, where the
+    # garbage collector is not run leading to excessive memory use (Julia v1.9.2).
+    # Force garbage collection if > 95% of total memory is found to be in use.
+    if (Sys.free_memory() ./ Sys.total_memory()) .< 0.05
+        GC.gc()
+    end
+
     return nothing
 end
 function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
-    cache = setup_cache(domain)
-    run_scenario(idx, param_set, domain, data_store, cache)
-
-    return nothing
-end
-function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, cache::NamedTuple)
-    # Extract coral only parameters
-    coral_params = to_coral_spec(param_set)
-    if domain.RCP == ""
-        throw("No RCP set for domain. Use `ADRIA.switch_RCPs!() to select an RCP to run scenarios with.")
-    end
-
-    return run_model(domain, param_set, coral_params, cache)
+    return run_scenario(idx, param_set, domain, data_store, setup_cache(domain))
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain)::NamedTuple
-    cache = setup_cache(domain)
-    return run_scenario(param_set, domain, cache)
+    coral_params = to_coral_spec(param_set)
+    return run_model(domain, param_set, coral_params, setup_cache(domain))
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, RCP::String)::NamedTuple
     domain = switch_RCPs!(domain, RCP)
