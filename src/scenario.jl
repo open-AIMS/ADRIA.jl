@@ -277,7 +277,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     MCDA_approach::Int64 = param_set("guided")
 
-    # sim constants
+    # Sim constants
+    sim_params = domain.sim_constants
     tf::Int64 = size(dhw_scen, 1)
     n_site_int::Int64 = sim_params.n_site_int
     n_sites::Int64 = domain.coral_growth.n_sites
@@ -393,7 +394,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         max_depth::Float64 = param_set("depth_min") + param_set("depth_offset")
         depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set("depth_min")) .& (site_data.depth_med .<= max_depth)
 
-        # TODO: Include this change in MATLAB version as well
         if any(depth_criteria .> 0)
             # If sites can be filtered based on depth, do so.
             depth_priority = depth_priority[depth_criteria]
@@ -404,7 +404,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     if is_guided
-        # pre-allocate rankings
+        # Pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
 
         # Prep site selection
