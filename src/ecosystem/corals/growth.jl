@@ -38,7 +38,7 @@ Modifies arrays in-place.
 - `cover_tmp` : Temporary cache matrix used to hold sum over species. Avoids memory allocations
 - `max_cover` : Maximum possible coral cover for each site
 """
-function proportional_adjustment!(covers::Matrix{T}, cover_tmp::Vector{T}, max_cover::Array{T})::Nothing where {T<:Float64}
+function proportional_adjustment!(covers::Union{SubArray{T},Matrix{T}}, cover_tmp::Vector{T}, max_cover::Array{T})::Nothing where {T<:Float64}
     # Proportionally adjust initial covers
     cover_tmp .= vec(sum(covers, dims=1))
     if any(cover_tmp .> max_cover)
