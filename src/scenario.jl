@@ -460,7 +460,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # TODO: Better conversion of Ub to wave mortality
     #       Currently scaling significant wave height by its max to non-dimensionalize values
-    wave_scen::Matrix{Float64} = Matrix{Float64}(domain.wave_scens[:, :, wave_idx]) ./ maximum(domain.wave_scens[:, :, wave_idx])
+    wave_scen::Matrix{Float64} = copy(domain.wave_scens[:, :, wave_idx])
+    wave_scen .= wave_scens ./ maximum(wave_scen)
 
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.waves, wave_scen, corals.wavemort90, n_species)
