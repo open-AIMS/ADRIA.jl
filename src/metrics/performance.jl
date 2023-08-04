@@ -97,8 +97,8 @@ julia> temporal_variability(x, temporal_variabilty, P(x), D(x), E(x))
 function temporal_variability(x::AbstractVector{<:Real}; w=[0.5, 0.5])
     return mean([median(x), 1.0 - gmd(x)], weights(w))
 end
-function temporal_variability(x::AbstractArray{<:Real,2})
-    return temporal_variability.(eachcol(x))
+function temporal_variability(x::AbstractArray{<:Real,2}; w=[0.5, 0.5])
+    return temporal_variability.(eachcol(x); w=w)
 end
 function temporal_variability(x::AbstractArray{<:Real}, func_or_data...)
     return mean([map(f -> f isa Function ? f(x) : f, func_or_data)...])
