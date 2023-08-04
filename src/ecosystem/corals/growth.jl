@@ -315,42 +315,56 @@ affect the distribution over time, and corals mature (moving up size classes).
 # Arguments
 - `cover` : Coral cover
 - `n_groups` : Number of coral groups represented
-- `dist` : Distributions for timestep \$t\$
-- `dist_t1` : Distributions for timestep \$t+1\$
+- `dist_t_1` : Distributions for timestep \$t-1\$
+- `dist_t` : Distributions for timestep \$t\$
 - `h²` : heritability value
-- `c_increase` : Cache matrix to temporarily store difference between \$c_t\$ and \$c_t1\$
 """
-function adjust_DHW_distribution!(cover, n_groups, dist, dist_t1, tstep, h², c_increase)::Nothing
+function adjust_DHW_distribution!(cover, n_groups, dist_t_1, dist_t, tstep, h²)::Nothing
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
+    weights = zeros(Int64(n_sp_sc / n_groups) - 2)
 
     # Adjust population distribution
     @floop for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
-        # Combine distributions using the weighted average approach for all size
-        # classes above 1.
-        _merge_distributions!(
-            @view(cover[tstep, sc1:sc1+step, loc]),
-            @view(cover[tstep+1, sc1:sc1+step, loc]),
-            @view(dist[sc1:sc1+step, loc]),
-            dist_t1[sc1:sc1+step, loc],
-            c_increase
-        )
+        # Combine distributions using a MixtureModel for all size
+        # classes above 1 (the correct size classes are selected within the
+        # function).
+        gt_sc2 = sc1 + 2
+        sc6::Int64 = sc1 + step
+        if sum(cover[tstep-1, gt_sc2:sc6, loc]) == 0.0
+            continue
+        end
+
+        _merge_distributions!(@view(cover[tstep, sc1:sc6, loc]), dist_t[sc1:sc6, loc])
 
         # A new distribution for size class 1 is then determined by taking the
-        # distribution of size class 6 (at time t+1) and 6 (at time t), and applying
+        # distribution of size classes >= 3 at time t+1 and at time t, and applying
         # the S⋅h² calculation, where:
         # - $S$ is the distance between the means of the gaussian distributions
         # - $h$ is heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
-        #
-        # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
-        S::Float64 = mean(dist_t1[sc1+step, loc]) - mean(dist[sc1+step, loc])
-        if S != 0.0
-            μ_t1::Float64 = mean(dist[sc1+step, loc]) + (S * h²)  # nominally, h² := 0.3
-            σ_t1::Float64 = std(dist_t1[sc1+step, loc])::Float64
+        weights .= cover[tstep-1, gt_sc2:sc6, loc] / sum(cover[tstep-1, gt_sc2:sc6, loc])
+        dt_1 = MixtureModel([dist_t_1[gt_sc2:sc6, loc]...], weights)
 
-            # The standard deviation is assumed to remain the same as the parents
-            dist_t1[sc1, loc] = truncated(Normal(μ_t1, σ_t1), 0.0, μ_t1 + HEAT_UB)
+        # Handle case where entire reproductive population died
+        if sum(cover[tstep, gt_sc2:sc6, loc]) == 0.0
+            dist_t[gt_sc2:sc6, loc] .= truncated(Normal(0.0, 0.0), 0.0, 0.0)
+            continue
+        end
+
+        weights .= cover[tstep, gt_sc2:sc6, loc] / sum(cover[tstep, gt_sc2:sc6, loc])
+        d_t = MixtureModel([dist_t[gt_sc2:sc6, loc]...], weights)
+
+        S::Float64 = mean(d_t) - mean(dt_1)
+        if S != 0.0
+            # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
+            # The standard deviation is assumed to be the same as parents
+            # Note: Nominally, h² := 0.3, but ranges from 0.25 - 0.5
+            μ_t1::Float64 = mean(d_t) + (S * h²)
+            σ_t1::Float64 = std(d_t)
+
+            lb = minimum(map(x -> x.lower, d_t.components))
+            dist_t[sc1, loc] = truncated(Normal(μ_t1, σ_t1), lb, μ_t1 + HEAT_UB)
         end
     end
 
