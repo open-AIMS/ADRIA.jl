@@ -282,7 +282,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
 end
 
 """
-    _merge_distributions!(c_t, c_t1, dists_t, dists_t1, c_increase)
+    _merge_distributions!(c_t, dists_t)
 
 Combine distributions using the weighted average approach for all size classes above 1.
 If a positive change in cover (between \$t\$ and \$t+1\$) is found for a given size
@@ -292,36 +292,22 @@ Where a negative change has occurred, it is assumed mortalities overcame growth.
 
 # Arguments
 - `c_t` : Cover for given size class, location at timestep \$t\$
-- `c_t1` : Cover for given size class, location at timestep \$t+1\$
 - `dists_t` : Critical DHW threshold distribution for timestep \$t\$
-- `dists_t1` : Critical DHW threshold distribution for timestep \$t+1\$
-- `c_increase` : Cache matrix to temporarily store difference between \$c_t\$ and \$c_t1\$
 
 # Returns
 Nothing
 """
-function _merge_distributions!(c_t, c_t1, dists_t, dists_t1, c_increase)::Nothing
-    # Identify size class populations that increased in cover.
-    # Assume an increase means the previous size class moved up (i.e., there was growth).
-    c_increase .= max.(c_t1 .- c_t, 0.0)
-    if all(c_increase .== 0.0)
-        return
-    end
-
-    moved = findall(c_increase[2:end] .> 0.0) .+ 1
-
-    # Calculate weights
-    w1::Vector{Float64} = replace!(c_increase ./ c_t1, NaN => 0.0)
-    w2::Vector{Float64} = replace!(c_t ./ c_t1, NaN => 0.0)
-
-    # Mix distributions, weighted according to their relative contributions.
-    dists_t1[moved] .= MixtureModel.(Vector{Distribution}[dists_t[moved.-1], dists_t[moved]], Vector{Float64}[w1, w2])
-
-    return
+function _merge_distributions!(c_t, dists_t)::Nothing
+    # Combine distributions for each paired neighbors above size class 1
+    # e.g., size class 2 combined with 3, 3 with 4, ..., 5 with 6
+    # Where no cover is found, simply use the larger size class distribution
+    weights = map(x -> sum(x) > 0.0 ? x ./ sum(x) : (0.0, 1.0), zip(c_t[2:end-1], c_t[3:end]))
+    dists_t[3:end] .= map((dts, (w1, w2)) -> MixtureModel([dts...], [w1, w2]), zip(dists_t[2:end-1], dists_t[3:end]), weights)
+    return nothing
 end
 
 """
-adjust_DHW_distribution!(cover, n_groups, dist, dist_t1, tstep, c_increase)
+    adjust_DHW_distribution!(cover, n_groups, dist_t_1, dist_t, tstep, h²)::Nothing
 
 Adjust critical DHW thresholds for a given species/size class distribution as mortalities
 affect the distribution over time, and corals mature (moving up size classes).
