@@ -173,7 +173,7 @@ function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
 
     return (in_conn=C1, out_conn=C2, strongest_predecessor=strong_pred)
 end
-function connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64})::NamedTuple
+function connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector)::NamedTuple
 
     # Accounts for cases where there is no coral cover
     tp = (area_weighted_TP .* cover)
