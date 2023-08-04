@@ -213,6 +213,10 @@ function coral_spec()::NamedTuple
             7.153507902   # Large massives
         ], inner=n_classes)
 
+    # Data from Hughes et al., (2018) were based on the 2016 bleaching event.
+    # We some further adaptation (+3.0 DHW) has occurred since then.
+    params.dist_mean .+= 3.0
+
     params.dist_std = repeat(Float64[
             2.590016677,  # arborescent Acropora
             2.904433676,  # tabular Acropora
