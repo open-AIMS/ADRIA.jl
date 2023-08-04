@@ -52,12 +52,12 @@ Note: Units for all areas are expected to be identical, and are assumed to be in
 - `seed_sc` : Indicates in-matrix locations of the coral size classes to seed
 - `a_adapt` : Mean of thermal enhancement in terms of DHW
 - `Yseed` : Log of seeded locations to update
-- `c_dist_t` : Critical DHW distributions of corals to update
+- `c_dist_t` : Critical DHW distributions of corals to update (i.e., for time \$t\$)
 """
 function seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float64},
     leftover_space::Vector{Float64}, seed_locs::Vector{Int64},
     seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::Vector{Float64},
-    Yseed::SubArray, c_dist_t1::Matrix{Distribution})::Nothing
+    Yseed::SubArray, c_dist_t::Matrix{Distribution})::Nothing
 
     # Calculate proportion to seed based on current available space
     scaled_seed = distribute_seeded_corals(total_location_area[seed_locs], leftover_space[seed_locs], seeded_area)
@@ -72,17 +72,17 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float6
     # Update critical DHW distribution for deployed size classes
     @floop for (i, loc) in enumerate(seed_locs)
         # Previous distributions
-        c_dist_t = c_dist_t1[seed_sc, loc]
+        c_dist_ti = @view(c_dist_t[seed_sc, loc])
 
         # Priors (weights based on cover for each species)
         wta = hcat(w_taxa[:, i], 1.0 .- w_taxa[:, i])
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
-        tn = truncated.(Normal.(a_adapt[seed_sc], std.(c_dist_t)), 0.0, maximum.(c_dist_t))
+        tn = truncated.(Normal.(a_adapt[seed_sc], std.(c_dist_ti)), 0.0, maximum.(c_dist_ti))
 
         # Create new distributions by mixing previous and current distributions
-        c_dist_t1[seed_sc, loc] = map((t, t1, w) -> MixtureModel([t, t1], [w...]), c_dist_t, tn, eachrow(wta))
+        c_dist_t[seed_sc, loc] = map((t, t1, w) -> MixtureModel([t, t1], [w...]), c_dist_ti, tn, eachrow(wta))
     end
 
     return nothing

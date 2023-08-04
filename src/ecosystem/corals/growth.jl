@@ -243,8 +243,8 @@ with a depth-adjusted coefficient (from Baird et al., [4]).
    https://doi.org/10.3354/meps12732
 """
 function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
-    depth_coeff::Vector{Float64}, dist_t::Matrix{Distribution},
-    dist_t1::Matrix{Distribution}, prop_mort::SubArray{Float64})::Nothing
+    depth_coeff::Vector{Float64}, dist_t_1::Matrix{Distribution},
+    dist_t::Matrix{Distribution}, prop_mort::SubArray{Float64})::Nothing
     n_sp_sc, n_locs = size(cover)
 
     # Adjust distributions for all locations, ignoring juveniles
@@ -255,7 +255,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             continue
         end
 
-        affected_pop::Float64 = cdf(dist_t[sp_sc, loc], dhw[loc])
+        affected_pop::Float64 = cdf(dist_t_1[sp_sc, loc], dhw[loc])
         mort_pop::Float64 = 0.0
         if affected_pop > 0.0
             # Calculate depth-adjusted bleaching mortality
@@ -271,9 +271,9 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
         prop_mort[sp_sc, loc] = mort_pop
         if mort_pop > 0.0
             # Re-create distribution
-            d::Distribution = dist_t[sp_sc, loc]
+            d::Distribution = dist_t_1[sp_sc, loc]
             μ::Float64 = mean(d)
-            dist_t1[sp_sc, loc] = truncated(Normal(μ, std(d)), mort_pop, μ + HEAT_UB)
+            dist_t[sp_sc, loc] = truncated(Normal(μ, std(d)), mort_pop, μ + HEAT_UB)
 
             # Update population
             cover[sp_sc, loc] = cover[sp_sc, loc] * (1.0 - mort_pop)
@@ -373,8 +373,9 @@ end
 
 
 """
-    fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, fec_params::Array{Float64},
-                     Y_pstep::Array{Float64, 2}, k_area::Array{Float64})::Nothing
+    fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, 
+                     fec_params::Array{Float64}, Y_pstep::Array{Float64, 2}, 
+                     k_area::Array{Float64})::Nothing
 
 The scope that different coral groups and size classes have for
 producing larvae without consideration of environment.
