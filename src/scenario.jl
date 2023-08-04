@@ -436,7 +436,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_dist_t::Matrix{Distribution} = repeat(
+    c_dist_t_1::Matrix{Distribution} = repeat(
         truncated.(
             Normal.(corals.dist_mean, corals.dist_std),
             0.0,
@@ -445,11 +445,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         1,
         n_sites
     )
-    c_dist_t1 = copy(c_dist_t)
+    c_dist_t = copy(c_dist_t_1)
 
     # Cache for proportional mortality and coral population increases
     bleaching_mort = zeros(tf, n_species, n_sites)
-    c_increase = zeros(n_groups)
 
     #### End coral constants
 
@@ -551,7 +550,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- wave_scen[tstep, :]), depth_coeff, c_dist_t, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- wave_scen[tstep, :]), depth_coeff, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
@@ -580,8 +579,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_loc_area, 0.0, 1.0)
 
         if tstep < tf
-            adjust_DHW_distribution!(Y_cover, n_groups, c_dist_t, c_dist_t1, tstep,
-                param_set("heritability"), c_increase)
+            adjust_DHW_distribution!(Y_cover, n_groups, c_dist_t_1, c_dist_t, tstep,
+                param_set("heritability"))
         end
     end
 
