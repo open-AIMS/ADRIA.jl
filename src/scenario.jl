@@ -223,7 +223,7 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     tf = size(domain.dhw_scens, 1)  # time frame
     tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
     c_dim = Base.ndims(result_set.raw) + 1
-    log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log)
+    log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log)
     for k in log_stores
         if k == :seed_log || k == :site_ranks
             concat_dim = c_dim
@@ -232,12 +232,19 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
         end
 
         vals = getfield(result_set, k)
-        vals[vals.<threshold] .= 0.0
+
+        try
+            vals[vals.<threshold] .= 0.0
+        catch err
+            err isa MethodError ? nothing : rethrow(err)
+        end
 
         if k == :seed_log
             getfield(data_store, k)[:, :, :, idx] .= vals
         elseif k == :site_ranks
             tmp_site_ranks[:, :, :] .= vals
+        elseif k == :coral_dhw_log
+            getfield(data_store, k)[:, :, :, :, idx] .= vals
         else
             getfield(data_store, k)[:, :, idx] .= vals
         end
@@ -446,6 +453,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         n_sites
     )
     c_dist_t = copy(c_dist_t_1)
+    dhw_tol_log = permutedims(repeat(c_dist_t_1, 1, 1, tf), [3, 1, 2])
 
     # Cache for proportional mortality and coral population increases
     bleaching_mort = zeros(tf, n_species, n_sites)
@@ -578,14 +586,27 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Ensure values are ∈ [0, 1]
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_loc_area, 0.0, 1.0)
 
-        if tstep < tf
+        if tstep <= tf
             adjust_DHW_distribution!(Y_cover, n_groups, c_dist_t_1, c_dist_t, tstep,
                 param_set("heritability"))
+
+            dhw_tol_log[tstep, :, :] .= c_dist_t
         end
     end
+
+    # Could collate critical DHW threshold log for corals to reduce disk space...
+    # dhw_tol_mean = dropdims(mean(mean.(dhw_tol_log), dims=3), dims=3)
+    # dhw_tol_mean_std = dropdims(mean(std.(dhw_tol_log), dims=3), dims=3)
+    # collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3), 
+    #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
+    dhw_tol_mean_log = mean.(dhw_tol_log)
+    dhw_tol_mean_std_log = std.(dhw_tol_log)
+
+    collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean_log, dhw_tol_mean_std_log, dims=ndims(dhw_tol_log) + 1),
+        timesteps=1:tf, species=corals.coral_id, sites=1:n_sites, stat=[:mean, :stdev])
 
     # Avoid placing importance on sites that were not considered
     # (lower values are higher importance)
     site_ranks[site_ranks.==0.0] .= n_sites + 1
-    return (raw=Y_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks, bleaching_mortality=bleaching_mort)
+    return (raw=Y_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks, bleaching_mortality=bleaching_mort, coral_dhw_log=collated_dhw_tol_log)
 end

@@ -119,6 +119,17 @@ function scenario_attributes(domain::Domain, param_df::DataFrame)
 end
 
 
+"""
+    setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
+
+- `z_store` : ZArray
+- `unique_sites` : Unique site ids
+- `n_scens` : number of scenarios
+- `tf` : timeframe
+- `n_sites` : number of sites
+
+Note: This setup relies on hardcoded values for number of species represented and seeded.
+"""
 function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     # Set up logs for site ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
@@ -158,7 +169,16 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     # )
     # bleach_log = zcreate(Float32, fog_dims...; name="bleaching_mortality", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
 
-    return ranks, seed_log, fog_log, shade_log
+    # Log for coral DHW thresholds
+    attrs = Dict(
+        :structure => ("timesteps", "species", "sites", "stat", "scenarios"),
+        :unique_site_ids => unique_sites,
+    )
+
+    # 36 is the number of species/groups represented
+    coral_dhw_log = zcreate(Float32, tf, 36, n_sites, 2, n_scens; name="coral_dhw_log", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(tf, 36, n_sites, 2, 1), attrs=attrs)
+
+    return ranks, seed_log, fog_log, shade_log, coral_dhw_log
 end
 
 """
@@ -310,7 +330,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     # Group all data stores
     stores = [stores..., dhw_stats..., wave_stats..., setup_logs(z_store, unique_sites(domain), nrow(scen_spec), tf, n_sites)...]
 
-    return domain, (; zip((met_names..., stat_store_names..., :site_ranks, :seed_log, :fog_log, :shade_log,), stores)...)
+    return domain, (; zip((met_names..., stat_store_names..., :site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log), stores)...)
 end
 
 """
