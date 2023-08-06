@@ -89,7 +89,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         factors=names(scenarios_df)
     )
 
-    parallel = (nrow(param_df) >= 4096) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(param_df) >= 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
@@ -104,7 +104,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
             #       Julia kernel to crash in multi-processing contexts.
             #       Getting each worker to create its own cache reduces serialization time
             #       (at the cost of increased run time) but resolves the kernel crash issue.
-            @everywhere @eval begin
+            @sync @async @everywhere @eval begin
                 using ADRIA
                 func = (dfx) -> run_scenario(dfx..., domain, data_store)
             end
