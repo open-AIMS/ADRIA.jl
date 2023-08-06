@@ -158,8 +158,8 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
 end
 
 """
-    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
-    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::NamedTuple
+    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::Nothing
+    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
     run_scenario(param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, cache::NamedTuple)::NamedTuple
     run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
 
@@ -597,7 +597,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Could collate critical DHW threshold log for corals to reduce disk space...
     # dhw_tol_mean = dropdims(mean(mean.(dhw_tol_log), dims=3), dims=3)
     # dhw_tol_mean_std = dropdims(mean(std.(dhw_tol_log), dims=3), dims=3)
-    # collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3), 
+    # collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3),
     #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
     dhw_tol_mean_log = mean.(dhw_tol_log)
     dhw_tol_mean_std_log = std.(dhw_tol_log)

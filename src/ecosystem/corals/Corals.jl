@@ -214,7 +214,7 @@ function coral_spec()::NamedTuple
         ], inner=n_classes)
 
     # Data from Hughes et al., (2018) were based on the 2016 bleaching event.
-    # We some further adaptation (+3.0 DHW) has occurred since then.
+    # We assume some further adaptation (+3.0 DHW) has occurred since then.
     params.dist_mean .+= 3.0
 
     params.dist_std = repeat(Float64[

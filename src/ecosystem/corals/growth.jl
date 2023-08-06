@@ -282,10 +282,11 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
 end
 
 """
-    _merge_distributions!(growth_rate, dists_t)::Nothing
+    _shift_distributions!(growth_rate, dists_t)::Nothing
 
-Combine distributions using a MixtureModel for all size classes above 1.
-Priors for the distributions are based on the assumed growth rates for each size class.
+Combines distributions between size classes > 1 to represent the shifts that occur as each
+size class grows. Priors for the distributions are based on the assumed growth rates for 
+each size class.
 
 i.e., (w_{i+1,1}, w_{i+1,2}) := (g_{i} / sum(g_{i,i+1}), g_{i+1} / sum(g_{i,i+1}))
 
