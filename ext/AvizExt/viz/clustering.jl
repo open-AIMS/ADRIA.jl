@@ -131,7 +131,7 @@ function _clusters_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
 end
 
 """
-    _cluster_color(unique_cluster_colors::Vector{RGBA{FLoat32}}, clusters::Vector{Int64}, cluster::Int64)
+    _cluster_color(unique_cluster_colors::Vector{RGBA{Float32}}, clusters::Vector{Int64}, cluster::Int64)
 
 Color parameter for current cluster weighted by number of scenarios
 
