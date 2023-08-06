@@ -587,7 +587,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_loc_area, 0.0, 1.0)
 
         if tstep <= tf
-            adjust_DHW_distribution!(Y_cover, n_groups, c_dist_t_1, c_dist_t, tstep,
+            adjust_DHW_distribution!(@view(Y_cover[tstep-1:tstep, :, :]), n_groups, c_dist_t_1, c_dist_t,
                 p.r, param_set("heritability"))
 
             dhw_tol_log[tstep, :, :] .= c_dist_t
