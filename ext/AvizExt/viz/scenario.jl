@@ -70,7 +70,8 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
     series!(ax, y'; series_opts...)
 
     # Density (TODO: Separate into own function)
-    scen_types = scenario_type(rs)
+    scen_match = 1:nrow(rs.inputs) .∈ [_dimkeys(y).scenarios]
+    scen_types = scenario_type(rs; scenarios=scen_match)
     scen_dist = dropdims(mean(y, dims=:timesteps), dims=:timesteps)
     ax2 = Axis(g[1, 2], width=100)
     if count(scen_types.counterfactual) > 0
