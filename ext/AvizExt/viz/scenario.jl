@@ -4,6 +4,21 @@
 
 Plot scenario outcomes over time.
 
+# Examples
+```julia
+scens = ADRIA.sample(dom, 64)
+
+# ... run scenarios ...
+
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+
+# Plot scenario outcomes
+ADRIA.viz.scenario(rs, s_tac)
+
+# Plot outcomes of scenarios where SRM < 1.0
+ADRIA.viz.scenario(rs, s_tac[:, scens.SRM .< 1.0])
+```
+
 # Arguments
 - `rs` : ResultSet
 - `y` : results of scenario metric
