@@ -591,6 +591,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
                 p.r, param_set("heritability"))
 
             dhw_tol_log[tstep, :, :] .= c_dist_t
+            c_dist_t_1 .= c_dist_t
         end
     end
 
