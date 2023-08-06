@@ -282,26 +282,27 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
 end
 
 """
-    _merge_distributions!(c_t, dists_t)
+    _merge_distributions!(growth_rate, dists_t)::Nothing
 
-Combine distributions using the weighted average approach for all size classes above 1.
-If a positive change in cover (between \$t\$ and \$t+1\$) is found for a given size
-class, the distribution of the previous size class is weighted by the difference, and the
-distribution of the current size class is weighted by [current cover - difference].
-Where a negative change has occurred, it is assumed mortalities overcame growth.
+Combine distributions using a MixtureModel for all size classes above 1.
+Priors for the distributions are based on the assumed growth rates for each size class.
+
+i.e., (w_{i+1,1}, w_{i+1,2}) := (g_{i} / sum(g_{i,i+1}), g_{i+1} / sum(g_{i,i+1}))
+
+where w are the weights/priors and \$g\$ is the growth rates.
 
 # Arguments
-- `c_t` : Cover for given size class, location at timestep \$t\$
+- `growth_rate` : growth rates for the given size classes/species
 - `dists_t` : Critical DHW threshold distribution for timestep \$t\$
 
 # Returns
 Nothing
 """
-function _merge_distributions!(c_t, dists_t)::Nothing
-    # Combine distributions for each paired neighbors above size class 1
+function _merge_distributions!(growth_rate::SubArray, dists_t::SubArray)::Nothing
+    # Combine distributions for each paired neighbors above size class 1 weighted by assumed
+    # growth rates. 
     # e.g., size class 2 combined with 3, 3 with 4, ..., 5 with 6
-    # Where no cover is found, simply use the larger size class distribution
-    weights = map(x -> sum(x) > 0.0 ? x ./ sum(x) : (0.0, 1.0), zip(c_t[2:end-1], c_t[3:end]))
+    weights = map(x -> x ./ sum(x), zip(growth_rate[2:end-1], growth_rate[3:end]))
     dists_t[3:end] .= map((dts, (w1, w2)) -> MixtureModel([dts...], [w1, w2]), zip(dists_t[2:end-1], dists_t[3:end]), weights)
     return nothing
 end
@@ -319,7 +320,7 @@ affect the distribution over time, and corals mature (moving up size classes).
 - `dist_t` : Distributions for timestep \$t\$
 - `h²` : heritability value
 """
-function adjust_DHW_distribution!(cover, n_groups, dist_t_1, dist_t, tstep, h²)::Nothing
+function adjust_DHW_distribution!(cover, n_groups, dist_t_1, dist_t, tstep, growth_rate, h²)::Nothing
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
@@ -330,29 +331,29 @@ function adjust_DHW_distribution!(cover, n_groups, dist_t_1, dist_t, tstep, h²)
         # Combine distributions using a MixtureModel for all size
         # classes above 1 (the correct size classes are selected within the
         # function).
-        gt_sc2 = sc1 + 2
+        gt_sc2::Int64 = sc1 + 2
         sc6::Int64 = sc1 + step
         if sum(cover[tstep-1, gt_sc2:sc6, loc]) == 0.0
             continue
         end
 
-        _merge_distributions!(@view(cover[tstep, sc1:sc6, loc]), dist_t[sc1:sc6, loc])
+        @views _merge_distributions!(growth_rate[sc1:sc6], dist_t[sc1:sc6, loc])
 
         # A new distribution for size class 1 is then determined by taking the
         # distribution of size classes >= 3 at time t+1 and at time t, and applying
         # the S⋅h² calculation, where:
         # - $S$ is the distance between the means of the gaussian distributions
         # - $h$ is heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
-        weights .= cover[tstep-1, gt_sc2:sc6, loc] / sum(cover[tstep-1, gt_sc2:sc6, loc])
+        weights .= cover[tstep-1, gt_sc2:sc6, loc] / sum(@view(cover[tstep-1, gt_sc2:sc6, loc]))
         dt_1 = MixtureModel([dist_t_1[gt_sc2:sc6, loc]...], weights)
 
         # Handle case where entire reproductive population died
-        if sum(cover[tstep, gt_sc2:sc6, loc]) == 0.0
+        if sum(@view(cover[tstep, gt_sc2:sc6, loc])) == 0.0
             dist_t[gt_sc2:sc6, loc] .= truncated(Normal(0.0, 0.0), 0.0, 0.0)
             continue
         end
 
-        weights .= cover[tstep, gt_sc2:sc6, loc] / sum(cover[tstep, gt_sc2:sc6, loc])
+        weights .= cover[tstep, gt_sc2:sc6, loc] / sum(@view(cover[tstep, gt_sc2:sc6, loc]))
         d_t = MixtureModel([dist_t[gt_sc2:sc6, loc]...], weights)
 
         S::Float64 = mean(d_t) - mean(dt_1)
@@ -363,7 +364,7 @@ function adjust_DHW_distribution!(cover, n_groups, dist_t_1, dist_t, tstep, h²)
             μ_t1::Float64 = mean(d_t) + (S * h²)
             σ_t1::Float64 = std(d_t)
 
-            lb = minimum(map(x -> x.lower, d_t.components))
+            lb = minimum(minimum.(d_t.components))
             dist_t[sc1, loc] = truncated(Normal(μ_t1, σ_t1), lb, μ_t1 + HEAT_UB)
         end
     end
