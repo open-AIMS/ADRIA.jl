@@ -70,19 +70,25 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float6
     w_taxa::Matrix{Float64} = scaled_seed ./ cover[seed_sc, seed_locs]
 
     # Update critical DHW distribution for deployed size classes
-    @floop for (i, loc) in enumerate(seed_locs)
+    for (i, loc) in enumerate(seed_locs)
         # Previous distributions
         c_dist_ti = @view(c_dist_t[seed_sc, loc])
 
-        # Priors (weights based on cover for each species)
-        wta = hcat(w_taxa[:, i], 1.0 .- w_taxa[:, i])
-
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
-        tn = truncated.(Normal.(a_adapt[seed_sc], std.(c_dist_ti)), 0.0, maximum.(c_dist_ti))
+        tn = truncated.(Normal.(a_adapt[seed_sc], std.(c_dist_ti)), minimum.(c_dist_ti), maximum.(c_dist_ti))
 
-        # Create new distributions by mixing previous and current distributions
-        c_dist_t[seed_sc, loc] = map((t, t1, w) -> MixtureModel([t, t1], [w...]), c_dist_ti, tn, eachrow(wta))
+        # If seeding an empty location, no need to do any further calculations
+        if all(isapprox.(w_taxa[:, i], 1.0))
+            c_dist_t[seed_sc, loc] .= tn
+            continue
+        end
+
+        # Create new distributions by mixing previous and current distributions using
+        # proportional cover as the priors/weights
+        # Priors (weights based on cover for each species)
+        tx = MixtureModel[MixtureModel([t, t1], Float64[w, 1.0-w]) for ((t, t1), w) in zip(zip(c_dist_ti, tn), w_taxa[:, i])]
+        c_dist_t[seed_sc, loc] .= truncated.(Normal.(mean.(tx), std.(tx)), minimum.(tx), maximum.(tx))
     end
 
     return nothing
