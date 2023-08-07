@@ -86,14 +86,14 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
         append!(target_site_ids, target_shade_sites)
     end
 
-    n_sites = length(dom.site_ids)
+    n_sites = length(domain.site_ids)
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
-        depth_criteria = (dom.site_data.depth_med .<= scen.max_depth) .& (dom.site_data.depth_med .>= scen.depth_min)
+        depth_criteria = (domain.site_data.depth_med .<= scen.max_depth) .& (domain.site_data.depth_med .>= scen.depth_min)
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
-        ranks_store(scenarios=scen_idx, sites=dom.site_ids[considered_sites]) .= site_selection(
-            dom,
+        ranks_store(scenarios=scen_idx, sites=domain.site_ids[considered_sites]) .= site_selection(
+            domain,
             scen,
             (mean(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5,
             (mean(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios))) .* 0.5,
@@ -110,7 +110,7 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
 end
 
 """
-    ranks_to_location_order(ranks::NamedDimsArray, interv_type::String)
+    ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
 
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the order 
@@ -119,10 +119,10 @@ of location preference for each scenario as location ids.
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
-- `interv_type` : String indicating the intervention type to perform aggregation on.
+- `iv_type` : String indicating the intervention type to perform aggregation on.
 """
-function ranks_to_location_order(ranks::NamedDimsArray, interv_type::String)
-    ranks_set = ranks(:, :, string(interv_type, "_rank"))
+function ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
+    ranks_set = ranks(:, :, string(iv_type, "_rank"))
     location_orders = NamedDimsArray(repeat([""], size(ranks, 1), size(ranks, 2)), scenarios=1:size(ranks, 1), ranks=1:size(ranks, 2))
 
     for scen in 1:size(ranks, 1)
@@ -132,7 +132,7 @@ function ranks_to_location_order(ranks::NamedDimsArray, interv_type::String)
 end
 
 """
-    ranks_to_frequencies(ranks::NamedDimsArray, interv_type::String)
+    ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
 
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the frequency 
@@ -141,13 +141,13 @@ with which each location was selected at each rank across the location selection
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
-- `interv_type` : String indicating the intervention type to perform aggregation on.
+- `iv_type` : String indicating the intervention type to perform aggregation on.
 """
-function ranks_to_frequencies(ranks::NamedDimsArray, interv_type::String)
+function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
     rank_frequencies = NamedDimsArray(zeros(size(ranks, 2), size(ranks, 2)), sites=ranks.sites, ranks=1:size(ranks, 2))
 
     for rank in range(1, size(ranks, 2), size(ranks, 2))
-        rank_frequencies[ranks=Int64(rank)] .= sum(ranks(:, :, string(interv_type, "_rank")) .== rank, dims=:scenarios)[scenarios=1]
+        rank_frequencies[ranks=Int64(rank)] .= sum(ranks(:, :, string(iv_type, "_rank")) .== rank, dims=:scenarios)[scenarios=1]
     end
     return rank_frequencies
 end
