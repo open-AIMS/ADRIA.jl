@@ -1,3 +1,5 @@
+using DataStructures
+
 """
     reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
     reef_condition_index(rs)
@@ -28,28 +30,40 @@ function _reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::A
     criteria = NamedDimsArray([
             0.0 0.0 0.0 0.0
             0.05 0.15 0.175 0.15  # Very Poor
-            0.15 0.25 0.3 0.25   # Poor
-            0.25 0.25 0.3 0.25   # Fair
-            0.35 0.35 0.35 0.25  # Good
-            0.45 0.45 0.45 0.35  # Very Good
-            Inf Inf Inf Inf      # Note: some metrics might return a value > 1.0
+            0.15 0.25 0.3 0.25    # Poor
+            0.25 0.25 0.3 0.25    # Fair
+            0.35 0.35 0.35 0.25   # Good
+            0.45 0.45 0.45 0.35   # Very Good
+            Inf Inf Inf Inf       # Note: some metrics might return a value > 1.0
         ],
         condition=[:lower, :very_poor, :poor, :fair, :good, :very_good, :upper],
         metric=[:RC, :E, :SV, :Juv]
     )
 
-    index_metrics = []
+    index_metrics = zeros(size(rc)..., 4)
     for (idx, met) in enumerate([rc, evenness, sv, juves])
         lower = collect(criteria[1:end-1, idx])
         upper = collect(criteria[2:end, idx])
         met_cp = map(x -> criteria[2:end, idx][lower.<=x.<=upper][1], met)
         replace!(met_cp, Inf => 1.0)
-        push!(index_metrics, met_cp)
+        index_metrics[:, :, :, idx] .= met_cp
     end
+
+    rci = similar(rc)
+    for (ts, loc, scen) in Iterator.product(axes(index_metrics, 1), axes(index_metrics, 2), axes(index_metrics, 3))
+        c = counter(index_metrics[ts, loc, scen, :])
+
+        if any(values(c) .>= 2)
+            rci[ts, loc, scen] .= minimum(sort(collect(keys(c))[values(c) .>= 2]))
+        end
+
+    # rci
+
 
     # Threshold for how many criteria need to be met for category to be satisfied.
     # (0.6 if 6 metrics; 0.1 for each metric)
     # We only have 4 metrics in ADRIA, so threshold is 0.4
+    # Main.@infiltrate
     criteria_threshold = 0.1 * length(index_metrics)
     rci = mean(index_metrics)
 
