@@ -310,11 +310,13 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     end
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT)
-    # Convert from percent to relative values
-    icc_data = (dropdims(mean(icc_data, dims=2), dims=2) ./ 100.0)'
+    # Convert from percent to relative values and split evenly over species
+    icc_data = (dropdims(mean(icc_data, dims=2), dims=2) ./ (length(icc_files) * 100.0))
+    # Repeat species splittings over each size class and reshape to give ADRIA compatible size
+    icc_data = reshape(repeat(icc_data, 6, 1), length(loc_ids), length(icc_files) * 6)'
 
     # Reorder dims to: locations, species
-    return NamedDimsArray(icc_data, species=1:length(icc_files), locs=loc_ids)
+    return NamedDimsArray(icc_data, species=1:(length(icc_files)*6), locs=loc_ids)
 end
 
 """
