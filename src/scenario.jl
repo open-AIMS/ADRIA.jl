@@ -215,7 +215,7 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
     vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain), site_area(domain))
-    vals = coral_evenness(vals)
+    vals = coral_evenness(NamedDims.unname(vals))
     vals[vals.<threshold] .= 0.0
     data_store.coral_evenness[:, :, idx] .= vals
 
