@@ -24,7 +24,7 @@ See notes for `juvenile_indicator()`
 # Returns
 NamedArray[timesteps ⋅ locations ⋅ scenarios]
 """
-function _reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
+function _reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray; threshold=2)::AbstractArray
     # Compare outputs against reef condition criteria provided by experts
     # These are median values for 8 experts.
     criteria = NamedDimsArray([
@@ -45,33 +45,28 @@ function _reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::A
         lower = collect(criteria[1:end-1, idx])
         upper = collect(criteria[2:end, idx])
         met_cp = map(x -> criteria[2:end, idx][lower.<=x.<=upper][1], met)
-        replace!(met_cp, Inf => 1.0)
+        replace!(met_cp, Inf => 0.9)
         index_metrics[:, :, :, idx] .= met_cp
     end
 
     rci = similar(rc)
-    for (ts, loc, scen) in Iterator.product(axes(index_metrics, 1), axes(index_metrics, 2), axes(index_metrics, 3))
+    for (ts, loc, scen) in Iterators.product(axes(index_metrics, 1), axes(index_metrics, 2), axes(index_metrics, 3))
         c = counter(index_metrics[ts, loc, scen, :])
 
-        if any(values(c) .>= 2)
-            rci[ts, loc, scen] .= minimum(sort(collect(keys(c))[values(c) .>= 2]))
+        # RCI is assigned the minimunm score of the greatest number of metrics that meet 
+        # `threshold`.
+        # e.g., if RC and evenness are good, and sv and juves are "poor" (both meet threshold)
+        #       the score is "poor".
+        #       If scores are spread out, we return the 3rd highest score.
+        if any(values(c) .>= threshold)
+            rci[ts, loc, scen] = minimum(sort(collect(keys(c))[values(c).>=threshold]))
+        else
+            rci[ts, loc, scen] = minimum(sort(collect(keys(c))[1:3]))
         end
-
-    # rci
-
-
-    # Threshold for how many criteria need to be met for category to be satisfied.
-    # (0.6 if 6 metrics; 0.1 for each metric)
-    # We only have 4 metrics in ADRIA, so threshold is 0.4
-    # Main.@infiltrate
-    criteria_threshold = 0.1 * length(index_metrics)
-    rci = mean(index_metrics)
-
-    # Set value to 0.0 in cases where mean contribution does not meet threshold.
-    rci[rci.<criteria_threshold] .= 0.0
+    end
 
     # TODO: bootstrap to cover expert uncertainty
-    return clamp!(rci, 0.1, 0.9)
+    return rci
 end
 function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
     rc::AbstractArray{<:Real} = relative_cover(rs)
