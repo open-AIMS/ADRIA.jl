@@ -311,10 +311,10 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT)
     # Convert from percent to relative values
-    icc_data = dropdims(mean(icc_data, dims=2), dims=2) ./ 100.0
+    icc_data = (dropdims(mean(icc_data, dims=2), dims=2) ./ 100.0)'
 
     # Reorder dims to: locations, species
-    return NamedDimsArray(icc_data, locs=loc_ids, species=1:length(icc_files))
+    return NamedDimsArray(icc_data, species=1:length(icc_files), locs=loc_ids)
 end
 
 """
