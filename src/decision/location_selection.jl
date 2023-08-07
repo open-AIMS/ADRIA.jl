@@ -5,8 +5,8 @@
 Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
 
 # Arguments
+- `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
 - `scenario` : contains criteria weightings and thresholds for a single scenario.
-- `mcda_vars` : site selection criteria and weightings structure
 - `w_scens` : array of length nsites containing wave scenario.
 - `dhw_scens` : array of length nsites containing dhw scenario.
 - `site_ids` : locations to consider
@@ -42,7 +42,8 @@ function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDi
 end
 
 """
-    run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, time_step::Int64)
+    run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64; aggregate_function=nothing,
+        target_seed_sites=nothing, target_shade_sites=nothing)
 
 Perform site selection for a given domain for multiple scenarios defined in a dataframe.
 
@@ -51,6 +52,7 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `scenarios` : DataFrame of criteria weightings and thresholds for each scenario.
 - `sum_cover` : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
 - `area_to_seed` : area of coral to be seeded at each time step in km^2
+- `aggregate_function` : function which aggregates ranks output into preferred form, e.g `ranks_to_frequencies`, `ranks_to_location_order`.
 - `target_seed_sites` : list of candidate locations for seeding (indices)
 - `target_shade_sites` : list of candidate location to shade (indices)
 
@@ -108,7 +110,7 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
 end
 
 """
-    ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
+    ranks_to_location_order(ranks::NamedDimsArray, interv_type::String)
 
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the order 
