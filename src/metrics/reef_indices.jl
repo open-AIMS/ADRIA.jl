@@ -82,13 +82,14 @@ reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scena
     scenario_rci(rci::NamedDimsArray; kwargs...)
     scenario_rci(rs::ResultSet; kwargs...)
 
-Calculate the mean Reef Fish Index for each scenario for the entire domain.
+Calculate the mean Reef Condition Index for each scenario for the entire domain.
 """
-function _scenario_rci(rti::NamedDimsArray; kwargs...)
-    rti_sliced = slice_results(rti; kwargs...)
-    return scenario_trajectory(rti_sliced)
+function _scenario_rci(rci::NamedDimsArray; kwargs...)
+    rci_sliced = slice_results(rci; kwargs...)
+    return scenario_trajectory(rci_sliced)
 end
 function _scenario_rci(rs::ResultSet; kwargs...)
+    # rci_area = site_area(rs) .* site_k_area(rs)
     return _scenario_rci(reef_condition_index(rs); kwargs...)
 end
 scenario_rci = Metric(_scenario_rci, (:timesteps, :scenario))
