@@ -119,10 +119,10 @@ of location preference for each scenario as location ids.
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
-- `iv_type` : String indicating the intervention type to perform aggregation on.
+- `interv_type` : String indicating the intervention type to perform aggregation on.
 """
-function ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
-    ranks_set = ranks(:, :, string(iv_type, "_rank"))
+function ranks_to_location_order(ranks::NamedDimsArray, interv_type::String)
+    ranks_set = ranks(:, :, string(interv_type, "_rank"))
     location_orders = NamedDimsArray(repeat([""], size(ranks, 1), size(ranks, 2)), scenarios=1:size(ranks, 1), ranks=1:size(ranks, 2))
 
     for scen in 1:size(ranks, 1)
@@ -132,7 +132,7 @@ function ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
 end
 
 """
-    ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
+    ranks_to_frequencies(ranks::NamedDimsArray, interv_type::String)
 
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the frequency 
@@ -141,13 +141,13 @@ with which each location was selected at each rank across the location selection
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
-- `iv_type` : String indicating the intervention type to perform aggregation on.
+- `interv_type` : String indicating the intervention type to perform aggregation on.
 """
-function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
+function ranks_to_frequencies(ranks::NamedDimsArray, interv_type::String)
     rank_frequencies = NamedDimsArray(zeros(size(ranks, 2), size(ranks, 2)), sites=ranks.sites, ranks=1:size(ranks, 2))
 
     for rank in range(1, size(ranks, 2), size(ranks, 2))
-        rank_frequencies[ranks=Int64(rank)] .= sum(ranks(:, :, string(iv_type, "_rank")) .== rank, dims=:scenarios)[scenarios=1]
+        rank_frequencies[ranks=Int64(rank)] .= sum(ranks(:, :, string(interv_type, "_rank")) .== rank, dims=:scenarios)[scenarios=1]
     end
     return rank_frequencies
 end
