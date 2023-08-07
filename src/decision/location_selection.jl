@@ -60,17 +60,17 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64; aggregate_function=nothing,
+function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64; aggregate_function=nothing,
     target_seed_sites=nothing, target_shade_sites=nothing)
     ranks_store = NamedDimsArray(
-        zeros(nrow(scenarios), length(dom.site_ids), 3),
+        zeros(nrow(scenarios), length(domain.site_ids), 3),
         scenarios=1:nrow(scenarios),
-        sites=dom.site_ids,
+        sites=domain.site_ids,
         ranks=["site_id", "seed_rank", "shade_rank"],
     )
 
-    dhw_scens = dom.dhw_scens
-    wave_scens = dom.wave_scens
+    dhw_scens = domain.dhw_scens
+    wave_scens = domain.wave_scens
 
     # Pre-calculate maximum depth to consider
     scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
