@@ -22,19 +22,18 @@ Make Metric callable with arbitary arguments that are passed to associated funct
 """
 function (f::Metric)(raw, args...; kwargs...)::NamedDimsArray
     local res
-    try
-        res = f.func(NamedDimsArray{(:timesteps, :species, :sites, :scenarios)[1:Base.ndims(raw)]}(raw), args...; kwargs...)
-    catch
-        res = f.func(raw, args...; kwargs...)
 
-        try
-            # Try renaming dimensions to match expectations
-            res = NamedDims.rename(res, f.dims)
-        catch err
-            if !(err isa MethodError)
-                rethrow(err)
-            end
+    res = NamedDimsArray{(:timesteps, :species, :sites, :scenarios)[1:Base.ndims(raw)]}(raw)
+    res = f.func(res, args...; kwargs...)
+
+    try
+        res = NamedDims.rename(res, f.dims[1:Base.ndims(res)])
+    catch err
+        if !(err isa MethodError)
+            rethrow(err)
         end
+
+        res = NamedDimsArray{(f.dims[1:Base.ndims(res)])}(res)
     end
 
     return res
@@ -159,15 +158,9 @@ end
 function _relative_cover(rs::ResultSet)::AbstractArray
     k_area = (site_k_area(rs) .* site_area(rs))'
     tac = rs.outcomes[:total_absolute_cover]
-    rc = cat(map(s -> s ./ k_area,
-            JuliennedArrays.Slices(
-                tac,
-                NamedDims.dim(tac, :timesteps),
-                NamedDims.dim(tac, :sites)
-            )
-        )..., dims=3)
+    rc = tac ./ k_area
 
-    return replace!(rc, NaN => 0.0, Inf => 0.0)
+    return replace(rc, NaN => 0.0, Inf => 0.0)
 end
 relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
 
