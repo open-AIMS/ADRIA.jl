@@ -309,23 +309,22 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
         icc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false, comment="#"))
     end
 
-    # use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
+    # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
     # as suggested by YM (pers comm. 2023-08-08 12:55pm AEDT)
     reef_mod_area_dist = LogNormal(log(700), log(4))
-    # get bin edges for coral diameters and transform to coral areas in cm^2
     bin_edges_area = colony_mean_area(Float64[0, 2, 5, 10, 20, 40, 80])
 
-    # find integral density between bounds of each size class areas
-    diff_cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area[2:end]) .- cdf.(reef_mod_area_dist, bin_edges_area[1:end-1])
-    # normalise densities for each size class to create weightings
-    size_class_weights = diff_cdf_integral ./ sum(diff_cdf_integral)
+    # Find integral density between bounds of each size class areas
+    cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
+    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:end-1])
+    size_class_weights = size_class_weights ./ sum(size_class_weights)
 
-    # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT)
-    # Convert from percent to relative values
+    # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
+    # Convert from percent to relative values.
     icc_data = ((dropdims(mean(icc_data, dims=2), dims=2)) ./ 100.0)
 
-    # Repeat species over each size class and reshape to give ADRIA compatible size (36 * nsites).
-    # Multiply by size class weights to give initial cover distribution over size class.
+    # Repeat species over each size class and reshape to give ADRIA compatible size (36 * n_locs).
+    # Multiply by size class weights to give initial cover distribution over each size class.
     icc_data = reshape(repeat(icc_data, 6, 1), length(loc_ids), length(icc_files) * 6)' .* repeat(size_class_weights, 6)
 
     # Reorder dims to: locations, species
