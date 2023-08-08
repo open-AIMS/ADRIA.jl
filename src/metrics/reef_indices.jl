@@ -96,18 +96,24 @@ end
 reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
 """
-    scenario_rci(rci::NamedDimsArray; kwargs...)
+    scenario_rci(rci::NamedDimsArray, tac::NamedDimsArray; kwargs...)
     scenario_rci(rs::ResultSet; kwargs...)
 
-Calculate the mean Reef Condition Index for each scenario for the entire domain.
+Extract the total populated area of locations with Reef Condition Index of "Good" or higher
+for each scenario for the entire domain.
 """
-function _scenario_rci(rci::NamedDimsArray; kwargs...)
+function _scenario_rci(rci::NamedDimsArray, tac::NamedDimsArray; kwargs...)
     rci_sliced = slice_results(rci; kwargs...)
-    return scenario_trajectory(rci_sliced)
+    tac_sliced = slice_results(tac; kwargs...)
+
+    # We want sum of populated area >= "good" condition
+    return scenario_trajectory(tac_sliced .* (rci_sliced .> 0.35); metric=sum)
 end
 function _scenario_rci(rs::ResultSet; kwargs...)
-    # rci_area = site_area(rs) .* site_k_area(rs)
-    return _scenario_rci(reef_condition_index(rs); kwargs...)
+    tac = total_absolute_cover(rs)
+    rci = reef_condition_index(rs)
+
+    return _scenario_rci(rci, tac; kwargs...)
 end
 scenario_rci = Metric(_scenario_rci, (:timesteps, :scenario))
 
