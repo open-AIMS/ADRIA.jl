@@ -10,7 +10,7 @@ using GLMakie
 using Statistics, Distributions, ThreadsX, Random
 using DataFrames, Bootstrap
 
-using ImageMagick, GeoInterface
+using ImageIO, GeoInterface
 
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
