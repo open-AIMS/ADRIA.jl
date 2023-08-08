@@ -1,4 +1,4 @@
-using DataStructures
+using FLoops, DataStructures
 
 """
     reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
@@ -27,43 +27,60 @@ NamedArray[timesteps ⋅ locations ⋅ scenarios]
 function _reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray; threshold=2)::AbstractArray
     # Compare outputs against reef condition criteria provided by experts
     # These are median values for 8 experts.
+    condition_category = Symbol[:lower, :very_poor, :poor, :fair, :good, :very_good, :very_good]
     criteria = NamedDimsArray([
             0.0 0.0 0.0 0.0
-            0.05 0.15 0.175 0.15  # Very Poor
+            0.05 0.15 0.175 0.15  # Very Poor [0 to these values]
             0.15 0.25 0.3 0.25    # Poor
             0.25 0.25 0.3 0.25    # Fair
             0.35 0.35 0.35 0.25   # Good
-            0.45 0.45 0.45 0.35   # Very Good
+            0.45 0.45 0.45 0.35   # Very Good [these values and above]
             Inf Inf Inf Inf       # Note: some metrics might return a value > 1.0
         ],
-        condition=[:lower, :very_poor, :poor, :fair, :good, :very_good, :upper],
+        condition=condition_category,
         metric=[:RC, :E, :SV, :Juv]
     )
 
     index_metrics = zeros(size(rc)..., 4)
-    for (idx, met) in enumerate([rc, evenness, sv, juves])
+    @floop for (idx, met) in enumerate([rc, evenness, sv, juves])
         lower = collect(criteria[1:end-1, idx])
         upper = collect(criteria[2:end, idx])
-        met_cp = map(x -> criteria[2:end, idx][lower.<=x.<=upper][1], met)
+        met_cp = map(x -> criteria[2:end, idx][lower.<=x.<upper][1], met)
         replace!(met_cp, Inf => 0.9)
         index_metrics[:, :, :, idx] .= met_cp
     end
 
+    replace!(criteria, Inf => 0.9)
+
     rci = similar(rc)
-    for (ts, loc, scen) in Iterators.product(axes(index_metrics, 1), axes(index_metrics, 2), axes(index_metrics, 3))
-        c = counter(index_metrics[ts, loc, scen, :])
+    @floop for (ts, loc, scen) in Iterators.product(
+        axes(index_metrics, 1),
+        axes(index_metrics, 2),
+        axes(index_metrics, 3))
+
+        # Find the category name condition score relates to for each metric
+        rci_cats = [condition_category[argmax(index_metrics[ts, loc, scen, i] .== criteria[:, i])]
+                    for i in axes(index_metrics, 4)]
+        c = counter(rci_cats)
+
+        # Get the corresponding score values by index (based on RC only)
+        # Because the index is used, it will always align with the correct category
+        # ("poor", "good", etc)
+        scores = criteria(collect(keys(c)), :RC)
 
         # RCI is assigned the minimunm score of the greatest number of metrics that meet 
         # `threshold`.
         # e.g., if RC and evenness are good, and sv and juves are "poor" (both meet threshold)
         #       the score is "poor".
-        #       If scores are spread out, we return the 3rd highest score.
+        #       If scores are spread out (e.g., unique values), we return the 2nd lowest score
         if any(values(c) .>= threshold)
-            rci[ts, loc, scen] = minimum(sort(collect(keys(c))[values(c).>=threshold]))
+            rci[ts, loc, scen] = minimum(scores[values(c).>=threshold])
         else
-            rci[ts, loc, scen] = minimum(sort(collect(keys(c))[1:3]))
+            rci[ts, loc, scen] = sort(scores)[2]
         end
     end
+
+    clamp!(rci, 0.1, 0.9)
 
     # TODO: bootstrap to cover expert uncertainty
     return rci
