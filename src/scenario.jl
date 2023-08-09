@@ -536,10 +536,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             d_s::UnitRange{Int64} = 1:length(horizon)
 
             # Put more weight on projected conditions closer to the decision point
-            @views env_horizon = decay[d_s] .* dhw_scen[horizon, :]
+            env_horizon .= decay .* @view(dhw_scen[horizon, :])
             mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
 
-            @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
+            env_horizon .= decay .* @view(wave_scen[horizon, :])
             mcda_vars.dam_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
         end
         if is_guided && (in_seed_years || in_shade_years)
@@ -578,7 +578,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- @view(wave_scen[tstep, :])), depth_coeff, c_dist_t, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- @view(wave_scen[tstep, :])), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
