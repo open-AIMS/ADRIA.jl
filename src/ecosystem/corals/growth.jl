@@ -196,7 +196,7 @@ end
         dist_t1::Matrix{Distribution}, prop_mort::AbstractArray{Float64})::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
-all non-Juvenile (> 5cm²) size classes. Distributions are informed by learnings from
+all non-Juvenile (> 5cm diameter) size classes. Distributions are informed by learnings from
 Bairos-Novak et al., [1] and (unpublished) data referred to in Hughes et al., [2]. Juvenile
 mortality is assumed to be primarily represented by other factors (i.e., background
 mortality; see Álvarez-Noriega et al., [3]). The proportion of the population which bleached

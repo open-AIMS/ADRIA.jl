@@ -187,9 +187,9 @@ function coral_spec()::NamedTuple
     # Background mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
     # Using values for:
     # - juvenile mortality (first two columns)
-    # - < 5cm² (Columns 1 and 2)
-    # - < 250cm² (Columns 3 and 4)
-    # - > 250cm² (Columns 5 and 6)
+    # - < 5cm diameter (Columns 1 and 2)
+    # - < 250cm diameter (Columns 3 and 4)
+    # - > 250cm diameter (Columns 5 and 6)
     # Values for size class 4 are then interpolated by K.A
     mb = Array{Float64,2}([
         0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora 
