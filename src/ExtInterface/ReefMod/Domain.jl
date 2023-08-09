@@ -310,11 +310,12 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     end
 
     # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
-    # as suggested by YM (pers comm. 2023-08-08 12:55pm AEDT)
+    # as suggested by YM (pers comm. 2023-08-08 12:55pm AEDT). Distribution is used to split ReefMod initial 
+    # species covers into ADRIA's 6 size classes by weighting with the cdf.
     reef_mod_area_dist = LogNormal(log(700), log(4))
     bin_edges_area = colony_mean_area(Float64[0, 2, 5, 10, 20, 40, 80])
 
-    # Find integral density between bounds of each size class areas
+    # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
     size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:end-1])
     size_class_weights = size_class_weights ./ sum(size_class_weights)
