@@ -192,7 +192,7 @@ end
 
 """
     bleaching_mortality!(Y::AbstractArray{Float64,2}, dhw::AbstractArray{Float64},
-        depth_coeff::Vector{Float64}, dist::Matrix{Distribution}, 
+        depth_coeff::Vector{Float64}, dist::Matrix{Distribution},
         dist_t1::Matrix{Distribution}, prop_mort::AbstractArray{Float64})::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
@@ -207,6 +207,7 @@ with a depth-adjusted coefficient (from Baird et al., [4]).
 - `cover` : Coral cover for current timestep
 - `dhw` : DHW for all represented locations
 - `depth_coeff` : Pre-calculated depth coefficient for all locations
+- `stdev` : Standard deviation of DHW tolerance
 - `dist` : Critical DHW threshold distribution for current timestep, for all species and
            locations
 - `dist_t1` : Critical DHW threshold distribution for next timestep, for all species and
@@ -243,7 +244,7 @@ with a depth-adjusted coefficient (from Baird et al., [4]).
    https://doi.org/10.3354/meps12732
 """
 function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
-    depth_coeff::Vector{Float64}, dist_t_1::Matrix{Distribution},
+    depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix{Distribution},
     dist_t::Matrix{Distribution}, prop_mort::SubArray{Float64})::Nothing
     n_sp_sc, n_locs = size(cover)
 
@@ -273,7 +274,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             # Re-create distribution
             d::Distribution = dist_t_1[sp_sc, loc]
             μ::Float64 = mean(d)
-            dist_t[sp_sc, loc] = truncated(Normal(μ, std(d)), mort_pop, μ + HEAT_UB)
+            dist_t[sp_sc, loc] = truncated(Normal(μ, stdev[sp_sc]), mort_pop, μ + HEAT_UB)
 
             # Update population
             cover[sp_sc, loc] = cover[sp_sc, loc] * (1.0 - mort_pop)
@@ -285,7 +286,7 @@ end
     _shift_distributions!(growth_rate, dists_t)::Nothing
 
 Combines distributions between size classes > 1 to represent the shifts that occur as each
-size class grows. Priors for the distributions are based on the assumed growth rates for 
+size class grows. Priors for the distributions are based on the assumed growth rates for
 each size class.
 
 i.e., (w_{i+1,1}, w_{i+1,2}) := (g_{i} / sum(g_{i,i+1}), g_{i+1} / sum(g_{i,i+1}))
@@ -293,51 +294,41 @@ i.e., (w_{i+1,1}, w_{i+1,2}) := (g_{i} / sum(g_{i,i+1}), g_{i+1} / sum(g_{i,i+1}
 where w are the weights/priors and \$g\$ is the growth rates.
 
 # Arguments
-- `growth_rate` : growth rates for the given size classes/species
-- `dists_t` : Critical DHW threshold distribution for timestep \$t\$
-- `weights` : reused cache for weights to avoid allocations
-- `tmp` : reused cache for MixtureModels to avoid allocations
+- `cover` : Coral cover for \$t-1\$
+- `growth_rate` : Growth rates for the given size classes/species
+- `dist_t` : Critical DHW threshold distribution for timestep \$t\$
+- `stdev` : Standard deviations of coral DHW tolerance
+- `tmp` : Reused cache for MixtureModels to avoid allocations
 # Returns
 Nothing
 """
-function _shift_distributions!(growth_rate::SubArray, dists_t::SubArray, weights::Vector{Float64}, tmp::Vector{MixtureModel})::Nothing
-    # # Combine distributions for each paired neighbors above size class 1 weighted by assumed
-    # # growth rates. 
-    # # e.g., size class 2 combined with 3, 3 with 4, ..., 5 with 6
-    # #
-    # # Growth rates are expressed in terms of proportion of size class that increases
-    # # per year. Values > 1 indicate corals move out of the size class more than once.
-    # # To determine the weights, we take the proportion of the remaining corals at end of 
-    # # year.
-    # # Example:
-    # #   Growth rate of size class 2: 0.95
-    # #   Growth rate of size class 3: 1.85
-    # #   0.95 / (0.95 + abs(1.85 - 1.0)) = 0.8636
-    # weights .= Float64[rate[1] ./ (rate[1] + abs(rate[2] - 1.0))
-    #                    for rate in
-    #                    zip(growth_rate[2:end-1], growth_rate[3:end])]
-
-    # tmp .= MixtureModel[MixtureModel(collect(dts), [ws, 1.0 - ws])
-    #                     for (dts, ws) in
-    #                     zip(zip(dists_t[2:end-1], dists_t[3:end]), weights)]
-    # μ = mean.(tmp)
-    # Main.@infiltrate
-    # dists_t[3:end] .= truncated.(Normal.(μ, std.(tmp)), minimum.(tmp), μ .+ HEAT_UB)
-
-    # # The entirety of size class 1 moves up every year so we simply reassign the
-    # # distribution for size class 1 to size class 2.
-    # dists_t[2] = dists_t[1]
-
+function _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::SubArray, stdev::SubArray)::Nothing
     # Simplified approach
-    x::MixtureModel = MixtureModel([dists_t[5], dists_t[6]])  # assume equal weighting
-    dists_t[6] = truncated(Normal(mean(x), std(x)), minimum(x), maximum(x))
-    dists_t[2:end-1] .= dists_t[1:end-2]
+    # Main.@infiltrate
+    # x::MixtureModel = MixtureModel([dist_t[5], dist_t[6]], cover[5:6] ./ sum(cover[5:6]))
+    # dist_t[6] = truncated(Normal(mean(x), std(x)), 0.0, mean(x) + HEAT_UB)
+    # dist_t[2:end-1] .= dist_t[1:end-2]
+
+    # Simplified with mixtures, assuming equal weighting
+    for i in 6:-1:3
+        sum(cover[i-1:i]) == 0.0 ? continue : false
+        prop_growth = (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
+        x::MixtureModel = MixtureModel([dist_t[i-1], dist_t[i]], prop_growth ./ sum(prop_growth))
+
+        # Use same stdev as target size class to maintain genetic variance
+        # pers comm K.B-N (2023-08-09 16:24 AEST)
+        dist_t[i] = truncated(Normal(mean(x), stdev[i]), 0.0, mean(x) + HEAT_UB)
+    end
+
+    # # Size class 1 all moves up to size class 2 any way
+    μ = mean(dist_t[1])
+    dist_t[2] = truncated(Normal(μ, stdev[2]), 0.0, μ + HEAT_UB)
 
     return nothing
 end
 
 """
-    adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Matrix{Distribution}, 
+    adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Matrix{Distribution},
         dist_t::Matrix{Distribution}, growth_rate::Matrix{Float64}, h²::Float64)::Nothing
 
 Adjust critical DHW thresholds for a given species/size class distribution as mortalities
@@ -352,52 +343,50 @@ affect the distribution over time, and corals mature (moving up size classes).
 - `h²` : heritability value
 """
 function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Matrix{Distribution},
-    dist_t::Matrix{Distribution}, growth_rate::Matrix{Float64}, h²::Float64)::Nothing
+    dist_t::Matrix{Distribution}, growth_rate::Matrix{Float64}, stdev::Vector{Float64}, h²::Float64)::Nothing
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
-    weights::Vector{Float64} = zeros(Int64(n_sp_sc / n_groups) - 2)
-    tmp_weights::Vector{Float64} = zeros(length(weights))
-    tmp_dist::Vector{MixtureModel} = Vector{MixtureModel}(undef, length(weights))
+    weights::Vector{Float64} = zeros(2)
 
     # Adjust population distribution
     for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
         # Combine distributions using a MixtureModel for all size
         # classes above 1 (the correct size classes are selected within the
         # function).
-        gt_sc2::Int64 = sc1 + 2
+        sc5::Int64 = sc1 + 4
         sc6::Int64 = sc1 + step
-        if sum(cover[1, gt_sc2:sc6, loc]) == 0.0
-            continue
-        end
+        # if sum(cover[1, sc5:sc6, loc]) == 0.0
+        #     continue
+        # end
 
-        # Handle case where entire reproductive population died
-        if sum(cover[2, gt_sc2:sc6, loc]) == 0.0
-            dist_t[gt_sc2:sc6, loc] .= truncated(Normal(0.0, 0.0), 0.0, 0.0)
-            continue
-        end
+        # # Handle case where entire reproductive population died
+        # if sum(cover[2, sc5:sc6, loc]) == 0.0
+        #     dist_t[sc5:sc6, loc] .= truncated(Normal(0.0, 0.0), 0.0, 0.0)
+        #     continue
+        # end
 
-        @views _shift_distributions!(growth_rate[sc1:sc6], dist_t[sc1:sc6, loc], tmp_weights, tmp_dist)
+        @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc], stdev[sc1:sc6])
 
         # A new distribution for size class 1 is then determined by taking the
-        # distribution of size classes >= 3 at time t+1 and at time t, and applying
-        # the S⋅h² calculation, where:
+        # distribution of size classes >= 5 at time t+1 and size class 1 at time t, and 
+        # applying the S⋅h² calculation, where:
         # - $S$ is the distance between the means of the gaussian distributions
         # - $h$ is heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
-        @views weights .= cover[1, gt_sc2:sc6, loc] / sum(cover[1, gt_sc2:sc6, loc])
-        dt_1::MixtureModel = MixtureModel(Truncated{Normal{Float64},Continuous,Float64,Float64,Float64}[dist_t_1[gt_sc2:sc6, loc]...], weights)
+        dt_1::Truncated{Normal{Float64},Continuous,Float64,Float64,Float64} = dist_t_1[sc1, loc]
+        if any(cover[2, sc5:sc6, loc] .!= 0.0)
+            @views weights .= cover[2, sc5:sc6, loc] / sum(cover[2, sc5:sc6, loc])
 
-        @views weights .= cover[2, gt_sc2:sc6, loc] / sum(cover[2, gt_sc2:sc6, loc])
-        d_t::MixtureModel = MixtureModel(Truncated{Normal{Float64},Continuous,Float64,Float64,Float64}[dist_t[gt_sc2:sc6, loc]...], weights)
+            d_t::MixtureModel = MixtureModel(Truncated{Normal{Float64},Continuous,Float64,Float64,Float64}[dist_t[sc5:sc6, loc]...], weights)
 
-        μ_d_t::Float64 = mean(d_t)
-        S::Float64 = μ_d_t - mean(dt_1)
-        if S != 0.0
-            # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
-            # The standard deviation is assumed to be the same as parents
-            # Note: Nominally, h² := 0.3, but ranges from 0.25 - 0.5
-            μ_t::Float64 = μ_d_t + (S * h²)
-            dist_t[sc1, loc] = truncated(Normal(μ_t, mean([std(d_t), std(dt_1)])), minimum(d_t), μ_t + HEAT_UB)
+            S::Float64 = mean(d_t) - mean(dt_1)
+            if S != 0.0
+                # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
+                # The standard deviation is assumed to be the same as parents
+                # Note: Nominally, h² := 0.3, but ranges from 0.25 - 0.5
+                μ_t::Float64 = mean(dt_1) + (S * h²)
+                dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), 0.0, μ_t + HEAT_UB)
+            end
         end
     end
 
@@ -406,8 +395,8 @@ end
 
 
 """
-    fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2}, 
-                     fec_params::Array{Float64}, Y_pstep::Array{Float64, 2}, 
+    fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2},
+                     fec_params::Array{Float64}, Y_pstep::Array{Float64, 2},
                      k_area::Array{Float64})::Nothing
 
 The scope that different coral groups and size classes have for

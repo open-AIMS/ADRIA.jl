@@ -404,7 +404,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_sc = (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id
 
     # Extract colony areas for sites selected in m^2 and add adaptation values
-    seeded_area = colony_mean_area(corals.mean_colony_diameter_m[seed_sc]) .* param_set(taxa_names)
+    colony_areas = colony_mean_area(corals.mean_colony_diameter_m)
+    seeded_area = colony_areas[seed_sc] .* param_set(taxa_names)
 
     # Set up assisted adaptation values
     a_adapt = zeros(n_species)
@@ -558,14 +559,14 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- wave_scen[tstep, :]), depth_coeff, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- wave_scen[tstep, :]), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
             # Seed each selected site
             seed_corals!(Y_pstep, vec(total_loc_area), vec(leftover_space_m²),
                 seed_locs, seeded_area, seed_sc, a_adapt, @view(Yseed[tstep, :, :]),
-                c_dist_t)
+                corals.dist_std, c_dist_t)
         end
 
         # Note: ODE is run relative to `k` area, but values are otherwise recorded

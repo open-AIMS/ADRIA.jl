@@ -54,10 +54,9 @@ Note: Units for all areas are expected to be identical, and are assumed to be in
 - `Yseed` : Log of seeded locations to update
 - `c_dist_t` : Critical DHW distributions of corals to update (i.e., for time \$t\$)
 """
-function seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float64},
-    leftover_space::Vector{Float64}, seed_locs::Vector{Int64},
-    seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::Vector{Float64},
-    Yseed::SubArray, c_dist_t::Matrix{Distribution})::Nothing
+function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_space::V,
+    seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V,
+    Yseed::SubArray, stdev::V, c_dist_t::Matrix{Distribution})::Nothing where {V<:Vector{Float64}}
 
     # Calculate proportion to seed based on current available space
     scaled_seed = distribute_seeded_corals(total_location_area[seed_locs], leftover_space[seed_locs], seeded_area)
@@ -76,7 +75,7 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float6
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
-        tn = truncated.(Normal.(a_adapt[seed_sc], std.(c_dist_ti)), minimum.(c_dist_ti), maximum.(c_dist_ti))
+        tn = truncated.(Normal.(a_adapt[seed_sc], stdev[seed_sc]), 0.0, maximum.(c_dist_ti))
 
         # If seeding an empty location, no need to do any further calculations
         if all(isapprox.(w_taxa[:, i], 1.0))
@@ -88,7 +87,7 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float6
         # proportional cover as the priors/weights
         # Priors (weights based on cover for each species)
         tx = MixtureModel[MixtureModel([t, t1], Float64[w, 1.0-w]) for ((t, t1), w) in zip(zip(c_dist_ti, tn), w_taxa[:, i])]
-        c_dist_t[seed_sc, loc] .= truncated.(Normal.(mean.(tx), std.(tx)), minimum.(tx), maximum.(tx))
+        c_dist_t[seed_sc, loc] .= truncated.(Normal.(mean.(tx), stdev[seed_sc]), 0.0, maximum.(tx))
     end
 
     return nothing
