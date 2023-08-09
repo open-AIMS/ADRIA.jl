@@ -327,7 +327,6 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     # Multiply by size class weights to give initial cover distribution over each size class.
     icc_data = Matrix(hcat(reduce.(vcat, eachrow(icc_data .* [size_class_weights]))...))
 
-    # Reorder dims to: locations, species
     return NamedDimsArray(icc_data, species=1:(length(icc_files)*6), locs=loc_ids)
 end
 
