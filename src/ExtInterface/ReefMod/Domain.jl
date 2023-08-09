@@ -1,5 +1,5 @@
 using NamedDims, AxisKeys, CSV
-using CSV, DataFrames, Statistics
+using CSV, DataFrames, Statistics, Distributions
 import GeoDataFrames as GDF
 
 using ModelParameters
@@ -309,12 +309,26 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
         icc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false, comment="#"))
     end
 
-    # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT)
-    # Convert from percent to relative values
-    icc_data = dropdims(mean(icc_data, dims=2), dims=2) ./ 100.0
+    # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
+    # as suggested by YM (pers comm. 2023-08-08 12:55pm AEST). Distribution is used to split ReefMod initial 
+    # species covers into ADRIA's 6 size classes by weighting with the cdf.
+    reef_mod_area_dist = LogNormal(log(700), log(4))
+    bin_edges_area = colony_mean_area(Float64[0, 2, 5, 10, 20, 40, 80])
 
-    # Reorder dims to: locations, species
-    return NamedDimsArray(icc_data, locs=loc_ids, species=1:length(icc_files))
+    # Find integral density between bounds of each size class areas to create weights for each size class.
+    cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
+    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:end-1])
+    size_class_weights = size_class_weights ./ sum(size_class_weights)
+
+    # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
+    # Convert from percent to relative values.
+    icc_data = ((dropdims(mean(icc_data, dims=2), dims=2)) ./ 100.0)
+
+    # Repeat species over each size class and reshape to give ADRIA compatible size (36 * n_locs).
+    # Multiply by size class weights to give initial cover distribution over each size class.
+    icc_data = Matrix(hcat(reduce.(vcat, eachrow(icc_data .* [size_class_weights]))...))
+
+    return NamedDimsArray(icc_data, species=1:(length(icc_files)*6), locs=loc_ids)
 end
 
 """
