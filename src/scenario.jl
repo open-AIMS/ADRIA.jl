@@ -89,7 +89,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         factors=names(scenarios_df)
     )
 
-    parallel = (nrow(param_df) >= 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(param_df) >= 2048) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
