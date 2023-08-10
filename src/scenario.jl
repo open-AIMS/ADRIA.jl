@@ -536,10 +536,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             d_s::UnitRange{Int64} = 1:length(horizon)
 
             # Put more weight on projected conditions closer to the decision point
-            env_horizon .= decay .* @view(dhw_scen[horizon, :])
+            @views env_horizon = decay[d_s] .* dhw_scen[horizon, :]
             mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
 
-            env_horizon .= decay .* @view(wave_scen[horizon, :])
+            @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
             mcda_vars.dam_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
         end
         if is_guided && (in_seed_years || in_shade_years)
