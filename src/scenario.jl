@@ -106,14 +106,14 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
             #       (at the cost of increased run time) but resolves the kernel crash issue.
             @sync @async @everywhere @eval begin
                 using ADRIA
-                func = (dfx) -> run_scenario(dfx..., domain, data_store)
+                func = (dfx) -> run_scenario(dfx..., data_store)
             end
         end
 
         @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
 
         # Define local helper
-        func = dfx -> run_scenario(dfx..., domain, data_store)
+        func = (dfx) -> run_scenario(dfx..., data_store)
     end
 
     if parallel
@@ -121,12 +121,11 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
             run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
 
             # Switch RCPs so correct data is loaded
-            domain = switch_RCPs!(domain, rcp)
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
             if show_progress
-                @showprogress run_msg 4 pmap(func, CachingPool(workers()), zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+                @showprogress run_msg 4 pmap(func, CachingPool(workers()), zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), Iterators.repeated(domain, size(scenarios_matrix, 1))))
             else
-                pmap(func, CachingPool(workers()), zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+                pmap(func, CachingPool(workers()), zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), Iterators.repeated(domain, size(scenarios_matrix, 1))))
             end
         end
     else
@@ -179,7 +178,18 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
 
     coral_params = to_coral_spec(param_set)
     if domain.RCP == ""
-        throw("No RCP set for domain. Use `ADRIA.switch_RCPs!() to select an RCP to run scenarios with.")
+        local rcp
+        try
+            rcp = param_set("RCP")  # Try extracting from NamedDimsArray
+        catch err
+            if !(err isa MethodError)
+                rethrow(err)
+            end
+
+            rcp = param_set.RCP  # Extract from dataframe
+        end
+
+        domain = switch_RCPs!(domain, string(Int64(rcp)))
     end
 
     result_set = run_model(domain, param_set, coral_params, cache)
@@ -263,9 +273,9 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     # There seems to be an issue when using `pmap` for distributed tasks, where the
     # garbage collector is not run leading to excessive memory use (Julia v1.9.2).
     # Force garbage collection if > 95% of total memory is found to be in use.
-    if (Sys.free_memory() ./ Sys.total_memory()) .< 0.05
-        GC.gc()
-    end
+    # if (Sys.free_memory() ./ Sys.total_memory()) .< 0.05
+    #     GC.gc()
+    # end
 
     return nothing
 end
@@ -446,6 +456,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Prep site selection
         mcda_vars = DMCDA_vars(domain, param_set, depth_priority, sum(Y_cover[1, :, :], dims=1), area_to_seed)
+
+        # Number of time steps in environmental layers to look ahead when making decisions
+        plan_horizon::Int64 = Int64(param_set("plan_horizon"))
     end
 
     # Set up distributions for natural adaptation/heritability
@@ -484,8 +497,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     tmp::Matrix{Float64} = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
 
-    env_horizon = zeros(Int64(param_set("plan_horizon") + 1), n_sites)  # temporary cache for planning horizon
-
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==1])
     @inbounds for tstep::Int64 in 2:tf
@@ -519,13 +530,16 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
-            horizon = tstep:tstep+Int64(param_set("plan_horizon"))
+
+            # Determine subset of data to select data for planning horizon
+            horizon::UnitRange{Int64} = tstep:min(tstep+plan_horizon, tf)
+            d_s::UnitRange{Int64} = 1:length(horizon)
 
             # Put more weight on projected conditions closer to the decision point
-            env_horizon .= decay .* @view(dhw_scen[horizon, :])
+            @views env_horizon = decay[d_s] .* dhw_scen[horizon, :]
             mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
 
-            env_horizon .= decay .* @view(wave_scen[horizon, :])
+            @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
             mcda_vars.dam_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
         end
         if is_guided && (in_seed_years || in_shade_years)
