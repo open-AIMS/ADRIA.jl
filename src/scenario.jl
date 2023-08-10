@@ -122,10 +122,12 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
 
             # Switch RCPs so correct data is loaded
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
+            rep_doms = Iterators.repeated(domain, size(scenarios_matrix, 1))
+            scenario_args = zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), rep_doms)
             if show_progress
-                @showprogress run_msg 4 pmap(func, CachingPool(workers()), zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), Iterators.repeated(domain, size(scenarios_matrix, 1))))
+                @showprogress run_msg 4 pmap(func, CachingPool(workers()), scenario_args)
             else
-                pmap(func, CachingPool(workers()), zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), Iterators.repeated(domain, size(scenarios_matrix, 1))))
+                pmap(func, CachingPool(workers()), scenario_args)
             end
         end
     else
@@ -133,7 +135,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         cache = setup_cache(domain)
 
         # Define local helper
-        func = dfx -> run_scenario(dfx..., domain, data_store, cache)
+        func = dfx -> run_scenario(dfx..., data_store, cache)
 
         for rcp in RCP
             run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
@@ -141,10 +143,12 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
             # Switch RCPs so correct data is loaded
             domain = switch_RCPs!(domain, rcp)
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
+            rep_doms = Iterators.repeated(domain, size(scenarios_matrix, 1))
+            scenario_args = zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), rep_doms)
             if show_progress
-                @showprogress run_msg 4 map(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+                @showprogress run_msg 4 map(func, scenario_args)
             else
-                map(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+                map(func, scenario_args)
             end
         end
     end
@@ -525,7 +529,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Update dMCDA values
 
             # Determine subset of data to select data for planning horizon
-            horizon::UnitRange{Int64} = tstep:min(tstep+plan_horizon, tf)
+            horizon::UnitRange{Int64} = tstep:min(tstep + plan_horizon, tf)
             d_s::UnitRange{Int64} = 1:length(horizon)
 
             # Put more weight on projected conditions closer to the decision point
