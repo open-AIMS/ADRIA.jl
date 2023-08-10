@@ -270,13 +270,6 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
         data_store.site_ranks[:, :, :, idx] .= tmp_site_ranks
     end
 
-    # There seems to be an issue when using `pmap` for distributed tasks, where the
-    # garbage collector is not run leading to excessive memory use (Julia v1.9.2).
-    # Force garbage collection if > 95% of total memory is found to be in use.
-    # if (Sys.free_memory() ./ Sys.total_memory()) .< 0.05
-    #     GC.gc()
-    # end
-
     return nothing
 end
 function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
