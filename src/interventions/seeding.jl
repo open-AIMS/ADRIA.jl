@@ -65,13 +65,19 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_s
     @views cover[seed_sc, seed_locs] .+= scaled_seed
     Yseed[:, seed_locs] .= scaled_seed
 
-    # Calculate w_taxa using proportion of area (used as priors for MixtureModel)
+    # Calculate distribution weights using proportion of area (used as priors for MixtureModel)
+    # Note: It is entirely possible for a location to be ranked in the top N, but
+    #       with no deployments (for a given species). A location with 0 cover 
+    #       and no deployments will therefore be NaN due to zero division. 
+    #       These are replaced with 1.0 so that the distribution for unseeded
+    #       corals are used.
     w_taxa::Matrix{Float64} = scaled_seed ./ cover[seed_sc, seed_locs]
+    replace!(w_taxa, NaN=>1.0)
 
     # Update critical DHW distribution for deployed size classes
     for (i, loc) in enumerate(seed_locs)
         # Previous distributions
-        c_dist_ti = @view(c_dist_t[seed_sc, loc])
+        c_dist_t = @view(c_dist_t1[seed_sc, loc])
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
