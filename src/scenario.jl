@@ -158,8 +158,8 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
 end
 
 """
-    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::NamedTuple
-    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::NamedTuple
+    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::Nothing
+    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
     run_scenario(param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, cache::NamedTuple)::NamedTuple
     run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
 
@@ -223,7 +223,7 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     tf = size(domain.dhw_scens, 1)  # time frame
     tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
     c_dim = Base.ndims(result_set.raw) + 1
-    log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log)
+    log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log)
     for k in log_stores
         if k == :seed_log || k == :site_ranks
             concat_dim = c_dim
@@ -232,12 +232,19 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
         end
 
         vals = getfield(result_set, k)
-        vals[vals.<threshold] .= 0.0
+
+        try
+            vals[vals.<threshold] .= 0.0
+        catch err
+            err isa MethodError ? nothing : rethrow(err)
+        end
 
         if k == :seed_log
             getfield(data_store, k)[:, :, :, idx] .= vals
         elseif k == :site_ranks
             tmp_site_ranks[:, :, :] .= vals
+        elseif k == :coral_dhw_log
+            getfield(data_store, k)[:, :, :, :, idx] .= vals
         else
             getfield(data_store, k)[:, :, idx] .= vals
         end
@@ -397,7 +404,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_sc = (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id
 
     # Extract colony areas for sites selected in m^2 and add adaptation values
-    seeded_area = colony_mean_area(corals.mean_colony_diameter_m[seed_sc]) .* param_set(taxa_names)
+    colony_areas = colony_mean_area(corals.mean_colony_diameter_m)
+    seeded_area = colony_areas[seed_sc] .* param_set(taxa_names)
 
     # Set up assisted adaptation values
     a_adapt = zeros(n_species)
@@ -436,7 +444,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_dist_t::Matrix{Distribution} = repeat(
+    c_dist_t_1::Matrix{Distribution} = repeat(
         truncated.(
             Normal.(corals.dist_mean, corals.dist_std),
             0.0,
@@ -445,11 +453,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         1,
         n_sites
     )
-    c_dist_t1 = copy(c_dist_t)
+    c_dist_t = copy(c_dist_t_1)
+    dhw_tol_log = permutedims(repeat(c_dist_t_1, 1, 1, tf), [3, 1, 2])
 
     # Cache for proportional mortality and coral population increases
     bleaching_mort = zeros(tf, n_species, n_sites)
-    c_increase = zeros(n_groups)
 
     #### End coral constants
 
@@ -551,14 +559,14 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- wave_scen[tstep, :]), depth_coeff, c_dist_t, c_dist_t1, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- wave_scen[tstep, :]), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
             # Seed each selected site
             seed_corals!(Y_pstep, vec(total_loc_area), vec(leftover_space_m²),
                 seed_locs, seeded_area, seed_sc, a_adapt, @view(Yseed[tstep, :, :]),
-                c_dist_t)
+                corals.dist_std, c_dist_t)
         end
 
         # Note: ODE is run relative to `k` area, but values are otherwise recorded
@@ -579,14 +587,28 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Ensure values are ∈ [0, 1]
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_loc_area, 0.0, 1.0)
 
-        if tstep < tf
-            adjust_DHW_distribution!(Y_cover, n_groups, c_dist_t, c_dist_t1, tstep,
-                param_set("heritability"), c_increase)
+        if tstep <= tf
+            adjust_DHW_distribution!(@view(Y_cover[tstep-1:tstep, :, :]), n_groups, c_dist_t_1, c_dist_t,
+                p.r, corals.dist_std, param_set("heritability"))
+
+            dhw_tol_log[tstep, :, :] .= c_dist_t
+            c_dist_t_1 .= c_dist_t
         end
     end
+
+    # Could collate critical DHW threshold log for corals to reduce disk space...
+    # dhw_tol_mean = dropdims(mean(mean.(dhw_tol_log), dims=3), dims=3)
+    # dhw_tol_mean_std = dropdims(mean(std.(dhw_tol_log), dims=3), dims=3)
+    # collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3),
+    #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
+    dhw_tol_mean_log = mean.(dhw_tol_log)
+    dhw_tol_mean_std_log = std.(dhw_tol_log)
+
+    collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean_log, dhw_tol_mean_std_log, dims=ndims(dhw_tol_log) + 1),
+        timesteps=1:tf, species=corals.coral_id, sites=1:n_sites, stat=[:mean, :stdev])
 
     # Avoid placing importance on sites that were not considered
     # (lower values are higher importance)
     site_ranks[site_ranks.==0.0] .= n_sites + 1
-    return (raw=Y_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks, bleaching_mortality=bleaching_mort)
+    return (raw=Y_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks, bleaching_mortality=bleaching_mort, coral_dhw_log=collated_dhw_tol_log)
 end

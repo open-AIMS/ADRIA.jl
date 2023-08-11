@@ -15,7 +15,7 @@ const ENV_STATS = "env_stats"
 const MODEL_SPEC = "model_spec"
 
 
-struct ResultSet{S,T1,T2,F,A,B,C,D,G,D1,D2,DF}
+struct ResultSet{S,T1,T2,F,A,B,C,D,G,D1,D2,D3,DF}
     name::S
     RCP::S
     invoke_time::S
@@ -40,6 +40,7 @@ struct ResultSet{S,T1,T2,F,A,B,C,D,G,D1,D2,DF}
     seed_log::B  # Values stored in m^2
     fog_log::C   # Reduction in bleaching mortality (0.0 - 1.0)
     shade_log::C # Reduction in bleaching mortality (0.0 - 1.0)
+    coral_dhw_tol_log::D3
 end
 
 
@@ -65,7 +66,8 @@ function ResultSet(input_set::AbstractArray, env_layer_md::EnvLayer, inputs_used
         NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
         NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
         NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]))
+        NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]),
+        NamedDimsArray{Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))}(log_set["coral_dhw_log"]))
 end
 
 
