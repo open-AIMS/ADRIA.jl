@@ -304,7 +304,7 @@ Nothing
 """
 function _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::SubArray, stdev::SubArray)::Nothing
     # Weight distributions based on growth rate and cover
-    for i in 6:-1:3
+    @floop for i in 6:-1:3
         sum(cover[i-1:i]) == 0.0 ? continue : false
         prop_growth = (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
         x::MixtureModel = MixtureModel([dist_t[i-1], dist_t[i]], prop_growth ./ sum(prop_growth))
@@ -345,7 +345,7 @@ function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Ma
     weights::Vector{Float64} = zeros(3)
 
     # Adjust population distribution
-    for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
+    @floop for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
         sc4::Int64 = sc1 + 3
         sc6::Int64 = sc1 + step
 
