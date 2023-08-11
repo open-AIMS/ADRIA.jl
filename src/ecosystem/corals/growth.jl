@@ -283,22 +283,22 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
 end
 
 """
-    _shift_distributions!(growth_rate, dists_t)::Nothing
+    _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::SubArray, stdev::SubArray)::Nothing
 
 Combines distributions between size classes > 1 to represent the shifts that occur as each
-size class grows. Priors for the distributions are based on the assumed growth rates for
-each size class.
+size class grows. Priors for the distributions are based on proportional cover and the 
+assumed growth rates for each size class.
 
-i.e., (w_{i+1,1}, w_{i+1,2}) := (g_{i} / sum(g_{i,i+1}), g_{i+1} / sum(g_{i,i+1}))
+i.e., (w_{i+1,1}, w_{i+1,2}) := (c_{i-1,i} / sum(c_{i-1,i})) * (g_{i-1,i} / sum(g_{i-1,i}))
 
-where w are the weights/priors and \$g\$ is the growth rates.
+where \$w\$ are the weights/priors and \$g\$ is the growth rates.
 
 # Arguments
 - `cover` : Coral cover for \$t-1\$
 - `growth_rate` : Growth rates for the given size classes/species
 - `dist_t` : Critical DHW threshold distribution for timestep \$t\$
 - `stdev` : Standard deviations of coral DHW tolerance
-- `tmp` : Reused cache for MixtureModels to avoid allocations
+
 # Returns
 Nothing
 """
@@ -323,7 +323,7 @@ end
 
 """
     adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Matrix{Distribution},
-        dist_t::Matrix{Distribution}, growth_rate::Matrix{Float64}, h²::Float64)::Nothing
+        dist_t::Matrix{Distribution}, growth_rate::Matrix{Float64}, stdev::Vector{Float64}, h²::Float64)::Nothing
 
 Adjust critical DHW thresholds for a given species/size class distribution as mortalities
 affect the distribution over time, and corals mature (moving up size classes).
@@ -334,6 +334,7 @@ affect the distribution over time, and corals mature (moving up size classes).
 - `dist_t_1` : Distributions for timestep \$t-1\$
 - `dist_t` : Distributions for timestep \$t\$
 - `growth_rate` : Growth rates for each species/size class
+- `stdev` : standard deviations of DHW tolerances for each size class
 - `h²` : heritability value
 """
 function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Matrix{Distribution},
