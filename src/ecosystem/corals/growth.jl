@@ -317,12 +317,12 @@ function _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::S
 
         # Use same stdev as target size class to maintain genetic variance
         # pers comm K.B-N (2023-08-09 16:24 AEST)
-        dist_t[i] = truncated(Normal(mean(x), stdev[i]), 0.0, mean(x) + HEAT_UB)
+        dist_t[i] = truncated(Normal(mean(x), stdev[i]), minimum(x), mean(x) + HEAT_UB)
     end
 
-    # # Size class 1 all moves up to size class 2 any way
+    # # Size class 1 all moves up to size class 2 anyway
     μ = mean(dist_t[1])
-    dist_t[2] = truncated(Normal(μ, stdev[2]), 0.0, μ + HEAT_UB)
+    dist_t[2] = truncated(Normal(μ, stdev[2]), minimum(dist_t[1]), μ + HEAT_UB)
 
     return nothing
 end
@@ -385,7 +385,7 @@ function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Ma
                 # The standard deviation is assumed to be the same as parents
                 # Note: Nominally, h² := 0.3, but ranges from 0.25 - 0.5
                 μ_t::Float64 = mean(dt_1) + (S * h²)
-                dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), 0.0, μ_t + HEAT_UB)
+                dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), minimum(d_t), μ_t + HEAT_UB)
             end
         end
     end

@@ -75,7 +75,7 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_s
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
-        tn = truncated.(Normal.(a_adapt[seed_sc], stdev[seed_sc]), 0.0, maximum.(c_dist_ti))
+        tn = truncated.(Normal.(a_adapt[seed_sc], stdev[seed_sc]), minimum.(c_dist_ti), maximum.(c_dist_ti))
 
         # If seeding an empty location, no need to do any further calculations
         if all(isapprox.(w_taxa[:, i], 1.0))
@@ -87,7 +87,7 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_s
         # proportional cover as the priors/weights
         # Priors (weights based on cover for each species)
         tx = MixtureModel[MixtureModel([t, t1], Float64[w, 1.0-w]) for ((t, t1), w) in zip(zip(c_dist_ti, tn), w_taxa[:, i])]
-        c_dist_t[seed_sc, loc] .= truncated.(Normal.(mean.(tx), stdev[seed_sc]), 0.0, maximum.(tx))
+        c_dist_t[seed_sc, loc] .= truncated.(Normal.(mean.(tx), stdev[seed_sc]), minimum.(tx), maximum.(tx))
     end
 
     return nothing
