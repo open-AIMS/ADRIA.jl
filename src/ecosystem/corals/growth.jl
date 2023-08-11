@@ -303,13 +303,7 @@ where w are the weights/priors and \$g\$ is the growth rates.
 Nothing
 """
 function _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::SubArray, stdev::SubArray)::Nothing
-    # Simplified approach
-    # Main.@infiltrate
-    # x::MixtureModel = MixtureModel([dist_t[5], dist_t[6]], cover[5:6] ./ sum(cover[5:6]))
-    # dist_t[6] = truncated(Normal(mean(x), std(x)), 0.0, mean(x) + HEAT_UB)
-    # dist_t[2:end-1] .= dist_t[1:end-2]
-
-    # Simplified with mixtures, assuming equal weighting
+    # Weight distributions based on growth rate and cover
     for i in 6:-1:3
         sum(cover[i-1:i]) == 0.0 ? continue : false
         prop_growth = (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
@@ -347,37 +341,34 @@ function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Ma
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
-    weights::Vector{Float64} = zeros(2)
+    weights::Vector{Float64} = zeros(3)
 
     # Adjust population distribution
     for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
-        # Combine distributions using a MixtureModel for all size
-        # classes above 1 (the correct size classes are selected within the
-        # function).
-        sc5::Int64 = sc1 + 4
+        sc4::Int64 = sc1 + 3
         sc6::Int64 = sc1 + step
-        # if sum(cover[1, sc5:sc6, loc]) == 0.0
-        #     continue
-        # end
 
-        # # Handle case where entire reproductive population died
-        # if sum(cover[2, sc5:sc6, loc]) == 0.0
-        #     dist_t[sc5:sc6, loc] .= truncated(Normal(0.0, 0.0), 0.0, 0.0)
-        #     continue
-        # end
+        # Skip if no cover
+        if sum(cover[1, sc1:sc6, loc]) == 0.0
+            continue
+        end
 
+        # Combine distributions using a MixtureModel for all size
+        # classes >= 4 (the correct size classes are selected within the
+        # function).
         @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc], stdev[sc1:sc6])
 
+        # Reproduction. Size class >= 3 spawn larvae.
         # A new distribution for size class 1 is then determined by taking the
-        # distribution of size classes >= 5 at time t+1 and size class 1 at time t, and 
+        # distribution of size classes >= 3 at time t+1 and size class 1 at time t, and 
         # applying the S⋅h² calculation, where:
         # - $S$ is the distance between the means of the gaussian distributions
         # - $h$ is heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
         dt_1::Truncated{Normal{Float64},Continuous,Float64,Float64,Float64} = dist_t_1[sc1, loc]
-        if any(cover[2, sc5:sc6, loc] .!= 0.0)
-            @views weights .= cover[2, sc5:sc6, loc] / sum(cover[2, sc5:sc6, loc])
+        if any(cover[2, sc4:sc6, loc] .!= 0.0)
+            @views weights .= cover[2, sc4:sc6, loc] / sum(cover[2, sc4:sc6, loc])
 
-            d_t::MixtureModel = MixtureModel(Truncated{Normal{Float64},Continuous,Float64,Float64,Float64}[dist_t[sc5:sc6, loc]...], weights)
+            d_t::MixtureModel = MixtureModel(Truncated{Normal{Float64},Continuous,Float64,Float64,Float64}[dist_t[sc4:sc6, loc]...], weights)
 
             S::Float64 = mean(d_t) - mean(dt_1)
             if S != 0.0
