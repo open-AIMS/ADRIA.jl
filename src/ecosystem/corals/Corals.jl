@@ -174,10 +174,9 @@ function coral_spec()::NamedTuple
     # unit is number of larvae per colony
     colony_area_cm2 = colony_mean_area(mean_colony_diameter_m .* 100.0)
     fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
-    fec[colony_area_cm2.<min_size_full_fec_cm2] .= 0.0
 
-    # Smallest size class do not reproduce
-    fec[:, 1:2] .= 0.0
+    # Size classes below indicated size are not fecund (reproductive)
+    fec[colony_area_cm2.<min_size_full_fec_cm2] .= 0.0
 
     # then convert to number of larvae produced per m2
     fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
@@ -197,7 +196,7 @@ function coral_spec()::NamedTuple
         0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora 
         0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora 
         0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
-        0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
+        0.2 0.2 0.040 0.026 0.020 0.020])  # Large massives
     params.mb_rate = mb'[:]
 
     # Natural adaptation / heritability
