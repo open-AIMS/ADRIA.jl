@@ -123,11 +123,16 @@ of location preference for each scenario as location ids.
 - `iv_type` : String indicating the intervention type to perform aggregation on.
 """
 function ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
-    ranks_set = ranks(:, :, string(iv_type, "_rank"))
-    location_orders = NamedDimsArray(repeat([""], size(ranks, 1), size(ranks, 2)), scenarios=1:size(ranks, 1), ranks=1:size(ranks, 2))
+    iv_dict = Dict([("seed", 1), ("shade", 2)])
+    ranks_set = ranks[intervention=iv_dict[iv_type]]
+    if ndims(ranks) == 3
+        location_orders = NamedDimsArray(repeat([""], size(ranks, 3), size(ranks, 1)), scenarios=1:size(ranks, 3), ranks=1:size(ranks, 1))
+    else
+        location_orders = NamedDimsArray(repeat([""], size(ranks, 1), size(ranks, 4), size(ranks, 2)), timesteps=ranks.timesteps, scenarios=1:size(ranks, 4), ranks=1:size(ranks, 2))
+    end
 
     for scen in 1:size(ranks, 1)
-        location_orders[scenarios=scen, intervention=1:sum(ranks_set[scenarios=scen] .!= 0.0)] .= sort(Int.(ranks_set[scenarios=scen][ranks_set[scenarios=scen].!=0.0])).sites
+        location_orders[scenarios=scen, ranks=1:sum(ranks_set[scenarios=scen] .!= 0.0)] .= sort(Int.(ranks_set[scenarios=scen][ranks_set[scenarios=scen].!=0.0])).sites
     end
     return location_orders
 end
