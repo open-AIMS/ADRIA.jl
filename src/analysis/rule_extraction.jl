@@ -43,11 +43,14 @@ Vector{Vector{Any}}
 Vector of vectors of rule conditions.
 """
 function _condition(rules::SIRUS.StableRules{Float64}, index::Int64)
-    feature_name(split) = split.splitpoint.feature_name
-    direction(split) = split.direction
-    value(split) = split.splitpoint.value
-
-    [[feature_name(s), direction(s), value(s)] for s in rules.rules[index].path.splits]
+    condition = []
+    for split in rules.rules[index].path.splits
+        feature_name = split.splitpoint.feature_name
+        direction = split.direction
+        value = split.splitpoint.value
+        push!(condition, [feature_name, direction, value])
+    end
+    return condition
 end
 
 """
