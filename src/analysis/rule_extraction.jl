@@ -5,7 +5,7 @@ import ..performance: temporal_variability
 """
     Rule{V<:Vector{Float64},W<:Vector{Vector{Any}}}
 
-# A Rule contains a condition (vector of conditional clauses) and consequent (vector 
+A Rule contains a condition (vector of conditional clauses) and consequent (vector 
 of values for then and else results of the condition)
 """
 struct Rule{V<:Vector{Float64},W<:Vector{Vector{Any}}}
@@ -19,10 +19,10 @@ end
 Vector of Rule objects. These are **not** the same as SIRUS.Rule object.
 
 # Arguments
-- `rules` - SIRUS.StableRules object
+- `rules` : SIRUS.StableRules object
 
 # Return
-Vector of Rule objects
+Vector{ADRIA.analysis.Rule{Vector{Float64}, Vector{Vector{Any}}}}
 """
 function rules(rules::SIRUS.StableRules{Float64})
     [Rule(_condition(rules, i), _consequent(rules, i)) for i in eachindex(rules.rules)]
@@ -35,10 +35,11 @@ Vector containing condition clauses. Each condition clause is a vector with thre
 components: a feature_name::String, a direction::String (< or ≤) and a value:<Float64 
 
 # Arguments
-- rules - SIRUS.StableRules object containing all rules
-- `index` - Index of the rule
+- rules : SIRUS.StableRules object containing all rules
+- `index` : Index of the rule
 
 # Return
+Vector{Vector{Any}}
 Vector of vectors of rule conditions.
 """
 function _condition(rules::SIRUS.StableRules{Float64}, index::Int64)
@@ -56,11 +57,11 @@ Vector of Rule consequent with two components: the probability of the 'then' cla
 probability of the 'else' clause (here called otherwise)
 
 # Arguments
-- rules - SIRUS.StableRules object containing all rules
-- `index` - Index of the rule
+- rules : SIRUS.StableRules object containing all rules
+- `index` : Index of the rule
 
 # Return
-Vector of rule consequents
+Vector{Float64}
 """
 function _consequent(rules::SIRUS.StableRules{Float64}, index::Int64)
     weight = rules.weights[index]
@@ -78,7 +79,7 @@ prints once, when the model is fitted and 2) this function prints the rules in a
 compact form.
 
 # Arguments
-- `rules` - Vector of Rule objects
+- `rules` : Vector of Rule objects
 """
 function print_rules(rules::Vector{Rule{Vector{Float64},Vector{Vector{Any}}}})
     condition(rule) = [c == :L ? "$(c[1]) < $(c[3])" : "$(c[1]) ≥ $(c[3])" for c in rule.condition]
