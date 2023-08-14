@@ -92,6 +92,7 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
+
         ranks_store(scenarios=scen_idx, sites=domain.site_ids[considered_sites]) .= site_selection(
             domain,
             scen,
@@ -126,7 +127,7 @@ function ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
     location_orders = NamedDimsArray(repeat([""], size(ranks, 1), size(ranks, 2)), scenarios=1:size(ranks, 1), ranks=1:size(ranks, 2))
 
     for scen in 1:size(ranks, 1)
-        location_orders[scenarios=scen, ranks=1:sum(ranks_set[scenarios=scen] .!= 0.0)] .= sort(Int.(ranks_set[scenarios=scen][ranks_set[scenarios=scen].!=0.0])).sites
+        location_orders[scenarios=scen, intervention=1:sum(ranks_set[scenarios=scen] .!= 0.0)] .= sort(Int.(ranks_set[scenarios=scen][ranks_set[scenarios=scen].!=0.0])).sites
     end
     return location_orders
 end
@@ -144,10 +145,16 @@ with which each location was selected at each rank across the location selection
 - `iv_type` : String indicating the intervention type to perform aggregation on.
 """
 function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
-    rank_frequencies = NamedDimsArray(zeros(size(ranks, 2), size(ranks, 2)), sites=ranks.sites, ranks=1:size(ranks, 2))
+    iv_dict = Dict([("seed", 1), ("shade", 2)])
+    if ndims(ranks) == 3
+        rank_frequencies = NamedDimsArray(zeros(size(ranks, 1), size(ranks, 1)), sites=ranks.sites, ranks=1:size(ranks, 1))
+    else
+        rank_frequencies = NamedDimsArray(zeros(size(ranks, 1), size(ranks, 2), size(ranks, 2)), timesteps=ranks.timesteps, sites=ranks.sites, ranks=1:size(ranks, 2))
+    end
 
     for rank in range(1, size(ranks, 2), size(ranks, 2))
-        rank_frequencies[ranks=Int64(rank)] .= sum(ranks(:, :, string(iv_type, "_rank")) .== rank, dims=:scenarios)[scenarios=1]
+        rank_frequencies[ranks=Int64(rank)] .= sum(ranks[intervention=iv_dict[iv_type]] .== rank, dims=:scenarios)[scenarios=1]
     end
+
     return rank_frequencies
 end
