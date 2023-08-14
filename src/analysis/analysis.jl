@@ -84,5 +84,6 @@ include("pareto.jl")
 include("sensitivity.jl")
 include("intervention.jl")
 include("clustering.jl")
+include("rule_extraction.jl")
 
 end
