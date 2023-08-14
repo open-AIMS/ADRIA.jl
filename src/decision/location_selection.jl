@@ -38,7 +38,7 @@ function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDi
 
     (_, _, ranks) = guided_site_selection(mcda_vars, scenario.guided, true, true, prefseedsites, prefshadesites, rankingsin, in_conn, out_conn, strong_pred)
 
-    return ranks
+    return ranks[:, 2:3]
 end
 
 """
@@ -63,10 +63,10 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64; aggregate_function=nothing,
     target_seed_sites=nothing, target_shade_sites=nothing)
     ranks_store = NamedDimsArray(
-        zeros(nrow(scenarios), length(domain.site_ids), 3),
-        scenarios=1:nrow(scenarios),
+        zeros(length(domain.site_ids), 2, nrow(scenarios)),
         sites=domain.site_ids,
-        ranks=["site_id", "seed_rank", "shade_rank"],
+        intervention=1:2,
+        scenarios=1:nrow(scenarios),
     )
 
     dhw_scens = domain.dhw_scens
