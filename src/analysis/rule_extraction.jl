@@ -16,7 +16,7 @@ end
 """
     rules(rules::SIRUS.StableRules)
 
-Vector of Rule objects. These are **not** the same as SIRUS.Rule object.
+Collates vector of Rule objects. These are **not** the same as SIRUS.Rule object.
 
 # Arguments
 - `rules` : SIRUS.StableRules object
