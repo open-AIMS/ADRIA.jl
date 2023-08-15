@@ -3,18 +3,18 @@ using StableRNGs: StableRNG
 import ..performance: temporal_variability
 
 """
-    Rule{V<:Vector{Float64},W<:Vector{Vector{Any}}}
+    Rule{V<:Vector{Vector{Any}},W<:Vector{Float64}}
 
 A Rule contains a condition (vector of conditional clauses) and consequent (vector 
 of values for then and else results of the condition)
 """
-struct Rule{V<:Vector{Float64},W<:Vector{Vector{Any}}}
-    condition::W
-    consequent::V
+struct Rule{V<:Vector{Vector},W<:Vector{Float64}}
+    condition::V
+    consequent::W
 end
 
 """
-    rules(rules::SIRUS.StableRules)
+    rules(rules::SIRUS.StableRules{Float64})
 
 Collates vector of Rule objects. These are **not** the same as SIRUS.Rule object.
 
@@ -43,7 +43,7 @@ Vector{Vector{Any}}
 Vector of vectors of rule conditions.
 """
 function _condition(rules::SIRUS.StableRules{Float64}, index::Int64)
-    condition = []
+    condition::Vector{Vector} = []
     for split in rules.rules[index].path.splits
         feature_name = split.splitpoint.feature_name
         direction = split.direction
@@ -84,7 +84,7 @@ compact form.
 # Arguments
 - `rules` : Vector of Rule objects
 """
-function print_rules(rules::Vector{Rule{Vector{Float64},Vector{Vector{Any}}}})
+function print_rules(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})
     condition(rule) = [c == :L ? "$(c[1]) < $(c[3])" : "$(c[1]) ≥ $(c[3])" for c in rule.condition]
     consequent(rule) = " then $(rule.consequent[1]) else $(rule.consequent[2])\n"
     rule_string(rule) = "if " * join(condition(rule), " ") * consequent(rule)
