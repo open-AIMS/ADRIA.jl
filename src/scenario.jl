@@ -11,22 +11,27 @@ Establish tuple of matrices/vectors for use as reusable data stores to avoid rep
 """
 function setup_cache(domain::Domain)::NamedTuple
 
-    # sim constants
+    # Simulation constants
     n_sites::Int64 = domain.coral_growth.n_sites
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
+    tf = length(timesteps(domain))
 
-    init_cov = domain.init_coral_cover
     cache = (
-        sf=zeros(n_groups, n_sites),  # stressed fecundity
-        fec_all=zeros(size(init_cov)...),  # all fecundity
+        # sf=zeros(n_groups, n_sites),  # stressed fecundity, commented out as it is disabled
+        fec_all=zeros(n_species, n_sites),  # all fecundity
         fec_scope=zeros(n_groups, n_sites),  # fecundity scope
-        dhw_step=zeros(n_sites),  # DHW each time step
-        cov_tmp=zeros(size(init_cov)...),  # Cover for previous timestep
+        dhw_step=zeros(n_sites),  # DHW for each time step
+        cov_tmp=zeros(n_species, n_sites),  # Cover for previous timestep
         depth_coeff=zeros(n_sites),  # store for depth coefficient
         site_area=Matrix{Float64}(site_area(domain)'),  # site areas
         TP_data=Matrix{Float64}(domain.TP_data),  # transition probabilities
-        waves=zeros(length(timesteps(domain)), n_species, n_sites)
+        wave_scen=zeros(tf, n_sites),  # tmp store for wave scenario
+        wave_damage=zeros(tf, n_species, n_sites),  # damage coefficient for each size class
+        dhw_tol_mean_log = zeros(tf, n_species, n_sites),  # tmp log for mean dhw tolerances
+        dhw_tol_std_log = zeros(tf, n_species, n_sites),  # tmp log for stdev dhw tolerances
+        c_dist_t_1 = fill(truncated(Normal(1.0, 0.25), 0.0, 1.0), n_species, n_sites),  # coral distribution t-1
+        c_dist_t = fill(truncated(Normal(1.0, 0.25), 0.0, 1.0), n_species, n_sites)  # coral distribution t
     )
 
     return cache
@@ -344,7 +349,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Caches
     TP_data = cache.TP_data
-    sf = cache.sf
+    # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
     fec_scope = cache.fec_scope
     dhw_t = cache.dhw_step
