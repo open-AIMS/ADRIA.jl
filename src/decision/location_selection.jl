@@ -113,7 +113,6 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
     return ranks_store
 
 end
-
 function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64, aggregation_function::Function, iv_type::String;
     target_seed_sites=nothing, target_shade_sites=nothing)
 
@@ -154,6 +153,7 @@ end
 
 
 """
+    ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String, rank_frequencies::NamedDimsArray, agg_dims::Union{Symbol,Tuple{Symbol,Symbol}})
     ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
 
 
@@ -164,6 +164,9 @@ with which each location was selected at each rank across the location selection
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
 - `iv_type` : String indicating the intervention type to perform aggregation on.
+- `rank_frequencies` : Storage container for rank frequencies.
+-`agg_dims` : dimensions to aggregate over when calculating rank frequencies.
+
 """
 function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String, rank_frequencies::NamedDimsArray, agg_dims::Union{Symbol,Tuple{Symbol,Symbol}})
     iv_dict = Dict([("seed", 1), ("shade", 2)])
@@ -185,7 +188,7 @@ end
 
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the frequency 
-with which each location was selected at each rank across the location selection scenarios.
+with which each location was selected at each rank across the location selection scenarios and over time.
 
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
