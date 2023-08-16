@@ -123,8 +123,8 @@ A StableRules object (implemented by SIRUS).
 function cluster_rules(clusters::Vector{T}, X::DataFrame, outcomes::AbstractMatrix{F},
     max_rules::T; n_trees::T=1000) where {T<:Int64,F<:Real}
     # Find robust cluster index
-    rc = robust_cluster(clusters, outcomes)
-    y = clusters .== rc
+    target = target_cluster(clusters, outcomes)
+    y = clusters .== target
 
     # Set seed and Random Number Generator
     seed = 123
@@ -145,17 +145,19 @@ Find most robust cluster.
 # Arguments
 - `clusters` : Vector with outcomes cluster indexes
 - `outcomes` : AbstractMatrix of outcomes features
+- `metric` : Metric used to aggregate outcomes for each cluster
 
 # Returns
 Index of the most robust cluster
 """
-function robust_cluster(clusters::Vector{T}, outcomes::AbstractMatrix{F}) where {T<:Int64,F<:Real}
+function target_cluster(clusters::Vector{T}, outcomes::AbstractMatrix{F}; kwargs...) where {T<:Int64,F<:Real}
     clusters_statistics::Vector{Float64} = []
+    metric = haskey(kwargs, :metric) ? kwargs[:metric] : temporal_variability
 
     max_outcome = maximum(outcomes)
     for cluster in unique(clusters)
         normalized_outcomed = outcomes[:, clusters.==cluster] ./ max_outcome
-        statistic = median(temporal_variability(normalized_outcomed; w=[0.9, 0.1]))
+        statistic = median(metric(normalized_outcomed))
         push!(clusters_statistics, statistic)
     end
 
