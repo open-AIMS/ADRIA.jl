@@ -244,8 +244,8 @@ with a depth-adjusted coefficient (from Baird et al., [4]).
    https://doi.org/10.3354/meps12732
 """
 function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
-    depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix{Distribution},
-    dist_t::Matrix{Distribution}, prop_mort::SubArray{Float64})::Nothing
+    depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix,
+    dist_t::Matrix, prop_mort::SubArray{Float64})::Nothing
     n_sp_sc, n_locs = size(cover)
 
     # Adjust distributions for all locations, ignoring juveniles
@@ -280,6 +280,8 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             cover[sp_sc, loc] = cover[sp_sc, loc] * (1.0 - mort_pop)
         end
     end
+
+    return nothing
 end
 
 """
@@ -335,9 +337,9 @@ affect the distribution over time, and corals mature (moving up size classes).
 - `stdev` : standard deviations of DHW tolerances for each size class
 - `h²` : heritability value
 """
-function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Matrix{Distribution},
-    dist_t::Matrix{Distribution}, growth_rate::Matrix{Float64}, stdev::Vector{Float64}, h²::Float64)::Nothing
-    _, n_sp_sc, n_locs = size(cover)
+function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::SubArray,
+    dist_t::SubArray, growth_rate::SubArray, stdev::SubArray, h²::Float64)::Nothing
+    _, n_sp_sc, _ = size(cover)
 
     step::Int64 = n_groups - 1
     weights::Vector{Float64} = zeros(3)

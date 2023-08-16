@@ -55,7 +55,7 @@ Note: Units for all areas are expected to be identical, and are assumed to be in
 """
 function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_space::V,
     seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V,
-    Yseed::SubArray, stdev::V, c_dist_t::Matrix{Distribution})::Nothing where {V<:Vector{Float64}}
+    Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
 
     # Calculate proportion to seed based on current available space
     scaled_seed = distribute_seeded_corals(total_location_area[seed_locs], leftover_space[seed_locs], seeded_area)
