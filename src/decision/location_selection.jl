@@ -160,21 +160,36 @@ with which each location was selected at each rank across the location selection
     `run_location_selection()`.
 - `iv_type` : String indicating the intervention type to perform aggregation on.
 """
-function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
+function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String, rank_frequencies::NamedDimsArray, agg_dims::Union{Symbol,Tuple{Symbol,Symbol}})
     iv_dict = Dict([("seed", 1), ("shade", 2)])
-    if ndims(ranks) == 3
-        rank_frequencies = NamedDimsArray(zeros(size(ranks, 1), size(ranks, 1)), sites=ranks.sites, ranks=1:size(ranks, 1))
-        n_ranks = size(ranks, 1)
-    else
-        rank_frequencies = NamedDimsArray(zeros(size(ranks, 1), size(ranks, 2), size(ranks, 2)), timesteps=ranks.timesteps, sites=ranks.sites, ranks=1:size(ranks, 2))
-        n_ranks = size(ranks, 2)
-    end
+    n_ranks = length(ranks.sites)
 
     for rank in range(1, n_ranks, n_ranks)
-        rank_frequencies[ranks=Int64(rank)] .= sum(ranks[intervention=iv_dict[iv_type]] .== rank, dims=:scenarios)[scenarios=1]
+        rank_frequencies[ranks=Int64(rank)] .= sum(ranks[intervention=iv_dict[iv_type]] .== rank, dims=agg_dims)[scenarios=1]
     end
 
     return rank_frequencies
+end
+function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
+    rank_frequencies = NamedDimsArray(zeros(length(ranks.sites), length(ranks.sites)), sites=ranks.sites, ranks=1:length(ranks.sites))
+    return ranks_to_frequencies(ranks, iv_type, rank_frequencies, :scenarios)
+end
+
+"""
+    ranks_to_frequencies_ts(ranks::NamedDimsArray, iv_type::String)
+
+
+Post-processing function for location ranks output of `run_location_selection()`. Gives the frequency 
+with which each location was selected at each rank across the location selection scenarios.
+
+# Arguments
+- `ranks` : Contains location ranks for each scenario of location selection, as created by 
+    `run_location_selection()`.
+- `iv_type` : String indicating the intervention type to perform aggregation on.
+"""
+function ranks_to_frequencies_ts(ranks::NamedDimsArray, iv_type::String)
+    rank_frequencies = NamedDimsArray(zeros(length(ranks.timesteps), length(ranks.sites), length(ranks.sites)), timesteps=ranks.timesteps, sites=ranks.sites, ranks=1:length(ranks.sites))
+    return ranks_to_frequencies(ranks, iv_type, rank_frequencies, (:scenarios, :timesteps))
 end
 
 """
