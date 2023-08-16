@@ -87,6 +87,10 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
         append!(target_site_ids, target_shade_sites)
     end
 
+    if isnothing(target_seed_sites) && isnothing(target_shade_sites)
+        target_site_ids = collect(1:length(domain.site_ids))
+    end
+
     n_sites = length(domain.site_ids)
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
 
