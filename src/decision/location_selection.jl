@@ -98,18 +98,17 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
         ranks_store(scenarios=scen_idx, sites=domain.site_ids[considered_sites]) .= site_selection(
             domain,
             scen,
-            (mean(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5,
-            (mean(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios))) .* 0.5,
+            env_mean(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
+            env_mean(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios)),
             considered_sites,
             sum_cover[scen_idx, :],
             area_to_seed
         )
     end
-    if !isnothing(aggregate_function)
-        return ranks_store, aggregate_function(ranks_store, "seed"), aggregate_function(ranks_store, "shade")
-    else
-        return ranks_store
-    end
+
+    return ranks_store
+
+end
 end
 
 """
@@ -168,6 +167,10 @@ function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
     end
 
     return rank_frequencies
+end
+
+function env_mean(env_layer, dims_agg)
+    return vec((mean(env_layer, dims=dims_agg) .+ std(env_layer, dims=dims_agg)) .* 0.5)
 end
 
 function set_depth_criteria(depth_med, depth_max, depth_min)
