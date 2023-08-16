@@ -4,6 +4,21 @@
 
 Plot scenario outcomes over time.
 
+# Examples
+```julia
+scens = ADRIA.sample(dom, 64)
+
+# ... run scenarios ...
+
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+
+# Plot scenario outcomes
+ADRIA.viz.scenario(rs, s_tac)
+
+# Plot outcomes of scenarios where SRM < 1.0
+ADRIA.viz.scenario(rs, s_tac[:, scens.SRM .< 1.0])
+```
+
 # Arguments
 - `rs` : ResultSet
 - `y` : results of scenario metric
@@ -70,7 +85,8 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
     series!(ax, y'; series_opts...)
 
     # Density (TODO: Separate into own function)
-    scen_types = scenario_type(rs)
+    scen_match = 1:nrow(rs.inputs) .∈ [_dimkeys(y).scenarios]
+    scen_types = scenario_type(rs; scenarios=scen_match)
     scen_dist = dropdims(mean(y, dims=:timesteps), dims=:timesteps)
     ax2 = Axis(g[1, 2], width=100)
     if count(scen_types.counterfactual) > 0
@@ -99,7 +115,10 @@ function ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ResultSet, y
 
     hidedecorations!(ax2)
     hidespines!(ax2)
-    ylims!(ax2, 0.0, maximum(scen_dist) + quantile(scen_dist, 0.05))
+    ylims!(ax2,
+        minimum(scen_dist) - quantile(scen_dist, 0.05),
+        maximum(scen_dist) + quantile(scen_dist, 0.05)
+    )
 
     # ax.ylabel = metric_label(metric)
     ax.xlabel = "Year"

@@ -11,7 +11,7 @@ const COLORS::Dict{Symbol,Symbol} = Dict(
 )
 
 
-function scenario_type(rs)
+function scenario_type(rs; scenarios=(:))
     inputs = rs.inputs
 
     no_seed = (inputs.N_seed_TA .== 0) .& (inputs.N_seed_CA .== 0) .& (inputs.N_seed_SM .== 0)
@@ -26,7 +26,7 @@ function scenario_type(rs)
     # Guided scenarios must be the inverse of unguided/counterfactual scenarios
     guided = Bool.(ones(Int64, size(inputs, 1)) .⊻ (counterfactual .| unguided))
 
-    return (counterfactual=counterfactual, unguided=unguided, guided=guided)
+    return (counterfactual=counterfactual[scenarios], unguided=unguided[scenarios], guided=guided[scenarios])
 end
 
 function scenario_colors(rs, weight::Float64, hide::BitVector)
