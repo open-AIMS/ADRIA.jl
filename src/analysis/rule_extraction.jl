@@ -6,7 +6,9 @@ import ..performance: temporal_variability
     Rule{V<:Vector{Vector},W<:Vector{Float64}}
 
 A Rule contains a condition (vector of conditional clauses) and consequent (vector
-of values for then and else results of the condition)
+of values for then and else results of the condition). Conditional clauses represent
+'a < b' statements. Consequents contain the probabilities of a observation begin
+past of the 'positive class' given that the condition is true or false.
 """
 struct Rule{V<:Vector{Vector},W<:Vector{Float64}}
     condition::V
@@ -17,14 +19,15 @@ end
     rules(rules::SIRUS.StableRules{Float64})
 
 Collates vector of Rule objects. These are **not** the same as SIRUS.Rule object.
+See also [`Rule`](@ref).
 
 # Arguments
-- `rules` : SIRUS.StableRules object
+- `rules` : SIRUS.StableRules object containing all rules
 
 # Returns
 Vector{ADRIA.analysis.Rule{Vector{Float64}, Vector{Vector}}}
 """
-function rules(rules::SIRUS.StableRules{Float64})
+function rules(rules::SIRUS.StableRules{Float64})::Vector{Rule{Vector{Vector},Vector{Float64}}}
     [Rule(_condition(rules, i), _consequent(rules, i)) for i in eachindex(rules.rules)]
 end
 
@@ -35,14 +38,13 @@ Vector containing condition clauses. Each condition clause is a vector with thre
 components: a feature_name::String, a direction::String (< or ≤) and a value:<Float64
 
 # Arguments
-- rules : SIRUS.StableRules object containing all rules
+- `rules` : SIRUS.StableRules object containing all rules
 - `index` : Index of the rule
 
 # Returns
-Vector{Vector}
-Vector of vectors of rule conditions.
+Vector of Rule condition clauses (each one being a vector itself).
 """
-function _condition(rules::SIRUS.StableRules{Float64}, index::Int64)
+function _condition(rules::SIRUS.StableRules{Float64}, index::Int64)::Vector{Vector}
     condition::Vector{Vector} = []
     for split in rules.rules[index].path.splits
         feature_name = split.splitpoint.feature_name
@@ -64,9 +66,9 @@ probability of the 'else' clause (here called otherwise)
 - `index` : Index of the rule
 
 # Returns
-Vector{Float64}
+Probabilities vector, one for Rule condition == true, one for Rule condition == false.
 """
-function _consequent(rules::SIRUS.StableRules{Float64}, index::Int64)
+function _consequent(rules::SIRUS.StableRules{Float64}, index::Int64)::Vector{Float64}
     weight = rules.weights[index]
     rule = rules.rules[index]
     then_probability = SIRUS._simplify_binary_probabilities(weight, rule.then)
@@ -98,11 +100,12 @@ end
 Use SIRUS package to extract rules from time series clusters based on some summary metric (default is median)
 
 # Arguments
-- `clusters` - Vector of cluster indexes for each scenario outcome
-- `X::DataFrame` - DataFrame with factors to be used as input by SIRUS
-- `outcomes` - Matrix of some metric over time for all scenarios
-- `max_rules` - Maximum number of rules, to be used as input by SIRUS
-- `n_trees` - Number of trees to be created by SIRUS algorithm
+- `clusters` : Vector of cluster indexes for each scenario outcome
+- `X` : Features to be used as input by SIRUS
+- `outcomes` : Matrix of some metric over time for all scenarios
+- `max_rules` : Maximum number of rules, to be used as input by SIRUS
+- `n_trees` : Number of trees to be created by SIRUS algorithm
+- `seed` : Seed to be used by RGN
 
 # Returns
 A StableRules object (implemented by SIRUS).
@@ -135,13 +138,13 @@ function cluster_rules(clusters::Vector{T}, X::DataFrame, outcomes::AbstractMatr
 end
 
 """
-    robust_cluster(clusters::Vector{T}, result_set::ResultSet) where {T<: Integer}
+    target_cluster(clusters::Vector{T}, result_set::ResultSet) where {T<: Integer}
 
 Find most robust cluster.
 
 # Arguments
-- `clusters` - Vector with outcomes cluster indexes
-- `outcomes` - AbstractMatrix of outcomes factors
+- `clusters` : Vector with outcomes cluster indexes
+- `outcomes` : AbstractMatrix of outcomes features
 
 # Returns
 Index of the most robust cluster
