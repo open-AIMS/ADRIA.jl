@@ -54,7 +54,7 @@ function _setup_workers()::Nothing
         end
 
         if active_cores > 1
-            @sync @async addprocs(active_cores; exeflags="--project=$(Base.active_project())")
+            addprocs(active_cores; exeflags="--project=$(Base.active_project())")
         end
     end
 
