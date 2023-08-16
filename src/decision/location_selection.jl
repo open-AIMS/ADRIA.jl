@@ -201,7 +201,7 @@ function ranks_to_frequencies_ts(ranks::NamedDimsArray, iv_type::String)
 end
 
 """
-    env_mean(env_layer, dims_agg)
+    env_mean(env_layer::AbstractArray, dims_agg)
 
 Calculates mean over specified dimensions plus half the standard deviation.
 
@@ -209,12 +209,12 @@ Calculates mean over specified dimensions plus half the standard deviation.
 - `env_layer` : Environmental data layer to calculate the mean of.
 - `dims_agg` : Dimensions to aggregate over.
 """
-function env_mean(env_layer, dims_agg)
+function env_mean(env_layer::AbstractArray, dims_agg)
     return vec((mean(env_layer, dims=dims_agg) .+ std(env_layer, dims=dims_agg)) .* 0.5)
 end
 
 """
-    set_depth_criteria(depth_med, depth_max, depth_min)
+    set_depth_criteria(depth_med::Vector{Float64}, depth_max::Float64, depth_min::Float64)
 
 Sets criteria for depth filtering in MCDA.
 
@@ -223,6 +223,6 @@ Sets criteria for depth filtering in MCDA.
 - `depth_max` : Maximum depth.
 - `depth_min` : Minimum depth.
 """
-function set_depth_criteria(depth_med, depth_max, depth_min)
+function set_depth_criteria(depth_med::Vector{Float64}, depth_max::Float64, depth_min::Float64)
     return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
 end
