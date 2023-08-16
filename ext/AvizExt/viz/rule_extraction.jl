@@ -60,7 +60,8 @@ function ADRIA.viz.rules_scatter!(g::Union{GridLayout,GridPosition}, rs::ResultS
                 sub_g[r, c],
                 xlabel=h_names[1],
                 ylabel=h_names[2],
-                title=_sub_title(h_names, condition);
+                title=_sub_title(h_names, condition),
+                titlesize=10;
                 axis_opts...
             )
 
