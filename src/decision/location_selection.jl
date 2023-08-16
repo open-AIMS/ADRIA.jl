@@ -124,6 +124,7 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
 end
 
 """
+    ranks_to_location_order(ranks::NamedDimsArray)
     ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
 
 
@@ -135,22 +136,22 @@ of location preference for each scenario as location ids.
     `run_location_selection()`.
 - `iv_type` : String indicating the intervention type to perform aggregation on.
 """
-function ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
-    iv_dict = Dict([("seed", 1), ("shade", 2)])
-    ranks_set = ranks[intervention=iv_dict[iv_type]]
-    if ndims(ranks) == 3
-        location_orders = NamedDimsArray(repeat([""], size(ranks, 3), size(ranks, 1)), scenarios=1:size(ranks, 3), ranks=1:size(ranks, 1))
-        n_scens = size(ranks, 3)
-    else
-        location_orders = NamedDimsArray(repeat([""], size(ranks, 1), size(ranks, 4), size(ranks, 2)), timesteps=ranks.timesteps, scenarios=1:size(ranks, 4), ranks=1:size(ranks, 2))
-        n_scens = size(ranks, 4)
-    end
+function ranks_to_location_order(ranks::NamedDimsArray)
+
+    n_scens = length(ranks.scenarios)
+    location_orders = NamedDimsArray(repeat([""], length(ranks.scenarios), length(ranks.sites)), scenarios=ranks.scenarios, ranks=1:length(ranks.sites))
 
     for scen in 1:n_scens
-        location_orders[scenarios=scen, ranks=1:sum(ranks_set[scenarios=scen] .!= 0.0)] .= sort(Int.(ranks_set[scenarios=scen][ranks_set[scenarios=scen].!=0.0])).sites
+        location_orders[scenarios=scen, ranks=1:sum(ranks[scenarios=scen] .!= 0.0)] .= sort(Int.(ranks[scenarios=scen][ranks[scenarios=scen].!=0.0])).sites
     end
     return location_orders
 end
+function ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
+    iv_dict = Dict([("seed", 1), ("shade", 2)])
+    ranks_set = ranks[intervention=iv_dict[iv_type]]
+    return ranks_to_location_order(ranks_set)
+end
+
 
 """
     ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
