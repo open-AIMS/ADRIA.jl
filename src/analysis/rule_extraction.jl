@@ -121,17 +121,16 @@ A StableRules object (implemented by SIRUS).
    https://doi.org//10.1214/20-EJS1792
 """
 function cluster_rules(clusters::Vector{T}, X::DataFrame, outcomes::AbstractMatrix{F},
-    max_rules::T; n_trees::T=1000) where {T<:Int64,F<:Real}
+    max_rules::T; n_trees::T=1000, seed=123) where {T<:Int64,F<:Real}
     # Find robust cluster index
     target = target_cluster(clusters, outcomes)
     y = clusters .== target
 
     # Set seed and Random Number Generator
-    seed = 123
-    _rng(seed::Int=1) = StableRNG(seed)
+    rng = StableRNG(seed)
 
     # Use SIRUS Stable Rules Classifier model to extract the rules
-    model = StableRulesClassifier(; max_rules=max_rules, n_trees=n_trees)
+    model = StableRulesClassifier(; max_rules=max_rules, n_trees=n_trees, rng=rng)
     mach = machine(model, X, y)
     fit!(mach)
     return rules(mach.fitresult)
