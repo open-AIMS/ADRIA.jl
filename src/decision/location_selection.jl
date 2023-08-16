@@ -75,7 +75,6 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
     wave_scens = domain.wave_scens
 
     # Pre-calculate maximum depth to consider
-    scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
     target_dhw_scens = unique(scenarios[:, "dhw_scenario"])
     target_wave_scens = unique(scenarios[:, "wave_scenario"])
 
@@ -90,7 +89,8 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
 
     n_sites = length(domain.site_ids)
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
-        depth_criteria = (domain.site_data.depth_med .<= scen.max_depth) .& (domain.site_data.depth_med .>= scen.depth_min)
+
+        depth_criteria = set_depth_criteria(domain.site_data.depth_med, (scen.depth_min .+ scen.depth_offset), scen.depth_min)
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
@@ -168,4 +168,8 @@ function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
     end
 
     return rank_frequencies
+end
+
+function set_depth_criteria(depth_med, depth_max, depth_min)
+    return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
 end

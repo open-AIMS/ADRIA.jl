@@ -424,7 +424,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Filter out sites outside of desired depth range
     if .!all(site_data.depth_med .== 0)
         max_depth::Float64 = param_set("depth_min") + param_set("depth_offset")
-        depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set("depth_min")) .& (site_data.depth_med .<= max_depth)
+        depth_criteria::BitArray{1} = set_depth_criteria(site_data.depth_med, max_depth, param_set("depth_min"))
 
         if any(depth_criteria .> 0)
             # If sites can be filtered based on depth, do so.
