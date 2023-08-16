@@ -191,9 +191,9 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2},
 end
 
 """
-    bleaching_mortality!(Y::AbstractArray{Float64,2}, dhw::AbstractArray{Float64},
-        depth_coeff::Vector{Float64}, dist::Matrix{Distribution},
-        dist_t1::Matrix{Distribution}, prop_mort::AbstractArray{Float64})::Nothing
+    bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
+        depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix,
+        dist_t::Matrix, prop_mort::SubArray{Float64})::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
 all non-Juvenile (> 5cm diameter) size classes. Distributions are informed by learnings from
@@ -208,9 +208,9 @@ with a depth-adjusted coefficient (from Baird et al., [4]).
 - `dhw` : DHW for all represented locations
 - `depth_coeff` : Pre-calculated depth coefficient for all locations
 - `stdev` : Standard deviation of DHW tolerance
-- `dist` : Critical DHW threshold distribution for current timestep, for all species and
+- `dist_t_1` : Critical DHW threshold distribution for current timestep, for all species and
            locations
-- `dist_t1` : Critical DHW threshold distribution for next timestep, for all species and
+- `dist_t` : Critical DHW threshold distribution for next timestep, for all species and
               locations
 - `prop_mort` : Cache to store records of bleaching mortality
 
@@ -298,9 +298,7 @@ where \$w\$ are the weights/priors and \$g\$ is the growth rates.
 - `growth_rate` : Growth rates for the given size classes/species
 - `dist_t` : Critical DHW threshold distribution for timestep \$t\$
 - `stdev` : Standard deviations of coral DHW tolerance
-
-# Returns
-Nothing
+- `tmp` : Reused cache for MixtureModels to avoid allocations
 """
 function _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::SubArray, stdev::SubArray)::Nothing
     # Weight distributions based on growth rate and cover
@@ -322,8 +320,8 @@ function _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::S
 end
 
 """
-    adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Matrix{Distribution},
-        dist_t::Matrix{Distribution}, growth_rate::Matrix{Float64}, stdev::Vector{Float64}, h²::Float64)::Nothing
+    adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::SubArray,
+        dist_t::SubArray, growth_rate::SubArray, stdev::SubArray, h²::Float64)::Nothing
 
 Adjust critical DHW thresholds for a given species/size class distribution as mortalities
 affect the distribution over time, and corals mature (moving up size classes).

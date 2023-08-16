@@ -32,10 +32,9 @@ function distribute_seeded_corals(seed_loc_area::Vector{Float64},
 end
 
 """
-    seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float64},
-        leftover_space_m²::Vector{Float64}, seed_locs::BitVector,
-        seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::Vector{Float64},
-        Yseed::SubArray, c_dist_t::Matrix{Distribution})::Nothing
+    seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_space::V,
+        seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V,
+        Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
 
 Deploy thermally enhanced corals to indicated locations ("seeding" or "outplanting").
 Increases indicated area covered by the given coral taxa and determines the modified
