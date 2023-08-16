@@ -32,6 +32,10 @@ function ts_cluster!() end
 function ts_spatial_cluster() end
 function ts_spatial_cluster!() end
 
+# Rule extraction
+function rules_scatter() end
+function rules_scatter!() end
+
 # Spatial
 function map() end
 function map!() end
