@@ -150,12 +150,11 @@ Find most robust cluster.
 Index of the most robust cluster
 """
 function target_cluster(clusters::Vector{T}, outcomes::AbstractMatrix{F}; kwargs...) where {T<:Int64,F<:Real}
-    clusters_statistics::Vector{Float64} = []
     metric = haskey(kwargs, :metric) ? kwargs[:metric] : temporal_variability
 
-    max_outcome = maximum(outcomes)
+    clusters_statistics::Vector{Float64} = []
     for cluster in unique(clusters)
-        normalized_outcomed = outcomes[:, clusters.==cluster] ./ max_outcome
+        normalized_outcomed = outcomes[:, clusters.==cluster] ./ maximum(outcomes)
         statistic = median(metric(normalized_outcomed))
         push!(clusters_statistics, statistic)
     end
