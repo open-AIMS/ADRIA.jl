@@ -102,7 +102,6 @@ Use SIRUS package to extract rules from time series clusters based on some summa
 # Arguments
 - `clusters` : Vector of cluster indexes for each scenario outcome
 - `X` : Features to be used as input by SIRUS
-- `outcomes` : Matrix of some metric over time for all scenarios
 - `max_rules` : Maximum number of rules, to be used as input by SIRUS
 - `n_trees` : Number of trees to be created by SIRUS algorithm
 - `seed` : Seed to be used by RGN
@@ -120,45 +119,17 @@ A StableRules object (implemented by SIRUS).
    Electron. J. Statist. 15 (1) 427 - 505.
    https://doi.org//10.1214/20-EJS1792
 """
-function cluster_rules(clusters::Vector{T}, X::DataFrame, outcomes::AbstractMatrix{F},
-    max_rules::T; n_trees::T=1000, seed=123) where {T<:Int64,F<:Real}
-    # Find robust cluster index
-    target = target_cluster(clusters, outcomes)
-    y = clusters .== target
+function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T; n_trees::T=1000,
+    seed=123) where {T<:Int64}
 
     # Set seed and Random Number Generator
     rng = StableRNG(seed)
 
     # Use SIRUS Stable Rules Classifier model to extract the rules
     model = StableRulesClassifier(; max_rules=max_rules, n_trees=n_trees, rng=rng)
-    mach = machine(model, X, y)
+    mach = machine(model, X, clusters)
     fit!(mach)
     return rules(mach.fitresult)
-end
-
-"""
-    target_cluster(clusters::Vector{T}, result_set::ResultSet) where {T<: Integer}
-
-Find most robust cluster.
-
-# Arguments
-- `clusters` : Vector with outcomes cluster indexes
-- `outcomes` : AbstractMatrix of outcomes features
-- `metric` : Metric used to aggregate outcomes for each cluster
-
-# Returns
-Index of the most robust cluster
-"""
-function target_cluster(clusters::Vector{T}, outcomes::AbstractMatrix{F}; metric=temporal_variability) where {T<:Int64,F<:Real}
-    clusters_statistics::Vector{Float64} = []
-    for cluster in unique(clusters)
-        normalized_outcomed = outcomes[:, clusters.==cluster] ./ maximum(outcomes)
-        statistic = median(metric(normalized_outcomed))
-        push!(clusters_statistics, statistic)
-    end
-
-    # Find index of the cluster with maximum value of summary statistic
-    return argmax(clusters_statistics)
 end
 
 """
