@@ -6,11 +6,32 @@ Note: Aggregates across the `site` dimension so trajectories over time for each 
 TODO: Produce summary stats. Currently returns just the mean.
 """
 
+"""
+    scenario_trajectory(data::AbstractArray; metric=mean)
+
+Produce scenario trajectories using the provided metric/aggregation function.
+
+# Arguments
+- `data` : Results to aggregate
+- `metric` : Function or Callable used to summarize data
+
+# Returns
+Matrix[timesteps ⋅ scenarios]
+"""
+function scenario_trajectory(data::AbstractArray; metric=mean)
+    tf = axes(data, :timesteps)
+    s::Matrix{eltype(data)} = map(metric,
+        JuliennedArrays.Slices(data[timesteps=tf], NamedDims.dim(data, :sites))
+    )
+
+    return NamedDimsArray(s, timesteps=axiskeys(data, :timesteps), scenarios=1:size(s, 2))
+end
+
 
 """
     scenario_total_cover(rs::ResultSet; kwargs...)
 
-Calculate the cluster-wide total absolute coral cover for each scenario.
+Calculate the mean absolute coral for each scenario for the entire domain.
 """
 function _scenario_total_cover(X::AbstractArray; kwargs...)
     return dropdims(sum(slice_results(X; kwargs...), dims=:sites), dims=:sites)
@@ -24,7 +45,7 @@ scenario_total_cover = Metric(_scenario_total_cover, (:timesteps, :scenarios), "
 """
     scenario_relative_cover(rs::ResultSet; kwargs...)
 
-Calculate the cluster-wide relative coral cover for each scenario.
+Calculate the mean relative coral cover for each scenario for the entire domain.
 """
 function _scenario_relative_cover(rs::ResultSet; kwargs...)
     target_sites = haskey(kwargs, :sites) ? kwargs[:sites] : (:)
@@ -45,19 +66,19 @@ Calculate the cluster-wide relative juvenile population for individual scenarios
 """
 function _scenario_juveniles(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
     @warn "`scenario_juveniles()` is deprecated and will be removed in future versions. Use `scenario_relative_juveniles()` instead."
-    return _scenario_rjuves(data, coral_spec, area; kwargs...)
+    return _scenario_relative_juveniles(data, coral_spec, area; kwargs...)
 end
 function _scenario_juveniles(rs::ResultSet; kwargs...)
     @warn "`scenario_juveniles()` is deprecated and will be removed in future versions. Use `scenario_relative_juveniles()` instead."
-    return scenario_rjuves(rs)
+    return _scenario_relative_juveniles(rs)
 end
 scenario_juveniles = Metric(_scenario_juveniles, (:timesteps, :scenario))
 
 
 """
-    scenario_rjuves(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
+    scenario_relative_juveniles(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
 
-Calculate the relative cluster-wide juvenile population for individual scenarios.
+Calculate the mean relative juvenile population for each scenario for the entire domain.
 """
 function _scenario_relative_juveniles(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)::NamedDimsArray
     ajuv = call_metric(absolute_juveniles, data, coral_spec; kwargs...)
@@ -76,7 +97,7 @@ scenario_relative_juveniles = Metric(_scenario_relative_juveniles, (:timesteps, 
     scenario_absolute_juveniles(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
     scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray
 
-Calculate the absolute cluster-wide juvenile population for individual scenarios.
+Calculate the mean absolute juvenile population for each scenario for the entire domain.
 """
 function _scenario_absolute_juveniles(data::NamedDimsArray, coral_spec::DataFrame, area::AbstractVector{<:Real}; kwargs...)
     juv = call_metric(absolute_juveniles, data, coral_spec; kwargs...)
@@ -109,7 +130,7 @@ scenario_juvenile_indicator = Metric(_scenario_juvenile_indicator, (:timesteps, 
     scenario_asv(sv::NamedDimsArray; kwargs...)
     scenario_asv(rs::ResultSet; kwargs...)
 
-Calculate the cluster-wide absolute shelter volume for each scenario.
+Calculate the mean absolute shelter volumes for each scenario for the entire domain.
 """
 function _scenario_asv(sv::NamedDimsArray; kwargs...)
     sv_sliced = slice_results(sv; kwargs...)
@@ -118,14 +139,14 @@ end
 function _scenario_asv(rs::ResultSet; kwargs...)
     return _scenario_asv(rs.outcomes[:absolute_shelter_volume]; kwargs...)
 end
-scenario_asv = Metric(_scenario_asv, (:scenario, :timesteps), "m³/m²")
+scenario_asv = Metric(_scenario_asv, (:timesteps, :scenario), "m³/m²")
 
 
 """
     scenario_rsv(sv::NamedDimsArray; kwargs...)
     scenario_rsv(rs::ResultSet; kwargs...)
 
-Calculate the cluster-wide mean relative shelter volumes for each scenario.
+Calculate the mean relative shelter volumes for each scenario for the entire domain.
 """
 function _scenario_rsv(sv::NamedDimsArray; kwargs...)
     sv_sliced = slice_results(sv; kwargs...)
@@ -134,4 +155,20 @@ end
 function _scenario_rsv(rs::ResultSet; kwargs...)
     return _scenario_rsv(rs.outcomes[:relative_shelter_volume]; kwargs...)
 end
-scenario_rsv = Metric(_scenario_rsv, (:scenario, :timesteps))
+scenario_rsv = Metric(_scenario_rsv, (:timesteps, :scenario))
+
+"""
+    scenario_evenness(ev::NamedDimsArray; kwargs...)
+    scenario_evenness(rs::ResultSet; kwargs...)
+
+Calculate the mean coral evenness for each scenario for the entire domain.
+"""
+function _scenario_evenness(ev::NamedDimsArray; kwargs...)
+    ev_sliced = slice_results(ev; kwargs...)
+    return scenario_trajectory(ev_sliced)
+    # return dropdims(mean(ev_sliced, dims=:sites), dims=:sites)
+end
+function _scenario_evenness(rs::ResultSet; kwargs...)
+    return _scenario_evenness(rs.outcomes[:coral_evenness]; kwargs...)
+end
+scenario_evenness = Metric(_scenario_evenness, (:timesteps, :scenario))

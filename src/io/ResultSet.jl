@@ -312,6 +312,14 @@ function timesteps(rs::ResultSet)
     return rs.env_layer_md.timeframe
 end
 
+function site_k_area(rs::ResultSet)::Vector{Float64}
+    return rs.site_max_coral_cover ./ 100.0
+end
+
+function site_area(rs::ResultSet)::Vector{Float64}
+    return rs.site_area
+end
+
 """
     n_locations(rs::ResultSet)
 

@@ -283,7 +283,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     end
 
     met_names = [:total_absolute_cover, :relative_shelter_volume,
-        :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator]
+        :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator, :coral_evenness]
 
     dim_struct = Dict(
         :structure => string.((:timesteps, :sites, :scenarios)),
