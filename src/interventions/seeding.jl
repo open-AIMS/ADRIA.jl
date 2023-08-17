@@ -76,7 +76,7 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_s
     # Update critical DHW distribution for deployed size classes
     for (i, loc) in enumerate(seed_locs)
         # Previous distributions
-        c_dist_t = @view(c_dist_t1[seed_sc, loc])
+        c_dist_ti = @view(c_dist_t[seed_sc, loc])
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
