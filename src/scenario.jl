@@ -320,7 +320,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     dhw_idx::Int64 = Int64(param_set("dhw_scenario"))
     wave_idx::Int64 = Int64(param_set("wave_scenario"))
 
-    dhw_scen::Matrix{Float64} = copy(domain.dhw_scens[:, :, dhw_idx])
+    dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
 
     tspan::Tuple = (0.0, 1.0)
     solver::Euler = Euler()
@@ -362,11 +362,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
     Y_cover[1, :, :] .= domain.init_coral_cover
     ode_u = zeros(n_species, n_sites)
-    cover_tmp = p.cover  # pre-allocated matrix used to avoid memory allocations
     max_cover = site_k(domain)  # Max coral cover at each site (0 - 1).
 
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
-    proportional_adjustment!(@view(Y_cover[1, :, :]), cover_tmp, max_cover)
+    proportional_adjustment!(@view(Y_cover[1, :, :]), p.cover, max_cover)
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2))  # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
@@ -464,17 +463,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_dist_t_1::Matrix{Distribution} = repeat(
-        truncated.(
-            Normal.(corals.dist_mean, corals.dist_std),
-            0.0,
-            corals.dist_mean .+ HEAT_UB
-        ),
-        1,
-        n_sites
-    )
-    c_dist_t = copy(c_dist_t_1)
-    dhw_tol_log = permutedims(repeat(c_dist_t_1, 1, 1, tf), [3, 1, 2])
+    c_dist_t_1 = cache.c_dist_t_1  # coral distribution t-1
+    c_dist_t = cache.c_dist_t  # coral distribution t
+
+    # Log of distributions
+    dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
+    dhw_tol_std_log = cache.dhw_tol_std_log  # tmp log for stdev dhw tolerances
 
     # Cache for proportional mortality and coral population increases
     bleaching_mort = zeros(tf, n_species, n_sites)
@@ -488,11 +482,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # TODO: Better conversion of Ub to wave mortality
     #       Currently scaling significant wave height by its max to non-dimensionalize values
-    wave_scen::Matrix{Float64} = copy(domain.wave_scens[:, :, wave_idx])
+    wave_scen = cache.wave_scen
+    wave_scen .= Matrix(domain.wave_scens[:, :, wave_idx])
     wave_scen .= wave_scen ./ maximum(wave_scen)
 
     # Pre-calculate proportion of survivers from wave stress
-    # Sw_t = wave_damage!(cache.waves, wave_scen, corals.wavemort90, n_species)
+    # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
     site_k_prop = max_cover'
     absolute_k_area = site_k_area(domain)'  # max possible coral area in m^2
@@ -503,7 +498,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==1])
     @inbounds for tstep::Int64 in 2:tf
         p_step::Int64 = tstep - 1
-        Y_pstep[:, :] .= Y_cover[p_step, :, :]
+        Y_pstep .= Y_cover[p_step, :, :]
 
         # Calculates scope for coral fedundity for each size class and at each site.
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, total_loc_area)
@@ -520,7 +515,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
 
-        @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
+        dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
 
         # Apply regional cooling effect before selecting locations to seed
         if (srm > 0.0) && in_shade_years
@@ -580,7 +575,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- @view(wave_scen[tstep, :])), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Y_pstep, vec(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
@@ -609,24 +604,33 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_loc_area, 0.0, 1.0)
 
         if tstep <= tf
-            adjust_DHW_distribution!(@view(Y_cover[tstep-1:tstep, :, :]), n_groups, c_dist_t_1, c_dist_t,
-                p.r, corals.dist_std, param_set("heritability"))
+            adjust_DHW_distribution!(@view(Y_cover[tstep-1:tstep, :, :]), n_groups, @view(c_dist_t_1[:,:]), @view(c_dist_t[:,:]),
+                @view(p.r[:]), @view(corals.dist_std[:]), param_set("heritability"))
 
-            dhw_tol_log[tstep, :, :] .= c_dist_t
+            # This seems to cause a memory leak, 
+            # Commenting the lines below resolves for all except the manager
+            dhw_tol_mean_log[tstep, :, :] .= mean.(c_dist_t)
+            dhw_tol_std_log[tstep, :, :] .= std.(c_dist_t)
             c_dist_t_1 .= c_dist_t
         end
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
-    # dhw_tol_mean = dropdims(mean(mean.(dhw_tol_log), dims=3), dims=3)
-    # dhw_tol_mean_std = dropdims(mean(std.(dhw_tol_log), dims=3), dims=3)
+    # dhw_tol_mean = dropdims(mean(dhw_tol_mean_log, dims=3), dims=3)
+    # dhw_tol_mean_std = dropdims(mean(dhw_tol_std_log, dims=3), dims=3)
     # collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3),
     #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
-    dhw_tol_mean_log = mean.(dhw_tol_log)
-    dhw_tol_mean_std_log = std.(dhw_tol_log)
 
-    collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean_log, dhw_tol_mean_std_log, dims=ndims(dhw_tol_log) + 1),
+    collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean_log, dhw_tol_std_log, dims=ndims(dhw_tol_mean_log) + 1),
         timesteps=1:tf, species=corals.coral_id, sites=1:n_sites, stat=[:mean, :stdev])
+
+    # Set variables to nothing so garbage collector clears them
+    # Leads to memory leak issues in multiprocessing contexts without these.
+    wave_scen = nothing
+    c_dist_t_1 = nothing
+    c_dist_t = nothing
+    dhw_tol_mean_log = nothing
+    dhw_tol_std_log = nothing
 
     # Avoid placing importance on sites that were not considered
     # (lower values are higher importance)
