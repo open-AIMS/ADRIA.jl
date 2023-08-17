@@ -318,13 +318,7 @@ function _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::S
     μ = mean(dist_t[1])
     dist_t[2] = truncated(Normal(μ, stdev[2]), minimum(dist_t[1]), μ + HEAT_UB)
 
-    # Calculate weights
-    w1::Vector{Float64} = replace!(c_increase ./ c_t1, NaN => 0.0)
-    w2::Vector{Float64} = replace!(c_t ./ c_t1, NaN => 0.0)
-
-    # Mix distributions, weighted according to their relative contributions.
-    dists_t1[moved] .= MixtureModel.(Vector{Distribution}[dists_t[moved.-1], dists_t[moved]], Vector{Float64}[w1, w2])
-    return
+    return nothing
 end
 
 """
