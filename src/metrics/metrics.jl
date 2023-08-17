@@ -313,7 +313,7 @@ juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios
 
 
 """
-    coral_evenness(X::AbstractArray{T})::AbstractArray{T} where {T<:Real}
+    coral_evenness(r_taxa_cover::AbstractArray{T})::Array{T} where {T<:Real}
     coral_evenness(rs::ResultSet)::AbstractArray{T} where {T}
 
 Calculates evenness across functional coral groups in ADRIA as a diversity metric.
@@ -333,12 +333,12 @@ function _coral_evenness(r_taxa_cover::AbstractArray{T})::Array{T} where {T<:Rea
     # Sum across groups represents functional diversity
     # Group evenness (Hill 1973, Ecology 54:427-432)
     loc_cover = dropdims(sum(r_taxa_cover, dims=2), dims=2)
-    simpson_D = zeros(n_steps, n_locs)
+    simpsons_diversity = zeros(n_steps, n_locs)
     for loc in axes(loc_cover, 2)
-        simpson_D[:, loc] = 1.0 ./ sum((r_taxa_cover[:, :, loc] ./ loc_cover[:, loc]) .^ 2, dims=2)
+        simpsons_diversity[:, loc] = 1.0 ./ sum((r_taxa_cover[:, :, loc] ./ loc_cover[:, loc]) .^ 2, dims=2)
     end
-    # simpson_D::Vector{T} = 1.0 ./ vec((r_taxa_cover ./ loc_cover) .^ 2)
-    return replace!(simpson_D, NaN => 0.0, Inf => 0.0) ./ n_grps
+
+    return replace!(simpsons_diversity, NaN => 0.0, Inf => 0.0) ./ n_grps
 end
 function _coral_evenness(rs::ResultSet)::AbstractArray
     return rs.outcomes[:coral_evenness]
@@ -361,7 +361,7 @@ Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical
 1. Aston Eoghan A., Duce Stephanie, Hoey Andrew S., Ferrari Renata (2022).
     A Protocol for Extracting Structural Metrics From 3D Reconstructions of Corals.
     Frontiers in Marine Science, 9.
-    https://doi.org/10.3389/fmars.2022.854395    
+    https://doi.org/10.3389/fmars.2022.854395
 
 """
 function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vector{Float64}}
