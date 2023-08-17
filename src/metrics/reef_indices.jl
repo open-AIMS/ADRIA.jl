@@ -159,7 +159,7 @@ reef_tourism_index = Metric(_reef_tourism_index, (:timesteps, :sites, :scenarios
     scenario_rti(rti::NamedDimsArray; kwargs...)
     scenario_rti(rs::ResultSet; kwargs...)
 
-Calculate the mean Reef Fish Index for each scenario for the entire domain.
+Calculate the mean Reef Tourism Index (RTI) for each scenario for the entire domain.
 """
 function _scenario_rti(rti::NamedDimsArray; kwargs...)
     rti_sliced = slice_results(rti; kwargs...)
@@ -231,7 +231,7 @@ reef_fish_index = Metric(_reef_fish_index, (:timesteps, :sites, :scenarios))
     scenario_rfi(rfi::NamedDimsArray; kwargs...)
     scenario_rfi(rs::ResultSet; kwargs...)
 
-Calculate the mean Reef Fish Index for each scenario for the entire domain.
+Calculate the mean Reef Fish Index (RFI) for each scenario for the entire domain.
 """
 function _scenario_rfi(rfi::NamedDimsArray; kwargs...)
     rfi_sliced = slice_results(rfi; kwargs...)
