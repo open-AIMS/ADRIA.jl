@@ -5,7 +5,7 @@ using FLoops, DataStructures
     reef_condition_index(rs)
 
 Estimates a Reef Condition Index (RCI) providing a single value that indicates the condition
-of a reef across four metrics: 
+of a reef across four metrics:
 - coral cover
 - evenness (coral diversity)
 - shelter volume, and
@@ -64,11 +64,11 @@ function _reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::A
         c = counter(rci_cats)
 
         # Get the corresponding score values by index (based on RC only)
-        # Because the index is used, it will always align with the correct category
-        # ("poor", "good", etc)
+        # Because the index is used and not the score value (0.15, 0.25, etc), it will
+        # always align with the correct category ("poor", "good", etc)
         scores = criteria(collect(keys(c)), :RC)
 
-        # RCI is assigned the minimunm score of the greatest number of metrics that meet 
+        # RCI is assigned the minimunm score of the greatest number of metrics that meet
         # `threshold`.
         # e.g., if RC and evenness are good, and sv and juves are "poor" (both meet threshold)
         #       the score is "poor".
@@ -177,9 +177,9 @@ scenario_rti = Metric(_scenario_rti, (:timesteps, :scenario))
 
 The Reef Fish Index (RFI) estimates fish biomass from relative coral cover.
 
-A linear regression (developed by Dr. R. Heneghan, Queensland University of Technology) 
+A linear regression (developed by Dr. R. Heneghan, Queensland University of Technology)
 is used to indicate the relationship between coral cover and fish biomass.
-The regression was developed with digitized data from Figures 4a and 6b in 
+The regression was developed with digitized data from Figures 4a and 6b in
 Graham & Nash (2013; see [1]).
 
 Values are provided ∈ [0, 1], where 1 indicates maximum fish biomass.
@@ -193,9 +193,9 @@ Note: Coral cover here is relative to coral habitable area (\$k\$ area).
 NamedArray[timesteps ⋅ locations ⋅ scenarios], values in kg/km²
 
 # References
-1. Graham, N.A.J., Nash, K.L., 2013. 
-The importance of structural complexity in coral reef ecosystems. 
-Coral Reefs 32, 315–326. 
+1. Graham, N.A.J., Nash, K.L., 2013.
+The importance of structural complexity in coral reef ecosystems.
+Coral Reefs 32, 315–326.
 https://doi.org/10.1007/s00338-012-0984-y
 """
 function _reef_fish_index(rc::AbstractArray, intcp_u1, intcp_u2)
