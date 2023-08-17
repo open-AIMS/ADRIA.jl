@@ -478,8 +478,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_dist_t_1 = cache.c_dist_t_1  # coral distribution t-1
-    c_dist_t = cache.c_dist_t  # coral distribution t
+    c_dist_t_1 = copy(cache.c_dist_t_1)  # coral distribution t-1
+    c_dist_t = copy(cache.c_dist_t)  # coral distribution t
 
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
