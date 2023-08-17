@@ -69,12 +69,12 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
 
     @testset "DHW distribution priors" begin
         Y_pstep = rand(36, 10)  # size class, locations
-        a_adapt = rand(1.0:6.0, 36)
-        total_location_area = fill(100.0, 10)
+        a_adapt = rand(2.0:6.0, 36)
+        total_location_area = fill(5000.0, 10)
 
         seed_locs = rand(1:10, 5)  # Pick 5 random locations
 
-        leftover_space_m² = fill(0.5, 10)
+        leftover_space_m² = fill(500.0, 10)
         seeded_area = NamedDimsArray(rand(Uniform(0.0, 500.0), 3), taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"])
 
         Yseed = zeros(2, 3, 10)
