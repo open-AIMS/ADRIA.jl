@@ -127,7 +127,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
 
             # Switch RCPs so correct data is loaded
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
-            rep_doms = Iterators.repeated(domain, size(scenarios_matrix, 1))
+            rep_doms = Iterators.repeated(domain, length(target_rows))
             scenario_args = zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), rep_doms)
             if show_progress
                 @showprogress run_msg 4 pmap(func, CachingPool(workers()), scenario_args)
@@ -286,11 +286,16 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     return nothing
 end
 function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
-    return run_scenario(idx, param_set, domain, data_store, setup_cache(domain))
+    cache = setup_cache(domain)
+    run_scenario(idx, param_set, domain, data_store, cache)
+    cache = nothing
+    return cache
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain)::NamedTuple
-    coral_params = to_coral_spec(param_set)
-    return run_model(domain, param_set, coral_params, setup_cache(domain))
+    cache = setup_cache(domain)
+    results = run_model(domain, param_set, to_coral_spec(param_set), cache)
+    cache = nothing
+    return results
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, RCP::String)::NamedTuple
     domain = switch_RCPs!(domain, RCP)
