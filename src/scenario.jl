@@ -268,7 +268,10 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
         elseif k == :site_ranks
             tmp_site_ranks[:, :, :] .= vals
         elseif k == :coral_dhw_log
-            getfield(data_store, k)[:, :, :, :, idx] .= vals
+            # Only log coral DHW tolerances if in debug mode
+            if parse(Bool, ENV["ADRIA_DEBUG"]) == true
+                getfield(data_store, k)[:, :, :, :, idx] .= vals
+            end
         else
             getfield(data_store, k)[:, :, idx] .= vals
         end
@@ -335,6 +338,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     solver::Euler = Euler()
 
     MCDA_approach::Int64 = param_set("guided")
+
+    # Environment variables are stored as strings, so convert to bool for use
+    in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
 
     # Sim constants
     sim_params = domain.sim_constants
@@ -616,10 +622,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             adjust_DHW_distribution!(@view(Y_cover[tstep-1:tstep, :, :]), n_groups, @view(c_dist_t_1[:,:]), @view(c_dist_t[:,:]),
                 @view(p.r[:]), @view(corals.dist_std[:]), param_set("heritability"))
 
-            # This seems to cause a memory leak, 
-            # Commenting the lines below resolves for all except the manager
-            dhw_tol_mean_log[tstep, :, :] .= mean.(c_dist_t)
-            dhw_tol_std_log[tstep, :, :] .= std.(c_dist_t)
+            if in_debug_mode
+                # Log dhw tolerances if in debug mode
+                dhw_tol_mean_log[tstep, :, :] .= mean.(c_dist_t)
+                dhw_tol_std_log[tstep, :, :] .= std.(c_dist_t)
+            end
+
             c_dist_t_1 .= c_dist_t
         end
     end
@@ -630,8 +638,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3),
     #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
 
-    collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean_log, dhw_tol_std_log, dims=ndims(dhw_tol_mean_log) + 1),
-        timesteps=1:tf, species=corals.coral_id, sites=1:n_sites, stat=[:mean, :stdev])
+    if in_debug_mode
+        collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean_log, dhw_tol_std_log, dims=ndims(dhw_tol_mean_log) + 1),
+            timesteps=1:tf, species=corals.coral_id, sites=1:n_sites, stat=[:mean, :stdev])
+    else
+        collated_dhw_tol_log = false
+    end
 
     # Set variables to nothing so garbage collector clears them
     # Leads to memory leak issues in multiprocessing contexts without these.

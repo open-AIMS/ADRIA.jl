@@ -119,8 +119,12 @@ end
         ADRIA.sample(dom, 16)
         ADRIA.model_spec(dom)
 
+        ENV["ADRIA_DEBUG"] = "false"
+
         p_df = ADRIA.param_table(dom)
         rs1 = ADRIA.run_scenario(p_df[1, :], dom)
+
+        delete!(ENV, "ADRIA_DEBUG")
 
         # ENV["ADRIA_THRESHOLD"] = 1e-6
         # run_scenario(p_df[1, :], dom)
