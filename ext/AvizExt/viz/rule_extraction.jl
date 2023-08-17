@@ -46,9 +46,7 @@ function ADRIA.viz.rules_scatter!(g::Union{GridLayout,GridPosition}, rs::ResultS
         for c in 1:n_cols
             # Get condition clauses to be shown in x and y axis
             index = c + (r - 1) * n_cols
-            if length(rules) < index
-                break
-            end
+            length(rules) < index && break
             condition = rules[index].condition
 
             # Feature names
