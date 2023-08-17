@@ -115,7 +115,7 @@ function _scenario_rci(rs::ResultSet; kwargs...)
 
     return _scenario_rci(rci, tac; kwargs...)
 end
-scenario_rci = Metric(_scenario_rci, (:timesteps, :scenario))
+scenario_rci = Metric(_scenario_rci, (:timesteps, :scenarios))
 
 """
     reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
@@ -168,7 +168,7 @@ end
 function _scenario_rti(rs::ResultSet; kwargs...)
     return _scenario_rti(reef_tourism_index(rs); kwargs...)
 end
-scenario_rti = Metric(_scenario_rti, (:timesteps, :scenario))
+scenario_rti = Metric(_scenario_rti, (:timesteps, :scenarios))
 
 
 """
@@ -240,4 +240,4 @@ end
 function _scenario_rfi(rs::ResultSet; kwargs...)
     return _scenario_rfi(reef_fish_index(rs); kwargs...)
 end
-scenario_rfi = Metric(_scenario_rfi, (:timesteps, :scenario))
+scenario_rfi = Metric(_scenario_rfi, (:timesteps, :scenarios))
