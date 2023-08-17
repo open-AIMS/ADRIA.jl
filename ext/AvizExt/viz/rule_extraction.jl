@@ -49,16 +49,15 @@ function ADRIA.viz.rules_scatter!(g::Union{GridLayout,GridPosition}, rs::ResultS
             length(rules) < index && break
             condition = rules[index].condition
 
-            # Feature names
-            condition_features = first.(condition)
-            foi = ms.fieldname .∈ [condition_features]
-            h_names = ms[foi, :name]
+            # Human readable feature names
+            fieldnames = first.(condition)
+            feature_names = [subset(ms, :fieldname => x -> x .== f).name[1] for f in fieldnames]
 
             ax::Axis = Axis(
                 sub_g[r, c],
-                xlabel=h_names[1],
-                ylabel=h_names[2],
-                title=_sub_title(h_names, condition),
+                xlabel=feature_names[1],
+                ylabel=feature_names[2],
+                title=_sub_title(feature_names, condition),
                 titlesize=10;
                 axis_opts...
             )
