@@ -279,6 +279,10 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
         data_store.site_ranks[:, :, :, idx] .= tmp_site_ranks
     end
 
+    if (idx % 256) == 0
+        @everywhere GC.gc()
+    end
+
     return nothing
 end
 function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
