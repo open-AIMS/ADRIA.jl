@@ -341,13 +341,13 @@ affect the distribution over time, and corals mature (moving up size classes).
 """
 function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::SubArray,
     dist_t::SubArray, growth_rate::SubArray, stdev::SubArray, h²::Float64)::Nothing
-    _, n_sp_sc, _ = size(cover)
+    _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
     weights::MVector{3, Float64} = @MVector(zeros(3))
 
     # Adjust population distribution
-    @floop for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, axes(cover, 3))
+    @floop for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
         sc6::Int64 = sc1 + step
 
         # Skip if no cover
@@ -362,9 +362,9 @@ function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Su
         # function).
         @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc], stdev[sc1:sc6])
 
-        # Reproduction. Size class >= 3 spawn larvae.
+        # Reproduction. Size class >= 4 spawn larvae.
         # A new distribution for size class 1 is then determined by taking the
-        # distribution of size classes >= 3 at time t+1 and size class 1 at time t, and 
+        # distribution of size classes >= 4 at time t+1 and size class 1 at time t, and
         # applying the Breeder's equation (S⋅h²), where:
         # - $S$ is the distance between the means of the gaussian distributions (selection differential)
         # - $h²$ is narrow-sense heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
@@ -378,7 +378,6 @@ function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Su
             if S != 0.0
                 # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
                 # The standard deviation is assumed to be the same as parents
-                # Note: Nominally, h² := 0.3, but ranges from 0.25 - 0.5
                 μ_t::Float64 = μ_dt_1 + (S * h²)
                 @views dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), minimum(d_t), μ_t + HEAT_UB)
             end
