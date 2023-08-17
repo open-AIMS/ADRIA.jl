@@ -286,7 +286,7 @@ end
     _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::SubArray, stdev::SubArray)::Nothing
 
 Combines distributions between size classes > 1 to represent the shifts that occur as each
-size class grows. Priors for the distributions are based on proportional cover and the 
+size class grows. Priors for the distributions are based on proportional cover and the
 assumed growth rates for each size class.
 
 i.e., (w_{i+1,1}, w_{i+1,2}) := (c_{i-1,i} / sum(c_{i-1,i})) * (g_{i-1,i} / sum(g_{i-1,i}))
@@ -367,7 +367,7 @@ function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Ma
 
         # Reproduction. Size class >= 3 spawn larvae.
         # A new distribution for size class 1 is then determined by taking the
-        # distribution of size classes >= 3 at time t+1 and size class 1 at time t, and 
+        # distribution of size classes >= 3 at time t+1 and size class 1 at time t, and
         # applying the S⋅h² calculation, where:
         # - $S$ is the distance between the means of the gaussian distributions
         # - $h$ is heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)

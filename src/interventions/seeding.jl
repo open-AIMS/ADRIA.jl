@@ -3,7 +3,7 @@
         available_space::Vector{Float64},
         seeded_area::NamedDimsArray)::NamedDimsArray
 
-Calculate proportion of deployed corals to be seeded at each of the selected locations. 
+Calculate proportion of deployed corals to be seeded at each of the selected locations.
 Distributes seeded corals according to current available space at each selected site.
 
 # Arguments
@@ -22,7 +22,7 @@ function distribute_seeded_corals(seed_loc_area::Vector{Float64},
     # sites
     prop_area_avail = available_space ./ sum(available_space)
 
-    # Distribute seeded corals (as area) across sites according to available space 
+    # Distribute seeded corals (as area) across sites according to available space
     # proportions:
     #     proportion * (area of 1 coral * num seeded corals)
     # Convert to relative cover proportion by dividing by site area
