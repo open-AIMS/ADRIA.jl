@@ -146,7 +146,8 @@ end
 Calculates a "nice" number of rows and columns from a given number of factors to display.
 The number of rows for subplots are calculated based on the number of desired columns.
 
-Note: `n_factors` <= 4 are always displayed with 2 columns.
+Note: `n_factors` == 1 is displayed as a single figure.
+      `n_factors` <= 4 are always displayed with 2 columns.
 
 # Arguments
 - `n_factors` : Number of factors to organize in a grid.
