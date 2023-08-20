@@ -146,7 +146,8 @@ end
 Calculates a "nice" number of rows and columns from a given number of factors to display.
 The number of rows for subplots are calculated based on the number of desired columns.
 
-Note: `n_factors` <= 4 are always displayed with 2 columns.
+Note: `n_factors` == 1 is displayed as a single figure.
+      `n_factors` <= 4 are always displayed with 2 columns.
 
 # Arguments
 - `n_factors` : Number of factors to organize in a grid.
@@ -156,6 +157,10 @@ Number of rows and columns
 """
 function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
     if n_factors <= 4
+        if n_factors == 1
+            return 1, 1
+        end
+
         n_cols::Int64 = 2
     else
         n_cols = max_cols
@@ -328,8 +333,6 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
         insert!(bounds, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
-    sub_g = g[1, 1] = GridLayout()
-
     bin_slices, factor_list, CIs = axiskeys(outcomes)
     b_slices = parse.(Float64, bin_slices)
     curr::Int64 = 1
@@ -341,7 +344,7 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
             fv_s = quantile(f_vals, b_slices)
 
             ax::Axis = Axis(
-                sub_g[r, c],
+                g[r, c],
                 title=h_names[f_names.==factors[curr]][1];
                 axis_opts...
             )
@@ -365,16 +368,34 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
         end
     end
 
-    linkyaxes!(axs...)
-    Label(sub_g[end+1, :], text=xlabel, fontsize=24)
-    Label(sub_g[1:end-1, 0], text=ylabel, fontsize=24, rotation=pi / 2)
+    if n_factors > 1
+        linkyaxes!(axs...)
+        Label(g[n_rows+1, :], text=xlabel, fontsize=24)
+        Label(g[:, 0], text=ylabel, fontsize=24, rotation=pi / 2)
 
-    if @isdefined(title_val)
-        Label(sub_g[0, :], text=title_val, fontsize=32)
+        if @isdefined(title_val)
+            Label(g[0, :], text=title_val, fontsize=32)
+        end
+    else
+        axs[1].xlabel = xlabel
+        axs[1].ylabel = ylabel
+
+        if @isdefined(title_val)
+            axs[1].title = title_val
+        end
     end
 
-    # Clear empty figures
-    trim!(sub_g)
+    try
+        # Clear empty figures
+        trim!(g)
+    catch err
+        if !(err isa MethodError)
+            # GridPosition plots a single figure so does
+            # not need empty figures to be cleared
+            # If any other error is encountered, something else happened.
+            rethrow(err)
+        end
+    end
 
     return g
 end
