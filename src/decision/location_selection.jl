@@ -146,15 +146,18 @@ function ranks_to_location_order(ranks::NamedDimsArray)
     return location_orders
 end
 function ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
-    iv_dict = Dict([("seed", 1), ("shade", 2)])
-    ranks_set = ranks[intervention=iv_dict[iv_type]]
+    ranks_set = _get_iv_type(ranks, iv_type)
     return ranks_to_location_order(ranks_set)
+end
+function ranks_to_location_order(rs::ResultSet, iv_type::String)
+    return ranks_to_location_order(rs.ranks, iv_type)
 end
 
 
 """
     ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String, rank_frequencies::NamedDimsArray, agg_dims::Union{Symbol,Tuple{Symbol,Symbol}})
     ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
+    ranks_to_frequencies(rs::ResultSet, iv_type::String)
 
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the frequency 
@@ -225,4 +228,9 @@ Sets criteria for depth filtering in MCDA.
 """
 function set_depth_criteria(depth_med::Vector{Float64}, depth_max::Float64, depth_min::Float64)
     return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
+end
+
+function _get_iv_type(ranks, iv_type)
+    iv_dict = Dict([("seed", 1), ("shade", 2)])
+    return ranks[intervention=iv_dict[iv_type]]
 end
