@@ -163,11 +163,11 @@ function target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{F};
     target_index = argmax(clusters_statistics)
     target_indexes = [target_index]
 
-    # Merge target cluster if is above 1% of size
+    # Merge target cluster if it is below 1% of size
     sizes = [size(outcomes[:, clusters.==c], 2) for c in unique(clusters)]
     target_size = sizes[target_index] / sum(sizes)
     while target_size < size_limit
-        # Nullify targe_index to find the next argmax
+        # Nullify target_index to find the next argmax
         clusters_statistics[target_index] = 0
 
         # Find next best cluster and add to target_indexes
