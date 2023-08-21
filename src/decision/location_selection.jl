@@ -125,6 +125,7 @@ end
 """
     ranks_to_location_order(ranks::NamedDimsArray)
     ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
+    ranks_to_location_order(rs::ResultSet, iv_type::String)
 
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the order 
@@ -134,6 +135,7 @@ of location preference for each scenario as location ids.
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
 - `iv_type` : String indicating the intervention type to perform aggregation on.
+- `rs` : ADRIA ResultSet.
 """
 function ranks_to_location_order(ranks::NamedDimsArray)
 
