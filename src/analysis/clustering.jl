@@ -140,17 +140,18 @@ end
 Categorize all clusters into target or non-target according to some metric.
 
 # Arguments
-- `clusters` : Vector with outcomes cluster indexes
-- `outcomes` : AbstractMatrix of outcomes features
+- `clusters` : Vector with outcome cluster indexes
+- `outcomes` : AbstractMatrix of scenario outcomes
 - `metric` : Metric used to aggregate outcomes for each cluster
-- `size_limit` : This function will repeatedely merge the best cluster with the second best
+- `size_limit` : This function will iteratively merge the best cluster with the second best
     if the fraction of scenarios inside it is below `size_limit`
 
 # Returns
 Vector containing 1's for target and 0's for non-target clusters
 """
 function target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{F};
-    metric=temporal_variability, size_limit=0.01) where {T<:Int64,F<:Real}
+    metric=temporal_variability, size_limit=0.01)::Vector{T} where {T<:Int64,F<:Real}
+
     # Compute statistic for each cluster
     clusters_statistics::Vector{Float64} = []
     for cluster in unique(clusters)
@@ -159,10 +160,7 @@ function target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{F};
         push!(clusters_statistics, statistic)
     end
 
-    # Index of target cluster
     target_index = argmax(clusters_statistics)
-
-    # Index of all target clusters (it may be more than one depending on the below)
     target_indexes = [target_index]
 
     # Merge target cluster if is above 1% of size
@@ -181,5 +179,5 @@ function target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{F};
     end
 
     # Return new clusters vector with only 1 and 0 for target and non-target clusters
-    [c ∈ target_indexes ? 1 : 0 for c in clusters]
+    return [c ∈ target_indexes ? 1 : 0 for c in clusters]
 end
