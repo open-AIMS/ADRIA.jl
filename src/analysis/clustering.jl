@@ -11,7 +11,7 @@ time steps and \$S\$ is number of scenarios.
 # Arguments
 - `x` : series matrix of shape \$T ⋅ S\$
 
-# Return
+# Returns
 Vector of \$N\$ elements
 
 # Examples
@@ -132,4 +132,52 @@ function time_series_clustering(result_set::ResultSet, data::AbstractMatrix{T}, 
 
     # Assign cluster 0 for filtered sites to use same indexing as the input data
     return [site != 0 ? popfirst!(clusters) : 0 for site in non_null_sites]
+end
+
+"""
+    target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{F}; metric=temporal_variability, size_limit=0.01) where {T<:Int64,F<:Real}
+
+Categorize all clusters into target or non-target according to some metric.
+
+# Arguments
+- `clusters` : Vector with outcome cluster indexes
+- `outcomes` : AbstractMatrix of scenario outcomes
+- `metric` : Metric used to aggregate outcomes for each cluster
+- `size_limit` : This function will iteratively merge the best cluster with the second best
+    if the fraction of scenarios inside it is below `size_limit`
+
+# Returns
+Vector containing 1's for target and 0's for non-target clusters
+"""
+function target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{F};
+    metric=temporal_variability, size_limit=0.01)::Vector{T} where {T<:Int64,F<:Real}
+
+    # Compute statistic for each cluster
+    clusters_statistics::Vector{Float64} = []
+    for cluster in unique(clusters)
+        normalized_outcomed = outcomes[:, clusters.==cluster] ./ maximum(outcomes)
+        statistic = median(metric(normalized_outcomed))
+        push!(clusters_statistics, statistic)
+    end
+
+    target_index = argmax(clusters_statistics)
+    target_indexes = [target_index]
+
+    # Merge target cluster if it is below 1% of size
+    sizes = [size(outcomes[:, clusters.==c], 2) for c in unique(clusters)]
+    target_size = sizes[target_index] / sum(sizes)
+    while target_size < size_limit
+        # Nullify target_index to find the next argmax
+        clusters_statistics[target_index] = 0
+
+        # Find next best cluster and add to target_indexes
+        target_index = argmax(clusters_statistics)
+        push!(target_indexes, target_index)
+
+        # Update target_size with next best cluster size
+        target_size += sizes[target_index] / sum(sizes)
+    end
+
+    # Return new clusters vector with only 1 and 0 for target and non-target clusters
+    return [c ∈ target_indexes ? 1 : 0 for c in clusters]
 end
