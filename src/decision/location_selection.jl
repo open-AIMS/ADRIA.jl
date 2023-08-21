@@ -211,7 +211,7 @@ with which each location was selected at each rank across the location selection
 """
 function ranks_to_frequencies_ts(ranks::NamedDimsArray, iv_type::String)
     rank_frequencies = NamedDimsArray(zeros(length(ranks.timesteps), length(ranks.sites), length(ranks.sites)), timesteps=ranks.timesteps, sites=ranks.sites, ranks=1:length(ranks.sites))
-    return ranks_to_frequencies(ranks, iv_type, rank_frequencies, (:scenarios, :timesteps))
+    return ranks_to_frequencies(ranks, iv_type, rank_frequencies, :scenarios)
 end
 
 function location_selection_frequencies(ranks::NamedDimsArray, ind_metrics::Vector{Int64}, iv_type::String, n_loc_int::Int)
