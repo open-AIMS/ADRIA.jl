@@ -207,12 +207,12 @@ for a selection of scenarios (e.g. selected robust scenarios)
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.- `ind_metrics` : String indicating the intervention type to perform aggregation on.
-- `ind_metrics` : Indices for selected scenarios (such as robust scenarios).
 - `iv_type` : indicates intervention log to use ("seed", "shade" or "fog").
 - `n_loc_int` : number of locations which are intervened at for each intervention decision.
+- `ind_metrics` : Indices for selected scenarios (such as robust scenarios). Defaults to all scenarios.
 
 """
-function location_selection_frequencies(ranks::NamedDimsArray, ind_metrics::Vector{Int64}, iv_type::String, n_loc_int::Int64)
+function location_selection_frequencies(ranks::NamedDimsArray, iv_type::String, n_loc_int::Int64; ind_metrics=collect(1:length(ranks.scenarios)))
 
     ranks_frequencies = ranks_to_frequencies_ts(ranks[scenarios=ind_metrics], iv_type; n_ranks=n_loc_int)
     loc_count = dropdims(sum(ranks_frequencies[ranks=1:n_loc_int], dims=[1, 3]), dims=3)[timesteps=1]
