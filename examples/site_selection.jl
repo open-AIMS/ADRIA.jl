@@ -16,7 +16,7 @@ sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(scens, 1))
 
 @info "Run site selection"
 # Use run_site_selection to get ranks
-ranks = run_site_selection(dom, criteria_df, sum_cover, area_to_seed)
+ranks = run_site_selection(dom, scens, sum_cover, area_to_seed)
 # Use an aggregation function to get location selection frequency.
 
 @info "Calculate rank aggregations"
