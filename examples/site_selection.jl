@@ -1,5 +1,5 @@
 using ADRIA
-using ADRIA: run_site_selection, ranks_to_frequencies, ranks_to_location_order, location_selection_frequencies
+using ADRIA: run_site_selection, ranks_to_frequencies, ranks_to_frequencies_ts, ranks_to_location_order, location_selection_frequencies
 using DataFrames
 
 
@@ -28,3 +28,9 @@ location_selection_frequency = location_selection_frequencies(rank, "seed", n_lo
 rank_frequencies_seed = run_site_selection(dom, scens, sum_cover, area_to_seed, ranks_to_frequencies, "seed")
 # To get location rank order as site ids:
 location_order_seed = run_site_selection(dom, scens, sum_cover, area_to_seed, ranks_to_location_order, "seed")
+
+# Example using ADRIA runs
+scens = ADRIA.sample(dom, 8) # Get scenario dataframe.
+rs = ADRIA.run_scenarios(scens, dom, "45") # Run scenarios.
+rank_freq = ranks_to_frequencies(rs.ranks, "seed") # Get rank frequencies.
+rank_freq_ts = ranks_to_frequencies_ts(rs.ranks, "seed") # Get rank frequencies over time.
