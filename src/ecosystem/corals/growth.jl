@@ -337,12 +337,12 @@ affect the distribution over time, and corals mature (moving up size classes).
 - `stdev` : standard deviations of DHW tolerances for each size class
 - `h²` : heritability value
 """
-function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t_1::Matrix{T},
-    dist_t::Matrix{T}, growth_rate::Matrix{F}, stdev::Vector{F}, h²::F)::Nothing where {T<:Truncated,F<:Float64}
+function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t_1::SubArray{T},
+    dist_t::SubArray{T}, growth_rate::SubArray{F}, stdev::SubArray{F}, h²::F)::Nothing where {T<:Truncated,F<:Float64}
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
-    weights::MVector{3, Float64} = @MVector(zeros(3))
+    weights::MVector{3,Float64} = @MVector(zeros(3))
 
     # Adjust population distribution
     @floop for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
@@ -353,34 +353,33 @@ function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t_1:
             continue
         end
 
-        sc4::Int64 = sc1 + 3
-
         # Combine distributions using a MixtureModel for all size
         # classes >= 4 (the correct size classes are selected within the
         # function).
         @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc], stdev[sc1:sc6])
 
+        # sc4::Int64 = sc1 + 3
         # Reproduction. Size class >= 4 spawn larvae.
         # A new distribution for size class 1 is then determined by taking the
         # distribution of size classes >= 4 at time t+1 and size class 1 at time t, and
         # applying the S⋅h² calculation, where:
         # - $S$ is the distance between the means of the gaussian distributions
         # - $h²$ is narrow-sense heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
-        dt_1::Truncated{Normal{Float64},Continuous,Float64,Float64,Float64} = dist_t_1[sc1, loc]
-        if sum(cover[2, sc4:sc6, loc]) > 0.0
-        # applying the Breeder's equation (S⋅h²), where:
-            @views weights .= cover[2, sc4:sc6, loc] / sum(cover[2, sc4:sc6, loc])
-            @views d_t::MixtureModel = MixtureModel(dist_t[sc4:sc6, loc], weights)
-            
-            μ_dt_1 = mean(dist_t_1[sc1, loc])
-            S::Float64 = mean(d_t) - μ_dt_1
-            if S != 0.0
-                # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
-                # The standard deviation is assumed to be the same as parents
-                μ_t::Float64 = μ_dt_1 + (S * h²)
-                @views dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), minimum(d_t), μ_t + HEAT_UB)
-            end
-        end
+        # dt_1::Truncated{Normal{Float64},Continuous,Float64,Float64,Float64} = dist_t_1[sc1, loc]
+        # if sum(cover[2, sc4:sc6, loc]) > 0.0
+        # # applying the Breeder's equation (S⋅h²), where:
+        #     @views weights .= cover[2, sc4:sc6, loc] / sum(cover[2, sc4:sc6, loc])
+        #     @views d_t::MixtureModel = MixtureModel(dist_t[sc4:sc6, loc], weights)
+
+        #     μ_dt_1 = mean(dist_t_1[sc1, loc])
+        #     S::Float64 = mean(d_t) - μ_dt_1
+        #     if S != 0.0
+        #         # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
+        #         # The standard deviation is assumed to be the same as parents
+        #         μ_t::Float64 = μ_dt_1 + (S * h²)
+        #         @views dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), minimum(d_t), μ_t + HEAT_UB)
+        #     end
+        # end
     end
 
     return nothing
