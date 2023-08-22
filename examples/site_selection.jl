@@ -15,9 +15,12 @@ area_to_seed = 962.11  # Area of seeded corals in m^2.
 # Initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of sites)).
 sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(scens, 1))
 
+@info "Run site selection"
 # Use run_site_selection to get ranks
 ranks = run_site_selection(dom, criteria_df, sum_cover, area_to_seed)
 # Use an aggregation function to get location selection frequency.
+
+@info "Calculate rank aggregations"
 n_loc_int = 5 # number of sites selected at each step.
 location_selection_frequency = location_selection_frequencies(rank, "seed", n_loc_int)
 
