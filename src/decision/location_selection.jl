@@ -67,7 +67,7 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
     ranks_store = NamedDimsArray(
         zeros(length(domain.site_ids), 2, nrow(scenarios)),
         sites=domain.site_ids,
-        intervention=1:2,
+        intervention=["seed", "shade"],
         scenarios=1:nrow(scenarios),
     )
 
@@ -103,7 +103,7 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
             domain,
             scen,
             vec((mean(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5),
-            vec((mean(dhw_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5),
+            vec((mean(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios))) .* 0.5),
             considered_sites,
             sum_cover[scen_idx, :],
             area_to_seed
@@ -145,7 +145,7 @@ function ranks_to_location_order(ranks::NamedDimsArray)
     return location_orders
 end
 function ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
-    ranks_set = _get_iv_type(ranks, iv_type)
+    ranks_set = ranks[intervention=iv_type]
     return ranks_to_location_order(ranks_set)
 end
 
@@ -166,7 +166,7 @@ with which each location was selected at each rank across the location selection
 
 """
 function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String, rank_frequencies::NamedDimsArray, agg_dims::Union{Symbol,Tuple{Symbol,Symbol}}; n_ranks=length(ranks.sites))
-    selected_ranks = _get_iv_type(ranks, iv_type)
+    selected_ranks = ranks[intervention=iv_type]
     for rank in range(1, n_ranks, n_ranks)
         rank_frequencies[ranks=Int64(rank)] .= sum(selected_ranks .== rank, dims=agg_dims)[scenarios=1]
     end
@@ -219,18 +219,4 @@ function location_selection_frequencies(ranks::NamedDimsArray, ind_metrics::Vect
     loc_count = dropdims(sum(ranks_frequencies[ranks=1:n_loc_int], dims=[1, 3]), dims=3)[timesteps=1]
 
     return loc_count
-end
-
-"""
-    _get_iv_type(ranks::NamedDimsArray, iv_type::String)
-
-Function to retrieve intervention key for ranks.
-# Arguments
-`ranks` : Contains location ranks for each scenario of location selection, as created by 
-    `run_location_selection()`.
-- `iv_type` : Intervention type.
-"""
-function _get_iv_type(ranks::NamedDimsArray, iv_type::String)
-    iv_dict = Dict([("seed", 1), ("shade", 2)])
-    return ranks[intervention=iv_dict[iv_type]]
 end
