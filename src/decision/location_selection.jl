@@ -173,10 +173,8 @@ function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String, rank_frequ
 
     return rank_frequencies
 end
-function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String)
-    if ndims(ranks) == 3
-        agg_dims = :scenarios
-    else
+function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String; agg_dims=:scenarios)
+    if ndims(ranks) == 4
         agg_dims = (:timesteps, :scenarios)
     end
     rank_frequencies = NamedDimsArray(zeros(length(ranks.sites), length(ranks.sites)), sites=ranks.sites, ranks=1:length(ranks.sites))
