@@ -25,7 +25,6 @@ function setup_cache(domain::Domain)::NamedTuple
         cov_tmp=zeros(n_species, n_sites),  # Cover for previous timestep
         depth_coeff=zeros(n_sites),  # store for depth coefficient
         site_area=Matrix{Float64}(site_area(domain)'),  # site areas
-        TP_data=Matrix{Float64}(domain.TP_data),  # transition probabilities
         wave_scen=zeros(tf, n_sites),  # tmp store for wave scenario
         wave_damage=zeros(tf, n_species, n_sites),  # damage coefficient for each size class
         dhw_tol_mean_log = zeros(tf, n_species, n_sites),  # tmp log for mean dhw tolerances

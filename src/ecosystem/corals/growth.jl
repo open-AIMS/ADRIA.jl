@@ -244,8 +244,8 @@ with a depth-adjusted coefficient (from Baird et al., [4]).
    https://doi.org/10.3354/meps12732
 """
 function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
-    depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix,
-    dist_t::Matrix, prop_mort::SubArray{Float64})::Nothing
+    depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix{<:Distribution},
+    dist_t::Matrix{<:Distribution}, prop_mort::SubArray{Float64})::Nothing
     n_sp_sc, n_locs = size(cover)
 
     # Adjust distributions for all locations, ignoring juveniles
@@ -302,14 +302,12 @@ where \$w\$ are the weights/priors and \$g\$ is the growth rates.
 - `stdev` : Standard deviations of coral DHW tolerance
 - `tmp` : Reused cache for MixtureModels to avoid allocations
 """
-function _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::SubArray, stdev::SubArray)::Nothing
+function _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{<:Truncated}, stdev::SubArray{F})::Nothing where {F<:Float64}
     # Weight distributions based on growth rate and cover
     for i in 6:-1:3
-        if sum(cover[i-1:i]) == 0.0
-            continue
-        end
-        prop_growth::Vector{Float64} = @views (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
-        @views x::MixtureModel = MixtureModel([dist_t[i-1], dist_t[i]], prop_growth ./ sum(prop_growth))
+        sum(cover[i-1:i]) == 0.0 ? continue : false
+        prop_growth = @views (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
+        x::MixtureModel = MixtureModel(dist_t[i-1:i], prop_growth ./ sum(prop_growth))
 
         # Use same stdev as target size class to maintain genetic variance
         # pers comm K.B-N (2023-08-09 16:24 AEST)
@@ -339,8 +337,8 @@ affect the distribution over time, and corals mature (moving up size classes).
 - `stdev` : standard deviations of DHW tolerances for each size class
 - `h²` : heritability value
 """
-function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::SubArray,
-    dist_t::SubArray, growth_rate::SubArray, stdev::SubArray, h²::Float64)::Nothing
+function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t_1::Matrix{T},
+    dist_t::Matrix{T}, growth_rate::Matrix{F}, stdev::Vector{F}, h²::F)::Nothing where {T<:Truncated,F<:Float64}
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
@@ -365,14 +363,15 @@ function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Su
         # Reproduction. Size class >= 4 spawn larvae.
         # A new distribution for size class 1 is then determined by taking the
         # distribution of size classes >= 4 at time t+1 and size class 1 at time t, and
-        # applying the Breeder's equation (S⋅h²), where:
-        # - $S$ is the distance between the means of the gaussian distributions (selection differential)
+        # applying the S⋅h² calculation, where:
+        # - $S$ is the distance between the means of the gaussian distributions
         # - $h²$ is narrow-sense heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
-        # - The complement of $h²$ is regarded as the environmental influence
-        if sum(@view(cover[2, sc4:sc6, loc])) > 0.0
+        dt_1::Truncated{Normal{Float64},Continuous,Float64,Float64,Float64} = dist_t_1[sc1, loc]
+        if sum(cover[2, sc4:sc6, loc]) > 0.0
+        # applying the Breeder's equation (S⋅h²), where:
             @views weights .= cover[2, sc4:sc6, loc] / sum(cover[2, sc4:sc6, loc])
-            @views d_t::MixtureModel = MixtureModel([dist_t[sc4:sc6, loc]...], weights)
-
+            @views d_t::MixtureModel = MixtureModel(dist_t[sc4:sc6, loc], weights)
+            
             μ_dt_1 = mean(dist_t_1[sc1, loc])
             S::Float64 = mean(d_t) - μ_dt_1
             if S != 0.0
@@ -530,7 +529,7 @@ Note: Units for all areas are assumed to be in m².
 
 # Arguments
 - `fec_scope` : fecundity scope
-- `TP_data` : Transition probability
+- `TP_data` : Transition probability (rows: source locations; cols: sink locations)
 - `leftover_space` : difference between sites' maximum carrying capacity and current coral cover (\$k - C_s\$)
 - `α` : max number of settlers / m²
 - `β` : larvae / m² required to produce 50% of maximum settlement
