@@ -21,7 +21,7 @@ ranks = run_site_selection(dom, scens, sum_cover, area_to_seed)
 
 @info "Calculate rank aggregations"
 n_loc_int = 5 # number of sites selected at each step.
-location_selection_frequency = location_selection_frequencies(rank, "seed", n_loc_int)
+location_selection_frequency = location_selection_frequencies(ranks, "seed", n_loc_int)
 
 # Use aggregation function within run_site_selection to get direct output.
 # To get rank frequencies:
