@@ -212,7 +212,7 @@ for a selection of scenarios (e.g. selected robust scenarios)
 - `ind_metrics` : Optional vector indicating selection of scenarios to calculate for.
 
 """
-function location_selection_frequencies(ranks::NamedDimsArray, iv_type::String, n_loc_int::Int64; ind_metrics=collect(1:length(ranks.scenarios)))
+function location_selection_frequencies(ranks::NamedDimsArray, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(ranks.scenarios)))
 
     ranks_frequencies = ranks_to_frequencies_ts(ranks[scenarios=ind_metrics], iv_type; n_ranks=n_loc_int)
     loc_count = dropdims(sum(ranks_frequencies[ranks=1:n_loc_int], dims=[1, 3]), dims=3)[timesteps=1]
