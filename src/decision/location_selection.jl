@@ -94,7 +94,7 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
     n_sites = length(domain.site_ids)
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
 
-        depth_criteria = set_depth_criteria(domain.site_data.depth_med, (scen.depth_min .+ scen.depth_offset), scen.depth_min)
+        depth_criteria = (domain.site_data.depth_med .<= (scen.depth_min .+ scen.depth_offset)) .& (domain.site_data.depth_med .>= scen.depth_min)
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
@@ -102,8 +102,8 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
         ranks_store(scenarios=scen_idx, sites=domain.site_ids[considered_sites]) .= site_selection(
             domain,
             scen,
-            env_mean(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
-            env_mean(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios)),
+            vec((mean(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5),
+            vec((mean(dhw_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5),
             considered_sites,
             sum_cover[scen_idx, :],
             area_to_seed
@@ -206,7 +206,8 @@ Post-processing function for intervention logs. Calculates the frequencies with 
 for a selection of scenarios (e.g. selected robust scenarios)
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
-    `run_location_selection()`.- `ind_metrics` : String indicating the intervention type to perform aggregation on.
+    `run_location_selection()`.
+- `ind_metrics` : String indicating the intervention type to perform aggregation on.
 - `ind_metrics` : Indices for selected scenarios (such as robust scenarios).
 - `iv_type` : indicates intervention log to use ("seed", "shade" or "fog").
 - `n_loc_int` : number of locations which are intervened at for each intervention decision.
@@ -221,33 +222,15 @@ function location_selection_frequencies(ranks::NamedDimsArray, ind_metrics::Vect
 end
 
 """
-    env_mean(env_layer::AbstractArray, dims_agg)
+    _get_iv_type(ranks::NamedDimsArray, iv_type::String)
 
-Calculates mean over specified dimensions plus half the standard deviation.
-
+Function to retrieve intervention key for ranks.
 # Arguments
-- `env_layer` : Environmental data layer to calculate the mean of.
-- `dims_agg` : Dimensions to aggregate over.
+`ranks` : Contains location ranks for each scenario of location selection, as created by 
+    `run_location_selection()`.
+- `iv_type` : Intervention type.
 """
-function env_mean(env_layer::AbstractArray, dims_agg)
-    return vec((mean(env_layer, dims=dims_agg) .+ std(env_layer, dims=dims_agg)) .* 0.5)
-end
-
-"""
-    set_depth_criteria(depth_med::Vector{Float64}, depth_max::Float64, depth_min::Float64)
-
-Sets criteria for depth filtering in MCDA.
-
-# Arguments
-- `depth_med` : Median depth (length n_locs).
-- `depth_max` : Maximum depth.
-- `depth_min` : Minimum depth.
-"""
-function set_depth_criteria(depth_med::Vector{Float64}, depth_max::Float64, depth_min::Float64)
-    return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
-end
-
-function _get_iv_type(ranks, iv_type)
+function _get_iv_type(ranks::NamedDimsArray, iv_type::String)
     iv_dict = Dict([("seed", 1), ("shade", 2)])
     return ranks[intervention=iv_dict[iv_type]]
 end
