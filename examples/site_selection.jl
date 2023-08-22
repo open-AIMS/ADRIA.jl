@@ -1,5 +1,5 @@
 using ADRIA
-using ADRIA: run_site_selection
+using ADRIA: run_site_selection, ranks_to_frequencies, ranks_to_location_order, location_selection_frequencies
 using DataFrames
 
 
@@ -7,12 +7,21 @@ using DataFrames
 here = @__DIR__
 dom = ADRIA.load_domain(joinpath(here, "Example_domain"))
 
-criteria_df = ADRIA.sample_site_selection(dom, 8) # get scenario dataframe
+scens = ADRIA.sample_site_selection(dom, 8) # Get scenario dataframe.
 
-area_to_seed = 962.11  # area of seeded corals in m^2
-ts = 5  # time step to perform site selection at
+area_to_seed = 962.11  # Area of seeded corals in m^2.
 
-# initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of sites))
-sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(criteria_df, 1))
+# Initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of sites)).
+sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(scens, 1))
 
-ranks = run_site_selection(dom, criteria_df, sum_cover, area_to_seed, ts)
+# Use run_site_selection to get ranks
+ranks = run_site_selection(dom, criteria_df, sum_cover, area_to_seed)
+# Use an aggregation function to get location selection frequency.
+n_loc_int = 5 # number of sites selected at each step.
+location_selection_frequency = location_selection_frequencies(rank, "seed", n_loc_int)
+
+# Use aggregation function within run_site_selection to get direct output.
+# To get rank frequencies:
+rank_frequencies_seed = run_site_selection(dom, scens, sum_cover, area_to_seed, ranks_to_frequencies, "seed")
+# To get location rank order as site ids:
+location_order_seed = run_site_selection(dom, scens, sum_cover, area_to_seed, ranks_to_location_order, "seed")
