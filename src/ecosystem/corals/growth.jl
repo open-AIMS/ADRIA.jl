@@ -191,9 +191,9 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2},
 end
 
 """
-    bleaching_mortality!(Y::AbstractArray{Float64,2}, dhw::AbstractArray{Float64},
-        depth_coeff::Vector{Float64}, dist::Matrix{Distribution},
-        dist_t1::Matrix{Distribution}, prop_mort::AbstractArray{Float64})::Nothing
+    bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
+        depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix,
+        dist_t::Matrix, prop_mort::SubArray{Float64})::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
 all non-Juvenile (> 5cm diameter) size classes. Distributions are informed by learnings from
@@ -208,9 +208,9 @@ with a depth-adjusted coefficient (from Baird et al., [4]).
 - `dhw` : DHW for all represented locations
 - `depth_coeff` : Pre-calculated depth coefficient for all locations
 - `stdev` : Standard deviation of DHW tolerance
-- `dist` : Critical DHW threshold distribution for current timestep, for all species and
+- `dist_t_1` : Critical DHW threshold distribution for current timestep, for all species and
            locations
-- `dist_t1` : Critical DHW threshold distribution for next timestep, for all species and
+- `dist_t` : Critical DHW threshold distribution for next timestep, for all species and
               locations
 - `prop_mort` : Cache to store records of bleaching mortality
 
@@ -244,8 +244,8 @@ with a depth-adjusted coefficient (from Baird et al., [4]).
    https://doi.org/10.3354/meps12732
 """
 function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
-    depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix{Distribution},
-    dist_t::Matrix{Distribution}, prop_mort::SubArray{Float64})::Nothing
+    depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix,
+    dist_t::Matrix, prop_mort::SubArray{Float64})::Nothing
     n_sp_sc, n_locs = size(cover)
 
     # Adjust distributions for all locations, ignoring juveniles
@@ -280,6 +280,8 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             cover[sp_sc, loc] = cover[sp_sc, loc] * (1.0 - mort_pop)
         end
     end
+
+    return nothing
 end
 
 """
@@ -298,16 +300,16 @@ where \$w\$ are the weights/priors and \$g\$ is the growth rates.
 - `growth_rate` : Growth rates for the given size classes/species
 - `dist_t` : Critical DHW threshold distribution for timestep \$t\$
 - `stdev` : Standard deviations of coral DHW tolerance
-
-# Returns
-Nothing
+- `tmp` : Reused cache for MixtureModels to avoid allocations
 """
 function _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::SubArray, stdev::SubArray)::Nothing
     # Weight distributions based on growth rate and cover
     for i in 6:-1:3
-        sum(cover[i-1:i]) == 0.0 ? continue : false
-        prop_growth = (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
-        x::MixtureModel = MixtureModel([dist_t[i-1], dist_t[i]], prop_growth ./ sum(prop_growth))
+        if sum(cover[i-1:i]) == 0.0
+            continue
+        end
+        prop_growth::Vector{Float64} = @views (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
+        @views x::MixtureModel = MixtureModel([dist_t[i-1], dist_t[i]], prop_growth ./ sum(prop_growth))
 
         # Use same stdev as target size class to maintain genetic variance
         # pers comm K.B-N (2023-08-09 16:24 AEST)
@@ -322,8 +324,8 @@ function _shift_distributions!(cover::SubArray, growth_rate::SubArray, dist_t::S
 end
 
 """
-    adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Matrix{Distribution},
-        dist_t::Matrix{Distribution}, growth_rate::Matrix{Float64}, stdev::Vector{Float64}, h²::Float64)::Nothing
+    adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::SubArray,
+        dist_t::SubArray, growth_rate::SubArray, stdev::SubArray, h²::Float64)::Nothing
 
 Adjust critical DHW thresholds for a given species/size class distribution as mortalities
 affect the distribution over time, and corals mature (moving up size classes).
@@ -337,16 +339,15 @@ affect the distribution over time, and corals mature (moving up size classes).
 - `stdev` : standard deviations of DHW tolerances for each size class
 - `h²` : heritability value
 """
-function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Matrix{Distribution},
-    dist_t::Matrix{Distribution}, growth_rate::Matrix{Float64}, stdev::Vector{Float64}, h²::Float64)::Nothing
+function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::SubArray,
+    dist_t::SubArray, growth_rate::SubArray, stdev::SubArray, h²::Float64)::Nothing
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
-    weights::Vector{Float64} = zeros(3)
+    weights::MVector{3, Float64} = @MVector(zeros(3))
 
     # Adjust population distribution
-    for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
-        sc4::Int64 = sc1 + 3
+    @floop for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
         sc6::Int64 = sc1 + step
 
         # Skip if no cover
@@ -354,30 +355,31 @@ function adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t_1::Ma
             continue
         end
 
+        sc4::Int64 = sc1 + 3
+
         # Combine distributions using a MixtureModel for all size
         # classes >= 4 (the correct size classes are selected within the
         # function).
         @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc], stdev[sc1:sc6])
 
-        # Reproduction. Size class >= 3 spawn larvae.
+        # Reproduction. Size class >= 4 spawn larvae.
         # A new distribution for size class 1 is then determined by taking the
-        # distribution of size classes >= 3 at time t+1 and size class 1 at time t, and
-        # applying the S⋅h² calculation, where:
-        # - $S$ is the distance between the means of the gaussian distributions
-        # - $h$ is heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
-        dt_1::Truncated{Normal{Float64},Continuous,Float64,Float64,Float64} = dist_t_1[sc1, loc]
-        if any(cover[2, sc4:sc6, loc] .!= 0.0)
+        # distribution of size classes >= 4 at time t+1 and size class 1 at time t, and
+        # applying the Breeder's equation (S⋅h²), where:
+        # - $S$ is the distance between the means of the gaussian distributions (selection differential)
+        # - $h²$ is narrow-sense heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
+        # - The complement of $h²$ is regarded as the environmental influence
+        if sum(@view(cover[2, sc4:sc6, loc])) > 0.0
             @views weights .= cover[2, sc4:sc6, loc] / sum(cover[2, sc4:sc6, loc])
+            @views d_t::MixtureModel = MixtureModel([dist_t[sc4:sc6, loc]...], weights)
 
-            d_t::MixtureModel = MixtureModel(Truncated{Normal{Float64},Continuous,Float64,Float64,Float64}[dist_t[sc4:sc6, loc]...], weights)
-
-            S::Float64 = mean(d_t) - mean(dt_1)
+            μ_dt_1 = mean(dist_t_1[sc1, loc])
+            S::Float64 = mean(d_t) - μ_dt_1
             if S != 0.0
                 # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
                 # The standard deviation is assumed to be the same as parents
-                # Note: Nominally, h² := 0.3, but ranges from 0.25 - 0.5
-                μ_t::Float64 = mean(dt_1) + (S * h²)
-                dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), minimum(d_t), μ_t + HEAT_UB)
+                μ_t::Float64 = μ_dt_1 + (S * h²)
+                @views dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), minimum(d_t), μ_t + HEAT_UB)
             end
         end
     end
@@ -416,6 +418,7 @@ function fecundity_scope!(fec_groups::AbstractArray{T,2}, fec_all::AbstractArray
     for (i, (s, e)) in enumerate(zip(1:ngroups:nclasses, ngroups:ngroups:nclasses+1))
         @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
+
     return nothing
 end
 

@@ -11,22 +11,27 @@ Establish tuple of matrices/vectors for use as reusable data stores to avoid rep
 """
 function setup_cache(domain::Domain)::NamedTuple
 
-    # sim constants
+    # Simulation constants
     n_sites::Int64 = domain.coral_growth.n_sites
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
+    tf = length(timesteps(domain))
 
-    init_cov = domain.init_coral_cover
     cache = (
-        sf=zeros(n_groups, n_sites),  # stressed fecundity
-        fec_all=zeros(size(init_cov)...),  # all fecundity
+        # sf=zeros(n_groups, n_sites),  # stressed fecundity, commented out as it is disabled
+        fec_all=zeros(n_species, n_sites),  # all fecundity
         fec_scope=zeros(n_groups, n_sites),  # fecundity scope
-        dhw_step=zeros(n_sites),  # DHW each time step
-        cov_tmp=zeros(size(init_cov)...),  # Cover for previous timestep
+        dhw_step=zeros(n_sites),  # DHW for each time step
+        cov_tmp=zeros(n_species, n_sites),  # Cover for previous timestep
         depth_coeff=zeros(n_sites),  # store for depth coefficient
         site_area=Matrix{Float64}(site_area(domain)'),  # site areas
         TP_data=Matrix{Float64}(domain.TP_data),  # transition probabilities
-        waves=zeros(length(timesteps(domain)), n_species, n_sites)
+        wave_scen=zeros(tf, n_sites),  # tmp store for wave scenario
+        wave_damage=zeros(tf, n_species, n_sites),  # damage coefficient for each size class
+        dhw_tol_mean_log = zeros(tf, n_species, n_sites),  # tmp log for mean dhw tolerances
+        dhw_tol_std_log = zeros(tf, n_species, n_sites),  # tmp log for stdev dhw tolerances
+        c_dist_t_1 = fill(truncated(Normal(1.0, 0.25), 0.0, 1.0), n_species, n_sites),  # coral distribution t-1
+        c_dist_t = fill(truncated(Normal(1.0, 0.25), 0.0, 1.0), n_species, n_sites)  # coral distribution t
     )
 
     return cache
@@ -89,7 +94,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         factors=names(scenarios_df)
     )
 
-    parallel = (nrow(param_df) >= 4096) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(param_df) >= 2048) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
@@ -104,16 +109,16 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
             #       Julia kernel to crash in multi-processing contexts.
             #       Getting each worker to create its own cache reduces serialization time
             #       (at the cost of increased run time) but resolves the kernel crash issue.
-            @everywhere @eval begin
+            @sync @async @everywhere @eval begin
                 using ADRIA
-                func = (dfx) -> run_scenario(dfx..., domain, data_store)
+                func = (dfx) -> run_scenario(dfx..., data_store)
             end
         end
 
         @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
 
         # Define local helper
-        func = dfx -> run_scenario(dfx..., domain, data_store)
+        func = (dfx) -> run_scenario(dfx..., data_store)
     end
 
     if parallel
@@ -121,12 +126,13 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
             run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
 
             # Switch RCPs so correct data is loaded
-            domain = switch_RCPs!(domain, rcp)
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
+            rep_doms = Iterators.repeated(domain, length(target_rows))
+            scenario_args = zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), rep_doms)
             if show_progress
-                @showprogress run_msg 4 pmap(func, CachingPool(workers()), zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+                @showprogress run_msg 4 pmap(func, CachingPool(workers()), scenario_args)
             else
-                pmap(func, CachingPool(workers()), zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+                pmap(func, CachingPool(workers()), scenario_args)
             end
         end
     else
@@ -134,7 +140,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         cache = setup_cache(domain)
 
         # Define local helper
-        func = dfx -> run_scenario(dfx..., domain, data_store, cache)
+        func = dfx -> run_scenario(dfx..., data_store, cache)
 
         for rcp in RCP
             run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
@@ -142,10 +148,12 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
             # Switch RCPs so correct data is loaded
             domain = switch_RCPs!(domain, rcp)
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
+            rep_doms = Iterators.repeated(domain, size(scenarios_matrix, 1))
+            scenario_args = zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), rep_doms)
             if show_progress
-                @showprogress run_msg 4 map(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+                @showprogress run_msg 4 map(func, scenario_args)
             else
-                map(func, zip(target_rows, eachrow(scenarios_matrix[target_rows, :])))
+                map(func, scenario_args)
             end
         end
     end
@@ -179,7 +187,18 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
 
     coral_params = to_coral_spec(param_set)
     if domain.RCP == ""
-        throw("No RCP set for domain. Use `ADRIA.switch_RCPs!() to select an RCP to run scenarios with.")
+        local rcp
+        try
+            rcp = param_set("RCP")  # Try extracting from NamedDimsArray
+        catch err
+            if !(err isa MethodError)
+                rethrow(err)
+            end
+
+            rcp = param_set.RCP  # Extract from dataframe
+        end
+
+        domain = switch_RCPs!(domain, string(Int64(rcp)))
     end
 
     result_set = run_model(domain, param_set, coral_params, cache)
@@ -249,7 +268,10 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
         elseif k == :site_ranks
             tmp_site_ranks[:, :, :] .= vals
         elseif k == :coral_dhw_log
-            getfield(data_store, k)[:, :, :, :, idx] .= vals
+            # Only log coral DHW tolerances if in debug mode
+            if parse(Bool, ENV["ADRIA_DEBUG"]) == true
+                getfield(data_store, k)[:, :, :, :, idx] .= vals
+            end
         else
             getfield(data_store, k)[:, :, idx] .= vals
         end
@@ -260,21 +282,23 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
         data_store.site_ranks[:, :, :, idx] .= tmp_site_ranks
     end
 
-    # There seems to be an issue when using `pmap` for distributed tasks, where the
-    # garbage collector is not run leading to excessive memory use (Julia v1.9.2).
-    # Force garbage collection if > 95% of total memory is found to be in use.
-    if (Sys.free_memory() ./ Sys.total_memory()) .< 0.05
-        GC.gc()
+    if (idx % 256) == 0
+        @everywhere GC.gc()
     end
 
     return nothing
 end
 function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
-    return run_scenario(idx, param_set, domain, data_store, setup_cache(domain))
+    cache = setup_cache(domain)
+    run_scenario(idx, param_set, domain, data_store, cache)
+    cache = nothing
+    return cache
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain)::NamedTuple
-    coral_params = to_coral_spec(param_set)
-    return run_model(domain, param_set, coral_params, setup_cache(domain))
+    cache = setup_cache(domain)
+    results = run_model(domain, param_set, to_coral_spec(param_set), cache)
+    cache = nothing
+    return results
 end
 function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, RCP::String)::NamedTuple
     domain = switch_RCPs!(domain, RCP)
@@ -308,12 +332,15 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     dhw_idx::Int64 = Int64(param_set("dhw_scenario"))
     wave_idx::Int64 = Int64(param_set("wave_scenario"))
 
-    dhw_scen::Matrix{Float64} = copy(domain.dhw_scens[:, :, dhw_idx])
+    dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
 
     tspan::Tuple = (0.0, 1.0)
     solver::Euler = Euler()
 
     MCDA_approach::Int64 = param_set("guided")
+
+    # Environment variables are stored as strings, so convert to bool for use
+    in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
 
     # Sim constants
     sim_params = domain.sim_constants
@@ -337,7 +364,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Caches
     TP_data = cache.TP_data
-    sf = cache.sf
+    # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
     fec_scope = cache.fec_scope
     dhw_t = cache.dhw_step
@@ -350,11 +377,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     Y_cover::Array{Float64,3} = zeros(tf, n_species, n_sites)  # Coral cover relative to total site area
     Y_cover[1, :, :] .= domain.init_coral_cover
     ode_u = zeros(n_species, n_sites)
-    cover_tmp = p.cover  # pre-allocated matrix used to avoid memory allocations
     max_cover = site_k(domain)  # Max coral cover at each site (0 - 1).
 
     # Proportionally adjust initial cover (handles inappropriate initial conditions)
-    proportional_adjustment!(@view(Y_cover[1, :, :]), cover_tmp, max_cover)
+    proportional_adjustment!(@view(Y_cover[1, :, :]), p.cover, max_cover)
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2))  # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
@@ -446,20 +472,18 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Prep site selection
         mcda_vars = DMCDA_vars(domain, param_set, depth_priority, sum(Y_cover[1, :, :], dims=1), area_to_seed)
+
+        # Number of time steps in environmental layers to look ahead when making decisions
+        plan_horizon::Int64 = Int64(param_set("plan_horizon"))
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_dist_t_1::Matrix{Distribution} = repeat(
-        truncated.(
-            Normal.(corals.dist_mean, corals.dist_std),
-            0.0,
-            corals.dist_mean .+ HEAT_UB
-        ),
-        1,
-        n_sites
-    )
-    c_dist_t = copy(c_dist_t_1)
-    dhw_tol_log = permutedims(repeat(c_dist_t_1, 1, 1, tf), [3, 1, 2])
+    c_dist_t_1 = copy(cache.c_dist_t_1)  # coral distribution t-1
+    c_dist_t = copy(cache.c_dist_t)  # coral distribution t
+
+    # Log of distributions
+    dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
+    dhw_tol_std_log = cache.dhw_tol_std_log  # tmp log for stdev dhw tolerances
 
     # Cache for proportional mortality and coral population increases
     bleaching_mort = zeros(tf, n_species, n_sites)
@@ -473,24 +497,23 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # TODO: Better conversion of Ub to wave mortality
     #       Currently scaling significant wave height by its max to non-dimensionalize values
-    wave_scen::Matrix{Float64} = copy(domain.wave_scens[:, :, wave_idx])
+    wave_scen = cache.wave_scen
+    wave_scen .= Matrix(domain.wave_scens[:, :, wave_idx])
     wave_scen .= wave_scen ./ maximum(wave_scen)
 
     # Pre-calculate proportion of survivers from wave stress
-    # Sw_t = wave_damage!(cache.waves, wave_scen, corals.wavemort90, n_species)
+    # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
     site_k_prop = max_cover'
     absolute_k_area = site_k_area(domain)'  # max possible coral area in m^2
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     tmp::Matrix{Float64} = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
 
-    env_horizon = zeros(Int64(param_set("plan_horizon") + 1), n_sites)  # temporary cache for planning horizon
-
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==1])
     @inbounds for tstep::Int64 in 2:tf
         p_step::Int64 = tstep - 1
-        Y_pstep[:, :] .= Y_cover[p_step, :, :]
+        Y_pstep .= Y_cover[p_step, :, :]
 
         # Calculates scope for coral fedundity for each size class and at each site.
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, total_loc_area)
@@ -507,7 +530,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
 
-        @views dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
+        dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
 
         # Apply regional cooling effect before selecting locations to seed
         if (srm > 0.0) && in_shade_years
@@ -519,13 +542,16 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         if is_guided && (in_seed_years || in_shade_years)
             # Update dMCDA values
-            horizon = tstep:tstep+Int64(param_set("plan_horizon"))
+
+            # Determine subset of data to select data for planning horizon
+            horizon::UnitRange{Int64} = tstep:min(tstep + plan_horizon, tf)
+            d_s::UnitRange{Int64} = 1:length(horizon)
 
             # Put more weight on projected conditions closer to the decision point
-            env_horizon .= decay .* dhw_scen[horizon, :]
+            @views env_horizon = decay[d_s] .* dhw_scen[horizon, :]
             mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
 
-            env_horizon .= decay .* wave_scen[horizon, :]
+            @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
             mcda_vars.dam_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
         end
         if is_guided && (in_seed_years || in_shade_years)
@@ -564,7 +590,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(Y_pstep, dhw_t .* (1.0 .- wave_scen[tstep, :]), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Y_pstep, vec(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
@@ -593,24 +619,39 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_loc_area, 0.0, 1.0)
 
         if tstep <= tf
-            adjust_DHW_distribution!(@view(Y_cover[tstep-1:tstep, :, :]), n_groups, c_dist_t_1, c_dist_t,
-                p.r, corals.dist_std, param_set("heritability"))
+            adjust_DHW_distribution!(@view(Y_cover[tstep-1:tstep, :, :]), n_groups, @view(c_dist_t_1[:,:]), @view(c_dist_t[:,:]),
+                @view(p.r[:]), @view(corals.dist_std[:]), param_set("heritability"))
 
-            dhw_tol_log[tstep, :, :] .= c_dist_t
+            if in_debug_mode
+                # Log dhw tolerances if in debug mode
+                dhw_tol_mean_log[tstep, :, :] .= mean.(c_dist_t)
+                dhw_tol_std_log[tstep, :, :] .= std.(c_dist_t)
+            end
+
             c_dist_t_1 .= c_dist_t
         end
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
-    # dhw_tol_mean = dropdims(mean(mean.(dhw_tol_log), dims=3), dims=3)
-    # dhw_tol_mean_std = dropdims(mean(std.(dhw_tol_log), dims=3), dims=3)
+    # dhw_tol_mean = dropdims(mean(dhw_tol_mean_log, dims=3), dims=3)
+    # dhw_tol_mean_std = dropdims(mean(dhw_tol_std_log, dims=3), dims=3)
     # collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3),
     #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
-    dhw_tol_mean_log = mean.(dhw_tol_log)
-    dhw_tol_mean_std_log = std.(dhw_tol_log)
 
-    collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean_log, dhw_tol_mean_std_log, dims=ndims(dhw_tol_log) + 1),
-        timesteps=1:tf, species=corals.coral_id, sites=1:n_sites, stat=[:mean, :stdev])
+    if in_debug_mode
+        collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean_log, dhw_tol_std_log, dims=ndims(dhw_tol_mean_log) + 1),
+            timesteps=1:tf, species=corals.coral_id, sites=1:n_sites, stat=[:mean, :stdev])
+    else
+        collated_dhw_tol_log = false
+    end
+
+    # Set variables to nothing so garbage collector clears them
+    # Leads to memory leak issues in multiprocessing contexts without these.
+    wave_scen = nothing
+    c_dist_t_1 = nothing
+    c_dist_t = nothing
+    dhw_tol_mean_log = nothing
+    dhw_tol_std_log = nothing
 
     # Avoid placing importance on sites that were not considered
     # (lower values are higher importance)

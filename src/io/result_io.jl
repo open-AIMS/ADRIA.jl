@@ -176,7 +176,12 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     )
 
     # 36 is the number of species/groups represented
-    coral_dhw_log = zcreate(Float32, tf, 36, n_sites, 2, n_scens; name="coral_dhw_log", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(tf, 36, n_sites, 2, 1), attrs=attrs)
+    local coral_dhw_log
+    if parse(Bool, ENV["ADRIA_DEBUG"]) == true
+        coral_dhw_log = zcreate(Float32, tf, 36, n_sites, 2, n_scens; name="coral_dhw_log", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(tf, 36, n_sites, 2, 1), attrs=attrs)
+    else
+        coral_dhw_log = zcreate(Float32, tf, 36, 1, 2, n_scens; name="coral_dhw_log", fill_value=0.0, fill_as_missing=false, path=log_fn, chunks=(tf, 36, 1, 2, 1), attrs=attrs)
+    end
 
     return ranks, seed_log, fog_log, shade_log, coral_dhw_log
 end

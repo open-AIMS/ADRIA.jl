@@ -81,7 +81,7 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
         seed_sc = BitVector([i ∈ [2, 8, 15] for i in 1:36])
 
         # Initial distributions
-        c_dist_t::Matrix{Distribution} = fill(truncated(Normal(1.0, 0.1), 0.0, 2.0), 36, 10)
+        c_dist_t = fill(truncated(Normal(1.0, 0.1), 0.0, 2.0), 36, 10)
         orig_dist = copy(c_dist_t)
 
         dist_std = rand(36)

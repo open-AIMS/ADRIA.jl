@@ -32,10 +32,9 @@ function distribute_seeded_corals(seed_loc_area::Vector{Float64},
 end
 
 """
-    seed_corals!(cover::Matrix{Float64}, total_location_area::Vector{Float64},
-        leftover_space_m²::Vector{Float64}, seed_locs::BitVector,
-        seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::Vector{Float64},
-        Yseed::SubArray, c_dist_t::Matrix{Distribution})::Nothing
+    seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_space::V,
+        seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V,
+        Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
 
 Deploy thermally enhanced corals to indicated locations ("seeding" or "outplanting").
 Increases indicated area covered by the given coral taxa and determines the modified
@@ -56,7 +55,7 @@ Note: Units for all areas are expected to be identical, and are assumed to be in
 """
 function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_space::V,
     seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V,
-    Yseed::SubArray, stdev::V, c_dist_t::Matrix{Distribution})::Nothing where {V<:Vector{Float64}}
+    Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
 
     # Calculate proportion to seed based on current available space
     scaled_seed = distribute_seeded_corals(total_location_area[seed_locs], leftover_space[seed_locs], seeded_area)
@@ -65,8 +64,14 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_s
     @views cover[seed_sc, seed_locs] .+= scaled_seed
     Yseed[:, seed_locs] .= scaled_seed
 
-    # Calculate w_taxa using proportion of area (used as priors for MixtureModel)
+    # Calculate distribution weights using proportion of area (used as priors for MixtureModel)
+    # Note: It is entirely possible for a location to be ranked in the top N, but
+    #       with no deployments (for a given species). A location with 0 cover 
+    #       and no deployments will therefore be NaN due to zero division. 
+    #       These are replaced with 1.0 so that the distribution for unseeded
+    #       corals are used.
     w_taxa::Matrix{Float64} = scaled_seed ./ cover[seed_sc, seed_locs]
+    replace!(w_taxa, NaN=>1.0)
 
     # Update critical DHW distribution for deployed size classes
     for (i, loc) in enumerate(seed_locs)
