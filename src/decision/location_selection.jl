@@ -67,7 +67,7 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Abs
     ranks_store = NamedDimsArray(
         zeros(length(domain.site_ids), 2, nrow(scenarios)),
         sites=domain.site_ids,
-        intervention=["seed", "shade"],
+        intervention=1:2,
         scenarios=1:nrow(scenarios),
     )
 
