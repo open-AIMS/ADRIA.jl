@@ -195,15 +195,20 @@ function ranks_to_frequencies_ts(ranks::NamedDimsArray, iv_type::String; n_ranks
     rank_frequencies = NamedDimsArray(zeros(length(ranks.timesteps), length(ranks.sites), length(ranks.sites)), timesteps=ranks.timesteps, sites=ranks.sites, ranks=1:length(ranks.sites))
     return ranks_to_frequencies(ranks, iv_type, rank_frequencies, :scenarios; n_ranks=n_ranks)
 end
+function ranks_to_frequencies_ts(rs::ResultSet, iv_type::String; n_ranks=length(ranks.sites))
+    return ranks_to_frequencies_ts(rs.ranks, iv_type; n_ranks=n_ranks)
+end
 
 """
-    location_selection_frequencies(ranks::NamedDimsArray, ind_metrics::Vector{Int64}, iv_type::String, n_loc_int::Int64)
-
+    location_selection_frequencies(ranks::NamedDimsArray, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(ranks.scenarios)))
+    location_selection_frequencies(rs::ResultSet, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(ranks.scenarios)))
+ 
 Post-processing function for intervention logs. Calculates the frequencies with which locations were selected for a particular intervention,
 for a selection of scenarios (e.g. selected robust scenarios)
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
+- `rs` : ADRIA result set.
 - `ind_metrics` : Indices for selected scenarios (such as robust scenarios).
 - `iv_type` : indicates intervention log to use ("seed", "shade" or "fog").
 - `n_loc_int` : number of locations which are intervened at for each intervention decision.
@@ -211,8 +216,13 @@ for a selection of scenarios (e.g. selected robust scenarios)
 
 """
 function location_selection_frequencies(ranks::NamedDimsArray, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(ranks.scenarios)))
+    ranks_frequencies = ranks_to_frequencies(ranks[scenarios=ind_metrics], iv_type; n_ranks=n_loc_int)
+    loc_count = sum(ranks_frequencies[ranks=1:n_loc_int], dims=2)[ranks=1]
 
-    ranks_frequencies = ranks_to_frequencies_ts(ranks[scenarios=ind_metrics], iv_type; n_ranks=n_loc_int)
+    return loc_count
+end
+function location_selection_frequencies(rs::ResultSet, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(ranks.scenarios)))
+    ranks_frequencies = ranks_to_frequencies_ts(rs.ranks[scenarios=ind_metrics], iv_type; n_ranks=n_loc_int)
     loc_count = dropdims(sum(ranks_frequencies[ranks=1:n_loc_int], dims=[1, 3]), dims=3)[timesteps=1]
 
     return loc_count
