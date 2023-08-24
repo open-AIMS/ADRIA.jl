@@ -174,6 +174,7 @@ function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFr
     # Only Intervention, EnvironmentalLayer and Criteria factors are perturbed,
     # all other factors are fixed to their default values
     scens = repeat(param_table(d), n)
+    select!(scens, Not(:RCP))  # remove RCP column added by param_table()
     scens[:, subset_spec.fieldname] .= sample(subset_spec, n, sampler)
 
     return scens
