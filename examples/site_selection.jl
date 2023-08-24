@@ -21,8 +21,7 @@ ranks = run_site_selection(dom, scens, sum_cover, area_to_seed)
 # Use an aggregation function to get location selection frequency.
 
 @info "Calculate rank aggregations"
-n_loc_int = 5 # number of sites selected at each step.
-location_selection_frequency = location_selection_frequencies(ranks, "seed", n_loc_int)
+location_selection_frequency = location_selection_frequencies(ranks, "seed")
 
 # Use aggregation function within run_site_selection to get direct output.
 # To get rank frequencies:
@@ -33,5 +32,6 @@ location_order_seed = run_site_selection(dom, scens, sum_cover, area_to_seed, ra
 # Example using ADRIA runs
 scens = ADRIA.sample(dom, 8) # Get scenario dataframe.
 rs = ADRIA.run_scenarios(scens, dom, "45") # Run scenarios.
-rank_freq = ranks_to_frequencies(rs.ranks, "seed") # Get rank frequencies.
-rank_freq_ts = ranks_to_frequencies_ts(rs.ranks, "seed") # Get rank frequencies over time.
+rank_freq = ranks_to_frequencies(rs, "seed") # Get rank frequencies.
+rank_freq_ts = ranks_to_frequencies_ts(rs, "seed") # Get rank frequencies over time.
+selection_freq = location_selection_frequencies(rs, "seed") # Get rank frequencies over time.
