@@ -61,7 +61,7 @@ end
     area_to_seed = 662.11  # area of seeded corals in m^2
 
     sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(scens, 1))
-    ranks = ADRIA.rank_locations(dom, criteria_df, sum_cover, area_to_seed)
+    ranks = ADRIA.run_site_selection(dom, criteria_df, sum_cover, area_to_seed)
 
     @test length(ranks.scenarios) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
     @test length(ranks.sites) == length(dom.site_ids) || "Ranks storage is not correct size for this domain."
