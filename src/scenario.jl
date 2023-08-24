@@ -533,7 +533,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Filter out sites outside of desired depth range
     if .!all(site_data.depth_med .== 0)
         max_depth::Float64 = param_set("depth_min") + param_set("depth_offset")
-        depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set("depth_min")) .& (site_data.depth_med .<= max_depth)
+        depth_criteria::BitArray{1} = set_depth_criteria(site_data.depth_med, max_depth, param_set("depth_min"))
 
         if any(depth_criteria .> 0)
             # If sites can be filtered based on depth, do so.
@@ -638,10 +638,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
             # Put more weight on projected conditions closer to the decision point
             @views env_horizon = decay[d_s] .* dhw_scen[horizon, :]
-            mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
+            mcda_vars.heat_stress_prob .= env_mean(env_horizon, 1)
 
             @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
-            mcda_vars.dam_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
+            mcda_vars.dam_prob .= env_mean(env_horizon, 1)
         end
         if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= site_coral_cover
