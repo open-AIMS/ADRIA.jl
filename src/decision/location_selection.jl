@@ -163,17 +163,19 @@ with which each location was selected at each rank across the location selection
 - `iv_type` : String indicating the intervention type to perform aggregation on.
 
 """
-function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String; n_ranks=length(ranks.sites))
-
-    rank_frequencies = NamedDimsArray(zeros(length(ranks.sites), length(ranks.sites)), sites=ranks.sites, ranks=1:length(ranks.sites))
-    selected_ranks = _get_iv_type(ranks, iv_type)
+function ranks_to_frequencies(ranks::NamedDimsArray, rank_frequencies::NamedDimsArray; n_ranks=length(ranks.sites))
     for rank in range(1, n_ranks, n_ranks)
-        rank_frequencies[ranks=Int64(rank)] .= sum(selected_ranks .== rank, dims=:scenarios)[scenarios=1]
+        rank_frequencies[ranks=Int64(rank)] .= sum(ranks .== rank, dims=:scenarios)[scenarios=1]
     end
     return rank_frequencies
 end
-function ranks_to_frequencies(rs::ResultSet, iv_type::String; n_ranks=length(ranks.sites))
-    return sum(ranks_to_frequencies_ts(rs.ranks, iv_type; n_ranks=n_ranks), dims=:timesteps)
+function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String; n_ranks=length(ranks.sites))
+    selected_ranks = _get_iv_type(ranks, iv_type)
+    rank_frequencies = NamedDimsArray(zeros(length(ranks.sites), length(ranks.sites)), sites=ranks.sites, ranks=1:length(ranks.sites))
+    return ranks_to_frequencies(selected_ranks, rank_frequencies; n_ranks=n_ranks)
+end
+function ranks_to_frequencies(rs::ResultSet, iv_type::String; n_ranks=length(rs.ranks.sites))
+    return sum(ranks_to_frequencies_ts(rs, iv_type; n_ranks=n_ranks), dims=:timesteps)[timesteps=1]
 end
 
 """
@@ -191,12 +193,17 @@ with which each location was selected at each rank across the location selection
 - `n_ranks` : Consider first n_ranks, default is all ranks (n_locs).
 
 """
-function ranks_to_frequencies_ts(ranks::NamedDimsArray, iv_type::String; n_ranks=length(ranks.sites))
+function ranks_to_frequencies_ts(ranks::NamedDimsArray; n_ranks=length(ranks.sites))
     rank_frequencies = NamedDimsArray(zeros(length(ranks.timesteps), length(ranks.sites), length(ranks.sites)), timesteps=ranks.timesteps, sites=ranks.sites, ranks=1:length(ranks.sites))
-    return ranks_to_frequencies(ranks, iv_type, rank_frequencies, :scenarios; n_ranks=n_ranks)
+    return ranks_to_frequencies(ranks, rank_frequencies; n_ranks=n_ranks)
 end
-function ranks_to_frequencies_ts(rs::ResultSet, iv_type::String; n_ranks=length(ranks.sites))
-    return ranks_to_frequencies_ts(rs.ranks, iv_type; n_ranks=n_ranks)
+function ranks_to_frequencies_ts(ranks::NamedDimsArray, iv_type::String; n_ranks=length(ranks.sites))
+    selected_ranks = _get_iv_type(ranks, iv_type)
+    return ranks_to_frequencies_ts(selected_ranks; n_ranks=n_ranks)
+end
+function ranks_to_frequencies_ts(rs::ResultSet, iv_type::String; n_ranks=length(rs.ranks.sites))
+    selected_ranks = _get_iv_type(rs.ranks, iv_type)
+    return ranks_to_frequencies_ts(selected_ranks; n_ranks=n_ranks)
 end
 
 """
@@ -221,8 +228,9 @@ function location_selection_frequencies(ranks::NamedDimsArray, iv_type::String; 
 
     return loc_count
 end
-function location_selection_frequencies(rs::ResultSet, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(ranks.scenarios)))
-    ranks_frequencies = ranks_to_frequencies_ts(rs.ranks[scenarios=ind_metrics], iv_type; n_ranks=n_loc_int)
+function location_selection_frequencies(rs::ResultSet, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(rs.ranks.scenarios)))
+    selected_ranks = _get_iv_type(rs.ranks[scenarios=ind_metrics], iv_type)
+    ranks_frequencies = ranks_to_frequencies_ts(selected_ranks; n_ranks=n_loc_int)
     loc_count = dropdims(sum(ranks_frequencies[ranks=1:n_loc_int], dims=[1, 3]), dims=3)[timesteps=1]
 
     return loc_count
