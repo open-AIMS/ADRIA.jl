@@ -72,7 +72,7 @@ function _scenario_juveniles(rs::ResultSet; kwargs...)
     @warn "`scenario_juveniles()` is deprecated and will be removed in future versions. Use `scenario_relative_juveniles()` instead."
     return _scenario_relative_juveniles(rs)
 end
-scenario_juveniles = Metric(_scenario_juveniles, (:timesteps, :scenario))
+scenario_juveniles = Metric(_scenario_juveniles, (:timesteps, :scenarios))
 
 
 """
@@ -90,7 +90,7 @@ function _scenario_relative_juveniles(rs::ResultSet; kwargs...)::NamedDimsArray
     #       otherwise it will get returned as an AxisKey array for some reason
     return dropdims(sum(absolute_juveniles(rs), dims=:sites), dims=:sites) ./ sum(rs.site_area)
 end
-scenario_relative_juveniles = Metric(_scenario_relative_juveniles, (:timesteps, :scenario))
+scenario_relative_juveniles = Metric(_scenario_relative_juveniles, (:timesteps, :scenarios))
 
 
 """
@@ -107,7 +107,7 @@ function _scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray
     # Calculate relative domain-wide cover based on absolute values
     return dropdims(sum(absolute_juveniles(rs), dims=:sites), dims=:sites)
 end
-scenario_absolute_juveniles = Metric(_scenario_absolute_juveniles, (:timesteps, :scenario))
+scenario_absolute_juveniles = Metric(_scenario_absolute_juveniles, (:timesteps, :scenarios))
 
 
 """
@@ -123,7 +123,7 @@ end
 function _scenario_juvenile_indicator(rs::ResultSet; kwargs...)::AbstractArray
     return dropdims(mean(juvenile_indicator(rs), dims=:sites), dims=:sites)
 end
-scenario_juvenile_indicator = Metric(_scenario_juvenile_indicator, (:timesteps, :scenario))
+scenario_juvenile_indicator = Metric(_scenario_juvenile_indicator, (:timesteps, :scenarios))
 
 
 """
@@ -139,7 +139,7 @@ end
 function _scenario_asv(rs::ResultSet; kwargs...)
     return _scenario_asv(rs.outcomes[:absolute_shelter_volume]; kwargs...)
 end
-scenario_asv = Metric(_scenario_asv, (:timesteps, :scenario), "m³/m²")
+scenario_asv = Metric(_scenario_asv, (:timesteps, :scenarios), "m³/m²")
 
 
 """
@@ -155,7 +155,7 @@ end
 function _scenario_rsv(rs::ResultSet; kwargs...)
     return _scenario_rsv(rs.outcomes[:relative_shelter_volume]; kwargs...)
 end
-scenario_rsv = Metric(_scenario_rsv, (:timesteps, :scenario))
+scenario_rsv = Metric(_scenario_rsv, (:timesteps, :scenarios))
 
 """
     scenario_evenness(ev::NamedDimsArray; kwargs...)
@@ -171,4 +171,4 @@ end
 function _scenario_evenness(rs::ResultSet; kwargs...)
     return _scenario_evenness(rs.outcomes[:coral_evenness]; kwargs...)
 end
-scenario_evenness = Metric(_scenario_evenness, (:timesteps, :scenario))
+scenario_evenness = Metric(_scenario_evenness, (:timesteps, :scenarios))
