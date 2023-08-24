@@ -922,3 +922,30 @@ function depth_criteria_indx(
 )::Vector{T} where {T<:Float64}
     return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
 end
+
+"""
+    env_mean(env_layer::AbstractArray, dims_agg::Union{Symbol,Tuple{Symbol,Symbol}})
+
+Calculates mean over specified dimensions plus half the standard deviation.
+
+# Arguments
+- `env_layer` : Environmental data layer to calculate the mean of.
+- `dims_agg` : Dimensions to aggregate over.
+"""
+function env_mean(env_layer::AbstractArray, dims_agg::Union{Symbol,Tuple{Symbol,Symbol}})
+    return vec((mean(env_layer, dims=dims_agg) .+ std(env_layer, dims=dims_agg)) .* 0.5)
+end
+
+"""
+    set_depth_criteria(depth_med::Vector{Float64}, depth_max::Float64, depth_min::Float64)
+
+Sets criteria for depth filtering in MCDA.
+
+# Arguments
+- `depth_med` : Median depth (length n_locs).
+- `depth_max` : Maximum depth.
+- `depth_min` : Minimum depth.
+"""
+function set_depth_criteria(depth_med::Vector{Float64}, depth_max::Float64, depth_min::Float64)
+    return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
+end
