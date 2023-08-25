@@ -303,7 +303,7 @@ where \$w\$ are the weights/priors and \$g\$ is the growth rates.
 """
 function _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{<:Truncated}, stdev::SubArray{F})::Nothing where {F<:Float64}
     # Weight distributions based on growth rate and cover
-    for i in 6:-1:3
+    @floop for i in 6:-1:3
         sum(cover[i-1:i]) == 0.0 ? continue : false
         prop_growth = @views (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
         x::MixtureModel = MixtureModel(dist_t[i-1:i], prop_growth ./ sum(prop_growth))
@@ -313,7 +313,7 @@ function _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dis
         dist_t[i] = truncated(Normal(mean(x), stdev[i]), minimum(x), mean(x) + HEAT_UB)
     end
 
-    # # Size class 1 all moves up to size class 2 anyway
+    # Size class 1 all moves up to size class 2 anyway
     μ = mean(dist_t[1])
     dist_t[2] = truncated(Normal(μ, stdev[2]), minimum(dist_t[1]), μ + HEAT_UB)
 
