@@ -532,59 +532,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         p.rec .= settler_cover(fec_scope, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
 
-        # Adjust DHW tolerances incorporating recruited coral
-        for sink_loc in findall(site_k_area(domain) .> 0)
-            @views larvae_contribution = TP_data[TP_data[:, sink_loc].>0.0, sink_loc]
-            if length(larvae_contribution) == 0.0
-                # Skip if no recruitment occurred
-                continue
-            end
-
-            w = larvae_contribution ./ sum(larvae_contribution)
-            for (sp, sc1) in enumerate(1:6:36)
-                r = p.rec[sp, sink_loc]
-                if r == 0.0
-                    continue
-                end
-
-                # Combine distributions altogether to determine new distribution for size class 1
-                # for the CURRENT timestep
-                if Y_pstep[sp, sink_loc] .== 0.0
-                    total_w::Float64 = r
-                else
-                    total_w = r / (r + Y_pstep[sp, sink_loc])
-                end
-
-                sc1_6::UnitRange{Int64} = sc1:sc1+5
-
-                # Identify source locations
-                @views source_locs = TP_data[:, sink_loc] .> 0.0
-
-                # Get distributions of reproductive size classes at source locations
-                @views reproductive_sc = fec_params_per_m²[sc1_6] .> 0.0
-                source_dists = vec(c_dist_t_1[sc1_6, source_locs][reproductive_sc, :])
-
-                # Determine weights based on contribution to recruitment.
-                # This weights the recruited corals by the size classes and source locations
-                # which contributed to recruitment.
-                expanded_w = repeat(w, inner=count(reproductive_sc))
-                expanded_w /= sum(expanded_w)
-
-                # Obtain the recruited and original distributions for the sink location.
-                recruited = MixtureModel(source_dists, expanded_w)
-                orig = c_dist_t_1[sc1, sink_loc]
-
-                d = MixtureModel([orig, recruited], [1.0 - total_w, total_w])
-
-                # Breeder's equation
-                S::Float64 = mean(d) - mean(c_dist_t_1[sc1, sink_loc])
-                h²::Float64 = param_set("heritability")
-                μ_t::Float64 = mean(d) + (S * h²)
-
-                # New DHW tolerance distribution for size class 1, for NEXT timestep
-                c_dist_t[sc1, sink_loc] = truncated(Normal(μ_t, corals.dist_std[sc1]), minimum(d), μ_t + HEAT_UB)
-            end
-        end
+        settler_DHW_tolerance!(Y_pstep, c_dist_t_1, c_dist_t, site_k_area(domain), TP_data,
+            p.rec, corals.dist_std, fec_params_per_m², param_set("heritability"))
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))

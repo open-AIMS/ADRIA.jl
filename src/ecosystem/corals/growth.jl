@@ -330,66 +330,10 @@ affect the distribution over time, and corals mature (moving up size classes).
 # Arguments
 - `cover` : Coral cover (for timestep \$t-1\$ and \$t\$)
 - `n_groups` : Number of coral groups represented
-- `dist_t_1` : Distributions for timestep \$t-1\$
 - `dist_t` : Distributions for timestep \$t\$
 - `growth_rate` : Growth rates for each species/size class
 - `stdev` : standard deviations of DHW tolerances for each size class
-- `h²` : heritability value
 """
-function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t_1::SubArray{T},
-    dist_t::SubArray{T}, growth_rate::SubArray{F}, stdev::SubArray{F}, h²::F)::Nothing where {T<:Truncated,F<:Float64}
-    _, n_sp_sc, n_locs = size(cover)
-
-    step::Int64 = n_groups - 1
-    # weights::MVector{3,Float64} = @MVector(zeros(3))
-
-    # Adjust population distribution
-    for sc1 in 1:n_groups:n_sp_sc
-        for loc in 1:n_locs
-            sc6::Int64 = sc1 + step
-
-            # Skip if no cover
-            if sum(cover[1, sc1:sc6, loc]) == 0.0
-                continue
-            end
-
-            # Combine distributions using a MixtureModel for all size
-            # classes >= 4 (the correct size classes are selected within the
-            # function).
-            @views _shift_distributions!(
-                cover[1, sc1:sc6, loc],
-                growth_rate[sc1:sc6],
-                dist_t[sc1:sc6, loc],
-                stdev[sc1:sc6]
-            )
-
-            # sc4::Int64 = sc1 + 3
-            # Reproduction. Size class >= 4 spawn larvae.
-            # A new distribution for size class 1 is then determined by taking the
-            # distribution of size classes >= 4 at time t+1 and size class 1 at time t, and
-            # applying the S⋅h² calculation, where:
-            # - $S$ is the distance between the means of the gaussian distributions
-            # - $h²$ is narrow-sense heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
-            # dt_1::Truncated{Normal{Float64},Continuous,Float64,Float64,Float64} = dist_t_1[sc1, loc]
-            # if sum(cover[2, sc4:sc6, loc]) > 0.0
-            # # applying the Breeder's equation (S⋅h²), where:
-            #     @views weights .= cover[2, sc4:sc6, loc] / sum(cover[2, sc4:sc6, loc])
-            #     @views d_t::MixtureModel = MixtureModel(dist_t[sc4:sc6, loc], weights)
-
-            #     μ_dt_1 = mean(dist_t_1[sc1, loc])
-            #     S::Float64 = mean(d_t) - μ_dt_1
-            #     if S != 0.0
-            #         # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
-            #         # The standard deviation is assumed to be the same as parents
-            #         μ_t::Float64 = μ_dt_1 + (S * h²)
-            #         @views dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), minimum(d_t), μ_t + HEAT_UB)
-            #     end
-            # end
-        end
-    end
-
-    return nothing
-end
 function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t::Matrix{T},
     growth_rate::Matrix{F}, stdev::Vector{F})::Nothing where {T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64}
     _, n_sp_sc, n_locs = size(cover)
@@ -409,6 +353,87 @@ function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t::M
             # classes >= 4 (the correct size classes are selected within the
             # function).
             @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc], stdev[sc1:sc6])
+        end
+    end
+
+    return nothing
+end
+
+"""
+    settler_DHW_tolerance!(cover::Matrix{F}, c_dist_t_1::Matrix{T},
+        c_dist_t::Matrix{T}, k_area::Vector{F}, tp::Matrix{F}, recruitment::Matrix{F},
+        dist_std::Vector{F}, fec_params_per_m²::Vector{F}, h²::F)::Nothing where {T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64}
+
+Incorporate DHW tolerances of newly settled corals into the distributions for the sink
+locations.
+
+# Arguments
+- `cover` : Area covered by coral
+- `c_dist_t_1` : DHW tolerance distribution for previous timestep
+- `c_dist_t` : DHW tolerance distribution for current timestep
+- `k_area` : Absolute coral habitable area
+- `tp` : Transition Probability matrix indicating the proportion of larvae that reaches a
+    sink location (columns) from a given source location (rows)
+- `recruitment` : recruited corals for each sink location
+- `dist_std` : original standard deviations for each species/size class
+- `fec_params_per_m²` : Fecundity parameters for each species/size class combination
+- `h²` : narrow-sense heritability
+
+"""
+function settler_DHW_tolerance!(cover::Matrix{F}, c_dist_t_1::Matrix{T},
+    c_dist_t::Matrix{T}, k_area::Vector{F}, tp::Matrix{F}, recruitment::Matrix{F},
+    dist_std::Vector{F}, fec_params_per_m²::Vector{F}, h²::F)::Nothing where {T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64}
+
+    # Adjust DHW tolerances incorporating recruited coral
+    for sink_loc in findall(k_area .> 0.0)
+        @views larvae_contribution = tp[tp[:, sink_loc].>0.0, sink_loc]
+        if length(larvae_contribution) == 0.0
+            # Skip if no recruitment occurred
+            continue
+        end
+
+        w = larvae_contribution ./ sum(larvae_contribution)
+        for (sp, sc1) in enumerate(1:6:36)
+            r = recruitment[sp, sink_loc]
+            if r == 0.0
+                continue
+            end
+
+            # Combine distributions altogether to determine new distribution for size class 1
+            # for the CURRENT timestep
+            if cover[sp, sink_loc] .== 0.0
+                total_w::Float64 = r
+            else
+                total_w = r / (r + cover[sp, sink_loc])
+            end
+
+            sc1_6::UnitRange{Int64} = sc1:sc1+5
+
+            # Identify source locations
+            @views source_locs = tp[:, sink_loc] .> 0.0
+
+            # Get distributions of reproductive size classes at source locations
+            @views reproductive_sc = fec_params_per_m²[sc1_6] .> 0.0
+            source_dists = vec(c_dist_t_1[sc1_6, source_locs][reproductive_sc, :])
+
+            # Determine weights based on contribution to recruitment.
+            # This weights the recruited corals by the size classes and source locations
+            # which contributed to recruitment.
+            expanded_w = repeat(w, inner=count(reproductive_sc))
+            expanded_w /= sum(expanded_w)
+
+            # Obtain the recruited and original distributions for the sink location.
+            recruited = MixtureModel(source_dists, expanded_w)
+            orig = c_dist_t_1[sc1, sink_loc]
+
+            d = MixtureModel([orig, recruited], [1.0 - total_w, total_w])
+
+            # Breeder's equation
+            S::Float64 = mean(d) - mean(c_dist_t_1[sc1, sink_loc])
+            μ_t::Float64 = mean(d) + (S * h²)
+
+            # New DHW tolerance distribution for size class 1, for CURRENT timestep
+            @views c_dist_t[sc1, sink_loc] = truncated(Normal(μ_t, dist_std[sc1]), minimum(d), μ_t + HEAT_UB)
         end
     end
 
