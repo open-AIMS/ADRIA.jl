@@ -151,7 +151,7 @@ end
 Display GUI for quick visualization and analysis of results.
 """
 function ADRIA.viz.explore(rs::ResultSet)
-    @info "Generating UI"
+    @info "Creating display"
     layout = comms_layout(resolution=(1920, 1080))
 
     f = layout.figure
@@ -324,7 +324,7 @@ function ADRIA.viz.explore(rs::ResultSet)
         Label(lc[i, 3], l2)
     end
 
-    @info "Determining sensitivities"
+    @info "Determining initial sensitivities"
     mean_tac_med = relative_sensitivities(X, Array(tac_scen_dist))
     mean_tac_med = mean_tac_med[interv_idx]
 
@@ -370,7 +370,7 @@ function ADRIA.viz.explore(rs::ResultSet)
     )
     hideydecorations!(outcomes_ax)
 
-    @info "Generating map display"
+    @info "Generating map"
     map_display = layout.map
     geodata = get_geojson_copy(rs)
     map_disp = create_map!(map_display, geodata, obs_mean_rc_sites, (:black, 0.05), centroids)
