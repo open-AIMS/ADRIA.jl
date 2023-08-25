@@ -519,7 +519,6 @@ function ADRIA.viz.explore(rs::ResultSet)
 
     # Trigger update only after some time since last interaction
     # TODO: Add update notification (spinner animation or something...)
-    # Main.@infiltrate
     up_timer = Timer(x -> x, 0.25)
     onany(time_slider.interval, tac_slider.interval,
         [t.active for t in t_toggles]...,
