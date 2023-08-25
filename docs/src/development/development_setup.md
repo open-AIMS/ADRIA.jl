@@ -1,6 +1,10 @@
 # Development setup
 
+## Install Julia
+
 Install Julia if not already done so, preferably using [juliaup](https://github.com/JuliaLang/juliaup).
+
+### Windows
 
 There may be issues installing juliaup from the Windows Store (or otherwise undesirable).
 In such cases, use the alternate MSIX App installer (https://install.julialang.org/Julia.appinstaller)
@@ -15,42 +19,65 @@ In such cases, use the alternate MSIX App installer (https://install.julialang.o
 
 ## Initial Setup
 
-Once installed, clone the ADRIA.jl repository, navigate to the project folder, and start Julia.
-**This only needs to be done once**.
+### Using the console
+
+Once Julia is installed, clone the ADRIA.jl repository and navigate to the project folder:
 
 ```bash
-# If not using the VS Code REPL, start julia specifying the current directory as the project environment
-# Assumes you have started the terminal in the ADRIA directory.
-$ julia --project=.
-
-# Instantiate project. Sets up project packages. Only need to do this once.
-julia> ]instantiate
+$ git clone git@github.com:open-AIMS/ADRIA.jl.git
+$ cd ./ADRIA.jl
 ```
 
+Start Julia specifying the current directory as the project environment:
+
+```bash
+$ julia --project=.
+```
+
+Switch to the package manager (`]`) and instantiate the project. **This only needs to be done once**.
+
+```julia-REPL
+julia> ]
+(ADRIA.jl) pkg> instantiate
+```
+
+This will sets up the project packages.
+
+## Sandbox
+
 For development purposes, set up a sandbox environment **(setup only needs to be done once)**.
-The steps below assumes you are in the ADRIA.jl project folder.
+This environment will function as a project apart from ADRIA, where you can install any
+packages, including ADRIA.jl, and run your code. When installing ADRIA.jl at the sandbox,
+use the `dev` command instead of `add`. For more information, please refer to
+[Pkg.jl documentation](https://pkgdocs.julialang.org/v1/managing-packages/#developing).
+
+Once you are inside ADRIA.jl project folder, create a folder named `sandbox` and start
+julia inside it:
 
 ```bash
 $ mkdir sandbox
 $ cd sandbox
 $ julia --project=.
-
-# Switch to the package manager (`]`)
-julia> ]
-
-# Add ADRIA.jl as a local package under development
-(sandbox) pkg> dev ../
-
-# Install additional packages for visualizations
-(sandbox) pkg> add GLMakie GeoMakie GraphMakie
-
-# Add additional debugging tools to sandbox environment
-(sandbox) pkg> add Revise Infiltrator BenchmarkTools JET
-
-# Press ctrl+c to exit the package manager
 ```
 
-Development scripts/functions can then be worked on in the `sandbox` folder, and its sub-folders, without these polluting the ADRIA project itself.
+Switch to the package manager (`]`) and add ADRIA.jl as a local package under development
+
+```julia-REPL
+julia> ]
+(sandbox) pkg> dev ../
+```
+
+You may also install additional packages for visualizations and debugging tools
+
+```julia-REPL
+(sandbox) pkg> add GLMakie GeoMakie GraphMakie
+(sandbox) pkg> add Revise Infiltrator BenchmarkTools JET
+```
+
+Press backspace or Ctrl+C to leave the package manager.
+
+Development scripts/functions can now be worked on in the `sandbox` folder, and its
+sub-folders, without these polluting the ADRIA project itself.
 
 
 ## Testing
@@ -59,7 +86,7 @@ To run the full test suite, rebuilding the environment as necessary:
 
 ```bash
 $ julia --project=.
-julia> ]test 
+julia> ]test
 ```
 
 Rebuilding the environment can be unnecessary for every test run during development.
