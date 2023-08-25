@@ -1,10 +1,9 @@
 # Getting Started
 
-ADRIA is a decision support platform which includes decision heuristics (MCDA) with a small coral ecosystem model.
-The MCDA processes may be used separately.
+## Setup
 
-This section outlines how ADRIA may be used to arrive at a select range of possible pathways that are robust to
-possible future conditions.
+This section outlines how ADRIA may be used to arrive at a select range of possible
+pathways that are robust to possible future conditions.
 
 Create a directory for your project, and start Julia inside that directory:
 
@@ -12,7 +11,8 @@ Create a directory for your project, and start Julia inside that directory:
 $ julia --project=.
 ```
 
-ADRIA may be installed through the package manager or from the github repository (for the most recent development version).
+ADRIA may be installed through the package manager or from the github repository (for the
+most recent development version).
 
 ```julia-repl
 julia> ]add ADRIA
@@ -28,24 +28,8 @@ Similarly, ADRIA can be updated as new releases are made:
 julia> ]up ADRIA
 ```
 
-To setup ADRIA for development, see the [Development Setup](@ref) page.
-
-## Visualizations
-
-The Makie package ecosystem is used for producing plots.
-These are optional, and only necessary if visualizations are desired.
-
-```julia-repl
-julia> ]add GLMakie GeoMakie GraphMakie
-```
-
-## Running ADRIA simulations
-
-Before anything can be done, a `config.toml` file is needed.
-Create a `config.toml` file inside your project directory
-with the following content below (adjusted for your needs).
-
-This `config.toml` file is specific to your computer and project. It **should not be** committed to version control.
+If desired, you can create a `config.toml` file inside your project directory.
+This is optional, and the assumed default values are shown below:
 
 ```toml
 [operation]
@@ -57,44 +41,81 @@ debug = false     # Disable multi-processing to allow error messages to be shown
 output_dir = "./Outputs"  # Change this to point to where you want to store results
 ```
 
+This `config.toml` file is specific to your computer and project. It **should not be**
+committed to version control.
+
+
 !!! tip "Performance"
     ADRIA uses an on-disk data store to hold results from model runs.
     Setting `output_dir` to a directory on an SSD (Solid State Drive)
     will maximize performance.
 
-Start Julia from the project directory
+To setup ADRIA for development, see the [Development setup](@ref) page.
+
+## Quick Start
+
+A common workflow would be the following:
+
+Start Julia from the project directory:
 
 ```bash
 $ julia --project=.
 ```
 
-
-and import ADRIA to start.
-
-```julia
-# Import ADRIA package
-using ADRIA
-```
-
-Below is an example workflow. Each line is explained in the next few pages.
+Load data for a spatial domain. See [Loading a Domain](@ref) for more details:
 
 ```julia
 using ADRIA
 
-# Load a domain
-dom = ADRIA.load_domain("path to some domain data package")
-
-# Generate scenarios
-scens = ADRIA.sample(128, dom)
-
-# Run sampled scenarios for a given RCP
-rs = ADRIA.run_scenarios(scens, dom, "45")
-
-# ... or repeat scenario runs across multiple RCPs
-rs = ADRIA.run_scenarios(scens, dom, ["45", "60", "85"])
-
-# Obtain metrics
-s_tac = ADRIA.metrics.scenario_tac(rs)
+dom = ADRIA.load_domain("path to domain data package")
 ```
 
-See [Analysis](@ref) for further examples.
+Generate scenarios based on available environmental data layers and model parameters. The
+number of scenarios shoud be a power of two. See [Generating scenarios](@ref) for more
+details:
+
+```julia
+num_scenarios = 128
+scens = ADRIA.sample(dom, num_scenarios)
+```
+
+Run sampled scenarios for one or more RCPs. Be aware that this may take a while:
+
+```julia
+rcp_45 = "45"
+rs = ADRIA.run_scenarios(scens, dom, rcp_45)
+```
+
+Or run scenarios across several RCPs:
+
+```julia
+rcps = ["45", "60", "85"]
+rs = ADRIA.run_scenarios(scens, dom, rcps)
+```
+
+It is also possible to load previously run scenarios. See [Running scenarios](@ref) for
+more details:
+
+```julia
+rs = ADRIA.load_results("path_to_output_data")
+```
+
+Extract some metric for analysis (e.g., the total absolute cover for each site and
+timestep):
+
+```julia
+s_tc = ADRIA.metrics.scenario_total_cover(rs)
+```
+
+Use the visualization tools to plot the results. The Makie package ecosystem is used for
+producing plots:
+
+```julia
+using GLMakie, GeoMakie, GraphMakie
+
+# Plot a quick scenario overview
+fig = ADRIA.viz.scenario(rs, s_tc; axis_opts=Dict(:ylabel=>"Absolue Cover"))
+save("path_to_save_figure", fig)
+```
+
+See [Analysis](@ref) for further examples of analysis and plots.
