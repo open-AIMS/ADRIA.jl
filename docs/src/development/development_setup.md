@@ -126,17 +126,17 @@ In most cases, simply auto-formatting the code is enough.
 The very first import of the ADRIA package will be very slow as it attempts to precompile common functions to reduce later start up time.
 The same applies when running ADRIA for the first time. This slow initial precompilation has to be repeated if the package is modified, but will remain "fast" if no changes are made.
 
-To ameliorate this avoid having to repeatedly restart the REPL to incorporate code changes, use the [Revise package](https://github.com/timholy/Revise.jl).
+Use the [Revise package](https://github.com/timholy/Revise.jl) to avoid having to repeatedly restart the REPL to incorporate code changes.
 By default, the VS Code REPL will auto-load this package.
 
 A custom [sysimage](https://julialang.github.io/PackageCompiler.jl/dev/sysimages.html) can also be created to reduce start up times.
 
 VS Code now has (experimental) support for generating a custom sysimage for its REPL.
-The same caveats as above apply: the sysimage has to be recreated if the project specification has changed for any reason.
+The same caveats as above apply: the sysimage has to be recreated if the project specification (e.g., expected package dependencies) changes.
 
 It is highly recommended that this sysimage be built and used.
 
 See: [This guide](https://www.julia-vscode.org/docs/dev/userguide/compilesysimage/)
 
-Otherwise, see the documentation [here](https://github.com/open-AIMS/ADRIA.jl/tree/main/build) for a quick how to.
-Note: compilation time to create a sysimage can be upwards of 30mins and, again, has to be repeated if the project packages are updated.
+Otherwise, if the VS Code build task cannot be used, see the documentation [here](https://github.com/open-AIMS/ADRIA.jl/tree/main/build) for a quick how to.
+Note: compilation time to create a sysimage can be upwards of 15mins and, again, has to be repeated if the project packages are updated.
