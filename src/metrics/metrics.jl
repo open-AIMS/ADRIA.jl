@@ -157,10 +157,11 @@ function _relative_cover(X::AbstractArray{U}, total_area::Vector{T}, k_area::Vec
 end
 function _relative_cover(rs::ResultSet)::AbstractArray
     k_area = (site_k_area(rs) .* site_area(rs))'
-    tac = rs.outcomes[:total_absolute_cover]
-    rc = tac ./ k_area
+    rc = copy(rs.outcomes[:total_absolute_cover])
+    non_zero_locs = findall(k_area' .> 0.0)
+    rc[:, non_zero_locs, :] ./= k_area[non_zero_locs]'
 
-    return replace(rc, NaN => 0.0, Inf => 0.0)
+    return rc
 end
 relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
 
