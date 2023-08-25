@@ -1,4 +1,4 @@
-# ADRIA.jl Documentation
+# Introduction
 
 ## What is ADRIA.jl?
 
