@@ -300,7 +300,6 @@ where \$w\$ are the weights/priors and \$g\$ is the growth rates.
 - `growth_rate` : Growth rates for the given size classes/species
 - `dist_t` : Critical DHW threshold distribution for timestep \$t\$
 - `stdev` : Standard deviations of coral DHW tolerance
-- `tmp` : Reused cache for MixtureModels to avoid allocations
 """
 function _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{<:Truncated}, stdev::SubArray{F})::Nothing where {F<:Float64}
     # Weight distributions based on growth rate and cover
@@ -342,44 +341,75 @@ function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t_1:
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
-    weights::MVector{3,Float64} = @MVector(zeros(3))
+    # weights::MVector{3,Float64} = @MVector(zeros(3))
 
     # Adjust population distribution
-    @floop for (sc1, loc) in Iterators.product(1:n_groups:n_sp_sc, 1:n_locs)
-        sc6::Int64 = sc1 + step
+    for sc1 in 1:n_groups:n_sp_sc
+        for loc in 1:n_locs
+            sc6::Int64 = sc1 + step
 
-        # Skip if no cover
-        if sum(cover[1, sc1:sc6, loc]) == 0.0
-            continue
+            # Skip if no cover
+            if sum(cover[1, sc1:sc6, loc]) == 0.0
+                continue
+            end
+
+            # Combine distributions using a MixtureModel for all size
+            # classes >= 4 (the correct size classes are selected within the
+            # function).
+            @views _shift_distributions!(
+                cover[1, sc1:sc6, loc],
+                growth_rate[sc1:sc6],
+                dist_t[sc1:sc6, loc],
+                stdev[sc1:sc6]
+            )
+
+            # sc4::Int64 = sc1 + 3
+            # Reproduction. Size class >= 4 spawn larvae.
+            # A new distribution for size class 1 is then determined by taking the
+            # distribution of size classes >= 4 at time t+1 and size class 1 at time t, and
+            # applying the S⋅h² calculation, where:
+            # - $S$ is the distance between the means of the gaussian distributions
+            # - $h²$ is narrow-sense heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
+            # dt_1::Truncated{Normal{Float64},Continuous,Float64,Float64,Float64} = dist_t_1[sc1, loc]
+            # if sum(cover[2, sc4:sc6, loc]) > 0.0
+            # # applying the Breeder's equation (S⋅h²), where:
+            #     @views weights .= cover[2, sc4:sc6, loc] / sum(cover[2, sc4:sc6, loc])
+            #     @views d_t::MixtureModel = MixtureModel(dist_t[sc4:sc6, loc], weights)
+
+            #     μ_dt_1 = mean(dist_t_1[sc1, loc])
+            #     S::Float64 = mean(d_t) - μ_dt_1
+            #     if S != 0.0
+            #         # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
+            #         # The standard deviation is assumed to be the same as parents
+            #         μ_t::Float64 = μ_dt_1 + (S * h²)
+            #         @views dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), minimum(d_t), μ_t + HEAT_UB)
+            #     end
+            # end
         end
+    end
 
-        # Combine distributions using a MixtureModel for all size
-        # classes >= 4 (the correct size classes are selected within the
-        # function).
-        @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc], stdev[sc1:sc6])
+    return nothing
+end
+function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t::Matrix{T},
+    growth_rate::Matrix{F}, stdev::Vector{F})::Nothing where {T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64}
+    _, n_sp_sc, n_locs = size(cover)
 
-        # sc4::Int64 = sc1 + 3
-        # Reproduction. Size class >= 4 spawn larvae.
-        # A new distribution for size class 1 is then determined by taking the
-        # distribution of size classes >= 4 at time t+1 and size class 1 at time t, and
-        # applying the S⋅h² calculation, where:
-        # - $S$ is the distance between the means of the gaussian distributions
-        # - $h²$ is narrow-sense heritability (assumed to range from 0.25 to 0.5, nominal value of 0.3)
-        # dt_1::Truncated{Normal{Float64},Continuous,Float64,Float64,Float64} = dist_t_1[sc1, loc]
-        # if sum(cover[2, sc4:sc6, loc]) > 0.0
-        # # applying the Breeder's equation (S⋅h²), where:
-        #     @views weights .= cover[2, sc4:sc6, loc] / sum(cover[2, sc4:sc6, loc])
-        #     @views d_t::MixtureModel = MixtureModel(dist_t[sc4:sc6, loc], weights)
+    step::Int64 = n_groups - 1
+    # Adjust population distribution
+    for sc1 in 1:n_groups:n_sp_sc
+        for loc in 1:n_locs
+            sc6::Int64 = sc1 + step
 
-        #     μ_dt_1 = mean(dist_t_1[sc1, loc])
-        #     S::Float64 = mean(d_t) - μ_dt_1
-        #     if S != 0.0
-        #         # The new distribution mean for size class 1 is then: prev mean + (S⋅h²)
-        #         # The standard deviation is assumed to be the same as parents
-        #         μ_t::Float64 = μ_dt_1 + (S * h²)
-        #         @views dist_t[sc1, loc] = truncated(Normal(μ_t, stdev[sc1]), minimum(d_t), μ_t + HEAT_UB)
-        #     end
-        # end
+            # Skip if no cover
+            if sum(cover[1, sc1:sc6, loc]) == 0.0
+                continue
+            end
+
+            # Combine distributions using a MixtureModel for all size
+            # classes >= 4 (the correct size classes are selected within the
+            # function).
+            @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc], stdev[sc1:sc6])
+        end
     end
 
     return nothing
@@ -512,7 +542,7 @@ Calculates coral recruitment for each species/group and location.
 λ, total coral recruitment for each coral taxa and location based on a Poisson distribution.
 """
 function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
-    α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::AbstractArray{T} where {T<:Float64}
+    α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::Matrix{T} where {T<:Float64}
     sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
     sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
     return sd
@@ -538,17 +568,24 @@ Note: Units for all areas are assumed to be in m².
 Area covered by recruited larvae (in m²)
 """
 function settler_cover(fec_scope::T,
-    TP_data::T, leftover_space::Matrix{Float64},
-    α::V, β::V, basal_area_per_settler::V)::Matrix{Float64} where {T<:AbstractArray{<:Float64,2},V<:Vector{Float64}}
+    TP_data::T, leftover_space::T,
+    α::V, β::V, basal_area_per_settler::V)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
     # Send larvae out into the world (reuse fec_scope to reduce allocations)
     # fec_scope .= (fec_scope .* sf)
     # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
+    valid_locs::BitVector = sum.(eachcol(TP_data)) .> 0.0
+    # _subset = TP_data[valid_locs, valid_locs]
+
     # As above, but more performant, less readable.
     Mwater::Float64 = 0.95
-    fec_scope *= TP_data
-    fec_scope .*= (1.0 .- Mwater)
+    fec_scope[:, valid_locs] .= (fec_scope[:, valid_locs] * TP_data[valid_locs, valid_locs]) .* (1.0 .- Mwater)
+    # fec_scope .*= (1.0 .- Mwater)
+    # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)
+    # fec_scope .*= (1.0 .- Mwater)
+    # fec_scope *= fec_scope * TP_data
+    # fec_scope .*= (1.0 .- Mwater)
 
     # Larvae have landed, work out how many are recruited
     # recruits per m^2 per site multiplied by area per settler
