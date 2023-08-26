@@ -4,7 +4,7 @@
 
 ADRIA is a decision support platform for informing reef restoration and adaptation interventions which includes decision heuristics (MCDA) with a small coral ecosystem model. The MCDA processes may be used separately.
 
-Among the most commom usecases are:
+Among the most common usecases are:
 
 - Running a number of scenarios under different environmental and intervention conditions (see [Loading a Domain](@ref), [Generating scenarios](@ref) and [Running scenarios](@ref));
 - Extracting metrics for each scenario and timestep such as coral cover, shelter volume or number of juveniles (see [Metrics](@ref));
