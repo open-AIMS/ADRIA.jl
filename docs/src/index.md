@@ -37,6 +37,6 @@ Here are some answers to some issues encountered.
 
 **A.** Scenarios are defined in a CSV file (with parameter values in columns, so that each row defines a scenario).
 
-  - See the `example_scenarios.csv` file in the `examples` directory for an idea of what this looks like.
-  - See `parameters.jl` file in the `examples` directory on how to extract the model specification and parameter table for a given domain.
-  - See also the `running_scenarios.jl` example script which showcases how to run such a file for a given study area.
+- See the `example_scenarios.csv` file in the `examples` directory for an idea of what this looks like.
+- See `parameters.jl` file in the `examples` directory on how to extract the model specification and parameter table for a given domain.
+- See also the `running_scenarios.jl` example script which showcases how to run such a file for a given study area.
