@@ -132,9 +132,13 @@ By default, the VS Code REPL will auto-load this package.
 A custom [sysimage](https://julialang.github.io/PackageCompiler.jl/dev/sysimages.html) can also be created to reduce start up times.
 
 VS Code now has (experimental) support for generating a custom sysimage for its REPL.
-The same caveats as above apply: the sysimage has to be recreated if the project specification (e.g., expected package dependencies) changes.
+Prior to Julia v1.9, a custom sysimage for the development/sandbox environment was highly recommended.
+Julia v1.9 introduced an improved precompilation process and the concept of extension packages.
+As many packages are still in the process of taking advantage of these changes, the sysimage may not
+successfully build. Given precompilation is now much faster than previously, the sysimage can be
+considered to be a "nice to have".
 
-It is highly recommended that this sysimage be built and used.
+The same caveats as above apply: the sysimage has to be recreated if the project specification (e.g., expected package dependencies) changes.
 
 See: [This guide](https://www.julia-vscode.org/docs/dev/userguide/compilesysimage/)
 
