@@ -3,7 +3,7 @@
 ADRIA consists of three overarching components:
 
 1. a set of Multi-Criteria Decision Analysis methods used to emulate decision-makers
-2. a simplified coral ecology model
+2. a coral ecosystem model (referred to as ADRIAmod)
 3. a suite of analysis and assessment methods
 
 Each component may be applied separately, or altogether to perform an end-to-end analysis.
@@ -16,7 +16,7 @@ components interact.
 The primary purpose of ADRIA is to support reef restoration and adaptation through the development
 of robust intervention strategies under deep uncertainty. Here, "robustness" refers to the ability
 of an intervention strategy to meet desired outcomes under uncertain future conditions, which
-themselves are unknown and may be unexpected. To do so, ADRIA employs an Exploratory Scenario
+themselves are unknown and may be unexpected. To do so, ADRIA adopts an Exploratory Scenario
 Modelling framework to explore the range of possible futures and their outcomes.
 
 Exploratory Scenario Modelling (ESM) itself leverages uncertainty and sensitivity analysis (UA/SA).
@@ -56,27 +56,31 @@ Each sub-component is represented by a struct with fields for each parameter. Th
 sub-component holds parameters that define a given adopted intervention strategy/option: how
 many (and type of) corals are to be seeded, the length of any deployment, the start/end years,
 and so on. The `Criteria` sub-component relates to the preferences for the Multi-Criteria
-Decision Analysis methods, further detailed in the [MCDA page](TODO). For the ADRIA ecology
-model, `EnviromentalLayers` relate to the environmental scenarios available for a given
+Decision Analysis methods, further detailed in the [MCDA page](TODO). For the ADRIA ecosystem model
+(ADRIAmod), `EnviromentalLayers` relate to the environmental scenarios available for a given
 simulation (a time series of DHW and Wave stress), itself determined on the loading of data
 (see [this page](TODO)).
 
-The `Coral` sub-component relates to the coral ecosystem model, currently defined as an ecosystem
-of six coral "types": Tabular Acropora, Corymbose Acropora, Small Massives and Large Massives, as
-well as enhanced (e.g., via assisted adaptation or other) Tabular and Corymbose Acropora. ADRIA
-represents these across six size classes, with six parameters for each coral "type" and size
-class.
+The `Coral` sub-component relates to ADRIAmod, currently representing six coral species:
 
-These six parameters are further detailed in [the Coral documentation](TODO), however, it results
-in 216 unique parameters (6 groups x 6 size classes x 6 parameters). Instead of specifying all
-216 parameters by hand, ADRIA instead auto-generates the sub-component using a common template
-(see [`coral_spec()`](TODO) and [`create_coral_struct()`](TODO)). Through discussion with expert
-stakeholders, parameter bounds were set to +/- 10% of their default values following a triangular
-distribution, the peak of which is the default value.
+1. Arborescent Acropora
+2. Tabular Acropora
+3. Corymbose Acropora
+4. Corymbose non-Acropora
+5. Small massives and encrusting
+6. Large massives
+
+ADRIAmod represents these across six size classes, with six parameter sets for each coral
+species and size class. These six parameter sets are further detailed in [the Coral documentation](TODO),
+however, it results in 216 unique factors (6 groups x 6 size classes x 6 parameters).
+Instead of specifying all 216 factors by hand, ADRIA instead auto-generates the sub-component
+using a common template (see [`coral_spec()`](TODO) and [`create_coral_struct()`](TODO)). Through
+discussion with expert stakeholders, factor bounds were set to +/- 10% of their default values
+following a triangular distribution, the peak of which is the default value.
 
 The [ModelParameters.jl](https://github.com/rafaqz/ModelParameters.jl) package is used to provide
-a simple table-like interface to model parameters. Using the `Param` type provided by
-ModelParameters.jl allows the default value, the parameter bounds, their expected distribution,
+a simple table-like interface to model factors. Using the `Param` type provided by
+ModelParameters.jl allows the default value, the factor bounds, their expected distribution,
 and other associated metadata (e.g., a human-readable name and description) to be attached. An
 example from the `Intervention` sub-component is shown below.
 
@@ -93,7 +97,7 @@ transformation. The process is described in
 [Baroni and Tarantola (2014)](https://doi.org/10.1016/j.envsoft.2013.09.022) and is illustrated
 here with the example below.
 
-Let $x_i$ be a parameter that is expected to be a discrete value between 1 and 3 (inclusive).
+Let $x_i$ be a factor that is expected to be a discrete value between 1 and 3 (inclusive).
 In other words, there are 3 valid options: $x_i = \{1, 2, 3\}$.
 
 1. The upper bound is increased by 1, such that $x_i = \{1, 2, 3, 4\}$
@@ -102,14 +106,14 @@ In other words, there are 3 valid options: $x_i = \{1, 2, 3\}$.
 
 In this manner the expected probability of a possible value being selected is maintained.
 
-These parameter definitions are collectively known as the model specification, and
+These factor definitions are collectively known as the model specification, and
 can be collated as a DataFrame.
 
 !!! note "Parameter Collation and Scenario Generation"
-    See [this page](TODO) for an example how-to on collating model parameters and
+    See [this page](TODO) for an example how-to on collating model factors and
     generating samples.
 
-Combination of the realized parameter values then represent a "scenario".
+Combination of the realized factor values then represent a "scenario".
 
 
 # References
