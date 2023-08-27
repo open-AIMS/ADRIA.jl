@@ -349,9 +349,8 @@ function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t::M
                 continue
             end
 
-            # Combine distributions using a MixtureModel for all size
-            # classes >= 4 (the correct size classes are selected within the
-            # function).
+            # Combine distributions using a MixtureModel for all non-juvenile size
+            # classes (we pass in all relevant size classes for the species group here).
             @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc], stdev[sc1:sc6])
         end
     end
