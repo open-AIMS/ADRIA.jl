@@ -234,9 +234,6 @@ function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, m
     return retrieve_ranks(site_ids, results.scores, maximize)
 end
 function retrieve_ranks(site_ids::Vector, scores::Vector, maximize::Bool)::Matrix{Union{Float64,Int64}}
-    # s_order = Union{Float64,Int64}[Int64.(site_ids) scores]
-    # s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=maximize)
-    # return s_order
     s_order::Vector{Int64} = sortperm(scores, rev=maximize)
     return Union{Float64,Int64}[Int64.(site_ids[s_order]) scores[s_order]]
 end
