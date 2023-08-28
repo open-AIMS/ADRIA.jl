@@ -6,10 +6,10 @@ Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
 
 
 """
-create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection{2, Float32}, 
-            data::Observable{Vector{Float32}}, highlight::Vector{RGBA{Float32}}, 
-            centroids::Vector{Tuple{Float64, Float64}}, colorbar_label::String, 
-            legend_params::Tuple, axis_opts::Dict)
+    create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSON.FeatureCollection,
+        data::Observable, highlight::Union{Vector,Tuple,Nothing},
+        centroids::Vector, colorbar_label::String="",
+        legend_params::Union{Tuple,Nothing}=nothing, axis_opts::Dict=Dict())
 
 Create a spatial choropleth figure.
 
@@ -24,10 +24,10 @@ Create a spatial choropleth figure.
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 """
-function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection,
-    data::Observable, highlight::Union{Vector,Nothing},
-    centroids::Vector, colorbar_label::String,
-    legend_params::Union{Tuple,Nothing}, axis_opts::Dict)
+function create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSON.FeatureCollection,
+    data::Observable, highlight::Union{Vector,Tuple,Nothing},
+    centroids::Vector, colorbar_label::String="",
+    legend_params::Union{Tuple,Nothing}=nothing, axis_opts::Dict=Dict())
     lon = first.(centroids)
     lat = last.(centroids)
 
@@ -51,10 +51,10 @@ function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection,
 
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10
-    m_b = @lift(maximum($data))
+    max_val = @lift(maximum($data))
 
     # Plot geodata polygons using data as internal color
-    color_range = (0.2, m_b[])
+    color_range = (0.0, max_val[])
     color_map = :grayC
     poly!(
         spatial,
@@ -63,6 +63,7 @@ function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection,
         colormap=color_map,
         colorrange=color_range,
         strokecolor=(:black, 0.05),
+        strokewidth=1.0
     )
     Colorbar(f[1, 2]; colorrange=color_range, colormap=color_map, label=colorbar_label,
         height=Relative(0.65))
@@ -71,25 +72,39 @@ function create_map!(f::GridLayout, geodata::GeoMakie.GeoJSON.FeatureCollection,
     # `poly!()` cannot handle multiple strokecolors being specified at the moment
     # so we instead overlay each cluster.
     if !isnothing(highlight)
-        hl_groups = unique(highlight)
-
-        for color in hl_groups
-            m = findall(highlight .== [color])
-            subset_feat = FC(; features=geodata[m])
-
+        if highlight isa Tuple
             poly!(
                 spatial,
-                subset_feat,
+                geodata,
                 color="transparent",
-                strokecolor=color,
+                strokecolor=highlight,
                 strokewidth=0.5,
                 linestyle=:solid,
                 overdraw=true,
             )
+        else
+            hl_groups = unique(highlight)
+
+            for color in hl_groups
+                m = findall(highlight .== [color])
+                subset_feat = FC(; features=geodata[m])
+
+                poly!(
+                    spatial,
+                    subset_feat,
+                    color="transparent",
+                    strokecolor=color,
+                    strokewidth=0.5,
+                    linestyle=:solid,
+                    overdraw=true,
+                )
+            end
         end
 
-        # Plot Legend only if highlight colors are present
-        Legend(f[1, 3], legend_params..., framevisible=false)
+        if !isnothing(legend_params)
+            # Plot Legend only if highlight colors are present
+            Legend(f[1, 3], legend_params..., framevisible=false)
+        end
     end
     # datalims!(spatial)  # auto-adjust limits (doesn't work if there are Infs...)
 
