@@ -132,8 +132,13 @@ Plot spatial choropleth of outcomes.
 # Returns
 GridPosition
 """
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dict=Dict(),
-    fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.map(
+    rs::Union{Domain,ResultSet},
+    y::NamedDimsArray;
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -141,8 +146,12 @@ function ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::NamedDimsArray; opts::Dic
 
     return f
 end
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict())
+function ADRIA.viz.map(
+    rs::Union{Domain,ResultSet};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -151,9 +160,13 @@ function ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict=Dict(), fig_opts:
 
     return f
 end
-function ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet},
-    y::AbstractVector; opts::Dict=Dict(), axis_opts::Dict=Dict())
-
+function ADRIA.viz.map!(
+    g::Union{GridLayout,GridPosition},
+    rs::Union{Domain,ResultSet},
+    y::AbstractVector;
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
     geodata = get_geojson_copy(rs)
     data = Observable(collect(y))
 
