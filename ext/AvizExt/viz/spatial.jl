@@ -163,7 +163,7 @@ end
 function ADRIA.viz.map!(
     g::Union{GridLayout,GridPosition},
     rs::Union{Domain,ResultSet},
-    y::AbstractVector;
+    y::AbstractVector{<:Real};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict()
 )
