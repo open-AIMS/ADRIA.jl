@@ -80,10 +80,14 @@ Visualize clustered time series for each site and map.
 # Returns
 Figure
 """
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}, data::AbstractArray,
-    clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict())
-
+function ADRIA.viz.map(
+    rs::Union{Domain,ResultSet},
+    data::AbstractArray,
+    clusters::Vector{Int64};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.map!(g, rs, data, clusters; opts=opts, axis_opts=axis_opts)
