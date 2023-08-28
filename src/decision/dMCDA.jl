@@ -212,15 +212,15 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 # Arguments
 - `S` : decision matrix containing criteria values for each location (n locations)*(m criteria)
 - `site_ids` : array of site ids still remaining after filtering.
-- `weights` : importance weights for each criteria. 
+- `weights` : importance weights for each criteria.
 - `mcda_func` : function/JMcDM DataType to use for mcda, specified as an element from methods_mcda.
 - `scores` : set of scores derived from applying an mcda ranking method.
-- `maximize` : Boolean indicating whether a mcda method is maximizing score (true), or minimizing (false). 
+- `maximize` : Boolean indicating whether a mcda method is maximizing score (true), or minimizing (false).
 
 # Returns
 - `s_order` : [site_ids, criteria values, ranks]
 """
-function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Function)
+function retrieve_ranks(S::Matrix{Float64}, site_ids::Vector{Float64}, weights::Vector{Float64}, mcda_func::Function)
     S = mcda_normalize(S) .* weights'
     scores = mcda_func(S)
 
@@ -233,11 +233,9 @@ function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, m
 
     return retrieve_ranks(site_ids, results.scores, maximize)
 end
-function retrieve_ranks(site_ids::Vector, scores::Vector, maximize::Bool)
-    s_order = Union{Float64,Int64}[Int64.(site_ids) scores]
-    s_order .= sortslices(s_order, dims=1, by=x -> x[2], rev=maximize)
-
-    return s_order
+function retrieve_ranks(site_ids::Vector, scores::Vector, maximize::Bool)::Matrix{Union{Float64,Int64}}
+    s_order::Vector{Int64} = sortperm(scores, rev=maximize)
+    return Union{Float64,Int64}[Int64.(site_ids[s_order]) scores[s_order]]
 end
 
 

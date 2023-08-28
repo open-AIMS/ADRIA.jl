@@ -55,7 +55,7 @@ Note: Units for all areas are expected to be identical, and are assumed to be in
 """
 function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_space::V,
     seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V,
-    Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
+    Yseed::SubArray, stdev::V, c_dist_t::Matrix{<:Truncated})::Nothing where {V<:Vector{Float64}}
 
     # Calculate proportion to seed based on current available space
     scaled_seed = distribute_seeded_corals(total_location_area[seed_locs], leftover_space[seed_locs], seeded_area)
@@ -66,12 +66,12 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_s
 
     # Calculate distribution weights using proportion of area (used as priors for MixtureModel)
     # Note: It is entirely possible for a location to be ranked in the top N, but
-    #       with no deployments (for a given species). A location with 0 cover 
-    #       and no deployments will therefore be NaN due to zero division. 
+    #       with no deployments (for a given species). A location with 0 cover
+    #       and no deployments will therefore be NaN due to zero division.
     #       These are replaced with 1.0 so that the distribution for unseeded
     #       corals are used.
     w_taxa::Matrix{Float64} = scaled_seed ./ cover[seed_sc, seed_locs]
-    replace!(w_taxa, NaN=>1.0)
+    replace!(w_taxa, NaN => 1.0)
 
     # Update critical DHW distribution for deployed size classes
     for (i, loc) in enumerate(seed_locs)
@@ -80,7 +80,7 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_s
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
-        tn = truncated.(Normal.(a_adapt[seed_sc], stdev[seed_sc]), minimum.(c_dist_ti), maximum.(c_dist_ti))
+        tn::Vector{Truncated} = truncated.(Normal.(a_adapt[seed_sc], stdev[seed_sc]), minimum.(c_dist_ti), maximum.(c_dist_ti))
 
         # If seeding an empty location, no need to do any further calculations
         if all(isapprox.(w_taxa[:, i], 1.0))
@@ -91,7 +91,7 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_s
         # Create new distributions by mixing previous and current distributions using
         # proportional cover as the priors/weights
         # Priors (weights based on cover for each species)
-        tx = MixtureModel[MixtureModel([t, t1], Float64[w, 1.0-w]) for ((t, t1), w) in zip(zip(c_dist_ti, tn), w_taxa[:, i])]
+        tx::Vector{MixtureModel} = MixtureModel[MixtureModel([t, t1], Float64[w, 1.0-w]) for ((t, t1), w) in zip(zip(c_dist_ti, tn), w_taxa[:, i])]
         c_dist_t[seed_sc, loc] .= truncated.(Normal.(mean.(tx), stdev[seed_sc]), minimum.(tx), maximum.(tx))
     end
 

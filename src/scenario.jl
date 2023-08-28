@@ -25,13 +25,10 @@ function setup_cache(domain::Domain)::NamedTuple
         cov_tmp=zeros(n_species, n_sites),  # Cover for previous timestep
         depth_coeff=zeros(n_sites),  # store for depth coefficient
         site_area=Matrix{Float64}(site_area(domain)'),  # site areas
-        TP_data=Matrix{Float64}(domain.TP_data),  # transition probabilities
         wave_scen=zeros(tf, n_sites),  # tmp store for wave scenario
         wave_damage=zeros(tf, n_species, n_sites),  # damage coefficient for each size class
-        dhw_tol_mean_log = zeros(tf, n_species, n_sites),  # tmp log for mean dhw tolerances
-        dhw_tol_std_log = zeros(tf, n_species, n_sites),  # tmp log for stdev dhw tolerances
-        c_dist_t_1 = fill(truncated(Normal(1.0, 0.25), 0.0, 1.0), n_species, n_sites),  # coral distribution t-1
-        c_dist_t = fill(truncated(Normal(1.0, 0.25), 0.0, 1.0), n_species, n_sites)  # coral distribution t
+        dhw_tol_mean_log=zeros(tf, n_species, n_sites),  # tmp log for mean dhw tolerances
+        dhw_tol_std_log=zeros(tf, n_species, n_sites),  # tmp log for stdev dhw tolerances
     )
 
     return cache
@@ -363,7 +360,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
-    TP_data = cache.TP_data
+    TP_data = Matrix(domain.TP_data)
     # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
     fec_scope = cache.fec_scope
@@ -478,8 +475,16 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_dist_t_1 = copy(cache.c_dist_t_1)  # coral distribution t-1
-    c_dist_t = copy(cache.c_dist_t)  # coral distribution t
+    c_dist_t_1::Matrix{Truncated{Normal{Float64},Continuous,Float64,Float64,Float64}} = repeat(
+        truncated.(
+            Normal.(corals.dist_mean, corals.dist_std),
+            0.0,
+            corals.dist_mean .+ HEAT_UB
+        ),
+        1,
+        n_sites
+    )
+    c_dist_t = copy(c_dist_t_1)
 
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
@@ -511,7 +516,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==1])
-    @inbounds for tstep::Int64 in 2:tf
+    for tstep::Int64 in 2:tf
         p_step::Int64 = tstep - 1
         Y_pstep .= Y_cover[p_step, :, :]
 
@@ -526,6 +531,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Gets used in ODE
         p.rec .= settler_cover(fec_scope, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
+
+        settler_DHW_tolerance!(Y_pstep, c_dist_t_1, c_dist_t, site_k_area(domain), TP_data,
+            p.rec, corals.dist_std, fec_params_per_m², param_set("heritability"))
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
@@ -619,8 +627,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_loc_area, 0.0, 1.0)
 
         if tstep <= tf
-            adjust_DHW_distribution!(@view(Y_cover[tstep-1:tstep, :, :]), n_groups, @view(c_dist_t_1[:,:]), @view(c_dist_t[:,:]),
-                @view(p.r[:]), @view(corals.dist_std[:]), param_set("heritability"))
+            adjust_DHW_distribution!(@view(Y_cover[tstep-1:tstep, :, :]), n_groups, c_dist_t,
+                p.r, corals.dist_std)
 
             if in_debug_mode
                 # Log dhw tolerances if in debug mode
@@ -648,8 +656,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Set variables to nothing so garbage collector clears them
     # Leads to memory leak issues in multiprocessing contexts without these.
     wave_scen = nothing
-    c_dist_t_1 = nothing
-    c_dist_t = nothing
     dhw_tol_mean_log = nothing
     dhw_tol_std_log = nothing
 
