@@ -23,7 +23,11 @@ function per_loc(metric, data::NamedDimsArray{D,T,N,A})::NamedDimsArray where {D
     #   see: https://stackoverflow.com/a/62040897
     tf = axes(data, :timesteps)
     s::Vector{eltype(data)} = map(metric,
-        JuliennedArrays.Slices(data[timesteps=tf], dim(data, :timesteps), dim(data, :scenarios))
+        JuliennedArrays.Slices(
+            data[timesteps=tf],
+            NamedDims.dim(data, :timesteps),
+            NamedDims.dim(data, :scenarios)
+        )
     )
 
     return NamedDimsArray(s, sites=axiskeys(data, :sites))
@@ -69,11 +73,10 @@ ADRIA.metrics.loc_trajectory(x -> quantile(x, 0.975), tac)
 """
 function loc_trajectory(metric, data::NamedDimsArray{D,T,N,A})::NamedDimsArray where {D,T,N,A}
     tf = axes(data, :timesteps)  # Note: use axes instead of axiskeys for speed
-    s::Matrix{eltype(data)} = map(metric,
-        JuliennedArrays.Slices(data[timesteps=tf], dim(data, :scenarios))
-    )
+    data_slices = JuliennedArrays.Slices(data[timesteps=tf], NamedDims.dim(data, :scenarios))
+    loc_data::Matrix{eltype(data)} = map(metric, data_slices)
 
-    return NamedDimsArray(s, timesteps=axiskeys(data, :timesteps), sites=axiskeys(data, :sites))
+    return NamedDimsArray(loc_data, timesteps=axiskeys(data, :timesteps), sites=axiskeys(data, :sites))
 end
 function loc_trajectory(metric, data::NamedDimsArray{D,T,N,A}, timesteps::Union{UnitRange,Int64})::NamedDimsArray where {D,T,N,A}
     return loc_trajectory(metric, data[timesteps=timesteps])
