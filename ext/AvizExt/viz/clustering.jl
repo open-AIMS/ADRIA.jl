@@ -70,7 +70,7 @@ Visualize clustered time series for each site and map.
 
 # Arguments
 - `rs` : ResultSet
-- `data` : Matrix of scenario data for each location
+- `data` : Vector of summary statistics data for each location
 - `clusters` : Vector of numbers corresponding to clusters
 - `opts` : Options specific to this plotting method
     - `highlight` : Vector of colors indicating cluster membership for each location.
@@ -97,7 +97,7 @@ end
 function ADRIA.viz.map!(
     g::Union{GridLayout,GridPosition},
     rs::Union{Domain,ResultSet},
-    data::AbstractArray,
+    data::AbstractVector{<:Real},
     clusters::Vector{Int64};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict()
