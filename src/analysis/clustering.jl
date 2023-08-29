@@ -1,9 +1,9 @@
 using Distances
 using Clustering
-
+using FLoops
 
 """
-    complexity(x::AbstractMatrix{T})::AbstractMatrix{Float64} where {T <: Real}
+    _complexity(x::AbstractMatrix{T})::AbstractMatrix{Float64} where {T <: Real}
 
 Compute Complexity (CE) of an Matrix `x` of shape \$T ⋅ S\$, where \$T\$ is total number of
 time steps and \$S\$ is number of scenarios.
@@ -21,14 +21,14 @@ Vector{Float64}:
  2
  5
 """
-function complexity(x::AbstractMatrix{T})::Vector{Float64} where {T<:Real}
-    return vec(sqrt.(sum(diff(Matrix(x), dims=1) .^ 2, dims=1)))
+function _complexity(x::AbstractMatrix{T})::Vector{Float64} where {T<:Real}
+    return vec(sqrt.(sum(diff(Matrix(x), dims=1) .^ 2, dims=1)) .+ 1)
 end
 
 """
-    correlation_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
+    correction_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
 
-Compute Correlation Factor (CF) between two time series complexities `ce_i` and `ce_j`.
+Compute Correction Factor (CF) between two time series complexities `ce_i` and `ce_j`.
 
 # Arguments
 - `ce_i` : Time series `i`
@@ -44,7 +44,7 @@ julia> CF(ce[1], ce[2])
 Float64:
  2.5
 """
-function correlation_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
+function correction_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
     return max(ce_i, ce_j) / min(ce_i, ce_j)
 end
 
@@ -53,7 +53,7 @@ end
 
 Compute Complexity Invariance Distance (CID) between every matrix column pairs (`data`) of
 shape \$T ⋅ S\$. The distance between every two series is the weighted euclidian distanced
-multiplied by the correlation factor, which takes into account the ration between the two
+multiplied by the correction factor, which takes into account the ration between the two
 series complexities. Returns a matrix of distances (\$S ⋅ S\$).
 
 # Arguments
@@ -62,8 +62,11 @@ series complexities. Returns a matrix of distances (\$S ⋅ S\$).
 # Returns
 Matrix of complexity invariance distances
 """
-function complexity_invariance_distance(data::AbstractMatrix{T})::AbstractMatrix{Float64} where {T<:Real}
-    ce = complexity(data)
+function complexity_invariance_distance(
+    data::AbstractMatrix{T}
+)::AbstractMatrix{Float64} where {T<:Real}
+    # Compute complexity vector
+    complexity = _complexity(data)
 
     # Create empty Matrix
     data_size = size(data, 2)
@@ -72,16 +75,15 @@ function complexity_invariance_distance(data::AbstractMatrix{T})::AbstractMatrix
     # [1, 1/2, 1/3, ..., 1/n]
     weights = sqrt.(1 ./ (1:size(data, 1)))
 
+    #? do we want to normalize the amplitudes of all series?
+
     # Iterate over data matrix to compute CID (Complexity Invariance Distance)
     for i in axes(data, 2)
-        for j in axes(data, 2)
+        @floop for j in axes(data, 2)
+            # Weight the WEuclidian Distance (ed) using the Correction Factor (cf)
             ed = weuclidean(data[:, i], data[:, j], weights)
-            cf = correlation_factor(ce[i], ce[j])
-
-            # Complexity Invariance Distance
-            cid = ed * cf
-            cid_matrix[i, j] = cid
-            cid_matrix[j, i] = cid
+            cf = correction_factor(complexity[i], complexity[j])
+            cid_matrix[i, j] = cid_matrix[j, i] = ed * cf
         end
     end
 
@@ -99,7 +101,7 @@ Hierarchical clustering between \$S\$ scenarios with \$T\$ time steps each.
 - `n_clusters` : Number of clusters determined _a priori_.
 
 # Returns
-Vector of cluster ids indicating which cluster each scenario belongs to.
+- `Vector` : Cluster ids indicating which cluster each scenario belongs to.
 
 # References
 1. Steinmann, P., Auping, W.L., Kwakkel, J.H., 2020.
@@ -112,26 +114,16 @@ Vector of cluster ids indicating which cluster each scenario belongs to.
    Data Min Knowl Disc 28, 634-669.
    https://doi.org/10.1007/s10618-013-0312-3
 """
-function time_series_clustering(data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
-    # Compute CID Distance Matrix
-    distances = complexity_invariance_distance(data)
-
+function time_series_clustering(
+    data::AbstractMatrix{T},
+    n_clusters::Int64
+)::Vector where {T<:Real}
     # Create dendogram using distantes matrix
+    distances = complexity_invariance_distance(data)
     dendogram = hclust(distances, linkage=:average)
 
-    # Hierarchical clustering with n_clusters clusters
+    # Return hierarchical clustering with n_clusters
     return cutree(dendogram, k=n_clusters)
-end
-function time_series_clustering(result_set::ResultSet, data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
-    # Find sites with k > 0.0
-    non_null_sites = result_set.site_data.k .> 0.0
-    filtered_data = data[:, non_null_sites]
-
-    # Apply time series cluster for filtered data
-    clusters = time_series_clustering(filtered_data, n_clusters)
-
-    # Assign cluster 0 for filtered sites to use same indexing as the input data
-    return [site != 0 ? popfirst!(clusters) : 0 for site in non_null_sites]
 end
 
 """
@@ -149,8 +141,12 @@ Categorize all clusters into target or non-target according to some metric.
 # Returns
 Vector containing 1's for target and 0's for non-target clusters
 """
-function target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{F};
-    metric=temporal_variability, size_limit=0.01)::Vector{T} where {T<:Int64,F<:Real}
+function target_clusters(
+    clusters::Vector{T},
+    outcomes::AbstractMatrix{F};
+    metric=temporal_variability,
+    size_limit=0.01
+)::Vector{T} where {T<:Int64,F<:Real}
 
     # Compute statistic for each cluster
     clusters_statistics::Vector{Float64} = []

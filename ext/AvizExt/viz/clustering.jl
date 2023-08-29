@@ -13,8 +13,12 @@ Visualize clustered time series of scenarios.
 # Returns
 Figure
 """
-function ADRIA.viz.ts_cluster(data::AbstractMatrix, clusters::Vector{Int64};
-    fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.ts_cluster(
+    data::AbstractMatrix,
+    clusters::Vector{Int64};
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -22,8 +26,12 @@ function ADRIA.viz.ts_cluster(data::AbstractMatrix, clusters::Vector{Int64};
 
     return f
 end
-function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix,
-    clusters::Vector{Int64}; axis_opts::Dict=Dict())
+function ADRIA.viz.ts_cluster!(
+    g::Union{GridLayout,GridPosition},
+    data::AbstractMatrix,
+    clusters::Vector{Int64};
+    axis_opts::Dict=Dict()
+)
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(data)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
@@ -34,29 +42,25 @@ function ADRIA.viz.ts_cluster!(g::Union{GridLayout,GridPosition}, data::Abstract
         axis_opts...
     )
 
-    # Filter clusters and data for non-zero clusters
-    clusters_filtered = filter(c -> c != 0, clusters)
-    data_filtered = data[:, clusters.>0]
-
     # Compute cluster colors
-    clusters_colors = _clusters_colors(clusters_filtered)
+    clusters_colors = _clusters_colors(clusters)
     unique_cluster_colors = unique(clusters_colors)
 
     leg_entry = Any[]
-    for cluster in unique(clusters_filtered)
-        cluster_color = _cluster_color(unique_cluster_colors, clusters_filtered, cluster)
+    for cluster in unique(clusters)
+        cluster_color = _cluster_color(unique_cluster_colors, clusters, cluster)
         push!(
             leg_entry,
             series!(
                 ax,
-                data_filtered[:, clusters_filtered.==cluster]',
+                data[:, clusters.==cluster]',
                 solid_color=cluster_color
             )
         )
     end
 
     # Plot Legend
-    n_clusters = length(unique(clusters_filtered))
+    n_clusters = length(unique(clusters))
     Legend(g[1, 2], leg_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
 
     return g
