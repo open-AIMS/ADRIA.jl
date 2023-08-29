@@ -19,18 +19,42 @@ class data have different colors. This maybe be usefull for bumphunting.
 # Returns
 Figure with condition Rule scatter plots
 """
-function ADRIA.viz.rules_scatter(rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, outcomes::NamedDimsArray, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.rules_scatter(
+    rs::ResultSet,
+    scenarios::DataFrame,
+    clusters::Vector{Int64},
+    outcomes::NamedDimsArray,
+    rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
     # For now we are only plotting conditions with two clauses
     rules = filter(r -> length(r.condition) == 2, rules)
 
-    ADRIA.viz.rules_scatter!(g, rs, scenarios, clusters, outcomes, rules; axis_opts=axis_opts)
+    ADRIA.viz.rules_scatter!(
+        g,
+        rs,
+        scenarios,
+        clusters,
+        outcomes,
+        rules;
+        axis_opts=axis_opts
+    )
 
     return f
 end
-function ADRIA.viz.rules_scatter!(g::Union{GridLayout,GridPosition}, rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, outcomes::NamedDimsArray, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; axis_opts::Dict=Dict())
+function ADRIA.viz.rules_scatter!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    scenarios::DataFrame,
+    clusters::Vector{Int64},
+    outcomes::NamedDimsArray,
+    rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
+    axis_opts::Dict=Dict()
+)
     sub_g = g[1, 1] = GridLayout()
 
     # Target cluster index
