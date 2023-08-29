@@ -82,7 +82,7 @@ Figure
 """
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
-    data::AbstractArray,
+    data::AbstractArray{<:Real},
     clusters::Vector{Int64};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
