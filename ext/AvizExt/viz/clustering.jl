@@ -1,3 +1,5 @@
+using JuliennedArrays
+
 """
     ts_cluster(data::AbstractMatrix, clusters::Vector{Int64}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     ts_cluster!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; axis_opts::Dict=Dict())
@@ -68,7 +70,7 @@ Visualize clustered time series for each site and map.
 
 # Arguments
 - `rs` : ResultSet
-- `data` : Matrix of scenario data for each location
+- `data` : Vector of summary statistics data for each location
 - `clusters` : Vector of numbers corresponding to clusters
 - `opts` : Options specific to this plotting method
     - `highlight` : Vector of colors indicating cluster membership for each location.
@@ -78,31 +80,35 @@ Visualize clustered time series for each site and map.
 # Returns
 Figure
 """
-function ADRIA.viz.map(rs::Union{Domain,ResultSet}, data::AbstractArray,
-    clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict())
-
+function ADRIA.viz.map(
+    rs::Union{Domain,ResultSet},
+    data::AbstractArray{<:Real},
+    clusters::Vector{Int64};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.map!(g, rs, data, clusters; opts=opts, axis_opts=axis_opts)
 
     return f
 end
-function ADRIA.viz.map!(g::Union{GridLayout,GridPosition},
-    rs::Union{Domain,ResultSet}, data::AbstractArray, clusters::Vector{Int64};
-    opts::Dict=Dict(), axis_opts::Dict=Dict())
-
-    # Vector of summary statistics (default is mean) computed over timesteps
-    opts[:summary] = get(opts, :summary, mean)
-    data_stats = collect(ADRIA.metrics.per_loc(opts[:summary], data))
-
+function ADRIA.viz.map!(
+    g::Union{GridLayout,GridPosition},
+    rs::Union{Domain,ResultSet},
+    data::AbstractVector{<:Real},
+    clusters::Vector{Int64};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
     cluster_colors = _clusters_colors(clusters)
-    legend_params = _cluster_legend_params(clusters, cluster_colors, data_stats)
+    legend_params = _cluster_legend_params(clusters, cluster_colors, data)
 
     opts[:highlight] = get(opts, :highlight, cluster_colors)
     opts[:legend_params] = get(opts, :legend_params, legend_params)
 
-    ADRIA.viz.map!(g, rs, data_stats; opts=opts, axis_opts=axis_opts)
+    ADRIA.viz.map!(g, rs, data; opts=opts, axis_opts=axis_opts)
 
     return g
 end
