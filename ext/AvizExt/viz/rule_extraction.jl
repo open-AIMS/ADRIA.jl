@@ -15,6 +15,11 @@ class data have different colors. This maybe be usefull for bumphunting.
 - `clusters` : Clusters used to extract Rule using SIRUS
 - `outcomes` : Results of scenario metric
 - `rules` : Rules extracted from scenarios and clusters
+- `opts` : Additional figure customization options
+- `fig_opts` : Additional options to pass to adjust Figure creation
+  See: https://docs.makie.org/v0.19/api/index.html#Figure
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
 Figure with condition Rule scatter plots
@@ -25,6 +30,7 @@ function ADRIA.viz.rules_scatter(
     clusters::Vector{Int64},
     outcomes::NamedDimsArray,
     rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
+    opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict()
 )
@@ -41,6 +47,7 @@ function ADRIA.viz.rules_scatter(
         clusters,
         outcomes,
         rules;
+        opts=opts,
         axis_opts=axis_opts
     )
 
@@ -53,6 +60,7 @@ function ADRIA.viz.rules_scatter!(
     clusters::Vector{Int64},
     outcomes::NamedDimsArray,
     rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
+    opts::Dict=Dict(),
     axis_opts::Dict=Dict()
 )
     sub_g = g[1, 1] = GridLayout()
@@ -105,7 +113,9 @@ function ADRIA.viz.rules_scatter!(
                 scatter!(ax, x, y, color=cat_color, marker=marker, markersize=4)
             end
 
-            _highlight_target_area(ax, condition, scenarios)
+            if get(opts, :target_area, false)
+                _highlight_target_area(ax, condition, scenarios)
+            end
         end
     end
 
@@ -126,11 +136,11 @@ end
 
 function _highlight_target_area(ax::Axis, condition::Vector{Vector}, scenarios::DataFrame)
     # Draw lines at clause breakpoints
-    vlines!(ax, [last(condition[1])], color=:black)
-    hlines!(ax, [last(condition[2])], color=:black)
+    vlines!(ax, [last(condition[1])], color=(:black, 0.4))
+    hlines!(ax, [last(condition[2])], color=(:black, 0.4))
 
     # Highlight target area
-    poly!(ax, _target_rect(scenarios, condition), color=(:black, 0.1))
+    poly!(ax, _target_area(scenarios, condition), color=(:black, 0.08))
 end
 
 function _find_limits(features)
