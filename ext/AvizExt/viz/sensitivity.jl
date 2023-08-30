@@ -302,7 +302,8 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
     end
 
     bin_slices, factor_list, CIs = axiskeys(outcomes)
-    b_slices = parse.(Float64, bin_slices)
+    b_slices = collect(LinRange(0.0, 1.0, length(bin_slices)))
+
     curr::Int64 = 1
     axs = Axis[]
     for r in 1:n_rows
