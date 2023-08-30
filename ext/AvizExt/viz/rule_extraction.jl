@@ -58,7 +58,7 @@ function ADRIA.viz.rules_scatter!(
     sub_g = g[1, 1] = GridLayout()
 
     # Target cluster index
-    target_index = clusters .== ADRIA.analysis.target_cluster(clusters, outcomes)
+    target_index = ADRIA.analysis.target_clusters(clusters, outcomes)
 
     # Colors and Labels Setup
     colors = ["#1f78b4", "#ff7f00"]
