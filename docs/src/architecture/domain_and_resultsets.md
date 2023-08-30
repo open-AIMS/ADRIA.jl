@@ -33,6 +33,15 @@ Geospatial data consists of:
 - polygons defining individual reefs/sites in [geopackage format](https://www.geopackage.org/)
 - initial coral cover (as a netCDF; with dimensions: species/sizes ⋅ locations)
 
+### ReefMod Engine datasets
+
+Datasets intended for use with the ReefMod Engine (RME) can also be loaded for use with ADRIAmod.
+The RME represents larger spatial scales typically covering the entire Great Barrier Reef.
+
+```julia
+dom = ADRIA.load_domain(ReefModDomain, "path to ReefMod Engine dataset", "45")
+```
+
 ### Naming conventions
 
 By convention, the directory name is typically the name of the reef or reef cluster.
