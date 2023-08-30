@@ -312,7 +312,7 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V, target_facto
 
     p_table = NamedDimsArray(
         zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
-        bins=["$(round(i, digits=2))" for i in steps[2:end]],
+        bins=["$(round(i, digits=5))" for i in steps[2:end]],
         factors=Symbol.(target_factors),
         CI=[:mean, :lower, :upper]
     )
