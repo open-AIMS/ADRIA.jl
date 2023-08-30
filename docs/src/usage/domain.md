@@ -12,3 +12,12 @@ By convention we assign the `Domain` to `dom`, although this variable can be nam
 ```julia
 dom = ADRIA.load_domain("path to domain data package")
 ```
+
+ReefMod Engine datasets can also be used to run ADRIAmod simulations for the Great Barrier
+Reef.
+
+```julia
+dom = ADRIA.load_domain(ReefModDomain, "path to ReefModEngine dataset", "45")
+```
+
+Note that at the moment the target RCP has to be specified.
