@@ -202,7 +202,7 @@ function ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::Na
     for r in 1:n_rows
         for c in 1:n_cols
             f_vals = rs.inputs[:, Symbol(factors[curr])]
-            fv_s = round.(quantile(f_vals, b_slices),digits=2)
+            fv_s = quantile(f_vals, b_slices)
             # fv_s = String[(i == 1) || iseven(i) ? @sprintf("%.1f", fv) : "" for (i, fv) in enumerate(quantile(f_vals, b_slices))]
             # xtick_labels = (1:length(bin_slices), fv_s)
 
@@ -310,7 +310,7 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
         for c in 1:n_cols
             f_name = Symbol(factors[curr])
             f_vals = rs.inputs[:, f_name]
-            fv_s = quantile(f_vals, b_slices)
+            fv_s = round.(quantile(f_vals, b_slices), digits=2)
 
             ax::Axis = Axis(
                 g[r, c],
