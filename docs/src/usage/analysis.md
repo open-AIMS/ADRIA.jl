@@ -31,8 +31,7 @@ Makie.inline!(false)
 ### Result Set
 
 All metrics and visualization tools presented here can be used with data generated from
-ADRIA's model or from any other model. Following, we show usage examples considering ADRIA
-result set `rs`:
+ADRIAmod. Following, we show usage examples considering ADRIA result set `rs`:
 
 ```julia
 # Load domain data
@@ -45,6 +44,10 @@ scens = ADRIA.sample(dom, num_samples)
 # Run the model for generated scenarios
 rcp_45 = "45"
 rs = ADRIA.run_scenarios(scens, dom, rcp_45)
+
+# Visualize results (in terms of absolute coral cover)
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+ADRIA.viz.scenario(rs, s_tac)
 ```
 
 See the previous sections [Loading a Domain](@ref), [Generating scenarios](@ref) and
