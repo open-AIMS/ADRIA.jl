@@ -85,7 +85,8 @@ function ADRIA.viz.rules_scatter!(
             condition = rules[index].condition
 
             # Human readable feature names
-            feature_names = _feature_names(first.(condition), rs)
+            fieldnames::Vector{String} = first.(condition)
+            feature_names = _feature_names(fieldnames, rs)
 
             ax::Axis = Axis(
                 sub_g[r, c],
@@ -143,20 +144,20 @@ function _highlight_target_area(ax::Axis, condition::Vector{Vector}, scenarios::
     poly!(ax, _target_area(scenarios, condition), color=(:black, 0.08))
 end
 
-function _find_limits(features)
+function _find_limits(features::Vector{<:Real})
     delta = (maximum(features) - minimum(features)) * 0.1
     [minimum(features) - delta, maximum(features) + delta]
 end
 
-function _readable_condition(condition, feature_names)
+function _readable_condition(condition::Vector{Vector}, feature_names::Vector{String})
     inequalities = [c[2] == :L ? " < " : " ≥ " for c in condition]
     values = string.([round(c[3]; digits=2) for c in condition])
     join(feature_names .* inequalities .* values, "\n")
 end
 
-function _target_rect(features, condition)
+function _target_area(scenarios::DataFrame, condition::Vector{Vector})
     # Inferior and superior limits for x and y features (in that order)
-    lims = [_find_limits(features[:, first(c)]) for c in condition]
+    lims = [_find_limits(scenarios[:, first(c)]) for c in condition]
 
     # Compute target areas parameters
     x, y = [c[2] == :L ? l[1] : c[3] for (c, l) in zip(condition, lims)]
@@ -165,6 +166,6 @@ function _target_rect(features, condition)
     Rect(x, y, w, h)
 end
 
-function _feature_names(fieldnames, rs::ResultSet)::Vector{String}
+function _feature_names(fieldnames::Vector{String}, rs::ResultSet)::Vector{String}
     return [model_spec(rs)[model_spec(rs).fieldname.==f, :].name[1] for f in fieldnames]
 end
