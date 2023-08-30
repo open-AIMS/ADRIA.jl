@@ -216,15 +216,18 @@ using Statistics
 # Extract metric from scenarios
 tac = ADRIA.metrics.total_absolute_cover(rs)
 
-# Summarize scenarios for each site
-m_tac = ADRIA.metrics.loc_trajectory(median, tac)
+# Get a timeseries summarizing the scenarios for each site
+tac_site_series = ADRIA.metrics.loc_trajectory(median, tac)
 
 # Cluster scenarios
 n_clusters = 6
-loc_clusters = ADRIA.analysis.time_series_clustering(rs, m_tac, n_clusters)
+clusters = ADRIA.analysis.time_series_clustering(tac_site_series, n_clusters)
+
+# Get a vector summarizing the scenarios and timesteps for each site
+tac_sites = ADRIA.metrics.per_loc(median, tac)
 
 # Plot figure
-tsc_map_fig = ADRIA.viz.map(rs, m_tac, loc_clusters)
+tsc_map_fig = ADRIA.viz.map(rs, tac_sites, clusters)
 
 # Save final figure
 save("tsc_map.png", tsc_map_fig)
