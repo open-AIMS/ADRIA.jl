@@ -16,7 +16,7 @@ struct Rule{V<:Vector{Vector},W<:Vector{Float64}}
 end
 
 """
-    rules(rules::SIRUS.StableRules{Float64})
+    rules(rules::SIRUS.StableRules{Int64})
 
 Collates vector of Rule objects. These are **not** the same as SIRUS.Rule object.
 See also [`Rule`](@ref).
@@ -27,12 +27,12 @@ See also [`Rule`](@ref).
 # Returns
 Vector{ADRIA.analysis.Rule{Vector{Float64}, Vector{Vector}}}
 """
-function rules(rules::SIRUS.StableRules{Float64})::Vector{Rule{Vector{Vector},Vector{Float64}}}
+function rules(rules::SIRUS.StableRules{Int64})::Vector{Rule{Vector{Vector},Vector{Float64}}}
     [Rule(_condition(rules, i), _consequent(rules, i)) for i in eachindex(rules.rules)]
 end
 
 """
-    _condition(rules::SIRUS.StableRules{Float64}, index::Int64)
+    _condition(rules::SIRUS.StableRules{Int64}, index::Int64)
 
 Vector containing condition clauses. Each condition clause is a vector with three
 components: a feature_name::String, a direction::String (< or ≤) and a value:<Float64
@@ -44,7 +44,7 @@ components: a feature_name::String, a direction::String (< or ≤) and a value:<
 # Returns
 Vector of Rule condition clauses (each one being a vector itself).
 """
-function _condition(rules::SIRUS.StableRules{Float64}, index::Int64)::Vector{Vector}
+function _condition(rules::SIRUS.StableRules{Int64}, index::Int64)::Vector{Vector}
     condition::Vector{Vector} = []
     for split in rules.rules[index].path.splits
         feature_name = split.splitpoint.feature_name
@@ -56,7 +56,7 @@ function _condition(rules::SIRUS.StableRules{Float64}, index::Int64)::Vector{Vec
 end
 
 """
-    _consequent(rules::SIRUS.StableRules{Float64}, index::Int64)
+    _consequent(rules::SIRUS.StableRules{Int64}, index::Int64)
 
 Vector of Rule consequent with two components: the probability of the 'then' clause and
 probability of the 'else' clause (here called otherwise)
@@ -68,7 +68,7 @@ probability of the 'else' clause (here called otherwise)
 # Returns
 Probabilities vector, one for Rule condition == true, one for Rule condition == false.
 """
-function _consequent(rules::SIRUS.StableRules{Float64}, index::Int64)::Vector{Float64}
+function _consequent(rules::SIRUS.StableRules{Int64}, index::Int64)::Vector{Float64}
     weight = rules.weights[index]
     rule = rules.rules[index]
     then_probability = SIRUS._simplify_binary_probabilities(weight, rule.then)
@@ -133,7 +133,7 @@ function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T; n_trees:
 end
 
 """
-    maximum_probability(rules::SIRUS.StableRules{Float64})
+    maximum_probability(rules::SIRUS.StableRules{Int64})
 
 Sum of biggest probabilities for each rule consequent
 
