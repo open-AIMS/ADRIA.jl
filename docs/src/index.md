@@ -9,7 +9,7 @@ Among the most common usecases are:
 
 - Running a number of scenarios under different environmental and intervention conditions (see [Loading a Domain](@ref), [Generating scenarios](@ref) and [Running scenarios](@ref));
 - Extracting metrics for each scenario and timestep such as coral cover, shelter volume or number of juveniles (see [Metrics](@ref));
-- Using these metrics to perform a range of analyses like time series clustering (grouping together scenarios with similar temporal behaviour) (see [Analysis](@ref));
+- Using these metrics to perform a range of analyses like time series clustering (grouping together scenarios with similar temporal behaviour; see [Analysis](@ref));
 - Using the visualization tools to plot some of the mentioned metrics or analysis (see [Analysis](@ref));
 
 More details about each of these can be found in the next sections.
