@@ -62,6 +62,10 @@ function ADRIA.viz.rules_scatter!(
 
     # Colors and Labels Setup
     colors = ["#1f78b4", "#ff7f00"]
+    labels = ["Target", "Non-target"]
+    marker = :circle
+    title_size = 11
+    labels_size = 11
 
     n_factors = length(rules)
     n_rows, n_cols = _calc_gridsize(n_factors)
@@ -80,7 +84,9 @@ function ADRIA.viz.rules_scatter!(
                 xlabel=feature_names[1],
                 ylabel=feature_names[2],
                 title=_readable_condition(condition, feature_names),
-                titlesize=10;
+                titlesize=title_size,
+                xlabelsize=labels_size,
+                ylabelsize=labels_size;
                 axis_opts...
             )
 
@@ -95,14 +101,25 @@ function ADRIA.viz.rules_scatter!(
             for t in unique(target_index)
                 x = x_features[t.==target_index]
                 y = y_features[t.==target_index]
-                cat_color = t == 1 ? :blue : :red
-                scatter!(ax, x, y, color=cat_color, marker=:circle, markersize=4)
+                cat_color = t == 1 ? colors[1] : colors[2]
+                scatter!(ax, x, y, color=cat_color, marker=marker, markersize=4)
             end
 
             _highlight_target_area(ax, condition, scenarios)
         end
     end
 
+    # Create Legend
+    markers = MarkerElement[MarkerElement(color=_c, marker=marker) for _c in colors]
+    Legend(
+        sub_g[1, n_cols+1],
+        markers,
+        labels,
+        "Clusters",
+        halign=:left,
+        valign=:top,
+        margin=(5, 5, 5, 5)
+    )
 
     g
 end
