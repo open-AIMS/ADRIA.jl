@@ -114,7 +114,7 @@ function ADRIA.viz.rules_scatter!(
                 scatter!(ax, x, y, color=cat_color, marker=marker, markersize=4)
             end
 
-            if get(opts, :target_area, false)
+            if get(opts, :target_area, true)
                 _highlight_target_area(ax, condition, scenarios)
             end
         end
