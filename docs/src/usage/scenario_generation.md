@@ -6,6 +6,9 @@ possible factors relating to environmental, intervention, and coral conditions.
 A scenario is defined as a combination of all factors (i.e., all the model inputs).
 
 ```julia
+# Load domain before generating scenarios
+dom = ADRIA.load_domain("path to domain data package")
+
 # Generate 128 scenarios based on available environmental data layers and model parameters
 scens = ADRIA.sample(dom, 128)
 ```
@@ -52,7 +55,7 @@ scens = ADRIA.sample(dom, 100, LatinHypercubeSample())
 The current default values can be extracted with:
 
 ```julia
-params = ADRIA.param_table(scenario_domain)
+params = ADRIA.param_table(dom)
 ```
 
 Again, `params` is a DataFrame of a single row and $D$ factors:
@@ -66,10 +69,10 @@ as well.
 
 ```julia
 # Get model specification
-model_spec = ADRIA.model_spec(scenario_domain)
+model_spec = ADRIA.model_spec(dom)
 
 # Sometimes it is useful to export the model specification to CSV
-ADRIA.model_spec(scenario_domain, "model_spec.csv")
+ADRIA.model_spec(dom, "model_spec.csv")
 ```
 
 ## Constrained sampling

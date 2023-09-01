@@ -34,14 +34,14 @@ mutable struct ReefModDomain <: Domain
 end
 
 """
-    load_domain(::Type{ReefModDomain}, fn_path, RCP)::ReefModDomain
+    load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefModDomain
 
-Load a Domain for use with ReefMod.
+Load a ReefMod Engine dataset.
 
 # Arguments
-- `ReefModDomain`
-- `fn_path`
-- `RCP`
+- `ReefModDomain` : DataType
+- `fn_path` : path to ReefMod Engine dataset
+- `RCP` : Representative Concentration Pathway scenario ID
 
 # Returns
 ReefModDomain
@@ -256,7 +256,7 @@ end
 - `ReefModDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
-- `tf` : the time frame represented by the dataset. 
+- `tf` : the time frame represented by the dataset.
     Subsets the data in cases where `tf[2] < length(data)` such that only `1:(tf[2] - tf[1])+1` is read in.
 
 # Returns
@@ -310,7 +310,7 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     end
 
     # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
-    # as suggested by YM (pers comm. 2023-08-08 12:55pm AEST). Distribution is used to split ReefMod initial 
+    # as suggested by YM (pers comm. 2023-08-08 12:55pm AEST). Distribution is used to split ReefMod initial
     # species covers into ADRIA's 6 size classes by weighting with the cdf.
     reef_mod_area_dist = LogNormal(log(700), log(4))
     bin_edges_area = colony_mean_area(Float64[0, 2, 5, 10, 20, 40, 80])
@@ -370,4 +370,3 @@ function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)
     Number of sites: $(n_locations(d))
     """)
 end
-

@@ -17,6 +17,11 @@ end
 Metric(f, d) = Metric(f, d, "")
 
 
+# Custom show method to display docstring for wrapped function
+# One limitation is that it does not display the docstring with the help system.
+Base.show(io::IO, mime::MIME"text/plain", M::Metric) = println(io, Base.doc(M.func))
+
+
 """
 Make Metric callable with arbitary arguments that are passed to associated function.
 """

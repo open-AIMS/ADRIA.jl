@@ -4,10 +4,10 @@ push!(LOAD_PATH, "../src/")
 using Documenter, ADRIA
 
 
-makedocs(sitename="ADRIA Documentation",
+makedocs(
+    sitename="ADRIA.jl",
     format=Documenter.HTML(
         prettyurls=get(ENV, "CI", nothing) == "true",
-        sidebar_sitename=false,
         assets=["assets/favicon.ico"]
     ),
     pages=[
