@@ -896,8 +896,8 @@ Calculates mean over specified dimensions plus half the standard deviation.
 # Returns
 - Mean + std of input env_layer, where std is weighted by (1-w) and aggregated over dims.
 """
-function env_mean(env_layer::AbstractArray, dims_agg::Union{Symbol,Tuple{Symbol,Symbol},Int,Tuple{Int,Int}})
-    return vec((mean(env_layer, dims=dims_agg) .+ std(env_layer, dims=dims_agg)) .* 0.5)
+function mean_var_offset(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)
+    return vec((mean(env_layer, dims=dims) .+ std(env_layer, dims=dims)) .* (1.0 - w))
 end
 
 """
