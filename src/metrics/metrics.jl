@@ -193,7 +193,7 @@ total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scena
 
 """
     relative_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, area::Vector{T}) where {T<:Real}
-    relative_taxa_cover(rs::ResultSet}
+    relative_taxa_cover(rs::ResultSet)
 
 Results grouped by taxa/species.
 
