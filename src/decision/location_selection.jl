@@ -133,6 +133,9 @@ of location preference for each scenario as location ids.
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
 - `iv_type` : String indicating the intervention type to perform aggregation on.
+
+# Returns
+- Location order after ranking as string IDs for each scenario.
 """
 function ranks_to_location_order(ranks::NamedDimsArray)
 
@@ -162,6 +165,8 @@ with which each location was selected at each rank across the location selection
 - `rs` : ADRIA result set.
 - `iv_type` : String indicating the intervention type to perform aggregation on.
 
+# Returns
+- Frequency with which each location was selected for each rank.
 """
 function ranks_to_frequencies(ranks::NamedDimsArray, rank_frequencies::NamedDimsArray; n_ranks=length(ranks.sites))
     for rank in range(1, n_ranks, n_ranks)
@@ -192,6 +197,8 @@ with which each location was selected at each rank across the location selection
 - `iv_type` : String indicating the intervention type to perform aggregation on.
 - `n_ranks` : Consider first n_ranks, default is all ranks (n_locs).
 
+# Returns 
+- Frequency with which each location was selected for each rank over time.
 """
 function ranks_to_frequencies_ts(ranks::NamedDimsArray; n_ranks=length(ranks.sites))
     rank_frequencies = NamedDimsArray(zeros(length(ranks.timesteps), length(ranks.sites), length(ranks.sites)), timesteps=ranks.timesteps, sites=ranks.sites, ranks=1:length(ranks.sites))
@@ -221,6 +228,8 @@ for a selection of scenarios (e.g. selected robust scenarios)
 - `n_loc_int` : number of locations which are intervened at for each intervention decision.
 - `ind_metrics` : Optional vector indicating selection of scenarios to calculate for.
 
+# Returns 
+- Counts for location selection at each location in the domain.
 """
 function location_selection_frequencies(ranks::NamedDimsArray, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(ranks.scenarios)))
     ranks_frequencies = ranks_to_frequencies(ranks[scenarios=ind_metrics], iv_type; n_ranks=n_loc_int)
@@ -245,6 +254,8 @@ Get ranks for intervention based on name.
     `run_location_selection()`.
 - `iv_type` : indicates intervention log to use ("seed", "shade" or "fog").
 
+# Returns
+- Ranks for specified iv_type.
 """
 function _get_iv_type(ranks, iv_type)
     iv_dict = Dict([("seed", 1), ("shade", 2)])
