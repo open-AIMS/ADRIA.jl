@@ -43,6 +43,36 @@ function timesteps(outcomes::NamedDimsArray)::Array{Int64}
     return Int64[]
 end
 
+"""
+    _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
+
+Calculates a "nice" number of rows and columns from a given number of factors to display.
+The number of rows for subplots are calculated based on the number of desired columns.
+
+Note: `n_factors` == 1 is displayed as a single figure.
+      `n_factors` <= 4 are always displayed with 2 columns.
+
+# Arguments
+- `n_factors` : Number of factors to organize in a grid.
+
+# Returns
+Number of rows and columns
+"""
+function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
+    if n_factors <= 4
+        if n_factors == 1
+            return 1, 1
+        end
+
+        n_cols::Int64 = 2
+    else
+        n_cols = max_cols
+    end
+
+    n_rows::Int64 = ceil(Int64, n_factors / n_cols)
+
+    return n_rows, n_cols
+end
 
 include("scenario.jl")
 include("sensitivity.jl")
