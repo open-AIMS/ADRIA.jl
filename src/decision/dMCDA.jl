@@ -940,7 +940,7 @@ function mean_var_offset(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symb
 end
 
 """
-    set_depth_criteria(depth_med::Vector{Float64}, depth_max::Float64, depth_min::Float64)
+    set_depth_criteria(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}
 
 Sets criteria for depth filtering in MCDA.
 
@@ -948,7 +948,10 @@ Sets criteria for depth filtering in MCDA.
 - `depth_med` : Median depth (length n_locs).
 - `depth_max` : Maximum depth.
 - `depth_min` : Minimum depth.
+
+# Returns
+- Vector of indices indicating locations which satisfy the depth criteria.
 """
-function set_depth_criteria(depth_med::Vector{Float64}, depth_max::Float64, depth_min::Float64)
+function set_depth_criteria(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}    
     return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
 end
