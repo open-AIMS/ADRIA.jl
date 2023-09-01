@@ -46,9 +46,9 @@ function rules_scatter() end
 function rules_scatter!() end
 
 # Location selection Plots
-function loc_selection_frequency_map()
-function loc_selection_frequency_map!()
-    
+function loc_selection_frequency_map() end
+function loc_selection_frequency_map!() end
+
 # Spatial
 function map() end
 function map!() end
