@@ -924,13 +924,16 @@ function depth_criteria_indx(
 end
 
 """
-    env_mean(env_layer::AbstractArray, dims_agg::Union{Symbol,Tuple{Symbol,Symbol},Int,Tuple{Int,Int}})
-
+    mean_var_offset(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)
 Calculates mean over specified dimensions plus half the standard deviation.
 
 # Arguments
 - `env_layer` : Environmental data layer to calculate the mean of.
-- `dims_agg` : Dimensions to aggregate over.
+- `dims` : Dimensions to aggregate over.
+- `w` : Weighting for std offset to mean.
+
+# Returns
+- Mean + std of input env_layer, where std is weighted by (1-w) and aggregated over dims.
 """
 function env_mean(env_layer::AbstractArray, dims_agg::Union{Symbol,Tuple{Symbol,Symbol},Int,Tuple{Int,Int}})
     return vec((mean(env_layer, dims=dims_agg) .+ std(env_layer, dims=dims_agg)) .* 0.5)
