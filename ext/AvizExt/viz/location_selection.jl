@@ -23,7 +23,7 @@ function loc_selection_frequency_map!(g::Union{GridLayout,GridPosition},
     fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
 
     loc_frequencies = location_selection_frequencies(rs, iv_type; n_loc_int=rs.n_loc_int, ind_metrics=scen_ids)
-    ADRIA.viz.map!(g, rs, keyless(unname(loc_frequencies)); axis_opts=axis_opts,
+    ADRIA.viz.map!(g, rs, keyless(unname(loc_frequencies)); axis_opts=axis_opts, fig_opts=fig_opts,
         color_map=[:red, :blue])
 end
 function loc_selection_frequency_map(rs::ResultSet, iv_type::String;
