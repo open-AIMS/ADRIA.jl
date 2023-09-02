@@ -39,6 +39,13 @@ Paste the generated release notes here.
 See Julia Registrator usage notes [here](https://github.com/JuliaComputing/Registrator.jl?installation_id=32448289&setup_action=install#details-for-triggering-juliaregistrator-for-step-2-above) for more details.
 
 
+!!! note "Issues can block release"
+    The JuliaRegistrator bot raises a corresponding issue with the Julia package registry.
+    Registration may be blocked for a number of reasons. Keep an eye on the auto-submitted
+    issue and resolve any issues reported there. Otherwise the package version will never be
+    released.
+
+
 ## Development Release
 
 Development releases provide users with the most recent "working" version of ADRIA and may still have some known bugs.
