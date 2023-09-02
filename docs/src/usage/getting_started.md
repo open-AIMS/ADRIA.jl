@@ -97,7 +97,7 @@ It is also possible to load previously run scenarios. See [Running scenarios](@r
 more details:
 
 ```julia
-rs = ADRIA.load_results("path_to_output_data")
+rs = ADRIA.load_results("path to results")
 ```
 
 Extract some metric for analysis (e.g., the total absolute cover for each site and
