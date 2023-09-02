@@ -129,9 +129,8 @@ each "portion" of information is separated by a double underscore (`__`).
 Simulation results are stored in [Zarr format](https://zarr.readthedocs.io/en/stable/spec/v2.html).
 A `ResultSet` also holds a copy of:
 
-- the scenario specifications run
+- the scenario specifications
 - the geospatial data used
-- model specification for the simulations run
 - Summary statistics for the DHW/wave scenarios run, and
 - Logs indicating which locations were intervened on
 
