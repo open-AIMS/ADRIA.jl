@@ -40,9 +40,9 @@ See Julia Registrator usage notes [here](https://github.com/JuliaComputing/Regis
 
 
 !!! note "Issues can block release"
-    The JuliaRegistrator bot raises a corresponding issue with the Julia package registry.
+    The JuliaRegistrator bot submits a corresponding Pull Request with the Julia package registry.
     Registration may be blocked for a number of reasons. Keep an eye on the auto-submitted
-    issue and resolve any issues reported there. Otherwise the package version will never be
+    Pull Request and resolve any issues reported there. Otherwise the package version will never be
     released.
 
 
