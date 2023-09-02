@@ -17,13 +17,11 @@ end
 Metric(f, d) = Metric(f, d, "")
 
 
-# Custom show method to display docstring for wrapped function
-# One limitation is that it does not display the docstring with the help system.
-Base.show(io::IO, mime::MIME"text/plain", M::Metric) = println(io, Base.doc(M.func))
-
-
 """
-Make Metric callable with arbitary arguments that are passed to associated function.
+    (f::Metric)(raw, args...; kwargs...)
+    (f::Metric)(rs::ResultSet, args...; kwargs...)
+
+Makes Metric types callable with arbitary arguments that are passed to associated function.
 """
 function (f::Metric)(raw, args...; kwargs...)::NamedDimsArray
     local res
@@ -149,13 +147,6 @@ function slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(
 end
 
 
-"""
-    relative_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray{T} where {T}
-    relative_cover(rs::ResultSet)::AbstractArray
-
-# Arguments
-- `X` : Matrix of raw model results
-"""
 function _relative_cover(X::AbstractArray{U}, total_area::Vector{T}, k_area::Vector{T})::AbstractArray{T} where {T<:Real,U<:Real}
     # sum over all species and size classes
     return (dropdims(sum(X, dims=2), dims=2) .* total_area') ./ replace(k_area, 0.0 => 1.0)'
@@ -168,8 +159,28 @@ function _relative_cover(rs::ResultSet)::AbstractArray
 
     return rc
 end
+
+"""
+    relative_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray{T} where {T}
+    relative_cover(rs::ResultSet)::AbstractArray
+
+Indicate coral cover relative to available hard substrate (\$k\$ area).
+
+# Arguments
+- `X` : Matrix of raw model results
+
+# Returns
+Coral cover [0 - 1], relative to available \$k\$ area for a given location.
+"""
 relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
 
+
+function _total_absolute_cover(X::AbstractArray{T}, site_area::Vector{T})::AbstractArray{T} where {T<:Real}
+    return dropdims(sum(X, dims=:species), dims=:species) .* site_area'
+end
+function _total_absolute_cover(rs::ResultSet)::AbstractArray
+    return rs.outcomes[:total_absolute_cover]
+end
 
 """
     total_absolute_cover(X::AbstractArray{T}, site_area::Vector{T})::AbstractArray{T} where {T}
@@ -181,32 +192,13 @@ Sum of proportional area taken up by all corals, multiplied by total site area.
 # Arguments
 - `X` : Matrix of raw model results
 - `site_area` : Vector of site areas, with sites following the same order as given indicated in X.
+
+# Returns
+Absolute coral cover for a given location in m².
 """
-function _total_absolute_cover(X::AbstractArray{T}, site_area::Vector{T})::AbstractArray{T} where {T<:Real}
-    return dropdims(sum(X, dims=:species), dims=:species) .* site_area'
-end
-function _total_absolute_cover(rs::ResultSet)::AbstractArray
-    return rs.outcomes[:total_absolute_cover]
-end
 total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scenarios), "m²")
 
 
-"""
-    relative_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, area::Vector{T}) where {T<:Real}
-    relative_taxa_cover(rs::ResultSet)
-
-Results grouped by taxa/species.
-
-TODO: Number of size classes is hard coded.
-
-# Arguments
-- `X` : Raw model results for a single scenario
-- `k_area` : the coral habitable area
-- `area` : total location area
-
-# Returns
-Coral cover, grouped by taxa for the given scenario, relative to location k area.
-"""
 function _relative_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, area::Vector{T})::AbstractArray where {T<:Real}
     n_steps, n_species, n_locs = size(X)
     n_sc = 6
@@ -227,7 +219,25 @@ end
 function _relative_taxa_cover(rs::ResultSet)::AbstractArray
     return rs.outcomes[:relative_taxa_cover]
 end
+
+"""
+    relative_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, area::Vector{T}) where {T<:Real}
+    relative_taxa_cover(rs::ResultSet)
+
+Results grouped by taxa/species.
+
+TODO: Number of size classes is hard coded.
+
+# Arguments
+- `X` : Raw model results for a single scenario
+- `k_area` : the coral habitable area
+- `area` : total location area
+
+# Returns
+Coral cover, grouped by taxa for the given scenario, relative to location k area.
+"""
 relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenarios))
+
 
 function _relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, area::Vector{T})::AbstractArray where {T<:Real}
     n_steps, n_species, n_locs = size(X)
@@ -248,12 +258,7 @@ function _relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, area::
 end
 relative_loc_taxa_cover = Metric(_relative_loc_taxa_cover, (:timesteps, :taxa, :location, :scenarios))
 
-"""
-    relative_juveniles(X::AbstractArray{T})::AbstractArray{T} where {T}
-    relative_juveniles(rs::ResultSet)::AbstractArray
 
-Juvenile coral cover relative to total site area.
-"""
 function _relative_juveniles(X::AbstractArray{T}, coral_spec::DataFrame)::AbstractArray{T} where {T<:Real}
     # Cover of juvenile corals (< 5cm diameter)
     juv_groups::AbstractArray{<:Real} = X[species=coral_spec.class_id .== 1] .+ X[species=coral_spec.class_id .== 2]
@@ -263,8 +268,22 @@ end
 function _relative_juveniles(rs::ResultSet)::AbstractArray
     return rs.outcomes[:relative_juveniles]
 end
+
+"""
+    relative_juveniles(X::AbstractArray{T})::AbstractArray{T} where {T}
+    relative_juveniles(rs::ResultSet)::AbstractArray
+
+Juvenile coral cover relative to total site area.
+"""
 relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios))
 
+
+function _absolute_juveniles(X::AbstractArray{T}, coral_spec::DataFrame, area::AbstractVector{T})::AbstractArray{T} where {T<:Real}
+    return _relative_juveniles(X, coral_spec) .* area'
+end
+function _absolute_juveniles(rs::ResultSet)::AbstractArray
+    return rs.outcomes[:relative_juveniles] .* site_area(rs)'
+end
 
 """
     absolute_juveniles(X::AbstractArray{T}, coral_spec::DataFrame, area::AbstractVector{T})::AbstractArray{T} where {T<:Real}
@@ -272,12 +291,6 @@ relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios
 
 Juvenile coral cover in m².
 """
-function _absolute_juveniles(X::AbstractArray{T}, coral_spec::DataFrame, area::AbstractVector{T})::AbstractArray{T} where {T<:Real}
-    return _relative_juveniles(X, coral_spec) .* area'
-end
-function _absolute_juveniles(rs::ResultSet)::AbstractArray
-    return rs.outcomes[:relative_juveniles] .* site_area(rs)'
-end
 absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios), "m²")
 
 
@@ -289,6 +302,17 @@ Calculate the maximum possible area that can be covered by juveniles for a given
 function _max_juvenile_area(coral_params::DataFrame, max_juv_density::Float64=51.8)
     max_size_m² = maximum(colony_mean_area(coral_params[coral_params.class_id.==2, :mean_colony_diameter_m]))
     return max_juv_density * max_size_m²
+end
+
+function _juvenile_indicator(X::AbstractArray{T}, coral_params::DataFrame,
+    abs_area::V, k_area::V)::AbstractArray{T} where {T<:Real,V<:Vector{Float64}}
+    # Replace 0 k areas with 1.0 to avoid zero-division error
+    usable_k_area = Float64[k > 0.0 ? k : 1.0 for k in k_area]'
+
+    return _absolute_juveniles(X, coral_params, abs_area) ./ (_max_juvenile_area(coral_params) .* usable_k_area)
+end
+function _juvenile_indicator(rs::ResultSet)::AbstractArray
+    return rs.outcomes[:juvenile_indicator]
 end
 
 """
@@ -305,33 +329,8 @@ from: Dr. A Thompson; to: Dr. K. Anthony
 Subject: RE: Max density of juvenile corals on the GBR
 Sent: Friday, 14 October 2022 2:58 PM
 """
-function _juvenile_indicator(X::AbstractArray{T}, coral_params::DataFrame,
-    abs_area::V, k_area::V)::AbstractArray{T} where {T<:Real,V<:Vector{Float64}}
-    # Replace 0 k areas with 1.0 to avoid zero-division error
-    usable_k_area = Float64[k > 0.0 ? k : 1.0 for k in k_area]'
-
-    return _absolute_juveniles(X, coral_params, abs_area) ./ (_max_juvenile_area(coral_params) .* usable_k_area)
-end
-function _juvenile_indicator(rs::ResultSet)::AbstractArray
-    return rs.outcomes[:juvenile_indicator]
-end
 juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios))
 
-
-"""
-    coral_evenness(r_taxa_cover::AbstractArray{T})::Array{T} where {T<:Real}
-    coral_evenness(rs::ResultSet)::AbstractArray{T} where {T}
-
-Calculates evenness across functional coral groups in ADRIA as a diversity metric.
-Inverse Simpsons diversity indicator.
-
-# References
-1. Hill, M. O. (1973).
-    Diversity and Evenness: A Unifying Notation and Its Consequences.
-   Ecology, 54(2), 427-432.
-   https://doi.org/10.2307/1934352
-
-"""
 function _coral_evenness(r_taxa_cover::AbstractArray{T})::Array{T} where {T<:Real}
     # Evenness as a functional diversity metric
     n_steps, n_grps, n_locs = size(r_taxa_cover)
@@ -349,8 +348,21 @@ end
 function _coral_evenness(rs::ResultSet)::AbstractArray
     return rs.outcomes[:coral_evenness]
 end
-coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
 
+"""
+    coral_evenness(r_taxa_cover::AbstractArray{T})::Array{T} where {T<:Real}
+    coral_evenness(rs::ResultSet)::AbstractArray{T} where {T}
+
+Calculates evenness across functional coral groups in ADRIA as a diversity metric.
+Inverse Simpsons diversity indicator.
+
+# References
+1. Hill, M. O. (1973).
+    Diversity and Evenness: A Unifying Notation and Its Consequences.
+   Ecology, 54(2), 427-432.
+   https://doi.org/10.2307/1934352
+"""
+coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
 
 """
     _colony_Lcm2_to_m3_m2(inputs::DataFrame)::Tuple
@@ -480,33 +492,6 @@ function _shelter_species_loop!(X::T1, ASV::T1, nspecies::Int64, colony_vol_m3_p
     clamp!(ASV, 0.0, maximum(ASV))
 end
 
-
-"""
-    absolute_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})
-    absolute_shelter_volume(rs::ResultSet)
-
-Provide indication of shelter volume in volume of cubic meters.
-
-The metric applies log-log linear models developed by Urbina-Barreto et al., [1]
-which uses colony diameter and planar area (2D metrics) to estimate
-shelter volume (a 3D metric).
-
-
-# Arguments
-- `X` : raw results
-- `site_area` : area in m^2 for each site
-- `max_cover` : maximum possible coral cover for each site (in percentage of site_area)
-- `inputs` : DataFrame of scenario inputs
-
-# References
-1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V.,
-     Elise, S., Kulbicki, M., Quod, J.-P., Dutrieux, E., Garnier, R.,
-     Henrich Bruggemann, J., Penin, L., & Adjeroud, M. (2021).
-   Quantifying the shelter capacity of coral reefs using photogrammetric
-     3D modeling: From colonies to reefscapes.
-   Ecological Indicators, 121, 107151.
-   https://doi.org/10.1016/j.ecolind.2020.107151
-"""
 function _absolute_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, inputs::NamedDimsArray)::AbstractArray{T} where {T<:Real}
     nspecies::Int64 = size(X, :species)
 
@@ -544,34 +529,22 @@ end
 function _absolute_shelter_volume(rs::ResultSet)::AbstractArray
     return rs.outcomes[:absolute_shelter_volume]
 end
-absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :scenarios))
-
 
 """
-    _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
-    relative_shelter_volume(rs::ResultSet)
+    absolute_shelter_volume(X::NamedDimsArray, site_area::Vector{<:Real}, inputs::Union{DataFrame,DataFrameRow})
+    absolute_shelter_volume(rs::ResultSet)
 
-Provide indication of shelter volume relative to theoretical maximum volume for
-the area covered by coral.
+Provide indication of shelter volume in volume of cubic meters.
 
 The metric applies log-log linear models developed by Urbina-Barreto et al., [1]
 which uses colony diameter and planar area (2D metrics) to estimate
 shelter volume (a 3D metric).
 
-```math
-RSV = \\begin{cases}
-TASV / MSV & TASV > 0, \\\\
-0 & \\text{otherwise}
-\\end{cases}
-```
-
-where ``TASV`` represents Total Absolute Shelter Volume and ``MSV`` represents the
-maximum shelter volume possible.
-
 
 # Arguments
 - `X` : raw results
 - `site_area` : area in m^2 for each site
+- `max_cover` : maximum possible coral cover for each site (in percentage of site_area)
 - `inputs` : DataFrame of scenario inputs
 
 # References
@@ -583,6 +556,9 @@ maximum shelter volume possible.
    Ecological Indicators, 121, 107151.
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
+absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :scenarios))
+
+
 function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
@@ -637,6 +613,45 @@ end
 function _relative_shelter_volume(rs::ResultSet)::NamedDimsArray
     return rs.outcomes[:relative_shelter_volume]
 end
+
+"""
+    relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+    relative_shelter_volume(rs::ResultSet)
+
+Provide indication of shelter volume relative to theoretical maximum volume for
+the area covered by coral.
+
+The metric applies log-log linear models developed by Urbina-Barreto et al., [1]
+which uses colony diameter and planar area (2D metrics) to estimate
+shelter volume (a 3D metric).
+
+```math
+RSV = \\begin{cases}
+TASV / MSV & TASV > 0, \\\\
+0 & \\text{otherwise}
+\\end{cases}
+```
+
+where ``TASV`` represents Total Absolute Shelter Volume and ``MSV`` represents the
+maximum shelter volume possible.
+
+# Arguments
+- `X` : raw results
+- `site_area` : area in m^2 for each site
+- `inputs` : DataFrame of scenario inputs
+
+# Returns
+Shelter volume relative to a theoretical maximum volume for the available \$k\$ area.
+
+# References
+1. Urbina-Barreto, I., Chiroleu, F., Pinel, R., Fréchon, L., Mahamadaly, V.,
+     Elise, S., Kulbicki, M., Quod, J.-P., Dutrieux, E., Garnier, R.,
+     Henrich Bruggemann, J., Penin, L., & Adjeroud, M. (2021).
+   Quantifying the shelter capacity of coral reefs using photogrammetric
+     3D modeling: From colonies to reefscapes.
+   Ecological Indicators, 121, 107151.
+   https://doi.org/10.1016/j.ecolind.2020.107151
+"""
 relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
 
 

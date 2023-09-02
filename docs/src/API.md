@@ -4,8 +4,8 @@
 
 ```@autodocs
 Modules = [ADRIA.metrics]
-Order   = [:function, :type]
-Private = false
+Order   = [:constant, :function, :type]
+Private = true
 ```
 
 ## Performance indicators

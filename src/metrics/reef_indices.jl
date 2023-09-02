@@ -1,29 +1,6 @@
 using FLoops, DataStructures
 
-"""
-    reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
-    reef_condition_index(rs)
 
-Estimates a Reef Condition Index (RCI) providing a single value that indicates the condition
-of a reef across four metrics:
-- coral cover
-- evenness (coral diversity)
-- shelter volume, and
-- abundance of juveniles
-
-# Notes
-Juveniles are made relative to maximum observed juvenile density (51.8/m²)
-See notes for `juvenile_indicator()`
-
-# Arguments
-- `rc` : Relative coral cover across all groups
-- `evenness` : Evenness across all coral groups
-- `sv` : Shelter volume based on coral sizes and abundances
-- `juves` : Abundance of coral juveniles < 5 cm diameter
-
-# Returns
-NamedArray[timesteps ⋅ locations ⋅ scenarios]
-"""
 function _reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray; threshold=2)::AbstractArray
     # Compare outputs against reef condition criteria provided by experts
     # These are median values for 8 experts.
@@ -93,15 +70,34 @@ function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
 
     return _reef_condition_index(rc, evenness, sv, juves)
 end
+
+"""
+    reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
+    reef_condition_index(rs)
+
+Estimates a Reef Condition Index (RCI) providing a single value that indicates the condition
+of a reef across four metrics:
+- coral cover
+- evenness (coral diversity)
+- shelter volume, and
+- abundance of juveniles
+
+# Notes
+Juveniles are made relative to maximum observed juvenile density (51.8/m²)
+See notes for `juvenile_indicator()`
+
+# Arguments
+- `rc` : Relative coral cover across all groups
+- `evenness` : Evenness across all coral groups
+- `sv` : Shelter volume based on coral sizes and abundances
+- `juves` : Abundance of coral juveniles < 5 cm diameter
+
+# Returns
+NamedArray[timesteps ⋅ locations ⋅ scenarios]
+"""
 reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
 
-"""
-    scenario_rci(rci::NamedDimsArray, tac::NamedDimsArray; kwargs...)
-    scenario_rci(rs::ResultSet; kwargs...)
 
-Extract the total populated area of locations with Reef Condition Index of "Good" or higher
-for each scenario for the entire domain.
-"""
 function _scenario_rci(rci::NamedDimsArray, tac::NamedDimsArray; kwargs...)
     rci_sliced = slice_results(rci; kwargs...)
     tac_sliced = slice_results(tac; kwargs...)
@@ -115,20 +111,17 @@ function _scenario_rci(rs::ResultSet; kwargs...)
 
     return _scenario_rci(rci, tac; kwargs...)
 end
+
+"""
+    scenario_rci(rci::NamedDimsArray, tac::NamedDimsArray; kwargs...)
+    scenario_rci(rs::ResultSet; kwargs...)
+
+Extract the total populated area of locations with Reef Condition Index of "Good" or higher
+for each scenario for the entire domain.
+"""
 scenario_rci = Metric(_scenario_rci, (:timesteps, :scenarios))
 
-"""
-    reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
-    reef_tourism_index(rs::ResultSet)::AbstractArray
 
-Estimate tourism index.
-
-# Arguments
-- `rc` : Relative coral cover across all groups
-- `evenness` : Evenness across all coral groups
-- `sv` : Shelter volume based on coral sizes and abundances
-- `juves` : Abundance of coral juveniles < 5 cm diameter
-"""
 function _reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray, intcp_u::Vector)::AbstractArray
     intcp = -0.498 .+ intcp_u
 
@@ -153,14 +146,22 @@ function _reef_tourism_index(rs::ResultSet; intcp_u::Bool=true)::AbstractArray
 
     return _reef_tourism_index(rc, evenness, sv, juves, intcp)
 end
+
+"""
+    reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray)::AbstractArray
+    reef_tourism_index(rs::ResultSet)::AbstractArray
+
+Estimate tourism index.
+
+# Arguments
+- `rc` : Relative coral cover across all groups
+- `evenness` : Evenness across all coral groups
+- `sv` : Shelter volume based on coral sizes and abundances
+- `juves` : Abundance of coral juveniles < 5 cm diameter
+"""
 reef_tourism_index = Metric(_reef_tourism_index, (:timesteps, :sites, :scenarios))
 
-"""
-    scenario_rti(rti::NamedDimsArray; kwargs...)
-    scenario_rti(rs::ResultSet; kwargs...)
 
-Calculate the mean Reef Tourism Index (RTI) for each scenario for the entire domain.
-"""
 function _scenario_rti(rti::NamedDimsArray; kwargs...)
     rti_sliced = slice_results(rti; kwargs...)
     return scenario_trajectory(rti_sliced)
@@ -168,8 +169,43 @@ end
 function _scenario_rti(rs::ResultSet; kwargs...)
     return _scenario_rti(reef_tourism_index(rs); kwargs...)
 end
+
+"""
+    scenario_rti(rti::NamedDimsArray; kwargs...)
+    scenario_rti(rs::ResultSet; kwargs...)
+
+Calculate the mean Reef Tourism Index (RTI) for each scenario for the entire domain.
+"""
 scenario_rti = Metric(_scenario_rti, (:timesteps, :scenarios))
 
+
+function _reef_fish_index(rc::AbstractArray, intcp_u1, intcp_u2)
+    intcp1 = 1.232 .+ intcp_u1
+    intcp2 = -1623.6 .+ intcp_u2
+
+    slope1 = 0.007476
+    slope2 = 1883.3
+
+    # Apply unique intercepts for each scenario
+    rfi = cat(map(axe -> 0.01 .* (
+                intcp2[axe] .+ slope2 .*
+                               (intcp1[axe] .+ slope1 .* (rc[:, :, axe] .* 100.0))
+            ),
+            axes(rc, 3))...,
+        dims=3)
+
+    # Calculate total fish biomass, kg km2
+    # 0.01 coefficient is to convert from kg ha to kg km2
+    return round.(rfi, digits=2)
+end
+function _reef_fish_index(rs::ResultSet; intcp_u1::Bool=true, intcp_u2::Bool=true)
+    rc = relative_cover(rs)
+    n_scens = size(rc, :scenarios)
+    icp1 = intcp_u1 ? rand(Normal(0.0, 0.195), n_scens) : zeros(n_scens)
+    icp2 = intcp_u2 ? rand(Normal(0.0, 533), n_scens) : zeros(n_scens)
+
+    return _reef_fish_index(rc, icp1, icp2)
+end
 
 """
     reef_fish_index(rc::AbstractArray)
@@ -198,41 +234,9 @@ The importance of structural complexity in coral reef ecosystems.
 Coral Reefs 32, 315–326.
 https://doi.org/10.1007/s00338-012-0984-y
 """
-function _reef_fish_index(rc::AbstractArray, intcp_u1, intcp_u2)
-    intcp1 = 1.232 .+ intcp_u1
-    intcp2 = -1623.6 .+ intcp_u2
-
-    slope1 = 0.007476
-    slope2 = 1883.3
-
-    # Apply unique intercepts for each scenario
-    rfi = cat(map(axe -> 0.01 .* (
-                intcp2[axe] .+ slope2 .*
-                               (intcp1[axe] .+ slope1 .* (rc[:, :, axe] .* 100.0))
-            ),
-            axes(rc, 3))...,
-        dims=3)
-
-    # Calculate total fish biomass, kg km2
-    # 0.01 coefficient is to convert from kg ha to kg km2
-    return round.(rfi, digits=2)
-end
-function _reef_fish_index(rs::ResultSet; intcp_u1::Bool=true, intcp_u2::Bool=true)
-    rc = relative_cover(rs)
-    n_scens = size(rc, :scenarios)
-    icp1 = intcp_u1 ? rand(Normal(0.0, 0.195), n_scens) : zeros(n_scens)
-    icp2 = intcp_u2 ? rand(Normal(0.0, 533), n_scens) : zeros(n_scens)
-
-    return _reef_fish_index(rc, icp1, icp2)
-end
 reef_fish_index = Metric(_reef_fish_index, (:timesteps, :sites, :scenarios))
 
-"""
-    scenario_rfi(rfi::NamedDimsArray; kwargs...)
-    scenario_rfi(rs::ResultSet; kwargs...)
 
-Calculate the mean Reef Fish Index (RFI) for each scenario for the entire domain.
-"""
 function _scenario_rfi(rfi::NamedDimsArray; kwargs...)
     rfi_sliced = slice_results(rfi; kwargs...)
     return scenario_trajectory(rfi_sliced)
@@ -240,4 +244,11 @@ end
 function _scenario_rfi(rs::ResultSet; kwargs...)
     return _scenario_rfi(reef_fish_index(rs); kwargs...)
 end
+
+"""
+    scenario_rfi(rfi::NamedDimsArray; kwargs...)
+    scenario_rfi(rs::ResultSet; kwargs...)
+
+Calculate the mean Reef Fish Index (RFI) for each scenario for the entire domain.
+"""
 scenario_rfi = Metric(_scenario_rfi, (:timesteps, :scenarios))

@@ -57,7 +57,7 @@ and so on. The `Criteria` sub-component relates to the preferences for the Multi
 Decision Analysis methods, further detailed in the [MCDA page](TODO). For the ADRIA ecosystem model
 (ADRIAmod), `EnviromentalLayers` relate to the environmental scenarios available for a given
 simulation (a time series of DHW and Wave stress), itself determined on the loading of data
-(see [this page](TODO)).
+(see [Running scenarios](@ref)).
 
 The `Coral` sub-component relates to ADRIAmod, currently representing six coral species:
 

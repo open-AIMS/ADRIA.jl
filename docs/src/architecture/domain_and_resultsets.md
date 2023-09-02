@@ -117,7 +117,7 @@ Example_domain
 
 The directory holding results is also treated as a data package referred to as a `ResultSet`.
 Scenario outcomes are written out to disk as they complete to a directory located in the
-user-defined `Output` directory (see [Getting started](@ref Getting started)).
+user-defined `Output` directory (see [Getting started](@ref)).
 
 The directory name follows the convention of `[Domain Name]__[IDs of RCPs]__[date/time of run]`.
 For example: `Moore_2022-11-17__RCPs45_60__2023-01-01_19_00_00_000`
