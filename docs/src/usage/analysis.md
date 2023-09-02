@@ -53,7 +53,7 @@ ADRIA.viz.scenario(rs, s_tac)
 See the previous sections [Loading a Domain](@ref), [Generating scenarios](@ref) and
 [Running scenarios](@ref) for more information.
 
-## Metrics Extraction
+## Extracting results
 
 A range of metrics are defined as part of the ADRIA framework. See the [Metrics](@ref)
 page for more details.
@@ -69,7 +69,10 @@ juves = ADRIA.metrics.relative_juveniles(rs)
 ```
 
 We can also look at scenario-level metrics. They aggregate the above metrics across the
-`site` dimension. The result is a 2-dimensional Array of timesteps and scenarios:
+`site` dimension and indicate the _outcomes_ under a given intervention (or non-intervention) option
+and environmental condition.
+
+The result is a 2-dimensional array of timesteps and scenarios:
 
 ```julia
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
