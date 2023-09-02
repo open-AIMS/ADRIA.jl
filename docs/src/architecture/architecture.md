@@ -54,7 +54,7 @@ Each sub-component is represented by a struct with fields for each parameter. Th
 sub-component holds parameters that define a given adopted intervention strategy/option: how
 many (and type of) corals are to be seeded, the length of any deployment, the start/end years,
 and so on. The `Criteria` sub-component relates to the preferences for the Multi-Criteria
-Decision Analysis methods, further detailed in the [MCDA page](TODO). For the ADRIA ecosystem model
+Decision Analysis methods, further detailed in [Dynamic Multi-Criteria Decision Analysis](@ref). For the ADRIA ecosystem model
 (ADRIAmod), `EnviromentalLayers` relate to the environmental scenarios available for a given
 simulation (a time series of DHW and Wave stress), itself determined on the loading of data
 (see [Running scenarios](@ref)).
@@ -69,7 +69,7 @@ The `Coral` sub-component relates to ADRIAmod, currently representing six coral 
 6. Large massives
 
 ADRIAmod represents these across six size classes, with six parameter sets for each coral
-species and size class. These six parameter sets are further detailed in [the Coral documentation](TODO),
+species and size class. These six parameter sets are further detailed in [Model Factors](@ref),
 however, it results in a large number of unique factors (6 groups x 6 size classes x 6 parameters: 216 factors).
 Instead of specifying all coral factors by hand, ADRIA instead auto-generates the sub-component
 using a common template (see `coral_spec()` and `create_coral_struct()` in [General API](@ref)).Through discussion with expert stakeholders, factor bounds were set to +/- 10% of their default values following a triangular distribution, the peak of which is the default value.
