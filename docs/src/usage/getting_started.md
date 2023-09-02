@@ -114,7 +114,7 @@ producing plots:
 using GLMakie, GeoMakie, GraphMakie
 
 # Plot a quick scenario overview
-fig = ADRIA.viz.scenario(rs, s_tc; axis_opts=Dict(:ylabel=>"Absolue Cover"))
+fig = ADRIA.viz.scenario(rs, s_tc; axis_opts=Dict(:ylabel=>"Absolute Cover"))
 save("path_to_save_figure", fig)
 ```
 
