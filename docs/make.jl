@@ -19,6 +19,7 @@ makedocs(
             "usage/scenario_generation.md",
             "usage/scenario_runs.md",
             "usage/analysis.md",
+            "usage/cookbook.md"
             # "usage/scenario_discovery.md"
         ],
         "dMCDA.md",
