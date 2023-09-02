@@ -49,7 +49,7 @@ Where multiple datasets for the same spatial domain are expected, appending a un
 recommended, such as the date of creation, such as "Moore\_2022-11-17".
 
 The geopackage is expected to have the same filename as its Domain. For example, if
-the domain name is "Example_domain", then the geopackage file should be named
+the domain name is "Example\_domain", then the geopackage file should be named
 "Example\_domain.gpkg".
 
 Degree-heating Week datasets must follow the convention of: `dhwRCP[NN].nc`
