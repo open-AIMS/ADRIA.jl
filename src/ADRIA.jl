@@ -12,7 +12,7 @@ using Setfield, ModelParameters, DataStructures
 using DataFrames, Graphs, SimpleWeightedGraphs, CSV, Dates
 import ArchGDAL as AG
 import GeoDataFrames as GDF, GeoFormatTypes as GFT
-using FileIO, ImageIO, Reexport, GeoInterface
+using FileIO, ImageIO, GeoInterface
 
 using ProgressMeter
 
