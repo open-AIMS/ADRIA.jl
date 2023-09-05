@@ -6,7 +6,7 @@ using NCDatasets
 
 Core ADRIA domain. Represents study area.
 """
-mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,D<:DataFrame,X<:AbstractArray{<:Float64},Y<:AbstractArray{<:Real},Z<:AbstractArray{<:Real}} <: Domain
+mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,D<:DataFrame,X<:AbstractArray{<:Float64},Y<:Union{Matrix{<:Real},NamedDimsArray},Z<:Union{Matrix{<:Real},NamedDimsArray}} <: Domain
     const name::String  # human-readable name
     RCP::String  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
