@@ -576,10 +576,15 @@ function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
-    nscens = inputs isa DataFrameRow ? 1 : size(inputs, 1)
-    ins = NamedDimsArray(Matrix(Vector(inputs)'), scenarios=1:nscens, factors=names(inputs))
+    nscens = size(inputs, 1)
+    ins = NamedDimsArray(Matrix(inputs), scenarios=1:nscens, factors=names(inputs))
+    return _relative_shelter_volume(X, site_area, k_area, ins)
+end
+function _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
+    # Collate for a single scenario
+    ins = NamedDimsArray(Matrix(Vector(inputs)'), scenarios=1, factors=names(inputs))
     return _relative_shelter_volume(X, site_area, k_area, ins)
 end
 function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
@@ -604,18 +609,26 @@ function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
-function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::NamedDimsArray where {T<:Real}
-    nscens = inputs isa DataFrameRow ? 1 : size(inputs, 1)
+function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrame)::NamedDimsArray where {T<:Real}
+    nscens = size(inputs, 1)
     ins = NamedDimsArray(Matrix(inputs), scenarios=1:nscens, factors=names(inputs))
     return _relative_shelter_volume(X, site_area, k_area, ins)
 end
-
+function _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrameRow)::NamedDimsArray where {T<:Real}
+    ins = NamedDimsArray(Vector(inputs), scenarios=1, factors=names(inputs))
+    return _relative_shelter_volume(X, site_area, k_area, ins)
+end
 function _relative_shelter_volume(rs::ResultSet)::NamedDimsArray
     return rs.outcomes[:relative_shelter_volume]
 end
 
 """
-    relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::Union{DataFrame,DataFrameRow})::AbstractArray{T} where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrame)::NamedDimsArray where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrameRow)::NamedDimsArray where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
     relative_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume relative to theoretical maximum volume for

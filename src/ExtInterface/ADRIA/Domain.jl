@@ -2,30 +2,30 @@ using NCDatasets
 
 
 """
-    ADRIADomain{M,I,D,S,V,T,X}
+    ADRIADomain{Σ,M,I,D,X,Y,Z}
 
 Core ADRIA domain. Represents study area.
 """
-mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,I<:Vector{Int64},D<:DataFrame,S<:String,V<:Vector{Float64},T<:Vector{String},X<:AbstractArray,Y<:AbstractArray,Z<:AbstractArray{<:Float64}} <: Domain
-    const name::S  # human-readable name
-    RCP::S  # RCP scenario represented
+mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,D<:DataFrame,X<:AbstractArray{<:Float64},Y<:AbstractArray{<:Real},Z<:AbstractArray{<:Real}} <: Domain
+    const name::String  # human-readable name
+    RCP::String  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
-    scenario_invoke_time::S  # time latest set of scenarios were run
+    scenario_invoke_time::String  # time latest set of scenarios were run
     const TP_data::Σ  # site connectivity data
-    const in_conn::V  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
-    const out_conn::V  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
-    const strong_pred::I  # strongest predecessor
+    const in_conn::Vector{Float64}  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
+    const out_conn::Vector{Float64}  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
+    const strong_pred::Vector{Int64}  # strongest predecessor
     site_data::D  # table of site data (depth, carrying capacity, etc)
-    site_distances::Z  # Matrix of distances between each site
+    site_distances::X  # Matrix of distances between each site
     median_site_distance::Float64
-    const site_id_col::S  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
-    const unique_site_id_col::S  # column of unique site ids
+    const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
+    const unique_site_id_col::String  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
     const coral_growth::CoralGrowth  # coral
-    const site_ids::T  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
-    const removed_sites::T  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
-    dhw_scens::X  # DHW scenarios
-    wave_scens::Y  # wave scenarios
+    const site_ids::Vector{String}  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
+    const removed_sites::Vector{String}  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
+    dhw_scens::Y  # DHW scenarios
+    wave_scens::Z  # wave scenarios
 
     # Parameters
     model::Model  # core model
@@ -40,10 +40,10 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::Abstra
     init_coral_cover::NamedDimsArray, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
     DHWs::NamedDimsArray, waves::NamedDimsArray)::ADRIADomain where {T<:Union{Float32,Float64}}
 
-    # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
     criteria::Criteria = Criteria()
     sim_constants::SimConstants = SimConstants()
 
+    # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
     if criteria.depth_min.bounds[1] > maximum(site_data.depth_med)
         min_depth = minimum(site_data.depth_med)
         fields = fieldnames(typeof(criteria))

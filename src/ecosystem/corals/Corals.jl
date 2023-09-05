@@ -95,10 +95,10 @@ between bleaching years come from [1].
    Ecological Monographs, 92(1), e01494.
    https://doi.org/10.1002/ecm.1494
 
-5. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021. 
-   Coral adaptation to climate change: Meta-analysis reveals high heritability across 
-     multiple traits. 
-   Global Change Biology 27, 5694-5710. 
+5. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021.
+   Coral adaptation to climate change: Meta-analysis reveals high heritability across
+     multiple traits.
+   Global Change Biology 27, 5694-5710.
    https://doi.org/10.1111/gcb.15829
 """
 function coral_spec()::NamedTuple
@@ -143,9 +143,9 @@ function coral_spec()::NamedTuple
     ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
     # all values in cm/year
     linear_extension = Array{Float64,2}([
-        1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora 
-        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora 
-        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora 
+        1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora
+        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora
+        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
         1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
         1.0 1.0 1.0 1.0 0.8 0.8     # small massives
         1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
@@ -191,10 +191,10 @@ function coral_spec()::NamedTuple
     # - > 250cm diameter (Columns 5 and 6)
     # Values for size class 4 are then interpolated by K.A
     mb = Array{Float64,2}([
-        0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora 
-        0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora 
-        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora 
-        0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora 
+        0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora
+        0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora
+        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora
+        0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
         0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
         0.2 0.2 0.040 0.026 0.020 0.020])  # Large massives
     params.mb_rate = mb'[:]
@@ -337,9 +337,9 @@ end
 function _update_coral_spec(spec::DataFrame, pnames::Vector{String}, coral_params::DataFrame)::DataFrame
     fnames::Vector{String} = String.(coral_params[!, :fieldname])
     for p in pnames
-        target::Bool = occursin.(p, fnames)
-        Threads.@threads for tn in fnames[target]
-            idx::Vector{Bool} = spec.coral_id .== rsplit(tn, "_$p", keepempty=false)
+        target::BitVector = occursin.(p, fnames)
+        @floop for tn in fnames[target]
+            idx::BitVector = spec.coral_id .== rsplit(tn, "_$p", keepempty=false)
             spec[idx, [p]] .= coral_params[coral_params.fieldname.==tn, :val]
         end
     end

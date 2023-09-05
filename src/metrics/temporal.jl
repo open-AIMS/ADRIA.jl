@@ -54,23 +54,23 @@ function summarize_raw(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Re
 end
 
 
-function summarize_rci(rs::ResultSet; kwargs...)
-    rc::AbstractArray{<:Real} = call_metric(relative_cover, X; kwargs...)
+# function summarize_rci(rs::ResultSet; kwargs...)
+#     rc::AbstractArray{<:Real} = call_metric(relative_cover, rs.inputs; kwargs...)
 
-    # Divide across sites by the max possible proportional coral cover
-    rc .= mapslices((s) -> s ./ (rs.site_max_coral_cover / 100.0), rc, dims=:sites)
+#     # Divide across sites by the max possible proportional coral cover
+#     rc .= mapslices((s) -> s ./ (rs.site_max_coral_cover / 100.0), rc, dims=:sites)
 
-    # Empty representation of evenness - currently ignored
-    E::AbstractArray{<:Real} = Array(Float32[])
+#     # Empty representation of evenness - currently ignored
+#     E::AbstractArray{<:Real} = Array(Float32[])
 
-    s_ids = kwargs[:scenarios]
-    SV::AbstractArray{<:Real} = call_metric(shelter_volume, X, rs.inputs[s_ids, :]; kwargs...)
-    juv::AbstractArray{<:Real} = call_metric(juveniles, X; kwargs...)
+#     s_ids = kwargs[:scenarios]
+#     SV::AbstractArray{<:Real} = call_metric(shelter_volume, X, rs.inputs[s_ids, :]; kwargs...)
+#     juv::AbstractArray{<:Real} = call_metric(juveniles, X; kwargs...)
 
-    rci::AbstractArray{<:Real} = reef_condition_index(rc, E, SV, juv)
+#     rci::AbstractArray{<:Real} = reef_condition_index(rc, E, SV, juv)
 
-    return summarize_trajectory(rci)
-end
+#     return summarize_trajectory(rci)
+# end
 
 
 """
@@ -152,7 +152,7 @@ end
 
 
 
-function summarize_trajectories(rs, ts_name; kwargs...)
+function summarize_trajectories(rs::ResultSet, ts_name; kwargs...)
     sliced = slice_results(rs.outcomes[ts_name]; kwargs...)
     return summarize_trajectory(sliced)
 end
