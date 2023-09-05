@@ -74,14 +74,14 @@ function _permutation_importance(
     scores = Matrix{Float64}(undef, size(features, 2), n_iter)
     rng = DecisionTree.mk_rng(rng)::Random.AbstractRNG
 
-    ThreadsX.foreach(enumerate(eachcol(features))) do (i, col)
+    @floop for (i, col) in enumerate(eachcol(features))
         origin = copy(col)
         scores[i, :] = map(1:n_iter) do _
             shuffle!(rng, col)
             base - score(trees, labels, features)
         end
 
-        @inbounds features[:, i] = origin
+        features[:, i] = origin
     end
 
     (mean=reshape(mapslices(scores, dims=2) do im
