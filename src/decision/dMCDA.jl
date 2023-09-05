@@ -885,7 +885,8 @@ end
 
 
 """
-    mean_var_offset(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)
+    sum_stat_env(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)
+
 Calculates mean over specified dimensions plus half the standard deviation.
 
 # Arguments
