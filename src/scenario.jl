@@ -639,10 +639,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Put more weight on projected conditions closer to the decision point
             @views env_horizon = decay[d_s] .* dhw_scen[horizon, :]
 
-            mcda_vars.heat_stress_prob .= mean_var_offset(env_horizon, :scenario)
+            mcda_vars.heat_stress_prob .= summary_stat_env(env_horizon, :scenario)
 
             @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
-            mcda_vars.dam_prob .= mean_var_offset(env_horizon, :scenario)
+            mcda_vars.dam_prob .= summmary_stat_env(env_horizon, :scenario)
         end
         if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= site_coral_cover
