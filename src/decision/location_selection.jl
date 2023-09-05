@@ -218,7 +218,8 @@ end
     location_selection_frequencies(rs::ResultSet, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(ranks.scenarios)))
  
 Post-processing function for intervention logs. Calculates the frequencies with which locations were selected for a particular intervention,
-for a selection of scenarios (e.g. selected robust scenarios)
+for a selection of scenarios (e.g. selected robust scenarios).
+
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
@@ -249,6 +250,7 @@ end
     _get_iv_type(ranks, iv_type)
 
 Get ranks for intervention based on name.
+    
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
