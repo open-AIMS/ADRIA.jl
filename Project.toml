@@ -61,7 +61,6 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Surrogates = "6fc51010-71bc-11e9-0e15-a3fcc6593c49"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
-ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 
 [weakdeps]
@@ -119,7 +118,6 @@ StableRNGs = "1.0.0"
 StaticArrays = "1"
 StatsBase = "0.33, 0.34"
 Surrogates = "6"
-ThreadsX = "0.1"
 Zarr = "0.7, 0.8, 1, 0.9"
 julia = "1"
 
