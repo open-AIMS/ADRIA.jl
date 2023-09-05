@@ -903,7 +903,7 @@ function sum_stat_env(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,
 end
 
 """
-    depth_criteria(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}
+    depth_criteria_indx(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}
 
 Calculates criteria for depth filtering in MCDA.
 
@@ -915,6 +915,6 @@ Calculates criteria for depth filtering in MCDA.
 # Returns
 - Vector of indices indicating locations which satisfy the depth criteria.
 """
-function depth_criteria(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}    
+function depth_criteria_indx(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}    
     return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
 end
