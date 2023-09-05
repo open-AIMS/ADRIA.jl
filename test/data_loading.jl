@@ -8,6 +8,15 @@ if !@isdefined(ADRIA_DIR)
     const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 end
 
+@testset "Domain loading" begin
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+    @test dom isa Domain
+    @test all(dom.dhw_scens .== 0.0)
+
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
+    @test dom isa Domain
+    @test maximum(dom.dhw_scens) > 0.0
+end
 
 @testset "Connectivity loading" begin
     site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Example_domain.gpkg"))
