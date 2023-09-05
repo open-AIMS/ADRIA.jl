@@ -54,7 +54,7 @@ NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
    Combining variance- and distribution-based global sensitivity analysis
    https://github.com/baronig/GSA-cvd
 """
-function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:AbstractArray{<:Real},T2<:AbstractVector{<:Real}}
+function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:AbstractMatrix{<:Real},T2<:AbstractVector{<:Real}}
     N, D = size(X)
     step = 1 / S
     seq = 0.0:step:1.0
@@ -95,8 +95,8 @@ function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDim
 
     return NamedDimsArray(results; factors=Symbol.(factor_names), Si=[:min, :mean, :median, :max, :std, :cv])
 end
-function pawn(X::AbstractArray{<:Real}, y::NamedDimsArray, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
-    return pawn(X, vec(y), factor_names; S=S)
+function pawn(X::Vector{<:Real}, y::NamedDimsArray, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
+    return pawn(reshape(X, :, 1), y, factor_names; S=S)
 end
 function pawn(X::DataFrame, y::AbstractVector; S::Int64=10)::NamedDimsArray
     return pawn(Matrix(X), y, names(X); S=S)

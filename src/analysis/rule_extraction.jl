@@ -73,7 +73,7 @@ function _consequent(rules::SIRUS.StableRules{Int64}, index::Int64)::Vector{Floa
     rule = rules.rules[index]
     then_probability = SIRUS._simplify_binary_probabilities(weight, rule.then)
     otherwise_probability = SIRUS._simplify_binary_probabilities(weight, rule.otherwise)
-    [then_probability, otherwise_probability]
+    return [then_probability, otherwise_probability]
 end
 
 """
@@ -128,7 +128,7 @@ function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T; n_trees:
     # Use SIRUS Stable Rules Classifier model to extract the rules
     model = StableRulesClassifier(; max_rules=max_rules, n_trees=n_trees, rng=rng)
     mach = machine(model, X, clusters)
-    fit!(mach)
+    MLJ.fit!(mach)
     return rules(mach.fitresult)
 end
 

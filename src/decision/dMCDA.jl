@@ -568,7 +568,7 @@ function guided_site_selection(
 end
 
 """
-    distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Array{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
+    distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Matrix{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
 
 Find selected sites with distances between each other < median distance-dist_thresh*(median distance).
 Replaces these sites with sites in the top_n ranks if the distance between these sites is greater.
@@ -583,7 +583,7 @@ Replaces these sites with sites in the top_n ranks if the distance between these
 # Returns
 - `prefsites` : new set of selected sites for seeding or shading.
 """
-function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Array{Float64},
+function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Matrix{Float64},
     min_dist::Float64, top_n::Int64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
     n_sites = length(pref_sites)

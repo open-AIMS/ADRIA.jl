@@ -337,9 +337,9 @@ end
 function _update_coral_spec(spec::DataFrame, pnames::Vector{String}, coral_params::DataFrame)::DataFrame
     fnames::Vector{String} = String.(coral_params[!, :fieldname])
     for p in pnames
-        target::Bool = occursin.(p, fnames)
-        Threads.@threads for tn in fnames[target]
-            idx::Vector{Bool} = spec.coral_id .== rsplit(tn, "_$p", keepempty=false)
+        target::BitVector = occursin.(p, fnames)
+        @floop for tn in fnames[target]
+            idx::BitVector = spec.coral_id .== rsplit(tn, "_$p", keepempty=false)
             spec[idx, [p]] .= coral_params[coral_params.fieldname.==tn, :val]
         end
     end
