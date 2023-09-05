@@ -773,7 +773,7 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
     end
 
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
-        depth_criteria = set_depth_criteria(dom.site_data.depth_med, scen.max_depth, scen.depth_min)
+        depth_criteria = depth_criteria_indx(dom.site_data.depth_med, scen.max_depth, scen.depth_min)
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
