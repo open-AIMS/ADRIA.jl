@@ -1,22 +1,49 @@
 module ADRIA
 
-using TOML, CpuId, PkgVersion
-using Random, StaticArrays, SparseArrays, LinearAlgebra, Statistics, Distributed
-using NamedDims, AxisKeys, SparseArrayKit, DifferentialEquations
+# Utility packages
+using
+    PrecompileTools,
+    RelocatableFolders,
+    TOML,
+    CpuId,
+    PkgVersion,
+    ProgressMeter,
+    Dates
 
-using FLoops
-using MAT
-using Combinatorics, Distances
-using OrderedCollections
-using Setfield, ModelParameters, DataStructures
-using DataFrames, Graphs, SimpleWeightedGraphs, CSV, Dates
+# IO and functionality packages
+import GeoDataFrames as GDF
+import GeoFormatTypes as GFT
 import ArchGDAL as AG
-import GeoDataFrames as GDF, GeoFormatTypes as GFT
-using FileIO, ImageIO, GeoInterface
+using
+    CSV,
+    DataFrames,
+    GeoInterface,
+    FileIO,
+    ImageIO,
+    MAT,
+    Graphs,
+    SimpleWeightedGraphs,
+    Distributed,
+    FLoops
 
-using ProgressMeter
-
-using PrecompileTools, RelocatableFolders
+# Modelling packages
+using
+    Random,
+    Statistics,
+    Distributions,
+    StaticArrays,
+    SparseArrays,
+    SparseArrayKit,
+    LinearAlgebra,
+    NamedDims,
+    AxisKeys,
+    DifferentialEquations,
+    OrderedCollections,
+    Combinatorics,
+    Distances,
+    Setfield,
+    ModelParameters,
+    DataStructures
 
 
 include("utils/text_display.jl")  # need better name for this file
@@ -93,6 +120,8 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(component_params),DataFrame,Type{Criteria}})   # time: 0.1223987
     Base.precompile(Tuple{Type{Domain},String,String,String,Vector{Int64},String,String,String,String,String,String,String})   # time: 0.1113899
     Base.precompile(Tuple{typeof(setup_cache),Domain})   # time: 0.1060752
+    Base.precompile(EnvLayer, (String, String, String, String, String, String, String, String, Any))
+    Base.precompile(load_results, (String,))
 end
 
 
