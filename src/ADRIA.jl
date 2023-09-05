@@ -48,7 +48,6 @@ include("metrics/metrics.jl")
 include("metrics/performance.jl")
 
 include("scenario.jl")
-include("optimization.jl")
 include("analysis/analysis.jl")
 include("analysis/sensitivity.jl")
 
