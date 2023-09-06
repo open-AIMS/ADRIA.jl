@@ -52,9 +52,11 @@ NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
 dom = ADRIA.load_domain("example_domain")
 scens = ADRIA.sample(dom, 128)
 rs = ADRIA.run_scenarios(scens, dom, "45")
-s_tac = ADRIA.metrics.scenario_total_cover(rs)
 
-ADRIA.sensitivity.pawn(rs, s_tac)
+# Get mean coral cover over time and locations
+μ_tac = mean(ADRIA.metrics.scenario_total_cover(rs), dims=:timesteps)
+
+ADRIA.sensitivity.pawn(rs, μ_tac)
 ```
 
 # References
@@ -138,13 +140,14 @@ function pawn(X::NamedDimsArray, y::Union{NamedDimsArray,AbstractVector{<:Real}}
     return pawn(X, y, axiskeys(X, 2); S=S)
 end
 function pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
-    if size(y, 2) > 1
-        throw(ValueError("The current implementation of PAWN can only assess a single quantity of interest at a time."))
+    N, D = size(y)
+    if N > 1 && D > 1
+        throw(ArgumentError("The current implementation of PAWN can only assess a single quantity of interest at a time."))
     end
 
-    # The wrapped call to vec(collect()) handles cases where a NamedDimsArray or adjoint matrix
-    # type is passed in
-    return pawn(X, vec(collect(y)); S=S)
+    # The wrapped call to `vec()` handles cases where matrix-like data type is passed in
+    # (N x 1 or 1 x D) and so ensures a vector is passed along
+    return pawn(X, vec(y); S=S)
 end
 function pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
     return pawn(rs.inputs, y; S=S)
