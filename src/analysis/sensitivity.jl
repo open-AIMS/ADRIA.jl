@@ -102,7 +102,16 @@ end
 function pawn(X::NamedDimsArray, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
     return pawn(X, y, axiskeys(X, 2); S=S)
 end
-function pawn(rs::ResultSet, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
+function pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
+    if size(y, 2) > 1
+        throw(ValueError("The current implementation of PAWN can only assess a single quantity of interest at a time."))
+    end
+
+    # The wrapped call to vec(collect()) handles cases where a NamedDimsArray or adjoint matrix
+    # type is passed in
+    return pawn(X, vec(collect(y)); S=S)
+end
+function pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
     return pawn(rs.inputs, y; S=S)
 end
 
