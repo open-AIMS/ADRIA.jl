@@ -2,7 +2,7 @@ module sensitivity
 
 using Logging
 using DataFrames, NamedDims, AxisKeys
-using Distributions, HypothesisTests, Bootstrap, StaticArrays
+using Distributions, HypothesisTests, Bootstrap, StaticArrays, FLoops
 
 using ADRIA: ResultSet
 using ADRIA.analysis: col_normalize
@@ -59,23 +59,24 @@ function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDim
     step = 1 / S
     seq = 0.0:step:1.0
 
-    X_di = @MVector zeros(N)
+    # Preallocate result structures
     X_q = @MVector zeros(S + 1)
     pawn_t = @MArray zeros(S, D)
     results = @MArray zeros(D, 6)
+
     # Hide warnings from HypothesisTests
     with_logger(NullLogger()) do
-        for d_i in 1:D
-            X_di .= X[:, d_i]
+        @floop for d_i in 1:D
+            X_di = @view(X[:, d_i])
             X_q .= quantile(X_di, seq)
 
-            Y_sel = y[X_q[1].<=X_di.<=X_q[2]]
+            Y_sel = @view(y[X_q[1].<=X_di.<=X_q[2]])
             if length(Y_sel) > 0
                 pawn_t[1, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, y))
             end
 
             for s in 2:S
-                Y_sel = y[X_q[s].<X_di.<=X_q[s+1]]
+                Y_sel = @view(y[X_q[s].<X_di.<=X_q[s+1]])
                 if length(Y_sel) == 0
                     continue  # no available samples
                 end
@@ -83,7 +84,7 @@ function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDim
                 pawn_t[s, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, y))
             end
 
-            p_ind = pawn_t[:, d_i]
+            p_ind = @view(pawn_t[:, d_i])
             p_mean = mean(p_ind)
             p_sdv = std(p_ind)
             p_cv = p_sdv ./ p_mean
@@ -94,9 +95,6 @@ function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDim
     replace!(results, NaN => 0.0, Inf => 0.0)
 
     return NamedDimsArray(results; factors=Symbol.(factor_names), Si=[:min, :mean, :median, :max, :std, :cv])
-end
-function pawn(X::Vector{<:Real}, y::NamedDimsArray, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
-    return pawn(reshape(X, :, 1), y, factor_names; S=S)
 end
 function pawn(X::DataFrame, y::AbstractVector; S::Int64=10)::NamedDimsArray
     return pawn(Matrix(X), y, names(X); S=S)
