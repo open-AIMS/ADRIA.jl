@@ -29,16 +29,18 @@ end
 
 Calculates the PAWN sensitivity index.
 
-The PAWN method (by Pianosi and Wagener) is a moment-independent approach to Global Sensitivity Analysis.
-Outputs are characterized by their Cumulative Distribution Function (CDF), quantifying the variation in
-the output distribution after conditioning an input over "slices" (\$S\$) - the conditioning intervals.
-If both distributions coincide at all slices (i.e., the distributions are similar or identical), then
-the factor is deemed non-influential.
+The PAWN method (by Pianosi and Wagener) is a moment-independent approach to Global
+Sensitivity Analysis. Outputs are characterized by their Cumulative Distribution Function
+(CDF), quantifying the variation in the output distribution after conditioning an input over
+"slices" (\$S\$) - the conditioning intervals. If both distributions coincide at all slices
+(i.e., the distributions are similar or identical), then the factor is deemed
+non-influential.
 
-This implementation applies the Kolmogorov-Smirnov test as the distance measure and returns summary
-statistics (min, mean, median, max, std, and cv) over the slices.
+This implementation applies the Kolmogorov-Smirnov test as the distance measure and returns
+summary statistics (min, mean, median, max, std, and cv) over the slices.
 
 # Arguments
+- `rs` : ResultSet
 - `X` : Model inputs
 - `y` : Model outputs
 - `factor_names` : Names of each factor represented by columns in `X`
