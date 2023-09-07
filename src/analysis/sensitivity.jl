@@ -93,7 +93,12 @@ particularly difficult to meet. Using the recommended value (\$S := 10\$), a sam
 Additionally, lower values of \$N/S\$ is more an indication of faulty experimental design moreso
 than any deficiency of the PAWN method.
 """
-function pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
+function pawn(
+    X::AbstractMatrix{<:Real},
+    y::AbstractVector{<:Real},
+    factor_names::Vector{String};
+    S::Int64=10
+)::NamedDimsArray
     N, D = size(X)
     step = 1 / S
     seq = 0.0:step:1.0
@@ -127,13 +132,21 @@ function pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names
             p_mean = mean(p_ind)
             p_sdv = std(p_ind)
             p_cv = p_sdv ./ p_mean
-            results[d_i, :] .= (minimum(p_ind), p_mean, median(p_ind), maximum(p_ind), p_sdv, p_cv)
+            results[d_i, :] .= (
+                minimum(p_ind),
+                p_mean,
+                median(p_ind),
+                maximum(p_ind),
+                p_sdv,
+                p_cv
+            )
         end
     end
 
     replace!(results, NaN => 0.0, Inf => 0.0)
 
-    return NamedDimsArray(results; factors=Symbol.(factor_names), Si=[:min, :mean, :median, :max, :std, :cv])
+    col_names = [:min, :mean, :median, :max, :std, :cv]
+    return NamedDimsArray(results; factors=Symbol.(factor_names), Si=col_names)
 end
 function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
     return pawn(Matrix(X), y, names(X); S=S)
@@ -144,7 +157,11 @@ end
 function pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
     N, D = size(y)
     if N > 1 && D > 1
-        throw(ArgumentError("The current implementation of PAWN can only assess a single quantity of interest at a time."))
+        msg::String = string(
+            "The current implementation of PAWN can only assess a single quantity",
+            " of interest at a time."
+        )
+        throw(ArgumentError(msg))
     end
 
     # The wrapped call to `vec()` handles cases where matrix-like data type is passed in
