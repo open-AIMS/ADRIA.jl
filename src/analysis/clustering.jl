@@ -199,3 +199,60 @@ function target_clusters(
     # Return new clusters vector with only 1 and 0 for target and non-target clusters
     return [c ∈ target_indexes ? 1 : 0 for c in clusters]
 end
+
+"""
+    robust_clusters(metrics::Vector{Metric}, rs::ResultSet; num_clusters=6)
+
+Find scenarios that perform well among a list of given metrics.
+
+# Arguments
+- `result_set` : ResultSet
+- `metrics` : Vector of metrics to consider when looking for robust cluster
+- `num_clusters` : Number of clusters to consider
+
+# Returns
+Vector of Booleans with true for robust scenarios
+"""
+function robust_scenarios(
+    result_set::ResultSet,
+    metrics::Vector{Metric};
+    num_clusters::Int64=6
+)::Vector{Bool}
+    clusters_summary = zeros(num_clusters)
+    robust_series = zeros(Bool, size(result_set.inputs, 1))
+    first = true
+
+    # Compute summary statistics for each metric
+    for metric in metrics
+        rs_metric = metric(result_set)
+        clusters = time_series_clustering(rs_metric, num_clusters)
+
+        for (idx, c) in enumerate(unique(clusters))
+            cluster_metric = rs_metric[:, clusters.==c]
+
+            # Compute median series for current cluster
+            tf = axes(cluster_metric, :timesteps)
+            timesteps_slices = JuliennedArrays.Slices(
+                cluster_metric[timesteps=tf],
+                NamedDims.dim(cluster_metric, :scenarios)
+            )
+            median_series = map(median, timesteps_slices)
+
+            # Summary statistics for that cluster metric
+            clusters_summary[idx] = sum(cumsum(median_series))
+        end
+
+        robust_clusters = findall(x -> x .> median(clusters_summary), clusters_summary)
+
+        # This may be improved by broadcasting and probably replacing this if-else
+        if first
+            robust_series = clusters .∈ robust_clusters
+        else
+            robust_series = robust_series .== clusters .∈ robust_clusters
+        end
+
+        first = false
+    end
+
+    return robust_series
+end
