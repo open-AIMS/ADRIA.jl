@@ -154,7 +154,7 @@ end
 function pawn(X::NamedDimsArray, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
     return pawn(X, y, axiskeys(X, 2); S=S)
 end
-function pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
+function pawn(X::Union{DataFrame,NamedDimsArray}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
     N, D = size(y)
     if N > 1 && D > 1
         msg::String = string(
