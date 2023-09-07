@@ -21,20 +21,26 @@ end
 
 
 """
-    pawn(X::T1, y::T2, dimnames::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:AbstractArray{<:Real},T2<:AbstractVector{<:Real}}
+    pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
+    pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
+    pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
+    pawn(X::NamedDimsArray, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
+    pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
 
 Calculates the PAWN sensitivity index.
 
-The PAWN method (by Pianosi and Wagener) is a moment-independent approach to Global Sensitivity Analysis.
-Outputs are characterized by their Cumulative Distribution Function (CDF), quantifying the variation in
-the output distribution after conditioning an input over "slices" (\$S\$) - the conditioning intervals.
-If both distributions coincide at all slices (i.e., the distributions are similar or identical), then
-the factor is deemed non-influential.
+The PAWN method (by Pianosi and Wagener) is a moment-independent approach to Global
+Sensitivity Analysis. Outputs are characterized by their Cumulative Distribution Function
+(CDF), quantifying the variation in the output distribution after conditioning an input over
+"slices" (\$S\$) - the conditioning intervals. If both distributions coincide at all slices
+(i.e., the distributions are similar or identical), then the factor is deemed
+non-influential.
 
-This implementation applies the Kolmogorov-Smirnov test as the distance measure and returns summary
-statistics (min, mean, median, max, std, and cv) over the slices.
+This implementation applies the Kolmogorov-Smirnov test as the distance measure and returns
+summary statistics (min, mean, median, max, std, and cv) over the slices.
 
 # Arguments
+- `rs` : ResultSet
 - `X` : Model inputs
 - `y` : Model outputs
 - `factor_names` : Names of each factor represented by columns in `X`
@@ -42,6 +48,18 @@ statistics (min, mean, median, max, std, and cv) over the slices.
 
 # Returns
 NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
+
+# Examples
+```julia
+dom = ADRIA.load_domain("example_domain")
+scens = ADRIA.sample(dom, 128)
+rs = ADRIA.run_scenarios(scens, dom, "45")
+
+# Get mean coral cover over time and locations
+μ_tac = mean(ADRIA.metrics.scenario_total_cover(rs), dims=:timesteps)
+
+ADRIA.sensitivity.pawn(rs, μ_tac)
+```
 
 # References
 1. Pianosi, F., Wagener, T., 2018.
@@ -53,8 +71,34 @@ NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
    GSA-cvd
    Combining variance- and distribution-based global sensitivity analysis
    https://github.com/baronig/GSA-cvd
+
+3. Puy, A., Lo Piano, S., & Saltelli, A. 2020.
+   A sensitivity analysis of the PAWN sensitivity index.
+   Environmental Modelling & Software, 127, 104679.
+   https://doi.org/10.1016/j.envsoft.2020.104679
+
+4. https://github.com/SAFEtoolbox/Miscellaneous/blob/main/Review_of_Puy_2020.pdf
+
+# Extended help
+Pianosi and Wagener have made public their review responding to a critique of their method
+by Puy et al., (2020). A key criticism by Puy et al. was that the PAWN method is sensitive
+to its tuning parameters and thus may produce biased results. The tuning parameters referred
+to are the number of samples (\$N\$) and the number of conditioning points - \$n\$ in Puy et
+al., but denoted as \$S\$ here.
+
+Puy et al., found that the ratio of \$N\$ (number of samples) to \$S\$ has to be
+sufficiently high (\$N/S > 80\$) to avoid biased results. Pianosi and Wagener point out this
+requirement is not particularly difficult to meet. Using the recommended value
+(\$S := 10\$), a sample of 1024 runs (small for purposes of Global Sensitivity Analysis)
+meets this requirement (\$1024/10 = 102.4\$). Additionally, lower values of \$N/S\$ is more
+an indication of faulty experimental design moreso than any deficiency of the PAWN method.
 """
-function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray where {T1<:AbstractMatrix{<:Real},T2<:AbstractVector{<:Real}}
+function pawn(
+    X::AbstractMatrix{<:Real},
+    y::AbstractVector{<:Real},
+    factor_names::Vector{String};
+    S::Int64=10
+)::NamedDimsArray
     N, D = size(X)
     step = 1 / S
     seq = 0.0:step:1.0
@@ -88,21 +132,55 @@ function pawn(X::T1, y::T2, factor_names::Vector{String}; S::Int64=10)::NamedDim
             p_mean = mean(p_ind)
             p_sdv = std(p_ind)
             p_cv = p_sdv ./ p_mean
-            results[d_i, :] .= (minimum(p_ind), p_mean, median(p_ind), maximum(p_ind), p_sdv, p_cv)
+            results[d_i, :] .= (
+                minimum(p_ind),
+                p_mean,
+                median(p_ind),
+                maximum(p_ind),
+                p_sdv,
+                p_cv
+            )
         end
     end
 
     replace!(results, NaN => 0.0, Inf => 0.0)
 
-    return NamedDimsArray(results; factors=Symbol.(factor_names), Si=[:min, :mean, :median, :max, :std, :cv])
+    col_names = [:min, :mean, :median, :max, :std, :cv]
+    return NamedDimsArray(results; factors=Symbol.(factor_names), Si=col_names)
 end
-function pawn(X::DataFrame, y::AbstractVector; S::Int64=10)::NamedDimsArray
+function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
     return pawn(Matrix(X), y, names(X); S=S)
 end
-function pawn(X::NamedDimsArray, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
+function pawn(
+    X::NamedDimsArray,
+    y::Union{NamedDimsArray,AbstractVector{<:Real}};
+    S::Int64=10
+)::NamedDimsArray
     return pawn(X, y, axiskeys(X, 2); S=S)
 end
-function pawn(rs::ResultSet, y::T; S::Int64=10)::NamedDimsArray where {T<:Union{NamedDimsArray,AbstractVector{<:Real}}}
+function pawn(
+    X::Union{DataFrame,NamedDimsArray},
+    y::AbstractMatrix{<:Real};
+    S::Int64=10
+)::NamedDimsArray
+    N, D = size(y)
+    if N > 1 && D > 1
+        msg::String = string(
+            "The current implementation of PAWN can only assess a single quantity",
+            " of interest at a time."
+        )
+        throw(ArgumentError(msg))
+    end
+
+    # The wrapped call to `vec()` handles cases where matrix-like data type is passed in
+    # (N x 1 or 1 x D) and so ensures a vector is passed along
+    return pawn(X, vec(y); S=S)
+end
+function pawn(
+    rs::ResultSet,
+    y::Union{NamedDimsArray,AbstractVector{<:Real}};
+    S::Int64=10
+)::NamedDimsArray
     return pawn(rs.inputs, y; S=S)
 end
 
