@@ -220,14 +220,13 @@ function robust_scenarios(
 )::Vector{Bool}
     clusters_summary = zeros(num_clusters)
     robust_series = zeros(Bool, size(result_set.inputs, 1))
-    first = true
 
     # Compute summary statistics for each metric
-    for metric in metrics
+    for (idx_m, metric) in enumerate(metrics)
         rs_metric = metric(result_set)
         clusters = time_series_clustering(rs_metric, num_clusters)
 
-        for (idx, c) in enumerate(unique(clusters))
+        for (idx_c, c) in enumerate(unique(clusters))
             cluster_metric = rs_metric[:, clusters.==c]
 
             # Compute median series for current cluster
@@ -239,19 +238,17 @@ function robust_scenarios(
             median_series = map(median, timesteps_slices)
 
             # Summary statistics for that cluster metric
-            clusters_summary[idx] = sum(cumsum(median_series))
+            clusters_summary[idx_c] = sum(cumsum(median_series))
         end
 
         robust_clusters = findall(x -> x .> median(clusters_summary), clusters_summary)
 
         # This may be improved by broadcasting and probably replacing this if-else
-        if first
+        if idx_m == 1
             robust_series = clusters .∈ robust_clusters
         else
             robust_series = robust_series .== clusters .∈ robust_clusters
         end
-
-        first = false
     end
 
     return robust_series
