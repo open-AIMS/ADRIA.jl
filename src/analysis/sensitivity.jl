@@ -81,17 +81,17 @@ ADRIA.sensitivity.pawn(rs, μ_tac)
 
 # Extended help
 Pianosi and Wagener have made public their review responding to a critique of their method
-by Puy et al., (2020). A key criticism by Puy et al. was that the PAWN method is sensitive to its
-tuning parameters and thus may produce biased results. The tuning parameters referred to are
-the number of samples (\$N\$) and the number of conditioning points - \$n\$ in Puy et al., but
-denoted as \$S\$ here.
+by Puy et al., (2020). A key criticism by Puy et al. was that the PAWN method is sensitive
+to its tuning parameters and thus may produce biased results. The tuning parameters referred
+to are the number of samples (\$N\$) and the number of conditioning points - \$n\$ in Puy et
+al., but denoted as \$S\$ here.
 
-Puy et al., found that the ratio of \$N\$ (number of samples) to \$S\$ has to be sufficiently high
-(\$N/S > 80\$) to avoid biased results. Pianosi and Wagener point  out this requirement is not
-particularly difficult to meet. Using the recommended value (\$S := 10\$), a sample of 1024 runs
-(small for purposes of Global Sensitivity Analysis) meets this requirement (\$1024/10 = 102.4\$).
-Additionally, lower values of \$N/S\$ is more an indication of faulty experimental design moreso
-than any deficiency of the PAWN method.
+Puy et al., found that the ratio of \$N\$ (number of samples) to \$S\$ has to be
+sufficiently high (\$N/S > 80\$) to avoid biased results. Pianosi and Wagener point out this
+requirement is not particularly difficult to meet. Using the recommended value
+(\$S := 10\$), a sample of 1024 runs (small for purposes of Global Sensitivity Analysis)
+meets this requirement (\$1024/10 = 102.4\$). Additionally, lower values of \$N/S\$ is more
+an indication of faulty experimental design moreso than any deficiency of the PAWN method.
 """
 function pawn(
     X::AbstractMatrix{<:Real},
@@ -151,10 +151,18 @@ end
 function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
     return pawn(Matrix(X), y, names(X); S=S)
 end
-function pawn(X::NamedDimsArray, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
+function pawn(
+    X::NamedDimsArray,
+    y::Union{NamedDimsArray,AbstractVector{<:Real}};
+    S::Int64=10
+)::NamedDimsArray
     return pawn(X, y, axiskeys(X, 2); S=S)
 end
-function pawn(X::Union{DataFrame,NamedDimsArray}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
+function pawn(
+    X::Union{DataFrame,NamedDimsArray},
+    y::AbstractMatrix{<:Real};
+    S::Int64=10
+)::NamedDimsArray
     N, D = size(y)
     if N > 1 && D > 1
         msg::String = string(
@@ -168,7 +176,11 @@ function pawn(X::Union{DataFrame,NamedDimsArray}, y::AbstractMatrix{<:Real}; S::
     # (N x 1 or 1 x D) and so ensures a vector is passed along
     return pawn(X, vec(y); S=S)
 end
-function pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
+function pawn(
+    rs::ResultSet,
+    y::Union{NamedDimsArray,AbstractVector{<:Real}};
+    S::Int64=10
+)::NamedDimsArray
     return pawn(rs.inputs, y; S=S)
 end
 
