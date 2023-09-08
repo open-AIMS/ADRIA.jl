@@ -121,8 +121,8 @@ A StableRules object (implemented by SIRUS).
    Electron. J. Statist. 15 (1) 427 - 505.
    https://doi.org//10.1214/20-EJS1792
 """
-function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T; n_trees::T=1000,
-    seed=123) where {T<:Int64}
+function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;
+    n_trees::T=1000, seed=123) where {T<:Int64}
 
     # Set seed and Random Number Generator
     rng = StableRNG(seed)
@@ -132,6 +132,11 @@ function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T; n_trees:
     mach = machine(model, X, clusters)
     MLJ.fit!(mach)
     return rules(mach.fitresult)
+end
+function cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;
+    n_trees::T=1000, seed=123) where {T<:Int64}
+    convert.(Float64, clusters)
+    cluster_rules(convert.(Int64, clusters), X, max_rules; n_trees=n_trees, seed=seed)
 end
 
 """
