@@ -123,19 +123,19 @@ scenario_rci = Metric(_scenario_rci, (:timesteps, :scenarios))
 
 
 function _reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray, intcp_u::Vector)::AbstractArray
-    intcp = -0.498 .+ intcp_u
+    intcp = 0.47947 .+ intcp_u
 
     # TODO: Ryan to reinterpolate to account for no CoTS and no rubble
     # Apply unique intercepts for each scenario
-    rti = cat(map(axe -> (intcp[axe] .+ (0.291 .* rc[:, :, axe]) .+
-                          (0.056 .* evenness[:, :, axe]) .+
-                          (0.628 .* sv[:, :, axe]) .+
-                          (1.335 .* juves[:, :, axe])
+    rti = cat(map(axe -> (intcp[axe] .+ (0.12764 .* rc[:, :, axe]) .+
+                          (0.31946 .* evenness[:, :, axe]) .+
+                          (0.11676 .* sv[:, :, axe]) .+
+                          (-0.0036065 .* juves[:, :, axe])
             ), axes(rc, 3))..., dims=3)
 
     return round.(clamp.(rti, 0.1, 0.9), digits=2)
 end
-function _reef_tourism_index(rs::ResultSet; intcp_u::Bool=true)::AbstractArray
+function _reef_tourism_index(rs::ResultSet; intcp_u::Bool=false)::AbstractArray
     rc::AbstractArray{<:Real} = relative_cover(rs)
     juves::AbstractArray{<:Real} = juvenile_indicator(rs)
     evenness::AbstractArray{<:Real} = coral_evenness(rs)
