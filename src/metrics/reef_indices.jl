@@ -198,7 +198,7 @@ function _reef_fish_index(rc::AbstractArray, intcp_u1, intcp_u2)
     # 0.01 coefficient is to convert from kg ha to kg km2
     return round.(rfi, digits=2)
 end
-function _reef_fish_index(rs::ResultSet; intcp_u1::Bool=true, intcp_u2::Bool=true)
+function _reef_fish_index(rs::ResultSet; intcp_u1::Bool=false, intcp_u2::Bool=false)
     rc = relative_cover(rs)
     n_scens = size(rc, :scenarios)
     icp1 = intcp_u1 ? rand(Normal(0.0, 0.195), n_scens) : zeros(n_scens)
