@@ -153,6 +153,11 @@ end
 
 Estimate tourism index.
 
+Note:
+This metric assumes all inputs (relative cover, evenness, shelter volume, coral juveniles)
+are scaled between 0 and 1. For evenness, shelter volume and coral juveniles, a value of 1
+may represent a theoretical maximum.
+
 # Arguments
 - `rc` : Relative coral cover across all groups
 - `evenness` : Evenness across all coral groups
