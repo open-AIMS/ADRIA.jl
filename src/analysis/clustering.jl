@@ -1,6 +1,8 @@
 using Distances
 using Clustering
 using FLoops
+using ADRIA
+using JuliennedArrays
 
 """
     _complexity(x::AbstractMatrix{T})::AbstractMatrix{Float64} where {T <: Real}
@@ -201,9 +203,13 @@ function target_clusters(
 end
 
 """
-    robust_clusters(metrics::Vector{Metric}, rs::ResultSet; num_clusters=6)
+    robust_scenarios(metrics::Vector{Metric}, rs::ResultSet; num_clusters=6)
 
-Find scenarios that perform well among a list of given metrics.
+Find scenarios that perform well across a list of given metrics. The scenarios are
+clusterized for each metric, then a median series for each cluster is computed. For each one
+of these series, a summary statistics is computed (for now we are using temporal variance)
+and the clusters above the median are cosidered robust for that metric. The scenarios
+selected in the end are the ones that are in the robust cluster for all metrics.
 
 # Arguments
 - `result_set` : ResultSet
@@ -215,41 +221,44 @@ Vector of Booleans with true for robust scenarios
 """
 function robust_scenarios(
     result_set::ResultSet,
-    metrics::Vector{Metric};
+    metrics::Vector{ADRIA.metrics.Metric};
     num_clusters::Int64=6
-)::Vector{Bool}
-    clusters_summary = zeros(num_clusters)
-    robust_series = zeros(Bool, size(result_set.inputs, 1))
+)::BitVector
+    _robust_scenarios = trues(size(result_set.inputs, 1))
 
     # Compute summary statistics for each metric
-    for (idx_m, metric) in enumerate(metrics)
+    for metric in metrics
         rs_metric = metric(result_set)
         clusters = time_series_clustering(rs_metric, num_clusters)
+
+        # Where statistics for each cluster will be saved
+        clusters_summary = zeros(num_clusters)
 
         for (idx_c, c) in enumerate(unique(clusters))
             cluster_metric = rs_metric[:, clusters.==c]
 
             # Compute median series for current cluster
+            # This could be extracted to a separate function
             tf = axes(cluster_metric, :timesteps)
             timesteps_slices = JuliennedArrays.Slices(
                 cluster_metric[timesteps=tf],
                 NamedDims.dim(cluster_metric, :scenarios)
             )
-            median_series = map(median, timesteps_slices)
+            median_series = median.(timesteps_slices)
 
             # Summary statistics for that cluster metric
-            clusters_summary[idx_c] = sum(cumsum(median_series))
+            # clusters_summary[idx_c] = sum(cumsum(median_series))
+            clusters_summary[idx_c] = temporal_variability(median_series)
         end
 
-        robust_clusters = findall(x -> x .> median(clusters_summary), clusters_summary)
+        # Robust clusters are the ones with summary statistics above the median
+        robust_clusters = clusters_summary .>= quantile(clusters_summary, 0.2)
 
-        # This may be improved by broadcasting and probably replacing this if-else
-        if idx_m == 1
-            robust_series = clusters .∈ robust_clusters
-        else
-            robust_series = robust_series .== clusters .∈ robust_clusters
-        end
+        # Select scenarios that are robust across all metrics
+        aux_rc::BitVector = clusters .∈ Vector{Int64}[unique(clusters)[robust_clusters]]
+
+        _robust_scenarios = _robust_scenarios .& aux_rc
     end
 
-    return robust_series
+    return _robust_scenarios
 end
