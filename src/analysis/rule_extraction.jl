@@ -135,8 +135,7 @@ function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;
 end
 function cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;
     n_trees::T=1000, seed=123) where {T<:Int64}
-    convert.(Float64, clusters)
-    cluster_rules(convert.(Int64, clusters), X, max_rules; n_trees=n_trees, seed=seed)
+    return cluster_rules(convert.(Int64, clusters), X, max_rules; n_trees=n_trees, seed=seed)
 end
 
 """
