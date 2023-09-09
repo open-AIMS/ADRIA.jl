@@ -100,8 +100,10 @@ export ReefModDomain
 # List out compatible domain datapackages
 const COMPAT_DPKG = ["0.3.1"]
 
+# This adds ~30 seconds to package load times
 if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(load_domain),String})   # time: 19.120537
+    Base.precompile(Tuple{typeof(load_domain),String,String})
     Base.precompile(Tuple{typeof(setup_result_store!),Domain,DataFrame})   # time: 4.6720815
     Base.precompile(Tuple{typeof(combine_results),Vector{String}})   # time: 4.0178256
     Base.precompile(Tuple{typeof(growthODE),Matrix{Float64},Matrix{Float64},NamedTuple{(:r, :k, :mb, :comp, :sm_comp, :small_massives, :small, :mid, :large, :acr_5_11, :acr_6_12, :rec, :sigma, :M_sm, :sXr, :X_mb, :cover),Tuple{Matrix{Float64},Vector{Float64},Matrix{Float64},Float64,Matrix{Float64},SVector{3,Int64},SVector{6,Int64},SVector{19,Int64},SVector{4,Int64},SVector{2,Int64},SVector{2,Int64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Vector{Float64}}},Float64})   # time: 1.4354926
@@ -128,8 +130,8 @@ end
 @setup_workload begin
     # Putting some things in `setup` can reduce the size of the
     # precompile file and potentially make loading faster.
-    ADRIA_DIR = pkgdir(ADRIA)
-    EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
+    # ADRIA_DIR = pkgdir(ADRIA)
+    # EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 
     @compile_workload begin
 
@@ -137,29 +139,21 @@ end
         addprocs(1)
         @everywhere 1 + 1
 
-        f() = begin
-            @showprogress 1 for _ in 1:10
-            end
-        end
-        b = redirect_stdout(f, devnull)
+        # Compile progress bar
+        # f() = begin
+        #     @showprogress 1 for _ in 1:10
+        #     end
+        # end
+        # b = redirect_stdout(f, devnull)
 
-        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
-        ADRIA.sample(dom, 16)
-        ADRIA.model_spec(dom)
+        # dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
+        # ADRIA.sample(dom, 16)
+        # ADRIA.model_spec(dom)
 
-        ENV["ADRIA_DEBUG"] = "false"
-
-        p_df = ADRIA.param_table(dom)
-        rs1 = ADRIA.run_scenario(p_df[1, :], dom)
-
-        delete!(ENV, "ADRIA_DEBUG")
-
-        # ENV["ADRIA_THRESHOLD"] = 1e-6
-        # run_scenario(p_df[1, :], dom)
-        # run_scenario(p_df[end, :], dom)
-        # delete!(ENV, "ADRIA_THRESHOLD")
-        # precompile(EnvLayer, (String, String, String, String, String, String, String, String, Any))
-        # precompile(load_results, (String,))
+        # ENV["ADRIA_DEBUG"] = "false"
+        # p_df = ADRIA.param_table(dom)
+        # rs1 = ADRIA.run_scenario(p_df[1, :], dom)
+        # delete!(ENV, "ADRIA_DEBUG")
     end
 end
 
