@@ -1,2 +1,12 @@
 [CPUSummary]
 hwloc = false
+
+[OrdinaryDiffEq]
+PrecompileAutoSpecialize = false
+PrecompileAutoSwitch = false
+PrecompileDefaultSpecialize = true
+PrecompileFunctionWrapperSpecialize = false
+PrecompileLowStorage = false
+PrecompileNoSpecialize = false
+PrecompileNonStiff = true
+PrecompileStiff = false

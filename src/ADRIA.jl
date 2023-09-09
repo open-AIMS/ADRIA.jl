@@ -37,7 +37,7 @@ using
     LinearAlgebra,
     NamedDims,
     AxisKeys,
-    DifferentialEquations,
+    OrdinaryDiffEq,
     OrderedCollections,
     Combinatorics,
     Distances,
