@@ -33,7 +33,7 @@ Struct of simulation constants for ADRIA
 Base.@kwdef mutable struct SimConstants
     n_site_int::Int64 = 5  # max number of sites we intervene on in a given year.
 
-    priority_sites::Vector{Int64} = []  # sites to prioritize when seeding or shading
+    priority_sites::Vector{Int64} = Int64[]  # sites to prioritize when seeding or shading
 
     # Zones to prioritize when seeding or shading, in order of preference
     # https://github.com/open-AIMS/ADRIA.jl/issues/231#issuecomment-1340138255
