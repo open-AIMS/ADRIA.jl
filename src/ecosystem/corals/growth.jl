@@ -4,9 +4,6 @@
 using Distributions
 
 
-# include("growth_expanded.jl")
-
-
 """
     growth_rate(linear_extension::Array{Float64}, diam_bin_widths::Array{Float64})::Vector{Float64}
 
@@ -68,7 +65,7 @@ group.  While growth and mortality metrics pertain to groups (6) as well
 as size classes (6) across all sites (total of 36 by \$n_sites\$), recruitment is
 a 6 by \$n_sites\$ array.
 """
-function growthODE(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
+function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, _::Real)::Nothing
     # Indices
 
     # small = [1, 7, 13, 19, 25, 31]
@@ -187,7 +184,7 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2},
     # End result is how much coral survives a bleaching event.
     @. Y = (1.0 - ((depth_coeff' * s) * (capped_dhw / 100.0)))^6.0
 
-    return
+    return nothing
 end
 
 """
@@ -544,7 +541,7 @@ Settler density (settlers / m²)
 # Examples
 settler_density(2.5, 5000.0, L)
 """
-function settler_density(α, β, L)
+function settler_density(α::T, β::T, L::T)::Float64 where {T<:Float64}
     return (α .* L) ./ (β .+ L)
 end
 

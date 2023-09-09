@@ -1,12 +1,12 @@
 """
     setup()::Nothing
 
-Initialize ADRIA configuration options from `config.toml` 
+Initialize ADRIA configuration options from `config.toml`
 or load defaults if not found.
 """
 function setup()::Nothing
     if has_setup()
-        return
+        return nothing
     end
 
     try
@@ -26,12 +26,12 @@ function setup()::Nothing
         ENV["ADRIA_DEBUG"] = false
     end
 
-    return
+    return nothing
 end
 
 
 """Check to ensure setup has been run."""
-function has_setup()
+function has_setup()::Bool
     try
         ENV["ADRIA_OUTPUT_DIR"]
     catch err
@@ -48,7 +48,7 @@ end
 """Spin up workers if needed."""
 function _setup_workers()::Nothing
     if nprocs() == 1 && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
-        active_cores = parse(Int, ENV["ADRIA_NUM_CORES"])
+        active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
         if active_cores <= 0
             active_cores = cpucores()
         end
@@ -58,7 +58,7 @@ function _setup_workers()::Nothing
         end
     end
 
-    return
+    return nothing
 end
 
 """Remove workers and free up memory."""
@@ -67,6 +67,5 @@ function _remove_workers()::Nothing
         rmprocs(workers())
     end
 
-    return
+    return nothing
 end
-

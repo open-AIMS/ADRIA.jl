@@ -112,7 +112,7 @@ Create samples and rescale to distribution defined in the model spec.
 # Returns
 Scenario specification
 """
-function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=Dict(
+function sample(spec::DataFrame, n::Int64, sampler=SobolSample(); supported_dists=Dict(
     "triang" => TriangularDist,
     "norm" => TruncatedNormal,
     "unif" => Uniform
@@ -151,7 +151,7 @@ function sample(spec::DataFrame, n::Int, sampler=SobolSample(); supported_dists=
 end
 
 """
-    sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+    sample_site_selection(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
 
 Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, Criteria).
 All other parameters are set to their default values.
@@ -164,7 +164,7 @@ All other parameters are set to their default values.
 # Returns
 Scenario specification
 """
-function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+function sample_site_selection(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
     subset_spec = component_params(d.model, [EnvironmentalLayer, Intervention, Criteria])
 
     # Only sample guided intervention scenarios
@@ -181,8 +181,8 @@ function sample_site_selection(d::Domain, n::Int, sampler=SobolSample())::DataFr
 end
 
 """
-    sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
-    
+    sample_cf(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
+
 Generate only counterfactual scenarios.
 
 # Arguments
@@ -193,7 +193,7 @@ Generate only counterfactual scenarios.
 # Returns
 Scenario specification
 """
-function sample_cf(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+function sample_cf(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
     spec_df = model_spec(d)
 
     # Unguided scenarios only
@@ -208,7 +208,7 @@ end
 
 """
     _adjust_guided_lower_bound!(guided_spec::DataFrame, lower::Int64)::DataFrame
-    
+
 Adjust lower bound of guided parameter spec to alter sampling range.
 """
 function _adjust_guided_lower_bound!(spec_df::DataFrame, lower::Int64)::DataFrame
@@ -221,8 +221,8 @@ function _adjust_guided_lower_bound!(spec_df::DataFrame, lower::Int64)::DataFram
 end
 
 """
-    sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
-    
+    sample_guided(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
+
 Generate only guided scenarios.
 
 # Arguments
@@ -233,7 +233,7 @@ Generate only guided scenarios.
 # Returns
 Scenario specification
 """
-function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+function sample_guided(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
     spec_df = model_spec(d)
 
     # Remove unguided scenarios as an option
@@ -244,8 +244,8 @@ function sample_guided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
 end
 
 """
-    sample_unguided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
-    
+    sample_unguided(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
+
 Generate only unguided scenarios.
 
 # Arguments
@@ -256,7 +256,7 @@ Generate only unguided scenarios.
 # Returns
 Scenario specification
 """
-function sample_unguided(d::Domain, n::Int, sampler=SobolSample())::DataFrame
+function sample_unguided(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
     spec_df = model_spec(d)
 
     # Fix guided factor to 0 (i.e., unguided scenarios only)
@@ -335,7 +335,7 @@ function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
 
     update!(d, params)
 end
-function fix_factor!(d::Domain; factors...)
+function fix_factor!(d::Domain; factors...)::Nothing
     for (factor, val) in factors
         try
             fix_factor!(d, factor, val)

@@ -33,18 +33,18 @@ end
 Update a dataframe of parameters.
 Length of `u` is expected to match number of columns in `df`.
 """
-function map_to_discrete!(df::DataFrame, u::Union{AbstractVector,Tuple})::Nothing
+function map_to_discrete!(df::DataFrame, u::Union{AbstractVector{Union{Int64,Float64}},Tuple})::Nothing
     for (idx, b) in enumerate(u)
         df[!, idx] .= map_to_discrete.(df[!, idx], b)
     end
 end
 
-struct EnvironmentalLayer{P} <: EcoModel
+struct EnvironmentalLayer{P<:Param} <: EcoModel
     dhw_scenario::P
     wave_scenario::P
 end
 
-function EnvironmentalLayer(dhw::AbstractArray, wave::AbstractArray)
+function EnvironmentalLayer(dhw::AbstractArray{T}, wave::AbstractArray{T2})::EnvironmentalLayer where {T<:Union{Float32,Float64},T2<:Union{Float32,Float64}}
     return EnvironmentalLayer(
         Param(1, bounds=(1.0, Float64(size(dhw, 3)) + 1.0), ptype="integer", dists="unif", name="DHW Scenario", description="DHW scenario member identifier."),
         Param(1, bounds=(1.0, Float64(size(wave, 3)) + 1.0), ptype="integer", dists="unif", name="Wave Scenario", description="Wave scenario member identifier.")

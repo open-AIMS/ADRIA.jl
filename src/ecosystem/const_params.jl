@@ -26,32 +26,32 @@ Struct of simulation constants for ADRIA
 
 4. Bozec, Y.-M., Hock, K., Mason, R. A. B., Baird, M. E., Castro-Sanguino, C.,
      Condie, S. A., Puotinen, M., Thompson, A., & Mumby, P. J. (2022).
-   Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation. 
+   Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation.
    Ecological Monographs, 92(1), e01494.
    https://doi.org/10.1002/ecm.1494
 """
 Base.@kwdef mutable struct SimConstants
-    n_site_int = 5  # max number of sites we intervene on in a given year.
+    n_site_int::Int64 = 5  # max number of sites we intervene on in a given year.
 
-    priority_sites = []  # sites to prioritize when seeding or shading
+    priority_sites::Vector{Int64} = []  # sites to prioritize when seeding or shading
 
     # Zones to prioritize when seeding or shading, in order of preference
     # https://github.com/open-AIMS/ADRIA.jl/issues/231#issuecomment-1340138255
     # https://www2.gbrmpa.gov.au/access/zoning/interpreting-zones
-    priority_zones = ["Pink", "Green", "Yellow", "DarkBlue", "LightBlue"]
+    priority_zones::Vector{String} = String["Pink", "Green", "Yellow", "DarkBlue", "LightBlue"]
 
     ## Environmental parameters
     # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
-    DHWmaxtot = 50.0
+    DHWmaxtot::Float64 = 50.0
 
     # Bleaching stress and coral fecundity parameters
-    LPdhwcoeff = 0.4  # shape parameters relating dhw affecting cover to larval production
-    LPDprm2 = 5.0  # parameter offsetting LPD curve
+    LPdhwcoeff::Float64 = 0.4  # shape parameters relating dhw affecting cover to larval production
+    LPDprm2::Float64 = 5.0  # parameter offsetting LPD curve
 
     # competition: probability that large Tabular Acropora overtop small massives
-    comp = 0.3
+    comp::Float64 = 0.3
 
     # Modified for use in ADRIA
-    max_settler_density = [100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
-    max_larval_density = [5000.0, 5000.0, 5000.0, 5000.0, 5000.0, 5000.0]
+    max_settler_density::Vector{Float64} = Float64[100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
+    max_larval_density::Vector{Float64} = Float64[5000.0, 5000.0, 5000.0, 5000.0, 5000.0, 5000.0]
 end

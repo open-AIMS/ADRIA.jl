@@ -13,9 +13,8 @@ Returns a copy of original array so input is not modified.
 # Returns
 - converted_names : array[str], of cleaned parameter names
 """
-function human_readable_name(names::Array{String}; title_case::Bool=false)::Array{String}
-    converted_names = names[:]
-    converted_names = map((x) -> replace(x, "_" => " "), converted_names)
+function human_readable_name(names::Vector{String}; title_case::Bool=false)::Vector{String}
+    converted_names::Vector{String} = map((x) -> replace(x, "_" => " "), names[:])
 
     if title_case
         map!(titlecase, converted_names, converted_names)
