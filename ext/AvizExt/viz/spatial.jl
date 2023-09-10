@@ -148,14 +148,21 @@ function ADRIA.viz.map(
 end
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
     opts[:colorbar_label] = get(opts, :colorbar_label, "Coral Real Estate [%]")
+
+    opts[:show_management_zones] = get(opts, :show_management_zones, false)
+    if opts[:show_management_zones]
+        highlight = rs.site_data.zone_type .|> lowercase .|> Symbol
+        opts[:highlight] = highlight
+    end
+
     ADRIA.viz.map!(g, rs, rs.site_data.k; opts, axis_opts)
 
     return f
