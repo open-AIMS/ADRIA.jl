@@ -1,9 +1,17 @@
 module sensitivity
 
-using Logging
-using DataFrames, NamedDims, AxisKeys
-using Distributions, HypothesisTests, Bootstrap, StaticArrays, FLoops
+using
+    Logging,
+    DataFrames,
+    NamedDims,
+    AxisKeys,
+    Distributions,
+    HypothesisTests,
+    Bootstrap,
+    StaticArrays,
+    FLoops
 
+using HypothesisTests: ApproximateKSTest
 using ADRIA: ResultSet
 using ADRIA.analysis: col_normalize
 
@@ -13,8 +21,8 @@ using ADRIA.analysis: col_normalize
 
 Calculate the Kolmogorov-Smirnov test statistic.
 """
-function ks_statistic(ks)
-    n = (ks.n_x * ks.n_y) / (ks.n_x + ks.n_y)
+function ks_statistic(ks::ApproximateKSTest)::Float64
+    n::Float64 = (ks.n_x * ks.n_y) / (ks.n_x + ks.n_y)
 
     return sqrt(n) * ks.δ
 end
@@ -254,26 +262,27 @@ Perform Regional Sensitivity Analysis.
 Regional Sensitivity Analysis is a Monte Carlo Filtering approach which aims to
 identify which (group of) factors drive model outputs within or outside of a specified bound.
 Outputs which fall inside the bounds are regarded as "behavioral", whereas those outside
-are "non-behavioral". The distribution of behavioral/non-behavioral subsets are compared for each
-factor. If the subsets are not similar, then the factor is influential. The sensitivity index is
-simply the maximum distance between the two distributions, with larger values indicating greater
-sensitivity.
+are "non-behavioral". The distribution of behavioral/non-behavioral subsets are compared for
+each factor. If the subsets are not similar, then the factor is influential. The sensitivity
+index is simply the maximum distance between the two distributions, with larger values
+indicating greater sensitivity.
 
 The implemented approach slices factor space into \$S\$ bins and iteratively assesses
 behavioral (samples within the bin) and non-behavioral (out of bin samples) subsets with the
-non-parametric \$k\$-sample Anderson-Darling test. Larger values indicate greater dissimilarity
-(thus, sensitivity). The Anderson-Darling test places more weight on the tails compared to the
-Kolmogorov-Smirnov test.
+non-parametric \$k\$-sample Anderson-Darling test. Larger values indicate greater
+dissimilarity (thus, sensitivity). The Anderson-Darling test places more weight on the tails
+compared to the Kolmogorov-Smirnov test.
 
 RSA can indicate where in factor space model sensitivities may be, and contributes to a
 Value-of-Information (VoI) analysis.
 
-Increasing the value of \$S\$ increases the granularity of the analysis, but necessitates larger
-sample sizes.
+Increasing the value of \$S\$ increases the granularity of the analysis, but necessitates
+larger sample sizes.
 
 Note: Values of type `missing` indicate a lack of samples in the region.
 
 # Arguments
+- `rs` : ResultSet
 - `X` : scenario specification
 - `y` : scenario outcomes
 - `S` : number of bins to slice factor space into (default: 10)
@@ -336,7 +345,9 @@ function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArr
         end
     end
 
-    return col_normalize(NamedDimsArray(r_s; bins=string.(seq[2:end]), factors=Symbol.(names(X))))
+    return col_normalize(
+        NamedDimsArray(r_s; bins=string.(seq[2:end]), factors=Symbol.(names(X)))
+    )
 end
 function rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
     return rsa(rs.inputs, vec(y); S=S)
@@ -374,6 +385,9 @@ Note:
 
 # Examples
 ```julia
+# Get metric of interest
+mu_tac = vec(mean(ADRIA.metrics.scenario_total_cover(rs), dims=:timesteps))
+
 # Factors of interest
 foi = [:SRM, :fogging, :a_adapt]
 
@@ -384,7 +398,15 @@ rule = y -> all(y .> 0.5)
 ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 ```
 """
-function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real,V<:Union{Function,BitVector,Vector{Int64}}}
+function outcome_map(
+    X::DataFrame,
+    y::AbstractVecOrMat{<:Real},
+    rule::Union{Function,BitVector,Vector{Int64}},
+    target_factors::Vector{String};
+    S::Int64=20,
+    n_boot::Int64=100,
+    conf::Float64=0.95
+)::NamedDimsArray
     step_size = 1 / S
     steps = collect(0:step_size:1.0)
 
@@ -397,45 +419,72 @@ function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V, target_facto
 
     all_p_rule = _map_outcomes(y, rule)
     if length(all_p_rule) == 0
-        @warn "Empty result set"
+        @warn "No results conform to specified rule."
         return p_table
     end
 
     # Identify behavioural
     n_scens = size(X, 1)
-    behave = zeros(Bool, n_scens)
+    behave::BitVector = falses(n_scens)
     behave[all_p_rule] .= true
 
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
         X_q .= quantile(X[:, fact_t], steps)
         for (i, s) in enumerate(X_q[1:end-1])
-            b = i == 1 ? (X_q[i] .<= X[:, fact_t] .<= X_q[i+1]) .& behave : (X_q[i] .< X[:, fact_t] .<= X_q[i+1]) .& behave
+            local b::BitVector
+            if i == 1
+                b = (X_q[i] .<= X[:, fact_t] .<= X_q[i+1])
+            else
+                b = (X_q[i] .< X[:, fact_t] .<= X_q[i+1])
+            end
+
+            b = b .& behave
+
             if count(b) == 0
-                p_table[i, j, 1] = missing
-                p_table[i, j, 2] = missing
-                p_table[i, j, 3] = missing
+                # No data to bootstrap (empty region)
+                p_table[i, j, [1, 2, 3]] .= missing
                 continue
             end
 
             bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
             ci = confint(bs, PercentileConfInt(conf))[1]
 
-            p_table[i, j, 1] = ci[1]
-            p_table[i, j, 2] = ci[2]
-            p_table[i, j, 3] = ci[3]
+            p_table[i, j, [1, 2, 3]] .= ci
         end
     end
 
     return p_table
 end
-function outcome_map(X::DataFrame, y::AbstractVecOrMat{T}, rule::V; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {T<:Real,V<:Union{Function,BitVector,Vector{Int64}}}
+function outcome_map(
+    X::DataFrame,
+    y::AbstractVecOrMat{<:Real},
+    rule::Union{Function,BitVector,Vector{Int64}};
+    S::Int64=20,
+    n_boot::Int64=100,
+    conf::Float64=0.95
+)::NamedDimsArray
     return outcome_map(X, y, rule, names(X); S, n_boot, conf)
 end
-function outcome_map(rs::ResultSet, y::AbstractArray, rule::V, target_factors::Vector; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {V<:Union{Function,BitVector,Vector{Int64}}}
+function outcome_map(
+    rs::ResultSet,
+    y::AbstractArray{<:Real},
+    rule::Union{Function,BitVector,Vector{Int64}},
+    target_factors::Vector{String};
+    S::Int64=20,
+    n_boot::Int64=100,
+    conf::Float64=0.95
+)::NamedDimsArray
     return outcome_map(rs.inputs, y, rule, target_factors; S, n_boot, conf)
 end
-function outcome_map(rs::ResultSet, y::AbstractArray, rule::V; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::NamedDimsArray where {V<:Union{Function,BitVector,Vector{Int64}}}
+function outcome_map(
+    rs::ResultSet,
+    y::AbstractArray{<:Real},
+    rule::Union{Function,BitVector,Vector{Int64}};
+    S::Int64=20,
+    n_boot::Int64=100,
+    conf::Float64=0.95
+)::NamedDimsArray
     return outcome_map(rs.inputs, y, rule, names(rs.inputs); S, n_boot, conf)
 end
 
