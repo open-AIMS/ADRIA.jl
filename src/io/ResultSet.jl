@@ -15,15 +15,15 @@ const ENV_STATS = "env_stats"
 const MODEL_SPEC = "model_spec"
 
 
-struct ResultSet{S,T1,T2,F,A,B,C,D,G,D1,D2,D3,DF}
-    name::S
-    RCP::S
-    invoke_time::S
-    ADRIA_VERSION::S
+struct ResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF}
+    name::String
+    RCP::String
+    invoke_time::String
+    ADRIA_VERSION::String
 
     site_ids::T1
-    site_area::F
-    site_max_coral_cover::F
+    site_area::Vector{Float64}
+    site_max_coral_cover::Vector{Float64}
     site_centroids::T2
     env_layer_md::EnvLayer
     dhw_stats::D

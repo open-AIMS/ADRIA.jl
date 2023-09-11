@@ -55,7 +55,7 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
         tmp_store::Vector{Matrix{Float64}} = Vector{Matrix{Float64}}(undef, length(years))
 
         # Get average connectivity for each represented year
-        for (i, yr) in enumerate(Symbol.(years))
+        @floop for (i, yr) in enumerate(Symbol.(years))
             conn_data::Vector{Matrix{Float64}} = Matrix{Float64}[
                 Matrix(CSV.read(fn, DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1]))
                 for fn in year_conn_fns[yr]
