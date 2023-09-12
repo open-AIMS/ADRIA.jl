@@ -12,7 +12,6 @@ using
     Bootstrap,
     Distributions,
     HypothesisTests
-
 using HypothesisTests: ApproximateKSTest
 
 using FLoops
