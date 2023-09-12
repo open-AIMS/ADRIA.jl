@@ -1,17 +1,22 @@
 module sensitivity
 
+using Logging
+
 using
-    Logging,
-    DataFrames,
-    NamedDims,
     AxisKeys,
-    Distributions,
-    HypothesisTests,
+    NamedDims,
+    StaticArrays
+using DataFrames
+
+using
     Bootstrap,
-    StaticArrays,
-    FLoops
+    Distributions,
+    HypothesisTests
 
 using HypothesisTests: ApproximateKSTest
+
+using FLoops
+
 using ADRIA: ResultSet
 using ADRIA.analysis: col_normalize
 
