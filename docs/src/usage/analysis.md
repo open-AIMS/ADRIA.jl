@@ -209,7 +209,7 @@ tsc_fig = ADRIA.viz.ts_cluster(
 save("tsc.png", tsc_fig)
 ```
 
-![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true "Time Series Cluster")
+![Plots of Time Series Cluster](/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true "Time Series Cluster")
 
 ### Time Series Clustering Map
 
@@ -239,7 +239,7 @@ tsc_map_fig = ADRIA.viz.map(rs, tac_sites, clusters)
 save("tsc_map.png", tsc_map_fig)
 ```
 
-![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/tsc_map.png?raw=true "Spatial Time Series Cluster")
+![Plots of Spatial Time Series Clusters](/ADRIA.jl/dev/assets/imgs/tsc_map.png?raw=true "Spatial Time Series Cluster")
 
 ### Regional Sensitivity Analysis
 
