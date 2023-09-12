@@ -107,15 +107,15 @@ function run_scenarios(
     # Sort RCPs so the dataframe order match the output filepath
     RCP = sort(RCP)
 
-    @info "Running $(nrow(param_df)) scenarios over $(length(RCP)) RCPs: $RCP"
+    @info "Running $(nrow(scens)) scenarios over $(length(RCP)) RCPs: $RCP"
 
     # Cross product between rcps and param_df to have every row of param_df for each rcp
     rcps_df = DataFrame(RCP=parse.(Int64, RCP))
-    scenarios_df = crossjoin(param_df, rcps_df)
+    scenarios_df = crossjoin(scens, rcps_df)
     sort!(scenarios_df, :RCP)
 
     @info "Setting up Result Set"
-    domain, data_store = ADRIA.setup_result_store!(domain, scenarios_df)
+    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df)
 
     # Convert DataFrame to named matrix for faster iteration
     scenarios_matrix = NamedDimsArray(
@@ -124,7 +124,7 @@ function run_scenarios(
         factors=names(scenarios_df)
     )
 
-    parallel = (nrow(param_df) >= 2048) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(scens) >= 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
@@ -153,11 +153,11 @@ function run_scenarios(
 
     if parallel
         for rcp in RCP
-            run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
+            run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
             # Switch RCPs so correct data is loaded
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
-            rep_doms = Iterators.repeated(domain, length(target_rows))
+            rep_doms = Iterators.repeated(dom, length(target_rows))
             scenario_args = zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), rep_doms)
             if show_progress
                 @showprogress run_msg 4 pmap(func, CachingPool(workers()), scenario_args)
@@ -167,18 +167,18 @@ function run_scenarios(
         end
     else
         # Cache to reuse during scenario runs
-        cache = setup_cache(domain)
+        cache = setup_cache(dom)
 
         # Define local helper
         func = dfx -> run_scenario(dfx..., data_store, cache)
 
         for rcp in RCP
-            run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
+            run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
             # Switch RCPs so correct data is loaded
-            domain = switch_RCPs!(domain, rcp)
+            dom = switch_RCPs!(dom, rcp)
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
-            rep_doms = Iterators.repeated(domain, size(scenarios_matrix, 1))
+            rep_doms = Iterators.repeated(dom, size(scenarios_matrix, 1))
             scenario_args = zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), rep_doms)
             if show_progress
                 @showprogress run_msg 4 map(func, scenario_args)
@@ -192,7 +192,7 @@ function run_scenarios(
         _remove_workers()
     end
 
-    return load_results(_result_location(domain, RCP))
+    return load_results(_result_location(dom, RCP))
 end
 
 """
