@@ -241,6 +241,49 @@ save("tsc_map.png", tsc_map_fig)
 
 ![Plots of Spatial Time Series Clusters](/ADRIA.jl/dev/assets/imgs/tsc_map.png?raw=true "Spatial Time Series Cluster")
 
+### Rule Induction (using Series Clusters)
+After clustering, it is possible to target some specific scenarios based on each cluster
+median outcome temporal variability:
+
+```julia
+# Find Time Series Clusters
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+num_clusters = 6
+clusters = ADRIA.analysis.time_series_clustering(s_tac, num_clusters)
+
+# Target scenarios
+target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)
+```
+
+Using this vector if target clusters, together with the parameters used to generate each
+scenario, it is possible to use a Rule Induction algorithm (SIRUS) and plot each extracted
+rule as a scatter graph:
+
+```julia
+# Select only desired features
+fields_iv = ADRIA.component_params(rs, [Intervention, Criteria]).fieldname
+scenarios_iv = scenarios[:, fields_iv]
+
+# Use SIRUS algorithm to extract rules
+max_rules = 10
+rules_iv = ADRIA.analysis.cluster_rules(target_clusters, scenarios_iv, max_rules)
+
+# Plot scatters for each rule highlighting the area selected them
+rules_scatter_fig = ADRIA.viz.rules_scatter(
+    rs,
+    scenarios_iv,
+    target_clusters,
+    rules_iv;
+    fig_opts=fig_opts,
+    opts=opts
+)
+
+# Save final figure
+save("rules_scatter.png", rules_scatter_fig)
+```
+
+![Plots of Rule Induction](/ADRIA.jl/dev/assets/imgs/rules_scatter.png?raw=true "Rule Induction")
+
 ### Regional Sensitivity Analysis
 
 Regional Sensitivity Analysis is a monte-carlo filtering approach. The aim of RSA is to aid
