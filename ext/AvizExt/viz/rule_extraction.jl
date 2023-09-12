@@ -12,8 +12,7 @@ class data have different colors. This maybe be usefull for bumphunting.
 # Arguments
 - `rs` : ResultSet
 - `scenarios` : Scenarios used to generate ResultSet
-- `clusters` : Clusters used to extract Rule using SIRUS
-- `outcomes` : Results of scenario metric
+- `clusters` : Vector indicating targeted (1) and non targeted (0) scenarios
 - `rules` : Rules extracted from scenarios and clusters
 - `opts` : Additional figure customization options
 - `fig_opts` : Additional options to pass to adjust Figure creation
@@ -28,7 +27,6 @@ function ADRIA.viz.rules_scatter(
     rs::ResultSet,
     scenarios::DataFrame,
     clusters::Vector{Int64},
-    outcomes::NamedDimsArray,
     rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
@@ -45,7 +43,6 @@ function ADRIA.viz.rules_scatter(
         rs,
         scenarios,
         clusters,
-        outcomes,
         rules;
         opts=opts,
         axis_opts=axis_opts
@@ -58,15 +55,11 @@ function ADRIA.viz.rules_scatter!(
     rs::ResultSet,
     scenarios::DataFrame,
     clusters::Vector{Int64},
-    outcomes::NamedDimsArray,
     rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict()
 )
     sub_g = g[1, 1] = GridLayout()
-
-    # Target cluster index
-    target_index = ADRIA.analysis.target_clusters(clusters, outcomes)
 
     # Colors and Labels Setup
     colors = ["#1f78b4", "#ff7f00"]
@@ -107,10 +100,10 @@ function ADRIA.viz.rules_scatter!(
             y_min, y_max = _find_limits(y_features)
             xlims!(x_min, x_max), ylims!(y_min, y_max)
 
-            for t in unique(target_index)
-                x = x_features[t.==target_index]
-                y = y_features[t.==target_index]
-                cat_color = t == 1 ? colors[1] : colors[2]
+            for c in unique(clusters)
+                x = x_features[c.==clusters]
+                y = y_features[c.==clusters]
+                cat_color = c == 1 ? colors[1] : colors[2]
                 scatter!(ax, x, y, color=cat_color, marker=marker, markersize=4)
             end
 
