@@ -35,42 +35,13 @@ function setup_cache(domain::Domain)::NamedTuple
 end
 
 
-"""
-    run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)
-    run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String}; show_progress=true, remove_workers=true)
-
-Run scenarios defined by the parameter table storing results to disk.
-Scenarios are run in parallel where the number of scenarios > 256.
-
-# Notes
-- Returned `domain` holds scenario invoke time used as unique result set identifier.
-- If multiple RCPs are specified, this method will temporarily use double the disk space
-  to consolidate results into a single ResultSet.
-
-# Examples
-```julia-repl
-...
-julia> rs_45 = ADRIA.run_scenarios(p_df, dom, "45")
-julia> rs_45_60 = ADRIA.run_scenarios(p_df, dom, ["45", "60"])
-```
-
-# Arguments
-- param_df : DataFrame of scenarios to run
-- domain : Domain, to run scenarios with
-- RCP : ID or list of of RCP(s) to run scenarios under.
-- show_progress : Display progress
-- remove_workers : If running in parallel, removes workers after completion
-
-# Returns
-ResultSet
-"""
 function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)::ResultSet
     msg = """
     `run_scenarios(param_df, domain, RCP)` is now deprecated and will be removed in
     ADRIA v1.0
 
     Instead, use:
-        run_scenarios(domain, param_df, RCP)
+        `run_scenarios(dom, scens, RCP)`
     """
     @warn msg
     return run_scenarios(domain, param_df, [RCP]; show_progress, remove_workers)
@@ -81,17 +52,55 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
     ADRIA v1.0
 
     Instead, use:
-        run_scenarios(domain, param_df, RCP)
+        `run_scenarios(dom, scens, RCP)`
     """
     @warn msg
     return run_scenarios(domain, param_df, RCP; show_progress, remove_workers)
 end
 
+"""
+    run_scenarios(dom::Domain, scens::DataFrame, RCP::String; show_progress=true, remove_workers=true)
+    run_scenarios(dom::Domain, scens::DataFrame, RCP::Vector{String}; show_progress=true, remove_workers=true)
 
-function run_scenarios(domain::Domain, param_df::DataFrame, RCP::String; show_progress=true, remove_workers=true)::ResultSet
-    return run_scenarios(domain, param_df, [RCP]; show_progress, remove_workers)
+Run scenarios defined by the parameter table storing results to disk.
+Scenarios are run in parallel where the number of scenarios > 256.
+
+# Notes
+- Returned `dom` holds scenario invoke time used as unique result set identifier.
+
+# Examples
+```julia-repl
+...
+julia> rs_45 = ADRIA.run_scenarios(dom, scens, "45")
+julia> rs_45_60 = ADRIA.run_scenarios(dom, scens, ["45", "60"])
+```
+
+# Arguments
+- `dom` : Domain, to run scenarios with
+- `scens` : DataFrame of scenarios to run
+- `RCP` : ID or list of of RCP(s) to run scenarios under.
+- `show_progress` : Display progress
+- `remove_workers` : If running in parallel, removes workers after completion
+
+# Returns
+ResultSet
+"""
+function run_scenarios(
+    dom::Domain,
+    scens::DataFrame,
+    RCP::String;
+    show_progress=true,
+    remove_workers=true
+)::ResultSet
+    return run_scenarios(dom, scens, [RCP]; show_progress, remove_workers)
 end
-function run_scenarios(domain::Domain, param_df::DataFrame, RCP::Vector{String}; show_progress=true, remove_workers=true)::ResultSet
+function run_scenarios(
+    dom::Domain,
+    scens::DataFrame,
+    RCP::Vector{String};
+    show_progress=true,
+    remove_workers=true
+)::ResultSet
     # Initialize ADRIA configuration options
     setup()
 
