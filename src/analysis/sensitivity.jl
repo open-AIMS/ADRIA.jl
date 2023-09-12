@@ -488,10 +488,13 @@ function outcome_map(
     return outcome_map(rs.inputs, y, rule, names(rs.inputs); S, n_boot, conf)
 end
 
-function _map_outcomes(y::AbstractArray, rule::Union{BitVector,Vector{Int64}})
+function _map_outcomes(
+    y::AbstractArray{<:Real},
+    rule::Union{BitVector,Vector{Int64}}
+)::Union{BitVector,Vector{Int64}}
     return rule
 end
-function _map_outcomes(y::AbstractArray, rule::Function)
+function _map_outcomes(y::AbstractArray{<:Real}, rule::Function)::Vector{Int64}
     _y = col_normalize(y)
     all_p_rule = findall(rule, eachrow(_y))
 
