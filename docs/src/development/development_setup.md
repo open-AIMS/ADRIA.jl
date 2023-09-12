@@ -116,10 +116,8 @@ for further details.
 
 ## Code Style
 
-Follow the standard Julia [style guide](https://docs.julialang.org/en/v1/manual/style-guide/) as much as possible.
-
-In most cases, simply auto-formatting the code is enough.
-
+We are currently moving to follow [Blue Style Guide](https://github.com/invenia/BlueStyle).
+All PRs should follow this style guide.
 
 ## Notes
 
