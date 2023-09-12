@@ -65,9 +65,33 @@ julia> rs_45_60 = ADRIA.run_scenarios(p_df, dom, ["45", "60"])
 ResultSet
 """
 function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)::ResultSet
-    return run_scenarios(param_df, domain, [RCP]; show_progress, remove_workers)
+    msg = """
+    `run_scenarios(param_df, domain, RCP)` is now deprecated and will be removed in
+    ADRIA v1.0
+
+    Instead, use:
+        run_scenarios(domain, param_df, RCP)
+    """
+    @warn msg
+    return run_scenarios(domain, param_df, [RCP]; show_progress, remove_workers)
 end
 function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String}; show_progress=true, remove_workers=true)::ResultSet
+    msg = """
+    `run_scenarios(param_df, domain, RCP)` is now deprecated and will be removed in
+    ADRIA v1.0
+
+    Instead, use:
+        run_scenarios(domain, param_df, RCP)
+    """
+    @warn msg
+    return run_scenarios(domain, param_df, RCP; show_progress, remove_workers)
+end
+
+
+function run_scenarios(domain::Domain, param_df::DataFrame, RCP::String; show_progress=true, remove_workers=true)::ResultSet
+    return run_scenarios(domain, param_df, [RCP]; show_progress, remove_workers)
+end
+function run_scenarios(domain::Domain, param_df::DataFrame, RCP::Vector{String}; show_progress=true, remove_workers=true)::ResultSet
     # Initialize ADRIA configuration options
     setup()
 
