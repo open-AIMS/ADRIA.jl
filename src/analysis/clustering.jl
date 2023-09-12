@@ -129,7 +129,8 @@ end
 """
     target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{F}; metric=temporal_variability, size_limit=0.01) where {T<:Int64,F<:Real}
 
-Categorize all clusters into target or non-target according to some metric.
+Cluster scenarios into target and non target based on median outcome temporal variability of
+previous time series cluster.
 
 # Arguments
 - `clusters` : Vector with outcome cluster indexes
