@@ -198,7 +198,7 @@ axis_opts = Dict(
     :ylabel => "TAC [m²]",
     :xlabel => "Timesteps [years]"
 )
-tsc_fig = ADRIA.viz.ts_cluster(
+tsc_fig = ADRIA.viz.clustered_scenarios(
     s_tac,
     clusters;
     fig_opts=fig_opts,

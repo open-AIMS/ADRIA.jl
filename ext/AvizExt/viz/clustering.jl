@@ -1,8 +1,8 @@
 using JuliennedArrays
 
 """
-    ts_cluster(data::AbstractMatrix, clusters::Vector{Int64}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ts_cluster!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; axis_opts::Dict=Dict())
+    clustered_scenarios(data::AbstractMatrix, clusters::Vector{Int64}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    clustered_scenarios(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; axis_opts::Dict=Dict())
 
 Visualize clustered time series of scenarios.
 
@@ -13,7 +13,7 @@ Visualize clustered time series of scenarios.
 # Returns
 Figure
 """
-function ADRIA.viz.ts_cluster(
+function ADRIA.viz.clustered_scenarios(
     data::AbstractMatrix,
     clusters::Vector{Int64};
     fig_opts::Dict=Dict(),
@@ -22,11 +22,11 @@ function ADRIA.viz.ts_cluster(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    ADRIA.viz.ts_cluster!(g, data, clusters; axis_opts=axis_opts)
+    ADRIA.viz.clustered_scenarios(g, data, clusters; axis_opts=axis_opts)
 
     return f
 end
-function ADRIA.viz.ts_cluster!(
+function ADRIA.viz.clustered_scenarios(
     g::Union{GridLayout,GridPosition},
     data::AbstractMatrix,
     clusters::Vector{Int64};
