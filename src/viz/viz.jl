@@ -29,8 +29,6 @@ function outcome_map!() end
 # Clustering
 function clustered_scenarios() end
 function clustered_scenarios!() end
-function ts_spatial_cluster() end
-function ts_spatial_cluster!() end
 
 # Rule extraction
 function rules_scatter() end
