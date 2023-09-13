@@ -91,9 +91,9 @@ function complexity_invariance_distance(
 end
 
 """
-    time_series_clustering(data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
+    cluster_series(data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
 
-Hierarchical clustering between \$S\$ scenarios with \$T\$ time steps each.
+Hierarchical cluster \$S\$ scenarios with \$T\$ time steps each.
 
 # Arguments
 - `data` : Matrix of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is
@@ -114,7 +114,7 @@ Hierarchical clustering between \$S\$ scenarios with \$T\$ time steps each.
    Data Min Knowl Disc 28, 634-669.
    https://doi.org/10.1007/s10618-013-0312-3
 """
-function time_series_clustering(
+function cluster_series(
     data::AbstractMatrix{T},
     n_clusters::Int64
 )::Vector where {T<:Real}

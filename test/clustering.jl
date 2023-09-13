@@ -53,9 +53,9 @@
             @test cid[1, 1] == cid[2, 2] == cid[3, 3] == 0.0
         end
 
-        @testset "Call time_series_clustering function" begin
+        @testset "Call cluster_series function" begin
             num_clusters = 5
-            clusters = ADRIA.analysis.time_series_clustering(test_data, num_clusters)
+            clusters = ADRIA.analysis.cluster_series(test_data, num_clusters)
 
             @test length(clusters) == size(test_data, 2)
             @test -1 ∉ clusters
@@ -89,9 +89,9 @@
             @test ce[5] == 1
         end
 
-        @testset "Call time_series_clustering function" begin
+        @testset "Call cluster_series function" begin
             num_clusters = 5
-            clusters = ADRIA.analysis.time_series_clustering(const_test_data, num_clusters)
+            clusters = ADRIA.analysis.cluster_series(const_test_data, num_clusters)
 
             @test length(clusters) == size(const_test_data, 2)
         end
