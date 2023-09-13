@@ -2,7 +2,7 @@ using JuliennedArrays
 
 """
     clustered_scenarios(data::AbstractMatrix, clusters::Vector{Int64}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    clustered_scenarios(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; axis_opts::Dict=Dict())
+    clustered_scenarios!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; axis_opts::Dict=Dict())
 
 Visualize clustered time series of scenarios.
 
@@ -22,11 +22,11 @@ function ADRIA.viz.clustered_scenarios(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    ADRIA.viz.clustered_scenarios(g, data, clusters; axis_opts=axis_opts)
+    ADRIA.viz.clustered_scenarios!(g, data, clusters; axis_opts=axis_opts)
 
     return f
 end
-function ADRIA.viz.clustered_scenarios(
+function ADRIA.viz.clustered_scenarios!(
     g::Union{GridLayout,GridPosition},
     data::AbstractMatrix,
     clusters::Vector{Int64};
