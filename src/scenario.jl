@@ -241,15 +241,15 @@ function run_scenario(
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
     rs_raw = result_set.raw
-    vals = total_absolute_cover(rs_raw, site_area(domain))
+    vals = total_absolute_cover(rs_raw, site_k_area(domain))
     vals[vals.<threshold] .= 0.0
     data_store.total_absolute_cover[:, :, idx] .= vals
 
-    vals .= absolute_shelter_volume(rs_raw, site_area(domain), scenario)
+    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), param_set)
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(rs_raw, site_area(domain), site_k_area(domain), scenario)
+    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), param_set)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
@@ -258,15 +258,15 @@ function run_scenario(
     vals[vals.<threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
 
-    vals .= juvenile_indicator(rs_raw, coral_spec, site_area(domain), site_k_area(domain))
+    vals .= juvenile_indicator(rs_raw, coral_spec, site_k_area(domain))
     vals[vals.<threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
-    vals = relative_taxa_cover(rs_raw, site_k_area(domain), site_area(domain))
+    vals = relative_taxa_cover(rs_raw, site_k_area(domain))
     vals[vals.<threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
-    vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain), site_area(domain))
+    vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain))
     vals = coral_evenness(NamedDims.unname(vals))
     vals[vals.<threshold] .= 0.0
     data_store.coral_evenness[:, :, idx] .= vals
