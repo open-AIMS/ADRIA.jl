@@ -638,7 +638,7 @@ Area covered by recruited larvae (in m²)
 function settler_cover(
     fec_scope::T,
     TP_data::T,
-    leftover_k_m²::T,
+    leftover_space::T,
     α::V,
     β::V,
     basal_area_per_settler::V
