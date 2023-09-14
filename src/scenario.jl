@@ -449,12 +449,25 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     site_data = domain.site_data
     depth_coeff .= depth_coefficient.(site_data.depth_med)
 
-    # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
+    # Coral cover relative to total site area
     C_cover::Array{Float64,3} = zeros(tf, n_species, n_locs)
     C_cover[1, :, :] .= domain.init_coral_cover
+    ode_u = zeros(n_species, n_locs)
+    max_cover = site_k(domain)  # Max coral cover at each site (0 - 1).
 
     # Locations that can support corals
     valid_locs::BitVector = site_k(domain) .> 0.0
+
+    # Initial coral cover is provided as values relative to location area.
+    # Convert coral covers to be relative to k area, ignoring locations with 0 carrying
+    # capacity (k area = 0.0).
+    absolute_k_area = site_k_area(domain)'  # max possible coral area in m^2
+    valid_locs::BitVector = absolute_k_area' .> 0.0
+    C_cover[1, :, valid_locs] .= (
+        (C_cover[1, :, valid_locs] .* cache.site_area[valid_locs]')
+        ./
+        absolute_k_area[valid_locs]'
+    )
 
     site_ranks = SparseArray(zeros(tf, n_locs, 2))  # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_locs))
@@ -693,7 +706,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Update initial condition
         growth.u0 .= C_t
-
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=alg_hint, dt=1.0)
 
