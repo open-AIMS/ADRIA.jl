@@ -35,7 +35,6 @@ function seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space::V,
     #     proportion * (area of 1 coral * num seeded corals)
     # Convert to relative cover proportion by dividing by site area
     scaled_seed = ((prop_area_avail .* seeded_area') ./ loc_k_area[seed_locs])'
-    # scaled_seed = distribute_seeded_corals(loc_k_area[seed_locs], leftover_space[seed_locs], seeded_area)
 
     # Seed each site and log
     @views cover[seed_sc, seed_locs] .+= scaled_seed
