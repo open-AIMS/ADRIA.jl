@@ -455,8 +455,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     ode_u = zeros(n_species, n_sites)
     max_cover = site_k(domain)  # Max coral cover at each site (0 - 1).
 
-    # Proportionally adjust initial cover (handles inappropriate initial conditions)
-    proportional_adjustment!(@view(Y_cover[1, :, :]), p.cover, max_cover)
+    # Locations that can support corals
+    valid_locs::BitVector = max_cover .> 0.0
 
     site_ranks = SparseArray(zeros(tf, n_sites, 2))  # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_sites))
