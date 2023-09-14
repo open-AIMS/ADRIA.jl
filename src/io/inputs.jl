@@ -13,7 +13,8 @@ function _check_compat(dpkg_details::Dict{String,Any})::Nothing
     if haskey(dpkg_details, "version") || haskey(dpkg_details, "dpkg_version")
         dpkg_version::String = dpkg_details["version"]
         if dpkg_version ∉ COMPAT_DPKG
-            error("Incompatible Domain data package. Detected $(dpkg_version), but only support one of $(COMPAT_DPKG)")
+            error("""Incompatible Domain data package. Detected $(dpkg_version),
+            but only support one of $(COMPAT_DPKG)""")
         end
     else
         error("Incompatible Domain data package.")
@@ -200,6 +201,7 @@ function load_covers(data_fn::String, attr::String, site_data::DataFrame)::Named
 
     # Reorder sites to match site_data
     data = data[sites=Key(site_data[:, :reef_siteid])]
+    data = _convert_abs_to_k(data, site_data)
 
     return data
 end
