@@ -225,15 +225,6 @@ function load_domain(path::String, rcp::Int64)::ADRIADomain
 end
 
 
-"""
-    site_k(domain::ADRIADomain)::Vector{Float64}
-
-Get maximum coral cover area as a proportion of site area.
-"""
-function site_k(domain::ADRIADomain)::Vector{Float64}
-    return domain.site_data.k ./ 100.0
-end
-
 """Get the path to the DHW data associated with the domain."""
 function get_DHW_data(d::ADRIADomain, RCP::String)::String
     return joinpath(d.env_layer_md.dpkg_path, "DHWs", "dhwRCP$(RCP).nc")

@@ -232,7 +232,7 @@ end
 Get maximum coral cover area as a proportion of site area.
 """
 function site_k(domain::Domain)::Vector{Float64}
-    return domain.site_data.k ./ 100.0
+    return domain.site_data.k
 end
 
 """Extract the time steps represented in the data package."""
