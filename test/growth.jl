@@ -15,32 +15,26 @@ using ADRIA
 end
 
 @testset "Coral Spec" begin
-    linear_extension = Array{Float64,2}(
-        [
-            1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora
-            1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora
-            1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
-            1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
-            1.0 1.0 1.0 1.0 0.8 0.8     # small massives
-            1.0 1.0 1.0 1.0 1.2 1.2
-        ],
-    )   # large massives
+    linear_extension = Array{Float64,2}([
+        1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora
+        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora
+        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
+        1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
+        1.0 1.0 1.0 1.0 0.8 0.8     # small massives
+        1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
 
     bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
 
     growth_rates = (2 * linear_extension) ./ bin_widths  # growth rates as calculated without growth_rate(), maintaining species x size_class structure
     #growth_rates[:, 6] .= 0.8 * growth_rates[:, 6]
 
-    mb = Array{Float64,2}(
-        [
-            0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora
-            0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora
-            0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora
-            0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
-            0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
-            0.2 0.2 0.040 0.026 0.020 0.020
-        ],
-    )   # Large massives
+    mb = Array{Float64,2}([
+        0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora
+        0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora
+        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora
+        0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
+        0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
+        0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
 
     coral_params = ADRIA.coral_spec().params
     stored_growth_rate = coral_params.growth_rate
@@ -857,7 +851,7 @@ end
     # Generate initial cover
     Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
 
-    ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
+    ADRIA.proportional_adjustment!(Y_cover[1, :, :], max_cover)
     growthODE(du, Y_cover[1, :, :], p, 1)
     @test !any(abs.(du) .> 1.0) ||
         "growth function is producing inappropriate values (abs(du) > 1.0)"
@@ -874,10 +868,10 @@ end
     p.X_mb .= rand(36, 32)
     Y_cover = zeros(10, 36, n_sites)
     Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
-    ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
-    for tstep in 2:10
-        growthODE(du, Y_cover[tstep - 1, :, :], p, tstep)
-        Y_cover[tstep, :, :] .= Y_cover[tstep - 1, :, :] .+ du
+    ADRIA.proportional_adjustment!(Y_cover[1, :, :], max_cover)
+    for tstep = 2:10
+        growthODE(du, Y_cover[tstep-1, :, :], p, tstep)
+        Y_cover[tstep, :, :] .= Y_cover[tstep-1, :, :] .+ du
     end
     @test any(diff(Y_cover; dims=1) .< 0) ||
         "ODE never decreases, du being restricted to >=0."
