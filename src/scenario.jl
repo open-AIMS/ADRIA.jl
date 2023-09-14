@@ -456,12 +456,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Locations that can support corals
     valid_locs::BitVector = site_k(domain) .> 0.0
-
-    site_ranks = SparseArray(zeros(tf, n_locs, 2))  # log seeding/fogging/shading ranks
-    Yshade = SparseArray(spzeros(tf, n_locs))
-    Yfog = SparseArray(spzeros(tf, n_locs))
-    Yseed = SparseArray(zeros(tf, 3, n_locs))  # 3 = the number of seeded coral types
-
     site_ranks = SparseArray(zeros(tf, n_locs, 2))  # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_locs))
     Yfog = SparseArray(spzeros(tf, n_locs))
