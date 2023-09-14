@@ -66,7 +66,6 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     site_dist, med_site_dist = ADRIA.site_distances(site_data)
     site_id_col = "LOC_NAME_S"
     unique_site_id_col = "LOC_NAME_S"
-    init_coral_cover = load_initial_cover(ReefModDomain, data_files, loc_ids)
     site_ids = site_data[:, unique_site_id_col]
 
     id_list = CSV.read(joinpath(data_files, "id", "id_list_2023_03_30.csv"), DataFrame, header=false, comment="#")
@@ -85,6 +84,9 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
 
     # Calculate `k` area (1.0 - "ungrazable" area)
     site_data[:, :k] .= 1.0 .- id_list[:, 3]
+
+    # Need to load initial coral cover after we know `k` area.
+    init_coral_cover = load_initial_cover(ReefModDomain, data_files, loc_ids, site_data)
 
     conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
@@ -300,7 +302,7 @@ function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector
 end
 
 """
-    load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::NamedDimsArray
+    load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame)::NamedDimsArray
 
 # Arguments
 - `ReefModDomain`
@@ -310,7 +312,7 @@ end
 # Returns
 NamedDimsArray[locs, species]
 """
-function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::NamedDimsArray
+function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame)::NamedDimsArray
     icc_path = joinpath(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
     if isempty(icc_files)
@@ -341,6 +343,9 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     # Repeat species over each size class and reshape to give ADRIA compatible size (36 * n_locs).
     # Multiply by size class weights to give initial cover distribution over each size class.
     icc_data = Matrix(hcat(reduce.(vcat, eachrow(icc_data .* [size_class_weights]))...))
+
+    # Convert values relative to absolute area to values relative to k area
+    icc_data = _convert_abs_to_k(icc_data, site_data)
 
     return NamedDimsArray(icc_data, species=1:(length(icc_files)*6), locs=loc_ids)
 end
