@@ -381,17 +381,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Locations that can support corals
     valid_locs::BitVector = max_cover .> 0.0
 
-    # Initial coral cover is provided as values relative to location area.
-    # Convert coral covers to be relative to k area, ignoring locations with 0 carrying
-    # capacity (k area = 0.0).
-    absolute_k_area = site_k_area(domain)'  # max possible coral area in m^2
-    valid_locs::BitVector = absolute_k_area' .> 0.0
-    C_cover[1, :, valid_locs] .= (
-        (C_cover[1, :, valid_locs] .* cache.site_area[valid_locs]')
-        ./
-        absolute_k_area[valid_locs]'
-    )
-
     site_ranks = SparseArray(zeros(tf, n_locs, 2))  # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_locs))
     Yfog = SparseArray(spzeros(tf, n_locs))
@@ -634,8 +623,13 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
 
         if tstep <= tf
-            adjust_DHW_distribution!(@view(C_cover[tstep-1:tstep, :, :]), n_groups, c_dist_t,
-                p.r, corals.dist_std)
+            adjust_DHW_distribution!(
+                @view(C_cover[tstep-1:tstep, :, :]),
+                n_groups,
+                c_dist_t,
+                p.r,
+                corals.dist_std
+            )
 
             if in_debug_mode
                 # Log dhw tolerances if in debug mode
