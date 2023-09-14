@@ -13,7 +13,8 @@ function _check_compat(dpkg_details::Dict{String,Any})::Nothing
     if haskey(dpkg_details, "version") || haskey(dpkg_details, "dpkg_version")
         dpkg_version::String = dpkg_details["version"]
         if dpkg_version ∉ COMPAT_DPKG
-            error("Incompatible Domain data package. Detected $(dpkg_version), but only support one of $(COMPAT_DPKG)")
+            error("""Incompatible Domain data package. Detected $(dpkg_version),
+            but only support one of $(COMPAT_DPKG)""")
         end
     else
         error("Incompatible Domain data package.")
@@ -61,7 +62,7 @@ end
     _process_inputs!(d::Domain, df::DataFrame)::Nothing
     _process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
     _process_inputs!(bnds::AbstractArray, p_types::AbstractArray, df::DataFrame)::Nothing
-    
+
 Map sampled values in `df` back to discrete bounds for parameters
 indicated to be of integer type in the Domain spec.
 
@@ -189,6 +190,7 @@ function load_covers(data_fn::String, attr::String, site_data::DataFrame)::Named
 
     # Reorder sites to match site_data
     data = data[sites=Key(site_data[:, :reef_siteid])]
+    data = _convert_abs_to_k(data, site_data)
 
     return data
 end
