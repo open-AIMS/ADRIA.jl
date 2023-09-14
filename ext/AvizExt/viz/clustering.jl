@@ -1,4 +1,5 @@
-using JuliennedArrays
+using JuliennedArrays: Slices
+using Statistics
 
 """
     clustered_scenarios(data::AbstractMatrix, clusters::Vector{Int64}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
@@ -17,12 +18,13 @@ function ADRIA.viz.clustered_scenarios(
     data::AbstractMatrix,
     clusters::Vector{Int64};
     fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
-)
+    axis_opts::Dict=Dict(),
+    opts::Dict=Dict()
+)::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    ADRIA.viz.clustered_scenarios!(g, data, clusters; axis_opts=axis_opts)
+    ADRIA.viz.clustered_scenarios!(g, data, clusters; axis_opts=axis_opts, opts=opts)
 
     return f
 end
@@ -30,40 +32,90 @@ function ADRIA.viz.clustered_scenarios!(
     g::Union{GridLayout,GridPosition},
     data::AbstractMatrix,
     clusters::Vector{Int64};
-    axis_opts::Dict=Dict()
-)
+    axis_opts::Dict=Dict(),
+    opts::Dict=Dict()
+)::Union{GridLayout,GridPosition}
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(data)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
-    ax = Axis(
-        g[1, 1],
-        xticks=xtick_vals,
-        xticklabelrotation=xtick_rot;
-        axis_opts...
-    )
+    ax = Axis(g[1, 1], xticks=xtick_vals, xticklabelrotation=xtick_rot; axis_opts...)
 
-    # Compute cluster colors
-    clusters_colors = _clusters_colors(clusters)
-    unique_cluster_colors = unique(clusters_colors)
+    if get(opts, :method, :series) == :confint
+        _plot_clusters_confint!(g, ax, data, clusters; opts=opts)
+    else
+        _plot_clusters_series!(g, ax, data, clusters; opts=opts)
+    end
 
+    return g
+end
+
+function _plot_clusters_series!(
+    g::Union{GridLayout,GridPosition},
+    ax::Axis,
+    data::AbstractMatrix,
+    clusters::Vector{Int64};
+    opts::Dict=Dict()
+)::Nothing
+    alphas = _get_alphas(clusters)
+    clusters_colors = unique(_get_colors(clusters, alphas))
     leg_entry = Any[]
-    for cluster in unique(clusters)
-        cluster_color = _cluster_color(unique_cluster_colors, clusters, cluster)
+
+    for (idx_c, cluster) in enumerate(unique(clusters))
         push!(
             leg_entry,
             series!(
                 ax,
                 data[:, clusters.==cluster]',
-                solid_color=cluster_color
+                solid_color=clusters_colors[idx_c]
             )
         )
     end
 
-    # Plot Legend
     n_clusters = length(unique(clusters))
     Legend(g[1, 2], leg_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
 
-    return g
+    return nothing
+end
+
+function _plot_clusters_confint!(
+    g::Union{GridLayout,GridPosition},
+    ax::Axis,
+    data::AbstractMatrix,
+    clusters::Vector{Int64};
+    opts::Dict=Dict()
+)::Nothing
+    band_colors = unique(_get_colors(clusters, 0.5))
+    line_colors = unique(_get_colors(clusters))
+    leg_entry = Any[]
+
+    # TODO if data is not a NamedDimsArray this won't work
+    xs::Vector{Float32} = data.timesteps
+
+    for (idx_c, cluster) in enumerate(unique(clusters))
+        cluster_data = data[:, clusters.==cluster]
+        data_slices = Slices(cluster_data, NamedDims.dim(cluster_data, :scenarios))
+
+        y_lower = quantile.(data_slices, [0.025])
+        y_upper = quantile.(data_slices, [0.975])
+
+        if get(opts, :fill_confint, true)
+            band!(ax, xs, y_lower, y_upper, color=band_colors[idx_c])
+        else
+            lines!(ax, xs, y_lower, linestyle=:dash, color=band_colors[idx_c])
+            lines!(ax, xs, y_upper, linestyle=:dash, color=band_colors[idx_c])
+        end
+
+        y_median = median.(data_slices)
+        push!(
+            leg_entry,
+            scatterlines!(ax, xs, y_median, color=line_colors[idx_c], markersize=5)
+        )
+    end
+
+    n_clusters = length(unique(clusters))
+    Legend(g[1, 2], leg_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
+
+    return nothing
 end
 
 """
@@ -91,7 +143,7 @@ function ADRIA.viz.map(
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict()
-)
+)::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.map!(g, rs, data, clusters; opts=opts, axis_opts=axis_opts)
@@ -105,8 +157,8 @@ function ADRIA.viz.map!(
     clusters::Vector{Int64};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict()
-)
-    cluster_colors = _clusters_colors(clusters)
+)::Union{GridLayout,GridPosition}
+    cluster_colors = _get_colors(clusters)
     legend_params = _cluster_legend_params(clusters, cluster_colors, data)
 
     opts[:highlight] = get(opts, :highlight, cluster_colors)
@@ -118,51 +170,65 @@ function ADRIA.viz.map!(
 end
 
 """
-    _cluster_colors(clusters::Vector{Int64})
-
+    _get_colors(clusters::Vector{Int64}, alphas::Vector{Float64})::Vector{RGBA{Float32}}
+    _get_colors(clusters::Vector{Int64}, alpha::Float64)::Vector{RGBA{Float32}}
+    _get_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
 Vector of cluster colors.
 
 # Arguments
 - `clusters` : Vector of numbers corresponding to clusters
+- `alphas` : Vector of alphas to be used for cluster color
 
 # Returns
 Vector{RGBA{Float32}}
 """
-function _clusters_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
+function _get_colors(clusters::Vector{Int64}, alphas::Vector{Float64})::Vector{RGBA{Float32}}
     # Number of non-zero clusters
     n_clusters = length(unique(filter(cluster -> cluster != 0, clusters)))
 
     # Vector of clusters colors for non-zero clusters
-    clusters_colors = categorical_colors(:seaborn_bright, n_clusters)
+    colors = categorical_colors(:seaborn_bright, n_clusters)
+
+    # Apply alpha to cluster colors
+    if !isempty(alphas)
+        colors = [RGBA(c.r, c.g, c.b, a) for (c, a) in zip(colors, alphas)]
+    end
 
     # Assign color "black" to cluster == 0
     rgba_black = parse(RGBA{Float32}, "transparent")
-    return [cluster == 0 ? rgba_black : clusters_colors[cluster] for cluster in clusters]
+    return [cluster == 0 ? rgba_black : colors[cluster] for cluster in clusters]
+end
+function _get_colors(clusters::Vector{Int64}, alpha::Float64)::Vector{RGBA{Float32}}
+    alphas::Vector{Float64} = fill(alpha, length(clusters))
+    return _get_colors(clusters, alphas)
+end
+function _get_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
+    return _get_colors(clusters, 1.0)
 end
 
 """
-    _cluster_color(unique_cluster_colors::Vector{RGBA{Float32}}, clusters::Vector{Int64}, cluster::Int64)
+    _get_alphas(clusters::Vector{Int64})::Vector{Float64}
 
-Color parameter for current cluster weighted by number of scenarios
+Vector of color alphas for each clusters weighted by number of scenarios
 
 # Arguments
-- `unique_cluster_colors` : Vector of all cluster options that are being used
-- `clusters` : Vector of numbers corresponding to clusters
-- `cluster` : Current cluster
+- `clusters` : Vector with scenario cluster numbers
 
 # Returns
-Tuple{RGBA{Float32}, Float64}
+Vector with one color alpha for each cluster
 """
-function _cluster_color(unique_cluster_colors::Vector{RGBA{Float32}},
-    clusters::Vector{Int64}, cluster::Int64)::Tuple{RGBA{Float32},Float64}
-    # Number of scenarios for a cluster
-    n_scens = count(clusters .== cluster)
+function _get_alphas(clusters::Vector{Int64})::Vector{Float64}
+    alphas::Vector{Float64} = zeros(Float64, length(unique(clusters)))
 
-    # Compute line weight
-    color_weight = max(min((1.0 / (n_scens * 0.05)), 0.6), 0.1)
+    for (i, cluster) in enumerate(unique(clusters))
+        n_scens = count(clusters .== cluster)
+        base_alpha = 1.0 / (n_scens * 0.05)
+        alphas[i] = max(min(base_alpha, 0.6), 0.1)
+    end
 
-    return (unique_cluster_colors[cluster], color_weight)
+    return alphas
 end
+
 
 """
     _cluster_legend_params(clusters::Vector{Int64}, clusters_colors::Vector{RGBA{Float32}}, data_statistics::Vector{Float32})
