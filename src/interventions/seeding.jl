@@ -1,37 +1,4 @@
 """
-    distribute_seeded_corals(seed_loc_area::Vector{Float64},
-        available_space::Vector{Float64},
-        seeded_area::NamedDimsArray)::NamedDimsArray
-
-Calculate proportion of deployed corals to be seeded at each of the selected locations.
-Distributes seeded corals according to current available space at each selected site.
-
-# Arguments
-- seed_loc_area : area of locations to seed in m².
-- available_space : currently available space at each seed location in m².
-- seeded_area : area (in m²) of each coral type to be seeded with dim taxa.
-
-# Returns
-scaled_seed : NamedDimsArray [taxa to seed ⋅ number of seed locations]
-"""
-function distribute_seeded_corals(seed_loc_area::Vector{Float64},
-    available_space::Vector{Float64},
-    seeded_area::NamedDimsArray)::NamedDimsArray
-
-    # Proportion of available space on each site relative to total space available on these
-    # sites
-    prop_area_avail = available_space ./ sum(available_space)
-
-    # Distribute seeded corals (as area) across sites according to available space
-    # proportions:
-    #     proportion * (area of 1 coral * num seeded corals)
-    # Convert to relative cover proportion by dividing by site area
-    scaled_seed = ((prop_area_avail .* seeded_area') ./ seed_loc_area)'
-
-    return scaled_seed
-end
-
-"""
     seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_space::V,
         seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V,
         Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
@@ -53,12 +20,22 @@ Note: Units for all areas are expected to be identical, and are assumed to be in
 - `Yseed` : Log of seeded locations to update
 - `c_dist_t` : Critical DHW distributions of corals to update (i.e., for time \$t\$)
 """
-function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_space::V,
+function seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space::V,
     seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V,
     Yseed::SubArray, stdev::V, c_dist_t::Matrix{Float64})::Nothing where {V<:Vector{Float64}}
 
     # Calculate proportion to seed based on current available space
-    scaled_seed = distribute_seeded_corals(total_location_area[seed_locs], leftover_space[seed_locs], seeded_area)
+
+    # Proportion of available space on each site relative to total space available on these
+    # sites
+    prop_area_avail = leftover_space[seed_locs] ./ sum(loc_k_area[seed_locs])
+
+    # Distribute seeded corals (as area) across sites according to available space
+    # proportions:
+    #     proportion * (area of 1 coral * num seeded corals)
+    # Convert to relative cover proportion by dividing by site area
+    scaled_seed = ((prop_area_avail .* seeded_area') ./ loc_k_area[seed_locs])'
+    # scaled_seed = distribute_seeded_corals(loc_k_area[seed_locs], leftover_space[seed_locs], seeded_area)
 
     # Seed each site and log
     @views cover[seed_sc, seed_locs] .+= scaled_seed
