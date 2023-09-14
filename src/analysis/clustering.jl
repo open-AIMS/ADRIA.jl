@@ -93,7 +93,8 @@ end
 """
     cluster_series(data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
 
-Hierarchical cluster \$S\$ scenarios with \$T\$ time steps each.
+Hierarchically cluster \$S\$ scenarios with \$T\$ time steps each.
+
 
 # Arguments
 - `data` : Matrix of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is
