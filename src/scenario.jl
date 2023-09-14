@@ -461,11 +461,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     Yfog = SparseArray(spzeros(tf, n_locs))
     Yseed = SparseArray(zeros(tf, 3, n_locs))  # 3 = the number of seeded coral types
 
-    site_ranks = SparseArray(zeros(tf, n_locs, 2))  # log seeding/fogging/shading ranks
-    Yshade = SparseArray(spzeros(tf, n_locs))
-    Yfog = SparseArray(spzeros(tf, n_locs))
-    Yseed = SparseArray(zeros(tf, 3, n_locs))  # 3 = the number of seeded coral types
-
     # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
     is_guided = param_set("guided") > 0
