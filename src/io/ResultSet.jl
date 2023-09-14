@@ -44,8 +44,17 @@ struct ResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF}
 end
 
 
-function ResultSet(input_set::AbstractArray, env_layer_md::EnvLayer, inputs_used::DataFrame, outcomes::Dict,
-    log_set::Zarr.ZGroup, dhw_stats_set::Dict, wave_stats_set::Dict, site_data::DataFrame, model_spec::DataFrame)::ResultSet
+function ResultSet(
+    input_set::AbstractArray,
+    env_layer_md::EnvLayer,
+    inputs_used::DataFrame,
+    outcomes::Dict,
+    log_set::Zarr.ZGroup,
+    dhw_stats_set::Dict,
+    wave_stats_set::Dict,
+    site_data::DataFrame,
+    model_spec::DataFrame
+)::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
     ResultSet(input_set.attrs["name"],
         string(rcp),
@@ -103,7 +112,8 @@ function combine_results(result_sets...)::ResultSet
     # @assert length(Set([rs.name for rs in result_sets])) == 1
 
     # Ensure all sim constants are identical
-    @assert all([result_sets[i].sim_constants == result_sets[i+1].sim_constants for i in 1:length(result_sets)-1])
+    @assert all([result_sets[i].sim_constants == result_sets[i+1].sim_constants
+                 for i in 1:length(result_sets)-1])
 
     # Ensure all result sets were from the same version of ADRIA
     if length(Set([rs.ADRIA_VERSION for rs in result_sets])) != 1
@@ -124,33 +134,68 @@ function combine_results(result_sets...)::ResultSet
     n_scenarios = sum(map((rs) -> size(rs.inputs, 1), result_sets))
 
     envlayer = rs1.env_layer_md
-    env_md = EnvLayer(envlayer.dpkg_path, envlayer.site_data_fn, envlayer.site_id_col, envlayer.unique_site_id_col,
-        envlayer.init_coral_cov_fn, envlayer.connectivity_fn,
-        dirname(envlayer.DHW_fn), dirname(envlayer.wave_fn), envlayer.timeframe)
+    env_md = EnvLayer(
+        envlayer.dpkg_path,
+        envlayer.site_data_fn,
+        envlayer.site_id_col,
+        envlayer.unique_site_id_col,
+        envlayer.init_coral_cov_fn,
+        envlayer.connectivity_fn,
+        dirname(envlayer.DHW_fn),
+        dirname(envlayer.wave_fn),
+        envlayer.timeframe
+    )
 
     all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
     input_dims = size(all_inputs)
-    attrs = scenario_attributes(canonical_name, rcps, names(all_inputs), combined_time, env_md, rs1.sim_constants,
-        rs1.site_ids, rs1.site_area, rs1.site_max_coral_cover, rs1.site_centroids)
+    attrs = scenario_attributes(
+        canonical_name,
+        rcps,
+        names(all_inputs),
+        combined_time,
+        env_md,
+        rs1.sim_constants,
+        rs1.site_ids,
+        rs1.site_area,
+        rs1.site_max_coral_cover,
+        rs1.site_centroids
+    )
 
     # Copy site data into result set
     mkdir(joinpath(new_loc, SITE_DATA))
-    cp(attrs[:site_data_file], joinpath(new_loc, SITE_DATA, basename(attrs[:site_data_file])), force=true)
+    cp(
+        attrs[:site_data_file],
+        joinpath(new_loc, SITE_DATA, basename(attrs[:site_data_file])),
+        force=true
+    )
 
     # Store copy of model specification as CSV
     mkdir(joinpath(new_loc, MODEL_SPEC))
     CSV.write(joinpath(new_loc, MODEL_SPEC, "model_spec.csv"), rs1.model_spec)
-    # model_spec(dom, joinpath(log_location, joinpath(new_loc, MODEL_SPEC, "model_spec.csv")))
 
     input_loc::String = joinpath(z_store.folder, INPUTS)
-    # TODO: Fix issue - ERROR: UndefRefError: access to undefined reference
-    input_set = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=(1, input_dims[2]), attrs=attrs)
+    input_set = zcreate(
+        Float64,
+        input_dims...;
+        fill_value=-9999.0,
+        fill_as_missing=false,
+        path=input_loc,
+        chunks=(1, input_dims[2]),
+        attrs=attrs
+    )
 
     # Store post-processed table of input parameters.
     input_set[:, :] = Matrix(all_inputs)
 
     logs = (; zip([:ranks, :seed_log, :fog_log, :shade_log],
-        setup_logs(z_store, rs1.site_ids, nrow(all_inputs), size(rs1.seed_log, :timesteps), size(rs1.seed_log, :sites)))...)
+        setup_logs(
+            z_store,
+            rs1.site_ids,
+            nrow(all_inputs),
+            size(rs1.seed_log, :timesteps),
+            size(rs1.seed_log, :sites)
+        ))...
+    )
 
     # Copy logs over
     for log in keys(logs)
@@ -182,11 +227,19 @@ function combine_results(result_sets...)::ResultSet
         end
 
         result_dims = (size(rs1.outcomes[m_name])[1:end-1]..., n_scenarios)
-        m_store = zcreate(Float32, result_dims...;
-            fill_value=nothing, fill_as_missing=false,
-            path=joinpath(z_store.folder, RESULTS, string(m_name)), chunks=(result_dims[1:end-1]..., 1),
+        m_store = zcreate(
+            Float32,
+            result_dims...;
+            fill_value=nothing,
+            fill_as_missing=false,
+            path=joinpath(
+                z_store.folder,
+                RESULTS,
+                string(m_name)),
+            chunks=(result_dims[1:end-1]..., 1),
             attrs=dim_struct,
-            compressor=compressor)
+            compressor=compressor
+        )
 
         # Copy results over
         scen_id = 1
@@ -252,7 +305,10 @@ end
 Get location of result set.
 """
 function store_location(rs::ResultSet)::String
-    @warn "`store_location()` is deprecated and will be removed in future versions. Use `result_location()` instead."
+    @warn """
+    `store_location()` is deprecated and will be removed in future versions.
+    Use `result_location()` instead.
+    """
     return result_location(rs)
 end
 function result_location(rs::ResultSet)::String
