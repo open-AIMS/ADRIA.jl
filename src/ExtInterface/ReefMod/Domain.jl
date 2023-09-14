@@ -331,17 +331,6 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     return NamedDimsArray(icc_data, species=1:(length(icc_files)*6), locs=loc_ids)
 end
 
-"""
-    site_k(dom::ReefModDomain)::Vector{Float64}
-
-Get maximum coral cover area as a proportion of site area.
-
-Note: ReefMod `k` area is already ∈ [0, 1] so no adjustment is necessary.
-"""
-function site_k(dom::ReefModDomain)::Vector{Float64}
-    return dom.site_data.k
-end
-
 
 """
     switch_RCPs!(d::ReefModDomain, RCP::String)::Domain

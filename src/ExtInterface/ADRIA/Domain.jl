@@ -120,6 +120,7 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 
     # Filter out missing entries
     site_data = site_data[coalesce.(in.(conn_ids, [site_conn.site_ids]), false), :]
+    site_data.k .= site_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
     site_dists::Matrix{Float64}, median_site_distance::Float64 = site_distances(site_data)
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
@@ -229,15 +230,6 @@ function load_domain(path::String, rcp::Int64)::ADRIADomain
     return load_domain(ADRIADomain, path, string(rcp))
 end
 
-
-"""
-    site_k(domain::ADRIADomain)::Vector{Float64}
-
-Get maximum coral cover area as a proportion of site area.
-"""
-function site_k(domain::ADRIADomain)::Vector{Float64}
-    return domain.site_data.k ./ 100.0
-end
 
 """Get the path to the DHW data associated with the domain."""
 function get_DHW_data(d::ADRIADomain, RCP::String)::String
