@@ -302,8 +302,12 @@ function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cove
     rule = (A[:, 4] .<= risk_tol) .& (A[:, 5] .> risk_tol)
     A[rule, 5] .= NaN
 
+    # Mark locations with no space as to be removed from consideration
+    A[A[:, 8].<=0.0, 8] .= NaN
+
     filtered = vec(.!any(isnan.(A), dims=2))
-    # remove rows with NaNs
+
+    # Remove rows with NaNs
     A = A[filtered, :]
     return A, filtered
 end
