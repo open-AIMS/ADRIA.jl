@@ -846,10 +846,10 @@ end
     max_cover = min.(vec(absolute_k_area ./ total_site_area), 0.5)
 
     # Test magnitude of change are within bounds
-    Y_cover = zeros(2, 36, n_sites)
+    C_cover = zeros(2, 36, n_sites)
 
     # Generate initial cover
-    Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
+    C_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
 
     ADRIA.proportional_adjustment!(Y_cover[1, :, :], max_cover)
     growthODE(du, Y_cover[1, :, :], p, 1)
@@ -857,7 +857,7 @@ end
         "growth function is producing inappropriate values (abs(du) > 1.0)"
 
     # Test zero recruit and coverage conditions
-    Y_cover = zeros(2, 36, n_sites)
+    C_cover = zeros(2, 36, n_sites)
     p.rec .= zeros(6, n_sites)
     growthODE(du, Y_cover[1, :, :], p, 1)
     @test all(du .== 0.0) ||
@@ -866,12 +866,12 @@ end
     # Test direction and magnitude of change
     p.rec .= rand(0:0.001:0.5, 6, n_sites)
     p.X_mb .= rand(36, 32)
-    Y_cover = zeros(10, 36, n_sites)
-    Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
-    ADRIA.proportional_adjustment!(Y_cover[1, :, :], max_cover)
+    C_cover = zeros(10, 36, n_sites)
+    C_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
+    ADRIA.proportional_adjustment!(C_cover[1, :, :], max_cover)
     for tstep = 2:10
-        growthODE(du, Y_cover[tstep-1, :, :], p, tstep)
-        Y_cover[tstep, :, :] .= Y_cover[tstep-1, :, :] .+ du
+        growthODE(du, C_cover[tstep-1, :, :], p, tstep)
+        C_cover[tstep, :, :] .= C_cover[tstep-1, :, :] .+ du
     end
     @test any(diff(Y_cover; dims=1) .< 0) ||
         "ODE never decreases, du being restricted to >=0."
@@ -880,8 +880,8 @@ end
 
     # Test change in smallest size class under no recruitment
     p.rec .= zeros(6, n_sites)
-    Y_cover = zeros(10, 36, n_sites)
-    Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
+    C_cover = zeros(10, 36, n_sites)
+    C_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
 
     for tstep in 2:10
         growthODE(du, Y_cover[tstep - 1, :, :], p, 1)
