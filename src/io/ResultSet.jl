@@ -312,23 +312,43 @@ function timesteps(rs::ResultSet)
     return rs.env_layer_md.timeframe
 end
 
+"""
+    site_k_area(rs::ResultSet)::Vector{Float64}
+
+Extract vector of a location's coral carrying capacity in terms of absolute area.
+"""
 function site_k_area(rs::ResultSet)::Vector{Float64}
-    return rs.site_max_coral_cover ./ 100.0
+    return rs.site_max_coral_cover .* rs.site_area
 end
 
+"""
+    site_k(rs::ResultSet)::Vector{Float64}
+
+Extract vector of a location's coral carrying capacity in as a proportion relative to the
+location's total area.
+"""
+function site_k(rs::ResultSet)::Vector{Float64}
+    return rs.site_max_coral_cover
+end
+
+"""
+    site_area(rs::ResultSet)::Vector{Float64}
+
+Extract vector of a location's total area in its areal unit (m², km², etc).
+"""
 function site_area(rs::ResultSet)::Vector{Float64}
     return rs.site_area
 end
 
 """
-    n_locations(rs::ResultSet)
+    n_locations(rs::ResultSet)::Int64
 
 Retrieve the number of locations represented in the result set.
 
 # Arguments
 - `rs` : ResultSet
 """
-function n_locations(rs::ResultSet)
+function n_locations(rs::ResultSet)::Int64
     return size(rs.site_ids, 1)
 end
 
