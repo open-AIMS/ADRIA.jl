@@ -128,6 +128,26 @@ function cluster_series(
 end
 
 """
+    cluster_scenarios(data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
+
+Alias to cluster_series.
+
+# Arguments
+- `data` : Matrix of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is
+  number of scenarios
+- `n_clusters` : Number of clusters determined _a priori_.
+
+# Returns
+- `Vector` : Cluster ids indicating which cluster each scenario belongs to.
+"""
+function cluster_scenarios(
+    data::AbstractMatrix{T},
+    n_clusters::Int64
+)::Vector where {T<:Real}
+    return cluster_series(data, n_clusters)
+end
+
+"""
     target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{F}; metric=temporal_variability, size_limit=0.01) where {T<:Int64,F<:Real}
 
 Categorize all clusters into target or non-target according to some metric.

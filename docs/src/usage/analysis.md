@@ -191,7 +191,7 @@ s_tac = ADRIA.metrics.scenario_total_cover(rs)
 
 # Cluster scenarios
 n_clusters = 6
-clusters = ADRIA.analysis.cluster_series(s_tac, n_clusters)
+clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
 
 axis_opts = Dict(
     :title => "Time Series Clustering with $n_clusters clusters",
@@ -227,7 +227,7 @@ tac_site_series = ADRIA.metrics.loc_trajectory(median, tac)
 
 # Cluster scenarios
 n_clusters = 6
-clusters = ADRIA.analysis.cluster_series(tac_site_series, n_clusters)
+clusters = ADRIA.analysis.cluster_scenarios(tac_site_series, n_clusters)
 
 # Get a vector summarizing the scenarios and timesteps for each site
 tac_sites = ADRIA.metrics.per_loc(median, tac)
