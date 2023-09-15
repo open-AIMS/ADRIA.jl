@@ -700,6 +700,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
             alg_hints=[:nonstiff], adaptive=false, dt=0.5)
 
+        # TODO:
+        # Check if size classes are inappropriately out-growing available space
+
         # Ensure values are ∈ [0, 1]
         @views C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
 
