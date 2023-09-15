@@ -83,11 +83,11 @@ If this is not the case, consider normalizing values first.
 # Apply V to a time series
 julia> temporal_variability(rand(50))
 
-# Apply V to an ensemble of of time series
+# Apply V to an ensemble of time series
 julia> x = rand(50, 200)
 julia> temporal_variability(x)
 
-# Create and apply a modified V metric to an ensemble of of time series.
+# Create and apply a modified V metric to an ensemble of time series.
 # Where the argument is an array and not a function, the data is used directly
 # and so it is assumed all matrices are of the same size and shape.
 julia> temporal_variability(x, temporal_variabilty, temporal_variability(P(x)))
