@@ -118,6 +118,7 @@ function combine_results(result_sets...)::ResultSet
     # Ensure all result sets were from the same version of ADRIA
     if length(Set([rs.ADRIA_VERSION for rs in result_sets])) != 1
         @warn "Results were created with different versions of ADRIA so errors may occur!"
+        @warn "Results from model runs < 0.9 are no longer compatible!"
     end
 
     rs1 = result_sets[1]
@@ -447,7 +448,7 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     vers_id = rs.ADRIA_VERSION
 
-    tf, sites, scens = size(rs.outcomes[:total_absolute_cover])
+    tf, sites, scens = size(rs.outcomes[:relative_cover])
     # Species/size groups represented: $(species)
 
     rcps = join(split(rs.RCP, "_"), ", ")
