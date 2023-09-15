@@ -1,7 +1,18 @@
 module metrics
 
-using Distributions, Statistics, Interpolations
-using DataFrames, OnlineStats, NamedDims, AxisKeys, JuliennedArrays
+using
+    Distributions,
+    Interpolations,
+    JuliennedArrays,
+    OnlineStats,
+    Statistics
+
+using
+    AxisKeys,
+    NamedDims
+
+using FLoops
+using DataFrames
 
 using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, site_k_area, site_area
 
@@ -154,22 +165,17 @@ function slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(
 end
 
 
-function _relative_cover(X::AbstractArray{U}, total_area::Vector{T}, k_area::Vector{T})::AbstractArray{T} where {T<:Real,U<:Real}
-    # sum over all species and size classes
-    return (dropdims(sum(X, dims=2), dims=2) .* total_area') ./ replace(k_area, 0.0 => 1.0)'
+function _relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    # Sum over all species and size classes
+    return dropdims(sum(X, dims=2), dims=2)
 end
-function _relative_cover(rs::ResultSet)::AbstractArray
-    k_area = site_k_area(rs)'
-    rc = copy(rs.outcomes[:total_absolute_cover])
-    non_zero_locs = findall(k_area' .> 0.0)
-    rc[:, non_zero_locs, :] ./= k_area[non_zero_locs]'
-
-    return rc
+function _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
+    return rs.outcomes[:relative_cover]
 end
 
 """
-    relative_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray{T} where {T}
-    relative_cover(rs::ResultSet)::AbstractArray
+    relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    relative_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 Indicate coral cover relative to available hard substrate (\$k\$ area).
 
@@ -182,23 +188,26 @@ Coral cover [0 - 1], relative to available \$k\$ area for a given location.
 relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
 
 
-function _total_absolute_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray{T} where {T<:Real}
-    return dropdims(sum(X, dims=:species), dims=:species) .* k_area'
+function _total_absolute_cover(
+    X::AbstractArray{<:Real},
+    k_area::Vector{<:Real}
+)::AbstractArray{<:Real}
+    return X .* k_area'
 end
-function _total_absolute_cover(rs::ResultSet)::AbstractArray
-    return rs.outcomes[:total_absolute_cover]
+function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
+    return _total_absolute_cover(rs.outcomes[:relative_cover], site_k_area(rs))
 end
 
 """
-    total_absolute_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray{T} where {T}
-    total_absolute_cover(rs::ResultSet)::AbstractArray{T} where {T}
+    total_absolute_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
+    total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 The Total Absolute Coral Cover.
 Sum of proportional area taken up by all corals, multiplied by total site area.
 
 # Arguments
 - `X` : Matrix of raw model results
-- `k_area` : Vector of site areas, with sites following the same order as given indicated in X.
+- `k_area` : Site areas, with sites following the same order as given indicated in X.
 
 # Returns
 Absolute coral cover for a given location in m².
@@ -206,7 +215,10 @@ Absolute coral cover for a given location in m².
 total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scenarios), "m²")
 
 
-function _relative_taxa_cover(X::AbstractArray{T}, k_area::Vector{T})::AbstractArray where {T<:Real}
+function _relative_taxa_cover(
+    X::AbstractArray{<:Real},
+    k_area::Vector{<:Real}
+)::AbstractArray{<:Real}
     n_steps, n_species, n_locs = size(X)
     n_sc = 6
 
@@ -398,8 +410,6 @@ Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical
 """
 function _colony_Lcm2_to_m3m2(inputs::NamedDimsArray)::Tuple{Vector{Float64},Vector{Float64}}
     _, _, cs_p::DataFrame = coral_spec()
-    n_corals::Int64 = length(unique(cs_p.taxa_id))
-    n_species::Int64 = length(unique(cs_p.coral_id))
     n_sizes::Int64 = length(unique(cs_p.class_id))
 
     # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
@@ -463,6 +473,7 @@ function _shelter_species_loop(X::AbstractArray{T1,3}, n_species::Int64, colony_
     ASV = NamedDimsArray{(:timesteps, :species, :sites)}(zeros(size(X)...))
     _shelter_species_loop!(X, ASV, n_species, colony_vol_m3_per_m2, k_area)
 
+    # Maximum shelter volume
     MSV::Matrix{Float64} = k_area' .* max_colony_vol_m3_per_m2  # in m³
     # Ensure zero division does not occur
     # ASV should be 0.0 where MSV is 0.0 so the end result is 0.0 / 1.0
@@ -496,13 +507,20 @@ Helper method to calculate absolute shelter volume metric across each species/si
 - `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class (36)
 - `k_area` : habitable area of site in m²
 """
-function _shelter_species_loop!(X::T1, ASV::T1, nspecies::Int64, colony_vol_m3_per_m2::V, k_area::V) where {T1<:NamedDims.NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},V<:AbstractVector{<:Float64}}
+function _shelter_species_loop!(
+    X::T1,
+    ASV::T1,
+    nspecies::Int64,
+    colony_vol_m3_per_m2::V,
+    k_area::V
+) where {
+    T1<:NamedDims.NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},
+    V<:AbstractVector{<:Float64}
+}
     @floop for sp::Int64 in 1:nspecies
         # SV represents absolute shelter volume in cubic meters
-        @inbounds ASV[species=sp] .= (X[species=sp] .* k_area') .* colony_vol_m3_per_m2[sp]
+        ASV[species=sp] .= (X[species=sp] .* k_area') .* colony_vol_m3_per_m2[sp]
     end
-
-    clamp!(ASV, 0.0, maximum(ASV))
 end
 
 function _absolute_shelter_volume(X::AbstractArray{T,4}, k_area::Vector{T}, inputs::NamedDimsArray)::AbstractArray{T} where {T<:Real}
@@ -580,8 +598,6 @@ function _relative_shelter_volume(X::AbstractArray{T,3}, k_area::Vector{T}, inpu
     colony_vol::Array{Float64}, max_colony_vol::Array{Float64} = _colony_Lcm2_to_m3m2(inputs)
     RSV::NamedDimsArray = _shelter_species_loop(X, nspecies, colony_vol, max_colony_vol, k_area)
 
-    # @assert !any(RSV .> 1.1)  # Error out in cases where RSV significantly .> 1.0
-
     # Sum over groups and size classes to estimate total shelter volume
     # proportional to the theoretical maximum (per site)
     RSV = dropdims(sum(RSV, dims=:species), dims=:species)
@@ -613,8 +629,6 @@ function _relative_shelter_volume(X::AbstractArray{T,4}, k_area::Vector{T}, inpu
         RSV[scenarios=scen] .= _shelter_species_loop(X[scenarios=scen], nspecies, colony_vol, max_colony_vol, k_area)
     end
 
-    @assert !any(RSV .> 1.1)  # Error out in cases where RSV significantly .> 1.0
-
     # Sum over groups and size classes to estimate total shelter volume
     # proportional to the theoretical maximum (per site)
     RSV = dropdims(sum(RSV, dims=:species), dims=:species)
@@ -636,12 +650,12 @@ function _relative_shelter_volume(rs::ResultSet)::NamedDimsArray
 end
 
 """
-    _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
-    _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
-    _relative_shelter_volume(X::AbstractArray{T,3}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
-    _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrame)::NamedDimsArray where {T<:Real}
-    _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::DataFrameRow)::NamedDimsArray where {T<:Real}
-    _relative_shelter_volume(X::AbstractArray{T,4}, site_area::Vector{T}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,3}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,3}, k_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,3}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,4}, k_area::Vector{T}, inputs::DataFrame)::NamedDimsArray where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,4}, k_area::Vector{T}, inputs::DataFrameRow)::NamedDimsArray where {T<:Real}
+    _relative_shelter_volume(X::AbstractArray{T,4}, k_area::Vector{T}, inputs::NamedDimsArray)::NamedDimsArray where {T<:Real}
     relative_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume relative to theoretical maximum volume for
@@ -663,7 +677,7 @@ maximum shelter volume possible.
 
 # Arguments
 - `X` : raw results
-- `site_area` : area in m^2 for each site
+- `k_area` : area in m^2 for each site
 - `inputs` : DataFrame of scenario inputs
 
 # Returns
