@@ -203,7 +203,7 @@ Sets up an on-disk result store.
 |   ├───juvenile_indicator
 |   ├───relative_juveniles
 │   ├───relative_taxa_cover
-│   ├───total_absolute_cover
+│   ├───relative_cover
 │   ├───relative_shelter_volume
 │   └───absolute_shelter_volume
 ├───site_data
@@ -224,7 +224,7 @@ Sets up an on-disk result store.
 - `scen_spec` : ADRIA scenario specification
 
 # Returns
-domain, (total_absolute_cover, relative_shelter_volume, absolute_shelter_volume, relative_juveniles,
+domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, relative_juveniles,
     juvenile_indicator, relative_taxa_cover, site_ranks, seed_log, fog_log, shade_log)
 """
 function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
@@ -287,7 +287,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         return (dl...,)
     end
 
-    met_names = [:total_absolute_cover, :relative_shelter_volume,
+    met_names = [:relative_cover, :relative_shelter_volume,
         :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator, :coral_evenness]
 
     dim_struct = Dict(
@@ -404,8 +404,13 @@ function load_results(result_loc::String)::ResultSet
     t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
 
     if r_vers_id != t_vers_id
-        msg = """Results were produced with a different version of ADRIA ($(r_vers_id)). The version of ADRIA in use is $(t_vers_id).\n
-        Errors may occur when analyzing data."""
+        msg = """Results were produced with a different version of ADRIA ($(r_vers_id)).
+        The version of ADRIA in use is $(t_vers_id).\n
+        Errors may occur when analyzing data.
+
+        ADRIA v0.8 store results relative to absolute location area, where as v0.9+ now
+        stores results relative to available area.
+        """
 
         @warn msg
     end
