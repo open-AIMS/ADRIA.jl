@@ -241,9 +241,9 @@ function run_scenario(
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
     rs_raw = result_set.raw
-    vals = total_absolute_cover(rs_raw, site_k_area(domain))
+    vals = relative_cover(rs_raw)
     vals[vals.<threshold] .= 0.0
-    data_store.total_absolute_cover[:, :, idx] .= vals
+    data_store.relative_cover[:, :, idx] .= vals
 
     vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), param_set)
     vals[vals.<threshold] .= 0.0
