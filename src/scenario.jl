@@ -703,7 +703,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # TODO:
         # Check if size classes are inappropriately out-growing available space
-        proportional_adjustment!(@view(C_cover[tstep, :, valid_locs]))
+        # Ensure values are ∈ [0, 1]
+        @views C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
 
         if tstep <= tf
             adjust_DHW_distribution!(
