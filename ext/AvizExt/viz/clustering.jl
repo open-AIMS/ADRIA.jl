@@ -40,7 +40,7 @@ function ADRIA.viz.clustered_scenarios!(
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
     ax = Axis(g[1, 1], xticks=xtick_vals, xticklabelrotation=xtick_rot; axis_opts...)
 
-    if get(opts, :method, :series) == :confint
+    if get(opts, :summarize, true)
         _plot_clusters_confint!(g, ax, data, clusters; opts=opts)
     else
         _plot_clusters_series!(g, ax, data, clusters; opts=opts)
@@ -98,12 +98,7 @@ function _plot_clusters_confint!(
         y_lower = quantile.(data_slices, [0.025])
         y_upper = quantile.(data_slices, [0.975])
 
-        if get(opts, :fill_confint, true)
-            band!(ax, xs, y_lower, y_upper, color=band_colors[idx_c])
-        else
-            lines!(ax, xs, y_lower, linestyle=:dash, color=band_colors[idx_c])
-            lines!(ax, xs, y_upper, linestyle=:dash, color=band_colors[idx_c])
-        end
+        band!(ax, xs, y_lower, y_upper, color=band_colors[idx_c])
 
         y_median = median.(data_slices)
         push!(
