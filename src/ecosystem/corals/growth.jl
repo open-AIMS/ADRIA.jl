@@ -34,15 +34,15 @@ Helper method to proportionally adjust coral cover, such that:
 Modifies arrays in-place.
 
 # Arguments
-- `coral_cover` : Coral cover
-- `max_cover` : Maximum possible coral cover for each site
+- `coral_cover` : Coral cover ∈ [0, 1]
+- `max_cover` : Maximum possible coral cover for each site ∈ [0, 1]
 
 # Returns
 nothing
 """
 function proportional_adjustment!(
     coral_cover::Union{SubArray{T},Matrix{T}},
-    max_cover::Array{T}
+    max_cover::Vector{T}
 )::Nothing where {T<:Float64}
     cover_tmp = vec(sum(coral_cover, dims=1))
     if any(cover_tmp .> max_cover)
