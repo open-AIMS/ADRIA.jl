@@ -303,13 +303,14 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
 
     bin_slices, factor_list, CIs = axiskeys(outcomes)
     b_slices = parse.(Float64, bin_slices)
+
     curr::Int64 = 1
     axs = Axis[]
     for r in 1:n_rows
         for c in 1:n_cols
             f_name = Symbol(factors[curr])
             f_vals = rs.inputs[:, f_name]
-            fv_s = quantile(f_vals, b_slices)
+            fv_s = round.(quantile(f_vals, b_slices), digits=2)
 
             ax::Axis = Axis(
                 g[r, c],
