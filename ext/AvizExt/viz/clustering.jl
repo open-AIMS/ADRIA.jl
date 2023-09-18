@@ -36,7 +36,6 @@ function ADRIA.viz.clustered_scenarios!(
     axis_opts::Dict=Dict(),
     opts::Dict=Dict()
 )::Union{GridLayout,GridPosition}
-    # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(data)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
     ax = Axis(g[1, 1], xticks=xtick_vals, xticklabelrotation=xtick_rot; axis_opts...)
@@ -80,10 +79,9 @@ function _plot_clusters_confint!(
 )::Nothing
     band_colors = unique(_get_colors(clusters, 0.5))
     line_colors = unique(_get_colors(clusters))
-    leg_entry = Vector{Any}(undef, length(unique(clusters)))
+    legend_entry = Vector{Any}(undef, length(unique(clusters)))
 
-    # TODO if data is not a NamedDimsArray this won't work
-    x_timestep::Vector{Float32} = data.timesteps
+    x_timesteps::Vector{Int64} = 1:length(data.timesteps)
 
     for (idx_c, cluster) in enumerate(unique(clusters))
         cluster_data = data[:, clusters.==cluster]
@@ -92,21 +90,15 @@ function _plot_clusters_confint!(
         y_lower = quantile.(data_slices, [0.025])
         y_upper = quantile.(data_slices, [0.975])
 
-        band!(ax, x_timestep, y_lower, y_upper, color=band_colors[idx_c])
+        band!(ax, x_timesteps, y_lower, y_upper, color=band_colors[idx_c])
 
         y_median = median.(data_slices)
-
-        leg_entry[idx_c] = scatterlines!(
-            ax,
-            x_timestep,
-            y_median,
-            color=line_colors[idx_c],
-            markersize=5
-        )
+        line_color = line_colors[idx_c]
+        legend_entry[idx_c] = scatterlines!(ax, y_median, color=line_color, markersize=5)
     end
 
     n_clusters = length(unique(clusters))
-    Legend(g[1, 2], leg_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
+    Legend(g[1, 2], legend_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
 
     return nothing
 end
