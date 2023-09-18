@@ -81,7 +81,7 @@ tsc_fig = ADRIA.viz.clustered_scenarios(
 )
 
 # Save final figure
-save(&quot;tsc.png&quot;, tsc_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true &quot;Time Series Cluster&quot;" alt="Plots of Temporal Sensitivities"/></p><h3 id="Time-Series-Clustering-Map"><a class="docs-heading-anchor" href="#Time-Series-Clustering-Map">Time Series Clustering Map</a><a id="Time-Series-Clustering-Map-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Series-Clustering-Map" title="Permalink"></a></h3><p>When using Time Series Clustering to cluster among multiple locations using some metric, it is possible to visualize the result as a map.</p><pre><code class="language-julia hljs">using Statistics
+save(&quot;tsc.png&quot;, tsc_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true &quot;Time Series Cluster&quot;" alt="Plots of Time Series Cluster"/></p><h3 id="Time-Series-Clustering-Map"><a class="docs-heading-anchor" href="#Time-Series-Clustering-Map">Time Series Clustering Map</a><a id="Time-Series-Clustering-Map-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Series-Clustering-Map" title="Permalink"></a></h3><p>When using Time Series Clustering to cluster among multiple locations using some metric, it is possible to visualize the result as a map.</p><pre><code class="language-julia hljs">using Statistics
 
 # Extract metric from scenarios
 tac = ADRIA.metrics.total_absolute_cover(rs)
@@ -100,7 +100,32 @@ tac_sites = ADRIA.metrics.per_loc(median, tac)
 tsc_map_fig = ADRIA.viz.map(rs, tac_sites, clusters)
 
 # Save final figure
-save(&quot;tsc_map.png&quot;, tsc_map_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsc_map.png?raw=true &quot;Spatial Time Series Cluster&quot;" alt="Plots of Temporal Sensitivities"/></p><h3 id="Regional-Sensitivity-Analysis"><a class="docs-heading-anchor" href="#Regional-Sensitivity-Analysis">Regional Sensitivity Analysis</a><a id="Regional-Sensitivity-Analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Regional-Sensitivity-Analysis" title="Permalink"></a></h3><p>Regional Sensitivity Analysis is a monte-carlo filtering approach. The aim of RSA is to aid in identifying which (group of) factors drive model outputs and their active areas of factor space.</p><pre><code class="language-julia hljs">tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)
+save(&quot;tsc_map.png&quot;, tsc_map_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsc_map.png?raw=true &quot;Spatial Time Series Cluster&quot;" alt="Plots of Spatial Time Series Clusters"/></p><h3 id="Rule-Induction-(using-Series-Clusters)"><a class="docs-heading-anchor" href="#Rule-Induction-(using-Series-Clusters)">Rule Induction (using Series Clusters)</a><a id="Rule-Induction-(using-Series-Clusters)-1"></a><a class="docs-heading-anchor-permalink" href="#Rule-Induction-(using-Series-Clusters)" title="Permalink"></a></h3><p>After clustering, it is possible to target some specific scenarios based on each cluster median outcome temporal variability:</p><pre><code class="language-julia hljs"># Find Time Series Clusters
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+num_clusters = 6
+clusters = ADRIA.analysis.time_series_clustering(s_tac, num_clusters)
+
+# Target scenarios
+target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)</code></pre><p>Using this vector if target clusters, together with the parameters used to generate each scenario, it is possible to use a Rule Induction algorithm (SIRUS) and plot each extracted rule as a scatter graph:</p><pre><code class="language-julia hljs"># Select only desired features
+fields_iv = ADRIA.component_params(rs, [Intervention, Criteria]).fieldname
+scenarios_iv = scenarios[:, fields_iv]
+
+# Use SIRUS algorithm to extract rules
+max_rules = 10
+rules_iv = ADRIA.analysis.cluster_rules(target_clusters, scenarios_iv, max_rules)
+
+# Plot scatters for each rule highlighting the area selected them
+rules_scatter_fig = ADRIA.viz.rules_scatter(
+    rs,
+    scenarios_iv,
+    target_clusters,
+    rules_iv;
+    fig_opts=fig_opts,
+    opts=opts
+)
+
+# Save final figure
+save(&quot;rules_scatter.png&quot;, rules_scatter_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/rules_scatter.png?raw=true &quot;Rule Induction&quot;" alt="Plots of Rule Induction"/></p><h3 id="Regional-Sensitivity-Analysis"><a class="docs-heading-anchor" href="#Regional-Sensitivity-Analysis">Regional Sensitivity Analysis</a><a id="Regional-Sensitivity-Analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Regional-Sensitivity-Analysis" title="Permalink"></a></h3><p>Regional Sensitivity Analysis is a monte-carlo filtering approach. The aim of RSA is to aid in identifying which (group of) factors drive model outputs and their active areas of factor space.</p><pre><code class="language-julia hljs">tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)
 rsa_fig = ADRIA.viz.rsa(
     rs,
     tac_rs,
@@ -133,4 +158,4 @@ save(&quot;outcome_map.png&quot;, tf)</code></pre><p><img src="/ADRIA.jl/dev/ass
 ADRIA.viz.explore(&quot;path to Result Set&quot;)
 
 # or, if the result set is already loaded:
-# ADRIA.viz.explore(rs)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/aviz_app.png?raw=true &quot;Data Exploration App&quot;" alt="Standalone app for data exploration"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../scenario_runs/">« Running scenarios</a><a class="docs-footer-nextpage" href="../cookbook/">Cookbook examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Sunday 17 September 2023 09:54">Sunday 17 September 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# ADRIA.viz.explore(rs)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/aviz_app.png?raw=true &quot;Data Exploration App&quot;" alt="Standalone app for data exploration"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../scenario_runs/">« Running scenarios</a><a class="docs-footer-nextpage" href="../cookbook/">Cookbook examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Monday 18 September 2023 01:49">Monday 18 September 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
