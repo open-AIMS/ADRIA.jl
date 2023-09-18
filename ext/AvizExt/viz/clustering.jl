@@ -59,18 +59,11 @@ function _plot_clusters_series!(
 )::Nothing
     alphas = _get_alphas(clusters)
     clusters_colors = unique(_get_colors(clusters, alphas))
-    leg_entry = Any[]
 
-    for (idx_c, cluster) in enumerate(unique(clusters))
-        push!(
-            leg_entry,
-            series!(
-                ax,
-                data[:, clusters.==cluster]',
-                solid_color=clusters_colors[idx_c]
-            )
-        )
-    end
+    leg_entry::Vector{Any} = [
+        series!(ax, data[:, clusters.==cluster]', solid_color=clusters_colors[idx_c])
+        for (idx_c, cluster) in enumerate(unique(clusters))
+    ]
 
     n_clusters = length(unique(clusters))
     Legend(g[1, 2], leg_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
@@ -87,7 +80,7 @@ function _plot_clusters_confint!(
 )::Nothing
     band_colors = unique(_get_colors(clusters, 0.5))
     line_colors = unique(_get_colors(clusters))
-    leg_entry = Any[]
+    leg_entry = Vector{Any}(undef, length(unique(clusters)))
 
     # TODO if data is not a NamedDimsArray this won't work
     xs::Vector{Float32} = data.timesteps
@@ -102,9 +95,13 @@ function _plot_clusters_confint!(
         band!(ax, xs, y_lower, y_upper, color=band_colors[idx_c])
 
         y_median = median.(data_slices)
-        push!(
-            leg_entry,
-            scatterlines!(ax, xs, y_median, color=line_colors[idx_c], markersize=5)
+
+        leg_entry[idx_c] = scatterlines!(
+            ax,
+            xs,
+            y_median,
+            color=line_colors[idx_c],
+            markersize=5
         )
     end
 
