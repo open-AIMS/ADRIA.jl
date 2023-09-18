@@ -434,7 +434,12 @@ function outcome_map(
 
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
-        X_q .= quantile(X[:, fact_t], steps)
+        if all(typeof.(X[:, fact_t]) .== Int64)
+            X_q .= [0, sort(unique(X[:, fact_t]))...]
+        else
+            X_q .= quantile(X[:, fact_t], steps)
+        end
+
         for (i, s) in enumerate(X_q[1:end-1])
             local b::BitVector
             if i == 1
