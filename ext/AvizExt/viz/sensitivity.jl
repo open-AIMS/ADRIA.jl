@@ -310,7 +310,11 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
         for c in 1:n_cols
             f_name = Symbol(factors[curr])
             f_vals = rs.inputs[:, f_name]
-            fv_s = round.(quantile(f_vals, b_slices), digits=2)
+            if all(mod.(f_vals, 1.0) .== 0.0)
+                fv_s = sort(unique(f_vals))
+            else
+                fv_s = round.(quantile(f_vals, b_slices), digits=2)
+            end
 
             ax::Axis = Axis(
                 g[r, c],
