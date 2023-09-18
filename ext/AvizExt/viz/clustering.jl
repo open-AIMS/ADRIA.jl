@@ -18,9 +18,9 @@ Figure
 function ADRIA.viz.clustered_scenarios(
     data::NamedDimsArray,
     clusters::Vector{Int64};
+    opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
-    opts::Dict=Dict()
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -33,8 +33,8 @@ function ADRIA.viz.clustered_scenarios!(
     g::Union{GridLayout,GridPosition},
     data::NamedDimsArray,
     clusters::Vector{Int64};
+    opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
-    opts::Dict=Dict()
 )::Union{GridLayout,GridPosition}
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(data)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
@@ -54,7 +54,7 @@ function _plot_clusters_series!(
     ax::Axis,
     data::NamedDimsArray,
     clusters::Vector{Int64};
-    opts::Dict=Dict()
+    opts::Dict=Dict(),
 )::Nothing
     alphas = _get_alphas(clusters)
     clusters_colors = unique(_get_colors(clusters, alphas))
@@ -75,7 +75,7 @@ function _plot_clusters_confint!(
     ax::Axis,
     data::NamedDimsArray,
     clusters::Vector{Int64};
-    opts::Dict=Dict()
+    opts::Dict=Dict(),
 )::Nothing
     band_colors = unique(_get_colors(clusters, 0.5))
     line_colors = unique(_get_colors(clusters))
@@ -127,7 +127,7 @@ function ADRIA.viz.map(
     clusters::Vector{Int64};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    axis_opts::Dict=Dict(),
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -141,7 +141,7 @@ function ADRIA.viz.map!(
     data::AbstractVector{<:Real},
     clusters::Vector{Int64};
     opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    axis_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
     cluster_colors = _get_colors(clusters)
     legend_params = _cluster_legend_params(clusters, cluster_colors, data)
