@@ -38,7 +38,7 @@ function ADRIA.viz.clustered_scenarios!(
 )::Union{GridLayout,GridPosition}
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(data)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
-    ax = Axis(g[1, 1], xticks=xtick_vals, xticklabelrotation=xtick_rot; axis_opts...)
+    ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
     if get(opts, :summarize, true)
         _plot_clusters_confint!(g, ax, data, clusters; opts=opts)
@@ -60,12 +60,12 @@ function _plot_clusters_series!(
     clusters_colors = unique(_get_colors(clusters, alphas))
 
     leg_entry::Vector{Any} = [
-        series!(ax, data[:, clusters.==cluster]', solid_color=clusters_colors[idx_c])
-        for (idx_c, cluster) in enumerate(unique(clusters))
+        series!(ax, data[:, clusters .== cluster]'; solid_color=clusters_colors[idx_c]) for
+        (idx_c, cluster) in enumerate(unique(clusters))
     ]
 
     n_clusters = length(unique(clusters))
-    Legend(g[1, 2], leg_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
+    Legend(g[1, 2], leg_entry, "Cluster " .* string.(1:n_clusters); framevisible=false)
 
     return nothing
 end
@@ -84,21 +84,21 @@ function _plot_clusters_confint!(
     x_timesteps::UnitRange{Int64} = 1:length(data.timesteps)
 
     for (idx_c, cluster) in enumerate(unique(clusters))
-        cluster_data = data[:, clusters.==cluster]
+        cluster_data = data[:, clusters .== cluster]
         data_slices = Slices(cluster_data, NamedDims.dim(cluster_data, :scenarios))
 
         y_lower = quantile.(data_slices, [0.025])
         y_upper = quantile.(data_slices, [0.975])
 
-        band!(ax, x_timesteps, y_lower, y_upper, color=band_colors[idx_c])
+        band!(ax, x_timesteps, y_lower, y_upper; color=band_colors[idx_c])
 
         y_median = median.(data_slices)
         line_color = line_colors[idx_c]
-        legend_entry[idx_c] = scatterlines!(ax, y_median, color=line_color, markersize=5)
+        legend_entry[idx_c] = scatterlines!(ax, y_median; color=line_color, markersize=5)
     end
 
     n_clusters = length(unique(clusters))
-    Legend(g[1, 2], legend_entry, "Cluster " .* string.(1:n_clusters), framevisible=false)
+    Legend(g[1, 2], legend_entry, "Cluster " .* string.(1:n_clusters); framevisible=false)
 
     return nothing
 end
@@ -167,7 +167,9 @@ Vector of cluster colors.
 # Returns
 Vector{RGBA{Float32}}
 """
-function _get_colors(clusters::Vector{Int64}, alphas::Vector{Float64})::Vector{RGBA{Float32}}
+function _get_colors(
+    clusters::Vector{Int64}, alphas::Vector{Float64}
+)::Vector{RGBA{Float32}}
     # Number of non-zero clusters
     n_clusters = length(unique(filter(cluster -> cluster != 0, clusters)))
 
@@ -214,7 +216,6 @@ function _get_alphas(clusters::Vector{Int64})::Vector{Float64}
     return alphas
 end
 
-
 """
     _cluster_legend_params(clusters::Vector{Int64}, clusters_colors::Vector{RGBA{Float32}}, data_statistics::Vector{Float32})
 
@@ -228,8 +229,11 @@ Color parameter for current cluster weighted by number of scenarios
 # Returns
 Tuple{RGBA{Float32}, Float64}
 """
-function _cluster_legend_params(clusters::Vector{Int64},
-    clusters_colors::Vector{RGBA{Float32}}, data_statistics::AbstractArray)::Tuple
+function _cluster_legend_params(
+    clusters::Vector{Int64},
+    clusters_colors::Vector{RGBA{Float32}},
+    data_statistics::AbstractArray,
+)::Tuple
     # Filter non-zero clusters from clusters, colors and data
     non_zero_clusters = clusters .!= 0
     clusters_filtered = clusters[non_zero_clusters]
@@ -237,14 +241,16 @@ function _cluster_legend_params(clusters::Vector{Int64},
     statistics_filtered = data_statistics[non_zero_clusters]
 
     # Fill legend entries colors
-    legend_entries = [PolyElement(color=color, strokecolor=:transparent) for
-                      color in unique(colors_filtered)]
+    legend_entries = [
+        PolyElement(; color=color, strokecolor=:transparent) for
+        color in unique(colors_filtered)
+    ]
 
     # Fill legend labels
     legend_labels = String[]
     clusters_numbers = unique(clusters_filtered)
     for cluster in clusters_numbers
-        stat_mean = mean(statistics_filtered[cluster.==clusters_filtered])
+        stat_mean = mean(statistics_filtered[cluster .== clusters_filtered])
         stat_mean_formatted = @sprintf "%.1e" stat_mean
         push!(legend_labels, "Cluster $(cluster): $stat_mean_formatted")
     end
