@@ -83,7 +83,7 @@ function _plot_clusters_confint!(
     leg_entry = Vector{Any}(undef, length(unique(clusters)))
 
     # TODO if data is not a NamedDimsArray this won't work
-    xs::Vector{Float32} = data.timesteps
+    x_timestep::Vector{Float32} = data.timesteps
 
     for (idx_c, cluster) in enumerate(unique(clusters))
         cluster_data = data[:, clusters.==cluster]
@@ -92,13 +92,13 @@ function _plot_clusters_confint!(
         y_lower = quantile.(data_slices, [0.025])
         y_upper = quantile.(data_slices, [0.975])
 
-        band!(ax, xs, y_lower, y_upper, color=band_colors[idx_c])
+        band!(ax, x_timestep, y_lower, y_upper, color=band_colors[idx_c])
 
         y_median = median.(data_slices)
 
         leg_entry[idx_c] = scatterlines!(
             ax,
-            xs,
+            x_timestep,
             y_median,
             color=line_colors[idx_c],
             markersize=5
