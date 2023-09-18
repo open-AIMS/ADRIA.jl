@@ -16,7 +16,7 @@ Visualize clustered time series of scenarios.
 Figure
 """
 function ADRIA.viz.clustered_scenarios(
-    data::AbstractMatrix,
+    data::NamedDimsArray,
     clusters::Vector{Int64};
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -31,7 +31,7 @@ function ADRIA.viz.clustered_scenarios(
 end
 function ADRIA.viz.clustered_scenarios!(
     g::Union{GridLayout,GridPosition},
-    data::AbstractMatrix,
+    data::NamedDimsArray,
     clusters::Vector{Int64};
     axis_opts::Dict=Dict(),
     opts::Dict=Dict()
@@ -53,7 +53,7 @@ end
 function _plot_clusters_series!(
     g::Union{GridLayout,GridPosition},
     ax::Axis,
-    data::AbstractMatrix,
+    data::NamedDimsArray,
     clusters::Vector{Int64};
     opts::Dict=Dict()
 )::Nothing
@@ -74,7 +74,7 @@ end
 function _plot_clusters_confint!(
     g::Union{GridLayout,GridPosition},
     ax::Axis,
-    data::AbstractMatrix,
+    data::NamedDimsArray,
     clusters::Vector{Int64};
     opts::Dict=Dict()
 )::Nothing
