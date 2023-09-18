@@ -81,7 +81,7 @@ function _plot_clusters_confint!(
     line_colors = unique(_get_colors(clusters))
     legend_entry = Vector{Any}(undef, length(unique(clusters)))
 
-    x_timesteps::UnitRange{Int64} = 1:length(data.timesteps)
+    x_timesteps::UnitRange{Int64} = 1:length(timesteps(data))
 
     for (idx_c, cluster) in enumerate(unique(clusters))
         cluster_data = data[:, clusters .== cluster]
