@@ -18,6 +18,23 @@ Robust Scenarios are, then, those that belong to the Robust Cluster for all metr
 
 # Returns
 BitVector with true for robust scenarios and false for non-robust
+
+# Example
+```julia
+rs::ResultSet = ADRIA.run_scenarios(samples, domain, "45")
+
+_metrics::Vector{ADRIA.metrics.Metric} = [
+    ADRIA.metrics.scenario_total_cover,
+    ADRIA.metrics.scenario_asv,
+    ADRIA.metrics.scenario_absolute_juveniles,
+]
+
+robustness_limit::Float64 = 0.25
+
+robust_scens = ADRIA.analysis.find_robust_clustering(
+    rs, _metrics; robustness_limit=robustness_limit
+)
+```
 """
 function find_robust_clustering(
     result_set::ResultSet,
