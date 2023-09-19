@@ -350,6 +350,40 @@ function fix_factor!(d::Domain; factors...)::Nothing
     end
 end
 
+"""
+    fix_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)
+    fix_factor_bounds!(d::Domain; factors...)
+
+Fix bounds of a parameter for sampling to those provided.
+
+Note: Changes are permanent. To reset, either specify the original value(s)
+      or reload the Domain.
+
+# Examples
+```julia
+# Fix `wave_stress` to specified bounds
+fix_factor_bounds!(dom, :wave_stress, (0.1,0.2))
+```
+"""
+function fix_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
+    params = DataFrame(d.model)
+
+    # Check new parameter bounds are within old parameter bounds
+    if (new_bnds[1] < params[params.fieldname.==factor, :bounds][1][1]) || (new_bnds[2] > params[params.fieldname.==factor, :bounds][1][2])
+        error("New bounds should be within default bounds.")
+    end
+
+    params[params.fieldname.==factor, :bounds] .= [new_bnds]
+    params[params.fieldname.==factor, :val] .= new_bnds[1] + 0.5 * (new_bnds[2] - new_bnds[1])
+
+    update!(d, params)
+end
+function fix_factor_bounds!(d::Domain; factors...)::Nothing
+    for (factor, bounds) in factors
+        fix_factor_bounds!(d, factor, bounds)
+
+    end
+end
 
 _unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
 
