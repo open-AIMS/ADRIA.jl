@@ -25,41 +25,50 @@ function find_robust_clustering(
     num_clusters::Int64=6,
     robustness_limit=0.2,
 )::BitVector
-    _robust_scenarios = trues(size(result_set.inputs, 1))
+    robust_scenarios = trues(size(result_set.inputs, 1))
 
     # Compute summary statistics for each metric
     for metric in metrics
-        rs_metric = metric(result_set)
+        metric_outcome::NamedDims.NamedDimsArray = metric(result_set)
 
-        clusters = ADRIA.analysis.cluster_scenarios(rs_metric, num_clusters)
+        clusters::Vector{Int64} = ADRIA.analysis.cluster_scenarios(
+            metric_outcome, num_clusters
+        )
 
-        # Where statistics for each cluster will be saved
-        clusters_summary = zeros(num_clusters)
-
-        for (idx_c, c) in enumerate(unique(clusters))
-            cluster_metric = rs_metric[:, clusters .== c]
-
-            # Compute median series for current cluster
-            # This could be extracted to a separate function
-            tf = axes(cluster_metric, :timesteps)
-            timesteps_slices = JuliennedArrays.Slices(
-                cluster_metric[timesteps=tf], NamedDims.dim(cluster_metric, :scenarios)
-            )
-            median_series = median.(timesteps_slices)
-
-            # Summary statistics for that cluster metric
-            # clusters_summary[idx_c] = sum(cumsum(median_series))
-            clusters_summary[idx_c] = temporal_variability(median_series)
-        end
-
-        # Robust clusters are the ones with summary statistics above the limit
-        robust_clusters = clusters_summary .>= quantile(clusters_summary, robustness_limit)
+        robust_clusters::BitVector = _find_robust_clusters(
+            metric_outcome, clusters, robustness_limit
+        )
 
         # Select scenarios that are robust across all metrics
         aux_rc::BitVector = clusters .∈ Vector{Int64}[unique(clusters)[robust_clusters]]
 
-        _robust_scenarios = _robust_scenarios .& aux_rc
+        robust_scenarios = robust_scenarios .& aux_rc
     end
 
-    return _robust_scenarios
+    return robust_scenarios
+end
+
+function _find_robust_clusters(
+    metric_outcome::NamedDims.NamedDimsArray,
+    clusters::Vector{Int64},
+    robustness_limit::Float64,
+)::BitVector
+    clusters_summary = zeros(length(unique(clusters)))
+
+    for (idx_c, c) in enumerate(unique(clusters))
+        cluster_metric = metric_outcome[:, clusters .== c]
+
+        # Median series for current cluster
+        tf = axes(cluster_metric, :timesteps)
+        timesteps_slices = JuliennedArrays.Slices(
+            cluster_metric[timesteps=tf], NamedDims.dim(cluster_metric, :scenarios)
+        )
+        median_series = median.(timesteps_slices)
+
+        # Summary statistics for that cluster metric
+        clusters_summary[idx_c] = temporal_variability(median_series)
+    end
+
+    # Robust clusters are the ones with summary statistics above the limit
+    return clusters_summary .>= quantile(clusters_summary, robustness_limit)
 end
