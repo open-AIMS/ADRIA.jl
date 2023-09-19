@@ -117,7 +117,9 @@ Hierarchically cluster \$S\$ scenarios with \$T\$ time steps each.
    Data Min Knowl Disc 28, 634-669.
    https://doi.org/10.1007/s10618-013-0312-3
 """
-function cluster_series(data::AbstractMatrix{T}, n_clusters::Int64)::Vector where {T<:Real}
+function cluster_series(
+    data::AbstractMatrix{T}, n_clusters::Int64
+)::Vector{Int64} where {T<:Real}
     # Create dendogram using distantes matrix
     distances = complexity_invariance_distance(data)
     dendogram = hclust(distances; linkage=:average)
@@ -141,7 +143,7 @@ Alias to cluster_series.
 """
 function cluster_scenarios(
     data::AbstractMatrix{T}, n_clusters::Int64
-)::Vector where {T<:Real}
+)::Vector{Int64} where {T<:Real}
     return cluster_series(data, n_clusters)
 end
 
