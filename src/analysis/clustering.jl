@@ -24,7 +24,7 @@ Vector{Float64}:
  5
 """
 function _complexity(x::AbstractMatrix{T})::Vector{Float64} where {T<:Real}
-    return vec(sqrt.(sum(diff(Matrix(x), dims=1) .^ 2, dims=1)) .+ 1)
+    return vec(sqrt.(sum(diff(Matrix(x); dims=1) .^ 2; dims=1)) .+ 1)
 end
 
 """
@@ -117,16 +117,13 @@ Hierarchically cluster \$S\$ scenarios with \$T\$ time steps each.
    Data Min Knowl Disc 28, 634-669.
    https://doi.org/10.1007/s10618-013-0312-3
 """
-function cluster_series(
-    data::AbstractMatrix{T},
-    n_clusters::Int64
-)::Vector where {T<:Real}
+function cluster_series(data::AbstractMatrix{T}, n_clusters::Int64)::Vector where {T<:Real}
     # Create dendogram using distantes matrix
     distances = complexity_invariance_distance(data)
-    dendogram = hclust(distances, linkage=:average)
+    dendogram = hclust(distances; linkage=:average)
 
     # Return hierarchical clustering with n_clusters
-    return cutree(dendogram, k=n_clusters)
+    return cutree(dendogram; k=n_clusters)
 end
 
 """
@@ -143,8 +140,7 @@ Alias to cluster_series.
 - `Vector` : Cluster ids indicating which cluster each scenario belongs to.
 """
 function cluster_scenarios(
-    data::AbstractMatrix{T},
-    n_clusters::Int64
+    data::AbstractMatrix{T}, n_clusters::Int64
 )::Vector where {T<:Real}
     return cluster_series(data, n_clusters)
 end
@@ -169,13 +165,13 @@ function target_clusters(
     clusters::Vector{T},
     outcomes::AbstractMatrix{F};
     metric=temporal_variability,
-    size_limit=0.01
+    size_limit=0.01,
 )::Vector{T} where {T<:Int64,F<:Real}
 
     # Compute statistic for each cluster
     clusters_statistics::Vector{Float64} = []
     for cluster in unique(clusters)
-        normalized_outcomed = outcomes[:, clusters.==cluster] ./ maximum(outcomes)
+        normalized_outcomed = outcomes[:, clusters .== cluster] ./ maximum(outcomes)
         statistic = median(metric(normalized_outcomed))
         push!(clusters_statistics, statistic)
     end
@@ -184,7 +180,7 @@ function target_clusters(
     target_indexes = [target_index]
 
     # Merge target cluster if it is below 1% of size
-    sizes = [size(outcomes[:, clusters.==c], 2) for c in unique(clusters)]
+    sizes = [size(outcomes[:, clusters .== c], 2) for c in unique(clusters)]
     target_size = sizes[target_index] / sum(sizes)
     while target_size < size_limit
         # Nullify target_index to find the next argmax
@@ -220,9 +216,7 @@ selected in the end are the ones that are in the robust cluster for all metrics.
 Vector of Booleans with true for robust scenarios
 """
 function robust_scenarios(
-    result_set::ResultSet,
-    metrics::Vector{ADRIA.metrics.Metric};
-    num_clusters::Int64=6
+    result_set::ResultSet, metrics::Vector{ADRIA.metrics.Metric}; num_clusters::Int64=6
 )::BitVector
     _robust_scenarios = trues(size(result_set.inputs, 1))
 
@@ -235,14 +229,13 @@ function robust_scenarios(
         clusters_summary = zeros(num_clusters)
 
         for (idx_c, c) in enumerate(unique(clusters))
-            cluster_metric = rs_metric[:, clusters.==c]
+            cluster_metric = rs_metric[:, clusters .== c]
 
             # Compute median series for current cluster
             # This could be extracted to a separate function
             tf = axes(cluster_metric, :timesteps)
             timesteps_slices = JuliennedArrays.Slices(
-                cluster_metric[timesteps=tf],
-                NamedDims.dim(cluster_metric, :scenarios)
+                cluster_metric[timesteps=tf], NamedDims.dim(cluster_metric, :scenarios)
             )
             median_series = median.(timesteps_slices)
 
