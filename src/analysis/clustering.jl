@@ -157,17 +157,34 @@ previous time series cluster.
 - `clusters` : Vector with outcome cluster indexes
 - `outcomes` : AbstractMatrix of scenario outcomes
 - `metric` : Metric used to aggregate outcomes for each cluster
+- `target_highest` : Target clusters with highest (or lowest) value of given metric
 - `size_limit` : This function will iteratively merge the best cluster with the second best
     if the fraction of scenarios inside it is below `size_limit`
 
 # Returns
 Vector containing 1's for target and 0's for non-target clusters
+
+# Examples
+
+```julia
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+
+num_clusters = 5
+clusters = ADRIA.analysis.cluster_series(s_tac, num_clusters)
+
+# Target clusters with highest metric value
+clusters_max = target_clusters(clusters, s_tac)
+
+# Target clusters with lowest metric value
+clusters_min = target_clusters(clusters, s_tac; target_highest=false)
+```
 """
 function target_clusters(
     clusters::Vector{T},
     outcomes::AbstractMatrix{F};
     metric=temporal_variability,
-    size_limit=0.01
+    target_highest=true,
+    size_limit=0.01,
 )::Vector{T} where {T<:Int64,F<:Real}
 
     # Compute statistic for each cluster
@@ -178,7 +195,8 @@ function target_clusters(
         push!(clusters_statistics, statistic)
     end
 
-    target_index = argmax(clusters_statistics)
+    target_function = target_highest ? argmax : argmin
+    target_index = target_function(clusters_statistics)
     target_indexes = [target_index]
 
     # Merge target cluster if it is below 1% of size
