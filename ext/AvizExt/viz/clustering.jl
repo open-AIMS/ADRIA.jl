@@ -9,7 +9,7 @@ using Statistics
 Visualize clustered time series of scenarios.
 
 # Arguments
-- `data` : Matrix of scenario data
+- `data` : Matrix of time series data for several scenarios or sites
 - `clusters` : Vector of numbers corresponding to clusters
 
 # Returns
@@ -77,6 +77,14 @@ function _plot_clusters_confint!(
     clusters::Vector{Int64};
     opts::Dict=Dict(),
 )::Nothing
+    if :timesteps ∉ dimnames(data)
+        throw(ArgumentError("data does not have :timesteps axis"))
+    elseif length(dimnames(data)) != 2
+        throw(ArgumentError("data does not have two dimensions"))
+    else
+        slice_dimension = filter(x -> x != :timesteps, dimnames(data))[1]
+    end
+
     band_colors = unique(_get_colors(clusters, 0.5))
     line_colors = unique(_get_colors(clusters))
     legend_entry = Vector{Any}(undef, length(unique(clusters)))
@@ -85,7 +93,7 @@ function _plot_clusters_confint!(
 
     for (idx_c, cluster) in enumerate(unique(clusters))
         cluster_data = data[:, clusters .== cluster]
-        data_slices = Slices(cluster_data, NamedDims.dim(cluster_data, :scenarios))
+        data_slices = Slices(cluster_data, NamedDims.dim(cluster_data, slice_dimension))
 
         y_lower = quantile.(data_slices, [0.025])
         y_upper = quantile.(data_slices, [0.975])
