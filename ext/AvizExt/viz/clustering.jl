@@ -56,16 +56,16 @@ function _plot_clusters_series!(
     clusters::Vector{Int64};
     opts::Dict=Dict(),
 )::Nothing
+    unique_clusters = sort(unique(clusters))
     alphas = _get_alphas(clusters)
     clusters_colors = unique(_get_colors(clusters, alphas))
 
     leg_entry::Vector{Any} = [
         series!(ax, data[:, clusters .== cluster]'; solid_color=clusters_colors[idx_c]) for
-        (idx_c, cluster) in enumerate(unique(clusters))
+        (idx_c, cluster) in enumerate(unique_clusters)
     ]
 
-    n_clusters = length(unique(clusters))
-    Legend(g[1, 2], leg_entry, "Cluster " .* string.(1:n_clusters); framevisible=false)
+    Legend(g[1, 2], leg_entry, "Cluster " .* string.(unique_clusters); framevisible=false)
 
     return nothing
 end
@@ -85,13 +85,15 @@ function _plot_clusters_confint!(
         slice_dimension = filter(x -> x != :timesteps, dimnames(data))[1]
     end
 
+    unique_clusters = sort(unique(clusters))
+
     band_colors = unique(_get_colors(clusters, 0.5))
     line_colors = unique(_get_colors(clusters))
-    legend_entry = Vector{Any}(undef, length(unique(clusters)))
+    legend_entry = Vector{Any}(undef, length(unique_clusters))
 
     x_timesteps::UnitRange{Int64} = 1:length(timesteps(data))
 
-    for (idx_c, cluster) in enumerate(unique(clusters))
+    for (idx_c, cluster) in enumerate(unique_clusters)
         cluster_data = data[:, clusters .== cluster]
         data_slices = Slices(cluster_data, NamedDims.dim(cluster_data, slice_dimension))
 
@@ -105,8 +107,9 @@ function _plot_clusters_confint!(
         legend_entry[idx_c] = scatterlines!(ax, y_median; color=line_color, markersize=5)
     end
 
-    n_clusters = length(unique(clusters))
-    Legend(g[1, 2], legend_entry, "Cluster " .* string.(1:n_clusters); framevisible=false)
+    Legend(
+        g[1, 2], legend_entry, "Cluster " .* string.(unique_clusters); framevisible=false
+    )
 
     return nothing
 end
