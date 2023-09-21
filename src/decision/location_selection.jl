@@ -227,7 +227,6 @@ for a selection of scenarios (e.g. selected robust scenarios).
 - `ind_metrics` : Indices for selected scenarios (such as robust scenarios).
 - `iv_type` : indicates intervention log to use ("seed", "shade" or "fog").
 - `n_loc_int` : number of locations which are intervened at for each intervention decision.
-- `ind_metrics` : Optional vector indicating selection of scenarios to calculate for.
 
 # Returns 
 - Counts for location selection at each location in the domain.
