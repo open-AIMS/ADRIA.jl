@@ -12,15 +12,18 @@ using GLMakie.Colors
 Extract time step labels, ensuring last entry is always included.
 """
 function _time_labels(labels; label_step=5)
-    tick_pos = collect(1:label_step:length(labels))
-    tick_label = collect(string.(labels)[1:label_step:end])
+    labels_length = length(labels)
+    labels_strings = string.(labels)
 
-    # Prevent missing last label if (length(labels) - 1) is not multiple of label_step
-    if (length(labels) - 1) % label_step != 0
-        return vcat(tick_pos, length(labels)), vcat(tick_label, string.(labels)[end])
+    tick_position = collect(1:label_step:labels_length)
+    tick_label = collect(labels_strings[1:label_step:end])
+
+    # Prevent missing last label
+    if (labels_length - 1) % label_step != 0
+        return vcat(tick_position, labels_length), vcat(tick_label, labels_strings[end])
     end
 
-    return tick_pos, tick_label
+    return tick_position, tick_label
 end
 
 function _dimkeys(outcomes::NamedDimsArray)
