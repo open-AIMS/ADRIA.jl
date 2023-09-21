@@ -247,6 +247,43 @@ function location_selection_frequencies(rs::ResultSet, iv_type::String; n_loc_in
 end
 
 """
+    summed_inverse_rank(ranks::NamedDimsArray, iv_type::String; dims=:scenarios,agg_func=x->x)
+    summed_inverse_rank(rs::ResultSet, iv_type::String; dims=:scenarios,agg_func=x->x)
+    summed_inverse_rank(ranks::NamedDimsArray; dims=:scenarios,agg_func=x->x)
+ 
+Calculates (number of sites) .- ranks summed over the dimension dims and transformed using agg_func 
+    (default no transformation).
+
+# Arguments
+- `ranks` : Contains location ranks for each scenario of location selection, as created by 
+    `run_location_selection()`.
+- `rs` : ADRIA result set.
+- `iv_type` : indicates intervention log to use ("seed", "shade" or "fog").
+- `dims` : Dimensions to sum over.
+- `agg_func` : function to transform result.
+
+# Returns 
+- Inverse rankings (i.e. the greater the number the higher ranked the site).
+"""
+function summed_inverse_rank(ranks::NamedDimsArray, iv_type::String; dims=:scenarios,agg_func=x->x)
+    selected_ranks = _get_iv_type(ranks, iv_type)
+    return summed_inverse_rank(selected_ranks; dims=dims,agg_func=agg_func)
+
+end
+function summed_inverse_rank(rs::ResultSet, iv_type::String; dims=:scenarios,agg_func=x->x)
+    selected_ranks = _get_iv_type(rs.ranks, iv_type)
+    return summed_inverse_rank(selected_ranks; dims=dims,agg_func=agg_func)
+
+end
+function summed_inverse_rank(ranks::NamedDimsArray; dims=:scenarios,agg_func=x->x)
+    n_locs = size(ranks,1)
+    inv_ranks = agg_func(sum(ranks .- n_locs,dims=dims))
+    
+    return inv_ranks
+end
+
+
+"""
     _get_iv_type(ranks, iv_type)
 
 Get ranks for intervention based on name.
