@@ -66,7 +66,7 @@ Run scenarios defined by the parameter table storing results to disk.
 Scenarios are run in parallel where the number of scenarios > 256.
 
 # Notes
-- Returned `dom` holds scenario invoke time used as unique result set identifier.
+- Returned `Domain` holds scenario invoke time used as unique result set identifier.
 
 # Examples
 ```julia-repl
@@ -78,7 +78,7 @@ julia> rs_45_60 = ADRIA.run_scenarios(dom, scens, ["45", "60"])
 # Arguments
 - `dom` : Domain, to run scenarios with
 - `scens` : DataFrame of scenarios to run
-- `RCP` : ID or list of of RCP(s) to run scenarios under.
+- `RCP` : ID or list of RCP(s) to run scenarios under.
 - `show_progress` : Display progress
 - `remove_workers` : If running in parallel, removes workers after completion
 
