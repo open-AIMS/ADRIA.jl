@@ -33,6 +33,21 @@ ADRIA.viz.scenario(rs, s_tac[:, scens.SRM .< 1.0])
 # Returns
 GridPosition
 """
+function ADRIA.viz.scenario(
+    rs::ResultSet,
+    y::NamedDimsArray;
+    opts::Dict=Dict(:by_RCP => false),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+    series_opts::Dict=Dict(),
+)
+    resolution = pop!(fig_opts, :resolution, (1000, 600))
+    f = Figure(; resolution=resolution, fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.scenario!(g, rs, y; opts, axis_opts, series_opts)
+
+    return f
+end
 function ADRIA.viz.scenario!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
@@ -145,21 +160,6 @@ function ADRIA.viz.scenario!(
     ax.xlabel = "Year"
 
     return g
-end
-function ADRIA.viz.scenario(
-    rs::ResultSet,
-    y::NamedDimsArray;
-    opts::Dict=Dict(:by_RCP => false),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
-)
-    resolution = pop!(fig_opts, :resolution, (1000, 600))
-    f = Figure(; resolution=resolution, fig_opts...)
-    g = f[1, 1] = GridLayout()
-    ADRIA.viz.scenario!(g, rs, y; opts, axis_opts, series_opts)
-
-    return f
 end
 
 # """
