@@ -61,51 +61,34 @@ function ADRIA.viz.scenarios!(
 
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-    min_step = (1.0 / 0.05)
-    color_weight = max(min((1.0 / (size(y, 2) / min_step)), 0.6), 0.05)
+    # Handle colors
+    merge!(series_opts, _get_series_opt_colors(rs, y, opts, series_opts))
 
-    # Create legend for each guided scenario type
-    if :color ∉ keys(series_opts)
-        hide_idx = get(series_opts, :hide_series, BitVector())
+    if get(opts, :by_RCP, false)
+        rcp::Vector{Symbol} = Symbol.(:RCP, Int64.(rs.inputs[:, :RCP]))
+        unique_rcp = sort((unique(rcp)))
 
-        if get(opts, :by_RCP, false)
-            rcp::Vector{Symbol} = Symbol.(:RCP, Int64.(rs.inputs[:, :RCP]))
-            unique_rcp = sort((unique(rcp)))
+        line_elements::Vector{LineElement} = LineElement[
+            LineElement(; color=_c, linestyle=nothing) for
+            _c in [COLORS[r] for r in unique_rcp]
+        ]
+        LineElement.(; color=[COLORS[r] for r in unique_rcp], linestyle=nothing)
 
-            line_elements::Vector{LineElement} = LineElement[
-                LineElement(; color=_c, linestyle=nothing) for
-                _c in [COLORS[r] for r in unique_rcp]
-            ]
-            LineElement.(; color=[COLORS[r] for r in unique_rcp], linestyle=nothing)
+        labels = String.(unique_rcp)
+    else
+        cf = LineElement(; color=COLORS[:counterfactual], linestyle=nothing)
+        ug = LineElement(; color=COLORS[:unguided], linestyle=nothing)
+        gu = LineElement(; color=COLORS[:guided], linestyle=nothing)
 
-            series_opts = merge(
-                series_opts, Dict(:color => map(x -> (COLORS[x], color_weight), rcp))
-            )
-            labels = String.(unique_rcp)
-        else
-            series_opts = merge(
-                series_opts, Dict(:color => scenario_colors(rs, color_weight, hide_idx))
-            )
+        line_elements = [cf, ug, gu]
+        labels = ["No Intervention", "Unguided", "Guided"]
+    end
 
-            cf = LineElement(; color=COLORS[:counterfactual], linestyle=nothing)
-            ug = LineElement(; color=COLORS[:unguided], linestyle=nothing)
-            gu = LineElement(; color=COLORS[:guided], linestyle=nothing)
-
-            line_elements = [cf, ug, gu]
-            labels = ["No Intervention", "Unguided", "Guided"]
-        end
-
-        # Add legend
-        if get(opts, :legend, true)
-            Legend(
-                g[1, 3],
-                line_elements,
-                labels;
-                halign=:left,
-                valign=:top,
-                margin=(5, 5, 5, 5),
-            )
-        end
+    # Add legend
+    if get(opts, :legend, true)
+        Legend(
+            g[1, 3], line_elements, labels; halign=:left, valign=:top, margin=(5, 5, 5, 5)
+        )
     end
 
     _plot_scenarios_series!(ax, y; series_opts)
@@ -130,7 +113,7 @@ function _plot_scenarios_hist(
     scen_types = scenario_type(rs; scenarios=scen_match)
     scen_dist = dropdims(mean(data; dims=:timesteps); dims=:timesteps)
 
-    color_weights = (counterfactual=0.8, unguided=0.7, guided=0.6)
+    hist_color_weights = (counterfactual=0.8, unguided=0.7, guided=0.6)
 
     ax_hist = Axis(g[1, 2]; width=100)
     for type in keys(scen_types)
@@ -139,7 +122,7 @@ function _plot_scenarios_hist(
                 ax_hist,
                 scen_dist[scen_types[type]];
                 direction=:x,
-                color=(COLORS[type], color_weights[type]),
+                color=(COLORS[type], hist_color_weights[type]),
                 bins=30,
                 normalization=:pdf,
             )
@@ -155,4 +138,21 @@ function _plot_scenarios_hist(
     )
 
     return nothing
+end
+
+function _get_series_opt_colors(
+    rs::ResultSet, data::NamedDimsArray, opts::Dict=Dict(), series_opts::Dict=Dict()
+)
+    if get(opts, :by_RCP, false)
+        rcp::Vector{Symbol} = Symbol.(:RCP, Int64.(rs.inputs[:, :RCP]))
+        return Dict(:color => map(x -> (COLORS[x], _color_weight(data)), rcp))
+    else
+        hide_idx = get(series_opts, :hide_series, BitVector())
+        return Dict(:color => scenario_colors(rs, _color_weight(data), hide_idx))
+    end
+end
+
+function _color_weight(data::NamedDimsArray)::Float64
+    min_step::Float64 = (1.0 / 0.05)
+    return max(min((1.0 / (size(data, 2) / min_step)), 0.6), 0.05)
 end
