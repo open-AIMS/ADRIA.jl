@@ -35,7 +35,7 @@ GridPosition
 """
 function ADRIA.viz.scenarios(
     rs::ResultSet,
-    y::NamedDimsArray;
+    data::NamedDimsArray;
     opts::Dict=Dict(:by_RCP => false),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -43,26 +43,26 @@ function ADRIA.viz.scenarios(
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    ADRIA.viz.scenarios!(g, rs, y; opts, axis_opts, series_opts)
+    ADRIA.viz.scenarios!(g, rs, data; opts, axis_opts, series_opts)
 
     return f
 end
 function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
-    y::NamedDimsArray;
+    data::NamedDimsArray;
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
     # Ensure last year is always shown in x-axis
-    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(y)))
+    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(data)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
 
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
     # Handle colors
-    merge!(series_opts, _get_series_opt_colors(rs, y, opts, series_opts))
+    merge!(series_opts, _get_series_opt_colors(rs, data, opts, series_opts))
 
     if get(opts, :by_RCP, false)
         rcp::Vector{Symbol} = Symbol.(:RCP, Int64.(rs.inputs[:, :RCP]))
@@ -91,8 +91,8 @@ function ADRIA.viz.scenarios!(
         )
     end
 
-    _plot_scenarios_series!(ax, y; series_opts)
-    _plot_scenarios_hist(g, rs, y)
+    _plot_scenarios_series!(ax, data; series_opts)
+    _plot_scenarios_hist(g, rs, data)
 
     return g
 end
