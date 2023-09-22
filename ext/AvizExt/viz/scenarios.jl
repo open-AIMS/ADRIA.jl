@@ -70,7 +70,7 @@ function ADRIA.viz.scenarios!(
 
         if get(opts, :by_RCP, false)
             rcp_ids = sort(Int.(unique(rs.inputs[:, :RCP])))
-            r_s = Symbol[Symbol("RCP$(r_id)") for r_id in rcp_ids]
+            r_s = [Symbol("RCP$(r_id)") for r_id in rcp_ids]
 
             eles = LineElement[
                 LineElement(; color=_c, linestyle=nothing) for
