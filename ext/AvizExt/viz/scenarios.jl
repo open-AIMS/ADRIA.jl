@@ -142,7 +142,7 @@ end
 
 function _get_series_opt_colors(
     rs::ResultSet, data::NamedDimsArray, opts::Dict=Dict(), series_opts::Dict=Dict()
-)
+)::Dict{Symbol,Vector{Tuple{Symbol,Float64}}}
     if get(opts, :by_RCP, false)
         rcp::Vector{Symbol} = Symbol.(:RCP, Int64.(rs.inputs[:, :RCP]))
         return Dict(:color => map(x -> (COLORS[x], _color_weight(data)), rcp))
