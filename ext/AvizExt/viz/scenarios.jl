@@ -91,13 +91,13 @@ function ADRIA.viz.scenarios!(
         )
     end
 
-    _plot_scenarios_series!(ax, data; series_opts)
+    _plot_scenarios_series!(ax, data, series_opts)
     _plot_scenarios_hist(g, rs, data)
 
     return g
 end
 
-function _plot_scenarios_series!(ax::Axis, data::NamedDimsArray; series_opts)::Nothing
+function _plot_scenarios_series!(ax::Axis, data::NamedDimsArray, series_opts::Dict)::Nothing
     series!(ax, data'; series_opts...)
 
     # ax.ylabel = metric_label(metric)
@@ -141,7 +141,7 @@ function _plot_scenarios_hist(
 end
 
 function _get_series_opt_colors(
-    rs::ResultSet, data::NamedDimsArray, opts::Dict=Dict(), series_opts::Dict=Dict()
+    rs::ResultSet, data::NamedDimsArray, opts::Dict, series_opts::Dict
 )::Dict{Symbol,Vector{Tuple{Symbol,Float64}}}
     if get(opts, :by_RCP, false)
         rcp::Vector{Symbol} = Symbol.(:RCP, Int64.(rs.inputs[:, :RCP]))
