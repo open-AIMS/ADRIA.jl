@@ -41,8 +41,7 @@ function ADRIA.viz.scenarios(
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
 )
-    resolution = pop!(fig_opts, :resolution, (1000, 600))
-    f = Figure(; resolution=resolution, fig_opts...)
+    f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.scenarios!(g, rs, y; opts, axis_opts, series_opts)
 
