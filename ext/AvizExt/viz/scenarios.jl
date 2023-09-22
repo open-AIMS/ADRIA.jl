@@ -1,6 +1,6 @@
 """
-    ADRIA.viz.scenario(rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.scenario!(g::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.scenarios(rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.scenarios!(g::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
 Plot scenario outcomes over time.
 
@@ -13,10 +13,10 @@ scens = ADRIA.sample(dom, 64)
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 
 # Plot scenario outcomes
-ADRIA.viz.scenario(rs, s_tac)
+ADRIA.viz.scenarios(rs, s_tac)
 
 # Plot outcomes of scenarios where SRM < 1.0
-ADRIA.viz.scenario(rs, s_tac[:, scens.SRM .< 1.0])
+ADRIA.viz.scenarios(rs, s_tac[:, scens.SRM .< 1.0])
 ```
 
 # Arguments
@@ -33,7 +33,7 @@ ADRIA.viz.scenario(rs, s_tac[:, scens.SRM .< 1.0])
 # Returns
 GridPosition
 """
-function ADRIA.viz.scenario(
+function ADRIA.viz.scenarios(
     rs::ResultSet,
     y::NamedDimsArray;
     opts::Dict=Dict(:by_RCP => false),
@@ -44,11 +44,11 @@ function ADRIA.viz.scenario(
     resolution = pop!(fig_opts, :resolution, (1000, 600))
     f = Figure(; resolution=resolution, fig_opts...)
     g = f[1, 1] = GridLayout()
-    ADRIA.viz.scenario!(g, rs, y; opts, axis_opts, series_opts)
+    ADRIA.viz.scenarios!(g, rs, y; opts, axis_opts, series_opts)
 
     return f
 end
-function ADRIA.viz.scenario!(
+function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
     y::NamedDimsArray;

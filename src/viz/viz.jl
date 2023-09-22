@@ -12,8 +12,8 @@ for existing functions/methods.
 function explore() end
 
 # Scenario plotting methods
-function scenario() end
-function scenario!() end
+function scenarios() end
+function scenarios!() end
 
 # Sensitivity analyses
 function pawn() end
