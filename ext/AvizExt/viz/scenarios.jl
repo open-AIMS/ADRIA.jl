@@ -55,7 +55,6 @@ function ADRIA.viz.scenarios!(
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
 )
-
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(y)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
@@ -69,18 +68,7 @@ function ADRIA.viz.scenarios!(
     if :color ∉ keys(series_opts)
         hide_idx = get(series_opts, :hide_series, BitVector())
 
-        if get(opts, :by_RCP, false) == false
-            series_opts = merge(
-                series_opts, Dict(:color => scenario_colors(rs, color_weight, hide_idx))
-            )
-
-            cf = LineElement(; color=COLORS[:counterfactual], linestyle=nothing)
-            ug = LineElement(; color=COLORS[:unguided], linestyle=nothing)
-            gu = LineElement(; color=COLORS[:guided], linestyle=nothing)
-
-            eles = [cf, ug, gu]
-            labels = ["No Intervention", "Unguided", "Guided"]
-        else
+        if get(opts, :by_RCP, false)
             rcp_ids = sort(Int.(unique(rs.inputs[:, :RCP])))
             r_s = Symbol[Symbol("RCP$(r_id)") for r_id in rcp_ids]
 
@@ -99,6 +87,17 @@ function ADRIA.viz.scenarios!(
                 ),
             )
             labels = String.(r_s)
+        else
+            series_opts = merge(
+                series_opts, Dict(:color => scenario_colors(rs, color_weight, hide_idx))
+            )
+
+            cf = LineElement(; color=COLORS[:counterfactual], linestyle=nothing)
+            ug = LineElement(; color=COLORS[:unguided], linestyle=nothing)
+            gu = LineElement(; color=COLORS[:guided], linestyle=nothing)
+
+            eles = [cf, ug, gu]
+            labels = ["No Intervention", "Unguided", "Guided"]
         end
 
         # Add legend
