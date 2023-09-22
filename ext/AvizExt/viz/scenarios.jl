@@ -40,7 +40,7 @@ function ADRIA.viz.scenarios(
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
-)
+)::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.scenarios!(g, rs, y; opts, axis_opts, series_opts)
@@ -54,7 +54,7 @@ function ADRIA.viz.scenarios!(
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
-)
+)::Union{GridLayout,GridPosition}
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(y)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
@@ -108,12 +108,28 @@ function ADRIA.viz.scenarios!(
         end
     end
 
-    series!(ax, y'; series_opts...)
+    _plot_scenarios_series!(ax, y; series_opts)
+    _plot_scenarios_hist(g, rs, y)
 
-    # Density (TODO: Separate into own function)
-    scen_match = 1:nrow(rs.inputs) .∈ [_dimkeys(y).scenarios]
+    return g
+end
+
+function _plot_scenarios_series!(ax::Axis, data::NamedDimsArray; series_opts)::Nothing
+    series!(ax, data'; series_opts...)
+
+    # ax.ylabel = metric_label(metric)
+    ax.xlabel = "Year"
+
+    return nothing
+end
+
+function _plot_scenarios_hist(
+    g::Union{GridLayout,GridPosition}, rs::ResultSet, data::NamedDimsArray
+)::Nothing
+    scen_match = 1:nrow(rs.inputs) .∈ [_dimkeys(data).scenarios]
     scen_types = scenario_type(rs; scenarios=scen_match)
-    scen_dist = dropdims(mean(y; dims=:timesteps); dims=:timesteps)
+    scen_dist = dropdims(mean(data; dims=:timesteps); dims=:timesteps)
+
     ax2 = Axis(g[1, 2]; width=100)
     if count(scen_types.counterfactual) > 0
         hist!(
@@ -156,8 +172,5 @@ function ADRIA.viz.scenarios!(
         maximum(scen_dist) + quantile(scen_dist, 0.05),
     )
 
-    # ax.ylabel = metric_label(metric)
-    ax.xlabel = "Year"
-
-    return g
+    return nothing
 end
