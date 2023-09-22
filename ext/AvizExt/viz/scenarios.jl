@@ -61,35 +61,11 @@ function ADRIA.viz.scenarios!(
 
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-    # Handle colors
+    # Set series colors
     merge!(series_opts, _get_series_opt_colors(rs, data, opts, series_opts))
 
-    if get(opts, :by_RCP, false)
-        rcp::Vector{Symbol} = Symbol.(:RCP, Int64.(rs.inputs[:, :RCP]))
-        unique_rcp = sort((unique(rcp)))
-
-        line_elements::Vector{LineElement} = LineElement[
-            LineElement(; color=_c, linestyle=nothing) for
-            _c in [COLORS[r] for r in unique_rcp]
-        ]
-        LineElement.(; color=[COLORS[r] for r in unique_rcp], linestyle=nothing)
-
-        labels = String.(unique_rcp)
-    else
-        cf = LineElement(; color=COLORS[:counterfactual], linestyle=nothing)
-        ug = LineElement(; color=COLORS[:unguided], linestyle=nothing)
-        gu = LineElement(; color=COLORS[:guided], linestyle=nothing)
-
-        line_elements = [cf, ug, gu]
-        labels = ["No Intervention", "Unguided", "Guided"]
-    end
-
-    # Add legend
-    if get(opts, :legend, true)
-        Legend(
-            g[1, 3], line_elements, labels; halign=:left, valign=:top, margin=(5, 5, 5, 5)
-        )
-    end
+    # Render legend
+    _render_scenarios_legend(g, rs, opts)
 
     _plot_scenarios_series!(ax, data, series_opts)
     _plot_scenarios_hist(g, rs, data)
@@ -155,4 +131,35 @@ end
 function _color_weight(data::NamedDimsArray)::Float64
     min_step::Float64 = (1.0 / 0.05)
     return max(min((1.0 / (size(data, 2) / min_step)), 0.6), 0.05)
+end
+
+function _render_scenarios_legend(
+    g::Union{GridLayout,GridPosition}, rs::ResultSet, opts::Dict
+)::Nothing
+    labels::Vector{String} = Vector{String}(undef, 0)
+    line_elements::Vector{LineElement} = Vector{LineElement}(undef, 0)
+
+    if get(opts, :by_RCP, false)
+        rcp::Vector{Symbol} = sort((unique(Symbol.(:RCP, Int64.(rs.inputs[:, :RCP])))))
+
+        rcp_colors = [COLORS[r] for r in rcp]
+        line_elements = [LineElement(; color=c, linestyle=nothing) for c in rcp_colors]
+        labels = String.(rcp)
+    else
+        cf::LineElement = LineElement(; color=COLORS[:counterfactual], linestyle=nothing)
+        ug::LineElement = LineElement(; color=COLORS[:unguided], linestyle=nothing)
+        gu::LineElement = LineElement(; color=COLORS[:guided], linestyle=nothing)
+
+        line_elements = [cf, ug, gu]
+        labels = ["No Intervention", "Unguided", "Guided"]
+    end
+
+    # Add legend
+    if get(opts, :legend, true)
+        Legend(
+            g[1, 3], line_elements, labels; halign=:left, valign=:top, margin=(5, 5, 5, 5)
+        )
+    end
+
+    return nothing
 end
