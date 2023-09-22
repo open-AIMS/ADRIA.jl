@@ -69,24 +69,19 @@ function ADRIA.viz.scenarios!(
         hide_idx = get(series_opts, :hide_series, BitVector())
 
         if get(opts, :by_RCP, false)
-            rcp_ids = sort(Int.(unique(rs.inputs[:, :RCP])))
-            r_s = [Symbol("RCP$(r_id)") for r_id in rcp_ids]
+            rcp::Vector{Symbol} = Symbol.(:RCP, Int64.(rs.inputs[:, :RCP]))
+            unique_rcp = sort((unique(rcp)))
 
-            eles = LineElement[
+            line_elements::Vector{LineElement} = LineElement[
                 LineElement(; color=_c, linestyle=nothing) for
-                _c in [COLORS[_r] for _r in r_s]
+                _c in [COLORS[r] for r in unique_rcp]
             ]
+            LineElement.(; color=[COLORS[r] for r in unique_rcp], linestyle=nothing)
 
             series_opts = merge(
-                series_opts,
-                Dict(
-                    :color => map(
-                        x -> (COLORS[Symbol("RCP$(Int(x))")], color_weight),
-                        rs.inputs[:, :RCP],
-                    ),
-                ),
+                series_opts, Dict(:color => map(x -> (COLORS[x], color_weight), rcp))
             )
-            labels = String.(r_s)
+            labels = String.(unique_rcp)
         else
             series_opts = merge(
                 series_opts, Dict(:color => scenario_colors(rs, color_weight, hide_idx))
@@ -96,13 +91,20 @@ function ADRIA.viz.scenarios!(
             ug = LineElement(; color=COLORS[:unguided], linestyle=nothing)
             gu = LineElement(; color=COLORS[:guided], linestyle=nothing)
 
-            eles = [cf, ug, gu]
+            line_elements = [cf, ug, gu]
             labels = ["No Intervention", "Unguided", "Guided"]
         end
 
         # Add legend
         if get(opts, :legend, true)
-            Legend(g[1, 3], eles, labels; halign=:left, valign=:top, margin=(5, 5, 5, 5))
+            Legend(
+                g[1, 3],
+                line_elements,
+                labels;
+                halign=:left,
+                valign=:top,
+                margin=(5, 5, 5, 5),
+            )
         end
     end
 
