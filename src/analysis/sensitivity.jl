@@ -196,6 +196,37 @@ function pawn(
     return pawn(rs.inputs, y; S=S)
 end
 
+"""
+    pawn_convergence(scens::DataFrame, foi::Vector{Symbol}, outcome::NamedDimsArray; N_steps=10)
+ 
+    Calculates the PAWN sensitivity index for an increasing number of scenarios where the maximum
+        is the total number of scenarios in scens. Number of scenario subsets determined by N_steps.
+
+# Arguments
+- `X` : Model inputs
+- `y` : Model outputs
+- `foi` : Names of each factor represented by columns in `X`
+- `N_steps` : Number of steps to cut the total number of scenarios into.
+
+# Returns
+NamedDimsArray, of min, mean, median, max, std, and cv summary statistics for an increasing 
+number of scenarios.
+"""
+function pawn_convergence(X::DataFrame, y::NamedDimsArray, foi::Vector{Symbol}; N_steps=10)
+    N = size(X,1)
+    step_size = floor(N/N_steps)
+    n_scenarios = collect(step_size:step_size:N)
+
+    A = Array{Any}(zeros(length(foi), 6, length(n_scenarios)))
+    pawn_N = NamedDimsArray(A, factors=foi, Si=[:min, :mean, :median, :max, :std, :cv], n_scenarios=collect(1:length(n_scenarios)))
+    s_indx = randperm(N)
+
+    for nn in 1:length(n_scenarios)
+        pawn_N[n_scenarios=nn] .= ADRIA.sensitivity.pawn(X[s_indx[1:n[nn]], :], y[scenarios=s_indx[1:n[nn]]])(factors=foi)
+    end
+    return pawn_N
+end
+
 
 """
     tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
