@@ -130,44 +130,26 @@ function _plot_scenarios_hist(
     scen_types = scenario_type(rs; scenarios=scen_match)
     scen_dist = dropdims(mean(data; dims=:timesteps); dims=:timesteps)
 
-    ax2 = Axis(g[1, 2]; width=100)
-    if count(scen_types.counterfactual) > 0
-        hist!(
-            ax2,
-            scen_dist[scen_types.counterfactual];
-            direction=:x,
-            color=(COLORS[:counterfactual], 0.8),
-            bins=30,
-            normalization=:pdf,
-        )
+    color_weights = (counterfactual=0.8, unguided=0.7, guided=0.6)
+
+    ax_hist = Axis(g[1, 2]; width=100)
+    for type in keys(scen_types)
+        if !isempty(scen_types[type])
+            hist!(
+                ax_hist,
+                scen_dist[scen_types[type]];
+                direction=:x,
+                color=(COLORS[type], color_weights[type]),
+                bins=30,
+                normalization=:pdf,
+            )
+        end
     end
 
-    if count(scen_types.unguided) > 0
-        hist!(
-            ax2,
-            scen_dist[scen_types.unguided];
-            direction=:x,
-            color=(COLORS[:unguided], 0.7),
-            bins=30,
-            normalization=:pdf,
-        )
-    end
-
-    if count(scen_types.guided) > 0
-        hist!(
-            ax2,
-            scen_dist[scen_types.guided];
-            direction=:x,
-            color=(COLORS[:guided], 0.6),
-            bins=30,
-            normalization=:pdf,
-        )
-    end
-
-    hidedecorations!(ax2)
-    hidespines!(ax2)
+    hidedecorations!(ax_hist)
+    hidespines!(ax_hist)
     ylims!(
-        ax2,
+        ax_hist,
         minimum(scen_dist) - quantile(scen_dist, 0.05),
         maximum(scen_dist) + quantile(scen_dist, 0.05),
     )
