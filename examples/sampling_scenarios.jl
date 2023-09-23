@@ -1,7 +1,7 @@
 @doc """
 This example file assumes Julia is started in the examples folder.
 
-The accompanying `config.toml` file specifies how many cores to use, 
+The accompanying `config.toml` file specifies how many cores to use,
 and the output location to store results in.
 """
 
@@ -12,8 +12,8 @@ using ADRIA
 here = @__DIR__
 ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"))
 
-@info "Creating 100 scenarios based on parameter bounds using the Sobol' method"
-scens = ADRIA.sample(ex_domain, 100)
+@info "Creating 128 scenarios based on parameter bounds using the Sobol' method"
+scens = ADRIA.sample(ex_domain, 128)
 
 # Can also use other samplers
 # using Surrogates.QuasiMonteCarlo
@@ -26,17 +26,17 @@ scens = ADRIA.sample(ex_domain, 100)
 
 # Batch run scenarios. Returns a ResultSet.
 @info "Setting up and running scenarios for RCP 4.5"
-rs = ADRIA.run_scenarios(scens, ex_domain, "45")
+rs = ADRIA.run_scenarios(ex_domain, scens, "45")
 
 # Multiple RCPs can be specified, so long as the data is available.
-# rs = ADRIA.run_scenarios(p_df, ex_domain, ["45", "60"])
+# rs = ADRIA.run_scenarios(ex_domain, p_df, ["45", "60"])
 
 # Single scenario run (returns NamedTuple of results for a single environmental/intervention scenario).
 # See documentation for more detail.
-# switch_RCPs!(domain, "45")
-# res1 = ADRIA.run_scenario(scens[1, :], domain)
-# res2 = ADRIA.run_scenario(scens[2, :], domain)
-# res3 = ADRIA.run_scenario(scens[3, :], domain, "60")  # run for a different RCP
+# domain = ADRIA.switch_RCPs!(domain, "45")
+# res1 = ADRIA.run_scenario(domain, scens[1, :])
+# res2 = ADRIA.run_scenario(domain, scens[2, :])
+# res3 = ADRIA.run_scenario(domain, scens[3, :], "60")  # run for a different RCP
 
 
 # Name of result store
