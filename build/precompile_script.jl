@@ -2,7 +2,7 @@ using CSV, DataFrames, GeoDataFrames
 
 
 precompile(CSV.read, (String, DataFrame))
-precompile(GeoDataFrames.read, (String, ))
+precompile(GeoDataFrames.read, (String,))
 
 
 # precompile(load_domain, (String, Int64))
@@ -14,7 +14,7 @@ precompile(GeoDataFrames.read, (String, ))
 #     ex_dir = joinpath(here, "../examples")
 #     @debug "Pre-running examples to reduce future spin-up time"
 
-#     f() = begin 
+#     f() = begin
 #         @showprogress 1 for _ in 1:10
 #         end
 #     end
@@ -26,9 +26,7 @@ precompile(GeoDataFrames.read, (String, ))
 #     ENV["ADRIA_THRESHOLD"] = 1e-6
 #     ex_domain.sim_constants.tf = 3
 #     ds = (raw=nothing, site_ranks=nothing, seed_log=nothing, fog_log=nothing, shade_log=nothing)
-#     run_scenario((1, p_df[1, :]), ex_domain, 1, ds)
-#     run_scenario((1, p_df[end, :]), ex_domain, 1, ds)
+#     run_scenario(ex_domain, (1, p_df[1, :]), 1, ds)
+#     run_scenario((ex_domain, 1, p_df[end, :]), 1, ds)
 #     delete!(ENV, "ADRIA_THRESHOLD")
 # end
-
-

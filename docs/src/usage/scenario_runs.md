@@ -2,10 +2,10 @@
 
 ```julia
 # Run sampled scenarios for a given RCP
-rs = ADRIA.run_scenarios(scens, dom, "45")
+rs = ADRIA.run_scenarios(dom, scens, "45")
 
 # ... or repeat scenario runs across multiple RCPs
-rs = ADRIA.run_scenarios(scens, dom, ["45", "60", "85"])
+rs = ADRIA.run_scenarios(dom, scens, ["45", "60", "85"])
 
 # The location of the outputs stored on disk
 @info ADRIA.store_name(rs)

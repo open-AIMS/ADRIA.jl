@@ -84,19 +84,20 @@ scens = ADRIA.sample(dom, 128)
 
 # Batch run scenarios. Returns a ResultSet.
 # Setting up and running scenarios
-rs = ADRIA.run_scenarios(p_df, dom, "45")
+rs = ADRIA.run_scenarios(dom, p_df, "45")
 
 # Multiple RCPs can be specified, so long as RCP-specific data is available.
-# rs = ADRIA.run_scenarios(p_df, dom, ["45", "60"])
+# rs = ADRIA.run_scenarios(dom, p_df, ["45", "60"])
 
 # Single scenario run (returns NamedTuple of results for a single environmental/intervention scenario).
 # See documentation for more detail.
-# result = ADRIA.run_scenario(param_df::DataFrameRow, domain::Domain; rep_id=1)::NamedTuple
+# scenario_id = 1
+# result = ADRIA.run_scenario(domain::Domain, scenario_id, param_df::DataFrameRow)
 
 # switch_RCPs!(domain, "45")
-# res1 = ADRIA.run_scenario(scens[1, :], domain)
-# res2 = ADRIA.run_scenario(scens[2, :], domain)
-# res3 = ADRIA.run_scenario(scens[3, :], domain, "60")  # run for a different RCP
+# res1 = ADRIA.run_scenario(domain, scens[1, :])
+# res2 = ADRIA.run_scenario(domain, scens[2, :])
+# res3 = ADRIA.run_scenario(domain, scens[3, :], "60")  # run for a different RCP
 
 # The location of the outputs stored on disk
 @info ADRIA.store_name(rs)

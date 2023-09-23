@@ -152,7 +152,7 @@ end
 
         # ENV["ADRIA_DEBUG"] = "false"
         # p_df = ADRIA.param_table(dom)
-        # rs1 = ADRIA.run_scenario(p_df[1, :], dom)
+        # rs1 = ADRIA.run_scenario(dom, p_df[1, :])
         # delete!(ENV, "ADRIA_DEBUG")
     end
 end
