@@ -69,6 +69,30 @@ function ADRIA.viz.pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Di
     return f
 end
 
+function ADRIA.viz.pawn_convergence(Si_N::NamedDimsArray; title="Factor", colors=Makie.wong_colors())
+
+    c_cycles = repeat(colors, Int(round(length(foi) / length(colors)) + 1))
+    
+    f, ax = lines(n, vec(Array(Si_N(Si=:mean, factors=foi[1]))), color=c_cycles[1], label=foi)
+    band!(n, vec(Array(Si_N(Si=:mean, factors=foi[1]) .- Si_N(Si=:std, factors=foi[1]))), vec(Array(Si_N(Si=:mean, factors=foi[1]) .+ Si_N(Si=:std, factors=foi[1]))), alpha=0.4, color=c_cycles[1])
+    ax.xlabel = "N scenarios"
+    ax.xlabelsize = 22
+    ax.ylabel = "PAWN Sensitivity"
+    ax.ylabelsize = 22
+    ax.title = title
+    
+    for fac in 2:length(foi)
+    
+        lines!(n, vec(Array(Si_N(Si=:mean, factors=foi[fac]))), color=c_cycles[fac], label=foi)
+        band!(n, vec(Array(Si_N(Si=:mean, factors=foi[fac]) .- Si_N(Si=:std, factors=foi[fac]))), vec(Array(Si_N(Si=:mean, factors=foi[fac]) .+ Si_N(Si=:std, factors=foi[fac]))), alpha=0.4, color=c_cycles[fac])
+    
+    end
+    lines!(n, vec(Array(Si_N(Si=:mean, factors=:dummy))), color="red", label=foi)
+    band!(n, vec(Array(Si_N(Si=:mean, factors=:dummy) .- Si_N(Si=:std, factors=:dummy))), vec(Array(Si_N(Si=:mean, factors=:dummy) .+ Si_N(Si=:std, factors=:dummy))), alpha=0.2, color="red")
+    
+    return f
+end
+    
 """
     ADRIA.viz.tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     ADRIA.viz.tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
