@@ -11,7 +11,7 @@ using GLMakie.Colors
 
 Extract time step labels, ensuring last entry is always included.
 """
-function _time_labels(labels; label_step=5)
+function _time_labels(labels; label_step=5)::Tuple{Vector{Int64},Vector{String}}
     labels_length = length(labels)
     labels_strings = string.(labels)
 
