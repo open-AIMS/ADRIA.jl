@@ -14,11 +14,10 @@ using ADRIA
     ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
 
     ex_domain = ADRIA.load_domain("../examples/Example_domain")
-    p_df = ADRIA.load_scenarios(ex_domain, "../examples/example_scenarios.csv")
-    ex_domain = ADRIA.run_scenarios(p_df, ex_domain, "45")
-    rs = ADRIA.load_results(ex_domain)
+    scens = ADRIA.load_scenarios(ex_domain, "../examples/example_scenarios.csv")
+    rs = ADRIA.run_scenarios(ex_domain, scens, "45")
+
+    @test typeof(rs) <: ADRIA.ResultSet
 
     cd(orig_loc)
 end
-
-

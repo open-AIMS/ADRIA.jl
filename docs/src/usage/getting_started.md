@@ -83,14 +83,14 @@ Run sampled scenarios for one or more RCPs. Be aware that this may take a while:
 
 ```julia
 rcp_45 = "45"
-rs = ADRIA.run_scenarios(scens, dom, rcp_45)
+rs = ADRIA.run_scenarios(dom, scens, rcp_45)
 ```
 
 Or run scenarios across several RCPs:
 
 ```julia
 rcps = ["45", "60", "85"]
-rs = ADRIA.run_scenarios(scens, dom, rcps)
+rs = ADRIA.run_scenarios(dom, scens, rcps)
 ```
 
 It is also possible to load previously run scenarios. See [Running scenarios](@ref) for

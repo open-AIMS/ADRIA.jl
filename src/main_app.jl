@@ -63,7 +63,7 @@ function adria_cmd_run()
     println("ADRIA.jl - Prototype App")
     println("Running $(n_scenarios) scenarios under RCP $(rcp) for $(domain.name)")
 
-    d = run_scenarios(scenarios, domain)
+    d = run_scenarios(domain, scenarios)
 
     res = ADRIA.load_results(d)
 
@@ -94,13 +94,13 @@ function _indicative_result_display(res)
     Y_no = ADRIA.metrics.summarize_relative_cover(selectdim(res.raw, 5, nodeploy_scens))
     Y_ung = ADRIA.metrics.summarize_relative_cover(selectdim(res.raw, 5, unguided_scens))
     Y_g = ADRIA.metrics.summarize_relative_cover(selectdim(res.raw, 5, guided_scens))
-    
+
     year_axis = [t % 5 == 0 || t == 2099 ? string(t) : "" for t in 2025:2099]
-    
+
     # No deployment
     upper = Y_no[:upper_95]
     lower = Y_no[:lower_95]
-    
+
     p = plot(upper, fillrange=lower, color=:lightsalmon1, alpha=0.8, label="")
     plot!(Y_no[:median], label="No Deployment median", linecolor=:red, alpha=0.8)
 
@@ -110,31 +110,31 @@ function _indicative_result_display(res)
     lower = Y_ung[:lower_95]
     p = plot!(upper, fillrange=lower, color=:lightblue2, alpha=0.8, label="")
     plot!(Y_ung[:median], label="Unguided median", linecolor=:blue, alpha=0.5)
-    
-    
+
+
     # Guided
     upper = Y_g[:upper_95]
     lower = Y_g[:lower_95]
-    
+
     plot!(upper, fillrange=lower, color=:lightseagreen, alpha=0.4, label="")
     plot!(Y_g[:median],
         label="Guided median", linecolor=:green, alpha=0.4,
         xlabel="Year", ylabel="Relative Cover",
         xticks=(1:75, year_axis))
-    
+
     p2 = plot(Y_ung[:mean] - Y_no[:mean], label="Guided - No Deployment (μ)",
-            xlabel="Year", ylabel="δ Relative Cover",
-            xticks=(1:75, year_axis), color=:red
+        xlabel="Year", ylabel="δ Relative Cover",
+        xticks=(1:75, year_axis), color=:red
     )
     plot!(Y_g[:mean] - Y_ung[:mean], label="Guided - Unguided (μ)", color=:blue)
-    
-    fig = plot(p, p2, size=(1000, 500), layout=(1,2), left_margin=5mm, bottom_margin=5mm, xrotation=45,
-            legend=:best, fg_legend=:transparent, bg_legend=:transparent)
+
+    fig = plot(p, p2, size=(1000, 500), layout=(1, 2), left_margin=5mm, bottom_margin=5mm, xrotation=45,
+        legend=:best, fg_legend=:transparent, bg_legend=:transparent)
     # display(fig)
     # gui(fig)
-    
+
     savefig(joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(ADRIA.store_name(res)).png"))
-    
+
     # TODO: Force display from commandline
     # https://discourse.julialang.org/t/how-to-display-the-plots-by-executing-the-file-from-command-line/13822/2
 end

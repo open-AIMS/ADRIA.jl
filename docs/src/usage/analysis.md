@@ -43,7 +43,7 @@ scens = ADRIA.sample(dom, num_samples)
 
 # Run the model for generated scenarios
 rcp_45 = "45"
-rs = ADRIA.run_scenarios(scens, dom, rcp_45)
+rs = ADRIA.run_scenarios(dom, scens, rcp_45)
 
 # Visualize results (in terms of absolute coral cover)
 s_tac = ADRIA.metrics.scenario_total_cover(rs)

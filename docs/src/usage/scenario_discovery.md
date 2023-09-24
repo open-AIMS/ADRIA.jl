@@ -7,7 +7,7 @@ using ADRIA
 dom = ADRIA.load_domain("...")
 scens = ADRIA.sample(dom, 4096)
 
-rs = ADRIA.run_scenarios(scens, dom, "45")
+rs = ADRIA.run_scenarios(dom, scens, "45")
 # rs = ADRIA.load_results("...")
 
 # Calculate representative statistic for all metrics of interest

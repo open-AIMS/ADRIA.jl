@@ -61,4 +61,6 @@ include("spec.jl")
 include("sampling.jl")
 include("clustering.jl")
 
-# include("example_run.jl")
+# Always run this example test case last
+# as it sets global environment variables
+include("example_run.jl")

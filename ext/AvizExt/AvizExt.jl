@@ -60,7 +60,7 @@ function julia_main()::Cint
         dom = load_domain(domain_loc, rcp_id)
         p_df = load_scenarios(dom, input_set)
 
-        rs = run_scenarios(p_df, dom)
+        rs = run_scenarios(dom, p_df)
         ADRIA.viz.explore(rs)
         return 0
     end

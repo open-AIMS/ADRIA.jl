@@ -65,7 +65,7 @@ NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
 ```julia
 dom = ADRIA.load_domain("example_domain")
 scens = ADRIA.sample(dom, 128)
-rs = ADRIA.run_scenarios(scens, dom, "45")
+rs = ADRIA.run_scenarios(dom, scens, "45")
 
 # Get mean coral cover over time and locations
 μ_tac = mean(ADRIA.metrics.scenario_total_cover(rs), dims=:timesteps)

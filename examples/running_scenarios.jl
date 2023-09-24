@@ -1,7 +1,7 @@
 @doc """
 This example file assumes Julia is started in the examples folder.
 
-The accompanying `config.toml` file specifies how many cores to use, 
+The accompanying `config.toml` file specifies how many cores to use,
 and the output location to store results in.
 """
 
@@ -17,14 +17,15 @@ p_df = ADRIA.load_scenarios(dom, joinpath(here, "example_scenarios.csv"))
 
 # Batch run scenarios. Returns a ResultSet.
 @info "Setting up and running scenarios"
-rs = ADRIA.run_scenarios(p_df, dom, "45")
+rs = ADRIA.run_scenarios(dom, p_df, "45")
 
 # Multiple RCPs can be specified, so long as the data is available.
-# rs = ADRIA.run_scenarios(p_df, dom, ["45", "60"])
+# rs = ADRIA.run_scenarios(dom, p_df, ["45", "60"])
 
 # Single scenario run (returns NamedTuple of results for a single environmental/intervention scenario).
 # See documentation for more detail.
-# result = ADRIA.run_scenario(param_df::DataFrameRow, domain::Domain; rep_id=1)::NamedTuple
+# scenario_id = 1
+# result = ADRIA.run_scenario(domain::Domain, scenario_id::Int64, param_df::DataFrameRow)::NamedTuple
 
 
 # The location of the outputs stored on disk

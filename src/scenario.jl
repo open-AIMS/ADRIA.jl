@@ -35,54 +35,87 @@ function setup_cache(domain::Domain)::NamedTuple
 end
 
 
+function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)::ResultSet
+    msg = """
+    `run_scenarios(param_df, domain, RCP)` is now deprecated and will be removed in
+    ADRIA v1.0
+
+    Instead, use:
+        `run_scenarios(dom, scens, RCP)`
+    """
+    @warn msg
+    return run_scenarios(domain, param_df, [RCP]; show_progress, remove_workers)
+end
+function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String}; show_progress=true, remove_workers=true)::ResultSet
+    msg = """
+    `run_scenarios(param_df, domain, RCP)` is now deprecated and will be removed in
+    ADRIA v1.0
+
+    Instead, use:
+        `run_scenarios(dom, scens, RCP)`
+    """
+    @warn msg
+    return run_scenarios(domain, param_df, RCP; show_progress, remove_workers)
+end
+
 """
-    run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)
-    run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String}; show_progress=true, remove_workers=true)
+    run_scenarios(dom::Domain, scens::DataFrame, RCP::String; show_progress=true, remove_workers=true)
+    run_scenarios(dom::Domain, scens::DataFrame, RCP::Vector{String}; show_progress=true, remove_workers=true)
 
 Run scenarios defined by the parameter table storing results to disk.
 Scenarios are run in parallel where the number of scenarios > 256.
 
 # Notes
-- Returned `domain` holds scenario invoke time used as unique result set identifier.
-- If multiple RCPs are specified, this method will temporarily use double the disk space
-  to consolidate results into a single ResultSet.
+- Returned `Domain` holds scenario invoke time used as unique result set identifier.
 
 # Examples
 ```julia-repl
 ...
-julia> rs_45 = ADRIA.run_scenarios(p_df, dom, "45")
-julia> rs_45_60 = ADRIA.run_scenarios(p_df, dom, ["45", "60"])
+julia> rs_45 = ADRIA.run_scenarios(dom, scens, "45")
+julia> rs_45_60 = ADRIA.run_scenarios(dom, scens, ["45", "60"])
 ```
 
 # Arguments
-- param_df : DataFrame of scenarios to run
-- domain : Domain, to run scenarios with
-- RCP : ID or list of of RCP(s) to run scenarios under.
-- show_progress : Display progress
-- remove_workers : If running in parallel, removes workers after completion
+- `dom` : Domain, to run scenarios with
+- `scens` : DataFrame of scenarios to run
+- `RCP` : ID or list of RCP(s) to run scenarios under.
+- `show_progress` : Display progress
+- `remove_workers` : If running in parallel, removes workers after completion
 
 # Returns
 ResultSet
 """
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)::ResultSet
-    return run_scenarios(param_df, domain, [RCP]; show_progress, remove_workers)
+function run_scenarios(
+    dom::Domain,
+    scens::DataFrame,
+    RCP::String;
+    show_progress=true,
+    remove_workers=true
+)::ResultSet
+    return run_scenarios(dom, scens, [RCP]; show_progress, remove_workers)
 end
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String}; show_progress=true, remove_workers=true)::ResultSet
+function run_scenarios(
+    dom::Domain,
+    scens::DataFrame,
+    RCP::Vector{String};
+    show_progress=true,
+    remove_workers=true
+)::ResultSet
     # Initialize ADRIA configuration options
     setup()
 
     # Sort RCPs so the dataframe order match the output filepath
     RCP = sort(RCP)
 
-    @info "Running $(nrow(param_df)) scenarios over $(length(RCP)) RCPs: $RCP"
+    @info "Running $(nrow(scens)) scenarios over $(length(RCP)) RCPs: $RCP"
 
     # Cross product between rcps and param_df to have every row of param_df for each rcp
     rcps_df = DataFrame(RCP=parse.(Int64, RCP))
-    scenarios_df = crossjoin(param_df, rcps_df)
+    scenarios_df = crossjoin(scens, rcps_df)
     sort!(scenarios_df, :RCP)
 
     @info "Setting up Result Set"
-    domain, data_store = ADRIA.setup_result_store!(domain, scenarios_df)
+    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df)
 
     # Convert DataFrame to named matrix for faster iteration
     scenarios_matrix = NamedDimsArray(
@@ -91,7 +124,7 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         factors=names(scenarios_df)
     )
 
-    parallel = (nrow(param_df) >= 2048) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    parallel = (nrow(scens) >= 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
@@ -120,12 +153,12 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
 
     if parallel
         for rcp in RCP
-            run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
+            run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
             # Switch RCPs so correct data is loaded
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
-            rep_doms = Iterators.repeated(domain, length(target_rows))
-            scenario_args = zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), rep_doms)
+            rep_doms = Iterators.repeated(dom, length(target_rows))
+            scenario_args = zip(rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :]))
             if show_progress
                 @showprogress run_msg 4 pmap(func, CachingPool(workers()), scenario_args)
             else
@@ -134,19 +167,19 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         end
     else
         # Cache to reuse during scenario runs
-        cache = setup_cache(domain)
+        cache = setup_cache(dom)
 
         # Define local helper
         func = dfx -> run_scenario(dfx..., data_store, cache)
 
         for rcp in RCP
-            run_msg = "Running $(nrow(param_df)) scenarios for RCP $rcp"
+            run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
             # Switch RCPs so correct data is loaded
-            domain = switch_RCPs!(domain, rcp)
+            dom = switch_RCPs!(dom, rcp)
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
-            rep_doms = Iterators.repeated(domain, size(scenarios_matrix, 1))
-            scenario_args = zip(target_rows, eachrow(scenarios_matrix[target_rows, :]), rep_doms)
+            rep_doms = Iterators.repeated(dom, size(scenarios_matrix, 1))
+            scenario_args = zip(rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :]))
             if show_progress
                 @showprogress run_msg 4 map(func, scenario_args)
             else
@@ -159,14 +192,14 @@ function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String};
         _remove_workers()
     end
 
-    return load_results(_result_location(domain, RCP))
+    return load_results(_result_location(dom, RCP))
 end
 
 """
-    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::Nothing
-    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
-    run_scenario(param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, cache::NamedTuple)::NamedTuple
-    run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
+    run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector, DataFrameRow}, data_store::NamedTuple, cache::NamedTuple)::Nothing
+    run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
+    run_scenario(domain::Domain, scenario::Union{AbstractVector, DataFrameRow}, cache::NamedTuple)::NamedTuple
+    run_scenario(domain::Domain, scenario::NamedTuple)::NamedTuple
 
 Run individual scenarios for a given domain, saving results to a Zarr data store.
 Results are stored in Zarr format at a pre-configured location.
@@ -179,26 +212,30 @@ This is to reduce the volume of data stored.
 # Returns
 Nothing
 """
-function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain,
-    data_store::NamedTuple, cache::NamedTuple)::Nothing
-
-    coral_params = to_coral_spec(param_set)
+function run_scenario(
+    domain::Domain,
+    idx::Int64,
+    scenario::Union{AbstractVector,DataFrameRow},
+    data_store::NamedTuple,
+    cache::NamedTuple
+)::Nothing
+    coral_params = to_coral_spec(scenario)
     if domain.RCP == ""
         local rcp
         try
-            rcp = param_set("RCP")  # Try extracting from NamedDimsArray
+            rcp = scenario("RCP")  # Try extracting from NamedDimsArray
         catch err
             if !(err isa MethodError)
                 rethrow(err)
             end
 
-            rcp = param_set.RCP  # Extract from dataframe
+            rcp = scenario.RCP  # Extract from dataframe
         end
 
         domain = switch_RCPs!(domain, string(Int64(rcp)))
     end
 
-    result_set = run_model(domain, param_set, coral_params, cache)
+    result_set = run_model(domain, scenario, coral_params, cache)
 
     # Capture results to disk
     # Set values below threshold to 0 to save space
@@ -209,15 +246,15 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
     vals[vals.<threshold] .= 0.0
     data_store.total_absolute_cover[:, :, idx] .= vals
 
-    vals .= absolute_shelter_volume(rs_raw, site_area(domain), param_set)
+    vals .= absolute_shelter_volume(rs_raw, site_area(domain), scenario)
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(rs_raw, site_area(domain), site_k_area(domain), param_set)
+    vals .= relative_shelter_volume(rs_raw, site_area(domain), site_k_area(domain), scenario)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
-    coral_spec::DataFrame = to_coral_spec(param_set)
+    coral_spec::DataFrame = to_coral_spec(scenario)
     vals .= relative_juveniles(rs_raw, coral_spec)
     vals[vals.<threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
@@ -285,23 +322,67 @@ function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow},
 
     return nothing
 end
-function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
+function run_scenario(
+    domain::Domain,
+    idx::Int64,
+    scenario::Union{AbstractVector,DataFrameRow},
+    data_store::NamedTuple
+)::Nothing
     cache = setup_cache(domain)
-    run_scenario(idx, param_set, domain, data_store, cache)
+    run_scenario(domain, idx, scenario, data_store, cache)
     cache = nothing
     return cache
 end
-function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain)::NamedTuple
+function run_scenario(
+    domain::Domain,
+    scenario::Union{AbstractVector,DataFrameRow}
+)::NamedTuple
     cache = setup_cache(domain)
-    results = run_model(domain, param_set, to_coral_spec(param_set), cache)
+    results = run_model(domain, scenario, to_coral_spec(scenario), cache)
     cache = nothing
     return results
 end
-function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, RCP::String)::NamedTuple
+function run_scenario(
+    domain::Domain,
+    scenario::Union{AbstractVector,DataFrameRow},
+    RCP::String
+)::NamedTuple
     domain = switch_RCPs!(domain, RCP)
-    return run_scenario(param_set, domain)
+    return run_scenario(domain, scenario)
 end
 
+"""
+    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::Nothing
+    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
+    run_scenario(param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, cache::NamedTuple)::NamedTuple
+    run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
+
+WARNING: Deprecated set of functions to be removed in v1.0
+
+Instead, use: `run_scenario(dom, scenarios, ...)`
+"""
+function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, dom, args...; kwargs...)
+    msg = """
+    `run_scenario(idx, param_set, ...)` is now deprecated and will be removed in ADRIA v1.0
+
+    Instead, use:
+        `run_scenario(dom, idx, scenario, ...)`
+    """
+    @warn msg
+
+    return run_scenario(dom, idx, param_set, args...; kwargs...)
+end
+function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, args...; kwargs...)
+    msg = """
+    `run_scenario(param_set, domain, ...)` is now deprecated and will be removed in ADRIA v1.0
+
+    Instead, use:
+        `run_scenario(dom, scenario, ...)`
+    """
+    @warn msg
+
+    return run_scenario(domain, param_set, args...; kwargs...)
+end
 
 """
     run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, corals::DataFrame, cache::NamedTuple)::NamedTuple
