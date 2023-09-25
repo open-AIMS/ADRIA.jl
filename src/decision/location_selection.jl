@@ -262,7 +262,7 @@ function summed_inverse_rank(ranks::NamedDimsArray, iv_type::String; dims::Symbo
     return summed_inverse_rank(selected_ranks; dims=dims,agg_func=agg_func)
 
 end
-function summed_inverse_rank(rs::ResultSet, iv_type::String; dims::Symbol=:scenarios, agg_func=x->x)
+function summed_inverse_rank(rs::ResultSet, iv_type::String; dims::Symbol=:scenarios, agg_func::Function=x->x)
     selected_ranks = _get_iv_type(rs.ranks, iv_type)
     return summed_inverse_rank(selected_ranks; dims=dims,agg_func=agg_func)
 
