@@ -13,7 +13,10 @@ Perform site selection using a chosen aggregation method, domain, initial cover,
 - `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
-function _site_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)
+function _site_selection(domain::Domain, 
+    mcda_vars::DMCDA_vars, 
+    guided::Int64)
+    
     site_ids = mcda_vars.site_ids
     n_sites = length(site_ids)
 
@@ -56,8 +59,13 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64;
-    target_seed_sites=nothing, target_shade_sites=nothing)
+function run_site_selection(domain::Domain, 
+    scenarios::DataFrame, 
+    sum_cover::NamedDimsArray, 
+    area_to_seed::Float64;
+    target_seed_sites=nothing, 
+    target_shade_sites=nothing)
+
     ranks_store = NamedDimsArray(
         zeros(length(domain.site_ids), 2, nrow(scenarios)),
         sites=domain.site_ids,
@@ -102,8 +110,14 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Nam
     return ranks_store
 
 end
-function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64, aggregation_function::Function, iv_type::String;
-    target_seed_sites=nothing, target_shade_sites=nothing)
+function run_site_selection(domain::Domain, 
+    scenarios::DataFrame, 
+    sum_cover::NamedDimsArray, 
+    area_to_seed::Float64, 
+    aggregation_function::Function, 
+    iv_type::String;
+    target_seed_sites=nothing, 
+    target_shade_sites=nothing)
 
     ranks = run_site_selection(domain, 
         scenarios, 
@@ -161,18 +175,27 @@ with which each location was selected at each rank across the location selection
 # Returns
 - Frequency with which each location was selected for each rank.
 """
-function ranks_to_frequencies(ranks::NamedDimsArray, rank_frequencies::NamedDimsArray; n_ranks::Int64=length(ranks.sites))
+function ranks_to_frequencies(ranks::NamedDimsArray, 
+    rank_frequencies::NamedDimsArray; 
+    n_ranks::Int64=length(ranks.sites))
+
     for rank in range(1, n_ranks, n_ranks)
         rank_frequencies[ranks=Int64(rank)] .= sum(ranks .== rank, dims=:scenarios)[scenarios=1]
     end
     return rank_frequencies
 end
-function ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String; n_ranks::Int64=length(ranks.sites))
+function ranks_to_frequencies(ranks::NamedDimsArray, 
+    iv_type::String; 
+    n_ranks::Int64=length(ranks.sites))
+
     selected_ranks = _get_iv_type(ranks, iv_type)
     rank_frequencies = NamedDimsArray(zeros(length(ranks.sites), length(ranks.sites)), sites=ranks.sites, ranks=1:length(ranks.sites))
     return ranks_to_frequencies(selected_ranks, rank_frequencies; n_ranks=n_ranks)
 end
-function ranks_to_frequencies(rs::ResultSet, iv_type::String; n_ranks=length(rs.ranks.sites))
+function ranks_to_frequencies(rs::ResultSet, 
+    iv_type::String; 
+    n_ranks=length(rs.ranks.sites))
+
     return sum(ranks_to_frequencies_ts(rs, iv_type; n_ranks=n_ranks), dims=:timesteps)[timesteps=1]
 end
 
@@ -193,15 +216,23 @@ with which each location was selected at each rank across the location selection
 # Returns 
 - Frequency with which each location was selected for each rank over time.
 """
-function ranks_to_frequencies_ts(ranks::NamedDimsArray; n_ranks::Int64=length(ranks.sites))
+function ranks_to_frequencies_ts(ranks::NamedDimsArray; 
+    n_ranks::Int64=length(ranks.sites))
+
     rank_frequencies = NamedDimsArray(zeros(length(ranks.timesteps), length(ranks.sites), length(ranks.sites)), timesteps=ranks.timesteps, sites=ranks.sites, ranks=1:length(ranks.sites))
     return ranks_to_frequencies(ranks, rank_frequencies; n_ranks=n_ranks)
 end
-function ranks_to_frequencies_ts(ranks::NamedDimsArray, iv_type::String; n_ranks=length(ranks.sites))
+function ranks_to_frequencies_ts(ranks::NamedDimsArray, 
+    iv_type::String; 
+    n_ranks=length(ranks.sites))
+
     selected_ranks = _get_iv_type(ranks, iv_type)
     return ranks_to_frequencies_ts(selected_ranks; n_ranks=n_ranks)
 end
-function ranks_to_frequencies_ts(rs::ResultSet, iv_type::String; n_ranks=length(rs.ranks.sites))
+function ranks_to_frequencies_ts(rs::ResultSet, 
+    iv_type::String; 
+    n_ranks=length(rs.ranks.sites))
+
     selected_ranks = _get_iv_type(rs.ranks, iv_type)
     return ranks_to_frequencies_ts(selected_ranks; n_ranks=n_ranks)
 end
@@ -224,13 +255,21 @@ for a selection of scenarios (e.g. selected robust scenarios).
 # Returns 
 - Counts for location selection at each location in the domain.
 """
-function location_selection_frequencies(ranks::NamedDimsArray, iv_type::String; n_loc_int::Int64=5, ind_metrics::Vector{Int64}=_get_scen_ids(ranks))
+function location_selection_frequencies(ranks::NamedDimsArray, 
+    iv_type::String; 
+    n_loc_int::Int64=5, 
+    ind_metrics::Vector{Int64}=_get_scen_ids(ranks))
+
     ranks_frequencies = ranks_to_frequencies(ranks[scenarios=ind_metrics], iv_type; n_ranks=n_loc_int)
     loc_count = sum(ranks_frequencies[ranks=1:n_loc_int], dims=2)[ranks=1]
 
     return loc_count
 end
-function location_selection_frequencies(rs::ResultSet, iv_type::String; n_loc_int::Int64=5, ind_metrics::Vector{Int64}=_get_scen_ids(rs.ranks))
+function location_selection_frequencies(rs::ResultSet, 
+    iv_type::String; 
+    n_loc_int::Int64=5, 
+    ind_metrics::Vector{Int64}=_get_scen_ids(rs.ranks))
+
     selected_ranks = _get_iv_type(rs.ranks[scenarios=ind_metrics], iv_type)
     ranks_frequencies = ranks_to_frequencies_ts(selected_ranks; n_ranks=n_loc_int)
     loc_count = dropdims(sum(ranks_frequencies[ranks=1:n_loc_int], dims=[1, 3]), dims=3)[timesteps=1]
@@ -257,17 +296,28 @@ Calculates (number of sites) .- ranks summed over the dimension dims and transfo
 # Returns 
 - Inverse rankings (i.e. the greater the number the higher ranked the site).
 """
-function summed_inverse_rank(ranks::NamedDimsArray, iv_type::String; dims::Symbol=:scenarios, agg_func::Function=x->x)
+function summed_inverse_rank(ranks::NamedDimsArray, 
+    iv_type::String; 
+    dims::Symbol=:scenarios, 
+    agg_func::Function=x->x)
+
     selected_ranks = _get_iv_type(ranks, iv_type)
     return summed_inverse_rank(selected_ranks; dims=dims,agg_func=agg_func)
 
 end
-function summed_inverse_rank(rs::ResultSet, iv_type::String; dims::Symbol=:scenarios, agg_func::Function=x->x)
+function summed_inverse_rank(rs::ResultSet, 
+    iv_type::String; 
+    dims::Symbol=:scenarios, 
+    agg_func::Function=x->x)
+
     selected_ranks = _get_iv_type(rs.ranks, iv_type)
     return summed_inverse_rank(selected_ranks; dims=dims,agg_func=agg_func)
 
 end
-function summed_inverse_rank(ranks::NamedDimsArray; dims::Symbol=:scenarios,agg_func::Function=x->x)
+function summed_inverse_rank(ranks::NamedDimsArray; 
+    dims::Symbol=:scenarios,
+    agg_func::Function=x->x)
+
     n_locs = size(ranks,1)
     inv_ranks = agg_func(sum(ranks .- n_locs,dims=dims))
     inv_ranks[inv_ranks.<0.0] .= 0.0
