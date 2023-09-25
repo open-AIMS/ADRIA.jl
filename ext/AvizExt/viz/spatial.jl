@@ -47,9 +47,9 @@ function create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSO
         dest="+proj=latlong +datum=WGS84",
         axis_opts...
     )
-    spatial.xticklabelsize = 12
-    spatial.yticklabelsize = 12
-
+    spatial.xticklabelsize = 14
+    spatial.yticklabelsize = 14
+    
     # spatial.xticklabelsvisible = false
     # spatial.yticklabelsvisible = false
 
