@@ -86,21 +86,16 @@ function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::Nam
 
     n_sites = length(domain.site_ids)
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
-
         depth_criteria = (domain.site_data.depth_med .<= (scen.depth_min .+ scen.depth_offset)) .& (domain.site_data.depth_med .>= scen.depth_min)
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
-
-        ranks_store(scenarios=scen_idx, sites=domain.site_ids[considered_sites]) .= site_selection(
-            domain,
-            scen,
+        mcda_vars_temp = DMCDA_vars(domain, scen, considered_sites,  sum_cover[scen_idx, :], area_to_seed, 
             vec((mean(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5),
             vec((mean(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios))) .* 0.5),
-            considered_sites,
-            sum_cover[scen_idx, :],
-            area_to_seed
-        )
+            )
+    
+        ranks_store(scenarios=scen_idx, sites=domain.site_ids[considered_sites]) .= _site_selection(domain, mcda_vars_temp, scen.guided)
     end
 
     return ranks_store
