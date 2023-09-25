@@ -19,18 +19,19 @@ Create a spatial choropleth figure.
 - `data` : Values to use for choropleth
 - `highlight` : Stroke colors for each location
 - `centroids` : Vector{Tuple}, of lon and lats
-- `colorbar_label` : Label to use for color bar
+- `colorbar_label` : Label to use for color bar.
+- `color_map` : Type of colormap to use, 
+    See: https://docs.makie.org/stable/documentation/colors/#colormaps
 - `legend_params` : Legend parameters
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
-- `color_map` : Type of colormap to use, see: 
-  https://docs.makie.org/stable/documentation/colors/#colormaps
 """
 function create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSON.FeatureCollection,
     data::Observable, highlight::Union{Vector,Tuple,Nothing},
     centroids::Vector, colorbar_label::String="",
-    legend_params::Union{Tuple,Nothing}=nothing, axis_opts::Dict=Dict()
-    ; color_map=:grayC)
+    color_map::Union{Symbol,Vector{Symbol}}=:grayC, 
+    legend_params::Union{Tuple,Nothing}=nothing, 
+    axis_opts::Dict=Dict())
     lon = first.(centroids)
     lat = last.(centroids)
 
@@ -127,6 +128,7 @@ Plot spatial choropleth of outcomes.
 - `y` : results of scenario metric
 - `opts` : Aviz options
 	- `colorbar_label`, label for colorbar. Defaults to "Relative Cover".
+    - `color_map`, preferred colormap for plotting heatmaps.
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 - `series_opts` : Additional options to pass to adjust Series attributes
@@ -141,21 +143,16 @@ function ADRIA.viz.map(
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
-    color_map=:grayC
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    ADRIA.viz.map!(g, rs, collect(y); opts, axis_opts, color_map=color_map)
+    ADRIA.viz.map!(g, rs, collect(y); opts, axis_opts)
 
     return f
 end
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-    color_map=:grayC
     opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
     fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
@@ -172,7 +169,6 @@ function ADRIA.viz.map(
     end
 
     ADRIA.viz.map!(g, rs, rs.site_data.k; opts, axis_opts)
-    ADRIA.viz.map!(g, rs, rs.site_data.k; opts, axis_opts, color_map=color_map)
 
     return f
 end
@@ -182,7 +178,6 @@ function ADRIA.viz.map!(
     y::AbstractVector{<:Real};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
-    color_map=:grayC
 )
     geodata = get_geojson_copy(rs)
     data = Observable(collect(y))
@@ -190,8 +185,9 @@ function ADRIA.viz.map!(
     highlight = get(opts, :highlight, nothing)
     c_label = get(opts, :colorbar_label, "")
     legend_params = get(opts, :legend_params, nothing)
+    color_map = get(opts, :color_map, :grayC)
 
-    return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label, legend_params, axis_opts; color_map=color_map)
+    return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label, color_map, legend_params, axis_opts)
 end
 
 
