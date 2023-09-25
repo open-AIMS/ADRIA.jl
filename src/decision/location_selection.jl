@@ -224,13 +224,13 @@ for a selection of scenarios (e.g. selected robust scenarios).
 # Returns 
 - Counts for location selection at each location in the domain.
 """
-function location_selection_frequencies(ranks::NamedDimsArray, iv_type::String; n_loc_int::Int64=5, ind_metrics::Vector{Int64}=ranks.scenarios)
+function location_selection_frequencies(ranks::NamedDimsArray, iv_type::String; n_loc_int::Int64=5, ind_metrics::Vector{Int64}=_get_scen_ids(ranks))
     ranks_frequencies = ranks_to_frequencies(ranks[scenarios=ind_metrics], iv_type; n_ranks=n_loc_int)
     loc_count = sum(ranks_frequencies[ranks=1:n_loc_int], dims=2)[ranks=1]
 
     return loc_count
 end
-function location_selection_frequencies(rs::ResultSet, iv_type::String; n_loc_int::Int64=5, ind_metrics::Vector{Int64}=rs.ranks.scenarios)
+function location_selection_frequencies(rs::ResultSet, iv_type::String; n_loc_int::Int64=5, ind_metrics::Vector{Int64}=_get_scen_ids(rs.ranks))
     selected_ranks = _get_iv_type(rs.ranks[scenarios=ind_metrics], iv_type)
     ranks_frequencies = ranks_to_frequencies_ts(selected_ranks; n_ranks=n_loc_int)
     loc_count = dropdims(sum(ranks_frequencies[ranks=1:n_loc_int], dims=[1, 3]), dims=3)[timesteps=1]
@@ -293,3 +293,18 @@ function _get_iv_type(ranks, iv_type)
     return ranks[intervention=iv_dict[iv_type]]
 end
 
+"""
+    _get_scen_ids(ranks)
+
+Get ranks for intervention based on name.
+    
+# Arguments
+- `ranks` : Contains location ranks for each scenario of location selection, as created by 
+    `run_location_selection()`.
+
+# Returns
+- Ids for full scenario set in ranks.
+"""
+function _get_scen_ids(ranks)
+    return collect(ranks.scenarios)
+end
