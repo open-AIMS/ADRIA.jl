@@ -270,7 +270,7 @@ end
 function summed_inverse_rank(ranks::NamedDimsArray; dims::Symbol=:scenarios,agg_func::Function=x->x)
     n_locs = size(ranks,1)
     inv_ranks = agg_func(sum(ranks .- n_locs,dims=dims))
-    
+    inv_ranks[inv_ranks.<0.0] .= 0.0
     return inv_ranks
 end
 
