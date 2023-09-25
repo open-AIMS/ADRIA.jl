@@ -1,27 +1,20 @@
 
 """
-    site_selection(domain::Domain, scenario::DataFrameRow{DataFrame,DataFrames.Index}, w_scens::AbstractArray, dhw_scens::AbstractArray, site_ids::Vector{Int64}, sum_cover::AbstractArray, area_to_seed::Float64)
+    _site_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)
 
-Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
+Perform site selection using a chosen aggregation method, domain, initial cover, criteria weightings and thresholds.
 
 # Arguments
 - `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
-- `scenario` : contains criteria weightings and thresholds for a single scenario.
-- `w_scens` : array of length nsites containing wave scenario.
-- `dhw_scens` : array of length nsites containing dhw scenario.
-- `site_ids` : locations to consider
-- `sum_cover` : summed cover (over species) for single scenario being run, for each site.
-- `area_to_seed` : area of coral to be seeded at each time step in km^2
+- `mcda_vars` : Contains relevant parameters for performing guided location selection.
+- `guided` : Integer indicating aggegation algorithm to use for guided location selection.
 
 # Returns
 - `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
-function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::AbstractArray, dhw_scens::AbstractArray,
-    site_ids::Vector{Int64}, sum_cover::NamedDimsArray, area_to_seed::Float64)::Matrix{Int64}
-
-    mcda_vars = DMCDA_vars(domain, scenario, site_ids, sum_cover, area_to_seed, w_scens, dhw_scens)
-    n_sites = length(site_ids)
+function _site_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)
+    n_sites = length(mcda_vars.site_ids)
 
     # site_id, seeding rank, shading rank
     rankingsin = [mcda_vars.site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
