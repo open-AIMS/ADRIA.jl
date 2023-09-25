@@ -105,7 +105,11 @@ end
 function run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64, aggregation_function::Function, iv_type::String;
     target_seed_sites=nothing, target_shade_sites=nothing)
 
-    ranks = run_site_selection(domain, scenarios, sum_cover, area_to_seed; target_seed_sites=nothing,
+    ranks = run_site_selection(domain, 
+        scenarios, 
+        sum_cover, 
+        area_to_seed; 
+        target_seed_sites=nothing,
         target_shade_sites=nothing)
     return aggregation_function(ranks, iv_type)
 
