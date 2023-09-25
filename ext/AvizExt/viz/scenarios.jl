@@ -86,26 +86,28 @@ function ADRIA.viz.scenarios!(
     return g
 end
 
-function _plot_scenarios_confint!(ax, rs, data)::Nothing
-    scen_type::NamedTuple = scenario_type(rs)
-    unique_types::Vector{Symbol} = collect(keys(scen_type))
-    sorted_types = sort(unique_types; by=x -> 1 / sum(scen_type[x]))
+function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)::Nothing
+    for type in _order_by_variance(data, scenario_type(rs))
+        selected_scenarios = scenario_type(rs)[type]
 
-    for type in sorted_types
-        type_filter = scen_type[type]
-        band_color = (scenario_colors(rs)[type_filter][1][1], 0.3)
-        line_color = (scenario_colors(rs)[type_filter][1][1], 1.0)
+        # Plot colors
+        base_color = scenario_colors(rs)[selected_scenarios][1][1]
+        band_color = (base_color, 0.4)
+        bandline_color = (base_color, 0.6)
+        line_color = (base_color, 1.0)
 
         # TODO Extract to external function to be used by scenarios and clustered_scenarios
         x_timesteps::UnitRange{Int64} = 1:size(data, 1)
 
-        type_data = data[:, type_filter]
+        type_data = data[:, selected_scenarios]
         data_slices = Slices(type_data, NamedDims.dim(type_data, :scenarios))
 
         y_lower = quantile.(data_slices, [0.025])
         y_upper = quantile.(data_slices, [0.975])
 
         band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
+        lines!(ax, x_timesteps, y_lower; color=bandline_color)
+        lines!(ax, x_timesteps, y_upper; color=bandline_color)
 
         y_median = median.(data_slices)
         scatterlines!(ax, y_median; color=line_color, markersize=5)
@@ -207,4 +209,15 @@ function _render_scenarios_legend(
     end
 
     return nothing
+end
+
+# Sort types by variance in reverse order to plot highest variances first
+function _order_by_variance(
+    data::NamedDimsArray, scenario_types::NamedTuple
+)::Tuple{Symbol,Symbol,Symbol}
+    return sort(
+        keys(scenario_types);
+        by=type -> sum(var(data[:, scenario_types[type]]; dims=2)),
+        rev=true,
+    )
 end
