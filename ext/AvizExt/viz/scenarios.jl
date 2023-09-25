@@ -92,7 +92,8 @@ function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)
         selected_scenarios = scenario_type(rs)[type]
 
         base_color = scenario_colors(rs)[selected_scenarios][1][1]
-        band_color = (base_color, max(0.7 - idx * 0.1, 0.4))
+        band_alpha = max(0.7 - idx * 0.1, 0.4)
+        band_color = (base_color, band_alpha)
         line_color = (base_color, 1.0)
 
         y_lower, y_upper, y_median = confint(data[:, selected_scenarios], :scenarios)
