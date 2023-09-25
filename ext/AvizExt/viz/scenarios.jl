@@ -71,7 +71,7 @@ function ADRIA.viz.scenarios!(
 
         legend_position = (1, 2)
     else
-        _plot_scenarios_series!(ax, data, series_opts)
+        _plot_scenarios_series!(ax, rs, data, series_opts)
         _plot_scenarios_hist(g, rs, data)
 
         legend_position = (1, 3)
@@ -104,8 +104,16 @@ function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)
     return nothing
 end
 
-function _plot_scenarios_series!(ax::Axis, data::NamedDimsArray, series_opts::Dict)::Nothing
-    series!(ax, data'; series_opts...)
+function _plot_scenarios_series!(
+    ax::Axis, rs::ResultSet, data::NamedDimsArray, series_opts::Dict
+)::Nothing
+    series_colors = pop!(series_opts, :color)
+    for type in _order_by_variance(data, scenario_type(rs))
+        selected_scenarios = scenario_type(rs)[type]
+        _color = series_colors[selected_scenarios]
+
+        series!(ax, data[:, selected_scenarios]'; solid_color=_color, series_opts...)
+    end
     return nothing
 end
 
