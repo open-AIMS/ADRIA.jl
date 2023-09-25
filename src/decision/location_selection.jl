@@ -338,7 +338,7 @@ Get ranks for intervention based on name.
 # Returns
 - Ranks for specified iv_type.
 """
-function _get_iv_type(ranks, iv_type)
+function _get_iv_type(ranks::NamedDimsArray, iv_type::String)
     iv_dict = Dict([("seed", 1), ("shade", 2)])
     return ranks[intervention=iv_dict[iv_type]]
 end
@@ -355,6 +355,6 @@ Get ranks for intervention based on name.
 # Returns
 - Ids for full scenario set in ranks.
 """
-function _get_scen_ids(ranks)
+function _get_scen_ids(ranks::NamedDimsArray)
     return collect(ranks.scenarios)
 end
