@@ -87,29 +87,17 @@ function ADRIA.viz.scenarios!(
 end
 
 function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)::Nothing
-    for type in _order_by_variance(data, scenario_type(rs))
+    x_timesteps::UnitRange{Int64} = 1:size(data, 1)
+    for (idx, type) in enumerate(_order_by_variance(data, scenario_type(rs)))
         selected_scenarios = scenario_type(rs)[type]
 
-        # Plot colors
         base_color = scenario_colors(rs)[selected_scenarios][1][1]
-        band_color = (base_color, 0.4)
-        bandline_color = (base_color, 0.6)
+        band_color = (base_color, max(0.7 - idx * 0.1, 0.4))
         line_color = (base_color, 1.0)
 
-        # TODO Extract to external function to be used by scenarios and clustered_scenarios
-        x_timesteps::UnitRange{Int64} = 1:size(data, 1)
-
-        type_data = data[:, selected_scenarios]
-        data_slices = Slices(type_data, NamedDims.dim(type_data, :scenarios))
-
-        y_lower = quantile.(data_slices, [0.025])
-        y_upper = quantile.(data_slices, [0.975])
+        y_lower, y_upper, y_median = confint(data[:, selected_scenarios], :scenarios)
 
         band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
-        lines!(ax, x_timesteps, y_lower; color=bandline_color)
-        lines!(ax, x_timesteps, y_upper; color=bandline_color)
-
-        y_median = median.(data_slices)
         scatterlines!(ax, y_median; color=line_color, markersize=5)
     end
 

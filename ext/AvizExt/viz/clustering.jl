@@ -1,7 +1,6 @@
 using JuliennedArrays: Slices
 using Statistics
 
-
 """
     clustered_scenarios(data::AbstractMatrix, clusters::Vector{Int64}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     clustered_scenarios!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; axis_opts::Dict=Dict())
@@ -94,16 +93,12 @@ function _plot_clusters_confint!(
     x_timesteps::UnitRange{Int64} = 1:length(timesteps(data))
 
     for (idx_c, cluster) in enumerate(unique_clusters)
-        cluster_data = data[:, clusters .== cluster]
-        data_slices = Slices(cluster_data, NamedDims.dim(cluster_data, slice_dimension))
-
-        y_lower = quantile.(data_slices, [0.025])
-        y_upper = quantile.(data_slices, [0.975])
-
-        band!(ax, x_timesteps, y_lower, y_upper; color=band_colors[idx_c])
-
-        y_median = median.(data_slices)
+        band_color = band_colors[idx_c]
         line_color = line_colors[idx_c]
+
+        y_lower, y_upper, y_median = confint(data[:, clusters .== cluster], slice_dimension)
+
+        band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
         legend_entry[idx_c] = scatterlines!(ax, y_median; color=line_color, markersize=5)
     end
 
