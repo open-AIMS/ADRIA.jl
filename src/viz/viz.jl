@@ -12,8 +12,19 @@ for existing functions/methods.
 function explore() end
 
 # Scenario plotting methods
-function scenario() end
-function scenario!() end
+function scenarios() end
+function scenarios!() end
+
+function scenario(args...; kwargs...)
+    @warn """
+    viz.scenario() is now deprecated and will be removed in ADRIA v1.0
+
+    Instead, use:
+        `viz.scenarios()`
+    """
+
+    return scenarios(args...; kwargs...)
+end
 
 # Sensitivity analyses
 function pawn() end

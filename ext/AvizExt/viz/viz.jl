@@ -5,7 +5,6 @@ using NamedDims, AxisKeys
 using .AvizExt: scenario_type, scenario_colors, COLORS
 using GLMakie.Colors
 
-
 """
     _time_labels(labels)
 
@@ -82,7 +81,7 @@ function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
     return n_rows, n_cols
 end
 
-include("scenario.jl")
+include("scenarios.jl")
 include("sensitivity.jl")
 include("clustering.jl")
 include("rule_extraction.jl")

@@ -47,7 +47,7 @@ rs = ADRIA.run_scenarios(dom, scens, rcp_45)
 
 # Visualize results (in terms of absolute coral cover)
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
-ADRIA.viz.scenario(rs, s_tac)
+ADRIA.viz.scenarios(rs, s_tac)
 ```
 
 See the previous sections [Loading a Domain](@ref), [Generating scenarios](@ref) and
@@ -113,7 +113,7 @@ One can plot a quick scenario overview:
 
 ```julia
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
-ADRIA.viz.scenario(rs, s_tac; axis_opts=Dict(:ylabel=>"Example Metric"))
+ADRIA.viz.scenarios(rs, s_tac; axis_opts=Dict(:ylabel=>"Example Metric"))
 ```
 
 And compose a figure with subplots:
@@ -125,8 +125,8 @@ s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
 tf = Figure(resolution=(1600, 600))  # resolution in pixels
 
 # Implicitly create a single figure with 2 columns
-ADRIA.viz.scenario!(tf[1, 1], rs, s_tac; opts=Dict(:by_RCP => false, :legend=>false), axis_opts=Dict(:title => "TAC [m²]"));
-ADRIA.viz.scenario!(tf[1, 2], rs, s_juves; axis_opts=Dict(:title => "Juveniles [%]"));
+ADRIA.viz.scenarios!(tf[1, 1], rs, s_tac; opts=Dict(:by_RCP => false, :legend=>false), axis_opts=Dict(:title => "TAC [m²]"));
+ADRIA.viz.scenarios!(tf[1, 2], rs, s_juves; axis_opts=Dict(:title => "Juveniles [%]"));
 
 tf  # display the figure
 save("aviz_scenario.png", tf)  # save the figure to a file
