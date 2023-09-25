@@ -27,6 +27,7 @@ ADRIA.viz.scenarios(rs, s_tac[:, scens.SRM .< 1.0])
 - `opts` : Aviz options
     - `by_RCP` : color by RCP otherwise color by scenario type. Defaults to false.
     - `legend` : show legend. Defaults to true.
+    - `summarize` : plot confidence interval. Defaults to true
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 - `series_opts` : Additional options to pass to adjust Series attributes

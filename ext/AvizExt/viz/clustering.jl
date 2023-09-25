@@ -10,6 +10,8 @@ Visualize clustered time series of scenarios.
 # Arguments
 - `data` : Matrix of time series data for several scenarios or sites
 - `clusters` : Vector of numbers corresponding to clusters
+- `opts` : Aviz options
+    - `summarize` : plot confidence interval. Defaults to true
 
 # Returns
 Figure
