@@ -406,7 +406,8 @@ function outcome_map(
     X::DataFrame,
     y::AbstractVecOrMat{<:Real},
     rule::Union{Function,BitVector,Vector{Int64}},
-    target_factors::Vector{String};
+    target_factors::Vector,
+    model_spec::DataFrame;
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95
@@ -434,11 +435,18 @@ function outcome_map(
 
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
-        if all(typeof.(X[:, fact_t]) .== Int64)
-            X_q .= [0, sort(unique(X[:, fact_t]))...]
+        ptype = model_spec[model_spec.name.==fact_t, :ptype]
+        if ptype == "integer"
+            X_q .= sort(unique(X[:, fact_t]))
         else
             X_q .= quantile(X[:, fact_t], steps)
         end
+
+        # if all(typeof.(X[:, fact_t]) .== Int64)
+        #     X_q .= [0, sort(unique(X[:, fact_t]))...]
+        # else
+        #     X_q .= quantile(X[:, fact_t], steps)
+        # end
 
         for (i, s) in enumerate(X_q[1:end-1])
             local b::BitVector
@@ -484,7 +492,7 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
-    return outcome_map(rs.inputs, y, rule, target_factors; S, n_boot, conf)
+    return outcome_map(rs.inputs, y, rule, target_factors, rs.model_spec; S, n_boot, conf)
 end
 function outcome_map(
     rs::ResultSet,
@@ -494,7 +502,7 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
-    return outcome_map(rs.inputs, y, rule, names(rs.inputs); S, n_boot, conf)
+    return outcome_map(rs.inputs, y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf)
 end
 
 function _map_outcomes(
