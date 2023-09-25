@@ -1,3 +1,5 @@
+using JuliennedArrays: Slices
+
 """
     ADRIA.viz.scenarios(rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
     ADRIA.viz.scenarios!(g::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
@@ -64,21 +66,56 @@ function ADRIA.viz.scenarios!(
     # Set series colors
     merge!(series_opts, _get_series_opt_colors(rs, data, opts, series_opts))
 
-    # Render legend
-    _render_scenarios_legend(g, rs, opts)
+    if get(opts, :summarize, true)
+        _plot_scenarios_confint!(ax, rs, data)
 
-    _plot_scenarios_series!(ax, data, series_opts)
-    _plot_scenarios_hist(g, rs, data)
+        legend_position = (1, 2)
+    else
+        _plot_scenarios_series!(ax, data, series_opts)
+        _plot_scenarios_hist(g, rs, data)
+
+        legend_position = (1, 3)
+    end
+
+    # Render legend
+    _render_scenarios_legend(g, rs, legend_position, opts)
+
+    ax.xlabel = "Year"
+    # ax.ylabel = metric_label(metric)
 
     return g
 end
 
+function _plot_scenarios_confint!(ax, rs, data)::Nothing
+    scen_type::NamedTuple = scenario_type(rs)
+    unique_types::Vector{Symbol} = collect(keys(scen_type))
+    sorted_types = sort(unique_types; by=x -> 1 / sum(scen_type[x]))
+
+    for type in sorted_types
+        type_filter = scen_type[type]
+        band_color = (scenario_colors(rs)[type_filter][1][1], 0.3)
+        line_color = (scenario_colors(rs)[type_filter][1][1], 1.0)
+
+        # TODO Extract to external function to be used by scenarios and clustered_scenarios
+        x_timesteps::UnitRange{Int64} = 1:size(data, 1)
+
+        type_data = data[:, type_filter]
+        data_slices = Slices(type_data, NamedDims.dim(type_data, :scenarios))
+
+        y_lower = quantile.(data_slices, [0.025])
+        y_upper = quantile.(data_slices, [0.975])
+
+        band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
+
+        y_median = median.(data_slices)
+        scatterlines!(ax, y_median; color=line_color, markersize=5)
+    end
+
+    return nothing
+end
+
 function _plot_scenarios_series!(ax::Axis, data::NamedDimsArray, series_opts::Dict)::Nothing
     series!(ax, data'; series_opts...)
-
-    # ax.ylabel = metric_label(metric)
-    ax.xlabel = "Year"
-
     return nothing
 end
 
@@ -134,7 +171,10 @@ function _color_weight(data::NamedDimsArray)::Float64
 end
 
 function _render_scenarios_legend(
-    g::Union{GridLayout,GridPosition}, rs::ResultSet, opts::Dict
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    legend_position::Tuple{Int64,Int64},
+    opts::Dict,
 )::Nothing
     labels::Vector{String} = Vector{String}(undef, 0)
     line_elements::Vector{LineElement} = Vector{LineElement}(undef, 0)
@@ -157,7 +197,12 @@ function _render_scenarios_legend(
     # Add legend
     if get(opts, :legend, true)
         Legend(
-            g[1, 3], line_elements, labels; halign=:left, valign=:top, margin=(5, 5, 5, 5)
+            g[legend_position...],
+            line_elements,
+            labels;
+            halign=:left,
+            valign=:top,
+            margin=(5, 5, 5, 5),
         )
     end
 
