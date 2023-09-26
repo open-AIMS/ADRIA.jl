@@ -82,8 +82,6 @@ function _plot_clusters_confint!(
         throw(ArgumentError("data does not have :timesteps axis"))
     elseif length(dimnames(data)) != 2
         throw(ArgumentError("data does not have two dimensions"))
-    else
-        slice_dimension = filter(x -> x != :timesteps, dimnames(data))[1]
     end
 
     unique_clusters = sort(unique(clusters))
@@ -93,6 +91,7 @@ function _plot_clusters_confint!(
     legend_entry = Vector{Any}(undef, length(unique_clusters))
 
     x_timesteps::UnitRange{Int64} = 1:length(timesteps(data))
+    slice_dimension = filter(x -> x != :timesteps, dimnames(data))[1]
 
     for (idx_c, cluster) in enumerate(unique_clusters)
         band_color = band_colors[idx_c]
