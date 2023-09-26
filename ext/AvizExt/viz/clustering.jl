@@ -80,7 +80,7 @@ function _plot_clusters_confint!(
 )::Nothing
     if :timesteps ∉ dimnames(data)
         throw(ArgumentError("data does not have :timesteps axis"))
-    elseif length(dimnames(data)) != 2
+    elseif ndims(data) != 2
         throw(ArgumentError("data does not have two dimensions"))
     end
 
