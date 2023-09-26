@@ -109,7 +109,7 @@ function model_spec(d::Domain, filepath::String)::Nothing
 
     CSV.write(filepath; header=true, append=true)(model_spec(d))
 
-    return
+    return nothing
 end
 function model_spec(m::Model)::DataFrame
     spec = DataFrame(m)
