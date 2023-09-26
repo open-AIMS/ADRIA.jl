@@ -88,18 +88,25 @@ end
 
 function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)::Nothing
     x_timesteps::UnitRange{Int64} = 1:size(data, 1)
-    for (idx, type) in enumerate(_order_by_variance(data, scenario_type(rs)))
-        selected_scenarios = scenario_type(rs)[type]
+    ordered_types = _order_by_variance(data, scenario_type(rs))
 
-        base_color = scenario_colors(rs)[selected_scenarios][1][1]
+    selected_scenarios = [scenario_type(rs)[type] for type in ordered_types]
+    confints = [confint(data[:, scenario], :scenarios) for scenario in selected_scenarios]
+    colors = [scenario_colors(rs)[scenario][1][1] for scenario in selected_scenarios]
+
+    for idx in eachindex(ordered_types)
         band_alpha = max(0.7 - idx * 0.1, 0.4)
-        band_color = (base_color, band_alpha)
-        line_color = (base_color, 1.0)
-
-        y_lower, y_median, y_upper = confint(data[:, selected_scenarios], :scenarios)
-
+        band_color = (colors[idx], band_alpha)
+        y_lower, y_upper = confints[idx][1], confints[idx][3]
         band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
-        scatterlines!(ax, y_median; color=line_color, markersize=5)
+    end
+
+    for idx in eachindex(ordered_types)
+        line_color = (colors[idx], 0.8)
+        y_median = confints[idx][2]
+        scatterlines!(
+            ax, y_median; color=line_color, linewidth=3, markersize=20, marker=:xcross
+        )
     end
 
     return nothing
