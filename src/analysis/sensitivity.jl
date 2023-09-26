@@ -412,23 +412,15 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
-    if !all([tf in model_spec.fieldname for tf in target_factors])
-        missing_factor = .!([tf in model_spec.fieldname for tf in target_factors])
-        error("Invalid target factors: $(target_factors[missing_factor])")
-    end
 
+
+    model_spec.ptype[model_spec.fieldname .∈ [target_factors]]
     factors_to_assess = model_spec.fieldname .∈ [target_factors]
-    foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
-    foi_spec = model_spec[factors_to_assess, foi_attributes]
+    foi_details = model_spec[factors_to_assess, [:fieldname, :ptype, :lower_bound, :upper_bound]]
 
-    foi_cat = (foi_spec.ptype .== "categorical")
-    if any(foi_cat)
-        max_bounds = maximum(
-            foi_spec[foi_cat, :upper_bound] .-
-            foi_spec[foi_cat, :lower_bound]
-        )
-        S = round(Int64, max(S, max_bounds))
-    end
+    foi_cat = (foi_details.ptype .== "categorical")
+    max_cat_bound = maximum(foi_details[foi_cat, :upper_bound] .- foi_details[foi_cat, :lower_bound])
+    S = max(S, max_cat_bound)
 
     step_size = 1 / S
     steps = collect(0:step_size:1.0)
@@ -453,8 +445,9 @@ function outcome_map(
 
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
-        if all(typeof.(X[:, fact_t]) .== Int64)
-            X_q .= [0, sort(unique(X[:, fact_t]))...]
+        ptype = model_spec[model_spec.name.==fact_t, :ptype]
+        if ptype == "integer"
+            X_q .= sort(unique(X[:, fact_t]))
         else
             X_q .= quantile(X[:, fact_t], steps)
         end
