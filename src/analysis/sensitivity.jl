@@ -412,6 +412,10 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
+    if !all([tf in model_spec.fieldname for tf in target_factors])
+        missing_factor = .!([tf in model_spec.fieldname for tf in target_factors])
+        error("Invalid target factors: $(target_factors[missing_factor])")
+    end
 
 
     model_spec.ptype[model_spec.fieldname .∈ [target_factors]]
