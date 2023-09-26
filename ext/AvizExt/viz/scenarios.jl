@@ -69,13 +69,15 @@ function ADRIA.viz.scenarios!(
 
     if get(opts, :summarize, true)
         _plot_scenarios_confint!(ax, rs, data)
-
-        legend_position = (1, 2)
     else
         _plot_scenarios_series!(ax, rs, data, series_opts)
-        _plot_scenarios_hist(g, rs, data)
+    end
 
+    if get(opts, :histogram, true)
+        _plot_scenarios_hist(g, rs, data)
         legend_position = (1, 3)
+    else
+        legend_position = (1, 2)
     end
 
     # Render legend
