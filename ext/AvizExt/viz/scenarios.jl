@@ -23,7 +23,7 @@ ADRIA.viz.scenarios(rs, s_tac[:, scens.SRM .< 1.0])
 
 # Arguments
 - `rs` : ResultSet
-- `y` : results of scenario metric
+- `data` : results of scenario metric
 - `opts` : Aviz options
     - `by_RCP` : color by RCP otherwise color by scenario type. Defaults to false.
     - `legend` : show legend. Defaults to true.
@@ -209,7 +209,16 @@ function _render_scenarios_legend(
     return nothing
 end
 
-# Sort types by variance in reverse order to plot highest variances first
+"""
+    function _order_by_variance(data::NamedDimsArray, scenario_types::NamedTuple)::Tuple{Symbol,Symbol,Symbol}
+
+Sort types by variance in reverse order to plot highest variances first
+
+# Arguments
+- `data` : Results of scenario metric
+- `scenario_types` : Named tuple with Vector{Bool} to filter scenarios of each type (
+    :guided, :unguided or :counterfactual)
+"""
 function _order_by_variance(
     data::NamedDimsArray, scenario_types::NamedTuple
 )::Tuple{Symbol,Symbol,Symbol}
