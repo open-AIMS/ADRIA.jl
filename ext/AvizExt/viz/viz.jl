@@ -81,16 +81,10 @@ function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
     return n_rows, n_cols
 end
 
-function confint(
-    data::NamedDimsArray, dimension::Symbol
-)::Tuple{Vector{Float64},Vector{Float64},Vector{Float64}}
+function confint(data::NamedDimsArray, dimension::Symbol)::Vector{Vector{Float64}}
     data_slices = Slices(data, NamedDims.dim(data, dimension))
-
-    y_lower = quantile.(data_slices, [0.025])
-    y_upper = quantile.(data_slices, [0.975])
-    y_median = median.(data_slices)
-
-    return y_lower, y_upper, y_median
+    quantiles::Matrix{Float64} = quantile.(data_slices, [[0.025] [0.5] [0.975]])
+    return [collect(q) for q in eachcol(quantiles)]
 end
 
 include("scenarios.jl")

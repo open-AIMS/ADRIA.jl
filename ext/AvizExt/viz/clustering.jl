@@ -97,7 +97,7 @@ function _plot_clusters_confint!(
         band_color = band_colors[idx_c]
         line_color = line_colors[idx_c]
 
-        y_lower, y_upper, y_median = confint(data[:, clusters .== cluster], slice_dimension)
+        y_lower, y_median, y_upper = confint(data[:, clusters .== cluster], slice_dimension)
 
         band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
         legend_entry[idx_c] = scatterlines!(ax, y_median; color=line_color, markersize=5)

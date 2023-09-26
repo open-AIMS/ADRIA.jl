@@ -97,7 +97,7 @@ function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)
         band_color = (base_color, band_alpha)
         line_color = (base_color, 1.0)
 
-        y_lower, y_upper, y_median = confint(data[:, selected_scenarios], :scenarios)
+        y_lower, y_median, y_upper = confint(data[:, selected_scenarios], :scenarios)
 
         band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
         scatterlines!(ax, y_median; color=line_color, markersize=5)
