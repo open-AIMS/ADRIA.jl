@@ -2,8 +2,8 @@ using JuliennedArrays: Slices
 using Statistics
 
 """
-    clustered_scenarios(data::AbstractMatrix, clusters::Vector{Int64}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    clustered_scenarios!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; axis_opts::Dict=Dict())
+    clustered_scenarios(data::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    clustered_scenarios!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Visualize clustered time series of scenarios.
 
