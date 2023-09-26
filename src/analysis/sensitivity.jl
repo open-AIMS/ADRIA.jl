@@ -406,7 +406,7 @@ function outcome_map(
     X::DataFrame,
     y::AbstractVecOrMat{<:Real},
     rule::Union{Function,BitVector,Vector{Int64}},
-    target_factors::Vector,
+    target_factors::Vector{String},
     model_spec::DataFrame;
     S::Int64=20,
     n_boot::Int64=100,
