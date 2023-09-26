@@ -101,8 +101,8 @@ end
 include("clustering.jl")
 include("intervention.jl")
 include("pareto.jl")
+include("intervention.jl")
+include("clustering.jl")
 include("rule_extraction.jl")
-include("scenario.jl")
-include("sensitivity.jl")
 
 end
