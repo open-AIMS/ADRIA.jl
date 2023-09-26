@@ -83,7 +83,7 @@ end
 
 function confint(data::NamedDimsArray, dimension::Symbol)::Vector{Vector{Float64}}
     data_slices = Slices(data, NamedDims.dim(data, dimension))
-    quantiles::Matrix{Float64} = quantile.(data_slices, [[0.025] [0.5] [0.975]])
+    quantiles::Matrix{Float64} = quantile.(data_slices, [0.025 0.5 0.975])
     return [collect(q) for q in eachcol(quantiles)]
 end
 
