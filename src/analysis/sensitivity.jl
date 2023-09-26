@@ -417,14 +417,18 @@ function outcome_map(
         error("Invalid target factors: $(target_factors[missing_factor])")
     end
 
-
-    model_spec.ptype[model_spec.fieldname .∈ [target_factors]]
     factors_to_assess = model_spec.fieldname .∈ [target_factors]
-    foi_details = model_spec[factors_to_assess, [:fieldname, :ptype, :lower_bound, :upper_bound]]
+    foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
+    foi_spec = model_spec[factors_to_assess, foi_attributes]
 
-    foi_cat = (foi_details.ptype .== "categorical")
-    max_cat_bound = maximum(foi_details[foi_cat, :upper_bound] .- foi_details[foi_cat, :lower_bound])
-    S = max(S, max_cat_bound)
+    foi_cat = (foi_spec.ptype .== "categorical")
+    if any(foi_cat)
+        max_bounds = maximum(
+            foi_spec[foi_cat, :upper_bound] .-
+            foi_spec[foi_cat, :lower_bound]
+        )
+        S = round(Int64, max(S, max_bounds))
+    end
 
     step_size = 1 / S
     steps = collect(0:step_size:1.0)
