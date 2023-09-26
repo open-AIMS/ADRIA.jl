@@ -52,8 +52,8 @@ function find_robust_clustering(
             metric_outcome, num_clusters
         )
 
-        robust_clusters::BitVector = _find_robust_clusters(
-            metric_outcome, clusters, robustness_limit
+        robust_clusters::BitVector = _find_robust(
+            clusters, metric_outcome, robustness_limit
         )
 
         # Select scenarios that are robust across all metrics
@@ -65,9 +65,9 @@ function find_robust_clustering(
     return robust_scenarios
 end
 
-function _find_robust_clusters(
-    metric_outcome::NamedDims.NamedDimsArray,
+function _find_robust(
     clusters::Vector{Int64},
+    metric_outcome::NamedDims.NamedDimsArray,
     robustness_limit::Float64,
 )::BitVector
     clusters_summary = zeros(length(unique(clusters)))
