@@ -453,21 +453,16 @@ function outcome_map(
 
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
-        ptype = model_spec[model_spec.name.==fact_t, :ptype]
-        
+        ptype = model_spec.ptype[model_spec.fieldname.==fact_t][1]
         if ptype == "categorical"
-            X_q .= sort(unique(X[:, fact_t]))
+            lb = foi_spec.lower_bound[foi_spec.fieldname.==fact_t][1]
+            ub = foi_spec.upper_bound[foi_spec.fieldname.==fact_t][1]
+            X_q .= round.(quantile(lb:1:ub, steps))
         else
             X_q .= quantile(X[:, fact_t], steps)
         end
 
-        # if all(typeof.(X[:, fact_t]) .== Int64)
-        #     X_q .= [0, sort(unique(X[:, fact_t]))...]
-        # else
-        #     X_q .= quantile(X[:, fact_t], steps)
-        # end
-
-        for (i, s) in enumerate(X_q[1:end-1])
+        for i in 1:length(X_q[1:end-1])
             local b::BitVector
             if i == 1
                 b = (X_q[i] .<= X[:, fact_t] .<= X_q[i+1])
