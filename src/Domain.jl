@@ -107,9 +107,9 @@ function model_spec(d::Domain, filepath::String)::Nothing
         write(io, "# Generated with ADRIA.jl $(vers_id) on $(replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_"))\n")
     end
 
-    model_spec(d) |> CSV.write(filepath, writeheader=true, append=true)
+    CSV.write(filepath, model_spec(d); header=true, append=true)
 
-    return
+    return nothing
 end
 function model_spec(m::Model)::DataFrame
     spec = DataFrame(m)
