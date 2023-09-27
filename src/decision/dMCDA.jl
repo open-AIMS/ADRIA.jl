@@ -260,7 +260,7 @@ function retrieve_ranks(S::Matrix{Float64},
 
     return retrieve_ranks(site_ids, results.scores, maximize)
 end
-function retrieve_ranks(site_ids::Vector,
+function retrieve_ranks(site_ids::Vector{Float64},
     scores::Vector,
     maximize::Bool)::Matrix{Union{Float64,Int64}}
     s_order::Vector{Int64} = sortperm(scores, rev=maximize)
@@ -300,7 +300,7 @@ Columns indicate:
 function create_decision_matrix(site_ids::Vector{Int64}, 
     in_conn::T, 
     out_conn::T, 
-    sum_cover::NamedDimsArray, 
+    sum_cover::Union{NamedDimsArray,T}, 
     max_cover::T, 
     area::T, 
     wave_stress::T, 
