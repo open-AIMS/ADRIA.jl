@@ -457,7 +457,7 @@ function outcome_map(
         if ptype == "categorical"
             lb = foi_spec.lower_bound[foi_spec.fieldname.==fact_t][1]
             ub = foi_spec.upper_bound[foi_spec.fieldname.==fact_t][1]
-            X_q .= round.(quantile(lb:1:ub, steps))
+            X_q .= round.(quantile(lb:1:ub, steps)) .-1
         else
             X_q .= quantile(X[:, fact_t], steps)
         end
