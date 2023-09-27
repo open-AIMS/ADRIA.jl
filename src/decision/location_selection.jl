@@ -122,8 +122,8 @@ function run_site_selection(domain::Domain,
         scenarios, 
         sum_cover, 
         area_to_seed; 
-        target_seed_sites=nothing,
-        target_shade_sites=nothing)
+        target_seed_sites=target_seed_sites,
+        target_shade_sites=target_shade_sites)
     return aggregation_function(ranks, iv_type)
 
 end
