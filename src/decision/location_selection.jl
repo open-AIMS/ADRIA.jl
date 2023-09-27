@@ -93,7 +93,6 @@ function run_site_selection(domain::Domain,
         target_site_ids = collect(1:length(domain.site_ids))
     end
 
-    n_sites = length(domain.site_ids)
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
         depth_criteria = (domain.site_data.depth_med .<= (scen.depth_min .+ scen.depth_offset)) .& (domain.site_data.depth_med .>= scen.depth_min)
         depth_priority = findall(depth_criteria)
