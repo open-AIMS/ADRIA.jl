@@ -75,13 +75,14 @@ end
 Constuctors for DMCDA variables.
 """
 function DMCDA_vars(
-    domain::Domain,
+    domain::Domain, 
     criteria::NamedDimsArray,
-    site_ids::AbstractArray,
-    sum_cover::AbstractArray,
+    site_ids::AbstractArray, 
+    sum_cover::AbstractArray, 
     area_to_seed::Float64,
     waves::AbstractArray, 
-    dhws::AbstractArray)::DMCDA_vars
+    dhws::AbstractArray
+)::DMCDA_vars
 
     # Site Data
     site_d = domain.site_data
@@ -127,7 +128,8 @@ function DMCDA_vars(
     criteria::NamedDimsArray,
     site_ids::AbstractArray,
     sum_cover::AbstractArray,
-    area_to_seed::Float64)::DMCDA_vars
+    area_to_seed::Float64
+)::DMCDA_vars
     num_sites = n_locations(domain)
     return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(num_sites, 1), zeros(num_sites, 1))
 end
@@ -138,7 +140,8 @@ function DMCDA_vars(
     sum_cover::AbstractArray,
     area_to_seed::Float64, 
     waves::AbstractArray, 
-    dhw::AbstractArray)::DMCDA_vars
+    dhw::AbstractArray
+)::DMCDA_vars
 
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed, waves, dhw)
@@ -148,7 +151,8 @@ function DMCDA_vars(
     criteria::DataFrameRow,
     site_ids::AbstractArray,
     sum_cover::AbstractArray,
-    area_to_seed::Float64)::DMCDA_vars
+    area_to_seed::Float64
+)::DMCDA_vars
 
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed)
@@ -178,7 +182,9 @@ end
 
 Align a vector of site rankings to match the indicated order in `s_order`.
 """
-function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
+function align_rankings!(rankings::Array, 
+    s_order::Matrix, 
+    col::Int64)::Nothing
     # Fill target ranking column
     for (i, site_id) in enumerate(s_order[:, 1])
         rankings[rankings[:, 1].==site_id, col] .= i
@@ -267,8 +273,9 @@ function retrieve_ranks(
     return retrieve_ranks(site_ids, results.scores, maximize)
 end
 function retrieve_ranks(
-    site_ids::Vector{Float64}, scores::Vector, maximize::Bool
-)::Matrix{Union{Float64,Int64}}
+    site_ids::Vector,
+    scores::Vector,
+    maximize::Bool)::Matrix{Union{Float64,Int64}}
     s_order::Vector{Int64} = sortperm(scores, rev=maximize)
     return Union{Float64,Int64}[Int64.(site_ids[s_order]) scores[s_order]]
 end
@@ -315,7 +322,8 @@ function create_decision_matrix(
     site_depth::T, 
     predec::Matrix{Float64}, 
     zones_criteria::T, 
-    risk_tol::Float64)where {T<:Vector{Float64}}
+    risk_tol::Float64
+) where {T<:Vector{Float64}}
     A = zeros(length(site_ids), 9)
     A[:, 1] .= site_ids  # Column of site ids
    
@@ -404,7 +412,8 @@ function create_seed_matrix(
     wt_heat::T, 
     wt_predec_seed::T, 
     wt_predec_zones_seed::T, 
-    wt_lo_cover::T)where {T<:Float64}
+    wt_lo_cover::T
+) where {T<:Float64}
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
@@ -738,7 +747,8 @@ function unguided_site_selection(
     shade_years,
     n_site_int,
     available_space, 
-    depth)
+    depth
+)
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.0
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
