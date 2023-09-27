@@ -184,14 +184,14 @@ scenario_evenness = Metric(_scenario_evenness, (:timesteps, :scenarios))
 """
     scenario_outcomes(rs::ResultSet, metrics::Vector{Metric})::NamedDimsArray
 
-Get outcomes for a given list of metrics and a result set
+Get outcomes for a given list of metrics and a result set.
 
 # Arguments
-    - `rs` : ResultSet
-    - `metrics` : Vector of scenario Metrics (the ones that start "with scenario_")
+- `rs` : ResultSet
+- `metrics` : Vector of scenario Metrics (the ones that start "with scenario_")
 
 # Returns
-    NamedDimsArray with (:timesteps, :scenarios, :outcomes)
+NamedDimsArray with (:timesteps, :scenarios, :outcomes)
 
 # Examples
 ```
