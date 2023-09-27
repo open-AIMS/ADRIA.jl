@@ -210,8 +210,11 @@ function scenario_outcomes(rs::ResultSet, metrics::Vector{Metric})::NamedDimsArr
     num_scenarios = size(rs.inputs, 1)
     num_metrics = length(metrics)
 
-    outcomes = NamedDimsArray{(:timesteps, :scenarios, :outcomes)}(
-        zeros(Float64, num_timesteps, num_scenarios, num_metrics)
+    outcomes = NamedDimsArray(
+        zeros(Float64, num_timesteps, num_scenarios, num_metrics);
+        timesteps=timesteps(rs),
+        scenarios=1:num_scenarios,
+        outcomes=name_symbol.(metrics),
     )
 
     for (i, metric) in enumerate(metrics)
