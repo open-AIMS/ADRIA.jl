@@ -188,21 +188,21 @@ Get outcomes for a given list of metrics and a result set
 
 # Arguments
     - `rs` : ResultSet
-    - `metrics` : Vector of scenario metrics (the ones that start "with scenario_")
+    - `metrics` : Vector of scenario Metrics (the ones that start "with scenario_")
 
 # Returns
     NamedDimsArray with (:timesteps, :scenarios, :outcomes)
 
 # Examples
 ```
-_metrics::Vector{ADRIA.metrics.Metric} = [
+metrics::Vector{ADRIA.metrics.Metric} = [
     ADRIA.metrics.scenario_total_cover,
     ADRIA.metrics.scenario_asv,
     ADRIA.metrics.scenario_absolute_juveniles,
 ]
 
-#  DataCube of outcomes (NamedDimsArray)
-outcomes_c = ADRIA.metrics.scenario_outcomes(rs, _metrics)
+# 3-dimensional Array of outcomes
+outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
 ```
 """
 function scenario_outcomes(rs::ResultSet, metrics::Vector{Metric})::NamedDimsArray
