@@ -74,9 +74,13 @@ end
 
 Constuctors for DMCDA variables.
 """
-function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
-    site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64,
-    waves::AbstractArray, dhws::AbstractArray)::DMCDA_vars
+function DMCDA_vars(domain::Domain, 
+    criteria::NamedDimsArray,
+    site_ids::AbstractArray, 
+    sum_cover::AbstractArray, 
+    area_to_seed::Float64,
+    waves::AbstractArray, 
+    dhws::AbstractArray)::DMCDA_vars
 
     # Site Data
     site_d = domain.site_data
@@ -117,18 +121,30 @@ function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
 
     return mcda_vars
 end
-function DMCDA_vars(domain::Domain, criteria::NamedDimsArray, site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+function DMCDA_vars(domain::Domain, 
+    criteria::NamedDimsArray, 
+    site_ids::AbstractArray, 
+    sum_cover::AbstractArray, 
+    area_to_seed::Float64)::DMCDA_vars
     num_sites = n_locations(domain)
     return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(num_sites, 1), zeros(num_sites, 1))
 end
-function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
-    sum_cover::AbstractArray, area_to_seed::Float64, waves::AbstractArray, dhw::AbstractArray)::DMCDA_vars
+function DMCDA_vars(domain::Domain, 
+    criteria::DataFrameRow, 
+    site_ids::AbstractArray,
+    sum_cover::AbstractArray, 
+    area_to_seed::Float64, 
+    waves::AbstractArray, 
+    dhw::AbstractArray)::DMCDA_vars
 
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed, waves, dhw)
 end
-function DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
-    sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+function DMCDA_vars(domain::Domain, 
+    criteria::DataFrameRow, 
+    site_ids::AbstractArray,
+    sum_cover::AbstractArray, 
+    area_to_seed::Float64)::DMCDA_vars
 
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed)
@@ -158,7 +174,9 @@ end
 
 Align a vector of site rankings to match the indicated order in `s_order`.
 """
-function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
+function align_rankings!(rankings::Array, 
+    s_order::Matrix, 
+    col::Int64)::Nothing
     # Fill target ranking column
     for (i, site_id) in enumerate(s_order[:, 1])
         rankings[rankings[:, 1].==site_id, col] .= i
@@ -181,7 +199,12 @@ end
 # Returns
 - `prefsites` : sites in order of their rankings
 """
-function rank_sites!(S, weights, rankings, n_site_int, mcda_func, rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
+function rank_sites!(S::Matrix{Float64}, 
+    weights::Vector{Float64}, 
+    rankings::Matrix{Int64}, 
+    n_site_int::Int64, 
+    mcda_func::Union{Function,Type{<:MCDMMethod}}, 
+    rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
     selector = vec(.!all(S[:, 2:end] .== 0, dims=1))
 
@@ -218,20 +241,28 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 # Returns
 - `s_order` : [site_ids, criteria values, ranks]
 """
-function retrieve_ranks(S::Matrix{Float64}, site_ids::Vector{Float64}, weights::Vector{Float64}, mcda_func::Function)
+function retrieve_ranks(S::Matrix{Float64}, 
+    site_ids::Vector{Float64}, 
+    weights::Vector{Float64}, 
+    mcda_func::Function)
     S = mcda_normalize(S) .* weights'
     scores = mcda_func(S)
 
     return retrieve_ranks(site_ids, vec(scores), true)
 end
-function retrieve_ranks(S::Matrix, site_ids::Vector, weights::Vector{Float64}, mcda_func::Type{<:MCDMMethod})
+function retrieve_ranks(S::Matrix{Float64}, 
+    site_ids::Vector{Float64}, 
+    weights::Vector{Float64}, 
+    mcda_func::Type{<:MCDMMethod})
     fns = fill(maximum, length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func())
     maximize = results.bestIndex == argmax(results.scores)
 
     return retrieve_ranks(site_ids, results.scores, maximize)
 end
-function retrieve_ranks(site_ids::Vector, scores::Vector, maximize::Bool)::Matrix{Union{Float64,Int64}}
+function retrieve_ranks(site_ids::Vector,
+    scores::Vector,
+    maximize::Bool)::Matrix{Union{Float64,Int64}}
     s_order::Vector{Int64} = sortperm(scores, rev=maximize)
     return Union{Float64,Int64}[Int64.(site_ids[s_order]) scores[s_order]]
 end
@@ -266,10 +297,21 @@ Columns indicate:
 - `predec` : list of priority predecessors (sites strongly connected to priority sites)
 - `risk_tol` : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risk_tol are filtered out.
 """
-function create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
+function create_decision_matrix(site_ids::Vector{Int64}, 
+    in_conn::T, 
+    out_conn::T, 
+    sum_cover::NamedDimsArray, 
+    max_cover::T, 
+    area::T, 
+    wave_stress::T, 
+    heat_stress::T, 
+    site_depth::T, 
+    predec::Matrix{Float64}, 
+    zones_criteria::T, 
+    risk_tol::Float64)where {T<:Vector{Float64}}
     A = zeros(length(site_ids), 9)
     A[:, 1] .= site_ids  # Column of site ids
-
+   
     # node connectivity centrality, need to instead work out strongest predecessors to priority sites
     A[:, 2] .= maximum(in_conn) != 0.0 ? in_conn / maximum(in_conn) : 0.0
     A[:, 3] .= maximum(out_conn) != 0.0 ? out_conn / maximum(out_conn) : 0.0
@@ -346,7 +388,15 @@ Tuple (SE, wse)
     6. seed zones (weights importance of sites highly connected to or within priority zones for seeding)
     7. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
-function create_seed_matrix(A, min_area, wt_in_conn_seed, wt_out_conn_seed, wt_waves, wt_heat, wt_predec_seed, wt_predec_zones_seed, wt_lo_cover)
+function create_seed_matrix(A::Matrix{Float64}, 
+    min_area::T, 
+    wt_in_conn_seed::T, 
+    wt_out_conn_seed::T, 
+    wt_waves::T, 
+    wt_heat::T, 
+    wt_predec_seed::T, 
+    wt_predec_zones_seed::T, 
+    wt_lo_cover::T)where {T<:Float64}
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
@@ -401,7 +451,14 @@ Tuple (SH, wsh)
     4. shade zones (weights importance of sites highly connected to or within priority zones)
     5. high cover (weights importance of sites with high cover of coral to shade)
 """
-function create_shade_matrix(A, max_area, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover)
+function create_shade_matrix(A::Matrix{Float64},
+    max_area::Vector{Float64}, 
+    wt_conn_shade::T, 
+    wt_waves::T, 
+    wt_heat::T, 
+    wt_predec_shade::T, 
+    wt_predec_zones_shade::T, 
+    wt_hi_cover)where {T<:Float64}
     # Set up decision matrix to be same size as A
     SH = copy(A)
 
@@ -442,9 +499,12 @@ Tuple :
         Values of 0 indicate sites that were not considered
 """
 function guided_site_selection(
-    d_vars::DMCDA_vars, alg_ind::T,
-    log_seed::B, log_shade::B,
-    prefseedsites::IA, prefshadesites::IB,
+    d_vars::DMCDA_vars, 
+    alg_ind::T,
+    log_seed::B, 
+    log_shade::B,
+    prefseedsites::IA, 
+    prefshadesites::IB,
     rankingsin::Matrix{T},
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
@@ -663,7 +723,13 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - `available_space` : vector/matrix : space available at each site (`k` value)
 - `depth` : vector of site ids found to be within desired depth range
 """
-function unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, available_space, depth)
+function unguided_site_selection(prefseedsites,
+    prefshadesites,
+    seed_years, 
+    shade_years, 
+    n_site_int, 
+    available_space, 
+    depth)
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.0
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
