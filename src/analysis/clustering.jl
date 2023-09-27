@@ -241,28 +241,30 @@ function target_clusters(
 end
 
 """
-    function find_scenarios(outcomes::AbstractArray, clusters::AbstractMatrix, filter_functions::Vector{Function}; aggregation_function::Function=temporal_variability)::BitVector
-    function find_scenarios(outcomes::AbstractArray, clusters::AbstractMatrix, filter_function::Function; aggregation_function::Function=temporal_variability)::BitVector
+    find_scenarios(outcomes::AbstractArray, clusters::AbstractMatrix, filter_functions::Vector{Function}; aggregation_function::Function=temporal_variability)::BitVector
+    find_scenarios(outcomes::AbstractArray, clusters::AbstractMatrix, filter_function::Function; aggregation_function::Function=temporal_variability)::BitVector
 
 Find scenarios across a list of given metrics outcomes using clustering strategy:
 For each metric outcome:
     - A median series is computed for each previously computed cluster (passed as argument)
     - A summary statistics is computed for each median series (default is temporal variance)
     - Selected clusters are those whose summary statistics is true for given function
+
 Selected scenarios are, then, those that belong to the selected cluster for all outcomes
 
 # Arguments
-- `outcomes_clusters` : Matrix where each col is a cluster vector for a different outcome,
-outcomes::AbstractArray,
-robustness_funcs::Vector{Function};
-temporal_aggregation_func::Function=temporal_variability,
+- `outcomes` : 3-dimensional array with one matrix of scenario outcomes for each scenario
+metric
+- `clusters` : Matrix where each col is a cluster vector for a different outcome
+- `filter_functions` :
+aggregation_function::Function=temporal_variability,
 
 # Returns
 BitVector with true for robust scenarios and false for non-robust
 
 # Example
 ```julia
-metrics::Vector{ADRIA.metrics.Metric} = [
+metrics = [
     ADRIA.metrics.scenario_total_cover,
     ADRIA.metrics.scenario_asv
 ]
@@ -272,13 +274,11 @@ outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
 num_clusters = 6
 
 # Cluster scenarios based on outcomes
-outcomes_clusters::AbstractMatrix{Int64} = ADRIA.analysis.cluster_scenarios(
-    outcomes, num_clusters
-)
+outcomes_clusters = ADRIA.analysis.cluster_scenarios(outcomes, num_clusters)
 
 robustness_limit = 0.25
 robustness_func(x) = x .>= quantile(x, robustness_limit)
-robust_scenarios = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, robustness_func)
+robust_scens = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, robustness_func)
 ```
 """
 function find_scenarios(
