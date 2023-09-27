@@ -153,7 +153,8 @@ function ranks_to_location_order(ranks::NamedDimsArray)
     end
     return location_orders
 end
-function ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
+function ranks_to_location_order(ranks::NamedDimsArray, 
+    iv_type::String)
     ranks_set = _get_iv_type(ranks, iv_type)
     return ranks_to_location_order(ranks_set)
 end
