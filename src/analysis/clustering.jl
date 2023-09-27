@@ -129,7 +129,7 @@ function cluster_series(
 end
 
 """
-    cluster_scenarios(data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
+    cluster_scenarios(data::AbstractArray{T}, n_clusters::Int64)::Array{Int64} where {T<:Real}
 
 Alias to cluster_series.
 
@@ -140,11 +140,51 @@ Alias to cluster_series.
 
 # Returns
 - `Vector` : Cluster ids indicating which cluster each scenario belongs to.
+
+# Example
+One can cluster scenarios based on a single Metric, passing a Matrix of outcomes for each
+timestep and scenario:
+
+    ```julia
+# Matrix of outcomes
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+
+# Cluster scenarios
+num_cluster = 6
+clusters = ADRIA.analysis.cluster_series(s_tac, num_clusters)
+```
+And perform multiple clusterings, based on multiple Metrics, passing a 3-dimensional Array
+(or NamedDimsArray) of outcomes for each timestep, scenario and Metric
+
+```julia
+metrics::Vector{ADRIA.metrics.Metric} = [
+    ADRIA.metrics.scenario_total_cover,
+    ADRIA.metrics.scenario_asv,
+    ADRIA.metrics.scenario_absolute_juveniles,
+]
+
+# 3-dimensional array of outcomes
+outcomes = ADRIA.metrics.scenario_outcomes(rs, _metrics)
+
+# Cluster scenarios
+num_clusters = 6
+outcomes_clusters = ADRIA.analysis.cluster_scenarios(outcomes, num_clusters)
+```
 """
 function cluster_scenarios(
-    data::AbstractMatrix{T}, n_clusters::Int64
-)::Vector{Int64} where {T<:Real}
-    return cluster_series(data, n_clusters)
+    data::AbstractArray{T}, n_clusters::Int64
+)::Array{Int64} where {T<:Real}
+    ndims(data) == 2 && return cluster_series(data, n_clusters)
+
+    num_metrics = size(data, 3)
+    num_scenarios = size(data, 2)
+
+    clusters = zeros(Int64, num_scenarios, num_metrics)
+    for m in 1:num_metrics
+        clusters[:, m] = cluster_series(data[:, :, m], n_clusters)
+    end
+
+    return clusters
 end
 
 """
