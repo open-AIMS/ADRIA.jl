@@ -80,7 +80,6 @@ function discretize_outcomes(y; S=20)
     return y_disc
 end
 
-#include("pareto.jl")
 include("clustering.jl")
 include("intervention.jl")
 include("pareto.jl")
