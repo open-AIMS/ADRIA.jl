@@ -64,6 +64,15 @@ function metric_name(f::Function)::String
 end
 
 """
+    name_symbol(m::Metric)::String
+
+Get name of metric as a symbol.
+"""
+function name_symbol(m::Metric)::Symbol
+    return Symbol(replace(metric_name(m), ' ' => '_'))
+end
+
+"""
     metric_label(m::Metric)::String
     metric_label(f::Function, unit::String)
 
