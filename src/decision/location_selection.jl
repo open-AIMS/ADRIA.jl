@@ -105,6 +105,8 @@ function run_site_selection(domain::Domain,
     
         ranks_store(scenarios=scen_idx, sites=domain.site_ids[considered_sites]) .= _site_selection(domain, mcda_vars_temp, scen.guided)
     end
+    # Set filtered locations as n_locs+1 for consistency with time dependent ranks
+    ranks_store[ranks_store.==0.0] .= length(domain.site_ids)+1
 
     return ranks_store
 
