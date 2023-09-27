@@ -180,3 +180,44 @@ end
 Calculate the mean coral evenness for each scenario for the entire domain.
 """
 scenario_evenness = Metric(_scenario_evenness, (:timesteps, :scenarios))
+
+"""
+    scenario_outcomes(rs::ResultSet, metrics::Vector{Metric})::NamedDimsArray
+
+Get outcomes for a given list of metrics and a result set
+
+# Arguments
+    - `rs` : ResultSet
+    - `metrics` : Vector of scenario metrics (the ones that start "with scenario_")
+
+# Returns
+    NamedDimsArray with (:timesteps, :scenarios, :outcomes)
+
+# Examples
+```
+_metrics::Vector{ADRIA.metrics.Metric} = [
+    ADRIA.metrics.scenario_total_cover,
+    ADRIA.metrics.scenario_asv,
+    ADRIA.metrics.scenario_absolute_juveniles,
+]
+
+#  DataCube of outcomes (NamedDimsArray)
+outcomes_c = ADRIA.metrics.scenario_outcomes(rs, _metrics)
+```
+"""
+function scenario_outcomes(rs::ResultSet, metrics::Vector{Metric})::NamedDimsArray
+    num_timesteps = length(timesteps(rs))
+    num_scenarios = size(rs.inputs, 1)
+    num_metrics = length(metrics)
+
+    outcomes = NamedDimsArray{(:timesteps, :scenarios, :outcomes)}(
+        zeros(Float64, num_timesteps, num_scenarios, num_metrics)
+    )
+
+    for (i, metric) in enumerate(metrics)
+        outcome = metric(rs)
+        outcomes[:, :, i] = outcome
+    end
+
+    return outcomes
+end
