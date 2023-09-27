@@ -83,7 +83,7 @@ end
 #include("pareto.jl")
 include("clustering.jl")
 include("intervention.jl")
-include("robust_decision_making.jl")
+include("pareto.jl")
 include("rule_extraction.jl")
 include("sensitivity.jl")
 
