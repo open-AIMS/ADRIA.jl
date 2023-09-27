@@ -273,9 +273,10 @@ function retrieve_ranks(
     return retrieve_ranks(site_ids, results.scores, maximize)
 end
 function retrieve_ranks(
-    site_ids::Vector,
+    site_ids::Vector{Float64},
     scores::Vector,
-    maximize::Bool)::Matrix{Union{Float64,Int64}}
+    maximize::Bool
+)::Matrix{Union{Float64,Int64}}
     s_order::Vector{Int64} = sortperm(scores, rev=maximize)
     return Union{Float64,Int64}[Int64.(site_ids[s_order]) scores[s_order]]
 end
