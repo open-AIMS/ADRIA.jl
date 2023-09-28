@@ -176,11 +176,10 @@ function cluster_scenarios(
 )::Array{Int64} where {T<:Real}
     ndims(data) == 2 && return cluster_series(data, n_clusters)
 
-    num_metrics = size(data, 3)
-    num_scenarios = size(data, 2)
+    _, n_metrics, n_scenarios = size(data)
 
-    clusters = zeros(Int64, num_scenarios, num_metrics)
-    for m in 1:num_metrics
+    clusters = zeros(Int64, n_scenarios, n_metrics)
+    for m in 1:n_metrics
         clusters[:, m] = cluster_series(data[:, :, m], n_clusters)
     end
 
