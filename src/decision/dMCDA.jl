@@ -46,7 +46,6 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     dist # ::M
     use_dist # ::Int64
     min_dist # ::Float64
-    top_n # ::Int64
     wt_in_conn_seed  # ::F
     wt_out_conn_seed  # ::F
     wt_conn_shade  # ::F
@@ -103,7 +102,6 @@ function DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
         domain.site_distances,
         criteria("use_dist"),
         domain.median_site_distance - domain.median_site_distance * criteria("dist_thresh"),
-        criteria("top_n"),
         criteria("in_seed_connectivity"),
         criteria("out_seed_connectivity"),
         criteria("shade_connectivity"),
@@ -546,7 +544,9 @@ function guided_site_selection(
     elseif log_seed
         prefseedsites, s_order_seed = rank_sites!(SE, wse, rankings, n_site_int, mcda_func, 2)
         if use_dist != 0
-            prefseedsites, rankings = distance_sorting(prefseedsites, s_order_seed, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 2)
+            prefseedsites, rankings = distance_sorting(
+                prefseedsites, s_order_seed, d_vars.dist, min_dist, rankings, 2
+            )
         end
     end
 
@@ -555,7 +555,9 @@ function guided_site_selection(
     elseif log_shade
         prefshadesites, s_order_shade = rank_sites!(SH, wsh, rankings, n_site_int, mcda_func, 3)
         if use_dist != 0
-            prefshadesites, rankings = distance_sorting(prefshadesites, s_order_shade, d_vars.dist, min_dist, Int64(d_vars.top_n), rankings, 3)
+            prefshadesites, rankings = distance_sorting(
+                prefshadesites, s_order_shade, d_vars.dist, min_dist, rankings, 3
+            )
         end
     end
 
@@ -572,29 +574,31 @@ function guided_site_selection(
 end
 
 """
-    distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Matrix{Float64}, dist_thresh::Float64, top_n::Int64)::AbstractArray{Int}
+    distance_sorting(pref_sites::AbstractArray{Int}, site_order::AbstractVector, dist::Matrix{Float64}, dist_thresh::Float64)::AbstractArray{Int}
 
 Find selected sites with distances between each other < median distance-dist_thresh*(median distance).
-Replaces these sites with sites in the top_n ranks if the distance between these sites is greater.
+Replaces these sites with sites in the top ranks if the distance between these sites is greater.
 
 # Arguments
 - `pref_sites` : original n highest ranked sites selected for seeding or shading.
 - `site_order` : current order of ranked sites in terms of numerical site ID.
 - `dist` : Matrix of unique distances between sites.
 - `min_dist` : minimum distance between sites for selected sites.
-- `top_n` : number of top ranked sites to re-select from.
 
 # Returns
 - `prefsites` : new set of selected sites for seeding or shading.
 """
 function distance_sorting(pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Matrix{Float64},
-    min_dist::Float64, top_n::Int64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
+    min_dist::Float64,
+    rankings::Matrix{Int64},
+    rank_col::Int64,
+)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
     n_sites = length(pref_sites)
     site_order = s_order[:, 1]
 
     # sites to select alternatives from
-    alt_sites = setdiff(site_order, pref_sites)[1:min(top_n, length(site_order) - n_sites)]
+    alt_sites = setdiff(site_order, pref_sites)
 
     # find all selected sites closer than the min distance
     pref_dists = findall(dist[pref_sites, pref_sites] .< min_dist)
