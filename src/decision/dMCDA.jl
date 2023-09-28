@@ -77,8 +77,8 @@ Constuctors for DMCDA variables.
 function DMCDA_vars(
     domain::Domain, 
     criteria::NamedDimsArray,
-    site_ids::AbstractArray, 
-    sum_cover::AbstractArray, 
+    site_ids::AbstractArray,
+    sum_cover::AbstractArray,
     area_to_seed::Float64,
     waves::AbstractArray, 
     dhws::AbstractArray
@@ -182,9 +182,7 @@ end
 
 Align a vector of site rankings to match the indicated order in `s_order`.
 """
-function align_rankings!(rankings::Array, 
-    s_order::Matrix, 
-    col::Int64)::Nothing
+function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # Fill target ranking column
     for (i, site_id) in enumerate(s_order[:, 1])
         rankings[rankings[:, 1].==site_id, col] .= i
