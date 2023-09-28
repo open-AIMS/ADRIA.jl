@@ -898,7 +898,9 @@ Calculates mean over specified dimensions plus half the standard deviation.
 - Mean + std of input env_layer, where std is weighted by (1-w), mean is weighted by
 w and aggregated over dims.
 """
-function sum_stat_env(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)
+function sum_stat_env(
+    env_layer::NamedDimsArray, dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5
+)
     return vec((mean(env_layer, dims=dims).* w) .+ (std(env_layer, dims=dims) .* (1.0 - w)))
 end
 
@@ -915,6 +917,8 @@ Calculates criteria for depth filtering in MCDA.
 # Returns
 - Vector of indices indicating locations which satisfy the depth criteria.
 """
-function depth_criteria_indx(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}    
+function depth_criteria_indx(
+    depth_med::Vector{T}, depth_max::T, depth_min::T
+)::Vector{T} where {T<:Float64}
     return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
 end
