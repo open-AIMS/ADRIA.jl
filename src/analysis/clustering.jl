@@ -5,7 +5,7 @@ using ADRIA
 using JuliennedArrays
 
 """
-    _complexity(x::AbstractMatrix{T})::AbstractMatrix{Float64} where {T <: Real}
+    _complexity(x::AbstractMatrix{Real})::AbstractMatrix{Float64}
 
 Compute Complexity (CE) of an Matrix `x` of shape \$T ⋅ S\$, where \$T\$ is total number of
 time steps and \$S\$ is number of scenarios.
@@ -23,7 +23,7 @@ Vector{Float64}:
  2
  5
 """
-function _complexity(x::AbstractMatrix{T})::Vector{Float64} where {T<:Real}
+function _complexity(x::AbstractMatrix{Real})::Vector{Float64}
     return vec(sqrt.(sum(diff(Matrix(x); dims=1) .^ 2; dims=1)) .+ 1)
 end
 
@@ -51,7 +51,7 @@ function correction_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
 end
 
 """
-    complexity_invariance_distance(data::AbstractMatrix{T})::AbstractMatrix{Float64} where {T<:Real}
+    complexity_invariance_distance(data::AbstractMatrix{Real})::AbstractMatrix{Float64}
 
 Compute Complexity Invariance Distance (CID) between every matrix column pairs (`data`) of
 shape \$T ⋅ S\$. The distance between every two series is the weighted euclidian distanced
@@ -64,9 +64,7 @@ series complexities. Returns a matrix of distances (\$S ⋅ S\$).
 # Returns
 Matrix of complexity invariance distances
 """
-function complexity_invariance_distance(
-    data::AbstractMatrix{T}
-)::AbstractMatrix{Float64} where {T<:Real}
+function complexity_invariance_distance(data::AbstractMatrix{Real})::AbstractMatrix{Float64}
     # Compute complexity vector
     complexity = _complexity(data)
 
@@ -93,7 +91,7 @@ function complexity_invariance_distance(
 end
 
 """
-    cluster_series(data::AbstractMatrix{T}, n_clusters::Int64)::Vector{Int64} where {T<:Real}
+    cluster_series(data::AbstractMatrix{Real}, n_clusters::Int64)::Vector{Int64}
 
 Hierarchically cluster \$S\$ scenarios with \$T\$ time steps each.
 
@@ -117,9 +115,7 @@ Hierarchically cluster \$S\$ scenarios with \$T\$ time steps each.
    Data Min Knowl Disc 28, 634-669.
    https://doi.org/10.1007/s10618-013-0312-3
 """
-function cluster_series(
-    data::AbstractMatrix{T}, n_clusters::Int64
-)::Vector{Int64} where {T<:Real}
+function cluster_series(data::AbstractMatrix{Real}, n_clusters::Int64)::Vector{Int64}
     # Create dendogram using distantes matrix
     distances = complexity_invariance_distance(data)
     dendogram = hclust(distances; linkage=:average)
@@ -129,7 +125,7 @@ function cluster_series(
 end
 
 """
-    cluster_scenarios(data::AbstractArray{T}, n_clusters::Int64)::Array{Int64} where {T<:Real}
+    cluster_scenarios(data::AbstractArray{Real}, n_clusters::Int64)::Array{Int64}
 
 Alias to cluster_series.
 
@@ -172,9 +168,7 @@ num_clusters = 6
 outcomes_clusters = ADRIA.analysis.cluster_scenarios(outcomes, num_clusters)
 ```
 """
-function cluster_scenarios(
-    data::AbstractArray{T}, n_clusters::Int64
-)::Array{Int64} where {T<:Real}
+function cluster_scenarios(data::AbstractArray{Real}, n_clusters::Int64)::Array{Int64}
     ndims(data) == 2 && return cluster_series(data, n_clusters)
 
     _, n_metrics, n_scenarios = size(data)
@@ -188,7 +182,7 @@ function cluster_scenarios(
 end
 
 """
-    target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{F}; metric=temporal_variability, size_limit=0.01) where {T<:Int64,F<:Real}
+    target_clusters(clusters::Vector{T}, outcomes::AbstractMatrix{Real}; metric=temporal_variability, size_limit=0.01) where {T<:Int64}
 
 Cluster scenarios into target and non target based on median outcome temporal variability of
 previous time series cluster.
@@ -205,10 +199,10 @@ Vector containing 1's for target and 0's for non-target clusters
 """
 function target_clusters(
     clusters::Vector{T},
-    outcomes::AbstractMatrix{F};
+    outcomes::AbstractMatrix{Real};
     metric=temporal_variability,
     size_limit=0.01,
-)::Vector{T} where {T<:Int64,F<:Real}
+)::Vector{T} where {T<:Int64}
 
     # Compute statistic for each cluster
     clusters_statistics::Vector{Float64} = []
