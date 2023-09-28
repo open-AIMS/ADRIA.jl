@@ -104,9 +104,7 @@ function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)
     for idx in eachindex(ordered_types)
         line_color = (colors[idx], 0.8)
         y_median = confints[idx][2]
-        scatterlines!(
-            ax, y_median; color=line_color, linewidth=3, markersize=20, marker=:xcross
-        )
+        lines!(ax, y_median; color=line_color, linewidth=4)
     end
 
     return nothing
