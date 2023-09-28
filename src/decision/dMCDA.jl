@@ -74,10 +74,11 @@ end
 
 Constuctors for DMCDA variables.
 """
-function DMCDA_vars(domain::Domain, 
+function DMCDA_vars(
+    domain::Domain,
     criteria::NamedDimsArray,
-    site_ids::AbstractArray, 
-    sum_cover::AbstractArray, 
+    site_ids::AbstractArray,
+    sum_cover::AbstractArray,
     area_to_seed::Float64,
     waves::AbstractArray, 
     dhws::AbstractArray)::DMCDA_vars
@@ -121,18 +122,20 @@ function DMCDA_vars(domain::Domain,
 
     return mcda_vars
 end
-function DMCDA_vars(domain::Domain, 
-    criteria::NamedDimsArray, 
-    site_ids::AbstractArray, 
-    sum_cover::AbstractArray, 
+function DMCDA_vars(
+    domain::Domain,
+    criteria::NamedDimsArray,
+    site_ids::AbstractArray,
+    sum_cover::AbstractArray,
     area_to_seed::Float64)::DMCDA_vars
     num_sites = n_locations(domain)
     return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(num_sites, 1), zeros(num_sites, 1))
 end
-function DMCDA_vars(domain::Domain, 
-    criteria::DataFrameRow, 
+function DMCDA_vars(
+    domain::Domain,
+    criteria::DataFrameRow,
     site_ids::AbstractArray,
-    sum_cover::AbstractArray, 
+    sum_cover::AbstractArray,
     area_to_seed::Float64, 
     waves::AbstractArray, 
     dhw::AbstractArray)::DMCDA_vars
@@ -140,10 +143,11 @@ function DMCDA_vars(domain::Domain,
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed, waves, dhw)
 end
-function DMCDA_vars(domain::Domain, 
-    criteria::DataFrameRow, 
+function DMCDA_vars(
+    domain::Domain,
+    criteria::DataFrameRow,
     site_ids::AbstractArray,
-    sum_cover::AbstractArray, 
+    sum_cover::AbstractArray,
     area_to_seed::Float64)::DMCDA_vars
 
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
@@ -174,9 +178,7 @@ end
 
 Align a vector of site rankings to match the indicated order in `s_order`.
 """
-function align_rankings!(rankings::Array, 
-    s_order::Matrix, 
-    col::Int64)::Nothing
+function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # Fill target ranking column
     for (i, site_id) in enumerate(s_order[:, 1])
         rankings[rankings[:, 1].==site_id, col] .= i
@@ -199,10 +201,11 @@ end
 # Returns
 - `prefsites` : sites in order of their rankings
 """
-function rank_sites!(S::Matrix{Float64}, 
-    weights::Vector{Float64}, 
-    rankings::Matrix{Int64}, 
-    n_site_int::Int64, 
+function rank_sites!(
+    S::Matrix{Float64},
+    weights::Vector{Float64},
+    rankings::Matrix{Int64},
+    n_site_int::Int64,
     mcda_func::Union{Function,Type{<:MCDMMethod}}, 
     rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
@@ -241,28 +244,31 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 # Returns
 - `s_order` : [site_ids, criteria values, ranks]
 """
-function retrieve_ranks(S::Matrix{Float64}, 
-    site_ids::Vector{Float64}, 
-    weights::Vector{Float64}, 
+function retrieve_ranks(
+    S::Matrix{Float64},
+    site_ids::Vector{Float64},
+    weights::Vector{Float64},
     mcda_func::Function)
     S = mcda_normalize(S) .* weights'
     scores = mcda_func(S)
 
     return retrieve_ranks(site_ids, vec(scores), true)
 end
-function retrieve_ranks(S::Matrix{Float64}, 
-    site_ids::Vector{Float64}, 
-    weights::Vector{Float64}, 
-    mcda_func::Type{<:MCDMMethod})
+function retrieve_ranks(
+    S::Matrix{Float64},
+    site_ids::Vector{Float64},
+    weights::Vector{Float64},
+    mcda_func::Type{<:MCDMMethod},
+)
     fns = fill(maximum, length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func())
     maximize = results.bestIndex == argmax(results.scores)
 
     return retrieve_ranks(site_ids, results.scores, maximize)
 end
-function retrieve_ranks(site_ids::Vector{Float64},
-    scores::Vector,
-    maximize::Bool)::Matrix{Union{Float64,Int64}}
+function retrieve_ranks(
+    site_ids::Vector{Float64}, scores::Vector, maximize::Bool
+)::Matrix{Union{Float64,Int64}}
     s_order::Vector{Int64} = sortperm(scores, rev=maximize)
     return Union{Float64,Int64}[Int64.(site_ids[s_order]) scores[s_order]]
 end
@@ -297,11 +303,12 @@ Columns indicate:
 - `predec` : list of priority predecessors (sites strongly connected to priority sites)
 - `risk_tol` : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risk_tol are filtered out.
 """
-function create_decision_matrix(site_ids::Vector{Int64}, 
-    in_conn::T, 
-    out_conn::T, 
-    sum_cover::Union{NamedDimsArray,T}, 
-    max_cover::T, 
+function create_decision_matrix(
+    site_ids::Vector{Int64},
+    in_conn::T,
+    out_conn::T,
+    sum_cover::Union{NamedDimsArray,T},
+    max_cover::T,
     area::T, 
     wave_stress::T, 
     heat_stress::T, 
@@ -388,10 +395,11 @@ Tuple (SE, wse)
     6. seed zones (weights importance of sites highly connected to or within priority zones for seeding)
     7. low cover (weights importance of sites with low cover/high available real estate to plant corals)
 """
-function create_seed_matrix(A::Matrix{Float64}, 
-    min_area::T, 
-    wt_in_conn_seed::T, 
-    wt_out_conn_seed::T, 
+function create_seed_matrix(
+    A::Matrix{Float64},
+    min_area::T,
+    wt_in_conn_seed::T,
+    wt_out_conn_seed::T,
     wt_waves::T, 
     wt_heat::T, 
     wt_predec_seed::T, 
@@ -499,9 +507,9 @@ Tuple :
         Values of 0 indicate sites that were not considered
 """
 function guided_site_selection(
-    d_vars::DMCDA_vars, 
+    d_vars::DMCDA_vars,
     alg_ind::T,
-    log_seed::B, 
+    log_seed::B,
     log_shade::B,
     prefseedsites::IA, 
     prefshadesites::IB,
@@ -723,11 +731,12 @@ Here, `max_cover` represents the max. carrying capacity for each site (the `k` v
 - `available_space` : vector/matrix : space available at each site (`k` value)
 - `depth` : vector of site ids found to be within desired depth range
 """
-function unguided_site_selection(prefseedsites,
+function unguided_site_selection(
+    prefseedsites,
     prefshadesites,
-    seed_years, 
-    shade_years, 
-    n_site_int, 
+    seed_years,
+    shade_years,
+    n_site_int,
     available_space, 
     depth)
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.0
