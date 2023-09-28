@@ -168,7 +168,7 @@ outcomes_clusters = ADRIA.analysis.cluster_scenarios(outcomes, num_clusters)
 function cluster_scenarios(data::AbstractArray{<:Real}, n_clusters::Int64)::Array{Int64}
     ndims(data) == 2 && return cluster_series(data, n_clusters)
 
-    _, n_metrics, n_scenarios = size(data)
+    _, n_scenarios, n_metrics = size(data)
 
     clusters = zeros(Int64, n_scenarios, n_metrics)
     for m in 1:n_metrics
