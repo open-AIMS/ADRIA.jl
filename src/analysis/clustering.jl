@@ -15,13 +15,6 @@ time steps and \$S\$ is number of scenarios.
 
 # Returns
 Vector of \$N\$ elements
-
-# Examples
-```julia-repl
-julia> CE([[1; 2; 3] [1; 3; 4]))
-Vector{Float64}:
- 2
- 5
 """
 function _complexity(x::AbstractMatrix{Real})::Vector{Float64}
     return vec(sqrt.(sum(diff(Matrix(x); dims=1) .^ 2; dims=1)) .+ 1)
@@ -40,11 +33,12 @@ Compute Correction Factor (CF) between two time series complexities `ce_i` and `
 Float64
 
 # Examples
-```julia-repl
-julia> ce = CE([[1; 2; 3] [1; 3; 4]))
-julia> CF(ce[1], ce[2])
+```julia
+julia> ce = complexity([[1, 2, 3] [1, 3, 4]])
+julia> correction_factor(ce[1], ce[2])
 Float64:
  2.5
+ ```
 """
 function correction_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
     return max(ce_i, ce_j) / min(ce_i, ce_j)
@@ -59,10 +53,11 @@ multiplied by the correction factor, which takes into account the ration between
 series complexities. Returns a matrix of distances (\$S ⋅ S\$).
 
 # Arguments
-- `data` : Matrix of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is number of scenarios
+- `data` : Matrix of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is
+number of scenarios
 
 # Returns
-Matrix of complexity invariance distances
+Matrix of complexity invariance distances.
 """
 function complexity_invariance_distance(data::AbstractMatrix{Real})::AbstractMatrix{Float64}
     # Compute complexity vector
