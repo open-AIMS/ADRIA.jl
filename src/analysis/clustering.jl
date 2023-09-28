@@ -232,28 +232,32 @@ function target_clusters(
 end
 
 """
-    find_scenarios(outcomes::AbstractArray, clusters::AbstractMatrix, filter_functions::Vector{Function}; aggregation_function::Function=temporal_variability)::BitVector
-    find_scenarios(outcomes::AbstractArray, clusters::AbstractMatrix, filter_function::Function; aggregation_function::Function=temporal_variability)::BitVector
+    find_scenarios(outcomes::AbstractMatrix{<:Real}, clusters::Vector{Int64}, filter_func::Function, aggregation_func::Function=temporal_variability)::BitVector
+    find_scenarios(outcomes::AbstractArray{<:Real,3}, clusters::AbstractMatrix{Int64}, filter_functions::Vector{Function}; aggregation_function::Function=temporal_variability)::BitVector
+    find_scenarios(outcomes::AbstractArray{<:Real}, clusters::AbstractMatrix{Int64}, filter_function::Function; aggregation_function::Function=temporal_variability)::BitVector
 
-Find scenarios across a list of given metrics outcomes using clustering strategy:
-For each metric outcome:
-    - A median series is computed for each previously computed cluster (passed as argument)
-    - A summary statistics is computed for each median series (default is temporal variance)
-    - Selected clusters are those whose summary statistics is true for given function
+If outcomes is Matrix of scenario outcomes and clusters is a Vector of clusters:
+    - Computes a median series for each cluster
+    - Use aggregation_func to compute a summary statistics for each median series
+    - Select scenarios for which filter_func returns true
 
-Selected scenarios are, then, those that belong to the selected cluster for all outcomes
+If outcomes is a a 3-dimensional Array with Matrix of outcomes for each scenario metric:
+    - Computes a median series for each cluster for each outcomes Matrix
+    - Use aggregation_func to compute a summary statistics for each median series
+    - Select scenarios for which filter_func returns true for each outcomes Matrix
+    - Select scenarios that were selected for all outcomes Matrices
 
 # Arguments
-- `outcomes` : 3-dimensional array with one matrix of scenario outcomes for each scenario
-metric
-- `clusters` : Matrix where each col is a cluster vector for a different outcome
-- `filter_functions` :
-aggregation_function::Function=temporal_variability,
+- `outcomes` : Outcomes for one or more scenario metrics
+- `clusters` : Clusters for one or more scenario metrics outcomes
+- `filter_functions` : Function used to filter/target clusters
+- `aggregation_function` : Function used to aggregate each median temporal series into a
+    single number (default is temporal_variability)
 
 # Returns
-BitVector with true for robust scenarios and false for non-robust
+BitVector with true/false for selected/not selected scenarios
 
-# Example
+# Examples
 ```julia
 metrics = [
     ADRIA.metrics.scenario_total_cover,
@@ -267,50 +271,20 @@ num_clusters = 6
 # Cluster scenarios based on outcomes
 outcomes_clusters = ADRIA.analysis.cluster_scenarios(outcomes, num_clusters)
 
-robustness_limit = 0.25
-robustness_func(x) = x .>= quantile(x, robustness_limit)
+# Find scenarios above 0.25-quantile for all metrics
+robustness_func(x) = x .>= quantile(x, 0.25)
 robust_scens = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, robustness_func)
+
+# Find scenarios in the three highest clusters for all metrics
+highest_clusters(x) = x .>= x .∈ [sort(x; rev=true)[1:3]]
+high_scens = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, highest_clusters)
 ```
 """
 function find_scenarios(
-    outcomes::AbstractArray,
-    clusters::AbstractMatrix,
-    filter_funcs::Vector{Function};
-    aggregation_func::Function=temporal_variability,
-)::BitVector
-    robust_scenarios = trues(size(clusters, 1))
-
-    # Compute summary statistics for each metric
-    for (idx, cluster) in enumerate(eachcol(clusters))
-        robust_clusters::BitVector = _find_clusters(
-            outcomes[:, :, idx], collect(cluster), filter_funcs[idx], aggregation_func
-        )
-
-        # Select scenarios that are robust across all metrics
-        aux_rc::BitVector = cluster .∈ Vector{Int64}[unique(cluster)[robust_clusters]]
-
-        robust_scenarios = robust_scenarios .& aux_rc
-    end
-
-    return robust_scenarios
-end
-function find_scenarios(
-    outcomes::AbstractArray,
-    clusters::AbstractMatrix,
+    outcomes::AbstractMatrix{<:Real},
+    clusters::AbstractVector{Int64},
     filter_func::Function;
     aggregation_func::Function=temporal_variability,
-)::BitVector
-    filter_funcs::Vector{Function} = fill(filter_func, size(clusters, 2))
-    return find_scenarios(
-        outcomes, clusters, filter_funcs; aggregation_func=aggregation_func
-    )
-end
-
-function _find_clusters(
-    outcomes::AbstractArray,
-    clusters::Vector{Int64},
-    filter_func::Function,
-    aggregation_func::Function,
 )::BitVector
     clusters_summary::Vector{Float64} = zeros(length(unique(clusters)))
 
@@ -319,15 +293,44 @@ function _find_clusters(
 
         # Median series for current cluster
         tf = axes(cluster_metric, :timesteps)
-        timesteps_slices = JuliennedArrays.Slices(
-            cluster_metric[timesteps=tf], NamedDims.dim(cluster_metric, :scenarios)
-        )
+        timesteps_slices = JuliennedArrays.Slices(cluster_metric[timesteps=tf], 2)
         median_series = median.(timesteps_slices)
 
         # Summary statistics for that cluster metric
         clusters_summary[idx_c] = aggregation_func(median_series)
     end
 
-    # Robust clusters are the ones with summary statistics above the limit
-    return filter_func(clusters_summary)
+    return clusters .∈ [unique(clusters)[filter_func(clusters_summary)]]
+end
+function find_scenarios(
+    outcomes::AbstractArray{<:Real,3},
+    clusters::AbstractMatrix{Int64},
+    filter_funcs::Vector{Function};
+    aggregation_func::Function=temporal_variability,
+)::BitVector
+    scenarios = trues(size(clusters, 1))
+
+    # Find scenarios for each clustered outcomes
+    for (idx, clust) in enumerate(eachcol(clusters))
+        scenarios =
+            scenarios .& find_scenarios(
+                outcomes[:, :, idx],
+                collect(clust),
+                filter_funcs[idx];
+                aggregation_func=aggregation_func,
+            )
+    end
+
+    return scenarios
+end
+function find_scenarios(
+    outcomes::AbstractArray{<:Real},
+    clusters::AbstractMatrix{Int64},
+    filter_func::Function;
+    aggregation_func::Function=temporal_variability,
+)::BitVector
+    filter_funcs::Vector{Function} = fill(filter_func, size(clusters, 2))
+    return find_scenarios(
+        outcomes, clusters, filter_funcs; aggregation_func=aggregation_func
+    )
 end
