@@ -275,18 +275,15 @@ robust_scens = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, robust
 function find_scenarios(
     outcomes::AbstractArray,
     clusters::AbstractMatrix,
-    filter_functions::Vector{Function};
-    aggregation_function::Function=temporal_variability,
+    filter_funcs::Vector{Function};
+    aggregation_func::Function=temporal_variability,
 )::BitVector
     robust_scenarios = trues(size(clusters, 1))
 
     # Compute summary statistics for each metric
     for (idx, cluster) in enumerate(eachcol(clusters))
         robust_clusters::BitVector = _find_clusters(
-            outcomes[:, :, idx],
-            collect(cluster),
-            filter_functions[idx],
-            aggregation_function,
+            outcomes[:, :, idx], collect(cluster), filter_funcs[idx], aggregation_func
         )
 
         # Select scenarios that are robust across all metrics
@@ -300,20 +297,20 @@ end
 function find_scenarios(
     outcomes::AbstractArray,
     clusters::AbstractMatrix,
-    filter_function::Function;
-    aggregation_function::Function=temporal_variability,
+    filter_func::Function;
+    aggregation_func::Function=temporal_variability,
 )::BitVector
-    filter_functions::Vector{Function} = fill(filter_function, size(clusters, 2))
+    filter_funcs::Vector{Function} = fill(filter_func, size(clusters, 2))
     return find_scenarios(
-        outcomes, clusters, filter_functions; aggregation_function=aggregation_function
+        outcomes, clusters, filter_funcs; aggregation_func=aggregation_func
     )
 end
 
 function _find_clusters(
     outcomes::AbstractArray,
     clusters::Vector{Int64},
-    filter_function::Function,
-    aggregation_function::Function,
+    filter_func::Function,
+    aggregation_func::Function,
 )::BitVector
     clusters_summary::Vector{Float64} = zeros(length(unique(clusters)))
 
@@ -328,9 +325,9 @@ function _find_clusters(
         median_series = median.(timesteps_slices)
 
         # Summary statistics for that cluster metric
-        clusters_summary[idx_c] = aggregation_function(median_series)
+        clusters_summary[idx_c] = aggregation_func(median_series)
     end
 
     # Robust clusters are the ones with summary statistics above the limit
-    return filter_function(clusters_summary)
+    return filter_func(clusters_summary)
 end
