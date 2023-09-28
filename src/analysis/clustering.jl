@@ -145,16 +145,17 @@ Alias to cluster_series.
 One can cluster scenarios based on a single Metric, passing a Matrix of outcomes for each
 timestep and scenario:
 
-    ```julia
+```julia
 # Matrix of outcomes
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 
 # Cluster scenarios
-num_cluster = 6
-clusters = ADRIA.analysis.cluster_series(s_tac, num_clusters)
+n_cluster = 6
+clusters = ADRIA.analysis.cluster_series(s_tac, n_clusters)
 ```
+
 And perform multiple clusterings, based on multiple Metrics, passing a 3-dimensional Array
-(or NamedDimsArray) of outcomes for each timestep, scenario and Metric
+(or NamedDimsArray) of outcomes for each timestep, scenario and Metric.
 
 ```julia
 metrics::Vector{ADRIA.metrics.Metric} = [
@@ -164,7 +165,7 @@ metrics::Vector{ADRIA.metrics.Metric} = [
 ]
 
 # 3-dimensional array of outcomes
-outcomes = ADRIA.metrics.scenario_outcomes(rs, _metrics)
+outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
 
 # Cluster scenarios
 num_clusters = 6
