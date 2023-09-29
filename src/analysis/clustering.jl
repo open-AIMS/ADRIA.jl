@@ -233,24 +233,24 @@ end
 
 """
     find_scenarios(outcomes::AbstractMatrix{<:Real}, clusters::Vector{Int64}, filter_func::Function, aggregation_func::Function=temporal_variability)::BitVector
-    find_scenarios(outcomes::AbstractArray{<:Real,3}, clusters::AbstractMatrix{Int64}, filter_functions::Vector{Function}; aggregation_function::Function=temporal_variability)::BitVector
-    find_scenarios(outcomes::AbstractArray{<:Real}, clusters::AbstractMatrix{Int64}, filter_function::Function; aggregation_function::Function=temporal_variability)::BitVector
+    find_scenarios(outcomes::AbstractArray{<:Real,3}, clusters::AbstractMatrix{Int64}, filter_funcs::Vector{Function}; aggregation_function::Function=temporal_variability)::BitVector
+    find_scenarios(outcomes::AbstractArray{<:Real,3}, clusters::AbstractMatrix{Int64}, filter_func::Function; aggregation_function::Function=temporal_variability)::BitVector
 
 If outcomes is Matrix of scenario outcomes and clusters is a Vector of clusters:
-    - Computes a median series for each cluster
-    - Use aggregation_func to compute a summary statistics for each median series
-    - Select scenarios for which filter_func returns true
+- Computes a median series for each cluster
+- Use aggregation_func to compute a summary statistics for each median series
+- Select scenarios for which `filter_func` returns true
 
-If outcomes is a a 3-dimensional Array with Matrix of outcomes for each scenario metric:
-    - Computes a median series for each cluster for each outcomes Matrix
-    - Use aggregation_func to compute a summary statistics for each median series
-    - Select scenarios for which filter_func returns true for each outcomes Matrix
-    - Select scenarios that were selected for all outcomes Matrices
+If outcomes is a 3-dimensional array of scenario outcomes:
+- Computes a median series for each outcome cluster
+- Use aggregation_func to compute a summary statistics for each median series
+- Select scenarios for which `filter_func` returns true for each matrix of outcomes
+- Select scenarios that were selected for all outcomes
 
 # Arguments
 - `outcomes` : Outcomes for one or more scenario metrics
-- `clusters` : Clusters for one or more scenario metrics outcomes
-- `filter_functions` : Function used to filter/target clusters
+- `clusters` : Clusters for one or more scenario metric outcomes
+- `filter_funcs` : Function used to filter/target clusters
 - `aggregation_function` : Function used to aggregate each median temporal series into a
     single number (default is temporal_variability)
 
@@ -324,7 +324,7 @@ function find_scenarios(
     return scenarios
 end
 function find_scenarios(
-    outcomes::AbstractArray{<:Real},
+    outcomes::AbstractArray{<:Real,3},
     clusters::AbstractMatrix{Int64},
     filter_func::Function;
     aggregation_func::Function=temporal_variability,
