@@ -205,12 +205,12 @@ metrics::Vector{ADRIA.metrics.Metric} = [
 outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
 ```
 """
-function scenario_outcomes(rs::ResultSet, metrics::Vector{Metric})::NamedDimsArray
+function scenario_outcomes(rs::ResultSet, metrics::Vector{<:Metric})::NamedDimsArray
     n_timesteps = length(timesteps(rs))
     n_scenarios = size(rs.inputs, 1)
     n_metrics = length(metrics)
 
-    outcomes = NamedDimsArray(
+    scen_outcomes = NamedDimsArray(
         zeros(n_timesteps, n_scenarios, n_metrics);
         timesteps=timesteps(rs),
         scenarios=1:n_scenarios,
@@ -218,8 +218,8 @@ function scenario_outcomes(rs::ResultSet, metrics::Vector{Metric})::NamedDimsArr
     )
 
     for (i, metric) in enumerate(metrics)
-        outcomes[:, :, i] = metric(rs)
+        scen_outcomes[:, :, i] = metric(rs)
     end
 
-    return outcomes
+    return scen_outcomes
 end
