@@ -114,8 +114,9 @@ function _plot_scenarios_series!(
     ax::Axis, rs::ResultSet, data::NamedDimsArray, series_opts::Dict
 )::Nothing
     series_colors = pop!(series_opts, :color)
-    for type in _order_by_variance(data, scenario_type(rs))
-        selected_scenarios = scenario_type(rs)[type]
+    scenario_types = scenario_type(rs)
+    for type in _order_by_variance(data, scenario_types)
+        selected_scenarios = scenario_types[type]
         _color = series_colors[selected_scenarios]
 
         series!(ax, data[:, selected_scenarios]'; solid_color=_color, series_opts...)
