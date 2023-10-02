@@ -50,12 +50,6 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::Abstra
         c_spec = (; zip(fields, [getfield(criteria, f) for f in fields])...)
         @set! c_spec.depth_min.bounds = (min_depth, minimum([min_depth + 2.0, maximum(site_data.depth_med)]))
 
-        # Update number of sites to consider for distance-based spreading
-        max_top_n = ceil(Int64, 2.0 * length(site_ids) ./ 3.0)
-        if (criteria.top_n.bounds[2] > max_top_n) || (criteria.top_n.bounds[1] < sim_constants.n_site_int)
-            @set! c_spec.top_n.bounds = (sim_constants.n_site_int, minimum([10, max_top_n]))
-        end
-
         criteria = Criteria(c_spec...)
     end
 
