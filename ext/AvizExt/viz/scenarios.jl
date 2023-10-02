@@ -87,26 +87,27 @@ function ADRIA.viz.scenarios!(
 end
 
 function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)::Nothing
-    x_timesteps::UnitRange{Int64} = 1:size(data, 1)
+    n_timesteps = size(data, 1)
+    x_timesteps::UnitRange{Int64} = 1:n_timesteps
     scenario_types = scenario_type(rs)
     ordered_types = _order_by_variance(data, scenario_types)
 
     selected_scenarios = [scenario_types[type] for type in ordered_types]
-    confints = [confint(data[:, scenario], :scenarios) for scenario in selected_scenarios]
     colors = [scenario_colors(rs)[scenario][1][1] for scenario in selected_scenarios]
+
+    confints = zeros(n_timesteps, length(scenario_types), 3)
+    for (idx_s, scenario) in enumerate(selected_scenarios)
+        confints[:, idx_s, :] = reduce(hcat, confint(data[:, scenario], :scenarios))
+    end
 
     for idx in eachindex(ordered_types)
         band_alpha = max(0.7 - idx * 0.1, 0.4)
         band_color = (colors[idx], band_alpha)
-        y_lower, y_upper = confints[idx][1], confints[idx][3]
+        y_lower, y_upper = confints[:, idx, 1], confints[:, idx, 3]
         band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
     end
 
-    for idx in eachindex(ordered_types)
-        line_color = (colors[idx], 0.8)
-        y_median = confints[idx][2]
-        lines!(ax, y_median; color=line_color, linewidth=4)
-    end
+    series!(ax, confints[:, :, 2]'; solid_color=colors)
 
     return nothing
 end
