@@ -88,9 +88,10 @@ end
 
 function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)::Nothing
     x_timesteps::UnitRange{Int64} = 1:size(data, 1)
-    ordered_types = _order_by_variance(data, scenario_type(rs))
+    scenario_types = scenario_type(rs)
+    ordered_types = _order_by_variance(data, scenario_types)
 
-    selected_scenarios = [scenario_type(rs)[type] for type in ordered_types]
+    selected_scenarios = [scenario_types[type] for type in ordered_types]
     confints = [confint(data[:, scenario], :scenarios) for scenario in selected_scenarios]
     colors = [scenario_colors(rs)[scenario][1][1] for scenario in selected_scenarios]
 
