@@ -225,7 +225,7 @@ Sort types by variance in reverse order to plot highest variances first
 
 # Arguments
 - `data` : Results of scenario metric
-- `scenario_types` : NamedTuple with BitVectors to filter scenarios of each type. One of:
+- `scenario_types` : NamedTuple of BitVectors to filter scenarios for each scenario type of:
     - :guided
     - :unguided
     - :counterfactual
