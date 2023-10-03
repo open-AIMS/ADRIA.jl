@@ -377,12 +377,15 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
     params[params.fieldname.==factor, :val] .= new_bnds[1] + 0.5 * (new_bnds[2] - new_bnds[1])
 
     update!(d, params)
+
+    return nothing
 end
 function set_factor_bounds!(d::Domain; factors...)::Nothing
     for (factor, bounds) in factors
         set_factor_bounds!(d, factor, bounds)
-
     end
+
+    return nothing
 end
 
 _unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
