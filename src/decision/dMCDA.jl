@@ -39,7 +39,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     heat_stress_prob  # ::A
     site_depth #::V
     sum_cover  # ::F
-    max_cover  # ::V
+    max_area  # ::V
     area  # ::M
     min_area # ::F
     risk_tol  # ::F
@@ -101,7 +101,7 @@ function DMCDA_vars(
         dhws,
         site_d.depth_med,
         sum_cover,
-        site_k(domain),
+        site_k_area(domain),
         area,
         criteria("coral_cover_tol") .* area_to_seed,
         criteria("deployed_coral_risk_tol"),
@@ -346,7 +346,7 @@ function create_decision_matrix(
     A[:, 7] .= zones_criteria
 
     # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 8] = max.((max_cover - sum_cover), 0.0) .* area
+    A[:, 8] = max.((1.0 - sum_cover), 0.0) .* area
 
     A[:, 9] = site_depth
 
@@ -549,7 +549,7 @@ function guided_site_selection(
     heat_stress = d_vars.heat_stress_prob[site_ids]
     site_depth = d_vars.site_depth[site_ids]
     sum_cover = d_vars.sum_cover[site_ids]
-    max_cover = d_vars.max_cover[site_ids]
+    max_area = d_vars.max_area[site_ids]
     area = d_vars.area[site_ids]
 
     # site_id, seeding rank, shading rank
