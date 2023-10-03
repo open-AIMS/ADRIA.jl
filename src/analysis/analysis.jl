@@ -98,9 +98,6 @@ function series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matri
     return quantile.(Slices(data, slice_dim), [0.025 0.5 0.975])
 end
 
-include("pareto.jl")
-include("sensitivity.jl")
-include("intervention.jl")
 include("clustering.jl")
 include("intervention.jl")
 include("pareto.jl")
