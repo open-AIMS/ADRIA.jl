@@ -30,8 +30,8 @@ function ADRIA.viz.rules_scatter(
     rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
-)
+    axis_opts::Dict=Dict(),
+)::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
@@ -39,16 +39,29 @@ function ADRIA.viz.rules_scatter(
     rules = filter(r -> length(r.condition) == 2, rules)
 
     ADRIA.viz.rules_scatter!(
-        g,
-        rs,
-        scenarios,
-        clusters,
-        rules;
-        opts=opts,
-        axis_opts=axis_opts
+        g, rs, scenarios, clusters, rules; opts=opts, axis_opts=axis_opts
     )
 
     return f
+end
+function ADRIA.viz.rules_scatter(
+    rs::ResultSet,
+    scenarios::DataFrame,
+    clusters::BitVector,
+    rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)::Figure
+    return ADRIA.viz.rules_scatter(
+        rs,
+        scenarios,
+        Int64.(clusters),
+        rules;
+        opts=opts,
+        fig_opts=fig_opts,
+        axis_opts=axis_opts,
+    )
 end
 function ADRIA.viz.rules_scatter!(
     g::Union{GridLayout,GridPosition},
