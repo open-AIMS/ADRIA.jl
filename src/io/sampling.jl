@@ -369,8 +369,8 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
     params = DataFrame(d.model)
 
     # Check new parameter bounds are within old parameter bounds
-    if (new_bnds[1] < params[params.fieldname .== factor, :bounds][1][1]) ||
-        (new_bnds[2] > params[params.fieldname .== factor, :bounds][1][2])
+    if (new_bnds[1] < params[params.fieldname .== factor, :default_bounds][1][1]) ||
+        (new_bnds[2] > params[params.fieldname .== factor, :default_bounds][1][2])
         error("New bounds should be within default bounds.")
     end
     if (params[params.fieldname .== factor, :dists] == "triang") && (length(new_bnds) !== 3)
