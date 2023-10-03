@@ -98,7 +98,9 @@ function _plot_clusters_confint!(
         line_color = line_colors[idx_c]
 
         y_lower, y_median, y_upper = eachcol(
-            series_confint(data[:, clusters .== cluster]; agg_dim=slice_dimension)
+            ADRIA.analysis.series_confint(
+                data[:, clusters .== cluster]; agg_dim=slice_dimension
+            ),
         )
 
         band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
