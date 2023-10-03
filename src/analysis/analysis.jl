@@ -84,7 +84,7 @@ end
 """
     series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matrix{Float64}
 
-Computes confidence interval for series of data
+Computes confidence interval for series of data.
 
 # Arguments
 - `data` : Matrix with series of data
