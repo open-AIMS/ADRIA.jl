@@ -281,7 +281,7 @@ end
 
 
 """
-    create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
+    create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, area, wave_stress, heat_stress, predec, risk_tol)
 
 Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
 Sites are then filtered based on heat and wave stress risk.
@@ -302,7 +302,6 @@ Columns indicate:
 - `in_conn` : site incoming centrality (relative strength of connectivity) (0 <= c <= 1.0)
 - `out_conn` : site outgoing centrality (relative strength of connectivity) (0 <= c <= 1.0)
 - `sum_cover` : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
-- `max_cover` : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
 - `area` : total absolute area (in m²) for each site
 - `wave_stress` : Probability of wave damage
 - `heat_stress` : Probability of site being affected by heat stress
@@ -851,10 +850,9 @@ end
 
 
 """
-    unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, max_cover)
+    unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, available_space, depth)
 
 Randomly select seed/shade site locations for the given year, constraining to sites with max. carrying capacity > 0.
-Here, `max_cover` represents the max. carrying capacity for each site (the `k` value).
 
 # Arguments
 - `pref_seed_locs` : Previously selected seeding locations
