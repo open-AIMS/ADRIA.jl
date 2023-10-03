@@ -219,7 +219,7 @@ function _render_scenarios_legend(
 end
 
 """
-    function _order_by_variance(data::NamedDimsArray, scenario_types::NamedTuple)::Tuple{Symbol,Symbol,Symbol}
+    _order_by_variance(data::NamedDimsArray, scenario_types::NamedTuple)::Tuple{Symbol,Symbol,Symbol}
 
 Sort types by variance in reverse order to plot highest variances first
 
