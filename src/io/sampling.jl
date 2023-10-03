@@ -373,9 +373,11 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
         (new_bnds[2] > params[params.fieldname .== factor, :default_bounds][1][2])
         error("New bounds should be within default bounds.")
     end
-    if (params[params.fieldname .== factor, :dists] == "triang") && (length(new_bnds) !== 3)
+    if (params[params.fieldname .== factor, :dists][1] == "triang") &&
+        (length(new_bnds) !== 3)
         error("Triangular dist requires three parameters.")
-    elseif (params[params.fieldname .== factor, :dists] == "unif") &&
+    end
+    if (params[params.fieldname .== factor, :dists][1] == "unif") &&
         (length(new_bnds) !== 2)
         error("Uniform dist requires two parameters.")
     end
