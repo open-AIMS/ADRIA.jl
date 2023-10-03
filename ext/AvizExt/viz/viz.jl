@@ -81,10 +81,21 @@ function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
     return n_rows, n_cols
 end
 
-function confint(data::NamedDimsArray, dimension::Symbol)::Vector{Vector{Float64}}
-    data_slices = Slices(data, NamedDims.dim(data, dimension))
-    quantiles::Matrix{Float64} = quantile.(data_slices, [0.025 0.5 0.975])
-    return [collect(q) for q in eachcol(quantiles)]
+"""
+    series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matrix{Float64}
+
+Computes confidence interval for series of data
+
+# Arguments
+- `data` : Matrix with series of data
+- `agg_dim` : Dimension used to aggregate data if a NamedDimsArray is passed
+
+# Returns
+Confidence interval (lower bound, median and higher bound) for each series step
+"""
+function series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matrix{Float64}
+    slice_dim = data isa NamedDimsArray ? NamedDims.dim(data, agg_dim) : 2
+    return quantile.(Slices(data, slice_dim), [0.025 0.5 0.975])
 end
 
 include("scenarios.jl")
