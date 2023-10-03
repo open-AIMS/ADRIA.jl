@@ -188,7 +188,7 @@ Get outcomes for a given list of metrics and a result set.
 
 # Arguments
 - `rs` : ResultSet
-- `metrics` : Vector of scenario Metrics (the ones that start "with scenario_")
+- `metrics` : Vector of scenario Metrics (the ones that start with `scenario_`)
 
 # Returns
 NamedDimsArray with (:timesteps, :scenarios, :outcomes)
