@@ -59,14 +59,14 @@ function _plot_clusters_series!(
 )::Nothing
     unique_clusters = sort(unique(clusters))
     alphas = _get_alphas(clusters)
-    clusters_colors = unique(_get_colors(clusters, alphas))
+    colors = unique(_get_colors(clusters))
 
-    leg_entry::Vector{Any} = [
-        series!(ax, data[:, clusters .== cluster]'; solid_color=clusters_colors[idx_c]) for
-        (idx_c, cluster) in enumerate(unique_clusters)
-    ]
+    for (idx, cluster) in enumerate(unique_clusters)
+        series!(ax, data[:, clusters .== cluster]'; solid_color=(colors[idx], alphas[idx]))
+    end
 
-    Legend(g[1, 2], leg_entry, "Cluster " .* string.(unique_clusters); framevisible=false)
+    labels = "Cluster " .* string.(unique_clusters)
+    _render_clustered_scenarios_legend(g, colors, labels)
 
     return nothing
 end
@@ -105,12 +105,21 @@ function _plot_clusters_confint!(
         )
 
         band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
-        legend_entry[idx_c] = scatterlines!(ax, y_median; color=line_color, markersize=5)
+        scatterlines!(ax, y_median; color=line_color, markersize=5)
     end
 
-    Legend(
-        g[1, 2], legend_entry, "Cluster " .* string.(unique_clusters); framevisible=false
-    )
+    labels = "Cluster " .* string.(unique_clusters)
+    _render_clustered_scenarios_legend(g, line_colors, labels)
+
+    return nothing
+end
+
+function _render_clustered_scenarios_legend(
+    g::Union{GridLayout,GridPosition}, colors::Vector, labels::Vector{String}
+)::Nothing
+    line_elems = [LineElement(; color=c, linestyle=nothing) for c in colors]
+
+    Legend(g[1, 2], line_elems, labels; framevisible=false)
 
     return nothing
 end
