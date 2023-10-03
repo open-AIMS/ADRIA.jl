@@ -214,7 +214,7 @@ function scenario_outcomes(rs::ResultSet, metrics::Vector{<:Metric})::NamedDimsA
         zeros(n_timesteps, n_scenarios, n_metrics);
         timesteps=timesteps(rs),
         scenarios=1:n_scenarios,
-        outcomes=name_symbol.(metrics),
+        outcomes=to_symbol.(metrics),
     )
 
     for (i, metric) in enumerate(metrics)

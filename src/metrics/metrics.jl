@@ -50,26 +50,25 @@ function (f::Metric)(rs::ResultSet, args...; kwargs...)::NamedDimsArray
     end
 end
 
-
 """
-    metric_name(m::Metric)::String
+    to_string(m::Metric)::String
 
 Get name of metric as a string.
 """
-function metric_name(m::Metric)::String
-    return metric_name(m.func)
+function to_string(m::Metric)::String
+    return to_string(m.func)
 end
-function metric_name(f::Function)::String
+function to_string(f::Function)::String
     return join(split(String(Symbol(f))[2:end], "_"), " ")
 end
 
 """
-    name_symbol(m::Metric)::String
+    to_symbol(m::Metric)::String
 
 Get name of metric as a symbol.
 """
-function name_symbol(m::Metric)::Symbol
-    return Symbol(replace(metric_name(m), ' ' => '_'))
+function to_symbol(m::Metric)::Symbol
+    return Symbol(replace(to_string(m), ' ' => '_'))
 end
 
 """
@@ -88,14 +87,13 @@ function metric_label(m::Metric)::String
     return metric_label(m.func, m.unit)
 end
 function metric_label(f::Function, unit::String)::String
-    n = titlecase(metric_name(f))
+    n = titlecase(to_string(f))
     if length(unit) > 0
         n *= " [$unit]"
     end
 
     return n
 end
-
 
 """
     dims(m::Metric)::Tuple
