@@ -369,12 +369,20 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
     params = DataFrame(d.model)
 
     # Check new parameter bounds are within old parameter bounds
-    if (new_bnds[1] < params[params.fieldname.==factor, :bounds][1][1]) || (new_bnds[2] > params[params.fieldname.==factor, :bounds][1][2])
+    if (new_bnds[1] < params[params.fieldname .== factor, :bounds][1][1]) ||
+        (new_bnds[2] > params[params.fieldname .== factor, :bounds][1][2])
         error("New bounds should be within default bounds.")
+    end
+    if (params[params.fieldname .== factor, :dists] == "triang") && (length(new_bnds) !== 3)
+        error("Triangular dist requires three parameters.")
+    elseif (params[params.fieldname .== factor, :dists] == "unif") &&
+        (length(new_bnds) !== 2)
+        error("Uniform dist requires two parameters.")
     end
 
     params[params.fieldname.==factor, :bounds] .= [new_bnds]
-    params[params.fieldname.==factor, :val] .= new_bnds[1] + 0.5 * (new_bnds[2] - new_bnds[1])
+    params[params.fieldname .== factor, :val] .=
+        new_bnds[1] + 0.5 * (new_bnds[2] - new_bnds[1])
 
     update!(d, params)
 
