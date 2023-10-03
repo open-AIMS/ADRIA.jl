@@ -1,10 +1,11 @@
 module analysis
 
-using Statistics, DataFrames
-using NamedDims, AxisKeys
 using ADRIA: ResultSet, n_locations
 using ADRIA.metrics: nds
 
+using JuliennedArrays: Slices
+using NamedDims, AxisKeys
+using Statistics, DataFrames
 
 """
     col_normalize(data::AbstractArray)::AbstractArray
@@ -78,6 +79,23 @@ function discretize_outcomes(y; S=20)
     end
 
     return y_disc
+end
+
+"""
+    series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matrix{Float64}
+
+Computes confidence interval for series of data.
+
+# Arguments
+- `data` : Matrix with series of data
+- `agg_dim` : Dimension used to aggregate data if a NamedDimsArray is passed
+
+# Returns
+Confidence interval (lower bound, median and higher bound) for each series step
+"""
+function series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matrix{Float64}
+    slice_dim = data isa NamedDimsArray ? NamedDims.dim(data, agg_dim) : 2
+    return quantile.(Slices(data, slice_dim), [0.025 0.5 0.975])
 end
 
 include("clustering.jl")

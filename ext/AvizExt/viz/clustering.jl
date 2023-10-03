@@ -1,16 +1,17 @@
 using JuliennedArrays: Slices
 using Statistics
 
-
 """
-    clustered_scenarios(data::AbstractMatrix, clusters::Vector{Int64}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    clustered_scenarios!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; axis_opts::Dict=Dict())
+    clustered_scenarios(data::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    clustered_scenarios!(g::Union{GridLayout,GridPosition}, data::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Visualize clustered time series of scenarios.
 
 # Arguments
 - `data` : Matrix of time series data for several scenarios or sites
 - `clusters` : Vector of numbers corresponding to clusters
+- `opts` : Aviz options
+    - `summarize` : plot confidence interval. Defaults to true
 
 # Returns
 Figure
@@ -79,10 +80,8 @@ function _plot_clusters_confint!(
 )::Nothing
     if :timesteps ∉ dimnames(data)
         throw(ArgumentError("data does not have :timesteps axis"))
-    elseif length(dimnames(data)) != 2
+    elseif ndims(data) != 2
         throw(ArgumentError("data does not have two dimensions"))
-    else
-        slice_dimension = filter(x -> x != :timesteps, dimnames(data))[1]
     end
 
     unique_clusters = sort(unique(clusters))
@@ -92,18 +91,20 @@ function _plot_clusters_confint!(
     legend_entry = Vector{Any}(undef, length(unique_clusters))
 
     x_timesteps::UnitRange{Int64} = 1:length(timesteps(data))
+    data_dims = dimnames(data)
+    slice_dimension = data_dims[findfirst(data_dims .!= :timesteps)]
 
     for (idx_c, cluster) in enumerate(unique_clusters)
-        cluster_data = data[:, clusters .== cluster]
-        data_slices = Slices(cluster_data, NamedDims.dim(cluster_data, slice_dimension))
-
-        y_lower = quantile.(data_slices, [0.025])
-        y_upper = quantile.(data_slices, [0.975])
-
-        band!(ax, x_timesteps, y_lower, y_upper; color=band_colors[idx_c])
-
-        y_median = median.(data_slices)
+        band_color = band_colors[idx_c]
         line_color = line_colors[idx_c]
+
+        y_lower, y_median, y_upper = eachcol(
+            ADRIA.analysis.series_confint(
+                data[:, clusters .== cluster]; agg_dim=slice_dimension
+            ),
+        )
+
+        band!(ax, x_timesteps, y_lower, y_upper; color=band_color)
         legend_entry[idx_c] = scatterlines!(ax, y_median; color=line_color, markersize=5)
     end
 
