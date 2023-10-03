@@ -97,7 +97,9 @@ function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)
 
     confints = zeros(n_timesteps, length(scenario_types), 3)
     for (idx_s, scenario) in enumerate(selected_scenarios)
-        confints[:, idx_s, :] = series_confint(data[:, scenario]; agg_dim=:scenarios)
+        confints[:, idx_s, :] = ADRIA.analysis.series_confint(
+            data[:, scenario]; agg_dim=:scenarios
+        )
     end
 
     for idx in eachindex(ordered_types)
