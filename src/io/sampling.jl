@@ -351,8 +351,8 @@ function fix_factor!(d::Domain; factors...)::Nothing
 end
 
 """
-    fix_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)
-    fix_factor_bounds!(d::Domain; factors...)
+    set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)
+    set_factor_bounds!(d::Domain; factors...)
 
 Fix bounds of a parameter for sampling to those provided.
 
@@ -362,10 +362,10 @@ Note: Changes are permanent. To reset, either specify the original value(s)
 # Examples
 ```julia
 # Fix `wave_stress` to specified bounds
-fix_factor_bounds!(dom, :wave_stress, (0.1,0.2))
+set_factor_bounds!(dom, :wave_stress, (0.1,0.2))
 ```
 """
-function fix_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
+function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
     params = DataFrame(d.model)
 
     # Check new parameter bounds are within old parameter bounds
@@ -378,9 +378,9 @@ function fix_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
 
     update!(d, params)
 end
-function fix_factor_bounds!(d::Domain; factors...)::Nothing
+function set_factor_bounds!(d::Domain; factors...)::Nothing
     for (factor, bounds) in factors
-        fix_factor_bounds!(d, factor, bounds)
+        set_factor_bounds!(d, factor, bounds)
 
     end
 end
