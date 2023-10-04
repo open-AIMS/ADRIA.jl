@@ -177,3 +177,15 @@ function cluster_labels(clusters::BitVector)::Vector{String}
     end
     return ["Non-target", "Target"]
 end
+function cluster_labels(
+    clusters::Vector{Int64}, data::AbstractVector{<:Real}
+)::Vector{String}
+    legend_labels = Vector{String}(undef, length(unique(clusters)))
+    for (idx, cluster) in enumerate(unique(clusters))
+        # TODO Extract to external function and accept as argument
+        cluster_agg = mean(data[cluster .== clusters])
+        cluster_agg_formatted = @sprintf "%.1e" cluster_agg
+        legend_labels[idx] = "Cluster $(cluster): $cluster_agg_formatted"
+    end
+    return legend_labels
+end

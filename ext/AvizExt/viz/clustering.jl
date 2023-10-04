@@ -168,6 +168,16 @@ function ADRIA.viz.map!(
 
     return g
 end
+function ADRIA.viz.map!(
+    g::Union{GridLayout,GridPosition},
+    rs::Union{Domain,ResultSet},
+    data::AbstractVector{<:Real},
+    clusters::BitVector;
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)::Union{GridLayout,GridPosition}
+    return ADRIA.viz.map!(g, rs, data, clusters; opts=opts, axis_opts=axis_opts)
+end
 
 """
     _cluster_legend_params(clusters::Vector{Int64}, clusters_colors::Vector{RGBA{Float32}}, data_statistics::Vector{Float32})
@@ -177,33 +187,17 @@ Color parameter for current cluster weighted by number of scenarios
 # Arguments
 - `clusters` : Vector of numbers corresponding to clusters
 - `cluster_colors` : Vector of all cluster options that are being used
-- `data_statistics` : Vector of statistics for each site (default is mean)
+- `data` : Vector of some metric outcome for each site
 
 # Returns
 Tuple{RGBA{Float32}, Float64}
 """
 function _cluster_legend_params(
-    clusters::Vector{Int64}, clusters_colors::Vector, data::AbstractArray
+    clusters::Vector{Int64}, colors::Vector, data::AbstractVector{<:Real}
 )::Tuple
-    # Filter non-zero clusters from clusters, colors and data
-    non_zero_clusters = clusters .!= 0
-    clusters_filtered = clusters[non_zero_clusters]
-    statistics_filtered = data[non_zero_clusters]
-
-    # Fill legend entries colors
-    legend_entries = [
-        PolyElement(; color=color, strokecolor=:transparent) for color in clusters_colors
-    ]
-
-    # Fill legend labels
-    legend_labels = String[]
-    clusters_numbers = unique(clusters_filtered)
-    for cluster in clusters_numbers
-        stat_mean = mean(statistics_filtered[cluster .== clusters_filtered])
-        stat_mean_formatted = @sprintf "%.1e" stat_mean
-        push!(legend_labels, "Cluster $(cluster): $stat_mean_formatted")
-    end
-
+    legend_entries = [PolyElement(; color=c, strokecolor=:transparent) for c in colors]
+    legend_labels = cluster_labels(clusters, data)
     legend_title = "Clusters mean value"
+
     return (legend_entries, legend_labels, legend_title)
 end
