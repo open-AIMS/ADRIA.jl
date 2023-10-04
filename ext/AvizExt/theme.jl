@@ -82,4 +82,52 @@ function scenario_colors!(obs_color::Observable, color_map::Vector, scen_types::
 
     color_map[hide] .= ((:white, 0.0),)
     obs_color[] = color_map
+
+"""
+    cluster_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
+
+Computes the colors for each clustered scenario
+
+# Arguments
+- `clusters` : Vector with scenario cluster numbers
+
+# Returns
+Vector with one color for each clustered scenario
+"""
+function cluster_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
+    unique_clusters = unique(clusters)
+    unique_colors = categorical_colors(:seaborn_bright, length(unique_clusters))
+
+    colors_map::Dict{Int64,RGBA{Float32}} = Dict(
+        c => unique_colors[i] for (i, c) in enumerate(unique_clusters)
+    )
+
+    colors::Vector{RGBA{Float32}} = Vector{RGBA{Float32}}(undef, length(clusters))
+    for (idx_c, cluster) in enumerate(clusters)
+        colors[idx_c] = colors_map[cluster]
+    end
+    return colors
+end
+
+"""
+    cluster_alphas(clusters::Vector{Int64})::Vector{Float64}
+
+Vector of color alphas for each clusters weighted by number of scenarios
+
+# Arguments
+- `clusters` : Vector with scenario cluster numbers
+
+# Returns
+Vector with one color alpha for each cluster
+"""
+function cluster_alphas(clusters::Vector{Int64})::Vector{Float64}
+    alphas::Vector{Float64} = zeros(Float64, length(unique(clusters)))
+
+    for (i, cluster) in enumerate((unique(clusters)))
+        n_scens = count(clusters .== cluster)
+        base_alpha = 1.0 / (n_scens * 0.05)
+        alphas[i] = max(min(base_alpha, 0.6), 0.1)
+    end
+
+    return alphas
 end

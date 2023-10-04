@@ -70,8 +70,8 @@ function _plot_clusters_series!(
     series_opts::Dict=Dict(),
 )::Nothing
     unique_clusters = sort(unique(clusters))
-    alphas = _get_alphas(clusters)
-    colors = get(series_opts, :color, unique(_get_colors(clusters)))
+    alphas = cluster_alphas(clusters)
+    colors = get(series_opts, :color, unique(cluster_colors(clusters)))
 
     for (idx, cluster) in enumerate(unique_clusters)
         series!(ax, data[:, clusters .== cluster]'; solid_color=(colors[idx], alphas[idx]))
@@ -100,7 +100,7 @@ function _plot_clusters_confint!(
     end
 
     unique_clusters = sort(unique(clusters))
-    colors = get(series_opts, :color, unique(_get_colors(clusters)))
+    colors = get(series_opts, :color, unique(cluster_colors(clusters)))
 
     x_timesteps::UnitRange{Int64} = 1:length(timesteps(data))
     data_dims = dimnames(data)
@@ -175,77 +175,15 @@ function ADRIA.viz.map!(
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
-    cluster_colors = _get_colors(clusters)
-    legend_params = _cluster_legend_params(clusters, cluster_colors, data)
+    colors = cluster_colors(clusters)
+    legend_params = _cluster_legend_params(clusters, unique(colors), data)
 
-    opts[:highlight] = get(opts, :highlight, cluster_colors)
+    opts[:highlight] = get(opts, :highlight, colors)
     opts[:legend_params] = get(opts, :legend_params, legend_params)
 
     ADRIA.viz.map!(g, rs, data; opts=opts, axis_opts=axis_opts)
 
     return g
-end
-
-"""
-    _get_colors(clusters::Vector{Int64}, alphas::Vector{Float64})::Vector{RGBA{Float32}}
-    _get_colors(clusters::Vector{Int64}, alpha::Float64)::Vector{RGBA{Float32}}
-    _get_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
-Vector of cluster colors.
-
-# Arguments
-- `clusters` : Vector of numbers corresponding to clusters
-- `alphas` : Vector of alphas to be used for cluster color
-
-# Returns
-Vector{RGBA{Float32}}
-"""
-function _get_colors(
-    clusters::Vector{Int64}, alphas::Vector{Float64}
-)::Vector{RGBA{Float32}}
-    # Number of non-zero clusters
-    n_clusters = length(unique(filter(cluster -> cluster != 0, clusters)))
-
-    # Vector of clusters colors for non-zero clusters
-    colors = categorical_colors(:seaborn_bright, n_clusters)
-
-    # Apply alpha to cluster colors
-    if !isempty(alphas)
-        colors = [RGBA(c.r, c.g, c.b, a) for (c, a) in zip(colors, alphas)]
-    end
-
-    # Assign color "black" to cluster == 0
-    rgba_black = parse(RGBA{Float32}, "transparent")
-    return [cluster == 0 ? rgba_black : colors[cluster] for cluster in clusters]
-end
-function _get_colors(clusters::Vector{Int64}, alpha::Float64)::Vector{RGBA{Float32}}
-    alphas::Vector{Float64} = fill(alpha, length(clusters))
-    return _get_colors(clusters, alphas)
-end
-function _get_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
-    return _get_colors(clusters, 1.0)
-end
-
-"""
-    _get_alphas(clusters::Vector{Int64})::Vector{Float64}
-
-Vector of color alphas for each clusters weighted by number of scenarios
-
-# Arguments
-- `clusters` : Vector with scenario cluster numbers
-
-# Returns
-Vector with one color alpha for each cluster
-"""
-function _get_alphas(clusters::Vector{Int64})::Vector{Float64}
-    alphas::Vector{Float64} = zeros(Float64, length(unique(clusters)))
-
-    for (i, cluster) in enumerate(unique(clusters))
-        n_scens = count(clusters .== cluster)
-        base_alpha = 1.0 / (n_scens * 0.05)
-        alphas[i] = max(min(base_alpha, 0.6), 0.1)
-    end
-
-    return alphas
 end
 
 """
@@ -262,20 +200,16 @@ Color parameter for current cluster weighted by number of scenarios
 Tuple{RGBA{Float32}, Float64}
 """
 function _cluster_legend_params(
-    clusters::Vector{Int64},
-    clusters_colors::Vector{RGBA{Float32}},
-    data_statistics::AbstractArray,
+    clusters::Vector{Int64}, clusters_colors::Vector, data::AbstractArray
 )::Tuple
     # Filter non-zero clusters from clusters, colors and data
     non_zero_clusters = clusters .!= 0
     clusters_filtered = clusters[non_zero_clusters]
-    colors_filtered = clusters_colors[non_zero_clusters]
-    statistics_filtered = data_statistics[non_zero_clusters]
+    statistics_filtered = data[non_zero_clusters]
 
     # Fill legend entries colors
     legend_entries = [
-        PolyElement(; color=color, strokecolor=:transparent) for
-        color in unique(colors_filtered)
+        PolyElement(; color=color, strokecolor=:transparent) for color in clusters_colors
     ]
 
     # Fill legend labels
