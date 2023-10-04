@@ -65,7 +65,7 @@ function _plot_clusters_series!(
         series!(ax, data[:, clusters .== cluster]'; solid_color=(colors[idx], alphas[idx]))
     end
 
-    _render_clustered_scenarios_legend(g, cluster_labels(clusters), colors)
+    _render_clustered_scenarios_legend(g, cluster_labels(sorted_clusters), colors)
 
     return nothing
 end
@@ -105,7 +105,7 @@ function _plot_clusters_confint!(
 
     series!(ax, confints[:, :, 2]'; solid_color=colors)
 
-    _render_clustered_scenarios_legend(g, cluster_labels(clusters), colors)
+    _render_clustered_scenarios_legend(g, cluster_labels(sorted_clusters), colors)
     return nothing
 end
 
