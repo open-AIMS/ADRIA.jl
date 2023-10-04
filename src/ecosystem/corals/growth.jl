@@ -397,17 +397,18 @@ function settler_DHW_tolerance!(cover::Matrix{F}, c_dist_t_1::Matrix{T},
 
         w = larvae_contribution ./ sum(larvae_contribution)
         for (sp, sc1) in enumerate(1:6:36)
-            r = recruitment[sp, sink_loc]
-            if r == 0.0
+            # Only update locations where recruitment occurred
+            rec = recruitment[sp, sink_loc]
+            if rec == 0.0
                 continue
             end
 
             # Combine distributions altogether to determine new distribution for size class 1
             # for the CURRENT timestep
             if cover[sp, sink_loc] .== 0.0
-                total_w::Float64 = r
+                rec_w::Float64 = 1.0  # no cover, so all the weight goes to new recruits
             else
-                total_w = r / (r + cover[sp, sink_loc])
+                rec_w = rec / (rec + cover[sp, sink_loc])
             end
 
             sc1_6::UnitRange{Int64} = sc1:sc1+5
@@ -426,10 +427,10 @@ function settler_DHW_tolerance!(cover::Matrix{F}, c_dist_t_1::Matrix{T},
             expanded_w /= sum(expanded_w)
 
             # Obtain the recruited and original distributions for the sink location.
-            recruited = MixtureModel(source_dists, expanded_w)
-            orig = c_dist_t_1[sc1, sink_loc]
+            recruit_mm = MixtureModel(source_dists, expanded_w)
+            orig_mm = c_dist_t_1[sc1, sink_loc]
 
-            d = MixtureModel([orig, recruited], [1.0 - total_w, total_w])
+            d = MixtureModel([orig_mm, recruit_mm], [1.0 - rec_w, rec_w])
 
             # Breeder's equation
             S::Float64 = mean(d) - mean(c_dist_t_1[sc1, sink_loc])
