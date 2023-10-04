@@ -85,6 +85,7 @@ function _plot_clusters_confint!(
 
     sorted_clusters = sort(clusters)
     colors = unique(cluster_colors(sorted_clusters))
+    alpha = get(opts, :alpha, 0.4)
 
     n_timesteps = length(timesteps(data))
     x_timesteps::UnitRange{Int64} = 1:n_timesteps
@@ -100,7 +101,7 @@ function _plot_clusters_confint!(
 
     for idx in eachindex(unique(sorted_clusters))
         y_lower, y_upper = confints[:, idx, 1], confints[:, idx, 3]
-        band!(ax, x_timesteps, y_lower, y_upper; color=(colors[idx], 0.5))
+        band!(ax, x_timesteps, y_lower, y_upper; color=(colors[idx], alpha))
     end
 
     series!(ax, confints[:, :, 2]'; solid_color=colors)
