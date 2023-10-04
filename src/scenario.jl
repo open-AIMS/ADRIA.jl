@@ -500,11 +500,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     seed_locs::Vector{Int64} = zeros(Int64, n_site_int)
     shade_locs::Vector{Int64} = zeros(Int64, n_site_int)
 
-    # Set other params for ODE
-    p.r .= corals.growth_rate  # Assumed growth_rate
-    p.mb .= corals.mb_rate  # background mortality
-    @set! p.k = max_cover  # max coral cover
-
     # Define taxa and size class to seed, and identify their factor names
     taxa_to_seed = [2, 3, 5]
     target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
@@ -708,11 +703,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
 
         if tstep <= tf
+            # Natural adaptation
             adjust_DHW_distribution!(
                 @view(C_cover[tstep-1:tstep, :, :]),
                 n_groups,
                 c_dist_t,
-                p.r,
+                corals.growth_rate,
                 corals.dist_std
             )
 
