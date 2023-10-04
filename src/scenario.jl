@@ -718,11 +718,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
 
         if tstep <= tf
+            # Natural adaptation
             adjust_DHW_distribution!(
                 @view(C_cover[tstep-1:tstep, :, :]),
                 n_groups,
                 c_dist_t,
-                p.r,
+                corals.growth_rate,
                 corals.dist_std
             )
 
