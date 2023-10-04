@@ -10,6 +10,7 @@ const COLORS::Dict{Symbol,Symbol} = Dict(
     :vikor => :midnightblue
 )
 
+const BINARY_LABELS::Dict{Bool,String} = Dict(0 => "Non-Target", 1 => "Target")
 
 function scenario_type(rs; scenarios=(:))
     inputs = rs.inputs
@@ -157,6 +158,9 @@ end
 """
     cluster_labels(clusters::Vector{Int64})::Vector{String}
     cluster_labels(clusters::BitVector)::Vector{String}
+    cluster_labels(clusters::Vector{Int64}, data::AbstractVector{<:Real})::Vector{String}
+    cluster_labels(clusters::BitVector, data::AbstractVector{<:Real})::Vector{String}
+    cluster_labels(cluster_names::Vector{String}, data::AbstractVector{<:Real})::Vector{String}
 
 Get labels for each cluster.
 
@@ -170,22 +174,27 @@ function cluster_labels(clusters::Vector{Int64})::Vector{String}
     return "Cluster " .* string.(unique(clusters))
 end
 function cluster_labels(clusters::BitVector)::Vector{String}
-    if unique(clusters) == [0]
-        return ["Non-target"]
-    elseif unique(clusters) == [1]
-        return ["Target"]
-    end
-    return ["Non-target", "Target"]
+    return [BINARY_LABELS[cluster] for cluster in unique(clusters)]
 end
 function cluster_labels(
     clusters::Vector{Int64}, data::AbstractVector{<:Real}
 )::Vector{String}
-    legend_labels = Vector{String}(undef, length(unique(clusters)))
-    for (idx, cluster) in enumerate(unique(clusters))
+    cluster_names::Vector{String} = ["Cluster $(cluster)" for cluster in clusters]
+    return cluster_labels(cluster_names, data)
+end
+function cluster_labels(clusters::BitVector, data::AbstractVector{<:Real})::Vector{String}
+    cluster_names::Vector{String} = [BINARY_LABELS[cluster] for cluster in clusters]
+    return cluster_labels(cluster_names, data)
+end
+function cluster_labels(
+    cluster_names::Vector{String}, data::AbstractVector{<:Real}
+)::Vector{String}
+    legend_labels = Vector{String}(undef, length(unique(cluster_names)))
+    for (idx, name) in enumerate(unique(cluster_names))
         # TODO Extract to external function and accept as argument
-        cluster_agg = mean(data[cluster .== clusters])
-        cluster_agg_formatted = @sprintf "%.1e" cluster_agg
-        legend_labels[idx] = "Cluster $(cluster): $cluster_agg_formatted"
+        cluster_metric = mean(data[name .== cluster_names])
+        metric_formatted = @sprintf "%.1e" cluster_metric
+        legend_labels[idx] = "$(name): $metric_formatted"
     end
     return legend_labels
 end

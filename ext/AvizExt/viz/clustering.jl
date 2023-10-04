@@ -139,7 +139,7 @@ Figure
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     data::AbstractArray{<:Real},
-    clusters::Vector{Int64};
+    clusters::Union{BitVector,Vector{Int64}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -154,7 +154,7 @@ function ADRIA.viz.map!(
     g::Union{GridLayout,GridPosition},
     rs::Union{Domain,ResultSet},
     data::AbstractVector{<:Real},
-    clusters::Vector{Int64};
+    clusters::Union{BitVector,Vector{Int64}};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
@@ -168,32 +168,25 @@ function ADRIA.viz.map!(
 
     return g
 end
-function ADRIA.viz.map!(
-    g::Union{GridLayout,GridPosition},
-    rs::Union{Domain,ResultSet},
-    data::AbstractVector{<:Real},
-    clusters::BitVector;
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-)::Union{GridLayout,GridPosition}
-    return ADRIA.viz.map!(g, rs, data, clusters; opts=opts, axis_opts=axis_opts)
-end
 
 """
     _cluster_legend_params(clusters::Vector{Int64}, clusters_colors::Vector{RGBA{Float32}}, data_statistics::Vector{Float32})
 
-Color parameter for current cluster weighted by number of scenarios
+Color parameter for current cluster weighted by number of scenarios.
 
 # Arguments
 - `clusters` : Vector of numbers corresponding to clusters
-- `cluster_colors` : Vector of all cluster options that are being used
+- `colors` : Vector of all cluster options that are being used
 - `data` : Vector of some metric outcome for each site
 
 # Returns
-Tuple{RGBA{Float32}, Float64}
+Tuple of legend params to be passed to map! containing legend_entries, legend_labels and
+legend_title (in that order).
 """
 function _cluster_legend_params(
-    clusters::Vector{Int64}, colors::Vector, data::AbstractVector{<:Real}
+    clusters::Union{BitVector,Vector{Int64}},
+    colors::Vector{RGBA{Float32}},
+    data::AbstractVector{<:Real},
 )::Tuple
     legend_entries = [PolyElement(; color=c, strokecolor=:transparent) for c in colors]
     legend_labels = cluster_labels(clusters, data)
