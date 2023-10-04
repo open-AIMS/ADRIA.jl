@@ -86,20 +86,24 @@ function _plot_clusters_confint!(
     sorted_clusters = sort(clusters)
     colors = unique(cluster_colors(sorted_clusters))
 
-    x_timesteps::UnitRange{Int64} = 1:length(timesteps(data))
+    n_timesteps = length(timesteps(data))
+    x_timesteps::UnitRange{Int64} = 1:n_timesteps
     data_dims = dimnames(data)
     slice_dimension = data_dims[findfirst(data_dims .!= :timesteps)]
 
+    confints = zeros(n_timesteps, length(unique(sorted_clusters)), 3)
     for (idx_c, cluster) in enumerate(unique(sorted_clusters))
-        y_lower, y_median, y_upper = eachcol(
-            ADRIA.analysis.series_confint(
-                data[:, clusters .== cluster]; agg_dim=slice_dimension
-            ),
+        confints[:, idx_c, :] = ADRIA.analysis.series_confint(
+            data[:, clusters .== cluster]; agg_dim=slice_dimension
         )
-
-        band!(ax, x_timesteps, y_lower, y_upper; color=(colors[idx_c], 0.5))
-        scatterlines!(ax, y_median; color=colors[idx_c], markersize=5)
     end
+
+    for idx in eachindex(unique(sorted_clusters))
+        y_lower, y_upper = confints[:, idx, 1], confints[:, idx, 3]
+        band!(ax, x_timesteps, y_lower, y_upper; color=(colors[idx], 0.5))
+    end
+
+    series!(ax, confints[:, :, 2]'; solid_color=colors)
 
     _render_clustered_scenarios_legend(g, cluster_labels(clusters), colors)
     return nothing
