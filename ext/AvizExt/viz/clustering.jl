@@ -18,44 +18,33 @@ Figure
 """
 function ADRIA.viz.clustered_scenarios(
     data::NamedDimsArray,
-    clusters::AbstractVector;
+    clusters::Union{BitVector,Vector{Int64}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    ADRIA.viz.clustered_scenarios!(
-        g, data, clusters; axis_opts=axis_opts, opts=opts, series_opts=series_opts
-    )
+    ADRIA.viz.clustered_scenarios!(g, data, clusters; axis_opts=axis_opts, opts=opts)
 
     return f
 end
 function ADRIA.viz.clustered_scenarios!(
     g::Union{GridLayout,GridPosition},
     data::NamedDimsArray,
-    clusters::AbstractVector;
+    clusters::Union{BitVector,Vector{Int64}};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(data)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-    if clusters isa BitVector
-        # Labels and colors should stay in this order as clusters are ordered before plotting
-        opts[:legend_labels] = ["Non-target", "Target"]
-        series_opts[:color] = [:red, :blue]
-        clusters = Int64.(clusters)
-    end
-
     if get(opts, :summarize, true)
-        _plot_clusters_confint!(g, ax, data, clusters; opts=opts, series_opts=series_opts)
+        _plot_clusters_confint!(g, ax, data, clusters; opts=opts)
     else
-        _plot_clusters_series!(g, ax, data, clusters; opts=opts, series_opts=series_opts)
+        _plot_clusters_series!(g, ax, data, clusters; opts=opts)
     end
 
     return g
@@ -65,22 +54,18 @@ function _plot_clusters_series!(
     g::Union{GridLayout,GridPosition},
     ax::Axis,
     data::NamedDimsArray,
-    clusters::Vector{Int64};
+    clusters::Union{BitVector,Vector{Int64}};
     opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
 )::Nothing
-    unique_clusters = sort(unique(clusters))
-    alphas = cluster_alphas(clusters)
-    colors = get(series_opts, :color, unique(cluster_colors(clusters)))
+    sorted_clusters = sort(clusters)
+    alphas = cluster_alphas(sorted_clusters)
+    colors = unique(cluster_colors(sorted_clusters))
 
-    for (idx, cluster) in enumerate(unique_clusters)
+    for (idx, cluster) in enumerate(unique(sorted_clusters))
         series!(ax, data[:, clusters .== cluster]'; solid_color=(colors[idx], alphas[idx]))
     end
 
-    labels = "Cluster " .* string.(unique_clusters)
-    opts[:legend_labels] = get(opts, :legend_labels, labels)
-    opts[:legend_colors] = colors
-    _render_clustered_scenarios_legend(g, opts)
+    _render_clustered_scenarios_legend(g, cluster_labels(clusters), colors)
 
     return nothing
 end
@@ -89,9 +74,8 @@ function _plot_clusters_confint!(
     g::Union{GridLayout,GridPosition},
     ax::Axis,
     data::NamedDimsArray,
-    clusters::Vector{Int64};
+    clusters::Union{BitVector,Vector{Int64}};
     opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
 )::Nothing
     if :timesteps ∉ dimnames(data)
         throw(ArgumentError("data does not have :timesteps axis"))
@@ -99,14 +83,14 @@ function _plot_clusters_confint!(
         throw(ArgumentError("data does not have two dimensions"))
     end
 
-    unique_clusters = sort(unique(clusters))
-    colors = get(series_opts, :color, unique(cluster_colors(clusters)))
+    sorted_clusters = sort(clusters)
+    colors = unique(cluster_colors(sorted_clusters))
 
     x_timesteps::UnitRange{Int64} = 1:length(timesteps(data))
     data_dims = dimnames(data)
     slice_dimension = data_dims[findfirst(data_dims .!= :timesteps)]
 
-    for (idx_c, cluster) in enumerate(unique_clusters)
+    for (idx_c, cluster) in enumerate(unique(sorted_clusters))
         y_lower, y_median, y_upper = eachcol(
             ADRIA.analysis.series_confint(
                 data[:, clusters .== cluster]; agg_dim=slice_dimension
@@ -117,18 +101,13 @@ function _plot_clusters_confint!(
         scatterlines!(ax, y_median; color=colors[idx_c], markersize=5)
     end
 
-    labels = "Cluster " .* string.(unique_clusters)
-    opts[:legend_labels] = get(opts, :legend_labels, labels)
-    opts[:legend_colors] = colors
-
-    _render_clustered_scenarios_legend(g, opts)
+    _render_clustered_scenarios_legend(g, cluster_labels(clusters), colors)
     return nothing
 end
 
 function _render_clustered_scenarios_legend(
-    g::Union{GridLayout,GridPosition}, opts::Dict=Dict()
+    g::Union{GridLayout,GridPosition}, labels::Vector{String}, colors::Vector{RGBA{Float32}}
 )::Nothing
-    colors, labels = opts[:legend_colors], opts[:legend_labels]
     line_elems = [LineElement(; color=c, linestyle=nothing) for c in colors]
     Legend(g[1, 2], line_elems, labels; framevisible=false)
 
