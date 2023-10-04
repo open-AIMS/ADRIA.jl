@@ -620,9 +620,10 @@ Determine area settled by recruited larvae.
 Note: Units for all areas are assumed to be in m².
 
 # Arguments
-- `fec_scope` : fecundity scope
+- `fec_scope` : Fecundity scope
 - `TP_data` : Transition probability (rows: source locations; cols: sink locations)
-- `leftover_space` : difference between sites' maximum carrying capacity and current coral cover (\$k - C_s\$)
+- `leftover_k_m²` : Difference between locations' maximum carrying capacity and current
+    coral cover (\$k - C_s\$ ∈ [0, 1])
 - `α` : max number of settlers / m²
 - `β` : larvae / m² required to produce 50% of maximum settlement
 - `basal_area_per_settler` : area taken up by a single settler
@@ -633,7 +634,7 @@ Area covered by recruited larvae (in m²)
 function settler_cover(
     fec_scope::T,
     TP_data::T,
-    leftover_space::T,
+    leftover_k_m²::T,
     α::V,
     β::V,
     basal_area_per_settler::V
