@@ -137,7 +137,7 @@ end
 Get color alphas for each cluster weighted by number of scenarios.
 
 # Arguments
-- `clusters` : Vector with scenario cluster numbers
+- `clusters` : Vector with scenario cluster ids
 
 # Returns
 Vector with one color alpha for each cluster.
