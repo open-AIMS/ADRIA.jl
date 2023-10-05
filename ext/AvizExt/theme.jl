@@ -9,7 +9,7 @@ const COLORS::Dict{Symbol,Symbol} = Dict(
     :guided => :dodgerblue,
     :order => :dodgerblue,
     :topsis => :deepskyblue4,
-    :vikor => :midnightblue
+    :vikor => :midnightblue,
 )
 
 const BINARY_LABELS::Dict{Bool,String} = Dict(0 => "Non-Target", 1 => "Target")
@@ -19,20 +19,25 @@ function scenario_type(rs::ResultSet; scenarios=(:))
     guided = ADRIA.analysis.guided(rs)
 
     return (
-        counterfactual=counterfactual[scenarios],
-        unguided=unguided[scenarios],
-        guided=guided[scenarios],
+        counterfactual=ADRIA.analysis.counterfactual(rs_input)[scenarios],
+        unguided=ADRIA.analysis.unguided(rs_input)[scenarios],
+        guided=ADRIA.analysis.guided(rs_input)[scenarios],
     )
 end
 
-function scenario_colors(rs, weight::Float64, hide::BitVector)
-    color_map = fill((COLORS[:guided], weight), size(rs.inputs, 1))
+function scenario_colors(rs::ResultSet, weight::Float64)
     scen_type = scenario_type(rs)
     counterfactual = scen_type.counterfactual
     unguided = scen_type.unguided
 
+    color_map = fill((COLORS[:guided], weight), size(rs.inputs, 1))
     color_map[counterfactual] .= ((COLORS[:counterfactual], weight),)
     color_map[unguided] .= ((COLORS[:unguided], weight),)
+
+    return color_map
+end
+function scenario_colors(rs::ResultSet, weight::Float64, hide::BitVector)
+    color_map = scenario_colors(rs, weight)
 
     if length(hide) > 0
         color_map[hide] .= ((:white, 0.0),)
@@ -40,29 +45,23 @@ function scenario_colors(rs, weight::Float64, hide::BitVector)
 
     return color_map
 end
-function scenario_colors(rs, weight::Float64)
-    color_map = fill((COLORS[:guided], weight), size(rs.inputs, 1))
-
-    scen_type = scenario_type(rs)
-    counterfactual = scen_type.counterfactual
-    unguided = scen_type.unguided
-
-    color_map[counterfactual] .= ((COLORS[:counterfactual], weight),)
-    color_map[unguided] .= ((COLORS[:unguided], weight),)
-
-    return color_map
-end
-function scenario_colors(rs)
+function scenario_colors(rs::ResultSet)
     return scenario_colors(rs, 0.1)
 end
-
 
 """
     scenario_colors!(obs_color, scen_types::NamedTuple, weight::Float64, hide::BitVector)
 
 Hide selected scenarios by changing transparency.
 """
-function scenario_colors!(obs_color::Observable, color_map::Vector, scen_types::NamedTuple, weight::Float64, hide::BitVector, guide_toggle_map)
+function scenario_colors!(
+    obs_color::Observable,
+    color_map::Vector,
+    scen_types::NamedTuple,
+    weight::Float64,
+    hide::BitVector,
+    guide_toggle_map,
+)
     color_map .= obs_color[]
     for (t, l, c) in guide_toggle_map
         if !t.active[]
