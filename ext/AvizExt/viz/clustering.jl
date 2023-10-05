@@ -84,6 +84,8 @@ function _plot_clusters_confint!(
     end
 
     sorted_clusters = sort(clusters)
+    cluster_ids = unique(sorted_clusters)
+
     colors = unique(cluster_colors(sorted_clusters))
     alpha = get(opts, :alpha, 0.4)
 
@@ -92,14 +94,14 @@ function _plot_clusters_confint!(
     data_dims = dimnames(data)
     slice_dimension = data_dims[findfirst(data_dims .!= :timesteps)]
 
-    confints = zeros(n_timesteps, length(unique(sorted_clusters)), 3)
-    for (idx_c, cluster) in enumerate(unique(sorted_clusters))
+    confints = zeros(n_timesteps, length(cluster_ids), 3)
+    for (idx_c, cluster) in enumerate(cluster_ids)
         confints[:, idx_c, :] = ADRIA.analysis.series_confint(
             data[:, clusters .== cluster]; agg_dim=slice_dimension
         )
     end
 
-    for idx in eachindex(unique(sorted_clusters))
+    for idx in eachindex(cluster_ids)
         y_lower, y_upper = confints[:, idx, 1], confints[:, idx, 3]
         band!(ax, x_timesteps, y_lower, y_upper; color=(colors[idx], alpha))
     end
