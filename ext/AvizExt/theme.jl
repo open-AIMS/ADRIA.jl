@@ -181,7 +181,7 @@ end
 function cluster_labels(
     clusters::Vector{Int64}, data::AbstractVector{<:Real}
 )::Vector{String}
-    cluster_names::Vector{String} = ["Cluster $(cluster)" for cluster in clusters]
+    cluster_names::Vector{String} = "Cluster " .* string.(clusters)
     return cluster_labels(cluster_names, data)
 end
 function cluster_labels(clusters::BitVector, data::AbstractVector{<:Real})::Vector{String}
