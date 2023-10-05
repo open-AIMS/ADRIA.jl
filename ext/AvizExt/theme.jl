@@ -23,21 +23,11 @@ function scenario_type(rs::ResultSet; scenarios=(:))
         unguided=ADRIA.analysis.unguided(rs_input)[scenarios],
         guided=ADRIA.analysis.guided(rs_input)[scenarios],
     )
-end
-
-function scenario_colors(rs::ResultSet, weight::Float64)
-    scen_type = scenario_type(rs)
-    counterfactual = scen_type.counterfactual
-    unguided = scen_type.unguided
-
-    color_map = fill((COLORS[:guided], weight), size(rs.inputs, 1))
-    color_map[counterfactual] .= ((COLORS[:counterfactual], weight),)
-    color_map[unguided] .= ((COLORS[:unguided], weight),)
-
-    return color_map
+function scenario_colors(rs::ResultSet, weight::Float64)::Vector{Tuple{Symbol,Float64}}
+    return [(c, weight) for c in scenario_colors(rs)]
 end
 function scenario_colors(rs::ResultSet, weight::Float64, hide::BitVector)
-    color_map = scenario_colors(rs, weight)
+    color_map::Vector{Tuple{Symbol,Float64}} = scenario_colors(rs, weight)
 
     if length(hide) > 0
         color_map[hide] .= ((:white, 0.0),)
@@ -45,8 +35,18 @@ function scenario_colors(rs::ResultSet, weight::Float64, hide::BitVector)
 
     return color_map
 end
-function scenario_colors(rs::ResultSet)
-    return scenario_colors(rs, 0.1)
+function scenario_colors(rs::ResultSet)::Vector{Symbol}
+    return scenario_colors(rs.inputs)
+end
+function scenario_colors(rs_inputs::DataFrame)::Vector{Symbol}
+    scen_types::Dict{Symbol,BitVector} = ADRIA.analysis.scenario_types(rs_inputs)
+    colors = Vector{Symbol}(undef, size(rs_inputs, 1))
+
+    for (key, value) in scen_types
+        colors[value] .= COLORS[key]
+    end
+
+    return colors
 end
 
 """

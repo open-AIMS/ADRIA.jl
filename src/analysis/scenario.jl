@@ -1,3 +1,15 @@
+SCEN_TYPES = [:counterfactual, :unguided, :guided]
+
+function scenario_types(rs::ResultSet; scenarios=(:))::Dict{Symbol,BitVector}
+    return scenario_types(rs.inputs; scenarios=scenarios)
+end
+function scenario_types(rs_input::DataFrame; scenarios=(:))::Dict{Symbol,BitVector}
+    return Dict(
+        type => eval(type)(rs_input)[scenarios] for
+        type in SCEN_TYPES if sum(eval(type)(rs_input)[scenarios]) != 0
+    )
+end
+
 function counterfactual(rs_inputs::DataFrame)::BitVector
     no_seed = _no_seed(rs_inputs)
     no_fog = rs_inputs.fogging .== 0
