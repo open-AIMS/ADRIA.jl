@@ -84,8 +84,8 @@ function scenario_colors!(obs_color::Observable, color_map::Vector, scen_types::
     end
 
     color_map[hide] .= ((:white, 0.0),)
-    obs_color[] = color_map
-
+    return obs_color[] = color_map
+end
 """
     cluster_colors(clusters::Vector{Int64}, unique_colors::Vector{RGBA{Float32}})::Vector{RGBA{Float32}}
     cluster_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
