@@ -1,3 +1,5 @@
+using Printf: @sprintf
+
 const COLORS::Dict{Symbol,Symbol} = Dict(
     :RCP45 => :darkblue,
     :RCP60 => :seagreen,
