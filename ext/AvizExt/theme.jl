@@ -142,8 +142,8 @@ Get color alphas for each cluster weighted by number of scenarios.
 # Returns
 Vector with one color alpha for each cluster.
 """
-function cluster_alphas(clusters::Vector{Int64})::Vector{Float64}
-    alphas::Vector{Float64} = zeros(Float64, length(unique(clusters)))
+function cluster_alphas(clusters::Vector{Int64})::Dict{Int64,Float64}
+    alphas::Dict{Int64,Float64} = Dict()
 
     for (i, cluster) in enumerate((unique(clusters)))
         n_scens::Int64 = count(clusters .== cluster)
@@ -153,7 +153,7 @@ function cluster_alphas(clusters::Vector{Int64})::Vector{Float64}
 
     return alphas
 end
-function cluster_alphas(clusters::BitVector)::Vector{Float64}
+function cluster_alphas(clusters::BitVector)::Dict{Int64,RGBA{Float32}}
     return cluster_alphas(Int64.(clusters))
 end
 
