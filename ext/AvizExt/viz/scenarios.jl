@@ -93,7 +93,7 @@ function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)
     ordered_types = _order_by_variance(data, scenario_types)
 
     selected_scenarios = [scenario_types[type] for type in ordered_types]
-    colors = [scenario_colors(rs)[scenario][1][1] for scenario in selected_scenarios]
+    colors = [COLORS[scenario] for scenario in keys(scenario_types)]
 
     confints = zeros(n_timesteps, length(scenario_types), 3)
     for (idx_s, scenario) in enumerate(selected_scenarios)
