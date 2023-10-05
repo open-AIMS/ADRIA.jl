@@ -6,6 +6,8 @@ import Surrogates: sample
 import Surrogates.QuasiMonteCarlo: SobolSample
 
 
+const DISCRETE_FACTOR_TYPES = ["integer", "categorical"]
+
 """
     adjust_samples(d::Domain, df::DataFrame)::DataFrame
     adjust_samples!(spec::DataFrame, df::DataFrame)::DataFrame
@@ -369,6 +371,19 @@ function _check_bounds(lower, upper)
     if any(lower .> upper)
         error("Bounds are not legal (upper bound must be greater than lower bound)")
     end
+end
+
+"""
+Check ptype for discrete variable types.
+
+Returns true if discrete, false otherwise.
+
+# Arguments
+- `ptype` : String representing variable type.
+"""
+function _check_discrete(p_type::String)
+    check = any(p_type .== DISCRETE_FACTOR_TYPES)
+    return check
 end
 
 

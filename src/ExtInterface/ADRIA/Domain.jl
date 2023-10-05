@@ -1,6 +1,5 @@
 using NCDatasets
 
-const DISCRETE_FACTOR_TYPES = ["integer", "categorical"]
 
 """
     ADRIADomain{Σ,M,I,D,X,Y,Z}
@@ -33,10 +32,6 @@ mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,D<:DataFrame,X<:
     sim_constants::SimConstants
 end
 
-function _check_discrete(p_type::String)
-    check = any(p_type .== DISCRETE_FACTOR_TYPES)
-    return check
-end
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
