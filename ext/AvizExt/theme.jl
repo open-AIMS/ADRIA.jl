@@ -153,7 +153,7 @@ function cluster_alphas(clusters::Vector{Int64})::Dict{Int64,Float64}
 
     return alphas
 end
-function cluster_alphas(clusters::BitVector)::Dict{Int64,RGBA{Float32}}
+function cluster_alphas(clusters::BitVector)::Dict{Int64,Float64}
     return cluster_alphas(Int64.(clusters))
 end
 
