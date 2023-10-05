@@ -286,9 +286,7 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
 
         # Handle special cases for discrete valued factors.
         # This will break if meanings/possible values of `ptype` changes.
-        is_int = to_update[_row, :ptype][1] == "integer"
-        is_cat = to_update[_row, :ptype][1] == "categorical"
-        dval = (is_int .| is_cat) ? 0 : 0.0
+        dval = _check_discrete(to_update[_row, :ptype][1]) ? 0 : 0.0
         to_update[_row, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [dval 0.0 0.0 _bnds true]
     end
 

@@ -11,7 +11,7 @@ abstract type EcoModel end
 """Set a model parameter value directly."""
 function set(p::Param, val::Union{Int64,Float64})
     if hasproperty(p, :ptype) 
-        if (p.ptype == "integer" | p.ptype == "categorical") && !isinteger(val)
+        if _check_discrete(p.ptype) && !isinteger(val)
             val = map_to_discrete(val, p.bounds[2])
         end
     end
