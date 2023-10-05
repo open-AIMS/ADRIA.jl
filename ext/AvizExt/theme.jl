@@ -192,3 +192,12 @@ function cluster_labels(
     end
     return legend_labels
 end
+
+function alphas(scenario_types::Dict{Symbol,BitVector})::Dict{Symbol,Float64}
+    return Dict(k => alpha(v) for (k, v) in scenario_types)
+end
+
+function alpha(scenario_types::BitVector)::Float64
+    base_alpha = (1 - count(scenario_types) / length(scenario_types))
+    return max(min(base_alpha, 0.3), 0.1)
+end

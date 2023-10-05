@@ -64,17 +64,22 @@ function ADRIA.viz.scenarios!(
 
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
+    rs_inputs = copy(rs.inputs)
+    keepat!(rs_inputs, data.scenarios)
+
     # Set series colors
-    merge!(series_opts, _get_series_opt_colors(rs, data, opts, series_opts))
+    by_rcp = get(opts, :by_RCP, false)
+    colors = by_rcp ? _RCP_colors(rs_inputs, data) : _type_colors(rs_inputs)
+    merge!(series_opts, colors)
 
     if get(opts, :summarize, true)
-        _plot_scenarios_confint!(ax, rs, data)
+        _plot_scenarios_confint!(ax, rs_inputs, data)
     else
-        _plot_scenarios_series!(ax, rs, data, series_opts)
+        _plot_scenarios_series!(ax, rs_inputs, data, series_opts)
     end
 
     # Plot Histograms when opts[:histogram] is true
-    get(opts, :histogram, true) && _plot_scenarios_hist(g, rs, data)
+    get(opts, :histogram, true) ? _plot_scenarios_hist(g, rs, data) : nothing
 
     # Render legend
     legend_position = get(opts, :histogram, true) ? (1, 3) : (1, 2)
@@ -86,11 +91,13 @@ function ADRIA.viz.scenarios!(
     return g
 end
 
-function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)::Nothing
+function _plot_scenarios_confint!(
+    ax::Axis, rs_inputs::DataFrame, data::NamedDimsArray
+)::Nothing
     n_timesteps = size(data, 1)
     x_timesteps::UnitRange{Int64} = 1:n_timesteps
-    scenario_types = scenario_type(rs)
-    ordered_types = _order_by_variance(data, scenario_types)
+    scenario_types = ADRIA.analysis.scenario_types(rs_inputs)
+    ordered_types = _sort(scenario_types, data)
 
     selected_scenarios = [scenario_types[type] for type in ordered_types]
     colors = [COLORS[scenario] for scenario in keys(scenario_types)]
@@ -115,15 +122,18 @@ function _plot_scenarios_confint!(ax::Axis, rs::ResultSet, data::NamedDimsArray)
 end
 
 function _plot_scenarios_series!(
-    ax::Axis, rs::ResultSet, data::NamedDimsArray, series_opts::Dict
+    ax::Axis, rs_inputs::DataFrame, data::NamedDimsArray, series_opts::Dict
 )::Nothing
-    series_colors = pop!(series_opts, :color)
-    scenario_types = scenario_type(rs)
-    for type in _order_by_variance(data, scenario_types)
-        selected_scenarios = scenario_types[type]
-        _color = series_colors[selected_scenarios]
+    scenario_types = ADRIA.analysis.scenario_types(rs_inputs)
 
-        series!(ax, data[:, selected_scenarios]'; solid_color=_color, series_opts...)
+    colors = pop!(series_opts, :color)
+    _alphas = alphas(scenario_types)
+
+    for type in _sort(scenario_types, data)
+        selected_scenarios = scenario_types[type]
+        color = (colors[selected_scenarios][1], _alphas[type])
+
+        series!(ax, data[:, selected_scenarios]'; solid_color=color, series_opts...)
     end
     return nothing
 end
@@ -132,7 +142,7 @@ function _plot_scenarios_hist(
     g::Union{GridLayout,GridPosition}, rs::ResultSet, data::NamedDimsArray
 )::Nothing
     scen_match = 1:nrow(rs.inputs) .∈ [_dimkeys(data).scenarios]
-    scen_types = scenario_type(rs; scenarios=scen_match)
+    scen_types = ADRIA.analysis.scenario_types(rs; scenarios=scen_match)
     scen_dist = dropdims(mean(data; dims=:timesteps); dims=:timesteps)
 
     hist_color_weights = (counterfactual=0.8, unguided=0.7, guided=0.6)
@@ -162,21 +172,14 @@ function _plot_scenarios_hist(
     return nothing
 end
 
-function _get_series_opt_colors(
-    rs::ResultSet, data::NamedDimsArray, opts::Dict, series_opts::Dict
-)::Dict{Symbol,Vector{Tuple{Symbol,Float64}}}
-    if get(opts, :by_RCP, false)
-        rcp::Vector{Symbol} = Symbol.(:RCP, Int64.(rs.inputs[:, :RCP]))
-        return Dict(:color => map(x -> (COLORS[x], _color_weight(data)), rcp))
-    else
-        hide_idx = get(series_opts, :hide_series, BitVector())
-        return Dict(:color => scenario_colors(rs, _color_weight(data), hide_idx))
-    end
+# TODO Move these two to theme.jl
+function _RCP_colors(rs_input::DataFrame, data::NamedDimsArray)
+    rcp::Vector{Symbol} = Symbol.(:RCP, Int64.(rs_input[:, :RCP]))
+    return Dict(:color => map(x -> (COLORS[x], _color_weight(data)), rcp))
 end
 
-function _color_weight(data::NamedDimsArray)::Float64
-    min_step::Float64 = (1.0 / 0.05)
-    return max(min((1.0 / (size(data, 2) / min_step)), 0.6), 0.05)
+function _type_colors(rs_input::DataFrame)
+    return Dict(:color => scenario_colors(rs_input))
 end
 
 function _render_scenarios_legend(
@@ -219,7 +222,7 @@ function _render_scenarios_legend(
 end
 
 """
-    _order_by_variance(data::NamedDimsArray, scenario_types::NamedTuple)::Tuple{Symbol,Symbol,Symbol}
+    _sort(scenario_types::Dict{Symbol, BitVector}, data::NamedDimsArray)::Vector{Symbol}
 
 Sort types by variance in reverse order to plot highest variances first
 
@@ -230,12 +233,9 @@ Sort types by variance in reverse order to plot highest variances first
     - :unguided
     - :counterfactual
 """
-function _order_by_variance(
-    data::NamedDimsArray, scenario_types::NamedTuple
-)::Tuple{Symbol,Symbol,Symbol}
+function _sort(scenario_types::Dict{Symbol,BitVector}, data::NamedDimsArray)::Vector{Symbol}
+    scen_types::Vector{Symbol} = collect(keys(scenario_types))
     return sort(
-        keys(scenario_types);
-        by=type -> sum(var(data[:, scenario_types[type]]; dims=2)),
-        rev=true,
+        scen_types; by=type -> sum(var(data[:, scenario_types[type]]; dims=2)), rev=true
     )
 end
