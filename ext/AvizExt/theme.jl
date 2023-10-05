@@ -13,23 +13,16 @@ const COLORS::Dict{Symbol,Symbol} = Dict(
 )
 
 const BINARY_LABELS::Dict{Bool,String} = Dict(0 => "Non-Target", 1 => "Target")
+function scenario_type(rs::ResultSet; scenarios=(:))
+    counterfactual = ADRIA.analysis.counterfactual(rs)
+    unguided = ADRIA.analysis.unguided(rs)
+    guided = ADRIA.analysis.guided(rs)
 
-function scenario_type(rs; scenarios=(:))
-    inputs = rs.inputs
-
-    no_seed = (inputs.N_seed_TA .== 0) .& (inputs.N_seed_CA .== 0) .& (inputs.N_seed_SM .== 0)
-    no_fog = inputs.fogging .== 0
-    no_SRM = inputs.SRM .== 0
-    counterfactual = no_seed .& no_fog .& no_SRM
-
-    has_seed = (inputs.N_seed_TA .> 0) .| (inputs.N_seed_CA .> 0) .| (inputs.N_seed_SM .> 0)
-    has_shade = (inputs.fogging .> 0) .| (inputs.SRM .> 0)
-    unguided = (inputs.guided .== 0) .& (has_seed .| has_shade)
-
-    # Guided scenarios must be the inverse of unguided/counterfactual scenarios
-    guided = Bool.(ones(Int64, size(inputs, 1)) .⊻ (counterfactual .| unguided))
-
-    return (counterfactual=counterfactual[scenarios], unguided=unguided[scenarios], guided=guided[scenarios])
+    return (
+        counterfactual=counterfactual[scenarios],
+        unguided=unguided[scenarios],
+        guided=guided[scenarios],
+    )
 end
 
 function scenario_colors(rs, weight::Float64, hide::BitVector)
