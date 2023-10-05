@@ -72,7 +72,7 @@ function scenario_colors!(
         display_weight = t.active[] ? weight : 0.05
 
         scen_t = getfield(scen_types, Symbol(lowercase(l)))
-        color_map[scen_t.&.!hide] .= ((display_color, display_weight),)
+        color_map[scen_t .& .!hide] .= ((display_color, display_weight),)
     end
 
     color_map[hide] .= ((:white, 0.0),)
