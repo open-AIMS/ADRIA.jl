@@ -412,6 +412,7 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
+
     if !all([tf in model_spec.fieldname for tf in target_factors])
         missing_factor = .!([tf in model_spec.fieldname for tf in target_factors])
         error("Invalid target factors: $(target_factors[missing_factor])")
@@ -455,9 +456,9 @@ function outcome_map(
     for (j, fact_t) in enumerate(target_factors)
         ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
         if ptype == "categorical"
-            fact_indx = foi_spec.fieldname .== fact_t
-            lb = foi_spec.lower_bound[fact_indx][1]
-            ub = foi_spec.upper_bound[fact_indx][1]
+            fact_idx = foi_spec.fieldname .== fact_t
+            lb = foi_spec.lower_bound[fact_idx][1]
+            ub = foi_spec.upper_bound[fact_idx][1]
             X_q .= round.(quantile(lb:1:ub, steps)) .- 1
         else
             X_q .= quantile(X[:, fact_t], steps)
