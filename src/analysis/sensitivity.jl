@@ -453,9 +453,9 @@ function outcome_map(
 
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
-        fact_indx = model_spec.fieldname .== fact_t
-        ptype = model_spec.ptype[fact_indx][1]
+        ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
         if ptype == "categorical"
+            fact_indx = foi_spec.fieldname .== fact_t
             lb = foi_spec.lower_bound[fact_indx][1]
             ub = foi_spec.upper_bound[fact_indx][1]
             X_q .= round.(quantile(lb:1:ub, steps)) .- 1
