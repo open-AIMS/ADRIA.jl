@@ -7,6 +7,19 @@ using Distributions
 
 abstract type EcoModel end
 
+const DISCRETE_FACTOR_TYPES = ["integer", "categorical"]
+
+"""
+Check ptype for discrete variable types.
+
+Returns true if discrete, false otherwise.
+
+# Arguments
+- `ptype` : String representing variable type.
+"""
+function _check_discrete(p_type::String)
+    return any(p_type .== DISCRETE_FACTOR_TYPES)
+end
 
 """Set a model parameter value directly."""
 function set(p::Param, val::Union{Int64,Float64})
