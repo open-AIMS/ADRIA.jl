@@ -33,7 +33,8 @@ function tsa() end
 function tsa!() end
 function rsa() end
 function rsa!() end
-
+function convergence() end
+function convergence!() end
 function outcome_map() end
 function outcome_map!() end
 
