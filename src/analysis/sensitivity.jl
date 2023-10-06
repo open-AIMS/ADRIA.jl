@@ -206,25 +206,37 @@ end
 - `X` : Model inputs
 - `y` : Model outputs
 - `foi` : Names of each factor represented by columns in `X`
-- `N_steps` : Number of steps to cut the total number of scenarios into.
+- `n_steps` : Number of steps to cut the total number of scenarios into.
 
 # Returns
 NamedDimsArray, of min, mean, median, max, std, and cv summary statistics for an increasing 
 number of scenarios.
 """
-function pawn_convergence(X::DataFrame, y::NamedDimsArray, foi::Vector{Symbol}; N_steps=10)
-    N = size(X,1)
-    step_size = floor(N/N_steps)
-    n_scens = collect(step_size:step_size:N)
+function pawn_convergence(
+    X::DataFrame, y::NamedDimsArray, foi::Vector{Symbol}; n_steps::Int64=10
+)
+    N = length(y.scenarios)
+    step_size = floor(Int64, N / n_steps)
+    N_it = collect(step_size:step_size:N)
 
-    A = Array{Any}(zeros(length(foi), 6, length(n_scens)))
-    pawn_N = NamedDimsArray(A, factors=foi, Si=[:min, :mean, :median, :max, :std, :cv], n_scenarios=collect(1:length(n_scens)))
-    s_indx = randperm(N)
+    A = Array{Float64}(zeros(length(foi), 6, length(N_it)))
+    pawn_store = NamedDimsArray(
+        A;
+        factors=foi,
+        Si=[:min, :mean, :median, :max, :std, :cv],
+        n_scenarios=collect(1:length(N_it)),
+    )
+    scens_indx = randperm(MersenneTwister(1234), N)
 
-    for nn in 1:length(n_scens)
-        pawn_N[n_scenarios=nn] .= pawn(X[s_indx[1:n_scens[nn]], :], y[scenarios=s_indx[1:n_scens[nn]]])(factors=foi)
+    for nn in 1:length(N_it)
+        pawn_store[n_scenarios=nn] .= col_normalize(
+            pawn(X[scens_indx[1:N_it[nn]], :], y[scens_indx[1:N_it[nn]]])
+        )(;
+            factors=foi
+        )
     end
-    return pawn_N
+
+    return pawn_store
 end
 
 
