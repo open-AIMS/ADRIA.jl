@@ -263,7 +263,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
 
     # Store post-processed table of input parameters.
     # +1 skips the RCP column
-    integer_params = findall([_check_discrete(dd) for dd in domain.model[:ptype]])
+    integer_params = findall(_check_discrete.(domain.model[:ptype]))
     map_to_discrete!(scen_spec[:, integer_params.+1], getindex.(domain.model[:bounds], 2)[integer_params])
     inputs[:, :] = Matrix(scen_spec)
 
