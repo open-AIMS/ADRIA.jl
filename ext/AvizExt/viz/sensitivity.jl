@@ -412,3 +412,66 @@ function ADRIA.viz.outcome_map(rs::ResultSet, si::NamedDimsArray, factors::Vecto
 
     return f
 end
+
+
+"""
+    ADRIA.viz.pawn_convergence_plot(pawn_store::NamedDimsArray, factors::Vector{Symbol}, N::Int64; grid=false,title="Factor", colors=Makie.wong_colors(),)
+Plot outcomes mapped to factor regions for up to 30 factors.
+
+# Arguments
+- `rs` : ResultSet
+- `pawn_store` : stores pawn values for each set of N scenarios (of increasing number).
+- `factors` : The factors of interest to display
+- `N` : Largest number of scenarios in set.
+
+# Returns
+GLMakie figure
+"""
+function ADRIA.viz.pawn_convergence_plot(
+    pawn_store::NamedDimsArray,
+    foi::Vector{Symbol},
+    N::Int64;
+    grid=false,
+    colors=Makie.wong_colors(),
+)
+    n_steps = length(pawn_store.n_scenarios)
+    step_size = floor(Int64, N ./ n_steps)
+    N_it = collect(step_size:step_size:N)
+
+    c_cycles = repeat(colors, Int(round(length(foi) / length(colors)) + 1))
+    g = GridLayout()
+    if grid
+        grid_sqr = ceil(Int64, sqrt(length(foi)))
+        g_nums = [[a, b] for a in 1:grid_sqr, b in 1:grid_sqr]
+    else
+        g_nums = repeat([1, 1], length(foi))
+    end
+
+    for fac in 1:length(foi)
+        factor = foi[fac]
+        grid_pos = g[g_nums[fac][1], g_nums[fac][2]]
+
+        mean_pawn = NamedDims.unname(
+            AxisKeys.keyless(pawn_store(; Si=:mean, factors=factor))
+        )
+        std_pawn = NamedDims.unname(AxisKeys.keyless(pawn_store(; Si=:std, factors=factor)))
+
+        if factor == :dummy
+            col = "red"
+        else
+            col = c_cycles[fac]
+        end
+
+        lines!(grid_pos, N_it, mean_pawn; color=col, label=factor)
+        band!(
+            grid_pos,
+            N_it,
+            mean_pawn .- std_pawn,
+            mean_pawn .+ std_pawn;
+            alpha=0.4,
+            color=col,
+        )
+    end
+
+    return g
+end
