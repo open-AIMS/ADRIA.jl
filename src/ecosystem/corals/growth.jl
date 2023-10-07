@@ -89,7 +89,7 @@ function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, _::Re
     @views @. du[p.mid, :] = p.sXr[p.mid-1, :] - p.sXr[p.mid, :] - p.X_mb[p.mid, :]
     @views @. du[p.large, :] = p.sXr[p.large-1, :] + p.sXr[p.large, :] - p.X_mb[p.large, :]
 
-    return
+    return nothing
 end
 
 """
@@ -339,12 +339,12 @@ affect the distribution over time, and corals mature (moving up size classes).
 - `stdev` : standard deviations of DHW tolerances for each size class
 """
 function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t::Matrix{T},
-    growth_rate::Matrix{F}, stdev::Vector{F})::Nothing where {T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64}
+    growth_rate::Vector{F}, stdev::Vector{F})::Nothing where {T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64}
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
     # Adjust population distribution
-    for sc1 in 1:n_groups:n_sp_sc
+    @floop for sc1 in 1:n_groups:n_sp_sc
         for loc in 1:n_locs
             sc6::Int64 = sc1 + step
 
@@ -381,12 +381,19 @@ locations.
 - `dist_std` : original standard deviations for each species/size class
 - `fec_params_per_m²` : Fecundity parameters for each species/size class combination
 - `h²` : narrow-sense heritability
-
 """
-function settler_DHW_tolerance!(cover::Matrix{F}, c_dist_t_1::Matrix{T},
-    c_dist_t::Matrix{T}, k_area::Vector{F}, tp::Matrix{F}, recruitment::Matrix{F},
-    dist_std::Vector{F}, fec_params_per_m²::Vector{F}, h²::F)::Nothing where {T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64}
-
+function settler_DHW_tolerance!(
+    cover::Matrix{F},
+    c_dist_t_1::Matrix{T},
+    c_dist_t::Matrix{T},
+    k_area::Vector{F},
+    tp::Matrix{F},
+    recruitment::Matrix{F},
+    dist_std::Vector{F},
+    fec_params_per_m²::Vector{F},
+    h²::F)::Nothing where {
+    T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64
+}
     # Adjust DHW tolerances incorporating recruited coral
     for sink_loc in findall(k_area .> 0.0)
         @views larvae_contribution = tp[tp[:, sink_loc].>0.0, sink_loc]
@@ -428,8 +435,18 @@ function settler_DHW_tolerance!(cover::Matrix{F}, c_dist_t_1::Matrix{T},
 
             # Obtain the recruited and original distributions for the sink location.
             recruit_mm = MixtureModel(source_dists, expanded_w)
-            orig_mm = c_dist_t_1[sc1, sink_loc]
 
+            if rec_w == 1.0
+                # If all the weight is on new recruits, then no need to mix with sink
+                # population.
+                μ_t = mean(recruit_mm)
+                @views c_dist_t[sc1, sink_loc] = truncated(
+                    Normal(μ_t, dist_std[sc1]), minimum(recruit_mm), μ_t + HEAT_UB
+                )
+                continue
+            end
+
+            orig_mm = c_dist_t_1[sc1, sink_loc]
             d = MixtureModel([orig_mm, recruit_mm], [1.0 - rec_w, rec_w])
 
             # Breeder's equation
@@ -587,7 +604,7 @@ Note: Units for all areas are assumed to be in m².
 - `fec_scope` : Fecundity scope
 - `TP_data` : Transition probability (rows: source locations; cols: sink locations)
 - `leftover_k_m²` : Difference between locations' maximum carrying capacity and current
-    coral cover (\$k - C_s\$ ∈ [0, 1])
+    coral cover (in m²)
 - `α` : max number of settlers / m²
 - `β` : larvae / m² required to produce 50% of maximum settlement
 - `basal_area_per_settler` : area taken up by a single settler
