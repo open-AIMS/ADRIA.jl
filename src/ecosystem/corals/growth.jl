@@ -89,7 +89,7 @@ function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, _::Re
     @views @. du[p.mid, :] = p.sXr[p.mid-1, :] - p.sXr[p.mid, :] - p.X_mb[p.mid, :]
     @views @. du[p.large, :] = p.sXr[p.large-1, :] + p.sXr[p.large, :] - p.X_mb[p.large, :]
 
-    return
+    return nothing
 end
 
 """
@@ -382,7 +382,7 @@ function adjust_DHW_distribution!(
     step::Int64 = n_groups - 1
 
     # Adjust population distribution
-    for sc1 in 1:n_groups:n_sp_sc
+    @floop for sc1 in 1:n_groups:n_sp_sc
         for loc in 1:n_locs
             sc6::Int64 = sc1 + step
 
@@ -623,7 +623,7 @@ Note: Units for all areas are assumed to be in m².
 - `fec_scope` : Fecundity scope
 - `TP_data` : Transition probability (rows: source locations; cols: sink locations)
 - `leftover_k_m²` : Difference between locations' maximum carrying capacity and current
-    coral cover (\$k - C_s\$ ∈ [0, 1])
+    coral cover (in m²)
 - `α` : max number of settlers / m²
 - `β` : larvae / m² required to produce 50% of maximum settlement
 - `basal_area_per_settler` : area taken up by a single settler
