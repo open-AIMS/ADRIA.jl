@@ -245,11 +245,11 @@ function run_scenario(
     vals[vals.<threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
-    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), param_set)
+    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), param_set)
+    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
@@ -593,22 +593,26 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, loc_k_area)
 
         loc_coral_cover = sum(Y_pstep, dims=1)  # dims: 1 * nsites
-        leftover_space_prop = relative_leftover_space(loc_coral_cover)
-        leftover_space_m² = leftover_space_prop .* loc_k_area
+        leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
 
         # Recruitment represents additional cover, relative to total site area
         # Gets used in ODE
-        p.rec .= settler_cover(fec_scope, TP_data, leftover_space_prop,
-            sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
+        p.rec .= settler_cover(
+            fec_scope,
+            TP_data,
+            leftover_space_m²,
+            sim_params.max_settler_density,
+            sim_params.max_larval_density,
+            basal_area_per_settler
+        ) ./ loc_k_area
 
         settler_DHW_tolerance!(c_mean_t_1, c_mean_t, site_k_area(domain), TP_data, p.rec, fec_params_per_m², param_set("heritability"))
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
 
-        dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
-
         # Apply regional cooling effect before selecting locations to seed
+        dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         if (srm > 0.0) && in_shade_years
             Yshade[tstep, :] .= srm
 
@@ -629,8 +633,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
             @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
             mcda_vars.dam_prob .= summary_stat_env(env_horizon, 1)
-        end
-        if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= loc_coral_cover
 
             # Determine connectivity strength
@@ -654,7 +656,15 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         has_shade_sites::Bool = !all(shade_locs .== 0)
-        has_seed_sites::Bool = !all(seed_locs .== 0)
+
+        # Check if locations are selected, and selected locations have space,
+        # otherwise no valid locations were selected for seeding.
+        has_seed_sites::Bool = true
+        if !all(seed_locs .== 0)
+            has_seed_sites = !all(leftover_space_m²[seed_locs] .== 0.0)
+        else
+            has_seed_sites = false
+        end
 
         # Fog selected locations
         if (fogging > 0.0) && in_shade_years && has_shade_sites
@@ -677,22 +687,21 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Update initial condition
-        tmp .= Y_pstep
-        growth.u0 .= tmp
+        growth.u0 .= Y_pstep
 
         # leftover space * current cover * growth_rate
-        p.sXr .= relative_leftover_space(sum(tmp, dims=1)) .* tmp .* p.r
-        p.X_mb .= tmp .* p.mb    # current cover * background mortality
+        p.sXr .= relative_leftover_space(sum(Y_pstep, dims=1)) .* Y_pstep .* corals.growth_rate
+        p.X_mb .= Y_pstep .* corals.mb_rate    # current cover * background mortality
 
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-            alg_hints=[:nonstiff], adaptive=false, dt=0.5)
-
-        # TODO:
-        # Check if size classes are inappropriately out-growing available space
-        proportional_adjustment!(@view(C_cover[tstep, :, :]), max_cover)
+            alg_hints=[:nonstiff], adaptive=false, dt=1.0)
 
         # Ensure values are ∈ [0, 1]
         @views C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
+
+        # TODO:
+        # Check if size classes are inappropriately out-growing available space
+        # proportional_adjustment!(@view(C_cover[tstep, :, :]), max_cover)
 
         if tstep <= tf
             # Natural adaptation
