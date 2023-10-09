@@ -265,15 +265,20 @@ function location_selection_frequencies(
 end
 function location_selection_frequencies(
     rs::ResultSet,
-    iv_type::String;
-    n_loc_int::Int64=5,
-    ind_metrics::Vector{Int64}=_get_scen_ids(rs.ranks),
+    iv_type::String,
 )
-    selected_ranks = _get_iv_type(rs.ranks[scenarios=ind_metrics], iv_type)
-    ranks_frequencies = ranks_to_frequencies_ts(selected_ranks; n_ranks=n_loc_int)
-    loc_count = dropdims(sum(ranks_frequencies[ranks=1:n_loc_int], dims=[1, 3]), dims=3)[timesteps=1]
-
+    log = getfield(rs, Symbol(string(iv_type, "_log")))
+    return location_selection_frequencies(log)
+end
+function location_selection_frequencies(inv_log::NamedDimsArray)
+    loc_count = dropdims(
+        sum(dropdims(sum(inv_log; dims=:coral_id); dims=:coral_id) .> 0; dims=:scenarios);
+        dims=:scenarios,
+    )
     return loc_count
+end
+function location_selection_frequencies(inv_log::NamedDimsArray, scen_ids::Vector{Int46})
+    return location_selection_frequencies(inv_log[scenarios=scen_ids])
 end
 
 """
