@@ -1,6 +1,21 @@
 using JuliennedArrays: Slices
 using Statistics
 
+"""
+    scenarios(outcomes::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    scenarios!(g::Union{GridLayout,GridPosition}, outcomes::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+
+Visualize clustered time series of scenarios.
+
+# Arguments
+- `outcomes` : Matrix of outcomes for several scenarios or sites
+- `clusters` : Vector of numbers corresponding to clusters
+- `opts` : Aviz options
+    - `summarize` : plot confidence interval. Defaults to true
+
+# Returns
+Figure
+"""
 function ADRIA.viz.scenarios(
     outcomes::NamedDimsArray,
     clusters::Union{BitVector,Vector{Int64}};
@@ -65,12 +80,9 @@ function ADRIA.viz.clustered_scenarios(
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )::Figure
-    f = Figure(; fig_opts...)
-    g = f[1, 1] = GridLayout()
-
-    ADRIA.viz.scenarios!(g, outcomes, clusters; axis_opts=axis_opts, opts=opts)
-
-    return f
+    return ADRIA.viz.scenarios(
+        outcomes, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
+    )
 end
 function ADRIA.viz.clustered_scenarios!(
     g::Union{GridLayout,GridPosition},

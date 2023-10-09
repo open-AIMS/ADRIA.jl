@@ -99,7 +99,7 @@ function ADRIA.viz.scenarios!(
         outcomes,
         scen_groups;
         opts=opts,
-        axis_opts::Dict=Dict(),
+        axis_opts=axis_opts,
         series_opts=series_opts,
     )
 end
