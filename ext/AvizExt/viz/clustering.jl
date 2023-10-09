@@ -44,7 +44,7 @@ function ADRIA.viz.scenarios!(
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
     scen_groups = ADRIA.analysis.scenario_clusters(clusters)
-    opts::Dict{Symbol,Any} = Dict(:histogram => false)
+    opts[:histogram] = false
     return ADRIA.viz.scenarios!(
         g,
         ax,
