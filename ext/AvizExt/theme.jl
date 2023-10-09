@@ -13,71 +13,34 @@ const COLORS::Dict{Symbol,Symbol} = Dict(
 )
 
 const BINARY_LABELS::Dict{Bool,String} = Dict(0 => "Non-Target", 1 => "Target")
-function scenario_type(rs::ResultSet; scenarios=(:))
-    counterfactual = ADRIA.analysis.counterfactual(rs)
-    unguided = ADRIA.analysis.unguided(rs)
-    guided = ADRIA.analysis.guided(rs)
 
-    return (
-        counterfactual=ADRIA.analysis.counterfactual(rs_input)[scenarios],
-        unguided=ADRIA.analysis.unguided(rs_input)[scenarios],
-        guided=ADRIA.analysis.guided(rs_input)[scenarios],
-    )
-function scenario_colors(rs::ResultSet, weight::Float64)::Vector{Tuple{Symbol,Float64}}
-    return [(c, weight) for c in scenario_colors(rs)]
+function colors(scen_groups::Dict{<:Any,BitVector})::Dict{Symbol,Symbol}
+    return Dict(group => COLORS[group] for group in keys(scen_groups))
 end
-function scenario_colors(rs::ResultSet, weight::Float64, hide::BitVector)
-    color_map::Vector{Tuple{Symbol,Float64}} = scenario_colors(rs, weight)
+function colors(
+    scen_groups::Dict{Symbol,BitVector}, weight::Float64
+)::Vector{Tuple{Symbol,Float64}}
+    groups = collect(keys(scen_groups))
+    n_scens = length(scen_groups[groups[1]])
+    _colors = Vector{Symbol}(undef, n_scens)
+    scen_colors = colors(scen_groups)
 
-    if length(hide) > 0
-        color_map[hide] .= ((:white, 0.0),)
+    for (group, scens) in scen_groups
+        _colors[scens] .= [scen_colors[group]]
     end
 
-    return color_map
-end
-function scenario_colors(rs::ResultSet)::Vector{Symbol}
-    return scenario_colors(rs.inputs)
-end
-function scenario_colors(rs_inputs::DataFrame)::Vector{Symbol}
-    scen_types::Dict{Symbol,BitVector} = ADRIA.analysis.scenario_types(rs_inputs)
-    colors = Vector{Symbol}(undef, size(rs_inputs, 1))
-
-    for (key, value) in scen_types
-        colors[value] .= COLORS[key]
-    end
-
-    return colors
+    return [(c, weight) for c in _colors]
 end
 
-"""
-    scenario_colors!(obs_color, scen_types::NamedTuple, weight::Float64, hide::BitVector)
-
-Hide selected scenarios by changing transparency.
-"""
-function scenario_colors!(
-    obs_color::Observable,
-    color_map::Vector,
-    scen_types::NamedTuple,
-    weight::Float64,
-    hide::BitVector,
-    guide_toggle_map,
-)
-    color_map .= obs_color[]
-    for (t, l, c) in guide_toggle_map
-        if !t.active[]
-            continue
-        end
-
-        display_color = t.active[] ? c : :gray
-        display_weight = t.active[] ? weight : 0.05
-
-        scen_t = getfield(scen_types, Symbol(lowercase(l)))
-        color_map[scen_t .& .!hide] .= ((display_color, display_weight),)
-    end
-
-    color_map[hide] .= ((:white, 0.0),)
-    return obs_color[] = color_map
+function alphas(scen_groups::Dict{Symbol,BitVector})::Dict{Symbol,Float64}
+    return Dict(name => alpha(scens) for (name, scens) in scen_groups)
 end
+
+function alpha(scens::BitVector)::Float64
+    base_alpha = (1 - count(scens) / length(scens))
+    return max(min(base_alpha, 0.3), 0.1)
+end
+
 """
     cluster_colors(clusters::Vector{Int64}, unique_colors::Vector{RGBA{Float32}})::Vector{RGBA{Float32}}
     cluster_colors(clusters::Vector{Int64})::Vector{RGBA{Float32}}
@@ -193,11 +156,33 @@ function cluster_labels(
     return legend_labels
 end
 
-function alphas(scenario_types::Dict{Symbol,BitVector})::Dict{Symbol,Float64}
-    return Dict(k => alpha(v) for (k, v) in scenario_types)
-end
+"""
+    scenario_colors!(obs_color, scen_types::NamedTuple, weight::Float64, hide::BitVector)
 
-function alpha(scenario_types::BitVector)::Float64
-    base_alpha = (1 - count(scenario_types) / length(scenario_types))
-    return max(min(base_alpha, 0.3), 0.1)
+Hide selected scenarios by changing transparency.
+"""
+function scenario_colors!(
+    obs_color::Observable,
+    color_map::Vector,
+    scen_groups::Dict{Symbol,BitVector},
+    scen_types::NamedTuple,
+    weight::Float64,
+    hide::BitVector,
+    guide_toggle_map,
+)
+    color_map .= obs_color[]
+    for (t, l, c) in guide_toggle_map
+        if !t.active[]
+            continue
+        end
+
+        display_color = t.active[] ? c : :gray
+        display_weight = t.active[] ? weight : 0.05
+
+        scen_t = scen_types[Symbol(lowercase(l))]
+        color_map[scen_t .& .!hide] .= ((display_color, display_weight),)
+    end
+
+    color_map[hide] .= ((:white, 0.0),)
+    return obs_color[] = color_map
 end

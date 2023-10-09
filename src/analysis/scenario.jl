@@ -1,12 +1,31 @@
-SCEN_TYPES = [:counterfactual, :unguided, :guided]
+SCENARIO_TYPES = [:counterfactual, :unguided, :guided]
 
-function scenario_types(rs::ResultSet; scenarios=(:))::Dict{Symbol,BitVector}
+"""
+# Example
+```
+# It returns something like:
+Dict(:RCP40 => [1,1,0], :)
+```
+"""
+function scenario_rcps(
+    rs_inputs::DataFrame; scenarios::Union{UnitRange,Colon,Vector{Int64},BitVector}=(:)
+)::Dict{Symbol,BitVector}
+    rs_rcps::Vector{Symbol} = Symbol.(:RCP, Int64.(rs_inputs[scenarios, :RCP]))
+    unique_rcps = unique(rs_rcps)
+    return Dict(rcp => rs_rcps .== rcp for rcp in unique_rcps)
+end
+
+function scenario_types(
+    rs::ResultSet; scenarios::Union{UnitRange,Colon,Vector{Int64},BitVector}=(:)
+)::Dict{Symbol,BitVector}
     return scenario_types(rs.inputs; scenarios=scenarios)
 end
-function scenario_types(rs_input::DataFrame; scenarios=(:))::Dict{Symbol,BitVector}
+function scenario_types(
+    rs_inputs::DataFrame; scenarios::Union{UnitRange,Colon,Vector{Int64},BitVector}=(:)
+)::Dict{Symbol,BitVector}
     return Dict(
-        type => eval(type)(rs_input)[scenarios] for
-        type in SCEN_TYPES if sum(eval(type)(rs_input)[scenarios]) != 0
+        type => eval(type)(rs_inputs[scenarios, :]) for
+        type in SCENARIO_TYPES if count(eval(type)(rs_inputs[scenarios, :])) != 0
     )
 end
 
