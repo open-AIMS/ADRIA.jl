@@ -1,4 +1,4 @@
-SCENARIO_TYPES = [:counterfactual, :unguided, :guided]
+const SCENARIO_TYPES = [:counterfactual, :unguided, :guided]
 
 function scenario_clusters(clusters::BitVector)::Dict{Symbol,BitVector}
     return Dict(:target => clusters, :non_target => .!clusters)
