@@ -26,9 +26,7 @@ function ADRIA.viz.scenarios(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    ADRIA.viz.scenarios!(
-        g, outcomes, clusters; opts=opts, axis_opts=axis_opts, series_opts=series_opts
-    )
+    ADRIA.viz.scenarios!(g, outcomes, clusters; opts=opts, axis_opts=axis_opts)
 
     return f
 end
