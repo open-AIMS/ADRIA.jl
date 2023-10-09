@@ -168,62 +168,41 @@ with which each location was selected at each rank across the location selection
 - `iv_type` : String indicating the intervention type to perform aggregation on.
 
 """
-function ranks_to_frequencies(
-    ranks::NamedDimsArray,
-    rank_frequencies::NamedDimsArray;
-    n_ranks::Int64=length(ranks.sites),
-)
+function ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)
+    dn = NamedDims.dimnames(ranks)
+    freq_dims = [n for n in dn if n != :scenarios]
+    dn_subset = vcat(freq_dims, [:ranks])
+    freq_elements = vcat(
+        [1:length(axiskeys(ranks, n)) for n in dn if n != :scenarios],
+        [1:length(axiskeys(ranks, :sites))],
+    )
+    mn = ([size(ranks, k) for k in freq_dims]..., size(ranks, :sites))
 
-    for rank in range(1, n_ranks, n_ranks)
-        rank_frequencies[ranks=Int64(rank)] .= sum(ranks .== rank, dims=:scenarios)[scenarios=1]
+    rank_frequencies = NamedDimsArray(zeros(mn...); zip(dn_subset, freq_elements)...)
+
+    for rank in 1:n_ranks
+        rank_frequencies[ranks=Int64(rank)] .= vec(sum(ranks .== rank; dims=:scenarios))
     end
+
     return rank_frequencies
 end
 function ranks_to_frequencies(
-    ranks::NamedDimsArray, iv_type::String; n_ranks::Int64=length(ranks.sites)
-)
-    selected_ranks = _get_iv_type(ranks, iv_type)
-    rank_frequencies = NamedDimsArray(zeros(length(ranks.sites), length(ranks.sites)), sites=ranks.sites, ranks=1:length(ranks.sites))
-    return ranks_to_frequencies(selected_ranks, rank_frequencies; n_ranks=n_ranks)
+    ranks::NamedDimsArray{D,T,3,A};
+    n_ranks=length(ranks.sites),
+    agg_func=x -> sum(x; dims=(:timesteps, :scenarios)),
+) where {D,T,A}
+    return agg_func(ranks_to_frequencies(ranks, n_ranks))
 end
 function ranks_to_frequencies(
-    rs::ResultSet, iv_type::String; n_ranks=length(rs.ranks.sites)
-)
-    return sum(ranks_to_frequencies_ts(rs, iv_type; n_ranks=n_ranks), dims=:timesteps)[timesteps=1]
-end
+    ranks::NamedDimsArray{D,T,2,A};
+    n_ranks=length(ranks.sites),
+    agg_func=nothing,
+) where {D,T,A}
+    if !isnothing(agg_func)
+        return agg_func(ranks_to_frequencies(ranks, n_ranks))
+    end
 
-"""
-    ranks_to_frequencies_ts(ranks::NamedDimsArray, iv_type::String; n_ranks=length(ranks.sites))
-    ranks_to_frequencies_ts(rs::ResultSet, iv_type::String; n_ranks=length(ranks.sites))
-
-Post-processing function for location ranks output of `run_location_selection()`. Gives the frequency 
-with which each location was selected at each rank across the location selection scenarios and over time.
-
-# Arguments
-- `ranks` : Contains location ranks for each scenario of location selection, as created by 
-    `run_location_selection()`.
-- `rs` : ADRIA result set. 
-- `iv_type` : String indicating the intervention type to perform aggregation on.
-- `n_ranks` : Consider first n_ranks, default is all ranks (n_locs).
-
-# Returns 
-- Frequency with which each location was selected for each rank over time.
-"""
-function ranks_to_frequencies_ts(ranks::NamedDimsArray; n_ranks::Int64=length(ranks.sites))
-    rank_frequencies = NamedDimsArray(zeros(length(ranks.timesteps), length(ranks.sites), length(ranks.sites)), timesteps=ranks.timesteps, sites=ranks.sites, ranks=1:length(ranks.sites))
-    return ranks_to_frequencies(ranks, rank_frequencies; n_ranks=n_ranks)
-end
-function ranks_to_frequencies_ts(
-    ranks::NamedDimsArray, iv_type::String; n_ranks=length(ranks.sites)
-)
-    selected_ranks = _get_iv_type(ranks, iv_type)
-    return ranks_to_frequencies_ts(selected_ranks; n_ranks=n_ranks)
-end
-function ranks_to_frequencies_ts(
-    rs::ResultSet, iv_type::String; n_ranks=length(rs.ranks.sites)
-)
-    selected_ranks = _get_iv_type(rs.ranks, iv_type)
-    return ranks_to_frequencies_ts(selected_ranks; n_ranks=n_ranks)
+    return ranks_to_frequencies(ranks, n_ranks)
 end
 
 """
@@ -243,32 +222,24 @@ for a selection of scenarios (e.g. selected robust scenarios).
 
 """
 function location_selection_frequencies(
-    ranks::NamedDimsArray,
-    iv_type::String;
+    ranks::NamedDimsArray;
     n_loc_int::Int64=5,
-    ind_metrics::Vector{Int64}=_get_scen_ids(ranks),
+    agg_func=nothing,
 )
-    ranks_frequencies = ranks_to_frequencies(ranks[scenarios=ind_metrics], iv_type; n_ranks=n_loc_int)
+    ranks_frequencies = ranks_to_frequencies(ranks; n_ranks=n_loc_int, agg_func=agg_func)
     loc_count = sum(ranks_frequencies[ranks=1:n_loc_int], dims=2)[ranks=1]
 
     return loc_count
 end
 function location_selection_frequencies(
-    rs::ResultSet,
-    iv_type::String,
-)
-    log = getfield(rs, Symbol(string(iv_type, "_log")))
-    return location_selection_frequencies(log)
-end
-function location_selection_frequencies(inv_log::NamedDimsArray)
+    inv_log::NamedDimsArray{D,T,4,A};
+    dims::Union{Symbol,Vector{Symbol}}=:coral_id,
+) where {D,T,A}
     loc_count = dropdims(
-        sum(dropdims(sum(inv_log; dims=:coral_id); dims=:coral_id) .> 0; dims=:scenarios);
+        sum(dropdims(sum(inv_log; dims=dim); dims=dims) .> 0; dims=:scenarios);
         dims=:scenarios,
     )
     return loc_count
-end
-function location_selection_frequencies(inv_log::NamedDimsArray, scen_ids::Vector{Int46})
-    return location_selection_frequencies(inv_log[scenarios=scen_ids])
 end
 
 """
