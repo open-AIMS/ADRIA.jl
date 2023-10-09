@@ -1,8 +1,6 @@
 using JuliennedArrays: Slices
 using ADRIA.analysis: series_confint
 
-include("../../../src/utils/text_display.jl")
-
 """
     ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
     ADRIA.viz.scenarios(rs_inputs::DataFrame, outcomes::NamedDimsArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())::Figure
