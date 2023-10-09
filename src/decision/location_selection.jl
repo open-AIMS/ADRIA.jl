@@ -287,34 +287,3 @@ end
 
 """
     _get_iv_type(ranks, iv_type)
-
-Get ranks for intervention based on name.
-    
-# Arguments
-- `ranks` : Contains location ranks for each scenario of location selection, as created by 
-    `run_location_selection()`.
-- `iv_type` : indicates intervention log to use ("seed", "shade" or "fog").
-
-# Returns
-- Ranks for specified iv_type.
-"""
-function _get_iv_type(ranks::NamedDimsArray, iv_type::String)
-    iv_dict = Dict([("seed", 1), ("shade", 2)])
-    return ranks[intervention=iv_dict[iv_type]]
-end
-
-"""
-    _get_scen_ids(ranks)
-
-Get ranks for intervention based on name.
-    
-# Arguments
-- `ranks` : Contains location ranks for each scenario of location selection, as created by 
-    `run_location_selection()`.
-
-# Returns
-- Ids for full scenario set in ranks.
-"""
-function _get_scen_ids(ranks::NamedDimsArray)
-    return collect(ranks.scenarios)
-end
