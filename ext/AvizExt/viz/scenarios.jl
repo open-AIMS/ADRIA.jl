@@ -93,6 +93,25 @@ function ADRIA.viz.scenarios!(
         ADRIA.analysis.scenario_types(_rs_inputs)
     end
 
+    return ADRIA.viz.scenarios!(
+        g,
+        ax,
+        outcomes,
+        scen_groups;
+        opts=opts,
+        axis_opts::Dict=Dict(),
+        series_opts=series_opts,
+    )
+end
+function ADRIA.viz.scenarios!(
+    g::Union{GridLayout,GridPosition},
+    ax::Axis,
+    outcomes::NamedDimsArray,
+    scen_groups::Dict{Symbol,BitVector};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+    series_opts::Dict=Dict(),
+)::Union{GridLayout,GridPosition}
     if get(opts, :summarize, true)
         scenarios_confint!(ax, outcomes, scen_groups)
     else

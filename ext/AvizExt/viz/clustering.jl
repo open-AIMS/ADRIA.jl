@@ -1,6 +1,48 @@
 using JuliennedArrays: Slices
 using Statistics
 
+function ADRIA.viz.scenarios(
+    outcomes::NamedDimsArray,
+    clusters::Union{BitVector,Vector{Int64}};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)::Figure
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+
+    ADRIA.viz.scenarios!(
+        g, outcomes, clusters; opts=opts, axis_opts=axis_opts, series_opts=series_opts
+    )
+
+    return f
+end
+function ADRIA.viz.scenarios!(
+    g::Union{GridLayout,GridPosition},
+    outcomes::NamedDimsArray,
+    clusters::Union{BitVector,Vector{Int64}};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+    series_opts::Dict=Dict(),
+)::Union{GridLayout,GridPosition}
+    # Ensure last year is always shown in x-axis
+    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+    ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
+
+    scen_groups = ADRIA.analysis.scenario_clusters(clusters)
+    opts::Dict{Symbol,Any} = Dict(:histogram => false)
+    return ADRIA.viz.scenarios!(
+        g,
+        ax,
+        outcomes,
+        scen_groups;
+        opts=opts,
+        axis_opts=axis_opts,
+        series_opts=series_opts,
+    )
+end
+
 """
     clustered_scenarios(outcomes::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     clustered_scenarios!(g::Union{GridLayout,GridPosition}, outcomes::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), axis_opts::Dict=Dict())
@@ -26,7 +68,7 @@ function ADRIA.viz.clustered_scenarios(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    ADRIA.viz.clustered_scenarios!(g, outcomes, clusters; axis_opts=axis_opts, opts=opts)
+    ADRIA.viz.scenarios!(g, outcomes, clusters; axis_opts=axis_opts, opts=opts)
 
     return f
 end
@@ -37,21 +79,7 @@ function ADRIA.viz.clustered_scenarios!(
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
-    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
-    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
-    ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
-
-    scen_groups = ADRIA.analysis.scenario_clusters(clusters)
-
-    if get(opts, :summarize, true)
-        scenarios_confint!(ax, outcomes, scen_groups)
-    else
-        scenarios_series!(ax, outcomes, scen_groups)
-    end
-
-    _render_legend(g, scen_groups, (1, 2))
-
-    return g
+    return ADRIA.viz.scenarios!(g, outcomes, clusters; axis_opts=axis_opts, opts=opts)
 end
 
 """
