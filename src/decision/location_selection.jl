@@ -260,30 +260,21 @@ Calculates (number of sites) .- ranks summed over the dimension dims and transfo
 
 """
 function summed_inverse_rank(
+    ranks::NamedDimsArray{D,T,3,A};
+    dims::Union{Symbol,Vector{Symbol}}=[:scenarios, :timsteps],
+) where {D,T,A}
+    return summed_inverse_rank(ranks, dims)
+end
+function summed_inverse_rank(
+    ranks::NamedDimsArray{D,T,2,A};
+) where {D,T,A}
+    return summed_inverse_rank(ranks, dims)
+end
+function summed_inverse_rank(
     ranks::NamedDimsArray,
-    iv_type::String;
-    dims::Symbol=:scenarios,
-    agg_func::Function=x -> x,
-)
-    selected_ranks = _get_iv_type(ranks, iv_type)
-    return summed_inverse_rank(selected_ranks; dims=dims,agg_func=agg_func)
-
-end
-function summed_inverse_rank(
-    rs::ResultSet, iv_type::String; dims::Symbol=:scenarios, agg_func::Function=x -> x
-)
-    selected_ranks = _get_iv_type(rs.ranks, iv_type)
-    return summed_inverse_rank(selected_ranks; dims=dims,agg_func=agg_func)
-
-end
-function summed_inverse_rank(
-    ranks::NamedDimsArray; dims::Symbol=:scenarios, agg_func::Function=x -> x
+    dims::Union{Symbol,Vector{Symbol}},
 )
     n_ranks = maximum(ranks)
-    inv_ranks = agg_func(dropdims(sum(n_ranks .- ranks,dims=dims),dims=dims))
-    return inv_ranks
+    inv_ranks = dropdims(sum(n_ranks .- ranks; dims=dims); dims=dims)
+    return inv_ranks ./ n_ranks
 end
-
-
-"""
-    _get_iv_type(ranks, iv_type)
