@@ -11,9 +11,6 @@ Perform site selection using a chosen aggregation method, domain, initial cover,
 - `mcda_vars` : Contains relevant parameters for performing guided location selection.
 - `guided` : Integer indicating aggegation algorithm to use for guided location selection.
 
-# Returns
-- `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
-    containing ranks for single scenario.
 """
 function _site_selection(domain::Domain, 
     mcda_vars::DMCDA_vars, 
@@ -57,9 +54,6 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `target_seed_sites` : list of candidate locations for seeding (indices)
 - `target_shade_sites` : list of candidate location to shade (indices)
 
-# Returns
-- `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
-    containing ranks for each scenario run.
 """
 function run_site_selection(domain::Domain, 
     scenarios::DataFrame, 
@@ -144,8 +138,6 @@ of location preference for each scenario as location ids.
     `run_location_selection()`.
 - `iv_type` : String indicating the intervention type to perform aggregation on.
 
-# Returns
-- Location order after ranking as string IDs for each scenario.
 """
 function ranks_to_location_order(ranks::NamedDimsArray)
 
@@ -175,8 +167,6 @@ with which each location was selected at each rank across the location selection
 - `rs` : ADRIA result set.
 - `iv_type` : String indicating the intervention type to perform aggregation on.
 
-# Returns
-- Frequency with which each location was selected for each rank.
 """
 function ranks_to_frequencies(
     ranks::NamedDimsArray,
@@ -251,8 +241,6 @@ for a selection of scenarios (e.g. selected robust scenarios).
 - `iv_type` : indicates intervention log to use ("seed", "shade" or "fog").
 - `n_loc_int` : number of locations which are intervened at for each intervention decision.
 
-# Returns 
-- Counts for location selection at each location in the domain.
 """
 function location_selection_frequencies(
     ranks::NamedDimsArray,
@@ -299,8 +287,6 @@ Calculates (number of sites) .- ranks summed over the dimension dims and transfo
 - `dims` : Dimensions to sum over.
 - `agg_func` : function to transform result.
 
-# Returns 
-- Inverse rankings (i.e. the greater the number the higher ranked the site).
 """
 function summed_inverse_rank(
     ranks::NamedDimsArray,
