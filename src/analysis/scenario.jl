@@ -1,12 +1,14 @@
 SCENARIO_TYPES = [:counterfactual, :unguided, :guided]
 
-"""
-# Example
-```
-# It returns something like:
-Dict(:RCP40 => [1,1,0], :)
-```
-"""
+function scenario_clusters(clusters::BitVector)::Dict{Symbol,BitVector}
+    return Dict(:target => clusters, :non_target => .!clusters)
+end
+function scenario_clusters(clusters::Vector{Int64})::Dict{Symbol,BitVector}
+    return Dict(
+        Symbol("Cluster_$(cluster)") => clusters .== cluster for cluster in unique(clusters)
+    )
+end
+
 function scenario_rcps(
     rs_inputs::DataFrame; scenarios::Union{UnitRange,Colon,Vector{Int64},BitVector}=(:)
 )::Dict{Symbol,BitVector}
@@ -15,11 +17,6 @@ function scenario_rcps(
     return Dict(rcp => rs_rcps .== rcp for rcp in unique_rcps)
 end
 
-function scenario_types(
-    rs::ResultSet; scenarios::Union{UnitRange,Colon,Vector{Int64},BitVector}=(:)
-)::Dict{Symbol,BitVector}
-    return scenario_types(rs.inputs; scenarios=scenarios)
-end
 function scenario_types(
     rs_inputs::DataFrame; scenarios::Union{UnitRange,Colon,Vector{Int64},BitVector}=(:)
 )::Dict{Symbol,BitVector}

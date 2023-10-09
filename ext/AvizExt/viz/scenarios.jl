@@ -1,6 +1,8 @@
 using JuliennedArrays: Slices
 using ADRIA.analysis: series_confint
 
+include("../../../src/utils/text_display.jl")
+
 """
     ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
     ADRIA.viz.scenarios(rs_inputs::DataFrame, outcomes::NamedDimsArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())::Figure
@@ -84,7 +86,7 @@ function ADRIA.viz.scenarios!(
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-    _rs_inputs = copy(rs_inputs[1:end .== outcomes.scenarios, :])
+    _rs_inputs = copy(rs_inputs[1:end .∈ [outcomes.scenarios], :])
     scen_groups = if get(opts, :by_RCP, false)
         ADRIA.analysis.scenario_rcps(_rs_inputs)
     else
@@ -92,12 +94,12 @@ function ADRIA.viz.scenarios!(
     end
 
     if get(opts, :summarize, true)
-        _plot_scenarios_confint!(ax, outcomes, scen_groups)
+        scenarios_confint!(ax, outcomes, scen_groups)
     else
-        _plot_scenarios_series!(ax, outcomes, scen_groups, series_opts)
+        scenarios_series!(ax, outcomes, scen_groups; series_opts=series_opts)
     end
 
-    get(opts, :histogram, true) ? _plot_scenarios_hist(g, outcomes, scen_groups) : nothing
+    get(opts, :histogram, true) ? scenarios_hist(g, outcomes, scen_groups) : nothing
 
     if get(opts, :legend, true)
         legend_position = get(opts, :histogram, true) ? (1, 3) : (1, 2)
@@ -110,7 +112,7 @@ function ADRIA.viz.scenarios!(
     return g
 end
 
-function _plot_scenarios_confint!(
+function scenarios_confint!(
     ax::Axis, outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
 )::Nothing
     ordered_groups::Vector{Symbol} = _sort_keys(scen_groups, outcomes)
@@ -123,7 +125,7 @@ function _plot_scenarios_confint!(
         confints[:, idx, :] = series_confint(outcomes[:, scen_groups[group]])
     end
 
-    _colors::Dict{Symbol,Symbol} = colors(scen_groups)
+    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
 
     for idx in eachindex(ordered_groups)
         band_color = (_colors[ordered_groups[idx]], 0.4)
@@ -131,22 +133,22 @@ function _plot_scenarios_confint!(
         band!(ax, 1:n_timesteps, y_lower, y_upper; color=band_color)
     end
 
-    series_colors = [_colors[group] for group in keys(scen_groups)]
+    series_colors = [_colors[group] for group in ordered_groups]
     series!(ax, confints[:, :, 2]'; solid_color=series_colors)
 
     return nothing
 end
 
-function _plot_scenarios_series!(
+function scenarios_series!(
     ax::Axis,
     outcomes::NamedDimsArray,
-    scen_groups::Dict{Symbol,BitVector},
-    series_opts::Dict,
+    scen_groups::Dict{Symbol,BitVector};
+    series_opts::Dict=Dict(),
 )::Nothing
-    _colors = colors(scen_groups)
-    _alphas = alphas(scen_groups)
+    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
+    _alphas::Dict{Symbol,Float64} = alphas(scen_groups)
 
-    for group in _sort_keys(scen_groups, outcomes)
+    for group in _sort_keys(scen_groups, outcomes; by=:size)
         color = (_colors[group], _alphas[group])
         scens = outcomes[:, scen_groups[group]]'
         series!(ax, scens; solid_color=color, series_opts...)
@@ -155,7 +157,7 @@ function _plot_scenarios_series!(
     return nothing
 end
 
-function _plot_scenarios_hist(
+function scenarios_hist(
     g::Union{GridLayout,GridPosition},
     outcomes::NamedDimsArray,
     scen_groups::Dict{<:Any,BitVector},
@@ -186,41 +188,42 @@ function _render_legend(
     scen_groups::Dict{<:Any,BitVector},
     legend_position::Tuple{Int64,Int64},
 )::Nothing
+    group_names::Vector{Symbol} = sort(collect(keys(scen_groups)))
     _colors = colors(scen_groups)
-    line_els::Vector{LineElement} = [
-        LineElement(; color=_colors[group]) for group in keys(scen_groups)
-    ]
-    labels::Vector{String} = string.(keys(scen_groups))
+    line_els::Vector{LineElement} = [LineElement(; color=_colors[n]) for n in group_names]
 
-    Legend(
-        g[legend_position...],
-        line_els,
-        labels;
-        halign=:left,
-        valign=:top,
-        margin=(5, 5, 5, 5),
-    )
+    Legend(g[legend_position...], line_els, labels(group_names); framevisible=false)
 
     return nothing
 end
 
 """
-    _sort_keys(scenario_types::Dict{Symbol, BitVector}, data::NamedDimsArray)::Vector{Symbol}
+    _sort_keys(scenario_types::Dict{Symbol, BitVector}, outcomes::NamedDimsArray)::Vector{Symbol}
 
 Sort types by variance in reverse order.
 
 # Arguments
-- `data` : Results of scenario metric
+- `outcomes` : Results of scenario metric
 - `scenario_types` : NamedTuple of BitVectors to filter scenarios for each scenario type of:
     - :guided
     - :unguided
     - :counterfactual
 """
 function _sort_keys(
-    scenario_types::Dict{Symbol,BitVector}, data::NamedDimsArray
+    scenario_types::Dict{Symbol,BitVector}, outcomes::NamedDimsArray; by=:variance
 )::Vector{Symbol}
     scen_types::Vector{Symbol} = collect(keys(scenario_types))
-    return sort(
-        scen_types; by=type -> sum(var(data[:, scenario_types[type]]; dims=2)), rev=true
-    )
+    if by == :variance
+        return sort(
+            scen_types;
+            by=type -> sum(var(outcomes[:, scenario_types[type]]; dims=2)),
+            rev=true,
+        )
+    elseif by == :size
+        return sort(
+            scen_types; by=type -> size(outcomes[:, scenario_types[type]], 2), rev=true
+        )
+    else
+        throw(ArgumentError("Invalid value of 'by' kwarg"))
+    end
 end
