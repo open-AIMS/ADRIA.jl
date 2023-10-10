@@ -245,7 +245,7 @@ function location_selection_frequencies(
     dims::Union{Symbol,Vector{Symbol}}=:coral_id,
 ) where {D,T,A}
     loc_count = dropdims(
-        sum(dropdims(sum(inv_log; dims=dim); dims=dims) .> 0; dims=:scenarios);
+        sum(dropdims(sum(inv_log; dims=dims); dims=dims) .> 0; dims=:scenarios);
         dims=:scenarios,
     )
     return loc_count
