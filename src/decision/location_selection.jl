@@ -196,7 +196,7 @@ end
 function ranks_to_frequencies(
     ranks::NamedDimsArray{D,T,3,A};
     n_ranks=length(ranks.sites),
-    agg_func=x -> sum(x; dims=(:timesteps, :scenarios)),
+    agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),
 ) where {D,T,A}
     return agg_func(ranks_to_frequencies(ranks, n_ranks))
 end
