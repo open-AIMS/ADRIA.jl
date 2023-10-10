@@ -212,9 +212,11 @@ function ADRIA.viz.explore(rs::ResultSet)
     X = rs.inputs
     min_color_step = (1.0 / 0.05)
     init_weight = (1.0 / (size(X, 1) / min_color_step))
-    color_map = scenario_colors(rs, init_weight)
+
+    # Group scenarios by type
+    scen_groups::Dict{Symbol,BitVector} = ADRIA.analysis.scenario_types(rs.inputs)
+    color_map = colors(scen_groups, init_weight)
     obs_color = Observable(color_map)
-    scen_types = scenario_type(rs)
 
     seed_log = rs.seed_log[:, 1, :, :]
 
@@ -229,25 +231,25 @@ function ADRIA.viz.explore(rs::ResultSet)
     ug_hist_alpha = Observable((:green, 0.5))
     g_hist_alpha = Observable((:blue, 0.5))
 
-    has_cf = count(scen_types.counterfactual) > 0
-    has_ug = count(scen_types.unguided) > 0
-    has_g = count(scen_types.guided) > 0
+    has_cf = count(scen_groups[:counterfactual]) > 0
+    has_ug = count(scen_groups[:unguided]) > 0
+    has_g = count(scen_groups[:guided]) > 0
 
     # Density (TODO: Separate into own function)
     tac_scen_dist = dropdims(mean(tac_scens, dims=:timesteps), dims=:timesteps)
-    obs_cf_scen_dist = Observable(tac_scen_dist[scen_types.counterfactual])
+    obs_cf_scen_dist = Observable(tac_scen_dist[scen_groups[:counterfactual]])
 
     scen_hist = layout.scen_hist
     if has_cf
         density!(scen_hist, obs_cf_scen_dist, direction=:y, color=cf_hist_alpha)
     end
 
-    obs_ug_scen_dist = Observable(tac_scen_dist[scen_types.unguided])
+    obs_ug_scen_dist = Observable(tac_scen_dist[scen_groups[:unguided]])
     if has_ug
         density!(scen_hist, obs_ug_scen_dist, direction=:y, color=ug_hist_alpha)
     end
 
-    obs_g_scen_dist = Observable(tac_scen_dist[scen_types.guided])
+    obs_g_scen_dist = Observable(tac_scen_dist[scen_groups[:guided]])
     if has_g
         density!(scen_hist, obs_g_scen_dist, direction=:y, color=g_hist_alpha)
     end
@@ -335,9 +337,9 @@ function ADRIA.viz.explore(rs::ResultSet)
     mean_juves_med = mean_juves_med[interv_idx]
 
     # sample_cv = std(tac_scen_dist) ./ mean(tac_scen_dist)
-    # cf_cv = std(tac_scen_dist[scen_types.counterfactual]) ./ mean(tac_scen_dist[scen_types.counterfactual])
-    # ug_cv = std(tac_scen_dist[scen_types.unguided]) ./ mean(tac_scen_dist[scen_types.unguided])
-    # g_cv = std(tac_scen_dist[scen_types.guided]) ./ mean(tac_scen_dist[scen_types.guided])
+    # cf_cv = std(tac_scen_dist[scen_groups[:counterfactual]]) ./ mean(tac_scen_dist[scen_groups[:counterfactual]])
+    # ug_cv = std(tac_scen_dist[scen_groups[:unguided]]) ./ mean(tac_scen_dist[scen_groups[:unguided]])
+    # g_cv = std(tac_scen_dist[scen_groups[:guided]]) ./ mean(tac_scen_dist[scen_groups[:guided]])
 
     ft_import = Axis(
         layout.importance[1, 1],
@@ -455,9 +457,9 @@ function ADRIA.viz.explore(rs::ResultSet)
         # Update scenario density
         scen_dist = dropdims(mean(tac_scens(timesteps=timespan), dims=:timesteps), dims=:timesteps)
         # Hide scenarios that were filtered out
-        cf_dist = scen_dist[show_idx.&scen_types.counterfactual]
-        ug_dist = scen_dist[show_idx.&scen_types.unguided]
-        g_dist = scen_dist[show_idx.&scen_types.guided]
+        cf_dist = scen_dist[show_idx .& scen_groups[:counterfactual]]
+        ug_dist = scen_dist[show_idx .& scen_groups[:unguided]]
+        g_dist = scen_dist[show_idx .& scen_groups[:guided]]
 
         if c_tog && !isempty(cf_dist)
             obs_cf_scen_dist[] = cf_dist
@@ -486,7 +488,9 @@ function ADRIA.viz.explore(rs::ResultSet)
         # Update visible trajectories
         # Determine level of transparency for each line (maximum of 0.5)
         color_weight = min((1.0 / (count(show_idx .> 0) / min_color_step)), 0.5)
-        scenario_colors!(obs_color, color_map, scen_types, color_weight, hide_idx, guide_toggle_map)
+        scenario_colors!(
+            obs_color, color_map, scen_groups, color_weight, hide_idx, guide_toggle_map
+        )
 
         # Update sensitivities (if there's enough samples...)
         if count(show_idx) > 16
