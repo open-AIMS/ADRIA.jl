@@ -70,7 +70,7 @@ function run_site_selection(domain::Domain,
 
     ranks_store = NamedDimsArray(
         zeros(length(domain.site_ids), 2, nrow(scenarios)),
-        sites=domain.site_ids,
+        sites=1:length(domain.site_ids),
         intervention=1:2,
         scenarios=1:nrow(scenarios),
     )
@@ -104,8 +104,10 @@ function run_site_selection(domain::Domain,
             vec((mean(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5),
             vec((mean(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios))) .* 0.5),
             )
-    
-        ranks_store(scenarios=scen_idx, sites=domain.site_ids[considered_sites]) .= _site_selection(domain, mcda_vars_temp, scen.guided)
+
+        ranks_store(; scenarios=scen_idx, sites=considered_sites) .= _site_selection(
+            domain, mcda_vars_temp, scen.guided
+        )
     end
     # Set filtered locations as n_locs+1 for consistency with time dependent ranks
     ranks_store[ranks_store.==0.0] .= length(domain.site_ids)+1
