@@ -127,33 +127,11 @@ function run_site_selection(domain::Domain,
         sum_cover, 
         area_to_seed; 
         target_seed_sites=target_seed_sites,
-        target_shade_sites=target_shade_sites)
-    return aggregation_function(ranks, iv_type)
+        target_shade_sites=target_shade_sites,
+    )
 
-end
+    return aggregation_function(ranks(; intervention=iv_type))
 
-"""
-    ranks_to_location_order(ranks::NamedDimsArray)
-
-Post-processing function for location ranks output of `run_location_selection()`. Gives the order 
-of location preference for each scenario as location ids.
-
-# Arguments
-- `ranks` : Contains location ranks for each scenario of location selection, as created by 
-    `run_location_selection()`.
-
-# Returns
-Location order after ranking as string IDs for each scenario.
-"""
-function ranks_to_location_order(ranks::NamedDimsArray)
-
-    n_scens = length(ranks.scenarios)
-    location_orders = NamedDimsArray(repeat([""], length(ranks.scenarios), length(ranks.sites)), scenarios=ranks.scenarios, ranks=1:length(ranks.sites))
-
-    for scen in 1:n_scens
-        location_orders[scenarios=scen, ranks=1:sum(ranks[scenarios=scen] .!= 0.0)] .= sort(Int.(ranks[scenarios=scen][ranks[scenarios=scen].!=0.0])).sites
-    end
-    return location_orders
 end
 
 
