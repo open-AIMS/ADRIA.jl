@@ -188,7 +188,7 @@ function ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)
     rank_frequencies = NamedDimsArray(zeros(mn...); zip(dn_subset, freq_elements)...)
 
     for rank in 1:n_ranks
-        rank_frequencies[ranks=Int64(rank)] .= vec(sum(ranks .== rank; dims=:scenarios))
+        rank_frequencies[ranks=Int64(rank)] .= sum(ranks .== rank; dims=:scenarios)[scenarios=1]
     end
 
     return rank_frequencies
