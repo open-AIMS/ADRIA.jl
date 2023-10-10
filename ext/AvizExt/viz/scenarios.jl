@@ -241,6 +241,6 @@ function _sort_keys(
             scen_types; by=type -> size(outcomes[:, scenario_types[type]], 2), rev=true
         )
     else
-        throw(ArgumentError("Invalid value of 'by' kwarg"))
+        throw(ArgumentError("Invalid 'by' option. Must be one of: [:variance, :size]"))
     end
 end
