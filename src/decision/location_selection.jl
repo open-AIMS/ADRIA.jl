@@ -246,20 +246,21 @@ Inverse rankings (i.e. the greater the number the higher ranked the site).
 """
 function summed_inverse_rank(
     ranks::NamedDimsArray{D,T,3,A};
-    dims::Union{Symbol,Vector{Symbol}}=[:scenarios, :timsteps],
+    dims::Vector{Symbol}=[:scenarios, :timesteps],
 ) where {D,T,A}
     return summed_inverse_rank(ranks, dims)
 end
 function summed_inverse_rank(
     ranks::NamedDimsArray{D,T,2,A};
+    dims::Vector{Symbol}=[:scenarios],
 ) where {D,T,A}
     return summed_inverse_rank(ranks, dims)
 end
 function summed_inverse_rank(
     ranks::NamedDimsArray,
-    dims::Union{Symbol,Vector{Symbol}},
+    dims::Vector{Symbol},
 )
     n_ranks = maximum(ranks)
-    inv_ranks = dropdims(sum(n_ranks .- ranks; dims=dims); dims=dims)
-    return inv_ranks ./ n_ranks
+    inv_ranks = dropdims(sum(n_ranks .- ranks; dims=dims); dims=dims[1])
+    return inv_ranks ./ (n_ranks * prod([size(ranks, d) for d in dims]))
 end
