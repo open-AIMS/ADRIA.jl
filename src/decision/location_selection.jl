@@ -43,8 +43,8 @@ end
 """
     run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64;
         target_seed_sites=nothing, target_shade_sites=nothing)
-    run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64, 
-        aggregation_function::Function; target_seed_sites=nothing, target_shade_sites=nothing)
+    run_site_selection(domain::Domain,scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64, aggregation_function::Function, 
+        iv_type::Union{String,Int64};target_seed_sites=nothing, target_shade_sites=nothing)
 
 Perform site selection for a given domain for multiple scenarios defined in a dataframe.
 
@@ -134,7 +134,6 @@ end
 
 """
     ranks_to_location_order(ranks::NamedDimsArray)
-    ranks_to_location_order(ranks::NamedDimsArray, iv_type::String)
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the order 
 of location preference for each scenario as location ids.
@@ -142,7 +141,6 @@ of location preference for each scenario as location ids.
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
-- `iv_type` : String indicating the intervention type to perform aggregation on.
 
 # Returns
 Location order after ranking as string IDs for each scenario.
@@ -160,8 +158,9 @@ end
 
 
 """
-    ranks_to_frequencies(ranks::NamedDimsArray, iv_type::String; n_ranks=length(ranks.sites))
-    ranks_to_frequencies(rs::ResultSet, iv_type::String; n_ranks=length(ranks.sites))
+    ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)ranks_to_frequencies(rs::ResultSet, iv_type::String; n_ranks=length(ranks.sites))
+    ranks_to_frequencies(ranks::NamedDimsArray{D,T,3,A};n_ranks=length(ranks.sites),agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),) where {D,T,A}
+    ranks_to_frequencies(ranks::NamedDimsArray{D,T,2,A};n_ranks=length(ranks.sites),agg_func=nothing) where {D,T,A}
 
 Post-processing function for location ranks output of `run_location_selection()`. Gives the frequency 
 with which each location was selected at each rank across the location selection scenarios.
@@ -169,8 +168,8 @@ with which each location was selected at each rank across the location selection
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
-- `rs` : ADRIA result set.
-- `iv_type` : String indicating the intervention type to perform aggregation on.
+- `n_ranks` : number of rankings (defualt is number of locations).
+- `agg_func` : Aggregation function to appy after frequencies are calculated.
 
 # Returns
 Frequency with which each location was selected for each rank.
@@ -213,19 +212,17 @@ function ranks_to_frequencies(
 end
 
 """
-    location_selection_frequencies(ranks::NamedDimsArray, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(ranks.scenarios)))
-    location_selection_frequencies(rs::ResultSet, iv_type::String; n_loc_int=5, ind_metrics=collect(1:length(ranks.scenarios)))
- 
+    location_selection_frequencies(ranks::NamedDimsArray;n_loc_int::Int64=5)
+    location_selection_frequencies(inv_log::NamedDimsArray{D,T,4,A};dims::Union{Symbol,Vector{Symbol}}=:coral_id) where {D,T,A}
+
 Post-processing function for intervention logs. Calculates the frequencies with which locations were selected for a particular intervention,
 for a selection of scenarios (e.g. selected robust scenarios).
 
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
-- `rs` : ADRIA result set.
-- `ind_metrics` : Indices for selected scenarios (such as robust scenarios).
-- `iv_type` : indicates intervention log to use ("seed", "shade" or "fog").
 - `n_loc_int` : number of locations which are intervened at for each intervention decision.
+- `dims` : dimensions to sum selection frequencies over.
 
 # Returns 
 Counts for location selection at each location in the domain.
@@ -251,20 +248,18 @@ function location_selection_frequencies(
 end
 
 """
-    summed_inverse_rank(ranks::NamedDimsArray, iv_type::String; dims=:scenarios,agg_func=x->x)
-    summed_inverse_rank(rs::ResultSet, iv_type::String; dims=:scenarios,agg_func=x->x)
-    summed_inverse_rank(ranks::NamedDimsArray; dims=:scenarios,agg_func=x->x)
- 
+    summed_inverse_rank(ranks::NamedDimsArray{D,T,3,A};dims::Union{Symbol,Vector{Symbol}}=[:scenarios, :timsteps],
+            ) where {D,T,A}
+    summed_inverse_rank(ranks::NamedDimsArray{D,T,2,A};) where {D,T,A}
+    summed_inverse_rank(ranks::NamedDimsArray,dims::Union{Symbol,Vector{Symbol}},)
+
 Calculates (number of sites) .- ranks summed over the dimension dims and transformed using agg_func 
     (default no transformation).
 
 # Arguments
 - `ranks` : Contains location ranks for each scenario of location selection, as created by 
     `run_location_selection()`.
-- `rs` : ADRIA result set.
-- `iv_type` : indicates intervention log to use ("seed", "shade" or "fog").
 - `dims` : Dimensions to sum over.
-- `agg_func` : function to transform result.
 
 # Returns 
 Inverse rankings (i.e. the greater the number the higher ranked the site).
