@@ -233,9 +233,8 @@ Counts for location selection at each location in the domain.
 function location_selection_frequencies(
     ranks::NamedDimsArray;
     n_loc_int::Int64=5,
-    agg_func=nothing,
 )
-    ranks_frequencies = ranks_to_frequencies(ranks; n_ranks=n_loc_int, agg_func=agg_func)
+    ranks_frequencies = ranks_to_frequencies(ranks; n_ranks=n_loc_int)
     loc_count = sum(ranks_frequencies[ranks=1:n_loc_int], dims=2)[ranks=1]
 
     return loc_count
