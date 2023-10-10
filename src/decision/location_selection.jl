@@ -180,8 +180,8 @@ function ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)
     freq_dims = [n for n in dn if n != :scenarios]
     dn_subset = vcat(freq_dims, [:ranks])
     freq_elements = vcat(
-        [1:length(axiskeys(ranks, n)) for n in dn if n != :scenarios],
-        [1:length(axiskeys(ranks, :sites))],
+        [1:size(ranks, n) for n in dn if n != :scenarios],
+        [1:size(ranks, :sites)],
     )
     mn = ([size(ranks, k) for k in freq_dims]..., size(ranks, :sites))
 
