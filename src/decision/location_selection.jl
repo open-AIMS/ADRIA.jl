@@ -120,7 +120,7 @@ function run_site_selection(domain::Domain,
     sum_cover::NamedDimsArray, 
     area_to_seed::Float64, 
     aggregation_function::Function, 
-    iv_type::String;
+    iv_type::Union{String,Int64};
     target_seed_sites=nothing, 
     target_shade_sites=nothing)
 
