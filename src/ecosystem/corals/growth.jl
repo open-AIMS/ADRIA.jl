@@ -84,7 +84,6 @@ function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, _::Re
     # sXr : available space (sigma) * current cover (X) * growth rate (r)
     # X_mb : current cover (X) * background mortality (mb)
     # rec : recruitment factors for each coral group (6 by n_sites)
-
     @views @. du[p.small, :] = p.rec - p.sXr[p.small, :] - p.X_mb[p.small, :]
     @views @. du[p.mid, :] = p.sXr[p.mid-1, :] - p.sXr[p.mid, :] - p.X_mb[p.mid, :]
     @views @. du[p.large, :] = p.sXr[p.large-1, :] + p.sXr[p.large, :] - p.X_mb[p.large, :]

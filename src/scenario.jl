@@ -278,8 +278,6 @@ function run_scenario(
     # end
 
     # Store logs
-    tf = size(domain.dhw_scens, 1)  # time frame
-    tmp_site_ranks = zeros(Float32, tf, nrow(domain.site_data), 2)
     c_dim = Base.ndims(result_set.raw) + 1
     log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log)
     for k in log_stores
@@ -300,7 +298,10 @@ function run_scenario(
         if k == :seed_log
             getfield(data_store, k)[:, :, :, idx] .= vals
         elseif k == :site_ranks
-            tmp_site_ranks[:, :, :] .= vals
+            if !isnothing(data_store.site_ranks)
+                # Squash site ranks down to average rankings over environmental repeats
+                data_store.site_ranks[:, :, :, idx] .= vals
+            end
         elseif k == :coral_dhw_log
             # Only log coral DHW tolerances if in debug mode
             if parse(Bool, ENV["ADRIA_DEBUG"]) == true
@@ -311,10 +312,7 @@ function run_scenario(
         end
     end
 
-    if !isnothing(data_store.site_ranks)
-        # Squash site ranks down to average rankings over environmental repeats
-        data_store.site_ranks[:, :, :, idx] .= tmp_site_ranks
-    end
+
 
     if (idx % 256) == 0
         @everywhere GC.gc()
@@ -588,13 +586,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
-    tmp::Matrix{Float64} = zeros(size(C_cover[1, :, :]))  # temporary array to hold intermediate covers
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==1])
     for tstep::Int64 in 2:tf
-        p_step::Int64 = tstep - 1
-        Y_pstep .= C_cover[p_step, :, :]
+        Y_pstep .= C_cover[tstep - 1, :, :]
 
         # Calculates scope for coral fedundity for each size class and at each site.
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, loc_k_area)
