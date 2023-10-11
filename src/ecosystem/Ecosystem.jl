@@ -10,7 +10,7 @@ abstract type EcoModel end
 const DISCRETE_FACTOR_TYPES = ["integer", "categorical"]
 
 """
-    _check_discrete(p_type::String)
+    _check_discrete(p_type::String)::Bool
 
 Check ptype for discrete variable types.
 Returns true if discrete, false otherwise.
@@ -18,7 +18,7 @@ Returns true if discrete, false otherwise.
 # Arguments
 - `ptype` : String representing variable type.
 """
-function _check_discrete(p_type::String)
+function _check_discrete(p_type::String)::Bool
     return any(p_type .== DISCRETE_FACTOR_TYPES)
 end
 
