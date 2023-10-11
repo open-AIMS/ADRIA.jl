@@ -459,7 +459,7 @@ function outcome_map(
             fact_idx = foi_spec.fieldname .== fact_t
             lb = foi_spec.lower_bound[fact_idx][1]
             ub = foi_spec.upper_bound[fact_idx][1]
-            X_q .= round.(quantile(lb:1:ub, steps)) .- 1
+            X_q .= round.(quantile(lb:ub, steps)) .- 1
         else
             X_q .= quantile(X[:, fact_t], steps)
         end
