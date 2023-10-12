@@ -41,6 +41,7 @@ using ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_
         zones_criteria,
         risk_tol,
     )
+
     @test !any(isnan.(A)) || "NaNs found in decision matrix"
     @test !any(isinf.(A)) || "Infs found in decision matrix"
 
@@ -94,7 +95,6 @@ end
     @test (sum(filtered)) == size(A, 1) || "Site where heat stress > risk_tol not filtered out"
     @test size(SE, 1) == n_sites - 2 ||
         "Sites where space available < min_area not filtered out"
-
 end
 
 @testset "MCDA shade matrix creation" begin
@@ -139,7 +139,9 @@ end
 
     SH, wsh = create_shade_matrix(A, area_max_cover[filtered], wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_zones_shade, wt_hi_cover)
 
-    @test maximum(SH[:, 8]) == (maximum(area_max_cover[convert(Vector{Int64}, A[:, 1])] .- A[:, 8])) || "Largest site with most coral area should have highest score"
+    @test maximum(SH[:, 8]) ==
+          (maximum(area_max_cover[convert(Vector{Int64}, A[:, 1])] .- A[:, 8])) ||
+        "Largest site with most coral area should have highest score"
 end
 
 @testset "MCDA normalisation" begin
