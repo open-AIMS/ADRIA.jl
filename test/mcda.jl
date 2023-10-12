@@ -13,6 +13,7 @@ using ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_
     dam_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
     heat_stress_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
     zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
+    site_depth = [5.0, 5.2, 7.1, 6.3, 8.6]
 
     # Dummy priority predecessors
     priority_sites = zeros(n_sites)
@@ -48,6 +49,7 @@ end
     dam_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
     heat_stress_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
     zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
+    site_depth = [5.0, 5.2, 7.1, 6.3, 8.6]
 
     # Dummy priority predecssors
     priority_sites = zeros(n_sites)
@@ -83,6 +85,7 @@ end
     dam_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
     heat_stress_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
     zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
+    site_depth = [5.0, 5.2, 7.1, 6.3, 8.6]
 
     # Dummy priority predecssors
     priority_sites = zeros(n_sites)
