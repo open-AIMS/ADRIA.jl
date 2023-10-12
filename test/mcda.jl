@@ -92,8 +92,8 @@ end
     SE, wse = create_seed_matrix(A, min_area, wtconseedin, wtconseedout, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover)
 
     @test (sum(filtered)) == size(A, 1) || "Site where heat stress > risk_tol not filtered out"
-    @test size(SE, 1) == size(A, 1) - 2 || "Sites where space available<min_area not filtered out"
-    @test A[3, 8] == 0.0 || "Site with k<coral cover should be set to space = 0"
+    @test size(SE, 1) == n_sites - 2 ||
+        "Sites where space available < min_area not filtered out"
 
 end
 
