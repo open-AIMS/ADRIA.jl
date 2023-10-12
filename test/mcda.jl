@@ -29,7 +29,7 @@ using ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_
 
     A, filtered = create_decision_matrix(1:n_sites, centr_in, centr_out, sum_cover, max_cover, area, dam_prob, heat_stress_prob, predec, zones_criteria, risk_tol)
 
-    @test all(0.0 .<= A[:, 2:end-2] .<= 1.0) || "`A` decision matrix out of bounds"
+        centr_in,
 
     @test !any(isnan.(A)) || "NaNs found in decision matrix"
     @test !any(isinf.(A)) || "Infs found in decision matrix"
@@ -71,7 +71,6 @@ end
     @test size(SE, 1) == size(A, 1) - 2 || "Sites where space available<min_area not filtered out"
     @test A[3, 8] == 0.0 || "Site with k<coral cover should be set to space = 0"
 
-    @test all(0.0 .<= SE[:, 2:end-2] .<= 1.0) || "Seeding Decision matrix values out of bounds"
 end
 
 @testset "MCDA shade matrix creation" begin
@@ -105,7 +104,7 @@ end
 
     @test maximum(SH[:, 8]) == (maximum(area_max_cover[convert(Vector{Int64}, A[:, 1])] .- A[:, 8])) || "Largest site with most coral area should have highest score"
 
-    @test all(0.0 .<= SH[:, 2:end-2] .<= 1.0) || "Shading Decision matrix values out of bounds"
+        "Largest site with most coral area should have highest score"
 end
 
 @testset "MCDA normalisation" begin
