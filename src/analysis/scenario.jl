@@ -9,42 +9,37 @@ function scenario_clusters(clusters::Vector{Int64})::Dict{Symbol,BitVector}
     )
 end
 
-function scenario_rcps(
-    rs_inputs::DataFrame; scenarios::Union{UnitRange,Colon,Vector{Int64},BitVector}=(:)
-)::Dict{Symbol,BitVector}
-    rs_rcps::Vector{Symbol} = Symbol.(:RCP, Int64.(rs_inputs[scenarios, :RCP]))
-    unique_rcps = unique(rs_rcps)
-    return Dict(rcp => rs_rcps .== rcp for rcp in unique_rcps)
+function scenario_rcps(scenarios::DataFrame)::Dict{Symbol,BitVector}
+    rcps::Vector{Symbol} = Symbol.(:RCP, Int64.(scenarios[:, :RCP]))
+    return Dict(rcp => rcps .== rcp for rcp in unique(rcps))
 end
 
-function scenario_types(
-    rs_inputs::DataFrame; scenarios::Union{UnitRange,Colon,Vector{Int64},BitVector}=(:)
-)::Dict{Symbol,BitVector}
+function scenario_types(scenarios::DataFrame)::Dict{Symbol,BitVector}
     return Dict(
-        type => eval(type)(rs_inputs[scenarios, :]) for
-        type in SCENARIO_TYPES if count(eval(type)(rs_inputs[scenarios, :])) != 0
+        type => eval(type)(scenarios) for
+        type in SCENARIO_TYPES if count(eval(type)(scenarios)) != 0
     )
 end
 
-function counterfactual(rs_inputs::DataFrame)::BitVector
-    no_seed = _no_seed(rs_inputs)
-    no_fog = rs_inputs.fogging .== 0
-    no_SRM = rs_inputs.SRM .== 0
+function counterfactual(scenarios::DataFrame)::BitVector
+    no_seed = _no_seed(scenarios)
+    no_fog = scenarios.fogging .== 0
+    no_SRM = scenarios.SRM .== 0
     return no_seed .& no_fog .& no_SRM
 end
 
-function unguided(rs_inputs::DataFrame)::BitVector
-    has_seed = .!_no_seed(rs_inputs)
-    has_shade = (rs_inputs.fogging .> 0) .| (rs_inputs.SRM .> 0)
-    return (rs_inputs.guided .== 0) .& (has_seed .| has_shade)
+function unguided(scenarios::DataFrame)::BitVector
+    has_seed = .!_no_seed(scenarios)
+    has_shade = (scenarios.fogging .> 0) .| (scenarios.SRM .> 0)
+    return (scenarios.guided .== 0) .& (has_seed .| has_shade)
 end
 
-function guided(rs_inputs::DataFrame)::BitVector
-    return .!(counterfactual(rs_inputs) .| unguided(rs_inputs))
+function guided(scenarios::DataFrame)::BitVector
+    return .!(counterfactual(scenarios) .| unguided(scenarios))
 end
 
-function _no_seed(rs_inputs::DataFrame)::BitVector
-    return (rs_inputs.N_seed_TA .== 0) .&
-           (rs_inputs.N_seed_CA .== 0) .&
-           (rs_inputs.N_seed_SM .== 0)
+function _no_seed(scenarios::DataFrame)::BitVector
+    return (scenarios.N_seed_TA .== 0) .&
+           (scenarios.N_seed_CA .== 0) .&
+           (scenarios.N_seed_SM .== 0)
 end

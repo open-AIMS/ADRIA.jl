@@ -3,8 +3,8 @@ using ADRIA.analysis: series_confint
 
 """
     ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.scenarios(rs_inputs::DataFrame, outcomes::NamedDimsArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())::Figure
-    ADRIA.viz.scenarios!(g::Union{GridLayout,GridPosition}, rs_inputs::DataFrame, outcomes::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.scenarios(scenarios::DataFrame, outcomes::NamedDimsArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())::Figure
+    ADRIA.viz.scenarios!(g::Union{GridLayout,GridPosition}, scenarios::DataFrame, outcomes::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
 Plot scenario outcomes over time.
 
@@ -24,7 +24,7 @@ ADRIA.viz.scenarios(rs.inputs, s_tac[:, scens.SRM .< 1.0])
 ```
 
 # Arguments
-- `rs_input` : DataFrame with ResultSet inputs
+- `scenarios` : DataFrame with ResultSet inputs
 - `outcomes` : Results of scenario metric
 - `opts` : Aviz options
     - `by_RCP` : color by RCP otherwise color by scenario type. Defaults to false.
@@ -56,7 +56,7 @@ function ADRIA.viz.scenarios(
     )
 end
 function ADRIA.viz.scenarios(
-    rs_inputs::DataFrame,
+    scenarios::DataFrame,
     outcomes::NamedDimsArray;
     opts::Dict=Dict(:by_RCP => false),
     fig_opts::Dict=Dict(),
@@ -66,14 +66,14 @@ function ADRIA.viz.scenarios(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.scenarios!(
-        g, rs_inputs, outcomes; opts=opts, axis_opts=axis_opts, series_opts=series_opts
+        g, scenarios, outcomes; opts=opts, axis_opts=axis_opts, series_opts=series_opts
     )
 
     return f
 end
 function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
-    rs_inputs::DataFrame,
+    scenarios::DataFrame,
     outcomes::NamedDimsArray;
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -84,11 +84,11 @@ function ADRIA.viz.scenarios!(
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-    _rs_inputs = copy(rs_inputs[1:end .∈ [outcomes.scenarios], :])
+    _scenarios = copy(scenarios[1:end .∈ [outcomes.scenarios], :])
     scen_groups = if get(opts, :by_RCP, false)
-        ADRIA.analysis.scenario_rcps(_rs_inputs)
+        ADRIA.analysis.scenario_rcps(_scenarios)
     else
-        ADRIA.analysis.scenario_types(_rs_inputs)
+        ADRIA.analysis.scenario_types(_scenarios)
     end
 
     return ADRIA.viz.scenarios!(
