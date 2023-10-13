@@ -473,8 +473,9 @@ function settler_DHW_tolerance!(
             d = MixtureModel([orig_mm, recruit_mm], [1.0 - rec_w, rec_w])
 
             # Breeder's equation
-            S::Float64 = mean(d) - mean(c_dist_t_1[sc1, sink_loc])
-            μ_t::Float64 = mean(d) + (S * h²)
+            μ = mean(d)
+            S::Float64 = μ - mean(orig_mm)
+            μ_t::Float64 = μ + (S * h²)
 
             # New DHW tolerance distribution for size class 1, for CURRENT timestep
             @views c_dist_t[sc1, sink_loc] = truncated(Normal(μ_t, dist_std[sc1]), minimum(d), μ_t + HEAT_UB)
