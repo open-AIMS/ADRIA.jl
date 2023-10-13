@@ -691,21 +691,17 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Update initial condition
-        growth.u0 .= Y_pstep
-
-        # leftover space * current cover * growth_rate
-        p.sXr .= relative_leftover_space(sum(Y_pstep, dims=1)) .* Y_pstep .* corals.growth_rate
-        p.X_mb .= Y_pstep .* corals.mb_rate    # current cover * background mortality
+        growth.u0 .= C_t
 
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-            alg_hints=[:nonstiff], adaptive=false, dt=1.0)
+            alg_hints=alg_hint, dt=1.0)
 
-        # Ensure values are ∈ [0, 1]
-        @views C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
+        # Assign results
+        C_cover[tstep, :, valid_locs] .= sol[end][:, valid_locs]
 
         # TODO:
         # Check if size classes are inappropriately out-growing available space
-        # proportional_adjustment!(@view(C_cover[tstep, :, :]), max_cover)
+        proportional_adjustment!(@view(C_cover[tstep, :, valid_locs]))
 
         if tstep <= tf
             # Natural adaptation
