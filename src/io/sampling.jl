@@ -284,7 +284,7 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
         _row = to_update.fieldname .== c
         _bnds = length(to_update[_row, :bounds][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
 
-        dval = to_update[_row, :ptype][1] == "integer" ? 0 : 0.0
+        dval = _check_discrete(to_update[_row, :ptype][1]) ? 0 : 0.0
         to_update[_row, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [dval 0.0 0.0 _bnds true]
     end
 
@@ -368,7 +368,6 @@ function _check_bounds(lower, upper)
         error("Bounds are not legal (upper bound must be greater than lower bound)")
     end
 end
-
 
 _offdiag_iter(A) = collect(ι for ι in CartesianIndices(A) if ι[1] ≠ ι[2])
 

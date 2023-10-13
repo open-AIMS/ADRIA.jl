@@ -406,11 +406,30 @@ function outcome_map(
     X::DataFrame,
     y::AbstractVecOrMat{<:Real},
     rule::Union{Function,BitVector,Vector{Int64}},
-    target_factors::Vector{String};
+    target_factors::Vector{String},
+    model_spec::DataFrame;
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
+    if !all(target_factors .∈ [model_spec.fieldname])
+        missing_factor = .!(target_factors .∈ [model_spec.fieldname])
+        error("Invalid target factors: $(target_factors[missing_factor])")
+    end
+
+    factors_to_assess = model_spec.fieldname .∈ [target_factors]
+    foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
+    foi_spec = model_spec[factors_to_assess, foi_attributes]
+
+    foi_cat = (foi_spec.ptype .== "categorical")
+    if any(foi_cat)
+        max_bounds = maximum(
+            foi_spec[foi_cat, :upper_bound] .-
+            foi_spec[foi_cat, :lower_bound]
+        )
+        S = round(Int64, max(S, max_bounds))
+    end
+
     step_size = 1 / S
     steps = collect(0:step_size:1.0)
 
@@ -434,8 +453,17 @@ function outcome_map(
 
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
-        X_q .= quantile(X[:, fact_t], steps)
-        for (i, s) in enumerate(X_q[1:end-1])
+        ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
+        if ptype == "categorical"
+            fact_idx = foi_spec.fieldname .== fact_t
+            lb = foi_spec.lower_bound[fact_idx][1]
+            ub = foi_spec.upper_bound[fact_idx][1]
+            X_q .= round.(quantile(lb:ub, steps)) .- 1
+        else
+            X_q .= quantile(X[:, fact_t], steps)
+        end
+
+        for i in 1:length(X_q[1:end-1])
             local b::BitVector
             if i == 1
                 b = (X_q[i] .<= X[:, fact_t] .<= X_q[i+1])
@@ -479,7 +507,7 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
-    return outcome_map(rs.inputs, y, rule, target_factors; S, n_boot, conf)
+    return outcome_map(rs.inputs, y, rule, target_factors, rs.model_spec; S, n_boot, conf)
 end
 function outcome_map(
     rs::ResultSet,
@@ -489,7 +517,7 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
-    return outcome_map(rs.inputs, y, rule, names(rs.inputs); S, n_boot, conf)
+    return outcome_map(rs.inputs, y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf)
 end
 
 function _map_outcomes(

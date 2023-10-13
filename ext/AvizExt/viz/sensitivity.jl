@@ -304,13 +304,21 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
     bin_slices, factor_list, CIs = axiskeys(outcomes)
     b_slices = parse.(Float64, bin_slices)
 
+    if any(f_names .== :guided)
+        fv_labels = ["unguided", "cf", last.(split.(string.(ADRIA.methods_mcda), "."))...]
+    end
     curr::Int64 = 1
     axs = Axis[]
     for r in 1:n_rows
         for c in 1:n_cols
             f_name = Symbol(factors[curr])
             f_vals = rs.inputs[:, f_name]
-            fv_s = round.(quantile(f_vals, b_slices), digits=2)
+            
+            if f_name == :guided
+                fv_s = collect(1:length(fv_labels))
+            else
+                fv_s = round.(quantile(f_vals, b_slices), digits=2)
+            end
 
             ax::Axis = Axis(
                 g[r, c],
@@ -327,6 +335,11 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
                 fv_s,
                 outcomes(factors=f_name, CI=:mean), markersize=15
             )
+
+            if f_name == :guided
+                ax.xticks = (fv_s,fv_labels)
+                ax.xticklabelrotation = pi/4
+            end
 
             push!(axs, ax)
             curr += 1
