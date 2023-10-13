@@ -46,8 +46,32 @@ function proportional_adjustment!(
 )::Nothing where {T<:Float64}
     cover_tmp = vec(sum(coral_cover, dims=1))
     if any(cover_tmp .> max_cover)
-        exceeded::Vector{Int64} = findall(cover_tmp .> max_cover)
+        exceeded::Vector{Int64} = findall(cover_tmp .> 1.0)
+        @warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model."
+        @warn "Cover - Max Cover: $(sum(cover_tmp[exceeded] .- max_cover[exceeded]))"
         @views @. coral_cover[:, exceeded] = (coral_cover[:, exceeded] / cover_tmp[exceeded]') * max_cover[exceeded]'
+    end
+
+    coral_cover .= max.(coral_cover, 0.0)
+
+    return nothing
+end
+
+"""
+    proportional_adjustment!(coral_cover::Union{SubArray{T},Matrix{T}})::Nothing where {T<:Float64}
+
+Adjust relative coral cover based on the proportion each size class contributes to area
+covered. Assumes 1.0 represents 100% of available location area.
+"""
+function proportional_adjustment!(
+    coral_cover::Union{SubArray{T},Matrix{T}}
+)::Nothing where {T<:Float64}
+    cover_tmp = vec(sum(coral_cover, dims=1))
+    if any(cover_tmp .> 1.0)
+        exceeded::Vector{Int64} = findall(cover_tmp .> 1.0)
+        @warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model."
+        @warn "Cover - 1.0: $(sum(cover_tmp[exceeded] .- 1.0))"
+        @views @. coral_cover[:, exceeded] = (coral_cover[:, exceeded] / cover_tmp[exceeded]')
     end
 
     coral_cover .= max.(coral_cover, 0.0)
