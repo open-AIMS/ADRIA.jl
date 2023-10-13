@@ -1,9 +1,9 @@
-using GLMakie, DataFrames
+using WGLMakie, DataFrames
 
 using ADRIA: ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
 using NamedDims, AxisKeys
 using .AvizExt
-using GLMakie.Colors
+using WGLMakie.Colors
 
 """
     _time_labels(labels)

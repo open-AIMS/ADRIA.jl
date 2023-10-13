@@ -28,7 +28,7 @@ See: https://docs.makie.org/v0.19/api/index.html#Figure
 See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function ADRIA.viz.pawn!(g::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
@@ -86,7 +86,7 @@ Display temporal sensitivity analysis
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function ADRIA.viz.tsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
     stat = get(opts, :stat, :median)
@@ -155,7 +155,7 @@ Plot regional sensitivities of up to 30 factors.
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
     n_factors::Int64 = length(factors)
@@ -262,7 +262,7 @@ Plot outcomes mapped to factor regions for up to 30 factors.
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), axis_opts::Dict=Dict())
     # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
