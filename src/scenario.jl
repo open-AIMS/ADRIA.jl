@@ -703,7 +703,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # TODO:
         # Check if size classes are inappropriately out-growing available space
-        # proportional_adjustment!(@view(C_cover[tstep, :, :]), max_cover)
+        proportional_adjustment!(@view(C_cover[tstep, :, valid_locs]))
 
         if tstep <= tf
             # Natural adaptation
