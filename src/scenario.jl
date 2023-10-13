@@ -449,11 +449,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     site_data = domain.site_data
     depth_coeff .= depth_coefficient.(site_data.depth_med)
 
-    # Coral cover relative to total site area
+    # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
     C_cover::Array{Float64,3} = zeros(tf, n_species, n_locs)
     C_cover[1, :, :] .= domain.init_coral_cover
-    ode_u = zeros(n_species, n_locs)
-    max_cover = site_k(domain)  # Max coral cover at each site (0 - 1).
 
     # Locations that can support corals
     valid_locs::BitVector = site_k(domain) .> 0.0
