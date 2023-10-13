@@ -443,7 +443,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     fec_all = cache.fec_all
     fec_scope = cache.fec_scope
     dhw_t = cache.dhw_step
-    Y_pstep = cache.cov_tmp
+    C_t = cache.cov_tmp
     depth_coeff = cache.depth_coeff
 
     site_data = domain.site_data
@@ -573,7 +573,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
+    p.r .= corals.growth_rate
+    p.mb .= corals.mb_rate
+    ode_u = zeros(n_species, n_locs)
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
+    alg_hint = Symbol[:nonstiff]
 
     area_weighted_TP = TP_data .* site_k_area(domain)
     TP_cache = similar(area_weighted_TP)
@@ -581,26 +585,30 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==1])
     for tstep::Int64 in 2:tf
-        Y_pstep .= C_cover[tstep - 1, :, :]
+        # Copy cover for previous timestep as basis for current timestep
+        C_t .= C_cover[tstep - 1, :, :]
 
-        # Calculates scope for coral fedundity for each size class and at each site.
-        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², Y_pstep, loc_k_area)
+        # Calculates scope for coral fedundity for each size class and at each location
+        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
 
-        loc_coral_cover = sum(Y_pstep, dims=1)  # dims: 1 * nsites
+        loc_coral_cover = sum(C_t, dims=1)  # dims: 1 * nsites
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
 
         # Recruitment represents additional cover, relative to total site area
-        # Gets used in ODE
-        p.rec .= settler_cover(
+        # Recruitment/settlement occurs after the full moon in October/November
+        p.rec[:, valid_locs] .= settler_cover(
             fec_scope,
             TP_data,
             leftover_space_m²,
             sim_params.max_settler_density,
             sim_params.max_larval_density,
             basal_area_per_settler
-        ) ./ loc_k_area
+        )[:, valid_locs] ./ loc_k_area[:, valid_locs]
 
         settler_DHW_tolerance!(c_mean_t_1, c_mean_t, site_k_area(domain), TP_data, p.rec, fec_params_per_m², param_set("heritability"))
+
+        # Add recruits to current cover
+        C_t[p.small, :] .+= p.rec
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
@@ -666,6 +674,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Calculate and apply bleaching mortality
+        # Bleaching typically occurs in the warmer months (November - February)
         #    This: `dhw_t .* (1.0 .- wave_scen[tstep, :])`
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
@@ -673,9 +682,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         bleaching_mortality!(Y_pstep, collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))), depth_coeff, corals.dist_std, c_mean_t_1, c_mean_t, @view(bleaching_mort[tstep-1:tstep, :, :]))
 
         # Apply seeding
+        # Assumes coral seeding occurs in the months after disturbances
+        # (such as cyclones/heat) occurs.
         if seed_corals && in_seed_years && has_seed_sites
-            # Seed each selected site
-            seed_corals!(Y_pstep, vec(loc_k_area), vec(leftover_space_m²),
+            # Seed selected locations
+            seed_corals!(C_t, vec(loc_k_area), vec(leftover_space_m²),
                 seed_locs, seeded_area, seed_sc, a_adapt, @view(Yseed[tstep, :, :]),
                 corals.dist_std, c_mean_t)
         end
