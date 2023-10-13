@@ -96,19 +96,17 @@ group.  While growth and mortality metrics pertain to groups (6) as well
 as size classes (6) across all sites (total of 36 by \$n_sites\$), recruitment is
 a 6 by \$n_sites\$ array.
 """
-function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, _::Real)::Nothing
+function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, t::Real)::Nothing
     # Indices
-
     # small = [1, 7, 13, 19, 25, 31]
     # mid = [2:5; 8:11; 14:17; 20:23; 26:29; 32:35]
     # large = [6, 12, 18, 24, 30, 36]
 
-    # Intermediate values are now calculated outside of ODE function
-    # To avoid repeat calculations
     # sXr : available space (sigma) * current cover (X) * growth rate (r)
     # X_mb : current cover (X) * background mortality (mb)
-    # rec : recruitment factors for each coral group (6 by n_sites)
-    @views @. du[p.small, :] = p.rec - p.sXr[p.small, :] - p.X_mb[p.small, :]
+    p.sXr .= max.(1.0 .- sum(X, dims=1), 0.0) .* X .* p.r
+    p.X_mb .= X .* p.mb
+    @views @. du[p.small, :] = -p.sXr[p.small, :] - p.X_mb[p.small, :]
     @views @. du[p.mid, :] = p.sXr[p.mid-1, :] - p.sXr[p.mid, :] - p.X_mb[p.mid, :]
     @views @. du[p.large, :] = p.sXr[p.large-1, :] + p.sXr[p.large, :] - p.X_mb[p.large, :]
 

@@ -33,6 +33,8 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
             rec::Matrix{Float64},                           # recruitment values, where `s` relates to available space (not max carrying capacity)
             sXr::Matrix{Float64},                           # s * X * r
             X_mb::Matrix{Float64},                          # X * mb
+            r::Vector{Float64},                             # growth rate
+            mb::Vector{Float64}                             # background mortality
         }((                        # cache matrix to hold X (current coral cover)
         # cached indices
         small, mid, large,
@@ -40,7 +42,9 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
         # cache matrices
         zeros(n_groups, n_sites),  # rec
         zeros(n_species, n_sites), # sXr
-        zeros(n_species, n_sites)  # X_mb
+        zeros(n_species, n_sites),  # X_mb
+        zeros(n_species),  # r
+        zeros(n_species)   # mb
     ))
 
     return CoralGrowth(n_sites, n_species, n_groups, p)
