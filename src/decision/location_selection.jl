@@ -146,8 +146,7 @@ Post-processing for location ranks output of `run_location_selection()`. Gives t
 with which each location was selected at each rank across the location selection scenarios.
 
 # Arguments
-- `ranks` : Contains location ranks for each scenario of location selection, as created by 
-    `run_location_selection()`.
+- `ranks` : Rankings of locations `run_location_selection()`.
 - `n_ranks` : number of rankings (defualt is number of locations).
 - `agg_func` : Aggregation function to appy after frequencies are calculated.
 
@@ -199,8 +198,7 @@ Post-process intervention logs. Calculates the frequencies with which locations 
 for a selection of scenarios (e.g. selected robust scenarios).
 
 # Arguments
-- `ranks` : Contains location ranks for each scenario of location selection, as created by 
-    `run_location_selection()`.
+- `ranks` : Rankings of locations `run_location_selection()`.
 - `n_loc_int` : number of locations which are intervened at for each intervention decision.
 - `dims` : dimensions to sum selection frequencies over.
 
@@ -237,8 +235,7 @@ Calculates (number of sites) .- ranks summed over the dimension dims and transfo
     (default no transformation).
 
 # Arguments
-- `ranks` : Contains location ranks for each scenario of location selection, as created by 
-    `run_location_selection()`.
+- `ranks` : Rankings of locations `run_location_selection()`.
 - `dims` : Dimensions to sum over.
 
 # Returns 
