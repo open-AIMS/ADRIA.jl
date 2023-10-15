@@ -146,9 +146,8 @@ using ADRIA:
 using DataFrames
 using Statistics, StatsBase
 
-@info "Loading data package"
-here = @__DIR__
-dom = ADRIA.load_domain(joinpath(here, "Moore_2023-08-17"), "45")
+# Load data package
+dom = ADRIA.load_domain("path to Domain files", "RCP")
 scens = ADRIA.sample_site_selection(dom, 8) # Get scenario dataframe.
 
 area_to_seed = 962.11  # Area of seeded corals in m^2.
@@ -156,14 +155,13 @@ area_to_seed = 962.11  # Area of seeded corals in m^2.
 # Initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of sites)).
 sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 
-@info "Run site selection"
 # Use run_site_selection to get ranks
 ranks = run_site_selection(dom, scens, sum_cover, area_to_seed)
 
 # Get frequencies with which each site is selected for each rank for set of stand alone location selections.
 rank_freq = ranks_to_frequencies(ranks[intervention=1])
 
-@info "Calculate rank aggregations"
+# Calculate rank aggregations
 # Get location selection freqencies for set of standalone location selections.
 location_selection_frequency = location_selection_frequencies(ranks[intervention=1])
 # Get summed inverse rank for set of standalone location selections.
@@ -202,6 +200,5 @@ unguided_freq = location_selection_frequencies(
 inv_summ_rank = summed_inverse_rank(rs.ranks[intervention=1])
 # Get summed inverse rank over time.
 inv_summ_rank = summed_inverse_rank(rs.ranks[intervention=1]; dims=[:scenarios])
-
 
 ```
