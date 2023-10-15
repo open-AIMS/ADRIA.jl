@@ -148,6 +148,8 @@ end
 
 Post-processing for location ranks output of `rank_locations()`. Gives the frequency 
 with which each location was selected at each rank across the location selection scenarios.
+Note : default output for 3D input case includes the timestep dimension. To aggregate over time use,
+`agg_func = x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps)`.
 
 # Arguments
 - `ranks` : Rankings of locations `rank_locations()`.
