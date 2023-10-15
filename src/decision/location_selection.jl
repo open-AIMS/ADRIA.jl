@@ -34,7 +34,7 @@ function _location_selection(
     in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), Array(mcda_vars.sum_cover))
 
     # Perform location selection for seeding and shading.
-    seed_true, shade_true = [true, true]
+    seed_true, shade_true = true, true
 
     (_, _, ranks) = guided_site_selection(mcda_vars, guided, seed_true, shade_true, prefseedsites, prefshadesites, rankingsin, in_conn[site_ids], out_conn[site_ids], strong_pred[site_ids])
 
