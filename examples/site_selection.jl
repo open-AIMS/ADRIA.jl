@@ -1,6 +1,6 @@
 using ADRIA
 using ADRIA:
-    run_site_selection,
+    rank_locations,
     ranks_to_frequencies,
     location_selection_frequencies,
     summed_inverse_rank
@@ -18,8 +18,8 @@ area_to_seed = 962.11  # Area of seeded corals in m^2.
 sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 
 @info "Run site selection"
-# Use run_site_selection to get ranks
-ranks = run_site_selection(dom, scens, sum_cover, area_to_seed)
+# Use rank_locations  to get ranks
+ranks = rank_locations(dom, scens, sum_cover, area_to_seed)
 
 # Get frequencies with which each site is selected for each rank for set of stand alone location selections.
 rank_freq = ranks_to_frequencies(ranks[intervention=1])
@@ -31,15 +31,15 @@ location_selection_frequency = location_selection_frequencies(ranks[intervention
 # Measure of magnitude and frequency of high rank.
 inv_summ_rank = summed_inverse_rank(ranks[intervention=1])
 
-# Use aggregation function within run_site_selection to get direct output.
+# Use aggregation function within rank_locations to get direct output.
 # To get rank frequencies:
-rank_frequencies_seed = run_site_selection(
+rank_frequencies_seed = rank_locations(
     dom, scens, sum_cover, area_to_seed, ranks_to_frequencies, 1
 )
-rank_frequencies_seed = run_site_selection(
+rank_frequencies_seed = rank_locations(
     dom, scens, sum_cover, area_to_seed, location_selection_frequencies, 1
 )
-rank_frequencies_seed = run_site_selection(
+rank_frequencies_seed = rank_locations(
     dom, scens, sum_cover, area_to_seed, summed_inverse_rank, 1
 )
 

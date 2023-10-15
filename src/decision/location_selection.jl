@@ -2,7 +2,7 @@ using NamedDims, AxisKeys
 
 
 """
-    _site_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)
+    _location_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)
 
 Perform site selection using a chosen aggregation method, domain, initial cover, criteria weightings and thresholds.
 
@@ -15,7 +15,8 @@ Perform site selection using a chosen aggregation method, domain, initial cover,
 `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
-function _site_selection(domain::Domain, 
+function _location_selection(
+    domain::Domain,
     mcda_vars::DMCDA_vars, 
     guided::Int64)
     
@@ -41,12 +42,12 @@ function _site_selection(domain::Domain,
 end
 
 """
-    run_site_selection(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64;
+    rank_locations(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64;
         target_seed_sites=nothing, target_shade_sites=nothing)
-    run_site_selection(domain::Domain,scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64, aggregation_function::Function, 
+    rank_locations(domain::Domain,scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64, aggregation_function::Function, 
         iv_type::Union{String,Int64};target_seed_sites=nothing, target_shade_sites=nothing)
 
-Perform site selection for a given domain for multiple scenarios defined in a dataframe.
+Get location rankings for a given domain for multiple scenarios defined in a dataframe.
 
 # Arguments
 - `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
@@ -61,7 +62,8 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 -`ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
 """
-function run_site_selection(domain::Domain, 
+function rank_locations(
+    domain::Domain,
     scenarios::DataFrame, 
     sum_cover::NamedDimsArray, 
     area_to_seed::Float64;
@@ -105,7 +107,7 @@ function run_site_selection(domain::Domain,
             vec((mean(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios))) .* 0.5),
             )
 
-        ranks_store(; scenarios=scen_idx, sites=considered_sites) .= _site_selection(
+        ranks_store(; scenarios=scen_idx, sites=considered_sites) .= _location_selection(
             domain, mcda_vars_temp, scen.guided
         )
     end
@@ -115,7 +117,8 @@ function run_site_selection(domain::Domain,
     return ranks_store
 
 end
-function run_site_selection(domain::Domain, 
+function rank_locations(
+    domain::Domain,
     scenarios::DataFrame, 
     sum_cover::NamedDimsArray, 
     area_to_seed::Float64, 
@@ -124,7 +127,8 @@ function run_site_selection(domain::Domain,
     target_seed_sites=nothing, 
     target_shade_sites=nothing)
 
-    ranks = run_site_selection(domain, 
+    ranks = rank_locations(
+        domain,
         scenarios, 
         sum_cover, 
         area_to_seed; 
@@ -142,11 +146,11 @@ end
     ranks_to_frequencies(ranks::NamedDimsArray{D,T,3,A};n_ranks=length(ranks.sites),agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),) where {D,T,A}
     ranks_to_frequencies(ranks::NamedDimsArray{D,T,2,A};n_ranks=length(ranks.sites),agg_func=nothing) where {D,T,A}
 
-Post-processing for location ranks output of `run_location_selection()`. Gives the frequency 
+Post-processing for location ranks output of `rank_locations()`. Gives the frequency 
 with which each location was selected at each rank across the location selection scenarios.
 
 # Arguments
-- `ranks` : Rankings of locations `run_location_selection()`.
+- `ranks` : Rankings of locations `rank_locations()`.
 - `n_ranks` : number of rankings (defualt is number of locations).
 - `agg_func` : Aggregation function to appy after frequencies are calculated.
 
@@ -198,7 +202,7 @@ Post-process intervention logs. Calculates the frequencies with which locations 
 for a selection of scenarios (e.g. selected robust scenarios).
 
 # Arguments
-- `ranks` : Rankings of locations `run_location_selection()`.
+- `ranks` : Rankings of locations `rank_locations()`.
 - `n_loc_int` : number of locations which are intervened at for each intervention decision.
 - `dims` : dimensions to sum selection frequencies over.
 
@@ -235,7 +239,7 @@ Calculates (number of sites) .- ranks summed over the dimension dims and transfo
     (default no transformation).
 
 # Arguments
-- `ranks` : Rankings of locations `run_location_selection()`.
+- `ranks` : Rankings of locations `rank_locations()`.
 - `dims` : Dimensions to sum over.
 
 # Returns 
