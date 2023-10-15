@@ -141,7 +141,6 @@ using ADRIA
 using ADRIA:
     run_site_selection,
     ranks_to_frequencies,
-    ranks_to_location_order,
     location_selection_frequencies,
     summed_inverse_rank
 using DataFrames
@@ -160,6 +159,7 @@ sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 @info "Run site selection"
 # Use run_site_selection to get ranks
 ranks = run_site_selection(dom, scens, sum_cover, area_to_seed)
+
 # Get frequencies with which each site is selected for each rank for set of stand alone location selections.
 rank_freq = ranks_to_frequencies(ranks[intervention=1])
 
@@ -175,9 +175,15 @@ inv_summ_rank = summed_inverse_rank(ranks[intervention=1])
 rank_frequencies_seed = run_site_selection(
     dom, scens, sum_cover, area_to_seed, ranks_to_frequencies, 1
 )
+rank_frequencies_seed = run_site_selection(
+    dom, scens, sum_cover, area_to_seed, location_selection_frequencies, 1
+)
+rank_frequencies_seed = run_site_selection(
+    dom, scens, sum_cover, area_to_seed, summed_inverse_rank, 1
+)
 
 # Example using ADRIA runs
-scens = ADRIA.sample(dom, 8) # Get scenario dataframe.
+scens = ADRIA.sample(dom, 2^5) # Get scenario dataframe.
 rs = ADRIA.run_scenarios(dom, scens, "45") # Run scenarios.
 
 # Get frequencies with which each site is selected for each rank for set of runs.
@@ -196,5 +202,6 @@ unguided_freq = location_selection_frequencies(
 inv_summ_rank = summed_inverse_rank(rs.ranks[intervention=1])
 # Get summed inverse rank over time.
 inv_summ_rank = summed_inverse_rank(rs.ranks[intervention=1]; dims=[:scenarios])
+
 
 ```
