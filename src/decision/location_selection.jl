@@ -265,7 +265,7 @@ function summed_inverse_rank(
     ranks::NamedDimsArray,
     dims::Vector{Symbol},
 )
-    n_ranks = maximum(ranks)
-    inv_ranks = dropdims(sum(n_ranks .- ranks; dims=dims); dims=dims[1])
-    return inv_ranks ./ (n_ranks * prod([size(ranks, d) for d in dims]))
+    max_ranks = maximum(ranks)
+    inv_ranks = dropdims(sum(max_ranks .- ranks; dims=dims); dims=dims[1])
+    return inv_ranks ./ (max_ranks * prod([size(ranks, d) for d in dims]))
 end
