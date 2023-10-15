@@ -178,9 +178,13 @@ end
 function ranks_to_frequencies(
     ranks::NamedDimsArray{D,T,3,A};
     n_ranks=length(ranks.sites),
-    agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),
+    agg_func=nothing,
 ) where {D,T,A}
-    return agg_func(ranks_to_frequencies(ranks, n_ranks))
+    if !isnothing(agg_func)
+        return agg_func(ranks_to_frequencies(ranks, n_ranks))
+    end
+
+    return ranks_to_frequencies(ranks, n_ranks)
 end
 function ranks_to_frequencies(
     ranks::NamedDimsArray{D,T,2,A};
