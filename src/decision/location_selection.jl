@@ -177,7 +177,7 @@ function ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)
 end
 function ranks_to_frequencies(
     ranks::NamedDimsArray{D,T,3,A};
-    n_ranks=length(ranks.sites),
+    n_ranks::Int64=length(ranks.sites),
     agg_func=nothing,
 ) where {D,T,A}
     if !isnothing(agg_func)
@@ -188,7 +188,7 @@ function ranks_to_frequencies(
 end
 function ranks_to_frequencies(
     ranks::NamedDimsArray{D,T,2,A};
-    n_ranks=length(ranks.sites),
+    n_ranks::Int64=length(ranks.sites),
     agg_func=nothing,
 ) where {D,T,A}
     if !isnothing(agg_func)
