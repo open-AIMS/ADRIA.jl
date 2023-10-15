@@ -142,7 +142,7 @@ end
     ranks_to_frequencies(ranks::NamedDimsArray{D,T,3,A};n_ranks=length(ranks.sites),agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),) where {D,T,A}
     ranks_to_frequencies(ranks::NamedDimsArray{D,T,2,A};n_ranks=length(ranks.sites),agg_func=nothing) where {D,T,A}
 
-Post-processing function for location ranks output of `run_location_selection()`. Gives the frequency 
+Post-processing for location ranks output of `run_location_selection()`. Gives the frequency 
 with which each location was selected at each rank across the location selection scenarios.
 
 # Arguments
@@ -195,7 +195,7 @@ end
     location_selection_frequencies(ranks::NamedDimsArray;n_loc_int::Int64=5)
     location_selection_frequencies(inv_log::NamedDimsArray{D,T,4,A};dims::Union{Symbol,Vector{Symbol}}=:coral_id) where {D,T,A}
 
-Post-processing function for intervention logs. Calculates the frequencies with which locations were selected for a particular intervention,
+Post-process intervention logs. Calculates the frequencies with which locations were selected for a particular intervention,
 for a selection of scenarios (e.g. selected robust scenarios).
 
 # Arguments
