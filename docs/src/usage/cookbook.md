@@ -148,7 +148,7 @@ using Statistics, StatsBase
 
 # Load data package
 dom = ADRIA.load_domain("path to Domain files", "RCP")
-scens = ADRIA.sample_site_selection(dom, 8) # Get scenario dataframe.
+scens = ADRIA.sample_site_selection(dom, 8) # Get site selection scenario dataframe.
 
 area_to_seed = 962.11  # Area of seeded corals in m^2.
 
