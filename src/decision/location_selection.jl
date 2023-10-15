@@ -249,7 +249,8 @@ Calculates (number of sites) .- ranks summed over the dimension dims and transfo
 - `dims` : Dimensions to sum over.
 
 # Returns 
-Inverse rankings (i.e. the greater the number the higher ranked the site).
+Inverse rankings (i.e. for ranks the lowest value is the highest rank, 
+in the inverse ranks the greater the number the higher ranked the location).
 """
 function summed_inverse_rank(
     ranks::NamedDimsArray{D,T,3,A};
@@ -267,7 +268,7 @@ function summed_inverse_rank(
     ranks::NamedDimsArray,
     dims::Vector{Symbol},
 )
-    max_ranks = maximum(ranks)
-    inv_ranks = dropdims(sum(max_ranks .- ranks; dims=dims); dims=dims[1])
-    return inv_ranks ./ (max_ranks * prod([size(ranks, d) for d in dims]))
+    lowest_rank = maximum(ranks)
+    inv_ranks = dropdims(sum(lowest_rank .- ranks; dims=dims); dims=dims[1])
+    return inv_ranks ./ (lowest_rank * prod([size(ranks, d) for d in dims]))
 end
