@@ -4,26 +4,22 @@ using ADRIA.metrics: total_absolute_cover
 
 const ADRIA_DIR = pkgdir(ADRIA)
 const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
-const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
+const EXAMPLES_PATH = joinpath(ADRIA_DIR, "examples")
+const EXAMPLE_DOMAIN_PATH = joinpath(EXAMPLES_PATH, "Example_domain")
 
 function test_rs()
-    orig_loc = pwd()
-    this_loc = @__DIR__
-    cd(this_loc)
+    # Load and apply configuration options
+    ADRIA.setup()
 
-    # Run full example to make sure nothing errors
-    ADRIA.setup()  # Load and apply configuration options
+    # Set result location to temporary folder within the current path
+    ENV["ADRIA_OUTPUT_DIR"] = mktempdir(@__DIR__)
 
-    # Use a temporary directory for result location
-    ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
+    # Run scenarios with example Domain
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+    dom_path = joinpath(EXAMPLES_PATH, "example_scenarios.csv")
+    scens = ADRIA.load_scenarios(dom, dom_path)
 
-    ex_domain = ADRIA.load_domain("../examples/Example_domain")
-    scens = ADRIA.load_scenarios(ex_domain, "../examples/example_scenarios.csv")
-    rs = ADRIA.run_scenarios(ex_domain, scens, "45")
-
-    cd(orig_loc)
-
-    return rs
+    return ADRIA.run_scenarios(dom, scens, "45")
 end
 
 const TEST_RS = test_rs()
