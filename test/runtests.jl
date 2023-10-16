@@ -2,14 +2,11 @@ using Test
 using TOML, CSV, DataFrames, ADRIA
 using ADRIA.metrics: total_absolute_cover
 
-
 const ADRIA_DIR = pkgdir(ADRIA)
 const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
 const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 
-
 @testset "Domain loading" begin
-
     @testset "Domain DataFrame" begin
         dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
         p_df = ADRIA.param_table(dom)
@@ -25,7 +22,6 @@ const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
         @test haskey(ENV, "ADRIA_THRESHOLD")
     end
 
-
     @testset "Discrete parameters" begin
         site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
         conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
@@ -38,7 +34,6 @@ const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
     end
 end
 
-
 @testset "proportional adjustment" begin
     Y = rand(5, 36, 20)
     tmp = zeros(20)
@@ -50,7 +45,6 @@ end
         @test all(0.0 .<= Y[i, :, :] .<= 1.0)
     end
 end
-
 
 include("site_selection.jl")
 include("data_loading.jl")
