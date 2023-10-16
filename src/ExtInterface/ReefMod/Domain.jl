@@ -77,7 +77,11 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     site_data[:, :k] .= 1.0 .- id_list[:, 3]
 
     conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
-    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(conn_data, vec(site_data.area .* site_data.k))
+    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
+        conn_data, 
+        vec(site_data.area .* site_data.k), 
+        similar(conn_data)
+    )
 
     # Set all site depths to 6m below sea level
     # (ReefMod does not account for depth)

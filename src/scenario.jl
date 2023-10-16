@@ -595,6 +595,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     tmp::Matrix{Float64} = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
 
+    area_weighted_TP = domain.TP_data .* site_k_area(domain)
+    TP_cache = similar(area_weighted_TP)
+
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==1])
     for tstep::Int64 in 2:tf
@@ -648,7 +651,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
             # Determine connectivity strength
             # Account for cases where there is no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), vec(site_coral_cover))
+            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_TP, vec(site_coral_cover), TP_cache)
             (seed_locs, shade_locs, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
                 seed_locs, shade_locs, rankings, in_conn[mcda_vars.site_ids], out_conn[mcda_vars.site_ids], strong_pred[mcda_vars.site_ids])
