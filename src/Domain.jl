@@ -44,7 +44,7 @@ function site_distances(site_data::DataFrame)::Tuple{Matrix{Float64},Float64}
                 continue
             end
 
-            @inbounds dist[ii, jj] = haversine((longitudes[ii], latitudes[ii]), (longitudes[jj], latitudes[jj]))
+            @views dist[ii, jj] = haversine((longitudes[ii], latitudes[ii]), (longitudes[jj], latitudes[jj]))
         end
     end
 

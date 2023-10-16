@@ -565,7 +565,7 @@ Calculates coral recruitment for each species/group and location.
 function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
     α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::Matrix{T} where {T<:Float64}
     sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
-    sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
+    @views sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
     return sd
 end
 
@@ -588,20 +588,26 @@ Note: Units for all areas are assumed to be in m².
 # Returns
 Area covered by recruited larvae (in m²)
 """
-function settler_cover(fec_scope::T,
-    TP_data::T, leftover_space::T,
-    α::V, β::V, basal_area_per_settler::V)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
+function settler_cover(
+    fec_scope::T,
+    TP_data::T, 
+    leftover_space::T,
+    α::V, 
+    β::V, 
+    basal_area_per_settler::V,
+)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
     # Send larvae out into the world (reuse fec_scope to reduce allocations)
     # fec_scope .= (fec_scope .* sf)
     # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
+    # Could pass this in...
     valid_locs::BitVector = sum.(eachcol(TP_data)) .> 0.0
     # _subset = TP_data[valid_locs, valid_locs]
 
     # As above, but more performant, less readable.
     Mwater::Float64 = 0.95
-    fec_scope[:, valid_locs] .= (fec_scope[:, valid_locs] * TP_data[valid_locs, valid_locs]) .* (1.0 .- Mwater)
+    @views fec_scope[:, valid_locs] .= (fec_scope[:, valid_locs] * TP_data[valid_locs, valid_locs]) .* (1.0 .- Mwater)
     # fec_scope .*= (1.0 .- Mwater)
     # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)
     # fec_scope .*= (1.0 .- Mwater)
