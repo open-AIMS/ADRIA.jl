@@ -333,6 +333,18 @@ function n_locations(rs::ResultSet)
 end
 
 """
+    n_scenarios(rs::ResultSet)::Int64
+
+Number of scenarios stored in the given result set.
+
+# Arguments
+- `rs` : ResultSet
+"""
+function n_scenarios(rs::ResultSet)::Int64
+    return size(rs.inputs, 1)
+end
+
+"""
     component_params(spec::DataFrame, component::Type)::DataFrame
 
 Extract parameters for a specific model component from exported model specification.
