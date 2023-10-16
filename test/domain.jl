@@ -17,14 +17,14 @@ using ADRIA
         @test haskey(ENV, "ADRIA_THRESHOLD")
     end
 
-    #@testset "Discrete parameters" begin
-    #    site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
-    #    conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
-    #    scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
-    #    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
-    #    test_scens = CSV.read(scen_path, DataFrame)
-    #    ADRIA.update_params!(dom, test_scens[5, :])
-    #
-    #    @test all(ADRIA.param_table(dom).N_seed_TA .== 500000)
-    #end
+    @testset "Discrete parameters" begin
+        site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
+        conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
+        scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
+        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        test_scens = CSV.read(scen_path, DataFrame)
+        ADRIA.update_params!(dom, test_scens[5, :])
+
+        @test all(ADRIA.param_table(dom).N_seed_TA .== 500000)
+    end
 end
