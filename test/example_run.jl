@@ -1,7 +1,6 @@
 using Test
 using ADRIA
 
-
 @testset "Full example run" begin
     orig_loc = pwd()
     this_loc = @__DIR__
