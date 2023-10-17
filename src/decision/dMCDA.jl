@@ -773,7 +773,9 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
     end
 
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
-        depth_criteria = depth_criteria_indx(dom.site_data.depth_med, scen.max_depth, scen.depth_min)
+        depth_criteria = depth_criteria_idx(
+            dom.site_data.depth_med, scen.max_depth, scen.depth_min
+        )
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
@@ -905,7 +907,7 @@ function summary_stat_env(
 end
 
 """
-    depth_criteria_indx(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}
+    depth_criteria_idx(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}
 
 Calculates criteria for depth filtering in MCDA.
 
@@ -917,7 +919,7 @@ Calculates criteria for depth filtering in MCDA.
 # Returns
 Vector of indices indicating locations which satisfy the depth criteria.
 """
-function depth_criteria_indx(
+function depth_criteria_idx(
     depth_med::Vector{T}, depth_max::T, depth_min::T
 )::Vector{T} where {T<:Float64}
     return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
