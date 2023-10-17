@@ -76,30 +76,6 @@ function ADRIA.viz.pawn(
     return f
 end
 
-function ADRIA.viz.pawn_convergence(Si_N::NamedDimsArray; title="Factor", colors=Makie.wong_colors())
-
-    c_cycles = repeat(colors, Int(round(length(foi) / length(colors)) + 1))
-    
-    f, ax = lines(n, vec(Array(Si_N(Si=:mean, factors=foi[1]))), color=c_cycles[1], label=foi)
-    band!(n, vec(Array(Si_N(Si=:mean, factors=foi[1]) .- Si_N(Si=:std, factors=foi[1]))), vec(Array(Si_N(Si=:mean, factors=foi[1]) .+ Si_N(Si=:std, factors=foi[1]))), alpha=0.4, color=c_cycles[1])
-    ax.xlabel = "N scenarios"
-    ax.xlabelsize = 22
-    ax.ylabel = "PAWN Sensitivity"
-    ax.ylabelsize = 22
-    ax.title = title
-    
-    for fac in 2:length(foi)
-    
-        lines!(n, vec(Array(Si_N(Si=:mean, factors=foi[fac]))), color=c_cycles[fac], label=foi)
-        band!(n, vec(Array(Si_N(Si=:mean, factors=foi[fac]) .- Si_N(Si=:std, factors=foi[fac]))), vec(Array(Si_N(Si=:mean, factors=foi[fac]) .+ Si_N(Si=:std, factors=foi[fac]))), alpha=0.4, color=c_cycles[fac])
-    
-    end
-    lines!(n, vec(Array(Si_N(Si=:mean, factors=:dummy))), color="red", label=foi)
-    band!(n, vec(Array(Si_N(Si=:mean, factors=:dummy) .- Si_N(Si=:std, factors=:dummy))), vec(Array(Si_N(Si=:mean, factors=:dummy) .+ Si_N(Si=:std, factors=:dummy))), alpha=0.2, color="red")
-    
-    return f
-end
-    
 """
     ADRIA.viz.tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     ADRIA.viz.tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
@@ -502,67 +478,4 @@ function ADRIA.viz.outcome_map(
     ADRIA.viz.outcome_map!(g, rs, si, factors; opts, axis_opts)
 
     return f
-end
-
-
-"""
-    ADRIA.viz.pawn_convergence_plot(pawn_store::NamedDimsArray, factors::Vector{Symbol}, N::Int64; grid=false,title="Factor", colors=Makie.wong_colors(),)
-Plot outcomes mapped to factor regions for up to 30 factors.
-
-# Arguments
-- `rs` : ResultSet
-- `pawn_store` : stores pawn values for each set of N scenarios (of increasing number).
-- `factors` : The factors of interest to display
-- `N` : Largest number of scenarios in set.
-
-# Returns
-GLMakie figure
-"""
-function ADRIA.viz.pawn_convergence_plot(
-    pawn_store::NamedDimsArray,
-    foi::Vector{Symbol},
-    N::Int64;
-    grid=false,
-    colors=Makie.wong_colors(),
-)
-    n_steps = length(pawn_store.n_scenarios)
-    step_size = floor(Int64, N ./ n_steps)
-    N_it = collect(step_size:step_size:N)
-
-    c_cycles = repeat(colors, Int(round(length(foi) / length(colors)) + 1))
-    g = GridLayout()
-    if grid
-        grid_sqr = ceil(Int64, sqrt(length(foi)))
-        g_nums = [[a, b] for a in 1:grid_sqr, b in 1:grid_sqr]
-    else
-        g_nums = repeat([1, 1], length(foi))
-    end
-
-    for fac in 1:length(foi)
-        factor = foi[fac]
-        grid_pos = g[g_nums[fac][1], g_nums[fac][2]]
-
-        mean_pawn = NamedDims.unname(
-            AxisKeys.keyless(pawn_store(; Si=:mean, factors=factor))
-        )
-        std_pawn = NamedDims.unname(AxisKeys.keyless(pawn_store(; Si=:std, factors=factor)))
-
-        if factor == :dummy
-            col = "red"
-        else
-            col = c_cycles[fac]
-        end
-
-        lines!(grid_pos, N_it, mean_pawn; color=col, label=factor)
-        band!(
-            grid_pos,
-            N_it,
-            mean_pawn .- std_pawn,
-            mean_pawn .+ std_pawn;
-            alpha=0.4,
-            color=col,
-        )
-    end
-
-    return g
 end
