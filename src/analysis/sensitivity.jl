@@ -119,7 +119,8 @@ function pawn(
     # Preallocate result structures
     X_q = @MVector zeros(S + 1)
     pawn_t = @MArray zeros(S, D)
-    results = @MArray zeros(D, 6)
+    results = @MArray zeros(D, 8)
+    q_stats = [0.025, 0.5, 0.975]
 
     # Hide warnings from HypothesisTests
     with_logger(NullLogger()) do
@@ -145,10 +146,13 @@ function pawn(
             p_mean = mean(p_ind)
             p_sdv = std(p_ind)
             p_cv = p_sdv ./ p_mean
+            p_lb, p_med, p_ub = quantile(p_ind, q_stats)
             results[d_i, :] .= (
                 minimum(p_ind),
+                p_lb,
                 p_mean,
-                median(p_ind),
+                p_med,
+                p_ub,
                 maximum(p_ind),
                 p_sdv,
                 p_cv
@@ -158,7 +162,7 @@ function pawn(
 
     replace!(results, NaN => 0.0, Inf => 0.0)
 
-    col_names = [:min, :mean, :median, :max, :std, :cv]
+    col_names = [:min, :lb, :mean, :median, :ub, :max, :std, :cv]
     return NamedDimsArray(results; factors=Symbol.(factor_names), Si=col_names)
 end
 function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
