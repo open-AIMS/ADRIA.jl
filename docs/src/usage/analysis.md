@@ -121,21 +121,41 @@ save("scenarios_tac.png", fig_s_tac)
 
 ![Quick scenario plots](/ADRIA.jl/dev/assets/imgs/scenarios_tac.png?raw=true "Quick scenario plot")
 
+And compose a figure with subplots. In the example below we also use the parameter `opts`
+that accepts the keys `by_RCP` to group scenarios by RCP (default is `false`), `legend`
+to plot the legend (default is `true`) and `summarize` to plot confidence intervals instead
+of plotting each series (default is `true`):
+
 ```julia
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
 
+# Parameters used to run each scenario
+scens = rs.inputs
+
 tf = Figure(resolution=(1600, 600))  # resolution in pixels
 
 # Implicitly create a single figure with 2 columns
-ADRIA.viz.scenarios!(tf[1, 1], rs, s_tac; opts=Dict(:by_RCP => false, :legend=>false), axis_opts=Dict(:title => "TAC [m²]"));
-ADRIA.viz.scenarios!(tf[1, 2], rs, s_juves; axis_opts=Dict(:title => "Juveniles [%]"));
+ADRIA.viz.scenarios!(
+    tf[1, 1],
+    scens,
+    s_tac;
+    opts=Dict(:by_RCP => false, :legend => false),
+    axis_opts=Dict(:title => "TAC [m²]"),
+);
+ADRIA.viz.scenarios!(
+    tf[1, 2],
+    scens,
+    s_juves;
+    opts=Dict(:summarize => false),
+    axis_opts=Dict(:title => "Juveniles [%]"),
+);
 
 tf  # display the figure
 save("aviz_scenario.png", tf)  # save the figure to a file
 ```
 
-![Quick scenario plots](/ADRIA.jl/dev/assets/imgs/aviz_scenario.png?raw=true "Quick scenario plots")
+![Scenarios with subplots](/ADRIA.jl/dev/assets/imgs/aviz_scenario.png?raw=true "Scenarios with subplots")
 
 
 ### PAWN sensitivity (heatmap overview)
