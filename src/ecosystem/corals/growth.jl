@@ -365,8 +365,8 @@ locations.
 
 # Arguments
 - `cover` : Area covered by coral
-- `c_dist_t_1` : DHW tolerance distribution for previous timestep
-- `c_dist_t` : DHW tolerance distribution for current timestep
+- `c_dist_t_1` : DHW tolerance distribution for previous timestep (t  - 1)
+- `c_dist_t` : DHW tolerance distribution for current timestep (t)
 - `k_area` : Absolute coral habitable area
 - `tp` : Transition Probability matrix indicating the proportion of larvae that reaches a
     sink location (columns) from a given source location (rows)
@@ -380,22 +380,26 @@ function settler_DHW_tolerance!(
     c_dist_t_1::Matrix{T},
     c_dist_t::Matrix{T},
     k_area::Vector{F},
-    tp::Matrix{F},
+    tp::AbstractMatrix{F},
     recruitment::Matrix{F},
     dist_std::Vector{F},
     fec_params_per_m²::Vector{F},
     h²::F)::Nothing where {
-    T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64
+    T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},
+    F<:Float64
 }
+    sink_loc_ids = findall(k_area .> 0.0)
+
     # Adjust DHW tolerances incorporating recruited coral
-    for sink_loc in findall(k_area .> 0.0)
-        @views larvae_contribution = tp[tp[:, sink_loc].>0.0, sink_loc]
-        if length(larvae_contribution) == 0.0
+    @floop for sink_loc in sink_loc_ids
+        # Identify source locations
+        @views source_locs = tp[:, sink_loc] .> 0.0
+        @views w = tp[source_locs, sink_loc]
+        if length(w) == 0.0
             # Skip if no recruitment occurred
             continue
         end
 
-        w = larvae_contribution ./ sum(larvae_contribution)
         for (sp, sc1) in enumerate(1:6:36)
             # Only update locations where recruitment occurred
             rec = recruitment[sp, sink_loc]
@@ -413,41 +417,41 @@ function settler_DHW_tolerance!(
 
             sc1_6::UnitRange{Int64} = sc1:sc1+5
 
-            # Identify source locations
-            @views source_locs = tp[:, sink_loc] .> 0.0
-
             # Get distributions of reproductive size classes at source locations
             @views reproductive_sc = fec_params_per_m²[sc1_6] .> 0.0
-            source_dists = vec(c_dist_t_1[sc1_6, source_locs][reproductive_sc, :])
+            source_dists = vec(c_dist_t_1[sc1_6[reproductive_sc], source_locs])
 
             # Determine weights based on contribution to recruitment.
             # This weights the recruited corals by the size classes and source locations
             # which contributed to recruitment.
             expanded_w = repeat(w, inner=count(reproductive_sc))
-            expanded_w /= sum(expanded_w)
+            expanded_w ./= sum(expanded_w)
 
             # Obtain the recruited and original distributions for the sink location.
-            recruit_mm = MixtureModel(source_dists, expanded_w)
+            recruit_mm::MixtureModel = MixtureModel(source_dists, expanded_w)
 
             if rec_w == 1.0
                 # If all the weight is on new recruits, then no need to mix with sink
                 # population.
-                μ_t = mean(recruit_mm)
+                μ_t::Float64 = mean(recruit_mm)
                 @views c_dist_t[sc1, sink_loc] = truncated(
                     Normal(μ_t, dist_std[sc1]), minimum(recruit_mm), μ_t + HEAT_UB
                 )
                 continue
             end
 
-            orig_mm = c_dist_t_1[sc1, sink_loc]
-            d = MixtureModel([orig_mm, recruit_mm], [1.0 - rec_w, rec_w])
+            orig_trunc::Truncated = c_dist_t_1[sc1, sink_loc]
+            mixed_mm::MixtureModel = MixtureModel(
+                [orig_trunc, recruit_mm], [1.0 - rec_w, rec_w]
+            )
+            μ_d::Float64 = mean(mixed_mm)
 
             # Breeder's equation
-            S::Float64 = mean(d) - mean(c_dist_t_1[sc1, sink_loc])
-            μ_t::Float64 = mean(d) + (S * h²)
+            # S::Float64 = μ_d - mean(orig_mm)
+            μ_t = μ_d + ((μ_d - mean(orig_trunc)) * h²)
 
             # New DHW tolerance distribution for size class 1, for CURRENT timestep
-            @views c_dist_t[sc1, sink_loc] = truncated(Normal(μ_t, dist_std[sc1]), minimum(d), μ_t + HEAT_UB)
+            @views c_dist_t[sc1, sink_loc] = truncated(Normal(μ_t, dist_std[sc1]), minimum(mixed_mm), μ_t + HEAT_UB)
         end
     end
 
