@@ -202,8 +202,8 @@ function pawn(
 end
 
 """
-    pawn_convergence(scens::DataFrame, foi::Vector{Symbol}, outcome::NamedDimsArray; N_steps=10)
- 
+    convergence(X::DataFrame, y::NamedDimsArray, foi::Vector{Symbol}; n_steps::Int64=10)
+
     Calculates the PAWN sensitivity index for an increasing number of scenarios where the maximum
         is the total number of scenarios in scens. Number of scenario subsets determined by N_steps.
 
@@ -214,28 +214,27 @@ end
 - `n_steps` : Number of steps to cut the total number of scenarios into.
 
 # Returns
-NamedDimsArray, of min, mean, median, max, std, and cv summary statistics for an increasing 
+NamedDimsArray, of min, mean, median, max, std, and cv summary statistics for an increasing
 number of scenarios.
 """
-function pawn_convergence(
+function convergence(
     X::DataFrame, y::NamedDimsArray, foi::Vector{Symbol}; n_steps::Int64=10
 )
     N = length(y.scenarios)
     step_size = floor(Int64, N / n_steps)
     N_it = collect(step_size:step_size:N)
 
-    A = Array{Float64}(zeros(length(foi), 6, length(N_it)))
     pawn_store = NamedDimsArray(
-        A;
+        Array{Float64}(zeros(length(foi), 8, length(N_it)));
         factors=foi,
-        Si=[:min, :mean, :median, :max, :std, :cv],
-        n_scenarios=collect(1:length(N_it)),
+        Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
+        n_scenarios=N_it,
     )
-    scens_indx = randperm(MersenneTwister(1234), N)
+    scens_idx = randperm(N)
 
-    for nn in 1:length(N_it)
-        pawn_store[n_scenarios=nn] .= col_normalize(
-            pawn(X[scens_indx[1:N_it[nn]], :], y[scens_indx[1:N_it[nn]]])
+    for nn in N_it
+        pawn_store(; n_scenarios=nn) .= col_normalize(
+            pawn(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])),
         )(;
             factors=foi
         )
