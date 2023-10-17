@@ -365,7 +365,7 @@ locations.
 
 # Arguments
 - `cover` : Area covered by coral
-- `c_dist_t_1` : DHW tolerance distribution for previous timestep (t  - 1)
+- `c_dist_t_1` : DHW tolerance distribution for previous timestep (t - 1)
 - `c_dist_t` : DHW tolerance distribution for current timestep (t)
 - `k_area` : Absolute coral habitable area
 - `tp` : Transition Probability matrix indicating the proportion of larvae that reaches a
