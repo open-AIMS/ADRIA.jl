@@ -203,7 +203,7 @@ end
 - `rank_col` : column to fill with rankings (2 for seed, 3 for shade)
 
 # Returns
-- `prefsites` : sites in order of their rankings
+`prefsites` : sites in order of their rankings
 """
 function rank_sites!(
     S::Matrix{Float64},
@@ -246,7 +246,7 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 - `maximize` : Boolean indicating whether a mcda method is maximizing score (true), or minimizing (false).
 
 # Returns
-- `s_order` : [site_ids, criteria values, ranks]
+`s_order` : [site_ids, criteria values, ranks]
 """
 function retrieve_ranks(
     S::Matrix{Float64},
@@ -663,7 +663,7 @@ Replaces these sites with sites in the top ranks if the distance between these s
 - `min_dist` : minimum distance between sites for selected sites.
 
 # Returns
-- `prefsites` : new set of selected sites for seeding or shading.
+`prefsites` : new set of selected sites for seeding or shading.
 """
 function distance_sorting(
     pref_sites::AbstractArray{Int},
@@ -743,7 +743,7 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 - `target_shade_sites` : list of candidate location to shade (indices)
 
 # Returns
-- `ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
+`ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
     containing ranks for each scenario run.
 """
 function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64;
@@ -807,7 +807,7 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
 - `area_to_seed` : area of coral to be seeded at each time step in km^2
 
 # Returns
-- `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
+`ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
 function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray,
@@ -895,7 +895,7 @@ Calculates mean over specified dimensions plus half the standard deviation.
 - `w` : Weighting for std offset to mean.
 
 # Returns
-- Mean + std of input env_layer, where std is weighted by (1-w), mean is weighted by
+Mean + std of input env_layer, where std is weighted by (1-w), mean is weighted by
 w and aggregated over dims.
 """
 function summary_stat_env(
