@@ -11,7 +11,8 @@ using DataFrames
 using
     Bootstrap,
     Distributions,
-    HypothesisTests
+    HypothesisTests,
+    Random
 using HypothesisTests: ApproximateKSTest
 
 using FLoops
