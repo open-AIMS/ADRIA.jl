@@ -390,17 +390,18 @@ function settler_DHW_tolerance!(cover::Matrix{F}, c_dist_t_1::Matrix{T},
 
         w = larvae_contribution ./ sum(larvae_contribution)
         for (sp, sc1) in enumerate(1:6:36)
-            r = recruitment[sp, sink_loc]
-            if r == 0.0
+            # Only update locations where recruitment occurred
+            rec = recruitment[sp, sink_loc]
+            if rec == 0.0
                 continue
             end
 
             # Combine distributions altogether to determine new distribution for size class 1
             # for the CURRENT timestep
             if cover[sp, sink_loc] .== 0.0
-                total_w::Float64 = r
+                rec_w::Float64 = 1.0  # no cover, so all the weight goes to new recruits
             else
-                total_w = r / (r + cover[sp, sink_loc])
+                rec_w = rec / (rec + cover[sp, sink_loc])
             end
 
             sc1_6::UnitRange{Int64} = sc1:sc1+5
@@ -419,10 +420,10 @@ function settler_DHW_tolerance!(cover::Matrix{F}, c_dist_t_1::Matrix{T},
             expanded_w /= sum(expanded_w)
 
             # Obtain the recruited and original distributions for the sink location.
-            recruited = MixtureModel(source_dists, expanded_w)
-            orig = c_dist_t_1[sc1, sink_loc]
+            recruit_mm = MixtureModel(source_dists, expanded_w)
+            orig_mm = c_dist_t_1[sc1, sink_loc]
 
-            d = MixtureModel([orig, recruited], [1.0 - total_w, total_w])
+            d = MixtureModel([orig_mm, recruit_mm], [1.0 - rec_w, rec_w])
 
             # Breeder's equation
             S::Float64 = mean(d) - mean(c_dist_t_1[sc1, sink_loc])
@@ -553,9 +554,7 @@ Calculates coral recruitment for each species/group and location.
 
 # Arguments
 - `larval_pool` : Available larval pool
-- `A` : Available space (0 - 1) relative to maximum area covered by
-      cropped algal turf, i.e., the substratum that is suitable
-      for coral recruitment
+- `A` : Available space, i.e., the substratum that is suitable for coral recruitment, in m²
 - `α` : Maximum achievable density (settlers/m²) for a 100% free space
 - `β` : Stock of larvae required to produce 50% of the maximum settlement
 
@@ -571,16 +570,17 @@ end
 
 
 """
-    settler_cover(fec_scope, sf, TP_data, leftover_space, α, β, basal_area_per_settler)
+    settler_cover(fec_scope, sf, TP_data, leftover_k_area, α, β, basal_area_per_settler)
 
 Determine area settled by recruited larvae.
 
 Note: Units for all areas are assumed to be in m².
 
 # Arguments
-- `fec_scope` : fecundity scope
+- `fec_scope` : Fecundity scope
 - `TP_data` : Transition probability (rows: source locations; cols: sink locations)
-- `leftover_space` : difference between sites' maximum carrying capacity and current coral cover (\$k - C_s\$)
+- `leftover_k_m²` : Difference between locations' maximum carrying capacity and current
+    coral cover (\$k - C_s\$ ∈ [0, 1])
 - `α` : max number of settlers / m²
 - `β` : larvae / m² required to produce 50% of maximum settlement
 - `basal_area_per_settler` : area taken up by a single settler
@@ -590,11 +590,11 @@ Area covered by recruited larvae (in m²)
 """
 function settler_cover(
     fec_scope::T,
-    TP_data::T, 
-    leftover_space::T,
-    α::V, 
-    β::V, 
-    basal_area_per_settler::V,
+    TP_data::T,
+    leftover_k_m²::T,
+    α::V,
+    β::V,
+    basal_area_per_settler::V
 )::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
     # Send larvae out into the world (reuse fec_scope to reduce allocations)
@@ -614,10 +614,10 @@ function settler_cover(
     # fec_scope *= fec_scope * TP_data
     # fec_scope .*= (1.0 .- Mwater)
 
-    # Larvae have landed, work out how many are recruited
+    # Larvae have landed, work out how many are recruited.
     # recruits per m^2 per site multiplied by area per settler
-    fec_scope .= recruitment_rate(fec_scope, leftover_space; α=α, β=β) .* basal_area_per_settler
+    fec_scope .= recruitment_rate(fec_scope, leftover_k_m²; α=α, β=β) .* basal_area_per_settler
 
-    # Determine area covered by recruited larvae (settler cover) per m^2
-    return min.(fec_scope, leftover_space)
+    # Determine absolute area covered by recruited larvae (settler cover)
+    return min.(fec_scope, leftover_k_m²)
 end
