@@ -113,10 +113,13 @@ One can plot a quick scenario overview:
 
 ```julia
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
-ADRIA.viz.scenarios(rs, s_tac; axis_opts=Dict(:ylabel=>"Example Metric"))
+fig_s_tac = ADRIA.viz.scenarios(
+    rs, s_tac; fig_opts=fig_opts, axis_opts=Dict(:ylabel => "Scenario Total Cover")
+)
+save("scenarios_tac.png", fig_s_tac)
 ```
 
-And compose a figure with subplots:
+![Quick scenario plots](/ADRIA.jl/dev/assets/imgs/scenarios_tac.png?raw=true "Quick scenario plot")
 
 ```julia
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
