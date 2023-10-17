@@ -30,7 +30,12 @@ See: https://docs.makie.org/v0.19/api/index.html#Axis
 # Returns
 Makie figure
 """
-function ADRIA.viz.pawn!(g::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.pawn!(
+    g::Union{GridLayout,GridPosition},
+    Si::NamedDimsArray;
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
 
     norm = get(opts, :normalize, true)
@@ -61,7 +66,9 @@ function ADRIA.viz.pawn!(g::Union{GridLayout,GridPosition}, Si::NamedDimsArray; 
 
     return g
 end
-function ADRIA.viz.pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.pawn(
+    Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.pawn!(g, Si; opts, axis_opts)
@@ -69,30 +76,6 @@ function ADRIA.viz.pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Di
     return f
 end
 
-function ADRIA.viz.pawn_convergence(Si_N::NamedDimsArray; title="Factor", colors=Makie.wong_colors())
-
-    c_cycles = repeat(colors, Int(round(length(foi) / length(colors)) + 1))
-    
-    f, ax = lines(n, vec(Array(Si_N(Si=:mean, factors=foi[1]))), color=c_cycles[1], label=foi)
-    band!(n, vec(Array(Si_N(Si=:mean, factors=foi[1]) .- Si_N(Si=:std, factors=foi[1]))), vec(Array(Si_N(Si=:mean, factors=foi[1]) .+ Si_N(Si=:std, factors=foi[1]))), alpha=0.4, color=c_cycles[1])
-    ax.xlabel = "N scenarios"
-    ax.xlabelsize = 22
-    ax.ylabel = "PAWN Sensitivity"
-    ax.ylabelsize = 22
-    ax.title = title
-    
-    for fac in 2:length(foi)
-    
-        lines!(n, vec(Array(Si_N(Si=:mean, factors=foi[fac]))), color=c_cycles[fac], label=foi)
-        band!(n, vec(Array(Si_N(Si=:mean, factors=foi[fac]) .- Si_N(Si=:std, factors=foi[fac]))), vec(Array(Si_N(Si=:mean, factors=foi[fac]) .+ Si_N(Si=:std, factors=foi[fac]))), alpha=0.4, color=c_cycles[fac])
-    
-    end
-    lines!(n, vec(Array(Si_N(Si=:mean, factors=:dummy))), color="red", label=foi)
-    band!(n, vec(Array(Si_N(Si=:mean, factors=:dummy) .- Si_N(Si=:std, factors=:dummy))), vec(Array(Si_N(Si=:mean, factors=:dummy) .+ Si_N(Si=:std, factors=:dummy))), alpha=0.2, color="red")
-    
-    return f
-end
-    
 """
     ADRIA.viz.tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     ADRIA.viz.tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
@@ -112,7 +95,9 @@ Display temporal sensitivity analysis
 # Returns
 Makie figure
 """
-function ADRIA.viz.tsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
+function ADRIA.viz.tsa!(
+    g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts
+)
     stat = get(opts, :stat, :median)
 
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
@@ -155,7 +140,13 @@ function ADRIA.viz.tsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::Na
 
     return g
 end
-function ADRIA.viz.tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.tsa(
+    rs::ResultSet,
+    si::NamedDimsArray;
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.tsa!(g, rs, si; opts, axis_opts)
@@ -181,7 +172,14 @@ Plot regional sensitivities of up to 30 factors.
 # Returns
 Makie figure
 """
-function ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+function ADRIA.viz.rsa!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    si::NamedDimsArray,
+    factors::Vector{String};
+    opts,
+    axis_opts,
+)
     n_factors::Int64 = length(factors)
     if n_factors > 30
         ArgumentError("Too many factors to plot. Maximum number supported is 30.")
@@ -259,7 +257,14 @@ function ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::Na
 
     return g
 end
-function ADRIA.viz.rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.rsa(
+    rs::ResultSet,
+    si::NamedDimsArray,
+    factors::Vector{String};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.rsa!(g, rs, si, factors; opts, axis_opts)
@@ -288,7 +293,14 @@ Plot outcomes mapped to factor regions for up to 30 factors.
 # Returns
 Makie figure
 """
-function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.outcome_map!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    outcomes::NamedDimsArray,
+    factors::Vector{String};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
     # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
     #       found in `rsa()`
     n_factors::Int64 = length(factors)
@@ -405,73 +417,17 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
 
     return g
 end
-function ADRIA.viz.outcome_map(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.outcome_map(
+    rs::ResultSet,
+    si::NamedDimsArray,
+    factors::Vector{String};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.outcome_map!(g, rs, si, factors; opts, axis_opts)
 
     return f
-end
-
-
-"""
-    ADRIA.viz.pawn_convergence_plot(pawn_store::NamedDimsArray, factors::Vector{Symbol}, N::Int64; grid=false,title="Factor", colors=Makie.wong_colors(),)
-Plot outcomes mapped to factor regions for up to 30 factors.
-
-# Arguments
-- `rs` : ResultSet
-- `pawn_store` : stores pawn values for each set of N scenarios (of increasing number).
-- `factors` : The factors of interest to display
-- `N` : Largest number of scenarios in set.
-
-# Returns
-GLMakie figure
-"""
-function ADRIA.viz.pawn_convergence_plot(
-    pawn_store::NamedDimsArray,
-    foi::Vector{Symbol},
-    N::Int64;
-    grid=false,
-    colors=Makie.wong_colors(),
-)
-    n_steps = length(pawn_store.n_scenarios)
-    step_size = floor(Int64, N ./ n_steps)
-    N_it = collect(step_size:step_size:N)
-
-    c_cycles = repeat(colors, Int(round(length(foi) / length(colors)) + 1))
-    g = GridLayout()
-    if grid
-        grid_sqr = ceil(Int64, sqrt(length(foi)))
-        g_nums = [[a, b] for a in 1:grid_sqr, b in 1:grid_sqr]
-    else
-        g_nums = repeat([1, 1], length(foi))
-    end
-
-    for fac in 1:length(foi)
-        factor = foi[fac]
-        grid_pos = g[g_nums[fac][1], g_nums[fac][2]]
-
-        mean_pawn = NamedDims.unname(
-            AxisKeys.keyless(pawn_store(; Si=:mean, factors=factor))
-        )
-        std_pawn = NamedDims.unname(AxisKeys.keyless(pawn_store(; Si=:std, factors=factor)))
-
-        if factor == :dummy
-            col = "red"
-        else
-            col = c_cycles[fac]
-        end
-
-        lines!(grid_pos, N_it, mean_pawn; color=col, label=factor)
-        band!(
-            grid_pos,
-            N_it,
-            mean_pawn .- std_pawn,
-            mean_pawn .+ std_pawn;
-            alpha=0.4,
-            color=col,
-        )
-    end
-
-    return g
 end
