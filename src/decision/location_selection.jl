@@ -236,10 +236,10 @@ function location_selection_frequencies(
 end
 
 """
-    summed_inverse_rank(ranks::NamedDimsArray{D,T,3,A};dims::Union{Symbol,Vector{Symbol}}=[:scenarios, :timsteps],
+    selection_score(ranks::NamedDimsArray{D,T,3,A};dims::Union{Symbol,Vector{Symbol}}=[:scenarios, :timsteps],
             ) where {D,T,A}
-    summed_inverse_rank(ranks::NamedDimsArray{D,T,2,A};) where {D,T,A}
-    summed_inverse_rank(ranks::NamedDimsArray,dims::Union{Symbol,Vector{Symbol}},)
+    selection_score(ranks::NamedDimsArray{D,T,2,A};) where {D,T,A}
+    selection_score(ranks::NamedDimsArray,dims::Union{Symbol,Vector{Symbol}},)
 
 Calculates (number of sites) .- ranks summed over the dimension dims and transformed using agg_func 
     (default no transformation).
@@ -249,22 +249,23 @@ Calculates (number of sites) .- ranks summed over the dimension dims and transfo
 - `dims` : Dimensions to sum over.
 
 # Returns 
-Inverse rankings (i.e. for ranks the lowest value is the highest rank, 
-in the inverse ranks the greater the number the higher ranked the location).
+Selection score (i.e. for ranks the lowest value is the highest rank, 
+in the selection score the greater the number the higher ranked and more 
+frequently selected the location).
 """
-function summed_inverse_rank(
+function selection_score(
     ranks::NamedDimsArray{D,T,3,A};
     dims::Vector{Symbol}=[:scenarios, :timesteps],
 ) where {D,T,A}
-    return summed_inverse_rank(ranks, dims)
+    return selection_score(ranks, dims)
 end
-function summed_inverse_rank(
+function selection_score(
     ranks::NamedDimsArray{D,T,2,A};
     dims::Vector{Symbol}=[:scenarios],
 ) where {D,T,A}
-    return summed_inverse_rank(ranks, dims)
+    return selection_score(ranks, dims)
 end
-function summed_inverse_rank(
+function selection_score(
     ranks::NamedDimsArray,
     dims::Vector{Symbol},
 )
