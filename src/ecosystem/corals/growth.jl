@@ -607,34 +607,31 @@ Area covered by recruited larvae (in m²)
 """
 function settler_cover(
     fec_scope::T,
-    TP_data::T,
+    TP_data::AbstractMatrix{Float64},
     leftover_k_m²::T,
     α::V,
     β::V,
     basal_area_per_settler::V
 )::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
+    # Could pass this in...
+    valid_locs::BitVector = sum.(eachcol(TP_data)) .> 0.0
+
     # Send larvae out into the world (reuse fec_scope to reduce allocations)
     # fec_scope .= (fec_scope .* sf)
     # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
 
-    # Could pass this in...
-    valid_locs::BitVector = sum.(eachcol(TP_data)) .> 0.0
-    # _subset = TP_data[valid_locs, valid_locs]
-
     # As above, but more performant, less readable.
-    Mwater::Float64 = 0.95
-    @views fec_scope[:, valid_locs] .= (fec_scope[:, valid_locs] * TP_data[valid_locs, valid_locs]) .* (1.0 .- Mwater)
-    # fec_scope .*= (1.0 .- Mwater)
-    # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)
-    # fec_scope .*= (1.0 .- Mwater)
-    # fec_scope *= fec_scope * TP_data
-    # fec_scope .*= (1.0 .- Mwater)
+    Mwater::Float64 = 0.95  # in water mortality
+    @views fec_scope[:, valid_locs] .= (
+        fec_scope[:, valid_locs] 
+        * TP_data[valid_locs, valid_locs]
+    ) .* (1.0 .- Mwater)
 
-    # Larvae have landed, work out how many are recruited.
+    # Larvae have landed, work out how many are recruited
+    # Determine area covered by recruited larvae (settler cover) per m^2
     # recruits per m^2 per site multiplied by area per settler
     fec_scope .= recruitment_rate(fec_scope, leftover_k_m²; α=α, β=β) .* basal_area_per_settler
-
-    # Determine absolute area covered by recruited larvae (settler cover)
-    return min.(fec_scope, leftover_k_m²)
+    
+    return fec_scope
 end
