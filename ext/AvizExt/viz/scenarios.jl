@@ -111,7 +111,8 @@ function ADRIA.viz.scenarios!(
     series_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
     if get(opts, :summarize, true)
-        scenarios_confint!(ax, outcomes, scen_groups)
+        confints = _confints(outcomes, scen_groups)
+        scenarios_confint!(ax::Axis, confints, scen_groups)
     else
         scenarios_series!(ax, outcomes, scen_groups; series_opts=series_opts)
     end
@@ -129,12 +130,12 @@ function ADRIA.viz.scenarios!(
     return g
 end
 
-function scenarios_confint!(
-    ax::Axis, outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
-)::Nothing
-    ordered_groups::Vector{Symbol} = _sort_keys(scen_groups, outcomes)
+function _confints(
+    outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
+)::Array{Float64}
+    groups::Vector{Symbol} = keys(scen_groups)
     n_timesteps::Int64 = size(outcomes, 1)
-    n_scens::Int64 = length(ordered_groups)
+    n_scens::Int64 = length(groups)
 
     # Compute confints
     confints::Array{Float64} = zeros(n_timesteps, n_scens, 3)
@@ -145,6 +146,17 @@ function scenarios_confint!(
         )
     end
 
+    return confints
+end
+
+function scenarios_confint!(
+    ax::Axis,
+    confints::AbstractArray,
+    scen_groups::Dict{Symbol,BitVector};
+    sort_by::Symbol=:variance,
+)::Nothing
+    ordered_groups = _sort_keys(scen_groups, confints; by=sort_by)
+    n_timesteps::Int64 = size(confints, 1)
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
 
     for idx in eachindex(ordered_groups)
