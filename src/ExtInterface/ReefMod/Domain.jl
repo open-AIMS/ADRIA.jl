@@ -1,5 +1,6 @@
 using NamedDims, AxisKeys, CSV
-using CSV, DataFrames, Statistics, Distributions
+using DataFrames, Statistics, Distributions
+using SparseArrays
 import GeoDataFrames as GDF
 
 using ModelParameters
@@ -71,7 +72,7 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
 
     # Convert area in km² to m²
-    site_data[:, :area] .= id_list[:, 2] * 1e6
+    site_data[:, :area] .= id_list[:, 2] .* 1e6
 
     # Calculate `k` area (1.0 - "ungrazable" area)
     site_data[:, :k] .= 1.0 .- id_list[:, 3]
@@ -249,7 +250,7 @@ function load_connectivity(::Type{ReefModDomain}, data_path::String, loc_ids::Ve
     end
 
     # Mean over all years
-    conn_data = dropdims(mean(tmp_mat, dims=3), dims=3)
+    conn_data::SparseMatrixCSC = sparse(dropdims(mean(tmp_mat, dims=3), dims=3))
     return NamedDimsArray(conn_data, source=loc_ids, sinks=loc_ids)
 end
 
