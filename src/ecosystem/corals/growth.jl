@@ -374,12 +374,19 @@ locations.
 - `dist_std` : original standard deviations for each species/size class
 - `fec_params_per_m²` : Fecundity parameters for each species/size class combination
 - `h²` : narrow-sense heritability
-
 """
-function settler_DHW_tolerance!(cover::Matrix{F}, c_dist_t_1::Matrix{T},
-    c_dist_t::Matrix{T}, k_area::Vector{F}, tp::Matrix{F}, recruitment::Matrix{F},
-    dist_std::Vector{F}, fec_params_per_m²::Vector{F}, h²::F)::Nothing where {T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64}
-
+function settler_DHW_tolerance!(
+    cover::Matrix{F},
+    c_dist_t_1::Matrix{T},
+    c_dist_t::Matrix{T},
+    k_area::Vector{F},
+    tp::Matrix{F},
+    recruitment::Matrix{F},
+    dist_std::Vector{F},
+    fec_params_per_m²::Vector{F},
+    h²::F)::Nothing where {
+    T<:Truncated{Normal{Float64},Continuous,Float64,Float64,Float64},F<:Float64
+}
     # Adjust DHW tolerances incorporating recruited coral
     for sink_loc in findall(k_area .> 0.0)
         @views larvae_contribution = tp[tp[:, sink_loc].>0.0, sink_loc]
@@ -421,8 +428,18 @@ function settler_DHW_tolerance!(cover::Matrix{F}, c_dist_t_1::Matrix{T},
 
             # Obtain the recruited and original distributions for the sink location.
             recruit_mm = MixtureModel(source_dists, expanded_w)
-            orig_mm = c_dist_t_1[sc1, sink_loc]
 
+            if rec_w == 1.0
+                # If all the weight is on new recruits, then no need to mix with sink
+                # population.
+                μ_t = mean(recruit_mm)
+                @views c_dist_t[sc1, sink_loc] = truncated(
+                    Normal(μ_t, dist_std[sc1]), minimum(recruit_mm), μ_t + HEAT_UB
+                )
+                continue
+            end
+
+            orig_mm = c_dist_t_1[sc1, sink_loc]
             d = MixtureModel([orig_mm, recruit_mm], [1.0 - rec_w, rec_w])
 
             # Breeder's equation
