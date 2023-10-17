@@ -242,7 +242,9 @@ Sort types by variance in reverse order.
     - :counterfactual
 """
 function _sort_keys(
-    scenario_types::Dict{Symbol,BitVector}, outcomes::NamedDimsArray; by=:variance
+    scenario_types::Dict{Symbol,BitVector},
+    outcomes::NamedDimsArray;
+    by=:variance,
 )::Vector{Symbol}
     scen_types::Vector{Symbol} = collect(keys(scenario_types))
     if by == :variance
@@ -255,6 +257,8 @@ function _sort_keys(
         return sort(
             scen_types; by=type -> size(outcomes[:, scenario_types[type]], 2), rev=true
         )
+    elseif by == :none
+        return scen_types
     else
         throw(ArgumentError("Invalid 'by' option. Must be one of: [:variance, :size]"))
     end
