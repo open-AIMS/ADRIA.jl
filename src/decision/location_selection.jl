@@ -270,6 +270,6 @@ function selection_score(
     dims::Vector{Symbol},
 )
     lowest_rank = maximum(ranks)
-    inv_ranks = dropdims(sum(lowest_rank .- ranks; dims=dims); dims=dims[1])
-    return inv_ranks ./ (lowest_rank * prod([size(ranks, d) for d in dims]))
+    selection_score = dropdims(sum(lowest_rank .- ranks; dims=dims); dims=dims[1])
+    return selection_score ./ (lowest_rank * prod([size(ranks, d) for d in dims]))
 end

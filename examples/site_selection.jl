@@ -29,7 +29,7 @@ rank_freq = ranks_to_frequencies(ranks[intervention=1])
 location_selection_frequency = location_selection_frequencies(ranks[intervention=1])
 # Get summed inverse rank for set of standalone location selections.
 # Measure of magnitude and frequency of high rank.
-inv_summ_rank = selection_score(ranks[intervention=1])
+sel_score = selection_score(ranks[intervention=1])
 
 # Use aggregation function within rank_locations to get direct output.
 # To get rank frequencies:
@@ -64,6 +64,6 @@ unguided_freq = location_selection_frequencies(
 
 # Get summed inverse rank for set of runs.
 # Measure of magnitude and frequency of high rank.
-inv_summ_rank = selection_score(rs.ranks[intervention=1])
+sel_score = selection_score(rs.ranks[intervention=1])
 # Get summed inverse rank over time.
-inv_summ_rank = selection_score(rs.ranks[intervention=1]; dims=[:scenarios])
+sel_score = selection_score(rs.ranks[intervention=1]; dims=[:scenarios])
