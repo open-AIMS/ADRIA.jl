@@ -440,7 +440,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
-    TP_data = Matrix(domain.TP_data)
+    TP_data = domain.TP_data
     # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
     fec_scope = cache.fec_scope
@@ -595,7 +595,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     tmp::Matrix{Float64} = zeros(size(Y_cover[1, :, :]))  # temporary array to hold intermediate covers
 
-    area_weighted_TP = domain.TP_data .* site_k_area(domain)
+    area_weighted_TP = TP_data .* site_k_area(domain)
     TP_cache = similar(area_weighted_TP)
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
