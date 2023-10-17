@@ -176,11 +176,12 @@ function scenarios_series!(
     outcomes::NamedDimsArray,
     scen_groups::Dict{Symbol,BitVector};
     series_opts::Dict=Dict(),
+    sort_by=:size,
 )::Nothing
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
     _alphas::Dict{Symbol,Float64} = alphas(scen_groups)
 
-    for group in _sort_keys(scen_groups, outcomes; by=:size)
+    for group in _sort_keys(scen_groups, outcomes; by=sort_by)
         color = (_colors[group], _alphas[group])
         scens = outcomes[:, scen_groups[group]]'
         series!(ax, scens; solid_color=color, series_opts...)
