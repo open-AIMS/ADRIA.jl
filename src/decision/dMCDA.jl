@@ -910,12 +910,12 @@ end
 Calculates criteria for depth filtering in MCDA.
 
 # Arguments
-- `depth_med` : Median depth (length n_locs).
-- `depth_max` : Maximum depth.
-- `depth_min` : Minimum depth.
+- `depth_med` : Median depth for each considered location (length of number of locations, n_locs).
+- `depth_max` : Maximum depth for each considered location.
+- `depth_min` : Minimum depth for each considered location.
 
 # Returns
-- Vector of indices indicating locations which satisfy the depth criteria.
+Vector of indices indicating locations which satisfy the depth criteria.
 """
 function depth_criteria_indx(
     depth_med::Vector{T}, depth_max::T, depth_min::T
