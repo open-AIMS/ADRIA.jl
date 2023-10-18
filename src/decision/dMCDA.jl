@@ -906,7 +906,7 @@ Calculates mean over specified dimensions plus half the standard deviation.
 - `w` : Weighting for std offset to mean.
 
 # Returns
-Mean + std of input env_layer, where std is weighted by (1-w), mean is weighted by
+Weighted mean + std of input env_layer, where std is weighted by (1-w), mean is weighted by
 w and aggregated over dims.
 """
 function summary_stat_env(
@@ -928,7 +928,7 @@ Calculates criteria for depth filtering in MCDA.
 - `depth_min` : Minimum depth for each considered location.
 
 # Returns
-Vector of indices indicating locations which satisfy the depth criteria.
+Vector of logical indices indicating locations which satisfy the depth criteria.
 """
 function depth_criteria_idx(
     depth_med::Vector{T}, depth_max::T, depth_min::T
