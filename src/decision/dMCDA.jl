@@ -492,16 +492,16 @@ end
 
 
 """
-    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int64}, prefshadesites::AbstractArray{Int64}, rankingsin::Matrix{Int64})
+    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, pref_seed_sites::AbstractArray{Int64}, pref_shade_sites::AbstractArray{Int64}, rankings_in::Matrix{Int64})
 
 # Arguments
 - `d_vars` : DMCDA_vars type struct containing weightings and criteria values for site selection.
 - `alg_ind` : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
 - `log_seed` : boolean indicating whether seeding sites are being re-assesed at current time
 - `log_shade` : boolean indicating whether shading/fogging sites are being re-assesed at current time
-- `prefshadesites` : previous time step's selection of sites for shading
-- `prefseedsites` : previous time step's selection of sites for seeding
-- `rankingsin` : pre-allocated store for site rankings
+- `pref_shade_sites` : previous time step's selection of sites for shading
+- `pref_seed_sites` : previous time step's selection of sites for seeding
+- `rankings_in` : pre-allocated store for site rankings
 - `in_conn` : in-degree centrality
 - `out_conn` : out-degree centrality
 - `strong_pred` : strongest predecessors
@@ -535,7 +535,9 @@ function guided_site_selection(
 
     # if no sites are available, abort
     if n_sites == 0
-        return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
+        return zeros(Int64, length(pref_seed_sites)),
+        zeros(Int64, length(pref_shade_sites)),
+        rankings_in
     end
 
     n_iv_locs::Int64 = d_vars.n_site_int
@@ -622,8 +624,13 @@ function guided_site_selection(
     elseif log_seed
         prefseedsites, s_order_seed = rank_sites!(SE, wse, rankings, n_iv_locs, mcda_func, 2)
         if use_dist != 0
-            prefseedsites, rankings = distance_sorting(
-                prefseedsites, s_order_seed, d_vars.dist, min_dist, rankings, 2
+            pref_seed_sites, rankings = distance_sorting(
+                pref_seed_sites,
+                s_order_seed,
+                d_vars.dist,
+                min_dist,
+                rankings,
+                2,
             )
         end
     end
@@ -633,22 +640,27 @@ function guided_site_selection(
     elseif log_shade
         prefshadesites, s_order_shade = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
         if use_dist != 0
-            prefshadesites, rankings = distance_sorting(
-                prefshadesites, s_order_shade, d_vars.dist, min_dist, rankings, 3
+            pref_shade_sites, rankings = distance_sorting(
+                pref_shade_sites,
+                s_order_shade,
+                d_vars.dist,
+                min_dist,
+                rankings,
+                3,
             )
         end
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
-    if sum(prefseedsites) == 0
-        rankings[:, 2] .= rankingsin[:, 2]
+    if sum(pref_seed_sites) == 0
+        rankings[:, 2] .= rankings_in[:, 2]
     end
 
-    if sum(prefshadesites) == 0
-        rankings[:, 3] .= rankingsin[:, 3]
+    if sum(pref_shade_sites) == 0
+        rankings[:, 3] .= rankings_in[:, 3]
     end
 
-    return prefseedsites, prefshadesites, rankings
+    return pref_seed_sites, pref_shade_sites, rankings
 end
 
 """
@@ -828,7 +840,7 @@ function site_selection(
     n_sites = length(site_ids)
 
     # site_id, seeding rank, shading rank
-    rankingsin = [mcda_vars.site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+    rankings_in = [mcda_vars.site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
     pref_seed_locs::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
     pref_shade_locs::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
@@ -849,7 +861,7 @@ end
 
 
 """
-    unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, available_space, depth)
+    unguided_site_selection(pref_seed_sites, pref_shade_sites, seed_years, shade_years, n_site_int, available_space, depth)
 
 Randomly select seed/shade site locations for the given year, constraining to sites with max. carrying capacity > 0.
 

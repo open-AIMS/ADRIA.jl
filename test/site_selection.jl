@@ -36,21 +36,23 @@ end
 end
 @testset "Unguided site selection" begin
     n_intervention_sites = 5
-    prefseedsites = zeros(Int64, n_intervention_sites)
-    prefshadesites = zeros(Int64, n_intervention_sites)
+    pref_seed_sites = zeros(Int64, n_intervention_sites)
+    pref_shade_sites = zeros(Int64, n_intervention_sites)
     seed_years = true
     shade_years = true
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
     depth_priority = collect(1:5)
 
-    prefseedsites, prefshadesites = ADRIA.unguided_site_selection(prefseedsites, prefshadesites, true, true, 5, max_cover, depth_priority)
+    pref_seed_sites, pref_shade_sites = ADRIA.unguided_site_selection(
+        pref_seed_sites, pref_shade_sites, true, true, 5, max_cover, depth_priority
+    )
 
     # Check that only two sites are selected (the sites where k > 0.0)
-    @test length(prefseedsites[prefseedsites.>0]) == 2
-    @test length(prefshadesites[prefshadesites.>0]) == 2
+    @test length(pref_seed_sites[pref_seed_sites .> 0]) == 2
+    @test length(pref_shade_sites[pref_shade_sites .> 0]) == 2
 
-    @test all([in(sid, [2, 3]) for sid in prefseedsites[prefseedsites.>0]])
-    @test all([in(sid, [2, 3]) for sid in prefshadesites[prefshadesites.>0]])
+    @test all([in(sid, [2, 3]) for sid in pref_seed_sites[pref_seed_sites .> 0]])
+    @test all([in(sid, [2, 3]) for sid in pref_shade_sites[pref_shade_sites .> 0]])
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
