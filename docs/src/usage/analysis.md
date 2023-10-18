@@ -268,6 +268,32 @@ save("tsc_asv.png", tsc_asc_fig)
 
 ![Plots of targeted lowest clusters](/ADRIA.jl/dev/assets/imgs/tsc_asv.png?raw=true "Targeted lowest clusters")
 
+### Multiple Time Series Clustering
+
+It is possible to perform time series clustering for different metric outcomes and find
+scenarios that behave the same across all of them. Currently there is no visualization
+function for this.
+
+```julia
+metrics::Vector{ADRIA.metrics.Metric} = [
+    ADRIA.metrics.scenario_total_cover,
+    ADRIA.metrics.scenario_asv,
+    ADRIA.metrics.scenario_absolute_juveniles,
+]
+
+outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
+n_clusters = 6
+
+# Clusters matrix
+outcomes_clusters::AbstractMatrix{Int64} = ADRIA.analysis.cluster_scenarios(
+    outcomes, n_clusters
+)
+
+# Filter scenarios that belong to on of the 4 high value clusters for all outcomes
+highest_clusters(x) = x .∈ [sort(x; rev=true)[1:4]]
+robust_scens = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, highest_clusters)
+```
+
 ### Time Series Clustering Map
 
 When using Time Series Clustering to cluster among multiple locations using some metric, it
