@@ -233,6 +233,41 @@ save("tsc.png", tsc_fig)
 
 ![Plots of Time Series Cluster](/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true "Time Series Cluster")
 
+### Target clusters
+
+One can also target scenarios that belong to specific clusters (like clusters with higher
+median value for some outcome):
+
+```julia
+using Statistics
+
+# Extract metric from scenarios
+asv = ADRIA.metrics.absolute_shelter_volume(rs)
+
+# Time series summarizing scenarios for each site
+asv_site_series = ADRIA.metrics.loc_trajectory(median, asv)
+
+# Cluster scenarios
+n_clusters = 6
+asv_clusters = ADRIA.analysis.cluster_scenarios(asv_site_series, n_clusters)
+
+# Target scenarios that belong to the two lowest value clusters
+lowest = x -> x .∈ [sort(x; rev=true)[1:2]]
+asv_target = ADRIA.analysis.find_scenarios(asv_site_series, asv_clusters, lowest)
+
+# Plot targeted scenarios
+axis_opts = Dict(:ylabel => "Absolute Shelter Volume", :xlabel => "Timesteps [years]")
+
+tsc_asc_fig = ADRIA.viz.clustered_scenarios(
+    asv_site_series, asv_target; axis_opts=axis_opts, fig_opts=fig_opts
+)
+
+# Save final figure
+save("tsc_asv.png", tsc_asc_fig)
+```
+
+![Plots of targeted lowest clusters](/ADRIA.jl/dev/assets/imgs/tsc_asv.png?raw=true "Targeted lowest clusters")
+
 ### Time Series Clustering Map
 
 When using Time Series Clustering to cluster among multiple locations using some metric, it
