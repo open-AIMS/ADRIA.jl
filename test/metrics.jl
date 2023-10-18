@@ -1,6 +1,9 @@
 @testset "Relative Shelter Volume" begin
-    scen_path = joinpath(TEST_DATA_DIR, "test_scenarios.csv")
-    test_scens = CSV.read(scen_path, DataFrame)
+    # Create scenario spec
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+
+    # Create scenario spec
+    test_scens = ADRIA.sample(dom, 8)
 
     @eval using NamedDims
 

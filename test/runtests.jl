@@ -4,6 +4,7 @@ using ADRIA.metrics: total_absolute_cover
 
 const ADRIA_DIR = pkgdir(ADRIA)
 const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
+
 const EXAMPLES_PATH = joinpath(ADRIA_DIR, "examples")
 const EXAMPLE_DOMAIN_PATH = joinpath(EXAMPLES_PATH, "Example_domain")
 
