@@ -157,7 +157,6 @@ save("aviz_scenario.png", tf)  # save the figure to a file
 
 ![Scenarios with subplots](/ADRIA.jl/dev/assets/imgs/aviz_scenario.png?raw=true "Scenarios with subplots")
 
-
 ### PAWN sensitivity (heatmap overview)
 
 The PAWN sensitivity analysis method is a moment-independent approach to Global Sensitivity
@@ -206,26 +205,26 @@ save("tsa.png", tsa_fig)
 The Time Series Clustering algorithm clusters together series (typically time series)
 with similar behavior. This is achieved by computing the Euclidian distance between each
 pair of series weighted by a correlation factor that takes into account the quotient
-between their complexities.
+between their complexities. When plotting `clustered_scenarios`, the kwarg `opts` can be
+used with the key `:summarize` to plot the confidence intervals of each cluster instead of
+each series individually (default is `true`).
 
 ```julia
 # Extract metric from scenarios
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 
 # Cluster scenarios
-n_clusters = 6
+n_clusters = 4
 clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
 
 axis_opts = Dict(
     :title => "Time Series Clustering with $n_clusters clusters",
     :ylabel => "TAC [m²]",
-    :xlabel => "Timesteps [years]"
+    :xlabel => "Timesteps [years]",
 )
+
 tsc_fig = ADRIA.viz.clustered_scenarios(
-    s_tac,
-    clusters;
-    fig_opts=fig_opts,
-    axis_opts=axis_opts
+    s_tac, clusters; opts=Dict(:summarize => true), fig_opts=fig_opts, axis_opts=axis_opts
 )
 
 # Save final figure
