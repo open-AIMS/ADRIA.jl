@@ -128,7 +128,7 @@ end
 
 """
     connectivity_strength(TP_base::AbstractArray)::NamedTuple
-    connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64})::NamedTuple
+    connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64}, TP_cache::AbstractMatrix{Float64})::NamedTuple
 
 Create in/out degree centralities for all nodes, and vector of their strongest predecessors.
 
@@ -173,7 +173,11 @@ function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
 
     return (in_conn=C1, out_conn=C2, strongest_predecessor=strong_pred)
 end
-function connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64}, TP_cache::AbstractMatrix{Float64})::NamedTuple
+function connectivity_strength(
+    area_weighted_TP::AbstractMatrix{Float64}, 
+    cover::Vector{Float64}, 
+    TP_cache::AbstractMatrix{Float64}
+)::NamedTuple
 
     # Accounts for cases where there is no coral cover
     TP_cache .= (area_weighted_TP .* cover)
