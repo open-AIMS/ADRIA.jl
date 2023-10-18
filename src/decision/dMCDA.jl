@@ -86,7 +86,6 @@ function DMCDA_vars(
 
     # Site Data
     site_d = domain.site_data
-    n_sites = n_locations(domain)
     area = site_area(domain)
 
     mcda_vars = DMCDA_vars(
