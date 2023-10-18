@@ -138,8 +138,11 @@ function scenarios_confint!(
 
     # Compute confints
     confints::Array{Float64} = zeros(n_timesteps, n_scens, 3)
+    agg_dim = symdiff(dimnames(outcomes), [:timesteps])[1]
     for (idx, group) in enumerate(ordered_groups)
-        confints[:, idx, :] = series_confint(outcomes[:, scen_groups[group]])
+        confints[:, idx, :] = series_confint(
+            outcomes[:, scen_groups[group]]; agg_dim=agg_dim
+        )
     end
 
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
