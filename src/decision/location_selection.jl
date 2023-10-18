@@ -5,12 +5,12 @@ using NamedDims, AxisKeys
     _location_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
 
 Select locations for a given domain and criteria/weightings/thresholds, using a chosen
-aggregation method.
+MCDA method.
 
 # Arguments
 - `domain` : The geospatial domain to assess
 - `mcda_vars` : Parameters for MCDA
-- `guided` : ID of aggregation algorithm to apply
+- `guided` : ID of MCDA algorithm to apply
 
 # Returns
 Matrix[n_sites ⋅ 2], where columns hold seeding and shading ranks for each location.
@@ -60,10 +60,10 @@ Return location ranks for a given domain and scenarios.
 # Arguments
 - `domain` : The geospatial domain locations were selected from
 - `scenarios` : Scenario specification
-- `sum_cover` : Matrix[n_scenarios ⋅ n_sites] containing the total coral cover for each
+- `sum_cover` : Matrix[n_scenarios ⋅ n_sites] containing the total coral cover at each
     location, for each scenario
 - `area_to_seed` : Area of coral to be seeded at each time step in km²
-- `agg_func` : Aggregation function to apply, e.g `ranks_to_frequencies`,
+- `agg_func` : Aggregation function to apply, e.g `ranks_to_frequencies` or
     `ranks_to_location_order`
 - `iv_type` : ID of intervention (1 = seeding, 2 = fogging)
 - `target_seed_sites` : list of candidate locations for seeding (indices)
@@ -166,9 +166,8 @@ end
     ranks_to_frequencies(ranks::NamedDimsArray{D,T,3,A}; n_ranks=length(ranks.sites), agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),) where {D,T,A}
     ranks_to_frequencies(ranks::NamedDimsArray{D,T,2,A}; n_ranks=length(ranks.sites), agg_func=nothing) where {D,T,A}
 
-Post-process location ranks as given by `rank_locations()`.
-
 Returns the frequency with which each location was ranked across scenarios.
+Uses the results from `rank_locations()`.
 
 Note: By default, ranks are aggregated over time where `ranks` is a 3-dimensional array.
 
