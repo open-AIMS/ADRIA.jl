@@ -230,7 +230,7 @@ set of scenarios.
 
 # Arguments
 - `ranks` : Rankings of locations `rank_locations()`
-- `n_loc_int` : number of locations which are intervened at for each intervention decision
+- `n_loc_int` : number of locations intervened at, for each decision point
 - `iv_log` : Intervention logs
 - `dims` : dimensions to sum selection frequencies over
 
