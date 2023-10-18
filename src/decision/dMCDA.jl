@@ -901,7 +901,9 @@ Mean + std of input env_layer, where std is weighted by (1-w), mean is weighted 
 w and aggregated over dims.
 """
 function summary_stat_env(
-    env_layer::NamedDimsArray, dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5
+    env_layer::AbstractArray,
+    dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
+    w=0.5,
 )
     return vec((mean(env_layer, dims=dims).* w) .+ (std(env_layer, dims=dims) .* (1.0 - w)))
 end
