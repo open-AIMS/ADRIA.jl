@@ -146,7 +146,6 @@ function rank_locations(
         target_seed_sites=target_seed_sites,
         target_shade_sites=target_shade_sites,
     )
-
     local iv_id
     try
         iv_id = axiskeys(ranks, :intervention)[iv_type]
