@@ -24,7 +24,7 @@ ADRIA.viz.scenarios(rs.inputs, s_tac[:, scens.SRM .< 1.0])
 ```
 
 # Arguments
-- `scenarios` : DataFrame with ResultSet inputs
+- `scenarios` : Scenario specification
 - `outcomes` : Results of scenario metric
 - `opts` : Aviz options
     - `by_RCP` : color by RCP otherwise color by scenario type. Defaults to false.

@@ -174,9 +174,8 @@ function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
     return (in_conn=C1, out_conn=C2, strongest_predecessor=strong_pred)
 end
 function connectivity_strength(
-    area_weighted_TP::NamedDimsArray, cover::Union{Vector{Float32},Vector{Float64}}
+    area_weighted_TP::NamedDimsArray, cover::Vector{<:Union{Float32, Float64}}
 )::NamedTuple
-
     # Accounts for cases where there is no coral cover
     tp = (area_weighted_TP .* cover)
     tp .= tp ./ maximum(tp)
