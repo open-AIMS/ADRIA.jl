@@ -833,7 +833,9 @@ function site_selection(
 
     # Determine connectivity strength
     # Account for cases where no coral cover
-    in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), sum_cover)
+    in_conn, out_conn, strong_pred = connectivity_strength(
+        domain.TP_data .* site_k_area(domain), Array(sum_cover)
+    )
     in_conn = in_conn[site_ids]
     out_conn = out_conn[site_ids]
     strong_pred = strong_pred[site_ids]
