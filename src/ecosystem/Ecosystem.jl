@@ -19,12 +19,12 @@ Returns true if discrete, false otherwise.
 - `ptype` : String representing variable type.
 """
 function _check_discrete(p_type::String)::Bool
-    return any(p_type .== DISCRETE_FACTOR_TYPES)
+    return p_type ∈ DISCRETE_FACTOR_TYPES
 end
 
 """Set a model parameter value directly."""
 function set(p::Param, val::Union{Int64,Float64})
-    if hasproperty(p, :ptype) 
+    if hasproperty(p, :ptype)
         if _check_discrete(p.ptype) && !isinteger(val)
             val = map_to_discrete(val, p.bounds[2])
         end
