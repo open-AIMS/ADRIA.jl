@@ -930,7 +930,7 @@ Vector of indices indicating locations which satisfy the depth criteria.
 """
 function depth_criteria_idx(
     depth_med::Vector{T}, depth_max::T, depth_min::T
-)::Vector{T} where {T<:Float64}
+)::Vector{Bool} where {T<:Float64}
     return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
 end
 
