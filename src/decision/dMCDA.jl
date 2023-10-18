@@ -344,7 +344,7 @@ function create_decision_matrix(
     A[:, 7] .= zones_criteria
 
     # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 8] = max.((1.0 - sum_cover), 0.0) .* area
+    A[:, 8] = max.((1.0 .- sum_cover), 0.0) .* area
 
     A[:, 9] = site_depth
 
