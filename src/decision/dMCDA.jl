@@ -812,8 +812,15 @@ Perform site selection using a chosen mcda aggregation method, domain, initial c
 `ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
     containing ranks for single scenario.
 """
-function site_selection(domain::Domain, scenario::DataFrameRow, w_scens::NamedDimsArray, dhw_scens::NamedDimsArray,
-    site_ids::Vector{Int64}, sum_cover::Vector{Float64}, area_to_seed::Float64)::Matrix{Int64}
+function site_selection(
+    domain::Domain,
+    scenario::DataFrameRow,
+    w_scens::Vector{Float64},
+    dhw_scens::Vector{Float64},
+    site_ids::Vector{Int64},
+    sum_cover::NamedDimsArray,
+    area_to_seed::Float64,
+)::Matrix{Int64}
 
     mcda_vars = DMCDA_vars(domain, scenario, site_ids, sum_cover, area_to_seed, w_scens, dhw_scens)
     n_sites = length(site_ids)
