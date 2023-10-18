@@ -256,6 +256,9 @@ function location_selection_frequencies(
     return loc_count
 end
 
+"""Drop single dimensions."""
+_drop_single(x::AbstractMatrix) = dropdims(x, dims=(findall(size(x) .== 1)...,))
+
 """
     selection_score(ranks::NamedDimsArray{D,T,3,A}; dims::Vector{Symbol}=[:scenarios, :timesteps]) where {D,T,A}
     selection_score(ranks::NamedDimsArray{D,T,2,A}) where {D,T,A}
@@ -277,13 +280,13 @@ function selection_score(
     ranks::NamedDimsArray{D,T,3,A};
     dims::Vector{Symbol}=[:scenarios, :timesteps],
 ) where {D,T,A}
-    return selection_score(ranks, dims)
+    return _drop_single(selection_score(ranks, dims))
 end
 function selection_score(
     ranks::NamedDimsArray{D,T,2,A};
     dims::Vector{Symbol}=[:scenarios],
 ) where {D,T,A}
-    return selection_score(ranks, dims)
+    return _drop_single(selection_score(ranks, dims))
 end
 function selection_score(
     ranks::NamedDimsArray,
