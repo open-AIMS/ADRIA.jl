@@ -2,24 +2,20 @@ using NamedDims, AxisKeys
 
 
 """
-    _location_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)
+    _location_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
 
-Perform site selection using a chosen aggregation method, domain, initial cover, criteria weightings and thresholds.
+Select locations for a given domain and criteria/weightings/thresholds, using a chosen
+aggregation method.
 
 # Arguments
-- `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
-- `mcda_vars` : Contains relevant parameters for performing guided location selection.
-- `guided` : Integer indicating aggegation algorithm to use for guided location selection.
+- `domain` : The geospatial domain to assess
+- `mcda_vars` : Parameters for MCDA
+- `guided` : ID of aggregation algorithm to apply
 
 # Returns
-`ranks` : n_reps * sites * 3 (last dimension indicates: site_id, seeding rank, shading rank)
-    containing ranks for single scenario.
+Matrix[n_sites ⋅ 2], where columns hold seeding and shading ranks for each location.
 """
-function _location_selection(
-    domain::Domain,
-    mcda_vars::DMCDA_vars, 
-    guided::Int64)
-    
+function _location_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
     site_ids = mcda_vars.site_ids
     n_sites = length(site_ids)
 
@@ -31,49 +27,65 @@ function _location_selection(
 
     # Determine connectivity strength
     # Account for cases where no coral cover
-    in_conn, out_conn, strong_pred = connectivity_strength(domain.TP_data .* site_k_area(domain), Array(mcda_vars.sum_cover))
+    in_conn, out_conn, strong_pred = connectivity_strength(
+        domain.TP_data .* site_k_area(domain), collect(mcda_vars.sum_cover)
+    )
 
     # Perform location selection for seeding and shading.
     seed_true, shade_true = true, true
 
-    (_, _, ranks) = guided_site_selection(mcda_vars, guided, seed_true, shade_true, prefseedsites, prefshadesites, rankingsin, in_conn[site_ids], out_conn[site_ids], strong_pred[site_ids])
+    (_, _, ranks) = guided_site_selection(
+        mcda_vars,
+        guided,
+        seed_true,
+        shade_true,
+        prefseedsites,
+        prefshadesites,
+        rankingsin,
+        in_conn[site_ids],
+        out_conn[site_ids],
+        strong_pred[site_ids]
+    )
 
     return ranks[:, 2:3]
 end
 
 """
-    rank_locations(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64;
-        target_seed_sites=nothing, target_shade_sites=nothing)
-    rank_locations(domain::Domain,scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64, aggregation_function::Function, 
-        iv_type::Union{String,Int64};target_seed_sites=nothing, target_shade_sites=nothing)
+    rank_locations(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64; target_seed_sites=nothing, target_shade_sites=nothing)::NamedDimsArray
+    rank_locations(domain::Domain,scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64, agg_func::Function,
+        iv_type::Union{String,Int64}; target_seed_sites=nothing, target_shade_sites=nothing)::AbstractArray
 
-Get location rankings for a given domain for multiple scenarios defined in a dataframe.
+Return location ranks for a given domain and scenarios.
 
 # Arguments
-- `domain` : ADRIA Domain type, indicating geographical domain to perform site selection over.
-- `scenarios` : DataFrame of criteria weightings and thresholds for each scenario.
-- `sum_cover` : array of size (number of scenarios * number of sites) containing the summed coral cover for each site selection scenario.
-- `area_to_seed` : area of coral to be seeded at each time step in km^2
-- `aggregation_function` : function which aggregates ranks output into preferred form, e.g `ranks_to_frequencies`, `ranks_to_location_order`.
+- `domain` : The geospatial domain locations were selected from
+- `scenarios` : Scenario specification
+- `sum_cover` : Matrix[n_scenarios ⋅ n_sites] containing the total coral cover for each
+    location, for each scenario
+- `area_to_seed` : Area of coral to be seeded at each time step in km²
+- `agg_func` : Aggregation function to apply, e.g `ranks_to_frequencies`,
+    `ranks_to_location_order`
+- `iv_type` : ID of intervention (1 = seeding, 2 = fogging)
 - `target_seed_sites` : list of candidate locations for seeding (indices)
 - `target_shade_sites` : list of candidate location to shade (indices)
 
 # Returns
--`ranks_store` : number of scenarios * sites * 3 (last dimension indicates: site_id, seed rank, shade rank)
-    containing ranks for each scenario run.
+Array[n_locations ⋅ 2 ⋅ n_scenarios], where columns hold seeding and shading ranks.
 """
 function rank_locations(
     domain::Domain,
-    scenarios::DataFrame, 
-    sum_cover::NamedDimsArray, 
+    scenarios::DataFrame,
+    sum_cover::NamedDimsArray,
     area_to_seed::Float64;
-    target_seed_sites=nothing, 
-    target_shade_sites=nothing)
+    target_seed_sites=nothing,
+    target_shade_sites=nothing
+)::NamedDimsArray
+    n_locs = n_locations(domain)
 
     ranks_store = NamedDimsArray(
-        zeros(length(domain.site_ids), 2, nrow(scenarios)),
-        sites=1:length(domain.site_ids),
-        intervention=1:2,
+        zeros(n_locs, 2, nrow(scenarios)),
+        sites=1:n_locs,
+        intervention=["seed", "shade"],
         scenarios=1:nrow(scenarios),
     )
 
@@ -102,7 +114,7 @@ function rank_locations(
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
-        mcda_vars_temp = DMCDA_vars(domain, scen, considered_sites,  sum_cover[scen_idx, :], area_to_seed, 
+        mcda_vars_temp = DMCDA_vars(domain, scen, considered_sites,  sum_cover[scen_idx, :], area_to_seed,
             vec((mean(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5),
             vec((mean(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios))) .* 0.5),
             )
@@ -115,45 +127,55 @@ function rank_locations(
     ranks_store[ranks_store.==0.0] .= length(domain.site_ids)+1
 
     return ranks_store
-
 end
 function rank_locations(
     domain::Domain,
-    scenarios::DataFrame, 
-    sum_cover::NamedDimsArray, 
-    area_to_seed::Float64, 
-    aggregation_function::Function, 
-    iv_type::Int64;
-    target_seed_sites=nothing, 
-    target_shade_sites=nothing)
-
+    scenarios::DataFrame,
+    sum_cover::NamedDimsArray,
+    area_to_seed::Float64,
+    agg_func::Function,
+    iv_type::Union{Int64, Symbol, String};
+    target_seed_sites=nothing,
+    target_shade_sites=nothing
+)::AbstractArray
     ranks = rank_locations(
         domain,
-        scenarios, 
-        sum_cover, 
-        area_to_seed; 
+        scenarios,
+        sum_cover,
+        area_to_seed;
         target_seed_sites=target_seed_sites,
         target_shade_sites=target_shade_sites,
     )
 
-    return aggregation_function(ranks(; intervention=iv_type))
+    local iv_id
+    try
+        iv_id = axiskeys(ranks, :intervention)[iv_type]
+    catch err
+        if !(err isa ArgumentError)
+            rethrow(err)
+        end
 
+        iv_id = iv_type
+    end
+
+    return agg_func(ranks(intervention=iv_id))
 end
 
 
 """
-    ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)ranks_to_frequencies(rs::ResultSet, iv_type::String; n_ranks=length(ranks.sites))
-    ranks_to_frequencies(ranks::NamedDimsArray{D,T,3,A};n_ranks=length(ranks.sites),agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),) where {D,T,A}
-    ranks_to_frequencies(ranks::NamedDimsArray{D,T,2,A};n_ranks=length(ranks.sites),agg_func=nothing) where {D,T,A}
+    ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)
+    ranks_to_frequencies(ranks::NamedDimsArray{D,T,3,A}; n_ranks=length(ranks.sites), agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),) where {D,T,A}
+    ranks_to_frequencies(ranks::NamedDimsArray{D,T,2,A}; n_ranks=length(ranks.sites), agg_func=nothing) where {D,T,A}
 
-Post-processing for location ranks output of `rank_locations()`. Gives the frequency 
-with which each location was selected at each rank across the location selection scenarios.
-Note : default output for 3D input case includes the timestep dimension. To aggregate over time use,
-`agg_func = x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps)`.
+Post-process location ranks as given by `rank_locations()`.
+
+Returns the frequency with which each location was ranked across scenarios.
+
+Note: By default, ranks are aggregated over time where `ranks` is a 3-dimensional array.
 
 # Arguments
-- `ranks` : Rankings of locations `rank_locations()`.
-- `n_ranks` : number of rankings (defualt is number of locations).
+- `ranks` : Location ranks from `rank_locations()`
+- `n_ranks` : Number of rankings (default is number of locations).
 - `agg_func` : Aggregation function to appy after frequencies are calculated.
 
 # Returns
@@ -201,19 +223,20 @@ function ranks_to_frequencies(
 end
 
 """
-    location_selection_frequencies(ranks::NamedDimsArray;n_loc_int::Int64=5)
-    location_selection_frequencies(inv_log::NamedDimsArray{D,T,4,A};dims::Union{Symbol,Vector{Symbol}}=:coral_id) where {D,T,A}
+    location_selection_frequencies(ranks::NamedDimsArray; n_loc_int::Int64=5)
+    location_selection_frequencies(iv_log::NamedDimsArray{D,T,4,A}; dims::Union{Symbol,Vector{Symbol}}=:coral_id) where {D,T,A}
 
-Post-process intervention logs. Calculates the frequencies with which locations were selected for a particular intervention,
-for a selection of scenarios (e.g. selected robust scenarios).
+Determines the count of times each location was selected for a specific intervention over a
+set of scenarios.
 
 # Arguments
-- `ranks` : Rankings of locations `rank_locations()`.
-- `n_loc_int` : number of locations which are intervened at for each intervention decision.
-- `dims` : dimensions to sum selection frequencies over.
+- `ranks` : Rankings of locations `rank_locations()`
+- `n_loc_int` : number of locations which are intervened at for each intervention decision
+- `iv_log` : Intervention logs
+- `dims` : dimensions to sum selection frequencies over
 
-# Returns 
-Counts for location selection at each location in the domain.
+# Returns
+Number of times each location was selected for an intervention.
 """
 function location_selection_frequencies(
     ranks::NamedDimsArray;
@@ -225,33 +248,32 @@ function location_selection_frequencies(
     return loc_count
 end
 function location_selection_frequencies(
-    inv_log::NamedDimsArray{D,T,4,A};
+    iv_log::NamedDimsArray{D,T,4,A};
     dims::Union{Symbol,Vector{Symbol}}=:coral_id,
 ) where {D,T,A}
     loc_count = dropdims(
-        sum(dropdims(sum(inv_log; dims=dims); dims=dims) .> 0; dims=:scenarios);
+        sum(dropdims(sum(iv_log; dims=dims); dims=dims) .> 0; dims=:scenarios);
         dims=:scenarios,
     )
     return loc_count
 end
 
 """
-    selection_score(ranks::NamedDimsArray{D,T,3,A};dims::Union{Symbol,Vector{Symbol}}=[:scenarios, :timsteps],
-            ) where {D,T,A}
-    selection_score(ranks::NamedDimsArray{D,T,2,A};) where {D,T,A}
-    selection_score(ranks::NamedDimsArray,dims::Union{Symbol,Vector{Symbol}},)
+    selection_score(ranks::NamedDimsArray{D,T,3,A}; dims::Vector{Symbol}=[:scenarios, :timesteps]) where {D,T,A}
+    selection_score(ranks::NamedDimsArray{D,T,2,A}) where {D,T,A}
+    selection_score(ranks::NamedDimsArray, dims::Vector{Symbol})
 
-Calculates (number of sites) .- ranks summed over the dimension dims and transformed using agg_func 
-    (default no transformation).
+Calculates score ∈ [0, 1], where 1 is the highest score possible, indicative of the relative
+desirability of each location.
+
+The score reflects the location ranking and frequency of attaining a high rank.
 
 # Arguments
-- `ranks` : Rankings of locations `rank_locations()`.
-- `dims` : Dimensions to sum over.
+- `ranks` : Rankings of locations from `rank_locations()`
+- `dims` : Dimensions to sum over
 
-# Returns 
-Selection score (i.e. for ranks the lowest value is the highest rank, 
-in the selection score the greater the number the higher ranked and more 
-frequently selected the location).
+# Returns
+Selection score
 """
 function selection_score(
     ranks::NamedDimsArray{D,T,3,A};
@@ -269,7 +291,7 @@ function selection_score(
     ranks::NamedDimsArray,
     dims::Vector{Symbol},
 )
-    lowest_rank = maximum(ranks)
+    lowest_rank = maximum(ranks) # 1 is best rank, n_sites + 1 is worst rank
     selection_score = dropdims(sum(lowest_rank .- ranks; dims=dims); dims=dims[1])
     return selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in dims]))
 end
