@@ -410,8 +410,16 @@ function create_seed_matrix(
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
-    wse = [wt_in_conn_seed, wt_out_conn_seed, wt_waves, wt_heat, wt_predec_seed, wt_predec_zones_seed, wt_lo_cover, wt_heat]
-    # wse .= mcda_normalize(wse)
+    wse = [
+        wt_in_conn_seed,
+        wt_out_conn_seed,
+        wt_waves,
+        wt_heat,
+        wt_predec_seed,
+        wt_predec_zones_seed,
+        wt_lo_cover,
+        wt_heat,
+    ]
 
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
@@ -478,8 +486,15 @@ function create_shade_matrix(A::Matrix{Float64},
     # Remove consideration of site depth as shading not accounted for in bleaching model yet
     SH = SH[:, 1:end-1]
 
-    wsh = [wt_conn_shade, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover]
-    wsh .= mcda_normalize(wsh)
+    wsh = [
+        wt_conn_shade,
+        wt_conn_shade,
+        wt_waves,
+        wt_heat,
+        wt_predec_shade,
+        wt_predec_zones_shade,
+        wt_hi_cover,
+    ]
 
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
     SH[:, 8] = A[:, 8] # total area of coral cover
