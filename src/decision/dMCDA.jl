@@ -322,7 +322,7 @@ function create_decision_matrix(
     predec::Matrix{Float64},
     zones_criteria::T,
     risk_tol::Float64
-)::Matrix{Union{Float64,Int64}} where {T<:Vector{Float64}}
+)::Tuple{Matrix{Float64}, BitVector} where {T<:Vector{Float64}}
     A = zeros(length(site_ids), 9)
     A[:, 1] .= site_ids  # Column of site ids
 
@@ -412,7 +412,7 @@ function create_seed_matrix(
     wt_predec_seed::T,
     wt_predec_zones_seed::T,
     wt_lo_cover::T
-)::Matrix{Union{Float64,Int64}} where {T<:Float64}
+)::Tuple{Matrix{Float64}, Vector{Float64}} where {T<:Float64}
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
@@ -474,7 +474,7 @@ function create_shade_matrix(A::Matrix{Float64},
     wt_heat::T,
     wt_predec_shade::T,
     wt_predec_zones_shade::T,
-    wt_hi_cover)::Matrix{Union{Float64,Int64}} where {T<:Float64}
+    wt_hi_cover)::Tuple{Matrix{Float64}, Vector{Float64}} where {T<:Float64}
     # Set up decision matrix to be same size as A
     SH = copy(A)
 
@@ -526,8 +526,9 @@ function guided_site_selection(
     out_conn::Vector{Float64},
     strong_pred::Vector{Int64};
     methods_mcda=methods_mcda
-)::Tuple where {T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool}
-
+)::Tuple{Vector{T}, Vector{T}, Matrix{T}} where {
+    T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool
+}
     use_dist::Int64 = d_vars.use_dist
     min_dist::Float64 = d_vars.min_dist
     site_ids = copy(d_vars.site_ids)
