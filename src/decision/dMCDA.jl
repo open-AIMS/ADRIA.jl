@@ -348,7 +348,7 @@ function create_decision_matrix(
     # priority zone predecessors and sites
     A[:, 7] .= zones_criteria
 
-    # Area of coral cover in m^2
+    # Area of coral cover in m^2 (proportional cover * carrying capacity in m^2 will be in m^2)
     A[:, 8] = prop_cover .* k_area
 
     A[:, 9] = site_depth
