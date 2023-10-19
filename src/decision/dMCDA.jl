@@ -542,10 +542,6 @@ function guided_site_selection(
     priority_zones::Array{String} = d_vars.priority_zones
 
     zones = d_vars.zones[site_ids]
-    wave_stress = d_vars.dam_prob[site_ids]
-    heat_stress = d_vars.heat_stress_prob[site_ids]
-    site_depth = d_vars.site_depth[site_ids]
-    sum_cover = d_vars.sum_cover[site_ids]
     k_area = d_vars.k_area[site_ids]
 
     # site_id, seeding rank, shading rank
