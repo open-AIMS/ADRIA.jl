@@ -117,19 +117,98 @@ rs = ADRIA.run_scenarios(dom, p_df, "45")
 
 ```julia
 using ADRIA
-using ADRIA: run_site_selection
+using ADRIA: rank_locations
+
+
+dom = ADRIA.load_domain("path to domain", "45")
+scens = ADRIA.sample_site_selection(dom, 8)
+
+# Area of seeded corals in m^2
+area_to_seed = 962.11
+
+# Initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of sites)).
+sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
+
+# Use rank_locations to get ranks
+ranks = rank_locations(dom, scens, sum_cover, area_to_seed)
+```
+
+## Intervention location selection - summary functions
+
+```julia
+using ADRIA
+using ADRIA:
+    rank_locations,
+    ranks_to_frequencies,
+    location_selection_frequencies,
+    selection_score
 using DataFrames
+using Statistics, StatsBase
 
+# Load data package
+dom = ADRIA.load_domain("path to Domain files", "RCP")
 
-dom = ADRIA.load_domain("Example_domain")
+# Select locations for interventions without any model runs
+scens = ADRIA.sample_site_selection(dom, 8)  # Get site selection scenario dataframe.
 
-criteria_df = ADRIA.sample_site_selection(dom, 8)  # get scenario dataframe
+# Area of seeded corals in m^2
+area_to_seed = 962.11
 
-area_to_seed = 962.11  # area of seeded corals in m^2
-ts = 5  # time step to perform site selection at
+# Initial coral cover matching number of criteria samples
+sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 
-# Initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of sites))
-sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(criteria_df, 1))
+# Use rank_locations to get ranks
+ranks = rank_locations(dom, scens, sum_cover, area_to_seed)
 
-ranks = run_site_selection(dom, criteria_df, sum_cover, area_to_seed, ts)
+# Get frequencies with which each site is selected for each rank for set of stand alone
+# location selections
+rank_freq = ranks_to_frequencies(ranks[intervention=1])
+
+# Calculate rank aggregations
+# Get location selection freqencies for set of standalone location selections
+location_selection_frequency = location_selection_frequencies(ranks[intervention=1])
+
+# Get summed inverse rank for set of standalone location selections
+# Measure of magnitude and frequency of high rank
+sel_score = selection_score(ranks[intervention=1])
+
+# Use aggregation function within rank_locations to get direct output
+# To get rank frequencies:
+rank_frequencies_seed = rank_locations(
+    dom, scens, sum_cover, area_to_seed, ranks_to_frequencies, 1
+)
+rank_frequencies_seed = rank_locations(
+    dom, scens, sum_cover, area_to_seed, location_selection_frequencies, 1
+)
+rank_frequencies_seed = rank_locations(
+    dom, scens, sum_cover, area_to_seed, selection_score, 1
+)
+
+# Example using ADRIA runs
+scens = ADRIA.sample(dom, 8)
+rs = ADRIA.run_scenarios(dom, scens, "45")
+
+# Get frequencies with which each site was selected for each rank for a set of runs
+rank_freq = ranks_to_frequencies(rs.ranks[intervention=1])  # with timesteps not aggregated
+
+# With timesteps aggregated
+rank_freq = ranks_to_frequencies(
+    rs.ranks[intervention=1];
+    agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),
+)
+
+# Get selection frequencies for set of runs
+selection_freq = location_selection_frequencies(rs.ranks[intervention=1])
+
+# Get selection frequencies over time for unguided runs only
+unguided_freq = location_selection_frequencies(
+    rs.seed_log[scenarios=findall(scens.guided .>= 1)]
+)
+
+# Get selection score for set of runs
+# Measure of magnitude and frequency of high rank
+sel_score = selection_score(rs.ranks[intervention=1])
+
+# Get selection score for locations over time
+sel_score = selection_score(rs.ranks[intervention=1]; dims=[:scenarios])
 ```

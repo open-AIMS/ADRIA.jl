@@ -68,6 +68,7 @@ include("interventions/seeding.jl")
 include("interventions/fogging.jl")
 
 include("io/ResultSet.jl")
+include("decision/location_selection.jl")
 include("io/result_io.jl")
 include("io/result_post_processing.jl")
 include("io/sampling.jl")
