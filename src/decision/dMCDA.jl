@@ -429,8 +429,8 @@ function create_seed_matrix(
         wt_heat,
     ]
 
-    SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
-    SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
+    SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
+    SE[:, 5] = (1 .- SE[:, 5])  # compliment of heat risk
 
     SE[:, 8] = k_area .- A[:, 8]
 
@@ -504,7 +504,7 @@ function create_shade_matrix(A::Matrix{Float64},
         wt_hi_cover,
     ]
 
-    SH[:, 4] = (1.0 .- SH[:, 4]) # complimentary of wave damage risk
+    SH[:, 4] = (1.0 .- SH[:, 4])  # complimentary of wave damage risk
 
     SH[SH[:, 8].<0, 8] .= 0  # if any negative, scale back to zero
     return SH, wsh
