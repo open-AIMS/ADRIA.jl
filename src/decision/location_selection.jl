@@ -179,7 +179,7 @@ Note: By default, ranks are aggregated over time where `ranks` is a 3-dimensiona
 # Returns
 Frequency with which each location was selected for each rank.
 """
-function ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)
+function ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)::NamedDimsArray
     dn = NamedDims.dimnames(ranks)
     freq_dims = [n for n in dn if n != :scenarios]
     dn_subset = vcat(freq_dims, [:ranks])
@@ -201,7 +201,7 @@ function ranks_to_frequencies(
     ranks::NamedDimsArray{D,T,3,A};
     n_ranks::Int64=length(ranks.sites),
     agg_func=nothing,
-) where {D,T,A}
+)::NamedDimsArray where {D,T,A}
     if !isnothing(agg_func)
         return agg_func(ranks_to_frequencies(ranks, n_ranks))
     end
@@ -212,7 +212,7 @@ function ranks_to_frequencies(
     ranks::NamedDimsArray{D,T,2,A};
     n_ranks::Int64=length(ranks.sites),
     agg_func=nothing,
-) where {D,T,A}
+)::NamedDimsArray where {D,T,A}
     if !isnothing(agg_func)
         return agg_func(ranks_to_frequencies(ranks, n_ranks))
     end
@@ -239,7 +239,7 @@ Number of times each location was selected for an intervention.
 function location_selection_frequencies(
     ranks::NamedDimsArray;
     n_loc_int::Int64=5,
-)
+)::NamedDimsArray
     ranks_frequencies = ranks_to_frequencies(ranks; n_ranks=n_loc_int)
     loc_count = sum(ranks_frequencies[ranks=1:n_loc_int], dims=2)[ranks=1]
 
@@ -248,7 +248,7 @@ end
 function location_selection_frequencies(
     iv_log::NamedDimsArray{D,T,4,A};
     dims::Union{Symbol,Vector{Symbol}}=:coral_id,
-) where {D,T,A}
+)::NamedDimsArray where {D,T,A}
     loc_count = dropdims(
         sum(dropdims(sum(iv_log; dims=dims); dims=dims) .> 0; dims=:scenarios);
         dims=:scenarios,
@@ -279,19 +279,19 @@ Selection score
 function selection_score(
     ranks::NamedDimsArray{D,T,3,A};
     dims::Vector{Symbol}=[:scenarios, :timesteps],
-) where {D,T,A}
+)::NamedDimsArray where {D,T,A}
     return _drop_single(selection_score(ranks, dims))
 end
 function selection_score(
     ranks::NamedDimsArray{D,T,2,A};
     dims::Vector{Symbol}=[:scenarios],
-) where {D,T,A}
-    return _drop_single(selection_score(ranks, dims))
+)::NamedDimsArray where {D,T,A}
+    return selection_score(ranks, dims)
 end
 function selection_score(
     ranks::NamedDimsArray,
     dims::Vector{Symbol},
-)
+)::NamedDimsArray
     lowest_rank = maximum(ranks) # 1 is best rank, n_sites + 1 is worst rank
     selection_score = dropdims(sum(lowest_rank .- ranks; dims=dims); dims=dims[1])
     return selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in dims]))
