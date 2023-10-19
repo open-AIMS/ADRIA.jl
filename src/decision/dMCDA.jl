@@ -277,7 +277,7 @@ end
 
 
 """
-    create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, area, wave_stress, heat_stress, predec, risk_tol)
+    create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, k_area, wave_stress, heat_stress, predec, risk_tol)
 
 Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
 Sites are then filtered based on heat and wave stress risk.
@@ -298,7 +298,7 @@ Columns indicate:
 - `in_conn` : site incoming centrality (relative strength of connectivity) (0 <= c <= 1.0)
 - `out_conn` : site outgoing centrality (relative strength of connectivity) (0 <= c <= 1.0)
 - `sum_cover` : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
-- `area` : total absolute area (in m²) for each site
+- `k_area` : Carrying capacity of each location in m²
 - `wave_stress` : Probability of wave damage
 - `heat_stress` : Probability of site being affected by heat stress
 - `predec` : list of priority predecessors (sites strongly connected to priority sites)
@@ -361,13 +361,14 @@ end
 
 
 """
-    create_seed_matrix(A, min_area, in_conn_seed, out_conn_seed, waves, heat, predec, low_cover)
+    create_seed_matrix(A, min_area, k_area, in_conn_seed, out_conn_seed, waves, heat, predec, low_cover)
 
 Create seeding specific decision matrix from criteria matrix. The weight criteria and filter.
 
 # Arguments
 - `A` : Criteria matrix
 - `min_area` : Minimum available area for a site to be considered
+- `k_area` : Location carrying capacity in m²
 - `wt_in_conn_seed` : Seed connectivity weight for seeding
 - `wt_out_conn_seed` : Seed connectivity weight for seeding
 - `wt_waves` : Wave stress weight
