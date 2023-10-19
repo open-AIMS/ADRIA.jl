@@ -496,8 +496,8 @@ function create_shade_matrix(A::Matrix{Float64},
         wt_hi_cover,
     ]
 
-    SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
-    SH[:, 8] = A[:, 8] # total area of coral cover
+    SH[:, 4] = (1.0 .- SH[:, 4]) # complimentary of wave damage risk
+    SH[:, 8] = SH[:, 8] # total area of coral cover
 
     SH[SH[:, 8].<0, 8] .= 0  # if any negative, scale back to zero
     return SH, wsh
