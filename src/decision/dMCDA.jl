@@ -847,7 +847,21 @@ function site_selection(
     out_conn = out_conn[site_ids]
     strong_pred = strong_pred[site_ids]
 
-    (_, _, ranks) = guided_site_selection(mcda_vars, scenario.guided, true, true, pref_seed_locs, pref_shade_locs, rankingsin, in_conn, out_conn, strong_pred)
+    # Calculate ranks for seeding and shading
+    seed_true, shade_true = true, true
+
+    (_, _, ranks) = guided_site_selection(
+        mcda_vars,
+        scenario.guided,
+        seed_true,
+        shade_true,
+        pref_seed_sites,
+        pref_shade_sites,
+        rankings_in,
+        in_conn,
+        out_conn,
+        strong_pred,
+    )
 
     return ranks
 end
