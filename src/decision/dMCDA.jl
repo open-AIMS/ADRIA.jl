@@ -38,7 +38,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     dam_prob  # ::A
     heat_stress_prob  # ::A
     site_depth #::V
-    sum_cover  # ::F
+    prop_cover  # ::F
     k_area  # ::V
     min_area # ::F
     risk_tol  # ::F
@@ -61,14 +61,14 @@ end
 
 """
     DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
-               site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64,
+               site_ids::AbstractArray, prop_cover::AbstractArray, area_to_seed::Float64,
                waves::AbstractArray, dhws::AbstractArray)::DMCDA_vars
     DMCDA_vars(domain::Domain, criteria::NamedDimsArray, site_ids::AbstractArray,
-               sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+               prop_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
     DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
-               sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+               prop_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
     DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
-               sum_cover::AbstractArray, area_to_seed::Float64,
+               prop_cover::AbstractArray, area_to_seed::Float64,
                waves::AbstractArray, dhw::AbstractArray)::DMCDA_vars
 
 Constuctors for DMCDA variables.
@@ -97,7 +97,7 @@ function DMCDA_vars(
         waves,
         dhws,
         site_d.depth_med,
-        sum_cover,
+        prop_cover,
         site_k_area(domain),
         criteria("coral_cover_tol") .* area_to_seed,
         criteria("deployed_coral_risk_tol"),
@@ -127,7 +127,15 @@ function DMCDA_vars(
     area_to_seed::Float64
 )::DMCDA_vars
     num_sites = n_locations(domain)
-    return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(num_sites, 1), zeros(num_sites, 1))
+    return DMCDA_vars(
+        domain,
+        criteria,
+        site_ids,
+        prop_cover,
+        area_to_seed,
+        zeros(num_sites, 1),
+        zeros(num_sites, 1),
+    )
 end
 function DMCDA_vars(
     domain::Domain,
@@ -140,7 +148,7 @@ function DMCDA_vars(
 )::DMCDA_vars
 
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
-    return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed, waves, dhw)
+    return DMCDA_vars(domain, criteria_vec, site_ids, prop_cover, area_to_seed, waves, dhw)
 end
 function DMCDA_vars(
     domain::Domain,
@@ -151,7 +159,7 @@ function DMCDA_vars(
 )::DMCDA_vars
 
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
-    return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed)
+    return DMCDA_vars(domain, criteria_vec, site_ids, prop_cover, area_to_seed)
 end
 
 """
@@ -277,7 +285,7 @@ end
 
 
 """
-    create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, k_area, wave_stress, heat_stress, predec, risk_tol)
+    create_decision_matrix(site_ids, in_conn, out_conn, prop_cover, k_area, wave_stress, heat_stress, predec, risk_tol)
 
 Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
 Sites are then filtered based on heat and wave stress risk.
@@ -297,7 +305,7 @@ Columns indicate:
 - `site_ids` : vector of site ids
 - `in_conn` : site incoming centrality (relative strength of connectivity) (0 <= c <= 1.0)
 - `out_conn` : site outgoing centrality (relative strength of connectivity) (0 <= c <= 1.0)
-- `sum_cover` : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
+- `prop_cover` : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
 - `k_area` : Carrying capacity of each location in m²
 - `wave_stress` : Probability of wave damage
 - `heat_stress` : Probability of site being affected by heat stress
@@ -341,7 +349,7 @@ function create_decision_matrix(
     A[:, 7] .= zones_criteria
 
     # Area of coral cover in m^2
-    A[:, 8] = sum_cover .* k_area
+    A[:, 8] = prop_cover .* k_area
 
     A[:, 9] = site_depth
 
@@ -769,7 +777,11 @@ Perform site selection for a given domain for multiple scenarios defined in a da
 Matrix[n_scenarios ⋅ n_sites ⋅ 3], where 3rd dimension indicates:
     site_id, seed rank, shade rank
 """
-function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64;
+function run_site_selection(
+    dom::Domain,
+    scenarios::DataFrame,
+    prop_cover::AbstractArray,
+    area_to_seed::Float64;
     target_seed_sites=nothing, target_shade_sites=nothing)
     ranks_store = NamedDimsArray(
         zeros(nrow(scenarios), length(dom.site_ids), 3),
@@ -809,7 +821,7 @@ function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::Abstra
             summary_stat_env(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
             summary_stat_env(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios)),
             considered_sites,
-            sum_cover[scen_idx, :],
+            prop_cover[scen_idx, :],
             area_to_seed
         )
     end
