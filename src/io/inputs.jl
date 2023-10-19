@@ -61,7 +61,7 @@ end
     _process_inputs!(d::Domain, df::DataFrame)::Nothing
     _process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
     _process_inputs!(bnds::AbstractArray, p_types::AbstractArray, df::DataFrame)::Nothing
-    
+
 Map sampled values in `df` back to discrete bounds for parameters
 indicated to be of integer type in the Domain spec.
 
@@ -121,10 +121,14 @@ Load cluster-level data for a given attribute in a netCDF as a NamedDimsArray.
 """
 function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
     local loaded::NamedDimsArray
+    local i::Int64
 
-    ds = Dataset(data_fn, "r")
+    ds = NCDataset(data_fn, "r")
     dim_names = keys(dimsize(ds[attr]))
-    data = ds[attr][:, :]
+    nd = ndims(ds[attr])
+
+    # Load all data (need same number of colons as number of dimensions)
+    data = ds[attr].var[[(:) for _ in 1:nd]...]
 
     if "reef_siteid" in keys(ds)
         sites = _char_to_string(ds["reef_siteid"][:])
@@ -136,12 +140,19 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
     # Note: cannot trust indicated dimension metadata
     # because this can be incorrect!
     # instead, match by number of sites
-    dim_keys = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
-    i = first(findall(size(data) .== length(sites)))
-    dim_keys[i] = sites
+    dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
 
     try
-        loaded = NamedDimsArray(data; zip(dim_names, dim_keys)...)
+        # Obviously this will be an issue if any two dimensions have the same number of
+        # elements as the number of sites, but so far it hasn't happened...
+        i = first(findall(size(data) .== length(sites)))
+    catch err
+        error("Error loading $data_fn : could not determine number of locations. Detected size: $(size(data)) | Known # sites: $(length(sites))")
+    end
+    dim_labels[i] = sites
+
+    try
+        loaded = NamedDimsArray(data; zip(dim_names, dim_labels)...)
     catch err
         if isa(err, KeyError)
             n_sites = size(data, 2)
