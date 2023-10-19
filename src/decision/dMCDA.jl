@@ -39,8 +39,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     heat_stress_prob  # ::A
     site_depth #::V
     sum_cover  # ::F
-    max_area  # ::V
-    area  # ::M
+    k_area  # ::V
     min_area # ::F
     risk_tol  # ::F
     dist # ::M
@@ -86,7 +85,6 @@ function DMCDA_vars(
 
     # Site Data
     site_d = domain.site_data
-    area = site_area(domain)
 
     mcda_vars = DMCDA_vars(
         site_ids,
@@ -101,7 +99,6 @@ function DMCDA_vars(
         site_d.depth_med,
         sum_cover,
         site_k_area(domain),
-        area,
         criteria("coral_cover_tol") .* area_to_seed,
         criteria("deployed_coral_risk_tol"),
         domain.site_distances,
@@ -343,8 +340,8 @@ function create_decision_matrix(
     # priority zone predecessors and sites
     A[:, 7] .= zones_criteria
 
-    # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 8] = max.((1.0 .- sum_cover), 0.0) .* area
+    # Area of coral cover in m^2
+    A[:, 8] = sum_cover .* k_area
 
     A[:, 9] = site_depth
 
@@ -353,9 +350,6 @@ function create_decision_matrix(
     A[A[:, 4].>risk_tol, 4] .= NaN
     rule = (A[:, 4] .<= risk_tol) .& (A[:, 5] .> risk_tol)
     A[rule, 5] .= NaN
-
-    # Mark locations with no space as to be removed from consideration
-    A[A[:, 8].<=0.0, 8] .= NaN
 
     filtered = vec(.!any(isnan.(A), dims=2))
 
@@ -421,8 +415,11 @@ function create_seed_matrix(
     SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
 
+    SE[:, 8] = k_area .- A[:, 8]
+
     # Coral real estate as total area, sites with ≤ min_area to be seeded available filtered out
-    SE[vec(A[:, 8] .<= min_area), 8] .= NaN
+    # This will also filter out sites with 0 space
+    SE[SE[:, 8] .<= min_area, 8] .= NaN
 
     # Mark "hot" locations for filter
     SE[vec(A[:, 5] .>= 0.75), 5] .= NaN
@@ -484,7 +481,7 @@ function create_shade_matrix(A::Matrix{Float64},
     wsh .= mcda_normalize(wsh)
 
     SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
-    SH[:, 8] = (max_area .- A[:, 8]) # total area of coral cover
+    SH[:, 8] = A[:, 8] # total area of coral cover
 
     SH[SH[:, 8].<0, 8] .= 0  # if any negative, scale back to zero
     return SH, wsh
@@ -549,8 +546,7 @@ function guided_site_selection(
     heat_stress = d_vars.heat_stress_prob[site_ids]
     site_depth = d_vars.site_depth[site_ids]
     sum_cover = d_vars.sum_cover[site_ids]
-    max_area = d_vars.max_area[site_ids]
-    area = d_vars.area[site_ids]
+    k_area = d_vars.k_area[site_ids]
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
