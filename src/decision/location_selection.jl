@@ -221,7 +221,7 @@ function ranks_to_frequencies(
 end
 
 """
-    location_selection_frequencies(ranks::NamedDimsArray; n_loc_int::Int64=5)
+    location_selection_frequencies(ranks::NamedDimsArray; n_iv_locs::Int64=5)
     location_selection_frequencies(iv_log::NamedDimsArray{D,T,4,A}; dims::Union{Symbol,Vector{Symbol}}=:coral_id) where {D,T,A}
 
 Determines the count of times each location was selected for a specific intervention over a
@@ -229,7 +229,7 @@ set of scenarios.
 
 # Arguments
 - `ranks` : Rankings of locations `rank_locations()`
-- `n_loc_int` : number of locations intervened at, for each decision point
+- `n_iv_locs` : number of locations intervened at, for each decision point
 - `iv_log` : Intervention logs
 - `dims` : dimensions to sum selection frequencies over
 
@@ -238,10 +238,10 @@ Number of times each location was selected for an intervention.
 """
 function location_selection_frequencies(
     ranks::NamedDimsArray;
-    n_loc_int::Int64=5,
+    n_iv_locs::Int64=5,
 )::NamedDimsArray
-    ranks_frequencies = ranks_to_frequencies(ranks; n_ranks=n_loc_int)
-    loc_count = sum(ranks_frequencies[ranks=1:n_loc_int], dims=2)[ranks=1]
+    ranks_frequencies = ranks_to_frequencies(ranks; n_ranks=n_iv_locs)
+    loc_count = sum(ranks_frequencies[ranks=1:n_iv_locs], dims=2)[ranks=1]
 
     return loc_count
 end
