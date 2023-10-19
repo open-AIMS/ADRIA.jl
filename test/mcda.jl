@@ -24,7 +24,7 @@ using ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_
     predec[predprior, 3] .= 1.0
     risk_tol = 0.8
 
-    sum_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
+    prop_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
     max_cover = [0.8, 0.75, 0.95, 0.7, 0.0]
 
     A, filtered = create_decision_matrix(
@@ -118,7 +118,7 @@ end
     predprior = [x for x in predprior if !isnan(x)]
     predec[predprior, 3] .= 1.0
 
-    sum_cover = [0.75, 0.5, 0.3, 0.7, 0.0]
+    prop_cover = [0.75, 0.5, 0.3, 0.7, 0.0]
     max_cover = [0.8, 0.75, 0.6, 0.77, 0.0]
     area_max_cover = max_cover .* area
 
