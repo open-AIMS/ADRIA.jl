@@ -348,7 +348,7 @@ function create_decision_matrix(
     # priority zone predecessors and sites
     A[:, 7] .= zones_criteria
 
-    # Area of coral cover in m^2 (proportional cover * carrying capacity in m^2 will be in m^2)
+    # Area of coral cover in m² (proportional cover ✖ carrying capacity in m² will be in m²)
     A[:, 8] = prop_cover .* k_area
 
     A[:, 9] = site_depth
@@ -505,7 +505,6 @@ function create_shade_matrix(A::Matrix{Float64},
     ]
 
     SH[:, 4] = (1.0 .- SH[:, 4]) # complimentary of wave damage risk
-    SH[:, 8] = SH[:, 8] # total area of coral cover
 
     SH[SH[:, 8].<0, 8] .= 0  # if any negative, scale back to zero
     return SH, wsh
