@@ -312,4 +312,3 @@ function selection_score(
     selection_score = dropdims(sum(lowest_rank .- ranks; dims=dims); dims=dims[1])
     return selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in dims]))
 end
-
