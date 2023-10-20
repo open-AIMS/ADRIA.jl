@@ -872,7 +872,7 @@ function unguided_site_selection(
     n_site_int,
     available_space,
     depth
-)::Tuple
+)::Tuple{Vector, Vector}
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.0
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
@@ -906,67 +906,34 @@ Calculates mean over specified dimensions plus half the standard deviation.
 - `w` : Weighting for std offset to mean.
 
 # Returns
-Weighted mean + std of input env_layer, where std is weighted by (1-w), mean is weighted by
-w and aggregated over dims.
+Weighted combination of mean and standard deviation of the projected environmental
+conditions (e.g., DHWs, wave stress, etc):
+    (μ * w) + (σ * (1 - w))
 """
 function summary_stat_env(
     env_layer::AbstractArray,
     dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
     w=0.5,
-)
+)::Vector{Float64}
     return vec((mean(env_layer, dims=dims).* w) .+ (std(env_layer, dims=dims) .* (1.0 - w)))
 end
 
 """
-    depth_criteria_idx(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}
+    within_depth_bounds(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}
 
-Calculates criteria for depth filtering in MCDA.
-
-# Arguments
-- `depth_med` : Median depth for each considered location (length of number of locations, n_locs).
-- `depth_max` : Maximum depth for each considered location.
-- `depth_min` : Minimum depth for each considered location.
-
-# Returns
-Vector of logical indices indicating locations which satisfy the depth criteria.
-"""
-function depth_criteria_idx(
-    depth_med::Vector{T}, depth_max::T, depth_min::T
-)::Vector{Bool} where {T<:Float64}
-    return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
-end
-
-"""
-    mean_var_offset(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)
-Calculates mean over specified dimensions plus half the standard deviation.
+Determines whether a location is within the min/max depth bounds.
+Used to filter locations based on their depth for location selection.
 
 # Arguments
-- `env_layer` : Environmental data layer to calculate the mean of.
-- `dims` : Dimensions to aggregate over.
-- `w` : Weighting for std offset to mean.
+- `depth_med` : Median depth of each considered location
+- `depth_max` : Maximum depth for each considered location
+- `depth_min` : Minimum depth for each considered location
 
 # Returns
-- Mean + std of input env_layer, where std is weighted by (1-w) and aggregated over dims.
+BitVector, of logical indices indicating locations which satisfy the depth criteria.
 """
-function sum_stat_env(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)
-    return vec((mean(env_layer, dims=dims).* w) .+ (std(env_layer, dims=dims) .* (1.0 - w)))
-end
-
-"""
-    depth_criteria_indx(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}
-
-Calculates criteria for depth filtering in MCDA.
-
-# Arguments
-- `depth_med` : Median depth (length n_locs).
-- `depth_max` : Maximum depth.
-- `depth_min` : Minimum depth.
-
-# Returns
-- Vector of indices indicating locations which satisfy the depth criteria.
-"""
-function depth_criteria_indx(
-    depth_med::Vector{T}, depth_max::T, depth_min::T
-)::Vector{T} where {T<:Float64}
-    return (depth_med .<= depth_max) .& (depth_med .>= depth_min)
+function within_depth_bounds(
+    loc_depth::Vector{T}, depth_max::T, depth_min::T
+)::BitVector where {T<:Float64}
+    return (loc_depth .<= depth_max) .& (loc_depth .>= depth_min)
 end

@@ -110,7 +110,11 @@ function rank_locations(
     end
 
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
-        depth_criteria = (domain.site_data.depth_med .<= (scen.depth_min .+ scen.depth_offset)) .& (domain.site_data.depth_med .>= scen.depth_min)
+        depth_criteria = within_depth_bounds(
+            domain.site_data.depth_med,
+            scen.depth_min .+ scen.depth_offset,
+            scen.depth_min
+        )
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
