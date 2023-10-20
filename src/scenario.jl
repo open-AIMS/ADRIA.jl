@@ -25,7 +25,6 @@ function setup_cache(domain::Domain)::NamedTuple
         cov_tmp=zeros(n_species, n_sites),  # Cover for previous timestep
         depth_coeff=zeros(n_sites),  # store for depth coefficient
         site_area=Matrix{Float64}(site_area(domain)'),  # site areas
-        wave_scen=zeros(tf, n_sites),  # tmp store for wave scenario
         wave_damage=zeros(tf, n_species, n_sites),  # damage coefficient for each size class
         dhw_tol_mean_log=zeros(tf, n_species, n_sites),  # tmp log for mean dhw tolerances
         dhw_tol_std_log=zeros(tf, n_species, n_sites),  # tmp log for stdev dhw tolerances
@@ -533,7 +532,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Filter out sites outside of desired depth range
     if .!all(site_data.depth_med .== 0)
         max_depth::Float64 = param_set("depth_min") + param_set("depth_offset")
-        depth_criteria::BitArray{1} = (site_data.depth_med .>= param_set("depth_min")) .& (site_data.depth_med .<= max_depth)
+        depth_criteria::BitArray{1} = within_depth_bounds(
+            site_data.depth_med, max_depth, param_set("depth_min")
+        )
 
         if any(depth_criteria .> 0)
             # If sites can be filtered based on depth, do so.
@@ -583,8 +584,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # TODO: Better conversion of Ub to wave mortality
     #       Currently scaling significant wave height by its max to non-dimensionalize values
-    wave_scen = cache.wave_scen
-    wave_scen .= Matrix(domain.wave_scens[:, :, wave_idx])
+    wave_scen = copy(domain.wave_scens[:, :, wave_idx])
     wave_scen .= wave_scen ./ maximum(wave_scen)
 
     # Pre-calculate proportion of survivers from wave stress
@@ -638,10 +638,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
             # Put more weight on projected conditions closer to the decision point
             @views env_horizon = decay[d_s] .* dhw_scen[horizon, :]
-            mcda_vars.heat_stress_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
+            mcda_vars.heat_stress_prob .= summary_stat_env(env_horizon, :timesteps)
 
             @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
-            mcda_vars.dam_prob .= vec((mean(env_horizon, dims=1) .+ std(env_horizon, dims=1)) .* 0.5)
+            mcda_vars.dam_prob .= summary_stat_env(env_horizon, 1)
         end
         if is_guided && (in_seed_years || in_shade_years)
             mcda_vars.sum_cover .= site_coral_cover
@@ -679,7 +679,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(Y_pstep, vec(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Y_pstep, collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites

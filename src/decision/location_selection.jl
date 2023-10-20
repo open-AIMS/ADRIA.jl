@@ -110,19 +110,24 @@ function rank_locations(
     end
 
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
-        depth_criteria = (domain.site_data.depth_med .<= (scen.depth_min .+ scen.depth_offset)) .& (domain.site_data.depth_med .>= scen.depth_min)
+        depth_criteria = within_depth_bounds(
+            domain.site_data.depth_med,
+            scen.depth_min .+ scen.depth_offset,
+            scen.depth_min
+        )
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
         mcda_vars_temp = DMCDA_vars(domain, scen, considered_sites,  sum_cover[scen_idx, :], area_to_seed,
-            vec((mean(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios)) .+ std(wave_scens[:, :, target_wave_scens], dims=(:timesteps, :scenarios))) .* 0.5),
-            vec((mean(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios)) .+ std(dhw_scens[:, :, target_dhw_scens], dims=(:timesteps, :scenarios))) .* 0.5),
+            summary_stat_env(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
+            summary_stat_env(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios))
             )
 
         ranks_store(; scenarios=scen_idx, sites=considered_sites) .= _location_selection(
             domain, mcda_vars_temp, scen.guided
         )
     end
+
     # Set filtered locations as n_locs+1 for consistency with time dependent ranks
     ranks_store[ranks_store.==0.0] .= length(domain.site_ids)+1
 

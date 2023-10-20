@@ -203,7 +203,7 @@ end
 - `rank_col` : column to fill with rankings (2 for seed, 3 for shade)
 
 # Returns
-- `prefsites` : sites in order of their rankings
+Sites in order of their rankings
 """
 function rank_sites!(
     S::Matrix{Float64},
@@ -246,7 +246,7 @@ Get location ranks using mcda technique specified in mcda_func, weights and a de
 - `maximize` : Boolean indicating whether a mcda method is maximizing score (true), or minimizing (false).
 
 # Returns
-- `s_order` : [site_ids, criteria values, ranks]
+Matrix, containing site_ids, criteria values, ranks
 """
 function retrieve_ranks(
     S::Matrix{Float64},
@@ -363,6 +363,7 @@ function create_decision_matrix(
 
     # Remove rows with NaNs
     A = A[filtered, :]
+
     return A, filtered
 end
 
@@ -509,9 +510,9 @@ end
 
 # Returns
 Tuple :
-    - `prefseedsites` : n_site_int highest ranked seeding sites
-    - `prefshadesites` : n_site_int highest ranked shading/fogging sites
-    - `rankings` : n_sites ⋅ 3 matrix holding [site_id, seeding_rank, shading_rank],
+    - `prefseedsites` : Vector, Indices of preferred seeding locations
+    - `prefshadesites` : Vector, Indices of preferred shading locations
+    - `rankings` : Matrix[n_sites ⋅ 3] where columns are site_id, seeding_rank, shading_rank
         Values of 0 indicate sites that were not considered
 """
 function guided_site_selection(
@@ -539,7 +540,7 @@ function guided_site_selection(
         return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
     end
 
-    n_site_int::Int64 = d_vars.n_site_int
+    n_iv_locs::Int64 = d_vars.n_site_int
     priority_sites::Array{Int64} = d_vars.priority_sites[in.(d_vars.priority_sites, [site_ids])]
     priority_zones::Array{String} = d_vars.priority_zones
 
@@ -550,19 +551,6 @@ function guided_site_selection(
     sum_cover = d_vars.sum_cover[site_ids]
     max_cover = d_vars.max_cover[site_ids]
     area = d_vars.area[site_ids]
-
-    risk_tol = d_vars.risk_tol
-    w_in_conn = d_vars.wt_in_conn_seed
-    w_out_conn = d_vars.wt_out_conn_seed
-    w_shade_conn = d_vars.wt_conn_shade
-    w_waves = d_vars.wt_waves
-    w_heat = d_vars.wt_heat
-    w_high_cover = d_vars.wt_hi_cover
-    w_low_cover = d_vars.wt_lo_cover
-    w_predec_seed = d_vars.wt_predec_seed
-    w_predec_shade = d_vars.wt_predec_shade
-    w_predec_zones_seed = d_vars.wt_zones_seed
-    w_predec_zones_shade = d_vars.wt_zones_shade
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
@@ -596,30 +584,45 @@ function guided_site_selection(
     zones_criteria = zone_preds .+ zone_sites
     mcda_func = methods_mcda[alg_ind]
 
-    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
+    A, filtered_sites = create_decision_matrix(
+        site_ids, in_conn, out_conn, sum_cover, max_cover,
+        area, wave_stress, heat_stress, site_depth, predec,
+        zones_criteria, d_vars.risk_tol
+    )
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
-        return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
+        return (
+            zeros(Int64, length(prefseedsites)),
+            zeros(Int64, length(prefshadesites)),
+            rankingsin
+        )
     end
 
     # cap to number of sites left after risk filtration
-    n_site_int = min(n_site_int, length(A[:, 1]))
+    n_iv_locs = min(n_iv_locs, length(A[:, 1]))
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_seed_matrix(A, d_vars.min_area, w_in_conn, w_out_conn, w_waves, w_heat, w_predec_seed, w_predec_zones_seed, w_low_cover)
+        SE, wse = create_seed_matrix(
+            A, d_vars.min_area, d_vars.wt_in_conn_seed, d_vars.wt_out_conn_seed,
+            d_vars.wt_waves, d_vars.wt_heat, d_vars.wt_predec_seed, d_vars.wt_zones_seed,
+            d_vars.wt_lo_cover
+        )
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
         max_area = (area.*max_cover)[filtered_sites]
-        SH, wsh = create_shade_matrix(A, max_area, w_shade_conn, w_waves, w_heat, w_predec_shade, w_predec_zones_shade, w_high_cover)
+        SH, wsh = create_shade_matrix(
+            A, max_area, d_vars.wt_conn_shade, d_vars.wt_waves, d_vars.wt_heat,
+            d_vars.wt_predec_shade, d_vars.wt_zones_shade, d_vars.wt_hi_cover
+        )
     end
 
     if log_seed && isempty(SE)
-        prefseedsites = zeros(Int64, n_site_int)
+        prefseedsites = zeros(Int64, n_iv_locs)
     elseif log_seed
-        prefseedsites, s_order_seed = rank_sites!(SE, wse, rankings, n_site_int, mcda_func, 2)
+        prefseedsites, s_order_seed = rank_sites!(SE, wse, rankings, n_iv_locs, mcda_func, 2)
         if use_dist != 0
             prefseedsites, rankings = distance_sorting(
                 prefseedsites, s_order_seed, d_vars.dist, min_dist, rankings, 2
@@ -628,9 +631,9 @@ function guided_site_selection(
     end
 
     if log_shade && isempty(SH)
-        prefshadesites = zeros(Int64, n_site_int)
+        prefshadesites = zeros(Int64, n_iv_locs)
     elseif log_shade
-        prefshadesites, s_order_shade = rank_sites!(SH, wsh, rankings, n_site_int, mcda_func, 3)
+        prefshadesites, s_order_shade = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
         if use_dist != 0
             prefshadesites, rankings = distance_sorting(
                 prefshadesites, s_order_shade, d_vars.dist, min_dist, rankings, 3
@@ -651,22 +654,24 @@ function guided_site_selection(
 end
 
 """
-    distance_sorting( pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Matrix{Float64}, min_dist::Float64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
+    distance_sorting(pref_locs::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Matrix{Float64}, min_dist::Float64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
 
-Find selected sites with distances between each other < median distance-dist_thresh*(median distance).
-Replaces these sites with sites in the top ranks if the distance between these sites is greater.
+Find selected locations with distances between each other < median distance-dist_thresh*(median distance).
+Replaces these locations with those in the top ranks if the distance between these is greater.
 
 # Arguments
-- `pref_sites` : original n highest ranked sites selected for seeding or shading.
-- `site_order` : current order of ranked sites in terms of numerical site ID.
+- `pref_locs` : Original n highest ranked locations selected for seeding or shading.
+- `s_order` : Current order of ranked sites in terms of numerical site ID.
 - `dist` : Matrix of unique distances between sites.
-- `min_dist` : minimum distance between sites for selected sites.
+- `min_dist` : Minimum distance between sites for selected sites.
+- `rankings` : Ranking data
+- `rank_col` : Index of column holding location ranks
 
 # Returns
-- `prefsites` : new set of selected sites for seeding or shading.
+New set of selected sites for seeding or shading.
 """
 function distance_sorting(
-    pref_sites::AbstractArray{Int},
+    pref_locs::AbstractArray{Int64},
     s_order::Matrix{Union{Float64,Int64}},
     dist::Matrix{Float64},
     min_dist::Float64,
@@ -674,60 +679,176 @@ function distance_sorting(
     rank_col::Int64,
 )::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
     # set-up
-    n_sites = length(pref_sites)
+    n_sites = length(pref_locs)
     site_order = s_order[:, 1]
 
-    # sites to select alternatives from
-    alt_sites = setdiff(site_order, pref_sites)
+    # Sites to select alternatives from
+    alt_sites = setdiff(site_order, pref_locs)
 
-    # find all selected sites closer than the min distance
-    pref_dists = findall(dist[pref_sites, pref_sites] .< min_dist)
-    # indices to replace
-    inds_rep = sort(unique(reinterpret(Int64, pref_dists)))
-    # number of sites to replace
-    select_n = length(inds_rep)
-    # indices to keep
-    inds_keep = collect(1:length(pref_sites))
-    inds_keep = setdiff(inds_keep, inds_rep)
+    # Find all selected sites closer than the min distance
+    pref_dists = findall(dist[pref_locs, pref_locs] .< min_dist)
 
-    # storage for new set of sites
-    rep_sites = pref_sites
+    idx_to_replace = sort(unique(reinterpret(Int64, pref_dists)))
+    select_n = length(idx_to_replace)
+
+    keep_idxs = setdiff(collect(1:length(pref_locs)), idx_to_replace)
+
+    # Store of new set of locations
+    updated_locs = pref_locs
 
     while (length(alt_sites) .>= select_n)
-        rep_sites = [rep_sites[inds_keep[:]]; alt_sites[1:select_n]]
+        updated_locs = [updated_locs[keep_idxs[:]]; alt_sites[1:select_n]]
 
         # Find all sites within these highly ranked but unselected sites which are further apart
-        alt_dists = dist[rep_sites, rep_sites] .> min_dist
+        alt_dists = dist[updated_locs, updated_locs] .> min_dist
 
         # Select from these sites those far enough away from all sites
-        inds_keep = sum(alt_dists, dims=2) .== n_sites - 1
+        keep_idxs = sum(alt_dists, dims=2) .== n_sites - 1
 
         # Keep sites that were far enough away last iteration
-        inds_keep[1:end-select_n] .= true
-        if length(inds_keep) == n_sites
+        keep_idxs[1:end-select_n] .= true
+        if length(keep_idxs) == n_sites
             select_n = 0
             break
         else
             # remove checked alt_sites
             alt_sites = setdiff(alt_sites, alt_sites[1:select_n])
-            select_n = sum(.!inds_keep)
+            select_n = sum(.!keep_idxs)
         end
     end
 
     # If not all sites could be replaced, just use highest ranked remaining pref_sites
-    if (select_n != 0) && !isempty(setdiff(pref_sites, rep_sites))
-        rem_pref_sites = setdiff(pref_sites, rep_sites)
-        rep_sites[end-select_n+1:end] .= rem_pref_sites[1:select_n]
+    if (select_n != 0) && !isempty(setdiff(pref_locs, updated_locs))
+        remaining_locs = setdiff(pref_locs, updated_locs)
+        updated_locs[end-select_n+1:end] .= remaining_locs[1:select_n]
     end
 
-    new_site_order = setdiff(site_order, rep_sites)
-    new_site_order = [rep_sites; new_site_order]
+    new_site_order = setdiff(site_order, updated_locs)
+    new_site_order = [updated_locs; new_site_order]
     s_order[:, 1] .= new_site_order
+
     # Match by site_id and assign rankings to log
     align_rankings!(rankings, s_order, rank_col)
 
-    return rep_sites, rankings
+    return updated_locs, rankings
 end
+
+"""
+    run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64; target_seed_sites=nothing, target_shade_sites=nothing)
+
+Perform site selection for a given domain for multiple scenarios defined in a dataframe.
+
+# Arguments
+- `dom` : ADRIA Domain type, indicating geographical domain to perform site selection over
+- `scenarios` : DataFrame of criteria weightings and thresholds for each scenario
+- `sum_cover` : Matrix[n_scenarios ⋅ n_locs] containing the total coral cover for each
+    site selection scenario
+- `area_to_seed` : area of coral to be seeded at each time step in km^2
+- `target_seed_sites` : list of candidate locations for seeding (indices)
+- `target_shade_sites` : list of candidate location to shade (indices)
+
+# Returns
+Matrix[n_scenarios ⋅ n_sites ⋅ 3], where 3rd dimension indicates:
+    site_id, seed rank, shade rank
+"""
+function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64;
+    target_seed_sites=nothing, target_shade_sites=nothing)
+    ranks_store = NamedDimsArray(
+        zeros(nrow(scenarios), length(dom.site_ids), 3),
+        scenarios=1:nrow(scenarios),
+        sites=dom.site_ids,
+        ranks=["site_id", "seed_rank", "shade_rank"],
+    )::Matrix
+
+    dhw_scens = dom.dhw_scens
+    wave_scens = dom.wave_scens
+
+    # Pre-calculate maximum depth to consider
+    scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
+    target_dhw_scens = unique(scenarios[:, "dhw_scenario"])
+    target_wave_scens = unique(scenarios[:, "wave_scenario"])
+
+    target_site_ids = Int64[]
+    if !isnothing(target_seed_sites)
+        append!(target_site_ids, target_seed_sites)
+    end
+
+    if !isnothing(target_shade_sites)
+        append!(target_site_ids, target_shade_sites)
+    end
+
+    for (scen_idx, scen) in enumerate(eachrow(scenarios))
+        depth_criteria = within_depth_bounds(
+            dom.site_data.depth_med, scen.max_depth, scen.depth_min
+        )
+        depth_priority = findall(depth_criteria)
+
+        considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
+
+        ranks_store(scenarios=scen_idx, sites=dom.site_ids[considered_sites]) .= site_selection(
+            dom,
+            scen,
+            summary_stat_env(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
+            summary_stat_env(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios)),
+            considered_sites,
+            sum_cover[scen_idx, :],
+            area_to_seed
+        )
+    end
+
+    return ranks_store
+end
+
+"""
+    site_selection(domain::Domain, scenario::DataFrameRow{DataFrame,DataFrames.Index}, wave_scens::NamedDimsArray, dhw_scens::NamedDimsArray, site_ids::Vector{Int64}, sum_cover::AbstractArray, area_to_seed::Float64)
+
+Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
+
+# Arguments
+- `scenario` : Contains criteria weightings and thresholds for a single scenario
+- `mcda_vars` : Site selection criteria and weightings structure
+- `wave_scens` : Wave scenarios
+- `dhw_scens` : DHW scenarios
+- `site_ids` : Locations to consider
+- `sum_cover` : Summed cover (over species) for single scenario being run, for each site
+- `area_to_seed` : Area of coral to be seeded at each time step in km^2
+
+# Returns
+Array[n_reps ⋅ sites ⋅ 3], for a single scenario, where 3rd dimension indicates:
+    site_id, seeding rank, shading rank
+"""
+function site_selection(
+    domain::Domain,
+    scenario::DataFrameRow,
+    wave_scens::Vector{Float64},
+    dhw_scens::Vector{Float64},
+    site_ids::Vector{Int64},
+    sum_cover::NamedDimsArray,
+    area_to_seed::Float64,
+)::Matrix{Int64}
+    mcda_vars = DMCDA_vars(domain, scenario, site_ids, sum_cover, area_to_seed, wave_scens, dhw_scens)
+    n_sites = length(site_ids)
+
+    # site_id, seeding rank, shading rank
+    rankingsin = [mcda_vars.site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+
+    pref_seed_locs::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
+    pref_shade_locs::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
+
+    # Determine connectivity strength
+    # Account for cases where no coral cover
+    in_conn, out_conn, strong_pred = connectivity_strength(
+        domain.TP_data .* site_k_area(domain), Array(sum_cover)
+    )
+    in_conn = in_conn[site_ids]
+    out_conn = out_conn[site_ids]
+    strong_pred = strong_pred[site_ids]
+
+    (_, _, ranks) = guided_site_selection(mcda_vars, scenario.guided, true, true, pref_seed_locs, pref_shade_locs, rankingsin, in_conn, out_conn, strong_pred)
+
+    return ranks
+end
+
 
 """
     unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, max_cover)
@@ -755,7 +876,7 @@ function unguided_site_selection(
     n_site_int,
     available_space,
     depth
-)::Tuple
+)::Tuple{Vector, Vector}
     # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.0
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
@@ -775,4 +896,48 @@ function unguided_site_selection(
     end
 
     return pref_seed_locs[pref_seed_locs.>0], pref_shade_locs[pref_shade_locs.>0]
+end
+
+
+"""
+    summary_stat_env(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)::Vector{Float64}
+
+Calculates mean over specified dimensions plus half the standard deviation.
+
+# Arguments
+- `env_layer` : Environmental data layer to calculate the mean of.
+- `dims` : Dimensions to aggregate over.
+- `w` : Weighting for std offset to mean.
+
+# Returns
+Weighted combination of mean and standard deviation of the projected environmental
+conditions (e.g., DHWs, wave stress, etc):
+    (μ * w) + (σ * (1 - w))
+"""
+function summary_stat_env(
+    env_layer::AbstractArray,
+    dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
+    w=0.5,
+)::Vector{Float64}
+    return vec((mean(env_layer, dims=dims).* w) .+ (std(env_layer, dims=dims) .* (1.0 - w)))
+end
+
+"""
+    within_depth_bounds(loc_depth::Vector{T}, depth_max::T, depth_min::T)::BitVector{T} where {T<:Float64}
+
+Determines whether a location is within the min/max depth bounds.
+Used to filter locations based on their depth for location selection.
+
+# Arguments
+- `loc_depth` : Depths of considered locations (typically the median depth)
+- `depth_max` : Maximum depth for each considered location
+- `depth_min` : Minimum depth for each considered location
+
+# Returns
+BitVector, of logical indices indicating locations which satisfy the depth criteria.
+"""
+function within_depth_bounds(
+    loc_depth::Vector{T}, depth_max::T, depth_min::T
+)::BitVector where {T<:Float64}
+    return (loc_depth .<= depth_max) .& (loc_depth .>= depth_min)
 end
