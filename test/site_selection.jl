@@ -56,14 +56,14 @@ end
 @testset "Guided site selection without ADRIA ecological model" begin
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
     N = 2^3
-    criteria_df = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
+    scens = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
 
     area_to_seed = 662.11  # area of seeded corals in m^2
 
     sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(scens, 1))
-    ranks = ADRIA.rank_locations(dom, criteria_df, sum_cover, area_to_seed)
+    ranks = ADRIA.rank_locations(dom, scens, sum_cover, area_to_seed)
 
-    @test length(ranks.scenarios) == sum(criteria_df.guided .> 0) || "Specified number of scenarios was not carried out."
+    @test length(ranks.scenarios) == sum(scens.guided .> 0) || "Specified number of scenarios was not carried out."
     @test length(ranks.sites) == length(dom.site_ids) || "Ranks storage is not correct size for this domain."
 
     sel_sites = unique(ranks)
