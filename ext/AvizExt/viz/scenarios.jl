@@ -153,16 +153,17 @@ function scenarios_confint!(
     ax::Axis,
     confints::AbstractArray,
     scen_groups::Dict{Symbol,BitVector};
+    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1)),
     sort_by::Symbol=:variance,
 )::Nothing
+
     ordered_groups = _sort_keys(scen_groups, confints; by=sort_by)
-    n_timesteps::Int64 = size(confints, 1)
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
 
     for idx in eachindex(ordered_groups)
         band_color = (_colors[ordered_groups[idx]], 0.4)
         y_lower, y_upper = confints[:, idx, 1], confints[:, idx, 3]
-        band!(ax, 1:n_timesteps, y_lower, y_upper; color=band_color)
+        band!(ax, x_vals, y_lower, y_upper; color=band_color)
     end
 
     series_colors = [_colors[group] for group in ordered_groups]
@@ -176,6 +177,7 @@ function scenarios_series!(
     outcomes::NamedDimsArray,
     scen_groups::Dict{Symbol,BitVector};
     series_opts::Dict=Dict(),
+    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(outcomes, 1)),
     sort_by=:size,
 )::Nothing
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
@@ -184,7 +186,7 @@ function scenarios_series!(
     for group in _sort_keys(scen_groups, outcomes; by=sort_by)
         color = (_colors[group], _alphas[group])
         scens = outcomes[:, scen_groups[group]]'
-        series!(ax, scens; solid_color=color, series_opts...)
+        series!(ax, x_vals, scens; solid_color=color, series_opts...)
     end
 
     return nothing
