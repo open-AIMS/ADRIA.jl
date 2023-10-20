@@ -1,5 +1,5 @@
 using AxisKeys, NamedDims
-using ADRIA: location_selection_frequencies
+using ADRIA: ResultSet
 """
     ADRIA.viz.selection_frequency_map!(g::Union{GridLayout,GridPosition},
         rs::ResultSet, iv_type::String; scen_ids::Vector{Int64}=collect(1:size(rs.inputs, 1)),
@@ -25,26 +25,62 @@ Plot a spatial map of location selection frequencies.
 # Returns
 Figure
 """
-function ADRIA.viz.selection_frequency_map!(
+function ADRIA.viz.ranks_to_frequencies!(
     g::Union{GridLayout,GridPosition},
-    rs::ResultSet, iv_type::String; scen_ids::Vector{Int64}=collect(1:size(rs.inputs, 1)),
-    opts::Dict=Dict(:color_map => [:red, :blue], :colorbar_label => "Selection frequency"),
+    rs::ResultSet,
+    frequencies::NamedDimsArray,
+    rank_ids::Vector{Int64};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
+    rank_groups = Dict(Symbol(rank_grp) => rank_grp .== rank_ids for rank_grp in rank_ids)
+    rank_colors = colors(rank_groups)
+    for rr in rank_ids
+        color_map = Dict(:color_map => [RGBf(1.0, 1.0, 1.0), rank_colors[Symbol(rr)]])
+        merge!(opts, color_map)
+        ADRIA.viz.map!(
+            g,
+            rs,
+            AxisKeys.keyless(NamedDims.unname(frequencies[ranks=rr]));
+            opts=opts,
+            axis_opts=axis_opts,
+        )
+    end
+    return g
+end
+function ADRIA.viz.ranks_to_frequencies!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    frequencies::NamedDimsArray,
+    rank_id::Int64;
+    opts::Dict=Dict(:color_map => :CMRmap),
     axis_opts::Dict=Dict())
 
-    loc_frequencies = location_selection_frequencies(rs, iv_type; n_loc_int=rs.sim_constants["n_site_int"], ind_metrics=scen_ids)
-    ADRIA.viz.map!(g, rs, AxisKeys.keyless(NamedDims.unname(loc_frequencies)); opts=opts, axis_opts=axis_opts)
+    return ADRIA.viz.map!(
+        g,
+        rs,
+        AxisKeys.keyless(NamedDims.unname(frequencies[ranks=rank_id]));
+        opts=opts,
+        axis_opts=axis_opts,
+    )
+
 end
-function ADRIA.viz.selection_frequency_map(
+function ADRIA.viz.ranks_to_frequencies(
     rs::ResultSet,
-    iv_type::String;
-    scen_ids::Vector{Int64}=collect(1:size(rs.inputs, 1)),
-    opts::Dict=Dict(:color_map => [:red, :blue], :colorbar_label => "Selection frequency"),
+    frequencies::NamedDimsArray,
+    rank_ids::Union{Int64,Vec{Int64}};
+    opts::Dict=Dict(),
     fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
 
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    return ADRIA.viz.selection_frequency_map!(
-        g, rs, iv_type; scen_ids=scen_ids, opts=opts, axis_opts=axis_opts
+    return ADRIA.viz.ranks_to_frequencies!(
+        g,
+        rs,
+        frequencies,
+        rank_ids;
+        opts=opts,
+        axis_opts=axis_opts,
     )
 end
