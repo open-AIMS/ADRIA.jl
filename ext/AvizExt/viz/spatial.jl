@@ -29,7 +29,7 @@ Create a spatial choropleth figure.
 function create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSON.FeatureCollection,
     data::Observable, highlight::Union{Vector,Tuple,Nothing},
     centroids::Vector, colorbar_label::String="",
-    color_map::Union{Symbol,Vector{Symbol}}=:grayC, 
+    color_map::Union{Symbol,Vector{Symbol},RGBA{Float32},Vector{RGBA{Float32}}}=:grayC,
     legend_params::Union{Tuple,Nothing}=nothing, 
     axis_opts::Dict=Dict())
     lon = first.(centroids)
