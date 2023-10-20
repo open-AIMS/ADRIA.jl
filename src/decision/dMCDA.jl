@@ -552,19 +552,6 @@ function guided_site_selection(
     max_cover = d_vars.max_cover[site_ids]
     area = d_vars.area[site_ids]
 
-    risk_tol = d_vars.risk_tol
-    w_in_conn = d_vars.wt_in_conn_seed
-    w_out_conn = d_vars.wt_out_conn_seed
-    w_shade_conn = d_vars.wt_conn_shade
-    w_waves = d_vars.wt_waves
-    w_heat = d_vars.wt_heat
-    w_high_cover = d_vars.wt_hi_cover
-    w_low_cover = d_vars.wt_lo_cover
-    w_predec_seed = d_vars.wt_predec_seed
-    w_predec_shade = d_vars.wt_predec_shade
-    w_predec_zones_seed = d_vars.wt_zones_seed
-    w_predec_zones_shade = d_vars.wt_zones_shade
-
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
@@ -597,10 +584,18 @@ function guided_site_selection(
     zones_criteria = zone_preds .+ zone_sites
     mcda_func = methods_mcda[alg_ind]
 
-    A, filtered_sites = create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, site_depth, predec, zones_criteria, risk_tol)
+    A, filtered_sites = create_decision_matrix(
+        site_ids, in_conn, out_conn, sum_cover, max_cover,
+        area, wave_stress, heat_stress, site_depth, predec,
+        zones_criteria, d_vars.risk_tol
+    )
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
-        return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
+        return (
+            zeros(Int64, length(prefseedsites)),
+            zeros(Int64, length(prefshadesites)),
+            rankingsin
+        )
     end
 
     # cap to number of sites left after risk filtration
@@ -608,13 +603,20 @@ function guided_site_selection(
 
     # if seeding, create seeding specific decision matrix
     if log_seed
-        SE, wse = create_seed_matrix(A, d_vars.min_area, w_in_conn, w_out_conn, w_waves, w_heat, w_predec_seed, w_predec_zones_seed, w_low_cover)
+        SE, wse = create_seed_matrix(
+            A, d_vars.min_area, d_vars.wt_in_conn_seed, d_vars.wt_out_conn_seed,
+            d_vars.wt_waves, d_vars.wt_heat, d_vars.wt_predec_seed, d_vars.wt_zones_seed,
+            d_vars.wt_lo_cover
+        )
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
         max_area = (area.*max_cover)[filtered_sites]
-        SH, wsh = create_shade_matrix(A, max_area, w_shade_conn, w_waves, w_heat, w_predec_shade, w_predec_zones_shade, w_high_cover)
+        SH, wsh = create_shade_matrix(
+            A, max_area, d_vars.wt_conn_shade, d_vars.wt_waves, d_vars.wt_heat,
+            d_vars.wt_predec_shade, d_vars.wt_zones_shade, d_vars.wt_hi_cover
+        )
     end
 
     if log_seed && isempty(SE)
