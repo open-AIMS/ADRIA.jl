@@ -77,7 +77,7 @@ function DMCDA_vars(
     domain::Domain,
     criteria::NamedDimsArray,
     site_ids::AbstractArray,
-    sum_cover::AbstractArray,
+    prop_cover::AbstractArray,
     area_to_seed::Float64,
     waves::AbstractArray,
     dhws::AbstractArray
@@ -123,7 +123,7 @@ function DMCDA_vars(
     domain::Domain,
     criteria::NamedDimsArray,
     site_ids::AbstractArray,
-    sum_cover::AbstractArray,
+    prop_cover::AbstractArray,
     area_to_seed::Float64
 )::DMCDA_vars
     num_sites = n_locations(domain)
@@ -141,12 +141,11 @@ function DMCDA_vars(
     domain::Domain,
     criteria::DataFrameRow,
     site_ids::AbstractArray,
-    sum_cover::AbstractArray,
+    prop_cover::AbstractArray,
     area_to_seed::Float64,
     waves::AbstractArray,
     dhw::AbstractArray
 )::DMCDA_vars
-
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, prop_cover, area_to_seed, waves, dhw)
 end
@@ -154,7 +153,7 @@ function DMCDA_vars(
     domain::Domain,
     criteria::DataFrameRow,
     site_ids::AbstractArray,
-    sum_cover::AbstractArray,
+    prop_cover::AbstractArray,
     area_to_seed::Float64
 )::DMCDA_vars
 
@@ -316,9 +315,8 @@ function create_decision_matrix(
     site_ids::Vector{Int64},
     in_conn::T,
     out_conn::T,
-    sum_cover::Union{NamedDimsArray,T},
-    max_cover::T,
-    area::T,
+    prop_cover::Union{NamedDimsArray,T},
+    k_area::T,
     wave_stress::T,
     heat_stress::T,
     site_depth::T,
@@ -407,13 +405,14 @@ Tuple (SE, wse)
 function create_seed_matrix(
     A::Matrix{Float64},
     min_area::T,
+    k_area::Vector{T},
     wt_in_conn_seed::T,
     wt_out_conn_seed::T,
     wt_waves::T,
     wt_heat::T,
     wt_predec_seed::T,
     wt_predec_zones_seed::T,
-    wt_lo_cover::T
+    wt_low_cover::T
 )::Tuple{Matrix{Float64}, Vector{Float64}} where {T<:Float64}
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
@@ -425,7 +424,7 @@ function create_seed_matrix(
         wt_heat,
         wt_predec_seed,
         wt_predec_zones_seed,
-        wt_lo_cover,
+        wt_low_cover,
         wt_heat,
     ]
 
@@ -481,7 +480,6 @@ Tuple (SH, wsh)
     5. high cover (weights importance of sites with high cover of coral to shade)
 """
 function create_shade_matrix(A::Matrix{Float64},
-    max_area::Vector{Float64},
     wt_conn_shade::T,
     wt_waves::T,
     wt_heat::T,
@@ -512,15 +510,15 @@ end
 
 
 """
-    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, pref_seed_sites::AbstractArray{Int64}, pref_shade_sites::AbstractArray{Int64}, rankings_in::Matrix{Int64})
+    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, pref_seed_locs::AbstractArray{Int64}, pref_shade_locs::AbstractArray{Int64}, rankings_in::Matrix{Int64})
 
 # Arguments
 - `d_vars` : DMCDA_vars type struct containing weightings and criteria values for site selection.
 - `alg_ind` : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
 - `log_seed` : boolean indicating whether seeding sites are being re-assesed at current time
 - `log_shade` : boolean indicating whether shading/fogging sites are being re-assesed at current time
-- `pref_shade_sites` : previous time step's selection of sites for shading
-- `pref_seed_sites` : previous time step's selection of sites for seeding
+- `pref_shade_locs` : previous time step's selection of sites for shading
+- `pref_seed_locs` : previous time step's selection of sites for seeding
 - `rankings_in` : pre-allocated store for site rankings
 - `in_conn` : in-degree centrality
 - `out_conn` : out-degree centrality
@@ -528,8 +526,8 @@ end
 
 # Returns
 Tuple :
-    - `prefseedsites` : Vector, Indices of preferred seeding locations
-    - `prefshadesites` : Vector, Indices of preferred shading locations
+    - `pref_seed_locs` : Vector, Indices of preferred seeding locations
+    - `pref_shade_locs` : Vector, Indices of preferred shading locations
     - `rankings` : Matrix[n_sites ⋅ 3] where columns are site_id, seeding_rank, shading_rank
         Values of 0 indicate sites that were not considered
 """
@@ -538,9 +536,9 @@ function guided_site_selection(
     alg_ind::T,
     log_seed::B,
     log_shade::B,
-    prefseedsites::IA,
-    prefshadesites::IB,
-    rankingsin::Matrix{T},
+    pref_seed_locs::IA,
+    pref_shade_locs::IB,
+    rankings_in::Matrix{T},
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
     strong_pred::Vector{Int64};
@@ -600,16 +598,17 @@ function guided_site_selection(
     mcda_func = methods_mcda[alg_ind]
 
     A, filtered_sites = create_decision_matrix(
-        site_ids, in_conn, out_conn, sum_cover, max_cover,
-        area, wave_stress, heat_stress, site_depth, predec,
+        site_ids, in_conn, out_conn, d_vars.prop_cover[site_ids], k_area,
+        d_vars.dam_prob[site_ids], d_vars.heat_stress_prob[site_ids],
+        d_vars.site_depth[site_ids], predec,
         zones_criteria, d_vars.risk_tol
     )
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return (
-            zeros(Int64, length(prefseedsites)),
-            zeros(Int64, length(prefshadesites)),
-            rankingsin
+            zeros(Int64, length(pref_seed_locs)),
+            zeros(Int64, length(pref_shade_locs)),
+            rankings_in
         )
     end
 
@@ -619,28 +618,27 @@ function guided_site_selection(
     # if seeding, create seeding specific decision matrix
     if log_seed
         SE, wse = create_seed_matrix(
-            A, d_vars.min_area, d_vars.wt_in_conn_seed, d_vars.wt_out_conn_seed,
-            d_vars.wt_waves, d_vars.wt_heat, d_vars.wt_predec_seed, d_vars.wt_zones_seed,
-            d_vars.wt_lo_cover
+            A, d_vars.min_area, k_area[filtered_sites], d_vars.wt_in_conn_seed,
+            d_vars.wt_out_conn_seed, d_vars.wt_waves, d_vars.wt_heat, d_vars.wt_predec_seed,
+            d_vars.wt_zones_seed, d_vars.wt_lo_cover
         )
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        max_area = (area.*max_cover)[filtered_sites]
         SH, wsh = create_shade_matrix(
-            A, max_area, d_vars.wt_conn_shade, d_vars.wt_waves, d_vars.wt_heat,
+            A, d_vars.wt_conn_shade, d_vars.wt_waves, d_vars.wt_heat,
             d_vars.wt_predec_shade, d_vars.wt_zones_shade, d_vars.wt_hi_cover
         )
     end
 
     if log_seed && isempty(SE)
-        prefseedsites = zeros(Int64, n_iv_locs)
+        pref_seed_locs = zeros(Int64, n_iv_locs)
     elseif log_seed
-        prefseedsites, s_order_seed = rank_sites!(SE, wse, rankings, n_iv_locs, mcda_func, 2)
+        pref_seed_locs, s_order_seed = rank_sites!(SE, wse, rankings, n_iv_locs, mcda_func, 2)
         if use_dist != 0
-            pref_seed_sites, rankings = distance_sorting(
-                pref_seed_sites,
+            pref_seed_locs, rankings = distance_sorting(
+                pref_seed_locs,
                 s_order_seed,
                 d_vars.dist,
                 min_dist,
@@ -651,12 +649,12 @@ function guided_site_selection(
     end
 
     if log_shade && isempty(SH)
-        prefshadesites = zeros(Int64, n_iv_locs)
+        pref_shade_locs = zeros(Int64, n_iv_locs)
     elseif log_shade
-        prefshadesites, s_order_shade = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
+        pref_shade_locs, s_order_shade = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
         if use_dist != 0
-            pref_shade_sites, rankings = distance_sorting(
-                pref_shade_sites,
+            pref_shade_locs, rankings = distance_sorting(
+                pref_shade_locs,
                 s_order_shade,
                 d_vars.dist,
                 min_dist,
@@ -667,15 +665,15 @@ function guided_site_selection(
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
-    if sum(pref_seed_sites) == 0
+    if sum(pref_seed_locs) == 0
         rankings[:, 2] .= rankings_in[:, 2]
     end
 
-    if sum(pref_shade_sites) == 0
+    if sum(pref_shade_locs) == 0
         rankings[:, 3] .= rankings_in[:, 3]
     end
 
-    return pref_seed_sites, pref_shade_sites, rankings
+    return pref_seed_locs, pref_shade_locs, rankings
 end
 
 """
