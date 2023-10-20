@@ -643,7 +643,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
             @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
             mcda_vars.dam_prob .= summary_stat_env(env_horizon, 1)
-            mcda_vars.sum_cover .= loc_coral_cover
+            mcda_vars.prop_cover .= loc_coral_cover
 
             # Determine connectivity strength
             # Account for cases where there is no coral cover
@@ -687,7 +687,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(Y_pstep, collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(C_t, collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         # Assumes coral seeding occurs in the months after disturbances

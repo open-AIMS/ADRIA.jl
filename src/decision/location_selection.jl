@@ -28,7 +28,7 @@ function _location_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int6
     # Determine connectivity strength
     # Account for cases where no coral cover
     in_conn, out_conn, strong_pred = connectivity_strength(
-        domain.TP_data .* site_k_area(domain), collect(mcda_vars.sum_cover)
+        domain.TP_data .* site_k_area(domain), collect(mcda_vars.prop_cover)
     )
 
     # Perform location selection for seeding and shading.
