@@ -898,7 +898,7 @@ end
 
 
 """
-    summary_stat_env(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)
+    summary_stat_env(env_layer::NamedDimsArray dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)::Vector{Float64}
 
 Calculates mean over specified dimensions plus half the standard deviation.
 
@@ -921,7 +921,7 @@ function summary_stat_env(
 end
 
 """
-    within_depth_bounds(depth_med::Vector{T}, depth_max::T, depth_min::T)::Vector{T} where {T<:Float64}
+    within_depth_bounds(depth_med::Vector{T}, depth_max::T, depth_min::T)::BitVector{T} where {T<:Float64}
 
 Determines whether a location is within the min/max depth bounds.
 Used to filter locations based on their depth for location selection.

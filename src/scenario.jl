@@ -584,7 +584,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     a_adapt[a_adapt.>0.0] .+= corals.dist_mean[a_adapt.>0.0]
 
     # TODO: Better conversion of Ub to wave mortality
-    # Currently scaling significant wave height by its max to non-dimensionalize values
+    #       Currently scaling significant wave height by its max to non-dimensionalize values
     wave_scen = cache.wave_scen
     wave_scen .= Matrix(domain.wave_scens[:, :, wave_idx])
     wave_scen .= wave_scen ./ maximum(wave_scen)
