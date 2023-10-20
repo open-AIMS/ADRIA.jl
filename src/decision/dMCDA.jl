@@ -654,13 +654,13 @@ function guided_site_selection(
 end
 
 """
-    distance_sorting( pref_sites::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Matrix{Float64}, min_dist::Float64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
+    distance_sorting(pref_locs::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Matrix{Float64}, min_dist::Float64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
 
 Find selected locations with distances between each other < median distance-dist_thresh*(median distance).
 Replaces these locations with those in the top ranks if the distance between these is greater.
 
 # Arguments
-- `pref_sites` : Original n highest ranked locations selected for seeding or shading.
+- `pref_locs` : Original n highest ranked locations selected for seeding or shading.
 - `s_order` : Current order of ranked sites in terms of numerical site ID.
 - `dist` : Matrix of unique distances between sites.
 - `min_dist` : Minimum distance between sites for selected sites.
