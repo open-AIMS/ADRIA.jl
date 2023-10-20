@@ -295,19 +295,68 @@ Plot sensitivty metric for increasing number of scenarios to illustrate converge
 GLMakie figure
 """
 function ADRIA.viz.convergence!(
-    f::Figure,
+    g::GridPosition,
     Si_conv::NamedDimsArray,
     foi::Vector{Symbol};
     series_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
+    n_scenarios = Si_conv.n_scenarios
     grps = Dict(Symbol(foi_grp) => foi_grp .== foi for foi_grp in foi)
-    ax = Axis(f[1, 1]; axis_opts...)
+    ax = Axis(g; axis_opts...)
+
     scenarios_series!(
-        ax, Si_conv(; Si=:median), grps; sort_by=:none, series_opts=series_opts
+        ax,
+        Si_conv(; Si=:median)',
+        grps;
+        sort_by=:none,
+        x_vals=n_scenarios,
+        series_opts=series_opts,
     )
-    scenarios_confint!(ax, Si_conv(; Si=[:lb, :median, :ub]), grps; sort_by=:none)
-    return Si_conv
+    scenarios_confint!(
+        ax,
+        permutedims(Si_conv(; Si=[:lb, :median, :ub]), (3, 2, 1)),
+        grps;
+        x_vals=n_scenarios,
+        sort_by=:none,
+    )
+    return g
+end
+function ADRIA.viz.convergence!(
+    g::GridPosition,
+    grid_size::Vector{Int64},
+    Si_conv::NamedDimsArray,
+    foi::Vector{Symbol};
+    axis_opts::Dict=Dict(),
+)
+    grps = Dict(Symbol(foi_grp) => foi_grp .== foi for foi_grp in foi)
+    Axis(g; axis_opts...)
+    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(grps)
+    _alphas::Dict{Symbol,Float64} = alphas(grps)
+
+    if prod(grid_size) < length(foi)
+        error("Figure grid is not big enough to plot all requested factors.")
+    end
+    axs = [Axis(g[row, col]) for row in 1:grid_size[1], col in 1:grid_size[2]]
+    step = 0
+    n_scenarios = Si_conv(; Si=:median).n_scenarios
+
+    for row in 1:grid_size[1], col in 1:grid_size[2]
+        step += 1
+        line!(
+            axs[row, col],
+            n_scenarios,
+            Si_conv(; Si=:median)[factor=foi[foi[step]]];
+            color=(_colors[step], _alphas[foi[step]]),
+        )
+        band!(
+            axs[row, col],
+            n_scenarios,
+            Si_conv(; Si=:lb)[factor=foi[foi[step]]],
+            Si_conv(; Si=:ub)[factor=foi[foi[step]]],
+        )
+    end
+    return g
 end
 function ADRIA.viz.convergence(
     Si_conv::NamedDimsArray,
@@ -317,7 +366,23 @@ function ADRIA.viz.convergence(
     axis_opts::Dict=Dict(),
 )
     f = Figure(; fig_opts...)
-    ADRIA.viz.convergence!(f, Si_conv, foi; series_opts=series_opts, axis_opts=axis_opts)
+    g = f[1, 1]
+    ADRIA.viz.convergence!(g, Si_conv, foi; series_opts=series_opts, axis_opts=axis_opts)
+    return f
+end
+function ADRIA.viz.convergence(
+    Si_conv::NamedDimsArray,
+    foi::Vector{Symbol},
+    grid_size::Vector{Int64};
+    fig_opts::Dict=Dict(),
+    series_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1]
+    ADRIA.viz.convergence!(
+        g, grid_size, Si_conv, foi; series_opts=series_opts, axis_opts=axis_opts
+    )
     return f
 end
 
