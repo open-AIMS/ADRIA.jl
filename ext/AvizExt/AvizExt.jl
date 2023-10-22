@@ -435,7 +435,7 @@ function ADRIA.viz.explore(rs::ResultSet)
         hide_idx .= Bool.(ones(Int64, length(hide_idx)) .⊻ show_idx)
 
         # Update map
-        obs_mean_rc_sites[] = vec(mean(mean_rc_sites(timesteps=timespan)[scenarios=show_idx], dims=(:scenarios, :timesteps)))
+        obs_mean_rc_sites[] = vec(mean(mean_rc_sites(timesteps=timespan, scenarios=findall(show_idx)), dims=(:scenarios, :timesteps)))
 
         seeded_sites = _get_seeded_sites(seed_log, (:), show_idx)
         site_alpha = 1.0

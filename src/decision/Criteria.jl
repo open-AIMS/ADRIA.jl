@@ -10,7 +10,7 @@ Base.@kwdef struct Criteria{P,N} <: EcoModel
     heat_stress::P = Param(
         1.0;
         ptype="real",
-        bounds=(0.0, 1.0),
+        bounds=(0.7, 0.9),
         dists="unif",
         name="Heat Stress",
         description="Importance of avoiding heat stress. Higher values places more weight on areas with low heat stress.",

@@ -6,8 +6,8 @@ import ADRIA.analysis: Rule
 
 # Description
 For each condition Rule, plots a scatter showing one condition clause at each axis.
-The target area of each condition is algo highlited, and the positive and negative
-class data have different colors. This maybe be usefull for bumphunting.
+The target area of each condition is highlighted, and the positive and negative
+class data have different colors. This may be useful for bump-hunting.
 
 # Arguments
 - `rs` : ResultSet

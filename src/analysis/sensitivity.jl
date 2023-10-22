@@ -11,7 +11,8 @@ using DataFrames
 using
     Bootstrap,
     Distributions,
-    HypothesisTests
+    HypothesisTests,
+    StatsBase
 using HypothesisTests: ApproximateKSTest
 
 using FLoops
@@ -246,9 +247,10 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
     )
 
     for t in axes(y, 1)
-        t_pawn_idx[:, :, t] .= col_normalize(
-            pawn(X, vec(mean(y[1:t, :], dims=1)))
-        )
+        # t_pawn_idx[:, :, t] .= col_normalize(
+        #     pawn(X, vec(mean(y[1:t, :], dims=1)))
+        # )
+        t_pawn_idx[:, :, t] .= pawn_cvm(X, vec(mean(y[1:t, :], dims=1)))
     end
 
     return t_pawn_idx
@@ -531,6 +533,63 @@ function _map_outcomes(y::AbstractArray{<:Real}, rule::Function)::Vector{Int64}
     all_p_rule = findall(rule, eachrow(_y))
 
     return all_p_rule
+end
+
+
+function cramervonmises_twosample(sample1::AbstractVector{T}, sample2::AbstractVector{T}) where {T}
+    n1, n2 = length(sample1), length(sample2)
+    combined_data = vcat(sample1, sample2)
+    ranks = tiedrank(combined_data)
+
+    ecdf1 = cumsum([count(x -> x <= x_i, sample1) / n1 for x_i in combined_data])
+    ecdf2 = cumsum([count(x -> x <= x_i, sample2) / n2 for x_i in combined_data])
+
+    W = (sum((ecdf1 - ecdf2) .^ 2 .* ranks) / (n1 * n2)) + (1 / (12 * (n1 + n2)))
+
+    return W
+end
+
+"""
+Regional sensitivity analysis
+
+Apply RSA using CvM statistic across factor space comparing y_b | y
+"""
+function regional_cvm(X, y; S=10)
+    cvm = zeros(S, size(X, 2))
+    steps = collect(0.0:1/S:1.0)
+    for d in axes(X, 2)
+        qs = unique(quantile(X[:, d], steps))
+        for (i, qi) in enumerate(qs[2:end])
+            if i == 1
+                xd = qs[i] .<= X[:, d] .< qi
+            else
+                xd = qs[i] .< X[:, d] .<= qi
+            end
+
+            cvm[i, d] = cramervonmises_twosample(y[xd], y)
+            # cvm[i, d] = cramervonmises_twosample(y[xd], y[.!xd])
+        end
+
+        cvm[isnan.(cvm[:, d]), d] .= 0.0
+    end
+
+    return cvm
+end
+
+
+"""
+PAWN-CvM
+
+PAWN modified to use the Cramer-von Mises test instead of the usual Kolmogorov-Smirnoff
+test.
+
+Default behavior is to take the maximum difference for each factor.
+"""
+function pawn_cvm(X, y; S=10, stat=maximum)
+    r_cvm = regional_cvm(X, y; S=S)
+    cvm_i = stat.(eachcol(r_cvm))
+
+    return (cvm_i ./ maximum(cvm_i))
 end
 
 end

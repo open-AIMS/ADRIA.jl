@@ -24,7 +24,8 @@ const methods_mcda = [
     order_ranking,
     adria_vikor,
     adria_topsis,
-    setdiff(jmcdm_methods, jmcdm_ignore)...
+    JMcDM.MOORA.MooraMethod,
+    # setdiff(jmcdm_methods, jmcdm_ignore)...
 ]
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector

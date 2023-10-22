@@ -71,8 +71,8 @@ Probabilities vector, one for Rule condition == true, one for Rule condition == 
 function _consequent(rules::SIRUS.StableRules{Int64}, index::Int64)::Vector{Float64}
     weight = rules.weights[index]
     rule = rules.rules[index]
-    then_probability = SIRUS._simplify_binary_probabilities(weight, rule.then)
-    otherwise_probability = SIRUS._simplify_binary_probabilities(weight, rule.otherwise)
+    then_probability = last(SIRUS._simplify_binary_probabilities(weight, rule.then))
+    otherwise_probability = last(SIRUS._simplify_binary_probabilities(weight, rule.otherwise))
     return [then_probability, otherwise_probability]
 end
 

@@ -59,15 +59,14 @@ function labels(group_names::Vector{Symbol})::Vector{String}
 end
 
 """
-    scenario_colors!(obs_color, scen_types::NamedTuple, weight::Float64, hide::BitVector)
+    scenario_colors!(obs_color, scen_types::Dict{Symbol, Any}, weight::Float64, hide::BitVector)
 
 Hide selected scenarios by changing transparency.
 """
 function scenario_colors!(
     obs_color::Observable,
     color_map::Vector,
-    scen_groups::Dict{Symbol,BitVector},
-    scen_types::NamedTuple,
+    scen_types::Dict{Symbol, BitVector},
     weight::Float64,
     hide::BitVector,
     guide_toggle_map,

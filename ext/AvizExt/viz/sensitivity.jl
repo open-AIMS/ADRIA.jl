@@ -57,7 +57,8 @@ function ADRIA.viz.pawn!(g::Union{GridLayout,GridPosition}, Si::NamedDimsArray; 
     )
     ax.yreversed = true
 
-    heatmap!(ax, Matrix(Si'))
+    heatmap!(ax, Matrix(Si'); colorrange=(0.0, maximum(Si)))
+    # Colorbar(g[:, end+1], ax)
 
     return g
 end
@@ -313,7 +314,7 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
         for c in 1:n_cols
             f_name = Symbol(factors[curr])
             f_vals = rs.inputs[:, f_name]
-            
+
             if f_name == :guided
                 fv_s = collect(1:length(fv_labels))
             else
