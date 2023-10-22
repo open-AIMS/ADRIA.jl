@@ -39,6 +39,11 @@ function colors(
 
     return [(c, weight) for c in _colors]
 end
+function colors(clusters::Vector{Int64})
+    unique_clusters = unique(clusters)
+    colormap = categorical_colors(:seaborn_bright, length(unique_clusters))
+    return [colormap[findfirst(x -> x == c, unique_clusters)] for c in clusters]
+end
 
 function alphas(scen_groups::Dict{Symbol,BitVector})::Dict{Symbol,Float64}
     return Dict(name => alpha(scens) for (name, scens) in scen_groups)

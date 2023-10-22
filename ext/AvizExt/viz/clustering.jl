@@ -132,10 +132,11 @@ function ADRIA.viz.map!(
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
-    colors = cluster_colors(clusters)
-    legend_params = _cluster_legend_params(clusters, unique(colors), data)
+    _clusters = Int64.(clusters)
+    scen_groups = ADRIA.analysis.scenario_clusters(_clusters)
+    legend_params = _cluster_legend_params(scen_groups)
 
-    opts[:highlight] = get(opts, :highlight, colors)
+    opts[:highlight] = get(opts, :highlight, colors(_clusters))
     opts[:legend_params] = get(opts, :legend_params, legend_params)
 
     ADRIA.viz.map!(g, rs, data; opts=opts, axis_opts=axis_opts)
@@ -157,13 +158,13 @@ Color parameter for current cluster weighted by number of scenarios.
 Tuple of legend params to be passed to map! containing legend_entries, legend_labels and
 legend_title (in that order).
 """
-function _cluster_legend_params(
-    clusters::Union{BitVector,Vector{Int64}},
-    colors::Vector{RGBA{Float32}},
-    data::AbstractVector{<:Real},
-)::Tuple
-    legend_entries = [PolyElement(; color=c, strokecolor=:transparent) for c in colors]
-    legend_labels = cluster_labels(clusters, data)
+function _cluster_legend_params(scen_groups::Dict{Symbol,BitVector})::Tuple
+    _colors = colors(scen_groups)
+    group_names = collect(keys(_colors))
+    legend_entries = [
+        PolyElement(; color=_colors[c], strokecolor=:transparent) for c in group_names
+    ]
+    legend_labels = labels(group_names)
     legend_title = "Clusters mean value"
 
     return (legend_entries, legend_labels, legend_title)
