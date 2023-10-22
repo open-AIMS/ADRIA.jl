@@ -113,27 +113,49 @@ One can plot a quick scenario overview:
 
 ```julia
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
-ADRIA.viz.scenarios(rs, s_tac; axis_opts=Dict(:ylabel=>"Example Metric"))
+fig_s_tac = ADRIA.viz.scenarios(
+    rs, s_tac; fig_opts=fig_opts, axis_opts=Dict(:ylabel => "Scenario Total Cover")
+)
+save("scenarios_tac.png", fig_s_tac)
 ```
 
-And compose a figure with subplots:
+![Quick scenario plots](/ADRIA.jl/dev/assets/imgs/scenarios_tac.png?raw=true "Quick scenario plot")
+
+And compose a figure with subplots. In the example below we also use the parameter `opts`
+that accepts the keys `by_RCP` to group scenarios by RCP (default is `false`), `legend`
+to plot the legend (default is `true`) and `summarize` to plot confidence intervals instead
+of plotting each series (default is `true`):
 
 ```julia
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
 
+# Parameters used to run each scenario
+scens = rs.inputs
+
 tf = Figure(resolution=(1600, 600))  # resolution in pixels
 
 # Implicitly create a single figure with 2 columns
-ADRIA.viz.scenarios!(tf[1, 1], rs, s_tac; opts=Dict(:by_RCP => false, :legend=>false), axis_opts=Dict(:title => "TAC [m²]"));
-ADRIA.viz.scenarios!(tf[1, 2], rs, s_juves; axis_opts=Dict(:title => "Juveniles [%]"));
+ADRIA.viz.scenarios!(
+    tf[1, 1],
+    scens,
+    s_tac;
+    opts=Dict(:by_RCP => false, :legend => false),
+    axis_opts=Dict(:title => "TAC [m²]"),
+);
+ADRIA.viz.scenarios!(
+    tf[1, 2],
+    scens,
+    s_juves;
+    opts=Dict(:summarize => false),
+    axis_opts=Dict(:title => "Juveniles [%]"),
+);
 
 tf  # display the figure
 save("aviz_scenario.png", tf)  # save the figure to a file
 ```
 
-![Quick scenario plots](/ADRIA.jl/dev/assets/imgs/aviz_scenario.png?raw=true "Quick scenario plots")
-
+![Scenarios with subplots](/ADRIA.jl/dev/assets/imgs/aviz_scenario.png?raw=true "Scenarios with subplots")
 
 ### PAWN sensitivity (heatmap overview)
 
@@ -183,26 +205,26 @@ save("tsa.png", tsa_fig)
 The Time Series Clustering algorithm clusters together series (typically time series)
 with similar behavior. This is achieved by computing the Euclidian distance between each
 pair of series weighted by a correlation factor that takes into account the quotient
-between their complexities.
+between their complexities. When plotting `clustered_scenarios`, the kwarg `opts` can be
+used with the key `:summarize` to plot the confidence intervals of each cluster instead of
+each series individually (default is `true`).
 
 ```julia
 # Extract metric from scenarios
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 
 # Cluster scenarios
-n_clusters = 6
+n_clusters = 4
 clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
 
 axis_opts = Dict(
     :title => "Time Series Clustering with $n_clusters clusters",
     :ylabel => "TAC [m²]",
-    :xlabel => "Timesteps [years]"
+    :xlabel => "Timesteps [years]",
 )
+
 tsc_fig = ADRIA.viz.clustered_scenarios(
-    s_tac,
-    clusters;
-    fig_opts=fig_opts,
-    axis_opts=axis_opts
+    s_tac, clusters; opts=Dict(:summarize => true), fig_opts=fig_opts, axis_opts=axis_opts
 )
 
 # Save final figure
@@ -210,6 +232,67 @@ save("tsc.png", tsc_fig)
 ```
 
 ![Plots of Time Series Cluster](/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true "Time Series Cluster")
+
+### Target clusters
+
+One can also target scenarios that belong to specific clusters (like clusters with higher
+median value for some outcome):
+
+```julia
+using Statistics
+
+# Extract metric from scenarios
+asv = ADRIA.metrics.absolute_shelter_volume(rs)
+
+# Time series summarizing scenarios for each site
+asv_site_series = ADRIA.metrics.loc_trajectory(median, asv)
+
+# Cluster scenarios
+n_clusters = 6
+asv_clusters = ADRIA.analysis.cluster_scenarios(asv_site_series, n_clusters)
+
+# Target scenarios that belong to the two lowest value clusters
+lowest = x -> x .∈ [sort(x; rev=true)[1:2]]
+asv_target = ADRIA.analysis.find_scenarios(asv_site_series, asv_clusters, lowest)
+
+# Plot targeted scenarios
+axis_opts = Dict(:ylabel => "Absolute Shelter Volume", :xlabel => "Timesteps [years]")
+
+tsc_asc_fig = ADRIA.viz.clustered_scenarios(
+    asv_site_series, asv_target; axis_opts=axis_opts, fig_opts=fig_opts
+)
+
+# Save final figure
+save("tsc_asv.png", tsc_asc_fig)
+```
+
+![Plots of targeted lowest clusters](/ADRIA.jl/dev/assets/imgs/tsc_asv.png?raw=true "Targeted lowest clusters")
+
+### Multiple Time Series Clustering
+
+It is possible to perform time series clustering for different metric outcomes and find
+scenarios that behave the same across all of them. Currently there is no visualization
+function for this.
+
+```julia
+metrics::Vector{ADRIA.metrics.Metric} = [
+    ADRIA.metrics.scenario_total_cover,
+    ADRIA.metrics.scenario_asv,
+    ADRIA.metrics.scenario_absolute_juveniles,
+]
+
+outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
+n_clusters = 6
+
+# Clusters matrix
+outcomes_clusters::AbstractMatrix{Int64} = ADRIA.analysis.cluster_scenarios(
+    outcomes, n_clusters
+)
+
+# Filter scenarios that belong to on of the 4 high value clusters for all outcomes
+highest_clusters(x) = x .∈ [sort(x; rev=true)[1:4]]
+robust_scens = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, highest_clusters)
+```
 
 ### Time Series Clustering Map
 
