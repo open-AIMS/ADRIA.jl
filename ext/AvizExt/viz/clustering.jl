@@ -160,7 +160,7 @@ legend_title (in that order).
 """
 function _cluster_legend_params(scen_groups::Dict{Symbol,BitVector})::Tuple
     _colors = colors(scen_groups)
-    group_names = collect(keys(_colors))
+    group_names = sort(collect(keys(_colors)))
     legend_entries = [
         PolyElement(; color=_colors[c], strokecolor=:transparent) for c in group_names
     ]
