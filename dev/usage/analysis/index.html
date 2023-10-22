@@ -34,17 +34,35 @@ opts = Dict(
         :a_adapt
     ]
 )</code></pre><h3 id="Scenario-outcomes"><a class="docs-heading-anchor" href="#Scenario-outcomes">Scenario outcomes</a><a id="Scenario-outcomes-1"></a><a class="docs-heading-anchor-permalink" href="#Scenario-outcomes" title="Permalink"></a></h3><p>One can plot a quick scenario overview:</p><pre><code class="language-julia hljs">s_tac = ADRIA.metrics.scenario_total_cover(rs)
-ADRIA.viz.scenarios(rs, s_tac; axis_opts=Dict(:ylabel=&gt;&quot;Example Metric&quot;))</code></pre><p>And compose a figure with subplots:</p><pre><code class="language-julia hljs">s_tac = ADRIA.metrics.scenario_total_cover(rs)
+fig_s_tac = ADRIA.viz.scenarios(
+    rs, s_tac; fig_opts=fig_opts, axis_opts=Dict(:ylabel =&gt; &quot;Scenario Total Cover&quot;)
+)
+save(&quot;scenarios_tac.png&quot;, fig_s_tac)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/scenarios_tac.png?raw=true &quot;Quick scenario plot&quot;" alt="Quick scenario plots"/></p><p>And compose a figure with subplots. In the example below we also use the parameter <code>opts</code> that accepts the keys <code>by_RCP</code> to group scenarios by RCP (default is <code>false</code>), <code>legend</code> to plot the legend (default is <code>true</code>) and <code>summarize</code> to plot confidence intervals instead of plotting each series (default is <code>true</code>):</p><pre><code class="language-julia hljs">s_tac = ADRIA.metrics.scenario_total_cover(rs)
 s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
+
+# Parameters used to run each scenario
+scens = rs.inputs
 
 tf = Figure(resolution=(1600, 600))  # resolution in pixels
 
 # Implicitly create a single figure with 2 columns
-ADRIA.viz.scenarios!(tf[1, 1], rs, s_tac; opts=Dict(:by_RCP =&gt; false, :legend=&gt;false), axis_opts=Dict(:title =&gt; &quot;TAC [m²]&quot;));
-ADRIA.viz.scenarios!(tf[1, 2], rs, s_juves; axis_opts=Dict(:title =&gt; &quot;Juveniles [%]&quot;));
+ADRIA.viz.scenarios!(
+    tf[1, 1],
+    scens,
+    s_tac;
+    opts=Dict(:by_RCP =&gt; false, :legend =&gt; false),
+    axis_opts=Dict(:title =&gt; &quot;TAC [m²]&quot;),
+);
+ADRIA.viz.scenarios!(
+    tf[1, 2],
+    scens,
+    s_juves;
+    opts=Dict(:summarize =&gt; false),
+    axis_opts=Dict(:title =&gt; &quot;Juveniles [%]&quot;),
+);
 
 tf  # display the figure
-save(&quot;aviz_scenario.png&quot;, tf)  # save the figure to a file</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/aviz_scenario.png?raw=true &quot;Quick scenario plots&quot;" alt="Quick scenario plots"/></p><h3 id="PAWN-sensitivity-(heatmap-overview)"><a class="docs-heading-anchor" href="#PAWN-sensitivity-(heatmap-overview)">PAWN sensitivity (heatmap overview)</a><a id="PAWN-sensitivity-(heatmap-overview)-1"></a><a class="docs-heading-anchor-permalink" href="#PAWN-sensitivity-(heatmap-overview)" title="Permalink"></a></h3><p>The PAWN sensitivity analysis method is a moment-independent approach to Global Sensitivity Analysis. It is described as producing robust results at relatively low sample sizes, and is used to screen factors (i.e., identification of important factors) and rank factors as well (ordering factors by their relative contribution towards a given quantity of interest).</p><pre><code class="language-julia hljs">using Statistics
+save(&quot;aviz_scenario.png&quot;, tf)  # save the figure to a file</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/aviz_scenario.png?raw=true &quot;Scenarios with subplots&quot;" alt="Scenarios with subplots"/></p><h3 id="PAWN-sensitivity-(heatmap-overview)"><a class="docs-heading-anchor" href="#PAWN-sensitivity-(heatmap-overview)">PAWN sensitivity (heatmap overview)</a><a id="PAWN-sensitivity-(heatmap-overview)-1"></a><a class="docs-heading-anchor-permalink" href="#PAWN-sensitivity-(heatmap-overview)" title="Permalink"></a></h3><p>The PAWN sensitivity analysis method is a moment-independent approach to Global Sensitivity Analysis. It is described as producing robust results at relatively low sample sizes, and is used to screen factors (i.e., identification of important factors) and rank factors as well (ordering factors by their relative contribution towards a given quantity of interest).</p><pre><code class="language-julia hljs">using Statistics
 
 # Sensitivity (of mean scenario outcomes to factors)
 mean_s_tac = vec(mean(s_tac, dims=1))
@@ -61,27 +79,65 @@ tsa_fig = ADRIA.viz.tsa(
     opts,
     fig_opts
 )
-save(&quot;tsa.png&quot;, tsa_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsa.png?raw=true &quot;Temporal Sensitivity Analysis&quot;" alt="Plots of Temporal Sensitivities"/></p><h3 id="Time-Series-Clustering"><a class="docs-heading-anchor" href="#Time-Series-Clustering">Time Series Clustering</a><a id="Time-Series-Clustering-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Series-Clustering" title="Permalink"></a></h3><p>The Time Series Clustering algorithm clusters together series (typically time series) with similar behavior. This is achieved by computing the Euclidian distance between each pair of series weighted by a correlation factor that takes into account the quotient between their complexities.</p><pre><code class="language-julia hljs"># Extract metric from scenarios
+save(&quot;tsa.png&quot;, tsa_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsa.png?raw=true &quot;Temporal Sensitivity Analysis&quot;" alt="Plots of Temporal Sensitivities"/></p><h3 id="Time-Series-Clustering"><a class="docs-heading-anchor" href="#Time-Series-Clustering">Time Series Clustering</a><a id="Time-Series-Clustering-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Series-Clustering" title="Permalink"></a></h3><p>The Time Series Clustering algorithm clusters together series (typically time series) with similar behavior. This is achieved by computing the Euclidian distance between each pair of series weighted by a correlation factor that takes into account the quotient between their complexities. When plotting <code>clustered_scenarios</code>, the kwarg <code>opts</code> can be used with the key <code>:summarize</code> to plot the confidence intervals of each cluster instead of each series individually (default is <code>true</code>).</p><pre><code class="language-julia hljs"># Extract metric from scenarios
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 
 # Cluster scenarios
-n_clusters = 6
+n_clusters = 4
 clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
 
 axis_opts = Dict(
     :title =&gt; &quot;Time Series Clustering with $n_clusters clusters&quot;,
     :ylabel =&gt; &quot;TAC [m²]&quot;,
-    :xlabel =&gt; &quot;Timesteps [years]&quot;
+    :xlabel =&gt; &quot;Timesteps [years]&quot;,
 )
+
 tsc_fig = ADRIA.viz.clustered_scenarios(
-    s_tac,
-    clusters;
-    fig_opts=fig_opts,
-    axis_opts=axis_opts
+    s_tac, clusters; opts=Dict(:summarize =&gt; true), fig_opts=fig_opts, axis_opts=axis_opts
 )
 
 # Save final figure
-save(&quot;tsc.png&quot;, tsc_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true &quot;Time Series Cluster&quot;" alt="Plots of Time Series Cluster"/></p><h3 id="Time-Series-Clustering-Map"><a class="docs-heading-anchor" href="#Time-Series-Clustering-Map">Time Series Clustering Map</a><a id="Time-Series-Clustering-Map-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Series-Clustering-Map" title="Permalink"></a></h3><p>When using Time Series Clustering to cluster among multiple locations using some metric, it is possible to visualize the result as a map.</p><pre><code class="language-julia hljs">using Statistics
+save(&quot;tsc.png&quot;, tsc_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true &quot;Time Series Cluster&quot;" alt="Plots of Time Series Cluster"/></p><h3 id="Target-clusters"><a class="docs-heading-anchor" href="#Target-clusters">Target clusters</a><a id="Target-clusters-1"></a><a class="docs-heading-anchor-permalink" href="#Target-clusters" title="Permalink"></a></h3><p>One can also target scenarios that belong to specific clusters (like clusters with higher median value for some outcome):</p><pre><code class="language-julia hljs">using Statistics
+
+# Extract metric from scenarios
+asv = ADRIA.metrics.absolute_shelter_volume(rs)
+
+# Time series summarizing scenarios for each site
+asv_site_series = ADRIA.metrics.loc_trajectory(median, asv)
+
+# Cluster scenarios
+n_clusters = 6
+asv_clusters = ADRIA.analysis.cluster_scenarios(asv_site_series, n_clusters)
+
+# Target scenarios that belong to the two lowest value clusters
+lowest = x -&gt; x .∈ [sort(x; rev=true)[1:2]]
+asv_target = ADRIA.analysis.find_scenarios(asv_site_series, asv_clusters, lowest)
+
+# Plot targeted scenarios
+axis_opts = Dict(:ylabel =&gt; &quot;Absolute Shelter Volume&quot;, :xlabel =&gt; &quot;Timesteps [years]&quot;)
+
+tsc_asc_fig = ADRIA.viz.clustered_scenarios(
+    asv_site_series, asv_target; axis_opts=axis_opts, fig_opts=fig_opts
+)
+
+# Save final figure
+save(&quot;tsc_asv.png&quot;, tsc_asc_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsc_asv.png?raw=true &quot;Targeted lowest clusters&quot;" alt="Plots of targeted lowest clusters"/></p><h3 id="Multiple-Time-Series-Clustering"><a class="docs-heading-anchor" href="#Multiple-Time-Series-Clustering">Multiple Time Series Clustering</a><a id="Multiple-Time-Series-Clustering-1"></a><a class="docs-heading-anchor-permalink" href="#Multiple-Time-Series-Clustering" title="Permalink"></a></h3><p>It is possible to perform time series clustering for different metric outcomes and find scenarios that behave the same across all of them. Currently there is no visualization function for this.</p><pre><code class="language-julia hljs">metrics::Vector{ADRIA.metrics.Metric} = [
+    ADRIA.metrics.scenario_total_cover,
+    ADRIA.metrics.scenario_asv,
+    ADRIA.metrics.scenario_absolute_juveniles,
+]
+
+outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
+n_clusters = 6
+
+# Clusters matrix
+outcomes_clusters::AbstractMatrix{Int64} = ADRIA.analysis.cluster_scenarios(
+    outcomes, n_clusters
+)
+
+# Filter scenarios that belong to on of the 4 high value clusters for all outcomes
+highest_clusters(x) = x .∈ [sort(x; rev=true)[1:4]]
+robust_scens = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, highest_clusters)</code></pre><h3 id="Time-Series-Clustering-Map"><a class="docs-heading-anchor" href="#Time-Series-Clustering-Map">Time Series Clustering Map</a><a id="Time-Series-Clustering-Map-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Series-Clustering-Map" title="Permalink"></a></h3><p>When using Time Series Clustering to cluster among multiple locations using some metric, it is possible to visualize the result as a map.</p><pre><code class="language-julia hljs">using Statistics
 
 # Extract metric from scenarios
 tac = ADRIA.metrics.total_absolute_cover(rs)
@@ -158,4 +214,4 @@ save(&quot;outcome_map.png&quot;, tf)</code></pre><p><img src="/ADRIA.jl/dev/ass
 ADRIA.viz.explore(&quot;path to Result Set&quot;)
 
 # or, if the result set is already loaded:
-# ADRIA.viz.explore(rs)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/aviz_app.png?raw=true &quot;Data Exploration App&quot;" alt="Standalone app for data exploration"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../scenario_runs/">« Running scenarios</a><a class="docs-footer-nextpage" href="../cookbook/">Cookbook examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Friday 20 October 2023 01:51">Friday 20 October 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# ADRIA.viz.explore(rs)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/aviz_app.png?raw=true &quot;Data Exploration App&quot;" alt="Standalone app for data exploration"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../scenario_runs/">« Running scenarios</a><a class="docs-footer-nextpage" href="../cookbook/">Cookbook examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Sunday 22 October 2023 03:13">Sunday 22 October 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
