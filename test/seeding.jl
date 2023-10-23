@@ -68,7 +68,7 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
     end
 
     @testset "DHW distribution priors" begin
-        Y_pstep = rand(36, 10)  # size class, locations
+        C_t = rand(36, 10)  # size class, locations
         a_adapt = rand(2.0:6.0, 36)
         total_location_area = fill(5000.0, 10)
 
@@ -85,13 +85,13 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
         orig_dist = copy(c_dist_t)
 
         dist_std = rand(36)
-        seed_corals!(Y_pstep, total_location_area, leftover_space_m², seed_locs, seeded_area, seed_sc,
+        seed_corals!(C_t, total_location_area, leftover_space_m², seed_locs, seeded_area, seed_sc,
             a_adapt, @view(Yseed[1, :, :]), dist_std, c_dist_t)
 
         # Ensure correct priors/weightings for each location
         for loc in seed_locs
             for (i, sc) in enumerate(findall(seed_sc))
-                prior1 = Yseed[1, i, loc] ./ Y_pstep[sc, loc]
+                prior1 = Yseed[1, i, loc] ./ C_t[sc, loc]
                 expected = [prior1, 1.0 - prior1]
                 @test mean(c_dist_t[sc, loc]) > mean(orig_dist[sc, loc]) || "Expected mean of distribution to shift | SC: $sc ; Location: $loc"
             end

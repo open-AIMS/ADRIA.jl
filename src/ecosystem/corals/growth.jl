@@ -486,7 +486,7 @@ end
 
 """
     fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2},
-                     fec_params::Array{Float64}, Y_pstep::Array{Float64, 2},
+                     fec_params::Array{Float64}, C_t::Array{Float64, 2},
                      k_area::Array{Float64})::Nothing
 
 The scope that different coral groups and size classes have for
@@ -502,15 +502,15 @@ fecundities across size classes.
 - `fec_groups` : Matrix[n_classes, n_sites], memory cache to place results into
 - `fec_all` : Matrix[n_taxa, n_sites], temporary cache to place intermediate fecundity values into
 - `fec_params` : Vector, coral fecundity parameters (in per m²) for each species/size class
-- `Y_pstep` : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
+- `C_t` : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
 - `site_area` : Vector[n_sites], total site area in m²
 """
 function fecundity_scope!(fec_groups::AbstractArray{T,2}, fec_all::AbstractArray{T,2}, fec_params::AbstractArray{T},
-    Y_pstep::AbstractArray{T,2}, site_area::AbstractArray{T})::Nothing where {T<:Float64}
+    C_t::AbstractArray{T,2}, site_area::AbstractArray{T})::Nothing where {T<:Float64}
     ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
     nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
 
-    fec_all .= fec_params .* Y_pstep .* site_area
+    fec_all .= fec_params .* C_t .* site_area
     for (i, (s, e)) in enumerate(zip(1:ngroups:nclasses, ngroups:ngroups:nclasses+1))
         @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
