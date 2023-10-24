@@ -79,8 +79,8 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
 
     conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
-        conn_data, 
-        vec(site_data.area .* site_data.k), 
+        conn_data,
+        vec(site_data.area .* site_data.k),
         similar(conn_data)
     )
 
@@ -250,7 +250,7 @@ function load_connectivity(::Type{ReefModDomain}, data_path::String, loc_ids::Ve
     end
 
     # Mean over all years
-    conn_data::SparseMatrixCSC = sparse(dropdims(mean(tmp_mat, dims=3), dims=3))
+    conn_data::Matrix{Float64} = dropdims(mean(tmp_mat, dims=3), dims=3)
     return NamedDimsArray(conn_data, source=loc_ids, sinks=loc_ids)
 end
 
