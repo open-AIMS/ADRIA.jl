@@ -556,8 +556,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_dist_t_1::Matrix{Float64} = repeat(corals.dist_mean, 1, n_sites)
-    c_dist_t = copy(c_dist_t_1)
+    c_mean_t_1::Matrix{Float64} = repeat(corals.dist_mean, 1, n_sites)
+    c_mean_t = copy(c_mean_t_1)
 
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
@@ -606,7 +606,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         p.rec .= settler_cover(fec_scope, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
 
-        settler_DHW_tolerance!(c_dist_t_1, c_dist_t, site_k_area(domain), TP_data, p.rec, fec_params_per_m², param_set("heritability"))
+        settler_DHW_tolerance!(c_mean_t_1, c_mean_t, site_k_area(domain), TP_data, p.rec, fec_params_per_m², param_set("heritability"))
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
@@ -671,14 +671,14 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(Y_pstep, collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))), depth_coeff, corals.dist_std, c_dist_t_1, c_dist_t, @view(bleaching_mort[tstep, :, :]))
+        bleaching_mortality!(Y_pstep, collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))), depth_coeff, corals.dist_std, c_mean_t_1, c_mean_t, @view(bleaching_mort[tstep, :, :]))
 
         # Apply seeding
         if seed_corals && in_seed_years && has_seed_sites
             # Seed each selected site
             seed_corals!(Y_pstep, vec(total_loc_area), vec(leftover_space_m²),
                 seed_locs, seeded_area, seed_sc, a_adapt, @view(Yseed[tstep, :, :]),
-                corals.dist_std, c_dist_t)
+                corals.dist_std, c_mean_t)
         end
 
         # Note: ODE is run relative to `k` area, but values are otherwise recorded
@@ -703,16 +703,16 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             adjust_DHW_distribution!(
                 @view(Y_cover[tstep-1:tstep, :, :]),
                 n_groups,
-                c_dist_t,
+                c_mean_t,
                 p.r
             )
 
             if in_debug_mode
                 # Log dhw tolerances if in debug mode
-                dhw_tol_mean_log[tstep, :, :] .= mean.(c_dist_t)
+                dhw_tol_mean_log[tstep, :, :] .= mean.(c_mean_t)
             end
 
-            c_dist_t_1 .= c_dist_t
+            c_mean_t_1 .= c_mean_t
         end
     end
 
