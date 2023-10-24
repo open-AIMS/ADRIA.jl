@@ -27,7 +27,6 @@ function setup_cache(domain::Domain)::NamedTuple
         site_area=Matrix{Float64}(site_area(domain)'),  # site areas
         wave_damage=zeros(tf, n_species, n_sites),  # damage coefficient for each size class
         dhw_tol_mean_log=zeros(tf, n_species, n_sites),  # tmp log for mean dhw tolerances
-        dhw_tol_std_log=zeros(tf, n_species, n_sites),  # tmp log for stdev dhw tolerances
     )
 
     return cache
@@ -303,7 +302,7 @@ function run_scenario(
         elseif k == :coral_dhw_log
             # Only log coral DHW tolerances if in debug mode
             if parse(Bool, ENV["ADRIA_DEBUG"]) == true
-                getfield(data_store, k)[:, :, :, :, idx] .= vals
+                getfield(data_store, k)[:, :, :, idx] .= vals
             end
         else
             getfield(data_store, k)[:, :, idx] .= vals
@@ -557,20 +556,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_dist_t_1::Matrix{Truncated{Normal{Float64},Continuous,Float64,Float64,Float64}} = repeat(
-        truncated.(
-            Normal.(corals.dist_mean, corals.dist_std),
-            0.0,
-            corals.dist_mean .+ HEAT_UB
-        ),
-        1,
-        n_sites
-    )
+    c_dist_t_1::Matrix{Float64} = repeat(corals.dist_mean, 1, n_sites)
     c_dist_t = copy(c_dist_t_1)
 
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
-    dhw_tol_std_log = cache.dhw_tol_std_log  # tmp log for stdev dhw tolerances
 
     # Cache for proportional mortality and coral population increases
     bleaching_mort = zeros(tf, n_species, n_sites)
@@ -616,8 +606,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         p.rec .= settler_cover(fec_scope, TP_data, leftover_space_prop,
             sim_params.max_settler_density, sim_params.max_larval_density, basal_area_per_settler)
 
-        settler_DHW_tolerance!(Y_pstep, c_dist_t_1, c_dist_t, site_k_area(domain), TP_data,
-            p.rec, corals.dist_std, fec_params_per_m², param_set("heritability"))
+        settler_DHW_tolerance!(c_dist_t_1, c_dist_t, site_k_area(domain), TP_data, p.rec, fec_params_per_m², param_set("heritability"))
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
@@ -711,13 +700,16 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         @views Y_cover[tstep, :, :] .= clamp.(sol.u[end] .* absolute_k_area ./ total_loc_area, 0.0, 1.0)
 
         if tstep <= tf
-            adjust_DHW_distribution!(@view(Y_cover[tstep-1:tstep, :, :]), n_groups, c_dist_t,
-                p.r, corals.dist_std)
+            adjust_DHW_distribution!(
+                @view(Y_cover[tstep-1:tstep, :, :]),
+                n_groups,
+                c_dist_t,
+                p.r
+            )
 
             if in_debug_mode
                 # Log dhw tolerances if in debug mode
                 dhw_tol_mean_log[tstep, :, :] .= mean.(c_dist_t)
-                dhw_tol_std_log[tstep, :, :] .= std.(c_dist_t)
             end
 
             c_dist_t_1 .= c_dist_t
@@ -729,10 +721,13 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # dhw_tol_mean_std = dropdims(mean(dhw_tol_std_log, dims=3), dims=3)
     # collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3),
     #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
-
     if in_debug_mode
-        collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean_log, dhw_tol_std_log, dims=ndims(dhw_tol_mean_log) + 1),
-            timesteps=1:tf, species=corals.coral_id, sites=1:n_sites, stat=[:mean, :stdev])
+        collated_dhw_tol_log = NamedDimsArray(
+            dhw_tol_mean_log,
+            timesteps=1:tf,
+            species=corals.coral_id,
+            sites=1:n_sites
+        )
     else
         collated_dhw_tol_log = false
     end
@@ -741,7 +736,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Leads to memory leak issues in multiprocessing contexts without these.
     wave_scen = nothing
     dhw_tol_mean_log = nothing
-    dhw_tol_std_log = nothing
 
     # Avoid placing importance on sites that were not considered
     # (lower values are higher importance)
