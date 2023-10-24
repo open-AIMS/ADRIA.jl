@@ -20,7 +20,7 @@ Vector, of size \$N = [n_{species} ⋅ n_{classes}]\$ indicating proportional gr
 for each.
 """
 function growth_rate(linear_extension::Matrix{Float64}, diam_bin_widths::Vector{Float64})::Vector{Float64}
-    return vec(((2.0 * linear_extension) ./ diam_bin_widths')')
+    return vec(((2.0 .* linear_extension) ./ diam_bin_widths')')
 end
 
 
@@ -193,12 +193,14 @@ end
         dist_t::Matrix, prop_mort::SubArray{Float64})::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
-all non-Juvenile (> 5cm diameter) size classes. Distributions are informed by learnings from
-Bairos-Novak et al., [1] and (unpublished) data referred to in Hughes et al., [2]. Juvenile
-mortality is assumed to be primarily represented by other factors (i.e., background
-mortality; see Álvarez-Noriega et al., [3]). The proportion of the population which bleached
-is estimated with the Cumulative Density Function. Bleaching mortality is then estimated
-with a depth-adjusted coefficient (from Baird et al., [4]).
+all non-Juvenile (> 5cm diameter) size classes.
+
+Distributions are informed by learnings from Bairos-Novak et al., [1] and (unpublished)
+data referred to in Hughes et al., [2]. Juvenile mortality is assumed to be primarily
+represented by other factors (i.e., background mortality; see Álvarez-Noriega et al., [3]).
+The proportion of the population which bleached is estimated with the Cumulative Density
+Function. Bleaching mortality is then estimated with a depth-adjusted coefficient
+(from Baird et al., [4]).
 
 # Arguments
 - `cover` : Coral cover for current timestep
@@ -242,7 +244,8 @@ with a depth-adjusted coefficient (from Baird et al., [4]).
 """
 function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
     depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix{Float64},
-    dist_t::Matrix{Float64}, prop_mort::SubArray{Float64})::Nothing
+    dist_t::Matrix{Float64}, prop_mort::SubArray{Float64}
+)::Nothing
     n_sp_sc, n_locs = size(cover)
 
     # Adjust distributions for all locations, ignoring juveniles
@@ -309,7 +312,28 @@ function breeders(μ_o::T, μ_s::T, h²::T)::T where {T<:Float64}
     return μ_o + ((μ_s - μ_o) * h²)
 end
 
-function _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{F})::Nothing where {F<:Float64}
+"""
+    _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{F})::Nothing where {F<:Float64}
+
+Combines distributions between size classes > 1 to represent the shifts that occur as each
+size class grows. Priors for the distributions are based on proportional cover and the
+assumed growth rates for each size class.
+
+i.e., \$(w_{i+1,1}, w_{i+1,2}) := (c_{i-1,i} / sum(c_{i-1,i})) * (g_{i-1,i} / sum(g_{i-1,i}))\$
+
+where \$w\$ are the weights/priors and \$g\$ is the growth rates.
+
+# Arguments
+- `cover` : Coral cover for \$t-1\$
+- `growth_rate` : Growth rates for the given size classes/species
+- `dist_t` : Critical DHW threshold distribution for timestep \$t\$
+- `stdev` : Standard deviations of coral DHW tolerance
+"""
+function _shift_distributions!(
+    cover::SubArray{F},
+    growth_rate::SubArray{F},
+    dist_t::SubArray{F}
+)::Nothing where {F<:Float64}
     # Weight distributions based on growth rate and cover
     # Do from largest size class to size class 3
     # (1 and 2 treated separately)
@@ -332,8 +356,8 @@ function _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dis
 end
 
 """
-    adjust_DHW_distribution!(cover::SubArray, n_groups::Int64, dist_t::SubArray,
-        dist_t::SubArray, growth_rate::SubArray)::Nothing
+    adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t::Matrix{F},
+        growth_rate::Matrix{F})::Nothing where {F<:Float64}
 
 Adjust critical DHW thresholds for a given species/size class distribution as mortalities
 affect the distribution over time, and corals mature (moving up size classes).
@@ -344,18 +368,23 @@ affect the distribution over time, and corals mature (moving up size classes).
 - `dist_t` : Distributions for timestep \$t\$
 - `growth_rate` : Growth rates for each species/size class
 """
-function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t::Matrix{F},
-    growth_rate::Matrix{F})::Nothing where {F<:Float64}
+function adjust_DHW_distribution!(
+    cover::SubArray{F},
+    n_groups::Int64,
+    dist_t::Matrix{F},
+    growth_rate::Matrix{F}
+)::Nothing where {F<:Float64}
     _, n_sp_sc, n_locs = size(cover)
 
     step::Int64 = n_groups - 1
+
     # Adjust population distribution
     for sc1 in 1:n_groups:n_sp_sc
         for loc in 1:n_locs
             sc6::Int64 = sc1 + step
 
             # Skip if no cover
-            if sum(cover[1, sc1:sc6, loc]) == 0.0
+            if sum(@view(cover[1, sc1:sc6, loc])) == 0.0
                 continue
             end
 
@@ -369,7 +398,7 @@ function adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t::M
 end
 
 """
-    settler_DHW_tolerance!(c_mean_t_1::Matrix{F}, c_mean_t::Matrix{F}, k_area::Vector{F}, tp::AbstractMatrix{F}, settlers::Matrix{F}, fec_params_per_m²::Vector{F}, h²::F)
+    settler_DHW_tolerance!(c_mean_t_1::Matrix{F}, c_mean_t::Matrix{F}, k_area::Vector{F}, tp::AbstractMatrix{F}, settlers::Matrix{F}, fec_params_per_m²::Vector{F}, h²::F)::Nothing where {F<:Float64}
 
 Update DHW tolerance means of newly settled corals into the distributions for the sink
 locations.
@@ -392,7 +421,7 @@ function settler_DHW_tolerance!(
     settlers::Matrix{F},
     fec_params_per_m²::Vector{F},
     h²::F
-) where {F<:Float64}
+)::Nothing where {F<:Float64}
     # Potential sink locations (TODO: pass in later)
     sink_loc_ids::Vector{Int64} = findall(k_area .> 0.0)
 
@@ -465,8 +494,13 @@ fecundities across size classes.
 - `Y_pstep` : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
 - `site_area` : Vector[n_sites], total site area in m²
 """
-function fecundity_scope!(fec_groups::AbstractArray{T,2}, fec_all::AbstractArray{T,2}, fec_params::AbstractArray{T},
-    Y_pstep::AbstractArray{T,2}, site_area::AbstractArray{T})::Nothing where {T<:Float64}
+function fecundity_scope!(
+    fec_groups::AbstractArray{T,2},
+    fec_all::AbstractArray{T,2},
+    fec_params::AbstractArray{T},
+    Y_pstep::AbstractArray{T,2},
+    site_area::AbstractArray{T}
+)::Nothing where {T<:Float64}
     ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
     nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
 
@@ -576,7 +610,7 @@ end
 
 
 """
-    settler_cover(fec_scope, sf, TP_data, leftover_k_area, α, β, basal_area_per_settler)
+    settler_cover(fec_scope::T, TP_data::AbstractMatrix{Float64}, leftover_k_m²::T, α::V, β::V, basal_area_per_settler::V)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
 Determine area settled by recruited larvae.
 
