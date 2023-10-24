@@ -618,7 +618,5 @@ function settler_cover(
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
     # recruits per m^2 per site multiplied by area per settler
-    fec_scope .= recruitment_rate(fec_scope, leftover_k_m²; α=α, β=β) .* basal_area_per_settler
-
-    return fec_scope
+    return recruitment_rate(fec_scope, leftover_k_m²; α=α, β=β) .* basal_area_per_settler
 end
