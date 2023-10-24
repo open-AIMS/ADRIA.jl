@@ -398,7 +398,7 @@ function settler_DHW_tolerance!(
 
     settler_sc::StepRange = 1:6:36
     for sink_loc in sink_loc_ids
-        if sum(settlers[:, sink_loc]) .== 0.0
+        if sum(@views(settlers[:, sink_loc])) .== 0.0
             # Only update locations where recruitment occurred
             continue
         end
@@ -424,7 +424,7 @@ function settler_DHW_tolerance!(
             # Determine weights based on contribution to recruitment.
             # This weights the recruited corals by the size classes and source locations
             # which contributed to recruitment.
-            if sum(w_per_group[:, sp]) > 0.0
+            if sum(@view(w_per_group[:, sp])) > 0.0
                 ew = @views repeat(w_per_group[:, sp], inner=count(reproductive_sc))
                 weights::Weights = Weights(ew ./ sum(ew))
 
