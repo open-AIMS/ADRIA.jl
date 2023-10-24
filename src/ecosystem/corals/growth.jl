@@ -641,10 +641,7 @@ function settler_cover(
     valid_locs::BitVector = sum.(eachcol(TP_data)) .> 0.0
 
     # Send larvae out into the world (reuse fec_scope to reduce allocations)
-    # fec_scope .= (fec_scope .* sf)
-    # fec_scope .= (fec_scope * TP_data) .* (1.0 .- Mwater)  # larval pool for each site (in larvae/m²)
-
-    # As above, but more performant, less readable.
+    # [Larval pool for each location in larvae/m²] * [survival rate]
     Mwater::Float64 = 0.95  # in water mortality
     @views fec_scope[:, valid_locs] .= (
         fec_scope[:, valid_locs]
