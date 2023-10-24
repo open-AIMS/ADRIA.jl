@@ -393,8 +393,11 @@ function settler_DHW_tolerance!(
     fec_params_per_m²::Vector{F},
     h²::F
 ) where {F<:Float64}
-    # Potential sink locations
-    sink_loc_ids = findall(k_area .> 0.0)
+    # Potential sink locations (TODO: pass in later)
+    sink_loc_ids::Vector{Int64} = findall(k_area .> 0.0)
+
+    source_locs::BitVector = falses(length(k_area))  # cache for source locations
+    reproductive_sc::BitVector = falses(6)  # cache for reproductive size classes
 
     settler_sc::StepRange = 1:6:36
     for sink_loc in sink_loc_ids
@@ -404,10 +407,10 @@ function settler_DHW_tolerance!(
         end
 
         # Note: source locations can include the sink location (self-seeding)
-        @views source_locs = tp[:, sink_loc] .> 0.0
+        source_locs .= @view(tp[:, sink_loc]) .> 0.0
 
         # Calculate contribution to cover to determine weights for each species/group
-        @views w = settlers[:, sink_loc]' .* tp[source_locs, sink_loc]
+        w::NamedDimsArray = @views settlers[:, sink_loc]' .* tp[source_locs, sink_loc]
         w_per_group = w ./ sum.(eachcol(w))'
         replace!(w_per_group, NaN=>0.0)
 
@@ -418,19 +421,18 @@ function settler_DHW_tolerance!(
             # Get distribution mean of reproductive size classes at source locations
             # recalling that source locations may include the sink location due to
             # self-seeding.
-            @views reproductive_sc = fec_params_per_m²[sc1_6] .> 0.0
-            @views settler_means = vec(c_mean_t_1[sc1_6[reproductive_sc], source_locs])
+            reproductive_sc .= @view(fec_params_per_m²[sc1_6]) .> 0.0
+            settler_means::SubArray{Float64} = @view(c_mean_t_1[sc1_6[reproductive_sc], source_locs])
 
             # Determine weights based on contribution to recruitment.
             # This weights the recruited corals by the size classes and source locations
             # which contributed to recruitment.
             if sum(@view(w_per_group[:, sp])) > 0.0
-                ew = @views repeat(w_per_group[:, sp], inner=count(reproductive_sc))
-                weights::Weights = Weights(ew ./ sum(ew))
+                ew::NamedDimsArray = repeat(@view(w_per_group[:, sp]), inner=count(reproductive_sc))
 
                 # Determine combined mean
                 # https://en.wikipedia.org/wiki/Mixture_distribution#Properties
-                recruit_μ::Float64 = sum(settler_means, weights)
+                recruit_μ::Float64 = sum(settler_means, Weights(ew ./ sum(ew)))
 
                 # Mean for generation t is determined through Breeder's equation
                 c_mean_t[sc1, sink_loc] = breeders(c_mean_t_1[sc1, sink_loc], recruit_μ, h²)
