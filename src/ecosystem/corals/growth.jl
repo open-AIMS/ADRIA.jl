@@ -208,10 +208,11 @@ Function. Bleaching mortality is then estimated with a depth-adjusted coefficien
 - `depth_coeff` : Pre-calculated depth coefficient for all locations
 - `stdev` : Standard deviation of DHW tolerance
 - `dist_t_1` : Critical DHW threshold distribution for current timestep, for all species and
-           locations
+    locations
 - `dist_t` : Critical DHW threshold distribution for next timestep, for all species and
-              locations
-- `prop_mort` : Cache to store records of bleaching mortality
+    locations
+- `prop_mort` : Cache to store records of bleaching mortality (stores mortalities for
+    t-1 and t)
 
 # References
 1. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021.
@@ -256,8 +257,9 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             continue
         end
 
+        # Use previous mortality threshold as minimum
         μ::Float64 = dist_t_1[sp_sc, loc]
-        dist::Distribution = truncated(Normal(μ, stdev[sp_sc]), 0.0, μ + HEAT_UB)
+        dist::Distribution = truncated(Normal(μ, stdev[sp_sc]), prop_mort[1, sp_sc, loc], μ + HEAT_UB)
 
         affected_pop::Float64 = cdf(dist, dhw[loc])
         mort_pop::Float64 = 0.0
@@ -272,7 +274,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             end
         end
 
-        prop_mort[sp_sc, loc] = mort_pop
+        prop_mort[2, sp_sc, loc] = mort_pop
         if mort_pop > 0.0
             # Re-create distribution
             # Use same stdev as target size class to maintain genetic variance
@@ -335,22 +337,16 @@ function _shift_distributions!(
     dist_t::SubArray{F}
 )::Nothing where {F<:Float64}
     # Weight distributions based on growth rate and cover
-    # Do from largest size class to size class 3
-    # (1 and 2 treated separately)
-    for i in 6:-1:3
+    # Do from largest size class to size class 2
+    # (values for size class 1 gets replaced by recruitment process)
+    for i in 6:-1:2
         # Skip size class if nothing is moving up
         sum(@view(cover[i-1:i])) == 0.0 ? continue : false
 
         prop_growth = @views (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
 
-        # Use same stdev as target size class to maintain genetic variance
-        # pers comm K.B-N (2023-08-09 16:24 AEST)
         dist_t[i] = sum(@view(dist_t[i-1:i]), Weights(prop_growth ./ sum(prop_growth)))
     end
-
-    # Size class 1 all moves up to size class 2 anyway
-    dist_t[2] = dist_t[1]
-    dist_t[1] = 0.0
 
     return nothing
 end
