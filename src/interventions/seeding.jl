@@ -80,7 +80,7 @@ function seed_corals!(cover::Matrix{Float64}, total_location_area::V, leftover_s
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
-        tn::Vector{Float64} = mean.(truncated.(Normal.(a_adapt[seed_sc], stdev[seed_sc]), minimum.(c_dist_ti), maximum.(c_dist_ti)))
+        tn::Vector{Float64} = mean.(truncated.(Normal.(a_adapt[seed_sc], stdev[seed_sc]), 0.0, a_adapt[seed_sc] .+ HEAT_UB))
 
         # If seeding an empty location, no need to do any further calculations
         if all(isapprox.(w_taxa[:, i], 1.0))
