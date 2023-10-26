@@ -472,8 +472,9 @@ function settler_DHW_tolerance!(
 
             # Breeder's equation
             μ = mean(d)
-            S::Float64 = μ - mean(orig_mm)
-            μ_t::Float64 = μ + (S * h²)
+            μ_o = mean(orig_mm)
+            S::Float64 = μ - μ_o
+            μ_t::Float64 = μ_o + (S * h²)
 
             # New DHW tolerance distribution for size class 1, for CURRENT timestep
             @views c_dist_t[sc1, sink_loc] = truncated(Normal(μ_t, dist_std[sc1]), minimum(d), μ_t + HEAT_UB)
