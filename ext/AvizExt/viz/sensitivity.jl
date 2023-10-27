@@ -298,83 +298,109 @@ function ADRIA.viz.convergence!(
     g::GridPosition,
     Si_conv::NamedDimsArray,
     factors::Vector{Symbol};
+    plot_overlay::Bool=true,
     series_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     n_scenarios = Si_conv.n_scenarios
     grps = Dict(Symbol(foi_grp) => foi_grp .== factors for foi_grp in factors)
-    ax = Axis(g; axis_opts...)
 
-    scenarios_series!(
-        ax,
-        Si_conv(; Si=:median)',
-        grps;
-        sort_by=:none,
-        x_vals=n_scenarios,
-        series_opts=series_opts,
-    )
-    scenarios_confint!(
-        ax,
-        permutedims(Si_conv(; Si=[:lb, :median, :ub]), (3, 2, 1)),
-        grps;
-        x_vals=n_scenarios,
-        sort_by=:none,
-    )
+    xlabel = pop!(axis_opts, :xlabel, "N scenarios")
+    ylabel = pop!(axis_opts, :ylabel, "Pawn Index")
+
+    if :title in keys(axis_opts)
+        title_val = pop!(axis_opts, :title)
+    end
+
+    if plot_overlay
+        ax = Axis(g; axis_opts...)
+        scenarios_confint!(
+            ax,
+            permutedims(Si_conv(; Si=[:lb, :median, :ub]), (3, 2, 1)),
+            grps;
+            x_vals=n_scenarios,
+            sort_by=:none,
+        )
+        ax.xlabel = xlabel
+        ax.ylabel = ylabel
+
+        if @isdefined(title_val)
+            ax.title = title_val
+        end
+    else
+        _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(grps)
+        _alphas::Dict{Symbol,Float64} = alphas(grps)
+
+        n_factors::Int64 = length(factors)
+        if n_factors > 30
+            ArgumentError("Too many factors to plot. Maximum number supported is 30.")
+        end
+
+        n_rows, n_cols = _calc_gridsize(n_factors)
+        factor_names = String.(factors)
+        axs = Axis[]
+        step::Int64 = 1
+
+        for row in 1:n_rows, col in 1:n_cols
+            ax::Axis = Axis(g[row, col]; title=factor_names[step], axis_opts...)
+
+            lines!(
+                ax,
+                n_scenarios,
+                Si_conv(; Si=:median)(; factors=factors[step]);
+                color=(_colors[factors[step]], _alphas[factors[step]]),
+            )
+            band!(
+                ax,
+                n_scenarios,
+                Si_conv(; Si=:lb)(; factors=factors[step]),
+                Si_conv(; Si=:ub)(; factors=factors[step]);
+                color=(_colors[factors[step]], _alphas[factors[step]]),
+            )
+            step += 1
+            push!(axs, ax)
+            if step > n_factors
+                break
+            end
+        end
+
+        if n_factors > 1
+            linkyaxes!(axs...)
+            Label(g[n_rows + 1, :]; text=xlabel, fontsize=24)
+            Label(g[:, 0]; text=ylabel, fontsize=24, rotation=pi / 2)
+
+            if @isdefined(title_val)
+                Label(g[0, :]; text=title_val, fontsize=32)
+            end
+        else
+            axs[1].xlabel = xlabel
+            axs[1].ylabel = ylabel
+
+            if @isdefined(title_val)
+                axs[1].title = title_val
+            end
+        end
+
+        try
+            # Clear empty figures
+            trim!(g)
+        catch err
+            if !(err isa MethodError)
+                # GridPosition plots a single figure so does
+                # not need empty figures to be cleared
+                # If any other error is encountered, something else happened.
+                rethrow(err)
+            end
+        end
+
+    end
     return g
 end
-function ADRIA.viz.convergence!(
-    g::GridPosition,
-    grid_size::Vector{Int64},
-    Si_conv::NamedDimsArray,
-    foi::Vector{Symbol};
-    axis_opts::Dict=Dict(),
-)
-    grps = Dict(Symbol(foi_grp) => foi_grp .== foi for foi_grp in foi)
-    Axis(g; axis_opts...)
-    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(grps)
-    _alphas::Dict{Symbol,Float64} = alphas(grps)
 
-    if prod(grid_size) < length(foi)
-        error("Figure grid is not big enough to plot all requested factors.")
-    end
-    axs = [Axis(g[row, col]) for row in 1:grid_size[1], col in 1:grid_size[2]]
-    step = 0
-    n_scenarios = Si_conv(; Si=:median).n_scenarios
-
-    for row in 1:grid_size[1], col in 1:grid_size[2]
-        step += 1
-        line!(
-            axs[row, col],
-            n_scenarios,
-            Si_conv(; Si=:median)[factor=foi[foi[step]]];
-            color=(_colors[step], _alphas[foi[step]]),
-        )
-        band!(
-            axs[row, col],
-            n_scenarios,
-            Si_conv(; Si=:lb)[factor=foi[foi[step]]],
-            Si_conv(; Si=:ub)[factor=foi[foi[step]]],
-        )
-    end
-    return g
-end
 function ADRIA.viz.convergence(
     Si_conv::NamedDimsArray,
     factors::Vector{Symbol};
-    fig_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-)
-    f = Figure(; fig_opts...)
-    g = f[1, 1]
-    ADRIA.viz.convergence!(g, Si_conv, foi; series_opts=series_opts, axis_opts=axis_opts)
-        factors;
-    return f
-end
-function ADRIA.viz.convergence(
-    Si_conv::NamedDimsArray,
-    factors::Vector{Symbol},
-    grid_size::Vector{Int64};
+    plot_overlay::Bool=true,
     fig_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -382,8 +408,34 @@ function ADRIA.viz.convergence(
     f = Figure(; fig_opts...)
     g = f[1, 1]
     ADRIA.viz.convergence!(
-        g, grid_size, Si_conv, foi; series_opts=series_opts, axis_opts=axis_opts
+        g,
+        Si_conv,
         factors;
+        plot_overlay=plot_overlay,
+        series_opts=series_opts,
+        axis_opts=axis_opts,
+    )
+    return f
+end
+function ADRIA.viz.convergence(
+    Si_conv::NamedDimsArray,
+    factors::Vector{Symbol},
+    grid_size::Vector{Int64};
+    plot_overlay::Bool=true,
+    fig_opts::Dict=Dict(),
+    series_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1]
+    ADRIA.viz.convergence!(
+        g,
+        grid_size,
+        Si_conv,
+        factors;
+        plot_overlay=plot_overlay,
+        series_opts=series_opts,
+        axis_opts=axis_opts,
     )
     return f
 end
