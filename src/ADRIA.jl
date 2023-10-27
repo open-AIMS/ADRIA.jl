@@ -62,7 +62,6 @@ include("io/inputs.jl")
 include("decision/mcda_methods.jl")
 include("decision/Criteria.jl")
 include("decision/dMCDA.jl")
-include("decision/location_selection.jl")
 
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
