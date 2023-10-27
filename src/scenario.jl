@@ -634,7 +634,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
             @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
             mcda_vars.dam_prob .= summary_stat_env(env_horizon, 1)
-            mcda_vars.prop_cover .= loc_coral_cover
+            mcda_vars.leftover_space .= leftover_space_m²
 
             # Determine connectivity strength
             # Account for cases where there is no coral cover
