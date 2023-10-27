@@ -562,9 +562,11 @@ function guided_site_selection(
 
     # if no sites are available, abort
     if n_sites == 0
-        return zeros(Int64, length(pref_seed_sites)),
-        zeros(Int64, length(pref_shade_sites)),
-        rankings_in
+        return (
+            zeros(Int64, length(pref_seed_sites)),
+            zeros(Int64, length(pref_shade_sites)),
+            rankings_in,
+        )
     end
 
     n_iv_locs::Int64 = d_vars.n_site_int
