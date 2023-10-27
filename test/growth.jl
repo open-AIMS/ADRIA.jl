@@ -850,15 +850,15 @@ end
     # Generate initial cover
     C_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
 
-    ADRIA.proportional_adjustment!(Y_cover[1, :, :], max_cover)
-    growthODE(du, Y_cover[1, :, :], p, 1)
+    ADRIA.proportional_adjustment!(C_cover[1, :, :], max_cover)
+    growthODE(du, C_cover[1, :, :], p, 1)
     @test !any(abs.(du) .> 1.0) ||
         "growth function is producing inappropriate values (abs(du) > 1.0)"
 
     # Test zero recruit and coverage conditions
     C_cover = zeros(2, 36, n_sites)
     p.rec .= zeros(6, n_sites)
-    growthODE(du, Y_cover[1, :, :], p, 1)
+    growthODE(du, C_cover[1, :, :], p, 1)
     @test all(du .== 0.0) ||
         "Growth produces non-zero values with zero recuitment and zero initial cover."
 
@@ -867,14 +867,16 @@ end
     p.X_mb .= rand(36, 32)
     C_cover = zeros(10, 36, n_sites)
     C_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
+
     ADRIA.proportional_adjustment!(C_cover[1, :, :], max_cover)
     for tstep = 2:10
         growthODE(du, C_cover[tstep-1, :, :], p, tstep)
         C_cover[tstep, :, :] .= C_cover[tstep-1, :, :] .+ du
     end
-    @test any(diff(Y_cover; dims=1) .< 0) ||
+
+    @test any(diff(C_cover; dims=1) .< 0) ||
         "ODE never decreases, du being restricted to >=0."
-    @test any(diff(Y_cover; dims=1) .>= 0) ||
+    @test any(diff(C_cover; dims=1) .>= 0) ||
         "ODE never increases, du being restricted to <=0."
 
     # Test change in smallest size class under no recruitment
@@ -883,11 +885,11 @@ end
     C_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
 
     for tstep in 2:10
-        growthODE(du, Y_cover[tstep - 1, :, :], p, 1)
-        Y_cover[tstep, :, :] .= Y_cover[tstep - 1, :, :] .+ du
+        growthODE(du, C_cover[tstep - 1, :, :], p, 1)
+        C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
     end
-    @test all((diff(Y_cover[:, [1, 7, 13, 19, 25, 31], :]; dims=1) .<= 0)) ||
+    @test all((diff(C_cover[:, [1, 7, 13, 19, 25, 31], :]; dims=1) .<= 0)) ||
         "Smallest size class growing with no recruitment.."
 
-    @test all(abs.(diff(Y_cover; dims=1)) .< 1.0) || "ODE more than doubles or halves area."
+    @test all(abs.(diff(C_cover; dims=1)) .< 1.0) || "ODE more than doubles or halves area."
 end
