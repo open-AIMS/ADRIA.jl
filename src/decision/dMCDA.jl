@@ -439,7 +439,7 @@ function create_seed_matrix(
     SE[SE[:, 8] .<= min_area, 8] .= NaN
 
     # Mark "hot" locations for filter
-    SE[vec(A[:, 5] .>= 0.75), 5] .= NaN
+    #SE[vec(A[:, 5] .>= 0.75), 5] .= NaN
 
     # Filter out identified locations
     SE = SE[vec(.!any(isnan.(SE), dims=2)), :]
