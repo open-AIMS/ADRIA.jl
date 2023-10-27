@@ -167,7 +167,7 @@ function scenarios_confint!(
     end
 
     series_colors = [_colors[group] for group in ordered_groups]
-    series!(ax, confints[:, :, 2]'; solid_color=series_colors)
+    series!(ax, x_vals, confints[:, :, 2]'; solid_color=series_colors)
 
     return nothing
 end
