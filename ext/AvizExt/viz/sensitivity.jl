@@ -297,12 +297,12 @@ GLMakie figure
 function ADRIA.viz.convergence!(
     g::GridPosition,
     Si_conv::NamedDimsArray,
-    foi::Vector{Symbol};
+    factors::Vector{Symbol};
     series_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     n_scenarios = Si_conv.n_scenarios
-    grps = Dict(Symbol(foi_grp) => foi_grp .== foi for foi_grp in foi)
+    grps = Dict(Symbol(foi_grp) => foi_grp .== factors for foi_grp in factors)
     ax = Axis(g; axis_opts...)
 
     scenarios_series!(
@@ -360,7 +360,7 @@ function ADRIA.viz.convergence!(
 end
 function ADRIA.viz.convergence(
     Si_conv::NamedDimsArray,
-    foi::Vector{Symbol};
+    factors::Vector{Symbol};
     fig_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -368,11 +368,12 @@ function ADRIA.viz.convergence(
     f = Figure(; fig_opts...)
     g = f[1, 1]
     ADRIA.viz.convergence!(g, Si_conv, foi; series_opts=series_opts, axis_opts=axis_opts)
+        factors;
     return f
 end
 function ADRIA.viz.convergence(
     Si_conv::NamedDimsArray,
-    foi::Vector{Symbol},
+    factors::Vector{Symbol},
     grid_size::Vector{Int64};
     fig_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
@@ -382,6 +383,7 @@ function ADRIA.viz.convergence(
     g = f[1, 1]
     ADRIA.viz.convergence!(
         g, grid_size, Si_conv, foi; series_opts=series_opts, axis_opts=axis_opts
+        factors;
     )
     return f
 end
