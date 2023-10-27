@@ -26,14 +26,13 @@ using ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_
 
     prop_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
     max_cover = [0.8, 0.75, 0.95, 0.7, 0.0]
+    leftover_space = (max_cover .- prop_cover) .* area
 
     A, filtered = create_decision_matrix(
         collect(1:n_sites),
         centr_in,
         centr_out,
-        sum_cover,
-        max_cover,
-        area,
+        leftover_space,
         dam_prob,
         heat_stress_prob,
         site_depth,
@@ -74,13 +73,12 @@ end
     sum_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
     max_cover = [0.8, 0.75, 0.95, 0.7, 0.0]
 
+    leftover_space = (max_cover .- prop_cover) .* area
     A, filtered = create_decision_matrix(
         collect(1:n_sites),
         centr_in,
         centr_out,
-        sum_cover,
-        max_cover,
-        area,
+        leftover_space,
         dam_prob,
         heat_stress_prob,
         site_depth,
@@ -121,14 +119,13 @@ end
     prop_cover = [0.75, 0.5, 0.3, 0.7, 0.0]
     max_cover = [0.8, 0.75, 0.6, 0.77, 0.0]
     area_max_cover = max_cover .* area
+    leftover_space = (max_cover .- prop_cover) .* area
 
     A, filtered = create_decision_matrix(
         collect(1:n_sites),
         centr_in,
         centr_out,
-        sum_cover,
-        max_cover,
-        area,
+        leftover_space,
         dam_prob,
         heat_stress_prob,
         site_depth,
@@ -137,7 +134,17 @@ end
         0.8,
     )
 
-    SH, wsh = create_shade_matrix(A, area_max_cover[filtered], wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_zones_shade, wt_hi_cover)
+    SH, wsh = create_shade_matrix(
+        A,
+        k_area[filtered],
+        area_max_cover[filtered],
+        wt_conn_shade,
+        wt_waves,
+        wt_heat,
+        wt_predec_shade,
+        wt_zones_shade,
+        wt_hi_cover,
+    )
 
     @test maximum(SH[:, 8]) ==
           (maximum(area_max_cover[convert(Vector{Int64}, A[:, 1])] .- A[:, 8])) ||
