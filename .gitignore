@@ -12,5 +12,3 @@ examples/Outputs/
 JuliaSysimage.dll
 
 docs/build/
-
-/test/jl*
