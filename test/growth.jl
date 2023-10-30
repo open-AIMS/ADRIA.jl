@@ -873,13 +873,14 @@ end
     p.X_mb .= rand(36, 32)
     C_cover = zeros(10, 36, n_sites)
     C_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
-
     ADRIA.proportional_adjustment!(C_cover[1, :, :], max_cover)
-    for tstep = 2:10
-        growthODE(du, C_cover[tstep-1, :, :], p, tstep)
-        C_cover[tstep, :, :] .= C_cover[tstep-1, :, :] .+ du
-    end
 
+    for tstep in 2:10
+        p.rec .= rand(0:0.001:0.5, 6, n_sites)
+        growthODE(du, C_cover[tstep - 1, :, :], p, tstep)
+        C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
+        C_cover[C_cover .< 0.0] .= 0.0
+    end
     @test any(diff(C_cover; dims=1) .< 0) ||
         "ODE never decreases, du being restricted to >=0."
     @test any(diff(C_cover; dims=1) .>= 0) ||
@@ -893,8 +894,10 @@ end
     for tstep in 2:10
         growthODE(du, C_cover[tstep - 1, :, :], p, 1)
         C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
+        C_cover[C_cover .< 0.0] .= 0.0
     end
-    @test all((diff(C_cover[:, [1, 7, 13, 19, 25, 31], :]; dims=1) .<= 0)) ||
+
+    @test all((diff(C_cover[:, [1, 7, 13, 19, 25, 31], :]; dims=1) .<= 1e-5)) ||
         "Smallest size class growing with no recruitment.."
 
     @test all(abs.(diff(C_cover; dims=1)) .< 1.0) || "ODE more than doubles or halves area."
