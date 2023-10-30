@@ -84,3 +84,13 @@ function ADRIA.viz.ranks_to_frequencies(
         axis_opts=axis_opts,
     )
 end
+
+function _default_colormap(rank_groups::Dict, alpha_vals::Dict)
+    rank_colors = colors(rank_groups, alpha_vals)
+    rank_ids = keys(rank_groups)
+    return Dict(
+        rank_grp =>
+            [RGBA{Float32}(1.0, 1.0, 1.0, alpha_vals[rank_grp]), rank_colors[rank_grp]] for
+        rank_grp in rank_ids
+    )
+end
