@@ -33,19 +33,45 @@ function ADRIA.viz.ranks_to_frequencies!(
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
-    rank_groups = Dict(Symbol(rank_grp) => rank_grp .== rank_ids for rank_grp in rank_ids)
-    rank_colors = colors(rank_groups)
-    for rr in rank_ids
-        color_map = Dict(:color_map => [RGBf(1.0, 1.0, 1.0), rank_colors[Symbol(rr)]])
-        merge!(opts, color_map)
-        ADRIA.viz.map!(
-            g,
-            rs,
-            AxisKeys.keyless(NamedDims.unname(frequencies[ranks=rr]));
-            opts=opts,
-            axis_opts=axis_opts,
+    sym_rank_ids = Symbol.(rank_ids)
+    rank_groups = Dict(rank_grp => rank_grp .== sym_rank_ids for rank_grp in sym_rank_ids)
+
+    if :colormap in keys(opts)
+        @assert opts[:color_map] isa Dict
+        all_colormaps = opts[:color_map]
+    else
+        alpha_vals = alphas(rank_groups)
+        all_colormaps = _default_colormap(rank_groups, alpha_vals)
+    end
+
+    opts[:color_map] = all_colormaps[sym_rank_ids[1]]
+
+    geodata = get_geojson_copy(rs)
+
+    opts[:show_colorbar] = get(opts, :show_colorbar, false)
+    ADRIA.viz.map!(
+        g,
+        rs,
+        frequencies[ranks=rank_ids[1]];
+        opts=opts,
+        axis_opts=axis_opts,
+    )
+
+    ax = content(content(g)[1, 1])  # get GeoAxis
+
+    for rr in rank_ids[2:end]
+        poly!(
+            ax,
+            geodata;
+            color=collect(frequencies[ranks=rr]),
+            colormap=all_colormaps[Symbol(rr)],
+            strokecolor=:grey,
+            strokewidth=0.5,
+            linestyle=:solid,
+            overdraw=true,
         )
     end
+
     return g
 end
 function ADRIA.viz.ranks_to_frequencies!(
