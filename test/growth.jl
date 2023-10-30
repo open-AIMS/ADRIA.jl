@@ -835,9 +835,14 @@ end
 end
 
 @testset "growth model" begin
+
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
     n_sites = ADRIA.n_locations(dom)
+
     p = dom.coral_growth.ode_p
+    coral_spec_df = ADRIA.coral_spec()[:params]
+    p.mb .= coral_spec_df[:, "mb_rate"]
+    p.r .= coral_spec_df[:, "growth_rate"]
 
     du = zeros(36, n_sites)
     absolute_k_area = rand(1e3:1e6, 1, n_sites)
