@@ -1,26 +1,29 @@
 using AxisKeys, NamedDims
 using ADRIA: ResultSet
-"""
-    ADRIA.viz.selection_frequency_map!(g::Union{GridLayout,GridPosition},
-        rs::ResultSet, iv_type::String; scen_ids::Vector{Int64}=collect(1:size(rs.inputs, 1)),
-        opts::Dict=Dict(:color_map => [:red, :blue], :colorbar_label => "Selection frequency"),
-        axis_opts::Dict=Dict())
-    ADRIA.viz.selection_frequency_map(rs::ResultSet, iv_type::String;
-        scen_ids::Vector{Int64}=collect(1:size(rs.inputs, 1)),
-        opts::Dict=Dict(:color_map => [:red, :blue], :colorbar_label => "Selection frequency"),
-        fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
 
+"""
+    ADRIA.viz.ranks_to_frequencies!(g::Union{GridLayout,GridPosition},rs::ResultSet,
+        frequencies::NamedDimsArray,rank_ids::Vector{Int64};opts::Dict=Dict(),axis_opts::Dict=Dict(),)
+    ADRIA.viz.ranks_to_frequencies!(g::Union{GridLayout,GridPosition},rs::ResultSet,
+        frequencies::NamedDimsArray,rank_id::Int64;opts::Dict=Dict(:color_map => :CMRmap),axis_opts::Dict=Dict())
+    ADRIA.viz.ranks_to_frequencies(rs::ResultSet,frequencies::NamedDimsArray,rank_ids::Union{Int64,Vector{Int64}};
+        opts::Dict=Dict(),fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+        
 Plot a spatial map of location selection frequencies.
 
 # Arguments
+- `g` : Figure GridPosition or GridLayout.
 - `rs` : Result set.
-- `iv_type` : Intervention type (e.g. "seed" or "shade").
-- `scen_ids` : Subset of scenarios to plot (could be robust scenarios, or all scenarios)
+- `frequencies` : Set of frequencies for each rank over a set of scenarios and/or timesteps. 
+    As calculated using`ranks_to_frequencies`.
+- `rank_id`/`rank_ids` : Rank or set of ranks to plot frequency maps for. E.g. 1, [1,2,3].
 - `opts` : Aviz options
     - `colorbar_label`, label for colorbar. Defaults to "Relative Cover".
     - `color_map`, preferred colormap for plotting heatmaps.
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
+- `fig_opts` : Additional options to pass to adjust Figure creation
+  See: https://docs.makie.org/v0.19/api/index.html#Figure
 
 # Returns
 Figure
@@ -120,12 +123,26 @@ function ADRIA.viz.ranks_to_frequencies(
     )
 end
 
-function _default_colormap(rank_groups::Dict, alpha_vals::Dict)
+"""
+    _default_colormap(rank_groups::Dict{Symbol,BitVector}, alpha_vals::Dict{Symbol,Float64})
+
+Retrieve set of colormaps for plotting overlayed colormaps.
+
+# Arguments
+- `rank_groups` : Maps identifying key to be plotted to Boolean vector indicating members of group.
+- `alpha_vals` : Maps identifying key to alpha values for colormap of each group (as greated by `alphas()`).
+
+# Returns
+Maps for each key in rank_groups to a unique colormap.
+"""
+function _default_colormap(
+    rank_groups::Dict{Symbol,BitVector}, alpha_vals::Dict{Symbol,Float64}
+)
     rank_colors = colors(rank_groups, alpha_vals)
     rank_ids = keys(rank_groups)
     return Dict(
         rank_grp =>
-            [RGBA{Float32}(1.0, 1.0, 1.0, alpha_vals[rank_grp]), rank_colors[rank_grp]] for
+            [RGBA{Float32}(1.0, 1.0, 1.0, 0.01), rank_colors[rank_grp]] for
         rank_grp in rank_ids
     )
 end
