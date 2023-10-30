@@ -45,10 +45,11 @@ function ADRIA.viz.ranks_to_frequencies!(
     end
 
     opts[:color_map] = all_colormaps[sym_rank_ids[1]]
-
     geodata = get_geojson_copy(rs)
-
+    legend_els = Vector{Any}(undef, length(rank_ids))
+    legend_labels = Vector{String}(undef, length(rank_ids))
     opts[:show_colorbar] = get(opts, :show_colorbar, false)
+
     ADRIA.viz.map!(
         g,
         rs,
@@ -56,6 +57,10 @@ function ADRIA.viz.ranks_to_frequencies!(
         opts=opts,
         axis_opts=axis_opts,
     )
+    legend_els[1] = PolyElement(;
+        color=all_colormaps[Symbol(rank_ids[1])][2], strokecolor=:grey, strokewidth=1
+    )
+    legend_labels[1] = string("Rank ", string(rank_ids[1]))
 
     ax = content(content(g)[1, 1])  # get GeoAxis
 
@@ -70,8 +75,12 @@ function ADRIA.viz.ranks_to_frequencies!(
             linestyle=:solid,
             overdraw=true,
         )
+        legend_els[rr] = PolyElement(;
+            color=all_colormaps[Symbol(rr)][2], strokecolor=:grey, strokewidth=1
+        )
+        legend_labels[rr] = string("Rank ", string(rr))
     end
-
+    Legend(g[1, 2], legend_els, legend_labels; patchsize=(35, 35), rowgap=10)
     return g
 end
 function ADRIA.viz.ranks_to_frequencies!(
