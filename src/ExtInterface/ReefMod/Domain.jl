@@ -1,9 +1,18 @@
-using NamedDims, AxisKeys, CSV
-using DataFrames, Statistics, Distributions
-using SparseArrays
+using
+    AxisKeys,
+    NamedDims
+
+using
+    CSV,
+    DataFrames,
+    ModelParameters
+
+using
+    Distributions,
+    Statistics
+
 import GeoDataFrames as GDF
 
-using ModelParameters
 using ADRIA: SimConstants, Domain, site_distances
 
 
