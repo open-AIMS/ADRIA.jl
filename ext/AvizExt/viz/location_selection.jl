@@ -68,7 +68,7 @@ end
 function ADRIA.viz.ranks_to_frequencies(
     rs::ResultSet,
     frequencies::NamedDimsArray,
-    rank_ids::Union{Int64,Vec{Int64}};
+    rank_ids::Union{Int64,Vector{Int64}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
 
