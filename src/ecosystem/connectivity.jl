@@ -105,7 +105,7 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
         extracted_TP[extracted_TP.<con_cutoff] .= 0.0
     end
 
-    TP_base = NamedDimsArray(sparse(extracted_TP), Source=unique_site_ids, Receiving=unique_site_ids)
+    TP_base = NamedDimsArray(extracted_TP, Source=unique_site_ids, Receiving=unique_site_ids)
     @assert all(0.0 .<= TP_base .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
     return (TP_base=TP_base, truncated=invalid_ids, site_ids=unique_site_ids)
@@ -128,7 +128,7 @@ end
 
 """
     connectivity_strength(TP_base::AbstractArray)::NamedTuple
-    connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64})::NamedTuple
+    connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64}, TP_cache::AbstractMatrix{Float64})::NamedTuple
 
 Create in/out degree centralities for all nodes, and vector of their strongest predecessors.
 
@@ -174,11 +174,14 @@ function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
     return (in_conn=C1, out_conn=C2, strongest_predecessor=strong_pred)
 end
 function connectivity_strength(
-    area_weighted_TP::NamedDimsArray, cover::Vector{<:Union{Float32, Float64}}
+    area_weighted_TP::AbstractMatrix{Float64},
+    cover::Vector{Float64},
+    TP_cache::AbstractMatrix{Float64}
 )::NamedTuple
-    # Accounts for cases where there is no coral cover
-    tp = (area_weighted_TP .* cover)
-    tp .= tp ./ maximum(tp)
 
-    return connectivity_strength(tp)
+    # Accounts for cases where there is no coral cover
+    TP_cache .= (area_weighted_TP .* cover)
+    TP_cache .= TP_cache ./ maximum(TP_cache)
+
+    return connectivity_strength(TP_cache)
 end

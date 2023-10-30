@@ -69,7 +69,7 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
 
     @testset "DHW distribution priors" begin
         Y_pstep = rand(36, 10)  # size class, locations
-        a_adapt = rand(2.0:6.0, 36)
+        a_adapt = rand(3.0:6.0, 36)
         total_location_area = fill(5000.0, 10)
 
         seed_locs = rand(1:10, 5)  # Pick 5 random locations
@@ -81,7 +81,8 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
         seed_sc = BitVector([i ∈ [2, 8, 15] for i in 1:36])
 
         # Initial distributions
-        c_dist_t = fill(truncated(Normal(1.0, 0.1), 0.0, 2.0), 36, 10)
+        d = truncated(Normal(1.0, 0.15), 0.0, 3.0)
+        c_dist_t = rand(d, 36, 10)
         orig_dist = copy(c_dist_t)
 
         dist_std = rand(36)
@@ -93,7 +94,7 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
             for (i, sc) in enumerate(findall(seed_sc))
                 prior1 = Yseed[1, i, loc] ./ Y_pstep[sc, loc]
                 expected = [prior1, 1.0 - prior1]
-                @test mean(c_dist_t[sc, loc]) > mean(orig_dist[sc, loc]) || "Expected mean of distribution to shift | SC: $sc ; Location: $loc"
+                @test c_dist_t[sc, loc] > orig_dist[sc, loc] || "Expected mean of distribution to shift | SC: $sc ; Location: $loc"
             end
         end
     end

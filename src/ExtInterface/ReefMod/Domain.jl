@@ -1,8 +1,18 @@
-using NamedDims, AxisKeys, CSV
-using CSV, DataFrames, Statistics, Distributions
+using
+    AxisKeys,
+    NamedDims
+
+using
+    CSV,
+    DataFrames,
+    ModelParameters
+
+using
+    Distributions,
+    Statistics
+
 import GeoDataFrames as GDF
 
-using ModelParameters
 using ADRIA: SimConstants, Domain, site_distances
 
 
@@ -71,13 +81,17 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
 
     # Convert area in km² to m²
-    site_data[:, :area] .= id_list[:, 2] * 1e6
+    site_data[:, :area] .= id_list[:, 2] .* 1e6
 
     # Calculate `k` area (1.0 - "ungrazable" area)
     site_data[:, :k] .= 1.0 .- id_list[:, 3]
 
     conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
-    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(conn_data, vec(site_data.area .* site_data.k))
+    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
+        conn_data,
+        vec(site_data.area .* site_data.k),
+        similar(conn_data)
+    )
 
     # Set all site depths to 6m below sea level
     # (ReefMod does not account for depth)
@@ -245,7 +259,7 @@ function load_connectivity(::Type{ReefModDomain}, data_path::String, loc_ids::Ve
     end
 
     # Mean over all years
-    conn_data = dropdims(mean(tmp_mat, dims=3), dims=3)
+    conn_data::Matrix{Float64} = dropdims(mean(tmp_mat, dims=3), dims=3)
     return NamedDimsArray(conn_data, source=loc_ids, sinks=loc_ids)
 end
 
