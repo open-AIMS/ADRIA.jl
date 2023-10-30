@@ -15,7 +15,7 @@ const COLORS::Dict{Symbol,Symbol} = Dict(
 )
 
 function colors(
-    scen_groups::Dict{<:Any,BitVector}
+    scen_groups::Dict{Symbol,BitVector},
 )::Dict{Symbol,Union{Symbol,RGBA{Float32}}}
     group_names = keys(scen_groups)
     if count(group_names .∉ [keys(COLORS)]) > 0
@@ -26,7 +26,8 @@ function colors(
     end
 end
 function colors(
-    scen_groups::Dict{Symbol,BitVector}, weight::Float64
+    scen_groups::Dict{Symbol,BitVector},
+    weight::Float64,
 )::Vector{Tuple{Symbol,Float64}}
     groups = collect(keys(scen_groups))
     n_scens = length(scen_groups[groups[1]])
@@ -38,6 +39,21 @@ function colors(
     end
 
     return [(c, weight) for c in _colors]
+end
+function colors(
+    scen_groups::Dict{Symbol,BitVector}, weights::Dict{Symbol,Float64}
+)::Dict{Symbol,RGBA{Float32}}
+    groups = collect(keys(scen_groups))
+    scen_colors = colors(scen_groups)
+
+    return Dict(
+        group => RGBA{Float32}(
+            scen_colors[group].r,
+            scen_colors[group].g,
+            scen_colors[group].b,
+            weights[group],
+        ) for group in groups
+    )
 end
 
 function alphas(scen_groups::Dict{Symbol,BitVector})::Dict{Symbol,Float64}
