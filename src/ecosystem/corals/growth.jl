@@ -403,7 +403,7 @@ function adjust_DHW_distribution!(
     step::Int64 = n_groups - 1
 
     # Adjust population distribution
-    @floop for sc1 in 1:n_groups:n_sp_sc
+    for sc1 in 1:n_groups:n_sp_sc
         for loc in 1:n_locs
             sc6::Int64 = sc1 + step
 
