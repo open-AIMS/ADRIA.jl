@@ -25,7 +25,7 @@ end
 
 
 """
-    proportional_adjustment!(coral_cover::Matrix{T}, max_cover::Array{T})::Nothing where {T<:Float64}
+    proportional_adjustment!(coral_cover::Matrix{T}, cover_tmp::Vector{T})::Nothing where {T<:Float64}
 
 Helper method to proportionally adjust coral cover, such that:
 - `coral_cover` ∈ [0, 1].
@@ -35,21 +35,21 @@ Modifies arrays in-place.
 
 # Arguments
 - `coral_cover` : Coral cover ∈ [0, 1]
-- `max_cover` : Maximum possible coral cover for each site ∈ [0, 1]
+- `cover_tmp` : temporary cache
 
 # Returns
 nothing
 """
 function proportional_adjustment!(
     coral_cover::Union{SubArray{T},Matrix{T}},
-    max_cover::Vector{T}
+    cover_tmp::Vector{T}
 )::Nothing where {T<:Float64}
-    cover_tmp = vec(sum(coral_cover, dims=1))
-    if any(cover_tmp .> max_cover)
+    cover_tmp .= vec(sum(coral_cover, dims=1))
+    if any(cover_tmp .> 1.0)
         exceeded::Vector{Int64} = findall(cover_tmp .> 1.0)
         @warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model."
-        @warn "Cover - Max Cover: $(sum(cover_tmp[exceeded] .- max_cover[exceeded]))"
-        @views @. coral_cover[:, exceeded] = (coral_cover[:, exceeded] / cover_tmp[exceeded]') * max_cover[exceeded]'
+        @warn "Cover - Max Cover: $(sum(cover_tmp[exceeded] .- 1.0))"
+        @views @. coral_cover[:, exceeded] = (coral_cover[:, exceeded] / cover_tmp[exceeded]')
     end
 
     coral_cover .= max.(coral_cover, 0.0)
