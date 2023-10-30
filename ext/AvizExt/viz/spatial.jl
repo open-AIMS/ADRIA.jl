@@ -8,7 +8,7 @@ Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
 """
     create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSON.FeatureCollection,
         data::Observable, highlight::Union{Vector,Tuple,Nothing},
-        centroids::Vector, colorbar_label::String="",
+        centroids::Vector, show_colorbar::Bool=true, colorbar_label::String="",
         legend_params::Union{Tuple,Nothing}=nothing, axis_opts::Dict=Dict())
 
 Create a spatial choropleth figure.
@@ -19,6 +19,7 @@ Create a spatial choropleth figure.
 - `data` : Values to use for choropleth
 - `highlight` : Stroke colors for each location
 - `centroids` : Vector{Tuple}, of lon and lats
+- `show_colorbar` : Whether to show a colorbar (true) or not (false)
 - `colorbar_label` : Label to use for color bar.
 - `color_map` : Type of colormap to use, 
     See: https://docs.makie.org/stable/documentation/colors/#colormaps
@@ -26,12 +27,18 @@ Create a spatial choropleth figure.
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 """
-function create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSON.FeatureCollection,
-    data::Observable, highlight::Union{Vector,Tuple,Nothing},
-    centroids::Vector, colorbar_label::String="",
+function create_map!(
+    f::Union{GridLayout,GridPosition},
+    geodata::GeoMakie.GeoJSON.FeatureCollection,
+    data::Observable,
+    highlight::Union{Vector,Tuple,Nothing},
+    centroids::Vector,
+    show_colorbar::Bool=true,
+    colorbar_label::String="",
     color_map::Union{Symbol,Vector{Symbol},RGBA{Float32},Vector{RGBA{Float32}}}=:grayC,
     legend_params::Union{Tuple,Nothing}=nothing, 
-    axis_opts::Dict=Dict())
+    axis_opts::Dict=Dict(),
+)
     lon = first.(centroids)
     lat = last.(centroids)
 
@@ -69,8 +76,16 @@ function create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSO
         strokecolor=(:black, 0.05),
         strokewidth=1.0
     )
-    Colorbar(f[1, 2]; colorrange=color_range, colormap=color_map, label=colorbar_label,
-        height=Relative(0.65))
+
+    if show_colorbar
+        Colorbar(
+            f[1, 2];
+            colorrange=color_range,
+            colormap=color_map,
+            label=colorbar_label,
+            height=Relative(0.65),
+        )
+    end
 
     # Overlay locations to be highlighted
     # `poly!()` cannot handle multiple strokecolors being specified at the moment
@@ -185,9 +200,21 @@ function ADRIA.viz.map!(
     highlight = get(opts, :highlight, nothing)
     c_label = get(opts, :colorbar_label, "")
     legend_params = get(opts, :legend_params, nothing)
+    show_colorbar = get(opts, :show_colorbar, true)
     color_map = get(opts, :color_map, :grayC)
 
-    return create_map!(g, geodata, data, highlight, ADRIA.centroids(rs), c_label, color_map, legend_params, axis_opts)
+    return create_map!(
+        g,
+        geodata,
+        data,
+        highlight,
+        ADRIA.centroids(rs),
+        show_colorbar,
+        c_label,
+        color_map,
+        legend_params,
+        axis_opts,
+    )
 end
 
 
