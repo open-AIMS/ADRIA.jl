@@ -396,7 +396,7 @@ function adjust_DHW_distribution!(
     cover::SubArray{F},
     n_groups::Int64,
     dist_t::Matrix{F},
-    growth_rate::Matrix{F}
+    growth_rate::Vector{F}
 )::Nothing where {F<:Float64}
     _, n_sp_sc, n_locs = size(cover)
 
@@ -522,7 +522,7 @@ function fecundity_scope!(
     fec_groups::AbstractArray{T,2},
     fec_all::AbstractArray{T,2},
     fec_params::AbstractArray{T},
-    Y_pstep::AbstractArray{T,2},
+    C_t::AbstractArray{T,2},
     site_area::AbstractArray{T}
 )::Nothing where {T<:Float64}
     ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
@@ -643,7 +643,7 @@ Note: Units for all areas are assumed to be in m².
 # Arguments
 - `fec_scope` : Fecundity scope
 - `TP_data` : Transition probability (rows: source locations; cols: sink locations)
-- `leftover_k_m²` : Difference between locations' maximum carrying capacity and current
+- `leftover_space` : Difference between locations' maximum carrying capacity and current
     coral cover (in m²)
 - `α` : max number of settlers / m²
 - `β` : larvae / m² required to produce 50% of maximum settlement
@@ -654,8 +654,8 @@ Area covered by recruited larvae (in m²)
 """
 function settler_cover(
     fec_scope::T,
-    TP_data::T,
-    leftover_k_m²::T,
+    TP_data::AbstractMatrix{Float64},
+    leftover_space::T,
     α::V,
     β::V,
     basal_area_per_settler::V

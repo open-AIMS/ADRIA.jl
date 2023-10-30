@@ -549,7 +549,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_mean_t_1::Matrix{Float64} = repeat(corals.dist_mean, 1, n_sites)
+    c_mean_t_1::Matrix{Float64} = repeat(corals.dist_mean, 1, n_locs)
     c_mean_t = copy(c_mean_t_1)
 
     # Log of distributions
@@ -639,7 +639,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
             # Determine connectivity strength
             # Account for cases where there is no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_TP, vec(site_coral_cover), TP_cache)
+            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_TP, vec(loc_coral_cover), TP_cache)
             (seed_locs, shade_locs, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
                 seed_locs, shade_locs, rankings, in_conn[mcda_vars.site_ids], out_conn[mcda_vars.site_ids], strong_pred[mcda_vars.site_ids])
@@ -709,7 +709,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         if tstep <= tf
             # Natural adaptation
             adjust_DHW_distribution!(
-                @view(Y_cover[tstep-1:tstep, :, :]),
+                @view(C_cover[tstep-1:tstep, :, :]),
                 n_groups,
                 c_mean_t,
                 p.r

@@ -135,7 +135,8 @@ Create in/out degree centralities for all nodes, and vector of their strongest p
 # Arguments
 - `TP_base` : Base transfer probability matrix to create Directed Graph from.
 - `area_weighted_TP` : Transfer probability matrix weighted by location `k` area
-- `cover` : total coral cover at location
+- `cover` : Total coral cover at location
+- `TP_cache` : Cache matrix of same size as TP_base to hold intermediate values
 
 # Returns
 NamedTuple:
@@ -175,7 +176,7 @@ function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
 end
 function connectivity_strength(
     area_weighted_TP::AbstractMatrix{Float64},
-    cover::Vector{Float64},
+    cover::Vector{<:Union{Float32, Float64}},
     TP_cache::AbstractMatrix{Float64}
 )::NamedTuple
 
