@@ -25,18 +25,6 @@ end
 
 const TEST_RS = test_rs()
 
-@testset "proportional adjustment" begin
-    Y = rand(5, 36, 20)
-    tmp = zeros(20)
-    max_cover = rand(20)
-
-    for i in axes(Y, 1)
-        ADRIA.proportional_adjustment!(Y[i, :, :], max_cover)
-
-        @test all(0.0 .<= Y[i, :, :] .<= 1.0)
-    end
-end
-
 
 include("clustering.jl")
 include("data_loading.jl")

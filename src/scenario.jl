@@ -452,6 +452,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
     C_cover::Array{Float64,3} = zeros(tf, n_species, n_locs)
     C_cover[1, :, :] .= domain.init_coral_cover
+    cover_tmp = zeros(n_locs)
 
     # Locations that can support corals
     valid_locs::BitVector = site_k(domain) .> 0.0
@@ -693,14 +694,17 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Update initial condition
         growth.u0 .= C_t
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-            alg_hints=alg_hint, dt=1.0)
+            alg_hints=alg_hint, dt=0.5)
 
         # Assign results
         C_cover[tstep, :, valid_locs] .= sol[end][:, valid_locs]
 
         # TODO:
         # Check if size classes are inappropriately out-growing available space
-        proportional_adjustment!(@view(C_cover[tstep, :, valid_locs]))
+        proportional_adjustment!(
+            @view(C_cover[tstep, :, valid_locs]),
+            cover_tmp[valid_locs]
+        )
 
         if tstep <= tf
             # Natural adaptation

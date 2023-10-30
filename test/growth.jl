@@ -4,13 +4,24 @@ using ADRIA
 
 @testset "proportional adjustment" begin
     Y = rand(5, 36, 20)
+    for i in axes(Y, 1)
+        Y[i, :, :] .= Y[i, :, :] / sum(Y[i, :, :], dims=1)
+    end
     tmp = zeros(20)
-    max_cover = rand(20)
 
     for i in axes(Y, 1)
-        ADRIA.proportional_adjustment!(Y[i, :, :], max_cover)
+        # No warning should be emitted when values are between 0 and 1
+        Test.@test_nowarn ADRIA.proportional_adjustment!(Y[i, :, :], tmp)
 
         @test all(0.0 .<= Y[i, :, :] .<= 1.0)
+    end
+
+    Y = rand(5, 36, 20)
+    for i in axes(Y, 1)
+        # Test that a warning is displayed when values need to be rescaled between 0 and 1
+        Test.@test_warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model." ADRIA.proportional_adjustment!(Y[i, :, :], tmp)
+
+        all(0.0 .<= Y[i, :, :] .<= 1.0)
     end
 end
 
@@ -845,18 +856,15 @@ end
     p.r .= coral_spec_df[:, "growth_rate"]
 
     du = zeros(36, n_sites)
-    absolute_k_area = rand(1e3:1e6, 1, n_sites)
-    total_site_area = rand(1e4:2.5e6, 1, n_sites)
     cover_tmp = zeros(n_sites)
-    max_cover = min.(vec(absolute_k_area ./ total_site_area), 0.5)
 
     # Test magnitude of change are within bounds
     C_cover = zeros(2, 36, n_sites)
 
     # Generate initial cover
-    C_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
-
-    ADRIA.proportional_adjustment!(C_cover[1, :, :], max_cover)
+    init = rand(Uniform(0.0, 0.4), 36, n_sites)
+    proportional = vec(init / sum(init, dims=1))
+    C_cover[1, :, :] .= proportional
     growthODE(du, C_cover[1, :, :], p, 1)
     @test !any(abs.(du) .> 1.0) ||
         "growth function is producing inappropriate values (abs(du) > 1.0)"
@@ -869,14 +877,15 @@ end
         "Growth produces non-zero values with zero recuitment and zero initial cover."
 
     # Test direction and magnitude of change
-    p.rec .= rand(0:0.001:0.5, 6, n_sites)
-    p.X_mb .= rand(36, 32)
+    p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
+    p.X_mb .= rand(36, n_sites)
     C_cover = zeros(10, 36, n_sites)
-    C_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
-    ADRIA.proportional_adjustment!(C_cover[1, :, :], max_cover)
+    init = rand(Uniform(0.0, 0.4), 36, n_sites)
+    proportional = vec(init / sum(init, dims=1))
+    C_cover[1, :, :] .= proportional
 
     for tstep in 2:10
-        p.rec .= rand(0:0.001:0.5, 6, n_sites)
+        p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
         growthODE(du, C_cover[tstep - 1, :, :], p, tstep)
         C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
         C_cover[C_cover .< 0.0] .= 0.0
@@ -889,7 +898,9 @@ end
     # Test change in smallest size class under no recruitment
     p.rec .= zeros(6, n_sites)
     C_cover = zeros(10, 36, n_sites)
-    C_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
+    init = rand(Uniform(0.0, 0.4), 36, n_sites)
+    proportional = vec(init / sum(init, dims=1))
+    C_cover[1, :, :] .= proportional
 
     for tstep in 2:10
         growthODE(du, C_cover[tstep - 1, :, :], p, 1)
