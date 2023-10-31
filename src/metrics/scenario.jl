@@ -89,11 +89,11 @@ function _scenario_absolute_juveniles(
     coral_spec::DataFrame,
     k_area::AbstractVector{<:Real};
     kwargs...
-)::AbstractVector{<:Real}
+)::AbstractArray{<:Real}
     juv = call_metric(absolute_juveniles, data, coral_spec; kwargs...)
     return dropdims(sum(juv, dims=:sites), dims=:sites) / sum(k_area)
 end
-function _scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractVector{<:Real}
+function _scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     # Calculate relative domain-wide cover based on absolute values
     return dropdims(sum(absolute_juveniles(rs), dims=:sites), dims=:sites)
 end
