@@ -297,8 +297,8 @@ GLMakie figure
 function ADRIA.viz.convergence!(
     g::GridPosition,
     Si_conv::NamedDimsArray,
-    factors::Vector{Symbol};
-    plot_overlay::Bool=true,
+    factors::Vector{Symbol},
+    plot_overlay::Bool;
     axis_opts::Dict=Dict(),
 )
     n_scenarios = Si_conv.n_scenarios
@@ -415,9 +415,7 @@ function ADRIA.viz.convergence(
 end
 function ADRIA.viz.convergence(
     Si_conv::NamedDimsArray,
-    factors::Vector{Symbol},
-    grid_size::Vector{Int64};
-    plot_overlay::Bool=true,
+    factors::Vector{Symbol};
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
@@ -425,10 +423,8 @@ function ADRIA.viz.convergence(
     g = f[1, 1]
     ADRIA.viz.convergence!(
         g,
-        grid_size,
         Si_conv,
         factors;
-        plot_overlay=plot_overlay,
         axis_opts=axis_opts,
     )
     return f
