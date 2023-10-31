@@ -274,15 +274,22 @@ end
 
 
 """
-    ADRIA.viz.convergence(Si_conv::NamedDimsArray, foi::Vector{Symbol}; series_opts::Dict=Dict(),axis_opts::Dict=Dict())
-    ADRIA.viz.convergence!(f::Figure, Si_conv::NamedDimsArray, foi::Vector{Symbol}; series_opts::Dict=Dict(),axis_opts::Dict=Dict())
+    ADRIA.viz.convergence(Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
+        axis_opts::Dict=Dict())
+    ADRIA.viz.convergence(Si_conv::NamedDimsArray, factors::Vector{Symbol}, plot_overlay::Bool; series_opts::Dict=Dict(),
+        axis_opts::Dict=Dict())
+    ADRIA.viz.convergence!(f::Figure, Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(), 
+        axis_opts::Dict=Dict())
+    ADRIA.viz.convergence!(g::GridPosition, Si_conv::NamedDimsArray, factors::Vector{Symbol}, plot_overlay::Bool; 
+        axis_opts::Dict=Dict())
 
 Plot sensitivty metric for increasing number of scenarios to illustrate convergence.
 
 # Arguments
 - `Si_conv` : Produced using ADRIA.analysis.convergence() 
-- `foi` : Factors of interest.
-- `factors` : The factors of interest to display
+- `factors` : Factors/model components to plot.
+- `plot_overlay` : If included band plots are plotted, if not included a heatmap is plotted. 
+    If true, for each factor the plots are overlayed. If false, each factor is plotted separately in a grid.
 - `opts` : Additional figure customization options
 - `fig_opts` : Additional options to pass to adjust Figure creation
   See: https://docs.makie.org/v0.19/api/index.html#Figure
