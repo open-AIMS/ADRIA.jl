@@ -299,7 +299,6 @@ function ADRIA.viz.convergence!(
     Si_conv::NamedDimsArray,
     factors::Vector{Symbol};
     plot_overlay::Bool=true,
-    series_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     n_scenarios = Si_conv.n_scenarios
@@ -396,13 +395,11 @@ function ADRIA.viz.convergence!(
     end
     return g
 end
-
 function ADRIA.viz.convergence(
     Si_conv::NamedDimsArray,
     factors::Vector{Symbol};
     plot_overlay::Bool=true,
     fig_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     f = Figure(; fig_opts...)
@@ -412,7 +409,6 @@ function ADRIA.viz.convergence(
         Si_conv,
         factors;
         plot_overlay=plot_overlay,
-        series_opts=series_opts,
         axis_opts=axis_opts,
     )
     return f
@@ -423,7 +419,6 @@ function ADRIA.viz.convergence(
     grid_size::Vector{Int64};
     plot_overlay::Bool=true,
     fig_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     f = Figure(; fig_opts...)
@@ -434,7 +429,6 @@ function ADRIA.viz.convergence(
         Si_conv,
         factors;
         plot_overlay=plot_overlay,
-        series_opts=series_opts,
         axis_opts=axis_opts,
     )
     return f
