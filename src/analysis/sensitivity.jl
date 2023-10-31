@@ -17,7 +17,7 @@ using HypothesisTests: ApproximateKSTest
 
 using FLoops
 
-using ADRIA: ResultSet
+using ADRIA: ResultSet, model_spec
 using ADRIA.analysis: col_normalize
 
 
@@ -242,7 +242,35 @@ function convergence(
 
     return pawn_store
 end
+function convergence(
+    rs::ResultSet,
+    X::DataFrame,
+    y::NamedDimsArray,
+    components::Vector{String};
+    n_steps::Int64=10,
+)
+    model_spec_df = model_spec(rs)
 
+    foi = [
+        model_spec_df[model_spec_df[:, "component"] .== cc, "fieldname"] for
+        cc in components
+    ]
+    Si_n = convergence(X, y, Symbol.(vcat(foi...)); n_steps=n_steps)
+    Si_c = NamedDimsArray(
+        zeros(length(components), 8, n_steps);
+        factors=Symbol.(components),
+        Si=Si_n.Si,
+        n_scenarios=Si_n.n_scenarios,
+    )
+
+    for (ind, cc) in enumerate(components)
+        foi_temp = Symbol.(foi[ind])
+        Si_c(; factors=Symbol(cc)) .= dropdims(
+            mean(Si_n(; factors=foi_temp); dims=:factors); dims=:factors
+        )
+    end
+    return Si_c
+end
 
 """
     tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
