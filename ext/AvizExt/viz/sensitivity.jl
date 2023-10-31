@@ -315,7 +315,7 @@ function ADRIA.viz.convergence!(
         ax = Axis(g; axis_opts...)
         scenarios_confint!(
             ax,
-            permutedims(Si_conv(; Si=[:lb, :median, :ub]), (3, 2, 1)),
+            permutedims(Si_conv(; Si=[:lb, :median, :ub]), (3, 1, 2)),
             grps;
             x_vals=n_scenarios,
             sort_by=:none,
