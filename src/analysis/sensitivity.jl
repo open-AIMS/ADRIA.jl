@@ -202,7 +202,7 @@ function pawn(
 end
 
 """
-    convergence(X::DataFrame, y::NamedDimsArray, foi::Vector{Symbol}; n_steps::Int64=10)
+    convergence(X::DataFrame, y::NamedDimsArray, target_factors::Vector{Symbol}; n_steps::Int64=10)
 
     Calculates the PAWN sensitivity index for an increasing number of scenarios where the maximum
         is the total number of scenarios in scens. Number of scenario subsets determined by N_steps.
@@ -210,7 +210,7 @@ end
 # Arguments
 - `X` : Model inputs
 - `y` : Model outputs
-- `foi` : Names of each factor represented by columns in `X`
+- `target_factors` : Names of target factors represented by columns in `X`
 - `n_steps` : Number of steps to cut the total number of scenarios into.
 
 # Returns
@@ -218,15 +218,18 @@ NamedDimsArray, of min, mean, median, max, std, and cv summary statistics for an
 number of scenarios.
 """
 function convergence(
-    X::DataFrame, y::NamedDimsArray, foi::Vector{Symbol}; n_steps::Int64=10
+    X::DataFrame,
+    y::NamedDimsArray,
+    target_factors::Vector{Symbol};
+    n_steps::Int64=10,
 )
     N = length(y.scenarios)
     step_size = floor(Int64, N / n_steps)
     N_it = collect(step_size:step_size:N)
 
     pawn_store = NamedDimsArray(
-        Array{Float64}(zeros(length(foi), 8, length(N_it)));
-        factors=foi,
+        Array{Float64}(zeros(length(target_factors), 8, length(N_it)));
+        factors=target_factors,
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
         n_scenarios=N_it,
     )
@@ -236,7 +239,7 @@ function convergence(
         pawn_store(; n_scenarios=nn) .= col_normalize(
             pawn(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])),
         )(;
-            factors=foi
+            factors=target_factors,
         )
     end
 
@@ -251,11 +254,11 @@ function convergence(
 )
     model_spec_df = model_spec(rs)
 
-    foi = [
+    target_factors = [
         model_spec_df[model_spec_df[:, "component"] .== cc, "fieldname"] for
         cc in components
     ]
-    Si_n = convergence(X, y, Symbol.(vcat(foi...)); n_steps=n_steps)
+    Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); n_steps=n_steps)
     Si_c = NamedDimsArray(
         zeros(length(components), 8, n_steps);
         factors=Symbol.(components),
@@ -264,9 +267,10 @@ function convergence(
     )
 
     for (ind, cc) in enumerate(components)
-        foi_temp = Symbol.(foi[ind])
+        target_factors_temp = Symbol.(target_factors[ind])
         Si_c(; factors=Symbol(cc)) .= dropdims(
-            mean(Si_n(; factors=foi_temp); dims=:factors); dims=:factors
+            mean(Si_n(; factors=target_factors_temp); dims=:factors);
+            dims=:factors,
         )
     end
     return Si_c
