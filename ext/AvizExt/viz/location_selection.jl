@@ -91,8 +91,14 @@ function ADRIA.viz.ranks_to_frequencies!(
     rs::ResultSet,
     frequencies::NamedDimsArray,
     rank_id::Int64;
-    opts::Dict=Dict(:color_map => :CMRmap),
+    opts::Dict=Dict(),
     axis_opts::Dict=Dict())
+    opts[:colorbar_label] = get(opts, :colorbar_label, "Selection frequency")
+    opts[:color_map] = get(
+        opts,
+        :color_map,
+        [RGBA{Float32}(1.0, 1.0, 1.0, 1.0), RGBA{Float32}(0.00784314, 0.243137, 1.0, 1.0)],
+    )
 
     return ADRIA.viz.map!(
         g,
@@ -145,4 +151,5 @@ function _default_colormap(
             [RGBA{Float32}(1.0, 1.0, 1.0, 0.01), rank_colors[rank_grp]] for
         rank_grp in rank_ids
     )
+
 end
