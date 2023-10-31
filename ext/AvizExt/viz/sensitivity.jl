@@ -395,10 +395,39 @@ function ADRIA.viz.convergence!(
     end
     return g
 end
-function ADRIA.viz.convergence(
+function ADRIA.viz.convergence!(
+    g::GridPosition,
     Si_conv::NamedDimsArray,
     factors::Vector{Symbol};
-    plot_overlay::Bool=true,
+    axis_opts::Dict=Dict(),
+)
+    y_label = get(axis_opts, :ylabel, "Factors")
+    x_label = get(axis_opts, :xlabel, "N scenarios")
+    y_labelsize = get(axis_opts, :ylabelsize, 22)
+    x_labelsize = get(axis_opts, :xlabelsize, 22)
+
+    z = Array(Si_conv(; Si=:median))
+    xtick_vals = (1:length(Si_conv.n_scenarios), string.(Si_conv.n_scenarios))
+    ytick_vals = (1:length(factors), string.(factors))
+
+    ax = Axis(
+        g[1, 1];
+        xticks=xtick_vals,
+        yticks=ytick_vals,
+        xlabel=x_label,
+        ylabel=y_label,
+        xlabelsize=x_labelsize,
+        ylabelsize=y_labelsize,
+        axis_opts...,
+    )
+    heatmap!(ax, z')
+
+    return g
+end
+function ADRIA.viz.convergence(
+    Si_conv::NamedDimsArray,
+    factors::Vector{Symbol},
+    plot_overlay::Bool;
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
