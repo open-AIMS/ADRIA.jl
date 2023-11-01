@@ -186,7 +186,7 @@ function component_params(spec::DataFrame, components::Vector{T})::DataFrame whe
 end
 
 """
-    _convert_k_to_abs(coral_cover::Union{NamedDimsArray,Matrix{Float64}}, site_data::DataFrame)::NamedDimsArray
+    _convert_abs_to_k(coral_cover::Union{NamedDimsArray,Matrix{Float64}}, site_data::DataFrame)::Union{NamedDimsArray,Matrix{Float64}}
 
 Convert coral cover data from being relative to absolute location area to relative to
 \$k\$ area.

@@ -2,13 +2,14 @@ using NamedDims, AxisKeys
 
 
 """
-    _location_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
+    _location_selection(domain::Domain, sum_cover::AbstractArray, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
 
 Select locations for a given domain and criteria/weightings/thresholds, using a chosen
 MCDA method.
 
 # Arguments
 - `domain` : The geospatial domain to assess
+- `sum_cover` :  Absolute coral cover at each location
 - `mcda_vars` : Parameters for MCDA
 - `guided` : ID of MCDA algorithm to apply
 

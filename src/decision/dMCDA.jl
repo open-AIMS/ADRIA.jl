@@ -348,7 +348,7 @@ function create_decision_matrix(
     # priority zone predecessors and sites
     A[:, 7] .= zones_criteria
 
-    # Area of space for coral cover in m² 
+    # Area of space for coral cover in m²
     A[:, 8] = leftover_space
 
     A[:, 9] = site_depth
@@ -392,7 +392,7 @@ Tuple (SE, wse)
     3. Outgoing centrality
     4. Wave risk (higher values = less risk)
     5. Damage risk (higher values = less risk)
-    6. Priority predecessors 
+    6. Priority predecessors
     7. GBRMPA zoning criteria
     8. Available space
     9. Location depth
