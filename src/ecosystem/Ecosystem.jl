@@ -44,12 +44,15 @@ function map_to_discrete(v::Union{Int64,Float64}, u::Union{Int64,Float64})::Int6
 end
 
 """
-    map_to_discrete!(df::DataFrame, u::AbstractArray)::Nothing
+    map_to_discrete!(df::Union{DataFrame,SubDataFrame}, u::Union{AbstractVector{Union{Int64,Float64}},Tuple})::Nothing
 
 Update a dataframe of parameters.
-Length of `u` is expected to match number of columns in `df`.
+Length of `u` (the upper bounds) is expected to match number of columns in `df`.
 """
-function map_to_discrete!(df::DataFrame, u::Union{AbstractVector{Union{Int64,Float64}},Tuple})::Nothing
+function map_to_discrete!(
+    df::Union{DataFrame,SubDataFrame},
+    u::Union{AbstractVector{<:Union{Int64,Float64}},Tuple}
+)::Nothing
     for (idx, b) in enumerate(u)
         df[!, idx] .= map_to_discrete.(df[!, idx], b)
     end
