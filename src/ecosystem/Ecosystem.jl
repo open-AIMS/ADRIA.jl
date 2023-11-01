@@ -51,7 +51,7 @@ Length of `u` (the upper bounds) is expected to match number of columns in `df`.
 """
 function map_to_discrete!(
     df::Union{DataFrame,SubDataFrame},
-    u::Union{AbstractVector{Union{Int64,Float64}},Tuple}
+    u::Union{AbstractVector{<:Union{Int64,Float64}},Tuple}
 )::Nothing
     for (idx, b) in enumerate(u)
         df[!, idx] .= map_to_discrete.(df[!, idx], b)
