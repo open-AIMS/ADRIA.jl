@@ -246,7 +246,7 @@ function location_selection_frequencies(
     n_iv_locs::Int64=5,
 )::NamedDimsArray
     ranks_frequencies = ranks_to_frequencies(ranks; n_ranks=n_iv_locs)
-    loc_count = sum(ranks_frequencies[ranks=1:n_iv_locs], dims=2)[ranks=1]
+    loc_count = sum(ranks_frequencies[ranks=1:n_iv_locs]; dims=:ranks)[ranks=1]
 
     return loc_count
 end
