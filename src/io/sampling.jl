@@ -368,10 +368,15 @@ set_factor_bounds!(dom, :wave_stress, (0.1,0.2))
 function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
     params = DataFrame(d.model)
 
+    # get upper and lower bounds for default and new distributions
+    default_upr, default_lwr = params[params.fieldname .== factor, :default_bounds][1]
+    new_lwr, new_upr = new_bnds[1], new_bnds[2]
+
     # Check new parameter bounds are within old parameter bounds
-    if (new_bnds[1] < params[params.fieldname .== factor, :default_bounds][1][1]) ||
-        (new_bnds[2] > params[params.fieldname .== factor, :default_bounds][1][2])
-        error("New bounds should be within default bounds.")
+    if (new_bnds[1] < default_upr) || (new_bnds[2] > default_lwr)
+        error(
+            "New bounds should be within [$default_upr, $default_lwr], received: ($new_upr, $new_lwr).",
+        )
     end
     if (params[params.fieldname .== factor, :dists][1] == "triang") &&
         (length(new_bnds) !== 3)
