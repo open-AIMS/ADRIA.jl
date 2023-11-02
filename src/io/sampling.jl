@@ -351,8 +351,8 @@ function fix_factor!(d::Domain; factors...)::Nothing
 end
 
 """
-    set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)
-    set_factor_bounds!(d::Domain; factors...)
+    set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
+    set_factor_bounds!(d::Domain; factors...)::Nothing
 
 Fix bounds of a parameter for sampling to those provided.
 
