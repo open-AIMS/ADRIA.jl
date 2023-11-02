@@ -369,13 +369,13 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
     params = DataFrame(d.model)
 
     # get upper and lower bounds for default and new distributions
-    default_upr, default_lwr = params[params.fieldname .== factor, :default_bounds][1]
-    new_lwr, new_upr = new_bnds[1], new_bnds[2]
+    default_upper, default_lower = params[params.fieldname .== factor, :default_bounds][1]
+    new_upper, new_lower = new_bnds[1], new_bnds[2]
 
     # Check new parameter bounds are within default parameter bounds
-    if (new_bnds[1] < default_upr) || (new_bnds[2] > default_lwr)
+    if (new_bnds[1] < default_lower) || (new_bnds[2] > default_upper)
         error(
-            "New bounds should be within [$default_upr, $default_lwr], received: ($new_upr, $new_lwr).",
+            "New bounds should be within [$default_upper, $default_lower], received: ($new_upper, $new_lower).",
         )
     end
     if (params[params.fieldname .== factor, :dists][1] == "triang") &&
@@ -386,11 +386,11 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
         error("Uniform dist requires two parameters (minimum, maximum).")
     end
 
-    new_val = new_lwr + 0.5 * (new_upr - new_lwr)
+    new_val = new_lower + 0.5 * (new_upper - new_lower)
 
     if _check_discrete(params[params.fieldname .== factor, :ptype][1])
         new_val = ceil(Int64, new_val)
-        new_bnds = (round(new_lwr), round(new_upr) + 1.0)
+        new_bnds = (round(new_lower), round(new_upper) + 1.0)
     end
 
     params[params.fieldname .== factor, :bounds] .= [new_bnds]
