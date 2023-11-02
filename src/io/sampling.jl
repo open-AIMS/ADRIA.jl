@@ -372,7 +372,7 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
     default_upr, default_lwr = params[params.fieldname .== factor, :default_bounds][1]
     new_lwr, new_upr = new_bnds[1], new_bnds[2]
 
-    # Check new parameter bounds are within old parameter bounds
+    # Check new parameter bounds are within default parameter bounds
     if (new_bnds[1] < default_upr) || (new_bnds[2] > default_lwr)
         error(
             "New bounds should be within [$default_upr, $default_lwr], received: ($new_upr, $new_lwr).",
