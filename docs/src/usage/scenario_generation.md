@@ -115,24 +115,23 @@ ADRIA.fix_factor!(dom;
     coral_cover_tol=1.0
 )
 ```
-The ranges for sampling can also be constrained if running scenarios for a particular 
-range of a parameter is of interest. For example, if one wanted to investigate only 
-scenarios with high fogging and seeding, the following example could be used:
+Samples can also be taken over a constrained range. For example, if one wanted to investigate only 
+scenarios with high fogging and seeding, the following could be used:
 
 ```julia
 dom = ADRIA.load_domain()
 
-# Adjust seeding bounds. Note only lower and upper bounds needed because it is a 
-# uniform distribution.
+# Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in  
+# question have a uniform distribution.
 ADRIA.set_factor_bounds!(dom, :N_seed_TA, (500000.0, 1000000.0 + 1.0))
 ADRIA.set_factor_bounds!(dom, :N_seed_CA, (500000.0, 1000000.0 + 1.0))
 ADRIA.set_factor_bounds!(dom, :N_seed_SA, (500000.0, 1000000.0 + 1.0))
 
 # Adjust fogging bounds. Note lower, upper and mode parameters are needed because it 
-# is a triangualr distribution.
+# is a triangular distribution.
 ADRIA.set_factor_bounds!(dom, :fogging, (0.2, 0.3, 0.1))
 
-# Adjust multiple parameter in one function evaluation
+# Adjust multiple factors simultaneously.
 ADRIA.set_factor_bounds!(dom;
     heat_stress=(0.3, 0.7),
     N_seed_TA=(500000.0, 1000000.0 + 1.0),
