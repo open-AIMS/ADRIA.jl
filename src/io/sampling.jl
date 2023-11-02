@@ -389,7 +389,7 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
     new_val = new_lower + 0.5 * (new_upper - new_lower)
 
     if _check_discrete(params[params.fieldname .== factor, :ptype][1])
-        new_val = ceil(Int64, new_val)
+        new_val = floor(Int64, new_val)
         new_bnds = (round(new_lower), round(new_upper) + 1.0)
     end
 
