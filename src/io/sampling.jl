@@ -369,13 +369,13 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
     params = DataFrame(d.model)
 
     # get upper and lower bounds for default and new distributions
-    default_upper, default_lower = params[params.fieldname .== factor, :default_bounds][1]
-    new_upper, new_lower = new_bnds[1], new_bnds[2]
+    default_lower, default_upper = params[params.fieldname .== factor, :default_bounds][1]
+    new_lower, new_upper = new_bnds[1], new_bnds[2]
 
     # Check new parameter bounds are within default parameter bounds
-    if (new_bnds[1] < default_lower) || (new_bnds[2] > default_upper)
+    if (new_lower < default_lower) || (new_upper > default_upper)
         error(
-            "New bounds should be within [$default_upper, $default_lower], received: ($new_upper, $new_lower).",
+            "New bounds should be within ($default_lower, $default_upper), received: ($new_lower, $new_upper).",
         )
     end
     if (params[params.fieldname .== factor, :dists][1] == "triang") &&
