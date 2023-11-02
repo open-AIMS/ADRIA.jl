@@ -386,9 +386,15 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
         error("Uniform dist requires two parameters (minimum, maximum).")
     end
 
-    params[params.fieldname.==factor, :bounds] .= [new_bnds]
-    params[params.fieldname .== factor, :val] .=
-        new_bnds[1] + 0.5 * (new_bnds[2] - new_bnds[1])
+    new_val = new_lwr + 0.5 * (new_upr - new_lwr)
+
+    if _check_discrete(params[params.fieldname .== factor, :ptype][1])
+        new_val = ceil(new_val)
+        new_bnds = (round(new_lwr), round(new_upper) + 1.0)
+    end
+
+    params[params.fieldname .== factor, :bounds] .= [new_bnds]
+    params[params.fieldname .== factor, :val] .= new_val
 
     update!(d, params)
 
