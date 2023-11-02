@@ -380,11 +380,10 @@ function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
     end
     if (params[params.fieldname .== factor, :dists][1] == "triang") &&
         (length(new_bnds) !== 3)
-        error("Triangular dist requires three parameters.")
-    end
-    if (params[params.fieldname .== factor, :dists][1] == "unif") &&
+        error("Triangular dist requires three parameters (minimum, maximum, peak).")
+    elseif (params[params.fieldname .== factor, :dists][1] == "unif") &&
         (length(new_bnds) !== 2)
-        error("Uniform dist requires two parameters.")
+        error("Uniform dist requires two parameters (minimum, maximum).")
     end
 
     params[params.fieldname.==factor, :bounds] .= [new_bnds]
