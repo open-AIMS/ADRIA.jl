@@ -5,7 +5,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
     # Bounds are defined as floats to maintain type stability
     guided::N = Param(
         0;
-        ptype="integer",
+        ptype="categorical",
         bounds=(-1.0, length(methods_mcda) + 1.0),
         default_bounds=(-1.0, length(methods_mcda) + 1.0),
         dists="unif",

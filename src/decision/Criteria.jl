@@ -118,7 +118,7 @@ Base.@kwdef struct Criteria{P,N} <: EcoModel
     )
     use_dist::N = Param(
         1;
-        ptype="integer",
+        ptype="categorical",
         bounds=(0.0, 1.0 + 1.0),
         default_bounds=(0.0, 1.0 + 1.0),
         dists="unif",
