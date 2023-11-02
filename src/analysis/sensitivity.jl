@@ -202,27 +202,31 @@ function pawn(
 end
 
 """
-    convergence(X::DataFrame, y::NamedDimsArray, target_factors::Vector{Symbol}; n_steps::Int64=10)
+    convergence(X::DataFrame, y::NamedDimsArray, target_factors::Vector{Symbol}; n_steps::Int64=10)::NamedDimsArray
+    convergence(rs::ResultSet, X::DataFrame, y::NamedDimsArray, components::Vector{String}; n_steps::Int64=10)::NamedDimsArray
 
-    Calculates the PAWN sensitivity index for an increasing number of scenarios where the maximum
-        is the total number of scenarios in scens. Number of scenario subsets determined by N_steps.
+Calculates the PAWN sensitivity index for an increasing number of scenarios where the maximum
+    is the total number of scenarios in scens. Number of scenario subsets determined by N_steps.
+    Can be calculated for individual factors or aggregated over factors for specified model components.
 
 # Arguments
+- `rs` : Result set (only needed if aggregating over model components).
 - `X` : Model inputs
 - `y` : Model outputs
-- `target_factors` : Names of target factors represented by columns in `X`
+- `target_factors` : Names of target factors represented by columns in `X`.
+- `components` : Names of model components to aggregate over (e.g. ["Intervention", "Criteria"]).
 - `n_steps` : Number of steps to cut the total number of scenarios into.
 
 # Returns
-NamedDimsArray, of min, mean, median, max, std, and cv summary statistics for an increasing
-number of scenarios.
+NamedDimsArray, of min, lower bound, mean, median, upper bound, max, std, and cv summary statistics 
+for an increasing number of scenarios.
 """
 function convergence(
     X::DataFrame,
     y::NamedDimsArray,
     target_factors::Vector{Symbol};
     n_steps::Int64=10,
-)
+)::NamedDimsArray
     N = length(y.scenarios)
     step_size = floor(Int64, N / n_steps)
     N_it = collect(step_size:step_size:N)
@@ -251,7 +255,7 @@ function convergence(
     y::NamedDimsArray,
     components::Vector{String};
     n_steps::Int64=10,
-)
+)::NamedDimsArray
     model_spec_df = model_spec(rs)
 
     target_factors = [
