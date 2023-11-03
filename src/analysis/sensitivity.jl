@@ -225,6 +225,7 @@ function convergence(
     X::DataFrame,
     y::NamedDimsArray,
     target_factors::Vector{Symbol};
+    Si::Function=pawn,
     n_steps::Int64=10,
 )::NamedDimsArray
     N = length(y.scenarios)
@@ -241,7 +242,7 @@ function convergence(
 
     for nn in N_it
         pawn_store(; n_scenarios=nn) .= col_normalize(
-            pawn(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])),
+            Si(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])),
         )(;
             factors=target_factors,
         )
@@ -254,6 +255,7 @@ function convergence(
     X::DataFrame,
     y::NamedDimsArray,
     components::Vector{String};
+    Si::Function=pawn,
     n_steps::Int64=10,
 )::NamedDimsArray
     model_spec_df = model_spec(rs)
@@ -262,7 +264,7 @@ function convergence(
         model_spec_df[model_spec_df[:, "component"] .== cc, "fieldname"] for
         cc in components
     ]
-    Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); n_steps=n_steps)
+    Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); Si=Si, n_steps=n_steps)
     Si_c = NamedDimsArray(
         zeros(length(components), 8, n_steps);
         factors=Symbol.(components),
