@@ -182,7 +182,10 @@ function connectivity_strength(
 
     # Accounts for cases where there is no coral cover
     TP_cache .= (area_weighted_TP .* cover)
-    TP_cache .= TP_cache ./ maximum(TP_cache)
+    max_TP = maximum(TP_cache)
+    if max_TP > 0.0
+        TP_cache .= TP_cache ./ max_TP
+    end
 
     return connectivity_strength(TP_cache)
 end
