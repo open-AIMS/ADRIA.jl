@@ -350,6 +350,63 @@ function fix_factor!(d::Domain; factors...)::Nothing
     end
 end
 
+"""
+    set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
+    set_factor_bounds!(d::Domain; factors...)::Nothing
+
+Fix bounds of a parameter for sampling to those provided.
+
+Note: Changes are permanent. To reset, either specify the original value(s)
+      or reload the Domain.
+
+# Examples
+```julia
+# Fix `wave_stress` to specified bounds
+set_factor_bounds!(dom, :wave_stress, (0.1,0.2))
+```
+"""
+function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
+    params = DataFrame(d.model)
+
+    # get upper and lower bounds for default and new distributions
+    default_lower, default_upper = params[params.fieldname .== factor, :default_bounds][1]
+    new_lower, new_upper = new_bnds[1], new_bnds[2]
+
+    # Check new parameter bounds are within default parameter bounds
+    if (new_lower < default_lower) || (new_upper > default_upper)
+        error(
+            "New bounds should be within ($default_lower, $default_upper), received: ($new_lower, $new_upper).",
+        )
+    end
+    if (params[params.fieldname .== factor, :dists][1] == "triang") &&
+        (length(new_bnds) !== 3)
+        error("Triangular dist requires three parameters (minimum, maximum, peak).")
+    elseif (params[params.fieldname .== factor, :dists][1] == "unif") &&
+        (length(new_bnds) !== 2)
+        error("Uniform dist requires two parameters (minimum, maximum).")
+    end
+
+    new_val = new_lower + 0.5 * (new_upper - new_lower)
+
+    if _check_discrete(params[params.fieldname .== factor, :ptype][1])
+        new_val = floor(Int64, new_val)
+        new_bnds = (round(new_lower), round(new_upper) + 1.0)
+    end
+
+    params[params.fieldname .== factor, :bounds] .= [new_bnds]
+    params[params.fieldname .== factor, :val] .= new_val
+
+    update!(d, params)
+
+    return nothing
+end
+function set_factor_bounds!(d::Domain; factors...)::Nothing
+    for (factor, bounds) in factors
+        set_factor_bounds!(d, factor, bounds)
+    end
+
+    return nothing
+end
 
 _unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
 

@@ -135,4 +135,31 @@ end
 
         @test all([all(scens[:, c] .== ms[ms.fieldname.==c, :val][1]) for c in coral_params]) || "Non-default coral parameter value found"
     end
+
+    @testset "Set new sampling bounds" begin
+        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        num_samples = 32
+
+        # test continuous factor is sampled within specified range
+        bnds = rand(2)
+        ADRIA.set_factor_bounds!(dom, :heat_stress, (minimum(bnds), maximum(bnds)))
+        scens = ADRIA.sample_guided(dom, num_samples)
+
+        @test (maximum(scens[:, "heat_stress"]) <= maximum(bnds)) ||
+            "Sampled continuous factor is outside of specified new bounds."
+        @test (minimum(scens[:, "heat_stress"]) >= minimum(bnds)) ||
+            "Sampled continuous factor is outside of specified new bounds."
+
+        # test discrete factor is sampled within specified range and is discrete
+        bnds = rand(0.0:1000000.0, 2)
+        ADRIA.set_factor_bounds!(dom, :N_seed_TA, (minimum(bnds), maximum(bnds)))
+        scens = ADRIA.sample_site_selection(dom, num_samples)
+        @test (maximum(scens[:, "N_seed_TA"]) <= maximum(bnds)) ||
+            "Sampled discrete factor is outside of specified new bounds."
+        @test (minimum(scens[:, "N_seed_TA"]) >= minimum(bnds)) ||
+            "Sampled discrete factor is outside of specified new bounds."
+        @test all(mod.(scens[:, "N_seed_TA"], 1.0) .== 0.0) ||
+            "Sampled discrete factors are not all discrete."
+    end
+
 end
