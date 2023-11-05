@@ -164,6 +164,38 @@ save("aviz_scenario.png", tf)  # save the figure to a file
 
 ![Scenarios with subplots](/ADRIA.jl/dev/assets/imgs/aviz_scenario.png?raw=true "Scenarios with subplots")
 
+### Intervention location selection - visualisation
+
+Plot spatial colormaps of site selection frequencies and other available site selection metrics.
+
+```julia
+
+# Calculate frequencies with which each site was selected at each rank
+rank_freq = ranks_to_frequencies(
+    rs.ranks[intervention=1];
+    agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),
+)
+
+# Plot 1st rank frequencies as a colormap
+tf = Figure(; resolution=(1200, 800))  # resolution in pixels
+ADRIA.viz.ranks_to_frequencies!(tf[1, 1], rs, rank_freq, 1)
+
+save("single_rank_plot_ex.png", tf)
+
+```
+
+![PAWN sensitivity plots](/ADRIA.jl/dev/assets/imgs/single_rank_plot_ex.png?raw=true "Rank frequency plot 1 rank")
+
+```julia
+# Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
+tf = Figure(; resolution=(1200, 800))  # resolution in pixels
+ADRIA.viz.ranks_to_frequencies!(tf[1, 1], rs, rank_freq, [1, 2, 3])
+
+save("ranks_plot_ex.png", tf)
+
+```
+![PAWN sensitivity plots](/ADRIA.jl/dev/assets/imgs/ranks_plot_ex.png?raw=true "Rank frequency plot 3 ranks")
+
 ### PAWN sensitivity (heatmap overview)
 
 The PAWN sensitivity analysis method is a moment-independent approach to Global Sensitivity
@@ -205,7 +237,6 @@ save("tsa.png", tsa_fig)
 ```
 
 ![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/tsa.png?raw=true "Temporal Sensitivity Analysis")
-
 
 ### Time Series Clustering
 
