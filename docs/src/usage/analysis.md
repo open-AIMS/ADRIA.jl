@@ -236,6 +236,42 @@ save("tsa.png", tsa_fig)
 
 ![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/tsa.png?raw=true "Temporal Sensitivity Analysis")
 
+
+### Convergence Analysis for Sensitivity
+
+When undertaking sensitivity analysis it is importnant to have a sufficient sample size that the sensitivity measure has converged and is relatively stable. To understand convergence behaviour a 
+large sample can be drawn and split into smaller sub-samples. Plotting a sensitivity measure against increasing sample size can help to understand whether the sample size is sufficient for convergence.
+The function `convergence` can be used to calculated a sensitivity measure for an increasing number of samples. The result can then be plotted as band plots or a heat map using `viz.convergence`.
+
+```julia
+
+outcome = ADRIA.mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps)[timesteps=1]
+
+# Plot heat map of sensitivities for increasing number of scenarios for 
+# individual factors (foi).
+foi = [:dhw_scenario, :wave_scenario, :guided]
+Si_N = convergence(scens, outcome, foi)
+ADRIA.viz.convergence(Si_N, Symbol.(foi))
+
+# Plot heat map of sensitivities for increasing number of scenarios for 
+# particular model components.
+components = ["EnvironmentalLayer", "Intervention"]
+Si_N = convergence(rs, scens, outcome, components)
+ADRIA.viz.convergence(Si_N, Symbol.(components))
+
+```
+![Plots of Convergence](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors.png?raw=true "Convergence Analysis- factors")
+![Plots of Convergence](/ADRIA.jl/dev/assets/imgs/colormap_convergence_components.png?raw=true "Convergence Analysis- model components")
+
+```julia
+# Plot covergence as grid of band plots
+Si_N = convergence(scens, outcome, foi)
+ADRIA.viz.convergence(Si_N, Symbol.(foi), plot_overlay=false)
+
+# Plot covergence as grid of overlayed band plots
+ADRIA.viz.convergence(Si_N, Symbol.(foi), plot_overlay=true)
+```
+
 ### Time Series Clustering
 
 The Time Series Clustering algorithm clusters together series (typically time series)
