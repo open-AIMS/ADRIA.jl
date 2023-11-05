@@ -734,7 +734,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             dhw_tol_mean_log,
             timesteps=1:tf,
             species=corals.coral_id,
-            sites=1:n_sites
+            sites=1:n_locs,
         )
     else
         collated_dhw_tol_log = false
