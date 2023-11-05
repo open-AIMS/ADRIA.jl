@@ -50,7 +50,7 @@ Sensitivity Analysis. Outputs are characterized by their Cumulative Distribution
 non-influential.
 
 This implementation applies the Kolmogorov-Smirnov test as the distance measure and returns
-summary statistics (min, mean, median, max, std, and cv) over the slices.
+summary statistics (min, lower bound, mean, median, upper bound, max, std, and cv) over the slices.
 
 # Arguments
 - `rs` : ResultSet
@@ -60,7 +60,7 @@ summary statistics (min, mean, median, max, std, and cv) over the slices.
 - `S` : Number of slides (default: 10)
 
 # Returns
-NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
+NamedDimsArray, of min, mean, lower bound, median, upper bound, max, std, and cv summary statistics.
 
 # Examples
 ```julia
