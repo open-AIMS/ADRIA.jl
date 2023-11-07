@@ -455,7 +455,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     cover_tmp = zeros(n_locs)
 
     # Locations that can support corals
-    valid_locs::BitVector = site_k(domain) .> 0.0
+    valid_locs::BitVector = location_k(domain) .> 0.0
     site_ranks = SparseArray(zeros(tf, n_locs, 2))  # log seeding/fogging/shading ranks
     Yshade = SparseArray(spzeros(tf, n_locs))
     Yfog = SparseArray(spzeros(tf, n_locs))

@@ -227,7 +227,7 @@ end
 Get maximum coral cover area for the given domain in absolute area.
 """
 function site_k_area(domain::Domain)::Vector{Float64}
-    return site_k(domain) .* site_area(domain)
+    return location_k(domain) .* site_area(domain)
 end
 
 """

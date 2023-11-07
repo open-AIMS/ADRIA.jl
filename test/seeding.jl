@@ -3,7 +3,7 @@ using Test
 using NamedDims, Distributions
 
 using ADRIA
-using ADRIA: distribute_seeded_corals, site_k, seed_corals!
+using ADRIA: distribute_seeded_corals, location_k, seed_corals!
 
 @testset "Seeding" begin
     # first test function on example domain
@@ -11,7 +11,7 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
 
     # extract inputs for function
     total_site_area = site_area(dom)
-    k = site_k(dom)
+    k = location_k(dom)
     current_cover = zeros(size(total_site_area))
 
     # calculate available space
