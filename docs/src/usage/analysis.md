@@ -177,8 +177,7 @@ rank_freq = ranks_to_frequencies(
 )
 
 # Plot 1st rank frequencies as a colormap
-tf = Figure(; resolution=(1200, 800))  # resolution in pixels
-ADRIA.viz.ranks_to_frequencies!(tf[1, 1], rs, rank_freq, 1)
+ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:resolution=>(1200, 800)))
 
 save("single_rank_plot.png", tf)
 
@@ -188,8 +187,7 @@ save("single_rank_plot.png", tf)
 
 ```julia
 # Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
-tf = Figure(; resolution=(1200, 800))  # resolution in pixels
-ADRIA.viz.ranks_to_frequencies!(tf[1, 1], rs, rank_freq, [1, 2, 3])
+ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:resolution=>(1200, 800)))
 
 save("ranks_plot.png", tf)
 
