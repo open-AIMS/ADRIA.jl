@@ -183,7 +183,7 @@ save("single_rank_plot.png", tf)
 
 ```
 
-![PAWN sensitivity plots](/ADRIA.jl/dev/assets/imgs/single_rank_plot.png?raw=true "Rank frequency plot 1 rank")
+![Rank frequency plots for single rank](/ADRIA.jl/dev/assets/imgs/single_rank_plot.png?raw=true "Rank frequency plot 1 rank")
 
 ```julia
 # Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
@@ -192,7 +192,7 @@ ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:resoluti
 save("ranks_plot.png", tf)
 
 ```
-![PAWN sensitivity plots](/ADRIA.jl/dev/assets/imgs/ranks_plot.png?raw=true "Rank frequency plot 3 ranks")
+![Rank frequency plots for multiple ranks](/ADRIA.jl/dev/assets/imgs/ranks_plot.png?raw=true "Rank frequency plot 3 ranks")
 
 ### PAWN sensitivity (heatmap overview)
 
