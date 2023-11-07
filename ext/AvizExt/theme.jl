@@ -15,7 +15,7 @@ const COLORS::Dict{Symbol,Symbol} = Dict(
 )
 
 function colors(
-    scen_groups::Dict{Symbol,BitVector},
+    scen_groups::Dict{<:Any,BitVector},
 )::Dict{Symbol,Union{Symbol,RGBA{Float32}}}
     group_names = keys(scen_groups)
     if count(group_names .∉ [keys(COLORS)]) > 0
