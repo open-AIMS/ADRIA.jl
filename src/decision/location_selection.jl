@@ -1,5 +1,6 @@
 using NamedDims, AxisKeys
 
+using ADRIA: connectivity_strength
 
 """
     _location_selection(domain::Domain, sum_cover::AbstractArray, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
