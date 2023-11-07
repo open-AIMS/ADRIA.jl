@@ -21,6 +21,7 @@ function setup_cache(domain::Domain)::NamedTuple
         # sf=zeros(n_groups, n_sites),  # stressed fecundity, commented out as it is disabled
         fec_all=zeros(n_species, n_sites),  # all fecundity
         fec_scope=zeros(n_groups, n_sites),  # fecundity scope
+        recruitment=zeros(n_groups, n_sites),  # coral recruitment
         dhw_step=zeros(n_sites),  # DHW for each time step
         cov_tmp=zeros(n_species, n_sites),  # Cover for previous timestep
         depth_coeff=zeros(n_sites),  # store for depth coefficient
@@ -442,6 +443,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
     fec_scope = cache.fec_scope
+    recruitment = cache.recruitment
     dhw_t = cache.dhw_step
     C_t = cache.cov_tmp
     depth_coeff = cache.depth_coeff
@@ -596,7 +598,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
-        p.rec[:, valid_locs] .= settler_cover(
+        recruitment[:, valid_locs] .= settler_cover(
             fec_scope,
             TP_data,
             leftover_space_m²,
@@ -605,10 +607,18 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             basal_area_per_settler
         )[:, valid_locs] ./ loc_k_area[:, valid_locs]
 
-        settler_DHW_tolerance!(c_mean_t_1, c_mean_t, site_k_area(domain), TP_data, p.rec, fec_params_per_m², param_set("heritability"))
+        settler_DHW_tolerance!(
+            c_mean_t_1,
+            c_mean_t,
+            site_k_area(domain),
+            TP_data,
+            recruitment,
+            fec_params_per_m²,
+            param_set("heritability")
+        )
 
         # Add recruits to current cover
-        C_t[p.small, :] .+= p.rec
+        C_t[p.small, :] .+= recruitment
 
         in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
         in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
