@@ -56,11 +56,11 @@ include("ecosystem/corals/Corals.jl")
 include("ecosystem/const_params.jl")
 include("ecosystem/connectivity.jl")
 
+include("decision/CriteriaWeights.jl")
+
 include("Domain.jl")
 include("io/inputs.jl")
 
-include("decision/mcda_methods.jl")
-include("decision/Criteria.jl")
 include("decision/dMCDA.jl")
 
 include("interventions/Interventions.jl")
@@ -68,7 +68,6 @@ include("interventions/seeding.jl")
 include("interventions/fogging.jl")
 
 include("io/ResultSet.jl")
-include("decision/location_selection.jl")
 include("io/result_io.jl")
 include("io/result_post_processing.jl")
 include("io/sampling.jl")
