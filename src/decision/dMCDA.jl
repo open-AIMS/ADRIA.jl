@@ -38,9 +38,8 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     dam_prob  # ::A
     heat_stress_prob  # ::A
     site_depth #::V
-    sum_cover  # ::F
-    max_cover  # ::V
-    area  # ::M
+    leftover_space  # ::F
+    k_area  # ::V
     min_area # ::F
     risk_tol  # ::F
     dist # ::M
@@ -62,14 +61,14 @@ end
 
 """
     DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
-               site_ids::AbstractArray, sum_cover::AbstractArray, area_to_seed::Float64,
+               site_ids::AbstractArray, leftover_space::AbstractArray, area_to_seed::Float64,
                waves::AbstractArray, dhws::AbstractArray)::DMCDA_vars
     DMCDA_vars(domain::Domain, criteria::NamedDimsArray, site_ids::AbstractArray,
-               sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+                leftover_space::AbstractArray, area_to_seed::Float64)::DMCDA_vars
     DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
-               sum_cover::AbstractArray, area_to_seed::Float64)::DMCDA_vars
+                leftover_space::AbstractArray, area_to_seed::Float64)::DMCDA_vars
     DMCDA_vars(domain::Domain, criteria::DataFrameRow, site_ids::AbstractArray,
-               sum_cover::AbstractArray, area_to_seed::Float64,
+                leftover_space::AbstractArray, area_to_seed::Float64,
                waves::AbstractArray, dhw::AbstractArray)::DMCDA_vars
 
 Constuctors for DMCDA variables.
@@ -78,7 +77,7 @@ function DMCDA_vars(
     domain::Domain,
     criteria::NamedDimsArray,
     site_ids::AbstractArray,
-    sum_cover::AbstractArray,
+    leftover_space::AbstractArray,
     area_to_seed::Float64,
     waves::AbstractArray,
     dhws::AbstractArray
@@ -86,8 +85,6 @@ function DMCDA_vars(
 
     # Site Data
     site_d = domain.site_data
-    n_sites = n_locations(domain)
-    area = site_area(domain)
 
     mcda_vars = DMCDA_vars(
         site_ids,
@@ -100,9 +97,8 @@ function DMCDA_vars(
         waves,
         dhws,
         site_d.depth_med,
-        sum_cover,
-        site_k(domain),
-        area,
+        leftover_space,
+        site_k_area(domain),
         criteria("coral_cover_tol") .* area_to_seed,
         criteria("deployed_coral_risk_tol"),
         domain.site_distances,
@@ -127,35 +123,44 @@ function DMCDA_vars(
     domain::Domain,
     criteria::NamedDimsArray,
     site_ids::AbstractArray,
-    sum_cover::AbstractArray,
+    leftover_space::AbstractArray,
     area_to_seed::Float64
 )::DMCDA_vars
     num_sites = n_locations(domain)
-    return DMCDA_vars(domain, criteria, site_ids, sum_cover, area_to_seed, zeros(num_sites, 1), zeros(num_sites, 1))
+    return DMCDA_vars(
+        domain,
+        criteria,
+        site_ids,
+        leftover_space,
+        area_to_seed,
+        zeros(num_sites, 1),
+        zeros(num_sites, 1),
+    )
 end
 function DMCDA_vars(
     domain::Domain,
     criteria::DataFrameRow,
     site_ids::AbstractArray,
-    sum_cover::AbstractArray,
+    leftover_space::AbstractArray,
     area_to_seed::Float64,
     waves::AbstractArray,
     dhw::AbstractArray
 )::DMCDA_vars
-
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
-    return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed, waves, dhw)
+    return DMCDA_vars(
+        domain, criteria_vec, site_ids, leftover_space, area_to_seed, waves, dhw
+    )
 end
 function DMCDA_vars(
     domain::Domain,
     criteria::DataFrameRow,
     site_ids::AbstractArray,
-    sum_cover::AbstractArray,
+    leftover_space::AbstractArray,
     area_to_seed::Float64
 )::DMCDA_vars
 
     criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria), rows=names(criteria))
-    return DMCDA_vars(domain, criteria_vec, site_ids, sum_cover, area_to_seed)
+    return DMCDA_vars(domain, criteria_vec, site_ids, leftover_space, area_to_seed)
 end
 
 """
@@ -281,41 +286,39 @@ end
 
 
 """
-    create_decision_matrix(site_ids, in_conn, out_conn, sum_cover, max_cover, area, wave_stress, heat_stress, predec, risk_tol)
+    create_decision_matrix(site_ids, in_conn, out_conn, leftover_space, wave_stress, heat_stress, predec, risk_tol)
 
 Creates criteria matrix `A`, where each column is a selection criterium and each row is a site.
 Sites are then filtered based on heat and wave stress risk.
 
-Where no sites are filtered, size of ``A := n_sites × 7 criteria``.
+Where no sites are filtered, size of ``A := n_sites × 9 criteria``.
 
 Columns indicate:
 1. Site ID
-2. Incoming Node Connectivity Centrality
-3. Outgoing Node Connectivity Centrality
+2. Incoming node connectivity centrality
+3. Outgoing node connectivity centrality
 4. Wave stress
 5. Heat stress
-6. Priority Predecessors
-7. Available Area (relative to max cover)
+6. Priority predecessors
+7. GBRMPA zoning criteria
+8. Available area (relative to max cover)
+9. Location depth
 
 # Arguments
-- `site_ids` : vector of site ids
-- `in_conn` : site incoming centrality (relative strength of connectivity) (0 <= c <= 1.0)
-- `out_conn` : site outgoing centrality (relative strength of connectivity) (0 <= c <= 1.0)
-- `sum_cover` : vector, sum of coral cover (across species) for each site (i.e., [x₁, x₂, ..., xₙ] where x_{1:n} <= 1.0)
-- `max_cover` : maximum possible proportional coral cover (k) for each site, relative to total site area (k <= 1.0)
-- `area` : total absolute area (in m²) for each site
-- `wave_stress` : Probability of wave damage
+- `site_ids` : Unique site ids.
+- `in_conn` : Site incoming centrality (relative strength of connectivity) (0 <= c <= 1.0).
+- `out_conn` : Site outgoing centrality (relative strength of connectivity) (0 <= c <= 1.0).
+- `leftover_space` : Available space for coral to grow (m²).
+- `wave_stress` : Probability of wave damage.
 - `heat_stress` : Probability of site being affected by heat stress
-- `predec` : list of priority predecessors (sites strongly connected to priority sites)
-- `risk_tol` : tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risk_tol are filtered out.
+- `predec` : List of priority predecessors (sites strongly connected to priority sites).
+- `risk_tol` : Tolerance for wave and heat risk (∈ [0,1]). Sites with heat or wave risk> risk_tol are filtered out.
 """
 function create_decision_matrix(
     site_ids::Vector{Int64},
     in_conn::T,
     out_conn::T,
-    sum_cover::Union{NamedDimsArray,T},
-    max_cover::T,
-    area::T,
+    leftover_space::Union{NamedDimsArray,T},
     wave_stress::T,
     heat_stress::T,
     site_depth::T,
@@ -345,8 +348,8 @@ function create_decision_matrix(
     # priority zone predecessors and sites
     A[:, 7] .= zones_criteria
 
-    # Proportion of empty space (no coral) compared to max possible cover
-    A[:, 8] = max.((max_cover - sum_cover), 0.0) .* area
+    # Area of space for coral cover in m²
+    A[:, 8] = leftover_space
 
     A[:, 9] = site_depth
 
@@ -355,9 +358,6 @@ function create_decision_matrix(
     A[A[:, 4].>risk_tol, 4] .= NaN
     rule = (A[:, 4] .<= risk_tol) .& (A[:, 5] .> risk_tol)
     A[rule, 5] .= NaN
-
-    # Mark locations with no space as to be removed from consideration
-    A[A[:, 8].<=0.0, 8] .= NaN
 
     filtered = vec(.!any(isnan.(A), dims=2))
 
@@ -388,12 +388,15 @@ Create seeding specific decision matrix from criteria matrix. The weight criteri
 Tuple (SE, wse)
 - `SE` : Matrix of shape [n sites considered, 7]
     1. Site index ID
-    2. Incoming Centrality
-    3. Outgoing Centrality
+    2. Incoming centrality
+    3. Outgoing centrality
     4. Wave risk (higher values = less risk)
     5. Damage risk (higher values = less risk)
-    6. Priority predecessors relating to coral real estate relative to max capacity
-    7. Available space
+    6. Priority predecessors
+    7. GBRMPA zoning criteria
+    8. Available space
+    9. Location depth
+
 - `wse` : 5-element vector of criteria weights
     1. incoming connectivity
     2. outgoing connectivity
@@ -412,22 +415,31 @@ function create_seed_matrix(
     wt_heat::T,
     wt_predec_seed::T,
     wt_predec_zones_seed::T,
-    wt_lo_cover::T
+    wt_low_cover::T
 )::Tuple{Matrix{Float64}, Vector{Float64}} where {T<:Float64}
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
-    wse = [wt_in_conn_seed, wt_out_conn_seed, wt_waves, wt_heat, wt_predec_seed, wt_predec_zones_seed, wt_lo_cover, wt_heat]
-    # wse .= mcda_normalize(wse)
+    wse = [
+        wt_in_conn_seed,
+        wt_out_conn_seed,
+        wt_waves,
+        wt_heat,
+        wt_predec_seed,
+        wt_predec_zones_seed,
+        wt_low_cover,
+        wt_heat,
+    ]
 
-    SE[:, 4] = (1 .- SE[:, 4]) # compliment of wave risk
-    SE[:, 5] = (1 .- SE[:, 5]) # compliment of heat risk
+    SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
+    SE[:, 5] = (1 .- SE[:, 5])  # compliment of heat risk
 
     # Coral real estate as total area, sites with ≤ min_area to be seeded available filtered out
-    SE[vec(A[:, 8] .<= min_area), 8] .= NaN
+    # This will also filter out sites with 0 space
+    SE[SE[:, 8] .<= min_area, 8] .= NaN
 
     # Mark "hot" locations for filter
-    SE[vec(A[:, 5] .>= 0.75), 5] .= NaN
+    #SE[vec(A[:, 5] .>= 0.75), 5] .= NaN
 
     # Filter out identified locations
     SE = SE[vec(.!any(isnan.(SE), dims=2)), :]
@@ -443,6 +455,7 @@ Create shading specific decision matrix and apply weightings.
 
 # Arguments
 - `A` : Criteria  matrix
+- `k_area`: Carrying capacity (m²) for coral.
 - `wt_conn_shade` : Shading connectivity weight
 - `wt_waves` : Wave stress weight
 - `wt_heat` : Heat stress weight
@@ -469,24 +482,36 @@ Tuple (SH, wsh)
     5. high cover (weights importance of sites with high cover of coral to shade)
 """
 function create_shade_matrix(A::Matrix{Float64},
-    max_area::Vector{Float64},
+    k_area::Vector{T},
     wt_conn_shade::T,
     wt_waves::T,
     wt_heat::T,
     wt_predec_shade::T,
     wt_predec_zones_shade::T,
-    wt_hi_cover)::Tuple{Matrix{Float64}, Vector{Float64}} where {T<:Float64}
+    wt_hi_cover,
+)::Tuple{Matrix{Float64},Vector{Float64}} where {T<:Float64}
+
+    # Define weights vector
+    wsh = [
+        wt_conn_shade,
+        wt_conn_shade,
+        wt_waves,
+        wt_heat,
+        wt_predec_shade,
+        wt_predec_zones_shade,
+        wt_hi_cover,
+    ]
+
     # Set up decision matrix to be same size as A
     SH = copy(A)
 
     # Remove consideration of site depth as shading not accounted for in bleaching model yet
-    SH = SH[:, 1:end-1]
+    SH = SH[:, 1:(end - 1)]
 
-    wsh = [wt_conn_shade, wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_predec_zones_shade, wt_hi_cover]
-    wsh .= mcda_normalize(wsh)
+    # Get area of coral cover (m²) by subtracting leftover space from total area for coral.
+    SH[:, 8] = k_area .- SH[:, 8]
 
-    SH[:, 4] = (1.0 .- A[:, 4]) # complimentary of wave damage risk
-    SH[:, 8] = (max_area .- A[:, 8]) # total area of coral cover
+    SH[:, 4] = (1.0 .- SH[:, 4])  # complimentary of wave damage risk
 
     SH[SH[:, 8].<0, 8] .= 0  # if any negative, scale back to zero
     return SH, wsh
@@ -494,24 +519,24 @@ end
 
 
 """
-    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, prefseedsites::AbstractArray{Int64}, prefshadesites::AbstractArray{Int64}, rankingsin::Matrix{Int64})
+    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, pref_seed_locs::AbstractArray{Int64}, pref_shade_locs::AbstractArray{Int64}, rankings_in::Matrix{Int64})
 
 # Arguments
 - `d_vars` : DMCDA_vars type struct containing weightings and criteria values for site selection.
 - `alg_ind` : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
 - `log_seed` : boolean indicating whether seeding sites are being re-assesed at current time
 - `log_shade` : boolean indicating whether shading/fogging sites are being re-assesed at current time
-- `prefshadesites` : previous time step's selection of sites for shading
-- `prefseedsites` : previous time step's selection of sites for seeding
-- `rankingsin` : pre-allocated store for site rankings
+- `pref_shade_locs` : previous time step's selection of sites for shading
+- `pref_seed_locs` : previous time step's selection of sites for seeding
+- `rankings_in` : pre-allocated store for site rankings
 - `in_conn` : in-degree centrality
 - `out_conn` : out-degree centrality
 - `strong_pred` : strongest predecessors
 
 # Returns
 Tuple :
-    - `prefseedsites` : Vector, Indices of preferred seeding locations
-    - `prefshadesites` : Vector, Indices of preferred shading locations
+    - `pref_seed_locs` : Vector, Indices of preferred seeding locations
+    - `pref_shade_locs` : Vector, Indices of preferred shading locations
     - `rankings` : Matrix[n_sites ⋅ 3] where columns are site_id, seeding_rank, shading_rank
         Values of 0 indicate sites that were not considered
 """
@@ -520,9 +545,9 @@ function guided_site_selection(
     alg_ind::T,
     log_seed::B,
     log_shade::B,
-    prefseedsites::IA,
-    prefshadesites::IB,
-    rankingsin::Matrix{T},
+    pref_seed_locs::IA,
+    pref_shade_locs::IB,
+    rankings_in::Matrix{T},
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
     strong_pred::Vector{Int64};
@@ -537,7 +562,11 @@ function guided_site_selection(
 
     # if no sites are available, abort
     if n_sites == 0
-        return zeros(Int64, length(prefseedsites)), zeros(Int64, length(prefshadesites)), rankingsin
+        return (
+            zeros(Int64, length(pref_seed_sites)),
+            zeros(Int64, length(pref_shade_sites)),
+            rankings_in,
+        )
     end
 
     n_iv_locs::Int64 = d_vars.n_site_int
@@ -545,12 +574,6 @@ function guided_site_selection(
     priority_zones::Array{String} = d_vars.priority_zones
 
     zones = d_vars.zones[site_ids]
-    wave_stress = d_vars.dam_prob[site_ids]
-    heat_stress = d_vars.heat_stress_prob[site_ids]
-    site_depth = d_vars.site_depth[site_ids]
-    sum_cover = d_vars.sum_cover[site_ids]
-    max_cover = d_vars.max_cover[site_ids]
-    area = d_vars.area[site_ids]
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
@@ -585,16 +608,20 @@ function guided_site_selection(
     mcda_func = methods_mcda[alg_ind]
 
     A, filtered_sites = create_decision_matrix(
-        site_ids, in_conn, out_conn, sum_cover, max_cover,
-        area, wave_stress, heat_stress, site_depth, predec,
+        site_ids,
+        in_conn,
+        out_conn,
+        d_vars.leftover_space[site_ids],
+        d_vars.dam_prob[site_ids], d_vars.heat_stress_prob[site_ids],
+        d_vars.site_depth[site_ids], predec,
         zones_criteria, d_vars.risk_tol
     )
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return (
-            zeros(Int64, length(prefseedsites)),
-            zeros(Int64, length(prefshadesites)),
-            rankingsin
+            zeros(Int64, length(pref_seed_locs)),
+            zeros(Int64, length(pref_shade_locs)),
+            rankings_in
         )
     end
 
@@ -604,53 +631,72 @@ function guided_site_selection(
     # if seeding, create seeding specific decision matrix
     if log_seed
         SE, wse = create_seed_matrix(
-            A, d_vars.min_area, d_vars.wt_in_conn_seed, d_vars.wt_out_conn_seed,
-            d_vars.wt_waves, d_vars.wt_heat, d_vars.wt_predec_seed, d_vars.wt_zones_seed,
+            A,
+            d_vars.min_area,
+            d_vars.wt_in_conn_seed,
+            d_vars.wt_out_conn_seed,
+            d_vars.wt_waves,
+            d_vars.wt_heat,
+            d_vars.wt_predec_seed,
+            d_vars.wt_zones_seed,
             d_vars.wt_lo_cover
         )
     end
 
     # if shading, create shading specific decision matrix
     if log_shade
-        max_area = (area.*max_cover)[filtered_sites]
         SH, wsh = create_shade_matrix(
-            A, max_area, d_vars.wt_conn_shade, d_vars.wt_waves, d_vars.wt_heat,
+            A,
+            d_vars.k_area[site_ids][filtered_sites],
+            d_vars.wt_conn_shade,
+            d_vars.wt_waves,
+            d_vars.wt_heat,
             d_vars.wt_predec_shade, d_vars.wt_zones_shade, d_vars.wt_hi_cover
         )
     end
 
     if log_seed && isempty(SE)
-        prefseedsites = zeros(Int64, n_iv_locs)
+        pref_seed_locs = zeros(Int64, n_iv_locs)
     elseif log_seed
-        prefseedsites, s_order_seed = rank_sites!(SE, wse, rankings, n_iv_locs, mcda_func, 2)
+        pref_seed_locs, s_order_seed = rank_sites!(SE, wse, rankings, n_iv_locs, mcda_func, 2)
         if use_dist != 0
-            prefseedsites, rankings = distance_sorting(
-                prefseedsites, s_order_seed, d_vars.dist, min_dist, rankings, 2
+            pref_seed_locs, rankings = distance_sorting(
+                pref_seed_locs,
+                s_order_seed,
+                d_vars.dist,
+                min_dist,
+                rankings,
+                2,
             )
         end
     end
 
     if log_shade && isempty(SH)
-        prefshadesites = zeros(Int64, n_iv_locs)
+        pref_shade_locs = zeros(Int64, n_iv_locs)
     elseif log_shade
-        prefshadesites, s_order_shade = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
+        pref_shade_locs, s_order_shade = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
         if use_dist != 0
-            prefshadesites, rankings = distance_sorting(
-                prefshadesites, s_order_shade, d_vars.dist, min_dist, rankings, 3
+            pref_shade_locs, rankings = distance_sorting(
+                pref_shade_locs,
+                s_order_shade,
+                d_vars.dist,
+                min_dist,
+                rankings,
+                3,
             )
         end
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
-    if sum(prefseedsites) == 0
-        rankings[:, 2] .= rankingsin[:, 2]
+    if sum(pref_seed_locs) == 0
+        rankings[:, 2] .= rankings_in[:, 2]
     end
 
-    if sum(prefshadesites) == 0
-        rankings[:, 3] .= rankingsin[:, 3]
+    if sum(pref_shade_locs) == 0
+        rankings[:, 3] .= rankings_in[:, 3]
     end
 
-    return prefseedsites, prefshadesites, rankings
+    return pref_seed_locs, pref_shade_locs, rankings
 end
 
 """
@@ -734,127 +780,9 @@ function distance_sorting(
 end
 
 """
-    run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64; target_seed_sites=nothing, target_shade_sites=nothing)
-
-Perform site selection for a given domain for multiple scenarios defined in a dataframe.
-
-# Arguments
-- `dom` : ADRIA Domain type, indicating geographical domain to perform site selection over
-- `scenarios` : DataFrame of criteria weightings and thresholds for each scenario
-- `sum_cover` : Matrix[n_scenarios ⋅ n_locs] containing the total coral cover for each
-    site selection scenario
-- `area_to_seed` : area of coral to be seeded at each time step in km^2
-- `target_seed_sites` : list of candidate locations for seeding (indices)
-- `target_shade_sites` : list of candidate location to shade (indices)
-
-# Returns
-Matrix[n_scenarios ⋅ n_sites ⋅ 3], where 3rd dimension indicates:
-    site_id, seed rank, shade rank
-"""
-function run_site_selection(dom::Domain, scenarios::DataFrame, sum_cover::AbstractArray, area_to_seed::Float64;
-    target_seed_sites=nothing, target_shade_sites=nothing)
-    ranks_store = NamedDimsArray(
-        zeros(nrow(scenarios), length(dom.site_ids), 3),
-        scenarios=1:nrow(scenarios),
-        sites=dom.site_ids,
-        ranks=["site_id", "seed_rank", "shade_rank"],
-    )::Matrix
-
-    dhw_scens = dom.dhw_scens
-    wave_scens = dom.wave_scens
-
-    # Pre-calculate maximum depth to consider
-    scenarios[:, "max_depth"] .= scenarios.depth_min .+ scenarios.depth_offset
-    target_dhw_scens = unique(scenarios[:, "dhw_scenario"])
-    target_wave_scens = unique(scenarios[:, "wave_scenario"])
-
-    target_site_ids = Int64[]
-    if !isnothing(target_seed_sites)
-        append!(target_site_ids, target_seed_sites)
-    end
-
-    if !isnothing(target_shade_sites)
-        append!(target_site_ids, target_shade_sites)
-    end
-
-    for (scen_idx, scen) in enumerate(eachrow(scenarios))
-        depth_criteria = within_depth_bounds(
-            dom.site_data.depth_med, scen.max_depth, scen.depth_min
-        )
-        depth_priority = findall(depth_criteria)
-
-        considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
-
-        ranks_store(scenarios=scen_idx, sites=dom.site_ids[considered_sites]) .= site_selection(
-            dom,
-            scen,
-            summary_stat_env(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
-            summary_stat_env(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios)),
-            considered_sites,
-            sum_cover[scen_idx, :],
-            area_to_seed
-        )
-    end
-
-    return ranks_store
-end
-
-"""
-    site_selection(domain::Domain, scenario::DataFrameRow{DataFrame,DataFrames.Index}, wave_scens::NamedDimsArray, dhw_scens::NamedDimsArray, site_ids::Vector{Int64}, sum_cover::AbstractArray, area_to_seed::Float64)
-
-Perform site selection using a chosen mcda aggregation method, domain, initial cover, criteria weightings and thresholds.
-
-# Arguments
-- `scenario` : Contains criteria weightings and thresholds for a single scenario
-- `mcda_vars` : Site selection criteria and weightings structure
-- `wave_scens` : Wave scenarios
-- `dhw_scens` : DHW scenarios
-- `site_ids` : Locations to consider
-- `sum_cover` : Summed cover (over species) for single scenario being run, for each site
-- `area_to_seed` : Area of coral to be seeded at each time step in km^2
-
-# Returns
-Array[n_reps ⋅ sites ⋅ 3], for a single scenario, where 3rd dimension indicates:
-    site_id, seeding rank, shading rank
-"""
-function site_selection(
-    domain::Domain,
-    scenario::DataFrameRow,
-    wave_scens::Vector{Float64},
-    dhw_scens::Vector{Float64},
-    site_ids::Vector{Int64},
-    sum_cover::NamedDimsArray,
-    area_to_seed::Float64,
-)::Matrix{Int64}
-    mcda_vars = DMCDA_vars(domain, scenario, site_ids, sum_cover, area_to_seed, wave_scens, dhw_scens)
-    n_sites = length(site_ids)
-
-    # site_id, seeding rank, shading rank
-    rankingsin = [mcda_vars.site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
-
-    pref_seed_locs::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
-    pref_shade_locs::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
-
-    # Determine connectivity strength
-    # Account for cases where no coral cover
-    in_conn, out_conn, strong_pred = connectivity_strength(
-        domain.TP_data .* site_k_area(domain), Array(sum_cover)
-    )
-    in_conn = in_conn[site_ids]
-    out_conn = out_conn[site_ids]
-    strong_pred = strong_pred[site_ids]
-
-    (_, _, ranks) = guided_site_selection(mcda_vars, scenario.guided, true, true, pref_seed_locs, pref_shade_locs, rankingsin, in_conn, out_conn, strong_pred)
-
-    return ranks
-end
-
-
-"""
-    unguided_site_selection(prefseedsites, prefshadesites, seed_years, shade_years, n_site_int, max_cover)
+    unguided_site_selection(pref_seed_sites, pref_shade_sites, seed_years, shade_years, n_site_int, available_space, depth)
 
 Randomly select seed/shade site locations for the given year, constraining to sites with max. carrying capacity > 0.
-Here, `max_cover` represents the max. carrying capacity for each site (the `k` value).
 
 # Arguments
 - `pref_seed_locs` : Previously selected seeding locations

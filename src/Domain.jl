@@ -185,6 +185,32 @@ function component_params(spec::DataFrame, components::Vector{T})::DataFrame whe
     return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
+"""
+    _convert_abs_to_k(coral_cover::Union{NamedDimsArray,Matrix{Float64}}, site_data::DataFrame)::Union{NamedDimsArray,Matrix{Float64}}
+
+Convert coral cover data from being relative to absolute location area to relative to
+\$k\$ area.
+"""
+function _convert_abs_to_k(
+    coral_cover::Union{NamedDimsArray,Matrix{Float64}},
+    site_data::DataFrame
+)::Union{NamedDimsArray,Matrix{Float64}}
+    # Initial coral cover is provided as values relative to location area.
+    # Convert coral covers to be relative to k area, ignoring locations with 0 carrying
+    # capacity (k area = 0.0).
+    absolute_k_area = (site_data.k .* site_data.area)'  # max possible coral area in m^2
+    valid_locs::BitVector = absolute_k_area' .> 0.0
+    coral_cover[:, valid_locs] .= (
+        (coral_cover[:, valid_locs] .* site_data.area[valid_locs]')
+        ./
+        absolute_k_area[valid_locs]'
+    )
+
+    # Ensure initial coral cover values are <= maximum carrying capacity
+    @assert all(sum(coral_cover, dims=1) .<= 1.0)
+
+    return coral_cover
+end
 
 """
     site_area(domain::Domain)::Vector{Float64}
@@ -201,7 +227,7 @@ end
 Get maximum coral cover area for the given domain in absolute area.
 """
 function site_k_area(domain::Domain)::Vector{Float64}
-    return site_k(domain) .* site_area(domain)
+    return location_k(domain) .* site_area(domain)
 end
 
 """
@@ -214,25 +240,45 @@ function n_locations(domain::Domain)::Int64
 end
 
 """
-    relative_leftover_space(domain::Domain)::Vector{Float64}
-    relative_leftover_space(site_k::Matrix{Float64}, site_coral_cover::Matrix{Float64})::Matrix{Float64}
+    relative_leftover_space(loc_coral_cover::Matrix{Float64})::Matrix{Float64}
 
 Get proportion of leftover space, given site_k and proportional cover on each site, summed over species.
+
+# Arguments
+- `loc_coral_cover` : Proportion of coral cover relative to `k` (maximum carrying capacity).
+
+# Returns
+Leftover space ∈ [0, 1]
 """
-function relative_leftover_space(domain::Domain, site_coral_cover::Matrix{Float64})::Matrix{Float64}
-    return relative_leftover_space(site_k(domain)', site_coral_cover)
-end
-function relative_leftover_space(site_k::AbstractArray{Float64,2}, site_coral_cover::Matrix{Float64})::Matrix{Float64}
-    return max.(site_k .- site_coral_cover, 0.0)
+function relative_leftover_space(loc_coral_cover::Matrix{Float64})::Matrix{Float64}
+    return max.(1.0 .- loc_coral_cover, 0.0)
 end
 
 """
     site_k(domain::Domain)::Vector{Float64}
 
-Get maximum coral cover area as a proportion of site area.
+Get maximum coral habitable area as a proportion of a location's area (\$k ∈ [0, 1]\$).
+
+WARNING: Deprecated. Use `location_k()` instead.
 """
 function site_k(domain::Domain)::Vector{Float64}
-    return domain.site_data.k ./ 100.0
+    msg = """
+    `site_k(domain)` is now deprecated and will be removed in ADRIA v1.0
+
+    Instead, use:
+        `location_k(domain)`
+    """
+    @warn msg
+    return domain.site_data.k
+end
+
+"""
+    location_k(domain::Domain)::Vector{Float64}
+
+Get maximum coral habitable area as a proportion of a location's area (\$k ∈ [0, 1]\$).
+"""
+function location_k(domain::Domain)
+    return domain.site_data.k
 end
 
 """Extract the time steps represented in the data package."""

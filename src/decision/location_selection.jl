@@ -2,20 +2,23 @@ using NamedDims, AxisKeys
 
 
 """
-    _location_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
+    _location_selection(domain::Domain, sum_cover::AbstractArray, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
 
 Select locations for a given domain and criteria/weightings/thresholds, using a chosen
 MCDA method.
 
 # Arguments
 - `domain` : The geospatial domain to assess
+- `sum_cover` :  Absolute coral cover at each location
 - `mcda_vars` : Parameters for MCDA
 - `guided` : ID of MCDA algorithm to apply
 
 # Returns
 Matrix[n_sites ⋅ 2], where columns hold seeding and shading ranks for each location.
 """
-function _location_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
+function _location_selection(
+    domain::Domain, sum_cover::AbstractArray, mcda_vars::DMCDA_vars, guided::Int64
+)::Matrix
     site_ids = mcda_vars.site_ids
     n_sites = length(site_ids)
 
@@ -28,7 +31,9 @@ function _location_selection(domain::Domain, mcda_vars::DMCDA_vars, guided::Int6
     # Determine connectivity strength
     # Account for cases where no coral cover
     in_conn, out_conn, strong_pred = connectivity_strength(
-        domain.TP_data .* site_k_area(domain), collect(mcda_vars.sum_cover)
+        domain.TP_data .* site_k_area(domain),
+        vec(sum_cover),
+        similar(domain.TP_data)  # tmp cache matrix
     )
 
     # Perform location selection for seeding and shading.
@@ -124,7 +129,10 @@ function rank_locations(
             )
 
         ranks_store(; scenarios=scen_idx, sites=considered_sites) .= _location_selection(
-            domain, mcda_vars_temp, scen.guided
+            domain,
+            collect(sum_cover[scen_idx, :]),
+            mcda_vars_temp,
+            scen.guided,
         )
     end
 

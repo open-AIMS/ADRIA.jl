@@ -4,43 +4,48 @@ using ADRIA
 
 @testset "proportional adjustment" begin
     Y = rand(5, 36, 20)
+    for i in axes(Y, 1)
+        Y[i, :, :] .= Y[i, :, :] / sum(Y[i, :, :], dims=1)
+    end
     tmp = zeros(20)
-    max_cover = rand(20)
 
     for i in axes(Y, 1)
-        ADRIA.proportional_adjustment!(Y[i, :, :], tmp, max_cover)
+        # No warning should be emitted when values are between 0 and 1
+        Test.@test_nowarn ADRIA.proportional_adjustment!(Y[i, :, :], tmp)
 
         @test all(0.0 .<= Y[i, :, :] .<= 1.0)
+    end
+
+    Y = rand(5, 36, 20)
+    for i in axes(Y, 1)
+        # Test that a warning is displayed when values need to be rescaled between 0 and 1
+        Test.@test_warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model." ADRIA.proportional_adjustment!(Y[i, :, :], tmp)
+
+        all(0.0 .<= Y[i, :, :] .<= 1.0)
     end
 end
 
 @testset "Coral Spec" begin
-    linear_extension = Array{Float64,2}(
-        [
-            1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora
-            1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora
-            1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
-            1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
-            1.0 1.0 1.0 1.0 0.8 0.8     # small massives
-            1.0 1.0 1.0 1.0 1.2 1.2
-        ],
-    )   # large massives
+    linear_extension = Array{Float64,2}([
+        1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora
+        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora
+        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
+        1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
+        1.0 1.0 1.0 1.0 0.8 0.8     # small massives
+        1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
 
     bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
 
     growth_rates = (2 * linear_extension) ./ bin_widths  # growth rates as calculated without growth_rate(), maintaining species x size_class structure
     #growth_rates[:, 6] .= 0.8 * growth_rates[:, 6]
 
-    mb = Array{Float64,2}(
-        [
-            0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora
-            0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora
-            0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora
-            0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
-            0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
-            0.2 0.2 0.040 0.026 0.020 0.020
-        ],
-    )   # Large massives
+    mb = Array{Float64,2}([
+        0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora
+        0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora
+        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora
+        0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
+        0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
+        0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
 
     coral_params = ADRIA.coral_spec().params
     stored_growth_rate = coral_params.growth_rate
@@ -133,7 +138,7 @@ end
         122315.9906084096,
     ]
 
-    Y_pstep = rand(Uniform(0.0, 0.01), 36, 216)
+    C_t = rand(Uniform(0.0, 0.01), 36, 216)
     total_site_area = [
         76997.8201778261,
         38180.997513339855,
@@ -354,7 +359,7 @@ end
     ]
 
     ADRIA.fecundity_scope!(
-        fec_groups, fec_all, fec_params, Y_pstep, Matrix(total_site_area')
+        fec_groups, fec_all, fec_params, C_t, Matrix(total_site_area')
     )
 
     @test any(fec_groups .> 1e8) ||
@@ -841,60 +846,70 @@ end
 end
 
 @testset "growth model" begin
+
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
     n_sites = ADRIA.n_locations(dom)
+
     p = dom.coral_growth.ode_p
+    coral_spec_df = ADRIA.coral_spec()[:params]
+    p.mb .= coral_spec_df[:, "mb_rate"]
+    p.r .= coral_spec_df[:, "growth_rate"]
 
     du = zeros(36, n_sites)
-    absolute_k_area = rand(1e3:1e6, 1, n_sites)
-    total_site_area = rand(1e4:2.5e6, 1, n_sites)
     cover_tmp = zeros(n_sites)
-    max_cover = min.(vec(absolute_k_area ./ total_site_area), 0.5)
 
     # Test magnitude of change are within bounds
-    Y_cover = zeros(2, 36, n_sites)
+    C_cover = zeros(2, 36, n_sites)
 
     # Generate initial cover
-    Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
-
-    ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
-    growthODE(du, Y_cover[1, :, :], p, 1)
+    init = rand(Uniform(0.0, 0.4), 36, n_sites)
+    proportional = vec(init / sum(init, dims=1))
+    C_cover[1, :, :] .= proportional
+    growthODE(du, C_cover[1, :, :], p, 1)
     @test !any(abs.(du) .> 1.0) ||
         "growth function is producing inappropriate values (abs(du) > 1.0)"
 
     # Test zero recruit and coverage conditions
-    Y_cover = zeros(2, 36, n_sites)
+    C_cover = zeros(2, 36, n_sites)
     p.rec .= zeros(6, n_sites)
-    growthODE(du, Y_cover[1, :, :], p, 1)
+    growthODE(du, C_cover[1, :, :], p, 1)
     @test all(du .== 0.0) ||
         "Growth produces non-zero values with zero recuitment and zero initial cover."
 
     # Test direction and magnitude of change
-    p.rec .= rand(0:0.001:0.5, 6, n_sites)
-    p.X_mb .= rand(36, 32)
-    Y_cover = zeros(10, 36, n_sites)
-    Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
-    ADRIA.proportional_adjustment!(Y_cover[1, :, :], cover_tmp, max_cover)
+    p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
+    p.X_mb .= rand(36, n_sites)
+    C_cover = zeros(10, 36, n_sites)
+    init = rand(Uniform(0.0, 0.4), 36, n_sites)
+    proportional = vec(init / sum(init, dims=1))
+    C_cover[1, :, :] .= proportional
+
     for tstep in 2:10
-        growthODE(du, Y_cover[tstep - 1, :, :], p, tstep)
-        Y_cover[tstep, :, :] .= Y_cover[tstep - 1, :, :] .+ du
+        p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
+        growthODE(du, C_cover[tstep - 1, :, :], p, tstep)
+        C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
+        C_cover[C_cover .< 0.0] .= 0.0
     end
-    @test any(diff(Y_cover; dims=1) .< 0) ||
+    @test any(diff(C_cover; dims=1) .< 0) ||
         "ODE never decreases, du being restricted to >=0."
-    @test any(diff(Y_cover; dims=1) .>= 0) ||
+    @test any(diff(C_cover; dims=1) .>= 0) ||
         "ODE never increases, du being restricted to <=0."
 
     # Test change in smallest size class under no recruitment
     p.rec .= zeros(6, n_sites)
-    Y_cover = zeros(10, 36, n_sites)
-    Y_cover[1, :, :] = hcat(map(x -> rand(x, 36), Uniform.(0.0, max_cover))...)
+    C_cover = zeros(10, 36, n_sites)
+    init = rand(Uniform(0.0, 0.4), 36, n_sites)
+    proportional = vec(init / sum(init, dims=1))
+    C_cover[1, :, :] .= proportional
 
     for tstep in 2:10
-        growthODE(du, Y_cover[tstep - 1, :, :], p, 1)
-        Y_cover[tstep, :, :] .= Y_cover[tstep - 1, :, :] .+ du
+        growthODE(du, C_cover[tstep - 1, :, :], p, 1)
+        C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
+        C_cover[C_cover .< 0.0] .= 0.0
     end
-    @test all((diff(Y_cover[:, [1, 7, 13, 19, 25, 31], :]; dims=1) .<= 0)) ||
+
+    @test all((diff(C_cover[:, [1, 7, 13, 19, 25, 31], :]; dims=1) .<= 1e-5)) ||
         "Smallest size class growing with no recruitment.."
 
-    @test all(abs.(diff(Y_cover; dims=1)) .< 1.0) || "ODE more than doubles or halves area."
+    @test all(abs.(diff(C_cover; dims=1)) .< 1.0) || "ODE more than doubles or halves area."
 end

@@ -3,7 +3,7 @@ using Test
 using NamedDims, Distributions
 
 using ADRIA
-using ADRIA: distribute_seeded_corals, site_k, seed_corals!
+using ADRIA: distribute_seeded_corals, location_k, seed_corals!
 
 @testset "Seeding" begin
     # first test function on example domain
@@ -11,7 +11,7 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
 
     # extract inputs for function
     total_site_area = site_area(dom)
-    k = site_k(dom)
+    k = location_k(dom)
     current_cover = zeros(size(total_site_area))
 
     # calculate available space
@@ -68,8 +68,8 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
     end
 
     @testset "DHW distribution priors" begin
-        Y_pstep = rand(36, 10)  # size class, locations
-        a_adapt = rand(3.0:6.0, 36)
+        C_t = rand(36, 10)  # size class, locations
+        a_adapt = rand(2.0:6.0, 36)
         total_location_area = fill(5000.0, 10)
 
         seed_locs = rand(1:10, 5)  # Pick 5 random locations
@@ -86,13 +86,13 @@ using ADRIA: distribute_seeded_corals, site_k, seed_corals!
         orig_dist = copy(c_dist_t)
 
         dist_std = rand(36)
-        seed_corals!(Y_pstep, total_location_area, leftover_space_m², seed_locs, seeded_area, seed_sc,
+        seed_corals!(C_t, total_location_area, leftover_space_m², seed_locs, seeded_area, seed_sc,
             a_adapt, @view(Yseed[1, :, :]), dist_std, c_dist_t)
 
         # Ensure correct priors/weightings for each location
         for loc in seed_locs
             for (i, sc) in enumerate(findall(seed_sc))
-                prior1 = Yseed[1, i, loc] ./ Y_pstep[sc, loc]
+                prior1 = Yseed[1, i, loc] ./ C_t[sc, loc]
                 expected = [prior1, 1.0 - prior1]
                 @test c_dist_t[sc, loc] > orig_dist[sc, loc] || "Expected mean of distribution to shift | SC: $sc ; Location: $loc"
             end

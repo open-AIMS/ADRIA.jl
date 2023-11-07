@@ -27,28 +27,24 @@ function CoralGrowth(n_sites::Int64)::CoralGrowth
     large::SVector = @SVector [6, 12, 18, 24, 30, 36]
 
     p = @NamedTuple{
-        r::Matrix{Float64},   # growth rate
-        k::Vector{Float64},   # max carrying capacity
-        mb::Matrix{Float64},  # background mortality
-        small::StaticArrays.SVector{6,Int64},           # indices for small size classes
-        mid::StaticArrays.SVector{24,Int64},            # indices for mid-size corals
-        large::StaticArrays.SVector{6,Int64},           # indices for large corals
-        rec::Matrix{Float64},                            # recruitment values, where `s` relates to available space (not max carrying capacity)
-        sXr::Matrix{Float64},                            # s * X * r
-        X_mb::Matrix{Float64},                           # X * mb
-        cover::Vector{Float64}}((                        # cache matrix to hold X (current coral cover)
-        # r, s, mb,
-        zeros(n_species, 1), zeros(n_sites), zeros(n_species, 1),
-
-
+            small::StaticArrays.SVector{6,Int64},           # indices for small size classes
+            mid::StaticArrays.SVector{24,Int64},            # indices for mid-size corals
+            large::StaticArrays.SVector{6,Int64},           # indices for large corals
+            rec::Matrix{Float64},                           # recruitment values, where `s` relates to available space (not max carrying capacity)
+            sXr::Matrix{Float64},                           # s * X * r
+            X_mb::Matrix{Float64},                          # X * mb
+            r::Vector{Float64},                             # growth rate
+            mb::Vector{Float64}                             # background mortality
+        }((                        # cache matrix to hold X (current coral cover)
         # cached indices
         small, mid, large,
 
         # cache matrices
-        # rec, sXr, 
-        # X_mb, cover
-        zeros(n_groups, n_sites),zeros(n_species, n_sites), 
-        zeros(n_species, n_sites), zeros(n_sites)
+        zeros(n_groups, n_sites),  # rec
+        zeros(n_species, n_sites), # sXr
+        zeros(n_species, n_sites),  # X_mb
+        zeros(n_species),  # r
+        zeros(n_species)   # mb
     ))
 
     return CoralGrowth(n_sites, n_species, n_groups, p)

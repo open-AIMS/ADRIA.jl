@@ -25,27 +25,58 @@ end
 
 
 """
-    proportional_adjustment!(covers::Matrix{T}, cover_tmp::Vector{T}, max_cover::Array{T})::Nothing where {T<:Real}
+    proportional_adjustment!(coral_cover::Matrix{T}, cover_tmp::Vector{T})::Nothing where {T<:Float64}
 
-Helper method to proportionally adjust coral cover.
+Helper method to proportionally adjust coral cover, such that:
+- `coral_cover` ∈ [0, 1].
+- `sum(coral_cover, dims=1)` ≯  1.0
+
 Modifies arrays in-place.
 
 # Arguments
-- `covers` : Coral cover result set
-- `cover_tmp` : Temporary cache matrix used to hold sum over species. Avoids memory allocations
-- `max_cover` : Maximum possible coral cover for each site
+- `coral_cover` : Coral cover ∈ [0, 1]
+- `cover_tmp` : temporary cache
+
+# Returns
+nothing
 """
-function proportional_adjustment!(covers::Union{SubArray{T},Matrix{T}}, cover_tmp::Vector{T}, max_cover::Array{T})::Nothing where {T<:Float64}
-    # Proportionally adjust initial covers
-    cover_tmp .= vec(sum(covers, dims=1))
-    if any(cover_tmp .> max_cover)
-        exceeded::Vector{Int64} = findall(cover_tmp .> max_cover)
-        @views @. covers[:, exceeded] = (covers[:, exceeded] / cover_tmp[exceeded]') * max_cover[exceeded]'
+function proportional_adjustment!(
+    coral_cover::Union{SubArray{T},Matrix{T}},
+    cover_tmp::Vector{T}
+)::Nothing where {T<:Float64}
+    cover_tmp .= vec(sum(coral_cover, dims=1))
+    if any(cover_tmp .> 1.0)
+        exceeded::Vector{Int64} = findall(cover_tmp .> 1.0)
+        @warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model."
+        @warn "Cover - Max Cover: $(sum(cover_tmp[exceeded] .- 1.0))"
+        @views @. coral_cover[:, exceeded] = (coral_cover[:, exceeded] / cover_tmp[exceeded]')
     end
 
-    covers .= max.(covers, 0.0)
+    coral_cover .= max.(coral_cover, 0.0)
 
-    return
+    return nothing
+end
+
+"""
+    proportional_adjustment!(coral_cover::Union{SubArray{T},Matrix{T}})::Nothing where {T<:Float64}
+
+Adjust relative coral cover based on the proportion each size class contributes to area
+covered. Assumes 1.0 represents 100% of available location area.
+"""
+function proportional_adjustment!(
+    coral_cover::Union{SubArray{T},Matrix{T}}
+)::Nothing where {T<:Float64}
+    cover_tmp = vec(sum(coral_cover, dims=1))
+    if any(cover_tmp .> 1.0)
+        exceeded::Vector{Int64} = findall(cover_tmp .> 1.0)
+        @warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model."
+        @warn "Cover - 1.0: $(sum(cover_tmp[exceeded] .- 1.0))"
+        @views @. coral_cover[:, exceeded] = (coral_cover[:, exceeded] / cover_tmp[exceeded]')
+    end
+
+    coral_cover .= max.(coral_cover, 0.0)
+
+    return nothing
 end
 
 
@@ -65,24 +96,21 @@ group.  While growth and mortality metrics pertain to groups (6) as well
 as size classes (6) across all sites (total of 36 by \$n_sites\$), recruitment is
 a 6 by \$n_sites\$ array.
 """
-function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, _::Real)::Nothing
+function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, t::Real)::Nothing
     # Indices
-
     # small = [1, 7, 13, 19, 25, 31]
     # mid = [2:5; 8:11; 14:17; 20:23; 26:29; 32:35]
     # large = [6, 12, 18, 24, 30, 36]
 
-    # Intermediate values are now calculated outside of ODE function
-    # To avoid repeat calculations
     # sXr : available space (sigma) * current cover (X) * growth rate (r)
     # X_mb : current cover (X) * background mortality (mb)
-    # rec : recruitment factors for each coral group (6 by n_sites)
-
-    @views @. du[p.small, :] = p.rec - p.sXr[p.small, :] - p.X_mb[p.small, :]
+    p.sXr .= max.(1.0 .- sum(X, dims=1), 0.0) .* X .* p.r
+    p.X_mb .= X .* p.mb
+    @views @. du[p.small, :] = -p.sXr[p.small, :] - p.X_mb[p.small, :]
     @views @. du[p.mid, :] = p.sXr[p.mid-1, :] - p.sXr[p.mid, :] - p.X_mb[p.mid, :]
     @views @. du[p.large, :] = p.sXr[p.large-1, :] + p.sXr[p.large, :] - p.X_mb[p.large, :]
 
-    return
+    return nothing
 end
 
 """
@@ -368,7 +396,7 @@ function adjust_DHW_distribution!(
     cover::SubArray{F},
     n_groups::Int64,
     dist_t::Matrix{F},
-    growth_rate::Matrix{F}
+    growth_rate::Vector{F}
 )::Nothing where {F<:Float64}
     _, n_sp_sc, n_locs = size(cover)
 
@@ -471,7 +499,7 @@ end
 
 """
     fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2},
-                     fec_params::Array{Float64}, Y_pstep::Array{Float64, 2},
+                     fec_params::Array{Float64}, C_t::Array{Float64, 2},
                      k_area::Array{Float64})::Nothing
 
 The scope that different coral groups and size classes have for
@@ -487,20 +515,20 @@ fecundities across size classes.
 - `fec_groups` : Matrix[n_classes, n_sites], memory cache to place results into
 - `fec_all` : Matrix[n_taxa, n_sites], temporary cache to place intermediate fecundity values into
 - `fec_params` : Vector, coral fecundity parameters (in per m²) for each species/size class
-- `Y_pstep` : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
+- `C_t` : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
 - `site_area` : Vector[n_sites], total site area in m²
 """
 function fecundity_scope!(
     fec_groups::AbstractArray{T,2},
     fec_all::AbstractArray{T,2},
     fec_params::AbstractArray{T},
-    Y_pstep::AbstractArray{T,2},
+    C_t::AbstractArray{T,2},
     site_area::AbstractArray{T}
 )::Nothing where {T<:Float64}
     ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
     nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
 
-    fec_all .= fec_params .* Y_pstep .* site_area
+    fec_all .= fec_params .* C_t .* site_area
     for (i, (s, e)) in enumerate(zip(1:ngroups:nclasses, ngroups:ngroups:nclasses+1))
         @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
@@ -606,7 +634,7 @@ end
 
 
 """
-    settler_cover(fec_scope::T, TP_data::AbstractMatrix{Float64}, leftover_k_m²::T, α::V, β::V, basal_area_per_settler::V)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
+    settler_cover(fec_scope::T, TP_data::AbstractMatrix{Float64}, leftover_space::T, α::V, β::V, basal_area_per_settler::V)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
 Determine area settled by recruited larvae.
 
@@ -615,8 +643,8 @@ Note: Units for all areas are assumed to be in m².
 # Arguments
 - `fec_scope` : Fecundity scope
 - `TP_data` : Transition probability (rows: source locations; cols: sink locations)
-- `leftover_k_m²` : Difference between locations' maximum carrying capacity and current
-    coral cover (\$k - C_s\$ ∈ [0, 1])
+- `leftover_space` : Difference between locations' maximum carrying capacity and current
+    coral cover (in m²)
 - `α` : max number of settlers / m²
 - `β` : larvae / m² required to produce 50% of maximum settlement
 - `basal_area_per_settler` : area taken up by a single settler
@@ -627,7 +655,7 @@ Area covered by recruited larvae (in m²)
 function settler_cover(
     fec_scope::T,
     TP_data::AbstractMatrix{Float64},
-    leftover_k_m²::T,
+    leftover_space::T,
     α::V,
     β::V,
     basal_area_per_settler::V
@@ -647,5 +675,5 @@ function settler_cover(
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
     # recruits per m^2 per site multiplied by area per settler
-    return recruitment_rate(fec_scope, leftover_k_m²; α=α, β=β) .* basal_area_per_settler
+    return recruitment_rate(fec_scope, leftover_space; α=α, β=β) .* basal_area_per_settler
 end
