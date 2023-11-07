@@ -107,7 +107,6 @@ function ADRIA.viz.ranks_to_frequencies!(
         opts=opts,
         axis_opts=axis_opts,
     )
-
 end
 function ADRIA.viz.ranks_to_frequencies(
     rs::ResultSet,
@@ -151,5 +150,4 @@ function _default_colormap(
             [RGBA{Float32}(1.0, 1.0, 1.0, 0.1), rank_colors[rank_grp]] for
         rank_grp in rank_ids
     )
-
 end
