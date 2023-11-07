@@ -1,4 +1,4 @@
-Base.@kwdef struct Criteria{P,N} <: EcoModel
+Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
     wave_stress::P = Param(
         1.0;
         ptype="real",

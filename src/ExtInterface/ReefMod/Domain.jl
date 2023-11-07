@@ -121,7 +121,7 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     )
 
     model::Model = Model((
-        EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), Criteria(), Coral()
+        EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), CriteriaWeights(), Coral()
     ))
 
     return ReefModDomain(

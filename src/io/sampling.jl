@@ -20,7 +20,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     # Map sampled values back to their discrete if necessary
     _process_inputs!(spec, df)
 
-    crit = component_params(spec, Criteria)
+    crit = component_params(spec, CriteriaWeights)
     interv = component_params(spec, Intervention)
 
     # If counterfactual, set all intervention options to 0.0
@@ -86,7 +86,7 @@ Notes:
 # Arguments
 - `dom` : Domain
 - `n` : Int
-- `component` : Type, e.g. Criteria
+- `component` : Type, e.g. CriteriaWeights
 - `sampler` : type of sampler to use.
 
 # Returns
@@ -153,7 +153,7 @@ end
 """
     sample_site_selection(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
 
-Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, Criteria).
+Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, CriteriaWeights).
 All other parameters are set to their default values.
 
 # Arguments
@@ -165,13 +165,15 @@ All other parameters are set to their default values.
 Scenario specification
 """
 function sample_site_selection(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
-    subset_spec = component_params(d.model, [EnvironmentalLayer, Intervention, Criteria])
+    subset_spec = component_params(
+        d.model, [EnvironmentalLayer, Intervention, CriteriaWeights]
+    )
 
     # Only sample guided intervention scenarios
     _adjust_guided_lower_bound!(subset_spec, 1)
 
     # Create and fill scenario spec
-    # Only Intervention, EnvironmentalLayer and Criteria factors are perturbed,
+    # Only Intervention, EnvironmentalLayer and CriteriaWeights factors are perturbed,
     # all other factors are fixed to their default values
     scens = repeat(param_table(d), n)
     select!(scens, Not(:RCP))  # remove RCP column added by param_table()
