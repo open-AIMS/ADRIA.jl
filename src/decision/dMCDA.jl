@@ -634,8 +634,12 @@ function guided_site_selection(
             A,
             d_vars.min_area,
             d_vars.wt_in_conn_seed,
-            d_vars.wt_out_conn_seed, d_vars.wt_waves, d_vars.wt_heat, d_vars.wt_predec_seed,
-            d_vars.wt_zones_seed, d_vars.wt_lo_cover
+            d_vars.wt_out_conn_seed,
+            d_vars.wt_waves,
+            d_vars.wt_heat,
+            d_vars.wt_predec_seed,
+            d_vars.wt_zones_seed,
+            d_vars.wt_lo_cover
         )
     end
 
