@@ -1,31 +1,12 @@
+module decision
 """Objects and methods for Dynamic Multi-Criteria Decision Analysis/Making"""
 
 using StatsBase
-using Distances
+using Distances, DataFrames
 using Combinatorics
 using JMcDM
 using InteractiveUtils: subtypes
-using ADRIA: order_ranking, adria_vikor, adria_topsis
-
-
-jmcdm_ignore = [
-    JMcDM.CRITIC.CriticMethod,
-    JMcDM.COPRAS.CoprasMethod,
-    JMcDM.MOOSRA.MoosraMethod,
-    JMcDM.MEREC.MERECMethod,
-    JMcDM.ELECTRE.ElectreMethod,
-    JMcDM.PROMETHEE.PrometheeMethod,
-    JMcDM.Topsis.TopsisMethod,
-    JMcDM.VIKOR.VikorMethod
-]
-
-const jmcdm_methods = subtypes(MCDMMethod)
-const methods_mcda = [
-    order_ranking,
-    adria_vikor,
-    adria_topsis,
-    setdiff(jmcdm_methods, jmcdm_ignore)...
-]
+using ADRIA: Domain, EcoModel, n_locations, site_area, site_k_area, site_k
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
@@ -58,6 +39,24 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wt_zones_shade # ::F
 end
 
+include("mcda_methods.jl")
+include("location_selection.jl")
+
+jmcdm_ignore = [
+    JMcDM.CRITIC.CriticMethod,
+    JMcDM.COPRAS.CoprasMethod,
+    JMcDM.MOOSRA.MoosraMethod,
+    JMcDM.MEREC.MERECMethod,
+    JMcDM.ELECTRE.ElectreMethod,
+    JMcDM.PROMETHEE.PrometheeMethod,
+    JMcDM.Topsis.TopsisMethod,
+    JMcDM.VIKOR.VikorMethod,
+]
+
+const jmcdm_methods = subtypes(MCDMMethod)
+const methods_mcda = [
+    order_ranking, adria_vikor, adria_topsis, setdiff(jmcdm_methods, jmcdm_ignore)...
+]
 
 """
     DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
@@ -868,4 +867,6 @@ function within_depth_bounds(
     loc_depth::Vector{T}, depth_max::T, depth_min::T
 )::BitVector where {T<:Float64}
     return (loc_depth .<= depth_max) .& (loc_depth .>= depth_min)
+end
+
 end
