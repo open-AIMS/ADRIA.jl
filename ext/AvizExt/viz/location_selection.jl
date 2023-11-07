@@ -64,8 +64,7 @@ function ADRIA.viz.ranks_to_frequencies!(
         color=all_colormaps[Symbol(rank_ids[1])][2], strokecolor=:grey, strokewidth=1
     )
     legend_labels[1] = string("Rank ", string(rank_ids[1]))
-
-    ax = content(content(g)[1, 1])  # get GeoAxis
+    ax = content(g[1, 1])  # get GeoAxis
 
     for rr in rank_ids[2:end]
         poly!(
