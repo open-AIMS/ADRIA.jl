@@ -20,7 +20,7 @@ Create a spatial choropleth figure.
 - `highlight` : Stroke colors for each location
 - `centroids` : Vector{Tuple}, of lon and lats
 - `show_colorbar` : Whether to show a colorbar (true) or not (false)
-- `colorbar_label` : Label to use for color bar.
+- `colorbar_label` : Label to use for color bar
 - `color_map` : Type of colormap to use, 
     See: https://docs.makie.org/stable/documentation/colors/#colormaps
 - `legend_params` : Legend parameters
@@ -56,7 +56,6 @@ function create_map!(
     )
     spatial.xticklabelsize = 14
     spatial.yticklabelsize = 14
-    
     # spatial.xticklabelsvisible = false
     # spatial.yticklabelsvisible = false
 
@@ -142,8 +141,8 @@ Plot spatial choropleth of outcomes.
 - `rs` : ResultSet
 - `y` : results of scenario metric
 - `opts` : Aviz options
-	- `colorbar_label`, label for colorbar. Defaults to "Relative Cover".
-    - `color_map`, preferred colormap for plotting heatmaps.
+	- `colorbar_label`, label for colorbar. Defaults to "Relative Cover"
+    - `color_map`, preferred colormap for plotting heatmaps
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 - `series_opts` : Additional options to pass to adjust Series attributes
