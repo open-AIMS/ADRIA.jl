@@ -116,8 +116,7 @@ function ADRIA.viz.ranks_to_frequencies(
 
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-
-    return ADRIA.viz.ranks_to_frequencies!(
+    ADRIA.viz.ranks_to_frequencies!(
         g,
         rs,
         frequencies,
@@ -125,6 +124,8 @@ function ADRIA.viz.ranks_to_frequencies(
         opts=opts,
         axis_opts=axis_opts,
     )
+
+    return f
 end
 
 """
