@@ -290,14 +290,24 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
     _, base_coral_params, p_vals = coral_spec()
 
     struct_fields = OrderedDict{String,Param}()
-    struct_fields["heritability"] = Param(0.3, ptype="real", bounds=(0.25, 0.5), dists="unif",
+    struct_fields["heritability"] = Param(
+        0.3;
+        ptype="real",
+        bounds=(0.25, 0.5),
+        default_bounds=(0.25, 0.5),
+        dists="unif",
         name="Heritability", description="Heritability of DHW tolerance.")
 
     for c_id in p_vals.coral_id
         for p in base_coral_params
             f_name::String = c_id * "_" * p
             f_val = p_vals[p_vals.coral_id.==c_id, p][1]
-            struct_fields[f_name] = Param(f_val, ptype="real", bounds=(f_val * bounds[1], f_val * bounds[2], 0.5), dists="triang",
+            struct_fields[f_name] = Param(
+                f_val;
+                ptype="real",
+                bounds=(f_val * bounds[1], f_val * bounds[2], 0.5),
+                default_bounds=(f_val * bounds[1], f_val * bounds[2], 0.5),
+                dists="triang",
                 name=human_readable_name(f_name, title_case=true), description="")
         end
     end
