@@ -29,7 +29,13 @@ end
     wave_scens = dom.wave_scens[1, :, criteria_df.wave_scenario[1]]
 
     mcda_vars = ADRIA.decision.DMCDA_vars(
-        dom, criteria_df[1, :], site_ids, sum_cover, area_to_seed, wave_scens, dhw_scens
+        dom,
+        criteria_df[1, :],
+        site_ids,
+        available_space,
+        area_to_seed,
+        wave_scens,
+        dhw_scens,
     )
     n_sites = length(mcda_vars.site_ids)
     @test (size(mcda_vars.conn, 1) == n_sites) && (size(mcda_vars.conn, 2) == n_sites) || "Connectivity input is incorrect size."
@@ -47,8 +53,14 @@ end
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
     depth_priority = collect(1:5)
 
-    prefseedsites, prefshadesites = ADRIA.decision.unguided_site_selection(
-        prefseedsites, prefshadesites, true, true, 5, max_cover, depth_priority
+    pref_seed_sites, pref_shade_sites = ADRIA.decision.unguided_site_selection(
+        pref_seed_sites,
+        pref_shade_sites,
+        true,
+        true,
+        5,
+        max_cover,
+        depth_priority,
     )
 
     # Check that only two sites are selected (the sites where k > 0.0)
