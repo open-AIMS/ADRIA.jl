@@ -478,9 +478,8 @@ function ADRIA.viz.convergence(
     axis_opts::Dict=Dict(),
 )
     f = Figure(; fig_opts...)
-    g = f[1, 1]
     ADRIA.viz.convergence!(
-        g,
+        f[1, 1],
         Si_conv,
         factors;
         opts=opts,
