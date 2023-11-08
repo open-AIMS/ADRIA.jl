@@ -239,24 +239,25 @@ save("tsa.png", tsa_fig)
 
 ### Convergence Analysis for Sensitivity
 
-When undertaking sensitivity analysis it is importnant to have a sufficient sample size that the sensitivity measure has converged and is relatively stable. To understand convergence behaviour a 
-large sample can be drawn and split into smaller sub-samples. Plotting a sensitivity measure against increasing sample size can help to understand whether the sample size is sufficient for convergence.
-The function `convergence` can be used to calculated a sensitivity measure for an increasing number of samples. The result can then be plotted as band plots or a heat map using `viz.convergence`.
+When undertaking sensitivity analysis it is important to have a sufficient number of samples such that the sensitivity measure converges to a stable state. To assess whether sufficient samples have been taken a convergence analysis can be conducted. One approach is to draw a large sample and then iteratively assess stability of the sensitivity metric using an increasing number of sub-samples. The sensitivity metric is described as having "converged" if there is little to no fluctuations/variance for a given sample size. The analysis can help determine if too little (or too many) samples have taken for the purpose of sensitivity analysis.
+
+The function `sensitivity.convergence` can be used to calculate a sensitivity measure for an increasing number of samples. The result can then be plotted as band plots or a heat map using `viz.convergence`.
 
 ```julia
+using Statistics
 
-outcome = ADRIA.mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps)[timesteps=1]
+outcome = mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps)[timesteps=1]
 
 # Plot heat map of sensitivities for increasing number of scenarios for 
 # individual factors (foi).
 foi = [:dhw_scenario, :wave_scenario, :guided]
-Si_N = convergence(scens, outcome, foi)
+Si_N = ADRIA.sensitivity.convergence(scens, outcome, foi; opts=Dict(:viz_type=:heat_map))
 ADRIA.viz.convergence(Si_N, Symbol.(foi))
 
 # Plot heat map of sensitivities for increasing number of scenarios for 
 # particular model components.
 components = ["EnvironmentalLayer", "Intervention"]
-Si_N = convergence(rs, scens, outcome, components)
+Si_N = ADRIA.sensitivity.convergence(rs, scens, outcome, components; opts=Dict(:viz_type=:heat_map))
 ADRIA.viz.convergence(Si_N, Symbol.(components))
 
 ```
