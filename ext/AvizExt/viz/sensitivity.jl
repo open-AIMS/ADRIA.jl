@@ -276,11 +276,11 @@ end
     _series_convergence(g::GridPosition, Si_conv::NamedDimsArray, factors::Vector{Symbol};
         opts::Dict=Dict(:plot_overlay => true), axis_opts::Dict=Dict())
 
-Plot sensitivity values for an increasing number of scenarios as a series, with each member 
+Plot sensitivity values for an increasing number of scenarios as a series, with each member
     of the series representing a factor or model component.
 
 # Arguments
-- `Si_conv` : Produced using ADRIA.analysis.convergence() 
+- `Si_conv` : Produced using ADRIA.analysis.convergence()
 - `factors` : Factors/model components to plot
 - `opts` : Additional figure customization options
         - `plot_overlay` : true, to plot overlayed series, false to plot series as grid of subplots
@@ -397,11 +397,11 @@ end
     _heatmap_convergence(g::GridPosition, Si_conv::NamedDimsArray, factors::Vector{Symbol};
         opts::Dict=Dict(), axis_opts::Dict=Dict())
 
-Plot sensitivity values for an increasing number of scenarios as a heatmap, with each row 
+Plot sensitivity values for an increasing number of scenarios as a heatmap, with each row
     of the heatmap representing a factor or model component.
 
 # Arguments
-- `Si_conv` : Produced using ADRIA.analysis.convergence() 
+- `Si_conv` : Produced using ADRIA.analysis.convergence()
 - `factors` : Factors/model components to plot
 - `opts` : Additional figure customization options
     - `colorbar_label` : string indicating how to label colorbar in heatmap
@@ -449,13 +449,13 @@ end
 """
     ADRIA.viz.convergence(Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
         axis_opts::Dict=Dict())
-    ADRIA.viz.convergence!(f::Figure, Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(), 
+    ADRIA.viz.convergence!(f::Figure, Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
         axis_opts::Dict=Dict())
 
 Plot sensitivty metric for increasing number of scenarios to illustrate convergence.
 
 # Arguments
-- `Si_conv` : Produced using ADRIA.analysis.convergence() 
+- `Si_conv` : Produced using ADRIA.analysis.convergence()
 - `factors` : Factors/model components to plot
 - `opts` : Additional figure customization options
     - `viz_type` : :heat_map to plot heatmap, :series to plot as series
