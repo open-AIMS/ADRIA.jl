@@ -301,13 +301,14 @@ Plot sensitivty metric for increasing number of scenarios to illustrate converge
 # Returns
 GLMakie figure
 """
-function ADRIA.viz.convergence!(
+function _series_convergence(
     g::GridPosition,
     Si_conv::NamedDimsArray,
-    factors::Vector{Symbol},
-    plot_overlay::Bool;
+    factors::Vector{Symbol};
+    opts::Dict=Dict(:plot_overlay => true),
     axis_opts::Dict=Dict(),
 )
+    plot_overlay = get(opts, :plot_overlay, true)
     n_scenarios = Si_conv.n_scenarios
     grps = Dict(Symbol(foi_grp) => foi_grp .== factors for foi_grp in factors)
 
@@ -402,10 +403,12 @@ function ADRIA.viz.convergence!(
     end
     return g
 end
-function ADRIA.viz.convergence!(
+
+function _heatmap_convergence(
     g::GridPosition,
     Si_conv::NamedDimsArray,
     factors::Vector{Symbol};
+    opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     y_label = get(axis_opts, :ylabel, "Factors")
@@ -428,13 +431,16 @@ function ADRIA.viz.convergence!(
         axis_opts...,
     )
     heatmap!(ax, z')
+    colorbar_label = get(opts, :colorbar_label, "Relative Sensitivity")
+    color_map = get(opts, :color_map, :viridis)
 
+    Colorbar(g[1, 2]; colormap=color_map, label=colorbar_label, height=Relative(0.65))
     return g
 end
 function ADRIA.viz.convergence(
     Si_conv::NamedDimsArray,
-    factors::Vector{Symbol},
-    plot_overlay::Bool;
+    factors::Vector{Symbol};
+    opts::Dict=Dict(:viz_type => :series),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
@@ -444,26 +450,27 @@ function ADRIA.viz.convergence(
         g,
         Si_conv,
         factors;
-        plot_overlay=plot_overlay,
+        opts=opts,
         axis_opts=axis_opts,
     )
     return f
 end
-function ADRIA.viz.convergence(
+function ADRIA.viz.convergence!(
+    g::Union{GridLayout,GridPosition},
     Si_conv::NamedDimsArray,
     factors::Vector{Symbol};
-    fig_opts::Dict=Dict(),
+    opts::Dict=Dict(:viz_type => :series),
     axis_opts::Dict=Dict(),
 )
-    f = Figure(; fig_opts...)
-    g = f[1, 1]
-    ADRIA.viz.convergence!(
-        g,
-        Si_conv,
-        factors;
-        axis_opts=axis_opts,
-    )
-    return f
+    viz_type = get(opts, :viz_type, :series)
+    if viz_type == :series
+        return _series_convergence(g, Si_conv, factors; opts=opts, axis_opts=axis_opts)
+    elseif viz_type == :heatmap
+        return _heatmap_convergence(g, Si_conv, factors; opts=opts, axis_opts=axis_opts)
+    else
+        error("Convergence plot $(viz_type) is not expected.")
+    end
+
 end
 
 
