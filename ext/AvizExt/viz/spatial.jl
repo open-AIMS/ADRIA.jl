@@ -14,7 +14,7 @@ Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
 Create a spatial choropleth figure.
 
 # Arguments
-- `f` : GLMakie figure to create plot in
+- `f` : Makie figure to create plot in
 - `geodata` : FeatureCollection, Geospatial data to display
 - `data` : Values to use for choropleth
 - `highlight` : Stroke colors for each location
