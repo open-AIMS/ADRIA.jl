@@ -381,6 +381,7 @@ Create seeding specific decision matrix from criteria matrix. The weight criteri
 - `wt_out_conn_seed` : Seed connectivity weight for seeding
 - `wt_waves` : Wave stress weight
 - `wt_heat` : Heat stress weight
+- `wt_depth` : Median depth weight
 - `wt_predec_seed` : Priority predecessor weight
 - `wt_predec_zones_seed` : Priority zones weight for seeding
 - `wt_low_cover` : Weighting for low coral cover (coral real estate), when seeding
@@ -398,7 +399,7 @@ Tuple (SE, wse)
     8. Available space
     9. Location depth
 
-- `wse` : 5-element vector of criteria weights
+- `wse` : 8-element vector of criteria weights
     1. incoming connectivity
     2. outgoing connectivity
     3. wave
@@ -406,6 +407,7 @@ Tuple (SE, wse)
     5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
     6. seed zones (weights importance of sites highly connected to or within priority zones for seeding)
     7. low cover (weights importance of sites with low cover/high available real estate to plant corals)
+    8. depth
 """
 function create_seed_matrix(
     A::Matrix{Float64},
