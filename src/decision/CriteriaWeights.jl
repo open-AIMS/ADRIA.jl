@@ -44,6 +44,15 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         name="Outgoing Connectivity (Seed)",
         description="Higher values give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for enhanced coral deployments.",
     )
+    seed_depth::P = Param(
+        1.0;
+        ptype="real",
+        bounds=(0.0, 1.0),
+        default_bounds=(0.0, 1.0),
+        dists="unif",
+        name="Depth (Seed)",
+        description="Higher values give preference to depper locations for enhanced coral deployments.",
+    )
     coral_cover_low::P = Param(
         0.0;
         ptype="real",
