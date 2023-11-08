@@ -3,6 +3,12 @@
 using ADRIA.metrics: relative_cover, relative_loc_taxa_cover, total_absolute_cover, absolute_shelter_volume, relative_shelter_volume
 using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
 using ADRIA.metrics: coral_evenness
+using ADRIA.decision:
+    within_depth_bounds,
+    summary_stat_env,
+    DMCDA_vars,
+    guided_site_selection,
+    unguided_site_selection
 
 """
     setup_cache(domain::Domain)::NamedTuple
