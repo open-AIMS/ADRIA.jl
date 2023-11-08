@@ -266,11 +266,11 @@ ADRIA.viz.convergence(Si_N, components)
 
 ```julia
 # Plot covergence as grid of band plots
-Si_N = convergence(scens, outcome, foi)
-ADRIA.viz.convergence(Si_N, foi, plot_overlay=false)
+Si_N = ADRIA.sensitivity.convergence(scens, outcome, foi)
+ADRIA.viz.convergence(Si_N, foi; opts=Dict(plot_overlay=>false))
 
 # Plot covergence as grid of overlayed band plots
-ADRIA.viz.convergence(Si_N, foi, plot_overlay=true)
+ADRIA.viz.convergence(Si_N, foi)
 ```
 
 ### Time Series Clustering
