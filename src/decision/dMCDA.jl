@@ -31,6 +31,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wt_conn_shade  # ::F
     wt_waves # ::F
     wt_heat  # ::F
+    wt_depth # ::F
     wt_hi_cover  # ::F
     wt_lo_cover  # ::F
     wt_predec_seed  # ::F
@@ -108,6 +109,7 @@ function DMCDA_vars(
         criteria("shade_connectivity"),
         criteria("wave_stress"),
         criteria("heat_stress"),
+        criteria("seed_depth"),
         criteria("coral_cover_high"),
         criteria("coral_cover_low"),
         criteria("seed_priority"),
@@ -414,7 +416,8 @@ function create_seed_matrix(
     wt_heat::T,
     wt_predec_seed::T,
     wt_predec_zones_seed::T,
-    wt_low_cover::T
+    wt_low_cover::T,
+    wt_depth::T,
 )::Tuple{Matrix{Float64}, Vector{Float64}} where {T<:Float64}
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
@@ -427,7 +430,7 @@ function create_seed_matrix(
         wt_predec_seed,
         wt_predec_zones_seed,
         wt_low_cover,
-        wt_heat,
+        wt_depth,
     ]
 
     SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
@@ -638,7 +641,8 @@ function guided_site_selection(
             d_vars.wt_heat,
             d_vars.wt_predec_seed,
             d_vars.wt_zones_seed,
-            d_vars.wt_lo_cover
+            d_vars.wt_lo_cover,
+            d_vars.wt_depth,
         )
     end
 
@@ -650,7 +654,9 @@ function guided_site_selection(
             d_vars.wt_conn_shade,
             d_vars.wt_waves,
             d_vars.wt_heat,
-            d_vars.wt_predec_shade, d_vars.wt_zones_shade, d_vars.wt_hi_cover
+            d_vars.wt_predec_shade,
+            d_vars.wt_zones_shade,
+            d_vars.wt_hi_cover,
         )
     end
 
