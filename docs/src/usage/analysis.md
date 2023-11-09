@@ -11,18 +11,25 @@ The Makie.jl ecosystem is used to produce figures.
 Install additional packages if necessary
 
 ```julia
-]add GLMakie GeoMakie GraphMakie
+]add Makie GeoMakie GraphMakie
+```
+
+Install a Makie [backend](https://docs.makie.org/stable/explanations/backends/) of your
+choice. WGLMakie is more flexible for our workflows, but GLMakie is a good choice too.
+
+```julia
+]add WGLMakie
 ```
 
 Import additional packages and the visualization extension will compile.
 
 ```julia
-using GLMakie, GeoMakie, GraphMakie
+using WGLMakie, GeoMakie, GraphMakie
 using ADRIA
 ```
 
-If using VS Code, you may need to deactivate the inline plotting feature to make figures
-appear.
+Plots will appear in the VS Code plots pane.
+You may need to deactivate the inline plotting feature when displaying plots elsewhere.
 
 ```julia
 Makie.inline!(false)
