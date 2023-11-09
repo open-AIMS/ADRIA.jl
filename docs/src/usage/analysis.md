@@ -239,38 +239,44 @@ save("tsa.png", tsa_fig)
 
 ### Convergence Analysis
 
-When undertaking sensitivity analysis it is important to have a sufficient number of samples such that the sensitivity measure converges to a stable state. To assess whether sufficient samples have been taken a convergence analysis can be conducted. One approach is to draw a large sample and then iteratively assess stability of the sensitivity metric using an increasing number of sub-samples. The sensitivity metric is described as having "converged" if there is little to no fluctuations/variance for a given sample size. The analysis can help determine if too little (or too many) samples have taken for the purpose of sensitivity analysis.
+When undertaking sensitivity analysis it is important to have a sufficient number of samples
+such that the sensitivity measure converges to a stable state. To assess whether sufficient
+samples have been taken a convergence analysis can be conducted. One approach is to draw a
+large sample and then iteratively assess stability of the sensitivity metric using an
+increasing number of sub-samples. The sensitivity metric is described as having "converged"
+if there is little to no fluctuations/variance for a given sample size. The analysis can
+help determine if too little (or too many) samples have taken for the purpose of sensitivity
+analysis.
 
-The function `sensitivity.convergence` can be used to calculate a sensitivity measure for an increasing number of samples. The result can then be plotted as band plots or a heat map using `viz.convergence`.
+The function `sensitivity.convergence` can be used to calculate a sensitivity measure for an
+increasing number of samples. The result can then be plotted as band plots or a heat map
+using `viz.convergence`.
 
 ```julia
 using Statistics
 
-outcome = mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps)[timesteps=1]
+outcome = dropdims(mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps), dims=:timesteps)
 
-# Plot heat map of sensitivities for increasing number of scenarios for
-# individual factors (the factors of interest, or "foi").
+# Display convergence for specific factors of interest ("foi")
 foi = [:dhw_scenario, :wave_scenario, :guided]
-Si_N = ADRIA.sensitivity.convergence(scens, outcome, foi; opts=Dict(:viz_type=:heat_map))
-ADRIA.viz.convergence(Si_N, Symbol.(foi))
+Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi)
+ADRIA.viz.convergence(Si_conv, foi)
 
-# Plot heat map of sensitivities for increasing number of scenarios for
-# particular model components.
-components = [:EnvironmentalLayer, :Intervention]
-Si_N = ADRIA.sensitivity.convergence(rs, scens, outcome, components; opts=Dict(:viz_type=:heat_map))
-ADRIA.viz.convergence(Si_N, components)
-
+# Convergence analysis of factors grouped by model component
+components = [:EnvironmentalLayer, :Intervention, :Coral]
+Si_conv = ADRIA.sensitivity.convergence(rs, scens, outcome, components)
+ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
 ```
-![Plots of Convergence](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors.png?raw=true "Convergence Analysis- factors")
-![Plots of Convergence](/ADRIA.jl/dev/assets/imgs/colormap_convergence_components.png?raw=true "Convergence Analysis- model components")
+
+![Convergence analysis of factors](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors.png?raw=true "Convergence Analysis - factors")
+![Grouped convergence analysis](/ADRIA.jl/dev/assets/imgs/colormap_convergence_components.png?raw=true "Convergence Analysis - model components")
 
 ```julia
-# Plot covergence as grid of band plots
-Si_N = ADRIA.sensitivity.convergence(scens, outcome, foi)
-ADRIA.viz.convergence(Si_N, foi; opts=Dict(plot_overlay=>false))
+# Display convergence plot within a single figure
+ADRIA.viz.convergence(Si_conv, foi)
 
-# Plot covergence as grid of overlayed band plots
-ADRIA.viz.convergence(Si_N, foi)
+# Create a grid of figures for each factor of interest
+ADRIA.viz.convergence(Si_conv, foi; opts=Dict(:plot_overlay=>false))
 ```
 
 ### Time Series Clustering

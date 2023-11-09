@@ -452,7 +452,7 @@ end
     ADRIA.viz.convergence!(f::Figure, Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
         axis_opts::Dict=Dict())
 
-Plot sensitivty metric for increasing number of scenarios to illustrate convergence.
+Plot sensitivity metric for increasing number of scenarios to illustrate convergence.
 
 # Arguments
 - `Si_conv` : Produced using ADRIA.analysis.convergence()
