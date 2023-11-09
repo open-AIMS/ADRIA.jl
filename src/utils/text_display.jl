@@ -87,7 +87,7 @@ end
 
 function _scientific_factors(x::Float64)
     # Handle negative numbers
-    signal = x < 0.0 ? -1.0 : 1.0
+    signal::Float64 = sign(x)
     x = abs(x)
 
     # Use an approximate value of `a` to find `b` from log(a) ≈ log(x) % log(10)
