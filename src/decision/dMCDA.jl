@@ -31,7 +31,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wt_conn_shade  # ::F
     wt_waves # ::F
     wt_heat  # ::F
-    wt_depth # ::F
+    wt_depth_seed # ::F
     wt_hi_cover  # ::F
     wt_lo_cover  # ::F
     wt_predec_seed  # ::F
@@ -381,7 +381,7 @@ Create seeding specific decision matrix from criteria matrix. The weight criteri
 - `wt_out_conn_seed` : Seed connectivity weight for seeding
 - `wt_waves` : Wave stress weight
 - `wt_heat` : Heat stress weight
-- `wt_depth` : Median depth weight
+- `wt_depth_seed` : Median depth weight
 - `wt_predec_seed` : Priority predecessor weight
 - `wt_predec_zones_seed` : Priority zones weight for seeding
 - `wt_low_cover` : Weighting for low coral cover (coral real estate), when seeding
@@ -419,7 +419,7 @@ function create_seed_matrix(
     wt_predec_seed::T,
     wt_predec_zones_seed::T,
     wt_low_cover::T,
-    wt_depth::T,
+    wt_depth_seed::T,
 )::Tuple{Matrix{Float64}, Vector{Float64}} where {T<:Float64}
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
@@ -432,7 +432,7 @@ function create_seed_matrix(
         wt_predec_seed,
         wt_predec_zones_seed,
         wt_low_cover,
-        wt_depth,
+        wt_depth_seed,
     ]
 
     SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
@@ -644,7 +644,7 @@ function guided_site_selection(
             d_vars.wt_predec_seed,
             d_vars.wt_zones_seed,
             d_vars.wt_lo_cover,
-            d_vars.wt_depth,
+            d_vars.wt_depth_seed,
         )
     end
 
