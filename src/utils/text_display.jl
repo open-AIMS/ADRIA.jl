@@ -42,7 +42,7 @@ Converts any Real number to scientific notation.
 to 2.
 """
 function to_scientific(x::Float64; digits=2)::String
-    x == 0.0 && return 0.0
+    x == 0.0 && return "0.0"
     a, b = get_scientific_factors(x::Float64; digits=digits)
     return "$a.E$b"
 end
