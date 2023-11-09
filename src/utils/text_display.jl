@@ -6,8 +6,8 @@ Returns a copy of original array so input is not modified.
 
 
 # Arguments
-- names : parameter names to convert
-- title_case : boolean, whether to convert to Title Case or not.
+- `names` : parameter names to convert
+- `title_case` : boolean, whether to convert to Title Case or not.
 
 
 # Returns
