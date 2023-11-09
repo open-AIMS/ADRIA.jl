@@ -68,30 +68,27 @@ to 2.
 """
 function get_scientific_factors(x::Float64; digits=2)::Tuple
     x == 0.0 && return 0.0, 0
+    abs(x) >= 1.0 && abs(x) < 10.0 && return trunc(x; digits=digits), 0
 
-    if x < 1
-        a::Float64, b::Int64 = _scientific_factors(1 / x)
-        a = (1 / a) * 10
-        b = -(b + 1)
-    else
-        a::Float64, b::Int64 = _scientific_factors(x)
+    # Handle 0 < abs(x) < 1
+    a::Float64, b::Int64 = abs(x) < 1 ? _scientific_factors(1 / x) : _scientific_factors(x)
+    if abs(x) < 1
+        b = a == 1.0 ? -b : -(b + 1)
+        a = a == 1.0 ? a : ((1 / a) * 10)
     end
 
-    a = round(a; digits=digits)
+    a = trunc(a; digits=digits)
 
     return a, b
 end
 function get_scientific_factors(x::Int64; digits=2)::Tuple
-    return to_scientific(Float64(x); digits=digits)
+    return get_scientific_factors(Float64(x); digits=digits)
 end
 
 function _scientific_factors(x::Float64)
     # Handle negative numbers
     signal = x < 0.0 ? -1.0 : 1.0
     x = abs(x)
-
-    # Handle edgecases x = 1 and x = -1
-    x == 1.0 && return signal, 0
 
     # Use an approximate value of `a` to find `b` from log(a) ≈ log(x) % log(10)
     a_tmp::Float64 = exp(log(x) % log(10))
