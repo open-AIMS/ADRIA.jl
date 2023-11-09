@@ -34,6 +34,7 @@ include("sampling.jl")
 include("seeding.jl")
 include("site_selection.jl")
 include("spec.jl")
+include("utils/test_display.jl")
 
 # Always run this example test case last
 # as it sets global environment variables
