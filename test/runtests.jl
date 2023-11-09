@@ -13,7 +13,7 @@ function test_rs()
     ADRIA.setup()
 
     # Set result location to temporary folder within the current path
-    ENV["ADRIA_OUTPUT_DIR"] = mktempdir(@__DIR__)
+    ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
 
     # Run scenarios with example Domain
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
@@ -24,7 +24,6 @@ function test_rs()
 end
 
 const TEST_RS = test_rs()
-
 
 include("clustering.jl")
 include("data_loading.jl")
