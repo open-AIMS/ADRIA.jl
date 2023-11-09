@@ -44,7 +44,7 @@ to 2.
 function to_scientific(x::Float64; digits=2)::String
     x == 0.0 && return "0.0"
     a, b = get_scientific_factors(x::Float64; digits=digits)
-    return "$a.E$b"
+    return "$(a)E$(b)"
 end
 function to_scientific(x::Int64; digits=2)::String
     return to_scientific(Float64(x); digits=digits)
