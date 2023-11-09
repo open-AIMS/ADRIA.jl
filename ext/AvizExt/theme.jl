@@ -22,7 +22,7 @@ function colors(
         colormap = categorical_colors(:seaborn_bright, length(group_names))
         return Dict(group => colormap[idx] for (idx, group) in enumerate(group_names))
     else
-        return Dict(group => COLORS[group] for group in keys(scen_groups))
+        return Dict(group => COLORS[group] for group in group_names)
     end
 end
 function colors(
