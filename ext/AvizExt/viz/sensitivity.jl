@@ -302,7 +302,7 @@ function _series_convergence(
     grps = Dict(Symbol(foi_grp) => foi_grp .== factors for foi_grp in factors)
 
     xlabel = pop!(axis_opts, :xlabel, "N scenarios")
-    ylabel = pop!(axis_opts, :ylabel, "Pawn Index")
+    ylabel = pop!(axis_opts, :ylabel, "Sensitivity")
 
     if :title in keys(axis_opts)
         title_val = pop!(axis_opts, :title)
