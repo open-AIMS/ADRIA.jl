@@ -255,32 +255,33 @@ function convergence(
     rs::ResultSet,
     X::DataFrame,
     y::NamedDimsArray,
-    components::Vector{String};
+    components::Vector{Symbol};
     Si::Function=pawn,
     n_steps::Int64=10,
 )::NamedDimsArray
-    model_spec_df = model_spec(rs)
+    ms = model_spec(rs)
 
     target_factors = [
-        model_spec_df[model_spec_df[:, "component"] .== cc, "fieldname"] for
-        cc in components
+        ms[ms[:, "component"] .== cc, "fieldname"] for
+        cc in string.(components)
     ]
+
     Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); Si=Si, n_steps=n_steps)
-    Si_c = NamedDimsArray(
+    Si_grouped = NamedDimsArray(
         zeros(length(components), 8, n_steps);
-        factors=Symbol.(components),
+        factors=components,
         Si=Si_n.Si,
         n_scenarios=Si_n.n_scenarios,
     )
 
-    for (ind, cc) in enumerate(components)
-        target_factors_temp = Symbol.(target_factors[ind])
-        Si_c(; factors=Symbol(cc)) .= dropdims(
-            mean(Si_n(; factors=target_factors_temp); dims=:factors);
+    for (cc, factors) in zip(components, target_factors)
+        Si_grouped(factors=cc) .= dropdims(
+            mean(Si_n(; factors=Symbol.(factors)); dims=:factors);
             dims=:factors,
         )
     end
-    return Si_c
+
+    return Si_grouped
 end
 
 """
