@@ -1,7 +1,7 @@
 using CSV, DataFrames, GeoDataFrames, GeoInterface
 using Statistics, Distributions
-using GLMakie.GeometryBasics
-using ADRIA, GLMakie
+using Makie.GeometryBasics
+using ADRIA, Makie
 
 
 precompile(CSV.read, (String, DataFrame))
