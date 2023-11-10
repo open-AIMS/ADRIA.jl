@@ -1,6 +1,5 @@
 using JSON
 
-
 """
     _check_compat(dpkg_details::Dict)
 
@@ -48,7 +47,7 @@ Load and pre-process scenario values.
 Parameters intended to be of Integer type or casted as such.
 """
 function load_scenarios(domain::Domain, filepath::String)::DataFrame
-    df = CSV.read(filepath, DataFrame, comment="#")
+    df = CSV.read(filepath, DataFrame; comment="#")
 
     if columnindex(df, :RCP) > 0
         df = df[!, Not("RCP")]
@@ -87,7 +86,9 @@ function _process_inputs!(bnds::Tuple, p_types::Tuple, df::DataFrame)::Nothing
     return nothing
 end
 
-function load_mat_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray{Float32}
+function load_mat_data(
+    data_fn::String, attr::String, site_data::DataFrame
+)::NamedDimsArray{Float32}
     data = matread(data_fn)
     local loaded::NamedDimsArray{Float32}
     local site_order::Vector{String}
@@ -113,7 +114,6 @@ function load_mat_data(data_fn::String, attr::String, site_data::DataFrame)::Nam
 
     return loaded
 end
-
 
 """
     load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
@@ -148,7 +148,9 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
         # elements as the number of sites, but so far it hasn't happened...
         i = first(findall(size(data) .== length(sites)))
     catch err
-        error("Error loading $data_fn : could not determine number of locations. Detected size: $(size(data)) | Known # sites: $(length(sites))")
+        error(
+            "Error loading $data_fn : could not determine number of locations. Detected size: $(size(data)) | Known # sites: $(length(sites))",
+        )
     end
     dim_labels[i] = sites
 
@@ -159,7 +161,9 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
             n_sites = size(data, 2)
             @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, scenarios)."
             if n_sites != nrow(site_data)
-                error("Mismatch in number of sites ($(data_fn)). Expected $(nrow(site_data)), got $(n_sites)")
+                error(
+                    "Mismatch in number of sites ($(data_fn)). Expected $(nrow(site_data)), got $(n_sites)",
+                )
             end
         else
             rethrow(err)
@@ -189,7 +193,6 @@ function _char_to_string(vals::AbstractVecOrMat)::Vector{String}
     return vals
 end
 
-
 """
     load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
 
@@ -205,7 +208,6 @@ function load_covers(data_fn::String, attr::String, site_data::DataFrame)::Named
 
     return data
 end
-
 
 """
     load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray

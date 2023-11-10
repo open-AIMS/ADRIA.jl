@@ -15,7 +15,7 @@ NamedDimsArray[taxa to seed ⋅ number of seed locations], area increased relati
 function distribute_seeded_corals(
     seed_loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
-    seeded_area::NamedDimsArray
+    seeded_area::NamedDimsArray,
 )::NamedDimsArray
     # Proportion of available space on each site relative to available space at these
     # locations
@@ -30,11 +30,8 @@ function distribute_seeded_corals(
     return scaled_seed
 end
 
-
 """
-    seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space_m²::V,
-        seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V,
-        Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
+    seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space_m²::V, seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V, Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
 
 Deploy thermally enhanced corals to indicated locations ("seeding" or "outplanting").
 Increases indicated area covered by the given coral taxa and determines the modified
@@ -53,15 +50,22 @@ Note: Units for all areas are expected to be identical, and are assumed to be in
 - `Yseed` : Log of seeded locations to update
 - `c_dist_t` : Critical DHW distributions of corals to update (i.e., for time \$t\$)
 """
-function seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space_m²::V,
-    seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V,
-    Yseed::SubArray, stdev::V, c_dist_t::Matrix{Float64})::Nothing where {V<:Vector{Float64}}
+function seed_corals!(
+    cover::Matrix{Float64},
+    loc_k_area::V,
+    leftover_space_m²::V,
+    seed_locs::Vector{Int64},
+    seeded_area::NamedDimsArray,
+    seed_sc::BitVector,
+    a_adapt::V,
+    Yseed::SubArray,
+    stdev::V,
+    c_dist_t::Matrix{Float64},
+)::Nothing where {V<:Vector{Float64}}
 
     # Calculate proportion to seed based on current available space
     scaled_seed = distribute_seeded_corals(
-        loc_k_area[seed_locs],
-        leftover_space_m²[seed_locs],
-        seeded_area
+        loc_k_area[seed_locs], leftover_space_m²[seed_locs], seeded_area
     )
 
     # Seed each location and log
@@ -84,7 +88,14 @@ function seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space_m²:
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
-        tn::Vector{Float64} = mean.(truncated.(Normal.(a_adapt[seed_sc], stdev[seed_sc]), 0.0, a_adapt[seed_sc] .+ HEAT_UB))
+        tn::Vector{Float64} =
+            mean.(
+                truncated.(
+                    Normal.(a_adapt[seed_sc], stdev[seed_sc]),
+                    0.0,
+                    a_adapt[seed_sc] .+ HEAT_UB,
+                )
+            )
 
         # If seeding an empty location, no need to do any further calculations
         if all(isapprox.(w_taxa[:, i], 1.0))

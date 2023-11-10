@@ -1,20 +1,12 @@
-using
-    AxisKeys,
-    NamedDims
+using AxisKeys, NamedDims
 
-using
-    CSV,
-    DataFrames,
-    ModelParameters
+using CSV, DataFrames, ModelParameters
 
-using
-    Distributions,
-    Statistics
+using Distributions, Statistics
 
 import GeoDataFrames as GDF
 
 using ADRIA: SimConstants, Domain, site_distances
-
 
 mutable struct ReefModDomain <: Domain
     const name::String
@@ -68,11 +60,16 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     unique_site_id_col = "LOC_NAME_S"
     site_ids = site_data[:, unique_site_id_col]
 
-    id_list = CSV.read(joinpath(data_files, "id", "id_list_2023_03_30.csv"), DataFrame, header=false, comment="#")
+    id_list = CSV.read(
+        joinpath(data_files, "id", "id_list_2023_03_30.csv"),
+        DataFrame;
+        header=false,
+        comment="#",
+    )
 
     # Re-order spatial data to match RME dataset
     # MANUAL CORRECTION
-    site_data[site_data.LABEL_ID.=="20198", :LABEL_ID] .= "20-198"
+    site_data[site_data.LABEL_ID .== "20198", :LABEL_ID] .= "20-198"
     id_order = [first(findall(x .== site_data.LABEL_ID)) for x in string.(id_list[:, 1])]
     site_data = site_data[id_order, :]
 
@@ -90,9 +87,7 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
 
     conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
-        conn_data,
-        vec(site_data.area .* site_data.k),
-        similar(conn_data)
+        conn_data, vec(site_data.area .* site_data.k), similar(conn_data)
     )
 
     # Set all site depths to 6m below sea level
@@ -122,24 +117,35 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
         "",
         "",
         "",
-        timeframe[1]:timeframe[2]
+        timeframe[1]:timeframe[2],
     )
 
-    model::Model = Model((EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), Criteria(), Coral()))
+    model::Model = Model((
+        EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), Criteria(), Coral()
+    ))
 
     return ReefModDomain(
         "ReefMod",
         RCP,
         env_md,
         "",
-        conn_data, in_conn, out_conn, strong_pred,
-        site_data, site_dist, med_site_dist,
-        site_id_col, unique_site_id_col,
+        conn_data,
+        in_conn,
+        out_conn,
+        strong_pred,
+        site_data,
+        site_dist,
+        med_site_dist,
+        site_id_col,
+        unique_site_id_col,
         init_coral_cover,
         CoralGrowth(nrow(site_data)),
         site_ids,
-        dhw_scens, cyc_scens,
-        model, SimConstants())
+        dhw_scens,
+        cyc_scens,
+        model,
+        SimConstants(),
+    )
 end
 
 """
@@ -170,7 +176,9 @@ Loads ReefMod DHW data as a datacube.
 # Returns
 NamedDimsArray[timesteps, locs, scenarios]
 """
-function load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::NamedDimsArray
+function load_DHW(
+    ::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100)
+)::NamedDimsArray
     dhw_path = joinpath(data_path, "dhw")
     rcp_files = _get_relevant_files(dhw_path, rcp)
     if isempty(rcp_files)
@@ -184,7 +192,7 @@ function load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timefra
     tf_start = findall(timeframe[1] .∈ data_tf)[1]
     tf_end = findall(timeframe[2] .∈ data_tf)[1]
 
-    d1 = first_file[:, tf_start+1:tf_end+1]
+    d1 = first_file[:, (tf_start + 1):(tf_end + 1)]
     data_shape = reverse(size(d1))
     data_cube = zeros(data_shape..., length(rcp_files))
     data_cube[:, :, 1] .= Matrix(d1)'
@@ -214,11 +222,16 @@ function load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timefra
             continue
         end
 
-        data_cube[:, :, i+1] .= Matrix(d[:, tf_start:tf_end])'
+        data_cube[:, :, i + 1] .= Matrix(d[:, tf_start:tf_end])'
     end
 
     # Only return valid scenarios
-    return NamedDimsArray(data_cube[:, :, keep_ds], timesteps=timeframe[1]:timeframe[2], locs=loc_ids, scenarios=rcp_files[keep_ds])
+    return NamedDimsArray(
+        data_cube[:, :, keep_ds];
+        timesteps=timeframe[1]:timeframe[2],
+        locs=loc_ids,
+        scenarios=rcp_files[keep_ds],
+    )
 end
 
 """
@@ -234,7 +247,9 @@ Loads the average connectivity matrix.
 # Returns
 NamedDimsArray[source, sinks]
 """
-function load_connectivity(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::NamedDimsArray
+function load_connectivity(
+    ::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}
+)::NamedDimsArray
     conn_path = joinpath(data_path, "con_bin")
     conn_files = _get_relevant_files(conn_path, "CONNECT_ACRO")
     if isempty(conn_files)
@@ -261,8 +276,8 @@ function load_connectivity(::Type{ReefModDomain}, data_path::String, loc_ids::Ve
     end
 
     # Mean over all years
-    conn_data::Matrix{Float64} = dropdims(mean(tmp_mat, dims=3), dims=3)
-    return NamedDimsArray(conn_data, source=loc_ids, sinks=loc_ids)
+    conn_data::Matrix{Float64} = dropdims(mean(tmp_mat; dims=3); dims=3)
+    return NamedDimsArray(conn_data; source=loc_ids, sinks=loc_ids)
 end
 
 """
@@ -273,12 +288,18 @@ end
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
 - `tf` : the time frame represented by the dataset.
-    Subsets the data in cases where `tf[2] < length(data)` such that only `1:(tf[2] - tf[1])+1` is read in.
+    Subsets the data in cases where `tf[2] < length(data)` such that only
+    `1:(tf[2] - tf[1])+1` is read in.
 
 # Returns
 NamedDimsArray[timesteps, locs, scenarios]
 """
-function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, tf::Tuple{Int64,Int64})::NamedDimsArray
+function load_cyclones(
+    ::Type{ReefModDomain},
+    data_path::String,
+    loc_ids::Vector{String},
+    tf::Tuple{Int64,Int64},
+)::NamedDimsArray
     # NOTE: This reads from the provided CSV files
     #       Replace with approach that reads directly from binary files
     #       Currently cannot get values in binary files to match
@@ -292,13 +313,17 @@ function load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector
     cyc_data = zeros(length(loc_ids), num_years, length(cyc_files))
     for (i, fn) in enumerate(cyc_files)
         # Read each cyclone trajectory
-        cyc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false, comment="#"))
+        cyc_data[:, :, i] = Matrix(
+            CSV.read(fn, DataFrame; drop=[1], header=false, comment="#")
+        )
     end
 
     # Cut down to the given time frame assuming the first entry represents the first index
-    cyc_data = permutedims(cyc_data, (2, 1, 3))[1:(tf[2]-tf[1])+1, :, :]
+    cyc_data = permutedims(cyc_data, (2, 1, 3))[1:((tf[2] - tf[1]) + 1), :, :]
 
-    return NamedDimsArray(cyc_data, timesteps=tf[1]:tf[2], locs=loc_ids, scenarios=1:length(cyc_files))
+    return NamedDimsArray(
+        cyc_data; timesteps=tf[1]:tf[2], locs=loc_ids, scenarios=1:length(cyc_files)
+    )
 end
 
 """
@@ -312,7 +337,9 @@ end
 # Returns
 NamedDimsArray[locs, species]
 """
-function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame)::NamedDimsArray
+function load_initial_cover(
+    ::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame
+)::NamedDimsArray
     icc_path = joinpath(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
     if isempty(icc_files)
@@ -322,7 +349,9 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     # Shape is locations, scenarios, species
     icc_data = zeros(length(loc_ids), 20, length(icc_files))
     for (i, fn) in enumerate(icc_files)
-        icc_data[:, :, i] = Matrix(CSV.read(fn, DataFrame; drop=[1], header=false, comment="#"))
+        icc_data[:, :, i] = Matrix(
+            CSV.read(fn, DataFrame; drop=[1], header=false, comment="#")
+        )
     end
 
     # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
@@ -333,12 +362,12 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
-    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:end-1])
+    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end - 1)])
     size_class_weights = size_class_weights ./ sum(size_class_weights)
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
     # Convert from percent to relative values.
-    icc_data = ((dropdims(mean(icc_data, dims=2), dims=2)) ./ 100.0)
+    icc_data = ((dropdims(mean(icc_data; dims=2); dims=2)) ./ 100.0)
 
     # Repeat species over each size class and reshape to give ADRIA compatible size (36 * n_locs).
     # Multiply by size class weights to give initial cover distribution over each size class.
@@ -347,9 +376,8 @@ function load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::V
     # Convert values relative to absolute area to values relative to k area
     icc_data = _convert_abs_to_k(icc_data, site_data)
 
-    return NamedDimsArray(icc_data, species=1:(length(icc_files)*6), locs=loc_ids)
+    return NamedDimsArray(icc_data; species=1:(length(icc_files) * 6), locs=loc_ids)
 end
-
 
 """
     switch_RCPs!(d::ReefModDomain, RCP::String)::Domain
@@ -368,13 +396,12 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     return d
 end
 
-
-function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)
-
+function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)::Nothing
     # df = model_spec(d)
     println("""
-    ReefMod Domain: $(d.name)
+        ReefMod Domain: $(d.name)
 
-    Number of sites: $(n_locations(d))
+        Number of sites: $(n_locations(d))
     """)
+    return nothing
 end
