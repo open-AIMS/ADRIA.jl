@@ -33,7 +33,6 @@ function set(p::Param, val::Union{Int64,Float64})
     return val
 end
 
-
 """
     map_to_discrete(v::Union{Int64,Float64}, u::Union{Int64,Float64})::Int64
 
@@ -51,11 +50,12 @@ Length of `u` (the upper bounds) is expected to match number of columns in `df`.
 """
 function map_to_discrete!(
     df::Union{DataFrame,SubDataFrame},
-    u::Union{AbstractVector{<:Union{Int64,Float64}},Tuple}
+    u::Union{AbstractVector{<:Union{Int64,Float64}},Tuple},
 )::Nothing
     for (idx, b) in enumerate(u)
         df[!, idx] .= map_to_discrete.(df[!, idx], b)
     end
+    return nothing
 end
 
 struct EnvironmentalLayer{P<:Param} <: EcoModel
@@ -63,7 +63,11 @@ struct EnvironmentalLayer{P<:Param} <: EcoModel
     wave_scenario::P
 end
 
-function EnvironmentalLayer(dhw::AbstractArray{T}, wave::AbstractArray{T2})::EnvironmentalLayer where {T<:Union{Missing,Float32,Float64},T2<:Union{Missing,Float32,Float64}}
+function EnvironmentalLayer(
+    dhw::AbstractArray{T}, wave::AbstractArray{T2}
+)::EnvironmentalLayer where {
+    T<:Union{Missing,Float32,Float64},T2<:Union{Missing,Float32,Float64}
+}
     return EnvironmentalLayer(
         Param(
             1;

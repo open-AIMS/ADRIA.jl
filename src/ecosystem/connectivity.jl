@@ -30,9 +30,13 @@ NamedTuple:
 - `truncated` : ID of sites removed
 - `site_ids` : ID of sites kept
 """
-function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
-    con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
-
+function site_connectivity(
+    file_loc::String,
+    unique_site_ids::Vector{String};
+    con_cutoff::Float64=1e-6,
+    agg_func::Function=mean,
+    swap::Bool=false,
+)::NamedTuple
     if !isdir(file_loc) && !isfile(file_loc)
         error("Could not find location: $(file_loc)")
     end
@@ -43,11 +47,10 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
     elseif isdir(file_loc)
         # Get connectivity years available in data store
         years::Vector{String} = getindex(first(walkdir(file_loc)), 2)
-        year_conn_fns = NamedTuple{Tuple(Symbol.(years))}(
-            [[joinpath.(first(fl), last(fl))
-              for fl in walkdir(joinpath(file_loc, yr))][1]
-             for yr in years]
-        )
+        year_conn_fns = NamedTuple{Tuple(Symbol.(years))}([
+            [joinpath.(first(fl), last(fl)) for fl in walkdir(joinpath(file_loc, yr))][1]
+            for yr in years
+        ])
 
         con_files = vcat([x for x in values(year_conn_fns)]...)
 
@@ -57,8 +60,17 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
         # Get average connectivity for each represented year
         @floop for (i, yr) in enumerate(Symbol.(years))
             conn_data::Vector{Matrix{Float64}} = Matrix{Float64}[
-                Matrix(CSV.read(fn, DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1]))
-                for fn in year_conn_fns[yr]
+                Matrix(
+                    CSV.read(
+                        fn,
+                        DataFrame;
+                        comment="#",
+                        missingstring="NA",
+                        transpose=swap,
+                        types=Float64,
+                        drop=[1],
+                    ),
+                ) for fn in year_conn_fns[yr]
             ]
 
             tmp_store[i] = agg_func(conn_data)
@@ -69,8 +81,18 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
     end
 
     # Get site ids from first file
-    con_file1::DataFrame = CSV.read(con_files[1], DataFrame, comment="#", missingstring="NA", transpose=swap, types=Float64, drop=[1])
-    con_site_ids::Vector{String} = String[x[1] for x in split.(names(con_file1), "_v"; limit=2)]
+    con_file1::DataFrame = CSV.read(
+        con_files[1],
+        DataFrame;
+        comment="#",
+        missingstring="NA",
+        transpose=swap,
+        types=Float64,
+        drop=[1],
+    )
+    con_site_ids::Vector{String} = String[
+        x[1] for x in split.(names(con_file1), "_v"; limit=2)
+    ]
 
     if isfile(file_loc)
         extracted_TP = Matrix{Float64}(con_file1)
@@ -102,29 +124,37 @@ function site_connectivity(file_loc::String, unique_site_ids::Vector{String};
     extracted_TP = extracted_TP[site_order, site_order]
 
     if con_cutoff > 0.0
-        extracted_TP[extracted_TP.<con_cutoff] .= 0.0
+        extracted_TP[extracted_TP .< con_cutoff] .= 0.0
     end
 
-    TP_base = NamedDimsArray(extracted_TP, Source=unique_site_ids, Receiving=unique_site_ids)
+    TP_base = NamedDimsArray(
+        extracted_TP; Source=unique_site_ids, Receiving=unique_site_ids
+    )
     @assert all(0.0 .<= TP_base .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
     return (TP_base=TP_base, truncated=invalid_ids, site_ids=unique_site_ids)
 end
-function site_connectivity(file_loc::String, unique_site_ids::Vector{Union{Missing,String}};
-    con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
+function site_connectivity(
+    file_loc::String,
+    unique_site_ids::Vector{Union{Missing,String}};
+    con_cutoff::Float64=1e-6,
+    agg_func::Function=mean,
+    swap::Bool=false,
+)::NamedTuple
 
     # Remove any row marked as missing
     if any(ismissing.(unique_site_ids))
         @warn "Removing entries marked as `missing` from provided list of sites."
-        unique_site_ids::Vector{String} = String.(unique_site_ids[.!ismissing.(unique_site_ids)])
+        unique_site_ids::Vector{String} =
+            String.(unique_site_ids[.!ismissing.(unique_site_ids)])
     else
         unique_site_ids = String.(unique_site_ids)
     end
 
-    return site_connectivity(file_loc, unique_site_ids;
-        con_cutoff=con_cutoff, agg_func=agg_func, swap=swap)
+    return site_connectivity(
+        file_loc, unique_site_ids; con_cutoff=con_cutoff, agg_func=agg_func, swap=swap
+    )
 end
-
 
 """
     connectivity_strength(TP_base::AbstractArray)::NamedTuple
@@ -145,7 +175,6 @@ NamedTuple:
 - `strongest_predecessor` : strongest predecessor for each site
 """
 function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
-
     g = SimpleDiGraph(TP_base)
 
     # Measure centrality based on number of incoming connections
@@ -176,8 +205,8 @@ function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
 end
 function connectivity_strength(
     area_weighted_TP::AbstractMatrix{Float64},
-    cover::Vector{<:Union{Float32, Float64}},
-    TP_cache::AbstractMatrix{Float64}
+    cover::Vector{<:Union{Float32,Float64}},
+    TP_cache::AbstractMatrix{Float64},
 )::NamedTuple
 
     # Accounts for cases where there is no coral cover

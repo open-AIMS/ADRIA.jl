@@ -1,12 +1,18 @@
 using NCDatasets
 
-
 """
     ADRIADomain{Σ,M,I,D,X,Y,Z}
 
 Core ADRIA domain. Represents study area.
 """
-mutable struct ADRIADomain{Σ<:NamedDimsArray,M<:NamedDimsArray,D<:DataFrame,X<:AbstractArray{<:Float64},Y<:Union{Matrix{<:Real},NamedDimsArray},Z<:Union{Matrix{<:Real},NamedDimsArray}} <: Domain
+mutable struct ADRIADomain{
+    Σ<:NamedDimsArray,
+    M<:NamedDimsArray,
+    D<:DataFrame,
+    X<:AbstractArray{<:Float64},
+    Y<:Union{Matrix{<:Real},NamedDimsArray},
+    Z<:Union{Matrix{<:Real},NamedDimsArray},
+} <: Domain
     const name::String  # human-readable name
     RCP::String  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
@@ -35,11 +41,26 @@ end
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
-function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::AbstractMatrix{<:T}, in_conn::Vector{Float64}, out_conn::Vector{Float64},
-    strongest_predecessor::Vector{Int64}, site_data::DataFrame, site_distances::Matrix{Float64}, median_site_distance::Float64, site_id_col::String, unique_site_id_col::String,
-    init_coral_cover::NamedDimsArray, coral_growth::CoralGrowth, site_ids::Vector{String}, removed_sites::Vector{String},
-    DHWs::NamedDimsArray, waves::NamedDimsArray)::ADRIADomain where {T<:Union{Float32,Float64}}
-
+function Domain(
+    name::String,
+    rcp::String,
+    env_layers::EnvLayer,
+    TP_base::AbstractMatrix{<:T},
+    in_conn::Vector{Float64},
+    out_conn::Vector{Float64},
+    strongest_predecessor::Vector{Int64},
+    site_data::DataFrame,
+    site_distances::Matrix{Float64},
+    median_site_distance::Float64,
+    site_id_col::String,
+    unique_site_id_col::String,
+    init_coral_cover::NamedDimsArray,
+    coral_growth::CoralGrowth,
+    site_ids::Vector{String},
+    removed_sites::Vector{String},
+    DHWs::NamedDimsArray,
+    waves::NamedDimsArray,
+)::ADRIADomain where {T<:Union{Float32,Float64}}
     criteria::Criteria = Criteria()
     sim_constants::SimConstants = SimConstants()
 
@@ -48,18 +69,41 @@ function Domain(name::String, rcp::String, env_layers::EnvLayer, TP_base::Abstra
         min_depth = minimum(site_data.depth_med)
         fields = fieldnames(typeof(criteria))
         c_spec = (; zip(fields, [getfield(criteria, f) for f in fields])...)
-        @set! c_spec.depth_min.bounds = (min_depth, minimum([min_depth + 2.0, maximum(site_data.depth_med)]))
+        @set! c_spec.depth_min.bounds = (
+            min_depth, minimum([min_depth + 2.0, maximum(site_data.depth_med)])
+        )
 
         criteria = Criteria(c_spec...)
     end
 
-    model::Model = Model((EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()))
+    model::Model = Model((
+        EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()
+    ))
 
-    return ADRIADomain(name, rcp, env_layers, "", TP_base, in_conn, out_conn, strongest_predecessor, site_data, site_distances, median_site_distance, site_id_col, unique_site_id_col,
-        init_coral_cover, coral_growth, site_ids, removed_sites, DHWs, waves,
-        model, sim_constants)
+    return ADRIADomain(
+        name,
+        rcp,
+        env_layers,
+        "",
+        TP_base,
+        in_conn,
+        out_conn,
+        strongest_predecessor,
+        site_data,
+        site_distances,
+        median_site_distance,
+        site_id_col,
+        unique_site_id_col,
+        init_coral_cover,
+        coral_growth,
+        site_ids,
+        removed_sites,
+        DHWs,
+        waves,
+        model,
+        sim_constants,
+    )
 end
-
 
 """
     Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
@@ -80,10 +124,30 @@ Convenience constructor for Domain.
 - `dhw_fn` : Filename of DHW data cube in use
 - `wave_fn` : Filename of wave data cube
 """
-function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
-    conn_path::String, dhw_fn::String, wave_fn::String)::ADRIADomain
-
-    env_layer_md::EnvLayer = EnvLayer(dpkg_path, site_data_fn, site_id_col, unique_site_id_col, init_coral_fn, conn_path, dhw_fn, wave_fn, timeframe)
+function Domain(
+    name::String,
+    dpkg_path::String,
+    rcp::String,
+    timeframe::Vector,
+    site_data_fn::String,
+    site_id_col::String,
+    unique_site_id_col::String,
+    init_coral_fn::String,
+    conn_path::String,
+    dhw_fn::String,
+    wave_fn::String,
+)::ADRIADomain
+    env_layer_md::EnvLayer = EnvLayer(
+        dpkg_path,
+        site_data_fn,
+        site_id_col,
+        unique_site_id_col,
+        init_coral_fn,
+        conn_path,
+        dhw_fn,
+        wave_fn,
+        timeframe,
+    )
 
     local site_data::DataFrame
     try
@@ -126,7 +190,12 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     elseif endswith(dhw_fn, ".nc")
         dhw = load_env_data(dhw_fn, "dhw", site_data)
     else
-        dhw = NamedDimsArray(zeros(Float32, length(timeframe), n_sites, 50); timesteps=timeframe, sites=conn_ids, scenarios=1:50)
+        dhw = NamedDimsArray(
+            zeros(Float32, length(timeframe), n_sites, 50);
+            timesteps=timeframe,
+            sites=conn_ids,
+            scenarios=1:50,
+        )
     end
 
     if endswith(wave_fn, ".mat")
@@ -134,7 +203,12 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
     elseif endswith(wave_fn, ".nc")
         waves = load_env_data(wave_fn, "Ub", site_data)
     else
-        waves = NamedDimsArray(zeros(Float32, length(timeframe), n_sites, 50); timesteps=timeframe, sites=conn_ids, scenarios=1:50)
+        waves = NamedDimsArray(
+            zeros(Float32, length(timeframe), n_sites, 50);
+            timesteps=timeframe,
+            sites=conn_ids,
+            scenarios=1:50,
+        )
     end
 
     if endswith(init_coral_fn, ".mat")
@@ -143,7 +217,11 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
         coral_cover = load_covers(init_coral_fn, "covers", site_data)
     else
         @warn "Using random initial coral cover"
-        coral_cover = NamedDimsArray(rand(Float32, coral_growth.n_species, n_sites); species=1:coral_growth.n_species, sites=1:n_sites)
+        coral_cover = NamedDimsArray(
+            rand(Float32, coral_growth.n_species, n_sites);
+            species=1:(coral_growth.n_species),
+            sites=1:n_sites,
+        )
     end
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
@@ -151,9 +229,26 @@ function Domain(name::String, dpkg_path::String, rcp::String, timeframe::Vector,
 
     @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
-    return Domain(name, rcp, env_layer_md, site_conn.TP_base, conns.in_conn, conns.out_conn, conns.strongest_predecessor,
-        site_data, site_dists, median_site_distance, site_id_col, unique_site_id_col, coral_cover, coral_growth,
-        site_conn.site_ids, site_conn.truncated, dhw, waves)
+    return Domain(
+        name,
+        rcp,
+        env_layer_md,
+        site_conn.TP_base,
+        conns.in_conn,
+        conns.out_conn,
+        conns.strongest_predecessor,
+        site_data,
+        site_dists,
+        median_site_distance,
+        site_id_col,
+        unique_site_id_col,
+        coral_cover,
+        coral_growth,
+        site_conn.site_ids,
+        site_conn.truncated,
+        dhw,
+        waves,
+    )
 end
 
 """
@@ -178,7 +273,9 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
     this_version::VersionNumber = parse(VersionNumber, dpkg_version)
     if this_version >= v"0.2.1"
         # Extract the time frame represented in this data package
-        md_timeframe::Tuple{Int64,Int64} = Tuple(dpkg_details["simulation_metadata"]["timeframe"])
+        md_timeframe::Tuple{Int64,Int64} = Tuple(
+            dpkg_details["simulation_metadata"]["timeframe"]
+        )
     else
         # Default to 2025-2099
         md_timeframe = (2025, 2099)
@@ -200,8 +297,8 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
     site_path::String = joinpath(site_data, "$(domain_name).gpkg")
     init_coral_cov::String = joinpath(site_data, "coral_cover.nc")
 
-    dhw::String = !isempty(rcp) ? joinpath(path, "DHWs", "dhwRCP$(rcp).nc") : ""
-    wave::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
+    dhw_fn::String = !isempty(rcp) ? joinpath(path, "DHWs", "dhwRCP$(rcp).nc") : ""
+    wave_fn::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
 
     return Domain(
         domain_name,
@@ -213,8 +310,8 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
         "reef_siteid",
         init_coral_cov,
         conn_path,
-        dhw,
-        wave
+        dhw_fn,
+        wave_fn,
     )
 end
 function load_domain(path::String, rcp::String)::ADRIADomain
@@ -223,7 +320,6 @@ end
 function load_domain(path::String, rcp::Int64)::ADRIADomain
     return load_domain(ADRIADomain, path, string(rcp))
 end
-
 
 """Get the path to the DHW data associated with the domain."""
 function get_DHW_data(d::ADRIADomain, RCP::String)::String
@@ -251,24 +347,24 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     return d
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", d::ADRIADomain)
-
+function Base.show(io::IO, mime::MIME"text/plain", d::ADRIADomain)::Nothing
     df = model_spec(d)
     println("""
-    Domain: $(d.name)
+        Domain: $(d.name)
 
-    Number of sites: $(n_locations(d))
-    Site data file: $(d.env_layer_md.site_data_fn)
-    Connectivity file: $(d.env_layer_md.connectivity_fn)
-    DHW file: $(d.env_layer_md.DHW_fn)
-    Wave file: $(d.env_layer_md.wave_fn)
-    Timeframe: $(d.env_layer_md.timeframe[1]) - $(d.env_layer_md.timeframe[end])
+        Number of sites: $(n_locations(d))
+        Site data file: $(d.env_layer_md.site_data_fn)
+        Connectivity file: $(d.env_layer_md.connectivity_fn)
+        DHW file: $(d.env_layer_md.DHW_fn)
+        Wave file: $(d.env_layer_md.wave_fn)
+        Timeframe: $(d.env_layer_md.timeframe[1]) - $(d.env_layer_md.timeframe[end])
 
-    Model Specification:
-    - Parameters: $(nrow(df))
-    - Number of constants: $(nrow(df[df.is_constant .== true, :]))
-    """)
+        Model Specification:
+        - Parameters: $(nrow(df))
+        - Number of constants: $(nrow(df[df.is_constant .== true, :]))
+        """)
 
     # println("\nEcosystem model specification:")
     # show(io, mime, model_spec(d)[:, [:component, :fieldname, :val, :full_bounds, :dists, :is_constant]])
+    return nothing
 end

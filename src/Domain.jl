@@ -1,8 +1,6 @@
 using NCDatasets
 
-
 abstract type Domain end
-
 
 """
     EnvLayer{S, TF}
@@ -20,7 +18,6 @@ mutable struct EnvLayer{S<:AbstractString,TF}
     wave_fn::S
     const timeframe::TF
 end
-
 
 """
     site_distance(site_data::DataFrame)::Matrix
@@ -44,14 +41,15 @@ function site_distances(site_data::DataFrame)::Tuple{Matrix{Float64},Float64}
                 continue
             end
 
-            @views dist[ii, jj] = haversine((longitudes[ii], latitudes[ii]), (longitudes[jj], latitudes[jj]))
+            @views dist[ii, jj] = haversine(
+                (longitudes[ii], latitudes[ii]), (longitudes[jj], latitudes[jj])
+            )
         end
     end
 
     median_site_dist = median(dist[.!isnan.(dist)])
     return dist, median_site_dist
 end
-
 
 """
     load_domain(path::String)
@@ -66,11 +64,9 @@ function load_domain(path::String)::Domain
     return load_domain(path, "")
 end
 
-
 function unique_sites(d::Domain)::Vector{String}
     return d.site_data[:, d.unique_site_id_col]
 end
-
 
 """
     param_table(d::ADRIADomain)::DataFrame
@@ -87,7 +83,6 @@ function param_table(d::Domain)::DataFrame
     return p_df
 end
 
-
 """
     model_spec(d::Domain)::DataFrame
     model_spec(d::Domain, filepath::String)::Nothing
@@ -103,8 +98,9 @@ function model_spec(d::Domain, filepath::String)::Nothing
     version = PkgVersion.Version(@__MODULE__)
     vers_id = "v$(version)"
 
+    current_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
     open(filepath, "w") do io
-        write(io, "# Generated with ADRIA.jl $(vers_id) on $(replace(string(now()), "T"=>"_", ":"=>"_", "."=>"_"))\n")
+        write(io, "# Generated with ADRIA.jl $(vers_id) on $(current_time)\n")
     end
 
     CSV.write(filepath, model_spec(d); header=true, append=true)
@@ -115,10 +111,9 @@ function model_spec(m::Model)::DataFrame
     spec = DataFrame(m)
     bnds = spec[!, :bounds]
 
-    DataFrames.hcat!(spec, DataFrame(
-        :lower_bound => first.(bnds),
-        :upper_bound => getindex.(bnds, 2)
-    ))
+    DataFrames.hcat!(
+        spec, DataFrame(:lower_bound => first.(bnds), :upper_bound => getindex.(bnds, 2))
+    )
 
     spec[!, :component] .= replace.(string.(spec[!, :component]), "ADRIA." => "")
     spec[!, :is_constant] .= spec[!, :lower_bound] .== spec[!, :upper_bound]
@@ -129,7 +124,6 @@ function model_spec(m::Model)::DataFrame
 
     return spec
 end
-
 
 """
     update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
@@ -154,7 +148,10 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
 
     to_floor = _check_discrete.(p_df.ptype)
     if any(to_floor)
-        p_df[to_floor, :val] .= map_to_discrete.(p_df[to_floor, :val], Int64.(getindex.(p_df[to_floor, :bounds], 2)))
+        p_df[to_floor, :val] .=
+            map_to_discrete.(
+                p_df[to_floor, :val], Int64.(getindex.(p_df[to_floor, :bounds], 2))
+            )
     end
 
     # Update with new parameters
@@ -162,7 +159,6 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
 
     return nothing
 end
-
 
 """
     component_params(m::Model, component)::DataFrame
@@ -176,13 +172,13 @@ function component_params(m::Model, component)::DataFrame
     return component_params(model_spec(m), component)
 end
 function component_params(spec::DataFrame, component)::DataFrame
-    return spec[spec.component.==replace.(string(component), "ADRIA." => ""), :]
+    return spec[spec.component .== replace.(string(component), "ADRIA." => ""), :]
 end
 function component_params(m::Model, components::Vector{T})::DataFrame where {T}
     return component_params(model_spec(m), components)
 end
 function component_params(spec::DataFrame, components::Vector{T})::DataFrame where {T}
-    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
+    return spec[spec.component .∈ [replace.(string.(components), "ADRIA." => "")], :]
 end
 
 """
@@ -192,8 +188,7 @@ Convert coral cover data from being relative to absolute location area to relati
 \$k\$ area.
 """
 function _convert_abs_to_k(
-    coral_cover::Union{NamedDimsArray,Matrix{Float64}},
-    site_data::DataFrame
+    coral_cover::Union{NamedDimsArray,Matrix{Float64}}, site_data::DataFrame
 )::Union{NamedDimsArray,Matrix{Float64}}
     # Initial coral cover is provided as values relative to location area.
     # Convert coral covers to be relative to k area, ignoring locations with 0 carrying
@@ -201,13 +196,12 @@ function _convert_abs_to_k(
     absolute_k_area = (site_data.k .* site_data.area)'  # max possible coral area in m^2
     valid_locs::BitVector = absolute_k_area' .> 0.0
     coral_cover[:, valid_locs] .= (
-        (coral_cover[:, valid_locs] .* site_data.area[valid_locs]')
-        ./
+        (coral_cover[:, valid_locs] .* site_data.area[valid_locs]') ./
         absolute_k_area[valid_locs]'
     )
 
     # Ensure initial coral cover values are <= maximum carrying capacity
-    @assert all(sum(coral_cover, dims=1) .<= 1.0)
+    @assert all(sum(coral_cover; dims=1) .<= 1.0)
 
     return coral_cover
 end
@@ -242,7 +236,8 @@ end
 """
     relative_leftover_space(loc_coral_cover::Matrix{Float64})::Matrix{Float64}
 
-Get proportion of leftover space, given site_k and proportional cover on each site, summed over species.
+Get proportion of leftover space, given site_k and proportional cover on each site, summed
+over species.
 
 # Arguments
 - `loc_coral_cover` : Proportion of coral cover relative to `k` (maximum carrying capacity).

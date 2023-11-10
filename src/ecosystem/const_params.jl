@@ -38,7 +38,9 @@ Base.@kwdef mutable struct SimConstants
     # Zones to prioritize when seeding or shading, in order of preference
     # https://github.com/open-AIMS/ADRIA.jl/issues/231#issuecomment-1340138255
     # https://www2.gbrmpa.gov.au/access/zoning/interpreting-zones
-    priority_zones::Vector{String} = String["Pink", "Green", "Yellow", "DarkBlue", "LightBlue"]
+    priority_zones::Vector{String} = String[
+        "Pink", "Green", "Yellow", "DarkBlue", "LightBlue"
+    ]
 
     ## Environmental parameters
     # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
@@ -53,5 +55,7 @@ Base.@kwdef mutable struct SimConstants
 
     # Modified for use in ADRIA
     max_settler_density::Vector{Float64} = Float64[100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
-    max_larval_density::Vector{Float64} = Float64[5000.0, 5000.0, 5000.0, 5000.0, 5000.0, 5000.0]
+    max_larval_density::Vector{Float64} = Float64[
+        5000.0, 5000.0, 5000.0, 5000.0, 5000.0, 5000.0
+    ]
 end
