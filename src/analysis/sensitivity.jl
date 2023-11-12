@@ -333,9 +333,7 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
     )
 
     for t in axes(y, 1)
-        t_pawn_idx[:, :, t] .= col_normalize(
-            pawn(X, vec(mean(y[1:t, :], dims=1)))
-        )
+        t_pawn_idx[:, :, t] .= pawn(X, vec(mean(y[1:t, :]; dims=1)))
     end
 
     return t_pawn_idx
