@@ -242,10 +242,8 @@ function convergence(
     scens_idx = randperm(N)
 
     for nn in N_it
-        pawn_store(; n_scenarios=nn) .= col_normalize(
-            Si(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])),
-        )(;
-            factors=target_factors,
+        pawn_store(; n_scenarios=nn) .= Si(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]]))(;
+            factors=target_factors
         )
     end
 
