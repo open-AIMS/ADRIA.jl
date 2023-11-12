@@ -58,7 +58,7 @@ Return a and b to write any Real number x as x = a * 10^b, where 1.0 <= a < 10.0
 an integer. The idea is that `x = a * 10^b` => `log(x) = log(a) + b*log(10)`. Which means
 that `log(a)` is the remainder of `log(x)/log(10)` hence `a = exp((log(x)%log(10)))`.
 Because `log(x) % log(10)` returns an approximate value, if we just use this to find `a` we
-will end up writing `40` as `3.9E1`. To avoid that, we take this approximated value of `a`,
+will end up writing `40` as `3.9E1`. To avoid that, we take this approximate value of `a`,
 compute `b` and use `b` to find the actual value of `a`.
 
 # Arguments
