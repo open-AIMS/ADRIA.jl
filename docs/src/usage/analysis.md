@@ -257,12 +257,12 @@ using Statistics
 
 outcome = dropdims(mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps), dims=:timesteps)
 
-# Display convergence for specific factors of interest ("foi")
+# Display convergence for specific factors of interest ("foi") as heat map
 foi = [:dhw_scenario, :wave_scenario, :guided]
-Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi)
+Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi; opts=Dict(:viz_type=>:heatmap))
 ADRIA.viz.convergence(Si_conv, foi)
 
-# Convergence analysis of factors grouped by model component
+# Convergence analysis of factors grouped by model component as heat map
 components = [:EnvironmentalLayer, :Intervention, :Coral]
 Si_conv = ADRIA.sensitivity.convergence(rs, scens, outcome, components)
 ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
@@ -277,7 +277,11 @@ ADRIA.viz.convergence(Si_conv, foi)
 
 # Create a grid of figures for each factor of interest
 ADRIA.viz.convergence(Si_conv, foi; opts=Dict(:plot_overlay=>false))
+
 ```
+
+![Convergence analysis of factors overlayed](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors_lines_overlay.png?raw=true "Convergence Analysis - overlayed")
+![Convergence analysis of factors as grid](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors_lines.png?raw=true "Convergence Analysis - as grid")
 
 ### Time Series Clustering
 
