@@ -45,7 +45,7 @@ function clustered_scenarios!() end
 function rules_scatter() end
 function rules_scatter!() end
 
-# Location selection Plots
+# Location selection plots
 function ranks_to_frequencies() end
 function ranks_to_frequencies!() end
 
