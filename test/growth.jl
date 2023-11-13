@@ -6,9 +6,13 @@ using ADRIA
     Y = rand(5, 36, 20)
     for i in axes(Y, 1)
         Y[i, :, :] .= Y[i, :, :] / sum(Y[i, :, :], dims=1)
+        diff_tmp = vec(sum(Y[i, :, :]; dims=1))
+        if any(diff_tmp .> 1.0)
+            Y[i, :, :] .= Y[i, :, :] .- (diff_tmp .- 1)' ./ 36
+        end
     end
-    tmp = zeros(20)
 
+    tmp = zeros(20)
     for i in axes(Y, 1)
         # No warning should be emitted when values are between 0 and 1
         Test.@test_nowarn ADRIA.proportional_adjustment!(Y[i, :, :], tmp)
