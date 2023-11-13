@@ -296,7 +296,10 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
         bounds=(0.25, 0.5),
         default_bounds=(0.25, 0.5),
         dists="unif",
-        name="Heritability", description="Heritability of DHW tolerance.")
+        criteria_keywords=(""),
+        name="Heritability",
+        description="Heritability of DHW tolerance.",
+    )
 
     for c_id in p_vals.coral_id
         for p in base_coral_params
@@ -308,7 +311,10 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
                 bounds=(f_val * bounds[1], f_val * bounds[2], 0.5),
                 default_bounds=(f_val * bounds[1], f_val * bounds[2], 0.5),
                 dists="triang",
-                name=human_readable_name(f_name, title_case=true), description="")
+                criteria_keywords=(""),
+                name=human_readable_name(f_name; title_case=true),
+                description="",
+            )
         end
     end
 

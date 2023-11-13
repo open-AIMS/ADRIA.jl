@@ -5,6 +5,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("seed", "shade", "weight"),
         name="Wave Stress",
         description="Importance of avoiding wave stress. Higher values places more weight on areas with low wave stress.",
     )
@@ -14,6 +15,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("seed", "shade", "weight"),
         name="Heat Stress",
         description="Importance of avoiding heat stress. Higher values places more weight on areas with low heat stress.",
     )
@@ -23,6 +25,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("shade", "weight"),
         name="Shade Connectivity",
         description="Higher values give preference to locations with high connectivity for shading deployments.",
     )
@@ -32,6 +35,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("seed", "weight"),
         name="Incoming Connectivity (Seed)",
         description="Higher values give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for enhanced coral deployments.",
     )
@@ -41,6 +45,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("seed", "weight"),
         name="Outgoing Connectivity (Seed)",
         description="Higher values give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for enhanced coral deployments.",
     )
@@ -59,6 +64,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("seed", "weight"),
         name="Low Coral Cover",
         description="Higher values give greater preference to sites with low coral cover for seeding deployments.",
     )
@@ -68,6 +74,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("shade", "weight"),
         name="High Coral Cover",
         description="Higher values give preference to sites with high coral cover for shading deployments.",
     )
@@ -77,6 +84,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("seed", "weight"),
         name="Predecessor Priority (Seed)",
         description="Importance of seeding sites that provide larvae to priority reefs.",
     )
@@ -86,6 +94,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("shade", "weight"),
         name="Predecessor Priority (Shade)",
         description="Importance of shading sites that provide larvae to priority reefs.",
     )
@@ -95,6 +104,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("seed", "weight"),
         name="Zone Predecessor (Seed)",
         description="Importance of seeding sites that provide larvae to priority (target) zones.",
     )
@@ -104,6 +114,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("shade", "weight"),
         name="Zone Predecessor (Shade)",
         description="Importance of shading sites that provide larvae to priority (target) zones.",
     )
@@ -113,6 +124,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("threshold", "seed"),
         name="Low Area Tolerance",
         description="Tolerance for low proportional space for seeding deployments.",
     )
@@ -122,6 +134,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.75, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("threshold", "seed", "shade"),
         name="Risk Tolerance",
         description="Filters out sites with heat/wave stress above threshold.",
     )
@@ -131,6 +144,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0 + 1.0),
         default_bounds=(0.0, 1.0 + 1.0),
         dists="unif",
+        criteria_keywords=("threshold",),
         name="Use Distance Threshold",
         description="Turns distance sorting on or off.",
     )
@@ -140,6 +154,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
+        criteria_keywords=("threshold",),
         name="Distance Threshold",
         description="Sites selected by MCDA must be further apart than median(dist)-dist_thresh*median(dist).",
     )
@@ -149,6 +164,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(3.0, 5.0),
         default_bounds=(3.0, 5.0),
         dists="unif",
+        criteria_keywords=("threshold",),
         name="Minimum Depth",
         description="Minimum depth for a site to be included for consideration.\nNote: This value will be replaced with the shallowest depth value found if all sites are found to be deeper than `depth_min + depth_offset`.",
     )
@@ -158,6 +174,7 @@ Base.@kwdef struct CriteriaWeights{P,N} <: EcoModel
         bounds=(10.0, 25.0),
         default_bounds=(10.0, 25.0),
         dists="unif",
+        criteria_keywords=("threshold",),
         name="Depth Offset",
         description="Offset from minimum depth, used to indicate maximum depth.",
     )
