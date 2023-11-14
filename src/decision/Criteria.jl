@@ -5,7 +5,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
-        criteria_keywords=("seed", "shade", "weight"),
+        criteria_keywords=("seed", "fog", "weight"),
         name="Wave Stress",
         description="Importance of avoiding wave stress. Higher values places more weight on areas with low wave stress.",
     )
@@ -15,7 +15,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
-        criteria_keywords=("seed", "shade", "weight"),
+        criteria_keywords=("seed", "fog", "weight"),
         name="Heat Stress",
         description="Importance of avoiding heat stress. Higher values places more weight on areas with low heat stress.",
     )
@@ -25,7 +25,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
-        criteria_keywords=("shade", "weight"),
+        criteria_keywords=("fog", "weight"),
         name="Shade Connectivity",
         description="Higher values give preference to locations with high connectivity for shading deployments.",
     )
@@ -65,7 +65,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
-        criteria_keywords=("shade", "weight"),
+        criteria_keywords=("fog", "weight"),
         name="High Coral Cover",
         description="Higher values give preference to sites with high coral cover for shading deployments.",
     )
@@ -85,7 +85,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
-        criteria_keywords=("shade", "weight"),
+        criteria_keywords=("fog", "weight"),
         name="Predecessor Priority (Shade)",
         description="Importance of shading sites that provide larvae to priority reefs.",
     )
@@ -105,7 +105,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
-        criteria_keywords=("shade", "weight"),
+        criteria_keywords=("fog", "weight"),
         name="Zone Predecessor (Shade)",
         description="Importance of shading sites that provide larvae to priority (target) zones.",
     )
@@ -125,7 +125,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         bounds=(0.75, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
-        criteria_keywords=("threshold", "seed", "shade"),
+        criteria_keywords=("threshold", "seed", "fog"),
         name="Risk Tolerance",
         description="Filters out sites with heat/wave stress above threshold.",
     )
