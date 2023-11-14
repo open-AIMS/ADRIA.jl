@@ -109,7 +109,7 @@ function DMCDA_vars(
         criteria("shade_connectivity"),
         criteria("wave_stress"),
         criteria("heat_stress"),
-        criteria("seed_depth"),
+        criteria("depth_seed"),
         criteria("coral_cover_high"),
         criteria("coral_cover_low"),
         criteria("seed_priority"),
