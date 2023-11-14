@@ -29,8 +29,10 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wt_in_conn_seed  # ::F
     wt_out_conn_seed  # ::F
     wt_conn_shade  # ::F
-    wt_waves # ::F
-    wt_heat  # ::F
+    wt_waves_seed # ::F
+    wt_waves_shade # ::F
+    wt_heat_seed  # ::F
+    wt_heat_shade  # ::F
     wt_depth_seed # ::F
     wt_hi_cover  # ::F
     wt_lo_cover  # ::F
@@ -134,7 +136,6 @@ function DMCDA_vars(
         criteria("shade_connectivity"),
         criteria("wave_stress"),
         criteria("heat_stress"),
-        criteria("depth_seed"),
         criteria("coral_cover_high"),
         criteria("coral_cover_low"),
         criteria("seed_priority"),
@@ -449,8 +450,8 @@ function create_seed_matrix(
     min_area::T,
     wt_in_conn_seed::T,
     wt_out_conn_seed::T,
-    wt_waves::T,
-    wt_heat::T,
+    wt_waves_seed::T,
+    wt_heat_seed::T,
     wt_predec_seed::T,
     wt_predec_zones_seed::T,
     wt_low_cover::T,
@@ -462,12 +463,12 @@ function create_seed_matrix(
     wse = [
         wt_in_conn_seed,
         wt_out_conn_seed,
-        wt_waves,
-        wt_heat,
+        wt_waves_seed,
+        wt_heat_seed,
         wt_predec_seed,
         wt_predec_zones_seed,
         wt_low_cover,
-        wt_depth_seed,
+        wt_heat,
     ]
 
     SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
@@ -523,8 +524,8 @@ Tuple (SH, wsh)
 function create_shade_matrix(A::Matrix{Float64},
     k_area::Vector{T},
     wt_conn_shade::T,
-    wt_waves::T,
-    wt_heat::T,
+    wt_waves_shade::T,
+    wt_heat_shade::T,
     wt_predec_shade::T,
     wt_predec_zones_shade::T,
     wt_hi_cover,
@@ -534,8 +535,8 @@ function create_shade_matrix(A::Matrix{Float64},
     wsh = [
         wt_conn_shade,
         wt_conn_shade,
-        wt_waves,
-        wt_heat,
+        wt_waves_shade,
+        wt_heat_shade,
         wt_predec_shade,
         wt_predec_zones_shade,
         wt_hi_cover,
@@ -674,8 +675,8 @@ function guided_site_selection(
             d_vars.min_area,
             d_vars.wt_in_conn_seed,
             d_vars.wt_out_conn_seed,
-            d_vars.wt_waves,
-            d_vars.wt_heat,
+            d_vars.wt_waves_seed,
+            d_vars.wt_heat_seed,
             d_vars.wt_predec_seed,
             d_vars.wt_zones_seed,
             d_vars.wt_lo_cover,
@@ -691,9 +692,7 @@ function guided_site_selection(
             d_vars.wt_conn_shade,
             d_vars.wt_waves,
             d_vars.wt_heat,
-            d_vars.wt_predec_shade,
-            d_vars.wt_zones_shade,
-            d_vars.wt_hi_cover,
+            d_vars.wt_predec_shade, d_vars.wt_zones_shade, d_vars.wt_hi_cover
         )
     end
 
