@@ -257,7 +257,7 @@ using Statistics
 
 outcome = dropdims(mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps), dims=:timesteps)
 
-# Display convergence for specific factors of interest ("foi") as heat map
+# Display convergence for specific factors of interest ("foi") as a heat map
 foi = [:dhw_scenario, :wave_scenario, :guided]
 Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi; opts=Dict(:viz_type=>:heatmap))
 ADRIA.viz.convergence(Si_conv, foi)
