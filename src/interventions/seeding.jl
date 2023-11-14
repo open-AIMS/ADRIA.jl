@@ -1,3 +1,5 @@
+using StatsBase
+
 """
     distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::NamedDimsArray)::NamedDimsArray
 

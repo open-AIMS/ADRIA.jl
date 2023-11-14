@@ -6,8 +6,8 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
     guided::N = Param(
         0;
         ptype="categorical",
-        bounds=(-1.0, length(methods_mcda) + 1.0),
-        default_bounds=(-1.0, length(methods_mcda) + 1.0),
+        bounds=(-1.0, length(decision.methods_mcda) + 1.0),
+        default_bounds=(-1.0, length(decision.methods_mcda) + 1.0),
         dists="unif",
         name="Guided",
         description="Choice of MCDA approach.",

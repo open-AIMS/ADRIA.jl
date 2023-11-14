@@ -1,5 +1,6 @@
 using NamedDims, AxisKeys
 
+using ADRIA: connectivity_strength
 
 """
     _location_selection(domain::Domain, sum_cover::AbstractArray, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
@@ -268,9 +269,7 @@ function location_selection_frequencies(
     )
     return loc_count
 end
-function ranks_to_frequencies(rs::ResultSet, iv_type::String; n_ranks=length(rs.ranks.sites))
-    return sum(ranks_to_frequencies_ts(rs, iv_type; n_ranks=n_ranks), dims=:timesteps)[timesteps=1]
-end
+
 
 """Drop single dimensions."""
 _drop_single(x::AbstractMatrix) = dropdims(x, dims=(findall(size(x) .== 1)...,))

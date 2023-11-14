@@ -122,7 +122,13 @@ end
 
         # Get Intervention params
         ms = ADRIA.model_spec(dom)
-        target_params = string.(ADRIA.component_params(ms, [ADRIA.EnvironmentalLayer, ADRIA.Intervention, ADRIA.Criteria]).fieldname)
+        target_params =
+            string.(
+                ADRIA.component_params(
+                    ms,
+                    [ADRIA.EnvironmentalLayer, ADRIA.Intervention, ADRIA.CriteriaWeights],
+                ).fieldname
+            )
 
         # Ignore guided
         target_params = String[ip for ip in target_params if ip != "guided"]

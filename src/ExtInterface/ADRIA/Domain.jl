@@ -61,11 +61,12 @@ function Domain(
     DHWs::NamedDimsArray,
     waves::NamedDimsArray,
 )::ADRIADomain where {T<:Union{Float32,Float64}}
-    criteria::Criteria = Criteria()
+    criteria_weights::CriteriaWeights = CriteriaWeights()
+
     sim_constants::SimConstants = SimConstants()
 
     # Update minimum site depth to be considered if default bounds are deeper than the deepest site in the cluster
-    if criteria.depth_min.bounds[1] > maximum(site_data.depth_med)
+    if criteria_weights.depth_min.bounds[1] > maximum(site_data.depth_med)
         min_depth = minimum(site_data.depth_med)
         fields = fieldnames(typeof(criteria))
         c_spec = (; zip(fields, [getfield(criteria, f) for f in fields])...)
@@ -73,11 +74,11 @@ function Domain(
             min_depth, minimum([min_depth + 2.0, maximum(site_data.depth_med)])
         )
 
-        criteria = Criteria(c_spec...)
+        criteria_weights = CriteriaWeights(c_spec...)
     end
 
     model::Model = Model((
-        EnvironmentalLayer(DHWs, waves), Intervention(), criteria, Coral()
+        EnvironmentalLayer(DHWs, waves), Intervention(), criteria_weights, Coral()
     ))
 
     return ADRIADomain(
