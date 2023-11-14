@@ -166,7 +166,7 @@ function run_scenarios(
             rep_doms = Iterators.repeated(dom, length(target_rows))
             scenario_args = zip(rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :]))
             if show_progress
-                @showprogress run_msg 4 pmap(func, CachingPool(workers()), scenario_args)
+                @showprogress desc=run_msg dt=4 pmap(func, CachingPool(workers()), scenario_args)
             else
                 pmap(func, CachingPool(workers()), scenario_args)
             end
@@ -187,7 +187,7 @@ function run_scenarios(
             rep_doms = Iterators.repeated(dom, size(scenarios_matrix, 1))
             scenario_args = zip(rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :]))
             if show_progress
-                @showprogress run_msg 4 map(func, scenario_args)
+                @showprogress desc=run_msg dt=4 map(func, scenario_args)
             else
                 map(func, scenario_args)
             end
