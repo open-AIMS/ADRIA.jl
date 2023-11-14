@@ -111,7 +111,8 @@ function ADRIA.viz.scenarios!(
     series_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
     if get(opts, :summarize, true)
-        scenarios_confint!(ax, outcomes, scen_groups)
+        confints = _confints(outcomes, scen_groups)
+        scenarios_confint!(ax::Axis, confints, scen_groups)
     else
         scenarios_series!(ax, outcomes, scen_groups; series_opts=series_opts)
     end
@@ -129,12 +130,12 @@ function ADRIA.viz.scenarios!(
     return g
 end
 
-function scenarios_confint!(
-    ax::Axis, outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
-)::Nothing
-    ordered_groups::Vector{Symbol} = _sort_keys(scen_groups, outcomes)
+function _confints(
+    outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
+)::Array{Float64}
+    groups::Vector{Symbol} = keys(scen_groups)
     n_timesteps::Int64 = size(outcomes, 1)
-    n_scens::Int64 = length(ordered_groups)
+    n_scens::Int64 = length(groups)
 
     # Compute confints
     confints::Array{Float64} = zeros(n_timesteps, n_scens, 3)
@@ -145,16 +146,28 @@ function scenarios_confint!(
         )
     end
 
+    return confints
+end
+
+function scenarios_confint!(
+    ax::Axis,
+    confints::AbstractArray,
+    scen_groups::Dict{Symbol,BitVector};
+    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1)),
+    sort_by::Symbol=:variance,
+)::Nothing
+
+    ordered_groups = _sort_keys(scen_groups, confints; by=sort_by)
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
 
     for idx in eachindex(ordered_groups)
         band_color = (_colors[ordered_groups[idx]], 0.4)
         y_lower, y_upper = confints[:, idx, 1], confints[:, idx, 3]
-        band!(ax, 1:n_timesteps, y_lower, y_upper; color=band_color)
+        band!(ax, x_vals, y_lower, y_upper; color=band_color)
     end
 
     series_colors = [_colors[group] for group in ordered_groups]
-    series!(ax, confints[:, :, 2]'; solid_color=series_colors)
+    series!(ax, x_vals, confints[:, :, 2]'; solid_color=series_colors)
 
     return nothing
 end
@@ -164,14 +177,16 @@ function scenarios_series!(
     outcomes::NamedDimsArray,
     scen_groups::Dict{Symbol,BitVector};
     series_opts::Dict=Dict(),
+    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(outcomes, 1)),
+    sort_by=:size,
 )::Nothing
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
     _alphas::Dict{Symbol,Float64} = alphas(scen_groups)
 
-    for group in _sort_keys(scen_groups, outcomes; by=:size)
+    for group in _sort_keys(scen_groups, outcomes; by=sort_by)
         color = (_colors[group], _alphas[group])
         scens = outcomes[:, scen_groups[group]]'
-        series!(ax, scens; solid_color=color, series_opts...)
+        series!(ax, x_vals, scens; solid_color=color, series_opts...)
     end
 
     return nothing
@@ -230,7 +245,9 @@ Sort types by variance in reverse order.
     - :counterfactual
 """
 function _sort_keys(
-    scenario_types::Dict{Symbol,BitVector}, outcomes::NamedDimsArray; by=:variance
+    scenario_types::Dict{Symbol,BitVector},
+    outcomes::NamedDimsArray;
+    by=:variance,
 )::Vector{Symbol}
     scen_types::Vector{Symbol} = collect(keys(scenario_types))
     if by == :variance
@@ -243,6 +260,8 @@ function _sort_keys(
         return sort(
             scen_types; by=type -> size(outcomes[:, scenario_types[type]], 2), rev=true
         )
+    elseif by == :none
+        return scen_types
     else
         throw(ArgumentError("Invalid 'by' option. Must be one of: [:variance, :size]"))
     end

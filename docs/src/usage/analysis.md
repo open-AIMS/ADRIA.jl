@@ -236,6 +236,56 @@ save("tsa.png", tsa_fig)
 
 ![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/tsa.png?raw=true "Temporal Sensitivity Analysis")
 
+
+### Convergence Analysis
+
+When undertaking sensitivity analysis it is important to have a sufficient number of samples
+such that the sensitivity measure converges to a stable state. To assess whether sufficient
+samples have been taken a convergence analysis can be conducted. One approach is to draw a
+large sample and then iteratively assess stability of the sensitivity metric using an
+increasing number of sub-samples. The sensitivity metric is described as having "converged"
+if there is little to no fluctuations/variance for a given sample size. The analysis can
+help determine if too little (or too many) samples have taken for the purpose of sensitivity
+analysis.
+
+The function `sensitivity.convergence` can be used to calculate a sensitivity measure for an
+increasing number of samples. The result can then be plotted as band plots or a heat map
+using `viz.convergence`.
+
+```julia
+using Statistics
+
+outcome = dropdims(mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps), dims=:timesteps)
+
+# Display convergence for specific factors of interest ("foi") as a heat map
+foi = [:dhw_scenario, :wave_scenario, :guided]
+Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi; opts=Dict(:viz_type=>:heatmap))
+ADRIA.viz.convergence(Si_conv, foi)
+
+# Convergence analysis of factors grouped by model component as a heat map
+components = [:EnvironmentalLayer, :Intervention, :Coral]
+Si_conv = ADRIA.sensitivity.convergence(rs, scens, outcome, components)
+ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
+```
+
+![Convergence analysis of factors](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors.png?raw=true "Convergence Analysis - factors")
+![Grouped convergence analysis](/ADRIA.jl/dev/assets/imgs/colormap_convergence_components.png?raw=true "Convergence Analysis - model components")
+
+```julia
+# Display convergence plot within a single figure.
+# Bands represent the 95% confidence interval derived from the number of conditioning
+# points, the default for which is ten (i.e., 10 samples).
+# Due to the limited sample size, care should be taken when interpreting the figure.
+ADRIA.viz.convergence(Si_conv, foi)
+
+# Create a grid of figures for each factor of interest.
+ADRIA.viz.convergence(Si_conv, foi; opts=Dict(:plot_overlay=>false))
+
+```
+
+![Convergence analysis of factors overlayed](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors_lines_overlay.png?raw=true "Convergence Analysis - overlayed")
+![Convergence analysis of factors as grid](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors_lines.png?raw=true "Convergence Analysis - as grid")
+
 ### Time Series Clustering
 
 The Time Series Clustering algorithm clusters together series (typically time series)

@@ -11,12 +11,13 @@ using DataFrames
 using
     Bootstrap,
     Distributions,
-    HypothesisTests
+    HypothesisTests,
+    Random
 using HypothesisTests: ApproximateKSTest
 
 using FLoops
 
-using ADRIA: ResultSet
+using ADRIA: ResultSet, model_spec
 using ADRIA.analysis: col_normalize
 
 
@@ -49,7 +50,7 @@ Sensitivity Analysis. Outputs are characterized by their Cumulative Distribution
 non-influential.
 
 This implementation applies the Kolmogorov-Smirnov test as the distance measure and returns
-summary statistics (min, mean, median, max, std, and cv) over the slices.
+summary statistics (min, lower bound, mean, median, upper bound, max, std, and cv) over the slices.
 
 # Arguments
 - `rs` : ResultSet
@@ -59,7 +60,7 @@ summary statistics (min, mean, median, max, std, and cv) over the slices.
 - `S` : Number of slides (default: 10)
 
 # Returns
-NamedDimsArray, of min, mean, median, max, std, and cv summary statistics.
+NamedDimsArray, of min, mean, lower bound, median, upper bound, max, std, and cv summary statistics.
 
 # Examples
 ```julia
@@ -118,7 +119,8 @@ function pawn(
     # Preallocate result structures
     X_q = @MVector zeros(S + 1)
     pawn_t = @MArray zeros(S, D)
-    results = @MArray zeros(D, 6)
+    results = @MArray zeros(D, 8)
+    q_stats = [0.025, 0.5, 0.975]
 
     # Hide warnings from HypothesisTests
     with_logger(NullLogger()) do
@@ -144,10 +146,13 @@ function pawn(
             p_mean = mean(p_ind)
             p_sdv = std(p_ind)
             p_cv = p_sdv ./ p_mean
+            p_lb, p_med, p_ub = quantile(p_ind, q_stats)
             results[d_i, :] .= (
                 minimum(p_ind),
+                p_lb,
                 p_mean,
-                median(p_ind),
+                p_med,
+                p_ub,
                 maximum(p_ind),
                 p_sdv,
                 p_cv
@@ -157,7 +162,7 @@ function pawn(
 
     replace!(results, NaN => 0.0, Inf => 0.0)
 
-    col_names = [:min, :mean, :median, :max, :std, :cv]
+    col_names = [:min, :lb, :mean, :median, :ub, :max, :std, :cv]
     return NamedDimsArray(results; factors=Symbol.(factor_names), Si=col_names)
 end
 function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
@@ -196,6 +201,86 @@ function pawn(
     return pawn(rs.inputs, y; S=S)
 end
 
+"""
+    convergence(X::DataFrame, y::NamedDimsArray, target_factors::Vector{Symbol}; n_steps::Int64=10)::NamedDimsArray
+    convergence(rs::ResultSet, X::DataFrame, y::NamedDimsArray, components::Vector{String}; n_steps::Int64=10)::NamedDimsArray
+
+Calculates the PAWN sensitivity index for an increasing number of scenarios where the
+maximum is the total number of scenarios in scens. Number of scenario subsets determined by
+N_steps. Can be calculated for individual factors or aggregated over factors for specified
+model components.
+
+# Arguments
+- `rs` : Result set (only needed if aggregating over model components).
+- `X` : Model inputs
+- `y` : Model outputs
+- `target_factors` : Names of target factors represented by columns in `X`.
+- `components` : Names of model components to aggregate over (e.g. [:Intervention, :Criteria]).
+- `n_steps` : Number of steps to cut the total number of scenarios into.
+
+# Returns
+NamedDimsArray, of min, lower bound, mean, median, upper bound, max, std, and cv summary
+statistics for an increasing number of scenarios.
+"""
+function convergence(
+    X::DataFrame,
+    y::NamedDimsArray,
+    target_factors::Vector{Symbol};
+    Si::Function=pawn,
+    n_steps::Int64=10,
+)::NamedDimsArray
+    N = length(y.scenarios)
+    step_size = floor(Int64, N / n_steps)
+    N_it = collect(step_size:step_size:N)
+
+    pawn_store = NamedDimsArray(
+        Array{Float64}(zeros(length(target_factors), 8, length(N_it)));
+        factors=target_factors,
+        Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
+        n_scenarios=N_it,
+    )
+    scens_idx = randperm(N)
+
+    for nn in N_it
+        pawn_store(; n_scenarios=nn) .= Si(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]]))(;
+            factors=target_factors
+        )
+    end
+
+    return pawn_store
+end
+function convergence(
+    rs::ResultSet,
+    X::DataFrame,
+    y::NamedDimsArray,
+    components::Vector{Symbol};
+    Si::Function=pawn,
+    n_steps::Int64=10,
+)::NamedDimsArray
+    ms = model_spec(rs)
+
+    target_factors = [
+        ms[ms[:, "component"] .== cc, "fieldname"] for
+        cc in string.(components)
+    ]
+
+    Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); Si=Si, n_steps=n_steps)
+    Si_grouped = NamedDimsArray(
+        zeros(length(components), 8, n_steps);
+        factors=components,
+        Si=Si_n.Si,
+        n_scenarios=Si_n.n_scenarios,
+    )
+
+    for (cc, factors) in zip(components, target_factors)
+        Si_grouped(factors=cc) .= dropdims(
+            mean(Si_n(; factors=Symbol.(factors)); dims=:factors);
+            dims=:factors,
+        )
+    end
+
+    return Si_grouped
+end
 
 """
     tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray

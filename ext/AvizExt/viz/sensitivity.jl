@@ -30,7 +30,12 @@ See: https://docs.makie.org/v0.19/api/index.html#Axis
 # Returns
 Makie figure
 """
-function ADRIA.viz.pawn!(g::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.pawn!(
+    g::Union{GridLayout,GridPosition},
+    Si::NamedDimsArray;
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
 
     norm = get(opts, :normalize, true)
@@ -61,7 +66,9 @@ function ADRIA.viz.pawn!(g::Union{GridLayout,GridPosition}, Si::NamedDimsArray; 
 
     return g
 end
-function ADRIA.viz.pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.pawn(
+    Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.pawn!(g, Si; opts, axis_opts)
@@ -88,7 +95,9 @@ Display temporal sensitivity analysis
 # Returns
 Makie figure
 """
-function ADRIA.viz.tsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
+function ADRIA.viz.tsa!(
+    g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts
+)
     stat = get(opts, :stat, :median)
 
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
@@ -131,7 +140,13 @@ function ADRIA.viz.tsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::Na
 
     return g
 end
-function ADRIA.viz.tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.tsa(
+    rs::ResultSet,
+    si::NamedDimsArray;
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.tsa!(g, rs, si; opts, axis_opts)
@@ -157,7 +172,14 @@ Plot regional sensitivities of up to 30 factors.
 # Returns
 Makie figure
 """
-function ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+function ADRIA.viz.rsa!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    si::NamedDimsArray,
+    factors::Vector{String};
+    opts,
+    axis_opts,
+)
     n_factors::Int64 = length(factors)
     if n_factors > 30
         ArgumentError("Too many factors to plot. Maximum number supported is 30.")
@@ -235,7 +257,14 @@ function ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::Na
 
     return g
 end
-function ADRIA.viz.rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.rsa(
+    rs::ResultSet,
+    si::NamedDimsArray,
+    factors::Vector{String};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.rsa!(g, rs, si, factors; opts, axis_opts)
@@ -243,6 +272,238 @@ function ADRIA.viz.rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String
     return f
 end
 
+"""
+    _series_convergence(g::GridPosition, Si_conv::NamedDimsArray, factors::Vector{Symbol};
+        opts::Dict=Dict(:plot_overlay => true), axis_opts::Dict=Dict())
+
+Plot sensitivity values for an increasing number of scenarios as a series, with each member
+    of the series representing a factor or model component.
+
+# Arguments
+- `Si_conv` : Produced using ADRIA.analysis.convergence()
+- `factors` : Factors/model components to plot
+- `opts` : Additional figure customization options
+        - `plot_overlay` : true, to plot overlaid series (the default), false to plot series as grid of subplots
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+      See: https://docs.makie.org/v0.19/api/index.html#Axis
+
+# Returns
+GLMakie figure
+"""
+function _series_convergence(
+    g::GridPosition,
+    Si_conv::NamedDimsArray,
+    factors::Vector{Symbol};
+    opts::Dict=Dict(:plot_overlay => true),
+    axis_opts::Dict=Dict(),
+)
+    plot_overlay = get(opts, :plot_overlay, true)
+    n_scenarios = Si_conv.n_scenarios
+    grps = Dict(Symbol(foi_grp) => foi_grp .== factors for foi_grp in factors)
+
+    xlabel = pop!(axis_opts, :xlabel, "N scenarios")
+    ylabel = pop!(axis_opts, :ylabel, "Sensitivity")
+
+    if :title in keys(axis_opts)
+        title_val = pop!(axis_opts, :title)
+    end
+
+    if plot_overlay
+        ax = Axis(g; axis_opts...)
+        scenarios_confint!(
+            ax,
+            permutedims(Si_conv(; Si=[:lb, :median, :ub]), (3, 1, 2)),
+            grps;
+            x_vals=n_scenarios,
+            sort_by=:none,
+        )
+        ax.xlabel = xlabel
+        ax.ylabel = ylabel
+
+        if @isdefined(title_val)
+            ax.title = title_val
+        end
+    else
+        _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(grps)
+        _alphas::Dict{Symbol,Float64} = alphas(grps)
+
+        n_factors::Int64 = length(factors)
+        if n_factors > 30
+            ArgumentError("Too many factors to plot. Maximum number supported is 30.")
+        end
+
+        n_rows, n_cols = _calc_gridsize(n_factors)
+        factor_names = String.(factors)
+        axs = Axis[]
+        step::Int64 = 1
+
+        for row in 1:n_rows, col in 1:n_cols
+            ax::Axis = Axis(g[row, col]; title=factor_names[step], axis_opts...)
+
+            lines!(
+                ax,
+                n_scenarios,
+                Si_conv(; Si=:median)(; factors=factors[step]);
+                color=(_colors[factors[step]], _alphas[factors[step]]),
+            )
+            band!(
+                ax,
+                n_scenarios,
+                Si_conv(; Si=:lb)(; factors=factors[step]),
+                Si_conv(; Si=:ub)(; factors=factors[step]);
+                color=(_colors[factors[step]], _alphas[factors[step]]),
+            )
+            step += 1
+            push!(axs, ax)
+            if step > n_factors
+                break
+            end
+        end
+
+        if n_factors > 1
+            linkyaxes!(axs...)
+            Label(g[n_rows + 1, :]; text=xlabel, fontsize=24)
+            Label(g[:, 0]; text=ylabel, fontsize=24, rotation=pi / 2)
+
+            if @isdefined(title_val)
+                Label(g[0, :]; text=title_val, fontsize=32)
+            end
+        else
+            axs[1].xlabel = xlabel
+            axs[1].ylabel = ylabel
+
+            if @isdefined(title_val)
+                axs[1].title = title_val
+            end
+        end
+
+        try
+            # Clear empty figures
+            trim!(g)
+        catch err
+            if !(err isa MethodError)
+                # GridPosition plots a single figure so does
+                # not need empty figures to be cleared
+                # If any other error is encountered, something else happened.
+                rethrow(err)
+            end
+        end
+
+    end
+    return g
+end
+
+"""
+    _heatmap_convergence(g::GridPosition, Si_conv::NamedDimsArray, factors::Vector{Symbol};
+        opts::Dict=Dict(), axis_opts::Dict=Dict())
+
+Plot sensitivity values for an increasing number of scenarios as a heatmap, with each row
+    of the heatmap representing a factor or model component.
+
+# Arguments
+- `Si_conv` : Produced using ADRIA.analysis.convergence()
+- `factors` : Factors/model components to plot
+- `opts` : Additional figure customization options
+    - `colorbar_label` : string indicating how to label colorbar in heatmap
+    - `color_map` : colormap to use for heatmap
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+      See: https://docs.makie.org/v0.19/api/index.html#Axis
+
+# Returns
+GLMakie figure
+"""
+function _heatmap_convergence(
+    g::GridPosition,
+    Si_conv::NamedDimsArray,
+    factors::Vector{Symbol};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
+    y_label = get(axis_opts, :ylabel, "Factors")
+    x_label = get(axis_opts, :xlabel, "N scenarios")
+    y_labelsize = get(axis_opts, :ylabelsize, 22)
+    x_labelsize = get(axis_opts, :xlabelsize, 22)
+
+    z = Array(Si_conv(; Si=:median))
+    xtick_vals = (1:length(Si_conv.n_scenarios), string.(Si_conv.n_scenarios))
+    ytick_vals = (1:length(factors), string.(factors))
+
+    ax = Axis(
+        g[1, 1];
+        xticks=xtick_vals,
+        yticks=ytick_vals,
+        xlabel=x_label,
+        ylabel=y_label,
+        xlabelsize=x_labelsize,
+        ylabelsize=y_labelsize,
+        axis_opts...,
+    )
+    heatmap!(ax, z')
+    colorbar_label = get(opts, :colorbar_label, "Relative Sensitivity")
+    color_map = get(opts, :color_map, :viridis)
+
+    Colorbar(g[1, 2]; colormap=color_map, label=colorbar_label, height=Relative(0.65))
+    return g
+end
+
+"""
+    ADRIA.viz.convergence(Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
+        axis_opts::Dict=Dict())
+    ADRIA.viz.convergence!(f::Figure, Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
+        axis_opts::Dict=Dict())
+
+Plot sensitivity metric for increasing number of scenarios to illustrate convergence.
+
+# Arguments
+- `Si_conv` : Produced using ADRIA.analysis.convergence()
+- `factors` : Factors/model components to plot
+- `opts` : Additional figure customization options
+    - `viz_type` : :heat_map to plot heatmap, :series to plot as series
+    - `plot_overlay` : true, to plot overlaid series (the default), false to plot series as grid of subplots
+    - `colorbar_label` : string indicating how to label colorbar in heatmap
+    - `color_map` : colormap to use for heatmap
+- `fig_opts` : Additional options to pass to adjust Figure creation
+  See: https://docs.makie.org/v0.19/api/index.html#Figure
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+
+# Returns
+GLMakie figure
+"""
+function ADRIA.viz.convergence(
+    Si_conv::NamedDimsArray,
+    factors::Vector{Symbol};
+    opts::Dict=Dict(:viz_type => :series),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
+    f = Figure(; fig_opts...)
+    ADRIA.viz.convergence!(
+        f[1, 1],
+        Si_conv,
+        factors;
+        opts=opts,
+        axis_opts=axis_opts,
+    )
+    return f
+end
+function ADRIA.viz.convergence!(
+    g::Union{GridLayout,GridPosition},
+    Si_conv::NamedDimsArray,
+    factors::Vector{Symbol};
+    opts::Dict=Dict(:viz_type => :series),
+    axis_opts::Dict=Dict(),
+)
+    viz_type = get(opts, :viz_type, :series)
+    if viz_type == :series
+        return _series_convergence(g, Si_conv, factors; opts=opts, axis_opts=axis_opts)
+    elseif viz_type == :heatmap
+        return _heatmap_convergence(g, Si_conv, factors; opts=opts, axis_opts=axis_opts)
+    else
+        error("Convergence plot $(viz_type) is not expected.")
+    end
+
+end
 
 
 """
@@ -264,7 +525,14 @@ Plot outcomes mapped to factor regions for up to 30 factors.
 # Returns
 Makie figure
 """
-function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.outcome_map!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    outcomes::NamedDimsArray,
+    factors::Vector{String};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
     # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
     #       found in `rsa()`
     n_factors::Int64 = length(factors)
@@ -381,7 +649,14 @@ function ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet
 
     return g
 end
-function ADRIA.viz.outcome_map(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+function ADRIA.viz.outcome_map(
+    rs::ResultSet,
+    si::NamedDimsArray,
+    factors::Vector{String};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.outcome_map!(g, rs, si, factors; opts, axis_opts)
