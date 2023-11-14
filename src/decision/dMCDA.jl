@@ -207,6 +207,14 @@ function mcda_normalize(x::Matrix)::Matrix
     return x ./ sqrt.(sum(x .^ 2, dims=1))
 end
 
+"""
+    mcda_normalize(x::DataFrame)::DataFrame
+
+Normalize weights for a set of scenarios (wse/wsh) for MCDA.
+"""
+function mcda_normalize(x::DataFrame)::DataFrame
+    return x ./ sum(Array(x); dims=2)
+end
 
 """
     align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
