@@ -95,7 +95,7 @@ end
         # Ensure at least one intervention is active
         @test all(any.(>(0), eachcol(scens[:, interv_params]))) || "All intervention factors had values <= 0"
 
-        crit = ADRIA.component_params(ADRIA.model_spec(dom), Criteria)
+        crit = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.CriteriaWeights)
         seed_weights = ADRIA.criteria_params(crit, ["seed", "weight"]).fieldname
         fog_weights = ADRIA.criteria_params(crit, ["fog", "weight"]).fieldname
 
