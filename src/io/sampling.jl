@@ -46,12 +46,12 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[not_fogged, contains.(names(df), "shade_")] .= 0.0
 
     # Normalize MCDA weights for fogging scenarios
-    df[.!(not_fogged), weights_fog_crit.fieldname] .= mcda_normalize(
-        df[.!(not_fogged), weights_fog_crit.fieldname]
+    df[.!(not_fogged) .& (df.guided .> 0), weights_fog_crit.fieldname] .= mcda_normalize(
+        df[.!(not_fogged) .& (df.guided .> 0), weights_fog_crit.fieldname],
     )
     # Normalize MCDA weights for seeding scenarios
-    df[.!(not_seeded), weights_seed_crit.fieldname] .= mcda_normalize(
-        df[.!(not_seeded), weights_seed_crit.fieldname]
+    df[.!(not_seeded) .& (df.guided .> 0), weights_seed_crit.fieldname] .= mcda_normalize(
+        df[.!(not_seeded) .& (df.guided .> 0), weights_seed_crit.fieldname],
     )
 
     # If use of distance threshold is off, set `dist_thresh` to 0.0
