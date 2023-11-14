@@ -2,6 +2,7 @@ using Printf
 using DataFrames, Distributions, LinearAlgebra
 using ADRIA
 using ADRIA: model_spec, _process_inputs!, component_params
+using ADRIA.decision: mcda_normalize
 import Surrogates: sample
 import Surrogates.QuasiMonteCarlo: SobolSample
 
