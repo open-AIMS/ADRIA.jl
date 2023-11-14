@@ -22,6 +22,8 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
 
     crit = component_params(spec, CriteriaWeights)
     interv = component_params(spec, Intervention)
+    weights_seed_crit = criteria_params(crit, ["seed", "weight"])
+    weights_fog_crit = criteria_params(crit, ["fog", "weight"])
 
     # If counterfactual, set all intervention options to 0.0
     df[df.guided.==-1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .= 0.0
@@ -42,6 +44,15 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     # Same for fogging/shading
     not_fogged = (df.fogging .== 0) .& (df.SRM .== 0)
     df[not_fogged, contains.(names(df), "shade_")] .= 0.0
+
+    # Normalize MCDA weights for fogging scenarios
+    df[.!(not_fogged), weights_fog_crit.fieldname] .= mcda_normalize(
+        df[.!(not_fogged), weights_fog_crit.fieldname]
+    )
+    # Normalize MCDA weights for seeding scenarios
+    df[.!(not_seeded), weights_seed_crit.fieldname] .= mcda_normalize(
+        df[.!(not_seeded), weights_seed_crit.fieldname]
+    )
 
     # If use of distance threshold is off, set `dist_thresh` to 0.0
     df[df.use_dist.==0, :dist_thresh] .= 0.0
