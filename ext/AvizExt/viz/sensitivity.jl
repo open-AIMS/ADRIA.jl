@@ -283,7 +283,7 @@ Plot sensitivity values for an increasing number of scenarios as a series, with 
 - `Si_conv` : Produced using ADRIA.analysis.convergence()
 - `factors` : Factors/model components to plot
 - `opts` : Additional figure customization options
-        - `plot_overlay` : true, to plot overlayed series, false to plot series as grid of subplots
+        - `plot_overlay` : true, to plot overlaid series (the default), false to plot series as grid of subplots
 - `axis_opts` : Additional options to pass to adjust Axis attributes
       See: https://docs.makie.org/v0.19/api/index.html#Axis
 
@@ -459,7 +459,7 @@ Plot sensitivity metric for increasing number of scenarios to illustrate converg
 - `factors` : Factors/model components to plot
 - `opts` : Additional figure customization options
     - `viz_type` : :heat_map to plot heatmap, :series to plot as series
-    - `plot_overlay` : true, to plot overlayed series, false to plot series as grid of subplots
+    - `plot_overlay` : true, to plot overlaid series (the default), false to plot series as grid of subplots
     - `colorbar_label` : string indicating how to label colorbar in heatmap
     - `color_map` : colormap to use for heatmap
 - `fig_opts` : Additional options to pass to adjust Figure creation
