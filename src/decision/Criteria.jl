@@ -1,25 +1,45 @@
 Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
-    wave_stress::P = Param(
+    seed_wave_stress::P = Param(
         1.0;
         ptype="real",
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
-        criteria_keywords=("seed", "fog", "weight"),
-        name="Wave Stress",
-        description="Importance of avoiding wave stress. Higher values places more weight on areas with low wave stress.",
+        criteria_keywords=("seed", "weight"),
+        name="Seed Wave Stress",
+        description="Importance of avoiding wave stress when seeding. Higher values places more weight on areas with low wave stress.",
     )
-    heat_stress::P = Param(
+    seed_heat_stress::P = Param(
         1.0;
         ptype="real",
         bounds=(0.0, 1.0),
         default_bounds=(0.0, 1.0),
         dists="unif",
-        criteria_keywords=("seed", "fog", "weight"),
-        name="Heat Stress",
-        description="Importance of avoiding heat stress. Higher values places more weight on areas with low heat stress.",
+        criteria_keywords=("seed", "weight"),
+        name="Seed Heat Stress",
+        description="Importance of avoiding heat stress when seeding. Higher values places more weight on areas with low heat stress.",
     )
-    shade_connectivity::P2 = Param(
+    shade_wave_stress::P = Param(
+        1.0;
+        ptype="real",
+        bounds=(0.0, 1.0),
+        default_bounds=(0.0, 1.0),
+        dists="unif",
+        criteria_keywords=("fog", "weight"),
+        name="Shade Wave Stress",
+        description="Importance of avoiding wave stress when fogging. Higher values places more weight on areas with low wave stress.",
+    )
+    shade_heat_stress::P = Param(
+        1.0;
+        ptype="real",
+        bounds=(0.0, 1.0),
+        default_bounds=(0.0, 1.0),
+        dists="unif",
+        criteria_keywords=("fog", "weight"),
+        name="Shade Heat Stress",
+        description="Importance of avoiding heat stress when fogging. Higher values places more weight on areas with low heat stress.",
+    )
+    shade_connectivity::P = Param(
         0.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -29,7 +49,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         name="Shade Connectivity",
         description="Higher values give preference to locations with high connectivity for shading deployments.",
     )
-    in_seed_connectivity::P2 = Param(
+    in_seed_connectivity::P = Param(
         1.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -39,7 +59,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         name="Incoming Connectivity (Seed)",
         description="Higher values give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for enhanced coral deployments.",
     )
-    out_seed_connectivity::P2 = Param(
+    out_seed_connectivity::P = Param(
         1.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -49,7 +69,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         name="Outgoing Connectivity (Seed)",
         description="Higher values give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for enhanced coral deployments.",
     )
-    coral_cover_low::P2 = Param(
+    coral_cover_low::P = Param(
         0.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -59,7 +79,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         name="Low Coral Cover",
         description="Higher values give greater preference to sites with low coral cover for seeding deployments.",
     )
-    coral_cover_high::P2 = Param(
+    coral_cover_high::P = Param(
         0.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -69,7 +89,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         name="High Coral Cover",
         description="Higher values give preference to sites with high coral cover for shading deployments.",
     )
-    seed_priority::P2 = Param(
+    seed_priority::P = Param(
         1.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -79,7 +99,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         name="Predecessor Priority (Seed)",
         description="Importance of seeding sites that provide larvae to priority reefs.",
     )
-    shade_priority::P2 = Param(
+    shade_priority::P = Param(
         0.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -89,7 +109,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         name="Predecessor Priority (Shade)",
         description="Importance of shading sites that provide larvae to priority reefs.",
     )
-    zone_seed::P2 = Param(
+    zone_seed::P = Param(
         0.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -99,7 +119,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         name="Zone Predecessor (Seed)",
         description="Importance of seeding sites that provide larvae to priority (target) zones.",
     )
-    zone_shade::P2 = Param(
+    zone_shade::P = Param(
         0.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -109,7 +129,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         name="Zone Predecessor (Shade)",
         description="Importance of shading sites that provide larvae to priority (target) zones.",
     )
-    coral_cover_tol::P2 = Param(
+    coral_cover_tol::P = Param(
         0.2;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -119,7 +139,7 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         name="Low Area Tolerance",
         description="Tolerance for low proportional space for seeding deployments.",
     )
-    deployed_coral_risk_tol::P = Param(
+    deployed_coral_risk_tol::P2 = Param(
         1.0;
         ptype="real",
         bounds=(0.75, 1.0),
