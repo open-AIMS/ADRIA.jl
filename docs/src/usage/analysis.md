@@ -262,7 +262,7 @@ foi = [:dhw_scenario, :wave_scenario, :guided]
 Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi; opts=Dict(:viz_type=>:heatmap))
 ADRIA.viz.convergence(Si_conv, foi)
 
-# Convergence analysis of factors grouped by model component as heat map
+# Convergence analysis of factors grouped by model component as a heat map
 components = [:EnvironmentalLayer, :Intervention, :Coral]
 Si_conv = ADRIA.sensitivity.convergence(rs, scens, outcome, components)
 ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
