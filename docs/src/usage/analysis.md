@@ -272,7 +272,10 @@ ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
 ![Grouped convergence analysis](/ADRIA.jl/dev/assets/imgs/colormap_convergence_components.png?raw=true "Convergence Analysis - model components")
 
 ```julia
-# Display convergence plot within a single figure. Bands represent the lower 2.5 to upper 97.5 percent interval for sensitivity.
+# Display convergence plot within a single figure.
+# Bands represent the 95% confidence interval derived from the number of conditioning
+# points, the default for which is ten (i.e., 10 samples).
+# Due to the limited sample size, care should be taken when interpreting the figure.
 ADRIA.viz.convergence(Si_conv, foi)
 
 # Create a grid of figures for each factor of interest.
