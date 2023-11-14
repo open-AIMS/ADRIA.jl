@@ -170,3 +170,12 @@ Base.@kwdef struct Criteria{P,P2,P3,N} <: EcoModel
         description="Offset from minimum depth, used to indicate maximum depth.",
     )
 end
+
+function criteria_params(crit::DataFrame, criteria_keywords::Vector{String})
+    sel_crit = vec(
+        all(
+            hcat([in.(c_k, crit.criteria_keywords) for c_k in criteria_keywords]...); dims=2
+        );
+    )
+    return crit[findall(sel_crit), :]
+end
