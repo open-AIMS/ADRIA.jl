@@ -1,4 +1,5 @@
 using JSON
+using NetCDF
 
 """
     _check_compat(dpkg_details::Dict)
@@ -124,73 +125,53 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
     local loaded::NamedDimsArray
     local i::Int64
 
-    ds = NCDataset(data_fn, "r")
-    dim_names = keys(dimsize(ds[attr]))
-    nd = ndims(ds[attr])
+    loaded = NetCDF.open(data_fn; mode=NC_NOWRITE) do v
+        # What NetCDF calls variables we are calling attr
+        nc_vars = v.vars
+        var_names = keys(nc_vars)
 
-    # Load all data (need same number of colons as number of dimensions)
-    data = ds[attr].var[[(:) for _ in 1:nd]...]
+        dims = nc_vars[attr].dim
+        dim_names::Vector{Symbol} = [Symbol(dim.name) for dim in dims]
 
-    if "reef_siteid" in keys(ds)
-        sites = _char_to_string(ds["reef_siteid"][:])
-    else
-        sites = 1:size(data, 2)
-    end
-    close(ds)
+        data = NetCDF.readvar(v, attr)
 
-    # Note: cannot trust indicated dimension metadata
-    # because this can be incorrect!
-    # instead, match by number of sites
-    dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
+        has_reef_siteid_var = "reef_siteid" in var_names
+        sites = has_reef_siteid_var ? NetCDF.readvar(v, "reef_siteid") : 1:size(data, 2)
 
-    try
-        # Obviously this will be an issue if any two dimensions have the same number of
-        # elements as the number of sites, but so far it hasn't happened...
-        i = first(findall(size(data) .== length(sites)))
-    catch err
-        error(
-            "Error loading $data_fn : could not determine number of locations. Detected size: $(size(data)) | Known # sites: $(length(sites))",
-        )
-    end
-    dim_labels[i] = sites
+        # Note: cannot trust indicated dimension metadata
+        # because this can be incorrect!
+        # instead, match by number of sites
+        dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
 
-    try
-        loaded = NamedDimsArray(data; zip(dim_names, dim_labels)...)
-    catch err
-        if isa(err, KeyError)
-            n_sites = size(data, 2)
-            @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, scenarios)."
-            if n_sites != nrow(site_data)
-                error(
-                    "Mismatch in number of sites ($(data_fn)). Expected $(nrow(site_data)), got $(n_sites)",
-                )
+        try
+            # Obviously this will be an issue if any two dimensions have the same number of
+            # elements as the number of sites, but so far it hasn't happened...
+            i = first(findall(size(data) .== length(sites)))
+        catch err
+            error(
+                "Error loading $data_fn : could not determine number of locations. Detected size: $(size(data)) | Known # sites: $(length(sites))",
+            )
+        end
+        dim_labels[i] = sites
+
+        try
+            NamedDimsArray(data; zip(dim_names, dim_labels)...)
+        catch err
+            if isa(err, KeyError)
+                n_sites = size(data, 2)
+                @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, scenarios)."
+                if n_sites != nrow(site_data)
+                    error(
+                        "Mismatch in number of sites ($(data_fn)). Expected $(nrow(site_data)), got $(n_sites)",
+                    )
+                end
+            else
+                rethrow(err)
             end
-        else
-            rethrow(err)
         end
     end
 
     return loaded
-end
-
-"""
-    _char_to_string(vals)::Vector{String}
-
-Convert character array entries in netCDFs to string.
-
-Some packages used to write out netCDFs do not yet support
-string values, and instead reverts to writing out character arrays.
-"""
-function _char_to_string(vals::AbstractVecOrMat)::Vector{String}
-    if vals isa Matrix
-        vals = map(x -> join(skipmissing(x)), eachcol(vals))
-    end
-
-    # R's ncdf4 package does not yet support string values
-    # so strip the null terminator from the joined character array.
-    vals = replace.(vals, "\0" => "")
-
-    return vals
 end
 
 """

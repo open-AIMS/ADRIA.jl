@@ -36,8 +36,8 @@ Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
 MLJ = "add582a8-e3ab-11e8-2d5e-e98b27df1bc7"
 ModelParameters = "4744a3fa-6c31-4707-899e-a3298e4618ad"
-NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 NamedDims = "356022a1-0364-5f58-8944-0da4b18d706f"
+NetCDF = "30363a11-5582-574a-97bb-aa9a979735b9"
 OnlineStats = "a15396b6-48d5-5d58-9928-6d29437db91e"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
@@ -64,9 +64,9 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 
 [weakdeps]
-Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [extensions]
 AvizExt = ["Makie", "GeoMakie", "GraphMakie"]
@@ -99,7 +99,6 @@ JuliennedArrays = "0.4"
 MAT = "0.10"
 MLJ = "0.19.2, 0.20"
 ModelParameters = "0.4"
-NCDatasets = "0.12, 0.13"
 NamedDims = "1"
 OnlineStats = "1.5"
 OrderedCollections = "1"
