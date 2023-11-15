@@ -164,7 +164,8 @@ function _nc_dim_labels(
     local sites_idx::Int64
 
     has_reef_siteid_var = "reef_siteid" in keys(nc_file.vars)
-    sites = has_reef_siteid_var ? NetCDF.readvar(nc_file, "reef_siteid") : 1:size(data, 2)
+    sites::Vector{String} =
+        has_reef_siteid_var ? NetCDF.readvar(nc_file, "reef_siteid") : 1:size(data, 2)
 
     try
         # This will be an issue if two or more dimensions have the same number of elements
