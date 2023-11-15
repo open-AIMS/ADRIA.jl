@@ -23,8 +23,8 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
 
     crit = component_params(spec, CriteriaWeights)
     interv = component_params(spec, Intervention)
-    weights_seed_crit = criteria_params(crit, ["seed", "weight"])
-    weights_fog_crit = criteria_params(crit, ["fog", "weight"])
+    weights_seed_crit = criteria_params(crit, (:seed, :weight))
+    weights_fog_crit = criteria_params(crit, (:fog, :weight))
 
     # If counterfactual, set all intervention options to 0.0
     df[df.guided.==-1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .= 0.0
