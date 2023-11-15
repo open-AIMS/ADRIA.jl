@@ -73,8 +73,8 @@ function get_scientific_factors(x::Float64; digits=2)::Tuple
     # Handle 0 < abs(x) < 1
     a::Float64, b::Int64 = abs(x) < 1 ? _scientific_factors(1 / x) : _scientific_factors(x)
     if abs(x) < 1
-        b = a == 1.0 ? -b : -(b + 1)
-        a = a == 1.0 ? a : ((1 / a) * 10)
+        b = abs(a) == 1.0 ? -b : -(b + 1)
+        a = abs(a) == 1.0 ? a : ((1 / a) * 10)
     end
 
     a = trunc(a; digits=digits)
