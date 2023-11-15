@@ -122,37 +122,12 @@ end
 Load cluster-level data for a given attribute in a netCDF as a NamedDimsArray.
 """
 function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    local loaded::NamedDimsArray
-    local i::Int64
-
-    loaded = NetCDF.open(data_fn; mode=NC_NOWRITE) do v
-        # What NetCDF calls variables we are calling attr
-        nc_vars = v.vars
-        var_names = keys(nc_vars)
-
-        dims = nc_vars[attr].dim
-        dim_names::Vector{Symbol} = [Symbol(dim.name) for dim in dims]
-
-        data = NetCDF.readvar(v, attr)
-
-        has_reef_siteid_var = "reef_siteid" in var_names
-        sites = has_reef_siteid_var ? NetCDF.readvar(v, "reef_siteid") : 1:size(data, 2)
-
-        # Note: cannot trust indicated dimension metadata
-        # because this can be incorrect!
-        # instead, match by number of sites
-        dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
-
-        try
-            # Obviously this will be an issue if any two dimensions have the same number of
-            # elements as the number of sites, but so far it hasn't happened...
-            i = first(findall(size(data) .== length(sites)))
-        catch err
-            error(
-                "Error loading $data_fn : could not determine number of locations. Detected size: $(size(data)) | Known # sites: $(length(sites))",
-            )
-        end
-        dim_labels[i] = sites
+    loaded::NamedDimsArray = NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
+        data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
+        dim_names::Vector{Symbol} = [Symbol(dim.name) for dim in nc_file.vars[attr].dim]
+        dim_labels::Vector{Union{UnitRange{Int64},Vector{String}}} = _nc_dim_labels(
+            data_fn, data, nc_file
+        )
 
         try
             NamedDimsArray(data; zip(dim_names, dim_labels)...)
@@ -172,6 +147,36 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
     end
 
     return loaded
+end
+
+"""
+    Return vector of labels for each array dimension. Important: Cannot trust indicated
+    dimension metadata to get site labels, because this can be incorrect. Instead, match by
+    number of sites.
+"""
+function _nc_dim_labels(
+    data_fn::String, data::Array{<:AbstractFloat}, nc_file::NetCDF.NcFile
+)::Vector{Union{UnitRange{Int64},Vector{String}}}
+    local sites_idx::Int64
+
+    has_reef_siteid_var = "reef_siteid" in keys(nc_file.vars)
+    sites = has_reef_siteid_var ? NetCDF.readvar(nc_file, "reef_siteid") : 1:size(data, 2)
+
+    try
+        # This will be an issue if two or more dimensions have the same number of elements
+        # as the number of sites, but so far it hasn't happened...
+        sites_idx = first(findall(size(data) .== length(sites)))
+    catch err
+        error(
+            "Error loading $data_fn : could not determine number of locations." *
+            "Detected size: $(size(data)) | Known # sites: $(length(sites))",
+        )
+    end
+
+    dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
+    dim_labels[sites_idx] = sites
+
+    return dim_labels
 end
 
 """
