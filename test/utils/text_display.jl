@@ -1,5 +1,3 @@
-include("../../src/utils/text_display.jl")
-
 @testset "text_display" begin
     @testset "get_scientific_factors" begin
         get_scientific_factors = ADRIA.get_scientific_factors
