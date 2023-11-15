@@ -169,7 +169,7 @@ function _nc_dim_labels(
     catch err
         error(
             "Error loading $data_fn : could not determine number of locations." *
-            "Detected size: $(size(data)) | Known # sites: $(length(sites))",
+            "Detected size: $(size(data)) | Known number of locations: $(length(sites))",
         )
     end
 
