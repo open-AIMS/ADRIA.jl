@@ -150,9 +150,9 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
 end
 
 """
-    Return vector of labels for each array dimension. Important: Cannot trust indicated
-    dimension metadata to get site labels, because this can be incorrect. Instead, match by
-    number of sites.
+Return vector of labels for each array dimension. Important: Cannot trust indicated
+dimension metadata to get site labels, because this can be incorrect. Instead, match by
+number of sites.
 """
 function _nc_dim_labels(
     data_fn::String, data::Array{<:AbstractFloat}, nc_file::NetCDF.NcFile
