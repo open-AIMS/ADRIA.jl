@@ -209,5 +209,5 @@ function criteria_params(
             hcat([in.(c_k, crit.criteria_keywords) for c_k in criteria_keywords]...); dims=2
         );
     )
-    return crit[findall(sel_crit), :]
+    return crit[sel_crit, :]
 end
