@@ -122,7 +122,9 @@ end
 Load cluster-level data for a given attribute in a netCDF as a NamedDimsArray.
 """
 function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    loaded::NamedDimsArray = NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
+    local loaded_data::NamedDimsArray
+
+    NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
         data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
         dim_names::Vector{Symbol} = [Symbol(dim.name) for dim in nc_file.vars[attr].dim]
         dim_labels::Vector{Union{UnitRange{Int64},Vector{String}}} = _nc_dim_labels(
@@ -130,7 +132,7 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
         )
 
         try
-            NamedDimsArray(data; zip(dim_names, dim_labels)...)
+            loaded_data = NamedDimsArray(data; zip(dim_names, dim_labels)...)
         catch err
             if isa(err, KeyError)
                 n_sites = size(data, 2)
@@ -146,7 +148,7 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
         end
     end
 
-    return loaded
+    return loaded_data
 end
 
 """
