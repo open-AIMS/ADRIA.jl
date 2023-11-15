@@ -9,7 +9,10 @@
             @test get_scientific_factors(1.01) == (1.01, 0)
             @test get_scientific_factors(-1.01) == (-1.01, 0)
             @test get_scientific_factors(10.0) == (1.00, 1)
+            @test get_scientific_factors(100.0) == (1.00, 2)
+            @test get_scientific_factors(10000.0) == (1.00, 4)
             @test get_scientific_factors(-10.0) == (-1.00, 1)
+            @test get_scientific_factors(-1000.0) == (-1.00, 3)
         end
 
         @testset "Integers" begin
@@ -19,6 +22,7 @@
         @testset "x > 10" begin
             @test get_scientific_factors(123.0) == (1.23, 2)
             @test get_scientific_factors(12.0) == (1.2, 1)
+            @test get_scientific_factors(10001.0; digits=3) == (1.000, 4)
         end
 
         @testset "0 > x > 1" begin

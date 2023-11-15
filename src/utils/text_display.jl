@@ -95,7 +95,13 @@ function _scientific_factors(x::Float64)
     b::Int64 = round(log(x / a_tmp) / log(10))
 
     # Use `b` to find the actual value of `a`
-    a::Float64 = (x / (10^b)) * signal
+    a::Float64 = (x / (10^b))
 
-    return a, b
+    # Handle edge case where x is an exact multiple of 10
+    if a == 10.0
+        a = 1.0
+        b += 1
+    end
+
+    return a * signal, b
 end
