@@ -31,6 +31,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     wt_conn_shade  # ::F
     wt_waves # ::F
     wt_heat  # ::F
+    wt_depth_seed # ::F
     wt_hi_cover  # ::F
     wt_lo_cover  # ::F
     wt_predec_seed  # ::F
@@ -108,6 +109,7 @@ function DMCDA_vars(
         criteria("shade_connectivity"),
         criteria("wave_stress"),
         criteria("heat_stress"),
+        criteria("depth_seed"),
         criteria("coral_cover_high"),
         criteria("coral_cover_low"),
         criteria("seed_priority"),
@@ -379,6 +381,7 @@ Create seeding specific decision matrix from criteria matrix. The weight criteri
 - `wt_out_conn_seed` : Seed connectivity weight for seeding
 - `wt_waves` : Wave stress weight
 - `wt_heat` : Heat stress weight
+- `wt_depth_seed` : Median depth weight
 - `wt_predec_seed` : Priority predecessor weight
 - `wt_predec_zones_seed` : Priority zones weight for seeding
 - `wt_low_cover` : Weighting for low coral cover (coral real estate), when seeding
@@ -396,7 +399,7 @@ Tuple (SE, wse)
     8. Available space
     9. Location depth
 
-- `wse` : 5-element vector of criteria weights
+- `wse` : 8-element vector of criteria weights
     1. incoming connectivity
     2. outgoing connectivity
     3. wave
@@ -404,6 +407,7 @@ Tuple (SE, wse)
     5. seed predecessors (weights importance of sites highly connected to priority sites for seeding)
     6. seed zones (weights importance of sites highly connected to or within priority zones for seeding)
     7. low cover (weights importance of sites with low cover/high available real estate to plant corals)
+    8. depth
 """
 function create_seed_matrix(
     A::Matrix{Float64},
@@ -414,7 +418,8 @@ function create_seed_matrix(
     wt_heat::T,
     wt_predec_seed::T,
     wt_predec_zones_seed::T,
-    wt_low_cover::T
+    wt_low_cover::T,
+    wt_depth_seed::T,
 )::Tuple{Matrix{Float64}, Vector{Float64}} where {T<:Float64}
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
@@ -427,7 +432,7 @@ function create_seed_matrix(
         wt_predec_seed,
         wt_predec_zones_seed,
         wt_low_cover,
-        wt_heat,
+        wt_depth_seed,
     ]
 
     SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
@@ -638,7 +643,8 @@ function guided_site_selection(
             d_vars.wt_heat,
             d_vars.wt_predec_seed,
             d_vars.wt_zones_seed,
-            d_vars.wt_lo_cover
+            d_vars.wt_lo_cover,
+            d_vars.wt_depth_seed,
         )
     end
 
@@ -650,7 +656,9 @@ function guided_site_selection(
             d_vars.wt_conn_shade,
             d_vars.wt_waves,
             d_vars.wt_heat,
-            d_vars.wt_predec_shade, d_vars.wt_zones_shade, d_vars.wt_hi_cover
+            d_vars.wt_predec_shade,
+            d_vars.wt_zones_shade,
+            d_vars.wt_hi_cover,
         )
     end
 

@@ -49,7 +49,9 @@ end
 
 
 @testset "MCDA seed matrix creation" begin
-    wtconseedout, wtconseedin, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover = [1.0, 1.0, 0.7, 1.0, 0.6, 0.6, 0.6]
+    wtconseedout, wtconseedin, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover, wt_depth_seed = [
+        1.0, 1.0, 0.7, 1.0, 0.6, 0.6, 0.6, 0.7
+    ]
 
     # Combine decision criteria into decision matrix A
     n_sites = 5
@@ -88,7 +90,18 @@ end
     )
 
     min_area = 20.0
-    SE, wse = create_seed_matrix(A, min_area, wtconseedin, wtconseedout, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover)
+    SE, wse = create_seed_matrix(
+        A,
+        min_area,
+        wtconseedin,
+        wtconseedout,
+        wt_waves,
+        wt_heat,
+        wt_predec_seed,
+        wt_zones_seed,
+        wt_lo_cover,
+        wt_depth_seed,
+    )
 
     @test (sum(filtered)) == size(A, 1) || "Site where heat stress > risk_tol not filtered out"
     @test size(SE, 1) == n_sites - 2 ||
