@@ -96,12 +96,12 @@ end
         @test all(any.(>(0), eachcol(scens[:, interv_params]))) || "All intervention factors had values <= 0"
 
         crit = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.CriteriaWeights)
-        seed_weights = ADRIA.criteria_params(crit, ["seed", "weight"]).fieldname
-        fog_weights = ADRIA.criteria_params(crit, ["fog", "weight"]).fieldname
+        seed_weights = ADRIA.criteria_params(crit, (:seed, :weight)).fieldname
+        fog_weights = ADRIA.criteria_params(crit, (:fog, :weight)).fieldname
 
-        @test all(abs.(sum(Array(scens[:, seed_weights]); dims=2) .- 1.0) .< 10e-6) ||
+        @test all(abs.(sum(Matrix(scens[:, seed_weights]); dims=2) .- 1.0) .< 10e-6) ||
             "Some seeding weights are not properly normalized."
-        @test all(abs.(sum(Array(scens[:, fog_weights]); dims=2) .- 1.0) .< 10e-6) ||
+        @test all(abs.(sum(Matrix(scens[:, fog_weights]); dims=2) .- 1.0) .< 10e-6) ||
             "Some fogging weights are not properly normalized."
 
     end
