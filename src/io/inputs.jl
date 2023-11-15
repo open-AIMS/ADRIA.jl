@@ -136,10 +136,12 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
         catch err
             if isa(err, KeyError)
                 n_sites = size(data, 2)
-                @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, scenarios)."
+                @warn "Provided file $(data_fn) did not have the expected dimensions " *
+                    "(one of: timesteps, reef_siteid, scenarios)."
                 if n_sites != nrow(site_data)
                     error(
-                        "Mismatch in number of sites ($(data_fn)). Expected $(nrow(site_data)), got $(n_sites)",
+                        "Mismatch in number of sites ($(data_fn)). " *
+                        "Expected $(nrow(site_data)), got $(n_sites)",
                     )
                 end
             else
