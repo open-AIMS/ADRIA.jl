@@ -126,7 +126,7 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
 
     NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
         data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
-        dim_names::Vector{Symbol} = [Symbol(dim.name) for dim in nc_file.vars[attr].dim]
+        dim_names::Vector{Symbol} = Symbol[Symbol(dim.name) for dim in nc_file.vars[attr].dim]
         dim_labels::Vector{Union{UnitRange{Int64},Vector{String}}} = _nc_dim_labels(
             data_fn, data, nc_file
         )
