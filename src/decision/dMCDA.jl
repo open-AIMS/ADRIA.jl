@@ -131,17 +131,19 @@ function DMCDA_vars(
         domain.site_distances,
         criteria("use_dist"),
         domain.median_site_distance - domain.median_site_distance * criteria("dist_thresh"),
-        criteria("in_seed_connectivity"),
-        criteria("out_seed_connectivity"),
-        criteria("shade_connectivity"),
-        criteria("wave_stress"),
-        criteria("heat_stress"),
+        criteria("seed_in_connectivity"),
+        criteria("seed_out_connectivity"),
+        criteria("fog_connectivity"),
+        criteria("seed_wave_stress"),
+        criteria("fog_wave_stress"),
+        criteria("seed_heat_stress"),
+        criteria("fog_heat_stress"),
         criteria("coral_cover_high"),
         criteria("coral_cover_low"),
         criteria("seed_priority"),
-        criteria("shade_priority"),
-        criteria("zone_seed"),
-        criteria("zone_shade")
+        criteria("fog_priority"),
+        criteria("seed_zone"),
+        criteria("fog_zone"),
     )
 
     return mcda_vars

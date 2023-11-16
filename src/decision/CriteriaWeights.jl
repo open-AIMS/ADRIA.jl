@@ -19,7 +19,7 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Seed Heat Stress",
         description="Importance of avoiding heat stress when seeding. Higher values places more weight on areas with low heat stress.",
     )
-    shade_wave_stress::P = Param(
+    fog_wave_stress::P = Param(
         1.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -29,7 +29,7 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Shade Wave Stress",
         description="Importance of avoiding wave stress when fogging. Higher values places more weight on areas with low wave stress.",
     )
-    shade_heat_stress::P = Param(
+    fog_heat_stress::P = Param(
         1.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -39,7 +39,7 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Shade Heat Stress",
         description="Importance of avoiding heat stress when fogging. Higher values places more weight on areas with low heat stress.",
     )
-    shade_connectivity::P = Param(
+    fog_connectivity::P = Param(
         0.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -49,7 +49,7 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Shade Connectivity",
         description="Higher values give preference to locations with high connectivity for shading deployments.",
     )
-    in_seed_connectivity::P = Param(
+    seed_in_connectivity::P = Param(
         1.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -59,7 +59,7 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Incoming Connectivity (Seed)",
         description="Higher values give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for enhanced coral deployments.",
     )
-    out_seed_connectivity::P = Param(
+    seed_out_connectivity::P = Param(
         1.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -108,7 +108,7 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Predecessor Priority (Seed)",
         description="Importance of seeding sites that provide larvae to priority reefs.",
     )
-    shade_priority::P = Param(
+    fog_priority::P = Param(
         0.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -118,7 +118,7 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Predecessor Priority (Shade)",
         description="Importance of shading sites that provide larvae to priority reefs.",
     )
-    zone_seed::P = Param(
+    seed_zone::P = Param(
         0.0;
         ptype="real",
         bounds=(0.0, 1.0),
@@ -128,7 +128,7 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Zone Predecessor (Seed)",
         description="Importance of seeding sites that provide larvae to priority (target) zones.",
     )
-    zone_shade::P = Param(
+    fog_zone::P = Param(
         0.0;
         ptype="real",
         bounds=(0.0, 1.0),
