@@ -44,6 +44,7 @@ using
     Setfield,
     ModelParameters,
     DataStructures,
+    DimensionalData,
     YAXArrays
 
 include("utils/text_display.jl")  # need better name for this file
