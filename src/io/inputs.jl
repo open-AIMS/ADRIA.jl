@@ -160,13 +160,11 @@ Return vector of labels for each dimension.
 because this can be incorrect. Instead, match by number of sites.
 """
 function _nc_dim_labels(
-    data_fn::String, data::Array{<:AbstractFloat}, nc_file::NetCDF.NcFile
+    data_fn::String, data::Array{<:Real}, nc_file::NetCDF.NcFile
 )::Vector{Union{UnitRange{Int64},Vector{String}}}
     local sites_idx::Int64
 
-    has_reef_siteid_var = "reef_siteid" in keys(nc_file.vars)
-    sites::Vector{String} =
-        has_reef_siteid_var ? NetCDF.readvar(nc_file, "reef_siteid") : 1:size(data, 2)
+    sites = "reef_siteid" in keys(nc_file.vars) ? _site_labels(nc_file) : 1:size(data, 2)
 
     try
         # This will be an issue if two or more dimensions have the same number of elements
@@ -183,6 +181,16 @@ function _nc_dim_labels(
     dim_labels[sites_idx] = sites
 
     return dim_labels
+end
+
+"""
+Some packages used to write out netCDFs do not yet support string values, and instead
+reverts to writing out character arrays.
+"""
+function _site_labels(nc_file::NetCDF.NcFile)::Vector{String}
+    site_ids = NetCDF.readvar(nc_file, "reef_siteid")
+    # Converts character array entries in netCDFs to string if needed
+    return site_ids isa Matrix ? nc_char2string(site_ids) : site_ids
 end
 
 """
