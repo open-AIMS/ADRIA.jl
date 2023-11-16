@@ -1,4 +1,5 @@
 using JSON
+using NetCDF
 
 """
     _check_compat(dpkg_details::Dict)
@@ -121,76 +122,75 @@ end
 Load cluster-level data for a given attribute in a netCDF as a NamedDimsArray.
 """
 function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    local loaded::NamedDimsArray
-    local i::Int64
+    local loaded_data::NamedDimsArray
 
-    ds = NCDataset(data_fn, "r")
-    dim_names = keys(dimsize(ds[attr]))
-    nd = ndims(ds[attr])
-
-    # Load all data (need same number of colons as number of dimensions)
-    data = ds[attr].var[[(:) for _ in 1:nd]...]
-
-    if "reef_siteid" in keys(ds)
-        sites = _char_to_string(ds["reef_siteid"][:])
-    else
-        sites = 1:size(data, 2)
-    end
-    close(ds)
-
-    # Note: cannot trust indicated dimension metadata
-    # because this can be incorrect!
-    # instead, match by number of sites
-    dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
-
-    try
-        # Obviously this will be an issue if any two dimensions have the same number of
-        # elements as the number of sites, but so far it hasn't happened...
-        i = first(findall(size(data) .== length(sites)))
-    catch err
-        error(
-            "Error loading $data_fn : could not determine number of locations. Detected size: $(size(data)) | Known # sites: $(length(sites))",
+    NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
+        data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
+        dim_names::Vector{Symbol} = Symbol[Symbol(dim.name) for dim in nc_file.vars[attr].dim]
+        dim_labels::Vector{Union{UnitRange{Int64},Vector{String}}} = _nc_dim_labels(
+            data_fn, data, nc_file
         )
-    end
-    dim_labels[i] = sites
 
-    try
-        loaded = NamedDimsArray(data; zip(dim_names, dim_labels)...)
-    catch err
-        if isa(err, KeyError)
-            n_sites = size(data, 2)
-            @warn "Provided file $(data_fn) did not have the expected dimensions (one of: timesteps, reef_siteid, scenarios)."
-            if n_sites != nrow(site_data)
-                error(
-                    "Mismatch in number of sites ($(data_fn)). Expected $(nrow(site_data)), got $(n_sites)",
-                )
+        try
+            loaded_data = NamedDimsArray(data; zip(dim_names, dim_labels)...)
+        catch err
+            if isa(err, KeyError)
+                n_sites = size(data, 2)
+                @warn "Provided file $(data_fn) did not have the expected dimensions " *
+                    "(one of: timesteps, reef_siteid, scenarios)."
+                if n_sites != nrow(site_data)
+                    error(
+                        "Mismatch in number of sites ($(data_fn)). " *
+                        "Expected $(nrow(site_data)), got $(n_sites)",
+                    )
+                end
+            else
+                rethrow(err)
             end
-        else
-            rethrow(err)
         end
     end
 
-    return loaded
+    return loaded_data
 end
 
 """
-    _char_to_string(vals)::Vector{String}
+Return vector of labels for each dimension.
 
-Convert character array entries in netCDFs to string.
-
-Some packages used to write out netCDFs do not yet support
-string values, and instead reverts to writing out character arrays.
+**Important:** Cannot trust indicated dimension metadata to get site labels,
+because this can be incorrect. Instead, match by number of sites.
 """
-function _char_to_string(vals::AbstractVecOrMat)::Vector{String}
-    if vals isa Matrix
-        vals = map(x -> join(skipmissing(x)), eachcol(vals))
+function _nc_dim_labels(
+    data_fn::String, data::Array{<:Real}, nc_file::NetCDF.NcFile
+)::Vector{Union{UnitRange{Int64},Vector{String}}}
+    local sites_idx::Int64
+
+    sites = "reef_siteid" in keys(nc_file.vars) ? _site_labels(nc_file) : 1:size(data, 2)
+
+    try
+        # This will be an issue if two or more dimensions have the same number of elements
+        # as the number of sites, but so far it hasn't happened...
+        sites_idx = first(findall(size(data) .== length(sites)))
+    catch err
+        error(
+            "Error loading $data_fn : could not determine number of locations." *
+            "Detected size: $(size(data)) | Known number of locations: $(length(sites))",
+        )
     end
 
-    # R's ncdf4 package does not yet support string values
-    # so strip the null terminator from the joined character array.
-    vals = replace.(vals, "\0" => "")
+    dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
+    dim_labels[sites_idx] = sites
 
-    return vals
+    return dim_labels
+end
+
+"""
+Some packages used to write out netCDFs do not yet support string values, and instead
+reverts to writing out character arrays.
+"""
+function _site_labels(nc_file::NetCDF.NcFile)::Vector{String}
+    site_ids = NetCDF.readvar(nc_file, "reef_siteid")
+    # Converts character array entries in netCDFs to string if needed
+    return site_ids isa Matrix ? nc_char2string(site_ids) : site_ids
 end
 
 """
