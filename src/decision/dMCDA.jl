@@ -138,6 +138,7 @@ function DMCDA_vars(
         criteria("fog_wave_stress"),
         criteria("seed_heat_stress"),
         criteria("fog_heat_stress"),
+        criteria("seed_depth"),
         criteria("coral_cover_high"),
         criteria("coral_cover_low"),
         criteria("seed_priority"),
@@ -470,7 +471,7 @@ function create_seed_matrix(
         wt_predec_seed,
         wt_predec_zones_seed,
         wt_low_cover,
-        wt_heat,
+        wt_depth_seed,
     ]
 
     SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
@@ -654,8 +655,10 @@ function guided_site_selection(
         in_conn,
         out_conn,
         d_vars.leftover_space[site_ids],
-        d_vars.dam_prob[site_ids], d_vars.heat_stress_prob[site_ids],
-        d_vars.site_depth[site_ids], predec,
+        d_vars.dam_prob[site_ids],
+        d_vars.heat_stress_prob[site_ids],
+        d_vars.site_depth[site_ids],
+        predec,
         zones_criteria, d_vars.risk_tol
     )
     if isempty(A)
@@ -692,9 +695,11 @@ function guided_site_selection(
             A,
             d_vars.k_area[site_ids][filtered_sites],
             d_vars.wt_conn_shade,
-            d_vars.wt_waves,
-            d_vars.wt_heat,
-            d_vars.wt_predec_shade, d_vars.wt_zones_shade, d_vars.wt_hi_cover
+            d_vars.wt_waves_seed,
+            d_vars.wt_heat_seed,
+            d_vars.wt_predec_shade,
+            d_vars.wt_zones_shade,
+            d_vars.wt_hi_cover,
         )
     end
 
