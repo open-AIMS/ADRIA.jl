@@ -43,8 +43,8 @@ using
     Distances,
     Setfield,
     ModelParameters,
-    DataStructures
-
+    DataStructures,
+    YAXArrays
 
 include("utils/text_display.jl")  # need better name for this file
 include("utils/setup.jl")
