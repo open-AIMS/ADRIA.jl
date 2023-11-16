@@ -132,10 +132,21 @@ function ADRIA.viz.map!(
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
-    colors = cluster_colors(clusters)
-    legend_params = _cluster_legend_params(clusters, unique(colors), data)
+    # Although this function is called scenario_clusters, here we have locations clusters
+    loc_groups::Dict{Symbol,BitVector} = ADRIA.analysis.scenario_clusters(clusters)
+    group_colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(loc_groups)
 
-    opts[:highlight] = get(opts, :highlight, colors)
+    legend_params::Tuple = _cluster_legend_params(data, loc_groups, group_colors)
+
+    _colors::Vector{Union{Symbol,RGBA{Float32}}} = Vector{Union{Symbol,RGBA{Float32}}}(
+        undef, length(clusters)
+    )
+    for (idx, filt) in loc_groups
+        _colors[filt] .= group_colors[idx]
+    end
+
+    # Highlight is a vector of stroke colors for each location
+    opts[:highlight] = get(opts, :highlight, _colors)
     opts[:legend_params] = get(opts, :legend_params, legend_params)
 
     ADRIA.viz.map!(g, rs, data; opts=opts, axis_opts=axis_opts)
@@ -144,26 +155,37 @@ function ADRIA.viz.map!(
 end
 
 """
-    _cluster_legend_params(clusters::Vector{Int64}, clusters_colors::Vector{RGBA{Float32}}, data_statistics::Vector{Float32})
+    _cluster_legend_params(data::AbstractVector{<:Real}, scen_groups::Dict{Symbol,BitVector}, group_colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}})::Tuple
 
 Color parameter for current cluster weighted by number of scenarios.
 
 # Arguments
-- `clusters` : Vector of numbers corresponding to clusters
-- `colors` : Vector of all cluster options that are being used
 - `data` : Vector of some metric outcome for each site
+- `loc_groups` : Dictionary of (group_names => filter), where filter is a BitVector to
+select locations that belong to each group
+- `group_colors` : Dictionary of (group_names => colors), where colors can be Symbols or
+RGBA{Float32}
 
 # Returns
 Tuple of legend params to be passed to map! containing legend_entries, legend_labels and
 legend_title (in that order).
 """
 function _cluster_legend_params(
-    clusters::Union{BitVector,Vector{Int64}},
-    colors::Vector{RGBA{Float32}},
     data::AbstractVector{<:Real},
+    loc_groups::Dict{Symbol,BitVector},
+    group_colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}},
 )::Tuple
+    group_keys = sort(collect(keys(group_colors)))
+    colors = [group_colors[key] for key in group_keys]
     legend_entries = [PolyElement(; color=c, strokecolor=:transparent) for c in colors]
-    legend_labels = cluster_labels(clusters, data)
+
+    label_means::Vector{Float64} = zeros(length(group_keys))
+    for (idx_key, key) in enumerate(group_keys)
+        label_means[idx_key] = mean(data[loc_groups[key]])
+    end
+
+    legend_labels =
+        labels(group_keys) .* ": " .* ADRIA.to_scientific.(label_means, digits=2)
     legend_title = "Clusters mean value"
 
     return (legend_entries, legend_labels, legend_title)

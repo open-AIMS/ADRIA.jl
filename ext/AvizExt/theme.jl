@@ -15,14 +15,14 @@ const COLORS::Dict{Symbol,Symbol} = Dict(
 )
 
 function colors(
-    scen_groups::Dict{<:Any,BitVector},
+    scen_groups::Dict{Symbol,BitVector}
 )::Dict{Symbol,Union{Symbol,RGBA{Float32}}}
     group_names = keys(scen_groups)
     if count(group_names .∉ [keys(COLORS)]) > 0
         colormap = categorical_colors(:seaborn_bright, length(group_names))
         return Dict(group => colormap[idx] for (idx, group) in enumerate(group_names))
     else
-        return Dict(group => COLORS[group] for group in keys(scen_groups))
+        return Dict(group => COLORS[group] for group in group_names)
     end
 end
 function colors(
