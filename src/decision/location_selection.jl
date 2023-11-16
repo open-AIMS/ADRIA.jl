@@ -320,3 +320,98 @@ function selection_score(
     selection_score = dropdims(sum(lowest_rank .- ranks; dims=dims); dims=dims[1])
     return selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in dims]))
 end
+
+function decision_matrices(
+    dom::Domain,
+    criteria_weights::DataFrameRow,
+    int_type::Symbol;
+    cover=dom.init_coral_cover::AbstractArray,
+    site_ids=collect(1:length(dom.site_data.site_id))::Vector{Int64},
+    area_to_seed::Float64=962.11,
+)
+    loc_coral_cover = sum(cover; dims=:species)
+
+    leftover_space = relative_leftover_space(Matrix(loc_coral_cover)) .* site_k_area(dom)
+    wave_stress = summary_stat_env(dom.wave_scens, (:scenarios, :timesteps))
+    heat_stress = summary_stat_env(dom.dhw_scens, (:scenarios, :timesteps))
+    TP_data = connectivity_strength(
+        dom.TP_data .* site_k_area(dom), vec(loc_coral_cover), dom.TP_data
+    )
+
+    predec = priority_predecessor_criteria(
+        dom.strong_pred, dom.sim_constants.priority_sites, length(site_ids)
+    )
+    zones_crit = zones_criteria(
+        dom.sim_constants.priority_zones, dom.site_data.zone_type, dom.strong_pred, site_ids
+    )
+
+    A, filtered_sites = create_decision_matrix(
+        site_ids,
+        TP_data.in_conn,
+        TP_data.out_conn,
+        leftover_space[site_ids],
+        wave_stress[site_ids],
+        heat_stress[site_ids],
+        dom.site_data.depth_med[site_ids],
+        predec,
+        zones_crit,
+        criteria_weights.deployed_coral_risk_tol,
+    )
+
+    if int_type == :seed
+        S, ws = create_seed_matrix(
+            A,
+            area_to_seed .* criteria_weights.coral_cover_tol,
+            criteria_weights.in_seed_connectivity,
+            criteria_weights.out_seed_connectivity,
+            criteria_weights.wave_stress,
+            criteria_weights.heat_stress,
+            criteria_weights.seed_priority,
+            criteria_weights.zone_seed,
+            criteria_weights.coral_cover_low,
+            criteria_weights.depth_seed,
+        )
+
+        S = NamedDimsArray(
+            S[:, 2:end];
+            locations=S[:, 1],
+            criteria=[
+                :in_connectivity,
+                :out_connectivity,
+                :wave_stress,
+                :heat_stress,
+                :priority_predecessor,
+                :zones,
+                :leftover_space,
+                :depth,
+            ],
+        )
+    elseif int_type == :fog
+        S, ws = create_shade_matrix(
+            A,
+            site_k_area(dom)[site_ids][filtered_sites],
+            criteria_weights.shade_connectivity,
+            criteria_weights.wave_stress,
+            criteria_weights.heat_stress,
+            criteria_weights.shade_priority,
+            criteria_weights.zone_shade,
+            criteria_weights.coral_cover_high,
+        )
+        S = NamedDimsArray(
+            S[:, 2:end];
+            locations=S[:, 1],
+            criteria=[
+                :in_connectivity,
+                :out_connectivity,
+                :wave_stress,
+                :heat_stress,
+                :priority_predecessor,
+                :zones,
+                :coral_area,
+            ],
+        )
+    else
+        error("$int_type is not a valid intervention type.")
+    end
+    return S, ws
+end
