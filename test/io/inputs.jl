@@ -4,7 +4,11 @@
         str_fp = joinpath(EXAMPLE_DOMAIN_PATH, "DHWs", "dhwRCP45.nc")
 
         ADRIA.NetCDF.open(char_fp; mode=ADRIA.NetCDF.NC_NOWRITE) do char_nc
-            @test ADRIA._site_labels(char_nc) isa Vector{String}
+            char2str_vector = ADRIA._site_labels(char_nc)
+            @test char2str_vector isa Vector{String}
+            @test char2str_vector[1] == "abcd"
+            @test char2str_vector[2] == "something"
+            @test char2str_vector[3] == "something else"
         end
 
         ADRIA.NetCDF.open(char_fp; mode=ADRIA.NetCDF.NC_NOWRITE) do str_nc
