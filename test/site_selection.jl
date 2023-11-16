@@ -47,15 +47,15 @@ end
 @testset "Unguided site selection" begin
     n_intervention_sites = 5
     pref_seed_sites = zeros(Int64, n_intervention_sites)
-    pref_shade_sites = zeros(Int64, n_intervention_sites)
+    pref_fog_sites = zeros(Int64, n_intervention_sites)
     seed_years = true
     shade_years = true
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
     depth_priority = collect(1:5)
 
-    pref_seed_sites, pref_shade_sites = ADRIA.decision.unguided_site_selection(
+    pref_seed_sites, pref_fog_sites = ADRIA.decision.unguided_site_selection(
         pref_seed_sites,
-        pref_shade_sites,
+        pref_fog_sites,
         true,
         true,
         5,
@@ -65,10 +65,10 @@ end
 
     # Check that only two sites are selected (the sites where k > 0.0)
     @test length(pref_seed_sites[pref_seed_sites .> 0]) == 2
-    @test length(pref_shade_sites[pref_shade_sites .> 0]) == 2
+    @test length(pref_fog_sites[pref_fog_sites .> 0]) == 2
 
     @test all([in(sid, [2, 3]) for sid in pref_seed_sites[pref_seed_sites .> 0]])
-    @test all([in(sid, [2, 3]) for sid in pref_shade_sites[pref_shade_sites .> 0]])
+    @test all([in(sid, [2, 3]) for sid in pref_fog_sites[pref_fog_sites .> 0]])
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin

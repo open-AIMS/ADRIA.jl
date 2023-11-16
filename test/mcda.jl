@@ -1,6 +1,6 @@
 using Test
 using Distributions
-using ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_shade_matrix
+using ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_fog_matrix
 
 
 @testset "Create decision matrix" begin
@@ -108,8 +108,10 @@ end
         "Sites where space available < min_area not filtered out"
 end
 
-@testset "MCDA shade matrix creation" begin
-    wt_conn_shade, wt_waves, wt_heat, wt_predec_shade, wt_zones_shade, wt_hi_cover = [1.0, 0.7, 1.0, 0.6, 0.6, 0.6]
+@testset "MCDA fog matrix creation" begin
+    wt_conn_fog, wt_waves, wt_heat, wt_predec_fog, wt_zones_fog, wt_hi_cover = [
+        1.0, 0.7, 1.0, 0.6, 0.6, 0.6
+    ]
 
     # Combine decision criteria into decision matrix A
     n_sites = 5
@@ -147,15 +149,15 @@ end
         0.8,
     )
 
-    SH, wsh = create_shade_matrix(
+    SH, wsh = create_fog_matrix(
         A,
         k_area[filtered],
         area_max_cover[filtered],
-        wt_conn_shade,
+        wt_conn_fog,
         wt_waves,
         wt_heat,
-        wt_predec_shade,
-        wt_zones_shade,
+        wt_predec_fog,
+        wt_zones_fog,
         wt_hi_cover,
     )
 

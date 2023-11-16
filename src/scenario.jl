@@ -501,7 +501,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     end
 
     seed_locs::Vector{Int64} = zeros(Int64, n_site_int)
-    shade_locs::Vector{Int64} = zeros(Int64, n_site_int)
+    fog_locs::Vector{Int64} = zeros(Int64, n_site_int)
 
     # Define taxa and size class to seed, and identify their factor names
     taxa_to_seed = [2, 3, 5]
@@ -656,24 +656,34 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Determine connectivity strength
             # Account for cases where there is no coral cover
             in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_TP, vec(loc_coral_cover), TP_cache)
-            (seed_locs, shade_locs, rankings) = guided_site_selection(mcda_vars, MCDA_approach,
+            (seed_locs, fog_locs, rankings) = guided_site_selection(
+                mcda_vars,
+                MCDA_approach,
                 seed_decision_years[tstep], shade_decision_years[tstep],
-                seed_locs, shade_locs, rankings, in_conn[mcda_vars.site_ids], out_conn[mcda_vars.site_ids], strong_pred[mcda_vars.site_ids])
+                seed_locs,
+                fog_locs,
+                rankings,
+                in_conn[mcda_vars.site_ids],
+                out_conn[mcda_vars.site_ids],
+                strong_pred[mcda_vars.site_ids],
+            )
 
             # Log site ranks
             # First col only holds site index ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
         elseif seed_corals && (in_seed_years || in_shade_years)
-            # Unguided deployment, seed/shade corals anywhere, so long as available space > 0
-            seed_locs, shade_locs = unguided_site_selection(seed_locs, shade_locs,
+            # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
+            seed_locs, fog_locs = unguided_site_selection(
+                seed_locs,
+                fog_locs,
                 seed_decision_years[tstep], shade_decision_years[tstep],
                 n_site_int, vec(leftover_space_m²), depth_priority)
 
             site_ranks[tstep, seed_locs, 1] .= 1.0
-            site_ranks[tstep, shade_locs, 2] .= 1.0
+            site_ranks[tstep, fog_locs, 2] .= 1.0
         end
 
-        has_shade_sites::Bool = !all(shade_locs .== 0)
+        has_shade_sites::Bool = !all(fog_locs .== 0)
 
         # Check if locations are selected, and selected locations have space,
         # otherwise no valid locations were selected for seeding.
@@ -686,7 +696,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Fog selected locations
         if (fogging > 0.0) && in_shade_years && has_shade_sites
-            fog_locations!(@view(Yfog[tstep, :]), shade_locs, dhw_t, fogging)
+            fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
 
         # Calculate and apply bleaching mortality
