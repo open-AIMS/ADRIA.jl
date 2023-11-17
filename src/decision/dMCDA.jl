@@ -217,7 +217,7 @@ end
 Normalize weights for a set of scenarios (wse/wsh) for MCDA.
 """
 function mcda_normalize(x::DataFrame)::DataFrame
-    return x ./ sum(Matrix(x); dims=2)
+    return x ./ sum.(eachrow(x))
 end
 
 """
