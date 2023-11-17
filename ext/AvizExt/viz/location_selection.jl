@@ -128,6 +128,48 @@ function ADRIA.viz.ranks_to_frequencies(
     return f
 end
 
+function ADRIA.viz.decision_matrices!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    S::NamedDimsArray,
+    criteria::Vector{Symbol};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
+    n_criteria::Int64 = length(criteria)
+    opts[:color_map] = get(opts, :color_map, :viridis)
+    n_rows, n_cols = _calc_gridsize(n_criteria)
+    criteria_names = String.(criteria)
+    step::Int64 = 1
+
+    for row in 1:n_rows, col in 1:n_cols
+        ADRIA.viz.map!(
+            g[row, col],
+            rs,
+            vec(S(criteria[step]));
+            opts=opts,
+            axis_opts=Dict(:title => criteria_names[step]),
+        )
+
+        step += 1
+        if step > n_criteria
+            break
+        end
+    end
+
+    try
+        # Clear empty figures
+        trim!(g)
+    catch err
+        if !(err isa MethodError)
+            # GridPosition plots a single figure so does
+            # not need empty figures to be cleared
+            # If any other error is encountered, something else happened.
+            rethrow(err)
+        end
+    end
+end
+
 """
     _default_colormap(rank_groups::Dict{Symbol,BitVector}, alpha_vals::Dict{Symbol,Float64})
 

@@ -374,7 +374,7 @@ function decision_matrices(
 
         S = NamedDimsArray(
             S[:, 2:end];
-            locations=S[:, 1],
+            locations=dom.site_data.site_id,
             criteria=[
                 :in_connectivity,
                 :out_connectivity,
@@ -399,7 +399,7 @@ function decision_matrices(
         )
         S = NamedDimsArray(
             S[:, 2:end];
-            locations=S[:, 1],
+            locations=dom.site_data.site_id,
             criteria=[
                 :in_connectivity,
                 :out_connectivity,
