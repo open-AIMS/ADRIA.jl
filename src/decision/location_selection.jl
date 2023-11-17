@@ -321,6 +321,24 @@ function selection_score(
     return selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in dims]))
 end
 
+"""
+    decision_matrices(dom::Domain, criteria_weights::DataFrameRow, int_type::Symbol; cover=dom.init_coral_cover::AbstractArray,
+        site_ids=collect(1:length(dom.site_data.site_id))::Vector{Int64},area_to_seed::Float64=962.11)
+
+Calculates a decision matrix for a specified intervention, using a scenario specification and Domain alone.
+    These can be visualised spatially using `viz.decision_matrices`.
+
+# Arguments
+- `dom` : Domain struct
+- `criteria_weights` :  A row of a scenario dataframe, containing intervention criteria weights.
+- `int_type` : Intervention type (e.g. :seed or :fog)
+- `cover` : Relative coral cover to site k area (dims: nspecies*nsites), default is initial cover
+- `site_ids` : Indices for sites to be included in the decision matrix, default is all sites in Domain
+- `area_to_seed` : Area of corals seeded in the scenario considered
+
+# Returns
+Selection score
+"""
 function decision_matrices(
     dom::Domain,
     criteria_weights::DataFrameRow,

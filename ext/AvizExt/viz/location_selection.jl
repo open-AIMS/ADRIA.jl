@@ -128,6 +128,43 @@ function ADRIA.viz.ranks_to_frequencies(
     return f
 end
 
+"""
+    ADRIA.viz.decision_matrices(rs::ResultSet, S::NamedDimsArray, criteria::Vector{Symbol}; opts::Dict=Dict(),
+        axis_opts::Dict=Dict(), fig_opts::Dict=Dict())
+    ADRIA.viz.decision_matrices!(g::Union{GridLayout,GridPosition}, rs::ResultSet, S::NamedDimsArray, criteria::Vector{Symbol};
+        opts::Dict=Dict(), axis_opts::Dict=Dict())
+        
+Plot a grid of spatial maps for a selection of location selection criteria.
+
+# Arguments
+- `g` : Figure GridPosition or GridLayout
+- `rs` : Result set
+- `S` : A decision matrix calculated using decison.decision_matrices
+- `criteria` : Names of criteria to be plotted, e.g [:heat_stress, :wave_stress]
+- `opts` : Aviz options
+    - `colorbar_label`, label for colorbar. Defaults to "Relative Cover".
+    - `color_map`, preferred colormap for plotting heatmaps.
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+- `fig_opts` : Additional options to pass to adjust Figure creation
+  See: https://docs.makie.org/v0.19/api/index.html#Figure
+
+# Returns
+Figure
+"""
+function ADRIA.viz.decision_matrices(
+    rs::ResultSet,
+    S::NamedDimsArray,
+    criteria::Vector{Symbol};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.decision_matrices!(g, rs, S, criteria; opts=opts, axis_opts=axis_opts)
+    return f
+end
 function ADRIA.viz.decision_matrices!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
@@ -143,12 +180,13 @@ function ADRIA.viz.decision_matrices!(
     step::Int64 = 1
 
     for row in 1:n_rows, col in 1:n_cols
+        axis_opts_temp = Dict(:title => criteria_names[step]; axis_opts...)
         ADRIA.viz.map!(
             g[row, col],
             rs,
             vec(S(criteria[step]));
             opts=opts,
-            axis_opts=Dict(:title => criteria_names[step]),
+            axis_opts=axis_opts_temp,
         )
 
         step += 1
