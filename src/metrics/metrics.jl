@@ -485,7 +485,7 @@ function _shelter_species_loop(X::AbstractArray{T1,3}, n_species::Int64, colony_
 
     # Work out RSV for each taxa
     for (sp, sq) in taxa_max_map
-        @floop for site in 1:size(ASV, :sites)
+        for site in 1:size(ASV, :sites)
             RSV[species=sq, sites=site] .= dropdims(sum(ASV[species=sp, sites=site], dims=:species), dims=:species) ./ MSV[sq, site]
         end
     end
@@ -517,7 +517,7 @@ function _shelter_species_loop!(
     T1<:NamedDims.NamedDimsArray{(:timesteps, :species, :sites),Float64,3,Array{Float64,3}},
     V<:AbstractVector{<:Float64}
 }
-    @floop for sp::Int64 in 1:nspecies
+    for sp::Int64 in 1:nspecies
         # SV represents absolute shelter volume in cubic meters
         ASV[species=sp] .= (X[species=sp] .* k_area') .* colony_vol_m3_per_m2[sp]
     end

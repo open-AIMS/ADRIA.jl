@@ -124,7 +124,7 @@ function pawn(
 
     # Hide warnings from HypothesisTests
     with_logger(NullLogger()) do
-        @floop for d_i in 1:D
+        for d_i in 1:D
             X_di = @view(X[:, d_i])
             X_q .= quantile(X_di, seq)
 
