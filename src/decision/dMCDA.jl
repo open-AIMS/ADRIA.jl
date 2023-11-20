@@ -54,10 +54,34 @@ jmcdm_ignore = [
     JMcDM.VIKOR.VikorMethod,
 ]
 
-const jmcdm_methods = subtypes(MCDMMethod)
-const methods_mcda = [
-    order_ranking, adria_vikor, adria_topsis, setdiff(jmcdm_methods, jmcdm_ignore)...
-]
+function supported_jmcdm_methods()
+    return [
+        JMcDM.ARAS.ArasMethod,
+        JMcDM.COCOSO.CocosoMethod,
+        JMcDM.CODAS.CodasMethod,
+        JMcDM.EDAS.EdasMethod,
+        JMcDM.GREY.GreyMethod,
+        JMcDM.MABAC.MabacMethod,
+        JMcDM.MAIRCA.MaircaMethod,
+        JMcDM.MARCOS.MarcosMethod,
+        JMcDM.MOORA.MooraMethod,
+        JMcDM.PIV.PIVMethod,
+        JMcDM.PSI.PSIMethod,
+        JMcDM.ROV.ROVMethod,
+        JMcDM.SAW.SawMethod,
+        JMcDM.WASPAS.WaspasMethod,
+        JMcDM.WPM.WPMMethod
+    ]
+end
+
+function mcda_methods()
+    return [
+        order_ranking,
+        adria_vikor,
+        adria_topsis,
+        supported_jmcdm_methods()...
+    ]
+end
 
 """
     DMCDA_vars(domain::Domain, criteria::NamedDimsArray,
@@ -555,7 +579,7 @@ function guided_site_selection(
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
     strong_pred::Vector{Int64};
-    methods_mcda=methods_mcda
+    methods_mcda=mcda_methods()
 )::Tuple{Vector{T}, Vector{T}, Matrix{T}} where {
     T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool
 }

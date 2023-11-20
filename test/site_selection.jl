@@ -92,7 +92,8 @@ end
 end
 
 @testset "Test ranks line up with ordering" begin
-    mcda_func = ADRIA.decision.methods_mcda[rand(1:length(ADRIA.decision.methods_mcda))]
+    supported_methods = ADRIA.decision.mcda_methods()
+    mcda_func = supported_methods[rand(1:length(supported_methods))]
     n_sites = 20
 
     S = ADRIA.decision.mcda_normalize(rand(Uniform(0, 1), n_sites, 6))

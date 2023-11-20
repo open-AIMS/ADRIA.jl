@@ -573,7 +573,7 @@ function ADRIA.viz.outcome_map!(
     b_slices = parse.(Float64, bin_slices)
 
     if any(f_names .== :guided)
-        fv_labels = ["unguided", "cf", last.(split.(string.(ADRIA.methods_mcda), "."))...]
+        fv_labels = ["unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...]
     end
     curr::Int64 = 1
     axs = Axis[]
