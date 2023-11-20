@@ -26,6 +26,7 @@ Import additional packages and the visualization extension will compile.
 ```julia
 using WGLMakie, GeoMakie, GraphMakie
 using ADRIA
+using Statistics
 ```
 
 Plots will appear in the VS Code plots pane.
@@ -119,7 +120,6 @@ opts = Dict(
 One can plot a quick scenario overview:
 
 ```julia
-s_tac = ADRIA.metrics.scenario_total_cover(rs)
 fig_s_tac = ADRIA.viz.scenarios(
     rs, s_tac; fig_opts=fig_opts, axis_opts=Dict(:ylabel => "Scenario Total Cover")
 )
@@ -134,25 +134,19 @@ to plot the legend (default is `true`) and `summarize` to plot confidence interv
 of plotting each series (default is `true`):
 
 ```julia
-s_tac = ADRIA.metrics.scenario_total_cover(rs)
-s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)
-
-# Parameters used to run each scenario
-scens = rs.inputs
-
 tf = Figure(resolution=(1600, 600))  # resolution in pixels
 
 # Implicitly create a single figure with 2 columns
 ADRIA.viz.scenarios!(
     tf[1, 1],
-    scens,
+    rs,
     s_tac;
     opts=Dict(:by_RCP => false, :legend => false),
     axis_opts=Dict(:title => "TAC [m²]"),
 );
 ADRIA.viz.scenarios!(
     tf[1, 2],
-    scens,
+    rs,
     s_juves;
     opts=Dict(:summarize => false),
     axis_opts=Dict(:title => "Juveniles [%]"),
@@ -169,29 +163,27 @@ save("aviz_scenario.png", tf)  # save the figure to a file
 Plot spatial colormaps of site selection frequencies and other available site selection metrics.
 
 ```julia
-
 # Calculate frequencies with which each site was selected at each rank
-rank_freq = ranks_to_frequencies(
+rank_freq = ADRIA.decision.ranks_to_frequencies(
     rs.ranks[intervention=1];
     agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),
 )
 
 # Plot 1st rank frequencies as a colormap
-ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:resolution=>(1200, 800)))
+rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:resolution=>(1200, 800)))
 
-save("single_rank_plot.png", tf)
-
+save("single_rank_plot.png", rank_fig)
 ```
 
 ![Rank frequency plots for single rank](/ADRIA.jl/dev/assets/imgs/single_rank_plot.png?raw=true "Rank frequency plot 1 rank")
 
 ```julia
 # Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
-ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:resolution=>(1200, 800)))
+rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:resolution=>(1200, 800)))
 
-save("ranks_plot.png", tf)
-
+save("ranks_plot.png", rank_fig)
 ```
+
 ![Rank frequency plots for multiple ranks](/ADRIA.jl/dev/assets/imgs/ranks_plot.png?raw=true "Rank frequency plot 3 ranks")
 
 ### PAWN sensitivity (heatmap overview)
@@ -202,8 +194,6 @@ is used to screen factors (i.e., identification of important factors) and rank f
 well (ordering factors by their relative contribution towards a given quantity of interest).
 
 ```julia
-using Statistics
-
 # Sensitivity (of mean scenario outcomes to factors)
 mean_s_tac = vec(mean(s_tac, dims=1))
 tac_Si = ADRIA.sensitivity.pawn(rs, mean_s_tac)
@@ -253,38 +243,26 @@ increasing number of samples. The result can then be plotted as band plots or a 
 using `viz.convergence`.
 
 ```julia
-using Statistics
-
 outcome = dropdims(mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps), dims=:timesteps)
 
-# Display convergence for specific factors of interest ("foi") as a heat map
+# Display convergence for specific factors of interest ("foi") within a single figure.
+# Bands represent the 95% confidence interval derived from the number of conditioning
+# points, the default for which is ten (i.e., 10 samples).
+# Due to the limited sample size, care should be taken when interpreting the figure.
 foi = [:dhw_scenario, :wave_scenario, :guided]
-Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi; opts=Dict(:viz_type=>:heatmap))
-ADRIA.viz.convergence(Si_conv, foi)
+Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi)
+conv_series_fig = ADRIA.viz.convergence(Si_conv, foi)
+save("convergence_factors_series.png", conv_series_fig)
 
 # Convergence analysis of factors grouped by model component as a heat map
 components = [:EnvironmentalLayer, :Intervention, :Coral]
 Si_conv = ADRIA.sensitivity.convergence(rs, scens, outcome, components)
-ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
+conv_hm_fig = ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:heatmap))
+save("convergence_components_heatmap.png", conv_hm_fig)
 ```
 
-![Convergence analysis of factors](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors.png?raw=true "Convergence Analysis - factors")
-![Grouped convergence analysis](/ADRIA.jl/dev/assets/imgs/colormap_convergence_components.png?raw=true "Convergence Analysis - model components")
-
-```julia
-# Display convergence plot within a single figure.
-# Bands represent the 95% confidence interval derived from the number of conditioning
-# points, the default for which is ten (i.e., 10 samples).
-# Due to the limited sample size, care should be taken when interpreting the figure.
-ADRIA.viz.convergence(Si_conv, foi)
-
-# Create a grid of figures for each factor of interest.
-ADRIA.viz.convergence(Si_conv, foi; opts=Dict(:plot_overlay=>false))
-
-```
-
-![Convergence analysis of factors overlayed](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors_lines_overlay.png?raw=true "Convergence Analysis - overlayed")
-![Convergence analysis of factors as grid](/ADRIA.jl/dev/assets/imgs/colormap_convergence_factors_lines.png?raw=true "Convergence Analysis - as grid")
+![Convergence analysis of factors overlayed](/ADRIA.jl/dev/assets/imgs/convergence_factors_series.png?raw=true "Convergence Analysis - factors")
+![Grouped convergence analysis](/ADRIA.jl/dev/assets/imgs/convergence_components_heatmap.png?raw=true "Convergence Analysis - model components as a heatmap")
 
 ### Time Series Clustering
 
@@ -325,8 +303,6 @@ One can also target scenarios that belong to specific clusters (like clusters wi
 median value for some outcome):
 
 ```julia
-using Statistics
-
 # Extract metric from scenarios
 asv = ADRIA.metrics.absolute_shelter_volume(rs)
 
@@ -386,8 +362,6 @@ When using Time Series Clustering to cluster among multiple locations using some
 is possible to visualize the result as a map.
 
 ```julia
-using Statistics
-
 # Extract metric from scenarios
 tac = ADRIA.metrics.total_absolute_cover(rs)
 
@@ -418,7 +392,7 @@ median outcome temporal variability:
 # Find Time Series Clusters
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 num_clusters = 6
-clusters = ADRIA.analysis.time_series_clustering(s_tac, num_clusters)
+clusters = ADRIA.analysis.cluster_scenarios(s_tac, num_clusters)
 
 # Target scenarios
 target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)
@@ -430,8 +404,8 @@ rule as a scatter graph:
 
 ```julia
 # Select only desired features
-fields_iv = ADRIA.component_params(rs, [Intervention, Criteria]).fieldname
-scenarios_iv = scenarios[:, fields_iv]
+fields_iv = ADRIA.component_params(rs, [Intervention, CriteriaWeights]).fieldname
+scenarios_iv = scens[:, fields_iv]
 
 # Use SIRUS algorithm to extract rules
 max_rules = 10
@@ -484,22 +458,22 @@ outputs and the region of factor space that led to those outputs.
 tf = Figure(resolution=(1600, 1200))  # resolution in pixels
 
 # Indicate factor values that are in the top 50 percentile
-tac_om_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5); S=20)
+tac_om_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
 ADRIA.viz.outcome_map!(
     tf[1, 1],
     rs,
     tac_om_50,
-    ["dhw_scenario", "wave_scenario", "N_seed_TA", "N_seed_CA", "fogging", "SRM"];
+    foi;
     axis_opts=Dict(:title => "Regions which lead to Top 50th Percentile Outcomes", :ylabel => "TAC [m²]")
 )
 
 # Indicate factor values that are in the top 30 percentile
-tac_om_70 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.7); S=20)
+tac_om_70 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20)
 ADRIA.viz.outcome_map!(
     tf[2, 1],
     rs,
     tac_om_70,
-    ["dhw_scenario", "wave_scenario", "N_seed_TA", "N_seed_CA", "fogging", "SRM"];
+    foi;
     axis_opts=Dict(:title => "Regions which lead to Top 30th Percentile Outcomes", :ylabel => "TAC [m²]"))
 
 save("outcome_map.png", tf)
