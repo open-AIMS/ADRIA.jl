@@ -111,10 +111,7 @@ function ADRIA.viz.scenarios!(
     series_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
     if get(opts, :summarize, true)
-        confints = _confints(outcomes, scen_groups)
-        _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
-        ordered_groups = _sort_keys(scen_groups, outcomes; by=:variance)
-        scenarios_confint!(ax::Axis, confints, ordered_groups, _colors)
+        scenarios_confint!(ax::Axis, outcomes, scen_groups)
     else
         scenarios_series!(ax, outcomes, scen_groups; series_opts=series_opts)
     end
@@ -169,6 +166,16 @@ function scenarios_confint!(
     series!(ax, x_vals, confints[:, :, 2]'; solid_color=series_colors)
 
     return nothing
+end
+function scenarios_confint!(
+    ax::Axis, outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
+)::Nothing
+    confints = _confints(outcomes, scen_groups)
+    color_keys::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
+    ordered_groups = _sort_keys(scen_groups, outcomes; by=:variance)
+    return scenarios_confint!(
+        ax, confints, ordered_groups, color_keys; x_vals=collect(1:size(confints, 1))
+    )
 end
 
 function scenarios_series!(
