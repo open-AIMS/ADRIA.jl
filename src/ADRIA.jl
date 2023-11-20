@@ -61,8 +61,8 @@ include("decision/CriteriaWeights.jl")
 include("Domain.jl")
 include("io/inputs.jl")
 
-# Note: The decision module is imported after CriteriaWeights as CriteriaWeights is needed in 
-# Domain.jl but Domain.jl is needed in dMCDA.jl. A restructure is needed so that Domain.jl is 
+# Note: The decision module is imported after CriteriaWeights as CriteriaWeights is needed in
+# Domain.jl but Domain.jl is needed in dMCDA.jl. A restructure is needed so that Domain.jl is
 # not required in dMCDA.jl.
 include("decision/dMCDA.jl")
 
@@ -89,7 +89,7 @@ include("viz/viz.jl")
 export
     growthODE,
     run_scenario, coral_spec,
-    create_coral_struct, Intervention, Criteria, Corals, SimConstants,
+    create_coral_struct, Intervention, CriteriaWeights, Corals, SimConstants,
     site_area, site_k_area,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz
