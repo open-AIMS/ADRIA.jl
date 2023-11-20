@@ -126,7 +126,9 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
 
     NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
         data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
-        dim_names::Vector{Symbol} = Symbol[Symbol(dim.name) for dim in nc_file.vars[attr].dim]
+        dim_names::Vector{Symbol} = Symbol[
+            Symbol(dim.name) for dim in nc_file.vars[attr].dim
+        ]
         dim_labels::Vector{Union{UnitRange{Int64},Vector{String}}} = _nc_dim_labels(
             data_fn, data, nc_file
         )
@@ -224,4 +226,26 @@ function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::Nam
     data = data[sites=Key(site_data[:, :reef_siteid])]
 
     return data
+end
+
+"""
+    load_cyclone_mortality(data_fn::String)::NamedDimsArray
+
+Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
+ordered by :locations
+"""
+function load_cyclone_mortality(data_fn::String)::NamedDimsArray
+    # Read file as YAXArray and convert to NamedDimsArray
+    # as we intend to move to use only YAXArrays soon
+    cyclone_cube = Cube(data_fn)
+    data = cyclone_cube.data
+    dim_names = name.(cyclone_cube.axes)
+    dim_labels = lookup.([cyclone_cube], dim_names)
+
+    # Sort by :locations
+    location_sort_idx = sortperm(dim_labels[2])
+    data = data[:, location_sort_idx, :, :]
+    dim_labels[2] = dim_labels[2][location_sort_idx]
+
+    return NamedDimsArray(data; zip(dim_names, dim_labels)...)
 end

@@ -413,7 +413,11 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     dhw_idx::Int64 = Int64(param_set("dhw_scenario"))
     wave_idx::Int64 = Int64(param_set("wave_scenario"))
+    cyclone_mortality_idx::Int64 = Int64(param_set("cyclone_mortality_scenario"))
 
+    cyclone_mortality_scen = @view(
+        domain.cyclone_mortality_scens[:, :, :, cyclone_mortality_idx]
+    )
     dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
 
     tspan::Tuple = (0.0, 1.0)
@@ -596,6 +600,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Copy cover for previous timestep as basis for current timestep
         C_t .= C_cover[tstep - 1, :, :]
 
+        # Coral deaths due to selected cyclone scenario
+        _cyclone_mortality(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
+
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
 
@@ -775,4 +782,22 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     # (lower values are higher importance)
     site_ranks[site_ranks.==0.0] .= n_locs + 1
     return (raw=C_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks, bleaching_mortality=bleaching_mort, coral_dhw_log=collated_dhw_tol_log)
+end
+
+function _cyclone_mortality(coral_cover, coral_params, cyclone_mortality)::Nothing
+    # Small class coral mortality
+    coral_deaths_small = coral_cover[coral_params.small, :] .* cyclone_mortality
+    coral_cover[coral_params.small, :] -= coral_deaths_small
+
+    # Mid class coral mortality
+    coral_mid = hcat(collect(Iterators.partition(coral_params.mid, 4))...)
+    for i in size(coral_mid, 1)
+        coral_deaths_mid = coral_cover[coral_mid[i, :], :] .* cyclone_mortality
+        coral_cover[coral_mid[i, :], :] -= coral_deaths_mid
+    end
+
+    # Large class coral mortality
+    coral_deaths_large = coral_cover[coral_params.large, :] .* cyclone_mortality
+    coral_cover[coral_params.large, :] -= coral_deaths_large
+    return nothing
 end
