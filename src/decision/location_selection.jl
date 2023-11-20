@@ -342,7 +342,7 @@ Selection score
 function decision_matrices(
     dom::Domain,
     criteria_weights::DataFrameRow,
-    int_type::Symbol;
+    iv_type::Symbol;
     cover=dom.init_coral_cover::AbstractArray,
     site_ids=collect(1:length(dom.site_data.site_id))::Vector{Int64},
     area_to_seed::Float64=962.11,
@@ -376,7 +376,7 @@ function decision_matrices(
         criteria_weights.deployed_coral_risk_tol,
     )
 
-    if int_type == :seed
+    if iv_type == :seed
         S, ws = create_seed_matrix(
             A,
             area_to_seed .* criteria_weights.coral_cover_tol,
@@ -404,7 +404,7 @@ function decision_matrices(
                 :depth,
             ],
         )
-    elseif int_type == :fog
+    elseif iv_type == :fog
         S, ws = create_shade_matrix(
             A,
             site_k_area(dom)[site_ids][filtered_sites],
@@ -429,7 +429,7 @@ function decision_matrices(
             ],
         )
     else
-        error("$int_type is not a valid intervention type.")
+        error("$iv_type is not a valid intervention type.")
     end
     return S, ws
 end
