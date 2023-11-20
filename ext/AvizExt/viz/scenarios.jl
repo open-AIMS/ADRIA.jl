@@ -55,6 +55,25 @@ function ADRIA.viz.scenarios(
         series_opts=series_opts,
     )
 end
+function ADRIA.viz.scenarios!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    outcomes::NamedDimsArray;
+    opts::Dict=Dict(:by_RCP => false),
+    axis_opts::Dict=Dict(),
+    series_opts::Dict=Dict(),
+)::Union{GridLayout,GridPosition}
+    opts[:histogram] = get(opts, :histogram, false)
+
+    return ADRIA.viz.scenarios!(
+        g,
+        rs.inputs,
+        outcomes;
+        opts=opts,
+        axis_opts=axis_opts,
+        series_opts=series_opts,
+    )
+end
 function ADRIA.viz.scenarios(
     scenarios::DataFrame,
     outcomes::NamedDimsArray;
