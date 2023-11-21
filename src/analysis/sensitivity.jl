@@ -124,7 +124,7 @@ function pawn(
 
     # Hide warnings from HypothesisTests
     with_logger(NullLogger()) do
-        @floop for d_i in 1:D
+        for d_i in 1:D
             X_di = @view(X[:, d_i])
             X_q .= quantile(X_di, seq)
 
@@ -231,10 +231,10 @@ function convergence(
 )::NamedDimsArray
     N = length(y.scenarios)
     step_size = floor(Int64, N / n_steps)
-    N_it = collect(step_size:step_size:N)
+    N_it = step_size == 0 ? collect(1:N) : collect(step_size:step_size:N)
 
     pawn_store = NamedDimsArray(
-        Array{Float64}(zeros(length(target_factors), 8, length(N_it)));
+        zeros(length(target_factors), 8, length(N_it));
         factors=target_factors,
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
         n_scenarios=N_it,
@@ -265,8 +265,10 @@ function convergence(
     ]
 
     Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); Si=Si, n_steps=n_steps)
+
+    # Note: n_steps only applies if it is > number of scenarios.
     Si_grouped = NamedDimsArray(
-        zeros(length(components), 8, n_steps);
+        zeros(length(components), 8, size(Si_n, 3));
         factors=components,
         Si=Si_n.Si,
         n_scenarios=Si_n.n_scenarios,
@@ -324,9 +326,9 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
     end
 
     t_pawn_idx = NamedDimsArray(
-        zeros(ncol(X), 6, size(y, 1));
+        zeros(ncol(X), 8, size(y, 1));
         factors=Symbol.(names(X)),
-        Si=[:min, :mean, :median, :max, :std, :cv],
+        Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
         timesteps=ts
     )
 

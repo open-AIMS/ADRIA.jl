@@ -130,7 +130,17 @@ function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;
     # Use SIRUS Stable Rules Classifier model to extract the rules
     model = StableRulesClassifier(; max_rules=max_rules, n_trees=n_trees, rng=rng)
     mach = machine(model, X, clusters)
-    MLJ.fit!(mach)
+
+    try
+        MLJ.fit!(mach)
+    catch err
+        if !(err isa MethodError)
+            rethrow(err)
+        end
+
+        error("Failed fitting SIRUS. Try increasing the number of scenarios/samples.")
+    end
+
     return rules(mach.fitresult)
 end
 function cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;

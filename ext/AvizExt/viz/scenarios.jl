@@ -55,6 +55,25 @@ function ADRIA.viz.scenarios(
         series_opts=series_opts,
     )
 end
+function ADRIA.viz.scenarios!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    outcomes::NamedDimsArray;
+    opts::Dict=Dict(:by_RCP => false),
+    axis_opts::Dict=Dict(),
+    series_opts::Dict=Dict(),
+)::Union{GridLayout,GridPosition}
+    opts[:histogram] = get(opts, :histogram, false)
+
+    return ADRIA.viz.scenarios!(
+        g,
+        rs.inputs,
+        outcomes;
+        opts=opts,
+        axis_opts=axis_opts,
+        series_opts=series_opts,
+    )
+end
 function ADRIA.viz.scenarios(
     scenarios::DataFrame,
     outcomes::NamedDimsArray;
@@ -111,8 +130,7 @@ function ADRIA.viz.scenarios!(
     series_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
     if get(opts, :summarize, true)
-        confints = _confints(outcomes, scen_groups)
-        scenarios_confint!(ax::Axis, confints, scen_groups)
+        scenarios_confint!(ax, outcomes, scen_groups)
     else
         scenarios_series!(ax, outcomes, scen_groups; series_opts=series_opts)
     end
@@ -133,14 +151,14 @@ end
 function _confints(
     outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
 )::Array{Float64}
-    groups::Vector{Symbol} = keys(scen_groups)
+    groups::Vector{Symbol} = _sort_keys(scen_groups, outcomes)
     n_timesteps::Int64 = size(outcomes, 1)
-    n_scens::Int64 = length(groups)
+    n_groups::Int64 = length(groups)
 
     # Compute confints
-    confints::Array{Float64} = zeros(n_timesteps, n_scens, 3)
+    confints::Array{Float64} = zeros(n_timesteps, n_groups, 3)
     agg_dim = symdiff(dimnames(outcomes), [:timesteps])[1]
-    for (idx, group) in enumerate(ordered_groups)
+    for (idx, group) in enumerate(groups)
         confints[:, idx, :] = series_confint(
             outcomes[:, scen_groups[group]]; agg_dim=agg_dim
         )
@@ -152,13 +170,10 @@ end
 function scenarios_confint!(
     ax::Axis,
     confints::AbstractArray,
-    scen_groups::Dict{Symbol,BitVector};
+    ordered_groups::Vector{Symbol},
+    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}};
     x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1)),
-    sort_by::Symbol=:variance,
 )::Nothing
-
-    ordered_groups = _sort_keys(scen_groups, confints; by=sort_by)
-    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
 
     for idx in eachindex(ordered_groups)
         band_color = (_colors[ordered_groups[idx]], 0.4)
@@ -170,6 +185,20 @@ function scenarios_confint!(
     series!(ax, x_vals, confints[:, :, 2]'; solid_color=series_colors)
 
     return nothing
+end
+function scenarios_confint!(
+    ax::Axis, outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
+)::Nothing
+    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
+    ordered_groups = _sort_keys(scen_groups, outcomes)
+    confints = _confints(outcomes, scen_groups)
+    return scenarios_confint!(
+        ax,
+        confints,
+        ordered_groups,
+        _colors;
+        x_vals=collect(1:size(confints, 1)),
+    )
 end
 
 function scenarios_series!(
@@ -246,7 +275,7 @@ Sort types by variance in reverse order.
 """
 function _sort_keys(
     scenario_types::Dict{Symbol,BitVector},
-    outcomes::NamedDimsArray;
+    outcomes::AbstractArray;
     by=:variance,
 )::Vector{Symbol}
     scen_types::Vector{Symbol} = collect(keys(scenario_types))
@@ -260,8 +289,6 @@ function _sort_keys(
         return sort(
             scen_types; by=type -> size(outcomes[:, scenario_types[type]], 2), rev=true
         )
-    elseif by == :none
-        return scen_types
     else
         throw(ArgumentError("Invalid 'by' option. Must be one of: [:variance, :size]"))
     end

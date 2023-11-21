@@ -44,6 +44,7 @@ include("mcda_methods.jl")
 include("location_selection.jl")
 
 jmcdm_ignore = [
+    JMcDM.LOPCOW.LOPCOWMethod,
     JMcDM.CRITIC.CriticMethod,
     JMcDM.COPRAS.CoprasMethod,
     JMcDM.MOOSRA.MoosraMethod,

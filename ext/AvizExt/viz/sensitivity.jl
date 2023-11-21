@@ -310,12 +310,13 @@ function _series_convergence(
 
     if plot_overlay
         ax = Axis(g; axis_opts...)
+        _colors = colors(grps)
         scenarios_confint!(
             ax,
             permutedims(Si_conv(; Si=[:lb, :median, :ub]), (3, 1, 2)),
-            grps;
+            collect(keys(grps)),
+            _colors;
             x_vals=n_scenarios,
-            sort_by=:none,
         )
         ax.xlabel = xlabel
         ax.ylabel = ylabel
