@@ -153,10 +153,10 @@ function _confints(
 )::Array{Float64}
     groups::Vector{Symbol} = _sort_keys(scen_groups, outcomes)
     n_timesteps::Int64 = size(outcomes, 1)
-    n_scens::Int64 = length(groups)
+    n_groups::Int64 = length(groups)
 
     # Compute confints
-    confints::Array{Float64} = zeros(n_timesteps, n_scens, 3)
+    confints::Array{Float64} = zeros(n_timesteps, n_groups, 3)
     agg_dim = symdiff(dimnames(outcomes), [:timesteps])[1]
     for (idx, group) in enumerate(groups)
         confints[:, idx, :] = series_confint(
