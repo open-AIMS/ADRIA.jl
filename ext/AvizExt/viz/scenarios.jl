@@ -171,17 +171,17 @@ function scenarios_confint!(
     ax::Axis,
     confints::AbstractArray,
     ordered_groups::Vector{Symbol},
-    colors_key::Dict{Symbol,Union{Symbol,RGBA{Float32}}};
+    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}};
     x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1)),
 )::Nothing
 
     for idx in eachindex(ordered_groups)
-        band_color = (colors_key[ordered_groups[idx]], 0.4)
+        band_color = (_colors[ordered_groups[idx]], 0.4)
         y_lower, y_upper = confints[:, idx, 1], confints[:, idx, 3]
         band!(ax, x_vals, y_lower, y_upper; color=band_color)
     end
 
-    series_colors = [colors_key[group] for group in ordered_groups]
+    series_colors = [_colors[group] for group in ordered_groups]
     series!(ax, x_vals, confints[:, :, 2]'; solid_color=series_colors)
 
     return nothing
@@ -190,10 +190,14 @@ function scenarios_confint!(
     ax::Axis, outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
 )::Nothing
     confints = _confints(outcomes, scen_groups)
-    color_keys::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
+    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
     ordered_groups = _sort_keys(scen_groups, outcomes; by=:variance)
     return scenarios_confint!(
-        ax, confints, ordered_groups, color_keys; x_vals=collect(1:size(confints, 1))
+        ax,
+        confints,
+        ordered_groups,
+        _colors;
+        x_vals=collect(1:size(confints, 1)),
     )
 end
 
