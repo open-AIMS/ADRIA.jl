@@ -130,7 +130,7 @@ function ADRIA.viz.scenarios!(
     series_opts::Dict=Dict(),
 )::Union{GridLayout,GridPosition}
     if get(opts, :summarize, true)
-        scenarios_confint!(ax::Axis, outcomes, scen_groups)
+        scenarios_confint!(ax, outcomes, scen_groups)
     else
         scenarios_series!(ax, outcomes, scen_groups; series_opts=series_opts)
     end
