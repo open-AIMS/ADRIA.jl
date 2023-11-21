@@ -55,10 +55,15 @@ function site_connectivity(
         con_files = vcat([x for x in values(year_conn_fns)]...)
 
         # Pre-allocate store
-        tmp_store::Vector{Matrix{Float64}} = Vector{Matrix{Float64}}(undef, length(years))
+        tmp_store::Vector{Matrix{Float64}} = Matrix{Float64}[]
 
         # Get average connectivity for each represented year
-        @floop for (i, yr) in enumerate(Symbol.(years))
+        for yr in Symbol.(years)
+            if length(year_conn_fns[yr]) == 0
+                # Skip empty directories
+                continue
+            end
+
             conn_data::Vector{Matrix{Float64}} = Matrix{Float64}[
                 Matrix(
                     CSV.read(
@@ -73,7 +78,7 @@ function site_connectivity(
                 ) for fn in year_conn_fns[yr]
             ]
 
-            tmp_store[i] = agg_func(conn_data)
+            push!(tmp_store, agg_func(conn_data))
         end
 
         # Mean across all years
