@@ -151,7 +151,7 @@ end
 function _confints(
     outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
 )::Array{Float64}
-    groups::Vector{Symbol} = collect(keys(scen_groups))
+    groups::Vector{Symbol} = _sort_keys(scen_groups, outcomes)
     n_timesteps::Int64 = size(outcomes, 1)
     n_scens::Int64 = length(groups)
 
