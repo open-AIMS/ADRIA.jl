@@ -94,6 +94,16 @@ end
 
         # Ensure at least one intervention is active
         @test all(any.(>(0), eachcol(scens[:, interv_params]))) || "All intervention factors had values <= 0"
+
+        crit = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.CriteriaWeights)
+        seed_weights = ADRIA.criteria_params(crit, (:seed, :weight)).fieldname
+        fog_weights = ADRIA.criteria_params(crit, (:fog, :weight)).fieldname
+
+        @test all(abs.(sum(Matrix(scens[:, seed_weights]); dims=2) .- 1.0) .< 10e-6) ||
+            "Some seeding weights are not properly normalized."
+        @test all(abs.(sum(Matrix(scens[:, fog_weights]); dims=2) .- 1.0) .< 10e-6) ||
+            "Some fogging weights are not properly normalized."
+
     end
 
     @testset "Unguided sampling" begin
@@ -148,12 +158,13 @@ end
 
         # test continuous factor is sampled within specified range
         bnds = rand(2)
-        ADRIA.set_factor_bounds!(dom, :heat_stress, (minimum(bnds), maximum(bnds)))
+        ADRIA.set_factor_bounds!(
+            dom, :deployed_coral_risk_tol, (minimum(bnds), maximum(bnds))
+        )
         scens = ADRIA.sample_guided(dom, num_samples)
-
-        @test (maximum(scens[:, "heat_stress"]) <= maximum(bnds)) ||
+        @test (maximum(scens[:, "deployed_coral_risk_tol"]) <= maximum(bnds)) ||
             "Sampled continuous factor is outside of specified new bounds."
-        @test (minimum(scens[:, "heat_stress"]) >= minimum(bnds)) ||
+        @test (minimum(scens[:, "deployed_coral_risk_tol"]) >= minimum(bnds)) ||
             "Sampled continuous factor is outside of specified new bounds."
 
         # test discrete factor is sampled within specified range and is discrete

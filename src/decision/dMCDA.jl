@@ -28,16 +28,18 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     min_dist # ::Float64
     wt_in_conn_seed  # ::F
     wt_out_conn_seed  # ::F
-    wt_conn_shade  # ::F
-    wt_waves # ::F
-    wt_heat  # ::F
+    wt_conn_fog  # ::F
+    wt_waves_seed # ::F
+    wt_waves_fog # ::F
+    wt_heat_seed  # ::F
+    wt_heat_fog  # ::F
     wt_depth_seed # ::F
     wt_hi_cover  # ::F
     wt_lo_cover  # ::F
     wt_predec_seed  # ::F
-    wt_predec_shade  # ::F
+    wt_predec_fog  # ::F
     wt_zones_seed # ::F
-    wt_zones_shade # ::F
+    wt_zones_fog # ::F
 end
 
 include("mcda_methods.jl")
@@ -129,18 +131,20 @@ function DMCDA_vars(
         domain.site_distances,
         criteria("use_dist"),
         domain.median_site_distance - domain.median_site_distance * criteria("dist_thresh"),
-        criteria("in_seed_connectivity"),
-        criteria("out_seed_connectivity"),
-        criteria("shade_connectivity"),
-        criteria("wave_stress"),
-        criteria("heat_stress"),
-        criteria("depth_seed"),
+        criteria("seed_in_connectivity"),
+        criteria("seed_out_connectivity"),
+        criteria("fog_connectivity"),
+        criteria("seed_wave_stress"),
+        criteria("fog_wave_stress"),
+        criteria("seed_heat_stress"),
+        criteria("fog_heat_stress"),
+        criteria("seed_depth"),
         criteria("coral_cover_high"),
         criteria("coral_cover_low"),
         criteria("seed_priority"),
-        criteria("shade_priority"),
-        criteria("zone_seed"),
-        criteria("zone_shade")
+        criteria("fog_priority"),
+        criteria("seed_zone"),
+        criteria("fog_zone"),
     )
 
     return mcda_vars
@@ -207,6 +211,14 @@ function mcda_normalize(x::Matrix)::Matrix
     return x ./ sqrt.(sum(x .^ 2, dims=1))
 end
 
+"""
+    mcda_normalize(x::DataFrame)::DataFrame
+
+Normalize weights for a set of scenarios (wse/wsh) for MCDA.
+"""
+function mcda_normalize(x::DataFrame)::DataFrame
+    return x ./ sum(Matrix(x); dims=2)
+end
 
 """
     align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
@@ -231,7 +243,7 @@ end
 - `rankings` : vector of site ranks to update
 - `n_site_int` : number of sites to select for interventions
 - `mcda_func` : function or JMcDM DataType, designates mcda method to use
-- `rank_col` : column to fill with rankings (2 for seed, 3 for shade)
+- `rank_col` : column to fill with rankings (2 for seed, 3 for fog)
 
 # Returns
 Sites in order of their rankings
@@ -441,8 +453,8 @@ function create_seed_matrix(
     min_area::T,
     wt_in_conn_seed::T,
     wt_out_conn_seed::T,
-    wt_waves::T,
-    wt_heat::T,
+    wt_waves_seed::T,
+    wt_heat_seed::T,
     wt_predec_seed::T,
     wt_predec_zones_seed::T,
     wt_low_cover::T,
@@ -454,8 +466,8 @@ function create_seed_matrix(
     wse = [
         wt_in_conn_seed,
         wt_out_conn_seed,
-        wt_waves,
-        wt_heat,
+        wt_waves_seed,
+        wt_heat_seed,
         wt_predec_seed,
         wt_predec_zones_seed,
         wt_low_cover,
@@ -480,19 +492,19 @@ end
 
 
 """
-    create_shade_matrix(A, wt_conn_shade , wt_waves, wt_heat, wt_predec_shade, wt_hi_cover)
+    create_fog_matrix(A, wt_conn_fog , wt_waves_fog, wt_heat_fog, wt_predec_fog, wt_hi_cover)
 
 Create shading specific decision matrix and apply weightings.
 
 # Arguments
 - `A` : Criteria  matrix
 - `k_area`: Carrying capacity (m²) for coral.
-- `wt_conn_shade` : Shading connectivity weight
-- `wt_waves` : Wave stress weight
-- `wt_heat` : Heat stress weight
-- `wt_predec_zones_shade` : Priority zones weight for shading
-- `wt_predec_shade` : Priority predecessor weight for shading
-- `wt_hi_cover` : Weighting for high coral cover when shading
+- `wt_conn_fog` : Shading connectivity weight
+- `wt_waves_fog` : Wave stress weight
+- `wt_heat_fog` : Heat stress weight
+- `wt_predec_zones_fog` : Priority zones weight for fogging
+- `wt_predec_fog` : Priority predecessor weight for fogging
+- `wt_hi_cover` : Weighting for high coral cover when fogging
 
 # Returns
 Tuple (SH, wsh)
@@ -505,31 +517,32 @@ Tuple (SH, wsh)
     6. Priority predecessors relating to coral real estate relative to max capacity
     7. Available space
 - `wsh` : 5-element vector of criteria weights
-    1. shade connectivity
+    1. fog connectivity
     2. wave
     3. heat
-    4. shade predecessors (weights importance of sites highly connected to priority sites for shading)
-    4. shade zones (weights importance of sites highly connected to or within priority zones)
-    5. high cover (weights importance of sites with high cover of coral to shade)
+    4. fog predecessors (weights importance of sites highly connected to priority sites for fogging)
+    4. fog zones (weights importance of sites highly connected to or within priority zones)
+    5. high cover (weights importance of sites with high cover of coral to fog)
 """
-function create_shade_matrix(A::Matrix{Float64},
+function create_fog_matrix(
+    A::Matrix{Float64},
     k_area::Vector{T},
-    wt_conn_shade::T,
-    wt_waves::T,
-    wt_heat::T,
-    wt_predec_shade::T,
-    wt_predec_zones_shade::T,
+    wt_conn_fog::T,
+    wt_waves_fog::T,
+    wt_heat_fog::T,
+    wt_predec_fog::T,
+    wt_predec_zones_fog::T,
     wt_hi_cover,
 )::Tuple{Matrix{Float64},Vector{Float64}} where {T<:Float64}
 
     # Define weights vector
     wsh = [
-        wt_conn_shade,
-        wt_conn_shade,
-        wt_waves,
-        wt_heat,
-        wt_predec_shade,
-        wt_predec_zones_shade,
+        wt_conn_fog,
+        wt_conn_fog,
+        wt_waves_fog,
+        wt_heat_fog,
+        wt_predec_fog,
+        wt_predec_zones_fog,
         wt_hi_cover,
     ]
 
@@ -550,14 +563,14 @@ end
 
 
 """
-    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_shade::Bool, pref_seed_locs::AbstractArray{Int64}, pref_shade_locs::AbstractArray{Int64}, rankings_in::Matrix{Int64})
+    guided_site_selection(d_vars::DMCDA_vars, alg_ind::Int64, log_seed::Bool, log_fog::Bool, pref_seed_locs::AbstractArray{Int64}, pref_fog_locs::AbstractArray{Int64}, rankings_in::Matrix{Int64})
 
 # Arguments
 - `d_vars` : DMCDA_vars type struct containing weightings and criteria values for site selection.
 - `alg_ind` : integer indicating MCDA aggregation method to use (0: none, 1: order ranking, 2:topsis, 3: vikor)
 - `log_seed` : boolean indicating whether seeding sites are being re-assesed at current time
-- `log_shade` : boolean indicating whether shading/fogging sites are being re-assesed at current time
-- `pref_shade_locs` : previous time step's selection of sites for shading
+- `log_fog` : boolean indicating whether shading/fogging sites are being re-assesed at current time
+- `pref_fog_locs` : previous time step's selection of sites for shading
 - `pref_seed_locs` : previous time step's selection of sites for seeding
 - `rankings_in` : pre-allocated store for site rankings
 - `in_conn` : in-degree centrality
@@ -567,7 +580,7 @@ end
 # Returns
 Tuple :
     - `pref_seed_locs` : Vector, Indices of preferred seeding locations
-    - `pref_shade_locs` : Vector, Indices of preferred shading locations
+    - `pref_fog_locs` : Vector, Indices of preferred shading locations
     - `rankings` : Matrix[n_sites ⋅ 3] where columns are site_id, seeding_rank, shading_rank
         Values of 0 indicate sites that were not considered
 """
@@ -575,9 +588,9 @@ function guided_site_selection(
     d_vars::DMCDA_vars,
     alg_ind::T,
     log_seed::B,
-    log_shade::B,
+    log_fog::B,
     pref_seed_locs::IA,
-    pref_shade_locs::IB,
+    pref_fog_locs::IB,
     rankings_in::Matrix{T},
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
@@ -595,7 +608,7 @@ function guided_site_selection(
     if n_sites == 0
         return (
             zeros(Int64, length(pref_seed_sites)),
-            zeros(Int64, length(pref_shade_sites)),
+            zeros(Int64, length(pref_fog_sites)),
             rankings_in,
         )
     end
@@ -643,15 +656,18 @@ function guided_site_selection(
         in_conn,
         out_conn,
         d_vars.leftover_space[site_ids],
-        d_vars.dam_prob[site_ids], d_vars.heat_stress_prob[site_ids],
-        d_vars.site_depth[site_ids], predec,
-        zones_criteria, d_vars.risk_tol
+        d_vars.dam_prob[site_ids],
+        d_vars.heat_stress_prob[site_ids],
+        d_vars.site_depth[site_ids],
+        predec,
+        zones_criteria,
+        d_vars.risk_tol,
     )
     if isempty(A)
         # if all rows have nans and A is empty, abort mission
         return (
             zeros(Int64, length(pref_seed_locs)),
-            zeros(Int64, length(pref_shade_locs)),
+            zeros(Int64, length(pref_fog_locs)),
             rankings_in
         )
     end
@@ -666,8 +682,8 @@ function guided_site_selection(
             d_vars.min_area,
             d_vars.wt_in_conn_seed,
             d_vars.wt_out_conn_seed,
-            d_vars.wt_waves,
-            d_vars.wt_heat,
+            d_vars.wt_waves_seed,
+            d_vars.wt_heat_seed,
             d_vars.wt_predec_seed,
             d_vars.wt_zones_seed,
             d_vars.wt_lo_cover,
@@ -675,16 +691,16 @@ function guided_site_selection(
         )
     end
 
-    # if shading, create shading specific decision matrix
-    if log_shade
-        SH, wsh = create_shade_matrix(
+    # if shading, create fogging specific decision matrix
+    if log_fog
+        SH, wsh = create_fog_matrix(
             A,
             d_vars.k_area[site_ids][filtered_sites],
-            d_vars.wt_conn_shade,
-            d_vars.wt_waves,
-            d_vars.wt_heat,
-            d_vars.wt_predec_shade,
-            d_vars.wt_zones_shade,
+            d_vars.wt_conn_fog,
+            d_vars.wt_waves_fog,
+            d_vars.wt_heat_fog,
+            d_vars.wt_predec_fog,
+            d_vars.wt_zones_fog,
             d_vars.wt_hi_cover,
         )
     end
@@ -705,14 +721,14 @@ function guided_site_selection(
         end
     end
 
-    if log_shade && isempty(SH)
-        pref_shade_locs = zeros(Int64, n_iv_locs)
-    elseif log_shade
-        pref_shade_locs, s_order_shade = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
+    if log_fog && isempty(SH)
+        pref_fog_locs = zeros(Int64, n_iv_locs)
+    elseif log_fog
+        pref_fog_locs, s_order_fog = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
         if use_dist != 0
-            pref_shade_locs, rankings = distance_sorting(
-                pref_shade_locs,
-                s_order_shade,
+            pref_fog_locs, rankings = distance_sorting(
+                pref_fog_locs,
+                s_order_fog,
                 d_vars.dist,
                 min_dist,
                 rankings,
@@ -726,11 +742,11 @@ function guided_site_selection(
         rankings[:, 2] .= rankings_in[:, 2]
     end
 
-    if sum(pref_shade_locs) == 0
+    if sum(pref_fog_locs) == 0
         rankings[:, 3] .= rankings_in[:, 3]
     end
 
-    return pref_seed_locs, pref_shade_locs, rankings
+    return pref_seed_locs, pref_fog_locs, rankings
 end
 
 """
@@ -814,13 +830,13 @@ function distance_sorting(
 end
 
 """
-    unguided_site_selection(pref_seed_sites, pref_shade_sites, seed_years, shade_years, n_site_int, available_space, depth)
+    unguided_site_selection(pref_seed_sites, pref_fog_sites, seed_years, shade_years, n_site_int, available_space, depth)
 
-Randomly select seed/shade site locations for the given year, constraining to sites with max. carrying capacity > 0.
+Randomly select seed/fog site locations for the given year, constraining to sites with max. carrying capacity > 0.
 
 # Arguments
 - `pref_seed_locs` : Previously selected seeding locations
-- `pref_shade_locs` : Previously selected shading locations
+- `pref_fog_locs` : Previously selected fogging locations
 - `seed_years` : bool, indicating whether to seed this year or not
 - `shade_years` : bool, indicating whether to shade this year or not
 - `n_site_int` : int, number of sites to intervene on
@@ -832,14 +848,14 @@ Tuple, of vectors indicating preferred seeding and shading locations by location
 """
 function unguided_site_selection(
     pref_seed_locs,
-    pref_shade_locs,
+    pref_fog_locs,
     seed_years,
     shade_years,
     n_site_int,
     available_space,
     depth
 )::Tuple{Vector, Vector}
-    # Unguided deployment, seed/shade corals anywhere so long as available_space > 0.0
+    # Unguided deployment, seed/fog corals anywhere so long as available_space > 0.0
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 
     # Select sites (without replacement to avoid duplicate sites)
@@ -853,11 +869,13 @@ function unguided_site_selection(
     end
 
     if shade_years
-        pref_shade_locs = zeros(Int64, n_site_int)
-        pref_shade_locs[1:s_n_site_int] .= StatsBase.sample(candidate_sites, s_n_site_int; replace=false)
+        pref_fog_locs = zeros(Int64, n_site_int)
+        pref_fog_locs[1:s_n_site_int] .= StatsBase.sample(
+            candidate_sites, s_n_site_int; replace=false
+        )
     end
 
-    return pref_seed_locs[pref_seed_locs.>0], pref_shade_locs[pref_shade_locs.>0]
+    return pref_seed_locs[pref_seed_locs .> 0], pref_fog_locs[pref_fog_locs .> 0]
 end
 
 

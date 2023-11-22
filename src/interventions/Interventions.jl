@@ -9,6 +9,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(-1.0, length(decision.mcda_methods()) + 1.0),
         default_bounds=(-1.0, length(decision.mcda_methods()) + 1.0),
         dists="unif",
+        criteria_keywords=(""),
         name="Guided",
         description="Choice of MCDA approach.",
     )
@@ -18,6 +19,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(0.0, 1000000.0 + 1.0),
         default_bounds=(0.0, 1000000.0 + 1.0),
         dists="unif",
+        criteria_keywords=(""),
         name="Seeded Tabular Acropora",
         description="Number of Tabular Acropora to seed per deployment year.",
     )
@@ -27,6 +29,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(0.0, 1000000.0 + 1.0),
         default_bounds=(0.0, 1000000.0 + 1.0),
         dists="unif",
+        criteria_keywords=(""),
         name="Seeded Corymbose Acropora",
         description="Number of Corymbose Acropora to seed per deployment year.",
     )
@@ -36,6 +39,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(0.0, 1000000.0 + 1.0),
         default_bounds=(0.0, 1000000.0 + 1.0),
         dists="unif",
+        criteria_keywords=(""),
         name="Seeded Small Massives",
         description="Number of small massives/encrusting to seed per deployment year.",
     )
@@ -45,6 +49,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(0.0, 0.3, 0.16 / 0.3),
         default_bounds=(0.0, 0.3, 0.16 / 0.3),
         dists="triang",
+        criteria_keywords=(""),
         name="Fogging",
         description="Assumed reduction in bleaching mortality.",
     )
@@ -54,6 +59,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(0.0, 7.0, 0.0),
         default_bounds=(0.0, 7.0, 0.0),
         dists="triang",
+        criteria_keywords=(""),
         name="SRM",
         description="Reduction in DHWs due to shading.",
     )
@@ -63,6 +69,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(0.0, 8.0, 0.0),
         default_bounds=(0.0, 8.0, 0.0),
         dists="triang",
+        criteria_keywords=(""),
         name="Assisted Adaptation",
         description="Assisted adaptation in terms of DHW resistance.",
     )
@@ -72,6 +79,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(5.0, 74.0 + 1.0, 5 / 70),
         default_bounds=(5.0, 74.0 + 1.0, 5 / 70),
         dists="triang",
+        criteria_keywords=(""),
         name="Years to Seed",
         description="Number of years to seed for.",
     )
@@ -81,6 +89,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(5.0, 74.0 + 1.0, 5 / 70),
         default_bounds=(5.0, 74.0 + 1.0, 5 / 70),
         dists="triang",
+        criteria_keywords=(""),
         name="Years to Shade",
         description="Number of years to shade for.",
     )
@@ -90,6 +99,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(0.0, 40.0 + 1.0),
         default_bounds=(0.0, 40.0 + 1.0),
         dists="unif",
+        criteria_keywords=(""),
         name="Planning Horizon",
         description="How many years of projected data to take into account when selecting intervention locations (0 only accounts for current year).",
     )
@@ -99,6 +109,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(0.0, 15.0 + 1.0),
         default_bounds=(0.0, 15.0 + 1.0),
         dists="unif",
+        criteria_keywords=(""),
         name="Seeding Frequency",
         description="Frequency of seeding site selection (0 is set and forget).",
     )
@@ -108,6 +119,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(0.0, 15.0 + 1.0),
         default_bounds=(0.0, 15.0 + 1.0),
         dists="unif",
+        criteria_keywords=(""),
         name="Shading Frequency",
         description="Frequency of shading site selection (0 is set and forget).",
     )
@@ -117,6 +129,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(2.0, 25.0 + 1.0),
         default_bounds=(2.0, 25.0 + 1.0),
         dists="unif",
+        criteria_keywords=(""),
         name="Seeding Start Year",
         description="Start seeding deployments after this number of years has elapsed.",
     )
@@ -126,6 +139,7 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         bounds=(2.0, 25.0 + 1.0),
         default_bounds=(2.0, 25.0 + 1.0),
         dists="unif",
+        criteria_keywords=(""),
         name="Shading Start Year",
         description="Start of shading deployments after this number of years has elapsed.",
     )

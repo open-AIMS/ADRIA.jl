@@ -26,8 +26,8 @@ function _location_selection(
     # site_id, seeding rank, shading rank
     rankingsin = [mcda_vars.site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
-    prefseedsites::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
-    prefshadesites::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
+    pref_seed_sites::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
+    pref_fog_sites::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
 
     # Determine connectivity strength
     # Account for cases where no coral cover
@@ -38,15 +38,15 @@ function _location_selection(
     )
 
     # Perform location selection for seeding and shading.
-    seed_true, shade_true = true, true
+    seed_true, fog_true = true, true
 
     (_, _, ranks) = guided_site_selection(
         mcda_vars,
         guided,
         seed_true,
-        shade_true,
-        prefseedsites,
-        prefshadesites,
+        fog_true,
+        pref_seed_sites,
+        pref_fog_sites,
         rankingsin,
         in_conn[site_ids],
         out_conn[site_ids],
@@ -57,9 +57,9 @@ function _location_selection(
 end
 
 """
-    rank_locations(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64; target_seed_sites=nothing, target_shade_sites=nothing)::NamedDimsArray
+    rank_locations(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64; target_seed_sites=nothing, target_fog_sites=nothing)::NamedDimsArray
     rank_locations(domain::Domain,scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64, agg_func::Function,
-        iv_type::Union{String,Int64}; target_seed_sites=nothing, target_shade_sites=nothing)::AbstractArray
+        iv_type::Union{String,Int64}; target_seed_sites=nothing, target_fog_sites=nothing)::AbstractArray
 
 Return location ranks for a given domain and scenarios.
 
@@ -73,7 +73,7 @@ Return location ranks for a given domain and scenarios.
     `ranks_to_location_order`
 - `iv_type` : ID of intervention (1 = seeding, 2 = fogging)
 - `target_seed_sites` : list of candidate locations for seeding (indices)
-- `target_shade_sites` : list of candidate location to shade (indices)
+- `target_fog_sites` : list of candidate location to fog (indices)
 
 # Returns
 Array[n_locations ⋅ 2 ⋅ n_scenarios], where columns hold seeding and shading ranks.
@@ -84,14 +84,14 @@ function rank_locations(
     sum_cover::NamedDimsArray,
     area_to_seed::Float64;
     target_seed_sites=nothing,
-    target_shade_sites=nothing
+    target_fog_sites=nothing,
 )::NamedDimsArray
     n_locs = n_locations(domain)
 
     ranks_store = NamedDimsArray(
         zeros(n_locs, 2, nrow(scenarios)),
         sites=1:n_locs,
-        intervention=["seed", "shade"],
+        intervention=["seed", "fog"],
         scenarios=1:nrow(scenarios),
     )
 
@@ -107,11 +107,11 @@ function rank_locations(
         append!(target_site_ids, target_seed_sites)
     end
 
-    if !isnothing(target_shade_sites)
-        append!(target_site_ids, target_shade_sites)
+    if !isnothing(target_fog_sites)
+        append!(target_site_ids, target_fog_sites)
     end
 
-    if isnothing(target_seed_sites) && isnothing(target_shade_sites)
+    if isnothing(target_seed_sites) && isnothing(target_fog_sites)
         target_site_ids = collect(1:length(domain.site_ids))
     end
 
@@ -150,7 +150,7 @@ function rank_locations(
     agg_func::Function,
     iv_type::Union{Int64, Symbol, String};
     target_seed_sites=nothing,
-    target_shade_sites=nothing
+    target_fog_sites=nothing,
 )::AbstractArray
     ranks = rank_locations(
         domain,
@@ -158,7 +158,7 @@ function rank_locations(
         sum_cover,
         area_to_seed;
         target_seed_sites=target_seed_sites,
-        target_shade_sites=target_shade_sites,
+        target_fog_sites=target_fog_sites,
     )
     local iv_id
     try
