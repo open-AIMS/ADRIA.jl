@@ -58,3 +58,23 @@ end
 
     @test all(axiskeys(coral_covers, 2) .== site_data.reef_siteid) || "Coral cover data not aligned with order specified in geospatial data"
 end
+
+@testset "Cyclone mortality data" begin
+    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Example_domain.gpkg"))
+    sort!(site_data, :reef_siteid)
+
+    cyclone_mortality_fn = joinpath(EXAMPLE_DOMAIN_PATH, "cyclones", "cyclone_mortality.nc")
+    cyclone_mortality = ADRIA.load_cyclone_mortality(cyclone_mortality_fn)
+
+    expected_species_order = [
+        "abhorescent_acropora",
+        "tabular_acropora",
+        "corymbose_acropora",
+        "corymbose_non_acropora",
+        "small_massives",
+        "large_massives"
+    ]
+
+    @test all(axiskeys(cyclone_mortality, 2) .== site_data.reef_siteid) || "Cyclone mortality locations do not align with location order specified in geospatial data"
+    @test all(axiskeys(cyclone_mortality, 3) .== expected_species_order) || "Cyclone mortality data does not list species in expected order"
+end
