@@ -52,7 +52,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
         df[guided_fogged, weights_fog_crit.fieldname],
     )
     # Normalize MCDA weights for seeding scenarios
-    guided_seeded = .!(not_seeded) .& is_guided
+    guided_seeded = .!(not_seeded) .& (df.guided .> 0)
     df[guided_seeded, weights_seed_crit.fieldname] .= mcda_normalize(
         df[guided_seeded, weights_seed_crit.fieldname],
     )
