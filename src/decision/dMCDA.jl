@@ -45,18 +45,6 @@ end
 include("mcda_methods.jl")
 include("location_selection.jl")
 
-jmcdm_ignore = [
-    JMcDM.LOPCOW.LOPCOWMethod,
-    JMcDM.CRITIC.CriticMethod,
-    JMcDM.COPRAS.CoprasMethod,
-    JMcDM.MOOSRA.MoosraMethod,
-    JMcDM.MEREC.MERECMethod,
-    JMcDM.ELECTRE.ElectreMethod,
-    JMcDM.PROMETHEE.PrometheeMethod,
-    JMcDM.Topsis.TopsisMethod,
-    JMcDM.VIKOR.VikorMethod,
-]
-
 function supported_jmcdm_methods()
     return [
         JMcDM.ARAS.ArasMethod,
