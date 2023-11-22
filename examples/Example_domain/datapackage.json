@@ -1,66 +1,107 @@
 {
-  "name": "Example_domain",
-  "title": "Example reef cluster data package",
-  "description": "Example data package for ADRIA",
-  "version": "0.3.1",
-  "sources": [],
-  "simulation_metadata": {
-    "timeframe": [2025, 2099]
-  },
-  "contributors": [
-    {
-      "title": "Joe Smith",
-      "email": "joe.smith@example.com",
-      "role": "author",
-      "description": "Assembled example data"
-    }
-  ],
-  "resources": [
-    {
-      "name": "spatial_data",
-      "description": "spatial data for Example cluster",
-      "path": "site_data/Example_domain.gpkg",
-      "format": "geopackage"
+    "name": "Moore",
+    "title": "Moore cluster data package 2023-10-30 release candidate",
+    "description": "Data package for the Moore cluster",
+    "version": "0.3.2-rc",
+    "sources": [],
+    "simulation_metadata": {
+        "timeframe": [
+            2025,
+            2099
+        ]
     },
-    {
-      "name": "coral_cover",
-      "description": "Initial coral cover",
-      "data": [
-        "reef_siteid",
-        "covers"
-      ],
-      "path": "site_data/coral_cover.nc",
-      "format": "netCDF"
-    },
-    {
-      "name": "DHWs",
-      "description": "Stochastic degree heating week data for the Moore Cluster. Data for RCP 4.5",
-      "data": [
-        "reef_siteid",
-        "dhw"
-      ],
-      "path": "DHWs/dhwRCP45.nc",
-      "format": "netCDF"
-    },
-    {
-      "name": "waves",
-      "description": "Stochastic wave data for the Example cluster",
-      "data": [
-        "reef_siteid",
-        "Ub"
-      ],
-      "path": "waves/wave_RCP45.mat",
-      "format": "netCDF"
-    },
-    {
-      "name": "connectivity",
-      "description": "Example connectivity data for specific days across years, grouped by year",
-      "data": [
-        "row_source",
-        "col_receiving"
-      ],
-      "path": "connectivity",
-      "format": "CSV"
-    }
-  ]
+    "contributors": [
+        {
+            "title": "Barbara Robson",
+            "email": "b.robson@aims.gov.au",
+            "role": "author",
+            "description": "Contributed connectivity and wave data"
+        },
+        {
+            "title": "Anna Cresswell",
+            "email": "a.cresswell@aims.gov.au",
+            "role": "author",
+            "description": "Updated spatial data (reduced number of sites, updated k and site areas)."
+        },
+        {
+            "title": "Chinenye Ani",
+            "email": "c.ani@aims.gov.au",
+            "role": "author",
+            "description": "Updated DHW data."
+        },
+        {
+            "title": "Takuya Iwanaga",
+            "email": "t.iwanaga@aims.gov.au",
+            "role": "author",
+            "description": "Packaged data and generated downscaled initial coral covers using data from the ReefModEngine."
+        },
+        {
+            "title": "Pedro Ribeiro de Almeida",
+            "email": "p.ribeirodealmeida@aims.gov.au",
+            "role": "author",
+            "description": "Added coral mortality projections due to cyclone."
+        }
+    ],
+    "resources": [
+        {
+            "name": "connectivity",
+            "description": "Connectivity data for specific days across years, grouped by year",
+            "data": [
+                "row_source",
+                "col_receiving"
+            ],
+            "path": "connectivity",
+            "format": "csv"
+        },
+        {
+            "name": "cyclone_mortality",
+            "description": "Coral mortality projections due to cyclone.",
+            "path": "cyclones/cyclone_mortality.nc",
+            "format": "netCDF"
+        },
+        {
+            "name": "spatial_data",
+            "description": "spatial data of cluster. Unique sites indicated by reef_siteid. Zone types under zone_type.",
+            "path": "site_data/Moore_2023-09-14.gpkg",
+            "data": [
+                "reef_siteid",
+                "site_id"
+            ],
+            "format": "geopackage"
+        },
+        {
+            "name": "coral_cover",
+            "description": [
+                "Initial coral cover is downscaled from ReefModEngine data (v1.0.18 / rme_ml_2023_03_30b).\n",
+                "RME data loaded by ADRIA distributes cover over size classes weighted by the PDF densities of ReefMod's size distribution (log-normal with mean log(700cm^2) and std log(4cm^2)).\n",
+                "The result is distributed over sites according to the indicated available k area for each site."
+            ],
+            "data": [
+                "reef_siteid",
+                "covers"
+            ],
+            "path": "site_data/coral_cover.nc",
+            "format": "netCDF"
+        },
+        {
+            "name": "DHWs",
+            "description": "Stochastic degree heating week data for the Moore Cluster. Includes data for RCPs 2.6, 4.5, 6.0, 8.5",
+            "data": [
+                "reef_siteid",
+                "dhw"
+            ],
+            "path": "DHWs",
+            "format": "netCDF"
+        },
+        {
+            "name": "waves",
+            "description": "Stochastic wave data for the Moore cluster. Empty datasets for RCPs 2.6, 4.5, 6.0, 8.5",
+            "data": [
+                "reef_siteid",
+                "wave"
+            ],
+            "path": "waves",
+            "format": "netCDF"
+        }
+    ]
 }
