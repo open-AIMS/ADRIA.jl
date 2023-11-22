@@ -2,7 +2,7 @@
   "name": "Example_domain",
   "title": "Example reef cluster data package",
   "description": "Example data package for ADRIA",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "sources": [],
   "simulation_metadata": {
     "timeframe": [2025, 2099]
@@ -30,6 +30,12 @@
         "covers"
       ],
       "path": "site_data/coral_cover.nc",
+      "format": "netCDF"
+    },
+    {
+      "name": "cyclone_mortality",
+      "description": "Coral mortality example projections due to cyclone.",
+      "path": "cyclones/cyclone_mortality.nc",
       "format": "netCDF"
     },
     {
