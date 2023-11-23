@@ -345,8 +345,8 @@ function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
 end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}; S=10)::NamedDimsArray
-    rsa(rs::ResultSet, y::AbstractArray{<:Real}; S::Int64=10)::NamedDimsArray
+    rsa(X::DataFrame, y::Vector{<:Real}, model_spec::DataFrame; S=10)::NamedDimsArray
+    rsa(rs::ResultSet, y::AbstractArray{<:Real}, model_spec::DataFrame; S::Int64=10)::NamedDimsArray
 
 Perform Regional Sensitivity Analysis.
 
@@ -406,16 +406,41 @@ function rsa(
     X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64=10
 )::NamedDimsArray
     N, D = size(X)
-    seq = collect(0.0:(1/S):1.0)
 
     X_di = @MVector zeros(N)
+    sel = trues(N)
+    factors = Symbol.(names(X))
+
+    factors_to_assess = model_spec.fieldname .∈ [factors]
+    foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
+    foi_spec = model_spec[factors_to_assess, foi_attributes]
+
+    foi_cat = (foi_spec.ptype .== "categorical")
+    if any(foi_cat)
+        max_bounds = maximum(
+            foi_spec[foi_cat, :upper_bound] .- foi_spec[foi_cat, :lower_bound]
+        )
+        S = round(Int64, max(S, max_bounds))
+    end
+
     X_q = @MVector zeros(S + 1)
     r_s = zeros(Union{Missing,Float64}, S, D)
-    sel = trues(N)
+    seq = collect(0.0:(1 / S):1.0)
 
     for d_i in 1:D
         X_di .= X[:, d_i]
-        X_q .= quantile(X_di, seq)
+
+        factor = factors[d_i]
+        ptype = foi_spec.ptype[foi_spec.fieldname .== factor][1]
+        if ptype == "categorical"
+            fact_idx = foi_spec.fieldname .== factor
+
+            lb = foi_spec.lower_bound[fact_idx][1]
+            ub = foi_spec.upper_bound[fact_idx][1]
+            X_q .= round.(quantile(lb:ub, seq)) .- 1
+        else
+            X_q .= quantile(X_di, seq)
+        end
 
         sel .= X_q[1] .<= X_di .<= X_q[2]
         if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
