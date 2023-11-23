@@ -631,7 +631,7 @@ function guided_site_selection(
         d_vars.heat_stress_prob[site_ids],
         d_vars.site_depth[site_ids],
         predec,
-        zones_criteria,
+        zones_crit,
         d_vars.risk_tol,
     )
     if isempty(A)
