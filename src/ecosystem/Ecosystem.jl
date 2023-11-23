@@ -96,6 +96,7 @@ function EnvironmentalLayer(
             default_bounds=(1.0, Float64(size(cyclone_mortality, 4)) + 1.0),
             ptype="integer",
             dists="unif",
+            criteria_keywords=(""),
             name="Cyclone Mortality",
             description="Cyclone mortality scenario identifier.",
         ),
