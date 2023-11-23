@@ -2,7 +2,7 @@
   "name": "Example_domain",
   "title": "Example reef cluster data package",
   "description": "Example data package for ADRIA",
-  "version": "0.3.2",
+  "version": "0.4.0-rc",
   "sources": [],
   "simulation_metadata": {
     "timeframe": [2025, 2099]
