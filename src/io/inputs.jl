@@ -237,15 +237,43 @@ ordered by :locations
 function load_cyclone_mortality(data_fn::String)::NamedDimsArray
     # Read file as YAXArray and convert to NamedDimsArray
     # as we intend to move to use only YAXArrays soon
-    cyclone_cube = Cube(data_fn)
-    data = cyclone_cube.data
-    dim_names = name.(cyclone_cube.axes)
-    dim_labels = lookup.([cyclone_cube], dim_names)
+    cyclone_cube::YAXArray = Cube(data_fn)
+    data::Array{Float64,4} = cyclone_cube.data
+    dim_names::NTuple{4,Symbol} = name.(cyclone_cube.axes)
+    dim_labels::Vector = lookup.([cyclone_cube], dim_names)
 
     # Sort by :locations
-    location_sort_idx = sortperm(dim_labels[2])
+    location_sort_idx::Vector{Int64} = sortperm(dim_labels[2])
     data = data[:, location_sort_idx, :, :]
     dim_labels[2] = dim_labels[2][location_sort_idx]
+
+    return NamedDimsArray(data; zip(dim_names, dim_labels)...)
+end
+function load_cyclone_mortality(
+    timeframe::Vector{Int64}, site_data::DataFrame
+)::NamedDimsArray
+    locations::Vector{String} = sort(site_data.reef_siteid)
+    species::Vector{String} = ADRIA.coral_spec().taxa_names
+    scenarios::Vector{Int64} = [1]
+
+    n_timesteps::Int64 = length(timeframe)
+    n_locations::Int64 = length(locations)
+    n_species::Int64 = length(species)
+    n_scenarios::Int64 = length(scenarios)
+
+    axlist::Tuple = (
+        Dim{:timesteps}(1:n_timesteps),
+        Dim{:locations}(locations),
+        Dim{:species}(species),
+        Dim{:scenarios}(scenarios),
+    )
+
+    data::Array{Float64,4} = zeros(n_timesteps, n_locations, n_species, n_scenarios)
+
+    cyclone_cube::YAXArray = YAXArray(axlist, data)
+
+    dim_names::NTuple{4,Symbol} = name.(cyclone_cube.axes)
+    dim_labels::Vector = lookup.([cyclone_cube], dim_names)
 
     return NamedDimsArray(data; zip(dim_names, dim_labels)...)
 end

@@ -230,7 +230,11 @@ function Domain(
         )
     end
 
-    cyclone_mortality::NamedDimsArray = load_cyclone_mortality(cyclone_mortality_fn)
+    cyclone_mortality::NamedDimsArray = if ispath(cyclone_mortality_fn)
+        load_cyclone_mortality(cyclone_mortality_fn)
+    else
+        load_cyclone_mortality(timeframe, site_data)
+    end
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
     msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
