@@ -206,6 +206,12 @@ function ADRIA.viz.rsa!(
     h_names = ms[foi, :name]
     bounds = ms[foi, :bounds]
 
+    if any(f_names .== "guided")
+        fv_labels = [
+            "unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
+        ]
+    end
+
     # Hacky special case handling for SSP/RCP
     if :RCP in factors || :SSP in factors
         loc = first(findall((factors .== :RCP) .|| (factors .== :SSP)))
@@ -223,18 +229,25 @@ function ADRIA.viz.rsa!(
     axs = Axis[]
     for r in 1:n_rows
         for c in 1:n_cols
-            f_vals = rs.inputs[:, Symbol(factors[curr])]
-            fv_s = quantile(f_vals, b_slices)
-            # fv_s = String[(i == 1) || iseven(i) ? @sprintf("%.1f", fv) : "" for (i, fv) in enumerate(quantile(f_vals, b_slices))]
-            # xtick_labels = (1:length(bin_slices), fv_s)
+            f_name = factors[curr]
+            f_vals = rs.inputs[:, f_name]
+            if f_name == "guided"
+                fv_s = collect(1:length(fv_labels))
+            else
+                fv_s = round.(quantile(f_vals, b_slices), digits=2)
+            end
 
             ax::Axis = Axis(
                 g[r, c],
-                title=h_names[f_names.==factors[curr]][1];
+                title=h_names[f_names .== factors[curr]][1],
                 axis_opts...
             )
 
-            scatterlines!(ax, fv_s, si(factors=Symbol(factors[curr])), markersize=15)
+            scatterlines!(ax, fv_s, si(; factors=Symbol(f_name)); markersize=15)
+            if f_name == "guided"
+                ax.xticks = (fv_s, fv_labels)
+                ax.xticklabelrotation = pi / 4
+            end
             push!(axs, ax)
             curr += 1
 
