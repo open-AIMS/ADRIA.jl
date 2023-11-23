@@ -238,16 +238,20 @@ function load_cyclone_mortality(data_fn::String)::NamedDimsArray
     # Read file as YAXArray and convert to NamedDimsArray
     # as we intend to move to use only YAXArrays soon
     cyclone_cube::YAXArray = Cube(data_fn)
-    data::Array{Float64,4} = cyclone_cube.data
-    dim_names::NTuple{4,Symbol} = name.(cyclone_cube.axes)
-    dim_labels::Vector = lookup.([cyclone_cube], dim_names)
 
-    # Sort by :locations
-    location_sort_idx::Vector{Int64} = sortperm(dim_labels[2])
-    data = data[:, location_sort_idx, :, :]
-    dim_labels[2] = dim_labels[2][location_sort_idx]
+    # Get locations sort indexes
+    locations = collect(cyclone_cube.locations)
+    location_sort_idx::Vector{Int64} = sortperm(locations)
 
-    return NamedDimsArray(data; zip(dim_names, dim_labels)...)
+    # Order locations labels
+    ordered_locations::Vector{String} = locations[location_sort_idx]
+    YAXArrays.DD.set(cyclone_cube, :locations => ordered_locations)
+
+    # Order data according to locations
+    ordered_data = cyclone_cube.data[:, location_sort_idx, :, :]
+
+    ordered_cyclone_cube::YAXArray = YAXArray(cyclone_cube.axes, ordered_data)
+    return _yaxarray2nameddimsarray(ordered_cyclone_cube)
 end
 function load_cyclone_mortality(
     timeframe::Vector{Int64}, site_data::DataFrame
@@ -270,10 +274,14 @@ function load_cyclone_mortality(
 
     data::Array{Float64,4} = zeros(n_timesteps, n_locations, n_species, n_scenarios)
 
-    cyclone_cube::YAXArray = YAXArray(axlist, data)
+    return _yaxarray2nameddimsarray(YAXArray(axlist, data))
+end
 
-    dim_names::NTuple{4,Symbol} = name.(cyclone_cube.axes)
-    dim_labels::Vector = lookup.([cyclone_cube], dim_names)
+function _yaxarray2nameddimsarray(yarray::YAXArray)::NamedDimsArray
+    data = yarray.data
+
+    dim_names::NTuple{4,Symbol} = name.(yarray.axes)
+    dim_labels::Vector = lookup.([yarray], dim_names)
 
     return NamedDimsArray(data; zip(dim_names, dim_labels)...)
 end
