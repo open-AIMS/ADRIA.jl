@@ -376,6 +376,7 @@ Note: Values of type `missing` indicate a lack of samples in the region.
 - `rs` : ResultSet
 - `X` : scenario specification
 - `y` : scenario outcomes
+- `model_spec` : Model specification, such as ADRIA.model_spec(domain)
 - `S` : number of bins to slice factor space into (default: 10)
 
 # Returns
@@ -401,7 +402,9 @@ ADRIA.sensitivity.rsa(X, y; S=10)
    https://dx.doi.org/10.1002/9780470725184
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
-function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
+function rsa(
+    X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64=10
+)::NamedDimsArray
     N, D = size(X)
     seq = collect(0.0:(1/S):1.0)
 
@@ -440,8 +443,10 @@ function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArr
         NamedDimsArray(r_s; bins=string.(seq[2:end]), factors=Symbol.(names(X)))
     )
 end
-function rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
-    return rsa(rs.inputs, vec(y); S=S)
+function rsa(
+    rs::ResultSet, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64=10
+)::NamedDimsArray
+    return rsa(rs.inputs, vec(y), model_spec; S=S)
 end
 
 
