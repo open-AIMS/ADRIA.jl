@@ -230,6 +230,7 @@ end
 
 """
     load_cyclone_mortality(data_fn::String)::NamedDimsArray
+    load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::NamedDimsArray
 
 Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
 ordered by :locations
