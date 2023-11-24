@@ -491,9 +491,9 @@ function rsa(
     )
 end
 function rsa(
-    rs::ResultSet, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64=10
+    rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
 )::NamedDimsArray
-    return rsa(rs.inputs, vec(y), model_spec; S=S)
+    return rsa(rs.inputs[:, Not(:RCP)], vec(y), rs.model_spec; S=S)
 end
 
 
