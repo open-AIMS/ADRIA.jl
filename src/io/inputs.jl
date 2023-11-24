@@ -126,7 +126,9 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
 
     NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
         data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
-        dim_names::Vector{Symbol} = Symbol[Symbol(dim.name) for dim in nc_file.vars[attr].dim]
+        dim_names::Vector{Symbol} = Symbol[
+            Symbol(dim.name) for dim in nc_file.vars[attr].dim
+        ]
         dim_labels::Vector{Union{UnitRange{Int64},Vector{String}}} = _nc_dim_labels(
             data_fn, data, nc_file
         )
@@ -224,4 +226,63 @@ function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::Nam
     data = data[sites=Key(site_data[:, :reef_siteid])]
 
     return data
+end
+
+"""
+    load_cyclone_mortality(data_fn::String)::NamedDimsArray
+    load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::NamedDimsArray
+
+Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
+ordered by :locations
+"""
+function load_cyclone_mortality(data_fn::String)::NamedDimsArray
+    # Read file as YAXArray and convert to NamedDimsArray
+    # as we intend to move to use only YAXArrays soon
+    cyclone_cube::YAXArray = Cube(data_fn)
+
+    # Get locations sort indexes
+    locations = collect(cyclone_cube.locations)
+    location_sort_idx::Vector{Int64} = sortperm(locations)
+
+    # Order locations labels
+    ordered_locations::Vector{String} = locations[location_sort_idx]
+    YAXArrays.DD.set(cyclone_cube, :locations => ordered_locations)
+
+    # Order data according to locations
+    ordered_data = cyclone_cube.data[:, location_sort_idx, :, :]
+
+    ordered_cyclone_cube::YAXArray = YAXArray(cyclone_cube.axes, ordered_data)
+    return _yaxarray2nameddimsarray(ordered_cyclone_cube)
+end
+function load_cyclone_mortality(
+    timeframe::Vector{Int64}, site_data::DataFrame
+)::NamedDimsArray
+    locations::Vector{String} = sort(site_data.reef_siteid)
+    species::Vector{String} = ADRIA.coral_spec().taxa_names
+    scenarios::Vector{Int64} = [1]
+
+    n_timesteps::Int64 = length(timeframe)
+    n_locations::Int64 = length(locations)
+    n_species::Int64 = length(species)
+    n_scenarios::Int64 = length(scenarios)
+
+    axlist::Tuple = (
+        Dim{:timesteps}(1:n_timesteps),
+        Dim{:locations}(locations),
+        Dim{:species}(species),
+        Dim{:scenarios}(scenarios),
+    )
+
+    data::Array{Float64,4} = zeros(n_timesteps, n_locations, n_species, n_scenarios)
+
+    return _yaxarray2nameddimsarray(YAXArray(axlist, data))
+end
+
+function _yaxarray2nameddimsarray(yarray::YAXArray)::NamedDimsArray
+    data = yarray.data
+
+    dim_names::NTuple{4,Symbol} = name.(yarray.axes)
+    dim_labels::Vector = lookup.([yarray], dim_names)
+
+    return NamedDimsArray(data; zip(dim_names, dim_labels)...)
 end

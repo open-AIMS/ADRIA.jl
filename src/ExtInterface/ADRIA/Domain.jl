@@ -30,6 +30,7 @@ mutable struct ADRIADomain{
     const removed_sites::Vector{String}  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
     dhw_scens::Y  # DHW scenarios
     wave_scens::Z  # wave scenarios
+    cyclone_mortality_scens::Union{Matrix{<:Real},NamedDimsArray}  # Cyclone mortality scenarios
 
     # Parameters
     model::Model  # core model
@@ -56,8 +57,9 @@ function Domain(
     coral_growth::CoralGrowth,
     site_ids::Vector{String},
     removed_sites::Vector{String},
-    DHWs::NamedDimsArray,
-    waves::NamedDimsArray,
+    DHW::NamedDimsArray,
+    wave::NamedDimsArray,
+    cyclone_mortality::NamedDimsArray,
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     criteria_weights::CriteriaWeights = CriteriaWeights()
 
@@ -76,7 +78,10 @@ function Domain(
     end
 
     model::Model = Model((
-        EnvironmentalLayer(DHWs, waves), Intervention(), criteria_weights, Coral()
+        EnvironmentalLayer(DHW, wave, cyclone_mortality),
+        Intervention(),
+        criteria_weights,
+        Coral(),
     ))
 
     return ADRIADomain(
@@ -97,16 +102,16 @@ function Domain(
         coral_growth,
         site_ids,
         removed_sites,
-        DHWs,
-        waves,
+        DHW,
+        wave,
+        cyclone_mortality,
         model,
         sim_constants,
     )
 end
 
 """
-    Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String,
-           conn_path::String, dhw_fn::String, wave_fn::String)::Domain
+    Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String)::Domain
 
 Convenience constructor for Domain.
 
@@ -122,6 +127,7 @@ Convenience constructor for Domain.
 - `conn_path` : Path to directory holding connectivity data
 - `dhw_fn` : Filename of DHW data cube in use
 - `wave_fn` : Filename of wave data cube
+- `cyclone_mortality_fn` : Filename of cyclone mortality data cube
 """
 function Domain(
     name::String,
@@ -135,6 +141,7 @@ function Domain(
     conn_path::String,
     dhw_fn::String,
     wave_fn::String,
+    cyclone_mortality_fn::String,
 )::ADRIADomain
     env_layer_md::EnvLayer = EnvLayer(
         dpkg_path,
@@ -223,6 +230,12 @@ function Domain(
         )
     end
 
+    cyclone_mortality::NamedDimsArray = if ispath(cyclone_mortality_fn)
+        load_cyclone_mortality(cyclone_mortality_fn)
+    else
+        load_cyclone_mortality(timeframe, site_data)
+    end
+
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
     msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
 
@@ -247,6 +260,7 @@ function Domain(
         site_conn.truncated,
         dhw,
         waves,
+        cyclone_mortality,
     )
 end
 
@@ -298,6 +312,7 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
 
     dhw_fn::String = !isempty(rcp) ? joinpath(path, "DHWs", "dhwRCP$(rcp).nc") : ""
     wave_fn::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
+    cyclone_mortality_fn::String = joinpath(path, "cyclones", "cyclone_mortality.nc")
 
     return Domain(
         domain_name,
@@ -311,6 +326,7 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
         conn_path,
         dhw_fn,
         wave_fn,
+        cyclone_mortality_fn,
     )
 end
 function load_domain(path::String, rcp::String)::ADRIADomain
@@ -356,6 +372,7 @@ function Base.show(io::IO, mime::MIME"text/plain", d::ADRIADomain)::Nothing
         Connectivity file: $(d.env_layer_md.connectivity_fn)
         DHW file: $(d.env_layer_md.DHW_fn)
         Wave file: $(d.env_layer_md.wave_fn)
+        Cyclone mortality file:
         Timeframe: $(d.env_layer_md.timeframe[1]) - $(d.env_layer_md.timeframe[end])
 
         Model Specification:
