@@ -93,6 +93,16 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         name="Years to Shade",
         description="Number of years to shade for.",
     )
+    fog_years::P2 = Param(
+        10;
+        ptype="integer",
+        bounds=(5.0, 74.0 + 1.0, 5 / 70),
+        default_bounds=(5.0, 74.0 + 1.0, 5 / 70),
+        dists="triang",
+        criteria_keywords=(""),
+        name="Years to fog",
+        description="Number of years to fog for.",
+    )
     plan_horizon::N = Param(
         5;
         ptype="integer",
@@ -123,6 +133,16 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         name="Shading Frequency",
         description="Frequency of shading site selection (0 is set and forget).",
     )
+    fog_freq::N = Param(
+        1;
+        ptype="integer",
+        bounds=(0.0, 15.0 + 1.0),
+        default_bounds=(0.0, 15.0 + 1.0),
+        dists="unif",
+        criteria_keywords=(""),
+        name="Fogging Frequency",
+        description="Frequency of fogging site selection (0 is set and forget).",
+    )
     seed_year_start::N = Param(
         2;
         ptype="integer",
@@ -142,5 +162,15 @@ Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
         criteria_keywords=(""),
         name="Shading Start Year",
         description="Start of shading deployments after this number of years has elapsed.",
+    )
+    fog_year_start::N = Param(
+        2;
+        ptype="integer",
+        bounds=(2.0, 25.0 + 1.0),
+        default_bounds=(2.0, 25.0 + 1.0),
+        dists="unif",
+        criteria_keywords=(""),
+        name="Fogginging Start Year",
+        description="Start of fogging deployments after this number of years has elapsed.",
     )
 end
