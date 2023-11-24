@@ -33,6 +33,24 @@ function ks_statistic(ks::ApproximateKSTest)::Float64
 end
 
 
+function _get_factor_spec(model_spec::DataFrame, factors::Vector{String})
+    factors_to_assess = model_spec.fieldname .∈ [factors]
+    foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
+    return model_spec[factors_to_assess, foi_attributes]
+end
+
+function _set_cat_S(S::Int64, foi_spec::DataFrame, foi_cat::BitVector)
+    max_bounds = maximum(foi_spec[foi_cat, :upper_bound] .- foi_spec[foi_cat, :lower_bound])
+    return round(Int64, max(S, max_bounds))
+end
+
+function _get_cat_quantile(foi_spec::DataFrame, fact_t::String, steps::Vector{Float64})
+    fact_idx = foi_spec.fieldname .== fact_t
+    lb = foi_spec.lower_bound[fact_idx][1]
+    ub = foi_spec.upper_bound[fact_idx][1]
+    return round.(quantile(lb:ub, steps)) .- 1
+end
+
 """
     pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
     pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
@@ -409,18 +427,13 @@ function rsa(
 
     X_di = @MVector zeros(N)
     sel = trues(N)
-    factors = Symbol.(names(X))
+    factors = names(X)
 
-    factors_to_assess = model_spec.fieldname .∈ [factors]
-    foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
-    foi_spec = model_spec[factors_to_assess, foi_attributes]
+    foi_spec = _get_factor_spec(model_spec, factors)
 
     foi_cat = (foi_spec.ptype .== "categorical")
     if any(foi_cat)
-        max_bounds = maximum(
-            foi_spec[foi_cat, :upper_bound] .- foi_spec[foi_cat, :lower_bound]
-        )
-        S = round(Int64, max(S, max_bounds))
+        S = _set_cat_S(S, foi_spec, foi_cat)
     end
 
     X_q = @MVector zeros(S + 1)
@@ -430,14 +443,9 @@ function rsa(
     for d_i in 1:D
         X_di .= X[:, d_i]
 
-        factor = factors[d_i]
-        ptype = foi_spec.ptype[foi_spec.fieldname .== factor][1]
+        ptype = foi_spec.ptype[foi_spec.fieldname .== factors[d_i]][1]
         if ptype == "categorical"
-            fact_idx = foi_spec.fieldname .== factor
-
-            lb = foi_spec.lower_bound[fact_idx][1]
-            ub = foi_spec.upper_bound[fact_idx][1]
-            X_q .= round.(quantile(lb:ub, seq)) .- 1
+            X_q .= _get_cat_quantile(foi_spec, factors[d_i], seq)
         else
             X_q .= quantile(X_di, seq)
         end
@@ -534,21 +542,15 @@ function outcome_map(
         error("Invalid target factors: $(target_factors[missing_factor])")
     end
 
-    factors_to_assess = model_spec.fieldname .∈ [target_factors]
-    foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
-    foi_spec = model_spec[factors_to_assess, foi_attributes]
+    foi_spec = _get_factor_spec(model_spec, target_factors)
 
     foi_cat = (foi_spec.ptype .== "categorical")
     if any(foi_cat)
-        max_bounds = maximum(
-            foi_spec[foi_cat, :upper_bound] .-
-            foi_spec[foi_cat, :lower_bound]
-        )
-        S = round(Int64, max(S, max_bounds))
+        S = _set_cat_S(S, foi_spec, foi_cat)
     end
 
     step_size = 1 / S
-    steps = collect(0:step_size:1.0)
+    steps = collect(0.0:step_size:1.0)
 
     p_table = NamedDimsArray(
         zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
@@ -570,22 +572,20 @@ function outcome_map(
 
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
+        X_f = X[:, fact_t]
         ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
         if ptype == "categorical"
-            fact_idx = foi_spec.fieldname .== fact_t
-            lb = foi_spec.lower_bound[fact_idx][1]
-            ub = foi_spec.upper_bound[fact_idx][1]
-            X_q .= round.(quantile(lb:ub, steps)) .- 1
+            X_q .= _get_cat_quantile(foi_spec, fact_t, steps)
         else
-            X_q .= quantile(X[:, fact_t], steps)
+            X_q .= quantile(X_f, steps)
         end
 
         for i in 1:length(X_q[1:end-1])
             local b::BitVector
             if i == 1
-                b = (X_q[i] .<= X[:, fact_t] .<= X_q[i+1])
+                b = (X_q[i] .<= X_f .<= X_q[i + 1])
             else
-                b = (X_q[i] .< X[:, fact_t] .<= X_q[i+1])
+                b = (X_q[i] .< X_f .<= X_q[i + 1])
             end
 
             b = b .& behave
