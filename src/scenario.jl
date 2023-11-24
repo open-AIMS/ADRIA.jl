@@ -661,7 +661,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
-        if is_guided && (in_seed_years || in_shade_years)
+        if is_guided && (in_seed_years || in_fog_years)
             # Update dMCDA values
 
             # Determine subset of data to select data for planning horizon
@@ -682,7 +682,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             (seed_locs, fog_locs, rankings) = guided_site_selection(
                 mcda_vars,
                 MCDA_approach,
-                seed_decision_years[tstep], shade_decision_years[tstep],
+                seed_decision_years[tstep],
+                fog_decision_years[tstep],
                 seed_locs,
                 fog_locs,
                 rankings,
@@ -694,19 +695,20 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Log site ranks
             # First col only holds site index ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
-        elseif seed_corals && (in_seed_years || in_shade_years)
+        elseif seed_corals && (in_seed_years || in_fog_years)
             # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
             seed_locs, fog_locs = unguided_site_selection(
                 seed_locs,
                 fog_locs,
-                seed_decision_years[tstep], shade_decision_years[tstep],
+                seed_decision_years[tstep],
+                fog_decision_years[tstep],
                 n_site_int, vec(leftover_space_m²), depth_priority)
 
             site_ranks[tstep, seed_locs, 1] .= 1.0
             site_ranks[tstep, fog_locs, 2] .= 1.0
         end
 
-        has_shade_sites::Bool = !all(fog_locs .== 0)
+        has_fog_sites::Bool = !all(fog_locs .== 0)
 
         # Check if locations are selected, and selected locations have space,
         # otherwise no valid locations were selected for seeding.
@@ -718,7 +720,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Fog selected locations
-        if (fogging > 0.0) && in_shade_years && has_shade_sites
+        if (fogging > 0.0) && in_fog_years && has_fog_sites
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
 
