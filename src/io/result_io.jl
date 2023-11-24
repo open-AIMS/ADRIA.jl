@@ -407,6 +407,10 @@ function load_results(result_loc::String)::ResultSet
     # Model specification
     model_spec = CSV.read(joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#")
 
+    # Standardize fieldnames to Symbol
+    # TODO: Match all other column data types with original model spec
+    model_spec.fieldname .= Symbol.(model_spec.fieldname)
+
     r_vers_id = input_set.attrs["ADRIA_VERSION"]
     t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
 

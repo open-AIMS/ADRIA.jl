@@ -176,7 +176,7 @@ function ADRIA.viz.rsa!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
     si::NamedDimsArray,
-    factors::Vector{String};
+    factors::Vector{Symbol};
     opts,
     axis_opts,
 )
@@ -273,7 +273,7 @@ end
 function ADRIA.viz.rsa(
     rs::ResultSet,
     si::NamedDimsArray,
-    factors::Vector{String};
+    factors::Vector{Symbol};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),

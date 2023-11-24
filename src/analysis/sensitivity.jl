@@ -37,7 +37,7 @@ end
 
 Get model spec for specified factors.
 """
-function _get_factor_spec(model_spec::DataFrame, factors::Vector{String})
+function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
     factors_to_assess = model_spec.fieldname .∈ [factors]
     foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
     return model_spec[factors_to_assess, foi_attributes]
@@ -58,7 +58,7 @@ end
 
 Get quantile for categorical variable, fact_t.
 """
-function _get_cat_quantile(foi_spec::DataFrame, fact_t::String, steps::Vector{Float64})
+function _get_cat_quantile(foi_spec::DataFrame, fact_t::Symbol, steps::Vector{Float64})
     fact_idx = foi_spec.fieldname .== fact_t
     lb = foi_spec.lower_bound[fact_idx][1]
     ub = foi_spec.upper_bound[fact_idx][1]
@@ -441,7 +441,7 @@ function rsa(
 
     X_di = @MVector zeros(N)
     sel = trues(N)
-    factors = names(X)
+    factors = Symbol.(names(X))
 
     foi_spec = _get_factor_spec(model_spec, factors)
 
