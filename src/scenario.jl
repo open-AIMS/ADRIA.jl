@@ -601,7 +601,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         C_t .= C_cover[tstep - 1, :, :]
 
         # Coral deaths due to selected cyclone scenario
-        _cyclone_mortality(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
+        _cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
 
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
@@ -784,7 +784,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     return (raw=C_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks, bleaching_mortality=bleaching_mort, coral_dhw_log=collated_dhw_tol_log)
 end
 
-function _cyclone_mortality(coral_cover, coral_params, cyclone_mortality)::Nothing
+function _cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
     # Small class coral mortality
     coral_deaths_small = coral_cover[coral_params.small, :] .* cyclone_mortality
     coral_cover[coral_params.small, :] -= coral_deaths_small
