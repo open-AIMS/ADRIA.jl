@@ -545,7 +545,7 @@ function outcome_map(
     X::DataFrame,
     y::AbstractVecOrMat{<:Real},
     rule::Union{Function,BitVector,Vector{Int64}},
-    target_factors::Vector{String},
+    target_factors::Vector{Symbol},
     model_spec::DataFrame;
     S::Int64=20,
     n_boot::Int64=100,
@@ -633,7 +633,7 @@ function outcome_map(
     rs::ResultSet,
     y::AbstractArray{<:Real},
     rule::Union{Function,BitVector,Vector{Int64}},
-    target_factors::Vector{String};
+    target_factors::Vector{Symbol};
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95

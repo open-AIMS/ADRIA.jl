@@ -543,7 +543,7 @@ function ADRIA.viz.outcome_map!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
     outcomes::NamedDimsArray,
-    factors::Vector{String};
+    factors::Vector{Symbol};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
