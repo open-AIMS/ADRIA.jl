@@ -36,6 +36,10 @@ end
     _get_factor_spec(model_spec::DataFrame, factors::Vector{String})
 
 Get model spec for specified factors.
+
+# Arguments 
+- model_spec : Model specification, from `model_spec(domain)` or `rs.model_spec`
+- factors : Parameters considered for sensitivity analysis
 """
 function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
     factors_to_assess = model_spec.fieldname .∈ [factors]
@@ -44,22 +48,32 @@ function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
 end
 
 """
-    _set_cat_S(S::Int64, foi_spec::DataFrame, foi_cat::BitVector)
+    _category_bins(S::Int64, foi_spec::DataFrame, foi_cat::BitVector)
 
 Get number of binnings for categorical variables.
+
+# Arguments
+- S : Number of bins
+- foi_spec : Model specification for factors of interest
+- foi_cat : Vector of length `foi_cat.fieldname` which contains true where the factor is categorical and false otherwise
 """
-function _set_cat_S(S::Int64, foi_spec::DataFrame, foi_cat::BitVector)
+function _category_bins(S::Int64, foi_spec::DataFrame, foi_cat::BitVector)
     max_bounds = maximum(foi_spec[foi_cat, :upper_bound] .- foi_spec[foi_cat, :lower_bound])
     return round(Int64, max(S, max_bounds))
 end
 
 """
-    _get_cat_quantile(foi_spec::DataFrame, fact_t::String, steps::Vector{Float64})
+    _get_cat_quantile(foi_spec::DataFrame, fact_cat::String, steps::Vector{Float64})
 
-Get quantile for categorical variable, fact_t.
+Get quantile for categorical variable, fact_cat.
+
+# Arguments
+- foi_spec : Model specification for factors of interest
+- foi_cat : Vector of length `foi_cat.fieldname` which contains true where the factor is categorical and false otherwise
+- steps : Number of steps for defining binnings
 """
-function _get_cat_quantile(foi_spec::DataFrame, fact_t::Symbol, steps::Vector{Float64})
-    fact_idx = foi_spec.fieldname .== fact_t
+function _get_cat_quantile(foi_spec::DataFrame, fact_cat::Symbol, steps::Vector{Float64})
+    fact_idx = foi_spec.fieldname .== fact_cat
     lb = foi_spec.lower_bound[fact_idx][1]
     ub = foi_spec.upper_bound[fact_idx][1]
     return round.(quantile(lb:ub, steps)) .- 1
@@ -447,7 +461,7 @@ function rsa(
 
     foi_cat = (foi_spec.ptype .== "categorical")
     if any(foi_cat)
-        S = _set_cat_S(S, foi_spec, foi_cat)
+        S = _category_bins(S, foi_spec, foi_cat)
     end
 
     X_q = @MVector zeros(S + 1)
@@ -560,7 +574,7 @@ function outcome_map(
 
     foi_cat = (foi_spec.ptype .== "categorical")
     if any(foi_cat)
-        S = _set_cat_S(S, foi_spec, foi_cat)
+        S = _category_bins(S, foi_spec, foi_cat)
     end
 
     step_size = 1 / S
