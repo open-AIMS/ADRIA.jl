@@ -155,15 +155,14 @@ function ADRIA.viz.tsa(
 end
 
 """
-    ADRIA.viz.rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+    ADRIA.viz.rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; axis_opts::Dict=Dict())
 
 Plot regional sensitivities of up to 30 factors.
 
 # Arguments
 - `rs` : ResultSet
 - `si` : Results from ADRIA regional sensitivity analysis
-- `opts` : Additional figure customization options
 - `fig_opts` : Additional options to pass to adjust Figure creation
   See: https://docs.makie.org/v0.19/api/index.html#Figure
 - `axis_opts` : Additional options to pass to adjust Axis attributes
@@ -177,8 +176,7 @@ function ADRIA.viz.rsa!(
     rs::ResultSet,
     si::NamedDimsArray,
     factors::Vector{Symbol};
-    opts,
-    axis_opts,
+    axis_opts::Dict=Dict(),
 )
     n_factors::Int64 = length(factors)
     if n_factors > 30
@@ -274,13 +272,12 @@ function ADRIA.viz.rsa(
     rs::ResultSet,
     si::NamedDimsArray,
     factors::Vector{Symbol};
-    opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    ADRIA.viz.rsa!(g, rs, si, factors; opts, axis_opts)
+    ADRIA.viz.rsa!(g, rs, si, factors; axis_opts)
 
     return f
 end
@@ -544,7 +541,6 @@ function ADRIA.viz.outcome_map!(
     rs::ResultSet,
     outcomes::NamedDimsArray,
     factors::Vector{Symbol};
-    opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
