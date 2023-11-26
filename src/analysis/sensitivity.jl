@@ -652,7 +652,9 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
-    return outcome_map(rs.inputs, y, rule, target_factors, rs.model_spec; S, n_boot, conf)
+    return outcome_map(
+        rs.inputs[:, Not(:RCP)], y, rule, target_factors, rs.model_spec; S, n_boot, conf
+    )
 end
 function outcome_map(
     rs::ResultSet,
@@ -662,7 +664,9 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
-    return outcome_map(rs.inputs, y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf)
+    return outcome_map(
+        rs.inputs[:, Not(:RCP)], y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf
+    )
 end
 
 function _map_outcomes(
