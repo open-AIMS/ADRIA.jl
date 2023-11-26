@@ -257,7 +257,7 @@ function ADRIA.viz.rsa!(
 
     linkyaxes!(axs...)
     Label(g[end+1, :], text=xlabel, fontsize=32)
-    Label(g[1:end-1, 0], text=ylabel, fontsize=32, rotation=pi / 2)
+    Label(g[1:(end - 1), 0]; text=ylabel, fontsize=32, rotation=xtick_rot)
 
     if :title in keys(axis_opts)
         Label(g[0, :], text=title_val, fontsize=40)
@@ -527,7 +527,6 @@ Plot outcomes mapped to factor regions for up to 30 factors.
 - `rs` : ResultSet
 - `outcomes` : ADRIA Outcome Mapping results
 - `factors` : The factors of interest to display
-- `opts` : Additional figure customization options
 - `fig_opts` : Additional options to pass to adjust Figure creation
   See: https://docs.makie.org/v0.19/api/index.html#Figure
 - `axis_opts` : Additional options to pass to adjust Axis attributes
