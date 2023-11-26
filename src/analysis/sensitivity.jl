@@ -378,7 +378,7 @@ end
 
 """
     rsa(X::DataFrame, y::Vector{<:Real}, model_spec::DataFrame; S=10)::NamedDimsArray
-    rsa(rs::ResultSet, y::AbstractArray{<:Real}, model_spec::DataFrame; S::Int64=10)::NamedDimsArray
+    rsa(rs::ResultSet, y::AbstractArray{<:Real}; S::Int64=10)::NamedDimsArray
 
 Perform Regional Sensitivity Analysis.
 
