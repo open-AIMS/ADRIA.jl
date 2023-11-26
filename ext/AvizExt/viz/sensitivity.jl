@@ -204,7 +204,7 @@ function ADRIA.viz.rsa!(
     h_names = ms[foi, :name]
     bounds = ms[foi, :bounds]
 
-    if any(f_names .== "guided")
+    if any(f_names .== :guided)
         fv_labels = [
             "unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
         ]
@@ -229,7 +229,7 @@ function ADRIA.viz.rsa!(
         for c in 1:n_cols
             f_name = factors[curr]
             f_vals = rs.inputs[:, f_name]
-            if f_name == "guided"
+            if f_name == :guided
                 fv_s = collect(1:length(fv_labels))
             else
                 fv_s = round.(quantile(f_vals, b_slices), digits=2)
@@ -242,7 +242,7 @@ function ADRIA.viz.rsa!(
             )
 
             scatterlines!(ax, fv_s, si(; factors=Symbol(f_name)); markersize=15)
-            if f_name == "guided"
+            if f_name == :guided
                 ax.xticks = (fv_s, fv_labels)
                 ax.xticklabelrotation = pi / 4
             end
@@ -582,7 +582,7 @@ function ADRIA.viz.outcome_map!(
     bin_slices, factor_list, CIs = axiskeys(outcomes)
     b_slices = parse.(Float64, bin_slices)
 
-    if any(f_names .== "guided")
+    if any(f_names .== :guided)
         fv_labels = ["unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...]
     end
     curr::Int64 = 1
@@ -662,14 +662,14 @@ end
 function ADRIA.viz.outcome_map(
     rs::ResultSet,
     si::NamedDimsArray,
-    factors::Vector{String};
+    factors::Vector{Symbol};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    ADRIA.viz.outcome_map!(g, rs, si, factors; opts, axis_opts)
+    ADRIA.viz.outcome_map!(g, rs, si, factors; axis_opts)
 
     return f
 end
