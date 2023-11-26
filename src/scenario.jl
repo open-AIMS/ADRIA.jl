@@ -480,7 +480,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     α = 0.95
     decay = α .^ (1:Int64(param_set("plan_horizon"))+1)
 
-    # Years at which seeding/shading/fogging occurs
+    # Years at which seeding/shading/fogging decisions are re-evaluated
     seed_decision_years = fill(false, tf)
     shade_decision_years = fill(false, tf)
     fog_decision_years = fill(false, tf)
@@ -638,6 +638,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Add recruits to current cover
         C_t[p.small, :] .+= recruitment
 
+        # Years at which seeding/fogging/shading occurs
         in_fog_years =
             (fog_start_year <= tstep) && (tstep <= (fog_start_year + fog_years - 1))
         in_shade_years =
