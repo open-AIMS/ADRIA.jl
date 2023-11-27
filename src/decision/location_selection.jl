@@ -1,6 +1,6 @@
 using NamedDims, AxisKeys
 
-using ADRIA: connectivity_strength
+using ADRIA: connectivity_strength, relative_leftover_space, site_k_area
 
 """
     _location_selection(domain::Domain, sum_cover::AbstractArray, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
@@ -87,6 +87,7 @@ function rank_locations(
     target_fog_sites=nothing,
 )::NamedDimsArray
     n_locs = n_locations(domain)
+    k_area_locs = site_k_area(domain)
 
     ranks_store = NamedDimsArray(
         zeros(n_locs, 2, nrow(scenarios)),
@@ -124,7 +125,12 @@ function rank_locations(
         depth_priority = findall(depth_criteria)
 
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
-        mcda_vars_temp = DMCDA_vars(domain, scen, considered_sites,  sum_cover[scen_idx, :], area_to_seed,
+        mcda_vars_temp = DMCDA_vars(
+            domain,
+            scen,
+            considered_sites,
+            relative_leftover_space(sum_cover[scen_idx, :]) .* k_area_locs,
+            area_to_seed,
             summary_stat_env(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
             summary_stat_env(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios))
             )
