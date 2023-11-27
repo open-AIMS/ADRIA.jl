@@ -56,8 +56,8 @@ Get number of bins for categorical variables.
 - `S` : Number of bins
 - `foi_spec` : Model specification for factors of interest
 """
-function _category_bins(S::Int64, foi_spec::DataFrame, foi_cat::BitVector)
-    max_bounds = maximum(foi_spec[foi_cat, :upper_bound] .- foi_spec[foi_cat, :lower_bound])
+function _category_bins(S::Int64, foi_spec::DataFrame)
+    max_bounds = maximum(foi_spec.upper_bound .- foi_spec.lower_bound)
     return round(Int64, max(S, max_bounds))
 end
 
@@ -460,7 +460,7 @@ function rsa(
 
     foi_cat = (foi_spec.ptype .== "categorical")
     if any(foi_cat)
-        S = _category_bins(S, foi_spec, foi_cat)
+        S = _category_bins(S, foi_spec[foi_cat, :])
     end
 
     X_q = @MVector zeros(S + 1)
@@ -573,7 +573,7 @@ function outcome_map(
 
     foi_cat = (foi_spec.ptype .== "categorical")
     if any(foi_cat)
-        S = _category_bins(S, foi_spec, foi_cat)
+        S = _category_bins(S, foi_spec[foi_cat, :])
     end
 
     step_size = 1 / S
