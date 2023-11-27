@@ -71,8 +71,8 @@ Get quantile for categorical variable, factor_c.
 - `factor_c` : Vector of length `foi_cat.fieldname` which contains true where the factor is categorical and false otherwise
 - `steps` : Number of steps for defining bins
 """
-function _get_cat_quantile(foi_spec::DataFrame, fact_cat::Symbol, steps::Vector{Float64})
-    fact_idx = foi_spec.fieldname .== fact_cat
+function _get_cat_quantile(foi_spec::DataFrame, factor_c::Symbol, steps::Vector{Float64})
+    fact_idx = foi_spec.fieldname .== factor_c
     lb = foi_spec.lower_bound[fact_idx][1]
     ub = foi_spec.upper_bound[fact_idx][1]
     return round.(quantile(lb:ub, steps)) .- 1
