@@ -155,8 +155,8 @@ function ADRIA.viz.tsa(
 end
 
 """
-    ADRIA.viz.rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; axis_opts::Dict=Dict())
+    ADRIA.viz.rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Plot regional sensitivities of up to 30 factors.
 
