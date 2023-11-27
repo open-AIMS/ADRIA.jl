@@ -39,7 +39,7 @@ Get model spec for specified factors.
 
 # Arguments 
 - `model_spec` : Model specification, as extracted by `ADRIA.model_spec(domain)` or from a `ResultSet`
-- `factors` : Parameters considered for sensitivity analysis
+- `factors` : Factors considered for sensitivity analysis
 """
 function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
     factors_to_assess = model_spec.fieldname .∈ [factors]
