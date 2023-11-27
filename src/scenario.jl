@@ -484,7 +484,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     α = 0.95
     decay = α .^ (1:Int64(param_set("plan_horizon"))+1)
 
-    # Years at which seeding/shading/fogging decisions are re-evaluated
+    # Years at which intervention locations are re-evaluated
     seed_decision_years = fill(false, tf)
     shade_decision_years = fill(false, tf)
     fog_decision_years = fill(false, tf)
@@ -711,19 +711,19 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             site_ranks[tstep, fog_locs, 2] .= 1.0
         end
 
-        has_fog_sites::Bool = !all(fog_locs .== 0)
+        has_fog_locs::Bool = !all(fog_locs .== 0)
 
         # Check if locations are selected, and selected locations have space,
         # otherwise no valid locations were selected for seeding.
-        has_seed_sites::Bool = true
+        has_seed_locs::Bool = true
         if !all(seed_locs .== 0)
-            has_seed_sites = !all(leftover_space_m²[seed_locs] .== 0.0)
+            has_seed_locs = !all(leftover_space_m²[seed_locs] .== 0.0)
         else
-            has_seed_sites = false
+            has_seed_locs = false
         end
 
         # Fog selected locations
-        if apply_fogging && in_fog_timeframe && has_fog_sites
+        if apply_fogging && in_fog_timeframe && has_fog_locs
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
 
@@ -738,7 +738,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Apply seeding
         # Assumes coral seeding occurs in the months after disturbances
         # (such as cyclones/heat) occurs.
-        if seed_corals && in_seed_timeframe && has_seed_sites
+        if seed_corals && in_seed_timeframe && has_seed_locs
             # Seed selected locations
             seed_corals!(C_t, vec(loc_k_area), vec(leftover_space_m²),
                 seed_locs, seeded_area, seed_sc, a_adapt, @view(Yseed[tstep, :, :]),
