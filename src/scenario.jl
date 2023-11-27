@@ -533,6 +533,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Flag indicating whether to seed or not to seed
     seed_corals = any(param_set(taxa_names) .> 0.0)
+    # Flag indicating whether to fog or not fog
+    apply_fogging = fogging > 0.0
+    # Flag indicating whether to apply shading
+    apply_shading = srm > 0.0
 
     # Defaults to considering all sites if depth cannot be considered.
     depth_priority = collect(1:n_locs)
@@ -646,7 +650,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Apply regional cooling effect before selecting locations to seed
         dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
-        if (srm > 0.0) && in_shade_timeframe
+        if apply_shading && in_shade_timeframe
             Yshade[tstep, :] .= srm
 
             # Apply reduction in DHW due to SRM
@@ -687,7 +691,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Log site ranks
             # First col only holds site index ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
-        elseif seed_corals && (in_seed_timeframe || in_fog_timeframe)
+        elseif (seed_corals && in_seed_timeframe) || (apply_fogging && in_fog_timeframe)
             # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
             seed_locs, fog_locs = unguided_site_selection(
                 seed_locs,
@@ -712,7 +716,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Fog selected locations
-        if (fogging > 0.0) && in_fog_timeframe && has_fog_sites
+        if apply_fogging && in_fog_timeframe && has_fog_sites
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
 
