@@ -116,23 +116,23 @@ This is referred to as \$F\$.
 - inputs_i : inputs used for scenarios of interest
 
 # Returns
-Matrix of `s * 7`, where `s` is the number of scenarios and columns are:
+Matrix of `s * 8`, where `s` is the number of scenarios and columns are:
 `N_seed_TA`, `N_seed_CA`, `N_seed_SM`, `fogging`, `SRM`, `seed_years`, `shade_years`, `fog_years`
 """
 function intervention_effort(X, ub, lb)
     return (X .- lb) ./ (ub .- lb)
 end
 function intervention_effort(ms::DataFrame, X::DataFrame;
-    interv_cols=Symbol.([
-        "N_seed_TA",
-        "N_seed_CA",
-        "N_seed_SM",
-        "fogging",
-        "SRM",
-        "seed_years",
-        "shade_years",
-        "fog_years",
-    ]),
+    interv_cols=[
+        :N_seed_TA,
+        :N_seed_CA,
+        :N_seed_SM,
+        :fogging,
+        :SRM,
+        :seed_years,
+        :shade_years,
+        :fog_years,
+    ],
 )
 
     interv_s = ms[findall(in(interv_cols), Symbol.(ms.fieldname)), ["fieldname", "lower_bound", "upper_bound"]]
