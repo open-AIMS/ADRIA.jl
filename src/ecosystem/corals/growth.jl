@@ -41,15 +41,17 @@ Modifies arrays in-place.
 nothing
 """
 function proportional_adjustment!(
-    coral_cover::Union{SubArray{T},Matrix{T}},
-    cover_tmp::Vector{T}
+    coral_cover::Union{SubArray{T},Matrix{T}}, cover_tmp::Vector{T}
 )::Nothing where {T<:Float64}
-    cover_tmp .= vec(sum(coral_cover, dims=1))
+    cover_tmp .= vec(sum(coral_cover; dims=1))
+    cover_tmp[cover_tmp .≈ 1.0] .= 1.0
     if any(cover_tmp .> 1.0)
-        exceeded::Vector{Int64} = findall(cover_tmp .> 1.0)
+        exceeded::BitVector = vec(cover_tmp .> 1.0)
         @warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model."
         @warn "Cover - Max Cover: $(sum(cover_tmp[exceeded] .- 1.0))"
-        @views @. coral_cover[:, exceeded] = (coral_cover[:, exceeded] / cover_tmp[exceeded]')
+        @views @. coral_cover[:, exceeded] = (
+            coral_cover[:, exceeded] / cover_tmp[exceeded]'
+        )
     end
 
     coral_cover .= max.(coral_cover, 0.0)
@@ -66,19 +68,9 @@ covered. Assumes 1.0 represents 100% of available location area.
 function proportional_adjustment!(
     coral_cover::Union{SubArray{T},Matrix{T}}
 )::Nothing where {T<:Float64}
-    cover_tmp = vec(sum(coral_cover, dims=1))
-    if any(cover_tmp .> 1.0)
-        exceeded::Vector{Int64} = findall(cover_tmp .> 1.0)
-        @warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model."
-        @warn "Cover - 1.0: $(sum(cover_tmp[exceeded] .- 1.0))"
-        @views @. coral_cover[:, exceeded] = (coral_cover[:, exceeded] / cover_tmp[exceeded]')
-    end
-
-    coral_cover .= max.(coral_cover, 0.0)
-
-    return nothing
+    cover_tmp = zeros(size(coral_cover, 2))
+    return proportional_adjustment!(coral_cover, cover_tmp)
 end
-
 
 """
     growthODE(du, X, p, _)
