@@ -646,14 +646,14 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Apply regional cooling effect before selecting locations to seed
         dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
-        if (srm > 0.0) && in_shade_years
+        if (srm > 0.0) && in_shade_timeframe
             Yshade[tstep, :] .= srm
 
             # Apply reduction in DHW due to SRM
             dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
-        if is_guided && (in_seed_years || in_fog_years)
+        if is_guided && (in_seed_timeframe || in_fog_timeframe)
             # Update dMCDA values
 
             # Determine subset of data to select data for planning horizon
@@ -687,7 +687,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Log site ranks
             # First col only holds site index ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
-        elseif seed_corals && (in_seed_years || in_fog_years)
+        elseif seed_corals && (in_seed_timeframe || in_fog_timeframe)
             # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
             seed_locs, fog_locs = unguided_site_selection(
                 seed_locs,
@@ -712,7 +712,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         end
 
         # Fog selected locations
-        if (fogging > 0.0) && in_fog_years && has_fog_sites
+        if (fogging > 0.0) && in_fog_timeframe && has_fog_sites
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
 
@@ -727,7 +727,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Apply seeding
         # Assumes coral seeding occurs in the months after disturbances
         # (such as cyclones/heat) occurs.
-        if seed_corals && in_seed_years && has_seed_sites
+        if seed_corals && in_seed_timeframe && has_seed_sites
             # Seed selected locations
             seed_corals!(C_t, vec(loc_k_area), vec(leftover_space_m²),
                 seed_locs, seeded_area, seed_sc, a_adapt, @view(Yseed[tstep, :, :]),
