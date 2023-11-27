@@ -380,14 +380,14 @@ function decision_matrices(
         S, ws = create_seed_matrix(
             A,
             area_to_seed .* criteria_weights.coral_cover_tol,
-            criteria_weights.in_seed_connectivity,
-            criteria_weights.out_seed_connectivity,
-            criteria_weights.wave_stress,
-            criteria_weights.heat_stress,
+            criteria_weights.seed_in_connectivity,
+            criteria_weights.seed_out_connectivity,
+            criteria_weights.seed_wave_stress,
+            criteria_weights.seed_heat_stress,
             criteria_weights.seed_priority,
-            criteria_weights.zone_seed,
+            criteria_weights.seed_zone,
             criteria_weights.coral_cover_low,
-            criteria_weights.depth_seed,
+            criteria_weights.seed_depth,
         )
 
         S = NamedDimsArray(
@@ -405,14 +405,14 @@ function decision_matrices(
             ],
         )
     elseif iv_type == :fog
-        S, ws = create_shade_matrix(
+        S, ws = create_fog_matrix(
             A,
             site_k_area(dom)[site_ids][filtered_sites],
-            criteria_weights.shade_connectivity,
-            criteria_weights.wave_stress,
-            criteria_weights.heat_stress,
-            criteria_weights.shade_priority,
-            criteria_weights.zone_shade,
+            criteria_weights.fog_connectivity,
+            criteria_weights.fog_wave_stress,
+            criteria_weights.fog_heat_stress,
+            criteria_weights.fog_priority,
+            criteria_weights.fog_zone,
             criteria_weights.coral_cover_high,
         )
         S = NamedDimsArray(
