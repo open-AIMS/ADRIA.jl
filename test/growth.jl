@@ -5,11 +5,7 @@ using ADRIA
 @testset "proportional adjustment" begin
     Y = rand(5, 36, 20)
     for i in axes(Y, 1)
-        Y[i, :, :] .= Y[i, :, :] / sum(Y[i, :, :], dims=1)
-        diff_tmp = vec(sum(Y[i, :, :]; dims=1))
-        if any(diff_tmp .> 1.0)
-            Y[i, :, :] .= Y[i, :, :] .- (diff_tmp .- 1)' ./ 36
-        end
+        Y[i, :, :] .= Y[i, :, :] / sum(Y[i, :, :]; dims=1)
     end
 
     tmp = zeros(20)
@@ -23,33 +19,41 @@ using ADRIA
     Y = rand(5, 36, 20)
     for i in axes(Y, 1)
         # Test that a warning is displayed when values need to be rescaled between 0 and 1
-        Test.@test_warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model." ADRIA.proportional_adjustment!(Y[i, :, :], tmp)
+        Test.@test_warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model." ADRIA.proportional_adjustment!(
+            Y[i, :, :], tmp
+        )
 
         all(0.0 .<= Y[i, :, :] .<= 1.0)
     end
 end
 
 @testset "Coral Spec" begin
-    linear_extension = Array{Float64,2}([
-        1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora
-        1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora
-        1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
-        1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
-        1.0 1.0 1.0 1.0 0.8 0.8     # small massives
-        1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
+    linear_extension = Array{Float64,2}(
+        [
+            1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora
+            1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora
+            1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
+            1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
+            1.0 1.0 1.0 1.0 0.8 0.8     # small massives
+            1.0 1.0 1.0 1.0 1.2 1.2
+        ],
+    )   # large massives
 
     bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
 
     growth_rates = (2 * linear_extension) ./ bin_widths  # growth rates as calculated without growth_rate(), maintaining species x size_class structure
     #growth_rates[:, 6] .= 0.8 * growth_rates[:, 6]
 
-    mb = Array{Float64,2}([
-        0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora
-        0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora
-        0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora
-        0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
-        0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
-        0.2 0.2 0.040 0.026 0.020 0.020])   # Large massives
+    mb = Array{Float64,2}(
+        [
+            0.2 0.2 0.004 0.004 0.002 0.002    # Arborescent Acropora
+            0.2 0.2 0.190 0.190 0.098 0.098    # Tabular Acropora
+            0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora
+            0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
+            0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
+            0.2 0.2 0.040 0.026 0.020 0.020
+        ],
+    )   # Large massives
 
     coral_params = ADRIA.coral_spec().params
     stored_growth_rate = coral_params.growth_rate
@@ -362,9 +366,7 @@ end
         49022.921055841725,
     ]
 
-    ADRIA.fecundity_scope!(
-        fec_groups, fec_all, fec_params, C_t, Matrix(total_site_area')
-    )
+    ADRIA.fecundity_scope!(fec_groups, fec_all, fec_params, C_t, Matrix(total_site_area'))
 
     @test any(fec_groups .> 1e8) ||
         "Fecundity is measured in m² and so should be a very large number"
@@ -850,7 +852,6 @@ end
 end
 
 @testset "growth model" begin
-
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
     n_sites = ADRIA.n_locations(dom)
 
@@ -867,7 +868,7 @@ end
 
     # Generate initial cover
     init = rand(Uniform(0.0, 0.4), 36, n_sites)
-    proportional = vec(init / sum(init, dims=1))
+    proportional = vec(init / sum(init; dims=1))
     C_cover[1, :, :] .= proportional
     growthODE(du, C_cover[1, :, :], p, 1)
     @test !any(abs.(du) .> 1.0) ||
@@ -885,7 +886,7 @@ end
     p.X_mb .= rand(36, n_sites)
     C_cover = zeros(10, 36, n_sites)
     init = rand(Uniform(0.0, 0.4), 36, n_sites)
-    proportional = vec(init / sum(init, dims=1))
+    proportional = vec(init / sum(init; dims=1))
     C_cover[1, :, :] .= proportional
 
     for tstep in 2:10
@@ -903,7 +904,7 @@ end
     p.rec .= zeros(6, n_sites)
     C_cover = zeros(10, 36, n_sites)
     init = rand(Uniform(0.0, 0.4), 36, n_sites)
-    proportional = vec(init / sum(init, dims=1))
+    proportional = vec(init / sum(init; dims=1))
     C_cover[1, :, :] .= proportional
 
     for tstep in 2:10
