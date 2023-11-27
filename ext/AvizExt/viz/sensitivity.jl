@@ -163,6 +163,7 @@ Plot regional sensitivities of up to 30 factors.
 # Arguments
 - `rs` : ResultSet
 - `si` : Results from ADRIA regional sensitivity analysis
+- `opts` : Additional figure customization options
 - `fig_opts` : Additional options to pass to adjust Figure creation
   See: https://docs.makie.org/v0.19/api/index.html#Figure
 - `axis_opts` : Additional options to pass to adjust Axis attributes
@@ -176,6 +177,7 @@ function ADRIA.viz.rsa!(
     rs::ResultSet,
     si::NamedDimsArray,
     factors::Vector{Symbol};
+    opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     n_factors::Int64 = length(factors)
@@ -272,12 +274,169 @@ function ADRIA.viz.rsa(
     rs::ResultSet,
     si::NamedDimsArray,
     factors::Vector{Symbol};
+    opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.rsa!(g, rs, si, factors; axis_opts)
+
+    return f
+end
+
+"""
+    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+
+Plot outcomes mapped to factor regions for up to 30 factors.
+
+# Arguments
+- `rs` : ResultSet
+- `outcomes` : ADRIA Outcome Mapping results
+- `factors` : The factors of interest to display
+- `opts` : Additional figure customization options
+- `fig_opts` : Additional options to pass to adjust Figure creation
+  See: https://docs.makie.org/v0.19/api/index.html#Figure
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+
+# Returns
+Makie figure
+"""
+function ADRIA.viz.outcome_map!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    outcomes::NamedDimsArray,
+    factors::Vector{Symbol};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
+    # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
+    #       found in `rsa()`
+    n_factors::Int64 = length(factors)
+    if n_factors > 30
+        ArgumentError("Too many factors to plot. Maximum number supported is 30.")
+    end
+
+    n_rows, n_cols = _calc_gridsize(n_factors)
+
+    xlabel = pop!(axis_opts, :xlabel, "Factor Value")
+    ylabel = pop!(axis_opts, :ylabel, "Outcome")
+
+    if :title in keys(axis_opts)
+        title_val = pop!(axis_opts, :title)
+    end
+
+    # min_step = (1 / 0.05)
+    # color_weight = min((1.0 / (length(factors) / min_step)), 0.6)
+
+    # Color by component
+    ms = model_spec(rs)
+    foi = ms.fieldname .∈ [factors]
+    all_comps = ms[foi, :component]
+    f_names = ms[foi, :fieldname]
+    h_names = ms[foi, :name]
+    bounds = ms[foi, :bounds]
+
+    # Hacky special case handling for SSP/RCP
+    if :RCP in factors || :SSP in factors
+        loc = first(findall((factors .== :RCP) .|| (factors .== :SSP)))
+        insert!(all_comps, loc, "EnvironmentalLayer")
+        insert!(f_names, loc, "RCP")
+        insert!(h_names, loc, "SSP/RCP")
+        insert!(bounds, loc, (1, length(unique(rs.inputs.RCP))))
+    end
+
+    bin_slices, factor_list, CIs = axiskeys(outcomes)
+    b_slices = parse.(Float64, bin_slices)
+
+    if any(f_names .== :guided)
+        fv_labels = [
+            "unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
+        ]
+    end
+    curr::Int64 = 1
+    axs = Axis[]
+    for r in 1:n_rows
+        for c in 1:n_cols
+            f_name = Symbol(factors[curr])
+            f_vals = rs.inputs[:, f_name]
+
+            if f_name == :guided
+                fv_s = collect(1:length(fv_labels))
+            else
+                fv_s = round.(quantile(f_vals, b_slices), digits=2)
+            end
+
+            ax::Axis = Axis(
+                g[r, c]; title=h_names[f_names .== factors[curr]][1], axis_opts...
+            )
+
+            band!(
+                ax,
+                fv_s[.!ismissing.(outcomes(; factors=f_name, CI=:lower))],
+                collect(skipmissing(outcomes(; factors=f_name, CI=:lower))),
+                collect(skipmissing(outcomes(; factors=f_name, CI=:upper))),
+            )
+            scatterlines!(ax, fv_s, outcomes(; factors=f_name, CI=:mean); markersize=15)
+
+            if f_name == :guided
+                ax.xticks = (fv_s, fv_labels)
+                ax.xticklabelrotation = pi / 4
+            end
+
+            push!(axs, ax)
+            curr += 1
+
+            if curr > n_factors
+                break
+            end
+        end
+    end
+
+    if n_factors > 1
+        linkyaxes!(axs...)
+        Label(g[n_rows + 1, :]; text=xlabel, fontsize=24)
+        Label(g[:, 0]; text=ylabel, fontsize=24, rotation=pi / 2)
+
+        if @isdefined(title_val)
+            Label(g[0, :]; text=title_val, fontsize=32)
+        end
+    else
+        axs[1].xlabel = xlabel
+        axs[1].ylabel = ylabel
+
+        if @isdefined(title_val)
+            axs[1].title = title_val
+        end
+    end
+
+    try
+        # Clear empty figures
+        trim!(g)
+    catch err
+        if !(err isa MethodError)
+            # GridPosition plots a single figure so does
+            # not need empty figures to be cleared
+            # If any other error is encountered, something else happened.
+            rethrow(err)
+        end
+    end
+
+    return g
+end
+function ADRIA.viz.outcome_map(
+    rs::ResultSet,
+    si::NamedDimsArray,
+    factors::Vector{Symbol};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.outcome_map!(g, rs, si, factors; opts=opts, axis_opts=axis_opts)
 
     return f
 end
@@ -514,161 +673,4 @@ function ADRIA.viz.convergence!(
         error("Convergence plot $(viz_type) is not expected.")
     end
 
-end
-
-
-"""
-    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
-
-Plot outcomes mapped to factor regions for up to 30 factors.
-
-# Arguments
-- `rs` : ResultSet
-- `outcomes` : ADRIA Outcome Mapping results
-- `factors` : The factors of interest to display
-- `fig_opts` : Additional options to pass to adjust Figure creation
-  See: https://docs.makie.org/v0.19/api/index.html#Figure
-- `axis_opts` : Additional options to pass to adjust Axis attributes
-  See: https://docs.makie.org/v0.19/api/index.html#Axis
-
-# Returns
-Makie figure
-"""
-function ADRIA.viz.outcome_map!(
-    g::Union{GridLayout,GridPosition},
-    rs::ResultSet,
-    outcomes::NamedDimsArray,
-    factors::Vector{Symbol};
-    axis_opts::Dict=Dict(),
-)
-    # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
-    #       found in `rsa()`
-    n_factors::Int64 = length(factors)
-    if n_factors > 30
-        ArgumentError("Too many factors to plot. Maximum number supported is 30.")
-    end
-
-    n_rows, n_cols = _calc_gridsize(n_factors)
-
-    xlabel = pop!(axis_opts, :xlabel, "Factor Value")
-    ylabel = pop!(axis_opts, :ylabel, "Outcome")
-
-    if :title in keys(axis_opts)
-        title_val = pop!(axis_opts, :title)
-    end
-
-    # min_step = (1 / 0.05)
-    # color_weight = min((1.0 / (length(factors) / min_step)), 0.6)
-
-    # Color by component
-    ms = model_spec(rs)
-    foi = ms.fieldname .∈ [factors]
-    all_comps = ms[foi, :component]
-    f_names = ms[foi, :fieldname]
-    h_names = ms[foi, :name]
-    bounds = ms[foi, :bounds]
-
-    # Hacky special case handling for SSP/RCP
-    if :RCP in factors || :SSP in factors
-        loc = first(findall((factors .== :RCP) .|| (factors .== :SSP)))
-        insert!(all_comps, loc, "EnvironmentalLayer")
-        insert!(f_names, loc, "RCP")
-        insert!(h_names, loc, "SSP/RCP")
-        insert!(bounds, loc, (1, length(unique(rs.inputs.RCP))))
-    end
-
-    bin_slices, factor_list, CIs = axiskeys(outcomes)
-    b_slices = parse.(Float64, bin_slices)
-
-    if any(f_names .== :guided)
-        fv_labels = ["unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...]
-    end
-    curr::Int64 = 1
-    axs = Axis[]
-    for r in 1:n_rows
-        for c in 1:n_cols
-            f_name = Symbol(factors[curr])
-            f_vals = rs.inputs[:, f_name]
-
-            if f_name == :guided
-                fv_s = collect(1:length(fv_labels))
-            else
-                fv_s = round.(quantile(f_vals, b_slices), digits=2)
-            end
-
-            ax::Axis = Axis(
-                g[r, c],
-                title=h_names[f_names.==factors[curr]][1];
-                axis_opts...
-            )
-
-            band!(ax,
-                fv_s[.!ismissing.(outcomes(factors=f_name, CI=:lower))],
-                collect(skipmissing(outcomes(factors=f_name, CI=:lower))),
-                collect(skipmissing(outcomes(factors=f_name, CI=:upper)))
-            )
-            scatterlines!(ax,
-                fv_s,
-                outcomes(factors=f_name, CI=:mean), markersize=15
-            )
-
-            if f_name == :guided
-                ax.xticks = (fv_s,fv_labels)
-                ax.xticklabelrotation = pi/4
-            end
-
-            push!(axs, ax)
-            curr += 1
-
-            if curr > n_factors
-                break
-            end
-        end
-    end
-
-    if n_factors > 1
-        linkyaxes!(axs...)
-        Label(g[n_rows+1, :], text=xlabel, fontsize=24)
-        Label(g[:, 0], text=ylabel, fontsize=24, rotation=pi / 2)
-
-        if @isdefined(title_val)
-            Label(g[0, :], text=title_val, fontsize=32)
-        end
-    else
-        axs[1].xlabel = xlabel
-        axs[1].ylabel = ylabel
-
-        if @isdefined(title_val)
-            axs[1].title = title_val
-        end
-    end
-
-    try
-        # Clear empty figures
-        trim!(g)
-    catch err
-        if !(err isa MethodError)
-            # GridPosition plots a single figure so does
-            # not need empty figures to be cleared
-            # If any other error is encountered, something else happened.
-            rethrow(err)
-        end
-    end
-
-    return g
-end
-function ADRIA.viz.outcome_map(
-    rs::ResultSet,
-    si::NamedDimsArray,
-    factors::Vector{Symbol};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-)
-    f = Figure(; fig_opts...)
-    g = f[1, 1] = GridLayout()
-    ADRIA.viz.outcome_map!(g, rs, si, factors; axis_opts)
-
-    return f
 end
