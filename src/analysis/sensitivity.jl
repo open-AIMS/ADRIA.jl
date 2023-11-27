@@ -421,7 +421,7 @@ Note: Values of type `missing` indicate a lack of samples in the region.
 - `rs` : ResultSet
 - `X` : scenario specification
 - `y` : scenario outcomes
-- `model_spec` : Model specification, such as ADRIA.model_spec(domain)
+- `model_spec` : Model specification, as extracted by `ADRIA.model_spec(domain)` or from a `ResultSet`
 - `S` : number of bins to slice factor space into (default: 10)
 
 # Returns
