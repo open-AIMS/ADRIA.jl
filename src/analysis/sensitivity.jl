@@ -68,7 +68,7 @@ Get quantile for categorical variable, factor_c.
 
 # Arguments
 - `foi_spec` : Model specification for factors of interest
-- `factor_c` : Vector of length `foi_cat.fieldname` which contains true where the factor is categorical and false otherwise
+- `factor_c` : Contains true where the factor is categorical and false otherwise
 - `steps` : Number of steps for defining bins
 """
 function _get_cat_quantile(foi_spec::DataFrame, factor_c::Symbol, steps::Vector{Float64})
@@ -458,9 +458,9 @@ function rsa(
 
     foi_spec = _get_factor_spec(model_spec, factors)
 
-    foi_cat = (foi_spec.ptype .== "categorical")
-    if any(foi_cat)
-        S = _category_bins(S, foi_spec[foi_cat, :])
+    is_cat = (foi_spec.ptype .== "categorical")
+    if any(is_cat)
+        S = _category_bins(S, foi_spec[is_cat, :])
     end
 
     X_q = @MVector zeros(S + 1)
@@ -571,9 +571,9 @@ function outcome_map(
 
     foi_spec = _get_factor_spec(model_spec, target_factors)
 
-    foi_cat = (foi_spec.ptype .== "categorical")
-    if any(foi_cat)
-        S = _category_bins(S, foi_spec[foi_cat, :])
+    is_cat = (foi_spec.ptype .== "categorical")
+    if any(is_cat)
+        S = _category_bins(S, foi_spec[is_cat, :])
     end
 
     step_size = 1 / S
