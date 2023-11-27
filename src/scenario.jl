@@ -432,12 +432,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
 
-    # years to start seeding/shading/fogging
+    # Years to start seeding/shading/fogging
     seed_start_year::Int64 = param_set("seed_year_start")
     shade_start_year::Int64 = param_set("shade_year_start")
     fog_start_year::Int64 = param_set("fog_year_start")
 
-    fogging::Real = param_set("fogging")  # percent reduction in bleaching mortality through fogging
+    fogging::Real = param_set("fogging")  # proportion of bleaching mortality reduction through fogging
     srm::Real = param_set("SRM")  # DHW equivalents reduced by some shading mechanism
     seed_years::Int64 = param_set("seed_years")  # number of years to seed
     shade_years::Int64 = param_set("shade_years")  # number of years to shade
@@ -638,7 +638,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Add recruits to current cover
         C_t[p.small, :] .+= recruitment
 
-        # Years at which seeding/fogging/shading occurs
+        # Time period over which intervention occurs
         in_fog_years =
             (fog_start_year <= tstep) && (tstep <= (fog_start_year + fog_years - 1))
         in_shade_years =
