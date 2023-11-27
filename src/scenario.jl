@@ -639,12 +639,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         C_t[p.small, :] .+= recruitment
 
         # Time period over which intervention occurs
-        in_fog_years =
-            (fog_start_year <= tstep) && (tstep <= (fog_start_year + fog_years - 1))
-        in_shade_years =
-            (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
-        in_seed_years =
-            (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
+        in_fog_timeframe = fog_start_year <= tstep <= (fog_start_year + fog_years - 1)
+        in_shade_timeframe =
+            shade_start_year <= tstep <= (shade_start_year + shade_years - 1)
+        in_seed_timeframe = seed_start_year <= tstep <= (seed_start_year + seed_years - 1)
 
         # Apply regional cooling effect before selecting locations to seed
         dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
