@@ -64,7 +64,7 @@ end
 """
     _get_cat_quantile(foi_spec::DataFrame, factor_c::String, steps::Vector{Float64})
 
-Get quantile for categorical variable, factor_c.
+Get quantile value for a given categorical variable.
 
 # Arguments
 - `foi_spec` : Model specification for factors of interest
