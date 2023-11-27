@@ -37,7 +37,7 @@ end
 
 Get model spec for specified factors.
 
-# Arguments 
+# Arguments
 - `model_spec` : Model specification, as extracted by `ADRIA.model_spec(domain)` or from a `ResultSet`
 - `factors` : Factors considered for sensitivity analysis
 """
@@ -62,19 +62,21 @@ function _category_bins(S::Int64, foi_spec::DataFrame)
 end
 
 """
-    _get_cat_quantile(foi_spec::DataFrame, factor_c::String, steps::Vector{Float64})
+    _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})
 
 Get quantile value for a given categorical variable.
 
 # Arguments
 - `foi_spec` : Model specification for factors of interest
-- `factor_c` : Contains true where the factor is categorical and false otherwise
+- `factor_name` : Contains true where the factor is categorical and false otherwise
 - `steps` : Number of steps for defining bins
 """
-function _get_cat_quantile(foi_spec::DataFrame, factor_c::Symbol, steps::Vector{Float64})
-    fact_idx = foi_spec.fieldname .== factor_c
+function _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})
+    fact_idx = foi_spec.fieldname .== factor_name
     lb = foi_spec.lower_bound[fact_idx][1]
     ub = foi_spec.upper_bound[fact_idx][1]
+
+    # The `- 1` adjusts quantile values as the samples are taken from the range [lb, ub+1]
     return round.(quantile(lb:ub, steps)) .- 1
 end
 
