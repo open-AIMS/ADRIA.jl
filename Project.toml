@@ -123,6 +123,7 @@ Statistics = "1"
 StatsBase = "0.33, 0.34"
 Surrogates = "6"
 TOML = "1"
+YAXArrays = "0.5"
 Zarr = "0.7, 0.8, 1, 0.9"
 julia = "1"
 
