@@ -38,8 +38,8 @@ end
 Get model spec for specified factors.
 
 # Arguments 
-- model_spec : Model specification, from `model_spec(domain)` or `rs.model_spec`
-- factors : Parameters considered for sensitivity analysis
+- `model_spec` : Model specification, as extracted by `ADRIA.model_spec(domain)` or from a `ResultSet`
+- `factors` : Parameters considered for sensitivity analysis
 """
 function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
     factors_to_assess = model_spec.fieldname .∈ [factors]
@@ -48,14 +48,13 @@ function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
 end
 
 """
-    _category_bins(S::Int64, foi_spec::DataFrame, foi_cat::BitVector)
+    _category_bins(S::Int64, foi_spec::DataFrame)
 
-Get number of binnings for categorical variables.
+Get number of bins for categorical variables.
 
 # Arguments
-- S : Number of bins
-- foi_spec : Model specification for factors of interest
-- foi_cat : Vector of length `foi_cat.fieldname` which contains true where the factor is categorical and false otherwise
+- `S` : Number of bins
+- `foi_spec` : Model specification for factors of interest
 """
 function _category_bins(S::Int64, foi_spec::DataFrame, foi_cat::BitVector)
     max_bounds = maximum(foi_spec[foi_cat, :upper_bound] .- foi_spec[foi_cat, :lower_bound])
@@ -63,14 +62,14 @@ function _category_bins(S::Int64, foi_spec::DataFrame, foi_cat::BitVector)
 end
 
 """
-    _get_cat_quantile(foi_spec::DataFrame, fact_cat::String, steps::Vector{Float64})
+    _get_cat_quantile(foi_spec::DataFrame, factor_c::String, steps::Vector{Float64})
 
-Get quantile for categorical variable, fact_cat.
+Get quantile for categorical variable, factor_c.
 
 # Arguments
-- foi_spec : Model specification for factors of interest
-- foi_cat : Vector of length `foi_cat.fieldname` which contains true where the factor is categorical and false otherwise
-- steps : Number of steps for defining binnings
+- `foi_spec` : Model specification for factors of interest
+- `factor_c` : Vector of length `foi_cat.fieldname` which contains true where the factor is categorical and false otherwise
+- `steps` : Number of steps for defining bins
 """
 function _get_cat_quantile(foi_spec::DataFrame, fact_cat::Symbol, steps::Vector{Float64})
     fact_idx = foi_spec.fieldname .== fact_cat
