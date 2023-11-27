@@ -33,7 +33,7 @@ function ks_statistic(ks::ApproximateKSTest)::Float64
 end
 
 """
-    _get_factor_spec(model_spec::DataFrame, factors::Vector{String})
+    _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
 
 Get model spec for specified factors.
 
