@@ -239,11 +239,11 @@ function ADRIA.viz.rsa!(
 
             ax::Axis = Axis(
                 g[r, c],
-                title=h_names[f_names .== factors[curr]][1],
+                title=h_names[f_names .== f_name][1],
                 axis_opts...
             )
 
-            scatterlines!(ax, fv_s, si(; factors=Symbol(f_name)); markersize=15)
+            scatterlines!(ax, fv_s, si(; factors=f_name); markersize=15)
             if f_name == :guided
                 ax.xticks = (fv_s, fv_labels)
                 ax.xticklabelrotation = pi / 4
