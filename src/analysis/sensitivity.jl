@@ -32,6 +32,53 @@ function ks_statistic(ks::ApproximateKSTest)::Float64
     return sqrt(n) * ks.δ
 end
 
+"""
+    _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
+
+Get model spec for specified factors.
+
+# Arguments
+- `model_spec` : Model specification, as extracted by `ADRIA.model_spec(domain)` or from a `ResultSet`
+- `factors` : Factors considered for sensitivity analysis
+"""
+function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
+    factors_to_assess = model_spec.fieldname .∈ [factors]
+    foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
+    return model_spec[factors_to_assess, foi_attributes]
+end
+
+"""
+    _category_bins(S::Int64, foi_spec::DataFrame)
+
+Get number of bins for categorical variables.
+
+# Arguments
+- `S` : Number of bins
+- `foi_spec` : Model specification for factors of interest
+"""
+function _category_bins(S::Int64, foi_spec::DataFrame)
+    max_bounds = maximum(foi_spec.upper_bound .- foi_spec.lower_bound)
+    return round(Int64, max(S, max_bounds))
+end
+
+"""
+    _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})
+
+Get quantile value for a given categorical variable.
+
+# Arguments
+- `foi_spec` : Model specification for factors of interest
+- `factor_name` : Contains true where the factor is categorical and false otherwise
+- `steps` : Number of steps for defining bins
+"""
+function _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})
+    fact_idx = foi_spec.fieldname .== factor_name
+    lb = foi_spec.lower_bound[fact_idx][1]
+    ub = foi_spec.upper_bound[fact_idx][1]
+
+    # The `- 1` adjusts quantile values as the samples are taken from the range [lb, ub+1]
+    return round.(quantile(lb:ub, steps)) .- 1
+end
 
 """
     pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
@@ -345,7 +392,7 @@ function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
 end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}; S=10)::NamedDimsArray
+    rsa(X::DataFrame, y::Vector{<:Real}, model_spec::DataFrame; S=10)::NamedDimsArray
     rsa(rs::ResultSet, y::AbstractArray{<:Real}; S::Int64=10)::NamedDimsArray
 
 Perform Regional Sensitivity Analysis.
@@ -376,6 +423,7 @@ Note: Values of type `missing` indicate a lack of samples in the region.
 - `rs` : ResultSet
 - `X` : scenario specification
 - `y` : scenario outcomes
+- `model_spec` : Model specification, as extracted by `ADRIA.model_spec(domain)` or from a `ResultSet`
 - `S` : number of bins to slice factor space into (default: 10)
 
 # Returns
@@ -401,18 +449,35 @@ ADRIA.sensitivity.rsa(X, y; S=10)
    https://dx.doi.org/10.1002/9780470725184
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
-function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
+function rsa(
+    X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64=10
+)::NamedDimsArray
     N, D = size(X)
-    seq = collect(0.0:(1/S):1.0)
 
     X_di = @MVector zeros(N)
+    sel = trues(N)
+    factors = Symbol.(names(X))
+
+    foi_spec = _get_factor_spec(model_spec, factors)
+
+    is_cat = (foi_spec.ptype .== "categorical")
+    if any(is_cat)
+        S = _category_bins(S, foi_spec[is_cat, :])
+    end
+
     X_q = @MVector zeros(S + 1)
     r_s = zeros(Union{Missing,Float64}, S, D)
-    sel = trues(N)
+    seq = collect(0.0:(1 / S):1.0)
 
     for d_i in 1:D
         X_di .= X[:, d_i]
-        X_q .= quantile(X_di, seq)
+
+        ptype = foi_spec.ptype[foi_spec.fieldname .== factors[d_i]][1]
+        if ptype == "categorical"
+            X_q .= _get_cat_quantile(foi_spec, factors[d_i], seq)
+        else
+            X_q .= quantile(X_di, seq)
+        end
 
         sel .= X_q[1] .<= X_di .<= X_q[2]
         if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
@@ -440,8 +505,10 @@ function rsa(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArr
         NamedDimsArray(r_s; bins=string.(seq[2:end]), factors=Symbol.(names(X)))
     )
 end
-function rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
-    return rsa(rs.inputs, vec(y); S=S)
+function rsa(
+    rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
+)::NamedDimsArray
+    return rsa(rs.inputs[:, Not(:RCP)], vec(y), rs.model_spec; S=S)
 end
 
 
@@ -493,7 +560,7 @@ function outcome_map(
     X::DataFrame,
     y::AbstractVecOrMat{<:Real},
     rule::Union{Function,BitVector,Vector{Int64}},
-    target_factors::Vector{String},
+    target_factors::Vector{Symbol},
     model_spec::DataFrame;
     S::Int64=20,
     n_boot::Int64=100,
@@ -504,21 +571,15 @@ function outcome_map(
         error("Invalid target factors: $(target_factors[missing_factor])")
     end
 
-    factors_to_assess = model_spec.fieldname .∈ [target_factors]
-    foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
-    foi_spec = model_spec[factors_to_assess, foi_attributes]
+    foi_spec = _get_factor_spec(model_spec, target_factors)
 
-    foi_cat = (foi_spec.ptype .== "categorical")
-    if any(foi_cat)
-        max_bounds = maximum(
-            foi_spec[foi_cat, :upper_bound] .-
-            foi_spec[foi_cat, :lower_bound]
-        )
-        S = round(Int64, max(S, max_bounds))
+    is_cat = (foi_spec.ptype .== "categorical")
+    if any(is_cat)
+        S = _category_bins(S, foi_spec[is_cat, :])
     end
 
     step_size = 1 / S
-    steps = collect(0:step_size:1.0)
+    steps = collect(0.0:step_size:1.0)
 
     p_table = NamedDimsArray(
         zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
@@ -540,22 +601,20 @@ function outcome_map(
 
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
+        X_f = X[:, fact_t]
         ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
         if ptype == "categorical"
-            fact_idx = foi_spec.fieldname .== fact_t
-            lb = foi_spec.lower_bound[fact_idx][1]
-            ub = foi_spec.upper_bound[fact_idx][1]
-            X_q .= round.(quantile(lb:ub, steps)) .- 1
+            X_q .= _get_cat_quantile(foi_spec, fact_t, steps)
         else
-            X_q .= quantile(X[:, fact_t], steps)
+            X_q .= quantile(X_f, steps)
         end
 
         for i in 1:length(X_q[1:end-1])
             local b::BitVector
             if i == 1
-                b = (X_q[i] .<= X[:, fact_t] .<= X_q[i+1])
+                b = (X_q[i] .<= X_f .<= X_q[i + 1])
             else
-                b = (X_q[i] .< X[:, fact_t] .<= X_q[i+1])
+                b = (X_q[i] .< X_f .<= X_q[i + 1])
             end
 
             b = b .& behave
@@ -589,12 +648,14 @@ function outcome_map(
     rs::ResultSet,
     y::AbstractArray{<:Real},
     rule::Union{Function,BitVector,Vector{Int64}},
-    target_factors::Vector{String};
+    target_factors::Vector{Symbol};
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
-    return outcome_map(rs.inputs, y, rule, target_factors, rs.model_spec; S, n_boot, conf)
+    return outcome_map(
+        rs.inputs[:, Not(:RCP)], y, rule, target_factors, rs.model_spec; S, n_boot, conf
+    )
 end
 function outcome_map(
     rs::ResultSet,
@@ -604,7 +665,9 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
-    return outcome_map(rs.inputs, y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf)
+    return outcome_map(
+        rs.inputs[:, Not(:RCP)], y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf
+    )
 end
 
 function _map_outcomes(
