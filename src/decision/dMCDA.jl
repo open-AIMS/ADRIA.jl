@@ -818,7 +818,7 @@ function distance_sorting(
 end
 
 """
-    unguided_site_selection(pref_seed_sites, pref_fog_sites, seed_years, shade_years, n_site_int, available_space, depth)
+    unguided_site_selection(pref_seed_sites, pref_fog_sites, seed_years, fog_years, n_site_int, available_space, depth)
 
 Randomly select seed/fog site locations for the given year, constraining to sites with max. carrying capacity > 0.
 
@@ -826,7 +826,7 @@ Randomly select seed/fog site locations for the given year, constraining to site
 - `pref_seed_locs` : Previously selected seeding locations
 - `pref_fog_locs` : Previously selected fogging locations
 - `seed_years` : bool, indicating whether to seed this year or not
-- `shade_years` : bool, indicating whether to shade this year or not
+- `fog_years` : bool, indicating whether to fog this year or not
 - `n_site_int` : int, number of sites to intervene on
 - `available_space` : vector/matrix : space available at each site (`k` value)
 - `depth` : vector of site ids found to be within desired depth range
@@ -838,7 +838,7 @@ function unguided_site_selection(
     pref_seed_locs,
     pref_fog_locs,
     seed_years,
-    shade_years,
+    fog_years,
     n_site_int,
     available_space,
     depth
@@ -856,7 +856,7 @@ function unguided_site_selection(
         pref_seed_locs[1:s_n_site_int] .= StatsBase.sample(candidate_sites, s_n_site_int; replace=false)
     end
 
-    if shade_years
+    if fog_years
         pref_fog_locs = zeros(Int64, n_site_int)
         pref_fog_locs[1:s_n_site_int] .= StatsBase.sample(
             candidate_sites, s_n_site_int; replace=false

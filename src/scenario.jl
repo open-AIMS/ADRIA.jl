@@ -436,14 +436,16 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
 
-    # years to start seeding/shading
+    # Years to start seeding/shading/fogging
     seed_start_year::Int64 = param_set("seed_year_start")
     shade_start_year::Int64 = param_set("shade_year_start")
+    fog_start_year::Int64 = param_set("fog_year_start")
 
-    fogging::Real = param_set("fogging")  # percent reduction in bleaching mortality through fogging
+    fogging::Real = param_set("fogging")  # proportion of bleaching mortality reduction through fogging
     srm::Real = param_set("SRM")  # DHW equivalents reduced by some shading mechanism
     seed_years::Int64 = param_set("seed_years")  # number of years to seed
     shade_years::Int64 = param_set("shade_years")  # number of years to shade
+    fog_years::Int64 = param_set("fog_years")  # number of years to fog
 
     loc_k_area::Matrix{Float64} = cache.site_k_area
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
@@ -482,9 +484,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     α = 0.95
     decay = α .^ (1:Int64(param_set("plan_horizon"))+1)
 
-    # Years at which to reassess seeding site selection
+    # Years at which intervention locations are re-evaluated
     seed_decision_years = fill(false, tf)
     shade_decision_years = fill(false, tf)
+    fog_decision_years = fill(false, tf)
 
     seed_start_year = max(seed_start_year, 2)
     if param_set("seed_freq") > 0
@@ -502,6 +505,15 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     else
         # Start at year 2 or the given specified shade start year
         shade_decision_years[shade_start_year] = true
+    end
+
+    fog_start_year = max(fog_start_year, 2)
+    if param_set("fog_freq") > 0
+        max_consider = min(fog_start_year + fog_years - 1, tf)
+        fog_decision_years[fog_start_year:Int64(param_set("fog_freq")):max_consider] .= true
+    else
+        # Start at year 2 or the given specified fog start year
+        fog_decision_years[fog_start_year] = true
     end
 
     seed_locs::Vector{Int64} = zeros(Int64, n_site_int)
@@ -525,6 +537,10 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # Flag indicating whether to seed or not to seed
     seed_corals = any(param_set(taxa_names) .> 0.0)
+    # Flag indicating whether to fog or not fog
+    apply_fogging = fogging > 0.0
+    # Flag indicating whether to apply shading
+    apply_shading = srm > 0.0
 
     # Defaults to considering all sites if depth cannot be considered.
     depth_priority = collect(1:n_locs)
@@ -633,19 +649,22 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Add recruits to current cover
         C_t[p.small, :] .+= recruitment
 
-        in_shade_years = (shade_start_year <= tstep) && (tstep <= (shade_start_year + shade_years - 1))
-        in_seed_years = (seed_start_year <= tstep) && (tstep <= (seed_start_year + seed_years - 1))
+        # Time period over which interventions occur
+        in_fog_timeframe = fog_start_year <= tstep <= (fog_start_year + fog_years - 1)
+        in_shade_timeframe =
+            shade_start_year <= tstep <= (shade_start_year + shade_years - 1)
+        in_seed_timeframe = seed_start_year <= tstep <= (seed_start_year + seed_years - 1)
 
         # Apply regional cooling effect before selecting locations to seed
         dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
-        if (srm > 0.0) && in_shade_years
+        if apply_shading && in_shade_timeframe
             Yshade[tstep, :] .= srm
 
             # Apply reduction in DHW due to SRM
             dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
-        if is_guided && (in_seed_years || in_shade_years)
+        if is_guided && (in_seed_timeframe || in_fog_timeframe)
             # Update dMCDA values
 
             # Determine subset of data to select data for planning horizon
@@ -666,7 +685,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             (seed_locs, fog_locs, rankings) = guided_site_selection(
                 mcda_vars,
                 MCDA_approach,
-                seed_decision_years[tstep], shade_decision_years[tstep],
+                seed_decision_years[tstep],
+                fog_decision_years[tstep],
                 seed_locs,
                 fog_locs,
                 rankings,
@@ -678,31 +698,32 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             # Log site ranks
             # First col only holds site index ids so skip (with 2:end)
             site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
-        elseif seed_corals && (in_seed_years || in_shade_years)
+        elseif (seed_corals && in_seed_timeframe) || (apply_fogging && in_fog_timeframe)
             # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
             seed_locs, fog_locs = unguided_site_selection(
                 seed_locs,
                 fog_locs,
-                seed_decision_years[tstep], shade_decision_years[tstep],
+                seed_decision_years[tstep],
+                fog_decision_years[tstep],
                 n_site_int, vec(leftover_space_m²), depth_priority)
 
             site_ranks[tstep, seed_locs, 1] .= 1.0
             site_ranks[tstep, fog_locs, 2] .= 1.0
         end
 
-        has_shade_sites::Bool = !all(fog_locs .== 0)
+        has_fog_locs::Bool = !all(fog_locs .== 0)
 
         # Check if locations are selected, and selected locations have space,
         # otherwise no valid locations were selected for seeding.
-        has_seed_sites::Bool = true
+        has_seed_locs::Bool = true
         if !all(seed_locs .== 0)
-            has_seed_sites = !all(leftover_space_m²[seed_locs] .== 0.0)
+            has_seed_locs = !all(leftover_space_m²[seed_locs] .== 0.0)
         else
-            has_seed_sites = false
+            has_seed_locs = false
         end
 
         # Fog selected locations
-        if (fogging > 0.0) && in_shade_years && has_shade_sites
+        if apply_fogging && in_fog_timeframe && has_fog_locs
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
 
@@ -712,12 +733,20 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        bleaching_mortality!(C_t, collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))), depth_coeff, corals.dist_std, c_mean_t_1, c_mean_t, @view(bleaching_mort[tstep-1:tstep, :, :]))
+        bleaching_mortality!(
+            C_t,
+            collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
+            depth_coeff,
+            corals.dist_std,
+            c_mean_t_1,
+            c_mean_t,
+            @view(bleaching_mort[tstep-1:tstep, :, :])
+        )
 
         # Apply seeding
         # Assumes coral seeding occurs in the months after disturbances
         # (such as cyclones/heat) occurs.
-        if seed_corals && in_seed_years && has_seed_sites
+        if seed_corals && in_seed_timeframe && has_seed_locs
             # Seed selected locations
             seed_corals!(C_t, vec(loc_k_area), vec(leftover_space_m²),
                 seed_locs, seeded_area, seed_sc, a_adapt, @view(Yseed[tstep, :, :]),

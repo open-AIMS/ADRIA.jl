@@ -43,8 +43,11 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[not_seeded, :a_adapt] .= 0.0
 
     # Same for fogging/shading
-    not_fogged = (df.fogging .== 0) .& (df.SRM .== 0)
-    df[not_fogged, contains.(names(df), "fog_") .& contains.(names(df), "shade_")] .= 0.0
+    not_fogged = (df.fogging .== 0)
+    df[not_fogged, contains.(names(df), "fog_")] .= 0.0
+
+    not_shaded = (df.SRM .== 0)
+    df[not_shaded, contains.(names(df), "shade_")] .= 0.0
 
     # Normalize MCDA weights for fogging scenarios
     guided_fogged = (df.fogging .> 0.0) .& (df.guided .> 0)

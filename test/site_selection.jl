@@ -49,15 +49,15 @@ end
     pref_seed_sites = zeros(Int64, n_intervention_sites)
     pref_fog_sites = zeros(Int64, n_intervention_sites)
     seed_years = true
-    shade_years = true
+    fog_years = true
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
     depth_priority = collect(1:5)
 
     pref_seed_sites, pref_fog_sites = ADRIA.decision.unguided_site_selection(
         pref_seed_sites,
         pref_fog_sites,
-        true,
-        true,
+        seed_years,
+        fog_years,
         5,
         max_cover,
         depth_priority,
