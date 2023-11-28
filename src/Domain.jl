@@ -232,7 +232,7 @@ function n_locations(domain::Domain)::Int64
 end
 
 """
-    relative_leftover_space(loc_coral_cover::Matrix{Float64})::Matrix{Float64}
+    relative_leftover_space(loc_coral_cover::Union{Matrix{Float64},Vector{Float32}})::Union{Matrix{Float64},Vector{Float32}}
 
 Get proportion of leftover space, given site_k and proportional cover on each site, summed
 over species.
@@ -243,7 +243,9 @@ over species.
 # Returns
 Leftover space ∈ [0, 1]
 """
-function relative_leftover_space(loc_coral_cover::Matrix{Float64})::Matrix{Float64}
+function relative_leftover_space(
+    loc_coral_cover::Union{Matrix{Float64},Vector{Float32}}
+)::Union{Matrix{Float64},Vector{Float64}}
     return max.(1.0 .- loc_coral_cover, 0.0)
 end
 

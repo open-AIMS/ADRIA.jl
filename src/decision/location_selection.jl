@@ -129,7 +129,9 @@ function rank_locations(
             domain,
             scen,
             considered_sites,
-            relative_leftover_space(sum_cover[scen_idx, :]) .* k_area_locs,
+            relative_leftover_space(
+                AxisKeys.keyless(NamedDims.unname(sum_cover[scen_idx, :]))
+            ) .* k_area_locs,
             area_to_seed,
             summary_stat_env(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
             summary_stat_env(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios))
