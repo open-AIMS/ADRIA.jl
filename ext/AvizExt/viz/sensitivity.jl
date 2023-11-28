@@ -187,7 +187,6 @@ function ADRIA.viz.rsa!(
 
     n_rows, n_cols = _calc_gridsize(n_factors)
 
-    xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
     xlabel = get(axis_opts, :xlabel, "Factor Value")
     ylabel = get(axis_opts, :ylabel, L"\text{Relative } S_{i}")
 
@@ -259,7 +258,7 @@ function ADRIA.viz.rsa!(
 
     linkyaxes!(axs...)
     Label(g[end+1, :], text=xlabel, fontsize=32)
-    Label(g[1:(end - 1), 0]; text=ylabel, fontsize=32, rotation=xtick_rot)
+    Label(g[1:(end - 1), 0]; text=ylabel, fontsize=32, rotation=π / 2.0)
 
     if :title in keys(axis_opts)
         Label(g[0, :], text=title_val, fontsize=40)
