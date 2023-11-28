@@ -642,7 +642,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Add recruits to current cover
         C_t[p.small, :] .+= recruitment
 
-        # Time period over which intervention occurs
+        # Time period over which interventions occur
         in_fog_timeframe = fog_start_year <= tstep <= (fog_start_year + fog_years - 1)
         in_shade_timeframe =
             shade_start_year <= tstep <= (shade_start_year + shade_years - 1)
