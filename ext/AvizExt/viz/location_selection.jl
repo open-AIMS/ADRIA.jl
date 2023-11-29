@@ -180,7 +180,7 @@ function ADRIA.viz.decision_matrices!(
     end
     n_criteria::Int64 = length(criteria)
     opts[:color_map] = get(opts, :color_map, :viridis)
-    n_rows, n_cols = _calc_gridsize(n_criteria + 1)
+    n_rows = n_cols = ceil(Int64, sqrt(n_criteria + 1))
     criteria_names = String.(criteria)
     step::Int64 = 1
     s_row = 1
@@ -202,7 +202,13 @@ function ADRIA.viz.decision_matrices!(
 
         step += 1
     end
-    ADRIA.viz.map!(g[s_row, s_col], rs, vec(scores); opts=opts, axis_opts=axis_opts_temp)
+    ADRIA.viz.map!(
+        g[s_row, s_col],
+        rs,
+        vec(scores);
+        opts=opts,
+        axis_opts=Dict(:title => "Aggregate score"; axis_opts...),
+    )
     try
         # Clear empty figures
         trim!(g)
