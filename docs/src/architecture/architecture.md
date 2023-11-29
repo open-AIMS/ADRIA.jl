@@ -29,11 +29,11 @@ discussed in Pianosi et al., 2016):
 3. Post-processing
 
 When ADRIA is applied in its entirety, "input sampling" is analogous to scenario generation: all
-model factors (the inputs) are collated and are sampled through a quasi-monte carlo process
-and subsequently adjusted to produce plausible combinations of factor values. The Sobol' sampling
-method is adopted as the default, although any method provided by the [QuasiMonteCarlo.jl](https://github.com/SciML/QuasiMonteCarlo.jl)
-package can be used. Sample adjustment is required to map sampled values (which are continuous) to
-categorical or whole number values (e.g., Baroni and Tarantola, 2014) as may be expected by some
+model factors (the inputs) are collated and are sampled through a quasi-monte carlo process.
+The Sobol' sampling method is adopted as the default, although any method provided by the
+[QuasiMonteCarlo.jl](https://github.com/SciML/QuasiMonteCarlo.jl) package can be used.
+Sample adjustment is required to map sampled values (which are continuous) to categorical or
+whole number values (e.g., Baroni and Tarantola, 2014) as may be expected by some
 factors. Values are also adjusted to avoid implausible factor combinations, such as active
 intervention factors in the case of non-intervention scenarios.
 
