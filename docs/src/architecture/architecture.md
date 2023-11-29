@@ -29,13 +29,13 @@ discussed in Pianosi et al., 2016):
 3. Post-processing
 
 When ADRIA is applied in its entirety, "input sampling" is analogous to scenario generation: all
-model parameters (the inputs) are collated and are sampled through a quasi-monte carlo process
-and subsequently adjusted to produce plausible combinations of parameter values. The Sobol' sampling
+model factors (the inputs) are collated and are sampled through a quasi-monte carlo process
+and subsequently adjusted to produce plausible combinations of factor values. The Sobol' sampling
 method is adopted as the default, although any method provided by the [QuasiMonteCarlo.jl](https://github.com/SciML/QuasiMonteCarlo.jl)
 package can be used. Sample adjustment is required to map sampled values (which are continuous) to
 categorical or whole number values (e.g., Baroni and Tarantola, 2014) as may be expected by some
-parameters. Values are also adjusted to avoid implausible factor combinations, such as active
-intervention parameters in the case of non-intervention scenarios.
+factors. Values are also adjusted to avoid implausible factor combinations, such as active
+intervention factors in the case of non-intervention scenarios.
 
 Model evaluation is simply running the model with the generated scenario set.
 
@@ -46,14 +46,14 @@ Post-processing is the analysis and visualization step.
 Factors in ADRIA are defined across four sub-components:
 
 1. Intervention
-2. Criteria
+2. CriteriaWeights
 3. EnvironmentalLayers
 4. Coral
 
 Each sub-component is represented by a struct with fields for each parameter. The `Intervention`
 sub-component holds parameters that define a given adopted intervention strategy/option: how
 many (and type of) corals are to be seeded, the length of any deployment, the start/end years,
-and so on. The `Criteria` sub-component relates to the preferences for the Multi-Criteria
+and so on. The `CriteriaWeights` sub-component relates to the preferences for the Multi-Criteria
 Decision Analysis methods, further detailed in [Dynamic Multi-Criteria Decision Analysis](@ref). For the ADRIA ecosystem model
 (ADRIAmod), `EnviromentalLayers` relate to the environmental scenarios available for a given
 simulation (a time series of DHW and Wave stress), itself determined on the loading of data
@@ -72,7 +72,9 @@ ADRIAmod represents these across six size classes, with six parameter sets for e
 species and size class. These six parameter sets are further detailed in [Model Factors](@ref),
 however, it results in a large number of unique factors (6 groups x 6 size classes x 6 parameters: 216 factors).
 Instead of specifying all coral factors by hand, ADRIA instead auto-generates the sub-component
-using a common template (see `coral_spec()` and `create_coral_struct()` in [General API](@ref)).Through discussion with expert stakeholders, factor bounds were set to +/- 10% of their default values following a triangular distribution, the peak of which is the default value.
+using a common template (see `coral_spec()` and `create_coral_struct()` in [General API](@ref)).
+Through discussion with expert stakeholders, factor bounds were set to +/- 10% of their
+default values following a triangular distribution, the peak of which is the default value.
 
 The [ModelParameters.jl](https://github.com/rafaqz/ModelParameters.jl) package is used to provide
 a simple table-like interface to model factors. Using the `Param` type provided by
@@ -105,11 +107,11 @@ In this manner the expected probability of a possible value being selected is ma
 These factor definitions are collectively known as the model specification, and
 can be collated as a DataFrame.
 
+Combination of the realized factor values then represent a "scenario".
+
 !!! note "Parameter Collation and Scenario Generation"
     See [Cookbook examples](@ref) for an example how-to on collating model factors and
     generating samples.
-
-Combination of the realized factor values then represent a "scenario".
 
 # References
 
