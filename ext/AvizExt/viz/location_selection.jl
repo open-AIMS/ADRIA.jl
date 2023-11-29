@@ -155,6 +155,7 @@ Figure
 function ADRIA.viz.decision_matrices(
     rs::ResultSet,
     S::NamedDimsArray,
+    scores::Vector{Float64},
     criteria::Vector{Symbol};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -162,24 +163,34 @@ function ADRIA.viz.decision_matrices(
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    ADRIA.viz.decision_matrices!(g, rs, S, criteria; opts=opts, axis_opts=axis_opts)
+    ADRIA.viz.decision_matrices!(g, rs, S, scores, criteria; opts=opts, axis_opts=axis_opts)
     return f
 end
 function ADRIA.viz.decision_matrices!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
     S::NamedDimsArray,
+    scores::Vector{Float64},
     criteria::Vector{Symbol};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
+    if length(rs.site_data.site_id) != size(S, 1)
+        error("Only unfiltered decision matrices can be plotted.")
+    end
     n_criteria::Int64 = length(criteria)
     opts[:color_map] = get(opts, :color_map, :viridis)
-    n_rows, n_cols = _calc_gridsize(n_criteria)
+    n_rows, n_cols = _calc_gridsize(n_criteria + 1)
     criteria_names = String.(criteria)
     step::Int64 = 1
-
+    s_row = 1
+    s_col = 1
     for row in 1:n_rows, col in 1:n_cols
+        if step > n_criteria
+            s_row = row
+            s_col = col
+            break
+        end
         axis_opts_temp = Dict(:title => criteria_names[step]; axis_opts...)
         ADRIA.viz.map!(
             g[row, col],
@@ -190,11 +201,8 @@ function ADRIA.viz.decision_matrices!(
         )
 
         step += 1
-        if step > n_criteria
-            break
-        end
     end
-
+    ADRIA.viz.map!(g[s_row, s_col], rs, vec(scores); opts=opts, axis_opts=axis_opts_temp)
     try
         # Clear empty figures
         trim!(g)

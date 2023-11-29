@@ -341,8 +341,7 @@ Selection score
 """
 function decision_matrices(
     dom::Domain,
-    criteria_weights::DataFrameRow,
-    iv_type::Symbol;
+    criteria_weights::DataFrameRow;
     cover=dom.init_coral_cover::AbstractArray,
     site_ids=collect(1:length(dom.site_data.site_id))::Vector{Int64},
     area_to_seed::Float64=962.11,
@@ -376,60 +375,58 @@ function decision_matrices(
         criteria_weights.deployed_coral_risk_tol,
     )
 
-    if iv_type == :seed
-        S, ws = create_seed_matrix(
-            A,
-            area_to_seed .* criteria_weights.coral_cover_tol,
-            criteria_weights.seed_in_connectivity,
-            criteria_weights.seed_out_connectivity,
-            criteria_weights.seed_wave_stress,
-            criteria_weights.seed_heat_stress,
-            criteria_weights.seed_priority,
-            criteria_weights.seed_zone,
-            criteria_weights.coral_cover_low,
-            criteria_weights.seed_depth,
+
+    S, wse = create_seed_matrix(
+        A,
+        area_to_seed .* criteria_weights.coral_cover_tol,
+        criteria_weights.seed_in_connectivity,
+        criteria_weights.seed_out_connectivity,
+        criteria_weights.seed_wave_stress,
+        criteria_weights.seed_heat_stress,
+        criteria_weights.seed_priority,
+        criteria_weights.seed_zone,
+        criteria_weights.coral_cover_low,
+        criteria_weights.seed_depth,
         )
 
-        S = NamedDimsArray(
-            S[:, 2:end];
-            locations=dom.site_data.site_id,
-            criteria=[
-                :in_connectivity,
-                :out_connectivity,
-                :wave_stress,
-                :heat_stress,
-                :priority_predecessor,
-                :zones,
-                :leftover_space,
-                :depth,
-            ],
-        )
-    elseif iv_type == :fog
-        S, ws = create_fog_matrix(
-            A,
-            site_k_area(dom)[site_ids][filtered_sites],
-            criteria_weights.fog_connectivity,
-            criteria_weights.fog_wave_stress,
-            criteria_weights.fog_heat_stress,
-            criteria_weights.fog_priority,
-            criteria_weights.fog_zone,
-            criteria_weights.coral_cover_high,
-        )
-        S = NamedDimsArray(
-            S[:, 2:end];
-            locations=dom.site_data.site_id,
-            criteria=[
-                :in_connectivity,
-                :out_connectivity,
-                :wave_stress,
-                :heat_stress,
-                :priority_predecessor,
-                :zones,
-                :coral_area,
-            ],
-        )
-    else
-        error("$iv_type is not a valid intervention type.")
-    end
-    return S, ws
+    SE = NamedDimsArray(
+        S[:, 2:end];
+        locations=dom.site_data.site_id,
+        criteria=[
+            :in_connectivity,
+            :out_connectivity,
+            :wave_stress,
+            :heat_stress,
+            :priority_predecessor,
+            :zones,
+            :leftover_space,
+            :depth,
+        ],
+    )
+
+    S, wsh = create_fog_matrix(
+        A,
+        site_k_area(dom)[site_ids][filtered_sites],
+        criteria_weights.fog_connectivity,
+        criteria_weights.fog_wave_stress,
+        criteria_weights.fog_heat_stress,
+        criteria_weights.fog_priority,
+        criteria_weights.fog_zone,
+        criteria_weights.coral_cover_high,
+    )
+    SH = NamedDimsArray(
+        S[:, 2:end];
+        locations=dom.site_data.site_id,
+        criteria=[
+            :in_connectivity,
+            :out_connectivity,
+            :wave_stress,
+            :heat_stress,
+            :priority_predecessor,
+            :zones,
+            :coral_area,
+        ],
+    )
+
+    return SE, wse, SH, wsh
 end
