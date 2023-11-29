@@ -10,7 +10,7 @@ MCDA method.
 
 # Arguments
 - `domain` : The geospatial domain to assess
-- `sum_cover` :  Absolute coral cover at each location
+- `sum_cover` :  Relative coral cover at each location
 - `mcda_vars` : Parameters for MCDA
 - `guided` : ID of MCDA algorithm to apply
 
@@ -66,7 +66,7 @@ Return location ranks for a given domain and scenarios.
 # Arguments
 - `domain` : The geospatial domain locations were selected from
 - `scenarios` : Scenario specification
-- `sum_cover` : Matrix[n_scenarios ⋅ n_sites] containing the total coral cover at each
+- `sum_cover` : Matrix[n_scenarios ⋅ n_sites] containing the total relative coral cover at each
     location, for each scenario
 - `area_to_seed` : Area of coral to be seeded at each time step in km²
 - `agg_func` : Aggregation function to apply, e.g `ranks_to_frequencies` or
