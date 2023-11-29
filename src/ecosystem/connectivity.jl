@@ -170,7 +170,7 @@ Create in/out degree centralities for all nodes, and vector of their strongest p
 # Arguments
 - `TP_base` : Base transfer probability matrix to create Directed Graph from.
 - `area_weighted_TP` : Transfer probability matrix weighted by location `k` area
-- `cover` : Total coral cover at location
+- `cover` : Total relative coral cover at location
 - `TP_cache` : Cache matrix of same size as TP_base to hold intermediate values
 
 # Returns
