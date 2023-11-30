@@ -159,7 +159,7 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Risk Tolerance",
         description="Filters out sites with heat/wave stress above threshold.",
     )
-    use_dist::N = Param(
+    use_spatial_group::N = Param(
         1;
         ptype="categorical",
         bounds=(0.0, 1.0 + 1.0),
@@ -168,16 +168,6 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         criteria_keywords=(:threshold,),
         name="Use Distance Threshold",
         description="Turns distance sorting on or off.",
-    )
-    dist_thresh::P3 = Param(
-        0.1;
-        ptype="real",
-        bounds=(0.0, 1.0),
-        default_bounds=(0.0, 1.0),
-        dists="unif",
-        criteria_keywords=(:threshold,),
-        name="Distance Threshold",
-        description="Sites selected by MCDA must be further apart than median(dist)-dist_thresh*median(dist).",
     )
     depth_min::P3 = Param(
         5.0;
