@@ -6,7 +6,7 @@ using Distributions, Statistics
 
 import GeoDataFrames as GDF
 
-using ADRIA: SimConstants, Domain, site_distances
+using ADRIA: SimConstants, Domain
 
 mutable struct ReefModDomain <: Domain
     const name::String
@@ -18,8 +18,6 @@ mutable struct ReefModDomain <: Domain
     const out_conn
     const strong_pred
     const site_data
-    const site_distances
-    const median_site_distance
     const site_id_col
     const unique_site_id_col
     init_coral_cover
@@ -59,7 +57,6 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
 
     site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
     site_data = GDF.read(site_data_path)
-    site_dist, med_site_dist = ADRIA.site_distances(site_data)
     site_id_col = "LOC_NAME_S"
     unique_site_id_col = "LOC_NAME_S"
     site_ids = site_data[:, unique_site_id_col]
@@ -162,8 +159,6 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
         out_conn,
         strong_pred,
         site_data,
-        site_dist,
-        med_site_dist,
         site_id_col,
         unique_site_id_col,
         init_coral_cover,

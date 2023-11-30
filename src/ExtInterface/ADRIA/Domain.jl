@@ -7,7 +7,6 @@ mutable struct ADRIADomain{
     Σ<:NamedDimsArray,
     M<:NamedDimsArray,
     D<:DataFrame,
-    X<:AbstractArray{<:Float64},
     Y<:Union{Matrix{<:Real},NamedDimsArray},
     Z<:Union{Matrix{<:Real},NamedDimsArray},
 } <: Domain
@@ -19,9 +18,7 @@ mutable struct ADRIADomain{
     const in_conn::Vector{Float64}  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
     const out_conn::Vector{Float64}  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strong_pred::Vector{Int64}  # strongest predecessor
-    const site_data::D  # table of site data (depth, carrying capacity, etc)
-    const site_distances::X  # Matrix of distances between each site
-    const median_site_distance::Float64
+    site_data::D  # table of site data (depth, carrying capacity, etc)
     const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
     const unique_site_id_col::String  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
@@ -49,8 +46,6 @@ function Domain(
     out_conn::Vector{Float64},
     strongest_predecessor::Vector{Int64},
     site_data::DataFrame,
-    site_distances::Matrix{Float64},
-    median_site_distance::Float64,
     site_id_col::String,
     unique_site_id_col::String,
     init_coral_cover::NamedDimsArray,
@@ -94,8 +89,6 @@ function Domain(
         out_conn,
         strongest_predecessor,
         site_data,
-        site_distances,
-        median_site_distance,
         site_id_col,
         unique_site_id_col,
         init_coral_cover,
@@ -185,7 +178,6 @@ function Domain(
     # Filter out missing entries
     site_data = site_data[coalesce.(in.(conn_ids, [site_conn.site_ids]), false), :]
     site_data.k .= site_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
-    site_dists::Matrix{Float64}, median_site_distance::Float64 = site_distances(site_data)
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
@@ -250,8 +242,6 @@ function Domain(
         conns.out_conn,
         conns.strongest_predecessor,
         site_data,
-        site_dists,
-        median_site_distance,
         site_id_col,
         unique_site_id_col,
         coral_cover,

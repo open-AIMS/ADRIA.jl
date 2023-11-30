@@ -18,38 +18,6 @@ mutable struct EnvLayer{S<:AbstractString,TF}
 end
 
 """
-    site_distance(site_data::DataFrame)::Matrix
-
-Calculate matrix of unique distances between sites.
-
-# Returns
-tuple, matrix of distance between sites, median site distance for domain
-"""
-
-function site_distances(site_data::DataFrame)::Tuple{Matrix{Float64},Float64}
-    site_centroids = centroids(site_data)
-    longitudes = first.(site_centroids)
-    latitudes = last.(site_centroids)
-
-    n_sites = size(site_data, 1)
-    dist = fill(NaN, n_sites, n_sites)
-    for jj in axes(dist, 2)
-        for ii in axes(dist, 1)
-            if ii == jj
-                continue
-            end
-
-            @views dist[ii, jj] = haversine(
-                (longitudes[ii], latitudes[ii]), (longitudes[jj], latitudes[jj])
-            )
-        end
-    end
-
-    median_site_dist = median(dist[.!isnan.(dist)])
-    return dist, median_site_dist
-end
-
-"""
     load_domain(path::String)
 
 Load ADRIA domain specification from data package.
