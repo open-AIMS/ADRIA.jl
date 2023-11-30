@@ -23,9 +23,8 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     k_area  # ::V
     min_area # ::F
     risk_tol  # ::F
-    dist # ::M
-    use_dist # ::Int64
-    min_dist # ::Float64
+    use_spatial_group # ::M
+    reefs #::V
     wt_in_conn_seed  # ::F
     wt_out_conn_seed  # ::F
     wt_conn_fog  # ::F
@@ -115,9 +114,8 @@ function DMCDA_vars(
         site_k_area(domain),
         criteria("coral_cover_tol") .* area_to_seed,
         criteria("deployed_coral_risk_tol"),
-        domain.site_distances,
-        criteria("use_dist"),
-        domain.median_site_distance - domain.median_site_distance * criteria("dist_thresh"),
+        criteria("use_spatial_group"),
+        domain.site_data.Reef,
         criteria("seed_in_connectivity"),
         criteria("seed_out_connectivity"),
         criteria("fog_connectivity"),
@@ -586,8 +584,7 @@ function guided_site_selection(
 )::Tuple{Vector{T}, Vector{T}, Matrix{T}} where {
     T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool
 }
-    use_dist::Int64 = d_vars.use_dist
-    min_dist::Float64 = d_vars.min_dist
+    use_spatial_group::Int64 = d_vars.use_spatial_group
     site_ids = copy(d_vars.site_ids)
     n_sites::Int64 = length(site_ids)
 
@@ -695,20 +692,18 @@ function guided_site_selection(
     if log_seed && isempty(SE)
         pref_seed_locs = zeros(Int64, n_iv_locs)
     elseif log_seed
+            pref_seed_locs, rankings = constrain_reef_group(
+                d_vars.reefs,
         pref_seed_locs, s_order_seed = rank_sites!(
             SE,
             wse,
             rankings,
-            n_iv_locs .* 2,
             mcda_func,
+            n_iv_locs .* 2,
             2,
         )
-        if use_dist != 0
-            pref_seed_locs, rankings = distance_sorting(
-                pref_seed_locs,
                 s_order_seed,
-                d_vars.dist,
-                min_dist,
+                pref_seed_locs,
                 rankings,
                 2,
             )
@@ -719,12 +714,11 @@ function guided_site_selection(
         pref_fog_locs = zeros(Int64, n_iv_locs)
     elseif log_fog
         pref_fog_locs, s_order_fog = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
-        if use_dist != 0
-            pref_fog_locs, rankings = distance_sorting(
-                pref_fog_locs,
+        if use_spatial_group == 1
+            pref_fog_locs, rankings = constrain_reef_group(
+                d_vars.reefs,
                 s_order_fog,
-                d_vars.dist,
-                min_dist,
+                pref_fog_locs,
                 rankings,
                 3,
             )
@@ -743,84 +737,37 @@ function guided_site_selection(
     return pref_seed_locs, pref_fog_locs, rankings
 end
 
-"""
-    distance_sorting(pref_locs::AbstractArray{Int}, s_order::Matrix{Union{Float64,Int64}}, dist::Matrix{Float64}, min_dist::Float64, rankings::Matrix{Int64}, rank_col::Int64)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
+function constrain_reef_group(loc_reefs, s_order, pref_locs, rankings, rank_col)
+    loc_order = s_order[:, 1]
+    n_site_int = length(pref_locs)
+    unique_reefs = unique(loc_reefs)
 
-Find selected locations with distances between each other < median distance-dist_thresh*(median distance).
-Replaces these locations with those in the top ranks if the distance between these is greater.
+    for kk in 1:ceil(Int64, length(loc_order) / 2)
+        pref_reefs = loc_reefs[pref_locs]
+        sum_reef_pref_locs = [sum(pref_reefs .== rr) for rr in unique_reefs]
+        reef_swap = unique_reefs[findall((sum_reef_pref_locs .> 3))]
 
-# Arguments
-- `pref_locs` : Original n highest ranked locations selected for seeding or shading.
-- `s_order` : Current order of ranked sites in terms of numerical site ID.
-- `dist` : Matrix of unique distances between sites.
-- `min_dist` : Minimum distance between sites for selected sites.
-- `rankings` : Ranking data
-- `rank_col` : Index of column holding location ranks
+        replace_locs = [pref_locs[pref_reefs .== reef][(3 + 1):end] for reef in reef_swap]
 
-# Returns
-New set of selected sites for seeding or shading.
-"""
-function distance_sorting(
-    pref_locs::AbstractArray{Int64},
-    s_order::Matrix{Union{Float64,Int64}},
-    dist::Matrix{Float64},
-    min_dist::Float64,
-    rankings::Matrix{Int64},
-    rank_col::Int64,
-)::Tuple{Vector{Union{Float64,Int64}},Matrix{Int64}}
-    # set-up
-    n_sites = length(pref_locs)
-    site_order = s_order[:, 1]
+        if !isempty(replace_locs)
+            replace_locs = replace_locs[1:end...]
 
-    # Sites to select alternatives from
-    alt_sites = setdiff(site_order, pref_locs)
-
-    # Find all selected sites closer than the min distance
-    pref_dists = findall(dist[pref_locs, pref_locs] .< min_dist)
-
-    idx_to_replace = sort(unique(reinterpret(Int64, pref_dists)))
-    select_n = length(idx_to_replace)
-
-    keep_idxs = setdiff(collect(1:length(pref_locs)), idx_to_replace)
-
-    # Store of new set of locations
-    updated_locs = pref_locs
-
-    while (length(alt_sites) .>= select_n)
-        updated_locs = [updated_locs[keep_idxs[:]]; alt_sites[1:select_n]]
-
-        # Find all sites within these highly ranked but unselected sites which are further apart
-        alt_dists = dist[updated_locs, updated_locs] .> min_dist
-
-        # Select from these sites those far enough away from all sites
-        keep_idxs = sum(alt_dists, dims=2) .== n_sites - 1
-
-        # Keep sites that were far enough away last iteration
-        keep_idxs[1:end-select_n] .= true
-        if length(keep_idxs) == n_sites
-            select_n = 0
-            break
+            pref_locs = setdiff(pref_locs, replace_locs)
+            loc_order = setdiff(loc_order, replace_locs)
+            add_locs = setdiff(loc_order, pref_locs)
+            n_add = n_site_int - length(pref_locs)
+            pref_locs = vec([pref_locs... add_locs[1:n_add]...])
         else
-            # remove checked alt_sites
-            alt_sites = setdiff(alt_sites, alt_sites[1:select_n])
-            select_n = sum(.!keep_idxs)
+            break
         end
     end
 
-    # If not all sites could be replaced, just use highest ranked remaining pref_sites
-    if (select_n != 0) && !isempty(setdiff(pref_locs, updated_locs))
-        remaining_locs = setdiff(pref_locs, updated_locs)
-        updated_locs[end-select_n+1:end] .= remaining_locs[1:select_n]
-    end
-
-    new_site_order = setdiff(site_order, updated_locs)
-    new_site_order = [updated_locs; new_site_order]
-    s_order[:, 1] .= new_site_order
+    removed_sites = setdiff(s_order[:, 1], loc_order)
+    s_order[:, 1] .= [loc_order..., removed_sites...]
 
     # Match by site_id and assign rankings to log
     align_rankings!(rankings, s_order, rank_col)
-
-    return updated_locs, rankings
+    return pref_locs, rankings
 end
 
 """
