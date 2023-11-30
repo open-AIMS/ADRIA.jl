@@ -24,6 +24,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     min_area # ::F
     risk_tol  # ::F
     use_spatial_group # ::M
+    n_spatial_grp # ::F
     reefs #::V
     wt_in_conn_seed  # ::F
     wt_out_conn_seed  # ::F
@@ -115,6 +116,7 @@ function DMCDA_vars(
         criteria("coral_cover_tol") .* area_to_seed,
         criteria("deployed_coral_risk_tol"),
         criteria("use_spatial_group"),
+        domain.sim_constants.n_spatial_grp,
         domain.site_data.Reef,
         criteria("seed_in_connectivity"),
         criteria("seed_out_connectivity"),
@@ -598,6 +600,7 @@ function guided_site_selection(
     end
 
     n_iv_locs::Int64 = d_vars.n_site_int
+    n_spatial_grp::Int64 = d_vars.n_spatial_grp
     priority_sites::Array{Int64} = d_vars.priority_sites[in.(d_vars.priority_sites, [site_ids])]
     priority_zones::Array{String} = d_vars.priority_zones
 
@@ -705,6 +708,7 @@ function guided_site_selection(
                 s_order_seed,
                 pref_seed_locs,
                 rankings,
+                n_spatial_grp,
                 2,
             )
         end
@@ -720,6 +724,7 @@ function guided_site_selection(
                 s_order_fog,
                 pref_fog_locs,
                 rankings,
+                n_spatial_grp,
                 3,
             )
         end
@@ -739,12 +744,13 @@ end
 
 """
     constrain_spatial_group(loc_reefs::Vector{String}, s_order::Matrix{Union{Float64,Int64}}, pref_locs::Vector{Float}, 
-        rankings::Matrix{Int64}, rank_col::Int64)
+        rankings::Matrix{Int64},  n_spatial_grp::Int64, rank_col::Int64)
 # Arguments
 - `loc_reefs` : List of the the reefs/cluster each location sites within
 - `s_order` : Ordered set of locations and their aggregate criteria score
 - `pref_locs` : Set of location ids to intervene at
 - `rankings` : Current ranks of the set of locations
+- `n_spatial_grp` : Number of selected locations to allow in the same reef/cluster.
 - `rank_col` : Column under which the ranks for the intervention of interest are stored in rankings.
 
 # Returns
@@ -758,6 +764,7 @@ function constrain_spatial_group(
     s_order::Matrix{Union{Float64,Int64}},
     pref_locs::Vector{Int64},
     rankings::Matrix{Int64},
+    n_spatial_grp::Int64,
     rank_col::Int64,
 )
     # Get full ordering of locations
@@ -771,9 +778,13 @@ function constrain_spatial_group(
 
         # Number of times a location appers within each reef/cluster
         sum_reef_pref_locs = [sum(pref_reefs .== rr) for rr in unique_reefs]
-        # If more than n_reef_locs in a reef/cluster, swap out the worst locations
+        # If more than n_spatial_grp in a reef/cluster, swap out the worst locations
+        reef_swap = unique_reefs[findall((sum_reef_pref_locs .> n_spatial_grp))]
 
         # Locations to replace (lowest ranked sites where too many sites in the same reef/cluster)
+        replace_locs = [
+            pref_locs[pref_reefs .== reef][(n_spatial_grp + 1):end] for reef in reef_swap
+        ]
 
         if !isempty(replace_locs)
             replace_locs = replace_locs[1:end...]
@@ -783,6 +794,7 @@ function constrain_spatial_group(
             add_locs = setdiff(loc_order, pref_locs) # Get next highly ranked to replace removed locations with
 
             # New preferred location set
+            pref_locs = vec([pref_locs... add_locs[1:(n_loc_iv - length(pref_locs))]...])
         else
             break
         end
