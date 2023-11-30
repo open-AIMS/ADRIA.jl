@@ -715,7 +715,7 @@ function guided_site_selection(
     elseif log_fog
         pref_fog_locs, s_order_fog = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
         if use_spatial_group == 1
-            pref_fog_locs, rankings = constrain_reef_group(
+            pref_fog_locs, rankings = constrain_spatial_group(
                 d_vars.reefs,
                 s_order_fog,
                 pref_fog_locs,
@@ -737,33 +737,62 @@ function guided_site_selection(
     return pref_seed_locs, pref_fog_locs, rankings
 end
 
-function constrain_reef_group(loc_reefs, s_order, pref_locs, rankings, rank_col)
+"""
+    constrain_spatial_group(loc_reefs::Vector{String}, s_order::Matrix{Union{Float64,Int64}}, pref_locs::Vector{Float}, 
+        rankings::Matrix{Int64}, rank_col::Int64)
+# Arguments
+- `loc_reefs` : List of the the reefs/cluster each location sites within
+- `s_order` : Ordered set of locations and their aggregate criteria score
+- `pref_locs` : Set of location ids to intervene at
+- `rankings` : Current ranks of the set of locations
+- `rank_col` : Column under which the ranks for the intervention of interest are stored in rankings.
+
+# Returns
+Tuple :
+    - `pref_locs` : Vector, Indices of preferred intervention locations
+    - `rankings` : Matrix[n_sites ⋅ 3] where columns are site_id, seeding_rank, shading_rank
+        Values of 0 indicate sites that were not considered
+"""
+function constrain_spatial_group(
+    loc_reefs::Vector{String},
+    s_order::Matrix{Union{Float64,Int64}},
+    pref_locs::Vector{Int64},
+    rankings::Matrix{Int64},
+    rank_col::Int64,
+)
+    # Get full ordering of locations
     loc_order = s_order[:, 1]
-    n_site_int = length(pref_locs)
+    n_loc_iv = length(pref_locs)
+    # Get unique reefs/clusters in location set
     unique_reefs = unique(loc_reefs)
 
     for kk in 1:ceil(Int64, length(loc_order) / 2)
-        pref_reefs = loc_reefs[pref_locs]
-        sum_reef_pref_locs = [sum(pref_reefs .== rr) for rr in unique_reefs]
-        reef_swap = unique_reefs[findall((sum_reef_pref_locs .> 3))]
+        pref_reefs = loc_reefs[pref_locs] # Reefs/clusters that selected locations sit within
 
-        replace_locs = [pref_locs[pref_reefs .== reef][(3 + 1):end] for reef in reef_swap]
+        # Number of times a location appers within each reef/cluster
+        sum_reef_pref_locs = [sum(pref_reefs .== rr) for rr in unique_reefs]
+        # If more than n_reef_locs in a reef/cluster, swap out the worst locations
+
+        # Locations to replace (lowest ranked sites where too many sites in the same reef/cluster)
 
         if !isempty(replace_locs)
             replace_locs = replace_locs[1:end...]
 
-            pref_locs = setdiff(pref_locs, replace_locs)
-            loc_order = setdiff(loc_order, replace_locs)
-            add_locs = setdiff(loc_order, pref_locs)
-            n_add = n_site_int - length(pref_locs)
-            pref_locs = vec([pref_locs... add_locs[1:n_add]...])
+            pref_locs = setdiff(pref_locs, replace_locs) # Remove locations from preferred sites
+            loc_order = setdiff(loc_order, replace_locs) # Remove locations from site order
+            add_locs = setdiff(loc_order, pref_locs) # Get next highly ranked to replace removed locations with
+
+            # New preferred location set
         else
             break
         end
     end
 
+    # Addremoved sites at end of location order
     removed_sites = setdiff(s_order[:, 1], loc_order)
-    s_order[:, 1] .= [loc_order..., removed_sites...]
+    s_order[:, 1] .= [
+        loc_order[1:n_loc_iv]..., removed_sites..., loc_order[(n_loc_iv + 1):end]...
+    ]
 
     # Match by site_id and assign rankings to log
     align_rankings!(rankings, s_order, rank_col)
