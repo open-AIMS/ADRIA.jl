@@ -71,8 +71,8 @@ Get quantile value for a given categorical variable.
 - `factor_name` : Contains true where the factor is categorical and false otherwise
 - `steps` : Number of steps for defining bins
 """
-function _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})
-    fact_idx = foi_spec.fieldname .== factor_name
+function _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})::Vector{Float64}
+    fact_idx::BitVector = foi_spec.fieldname .== factor_name
     lb = foi_spec.lower_bound[fact_idx][1]
     ub = foi_spec.upper_bound[fact_idx][1]
 
@@ -454,7 +454,7 @@ function rsa(
 )::NamedDimsArray
     N, D = size(X)
 
-    X_di = @MVector zeros(N)
+    X_di = zeros(N)
     sel = trues(N)
     factors = Symbol.(names(X))
 
@@ -465,7 +465,7 @@ function rsa(
         S = _category_bins(S, foi_spec[is_cat, :])
     end
 
-    X_q = @MVector zeros(S + 1)
+    X_q = zeros(S + 1)
     r_s = zeros(Union{Missing,Float64}, S, D)
     seq = collect(0.0:(1 / S):1.0)
 
