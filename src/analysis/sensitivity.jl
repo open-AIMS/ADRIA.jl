@@ -392,7 +392,8 @@ function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
 end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}, model_spec::DataFrame; S=10)::NamedDimsArray
+    rsa(X::DataFrame, y::Vector{<:Real}, model_spec::DataFrame; S::Int64=10)::NamedDimsArray
+    rsa(rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64=10)::NamedDimsArray
     rsa(rs::ResultSet, y::AbstractArray{<:Real}; S::Int64=10)::NamedDimsArray
 
 Perform Regional Sensitivity Analysis.
@@ -424,6 +425,7 @@ Note: Values of type `missing` indicate a lack of samples in the region.
 - `X` : scenario specification
 - `y` : scenario outcomes
 - `model_spec` : Model specification, as extracted by `ADRIA.model_spec(domain)` or from a `ResultSet`
+- `factors` : Specific model factors to examine
 - `S` : number of bins to slice factor space into (default: 10)
 
 # Returns
@@ -508,7 +510,17 @@ end
 function rsa(
     rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
 )::NamedDimsArray
-    return rsa(rs.inputs[:, Not(:RCP)], vec(y), rs.model_spec; S=S)
+    return rsa(rs.inputs[!, Not(:RCP)], y, rs.model_spec; S=S)
+end
+function rsa(
+    rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64=10
+)::NamedDimsArray
+    return rsa(
+        rs.inputs[!, Not(:RCP)][!, factors],
+        y,
+        rs.model_spec[rs.model_spec.fieldname .∈ [factors], :];
+        S=S
+    )
 end
 
 
