@@ -27,9 +27,13 @@ mutable struct ReefModDomain <: Domain
     const site_ids
     dhw_scens
 
-    # `wave_scens` Actually holds cyclones, but to maintain compatibility with
+    # `wave_scens` holds empty wave data to maintain compatibility with
     # ADRIA's dMCDA methods
     wave_scens
+
+    # `cyclone_mortality_scens` holds dummy cyclone mortality data to maintain compatibility
+    # with ADRIA's dMCDA methods
+    cyclone_mortality_scens
 
     model
     sim_constants::SimConstants
@@ -106,7 +110,28 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     site_data[:, :zone_type] .= zones
 
     timeframe = (2022, 2100)
-    cyc_scens = load_cyclones(ReefModDomain, data_files, loc_ids, timeframe)
+
+    # This loads cyclone categories, not mortalities, so ignoring for now.
+    # cyc_scens = load_cyclones(ReefModDomain, data_files, loc_ids, timeframe)
+
+    # timesteps, location, scenario
+    wave_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 1)
+    wave_scens = NamedDimsArray(
+        wave_scens;
+        timesteps=timeframe[1]:timeframe[2],
+        locs=loc_ids,
+        scenarios=[1]
+    )
+
+    # timesteps, location, species, scenario
+    cyc_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 6, 1)
+    cyc_scens = NamedDimsArray(
+        cyc_scens;
+        timesteps=timeframe[1]:timeframe[2],
+        locs=loc_ids,
+        species=1:6,
+        scenarios=[1]
+    )
 
     env_md = EnvLayer(
         fn_path,
@@ -121,7 +146,10 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     )
 
     model::Model = Model((
-        EnvironmentalLayer(dhw_scens, cyc_scens), Intervention(), CriteriaWeights(), Coral()
+        EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
+        Intervention(),
+        CriteriaWeights(),
+        Coral()
     ))
 
     return ReefModDomain(
@@ -142,6 +170,7 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
         CoralGrowth(nrow(site_data)),
         site_ids,
         dhw_scens,
+        wave_scens,
         cyc_scens,
         model,
         SimConstants(),
