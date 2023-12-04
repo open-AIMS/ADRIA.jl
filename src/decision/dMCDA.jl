@@ -776,7 +776,7 @@ function constrain_spatial_group(
     for kk in 1:ceil(Int64, length(loc_order) / 2)
         pref_groups = spatial_groups[pref_locs] # Reefs/clusters that selected locations sit within
 
-        # Number of times a location appers within each reef/cluster
+        # Number of times a location appears within each reef/cluster
         sum_pref_locs = dropdims(
             sum(pref_groups .== reshape(unique_groups, 1, length(unique_groups)); dims=1);
             dims=1,
@@ -804,7 +804,7 @@ function constrain_spatial_group(
         end
     end
 
-    # Addremoved sites at end of location order
+    # Add removed sites at end of preferred site order
     removed_sites = setdiff(s_order[:, 1], loc_order)
     s_order[:, 1] .= [
         loc_order[1:n_loc_iv]..., removed_sites..., loc_order[(n_loc_iv + 1):end]...
