@@ -760,7 +760,7 @@ Tuple :
         Values of 0 indicate sites that were not considered
 """
 function constrain_spatial_group(
-    spatial_groups::Vector{String},
+    spatial_groups::Union{Vector{String},Vector{Float64}},
     s_order::Matrix{Union{Float64,Int64}},
     pref_locs::Vector{Int64},
     rankings::Matrix{Int64},
