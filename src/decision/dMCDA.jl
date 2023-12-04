@@ -777,7 +777,11 @@ function constrain_spatial_group(
         pref_groups = spatial_groups[pref_locs] # Reefs/clusters that selected locations sit within
 
         # Number of times a location appers within each reef/cluster
-        sum_pref_locs = [sum(pref_groups .== rr) for rr in unique_groups]
+        sum_pref_locs = dropdims(
+            sum(pref_groups .== reshape(unique_groups, 1, length(unique_groups)); dims=1);
+            dims=1,
+        )
+
         # If more than n_spatial_grp in a reef/cluster, swap out the worst locations
         groups_swap = unique_groups[findall((sum_pref_locs .> n_spatial_grp))]
 
