@@ -695,7 +695,9 @@ function guided_site_selection(
     if log_seed && isempty(SE)
         pref_seed_locs = zeros(Int64, n_iv_locs)
     elseif log_seed
-        pref_seed_locs, s_order_seed = rank_sites!(SE, wse, rankings, n_iv_locs, mcda_func, 2)
+        pref_seed_locs, s_order_seed = rank_sites!(
+            SE, wse, rankings, size(SE, 1), mcda_func, 2
+        )
         if use_dist != 0
             pref_seed_locs, rankings = distance_sorting(
                 pref_seed_locs,
