@@ -617,7 +617,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         C_t .= C_cover[tstep - 1, :, :]
 
         # Coral deaths due to selected cyclone scenario
-        _cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
+        # Peak cyclone period is January to March
+        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
 
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
@@ -649,7 +650,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Add recruits to current cover
         C_t[p.small, :] .+= recruitment
 
-        # Time period over which interventions occur
+        # Check whether current timestep is in deployment period for each intervention
         in_fog_timeframe = fog_start_year <= tstep <= (fog_start_year + fog_years - 1)
         in_shade_timeframe =
             shade_start_year <= tstep <= (shade_start_year + shade_years - 1)
@@ -664,6 +665,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
+        # Determine intervention locations whose deployment is assumed to occur
+        # between November to February.
+        # - SRM is applied first
+        # - Fogging is applied next
+        # - Bleaching then occurs
+        # - Then intervention locations are seeded
         if is_guided && (in_seed_timeframe || in_fog_timeframe)
             # Update dMCDA values
 
@@ -745,7 +752,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
         # Apply seeding
         # Assumes coral seeding occurs in the months after disturbances
-        # (such as cyclones/heat) occurs.
+        # (such as cyclones/bleaching).
         if seed_corals && in_seed_timeframe && has_seed_locs
             # Seed selected locations
             seed_corals!(C_t, vec(loc_k_area), vec(leftover_space_m²),
@@ -813,7 +820,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
     return (raw=C_cover, seed_log=Yseed, fog_log=Yfog, shade_log=Yshade, site_ranks=site_ranks, bleaching_mortality=bleaching_mort, coral_dhw_log=collated_dhw_tol_log)
 end
 
-function _cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
+function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
     # Small class coral mortality
     coral_deaths_small = coral_cover[coral_params.small, :] .* cyclone_mortality
     coral_cover[coral_params.small, :] -= coral_deaths_small
