@@ -68,17 +68,20 @@ N is the number of dhw/wave scenarios.
 function store_env_summary(data_cube::NamedDimsArray, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)::ZArray
     stats = summarize_env_data(data_cube)
 
-    stats_store = zcreate(Float32, (2, size(stats, 2))...;
+    stats_store = zcreate(
+        Float32,
+        (2, size(stats, 2), size(stats, 3))...;
         fill_value=nothing, fill_as_missing=false,
         path=joinpath(file_loc, rcp),
         attrs=Dict(
-            :structure => ("stat", type),
-            :rows => ["mean", "std"],
-            :cols => string.(1:size(stats, 2)),
+            :structure => ("stat", type, "locations"),
+            :stats => ["mean", "std"],
+            :scenarios => string.(1:size(stats, 2)),
+            :locations => string.(1:size(stats, 3)),
             :rcp => rcp),
         compressor=compressor)
 
-    stats_store[:, :] .= stats
+    stats_store[:, :, :] .= stats
 
     return stats_store
 end
