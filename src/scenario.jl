@@ -665,7 +665,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
-        # Determine intervention locations, deployment of which is assumed to occur
+        # Determine intervention locations whose deployment is assumed to occur
         # between November to February.
         # - SRM is applied first
         # - Fogging is applied next
