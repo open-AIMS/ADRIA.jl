@@ -625,13 +625,15 @@ function guided_site_selection(
 
     # add weights for strongest predecessors and zones to get zone criteria
     zones_criteria = zone_preds .+ zone_sites
+
     mcda_func = methods_mcda[alg_ind]
-    leftover_space = d_vars.leftover_space[site_ids]
+    leftover_space = vec(d_vars.leftover_space)
+
     A, filtered_sites = create_decision_matrix(
         site_ids,
         in_conn,
         out_conn,
-        leftover_space,
+        leftover_space[site_ids],
         d_vars.dam_prob[site_ids],
         d_vars.heat_stress_prob[site_ids],
         d_vars.site_depth[site_ids],
@@ -686,12 +688,13 @@ function guided_site_selection(
         pref_seed_locs, s_order_seed = rank_sites!(
             SE, wse, rankings, size(SE, 1), mcda_func, 2
         )
-        pref_seed_locs, rankings = contrain_spatial_group(
+
+        pref_seed_locs, rankings = constrain_spatial_group(
             d_vars.spatial_groups,
             s_order_seed,
             rankings,
             d_vars.area_to_seed,
-            leftover_space[filtered_sites],
+            leftover_space,
             n_iv_locs,
             d_vars.n_spatial_grp,
         )
