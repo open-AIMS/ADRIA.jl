@@ -712,15 +712,17 @@ function guided_site_selection(
 end
 
 """
-    constrain_spatial_group(spatial_groups::Vector{String}, s_order::Matrix{Union{Float64,Int64}}, pref_locs::Vector{Float}, 
-        rankings::Matrix{Int64},  n_spatial_grp::Int64, rank_col::Int64)
+    constrain_spatial_group(reefs::Union{Vector{String},Vector{Float64}}, s_order::Matrix{Union{Float64,Int64}}, rankings::Matrix{Int64},
+        seeded_area::NamedDimsArray, available_space::Vector{Float64}, n_site_int::Int64, n_spatial_grp::Int64)
+
 # Arguments
-- `spatial_groups` : List of the the reefs/cluster each location sites within
+- `reefs` : List of the the reefs each location sits within
 - `s_order` : Ordered set of locations and their aggregate criteria score
-- `pref_locs` : Set of location ids to intervene at
 - `rankings` : Current ranks of the set of locations
+- `seeded_area` : absolute area to be seeded for each coral species (m²)
+- `available_space` : absolute area available at each location (m²)
+- `n_site_int` : Minimum number of sites to intervene at
 - `n_spatial_grp` : Number of selected locations to allow in the same reef/cluster.
-- `rank_col` : Column under which the ranks for the intervention of interest are stored in rankings.
 
 # Returns
 Tuple :
@@ -797,7 +799,8 @@ function constrain_spatial_group(
 end
 
 """
-    unguided_site_selection(pref_seed_sites, pref_fog_sites, seed_years, fog_years, n_site_int, available_space, depth)
+    unguided_site_selection(pref_seed_locs::T, pref_fog_locs::T, seed_years::Bool, fog_years::Bool, n_site_int::Int64, 
+        available_space::Vector{Float64}, depth::T)::Tuple{Vector,Vector} where {T<:Vector{Int64}}
 
 Randomly select seed/fog site locations for the given year, constraining to sites with max. carrying capacity > 0.
 
@@ -814,14 +817,14 @@ Randomly select seed/fog site locations for the given year, constraining to site
 Tuple, of vectors indicating preferred seeding and shading locations by location index
 """
 function unguided_site_selection(
-    pref_seed_locs,
-    pref_fog_locs,
-    seed_years,
-    fog_years,
-    n_site_int,
-    available_space,
-    depth
-)::Tuple{Vector, Vector}
+    pref_seed_locs::T,
+    pref_fog_locs::T,
+    seed_years::Bool,
+    fog_years::Bool,
+    n_site_int::Int64,
+    available_space::Vector{Float64},
+    depth::T,
+)::Tuple{Vector,Vector} where {T<:Vector{Int64}}
     # Unguided deployment, seed/fog corals anywhere so long as available_space > 0.0
     # Only sites that have available space are considered, otherwise a zero-division error may occur later on.
 

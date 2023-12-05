@@ -1,7 +1,7 @@
 using StatsBase
 
 """
-    distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::NamedDimsArray, n_site_int::Int64)::NamedDimsArray
+    distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::NamedDimsArray)::NamedDimsArray
 
 Calculate proportion of deployed corals to be seeded at each of the selected locations.
 Distributes seeded corals according to current available space at each selected site.
@@ -10,7 +10,6 @@ Distributes seeded corals according to current available space at each selected 
 - seed_loc_k_m² : carrying capacity area of locations to seed in m².
 - available_space : currently available space at each seed location in m².
 - seeded_area : area (in m²) of each coral type to be seeded with dim taxa.
-- `n_site_int` : Number of sites to seed at before adjusting for space available.
 
 # Returns
 NamedDimsArray[taxa to seed ⋅ number of seed locations], area increased relative to k area.
@@ -36,7 +35,7 @@ function distribute_seeded_corals(
 end
 
 """
-    seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space_m²::V, seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V, Yseed::SubArray, stdev::V, c_dist_t::Matrix, n_site_int::Int64)::Nothing where {V<:Vector{Float64}}
+    seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space_m²::V, seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V, Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
 
 Deploy thermally enhanced corals to indicated locations ("seeding" or "outplanting").
 Increases indicated area covered by the given coral taxa and determines the modified
@@ -54,7 +53,6 @@ Note: Units for all areas are expected to be identical, and are assumed to be in
 - `a_adapt` : Mean of thermal enhancement in terms of DHW
 - `Yseed` : Log of seeded locations to update
 - `c_dist_t` : Critical DHW distributions of corals to update (i.e., for time \$t\$)
-- ` n_site_int` : number of sites to seed at before adjusting for space available
 """
 function seed_corals!(
     cover::Matrix{Float64},
