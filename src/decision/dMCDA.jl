@@ -458,6 +458,11 @@ function create_seed_matrix(
     SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5])  # compliment of heat risk
 
+    SE[SE[:, 8] .<= 0.0, 8] .= NaN # Filter out sites with no space
+
+    # Filter out identified locations
+    SE = SE[vec(.!any(isnan.(SE); dims=2)), :]
+
     return SE, wse
 end
 
