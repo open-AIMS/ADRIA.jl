@@ -19,7 +19,7 @@ function distribute_seeded_corals(
     seed_loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
     seeded_area::NamedDimsArray,
-)::Tuple{NamedDimsArray,Vector{Int64}}
+)::NamedDimsArray
 
     # Proportion of available space on each site relative to available space at these
     # locations
@@ -68,7 +68,7 @@ function seed_corals!(
 )::Nothing where {V<:Vector{Float64}}
 
     # Calculate proportion to seed based on current available space
-    scaled_seed, seed_locs = distribute_seeded_corals(
+    scaled_seed = distribute_seeded_corals(
         seed_locs,
         loc_k_area,
         leftover_space_m²,
