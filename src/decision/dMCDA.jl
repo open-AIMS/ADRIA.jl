@@ -749,11 +749,12 @@ function constrain_spatial_group(
     n_spatial_grp::Int64,
 )
     # Get full ordering of locations
-    loc_order = copy(s_order[:, 1])
+    loc_order = s_order[:, 1]
     # Get unique reefs/clusters in location set
     unique_reefs = unique(reefs)
-    needed_space = sum(seeded_area)
+    pref_locs = loc_order[1:n_site_int]
 
+    num_locs = n_site_int
     for ll in 1:length(loc_order)
         # If enough space, keep n_site_int, else expand as needed
         cumulative_space = cumsum(available_space[loc_order])
@@ -795,7 +796,8 @@ function constrain_spatial_group(
     end
 
     # Add removed sites at end of preferred site order
-    removed_sites = setdiff(seed_locs, loc_order)
+    removed_sites = setdiff(s_order[:, 1], loc_order)
+
     s_order[:, 1] .= [
         loc_order[1:num_locs]...,
         removed_sites...,
