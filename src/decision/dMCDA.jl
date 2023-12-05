@@ -21,7 +21,6 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_depth #::V
     leftover_space  # ::F
     k_area  # ::V
-    min_area # ::F
     risk_tol  # ::F
     n_spatial_grp # ::F
     spatial_groups #::V
@@ -112,7 +111,6 @@ function DMCDA_vars(
         site_d.depth_med,
         leftover_space,
         site_k_area(domain),
-        criteria("coral_cover_tol") .* area_to_seed,
         criteria("deployed_coral_risk_tol"),
         domain.sim_constants.n_spatial_grp,
         domain.site_data.UNIQUE_ID,
@@ -394,13 +392,12 @@ end
 
 
 """
-    create_seed_matrix(A, min_area, in_conn_seed, out_conn_seed, waves, heat, predec, low_cover)
+    create_seed_matrix(A, in_conn_seed, out_conn_seed, waves, heat, predec, low_cover)
 
 Create seeding specific decision matrix from criteria matrix. The weight criteria and filter.
 
 # Arguments
 - `A` : Criteria matrix
-- `min_area` : Minimum available area for a site to be considered
 - `wt_in_conn_seed` : Seed connectivity weight for seeding
 - `wt_out_conn_seed` : Seed connectivity weight for seeding
 - `wt_waves` : Wave stress weight
@@ -435,7 +432,6 @@ Tuple (SE, wse)
 """
 function create_seed_matrix(
     A::Matrix{Float64},
-    min_area::T,
     wt_in_conn_seed::T,
     wt_out_conn_seed::T,
     wt_waves_seed::T,
@@ -461,16 +457,6 @@ function create_seed_matrix(
 
     SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5])  # compliment of heat risk
-
-    # Coral real estate as total area, sites with ≤ min_area to be seeded available filtered out
-    # This will also filter out sites with 0 space
-    SE[SE[:, 8] .<= min_area, 8] .= NaN
-
-    # Mark "hot" locations for filter
-    #SE[vec(A[:, 5] .>= 0.75), 5] .= NaN
-
-    # Filter out identified locations
-    SE = SE[vec(.!any(isnan.(SE), dims=2)), :]
 
     return SE, wse
 end
@@ -598,7 +584,6 @@ function guided_site_selection(
     end
 
     n_iv_locs::Int64 = d_vars.n_site_int
-    n_spatial_grp::Int64 = d_vars.n_spatial_grp
     priority_sites::Array{Int64} = d_vars.priority_sites[in.(d_vars.priority_sites, [site_ids])]
     priority_zones::Array{String} = d_vars.priority_zones
 
@@ -664,7 +649,6 @@ function guided_site_selection(
     if log_seed
         SE, wse = create_seed_matrix(
             A,
-            d_vars.min_area,
             d_vars.wt_in_conn_seed,
             d_vars.wt_out_conn_seed,
             d_vars.wt_waves_seed,
@@ -702,7 +686,7 @@ function guided_site_selection(
             rankings,
             seeded_area,
             leftover_space[filtered_sites],
-            n_site_int,
+            n_iv_locs,
             d_vars.n_spatial_grp,
         )
 

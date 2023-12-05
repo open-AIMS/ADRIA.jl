@@ -139,16 +139,6 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Zone Predecessor (Shade)",
         description="Importance of shading sites that provide larvae to priority (target) zones.",
     )
-    coral_cover_tol::P = Param(
-        0.2;
-        ptype="real",
-        bounds=(0.0, 1.0),
-        default_bounds=(0.0, 1.0),
-        dists="unif",
-        criteria_keywords=(:threshold, :seed),
-        name="Low Area Tolerance",
-        description="Tolerance for low proportional space for seeding deployments.",
-    )
     deployed_coral_risk_tol::P2 = Param(
         1.0;
         ptype="real",
