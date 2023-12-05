@@ -42,8 +42,8 @@ Matrix{Float64, 2}, of mean and standard deviation for each environmental scenar
 function summarize_env_data(data::AbstractArray)::Array{Float64}
     # TODO: Update once
     stats_store::Array{Float64} = zeros(2, size(data, 3), size(data, 2))
-    stats_store[1, :, :] .= Array(dropdims(mean(data; dims=1); dims=1)')
-    stats_store[2, :, :] .= Array(dropdims(std(data; dims=1); dims=1)')
+    stats_store[1, :, :] .= dropdims(mean(data; dims=1); dims=1)'
+    stats_store[2, :, :] .= dropdims(std(data; dims=1); dims=1)'
     return stats_store
 end
 
