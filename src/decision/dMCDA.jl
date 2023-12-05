@@ -24,6 +24,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     risk_tol  # ::F
     n_spatial_grp # ::F
     spatial_groups #::V
+    area_to_seed #::V
     wt_in_conn_seed  # ::F
     wt_out_conn_seed  # ::F
     wt_conn_fog  # ::F
@@ -114,6 +115,7 @@ function DMCDA_vars(
         criteria("deployed_coral_risk_tol"),
         domain.sim_constants.n_spatial_grp,
         domain.site_data.UNIQUE_ID,
+        area_to_seed,
         criteria("seed_in_connectivity"),
         criteria("seed_out_connectivity"),
         criteria("fog_connectivity"),
@@ -575,7 +577,6 @@ function guided_site_selection(
 )::Tuple{Vector{T}, Vector{T}, Matrix{T}} where {
     T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool
 }
-    use_spatial_group::Int64 = d_vars.use_spatial_group
     site_ids = copy(d_vars.site_ids)
     n_sites::Int64 = length(site_ids)
 
@@ -689,7 +690,7 @@ function guided_site_selection(
             d_vars.spatial_groups,
             s_order_seed,
             rankings,
-            seeded_area,
+            d_vars.area_to_seed,
             leftover_space[filtered_sites],
             n_iv_locs,
             d_vars.n_spatial_grp,
@@ -718,13 +719,13 @@ end
 
 """
     constrain_spatial_group(reefs::Union{Vector{String},Vector{Float64}}, s_order::Matrix{Union{Float64,Int64}}, rankings::Matrix{Int64},
-        seeded_area::NamedDimsArray, available_space::Vector{Float64}, n_site_int::Int64, n_spatial_grp::Int64)
+    area_to_seed::Float64, available_space::Vector{Float64}, n_site_int::Int64, n_spatial_grp::Int64)
 
 # Arguments
 - `reefs` : List of the the reefs each location sits within
 - `s_order` : Ordered set of locations and their aggregate criteria score
 - `rankings` : Current ranks of the set of locations
-- `seeded_area` : absolute area to be seeded for each coral species (m²)
+- `area_to_seed` : absolute area to be seeded (m²)
 - `available_space` : absolute area available at each location (m²)
 - `n_site_int` : Minimum number of sites to intervene at
 - `n_spatial_grp` : Number of selected locations to allow in the same reef/cluster.
@@ -739,7 +740,7 @@ function constrain_spatial_group(
     reefs::Union{Vector{String},Vector{Float64}},
     s_order::Matrix{Union{Float64,Int64}},
     rankings::Matrix{Int64},
-    seeded_area::NamedDimsArray,
+    area_to_seed::Float64,
     available_space::Vector{Float64},
     n_site_int::Int64,
     n_spatial_grp::Int64,
@@ -753,8 +754,8 @@ function constrain_spatial_group(
     for ll in 1:length(loc_order)
         # If enough space, keep n_site_int, else expand as needed
         cumulative_space = cumsum(available_space[loc_order])
-        num_locs = if cumulative_space[n_site_int] .< needed_space
-            findfirst(>=(needed_space), cumulative_space)
+        num_locs = if cumulative_space[n_site_int] .< area_to_seed
+            findfirst(>=(area_to_seed), cumulative_space)
         else
             n_site_int
         end
