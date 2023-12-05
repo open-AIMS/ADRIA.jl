@@ -635,12 +635,12 @@ function guided_site_selection(
     # add weights for strongest predecessors and zones to get zone criteria
     zones_criteria = zone_preds .+ zone_sites
     mcda_func = methods_mcda[alg_ind]
-
+    leftover_space = d_vars.leftover_space[site_ids]
     A, filtered_sites = create_decision_matrix(
         site_ids,
         in_conn,
         out_conn,
-        d_vars.leftover_space[site_ids],
+        leftover_space,
         d_vars.dam_prob[site_ids],
         d_vars.heat_stress_prob[site_ids],
         d_vars.site_depth[site_ids],
@@ -693,39 +693,26 @@ function guided_site_selection(
     if log_seed && isempty(SE)
         pref_seed_locs = zeros(Int64, n_iv_locs)
     elseif log_seed
-            pref_seed_locs, rankings = constrain_reef_group(
-                d_vars.reefs,
         pref_seed_locs, s_order_seed = rank_sites!(
-            SE,
-            wse,
-            rankings,
-            mcda_func,
-            n_iv_locs .* 2,
-            2,
+            SE, wse, rankings, size(SE, 1), mcda_func, 2
         )
-                s_order_seed,
-                pref_seed_locs,
-                rankings,
-                n_spatial_grp,
-                2,
-            )
-        end
+        pref_seed_locs, rankings = contrain_spatial_group(
+            d_vars.spatial_groups,
+            s_order_seed,
+            rankings,
+            seeded_area,
+            leftover_space[filtered_sites],
+            n_site_int,
+            d_vars.n_spatial_grp,
+        )
+
     end
 
     if log_fog && isempty(SH)
         pref_fog_locs = zeros(Int64, n_iv_locs)
     elseif log_fog
         pref_fog_locs, s_order_fog = rank_sites!(SH, wsh, rankings, n_iv_locs, mcda_func, 3)
-        if use_spatial_group == 1
-            pref_fog_locs, rankings = constrain_spatial_group(
-                d_vars.spatial_groups,
-                s_order_fog,
-                pref_fog_locs,
-                rankings,
-                n_spatial_grp,
-                3,
-            )
-        end
+
     end
 
     # Replace with input rankings if seeding or shading rankings have not been filled
@@ -758,30 +745,40 @@ Tuple :
         Values of 0 indicate sites that were not considered
 """
 function constrain_spatial_group(
-    spatial_groups::Union{Vector{String},Vector{Float64}},
+    reefs::Union{Vector{String},Vector{Float64}},
     s_order::Matrix{Union{Float64,Int64}},
-    pref_locs::Vector{Int64},
     rankings::Matrix{Int64},
+    seeded_area::NamedDimsArray,
+    available_space::Vector{Float64},
+    n_site_int::Int64,
     n_spatial_grp::Int64,
-    rank_col::Int64,
 )
     # Get full ordering of locations
-    loc_order = s_order[:, 1]
-    n_loc_iv = length(pref_locs)
+    loc_order = copy(s_order[:, 1])
     # Get unique reefs/clusters in location set
-    unique_groups = unique(spatial_groups)
+    unique_reefs = unique(reefs)
+    needed_space = sum(seeded_area)
 
-    for kk in 1:ceil(Int64, length(loc_order) / 2)
-        pref_groups = spatial_groups[pref_locs] # Reefs/clusters that selected locations sit within
+    for ll in 1:length(loc_order)
+        # If enough space, keep n_site_int, else expand as needed
+        cumulative_space = cumsum(available_space[loc_order])
+        num_locs = if cumulative_space[n_site_int] .< needed_space
+            findfirst(>=(needed_space), cumulative_space)
+        else
+            n_site_int
+        end
+
+        pref_locs = loc_order[1:num_locs]
+        pref_groups = reefs[pref_locs] # Reefs/clusters that selected locations sit within
 
         # Number of times a location appears within each reef/cluster
         sum_pref_locs = dropdims(
-            sum(pref_groups .== reshape(unique_groups, 1, length(unique_groups)); dims=1);
+            sum(pref_groups .== reshape(unique_reefs, 1, length(unique_reefs)); dims=1);
             dims=1,
         )
 
         # If more than n_spatial_grp in a reef/cluster, swap out the worst locations
-        groups_swap = unique_groups[findall((sum_pref_locs .> n_spatial_grp))]
+        groups_swap = unique_reefs[findall((sum_pref_locs .> n_spatial_grp))]
 
         # Locations to replace (lowest ranked sites where too many sites in the same reef/cluster)
         replace_locs = [
@@ -796,20 +793,22 @@ function constrain_spatial_group(
             add_locs = setdiff(loc_order, pref_locs) # Get next highly ranked to replace removed locations with
 
             # New preferred location set
-            pref_locs = vec([pref_locs... add_locs[1:(n_loc_iv - length(pref_locs))]...])
+            pref_locs = vec([pref_locs... add_locs[1:(num_locs - length(pref_locs))]...])
         else
             break
         end
     end
 
     # Add removed sites at end of preferred site order
-    removed_sites = setdiff(s_order[:, 1], loc_order)
+    removed_sites = setdiff(seed_locs, loc_order)
     s_order[:, 1] .= [
-        loc_order[1:n_loc_iv]..., removed_sites..., loc_order[(n_loc_iv + 1):end]...
+        loc_order[1:num_locs]...,
+        removed_sites...,
+        loc_order[(num_locs + 1):end]...,
     ]
 
     # Match by site_id and assign rankings to log
-    align_rankings!(rankings, s_order, rank_col)
+    align_rankings!(rankings, s_order, 2)
     return pref_locs, rankings
 end
 
