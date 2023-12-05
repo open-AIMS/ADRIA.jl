@@ -361,12 +361,13 @@ function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,Abstra
     for (i, sd) in enumerate(rcp_stat_dirs)
         store = zopen(sd, fill_as_missing=false)
 
-        dims = store.attrs["structure"]
+        dim_names = Symbol.(store.attrs["structure"])
         stats = string.(store.attrs["stats"])
         scenario_ids = string.(store.attrs["scenarios"])
         loc_ids = string.(store.attrs["locations"])
         stat_set = NamedDimsArray(
-            store[:, :, :]; zip(Symbol.(dims), [stats, scenario_ids, loc_ids])...
+            store[:, :, :];
+            zip(dim_names, [stats, scenario_ids, loc_ids])...,
         )
 
         stat_d[rcp_dirs[i]] = stat_set
