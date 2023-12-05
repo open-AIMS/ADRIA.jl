@@ -23,7 +23,6 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     k_area  # ::V
     min_area # ::F
     risk_tol  # ::F
-    use_spatial_group # ::M
     n_spatial_grp # ::F
     spatial_groups #::V
     wt_in_conn_seed  # ::F
@@ -115,7 +114,6 @@ function DMCDA_vars(
         site_k_area(domain),
         criteria("coral_cover_tol") .* area_to_seed,
         criteria("deployed_coral_risk_tol"),
-        criteria("use_spatial_group"),
         domain.sim_constants.n_spatial_grp,
         domain.site_data.UNIQUE_ID,
         criteria("seed_in_connectivity"),
