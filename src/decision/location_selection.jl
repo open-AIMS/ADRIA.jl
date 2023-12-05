@@ -130,7 +130,7 @@ function rank_locations(
             scen,
             considered_sites,
             relative_leftover_space(
-                AxisKeys.keyless(NamedDims.unname(sum_cover[scen_idx, :]))
+                collect(sum_cover[scen_idx, :]),
             ) .* k_area_locs,
             area_to_seed,
             summary_stat_env(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
