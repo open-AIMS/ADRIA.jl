@@ -41,10 +41,10 @@ Matrix{Float64, 2}, of mean and standard deviation for each environmental scenar
 """
 function summarize_env_data(data::AbstractArray)::Array{Float64}
     # TODO: Update once
-    dc_mean = dropdims(mean(data, dims=(1, 2)), dims=(1, 2))'
-    dc_std = dropdims(std(data, dims=(1, 2)), dims=(1, 2))'
-
-    return Array{Float64}(vcat(dc_mean, dc_std))
+    stats_store::Array{Float64} = zeros(2, size(data, 3), size(data, 2))
+    stats_store[1, :, :] .= dropdims(mean(data; dims=1); dims=1)'
+    stats_store[2, :, :] .= dropdims(std(data; dims=1); dims=1)'
+    return stats_store
 end
 
 """
@@ -68,17 +68,20 @@ N is the number of dhw/wave scenarios.
 function store_env_summary(data_cube::NamedDimsArray, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)::ZArray
     stats = summarize_env_data(data_cube)
 
-    stats_store = zcreate(Float32, (2, size(stats, 2))...;
+    stats_store = zcreate(
+        Float32,
+        (2, size(stats, 2), size(stats, 3))...;
         fill_value=nothing, fill_as_missing=false,
         path=joinpath(file_loc, rcp),
         attrs=Dict(
-            :structure => ("stat", type),
-            :rows => ["mean", "std"],
-            :cols => string.(1:size(stats, 2)),
+            :structure => ("stat", type, "locations"),
+            :stats => ["mean", "std"],
+            :scenarios => string.(1:size(stats, 2)),
+            :locations => string.(1:size(stats, 3)),
             :rcp => rcp),
         compressor=compressor)
 
-    stats_store[:, :] .= stats
+    stats_store[:, :, :] .= stats
 
     return stats_store
 end
@@ -358,10 +361,14 @@ function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,Abstra
     for (i, sd) in enumerate(rcp_stat_dirs)
         store = zopen(sd, fill_as_missing=false)
 
-        dims = store.attrs["structure"]
-        row_names = string.(store.attrs["rows"])
-        col_names = string.(store.attrs["cols"])
-        stat_set = NamedDimsArray(store[:, :]; zip(Symbol.(dims), [row_names, col_names])...)
+        dim_names = Symbol.(store.attrs["structure"])
+        stats = string.(store.attrs["stats"])
+        scenario_ids = string.(store.attrs["scenarios"])
+        loc_ids = string.(store.attrs["locations"])
+        stat_set = NamedDimsArray(
+            store[:, :, :];
+            zip(dim_names, [stats, scenario_ids, loc_ids])...,
+        )
 
         stat_d[rcp_dirs[i]] = stat_set
     end
