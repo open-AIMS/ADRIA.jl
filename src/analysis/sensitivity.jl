@@ -577,7 +577,7 @@ function outcome_map(
     rule::Union{Function,BitVector,Vector{Int64}},
     target_factors::Vector{Symbol},
     model_spec::DataFrame;
-    S::Int64=20,
+    S::Int64=10,
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
@@ -593,8 +593,7 @@ function outcome_map(
         S = _category_bins(S, foi_spec[is_cat, :])
     end
 
-    step_size = 1 / S
-    steps = collect(0.0:step_size:1.0)
+    steps = collect(0.0:(1 / S):1.0)
 
     p_table = NamedDimsArray(
         zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
@@ -621,7 +620,9 @@ function outcome_map(
         if occursin("categorical", ptype)
             X_q .= _get_cat_quantile(foi_spec, fact_t, steps)
         else
-            X_q .= quantile(X_f, steps)
+            S = S_default
+            steps = steps_default
+            X_q[1:(S + 1)] .= quantile(X_f, steps)
         end
 
         for i in 1:length(X_q[1:end-1])
