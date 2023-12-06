@@ -585,7 +585,7 @@ function outcome_map(
     rule::Union{Function,BitVector,Vector{Int64}},
     target_factors::Vector{Symbol},
     model_spec::DataFrame;
-    S::Int64=20,
+    S::Int64=10,
     n_boot::Int64=100,
     conf::Float64=0.95
 )::NamedDimsArray
@@ -596,13 +596,14 @@ function outcome_map(
 
     foi_spec = _get_factor_spec(model_spec, target_factors)
 
+    S_default = S # save input S
+    steps_default = collect(0.0:(1 / S):1.0)
     is_cat = (foi_spec.ptype .== "categorical")
     if any(is_cat)
         S = _category_bins(S, foi_spec[is_cat, :])
     end
 
-    step_size = 1 / S
-    steps = collect(0.0:step_size:1.0)
+    steps = collect(0.0:(1 / S):1.0)
 
     p_table = NamedDimsArray(
         zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
@@ -627,9 +628,16 @@ function outcome_map(
         X_f = X[:, fact_t]
         ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
         if ptype == "categorical"
-            X_q .= _get_cat_quantile(foi_spec, fact_t, steps)
+            S = round(
+                Int64,
+                maximum(foi_spec[is_cat, :].upper_bound .- foi_spec[is_cat, :].lower_bound),
+            )
+            steps = collect(0.0:(1 / S):1.0)
+            X_q[1:(S + 1)] .= _get_cat_quantile(foi_spec, fact_t, steps)
         else
-            X_q .= quantile(X_f, steps)
+            S = S_default
+            steps = steps_default
+            X_q[1:(S + 1)] .= quantile(X_f, steps)
         end
 
         for i in 1:length(X_q[1:end-1])
