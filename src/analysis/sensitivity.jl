@@ -462,23 +462,34 @@ function rsa(
 
     foi_spec = _get_factor_spec(model_spec, factors)
 
+    S_default = S # save input S
+    seq_default = collect(0.0:(1 / S):1.0)
     is_cat = (foi_spec.ptype .== "categorical")
     if any(is_cat)
+        # set size of containers to largest possible S
         S = _category_bins(S, foi_spec[is_cat, :])
     end
 
     X_q = zeros(S + 1)
     r_s = zeros(Union{Missing,Float64}, S, D)
     seq = collect(0.0:(1 / S):1.0)
+    seq_store = seq
 
     for d_i in 1:D
         X_di .= X[:, d_i]
 
         ptype = foi_spec.ptype[foi_spec.fieldname .== factors[d_i]][1]
         if ptype == "categorical"
-            X_q .= _get_cat_quantile(foi_spec, factors[d_i], seq)
+            S = round(
+                Int64,
+                maximum(foi_spec[is_cat, :].upper_bound .- foi_spec[is_cat, :].lower_bound),
+            )
+            seq = collect(0.0:(1 / S):1.0)
+            X_q[1:(S + 1)] .= _get_cat_quantile(foi_spec, factors[d_i], seq)
         else
-            X_q .= quantile(X_di, seq)
+            S = S_default
+            seq = seq_default
+            X_q[1:(S + 1)] .= quantile(X_di, seq)
         end
 
         sel .= X_q[1] .<= X_di .<= X_q[2]
@@ -504,7 +515,7 @@ function rsa(
     end
 
     return col_normalize(
-        NamedDimsArray(r_s; bins=string.(seq[2:end]), factors=Symbol.(names(X)))
+        NamedDimsArray(r_s; bins=string.(seq_store[2:end]), factors=Symbol.(names(X))),
     )
 end
 function rsa(
