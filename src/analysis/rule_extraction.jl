@@ -46,10 +46,11 @@ Vector of Rule condition clauses (each one being a vector itself).
 """
 function _condition(rules::SIRUS.StableRules{Int64}, index::Int64)::Vector{Vector}
     condition::Vector{Vector} = []
-    for split in rules.rules[index].path.splits
-        feature_name = split.splitpoint.feature_name
-        direction = split.direction
-        value = split.splitpoint.value
+
+    for subclause in rules.rules[index].clause.subclauses
+        feature_name::String = subclause.feature_name
+        direction::Symbol = subclause.direction
+        value::Float32 = subclause.splitval
         push!(condition, [feature_name, direction, value])
     end
     return condition
