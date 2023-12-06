@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Analysis · ADRIA.jl</title><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="ADRIA.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ADRIA.jl</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../synopsis/">Synopsis</a></li><li><span class="tocitem">Usage</span><ul><li><a class="tocitem" href="../getting_started/">Getting Started</a></li><li><a class="tocitem" href="../domain/">Loading a Domain</a></li><li><a class="tocitem" href="../scenario_generation/">Generating scenarios</a></li><li><a class="tocitem" href="../scenario_runs/">Running scenarios</a></li><li class="is-active"><a class="tocitem" href>Analysis</a><ul class="internal"><li><a class="tocitem" href="#Setup"><span>Setup</span></a></li><li><a class="tocitem" href="#Extracting-results"><span>Extracting results</span></a></li><li><a class="tocitem" href="#Visualization"><span>Visualization</span></a></li></ul></li><li><a class="tocitem" href="../cookbook/">Cookbook examples</a></li></ul></li><li><a class="tocitem" href="../../dMCDA/">Dynamic Multi-Criteria Decision Analysis</a></li><li><span class="tocitem">Architecture</span><ul><li><a class="tocitem" href="../../architecture/architecture/">Architectural overview</a></li><li><a class="tocitem" href="../../architecture/domain_and_resultsets/">Inputs and Outputs</a></li></ul></li><li><span class="tocitem">Development</span><ul><li><a class="tocitem" href="../../development/development_setup/">Development setup</a></li><li><a class="tocitem" href="../../development/metrics/">Contributing a metric</a></li><li><a class="tocitem" href="../../development/release_guide/">Release Guide</a></li><li><a class="tocitem" href="../../development/building_docs/">Building Documentation</a></li></ul></li><li><a class="tocitem" href="../../API/">ADRIA API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Usage</a></li><li class="is-active"><a href>Analysis</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Analysis</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/open-AIMS/ADRIA.jl/blob/main/docs/src/usage/analysis.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Analysis"><a class="docs-heading-anchor" href="#Analysis">Analysis</a><a id="Analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Analysis" title="Permalink"></a></h1><p>This section presents tools for analysing model generate data, including functions to extract metrics and plot graphs.</p><h2 id="Setup"><a class="docs-heading-anchor" href="#Setup">Setup</a><a id="Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Setup" title="Permalink"></a></h2><h3 id="Makie"><a class="docs-heading-anchor" href="#Makie">Makie</a><a id="Makie-1"></a><a class="docs-heading-anchor-permalink" href="#Makie" title="Permalink"></a></h3><p>The Makie.jl ecosystem is used to produce figures.</p><p>Install additional packages if necessary</p><pre><code class="language-julia hljs">]add Makie GeoMakie GraphMakie</code></pre><p>Install a Makie <a href="https://docs.makie.org/stable/explanations/backends/">backend</a> of your choice. WGLMakie is more flexible for our workflows, but GLMakie is a good choice too.</p><pre><code class="language-julia hljs">]add WGLMakie</code></pre><p>Import additional packages and the visualization extension will compile.</p><pre><code class="language-julia hljs">using WGLMakie, GeoMakie, GraphMakie
+using ADRIA
+using Statistics</code></pre><p>Plots will appear in the VS Code plots pane. You may need to deactivate the inline plotting feature when displaying plots elsewhere.</p><pre><code class="language-julia hljs">Makie.inline!(false)</code></pre><h3 id="Result-Set"><a class="docs-heading-anchor" href="#Result-Set">Result Set</a><a id="Result-Set-1"></a><a class="docs-heading-anchor-permalink" href="#Result-Set" title="Permalink"></a></h3><p>All metrics and visualization tools presented here can be used with data generated from ADRIAmod. Following, we show usage examples considering ADRIA result set <code>rs</code>:</p><pre><code class="language-julia hljs"># Load domain data
+dom = ADRIA.load_domain(&quot;path to domain data&quot;)
+
+# Create some scenarios
+num_samples = 4096
+scens = ADRIA.sample(dom, num_samples)
+
+# Run the model for generated scenarios
+rcp_45 = &quot;45&quot;
+rs = ADRIA.run_scenarios(dom, scens, rcp_45)
+
+# Visualize results (in terms of absolute coral cover)
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+ADRIA.viz.scenarios(rs, s_tac)</code></pre><p>See the previous sections <a href="../domain/#Loading-a-Domain">Loading a Domain</a>, <a href="../scenario_generation/#Generating-scenarios">Generating scenarios</a> and <a href="../scenario_runs/#Running-scenarios">Running scenarios</a> for more information.</p><h2 id="Extracting-results"><a class="docs-heading-anchor" href="#Extracting-results">Extracting results</a><a id="Extracting-results-1"></a><a class="docs-heading-anchor-permalink" href="#Extracting-results" title="Permalink"></a></h2><p>A range of metrics are defined as part of the ADRIA framework. See the <a href="../../API/#Metrics">Metrics</a> page for more details.</p><p>Here, we extract results for specific metrics for each timestep and sites for all the scenarios run. The result of each line above is a 3-dimensional Array of timesteps, sites and scenarios:</p><pre><code class="language-julia hljs">tac = ADRIA.metrics.total_absolute_cover(rs)
+rsv = ADRIA.metrics.relative_shelter_volume(rs)
+juves = ADRIA.metrics.relative_juveniles(rs)</code></pre><p>We can also look at scenario-level metrics. They aggregate the above metrics across the <code>site</code> dimension and indicate the <em>outcomes</em> under a given intervention (or non-intervention) option and environmental condition.</p><p>The result is a 2-dimensional array of timesteps and scenarios:</p><pre><code class="language-julia hljs">s_tac = ADRIA.metrics.scenario_total_cover(rs)
+s_rsv = ADRIA.metrics.scenario_rsv(rs)
+s_juves = ADRIA.metrics.scenario_relative_juveniles(rs)</code></pre><h2 id="Visualization"><a class="docs-heading-anchor" href="#Visualization">Visualization</a><a id="Visualization-1"></a><a class="docs-heading-anchor-permalink" href="#Visualization" title="Permalink"></a></h2><p>The examples below are to illustrate usage. For further information on each method of analysis, see the documentation for the given function.</p><p>Some options shared for the plots below are defined here.</p><pre><code class="language-julia hljs"># Some shared options for the example plots below
+fig_opts = Dict(:resolution =&gt; (1600, 800))
+
+# Factors of Interest
+opts = Dict(
+    :factors =&gt; [
+        :RCP,
+        :dhw_scenario,
+        :wave_scenario,
+        :guided,
+        :N_seed_TA,
+        :N_seed_CA,
+        :fogging,
+        :SRM,
+        :a_adapt
+    ]
+)</code></pre><h3 id="Scenario-outcomes"><a class="docs-heading-anchor" href="#Scenario-outcomes">Scenario outcomes</a><a id="Scenario-outcomes-1"></a><a class="docs-heading-anchor-permalink" href="#Scenario-outcomes" title="Permalink"></a></h3><p>One can plot a quick scenario overview:</p><pre><code class="language-julia hljs">fig_s_tac = ADRIA.viz.scenarios(
+    rs, s_tac; fig_opts=fig_opts, axis_opts=Dict(:ylabel =&gt; &quot;Scenario Total Cover&quot;)
+)
+save(&quot;scenarios_tac.png&quot;, fig_s_tac)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/scenarios_tac.png?raw=true &quot;Quick scenario plot&quot;" alt="Quick scenario plots"/></p><p>And compose a figure with subplots. In the example below we also use the parameter <code>opts</code> that accepts the keys <code>by_RCP</code> to group scenarios by RCP (default is <code>false</code>), <code>legend</code> to plot the legend (default is <code>true</code>) and <code>summarize</code> to plot confidence intervals instead of plotting each series (default is <code>true</code>):</p><pre><code class="language-julia hljs">tf = Figure(resolution=(1600, 600))  # resolution in pixels
+
+# Implicitly create a single figure with 2 columns
+ADRIA.viz.scenarios!(
+    tf[1, 1],
+    rs,
+    s_tac;
+    opts=Dict(:by_RCP =&gt; false, :legend =&gt; false),
+    axis_opts=Dict(:title =&gt; &quot;TAC [m²]&quot;),
+);
+ADRIA.viz.scenarios!(
+    tf[1, 2],
+    rs,
+    s_juves;
+    opts=Dict(:summarize =&gt; false),
+    axis_opts=Dict(:title =&gt; &quot;Juveniles [%]&quot;),
+);
+
+tf  # display the figure
+save(&quot;aviz_scenario.png&quot;, tf)  # save the figure to a file</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/aviz_scenario.png?raw=true &quot;Scenarios with subplots&quot;" alt="Scenarios with subplots"/></p><h3 id="Intervention-location-selection-visualisation"><a class="docs-heading-anchor" href="#Intervention-location-selection-visualisation">Intervention location selection - visualisation</a><a id="Intervention-location-selection-visualisation-1"></a><a class="docs-heading-anchor-permalink" href="#Intervention-location-selection-visualisation" title="Permalink"></a></h3><p>Plot spatial colormaps of site selection frequencies and other available site selection metrics.</p><pre><code class="language-julia hljs"># Calculate frequencies with which each site was selected at each rank
+rank_freq = ADRIA.decision.ranks_to_frequencies(
+    rs.ranks[intervention=1];
+    agg_func=x -&gt; dropdims(sum(x; dims=:timesteps); dims=:timesteps),
+)
+
+# Plot 1st rank frequencies as a colormap
+rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:resolution=&gt;(1200, 800)))
+
+save(&quot;single_rank_plot.png&quot;, rank_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/single_rank_plot.png?raw=true &quot;Rank frequency plot 1 rank&quot;" alt="Rank frequency plots for single rank"/></p><pre><code class="language-julia hljs"># Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
+rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:resolution=&gt;(1200, 800)))
+
+save(&quot;ranks_plot.png&quot;, rank_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/ranks_plot.png?raw=true &quot;Rank frequency plot 3 ranks&quot;" alt="Rank frequency plots for multiple ranks"/></p><h3 id="PAWN-sensitivity-(heatmap-overview)"><a class="docs-heading-anchor" href="#PAWN-sensitivity-(heatmap-overview)">PAWN sensitivity (heatmap overview)</a><a id="PAWN-sensitivity-(heatmap-overview)-1"></a><a class="docs-heading-anchor-permalink" href="#PAWN-sensitivity-(heatmap-overview)" title="Permalink"></a></h3><p>The PAWN sensitivity analysis method is a moment-independent approach to Global Sensitivity Analysis. It is described as producing robust results at relatively low sample sizes, and is used to screen factors (i.e., identification of important factors) and rank factors as well (ordering factors by their relative contribution towards a given quantity of interest).</p><pre><code class="language-julia hljs"># Sensitivity (of mean scenario outcomes to factors)
+mean_s_tac = vec(mean(s_tac, dims=1))
+tac_Si = ADRIA.sensitivity.pawn(rs, mean_s_tac)
+pawn_fig = ADRIA.viz.pawn(
+    tac_Si;
+    opts,
+    fig_opts
+)
+save(&quot;pawn_si.png&quot;, pawn_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/pawn_si.png?raw=true &quot;PAWN sensitivity plots&quot;" alt="PAWN sensitivity plots"/></p><h3 id="Temporal-Sensitivity-Analysis"><a class="docs-heading-anchor" href="#Temporal-Sensitivity-Analysis">Temporal Sensitivity Analysis</a><a id="Temporal-Sensitivity-Analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Temporal-Sensitivity-Analysis" title="Permalink"></a></h3><p>Temporal (or Time-varying) Sensitivity Analysis applies sensitivity analysis to model outputs over time. The relative importance of factors and their influence on outputs over time can then be examined through this analysis.</p><pre><code class="language-julia hljs">tsa_s = ADRIA.sensitivity.tsa(rs, s_tac)
+tsa_fig = ADRIA.viz.tsa(
+    rs,
+    tsa_s;
+    opts,
+    fig_opts
+)
+save(&quot;tsa.png&quot;, tsa_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsa.png?raw=true &quot;Temporal Sensitivity Analysis&quot;" alt="Plots of Temporal Sensitivities"/></p><h3 id="Convergence-Analysis"><a class="docs-heading-anchor" href="#Convergence-Analysis">Convergence Analysis</a><a id="Convergence-Analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Convergence-Analysis" title="Permalink"></a></h3><p>When undertaking sensitivity analysis it is important to have a sufficient number of samples such that the sensitivity measure converges to a stable state. To assess whether sufficient samples have been taken a convergence analysis can be conducted. One approach is to draw a large sample and then iteratively assess stability of the sensitivity metric using an increasing number of sub-samples. The sensitivity metric is described as having &quot;converged&quot; if there is little to no fluctuations/variance for a given sample size. The analysis can help determine if too little (or too many) samples have taken for the purpose of sensitivity analysis.</p><p>The function <code>sensitivity.convergence</code> can be used to calculate a sensitivity measure for an increasing number of samples. The result can then be plotted as band plots or a heat map using <code>viz.convergence</code>.</p><pre><code class="language-julia hljs">outcome = dropdims(mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps), dims=:timesteps)
+
+# Display convergence for specific factors of interest (&quot;foi&quot;) within a single figure.
+# Bands represent the 95% confidence interval derived from the number of conditioning
+# points, the default for which is ten (i.e., 10 samples).
+# Due to the limited sample size, care should be taken when interpreting the figure.
+foi = [:dhw_scenario, :wave_scenario, :guided]
+Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi)
+conv_series_fig = ADRIA.viz.convergence(Si_conv, foi)
+save(&quot;convergence_factors_series.png&quot;, conv_series_fig)
+
+# Convergence analysis of factors grouped by model component as a heat map
+components = [:EnvironmentalLayer, :Intervention, :Coral]
+Si_conv = ADRIA.sensitivity.convergence(rs, scens, outcome, components)
+conv_hm_fig = ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=&gt;:heatmap))
+save(&quot;convergence_components_heatmap.png&quot;, conv_hm_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/convergence_factors_series.png?raw=true &quot;Convergence Analysis - factors&quot;" alt="Convergence analysis of factors overlayed"/> <img src="/ADRIA.jl/dev/assets/imgs/convergence_components_heatmap.png?raw=true &quot;Convergence Analysis - model components as a heatmap&quot;" alt="Grouped convergence analysis"/></p><h3 id="Time-Series-Clustering"><a class="docs-heading-anchor" href="#Time-Series-Clustering">Time Series Clustering</a><a id="Time-Series-Clustering-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Series-Clustering" title="Permalink"></a></h3><p>The Time Series Clustering algorithm clusters together series (typically time series) with similar behavior. This is achieved by computing the Euclidian distance between each pair of series weighted by a correlation factor that takes into account the quotient between their complexities. When plotting <code>clustered_scenarios</code>, the kwarg <code>opts</code> can be used with the key <code>:summarize</code> to plot the confidence intervals of each cluster instead of each series individually (default is <code>true</code>).</p><pre><code class="language-julia hljs"># Extract metric from scenarios
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+
+# Cluster scenarios
+n_clusters = 4
+clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
+
+axis_opts = Dict(
+    :title =&gt; &quot;Time Series Clustering with $n_clusters clusters&quot;,
+    :ylabel =&gt; &quot;TAC [m²]&quot;,
+    :xlabel =&gt; &quot;Timesteps [years]&quot;,
+)
+
+tsc_fig = ADRIA.viz.clustered_scenarios(
+    s_tac, clusters; opts=Dict(:summarize =&gt; true), fig_opts=fig_opts, axis_opts=axis_opts
+)
+
+# Save final figure
+save(&quot;tsc.png&quot;, tsc_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsc.png?raw=true &quot;Time Series Cluster&quot;" alt="Plots of Time Series Cluster"/></p><h3 id="Target-clusters"><a class="docs-heading-anchor" href="#Target-clusters">Target clusters</a><a id="Target-clusters-1"></a><a class="docs-heading-anchor-permalink" href="#Target-clusters" title="Permalink"></a></h3><p>One can also target scenarios that belong to specific clusters (like clusters with higher median value for some outcome):</p><pre><code class="language-julia hljs"># Extract metric from scenarios
+asv = ADRIA.metrics.absolute_shelter_volume(rs)
+
+# Time series summarizing scenarios for each site
+asv_site_series = ADRIA.metrics.loc_trajectory(median, asv)
+
+# Cluster scenarios
+n_clusters = 6
+asv_clusters = ADRIA.analysis.cluster_scenarios(asv_site_series, n_clusters)
+
+# Target scenarios that belong to the two lowest value clusters
+lowest = x -&gt; x .∈ [sort(x; rev=true)[1:2]]
+asv_target = ADRIA.analysis.find_scenarios(asv_site_series, asv_clusters, lowest)
+
+# Plot targeted scenarios
+axis_opts = Dict(:ylabel =&gt; &quot;Absolute Shelter Volume&quot;, :xlabel =&gt; &quot;Timesteps [years]&quot;)
+
+tsc_asc_fig = ADRIA.viz.clustered_scenarios(
+    asv_site_series, asv_target; axis_opts=axis_opts, fig_opts=fig_opts
+)
+
+# Save final figure
+save(&quot;tsc_asv.png&quot;, tsc_asc_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsc_asv.png?raw=true &quot;Targeted lowest clusters&quot;" alt="Plots of targeted lowest clusters"/></p><h3 id="Multiple-Time-Series-Clustering"><a class="docs-heading-anchor" href="#Multiple-Time-Series-Clustering">Multiple Time Series Clustering</a><a id="Multiple-Time-Series-Clustering-1"></a><a class="docs-heading-anchor-permalink" href="#Multiple-Time-Series-Clustering" title="Permalink"></a></h3><p>It is possible to perform time series clustering for different metric outcomes and find scenarios that behave the same across all of them. Currently there is no visualization function for this.</p><pre><code class="language-julia hljs">metrics::Vector{ADRIA.metrics.Metric} = [
+    ADRIA.metrics.scenario_total_cover,
+    ADRIA.metrics.scenario_asv,
+    ADRIA.metrics.scenario_absolute_juveniles,
+]
+
+outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
+n_clusters = 6
+
+# Clusters matrix
+outcomes_clusters::AbstractMatrix{Int64} = ADRIA.analysis.cluster_scenarios(
+    outcomes, n_clusters
+)
+
+# Filter scenarios that belong to on of the 4 high value clusters for all outcomes
+highest_clusters(x) = x .∈ [sort(x; rev=true)[1:4]]
+robust_scens = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, highest_clusters)</code></pre><h3 id="Time-Series-Clustering-Map"><a class="docs-heading-anchor" href="#Time-Series-Clustering-Map">Time Series Clustering Map</a><a id="Time-Series-Clustering-Map-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Series-Clustering-Map" title="Permalink"></a></h3><p>When using Time Series Clustering to cluster among multiple locations using some metric, it is possible to visualize the result as a map.</p><pre><code class="language-julia hljs"># Extract metric from scenarios
+tac = ADRIA.metrics.total_absolute_cover(rs)
+
+# Get a timeseries summarizing the scenarios for each site
+tac_site_series = ADRIA.metrics.loc_trajectory(median, tac)
+
+# Cluster scenarios
+n_clusters = 6
+clusters = ADRIA.analysis.cluster_scenarios(tac_site_series, n_clusters)
+
+# Get a vector summarizing the scenarios and timesteps for each site
+tac_sites = ADRIA.metrics.per_loc(median, tac)
+
+# Plot figure
+tsc_map_fig = ADRIA.viz.map(rs, tac_sites, clusters)
+
+# Save final figure
+save(&quot;tsc_map.png&quot;, tsc_map_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/tsc_map.png?raw=true &quot;Spatial Time Series Cluster&quot;" alt="Plots of Spatial Time Series Clusters"/></p><h3 id="Rule-Induction-(using-Series-Clusters)"><a class="docs-heading-anchor" href="#Rule-Induction-(using-Series-Clusters)">Rule Induction (using Series Clusters)</a><a id="Rule-Induction-(using-Series-Clusters)-1"></a><a class="docs-heading-anchor-permalink" href="#Rule-Induction-(using-Series-Clusters)" title="Permalink"></a></h3><p>After clustering, it is possible to target some specific scenarios based on each cluster median outcome temporal variability:</p><pre><code class="language-julia hljs"># Find Time Series Clusters
+s_tac = ADRIA.metrics.scenario_total_cover(rs)
+num_clusters = 6
+clusters = ADRIA.analysis.cluster_scenarios(s_tac, num_clusters)
+
+# Target scenarios
+target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)</code></pre><p>Using this vector if target clusters, together with the parameters used to generate each scenario, it is possible to use a Rule Induction algorithm (SIRUS) and plot each extracted rule as a scatter graph:</p><pre><code class="language-julia hljs"># Select only desired features
+fields_iv = ADRIA.component_params(rs, [Intervention, CriteriaWeights]).fieldname
+scenarios_iv = scens[:, fields_iv]
+
+# Use SIRUS algorithm to extract rules
+max_rules = 10
+rules_iv = ADRIA.analysis.cluster_rules(target_clusters, scenarios_iv, max_rules)
+
+# Plot scatters for each rule highlighting the area selected them
+rules_scatter_fig = ADRIA.viz.rules_scatter(
+    rs,
+    scenarios_iv,
+    target_clusters,
+    rules_iv;
+    fig_opts=fig_opts,
+    opts=opts
+)
+
+# Save final figure
+save(&quot;rules_scatter.png&quot;, rules_scatter_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/rules_scatter.png?raw=true &quot;Rule Induction&quot;" alt="Plots of Rule Induction"/></p><h3 id="Regional-Sensitivity-Analysis"><a class="docs-heading-anchor" href="#Regional-Sensitivity-Analysis">Regional Sensitivity Analysis</a><a id="Regional-Sensitivity-Analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Regional-Sensitivity-Analysis" title="Permalink"></a></h3><p>Regional Sensitivity Analysis is a monte-carlo filtering approach. The aim of RSA is to aid in identifying which (group of) factors drive model outputs and their active areas of factor space.</p><pre><code class="language-julia hljs">tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)
+rsa_fig = ADRIA.viz.rsa(
+    rs,
+    tac_rs,
+    [&quot;dhw_scenario&quot;, &quot;wave_scenario&quot;, &quot;N_seed_TA&quot;, &quot;N_seed_CA&quot;, &quot;fogging&quot;, &quot;SRM&quot;];
+    opts,
+    fig_opts
+)
+save(&quot;rsa.png&quot;, rsa_fig)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/rsa.png?raw=true &quot;Regional Sensitivity Analysis&quot;" alt="Plots of Regional Sensitivities"/></p><h3 id="Outcome-mapping"><a class="docs-heading-anchor" href="#Outcome-mapping">Outcome mapping</a><a id="Outcome-mapping-1"></a><a class="docs-heading-anchor-permalink" href="#Outcome-mapping" title="Permalink"></a></h3><p>A monte-carlo filtering approach similar to Regional Sensitivity Analysis.</p><p>As the name implies, outcome mapping aids in identifying the relationship between model outputs and the region of factor space that led to those outputs.</p><pre><code class="language-julia hljs">tf = Figure(resolution=(1600, 1200))  # resolution in pixels
+
+# Indicate factor values that are in the top 50 percentile
+tac_om_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -&gt; any(x .&gt;= 0.5), foi; S=20)
+ADRIA.viz.outcome_map!(
+    tf[1, 1],
+    rs,
+    tac_om_50,
+    foi;
+    axis_opts=Dict(:title =&gt; &quot;Regions which lead to Top 50th Percentile Outcomes&quot;, :ylabel =&gt; &quot;TAC [m²]&quot;)
+)
+
+# Indicate factor values that are in the top 30 percentile
+tac_om_70 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -&gt; any(x .&gt;= 0.7), foi; S=20)
+ADRIA.viz.outcome_map!(
+    tf[2, 1],
+    rs,
+    tac_om_70,
+    foi;
+    axis_opts=Dict(:title =&gt; &quot;Regions which lead to Top 30th Percentile Outcomes&quot;, :ylabel =&gt; &quot;TAC [m²]&quot;))
+
+save(&quot;outcome_map.png&quot;, tf)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/outcome_map.png?raw=true &quot;Outcome mapping&quot;" alt="Outcome mapping"/></p><h3 id="GUI-for-high-level-exploration-(prototype-only!)"><a class="docs-heading-anchor" href="#GUI-for-high-level-exploration-(prototype-only!)">GUI for high-level exploration (prototype only!)</a><a id="GUI-for-high-level-exploration-(prototype-only!)-1"></a><a class="docs-heading-anchor-permalink" href="#GUI-for-high-level-exploration-(prototype-only!)" title="Permalink"></a></h3><pre><code class="language-julia hljs"># To explore results interactively
+ADRIA.viz.explore(&quot;path to Result Set&quot;)
+
+# or, if the result set is already loaded:
+# ADRIA.viz.explore(rs)</code></pre><p><img src="/ADRIA.jl/dev/assets/imgs/aviz_app.png?raw=true &quot;Data Exploration App&quot;" alt="Standalone app for data exploration"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../scenario_runs/">« Running scenarios</a><a class="docs-footer-nextpage" href="../cookbook/">Cookbook examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Wednesday 6 December 2023 04:51">Wednesday 6 December 2023</span>. Using Julia version 1.9.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
