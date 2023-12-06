@@ -116,6 +116,8 @@ function rank_locations(
         target_site_ids = collect(1:length(domain.site_ids))
     end
 
+    leftover_space_scens = relative_leftover_space(sum_cover.data) .* k_area_locs'
+
     for (scen_idx, scen) in enumerate(eachrow(scenarios))
         depth_criteria = within_depth_bounds(
             domain.site_data.depth_med,
@@ -124,14 +126,13 @@ function rank_locations(
         )
         depth_priority = findall(depth_criteria)
 
+
         considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
         mcda_vars_temp = DMCDA_vars(
             domain,
             scen,
             considered_sites,
-            relative_leftover_space(
-                sum_cover[scen_idx, :].data,
-            ) .* k_area_locs,
+            leftover_space_scens[scen_idx, :],
             area_to_seed,
             summary_stat_env(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
             summary_stat_env(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios))
