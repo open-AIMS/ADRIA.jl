@@ -463,12 +463,14 @@ function rsa(
 
     is_cat = occursin.("categorical", foi_spec.ptype)
     if any(is_cat)
+        # set size of containers to largest possible S
         S = _category_bins(S, foi_spec[is_cat, :])
     end
 
     X_q = zeros(S + 1)
     r_s = zeros(Union{Missing,Float64}, S, D)
     seq = collect(0.0:(1 / S):1.0)
+    seq_store = seq
 
     for d_i in 1:D
         X_di .= X[:, d_i]
@@ -477,7 +479,9 @@ function rsa(
         if occursin("categorical", ptype)
             X_q .= _get_cat_quantile(foi_spec, factors[d_i], seq)
         else
-            X_q .= quantile(X_di, seq)
+            S = S_default
+            seq = seq_default
+            X_q[1:(S + 1)] .= quantile(X_di, seq)
         end
 
         sel .= X_q[1] .<= X_di .<= X_q[2]
@@ -503,7 +507,7 @@ function rsa(
     end
 
     return col_normalize(
-        NamedDimsArray(r_s; bins=string.(seq[2:end]), factors=Symbol.(names(X)))
+        NamedDimsArray(r_s; bins=string.(seq_store[2:end]), factors=Symbol.(names(X))),
     )
 end
 function rsa(
