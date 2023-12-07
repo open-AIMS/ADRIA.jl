@@ -1,66 +1,85 @@
 {
-    "name": "test_set_2023-10-30",
-    "title": "Test data package",
-    "description": "Data package synthesised from actual data package for ADRIA and adjusted for testing purposes.",
-    "version": "0.3.1",
-    "sources": [],
-    "simulation_metadata": {
-        "timeframe": [
-            2025,
-            2099
-        ]
-    },
-    "contributors": [],
-    "resources": [
-        {
-            "name": "spatial_data",
-            "description": "spatial data of cluster. Unique sites indicated by reef_siteid. Zone types under zone_type.",
-            "path": "site_data\\test_set_2023-10-30.gpkg",
-            "data": [
-                "reef_siteid",
-                "site_id"
-            ],
-            "format": "geopackage"
-        },
-        {
-            "name": "coral_cover",
-            "description": "Initial coral cover. Matching reefs indicated by reef_siteid.",
-            "data": [
-                "reef_siteid",
-                "covers"
-            ],
-            "path": "site_data/coral_cover.nc",
-            "format": "netCDF"
-        },
-        {
-            "name": "DHWs",
-            "description": "Stochastic degree heating week data. Includes data for RCP 4.5.",
-            "data": [
-                "reef_siteid",
-                "dhw"
-            ],
-            "path": "DHWs",
-            "format": "netCDF"
-        },
-        {
-            "name": "waves",
-            "description": "Stochastic wave data. Empty datasets for RCP 4.5.",
-            "data": [
-                "reef_siteid",
-                "wave"
-            ],
-            "path": "waves",
-            "format": "netCDF"
-        },
-        {
-            "name": "connectivity",
-            "description": "Connectivity data for specific days across years, grouped by year.",
-            "data": [
-                "row_source",
-                "col_receiving"
-            ],
-            "path": "connectivity",
-            "format": "CSV"
-        }
+"name": "Example_domain",
+"title": "Example reef cluster data package",
+"description": "Example data package for ADRIA",
+"version": "0.4.0-rc",
+"sources": [],
+"simulation_metadata": {
+    "timeframe": [
+        2025,
+        2099
     ]
+},
+"contributors": [
+    {
+        "title": "Joe Smith",
+        "email": "joe.smith@example.com",
+        "role": "author",
+        "description": "Assembled example data"
+    }
+],
+"resources": [
+    {
+        "name": "spatial_data",
+    "description": "spatial data for Example cluster",
+    "path": "site_data/Example_domain.gpkg",
+    "format": "geopackage"
+},
+{
+    "name": "coral_cover",
+    "description": "Initial coral cover",
+    "data": [
+        "reef_siteid",
+        "covers"
+    ],
+    "path": "site_data/coral_cover.nc",
+    "format": "netCDF"
+},
+{
+    "name": "cyclone_mortality",
+    "description": "Coral mortality example projections due to cyclone.",
+    "path": "cyclones/cyclone_mortality.nc",
+    "format": "netCDF"
+},
+{
+    "name": "DHWs",
+    "description": "Stochastic degree heating week data for the Moore Cluster. Data for RCP 4.5",
+    "data": [
+        "reef_siteid",
+        "dhw"
+    ],
+    "path": "DHWs/dhwRCP45.nc",
+    "format": "netCDF"
+},
+{
+    "name": "waves",
+    "description": "Stochastic wave data for the Example cluster",
+    "data": [
+        "reef_siteid",
+        "Ub"
+    ],
+    "path": "waves/wave_RCP45.nc",
+    "format": "netCDF"
+},
+{
+    "name": "cyclones",
+    "description": "Empty cyclone data for the Example cluster",
+    "data": [
+        "reef_siteid",
+        "layer"
+    ],
+    "path": "cyclones/cyclone_mortality.nc",
+    "format": "netCDF"
+},
+{
+    "name": "connectivity",
+    "description": "Example connectivity data for specific days across years, grouped by year",
+    "data": [
+        "row_source",
+        "col_receiving"
+    ],
+    "path": "connectivity",
+    "format": "CSV"
+}
+]
 }
