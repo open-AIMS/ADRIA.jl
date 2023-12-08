@@ -1,3 +1,5 @@
+using Distributions
+using Combinatorics, IterTools
 using Test
 using ADRIA.Distributions
 
@@ -5,6 +7,49 @@ using ADRIA.Distributions
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
     const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
+end
+
+function get_site_order(criteria, site_ids)
+    sorted_ids = sortperm(criteria; rev=true)
+    site_order = hcat(site_ids[sorted_ids], criteria[sorted_ids])
+    return site_order
+end
+
+function test_site_ranks(
+    weights_set, A, rankings, criteria_names, n_site_int, mcda_func, inv
+)
+    S = ADRIA.decision.mcda_normalize(A)
+    S[:, 1] .= A[:, 1]
+    site_ids = A[:, 1]
+    for weights in weights_set
+        crit_inds = findall(weights .> 0.0)
+        criteria = vec(
+            sum(
+                weights[crit_inds]' .*
+                ADRIA.decision.mcda_normalize(A[:, 2:end][:, crit_inds]);
+                dims=2,
+            ),
+        )
+        site_max = get_site_order(criteria, site_ids)
+        prefsites, s_order = ADRIA.decision.rank_sites!(
+            S, weights, rankings, n_site_int, mcda_func, inv
+        )
+
+        # check that 5 worst sites aren't in those selected
+        names_temp = criteria_names[crit_inds]
+        names_string = string(["$(name), " for name in names_temp[1:(end - 1)]]...)
+
+        @test !any(in.(Int.(site_max[(n_site_int + 1):end, 1]), prefsites)) || string(
+            "For the ",
+            names_string,
+            "and $(names_temp[end]) criteria, some of the worst sites were still selected during site selection.",
+        )
+        @test any(prefsites .== 5) & any(prefsites .== 6) || string(
+            "For the ",
+            names_string,
+            "and $(names_temp[end]) criteria, the best sites (5 and 6) were not selected.",
+        )
+    end
 end
 
 @testset "site selection" begin
@@ -73,23 +118,69 @@ end
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
     N = 2^3
     scens = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
 
-    area_to_seed = 962.11  # Area of seeded corals in m^2.
+    cover = sum(dom.init_coral_cover; dims=:species)[species=1]
+    leftover_space = 1 .- cover
+    k_area = dom.site_data.area .* dom.site_data.k
+    dhw_av = ADRIA.decision.summary_stat_env(dom.dhw_scens, (:timesteps, :scenarios))
+    wave_av = ADRIA.decision.summary_stat_env(dom.wave_scens, (:timesteps, :scenarios))
+    depth_med = dom.site_data.depth_med
 
-    sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(scens, 1))
-    ranks = ADRIA.decision.rank_locations(dom, scens, sum_cover, area_to_seed)
+    TP_data = ADRIA.connectivity_strength(
+        dom.TP_data .* ADRIA.site_k_area(dom), collect(cover), dom.TP_data
+    )
 
-    @test length(ranks.scenarios) == sum(scens.guided .> 0) || "Specified number of scenarios was not carried out."
-    @test length(ranks.sites) == length(dom.site_ids) || "Ranks storage is not correct size for this domain."
+    site_ids = dom.site_data.site_id
 
-    sel_sites = unique(ranks)
-    sel_sites = sel_sites[sel_sites.!=0.0]
-    possible_ranks = collect(Float64, 1:ADRIA.n_locations(dom)+1.0)
+    n_sites = length(site_ids)
+    heat_stress =
+        1 .- vec((dhw_av .- minimum(dhw_av)) ./ (maximum(dhw_av) - minimum(dhw_av)))
+    wave_stress =
+        1 .- vec((wave_av .- minimum(wave_av)) ./ (maximum(wave_av) - minimum(wave_av)))
+    cover_area = cover .* k_area
+    space_area = leftover_space .* k_area
+    in_conn = TP_data.in_conn
+    out_conn = TP_data.out_conn
 
-    @test all([in(ss, possible_ranks) for ss in sel_sites]) || "Impossible rank assigned."
+    n_sites = length(site_ids)
+    n_site_int = 5
+    lb_sites = n_sites - n_site_int
+
+    criteria_names = [
+        "heat stress",
+        "wave stress",
+        "median depth",
+        "coral cover space",
+        "in connectivity",
+        "out connectivity",
+    ]
+    A = hcat(site_ids, heat_stress, wave_stress, depth_med, space_area, in_conn, out_conn)
+
+    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+
+    # Test 0.0 or 1.0 weights in all combinations
+    weights = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    weights_choice = collect(0.0:0.1:1.0)
+
+    for num_crit in 1:6
+        weights[num_crit] = 1.0
+        weights_set = collect(distinct(permutations(weights, 6)))
+        test_site_ranks(
+            weights_set, A, rankings, criteria_names, n_site_int, mcda_funcs[1], 1
+        )
+    end
+    weights = rand(200, 6)
+    weights = weights ./ sum(weights; dims=2)
+    for ww in eachrow(weights)
+        weights_set = collect(distinct(permutations(ww, 6)))
+        test_site_ranks(
+            weights_set, A, rankings, criteria_names, n_site_int, mcda_funcs[1], 1
+        )
+    end
+
 end
 
 @testset "Test ranks line up with ordering" begin
