@@ -172,7 +172,7 @@ end
             weights_set, A, rankings, criteria_names, n_site_int, mcda_funcs[1], 1
         )
     end
-    weights = rand(200, 6)
+    weights = rand(100, 6)
     weights = weights ./ sum(weights; dims=2)
     for ww in eachrow(weights)
         weights_set = collect(distinct(permutations(ww, 6)))
