@@ -52,6 +52,42 @@ function test_site_ranks(
     end
 end
 
+
+function get_test_decision_matrix(dom)
+    cover = sum(dom.init_coral_cover; dims=:species)[species=1]
+    leftover_space = 1 .- cover
+    k_area = dom.site_data.area .* dom.site_data.k
+    dhw_av = ADRIA.decision.summary_stat_env(dom.dhw_scens, (:timesteps, :scenarios))
+    wave_av = ADRIA.decision.summary_stat_env(dom.wave_scens, (:timesteps, :scenarios))
+    depth_med = dom.site_data.depth_med
+
+    TP_data = ADRIA.connectivity_strength(
+        dom.TP_data .* ADRIA.site_k_area(dom), collect(cover), dom.TP_data
+    )
+
+    site_ids = dom.site_data.site_id
+
+    heat_stress =
+        1 .- vec((dhw_av .- minimum(dhw_av)) ./ (maximum(dhw_av) - minimum(dhw_av)))
+    wave_stress =
+        1 .- vec((wave_av .- minimum(wave_av)) ./ (maximum(wave_av) - minimum(wave_av)))
+    space_area = leftover_space .* k_area
+    in_conn = TP_data.in_conn
+    out_conn = TP_data.out_conn
+
+    A = hcat(site_ids, heat_stress, wave_stress, depth_med, space_area, in_conn, out_conn)
+
+    criteria_names = [
+        "heat stress",
+        "wave stress",
+        "median depth",
+        "coral cover space",
+        "in connectivity",
+        "out connectivity",
+    ]
+    return A, criteria_names
+end
+
 @testset "site selection" begin
     # TODO: Complete tests with @tests
 
@@ -119,45 +155,9 @@ end
 
 @testset "Guided site selection without ADRIA ecological model" begin
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
-    N = 2^3
-    scens = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
-
-    cover = sum(dom.init_coral_cover; dims=:species)[species=1]
-    leftover_space = 1 .- cover
-    k_area = dom.site_data.area .* dom.site_data.k
-    dhw_av = ADRIA.decision.summary_stat_env(dom.dhw_scens, (:timesteps, :scenarios))
-    wave_av = ADRIA.decision.summary_stat_env(dom.wave_scens, (:timesteps, :scenarios))
-    depth_med = dom.site_data.depth_med
-
-    TP_data = ADRIA.connectivity_strength(
-        dom.TP_data .* ADRIA.site_k_area(dom), collect(cover), dom.TP_data
-    )
-
-    site_ids = dom.site_data.site_id
-
-    n_sites = length(site_ids)
-    heat_stress =
-        1 .- vec((dhw_av .- minimum(dhw_av)) ./ (maximum(dhw_av) - minimum(dhw_av)))
-    wave_stress =
-        1 .- vec((wave_av .- minimum(wave_av)) ./ (maximum(wave_av) - minimum(wave_av)))
-    cover_area = cover .* k_area
-    space_area = leftover_space .* k_area
-    in_conn = TP_data.in_conn
-    out_conn = TP_data.out_conn
-
+    A, criteria_names = get_test_decision_matrix(dom)
     n_sites = length(site_ids)
     n_site_int = 5
-    lb_sites = n_sites - n_site_int
-
-    criteria_names = [
-        "heat stress",
-        "wave stress",
-        "median depth",
-        "coral cover space",
-        "in connectivity",
-        "out connectivity",
-    ]
-    A = hcat(site_ids, heat_stress, wave_stress, depth_med, space_area, in_conn, out_conn)
 
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
