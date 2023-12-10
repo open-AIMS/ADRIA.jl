@@ -52,6 +52,15 @@ function test_site_ranks(
     end
 end
 
+function test_mcda_funcs(rankings, S, weights, mcda_funcs, n_site_int)
+    for mf in mcda_funcs
+        prefsites, s_order = ADRIA.decision.rank_sites!(
+            S, weights, rankings, n_site_int, mf, 2
+        )
+        @test in(5, prefsites) .& in(6, prefsites) ||
+            "The best overall sites were not chosen by method $mf"
+    end
+end
 
 function get_test_decision_matrix(dom)
     cover = sum(dom.init_coral_cover; dims=:species)[species=1]
@@ -203,4 +212,24 @@ end
 
     @test all([(rankings[rankings[:, 1].==s_order[rank, 1], 2].==rank)[1] for rank in 1:size(s_order, 1)]) || "Ranking does not match mcda score ordering"
 
+end
+
+@testset "Test each mcda method is working" begin
+    mcda_funcs = ADRIA.decision.mcda_methods()
+
+    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
+    A, criteria_names = get_test_decision_matrix(dom)
+
+    site_ids = dom.site_data.site_id
+    n_sites = length(site_ids)
+    n_site_int = 5
+
+    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+
+    S = ADRIA.decision.mcda_normalize(A)
+    S[:, 1] .= A[:, 1]
+
+    weights = [1.0, 1.0, 1.0, 1.0, 0.0, 0.0]
+
+    test_mcda_funcs(rankings, S, weights, mcda_funcs, n_site_int)
 end
