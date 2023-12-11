@@ -10,7 +10,7 @@ using ADRIA
 
 @info "Loading data package"
 here = @__DIR__
-ex_domain = ADRIA.load_domain(joinpath(here, "Example_domain"))
+ex_domain = ADRIA.load_domain(joinpath(here, "Test_domain"))
 
 @info "Creating 128 scenarios based on parameter bounds using the Sobol' method"
 scens = ADRIA.sample(ex_domain, 128)
