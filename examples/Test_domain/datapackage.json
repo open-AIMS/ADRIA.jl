@@ -1,0 +1,85 @@
+{
+    "name": "Test_domain",
+    "title": "Test reef cluster data package",
+    "description": "Test data package for ADRIA",
+    "version": "0.4.0-rc",
+    "sources": [],
+    "simulation_metadata": {
+        "timeframe": [
+            2025,
+            2099
+        ]
+    },
+    "contributors": [
+        {
+            "title": "Joe Smith",
+            "email": "joe.smith@example.com",
+            "role": "author",
+            "description": "Assembled test data"
+        }
+    ],
+    "resources": [
+        {
+            "name": "spatial_data",
+            "description": "spatial data for test cluster",
+            "path": "site_data/Test_domain.gpkg",
+            "format": "geopackage"
+        },
+        {
+            "name": "coral_cover",
+            "description": "Initial coral cover",
+            "data": [
+                "reef_siteid",
+                "covers"
+            ],
+            "path": "site_data/coral_cover.nc",
+            "format": "netCDF"
+        },
+        {
+            "name": "cyclone_mortality",
+            "description": "Coral mortality test projections due to cyclone.",
+            "path": "cyclones/cyclone_mortality.nc",
+            "format": "netCDF"
+        },
+        {
+            "name": "DHWs",
+            "description": "Stochastic degree heating week test data. Data for RCP 4.5",
+            "data": [
+                "reef_siteid",
+                "dhw"
+            ],
+            "path": "DHWs/dhwRCP45.nc",
+            "format": "netCDF"
+        },
+        {
+            "name": "waves",
+            "description": "Stochastic wave data for the test cluster",
+            "data": [
+                "reef_siteid",
+                "Ub"
+            ],
+            "path": "waves/wave_RCP45.nc",
+            "format": "netCDF"
+        },
+        {
+            "name": "cyclones",
+            "description": "Empty cyclone data for the test cluster",
+            "data": [
+                "reef_siteid",
+                "layer"
+            ],
+            "path": "cyclones/cyclone_mortality.nc",
+            "format": "netCDF"
+        },
+        {
+            "name": "connectivity",
+            "description": "Test connectivity data for specific days across years, grouped by year",
+            "data": [
+                "row_source",
+                "col_receiving"
+            ],
+            "path": "connectivity",
+            "format": "CSV"
+        }
+    ]
+}
