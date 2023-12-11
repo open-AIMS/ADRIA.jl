@@ -58,7 +58,6 @@ function supported_jmcdm_methods()
         JMcDM.MOORA.MooraMethod,
         JMcDM.PIV.PIVMethod,
         JMcDM.PSI.PSIMethod,
-        JMcDM.ROV.ROVMethod,
         JMcDM.SAW.SawMethod,
         JMcDM.WASPAS.WaspasMethod,
         JMcDM.WPM.WPMMethod
