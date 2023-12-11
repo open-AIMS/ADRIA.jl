@@ -17,15 +17,15 @@
   ],
   "resources": [
     {
-      "name": "spatial_data",
-      "description": "spatial data for Example cluster",
-      "path": "site_data/Example_domain.gpkg",
-      "format": "geopackage"
-    },
-    {
-      "name": "coral_cover",
-      "description": "Initial coral cover",
-      "data": [
+        "name": "spatial_data",
+    "description": "spatial data for test cluster",
+    "path": "site_data/Test_domain.gpkg",
+    "format": "geopackage"
+},
+{
+    "name": "coral_cover",
+    "description": "Initial coral cover",
+    "data": [
         "reef_siteid",
         "covers"
       ],
