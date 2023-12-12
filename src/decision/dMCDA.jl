@@ -783,14 +783,28 @@ function constrain_spatial_group(
         ]
 
         if !isempty(replace_locs)
-            replace_locs = replace_locs[1:end...]
+            reef_add = unique_reefs[(sum_pref_locs .+ 1) .<= n_spatial_grp] # acceptable reefs to swtich out for
 
-            pref_locs = setdiff(pref_locs, replace_locs) # Remove locations from preferred sites
-            loc_order = setdiff(loc_order, replace_locs) # Remove locations from site order
-            add_locs = setdiff(loc_order, pref_locs) # Get next highly ranked to replace removed locations with
+            pref_locs = setdiff(pref_locs, replace_locs) # Remove locations to be replaced from preferred sites
+            loc_order = setdiff(loc_order, replace_locs) # Remove locations to be replaced from site order
+            add_locs = setdiff(loc_order, pref_locs) # Locations which can be added in place
 
+            # Indices of locations available that satisfy the reef constraint
+            add_locs_ind = findall(
+                dropdims(
+                    any(
+                        reshape(reefs[add_locs], 1, length(reefs[add_locs])) .== reef_add;
+                        dims=1,
+                    );
+                    dims=1,
+                ),
+            )
             # New preferred location set
-            pref_locs = vec([pref_locs... add_locs[1:(num_locs - length(pref_locs))]...])
+            pref_locs = vec(
+                [pref_locs... add_locs[add_locs_ind[1:length(replace_locs)]]...]
+            )
+            loc_order = setdiff(loc_order, pref_locs)
+            loc_order = [pref_locs...; loc_order...]
         else
             break
         end
