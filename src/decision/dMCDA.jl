@@ -588,38 +588,14 @@ function guided_site_selection(
     priority_sites::Array{Int64} = d_vars.priority_sites[in.(d_vars.priority_sites, [site_ids])]
     priority_zones::Array{String} = d_vars.priority_zones
 
-    zones = d_vars.zones[site_ids]
+    priority_zone_criteria = priority_zones_criteria(
+        strong_pred, d_vars.zones[d_vars.site_ids], priority_zones, d_vars.site_ids
+    )
+    priority_locations_criteria = priority_location_criteria(strong_pred, priority_sites)
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
-    # work out which priority predecessors are connected to priority sites
-    predec::Matrix{Float64} = zeros(n_sites, 3)
-    predec[:, 1:2] .= strong_pred
-    predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
-    predprior = Int64[x for x in predprior if !isnan(x)]
-
-    predec[predprior, 3] .= 1.0
-
-    # for zones, find sites which are zones and strongest predecessors of sites in zones
-    zone_ids = intersect(priority_zones, unique(zones))
-    zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
-    zone_preds = zeros(n_sites)
-    zone_sites = zeros(n_sites)
-
-    for (k::Int64, z_name::String) in enumerate(zone_ids)
-        # find sites which are strongest predecessors of sites in the zone
-        zone_preds_temp::Vector{Int64} = strong_pred[zones .== z_name]
-        for s::Int64 in unique(zone_preds_temp)
-            # for each predecessor site, add zone_weights * (no. of zone sites the site is a strongest predecessor for)
-            zone_preds[site_ids .== s] .= zone_preds[site_ids .== s] .+ (zone_weights[k] .* sum(zone_preds_temp .== s))
-        end
-        # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)
-        zone_sites[zones .== z_name] .= zone_weights[k]
-    end
-
-    # add weights for strongest predecessors and zones to get zone criteria
-    zones_criteria = zone_preds .+ zone_sites
 
     mcda_func = methods_mcda[alg_ind]
     leftover_space = vec(d_vars.leftover_space)
@@ -632,8 +608,8 @@ function guided_site_selection(
         d_vars.dam_prob[site_ids],
         d_vars.heat_stress_prob[site_ids],
         d_vars.site_depth[site_ids],
-        predec,
-        zones_criteria,
+        priority_locations_criteria,
+        priority_zone_criteria,
         d_vars.risk_tol,
     )
     if isempty(A)
@@ -920,4 +896,75 @@ function within_depth_bounds(
     return (loc_depth .<= depth_max) .& (loc_depth .>= depth_min)
 end
 
+"""
+    priority_location_criteria(strong_pred::Vector{Int64}, priority_locations::Vector{Int64})::Vector{Float64}
+
+Calculates the priority location criteria, which prioritises priority locations and locations which are larval sources for these.
+
+# Arguments
+- `strong_pred` : Strongest predecessor locations for each location.
+- `priority_locations` : Priority locations  
+
+# Returns
+Priority criteria value for each location, the larger the value the better that location contributes to prioritising locations 
+    in the `priority_locations` list.
+"""
+function priority_location_criteria(
+    strong_pred::Vector{Int64}, priority_locations::Vector{Int64}
+)::Vector{Float64}
+
+    # Work out which priority predecessors are connected to priority locations
+    predec::Matrix{Float64} = zeros(length(strong_pred), 3)
+    predec[:, 1:2] .= strong_pred
+    predprior = predec[in.(predec[:, 1], [priority_locations']), 2]
+    predprior = Int64[x for x in predprior if !isnan(x)]
+
+    predec[predprior, 3] .= 1.0
+    return predec[:, 3]
+end
+
+"""
+    priority_zones_criteria(strong_pred::Vector{Int64}, zones::Vector{String}, priority_zones::Vector{String}, 
+site_ids::Vector{Int64})::Vector{Float64}
+
+Calculates the priority zone criteria, which prioritises priority GBRMPA zones and zones which are larval sources for these.
+
+# Arguments
+- `strong_pred` : Strongest predecessor locations for each location.
+- `zones` : Zone classification for each location
+- `priority_zones` : Zones to prioritse (in order of priority)
+
+# Returns
+Priority zones value for each location, the larger the value the better that location contributes to prioritising 
+    in the `priority_zones` list.
+"""
+function priority_zones_criteria(
+    strong_pred::Vector{Int64},
+    zones::Vector{String},
+    priority_zones::Vector{String},
+    site_ids::Vector{Int64},
+)::Vector{Float64}
+    n_sites = length(zones)
+    # for zones, find sites which are zones and strongest predecessors of sites in zones
+    zone_ids = intersect(priority_zones, unique(zones))
+    zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
+    zone_preds = zeros(n_sites)
+    zone_sites = zeros(n_sites)
+
+    for (k::Int64, z_name::String) in enumerate(zone_ids)
+        # find sites which are strongest predecessors of sites in the zone
+        zone_preds_temp::Vector{Int64} = strong_pred[zones .== z_name]
+        for s::Int64 in unique(zone_preds_temp)
+            # for each predecessor site, add zone_weights * (no. of zone sites the site is a strongest predecessor for)
+            zone_preds[site_ids .== s] .=
+                zone_preds[site_ids .== s] .+
+                (zone_weights[k] .* sum(zone_preds_temp .== s))
+        end
+        # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)
+        zone_sites[zones .== z_name] .= zone_weights[k]
+    end
+
+    # add weights for strongest predecessors and zones to get zone criteria
+    return zone_preds .+ zone_sites
+end
 end
