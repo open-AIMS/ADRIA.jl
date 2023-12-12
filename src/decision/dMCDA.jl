@@ -343,7 +343,7 @@ function create_decision_matrix(
     wave_stress::T,
     heat_stress::T,
     site_depth::T,
-    predec::Matrix{Float64},
+    predec::T,
     zones_criteria::T,
     risk_tol::Float64
 )::Tuple{Matrix{Float64}, BitVector} where {T <: Vector{Float64}}
@@ -366,7 +366,7 @@ function create_decision_matrix(
     A[:, 5] .= max_hs == 0.0 ? 0.0 : (heat_stress .- min_hs) ./ (max_hs - min_hs)
 
     # priority predecessors
-    A[:, 6] .= predec[:, 3]
+    A[:, 6] .= predec
 
     # priority zone predecessors and sites
     A[:, 7] .= zones_criteria
