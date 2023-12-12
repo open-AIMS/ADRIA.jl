@@ -750,13 +750,14 @@ function constrain_spatial_group(
 )
     # Get full ordering of locations
     loc_order = s_order[:, 1]
-    # Get unique reefs/clusters in location set
+    # Get unique reefs in location set
     unique_reefs = unique(reefs)
     pref_locs = loc_order[1:n_site_int]
 
-    num_locs = n_site_int
+    num_locs = n_site_int # No. of locations to consider
+
     for ll in 1:length(loc_order)
-        # If enough space, keep n_site_int, else expand as needed
+        # If enough space for seeding corals, keep n_site_int, else expand as needed
         cumulative_space = cumsum(available_space[loc_order])
         num_locs = if cumulative_space[n_site_int] .< area_to_seed
             findfirst(>=(area_to_seed), cumulative_space)
@@ -765,18 +766,18 @@ function constrain_spatial_group(
         end
 
         pref_locs = loc_order[1:num_locs]
-        pref_groups = reefs[pref_locs] # Reefs/clusters that selected locations sit within
+        pref_groups = reefs[pref_locs] # Reefs that selected locations sit within
 
-        # Number of times a location appears within each reef/cluster
+        # Number of times a selected location appears within each reef
         sum_pref_locs = dropdims(
             sum(pref_groups .== reshape(unique_reefs, 1, length(unique_reefs)); dims=1);
             dims=1,
         )
 
-        # If more than n_spatial_grp in a reef/cluster, swap out the worst locations
+        # If more than n_spatial_grp locations in a reef, swap out the worst locations
         groups_swap = unique_reefs[findall((sum_pref_locs .> n_spatial_grp))]
 
-        # Locations to replace (lowest ranked sites where too many sites in the same reef/cluster)
+        # Locations to replace
         replace_locs = [
             pref_locs[pref_groups .== gp][(n_spatial_grp + 1):end] for gp in groups_swap
         ]
