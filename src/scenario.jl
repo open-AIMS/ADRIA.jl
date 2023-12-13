@@ -569,6 +569,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Pre-allocate rankings
         rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(Int, length(depth_priority))]
 
+        priority_locations = domain.sim_constants.priority_sites
+        priority_zones = domain.sim_constants.priority_sites
+
         # Prep site selection
         mcda_vars = DMCDA_vars(domain, param_set, depth_priority, sum(C_cover[1, :, :], dims=1), area_to_seed)
 
@@ -699,7 +702,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
                 rankings,
                 in_conn[mcda_vars.site_ids],
                 out_conn[mcda_vars.site_ids],
-                strong_pred[mcda_vars.site_ids],
+                strong_pred,
             )
 
             # Log site ranks
