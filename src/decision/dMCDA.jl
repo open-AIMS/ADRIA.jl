@@ -589,7 +589,9 @@ function guided_site_selection(
     priority_zones::Array{String} = d_vars.priority_zones
 
     priority_zone_criteria = priority_zones_criteria(
-        strong_pred, d_vars.zones[d_vars.site_ids], priority_zones, d_vars.site_ids
+        strong_pred,
+        d_vars.zones,
+        priority_zones,
     )
     priority_locations_criteria = priority_location_criteria(strong_pred, priority_sites)
 
@@ -608,8 +610,8 @@ function guided_site_selection(
         d_vars.dam_prob[site_ids],
         d_vars.heat_stress_prob[site_ids],
         d_vars.site_depth[site_ids],
-        priority_locations_criteria,
-        priority_zone_criteria,
+        priority_locations_criteria[site_ids],
+        priority_zone_criteria[site_ids],
         d_vars.risk_tol,
     )
     if isempty(A)
@@ -910,11 +912,13 @@ Priority criteria value for each location, the larger the value the better that 
     in the `priority_locations` list.
 """
 function priority_location_criteria(
-    strong_pred::Vector{Int64}, priority_locations::Vector{Int64}
+    strong_pred::Vector{Int64},
+    priority_locations::Vector{Int64},
 )::Vector{Float64}
-
+    n_sites = length(strong_pred)
     # Work out which priority predecessors are connected to priority locations
-    predec::Matrix{Float64} = zeros(length(strong_pred), 3)
+    predec::Matrix{Float64} = zeros(n_sites, 3)
+
     predec[:, 1:2] .= strong_pred
     predprior = predec[in.(predec[:, 1], [priority_locations']), 2]
     predprior = Int64[x for x in predprior if !isnan(x)]
@@ -942,7 +946,6 @@ function priority_zones_criteria(
     strong_pred::Vector{Int64},
     zones::Vector{String},
     priority_zones::Vector{String},
-    site_ids::Vector{Int64},
 )::Vector{Float64}
     n_sites = length(zones)
     # for zones, find sites which are zones and strongest predecessors of sites in zones
@@ -954,10 +957,10 @@ function priority_zones_criteria(
     for (k::Int64, z_name::String) in enumerate(zone_ids)
         # find sites which are strongest predecessors of sites in the zone
         zone_preds_temp::Vector{Int64} = strong_pred[zones .== z_name]
-        for s::Int64 in unique(zone_preds_temp)
+        for s::Int64 in unique(zone_preds_temp[zone_preds_temp .!= 0])
             # for each predecessor site, add zone_weights * (no. of zone sites the site is a strongest predecessor for)
-            zone_preds[site_ids .== s] .=
-                zone_preds[site_ids .== s] .+
+            zone_preds[s] =
+                zone_preds[s] .+
                 (zone_weights[k] .* sum(zone_preds_temp .== s))
         end
         # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)
