@@ -50,7 +50,7 @@ function _location_selection(
         rankingsin,
         in_conn[site_ids],
         out_conn[site_ids],
-        strong_pred[site_ids]
+        strong_pred,
     )
 
     return ranks[:, 2:3]
