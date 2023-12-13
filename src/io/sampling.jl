@@ -370,52 +370,116 @@ function fix_factor!(d::Domain; factors...)::Nothing
 end
 
 """
-    set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
-    set_factor_bounds!(d::Domain; factors...)::Nothing
+    get_bounds(dom::Domain, factor::Symbol)::Tuple
 
-Fix bounds of a parameter for sampling to those provided.
+Get factor bounds. If the factor is continuous, it will have a triangular distribution,
+then bounds will be a tuple with three elements (minimum, maximum, peak). If the factor is
+discrete, it will have a uniform distribution, then bounds will be a tuple with two elements
+(lower_bound, upper_bound). Note that, for discrete factors, the actual upper bound
+corresponds to the upper bound saved at the Domain's model_spec minus 1.0 because of how
+sampling works.
 
-Note: Changes are permanent. To reset, either specify the original value(s)
-      or reload the Domain.
+# Arguments
+- `dom` : Domain
+- `factor` : Name of the factor to get the bounds from
+"""
+function get_bounds(dom::Domain, factor::Symbol)::Tuple
+    model::Model = dom.model
+    factor_filter::BitVector = collect(model[:fieldname]) .== factor
+
+    bounds = if _check_discrete(dom, factor)
+        lower, upper = model[:bounds][factor_filter][1]
+        (lower, upper - 1.0)
+    else
+        model[:bounds][factor_filter][1]
+    end
+
+    return bounds
+end
+
+"""
+    get_default_bounds(dom::Domain, factor::Symbol)::Tuple
+
+Get factor default_bounds. Refer to `get_bounds` for more details of how the bounds work.
+
+# Arguments
+- `dom` : Domain
+- `factor` : Name of the factor to get the bounds from
+"""
+function get_default_bounds(dom::Domain, factor::Symbol)::Tuple
+    model::Model = dom.model
+    factor_filter::BitVector = collect(model[:fieldname]) .== factor
+
+    default_bounds = if _check_discrete(dom, factor)
+        default_lower, default_upper = model[:default_bounds][factor_filter][1]
+        (default_lower, default_upper - 1.0)
+    else
+        model[:default_bounds][factor_filter][1]
+    end
+
+    return default_bounds
+end
+
+"""
+    set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
+    set_factor_bounds!(dom::Domain; factors...)::Nothing
+
+Set new lower and upper bounds for a parameter, `new_bounds = (lower_bound, upper_bound)`.
+All sampled values `s_vals` for this parameter will lie within the range
+`lower_bound ≤ s_vals ≤ upper_bound`. When used to set new bounds for a discrete parameter,
+the upper bound will be set to `upper_bound + 1` to guarantee that the sample values will
+always be less or equal `upper_bound`.
+
+Note: Changes are permanent. To reset, either specify the original value(s) or reload the
+Domain.
+
+# Arguments
+- `dom` : Domain
+- `factor` : Parameter whose bounds will be change to a new value
+- `new_bounds` : Tuple of lower and upper bounds to be set as the new bounds of the
+respective parameter
+
 
 # Examples
 ```julia
-# Fix `wave_stress` to specified bounds
 set_factor_bounds!(dom, :wave_stress, (0.1,0.2))
 ```
 """
-function set_factor_bounds!(d::Domain, factor::Symbol, new_bnds::Tuple)::Nothing
-    params = DataFrame(d.model)
+function set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
+    params = DataFrame(dom.model)
 
-    # get upper and lower bounds for default and new distributions
+    # Get upper and lower bounds for default and new distributions
     default_lower, default_upper = params[params.fieldname .== factor, :default_bounds][1]
-    new_lower, new_upper = new_bnds[1], new_bnds[2]
+    new_lower, new_upper = new_bounds[1], new_bounds[2]
 
-    # Check new parameter bounds are within default parameter bounds
-    if (new_lower < default_lower) || (new_upper > default_upper)
-        error(
-            "New bounds should be within ($default_lower, $default_upper), received: ($new_lower, $new_upper).",
-        )
-    end
+    _check_bounds_range(new_bounds, (default_lower, default_upper), factor, dom)
+
     if (params[params.fieldname .== factor, :dists][1] == "triang") &&
-        (length(new_bnds) !== 3)
+        (length(new_bounds) !== 3)
         error("Triangular dist requires three parameters (minimum, maximum, peak).")
     elseif (params[params.fieldname .== factor, :dists][1] == "unif") &&
-        (length(new_bnds) !== 2)
+        (length(new_bounds) !== 2)
         error("Uniform dist requires two parameters (minimum, maximum).")
     end
 
     new_val = new_lower + 0.5 * (new_upper - new_lower)
 
-    if _check_discrete(params[params.fieldname .== factor, :ptype][1])
+    if _check_discrete(dom, factor)
+        if new_lower % 1.0 != 0.0 || new_upper % 1.0 != 0.0
+            @warn "Upper and/or lower bounds for discrete variables should be integer numbers."
+        end
+
         new_val = floor(Int64, new_val)
-        new_bnds = (round(new_lower), round(new_upper) + 1.0)
+        new_lower = round(new_lower)
+        # upper bound should not be greater than default_upper
+        new_upper = min(round(new_upper) + 1.0, default_upper)
+        new_bounds = (new_lower, new_upper)
     end
 
-    params[params.fieldname .== factor, :bounds] .= [new_bnds]
+    params[params.fieldname .== factor, :bounds] .= [new_bounds]
     params[params.fieldname .== factor, :val] .= new_val
 
-    update!(d, params)
+    update!(dom, params)
 
     return nothing
 end
@@ -429,6 +493,33 @@ end
 
 _unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
 
+"""
+    function _check_bounds_range(new_bounds::Tuple, factor::Symbol, dom::Domain)
+
+    Check new parameter bounds are within default parameter bounds
+"""
+function _check_bounds_range(
+    new_bounds::Tuple, default_bounds::Tuple, factor::Symbol, dom::Domain
+)::Nothing
+    out_of_bounds::Bool = false
+    new_lower, new_upper = new_bounds
+    default_lower, default_upper = default_bounds
+
+    if _check_discrete(dom, factor)
+        # If factor is discrete, sampled values must be within default_lower and (default_upper - 1)
+        out_of_bounds = (new_lower < default_lower) || (new_upper > (default_upper - 1))
+    else
+        out_of_bounds = (new_lower < default_lower) || (new_upper > default_upper)
+    end
+
+    if out_of_bounds
+        error(
+            "Bounds should be within ($default_lower, $default_upper), received: ($new_lower, $new_upper).",
+        )
+    end
+
+    return nothing
+end
 
 """
 Check specified bounds for validity.

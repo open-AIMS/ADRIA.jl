@@ -11,15 +11,21 @@ const DISCRETE_FACTOR_TYPES = ["integer", "categorical"]
 
 """
     _check_discrete(p_type::String)::Bool
+    _check_discrete(dom, fieldname::Symbol)::Bool
 
-Check ptype for discrete variable types.
-Returns true if discrete, false otherwise.
+Check ptype for discrete variable types. Returns true if discrete, false otherwise.
 
 # Arguments
 - `ptype` : String representing variable type.
 """
 function _check_discrete(p_type::String)::Bool
     return p_type ∈ DISCRETE_FACTOR_TYPES
+end
+function _check_discrete(dom, fieldname::Symbol)::Bool
+    model::Model = dom.model
+    param_filter::BitVector = collect(model[:fieldname]) .== fieldname
+    ptype::String = model[:ptype][param_filter][1]
+    return _check_discrete(ptype)
 end
 
 """Set a model parameter value directly."""
