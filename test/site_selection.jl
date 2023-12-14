@@ -164,6 +164,7 @@ end
 
 @testset "Guided site selection without ADRIA ecological model" begin
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
+    site_ids = collect(1:length(dom.site_data.site_id))
     A, criteria_names = get_test_decision_matrix(dom)
     n_sites = length(site_ids)
     n_site_int = 5
