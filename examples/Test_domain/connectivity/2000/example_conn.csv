@@ -1,6 +1,6 @@
-# Transfer probability matrix for tests only,,,,,,,,,,
-# Row names are the SOURCE sites. Column names indicate the RECEIVING reef.,,,,,,,,,,
-# Refer to the associated cross-reference table for reef locations and reef ids.,,,,,,,,,,
+# Transfer probability matrix for tests only,
+# Row names are the SOURCE sites. Column names indicate the RECEIVING reef.,
+# Refer to the associated cross-reference table for reef locations and reef ids.,
 recieving_site,reef_01,reef_02,reef_03,reef_04,reef_05,reef_06,reef_07,reef_08,reef_09,reef_10
 reef_01,0,0,0,0,0,0,0,0,0,0
 reef_02,0,0,0,0,0,0,0,0,0,0
