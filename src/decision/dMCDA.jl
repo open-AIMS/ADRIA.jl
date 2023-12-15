@@ -970,24 +970,24 @@ function priority_zones_criteria(
     priority_zones::Vector{String},
 )::Vector{Float64}
     n_sites = length(zones)
-    # for zones, find sites which are zones and strongest predecessors of sites in zones
+    # for zones, find locations which are zones and strongest predecessors of locations in zones
     zone_ids = intersect(priority_zones, unique(zones))
     zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
     zone_preds = zeros(n_sites)
-    zone_sites = zeros(n_sites)
+    zone_locations = zeros(n_sites)
 
     for (k::Int64, z_name::String) in enumerate(zone_ids)
-        # find sites which are strongest predecessors of sites in the zone
+        # find locations which are strongest predecessors of locations in the zone and add zone weights to these locationes
         add_zone_weight = dropdims(
             any(in.(strong_pred, findall(zones .== z_name)'); dims=2); dims=2
         )
         zone_preds[add_zone_weight] .= zone_preds[add_zone_weight] .+ zone_weights[k]
 
-        # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)
-        zone_sites[zones .== z_name] .= zone_weights[k]
+        # add zone_weights for locations in the zone (whether a strongest predecessor of a zone or not)
+        zone_locations[zones .== z_name] .= zone_weights[k]
     end
 
     # add weights for strongest predecessors and zones to get zone criteria
-    return zone_preds .+ zone_sites
+    return zone_preds .+ zone_locations
 end
 end
