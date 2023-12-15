@@ -24,9 +24,18 @@ function _is_discrete_factor(p_type::String)::Bool
 end
 function _is_discrete_factor(dom::Domain, fieldname::Symbol)::Bool
     model::Model = dom.model
-    param_filter::BitVector = collect(model[:fieldname]) .== fieldname
-    ptype::String = model[:ptype][param_filter][1]
+    param_idx::Int64 = findfirst(x -> x == fieldname, model[:fieldname])
+    ptype::String = model[:ptype][param_idx]
     return _is_discrete_factor(ptype)
+end
+
+"""
+    _distribution_type(dom::Domain, fieldname::Symbol)::String
+"""
+function _distribution_type(dom::Domain, fieldname::Symbol)::String
+    model::Model = dom.model
+    param_idx::Int64 = findfirst(x -> x == fieldname, model[:fieldname])
+    return model[:dists][param_idx]
 end
 
 """Set a model parameter value directly."""
@@ -466,12 +475,9 @@ end
 """
     get_bounds(dom::Domain, factor::Symbol)::Tuple
 
-Get factor bounds. If the factor is continuous, it will have a triangular distribution,
-then bounds will be a tuple with three elements (minimum, maximum, peak). If the factor is
-discrete, it will have a uniform distribution, then bounds will be a tuple with two elements
-(lower_bound, upper_bound). Note that, for discrete factors, the actual upper bound
-corresponds to the upper bound saved at the Domain's model_spec minus 1.0 because of how
-sampling works.
+Get factor lower and upper bounds. If the factor has a triangular distribution, it returns
+a 2-elements tuple (without the peack value). Note that, for discrete factors, the actual
+upper bound corresponds to the upper bound saved at the Domain's model_spec minus 1.0.
 
 # Arguments
 - `dom` : Domain
@@ -480,14 +486,9 @@ sampling works.
 function get_bounds(dom::Domain, factor::Symbol)::Tuple
     model::Model = dom.model
     factor_filter::BitVector = collect(model[:fieldname]) .== factor
+    bounds::Tuple{Float64,Float64} = model[:bounds][factor_filter][1]
 
-    bounds = if _is_discrete_factor(dom, factor)
-        lower, upper = model[:bounds][factor_filter][1]
-        (lower, upper - 1.0)
-    else
-        model[:bounds][factor_filter][1]
-    end
-
+    _is_discrete_factor(dom, factor) && return (bounds[1], bounds[2] - 1.0)
     return bounds
 end
 
@@ -503,14 +504,9 @@ Get factor default_bounds. Refer to `get_bounds` for more details of how the bou
 function get_default_bounds(dom::Domain, factor::Symbol)::Tuple
     model::Model = dom.model
     factor_filter::BitVector = collect(model[:fieldname]) .== factor
+    default_bounds::Tuple = model[:default_bounds][factor_filter][1]
 
-    default_bounds = if _is_discrete_factor(dom, factor)
-        default_lower, default_upper = model[:default_bounds][factor_filter][1]
-        (default_lower, default_upper - 1.0)
-    else
-        model[:default_bounds][factor_filter][1]
-    end
-
+    _is_discrete_factor(dom, factor) && return (default_bounds[1], default_bounds[2] - 1.0)
     return default_bounds
 end
 
@@ -518,11 +514,11 @@ end
     set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
     set_factor_bounds!(dom::Domain; factors...)::Nothing
 
-Set new lower and upper bounds for a parameter, `new_bounds = (lower_bound, upper_bound)`.
-All sampled values `s_vals` for this parameter will lie within the range
-`lower_bound ≤ s_vals ≤ upper_bound`. When used to set new bounds for a discrete parameter,
-the upper bound will be set to `upper_bound + 1` to guarantee that the sample values will
-always be less or equal `upper_bound`.
+Set new lower and upper bounds for a parameter. All sampled values `s_vals` for this
+parameter will lie within the range `lower_bound ≤ s_vals ≤ upper_bound`. When used to set
+new bounds for a factor with discrete distribution, upper bound will be set to
+`upper_bound + 1` to guarantee that the sampled values will always be less than or equal
+`upper_bound`. This function will automatically set a new value to `val`.
 
 Note: Changes are permanent. To reset, either specify the original value(s) or reload the
 Domain.
@@ -530,46 +526,27 @@ Domain.
 # Arguments
 - `dom` : Domain
 - `factor` : Parameter whose bounds will be change to a new value
-- `new_bounds` : Tuple of lower and upper bounds to be set as the new bounds of the
-respective parameter
+- `new_bounds` : Tuple bounds to be set as the new bounds of the respective factor. When
+factor has a triangular distribution, `new_bounds` must be is a 3-dimensional Tuple, with
+`(new_min, new_max, new_peak)` values; when it has a uniform distribution, `new_bounds` must be a
+2-dimensional Tuple, with `(new_lower, new_upper)` values.
 
 
 # Examples
 ```julia
-set_factor_bounds!(dom, :wave_stress, (0.1,0.2))
+set_factor_bounds!(dom, :wave_stress, (0.1, 0.2))
 ```
 """
 function set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
-    params = DataFrame(dom.model)
+    _check_bounds_range(dom, factor, new_bounds)
 
-    # Get upper and lower bounds for default and new distributions
-    default_lower, default_upper = params[params.fieldname .== factor, :default_bounds][1]
-    new_lower, new_upper = new_bounds[1], new_bounds[2]
-
-    _check_bounds_range(new_bounds, (default_lower, default_upper), factor, dom)
-
-    if (params[params.fieldname .== factor, :dists][1] == "triang") &&
-        (length(new_bounds) !== 3)
-        error("Triangular dist requires three parameters (minimum, maximum, peak).")
-    elseif (params[params.fieldname .== factor, :dists][1] == "unif") &&
-        (length(new_bounds) !== 2)
-        error("Uniform dist requires two parameters (minimum, maximum).")
+    new_bounds, new_val = if _is_discrete_factor(dom, factor)
+        _discrete_bounds(dom, factor, new_bounds)
+    else
+        _continuous_bounds(dom, factor, new_bounds)
     end
 
-    new_val = new_lower + 0.5 * (new_upper - new_lower)
-
-    if _is_discrete_factor(dom, factor)
-        if new_lower % 1.0 != 0.0 || new_upper % 1.0 != 0.0
-            @warn "Upper and/or lower bounds for discrete variables should be integer numbers."
-        end
-
-        new_val = floor(Int64, new_val)
-        new_lower = round(new_lower)
-        # upper bound should not be greater than default_upper
-        new_upper = min(round(new_upper) + 1.0, default_upper)
-        new_bounds = (new_lower, new_upper)
-    end
-
+    params = model_spec(dom)
     params[params.fieldname .== factor, :bounds] .= [new_bounds]
     params[params.fieldname .== factor, :val] .= new_val
 
@@ -585,36 +562,62 @@ function set_factor_bounds!(d::Domain; factors...)::Nothing
     return nothing
 end
 
-_unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
+function _continuous_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Tuple
+    new_lower, new_upper = new_bounds[1:2]
+    new_val::Float64 = new_lower + 0.5 * (new_upper - new_lower)
+    return (new_bounds, new_val)
+end
+
+function _discrete_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Tuple
+    new_lower, new_upper = new_bounds[1:2]
+    (new_lower % 1.0 == 0.0 && new_upper % 1.0 == 0.0) ||
+        @warn "Upper and/or lower bounds for discrete variables should be integer numbers."
+
+    new_lower = round(new_lower)
+    new_upper = min(round(new_upper) + 1.0, get_default_bounds(dom, factor)[2])
+    new_bounds = (new_lower, new_upper)
+
+    new_val::Int64 = floor(new_lower + 0.5 * (new_upper - new_lower))
+
+    return (new_bounds, new_val)
+end
 
 """
-    function _check_bounds_range(new_bounds::Tuple, factor::Symbol, dom::Domain)
+    _check_bounds_range(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
 
-    Check new parameter bounds are within default parameter bounds
+Check new parameter bounds are within default parameter bounds
 """
-function _check_bounds_range(
-    new_bounds::Tuple, default_bounds::Tuple, factor::Symbol, dom::Domain
-)::Nothing
-    out_of_bounds::Bool = false
+function _check_bounds_range(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
+    default_lower, default_upper = get_default_bounds(dom, factor)
     new_lower, new_upper = new_bounds
-    default_lower, default_upper = default_bounds
+
+    out_of_bounds::Bool = false
 
     if _is_discrete_factor(dom, factor)
         # If factor is discrete, sampled values must be within default_lower and (default_upper - 1)
-        out_of_bounds = (new_lower < default_lower) || (new_upper > (default_upper - 1))
+        out_of_bounds = (new_lower < default_lower) || (new_upper > default_upper)
     else
         out_of_bounds = (new_lower < default_lower) || (new_upper > default_upper)
     end
 
+    # Check if new bounds are withing default range
     if out_of_bounds
         error(
             "Bounds should be within ($default_lower, $default_upper), received: ($new_lower, $new_upper).",
         )
     end
 
+    # Check if number of bounds
+    if (_distribution_type(dom, factor) == "triang") && (length(new_bounds) !== 3)
+        error("Triangular dist requires three parameters (minimum, maximum, peak).")
+    elseif (_distribution_type(dom, factor) == "unif") && (length(new_bounds) !== 2)
+        error("Uniform dist requires two parameters (minimum, maximum).")
+    end
+
     return nothing
 end
 
+_unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
 _offdiag_iter(A) = collect(ι for ι in CartesianIndices(A) if ι[1] ≠ ι[2])
 
 """
