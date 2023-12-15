@@ -956,13 +956,11 @@ function priority_zones_criteria(
 
     for (k::Int64, z_name::String) in enumerate(zone_ids)
         # find sites which are strongest predecessors of sites in the zone
-        zone_preds_temp::Vector{Int64} = strong_pred[zones .== z_name]
-        for s::Int64 in unique(zone_preds_temp[zone_preds_temp .!= 0])
-            # for each predecessor site, add zone_weights * (no. of zone sites the site is a strongest predecessor for)
-            zone_preds[s] =
-                zone_preds[s] .+
-                (zone_weights[k] .* sum(zone_preds_temp .== s))
-        end
+        add_zone_weight = dropdims(
+            any(in.(strong_pred, findall(zones .== z_name)'); dims=2); dims=2
+        )
+        zone_preds[add_zone_weight] .= zone_preds[add_zone_weight] .+ zone_weights[k]
+
         # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)
         zone_sites[zones .== z_name] .= zone_weights[k]
     end
