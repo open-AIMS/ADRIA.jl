@@ -97,15 +97,16 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     weights_fog_crit = criteria_params(crit, (:fog, :weight))
 
     # If counterfactual, set all intervention options to 0.0
-    df[df.guided.==-1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .= 0.0
+    df[df.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .=
+        0.0
 
     # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
     non_depth = filter(x -> x ∉ [:depth_min, :depth_offset], crit.fieldname)
-    df[df.guided.==0.0, non_depth] .= 0.0
-    df[df.guided.==-1.0, non_depth] .= 0.0
+    df[df.guided .== 0.0, non_depth] .= 0.0
+    df[df.guided .== -1.0, non_depth] .= 0.0
 
     # If unguided, set planning horizon to 0.
-    df[df.guided.==0.0, :plan_horizon] .= 0.0
+    df[df.guided .== 0.0, :plan_horizon] .= 0.0
 
     # If no seeding is to occur, set related variables to 0
     not_seeded = (df.N_seed_TA .== 0) .& (df.N_seed_CA .== 0) .& (df.N_seed_SM .== 0)
@@ -122,16 +123,16 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     # Normalize MCDA weights for fogging scenarios
     guided_fogged = (df.fogging .> 0.0) .& (df.guided .> 0)
     df[guided_fogged, weights_fog_crit.fieldname] .= mcda_normalize(
-        df[guided_fogged, weights_fog_crit.fieldname],
+        df[guided_fogged, weights_fog_crit.fieldname]
     )
     # Normalize MCDA weights for seeding scenarios
     guided_seeded = .!(not_seeded) .& (df.guided .> 0)
     df[guided_seeded, weights_seed_crit.fieldname] .= mcda_normalize(
-        df[guided_seeded, weights_seed_crit.fieldname],
+        df[guided_seeded, weights_seed_crit.fieldname]
     )
 
     # If use of distance threshold is off, set `dist_thresh` to 0.0
-    df[df.use_dist.==0, :dist_thresh] .= 0.0
+    df[df.use_dist .== 0, :dist_thresh] .= 0.0
 
     if nrow(unique(df)) < nrow(df)
         perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(df)) / nrow(df))) * 100.0))%"
@@ -199,38 +200,55 @@ Create samples and rescale to distribution defined in the model spec.
 # Returns
 Scenario specification
 """
-function sample(spec::DataFrame, n::Int64, sampler=SobolSample(); supported_dists=Dict(
-    "triang" => TriangularDist,
-    "norm" => TruncatedNormal,
-    "unif" => Uniform
-))::DataFrame
-
+function sample(
+    spec::DataFrame,
+    n::Int64,
+    sampler=SobolSample();
+    supported_dists=Dict(
+        "triang" => TriangularDist, "norm" => TruncatedNormal, "unif" => Uniform
+    ),
+)::DataFrame
     if Symbol(sampler) == Symbol("QuasiMonteCarlo.SobolSample()")
-        ispow2(n) ? n : throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
+        if ispow2(n)
+            n
+        else
+            throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
+        end
     end
 
     # Select non-constant params
-    vary_vars = spec[spec.is_constant.==false, ["dists", "bounds"]]
+    vary_vars = spec[spec.is_constant .== false, ["dists", "bounds"]]
 
     # Update range
-    triang_params = vary_vars[vary_vars.dists.=="triang", "bounds"]
-    vary_vars[vary_vars.dists.=="triang", "bounds"] .= map(x -> (x[1], x[2], (x[2] - x[1]) * x[3] + x[1]), triang_params)
+    triang_params = vary_vars[vary_vars.dists .== "triang", "bounds"]
+    vary_vars[vary_vars.dists .== "triang", "bounds"] .= map(
+        x -> (x[1], x[2], (x[2] - x[1]) * x[3] + x[1]), triang_params
+    )
     vary_dists = map((x) -> supported_dists[x.dists](x.bounds...), eachrow(vary_vars))
 
     # Create sample for uncertain parameters
     n_vary_params = size(vary_vars, 1)
-    n_vary_params > 0 ? n_vary_params : throw(DomainError(n_vary_params, "Number of parameters to perturb must be > 0"))
+    if n_vary_params > 0
+        n_vary_params
+    else
+        throw(DomainError(n_vary_params, "Number of parameters to perturb must be > 0"))
+    end
     samples = sample(n, zeros(n_vary_params), ones(n_vary_params), sampler)
 
     # Convert vector of tuples to matrix
     samples = permutedims(hcat([collect(s) for s in samples]...))
 
     # Scale values to indicated distributions
-    samples .= permutedims(hcat(map(ix -> quantile.(vary_dists[ix], samples[:, ix]), 1:size(samples, 2))...))'
+    samples .=
+        permutedims(
+            hcat(
+                map(ix -> quantile.(vary_dists[ix], samples[:, ix]), 1:size(samples, 2))...
+            ),
+        )'
 
     # Combine varying and constant values (constant params use their indicated default vals)
     full_df = hcat(fill.(spec.val, n)...)
-    full_df[:, spec.is_constant.==false] .= samples
+    full_df[:, spec.is_constant .== false] .= samples
 
     # Adjust samples for discrete values using flooring trick
     # Ensure unguided scenarios do not have superfluous parameter values
@@ -287,7 +305,8 @@ function sample_cf(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
 
     # Unguided scenarios only
     guided_col = spec_df.fieldname .== :guided
-    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [-1 -1 -1 (-1.0, -1.0) true]
+    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .=
+        [-1 -1 -1 (-1.0, -1.0) true]
 
     # Remove intervention scenarios as an option
     _deactivate_interventions(spec_df)
@@ -305,7 +324,8 @@ function _adjust_guided_lower_bound!(spec_df::DataFrame, lower::Int64)::DataFram
     g_upper = Float64(spec_df[guided_col, :upper_bound][1])
 
     # Update entries, standardizing values for bounds as floats
-    spec_df[guided_col, [:val, :lower_bound, :bounds]] .= [lower Float64(lower) (Float64(lower), g_upper)]
+    spec_df[guided_col, [:val, :lower_bound, :bounds]] .=
+        [lower Float64(lower) (Float64(lower), g_upper)]
     return spec_df
 end
 
@@ -350,7 +370,8 @@ function sample_unguided(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
 
     # Fix guided factor to 0 (i.e., unguided scenarios only)
     guided_col = spec_df.fieldname .== :guided
-    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [0 0 0 (0.0, 0.0) true]
+    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .=
+        [0 0 0 (0.0, 0.0) true]
 
     return sample(spec_df, n, sampler)
 end
@@ -374,12 +395,12 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
         _bnds = length(to_update[_row, :bounds][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
 
         dval = _check_discrete(to_update[_row, :ptype][1]) ? 0 : 0.0
-        to_update[_row, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .= [dval 0.0 0.0 _bnds true]
+        to_update[_row, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .=
+            [dval 0.0 0.0 _bnds true]
     end
 
     return nothing
 end
-
 
 """
     fix_factor(d::Domain, factor::Symbol)
@@ -406,23 +427,25 @@ fix_factor!(dom; guided=3, N_seed_TA=1e6)
 """
 function fix_factor!(d::Domain, factor::Symbol)::Nothing
     params = DataFrame(d.model)
-    default_val = params[params.fieldname.==factor, :val][1]
+    default_val = params[params.fieldname .== factor, :val][1]
 
-    bnds = params[params.fieldname.==factor, :bounds][1]
+    bnds = params[params.fieldname .== factor, :bounds][1]
     new_bnds = Tuple(fill(default_val, length(bnds)))
-    params[params.fieldname.==factor, :bounds] .= [new_bnds]
+    params[params.fieldname .== factor, :bounds] .= [new_bnds]
 
     update!(d, params)
+    return nothing
 end
 function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     params = DataFrame(d.model)
-    params[params.fieldname.==factor, :val] .= val
+    params[params.fieldname .== factor, :val] .= val
 
-    bnds = params[params.fieldname.==factor, :bounds][1]
+    bnds = params[params.fieldname .== factor, :bounds][1]
     new_bnds = Tuple(fill(val, length(bnds)))
-    params[params.fieldname.==factor, :bounds] .= [new_bnds]
+    params[params.fieldname .== factor, :bounds] .= [new_bnds]
 
     update!(d, params)
+    return nothing
 end
 function fix_factor!(d::Domain; factors...)::Nothing
     for (factor, val) in factors
@@ -437,6 +460,7 @@ function fix_factor!(d::Domain; factors...)::Nothing
             fix_factor!(d, factor, Int64(val))
         end
     end
+    return nothing
 end
 
 """
