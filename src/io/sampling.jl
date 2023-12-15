@@ -615,21 +615,6 @@ function _check_bounds_range(
     return nothing
 end
 
-"""
-Check specified bounds for validity.
-
-Raises error if lower bound values are greater than upper bounds.
-
-# Arguments
-- `lower` : lower bounds
-- `upper` : upper bound values
-"""
-function _check_bounds(lower, upper)
-    if any(lower .> upper)
-        error("Bounds are not legal (upper bound must be greater than lower bound)")
-    end
-end
-
 _offdiag_iter(A) = collect(ι for ι in CartesianIndices(A) if ι[1] ≠ ι[2])
 
 """
