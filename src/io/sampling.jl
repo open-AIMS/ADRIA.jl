@@ -6,6 +6,76 @@ using ADRIA.decision: mcda_normalize
 import Surrogates: sample
 import Surrogates.QuasiMonteCarlo: SobolSample
 
+const DISCRETE_FACTOR_TYPES = ["integer", "categorical"]
+
+"""
+    _check_discrete(p_type::String)::Bool
+    _check_discrete(dom, fieldname::Symbol)::Bool
+
+Check ptype for discrete variable types. Returns true if discrete, false otherwise.
+
+# Arguments
+- `ptype` : String representing variable type
+- `dom` : Domain
+- `fieldname` : Name of model factor
+"""
+function _check_discrete(p_type::String)::Bool
+    return p_type ∈ DISCRETE_FACTOR_TYPES
+end
+function _check_discrete(dom::Domain, fieldname::Symbol)::Bool
+    model::Model = dom.model
+    param_filter::BitVector = collect(model[:fieldname]) .== fieldname
+    ptype::String = model[:ptype][param_filter][1]
+    return _check_discrete(ptype)
+end
+
+"""Set a model parameter value directly."""
+function set(p::Param, val::Union{Int64,Float64})
+    if hasproperty(p, :ptype)
+        if _check_discrete.(p.ptype) && !isinteger(val)
+            val = map_to_discrete(val, p.bounds[2])
+        end
+    end
+
+    return val
+end
+
+"""
+    map_to_discrete(val::Union{Int64,Float64}, s_ub::Union{Int64,Float64})::Int64
+
+For integer/categorical parameters, take floor of `val`, capping to `s_ub - 1`
+
+# Arguments
+- `val` : Continuous value to be transformed into a whole number
+- `s_ub` : Upper bound for sampling purposes
+
+# Returns
+Sampled value mapped to floored whole value.
+"""
+function map_to_discrete(val::Union{Int64,Float64}, s_ub::Union{Int64,Float64})::Int64
+    return Int64(min(floor(val), s_ub - 1))
+end
+
+"""
+    map_to_discrete!(df::Union{DataFrame,SubDataFrame}, ub::Union{AbstractVector{Union{Int64,Float64}},Tuple})::Nothing
+
+Update a dataframe of parameters.
+Length of `ub` (the upper bounds) is expected to match number of columns in `df`.
+
+# Arguments
+- `df` : DataFrame of values
+- `ub` : Upper bound for sampling purposes
+"""
+function map_to_discrete!(
+    df::Union{DataFrame,SubDataFrame},
+    ub::Union{AbstractVector{<:Union{Int64,Float64}},Tuple},
+)::Nothing
+    for (idx, b) in enumerate(ub)
+        df[!, idx] .= map_to_discrete.(df[!, idx], b)
+    end
+
+    return nothing
+end
 
 """
     adjust_samples(d::Domain, df::DataFrame)::DataFrame
