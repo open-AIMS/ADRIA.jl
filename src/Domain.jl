@@ -144,7 +144,7 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
         end
     end
 
-    to_floor = _check_discrete.(p_df.ptype)
+    to_floor = _is_discrete_factor.(p_df.ptype)
     if any(to_floor)
         p_df[to_floor, :val] .=
             map_to_discrete.(

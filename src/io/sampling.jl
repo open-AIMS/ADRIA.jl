@@ -9,8 +9,8 @@ import Surrogates.QuasiMonteCarlo: SobolSample
 const DISCRETE_FACTOR_TYPES = ["integer", "categorical"]
 
 """
-    _check_discrete(p_type::String)::Bool
-    _check_discrete(dom, fieldname::Symbol)::Bool
+    _is_discrete_factor(p_type::String)::Bool
+    _is_discrete_factor(dom, fieldname::Symbol)::Bool
 
 Check ptype for discrete variable types. Returns true if discrete, false otherwise.
 
@@ -19,20 +19,20 @@ Check ptype for discrete variable types. Returns true if discrete, false otherwi
 - `dom` : Domain
 - `fieldname` : Name of model factor
 """
-function _check_discrete(p_type::String)::Bool
+function _is_discrete_factor(p_type::String)::Bool
     return p_type ∈ DISCRETE_FACTOR_TYPES
 end
-function _check_discrete(dom::Domain, fieldname::Symbol)::Bool
+function _is_discrete_factor(dom::Domain, fieldname::Symbol)::Bool
     model::Model = dom.model
     param_filter::BitVector = collect(model[:fieldname]) .== fieldname
     ptype::String = model[:ptype][param_filter][1]
-    return _check_discrete(ptype)
+    return _is_discrete_factor(ptype)
 end
 
 """Set a model parameter value directly."""
 function set(p::Param, val::Union{Int64,Float64})
     if hasproperty(p, :ptype)
-        if _check_discrete.(p.ptype) && !isinteger(val)
+        if _is_discrete_factor.(p.ptype) && !isinteger(val)
             val = map_to_discrete(val, p.bounds[2])
         end
     end
@@ -457,7 +457,7 @@ function get_bounds(dom::Domain, factor::Symbol)::Tuple
     model::Model = dom.model
     factor_filter::BitVector = collect(model[:fieldname]) .== factor
 
-    bounds = if _check_discrete(dom, factor)
+    bounds = if _is_discrete_factor(dom, factor)
         lower, upper = model[:bounds][factor_filter][1]
         (lower, upper - 1.0)
     else
@@ -480,7 +480,7 @@ function get_default_bounds(dom::Domain, factor::Symbol)::Tuple
     model::Model = dom.model
     factor_filter::BitVector = collect(model[:fieldname]) .== factor
 
-    default_bounds = if _check_discrete(dom, factor)
+    default_bounds = if _is_discrete_factor(dom, factor)
         default_lower, default_upper = model[:default_bounds][factor_filter][1]
         (default_lower, default_upper - 1.0)
     else
@@ -534,7 +534,7 @@ function set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Not
 
     new_val = new_lower + 0.5 * (new_upper - new_lower)
 
-    if _check_discrete(dom, factor)
+    if _is_discrete_factor(dom, factor)
         if new_lower % 1.0 != 0.0 || new_upper % 1.0 != 0.0
             @warn "Upper and/or lower bounds for discrete variables should be integer numbers."
         end
@@ -575,7 +575,7 @@ function _check_bounds_range(
     new_lower, new_upper = new_bounds
     default_lower, default_upper = default_bounds
 
-    if _check_discrete(dom, factor)
+    if _is_discrete_factor(dom, factor)
         # If factor is discrete, sampled values must be within default_lower and (default_upper - 1)
         out_of_bounds = (new_lower < default_lower) || (new_upper > (default_upper - 1))
     else
