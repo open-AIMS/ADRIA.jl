@@ -934,14 +934,14 @@ Priority criteria value for each location, the larger the value the better that 
     in the `priority_locations` list.
 """
 function priority_location_criteria(
-    strong_pred::Vector{Int64},
+    strong_pred::Matrix{Int64},
     priority_locations::Vector{Int64},
 )::Vector{Float64}
-    n_sites = length(strong_pred)
+    n_sites = size(strong_pred, 1)
     # Work out which priority predecessors are connected to priority locations
     predec::Matrix{Float64} = zeros(n_sites, 3)
-
     predec[:, 1:2] .= strong_pred
+
     predprior = predec[in.(predec[:, 1], [priority_locations']), 2]
     predprior = Int64[x for x in predprior if !isnan(x)]
 
@@ -965,7 +965,7 @@ Priority zones value for each location, the larger the value the better that loc
     in the `priority_zones` list.
 """
 function priority_zones_criteria(
-    strong_pred::Vector{Int64},
+    strong_pred::Matrix{Int64},
     zones::Vector{String},
     priority_zones::Vector{String},
 )::Vector{Float64}
@@ -978,9 +978,12 @@ function priority_zones_criteria(
 
     for (k::Int64, z_name::String) in enumerate(zone_ids)
         # find locations which are strongest predecessors of locations in the zone and add zone weights to these locationes
-        add_zone_weight = dropdims(
-            any(in.(strong_pred, findall(zones .== z_name)'); dims=2); dims=2
-        )
+        add_zone_weight = strong_pred[
+            dropdims(
+                any(in.(strong_pred[:, 1], findall(zones .== z_name)'); dims=2); dims=2
+            ),
+            2,
+        ]
         zone_preds[add_zone_weight] .= zone_preds[add_zone_weight] .+ zone_weights[k]
 
         # add zone_weights for locations in the zone (whether a strongest predecessor of a zone or not)
