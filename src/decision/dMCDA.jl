@@ -967,7 +967,8 @@ Priority zones value for each location, the larger the value the better that loc
 function priority_zones_criteria(
     strong_pred::Matrix{Int64},
     zones::Vector{String},
-    priority_zones::Vector{String},
+    priority_zones::Vector{String};
+    pred_w::Float64=0.2,
 )::Vector{Float64}
     n_sites = length(zones)
     # for zones, find locations which are zones and strongest predecessors of locations in zones
@@ -991,6 +992,6 @@ function priority_zones_criteria(
     end
 
     # add weights for strongest predecessors and zones to get zone criteria
-    return zone_preds .+ zone_locations
+    return pred_w .* zone_preds .+ (1 - pred_w) .* zone_locations
 end
 end
