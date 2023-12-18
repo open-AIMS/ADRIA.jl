@@ -236,7 +236,8 @@ end
                 ADRIA.set_factor_bounds!(dom, discrete_factor_name, new_bounds)
 
                 factor_params = dom.model[ms.fieldname .== discrete_factor_name][1]
-                @test factor_params.bounds == factor_params.default_bounds
+                @test factor_params.bounds[1] == factor_params.default_bounds[1]
+                @test factor_params.bounds[2] == factor_params.default_bounds[2] - 1.0
 
                 scens = ADRIA.sample_site_selection(dom, num_samples)
                 discrete_factor_scens = scens[:, string(discrete_factor_name)]

@@ -486,7 +486,7 @@ upper bound corresponds to the upper bound saved at the Domain's model_spec minu
 function get_bounds(dom::Domain, factor::Symbol)::Tuple
     model::Model = dom.model
     factor_filter::BitVector = collect(model[:fieldname]) .== factor
-    bounds::Tuple{Float64,Float64} = model[:bounds][factor_filter][1]
+    bounds::Tuple = model[:bounds][factor_filter][1]
 
     _is_discrete_factor(dom, factor) && return (bounds[1], bounds[2] - 1.0)
     return bounds
