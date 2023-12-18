@@ -403,7 +403,7 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
         _row = to_update.fieldname .== c
         _bnds = length(to_update[_row, :bounds][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
 
-        dval = _check_discrete(to_update[_row, :ptype][1]) ? 0 : 0.0
+        dval = _is_discrete_factor(to_update[_row, :ptype][1]) ? 0 : 0.0
         to_update[_row, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .=
             [dval 0.0 0.0 _bnds true]
     end
