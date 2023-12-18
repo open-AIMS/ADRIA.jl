@@ -476,7 +476,7 @@ end
     get_bounds(dom::Domain, factor::Symbol)::Tuple
 
 Get factor lower and upper bounds. If the factor has a triangular distribution, it returns
-a 2-elements tuple (without the peack value). Note that, for discrete factors, the actual
+a 2-elements tuple (without the peak value). Note that, for discrete factors, the actual
 upper bound corresponds to the upper bound saved at the Domain's model_spec minus 1.0.
 
 # Arguments
@@ -514,10 +514,10 @@ end
     set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
     set_factor_bounds!(dom::Domain; factors...)::Nothing
 
-Set new lower and upper bounds for a parameter. All sampled values `s_vals` for this
-parameter will lie within the range `lower_bound ≤ s_vals ≤ upper_bound`. When used to set
-new bounds for a factor with discrete distribution, upper bound will be set to
-`upper_bound + 1` to guarantee that the sampled values will always be less than or equal
+Set new bound values for a given parameter. Sampled values for a parameter will lie
+within the range `lower_bound ≤ s ≤ upper_bound`, for every sample value `s`.
+When used to set new bounds for a factor with discrete distribution, upper bound will be set
+to `upper_bound + 1` to guarantee that the sampled values will always be less than or equal
 `upper_bound`. This function will automatically set a new value to `val`.
 
 Note: Changes are permanent. To reset, either specify the original value(s) or reload the
@@ -527,9 +527,9 @@ Domain.
 - `dom` : Domain
 - `factor` : Parameter whose bounds will be change to a new value
 - `new_bounds` : Tuple bounds to be set as the new bounds of the respective factor. When
-factor has a triangular distribution, `new_bounds` must be is a 3-dimensional Tuple, with
-`(new_min, new_max, new_peak)` values; when it has a uniform distribution, `new_bounds` must be a
-2-dimensional Tuple, with `(new_lower, new_upper)` values.
+factor has a triangular distribution, `new_bounds` must be is a 3-element Tuple, with
+`(new_min, new_max, new_peak)` values; when it has a uniform distribution, `new_bounds`
+must be a 2-element Tuple, with `(new_lower, new_upper)` values.
 
 
 # Examples
@@ -600,14 +600,13 @@ function _check_bounds_range(dom::Domain, factor::Symbol, new_bounds::Tuple)::No
         out_of_bounds = (new_lower < default_lower) || (new_upper > default_upper)
     end
 
-    # Check if new bounds are withing default range
+    # Check if new bounds are within the default range
     if out_of_bounds
         error(
             "Bounds should be within ($default_lower, $default_upper), received: ($new_lower, $new_upper).",
         )
     end
 
-    # Check if number of bounds
     if (_distribution_type(dom, factor) == "triang") && (length(new_bounds) !== 3)
         error("Triangular dist requires three parameters (minimum, maximum, peak).")
     elseif (_distribution_type(dom, factor) == "unif") && (length(new_bounds) !== 2)
