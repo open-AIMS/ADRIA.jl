@@ -191,8 +191,7 @@ function connectivity_strength(conn::AbstractMatrix{Float64})::NamedTuple
     C2 = outdegree_centrality(g)
 
     # For each node, find strongly connected predecessor (by number of connections)
-    strong_pred = zeros(Int64, (size(C1)..., 2))
-    strong_pred[:, 1] .= 1:length(C1)
+    strong_pred = zeros(Int64, (size(C1)...))
     for v_id in vertices(g)
         incoming = inneighbors(g, v_id)
 

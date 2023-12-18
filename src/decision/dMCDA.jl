@@ -914,13 +914,14 @@ Priority criteria value for each location, the larger the value the better that 
 function priority_location_criteria(
     strong_pred::Matrix{Int64},
     priority_locations::Vector{Int64},
+    location_ids::Vector{Int64},
 )::Vector{Float64}
-    n_sites = size(strong_pred, 1)
+    n_locs = size(strong_pred, 1)
     # Work out which priority predecessors are connected to priority locations
-    predec::Matrix{Float64} = zeros(n_sites, 3)
+    predec::Matrix{Float64} = zeros(n_locs, 3)
     predec[:, 1:2] .= strong_pred
 
-    predprior = predec[in.(predec[:, 1], [priority_locations']), 2]
+    predprior = predec[in.(location_ids, [priority_locations']), 2]
     predprior = Int64[x for x in predprior if !isnan(x)]
 
     predec[predprior, 3] .= 1.0
