@@ -106,8 +106,8 @@ Details of this aggregation method in, for example [1]
 """
 function adria_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Float64}
 
-    # Remove zero columns as these will return NaNs in the Q score
-    S = S[:, vec(sum(S .> 0.0; dims=1) .!= 0)]
+    # Remove zero columns as these will return NaNs in the Q score 
+    S = S[:, .!vec((all(S .== maximum(S; dims=1); dims=1)))]
     F_s = maximum(S)
 
     # Compute utility of the majority Sr (Manhatten Distance)
