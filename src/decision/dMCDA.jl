@@ -589,11 +589,14 @@ function guided_site_selection(
     priority_zones::Array{String} = d_vars.priority_zones
 
     priority_zone_criteria = priority_zones_criteria(
-        strong_pred,
-        d_vars.zones,
+        strong_pred[site_ids],
+        d_vars.zones[site_ids],
         priority_zones,
+        site_ids,
     )
-    priority_locations_criteria = priority_location_criteria(strong_pred, priority_sites)
+    priority_locations_criteria = priority_location_criteria(
+        strong_pred[site_ids], priority_sites, site_ids
+    )
 
     # site_id, seeding rank, shading rank
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
@@ -632,8 +635,8 @@ function guided_site_selection(
         d_vars.dam_prob[site_ids],
         d_vars.heat_stress_prob[site_ids],
         d_vars.site_depth[site_ids],
-        priority_locations_criteria[site_ids],
-        priority_zone_criteria[site_ids],
+        priority_locations_criteria,
+        priority_zone_criteria,
         d_vars.risk_tol,
     )
     if isempty(A)
@@ -921,20 +924,21 @@ function within_depth_bounds(
 end
 
 """
-    priority_location_criteria(strong_pred::Vector{Int64}, priority_locations::Vector{Int64})::Vector{Float64}
+    priority_location_criteria(strong_pred::Vector{Int64}, priority_locations::Vector{Int64}, location_ids::Vector{Int64})::Vector{Float64}
 
 Calculates the priority location criteria, which prioritises priority locations and locations which are larval sources for these.
 
 # Arguments
 - `strong_pred` : Strongest predecessor locations for each location.
 - `priority_locations` : Priority locations  
+- `location_ids` : Full set of location indices (same size as `strong_pred`)
 
 # Returns
 Priority criteria value for each location, the larger the value the better that location contributes to prioritising locations 
     in the `priority_locations` list.
 """
 function priority_location_criteria(
-    strong_pred::Matrix{Int64},
+    strong_pred::Vector{Int64},
     priority_locations::Vector{Int64},
     location_ids::Vector{Int64},
 )::Vector{Float64}
@@ -951,8 +955,8 @@ function priority_location_criteria(
 end
 
 """
-    priority_zones_criteria(strong_pred::Vector{Int64}, zones::Vector{String}, priority_zones::Vector{String}, 
-site_ids::Vector{Int64})::Vector{Float64}
+    priority_zones_criteria(strong_pred::Vector{Int64}, zones::Vector{String}, priority_zones::Vector{String},
+        location_ids::Vector{Int64}; pred_w::Float64=0.2)::Vector{Float64}
 
 Calculates the priority zone criteria, which prioritises priority GBRMPA zones and zones which are larval sources for these.
 
@@ -960,39 +964,41 @@ Calculates the priority zone criteria, which prioritises priority GBRMPA zones a
 - `strong_pred` : Strongest predecessor locations for each location.
 - `zones` : Zone classification for each location
 - `priority_zones` : Zones to prioritse (in order of priority)
+- `location_ids` : Full set of location indices (same size as `strong_pred`)
+- `pred_w` : Weight designating importance of locations being in the zone vs. larval sources for the zone.
 
 # Returns
 Priority zones value for each location, the larger the value the better that location contributes to prioritising 
     in the `priority_zones` list.
 """
 function priority_zones_criteria(
-    strong_pred::Matrix{Int64},
+    strong_pred::Vector{Int64},
     zones::Vector{String},
-    priority_zones::Vector{String};
+    priority_zones::Vector{String},
+    location_ids::Vector{Int64};
     pred_w::Float64=0.2,
 )::Vector{Float64}
     n_sites = length(zones)
-    # for zones, find locations which are zones and strongest predecessors of locations in zones
+    # For zones, find locations which are zones and strongest predecessors of locations in zones
     zone_ids = intersect(priority_zones, unique(zones))
     zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
     zone_preds = zeros(n_sites)
     zone_locations = zeros(n_sites)
 
     for (k::Int64, z_name::String) in enumerate(zone_ids)
-        # find locations which are strongest predecessors of locations in the zone and add zone weights to these locationes
-        add_zone_weight = strong_pred[
-            dropdims(
-                any(in.(strong_pred[:, 1], findall(zones .== z_name)'); dims=2); dims=2
-            ),
-            2,
-        ]
-        zone_preds[add_zone_weight] .= zone_preds[add_zone_weight] .+ zone_weights[k]
+        # Find locations which are strongest predecessors of locations in the zone 
+        add_zone_weight = strong_pred[zones .== z_name]
+        # Positional indices of locations in location_ids
+        pred_zone_idx = findall(
+            dropdims(sum(add_zone_weight .== location_ids'; dims=1); dims=1) .> 0
+        )
+        zone_preds[pred_zone_idx] .= zone_preds[pred_zone_idx] .+ zone_weights[k]
 
-        # add zone_weights for locations in the zone (whether a strongest predecessor of a zone or not)
+        # Add zone_weights for locations in the zone (whether a strongest predecessor of a zone or not)
         zone_locations[zones .== z_name] .= zone_weights[k]
     end
 
-    # add weights for strongest predecessors and zones to get zone criteria
+    # Add weights for strongest predecessors and zones to get zone criteria
     return pred_w .* zone_preds .+ (1 - pred_w) .* zone_locations
 end
 end
