@@ -993,7 +993,8 @@ function priority_zones_criteria(
         zone_preds[pred_zone_idx] .= zone_preds[pred_zone_idx] .+ zone_weights[k]
 
         # Add zone_weights for locations in the zone (whether a strongest predecessor of a zone or not)
-        zone_locations[zones .== z_name] .= zone_weights[k]
+        zone_locations[zones .== z_name] .=
+            zone_locations[zones .== z_name] .+ zone_weights[k]
     end
 
     # Add weights for strongest predecessors and zones to get zone criteria
