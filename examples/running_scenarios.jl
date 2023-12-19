@@ -9,7 +9,7 @@ using ADRIA
 
 
 @info "Loading data package"
-example_domain_path = joinpath(pkgdir(ADRIA), "examples", "Example_domain")
+example_domain_path = joinpath(pkgdir(ADRIA), "examples", "Test_domain")
 dom = ADRIA.load_domain(example_domain_path)
 
 @info "Loading example scenarios"

@@ -13,7 +13,7 @@ using ADRIA
 
 
 @info "Loading data package"
-data_pkg = "./Example_domain"
+data_pkg = "./Test_domain"
 scenario_domain = ADRIA.load_domain(data_pkg, 45)
 
 # Get current parameter table (fieldnames and their values)

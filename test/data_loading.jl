@@ -5,7 +5,7 @@ using CSV
 
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
-    const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
+    const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Test_domain")
 end
 
 @testset "Domain loading" begin
@@ -19,7 +19,7 @@ end
 end
 
 @testset "Connectivity loading" begin
-    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Example_domain.gpkg"))
+    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Test_domain.gpkg"))
     sort!(site_data, :reef_siteid)
 
     unique_site_ids = site_data.reef_siteid
@@ -36,7 +36,7 @@ end
 end
 
 @testset "Environmental data" begin
-    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Example_domain.gpkg"))
+    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Test_domain.gpkg"))
 
     sort!(site_data, :reef_siteid)
 
@@ -50,7 +50,7 @@ end
 end
 
 @testset "Initial covers" begin
-    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Example_domain.gpkg"))
+    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Test_domain.gpkg"))
     sort!(site_data, :reef_siteid)
 
     coral_cover_fn = joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "coral_cover.nc")
@@ -60,7 +60,7 @@ end
 end
 
 @testset "Cyclone mortality data" begin
-    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Example_domain.gpkg"))
+    site_data = GDF.read(joinpath(EXAMPLE_DOMAIN_PATH, "site_data", "Test_domain.gpkg"))
     sort!(site_data, :reef_siteid)
 
     cyclone_mortality_fn = joinpath(EXAMPLE_DOMAIN_PATH, "cyclones", "cyclone_mortality.nc")
