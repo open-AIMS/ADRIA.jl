@@ -956,7 +956,7 @@ function priority_zones_criteria(
     pred_w::Float64=0.2,
 )::Vector{Float64}
     n_sites = length(zones)
-    # For zones, find locations which are zones and strongest predecessors of locations in zones
+    # Find set of priority zones and scoring system depending on zone priority
     zone_ids = intersect(priority_zones, unique(zones))
     zone_weights = mcda_normalize(collect(length(zone_ids):-1:1))
     zone_preds = zeros(n_sites)
