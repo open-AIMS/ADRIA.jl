@@ -766,7 +766,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             alg_hints=alg_hint, dt=0.5)
 
         # Assign results
-        C_cover[tstep, :, valid_locs] .= sol[end][:, valid_locs]
+        C_cover[tstep, :, valid_locs] .= sol.u[end][:, valid_locs]
 
         # TODO:
         # Check if size classes are inappropriately out-growing available space
