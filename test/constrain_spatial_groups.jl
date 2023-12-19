@@ -59,8 +59,9 @@ using Statistics
     )
 
     @test all(new_prefsites .== prefsites) ||
-        "All sites were too close according to the threshold but some were still replaced."
+        "All sites in different reefs but some were still replaced."
 
+    # Make slected sites not have enough space to seed corals
     available_space[prefsites] .= (area_to_seed - 100.0) / n_site_iv
     available_space[s_order[n_site_iv + 1, 1]] = area_to_seed
 
