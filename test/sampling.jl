@@ -1,6 +1,5 @@
 using ADRIA
 
-
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
     const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Test_domain")
@@ -13,7 +12,8 @@ end
 
     ms = ADRIA.model_spec(dom)
     constant_params = ms.is_constant .== true
-    @test all(values(scens[1, constant_params]) .== values(scens[end, constant_params])) || "Constant params are not constant!"
+    @test all(values(scens[1, constant_params]) .== values(scens[end, constant_params])) ||
+        "Constant params are not constant!"
 
     eco = (ms.component .== "Coral") .& .!(constant_params)
     interv = (ms.component .== "Intervention") .& .!(constant_params)
@@ -72,11 +72,15 @@ end
         @test all(scens.guided .== -1) || "Intervention scenarios found"
 
         # Get Intervention params
-        interv_params = string.(ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname)
+        interv_params =
+            string.(
+                ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
+            )
 
         # Ensure all interventions are deactivated (ignoring the "guided" factor)
         interv_params = String[ip for ip in interv_params if ip != "guided"]
-        @test all(all.(==(0), eachcol(scens[:, interv_params]))) || "Intervention factors with values > 0 found"
+        @test all(all.(==(0), eachcol(scens[:, interv_params]))) ||
+            "Intervention factors with values > 0 found"
     end
 
     @testset "Guided sampling" begin
@@ -87,13 +91,17 @@ end
         @test all(scens.guided .> 0) || "Non-intervention scenarios found"
 
         # Get Intervention params
-        interv_params = string.(ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname)
+        interv_params =
+            string.(
+                ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
+            )
 
         # Ignore guided
         interv_params = String[ip for ip in interv_params if ip != "guided"]
 
         # Ensure at least one intervention is active
-        @test all(any.(>(0), eachcol(scens[:, interv_params]))) || "All intervention factors had values <= 0"
+        @test all(any.(>(0), eachcol(scens[:, interv_params]))) ||
+            "All intervention factors had values <= 0"
 
         crit = ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.CriteriaWeights)
         seed_weights = ADRIA.criteria_params(crit, (:seed, :weight)).fieldname
@@ -103,7 +111,6 @@ end
             "Some seeding weights are not properly normalized."
         @test all(abs.(sum(Matrix(scens[:, fog_weights]); dims=2) .- 1.0) .< 10e-6) ||
             "Some fogging weights are not properly normalized."
-
     end
 
     @testset "Unguided sampling" begin
@@ -114,13 +121,19 @@ end
         @test all(scens.guided .== 0) || "Intervention or counterfactual scenarios found"
 
         # Get Intervention params
-        interv_params = string.(ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname)
+        interv_params =
+            string.(
+                ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
+            )
 
         # Ignore guided and planning horizon
-        interv_params = String[ip for ip in interv_params if ip != "plan_horizon" && ip != "guided"]
+        interv_params = String[
+            ip for ip in interv_params if ip != "plan_horizon" && ip != "guided"
+        ]
 
         # Ensure at least one intervention is active
-        @test all(any.(>(0), eachcol(scens[:, interv_params]))) || "All intervention factors had values <= 0"
+        @test all(any.(>(0), eachcol(scens[:, interv_params]))) ||
+            "All intervention factors had values <= 0"
     end
 
     @testset "Site selection sampling" begin
@@ -144,39 +157,94 @@ end
         target_params = String[ip for ip in target_params if ip != "guided"]
 
         # Ensure at least one intervention is active
-        @test all(any.(>(0), eachcol(scens[:, target_params]))) || "All target factors had values <= 0"
+        @test all(any.(>(0), eachcol(scens[:, target_params]))) ||
+            "All target factors had values <= 0"
 
         # Check that all coral parameters are set to their nominated default values
         coral_params = ADRIA.component_params(ms, ADRIA.Coral).fieldname
 
-        @test all([all(scens[:, c] .== ms[ms.fieldname.==c, :val][1]) for c in coral_params]) || "Non-default coral parameter value found"
+        @test all([
+            all(scens[:, c] .== ms[ms.fieldname .== c, :val][1]) for c in coral_params
+        ]) || "Non-default coral parameter value found"
+    end
+
+    @testset "Get sampling bounds" begin
+        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        ms = ADRIA.model_spec(dom)
+
+        @testset "Continuous variables" begin
+            continuous_factors = ms[(ms.ptype .∉ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
+
+            for factor in eachrow(continuous_factors)
+                factor_fieldname = factor.fieldname
+                @test ADRIA.get_bounds(dom, factor_fieldname) == factor.bounds
+                @test ADRIA.get_default_bounds(dom, factor_fieldname) ==
+                    factor.default_bounds
+            end
+        end
+
+        @testset "Discrete variables" begin
+            discrete_factors = ms[(ms.ptype .∈ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
+            for factor in eachrow(discrete_factors)
+                factor_fieldname = factor.fieldname
+                @test ADRIA.get_bounds(dom, factor_fieldname)[1] == factor.bounds[1]
+                @test ADRIA.get_bounds(dom, factor_fieldname)[2] == factor.bounds[2] - 1.0
+                @test ADRIA.get_default_bounds(dom, factor_fieldname)[1] ==
+                    factor.default_bounds[1]
+                @test ADRIA.get_default_bounds(dom, factor_fieldname)[2] ==
+                    factor.default_bounds[2] - 1.0
+            end
+        end
     end
 
     @testset "Set new sampling bounds" begin
         dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
         num_samples = 32
 
-        # test continuous factor is sampled within specified range
-        bnds = rand(2)
-        ADRIA.set_factor_bounds!(
-            dom, :deployed_coral_risk_tol, (minimum(bnds), maximum(bnds))
-        )
-        scens = ADRIA.sample_guided(dom, num_samples)
-        @test (maximum(scens[:, "deployed_coral_risk_tol"]) <= maximum(bnds)) ||
-            "Sampled continuous factor is outside of specified new bounds."
-        @test (minimum(scens[:, "deployed_coral_risk_tol"]) >= minimum(bnds)) ||
-            "Sampled continuous factor is outside of specified new bounds."
+        @testset "Continuous factor is sampled within specified range" begin
+            bnds = rand(2)
+            ADRIA.set_factor_bounds!(
+                dom, :deployed_coral_risk_tol, (minimum(bnds), maximum(bnds))
+            )
+            scens = ADRIA.sample_guided(dom, num_samples)
+            @test (maximum(scens[:, "deployed_coral_risk_tol"]) <= maximum(bnds)) ||
+                "Sampled continuous factor is outside of specified new bounds."
+            @test (minimum(scens[:, "deployed_coral_risk_tol"]) >= minimum(bnds)) ||
+                "Sampled continuous factor is outside of specified new bounds."
+        end
 
-        # test discrete factor is sampled within specified range and is discrete
-        bnds = rand(0.0:1000000.0, 2)
-        ADRIA.set_factor_bounds!(dom, :N_seed_TA, (minimum(bnds), maximum(bnds)))
-        scens = ADRIA.sample_site_selection(dom, num_samples)
-        @test (maximum(scens[:, "N_seed_TA"]) <= maximum(bnds)) ||
-            "Sampled discrete factor is outside of specified new bounds."
-        @test (minimum(scens[:, "N_seed_TA"]) >= minimum(bnds)) ||
-            "Sampled discrete factor is outside of specified new bounds."
-        @test all(mod.(scens[:, "N_seed_TA"], 1.0) .== 0.0) ||
-            "Sampled discrete factors are not all discrete."
+        @testset "Discrete factor is sampled within specified range and is discrete" begin
+            bnds = rand(0.0:1000000.0, 2)
+            ADRIA.set_factor_bounds!(dom, :N_seed_TA, (minimum(bnds), maximum(bnds)))
+            scens = ADRIA.sample_site_selection(dom, num_samples)
+            @test (maximum(scens[:, "N_seed_TA"]) <= maximum(bnds)) ||
+                "Sampled discrete factor is outside of specified new bounds."
+            @test (minimum(scens[:, "N_seed_TA"]) >= minimum(bnds)) ||
+                "Sampled discrete factor is outside of specified new bounds."
+            @test all(mod.(scens[:, "N_seed_TA"], 1.0) .== 0.0) ||
+                "Sampled discrete factors are not all discrete."
+        end
+
+        @testset "Discrete factor upper and lower limits are not out of bounds" begin
+            ms = ADRIA.model_spec(dom)
+            discrete_factors = ms[(ms.ptype .== "categorical"), :]
+            discrete_factor = discrete_factors[1, :]
+            discrete_factor_name = discrete_factor.fieldname
+
+            @testset "New and old bounds are the same" begin
+                new_bounds = ADRIA.get_default_bounds(dom, discrete_factor_name)
+                ADRIA.set_factor_bounds!(dom, discrete_factor_name, new_bounds)
+
+                factor_params = dom.model[ms.fieldname .== discrete_factor_name][1]
+                @test factor_params.bounds[1] == factor_params.default_bounds[1]
+                @test factor_params.bounds[2] == factor_params.default_bounds[2] - 1.0
+
+                scens = ADRIA.sample_site_selection(dom, num_samples)
+                discrete_factor_scens = scens[:, string(discrete_factor_name)]
+                @test (maximum(discrete_factor_scens) <= maximum(new_bounds))
+                @test (minimum(discrete_factor_scens) >= minimum(new_bounds))
+                @test all(mod.(discrete_factor_scens, 1.0) .== 0.0)
+            end
+        end
     end
-
 end
