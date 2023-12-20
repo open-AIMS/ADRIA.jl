@@ -766,23 +766,22 @@ function constrain_spatial_group(
         end
 
         pref_locs = loc_order[1:num_locs]
-        pref_groups = reefs[pref_locs] # Reefs that selected locations sit within
+        pref_reefs = reefs[pref_locs] # Reefs that selected locations sit within
 
         # Number of times a selected location appears within each reef
         sum_pref_locs = dropdims(
-            sum(pref_groups .== reshape(unique_reefs, 1, length(unique_reefs)); dims=1);
+            sum(pref_reefs .== reshape(unique_reefs, 1, length(unique_reefs)); dims=1);
             dims=1,
         )
 
         # If more than n_spatial_grp locations in a reef, swap out the worst locations
-        groups_swap = unique_reefs[findall((sum_pref_locs .> n_spatial_grp))]
+        reefs_swap = unique_reefs[(sum_pref_locs .> n_spatial_grp)]
 
-        # Locations to replace
-        replace_locs = [
-            pref_locs[pref_groups .== gp][(n_spatial_grp + 1):end] for gp in groups_swap
-        ]
-
-        if !isempty(replace_locs)
+        if !isempty(reefs_swap)
+            # Locations to replace
+            replace_locs = [
+                pref_locs[pref_reefs .== gp][(n_spatial_grp + 1):end] for gp in reefs_swap
+            ]
             replace_locs = replace_locs[1:end...]
             reef_add = unique_reefs[(sum_pref_locs .+ 1) .<= n_spatial_grp] # acceptable reefs to swtich out for
 
