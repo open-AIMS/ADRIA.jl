@@ -953,7 +953,7 @@ function priority_zones_criteria(
     zones::Vector{String},
     priority_zones::Vector{String},
     location_ids::Vector{Int64};
-    pred_w::Float64=0.2,
+    pred_w::Float64=0.5,
 )::Vector{Float64}
     n_sites = length(zones)
     # Find set of priority zones and scoring system depending on zone priority
