@@ -343,7 +343,7 @@ include("metrics.jl")
 include("sampling.jl")
 include("seeding.jl")
 include("site_selection.jl")
-include("constrain_spatial_groups.jl")
+include("constrain_reef_clusters.jl")
 include("spec.jl")
 include("utils/text_display.jl")
 

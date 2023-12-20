@@ -1,5 +1,5 @@
 using Test
-using ADRIA: decision.constrain_spatial_group
+using ADRIA: decision.constrain_reef_cluster
 using LinearAlgebra
 using Random
 using Statistics
@@ -22,7 +22,7 @@ using Statistics
     # Empty ranking just for testing
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
-    new_prefsites, rankings = constrain_spatial_group(
+    new_prefsites, rankings = constrain_reef_cluster(
         reef_locs,
         s_order,
         rankings,
@@ -48,7 +48,7 @@ using Statistics
     s_order = Union{Float64,Int64}[Int64.(orig_site_order) rand(n_sites)]
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
-    new_prefsites, rankings = constrain_spatial_group(
+    new_prefsites, rankings = constrain_reef_cluster(
         reef_locs,
         s_order,
         rankings,
@@ -68,7 +68,7 @@ using Statistics
     s_order = Union{Float64,Int64}[Int64.(orig_site_order) rand(n_sites)]
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
-    new_prefsites, rankings = constrain_spatial_group(
+    new_prefsites, rankings = constrain_reef_cluster(
         reef_locs, s_order, rankings, area_to_seed, available_space, n_site_iv, 3
     )
     @test length(new_prefsites) == (n_site_iv + 1) ||

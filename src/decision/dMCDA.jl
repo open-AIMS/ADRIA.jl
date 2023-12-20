@@ -22,7 +22,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     leftover_space  # ::F
     k_area  # ::V
     risk_tol  # ::F
-    n_spatial_grp # ::F
+    n_reefs # ::F
     spatial_groups #::V
     area_to_seed #::V
     wt_in_conn_seed  # ::F
@@ -113,7 +113,7 @@ function DMCDA_vars(
         leftover_space,
         site_k_area(domain),
         criteria("deployed_coral_risk_tol"),
-        domain.sim_constants.n_spatial_grp,
+        domain.sim_constants.n_reefs,
         domain.site_data.UNIQUE_ID,
         area_to_seed,
         criteria("seed_in_connectivity"),
@@ -689,14 +689,14 @@ function guided_site_selection(
             SE, wse, rankings, size(SE, 1), mcda_func, 2
         )
 
-        pref_seed_locs, rankings = constrain_spatial_group(
+        pref_seed_locs, rankings = constrain_reef_cluster(
             d_vars.spatial_groups,
             s_order_seed,
             rankings,
             d_vars.area_to_seed,
             leftover_space,
             n_iv_locs,
-            d_vars.n_spatial_grp,
+            d_vars.n_reefs,
         )
 
     end
@@ -721,8 +721,8 @@ function guided_site_selection(
 end
 
 """
-    constrain_spatial_group(reefs::Union{Vector{String},Vector{Float64}}, s_order::Matrix{Union{Float64,Int64}}, rankings::Matrix{Int64},
-    area_to_seed::Float64, available_space::Vector{Float64}, n_site_int::Int64, n_spatial_grp::Int64)
+    constrain_reef_cluster(reefs::Union{Vector{String},Vector{Float64}}, s_order::Matrix{Union{Float64,Int64}}, rankings::Matrix{Int64},
+    area_to_seed::Float64, available_space::Vector{Float64}, n_site_int::Int64, n_reefs::Int64)
 
 # Arguments
 - `reefs` : List of the the reefs each location sits within
@@ -731,7 +731,7 @@ end
 - `area_to_seed` : absolute area to be seeded (m²)
 - `available_space` : absolute area available at each location (m²)
 - `n_site_int` : Minimum number of sites to intervene at
-- `n_spatial_grp` : Number of selected locations to allow in the same reef/cluster.
+- `n_reefs` : Number of selected locations to allow in the same reef.
 
 # Returns
 Tuple :
@@ -739,14 +739,14 @@ Tuple :
     - `rankings` : Matrix[n_sites ⋅ 3] where columns are site_id, seeding_rank, shading_rank
         Values of 0 indicate sites that were not considered
 """
-function constrain_spatial_group(
+function constrain_reef_cluster(
     reefs::Union{Vector{String},Vector{Float64}},
     s_order::Matrix{Union{Float64,Int64}},
     rankings::Matrix{Int64},
     area_to_seed::Float64,
     available_space::Vector{Float64},
     n_site_int::Int64,
-    n_spatial_grp::Int64,
+    n_reefs::Int64,
 )
     # Get full ordering of locations
     loc_order = s_order[:, 1]
@@ -774,16 +774,16 @@ function constrain_spatial_group(
             dims=1,
         )
 
-        # If more than n_spatial_grp locations in a reef, swap out the worst locations
-        reefs_swap = unique_reefs[(sum_pref_locs .> n_spatial_grp)]
+        # If more than n_reefs locations in a reef, swap out the worst locations
+        reefs_swap = unique_reefs[(sum_pref_locs .> n_reefs)]
 
         if !isempty(reefs_swap)
             # Locations to replace
             replace_locs = [
-                pref_locs[pref_reefs .== gp][(n_spatial_grp + 1):end] for gp in reefs_swap
+                pref_locs[pref_reefs .== gp][(n_reefs + 1):end] for gp in reefs_swap
             ]
             replace_locs = replace_locs[1:end...]
-            reef_add = unique_reefs[(sum_pref_locs .+ 1) .<= n_spatial_grp] # acceptable reefs to swtich out for
+            reef_add = unique_reefs[(sum_pref_locs .+ 1) .<= n_reefs] # acceptable reefs to swtich out for
 
             pref_locs = setdiff(pref_locs, replace_locs) # Remove locations to be replaced from preferred sites
             loc_order = setdiff(loc_order, replace_locs) # Remove locations to be replaced from site order
