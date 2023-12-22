@@ -1,12 +1,13 @@
 using Printf
 using DataFrames, Distributions, LinearAlgebra
 using ADRIA
-using ADRIA: model_spec, _process_inputs!, component_params
+using ADRIA: model_spec, component_params
 using ADRIA.decision: mcda_normalize
 import Surrogates: sample
-import Surrogates.QuasiMonteCarlo: SobolSample
+import Surrogates.QuasiMonteCarlo as QMC
+import Surrogates.QuasiMonteCarlo: SobolSample, OwenScramble
 
-const DISCRETE_FACTOR_TYPES = ["integer", "categorical"]
+const DISCRETE_FACTOR_TYPES = ["ordered categorical", "unordered categorical", "discrete"]
 
 """
     _is_discrete_factor(p_type::String)::Bool
@@ -35,55 +36,7 @@ end
 function _distribution_type(dom::Domain, fieldname::Symbol)::String
     model::Model = dom.model
     param_idx::Int64 = findfirst(x -> x == fieldname, model[:fieldname])
-    return model[:dists][param_idx]
-end
-
-"""Set a model parameter value directly."""
-function set(p::Param, val::Union{Int64,Float64})
-    if hasproperty(p, :ptype)
-        if _is_discrete_factor.(p.ptype) && !isinteger(val)
-            val = map_to_discrete(val, p.bounds[2])
-        end
-    end
-
-    return val
-end
-
-"""
-    map_to_discrete(val::Union{Int64,Float64}, s_ub::Union{Int64,Float64})::Int64
-
-For integer/categorical parameters, take floor of `val`, capping to `s_ub - 1`
-
-# Arguments
-- `val` : Continuous value to be transformed into a whole number
-- `s_ub` : Upper bound for sampling purposes
-
-# Returns
-Sampled value mapped to floored whole value.
-"""
-function map_to_discrete(val::Union{Int64,Float64}, s_ub::Union{Int64,Float64})::Int64
-    return Int64(min(floor(val), s_ub - 1))
-end
-
-"""
-    map_to_discrete!(df::Union{DataFrame,SubDataFrame}, ub::Union{AbstractVector{Union{Int64,Float64}},Tuple})::Nothing
-
-Update a dataframe of parameters.
-Length of `ub` (the upper bounds) is expected to match number of columns in `df`.
-
-# Arguments
-- `df` : DataFrame of values
-- `ub` : Upper bound for sampling purposes
-"""
-function map_to_discrete!(
-    df::Union{DataFrame,SubDataFrame},
-    ub::Union{AbstractVector{<:Union{Int64,Float64}},Tuple},
-)::Nothing
-    for (idx, b) in enumerate(ub)
-        df[!, idx] .= map_to_discrete.(df[!, idx], b)
-    end
-
-    return nothing
+    return model[:dist][param_idx]
 end
 
 """
@@ -97,9 +50,6 @@ function adjust_samples(d::Domain, df::DataFrame)::DataFrame
     return adjust_samples(model_spec(d), df)
 end
 function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
-    # Map sampled values back to their discrete if necessary
-    _process_inputs!(spec, df)
-
     crit = component_params(spec, CriteriaWeights)
     interv = component_params(spec, Intervention)
     weights_seed_crit = criteria_params(crit, (:seed, :weight))
@@ -503,7 +453,6 @@ function get_default_bounds(dom::Domain, factor::Symbol)::Tuple
     factor_filter::BitVector = collect(model[:fieldname]) .== factor
     default_bounds::Tuple = model[:default_bounds][factor_filter][1]
 
-    _is_discrete_factor(dom, factor) && return (default_bounds[1], default_bounds[2] - 1.0)
     return default_bounds
 end
 
@@ -588,16 +537,8 @@ function _check_bounds_range(dom::Domain, factor::Symbol, new_bounds::Tuple)::No
     default_lower, default_upper = get_default_bounds(dom, factor)
     new_lower, new_upper = new_bounds
 
-    out_of_bounds::Bool = false
-
-    if _is_discrete_factor(dom, factor)
-        # If factor is discrete, sampled values must be within default_lower and (default_upper - 1)
-        out_of_bounds = (new_lower < default_lower) || (new_upper > default_upper)
-    else
-        out_of_bounds = (new_lower < default_lower) || (new_upper > default_upper)
-    end
-
     # Check if new bounds are within the default range
+    out_of_bounds::Bool = (new_lower < default_lower) || (new_upper > default_upper)
     if out_of_bounds
         error(
             "Bounds should be within ($default_lower, $default_upper), received: ($new_lower, $new_upper).",
