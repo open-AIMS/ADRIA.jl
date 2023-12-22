@@ -41,28 +41,6 @@ end
     end
 end
 
-@testset "Flooring trick" begin
-    # Check that continous sampled values are correctly mapped
-    # to corresponding discrete values.
-
-    @test ADRIA.map_to_discrete(50.7, 51) == 50
-
-    @test ADRIA.map_to_discrete(10.9, 11) == 10
-
-    # Test value capped to upper bound
-    @test ADRIA.map_to_discrete(4, 4) == 3
-
-    x = rand(1:0.01:20, 25)
-    expect = min.(floor.(Int64, x), ceil.(Int64, x) .- 1)
-    calc = ADRIA.map_to_discrete.(x, Int64.(ceil.(x)))
-    msg = """
-    Flooring trick failed to produce discrete values
-    Expected: $(expect)
-    Received: $(calc)
-    """
-    @test all(expect .== calc) || msg
-end
-
 @testset "Targeted sampling" begin
     @testset "Counterfactual sampling" begin
         dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
