@@ -456,7 +456,7 @@ Plot sensitivity values for an increasing number of scenarios as a series, with 
       See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function _series_convergence(
     g::GridPosition,
@@ -579,7 +579,7 @@ Plot sensitivity values for an increasing number of scenarios as a heatmap, with
       See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function _heatmap_convergence(
     g::GridPosition,
@@ -637,7 +637,7 @@ Plot sensitivity metric for increasing number of scenarios to illustrate converg
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function ADRIA.viz.convergence(
     Si_conv::NamedDimsArray,
