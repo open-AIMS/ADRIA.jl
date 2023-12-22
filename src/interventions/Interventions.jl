@@ -1,176 +1,140 @@
-Base.@kwdef struct Intervention{N,P,P2} <: EcoModel
-    # Intervention Parameters
-    # Integer values have a +1 offset to allow for discrete value mapping
-    # (see `set()` and `map_to_discrete()` methods)
+Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
+    # Intervention Factors
     # Bounds are defined as floats to maintain type stability
-    guided::N = Param(
+    guided::DU = Factor(
         0;
-        ptype="categorical",
-        bounds=(-1.0, length(decision.mcda_methods()) + 1.0),
-        default_bounds=(-1.0, length(decision.mcda_methods()) + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(-1.0, Float64(length(decision.mcda_methods()))),
         name="Guided",
         description="Choice of MCDA approach.",
     )
-    N_seed_TA::N = Param(
+    N_seed_TA::DU = Factor(
         0;
-        ptype="integer",
-        bounds=(0.0, 1000000.0 + 1.0),
-        default_bounds=(0.0, 1000000.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 1000000.0),
         name="Seeded Tabular Acropora",
         description="Number of Tabular Acropora to seed per deployment year.",
     )
-    N_seed_CA::N = Param(
+    N_seed_CA::DU = Factor(
         0;
-        ptype="integer",
-        bounds=(0.0, 1000000.0 + 1.0),
-        default_bounds=(0.0, 1000000.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 1000000.0),
         name="Seeded Corymbose Acropora",
         description="Number of Corymbose Acropora to seed per deployment year.",
     )
-    N_seed_SM::N = Param(
+    N_seed_SM::DU = Factor(
         0;
-        ptype="integer",
-        bounds=(0.0, 1000000.0 + 1.0),
-        default_bounds=(0.0, 1000000.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 1000000.0),
         name="Seeded Small Massives",
         description="Number of small massives/encrusting to seed per deployment year.",
     )
-    fogging::P = Param(
+    fogging::T = Factor(
         0.16;
-        ptype="real",
-        bounds=(0.0, 0.3, 0.16 / 0.3),
-        default_bounds=(0.0, 0.3, 0.16 / 0.3),
-        dists="triang",
-        criteria_keywords=(""),
+        ptype="continuous",
+        dist=TriangularDist,
+        dist_params=(0.0, 0.3, 0.16),
         name="Fogging",
         description="Assumed reduction in bleaching mortality.",
     )
-    SRM::P = Param(
+    SRM::T = Factor(
         0.0;
-        ptype="real",
-        bounds=(0.0, 7.0, 0.0),
-        default_bounds=(0.0, 7.0, 0.0),
-        dists="triang",
-        criteria_keywords=(""),
+        ptype="continuous",
+        dist=TriangularDist,
+        dist_params=(0.0, 7.0, 0.0),
         name="SRM",
         description="Reduction in DHWs due to shading.",
     )
-    a_adapt::P = Param(
+    a_adapt::T = Factor(
         0.0;
-        ptype="real",
-        bounds=(0.0, 8.0, 0.0),
-        default_bounds=(0.0, 8.0, 0.0),
-        dists="triang",
-        criteria_keywords=(""),
+        ptype="continuous",
+        dist=TriangularDist,
+        dist_params=(0.0, 8.0, 0.0),
         name="Assisted Adaptation",
         description="Assisted adaptation in terms of DHW resistance.",
     )
-    seed_years::P2 = Param(
+    seed_years::DT = Factor(
         10;
-        ptype="integer",
-        bounds=(5.0, 74.0 + 1.0, 5 / 70),
-        default_bounds=(5.0, 74.0 + 1.0, 5 / 70),
-        dists="triang",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteTriangularDist,
+        dist_params=(5.0, 74.0, 5.0),
         name="Years to Seed",
         description="Number of years to seed for.",
     )
-    shade_years::P2 = Param(
+    shade_years::DT = Factor(
         10;
-        ptype="integer",
-        bounds=(5.0, 74.0 + 1.0, 5 / 70),
-        default_bounds=(5.0, 74.0 + 1.0, 5 / 70),
-        dists="triang",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteTriangularDist,
+        dist_params=(5.0, 74.0, 5.0),
         name="Years to Shade",
         description="Number of years to shade for.",
     )
-    fog_years::P2 = Param(
+    fog_years::DT = Factor(
         10;
-        ptype="integer",
-        bounds=(5.0, 74.0 + 1.0, 5 / 70),
-        default_bounds=(5.0, 74.0 + 1.0, 5 / 70),
-        dists="triang",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteTriangularDist,
+        dist_params=(5.0, 74.0, 5.0),
         name="Years to fog",
         description="Number of years to fog for.",
     )
-    plan_horizon::N = Param(
+    plan_horizon::DU = Factor(
         5;
-        ptype="integer",
-        bounds=(0.0, 40.0 + 1.0),
-        default_bounds=(0.0, 40.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 40.0),
         name="Planning Horizon",
-        description="How many years of projected data to take into account when selecting intervention locations (0 only accounts for current year).",
+        description="How many years of projected data to take into account when selecting intervention locations (0 only accounts for current deployment year).",
     )
-    seed_freq::N = Param(
+    seed_freq::DU = Factor(
         5;
-        ptype="integer",
-        bounds=(0.0, 15.0 + 1.0),
-        default_bounds=(0.0, 15.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 15.0),
         name="Seeding Frequency",
         description="Frequency of seeding site selection (0 is set and forget).",
     )
-    shade_freq::N = Param(
+    shade_freq::DU = Factor(
         1;
-        ptype="integer",
-        bounds=(0.0, 15.0 + 1.0),
-        default_bounds=(0.0, 15.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 15.0),
         name="Shading Frequency",
         description="Frequency of shading site selection (0 is set and forget).",
     )
-    fog_freq::N = Param(
+    fog_freq::DU = Factor(
         1;
-        ptype="integer",
-        bounds=(0.0, 15.0 + 1.0),
-        default_bounds=(0.0, 15.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 15.0),
         name="Fogging Frequency",
         description="Frequency of fogging site selection (0 is set and forget).",
     )
-    seed_year_start::N = Param(
+    seed_year_start::DU = Factor(
         2;
-        ptype="integer",
-        bounds=(2.0, 25.0 + 1.0),
-        default_bounds=(2.0, 25.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 25.0),
         name="Seeding Start Year",
         description="Start seeding deployments after this number of years has elapsed.",
     )
-    shade_year_start::N = Param(
+    shade_year_start::DU = Factor(
         2;
-        ptype="integer",
-        bounds=(2.0, 25.0 + 1.0),
-        default_bounds=(2.0, 25.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
+        ptype="unordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(2.0, 25.0),
         name="Shading Start Year",
         description="Start of shading deployments after this number of years has elapsed.",
     )
-    fog_year_start::N = Param(
+    fog_year_start::DU = Factor(
         2;
-        ptype="integer",
-        bounds=(2.0, 25.0 + 1.0),
-        default_bounds=(2.0, 25.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(""),
-        name="Fogginging Start Year",
+        ptype="unordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(2.0, 25.0),
+        name="Fogging Start Year",
         description="Start of fogging deployments after this number of years has elapsed.",
     )
 end
