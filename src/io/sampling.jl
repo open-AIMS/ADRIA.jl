@@ -173,7 +173,7 @@ function sample(
     end
 
     # Select non-constant params
-    vary_vars = spec[spec.is_constant .== false, ["dists", "bounds"]]
+    vary_vars = spec[spec.is_constant .== false, [:fieldname, :dist, :dist_params]]
 
     # Update range
     triang_params = vary_vars[vary_vars.dists .== "triang", "bounds"]
@@ -261,7 +261,7 @@ function sample_cf(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
 
     # Unguided scenarios only
     guided_col = spec_df.fieldname .== :guided
-    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .=
+    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :dist_params, :is_constant]] .=
         [-1 -1 -1 (-1.0, -1.0) true]
 
     # Remove intervention scenarios as an option
@@ -280,7 +280,7 @@ function _adjust_guided_lower_bound!(spec_df::DataFrame, lower::Int64)::DataFram
     g_upper = Float64(spec_df[guided_col, :upper_bound][1])
 
     # Update entries, standardizing values for bounds as floats
-    spec_df[guided_col, [:val, :lower_bound, :bounds]] .=
+    spec_df[guided_col, [:val, :lower_bound, :dist_params]] .=
         [lower Float64(lower) (Float64(lower), g_upper)]
     return spec_df
 end
@@ -326,7 +326,7 @@ function sample_unguided(d::Domain, n::Int64, sampler=SobolSample())::DataFrame
 
     # Fix guided factor to 0 (i.e., unguided scenarios only)
     guided_col = spec_df.fieldname .== :guided
-    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .=
+    spec_df[guided_col, [:val, :lower_bound, :upper_bound, :dist_params, :is_constant]] .=
         [0 0 0 (0.0, 0.0) true]
 
     return sample(spec_df, n, sampler)
@@ -348,10 +348,10 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
     cols = Symbol[fn for fn in intervs.fieldname if fn != :guided]
     for c in cols
         _row = to_update.fieldname .== c
-        _bnds = length(to_update[_row, :bounds][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
+        _bnds = length(to_update[_row, :dist_params][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
 
         dval = _is_discrete_factor(to_update[_row, :ptype][1]) ? 0 : 0.0
-        to_update[_row, [:val, :lower_bound, :upper_bound, :bounds, :is_constant]] .=
+        to_update[_row, [:val, :lower_bound, :upper_bound, :dist_params, :is_constant]] .=
             [dval 0.0 0.0 _bnds true]
     end
 
@@ -385,9 +385,9 @@ function fix_factor!(d::Domain, factor::Symbol)::Nothing
     params = DataFrame(d.model)
     default_val = params[params.fieldname .== factor, :val][1]
 
-    bnds = params[params.fieldname .== factor, :bounds][1]
+    bnds = params[params.fieldname .== factor, :dist_params][1]
     new_bnds = Tuple(fill(default_val, length(bnds)))
-    params[params.fieldname .== factor, :bounds] .= [new_bnds]
+    params[params.fieldname .== factor, :dist_params] .= [new_bnds]
 
     update!(d, params)
     return nothing
@@ -396,9 +396,9 @@ function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     params = DataFrame(d.model)
     params[params.fieldname .== factor, :val] .= val
 
-    bnds = params[params.fieldname .== factor, :bounds][1]
+    bnds = params[params.fieldname .== factor, :dist_params][1]
     new_bnds = Tuple(fill(val, length(bnds)))
-    params[params.fieldname .== factor, :bounds] .= [new_bnds]
+    params[params.fieldname .== factor, :dist_params] .= [new_bnds]
 
     update!(d, params)
     return nothing
@@ -423,7 +423,7 @@ end
     get_bounds(dom::Domain, factor::Symbol)::Tuple
 
 Get factor lower and upper bounds. If the factor has a triangular distribution, it returns
-a 2-elements tuple (without the peak value). Note that, for discrete factors, the actual
+a 2-element tuple (without the peak value). Note that, for discrete factors, the actual
 upper bound corresponds to the upper bound saved at the Domain's model_spec minus 1.0.
 
 # Arguments
@@ -433,7 +433,7 @@ upper bound corresponds to the upper bound saved at the Domain's model_spec minu
 function get_bounds(dom::Domain, factor::Symbol)::Tuple
     model::Model = dom.model
     factor_filter::BitVector = collect(model[:fieldname]) .== factor
-    bounds::Tuple = model[:bounds][factor_filter][1]
+    bounds::Tuple = model[:dist_params][factor_filter][1]
 
     _is_discrete_factor(dom, factor) && return (bounds[1], bounds[2] - 1.0)
     return bounds
@@ -526,7 +526,7 @@ function set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Not
     end
 
     params = model_spec(dom)
-    params[params.fieldname .== factor, :bounds] .= [new_bounds]
+    params[params.fieldname .== factor, :dist_params] .= [new_bounds]
     params[params.fieldname .== factor, :val] .= new_val
 
     update!(dom, params)
