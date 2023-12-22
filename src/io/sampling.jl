@@ -31,9 +31,9 @@ function _is_discrete_factor(dom::Domain, fieldname::Symbol)::Bool
 end
 
 """
-    _distribution_type(dom::Domain, fieldname::Symbol)::String
+    _distribution_type(dom::Domain, fieldname::Symbol)
 """
-function _distribution_type(dom::Domain, fieldname::Symbol)::String
+function _distribution_type(dom::Domain, fieldname::Symbol)
     model::Model = dom.model
     param_idx::Int64 = findfirst(x -> x == fieldname, model[:fieldname])
     return model[:dist][param_idx]
