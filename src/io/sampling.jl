@@ -414,12 +414,10 @@ upper bound corresponds to the upper bound saved at the Domain's model_spec minu
 Minimum and maximum bounds associated with the parameter distribution.
 """
 function get_bounds(dom::Domain, factor::Symbol)::Tuple
-    model::Model = dom.model
-    factor_filter::BitVector = collect(model[:fieldname]) .== factor
+    factor_filter::BitVector = collect(dom.model[:fieldname]) .== factor
     bounds::Tuple = model[:dist_params][factor_filter][1]
 
-    _is_discrete_factor(dom, factor) && return (bounds[1], bounds[2] - 1.0)
-    return bounds
+    return (bounds[1], bounds[2])
 end
 function get_bounds(param::Param)::Tuple
     return param.dist_params[1:2]
