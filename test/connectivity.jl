@@ -1,6 +1,5 @@
-using ADRIA, DataFrames, CSV
-import GeoDataFrames as GDF
-using CSV
+using ADRIA, ADRIA.DataFrames, ADRIA.CSV
+import ADRIA.GeoDataFrames as GDF
 
 
 @testset "Connectivity loading" begin

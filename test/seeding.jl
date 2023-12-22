@@ -1,8 +1,7 @@
 using Test
 
-using NamedDims, Distributions
-
 using ADRIA
+using ADRIA.NamedDims, ADRIA.Distributions
 using ADRIA: distribute_seeded_corals, location_k, seed_corals!
 
 if !@isdefined(ADRIA_DIR)

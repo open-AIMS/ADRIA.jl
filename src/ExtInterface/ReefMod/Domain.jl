@@ -1,12 +1,10 @@
-using AxisKeys, NamedDims
+using Statistics
+using Distributions
 
+using AxisKeys, NamedDims
 using CSV, DataFrames, ModelParameters
 
-using Distributions, Statistics
-
-import GeoDataFrames as GDF
-
-using ADRIA: SimConstants, Domain
+using ADRIA: SimConstants, Domain, site_distances, GDF
 
 mutable struct ReefModDomain <: Domain
     const name::String

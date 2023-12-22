@@ -1,10 +1,12 @@
 using Test
-using TOML, CSV, DataFrames, ADRIA
-
-using WGLMakie, GeoMakie, GraphMakie
 using Statistics
 
+using ADRIA
+using ADRIA.TOML, ADRIA.CSV, ADRIA.DataFrames
 using ADRIA.metrics: total_absolute_cover
+
+using WGLMakie, GeoMakie, GraphMakie
+
 
 const ADRIA_DIR = pkgdir(ADRIA)
 const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
@@ -121,12 +123,10 @@ function test_rs_w_fig()
 
     # Plot 1st rank frequencies as a colormap
     rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:size => (1200, 800)))
-
     # save("single_rank_plot.png", rank_fig)
 
     # Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
     rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:size => (1200, 800)))
-
     # save("ranks_plot.png", rank_fig)
 
     ### PAWN sensitivity (heatmap overview)
@@ -329,7 +329,9 @@ function test_rs_w_fig()
     return rs
 end
 
-const TEST_RS = test_rs_w_fig()
+if !@isdefined(TEST_RS)
+	const TEST_RS = test_rs_w_fig()
+end
 
 include("clustering.jl")
 include("data_loading.jl")

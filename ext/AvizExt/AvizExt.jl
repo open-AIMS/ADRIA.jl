@@ -14,12 +14,12 @@ using ImageIO, GeoInterface
 
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
-import ADRIA.FileIO, ADRIA.GDF, ADRIA.GFT
+import ADRIA.FileIO, ADRIA.GFT
+using ADRIA
 using ADRIA:
     load_results, load_domain, load_scenarios,
-    ResultSet, run_scenarios, metrics, viz.explore
+    ResultSet, run_scenarios, metrics, viz.explore, GDF
 
-using ADRIA
 import ADRIA: timesteps as AD_timesteps
 import ADRIA.viz: explore
 
