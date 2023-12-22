@@ -460,7 +460,7 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     Results stored at: $(result_location(rs))
 
     RCP(s) represented: $(rcps)
-    Intervention scenarios run: $(scens)
+    Scenarios run: $(scens)
     Number of sites: $(sites)
     Timesteps: $(tf)
 
