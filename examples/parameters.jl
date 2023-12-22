@@ -41,9 +41,9 @@ p_types = scenario_domain.model[:ptype]
 ## Note: ADRIA integer parameter bounds are set such that ℓ ≤ x ≤ u+1,
 ## where ℓ is the lower bound and u is the upper bound.
 ## This is because `floor(x)` is assigned with `update_params!()`.
-## Instances where ℓ := x := u indicate uncertain parameters that 
+## Instances where ℓ := x := u indicate uncertain parameters that
 ## are nevertheless assumed to be constant.
-p_bounds = scenario_domain.model[:bounds]
+p_bounds = scenario_domain.model[:dist_params]
 
 ## Component groups
 p_groups = scenario_domain.model[:component]
@@ -54,4 +54,3 @@ model_spec = DataFrame(scenario_domain.model)
 
 # Get DataFrame of parameter information for a specific sub-component (Intervention, Criteria, Coral)
 ADRIA.component_params(scenario_domain.model, Intervention)
-

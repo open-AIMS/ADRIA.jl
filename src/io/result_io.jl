@@ -264,17 +264,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     # Create store for scenario spec
     inputs = zcreate(Float64, input_dims...; fill_value=-9999.0, fill_as_missing=false, path=input_loc, chunks=input_dims, attrs=attrs)
 
-    # Store post-processed table of input parameters.
-    ms = model_spec(domain)
-
-    # Find discrete parameters that are not constant
-    discrete_param_idx = findall(_is_discrete_factor.(ms.ptype) .& .!ms.is_constant)
-    discrete_params = @view scen_spec[!, Not(:RCP)][!, discrete_param_idx]
-
-    # Map continuous values to discrete, and fill scenario spec with updated values.
-    map_to_discrete!(discrete_params, getindex.(ms.bounds, 2)[discrete_param_idx])
-    scen_spec[!, Not(:RCP)][:, discrete_param_idx] .= discrete_params
-
+    # Store table of factor values
     inputs[:, :] = Matrix(scen_spec)
 
     tf, n_sites, _ = size(domain.dhw_scens)

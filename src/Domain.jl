@@ -75,7 +75,7 @@ function model_spec(d::Domain, filepath::String)::Nothing
 end
 function model_spec(m::Model)::DataFrame
     spec = DataFrame(m)
-    bnds = spec[!, :bounds]
+    bnds = spec[!, :dist_params]
 
     DataFrames.hcat!(
         spec, DataFrame(:lower_bound => first.(bnds), :upper_bound => getindex.(bnds, 2))
@@ -95,10 +95,9 @@ end
     update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
 
 Update given domain with new parameter values.
-Maps sampled continuous values to discrete values for categorical variables.
 """
 function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
-    p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :bounds]]
+    p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :dist_params]]
 
     try
         p_df[!, :val] .= collect(params[Not("RCP")])
@@ -110,14 +109,6 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
 
             p_df[!, :val] .= collect(params)
         end
-    end
-
-    to_floor = _is_discrete_factor.(p_df.ptype)
-    if any(to_floor)
-        p_df[to_floor, :val] .=
-            map_to_discrete.(
-                p_df[to_floor, :val], Int64.(getindex.(p_df[to_floor, :bounds], 2))
-            )
     end
 
     # Update with new parameters
@@ -261,7 +252,7 @@ Assumes all `val` and `bounds` are to be updated.
 """
 function update!(dom::Domain, spec::DataFrame)::Nothing
     dom.model[:val] = spec.val
-    dom.model[:bounds] = spec.bounds
+    dom.model[:dist_params] = spec.dist_params
 
     return nothing
 end

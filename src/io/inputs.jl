@@ -53,7 +53,6 @@ function load_scenarios(domain::Domain, filepath::String)::DataFrame
     if columnindex(df, :RCP) > 0
         df = df[!, Not("RCP")]
     end
-    _process_inputs!(domain, df)
 
     return df
 end
