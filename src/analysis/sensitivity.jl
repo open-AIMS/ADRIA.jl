@@ -76,8 +76,7 @@ function _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vect
     lb = foi_spec.lower_bound[fact_idx][1]
     ub = foi_spec.upper_bound[fact_idx][1]
 
-    # The `- 1` adjusts quantile values as the samples are taken from the range [lb, ub+1]
-    return round.(quantile(lb:ub, steps)) .- 1
+    return round.(quantile(lb:ub, steps))
 end
 
 """
@@ -462,7 +461,7 @@ function rsa(
 
     foi_spec = _get_factor_spec(model_spec, factors)
 
-    is_cat = (foi_spec.ptype .== "categorical")
+    is_cat = occursin.("categorical", foi_spec.ptype)
     if any(is_cat)
         S = _category_bins(S, foi_spec[is_cat, :])
     end
@@ -475,7 +474,7 @@ function rsa(
         X_di .= X[:, d_i]
 
         ptype = foi_spec.ptype[foi_spec.fieldname .== factors[d_i]][1]
-        if ptype == "categorical"
+        if occursin("categorical", ptype)
             X_q .= _get_cat_quantile(foi_spec, factors[d_i], seq)
         else
             X_q .= quantile(X_di, seq)
@@ -585,7 +584,7 @@ function outcome_map(
 
     foi_spec = _get_factor_spec(model_spec, target_factors)
 
-    is_cat = (foi_spec.ptype .== "categorical")
+    is_cat = occursin.("categorical", foi_spec.ptype)
     if any(is_cat)
         S = _category_bins(S, foi_spec[is_cat, :])
     end
@@ -615,7 +614,7 @@ function outcome_map(
     for (j, fact_t) in enumerate(target_factors)
         X_f = X[:, fact_t]
         ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
-        if ptype == "categorical"
+        if occursin("categorical", ptype)
             X_q .= _get_cat_quantile(foi_spec, fact_t, steps)
         else
             X_q .= quantile(X_f, steps)

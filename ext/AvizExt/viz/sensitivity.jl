@@ -203,7 +203,7 @@ function ADRIA.viz.rsa!(
     all_comps = ms[foi, :component]
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
-    bounds = ms[foi, :bounds]
+    dist_params = ms[foi, :dist_params]
 
     if any(f_names .== :guided)
         fv_labels = [
@@ -217,7 +217,7 @@ function ADRIA.viz.rsa!(
         insert!(all_comps, loc, "EnvironmentalLayer")
         insert!(f_names, loc, "RCP")
         insert!(h_names, loc, "SSP/RCP")
-        insert!(bounds, loc, (1, length(unique(rs.inputs.RCP))))
+        insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
     # comps = unique(all_comps)
@@ -336,7 +336,7 @@ function ADRIA.viz.outcome_map!(
     all_comps = ms[foi, :component]
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
-    bounds = ms[foi, :bounds]
+    dist_params = ms[foi, :dist_params]
 
     # Hacky special case handling for SSP/RCP
     if :RCP in factors || :SSP in factors
@@ -344,7 +344,7 @@ function ADRIA.viz.outcome_map!(
         insert!(all_comps, loc, "EnvironmentalLayer")
         insert!(f_names, loc, "RCP")
         insert!(h_names, loc, "SSP/RCP")
-        insert!(bounds, loc, (1, length(unique(rs.inputs.RCP))))
+        insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
     bin_slices, factor_list, CIs = axiskeys(outcomes)
