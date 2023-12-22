@@ -24,7 +24,7 @@ using ADRIA
 
         # Create scenario spec
         samples = ADRIA.sample(dom, 8)
-        samples[!, :N_seed_TA] .= 500_000
+        samples[!, :N_seed_TA] .= 500_000.0
 
         # Write out scenario spec
         tmp_dir = mktempdir()
@@ -38,7 +38,7 @@ using ADRIA
         ADRIA.update_params!(dom, test_scens[5, :])
 
         # Ensure values match
-        @test all(ADRIA.param_table(dom).N_seed_TA .== 500000)
+        @test all(ADRIA.param_table(dom).N_seed_TA .== 500000.0)
 
         # Ensure known discrete values are integer
         @test all(isinteger.(ADRIA.param_table(dom).seed_years))
