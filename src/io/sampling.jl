@@ -440,6 +440,39 @@ function get_bounds(dom::Domain, factor::Symbol)::Tuple
 end
 
 """
+    get_bounds(param::Param)::Tuple
+
+ Get factor lower and upper bounds of the Parameter distribution.
+
+# Arguments
+- `param` : Parameter
+
+# Returns
+Minimum and maximum bounds associated with the parameter distribution.
+"""
+function get_bounds(param::Param)::Tuple
+    return param.dist_params[1:2]
+end
+
+"""
+    lower_bound(param::Param)::Union{Int64, Float64}
+
+Retrieve the lower bound of the parameter distribution
+"""
+function lower_bound(param::Param)::Union{Int64, Float64}
+    return param.dist_params[1]
+end
+
+"""
+    upper_bound(param::Param)::Union{Int64, Float64}
+
+Retrieve the upper bound of the parameter distribution
+"""
+function upper_bound(param::Param)::Union{Int64, Float64}
+    return param.dist_params[2]
+end
+
+"""
     get_default_bounds(dom::Domain, factor::Symbol)::Tuple
 
 Get factor default_bounds. Refer to `get_bounds` for more details of how the bounds work.
