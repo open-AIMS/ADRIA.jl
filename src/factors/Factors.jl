@@ -21,7 +21,7 @@ Convenience constructor for Param type with ADRIA-specific metadata.
 
 # Optional keyword arguments
 - `default_dist_params` : Tuple, parameters for `Distribution` type provided by `Distributions.jl`
-- `criteria_keywords` : "tags" specific to CriteriaWeights to indicate what intervention/criteria type the factor is related to.
+- `criteria_keywords` :
 
 # Returns
 Parameter
