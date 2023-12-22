@@ -169,40 +169,25 @@ function sample(
 
     # Select non-constant params
     vary_vars = spec[spec.is_constant .== false, [:fieldname, :dist, :dist_params]]
-
-    # Update range
-    triang_params = vary_vars[vary_vars.dists .== "triang", "bounds"]
-    vary_vars[vary_vars.dists .== "triang", "bounds"] .= map(
-        x -> (x[1], x[2], (x[2] - x[1]) * x[3] + x[1]), triang_params
-    )
-    vary_dists = map((x) -> supported_dists[x.dists](x.bounds...), eachrow(vary_vars))
-
-    # Create sample for uncertain parameters
     n_vary_params = size(vary_vars, 1)
-    if n_vary_params > 0
-        n_vary_params
-    else
+    if n_vary_params == 0
         throw(DomainError(n_vary_params, "Number of parameters to perturb must be > 0"))
     end
-    samples = sample(n, zeros(n_vary_params), ones(n_vary_params), sampler)
 
-    # Convert vector of tuples to matrix
-    samples = permutedims(hcat([collect(s) for s in samples]...))
+    # Create distribution types
+    vary_dists = map(x -> x.dist(x.dist_params...), eachrow(vary_vars))
 
-    # Scale values to indicated distributions
-    samples .=
-        permutedims(
-            hcat(
-                map(ix -> quantile.(vary_dists[ix], samples[:, ix]), 1:size(samples, 2))...
-            ),
-        )'
+    # Create uniformly distributed samples for uncertain parameters
+    samples = QMC.sample(n, zeros(n_vary_params), ones(n_vary_params), sample_method)
+
+    # Scale uniform samples to indicated distributions using the inverse CDF method
+    samples = Matrix(quantile.(vary_dists, samples)')
 
     # Combine varying and constant values (constant params use their indicated default vals)
     full_df = hcat(fill.(spec.val, n)...)
     full_df[:, spec.is_constant .== false] .= samples
 
-    # Adjust samples for discrete values using flooring trick
-    # Ensure unguided scenarios do not have superfluous parameter values
+    # Ensure unguided scenarios do not have superfluous factor combinations
     return adjust_samples(spec, DataFrame(full_df, spec.fieldname))
 end
 
@@ -545,10 +530,10 @@ end
 function _discrete_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Tuple
     new_lower, new_upper = new_bounds[1:2]
     (new_lower % 1.0 == 0.0 && new_upper % 1.0 == 0.0) ||
-        @warn "Upper and/or lower bounds for discrete variables should be integer numbers."
+        @warn "Upper and/or lower bounds for discrete variables should be integers."
 
     new_lower = round(new_lower)
-    new_upper = min(round(new_upper) + 1.0, get_default_bounds(dom, factor)[2])
+    new_upper = min(ceil(Float64, new_upper), get_default_bounds(dom, factor)[2])
     new_bounds = (new_lower, new_upper)
 
     new_val::Int64 = floor(new_lower + 0.5 * (new_upper - new_lower))
