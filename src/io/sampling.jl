@@ -444,18 +444,19 @@ end
 """
     get_default_bounds(dom::Domain, factor::Symbol)::Tuple
 
-Get factor default_bounds. Refer to `get_bounds` for more details of how the bounds work.
+Get default distribution parameters for a factor.
+Refer to `get_bounds` for more details of how the bounds work.
 
 # Arguments
 - `dom` : Domain
 - `factor` : Name of the factor to get the bounds from
 """
-function get_default_bounds(dom::Domain, factor::Symbol)::Tuple
+function get_default_dist_params(dom::Domain, factor::Symbol)::Tuple
     model::Model = dom.model
     factor_filter::BitVector = collect(model[:fieldname]) .== factor
-    default_bounds::Tuple = model[:default_bounds][factor_filter][1]
+    default_params::Tuple = model[:default_dist_params][factor_filter][1]
 
-    return default_bounds
+    return default_params
 end
 
 """
@@ -522,7 +523,7 @@ function _discrete_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Tuple
         @warn "Upper and/or lower bounds for discrete variables should be integers."
 
     new_lower = round(new_lower)
-    new_upper = min(ceil(Float64, new_upper), get_default_bounds(dom, factor)[2])
+    new_upper = min(ceil(new_upper), get_default_dist_params(dom, factor)[2])
     new_bounds = (new_lower, new_upper)
 
     new_val::Int64 = floor(new_lower + 0.5 * (new_upper - new_lower))
@@ -536,7 +537,7 @@ end
 Check new parameter bounds are within default parameter bounds
 """
 function _check_bounds_range(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
-    default_lower, default_upper = get_default_bounds(dom, factor)
+    default_lower, default_upper = get_default_dist_params(dom, factor)
     new_lower, new_upper = new_bounds
 
     # Check if new bounds are within the default range
