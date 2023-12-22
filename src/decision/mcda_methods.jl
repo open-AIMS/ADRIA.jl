@@ -98,27 +98,28 @@ Details of this aggregation method in, for example [1]
     https://doi.org/10.3390/jrfm14060271
 
 # Arguments
-- `S` : Matrix
+- `S` : Decision matrix
 - `v` : Real
 
 # Returns
 - `Q` : aggregate score for ranking.
 """
-function adria_vikor(S::Array{Float64,2}; v::Float64=0.5)::Array{Float64}
-
-    # Remove columns with constant values. Zero-valued columns will return NaNs in the Q score.
-    S = S[:, .!vec((all(S .== maximum(S; dims=1); dims=1)))]
-    F_s = maximum(S)
+function adria_vikor(S::Matrix{Float64}; v::Float64=0.5)::Array{Float64}
+    # Remove columns with constant values.
+    # Zero-valued columns will return NaNs in the Q score.
+    if size(S, 1) > 1
+        S = S[:, .!vec((all(S .== maximum(S; dims=1); dims=1)))]
+    end
 
     # Compute utility of the majority Sr (Manhatten Distance)
     # Compute individual regret R (Chebyshev distance)
-    sr_arg = (F_s .- S)
+    sr_arg = maximum(S) .- S
     Sr = sum(sr_arg, dims=2)
     R = maximum(sr_arg, dims=2)
 
     # Compute the VIKOR compromise Q
-    S_s, S_h = maximum(Sr), minimum(Sr)
-    R_s, R_h = maximum(R), minimum(R)
+    S_s, S_h = extrema(Sr)
+    R_h, R_s = extrema(R)
     Q = @. v * (Sr - S_h) / (S_s - S_h) + (1 - v) * (R - R_h) / (R_s - R_h)
     Q .= 1.0 .- Q  # Invert rankings so higher values = higher rank
 
