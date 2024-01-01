@@ -177,6 +177,6 @@ end
     )[1] == 1 ||
         "Strongest predecessor site to priority zone in non-priority zone should have smallest non-zero value."
 
-    @test all(findall(priority_zones_crit .== maximum(priority_zones_crit)) == [4, 8]) ||
-        "Highest priority zone sites should have highest value in the zone criteria."
+    @test findall(priority_zones_crit .== maximum(priority_zones_crit)) == [5] ||
+        "Sites which are high priority zones and sources to high priority zones should have the highest zone criteria value."
 end
