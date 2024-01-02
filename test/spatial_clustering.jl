@@ -31,10 +31,10 @@ using Statistics
 		n_iv_locs,
 		3,)
 
-	num_reefs = [sum(reef_locs[new_prefsites] .== rr) for rr in unique(reef_locs)]
-	l_diff_sites = length(setdiff(prefsites, new_prefsites))
+	num_reefs = [sum(reef_locs[new_prefsites] .== reef) for reef in unique(reef_locs)]
+	locs_diff = length(setdiff(prefsites, new_prefsites))
 
-	@test all(l_diff_sites == 2) ||
+	@test all(locs_diff  == 2) ||
 		  "Too few or too many sites have been removed when constraining spatial groups."
 	@test all(prefsites[1:3] .== new_prefsites[1:3]) ||
 		  "Some sites which should not have been replaced have been replaced when constraining spatial groups."
