@@ -118,7 +118,7 @@ function adria_vikor(S::Matrix{Float64}; v::Float64=0.5)::Array{Float64}
     R = maximum(sr_arg, dims=2)
 
     # Compute the VIKOR compromise Q
-    S_s, S_h = extrema(Sr)
+    S_h, S_s = extrema(Sr)
     R_h, R_s = extrema(R)
     Q = @. v * (Sr - S_h) / (S_s - S_h) + (1 - v) * (R - R_h) / (R_s - R_h)
     Q .= 1.0 .- Q  # Invert rankings so higher values = higher rank
