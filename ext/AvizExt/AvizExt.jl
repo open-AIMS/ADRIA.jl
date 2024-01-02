@@ -523,7 +523,7 @@ function ADRIA.viz.explore(rs::ResultSet)
 
     # Trigger update only after some time since last interaction
     # TODO: Add update notification (spinner animation or something...)
-    up_timer = Timer(x -> x, 0.25)
+    # up_timer = Timer(x -> x, 0.25)
     onany(time_slider.interval, tac_slider.interval,
         [t.active for t in t_toggles]...,
         [sld.interval for sld in interv_sliders]...) do time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, intervs... # i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val
@@ -534,7 +534,9 @@ function ADRIA.viz.explore(rs::ResultSet)
         tac_bot_val[] = tac_val[1]
         tac_top_val[] = tac_val[2]
 
-        close(up_timer)
+        if @isdefined up_timer
+            close(up_timer)
+        end
         up_timer = Timer(x -> update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, intervs...), 2)
     end
 
@@ -543,6 +545,7 @@ function ADRIA.viz.explore(rs::ResultSet)
     # DataInspector()
 
     wait(gl_screen)
+    # close(up_timer)
 end
 function ADRIA.viz.explore(rs_path::String)
     return ADRIA.viz.explore(load_results(rs_path))
