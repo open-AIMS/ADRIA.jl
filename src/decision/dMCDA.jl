@@ -722,7 +722,7 @@ end
 
 """
     constrain_reef_cluster(reefs::Union{Vector{String},Vector{Float64}}, s_order::Matrix{Union{Float64,Int64}}, rankings::Matrix{Int64},
-    area_to_seed::Float64, available_space::Vector{Float64}, n_site_int::Int64, n_reefs::Int64)
+    area_to_seed::Float64, available_space::Vector{Float64}, n_iv_locs::Int64, n_reefs::Int64)::Tuple{Vector{Int64},Matrix{Int64}}
 
 # Arguments
 - `reefs` : List of the the reefs each location sits within
@@ -730,7 +730,7 @@ end
 - `rankings` : Current ranks of the set of locations
 - `area_to_seed` : absolute area to be seeded (m²)
 - `available_space` : absolute area available at each location (m²)
-- `n_site_int` : Minimum number of sites to intervene at
+- `n_iv_locs` : Minimum number of sites to intervene at
 - `n_reefs` : Number of selected locations to allow in the same reef.
 
 # Returns
@@ -745,17 +745,17 @@ function constrain_reef_cluster(
     rankings::Matrix{Int64},
     area_to_seed::Float64,
     available_space::Vector{Float64},
-    n_site_int::Int64,
+    n_iv_locs::Int64,
     n_reefs::Int64,
-)
+)::Tuple{Vector{Int64},Matrix{Int64}}
     # Get full ordering of locations
     loc_order = s_order[:, 1]
 
     # Get unique reefs in location set
     unique_reefs = unique(reefs)
-    pref_locs = loc_order[1:n_site_int]
+    pref_locs = loc_order[1:n_iv_locs]
 
-    num_locs = n_site_int  # No. of locations to consider
+    num_locs = n_iv_locs  # No. of locations to consider
 
     for loc in 1:length(loc_order)
         # If enough space for seeding corals, keep n_site_int, else expand as needed
