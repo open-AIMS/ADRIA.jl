@@ -415,7 +415,7 @@ Minimum and maximum bounds associated with the parameter distribution.
 """
 function get_bounds(dom::Domain, factor::Symbol)::Tuple
     factor_filter::BitVector = collect(dom.model[:fieldname]) .== factor
-    bounds::Tuple = model[:dist_params][factor_filter][1]
+    bounds::Tuple = dom.model[:dist_params][factor_filter][1]
 
     return (bounds[1], bounds[2])
 end
