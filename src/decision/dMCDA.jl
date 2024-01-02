@@ -756,11 +756,10 @@ function constrain_reef_cluster(
     pref_locs = loc_order[1:n_site_int]
 
     num_locs = n_site_int  # No. of locations to consider
-    cumulative_space = cumsum(available_space)
 
-    for ll in 1:length(loc_order)
+    for loc in 1:length(loc_order)
         # If enough space for seeding corals, keep n_site_int, else expand as needed
-        num_locs = max(findfirst(>=(area_to_seed), cumulative_space[loc_order]), n_site_int) 
+        num_locs = max(findfirst(>=(area_to_seed), cumsum(available_space[loc_order])), n_iv_locs) 
 
         pref_locs = loc_order[1:num_locs]
         pref_reefs = reefs[pref_locs]  # Reefs that selected locations sit within
