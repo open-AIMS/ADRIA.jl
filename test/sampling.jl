@@ -205,7 +205,13 @@ end
 
         @testset "Discrete factor upper and lower limits are not out of bounds" begin
             ms = ADRIA.model_spec(dom)
+
+            # Obtain details of discrete factors by checking if elements of array A appear
+            # in array B.
+            # For `Ref()`, see:
+            # https://docs.julialang.org/en/v1/base/collections/#Iterable-Collections
             discrete_factors = ms[in.(ms.ptype, Ref(ADRIA.DISCRETE_FACTOR_TYPES)), :]
+
             discrete_factor = discrete_factors[1, :]
             discrete_factor_name = discrete_factor.fieldname
 
