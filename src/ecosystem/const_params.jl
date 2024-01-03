@@ -32,7 +32,7 @@ Struct of simulation constants for ADRIA
 """
 Base.@kwdef mutable struct SimConstants
     n_site_int::Int64 = 5  # max number of sites we intervene on in a given year.
-    n_reefs::Int64 = 3  # max number of locations selected in the same site/cluster (when using spatial group constraints)
+    max_members::Int64 = 3  # max number of locations selected in the same site/cluster (when using spatial group constraints)
 
     priority_sites::Vector{Int64} = Int64[]  # sites to prioritize when seeding or shading
 
