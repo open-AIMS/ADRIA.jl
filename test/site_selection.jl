@@ -3,16 +3,9 @@ using Combinatorics, IterTools
 using Test
 using ADRIA.Distributions
 
-
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
     const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
-end
-
-function get_site_order(criteria, site_ids)
-    sorted_ids = sortperm(criteria; rev=true)
-    site_order = hcat(site_ids[sorted_ids], criteria[sorted_ids])
-    return site_order
 end
 
 function test_site_ranks(
