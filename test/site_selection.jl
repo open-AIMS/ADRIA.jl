@@ -26,45 +26,46 @@ function test_site_ranks(
 		"in connectivity",
 		"out connectivity",
 	]
-    for weights in weights_set
-        crit_inds = findall(weights .> 0.0)
-        criteria = vec(
-            sum(
-                weights[crit_inds]' .*
-                ADRIA.decision.mcda_normalize(A[:, 2:end][:, crit_inds]);
-                dims=2,
-            ),
-        )
-        site_max = get_site_order(criteria, site_ids)
-        prefsites, s_order = ADRIA.decision.rank_sites!(
-            S, weights, rankings, n_site_int, mcda_func, inv
-        )
+	for weights in weights_set
+		crit_inds = findall(weights .> 0.0)
 
-        # check that 5 worst sites aren't in those selected
-        names_temp = criteria_names[crit_inds]
-        names_string = string(["$(name), " for name in names_temp[1:(end - 1)]]...)
+		prefsites, s_order = ADRIA.decision.rank_sites!(
+			S, weights, rankings, n_site_int, mcda_func, inv
+		)
 
-        @test !any(in.(Int.(site_max[(n_site_int + 1):end, 1]), prefsites)) || string(
-            "For the ",
-            names_string,
-            "and $(names_temp[end]) criteria, some of the worst sites were still selected during site selection.",
-        )
-        @test any(prefsites .== 5) & any(prefsites .== 6) || string(
-            "For the ",
-            names_string,
-            "and $(names_temp[end]) criteria, the best sites (5 and 6) were not selected.",
-        )
-    end
+		names_temp = criteria_names[crit_inds]
+		names_string = string(["$(name), " for name in names_temp[1:(end - 1)]]...)
+
+		# Check that 2 best sites are selected (5 and 6)
+		@test any(prefsites .== 5) & any(prefsites .== 6) || string(
+			"For the ",
+			names_string,
+			"and $(names_temp[end]) criteria, the best sites (5 and 6) were not selected.",
+		)
+		# Check that 2 worst sites aren't selected (9 and 10)
+		@test any(prefsites .!= 9) & any(prefsites .!= 10) || string(
+			"For the ",
+			names_string,
+			"and $(names_temp[end]) criteria, the worst sites (9 and 10) were selected.",
+		)
+	end
 end
 
-function test_mcda_funcs(rankings, S, weights, mcda_funcs, n_site_int)
-    for mf in mcda_funcs
-        prefsites, s_order = ADRIA.decision.rank_sites!(
-            S, weights, rankings, n_site_int, mf, 2
-        )
-        @test in(5, prefsites) .& in(6, prefsites) ||
-            "The best overall sites were not chosen by method $mf"
-    end
+function test_mcda_funcs(rankings::Matrix{Int64}, S::Matrix{Float64},
+	weights::Vector{Float64},
+	mcda_funcs, n_site_int::Int64)
+	for mf in mcda_funcs
+		prefsites, s_order = ADRIA.decision.rank_sites!(
+			S, weights, rankings, n_site_int, mf, 2
+		)
+		# Check that 2 best sites are selected (5 and 6)
+		@test in(5, prefsites) .& in(6, prefsites) ||
+			"The best overall sites (5 and 6) were not chosen by method $mf."
+
+		# Check that 2 worst sites aren't selected (9 and 10)
+		@test any(prefsites .!= 9) & any(prefsites .!= 10) ||
+			"The worst overall sites (9 and 10) were chosen by method $mf."
+	end
 end
 
 function get_test_decision_matrix(dom)
