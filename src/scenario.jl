@@ -756,8 +756,14 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         if seed_corals && in_seed_timeframe && has_seed_locs
             # Seed selected locations
             seed_corals!(C_t, vec(loc_k_area), vec(leftover_space_m²),
-                seed_locs, seeded_area, seed_sc, a_adapt, @view(Yseed[tstep, :, :]),
-                corals.dist_std, c_mean_t)
+                seed_locs,
+                seeded_area,
+                seed_sc,
+                a_adapt,
+                @view(Yseed[tstep, :, :]),
+                corals.dist_std,
+                c_mean_t,
+            )
         end
 
         # Update initial condition

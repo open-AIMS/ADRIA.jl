@@ -140,9 +140,6 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
         df[guided_seeded, weights_seed_crit.fieldname]
     )
 
-    # If use of distance threshold is off, set `dist_thresh` to 0.0
-    df[df.use_dist .== 0, :dist_thresh] .= 0.0
-
     if nrow(unique(df)) < nrow(df)
         perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(df)) / nrow(df))) * 100.0))%"
         @warn "Non-unique samples created: $perc of the samples are duplicates."

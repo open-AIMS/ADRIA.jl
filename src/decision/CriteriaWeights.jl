@@ -1,4 +1,4 @@
-Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
+Base.@kwdef struct CriteriaWeights{P,P2,P3} <: EcoModel
     seed_wave_stress::P = Param(
         1.0;
         ptype="real",
@@ -139,16 +139,6 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         name="Zone Predecessor (Shade)",
         description="Importance of shading sites that provide larvae to priority (target) zones.",
     )
-    coral_cover_tol::P = Param(
-        0.2;
-        ptype="real",
-        bounds=(0.0, 1.0),
-        default_bounds=(0.0, 1.0),
-        dists="unif",
-        criteria_keywords=(:threshold, :seed),
-        name="Low Area Tolerance",
-        description="Tolerance for low proportional space for seeding deployments.",
-    )
     deployed_coral_risk_tol::P2 = Param(
         1.0;
         ptype="real",
@@ -158,26 +148,6 @@ Base.@kwdef struct CriteriaWeights{P,P2,P3,N} <: EcoModel
         criteria_keywords=(:threshold, :seed, :fog),
         name="Risk Tolerance",
         description="Filters out sites with heat/wave stress above threshold.",
-    )
-    use_dist::N = Param(
-        1;
-        ptype="categorical",
-        bounds=(0.0, 1.0 + 1.0),
-        default_bounds=(0.0, 1.0 + 1.0),
-        dists="unif",
-        criteria_keywords=(:threshold,),
-        name="Use Distance Threshold",
-        description="Turns distance sorting on or off.",
-    )
-    dist_thresh::P3 = Param(
-        0.1;
-        ptype="real",
-        bounds=(0.0, 1.0),
-        default_bounds=(0.0, 1.0),
-        dists="unif",
-        criteria_keywords=(:threshold,),
-        name="Distance Threshold",
-        description="Sites selected by MCDA must be further apart than median(dist)-dist_thresh*median(dist).",
     )
     depth_min::P3 = Param(
         5.0;

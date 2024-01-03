@@ -343,6 +343,7 @@ include("metrics.jl")
 include("sampling.jl")
 include("seeding.jl")
 include("site_selection.jl")
+include("spatial_clustering.jl")
 include("spec.jl")
 include("utils/text_display.jl")
 
