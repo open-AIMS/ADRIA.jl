@@ -721,9 +721,11 @@ function guided_site_selection(
 end
 
 """
-    constrain_reef_cluster(reefs::Union{Vector{String},Vector{Float64}}, s_order::Matrix{Union{Float64,Int64}}, rankings::Matrix{Int64},
-    area_to_seed::Float64, available_space::Vector{Float64}, n_iv_locs::Int64, n_reefs::Int64)::Tuple{Vector{Int64},Matrix{Int64}}
-
+	constrain_reef_cluster(reefs::Union{Vector{String}, Vector{Float64}}, 
+		s_order::Matrix{Union{Float64, Int64}}, rankings::Matrix{Int64}, 
+		area_to_seed::Float64, available_space::Vector{Float64}, n_iv_locs::Int64,
+		max_members::Int64)::Tuple{Vector{Int64}, Matrix{Int64}}
+		
 # Arguments
 - `reefs` : List of the the reefs each location sits within
 - `s_order` : Ordered set of locations and their aggregate criteria score
@@ -731,24 +733,24 @@ end
 - `area_to_seed` : absolute area to be seeded (m²)
 - `available_space` : absolute area available at each location (m²)
 - `n_iv_locs` : Minimum number of sites to intervene at
-- `n_reefs` : Number of selected locations to allow in the same reef.
+- `max_members` : Number of selected locations to allow in the same reef.
 
 # Returns
 Tuple :
 - `pref_locs` : Vector, Indices of preferred intervention locations
 - `rankings` : Matrix[n_sites ⋅ 3] where columns are site_id, seeding_rank, shading_rank
-    Values of 0 indicate sites that were not considered
+	Values of 0 indicate sites that were not considered
 """
 function constrain_reef_cluster(
-    reefs::Union{Vector{String},Vector{Float64}},
-    s_order::Matrix{Union{Float64,Int64}},
-    rankings::Matrix{Int64},
-    area_to_seed::Float64,
-    available_space::Vector{Float64},
-    n_iv_locs::Int64,
+	reefs::Union{Vector{String}, Vector{Float64}},
+	s_order::Matrix{Union{Float64, Int64}},
+	rankings::Matrix{Int64},
+	area_to_seed::Float64,
+	available_space::Vector{Float64},
+	n_iv_locs::Int64,
 	max_members::Int64
-)::Tuple{Vector{Int64},Matrix{Int64}}
-    # Get full ordering of locations
+)::Tuple{Vector{Int64}, Matrix{Int64}}
+	# Get ordering of locations by their preferred ranks
 	loc_ordered_ids = s_order[:, 1]
 
 	unique_reefs = reshape(unique(reefs), 1, length(unique(reefs)))
