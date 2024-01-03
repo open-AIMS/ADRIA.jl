@@ -749,37 +749,34 @@ function constrain_reef_cluster(
     n_reefs::Int64,
 )::Tuple{Vector{Int64},Matrix{Int64}}
     # Get full ordering of locations
-    loc_order = s_order[:, 1]
+	loc_ordered_ids = s_order[:, 1]
 
 	unique_reefs = reshape(unique(reefs), 1, length(unique(reefs)))
 	max_iters = length(loc_ordered_ids)
 
 	local pref_locs::Vector{Int64}
 	local num_locs::Int64
-    for loc in 1:length(loc_order)
-        # If enough space for seeding corals, keep n_site_int, else expand as needed
-        num_locs = max(findfirst(>=(area_to_seed), cumsum(available_space[loc_order])), n_iv_locs) 
+	for _ in 1:max_iters
+		# If enough space for seeding corals, keep n_site_int, else expand as needed
+		num_locs = max(findfirst(>=(area_to_seed), cumsum(available_space[loc_ordered_ids])), n_iv_locs)
 
-        pref_locs = loc_order[1:num_locs]
-        pref_reefs = reefs[pref_locs]  # Reefs that selected locations sit within
+		# If the number of locations to select is larger than the minimum, don't use spatial 
+		pref_locs = loc_ordered_ids[1:num_locs]
+		pref_reefs = reefs[pref_locs]  # Reefs that selected locations sit within
 
 		# Number of times a reef appears within each location
 		reef_occurances = vec(sum(pref_reefs .== unique_reefs; dims = 1))
 
         # If more than n_reefs locations in a reef, swap out the worst locations
         reefs_swap = unique_reefs[(sum_pref_locs .> n_reefs)]
+		# Remove locations to be replaced from preferred locations
+		pref_locs = setdiff(pref_locs, locs_to_replace)
 
         if !isempty(reefs_swap)
-            # Locations to replace
-            replace_locs = [
-                pref_locs[pref_reefs .== gp][(n_reefs + 1):end] for gp in reefs_swap
-            ]
-            replace_locs = replace_locs[1:end...]
-            reef_add = unique_reefs[(sum_pref_locs .+ 1) .<= n_reefs]  # acceptable reefs to swtich out for
+		loc_ordered_ids = setdiff(loc_ordered_ids, locs_to_replace)
 
-            pref_locs = setdiff(pref_locs, replace_locs)  # Remove locations to be replaced from preferred sites
-            loc_order = setdiff(loc_order, replace_locs)  # Remove locations to be replaced from site order
-            add_locs = setdiff(loc_order, pref_locs)  # Locations which can be added in place
+		# Locations which can be added in place
+		alternate_loc_ids = setdiff(loc_ordered_ids, pref_locs)
 
             # Indices of locations available that satisfy the reef constraint
             add_locs_ind = findall(
@@ -792,26 +789,26 @@ function constrain_reef_cluster(
                 ),
             )
 
-            # New preferred location set
-            pref_locs = [pref_locs... add_locs[add_locs_ind[1:length(replace_locs)]]...]
+		# New preferred location set
+		locs_to_add_inds = add_locs_ind[1:length(locs_to_replace)]
+		pref_locs = [pref_locs... alternate_loc_ids[locs_to_add_inds]...]
 
-            loc_order = setdiff(loc_order, pref_locs)
-            loc_order = [pref_locs...; loc_order...]
-        else
-            break
-        end
-    end
+		# Rearrange ranked location list into new preferred order
+		loc_ordered_ids = setdiff(loc_ordered_ids, pref_locs)
+		loc_ordered_ids = [pref_locs...; loc_ordered_ids...]
+	end
 
-    # Add removed sites at end of preferred site order
-    removed_sites = setdiff(s_order[:, 1], loc_order)
+	# Add removed sites at end of preferred site order
+	removed_sites = setdiff(s_order[:, 1], loc_ordered_ids)
 
-    s_order[:, 1] .= [
-        loc_order[1:num_locs]...,
-        removed_sites...,
-        loc_order[(num_locs + 1):end]...,
-    ]
+	# Add any removed sites back into full location ordering
+	s_order[:, 1] .= [
+		loc_ordered_ids[1:num_locs]...,
+		removed_sites...,
+		loc_ordered_ids[(num_locs + 1):end]...,
+	]
 
-    # Match by site_id and assign rankings to log
+	# Match by site_id and assign rankings to log
     align_rankings!(rankings, s_order, 2)
     return pref_locs, rankings
 end
