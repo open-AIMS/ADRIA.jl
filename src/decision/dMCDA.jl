@@ -797,17 +797,10 @@ function constrain_reef_cluster(
 
 		# Indices of the subset of locations which can be added which also sit within an 
 		# allowed reef
-		add_locs_ind = findall(
-			dropdims(
-				any(
-					reshape(reefs[alternate_loc_ids], 1, length(reefs[alternate_loc_ids]))
-					.==
-					reef_switch_ids;
-					dims = 1,
-				);
-				dims = 1,
-			),
-		)
+		add_locs_ind = findall(dropdims(any(
+				reshape(reefs[alternate_loc_ids], 1, length(reefs[alternate_loc_ids]))
+				.==
+				reef_switch_ids; dims = 1); dims = 1))
 
 		# New preferred location set
 		locs_to_add_inds = add_locs_ind[1:length(locs_to_replace)]
