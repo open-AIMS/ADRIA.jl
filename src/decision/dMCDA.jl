@@ -769,6 +769,11 @@ function constrain_reef_cluster(
 
 		# If more than n_reefs locations in a reef, swap out the worst locations
 		reefs_swap = unique_reefs[(reef_occurances .> max_members)]
+
+		if isempty(reefs_swap)
+			break
+		end
+
 		replace_start = (max_members + 1)  # starting id for locations to replace
 
 		# Find locations in reefs which need replacement, and find the ids of lowest 
@@ -783,22 +788,25 @@ function constrain_reef_cluster(
 		# Remove locations to be replaced from preferred locations
 		pref_locs = setdiff(pref_locs, locs_to_replace)
 
-        if !isempty(reefs_swap)
+		# Remove locations to be replaced from location order
 		loc_ordered_ids = setdiff(loc_ordered_ids, locs_to_replace)
 
 		# Locations which can be added in place
 		alternate_loc_ids = setdiff(loc_ordered_ids, pref_locs)
 
-            # Indices of locations available that satisfy the reef constraint
-            add_locs_ind = findall(
-                dropdims(
-                    any(
-                        reshape(reefs[add_locs], 1, length(reefs[add_locs])) .== reef_add;
-                        dims=1,
-                    );
-                    dims=1,
-                ),
-            )
+		# Indices of the subset of locations which can be added which also sit within an 
+		# allowed reef
+		add_locs_ind = findall(
+			dropdims(
+				any(
+					reshape(reefs[alternate_loc_ids], 1, length(reefs[alternate_loc_ids]))
+					.==
+					reef_switch_ids;
+					dims = 1,
+				);
+				dims = 1,
+			),
+		)
 
 		# New preferred location set
 		locs_to_add_inds = add_locs_ind[1:length(locs_to_replace)]
