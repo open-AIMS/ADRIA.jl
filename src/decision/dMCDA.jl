@@ -22,7 +22,7 @@ struct DMCDA_vars  # {V, I, F, M} where V <: Vector
 	leftover_space  # ::F
 	k_area  # ::V
 	risk_tol  # ::F
-	n_reefs # ::F
+	max_members # ::F
 	spatial_groups #::V
 	area_to_seed #::V
 	wt_in_conn_seed  # ::F
@@ -113,7 +113,7 @@ function DMCDA_vars(
 		leftover_space,
 		site_k_area(domain),
 		criteria("deployed_coral_risk_tol"),
-		domain.sim_constants.n_reefs,
+		domain.sim_constants.max_members,
 		domain.site_data.UNIQUE_ID,
 		area_to_seed,
 		criteria("seed_in_connectivity"),
@@ -691,7 +691,7 @@ function guided_site_selection(
 			d_vars.area_to_seed,
 			leftover_space,
 			n_iv_locs,
-			d_vars.n_reefs,
+			d_vars.max_members,
 		)
 	end
 
