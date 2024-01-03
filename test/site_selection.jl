@@ -16,8 +16,8 @@ function test_site_ranks(
 	mcda_func::Function,
 	inv::Float64,
 )
-    S = ADRIA.decision.mcda_normalize(A)
-    S[:, 1] .= A[:, 1]
+	S = ADRIA.decision.mcda_normalize(A)
+	S[:, 1] .= A[:, 1]
 	criteria_names = [
 		"heat stress",
 		"wave stress",
@@ -68,32 +68,31 @@ function test_mcda_funcs(rankings::Matrix{Int64}, S::Matrix{Float64},
 	end
 end
 
-function get_test_decision_matrix(dom)
-    cover = sum(dom.init_coral_cover; dims=:species)[species=1]
-    leftover_space = 1 .- cover
-    k_area = dom.site_data.area .* dom.site_data.k
-    dhw_av = ADRIA.decision.summary_stat_env(dom.dhw_scens, (:timesteps, :scenarios))
-    wave_av = ADRIA.decision.summary_stat_env(dom.wave_scens, (:timesteps, :scenarios))
-    depth_med = dom.site_data.depth_med
+function get_test_decision_matrix(dom::Domain)::Matrix{Float64}
+	cover = sum(dom.init_coral_cover; dims = :species)[species = 1]
+	leftover_space = 1 .- cover
+	k_area = dom.site_data.area .* dom.site_data.k
+	dhw_av = ADRIA.decision.summary_stat_env(dom.dhw_scens, (:timesteps, :scenarios))
+	wave_av = ADRIA.decision.summary_stat_env(dom.wave_scens, (:timesteps, :scenarios))
+	depth_med = dom.site_data.depth_med
 
-    TP_data = ADRIA.connectivity_strength(
-        dom.TP_data .* ADRIA.site_k_area(dom), collect(cover), dom.TP_data
-    )
+	TP_data = ADRIA.connectivity_strength(
+		dom.TP_data .* ADRIA.site_k_area(dom), collect(cover), dom.TP_data
+	)
 
-    site_ids = dom.site_data.site_id
+	site_ids = dom.site_data.site_id
 
-    heat_stress =
-        1 .- vec((dhw_av .- minimum(dhw_av)) ./ (maximum(dhw_av) - minimum(dhw_av)))
-    wave_stress =
-        1 .- vec((wave_av .- minimum(wave_av)) ./ (maximum(wave_av) - minimum(wave_av)))
-    space_area = leftover_space .* k_area
-    in_conn = TP_data.in_conn
-    out_conn = TP_data.out_conn
+	heat_stress =
+		1 .- vec((dhw_av .- minimum(dhw_av)) ./ (maximum(dhw_av) - minimum(dhw_av)))
+	wave_stress =
+		1 .- vec((wave_av .- minimum(wave_av)) ./ (maximum(wave_av) - minimum(wave_av)))
+	space_area = leftover_space .* k_area
+	in_conn = TP_data.in_conn
+	out_conn = TP_data.out_conn
 
-    A = hcat(site_ids, heat_stress, wave_stress, depth_med, space_area, in_conn, out_conn)
+	A = hcat(site_ids, heat_stress, wave_stress, depth_med, space_area, in_conn, out_conn)
 
 	return A
-    return A, criteria_names
 end
 
 @testset "site selection" begin
