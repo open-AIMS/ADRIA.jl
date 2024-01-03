@@ -751,12 +751,11 @@ function constrain_reef_cluster(
     # Get full ordering of locations
     loc_order = s_order[:, 1]
 
-    # Get unique reefs in location set
-    unique_reefs = unique(reefs)
-    pref_locs = loc_order[1:n_iv_locs]
+	unique_reefs = reshape(unique(reefs), 1, length(unique(reefs)))
+	max_iters = length(loc_ordered_ids)
 
-    num_locs = n_iv_locs  # No. of locations to consider
-
+	local pref_locs::Vector{Int64}
+	local num_locs::Int64
     for loc in 1:length(loc_order)
         # If enough space for seeding corals, keep n_site_int, else expand as needed
         num_locs = max(findfirst(>=(area_to_seed), cumsum(available_space[loc_order])), n_iv_locs) 
@@ -764,11 +763,8 @@ function constrain_reef_cluster(
         pref_locs = loc_order[1:num_locs]
         pref_reefs = reefs[pref_locs]  # Reefs that selected locations sit within
 
-        # Number of times a selected location appears within each reef
-        sum_pref_locs = dropdims(
-            sum(pref_reefs .== reshape(unique_reefs, 1, length(unique_reefs)); dims=1);
-            dims=1,
-        )
+		# Number of times a reef appears within each location
+		reef_occurances = vec(sum(pref_reefs .== unique_reefs; dims = 1))
 
         # If more than n_reefs locations in a reef, swap out the worst locations
         reefs_swap = unique_reefs[(sum_pref_locs .> n_reefs)]
