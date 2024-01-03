@@ -762,8 +762,14 @@ function constrain_reef_cluster(
 		# If enough space for seeding corals, keep n_site_int, else expand as needed
 		num_locs = max(findfirst(>=(area_to_seed), cumsum(available_space[loc_ordered_ids])), n_iv_locs)
 
-		# If the number of locations to select is larger than the minimum, don't use spatial 
 		pref_locs = loc_ordered_ids[1:num_locs]
+
+		# If the number of locations to select is larger than the minimum, don't use spatial 
+		# clusters to constrain the selection
+		if num_locs .!= n_iv_locs
+			break
+		end
+
 		pref_reefs = reefs[pref_locs]  # Reefs that selected locations sit within
 
 		# Number of times a reef appears within each location
