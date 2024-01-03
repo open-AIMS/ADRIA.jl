@@ -3,7 +3,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     # Bounds are defined as floats to maintain type stability
     guided::DU = Factor(
         0;
-        ptype="ordered categorical",
+        ptype="unordered categorical",
         dist=DiscreteUniform,
         dist_params=(-1.0, Float64(length(decision.mcda_methods()))),
         name="Guided",
@@ -11,7 +11,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     N_seed_TA::DU = Factor(
         0;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 1000000.0),
         name="Seeded Tabular Acropora",
@@ -19,7 +19,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     N_seed_CA::DU = Factor(
         0;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 1000000.0),
         name="Seeded Corymbose Acropora",
@@ -27,7 +27,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     N_seed_SM::DU = Factor(
         0;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 1000000.0),
         name="Seeded Small Massives",
@@ -59,7 +59,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     seed_years::DT = Factor(
         10;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteTriangularDist,
         dist_params=(5.0, 74.0, 5.0),
         name="Years to Seed",
@@ -67,7 +67,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     shade_years::DT = Factor(
         10;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteTriangularDist,
         dist_params=(5.0, 74.0, 5.0),
         name="Years to Shade",
@@ -75,7 +75,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     fog_years::DT = Factor(
         10;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteTriangularDist,
         dist_params=(5.0, 74.0, 5.0),
         name="Years to fog",
@@ -83,7 +83,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     plan_horizon::DU = Factor(
         5;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 40.0),
         name="Planning Horizon",
@@ -91,7 +91,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     seed_freq::DU = Factor(
         5;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
         name="Seeding Frequency",
@@ -99,7 +99,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     shade_freq::DU = Factor(
         1;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
         name="Shading Frequency",
@@ -107,7 +107,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     fog_freq::DU = Factor(
         1;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
         name="Fogging Frequency",
@@ -115,7 +115,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     seed_year_start::DU = Factor(
         2;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 25.0),
         name="Seeding Start Year",
@@ -123,7 +123,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     shade_year_start::DU = Factor(
         2;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(2.0, 25.0),
         name="Shading Start Year",
@@ -131,7 +131,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     fog_year_start::DU = Factor(
         2;
-        ptype="unordered categorical",
+        ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(2.0, 25.0),
         name="Fogging Start Year",
