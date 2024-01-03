@@ -746,7 +746,7 @@ function constrain_reef_cluster(
     area_to_seed::Float64,
     available_space::Vector{Float64},
     n_iv_locs::Int64,
-    n_reefs::Int64,
+	max_members::Int64
 )::Tuple{Vector{Int64},Matrix{Int64}}
     # Get full ordering of locations
 	loc_ordered_ids = s_order[:, 1]
@@ -767,8 +767,19 @@ function constrain_reef_cluster(
 		# Number of times a reef appears within each location
 		reef_occurances = vec(sum(pref_reefs .== unique_reefs; dims = 1))
 
-        # If more than n_reefs locations in a reef, swap out the worst locations
-        reefs_swap = unique_reefs[(sum_pref_locs .> n_reefs)]
+		# If more than n_reefs locations in a reef, swap out the worst locations
+		reefs_swap = unique_reefs[(reef_occurances .> max_members)]
+		replace_start = (max_members + 1)  # starting id for locations to replace
+
+		# Find locations in reefs which need replacement, and find the ids of lowest 
+		# ranked locations in this set
+		locs_to_replace = vcat([
+			pref_locs[pref_reefs .== reef][replace_start:end] for reef in reefs_swap
+		]...)
+
+		# Acceptable reefs to switch out for
+		reef_switch_ids = unique_reefs[(reef_occurances .+ 1) .<= max_members]
+
 		# Remove locations to be replaced from preferred locations
 		pref_locs = setdiff(pref_locs, locs_to_replace)
 
