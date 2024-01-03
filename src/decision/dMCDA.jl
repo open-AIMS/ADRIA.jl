@@ -811,7 +811,7 @@ function constrain_reef_cluster(
 
 		# New preferred location set
 		locs_to_add_inds = add_locs_ind[1:length(locs_to_replace)]
-		pref_locs = [pref_locs... alternate_loc_ids[locs_to_add_inds]...]
+		pref_locs = [pref_locs...; alternate_loc_ids[locs_to_add_inds]...]
 
 		# Rearrange ranked location list into new preferred order
 		loc_ordered_ids = setdiff(loc_ordered_ids, pref_locs)
