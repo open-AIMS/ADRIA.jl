@@ -9,11 +9,23 @@ if !@isdefined(ADRIA_DIR)
 end
 
 function test_site_ranks(
-    weights_set, A, rankings, criteria_names, n_site_int, mcda_func, inv
+	weights_set::Vector{Vector{Float64}},
+	A::Matrix{Float64},
+	rankings::Matrix{Int64},
+	n_site_int::Int64,
+	mcda_func::Function,
+	inv::Float64,
 )
     S = ADRIA.decision.mcda_normalize(A)
     S[:, 1] .= A[:, 1]
-    site_ids = A[:, 1]
+	criteria_names = [
+		"heat stress",
+		"wave stress",
+		"median depth",
+		"coral cover space",
+		"in connectivity",
+		"out connectivity",
+	]
     for weights in weights_set
         crit_inds = findall(weights .> 0.0)
         criteria = vec(
@@ -79,14 +91,7 @@ function get_test_decision_matrix(dom)
 
     A = hcat(site_ids, heat_stress, wave_stress, depth_med, space_area, in_conn, out_conn)
 
-    criteria_names = [
-        "heat stress",
-        "wave stress",
-        "median depth",
-        "coral cover space",
-        "in connectivity",
-        "out connectivity",
-    ]
+	return A
     return A, criteria_names
 end
 
@@ -158,7 +163,7 @@ end
 @testset "Guided site selection without ADRIA ecological model" begin
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
     site_ids = collect(1:length(dom.site_data.site_id))
-    A, criteria_names = get_test_decision_matrix(dom)
+	A = get_test_decision_matrix(dom)
     n_sites = length(site_ids)
     n_site_int = 5
 
@@ -212,7 +217,7 @@ end
     mcda_funcs = ADRIA.decision.mcda_methods()
 
     dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
-    A, criteria_names = get_test_decision_matrix(dom)
+	A = get_test_decision_matrix(dom)
 
     site_ids = dom.site_data.site_id
     n_sites = length(site_ids)
