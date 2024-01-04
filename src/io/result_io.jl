@@ -482,6 +482,7 @@ function load_results(result_loc::String)::ResultSet
 
     dhw_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "dhw"))
     wave_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "wave"))
+	conn_set = _recreate_conn_from_store(joinpath(result_loc, "connectivity"))
 
     result_loc = replace(result_loc, "\\" => "/")
     if endswith(result_loc, "/")
@@ -568,7 +569,18 @@ function load_results(result_loc::String)::ResultSet
         end
     end
 
-    return ResultSet(input_set, env_layer_md, inputs_used, outcomes, log_set, dhw_stat_set, wave_stat_set, site_data, model_spec)
+	return ResultSet(
+		input_set,
+		env_layer_md,
+		inputs_used,
+		outcomes,
+		log_set,
+		dhw_stat_set,
+		wave_stat_set,
+		conn_set,
+		site_data,
+		model_spec,
+	)
 end
 function load_results(domain::Domain)::ResultSet
     return load_results(result_location(domain))
