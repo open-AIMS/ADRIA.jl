@@ -86,6 +86,28 @@ function store_env_summary(data_cube::NamedDimsArray, type::String, file_loc::St
     return stats_store
 end
 
+function store_conn(
+	conn_data::NamedDimsArray,
+	file_loc::String,
+	rcp::String,
+	compressor::Zarr.Compressor
+)::ZArray
+	conn_store = zcreate(
+		Float32,
+		size(conn_data)...;
+		fill_value = nothing, fill_as_missing = false,
+		path = joinpath(file_loc, rcp),
+		attrs = Dict(
+			:structure => ("Source", "Receiving"),
+			:Source => conn_data.Source,
+			:Receiving => conn_data.Receiving,
+			:rcp => rcp),
+		compressor = compressor)
+
+	conn_store[:, :] .= Matrix(conn_data)
+	return conn_store
+end
+
 """
     scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k)
     scenario_attributes(domain::Domain, param_df::DataFrame)
