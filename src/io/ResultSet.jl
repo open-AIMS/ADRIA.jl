@@ -14,69 +14,76 @@ const SITE_DATA = "site_data"
 const ENV_STATS = "env_stats"
 const MODEL_SPEC = "model_spec"
 
+struct ResultSet{T1, T2, A, B, C, D, G, D1, D2, D3, DF}
+	name::String
+	RCP::String
+	invoke_time::String
+	ADRIA_VERSION::String
 
-struct ResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF}
-    name::String
-    RCP::String
-    invoke_time::String
-    ADRIA_VERSION::String
+	site_ids::T1
+	site_area::Vector{Float64}
+	site_max_coral_cover::Vector{Float64}
+	site_centroids::T2
+	env_layer_md::EnvLayer
+	dhw_stats::D
+	wave_stats::D
+	connectivity_data::D
+	site_data::G
 
-    site_ids::T1
-    site_area::Vector{Float64}
-    site_max_coral_cover::Vector{Float64}
-    site_centroids::T2
-    env_layer_md::EnvLayer
-    dhw_stats::D
-    wave_stats::D
-    site_data::G
+	inputs::G
+	sim_constants::D1
+	model_spec::DF
 
-    inputs::G
-    sim_constants::D1
-    model_spec::DF
-
-    # raw::AbstractArray
-    outcomes::D2
-    ranks::A
-    seed_log::B  # Values stored in m^2
-    fog_log::C   # Reduction in bleaching mortality (0.0 - 1.0)
-    shade_log::C # Reduction in bleaching mortality (0.0 - 1.0)
-    coral_dhw_tol_log::D3
+	# raw::AbstractArray
+	outcomes::D2
+	ranks::A
+	seed_log::B  # Values stored in m^2
+	fog_log::C   # Reduction in bleaching mortality (0.0 - 1.0)
+	shade_log::C # Reduction in bleaching mortality (0.0 - 1.0)
+	coral_dhw_tol_log::D3
 end
 
-
 function ResultSet(
-    input_set::AbstractArray,
-    env_layer_md::EnvLayer,
-    inputs_used::DataFrame,
-    outcomes::Dict,
-    log_set::Zarr.ZGroup,
-    dhw_stats_set::Dict,
-    wave_stats_set::Dict,
-    site_data::DataFrame,
-    model_spec::DataFrame
+	input_set::AbstractArray,
+	env_layer_md::EnvLayer,
+	inputs_used::DataFrame,
+	outcomes::Dict,
+	log_set::Zarr.ZGroup,
+	dhw_stats_set::Dict,
+	wave_stats_set::Dict,
+	conn_data::Dict,
+	site_data::DataFrame,
+	model_spec::DataFrame,
 )::ResultSet
-    rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
-    ResultSet(input_set.attrs["name"],
-        string(rcp),
-        input_set.attrs["invoke_time"],
-        input_set.attrs["ADRIA_VERSION"],
-        input_set.attrs["site_ids"],
-        convert.(Float64, input_set.attrs["site_area"]),
-        convert.(Float64, input_set.attrs["site_max_coral_cover"]),
-        input_set.attrs["site_centroids"],
-        env_layer_md,
-        dhw_stats_set,
-        wave_stats_set,
-        site_data,
-        inputs_used,
-        input_set.attrs["sim_constants"],
-        model_spec,
-        outcomes,
-        NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))}(log_set["coral_dhw_log"]))
+	rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
+	return ResultSet(input_set.attrs["name"],
+		string(rcp),
+		input_set.attrs["invoke_time"],
+		input_set.attrs["ADRIA_VERSION"],
+		input_set.attrs["site_ids"],
+		convert.(Float64, input_set.attrs["site_area"]),
+		convert.(Float64, input_set.attrs["site_max_coral_cover"]),
+		input_set.attrs["site_centroids"],
+		env_layer_md,
+		dhw_stats_set,
+		wave_stats_set,
+		conn_data,
+		site_data,
+		inputs_used,
+		input_set.attrs["sim_constants"],
+		model_spec,
+		outcomes,
+		NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(
+			log_set["rankings"]
+		),
+		NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
+		NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
+		NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(
+			log_set["shade"]
+		),
+		NamedDimsArray{Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))}(
+			log_set["coral_dhw_log"]
+		))
 end
 
 
