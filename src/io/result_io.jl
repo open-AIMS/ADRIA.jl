@@ -91,6 +91,28 @@ function store_env_summary(
     return stats_store
 end
 
+function store_conn(
+	conn_data::NamedDimsArray,
+	file_loc::String,
+	rcp::String,
+	compressor::Zarr.Compressor
+)::ZArray
+	conn_store = zcreate(
+		Float32,
+		size(conn_data)...;
+		fill_value = nothing, fill_as_missing = false,
+		path = joinpath(file_loc, rcp),
+		attrs = Dict(
+			:structure => ("Source", "Receiving"),
+			:Source => conn_data.Source,
+			:Receiving => conn_data.Receiving,
+			:rcp => rcp),
+		compressor = compressor)
+
+	conn_store[:, :] .= Matrix(conn_data)
+	return conn_store
+end
+
 """
     store_conn(conn_data::NamedDimsArray, file_loc::String, rcp::String, 
         compressor::Zarr.Compressor)::ZArray
