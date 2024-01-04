@@ -431,6 +431,33 @@ function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,Abstra
 end
 
 """
+	_recreate_conn_from_store(zarr_store_path::String)::Dict{String, AbstractArray}
+
+Recreate data structure holding connectivity for each RCP from Zarr store.
+"""
+function _recreate_conn_from_store(zarr_store_path::String)::Dict{String, AbstractArray}
+	rcp_dirs = filter(d -> isdir(joinpath(zarr_store_path, d)), readdir(zarr_store_path))
+	rcp_stat_dirs = joinpath.(zarr_store_path, rcp_dirs)
+
+	conn_d = Dict{String, AbstractArray}()
+	for (i, sd) in enumerate(rcp_stat_dirs)
+		store = zopen(sd; fill_as_missing = false)
+
+		dim_names = Symbol.(store.attrs["structure"])
+		source_ids = string.(store.attrs["Source"])
+		recieving_ids = string.(store.attrs["Receiving"])
+		conn_set = NamedDimsArray(
+			store[:, :];
+			zip(dim_names, [source_ids, recieving_ids])...
+		)
+
+		conn_d[rcp_dirs[i]] = conn_set
+	end
+
+	return conn_d
+end
+
+"""
     load_results(result_loc::String)::ResultSet
     load_results(domain::Domain)::ResultSet
 
