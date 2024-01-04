@@ -353,21 +353,53 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     # dhw and wave zarrays
     dhw_stats = []
     wave_stats = []
+	connectivity = []
     dhw_stat_names = []
     wave_stat_names = []
+	conn_names = []
     for rcp in rcps
         push!(dhw_stats, store_env_summary(domain.dhw_scens, "dhw_scenario", joinpath(z_store.folder, ENV_STATS, "dhw"), rcp, COMPRESSOR))
         push!(wave_stats, store_env_summary(domain.wave_scens, "wave_scenario", joinpath(z_store.folder, ENV_STATS, "wave"), rcp, COMPRESSOR))
+		push!(
+			connectivity,
+			store_conn(
+				domain.TP_data,
+				joinpath(z_store.folder, "connectivity"),
+				rcp,
+				COMPRESSOR
+			),
 
         push!(dhw_stat_names, Symbol("dhw_stat_$rcp"))
         push!(wave_stat_names, Symbol("wave_stat_$rcp"))
+		push!(conn_names, Symbol("connectivity_$rcp"))
     end
     stat_store_names = vcat(dhw_stat_names, wave_stat_names)
 
-    # Group all data stores
-    stores = [stores..., dhw_stats..., wave_stats..., setup_logs(z_store, unique_sites(domain), nrow(scen_spec), tf, n_sites)...]
+	# Group all data stores
+	stores = [
+		stores...,
+		dhw_stats...,
+		wave_stats...,
+		connectivity...,
+		setup_logs(z_store, unique_sites(domain), nrow(scen_spec), tf, n_sites)...,
+	]
 
-    return domain, (; zip((met_names..., stat_store_names..., :site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log), stores)...)
+	return domain,
+	(;
+		zip(
+			(
+				met_names...,
+				stat_store_names...,
+				conn_names...,
+				:site_ranks,
+				:seed_log,
+				:fog_log,
+				:shade_log,
+				:coral_dhw_log,
+			),
+			stores,
+		)...
+	)
 end
 
 """
