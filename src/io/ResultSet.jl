@@ -29,17 +29,13 @@ struct ResultSet{T1, T2, A, B, C, D, G, D1, D2, D3, DF}
     connectivity_data::D
     site_data::G
 
-    inputs::G
-    sim_constants::D1
-    model_spec::DF
-
-    # raw::AbstractArray
-    outcomes::D2
-    ranks::A
-    seed_log::B  # Values stored in m^2
-    fog_log::C   # Reduction in bleaching mortality (0.0 - 1.0)
-    shade_log::C # Reduction in bleaching mortality (0.0 - 1.0)
-    coral_dhw_tol_log::D3
+	# raw::AbstractArray
+	outcomes::D2
+	ranks::A
+	seed_log::B  # Values stored in m^2
+	fog_log::C   # Reduction in bleaching mortality (0.0 - 1.0)
+	shade_log::C # Reduction in bleaching mortality (0.0 - 1.0)
+	coral_dhw_tol_log::D3
 end
 
 function ResultSet(
