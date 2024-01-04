@@ -57,11 +57,12 @@ Produce summary statistics (mean/std) for given data cube saved to a Zarr data s
 - `file_loc` : path for Zarr data store
 
 # Returns
-Zarr data store holding a 2*N matrix.
+Zarr data store holding a 2*N*M matrix.
 
 First row is mean over time
 Second row is the std over time
 N is the number of dhw/wave scenarios.
+M is the number of locations.
 """
 function store_env_summary(
 	data_cube::NamedDimsArray,
@@ -90,6 +91,22 @@ function store_env_summary(
 	return stats_store
 end
 
+"""
+	store_conn(conn_data::NamedDimsArray, file_loc::String, rcp::String, 
+		compressor::Zarr.Compressor)::ZArray
+
+Retrieve connectivity matrices from Domain for storage.
+Produce connectivity for a particular RCP saved to a Zarr data store.
+
+# Arguments
+- `conn_data` : connectivity data (e.g. `domain.TP_data`)
+- `file_loc` : path for Zarr data store
+- `rcp`: RCP associated with connectivity data.
+
+# Returns
+Zarr data store holding a M*M matrix.
+M is the number of locations.
+"""
 function store_conn(
 	conn_data::NamedDimsArray,
 	file_loc::String,
