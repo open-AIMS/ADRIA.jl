@@ -134,7 +134,7 @@ Base.@kwdef struct CriteriaWeights{U1,U2,U3,DU,DO} <: EcoModel
         name="Risk Tolerance",
         description="Filters out sites with heat/wave stress above threshold.",
     )
-    depth_min::DO = Param(
+    depth_min::DO = Factor(
         5.0;
         ptype="ordered categorical",
         dist=DiscreteOrderedUniformDist,
