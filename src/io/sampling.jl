@@ -144,14 +144,14 @@ function sample(dom::Domain, n::Int, component::Type, sampler=SobolSample(R=Owen
 end
 
 """
-    sample(spec::DataFrame, n::Int, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+    sample(spec::DataFrame, n::Int, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
 Create samples and rescale to distribution defined in the model spec.
 
 # Arguments
 - `spec` : DataFrame containing model parameter specifications.
 - `n` : number of samples to generate.
-- `sampler` : type of sampler to use.
+- `sample_method` : type of sampler to use.
 
 # Returns
 Scenario specification
@@ -161,7 +161,7 @@ function sample(
     n::Int64,
     sample_method=SobolSample(R=OwenScramble(base=2, pad=32))
 )::DataFrame
-    if contains(string(sampler), "SobolSample")
+    if contains(string(sample_method), "SobolSample")
         if !ispow2(n)
             throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
         end
@@ -365,9 +365,9 @@ function fix_factor!(d::Domain, factor::Symbol)::Nothing
     params = DataFrame(d.model)
     default_val = params[params.fieldname .== factor, :val][1]
 
-    bnds = params[params.fieldname .== factor, :dist_params][1]
-    new_bnds = Tuple(fill(default_val, length(bnds)))
-    params[params.fieldname .== factor, :dist_params] .= [new_bnds]
+    dist_params = params[params.fieldname .== factor, :dist_params][1]
+    new_params = Tuple(fill(default_val, length(dist_params)))
+    params[params.fieldname .== factor, :dist_params] .= [new_params]
 
     update!(d, params)
     return nothing
@@ -401,6 +401,7 @@ end
 
 """
     get_bounds(dom::Domain, factor::Symbol)::Tuple
+    get_bounds(param::Param)::Tuple
 
 Get factor lower and upper bounds. If the factor has a triangular distribution, it returns
 a 2-element tuple (without the peak value). Note that, for discrete factors, the actual
@@ -409,6 +410,10 @@ upper bound corresponds to the upper bound saved at the Domain's model_spec minu
 # Arguments
 - `dom` : Domain
 - `factor` : Name of the factor to get the bounds from
+- `param` : Parameter
+
+# Returns
+Minimum and maximum bounds associated with the parameter distribution.
 """
 function get_bounds(dom::Domain, factor::Symbol)::Tuple
     model::Model = dom.model
@@ -418,18 +423,6 @@ function get_bounds(dom::Domain, factor::Symbol)::Tuple
     _is_discrete_factor(dom, factor) && return (bounds[1], bounds[2] - 1.0)
     return bounds
 end
-
-"""
-    get_bounds(param::Param)::Tuple
-
- Get factor lower and upper bounds of the Parameter distribution.
-
-# Arguments
-- `param` : Parameter
-
-# Returns
-Minimum and maximum bounds associated with the parameter distribution.
-"""
 function get_bounds(param::Param)::Tuple
     return param.dist_params[1:2]
 end
