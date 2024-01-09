@@ -99,7 +99,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
 end
 
 """
-    sample(dom::Domain, n::Int, sampler=SobolSample(R=OwenScramble(base=2, pad=32))::DataFrame
+    sample(dom::Domain, n::Int, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
 Create samples and rescale to distribution defined in the model spec.
 
