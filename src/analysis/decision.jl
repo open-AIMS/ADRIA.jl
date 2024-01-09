@@ -2,10 +2,9 @@ using ADRIA.decision
 using ADRIA: relative_leftover_space, connectivity_strength
 
 """
-	decision_matrices(rs::ResultSet, criteria_weights::DataFrameRow;
-		loc_coral_cover = rs.site_max_coral_cover::Vector{Float64},
-		area_to_seed::Float64 = 962.11)
-		
+    decision_matrices(rs::ResultSet, criteria_weights::DataFrameRow;
+        loc_coral_cover = rs.site_max_coral_cover::Vector{Float64})
+
 Calculates a decision matrix for a specified intervention, using a scenario specification 
 	and Domain alone. These can be visualised spatially using `viz.decision_matrices`.
 
@@ -14,18 +13,16 @@ Calculates a decision matrix for a specified intervention, using a scenario spec
 - `criteria_weights` :  A row of a scenario dataframe, containing intervention criteria weights.
 - `int_type` : Intervention type (e.g. :seed or :fog)
 - `loc_coral_cover` : Relative coral cover to site k area (dims: nspecies*nsites), default 
-	is max cover over scenarios in rs.
-- `area_to_seed` : Area of corals seeded in the scenario considered
+is max cover over scenarios in rs.
 
 # Returns
 Selection score
 """
 function decision_matrices(
-	rs::ResultSet,
-	criteria_weights::DataFrameRow;
-	loc_coral_cover = rs.site_max_coral_cover::Vector{Float64},
-	area_to_seed::Float64 = 962.11,
-	RCP::String = "45",
+    rs::ResultSet,
+    criteria_weights::DataFrameRow;
+    loc_coral_cover = rs.site_max_coral_cover::Vector{Float64},
+    RCP::String = "45",
 )
 	site_ids = collect(1:length(rs.site_data.site_id))
 	leftover_space = relative_leftover_space(loc_coral_cover) .* site_k_area(rs)
