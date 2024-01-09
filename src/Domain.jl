@@ -75,10 +75,13 @@ function model_spec(d::Domain, filepath::String)::Nothing
 end
 function model_spec(m::Model)::DataFrame
     spec = DataFrame(m)
-    bnds = spec[!, :dist_params]
+    dist_params = spec[!, :dist_params]
 
     DataFrames.hcat!(
-        spec, DataFrame(:lower_bound => first.(bnds), :upper_bound => getindex.(bnds, 2))
+        spec, DataFrame(
+            :lower_bound => first.(dist_params),
+            :upper_bound => getindex.(dist_params, 2)
+        )
     )
 
     spec[!, :component] .= replace.(string.(spec[!, :component]), "ADRIA." => "")

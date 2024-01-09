@@ -326,11 +326,11 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
     cols = Symbol[fn for fn in intervs.fieldname if fn != :guided]
     for c in cols
         _row = to_update.fieldname .== c
-        _bnds = length(to_update[_row, :dist_params][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
+        _dparams = length(to_update[_row, :dist_params][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
 
         dval = _is_discrete_factor(to_update[_row, :ptype][1]) ? 0 : 0.0
         to_update[_row, [:val, :lower_bound, :upper_bound, :dist_params, :is_constant]] .=
-            [dval 0.0 0.0 _bnds true]
+            [dval 0.0 0.0 _dparams true]
     end
 
     return nothing
@@ -374,9 +374,9 @@ function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     params = DataFrame(d.model)
     params[params.fieldname .== factor, :val] .= val
 
-    bnds = params[params.fieldname .== factor, :dist_params][1]
-    new_bnds = Tuple(fill(val, length(bnds)))
-    params[params.fieldname .== factor, :dist_params] .= [new_bnds]
+    dist_params = params[params.fieldname .== factor, :dist_params][1]
+    new_dist_params = Tuple(fill(val, length(dist_params)))
+    params[params.fieldname .== factor, :dist_params] .= [new_dist_params]
 
     update!(d, params)
     return nothing
