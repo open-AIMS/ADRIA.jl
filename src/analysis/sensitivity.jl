@@ -20,9 +20,8 @@ using FLoops
 using ADRIA: ResultSet, model_spec
 using ADRIA.analysis: col_normalize
 
-
 """
-    ks_statistic(ks)
+ks_statistic(ks)
 
 Calculate the Kolmogorov-Smirnov test statistic.
 """
@@ -33,7 +32,7 @@ function ks_statistic(ks::ApproximateKSTest)::Float64
 end
 
 """
-    _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
+_get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
 
 Get model spec for specified factors.
 
@@ -48,7 +47,7 @@ function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
 end
 
 """
-    _category_bins(S::Int64, foi_spec::DataFrame)
+_category_bins(S::Int64, foi_spec::DataFrame)
 
 Get number of bins for categorical variables.
 
@@ -62,7 +61,7 @@ function _category_bins(S::Int64, foi_spec::DataFrame)
 end
 
 """
-    _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})
+_get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})
 
 Get quantile value for a given categorical variable.
 
@@ -71,7 +70,9 @@ Get quantile value for a given categorical variable.
 - `factor_name` : Contains true where the factor is categorical and false otherwise
 - `steps` : Number of steps for defining bins
 """
-function _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})::Vector{Float64}
+function _get_cat_quantile(
+    foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64}
+)::Vector{Float64}
     fact_idx::BitVector = foi_spec.fieldname .== factor_name
     lb = foi_spec.lower_bound[fact_idx][1]
     ub = foi_spec.upper_bound[fact_idx][1]
@@ -81,11 +82,11 @@ function _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vect
 end
 
 """
-    pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
-    pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
-    pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
-    pawn(X::NamedDimsArray, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
-    pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
+pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
+pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
+pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
+pawn(X::NamedDimsArray, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
+pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
 
 Calculates the PAWN sensitivity index.
 
@@ -157,7 +158,7 @@ function pawn(
     X::AbstractMatrix{<:Real},
     y::AbstractVector{<:Real},
     factor_names::Vector{String};
-    S::Int64=10
+    S::Int64 = 10,
 )::NamedDimsArray
     N, D = size(X)
     step = 1 / S
@@ -175,13 +176,13 @@ function pawn(
             X_di = @view(X[:, d_i])
             X_q .= quantile(X_di, seq)
 
-            Y_sel = @view(y[X_q[1].<=X_di.<=X_q[2]])
+            Y_sel = @view(y[X_q[1] .<= X_di .<= X_q[2]])
             if length(Y_sel) > 0
                 pawn_t[1, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, y))
             end
 
             for s in 2:S
-                Y_sel = @view(y[X_q[s].<X_di.<=X_q[s+1]])
+                Y_sel = @view(y[X_q[s] .< X_di .<= X_q[s + 1]])
                 if length(Y_sel) == 0
                     continue  # no available samples
                 end
@@ -210,47 +211,47 @@ function pawn(
     replace!(results, NaN => 0.0, Inf => 0.0)
 
     col_names = [:min, :lb, :mean, :median, :ub, :max, :std, :cv]
-    return NamedDimsArray(results; factors=Symbol.(factor_names), Si=col_names)
+    return NamedDimsArray(results; factors = Symbol.(factor_names), Si = col_names)
 end
-function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
-    return pawn(Matrix(X), y, names(X); S=S)
+function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64 = 10)::NamedDimsArray
+    return pawn(Matrix(X), y, names(X); S = S)
 end
 function pawn(
     X::NamedDimsArray,
-    y::Union{NamedDimsArray,AbstractVector{<:Real}};
-    S::Int64=10
+    y::Union{NamedDimsArray, AbstractVector{<:Real}};
+    S::Int64 = 10
 )::NamedDimsArray
-    return pawn(X, y, axiskeys(X, 2); S=S)
+    return pawn(X, y, axiskeys(X, 2); S = S)
 end
 function pawn(
-    X::Union{DataFrame,NamedDimsArray},
+    X::Union{DataFrame, NamedDimsArray},
     y::AbstractMatrix{<:Real};
-    S::Int64=10
+    S::Int64 = 10
 )::NamedDimsArray
     N, D = size(y)
     if N > 1 && D > 1
         msg::String = string(
             "The current implementation of PAWN can only assess a single quantity",
-            " of interest at a time."
+            " of interest at a time.",
         )
         throw(ArgumentError(msg))
     end
 
     # The wrapped call to `vec()` handles cases where matrix-like data type is passed in
     # (N x 1 or 1 x D) and so ensures a vector is passed along
-    return pawn(X, vec(y); S=S)
+    return pawn(X, vec(y); S = S)
 end
 function pawn(
     rs::ResultSet,
-    y::Union{NamedDimsArray,AbstractVector{<:Real}};
-    S::Int64=10
+    y::Union{NamedDimsArray, AbstractVector{<:Real}};
+    S::Int64 = 10
 )::NamedDimsArray
-    return pawn(rs.inputs, y; S=S)
+    return pawn(rs.inputs, y; S = S)
 end
 
 """
-    convergence(X::DataFrame, y::NamedDimsArray, target_factors::Vector{Symbol}; n_steps::Int64=10)::NamedDimsArray
-    convergence(rs::ResultSet, X::DataFrame, y::NamedDimsArray, components::Vector{String}; n_steps::Int64=10)::NamedDimsArray
+convergence(X::DataFrame, y::NamedDimsArray, target_factors::Vector{Symbol}; n_steps::Int64=10)::NamedDimsArray
+convergence(rs::ResultSet, X::DataFrame, y::NamedDimsArray, components::Vector{String}; n_steps::Int64=10)::NamedDimsArray
 
 Calculates the PAWN sensitivity index for an increasing number of scenarios where the
 maximum is the total number of scenarios in scens. Number of scenario subsets determined by
@@ -273,8 +274,8 @@ function convergence(
     X::DataFrame,
     y::NamedDimsArray,
     target_factors::Vector{Symbol};
-    Si::Function=pawn,
-    n_steps::Int64=10,
+    Si::Function = pawn,
+    n_steps::Int64 = 10,
 )::NamedDimsArray
     N = length(y.scenarios)
     step_size = floor(Int64, N / n_steps)
@@ -282,15 +283,17 @@ function convergence(
 
     pawn_store = NamedDimsArray(
         zeros(length(target_factors), 8, length(N_it));
-        factors=target_factors,
-        Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
-        n_scenarios=N_it,
+        factors = target_factors,
+        Si = [:min, :lb, :mean, :median, :ub, :max, :std, :cv],
+        n_scenarios = N_it,
     )
     scens_idx = randperm(N)
 
     for nn in N_it
-        pawn_store(; n_scenarios=nn) .= Si(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]]))(;
-            factors=target_factors
+        pawn_store(; n_scenarios = nn) .= Si(
+            X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])
+        )(;
+            factors = target_factors
         )
     end
 
@@ -301,8 +304,8 @@ function convergence(
     X::DataFrame,
     y::NamedDimsArray,
     components::Vector{Symbol};
-    Si::Function=pawn,
-    n_steps::Int64=10,
+    Si::Function = pawn,
+    n_steps::Int64 = 10,
 )::NamedDimsArray
     ms = model_spec(rs)
 
@@ -311,20 +314,20 @@ function convergence(
         cc in string.(components)
     ]
 
-    Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); Si=Si, n_steps=n_steps)
+    Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); Si = Si, n_steps = n_steps)
 
     # Note: n_steps only applies if it is > number of scenarios.
     Si_grouped = NamedDimsArray(
         zeros(length(components), 8, size(Si_n, 3));
-        factors=components,
-        Si=Si_n.Si,
-        n_scenarios=Si_n.n_scenarios,
+        factors = components,
+        Si = Si_n.Si,
+        n_scenarios = Si_n.n_scenarios,
     )
 
     for (cc, factors) in zip(components, target_factors)
-        Si_grouped(factors=cc) .= dropdims(
-            mean(Si_n(; factors=Symbol.(factors)); dims=:factors);
-            dims=:factors,
+        Si_grouped(; factors = cc) .= dropdims(
+            mean(Si_n(; factors = Symbol.(factors)); dims = :factors);
+            dims = :factors
         )
     end
 
@@ -332,7 +335,7 @@ function convergence(
 end
 
 """
-    tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
+tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
 
 Perform Temporal (or time-varying) Sensitivity Analysis using the PAWN sensitivity index.
 
@@ -374,14 +377,14 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
 
     t_pawn_idx = NamedDimsArray(
         zeros(ncol(X), 8, size(y, 1));
-        factors=Symbol.(names(X)),
-        Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
-        timesteps=ts
+        factors = Symbol.(names(X)),
+        Si = [:min, :lb, :mean, :median, :ub, :max, :std, :cv],
+        timesteps = ts,
     )
 
     for t in axes(y, 1)
         t_pawn_idx[:, :, t] .= col_normalize(
-            pawn(X, vec(mean(y[1:t, :], dims=1)))
+            pawn(X, vec(mean(y[1:t, :]; dims = 1)))
         )
     end
 
@@ -392,9 +395,9 @@ function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
 end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}, model_spec::DataFrame; S::Int64=10)::NamedDimsArray
-    rsa(rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64=10)::NamedDimsArray
-    rsa(rs::ResultSet, y::AbstractArray{<:Real}; S::Int64=10)::NamedDimsArray
+rsa(X::DataFrame, y::Vector{<:Real}, model_spec::DataFrame; S::Int64=10)::NamedDimsArray
+rsa(rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64=10)::NamedDimsArray
+rsa(rs::ResultSet, y::AbstractArray{<:Real}; S::Int64=10)::NamedDimsArray
 
 Perform Regional Sensitivity Analysis.
 
@@ -452,7 +455,7 @@ ADRIA.sensitivity.rsa(X, y; S=10)
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
 function rsa(
-    X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64=10
+    X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64 = 10
 )::NamedDimsArray
     N, D = size(X)
 
@@ -471,7 +474,7 @@ function rsa(
     end
 
     X_q = zeros(S + 1)
-    r_s = zeros(Union{Missing,Float64}, S, D)
+    r_s = zeros(Union{Missing, Float64}, S, D)
     seq = collect(0.0:(1 / S):1.0)
     seq_store = seq
 
@@ -501,7 +504,7 @@ function rsa(
         end
 
         for s in 2:S
-            sel .= X_q[s] .< X_di .<= X_q[s+1]
+            sel .= X_q[s] .< X_di .<= X_q[s + 1]
             if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
                 # not enough samples, or inactive area of factor space
                 r_s[s, d_i] = missing
@@ -515,28 +518,27 @@ function rsa(
     end
 
     return col_normalize(
-        NamedDimsArray(r_s; bins=string.(seq_store[2:end]), factors=Symbol.(names(X))),
+        NamedDimsArray(r_s; bins = string.(seq_store[2:end]), factors = Symbol.(names(X)))
     )
 end
 function rsa(
-    rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
+    rs::ResultSet, y::AbstractVector{<:Real}; S::Int64 = 10
 )::NamedDimsArray
-    return rsa(rs.inputs[!, Not(:RCP)], y, rs.model_spec; S=S)
+    return rsa(rs.inputs[!, Not(:RCP)], y, rs.model_spec; S = S)
 end
 function rsa(
-    rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64=10
+    rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64 = 10
 )::NamedDimsArray
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
         y,
         rs.model_spec[rs.model_spec.fieldname .∈ [factors], :];
-        S=S
+        S = S,
     )
 end
 
-
 """
-    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedDimsArray
+outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedDimsArray
 
 Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
 
@@ -582,12 +584,12 @@ ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 function outcome_map(
     X::DataFrame,
     y::AbstractVecOrMat{<:Real},
-    rule::Union{Function,BitVector,Vector{Int64}},
+    rule::Union{Function, BitVector, Vector{Int64}},
     target_factors::Vector{Symbol},
     model_spec::DataFrame;
-    S::Int64=10,
-    n_boot::Int64=100,
-    conf::Float64=0.95
+    S::Int64 = 10,
+    n_boot::Int64 = 100,
+    conf::Float64 = 0.95,
 )::NamedDimsArray
     if !all(target_factors .∈ [model_spec.fieldname])
         missing_factor = .!(target_factors .∈ [model_spec.fieldname])
@@ -606,10 +608,10 @@ function outcome_map(
     steps = collect(0.0:(1 / S):1.0)
 
     p_table = NamedDimsArray(
-        zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
-        bins=string.(steps[2:end]),
-        factors=Symbol.(target_factors),
-        CI=[:mean, :lower, :upper]
+        zeros(Union{Missing, Float64}, length(steps) - 1, length(target_factors), 3);
+        bins = string.(steps[2:end]),
+        factors = Symbol.(target_factors),
+        CI = [:mean, :lower, :upper],
     )
 
     all_p_rule = _map_outcomes(y, rule)
@@ -640,7 +642,7 @@ function outcome_map(
             X_q[1:(S + 1)] .= quantile(X_f, steps)
         end
 
-        for i in 1:length(X_q[1:end-1])
+        for i in 1:length(X_q[1:(end - 1)])
             local b::BitVector
             if i == 1
                 b = (X_q[i] .<= X_f .<= X_q[i + 1])
@@ -668,21 +670,21 @@ end
 function outcome_map(
     X::DataFrame,
     y::AbstractVecOrMat{<:Real},
-    rule::Union{Function,BitVector,Vector{Int64}};
-    S::Int64=20,
-    n_boot::Int64=100,
-    conf::Float64=0.95
+    rule::Union{Function, BitVector, Vector{Int64}};
+    S::Int64 = 20,
+    n_boot::Int64 = 100,
+    conf::Float64 = 0.95,
 )::NamedDimsArray
     return outcome_map(X, y, rule, names(X); S, n_boot, conf)
 end
 function outcome_map(
     rs::ResultSet,
     y::AbstractArray{<:Real},
-    rule::Union{Function,BitVector,Vector{Int64}},
+    rule::Union{Function, BitVector, Vector{Int64}},
     target_factors::Vector{Symbol};
-    S::Int64=20,
-    n_boot::Int64=100,
-    conf::Float64=0.95
+    S::Int64 = 20,
+    n_boot::Int64 = 100,
+    conf::Float64 = 0.95,
 )::NamedDimsArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, target_factors, rs.model_spec; S, n_boot, conf
@@ -691,10 +693,10 @@ end
 function outcome_map(
     rs::ResultSet,
     y::AbstractArray{<:Real},
-    rule::Union{Function,BitVector,Vector{Int64}};
-    S::Int64=20,
-    n_boot::Int64=100,
-    conf::Float64=0.95
+    rule::Union{Function, BitVector, Vector{Int64}};
+    S::Int64 = 20,
+    n_boot::Int64 = 100,
+    conf::Float64 = 0.95,
 )::NamedDimsArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf
@@ -703,8 +705,8 @@ end
 
 function _map_outcomes(
     y::AbstractArray{<:Real},
-    rule::Union{BitVector,Vector{Int64}}
-)::Union{BitVector,Vector{Int64}}
+    rule::Union{BitVector, Vector{Int64}}
+)::Union{BitVector, Vector{Int64}}
     return rule
 end
 function _map_outcomes(y::AbstractArray{<:Real}, rule::Function)::Vector{Int64}
