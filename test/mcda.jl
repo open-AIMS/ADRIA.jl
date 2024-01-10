@@ -59,14 +59,13 @@ end
 @testset "MCDA seed matrix creation" begin
     wtconseedout, wtconseedin, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover, wt_depth_seed = rand(
         Uniform(0.0, 1.0),
-        8,
+        8
     )
 
     A, filtered, k_area = create_test_decision_matrix(5, 1.0)
     min_area = 20.0
     SE, wse = create_seed_matrix(
         A,
-        min_area,
         wtconseedin,
         wtconseedout,
         wt_waves,
@@ -77,7 +76,8 @@ end
         wt_depth_seed,
     )
 
-    @test (sum(filtered)) == size(A, 1) || "Site where heat stress > risk_tol not filtered out"
+    @test (sum(filtered)) == size(A, 1) ||
+        "Site where heat stress > risk_tol not filtered out"
     @test size(SE, 1) == sum(A[:, 8] .> min_area) ||
         "Sites where space available < min_area not filtered out"
 end
@@ -118,7 +118,8 @@ end
     norm_A = mcda_normalize(A[:, 2:end])
     norm_w = mcda_normalize(w)
 
-    @test all((sqrt.(sum(norm_A .^ 2, dims=1)) .- 1.0) .< 0.0001) || "Decision matrix normalization not giving column sums = 1."
+    @test all((sqrt.(sum(norm_A .^ 2; dims = 1)) .- 1.0) .< 0.0001) ||
+        "Decision matrix normalization not giving column sums = 1."
     @test (sum(norm_w) - 1.0) <= 0.001 || "MCDA weights not summing to one."
 end
 
