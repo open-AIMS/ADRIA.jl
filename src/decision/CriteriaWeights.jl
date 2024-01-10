@@ -69,7 +69,7 @@ Base.@kwdef struct CriteriaWeights{U1,U2,U3,DU,DO} <: EcoModel
         dist_params=(0.0, 1.0),
         criteria_keywords=(:seed, :weight),
         name="Depth (Seed)",
-        description="Higher values give preference to depper locations for enhanced coral deployments.",
+        description="Higher values give preference to deeper locations for enhanced coral deployments.",
     )
     coral_cover_low::U2 = Factor(
         0.0;
