@@ -167,34 +167,34 @@ if ccall(:jl_generating_output, Cint, ()) == 1
 end
 
 
-@setup_workload begin
-    # Putting some things in `setup` can reduce the size of the
-    # precompile file and potentially make loading faster.
-    # ADRIA_DIR = pkgdir(ADRIA)
-    # EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
+# @setup_workload begin
+#     # Putting some things in `setup` can reduce the size of the
+#     # precompile file and potentially make loading faster.
+#     # ADRIA_DIR = pkgdir(ADRIA)
+#     # EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Example_domain")
 
-    @compile_workload begin
+#     @compile_workload begin
 
-        # Force precompiling of code that handles distributed infrastructure
-        addprocs(1)
-        @everywhere 1 + 1
+#         # Force precompiling of code that handles distributed infrastructure
+#         addprocs(1)
+#         @everywhere 1 + 1
 
-        # Compile progress bar
-        # f() = begin
-        #     @showprogress 1 for _ in 1:10
-        #     end
-        # end
-        # b = redirect_stdout(f, devnull)
+#         # Compile progress bar
+#         # f() = begin
+#         #     @showprogress 1 for _ in 1:10
+#         #     end
+#         # end
+#         # b = redirect_stdout(f, devnull)
 
-        # dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
-        # ADRIA.sample(dom, 16)
-        # ADRIA.model_spec(dom)
+#         # dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
+#         # ADRIA.sample(dom, 16)
+#         # ADRIA.model_spec(dom)
 
-        # ENV["ADRIA_DEBUG"] = "false"
-        # p_df = ADRIA.param_table(dom)
-        # rs1 = ADRIA.run_scenario(dom, p_df[1, :])
-        # delete!(ENV, "ADRIA_DEBUG")
-    end
-end
+#         # ENV["ADRIA_DEBUG"] = "false"
+#         # p_df = ADRIA.param_table(dom)
+#         # rs1 = ADRIA.run_scenario(dom, p_df[1, :])
+#         # delete!(ENV, "ADRIA_DEBUG")
+#     end
+# end
 
 end
