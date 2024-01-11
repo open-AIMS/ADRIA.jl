@@ -21,8 +21,8 @@
 │     │ │                │ │         Message                        │
 └─────┘ └────────────────┘ └────────────────────────────────────────┘
 """
-function comms_layout(; resolution=(1920, 1080))
-    f = Figure(resolution=resolution)
+function comms_layout(; size=(1920, 1080))
+    f = Figure(size=size)
 
     main = f[1:6, 1:9] = GridLayout()
 
@@ -118,8 +118,8 @@ end
      │                            │  │                   │
      └────────────────────────────┘  └───────────────────┘
 """
-function modeler_layout(; resolution=(1920, 1080))
-    f = Figure(resolution=resolution)
+function modeler_layout(; size=(1920, 1080))
+    f = Figure(size=size)
 
     # controls = f[1:3, 1] = GridLayout()
     main = f[1:3, 1:6] = GridLayout()
@@ -189,8 +189,8 @@ end
 # │             │  │              │ │   Histogram   │
 # └─────────────┘  └──────────────┘ └───────────────┘
 # """
-# function create_layout(; resolution=(1600, 900))
-#     f = Figure(resolution=resolution)
+# function create_layout(; size=(1600, 900))
+#     f = Figure(size=size)
 
 #     controls = f[1:3, 1] = GridLayout()
 #     main = f[1:3, 2] = GridLayout()

@@ -152,7 +152,7 @@ Display GUI for quick visualization and analysis of results.
 """
 function ADRIA.viz.explore(rs::ResultSet)
     @info "Creating display"
-    layout = comms_layout(resolution=(1920, 1080))
+    layout = comms_layout(size=(1920, 1080))
 
     f = layout.figure
     traj_display = layout.trajectory.temporal
@@ -553,7 +553,7 @@ end
 
 
 # function explore(rs::ADRIA.ResultSet)
-#     layout = modeler_layout(resolution=(1920, 1080))
+#     layout = modeler_layout(size=(1920, 1080))
 
 #     f = layout.figure
 #     # controls = layout.controls

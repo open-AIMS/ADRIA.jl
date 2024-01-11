@@ -67,7 +67,7 @@ function test_rs_w_fig()
 	## Visualization
 
 	# Some shared options for the example plots below
-	fig_opts = Dict(:resolution => (1600, 800))
+	fig_opts = Dict(:size => (1600, 800))
 
 	# Factors of Interest
 	opts = Dict(
@@ -92,7 +92,7 @@ function test_rs_w_fig()
 	# save("scenarios_tac.png", fig_s_tac)
 
 
-	tf = Figure(resolution = (1600, 600))  # resolution in pixels
+	tf = Figure(size = (1600, 600))  # resolution in pixels
 
 	# Implicitly create a single figure with 2 columns
 	ADRIA.viz.scenarios!(
@@ -122,12 +122,12 @@ function test_rs_w_fig()
 	)
 
 	# Plot 1st rank frequencies as a colormap
-	rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts = Dict(:resolution => (1200, 800)))
+	rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts = Dict(:size => (1200, 800)))
 
 	# save("single_rank_plot.png", rank_fig)
 
 	# Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
-	rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts = Dict(:resolution => (1200, 800)))
+	rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts = Dict(:size => (1200, 800)))
 
 	# save("ranks_plot.png", rank_fig)
 
@@ -307,7 +307,7 @@ function test_rs_w_fig()
 
 	### Outcome mapping
 
-	tf = Figure(resolution = (1600, 1200))  # resolution in pixels
+	tf = Figure(size = (1600, 1200))  # resolution in pixels
 
 	# Indicate factor values that are in the top 50 percentile
 	tac_om_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S = 20)
