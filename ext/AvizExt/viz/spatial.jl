@@ -21,7 +21,7 @@ Create a spatial choropleth figure.
 - `centroids` : Vector{Tuple}, of lon and lats
 - `show_colorbar` : Whether to show a colorbar (true) or not (false)
 - `colorbar_label` : Label to use for color bar
-- `color_map` : Type of colormap to use, 
+- `color_map` : Type of colormap to use,
     See: https://docs.makie.org/stable/documentation/colors/#colormaps
 - `legend_params` : Legend parameters
 - `axis_opts` : Additional options to pass to adjust Axis attributes
@@ -36,28 +36,26 @@ function create_map!(
     show_colorbar::Bool=true,
     colorbar_label::String="",
     color_map::Union{Symbol,Vector{Symbol},RGBA{Float32},Vector{RGBA{Float32}}}=:grayC,
-    legend_params::Union{Tuple,Nothing}=nothing, 
+    legend_params::Union{Tuple,Nothing}=nothing,
     axis_opts::Dict=Dict(),
 )
-    lon = first.(centroids)
-    lat = last.(centroids)
-
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
 
-    map_buffer = 0.025
     spatial = GeoAxis(
         f[1, 1];
-        lonlims=(minimum(lon) - map_buffer, maximum(lon) + map_buffer),
-        latlims=(minimum(lat) - map_buffer, maximum(lat) + map_buffer),
         dest="+proj=latlong +datum=WGS84",
         axis_opts...
     )
+    # lon = first.(centroids)
+    # lat = last.(centroids)
+    # map_buffer = 0.025
+    # xlims!(spatial, minimum(lon) - map_buffer, maximum(lon) + map_buffer)
+    # ylims!(spatial, minimum(lat) - map_buffer, maximum(lat) + map_buffer)
+
     spatial.xticklabelsize = 14
     spatial.yticklabelsize = 14
-    # spatial.xticklabelsvisible = false
-    # spatial.yticklabelsvisible = false
 
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10
@@ -124,7 +122,6 @@ function create_map!(
             Legend(f[1, 3], legend_params..., framevisible=false)
         end
     end
-    # datalims!(spatial)  # auto-adjust limits (doesn't work if there are Infs...)
 
     return f
 end
