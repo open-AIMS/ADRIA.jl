@@ -6,7 +6,6 @@ using Setfield: @set!
 using DataFrames: DataFrame
 using ADRIA: Domain, EnvLayer
 
-
 const RESULTS = "results"
 const LOG_GRP = "logs"
 const INPUTS = "inputs"
@@ -14,8 +13,7 @@ const SITE_DATA = "site_data"
 const ENV_STATS = "env_stats"
 const MODEL_SPEC = "model_spec"
 
-
-struct ResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF}
+struct ResultSet{T1, T2, A, B, C, D, G, D1, D2, D3, DF}
     name::String
     RCP::String
     invoke_time::String
@@ -28,6 +26,7 @@ struct ResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF}
     env_layer_md::EnvLayer
     dhw_stats::D
     wave_stats::D
+    connectivity_data::D
     site_data::G
 
     inputs::G
@@ -43,7 +42,6 @@ struct ResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF}
     coral_dhw_tol_log::D3
 end
 
-
 function ResultSet(
     input_set::AbstractArray,
     env_layer_md::EnvLayer,
@@ -52,11 +50,12 @@ function ResultSet(
     log_set::Zarr.ZGroup,
     dhw_stats_set::Dict,
     wave_stats_set::Dict,
+    conn_data::Dict,
     site_data::DataFrame,
-    model_spec::DataFrame
+    model_spec::DataFrame,
 )::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
-    ResultSet(input_set.attrs["name"],
+    return ResultSet(input_set.attrs["name"],
         string(rcp),
         input_set.attrs["invoke_time"],
         input_set.attrs["ADRIA_VERSION"],
@@ -67,18 +66,24 @@ function ResultSet(
         env_layer_md,
         dhw_stats_set,
         wave_stats_set,
+        conn_data,
         site_data,
         inputs_used,
         input_set.attrs["sim_constants"],
         model_spec,
         outcomes,
-        NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(log_set["rankings"]),
+        NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(
+            log_set["rankings"]
+        ),
         NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
         NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(log_set["shade"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))}(log_set["coral_dhw_log"]))
+        NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(
+            log_set["shade"]
+        ),
+        NamedDimsArray{Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))}(
+            log_set["coral_dhw_log"]
+        ))
 end
-
 
 """
     _copy_env_stats(src::String, dst::String, subdir::String)::Nothing
@@ -91,12 +96,11 @@ function _copy_env_stats(src::String, dst::String, subdir::String)::Nothing
     mkpath(dst_dir)
     src_ds = filter(d -> isdir(joinpath(src_dir, d)), readdir(src_dir))
     for ds in src_ds
-        cp(joinpath(src_dir, ds), joinpath(dst_dir, ds), force=true)
+        cp(joinpath(src_dir, ds), joinpath(dst_dir, ds); force = true)
     end
 
-    return
+    return nothing
 end
-
 
 """
     combine(result_sets...)::ResultSet
@@ -105,15 +109,17 @@ end
 Combine arbitrary number of ADRIA result sets into a single data store.
 
 Note: Results are stored in Zarr format. Combining data sets can be
-      expected to double total disk space requirement.
+  expected to double total disk space requirement.
 """
 function combine_results(result_sets...)::ResultSet
     # Make sure results are all for the same domain
     # @assert length(Set([rs.name for rs in result_sets])) == 1
 
     # Ensure all sim constants are identical
-    @assert all([result_sets[i].sim_constants == result_sets[i+1].sim_constants
-                 for i in 1:length(result_sets)-1])
+    @assert all([
+        result_sets[i].sim_constants == result_sets[i + 1].sim_constants
+        for i in 1:(length(result_sets) - 1)
+    ])
 
     # Ensure all result sets were from the same version of ADRIA
     if length(Set([rs.ADRIA_VERSION for rs in result_sets])) != 1
@@ -128,7 +134,9 @@ function combine_results(result_sets...)::ResultSet
     rcps = join(unique([rs.RCP for rs in result_sets]), "_")
 
     # Create new zarr store
-    new_loc = joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(rs1.name)__RCPs$(rcps)__$(combined_time)")
+    new_loc = joinpath(
+        ENV["ADRIA_OUTPUT_DIR"], "$(rs1.name)__RCPs$(rcps)__$(combined_time)"
+    )
     z_store = DirectoryStore(new_loc)
 
     # Get input sizes
@@ -144,7 +152,7 @@ function combine_results(result_sets...)::ResultSet
         envlayer.connectivity_fn,
         dirname(envlayer.DHW_fn),
         dirname(envlayer.wave_fn),
-        envlayer.timeframe
+        envlayer.timeframe,
     )
 
     all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
@@ -159,15 +167,15 @@ function combine_results(result_sets...)::ResultSet
         rs1.site_ids,
         rs1.site_area,
         rs1.site_max_coral_cover,
-        rs1.site_centroids
+        rs1.site_centroids,
     )
 
     # Copy site data into result set
     mkdir(joinpath(new_loc, SITE_DATA))
     cp(
         attrs[:site_data_file],
-        joinpath(new_loc, SITE_DATA, basename(attrs[:site_data_file])),
-        force=true
+        joinpath(new_loc, SITE_DATA, basename(attrs[:site_data_file]));
+        force = true,
     )
 
     # Store copy of model specification as CSV
@@ -178,24 +186,25 @@ function combine_results(result_sets...)::ResultSet
     input_set = zcreate(
         Float64,
         input_dims...;
-        fill_value=-9999.0,
-        fill_as_missing=false,
-        path=input_loc,
-        chunks=(1, input_dims[2]),
-        attrs=attrs
+        fill_value = -9999.0,
+        fill_as_missing = false,
+        path = input_loc,
+        chunks = (1, input_dims[2]),
+        attrs = attrs,
     )
 
     # Store post-processed table of input parameters.
     input_set[:, :] = Matrix(all_inputs)
 
-    logs = (; zip([:ranks, :seed_log, :fog_log, :shade_log],
-        setup_logs(
-            z_store,
-            rs1.site_ids,
-            nrow(all_inputs),
-            size(rs1.seed_log, :timesteps),
-            size(rs1.seed_log, :sites)
-        ))...
+    logs = (;
+        zip([:ranks, :seed_log, :fog_log, :shade_log],
+            setup_logs(
+                z_store,
+                rs1.site_ids,
+                nrow(all_inputs),
+                size(rs1.seed_log, :timesteps),
+                size(rs1.seed_log, :sites),
+            ))...
     )
 
     # Copy logs over
@@ -207,39 +216,39 @@ function combine_results(result_sets...)::ResultSet
             rs_scen_len = size(s_log, :scenarios)
 
             try
-                n_log[:, :, scen_id:scen_id+(rs_scen_len-1)] .= s_log
+                n_log[:, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
             catch
-                n_log[:, :, :, scen_id:scen_id+(rs_scen_len-1)] .= s_log
+                n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
             end
 
             scen_id = scen_id + rs_scen_len
         end
     end
 
-    compressor = Zarr.BloscCompressor(cname="zstd", clevel=4, shuffle=true)
+    compressor = Zarr.BloscCompressor(; cname = "zstd", clevel = 4, shuffle = true)
     metrics = keys(rs1.outcomes)
     for m_name in metrics
         m_dim_names = NamedDims.dimnames(rs1.outcomes[m_name])
-        dim_struct = Dict{Symbol,Any}(
-            :structure => m_dim_names,
+        dim_struct = Dict{Symbol, Any}(
+            :structure => m_dim_names
         )
         if :sites in m_dim_names
             dim_struct[:unique_site_ids] = rs1.site_ids
         end
 
-        result_dims = (size(rs1.outcomes[m_name])[1:end-1]..., n_scenarios)
+        result_dims = (size(rs1.outcomes[m_name])[1:(end - 1)]..., n_scenarios)
         m_store = zcreate(
             Float32,
             result_dims...;
-            fill_value=nothing,
-            fill_as_missing=false,
-            path=joinpath(
+            fill_value = nothing,
+            fill_as_missing = false,
+            path = joinpath(
                 z_store.folder,
                 RESULTS,
                 string(m_name)),
-            chunks=(result_dims[1:end-1]..., 1),
-            attrs=dim_struct,
-            compressor=compressor
+            chunks = (result_dims[1:(end - 1)]..., 1),
+            attrs = dim_struct,
+            compressor = compressor,
         )
 
         # Copy results over
@@ -247,9 +256,9 @@ function combine_results(result_sets...)::ResultSet
         for rs in result_sets
             rs_scen_len = size(rs.outcomes[m_name], :scenarios)
             try
-                m_store[:, :, scen_id:scen_id+(rs_scen_len-1)] .= rs.outcomes[m_name]
+                m_store[:, :, scen_id:(scen_id + (rs_scen_len - 1))] .= rs.outcomes[m_name]
             catch
-                m_store[:, :, :, scen_id:scen_id+(rs_scen_len-1)] .= rs.outcomes[m_name]
+                m_store[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] .= rs.outcomes[m_name]
             end
 
             scen_id = scen_id + rs_scen_len
@@ -270,7 +279,6 @@ function combine_results(result_set_locs::Array{String})::ResultSet
     return combine_results(load_results.(result_set_locs)...)
 end
 
-
 """
     env_stats(rs::ResultSet, s_name::String, rcp::String)
     env_stats(rs::ResultSet, s_name::String, rcp::String, scenario::Int)
@@ -288,7 +296,6 @@ function env_stats(rs::ResultSet, s_name::String, stat::String, rcp::String, sce
     return getfield(rs, Symbol("$(s_name)_stats"))[rcp][stat, scenario]
 end
 
-
 """
     store_name(rs::ResultSet)::String
 
@@ -297,7 +304,6 @@ Get name of result set.
 function store_name(rs::ResultSet)::String
     return "$(rs.name)__RCPs$(rs.RCP)__$(rs.invoke_time)"
 end
-
 
 """
     store_location(rs::ResultSet)::String
@@ -328,7 +334,6 @@ function result_location(rs::ResultSet)::String
     return replace(store, "\\" => "/")
 end
 
-
 """
     select(r::ResultSet, op::String)
 
@@ -348,14 +353,13 @@ select(result, "guided .> 0.0")
 function select(r::ResultSet, op::String)
     scens = r.inputs
 
-    col, qry = split(op, " ", limit=2)
+    col, qry = split(op, " "; limit = 2)
     col = Symbol(col)
 
     df_ss = getproperty(scens, col)
 
     return eval(Meta.parse("$df_ss $qry"))
 end
-
 
 """
     timesteps(rs::ResultSet)
@@ -428,11 +432,11 @@ Extract parameters for a specific model component from exported model specificat
 """
 function component_params(rs::ResultSet, component::T)::DataFrame where {T}
     spec = rs.model_spec
-    return spec[spec.component.==string(component), :]
+    return spec[spec.component .== string(component), :]
 end
 function component_params(rs::ResultSet, components::Vector{T})::DataFrame where {T}
     spec = rs.model_spec
-    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
+    return spec[spec.component .∈ [replace.(string.(components), "ADRIA." => "")], :]
 end
 
 """
@@ -444,7 +448,6 @@ function model_spec(rs::ResultSet)::DataFrame
     return rs.model_spec
 end
 
-
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     vers_id = rs.ADRIA_VERSION
 
@@ -455,15 +458,15 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
     println("""
     Domain: $(rs.name)
-
+    
     Run with ADRIA $(vers_id) on $(rs.invoke_time)
     Results stored at: $(result_location(rs))
-
+    
     RCP(s) represented: $(rcps)
     Scenarios run: $(scens)
     Number of sites: $(sites)
     Timesteps: $(tf)
-
+    
     Input layers
     ------------""")
 
