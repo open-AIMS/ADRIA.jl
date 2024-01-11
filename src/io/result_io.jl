@@ -92,44 +92,6 @@ function store_env_summary(
 end
 
 """
-	store_conn(conn_data::NamedDimsArray, file_loc::String, rcp::String, 
-		compressor::Zarr.Compressor)::ZArray
-
-Retrieve connectivity matrices from Domain for storage.
-Produce connectivity for a particular RCP saved to a Zarr data store.
-
-# Arguments
-- `conn_data` : connectivity data (e.g. `domain.TP_data`)
-- `file_loc` : path for Zarr data store
-- `rcp`: RCP associated with connectivity data.
-
-# Returns
-Zarr data store holding a M*M matrix.
-M is the number of locations.
-"""
-function store_conn(
-	conn_data::NamedDimsArray,
-	file_loc::String,
-	rcp::String,
-	compressor::Zarr.Compressor
-)::ZArray
-	conn_store = zcreate(
-		Float32,
-		size(conn_data)...;
-		fill_value = nothing, fill_as_missing = false,
-		path = joinpath(file_loc, rcp),
-		attrs = Dict(
-			:structure => ("Source", "Receiving"),
-			:Source => conn_data.Source,
-			:Receiving => conn_data.Receiving,
-			:rcp => rcp),
-		compressor = compressor)
-
-	conn_store[:, :] .= Matrix(conn_data)
-	return conn_store
-end
-
-"""
     store_conn(conn_data::NamedDimsArray, file_loc::String, rcp::String, 
         compressor::Zarr.Compressor)::ZArray
 
