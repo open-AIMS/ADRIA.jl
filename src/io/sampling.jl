@@ -99,7 +99,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
 end
 
 """
-    sample(dom::Domain, n::Int, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+    sample(dom::Domain, n::Int, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
 Create samples and rescale to distribution defined in the model spec.
 
@@ -109,18 +109,18 @@ Notes:
 # Arguments
 - `dom` : Domain
 - `n` : Int
-- `sampler` : type of sampler to use.
+- `sample_method` : type of sampler to use.
 
 # Returns
 Scenario specification
 """
-function sample(dom::Domain, n::Int, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample(dom::Domain, n::Int, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
-    return sample(model_spec(dom), n, sampler)
+    return sample(model_spec(dom), n, sample_method)
 end
 
 """
-    sample(dom::Domain, n::Int, component::Type, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+    sample(dom::Domain, n::Int, component::Type, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
 Create samples and rescale to distribution defined in the model spec.
 
@@ -131,16 +131,16 @@ Notes:
 - `dom` : Domain
 - `n` : Number of samples to create
 - `component` : Component type, e.g. CriteriaWeights
-- `sampler` : Sampler to use
+- `sample_method` : sample_method to use
 
 # Returns
 Scenario specification
 """
-function sample(dom::Domain, n::Int, component::Type, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample(dom::Domain, n::Int, component::Type, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
 
     spec = component_params(dom.model, component)
-    return sample(spec, n, sampler)
+    return sample(spec, n, sample_method)
 end
 
 """
@@ -192,7 +192,7 @@ function sample(
 end
 
 """
-    sample_site_selection(d::Domain, n::Int64, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+    sample_site_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
 Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, CriteriaWeights).
 All other parameters are set to their default values.
@@ -200,12 +200,12 @@ All other parameters are set to their default values.
 # Arguments
 - `d` : Domain.
 - `n` : number of samples to generate.
-- `sampler` : type of sampler to use.
+- `sample_method` : type of sampler to use.
 
 # Returns
 Scenario specification
 """
-function sample_site_selection(d::Domain, n::Int64, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample_site_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
     subset_spec = component_params(
         d.model, [EnvironmentalLayer, Intervention, CriteriaWeights]
     )
@@ -218,25 +218,25 @@ function sample_site_selection(d::Domain, n::Int64, sampler=SobolSample(R=OwenSc
     # all other factors are fixed to their default values
     scens = repeat(param_table(d), n)
     select!(scens, Not(:RCP))  # remove RCP column added by param_table()
-    scens[:, subset_spec.fieldname] .= sample(subset_spec, n, sampler)
+    scens[:, subset_spec.fieldname] .= sample(subset_spec, n, sample_method)
 
     return scens
 end
 
 """
-    sample_cf(d::Domain, n::Int64, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+    sample_cf(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
 Generate only counterfactual scenarios.
 
 # Arguments
 - `d` : Domain.
 - `n` : number of samples to generate.
-- `sampler` : type of sampler to use.
+- `sample_method` : type of sampler to use.
 
 # Returns
 Scenario specification
 """
-function sample_cf(d::Domain, n::Int64, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample_cf(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
     spec_df = model_spec(d)
 
     # Unguided scenarios only
@@ -247,7 +247,7 @@ function sample_cf(d::Domain, n::Int64, sampler=SobolSample(R=OwenScramble(base=
     # Remove intervention scenarios as an option
     _deactivate_interventions(spec_df)
 
-    return sample(spec_df, n, sampler)
+    return sample(spec_df, n, sample_method)
 end
 
 """
@@ -266,42 +266,42 @@ function _adjust_guided_lower_bound!(spec_df::DataFrame, lower::Int64)::DataFram
 end
 
 """
-    sample_guided(d::Domain, n::Int64, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+    sample_guided(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
 Generate only guided scenarios.
 
 # Arguments
 - `d` : Domain.
 - `n` : number of samples to generate.
-- `sampler` : type of sampler to use.
+- `sample_method` : type of sampler to use.
 
 # Returns
 Scenario specification
 """
-function sample_guided(d::Domain, n::Int64, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample_guided(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
     spec_df = model_spec(d)
 
     # Remove unguided scenarios as an option
     # Sample without unguided (i.e., values >= 1), then revert back to original model spec
     _adjust_guided_lower_bound!(spec_df, 1)
 
-    return sample(spec_df, n, sampler)
+    return sample(spec_df, n, sample_method)
 end
 
 """
-    sample_unguided(d::Domain, n::Int64, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+    sample_unguided(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
 Generate only unguided scenarios.
 
 # Arguments
 - `d` : Domain.
 - `n` : number of samples to generate.
-- `sampler` : type of sampler to use.
+- `sample_method` : type of sampler to use.
 
 # Returns
 Scenario specification
 """
-function sample_unguided(d::Domain, n::Int64, sampler=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample_unguided(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
     spec_df = model_spec(d)
 
     # Fix guided factor to 0 (i.e., unguided scenarios only)
@@ -309,7 +309,7 @@ function sample_unguided(d::Domain, n::Int64, sampler=SobolSample(R=OwenScramble
     spec_df[guided_col, [:val, :lower_bound, :upper_bound, :dist_params, :is_constant]] .=
         [0 0 0 (0.0, 0.0) true]
 
-    return sample(spec_df, n, sampler)
+    return sample(spec_df, n, sample_method)
 end
 
 """
