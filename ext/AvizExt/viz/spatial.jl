@@ -4,7 +4,6 @@ import GeoMakie.GeoJSON: AbstractFeatureCollection, features, bbox
 Base.getindex(fc::AbstractFeatureCollection, i::UnitRange) = features(fc)[i]
 Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
 
-
 """
     create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSON.FeatureCollection,
         data::Observable, highlight::Union{Vector,Tuple,Nothing},
@@ -28,15 +27,15 @@ Create a spatial choropleth figure.
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 """
 function create_map!(
-    f::Union{GridLayout,GridPosition},
+    f::Union{GridLayout, GridPosition},
     geodata::GeoMakie.GeoJSON.FeatureCollection,
     data::Observable,
-    highlight::Union{Vector,Tuple,Nothing},
+    highlight::Union{Vector, Tuple, Nothing},
     centroids::Vector,
     show_colorbar::Bool=true,
     colorbar_label::String="",
-    color_map::Union{Symbol,Vector{Symbol},RGBA{Float32},Vector{RGBA{Float32}}}=:grayC,
-    legend_params::Union{Tuple,Nothing}=nothing,
+    color_map::Union{Symbol, Vector{Symbol}, RGBA{Float32}, Vector{RGBA{Float32}}}=:grayC,
+    legend_params::Union{Tuple, Nothing}=nothing,
     axis_opts::Dict=Dict(),
 )
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
@@ -46,7 +45,7 @@ function create_map!(
     spatial = GeoAxis(
         f[1, 1];
         dest="+proj=latlong +datum=WGS84",
-        axis_opts...
+        axis_opts...,
     )
     # lon = first.(centroids)
     # lat = last.(centroids)
@@ -66,12 +65,12 @@ function create_map!(
 
     poly!(
         spatial,
-        geodata,
+        geodata;
         color=data,
         colormap=color_map,
         colorrange=color_range,
         strokecolor=(:black, 0.05),
-        strokewidth=1.0
+        strokewidth=1.0,
     )
 
     if show_colorbar
@@ -91,7 +90,7 @@ function create_map!(
         if highlight isa Tuple
             poly!(
                 spatial,
-                geodata,
+                geodata;
                 color="transparent",
                 strokecolor=highlight,
                 strokewidth=0.5,
@@ -107,7 +106,7 @@ function create_map!(
 
                 poly!(
                     spatial,
-                    subset_feat,
+                    subset_feat;
                     color="transparent",
                     strokecolor=color,
                     strokewidth=0.5,
@@ -119,18 +118,17 @@ function create_map!(
 
         if !isnothing(legend_params)
             # Plot Legend only if highlight colors are present
-            Legend(f[1, 3], legend_params..., framevisible=false)
+            Legend(f[1, 3], legend_params...; framevisible=false)
         end
     end
 
     return f
 end
 
-
 """
-	ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-	ADRIA.viz.map(rs::ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-	ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
 Plot spatial choropleth of outcomes.
 
@@ -138,7 +136,7 @@ Plot spatial choropleth of outcomes.
 - `rs` : ResultSet
 - `y` : results of scenario metric
 - `opts` : Aviz options
-	- `colorbar_label`, label for colorbar. Defaults to "Relative Cover"
+    - `colorbar_label`, label for colorbar. Defaults to "Relative Cover"
     - `color_map`, preferred colormap for plotting heatmaps
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
@@ -149,7 +147,7 @@ Plot spatial choropleth of outcomes.
 GridPosition
 """
 function ADRIA.viz.map(
-    rs::Union{Domain,ResultSet},
+    rs::Union{Domain, ResultSet},
     y::NamedDimsArray;
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
@@ -163,10 +161,10 @@ function ADRIA.viz.map(
     return f
 end
 function ADRIA.viz.map(
-    rs::Union{Domain,ResultSet};
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
+    rs::Union{Domain, ResultSet};
+    opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
+    fig_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
+    axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -175,7 +173,7 @@ function ADRIA.viz.map(
 
     opts[:show_management_zones] = get(opts, :show_management_zones, false)
     if opts[:show_management_zones]
-        highlight = rs.site_data.zone_type .|> lowercase .|> Symbol
+        highlight = Symbol.(lowercase.(rs.site_data.zone_type))
         opts[:highlight] = highlight
     end
 
@@ -184,8 +182,8 @@ function ADRIA.viz.map(
     return f
 end
 function ADRIA.viz.map!(
-    g::Union{GridLayout,GridPosition},
-    rs::Union{Domain,ResultSet},
+    g::Union{GridLayout, GridPosition},
+    rs::Union{Domain, ResultSet},
     y::AbstractVector{<:Real};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -213,9 +211,8 @@ function ADRIA.viz.map!(
     )
 end
 
-
 """
-	make_geojson_copy(ds::Union{ResultSet,Domain})::String
+    make_geojson_copy(ds::Union{ResultSet,Domain})::String
 
 Make a temporary copy of GeoPackage as GeoJSON.
 
@@ -225,7 +222,7 @@ Make a temporary copy of GeoPackage as GeoJSON.
 # Returns
 Path to temporary copy of GeoJSON file.
 """
-function make_geojson_copy(ds::Union{ResultSet,Domain})::String
+function make_geojson_copy(ds::Union{ResultSet, Domain})::String
     tmpdir = ADRIA.viz.tmpdir
     local geo_fn = joinpath(tmpdir, "Aviz_$(ds.name).geojson")
     if !isfile(geo_fn)
@@ -240,7 +237,7 @@ function make_geojson_copy(ds::Union{ResultSet,Domain})::String
 end
 
 """
-	get_geojson(ds::Union{ResultSet,Domain})::FC
+    get_geojson(ds::Union{ResultSet,Domain})::FC
 
 Retrieves a temporary copy of spatial data associated with the given Domain or ResultSet as
 a FeatureCollection.
@@ -251,7 +248,7 @@ a FeatureCollection.
 # Returns
 FeatureCollection of polygons
 """
-function get_geojson_copy(ds::Union{ResultSet,Domain})::FC
+function get_geojson_copy(ds::Union{ResultSet, Domain})::FC
     fn = make_geojson_copy(ds)
 
     # Only return the set Features if filepaths match
