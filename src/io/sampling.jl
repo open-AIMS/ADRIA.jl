@@ -161,10 +161,8 @@ function sample(
     n::Int64,
     sample_method=SobolSample(R=OwenScramble(base=2, pad=32))
 )::DataFrame
-    if contains(string(sample_method), "SobolSample")
-        if !ispow2(n)
-            throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
-        end
+    if contains(string(sample_method), "SobolSample") && !ispow2(n)
+        throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
     end
 
     # Select non-constant params
