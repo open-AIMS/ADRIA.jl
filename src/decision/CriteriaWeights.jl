@@ -169,7 +169,8 @@ function criteria_params(
 )::DataFrame
     sel_crit = vec(
         all(
-            hcat([in.(c_k, crit.criteria_keywords) for c_k in criteria_keywords]...); dims=2
+            hcat([in.(c_k, crit.criteria_keywords) for c_k in criteria_keywords]...);
+            dims = 2,
         );
     )
     return crit[sel_crit, :]

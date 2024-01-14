@@ -9,36 +9,37 @@ using InteractiveUtils: subtypes
 using ADRIA: Domain, EcoModel, n_locations, site_area, site_k_area, site_k
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
-	site_ids  # ::V
-	n_site_int  # ::I
-	priority_sites  # ::V
-	priority_zones # ::V
-	zones # ::V
-	strong_pred  # ::V
-	conn
-	dam_prob  # ::A
-	heat_stress_prob  # ::A
-	site_depth #::V
-	leftover_space  # ::F
-	k_area  # ::V
-	risk_tol  # ::F
-	max_members # ::F
-	spatial_groups #::V
-	area_to_seed #::V
-	wt_in_conn_seed  # ::F
-	wt_out_conn_seed  # ::F
-	wt_conn_fog  # ::F
-	wt_waves_seed # ::F
-	wt_waves_fog # ::F
-	wt_heat_seed  # ::F
-	wt_heat_fog  # ::F
-	wt_depth_seed # ::F
-	wt_hi_cover  # ::F
-	wt_lo_cover  # ::F
-	wt_predec_seed  # ::F
-	wt_predec_fog  # ::F
-	wt_zones_seed # ::F
-	wt_zones_fog # ::F
+    site_ids  # ::V
+    n_site_int  # ::I
+    priority_sites  # ::V
+    priority_zones # ::V
+    zones # ::V
+    strong_pred  # ::V
+    conn
+    dam_prob  # ::A
+    heat_stress_prob  # ::A
+    site_depth #::V
+    leftover_space  # ::F
+    k_area  # ::V
+    risk_tol  # ::F
+    max_members # ::F
+    spatial_groups #::V
+    area_to_seed #::V
+    wt_in_conn_seed  # ::F
+    wt_out_conn_seed  # ::F
+    wt_in_conn_fog  # ::F
+    wt_out_conn_fog  # ::F
+    wt_waves_seed # ::F
+    wt_waves_fog # ::F
+    wt_heat_seed  # ::F
+    wt_heat_fog  # ::F
+    wt_depth_seed # ::F
+    wt_hi_cover  # ::F
+    wt_lo_cover  # ::F
+    wt_predec_seed  # ::F
+    wt_predec_fog  # ::F
+    wt_zones_seed # ::F
+    wt_zones_fog # ::F
 end
 
 include("mcda_methods.jl")
@@ -99,38 +100,39 @@ function DMCDA_vars(
 	# Site Data
 	site_d = domain.site_data
 
-	mcda_vars = DMCDA_vars(
-		site_ids,
-		domain.sim_constants.n_site_int,
-		domain.sim_constants.priority_sites,
-		domain.sim_constants.priority_zones,
-		site_d.zone_type,
-		domain.strong_pred,
-		domain.TP_data .* site_k_area(domain),
-		waves,
-		dhws,
-		site_d.depth_med,
-		leftover_space,
-		site_k_area(domain),
-		criteria("deployed_coral_risk_tol"),
-		domain.sim_constants.max_members,
-		domain.site_data.UNIQUE_ID,
-		area_to_seed,
-		criteria("seed_in_connectivity"),
-		criteria("seed_out_connectivity"),
-		criteria("fog_connectivity"),
-		criteria("seed_wave_stress"),
-		criteria("fog_wave_stress"),
-		criteria("seed_heat_stress"),
-		criteria("fog_heat_stress"),
-		criteria("seed_depth"),
-		criteria("coral_cover_high"),
-		criteria("coral_cover_low"),
-		criteria("seed_priority"),
-		criteria("fog_priority"),
-		criteria("seed_zone"),
-		criteria("fog_zone"),
-	)
+    mcda_vars = DMCDA_vars(
+        site_ids,
+        domain.sim_constants.n_site_int,
+        domain.sim_constants.priority_sites,
+        domain.sim_constants.priority_zones,
+        site_d.zone_type,
+        domain.strong_pred,
+        domain.TP_data .* site_k_area(domain),
+        waves,
+        dhws,
+        site_d.depth_med,
+        leftover_space,
+        site_k_area(domain),
+        criteria("deployed_coral_risk_tol"),
+        domain.sim_constants.max_members,
+        domain.site_data.UNIQUE_ID,
+        area_to_seed,
+        criteria("seed_in_connectivity"),
+        criteria("seed_out_connectivity"),
+        criteria("fog_in_connectivity"),
+        criteria("fog_out_connectivity"),
+        criteria("seed_wave_stress"),
+        criteria("fog_wave_stress"),
+        criteria("seed_heat_stress"),
+        criteria("fog_heat_stress"),
+        criteria("seed_depth"),
+        criteria("fog_coral_cover_high"),
+        criteria("seed_coral_cover_low"),
+        criteria("seed_priority"),
+        criteria("fog_priority"),
+        criteria("seed_zone"),
+        criteria("fog_zone"),
+    )
 
 	return mcda_vars
 end
@@ -430,15 +432,16 @@ Tuple (SE, wse)
 	8. depth
 """
 function create_seed_matrix(
-	A::Matrix{Float64},
-	wt_in_conn_seed::T,
-	wt_out_conn_seed::T,
-	wt_waves_seed::T,
-	wt_heat_seed::T,
-	wt_predec_seed::T,
-	wt_predec_zones_seed::T,
-	wt_low_cover::T,
-	wt_depth_seed::T,
+    A::Matrix{Float64},
+    wt_in_conn_seed::T,
+    wt_out_conn_seed::T,
+    wt_waves_seed::T,
+    wt_heat_seed::T,
+    wt_predec_seed::T,
+    wt_predec_zones_seed::T,
+    wt_low_cover::T,
+    wt_depth_seed::T;
+    filter_space::T=0.0
 )::Tuple{Matrix{Float64}, Vector{Float64}} where {T <: Float64}
 	# Define seeding decision matrix, based on copy of A
 	SE = copy(A)
@@ -457,7 +460,7 @@ function create_seed_matrix(
 	SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
 	SE[:, 5] = (1 .- SE[:, 5])  # compliment of heat risk
 
-	SE[SE[:, 8] .<= 0.0, 8] .= NaN # Filter out sites with no space
+    SE[SE[:, 8] .<= filter_space, 8] .= NaN # Filter out sites with no space
 
 	# Filter out identified locations
 	SE = SE[vec(.!any(isnan.(SE); dims = 2)), :]
@@ -499,26 +502,27 @@ Tuple (SH, wsh)
 	5. high cover (weights importance of sites with high cover of coral to fog)
 """
 function create_fog_matrix(
-	A::Matrix{Float64},
-	k_area::Vector{T},
-	wt_conn_fog::T,
-	wt_waves_fog::T,
-	wt_heat_fog::T,
-	wt_predec_fog::T,
-	wt_predec_zones_fog::T,
-	wt_hi_cover,
+    A::Matrix{Float64},
+    k_area::Vector{T},
+    wt_in_conn_fog::T,
+    wt_out_conn_fog::T,
+    wt_waves_fog::T,
+    wt_heat_fog::T,
+    wt_predec_fog::T,
+    wt_predec_zones_fog::T,
+    wt_hi_cover,
 )::Tuple{Matrix{Float64}, Vector{Float64}} where {T <: Float64}
 
-	# Define weights vector
-	wsh = [
-		wt_conn_fog,
-		wt_conn_fog,
-		wt_waves_fog,
-		wt_heat_fog,
-		wt_predec_fog,
-		wt_predec_zones_fog,
-		wt_hi_cover,
-	]
+    # Define weights vector
+    wsh = [
+        wt_in_conn_fog,
+        wt_out_conn_fog,
+        wt_waves_fog,
+        wt_heat_fog,
+        wt_predec_fog,
+        wt_predec_zones_fog,
+        wt_hi_cover,
+    ]
 
 	# Set up decision matrix to be same size as A
 	SH = copy(A)
@@ -643,19 +647,20 @@ function guided_site_selection(
 		)
 	end
 
-	# if shading, create fogging specific decision matrix
-	if log_fog
-		SH, wsh = create_fog_matrix(
-			A,
-			d_vars.k_area[site_ids][filtered_sites],
-			d_vars.wt_conn_fog,
-			d_vars.wt_waves_fog,
-			d_vars.wt_heat_fog,
-			d_vars.wt_predec_fog,
-			d_vars.wt_zones_fog,
-			d_vars.wt_hi_cover,
-		)
-	end
+    # if shading, create fogging specific decision matrix
+    if log_fog
+        SH, wsh = create_fog_matrix(
+            A,
+            d_vars.k_area[site_ids][filtered_sites],
+            d_vars.wt_in_conn_fog,
+            d_vars.wt_out_conn_fog,
+            d_vars.wt_waves_fog,
+            d_vars.wt_heat_fog,
+            d_vars.wt_predec_fog,
+            d_vars.wt_zones_fog,
+            d_vars.wt_hi_cover,
+        )
+    end
 
 	if log_seed && isempty(SE)
 		pref_seed_locs = zeros(Int64, n_iv_locs)
