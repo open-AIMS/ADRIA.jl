@@ -80,6 +80,7 @@ function decision_matrices(
         criteria_weights.seed_zone,
         criteria_weights.seed_coral_cover_low,
         criteria_weights.seed_depth;
+        filter_space = -1.0,
     )
     SE = NamedDimsArray(
         S[:, 2:end];
