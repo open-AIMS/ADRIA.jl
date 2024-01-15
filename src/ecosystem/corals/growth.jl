@@ -574,8 +574,16 @@ end
 """
     settler_density(α, β, L)
 
+Density potential for settlers estimated with a Beverton-Holt (B-H) function, following [1]
+and as detailed in [2].
+
 Note for β: "For corals, the actual number of 6-month old recruits for each coral group
     is generated [...] following a Poisson distribution with recruitment event rate λ.
+
+# Examples
+```julia
+settler_density(2.5, 5000.0, L)
+```
 
 # Arguments
 - `α` : Maximum achievable density (settlers/m²) for a 100% free space (set to 2.5 in [1] for Corymbose)
@@ -595,8 +603,8 @@ Settler density (settlers / m²)
    Ecological Monographs, 92(1), e01494.
    https://doi.org/10.1002/ecm.1494
 
-# Examples
-settler_density(2.5, 5000.0, L)
+2. Haddon, M. (2011). Modelling and quantitative methods in fisheries. CRC Press/Chapman and
+    Hall, Boca Raton, Florida, USA.
 """
 function settler_density(α::T, β::T, L::T)::Float64 where {T<:Float64}
     return (α .* L) ./ (β .+ L)
