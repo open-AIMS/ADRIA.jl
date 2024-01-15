@@ -178,13 +178,17 @@ function ADRIA.viz.decision_matrices!(
     if length(rs.site_data.site_id) != size(S, 1)
         error("Only unfiltered decision matrices can be plotted.")
     end
-    n_criteria::Int64 = length(criteria)
+
     opts[:color_map] = get(opts, :color_map, :viridis)
+    opts[:colorbar_limits] = get(opts, :colorbar_limits, (0.0, 1.0))
+
+    n_criteria::Int64 = length(criteria)
     n_rows = n_cols = ceil(Int64, sqrt(n_criteria + 1))
     criteria_names = String.(criteria)
     step::Int64 = 1
     s_row = 1
     s_col = 1
+
     for row in 1:n_rows, col in 1:n_cols
         if step > n_criteria
             s_row = row
