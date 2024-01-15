@@ -650,22 +650,26 @@ function settler_cover(
     leftover_space::T,
     α::V,
     β::V,
-    basal_area_per_settler::V
+    basal_area_per_settler::V,
+    potential_settlers::T
 )::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
-    # Could pass this in...
-    valid_locs::BitVector = sum.(eachcol(TP_data)) .> 0.0
+    # Determine active sources and sinks
+    valid_sources::BitVector = sum.(eachrow(TP_data)) .> 0.0
+    valid_sinks::BitVector = sum.(eachcol(TP_data)) .> 0.0
 
-    # Send larvae out into the world (reuse fec_scope to reduce allocations)
+    # Send larvae out into the world (reuse potential_settlers to reduce allocations)
     # [Larval pool for each location in larvae/m²] * [survival rate]
-    Mwater::Float64 = 0.95  # in water mortality
-    @views fec_scope[:, valid_locs] .= (
-        fec_scope[:, valid_locs]
-        * TP_data[valid_locs, valid_locs]
+    # this is known as in-water mortality.
+    # Set to 0.0 as it is now taken care of by connectivity data.
+    Mwater::Float64 = 0.0
+    @views potential_settlers[:, valid_sinks] .= (
+        fec_scope[:, valid_sources]
+        * TP_data[valid_sources, valid_sinks]
     ) .* (1.0 .- Mwater)
 
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
     # recruits per m^2 per site multiplied by area per settler
-    return recruitment_rate(fec_scope, leftover_space; α=α, β=β) .* basal_area_per_settler
+    return recruitment_rate(potential_settlers, leftover_space; α=α, β=β) .* basal_area_per_settler
 end
