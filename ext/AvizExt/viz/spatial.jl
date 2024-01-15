@@ -44,14 +44,14 @@ function create_map!(
 
     spatial = GeoAxis(
         f[1, 1];
-        dest="+proj=latlong +datum=WGS84",
+        dest = "+proj=latlong +datum=WGS84",
         axis_opts...,
     )
-    # lon = first.(centroids)
-    # lat = last.(centroids)
-    # map_buffer = 0.025
-    # xlims!(spatial, minimum(lon) - map_buffer, maximum(lon) + map_buffer)
-    # ylims!(spatial, minimum(lat) - map_buffer, maximum(lat) + map_buffer)
+    lon = first.(centroids)
+    lat = last.(centroids)
+    map_buffer = 0.025
+    xlims!(spatial, minimum(lon) - map_buffer, maximum(lon) + map_buffer)
+    ylims!(spatial, minimum(lat) - map_buffer, maximum(lat) + map_buffer)
 
     spatial.xticklabelsize = 14
     spatial.yticklabelsize = 14
