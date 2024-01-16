@@ -20,6 +20,8 @@ Plot a spatial map of location selection frequencies.
 - `opts` : Aviz options
     - `colorbar_label`, label for colorbar. Defaults to "Relative Cover".
     - `color_map`, preferred colormap for plotting heatmaps.
+    - `colorbar_limits` : Upper and lower limits displayed on colorbar,
+    (default is (0.0, maximum(data)))
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 - `fig_opts` : Additional options to pass to adjust Figure creation
@@ -129,9 +131,10 @@ function ADRIA.viz.ranks_to_frequencies(
 end
 
 """
-    ADRIA.viz.decision_matrices(rs::ResultSet, S::NamedDimsArray, criteria::Vector{Symbol}; opts::Dict=Dict(),
-        axis_opts::Dict=Dict(), fig_opts::Dict=Dict())
-    ADRIA.viz.decision_matrices!(g::Union{GridLayout,GridPosition}, rs::ResultSet, S::NamedDimsArray, criteria::Vector{Symbol};
+    ADRIA.viz.decision_matrices(rs::ResultSet, S::NamedDimsArray, scores::Vector{Float64}, 
+        criteria::Vector{Symbol}; opts::Dict=Dict(), axis_opts::Dict=Dict(), fig_opts::Dict=Dict())
+    ADRIA.viz.decision_matrices!(g::Union{GridLayout,GridPosition}, rs::ResultSet, 
+        S::NamedDimsArray, scores::Vector{Float64}, criteria::Vector{Symbol}; 
         opts::Dict=Dict(), axis_opts::Dict=Dict())
         
 Plot a grid of spatial maps for a selection of location selection criteria.
@@ -139,11 +142,13 @@ Plot a grid of spatial maps for a selection of location selection criteria.
 # Arguments
 - `g` : Figure GridPosition or GridLayout
 - `rs` : Result set
-- `S` : A decision matrix calculated using decison.decision_matrices
+- `S` : A normalised decision matrix calculated using decison.decision_matrices
 - `criteria` : Names of criteria to be plotted, e.g [:heat_stress, :wave_stress]
 - `opts` : Aviz options
     - `colorbar_label`, label for colorbar. Defaults to "Relative Cover".
     - `color_map`, preferred colormap for plotting heatmaps.
+    - `colorbar_limits` : Upper and lower limits displayed on colorbar,
+    (default is (0.0, 1.0))
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 - `fig_opts` : Additional options to pass to adjust Figure creation

@@ -21,7 +21,7 @@ Create a spatial choropleth figure.
 - `show_colorbar` : Whether to show a colorbar (true) or not (false)
 - `colorbar_label` : Label to use for color bar
 - `colorbar_limits` : Upper and lower limits displayed on colorbar,
-    (default is (minimum(data),maximum(data)))
+    (default is (0.0, maximum(data)))
 - `color_map` : Type of colormap to use,
     See: https://docs.makie.org/stable/documentation/colors/#colormaps
 - `legend_params` : Legend parameters
