@@ -188,18 +188,11 @@ function ADRIA.viz.decision_matrices!(
     opts[:colorbar_limits] = get(opts, :colorbar_limits, (0.0, 1.0))
 
     n_criteria::Int64 = length(criteria)
-    n_rows = n_cols = ceil(Int64, sqrt(n_criteria + 1))
+    n_rows, n_cols = _calc_gridsize(n_criteria + 1)
     criteria_names = String.(criteria)
     step::Int64 = 1
-    s_row = 1
-    s_col = 1
 
     for row in 1:n_rows, col in 1:n_cols
-        if step > n_criteria
-            s_row = row
-            s_col = col
-            break
-        end
         axis_opts_temp = Dict(:title => criteria_names[step]; axis_opts...)
         ADRIA.viz.map!(
             g[row, col],
@@ -218,17 +211,9 @@ function ADRIA.viz.decision_matrices!(
         opts=opts,
         axis_opts=Dict(:title => "Aggregate score"; axis_opts...),
     )
-    try
-        # Clear empty figures
-        trim!(g)
-    catch err
-        if !(err isa MethodError)
-            # GridPosition plots a single figure so does
-            # not need empty figures to be cleared
-            # If any other error is encountered, something else happened.
-            rethrow(err)
-        end
-    end
+
+    # Clear empty figures
+    return trim!(g)
 end
 
 """
