@@ -1,6 +1,6 @@
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
-    const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Test_domain")
+    const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
 end
 
 @testset "Extracting component parameters" begin
