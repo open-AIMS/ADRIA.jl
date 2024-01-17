@@ -162,8 +162,9 @@ function site_connectivity(
 end
 
 """
-	connectivity_strength(TP_base::AbstractArray)::NamedTuple
-	connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64}, TP_cache::AbstractMatrix{Float64})::NamedTuple
+    connectivity_strength(TP_base::AbstractMatrix{<:Real})::NamedTuple
+    connectivity_strength(area_weighted_TP::AbstractMatrix{Float64},cover::Vector{<:Real},
+        TP_cache::AbstractMatrix{<:Real})::NamedTuple
 
 Create in/out degree centralities for all nodes, and vector of their strongest predecessors.
 
