@@ -612,6 +612,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==1])
+
+    # Cache matrix to store potential settlers
+    potential_settlers = zeros(size(fec_scope)...)
     for tstep::Int64 in 2:tf
         # Copy cover for previous timestep as basis for current timestep
         C_t .= C_cover[tstep - 1, :, :]
@@ -626,6 +629,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         loc_coral_cover = sum(C_t, dims=1)  # dims: 1 * nsites
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
 
+        # Reset potential settlers to zero
+        potential_settlers .= 0.0
+
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
         recruitment[:, valid_locs] .= settler_cover(
@@ -634,7 +640,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
             leftover_space_m²,
             sim_params.max_settler_density,
             sim_params.max_larval_density,
-            basal_area_per_settler
+            basal_area_per_settler,
+            potential_settlers
         )[:, valid_locs] ./ loc_k_area[:, valid_locs]
 
         settler_DHW_tolerance!(

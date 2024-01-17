@@ -574,8 +574,16 @@ end
 """
     settler_density(α, β, L)
 
+Density potential for settlers estimated with a Beverton-Holt (B-H) function, following [1]
+and as detailed in [2].
+
 Note for β: "For corals, the actual number of 6-month old recruits for each coral group
     is generated [...] following a Poisson distribution with recruitment event rate λ.
+
+# Examples
+```julia
+settler_density(2.5, 5000.0, L)
+```
 
 # Arguments
 - `α` : Maximum achievable density (settlers/m²) for a 100% free space (set to 2.5 in [1] for Corymbose)
@@ -595,8 +603,8 @@ Settler density (settlers / m²)
    Ecological Monographs, 92(1), e01494.
    https://doi.org/10.1002/ecm.1494
 
-# Examples
-settler_density(2.5, 5000.0, L)
+2. Haddon, M. (2011). Modelling and quantitative methods in fisheries. CRC Press/Chapman and
+    Hall, Boca Raton, Florida, USA.
 """
 function settler_density(α::T, β::T, L::T)::Float64 where {T<:Float64}
     return (α .* L) ./ (β .+ L)
@@ -626,7 +634,7 @@ end
 
 
 """
-    settler_cover(fec_scope::T, TP_data::AbstractMatrix{Float64}, leftover_space::T, α::V, β::V, basal_area_per_settler::V)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
+    settler_cover(fec_scope::T, TP_data::AbstractMatrix{Float64}, leftover_space::T, α::V, β::V, basal_area_per_settler::V, potential_settlers::T)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
 Determine area settled by recruited larvae.
 
@@ -640,6 +648,7 @@ Note: Units for all areas are assumed to be in m².
 - `α` : max number of settlers / m²
 - `β` : larvae / m² required to produce 50% of maximum settlement
 - `basal_area_per_settler` : area taken up by a single settler
+- `potential_settlers` : matrix to (re)use as cache to avoid memory allocations
 
 # Returns
 Area covered by recruited larvae (in m²)
@@ -650,22 +659,26 @@ function settler_cover(
     leftover_space::T,
     α::V,
     β::V,
-    basal_area_per_settler::V
+    basal_area_per_settler::V,
+    potential_settlers::T
 )::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
-    # Could pass this in...
-    valid_locs::BitVector = sum.(eachcol(TP_data)) .> 0.0
+    # Determine active sources and sinks
+    valid_sources::BitVector = sum.(eachrow(TP_data)) .> 0.0
+    valid_sinks::BitVector = sum.(eachcol(TP_data)) .> 0.0
 
-    # Send larvae out into the world (reuse fec_scope to reduce allocations)
+    # Send larvae out into the world (reuse potential_settlers to reduce allocations)
     # [Larval pool for each location in larvae/m²] * [survival rate]
-    Mwater::Float64 = 0.95  # in water mortality
-    @views fec_scope[:, valid_locs] .= (
-        fec_scope[:, valid_locs]
-        * TP_data[valid_locs, valid_locs]
+    # this is known as in-water mortality.
+    # Set to 0.0 as it is now taken care of by connectivity data.
+    Mwater::Float64 = 0.0
+    @views potential_settlers[:, valid_sinks] .= (
+        fec_scope[:, valid_sources]
+        * TP_data[valid_sources, valid_sinks]
     ) .* (1.0 .- Mwater)
 
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
     # recruits per m^2 per site multiplied by area per settler
-    return recruitment_rate(fec_scope, leftover_space; α=α, β=β) .* basal_area_per_settler
+    return recruitment_rate(potential_settlers, leftover_space; α=α, β=β) .* basal_area_per_settler
 end
