@@ -3,25 +3,25 @@ using ADRIA: relative_leftover_space, connectivity_strength, model_spec, criteri
     component_params
 
 """
-    decision_matrices(rs::ResultSet, criteria_weights::DataFrameRow;
-        loc_coral_cover = rs.site_max_coral_cover::Vector{Float64})
+    decision_matrices(rs::ResultSet, criteria_row::DataFrameRow;
+        loc_coral_cover = rs.site_max_coral_cover::Vector{Float64}, RCP::String = "45")
 
 Calculates a decision matrix for a specified intervention, using a scenario specification 
 	and Domain alone. These can be visualised spatially using `viz.decision_matrices`.
 
 # Arguments
 - `rs` : ADRIA ResultSet
-- `criteria_weights` :  A row of a scenario dataframe, containing intervention criteria weights.
-- `int_type` : Intervention type (e.g. :seed or :fog)
+- `criteria_row` :  A row of a scenario dataframe, containing intervention criteria weights.
 - `loc_coral_cover` : Relative coral cover to site k area (dims: nspecies*nsites), default 
 is max cover over scenarios in rs.
+-  `RCP` : RCP scenario to use (waves and dhws), default is "45".
 
 # Returns
 Selection score
 """
 function decision_matrices(
     rs::ResultSet,
-    criteria_weights::DataFrameRow;
+    criteria_row::DataFrameRow;
     loc_coral_cover = rs.site_max_coral_cover::Vector{Float64},
     RCP::String = "45",
 )
@@ -67,19 +67,19 @@ function decision_matrices(
         rs.site_data.depth_med[site_ids],
         priority_source_criteria,
         zones_criteria,
-        criteria_weights.deployed_coral_risk_tol,
+        criteria_row.deployed_coral_risk_tol,
     )
 
     S, wse = ADRIA.decision.create_seed_matrix(
         A,
-        criteria_weights.seed_in_connectivity,
-        criteria_weights.seed_out_connectivity,
-        criteria_weights.seed_wave_stress,
-        criteria_weights.seed_heat_stress,
-        criteria_weights.seed_priority,
-        criteria_weights.seed_zone,
-        criteria_weights.seed_coral_cover_low,
-        criteria_weights.seed_depth;
+        criteria_row.seed_in_connectivity,
+        criteria_row.seed_out_connectivity,
+        criteria_row.seed_wave_stress,
+        criteria_row.seed_heat_stress,
+        criteria_row.seed_priority,
+        criteria_row.seed_zone,
+        criteria_row.seed_coral_cover_low,
+        criteria_row.seed_depth;
         filter_space = -1.0,
     )
     SE = NamedDimsArray(
@@ -91,13 +91,13 @@ function decision_matrices(
     S, wsh = ADRIA.decision.create_fog_matrix(
         A,
         site_k_area(rs)[site_ids][filtered_sites],
-        criteria_weights.fog_in_connectivity,
-        criteria_weights.fog_out_connectivity,
-        criteria_weights.fog_wave_stress,
-        criteria_weights.fog_heat_stress,
-        criteria_weights.fog_priority,
-        criteria_weights.fog_zone,
-        criteria_weights.fog_coral_cover_high,
+        criteria_row.fog_in_connectivity,
+        criteria_row.fog_out_connectivity,
+        criteria_row.fog_wave_stress,
+        criteria_row.fog_heat_stress,
+        criteria_row.fog_priority,
+        criteria_row.fog_zone,
+        criteria_row.fog_coral_cover_high,
     )
     SH = NamedDimsArray(
         S[:, 2:end];
