@@ -35,9 +35,9 @@ function decision_matrices(
         rs.dhw_stats[RCP](; stat = "mean"), (:dhw_scenario)
     )
 
-    TP_data = rs.connectivity_data[RCP]  # connectivity matrix
+    conn_data = rs.connectivity_data[RCP]  # connectivity matrix
     connectivity_data = connectivity_strength(
-        TP_data .* site_k_area(rs), vec(loc_coral_cover), TP_data
+        conn_data .* site_k_area(rs), loc_coral_cover, conn_data
     )
     # Strongest larval source location for each location
     strong_pred = connectivity_data.strongest_predecessor
