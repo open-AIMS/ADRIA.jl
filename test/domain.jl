@@ -3,7 +3,7 @@ using ADRIA
 
 @testset "Domain loading" begin
     @testset "Domain DataFrame" begin
-        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
         p_df = ADRIA.param_table(dom)
         @test p_df isa DataFrame
     end
@@ -20,7 +20,7 @@ using ADRIA
     @testset "Discrete parameters" begin
         site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
         conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
-        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
 
         # Create scenario spec
         samples = ADRIA.sample(dom, 8)

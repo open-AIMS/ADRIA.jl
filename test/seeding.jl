@@ -5,9 +5,14 @@ using NamedDims, Distributions
 using ADRIA
 using ADRIA: distribute_seeded_corals, location_k, seed_corals!
 
+if !@isdefined(ADRIA_DIR)
+    const ADRIA_DIR = pkgdir(ADRIA)
+    const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
+end
+
 @testset "Seeding" begin
     # first test function on example domain
-    dom = ADRIA.load_domain(joinpath(@__DIR__, "data", "Test_domain"), 45)
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
 
     # extract inputs for function
     total_site_area = site_area(dom)

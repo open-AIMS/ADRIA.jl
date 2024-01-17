@@ -4,13 +4,13 @@ using Test
 
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
-    const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
+    const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
 end
 
 @testset "site selection" begin
     # TODO: Complete tests with @tests
 
-    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
     p_tbl = ADRIA.param_table(dom)
 
     p_tbl[:, :depth_offset] .= 7.0
@@ -18,7 +18,7 @@ end
     # ranks = ADRIA.site_selection(dom, p_tbl, 1, 10, 1)
 end
 @testset "MCDA variable constructor" begin
-    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
     criteria_df = ADRIA.sample_site_selection(dom, 1) # get scenario dataframe
     site_ids = collect(1:length(dom.site_ids))
     available_space = rand(Uniform(200, 30000), length(site_ids))
@@ -72,7 +72,7 @@ end
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
-    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, 45)
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
     N = 2^3
     scens = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
 
