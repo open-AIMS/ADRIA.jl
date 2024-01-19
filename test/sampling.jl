@@ -2,11 +2,11 @@ using ADRIA
 
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
-    const EXAMPLE_DOMAIN_PATH = joinpath(ADRIA_DIR, "examples", "Test_domain")
+    const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
 end
 
 @testset "sample" begin
-    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
     num_samples = 32
     scens = ADRIA.sample(dom, num_samples)
 
@@ -65,7 +65,7 @@ end
 
 @testset "Targeted sampling" begin
     @testset "Counterfactual sampling" begin
-        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         num_samples = 32
         scens = ADRIA.sample_cf(dom, num_samples)
 
@@ -84,7 +84,7 @@ end
     end
 
     @testset "Guided sampling" begin
-        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         num_samples = 32
         scens = ADRIA.sample_guided(dom, num_samples)
 
@@ -114,7 +114,7 @@ end
     end
 
     @testset "Unguided sampling" begin
-        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         num_samples = 32
         scens = ADRIA.sample_unguided(dom, num_samples)
 
@@ -137,7 +137,7 @@ end
     end
 
     @testset "Site selection sampling" begin
-        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         num_samples = 32
         scens = ADRIA.sample_site_selection(dom, num_samples)
 
@@ -169,7 +169,7 @@ end
     end
 
     @testset "Get sampling bounds" begin
-        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         ms = ADRIA.model_spec(dom)
 
         @testset "Continuous variables" begin
@@ -198,7 +198,7 @@ end
     end
 
     @testset "Set new sampling bounds" begin
-        dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         num_samples = 32
 
         @testset "Continuous factor is sampled within specified range" begin

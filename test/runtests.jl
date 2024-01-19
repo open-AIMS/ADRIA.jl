@@ -9,8 +9,7 @@ using ADRIA.metrics: total_absolute_cover
 const ADRIA_DIR = pkgdir(ADRIA)
 const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
 
-const EXAMPLES_PATH = joinpath(ADRIA_DIR, "examples")
-const EXAMPLE_DOMAIN_PATH = joinpath(EXAMPLES_PATH, "Test_domain")
+const TEST_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Test_domain")
 
 """Test smaller scenario run with example scenario specification"""
 function test_small_spec_rs()
@@ -21,8 +20,8 @@ function test_small_spec_rs()
     ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
 
     # Run scenarios with example Domain
-    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
-    dom_path = joinpath(EXAMPLES_PATH, "example_scenarios.csv")
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+    dom_path = joinpath(TEST_DATA_DIR, "example_scenarios.csv")
     scens = ADRIA.load_scenarios(dom, dom_path)
 
     return ADRIA.run_scenarios(dom, scens, "45")
@@ -40,7 +39,7 @@ function test_rs_w_fig()
     Makie.inline!(false)
 
     # Load domain data
-    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
 
     # Create some scenarios
     # The number of scenarios set here seem to be the rough minimum for SIRUS to produce

@@ -852,7 +852,7 @@ end
 end
 
 @testset "growth model" begin
-    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH, "45")
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
     n_sites = ADRIA.n_locations(dom)
 
     p = dom.coral_growth.ode_p

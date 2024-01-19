@@ -1,6 +1,0 @@
-[operation]
-num_cores = 2    # No. of cores to use. Values <= 0 will use all available cores.
-threshold = 1e-6  # Result values below this will be set to 0.0
-
-[results]
-output_dir = "./outputs"  # save to current working directory

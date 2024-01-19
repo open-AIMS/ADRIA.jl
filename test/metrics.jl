@@ -1,6 +1,6 @@
 @testset "Relative Shelter Volume" begin
     # Create scenario spec
-    dom = ADRIA.load_domain(EXAMPLE_DOMAIN_PATH)
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
 
     # Create scenario spec
     test_scens = ADRIA.sample(dom, 8)
