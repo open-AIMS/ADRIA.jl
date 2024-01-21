@@ -4,7 +4,7 @@ using Distributions
 using AxisKeys, NamedDims
 using CSV, DataFrames, ModelParameters
 
-using ADRIA: SimConstants, Domain, site_distances, GDF
+using ADRIA: SimConstants, Domain, GDF
 
 mutable struct ReefModDomain <: Domain
     const name::String
