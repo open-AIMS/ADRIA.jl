@@ -17,19 +17,24 @@ Here, the `scens` variable holds a DataFrame of scenarios of shape $N$ by $D$, w
 $N$ is the number of scenarios (rows) and $D$ is the number of factors (columns).
 Because it is a DataFrame, it can be modified after the fact.
 
-The Sobol' method (Sobol' 1993, 2001) is the default sampling approach. It is a
-deterministic low-discrepancy quasi-monte carlo sampler. Samples are described as
-having low discrepancy if the samples are equi-distributed, and thus guarantee an
-even exploration of parameter space. One limitation of the Sobol' method is that 
-all factors are assumed to be independent. For most factors represented in ADRIA,
-this assumption holds true. Specific factors relating to intervention options may
-conditionally co-vary however, and this dependency is introduced by adjusting the
-sample values _a posteriori_ to restrict sampled values to their plausible 
+The Sobol' method (Sobol' 1993, 2001) with Owen Scrambling is the default sampling approach.
+The Sobol' sampling method is a deterministic low-discrepancy quasi-monte carlo method.
+Samples are described as having low discrepancy if the samples are equi-distributed, and
+thus guarantee an even exploration of factor space. Owen Scrambling is an approach to
+introduce randomness to the quasi-monte carlo sequence, and belong to a class of sampling
+methods known as randomized Quasi-Monte Carlo (rQMC). rQMC approaches offer a balance
+between good space-filling properties and associated exploration of factor space with
+improved convergence characteristics.
+
+One limitation of the Sobol' method is that all factors are assumed to be independent.
+For most factors represented in ADRIA, this assumption holds true. Specific factors relating
+to intervention options may conditionally co-vary however, and this dependency is introduced
+by adjusting the sample values _a posteriori_ to restrict sampled values to their plausible
 combinations, and to map continuous values to their expected discrete factor
 values (where necessary), as is in the case with categorical factors. The Sobol'
 scheme is therefore disrupted due to the adjustment and so a Sobol' sensitivity
-analysis may exhibit comparatively poor convergence. Subsequent assessment of 
-uncertainty and sensitivity is instead conducted with the distribution-based 
+analysis may exhibit comparatively poor convergence. Subsequent assessment of
+uncertainty and sensitivity is instead conducted with the distribution-based
 PAWN method (Pianosi and Wagener 2015, 2018).
 
 !!! note "Sobol' samples"
@@ -49,8 +54,7 @@ import Surrogates.QuasiMonteCarlo: LatinHypercubeSample
 scens = ADRIA.sample(dom, 100, LatinHypercubeSample())
 ```
 
-
-### On model parameters and specifications
+## On model parameters and specifications
 
 The current default values can be extracted with:
 
@@ -62,8 +66,8 @@ Again, `params` is a DataFrame of a single row and $D$ factors:
 A single scenario with model factors set to their default values.
 
 Running specific user-defined scenarios is as simple as modifying the DataFrame
-(referred to as the "scenario specification"). A set of scenarios may be specified 
-simply by extending the number of rows of the DataFrame. Details of the ADRIA 
+(referred to as the "scenario specification"). A set of scenarios may be specified
+simply by extending the number of rows of the DataFrame. Details of the ADRIA
 model - parameter names, the default values, and their bounds - can be extracted
 as well.
 
@@ -103,8 +107,8 @@ ADRIA.fix_factor!(dom, :a_adapt, 3.0)
 ADRIA.fix_factor!(dom;
     seed_TA=Int64(5e5),
     seed_CA=Int64(5e5),
-    SRM=0.0,  # Never fog/shade
-    fogging=0.0,
+    SRM=0.0,  # Never shade
+    fogging=0.0,  # Never fog
     a_adapt=3.0,  # only deploy +3 DHW enhanced corals
     seed_years=5,
     shade_years=0,
@@ -115,28 +119,30 @@ ADRIA.fix_factor!(dom;
     coral_cover_tol=1.0
 )
 ```
-Samples can also be taken over a constrained range. For example, if one wanted to investigate only 
+
+Samples can also be taken over a constrained range. For example, if one wanted to investigate only
 scenarios with high fogging and seeding, the following could be used:
 
 ```julia
 dom = ADRIA.load_domain()
 
-# Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in  
+# Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in
 # question have a uniform distribution.
-ADRIA.set_factor_bounds!(dom, :N_seed_TA, (500000.0, 1000000.0 + 1.0))
-ADRIA.set_factor_bounds!(dom, :N_seed_CA, (500000.0, 1000000.0 + 1.0))
-ADRIA.set_factor_bounds!(dom, :N_seed_SA, (500000.0, 1000000.0 + 1.0))
+ADRIA.set_factor_bounds!(dom, :N_seed_TA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :N_seed_CA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :N_seed_SA, (500000.0, 1000000.0))
 
-# Adjust fogging bounds. Note lower, upper and mode parameters are needed because it 
+# Adjust fogging bounds. Note lower, upper and mode parameters are needed because it
 # is a triangular distribution.
 ADRIA.set_factor_bounds!(dom, :fogging, (0.2, 0.3, 0.1))
 
 # Adjust multiple factors simultaneously.
 ADRIA.set_factor_bounds!(dom;
     heat_stress=(0.3, 0.7),
-    N_seed_TA=(500000.0, 1000000.0 + 1.0),
-    N_seed_CA=(500000.0, 1000000.0 + 1.0))
+    N_seed_TA=(500000.0, 1000000.0),
+    N_seed_CA=(500000.0, 1000000.0))
 ```
+
 ## Sampling counterfactuals only
 
 A convenience function to create scenarios with no interventions (counterfactuals).
@@ -145,8 +151,7 @@ A convenience function to create scenarios with no interventions (counterfactual
 cf_scens = ADRIA.sample_cf(dom, 1024)
 ```
 
-
-# References
+## References
 
 1. Sobol’, I. M. 1993.
    Sensitivity analysis for non-linear mathematical models.

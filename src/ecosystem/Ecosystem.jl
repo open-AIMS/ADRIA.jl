@@ -19,33 +19,27 @@ function EnvironmentalLayer(
     T<:Union{Missing,Float32,Float64},T2<:Union{Missing,Float32,Float64}
 }
     return EnvironmentalLayer(
-        Param(
+        Factor(
             1;
-            bounds=(1.0, Float64(size(dhw, 3)) + 1.0),
-            default_bounds=(1.0, Float64(size(dhw, 3)) + 1.0),
-            ptype="integer",
-            dists="unif",
-            criteria_keywords=(""),
+            ptype="unordered categorical",
+            dist=DiscreteUniform,
+            dist_params=(1.0, Float64(size(dhw, 3))),
             name="DHW Scenario",
             description="DHW scenario member identifier.",
         ),
-        Param(
+        Factor(
             1;
-            bounds=(1.0, Float64(size(wave, 3)) + 1.0),
-            default_bounds=(1.0, Float64(size(wave, 3)) + 1.0),
-            ptype="integer",
-            dists="unif",
-            criteria_keywords=(""),
+            ptype="unordered categorical",
+            dist=DiscreteUniform,
+            dist_params=(1.0, Float64(size(wave, 3))),
             name="Wave Scenario",
             description="Wave scenario member identifier.",
         ),
-        Param(
+        Factor(
             1;
-            bounds=(1.0, Float64(size(cyclone_mortality, 4)) + 1.0),
-            default_bounds=(1.0, Float64(size(cyclone_mortality, 4)) + 1.0),
-            ptype="integer",
-            dists="unif",
-            criteria_keywords=(""),
+            ptype="unordered categorical",
+            dist=DiscreteUniform,
+            dist_params=(1.0, Float64(size(cyclone_mortality, 4))),
             name="Cyclone Mortality",
             description="Cyclone mortality scenario identifier.",
         ),

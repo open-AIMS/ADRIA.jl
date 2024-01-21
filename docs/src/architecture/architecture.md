@@ -47,7 +47,7 @@ Factors in ADRIA are defined across four sub-components:
 
 1. Intervention
 2. CriteriaWeights
-3. EnvironmentalLayers
+3. EnvironmentalLayer
 4. Coral
 
 Each sub-component is represented by a struct with fields for each parameter. The `Intervention`
@@ -55,7 +55,7 @@ sub-component holds parameters that define a given adopted intervention strategy
 many (and type of) corals are to be seeded, the length of any deployment, the start/end years,
 and so on. The `CriteriaWeights` sub-component relates to the preferences for the Multi-Criteria
 Decision Analysis methods, further detailed in [Dynamic Multi-Criteria Decision Analysis](@ref). For the ADRIA ecosystem model
-(ADRIAmod), `EnviromentalLayers` relate to the environmental scenarios available for a given
+(ADRIAmod), `EnviromentalLayer` relate to the environmental scenarios available for a given
 simulation (a time series of DHW and Wave stress), itself determined on the loading of data
 (see [Running scenarios](@ref)).
 
@@ -77,47 +77,29 @@ Through discussion with expert stakeholders, factor bounds were set to +/- 10% o
 default values following a triangular distribution, the peak of which is the default value.
 
 The [ModelParameters.jl](https://github.com/rafaqz/ModelParameters.jl) package is used to provide
-a simple table-like interface to model factors. Using the `Param` type provided by
-ModelParameters.jl allows the default value, the factor bounds, their expected distribution,
-and other associated metadata (e.g., a human-readable name and description) to be attached. An
-example from the `Intervention` sub-component is shown below.
+a simple table-like interface to model factors. ADRIA provides a wrapper to the `Param` type
+provided by ModelParameters.jl called a `Factor`. These `Factor`s requires ADRIA-specific
+metadata to be provided alongside the default value for a given model factor. These include
+the assumed distribution of the factor, distribution factors (principally the lower and
+upper bounds), and a human-readable name and description. An example from the `Intervention`
+sub-component is shown below.
 
 ```julia
-guided::N = Param(0, ptype="integer", bounds=(-1, 3 + 1), dists="unif",
+guided::N = Factor(0.0, ptype="ordered categorical", dist=(-1.0, 3.0), dist_params=DiscreteUniform,
         name="Guided", description="Choice of MCDA approach.")
 ```
 
-Note the `+ 1` in the example above when specifying the upper bound. Usual sampling approaches,
-such as the Sobol' method mentioned above, provide a continous value. These need to be
-transformed to a whole number when working with categorical factors or parameters which expect a
-whole number. A "flooring trick" (as it is referred to here) is adopted to handle this
-transformation. The process is described in
-[Baroni and Tarantola (2014)](https://doi.org/10.1016/j.envsoft.2013.09.022) and is illustrated
-here with the example below.
+Note that factor values are provided as floats - even where discrete values are expected -
+to maintain type stability. Mixing floats with integers will lead to an error. Similarly,
+values used to update the model should always be floats.
 
-Let $x_i$ be a factor that is expected to be a discrete value between 1 and 3 (inclusive).
-In other words, there are 3 valid options: $x_i = \{1, 2, 3\}$.
-
-1. The upper bound is increased by 1, such that $x_i = \{1, 2, 3, 4\}$
-2. Sample from this extended range with the given sampler, which returns a value $1 \le v_i \lt 4$, where $v_i \in \mathbb{R}$
-3. Take the `floor` of $v_i$. For example, if $v_i = 3.9$, then $\text{floor}(v_i) = 3$.
-
-In this manner the expected probability of a possible value being selected is maintained.
-
-These factor definitions are collectively known as the model specification, and
-can be collated as a DataFrame.
-
-Combination of the realized factor values then represent a "scenario".
+Combinations of the realized factor values then represent a "scenario".
 
 !!! note "Parameter Collation and Scenario Generation"
     See [Cookbook examples](@ref) for an example how-to on collating model factors and
     generating samples.
 
 # References
-
-Baroni, G., and S. Tarantola. 2014.
-A General Probabilistic Framework for uncertainty and global sensitivity analysis of deterministic models: A hydrological case study.
-Environmental Modelling & Software 51:26–34.
 
 Pianosi, F., K. Beven, J. Freer, J. W. Hall, J. Rougier, D. B. Stephenson, and T. Wagener. 2016.
 Sensitivity analysis of environmental models: A systematic review with practical workflow.

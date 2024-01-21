@@ -18,6 +18,7 @@ rs = ADRIA.run_scenarios(dom, scens, ["45", "60", "85"])
 The `rs` variable is an `ResultSet` object which acts as an interface to the stored results.
 
 The `ResultSet` provides:
+
 - An overview of scenarios run
 - Access to results from key ADRIA metrics
 - Seeding/Shading/Fogging logs

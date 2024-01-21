@@ -41,28 +41,6 @@ end
     end
 end
 
-@testset "Flooring trick" begin
-    # Check that continous sampled values are correctly mapped
-    # to corresponding discrete values.
-
-    @test ADRIA.map_to_discrete(50.7, 51) == 50
-
-    @test ADRIA.map_to_discrete(10.9, 11) == 10
-
-    # Test value capped to upper bound
-    @test ADRIA.map_to_discrete(4, 4) == 3
-
-    x = rand(1:0.01:20, 25)
-    expect = min.(floor.(Int64, x), ceil.(Int64, x) .- 1)
-    calc = ADRIA.map_to_discrete.(x, Int64.(ceil.(x)))
-    msg = """
-    Flooring trick failed to produce discrete values
-    Expected: $(expect)
-    Received: $(calc)
-    """
-    @test all(expect .== calc) || msg
-end
-
 @testset "Targeted sampling" begin
     @testset "Counterfactual sampling" begin
         dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
@@ -176,23 +154,23 @@ end
             continuous_factors = ms[(ms.ptype .∉ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
 
             for factor in eachrow(continuous_factors)
-                factor_fieldname = factor.fieldname
-                @test ADRIA.get_bounds(dom, factor_fieldname) == factor.bounds
-                @test ADRIA.get_default_bounds(dom, factor_fieldname) ==
-                    factor.default_bounds
+                fn = factor.fieldname
+                @test ADRIA.get_bounds(dom, fn) == factor.dist_params[1:2]
+                @test ADRIA.get_default_dist_params(dom, fn) ==
+                    factor.default_dist_params
             end
         end
 
         @testset "Discrete variables" begin
             discrete_factors = ms[(ms.ptype .∈ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
             for factor in eachrow(discrete_factors)
-                factor_fieldname = factor.fieldname
-                @test ADRIA.get_bounds(dom, factor_fieldname)[1] == factor.bounds[1]
-                @test ADRIA.get_bounds(dom, factor_fieldname)[2] == factor.bounds[2] - 1.0
-                @test ADRIA.get_default_bounds(dom, factor_fieldname)[1] ==
-                    factor.default_bounds[1]
-                @test ADRIA.get_default_bounds(dom, factor_fieldname)[2] ==
-                    factor.default_bounds[2] - 1.0
+                fn = factor.fieldname
+                @test ADRIA.get_bounds(dom, fn)[1] == factor.dist_params[1]
+                @test ADRIA.get_bounds(dom, fn)[2] == factor.dist_params[2]
+                @test ADRIA.get_default_dist_params(dom, fn)[1] ==
+                    factor.default_dist_params[1]
+                @test ADRIA.get_default_dist_params(dom, fn)[2] ==
+                    factor.default_dist_params[2]
             end
         end
     end
@@ -227,17 +205,23 @@ end
 
         @testset "Discrete factor upper and lower limits are not out of bounds" begin
             ms = ADRIA.model_spec(dom)
-            discrete_factors = ms[(ms.ptype .== "categorical"), :]
+
+            # Obtain details of discrete factors by checking if elements of array A appear
+            # in array B.
+            # For `Ref()`, see:
+            # https://docs.julialang.org/en/v1/base/collections/#Iterable-Collections
+            discrete_factors = ms[in.(ms.ptype, Ref(ADRIA.DISCRETE_FACTOR_TYPES)), :]
+
             discrete_factor = discrete_factors[1, :]
             discrete_factor_name = discrete_factor.fieldname
 
             @testset "New and old bounds are the same" begin
-                new_bounds = ADRIA.get_default_bounds(dom, discrete_factor_name)
+                new_bounds = ADRIA.get_default_dist_params(dom, discrete_factor_name)
                 ADRIA.set_factor_bounds!(dom, discrete_factor_name, new_bounds)
 
                 factor_params = dom.model[ms.fieldname .== discrete_factor_name][1]
-                @test factor_params.bounds[1] == factor_params.default_bounds[1]
-                @test factor_params.bounds[2] == factor_params.default_bounds[2] - 1.0
+                @test factor_params.dist_params[1] == factor_params.default_dist_params[1]
+                @test factor_params.dist_params[2] == factor_params.default_dist_params[2]
 
                 scens = ADRIA.sample_site_selection(dom, num_samples)
                 discrete_factor_scens = scens[:, string(discrete_factor_name)]
