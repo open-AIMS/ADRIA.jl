@@ -1,6 +1,6 @@
-using ADRIA, DataFrames, CSV, NamedDims, AxisKeys
-import GeoDataFrames as GDF
-using CSV
+using ADRIA, ADRIA.DataFrames, ADRIA.CSV
+using ADRIA.NamedDims, ADRIA.AxisKeys
+import ADRIA.GDF as GDF
 
 
 if !@isdefined(ADRIA_DIR)

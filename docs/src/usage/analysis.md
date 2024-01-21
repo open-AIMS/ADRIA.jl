@@ -385,6 +385,7 @@ save("tsc_map.png", tsc_map_fig)
 ![Plots of Spatial Time Series Clusters](/ADRIA.jl/dev/assets/imgs/tsc_map.png?raw=true "Spatial Time Series Cluster")
 
 ### Rule Induction (using Series Clusters)
+
 After clustering, it is possible to target some specific scenarios based on each cluster
 median outcome temporal variability:
 

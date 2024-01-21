@@ -53,38 +53,8 @@ function load_scenarios(domain::Domain, filepath::String)::DataFrame
     if columnindex(df, :RCP) > 0
         df = df[!, Not("RCP")]
     end
-    _process_inputs!(domain, df)
 
     return df
-end
-
-"""
-    _process_inputs!(d::Domain, df::DataFrame)::Nothing
-    _process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
-    _process_inputs!(bnds::AbstractArray, p_types::AbstractArray, df::DataFrame)::Nothing
-
-Map sampled values in `df` back to discrete bounds for parameters
-indicated to be of integer type in the Domain spec.
-
-# Arguments
-- `d` : Domain
-- `bnds` : Tuple containing list of parameter bounds (lower,upper).
-- `spec` : Model specification defining parameter bounds, types and distributions.
-- `df` : parameter sets defining scenarios
-"""
-function _process_inputs!(d::Domain, df::DataFrame)::Nothing
-    return _process_inputs!(d.model[:bounds], d.model[:ptype], df)
-end
-function _process_inputs!(spec::DataFrame, df::DataFrame)::Nothing
-    return _process_inputs!(Tuple(spec[:, :bounds]), Tuple(spec[:, :ptype]), df)
-end
-function _process_inputs!(bnds::Tuple, p_types::Tuple, df::DataFrame)::Nothing
-    for (i, dt) in enumerate(p_types)
-        if _is_discrete_factor(dt) && (bnds[i][1] < bnds[i][2])
-            @inbounds df[!, i] .= map_to_discrete.(df[!, i], Int64(bnds[i][2]))
-        end
-    end
-    return nothing
 end
 
 function load_mat_data(

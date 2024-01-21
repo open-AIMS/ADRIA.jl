@@ -126,7 +126,7 @@ function ADRIA.viz.tsa!(
     # color_weight = min((1.0 / (length(factors) / min_step)), 0.6)
     comps = unique(all_comps)
     dc = distinguishable_colors(length(comps), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
-    lns = Combined[
+    lns = Plot[
         series!(
             ax,
             si(Si=stat)[findall(all_comps .== _cmp), :],
@@ -203,7 +203,7 @@ function ADRIA.viz.rsa!(
     all_comps = ms[foi, :component]
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
-    bounds = ms[foi, :bounds]
+    dist_params = ms[foi, :dist_params]
 
     if any(f_names .== :guided)
         fv_labels = [
@@ -217,7 +217,7 @@ function ADRIA.viz.rsa!(
         insert!(all_comps, loc, "EnvironmentalLayer")
         insert!(f_names, loc, "RCP")
         insert!(h_names, loc, "SSP/RCP")
-        insert!(bounds, loc, (1, length(unique(rs.inputs.RCP))))
+        insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
     # comps = unique(all_comps)
@@ -336,7 +336,7 @@ function ADRIA.viz.outcome_map!(
     all_comps = ms[foi, :component]
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
-    bounds = ms[foi, :bounds]
+    dist_params = ms[foi, :dist_params]
 
     # Hacky special case handling for SSP/RCP
     if :RCP in factors || :SSP in factors
@@ -344,7 +344,7 @@ function ADRIA.viz.outcome_map!(
         insert!(all_comps, loc, "EnvironmentalLayer")
         insert!(f_names, loc, "RCP")
         insert!(h_names, loc, "SSP/RCP")
-        insert!(bounds, loc, (1, length(unique(rs.inputs.RCP))))
+        insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
     bin_slices, factor_list, CIs = axiskeys(outcomes)
@@ -456,7 +456,7 @@ Plot sensitivity values for an increasing number of scenarios as a series, with 
       See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function _series_convergence(
     g::GridPosition,
@@ -579,7 +579,7 @@ Plot sensitivity values for an increasing number of scenarios as a heatmap, with
       See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function _heatmap_convergence(
     g::GridPosition,
@@ -637,7 +637,7 @@ Plot sensitivity metric for increasing number of scenarios to illustrate converg
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function ADRIA.viz.convergence(
     Si_conv::NamedDimsArray,

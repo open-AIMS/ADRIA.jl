@@ -1,5 +1,5 @@
-using Distributions
 using Test
+using ADRIA.Distributions
 
 
 if !@isdefined(ADRIA_DIR)
@@ -19,7 +19,8 @@ end
 end
 @testset "MCDA variable constructor" begin
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
-    criteria_df = ADRIA.sample_site_selection(dom, 1) # get scenario dataframe
+    criteria_df = ADRIA.param_table(dom)  # Get single scenario dataframe
+
     site_ids = collect(1:length(dom.site_ids))
     available_space = rand(Uniform(200, 30000), length(site_ids))
 
