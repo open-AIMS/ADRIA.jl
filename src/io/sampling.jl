@@ -466,9 +466,6 @@ end
 
 Set new bound values for a given parameter. Sampled values for a parameter will lie
 within the range `lower_bound ≤ s ≤ upper_bound`, for every sample value `s`.
-When used to set new bounds for a factor with discrete distribution, upper bound will be set
-to `upper_bound + 1` to guarantee that the sampled values will always be less than or equal
-`upper_bound`. This function will automatically set a new value to `val`.
 
 Note: Changes are permanent. To reset, either specify the original value(s) or reload the
 Domain.
