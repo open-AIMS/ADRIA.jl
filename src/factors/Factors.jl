@@ -65,7 +65,7 @@ end
 """
     DiscreteTriangularDist(lb::Int64, ub::Int64, peak::Int64)::DiscreteNonParametric
 
-Custom constructor to create a discrete triangular distribution.
+Create a discrete triangular distribution.
 
 # Extended Help
 

@@ -1,6 +1,7 @@
 using Test
-using Distributions
 using ADRIA
+using ADRIA.Distributions
+
 
 @testset "proportional adjustment" begin
     Y = rand(5, 36, 20)

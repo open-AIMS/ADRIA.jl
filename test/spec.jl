@@ -20,5 +20,4 @@ end
 
     x = ADRIA.component_params(dom.model, ADRIA.CriteriaWeights)
     @test size(x, 1) > 0
-
 end

@@ -1,5 +1,5 @@
 using Test
-using Distributions
+using ADRIA.Distributions
 using ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_fog_matrix
 
 

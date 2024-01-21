@@ -1,4 +1,4 @@
-Base.@kwdef struct CriteriaWeights{U1,U2,U3,DU,DO} <: EcoModel
+Base.@kwdef struct CriteriaWeights{U2,U3,DO} <: EcoModel
     seed_wave_stress::U2 = Factor(
         1.0;
         ptype="continuous",

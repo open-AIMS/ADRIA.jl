@@ -126,7 +126,7 @@ function ADRIA.viz.tsa!(
     # color_weight = min((1.0 / (length(factors) / min_step)), 0.6)
     comps = unique(all_comps)
     dc = distinguishable_colors(length(comps), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
-    lns = Combined[
+    lns = Plot[
         series!(
             ax,
             si(Si=stat)[findall(all_comps .== _cmp), :],
@@ -456,7 +456,7 @@ Plot sensitivity values for an increasing number of scenarios as a series, with 
       See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function _series_convergence(
     g::GridPosition,
@@ -579,7 +579,7 @@ Plot sensitivity values for an increasing number of scenarios as a heatmap, with
       See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function _heatmap_convergence(
     g::GridPosition,
@@ -637,7 +637,7 @@ Plot sensitivity metric for increasing number of scenarios to illustrate converg
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 
 # Returns
-GLMakie figure
+Makie figure
 """
 function ADRIA.viz.convergence(
     Si_conv::NamedDimsArray,
