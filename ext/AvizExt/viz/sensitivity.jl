@@ -126,7 +126,7 @@ function ADRIA.viz.tsa!(
     # color_weight = min((1.0 / (length(factors) / min_step)), 0.6)
     comps = unique(all_comps)
     dc = distinguishable_colors(length(comps), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
-    lns = Combined[
+    lns = Plot[
         series!(
             ax,
             si(Si=stat)[findall(all_comps .== _cmp), :],
