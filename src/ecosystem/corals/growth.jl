@@ -252,12 +252,12 @@ function truncated_normal_mean(
     upper_bound::Float64
 )::Float64
 
-    alpha::Float64 = (lower_bound-normal_mean)/normal_stdev
-    beta::Float64 = (upper_bound-normal_mean)/normal_stdev
+    alpha::Float64 = (lower_bound - normal_mean) / normal_stdev
+    beta::Float64 = (upper_bound - normal_mean) / normal_stdev
 
-    Z::Float64 = 0.5 * (erf(beta/ √2) - erf(alpha/ √2))
+    Z::Float64 = 0.5 * (erf(beta / √2) - erf(alpha / √2))
 
-    return normal_mean + ((standard_normal_pdf(alpha) - standard_normal_pdf(beta))/Z) * normal_stdev
+    return normal_mean + ((standard_normal_pdf(alpha) - standard_normal_pdf(beta)) / Z) * normal_stdev
 end
 
 """
@@ -302,9 +302,9 @@ function truncated_normal_cdf(
 
     sqrt2::Float64 = √2
 
-    Z::Float64 = 0.5 * (erf(beta/ sqrt2) - erf(alpha/ sqrt2))
+    Z::Float64 = 0.5 * (erf(beta / sqrt2) - erf(alpha / sqrt2))
 
-    return 0.5 * (erf(zeta/sqrt2) - erf(alpha/sqrt2))/Z
+    return 0.5 * (erf(zeta / sqrt2) - erf(alpha / sqrt2)) / Z
 end
 
 """
