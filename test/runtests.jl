@@ -330,7 +330,7 @@ function test_rs_w_fig()
 end
 
 if !@isdefined(TEST_RS)
-	const TEST_RS = test_rs_w_fig()
+    const TEST_RS = test_rs_w_fig()
 end
 
 include("clustering.jl")
