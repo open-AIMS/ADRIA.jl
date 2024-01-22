@@ -1,6 +1,9 @@
 using NamedDims, AxisKeys
 
-using ADRIA: connectivity_strength, relative_leftover_space, site_k_area
+using ADRIA: ResultSet, CriteriaWeights, connectivity_strength, relative_leftover_space,
+    site_k_area,
+    model_spec, criteria_params,
+    component_params
 
 """
 	_location_selection(domain::Domain, sum_cover::AbstractArray, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
@@ -337,12 +340,15 @@ Selection score
 """
 function decision_matrices(
     rs::ResultSet,
-    criteria_row::DataFrameRow;
+    criteria_row::DataFrameRow,
     mcda_func::Function;
     loc_coral_cover = rs.site_max_coral_cover::Vector{Float64},
     RCP::String = "45",
     env_aggregation::Function = summary_stat_env,
+)::Dict
     site_ids = collect(1:length(rs.site_data.site_id))
+    site_names = rs.site_data.site_id
+    n_locs = length(site_ids)
     leftover_space = relative_leftover_space(loc_coral_cover) .* site_k_area(rs)
 
     wave_stress = env_aggregation(
@@ -383,7 +389,7 @@ function decision_matrices(
         heat_stress[site_ids],
         rs.site_data.depth_med[site_ids],
         priority_source_criteria,
-        zones_criteria,
+        priority_zones_criteria,
         criteria_row.deployed_coral_risk_tol,
     )
 
@@ -399,13 +405,18 @@ function decision_matrices(
         criteria_row.seed_depth;
         filter_space = -1.0,
     )
+    # Remove any criteria which are zeros for all sites
+    selector = _filter_preferred(S)
     SE = NamedDimsArray(
-        S[:, 2:end];
-        locations = rs.site_data.site_id[Int.(S[:, 1])],
-        criteria = weights_seed_crit.fieldname,
+        zeros(n_locs, length(wse[selector[2:end]]));
+        locations = site_names,
+        criteria = weights_seed_crit.fieldname[selector[2:end]],
     )
 
     # Only add entries for locations which were not filtered (the filtered locations will have zeros)
+    SE(site_names[Int.(S[:, 1])]) .=
+        mcda_normalize(wse[selector[2:end]])' .* mcda_normalize(S[:, selector][:, 2:end])
+
     S, wsh = create_fog_matrix(
         A,
         site_k_area(rs)[site_ids][filtered_sites],
@@ -417,11 +428,14 @@ function decision_matrices(
         criteria_row.fog_zone,
         criteria_row.fog_coral_cover_high,
     )
+    selector = _filter_preferred(S)
     SH = NamedDimsArray(
-        S[:, 2:end];
-        locations = rs.site_data.site_id[Int.(S[:, 1])],
-        criteria = weights_fog_crit.fieldname,
+        zeros(n_locs, length(wsh[selector[2:end]]));
+        locations = site_names,
+        criteria = weights_fog_crit.fieldname[selector[2:end]],
     )
+    SH(site_names[Int.(S[:, 1])]) .=
+        mcda_normalize(wsh[selector[2:end]])' .* mcda_normalize(S[:, selector][:, 2:end])
 
     # Create decision info struct
     decision_dict = Dict(

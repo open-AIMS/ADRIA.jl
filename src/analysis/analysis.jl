@@ -111,6 +111,5 @@ include("intervention.jl")
 include("clustering.jl")
 include("rule_extraction.jl")
 include("scenario.jl")
-include("decision.jl")
 
 end

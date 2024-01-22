@@ -63,11 +63,6 @@ include("decision/CriteriaWeights.jl")
 include("Domain.jl")
 include("io/inputs.jl")
 
-# Note: The decision module is imported after CriteriaWeights as CriteriaWeights is needed in
-# Domain.jl but Domain.jl is needed in dMCDA.jl. A restructure is needed so that Domain.jl is
-# not required in dMCDA.jl.
-include("decision/dMCDA.jl")
-
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
@@ -75,6 +70,13 @@ include("interventions/fogging.jl")
 include("io/ResultSet.jl")
 include("io/result_io.jl")
 include("io/result_post_processing.jl")
+
+# Note: The decision module is imported after CriteriaWeights as CriteriaWeights is needed in
+# Domain.jl but Domain.jl is needed in dMCDA.jl. A restructure is needed so that Domain.jl is
+# not required in dMCDA.jl. It is also imported after ResultSet as ResultSet is needed in 
+# `decision_matrices`, but the decision module is also needed in sampling.
+include("decision/dMCDA.jl")
+
 include("io/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")

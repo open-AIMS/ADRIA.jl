@@ -207,7 +207,17 @@ function mcda_normalize(x::DataFrame)::DataFrame
 end
 
 """
-	align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
+    _filter_preferred(x::Union{Matrix,NamedDimsArray})
+
+Filter all criteria which are zero for all sites from the decision matrix x.
+"""
+function _filter_preferred(x::Union{Matrix, NamedDimsArray})::BitVector
+    # weights in order of: in_conn, out_conn, wave, heat, predecessors, low cover
+    return vec(.!all(x .== 0; dims = 1))
+end
+
+"""
+    align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 
 Align a vector of site rankings to match the indicated order in `s_order`.
 """
@@ -235,20 +245,17 @@ end
 Sites in order of their rankings
 """
 function rank_sites!(
-	S::Matrix{Float64},
-	weights::Vector{Float64},
-	rankings::Matrix{Int64},
-	n_site_int::Int64,
-	mcda_func::Union{Function, Type{<:MCDMMethod}},
-	rank_col)::Tuple{Vector{Int64}, Matrix{Union{Float64, Int64}}}
-	# Filter out all non-preferred sites
-	selector = vec(.!all(S[:, 2:end] .== 0; dims = 1))
-
-	# weights in order of: in_conn, out_conn, wave, heat, predecessors, low cover
-	weights = weights[selector]
-	S = S[:, Bool[1, selector...]]
-
-	s_order = retrieve_ranks(S[:, 2:end], S[:, 1], weights, mcda_func)
+    S::Matrix{Float64},
+    weights::Vector{Float64},
+    rankings::Matrix{Int64},
+    n_site_int::Int64,
+    mcda_func::Union{Function, Type{<:MCDMMethod}},
+    rank_col)::Tuple{Vector{Int64}, Matrix{Union{Float64, Int64}}}
+    # Filter out all non-preferred sites
+    selector = _filter_preferred(S)
+    S = S[:, selector]
+    weights = weights[selector[2:end]]
+    s_order = retrieve_ranks(S[:, 2:end], S[:, 1], weights, mcda_func)
 
 	last_idx = min(n_site_int, size(s_order, 1))
 	prefsites = Int64.(s_order[1:last_idx, 1])
@@ -441,7 +448,7 @@ function create_seed_matrix(
     wt_predec_zones_seed::T,
     wt_low_cover::T,
     wt_depth_seed::T;
-    filter_space::T=0.0
+    filter_space::T = 0.0,
 )::Tuple{Matrix{Float64}, Vector{Float64}} where {T <: Float64}
 	# Define seeding decision matrix, based on copy of A
 	SE = copy(A)
