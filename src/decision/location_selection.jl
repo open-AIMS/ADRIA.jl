@@ -360,11 +360,11 @@ function decision_matrices(
     strong_pred = connectivity_data.strongest_predecessor
 
     # Criteria for strongest larval sources to priority locations
-    priority_source_criteria = ADRIA.decision.priority_predecessor_criteria(
+    priority_source_criteria = priority_predecessor_criteria(
         strong_pred, vec(rs.sim_constants["priority_sites"]), length(site_ids)
     )
     # Criteria for strongest larval sources to/members of priority zones
-    zones_criteria = ADRIA.decision.zones_criteria(
+    priority_zones_criteria = zones_criteria(
         vec(rs.sim_constants["priority_zones"]), rs.site_data.zone_type, strong_pred,
         site_ids,
     )
@@ -374,7 +374,7 @@ function decision_matrices(
     weights_seed_crit = criteria_params(crit, "(:seed, :weight)")
     weights_fog_crit = criteria_params(crit, "(:fog, :weight)")
 
-    A, filtered_sites = ADRIA.decision.create_decision_matrix(
+    A, filtered_sites = create_decision_matrix(
         site_ids,
         connectivity_data.in_conn,
         connectivity_data.out_conn,
@@ -387,7 +387,7 @@ function decision_matrices(
         criteria_row.deployed_coral_risk_tol,
     )
 
-    S, wse = ADRIA.decision.create_seed_matrix(
+    S, wse = create_seed_matrix(
         A,
         criteria_row.seed_in_connectivity,
         criteria_row.seed_out_connectivity,
@@ -405,7 +405,8 @@ function decision_matrices(
         criteria = weights_seed_crit.fieldname,
     )
 
-    S, wsh = ADRIA.decision.create_fog_matrix(
+    # Only add entries for locations which were not filtered (the filtered locations will have zeros)
+    S, wsh = create_fog_matrix(
         A,
         site_k_area(rs)[site_ids][filtered_sites],
         criteria_row.fog_in_connectivity,
