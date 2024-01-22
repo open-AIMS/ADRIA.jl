@@ -284,6 +284,7 @@ function ADRIA.viz.map!(
     rs::ResultSet,
     S::NamedDimsArray,
     scores::Vector{Float64};
+    criteria::Vector{Symbol} = S.criteria,
     opts::Dict = Dict(),
     axis_opts::Dict = Dict(),
 )
@@ -305,11 +306,29 @@ end
     opts[:color_map] = get(opts, :color_map, :viridis)
     opts[:colorbar_limits] = get(opts, :colorbar_limits, (0.0, 1.0))
 
+    m_spec = model_spec(rs)
+    criteria_names::Vector{String} = m_spec[
+        dropdims(
+            any(
+                reshape(criteria, 1, length(criteria)) .== m_spec[:, "fieldname"]; dims = 2
+            );
+            dims = 2,
+        ), "name"]
     n_criteria::Int64 = length(criteria)
     n_rows, n_cols = _calc_gridsize(n_criteria + 1)
     step::Int64 = 1
 
     for row in 1:n_rows, col in 1:n_cols
+        if step > length(criteria_names)
+            ADRIA.viz.map!(
+                g[row, col],
+                rs,
+                vec(scores);
+                opts = opts,
+                axis_opts = Dict(:title => "Aggregate criteria score"; axis_opts...),
+            )
+            break
+        end
         axis_opts_temp = Dict(:title => criteria_names[step]; axis_opts...)
         ADRIA.viz.map!(
             g[row, col],
