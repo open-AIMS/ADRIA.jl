@@ -201,19 +201,13 @@ rs = ADRIA.run_scenarios(dom, scens, "45")
 # Remove any risk filtering
 scens[1, ["deployed_coral_risk_tol"]] .= [1.0]
 
-# Create decision matrices for first scenario
-SE, wse, SH, wsh = ADRIA.analysis.decision_matrices(rs, scens[1, :])
+# Create decision matrices for first scenario, get aggregate score using the
+# first MCDA method
+decision_dict = ADRIA.decision.decision_matrices(rs, scens[1, :], mcda_funcs[1])
 
-# Normalize seeding decision matrix and multiply by weightings
-S = mcda_normalize(SE) .* mcda_normalize(wse)'
-
-# Get aggregate matrix criteria score using first MCDA algorithm
-scores = mcda_funcs[1](Matrix(S))
-
-# Plot maps of specified criteria and aggreagte selection score
-fig_criteria = ADRIA.viz.decision_matrices(
-    rs, S, vec(scores),
-    [:seed_heat_stress, :seed_wave_stress, :seed_coral_cover_low, :seed_depth],
+# Plot maps of seeding criteria and aggreagte selection score
+fig_criteria = hs = ADRIA.viz.map(
+    rs, decision_dict[:seed_matrix], decision_dict[:seed_scores]
 )
 save("criteria_maps.png", fig_criteria)
 ```
