@@ -125,15 +125,28 @@ function create_map!(
 end
 
 """
-    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map(rs::ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), 
+        axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), 
+        axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::ResultSet, S::NamedDimsArray, scores::Vector{Float64};
+        criteria::Vector{Symbol} = S.criteria, opts::Dict = Dict(), axis_opts::Dict = Dict(),
+        fig_opts::Dict = Dict())
+    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; 
+        opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map!(g::Union{GridLayout,GridPosition},rs::ResultSet, S::NamedDimsArray, 
+        scores::Vector{Float64}; criteria::Vector{Symbol} = S.criteria, opts::Dict = Dict(), 
+        axis_opts::Dict = Dict(), fig_opts::Dict = Dict())
 
 Plot spatial choropleth of outcomes.
 
 # Arguments
 - `rs` : ResultSet
 - `y` : results of scenario metric
+- `S` : A normalised decision matrix calculated using decison.decision_matrices
+- `scores` : Aggregated criteria scores.
+- `criteria` : Names of criteria to be plotted, if not specified all criteria in 
+    S will be plotted.
 - `opts` : Aviz options
     - `colorbar_label`, label for colorbar. Defaults to "Relative Cover"
     -`colorbar_limits`, min and max values to be shown on the colorbar. 
@@ -211,6 +224,57 @@ function ADRIA.viz.map!(
         legend_params,
         axis_opts,
     )
+end
+function ADRIA.viz.map(
+    rs::ResultSet,
+    S::NamedDimsArray,
+    scores::Vector{Float64};
+    criteria::Vector{Symbol} = S.criteria,
+    opts::Dict = Dict(),
+    axis_opts::Dict = Dict(),
+    fig_opts::Dict = Dict(),
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.map!(
+        g, rs, S, scores; criteria = criteria, opts = opts, axis_opts = axis_opts
+    )
+    return f
+end
+function ADRIA.viz.map!(
+    g::Union{GridLayout, GridPosition},
+    rs::ResultSet,
+    S::NamedDimsArray,
+    scores::Vector{Float64};
+    opts::Dict = Dict(),
+    axis_opts::Dict = Dict(),
+)
+    if length(rs.site_data.site_id) != size(S, 1)
+        error("Only unfiltered decision matrices can be plotted.")
+    end
+
+    opts[:color_map] = get(opts, :color_map, :viridis)
+    opts[:colorbar_limits] = get(opts, :colorbar_limits, (0.0, 1.0))
+
+    n_criteria::Int64 = length(criteria)
+    n_rows, n_cols = _calc_gridsize(n_criteria + 1)
+    step::Int64 = 1
+
+    for row in 1:n_rows, col in 1:n_cols
+        axis_opts_temp = Dict(:title => criteria_names[step]; axis_opts...)
+        ADRIA.viz.map!(
+            g[row, col],
+            rs,
+            vec(S(criteria[step]));
+            opts = opts,
+            axis_opts = axis_opts_temp
+        )
+
+        step += 1
+    end
+
+    # Clear empty figures
+    return trim!(g)
 end
 
 """
