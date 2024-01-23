@@ -336,6 +336,7 @@ end
 include("clustering.jl")
 include("data_loading.jl")
 include("domain.jl")
+include("Ecosystem.jl")
 include("growth.jl")
 include("io/inputs.jl")
 include("metrics.jl")

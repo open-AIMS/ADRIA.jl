@@ -110,19 +110,6 @@ function truncated_normal_mean(normal_mean::Float64, normal_stdev::Float64, lowe
     return normal_mean + truncated_standard_normal_mean(alpha, beta) * normal_stdev
 end
 
-# --------------------- need to fix numerical stability below -----------------------------
-
-"""
-    standard_normal_pdf(x::Float64)
-
-Evaluate the probability density function (pdf) of the stanrdard normal distribution at
-the given point.
-
-"""
-function standard_normal_pdf(x::Float64)::Float64
-    return 1/√(2π) * ℯ^(-0.5 * x^2)
-end
-
 """
     truncared_normal_cdf(x::Float64, normal_mean::Float64, normal_stdev::Float64,
         lower_bound::Float64, upper_bound::Float64)::Float64
@@ -149,7 +136,7 @@ c = (x - μ)/σ
 - upper_bound : upper bound of truncated distribution
 
 # Returns
-- mean of truncated normal distribution
+- cdf of truncated normal distribution evaluated at 'x'
 """
 function truncated_normal_cdf(
     x::Float64,
@@ -159,13 +146,19 @@ function truncated_normal_cdf(
     upper_bound::Float64
 )::Float64
 
+    if x <= lower_bound
+        return 0.0
+    elseif x >= upper_bound
+        return 1.0
+    end
+
     alpha::Float64 = (lower_bound - normal_mean) / normal_stdev
     beta::Float64 = (upper_bound - normal_mean) / normal_stdev
     zeta::Float64 = (x - normal_mean) / normal_stdev
 
-    sqrt2::Float64 = √2
+    logcdf::Float64 = 
+        logerf(alpha * invsqrt2, zeta * invsqrt2) - 
+        logerf(alpha * invsqrt2, beta * invsqrt2)
 
-    Z::Float64 = 0.5 * (erf(beta / sqrt2) - erf(alpha / sqrt2))
-
-    return 0.5 * (erf(zeta / sqrt2) - erf(alpha / sqrt2)) / Z
+    return exp(logcdf)
 end
