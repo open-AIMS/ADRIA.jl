@@ -919,3 +919,54 @@ end
 
     @test all(abs.(diff(C_cover; dims=1)) .< 1.0) || "ODE more than doubles or halves area."
 end
+
+
+@testset "truncated normal calculations" begin
+
+    means::Vector{Float64} = Vector{Float64}([0.0, 0.5, 1.5, 2.5, 4.0, 5.0])
+    stdev::Vector{Float64} = Vector{Float64}([0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0])
+    lower_bounds::Vector{Float64} = Vector{Float64}([0.0, 0.5, 1.5, 3.0, 7.0, 10.0])
+    bound_widths::Vector{Float64} = Vector{Float64}([0.25, 0.5, 1.0, 2.0, 5.0, 10.0])
+
+    n_checks = length(means) * length(stdev) * length(bound_widths)
+    mean_diffs::Vector{Float64} = Vector{Float64}(undef, n_checks)
+
+    # truncated normal mean should agree with normal mean for symmetrical bounds about mean
+    ind::Integer = 1;
+    for mu in means
+        for std in stdev
+            for width in bound_widths
+                calculated = ADRIA.truncated_normal_mean(
+                    mu, std, mu - width, mu + width
+                )
+                mean_diffs[ind] = abs(mu - calculated)
+                ind += 1
+            end
+        end
+    end
+
+    @test all(mean_diffs .== 0.0) ||
+        "calculated truncated normal mean not equal to normal mean for symmetric bounds"
+    
+    n_checks = length(means) * length(stdev) * length(bound_widths) * length(lower_bounds)
+    mean_diffs = Vector{Float64}(undef, n_checks)
+    
+    ind = 1
+    for mu in means
+        for std in stdev
+            for lower_b in lower_bounds
+                for width in bound_widths
+                    calculated = ADRIA.truncated_normal_mean(
+                        mu, std, lower_b, lower_b + width
+                    )
+                    expected = mean(truncated(Normal(mu, std), lower_b, lower_b + width))
+                    mean_diffs[ind] = abs(expected - calculated)
+                    ind += 1
+                end
+            end
+        end
+    end
+
+    @test all(mean_diffs .< 1e-7) ||
+        "calculated truncated normal mean differs signficantly from Distributions.jl"
+end
