@@ -139,7 +139,7 @@ function site_connectivity(
 end
 function site_connectivity(
     file_loc::String,
-    unique_site_ids::Vector{Union{Missing,String}};
+    unique_site_ids::Vector{Union{Missing, String}};
     con_cutoff::Float64=1e-6,
     agg_func::Function=mean,
     swap::Bool=false,

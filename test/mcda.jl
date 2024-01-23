@@ -24,7 +24,7 @@ function create_test_decision_matrix(n_sites::Int64, risk_tol::Float64)
     # Dummy priority predecessors
     predec = priority_location_criteria(strong_pred, [1, 2], site_ids)
     zones_criteria = priority_zones_criteria(strong_pred, zones, ["Good"], site_ids)
-    Main.@infiltrate
+
     prop_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
     max_cover = [0.8, 0.75, 0.95, 0.7, 0.0]
 
@@ -59,7 +59,7 @@ end
 @testset "MCDA seed matrix creation" begin
     wtconseedout, wtconseedin, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover, wt_depth_seed = rand(
         Uniform(0.0, 1.0),
-        8
+        8,
     )
 
     A, filtered, k_area = create_test_decision_matrix(5, 1.0)
@@ -118,7 +118,7 @@ end
     norm_A = mcda_normalize(A[:, 2:end])
     norm_w = mcda_normalize(w)
 
-    @test all((sqrt.(sum(norm_A .^ 2; dims = 1)) .- 1.0) .< 0.0001) ||
+    @test all((sqrt.(sum(norm_A .^ 2; dims=1)) .- 1.0) .< 0.0001) ||
         "Decision matrix normalization not giving column sums = 1."
     @test (sum(norm_w) - 1.0) <= 0.001 || "MCDA weights not summing to one."
 end
