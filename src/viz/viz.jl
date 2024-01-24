@@ -49,8 +49,6 @@ function rules_scatter!() end
 # Location selection plots
 function ranks_to_frequencies() end
 function ranks_to_frequencies!() end
-function decision_matrices() end
-function decision_matrices!() end
 
 # Spatial
 function map() end

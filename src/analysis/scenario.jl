@@ -1,18 +1,18 @@
 const SCENARIO_TYPES = [:counterfactual, :unguided, :guided]
 
-function scenario_clusters(clusters::BitVector)::Dict{Symbol,BitVector}
+function scenario_clusters(clusters::BitVector)::Dict{Symbol, BitVector}
     return Dict(:target => clusters, :non_target => .!clusters)
 end
-function scenario_clusters(clusters::Vector{Int64})::Dict{Symbol,BitVector}
+function scenario_clusters(clusters::Vector{Int64})::Dict{Symbol, BitVector}
     return Dict(Symbol("Cluster_$(c)") => clusters .== c for c in unique(clusters))
 end
 
-function scenario_rcps(scenarios::DataFrame)::Dict{Symbol,BitVector}
+function scenario_rcps(scenarios::DataFrame)::Dict{Symbol, BitVector}
     rcps::Vector{Symbol} = Symbol.(:RCP, Int64.(scenarios[:, :RCP]))
     return Dict(rcp => rcps .== rcp for rcp in unique(rcps))
 end
 
-function scenario_types(scenarios::DataFrame)::Dict{Symbol,BitVector}
+function scenario_types(scenarios::DataFrame)::Dict{Symbol, BitVector}
     return Dict(
         type => eval(type)(scenarios) for
         type in SCENARIO_TYPES if count(eval(type)(scenarios)) != 0

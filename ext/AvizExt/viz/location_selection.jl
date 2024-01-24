@@ -31,7 +31,7 @@ Plot a spatial map of location selection frequencies.
 Figure
 """
 function ADRIA.viz.ranks_to_frequencies!(
-    g::Union{GridLayout,GridPosition},
+    g::Union{GridLayout, GridPosition},
     rs::ResultSet,
     frequencies::NamedDimsArray,
     rank_ids::Vector{Int64};
@@ -88,7 +88,7 @@ function ADRIA.viz.ranks_to_frequencies!(
     return g
 end
 function ADRIA.viz.ranks_to_frequencies!(
-    g::Union{GridLayout,GridPosition},
+    g::Union{GridLayout, GridPosition},
     rs::ResultSet,
     frequencies::NamedDimsArray,
     rank_id::Int64;
@@ -112,10 +112,9 @@ end
 function ADRIA.viz.ranks_to_frequencies(
     rs::ResultSet,
     frequencies::NamedDimsArray,
-    rank_ids::Union{Int64,Vector{Int64}};
+    rank_ids::Union{Int64, Vector{Int64}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.ranks_to_frequencies!(
@@ -143,7 +142,7 @@ Retrieve set of colormaps for plotting overlayed colormaps.
 Maps for each key in rank_groups to a unique colormap.
 """
 function _default_colormap(
-    rank_groups::Dict{Symbol,BitVector}, alpha_vals::Dict{Symbol,Float64}
+    rank_groups::Dict{Symbol, BitVector}, alpha_vals::Dict{Symbol, Float64}
 )
     rank_colors = colors(rank_groups, alpha_vals)
     rank_ids = keys(rank_groups)

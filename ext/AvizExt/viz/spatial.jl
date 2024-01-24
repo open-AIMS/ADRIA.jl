@@ -34,12 +34,12 @@ function create_map!(
     data::Observable,
     highlight::Union{Vector, Tuple, Nothing},
     centroids::Vector,
-    show_colorbar::Bool = true,
-    colorbar_label::String = "",
-    colorbar_limits::Tuple{Float64, Float64} = (0.0, maximum(data)),
-    color_map::Union{Symbol, Vector{Symbol}, RGBA{Float32}, Vector{RGBA{Float32}}} = :grayC,
-    legend_params::Union{Tuple, Nothing} = nothing,
-    axis_opts::Dict = Dict(),
+    show_colorbar::Bool=true,
+    colorbar_label::String="",
+    colorbar_limits::Tuple{Float64, Float64}=(0.0, maximum(data)),
+    color_map::Union{Symbol, Vector{Symbol}, RGBA{Float32}, Vector{RGBA{Float32}}}=:grayC,
+    legend_params::Union{Tuple, Nothing}=nothing,
+    axis_opts::Dict=Dict(),
 )
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
@@ -47,7 +47,7 @@ function create_map!(
 
     spatial = GeoAxis(
         f[1, 1];
-        dest = "+proj=latlong +datum=WGS84",
+        dest="+proj=latlong +datum=WGS84",
         axis_opts...,
     )
     # lon = first.(centroids)
@@ -62,23 +62,22 @@ function create_map!(
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10
 
-
     poly!(
         spatial,
         geodata;
-        color = data,
-        colormap = color_map,
-        strokecolor = (:black, 0.05),
-        strokewidth = 1.0,
+        color=data,
+        colormap=color_map,
+        strokecolor=(:black, 0.05),
+        strokewidth=1.0,
     )
 
     if show_colorbar
         Colorbar(
             f[1, 2];
-            colormap = color_map,
-            label = colorbar_label,
-            height = Relative(0.65),
-            limits = colorbar_limits,
+            colormap=color_map,
+            label=colorbar_label,
+            height=Relative(0.65),
+            limits=colorbar_limits,
         )
     end
 
@@ -90,34 +89,34 @@ function create_map!(
             poly!(
                 spatial,
                 geodata;
-                color = "transparent",
-                strokecolor = highlight,
-                strokewidth = 0.5,
-                linestyle = :solid,
-                overdraw = true,
+                color="transparent",
+                strokecolor=highlight,
+                strokewidth=0.5,
+                linestyle=:solid,
+                overdraw=true,
             )
         else
             hl_groups = unique(highlight)
 
             for color in hl_groups
                 m = findall(highlight .== [color])
-                subset_feat = FC(; features = geodata[m])
+                subset_feat = FC(; features=geodata[m])
 
                 poly!(
                     spatial,
                     subset_feat;
-                    color = "transparent",
-                    strokecolor = color,
-                    strokewidth = 0.5,
-                    linestyle = :solid,
-                    overdraw = true,
+                    color="transparent",
+                    strokecolor=color,
+                    strokewidth=0.5,
+                    linestyle=:solid,
+                    overdraw=true,
                 )
             end
         end
 
         if !isnothing(legend_params)
             # Plot Legend only if highlight colors are present
-            Legend(f[1, 3], legend_params...; framevisible = false)
+            Legend(f[1, 3], legend_params...; framevisible=false)
         end
     end
 
@@ -229,15 +228,15 @@ function ADRIA.viz.map(
     rs::ResultSet,
     S::NamedDimsArray,
     scores::Vector{Float64};
-    criteria::Vector{Symbol} = S.criteria,
-    opts::Dict = Dict(),
-    axis_opts::Dict = Dict(),
-    fig_opts::Dict = Dict(),
+    criteria::Vector{Symbol}=S.criteria,
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.map!(
-        g, rs, S, scores; criteria = criteria, opts = opts, axis_opts = axis_opts
+        g, rs, S, scores; criteria=criteria, opts=opts, axis_opts=axis_opts
     )
     return f
 end
@@ -246,9 +245,9 @@ function ADRIA.viz.map!(
     rs::ResultSet,
     S::NamedDimsArray,
     scores::Vector{Float64};
-    criteria::Vector{Symbol} = S.criteria,
-    opts::Dict = Dict(),
-    axis_opts::Dict = Dict(),
+    criteria::Vector{Symbol}=S.criteria,
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
 )
     if length(rs.site_data.site_id) != size(S, 1)
         error("Only unfiltered decision matrices can be plotted.")
@@ -261,9 +260,9 @@ function ADRIA.viz.map!(
     criteria_names::Vector{String} = m_spec[
         dropdims(
             any(
-                reshape(criteria, 1, length(criteria)) .== m_spec[:, "fieldname"]; dims = 2
+                reshape(criteria, 1, length(criteria)) .== m_spec[:, "fieldname"]; dims=2
             );
-            dims = 2,
+            dims=2,
         ), "name"]
     n_criteria::Int64 = length(criteria)
     n_rows, n_cols = _calc_gridsize(n_criteria + 1)
@@ -275,8 +274,8 @@ function ADRIA.viz.map!(
                 g[row, col],
                 rs,
                 vec(scores);
-                opts = opts,
-                axis_opts = Dict(:title => "Aggregate criteria score"; axis_opts...),
+                opts=opts,
+                axis_opts=Dict(:title => "Aggregate criteria score"; axis_opts...),
             )
             break
         end
@@ -285,8 +284,8 @@ function ADRIA.viz.map!(
             g[row, col],
             rs,
             vec(S(criteria[step]));
-            opts = opts,
-            axis_opts = axis_opts_temp
+            opts=opts,
+            axis_opts=axis_opts_temp,
         )
 
         step += 1

@@ -1,17 +1,17 @@
-const COMPRESSOR = Zarr.BloscCompressor(; cname = "zstd", clevel = 2, shuffle = true)
+const COMPRESSOR = Zarr.BloscCompressor(; cname="zstd", clevel=2, shuffle=true)
 
 function get_geometry(df::DataFrame)
-    if columnindex(df, :geometry) > 0
-        return df.geometry
-    elseif columnindex(df, :geom) > 0
-        return df.geom
-    end
+	if columnindex(df, :geometry) > 0
+		return df.geometry
+	elseif columnindex(df, :geom) > 0
+		return df.geom
+	end
 
     return error("No geometry data found")
 end
 
 """
-    centroids(df::DataFrame)
+	centroids(df::DataFrame)
 
 Extract and return long/lat from a GeoDataFrame.
 
@@ -30,7 +30,7 @@ function centroids(ds::Union{Domain, ResultSet})::Vector{Tuple{Float64, Float64}
 end
 
 """
-    summarize_env_data(data_cube::AbstractArray)
+	summarize_env_data(data_cube::AbstractArray)
 
 Summarize environmental data layers (mean and standard deviation).
 
@@ -40,13 +40,13 @@ Matrix{Float64, 2}, of mean and standard deviation for each environmental scenar
 function summarize_env_data(data::AbstractArray)::Array{Float64}
     # TODO: Update once
     stats_store::Array{Float64} = zeros(2, size(data, 3), size(data, 2))
-    stats_store[1, :, :] .= dropdims(mean(data; dims = 1); dims = 1)'
-    stats_store[2, :, :] .= dropdims(std(data; dims = 1); dims = 1)'
+    stats_store[1, :, :] .= dropdims(mean(data; dims=1); dims=1)'
+    stats_store[2, :, :] .= dropdims(std(data; dims=1); dims=1)'
     return stats_store
 end
 
 """
-    store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, compressor::Zarr.Compressor)
+	store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, compressor::Zarr.Compressor)
 
 Retrieve summary statistics matrices from DataFrames of dhws and waves.
 Produce summary statistics (mean/std) for given data cube saved to a Zarr data store.
@@ -76,19 +76,19 @@ function store_env_summary(
     stats_store = zcreate(
         Float32,
         (2, size(stats, 2), size(stats, 3))...;
-        fill_value = nothing, fill_as_missing = false,
-        path = joinpath(file_loc, rcp),
-        attrs = Dict(
+        fill_value=nothing, fill_as_missing=false,
+        path=joinpath(file_loc, rcp),
+        attrs=Dict(
             :structure => ("stat", type, "locations"),
             :stats => ["mean", "std"],
             :scenarios => string.(1:size(stats, 2)),
             :locations => string.(1:size(stats, 3)),
             :rcp => rcp),
-        compressor = compressor)
+        compressor=compressor)
 
-    stats_store[:, :, :] .= stats
+	stats_store[:, :, :] .= stats
 
-    return stats_store
+	return stats_store
 end
 
 """
@@ -111,19 +111,19 @@ function store_conn(
     conn_data::NamedDimsArray,
     file_loc::String,
     rcp::String,
-    compressor::Zarr.Compressor
+    compressor::Zarr.Compressor,
 )::ZArray
     conn_store = zcreate(
         Float32,
         size(conn_data)...;
-        fill_value = nothing, fill_as_missing = false,
-        path = joinpath(file_loc, rcp),
-        attrs = Dict(
+        fill_value=nothing, fill_as_missing=false,
+        path=joinpath(file_loc, rcp),
+        attrs=Dict(
             :structure => ("Source", "Receiving"),
             :Source => conn_data.Source,
             :Receiving => conn_data.Receiving,
             :rcp => rcp),
-        compressor = compressor)
+        compressor=compressor)
 
     conn_store[:, :] .= Matrix(conn_data)
     return conn_store
@@ -168,7 +168,7 @@ function scenario_attributes(
         :site_centroids => centroids,
     )
 
-    return attrs
+	return attrs
 end
 function scenario_attributes(domain::Domain, param_df::DataFrame)
     return scenario_attributes(domain.name, domain.RCP, names(param_df),
@@ -179,7 +179,7 @@ function scenario_attributes(domain::Domain, param_df::DataFrame)
 end
 
 """
-    setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
+	setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
 
 - `z_store` : ZArray
 - `unique_sites` : Unique site ids
@@ -190,9 +190,9 @@ end
 Note: This setup relies on hardcoded values for number of species represented and seeded.
 """
 function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
-    # Set up logs for site ranks, seed/fog log
-    zgroup(z_store, LOG_GRP)
-    log_fn::String = joinpath(z_store.folder, LOG_GRP)
+	# Set up logs for site ranks, seed/fog log
+	zgroup(z_store, LOG_GRP)
+	log_fn::String = joinpath(z_store.folder, LOG_GRP)
 
     # Store ranked sites
     rank_dims::Tuple{Int64, Int64, Int64, Int64} = (tf, n_sites, 2, n_scens)  # sites, site id and rank, no. scenarios
@@ -209,12 +209,12 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     ranks = zcreate(
         Float32,
         rank_dims...;
-        name = "rankings",
-        fill_value = nothing,
-        fill_as_missing = false,
-        path = log_fn,
-        chunks = (rank_dims[1:3]..., 1),
-        attrs = attrs,
+        name="rankings",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(rank_dims[1:3]..., 1),
+        attrs=attrs,
     )
 
     attrs = Dict(
@@ -224,51 +224,51 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     seed_log = zcreate(
         Float32,
         seed_dims...;
-        name = "seed",
-        fill_value = nothing,
-        fill_as_missing = false,
-        path = log_fn,
-        chunks = (seed_dims[1:3]..., 1),
-        attrs = attrs,
+        name="seed",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(seed_dims[1:3]..., 1),
+        attrs=attrs,
     )
 
     attrs = Dict(
         :structure => ("timesteps", "sites", "scenarios"),
-        :unique_site_ids => unique_sites
+        :unique_site_ids => unique_sites,
     )
     fog_log = zcreate(
         Float32,
         fog_dims...;
-        name = "fog",
-        fill_value = nothing,
-        fill_as_missing = false,
-        path = log_fn,
-        chunks = (fog_dims[1:2]..., 1),
-        attrs = attrs,
+        name="fog",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(fog_dims[1:2]..., 1),
+        attrs=attrs,
     )
     shade_log = zcreate(
         Float32,
         fog_dims...;
-        name = "shade",
-        fill_value = nothing,
-        fill_as_missing = false,
-        path = log_fn,
-        chunks = (fog_dims[1:2]..., 1),
-        attrs = attrs,
+        name="shade",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(fog_dims[1:2]..., 1),
+        attrs=attrs,
     )
 
-    # TODO: Could log bleaching mortality
-    # attrs = Dict(
-    #     :structure => ("timesteps", "sites", "scenarios"),
-    #     :unique_site_ids => unique_sites,
-    # )
-    # bleach_log = zcreate(Float32, fog_dims...; name="bleaching_mortality", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
+	# TODO: Could log bleaching mortality
+	# attrs = Dict(
+	#     :structure => ("timesteps", "sites", "scenarios"),
+	#     :unique_site_ids => unique_sites,
+	# )
+	# bleach_log = zcreate(Float32, fog_dims...; name="bleaching_mortality", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
 
-    # Log for coral DHW thresholds
-    attrs = Dict(
-        :structure => ("timesteps", "species", "sites", "scenarios"),
-        :unique_site_ids => unique_sites,
-    )
+	# Log for coral DHW thresholds
+	attrs = Dict(
+		:structure => ("timesteps", "species", "sites", "scenarios"),
+		:unique_site_ids => unique_sites,
+	)
 
     # 36 is the number of species/groups represented
     local coral_dhw_log
@@ -279,12 +279,12 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
             36,
             n_sites,
             n_scens;
-            name = "coral_dhw_log",
-            fill_value = nothing,
-            fill_as_missing = false,
-            path = log_fn,
-            chunks = (tf, 36, n_sites, 1),
-            attrs = attrs,
+            name="coral_dhw_log",
+            fill_value=nothing,
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(tf, 36, n_sites, 1),
+            attrs=attrs,
         )
     else
         coral_dhw_log = zcreate(
@@ -293,20 +293,20 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
             36,
             1,
             n_scens;
-            name = "coral_dhw_log",
-            fill_value = 0.0,
-            fill_as_missing = false,
-            path = log_fn,
-            chunks = (tf, 36, 1, 1),
-            attrs = attrs,
+            name="coral_dhw_log",
+            fill_value=0.0,
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(tf, 36, 1, 1),
+            attrs=attrs,
         )
     end
 
-    return ranks, seed_log, fog_log, shade_log, coral_dhw_log
+	return ranks, seed_log, fog_log, shade_log, coral_dhw_log
 end
 
 """
-    setup_result_store!(domain::Domain, param_df::DataFrame)
+	setup_result_store!(domain::Domain, param_df::DataFrame)
 
 Sets up an on-disk result store.
 
@@ -351,11 +351,11 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         string(now()), "T" => "_", ":" => "_", "." => "_"
     )
 
-    # Collect defined RCPs
-    rcps = string.(unique(scen_spec, "RCP")[!, "RCP"])
-    log_location::String = _result_location(domain, rcps)
+	# Collect defined RCPs
+	rcps = string.(unique(scen_spec, "RCP")[!, "RCP"])
+	log_location::String = _result_location(domain, rcps)
 
-    z_store = DirectoryStore(log_location)
+	z_store = DirectoryStore(log_location)
 
     # Store copy of inputs
     input_loc::String = joinpath(z_store.folder, INPUTS)
@@ -366,28 +366,28 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     mkdir(joinpath(log_location, "site_data"))
     geo_fn = joinpath(log_location, "site_data", basename(attrs[:name]) * ".gpkg")
     try
-        GDF.write(geo_fn, domain.site_data; driver = "geojson")
+        GDF.write(geo_fn, domain.site_data; driver="geojson")
     catch err
         if !isa(err, ArgumentError)
             rethrow(err)
         end
 
-        GDF.write(geo_fn, domain.site_data; geom_columns = (:geom,), driver = "geojson")
+        GDF.write(geo_fn, domain.site_data; geom_columns=(:geom,), driver="geojson")
     end
 
-    # Store copy of model specification as CSV
-    mkdir(joinpath(log_location, "model_spec"))
-    model_spec(domain, joinpath(log_location, "model_spec", "model_spec.csv"))
+	# Store copy of model specification as CSV
+	mkdir(joinpath(log_location, "model_spec"))
+	model_spec(domain, joinpath(log_location, "model_spec", "model_spec.csv"))
 
     # Create store for scenario spec
     inputs = zcreate(
         Float64,
         input_dims...;
-        fill_value = -9999.0,
-        fill_as_missing = false,
-        path = input_loc,
-        chunks = input_dims,
-        attrs = attrs,
+        fill_value=-9999.0,
+        fill_as_missing=false,
+        path=input_loc,
+        chunks=input_dims,
+        attrs=attrs,
     )
 
     # Store table of factor values
@@ -395,23 +395,23 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
 
     tf, n_sites, _ = size(domain.dhw_scens)
 
-    # Set up stores for each metric
-    function dim_lengths(metric_structure)
-        dl = []
-        for d in metric_structure
-            if d == "timesteps"
-                append!(dl, tf)
-            elseif d == "species"
-                append!(dl, domain.coral_growth.n_species)
-            elseif d == "sites"
-                append!(dl, n_sites)
-            elseif d == "scenarios"
-                append!(dl, nrow(scen_spec))
-            end
-        end
+	# Set up stores for each metric
+	function dim_lengths(metric_structure)
+		dl = []
+		for d in metric_structure
+			if d == "timesteps"
+				append!(dl, tf)
+			elseif d == "species"
+				append!(dl, domain.coral_growth.n_species)
+			elseif d == "sites"
+				append!(dl, n_sites)
+			elseif d == "scenarios"
+				append!(dl, nrow(scen_spec))
+			end
+		end
 
-        return (dl...,)
-    end
+		return (dl...,)
+	end
 
     met_names = [:relative_cover, :relative_shelter_volume,
         :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator, :coral_evenness,
@@ -426,11 +426,11 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     # Create stores for each metric
     stores = [
         zcreate(Float32, result_dims...;
-            fill_value = nothing, fill_as_missing = false,
-            path = joinpath(z_store.folder, RESULTS, string(m_name)),
-            chunks = (result_dims[1:(end - 1)]..., 1),
-            attrs = dim_struct,
-            compressor = COMPRESSOR)
+            fill_value=nothing, fill_as_missing=false,
+            path=joinpath(z_store.folder, RESULTS, string(m_name)),
+            chunks=(result_dims[1:(end - 1)]..., 1),
+            attrs=dim_struct,
+            compressor=COMPRESSOR)
         for m_name in met_names
     ]
 
@@ -438,13 +438,13 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     push!(
         stores,
         zcreate(Float32, (result_dims[1], 6, result_dims[3])...;
-            fill_value = nothing, fill_as_missing = false,
-            path = joinpath(z_store.folder, RESULTS, "relative_taxa_cover"),
-            chunks = ((result_dims[1], 6)..., 1),
-            attrs = Dict(
+            fill_value=nothing, fill_as_missing=false,
+            path=joinpath(z_store.folder, RESULTS, "relative_taxa_cover"),
+            chunks=((result_dims[1], 6)..., 1),
+            attrs=Dict(
                 :structure => string.(ADRIA.metrics.relative_taxa_cover.dims)
             ),
-            compressor = COMPRESSOR))
+            compressor=COMPRESSOR))
     push!(met_names, :relative_taxa_cover)
 
     # dhw and wave zarrays
@@ -481,7 +481,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
                 domain.TP_data,
                 joinpath(z_store.folder, "connectivity"),
                 rcp,
-                COMPRESSOR
+                COMPRESSOR,
             ),
         )
 
@@ -519,7 +519,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
 end
 
 """
-    _recreate_stats_from_store(zarr_store_path::String)::Dict{String, AbstractArray}
+	_recreate_stats_from_store(zarr_store_path::String)::Dict{String, AbstractArray}
 
 Recreate data structure holding RCP summary statistics from Zarr store.
 """
@@ -529,7 +529,7 @@ function _recreate_stats_from_store(zarr_store_path::String)::Dict{String, Abstr
 
     stat_d = Dict{String, AbstractArray}()
     for (i, sd) in enumerate(rcp_stat_dirs)
-        store = zopen(sd; fill_as_missing = false)
+        store = zopen(sd; fill_as_missing=false)
 
         dim_names = Symbol.(store.attrs["structure"])
         stats = string.(store.attrs["stats"])
@@ -537,13 +537,13 @@ function _recreate_stats_from_store(zarr_store_path::String)::Dict{String, Abstr
         loc_ids = string.(store.attrs["locations"])
         stat_set = NamedDimsArray(
             store[:, :, :];
-            zip(dim_names, [stats, scenario_ids, loc_ids])...
+            zip(dim_names, [stats, scenario_ids, loc_ids])...,
         )
 
-        stat_d[rcp_dirs[i]] = stat_set
-    end
+		stat_d[rcp_dirs[i]] = stat_set
+	end
 
-    return stat_d
+	return stat_d
 end
 
 """
@@ -557,14 +557,14 @@ function _recreate_conn_from_store(zarr_store_path::String)::Dict{String, Abstra
 
     conn_d = Dict{String, AbstractArray}()
     for (i, sd) in enumerate(rcp_stat_dirs)
-        store = zopen(sd; fill_as_missing = false)
+        store = zopen(sd; fill_as_missing=false)
 
         dim_names = Symbol.(store.attrs["structure"])
         source_ids = string.(store.attrs["Source"])
         recieving_ids = string.(store.attrs["Receiving"])
         conn_set = NamedDimsArray(
             store[:, :];
-            zip(dim_names, [source_ids, recieving_ids])...
+            zip(dim_names, [source_ids, recieving_ids])...,
         )
 
         conn_d[rcp_dirs[i]] = conn_set
@@ -574,18 +574,18 @@ function _recreate_conn_from_store(zarr_store_path::String)::Dict{String, Abstra
 end
 
 """
-    load_results(result_loc::String)::ResultSet
-    load_results(domain::Domain)::ResultSet
+	load_results(result_loc::String)::ResultSet
+	load_results(domain::Domain)::ResultSet
 
 Create interface to a given Zarr result set.
 """
 function load_results(result_loc::String)::ResultSet
-    !isdir(result_loc) ? error("Not a directory: $(result_loc)") : nothing
+	!isdir(result_loc) ? error("Not a directory: $(result_loc)") : nothing
 
     # Read in results
     local raw_set
     try
-        raw_set = zopen(joinpath(result_loc, RESULTS); fill_as_missing = false)
+        raw_set = zopen(joinpath(result_loc, RESULTS); fill_as_missing=false)
     catch err
         if !occursin("ArgumentError", sprint(showerror, err))
             rethrow(err)
@@ -593,8 +593,8 @@ function load_results(result_loc::String)::ResultSet
     end
 
     # Read in logs
-    log_set = zopen(joinpath(result_loc, LOG_GRP); fill_as_missing = false)
-    input_set = zopen(joinpath(result_loc, INPUTS); fill_as_missing = false)
+    log_set = zopen(joinpath(result_loc, LOG_GRP); fill_as_missing=false)
+    input_set = zopen(joinpath(result_loc, INPUTS); fill_as_missing=false)
 
     dhw_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "dhw"))
     wave_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "wave"))
@@ -605,21 +605,21 @@ function load_results(result_loc::String)::ResultSet
         result_loc = result_loc[1:(end - 1)]
     end
 
-    # Spatial data
-    site_data = GDF.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
-    sort!(site_data, [Symbol(input_set.attrs["unique_site_id_col"])])
+	# Spatial data
+	site_data = GDF.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
+	sort!(site_data, [Symbol(input_set.attrs["unique_site_id_col"])])
 
     # Model specification
     model_spec = CSV.read(
-        joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment = "#"
+        joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#"
     )
 
-    # Standardize fieldnames to Symbol
-    # TODO: Match all other column data types with original model spec
-    model_spec.fieldname .= Symbol.(model_spec.fieldname)
+	# Standardize fieldnames to Symbol
+	# TODO: Match all other column data types with original model spec
+	model_spec.fieldname .= Symbol.(model_spec.fieldname)
 
-    r_vers_id = input_set.attrs["ADRIA_VERSION"]
-    t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
+	r_vers_id = input_set.attrs["ADRIA_VERSION"]
+	t_vers_id = "v" * string(PkgVersion.Version(@__MODULE__))
 
     if r_vers_id != t_vers_id
         msg = """Results were produced with a different version of ADRIA ($(r_vers_id)).
@@ -630,12 +630,12 @@ function load_results(result_loc::String)::ResultSet
         stores results relative to available area.
         """
 
-        @warn msg
-    end
+		@warn msg
+	end
 
-    # The inputs used
-    input_cols::Array{String} = input_set.attrs["columns"]
-    inputs_used::DataFrame = DataFrame(input_set[:, :], input_cols)
+	# The inputs used
+	input_cols::Array{String} = input_set.attrs["columns"]
+	inputs_used::DataFrame = DataFrame(input_set[:, :], input_cols)
 
     # Details of the environmental data layer used for the sims
     env_layer_md::EnvLayer = EnvLayer(
@@ -651,23 +651,23 @@ function load_results(result_loc::String)::ResultSet
     )
 
     outcomes = Dict{Symbol, NamedDimsArray}()
-    subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS); join = true))
+    subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS); join=true))
     for sd in subdirs
         if !(occursin(LOG_GRP, sd)) && !(occursin(INPUTS, sd))
-            res = zopen(sd; fill_as_missing = false)
+            res = zopen(sd; fill_as_missing=false)
             sz = size(res)
 
-            # Construct dimension names and metadata
-            st = []
-            for (i, s) in enumerate(res.attrs["structure"])
-                if s == "timesteps"
-                    push!(st, input_set.attrs["timeframe"])
-                elseif s == "sites"
-                    push!(st, res.attrs["unique_site_ids"])
-                else
-                    push!(st, 1:sz[i])
-                end
-            end
+			# Construct dimension names and metadata
+			st = []
+			for (i, s) in enumerate(res.attrs["structure"])
+				if s == "timesteps"
+					push!(st, input_set.attrs["timeframe"])
+				elseif s == "sites"
+					push!(st, res.attrs["unique_site_ids"])
+				else
+					push!(st, 1:sz[i])
+				end
+			end
 
             try
                 outcomes[Symbol(basename(sd))] = NamedDimsArray(
@@ -706,11 +706,11 @@ function load_results(result_loc::String)::ResultSet
     )
 end
 function load_results(domain::Domain)::ResultSet
-    return load_results(result_location(domain))
+	return load_results(result_location(domain))
 end
 
 """
-    result_location(d::Domain)::String
+	result_location(d::Domain)::String
 
 Generate path to the data store of results for the given Domain.
 """
@@ -721,7 +721,7 @@ function result_location(d::Domain)::String
 end
 
 """
-    _result_location(d::Domain, rcps::Vector{String})::String
+	_result_location(d::Domain, rcps::Vector{String})::String
 
 Generate path to the data store of results for the given Domain and RCPs names.
 """

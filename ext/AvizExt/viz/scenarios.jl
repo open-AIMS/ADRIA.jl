@@ -56,13 +56,13 @@ function ADRIA.viz.scenarios(
     )
 end
 function ADRIA.viz.scenarios!(
-    g::Union{GridLayout,GridPosition},
+    g::Union{GridLayout, GridPosition},
     rs::ResultSet,
     outcomes::NamedDimsArray;
     opts::Dict=Dict(:by_RCP => false),
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
-)::Union{GridLayout,GridPosition}
+)::Union{GridLayout, GridPosition}
     opts[:histogram] = get(opts, :histogram, false)
 
     return ADRIA.viz.scenarios!(
@@ -91,13 +91,13 @@ function ADRIA.viz.scenarios(
     return f
 end
 function ADRIA.viz.scenarios!(
-    g::Union{GridLayout,GridPosition},
+    g::Union{GridLayout, GridPosition},
     scenarios::DataFrame,
     outcomes::NamedDimsArray;
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
-)::Union{GridLayout,GridPosition}
+)::Union{GridLayout, GridPosition}
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
@@ -121,14 +121,14 @@ function ADRIA.viz.scenarios!(
     )
 end
 function ADRIA.viz.scenarios!(
-    g::Union{GridLayout,GridPosition},
+    g::Union{GridLayout, GridPosition},
     ax::Axis,
     outcomes::NamedDimsArray,
-    scen_groups::Dict{Symbol,BitVector};
+    scen_groups::Dict{Symbol, BitVector};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
-)::Union{GridLayout,GridPosition}
+)::Union{GridLayout, GridPosition}
     if get(opts, :summarize, true)
         scenarios_confint!(ax, outcomes, scen_groups)
     else
@@ -149,7 +149,7 @@ function ADRIA.viz.scenarios!(
 end
 
 function _confints(
-    outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
+    outcomes::NamedDimsArray, scen_groups::Dict{Symbol, BitVector}
 )::Array{Float64}
     groups::Vector{Symbol} = _sort_keys(scen_groups, outcomes)
     n_timesteps::Int64 = size(outcomes, 1)
@@ -171,10 +171,9 @@ function scenarios_confint!(
     ax::Axis,
     confints::AbstractArray,
     ordered_groups::Vector{Symbol},
-    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}};
-    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1)),
+    _colors::Dict{Symbol, Union{Symbol, RGBA{Float32}}};
+    x_vals::Union{Vector{Int64}, Vector{Float64}}=collect(1:size(confints, 1)),
 )::Nothing
-
     for idx in eachindex(ordered_groups)
         band_color = (_colors[ordered_groups[idx]], 0.4)
         y_lower, y_upper = confints[:, idx, 1], confints[:, idx, 3]
@@ -187,9 +186,9 @@ function scenarios_confint!(
     return nothing
 end
 function scenarios_confint!(
-    ax::Axis, outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
+    ax::Axis, outcomes::NamedDimsArray, scen_groups::Dict{Symbol, BitVector}
 )::Nothing
-    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
+    _colors::Dict{Symbol, Union{Symbol, RGBA{Float32}}} = colors(scen_groups)
     ordered_groups = _sort_keys(scen_groups, outcomes)
     confints = _confints(outcomes, scen_groups)
     return scenarios_confint!(
@@ -204,13 +203,13 @@ end
 function scenarios_series!(
     ax::Axis,
     outcomes::NamedDimsArray,
-    scen_groups::Dict{Symbol,BitVector};
+    scen_groups::Dict{Symbol, BitVector};
     series_opts::Dict=Dict(),
-    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(outcomes, 1)),
+    x_vals::Union{Vector{Int64}, Vector{Float64}}=collect(1:size(outcomes, 1)),
     sort_by=:size,
 )::Nothing
-    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
-    _alphas::Dict{Symbol,Float64} = alphas(scen_groups)
+    _colors::Dict{Symbol, Union{Symbol, RGBA{Float32}}} = colors(scen_groups)
+    _alphas::Dict{Symbol, Float64} = alphas(scen_groups)
 
     for group in _sort_keys(scen_groups, outcomes; by=sort_by)
         color = (_colors[group], _alphas[group])
@@ -222,9 +221,9 @@ function scenarios_series!(
 end
 
 function scenarios_hist(
-    g::Union{GridLayout,GridPosition},
+    g::Union{GridLayout, GridPosition},
     outcomes::NamedDimsArray,
-    scen_groups::Dict{<:Any,BitVector},
+    scen_groups::Dict{<:Any, BitVector},
 )::Nothing
     scen_dist = dropdims(mean(outcomes; dims=:timesteps); dims=:timesteps)
     ax_hist = Axis(g[1, 2]; width=100)
@@ -248,9 +247,9 @@ function scenarios_hist(
 end
 
 function _render_legend(
-    g::Union{GridLayout,GridPosition},
-    scen_groups::Dict{<:Any,BitVector},
-    legend_position::Tuple{Int64,Int64},
+    g::Union{GridLayout, GridPosition},
+    scen_groups::Dict{<:Any, BitVector},
+    legend_position::Tuple{Int64, Int64},
 )::Nothing
     group_names::Vector{Symbol} = sort(collect(keys(scen_groups)))
     _colors = colors(scen_groups)
@@ -274,7 +273,7 @@ Sort types by variance in reverse order.
     - :counterfactual
 """
 function _sort_keys(
-    scenario_types::Dict{Symbol,BitVector},
+    scenario_types::Dict{Symbol, BitVector},
     outcomes::AbstractArray;
     by=:variance,
 )::Vector{Symbol}
