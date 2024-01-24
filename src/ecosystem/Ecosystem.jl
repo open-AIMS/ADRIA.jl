@@ -48,7 +48,7 @@ function EnvironmentalLayer(
 end
 
 """
-    truncated_standard_normal_mean(a::Float64, b::Float64)::Float64
+    truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
 
 Calculates the mean of the truncated standard normal distribution. Implementation taken
 from Distributions.jl [1] excluding unused error checks. 
