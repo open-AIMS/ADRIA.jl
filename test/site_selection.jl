@@ -79,17 +79,29 @@ end
 
     area_to_seed = 962.11  # Area of seeded corals in m^2.
 
-    sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(scens, 1))
+    sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
     ranks = ADRIA.decision.rank_locations(dom, scens, sum_cover, area_to_seed)
 
     @test length(ranks.scenarios) == sum(scens.guided .> 0) || "Specified number of scenarios was not carried out."
     @test length(ranks.sites) == length(dom.site_ids) || "Ranks storage is not correct size for this domain."
 
     sel_sites = unique(ranks)
-    sel_sites = sel_sites[sel_sites.!=0.0]
-    possible_ranks = collect(Float64, 1:ADRIA.n_locations(dom)+1.0)
+    sel_sites = sel_sites[sel_sites .!= 0.0]
+    possible_ranks = collect(Float64, 1:(ADRIA.n_locations(dom) + 1.0))
 
     @test all([in(ss, possible_ranks) for ss in sel_sites]) || "Impossible rank assigned."
+
+    mcda_funcs = ADRIA.decision.mcda_methods()
+    n_site_int = 5
+    scens = ADRIA.sample_site_selection(dom, 2^12)
+
+    # Initial coral cover matching number of criteria samples (size = (no. criteria scens, no. of sites)).
+    sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
+    ranks = ADRIA.decision.rank_locations(dom, scens, sum_cover, area_to_seed)
+
+    rank_freq = ADRIA.decision.ranks_to_frequencies(ranks("seed"))
+    @test rank_freq.sites[rank_freq(; ranks=1) .== maximum(rank_freq(; ranks=1))] == [5] || "The highest value site was not the most frequently selected in first rank."
+    @test rank_freq.sites[rank_freq(; ranks=2) .== maximum(rank_freq(; ranks=2))] == [6] || "The second highest value site was not the most frequently selected in second rank."
 end
 
 @testset "Test ranks line up with ordering" begin
@@ -110,6 +122,5 @@ end
         S, weights, rankings, n_site_int, mcda_func, 2
     )
 
-    @test all([(rankings[rankings[:, 1].==s_order[rank, 1], 2].==rank)[1] for rank in 1:size(s_order, 1)]) || "Ranking does not match mcda score ordering"
-
+    @test all([(rankings[rankings[:, 1] .== s_order[rank, 1], 2] .== rank)[1] for rank in 1:size(s_order, 1)]) || "Ranking does not match mcda score ordering"
 end
