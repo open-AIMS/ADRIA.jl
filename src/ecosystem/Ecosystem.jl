@@ -145,6 +145,13 @@ function truncated_normal_cdf(
     beta::Float64 = (upper_bound - normal_mean) / normal_stdev
     zeta::Float64 = (x - normal_mean) / normal_stdev
 
+    if abs(alpha) > 10 || abs(beta) > 10
+        @debug "Possible loss of accuracy: the given truncated normal distribution bounds \
+            are more than 10 standard deviations from the normal mean. \
+            \nLower and upper bounds of the truncated normal distribution are \
+            $(alpha) and $(beta) standard deviations from the normal mean respectively."
+    end
+
     logcdf::Float64 = 
         logerf(alpha * StatsFuns.invsqrt2, zeta * StatsFuns.invsqrt2) - 
         logerf(alpha * StatsFuns.invsqrt2, beta * StatsFuns.invsqrt2)
