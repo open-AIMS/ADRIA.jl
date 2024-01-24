@@ -1,13 +1,13 @@
 """
-site_connectivity(file_loc::String, unique_site_ids::Vector{String};
-                  con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
+    site_connectivity(file_loc::String, unique_site_ids::Vector{String};
+        con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
 
 Create transitional probability matrix indicating connectivity between
 sites, level of centrality, and the strongest predecessor for each site.
 
 NOTE: Transposes transitional probability matrix if `swap == true`
-      If multiple files are read in, this assumes all file rows/cols
-      follow the same order as the first file read in.
+  If multiple files are read in, this assumes all file rows/cols
+  follow the same order as the first file read in.
 
 # Examples
 ```julia
@@ -17,10 +17,10 @@ NOTE: Transposes transitional probability matrix if `swap == true`
 
 # Arguments
 - `file_loc` : Path to data file (or datasets) to load
-               If a folder, searches subfolders as well
+   If a folder, searches subfolders as well
 - `unique_site_ids` : Unique site ids in their expected order
 - `con_cutoff` : Percent thresholds of max for weak connections in
-                 network (defined by user or defaults in `SimConstants`)
+ network (defined by user or defaults in `SimConstants`)
 - `agg_func` : Summary statistic to take (defaults to `mean`)
 - `swap` : Whether to transpose data (defaults to `false`)
 
@@ -141,7 +141,7 @@ function site_connectivity(
 end
 function site_connectivity(
     file_loc::String,
-    unique_site_ids::Vector{Union{Missing,String}};
+    unique_site_ids::Vector{Union{Missing, String}};
     con_cutoff::Float64=1e-6,
     agg_func::Function=mean,
     swap::Bool=false,
@@ -179,7 +179,9 @@ NamedTuple:
 - `out_conn` : sites ranked by outgoing connectivity
 - `strongest_predecessor` : strongest predecessor for each site
 """
-function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
+function connectivity_strength(
+    TP_base::AbstractMatrix{<:Union{Float32, Float64}}
+)::NamedTuple
     g = SimpleDiGraph(TP_base)
 
     # Measure centrality based on number of incoming connections
@@ -210,8 +212,8 @@ function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
 end
 function connectivity_strength(
     area_weighted_TP::AbstractMatrix{Float64},
-    cover::Vector{<:Union{Float32,Float64}},
-    TP_cache::AbstractMatrix{Float64},
+    cover::Vector{<:Union{Float32, Float64}},
+    TP_cache::AbstractMatrix{<:Union{Float32, Float64}},
 )::NamedTuple
 
     # Accounts for cases where there is no coral cover

@@ -20,6 +20,8 @@ Create a spatial choropleth figure.
 - `centroids` : Vector{Tuple}, of lon and lats
 - `show_colorbar` : Whether to show a colorbar (true) or not (false)
 - `colorbar_label` : Label to use for color bar
+- `colorbar_limits` : Upper and lower limits displayed on colorbar,
+    (default is (0.0, maximum(data)))
 - `color_map` : Type of colormap to use,
     See: https://docs.makie.org/stable/documentation/colors/#colormaps
 - `legend_params` : Legend parameters
@@ -34,6 +36,7 @@ function create_map!(
     centroids::Vector,
     show_colorbar::Bool=true,
     colorbar_label::String="",
+    colorbar_limits::Tuple{Float64, Float64}=(0.0, maximum(data)),
     color_map::Union{Symbol, Vector{Symbol}, RGBA{Float32}, Vector{RGBA{Float32}}}=:grayC,
     legend_params::Union{Tuple, Nothing}=nothing,
     axis_opts::Dict=Dict(),
@@ -58,17 +61,12 @@ function create_map!(
 
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10
-    max_val = @lift(maximum($data))
-
-    # Plot geodata polygons using data as internal color
-    color_range = (0.0, max_val[])
 
     poly!(
         spatial,
         geodata;
         color=data,
         colormap=color_map,
-        colorrange=color_range,
         strokecolor=(:black, 0.05),
         strokewidth=1.0,
     )
@@ -76,10 +74,10 @@ function create_map!(
     if show_colorbar
         Colorbar(
             f[1, 2];
-            colorrange=color_range,
             colormap=color_map,
             label=colorbar_label,
             height=Relative(0.65),
+            limits=colorbar_limits,
         )
     end
 
@@ -126,17 +124,32 @@ function create_map!(
 end
 
 """
-    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map(rs::ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), 
+        axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), 
+        axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::ResultSet, S::NamedDimsArray, scores::Vector{Float64};
+        criteria::Vector{Symbol} = S.criteria, opts::Dict = Dict(), axis_opts::Dict = Dict(),
+        fig_opts::Dict = Dict())
+    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; 
+        opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map!(g::Union{GridLayout,GridPosition},rs::ResultSet, S::NamedDimsArray, 
+        scores::Vector{Float64}; criteria::Vector{Symbol} = S.criteria, opts::Dict = Dict(), 
+        axis_opts::Dict = Dict(), fig_opts::Dict = Dict())
 
 Plot spatial choropleth of outcomes.
 
 # Arguments
 - `rs` : ResultSet
 - `y` : results of scenario metric
+- `S` : A normalised decision matrix calculated using decison.decision_matrices
+- `scores` : Aggregated criteria scores.
+- `criteria` : Names of criteria to be plotted, if not specified all criteria in 
+    S will be plotted.
 - `opts` : Aviz options
     - `colorbar_label`, label for colorbar. Defaults to "Relative Cover"
+    -`colorbar_limits`, min and max values to be shown on the colorbar. 
+        Defaults to (0.0,maximum(y)).
     - `color_map`, preferred colormap for plotting heatmaps
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
@@ -196,7 +209,7 @@ function ADRIA.viz.map!(
     legend_params = get(opts, :legend_params, nothing)
     show_colorbar = get(opts, :show_colorbar, true)
     color_map = get(opts, :color_map, :grayC)
-
+    colorbar_limits = get(opts, :colorbar_limits, (0.0, maximum(y)))
     return create_map!(
         g,
         geodata,
@@ -205,10 +218,81 @@ function ADRIA.viz.map!(
         ADRIA.centroids(rs),
         show_colorbar,
         c_label,
+        colorbar_limits,
         color_map,
         legend_params,
         axis_opts,
     )
+end
+function ADRIA.viz.map(
+    rs::ResultSet,
+    S::NamedDimsArray,
+    scores::Vector{Float64};
+    criteria::Vector{Symbol}=S.criteria,
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.map!(
+        g, rs, S, scores; criteria=criteria, opts=opts, axis_opts=axis_opts
+    )
+    return f
+end
+function ADRIA.viz.map!(
+    g::Union{GridLayout, GridPosition},
+    rs::ResultSet,
+    S::NamedDimsArray,
+    scores::Vector{Float64};
+    criteria::Vector{Symbol}=S.criteria,
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict(),
+)
+    if length(rs.site_data.site_id) != size(S, 1)
+        error("Only unfiltered decision matrices can be plotted.")
+    end
+
+    opts[:color_map] = get(opts, :color_map, :viridis)
+    opts[:colorbar_limits] = get(opts, :colorbar_limits, (0.0, 1.0))
+
+    m_spec = model_spec(rs)
+    criteria_names::Vector{String} = m_spec[
+        dropdims(
+            any(
+                reshape(criteria, 1, length(criteria)) .== m_spec[:, "fieldname"]; dims=2
+            );
+            dims=2,
+        ), "name"]
+    n_criteria::Int64 = length(criteria)
+    n_rows, n_cols = _calc_gridsize(n_criteria + 1)
+    step::Int64 = 1
+
+    for row in 1:n_rows, col in 1:n_cols
+        if step > length(criteria_names)
+            ADRIA.viz.map!(
+                g[row, col],
+                rs,
+                vec(scores);
+                opts=opts,
+                axis_opts=Dict(:title => "Aggregate criteria score"; axis_opts...),
+            )
+            break
+        end
+        axis_opts_temp = Dict(:title => criteria_names[step]; axis_opts...)
+        ADRIA.viz.map!(
+            g[row, col],
+            rs,
+            vec(S(criteria[step]));
+            opts=opts,
+            axis_opts=axis_opts_temp,
+        )
+
+        step += 1
+    end
+
+    # Clear empty figures
+    return trim!(g)
 end
 
 """
