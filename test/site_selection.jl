@@ -102,6 +102,7 @@ end
     rank_freq = ADRIA.decision.ranks_to_frequencies(ranks("seed"))
     @test rank_freq.sites[rank_freq(; ranks=1) .== maximum(rank_freq(; ranks=1))] == [5] || "The highest value site was not the most frequently selected in first rank."
     @test rank_freq.sites[rank_freq(; ranks=2) .== maximum(rank_freq(; ranks=2))] == [6] || "The second highest value site was not the most frequently selected in second rank."
+    @test all(rank_freq(; ranks=[1, 2, 3, 4, 5])(; sites=9) .== 0.0) || "Lowest value site has a non-zero selection frequency."
 end
 
 @testset "Test ranks line up with ordering" begin
