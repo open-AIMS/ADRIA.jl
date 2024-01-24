@@ -2,6 +2,7 @@
 
 
 using Distributions
+using SpecialFunctions
 
 
 """
@@ -279,9 +280,11 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
 
         # Use previous mortality threshold as minimum
         μ::Float64 = dist_t_1[sp_sc, loc]
-        dist::Distribution = truncated(Normal(μ, stdev[sp_sc]), prop_mort[1, sp_sc, loc], μ + HEAT_UB)
 
-        affected_pop::Float64 = cdf(dist, dhw[loc])
+        affected_pop::Float64 = truncated_normal_cdf(
+            dhw[loc], μ, stdev[sp_sc], prop_mort[1, sp_sc, loc], μ + HEAT_UB
+        )
+
         mort_pop::Float64 = 0.0
         if affected_pop > 0.0
             # Calculate depth-adjusted bleaching mortality
@@ -299,8 +302,8 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             # Re-create distribution
             # Use same stdev as target size class to maintain genetic variance
             # pers comm K.B-N (2023-08-09 16:24 AEST)
-            dist_t[sp_sc, loc] = mean(
-                truncated(Normal(μ, stdev[sp_sc]), mort_pop, μ + HEAT_UB)
+            dist_t[sp_sc, loc] = truncated_normal_mean(
+                μ, stdev[sp_sc], mort_pop, μ + HEAT_UB
             )
 
             # Update population
