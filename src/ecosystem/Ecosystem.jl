@@ -121,8 +121,8 @@ of the normal distribution, and the lower and upper bounds of the truncated dist
 - `x` : value to evaluate cdf at
 - `mean` : mean of underlying normal distribution
 - `stdev` : standard deviation of underlying normal Distribution
-- `lower_bound`: lower bound of truncated distribution
-- `upper_bound` : upper bound of truncated distribution
+- `lower_bound` : lower bound of the truncated distribution
+- `upper_bound` : upper bound of the truncated distribution
 
 # Returns
 The cdf of truncated normal distribution evaluated at `x`
