@@ -24,7 +24,7 @@ using ADRIA.Random
     
     mean_diffs = zeros(n_checks)
     
-    # The calculated truncated normal mean should agrew with the Distributions.jl implementation
+    # The calculated truncated normal mean should agree with the Distributions.jl implementation
     for i in 1:n_checks
         mu = rand(Uniform(0, 10))
         stdev = rand(Uniform(0.01, 10))
