@@ -637,7 +637,7 @@ end
 
 
 """
-    settler_cover(fec_scope::T, TP_data::AbstractMatrix{Float64}, leftover_space::T, α::V, β::V, basal_area_per_settler::V, potential_settlers::T)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
+    settler_cover(fec_scope::T, conn::AbstractMatrix{Float64}, leftover_space::T, α::V, β::V, basal_area_per_settler::V, potential_settlers::T)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
 Determine area settled by recruited larvae.
 
@@ -645,7 +645,7 @@ Note: Units for all areas are assumed to be in m².
 
 # Arguments
 - `fec_scope` : Fecundity scope
-- `TP_data` : Transition probability (rows: source locations; cols: sink locations)
+- `conn` : Connectivity between locations (rows: source locations; cols: sink locations)
 - `leftover_space` : Difference between locations' maximum carrying capacity and current
     coral cover (in m²)
 - `α` : max number of settlers / m²
@@ -658,7 +658,7 @@ Area covered by recruited larvae (in m²)
 """
 function settler_cover(
     fec_scope::T,
-    TP_data::AbstractMatrix{Float64},
+    conn::AbstractMatrix{Float64},
     leftover_space::T,
     α::V,
     β::V,
@@ -667,18 +667,24 @@ function settler_cover(
 )::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
     # Determine active sources and sinks
-    valid_sources::BitVector = sum.(eachrow(TP_data)) .> 0.0
-    valid_sinks::BitVector = sum.(eachcol(TP_data)) .> 0.0
+    valid_sources::BitVector = vec(sum(conn, dims=2) .> 0.0)
+    valid_sinks::BitVector = vec(sum(conn, dims=1) .> 0.0)
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
+    @floop for src in findall(valid_sources)
+        @views potential_settlers[:, valid_sinks] .+= (
+            fec_scope[:, src] .* conn[src, valid_sinks]'
+        )
+    end
+
     # [Larval pool for each location in larvae/m²] * [survival rate]
     # this is known as in-water mortality.
     # Set to 0.0 as it is now taken care of by connectivity data.
-    Mwater::Float64 = 0.0
-    @views potential_settlers[:, valid_sinks] .= (
-        fec_scope[:, valid_sources]
-        * TP_data[valid_sources, valid_sinks]
-    ) .* (1.0 .- Mwater)
+    # Mwater::Float64 = 0.0
+    # @views potential_settlers[:, valid_sinks] .= (
+    #     fec_scope[:, valid_sources]
+    #     * TP_data[valid_sources, valid_sinks]
+    # ) .* (1.0 .- Mwater)
 
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
