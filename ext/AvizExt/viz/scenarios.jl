@@ -42,7 +42,7 @@ function ADRIA.viz.scenarios(
     rs::ResultSet,
     outcomes::NamedDimsArray;
     opts::Dict=Dict(:by_RCP => false),
-    fig_opts::Dict=Dict(),
+    fig_opts::Dict=Dict(:size=>(800, 300)),
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
 )::Figure
@@ -78,7 +78,7 @@ function ADRIA.viz.scenarios(
     scenarios::DataFrame,
     outcomes::NamedDimsArray;
     opts::Dict=Dict(:by_RCP => false),
-    fig_opts::Dict=Dict(),
+    fig_opts::Dict=Dict(:size=>(800, 300)),
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
 )::Figure
