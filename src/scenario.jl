@@ -69,7 +69,8 @@ end
     run_scenarios(dom::Domain, scens::DataFrame, RCP::Vector{String}; show_progress=true, remove_workers=true)
 
 Run scenarios defined by the parameter table storing results to disk.
-Scenarios are run in parallel where the number of scenarios > 256.
+Scenarios are run in parallel where the number of scenarios > 256 for base Domain data
+packages and > 4 for GBR-scale datasets.
 
 # Notes
 - Returned `Domain` holds scenario invoke time used as unique result set identifier.
@@ -130,7 +131,8 @@ function run_scenarios(
         factors=names(scenarios_df)
     )
 
-    parallel = (nrow(scens) >= 256) && (parse(Bool, ENV["ADRIA_DEBUG"]) == false)
+    para_threshold = typeof(dom) == ReefModDomain ? 8 : 256
+    parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
