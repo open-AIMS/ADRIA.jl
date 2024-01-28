@@ -67,7 +67,7 @@ function load_mat_data(
     # Attach site names to each dimension
     try
         site_order = Vector{String}(vec(data["reef_siteid"]))
-        loaded = NamedDimsArray(data[attr]; Source=site_order, Receiving=site_order)
+        loaded = NamedDimsArray(data[attr]; Source=site_order, Sink=site_order)
     catch err
         if isa(err, KeyError)
             @warn "Provided file $(data_fn) did not have reef_siteid! There may be a mismatch in sites."
@@ -76,7 +76,7 @@ function load_mat_data(
 
                 # Subset down to number of sites
                 tmp = selectdim(data[attr], 2, 1:nrow(site_data))
-                loaded = NamedDimsArray(tmp; Source=site_order, Receiving=site_order)
+                loaded = NamedDimsArray(tmp; Source=site_order, Sink=site_order)
             end
         else
             rethrow(err)

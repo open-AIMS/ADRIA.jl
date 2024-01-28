@@ -92,7 +92,7 @@ function store_env_summary(
 end
 
 """
-    store_conn(conn_data::NamedDimsArray, file_loc::String, rcp::String, 
+    store_conn(conn_data::NamedDimsArray, file_loc::String, rcp::String,
         compressor::Zarr.Compressor)::ZArray
 
 Retrieve connectivity matrices from Domain for storage.
@@ -119,9 +119,9 @@ function store_conn(
         fill_value = nothing, fill_as_missing = false,
         path = joinpath(file_loc, rcp),
         attrs = Dict(
-            :structure => ("Source", "Receiving"),
+            :structure => ("Source", "Sink"),
             :Source => conn_data.Source,
-            :Receiving => conn_data.Receiving,
+            :Sink => conn_data.Sink,
             :rcp => rcp),
         compressor = compressor)
 
@@ -561,10 +561,10 @@ function _recreate_conn_from_store(zarr_store_path::String)::Dict{String, Abstra
 
         dim_names = Symbol.(store.attrs["structure"])
         source_ids = string.(store.attrs["Source"])
-        recieving_ids = string.(store.attrs["Receiving"])
+        sink_ids = string.(store.attrs["Sink"])
         conn_set = NamedDimsArray(
             store[:, :];
-            zip(dim_names, [source_ids, recieving_ids])...
+            zip(dim_names, [source_ids, sink_ids])...
         )
 
         conn_d[rcp_dirs[i]] = conn_set
@@ -625,7 +625,7 @@ function load_results(result_loc::String)::ResultSet
         msg = """Results were produced with a different version of ADRIA ($(r_vers_id)).
         The version of ADRIA in use is $(t_vers_id).\n
         Errors may occur when analyzing data.
-        
+
         ADRIA v0.8 store results relative to absolute location area, where as v0.9+ now
         stores results relative to available area.
         """

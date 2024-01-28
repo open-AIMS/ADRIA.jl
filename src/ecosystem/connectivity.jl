@@ -133,7 +133,7 @@ function site_connectivity(
     end
 
     TP_base = NamedDimsArray(
-        extracted_TP; Source=unique_site_ids, Receiving=unique_site_ids
+        extracted_TP; Source=unique_site_ids, Sink=unique_site_ids
     )
     @assert all(0.0 .<= TP_base .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
