@@ -51,7 +51,7 @@ end
     truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
 
 Calculates the mean of the truncated standard normal distribution. Implementation taken
-from Distributions.jl [1] excluding unused error checks. 
+from Distributions.jl [1] excluding unused error checks.
 
 # Arguments
 - `lb` : lower bound of the truncated distribution
@@ -86,11 +86,11 @@ end
 
 """
     truncated_normal_mean(
-        normal_mean::Float64, 
-        normal_stdev::Float64, 
-        lower_bound::Float64, 
+        normal_mean::Float64,
+        normal_stdev::Float64,
+        lower_bound::Float64,
         upper_bound::Float64
-    )::Float64   
+    )::Float64
 
 Calculates the mean of the truncated normal distribution.
 
@@ -152,8 +152,8 @@ function truncated_normal_cdf(
             $(alpha) and $(beta) standard deviations from the normal mean respectively."
     end
 
-    logcdf::Float64 = 
-        logerf(alpha * StatsFuns.invsqrt2, zeta * StatsFuns.invsqrt2) - 
+    logcdf::Float64 =
+        logerf(alpha * StatsFuns.invsqrt2, zeta * StatsFuns.invsqrt2) -
         logerf(alpha * StatsFuns.invsqrt2, beta * StatsFuns.invsqrt2)
 
     return exp(logcdf)
