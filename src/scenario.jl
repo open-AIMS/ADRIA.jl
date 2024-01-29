@@ -174,11 +174,8 @@ function run_scenarios(
             end
         end
     else
-        # Cache to reuse during scenario runs
-        cache = setup_cache(dom)
-
         # Define local helper
-        func = dfx -> run_scenario(dfx..., data_store, cache)
+        func = dfx -> run_scenario(dfx..., data_store)
 
         for rcp in RCP
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
@@ -204,9 +201,9 @@ function run_scenarios(
 end
 
 """
-    run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector, DataFrameRow}, data_store::NamedTuple, cache::NamedTuple)::Nothing
+    run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector, DataFrameRow}, data_store::NamedTuple)::Nothing
     run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
-    run_scenario(domain::Domain, scenario::Union{AbstractVector, DataFrameRow}, cache::NamedTuple)::NamedTuple
+    run_scenario(domain::Domain, scenario::Union{AbstractVector, DataFrameRow})::NamedTuple
     run_scenario(domain::Domain, scenario::NamedTuple)::NamedTuple
 
 Run individual scenarios for a given domain, saving results to a Zarr data store.
@@ -224,10 +221,8 @@ function run_scenario(
     domain::Domain,
     idx::Int64,
     scenario::Union{AbstractVector,DataFrameRow},
-    data_store::NamedTuple,
-    cache::NamedTuple
+    data_store::NamedTuple
 )::Nothing
-    coral_params = to_coral_spec(scenario)
     if domain.RCP == ""
         local rcp
         try
@@ -243,7 +238,7 @@ function run_scenario(
         domain = switch_RCPs!(domain, string(Int64(rcp)))
     end
 
-    result_set = run_model(domain, scenario, coral_params, cache)
+    result_set = run_model(domain, scenario)
 
     # Capture results to disk
     # Set values below threshold to 0 to save space
@@ -320,8 +315,6 @@ function run_scenario(
         end
     end
 
-
-
     if (idx % 256) == 0
         @everywhere GC.gc()
     end
@@ -330,23 +323,9 @@ function run_scenario(
 end
 function run_scenario(
     domain::Domain,
-    idx::Int64,
-    scenario::Union{AbstractVector,DataFrameRow},
-    data_store::NamedTuple
-)::Nothing
-    cache = setup_cache(domain)
-    run_scenario(domain, idx, scenario, data_store, cache)
-    cache = nothing
-    return cache
-end
-function run_scenario(
-    domain::Domain,
     scenario::Union{AbstractVector,DataFrameRow}
 )::NamedTuple
-    cache = setup_cache(domain)
-    results = run_model(domain, scenario, to_coral_spec(scenario), cache)
-    cache = nothing
-    return results
+    return run_model(domain, scenario)
 end
 function run_scenario(
     domain::Domain,
@@ -358,40 +337,7 @@ function run_scenario(
 end
 
 """
-    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple, cache::NamedTuple)::Nothing
-    run_scenario(idx::Int64, param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
-    run_scenario(param_set::Union{AbstractVector, DataFrameRow}, domain::Domain, cache::NamedTuple)::NamedTuple
-    run_scenario(param_set::NamedTuple, domain::Domain)::NamedTuple
-
-WARNING: Deprecated set of functions to be removed in v1.0
-
-Instead, use: `run_scenario(dom, scenarios, ...)`
-"""
-function run_scenario(idx::Int64, param_set::Union{AbstractVector,DataFrameRow}, dom, args...; kwargs...)
-    msg = """
-    `run_scenario(idx, param_set, ...)` is now deprecated and will be removed in ADRIA v1.0
-
-    Instead, use:
-        `run_scenario(dom, idx, scenario, ...)`
-    """
-    @warn msg
-
-    return run_scenario(dom, idx, param_set, args...; kwargs...)
-end
-function run_scenario(param_set::Union{AbstractVector,DataFrameRow}, domain::Domain, args...; kwargs...)
-    msg = """
-    `run_scenario(param_set, domain, ...)` is now deprecated and will be removed in ADRIA v1.0
-
-    Instead, use:
-        `run_scenario(dom, scenario, ...)`
-    """
-    @warn msg
-
-    return run_scenario(domain, param_set, args...; kwargs...)
-end
-
-"""
-    run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow}, corals::DataFrame, cache::NamedTuple)::NamedTuple
+    run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow})::NamedTuple
 
 Core scenario running function.
 
@@ -401,12 +347,14 @@ Only the mean site rankings are kept
 # Returns
 NamedTuple of collated results
 """
-function run_model(domain::Domain, param_set::DataFrameRow, corals::DataFrame, cache::NamedTuple)::NamedTuple
+function run_model(domain::Domain, param_set::DataFrameRow)::NamedTuple
     ps = NamedDimsArray(Vector(param_set), factors=names(param_set))
-    return run_model(domain, ps, corals, cache)
+    return run_model(domain, ps)
 end
-function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame, cache::NamedTuple)::NamedTuple
+function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     p = domain.coral_growth.ode_p
+    corals = to_coral_spec(param_set)
+    cache = setup_cache(domain)
 
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
@@ -778,7 +726,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray, corals::DataFrame,
         # Update initial condition
         growth.u0 .= C_t
         sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
-            alg_hints=alg_hint, dt=0.5)
+            alg_hints=alg_hint, dt=1.0)
 
         # Assign results
         C_cover[tstep, :, valid_locs] .= sol.u[end][:, valid_locs]
