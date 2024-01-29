@@ -203,6 +203,7 @@ function load_DHW(
 )::NamedDimsArray
     dhw_path = joinpath(data_path, "dhw")
     rcp_files = _get_relevant_files(dhw_path, rcp)
+    rcp_files = filter(x -> occursin("SSP", x), rcp_files)
     if isempty(rcp_files)
         ArgumentError("No DHW data files found in: $(dhw_path)")
     end
