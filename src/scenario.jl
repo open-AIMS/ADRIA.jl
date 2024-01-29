@@ -545,7 +545,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Treat as enhancement from mean of "natural" DHW tolerance
     a_adapt[a_adapt.>0.0] .+= corals.dist_mean[a_adapt.>0.0]
-
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
@@ -568,10 +567,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     for tstep::Int64 in 2:tf
         # Copy cover for previous timestep as basis for current timestep
         C_t .= C_cover[tstep-1, :, :]
-
-        # Coral deaths due to selected cyclone scenario
-        # Peak cyclone period is January to March
-        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
 
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
@@ -630,6 +625,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # between November to February.
         # - SRM is applied first
         # - Fogging is applied next
+        # - then cyclone mortality
         # - Bleaching then occurs
         # - Then intervention locations are seeded
         if is_guided && (in_seed_timeframe || in_fog_timeframe)
@@ -700,6 +696,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
 
+        # Coral deaths due to selected cyclone scenario
+        # Peak cyclone period is January to March
+        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
+
         # Calculate and apply bleaching mortality
         # Bleaching typically occurs in the warmer months (November - February)
         #    This: `dhw_t .* (1.0 .- wave_scen[tstep, :])`
@@ -761,12 +761,13 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 @view(C_cover[(tstep-1):tstep, :, :]), n_groups, c_mean_t, p.r
             )
 
+            # Set values for t to t-1
+            c_mean_t_1 .= c_mean_t
+
             if in_debug_mode
                 # Log dhw tolerances if in debug mode
                 dhw_tol_mean_log[tstep, :, :] .= mean.(c_mean_t)
             end
-
-            c_mean_t_1 .= c_mean_t
         end
     end
 

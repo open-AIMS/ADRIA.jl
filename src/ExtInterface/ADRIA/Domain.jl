@@ -237,7 +237,7 @@ end
 - `path` : location of data package
 - `rcp` : RCP scenario to run. If none provided, no data path is set.
 """
-function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
+function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomain
     domain_name::String = basename(path)
     if length(domain_name) == 0
         domain_name = basename(dirname(path))
