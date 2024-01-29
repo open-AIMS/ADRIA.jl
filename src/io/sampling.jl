@@ -337,9 +337,9 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
 end
 
 """
-    fix_factor(d::Domain, factor::Symbol)
-    fix_factor(d::Domain, factor::Symbol, val::Real)
-    fix_factor(d::Domain, factors...)
+    fix_factor!(d::Domain, factor::Symbol)
+    fix_factor!(d::Domain, factor::Symbol, val::Real)
+    fix_factor!(d::Domain, factors...)
 
 Fix a factor so it gets ignored for the purpose of constructing samples.
 If no value is provided, the default is used.
