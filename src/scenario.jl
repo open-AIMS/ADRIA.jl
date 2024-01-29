@@ -365,10 +365,18 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     wave_idx::Int64 = Int64(param_set("wave_scenario"))
     cyclone_mortality_idx::Int64 = Int64(param_set("cyclone_mortality_scenario"))
 
+    # Extract environmental data
+    dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
+
+    # TODO: Better conversion of Ub to wave mortality
+    #       Currently scaling significant wave height by its max to non-dimensionalize values
+    wave_scen = copy(domain.wave_scens[:, :, wave_idx])
+    wave_scen .= wave_scen ./ maximum(wave_scen)
+    replace!(wave_scen, Inf=>0.0, NaN=>0.0)
+
     cyclone_mortality_scen = @view(
         domain.cyclone_mortality_scens[:, :, :, cyclone_mortality_idx]
     )
-    dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
 
     tspan::Tuple = (0.0, 1.0)
     solver::Euler = Euler()
@@ -542,11 +550,6 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
     # Treat as enhancement from mean of "natural" DHW tolerance
     a_adapt[a_adapt.>0.0] .+= corals.dist_mean[a_adapt.>0.0]
-
-    # TODO: Better conversion of Ub to wave mortality
-    #       Currently scaling significant wave height by its max to non-dimensionalize values
-    wave_scen = copy(domain.wave_scens[:, :, wave_idx])
-    wave_scen .= wave_scen ./ maximum(wave_scen)
 
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
