@@ -265,7 +265,7 @@ function _relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T})::Abstr
     taxa_cover = zeros(n_steps, n_sc, n_locs)
     k_cover = zeros(n_steps, n_sc)
     for (taxa_id, grp) in enumerate([i:i+(n_sc-1) for i in 1:n_sc:n_species])
-        @floop for (loc, a) in enumerate(k_area)
+        for (loc, a) in enumerate(k_area)
             k_cover .= X[:, grp, loc] .* a
 
             # Sum over size class groups

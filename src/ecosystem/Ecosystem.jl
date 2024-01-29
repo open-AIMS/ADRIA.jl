@@ -74,17 +74,19 @@ function truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
         return lb
     end
 
-    mid = (lb + ub) / 2
+    mid = (lb + ub) / 2.0
     Δ = (ub - lb) * mid
     lb′ = lb * StatsFuns.invsqrt2
     ub′ = ub * StatsFuns.invsqrt2
 
     m = ub
-    if lb ≤ 0 ≤ ub
+    if lb ≤ 0.0 ≤ ub
         m = expm1(-Δ) * exp(-lb^2 / 2) / erf(ub′, lb′)
-    elseif 0 < lb < ub
+    elseif 0.0 < lb < ub
         z = exp(-Δ) * erfcx(ub′) - erfcx(lb′)
-        iszero(z) && return mid
+        if iszero(z)
+            return mid
+        end
         m = expm1(-Δ) / z
     end
 
