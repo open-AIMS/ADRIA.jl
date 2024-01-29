@@ -483,7 +483,7 @@ must be a 2-element Tuple, with `(new_lower, new_upper)` values.
 set_factor_bounds!(dom, :wave_stress, (0.1, 0.2))
 ```
 """
-function set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
+function set_factor_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Domain
     _check_bounds_range(dom, factor, new_bounds)
 
     new_bounds, new_val = if _is_discrete_factor(dom, factor)
@@ -496,16 +496,16 @@ function set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Not
     params[params.fieldname .== factor, :dist_params] .= [new_bounds]
     params[params.fieldname .== factor, :val] .= new_val
 
-    update!(dom, params)
+    dom = update!(dom, params)
 
-    return nothing
+    return dom
 end
-function set_factor_bounds!(d::Domain; factors...)::Nothing
+function set_factor_bounds(dom::Domain; factors...)::Domain
     for (factor, bounds) in factors
-        set_factor_bounds!(d, factor, bounds)
+        dom = set_factor_bounds(dom, factor, bounds)
     end
 
-    return nothing
+    return dom
 end
 
 function _continuous_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Tuple
@@ -545,10 +545,10 @@ function _check_bounds_range(dom::Domain, factor::Symbol, new_bounds::Tuple)::No
         )
     end
 
-    if (_distribution_type(dom, factor) == "triang") && (length(new_bounds) !== 3)
-        error("Triangular dist requires three parameters (minimum, maximum, peak).")
-    elseif (_distribution_type(dom, factor) == "unif") && (length(new_bounds) !== 2)
-        error("Uniform dist requires two parameters (minimum, maximum).")
+    if contains(string(_distribution_type(dom, factor)), "Triang") && (length(new_bounds) !== 3)
+        error("Triangular type distributions requires three parameters (minimum, maximum, peak).")
+    elseif contains(string(_distribution_type(dom, factor)), "Unif") && (length(new_bounds) !== 2)
+        error("Uniform distributions requires two parameters (minimum, maximum).")
     end
 
     return nothing
