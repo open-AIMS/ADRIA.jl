@@ -460,8 +460,8 @@ function get_default_dist_params(dom::Domain, factor::Symbol)::Tuple
 end
 
 """
-    set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
-    set_factor_bounds!(dom::Domain; factors...)::Nothing
+    set_factor_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
+    set_factor_bounds(dom::Domain; factors...)::Nothing
 
 Set new bound values for a given parameter. Sampled values for a parameter will lie
 within the range `lower_bound ≤ s ≤ upper_bound`, for every sample value `s`.
@@ -480,7 +480,7 @@ must be a 2-element Tuple, with `(new_lower, new_upper)` values.
 
 # Examples
 ```julia
-set_factor_bounds!(dom, :wave_stress, (0.1, 0.2))
+set_factor_bounds(dom, :wave_stress, (0.1, 0.2))
 ```
 """
 function set_factor_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Domain
@@ -496,7 +496,7 @@ function set_factor_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Doma
     params[params.fieldname .== factor, :dist_params] .= [new_bounds]
     params[params.fieldname .== factor, :val] .= new_val
 
-    dom = update!(dom, params)
+    update!(dom, params)
 
     return dom
 end
@@ -536,14 +536,6 @@ Check new parameter bounds are within default parameter bounds
 function _check_bounds_range(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
     default_lower, default_upper = get_default_dist_params(dom, factor)
     new_lower, new_upper = new_bounds
-
-    # Check if new bounds are within the default range
-    out_of_bounds::Bool = (new_lower < default_lower) || (new_upper > default_upper)
-    if out_of_bounds
-        error(
-            "Bounds should be within ($default_lower, $default_upper), received: ($new_lower, $new_upper).",
-        )
-    end
 
     if contains(string(_distribution_type(dom, factor)), "Triang") && (length(new_bounds) !== 3)
         error("Triangular type distributions requires three parameters (minimum, maximum, peak).")

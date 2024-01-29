@@ -128,16 +128,16 @@ dom = ADRIA.load_domain()
 
 # Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in
 # question have a uniform distribution.
-ADRIA.set_factor_bounds!(dom, :N_seed_TA, (500000.0, 1000000.0))
-ADRIA.set_factor_bounds!(dom, :N_seed_CA, (500000.0, 1000000.0))
-ADRIA.set_factor_bounds!(dom, :N_seed_SA, (500000.0, 1000000.0))
+dom = ADRIA.set_factor_bounds(dom, :N_seed_TA, (500000.0, 1000000.0))
+dom = ADRIA.set_factor_bounds(dom, :N_seed_CA, (500000.0, 1000000.0))
+dom = ADRIA.set_factor_bounds(dom, :N_seed_SA, (500000.0, 1000000.0))
 
 # Adjust fogging bounds. Note lower, upper and mode parameters are needed because it
 # is a triangular distribution.
-ADRIA.set_factor_bounds!(dom, :fogging, (0.2, 0.3, 0.1))
+dom = ADRIA.set_factor_bounds(dom, :fogging, (0.2, 0.3, 0.1))
 
 # Adjust multiple factors simultaneously.
-ADRIA.set_factor_bounds!(dom;
+dom = ADRIA.set_factor_bounds(dom;
     heat_stress=(0.3, 0.7),
     N_seed_TA=(500000.0, 1000000.0),
     N_seed_CA=(500000.0, 1000000.0))
