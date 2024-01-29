@@ -299,7 +299,7 @@ function load_connectivity(
 
     # Mean over all years
     conn_data::Matrix{Float64} = dropdims(mean(tmp_mat; dims=3); dims=3)
-    return NamedDimsArray(conn_data; source=loc_ids, sinks=loc_ids)
+    return NamedDimsArray(conn_data; Source=loc_ids, Sink=loc_ids)
 end
 
 """

@@ -1,6 +1,6 @@
 """Coral growth functions"""
 
-
+using FLoops
 using Distributions
 using SpecialFunctions
 
@@ -270,44 +270,57 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
 )::Nothing
     n_sp_sc, n_locs = size(cover)
 
-    # Adjust distributions for all locations, ignoring juveniles
+    # Determine non-juvenile size classes.
+    # First two of each functional group are the juvenile size classes
+    size_classes = 1:n_sp_sc
+    juveniles = sort!(vec([size_classes[1:6:end] size_classes[2:6:end]]))
+    non_juveniles = setdiff(size_classes, juveniles)
+
+    # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
-    for (sp_sc, loc) in Iterators.product(3:n_sp_sc, 1:n_locs)
-        # Skip if location experiences no heat stress or there is no population
-        if dhw[loc] == 0.0 || cover[sp_sc, loc] == 0.0
+    for loc in 1:n_locs
+        # Skip locations that have no heat stress
+        if dhw[loc] == 0.0
             continue
         end
 
-        # Use previous mortality threshold as minimum
-        μ::Float64 = dist_t_1[sp_sc, loc]
-
-        affected_pop::Float64 = truncated_normal_cdf(
-            dhw[loc], μ, stdev[sp_sc], prop_mort[1, sp_sc, loc], μ + HEAT_UB
-        )
-
-        mort_pop::Float64 = 0.0
-        if affected_pop > 0.0
-            # Calculate depth-adjusted bleaching mortality
-            mort_pop = affected_pop * depth_coeff[loc]
-
-            # Set values close to 0.0 (e.g., 1e-214) to 0.0
-            # https://github.com/JuliaLang/julia/issues/23376#issuecomment-324649815
-            if (mort_pop + one(mort_pop)) ≈ one(mort_pop)
-                mort_pop = 0.0
+        # Determine bleaching mortality for each non-juvenile species/size class
+        for sp_sc in non_juveniles
+            # Skip location if there is no population
+            if cover[sp_sc, loc] == 0.0
+                continue
             end
-        end
 
-        prop_mort[2, sp_sc, loc] = mort_pop
-        if mort_pop > 0.0
-            # Re-create distribution
-            # Use same stdev as target size class to maintain genetic variance
-            # pers comm K.B-N (2023-08-09 16:24 AEST)
-            dist_t[sp_sc, loc] = truncated_normal_mean(
-                μ, stdev[sp_sc], mort_pop, μ + HEAT_UB
+            μ::Float64 = dist_t_1[sp_sc, loc]
+            affected_pop::Float64 = truncated_normal_cdf(
+                # Use previous mortality threshold as minimum
+                dhw[loc], μ, stdev[sp_sc], prop_mort[1, sp_sc, loc], μ + HEAT_UB
             )
 
-            # Update population
-            cover[sp_sc, loc] = cover[sp_sc, loc] * (1.0 - mort_pop)
+            mort_pop::Float64 = 0.0
+            if affected_pop > 0.0
+                # Calculate depth-adjusted bleaching mortality
+                mort_pop = affected_pop * depth_coeff[loc]
+
+                # Set values close to 0.0 (e.g., 1e-214) to 0.0
+                # https://github.com/JuliaLang/julia/issues/23376#issuecomment-324649815
+                if (mort_pop + one(mort_pop)) ≈ one(mort_pop)
+                    mort_pop = 0.0
+                end
+            end
+
+            prop_mort[2, sp_sc, loc] = mort_pop
+            if mort_pop > 0.0
+                # Re-create distribution
+                # Use same stdev as target size class to maintain genetic variance
+                # pers comm K.B-N (2023-08-09 16:24 AEST)
+                dist_t[sp_sc, loc] = truncated_normal_mean(
+                    μ, stdev[sp_sc], mort_pop, μ + HEAT_UB
+                )
+
+                # Update population
+                cover[sp_sc, loc] = cover[sp_sc, loc] * (1.0 - mort_pop)
+            end
         end
     end
 
@@ -637,7 +650,7 @@ end
 
 
 """
-    settler_cover(fec_scope::T, TP_data::AbstractMatrix{Float64}, leftover_space::T, α::V, β::V, basal_area_per_settler::V, potential_settlers::T)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
+    settler_cover(fec_scope::T, conn::AbstractMatrix{Float64}, leftover_space::T, α::V, β::V, basal_area_per_settler::V, potential_settlers::T)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
 Determine area settled by recruited larvae.
 
@@ -645,7 +658,7 @@ Note: Units for all areas are assumed to be in m².
 
 # Arguments
 - `fec_scope` : Fecundity scope
-- `TP_data` : Transition probability (rows: source locations; cols: sink locations)
+- `conn` : Connectivity between locations (rows: source locations; cols: sink locations)
 - `leftover_space` : Difference between locations' maximum carrying capacity and current
     coral cover (in m²)
 - `α` : max number of settlers / m²
@@ -658,7 +671,7 @@ Area covered by recruited larvae (in m²)
 """
 function settler_cover(
     fec_scope::T,
-    TP_data::AbstractMatrix{Float64},
+    conn::AbstractMatrix{Float64},
     leftover_space::T,
     α::V,
     β::V,
@@ -667,18 +680,24 @@ function settler_cover(
 )::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
     # Determine active sources and sinks
-    valid_sources::BitVector = sum.(eachrow(TP_data)) .> 0.0
-    valid_sinks::BitVector = sum.(eachcol(TP_data)) .> 0.0
+    valid_sources::BitVector = vec(sum(conn, dims=2) .> 0.0)
+    valid_sinks::BitVector = vec(sum(conn, dims=1) .> 0.0)
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
+    @floop for src in findall(valid_sources)
+        @views potential_settlers[:, valid_sinks] .+= (
+            fec_scope[:, src] .* conn[src, valid_sinks]'
+        )
+    end
+
     # [Larval pool for each location in larvae/m²] * [survival rate]
     # this is known as in-water mortality.
     # Set to 0.0 as it is now taken care of by connectivity data.
-    Mwater::Float64 = 0.0
-    @views potential_settlers[:, valid_sinks] .= (
-        fec_scope[:, valid_sources]
-        * TP_data[valid_sources, valid_sinks]
-    ) .* (1.0 .- Mwater)
+    # Mwater::Float64 = 0.0
+    # @views potential_settlers[:, valid_sinks] .= (
+    #     fec_scope[:, valid_sources]
+    #     * TP_data[valid_sources, valid_sinks]
+    # ) .* (1.0 .- Mwater)
 
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
