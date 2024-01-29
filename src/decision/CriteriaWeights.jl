@@ -129,7 +129,7 @@ Base.@kwdef struct CriteriaWeights{U2,U3,DO} <: EcoModel
         1.0;
         ptype="continuous",
         dist=Uniform,
-        dist_params=(0.0, 1.0),
+        dist_params=(0.75, 1.0),
         criteria_keywords=(:threshold, :seed, :fog),
         name="Risk Tolerance",
         description="Filters out sites with heat/wave stress above threshold.",
