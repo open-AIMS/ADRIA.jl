@@ -584,6 +584,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
         # Reset potential settlers to zero
         potential_settlers .= 0.0
+        recruitment .= 0.0
 
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
@@ -608,7 +609,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
         )
 
         # Add recruits to current cover
-        C_t[p.small, :] .+= recruitment
+        C_t[p.small, :] .= recruitment
 
         # Check whether current timestep is in deployment period for each intervention
         in_fog_timeframe = fog_start_year <= tstep <= (fog_start_year + fog_years - 1)
