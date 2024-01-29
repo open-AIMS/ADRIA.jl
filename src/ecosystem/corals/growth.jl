@@ -671,6 +671,8 @@ function settler_cover(
     valid_sinks::BitVector = vec(sum(conn, dims=1) .> 0.0)
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
+    # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae 
+    # which do not settle. Per comms with C. Ani (2023-01-29 13:24 AEST).
     @floop for src in findall(valid_sources)
         @views potential_settlers[:, valid_sinks] .+= (
             fec_scope[:, src] .* conn[src, valid_sinks]'
