@@ -684,20 +684,15 @@ function settler_cover(
     valid_sinks::BitVector = vec(sum(conn, dims=1) .> 0.0)
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
-    @floop for src in findall(valid_sources)
-        @views potential_settlers[:, valid_sinks] .+= (
-            fec_scope[:, src] .* conn[src, valid_sinks]'
-        )
-    end
-
+    # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae 
+    # which do not settle. Pers comm with C. Ani (2023-01-29 13:24 AEST).
     # [Larval pool for each location in larvae/m²] * [survival rate]
     # this is known as in-water mortality.
     # Set to 0.0 as it is now taken care of by connectivity data.
     # Mwater::Float64 = 0.0
-    # @views potential_settlers[:, valid_sinks] .= (
-    #     fec_scope[:, valid_sources]
-    #     * TP_data[valid_sources, valid_sinks]
-    # ) .* (1.0 .- Mwater)
+    @views potential_settlers[:, valid_sinks] .= (
+        fec_scope[:, valid_sources] * conn[valid_sources, valid_sinks]
+    )
 
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
