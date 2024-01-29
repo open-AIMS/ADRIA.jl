@@ -778,10 +778,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
 
         # Check if size classes are inappropriately out-growing available space
-        proportional_adjustment!(
-            @view(C_cover[tstep, :, valid_locs]),
-            cover_tmp[valid_locs]
-        )
+        # proportional_adjustment!(
+        #     @view(C_cover[tstep, :, valid_locs]),
+        #     cover_tmp[valid_locs]
+        # )
 
         if tstep <= tf
             # Natural adaptation
