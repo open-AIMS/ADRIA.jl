@@ -273,7 +273,7 @@ function test_rs_w_fig()
     scenarios_iv = scens[:, fields_iv]
 
     # Use SIRUS algorithm to extract rules
-    max_rules = 10
+    max_rules = 4
     rules_iv = ADRIA.analysis.cluster_rules(target_clusters, scenarios_iv, max_rules)
 
     # Plot scatters for each rule highlighting the area selected them

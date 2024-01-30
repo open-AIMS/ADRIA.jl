@@ -6,7 +6,7 @@ using ADRIA.Random
 @testset "Truncated normal mean" begin
     n_checks = 1000
     mean_diffs::Vector{Float64} = zeros(n_checks)
-    
+
     # The truncted normal mean should agree with the normal mean for symmetrical bound about mean
     for i in 1:n_checks
         mu = rand(Uniform(0, 10))
@@ -37,7 +37,7 @@ using ADRIA.Random
         expected = mean(truncated(Normal(mu, stdev), lb, ub))
         mean_diffs[i] = abs(expected - calculated)
     end
-    
+
     @test all(mean_diffs .< 1e-7) ||
         "calculated truncated normal mean differs signficantly from Distributions.jl"
 end
@@ -45,7 +45,7 @@ end
 @testset "Truncated normal cdf" begin
     n_checks::Int = 1000
     cdf_diffs::Vector{Float64} = zeros(3 * n_checks)
-    
+
     # The truncated normal cdf should return 0.0, 0.5, and 1.0 when evaluated at the lower
     # bound, median and upper bound respectively.
     for i in 1:n_checks
@@ -71,14 +71,14 @@ end
         "truncated normal cdf not equal to 0.0, 0.5, 1.0 at lower bound, mean, upper bound"
 
     n_checks = 3000
-   
+
     # The truncated normal cdf should agree with the Distributions.jl implementation
     for i in 1:n_checks
         mu = rand(Uniform(0, 10))
         stdev = rand(Uniform(0.01, 10))
         lb = rand(Uniform(mu - stdev * 10, mu + stdev * 5))
         ub = rand(Uniform(lb, lb + stdev * 5))
-    
+
         x = rand(Uniform(lb, ub))
 
         calculated = ADRIA.truncated_normal_cdf(

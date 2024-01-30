@@ -181,7 +181,7 @@ end
 
         @testset "Continuous factor is sampled within specified range" begin
             bnds = rand(2)
-            ADRIA.set_factor_bounds!(
+            dom = ADRIA.set_factor_bounds(
                 dom, :deployed_coral_risk_tol, (minimum(bnds), maximum(bnds))
             )
             scens = ADRIA.sample_guided(dom, num_samples)
@@ -193,7 +193,7 @@ end
 
         @testset "Discrete factor is sampled within specified range and is discrete" begin
             bnds = rand(0.0:1000000.0, 2)
-            ADRIA.set_factor_bounds!(dom, :N_seed_TA, (minimum(bnds), maximum(bnds)))
+            dom = ADRIA.set_factor_bounds(dom, :N_seed_TA, (minimum(bnds), maximum(bnds)))
             scens = ADRIA.sample_site_selection(dom, num_samples)
             @test (maximum(scens[:, "N_seed_TA"]) <= maximum(bnds)) ||
                 "Sampled discrete factor is outside of specified new bounds."
@@ -217,7 +217,7 @@ end
 
             @testset "New and old bounds are the same" begin
                 new_bounds = ADRIA.get_default_dist_params(dom, discrete_factor_name)
-                ADRIA.set_factor_bounds!(dom, discrete_factor_name, new_bounds)
+                dom = ADRIA.set_factor_bounds(dom, discrete_factor_name, new_bounds)
 
                 factor_params = dom.model[ms.fieldname .== discrete_factor_name][1]
                 @test factor_params.dist_params[1] == factor_params.default_dist_params[1]
