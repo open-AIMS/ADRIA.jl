@@ -159,16 +159,22 @@ function site_connectivity(
 end
 
 """
-    connectivity_strength(TP_base::AbstractArray)::NamedTuple
-    connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64}, TP_cache::AbstractMatrix{Float64})::NamedTuple
+    connectivity_strength(area_weighted_conn::AbstractMatrix{Float64}, cover::Vector{Float64}, conn_cache::AbstractMatrix{Float64})::NamedTuple
 
 Create in/out degree centralities for all nodes, and vector of their strongest predecessors.
 
 # Arguments
-- `TP_base` : Base transfer probability matrix to create Directed Graph from.
-- `area_weighted_TP` : Transfer probability matrix weighted by location `k` area
+- `area_weighted_conn` : Transfer probability matrix weighted by location `k` area
 - `cover` : Total relative coral cover at location
-- `TP_cache` : Cache matrix of same size as TP_base to hold intermediate values
+- `conn_cache` : Cache matrix of same size as TP_base to hold intermediate values
+
+
+    connectivity_strength(conn::AbstractArray)::NamedTuple
+
+Create in/out degree centralities for all nodes, and vector of their strongest predecessors.
+
+# Arguments
+- `conn` : Base connectivity matrix to create Directed Graph from.
 
 # Returns
 NamedTuple:
@@ -176,8 +182,8 @@ NamedTuple:
 - `out_conn` : sites ranked by outgoing connectivity
 - `strongest_predecessor` : strongest predecessor for each site
 """
-function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
-    g = SimpleDiGraph(TP_base)
+function connectivity_strength(conn::AbstractMatrix{Float64})::NamedTuple
+    g = SimpleDiGraph(conn)
 
     # Measure centrality based on number of incoming connections
     C1 = indegree_centrality(g)
@@ -206,17 +212,16 @@ function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
     return (in_conn=C1, out_conn=C2, strongest_predecessor=strong_pred)
 end
 function connectivity_strength(
-    area_weighted_TP::AbstractMatrix{Float64},
+    area_weighted_conn::AbstractMatrix{Float64},
     cover::Vector{<:Union{Float32,Float64}},
-    TP_cache::AbstractMatrix{Float64},
+    conn_cache::AbstractMatrix{Float64},
 )::NamedTuple
-
     # Accounts for cases where there is no coral cover
-    TP_cache .= (area_weighted_TP .* cover)
-    max_TP = maximum(TP_cache)
-    if max_TP > 0.0
-        TP_cache .= TP_cache ./ max_TP
+    conn_cache .= (area_weighted_conn .* cover)
+    max_conn = maximum(conn_cache)
+    if max_conn > 0.0
+        conn_cache .= conn_cache ./ max_conn
     end
 
-    return connectivity_strength(TP_cache)
+    return connectivity_strength(conn_cache)
 end
