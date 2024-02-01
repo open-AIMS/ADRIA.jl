@@ -441,6 +441,7 @@ locations.
 - `k_area` : Absolute coral habitable area
 - `tp` : Transition Probability matrix indicating the proportion of larvae that reaches a
     sink location (columns) from a given source location (rows)
+    Columns should sum to 1
 - `settlers` : recruited corals for each sink location
 - `fec_params_per_m²` : Fecundity parameters for each species/size class combination
 - `h²` : narrow-sense heritability
@@ -472,7 +473,7 @@ function settler_DHW_tolerance!(
 
         # Calculate contribution to cover to determine weights for each species/group
         w::NamedDimsArray = @views settlers[:, sink_loc]' .* tp[source_locs, sink_loc]
-        w_per_group = w ./ sum.(eachcol(w))'
+        w_per_group = w ./ sum(w, dims=1)
         replace!(w_per_group, NaN=>0.0)
 
         # Determine new distribution mean for each species at all locations
@@ -684,7 +685,7 @@ function settler_cover(
     valid_sinks::BitVector = vec(sum(conn, dims=1) .> 0.0)
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
-    # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae 
+    # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae
     # which do not settle. Pers comm with C. Ani (2023-01-29 13:24 AEST).
     # [Larval pool for each location in larvae/m²] * [survival rate]
     # this is known as in-water mortality.
