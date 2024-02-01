@@ -133,33 +133,33 @@ function run_scenarios(
 
     para_threshold = typeof(dom) == ReefModDomain ? 8 : 256
     parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (nrow(scens) >= para_threshold)
-    if parallel && nworkers() == 1
-        @info "Setting up parallel processing..."
-        spinup_time = @elapsed begin
-            _setup_workers()
+    if parallel
+        if nworkers() == 1
+            @info "Setting up parallel processing..."
+            spinup_time = @elapsed begin
+                _setup_workers()
 
-            # Load ADRIA on workers and define helper function
-            # Note: Workers do not share the same cache in parallel workloads.
-            #       Previously, cache would be reserialized so each worker has access to
-            #       a separate cache.
-            #       Using CachingPool() resolves the the repeated reserialization but it
-            #       seems each worker was then attempting to use the same cache, causing the
-            #       Julia kernel to crash in multi-processing contexts.
-            #       Getting each worker to create its own cache reduces serialization time
-            #       (at the cost of increased run time) but resolves the kernel crash issue.
-            @sync @async @everywhere @eval begin
-                using ADRIA
-                func = (dfx) -> run_scenario(dfx..., data_store)
+                # Load ADRIA on workers and define helper function
+                # Note: Workers do not share the same cache in parallel workloads.
+                #       Previously, cache would be reserialized so each worker has access to
+                #       a separate cache.
+                #       Using CachingPool() resolves the the repeated reserialization but it
+                #       seems each worker was then attempting to use the same cache, causing the
+                #       Julia kernel to crash in multi-processing contexts.
+                #       Getting each worker to create its own cache reduces serialization time
+                #       (at the cost of increased run time) but resolves the kernel crash issue.
+                @sync @async @everywhere @eval begin
+                    using ADRIA
+                    func = (dfx) -> run_scenario(dfx..., data_store)
+                end
             end
-        end
 
-        @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
+            @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
+        end
 
         # Define local helper
         func = (dfx) -> run_scenario(dfx..., data_store)
-    end
 
-    if parallel
         for rcp in RCP
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 

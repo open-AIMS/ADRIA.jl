@@ -1,4 +1,4 @@
-Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
+Base.@kwdef struct Intervention{DU,DO,T,DT} <: EcoModel
     # Intervention Factors
     # Bounds are defined as floats to maintain type stability
     guided::DU = Factor(
@@ -9,27 +9,27 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Guided",
         description="Choice of MCDA approach.",
     )
-    N_seed_TA::DU = Factor(
+    N_seed_TA::DO = Factor(
         0;
         ptype="ordered categorical",
-        dist=DiscreteUniform,
-        dist_params=(0.0, 1000000.0),
+        dist=DiscreteOrderedUniformDist,  # DiscreteOrderedUniformDist
+        dist_params=(0.0, 1000000.0, 50000.0),
         name="Seeded Tabular Acropora",
         description="Number of Tabular Acropora to seed per deployment year.",
     )
-    N_seed_CA::DU = Factor(
+    N_seed_CA::DO = Factor(
         0;
         ptype="ordered categorical",
-        dist=DiscreteUniform,
-        dist_params=(0.0, 1000000.0),
+        dist=DiscreteOrderedUniformDist,  # DiscreteUniform
+        dist_params=(0.0, 1000000.0, 50000.0),
         name="Seeded Corymbose Acropora",
         description="Number of Corymbose Acropora to seed per deployment year.",
     )
-    N_seed_SM::DU = Factor(
+    N_seed_SM::DO = Factor(
         0;
         ptype="ordered categorical",
-        dist=DiscreteUniform,
-        dist_params=(0.0, 1000000.0),
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.0, 1000000.0, 50000.0),
         name="Seeded Small Massives",
         description="Number of small massives/encrusting to seed per deployment year.",
     )
