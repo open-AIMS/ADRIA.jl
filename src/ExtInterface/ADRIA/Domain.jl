@@ -14,12 +14,12 @@ mutable struct ADRIADomain{
     RCP::String  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
     scenario_invoke_time::String  # time latest set of scenarios were run
-    const TP_data::Σ  # site connectivity data
+    const conn::Σ  # connectivity data
     const in_conn::Vector{Float64}  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
     const out_conn::Vector{Float64}  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strong_pred::Vector{Int64}  # strongest predecessor
     site_data::D  # table of site data (depth, carrying capacity, etc)
-    const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
+    const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `conn`)
     const unique_site_id_col::String  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
     const coral_growth::CoralGrowth  # coral

@@ -26,9 +26,10 @@ NOTE: Transposes transitional probability matrix if `swap == true`
 
 # Returns
 NamedTuple:
-- `TP_data` : Matrix, containing the transition probability for all sites
-- `truncated` : ID of sites removed
-- `site_ids` : ID of sites kept
+- `conn` : Matrix, containing the connectivity for all locations.
+           Accounts for larvae which do not settle, so rows are not required to sum to 1
+- `truncated` : ID of locations removed
+- `site_ids` : ID of locations kept
 """
 function site_connectivity(
     file_loc::String,
@@ -41,16 +42,13 @@ function site_connectivity(
         error("Could not find location: $(file_loc)")
     end
 
-    local extracted_TP::Matrix{Float64}
-    if isfile(file_loc)
-        con_files::Vector{String} = String[file_loc]
-    elseif isdir(file_loc)
-        # Get connectivity years available in data store
-        years::Vector{String} = getindex(first(walkdir(file_loc)), 2)
-        year_conn_fns = NamedTuple{Tuple(Symbol.(years))}([
-            [joinpath.(first(fl), last(fl)) for fl in walkdir(joinpath(file_loc, yr))][1]
-            for yr in years
-        ])
+    local extracted_conn::Matrix{Float64}
+    if isfile(file_path)
+        conn_files::Vector{String} = String[file_path]
+        first_file = conn_files[1]
+    elseif isdir(file_path)
+        conn_fns = readdir(file_path)
+        conn_fns = String[fn for fn in conn_fns if endswith(fn, ".csv")]
 
         con_files = vcat([x for x in values(year_conn_fns)]...)
 
@@ -132,12 +130,12 @@ function site_connectivity(
         extracted_TP[extracted_TP .< con_cutoff] .= 0.0
     end
 
-    TP_base = NamedDimsArray(
-        extracted_TP; Source=unique_site_ids, Sink=unique_site_ids
+    conn = NamedDimsArray(
+        extracted_conn; Source=unique_site_ids, Sink=unique_site_ids
     )
-    @assert all(0.0 .<= TP_base .<= 1.0) "Connectivity data not scaled between 0 - 1"
+    @assert all(0.0 .<= conn .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
-    return (TP_base=TP_base, truncated=invalid_ids, site_ids=unique_site_ids)
+    return (conn=conn, truncated=invalid_ids, site_ids=loc_ids)
 end
 function site_connectivity(
     file_loc::String,
@@ -162,16 +160,22 @@ function site_connectivity(
 end
 
 """
-    connectivity_strength(TP_base::AbstractArray)::NamedTuple
-    connectivity_strength(area_weighted_TP::AbstractMatrix{Float64}, cover::Vector{Float64}, TP_cache::AbstractMatrix{Float64})::NamedTuple
+    connectivity_strength(area_weighted_conn::AbstractMatrix{Float64}, cover::Vector{Float64}, conn_cache::AbstractMatrix{Float64})::NamedTuple
 
 Create in/out degree centralities for all nodes, and vector of their strongest predecessors.
 
 # Arguments
-- `TP_base` : Base transfer probability matrix to create Directed Graph from.
-- `area_weighted_TP` : Transfer probability matrix weighted by location `k` area
+- `area_weighted_conn` : Transfer probability matrix weighted by location `k` area
 - `cover` : Total relative coral cover at location
-- `TP_cache` : Cache matrix of same size as TP_base to hold intermediate values
+- `conn_cache` : Cache matrix of same size as TP_base to hold intermediate values
+
+
+    connectivity_strength(conn::AbstractArray)::NamedTuple
+
+Create in/out degree centralities for all nodes, and vector of their strongest predecessors.
+
+# Arguments
+- `conn` : Base connectivity matrix to create Directed Graph from.
 
 # Returns
 NamedTuple:
@@ -179,8 +183,8 @@ NamedTuple:
 - `out_conn` : sites ranked by outgoing connectivity
 - `strongest_predecessor` : strongest predecessor for each site
 """
-function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
-    g = SimpleDiGraph(TP_base)
+function connectivity_strength(conn::AbstractMatrix{Float64})::NamedTuple
+    g = SimpleDiGraph(conn)
 
     # Measure centrality based on number of incoming connections
     C1 = indegree_centrality(g)
@@ -209,17 +213,16 @@ function connectivity_strength(TP_base::AbstractMatrix{Float64})::NamedTuple
     return (in_conn=C1, out_conn=C2, strongest_predecessor=strong_pred)
 end
 function connectivity_strength(
-    area_weighted_TP::AbstractMatrix{Float64},
+    area_weighted_conn::AbstractMatrix{Float64},
     cover::Vector{<:Union{Float32,Float64}},
-    TP_cache::AbstractMatrix{Float64},
+    conn_cache::AbstractMatrix{Float64},
 )::NamedTuple
-
     # Accounts for cases where there is no coral cover
-    TP_cache .= (area_weighted_TP .* cover)
-    max_TP = maximum(TP_cache)
-    if max_TP > 0.0
-        TP_cache .= TP_cache ./ max_TP
+    conn_cache .= (area_weighted_conn .* cover)
+    max_conn = maximum(conn_cache)
+    if max_conn > 0.0
+        conn_cache .= conn_cache ./ max_conn
     end
 
-    return connectivity_strength(TP_cache)
+    return connectivity_strength(conn_cache)
 end

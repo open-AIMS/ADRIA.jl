@@ -32,9 +32,9 @@ function _location_selection(
     # Determine connectivity strength
     # Account for cases where no coral cover
     in_conn, out_conn, strong_pred = connectivity_strength(
-        domain.TP_data .* site_k_area(domain),
+        domain.conn .* site_k_area(domain),
         vec(sum_cover),
-        similar(domain.TP_data)  # tmp cache matrix
+        similar(domain.conn)  # tmp cache matrix
     )
 
     # Perform location selection for seeding and shading.

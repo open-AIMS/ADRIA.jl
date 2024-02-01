@@ -11,7 +11,7 @@ mutable struct ReefModDomain <: Domain
     RCP::String
     env_layer_md
     scenario_invoke_time::String  # time latest set of scenarios were run
-    const TP_data
+    const conn
     const in_conn
     const out_conn
     const strong_pred
