@@ -14,7 +14,7 @@ mutable struct ADRIADomain{
     RCP::String  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
     scenario_invoke_time::String  # time latest set of scenarios were run
-    const conn::Σ  # site connectivity data
+    const conn::Σ  # connectivity data
     const in_conn::Vector{Float64}  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
     const out_conn::Vector{Float64}  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strong_pred::Vector{Int64}  # strongest predecessor
