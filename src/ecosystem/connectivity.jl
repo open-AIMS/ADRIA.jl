@@ -26,9 +26,10 @@ NOTE: Transposes transitional probability matrix if `swap == true`
 
 # Returns
 NamedTuple:
-- `conn` : Matrix, containing the connectivity for all sites
-- `truncated` : ID of sites removed
-- `site_ids` : ID of sites kept
+- `conn` : Matrix, containing the connectivity for all locations.
+           Accounts for larvae which do not settle, so rows are not required to sum to 1
+- `truncated` : ID of locations removed
+- `site_ids` : ID of locations kept
 """
 function site_connectivity(
     file_loc::String,
