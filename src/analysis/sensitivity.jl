@@ -451,8 +451,8 @@ ADRIA.sensitivity.rsa(X, y; S=10)
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
 function rsa(
-    X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64=10
-)::NamedDimsArray
+    X::DataFrame, y::AbstractVector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10
+)::Dict{Symbol, Matrix{Union{Missing, Float64}}}
     N, D = size(X)
 
     X_di = zeros(N)
@@ -467,8 +467,8 @@ function rsa(
         S = _category_bins(S, foi_spec[is_cat, :])
     end
 
+    r_s::Dict{Symbol, Matrix{Union{Missing, Float64}}} = Dict()
     X_q = zeros(S + 1)
-    r_s = zeros(Union{Missing,Float64}, S, D)
     seq = collect(0.0:(1 / S):1.0)
     seq_store = seq
 
@@ -506,9 +506,7 @@ function rsa(
         end
     end
 
-    return col_normalize(
-        NamedDimsArray(r_s; bins=string.(seq_store[2:end]), factors=Symbol.(names(X))),
-    )
+    return r_s
 end
 function rsa(
     rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
