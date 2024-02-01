@@ -53,6 +53,9 @@ end
 Calculates the mean of the truncated standard normal distribution. Implementation taken
 from Distributions.jl [1] excluding unused error checks.
 
+Note: This implementation attempts to avoid NaNs where possible. In cases where `lb` > `ub`
+      a zero value is returned.
+
 # Arguments
 - `lb` : lower bound of the truncated distribution
 - `ub` : upper bound of the truncated distribution
@@ -62,18 +65,21 @@ The mean of the truncated standard normal distribution
 
 # References
 1. Documentation of (Distributions.jl)[https://juliastats.org/Distributions.jl/stable/],
-   Specific code taken from (truncated normal directory)[https://github.com/JuliaStats/Distributions.jl/blob/master/src/truncated/normal.jl] on 24/01/2024
+   Specific code taken from (truncated normal directory)[https://github.com/JuliaStats/Distributions.jl/blob/c1705a3015d438f7e841e82ef5148224813831e8/src/truncated/normal.jl#L24-L46] on 24/01/2024
 """
 function truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
     if abs(lb) > abs(ub)
-        return - truncated_standard_normal_mean(-ub, -lb)
-    elseif (lb == ub) 
+        return -truncated_standard_normal_mean(-ub, -lb)
+    elseif (lb == ub)
         return lb
     end
-    mid = (lb + ub) / 2 
+
+    mid = (lb + ub) / 2
     Δ = (ub - lb) * mid
     lb′ = lb * StatsFuns.invsqrt2
     ub′ = ub * StatsFuns.invsqrt2
+
+    m = 0.0
     if lb ≤ 0 ≤ ub
         m = expm1(-Δ) * exp(-lb^2 / 2) / erf(ub′, lb′)
     elseif 0 < lb < ub
@@ -81,6 +87,7 @@ function truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
         iszero(z) && return mid
         m = expm1(-Δ) / z
     end
+
     return clamp(m / StatsFuns.sqrthalfπ, lb, ub)
 end
 
