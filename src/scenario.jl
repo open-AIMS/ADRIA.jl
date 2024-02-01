@@ -738,7 +738,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
             alg_hints=alg_hint, dt=1.0)
 
         # Assign results
-        C_cover[tstep, :, valid_locs] .= sol.u[end][:, valid_locs]
+        # We need to clamp values as the ODE may return negative values.
+        C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
 
         # TODO:
         # Check if size classes are inappropriately out-growing available space
