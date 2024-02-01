@@ -26,7 +26,7 @@ NOTE: Transposes transitional probability matrix if `swap == true`
 
 # Returns
 NamedTuple:
-- `TP_data` : Matrix, containing the transition probability for all sites
+- `conn` : Matrix, containing the connectivity for all sites
 - `truncated` : ID of sites removed
 - `site_ids` : ID of sites kept
 """
@@ -41,16 +41,13 @@ function site_connectivity(
         error("Could not find location: $(file_loc)")
     end
 
-    local extracted_TP::Matrix{Float64}
-    if isfile(file_loc)
-        con_files::Vector{String} = String[file_loc]
-    elseif isdir(file_loc)
-        # Get connectivity years available in data store
-        years::Vector{String} = getindex(first(walkdir(file_loc)), 2)
-        year_conn_fns = NamedTuple{Tuple(Symbol.(years))}([
-            [joinpath.(first(fl), last(fl)) for fl in walkdir(joinpath(file_loc, yr))][1]
-            for yr in years
-        ])
+    local extracted_conn::Matrix{Float64}
+    if isfile(file_path)
+        conn_files::Vector{String} = String[file_path]
+        first_file = conn_files[1]
+    elseif isdir(file_path)
+        conn_fns = readdir(file_path)
+        conn_fns = String[fn for fn in conn_fns if endswith(fn, ".csv")]
 
         con_files = vcat([x for x in values(year_conn_fns)]...)
 
@@ -132,12 +129,12 @@ function site_connectivity(
         extracted_TP[extracted_TP .< con_cutoff] .= 0.0
     end
 
-    TP_base = NamedDimsArray(
-        extracted_TP; Source=unique_site_ids, Sink=unique_site_ids
+    conn = NamedDimsArray(
+        extracted_conn; Source=unique_site_ids, Sink=unique_site_ids
     )
-    @assert all(0.0 .<= TP_base .<= 1.0) "Connectivity data not scaled between 0 - 1"
+    @assert all(0.0 .<= conn .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
-    return (TP_base=TP_base, truncated=invalid_ids, site_ids=unique_site_ids)
+    return (conn=conn, truncated=invalid_ids, site_ids=loc_ids)
 end
 function site_connectivity(
     file_loc::String,

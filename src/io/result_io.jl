@@ -99,7 +99,7 @@ Retrieve connectivity matrices from Domain for storage.
 Produce connectivity for a particular RCP saved to a Zarr data store.
 
 # Arguments
-- `conn_data` : connectivity data (e.g. `domain.TP_data`)
+- `conn_data` : connectivity data (e.g. `domain.conn`)
 - `file_loc` : path for Zarr data store
 - `rcp`: RCP associated with connectivity data.
 
@@ -478,7 +478,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         push!(
             connectivity,
             store_conn(
-                domain.TP_data,
+                domain.conn,
                 joinpath(z_store.folder, "connectivity"),
                 rcp,
                 COMPRESSOR
