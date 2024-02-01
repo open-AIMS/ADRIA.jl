@@ -48,8 +48,12 @@ function proportional_adjustment!(
     cover_tmp[cover_tmp .≈ 1.0] .= 1.0
     if any(cover_tmp .> 1.0)
         exceeded::BitVector = vec(cover_tmp .> 1.0)
-        @warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model."
-        @warn "Cover - Max Cover: $(sum(cover_tmp[exceeded] .- 1.0))"
+        msg = """
+            Cover exceeded bounds, constraining to be within available space
+            This indicates an issue with the model.
+            Cover - Max Cover: $(sum(cover_tmp[exceeded] .- 1.0))
+        """
+        @debug msg
         @views @. coral_cover[:, exceeded] = (
             coral_cover[:, exceeded] / cover_tmp[exceeded]'
         )
@@ -326,6 +330,8 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             end
         end
     end
+
+    clamp!(cover, 0.0, 1.0)
 
     return nothing
 end
