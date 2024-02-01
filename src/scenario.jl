@@ -708,7 +708,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
         # so what causes 100% mortality can differ between runs.
         bleaching_mortality!(
             C_t,
-            collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
+            dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
             depth_coeff,
             corals.dist_std,
             c_mean_t_1,
