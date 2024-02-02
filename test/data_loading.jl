@@ -25,7 +25,7 @@ end
     unique_site_ids = site_data.reef_siteid
 
     conn_files = joinpath(TEST_DOMAIN_PATH, "connectivity")
-    conn_data = CSV.read(joinpath(conn_files, "2000", "example_conn.csv"), DataFrame, comment="#", drop=[1], types=Float64)
+    conn_data = CSV.read(joinpath(conn_files, "example_conn.csv"), DataFrame, comment="#", drop=[1], types=Float64)
 
     conn_details = ADRIA.site_connectivity(conn_files, unique_site_ids)
 
