@@ -274,19 +274,12 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
     end
 
     dpkg_details::Dict{String,Any} = _load_dpkg(path)
-    dpkg_version = dpkg_details["version"]
 
     # Handle compatibility
-    this_version::VersionNumber = parse(VersionNumber, dpkg_version)
-    if this_version >= v"0.2.1"
-        # Extract the time frame represented in this data package
-        md_timeframe::Tuple{Int64,Int64} = Tuple(
-            dpkg_details["simulation_metadata"]["timeframe"]
-        )
-    else
-        # Default to 2025-2099
-        md_timeframe = (2025, 2099)
-    end
+    # Extract the time frame represented in this data package
+    md_timeframe::Tuple{Int64,Int64} = Tuple(
+        dpkg_details["simulation_metadata"]["timeframe"]
+    )
 
     if length(md_timeframe) == 2
         @assert md_timeframe[1] < md_timeframe[2] "Start date/year specified in data package must be < end date/year"
