@@ -103,7 +103,7 @@ export ReefModDomain
 # export dims, ndims
 
 # List out compatible domain datapackages
-const COMPAT_DPKG = ["0.3.1", "0.4.0-rc", "0.4.0"]
+const COMPAT_DPKG = ["0.4.0-rc", "0.4.0", "0.5.0-rc", "0.5.0"]
 
 # This adds ~30 seconds to package load times
 if ccall(:jl_generating_output, Cint, ()) == 1
