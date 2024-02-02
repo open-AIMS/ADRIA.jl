@@ -103,12 +103,16 @@ function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, t::Re
     # X_mb : current cover (X) * background mortality (mb)
 
     # Pre-apply background mortality to growth
-    # p.X_mb .= X .* p.mb
-    p.sXr .= (max.(1.0 .- sum(X, dims=1), 0.0) .* X .* p.r) .- (X .* p.mb)
+    p.X_mb .= X .* p.mb
+    p.sXr .= (max.(1.0 .- sum(X, dims=1), 0.0) .* X .* p.r)
 
-    @views @. du[p.small, :] = -p.sXr[p.small, :]
-    @views @. du[p.mid, :] = p.sXr[p.mid-1, :] - p.sXr[p.mid, :]
-    @views @. du[p.large, :] = p.sXr[p.large-1, :] + p.sXr[p.large, :]
+    # For each size class, we determine the corals coming into size class due to growth,
+    # and subtract those leaving the size class due to growth and background mortality
+    # e.g., C = [corals coming in] - [corals going out]
+    # The smallest size class only has corals leaving the size class.
+    @views @. du[p.small, :] = -p.sXr[p.small, :] - p.X_mb[p.small, :]
+    @views @. du[p.mid, :] = (p.sXr[p.mid-1, :] - p.X_mb[p.mid-1, :]) - (p.sXr[p.mid, :] + p.X_mb[p.mid, :])
+    @views @. du[p.large, :] = (p.sXr[p.large-1, :] + p.sXr[p.large, :]) - p.X_mb[p.large, :]
 
     return nothing
 end
