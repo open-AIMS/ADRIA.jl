@@ -16,10 +16,10 @@ NOTE: Transposes transitional probability matrix if `swap == true`
 ```
 
 # Arguments
-- `file_loc` : Path to data file (or datasets) to load
+- `file_path` : Path to data file (or datasets) to load
                If a folder, searches subfolders as well
-- `unique_site_ids` : Unique site ids in their expected order
-- `con_cutoff` : Percent thresholds of max for weak connections in
+- `loc_ids` : Unique site ids in their expected order
+- `conn_cutoff` : Percent thresholds of max for weak connections in
                  network (defined by user or defaults in `SimConstants`)
 - `agg_func` : Summary statistic to take (defaults to `mean`)
 - `swap` : Whether to transpose data (defaults to `false`)
@@ -32,17 +32,17 @@ NamedTuple:
 - `site_ids` : ID of locations kept
 """
 function site_connectivity(
-    file_loc::String,
-    unique_site_ids::Vector{String};
-    con_cutoff::Float64=1e-6,
+    file_path::String,
+    loc_ids::Vector{String};
+    conn_cutoff::Float64=1e-6,
     agg_func::Function=mean,
     swap::Bool=false,
 )::NamedTuple
-    if !isdir(file_loc) && !isfile(file_loc)
-        error("Could not find location: $(file_loc)")
+    if !isdir(file_path) && !isfile(file_path)
+        error("Could not find location: $(file_path)")
     end
 
-    local extracted_conn::Matrix{Float64}
+    local extracted_TP::Matrix{Float64}
     if isfile(file_path)
         conn_files::Vector{String} = String[file_path]
         first_file = conn_files[1]
@@ -50,18 +50,20 @@ function site_connectivity(
         conn_fns = readdir(file_path)
         conn_fns = String[fn for fn in conn_fns if endswith(fn, ".csv")]
 
-        con_files = vcat([x for x in values(year_conn_fns)]...)
+        first_file = joinpath.(file_path, conn_fns[1])
 
-        # Pre-allocate store
+        # Assume years are always in the second position
+        years::Vector{String} = unique(getindex.(split.(conn_fns, "_"), 2))
+
+        # Organize files by their connectivity years
+        year_conn_fns = NamedTuple{Tuple(Symbol.("year_".*years))}(
+            [filter(x -> occursin(yr, x), joinpath.(file_path, conn_fns)) for yr in years]
+        )
+
+        # Create store for each year
         tmp_store::Vector{Matrix{Float64}} = Matrix{Float64}[]
-
-        # Get average connectivity for each represented year
-        for yr in Symbol.(years)
-            if length(year_conn_fns[yr]) == 0
-                # Skip empty directories
-                continue
-            end
-
+        for yr in years
+            assoc_files = getfield(year_conn_fns, Symbol.("year_" * yr))
             conn_data::Vector{Matrix{Float64}} = Matrix{Float64}[
                 Matrix(
                     CSV.read(
@@ -72,20 +74,20 @@ function site_connectivity(
                         transpose=swap,
                         types=Float64,
                         drop=[1],
-                    ),
-                ) for fn in year_conn_fns[yr]
+                    )
+                ) for fn in assoc_files
             ]
 
             push!(tmp_store, agg_func(conn_data))
         end
 
         # Mean across all years
-        extracted_TP = agg_func(tmp_store)
+        extracted_conn = agg_func(tmp_store)
     end
 
-    # Get site ids from first file
-    con_file1::DataFrame = CSV.read(
-        con_files[1],
+    # Get location ids from first file
+    conn_file1 = CSV.read(
+        first_file,
         DataFrame;
         comment="#",
         missingstring="NA",
@@ -93,45 +95,43 @@ function site_connectivity(
         types=Float64,
         drop=[1],
     )
-    con_site_ids::Vector{String} = String[
-        x[1] for x in split.(names(con_file1), "_v"; limit=2)
-    ]
 
-    if isfile(file_loc)
-        extracted_TP = Matrix{Float64}(con_file1)
+    conn_loc_ids::Vector{String} = names(conn_file1)
+    if isfile(file_path)
+        extracted_conn = Matrix{Float64}(conn_file1)
     end
 
-    # Get IDs missing in con_site_ids
-    invalid_ids::Vector{String} = setdiff(con_site_ids, unique_site_ids)
+    # Identify locations that are not found in either conn_loc_ids or loc_ids
+    # Get IDs that are in conn_loc_ids but not in loc_ids
+    invalid_ids::Vector{String} = setdiff(conn_loc_ids, loc_ids)
 
-    # Get IDs missing in site_order
-    append!(invalid_ids, setdiff(unique_site_ids, con_site_ids))
+    # Add locations that in loc_ids, but not in conn_loc_ids
+    append!(invalid_ids, setdiff(loc_ids, conn_loc_ids))
 
-    # Identify IDs that do not appear in `invalid_ids`
-    valid_ids::Vector{String} = [x ∉ invalid_ids ? x : missing for x in unique_site_ids]
-    valid_idx = .!ismissing.(valid_ids)
+    # Identify indices of IDs that do not appear in `invalid_ids`
+    valid_ids::Vector{String} = setdiff(loc_ids, invalid_ids)
+    valid_idx = findall(x -> x in loc_ids, valid_ids)
 
     # Align IDs
-    unique_site_ids::Vector{String} = coalesce(unique_site_ids[valid_idx])
-    site_order = [findfirst(c_id .== con_site_ids) for c_id in unique_site_ids]
+    loc_ids::Vector{String} = coalesce(loc_ids[valid_idx])
+    loc_order = [findfirst(c_id .== conn_loc_ids) for c_id in loc_ids]
 
     if length(invalid_ids) > 0
-        if length(invalid_ids) >= length(con_site_ids)
+        if length(invalid_ids) >= length(conn_loc_ids)
             error("All sites appear to be missing from data set. Aborting.")
         end
 
-        @warn "The following sites (n=$(length(invalid_ids))) were not found in site_ids and were removed:\n$(invalid_ids)"
+        @warn "The following sites (n=$(length(invalid_ids))) were not found in `loc_ids` and were removed:\n$(invalid_ids)"
     end
 
     # Reorder all data into expected form
-    extracted_TP = extracted_TP[site_order, site_order]
-
-    if con_cutoff > 0.0
-        extracted_TP[extracted_TP .< con_cutoff] .= 0.0
+    extracted_conn = extracted_conn[loc_order, loc_order]
+    if conn_cutoff > 0.0
+        extracted_conn[extracted_conn .< conn_cutoff] .= 0.0
     end
 
     conn = NamedDimsArray(
-        extracted_conn; Source=unique_site_ids, Sink=unique_site_ids
+        extracted_conn; Source=loc_ids, Sink=loc_ids
     )
     @assert all(0.0 .<= conn .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
