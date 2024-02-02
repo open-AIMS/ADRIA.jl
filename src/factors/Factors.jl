@@ -57,7 +57,7 @@ function _check_has_required_info(kwargs::NT) where {NT <: NamedTuple}
     @assert haskey(kwargs, :description) "Missing factor field `description`"
 
     param_dist_types = [
-        "continuous", "ordered categorical", "unordered categorical", "discrete"
+        "continuous", "ordered categorical", "unordered categorical", "discrete", "ordered discrete"
     ]
     @assert any(occursin.(kwargs[:ptype], param_dist_types)) "`ptype` field is not one of $(param_dist_types)"
 end
