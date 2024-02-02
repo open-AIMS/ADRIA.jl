@@ -708,7 +708,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
         # so what causes 100% mortality can differ between runs.
         bleaching_mortality!(
             C_t,
-            collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
+            dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
             depth_coeff,
             corals.dist_std,
             c_mean_t_1,
@@ -738,9 +738,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
             alg_hints=alg_hint, dt=1.0)
 
         # Assign results
-        C_cover[tstep, :, valid_locs] .= sol.u[end][:, valid_locs]
+        # We need to clamp values as the ODE may return negative values.
+        C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
 
-        # TODO:
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
             @view(C_cover[tstep, :, valid_locs]),
@@ -807,5 +807,9 @@ function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothi
     # Large class coral mortality
     coral_deaths_large = coral_cover[coral_params.large, :] .* cyclone_mortality
     coral_cover[coral_params.large, :] -= coral_deaths_large
+
+    # Ensure no negative values
+    clamp!(coral_cover, 0.0, 1.0)
+
     return nothing
 end
