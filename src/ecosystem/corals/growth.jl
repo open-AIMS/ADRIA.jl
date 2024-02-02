@@ -112,14 +112,6 @@ function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, t::Re
     @views @. du[p.mid, :] = (p.sXr[p.mid-1, :] - p.X_mb[p.mid-1, :]) - (p.sXr[p.mid, :] + p.X_mb[p.mid, :])
     @views @. du[p.large, :] = (p.sXr[p.large-1, :] + p.sXr[p.large, :]) - p.X_mb[p.large, :]
 
-    # Pre-apply background mortality to growth
-    # p.X_mb .= X .* p.mb
-    p.sXr .= (max.(1.0 .- sum(X, dims=1), 0.0) .* X .* p.r) .- (X .* p.mb)
-
-    @views @. du[p.small, :] = -p.sXr[p.small, :]
-    @views @. du[p.mid, :] = p.sXr[p.mid-1, :] - p.sXr[p.mid, :]
-    @views @. du[p.large, :] = p.sXr[p.large-1, :] + p.sXr[p.large, :]
-
     return nothing
 end
 
