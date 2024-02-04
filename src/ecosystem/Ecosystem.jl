@@ -53,15 +53,15 @@ end
 Calculates the mean of the truncated standard normal distribution. Implementation taken
 from Distributions.jl [1] excluding unused error checks.
 
-Note: This implementation attempts to avoid NaNs where possible. In cases where `lb` > `ub`
-      a zero value is returned.
+Note: This implementation attempts to avoid NaNs where possible. In cases where `lb` > `ub`,
+      `ub` is returned.
 
 # Arguments
 - `lb` : lower bound of the truncated distribution
 - `ub` : upper bound of the truncated distribution
 
 # Returns
-The mean of the truncated standard normal distribution
+The mean of the truncated standard normal distribution or the upper bound if `lb` > `ub`.
 
 # References
 1. Documentation of (Distributions.jl)[https://juliastats.org/Distributions.jl/stable/],
@@ -79,7 +79,7 @@ function truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
     lb′ = lb * StatsFuns.invsqrt2
     ub′ = ub * StatsFuns.invsqrt2
 
-    m = 0.0
+    m = ub
     if lb ≤ 0 ≤ ub
         m = expm1(-Δ) * exp(-lb^2 / 2) / erf(ub′, lb′)
     elseif 0 < lb < ub
