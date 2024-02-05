@@ -457,20 +457,18 @@ function rsa(
 
     X_di = zeros(N)
     sel = trues(N)
-    factors = Symbol.(names(X))
 
     foi_spec = _get_factor_spec(model_spec, factors)
+    unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
+    seq_store::Dict{Symbol, Vector{Float64}} = Dict()
 
-    is_cat = occursin.("categorical", foi_spec.ptype)
-    if any(is_cat)
-        # set size of containers to largest possible S
-        S = _category_bins(S, foi_spec[is_cat, :])
+    for (f_i, factor) in enumerate(unordered_cat)
+        S_temp = _category_bins(foi_spec[foi_spec.fieldname .== factor, :])
+        seq_store[factor] = collect(0.0:(1 / S_temp):1.0)
     end
 
-    r_s::Dict{Symbol, Matrix{Union{Missing, Float64}}} = Dict()
-    X_q = zeros(S + 1)
-    seq = collect(0.0:(1 / S):1.0)
-    seq_store = seq
+    seq_store[:default] = collect(0.0:(1 / S):1.0)
+    unordered_cat = vcat(unordered_cat, :default)
 
     for d_i in 1:D
         X_di .= X[:, d_i]
