@@ -155,7 +155,7 @@ function scenario_attributes(
         :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)),
         :site_data_file => env_layer.site_data_fn,
         :site_id_col => env_layer.site_id_col,
-        :unique_site_id_col => env_layer.unique_site_id_col,
+        :cluster_id_col => env_layer.cluster_id_col,
         :init_coral_cover_file => env_layer.init_coral_cov_fn,
         :connectivity_file => env_layer.connectivity_fn,
         :DHW_file => env_layer.DHW_fn,
@@ -607,7 +607,7 @@ function load_results(result_loc::String)::ResultSet
 
     # Spatial data
     site_data = GDF.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
-    sort!(site_data, [Symbol(input_set.attrs["unique_site_id_col"])])
+    sort!(site_data, [Symbol(input_set.attrs["site_id_col"])])
 
     # Model specification
     model_spec = CSV.read(
@@ -642,7 +642,7 @@ function load_results(result_loc::String)::ResultSet
         result_loc,
         input_set.attrs["site_data_file"],
         input_set.attrs["site_id_col"],
-        input_set.attrs["unique_site_id_col"],
+        input_set.attrs["cluster_id_col"],
         input_set.attrs["init_coral_cover_file"],
         input_set.attrs["connectivity_file"],
         input_set.attrs["DHW_file"],

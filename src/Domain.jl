@@ -9,7 +9,7 @@ mutable struct EnvLayer{S<:AbstractString,TF}
     dpkg_path::S
     site_data_fn::S
     const site_id_col::S
-    const unique_site_id_col::S
+    const cluster_id_col::S
     init_coral_cov_fn::S
     connectivity_fn::S
     DHW_fn::S
@@ -31,7 +31,7 @@ function load_domain(path::String)::Domain
 end
 
 function unique_sites(d::Domain)::Vector{String}
-    return d.site_data[:, d.unique_site_id_col]
+    return d.site_data[:, d.cluster_id_col]
 end
 
 """

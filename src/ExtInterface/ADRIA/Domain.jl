@@ -20,7 +20,7 @@ mutable struct ADRIADomain{
     const strong_pred::Vector{Int64}  # strongest predecessor
     site_data::D  # table of site data (depth, carrying capacity, etc)
     const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `conn`)
-    const unique_site_id_col::String  # column of unique site ids
+    const cluster_id_col::String  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
     const coral_growth::CoralGrowth  # coral
     const site_ids::Vector{String}  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
@@ -47,7 +47,7 @@ function Domain(
     strongest_predecessor::Vector{Int64},
     site_data::DataFrame,
     site_id_col::String,
-    unique_site_id_col::String,
+    cluster_id_col::String,
     init_coral_cover::NamedDimsArray,
     coral_growth::CoralGrowth,
     site_ids::Vector{String},
@@ -91,7 +91,7 @@ function Domain(
         strongest_predecessor,
         site_data,
         site_id_col,
-        unique_site_id_col,
+        cluster_id_col,
         init_coral_cover,
         coral_growth,
         site_ids,
@@ -105,7 +105,7 @@ function Domain(
 end
 
 """
-    Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String)::Domain
+    Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, cluster_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String)::Domain
 
 Convenience constructor for Domain.
 
@@ -116,7 +116,7 @@ Convenience constructor for Domain.
 - `timeframe` : Time steps represented
 - `site_data_fn` : File name of spatial data used
 - `site_id_col` : Column holding name of reef the site is associated with (non-unique)
-- `unique_site_id_col` : Column holding unique site names/ids
+- `cluster_id_col` : Column holding unique site names/ids
 - `init_coral_fn` : Name of file holding initial coral cover values
 - `conn_path` : Path to directory holding connectivity data
 - `dhw_fn` : Filename of DHW data cube in use
@@ -130,7 +130,7 @@ function Domain(
     timeframe::Vector,
     site_data_fn::String,
     site_id_col::String,
-    unique_site_id_col::String,
+    cluster_id_col::String,
     init_coral_fn::String,
     conn_path::String,
     dhw_fn::String,
@@ -148,16 +148,18 @@ function Domain(
         end
     end
 
-    if unique_site_id_col ∉ names(site_data)
-        @warn "Unique location ID column $(unique_site_id_col) not found. Defaulting to UNIQUE_ID."
-        unique_site_id_col = "UNIQUE_ID"
+    if cluster_id_col ∉ names(site_data)
+        @warn "Cluster ID column $(cluster_id_col) not found. Defaulting to UNIQUE_ID."
+        cluster_id_col = "UNIQUE_ID"
     end
+
+    site_data[!, cluster_id_col] .= string.(Int64.(site_data[:, cluster_id_col]))
 
     env_layer_md::EnvLayer = EnvLayer(
         dpkg_path,
         site_data_fn,
         site_id_col,
-        unique_site_id_col,
+        cluster_id_col,
         init_coral_fn,
         conn_path,
         dhw_fn,
@@ -247,7 +249,7 @@ function Domain(
         conns.strongest_predecessor,
         site_data,
         site_id_col,
-        unique_site_id_col,
+        cluster_id_col,
         coral_cover,
         coral_growth,
         site_conn.site_ids,
