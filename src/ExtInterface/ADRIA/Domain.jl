@@ -153,6 +153,8 @@ function Domain(
         cluster_id_col = "UNIQUE_ID"
     end
 
+    site_data[!, cluster_id_col] .= string.(Int64.(site_data[:, cluster_id_col]))
+
     env_layer_md::EnvLayer = EnvLayer(
         dpkg_path,
         site_data_fn,
