@@ -607,7 +607,7 @@ function load_results(result_loc::String)::ResultSet
 
     # Spatial data
     site_data = GDF.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
-    sort!(site_data, [Symbol(input_set.attrs["unique_site_id_col"])])
+    sort!(site_data, [Symbol(input_set.attrs["site_id_col"])])
 
     # Model specification
     model_spec = CSV.read(
