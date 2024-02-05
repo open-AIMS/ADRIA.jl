@@ -470,16 +470,16 @@ function rsa(
     seq_store[:default] = collect(0.0:(1 / S):1.0)
     unordered_cat = vcat(unordered_cat, :default)
 
-    for d_i in 1:D
-        X_di .= X[:, d_i]
+    for fact_t in factors
+        f_ind = foi_spec.fieldname .== fact_t
+        ptype::String = foi_spec.ptype[foi_spec.fieldname .== fact_t][1]
 
-        ptype = foi_spec.ptype[foi_spec.fieldname .== factors[d_i]][1]
-        if occursin("categorical", ptype)
-            X_q .= _get_cat_quantile(foi_spec, factors[d_i], seq)
+        if ptype == "unordered categorical"
+            seq = seq_store[fact_t]
+            X_q = _get_cat_quantile(foi_spec, fact_t, seq)
         else
-            S = S_default
-            seq = seq_default
-            X_q[1:(S + 1)] .= quantile(X_di, seq)
+            seq = seq_store[:default]
+            X_q = quantile(X_i, seq)
         end
 
         sel .= X_q[1] .<= X_di .<= X_q[2]
