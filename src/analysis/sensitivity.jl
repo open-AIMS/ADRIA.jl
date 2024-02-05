@@ -455,7 +455,7 @@ function rsa(
 )::Dict{Symbol, Matrix{Union{Missing, Float64}}}
     N, D = size(X)
 
-    X_di = zeros(N)
+    X_i = zeros(N)
     sel = trues(N)
 
     foi_spec = _get_factor_spec(model_spec, factors)
@@ -483,8 +483,10 @@ function rsa(
             X_q = quantile(X_i, seq)
         end
 
-        sel .= X_q[1] .<= X_di .<= X_q[2]
+        X_i .= X[:, fact_t]
         r_s[fact_t] = hcat(seq[2:end], zeros(Union{Missing, Float64}, (length(seq[2:end]), 1)))
+
+        sel .= X_q[1] .<= X_i .<= X_q[2]
         if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
             # not enough samples, or inactive area of factor space
             r_s[fact_t][1, 2] = missing
@@ -493,7 +495,7 @@ function rsa(
         end
 
         for s in 2:S
-            sel .= X_q[s] .< X_di .<= X_q[s+1]
+            sel .= X_q[s] .< X_i .<= X_q[s + 1]
             if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
                 # not enough samples, or inactive area of factor space
                 r_s[fact_t][s, 2] = missing
