@@ -77,8 +77,8 @@ function get_test_decision_matrix(dom::Domain)::Matrix{Float64}
     wave_av = ADRIA.decision.summary_stat_env(dom.wave_scens, (:timesteps, :scenarios))
     depth_med = dom.site_data.depth_med
 
-    TP_data = ADRIA.connectivity_strength(
-        dom.TP_data .* ADRIA.site_k_area(dom), collect(cover), dom.TP_data
+    conn_data = ADRIA.connectivity_strength(
+        dom.conn .* ADRIA.site_k_area(dom), collect(cover), dom.conn
     )
 
     heat_stress =
@@ -86,8 +86,8 @@ function get_test_decision_matrix(dom::Domain)::Matrix{Float64}
     wave_stress =
         1 .- vec((wave_av .- minimum(wave_av)) ./ (maximum(wave_av) - minimum(wave_av)))
     space_area = leftover_space .* k_area
-    in_conn = TP_data.in_conn
-    out_conn = TP_data.out_conn
+    in_conn = conn_data.in_conn
+    out_conn = conn_data.out_conn
 
     site_ids = dom.site_data.site_id
     # Simplified decision matrix for testing
