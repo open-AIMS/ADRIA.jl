@@ -18,8 +18,8 @@ using HypothesisTests: ApproximateKSTest
 using FLoops
 
 using ADRIA: ResultSet, model_spec
-using ADRIA.analysis: col_normalize
 
+using ADRIA.analysis: col_normalize, normalize!
 
 """
     ks_statistic(ks)
@@ -504,6 +504,7 @@ function rsa(
             # ci = confint(bs, PercentileConfInt(conf))[1]
             r_s[s, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
+        r_s[fact_t][:, 2] .= normalize!(r_s[fact_t][:, 2])
     end
 
     return r_s
