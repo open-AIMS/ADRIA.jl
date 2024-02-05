@@ -56,9 +56,9 @@ Get number of bins for categorical variables.
 - `S` : Number of bins
 - `foi_spec` : Model specification for factors of interest
 """
-function _category_bins(S::Int64, foi_spec::DataFrame)
+function _category_bins(foi_spec::DataFrame)
     max_bounds = maximum(foi_spec.upper_bound .- foi_spec.lower_bound)
-    return round(Int64, max(S, max_bounds))
+    return round(Int64, max_bounds)
 end
 
 """
