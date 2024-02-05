@@ -513,12 +513,12 @@ function rsa(
 end
 function rsa(
     rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
-)::NamedDimsArray
+)::Dict{Symbol, Matrix{Union{Missing, Float64}}}
     return rsa(rs.inputs[!, Not(:RCP)], y, rs.model_spec; S=S)
 end
 function rsa(
     rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64=10
-)::NamedDimsArray
+)::Dict{Symbol, Matrix{Union{Missing, Float64}}}
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
         y,
