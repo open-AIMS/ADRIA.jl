@@ -461,6 +461,7 @@ function rsa(
     foi_spec = _get_factor_spec(model_spec, factors)
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
     seq_store::Dict{Symbol, Vector{Float64}} = Dict()
+    r_s::Dict{Symbol, Matrix{Union{Missing, Float64}}} = Dict()
 
     for (f_i, factor) in enumerate(unordered_cat)
         S_temp = _category_bins(foi_spec[foi_spec.fieldname .== factor, :])
@@ -483,24 +484,25 @@ function rsa(
         end
 
         sel .= X_q[1] .<= X_di .<= X_q[2]
+        r_s[fact_t] = hcat(seq[2:end], zeros(Union{Missing, Float64}, (length(seq[2:end]), 1)))
         if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
             # not enough samples, or inactive area of factor space
-            r_s[1, d_i] = missing
+            r_s[fact_t][1, 2] = missing
         else
-            r_s[1, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+            r_s[fact_t][1, 2] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
 
         for s in 2:S
             sel .= X_q[s] .< X_di .<= X_q[s+1]
             if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
                 # not enough samples, or inactive area of factor space
-                r_s[s, d_i] = missing
+                r_s[fact_t][s, 2] = missing
                 continue
             end
 
             # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
             # ci = confint(bs, PercentileConfInt(conf))[1]
-            r_s[s, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+            r_s[fact_t][s, 2] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
         r_s[fact_t][:, 2] .= normalize!(r_s[fact_t][:, 2])
     end
