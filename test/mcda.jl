@@ -52,8 +52,7 @@ end
 
     @test !any(isnan.(A)) || "NaNs found in decision matrix"
     @test !any(isinf.(A)) || "Infs found in decision matrix"
-
-    @test A[end, 6] == 0.0 || "Site with 0 max cover should be ignored but was not"
+    @test A[end, 8] == 0.0 || "Site with 0 max cover should be ignored but was not"
 end
 
 @testset "MCDA seed matrix creation" begin
