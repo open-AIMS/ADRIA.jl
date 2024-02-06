@@ -152,8 +152,9 @@ function Domain(
         @warn "Cluster ID column $(cluster_id_col) not found. Defaulting to UNIQUE_ID."
         cluster_id_col = "UNIQUE_ID"
     end
-
-    site_data[!, cluster_id_col] .= string.(Int64.(site_data[:, cluster_id_col]))
+    if typeof(site_data[:, cluster_id_col][1]) != String
+        site_data[!, cluster_id_col] .= string.(Int64.(site_data[:, cluster_id_col]))
+    end
 
     env_layer_md::EnvLayer = EnvLayer(
         dpkg_path,
