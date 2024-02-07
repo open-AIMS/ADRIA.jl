@@ -495,29 +495,28 @@ function rsa(
         end
 
         X_i .= X[:, fact_t]
-        r_s[fact_t] = hcat(seq[2:end], zeros(Union{Missing, Float64}, (length(seq[2:end]), 1)))
 
         sel .= X_q[1] .<= X_i .<= X_q[2]
         if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
             # not enough samples, or inactive area of factor space
-            r_s[fact_t][1, 2] = missing
+            r_s[fact_t][1] = missing
         else
-            r_s[fact_t][1, 2] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+            r_s[fact_t][1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
 
         for s in 2:S
             sel .= X_q[s] .< X_i .<= X_q[s + 1]
             if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
                 # not enough samples, or inactive area of factor space
-                r_s[fact_t][s, 2] = missing
+                r_s[fact_t][s] = missing
                 continue
             end
 
             # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
             # ci = confint(bs, PercentileConfInt(conf))[1]
-            r_s[fact_t][s, 2] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+            r_s[fact_t][s] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
-        r_s[fact_t][:, 2] .= normalize!(r_s[fact_t][:, 2])
+        r_s[fact_t] .= normalize!(r_s[fact_t])
     end
 
     return Dataset(; r_s...)
