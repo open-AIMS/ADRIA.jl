@@ -470,8 +470,17 @@ function rsa(
         seq_store[factor] = collect(0.0:(1 / S_temp):1.0)
     end
 
+    # Other variables have default sequence using input S
     seq_store[:default] = collect(0.0:(1 / S):1.0)
-    unordered_cat = vcat(unordered_cat, :default)
+    default_ax = (Dim{:default}(seq_store[:default][2:end]),)
+
+    yax_store_cat = Tuple((YAXArray((Dim{fact_t}(seq_store[fact_t][2:end]),), zeros(Union{Missing, Float64}, (length(seq_store[fact_t][2:end])))) for fact_t in unordered_cat))
+    yax_store_default = Tuple(YAXArray(default_ax, zeros(Union{Missing, Float64}, (length(seq_store[:default][2:end])))) for _ in 1:(length(factors) - length(unordered_cat)))
+
+    # Create storage NamedTuples for unordered categorical variables and other variables, then merge
+    r_s_default = NamedTuple(zip(Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]), yax_store_default))
+    r_s_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
+    r_s = merge(r_s_cat, r_s_default)
 
     for fact_t in factors
         f_ind = foi_spec.fieldname .== fact_t
