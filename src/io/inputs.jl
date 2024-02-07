@@ -87,29 +87,54 @@ function load_mat_data(
 end
 
 """
-    load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    load_nc_data(data_fn::String, attr::String, site_data::DataFrame; dim_names::Vector{Symbol}=[], dim_names_replace::Vector=[])::YAXArray
 
-Load cluster-level data for a given attribute in a netCDF as a NamedDimsArray.
+Load cluster-level data for a given attribute in a netCDF.
 """
-function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    local loaded_data::NamedDimsArray
-
+function load_nc_data(
+    data_fn::String,
+    attr::String,
+    site_data::DataFrame;
+    dim_names::Vector=[],
+    dim_names_replace::Vector=[],
+)::YAXArray
     NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
         data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
-        dim_names::Vector{Symbol} = Symbol[
-            Symbol(dim.name) for dim in nc_file.vars[attr].dim
-        ]
-        dim_labels::Vector{Union{UnitRange{Int64},Vector{String}}} = _nc_dim_labels(
-            data_fn, data, nc_file
-        )
+
+        dim_labels = _nc_dim_labels(data_fn, data, nc_file)
+
+        # Handle dim_names
+        if isempty(dim_names)
+            dim_names = [Symbol(dim.name) for dim in nc_file.vars[attr].dim]
+        end
+
+        if !isempty(dim_names_replace)
+            replace!(dim_names, dim_names_replace...)
+        end
+
+        # Order sites
+        if :sites ∈ dim_names
+            sites_dim::Int64 = findfirst(x -> x == :sites, dim_names)
+            sites::Vector{String} = dim_labels[sites_dim]
+            sites_sort_idx = sortperm(sites)
+
+            dim_labels[sites_dim] = dim_labels[sites_dim][sites_sort_idx]
+
+            # Guarantees that even if sites dimension changes this sorting still works
+            selector::Vector{Any} = fill(:, length(dim_labels))
+            selector[sites_dim] = sites_sort_idx
+            data = data[selector...]
+        end
+
+        axlist = Tuple(Dim{i[1]}(i[2]) for i in zip(dim_names, dim_labels))
 
         try
-            loaded_data = NamedDimsArray(data; zip(dim_names, dim_labels)...)
+            return YAXArray(axlist, data)
         catch err
             if isa(err, KeyError)
                 n_sites = size(data, 2)
                 @warn "Provided file $(data_fn) did not have the expected dimensions " *
-                    "(one of: timesteps, reef_siteid, scenarios)."
+                      "(one of: timesteps, reef_siteid, scenarios)."
                 if n_sites != nrow(site_data)
                     error(
                         "Mismatch in number of sites ($(data_fn)). " *
@@ -121,8 +146,6 @@ function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::Name
             end
         end
     end
-
-    return loaded_data
 end
 
 """
@@ -170,15 +193,11 @@ end
 
 Load initial coral cover data from netCDF.
 """
-function load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    data::NamedDimsArray = load_nc_data(data_fn, attr, site_data)
-    data = NamedDims.rename(data, :covers => :species, :reef_siteid => :sites)
+function load_covers(data_fn::String, attr::String, site_data::DataFrame)::YAXArray
+    _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
+    data = load_nc_data(data_fn, attr, site_data; dim_names_replace=_dim_names_replace)
 
-    # Reorder sites to match site_data
-    data = data[sites=Key(site_data[:, :reef_siteid])]
-    data = _convert_abs_to_k(data, site_data)
-
-    return data
+    return _convert_abs_to_k(data, site_data)
 end
 
 """
@@ -186,16 +205,9 @@ end
 
 Load environmental data layers (DHW, Wave) from netCDF.
 """
-function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    data::NamedDimsArray = load_nc_data(data_fn, attr, site_data)
-
-    # Re-attach correct dimension names
-    data = NamedDims.rename(data, (:timesteps, :sites, :scenarios))
-
-    # Reorder sites to match site_data
-    data = data[sites=Key(site_data[:, :reef_siteid])]
-
-    return data
+function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::YAXArray
+    _dim_names = [:timesteps, :sites, :scenarios]
+    return load_nc_data(data_fn, attr, site_data; dim_names=_dim_names)
 end
 
 """

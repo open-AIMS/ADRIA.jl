@@ -4,11 +4,11 @@
 Core ADRIA domain. Represents study area.
 """
 mutable struct ADRIADomain{
-    Σ<:NamedDimsArray,
-    M<:NamedDimsArray,
+    Σ<:YAXArray,
+    M<:YAXArray,
     D<:DataFrame,
-    Y<:Union{Matrix{<:Real},NamedDimsArray},
-    Z<:Union{Matrix{<:Real},NamedDimsArray},
+    Y<:Union{Matrix{<:Real},YAXArray},
+    Z<:Union{Matrix{<:Real},YAXArray},
 } <: Domain
     const name::String  # human-readable name
     RCP::String  # RCP scenario represented
@@ -27,7 +27,7 @@ mutable struct ADRIADomain{
     const removed_sites::Vector{String}  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
     dhw_scens::Y  # DHW scenarios
     wave_scens::Z  # wave scenarios
-    cyclone_mortality_scens::Union{Matrix{<:Real},NamedDimsArray}  # Cyclone mortality scenarios
+    cyclone_mortality_scens::Union{Matrix{<:Real},YAXArray}  # Cyclone mortality scenarios
 
     # Parameters
     model::Model  # core model
@@ -41,20 +41,20 @@ function Domain(
     name::String,
     rcp::String,
     env_layers::EnvLayer,
-    TP_base::AbstractMatrix{<:T},
+    TP_base::YAXArray{T},
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
     strongest_predecessor::Vector{Int64},
     site_data::DataFrame,
     site_id_col::String,
     cluster_id_col::String,
-    init_coral_cover::NamedDimsArray,
+    init_coral_cover::YAXArray,
     coral_growth::CoralGrowth,
     site_ids::Vector{String},
     removed_sites::Vector{String},
-    DHW::NamedDimsArray,
-    wave::NamedDimsArray,
-    cyclone_mortality::NamedDimsArray,
+    DHW::YAXArray,
+    wave::YAXArray,
+    cyclone_mortality::YAXArray,
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     criteria_weights::CriteriaWeights = CriteriaWeights()
     sim_constants::SimConstants = SimConstants()
@@ -189,45 +189,43 @@ function Domain(
 
     # TODO: Clean these repetitive lines up
     if endswith(dhw_fn, ".mat")
-        dhw::NamedDimsArray = load_mat_data(dhw_fn, "dhw", site_data)
+        dhw = load_mat_data(dhw_fn, "dhw", site_data)
     elseif endswith(dhw_fn, ".nc")
         dhw = load_env_data(dhw_fn, "dhw", site_data)
     else
-        dhw = NamedDimsArray(
-            zeros(Float32, length(timeframe), n_sites, 50);
-            timesteps=timeframe,
-            sites=conn_ids,
-            scenarios=1:50,
-        )
+        dwh_axlist = Dim{:timesteps}(timeframe),
+        Dim{:sites}(conn_ids),
+        Dim{:scenarios}(1:50)
+
+        dhw = YAXArray(dwh_axlist, zeros(Float32, length(timeframe), n_sites, 50);)
     end
 
     if endswith(wave_fn, ".mat")
-        waves::NamedDimsArray = load_mat_data(wave_fn, "wave", site_data)
+        waves = load_mat_data(wave_fn, "wave", site_data)
     elseif endswith(wave_fn, ".nc")
         waves = load_env_data(wave_fn, "Ub", site_data)
     else
-        waves = NamedDimsArray(
-            zeros(Float32, length(timeframe), n_sites, 50);
-            timesteps=timeframe,
-            sites=conn_ids,
-            scenarios=1:50,
-        )
+        waves_axlist = Dim{:timesteps}(timeframe),
+        Dim{:sites}(conn_ids),
+        Dim{:scenarios}(1:50)
+        waves = YAXArray(waves_axlist, zeros(Float32, length(timeframe), n_sites, 50);)
     end
 
     if endswith(init_coral_fn, ".mat")
-        coral_cover::NamedDimsArray = load_mat_data(init_coral_fn, "covers", site_data)
+        coral_cover = load_mat_data(init_coral_fn, "covers", site_data)
     elseif endswith(init_coral_fn, ".nc")
         coral_cover = load_covers(init_coral_fn, "covers", site_data)
     else
         @warn "Using random initial coral cover"
-        coral_cover = NamedDimsArray(
-            rand(Float32, coral_growth.n_species, n_sites);
-            species=1:(coral_growth.n_species),
-            sites=1:n_sites,
+        coral_cover_axlist = (
+            Dim{:species}(1:(coral_growth.n_species)), Dim{:sites}(1:n_sites)
+        )
+        coral_cover = YAXArray(
+            coral_cover_axlist, rand(Float32, coral_growth.n_species, n_sites)
         )
     end
 
-    cyclone_mortality::NamedDimsArray = if ispath(cyclone_mortality_fn)
+    cyclone_mortality = if ispath(cyclone_mortality_fn)
         load_cyclone_mortality(cyclone_mortality_fn)
     else
         load_cyclone_mortality(timeframe, site_data)
