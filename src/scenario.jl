@@ -232,7 +232,7 @@ function run_scenario(
 
     rs_raw::Array{Float64} = result_set.raw
     vals = relative_cover(rs_raw)
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
     # This is temporary while we are migrating to YAXArray
@@ -248,15 +248,15 @@ function run_scenario(
 
     coral_spec::DataFrame = to_coral_spec(scenario)
     vals .= relative_juveniles(rs_raw, coral_spec)
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
 
     vals .= juvenile_indicator(rs_raw, coral_spec, site_k_area(domain))
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
     vals = relative_taxa_cover(rs_raw, site_k_area(domain))
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
     vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain))
@@ -523,7 +523,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     ## Update ecological parameters based on intervention option
 
     # Treat as enhancement from mean of "natural" DHW tolerance
-    a_adapt[a_adapt.>0.0] .+= corals.dist_mean[a_adapt.>0.0]
+    a_adapt[a_adapt .> 0.0] .+= corals.dist_mean[a_adapt .> 0.0]
 
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
