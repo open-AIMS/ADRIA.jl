@@ -22,13 +22,13 @@ mutable struct ReefModDomain <: Domain
     RCP::String
     env_layer_md
     scenario_invoke_time::String  # time latest set of scenarios were run
-    const conn
+    const TP_data
     const in_conn
     const out_conn
     const strong_pred
     const site_data
     const site_id_col
-    const cluster_id_col
+    const unique_site_id_col
     init_coral_cover
     const coral_growth::CoralGrowth
     const site_ids
@@ -53,8 +53,7 @@ end
         RCP::String
     )::ReefModDomain
 
-Load ReefMod Matlab Dataset stored in netcdf file format. 
-Uses a path ReefMod Engine data to fill missing required data
+Load ReefMod Matlab Dataset stored in netcdf file format.
 
 # Arguments
 - `ReefModDomain` : DataType
@@ -158,7 +157,7 @@ function load_domain(
         fn_path,
         geodata_fn,
         site_id_col,
-        cluster_id_col,
+        unique_site_id_col,
         "",
         "",
         "",
@@ -184,7 +183,7 @@ function load_domain(
         strong_pred,
         site_data,
         site_id_col,
-        cluster_id_col,
+        unique_site_id_col,
         init_coral_cover,
         CoralGrowth(nrow(site_data)),
         site_ids,
