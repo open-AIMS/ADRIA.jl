@@ -130,9 +130,8 @@ function site_connectivity(
         extracted_conn[extracted_conn .< conn_cutoff] .= 0.0
     end
 
-    conn = NamedDimsArray(
-        extracted_conn; Source=loc_ids, Sink=loc_ids
-    )
+    conn = YAXArray((Dim{:Source}(loc_ids), Dim{:Sink}(loc_ids)), extracted_conn)
+
     @assert all(0.0 .<= conn .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
     return (conn=conn, truncated=invalid_ids, site_ids=loc_ids)
