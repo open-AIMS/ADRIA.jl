@@ -97,7 +97,7 @@ export
     metrics, select, timesteps, env_stats, viz
 
 # Interfaces for external models
-export ReefModDomain
+export RMEDomain
 
 # metric helper methods
 # export dims, ndims
