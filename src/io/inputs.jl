@@ -57,35 +57,6 @@ function load_scenarios(domain::Domain, filepath::String)::DataFrame
     return df
 end
 
-function load_mat_data(
-    data_fn::String, attr::String, site_data::DataFrame
-)::NamedDimsArray{Float32}
-    data = matread(data_fn)
-    local loaded::NamedDimsArray{Float32}
-    local site_order::Vector{String}
-
-    # Attach site names to each dimension
-    try
-        site_order = Vector{String}(vec(data["reef_siteid"]))
-        loaded = NamedDimsArray(data[attr]; Source=site_order, Sink=site_order)
-    catch err
-        if isa(err, KeyError)
-            @warn "Provided file $(data_fn) did not have reef_siteid! There may be a mismatch in sites."
-            if size(loaded, 2) != nrow(site_data)
-                @warn "Mismatch in number of sites ($(data_fn)).\nTruncating so that data size matches!"
-
-                # Subset down to number of sites
-                tmp = selectdim(data[attr], 2, 1:nrow(site_data))
-                loaded = NamedDimsArray(tmp; Source=site_order, Sink=site_order)
-            end
-        else
-            rethrow(err)
-        end
-    end
-
-    return loaded
-end
-
 """
     load_nc_data(data_fn::String, attr::String, site_data::DataFrame; dim_names::Vector{Symbol}=[], dim_names_replace::Vector=[])::YAXArray
 
