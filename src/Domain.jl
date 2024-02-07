@@ -165,6 +165,23 @@ function _convert_abs_to_k(
 
     return coral_cover
 end
+function _convert_abs_to_k(coral_cover::YAXArray, site_data::DataFrame)::YAXArray
+    # Initial coral cover is provided as values relative to location area.
+    # Convert coral covers to be relative to k area, ignoring locations with 0 carrying
+    # capacity (k area = 0.0).
+    absolute_k_area = (site_data.k .* site_data.area)'  # max possible coral area in m^2
+    valid_locs::BitVector = absolute_k_area' .> 0.0
+
+    coral_cover[:, valid_locs] .= (
+        (coral_cover[:, valid_locs] .* site_data.area[valid_locs]') ./
+        absolute_k_area[valid_locs]'
+    )
+
+    # Ensure initial coral cover values are <= maximum carrying capacity
+    @assert all(sum(coral_cover; dims=1) .<= 1.0)
+
+    return coral_cover
+end
 
 """
     site_area(domain::Domain)::Vector{Float64}
