@@ -85,6 +85,7 @@ include("analysis/sensitivity.jl")
 
 include("ExtInterface/ADRIA/Domain.jl")
 include("ExtInterface/ReefMod/Domain.jl")
+include("ExtInterface/ReefMod/MatDomain.jl")
 
 include("viz/viz.jl")
 
@@ -98,6 +99,7 @@ export
 
 # Interfaces for external models
 export RMEDomain
+export ReefModDomain
 
 # metric helper methods
 # export dims, ndims

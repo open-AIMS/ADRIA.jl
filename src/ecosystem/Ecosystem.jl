@@ -47,6 +47,38 @@ function EnvironmentalLayer(
     )
 end
 
+function rationalErfOn7(x::Float64)::Float64
+
+    coef::Float64 = 1.0
+    if (x < 0)
+        x *= -1
+        coef = -1
+    end
+
+    x2::Float64 = x * x
+    x3::Float64 = x2 * x
+    x4::Float64 = x3 * x
+    x5::Float64 = x4 * x
+    x6::Float64 = x5 * x
+
+    a1::Float64 = 0.0705230784
+    a2::Float64 = 0.0422820123
+    a3::Float64 = 0.0092705272
+    a4::Float64 = 0.0001520143
+    a5::Float64 = 0.0002765672
+    a6::Float64 = 0.0000430638
+
+    denom = 1.0 + a1 * x + a2 * x2 + a3 * x3 + a4 * x4 + a5 * x5 + a6 * x6
+
+    denom = denom * denom # raise to the power of 5
+    denom = denom * denom # power 4
+    denom = denom * denom # power 8
+    denom = denom * denom # power 16
+
+    return coef * (1 - 1.0 / denom)
+
+end
+
 """
     truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
 
@@ -67,10 +99,10 @@ The mean of the truncated standard normal distribution
 function truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
     if abs(lb) > abs(ub)
         return - truncated_standard_normal_mean(-ub, -lb)
-    elseif (lb == ub) 
+    elseif (lb == ub)
         return lb
     end
-    mid = (lb + ub) / 2 
+    mid = (lb + ub) / 2
     Δ = (ub - lb) * mid
     lb′ = lb * StatsFuns.invsqrt2
     ub′ = ub * StatsFuns.invsqrt2

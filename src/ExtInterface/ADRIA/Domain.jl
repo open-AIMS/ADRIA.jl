@@ -34,6 +34,8 @@ mutable struct ADRIADomain{
     sim_constants::SimConstants
 end
 
+using Infiltrator
+
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
@@ -57,7 +59,6 @@ function Domain(
     cyclone_mortality::NamedDimsArray,
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     criteria_weights::CriteriaWeights = CriteriaWeights()
-
     sim_constants::SimConstants = SimConstants()
 
     # Update minimum site depth to be considered if default bounds are deeper than the
@@ -79,7 +80,7 @@ function Domain(
         criteria_weights,
         Coral(),
     ))
-
+    @infiltrate
     return ADRIADomain(
         name,
         rcp,
