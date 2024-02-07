@@ -54,7 +54,7 @@ end
     sort!(site_data, :reef_siteid)
 
     coral_cover_fn = joinpath(TEST_DOMAIN_PATH, "site_data", "coral_cover.nc")
-    coral_covers = ADRIA.load_covers(coral_cover_fn, "covers", site_data)
+    coral_covers = ADRIA.load_cover(coral_cover_fn, "covers", site_data)
 
     @test all(axiskeys(coral_covers, 2) .== site_data.reef_siteid) || "Coral cover data not aligned with order specified in geospatial data"
 end
