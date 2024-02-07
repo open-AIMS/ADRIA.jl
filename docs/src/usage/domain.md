@@ -17,7 +17,7 @@ ReefMod Engine datasets can also be used to run ADRIAmod simulations for the Gre
 Reef.
 
 ```julia
-dom = ADRIA.load_domain(ReefModDomain, "path to ReefModEngine dataset", "45")
+dom = ADRIA.load_domain(RMEDomain, "path to ReefModEngine dataset", "45")
 ```
 
 Note that at the moment the target RCP has to be specified.

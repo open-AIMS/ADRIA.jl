@@ -6,7 +6,7 @@ using CSV, DataFrames, ModelParameters
 
 using ADRIA: SimConstants, Domain, GDF
 
-mutable struct ReefModDomain <: Domain
+mutable struct RMEDomain <: Domain
     const name::String
     RCP::String
     env_layer_md
@@ -36,21 +36,21 @@ mutable struct ReefModDomain <: Domain
 end
 
 """
-    load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefModDomain
+    load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
 
 Load a ReefMod Engine dataset.
 
 # Arguments
-- `ReefModDomain` : DataType
+- `RMEDomain` : DataType
 - `fn_path` : path to ReefMod Engine dataset
 - `RCP` : Representative Concentration Pathway scenario ID
 
 # Returns
-ReefModDomain
+RMEDomain
 """
-function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefModDomain
+function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     data_files = joinpath(fn_path, "data_files")
-    dhw_scens = load_DHW(ReefModDomain, data_files, RCP)
+    dhw_scens = load_DHW(RMEDomain, data_files, RCP)
     loc_ids = axiskeys(dhw_scens)[2]
 
     site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
@@ -82,9 +82,9 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     site_data[:, :k] .= 1.0 .- id_list[:, 3]
 
     # Need to load initial coral cover after we know `k` area.
-    init_coral_cover = load_initial_cover(ReefModDomain, data_files, loc_ids, site_data)
+    init_coral_cover = load_initial_cover(RMEDomain, data_files, loc_ids, site_data)
 
-    conn_data = load_connectivity(ReefModDomain, data_files, loc_ids)
+    conn_data = load_connectivity(RMEDomain, data_files, loc_ids)
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
         conn_data, vec(site_data.area .* site_data.k), similar(conn_data)
     )
@@ -107,7 +107,7 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     timeframe = (2022, 2100)
 
     # This loads cyclone categories, not mortalities, so ignoring for now.
-    # cyc_scens = load_cyclones(ReefModDomain, data_files, loc_ids, timeframe)
+    # cyc_scens = load_cyclones(RMEDomain, data_files, loc_ids, timeframe)
 
     # timesteps, location, scenario
     wave_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 1)
@@ -147,7 +147,7 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
         Coral()
     ))
 
-    return ReefModDomain(
+    return RMEDomain(
         "ReefMod",
         RCP,
         env_md,
@@ -185,12 +185,12 @@ function _get_relevant_files(fn_path::String, ident::String)
 end
 
 """
-    load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))
+    load_DHW(::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))
 
 Loads ReefMod DHW data as a datacube.
 
 # Arguments
-- `ReefModDomain`
+- `RMEDomain`
 - `data_path` : path to ReefMod data
 - `rcp` : RCP identifier
 - `timeframe` : range of years to represent.
@@ -199,7 +199,7 @@ Loads ReefMod DHW data as a datacube.
 NamedDimsArray[timesteps, locs, scenarios]
 """
 function load_DHW(
-    ::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100)
+    ::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100)
 )::NamedDimsArray
     dhw_path = joinpath(data_path, "dhw")
     rcp_files = _get_relevant_files(dhw_path, rcp)
@@ -258,12 +258,12 @@ function load_DHW(
 end
 
 """
-    load_connectivity(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})
+    load_connectivity(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String})
 
 Loads the average connectivity matrix.
 
 # Arguments
-- `ReefModDomain`
+- `RMEDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
 
@@ -271,7 +271,7 @@ Loads the average connectivity matrix.
 NamedDimsArray[source, sinks]
 """
 function load_connectivity(
-    ::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}
+    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}
 )::NamedDimsArray
     conn_path = joinpath(data_path, "con_bin")
     conn_files = _get_relevant_files(conn_path, "CONNECT_ACRO")
@@ -304,10 +304,10 @@ function load_connectivity(
 end
 
 """
-    load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, tf::Tuple{Int64, Int64})::NamedDimsArray
+    load_cyclones(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, tf::Tuple{Int64, Int64})::NamedDimsArray
 
 # Arguments
-- `ReefModDomain`
+- `RMEDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
 - `tf` : the time frame represented by the dataset.
@@ -318,7 +318,7 @@ end
 NamedDimsArray[timesteps, locs, scenarios]
 """
 function load_cyclones(
-    ::Type{ReefModDomain},
+    ::Type{RMEDomain},
     data_path::String,
     loc_ids::Vector{String},
     tf::Tuple{Int64,Int64},
@@ -350,10 +350,10 @@ function load_cyclones(
 end
 
 """
-    load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame)::NamedDimsArray
+    load_initial_cover(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame)::NamedDimsArray
 
 # Arguments
-- `ReefModDomain`
+- `RMEDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
 
@@ -361,7 +361,7 @@ end
 NamedDimsArray[locs, species]
 """
 function load_initial_cover(
-    ::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame
+    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame
 )::NamedDimsArray
     icc_path = joinpath(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
@@ -403,23 +403,23 @@ function load_initial_cover(
 end
 
 """
-    switch_RCPs!(d::ReefModDomain, RCP::String)::Domain
+    switch_RCPs!(d::RMEDomain, RCP::String)::Domain
 
 Switch environmental datasets to represent the given RCP.
 """
-function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
+function switch_RCPs!(d::RMEDomain, RCP::String)::RMEDomain
     @set! d.RCP = RCP
     data_files = joinpath(d.env_layer_md.dpkg_path, "data_files")
-    @set! d.dhw_scens = load_DHW(ReefModDomain, data_files, RCP)
+    @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP)
 
     # Cyclones are not RCP-specific?
     # loc_ids = axiskeys(d.dhw_scens)[2]
-    # @set! d.wave_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
+    # @set! d.wave_scens = load_cyclones(RMEDomain, data_files, loc_ids)
 
     return d
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)::Nothing
+function Base.show(io::IO, mime::MIME"text/plain", d::RMEDomain)::Nothing
     # df = model_spec(d)
     println("""
         ReefMod Domain: $(d.name)

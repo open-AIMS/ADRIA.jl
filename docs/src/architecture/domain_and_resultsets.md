@@ -39,7 +39,7 @@ Datasets intended for use with the ReefMod Engine (RME) can also be loaded for u
 The RME represents larger spatial scales typically covering the entire Great Barrier Reef.
 
 ```julia
-dom = ADRIA.load_domain(ReefModDomain, "path to ReefMod Engine dataset", "45")
+dom = ADRIA.load_domain(RMEDomain, "path to ReefMod Engine dataset", "45")
 ```
 
 ### Naming conventions
