@@ -190,9 +190,7 @@ function Domain(
     n_sites::Int64 = coral_growth.n_sites
 
     # TODO: Clean these repetitive lines up
-    if endswith(dhw_fn, ".mat")
-        dhw = load_mat_data(dhw_fn, "dhw", site_data)
-    elseif endswith(dhw_fn, ".nc")
+    if endswith(dhw_fn, ".nc")
         dhw = load_env_data(dhw_fn, "dhw", site_data)
     else
         dwh_axlist = Dim{:timesteps}(timeframe),
@@ -202,9 +200,7 @@ function Domain(
         dhw = YAXArray(dwh_axlist, zeros(Float32, length(timeframe), n_sites, 50);)
     end
 
-    if endswith(wave_fn, ".mat")
-        waves = load_mat_data(wave_fn, "wave", site_data)
-    elseif endswith(wave_fn, ".nc")
+    if endswith(wave_fn, ".nc")
         waves = load_env_data(wave_fn, "Ub", site_data)
     else
         waves_axlist = Dim{:timesteps}(timeframe),
@@ -213,9 +209,7 @@ function Domain(
         waves = YAXArray(waves_axlist, zeros(Float32, length(timeframe), n_sites, 50);)
     end
 
-    if endswith(init_coral_fn, ".mat")
-        coral_cover = load_mat_data(init_coral_fn, "covers", site_data)
-    elseif endswith(init_coral_fn, ".nc")
+    if endswith(init_coral_fn, ".nc")
         coral_cover = load_covers(init_coral_fn, "covers", site_data)
     else
         @warn "Using random initial coral cover"
