@@ -107,7 +107,7 @@ function run_scenarios(
         factors=names(scenarios_df)
     )
 
-    para_threshold = typeof(dom) == ReefModDomain ? 8 : 256
+    para_threshold = typeof(dom) == RMEDomain ? 8 : 256
     parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
