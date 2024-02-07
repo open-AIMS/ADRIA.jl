@@ -160,19 +160,26 @@ function _site_labels(nc_file::NetCDF.NcFile)::Vector{String}
 end
 
 """
-    load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    load_cover(data_fn::String, attr::String, site_data::DataFrame)::YAXArray
+    load_cover(n_species::Int64, n_sites::Int64)::YAXArray
 
 Load initial coral cover data from netCDF.
 """
-function load_covers(data_fn::String, attr::String, site_data::DataFrame)::YAXArray
+function load_cover(data_fn::String, attr::String, site_data::DataFrame)::YAXArray
     _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
     data = load_nc_data(data_fn, attr, site_data; dim_names_replace=_dim_names_replace)
 
     return _convert_abs_to_k(data, site_data)
 end
+function load_cover(n_species::Int64, n_sites::Int64)::YAXArray
+    @warn "Using random initial coral cover"
+    axlist = (Dim{:species}(1:(n_species)), Dim{:sites}(1:n_sites))
+    return YAXArray(axlist, rand(Float32, n_species, n_sites))
+end
 
 """
-    load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    load_env_data(data_fn::String, attr::String, site_data::DataFrame)::YAXArray
+    load_env_data(timeframe, sites)::YAXArray
 
 Load environmental data layers (DHW, Wave) from netCDF.
 """
@@ -180,10 +187,14 @@ function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::YAX
     _dim_names = [:timesteps, :sites, :scenarios]
     return load_nc_data(data_fn, attr, site_data; dim_names=_dim_names)
 end
+function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArray
+    axlist = (Dim{:timesteps}(timeframe), Dim{:sites}(sites), Dim{:scenarios}(1:50))
+    return YAXArray(axlist, zeros(Float32, length(timeframe), length(sites), 50);)
+end
 
 """
-    load_cyclone_mortality(data_fn::String)::NamedDimsArray
-    load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::NamedDimsArray
+    load_cyclone_mortality(data_fn::String)::YAXArray
+    load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::YAXArray
 
 Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
 ordered by :locations

@@ -189,36 +189,22 @@ function Domain(
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
 
-    # TODO: Clean these repetitive lines up
-    if endswith(dhw_fn, ".nc")
-        dhw = load_env_data(dhw_fn, "dhw", site_data)
+    dhw = if ispath(dhw_fn)
+        load_env_data(dhw_fn, "dhw", site_data)
     else
-        dwh_axlist = Dim{:timesteps}(timeframe),
-        Dim{:sites}(conn_ids),
-        Dim{:scenarios}(1:50)
-
-        dhw = YAXArray(dwh_axlist, zeros(Float32, length(timeframe), n_sites, 50);)
+        load_env_data(timeframe, conn_ids)
     end
 
-    if endswith(wave_fn, ".nc")
-        waves = load_env_data(wave_fn, "Ub", site_data)
+    waves = if ispath(wave_fn)
+        load_env_data(wave_fn, "Ub", site_data)
     else
-        waves_axlist = Dim{:timesteps}(timeframe),
-        Dim{:sites}(conn_ids),
-        Dim{:scenarios}(1:50)
-        waves = YAXArray(waves_axlist, zeros(Float32, length(timeframe), n_sites, 50);)
+        load_env_data(timeframe, conn_ids)
     end
 
-    if endswith(init_coral_fn, ".nc")
-        coral_cover = load_covers(init_coral_fn, "covers", site_data)
+    coral_cover = if ispath(init_coral_fn)
+        load_cover(init_coral_fn, "covers", site_data)
     else
-        @warn "Using random initial coral cover"
-        coral_cover_axlist = (
-            Dim{:species}(1:(coral_growth.n_species)), Dim{:sites}(1:n_sites)
-        )
-        coral_cover = YAXArray(
-            coral_cover_axlist, rand(Float32, coral_growth.n_species, n_sites)
-        )
+        load_cover(coral_growth.n_species, n_sites)
     end
 
     cyclone_mortality = if ispath(cyclone_mortality_fn)
