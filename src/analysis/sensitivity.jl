@@ -462,10 +462,10 @@ function rsa(
 
     foi_spec = _get_factor_spec(model_spec, factors)
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
-    seq_store::Dict{Symbol, Vector{Float64}} = Dict()
-    r_s::Dict{Symbol, Matrix{Union{Missing, Float64}}} = Dict()
+    seq_store::Dict{Symbol, Vector{Float64}} = Dict() # storage for bin sequences
 
-    for (f_i, factor) in enumerate(unordered_cat)
+    # Get unique bin sequences for unordered categorical variables and store
+    for factor in unordered_cat
         S_temp = _category_bins(foi_spec[foi_spec.fieldname .== factor, :])
         seq_store[factor] = collect(0.0:(1 / S_temp):1.0)
     end
