@@ -71,9 +71,6 @@ function load_nc_data(
     NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
         data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
 
-        dim_labels = _nc_dim_labels(data_fn, data, nc_file)
-
-        # Handle dim_names
         if isempty(dim_names)
             dim_names = [Symbol(dim.name) for dim in nc_file.vars[attr].dim]
         end
@@ -82,23 +79,12 @@ function load_nc_data(
             replace!(dim_names, dim_names_replace...)
         end
 
-        # Order sites
-        if :sites ∈ dim_names
-            sites_dim::Int64 = findfirst(x -> x == :sites, dim_names)
-            sites::Vector{String} = dim_labels[sites_dim]
-            sites_sort_idx = sortperm(sites)
-
-            dim_labels[sites_dim] = dim_labels[sites_dim][sites_sort_idx]
-
-            # Guarantees that sorting will work even if sites dimension changes
-            selector::Vector{Union{Colon,Vector{Int64}}} = fill(:, length(dim_labels))
-            selector[sites_dim] = sites_sort_idx
-            data = data[selector...]
-        end
+        dim_labels = _nc_dim_labels(data_fn, data, nc_file)
 
         axlist = Tuple(Dim{i[1]}(i[2]) for i in zip(dim_names, dim_labels))
 
-        return YAXArray(axlist, data)
+        cube = YAXArray(axlist, data)
+        return sort(cube, :sites)
     end
 end
 
@@ -116,8 +102,8 @@ function _nc_dim_labels(
     sites = "reef_siteid" in keys(nc_file.vars) ? _site_labels(nc_file) : 1:size(data, 2)
 
     try
-        # This will be an issue if two or more dimensions have the same number of elements
-        # as the number of sites, but so far it hasn't happened...
+        # This will be an issue if number of elements is equal the number of sites, two or
+        # more dimensions but so far that hasn't happened...
         sites_idx = first(findall(size(data) .== length(sites)))
     catch err
         error(
@@ -182,27 +168,17 @@ end
 Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
 ordered by :locations
 """
-function load_cyclone_mortality(data_fn::String)::NamedDimsArray
+function load_cyclone_mortality(data_fn::String)::YAXArray
     cyclone_cube::YAXArray = Cube(data_fn)
-    return _yaxarray2nameddimsarray(sort_axis(cyclone_cube, :locations))
+    return sort_axis(cyclone_cube, :locations)
 end
-function load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::NamedDimsArray
-    cube = ZeroDataCube(;
+function load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::YAXArray
+    return ZeroDataCube(;
         timesteps=1:length(timeframe),
         locations=sort(site_data.reef_siteid),
         species=ADRIA.coral_spec().taxa_names,
         scenarios=[1]
     )
-    return _yaxarray2nameddimsarray(cube)
-end
-
-function _yaxarray2nameddimsarray(yarray::YAXArray)::NamedDimsArray
-    data = yarray.data
-
-    dim_names::NTuple{4,Symbol} = name.(yarray.axes)
-    dim_labels::Vector = lookup.([yarray], dim_names)
-
-    return NamedDimsArray(data; zip(dim_names, dim_labels)...)
 end
 
 """
