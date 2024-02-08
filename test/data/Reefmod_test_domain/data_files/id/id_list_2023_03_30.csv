@@ -1,0 +1,64 @@
+# reef_id, area_km2, sand_propotion, shelf_position
+
+# reef_id
+# The reef IDs here are the standard used throughout the RME and
+# must be the same as in all the other data files used.
+# If reef IDs do not match up across files the RME will not run.
+# The order here is also important since this must match the
+# connectivity matrix files that do not have reef IDs embedded.
+# Note that some alternate lists of reef IDs are circulating
+# that have five reefs renamed as follows:
+# used in RME   alternate
+# 10-441        11-325
+# 11-288        11-244e
+# 11-303        11-244f
+# 11-310        11-244g
+# 11-311        11-244h
+# These are just renamings as can be seen on a map of GBR.
+# 10-441 is between two groups with IDs 10-44x and 11-32x
+# alternate ID 11-325 just makes it part of the other group.
+# Alternate IDs 11-244e,f,g,h brings four unnamed reefs into
+# ""Great Detatched Reef"" group which they are clearly part of.
+# The alternate IDs are likely a newer revision, but currently
+# the RME uses the orignal (legacy) reef IDs.
+# Additionally a error has been propagated through many files
+# where the reef id listed here as ""20-198"" is listed as ""20198"".
+# Note the RME is case-insensitive to letters in the reef IDs.
+# They can be upper or lower case when specified, when reported
+# they are upper-case.
+
+# area_km2
+# The area of the reef in square kilometres.
+
+# sand_proportion
+# Proportion of reef which is non-grazable (sand)
+# as a proportion (range 0 to 1).
+
+# shelf_position,
+# The location of the reef on the continental shelf:
+# 1 = inshore
+# 2 = midshelf
+# 3 = offshore
+
+# This file was updated on Thu 30 Mar 12:07:21 BST 2023
+
+10-330,0.83553108,0.273867268,1
+10-331,0.050957401,0.263837962,1
+10-332,0.000170837,0.267173829,1
+10-333,2.96E-05,0.26719934,1
+10-334,0.001210186,0.267194842,1
+10-335,4.162737108,0.269955408,1
+10-336,18.15511237,0.270062604,1
+10-337,1.906177059,0.270186711,1
+10-338,6.788223198,0.245342343,1
+10-339,0.513973791,0.273867268,1
+10-340,0.679536067,0.272787083,1
+10-341,7.136815376,0.270702176,1
+10-342,0.071476397,0.273867268,1
+10-299,6.153130426,0.226130617,1
+10-316,0.130701654,0.273867268,1
+10-317,0.079961712,0.273867268,1
+10-318a,0.500427867,0.273867268,1
+10-318b,0.51283562,0.273867268,1
+10-318c,0.2788252,0.273867268,1
+10-318d,0.151779392,0.273867268,1
