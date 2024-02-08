@@ -188,30 +188,19 @@ function Domain(
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
+    n_species = coral_growth.n_species
 
-    dhw = if ispath(dhw_fn)
-        load_env_data(dhw_fn, "dhw", site_data)
-    else
-        load_env_data(timeframe, conn_ids)
-    end
+    cover_params = ispath(init_coral_fn) ? (init_coral_fn, site_data) : (n_species, n_sites)
+    coral_cover = load_cover(cover_params...)
 
-    waves = if ispath(wave_fn)
-        load_env_data(wave_fn, "Ub", site_data)
-    else
-        load_env_data(timeframe, conn_ids)
-    end
+    dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
+    dhw = load_env_data(dhw_params...)
 
-    coral_cover = if ispath(init_coral_fn)
-        load_cover(init_coral_fn, "covers", site_data)
-    else
-        load_cover(coral_growth.n_species, n_sites)
-    end
+    waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
+    waves = load_env_data(waves_params...)
 
-    cyclone_mortality = if ispath(cyclone_mortality_fn)
-        load_cyclone_mortality(cyclone_mortality_fn)
-    else
-        load_cyclone_mortality(timeframe, site_data)
-    end
+    cyc_params = ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, site_data)
+    cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
     msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
