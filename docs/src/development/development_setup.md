@@ -136,7 +136,7 @@ Flag(s) for JuliaFormatter. See Formatting Options and options.jl.
 The team has adopted the following configuration options for auto-formatting:
 
 ```bash
-style=BlueStyle(), indent=4, margin=256, always_for_in=true, for_in_replacement="∈", whitespace_typedefs=true, import_to_using=true, align_struct_field=true, align_assignment=false, align_conditional=true, align_pair_arrow=false, normalize_line_endings="unix", align_matrix=true, join_lines_based_on_source=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=true
+style=BlueStyle(), indent=4, margin=92, always_for_in=true, for_in_replacement="∈", whitespace_typedefs=true, import_to_using=true, align_struct_field=true, align_assignment=false, align_conditional=true, align_pair_arrow=false, normalize_line_endings="unix", align_matrix=true, join_lines_based_on_source=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=true
 ```
 
 Next, search for `trim` and ensure the following options are all ticked/enabled:
@@ -144,6 +144,21 @@ Next, search for `trim` and ensure the following options are all ticked/enabled:
 - Files: Trim Final Newlines
 - Files: Trim Trailing Whitespace
 - Editor: Trim Auto Whitespace
+
+An optional, but recommended, step would be to add a ruler guide to indicate where the
+character limit/width is.
+
+Search for `rulers` and click on "Edit in settings.json" under "Editor: Rulers"
+
+Add "92" to the list of ruler lengths, such that the `editor.rulers` entry looks like this:
+
+```json
+"editor.rulers": [
+        92
+    ]
+```
+
+Adding multiple values adds more guide lines at the indicated widths.
 
 ## Notes
 
