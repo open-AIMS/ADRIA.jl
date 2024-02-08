@@ -91,7 +91,7 @@ function load_nc_data(
             dim_labels[sites_dim] = dim_labels[sites_dim][sites_sort_idx]
 
             # Guarantees that sorting will work even if sites dimension changes
-            selector::Vector{Any} = fill(:, length(dim_labels))
+            selector::Vector{Union{Colon,Vector{Int64}}} = fill(:, length(dim_labels))
             selector[sites_dim] = sites_sort_idx
             data = data[selector...]
         end
