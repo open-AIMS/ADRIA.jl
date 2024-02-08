@@ -99,23 +99,7 @@ function load_nc_data(
 
         axlist = Tuple(Dim{i[1]}(i[2]) for i in zip(dim_names, dim_labels))
 
-        try
-            return YAXArray(axlist, data)
-        catch err
-            if isa(err, KeyError)
-                n_sites = size(data, 2)
-                @warn "Provided file $(data_fn) did not have the expected dimensions " *
-                      "(one of: timesteps, reef_siteid, scenarios)."
-                if n_sites != nrow(site_data)
-                    error(
-                        "Mismatch in number of sites ($(data_fn)). " *
-                        "Expected $(nrow(site_data)), got $(n_sites)",
-                    )
-                end
-            else
-                rethrow(err)
-            end
-        end
+        return YAXArray(axlist, data)
     end
 end
 
