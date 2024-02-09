@@ -158,7 +158,7 @@ function pawn(
     X::AbstractMatrix{<:Real},
     y::AbstractVector{<:Real},
     factor_names::Vector{String};
-    S::Int64=10
+    S::Int64=10,
 )::NamedDimsArray
     N, D = size(X)
     step = 1 / S
@@ -176,13 +176,13 @@ function pawn(
             X_di = @view(X[:, d_i])
             X_q .= quantile(X_di, seq)
 
-            Y_sel = @view(y[X_q[1].<=X_di.<=X_q[2]])
+            Y_sel = @view(y[X_q[1] .<= X_di .<= X_q[2]])
             if length(Y_sel) > 0
                 pawn_t[1, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, y))
             end
 
             for s in 2:S
-                Y_sel = @view(y[X_q[s].<X_di.<=X_q[s+1]])
+                Y_sel = @view(y[X_q[s] .< X_di .<= X_q[s + 1]])
                 if length(Y_sel) == 0
                     continue  # no available samples
                 end
@@ -232,7 +232,7 @@ function pawn(
     if N > 1 && D > 1
         msg::String = string(
             "The current implementation of PAWN can only assess a single quantity",
-            " of interest at a time."
+            " of interest at a time.",
         )
         throw(ArgumentError(msg))
     end
@@ -323,9 +323,9 @@ function convergence(
     )
 
     for (cc, factors) in zip(components, target_factors)
-        Si_grouped(factors=cc) .= dropdims(
+        Si_grouped(; factors=cc) .= dropdims(
             mean(Si_n(; factors=Symbol.(factors)); dims=:factors);
-            dims=:factors,
+            dims=:factors
         )
     end
 
@@ -377,12 +377,12 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
         zeros(ncol(X), 8, size(y, 1));
         factors=Symbol.(names(X)),
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
-        timesteps=ts
+        timesteps=ts,
     )
 
     for t in axes(y, 1)
         t_pawn_idx[:, :, t] .= col_normalize(
-            pawn(X, vec(mean(y[1:t, :], dims=1)))
+            pawn(X, vec(mean(y[1:t, :]; dims=1)))
         )
     end
 
@@ -453,7 +453,8 @@ ADRIA.sensitivity.rsa(X, y; S=10)
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
 function rsa(
-    X::DataFrame, y::AbstractVector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10
+    X::DataFrame, y::AbstractVector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame;
+    S::Int64=10,
 )::YAXArrays.Dataset
     N, D = size(X)
 
@@ -462,7 +463,7 @@ function rsa(
 
     foi_spec = _get_factor_spec(model_spec, factors)
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
-    seq_store::Dict{Symbol, Vector{Float64}} = Dict() # storage for bin sequences
+    seq_store::Dict{Symbol,Vector{Float64}} = Dict() # storage for bin sequences
 
     # Get unique bin sequences for unordered categorical variables and store
     for factor in unordered_cat
@@ -474,11 +475,25 @@ function rsa(
     seq_store[:default] = collect(0.0:(1 / S):1.0)
     default_ax = (Dim{:default}(seq_store[:default][2:end]),)
 
-    yax_store_cat = Tuple((YAXArray((Dim{fact_t}(seq_store[fact_t][2:end]),), zeros(Union{Missing, Float64}, (length(seq_store[fact_t][2:end])))) for fact_t in unordered_cat))
-    yax_store_default = Tuple(YAXArray(default_ax, zeros(Union{Missing, Float64}, (length(seq_store[:default][2:end])))) for _ in 1:(length(factors) - length(unordered_cat)))
+    yax_store_cat = Tuple((
+        YAXArray(
+            (Dim{fact_t}(seq_store[fact_t][2:end]),),
+            zeros(Union{Missing,Float64}, (length(seq_store[fact_t][2:end]))),
+        ) for fact_t in unordered_cat
+    ))
+    yax_store_default = Tuple(
+        YAXArray(
+            default_ax, zeros(Union{Missing,Float64}, (length(seq_store[:default][2:end])))
+        ) for _ in 1:(length(factors) - length(unordered_cat))
+    )
 
     # Create storage NamedTuples for unordered categorical variables and other variables, then merge
-    r_s_default = NamedTuple(zip(Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]), yax_store_default))
+    r_s_default = NamedTuple(
+        zip(
+            Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]),
+            yax_store_default,
+        ),
+    )
     r_s_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
     r_s = merge(r_s_cat, r_s_default)
 
@@ -533,10 +548,9 @@ function rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
         y,
         rs.model_spec[rs.model_spec.fieldname .∈ [factors], :];
-        S=S
+        S=S,
     )
 end
-
 
 """
     outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedDimsArray
@@ -590,7 +604,7 @@ function outcome_map(
     model_spec::DataFrame;
     S::Int64=10,
     n_boot::Int64=100,
-    conf::Float64=0.95
+    conf::Float64=0.95,
 )::NamedDimsArray
     if !all(target_factors .∈ [model_spec.fieldname])
         missing_factor = .!(target_factors .∈ [model_spec.fieldname])
@@ -610,7 +624,7 @@ function outcome_map(
         zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
         bins=string.(steps[2:end]),
         factors=Symbol.(target_factors),
-        CI=[:mean, :lower, :upper]
+        CI=[:mean, :lower, :upper],
     )
 
     all_p_rule = _map_outcomes(y, rule)
@@ -636,7 +650,7 @@ function outcome_map(
             X_q[1:(S + 1)] .= quantile(X_f, steps)
         end
 
-        for i in 1:length(X_q[1:end-1])
+        for i in 1:length(X_q[1:(end - 1)])
             local b::BitVector
             if i == 1
                 b = (X_q[i] .<= X_f .<= X_q[i + 1])
@@ -667,7 +681,7 @@ function outcome_map(
     rule::Union{Function,BitVector,Vector{Int64}};
     S::Int64=20,
     n_boot::Int64=100,
-    conf::Float64=0.95
+    conf::Float64=0.95,
 )::NamedDimsArray
     return outcome_map(X, y, rule, names(X); S, n_boot, conf)
 end
@@ -678,7 +692,7 @@ function outcome_map(
     target_factors::Vector{Symbol};
     S::Int64=20,
     n_boot::Int64=100,
-    conf::Float64=0.95
+    conf::Float64=0.95,
 )::NamedDimsArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, target_factors, rs.model_spec; S, n_boot, conf
@@ -690,7 +704,7 @@ function outcome_map(
     rule::Union{Function,BitVector,Vector{Int64}};
     S::Int64=20,
     n_boot::Int64=100,
-    conf::Float64=0.95
+    conf::Float64=0.95,
 )::NamedDimsArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf
