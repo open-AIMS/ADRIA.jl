@@ -311,8 +311,8 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
     @set! d.RCP = RCP
 
-    @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw", d.site_data)
-    @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub", d.site_data)
+    @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw")
+    @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub")
 
     return d
 end
