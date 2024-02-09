@@ -56,9 +56,9 @@ function site_connectivity(
         years::Vector{String} = unique(getindex.(split.(conn_fns, "_"), 2))
 
         # Organize files by their connectivity years
-        year_conn_fns = NamedTuple{Tuple(Symbol.("year_".*years))}(
-            [filter(x -> occursin(yr, x), joinpath.(file_path, conn_fns)) for yr in years]
-        )
+        year_conn_fns = NamedTuple{Tuple(Symbol.("year_" .* years))}(
+        [filter(x -> occursin(yr, x), joinpath.(file_path, conn_fns)) for yr in years]
+)
 
         # Create store for each year
         tmp_store::Vector{Matrix{Float64}} = Matrix{Float64}[]
@@ -74,7 +74,7 @@ function site_connectivity(
                         transpose=swap,
                         types=Float64,
                         drop=[1],
-                    )
+                    ),
                 ) for fn in assoc_files
             ]
 
@@ -139,7 +139,7 @@ function site_connectivity(
 end
 function site_connectivity(
     file_loc::String,
-    unique_site_ids::Vector{Union{Missing, String}};
+    unique_site_ids::Vector{Union{Missing,String}};
     con_cutoff::Float64=1e-6,
     agg_func::Function=mean,
     swap::Bool=false,

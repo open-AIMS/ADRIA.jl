@@ -74,7 +74,7 @@ function run_scenarios(
     scens::DataFrame,
     RCP::String;
     show_progress=true,
-    remove_workers=true,
+    remove_workers=true
 )::ResultSet
     return run_scenarios(dom, scens, [RCP]; show_progress, remove_workers)
 end
@@ -105,7 +105,7 @@ function run_scenarios(
     scenarios_matrix = NamedDimsArray(
         Matrix(scenarios_df);
         scenarios=1:nrow(scenarios_df),
-        factors=names(scenarios_df),
+        factors=names(scenarios_df)
     )
 
     para_threshold = typeof(dom) == ReefModDomain ? 8 : 256
@@ -204,7 +204,7 @@ function run_scenario(
     domain::Domain,
     idx::Int64,
     scenario::Union{AbstractVector,DataFrameRow},
-    data_store::NamedTuple
+    data_store::NamedTuple,
 )::Nothing
     if domain.RCP == ""
         local rcp
@@ -312,8 +312,8 @@ function run_scenario(
 end
 function run_scenario(
     domain::Domain,
-    scenario::Union{AbstractVector, DataFrameRow},
-    RCP::String,
+    scenario::Union{AbstractVector,DataFrameRow},
+    RCP::String
 )::NamedTuple
     domain = switch_RCPs!(domain, RCP)
     return run_scenario(domain, scenario)
@@ -331,7 +331,7 @@ Only the mean site rankings are kept
 NamedTuple of collated results
 """
 function run_model(domain::Domain, param_set::DataFrameRow)::NamedTuple
-    ps = NamedDimsArray(Vector(param_set), factors=names(param_set))
+    ps = NamedDimsArray(Vector(param_set); factors=names(param_set))
     return run_model(domain, ps)
 end
 function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
@@ -355,7 +355,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     #       Currently scaling significant wave height by its max to non-dimensionalize values
     wave_scen = copy(domain.wave_scens[:, :, wave_idx])
     wave_scen .= wave_scen ./ maximum(wave_scen)
-    replace!(wave_scen, Inf=>0.0, NaN=>0.0)
+    replace!(wave_scen, Inf => 0.0, NaN => 0.0)
 
     cyclone_mortality_scen = @view(
         domain.cyclone_mortality_scens[:, :, :, cyclone_mortality_idx]
@@ -396,7 +396,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
     # Determine contribution of each source to a sink location
     # i.e., columns should sum to 1!
-    TP_data = conn ./ sum(conn, dims=1)
+    TP_data = conn ./ sum(conn; dims=1)
 
     # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
@@ -410,7 +410,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     depth_coeff .= depth_coefficient.(site_data.depth_med)
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
-    C_cover::Array{Float64, 3} = zeros(tf, n_species, n_locs)
+    C_cover::Array{Float64,3} = zeros(tf, n_species, n_locs)
     C_cover[1, :, :] .= domain.init_coral_cover
     cover_tmp = zeros(n_locs)
 
@@ -561,7 +561,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     conn_cache = similar(area_weighted_conn)
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
-    basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id .== 1])
+    basal_area_per_settler = colony_mean_area(
+        corals.mean_colony_diameter_m[corals.class_id .== 1]
+    )
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
@@ -585,15 +587,18 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
-        recruitment[:, valid_locs] .= settler_cover(
-            fec_scope,
-            conn,
-            leftover_space_m²,
-            sim_params.max_settler_density,
-            sim_params.max_larval_density,
-            basal_area_per_settler,
-            potential_settlers,
-        )[:, valid_locs] ./ loc_k_area[:, valid_locs]
+        recruitment[:, valid_locs] .=
+            settler_cover(
+                fec_scope,
+                conn,
+                leftover_space_m²,
+                sim_params.max_settler_density,
+                sim_params.max_larval_density,
+                basal_area_per_settler,
+                potential_settlers,
+            )[
+                :, valid_locs
+            ] ./ loc_k_area[:, valid_locs]
 
         settler_DHW_tolerance!(
             c_mean_t_1,
@@ -646,7 +651,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
             # Determine connectivity strength
             # Account for cases where there is no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
+            in_conn, out_conn, strong_pred = connectivity_strength(
+                area_weighted_conn, vec(loc_coral_cover), conn_cache
+            )
             (seed_locs, fog_locs, rankings) = guided_site_selection(
                 mcda_vars,
                 MCDA_approach,
@@ -726,7 +733,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
         # Update initial condition
         growth.u0 .= C_t
-        sol::ODESolution = solve(growth, solver, save_everystep=false, save_start=false,
+        sol::ODESolution = solve(growth, solver; save_everystep=false, save_start=false,
             alg_hints=alg_hint, dt=1.0)
 
         # Assign results
@@ -736,7 +743,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
             @view(C_cover[tstep, :, valid_locs]),
-            cover_tmp[valid_locs],
+            cover_tmp[valid_locs]
         )
 
         if tstep <= tf
@@ -745,7 +752,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
                 @view(C_cover[(tstep - 1):tstep, :, :]),
                 n_groups,
                 c_mean_t,
-                p.r,
+                p.r
             )
 
             if in_debug_mode
@@ -767,7 +774,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
             dhw_tol_mean_log;
             timesteps=1:tf,
             species=corals.coral_id,
-            sites=1:n_locs,
+            sites=1:n_locs
         )
     else
         collated_dhw_tol_log = false

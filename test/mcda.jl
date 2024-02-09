@@ -58,7 +58,7 @@ end
 @testset "MCDA seed matrix creation" begin
     wtconseedout, wtconseedin, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover, wt_depth_seed = rand(
         Uniform(0.0, 1.0),
-        8,
+        8
     )
 
     A, filtered, k_area = create_test_decision_matrix(5, 1.0)
@@ -126,7 +126,7 @@ end
     mcda_funcs = ADRIA.decision.mcda_methods()
     n_site_int = 5
 
-    # Create simplistic set of 8 sites 
+    # Create simplistic set of 8 sites
     # Site 1 is the strongest predecessor for 2, 3, 4
     # Site 5 is the strongest predecessor for sites 4, 5, 6
     site_ids = collect(1:8)
