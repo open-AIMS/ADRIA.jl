@@ -46,7 +46,7 @@ function create_test_decision_matrix(n_sites::Int64, risk_tol::Float64)
 end
 @testset "Create decision matrix" begin
     n_sites = 5
-    risk_tol = 0.8
+    risk_tol = 1.0
 
     A, filtered, k_area = create_test_decision_matrix(n_sites, risk_tol)
 
