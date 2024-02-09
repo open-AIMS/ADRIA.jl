@@ -1,3 +1,5 @@
+import Base.copy
+
 function axes_names(cube::YAXArray)
     return name.(cube.axes)
 end
@@ -20,4 +22,15 @@ function sort(cube::YAXArray, axis_name::Symbol)::YAXArray
     selector[axis_idx] = labels_sort_idx
 
     return cube[selector...]
+end
+
+"""
+    copy(cube::YAXArray)::YAXArray
+
+Use julia's Base.copy function to create a copy of an YAXArray
+"""
+function copy(cube::YAXArray)::YAXArray
+    new_data = copy(cube.data)
+    new_axlist = Tuple(ax for ax in deepcopy(cube.axes))
+    return YAXArray(new_axlist, new_data)
 end
