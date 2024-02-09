@@ -60,7 +60,7 @@ Get number of bins for categorical variables.
 """
 function _category_bins(foi_spec::DataFrame)
     max_bounds = maximum(foi_spec.upper_bound .- foi_spec.lower_bound)
-    return round(Int64, max_bounds)
+    return round(Int64, max_bounds) + 1
 end
 
 """
@@ -73,9 +73,11 @@ Get quantile value for a given categorical variable.
 - `factor_name` : Contains true where the factor is categorical and false otherwise
 - `steps` : Number of steps for defining bins
 """
-function _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})::Vector{Float64}
+function _get_cat_quantile(
+    foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64}
+)::Vector{Float64}
     fact_idx::BitVector = foi_spec.fieldname .== factor_name
-    lb = foi_spec.lower_bound[fact_idx][1]
+    lb = foi_spec.lower_bound[fact_idx][1] - 1
     ub = foi_spec.upper_bound[fact_idx][1]
 
     return round.(quantile(lb:ub, steps))
