@@ -84,7 +84,7 @@ function run_scenarios(
     setup()
 
     # Sort RCPs so the dataframe order match the output filepath
-    RCP = sort(RCP)
+    RCP = Base.sort(RCP)
 
     @info "Running $(nrow(scens)) scenarios over $(length(RCP)) RCPs: $RCP"
 
