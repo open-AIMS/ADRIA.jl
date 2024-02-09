@@ -1,37 +1,36 @@
-using Statistics
+using ADRIA: Domain, GDF, SimConstants
+using CSV
+using DataFrames
 using Distributions
-
-using AxisKeys, NamedDims
-using CSV, DataFrames, ModelParameters
-
-using ADRIA: SimConstants, Domain, GDF
+using ModelParameters
+using Statistics
 
 mutable struct RMEDomain <: Domain
     const name::String
     RCP::String
-    env_layer_md
+    env_layer_md::ADRIA.EnvLayer
     scenario_invoke_time::String  # time latest set of scenarios were run
-    const conn
-    const in_conn
-    const out_conn
-    const strong_pred
-    const site_data
-    const site_id_col
-    const cluster_id_col
-    init_coral_cover
+    const conn::YAXArray{Float64}
+    const in_conn::Vector{Float64}
+    const out_conn::Vector{Float64}
+    const strong_pred::Vector{Int64}
+    const site_data::DataFrames.DataFrame
+    const site_id_col::String
+    const cluster_id_col::String
+    init_coral_cover::YAXArray{Float64}
     const coral_growth::CoralGrowth
-    const site_ids
-    dhw_scens
+    const site_ids::Vector{String}
+    dhw_scens::YAXArray{Float64}
 
     # `wave_scens` holds empty wave data to maintain compatibility with
     # ADRIA's dMCDA methods
-    wave_scens
+    wave_scens::YAXArray{Float64}
 
     # `cyclone_mortality_scens` holds dummy cyclone mortality data to maintain compatibility
     # with ADRIA's dMCDA methods
-    cyclone_mortality_scens
+    cyclone_mortality_scens::YAXArray{Float64}
 
-    model
+    model::ModelParameters.Model
     sim_constants::SimConstants
 end
 
@@ -57,7 +56,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     site_data = GDF.read(site_data_path)
     site_id_col = "LOC_NAME_S"
     cluster_id_col = "LOC_NAME_S"
-    site_ids = site_data[:, site_id_col]
+    site_ids::Vector{String} = site_data[:, site_id_col]
 
     id_list = CSV.read(
         joinpath(data_files, "id", "id_list_2023_03_30.csv"),
@@ -68,8 +67,8 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
 
     # Re-order spatial data to match RME dataset
     # MANUAL CORRECTION
-    site_data[site_data.LABEL_ID .== "20198", :LABEL_ID] .= "20-198"
-    id_order = [first(findall(x .== site_data.LABEL_ID)) for x in string.(id_list[:, 1])]
+    site_data[site_data.LABEL_ID.=="20198", :LABEL_ID] .= "20-198"
+    id_order::Vector{Int64} = [first(findall(x .== site_data.LABEL_ID)) for x in string.(id_list[:, 1])]
     site_data = site_data[id_order, :]
 
     # Check that the two lists of location ids are identical
@@ -104,29 +103,24 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     zones = replace.(zones, "Zone" => "", " " => "")
     site_data[:, :zone_type] .= zones
 
-    timeframe = (2022, 2100)
-
     # This loads cyclone categories, not mortalities, so ignoring for now.
     # cyc_scens = load_cyclones(RMEDomain, data_files, loc_ids, timeframe)
 
-    # timesteps, location, scenario
-    wave_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 1)
-    wave_scens = NamedDimsArray(
-        wave_scens;
-        timesteps=timeframe[1]:timeframe[2],
-        locs=loc_ids,
-        scenarios=[1]
-    )
+    timeframe = (2022, 2100)
+    timeframe_range = timeframe[1]:timeframe[2]
 
-    # timesteps, location, species, scenario
-    cyc_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 6, 1)
-    cyc_scens = NamedDimsArray(
-        cyc_scens;
-        timesteps=timeframe[1]:timeframe[2],
-        locs=loc_ids,
-        species=1:6,
-        scenarios=[1]
-    )
+    dim_timesteps = Dim{:timesteps}(timeframe_range)
+    dim_locs = Dim{:locs}(loc_ids)
+    dim_species = Dim{:species}(1:6)
+    dim_scenarios = Dim{:scenarios}([1])
+
+    wave_axlist = (dim_timesteps, dim_locs, dim_scenarios)
+    wave_data = zeros(length(timeframe_range), nrow(site_data), 1)
+    wave_scens::YAXArray{Float64} = YAXArray(wave_axlist, wave_data)
+
+    cyc_axlist = (dim_timesteps, dim_locs, dim_species, dim_scenarios)
+    cyc_data = zeros(length(timeframe_range), nrow(site_data), 6, 1)
+    cyc_scens::YAXArray{Float64} = YAXArray(cyc_axlist, cyc_data)
 
     env_md = EnvLayer(
         fn_path,
@@ -137,7 +131,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
         "",
         "",
         "",
-        timeframe[1]:timeframe[2],
+        timeframe_range,
     )
 
     model::Model = Model((
@@ -196,7 +190,7 @@ Loads ReefMod DHW data as a datacube.
 - `timeframe` : range of years to represent.
 
 # Returns
-NamedDimsArray[timesteps, locs, scenarios]
+YAXArray[timesteps, locs, scenarios]
 """
 function load_DHW(
     ::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100)
@@ -215,7 +209,7 @@ function load_DHW(
     tf_start = findall(timeframe[1] .∈ data_tf)[1]
     tf_end = findall(timeframe[2] .∈ data_tf)[1]
 
-    d1 = first_file[:, (tf_start + 1):(tf_end + 1)]
+    d1 = first_file[:, (tf_start+1):(tf_end+1)]
     data_shape = reverse(size(d1))
     data_cube = zeros(data_shape..., length(rcp_files))
     data_cube[:, :, 1] .= Matrix(d1)'
@@ -245,16 +239,16 @@ function load_DHW(
             continue
         end
 
-        data_cube[:, :, i + 1] .= Matrix(d[:, tf_start:tf_end])'
+        data_cube[:, :, i+1] .= Matrix(d[:, tf_start:tf_end])'
     end
 
-    # Only return valid scenarios
-    return NamedDimsArray(
-        data_cube[:, :, keep_ds];
-        timesteps=timeframe[1]:timeframe[2],
-        locs=loc_ids,
-        scenarios=rcp_files[keep_ds],
+    axlist = (
+        Dim{:timesteps}(timeframe[1]:timeframe[2]),
+        Dim{:locs}(loc_ids),
+        Dim{:scenarios}(rcp_files[keep_ds]),
     )
+    # Only return valid scenarios
+    return YAXArray(axlist, data_cube[:, :, keep_ds])
 end
 
 """
@@ -268,7 +262,7 @@ Loads the average connectivity matrix.
 - `loc_ids` : location ids
 
 # Returns
-NamedDimsArray[source, sinks]
+YAXArray[source, sinks]
 """
 function load_connectivity(
     ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}
@@ -300,7 +294,7 @@ function load_connectivity(
 
     # Mean over all years
     conn_data::Matrix{Float64} = dropdims(mean(tmp_mat; dims=3); dims=3)
-    return NamedDimsArray(conn_data; Source=loc_ids, Sink=loc_ids)
+    return YAXArray((Dim{:Source}(loc_ids), Dim{:Sink}(loc_ids)), conn_data)
 end
 
 """
@@ -315,14 +309,14 @@ end
     `1:(tf[2] - tf[1])+1` is read in.
 
 # Returns
-NamedDimsArray[timesteps, locs, scenarios]
+YAXArray[timesteps, locs, scenarios]
 """
 function load_cyclones(
     ::Type{RMEDomain},
     data_path::String,
     loc_ids::Vector{String},
     tf::Tuple{Int64,Int64},
-)::NamedDimsArray
+)::YAXArray
     # NOTE: This reads from the provided CSV files
     #       Replace with approach that reads directly from binary files
     #       Currently cannot get values in binary files to match
@@ -342,11 +336,10 @@ function load_cyclones(
     end
 
     # Cut down to the given time frame assuming the first entry represents the first index
-    cyc_data = permutedims(cyc_data, (2, 1, 3))[1:((tf[2] - tf[1]) + 1), :, :]
+    cyc_data = permutedims(cyc_data, (2, 1, 3))[1:((tf[2]-tf[1])+1), :, :]
 
-    return NamedDimsArray(
-        cyc_data; timesteps=tf[1]:tf[2], locs=loc_ids, scenarios=1:length(cyc_files)
-    )
+    axlist = (Dim{:timesteps}(tf[1]:tf[2]), Dim{:locs}(loc_ids), Dim{:scenarios}(1:length(cyc_files)))
+    return YAXArray(axlist, cyc_data)
 end
 
 """
@@ -358,7 +351,7 @@ end
 - `loc_ids` : location ids
 
 # Returns
-NamedDimsArray[locs, species]
+YAXArray[locs, species]
 """
 function load_initial_cover(
     ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame
@@ -385,7 +378,7 @@ function load_initial_cover(
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
-    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end - 1)])
+    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end-1)])
     size_class_weights = size_class_weights ./ sum(size_class_weights)
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
@@ -399,7 +392,8 @@ function load_initial_cover(
     # Convert values relative to absolute area to values relative to k area
     icc_data = _convert_abs_to_k(icc_data, site_data)
 
-    return NamedDimsArray(icc_data; species=1:(length(icc_files) * 6), locs=loc_ids)
+    axlist = (Dim{:species}(1:(length(icc_files)*6)), Dim{:locs}(loc_ids))
+    return YAXArray(axlist, icc_data)
 end
 
 """
