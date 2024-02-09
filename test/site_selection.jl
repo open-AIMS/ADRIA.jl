@@ -152,7 +152,7 @@ end
         fog_years,
         5,
         max_cover,
-        depth_priority,
+        depth_priority
     )
 
     # Check that only two sites are selected (the sites where k > 0.0)

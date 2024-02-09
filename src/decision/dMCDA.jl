@@ -237,8 +237,8 @@ function rank_sites!(
     weights::Vector{Float64},
     rankings::Matrix{Int64},
     n_site_int::Int64,
-    mcda_func::Union{Function, Type{<:MCDMMethod}},
-    rank_col)::Tuple{Vector{Int64}, Matrix{Union{Float64, Int64}}}
+    mcda_func::Union{Function,Type{<:MCDMMethod}},
+    rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
     selector = vec(.!all(S[:, 2:end] .== 0; dims=1))
 
@@ -279,7 +279,7 @@ function retrieve_ranks(
     S::Matrix{Float64},
     site_ids::Vector{Float64},
     weights::Vector{Float64},
-    mcda_func::Function)::Matrix{Union{Float64, Int64}}
+    mcda_func::Function)::Matrix{Union{Float64,Int64}}
     S = mcda_normalize(S) .* weights'
     scores = mcda_func(S)
 
@@ -290,7 +290,7 @@ function retrieve_ranks(
     site_ids::Vector{Float64},
     weights::Vector{Float64},
     mcda_func::Type{<:MCDMMethod},
-)::Matrix{Union{Float64, Int64}}
+)::Matrix{Union{Float64,Int64}}
     fns = fill(maximum, length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func())
     maximize = results.bestIndex == argmax(results.scores)
@@ -300,10 +300,10 @@ end
 function retrieve_ranks(
     site_ids::Vector{Float64},
     scores::Vector,
-    maximize::Bool,
-)::Matrix{Union{Float64, Int64}}
+    maximize::Bool
+)::Matrix{Union{Float64,Int64}}
     s_order::Vector{Int64} = sortperm(scores; rev=maximize)
-    return Union{Float64, Int64}[Int64.(site_ids[s_order]) scores[s_order]]
+    return Union{Float64,Int64}[Int64.(site_ids[s_order]) scores[s_order]]
 end
 
 """
@@ -339,14 +339,14 @@ function create_decision_matrix(
     site_ids::Vector{Int64},
     in_conn::T,
     out_conn::T,
-    leftover_space::Union{NamedDimsArray, T},
+    leftover_space::Union{NamedDimsArray,T},
     wave_stress::T,
     heat_stress::T,
     site_depth::T,
     predec::Matrix{Float64},
     zones_criteria::T,
-    risk_tol::Float64
-)::Tuple{Matrix{Float64}, BitVector} where {T <: Vector{Float64}}
+    risk_tol::Float64,
+)::Tuple{Matrix{Float64},BitVector} where {T<:Vector{Float64}}
     A = zeros(length(site_ids), 9)
     A[:, 1] .= site_ids  # Column of site ids
 
@@ -438,8 +438,8 @@ function create_seed_matrix(
     wt_predec_seed::T,
     wt_predec_zones_seed::T,
     wt_low_cover::T,
-    wt_depth_seed::T
-)::Tuple{Matrix{Float64}, Vector{Float64}} where {T <: Float64}
+    wt_depth_seed::T,
+)::Tuple{Matrix{Float64},Vector{Float64}} where {T<:Float64}
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
@@ -507,7 +507,7 @@ function create_fog_matrix(
     wt_predec_fog::T,
     wt_predec_zones_fog::T,
     wt_hi_cover,
-)::Tuple{Matrix{Float64}, Vector{Float64}} where {T <: Float64}
+)::Tuple{Matrix{Float64},Vector{Float64}} where {T<:Float64}
 
     # Define weights vector
     wsh = [
@@ -568,11 +568,11 @@ function guided_site_selection(
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
     strong_pred::Vector{Int64};
-    methods_mcda=mcda_methods()
+    methods_mcda=mcda_methods(),
 )::Tuple{
-    Vector{T}, Vector{T}, Matrix{T}
+    Vector{T},Vector{T},Matrix{T}
 } where {
-    T <: Int64, IA <: AbstractArray{<:Int64}, IB <: AbstractArray{<:Int64}, B <: Bool
+    T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool
 }
     site_ids = copy(d_vars.site_ids)
     n_sites::Int64 = length(site_ids)
@@ -741,14 +741,14 @@ Tuple :
 Values of 0 indicate sites that were not considered
 """
 function constrain_reef_cluster(
-    reefs::Union{Vector{String}, Vector{Float64}},
-    s_order::Matrix{Union{Float64, Int64}},
+    reefs::Union{Vector{String},Vector{Float64}},
+    s_order::Matrix{Union{Float64,Int64}},
     rankings::Matrix{Int64},
     area_to_seed::Float64,
     available_space::Vector{Float64},
     n_iv_locs::Int64,
-    max_members::Int64
-)::Tuple{Vector{Int64}, Matrix{Int64}}
+    max_members::Int64,
+)::Tuple{Vector{Int64},Matrix{Int64}}
     # Get ordering of locations by their preferred ranks
     loc_ordered_ids = s_order[:, 1]
 
@@ -790,7 +790,7 @@ function constrain_reef_cluster(
         locs_to_replace = vcat(
             [
                 pref_locs[pref_reefs .== reef][replace_start:end] for reef in reefs_swap
-            ]...,
+            ]...
         )
 
         # Acceptable reefs to switch out for
@@ -865,7 +865,7 @@ function unguided_site_selection(
     n_site_int::Int64,
     available_space::Vector{Float64},
     depth::T,
-)::Tuple{Vector, Vector} where {T <: Vector{Int64}}
+)::Tuple{Vector,Vector} where {T<:Vector{Int64}}
     # Unguided deployment, seed/fog corals anywhere so long as available_space > 0.0
     # Only sites that have available space are considered, otherwise a zero-division error
     # may occur later on.
@@ -909,8 +909,8 @@ conditions (e.g., DHWs, wave stress, etc):
 """
 function summary_stat_env(
     env_layer::AbstractArray,
-    dims::Union{Int64, Symbol, Tuple{Symbol, Symbol}};
-    w=0.5,
+    dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
+    w=0.5
 )::Vector{Float64}
     return vec(
         (mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w))
@@ -933,7 +933,7 @@ BitVector, of logical indices indicating locations which satisfy the depth crite
 """
 function within_depth_bounds(
     loc_depth::Vector{T}, depth_max::T, depth_min::T
-)::BitVector where {T <: Float64}
+)::BitVector where {T<:Float64}
     return (loc_depth .<= depth_max) .& (loc_depth .>= depth_min)
 end
 
