@@ -21,7 +21,6 @@ Convenience constructor for Param type with ADRIA-specific metadata.
 
 # Optional keyword arguments
 - `default_dist_params` : Tuple, parameters for `Distribution` type provided by `Distributions.jl`
-- `criteria_keywords` : "tags" specific to CriteriaWeights to indicate what intervention/criteria type the factor is related to.
 
 # Returns
 Parameter
@@ -35,10 +34,7 @@ function Factor(val; kwargs...)::Param
 end
 
 function _set_factor_defaults(kwargs::NT) where {NT <: NamedTuple}
-    missing_defaults = (;
-        default_dist_params=kwargs.dist_params,
-        criteria_keywords=("",)
-    )
+    missing_defaults = (; default_dist_params=kwargs.dist_params)
 
     for k in keys(missing_defaults)
         if !haskey(kwargs, k)
