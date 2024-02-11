@@ -85,11 +85,12 @@ end
     within_depth_bounds(loc_depth::Vector{T}, depth_max::T, depth_min::T)::BitVector{T} where {T<:Float64}
 
 Determines whether a location is within the min/max depth bounds.
-Used to filter locations based on their depth for location selection.
+
 # Arguments
 - `loc_depth` : Depths of considered locations (typically the median depth)
 - `depth_max` : Maximum depth for each considered location
 - `depth_min` : Minimum depth for each considered location
+Used to filter locations based on their depth for location selection.
 
 # Returns
 BitVector, of logical indices indicating locations which satisfy the depth criteria.
