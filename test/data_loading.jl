@@ -25,13 +25,13 @@ end
     unique_site_ids = site_data.reef_siteid
 
     conn_files = joinpath(TEST_DOMAIN_PATH, "connectivity")
-    conn_data = CSV.read(joinpath(conn_files, "2000", "example_conn.csv"), DataFrame, comment="#", drop=[1], types=Float64)
+    conn_data = CSV.read(joinpath(conn_files, "example_conn.csv"), DataFrame, comment="#", drop=[1], types=Float64)
 
     conn_details = ADRIA.site_connectivity(conn_files, unique_site_ids)
 
-    TP_data = conn_details.TP_base
-    @test all(axiskeys(TP_data, 1) .== axiskeys(TP_data, 2)) || "Site order does not match between rows/columns."
-    @test all(axiskeys(TP_data, 2) .== site_data.reef_siteid) || "Sites do not match expected order."
+    conn = conn_details.conn
+    @test all(axiskeys(conn, 1) .== axiskeys(conn, 2)) || "Site order does not match between rows/columns."
+    @test all(axiskeys(conn, 2) .== site_data.reef_siteid) || "Sites do not match expected order."
     @test all(unique_site_ids .== conn_details.site_ids) || "Included site ids do not match length/order in geospatial file."
 end
 

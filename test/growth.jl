@@ -16,16 +16,6 @@ using ADRIA.Distributions
 
         @test all(0.0 .<= Y[i, :, :] .<= 1.0)
     end
-
-    Y = rand(5, 36, 20)
-    for i in axes(Y, 1)
-        # Test that a warning is displayed when values need to be rescaled between 0 and 1
-        Test.@test_warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model." ADRIA.proportional_adjustment!(
-            Y[i, :, :], tmp
-        )
-
-        all(0.0 .<= Y[i, :, :] .<= 1.0)
-    end
 end
 
 @testset "Coral Spec" begin

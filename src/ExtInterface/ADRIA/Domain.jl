@@ -14,13 +14,13 @@ mutable struct ADRIADomain{
     RCP::String  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
     scenario_invoke_time::String  # time latest set of scenarios were run
-    const TP_data::Σ  # site connectivity data
+    const conn::Σ  # connectivity data
     const in_conn::Vector{Float64}  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
     const out_conn::Vector{Float64}  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strong_pred::Vector{Int64}  # strongest predecessor
     site_data::D  # table of site data (depth, carrying capacity, etc)
-    const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `TP_data`)
-    const unique_site_id_col::String  # column of unique site ids
+    const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `conn`)
+    const cluster_id_col::String  # column of unique site ids
     init_coral_cover::M  # initial coral cover dataset
     const coral_growth::CoralGrowth  # coral
     const site_ids::Vector{String}  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
@@ -49,7 +49,7 @@ function Domain(
     strongest_predecessor::Vector{Int64},
     site_data::DataFrame,
     site_id_col::String,
-    unique_site_id_col::String,
+    cluster_id_col::String,
     init_coral_cover::NamedDimsArray,
     coral_growth::CoralGrowth,
     site_ids::Vector{String},
@@ -92,7 +92,7 @@ function Domain(
         strongest_predecessor,
         site_data,
         site_id_col,
-        unique_site_id_col,
+        cluster_id_col,
         init_coral_cover,
         coral_growth,
         site_ids,
@@ -106,7 +106,7 @@ function Domain(
 end
 
 """
-    Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, unique_site_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String)::Domain
+    Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, cluster_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String)::Domain
 
 Convenience constructor for Domain.
 
@@ -117,7 +117,7 @@ Convenience constructor for Domain.
 - `timeframe` : Time steps represented
 - `site_data_fn` : File name of spatial data used
 - `site_id_col` : Column holding name of reef the site is associated with (non-unique)
-- `unique_site_id_col` : Column holding unique site names/ids
+- `cluster_id_col` : Column holding unique site names/ids
 - `init_coral_fn` : Name of file holding initial coral cover values
 - `conn_path` : Path to directory holding connectivity data
 - `dhw_fn` : Filename of DHW data cube in use
@@ -131,25 +131,13 @@ function Domain(
     timeframe::Vector,
     site_data_fn::String,
     site_id_col::String,
-    unique_site_id_col::String,
+    cluster_id_col::String,
     init_coral_fn::String,
     conn_path::String,
     dhw_fn::String,
     wave_fn::String,
     cyclone_mortality_fn::String,
 )::ADRIADomain
-    env_layer_md::EnvLayer = EnvLayer(
-        dpkg_path,
-        site_data_fn,
-        site_id_col,
-        unique_site_id_col,
-        init_coral_fn,
-        conn_path,
-        dhw_fn,
-        wave_fn,
-        timeframe,
-    )
-
     local site_data::DataFrame
     try
         site_data = GDF.read(site_data_fn)
@@ -161,11 +149,29 @@ function Domain(
         end
     end
 
+    if cluster_id_col ∉ names(site_data)
+        @warn "Cluster ID column $(cluster_id_col) not found. Defaulting to UNIQUE_ID."
+        cluster_id_col = "UNIQUE_ID"
+    end
+    if typeof(site_data[:, cluster_id_col][1]) != String
+        site_data[!, cluster_id_col] .= string.(Int64.(site_data[:, cluster_id_col]))
+    end
+
+    env_layer_md::EnvLayer = EnvLayer(
+        dpkg_path,
+        site_data_fn,
+        site_id_col,
+        cluster_id_col,
+        init_coral_fn,
+        conn_path,
+        dhw_fn,
+        wave_fn,
+        timeframe,
+    )
+
     # Sort data to maintain consistent order
-    sort!(site_data, Symbol[Symbol(unique_site_id_col)])
-
-    u_sids::Vector{String} = site_data[!, unique_site_id_col]
-
+    sort!(site_data, Symbol[Symbol(site_id_col)])
+    u_sids::Vector{String} = string.(collect(site_data[!, site_id_col]))
     # If site id column is missing then derive it from the Unique IDs
     if !in(site_id_col, names(site_data))
         site_data[!, site_id_col] .= String[d[2] for d in split.(u_sids, "_"; limit=2)]
@@ -173,9 +179,9 @@ function Domain(
 
     site_data.row_id = 1:nrow(site_data)
 
-    conn_ids::Vector{String} = site_data[:, site_id_col]
+    conn_ids::Vector{String} = u_sids
     site_conn::NamedTuple = site_connectivity(conn_path, u_sids)
-    conns::NamedTuple = connectivity_strength(site_conn.TP_base)
+    conns::NamedTuple = connectivity_strength(site_conn.conn)
 
     # Filter out missing entries
     site_data = site_data[coalesce.(in.(conn_ids, [site_conn.site_ids]), false), :]
@@ -239,13 +245,13 @@ function Domain(
         name,
         rcp,
         env_layer_md,
-        site_conn.TP_base,
+        site_conn.conn,
         conns.in_conn,
         conns.out_conn,
         conns.strongest_predecessor,
         site_data,
         site_id_col,
-        unique_site_id_col,
+        cluster_id_col,
         coral_cover,
         coral_growth,
         site_conn.site_ids,
@@ -272,19 +278,12 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
     end
 
     dpkg_details::Dict{String,Any} = _load_dpkg(path)
-    dpkg_version = dpkg_details["version"]
 
     # Handle compatibility
-    this_version::VersionNumber = parse(VersionNumber, dpkg_version)
-    if this_version >= v"0.2.1"
-        # Extract the time frame represented in this data package
-        md_timeframe::Tuple{Int64,Int64} = Tuple(
-            dpkg_details["simulation_metadata"]["timeframe"]
-        )
-    else
-        # Default to 2025-2099
-        md_timeframe = (2025, 2099)
-    end
+    # Extract the time frame represented in this data package
+    md_timeframe::Tuple{Int64,Int64} = Tuple(
+        dpkg_details["simulation_metadata"]["timeframe"]
+    )
 
     if length(md_timeframe) == 2
         @assert md_timeframe[1] < md_timeframe[2] "Start date/year specified in data package must be < end date/year"
@@ -313,7 +312,7 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
         timeframe,
         site_path,
         "reef_siteid",
-        "reef_siteid",
+        "cluster_id",
         init_coral_cov,
         conn_path,
         dhw_fn,

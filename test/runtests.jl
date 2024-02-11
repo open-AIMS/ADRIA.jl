@@ -23,8 +23,18 @@ function test_small_spec_rs()
 
     # Run scenarios with example Domain
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
-    dom_path = joinpath(TEST_DATA_DIR, "example_scenarios.csv")
-    scens = ADRIA.load_scenarios(dom, dom_path)
+
+    # Create scenario spec
+    samples = ADRIA.sample(dom, 16)
+    samples[!, :N_seed_TA] .= 500_000.0
+
+    # Write out scenario spec
+    tmp_dir = mktempdir()
+    tmp_fn = joinpath(tmp_dir, "test_scenarios.csv")
+    CSV.write(tmp_fn, samples)
+
+    # Test reading in scenarios from a file
+    scens = ADRIA.load_scenarios(dom, tmp_fn)
 
     return ADRIA.run_scenarios(dom, scens, "45")
 end

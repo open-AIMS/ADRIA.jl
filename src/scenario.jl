@@ -410,7 +410,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
 
     # Caches
-    TP_data = domain.TP_data
+    conn = domain.conn
+
+    # Determine contribution of each source to a sink location
+    # i.e., columns should sum to 1!
+    TP_data = conn ./ sum(conn, dims=1)
+
     # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
     fec_scope = cache.fec_scope
@@ -561,8 +566,8 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
     alg_hint = Symbol[:nonstiff]
 
-    area_weighted_TP = TP_data .* site_k_area(domain)
-    TP_cache = similar(area_weighted_TP)
+    area_weighted_conn = conn .* site_k_area(domain)
+    conn_cache = similar(area_weighted_conn)
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==1])
@@ -591,7 +596,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
         # Recruitment/settlement occurs after the full moon in October/November
         recruitment[:, valid_locs] .= settler_cover(
             fec_scope,
-            TP_data,
+            conn,
             leftover_space_m²,
             sim_params.max_settler_density,
             sim_params.max_larval_density,
@@ -603,7 +608,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
             c_mean_t_1,
             c_mean_t,
             site_k_area(domain),
-            TP_data,
+            TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
             fec_params_per_m²,
             param_set("heritability")
@@ -650,7 +655,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
             # Determine connectivity strength
             # Account for cases where there is no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_TP, vec(loc_coral_cover), TP_cache)
+            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
             (seed_locs, fog_locs, rankings) = guided_site_selection(
                 mcda_vars,
                 MCDA_approach,
@@ -704,7 +709,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
         # so what causes 100% mortality can differ between runs.
         bleaching_mortality!(
             C_t,
-            collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
+            dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
             depth_coeff,
             corals.dist_std,
             c_mean_t_1,
@@ -734,9 +739,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
             alg_hints=alg_hint, dt=1.0)
 
         # Assign results
-        C_cover[tstep, :, valid_locs] .= sol.u[end][:, valid_locs]
+        # We need to clamp values as the ODE may return negative values.
+        C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
 
-        # TODO:
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
             @view(C_cover[tstep, :, valid_locs]),
@@ -803,5 +808,9 @@ function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothi
     # Large class coral mortality
     coral_deaths_large = coral_cover[coral_params.large, :] .* cyclone_mortality
     coral_cover[coral_params.large, :] -= coral_deaths_large
+
+    # Ensure no negative values
+    clamp!(coral_cover, 0.0, 1.0)
+
     return nothing
 end

@@ -11,13 +11,13 @@ mutable struct RMEDomain <: Domain
     RCP::String
     env_layer_md
     scenario_invoke_time::String  # time latest set of scenarios were run
-    const TP_data
+    const conn
     const in_conn
     const out_conn
     const strong_pred
     const site_data
     const site_id_col
-    const unique_site_id_col
+    const cluster_id_col
     init_coral_cover
     const coral_growth::CoralGrowth
     const site_ids
@@ -56,8 +56,8 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
     site_data = GDF.read(site_data_path)
     site_id_col = "LOC_NAME_S"
-    unique_site_id_col = "LOC_NAME_S"
-    site_ids = site_data[:, unique_site_id_col]
+    cluster_id_col = "LOC_NAME_S"
+    site_ids = site_data[:, site_id_col]
 
     id_list = CSV.read(
         joinpath(data_files, "id", "id_list_2023_03_30.csv"),
@@ -132,7 +132,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
         fn_path,
         site_data_path,
         site_id_col,
-        unique_site_id_col,
+        cluster_id_col,
         "",
         "",
         "",
@@ -158,7 +158,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
         strong_pred,
         site_data,
         site_id_col,
-        unique_site_id_col,
+        cluster_id_col,
         init_coral_cover,
         CoralGrowth(nrow(site_data)),
         site_ids,

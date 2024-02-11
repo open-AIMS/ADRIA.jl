@@ -147,7 +147,7 @@ function combine_results(result_sets...)::ResultSet
         envlayer.dpkg_path,
         envlayer.site_data_fn,
         envlayer.site_id_col,
-        envlayer.unique_site_id_col,
+        envlayer.cluster_id_col,
         envlayer.init_coral_cov_fn,
         envlayer.connectivity_fn,
         dirname(envlayer.DHW_fn),
@@ -458,15 +458,15 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
     println("""
     Domain: $(rs.name)
-    
+
     Run with ADRIA $(vers_id) on $(rs.invoke_time)
     Results stored at: $(result_location(rs))
-    
+
     RCP(s) represented: $(rcps)
     Scenarios run: $(scens)
     Number of sites: $(sites)
     Timesteps: $(tf)
-    
+
     Input layers
     ------------""")
 

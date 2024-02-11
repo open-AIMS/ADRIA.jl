@@ -14,6 +14,6 @@ import ADRIA.GeoDataFrames as GDF
 
     conn_details = ADRIA.site_connectivity(conn_files, unique_site_ids)
 
-    TP_data = conn_details.TP_base
-    @test all(names(TP_data, 2) .== site_data.reef_siteid) || "Sites do not match expected order!"
+    conn = conn_details.conn
+    @test all(names(conn, 2) .== site_data.reef_siteid) || "Sites do not match expected order!"
 end

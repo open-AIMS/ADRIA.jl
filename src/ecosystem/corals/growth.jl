@@ -48,8 +48,12 @@ function proportional_adjustment!(
     cover_tmp[cover_tmp .≈ 1.0] .= 1.0
     if any(cover_tmp .> 1.0)
         exceeded::BitVector = vec(cover_tmp .> 1.0)
-        @warn "Cover exceeded bounds, constraining to be within available space, but this indicates an issue with the model."
-        @warn "Cover - Max Cover: $(sum(cover_tmp[exceeded] .- 1.0))"
+        msg = """
+            Cover exceeded bounds, constraining to be within available space
+            This indicates an issue with the model.
+            Cover - Max Cover: $(sum(cover_tmp[exceeded] .- 1.0))
+        """
+        @debug msg
         @views @. coral_cover[:, exceeded] = (
             coral_cover[:, exceeded] / cover_tmp[exceeded]'
         )
@@ -97,11 +101,16 @@ function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, t::Re
 
     # sXr : available space (sigma) * current cover (X) * growth rate (r)
     # X_mb : current cover (X) * background mortality (mb)
-    p.sXr .= max.(1.0 .- sum(X, dims=1), 0.0) .* X .* p.r
+    p.sXr .= (max.(1.0 .- sum(X, dims=1), 0.0) .* X .* p.r)
     p.X_mb .= X .* p.mb
+
+    # For each size class, we determine the corals coming into size class due to growth,
+    # and subtract those leaving the size class due to growth and background mortality
+    # e.g., C = [corals coming in] - [corals going out]
+    # The smallest size class only has corals leaving the size class.
     @views @. du[p.small, :] = -p.sXr[p.small, :] - p.X_mb[p.small, :]
-    @views @. du[p.mid, :] = p.sXr[p.mid-1, :] - p.sXr[p.mid, :] - p.X_mb[p.mid, :]
-    @views @. du[p.large, :] = p.sXr[p.large-1, :] + p.sXr[p.large, :] - p.X_mb[p.large, :]
+    @views @. du[p.mid, :] = (p.sXr[p.mid-1, :] - p.X_mb[p.mid-1, :]) - (p.sXr[p.mid, :] + p.X_mb[p.mid, :])
+    @views @. du[p.large, :] = (p.sXr[p.large-1, :] + p.sXr[p.large, :]) - p.X_mb[p.large, :]
 
     return nothing
 end
@@ -324,6 +333,8 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
         end
     end
 
+    clamp!(cover, 0.0, 1.0)
+
     return nothing
 end
 
@@ -441,6 +452,7 @@ locations.
 - `k_area` : Absolute coral habitable area
 - `tp` : Transition Probability matrix indicating the proportion of larvae that reaches a
     sink location (columns) from a given source location (rows)
+    Columns should sum to 1
 - `settlers` : recruited corals for each sink location
 - `fec_params_per_m²` : Fecundity parameters for each species/size class combination
 - `h²` : narrow-sense heritability
@@ -472,7 +484,7 @@ function settler_DHW_tolerance!(
 
         # Calculate contribution to cover to determine weights for each species/group
         w::NamedDimsArray = @views settlers[:, sink_loc]' .* tp[source_locs, sink_loc]
-        w_per_group = w ./ sum.(eachcol(w))'
+        w_per_group = w ./ sum(w, dims=1)
         replace!(w_per_group, NaN=>0.0)
 
         # Determine new distribution mean for each species at all locations
@@ -684,7 +696,7 @@ function settler_cover(
     valid_sinks::BitVector = vec(sum(conn, dims=1) .> 0.0)
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
-    # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae 
+    # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae
     # which do not settle. Pers comm with C. Ani (2023-01-29 13:24 AEST).
     # [Larval pool for each location in larvae/m²] * [survival rate]
     # this is known as in-water mortality.

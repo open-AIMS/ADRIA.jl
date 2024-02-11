@@ -99,7 +99,7 @@ Retrieve connectivity matrices from Domain for storage.
 Produce connectivity for a particular RCP saved to a Zarr data store.
 
 # Arguments
-- `conn_data` : connectivity data (e.g. `domain.TP_data`)
+- `conn_data` : connectivity data (e.g. `domain.conn`)
 - `file_loc` : path for Zarr data store
 - `rcp`: RCP associated with connectivity data.
 
@@ -155,7 +155,7 @@ function scenario_attributes(
         :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)),
         :site_data_file => env_layer.site_data_fn,
         :site_id_col => env_layer.site_id_col,
-        :unique_site_id_col => env_layer.unique_site_id_col,
+        :cluster_id_col => env_layer.cluster_id_col,
         :init_coral_cover_file => env_layer.init_coral_cov_fn,
         :connectivity_file => env_layer.connectivity_fn,
         :DHW_file => env_layer.DHW_fn,
@@ -478,7 +478,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         push!(
             connectivity,
             store_conn(
-                domain.TP_data,
+                domain.conn,
                 joinpath(z_store.folder, "connectivity"),
                 rcp,
                 COMPRESSOR
@@ -607,7 +607,7 @@ function load_results(result_loc::String)::ResultSet
 
     # Spatial data
     site_data = GDF.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
-    sort!(site_data, [Symbol(input_set.attrs["unique_site_id_col"])])
+    sort!(site_data, [Symbol(input_set.attrs["site_id_col"])])
 
     # Model specification
     model_spec = CSV.read(
@@ -642,7 +642,7 @@ function load_results(result_loc::String)::ResultSet
         result_loc,
         input_set.attrs["site_data_file"],
         input_set.attrs["site_id_col"],
-        input_set.attrs["unique_site_id_col"],
+        input_set.attrs["cluster_id_col"],
         input_set.attrs["init_coral_cover_file"],
         input_set.attrs["connectivity_file"],
         input_set.attrs["DHW_file"],
