@@ -141,7 +141,17 @@ function select_locations(
     min_locs::Int64,
     max_members::Int64
 )::Matrix{Union{String,Symbol,Int64}}
-    rank_ordered_idx = rank_by_index(sp, dm, method)
+    local rank_ordered_idx
+    try
+        rank_ordered_idx = rank_by_index(sp, matrix, method)
+    catch err
+        if err isa DomainError
+            # Return empty matrix to signify no ranks
+            return [;;]
+        end
+
+        rethrow(err)
+    end
 
     # Disperse selected locations to avoid "clumping" deployment locations
     dispersed_rank_order, _, n_locs = disperse_locations(
