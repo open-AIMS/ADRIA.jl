@@ -457,6 +457,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
     # Flag indicating whether to seed or not to seed when unguided
+    apply_seeding = any(param_set(taxa_names) .> 0.0)
+    # Flag indicating whether to seed or not to seed when unguided
     is_unguided = param_set[At("guided")] == 0.0
     seeding = any(param_set[At(taxa_names)] .> 0.0)
     apply_seeding = is_unguided && seeding
@@ -783,10 +785,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
 
         # Check if size classes are inappropriately out-growing available space
-        # proportional_adjustment!(
-        #     @view(C_cover[tstep, :, valid_locs]),
-        #     cover_tmp[valid_locs]
-        # )
+        proportional_adjustment!(
+            @view(C_cover[tstep, :, valid_locs]),
+            cover_tmp[valid_locs]
+        )
 
         if tstep <= tf
             # Natural adaptation
