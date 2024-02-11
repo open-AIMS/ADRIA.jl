@@ -1,6 +1,5 @@
 using StatsBase
 using NamedDims, YAXArrays
-import YAXArrays.DD: At
 using ADRIA: Factor, DiscreteOrderedUniformDist, component_params
 
 abstract type DecisionPreference end
@@ -12,7 +11,7 @@ struct DecisionPreferences <: DecisionPreference
 end
 
 """
-    decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T2}; kwargs...)::YAXArray where {T<:Union{String,Symbol}}
+    decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T})::YAXArray where {T<:Union{String,Symbol}}
     decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T}, criteria_vals::Matrix)::YAXArray where {T<:Union{String,Symbol}}
 
 Construct a decision matrix.
@@ -21,7 +20,6 @@ Construct a decision matrix.
 - `loc_names` : location names
 - `criteria_names` : name of criteria being considered
 - `criteria_vals` : values for each criteria
-- `kwargs` : Preset criteria values by their names
 """
 function decision_matrix(
     loc_names::Vector{T},
@@ -40,20 +38,13 @@ function decision_matrix(
 end
 function decision_matrix(
     loc_names::Vector{T},
-    criteria_names::Vector{T2};
-    kwargs...
+    criteria_names::Vector{T2}
 )::YAXArray where {T<:Union{String,Symbol},T2<:Union{String,Symbol}}
-    mat = decision_matrix(
+    return decision_matrix(
         loc_names,
         criteria_names,
         zeros(length(loc_names), length(criteria_names))
     )
-
-    if length(kwargs) > 0
-        update_criteria_values!(mat; kwargs...)
-    end
-
-    return mat
 end
 
 """
@@ -71,51 +62,22 @@ function update_criteria_values!(dm::YAXArray, values::Matrix)::Nothing
 
     return nothing
 end
-function update_criteria_values!(dm::YAXArray; kwargs...)::Nothing
-    for (criteria_name, value) in kwargs
-        dm[criteria=At(string(criteria_name))] .= value
-    end
-
-    return nothing
-end
-
-"""
-    filter_criteria(prefs::T, is_const::Vector)::T where {T<:DecisionPreference}
-
-Filter criteria marked to be removed according to vector of true/false.
-
-# Arguments
-- `prefs` : The DecisionPreference to update.
-- `remove` : Boolean vector indicating which columns to remove
-"""
-function filter_criteria(prefs::T, remove::Vector)::T where {T<:DecisionPreference}
-    return typeof(prefs)(
-        prefs.names[.!remove],
-        prefs.weights[.!remove],
-        prefs.directions[.!remove]
-    )
-end
 
 """
     solve(dp::T, dm::YAXArray, method::Function) where {T<:DecisionPreference}
 
 # Arguments
 - `dp` : DecisionPreferences
-- `dm` : the decision matrix to assess
-- `method` : An MCDA method provided by the JMcDM package
+- `dm` : a decision matrix
+- `method` : JMcDM provided MCDA method
 
 # Returns
 JMcDM result type (to confirm)
 """
 function solve(
-    dp::T, dm::YAXArray, method::Union{DataType}
+    dp::T, dm::YAXArray, method::Union{DataType,Function}
 ) where {T<:DecisionPreference}
     return mcdm(MCDMSetting(dm.data, dp.weights, dp.directions), method())
-end
-function solve(
-    dp::T, dm::YAXArray, method::Union{Function}
-) where {T<:DecisionPreference}
-    return method(dm.data, dp.weights, dp.directions)
 end
 
 """
@@ -125,8 +87,8 @@ Default index rank method, returns location indices in order of their rank.
 
 # Arguments
 - `dp` : DecisionPreferences
-- `dm` : The decision matrix to assess
-- `method` : An MCDA method provided by the JMcDM package
+- `dm` : a decision matrix
+- `method` : JMcDM provided MCDA method
 
 # Returns
 Index of locations ordered by their rank
@@ -138,13 +100,12 @@ function rank_by_index(
 
     scores = res.scores
     if all(isnan.(scores))
-        # This may happen if there are constants in the decision matrix
-        # or if the method fails for some reason...
+        # This may happen if there are constants in the decision matrix.
         throw(DomainError(scores, "No ranking possible"))
     end
 
-    is_maximal = res.bestIndex == argmax(res.scores)
-    return sortperm(res.scores; rev=is_maximal)
+    res_direction = res.bestIndex == argmax(res.scores)
+    return sortperm(res.scores; rev=res_direction)
 end
 
 """
@@ -155,15 +116,15 @@ Returns the selected location names ordered by their rank.
 
 # Arguments
 - `dp` : DecisionPreferences
-- `dm` : The decision matrix to assess
-- `method` : An MCDA method provided by the JMcDM package
-- `min_locs` : Minimum number of locations to select
+- `dm` : a decision matrix
+- `method` : JMcDM provided MCDA method
+- `n_locs` : Minimum number of locations to select
 
 # Returns
 Index of locations ordered by their rank
 """
 function select_locations(
-    dp::T, dm::YAXArray, method::Union{Function,DataType}, min_locs::Int64
+    dp::T, dm::YAXArray, method::Union{Function,DataType}, n_locs::Int64
 )::Matrix{Union{String,Symbol,Int64}} where {T<:DecisionPreference}
     local rank_idx
     try
@@ -177,11 +138,7 @@ function select_locations(
         rethrow(err)
     end
 
-    return [collect(dm.location[rank_idx][1:min_locs]) rank_idx[1:min_locs]]
-end
-
-function map_to_canonical(selected_subset, canonical, considered)
-    return canonical[considered][selected_subset]
+    return [collect(getAxis(:location, dm)[rank_idx][1:n_locs]) rank_idx[1:n_locs]]
 end
 
 """
@@ -191,9 +148,9 @@ Apply a threshold filter to a given decision matrix, filtering out locations tha
 outside the given bounds.
 
 # Arguments
-- `criteria_name` : Criteria to apply thresholds to
-- `threshold` : Lower and upper bounds of values to retain (inclusive)
-- `dm` : The decision matrix to apply thresholds to
+- `criteria_name` : criteria to apply thresholds to
+- `threshold` : lower and upper bounds of values to retain (inclusive)
+- `dm` : a decision matrix
 
 # Returns
 A new YAXArray
@@ -213,7 +170,7 @@ function apply_threshold(
 
     valid_locs = vec(threshold[1] .<= target_vals .<= (threshold[1]+threshold[2]))
 
-    return dm[location=valid_locs]
+    return dm[valid_locs, :]
 end
 
 """
