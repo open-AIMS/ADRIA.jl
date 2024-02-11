@@ -1,64 +1,20 @@
-using NamedDims, AxisKeys
+using NamedDims, AxisKeys, YAXArrays
 
-using ADRIA: connectivity_strength, relative_leftover_space, site_k_area
+using ADRIA:
+    Domain,
+    sample,
+    connectivity_strength,
+    relative_leftover_space,
+    site_k_area,
+    n_locations,
+    to_coral_spec,
+    colony_mean_area,
+    switch_RCPs!
 
-"""
-    _location_selection(domain::Domain, sum_cover::AbstractArray, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
-
-Select locations for a given domain and criteria/weightings/thresholds, using a chosen
-MCDA method.
-
-# Arguments
-- `domain` : The geospatial domain to assess
-- `sum_cover` :  Relative coral cover at each location
-- `mcda_vars` : Parameters for MCDA
-- `guided` : ID of MCDA algorithm to apply
-
-# Returns
-Matrix[n_sites ⋅ 2], where columns hold seeding and shading ranks for each location.
-"""
-function _location_selection(
-    domain::Domain, sum_cover::AbstractArray, mcda_vars::DMCDA_vars, guided::Int64
-)::Matrix
-    site_ids = mcda_vars.site_ids
-    n_sites = length(site_ids)
-
-    # site_id, seeding rank, shading rank
-    rankingsin = [mcda_vars.site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
-
-    pref_seed_sites::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
-    pref_fog_sites::Vector{Int64} = zeros(Int64, mcda_vars.n_site_int)
-
-    # Determine connectivity strength
-    # Account for cases where no coral cover
-    in_conn, out_conn, strong_pred = connectivity_strength(
-        domain.conn .* site_k_area(domain),
-        vec(sum_cover),
-        similar(domain.conn)  # tmp cache matrix
-    )
-
-    # Perform location selection for seeding and shading.
-    seed_true, fog_true = true, true
-
-    (_, _, ranks) = guided_site_selection(
-        mcda_vars,
-        guided,
-        seed_true,
-        fog_true,
-        pref_seed_sites,
-        pref_fog_sites,
-        rankingsin,
-        in_conn[site_ids],
-        out_conn[site_ids],
-        strong_pred[site_ids]
-    )
-
-    return ranks[:, 2:3]
-end
 
 """
-    rank_locations(domain::Domain, scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64; target_seed_sites=nothing, target_fog_sites=nothing)::NamedDimsArray
-    rank_locations(domain::Domain,scenarios::DataFrame, sum_cover::NamedDimsArray, area_to_seed::Float64, agg_func::Function,
+    rank_locations(domain::Domain, scenarios::DataFrame, area_to_seed::Float64; target_seed_sites=nothing, target_fog_sites=nothing)::NamedDimsArray
+    rank_locations(domain::Domain,scenarios::DataFrame, area_to_seed::Float64, agg_func::Function,
         iv_type::Union{String,Int64}; target_seed_sites=nothing, target_fog_sites=nothing)::AbstractArray
 
 Return location ranks for a given domain and scenarios.
@@ -66,8 +22,6 @@ Return location ranks for a given domain and scenarios.
 # Arguments
 - `domain` : The geospatial domain locations were selected from
 - `scenarios` : Scenario specification
-- `sum_cover` : Matrix[n_scenarios ⋅ n_sites] containing the total relative coral cover at each
-    location, for each scenario
 - `area_to_seed` : Area of coral to be seeded at each time step in km²
 - `agg_func` : Aggregation function to apply, e.g `ranks_to_frequencies` or
     `ranks_to_location_order`
@@ -79,29 +33,31 @@ Return location ranks for a given domain and scenarios.
 Array[n_locations ⋅ 2 ⋅ n_scenarios], where columns hold seeding and shading ranks.
 """
 function rank_locations(
-    domain::Domain,
-    scenarios::DataFrame,
-    sum_cover::NamedDimsArray,
-    area_to_seed::Float64;
+    dom::Domain,
+    n_corals::Int64,
+    scenarios::DataFrame;
+    rcp=nothing,
+    n_iv_locs=nothing,
     target_seed_sites=nothing,
     target_fog_sites=nothing,
 )::NamedDimsArray
-    n_locs = n_locations(domain)
-    k_area_locs = site_k_area(domain)
+    n_locs = n_locations(dom)
+    k_area_locs = site_k_area(dom)
+
+    if isnothing(n_iv_locs)
+        n_iv_locs = dom.sim_constants.n_site_int
+    end
+
+    if !isnothing(rcp)
+        dom = switch_RCPs!(dom, rcp)
+    end
 
     ranks_store = NamedDimsArray(
         zeros(n_locs, 2, nrow(scenarios)),
         sites=1:n_locs,
         intervention=["seed", "fog"],
-        scenarios=1:nrow(scenarios),
+        scenarios=1:nrow(scenarios)
     )
-
-    dhw_scens = domain.dhw_scens
-    wave_scens = domain.wave_scens
-
-    # Pre-calculate maximum depth to consider
-    target_dhw_scens = unique(scenarios[:, "dhw_scenario"])
-    target_wave_scens = unique(scenarios[:, "wave_scenario"])
 
     target_site_ids = Int64[]
     if !isnothing(target_seed_sites)
@@ -113,41 +69,119 @@ function rank_locations(
     end
 
     if isnothing(target_seed_sites) && isnothing(target_fog_sites)
-        target_site_ids = collect(1:length(domain.site_ids))
+        target_site_ids = dom.site_ids
     end
+
+    # Sum of coral cover (relative to k area) at each location and scenario
+    sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scenarios, 1))
 
     leftover_space_scens = relative_leftover_space(sum_cover.data) .* k_area_locs'
 
-    for (scen_idx, scen) in enumerate(eachrow(scenarios))
-        depth_criteria = within_depth_bounds(
-            domain.site_data.depth_med,
-            scen.depth_min .+ scen.depth_offset,
-            scen.depth_min
+    area_weighted_conn = dom.conn .* site_k_area(dom)
+    conn_cache = similar(area_weighted_conn)
+    conn_names = ["seed_in_connectivity", "seed_out_connectivity", "seed_priority"]
+
+    in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, collect(sum_cover[1, :]), conn_cache)
+
+    axlist = (
+        Dim{:scenarios}(1:nrow(scenarios)),
+        Dim{:factors}(names(scenarios)),
+    )
+    scens = YAXArray(
+        axlist,
+        Matrix(scenarios)
+    )
+
+    seed_pref = SeedPreferences(dom, scens[1, :])
+    fog_pref = FogPreferences(dom, scens[1, :])
+    site_data = dom.site_data
+    coral_habitable_locs = site_data.k .> 0.0
+    for (scen_idx, scen) in enumerate(eachrow(scens))
+        min_depth = scen[factors=At("depth_min")].data[1]
+        depth_criteria::BitArray{1} = within_depth_bounds(
+            site_data.depth_med,
+            min_depth .+ scen[factors=At("depth_offset")].data[1],
+            min_depth
         )
-        depth_priority = findall(depth_criteria)
 
+        valid_locs = coral_habitable_locs .& depth_criteria
 
-        considered_sites = target_site_ids[findall(in(depth_priority), target_site_ids)]
-        mcda_vars_temp = DMCDA_vars(
-            domain,
-            scen,
-            considered_sites,
-            leftover_space_scens[scen_idx, :],
+        MCDA_approach = mcda_methods()[Int64(scen[factors=At("guided")][1])]
+        leftover_space_m² = vec(leftover_space_scens[scen_idx, valid_locs])
+
+        corals = to_coral_spec(scenarios[scen_idx, :])
+        area_to_seed = mean(n_corals * colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==2]))
+
+        seed_pref = SeedPreferences(dom, scen)
+        fog_pref = FogPreferences(dom, scen)
+
+        # Create shared decision matrix
+        decision_mat = decision_matrix(dom.site_ids, seed_pref.names)
+
+        # Set criteria values that do not change between time steps
+        decision_mat[criteria=At("seed_depth")] = site_data.depth_med
+        # Ensure what to do with this because it is usually empty
+        # decision_mat[criteria=At("seed_zone")]
+
+        # Remove locations that cannot support corals or are out of depth bounds
+        # from consideration
+        decision_mat = decision_mat[valid_locs, :]
+
+        # Number of time steps in environmental layers to look ahead when making decisions
+        Main.@infiltrate
+        horizon::UnitRange{Int64} = 1:1+Int64(scen[factors=At("plan_horizon")][1])
+        d_s::UnitRange{Int64} = 1:length(horizon)
+
+        dhw_scen_idx = Int64(scen[factors=At("dhw_scenario")][1])
+        wave_scen_idx = Int64(scen[factors=At("wave_scenario")][1])
+        dhw_scens = dom.dhw_scens[:, :, dhw_scen_idx]
+        wave_scens = dom.wave_scens[:, :, wave_scen_idx]
+
+        @views env_horizon = decay[d_s] .* dhw_scen[horizon, considered_locs]
+        decision_mat[criteria=At("seed_heat_stress")] = summary_stat_env(dhw_scens[env_horizon, valid_locs, dhw_scen_idx], :timesteps)
+
+        @views env_horizon = decay[d_s] .* wave_scen[horizon, considered_locs]
+        decision_mat[criteria=At("seed_wave_stress")] = summary_stat_env(wave_scens[env_horizon, valid_locs, wave_scen_idx], :timesteps)
+
+        decision_mat[criteria=At("seed_coral_cover")] = collect(sum_cover[scen_idx, valid_locs])
+
+        decision_mat[criteria=At(conn_names)] .= [
+            in_conn[valid_locs] out_conn[valid_locs] strong_pred[valid_locs]
+        ]
+
+        # Identify valid, non-constant, columns for use in MCDA
+        is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
+        valid_prefs = seed_pref.names[.!is_const]
+        decision_mat = decision_mat[criteria=At(valid_prefs)]
+
+        # Recreate preferences, removing criteria that are constant for this timestep
+        sp = SeedPreferences(valid_prefs, seed_pref.weights[.!is_const], seed_pref.directions[.!is_const])
+        fp = FogPreferences(valid_prefs, fog_pref.weights[.!is_const], fog_pref.directions[.!is_const])
+
+        selected_seed_ranks = select_locations(
+            sp,
+            decision_mat,
+            MCDA_approach,
+            site_data.cluster_id[valid_locs],
             area_to_seed,
-            summary_stat_env(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
-            summary_stat_env(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios))
-            )
-
-        ranks_store(; scenarios=scen_idx, sites=considered_sites) .= _location_selection(
-            domain,
-            collect(sum_cover[scen_idx, :]),
-            mcda_vars_temp,
-            scen.guided,
+            leftover_space_m²,
+            n_iv_locs,
+            dom.sim_constants.max_members
         )
+        if !isempty(selected_seed_ranks)
+            ranks_store[selected_seed_ranks[:, 2], 1, scen_idx] .= 1:size(selected_seed_ranks, 1)
+        end
+
+        selected_fog_ranks = select_locations(
+            fp, decision_mat, MCDA_approach, n_iv_locs
+        )
+        if !isempty(selected_fog_ranks)
+            ranks_store[selected_fog_ranks[:, 2], 2, scen_idx] .= 1:n_iv_locs
+        end
     end
 
     # Set filtered locations as n_locs+1 for consistency with time dependent ranks
-    ranks_store[ranks_store.==0.0] .= length(domain.site_ids)+1
+    ranks_store[ranks_store.==0.0] .= length(dom.site_ids)+1
 
     return ranks_store
 end
