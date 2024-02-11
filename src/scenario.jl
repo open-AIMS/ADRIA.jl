@@ -8,18 +8,7 @@ using ADRIA.metrics:
     relative_shelter_volume
 using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
 using ADRIA.metrics: coral_evenness
-using ADRIA.decision:
-    within_depth_bounds,
-    summary_stat_env,
-    unguided_site_selection,
-    mcda_methods,
-    SeedPreferences,
-    FogPreferences,
-    SRMPreferences,
-    decision_matrix,
-    apply_depth_threshold,
-    select_locations,
-    unguided_selection
+using ADRIA.decision
 
 """
     setup_cache(domain::Domain)::NamedTuple

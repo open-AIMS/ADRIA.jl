@@ -100,6 +100,17 @@ function within_depth_bounds(
 )::BitVector where {T <: Float64}
     return (loc_depth .<= depth_max) .& (loc_depth .>= depth_min)
 end
+
+function weighted_projection(env_data, tstep, planning_horizon, decay, timeframe)
+    # Determine subset of data to select data for planning horizon
+    horizon::UnitRange{Int64} = tstep:min(tstep + planning_horizon, timeframe)
+    d_s::UnitRange{Int64} = 1:length(horizon)
+
+    # Put more weight on projected conditions closer to the decision point
+    @views env_horizon = decay[d_s] .* env_data[horizon, :]
+    return summary_stat_env(env_horizon, :timesteps)
+end
+
 """
     summary_stat_env(env_layer::NamedDimsArray, dims::Union{Int64, Symbol, Tuple{Symbol, Symbol}}; w=0.5)::Vector{Float64}
 
@@ -163,5 +174,19 @@ end
 
 include("Criteria/DecisionPreferences.jl")
 include("Criteria/DecisionWeights.jl")
+
+export
+    SeedPreferences,
+    FogPreferences,
+    SRMPreferences,
+    decision_matrix,
+    filter_constant_criteria,
+    update_criteria_values!,
+    select_locations,
+    unguided_selection,
+    weighted_projection,
+    within_depth_bounds,
+    summary_stat_env,
+    mcda_methods
 
 end
