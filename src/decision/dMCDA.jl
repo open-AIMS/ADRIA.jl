@@ -213,6 +213,7 @@ end
 
 include("Criteria/DecisionPreferences.jl")
 include("Criteria/DecisionWeights.jl")
+include("location_selection.jl")
 
 export
     SeedPreferences,
