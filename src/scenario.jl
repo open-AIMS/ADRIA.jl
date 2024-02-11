@@ -11,9 +11,15 @@ using ADRIA.metrics: coral_evenness
 using ADRIA.decision:
     within_depth_bounds,
     summary_stat_env,
-    DMCDA_vars,
-    guided_site_selection,
-    unguided_site_selection
+    unguided_site_selection,
+    mcda_methods,
+    SeedPreferences,
+    FogPreferences,
+    SRMPreferences,
+    decision_matrix,
+    apply_depth_threshold,
+    select_locations,
+    unguided_selection
 
 """
     setup_cache(domain::Domain)::NamedTuple
