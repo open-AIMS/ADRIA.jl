@@ -16,8 +16,7 @@ using ADRIA: Factor, DiscreteOrderedUniformDist, component_params
 struct DMCDA_vars end
 
 # dummy functions to allow precompilation
-function guided_site_selection() end
-function unguided_site_selection() end
+function unguided_selection() end
 function rank_sites!() end
 function adria_topsis() end
 function adria_vikor() end
