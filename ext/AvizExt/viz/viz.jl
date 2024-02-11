@@ -1,7 +1,7 @@
 using Makie, DataFrames
 
 using ADRIA: ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
-using NamedDims, AxisKeys
+using NamedDims, AxisKeys, YAXArrays, DimensionalData
 using .AvizExt
 using Makie.Colors
 
