@@ -124,18 +124,22 @@ factor.
 - `w` : Weighting for std offset to mean.
 
 # Returns
-Weighted combination of mean and standard deviation of the projected environmental
+If the time horizon > 1, returns the weighted combination of mean and standard deviation of the projected environmental
 conditions (e.g., DHWs, wave stress, etc):
     (μ * w) + (σ * (1 - w))
+
+Where the time horizon == 1, the original values are returned.
 """
 function summary_stat_env(
     env_layer::AbstractArray,
     dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
     w=0.5
 )::Vector{Float64}
-    return vec(
-        (mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w))
-    )
+    if size(env_layer, 1) > 1
+        return vec((mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w)))
+    end
+
+    return vec(env_layer)
 end
 
 """
