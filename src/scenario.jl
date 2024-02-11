@@ -502,17 +502,12 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Filter out sites outside of desired depth range
     # Defaults to considering all sites if depth cannot be considered.
-    depth_priority = collect(1:n_locs)
+    depth_criteria = BitVector(fill(true, n_locs))
     if .!all(site_data.depth_med .== 0)
         max_depth::Float64 = param_set[At("depth_min")] + param_set[At("depth_offset")]
         depth_criteria::BitArray{1} = within_depth_bounds(
             site_data.depth_med, max_depth, param_set[At("depth_min")]
         )
-
-        if any(depth_criteria .> 0)
-            # If sites can be filtered based on depth, do so.
-            depth_priority = depth_priority[depth_criteria]
-        end
     end
 
     coral_habitable_locs = site_data.k .> 0.0
@@ -520,7 +515,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         seed_pref = SeedPreferences(domain, param_set)
         fog_pref = FogPreferences(domain, param_set)
 
-        # Create shared decision matrix
+        # Create shared decision matrix.
+        # Because the seed preferences are used, all criteria names will
+        # refer to the seed equivalents, e.g., "seed_*"
         decision_mat = decision_matrix(domain.site_ids, seed_pref.names)
 
         # Set criteria values that do not change between time steps
@@ -528,11 +525,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # Ensure what to do with this because it is usually empty
         # decision_mat[criteria=At("seed_zone")]
 
-        # Remove locations that cannot support corals from consideration
-        decision_mat = decision_mat[coral_habitable_locs, :]
-
-        # Apply depth thresholds
-        decision_mat = apply_depth_threshold(domain, param_set, decision_mat)
+        # Remove locations that cannot support corals or are out of depth bounds
+        # from consideration
+        decision_mat = decision_mat[coral_habitable_locs .& depth_criteria, :]
 
         # Find indices of valid locations after depth thresholds are applied
         _valid_locs = (coral_habitable_locs .&
@@ -659,6 +654,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             d_s::UnitRange{Int64} = 1:length(horizon)
 
             # Put more weight on projected conditions closer to the decision point
+            # and current cover conditions
             @views env_horizon = decay[d_s] .* dhw_scen[horizon, considered_locs]
             decision_mat[criteria=At("seed_heat_stress")] .= summary_stat_env(env_horizon, :timesteps)
 
@@ -671,7 +667,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             # Determine connectivity strength weighting by area.
             # Accounts for strength of connectivity where there is low/no coral cover
             in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
-            decision_mat[criteria=At(["seed_in_connectivity", "seed_out_connectivity", "seed_priority"])] .= [in_conn[considered_locs] out_conn[considered_locs] strong_pred[considered_locs]]
+            conn_factors = ["seed_in_connectivity", "seed_out_connectivity", "seed_priority"]
+            decision_mat[criteria=At(conn_factors)] .= [
+                in_conn[considered_locs] out_conn[considered_locs] strong_pred[considered_locs]
+            ]
 
             # Identify valid, non-constant, columns for use in MCDA
             is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
@@ -718,7 +717,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     domain.site_ids,
                     n_site_int,
                     vec(leftover_space_m²),
-                    depth_priority
+                    depth_criteria
                 )
 
                 site_ranks[tstep, selected_seed_ranks[:, 2], 1] .= 1.0
@@ -729,7 +728,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     domain.site_ids,
                     n_site_int,
                     vec(leftover_space_m²),
-                    depth_priority
+                    depth_criteria
                 )
 
                 site_ranks[tstep, selected_fog_ranks[:, 2], 1] .= 1.0

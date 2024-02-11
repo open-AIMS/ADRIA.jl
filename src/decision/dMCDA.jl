@@ -148,10 +148,10 @@ function unguided_selection(
     location_ids,
     n_iv_locs::Int64,
     k_area::Vector{Float64},
-    depth::Vector{Int64}
+    depth::BitVector
 )::Matrix
     # Filter down to site ids to be considered
-    candidate_locs = depth[(k_area .> 0.0)[depth]]
+    candidate_locs = findall((k_area .> 0.0) .& depth)
     n_locs = length(candidate_locs)
     s_iv_locs = n_locs < n_iv_locs ? n_locs : n_iv_locs
 
