@@ -88,3 +88,10 @@ function FogPreferences(
 
     return DecisionPreferences(string.(w.fieldname), params(string.(w.fieldname)), w.direction)
 end
+function FogPreferences(
+    dom, params::YAXArray
+)::DecisionPreferences
+    w::DataFrame = component_params(dom.model, FogCriteriaWeights)
+
+    return DecisionPreferences(string.(w.fieldname), params[factors=At(string.(w.fieldname))], w.direction)
+end
