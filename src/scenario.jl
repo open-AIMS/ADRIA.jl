@@ -623,7 +623,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             # Update dMCDA values
             dhw_projection = weighted_projection(dhw_scen, tstep, plan_horizon, decay, tf)
             wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
-
             # Determine connectivity strength weighting by area.
             # Accounts for strength of connectivity where there is low/no coral cover
             in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
