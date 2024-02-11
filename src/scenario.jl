@@ -624,6 +624,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # Add recruits to current cover
         C_t[p.small, :] .= recruitment
 
+        # Update available space
+        loc_coral_cover = sum(C_t, dims=1)  # dims: 1 * nsites
+        leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
+
         # Check whether current timestep is in deployment period for each intervention
         in_fog_timeframe = fog_start_year <= tstep <= (fog_start_year + fog_years - 1)
         in_shade_timeframe =
