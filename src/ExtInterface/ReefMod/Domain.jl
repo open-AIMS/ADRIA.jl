@@ -5,6 +5,15 @@ using AxisKeys, NamedDims
 using CSV, DataFrames, ModelParameters
 
 using ADRIA: SimConstants, Domain, GDF
+using ADRIA.decision:
+    DecisionThresholds,
+    DecisionWeights,
+    DepthThresholds
+
+using ADRIA.decision:
+    SeedCriteriaWeights,
+    FogCriteriaWeights,
+    SRMCriteriaWeights
 
 mutable struct ReefModDomain <: Domain
     const name::String
@@ -140,10 +149,17 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
         timeframe[1]:timeframe[2],
     )
 
+    criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
+        SeedCriteriaWeights(),
+        FogCriteriaWeights(),
+        SRMCriteriaWeights(),
+        DepthThresholds()
+    ]
+
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
         Intervention(),
-        CriteriaWeights(),
+        criteria_weights...,
         Coral()
     ))
 

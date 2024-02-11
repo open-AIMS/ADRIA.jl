@@ -1,3 +1,13 @@
+using ADRIA.decision:
+    DecisionThresholds,
+    DecisionWeights,
+    DepthThresholds
+
+using ADRIA.decision:
+    SeedCriteriaWeights,
+    FogCriteriaWeights,
+    SRMCriteriaWeights
+
 """
     ADRIADomain{Σ,M,I,D,X,Y,Z}
 
@@ -56,27 +66,18 @@ function Domain(
     wave::NamedDimsArray,
     cyclone_mortality::NamedDimsArray,
 )::ADRIADomain where {T<:Union{Float32,Float64}}
-    criteria_weights::CriteriaWeights = CriteriaWeights()
-
     sim_constants::SimConstants = SimConstants()
-
-    # Update minimum site depth to be considered if default bounds are deeper than the
-    # deepest site in the cluster
-    if lower_bound(criteria_weights.depth_min) > maximum(site_data.depth_med)
-        min_depth = minimum(site_data.depth_med)
-        fields = fieldnames(typeof(criteria))
-        c_spec = (; zip(fields, [getfield(criteria, f) for f in fields])...)
-        @set! c_spec.depth_min.dist_params = (
-            min_depth, minimum([min_depth + 2.0, maximum(site_data.depth_med)])
-        )
-
-        criteria_weights = CriteriaWeights(c_spec...)
-    end
+    criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
+        SeedCriteriaWeights(),
+        FogCriteriaWeights(),
+        SRMCriteriaWeights(),
+        DepthThresholds()
+    ]
 
     model::Model = Model((
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
         Intervention(),
-        criteria_weights,
+        criteria_weights...,
         Coral(),
     ))
 
