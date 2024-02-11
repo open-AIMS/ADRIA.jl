@@ -215,23 +215,3 @@ function apply_threshold(
 
     return dm[location=valid_locs]
 end
-
-"""
-    apply_depth_threshold(dom, params, decision_mat)
-
-Apply a depth thresholds using values from a parameter set.
-
-# Arguments
-- `dom` : Domain
-- `params` : Parameter specification
-- `decision_mat` : Decision matrix to update
-
-# Returns
-Updated decision matrix.
-"""
-function apply_depth_threshold(dom, params, decision_mat)
-    thresholds = component_params(dom.model, DepthThresholds)
-    threshold_vals = params(string.(thresholds.fieldname))
-
-    return apply_threshold("seed_depth", Tuple(threshold_vals), decision_mat)
-end
