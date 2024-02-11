@@ -75,9 +75,14 @@ end
 JMcDM result type (to confirm)
 """
 function solve(
-    dp::T, dm::YAXArray, method::Union{DataType,Function}
+    dp::T, dm::YAXArray, method::Union{DataType}
 ) where {T<:DecisionPreference}
     return mcdm(MCDMSetting(dm.data, dp.weights, dp.directions), method())
+end
+function solve(
+    dp::T, dm::YAXArray, method::Union{Function}
+) where {T<:DecisionPreference}
+    return method(dm.data, dp.weights, dp.directions)
 end
 
 """
