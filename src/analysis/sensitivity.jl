@@ -477,12 +477,14 @@ function rsa(
     seq_store[:default] = collect(0.0:(1 / S):1.0)
     default_ax = (Dim{:default}(seq_store[:default][2:end]),)
 
+    # YAXArray storage for unordered categorical variables
     yax_store_cat = Tuple((
         YAXArray(
             (Dim{fact_t}(seq_store[fact_t][2:end]),),
             zeros(Union{Missing,Float64}, (length(seq_store[fact_t][2:end]))),
         ) for fact_t in unordered_cat
     ))
+    # YAXArray storage for other variables
     yax_store_default = Tuple(
         YAXArray(
             default_ax, zeros(Union{Missing,Float64}, (length(seq_store[:default][2:end])))
