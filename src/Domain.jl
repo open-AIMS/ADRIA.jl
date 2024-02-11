@@ -69,7 +69,9 @@ function model_spec(d::Domain, filepath::String)::Nothing
         write(io, "# Generated with ADRIA.jl $(vers_id) on $(current_time)\n")
     end
 
-    CSV.write(filepath, model_spec(d); header=true, append=true)
+    ms = model_spec(d)
+    ms[!, :] .= replace(Matrix(ms), nothing=>"")
+    CSV.write(filepath, ms; header=true, append=true)
 
     return nothing
 end
