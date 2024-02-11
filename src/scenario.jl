@@ -489,8 +489,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     a_adapt = zeros(n_species)
     a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
-    # Flag indicating whether to seed or not to seed
-    seed_corals = any(param_set[At(taxa_names)] .> 0.0)
+    # Flag indicating whether to seed or not to seed when unguided
+    apply_seeding = any(param_set(taxa_names) .> 0.0)
     # Flag indicating whether to fog or not fog
     apply_fogging = fogging > 0.0
     # Flag indicating whether to apply shading
@@ -577,6 +577,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         corals.mean_colony_diameter_m[corals.class_id.==1]
     )
 
+    # Dummy vars to fill/replace with ranks of selected locations
+    selected_seed_ranks = [;;]
+    selected_fog_ranks = [;;]
+
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
     for tstep::Int64 in 2:tf
@@ -655,64 +659,107 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             d_s::UnitRange{Int64} = 1:length(horizon)
 
             # Put more weight on projected conditions closer to the decision point
-            @views env_horizon = decay[d_s] .* dhw_scen[horizon, :]
-            mcda_vars.heat_stress_prob .= summary_stat_env(env_horizon, :timesteps)
+            @views env_horizon = decay[d_s] .* dhw_scen[horizon, considered_locs]
+            decision_mat[criteria=At("seed_heat_stress")] .= summary_stat_env(env_horizon, :timesteps)
 
-            @views env_horizon = decay[d_s] .* wave_scen[horizon, :]
-            mcda_vars.dam_prob .= summary_stat_env(env_horizon, 1)
-            mcda_vars.leftover_space .= leftover_space_m²
+            @views env_horizon = decay[d_s] .* wave_scen[horizon, considered_locs]
+            decision_mat[criteria=At("seed_wave_stress")] .= summary_stat_env(env_horizon, :timesteps)
 
-            # Determine connectivity strength
-            # Account for cases where there is no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(
-                area_weighted_conn, vec(loc_coral_cover), conn_cache
-            )
-            (seed_locs, fog_locs, rankings) = guided_site_selection(
-                mcda_vars,
-                MCDA_approach,
-                seed_decision_years[tstep],
-                fog_decision_years[tstep],
-                seed_locs,
-                fog_locs,
-                rankings,
-                in_conn[mcda_vars.site_ids],
-                out_conn[mcda_vars.site_ids],
-                strong_pred[mcda_vars.site_ids],
-            )
+            # Coral cover relative to k
+            decision_mat[criteria=At("seed_coral_cover")] .= loc_coral_cover[considered_locs]
 
-            # Log site ranks
-            # First col only holds site index ids so skip (with 2:end)
-            site_ranks[tstep, rankings[:, 1], :] = rankings[:, 2:end]
-        elseif (seed_corals && in_seed_timeframe) || (apply_fogging && in_fog_timeframe)
-            # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
-            seed_locs, fog_locs = unguided_site_selection(
-                seed_locs,
-                fog_locs,
-                seed_decision_years[tstep],
-                fog_decision_years[tstep],
-                n_site_int,
-                vec(leftover_space_m²),
-                depth_priority,
-            )
+            # Determine connectivity strength weighting by area.
+            # Accounts for strength of connectivity where there is low/no coral cover
+            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
+            decision_mat[criteria=At(["seed_in_connectivity", "seed_out_connectivity", "seed_priority"])] .= [in_conn[considered_locs] out_conn[considered_locs] strong_pred[considered_locs]]
 
-            site_ranks[tstep, seed_locs, 1] .= 1.0
-            site_ranks[tstep, fog_locs, 2] .= 1.0
+            # Identify valid, non-constant, columns for use in MCDA
+            is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
+            valid_prefs = seed_pref.names[.!is_const]
+
+            # Recreate preferences, removing criteria that are constant for this timestep
+            sp = SeedPreferences(valid_prefs, seed_pref.weights[.!is_const], seed_pref.directions[.!is_const])
+            fp = FogPreferences(valid_prefs, fog_pref.weights[.!is_const], fog_pref.directions[.!is_const])
+
+            if in_seed_timeframe
+                selected_seed_ranks = select_locations(
+                    sp,
+                    decision_mat[criteria=At(valid_prefs)],
+                    MCDA_approach,
+                    site_data.cluster_id[considered_locs],
+                    area_to_seed,
+                    vec(leftover_space_m²),
+                    domain.sim_constants.n_site_int,
+                    domain.sim_constants.max_members
+                )
+
+                # Log rankings as appropriate
+                if !isempty(selected_seed_ranks)
+                    site_ranks[tstep, selected_seed_ranks[:, 2], 1] .= 1:size(selected_seed_ranks, 1)
+                end
+            end
+
+            if in_fog_timeframe
+                selected_fog_ranks = select_locations(
+                    fp,
+                    decision_mat[criteria=At(valid_prefs)],
+                    MCDA_approach,
+                    domain.sim_constants.n_site_int
+                )
+
+                if !isempty(selected_fog_ranks)
+                    site_ranks[tstep, selected_fog_ranks[:, 2], 2] .= 1:size(selected_fog_ranks, 1)
+                end
+            end
+        elseif (apply_seeding && in_seed_timeframe) || (apply_fogging && in_fog_timeframe)
+            if apply_seeding
+                # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
+                selected_seed_ranks = unguided_selection(
+                    domain.site_ids,
+                    n_site_int,
+                    vec(leftover_space_m²),
+                    depth_priority
+                )
+
+                site_ranks[tstep, selected_seed_ranks[:, 2], 1] .= 1.0
+            end
+
+            if apply_fogging
+                selected_fog_ranks = unguided_selection(
+                    domain.site_ids,
+                    n_site_int,
+                    vec(leftover_space_m²),
+                    depth_priority
+                )
+
+                site_ranks[tstep, selected_fog_ranks[:, 2], 1] .= 1.0
+            end
         end
 
-        has_fog_locs::Bool = !all(fog_locs .== 0)
-
-        # Check if locations are selected, and selected locations have space,
-        # otherwise no valid locations were selected for seeding.
-        has_seed_locs::Bool = true
-        if !all(seed_locs .== 0)
-            has_seed_locs = !all(leftover_space_m²[seed_locs] .== 0.0)
-        else
-            has_seed_locs = false
-        end
+        # Check if locations are selected (can reuse previous selection)
+        has_seed_locs::Bool = !isempty(selected_seed_ranks)
+        has_fog_locs::Bool = !isempty(selected_fog_ranks)
 
         # Fog selected locations
         if apply_fogging && in_fog_timeframe && has_fog_locs
-            fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
+            fog_locations!(@view(Yfog[tstep, :]), selected_fog_ranks[:, 2], dhw_t, fogging)
+        end
+
+        # Apply seeding (assumed to occur after spawning)
+        if has_seed_locs && in_seed_timeframe
+            # Seed selected locations
+            seed_corals!(
+                C_t,
+                vec(loc_k_area),
+                vec(leftover_space_m²),
+                selected_seed_ranks[:, 2],
+                seeded_area,
+                seed_sc,
+                a_adapt,
+                @view(Yseed[tstep, :, :]),
+                corals.dist_std,
+                c_mean_t,
+            )
         end
 
         # Coral deaths due to selected cyclone scenario
@@ -734,26 +781,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             c_mean_t,
             @view(bleaching_mort[(tstep-1):tstep, :, :])
         )
-
-        # Apply seeding
-        # Assumes coral seeding occurs in the months after disturbances
-        # (such as cyclones/bleaching).
-        if seed_corals && in_seed_timeframe && has_seed_locs
-            # Seed selected locations
-            seed_corals!(
-                C_t,
-                vec(loc_k_area),
-                vec(leftover_space_m²),
-                seed_locs,
-                seeded_area,
-                seed_sc,
-                a_adapt,
-                @view(Yseed[tstep, :, :]),
-                corals.dist_std,
-                c_mean_t,
-            )
-        end
-
         # Update initial condition
         growth.u0 .= C_t
         sol::ODESolution = solve(
@@ -771,7 +798,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
-            @view(C_cover[tstep, :, valid_locs]), cover_tmp[valid_locs]
+            @view(C_cover[tstep, :, valid_locs]),
+            cover_tmp[valid_locs]
         )
 
         if tstep <= tf
