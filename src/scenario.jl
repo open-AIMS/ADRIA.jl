@@ -473,9 +473,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         fog_decision_years[fog_start_year] = true
     end
 
-    seed_locs::Vector{Int64} = zeros(Int64, n_site_int)
-    fog_locs::Vector{Int64} = zeros(Int64, n_site_int)
-
     # Define taxa and size class to seed, and identify their factor names
     taxa_to_seed = [2, 3, 5]
     target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
