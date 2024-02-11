@@ -518,16 +518,29 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         end
     end
 
+    coral_habitable_locs = site_data.k .> 0.0
     if is_guided
-        # Pre-allocate rankings
-        rankings = [depth_priority zeros(Int, length(depth_priority)) zeros(
-            Int, length(depth_priority)
-        )]
+        seed_pref = SeedPreferences(domain, param_set)
+        fog_pref = FogPreferences(domain, param_set)
 
-        # Prep site selection
-        mcda_vars = DMCDA_vars(
-            domain, param_set, depth_priority, sum(C_cover[1, :, :]; dims=1), area_to_seed
-        )
+        # Create shared decision matrix
+        decision_mat = decision_matrix(domain.site_ids, seed_pref.names)
+
+        # Set criteria values that do not change between time steps
+        decision_mat[criteria=At("seed_depth")] = site_data.depth_med
+        # Ensure what to do with this because it is usually empty
+        # decision_mat[criteria=At("seed_zone")]
+
+        # Remove locations that cannot support corals from consideration
+        decision_mat = decision_mat[coral_habitable_locs, :]
+
+        # Apply depth thresholds
+        decision_mat = apply_depth_threshold(domain, param_set, decision_mat)
+
+        # Find indices of valid locations after depth thresholds are applied
+        _valid_locs = (coral_habitable_locs .&
+            (site_data.reef_siteid .∈ Ref(decision_mat.location)))
+        considered_locs = site_data[_valid_locs, :row_id]
 
         # Number of time steps in environmental layers to look ahead when making decisions
         plan_horizon::Int64 = Int64(param_set[At("plan_horizon")])
