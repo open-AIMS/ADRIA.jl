@@ -136,7 +136,7 @@ Flag(s) for JuliaFormatter. See Formatting Options and options.jl.
 The team has adopted the following configuration options for auto-formatting:
 
 ```bash
-style=BlueStyle(), indent=4, margin=92, always_for_in=true, for_in_replacement="∈", whitespace_typedefs=false, import_to_using=true, align_struct_field=true, align_assignment=false, align_conditional=true, align_pair_arrow=false, normalize_line_endings="unix", align_matrix=true, join_lines_based_on_source=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=true
+style=BlueStyle(), indent=4, margin=92, always_for_in=true, for_in_replacement="∈", whitespace_typedefs=false, import_to_using=true, align_struct_field=true, align_assignment=false, align_conditional=true, align_pair_arrow=false, normalize_line_endings="unix", align_matrix=true, join_lines_based_on_source=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=true, trailing_comma=false
 ```
 
 Under the tabs option:
