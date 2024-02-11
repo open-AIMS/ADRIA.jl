@@ -499,14 +499,13 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Flag indicating whether to apply shading
     apply_shading = srm > 0.0
 
-    # Defaults to considering all sites if depth cannot be considered.
-    depth_priority = collect(1:n_locs)
-
     # Calculate total area to seed respecting tolerance for minimum available space to still
     # seed at a site
     area_to_seed = sum(seeded_area)
 
     # Filter out sites outside of desired depth range
+    # Defaults to considering all sites if depth cannot be considered.
+    depth_priority = collect(1:n_locs)
     if .!all(site_data.depth_med .== 0)
         max_depth::Float64 = param_set[At("depth_min")] + param_set[At("depth_offset")]
         depth_criteria::BitArray{1} = within_depth_bounds(
@@ -516,9 +515,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         if any(depth_criteria .> 0)
             # If sites can be filtered based on depth, do so.
             depth_priority = depth_priority[depth_criteria]
-        else
-            # Otherwise if no sites can be filtered, remove depth as a criterion.
-            @warn "No sites within provided depth range of $(param_set[At("depth_min")]) - $(max_depth) meters. Considering all sites."
         end
     end
 
