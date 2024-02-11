@@ -429,7 +429,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
-    is_guided = param_set[At("guided")] > 0
+    is_guided = param_set("guided") > 0
+    if is_guided
+        MCDA_approach = mcda_methods()[Int64(param_set("guided"))]
+    end
 
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
