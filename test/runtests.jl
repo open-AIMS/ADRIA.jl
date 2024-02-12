@@ -11,7 +11,7 @@ const ADRIA_DIR = pkgdir(ADRIA)
 const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
 
 const TEST_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Test_domain")
-const TEST_REEFMOD_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Reefmod_test_domain")
+const TEST_REEFMOD_ENGINE_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Reefmod_test_domain")
 
 """Test smaller scenario run with example scenario specification"""
 function test_small_spec_rs()
@@ -39,13 +39,13 @@ function test_small_spec_rs()
     return ADRIA.run_scenarios(dom, scens, "45")
 end
 
-"""Test ReefMod domain loading"""
-function test_reefmod_domain()
+"""Test ReefMod Engine domain loading"""
+function test_reefmod_engine_domain()
     # Load and apply configuration options
     ADRIA.setup()
 
-    # Load test ReefModDomain
-    return ADRIA.load_domain(ReefModDomain, TEST_REEFMOD_DOMAIN_PATH, "45")
+    # Load test RMEDomain
+    return ADRIA.load_domain(RMEDomain, TEST_REEFMOD_ENGINE_DOMAIN_PATH, "45")
 end
 
 """Test larger scenario run with figure creation"""
