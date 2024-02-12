@@ -640,7 +640,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
             valid_criteria = seed_pref.names[.!is_const]
 
-            if seeding && seed_decision_years[tstep]
+            if seed_decision_years[tstep]
                 sp = filter_criteria(seed_pref, is_const)
                 selected_seed_ranks = select_locations(
                     sp,
@@ -649,23 +649,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     site_data.cluster_id[considered_locs],
                     area_to_seed,
                     vec(leftover_space_m²),
-                    min_iv_locs,
-                    max_members
+                    domain.sim_constants.n_site_int,
+                    domain.sim_constants.max_members
                 )
-
-                if reselect
-                    selected_seed_ranks = select_locations(
-                        sp,
-                        decision_mat[criteria=At(valid_criteria)],
-                        MCDA_approach,
-                        site_data.cluster_id[considered_locs],
-                        area_to_seed,
-                        vec(leftover_space_m²),
-                        domain.sim_constants.n_site_int,
-                        domain.sim_constants.max_members
-                    )
-                end
-
                 # Log rankings as appropriate
                 if !isempty(selected_seed_ranks)
                     # Map selected locations back to their canonical ids.
