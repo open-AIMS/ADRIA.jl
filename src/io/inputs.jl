@@ -209,28 +209,14 @@ function load_cyclone_mortality(data_fn::String)::NamedDimsArray
     cyclone_cube::YAXArray = Cube(data_fn)
     return _yaxarray2nameddimsarray(sort_axis(cyclone_cube, :locations))
 end
-function load_cyclone_mortality(
-    timeframe::Vector{Int64}, site_data::DataFrame
-)::NamedDimsArray
-    locations::Vector{String} = sort(site_data.reef_siteid)
-    species::Vector{String} = ADRIA.coral_spec().taxa_names
-    scenarios::Vector{Int64} = [1]
-
-    n_timesteps::Int64 = length(timeframe)
-    n_locations::Int64 = length(locations)
-    n_species::Int64 = length(species)
-    n_scenarios::Int64 = length(scenarios)
-
-    axlist::Tuple = (
-        Dim{:timesteps}(1:n_timesteps),
-        Dim{:locations}(locations),
-        Dim{:species}(species),
-        Dim{:scenarios}(scenarios),
+function load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::NamedDimsArray
+    cube = ZeroDataCube(;
+        timesteps=1:length(timeframe),
+        locations=sort(site_data.reef_siteid),
+        species=ADRIA.coral_spec().taxa_names,
+        scenarios=[1]
     )
-
-    data::Array{Float64,4} = zeros(n_timesteps, n_locations, n_species, n_scenarios)
-
-    return _yaxarray2nameddimsarray(YAXArray(axlist, data))
+    return _yaxarray2nameddimsarray(cube)
 end
 
 function _yaxarray2nameddimsarray(yarray::YAXArray)::NamedDimsArray
@@ -240,6 +226,27 @@ function _yaxarray2nameddimsarray(yarray::YAXArray)::NamedDimsArray
     dim_labels::Vector = lookup.([yarray], dim_names)
 
     return NamedDimsArray(data; zip(dim_names, dim_labels)...)
+end
+
+"""
+    DataCube(data::AbstractArray; kwargs...)::YAXArray
+
+Constructor for YAXArray.
+"""
+function DataCube(data::AbstractArray; kwargs...)::YAXArray
+    return YAXArray(Tuple(Dim{name}(kwargs[name]) for name in Symbol.(keys(kwargs))), data)
+end
+
+"""
+    ZeroDataCube(T=Float64; kwargs...)::YAXArray
+
+Constructor for YAXArray with all entries equal zero.
+"""
+function ZeroDataCube(T=Float64; kwargs...)::YAXArray
+    return DataCube(
+        zeros(T, Tuple(length(kwargs[name]) for name in Symbol.(keys(kwargs))));
+        kwargs...
+    )
 end
 
 function axes_names(cube::YAXArray)
