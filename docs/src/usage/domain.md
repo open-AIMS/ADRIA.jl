@@ -27,7 +27,7 @@ ADRIAmod simulation for the Great Barrier Reef. A path to a ReefModEngine datase
 because Reefmod Matfiles do not contain some necessary site and connectivity data.
 
 ```julia
-dom = ADRIA.load_domain(ReefModDomain. "path to netcdf", "path to ReefModEngine dataset", "45")
+dom = ADRIA.load_domain(ReefModDomain, "path to netcdf", "path to ReefModEngine dataset", "45")
 ```
 
 The target RCP must also be specified.
