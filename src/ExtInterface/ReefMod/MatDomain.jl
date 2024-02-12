@@ -73,44 +73,8 @@ function load_domain(
     netcdf_file = _find_netcdf(fn_path, RCP)
     dom_dataset::Dataset = open_dataset(netcdf_file)
 
-    id_list_fn = _find_file(joinpath(fn_path, "id"), Regex("id_list.*.csv"))
-    id_list = CSV.read(
-        id_list_fn,
-        DataFrame;
-        header=false,
-        comment="#",
-    )
-    
-    # Read location data
-    geodata_dir = joinpath(fn_path, "region")
-    geodata_fn = _find_file(geodata_dir, ".gpkg")
-    site_data = GDF.read(geodata_fn)
-
-    site_id_col = "LOC_NAME_S"
-    cluster_id_col = "LOC_NAME_S"
-    site_ids = site_data[:, site_id_col]
-    
-
-    # Re-order spatial data to match RME dataset
-    # MANUAL CORRECTION
-    site_data[site_data.LABEL_ID .== "20198", :LABEL_ID] .= "20-198"
-    id_order = [first(findall(x .== site_data.LABEL_ID)) for x in string.(id_list[:, 1])]
-    site_data = site_data[id_order, :]
-
-    # Check that the two lists of location ids are identical
-    @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
-    
-    # Load reef area and convert from km^2 to m^2
-    site_data[:, :area] = id_list[:, 2] .* 1e6
-    
-    # Calculate `k` area (1.0 - "ungrazable" area)
-    site_data[:, :k] = 1 .- id_list[:, 3]
-
-    # Load DHWs
-    dhws = Cube(
-        dom_dataset[["record_applied_DHWs"]]
-    )[timestep = At(timeframe[1] : timeframe[2])].data[:, :, :]
-
+    # force YAXArrays to load data into NamedDimsArray
+    dhws = Cube(dom_dataset[["record_applied_DHWs"]])[timestep = At(timeframe[1] : timeframe[2])].data[:, :, :]
     dhw_scens = NamedDimsArray(
         dhws,
         timesteps=timeframe[1]:timeframe[2],
@@ -118,10 +82,18 @@ function load_domain(
         scenarios=1:size(dhws)[3]
     )
     
-    # Initial coral cover is loaded from the first year of reefmod 'coral_cover_per_taxa' data
-    init_coral_cover = load_initial_cover(
-        ReefModDomain, dom_dataset, site_data, site_ids, timeframe[1]
-    )
+    site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
+    lat_col_id = "Y_COORD"
+    lon_col_id = "X_COORD"
+    site_data = GDF.read(site_data_path)
+    site_id_col = "LOC_NAME_S"
+    cluster_id_col = "LOC_NAME_S"
+    site_ids = site_data[:, cluster_id_col]
+    
+    site_data[:, lat_col_id] = Cube(dom_dataset[["lat"]]).data
+    site_data[:, lon_col_id] = Cube(dom_dataset[["lon"]]).data
+    site_data[:, :area] = Cube(dom_dataset[["reef_area"]]).data
+    site_data[:, :k] = dropdims(mean(Cube(dom_dataset[["nongrazable"]]), dims=2), dims=2).data
 
     # Connectivity data is retireved from a subdirectory because it's not contained in matfiles
     conn_data = load_connectivity(RMEDomain, fn_path, site_ids)
@@ -287,8 +259,7 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     )[timestep = At(d.env_layer_md.timeframe)].data[:, :, :]
 
     scens = 1:size(dhws)[3]
-    loc_ids = d.site_ids
-
+    loc_ids = _get_loc_ids(d.loc_ids_path)
     d.dhw_scens = NamedDimsArray(
         dhws,
         timesteps=d.env_layer_md.timeframe,
