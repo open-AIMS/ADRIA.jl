@@ -698,7 +698,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     domain.site_ids,
                     min_iv_locs,
                     vec(leftover_space_m²),
-                    depth_criteria
+                    depth_priority
                 )
 
                 site_ranks[tstep, selected_seed_ranks[:, 2], 1] .= 1.0
@@ -709,7 +709,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     domain.site_ids,
                     min_iv_locs,
                     vec(leftover_space_m²),
-                    depth_criteria
+                    depth_priority
                 )
 
                 site_ranks[tstep, selected_fog_ranks[:, 2], 1] .= 1.0
