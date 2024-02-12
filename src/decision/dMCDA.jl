@@ -12,7 +12,6 @@ using
 
 using ADRIA: Factor, DiscreteOrderedUniformDist, component_params
 
-
 # dummy dMCDA_vars() for dev
 struct DMCDA_vars end
 
@@ -41,7 +40,7 @@ function supported_jmcdm_methods()
         JMcDM.PSI.PSIMethod,
         JMcDM.SAW.SawMethod,
         JMcDM.WASPAS.WaspasMethod,
-        JMcDM.WPM.WPMMethod,
+        JMcDM.WPM.WPMMethod
     ]
 end
 
@@ -97,7 +96,7 @@ BitVector, of logical indices indicating locations which satisfy the depth crite
 """
 function within_depth_bounds(
     loc_depth::Vector{T}, depth_max::T, depth_min::T
-)::BitVector where {T <: Float64}
+)::BitVector where {T<:Float64}
     return (loc_depth .<= depth_max) .& (loc_depth .>= depth_min)
 end
 
@@ -130,9 +129,11 @@ conditions (e.g., DHWs, wave stress, etc):
 function summary_stat_env(
     env_layer::AbstractArray,
     dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
-    w=0.5,
+    w=0.5
 )::Vector{Float64}
-    return vec((mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w)))
+    return vec(
+        (mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w))
+    )
 end
 
 """
@@ -169,7 +170,6 @@ function decision_frequency(
     return freq_timeframe
 end
 
-
 """
     unguided_selection(
         n_iv_locs::Int64,
@@ -200,11 +200,10 @@ function unguided_selection(
     n_locs = length(candidate_locs)
     s_iv_locs = n_locs < n_iv_locs ? n_locs : n_iv_locs
 
-    sel = StatsBase.sample(candidate_locs, s_iv_locs; replace = false)
+    sel = StatsBase.sample(candidate_locs, s_iv_locs; replace=false)
 
     return [location_ids[sel] sel]
 end
-
 
 include("Criteria/DecisionPreferences.jl")
 include("Criteria/DecisionWeights.jl")
