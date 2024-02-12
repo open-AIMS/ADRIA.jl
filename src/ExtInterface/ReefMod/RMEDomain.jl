@@ -114,13 +114,8 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     dim_species = Dim{:species}(1:6)
     dim_scenarios = Dim{:scenarios}([1])
 
-    wave_axlist = (dim_timesteps, dim_locs, dim_scenarios)
-    wave_data = zeros(length(timeframe_range), nrow(site_data), 1)
-    wave_scens::YAXArray{Float64} = YAXArray(wave_axlist, wave_data)
-
-    cyc_axlist = (dim_timesteps, dim_locs, dim_species, dim_scenarios)
-    cyc_data = zeros(length(timeframe_range), nrow(site_data), 6, 1)
-    cyc_scens::YAXArray{Float64} = YAXArray(cyc_axlist, cyc_data)
+    wave_scens::YAXArray{Float64} = ZeroDataCube(Float64; timesteps=timeframe_range, locs=loc_ids, scenarios=[1])
+    cyc_scens::YAXArray{Float64} = ZeroDataCube(Float64; timesteps=timeframe_range, locs=loc_ids, species=1:6, scenarios=[1])
 
     env_md = EnvLayer(
         fn_path,
@@ -242,13 +237,13 @@ function load_DHW(
         data_cube[:, :, i+1] .= Matrix(d[:, tf_start:tf_end])'
     end
 
-    axlist = (
-        Dim{:timesteps}(timeframe[1]:timeframe[2]),
-        Dim{:locs}(loc_ids),
-        Dim{:scenarios}(rcp_files[keep_ds]),
-    )
     # Only return valid scenarios
-    return YAXArray(axlist, data_cube[:, :, keep_ds])
+    return DataCube(
+        data_cube[:, :, keep_ds];
+        timesteps=timeframe[1]:timeframe[2],
+        locs=loc_ids,
+        scenarios=rcp_files[keep_ds],
+    )
 end
 
 """
@@ -294,7 +289,11 @@ function load_connectivity(
 
     # Mean over all years
     conn_data::Matrix{Float64} = dropdims(mean(tmp_mat; dims=3); dims=3)
-    return YAXArray((Dim{:Source}(loc_ids), Dim{:Sink}(loc_ids)), conn_data)
+    return DataCube(
+        conn_data;
+        Source=loc_ids,
+        Sink=loc_ids,
+    )
 end
 
 """
@@ -337,9 +336,12 @@ function load_cyclones(
 
     # Cut down to the given time frame assuming the first entry represents the first index
     cyc_data = permutedims(cyc_data, (2, 1, 3))[1:((tf[2]-tf[1])+1), :, :]
-
-    axlist = (Dim{:timesteps}(tf[1]:tf[2]), Dim{:locs}(loc_ids), Dim{:scenarios}(1:length(cyc_files)))
-    return YAXArray(axlist, cyc_data)
+    return DataCube(
+        cyc_data;
+        timesteps=tf[1]:tf[2],
+        locs=loc_ids,
+        scenarios=1:length(cyc_files),
+    )
 end
 
 """
@@ -392,8 +394,11 @@ function load_initial_cover(
     # Convert values relative to absolute area to values relative to k area
     icc_data = _convert_abs_to_k(icc_data, site_data)
 
-    axlist = (Dim{:species}(1:(length(icc_files)*6)), Dim{:locs}(loc_ids))
-    return YAXArray(axlist, icc_data)
+    return DataCube(
+        icc_data;
+        species=1:(length(icc_files)*6),
+        locs=loc_ids,
+    )
 end
 
 """
