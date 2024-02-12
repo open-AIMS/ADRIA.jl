@@ -200,19 +200,17 @@ function run_scenario(
     scenario::Union{AbstractVector,DataFrameRow},
     data_store::NamedTuple
 )::Nothing
-    if domain.RCP == ""
-        local rcp
-        try
-            rcp = scenario("RCP")  # Try extracting from NamedDimsArray
-        catch err
-            if !(err isa MethodError)
-                rethrow(err)
-            end
-
-            rcp = scenario.RCP  # Extract from dataframe
+    rcp = ""
+    try
+        rcp = string(Int64(scenario("RCP")))  # Try extracting from NamedDimsArray
+    catch err
+        if !(err isa MethodError)
+            rethrow(err)
         end
-
-        domain = swatch_RCPs!(domain, string(Int64(rcp)))
+        rcp = string(Int64(scenario.RCP))  # Extract from dataframe
+    end
+    if domain.RCP != rcp
+        domain = switch_RCPs!(domain, rcp)
     end
 
     result_set = run_model(domain, scenario)
