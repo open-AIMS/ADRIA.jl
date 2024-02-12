@@ -1,0 +1,11 @@
+   Resolving package versions...
+    Updating `C:\Users\dtan\AppData\Local\Temp\jl_Yv2QSw\Project.toml`
+⌃ [33e6dc65] + MKL v0.3.0
+    Updating `C:\Users\dtan\AppData\Local\Temp\jl_Yv2QSw\Manifest.toml`
+⌃ [33e6dc65] + MKL v0.3.0
+⌅ [9b87118b] + PackageCompiler v1.6.0
+        Info Packages marked with ⌃ and ⌅ have new versions available. Those with ⌃ may be upgradable, but those with ⌅ are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`
+Precompiling project...
+[32m  ✓ [39mOrdinaryDiffEq
+[32m  ✓ [39mADRIA
+  2 dependencies successfully precompiled in 62 seconds. 457 already precompiled.
