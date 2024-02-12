@@ -89,29 +89,29 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Planning Horizon",
         description="How many years of projected data to take into account when selecting intervention locations (0 only accounts for current deployment year).",
     )
-    seed_freq::Param = Factor(
+    seed_deployment_freq::DU = Factor(
         5;
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
-        name="Seeding Frequency",
-        description="Frequency of seeding site selection (0 is set and forget).",
+        name="Selection Frequency (Seed)",
+        description="Frequency of seeding deployments (0 deploys once).",
     )
-    shade_freq::Param = Factor(
-        1;
+    fog_deployment_freq::DU = Factor(
+        5;
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
-        name="Shading Frequency",
-        description="Frequency of shading site selection (0 is set and forget).",
+        name="Selection Frequency (Fog)",
+        description="Frequency of fogging deployments (0 deploys once).",
     )
-    fog_freq::Param = Factor(
+    shade_deployment_freq::DU = Factor(
         1;
         ptype="ordered categorical",
         dist=DiscreteUniform,
-        dist_params=(0.0, 15.0),
-        name="Fogging Frequency",
-        description="Frequency of fogging site selection (0 is set and forget).",
+        dist_params=(1.0, 15.0),
+        name="Deployment Frequency (Shading)",
+        description="Frequency of shading deployments.",
     )
     seed_year_start::Param = Factor(
         2;
