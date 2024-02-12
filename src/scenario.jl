@@ -504,24 +504,24 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         seed_pref = SeedPreferences(domain, param_set)
         fog_pref = FogPreferences(domain, param_set)
 
-        # Create shared decision matrix.
-        # Because the seed preferences are used, all criteria names will
-        # refer to the seed equivalents, e.g., "seed_*"
-        decision_mat = decision_matrix(domain.site_ids, seed_pref.names)
+        # Create shared decision matrix, setting criteria values that do not change
+        # between time steps
+        decision_mat = decision_matrix(
+            domain.site_ids,
+            seed_pref.names;
+            seed_depth=site_data.depth_med
+        )
 
-        # Set criteria values that do not change between time steps
-        decision_mat[criteria=At("seed_depth")] = site_data.depth_med
-        # Ensure what to do with this because it is usually empty
+        # Unsure what to do with this because it is usually empty
         # decision_mat[criteria=At("seed_zone")]
 
         # Remove locations that cannot support corals or are out of depth bounds
         # from consideration
-        decision_mat = decision_mat[coral_habitable_locs .& depth_criteria, :]
+        _valid_locs = coral_habitable_locs .& depth_criteria
+        decision_mat = decision_mat[_valid_locs, :]
 
-        # Find indices of valid locations after depth thresholds are applied
-        _valid_locs = (coral_habitable_locs .&
-            (site_data.reef_siteid .∈ Ref(decision_mat.location)))
-        considered_locs = site_data[_valid_locs, :row_id]
+        # Row IDs of valid locations after depth thresholds and k area filter are applied
+        considered_locs = findall(_valid_locs)
 
         # Number of time steps in environmental layers to look ahead when making decisions
         plan_horizon::Int64 = Int64(param_set[At("plan_horizon")])
@@ -637,42 +637,32 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # - Then intervention locations are seeded
         if is_guided && (in_seed_timeframe || in_fog_timeframe)
             # Update dMCDA values
-
-            # Determine subset of data to select data for planning horizon
-            horizon::UnitRange{Int64} = tstep:min(tstep + plan_horizon, tf)
-            d_s::UnitRange{Int64} = 1:length(horizon)
-
-            # Put more weight on projected conditions closer to the decision point
-            # and current cover conditions
-            @views env_horizon = decay[d_s] .* dhw_scen[horizon, considered_locs]
-            decision_mat[criteria=At("seed_heat_stress")] .= summary_stat_env(env_horizon, :timesteps)
-
-            @views env_horizon = decay[d_s] .* wave_scen[horizon, considered_locs]
-            decision_mat[criteria=At("seed_wave_stress")] .= summary_stat_env(env_horizon, :timesteps)
-
-            # Coral cover relative to k
-            decision_mat[criteria=At("seed_coral_cover")] .= loc_coral_cover[considered_locs]
+            dhw_projection = weighted_projection(dhw_scen[:, considered_locs], tstep, plan_horizon, decay, tf)
+            wave_projection = weighted_projection(wave_scen[:, considered_locs], tstep, plan_horizon, decay, tf)
 
             # Determine connectivity strength weighting by area.
             # Accounts for strength of connectivity where there is low/no coral cover
             in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
-            conn_factors = ["seed_in_connectivity", "seed_out_connectivity", "seed_priority"]
-            decision_mat[criteria=At(conn_factors)] .= [
-                in_conn[considered_locs] out_conn[considered_locs] strong_pred[considered_locs]
-            ]
-
-            # Identify valid, non-constant, columns for use in MCDA
-            is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
-            valid_prefs = seed_pref.names[.!is_const]
+            update_criteria_values!(
+                decision_mat;
+                seed_heat_stress=dhw_projection,
+                seed_wave_stress=wave_projection,
+                seed_coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
+                seed_in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
+                seed_out_connectivity=out_conn[considered_locs],
+                seed_priority=strong_pred[considered_locs]
+            )
 
             # Recreate preferences, removing criteria that are constant for this timestep
-            sp = SeedPreferences(valid_prefs, seed_pref.weights[.!is_const], seed_pref.directions[.!is_const])
-            fp = FogPreferences(valid_prefs, fog_pref.weights[.!is_const], fog_pref.directions[.!is_const])
+            is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
+            valid_criteria = seed_pref.names[.!is_const]
 
             if in_seed_timeframe
+                sp = filter_constant_criteria(seed_pref, is_const)
+
                 selected_seed_ranks = select_locations(
                     sp,
-                    decision_mat[criteria=At(valid_prefs)],
+                    decision_mat[criteria=At(valid_criteria)],
                     MCDA_approach,
                     site_data.cluster_id[considered_locs],
                     area_to_seed,
@@ -688,9 +678,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             end
 
             if in_fog_timeframe
+                fp = filter_constant_criteria(fog_pref, is_const)
                 selected_fog_ranks = select_locations(
                     fp,
-                    decision_mat[criteria=At(valid_prefs)],
+                    decision_mat[criteria=At(valid_criteria)],
                     MCDA_approach,
                     domain.sim_constants.n_site_int
                 )
@@ -706,7 +697,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     domain.site_ids,
                     n_site_int,
                     vec(leftover_space_m²),
-                    depth_criteria
+                    depth_priority
                 )
 
                 site_ranks[tstep, selected_seed_ranks[:, 2], 1] .= 1.0
@@ -717,7 +708,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     domain.site_ids,
                     n_site_int,
                     vec(leftover_space_m²),
-                    depth_criteria
+                    depth_priority
                 )
 
                 site_ranks[tstep, selected_fog_ranks[:, 2], 1] .= 1.0

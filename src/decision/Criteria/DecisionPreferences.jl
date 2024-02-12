@@ -1,5 +1,6 @@
 using StatsBase
 using NamedDims, YAXArrays
+import YAXArrays.DD: At
 using ADRIA: Factor, DiscreteOrderedUniformDist, component_params
 
 abstract type DecisionPreference end
@@ -11,7 +12,7 @@ struct DecisionPreferences <: DecisionPreference
 end
 
 """
-    decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T})::YAXArray where {T<:Union{String,Symbol}}
+    decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T2}; kwargs...)::YAXArray where {T<:Union{String,Symbol}}
     decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T}, criteria_vals::Matrix)::YAXArray where {T<:Union{String,Symbol}}
 
 Construct a decision matrix.
@@ -20,6 +21,7 @@ Construct a decision matrix.
 - `loc_names` : location names
 - `criteria_names` : name of criteria being considered
 - `criteria_vals` : values for each criteria
+- `kwargs` : Preset criteria values by their names
 """
 function decision_matrix(
     loc_names::Vector{T},
@@ -38,13 +40,20 @@ function decision_matrix(
 end
 function decision_matrix(
     loc_names::Vector{T},
-    criteria_names::Vector{T2}
+    criteria_names::Vector{T2};
+    kwargs...
 )::YAXArray where {T<:Union{String,Symbol},T2<:Union{String,Symbol}}
-    return decision_matrix(
+    mat = decision_matrix(
         loc_names,
         criteria_names,
         zeros(length(loc_names), length(criteria_names))
     )
+
+    if length(kwargs) > 0
+        update_criteria_values!(mat; kwargs...)
+    end
+
+    return mat
 end
 
 """
@@ -61,6 +70,31 @@ function update_criteria_values!(dm::YAXArray, values::Matrix)::Nothing
     dm.data .= values
 
     return nothing
+end
+function update_criteria_values!(dm::YAXArray; kwargs...)::Nothing
+    for (criteria_name, value) in kwargs
+        dm[criteria=At(string(criteria_name))] .= value
+    end
+
+    return nothing
+end
+
+"""
+    filter_constant_criteria(prefs::T, is_const::Vector)::T where {T<:DecisionPreference}
+
+Remove criteria that are constant in the decision matrix from the corresponding
+DecisionPreference.
+
+# Arguments
+- `prefs` : The DecisionPreference to update.
+- `is_const` : Boolean vector indicating which columns are constant
+"""
+function filter_constant_criteria(prefs::T, is_const::Vector)::T where {T<:DecisionPreference}
+    return typeof(prefs)(
+        prefs.names[.!is_const],
+        prefs.weights[.!is_const],
+        prefs.directions[.!is_const]
+    )
 end
 
 """
