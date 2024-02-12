@@ -101,7 +101,7 @@ function run_scenarios(
         Matrix(scenarios_df); scenarios=1:nrow(scenarios_df), factors=names(scenarios_df)
     )
 
-    para_threshold = typeof(dom) == ReefModDomain ? 8 : 256
+    para_threshold = typeof(dom) == ReefModDomain ? 8 : 512
     parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
@@ -428,40 +428,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     α = 0.95
     decay = α .^ (1:(Int64(param_set[At("plan_horizon")])+1))
 
-    # Years at which intervention locations are re-evaluated
-    seed_decision_years = fill(false, tf)
-    shade_decision_years = fill(false, tf)
-    fog_decision_years = fill(false, tf)
-
-    seed_start_year = max(seed_start_year, 2)
-    if param_set[At("seed_freq")] > 0
-        max_consider = min(seed_start_year + seed_years - 1, tf)
-        seed_decision_years[seed_start_year:Int64(param_set[At("seed_freq")]):max_consider] .=
-            true
-    else
-        # Start at year 2 or the given specified seed start year
-        seed_decision_years[seed_start_year] = true
-    end
-
-    shade_start_year = max(shade_start_year, 2)
-    if param_set[At("shade_freq")] > 0
-        max_consider = min(shade_start_year + shade_years - 1, tf)
-        shade_decision_years[shade_start_year:Int64(param_set[At("shade_freq")]):max_consider] .=
-            true
-    else
-        # Start at year 2 or the given specified shade start year
-        shade_decision_years[shade_start_year] = true
-    end
-
-    fog_start_year = max(fog_start_year, 2)
-    if param_set[At("fog_freq")] > 0
-        max_consider = min(fog_start_year + fog_years - 1, tf)
-        fog_decision_years[fog_start_year:Int64(param_set[At("fog_freq")]):max_consider] .= true
-    else
-        # Start at year 2 or the given specified fog start year
-        fog_decision_years[fog_start_year] = true
-    end
-
+    # Years at which intervention locations are re-evaluated and deployed
+    seed_decision_years = decision_frequency(seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")])
+    fog_decision_years = decision_frequency(fog_start_year, tf, fog_years, param_set[At("fog_deployment_freq")])
+    shade_decision_years = decision_frequency(shade_start_year, tf, shade_years, param_set[At("shade_deployment_freq")])
     # Define taxa and size class to seed, and identify their factor names
     taxa_to_seed = [2, 3, 5]
     target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
@@ -479,9 +449,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
     # Flag indicating whether to seed or not to seed when unguided
-    apply_seeding = any(param_set(taxa_names) .> 0.0)
+    is_unguided = param_set("guided") == 0.0
+    apply_seeding = is_unguided && any(param_set(taxa_names) .> 0.0)
     # Flag indicating whether to fog or not fog
-    apply_fogging = fogging > 0.0
+    apply_fogging = is_unguided && (fogging > 0.0)
     # Flag indicating whether to apply shading
     apply_shading = srm > 0.0
 
@@ -613,29 +584,31 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         loc_coral_cover = sum(C_t, dims=1)  # dims: 1 * nsites
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
 
-        # Check whether current timestep is in deployment period for each intervention
-        in_fog_timeframe = fog_start_year <= tstep <= (fog_start_year + fog_years - 1)
-        in_shade_timeframe =
-            shade_start_year <= tstep <= (shade_start_year + shade_years - 1)
-        in_seed_timeframe = seed_start_year <= tstep <= (seed_start_year + seed_years - 1)
+        # Determine intervention locations whose deployment is assumed to occur
+        # between November to February.
+        #
+        # Nominal sequence of events is conceptualised as:
+        # - Corals spawn and are recruited
+        # - SRM is applied
+        # - Fogging is applied next
+        # - Seeding interventions occur
+        # - then cyclones hit
+        # - bleaching then occurs
+        #
+        # Seeding occurs before bleaching as current tech only allows deployments shortly
+        # after spawning. If bio-banking or similar tech comes up to speed then we could
+        # potentially deploy at alternate times.
 
         # Apply regional cooling effect before selecting locations to seed
         dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
-        if apply_shading && in_shade_timeframe
+        if apply_shading && shade_decision_years[tstep]
             Yshade[tstep, :] .= srm
 
             # Apply reduction in DHW due to SRM
             dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
-        # Determine intervention locations whose deployment is assumed to occur
-        # between November to February.
-        # - SRM is applied first
-        # - Fogging is applied next
-        # - then cyclone mortality
-        # - Bleaching then occurs
-        # - Then intervention locations are seeded
-        if is_guided && (in_seed_timeframe || in_fog_timeframe)
+        if is_guided && (seed_decision_years[tstep] || fog_decision_years[tstep])
             # Update dMCDA values
             dhw_projection = weighted_projection(dhw_scen[:, considered_locs], tstep, plan_horizon, decay, tf)
             wave_projection = weighted_projection(wave_scen[:, considered_locs], tstep, plan_horizon, decay, tf)
@@ -657,19 +630,32 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
             valid_criteria = seed_pref.names[.!is_const]
 
-            if in_seed_timeframe
+            if seed_decision_years[tstep]
                 sp = filter_constant_criteria(seed_pref, is_const)
 
-                selected_seed_ranks = select_locations(
-                    sp,
-                    decision_mat[criteria=At(valid_criteria)],
-                    MCDA_approach,
-                    site_data.cluster_id[considered_locs],
-                    area_to_seed,
-                    vec(leftover_space_m²),
-                    domain.sim_constants.n_site_int,
-                    domain.sim_constants.max_members
-                )
+                reselect = false
+                if seed_decision_years[tstep]
+                    reselect = true
+                elseif !seed_decision_years[tstep] && !isempty(selected_seed_ranks)
+                    # Reselect deployment locations anyway if any one of the locations are
+                    # filled to max capacity.
+                    if any(leftover_space_m²[selected_seed_ranks[:, 2]] .== 0.0)
+                        reselect = true
+                    end
+                end
+
+                if reselect
+                    selected_seed_ranks = select_locations(
+                        sp,
+                        decision_mat[criteria=At(valid_criteria)],
+                        MCDA_approach,
+                        site_data.cluster_id[considered_locs],
+                        area_to_seed,
+                        vec(leftover_space_m²),
+                        domain.sim_constants.n_site_int,
+                        domain.sim_constants.max_members
+                    )
+                end
 
                 # Log rankings as appropriate
                 if !isempty(selected_seed_ranks)
@@ -677,7 +663,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 end
             end
 
-            if in_fog_timeframe
+            if fog_decision_years[tstep]
                 fp = filter_constant_criteria(fog_pref, is_const)
                 selected_fog_ranks = select_locations(
                     fp,
@@ -690,25 +676,25 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     site_ranks[tstep, selected_fog_ranks[:, 2], 2] .= 1:size(selected_fog_ranks, 1)
                 end
             end
-        elseif (apply_seeding && in_seed_timeframe) || (apply_fogging && in_fog_timeframe)
-            if apply_seeding
+        elseif is_unguided
+            if apply_seeding && seed_decision_years[tstep]
                 # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
                 selected_seed_ranks = unguided_selection(
                     domain.site_ids,
                     n_site_int,
                     vec(leftover_space_m²),
-                    depth_priority
+                    depth_criteria
                 )
 
                 site_ranks[tstep, selected_seed_ranks[:, 2], 1] .= 1.0
             end
 
-            if apply_fogging
+            if apply_fogging && fog_decision_years[tstep]
                 selected_fog_ranks = unguided_selection(
                     domain.site_ids,
                     n_site_int,
                     vec(leftover_space_m²),
-                    depth_priority
+                    depth_criteria
                 )
 
                 site_ranks[tstep, selected_fog_ranks[:, 2], 1] .= 1.0
@@ -720,12 +706,12 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         has_fog_locs::Bool = !isempty(selected_fog_ranks)
 
         # Fog selected locations
-        if apply_fogging && in_fog_timeframe && has_fog_locs
+        if fog_decision_years[tstep] && has_fog_locs
             fog_locations!(@view(Yfog[tstep, :]), selected_fog_ranks[:, 2], dhw_t, fogging)
         end
 
         # Apply seeding (assumed to occur after spawning)
-        if has_seed_locs && in_seed_timeframe
+        if seed_decision_years[tstep] && has_seed_locs
             # Seed selected locations
             seed_corals!(
                 C_t,
