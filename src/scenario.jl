@@ -214,6 +214,9 @@ function run_scenario(
 
         domain = switch_RCPs!(domain, rcp)
     end
+    if domain.RCP != rcp
+        domain = switch_RCPs!(domain, rcp)
+    end
 
     result_set = run_model(domain, scenario)
 
