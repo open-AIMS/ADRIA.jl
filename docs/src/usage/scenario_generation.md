@@ -112,8 +112,7 @@ ADRIA.fix_factor!(dom;
     a_adapt=3.0,  # only deploy +3 DHW enhanced corals
     seed_years=5,
     shade_years=0,
-    seed_freq=0,
-    shade_freq=0,
+    seed_deployment_freq=0,
     seed_year_start=3,
     shade_year_start=3,
     coral_cover_tol=1.0

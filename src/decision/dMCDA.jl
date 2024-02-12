@@ -135,6 +135,40 @@ function summary_stat_env(
     return vec((mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w)))
 end
 
+"""
+    decision_frequency(
+        start_year::Int64,
+        timeframe::Int64,
+        n_years::Int64,
+        freq::Union{Float64,Int64}
+    )::Vector{Bool}
+
+# Arguments
+- `start_year` : Year to begin deployments
+- `timeframe` : Total length of simulation time
+- `n_years` : Number of years to deploy for
+- `freq` : Frequency (in years) of decision/deployments
+
+# Returns
+Vector of true/false indicating which years in simulation period to apply a decision.
+"""
+function decision_frequency(
+    start_year::Int64, timeframe::Int64, n_years::Int64, freq::Union{Float64,Int64}
+)::Vector{Bool}
+    freq_timeframe = fill(false, timeframe)
+
+    start_year = max(start_year, 2)
+    if freq > 0
+        max_consider = min(start_year + n_years - 1, timeframe)
+        freq_timeframe[start_year:Int64(freq):max_consider] .= true
+    else
+        # Start at year 2 or the given specified start year
+        freq_timeframe[start_year] = true
+    end
+
+    return freq_timeframe
+end
+
 
 """
     unguided_selection(
@@ -184,6 +218,7 @@ export
     update_criteria_values!,
     select_locations,
     unguided_selection,
+    decision_frequency,
     weighted_projection,
     within_depth_bounds,
     summary_stat_env,
