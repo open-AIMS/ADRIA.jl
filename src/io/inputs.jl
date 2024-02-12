@@ -84,7 +84,7 @@ function load_nc_data(
         axlist = Tuple(Dim{i[1]}(i[2]) for i in zip(dim_names, dim_labels))
 
         cube = YAXArray(axlist, data)
-        return sort(cube, :sites)
+        return sort_axis(cube, :sites)
     end
 end
 
