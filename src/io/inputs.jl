@@ -243,7 +243,7 @@ end
 Constructor for YAXArray with all entries equal zero.
 """
 function ZeroDataCube(T=Float64; kwargs...)::YAXArray
-    return DataCube(zeros(T, [length(kwargs[name]) for (name, _) in kwargs]...); kwargs...)
+    return DataCube(zeros(T, [length(val) for (name, val) in kwargs]...); kwargs...)
 end
 
 function axes_names(cube::YAXArray)
