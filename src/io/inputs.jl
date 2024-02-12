@@ -206,46 +206,17 @@ Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality
 ordered by :locations
 """
 function load_cyclone_mortality(data_fn::String)::NamedDimsArray
-    # Read file as YAXArray and convert to NamedDimsArray
-    # as we intend to move to use only YAXArrays soon
     cyclone_cube::YAXArray = Cube(data_fn)
-
-    # Get locations sort indexes
-    locations = collect(cyclone_cube.locations)
-    location_sort_idx::Vector{Int64} = sortperm(locations)
-
-    # Order locations labels
-    ordered_locations::Vector{String} = locations[location_sort_idx]
-    YAXArrays.DD.set(cyclone_cube, :locations => ordered_locations)
-
-    # Order data according to locations
-    ordered_data = cyclone_cube.data[:, location_sort_idx, :, :]
-
-    ordered_cyclone_cube::YAXArray = YAXArray(cyclone_cube.axes, ordered_data)
-    return _yaxarray2nameddimsarray(ordered_cyclone_cube)
+    return _yaxarray2nameddimsarray(sort_axis(cyclone_cube, :locations))
 end
-function load_cyclone_mortality(
-    timeframe::Vector{Int64}, site_data::DataFrame
-)::NamedDimsArray
-    locations::Vector{String} = sort(site_data.reef_siteid)
-    species::Vector{String} = ADRIA.coral_spec().taxa_names
-    scenarios::Vector{Int64} = [1]
-
-    n_timesteps::Int64 = length(timeframe)
-    n_locations::Int64 = length(locations)
-    n_species::Int64 = length(species)
-    n_scenarios::Int64 = length(scenarios)
-
-    axlist::Tuple = (
-        Dim{:timesteps}(1:n_timesteps),
-        Dim{:locations}(locations),
-        Dim{:species}(species),
-        Dim{:scenarios}(scenarios),
+function load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::NamedDimsArray
+    cube = ZeroDataCube(;
+        timesteps=1:length(timeframe),
+        locations=sort(site_data.reef_siteid),
+        species=ADRIA.coral_spec().taxa_names,
+        scenarios=[1]
     )
-
-    data::Array{Float64,4} = zeros(n_timesteps, n_locations, n_species, n_scenarios)
-
-    return _yaxarray2nameddimsarray(YAXArray(axlist, data))
+    return _yaxarray2nameddimsarray(cube)
 end
 
 function _yaxarray2nameddimsarray(yarray::YAXArray)::NamedDimsArray
@@ -255,4 +226,46 @@ function _yaxarray2nameddimsarray(yarray::YAXArray)::NamedDimsArray
     dim_labels::Vector = lookup.([yarray], dim_names)
 
     return NamedDimsArray(data; zip(dim_names, dim_labels)...)
+end
+
+"""
+    DataCube(data::AbstractArray; kwargs...)::YAXArray
+
+Constructor for YAXArray.
+"""
+function DataCube(data::AbstractArray; kwargs...)::YAXArray
+    return YAXArray(Tuple(Dim{name}(val) for (name, val) in kwargs), data)
+end
+
+"""
+    ZeroDataCube(T=Float64; kwargs...)::YAXArray
+
+Constructor for YAXArray with all entries equal zero.
+"""
+function ZeroDataCube(T=Float64; kwargs...)::YAXArray
+    return DataCube(zeros(T, [length(val) for (name, val) in kwargs]...); kwargs...)
+end
+
+function axes_names(cube::YAXArray)
+    return name.(cube.axes)
+end
+
+"""
+    sort_axis(cube::YAXArray, axis_name::Symbol)
+
+Sorts axis labels of a given YAXArray datacube.
+"""
+function sort_axis(cube::YAXArray, axis_name::Symbol)::YAXArray
+    axis_labels = collect(lookup(cube, axis_name))
+    labels_sort_idx::Vector{Int64} = sortperm(axis_labels)
+    ordered_labels = axis_labels[labels_sort_idx]
+
+    # Get selector to order data
+    _axes_names = axes_names(cube)
+    n_axes = length(_axes_names)
+    selector::Vector{Union{Colon,Vector{Int64}}} = fill(:, n_axes)
+    axis_idx::Int64 = findfirst(x -> x == axis_name, _axes_names)
+    selector[axis_idx] = labels_sort_idx
+
+    return cube[selector...]
 end
