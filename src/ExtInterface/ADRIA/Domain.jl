@@ -34,8 +34,6 @@ mutable struct ADRIADomain{
     sim_constants::SimConstants
 end
 
-using Infiltrator
-
 """
 Barrier function to create Domain struct without specifying Intervention/Criteria/Coral/SimConstant parameters.
 """
@@ -80,7 +78,6 @@ function Domain(
         criteria_weights,
         Coral(),
     ))
-    @infiltrate
     return ADRIADomain(
         name,
         rcp,
