@@ -58,15 +58,15 @@ function load_scenarios(domain::Domain, filepath::String)::DataFrame
 end
 
 """
-    load_nc_data(data_fn::String, attr::String; dim_names::Vector{Symbol}=[], dim_names_replace::Vector=[])::YAXArray
+    load_nc_data(data_fn::String, attr::String; dim_names::Vector{Symbol}=Symbol[], dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[])::YAXArray
 
 Load cluster-level data for a given attribute in a netCDF.
 """
 function load_nc_data(
     data_fn::String,
     attr::String;
-    dim_names::Vector=[],
-    dim_names_replace::Vector=[],
+    dim_names::Vector{Symbol}=Symbol[],
+    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[],
 )::YAXArray
     NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
         data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
@@ -135,7 +135,7 @@ end
 Load initial coral cover data from netCDF.
 """
 function load_cover(data_fn::String, site_data::DataFrame)::YAXArray
-    _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
+    _dim_names_replace::Vector{Pair{Symbol,Symbol}} = [:covers => :species, :reef_siteid => :sites]
     data = load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
 
     return _convert_abs_to_k(data, site_data)
@@ -153,7 +153,7 @@ end
 Load environmental data layers (DHW, Wave) from netCDF.
 """
 function load_env_data(data_fn::String, attr::String)::YAXArray
-    _dim_names = [:timesteps, :sites, :scenarios]
+    _dim_names::Vector{Symbol} = [:timesteps, :sites, :scenarios]
     return load_nc_data(data_fn, attr; dim_names=_dim_names)
 end
 function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArray
