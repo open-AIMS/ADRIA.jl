@@ -632,30 +632,16 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
             if seed_decision_years[tstep]
                 sp = filter_constant_criteria(seed_pref, is_const)
-
-                reselect = false
-                if seed_decision_years[tstep]
-                    reselect = true
-                elseif !seed_decision_years[tstep] && !isempty(selected_seed_ranks)
-                    # Reselect deployment locations anyway if any one of the locations are
-                    # filled to max capacity.
-                    if any(leftover_space_m²[selected_seed_ranks[:, 2]] .== 0.0)
-                        reselect = true
-                    end
-                end
-
-                if reselect
-                    selected_seed_ranks = select_locations(
-                        sp,
-                        decision_mat[criteria=At(valid_criteria)],
-                        MCDA_approach,
-                        site_data.cluster_id[considered_locs],
-                        area_to_seed,
-                        vec(leftover_space_m²),
-                        domain.sim_constants.n_site_int,
-                        domain.sim_constants.max_members
-                    )
-                end
+                selected_seed_ranks = select_locations(
+                    sp,
+                    decision_mat[criteria=At(valid_criteria)],
+                    MCDA_approach,
+                    site_data.cluster_id[considered_locs],
+                    area_to_seed,
+                    vec(leftover_space_m²),
+                    domain.sim_constants.n_site_int,
+                    domain.sim_constants.max_members
+                )
 
                 # Log rankings as appropriate
                 if !isempty(selected_seed_ranks)
