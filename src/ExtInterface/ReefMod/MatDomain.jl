@@ -13,8 +13,6 @@ using
     NetCDF
     YAXArrays
 
-import ArchGDAL: createpoint
-
 import YAXArrays.DD: At
 
 mutable struct ReefModDomain <: Domain
@@ -73,7 +71,7 @@ function load_domain(
     netcdf_file = _find_netcdf(fn_path, RCP)
     dom_dataset::Dataset = open_dataset(netcdf_file)
 
-    # force YAXArrays to load data into NamedDimsArray
+    # Force YAXArrays to load data into NamedDimsArray
     dhws = Cube(dom_dataset[["record_applied_DHWs"]])[timestep = At(timeframe[1] : timeframe[2])].data[:, :, :]
     dhw_scens = NamedDimsArray(
         dhws,
