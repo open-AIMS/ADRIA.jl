@@ -242,6 +242,10 @@ function disperse_locations(
         for rule_violator in exceeded_clusters
             # For each cluster that violates the rule find out how much the rule was violated
             # by. The difference is how many alternate locations we need to find.
+            if !(rule_violator in keys(cluster_frequency))
+                continue
+            end
+
             freq = cluster_frequency[rule_violator]
             reduce_by = freq - max_members
 
@@ -285,9 +289,14 @@ function disperse_locations(
                     rule_violators_idx, exceeded_clusters,
                     potential_alternatives = _update_state(cluster_ids, num_locs, max_members)
             end
-        end
-        c += 1
 
+            if length(exceeded_clusters) == 0
+                # Break out of for loop early if solution found
+                break
+            end
+        end
+
+        c += 1
         if c > max_iter
             @debug "Could not reduce clusters down to max_members. Exceeded `max_iter`."
             break
