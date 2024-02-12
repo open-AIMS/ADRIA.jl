@@ -80,11 +80,7 @@ function load_nc_data(
         end
 
         dim_labels = _nc_dim_labels(data_fn, data, nc_file)
-
-        axlist = Tuple(Dim{i[1]}(i[2]) for i in zip(dim_names, dim_labels))
-
-        cube = YAXArray(axlist, data)
-        return sort_axis(cube, :sites)
+        return sort_axis(DataCube(data; zip(dim_names, dim_labels)...), :sites)
     end
 end
 
@@ -135,15 +131,15 @@ end
 Load initial coral cover data from netCDF.
 """
 function load_cover(data_fn::String, site_data::DataFrame)::YAXArray
-    _dim_names_replace::Vector{Pair{Symbol,Symbol}} = [:covers => :species, :reef_siteid => :sites]
+    _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
     data = load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
 
     return _convert_abs_to_k(data, site_data)
 end
 function load_cover(n_species::Int64, n_sites::Int64)::YAXArray
     @warn "Using random initial coral cover"
-    axlist = (Dim{:species}(1:(n_species)), Dim{:sites}(1:n_sites))
-    return YAXArray(axlist, rand(Float32, n_species, n_sites))
+
+    return DataCube(rand(Float32, n_species, n_sites); species=1:(n_species), sites=1:n_sites)
 end
 
 """
@@ -157,8 +153,7 @@ function load_env_data(data_fn::String, attr::String)::YAXArray
     return load_nc_data(data_fn, attr; dim_names=_dim_names)
 end
 function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArray
-    axlist = (Dim{:timesteps}(timeframe), Dim{:sites}(sites), Dim{:scenarios}(1:50))
-    return YAXArray(axlist, zeros(Float32, length(timeframe), length(sites), 50);)
+    return ZeroDataCube(Float32; timesteps=timeframe, sites=sites, scenarios=1:50)
 end
 
 """
