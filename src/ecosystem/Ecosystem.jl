@@ -69,7 +69,7 @@ The mean of the truncated standard normal distribution or the upper bound if `lb
 """
 function truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
     if abs(lb) > abs(ub)
-        return - truncated_standard_normal_mean(-ub, -lb)
+        return -truncated_standard_normal_mean(-ub, -lb)
     elseif (lb == ub)
         return lb
     end
