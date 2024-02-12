@@ -14,6 +14,7 @@ In such cases, use the alternate MSIX App installer (https://install.julialang.o
 
 - It is recommended that the [juliaup](https://github.com/JuliaLang/juliaup) tool be used to ease managing Julia versions.
 - We recommend [VS Code](https://code.visualstudio.com/) with its Julia extension when developing ADRIA.
+- Install the VS Code Julia Formatter extension (note: **not** the JuliaFormatter.jl package).
 - We also recommend the built-in Julia REPL within VS Code be used (see the notes below).
 
 
@@ -118,6 +119,55 @@ for further details.
 
 We are currently moving to follow [Blue Style Guide](https://github.com/invenia/BlueStyle).
 All PRs should follow this style guide.
+
+To set up the formatter:
+
+- Go to the VS Code settings panel or press `ctrl+,`.
+- Search for "Julia Formatter"
+
+One of the top matches, if not the first match, should be the configuration flags for the
+formatter.
+
+```bash
+Julia-format: Flag
+Flag(s) for JuliaFormatter. See Formatting Options and options.jl.
+```
+
+The team has adopted the following configuration options for auto-formatting:
+
+```bash
+style=BlueStyle(), indent=4, margin=92, always_for_in=true, for_in_replacement="∈", whitespace_typedefs=false, import_to_using=true, align_struct_field=true, align_assignment=false, align_conditional=true, align_pair_arrow=false, normalize_line_endings="unix", align_matrix=true, join_lines_based_on_source=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=true, trailing_comma=false
+```
+
+Under the tabs option:
+
+```bash
+Julia-format: Tabs
+Tab size, which should be the same as indent's value in Julia-format: Flag. Or, set this to 0 to use space(s).
+```
+
+Set this to 0 to ensure spaces are always used for indentation.
+
+Next, search for `trim` and ensure the following options are all ticked/enabled:
+
+- Files: Trim Final Newlines
+- Files: Trim Trailing Whitespace
+- Editor: Trim Auto Whitespace
+
+An optional, but recommended, step would be to add a ruler guide to indicate where the
+character limit/width is.
+
+Search for `rulers` and click on "Edit in settings.json" under "Editor: Rulers"
+
+Add "92" to the list of ruler lengths, such that the `editor.rulers` entry looks like this:
+
+```json
+"editor.rulers": [
+        92
+    ]
+```
+
+Adding multiple values adds more guide lines at the indicated widths.
 
 ## Notes
 
