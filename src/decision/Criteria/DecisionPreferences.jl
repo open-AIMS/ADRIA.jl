@@ -139,7 +139,8 @@ function rank_by_index(
 
     scores = res.scores
     if all(isnan.(scores))
-        # This may happen if there are constants in the decision matrix.
+        # This may happen if there are constants in the decision matrix
+        # or if the method fails for some reason...
         throw(DomainError(scores, "No ranking possible"))
     end
 
