@@ -147,7 +147,7 @@ end
 Load initial coral cover data from netCDF.
 """
 function load_cover(data_fn::String, site_data::DataFrame)::YAXArray
-    _dim_names_replace::Vector{Pair{Symbol,Symbol}} = [:covers => :species, :reef_siteid => :sites]
+    _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
     data = load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
 
     return load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
