@@ -620,14 +620,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
-        # Determine intervention locations whose deployment is assumed to occur
-        # between November to February.
-        # - SRM is applied first
-        # - Fogging is applied next
-        # - then cyclone mortality
-        # - Bleaching then occurs
-        # - Then intervention locations are seeded
-        if is_guided && (in_seed_timeframe || in_fog_timeframe)
+        if is_guided && (seed_decision_years[tstep] || fog_decision_years[tstep])
             # Update dMCDA values
             dhw_projection = weighted_projection(dhw_scen, tstep, plan_horizon, decay, tf)
             wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
@@ -705,7 +698,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     domain.site_ids,
                     min_iv_locs,
                     vec(leftover_space_m²),
-                    depth_priority
+                    depth_criteria
                 )
 
                 site_ranks[tstep, selected_seed_ranks[:, 2], 1] .= 1.0
@@ -716,7 +709,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     domain.site_ids,
                     min_iv_locs,
                     vec(leftover_space_m²),
-                    depth_priority
+                    depth_criteria
                 )
 
                 site_ranks[tstep, selected_fog_ranks[:, 2], 1] .= 1.0
