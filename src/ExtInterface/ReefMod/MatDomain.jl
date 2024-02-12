@@ -22,13 +22,13 @@ mutable struct ReefModDomain <: Domain
     RCP::String
     env_layer_md
     scenario_invoke_time::String  # time latest set of scenarios were run
-    const TP_data
+    const conn
     const in_conn
     const out_conn
     const strong_pred
     const site_data
     const site_id_col
-    const unique_site_id_col
+    const cluster_id_col
     init_coral_cover
     const coral_growth::CoralGrowth
     const site_ids
@@ -53,7 +53,8 @@ end
         RCP::String
     )::ReefModDomain
 
-Load ReefMod Matlab Dataset stored in netcdf file format.
+Load ReefMod Matlab Dataset stored in netcdf file format. 
+Uses a path ReefMod Engine data to fill missing required data
 
 # Arguments
 - `ReefModDomain` : DataType
@@ -74,7 +75,6 @@ function load_domain(
 
     # force YAXArrays to load data into NamedDimsArray
     dhws = Cube(dom_dataset[["record_applied_DHWs"]])[timestep = At(timeframe[1] : timeframe[2])].data[:, :, :]
-    println(size(dhws))
     dhw_scens = NamedDimsArray(
         dhws,
         timesteps=timeframe[1]:timeframe[2],
@@ -87,8 +87,8 @@ function load_domain(
     lon_col_id = "X_COORD"
     site_data = GDF.read(site_data_path)
     site_id_col = "LOC_NAME_S"
-    unique_site_id_col = "LOC_NAME_S"
-    site_ids = site_data[:, unique_site_id_col]
+    cluster_id_col = "LOC_NAME_S"
+    site_ids = site_data[:, cluster_id_col]
     
     site_data[:, lat_col_id] = Cube(dom_dataset[["lat"]]).data
     site_data[:, lon_col_id] = Cube(dom_dataset[["lon"]]).data
@@ -130,7 +130,7 @@ function load_domain(
         fn_path,
         geodata_fn,
         site_id_col,
-        unique_site_id_col,
+        cluster_id_col,
         "",
         "",
         "",
@@ -156,7 +156,7 @@ function load_domain(
         strong_pred,
         site_data,
         site_id_col,
-        unique_site_id_col,
+        cluster_id_col,
         init_coral_cover,
         CoralGrowth(nrow(site_data)),
         site_ids,
@@ -259,7 +259,6 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     )[timestep = At(d.env_layer_md.timeframe)].data[:, :, :]
 
     scens = 1:size(dhws)[3]
-    println(size(dhws))
     loc_ids = _get_loc_ids(d.loc_ids_path)
     d.dhw_scens = NamedDimsArray(
         dhws,

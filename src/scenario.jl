@@ -214,7 +214,7 @@ function run_scenario(
 
         domain = switch_RCPs!(domain, rcp)
     end
-    if domain.RCP != rcp
+    if domain.RCP == ""
         domain = switch_RCPs!(domain, rcp)
     end
 
