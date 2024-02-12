@@ -16,8 +16,7 @@ using ADRIA.decision:
 
 using ADRIA.decision:
     SeedCriteriaWeights,
-    FogCriteriaWeights,
-    SRMCriteriaWeights
+    FogCriteriaWeights
 
 mutable struct ReefModDomain <: Domain
     const name::String
@@ -146,7 +145,6 @@ function load_domain(::Type{ReefModDomain}, fn_path::String, RCP::String)::ReefM
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
         SeedCriteriaWeights(),
         FogCriteriaWeights(),
-        SRMCriteriaWeights(),
         DepthThresholds()
     ]
 

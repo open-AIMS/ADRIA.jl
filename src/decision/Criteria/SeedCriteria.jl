@@ -58,24 +58,25 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         name="Seed Coral Cover",
         description="Preference locations with lower coral cover (higher available space) for seeding deployments.",
     )
-    seed_priority::Param = Factor(
-        1.0;
-        ptype="continuous",
-        dist=Uniform,
-        dist_params=(0.0, 1.0),
-        direction=maximum,
-        name="Predecessor Priority (Seed)",
-        description="Preference locations that provide larvae to priority reefs.",
-    )
-    seed_zone::Param = Factor(
-        0.0;
-        ptype="continuous",
-        dist=Uniform,
-        dist_params=(0.0, 1.0),
-        direction=maximum,
-        name="Zone Predecessor (Seed)",
-        description="Preference locations that provide larvae to priority (target) zones.",
-    )
+    # Disabled as they are currently unnecessary
+    # seed_priority::Param = Factor(
+    #     1.0;
+    #     ptype="continuous",
+    #     dist=Uniform,
+    #     dist_params=(0.0, 1.0),
+    #     direction=maximum,
+    #     name="Predecessor Priority (Seed)",
+    #     description="Preference locations that provide larvae to priority reefs.",
+    # )
+    # seed_zone::Param = Factor(
+    #     0.0;
+    #     ptype="continuous",
+    #     dist=Uniform,
+    #     dist_params=(0.0, 1.0),
+    #     direction=maximum,
+    #     name="Zone Predecessor (Seed)",
+    #     description="Preference locations that provide larvae to priority (target) zones.",
+    # )
 end
 
 """

@@ -53,7 +53,6 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     interv = component_params(spec, Intervention)
     seed_weights = component_params(spec, SeedCriteriaWeights)
     fog_weights = component_params(spec, FogCriteriaWeights)
-    srm_weights = component_params(spec, SRMCriteriaWeights)
 
     # If counterfactual, set all intervention options to 0.0
     df[df.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .=
@@ -62,8 +61,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
     non_depth_names = vcat(
         seed_weights.fieldname,
-        fog_weights.fieldname,
-        srm_weights.fieldname
+        fog_weights.fieldname
     )
     df[df.guided .== 0.0, non_depth_names] .= 0.0
     df[df.guided .== -1.0, non_depth_names] .= 0.0
@@ -209,7 +207,7 @@ Scenario specification
 """
 function sample_site_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
     subset_spec = component_params(
-        d.model, [EnvironmentalLayer, Intervention, SeedCriteriaWeights, FogCriteriaWeights, SRMCriteriaWeights, DepthThresholds]
+        d.model, [EnvironmentalLayer, Intervention, SeedCriteriaWeights, FogCriteriaWeights, DepthThresholds]
     )
 
     # Only sample guided intervention scenarios

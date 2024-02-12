@@ -58,24 +58,25 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Fog Coral Cover",
         description="Higher values give preference to sites with high coral cover for fogging deployments.",
     )
-    fog_priority::Param= Factor(
-        0.0;
-        ptype="continuous",
-        dist=Uniform,
-        dist_params=(0.0, 1.0),
-        direction=maximum,
-        name="Predecessor Priority (Fog)",
-        description="Importance of fogging sites that provide larvae to priority reefs.",
-    )
-    fog_zone::Param= Factor(
-        0.0;
-        ptype="continuous",
-        dist=Uniform,
-        dist_params=(0.0, 1.0),
-        direction=maximum,
-        name="Zone Predecessor (Fog)",
-        description="Importance of fogging sites that provide larvae to priority (target) zones.",
-    )
+    # Disabled as they are currently unnecessary
+    # fog_priority::Param= Factor(
+    #     0.0;
+    #     ptype="continuous",
+    #     dist=Uniform,
+    #     dist_params=(0.0, 1.0),
+    #     direction=maximum,
+    #     name="Predecessor Priority (Fog)",
+    #     description="Importance of fogging sites that provide larvae to priority reefs.",
+    # )
+    # fog_zone::Param= Factor(
+    #     0.0;
+    #     ptype="continuous",
+    #     dist=Uniform,
+    #     dist_params=(0.0, 1.0),
+    #     direction=maximum,
+    #     name="Zone Predecessor (Fog)",
+    #     description="Importance of fogging sites that provide larvae to priority (target) zones.",
+    # )
 end
 
 # Alias default constructor

@@ -5,8 +5,7 @@ using ADRIA.decision:
 
 using ADRIA.decision:
     SeedCriteriaWeights,
-    FogCriteriaWeights,
-    SRMCriteriaWeights
+    FogCriteriaWeights
 
 """
     ADRIADomain{Σ,M,I,D,X,Y,Z}
@@ -70,7 +69,6 @@ function Domain(
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
         SeedCriteriaWeights(),
         FogCriteriaWeights(),
-        SRMCriteriaWeights(),
         DepthThresholds()
     ]
 

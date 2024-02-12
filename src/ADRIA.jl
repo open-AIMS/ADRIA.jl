@@ -86,7 +86,7 @@ export
     growthODE,
     run_scenario, coral_spec,
     create_coral_struct, Intervention, Corals, SimConstants,
-    SeedCriteriaWeights, FogCriteriaWeights, SRMCriteriaWeights,
+    SeedCriteriaWeights, FogCriteriaWeights,
     site_area, site_k_area,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz

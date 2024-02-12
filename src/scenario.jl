@@ -491,7 +491,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         _valid_locs = coral_habitable_locs .& depth_criteria
         decision_mat = decision_mat[_valid_locs, :]
 
-        # Row IDs of valid locations after depth thresholds and k area filter are applied
+        # IDs of valid locations after depth thresholds and k area filter are applied
         considered_locs = findall(_valid_locs)
 
         # Number of time steps in environmental layers to look ahead when making decisions
@@ -622,8 +622,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 seed_wave_stress=wave_projection,
                 seed_coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
                 seed_in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
-                seed_out_connectivity=out_conn[considered_locs],
-                seed_priority=strong_pred[considered_locs]
+                seed_out_connectivity=out_conn[considered_locs]
             )
 
             # Recreate preferences, removing criteria that are constant for this timestep
