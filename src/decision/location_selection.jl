@@ -50,7 +50,7 @@ function _location_selection(
         rankingsin,
         in_conn[site_ids],
         out_conn[site_ids],
-        strong_pred[site_ids]
+        strong_pred[site_ids],
     )
 
     return ranks[:, 2:3]
@@ -90,7 +90,7 @@ function rank_locations(
     k_area_locs = site_k_area(domain)
 
     ranks_store = NamedDimsArray(
-        zeros(n_locs, 2, nrow(scenarios)),
+        zeros(n_locs, 2, nrow(scenarios));
         sites=1:n_locs,
         intervention=["seed", "fog"],
         scenarios=1:nrow(scenarios),
@@ -135,19 +135,19 @@ function rank_locations(
             leftover_space_scens[scen_idx, :],
             area_to_seed,
             summary_stat_env(wave_scens[:, :, target_wave_scens], (:timesteps, :scenarios)),
-            summary_stat_env(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios))
-            )
+            summary_stat_env(dhw_scens[:, :, target_dhw_scens], (:timesteps, :scenarios)),
+        )
 
         ranks_store(; scenarios=scen_idx, sites=considered_sites) .= _location_selection(
             domain,
             collect(sum_cover[scen_idx, :]),
             mcda_vars_temp,
-            scen.guided,
+            scen.guided
         )
     end
 
     # Set filtered locations as n_locs+1 for consistency with time dependent ranks
-    ranks_store[ranks_store.==0.0] .= length(domain.site_ids)+1
+    ranks_store[ranks_store .== 0.0] .= length(domain.site_ids) + 1
 
     return ranks_store
 end
@@ -157,7 +157,7 @@ function rank_locations(
     sum_cover::NamedDimsArray,
     area_to_seed::Float64,
     agg_func::Function,
-    iv_type::Union{Int64, Symbol, String};
+    iv_type::Union{Int64,Symbol,String};
     target_seed_sites=nothing,
     target_fog_sites=nothing,
 )::AbstractArray
@@ -180,9 +180,8 @@ function rank_locations(
         iv_id = iv_type
     end
 
-    return agg_func(ranks(intervention=iv_id))
+    return agg_func(ranks(; intervention=iv_id))
 end
-
 
 """
     ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)
@@ -208,7 +207,7 @@ function ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)::NamedDimsA
     dn_subset = vcat(freq_dims, [:ranks])
     freq_elements = vcat(
         [1:size(ranks, n) for n in dn if n != :scenarios],
-        [1:size(ranks, :sites)],
+        [1:size(ranks, :sites)]
     )
     mn = ([size(ranks, k) for k in freq_dims]..., size(ranks, :sites))
 
@@ -223,7 +222,7 @@ end
 function ranks_to_frequencies(
     ranks::NamedDimsArray{D,T,3,A};
     n_ranks::Int64=length(ranks.sites),
-    agg_func=nothing,
+    agg_func=nothing
 )::NamedDimsArray where {D,T,A}
     if !isnothing(agg_func)
         return agg_func(ranks_to_frequencies(ranks, n_ranks))
@@ -234,7 +233,7 @@ end
 function ranks_to_frequencies(
     ranks::NamedDimsArray{D,T,2,A};
     n_ranks::Int64=length(ranks.sites),
-    agg_func=nothing,
+    agg_func=nothing
 )::NamedDimsArray where {D,T,A}
     if !isnothing(agg_func)
         return agg_func(ranks_to_frequencies(ranks, n_ranks))
@@ -261,7 +260,7 @@ Number of times each location was selected for an intervention.
 """
 function location_selection_frequencies(
     ranks::NamedDimsArray;
-    n_iv_locs::Int64=5,
+    n_iv_locs::Int64=5
 )::NamedDimsArray
     ranks_frequencies = ranks_to_frequencies(ranks; n_ranks=n_iv_locs)
     loc_count = sum(ranks_frequencies[ranks=1:n_iv_locs]; dims=:ranks)[ranks=1]
@@ -270,7 +269,7 @@ function location_selection_frequencies(
 end
 function location_selection_frequencies(
     iv_log::NamedDimsArray{D,T,4,A};
-    dims::Union{Symbol,Vector{Symbol}}=:coral_id,
+    dims::Union{Symbol,Vector{Symbol}}=:coral_id
 )::NamedDimsArray where {D,T,A}
     loc_count = dropdims(
         sum(dropdims(sum(iv_log; dims=dims); dims=dims) .> 0; dims=:scenarios);
@@ -279,9 +278,8 @@ function location_selection_frequencies(
     return loc_count
 end
 
-
 """Drop single dimensions."""
-_drop_single(x::AbstractMatrix) = dropdims(x, dims=(findall(size(x) .== 1)...,))
+_drop_single(x::AbstractMatrix) = dropdims(x; dims=(findall(size(x) .== 1)...,))
 
 """
     selection_score(ranks::NamedDimsArray{D,T,3,A}; dims::Vector{Symbol}=[:scenarios, :timesteps]) where {D,T,A}
@@ -302,13 +300,13 @@ Selection score
 """
 function selection_score(
     ranks::NamedDimsArray{D,T,3,A};
-    dims::Vector{Symbol}=[:scenarios, :timesteps],
+    dims::Vector{Symbol}=[:scenarios, :timesteps]
 )::NamedDimsArray where {D,T,A}
     return _drop_single(selection_score(ranks, dims))
 end
 function selection_score(
     ranks::NamedDimsArray{D,T,2,A};
-    dims::Vector{Symbol}=[:scenarios],
+    dims::Vector{Symbol}=[:scenarios]
 )::NamedDimsArray where {D,T,A}
     return selection_score(ranks, dims)
 end
