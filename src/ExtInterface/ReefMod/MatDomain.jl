@@ -1,17 +1,19 @@
 using ADRIA: SimConstants, Domain, GDF
-using AxisKeys
-using DataFrames
-using DimensionalData
-using Distributions
-using MAT
-using ModelParameters
-using NamedDims
-using NetCDF
-using Statistics
-using YAXArrays
 
-using Infiltrator
+using 
+    Distributions
+    Statistics
 
+using
+    AxisKeys
+    DataFrames
+    MAT
+    ModelParameters
+    NamedDims
+    NetCDF
+    YAXArrays
+
+import YAXArrays.DD: At
 
 mutable struct ReefModDomain <: Domain
     const name::String
@@ -76,7 +78,7 @@ function load_domain(
     loc_ids_path = joinpath(data_files, "dhw")
     loc_ids = _get_loc_ids(loc_ids_path)
 
-    # force YAXArrays to load data into NamedDimsArray
+    # Force YAXArrays to load data into NamedDimsArray
     dhws = Cube(dom_dataset[["record_applied_DHWs"]])[timestep = At(timeframe[1] : timeframe[2])].data[:, :, :]
     dhw_scens = NamedDimsArray(
         dhws,
@@ -135,7 +137,7 @@ function load_domain(
         scenarios=[1]
     )
     
-    # current ReefMod mat data only contains cyclone classifications not mortality
+    # Current ReefMod mat data only contains cyclone classifications not mortality
     # timesteps, location, species, scenario
     cyc_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 6, 1)
     cyc_scens = NamedDimsArray(
@@ -214,11 +216,11 @@ function load_initial_cover(
     init_yr::Int=2022
 )::NamedDimsArray
     if !haskey(dom_data.cubes, :coral_cover_per_taxa)
-        @error "coral_cover_per_taxa variable not found in YAXArrays dataset"
+        @error "coral_cover_per_taxa variable not found in ReefMod data"
     end
     init_cc_per_taxa::YAXArray = Cube(dom_data[["coral_cover_per_taxa"]])[time = At(init_yr)]
 
-    # the following class weight calculations are taken from ReefModEngine Domain calculation
+    # The following class weight calculations are taken from ReefModEngine Domain calculation
     
     # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
     # as suggested by YM (pers comm. 2023-08-08 12:55pm AEST). Distribution is used to split ReefMod initial
