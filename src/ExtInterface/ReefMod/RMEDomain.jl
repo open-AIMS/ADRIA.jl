@@ -255,8 +255,6 @@ function load_DHW(
         locs=loc_ids,
         scenarios=rcp_files[keep_ds],
     )
-    # Only return valid scenarios
-    return YAXArray(axlist, data_cube[:, :, keep_ds])
 end
 
 """
