@@ -500,8 +500,8 @@ function settler_DHW_tolerance!(
             # Determine weights based on contribution to recruitment.
             # This weights the recruited corals by the size classes and source locations
             # which contributed to recruitment.
-            if sum(@view(w_per_group[:, sp])) > 0.0
-                ew = repeat(@view(w_per_group[:, sp]), inner=count(reproductive_sc))
+            if sum(w_per_group[:, sp]) > 0.0
+                ew::NamedDimsArray = repeat(w_per_group[:, sp], inner=count(reproductive_sc))
 
                 # Determine combined mean
                 # https://en.wikipedia.org/wiki/Mixture_distribution#Properties
