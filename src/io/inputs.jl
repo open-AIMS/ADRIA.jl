@@ -234,7 +234,7 @@ end
 Constructor for YAXArray.
 """
 function DataCube(data::AbstractArray; kwargs...)::YAXArray
-    return YAXArray(Tuple(Dim{name}(kwargs[name]) for name in Symbol.(keys(kwargs))), data)
+    return YAXArray(Tuple(Dim{name}(val) for (name, val) in kwargs), data)
 end
 
 """
@@ -243,10 +243,7 @@ end
 Constructor for YAXArray with all entries equal zero.
 """
 function ZeroDataCube(T=Float64; kwargs...)::YAXArray
-    return DataCube(
-        zeros(T, Tuple(length(kwargs[name]) for name in Symbol.(keys(kwargs))));
-        kwargs...
-    )
+    return DataCube(zeros(T, [length(kwargs[name]) for (name, _) in kwargs]...); kwargs...)
 end
 
 function axes_names(cube::YAXArray)
