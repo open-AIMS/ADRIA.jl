@@ -107,7 +107,6 @@ function run_scenarios(
         factors=names(scenarios_df)
     )
 
-
     para_threshold = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
     parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
@@ -141,6 +140,7 @@ function run_scenarios(
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
             # Switch RCPs so correct data is loaded
+            dom = switch_RCPs!(dom, rcp)
             target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
             rep_doms = Iterators.repeated(dom, length(target_rows))
             scenario_args = zip(rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :]))
@@ -209,7 +209,7 @@ function run_scenario(
         end
         rcp = string(Int64(scenario.RCP))  # Extract from dataframe
     end
-    if domain.RCP != rcp
+    if domain.RCP == ""
         domain = switch_RCPs!(domain, rcp)
     end
 
