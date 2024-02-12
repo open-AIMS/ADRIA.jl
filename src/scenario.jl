@@ -653,6 +653,19 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     max_members
                 )
 
+                if reselect
+                    selected_seed_ranks = select_locations(
+                        sp,
+                        decision_mat[criteria=At(valid_criteria)],
+                        MCDA_approach,
+                        site_data.cluster_id[considered_locs],
+                        area_to_seed,
+                        vec(leftover_space_m²),
+                        domain.sim_constants.n_site_int,
+                        domain.sim_constants.max_members
+                    )
+                end
+
                 # Log rankings as appropriate
                 if !isempty(selected_seed_ranks)
                     # Map selected locations back to their canonical ids.
@@ -697,7 +710,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     domain.site_ids,
                     min_iv_locs,
                     vec(leftover_space_m²),
-                    depth_priority
+                    depth_criteria
                 )
 
                 site_ranks[tstep, selected_seed_ranks[:, 2], 1] .= 1.0
@@ -708,7 +721,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     domain.site_ids,
                     min_iv_locs,
                     vec(leftover_space_m²),
-                    depth_priority
+                    depth_criteria
                 )
 
                 site_ranks[tstep, selected_fog_ranks[:, 2], 1] .= 1.0
