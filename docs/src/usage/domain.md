@@ -23,9 +23,11 @@ dom = ADRIA.load_domain(RMEDomain, "path to ReefModEngine dataset", "45")
 Note that at the moment the target RCP has to be specified.
 
 ReefMod Matlab datasets that have been converted to NetCDF files can also be used to run
-ADRIAmod simulation for the Great Barrier Reef.
+ADRIAmod simulation for the Great Barrier Reef. A path to a ReefModEngine dataset is required
+because Reefmod Matfiles do not contain some necessary site and connectivity data.
+
 ```julia
-dom = ADRIA.load_domain(ReefModDomain, "path to ReefMod dataset", "45")
+dom = ADRIA.load_domain(ReefModDomain. "path to netcdf", "path to ReefModEngine dataset", "45")
 ```
 
 The target RCP must also be specified.
