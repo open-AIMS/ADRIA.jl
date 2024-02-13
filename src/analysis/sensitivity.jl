@@ -6,8 +6,7 @@ using
     AxisKeys,
     NamedDims,
     StaticArrays,
-    YAXArrays,
-    DimensionalData
+    YAXArrays
 using DataFrames
 
 using
@@ -395,9 +394,9 @@ function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
 end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10)::YAXArrays.Dataset
-    rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::YAXArrays.Dataset
-    rsa(rs::ResultSet, y::AbstractArray{<:Real}, factors::Vector{Symbol}; S::Int64=10)::YAXArrays.Dataset
+    rsa(X::DataFrame, y::Vector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10)::Dataset
+    rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::Dataset
+    rsa(rs::ResultSet, y::AbstractArray{<:Real}, factors::Vector{Symbol}; S::Int64=10)::Dataset
 
 Perform Regional Sensitivity Analysis.
 
@@ -432,7 +431,7 @@ Note: Values of type `missing` indicate a lack of samples in the region.
 - `S` : number of bins to slice factor space into (default: 10)
 
 # Returns
-YAXArrays.Dataset
+Dataset
 
 # Examples
 ```julia
@@ -457,7 +456,7 @@ ADRIA.sensitivity.rsa(X, y; S=10)
 function rsa(
     X::DataFrame, y::AbstractVector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame;
     S::Int64=10,
-)::YAXArrays.Dataset
+)::Dataset
     N, D = size(X)
 
     X_i = zeros(N)
@@ -542,12 +541,12 @@ function rsa(
 end
 function rsa(
     rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
-)::YAXArrays.Dataset
+)::Dataset
     return rsa(rs.inputs[!, Not(:RCP)], y, rs.model_spec; S=S)
 end
 function rsa(
     rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64=10
-)::YAXArrays.Dataset
+)::Dataset
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
         y,
