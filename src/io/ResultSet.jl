@@ -306,18 +306,10 @@ function store_name(rs::ResultSet)::String
 end
 
 """
-    store_location(rs::ResultSet)::String
     result_location(rs::ResultSet)::String
 
 Get location of result set.
 """
-function store_location(rs::ResultSet)::String
-    @warn """
-    `store_location()` is deprecated and will be removed in future versions.
-    Use `result_location()` instead.
-    """
-    return result_location(rs)
-end
 function result_location(rs::ResultSet)::String
     store = ""
     try
