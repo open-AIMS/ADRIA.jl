@@ -6,7 +6,7 @@ using Distances, DataFrames
 using Combinatorics
 using JMcDM
 using InteractiveUtils: subtypes
-using ADRIA: Domain, EcoModel, n_locations, site_area, site_k_area, site_k
+using ADRIA: Domain, EcoModel, n_locations, site_area, site_k_area
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V

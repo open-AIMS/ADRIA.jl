@@ -34,7 +34,6 @@ const LOADER = @path joinpath(ASSETS, "imgs", "ADRIA_loader.gif")
 include("./plotting.jl")
 include("./layout.jl")
 include("./theme.jl")
-# include("./rf_analysis.jl")
 include("./analysis.jl")
 include("./viz/viz.jl")
 
@@ -258,27 +257,10 @@ function ADRIA.viz.explore(rs::ResultSet)
     hidespines!(scen_hist)
     ylims!(scen_hist, 0.0, maximum(tac_scen_dist))
 
-    # Random forest stuff
-    # Feature importance
-    # layout.outcomes
-    # ft_import = layout.importance
-
-    # https://github.dev/JuliaAI/DecisionTree.jl
-    # X = Matrix(rs.inputs)
-    # p = outcome_probability(tac_scen_dist)
-    # model = build_forest(p, X, ceil(Int, sqrt(size(X, 1))), 30, 0.7, -1; rng=101)
-    # p_tbl = probability_table(model, X, p)
-    # @time ft_tbl = ft_importance(model, rs.inputs, p; rng=101)
-
     ms = rs.model_spec
     intervention_components = ms[(ms.component.=="Intervention").&(ms.fieldname.!="guided"), [:name, :fieldname, :lower_bound, :upper_bound]]
     interv_names = intervention_components.fieldname
     interv_idx = findall(x -> x in interv_names, names(X))
-
-    # Adjust no intervention scenarios so intervention values are not 0 (to avoid these getting removed in display)
-    # for r in eachrow(intervention_components)
-    #     X[X.guided.<0, r.fieldname] .= r.lower_bound
-    # end
 
     # Add control grid
     # Controls for RCPs

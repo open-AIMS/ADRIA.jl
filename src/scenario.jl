@@ -40,30 +40,6 @@ function setup_cache(domain::Domain)::NamedTuple
     return cache
 end
 
-
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP::String; show_progress=true, remove_workers=true)::ResultSet
-    msg = """
-    `run_scenarios(param_df, domain, RCP)` is now deprecated and will be removed in
-    ADRIA v1.0
-
-    Instead, use:
-        `run_scenarios(dom, scens, RCP)`
-    """
-    @warn msg
-    return run_scenarios(domain, param_df, [RCP]; show_progress, remove_workers)
-end
-function run_scenarios(param_df::DataFrame, domain::Domain, RCP::Vector{String}; show_progress=true, remove_workers=true)::ResultSet
-    msg = """
-    `run_scenarios(param_df, domain, RCP)` is now deprecated and will be removed in
-    ADRIA v1.0
-
-    Instead, use:
-        `run_scenarios(dom, scens, RCP)`
-    """
-    @warn msg
-    return run_scenarios(domain, param_df, RCP; show_progress, remove_workers)
-end
-
 """
     run_scenarios(dom::Domain, scens::DataFrame, RCP::String; show_progress=true, remove_workers=true)
     run_scenarios(dom::Domain, scens::DataFrame, RCP::Vector{String}; show_progress=true, remove_workers=true)
