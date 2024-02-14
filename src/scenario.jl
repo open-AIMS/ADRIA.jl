@@ -367,10 +367,13 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Sim constants
     sim_params = domain.sim_constants
     tf::Int64 = size(dhw_scen, 1)
-    n_site_int::Int64 = sim_params.n_site_int
     n_locs::Int64 = domain.coral_growth.n_sites
     n_species::Int64 = domain.coral_growth.n_species
     n_groups::Int64 = domain.coral_growth.n_groups
+
+    # Locations to intervene
+    n_iv_locs::Int64 = param_set("min_iv_locations")
+    max_members::Int64 = param_set("cluster_max_member")
 
     # Years to start seeding/shading/fogging
     seed_start_year::Int64 = param_set[At("seed_year_start")]
