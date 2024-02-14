@@ -276,7 +276,7 @@ function load_connectivity(
     conn_path = joinpath(data_path, "con_bin")
     conn_files = _get_relevant_files(conn_path, "CONNECT_ACRO")
     if isempty(conn_files)
-        ArgumentError("No DHW data files found in: $(conn_path)")
+        ArgumentError("No CONNECT_ACRO data files found in: $(conn_path)")
     end
 
     n_locs = length(loc_ids)
