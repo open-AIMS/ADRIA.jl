@@ -260,6 +260,7 @@ function _adjust_guided_lower_bound!(spec_df::DataFrame, lower::Int64)::DataFram
     # Update entries, standardizing values for bounds as floats
     spec_df[guided_col, [:val, :lower_bound, :dist_params]] .=
         [lower Float64(lower) (Float64(lower), g_upper)]
+
     return spec_df
 end
 
@@ -281,7 +282,10 @@ function sample_guided(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScra
 
     # Remove unguided scenarios as an option
     # Sample without unguided (i.e., values >= 1), then revert back to original model spec
-    _adjust_guided_lower_bound!(spec_df, 1)
+    if !(spec_df[spec_df.fieldname .== :guided, :is_constant][1])
+        _adjust_guided_lower_bound!(spec_df, 1)
+        spec_df[!, :is_constant] .= spec_df[!, :lower_bound] .== spec_df[!, :upper_bound]
+    end
 
     return sample(spec_df, n, sample_method)
 end
@@ -493,8 +497,25 @@ function set_factor_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Doma
     end
 
     params = model_spec(dom)
+
+    old_bounds = params[params.fieldname .== factor, :dist_params][1]
+    if length(new_bounds) < length(old_bounds)
+        new_peak = old_bounds[3]
+        if contains(string(params[params.fieldname .== factor, :dist][1]), "Triang")
+            # Calculate new peak if needed
+            if !(new_bounds[1] .< new_peak .< new_bounds[2])
+                new_peak = middle(new_bounds[1], new_bounds[2])
+            end
+        end
+
+        new_bounds = (new_bounds..., new_peak)
+    end
+
     params[params.fieldname .== factor, :dist_params] .= [new_bounds]
-    params[params.fieldname .== factor, :val] .= new_val
+
+    old_val = params[params.fieldname .== factor, :val][1]
+    params[params.fieldname .== factor, :val] .= oftype(old_val, new_val)
+    params[!, :is_constant] .= params[!, :lower_bound] .== params[!, :upper_bound]
 
     update!(dom, params)
 
@@ -520,7 +541,7 @@ function _discrete_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Tuple
         @warn "Upper and/or lower bounds for discrete variables should be integers."
 
     new_lower = round(new_lower)
-    new_upper = min(ceil(new_upper), get_default_dist_params(dom, factor)[2])
+    new_upper = min(floor(new_upper), get_default_dist_params(dom, factor)[2])
     new_bounds = (new_lower, new_upper)
 
     new_val::Int64 = floor(new_lower + 0.5 * (new_upper - new_lower))
@@ -538,9 +559,9 @@ function _check_bounds_range(dom::Domain, factor::Symbol, new_bounds::Tuple)::No
     new_lower, new_upper = new_bounds
 
     if contains(string(_distribution_type(dom, factor)), "Triang") && (length(new_bounds) !== 3)
-        error("Triangular type distributions requires three parameters (minimum, maximum, peak).")
-    elseif contains(string(_distribution_type(dom, factor)), "Unif") && (length(new_bounds) !== 2)
-        error("Uniform distributions requires two parameters (minimum, maximum).")
+        error("Error with $(factor) - $(new_bounds): Triangular type distributions requires three parameters (minimum, maximum, peak).")
+    elseif contains(string(_distribution_type(dom, factor)), "DiscreteUniform") && (length(new_bounds) !== 2)
+        error("Error with $(factor) - $(new_bounds): Uniform distributions requires two parameters (minimum, maximum).")
     end
 
     return nothing
