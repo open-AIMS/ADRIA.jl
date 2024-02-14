@@ -2,6 +2,10 @@ using Statistics
 using Printf
 using ADRIA.sensitivity: _get_cat_quantile
 
+const FV_LABELS = [
+    "unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
+]
+
 """
     ADRIA.viz.pawn(Si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     ADRIA.viz.pawn!(f::Union{GridLayout,GridPosition}, Si::YAXArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
@@ -207,9 +211,7 @@ function ADRIA.viz.rsa!(
     f_types = ms[foi, :ptype]
 
     if any(f_names .== :guided)
-        fv_labels = [
-            "unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
-        ]
+        fv_labels = FV_LABELS
     end
 
     # Hacky special case handling for SSP/RCP
@@ -353,9 +355,7 @@ function ADRIA.viz.outcome_map!(
     b_slices = parse.(Float64, bin_slices)
 
     if any(f_names .== :guided)
-        fv_labels = [
-            "unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
-        ]
+        fv_labels = FV_LABELS
     end
     curr::Int64 = 1
     axs = Axis[]
