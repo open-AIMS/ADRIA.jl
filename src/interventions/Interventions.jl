@@ -1,7 +1,7 @@
-Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
+Base.@kwdef struct Intervention <: EcoModel
     # Intervention Factors
     # Bounds are defined as floats to maintain type stability
-    guided::DU = Factor(
+    guided::Param = Factor(
         0;
         ptype="unordered categorical",
         dist=DiscreteUniform,
@@ -9,7 +9,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Guided",
         description="Choice of MCDA approach.",
     )
-    N_seed_TA::DU = Factor(
+    N_seed_TA::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
@@ -17,7 +17,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Seeded Tabular Acropora",
         description="Number of Tabular Acropora to seed per deployment year.",
     )
-    N_seed_CA::DU = Factor(
+    N_seed_CA::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
@@ -25,7 +25,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Seeded Corymbose Acropora",
         description="Number of Corymbose Acropora to seed per deployment year.",
     )
-    N_seed_SM::DU = Factor(
+    N_seed_SM::Param = Factor(
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
@@ -33,7 +33,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Seeded Small Massives",
         description="Number of small massives/encrusting to seed per deployment year.",
     )
-    fogging::T = Factor(
+    fogging::Param = Factor(
         0.16;
         ptype="continuous",
         dist=TriangularDist,
@@ -41,7 +41,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Fogging",
         description="Assumed reduction in bleaching mortality.",
     )
-    SRM::T = Factor(
+    SRM::Param = Factor(
         0.0;
         ptype="continuous",
         dist=TriangularDist,
@@ -49,7 +49,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="SRM",
         description="Reduction in DHWs due to shading.",
     )
-    a_adapt::T = Factor(
+    a_adapt::Param = Factor(
         0.0;
         ptype="continuous",
         dist=TriangularDist,
@@ -57,7 +57,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Assisted Adaptation",
         description="Assisted adaptation in terms of DHW resistance.",
     )
-    seed_years::DT = Factor(
+    seed_years::Param = Factor(
         10;
         ptype="ordered categorical",
         dist=DiscreteTriangularDist,
@@ -65,7 +65,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Years to Seed",
         description="Number of years to seed for.",
     )
-    shade_years::DT = Factor(
+    shade_years::Param = Factor(
         10;
         ptype="ordered categorical",
         dist=DiscreteTriangularDist,
@@ -73,7 +73,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Years to Shade",
         description="Number of years to shade for.",
     )
-    fog_years::DT = Factor(
+    fog_years::Param = Factor(
         10;
         ptype="ordered categorical",
         dist=DiscreteTriangularDist,
@@ -81,7 +81,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Years to fog",
         description="Number of years to fog for.",
     )
-    plan_horizon::DU = Factor(
+    plan_horizon::Param = Factor(
         5;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -89,7 +89,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Planning Horizon",
         description="How many years of projected data to take into account when selecting intervention locations (0 only accounts for current deployment year).",
     )
-    seed_freq::DU = Factor(
+    seed_freq::Param = Factor(
         5;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -97,7 +97,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Seeding Frequency",
         description="Frequency of seeding site selection (0 is set and forget).",
     )
-    shade_freq::DU = Factor(
+    shade_freq::Param = Factor(
         1;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -105,7 +105,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Shading Frequency",
         description="Frequency of shading site selection (0 is set and forget).",
     )
-    fog_freq::DU = Factor(
+    fog_freq::Param = Factor(
         1;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -113,7 +113,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Fogging Frequency",
         description="Frequency of fogging site selection (0 is set and forget).",
     )
-    seed_year_start::DU = Factor(
+    seed_year_start::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -121,7 +121,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Seeding Start Year",
         description="Start seeding deployments after this number of years has elapsed.",
     )
-    shade_year_start::DU = Factor(
+    shade_year_start::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=DiscreteUniform,
@@ -129,7 +129,7 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
         name="Shading Start Year",
         description="Start of shading deployments after this number of years has elapsed.",
     )
-    fog_year_start::DU = Factor(
+    fog_year_start::Param = Factor(
         2;
         ptype="ordered categorical",
         dist=DiscreteUniform,
