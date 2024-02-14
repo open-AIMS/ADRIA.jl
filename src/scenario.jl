@@ -89,7 +89,7 @@ function run_scenarios(
     setup()
 
     # Sort RCPs so the dataframe order match the output filepath
-    RCP = Base.sort(RCP)
+    RCP = sort(RCP)
 
     @info "Running $(nrow(scens)) scenarios over $(length(RCP)) RCPs: $RCP"
 
@@ -236,11 +236,14 @@ function run_scenario(
     vals[vals.<threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
-    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
+    # This is temporary while we are migrating to YAXArray
+    scenario_nda::NamedDimsArray = yaxarray2nameddimsarray(scenario)
+
+    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario_nda)
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
+    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario_nda)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
