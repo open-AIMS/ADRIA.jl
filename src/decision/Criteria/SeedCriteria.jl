@@ -121,6 +121,9 @@ end
 Selection locations for seeding deployments.
 Attempts to spread deployment locations based on location clusters.
 
+Note: If a subset of locations is passed in, the returned indices
+will relate to the position of the subset, not the canonical dataset.
+
 # Arguments
 - `sp` : SeedPreferences
 - `dm` : The decision matrix to assess

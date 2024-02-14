@@ -180,6 +180,10 @@ function select_locations(
     return [collect(dm.location[rank_idx][1:min_locs]) rank_idx[1:min_locs]]
 end
 
+function map_to_canonical(selected_subset, canonical, considered)
+    return canonical[considered][selected_subset]
+end
+
 """
     apply_threshold(criteria_name::Symbol, threshold::Tuple, dm::YAXArray}
 
