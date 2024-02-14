@@ -220,6 +220,7 @@ export
     update_criteria_values!,
     select_locations,
     unguided_selection,
+    map_to_canonical,
     decision_frequency,
     weighted_projection,
     within_depth_bounds,
