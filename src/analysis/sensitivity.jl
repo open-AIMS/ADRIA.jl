@@ -504,6 +504,8 @@ function rsa(
         f_ind = foi_spec.fieldname .== fact_t
         ptype::String = foi_spec.ptype[foi_spec.fieldname .== fact_t][1]
 
+        X_i .= X[:, fact_t]
+
         if ptype == "unordered categorical"
             seq = seq_store[fact_t]
             X_q = _get_cat_quantile(foi_spec, fact_t, seq)
@@ -511,8 +513,6 @@ function rsa(
             seq = seq_store[:default]
             X_q = quantile(X_i, seq)
         end
-
-        X_i .= X[:, fact_t]
 
         sel .= X_q[1] .<= X_i .<= X_q[2]
         if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
