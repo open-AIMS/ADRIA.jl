@@ -1,6 +1,6 @@
 using Statistics
 using Printf
-
+using ADRIA.sensitivity: _get_cat_quantile
 
 """
     ADRIA.viz.pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
@@ -155,8 +155,8 @@ function ADRIA.viz.tsa(
 end
 
 """
-    ADRIA.viz.rsa(rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.rsa(rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Plot regional sensitivities of up to 30 factors.
 
@@ -175,7 +175,7 @@ Makie figure
 function ADRIA.viz.rsa!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
-    si::NamedDimsArray,
+    si::Dataset,
     factors::Vector{Symbol};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -204,6 +204,7 @@ function ADRIA.viz.rsa!(
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
     dist_params = ms[foi, :dist_params]
+    f_types = ms[foi, :ptype]
 
     if any(f_names .== :guided)
         fv_labels = [
@@ -222,27 +223,28 @@ function ADRIA.viz.rsa!(
 
     # comps = unique(all_comps)
     # dc = distinguishable_colors(length(comps), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
-    bin_slices, factor_list = axiskeys(si)
-    b_slices = parse.(Float64, bin_slices)
     curr::Int64 = 1
     axs = Axis[]
     for r in 1:n_rows
         for c in 1:n_cols
             f_name = factors[curr]
+            f_type = f_types[curr]
             f_vals = rs.inputs[:, f_name]
-            if f_name == :guided
-                fv_s = collect(1:length(fv_labels))
-            else
-                fv_s = round.(quantile(f_vals, b_slices), digits=2)
-            end
 
+            if f_type == "unordered categorical"
+                fv_s = _get_cat_quantile(
+                    ms[ms.fieldname .== f_name, :], f_name, collect(si[f_name].axes[1])
+                )
+            else
+                fv_s = round.(quantile(f_vals, collect(si[f_name].axes[1])), digits=2)
+            end
             ax::Axis = Axis(
-                g[r, c],
+                g[r, c];
                 title=h_names[f_names .== f_name][1],
-                axis_opts...
+                axis_opts...,
             )
 
-            scatterlines!(ax, fv_s, si(; factors=f_name); markersize=15)
+            scatterlines!(ax, fv_s, collect(si[f_name]); markersize=15)
             if f_name == :guided
                 ax.xticks = (fv_s, fv_labels)
                 ax.xticklabelrotation = pi / 4
@@ -271,7 +273,7 @@ function ADRIA.viz.rsa!(
 end
 function ADRIA.viz.rsa(
     rs::ResultSet,
-    si::NamedDimsArray,
+    si::Dataset,
     factors::Vector{Symbol};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),

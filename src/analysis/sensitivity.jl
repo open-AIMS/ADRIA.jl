@@ -5,7 +5,8 @@ using Logging
 using
     AxisKeys,
     NamedDims,
-    StaticArrays
+    StaticArrays,
+    YAXArrays
 using DataFrames
 
 using
@@ -18,8 +19,8 @@ using HypothesisTests: ApproximateKSTest
 using FLoops
 
 using ADRIA: ResultSet, model_spec
-using ADRIA.analysis: col_normalize
 
+using ADRIA.analysis: col_normalize, normalize!
 
 """
     ks_statistic(ks)
@@ -56,9 +57,9 @@ Get number of bins for categorical variables.
 - `S` : Number of bins
 - `foi_spec` : Model specification for factors of interest
 """
-function _category_bins(S::Int64, foi_spec::DataFrame)
+function _category_bins(foi_spec::DataFrame)
     max_bounds = maximum(foi_spec.upper_bound .- foi_spec.lower_bound)
-    return round(Int64, max(S, max_bounds))
+    return round(Int64, max_bounds) + 1
 end
 
 """
@@ -71,9 +72,11 @@ Get quantile value for a given categorical variable.
 - `factor_name` : Contains true where the factor is categorical and false otherwise
 - `steps` : Number of steps for defining bins
 """
-function _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})::Vector{Float64}
+function _get_cat_quantile(
+    foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64}
+)::Vector{Float64}
     fact_idx::BitVector = foi_spec.fieldname .== factor_name
-    lb = foi_spec.lower_bound[fact_idx][1]
+    lb = foi_spec.lower_bound[fact_idx][1] - 1
     ub = foi_spec.upper_bound[fact_idx][1]
 
     return round.(quantile(lb:ub, steps))
@@ -156,7 +159,7 @@ function pawn(
     X::AbstractMatrix{<:Real},
     y::AbstractVector{<:Real},
     factor_names::Vector{String};
-    S::Int64=10
+    S::Int64=10,
 )::NamedDimsArray
     N, D = size(X)
     step = 1 / S
@@ -174,13 +177,13 @@ function pawn(
             X_di = @view(X[:, d_i])
             X_q .= quantile(X_di, seq)
 
-            Y_sel = @view(y[X_q[1].<=X_di.<=X_q[2]])
+            Y_sel = @view(y[X_q[1] .<= X_di .<= X_q[2]])
             if length(Y_sel) > 0
                 pawn_t[1, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, y))
             end
 
             for s in 2:S
-                Y_sel = @view(y[X_q[s].<X_di.<=X_q[s+1]])
+                Y_sel = @view(y[X_q[s] .< X_di .<= X_q[s + 1]])
                 if length(Y_sel) == 0
                     continue  # no available samples
                 end
@@ -230,7 +233,7 @@ function pawn(
     if N > 1 && D > 1
         msg::String = string(
             "The current implementation of PAWN can only assess a single quantity",
-            " of interest at a time."
+            " of interest at a time.",
         )
         throw(ArgumentError(msg))
     end
@@ -321,9 +324,9 @@ function convergence(
     )
 
     for (cc, factors) in zip(components, target_factors)
-        Si_grouped(factors=cc) .= dropdims(
+        Si_grouped(; factors=cc) .= dropdims(
             mean(Si_n(; factors=Symbol.(factors)); dims=:factors);
-            dims=:factors,
+            dims=:factors
         )
     end
 
@@ -375,12 +378,12 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
         zeros(ncol(X), 8, size(y, 1));
         factors=Symbol.(names(X)),
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
-        timesteps=ts
+        timesteps=ts,
     )
 
     for t in axes(y, 1)
         t_pawn_idx[:, :, t] .= col_normalize(
-            pawn(X, vec(mean(y[1:t, :], dims=1)))
+            pawn(X, vec(mean(y[1:t, :]; dims=1)))
         )
     end
 
@@ -391,9 +394,9 @@ function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
 end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}, model_spec::DataFrame; S::Int64=10)::NamedDimsArray
-    rsa(rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64=10)::NamedDimsArray
-    rsa(rs::ResultSet, y::AbstractArray{<:Real}; S::Int64=10)::NamedDimsArray
+    rsa(X::DataFrame, y::Vector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10)::Dataset
+    rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::Dataset
+    rsa(rs::ResultSet, y::AbstractArray{<:Real}, factors::Vector{Symbol}; S::Int64=10)::Dataset
 
 Perform Regional Sensitivity Analysis.
 
@@ -428,7 +431,7 @@ Note: Values of type `missing` indicate a lack of samples in the region.
 - `S` : number of bins to slice factor space into (default: 10)
 
 # Returns
-NamedDimsArray, [bin values, factors]
+Dataset
 
 # Examples
 ```julia
@@ -451,77 +454,106 @@ ADRIA.sensitivity.rsa(X, y; S=10)
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
 function rsa(
-    X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64=10
-)::NamedDimsArray
+    X::DataFrame, y::AbstractVector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame;
+    S::Int64=10,
+)::Dataset
     N, D = size(X)
 
-    X_di = zeros(N)
+    X_i = zeros(N)
     sel = trues(N)
-    factors = Symbol.(names(X))
 
     foi_spec = _get_factor_spec(model_spec, factors)
+    unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
+    seq_store::Dict{Symbol,Vector{Float64}} = Dict() # storage for bin sequences
 
-    is_cat = occursin.("categorical", foi_spec.ptype)
-    if any(is_cat)
-        S = _category_bins(S, foi_spec[is_cat, :])
+    # Get unique bin sequences for unordered categorical variables and store
+    for factor in unordered_cat
+        S_temp = _category_bins(foi_spec[foi_spec.fieldname .== factor, :])
+        seq_store[factor] = collect(0.0:(1 / S_temp):1.0)
     end
 
-    X_q = zeros(S + 1)
-    r_s = zeros(Union{Missing,Float64}, S, D)
-    seq = collect(0.0:(1 / S):1.0)
+    # Other variables have default sequence using input S
+    seq_store[:default] = collect(0.0:(1 / S):1.0)
+    default_ax = (Dim{:default}(seq_store[:default][2:end]),)
 
-    for d_i in 1:D
-        X_di .= X[:, d_i]
+    # YAXArray storage for unordered categorical variables
+    yax_store_cat = Tuple((
+        YAXArray(
+            (Dim{fact_t}(seq_store[fact_t][2:end]),),
+            zeros(Union{Missing,Float64}, (length(seq_store[fact_t][2:end]))),
+        ) for fact_t in unordered_cat
+    ))
+    # YAXArray storage for other variables
+    yax_store_default = Tuple(
+        YAXArray(
+            default_ax, zeros(Union{Missing,Float64}, (length(seq_store[:default][2:end])))
+        ) for _ in 1:(length(factors) - length(unordered_cat))
+    )
 
-        ptype = foi_spec.ptype[foi_spec.fieldname .== factors[d_i]][1]
-        if occursin("categorical", ptype)
-            X_q .= _get_cat_quantile(foi_spec, factors[d_i], seq)
+    # Create storage NamedTuples for unordered categorical variables and other variables, then merge
+    r_s_default = NamedTuple(
+        zip(
+            Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]),
+            yax_store_default,
+        ),
+    )
+    r_s_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
+    r_s = merge(r_s_cat, r_s_default)
+
+    for fact_t in factors
+        f_ind = foi_spec.fieldname .== fact_t
+        ptype::String = foi_spec.ptype[foi_spec.fieldname .== fact_t][1]
+
+        X_i .= X[:, fact_t]
+
+        if ptype == "unordered categorical"
+            seq = seq_store[fact_t]
+            X_q = _get_cat_quantile(foi_spec, fact_t, seq)
         else
-            X_q .= quantile(X_di, seq)
+            seq = seq_store[:default]
+            X_q = quantile(X_i, seq)
         end
 
-        sel .= X_q[1] .<= X_di .<= X_q[2]
+        sel .= X_q[1] .<= X_i .<= X_q[2]
         if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
             # not enough samples, or inactive area of factor space
-            r_s[1, d_i] = missing
+            r_s[fact_t][1] = missing
         else
-            r_s[1, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+            r_s[fact_t][1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
 
-        for s in 2:S
-            sel .= X_q[s] .< X_di .<= X_q[s+1]
+        for s in 2:(length(X_q) - 1)
+            sel .= X_q[s] .< X_i .<= X_q[s + 1]
             if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
                 # not enough samples, or inactive area of factor space
-                r_s[s, d_i] = missing
+                r_s[fact_t][s] = missing
                 continue
             end
 
             # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
             # ci = confint(bs, PercentileConfInt(conf))[1]
-            r_s[s, d_i] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+            r_s[fact_t][s] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
+        r_s[fact_t] .= normalize!(r_s[fact_t])
     end
 
-    return col_normalize(
-        NamedDimsArray(r_s; bins=string.(seq[2:end]), factors=Symbol.(names(X)))
-    )
+    return Dataset(; r_s...)
 end
 function rsa(
     rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
-)::NamedDimsArray
+)::Dataset
     return rsa(rs.inputs[!, Not(:RCP)], y, rs.model_spec; S=S)
 end
 function rsa(
     rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64=10
-)::NamedDimsArray
+)::Dataset
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
         y,
         rs.model_spec[rs.model_spec.fieldname .∈ [factors], :];
-        S=S
+        S=S,
     )
 end
-
 
 """
     outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedDimsArray
@@ -573,9 +605,9 @@ function outcome_map(
     rule::Union{Function,BitVector,Vector{Int64}},
     target_factors::Vector{Symbol},
     model_spec::DataFrame;
-    S::Int64=20,
+    S::Int64=10,
     n_boot::Int64=100,
-    conf::Float64=0.95
+    conf::Float64=0.95,
 )::NamedDimsArray
     if !all(target_factors .∈ [model_spec.fieldname])
         missing_factor = .!(target_factors .∈ [model_spec.fieldname])
@@ -589,14 +621,13 @@ function outcome_map(
         S = _category_bins(S, foi_spec[is_cat, :])
     end
 
-    step_size = 1 / S
-    steps = collect(0.0:step_size:1.0)
+    steps = collect(0.0:(1 / S):1.0)
 
     p_table = NamedDimsArray(
         zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
         bins=string.(steps[2:end]),
         factors=Symbol.(target_factors),
-        CI=[:mean, :lower, :upper]
+        CI=[:mean, :lower, :upper],
     )
 
     all_p_rule = _map_outcomes(y, rule)
@@ -617,10 +648,12 @@ function outcome_map(
         if occursin("categorical", ptype)
             X_q .= _get_cat_quantile(foi_spec, fact_t, steps)
         else
-            X_q .= quantile(X_f, steps)
+            S = S_default
+            steps = steps_default
+            X_q[1:(S + 1)] .= quantile(X_f, steps)
         end
 
-        for i in 1:length(X_q[1:end-1])
+        for i in 1:length(X_q[1:(end - 1)])
             local b::BitVector
             if i == 1
                 b = (X_q[i] .<= X_f .<= X_q[i + 1])
@@ -651,7 +684,7 @@ function outcome_map(
     rule::Union{Function,BitVector,Vector{Int64}};
     S::Int64=20,
     n_boot::Int64=100,
-    conf::Float64=0.95
+    conf::Float64=0.95,
 )::NamedDimsArray
     return outcome_map(X, y, rule, names(X); S, n_boot, conf)
 end
@@ -662,7 +695,7 @@ function outcome_map(
     target_factors::Vector{Symbol};
     S::Int64=20,
     n_boot::Int64=100,
-    conf::Float64=0.95
+    conf::Float64=0.95,
 )::NamedDimsArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, target_factors, rs.model_spec; S, n_boot, conf
@@ -674,7 +707,7 @@ function outcome_map(
     rule::Union{Function,BitVector,Vector{Int64}};
     S::Int64=20,
     n_boot::Int64=100,
-    conf::Float64=0.95
+    conf::Float64=0.95,
 )::NamedDimsArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf
