@@ -275,7 +275,7 @@ function run_scenario(
         vals = getfield(result_set, k)
 
         try
-            vals[vals.<threshold] .= 0.0
+            vals[vals.<threshold] .= Float32(0.0)
         catch err
             err isa MethodError ? nothing : rethrow(err)
         end
@@ -372,7 +372,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     n_groups::Int64 = domain.coral_growth.n_groups
 
     # Locations to intervene
-    n_iv_locs::Int64 = param_set("min_iv_locations")
+    min_iv_locs::Int64 = param_set("min_iv_locations")
     max_members::Int64 = param_set("cluster_max_member")
 
     # Years to start seeding/shading/fogging
@@ -414,7 +414,12 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Locations that can support corals
     valid_locs::BitVector = location_k(domain) .> 0.0
-    site_ranks = SparseArray(zeros(tf, n_locs, 2))  # log seeding/fogging/shading ranks
+
+    # Avoid placing importance on sites that were not considered
+    # Lower values are higher importance/ranks.
+    # Values of n_locs+1 indicate locations that were not considered in rankings.
+    site_ranks = fill(n_locs + 1, tf, n_locs, 2)  # log seeding/fogging ranks
+
     Yshade = SparseArray(spzeros(tf, n_locs))
     Yfog = SparseArray(spzeros(tf, n_locs))
     Yseed = SparseArray(zeros(tf, 3, n_locs))  # 3 = the number of seeded coral types
@@ -428,8 +433,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
-    α = 0.95
-    decay = α .^ (1:(Int64(param_set[At("plan_horizon")])+1))
+    α = 0.99
+    decay = α .^ (1:Int64(param_set("plan_horizon"))+1).^2
 
     # Years at which intervention locations are re-evaluated and deployed
     seed_decision_years = decision_frequency(seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")])
@@ -453,7 +458,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Flag indicating whether to seed or not to seed when unguided
     is_unguided = param_set("guided") == 0.0
-    apply_seeding = is_unguided && any(param_set(taxa_names) .> 0.0)
+    seeding = any(param_set(taxa_names) .> 0.0)
+    apply_seeding = is_unguided && seeding
     # Flag indicating whether to fog or not fog
     apply_fogging = is_unguided && (fogging > 0.0)
     # Flag indicating whether to apply shading
@@ -611,29 +617,32 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
+        # TODO: All interventions to be moved to appropriate type methods.
+        # intervene(SeedIntervention, tstep)
         if is_guided && (seed_decision_years[tstep] || fog_decision_years[tstep])
-            # Update dMCDA values
-            dhw_projection = weighted_projection(dhw_scen[:, considered_locs], tstep, plan_horizon, decay, tf)
-            wave_projection = weighted_projection(wave_scen[:, considered_locs], tstep, plan_horizon, decay, tf)
+            if seeding && seed_decision_years[tstep]
+                # Update dMCDA values
+                dhw_projection = weighted_projection(dhw_scen, tstep, plan_horizon, decay, tf)
+                wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
 
-            # Determine connectivity strength weighting by area.
-            # Accounts for strength of connectivity where there is low/no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
-            update_criteria_values!(
-                decision_mat;
-                seed_heat_stress=dhw_projection,
-                seed_wave_stress=wave_projection,
-                seed_coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
-                seed_in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
-                seed_out_connectivity=out_conn[considered_locs]
-            )
+                # Determine connectivity strength weighting by area.
+                # Accounts for strength of connectivity where there is low/no coral cover
+                in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
 
-            # Recreate preferences, removing criteria that are constant for this timestep
-            is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
-            valid_criteria = seed_pref.names[.!is_const]
+                update_criteria_values!(
+                    decision_mat;
+                    seed_heat_stress=dhw_projection[considered_locs],
+                    seed_wave_stress=wave_projection[considered_locs],
+                    seed_coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
+                    seed_in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
+                    seed_out_connectivity=out_conn[considered_locs]
+                )
 
-            if seed_decision_years[tstep]
-                sp = filter_constant_criteria(seed_pref, is_const)
+                # Recreate preferences, removing criteria that are constant for this timestep
+                is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
+                valid_criteria = seed_pref.names[.!is_const]
+
+                sp = filter_criteria(seed_pref, is_const)
                 selected_seed_ranks = select_locations(
                     sp,
                     decision_mat[criteria=At(valid_criteria)],
@@ -641,26 +650,44 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     site_data.cluster_id[considered_locs],
                     area_to_seed,
                     vec(leftover_space_m²),
-                    domain.sim_constants.n_site_int,
-                    domain.sim_constants.max_members
+                    min_iv_locs,
+                    max_members
                 )
 
                 # Log rankings as appropriate
                 if !isempty(selected_seed_ranks)
+                    # Map selected locations back to their canonical ids.
+                    # This won't be necessary once we switch to YAXArrays
+                    # as we could subset based on location names/ids directly
+                    selected_seed_ranks[:, 2] .= map_to_canonical(
+                        selected_seed_ranks[:, 2],
+                        site_data.row_id,
+                        considered_locs
+                    )
+
                     site_ranks[tstep, selected_seed_ranks[:, 2], 1] .= 1:size(selected_seed_ranks, 1)
                 end
             end
 
-            if fog_decision_years[tstep]
-                fp = filter_constant_criteria(fog_pref, is_const)
+            if (fogging .> 0.0) && fog_decision_years[tstep]
+                fp = filter_criteria(fog_pref, is_const)
                 selected_fog_ranks = select_locations(
                     fp,
                     decision_mat[criteria=At(valid_criteria)],
                     MCDA_approach,
-                    domain.sim_constants.n_site_int
+                    min_iv_locs
                 )
 
                 if !isempty(selected_fog_ranks)
+                    # Map selected locations back to their canonical ids.
+                    # This won't be necessary once we switch to YAXArrays
+                    # as we could subset based on location names/ids directly
+                    selected_fog_ranks[:, 2] .= map_to_canonical(
+                        selected_fog_ranks[:, 2],
+                        site_data.row_id,
+                        considered_locs
+                    )
+
                     site_ranks[tstep, selected_fog_ranks[:, 2], 2] .= 1:size(selected_fog_ranks, 1)
                 end
             end
@@ -669,7 +696,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
                 selected_seed_ranks = unguided_selection(
                     domain.site_ids,
-                    n_site_int,
+                    min_iv_locs,
                     vec(leftover_space_m²),
                     depth_criteria
                 )
@@ -680,7 +707,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             if apply_fogging && fog_decision_years[tstep]
                 selected_fog_ranks = unguided_selection(
                     domain.site_ids,
-                    n_site_int,
+                    min_iv_locs,
                     vec(leftover_space_m²),
                     depth_criteria
                 )
