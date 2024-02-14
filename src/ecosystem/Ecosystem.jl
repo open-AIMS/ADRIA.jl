@@ -137,7 +137,7 @@ function truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
 
     m = ub
     if lb ≤ 0 ≤ ub
-        m = expm1(-Δ) * exp(-lb^2 / 2) / (rational_erf(lb′) - rational_erf(ub′))# erf(ub′, lb′)
+        m = expm1(-Δ) * exp(-lb^2 / 2) / (rational_erf(lb′) - rational_erf(ub′))
     elseif 0 < lb < ub
         z = exp(-Δ) * rational_erfcx(ub′) - rational_erfcx(lb′)
         iszero(z) && return mid
