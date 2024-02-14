@@ -8,7 +8,7 @@ Data specifications are outlined/stored in this repository: https://github.com/o
 
 The overall structure and data formats of the data packages are illustrated in the diagram below.
 
-![Domain-Results Diagram](../assets/imgs/ADRIA_Input_Output_diagram.png?raw=true "Domain-Results Diagram")
+![Domain-Results Diagram](../assets/imgs/domain_and_resultsets/ADRIA_Input_Output_diagram.png?raw=true "Domain-Results Diagram")
 
 ## Domain data package
 
