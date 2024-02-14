@@ -127,7 +127,7 @@ end
             string.(
                 ADRIA.component_params(
                     ms,
-                    [ADRIA.EnvironmentalLayer, ADRIA.Intervention, ADRIA.CriteriaWeights],
+                    [ADRIA.EnvironmentalLayer, ADRIA.Intervention, ADRIA.CriteriaWeights]
                 ).fieldname
             )
 
@@ -228,6 +228,18 @@ end
                 @test (maximum(discrete_factor_scens) <= maximum(new_bounds))
                 @test (minimum(discrete_factor_scens) >= minimum(new_bounds))
                 @test all(mod.(discrete_factor_scens, 1.0) .== 0.0)
+            end
+
+            @testset "Set distribution bounds with new step sizes or peaks" begin
+                # The below should not raise an error
+                dom = ADRIA.set_factor_bounds(
+                    dom;
+                    N_seed_TA=(Int(1e6), Int(5e10), Int(1e6)),
+                    N_seed_CA=(Int(1e6), Int(5e10), Int(1e6)),
+                    N_seed_SM=(Int(1e6), Int(5e10), Int(1e6)),
+                    a_adapt=(0.0, 30.0, 0.0),
+                    seed_freq=(1, 5)
+                )
             end
         end
     end
