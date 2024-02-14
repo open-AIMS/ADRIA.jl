@@ -68,8 +68,8 @@ end
 
 # Arguments
 - `dp` : DecisionPreferences
-- `dm` : a decision matrix
-- `method` : JMcDM provided MCDA method
+- `dm` : the decision matrix to assess
+- `method` : An MCDA method provided by the JMcDM package
 
 # Returns
 JMcDM result type (to confirm)
@@ -87,8 +87,8 @@ Default index rank method, returns location indices in order of their rank.
 
 # Arguments
 - `dp` : DecisionPreferences
-- `dm` : a decision matrix
-- `method` : JMcDM provided MCDA method
+- `dm` : The decision matrix to assess
+- `method` : An MCDA method provided by the JMcDM package
 
 # Returns
 Index of locations ordered by their rank
@@ -104,8 +104,8 @@ function rank_by_index(
         throw(DomainError(scores, "No ranking possible"))
     end
 
-    res_direction = res.bestIndex == argmax(res.scores)
-    return sortperm(res.scores; rev=res_direction)
+    is_maximal = res.bestIndex == argmax(res.scores)
+    return sortperm(res.scores; rev=is_maximal)
 end
 
 """
@@ -116,15 +116,15 @@ Returns the selected location names ordered by their rank.
 
 # Arguments
 - `dp` : DecisionPreferences
-- `dm` : a decision matrix
-- `method` : JMcDM provided MCDA method
-- `n_locs` : Minimum number of locations to select
+- `dm` : The decision matrix to assess
+- `method` : An MCDA method provided by the JMcDM package
+- `min_locs` : Minimum number of locations to select
 
 # Returns
 Index of locations ordered by their rank
 """
 function select_locations(
-    dp::T, dm::YAXArray, method::Union{Function,DataType}, n_locs::Int64
+    dp::T, dm::YAXArray, method::Union{Function,DataType}, min_locs::Int64
 )::Matrix{Union{String,Symbol,Int64}} where {T<:DecisionPreference}
     local rank_idx
     try
@@ -138,7 +138,7 @@ function select_locations(
         rethrow(err)
     end
 
-    return [collect(getAxis(:location, dm)[rank_idx][1:n_locs]) rank_idx[1:n_locs]]
+    return [collect(dm.location[rank_idx][1:min_locs]) rank_idx[1:min_locs]]
 end
 
 """
@@ -148,9 +148,9 @@ Apply a threshold filter to a given decision matrix, filtering out locations tha
 outside the given bounds.
 
 # Arguments
-- `criteria_name` : criteria to apply thresholds to
-- `threshold` : lower and upper bounds of values to retain (inclusive)
-- `dm` : a decision matrix
+- `criteria_name` : Criteria to apply thresholds to
+- `threshold` : Lower and upper bounds of values to retain (inclusive)
+- `dm` : the decision matrix to apply thresholds to
 
 # Returns
 A new YAXArray
