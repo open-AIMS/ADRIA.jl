@@ -46,15 +46,17 @@ function summarize_env_data(data::AbstractArray)::Array{Float64}
 end
 
 """
-    store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, compressor::Zarr.Compressor)
+    store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)::ZArray
 
 Retrieve summary statistics matrices from DataFrames of dhws and waves.
 Produce summary statistics (mean/std) for given data cube saved to a Zarr data store.
 
 # Arguments
-- `data_cube` : data to summarize
-- `type` : dimension identifier to use
-- `file_loc` : path for Zarr data store
+- `data_cube` : Data to summarize
+- `type` : Dimension identifier to use
+- `file_loc` : Path for Zarr data store
+- `rcp` : RCP
+- `compressor` : Zarr compressor
 
 # Returns
 Zarr data store holding a 2*N*M matrix.
@@ -65,7 +67,7 @@ N is the number of dhw/wave scenarios.
 M is the number of locations.
 """
 function store_env_summary(
-    data_cube::NamedDimsArray,
+    data_cube::AbstractArray,
     type::String,
     file_loc::String,
     rcp::String,
@@ -92,7 +94,7 @@ function store_env_summary(
 end
 
 """
-    store_conn(conn_data::NamedDimsArray, file_loc::String, rcp::String,
+    store_conn(conn_data::YAXArray, file_loc::String, rcp::String,
         compressor::Zarr.Compressor)::ZArray
 
 Retrieve connectivity matrices from Domain for storage.
@@ -108,7 +110,7 @@ Zarr data store holding a M*M matrix.
 M is the number of locations.
 """
 function store_conn(
-    conn_data::NamedDimsArray,
+    conn_data::YAXArray,
     file_loc::String,
     rcp::String,
     compressor::Zarr.Compressor
@@ -120,8 +122,8 @@ function store_conn(
         path=joinpath(file_loc, rcp),
         attrs=Dict(
             :structure => ("Source", "Sink"),
-            :Source => conn_data.Source,
-            :Sink => conn_data.Sink,
+            :Source => collect(conn_data.Source),
+            :Sink => collect(conn_data.Sink),
             :rcp => rcp),
         compressor=compressor)
 
@@ -523,11 +525,11 @@ end
 
 Recreate data structure holding RCP summary statistics from Zarr store.
 """
-function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,AbstractArray}
+function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,YAXArray}
     rcp_dirs = filter(d -> isdir(joinpath(zarr_store_path, d)), readdir(zarr_store_path))
     rcp_stat_dirs = joinpath.(zarr_store_path, rcp_dirs)
 
-    stat_d = Dict{String,AbstractArray}()
+    stat_d = Dict{String,YAXArray}()
     for (i, sd) in enumerate(rcp_stat_dirs)
         store = zopen(sd; fill_as_missing=false)
 
@@ -535,7 +537,7 @@ function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,Abstra
         stats = string.(store.attrs["stats"])
         scenario_ids = string.(store.attrs["scenarios"])
         loc_ids = string.(store.attrs["locations"])
-        stat_set = NamedDimsArray(
+        stat_set = DataCube(
             store[:, :, :];
             zip(dim_names, [stats, scenario_ids, loc_ids])...
         )
@@ -551,18 +553,18 @@ end
 
 Recreate data structure holding connectivity for each RCP from Zarr store.
 """
-function _recreate_conn_from_store(zarr_store_path::String)::Dict{String,AbstractArray}
+function _recreate_conn_from_store(zarr_store_path::String)::Dict{String,YAXArray}
     rcp_dirs = filter(d -> isdir(joinpath(zarr_store_path, d)), readdir(zarr_store_path))
     rcp_stat_dirs = joinpath.(zarr_store_path, rcp_dirs)
 
-    conn_d = Dict{String,AbstractArray}()
+    conn_d = Dict{String,YAXArray}()
     for (i, sd) in enumerate(rcp_stat_dirs)
         store = zopen(sd; fill_as_missing=false)
 
         dim_names = Symbol.(store.attrs["structure"])
         source_ids = string.(store.attrs["Source"])
         sink_ids = string.(store.attrs["Sink"])
-        conn_set = NamedDimsArray(
+        conn_set = DataCube(
             store[:, :];
             zip(dim_names, [source_ids, sink_ids])...
         )
