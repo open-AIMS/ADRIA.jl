@@ -217,3 +217,19 @@ function sort_axis(cube::YAXArray, axis_name::Symbol)::YAXArray
 
     return cube[selector...]
 end
+
+"""
+    copy(cube::YAXArray)::YAXArray
+
+Copy a YAXArray data cube.
+"""
+function copy_datacube(cube::YAXArray)::YAXArray
+    new_axlist = Tuple(ax for ax in deepcopy(cube.axes))
+    return YAXArray(new_axlist, copy(cube.data))
+end
+
+function yaxarray2nameddimsarray(cube::YAXArray)::NamedDimsArray
+    axis_names = axes_names(cube)
+    axis_labels = collect.(lookup(cube, axis_names))
+    return NamedDimsArray(cube.data; NamedTuple{axis_names}(axis_labels)...)
+end
