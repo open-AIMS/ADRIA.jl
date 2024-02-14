@@ -45,7 +45,7 @@ function proportional_adjustment!(
     coral_cover::Union{SubArray{T},Matrix{T}}, cover_tmp::Vector{T}
 )::Nothing where {T<:Float64}
     cover_tmp .= vec(sum(coral_cover; dims=1))
-    cover_tmp[cover_tmp .≈ 1.0] .= 1.0
+    cover_tmp[cover_tmp.≈1.0] .= 1.0
     if any(cover_tmp .> 1.0)
         exceeded::BitVector = vec(cover_tmp .> 1.0)
         msg = """
@@ -483,9 +483,9 @@ function settler_DHW_tolerance!(
         source_locs .= @view(tp[:, sink_loc]) .> 0.0
 
         # Calculate contribution to cover to determine weights for each species/group
-        w::NamedDimsArray = @views settlers[:, sink_loc]' .* tp[source_locs, sink_loc]
+        w = @views settlers[:, sink_loc]' .* tp[source_locs, sink_loc].data
         w_per_group = w ./ sum(w, dims=1)
-        replace!(w_per_group, NaN=>0.0)
+        replace!(w_per_group, NaN => 0.0)
 
         # Determine new distribution mean for each species at all locations
         for (sp, sc1) in enumerate(settler_sc)
@@ -501,7 +501,7 @@ function settler_DHW_tolerance!(
             # This weights the recruited corals by the size classes and source locations
             # which contributed to recruitment.
             if sum(@view(w_per_group[:, sp])) > 0.0
-                ew::NamedDimsArray = repeat(@view(w_per_group[:, sp]), inner=count(reproductive_sc))
+                ew = repeat(@view(w_per_group[:, sp]), inner=count(reproductive_sc))
 
                 # Determine combined mean
                 # https://en.wikipedia.org/wiki/Mixture_distribution#Properties

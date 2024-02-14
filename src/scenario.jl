@@ -89,7 +89,7 @@ function run_scenarios(
     setup()
 
     # Sort RCPs so the dataframe order match the output filepath
-    RCP = Base.sort(RCP)
+    RCP = sort(RCP)
 
     @info "Running $(nrow(scens)) scenarios over $(length(RCP)) RCPs: $RCP"
 
@@ -102,7 +102,7 @@ function run_scenarios(
     dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df)
 
     # Convert DataFrame to named matrix for faster iteration
-    scenarios_matrix = NamedDimsArray(
+    scenarios_matrix::YAXArray = DataCube(
         Matrix(scenarios_df); scenarios=1:nrow(scenarios_df), factors=names(scenarios_df)
     )
 
@@ -140,17 +140,14 @@ function run_scenarios(
 
             # Switch RCPs so correct data is loaded
             dom = switch_RCPs!(dom, rcp)
-            target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
-            rep_doms = Iterators.repeated(dom, length(target_rows))
-            scenario_args = zip(
-                rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :])
-            )
+            scen_args = _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
+
             if show_progress
                 @showprogress desc = run_msg dt = 4 pmap(
-                    func, CachingPool(workers()), scenario_args
+                    func, CachingPool(workers()), scen_args
                 )
             else
-                pmap(func, CachingPool(workers()), scenario_args)
+                pmap(func, CachingPool(workers()), scen_args)
             end
         end
     else
@@ -162,15 +159,12 @@ function run_scenarios(
 
             # Switch RCPs so correct data is loaded
             dom = switch_RCPs!(dom, rcp)
-            target_rows = findall(scenarios_matrix("RCP") .== parse(Float64, rcp))
-            rep_doms = Iterators.repeated(dom, size(scenarios_matrix, 1))
-            scenario_args = zip(
-                rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :])
-            )
+            scen_args = _scenario_args(dom, scenarios_matrix, rcp, size(scenarios_matrix, 1))
+
             if show_progress
-                @showprogress desc = run_msg dt = 4 map(func, scenario_args)
+                @showprogress desc = run_msg dt = 4 map(func, scen_args)
             else
-                map(func, scenario_args)
+                map(func, scen_args)
             end
         end
     end
@@ -180,6 +174,14 @@ function run_scenarios(
     end
 
     return load_results(_result_location(dom, RCP))
+end
+
+function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
+    target_rows = findall(scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp))
+    rep_doms = Iterators.repeated(dom, n)
+    return zip(
+        rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :])
+    )
 end
 
 """
@@ -234,11 +236,14 @@ function run_scenario(
     vals[vals.<threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
-    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
+    # This is temporary while we are migrating to YAXArray
+    scenario_nda::NamedDimsArray = yaxarray2nameddimsarray(scenario)
+
+    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario_nda)
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
+    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario_nda)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
@@ -333,19 +338,19 @@ function run_model(domain::Domain, param_set::DataFrameRow)::NamedTuple
     ps = NamedDimsArray(Vector(param_set); factors=names(param_set))
     return run_model(domain, ps)
 end
-function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
+function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
 
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
-    rnd_seed_val::Int64 = floor(Int64, sum(param_set(!=("RCP"))))  # select everything except RCP
+    rnd_seed_val::Int64 = floor(Int64, sum(param_set[Where(x -> x != "RCP")]))  # select everything except RCP
     Random.seed!(rnd_seed_val)
 
-    dhw_idx::Int64 = Int64(param_set("dhw_scenario"))
-    wave_idx::Int64 = Int64(param_set("wave_scenario"))
-    cyclone_mortality_idx::Int64 = Int64(param_set("cyclone_mortality_scenario"))
+    dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
+    wave_idx::Int64 = Int64(param_set[At("wave_scenario")])
+    cyclone_mortality_idx::Int64 = Int64(param_set[At("cyclone_mortality_scenario")])
 
     # Extract environmental data
     dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
@@ -362,8 +367,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
     tspan::Tuple = (0.0, 1.0)
     solver::Euler = Euler()
-
-    MCDA_approach::Int64 = param_set("guided")
+    MCDA_approach::Int64 = param_set[At("guided")]
 
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
@@ -377,15 +381,15 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     n_groups::Int64 = domain.coral_growth.n_groups
 
     # Years to start seeding/shading/fogging
-    seed_start_year::Int64 = param_set("seed_year_start")
-    shade_start_year::Int64 = param_set("shade_year_start")
-    fog_start_year::Int64 = param_set("fog_year_start")
+    seed_start_year::Int64 = param_set[At("seed_year_start")]
+    shade_start_year::Int64 = param_set[At("shade_year_start")]
+    fog_start_year::Int64 = param_set[At("fog_year_start")]
 
-    fogging::Real = param_set("fogging")  # proportion of bleaching mortality reduction through fogging
-    srm::Real = param_set("SRM")  # DHW equivalents reduced by some shading mechanism
-    seed_years::Int64 = param_set("seed_years")  # number of years to seed
-    shade_years::Int64 = param_set("shade_years")  # number of years to shade
-    fog_years::Int64 = param_set("fog_years")  # number of years to fog
+    fogging::Real = param_set[At("fogging")]  # proportion of bleaching mortality reduction through fogging
+    srm::Real = param_set[At("SRM")]  # DHW equivalents reduced by some shading mechanism
+    seed_years::Int64 = param_set[At("seed_years")]  # number of years to seed
+    shade_years::Int64 = param_set[At("shade_years")]  # number of years to shade
+    fog_years::Int64 = param_set[At("fog_years")]  # number of years to fog
 
     loc_k_area::Matrix{Float64} = cache.site_k_area
     fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
@@ -422,12 +426,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
     # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
-    is_guided = param_set("guided") > 0
+    is_guided = param_set[At("guided")] > 0
 
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
     α = 0.95
-    decay = α .^ (1:(Int64(param_set("plan_horizon"))+1))
+    decay = α .^ (1:(Int64(param_set[At("plan_horizon")])+1))
 
     # Years at which intervention locations are re-evaluated
     seed_decision_years = fill(false, tf)
@@ -435,9 +439,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     fog_decision_years = fill(false, tf)
 
     seed_start_year = max(seed_start_year, 2)
-    if param_set("seed_freq") > 0
+    if param_set[At("seed_freq")] > 0
         max_consider = min(seed_start_year + seed_years - 1, tf)
-        seed_decision_years[seed_start_year:Int64(param_set("seed_freq")):max_consider] .=
+        seed_decision_years[seed_start_year:Int64(param_set[At("seed_freq")]):max_consider] .=
             true
     else
         # Start at year 2 or the given specified seed start year
@@ -445,9 +449,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     end
 
     shade_start_year = max(shade_start_year, 2)
-    if param_set("shade_freq") > 0
+    if param_set[At("shade_freq")] > 0
         max_consider = min(shade_start_year + shade_years - 1, tf)
-        shade_decision_years[shade_start_year:Int64(param_set("shade_freq")):max_consider] .=
+        shade_decision_years[shade_start_year:Int64(param_set[At("shade_freq")]):max_consider] .=
             true
     else
         # Start at year 2 or the given specified shade start year
@@ -455,9 +459,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     end
 
     fog_start_year = max(fog_start_year, 2)
-    if param_set("fog_freq") > 0
+    if param_set[At("fog_freq")] > 0
         max_consider = min(fog_start_year + fog_years - 1, tf)
-        fog_decision_years[fog_start_year:Int64(param_set("fog_freq")):max_consider] .= true
+        fog_decision_years[fog_start_year:Int64(param_set[At("fog_freq")]):max_consider] .= true
     else
         # Start at year 2 or the given specified fog start year
         fog_decision_years[fog_start_year] = true
@@ -469,21 +473,21 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
     # Define taxa and size class to seed, and identify their factor names
     taxa_to_seed = [2, 3, 5]
     target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
-    taxa_names = param_set.factors[occursin.("N_seed_", param_set.factors)]
+    taxa_names::Vector{String} = collect(param_set.factors[occursin.("N_seed_", param_set.factors)])
 
     # Identify taxa and size class to be seeded
     seed_sc = (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id
 
     # Extract colony areas for sites selected in m^2 and add adaptation values
     colony_areas = colony_mean_area(corals.mean_colony_diameter_m)
-    seeded_area = colony_areas[seed_sc] .* param_set(taxa_names)
+    seeded_area = colony_areas[seed_sc] .* param_set[At(taxa_names)]
 
     # Set up assisted adaptation values
     a_adapt = zeros(n_species)
-    a_adapt[seed_sc] .= param_set("a_adapt")
+    a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
     # Flag indicating whether to seed or not to seed
-    seed_corals = any(param_set(taxa_names) .> 0.0)
+    seed_corals = any(param_set[At(taxa_names)] .> 0.0)
     # Flag indicating whether to fog or not fog
     apply_fogging = fogging > 0.0
     # Flag indicating whether to apply shading
@@ -498,9 +502,9 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
     # Filter out sites outside of desired depth range
     if .!all(site_data.depth_med .== 0)
-        max_depth::Float64 = param_set("depth_min") + param_set("depth_offset")
+        max_depth::Float64 = param_set[At("depth_min")] + param_set[At("depth_offset")]
         depth_criteria::BitArray{1} = within_depth_bounds(
-            site_data.depth_med, max_depth, param_set("depth_min")
+            site_data.depth_med, max_depth, param_set[At("depth_min")]
         )
 
         if any(depth_criteria .> 0)
@@ -508,7 +512,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
             depth_priority = depth_priority[depth_criteria]
         else
             # Otherwise if no sites can be filtered, remove depth as a criterion.
-            @warn "No sites within provided depth range of $(param_set("depth_min")) - $(max_depth) meters. Considering all sites."
+            @warn "No sites within provided depth range of $(param_set[At("depth_min")]) - $(max_depth) meters. Considering all sites."
         end
     end
 
@@ -524,11 +528,12 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
         )
 
         # Number of time steps in environmental layers to look ahead when making decisions
-        plan_horizon::Int64 = Int64(param_set("plan_horizon"))
+        plan_horizon::Int64 = Int64(param_set[At("plan_horizon")])
     end
 
     # Set up distributions for natural adaptation/heritability
     c_mean_t_1::Matrix{Float64} = repeat(corals.dist_mean, 1, n_locs)
+
     c_mean_t = copy(c_mean_t_1)
 
     # Log of distributions
@@ -603,7 +608,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
             TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
             fec_params_per_m²,
-            param_set("heritability"),
+            param_set[At("heritability")],
         )
 
         # Add recruits to current cover
