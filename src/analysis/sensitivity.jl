@@ -522,7 +522,7 @@ function rsa(
             r_s[fact_t][1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
 
-        for s in 2:S
+        for s in 2:(length(X_q) - 1)
             sel .= X_q[s] .< X_i .<= X_q[s + 1]
             if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
                 # not enough samples, or inactive area of factor space
