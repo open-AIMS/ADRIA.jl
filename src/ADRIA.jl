@@ -51,7 +51,6 @@ include("utils/text_display.jl")  # need better name for this file
 include("utils/setup.jl")
 include("factors/Factors.jl")
 include("factors/const_params.jl")
-include("yaxarrays/YAXArrays.jl")
 
 include("ecosystem/corals/growth.jl")
 include("ecosystem/corals/CoralGrowth.jl")
