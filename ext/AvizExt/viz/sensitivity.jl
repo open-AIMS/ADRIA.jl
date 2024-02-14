@@ -345,6 +345,7 @@ function ADRIA.viz.outcome_map!(
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
     dist_params = ms[foi, :dist_params]
+    f_types = ms[foi, :ptype]
 
     # Hacky special case handling for SSP/RCP
     if :RCP in factors || :SSP in factors
@@ -367,15 +368,18 @@ function ADRIA.viz.outcome_map!(
     axs = Axis[]
     for r in 1:n_rows
         for c in 1:n_cols
-            f_name = Symbol(factors[curr])
+            f_name = factors[curr]
+            f_type = f_types[curr]
             f_vals = rs.inputs[:, f_name]
 
-            if f_name == :guided
-                fv_s = collect(1:length(fv_labels))
+            if f_type == "unordered categorical"
+                fv_s = _get_cat_quantile(
+                    ms[ms.fieldname .== f_name, :], f_name,
+                    collect(outcomes[f_name].axes[1]),
+                )
             else
-                fv_s = round.(quantile(f_vals, b_slices), digits=2)
+                fv_s = round.(quantile(f_vals, collect(outcomes[f_name].axes[1])), digits=2)
             end
-
             ax::Axis = Axis(
                 g[r, c]; title=h_names[f_names .== factors[curr]][1], axis_opts...
             )
