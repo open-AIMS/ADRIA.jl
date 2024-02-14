@@ -348,7 +348,7 @@ function run_model(domain::Domain, param_set::NamedDimsArray)::NamedTuple
 
     # TODO: Better conversion of Ub to wave mortality
     #       Currently scaling significant wave height by its max to non-dimensionalize values
-    wave_scen = copy(domain.wave_scens[:, :, wave_idx])
+    wave_scen = copy_datacube(domain.wave_scens[:, :, wave_idx])
     wave_scen .= wave_scen ./ maximum(wave_scen)
     replace!(wave_scen, Inf => 0.0, NaN => 0.0)
 
