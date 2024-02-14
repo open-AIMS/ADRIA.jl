@@ -460,6 +460,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     is_unguided = param_set[At("guided")] == 0.0
     seeding = any(param_set[At(taxa_names)] .> 0.0)
     apply_seeding = is_unguided && seeding
+
     # Flag indicating whether to fog or not fog
     apply_fogging = is_unguided && (fogging > 0.0)
     # Flag indicating whether to apply shading
@@ -620,27 +621,28 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # TODO: All interventions to be moved to appropriate type methods.
         # intervene(SeedIntervention, tstep)
         if is_guided && (seed_decision_years[tstep] || fog_decision_years[tstep])
-            # Update dMCDA values
-            dhw_projection = weighted_projection(dhw_scen, tstep, plan_horizon, decay, tf)
-            wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
-            # Determine connectivity strength weighting by area.
-            # Accounts for strength of connectivity where there is low/no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
+            if seeding && seed_decision_years[tstep]
+                # Update dMCDA values
+                dhw_projection = weighted_projection(dhw_scen, tstep, plan_horizon, decay, tf)
+                wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
 
-            update_criteria_values!(
-                decision_mat;
-                seed_heat_stress=dhw_projection[considered_locs],
-                seed_wave_stress=wave_projection[considered_locs],
-                seed_coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
-                seed_in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
-                seed_out_connectivity=out_conn[considered_locs]
-            )
+                # Determine connectivity strength weighting by area.
+                # Accounts for strength of connectivity where there is low/no coral cover
+                in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
 
-            # Recreate preferences, removing criteria that are constant for this timestep
-            is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
-            valid_criteria = seed_pref.names[.!is_const]
+                update_criteria_values!(
+                    decision_mat;
+                    seed_heat_stress=dhw_projection[considered_locs],
+                    seed_wave_stress=wave_projection[considered_locs],
+                    seed_coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
+                    seed_in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
+                    seed_out_connectivity=out_conn[considered_locs]
+                )
 
-            if seed_decision_years[tstep]
+                # Recreate preferences, removing criteria that are constant for this timestep
+                is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
+                valid_criteria = seed_pref.names[.!is_const]
+
                 sp = filter_criteria(seed_pref, is_const)
                 selected_seed_ranks = select_locations(
                     sp,
@@ -649,8 +651,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     site_data.cluster_id[considered_locs],
                     area_to_seed,
                     vec(leftover_space_m²),
-                    domain.sim_constants.n_site_int,
-                    domain.sim_constants.max_members
+                    min_iv_locs,
+                    max_members
                 )
                 # Log rankings as appropriate
                 if !isempty(selected_seed_ranks)
