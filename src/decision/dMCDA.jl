@@ -24,23 +24,26 @@ function adria_vikor() end
 function create_decision_matrix() end
 
 function supported_jmcdm_methods()
+    # Those commented out with failed a simple test where only heat stress is considered
+    # and the method selected the hottest locations ("**")
+    # or a nonsensical selection (e.g., 1, 2, 3, 4, 5; marked with "*^")
     return [
-        JMcDM.Topsis.TopsisMethod,
+        #** JMcDM.Topsis.TopsisMethod,
         JMcDM.VIKOR.VikorMethod,
-        JMcDM.ARAS.ArasMethod,
-        JMcDM.COCOSO.CocosoMethod,
-        JMcDM.CODAS.CodasMethod,
-        JMcDM.EDAS.EdasMethod,
-        JMcDM.GREY.GreyMethod,
-        JMcDM.MABAC.MabacMethod,
+        #** JMcDM.ARAS.ArasMethod,
+        #*^ JMcDM.COCOSO.CocosoMethod,
+        #** JMcDM.CODAS.CodasMethod,
+        #** JMcDM.EDAS.EdasMethod,
+        #** JMcDM.GREY.GreyMethod,
+        #** JMcDM.MABAC.MabacMethod,
         JMcDM.MAIRCA.MaircaMethod,
-        JMcDM.MARCOS.MarcosMethod,
-        JMcDM.MOORA.MooraMethod,
+        #** JMcDM.MARCOS.MarcosMethod,
+        #*^ JMcDM.MOORA.MooraMethod,
         JMcDM.PIV.PIVMethod,
         JMcDM.PSI.PSIMethod,
-        JMcDM.SAW.SawMethod,
-        JMcDM.WASPAS.WaspasMethod,
-        JMcDM.WPM.WPMMethod
+        #** JMcDM.SAW.SawMethod,
+        #** JMcDM.WASPAS.WaspasMethod,
+        #** JMcDM.WPM.WPMMethod
     ]
 end
 
