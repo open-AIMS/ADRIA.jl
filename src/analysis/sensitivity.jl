@@ -80,11 +80,35 @@ function _get_cat_quantile(
 end
 
 """
-    pawn(rs::ResultSet, y::Union{YAXArray,AbstractVector{<:Real}}; S::Int64=10)::YAXArray
-    pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::YAXArray
-    pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::YAXArray
-    pawn(X::YAXArray, y::Union{YAXArray,AbstractVector{<:Real}}; S::Int64=10)::YAXArray
-    pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::YAXArray
+    _create_seq_store(model_spec::Dataframe, unordered_cat::Vector{Symbol}, S::Int64)
+
+Get stored bin sequences for each factor type.
+
+# Arguments
+- `model_spec` : Model specification, as extracted by `ADRIA.model_spec(domain)` or from a `ResultSet`
+- `unordered_cat` : Factors considered for sensitivity analysis of unordered categorical type.
+- `S` : Number of bins.
+"""
+function _create_seq_store(model_spec::Dataframe, unordered_cat::Vector{Symbol}, S::Int64)
+    seq_store::Dict{Symbol,Vector{Float64}} = Dict() # storage for bin sequences
+
+    # Get unique bin sequences for unordered categorical variables and store
+    for factor in unordered_cat
+        S_temp = _category_bins(model_spec[model_spec.fieldname .== factor, :])
+        seq_store[factor] = collect(0.0:(1 / S_temp):1.0)
+    end
+    # Other variables have default sequence using input S
+    seq_store[:default] = collect(0.0:(1 / S):1.0)
+
+    return seq_store
+end
+
+"""
+    pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
+    pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
+    pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
+    pawn(X::NamedDimsArray, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
+    pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
 
 Calculates the PAWN sensitivity index.
 
@@ -470,18 +494,10 @@ function rsa(
     X_i = zeros(N)
     sel = trues(N)
 
-    foi_spec::DataFrame = _get_factor_spec(model_spec, factors)
-    unordered_cat = foi_spec.fieldname[foi_spec.ptype.=="unordered categorical"]
-    seq_store::Dict{Symbol,Vector{Float64}} = Dict() # storage for bin sequences
+    foi_spec = _get_factor_spec(model_spec, factors)
+    unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
+    seq_store = _create_seq_store(foi_spec, unordered_cat, S)
 
-    # Get unique bin sequences for unordered categorical variables and store
-    for factor in unordered_cat
-        S_temp = _category_bins(foi_spec[foi_spec.fieldname.==factor, :])
-        seq_store[factor] = collect(0.0:(1/S_temp):1.0)
-    end
-
-    # Other variables have default sequence using input S
-    seq_store[:default] = collect(0.0:(1/S):1.0)
     default_ax = (Dim{:default}(seq_store[:default][2:end]),)
 
     # YAXArray storage for unordered categorical variables
@@ -622,11 +638,12 @@ function outcome_map(
         error("Invalid target factors: $(target_factors[missing_factor])")
     end
 
-    foi_spec::DataFrame = _get_factor_spec(model_spec, target_factors)
+    foi_spec = _get_factor_spec(model_spec, target_factors)
+    seq_store = _create_seq_store(foi_spec, unordered_cat, S)
 
-    is_cat = occursin.("categorical", foi_spec.ptype)
-    if any(is_cat)
-        S = _category_bins(foi_spec[is_cat, :])
+    default_ax = (
+        Dim{:default}(seq_store[:default][2:end]), Dim{:CI}(["mean", "lower", "upper"])
+        S = _category_bins(S, foi_spec[is_cat, :])
     end
 
     steps = collect(0.0:(1/S):1.0)
