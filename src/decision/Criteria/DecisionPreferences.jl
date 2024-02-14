@@ -80,20 +80,19 @@ function update_criteria_values!(dm::YAXArray; kwargs...)::Nothing
 end
 
 """
-    filter_constant_criteria(prefs::T, is_const::Vector)::T where {T<:DecisionPreference}
+    filter_criteria(prefs::T, is_const::Vector)::T where {T<:DecisionPreference}
 
-Remove criteria that are constant in the decision matrix from the corresponding
-DecisionPreference.
+Filter criteria marked to be removed according to vector of true/false.
 
 # Arguments
 - `prefs` : The DecisionPreference to update.
-- `is_const` : Boolean vector indicating which columns are constant
+- `remove` : Boolean vector indicating which columns to remove
 """
-function filter_constant_criteria(prefs::T, is_const::Vector)::T where {T<:DecisionPreference}
+function filter_criteria(prefs::T, remove::Vector)::T where {T<:DecisionPreference}
     return typeof(prefs)(
-        prefs.names[.!is_const],
-        prefs.weights[.!is_const],
-        prefs.directions[.!is_const]
+        prefs.names[.!remove],
+        prefs.weights[.!remove],
+        prefs.directions[.!remove]
     )
 end
 
