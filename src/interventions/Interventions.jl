@@ -11,25 +11,25 @@ Base.@kwdef struct Intervention{DU,T,DT} <: EcoModel
     )
     N_seed_TA::DU = Factor(
         0;
-        ptype="ordered categorical",
-        dist=DiscreteUniform,
-        dist_params=(0.0, 1000000.0),
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
         name="Seeded Tabular Acropora",
         description="Number of Tabular Acropora to seed per deployment year.",
     )
     N_seed_CA::DU = Factor(
         0;
-        ptype="ordered categorical",
-        dist=DiscreteUniform,
-        dist_params=(0.0, 1000000.0),
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
         name="Seeded Corymbose Acropora",
         description="Number of Corymbose Acropora to seed per deployment year.",
     )
     N_seed_SM::DU = Factor(
         0;
-        ptype="ordered categorical",
-        dist=DiscreteUniform,
-        dist_params=(0.0, 1000000.0),
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
         name="Seeded Small Massives",
         description="Number of small massives/encrusting to seed per deployment year.",
     )
