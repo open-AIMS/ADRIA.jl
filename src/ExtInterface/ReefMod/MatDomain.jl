@@ -13,6 +13,8 @@ using
     NetCDF
     YAXArrays
 
+import ArchGDAL: createpoint
+
 import YAXArrays.DD: At
 
 mutable struct ReefModDomain <: Domain
@@ -42,8 +44,6 @@ mutable struct ReefModDomain <: Domain
 
     model
     sim_constants::SimConstants
-    netcdf_dir::String
-    loc_ids_path::String
 end
 
 """
@@ -60,97 +60,84 @@ Uses a path ReefMod Engine data to fill missing required data
 # Arguments
 - `ReefModDomain` : DataType
 - `netcdf_dir` : path to netcdf ReefMod Matlab Dataset Directory
-- `geo_path` : path to geo data used in RMEDomain
+- `RCP` : Representative Concentration Pathway scenario ID
 
 # Returns
-RMEDomain
+ReefModDomain
 """
 function load_domain(
     ::Type{ReefModDomain},
     netcdf_dir::String,
-    rfmod_engine_path::String,
-    RCP::String,
-    timeframe =  (2022, 2100)
+    RCP::String;
+    timeframe::Tuple=(2022, 2100)
 )::ReefModDomain
     netcdf_file = _find_netcdf(netcdf_dir, RCP)
     dom_dataset::Dataset = open_dataset(netcdf_file)
-    data_files = joinpath(rfmod_engine_path, "data_files")
-    loc_ids_path = joinpath(data_files, "dhw")
-    loc_ids = _get_loc_ids(loc_ids_path)
+
+    site_ids = dom_dataset.properties["reef_ids"]
 
     # Force YAXArrays to load data into NamedDimsArray
     dhws = Cube(dom_dataset[["record_applied_DHWs"]])[timestep = At(timeframe[1] : timeframe[2])].data[:, :, :]
     dhw_scens = NamedDimsArray(
         dhws,
         timesteps=timeframe[1]:timeframe[2],
-        locs=loc_ids,
+        locs=site_ids,
         scenarios=1:size(dhws)[3]
     )
-    
-    site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
-    lat_col_id = "Y_COORD"
-    lon_col_id = "X_COORD"
-    site_data = GDF.read(site_data_path)
+
+    n_locations::Int = dom_dataset.properties["n_locations"]
+
+    latitudes = Cube(dom_dataset[["lat"]]).data
+    longitudes = Cube(dom_dataset[["lon"]]).data
+
+    site_data = DataFrame((
+        geom = [createpoint(x, y) for (x, y) in zip(longitudes, latitudes)],
+        LOC_NAME_S = site_ids,
+        UNIQUE_ID = site_ids,
+        X_COORD = longitudes,
+        Y_COORD = latitudes,
+        depth_med = [Float64(6.0) for _ in 1:n_locations],
+        area = Cube(dom_dataset[["reef_area"]]).data .* 1e6, # Convert to m^2 from km^2
+        k = 1 .- dropdims(mean(Cube(dom_dataset[["nongrazable"]]), dims=2), dims=2).data ./ 100.0
+    ))
     site_id_col = "LOC_NAME_S"
     cluster_id_col = "LOC_NAME_S"
-    site_ids = site_data[:, cluster_id_col]
     
-    site_data[:, lat_col_id] = Cube(dom_dataset[["lat"]]).data
-    site_data[:, lon_col_id] = Cube(dom_dataset[["lon"]]).data
-    site_data[:, :area] = Cube(dom_dataset[["reef_area"]]).data
-    site_data[:, :k] = dropdims(mean(Cube(dom_dataset[["nongrazable"]]), dims=2), dims=2).data
+    # Initial coral cover is loaded from the first year of reefmod 'coral_cover_per_taxa' data
+    init_coral_cover = load_initial_cover(ReefModDomain, dom_dataset, site_data, site_ids, timeframe[1])
 
-    # Convert non grazable area to a proportion of area and calculate grazable proportion
-    site_data[:, :k] = (1 .- site_data[:, :k] ./ 100.0)
-    # km^2 to m^2
-    site_data[:, :area] *= 1e6 
-
-    init_coral_cover = load_initial_cover(ReefModDomain, dom_dataset, site_data, loc_ids, timeframe[1])
-    conn_data = load_connectivity(RMEDomain, data_files, loc_ids)
+    # Connectivity data is retireved from a subdirectory because it's not contained in matfiles
+    conn_data = load_connectivity(RMEDomain, netcdf_dir, site_ids)
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
         conn_data, vec(site_data.area .* site_data.k), similar(conn_data)
     )
 
-    # Set all site depths to 6m below sea level
-    # (ReefMod does not account for depth)
-    # Ensure column is of float type
-    site_data[:, :depth_med] .= 6.0
-    site_data[!, :depth_med] = convert.(Float64, site_data[!, :depth_med])
-
-    # Add GBRMPA zone type info as well
-    gbr_zt_path = joinpath(data_files, "region", "gbrmpa_zone_type.csv")
-    gbr_zone_types = CSV.read(gbr_zt_path, DataFrame; types=String)
-    missing_rows = ismissing.(gbr_zone_types[:, "GBRMPA Zone Types"])
-    gbr_zone_types[missing_rows, "GBRMPA Zone Types"] .= ""
-    zones = gbr_zone_types[:, "GBRMPA Zone Types"]
-    zones = replace.(zones, "Zone" => "", " " => "")
-    site_data[:, :zone_type] .= zones
-
-    timeframe = (2022, 2100)
+    # GBRMPA zone types are not contained in matfiles
+    site_data[:, :zone_type] .= ["" for _ in 1:n_locations]
 
     # timesteps, location, scenario
-    wave_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 1)
+    wave_scens = zeros(length(timeframe[1]:timeframe[2]), n_locations, 1)
     wave_scens = NamedDimsArray(
         wave_scens;
         timesteps=timeframe[1]:timeframe[2],
-        locs=loc_ids,
+        locs=site_ids,
         scenarios=[1]
     )
     
     # Current ReefMod mat data only contains cyclone classifications not mortality
     # timesteps, location, species, scenario
-    cyc_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 6, 1)
+    cyc_scens = zeros(length(timeframe[1]:timeframe[2]), n_locations, 6, 1)
     cyc_scens = NamedDimsArray(
         cyc_scens;
         timesteps=timeframe[1]:timeframe[2],
-        locs=loc_ids,
+        locs=site_ids,
         species=1:6,
         scenarios=[1]
     )
 
     env_md = EnvLayer(
         netcdf_dir,
-        site_data_path,
+        "",
         site_id_col,
         cluster_id_col,
         "",
@@ -187,16 +174,7 @@ function load_domain(
         cyc_scens,
         model,
         SimConstants(),
-        netcdf_dir,
-        loc_ids_path
     )
-end
-
-function _get_loc_ids(file_path::String)::Vector{String}
-    possible_match = _get_relevant_files(file_path, "SSP")
-    first_file = CSV.read(possible_match[1], DataFrame)
-    loc_ids = String.(first_file[:, 1])
-    return loc_ids
 end
 
 """
@@ -262,12 +240,19 @@ function _find_netcdf(directory::String, scenario::String)::String
     return pos_files[1]
 end
 
+"""
+    switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
+
+Load different RCP into domain.
+"""
 function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
-    new_scen_fn = _find_netcdf(d.netcdf_dir, RCP)
+    new_scen_fn = _find_netcdf(d.env_layer_md.dpkg_path, RCP)
     new_scen_dataset = open_dataset(new_scen_fn)
+
     dhws = Cube(new_scen_dataset[["record_applied_DHWs"]])[timestep = At(d.env_layer_md.timeframe)].data[:, :, :]
     scens = 1:size(dhws)[3]
-    loc_ids = _get_loc_ids(d.loc_ids_path)
+    loc_ids = d.site_ids
+
     d.dhw_scens = NamedDimsArray(
         dhws,
         timesteps=d.env_layer_md.timeframe,
