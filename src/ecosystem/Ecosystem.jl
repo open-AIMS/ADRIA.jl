@@ -207,15 +207,23 @@ function truncated_normal_cdf(
     beta::Float64 = (upper_bound - normal_mean) / normal_stdev
     zeta::Float64 = (x - normal_mean) / normal_stdev
 
-    if abs(alpha) > 10 || abs(beta) > 10
+    # Large errors occurs when bounds deviate from the mean significantly and
+    # are close together relative to the standard deviation.
+    threshold = 3
+    if (alpha > threshold && beta > threshold) || (alpha < -threshold && beta < -threshold)
         @debug "Possible loss of accuracy: the given truncated normal distribution bounds \
-            are more than 10 standard deviations from the normal mean. \
+            are more than 5 standard deviations from the normal mean. \
             \nLower and upper bounds of the truncated normal distribution are \
-            $(alpha) and $(beta) standard deviations from the normal mean respectively."
+            $(alpha) and $(beta) standard deviations from the normal mean respectively. \
+            Falling back to more accurate calculation."
+        
+        return erf(alpha * StatsFuns.invsqrt2, zeta * StatsFuns.invsqrt2) /
+               erf(alpha * StatsFuns.invsqrt2, beta * StatsFuns.invsqrt2)
     end
 
-    # Store error function of alpha to avoid calculating twice
+    # Store error function of alpha to avoid duplicate calculations
     erf_alpha = rational_erf(alpha * StatsFuns.invsqrt2)
+
 
     return (rational_erf(zeta * StatsFuns.invsqrt2) - erf_alpha) /
            (rational_erf(beta * StatsFuns.invsqrt2) - erf_alpha)
