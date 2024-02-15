@@ -101,10 +101,10 @@ function load_domain(
     @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
     
     # Load reef area and convert from km^2 to m^2
-    site_data[:, :area] = Cube(dom_dataset[["reef_area"]]).data[:] .* 1e6
-
-    # Convert nongrazable area from percentage to decimal in [0, 1] and calculate grazable area
-    site_data[:, :k] = 1 .- dropdims(mean(Cube(dom_dataset[["nongrazable"]]), dims=2), dims=2).data ./ 100.0
+    site_data[:, :area] = id_list[:, 2] .* 1e6
+    
+    # Calculate `k` area (1.0 - "ungrazable" area)
+    site_data[:, :k] = 1 .- id_list[:, 3]
 
     # Load DHWs
     dhws = Cube(
