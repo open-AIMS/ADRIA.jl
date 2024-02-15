@@ -454,9 +454,10 @@ ADRIA.sensitivity.rsa(X, y; S=10)
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
 function rsa(
-    X::DataFrame, y::AbstractVector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame;
-    S::Int64=10,
+    X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame;
+    S::Int64=10
 )::Dataset
+    factors = Symbol.(names(X))
     N, D = size(X)
 
     X_i = zeros(N)
