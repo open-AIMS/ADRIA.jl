@@ -126,16 +126,15 @@ function _site_labels(nc_file::NetCDF.NcFile)::Vector{String}
 end
 
 """
-    load_cover(data_fn::String, site_data::DataFrame)::YAXArray
+    load_cover(data_fn::String)::YAXArray
     load_cover(n_species::Int64, n_sites::Int64)::YAXArray
 
 Load initial coral cover data from netCDF.
 """
-function load_cover(data_fn::String, site_data::DataFrame)::YAXArray
+function load_cover(data_fn::String)::YAXArray
     _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
-    data = load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
 
-    return _convert_abs_to_k(data, site_data)
+    return load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
 end
 function load_cover(n_species::Int64, n_sites::Int64)::YAXArray
     @warn "Using random initial coral cover"
