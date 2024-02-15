@@ -72,17 +72,12 @@ function ResultSet(
         input_set.attrs["sim_constants"],
         model_spec,
         outcomes,
-        NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(
-            log_set["rankings"]
-        ),
-        NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(
-            log_set["shade"]
-        ),
-        NamedDimsArray{Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))}(
-            log_set["coral_dhw_log"]
-        ))
+        DataCube(log_set["rankings"], Symbol.(Tuple(log_set["rankings"].attrs["structure"]))),
+        DataCube(log_set["seed"], Symbol.(Tuple(log_set["seed"].attrs["structure"]))),
+        DataCube(log_set["fog"], Symbol.(Tuple(log_set["fog"].attrs["structure"]))),
+        DataCube(log_set["shade"], Symbol.(Tuple(log_set["shade"].attrs["structure"]))),
+        DataCube(log_set["coral_dhw_log"], Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))),
+    )
 end
 
 """
