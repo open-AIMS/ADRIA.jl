@@ -150,7 +150,7 @@ outside the given bounds.
 # Arguments
 - `criteria_name` : Criteria to apply thresholds to
 - `threshold` : Lower and upper bounds of values to retain (inclusive)
-- `dm` : the decision matrix to apply thresholds to
+- `dm` : The decision matrix to apply thresholds to
 
 # Returns
 A new YAXArray
@@ -170,7 +170,7 @@ function apply_threshold(
 
     valid_locs = vec(threshold[1] .<= target_vals .<= (threshold[1]+threshold[2]))
 
-    return dm[valid_locs, :]
+    return dm[location=valid_locs]
 end
 
 """
