@@ -135,7 +135,7 @@ function load_domain(
     site_data[:, :zone_type] .= ["" for _ in 1:nrow(site_data)]
 
     # timesteps, location, scenario
-    wave_scens = zeros(length(timeframe[1]:timeframe[2]), n_locations, 1)
+    wave_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 1)
     wave_scens = NamedDimsArray(
         wave_scens;
         timesteps=timeframe[1]:timeframe[2],
@@ -145,7 +145,7 @@ function load_domain(
     
     # Current ReefMod mat data only contains cyclone classifications not mortality
     # timesteps, location, species, scenario
-    cyc_scens = zeros(length(timeframe[1]:timeframe[2]), n_locations, 6, 1)
+    cyc_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 6, 1)
     cyc_scens = NamedDimsArray(
         cyc_scens;
         timesteps=timeframe[1]:timeframe[2],
