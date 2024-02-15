@@ -804,7 +804,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3),
     #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
     if in_debug_mode
-        collated_dhw_tol_log = NamedDimsArray(
+        collated_dhw_tol_log = DataCube(
             dhw_tol_mean_log; timesteps=1:tf, species=corals.coral_id, sites=1:n_locs
         )
     else
