@@ -80,7 +80,7 @@ function _get_cat_quantile(
 end
 
 """
-    _create_seq_store(model_spec::Dataframe, unordered_cat::Vector{Symbol}, S::Int64)
+    _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol}, S::Int64)
 
 Get stored bin sequences for each factor type.
 
@@ -89,7 +89,7 @@ Get stored bin sequences for each factor type.
 - `unordered_cat` : Factors considered for sensitivity analysis of unordered categorical type.
 - `S` : Number of bins.
 """
-function _create_seq_store(model_spec::Dataframe, unordered_cat::Vector{Symbol}, S::Int64)
+function _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol}, S::Int64)
     seq_store::Dict{Symbol,Vector{Float64}} = Dict() # storage for bin sequences
 
     # Get unique bin sequences for unordered categorical variables and store
