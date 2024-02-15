@@ -148,7 +148,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     ))
 
     return RMEDomain(
-        "ReefMod",
+        "ReefMod Engine",
         RCP,
         env_md,
         "",
