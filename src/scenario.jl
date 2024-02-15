@@ -559,7 +559,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     alg_hint = Symbol[:nonstiff]
 
     area_weighted_conn = conn .* site_k_area(domain)
-    conn_cache = similar(area_weighted_conn)
+    conn_cache = similar(area_weighted_conn.data)
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(
