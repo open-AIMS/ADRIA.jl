@@ -621,28 +621,28 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # TODO: All interventions to be moved to appropriate type methods.
         # intervene(SeedIntervention, tstep)
         if is_guided && (seed_decision_years[tstep] || fog_decision_years[tstep])
+            # Update dMCDA values
+            dhw_projection = weighted_projection(dhw_scen, tstep, plan_horizon, decay, tf)
+            wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
+
+            # Determine connectivity strength weighting by area.
+            # Accounts for strength of connectivity where there is low/no coral cover
+            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
+
+            update_criteria_values!(
+                decision_mat;
+                seed_heat_stress=dhw_projection[considered_locs],
+                seed_wave_stress=wave_projection[considered_locs],
+                seed_coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
+                seed_in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
+                seed_out_connectivity=out_conn[considered_locs]
+            )
+
+            # Recreate preferences, removing criteria that are constant for this timestep
+            is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
+            valid_criteria = seed_pref.names[.!is_const]
+
             if seeding && seed_decision_years[tstep]
-                # Update dMCDA values
-                dhw_projection = weighted_projection(dhw_scen, tstep, plan_horizon, decay, tf)
-                wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
-
-                # Determine connectivity strength weighting by area.
-                # Accounts for strength of connectivity where there is low/no coral cover
-                in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
-
-                update_criteria_values!(
-                    decision_mat;
-                    seed_heat_stress=dhw_projection[considered_locs],
-                    seed_wave_stress=wave_projection[considered_locs],
-                    seed_coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
-                    seed_in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
-                    seed_out_connectivity=out_conn[considered_locs]
-                )
-
-                # Recreate preferences, removing criteria that are constant for this timestep
-                is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
-                valid_criteria = seed_pref.names[.!is_const]
-
                 sp = filter_criteria(seed_pref, is_const)
                 selected_seed_ranks = select_locations(
                     sp,
