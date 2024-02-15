@@ -84,8 +84,8 @@ include("analysis/analysis.jl")
 include("analysis/sensitivity.jl")
 
 include("ExtInterface/ADRIA/Domain.jl")
-include("ExtInterface/ReefMod/Domain.jl")
-include("ExtInterface/ReefMod/MatDomain.jl")
+include("ExtInterface/ReefMod/RMEDomain.jl")
+include("ExtInterface/ReefMod/ReefModDomain.jl")
 
 include("viz/viz.jl")
 
