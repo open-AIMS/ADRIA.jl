@@ -99,19 +99,28 @@ function SeedPreferences(
 end
 
 """
-    select_locations(sp::SeedPreferences, matrix, method, cluster)
+    select_locations(
+        sp::SeedPreferences,
+        dm::YAXArray,
+        method::Union{Function,DataType},
+        cluster_ids::Vector{<:Union{Int64,String,Symbol}},
+        area_to_seed::Float64,
+        available_space::Vector{Float64},
+        min_locs::Int64,
+        max_members::Int64
+    )::Matrix{Union{String,Symbol,Int64}}
 
 Selection locations for seeding deployments.
 Attempts to spread deployment locations based on location clusters.
 
 # Arguments
 - `sp` : SeedPreferences
-- `matrix` : Decision matrix
+- `dm` : The decision matrix to assess
 - `method` : MCDA method from JMcDM.jl
 - `cluster_ids` : Cluster membership for each considered location
 - `area_to_seed` : total area to be seeded in absolute units (n_corals * mean juvenile area)
 - `available_space` : available space for each location in absolute units (e.g., m²)
-- `n_iv_locs` : Minimum number of locations to consider
+- `min_locs` : Minimum number of locations to consider
 - `max_members` : Maximum number of deployment locations per cluster
 
 # Example
@@ -124,15 +133,15 @@ select_locations(sp, dmat, topsis, cluster_ids, sort(rand(10), rev=false), 3.0, 
 """
 function select_locations(
     sp::SeedPreferences,
-    matrix::YAXArray,
+    dm::YAXArray,
     method::Union{Function,DataType},
     cluster_ids::Vector{<:Union{Int64,String,Symbol}},
     area_to_seed::Float64,
     available_space::Vector{Float64},
-    n_iv_locs::Int64,
+    min_locs::Int64,
     max_members::Int64
 )::Matrix{Union{String,Symbol,Int64}}
-    rank_ordered_idx = rank_by_index(sp, matrix, method)
+    rank_ordered_idx = rank_by_index(sp, dm, method)
 
     # Disperse selected locations to avoid "clumping" deployment locations
     dispersed_rank_order, _, n_locs = disperse_locations(
@@ -140,11 +149,11 @@ function select_locations(
         cluster_ids[rank_ordered_idx],  # Reorder to match ranked location order
         available_space[rank_ordered_idx],
         area_to_seed,
-        n_iv_locs,
+        min_locs,
         max_members
     )
 
-    loc_names = collect(getAxis(:location, matrix))
+    loc_names = collect(getAxis(:location, dm))
 
     return [loc_names[dispersed_rank_order][1:n_locs] rank_ordered_idx[1:n_locs]]
 end
@@ -271,7 +280,22 @@ function disperse_locations(
     return ranked_locs, cluster_ids, num_locs
 end
 
-function _update_state(cluster_ids, num_locs, max_members)
+"""
+    _update_state(cluster_ids::Vector, num_locs::Int64, max_members::Int64)
+
+Update list of:
+- selected clusters
+- frequency of their selection
+- the indices of clusters which exceed the membership rule
+- IDs of the above
+- and potential suitable alternative locations
+
+# Arguments
+- `cluster_ids` : ID of clusters
+- `num_locs` : Number of locations to select
+- `max_members` : Maximum number of members per cluster
+"""
+function _update_state(cluster_ids::Vector, num_locs::Int64, max_members::Int64)
     selected_clusters = cluster_ids[1:num_locs]
     cluster_frequency = countmap(selected_clusters)
     rule_violators_idx = findall(values(cluster_frequency) .> max_members)
