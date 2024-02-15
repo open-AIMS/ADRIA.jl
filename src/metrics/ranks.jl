@@ -44,7 +44,7 @@ end
 - kwargs : named dimensions to slice across
 
 # Returns
-NamedDimsArray[timesteps, sites, scenarios]
+YAXArray[timesteps, sites, scenarios]
 
 # Example
 ```julia
@@ -110,7 +110,7 @@ end
 - kwargs : named dimensions to slice across
 
 # Returns
-NamedDimsArray[timesteps, sites, scenarios]
+YAXArray[timesteps, sites, scenarios]
 
 # Example
 ```julia
