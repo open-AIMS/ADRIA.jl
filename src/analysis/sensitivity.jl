@@ -83,11 +83,11 @@ function _get_cat_quantile(
 end
 
 """
-    pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
-    pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
-    pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
-    pawn(X::NamedDimsArray, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
-    pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
+    pawn(rs::ResultSet, y::Union{YAXArray,AbstractVector{<:Real}}; S::Int64=10)::YAXArray
+    pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::YAXArray
+    pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::YAXArray
+    pawn(X::YAXArray, y::Union{YAXArray,AbstractVector{<:Real}}; S::Int64=10)::YAXArray
+    pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::YAXArray
 
 Calculates the PAWN sensitivity index.
 
@@ -109,7 +109,7 @@ summary statistics (min, lower bound, mean, median, upper bound, max, std, and c
 - `S` : Number of slides (default: 10)
 
 # Returns
-NamedDimsArray, of min, mean, lower bound, median, upper bound, max, std, and cv summary statistics.
+YAXArray, of min, mean, lower bound, median, upper bound, max, std, and cv summary statistics.
 
 # Examples
 ```julia
@@ -160,7 +160,7 @@ function pawn(
     y::AbstractVector{<:Real},
     factor_names::Vector{String};
     S::Int64=10,
-)::NamedDimsArray
+)::YAXArray
     N, D = size(X)
     step = 1 / S
     seq = 0.0:step:1.0
@@ -212,23 +212,23 @@ function pawn(
     replace!(results, NaN => 0.0, Inf => 0.0)
 
     col_names = [:min, :lb, :mean, :median, :ub, :max, :std, :cv]
-    return NamedDimsArray(results; factors=Symbol.(factor_names), Si=col_names)
+    return DataCube(results; factors=Symbol.(factor_names), Si=col_names)
 end
-function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
+function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::YAXArray
     return pawn(Matrix(X), y, names(X); S=S)
 end
 function pawn(
-    X::NamedDimsArray,
-    y::Union{NamedDimsArray,AbstractVector{<:Real}};
+    X::YAXArray,
+    y::Union{YAXArray,AbstractVector{<:Real}};
     S::Int64=10
-)::NamedDimsArray
+)::YAXArray
     return pawn(X, y, axiskeys(X, 2); S=S)
 end
 function pawn(
-    X::Union{DataFrame,NamedDimsArray},
+    X::Union{DataFrame,YAXArray},
     y::AbstractMatrix{<:Real};
     S::Int64=10
-)::NamedDimsArray
+)::YAXArray
     N, D = size(y)
     if N > 1 && D > 1
         msg::String = string(
@@ -244,15 +244,15 @@ function pawn(
 end
 function pawn(
     rs::ResultSet,
-    y::Union{NamedDimsArray,AbstractVector{<:Real}};
+    y::Union{YAXArray,AbstractVector{<:Real}};
     S::Int64=10
-)::NamedDimsArray
+)::YAXArray
     return pawn(rs.inputs, y; S=S)
 end
 
 """
-    convergence(X::DataFrame, y::NamedDimsArray, target_factors::Vector{Symbol}; n_steps::Int64=10)::NamedDimsArray
-    convergence(rs::ResultSet, X::DataFrame, y::NamedDimsArray, components::Vector{String}; n_steps::Int64=10)::NamedDimsArray
+    convergence(X::DataFrame, y::YAXArray, target_factors::Vector{Symbol}; n_steps::Int64=10)::YAXArray
+    convergence(rs::ResultSet, X::DataFrame, y::YAXArray, components::Vector{String}; n_steps::Int64=10)::YAXArray
 
 Calculates the PAWN sensitivity index for an increasing number of scenarios where the
 maximum is the total number of scenarios in scens. Number of scenario subsets determined by
@@ -268,21 +268,21 @@ model components.
 - `n_steps` : Number of steps to cut the total number of scenarios into.
 
 # Returns
-NamedDimsArray, of min, lower bound, mean, median, upper bound, max, std, and cv summary
+YAXArray, of min, lower bound, mean, median, upper bound, max, std, and cv summary
 statistics for an increasing number of scenarios.
 """
 function convergence(
     X::DataFrame,
-    y::NamedDimsArray,
+    y::YAXArray,
     target_factors::Vector{Symbol};
     Si::Function=pawn,
     n_steps::Int64=10,
-)::NamedDimsArray
+)::YAXArray
     N = length(y.scenarios)
     step_size = floor(Int64, N / n_steps)
     N_it = step_size == 0 ? collect(1:N) : collect(step_size:step_size:N)
 
-    pawn_store = NamedDimsArray(
+    pawn_store = DataCube(
         zeros(length(target_factors), 8, length(N_it));
         factors=target_factors,
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
@@ -301,11 +301,11 @@ end
 function convergence(
     rs::ResultSet,
     X::DataFrame,
-    y::NamedDimsArray,
+    y::YAXArray,
     components::Vector{Symbol};
     Si::Function=pawn,
     n_steps::Int64=10,
-)::NamedDimsArray
+)::YAXArray
     ms = model_spec(rs)
 
     target_factors = [
@@ -316,7 +316,7 @@ function convergence(
     Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); Si=Si, n_steps=n_steps)
 
     # Note: n_steps only applies if it is > number of scenarios.
-    Si_grouped = NamedDimsArray(
+    Si_grouped = DataCube(
         zeros(length(components), 8, size(Si_n, 3));
         factors=components,
         Si=Si_n.Si,
@@ -334,7 +334,7 @@ function convergence(
 end
 
 """
-    tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
+    tsa(X::DataFrame, y::AbstractMatrix)::YAXArray
 
 Perform Temporal (or time-varying) Sensitivity Analysis using the PAWN sensitivity index.
 
@@ -357,12 +357,12 @@ ADRIA.sensitivity.tsa(rs.inputs, y_tac)
 - `y` : scenario outcomes over time
 
 # Returns
-NamedDimsArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
+YAXArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
 - \$D\$ is the number of dimensions/factors
 - 6 corresponds to the min, mean, median, max, std, and cv of the PAWN indices
 - \$T\$ is the number of time steps
 """
-function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
+function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::YAXArray
     local ts
     try
         ts = axiskeys(y, 1)
@@ -374,7 +374,7 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
         end
     end
 
-    t_pawn_idx = NamedDimsArray(
+    t_pawn_idx = DataCube(
         zeros(ncol(X), 8, size(y, 1));
         factors=Symbol.(names(X)),
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
@@ -389,7 +389,7 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
 
     return t_pawn_idx
 end
-function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
+function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::YAXArray
     return tsa(rs.inputs, y)
 end
 
@@ -623,7 +623,7 @@ function outcome_map(
 
     steps = collect(0.0:(1 / S):1.0)
 
-    p_table = NamedDimsArray(
+    p_table = DataCube(
         zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
         bins=string.(steps[2:end]),
         factors=Symbol.(target_factors),
@@ -685,7 +685,7 @@ function outcome_map(
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95,
-)::NamedDimsArray
+)::YAXArray
     return outcome_map(X, y, rule, names(X); S, n_boot, conf)
 end
 function outcome_map(
@@ -696,7 +696,7 @@ function outcome_map(
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95,
-)::NamedDimsArray
+)::YAXArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, target_factors, rs.model_spec; S, n_boot, conf
     )
@@ -708,7 +708,7 @@ function outcome_map(
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95,
-)::NamedDimsArray
+)::YAXArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf
     )
