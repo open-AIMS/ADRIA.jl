@@ -601,8 +601,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # - SRM is applied
         # - Fogging is applied next
         # - Seeding interventions occur
-        # - then cyclones hit
         # - bleaching then occurs
+        # - then cyclones hit
         #
         # Seeding occurs before bleaching as current tech only allows deployments shortly
         # after spawning. If bio-banking or similar tech comes up to speed then we could
@@ -742,10 +742,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             )
         end
 
-        # Coral deaths due to selected cyclone scenario
-        # Peak cyclone period is January to March
-        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
-
         # Calculate and apply bleaching mortality
         # Bleaching typically occurs in the warmer months (November - February)
         #    This: `dhw_t .* (1.0 .- wave_scen[tstep, :])`
@@ -761,6 +757,11 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             c_mean_t,
             @view(bleaching_mort[(tstep-1):tstep, :, :])
         )
+
+        # Coral deaths due to selected cyclone scenario
+        # Peak cyclone period is January to March
+        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
+
         # Update initial condition
         growth.u0 .= C_t
         sol::ODESolution = solve(
