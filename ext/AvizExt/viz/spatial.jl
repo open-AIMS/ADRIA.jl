@@ -173,7 +173,13 @@ function ADRIA.viz.map(
 
     opts[:show_management_zones] = get(opts, :show_management_zones, false)
     if opts[:show_management_zones]
-        highlight = Symbol.(lowercase.(rs.site_data.zone_type))
+        local highlight
+        try
+            highlight = Symbol.(lowercase.(rs.site_data.zone_type))
+        catch
+            # Annoyingly, the case of the name may have changed...
+            highlight = Symbol.(lowercase.(rs.site_data.ZONE_TYPE))
+        end
         opts[:highlight] = highlight
     end
 

@@ -105,7 +105,7 @@ function DMCDA_vars(
         domain.sim_constants.n_site_int,
         domain.sim_constants.priority_sites,
         domain.sim_constants.priority_zones,
-        site_d.zone_type,
+        site_d.ZONE_TYPE,
         domain.strong_pred,
         domain.conn .* site_k_area(domain),
         waves,

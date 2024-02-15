@@ -142,19 +142,21 @@ function component_params(spec::DataFrame, components::Vector{T})::DataFrame whe
 end
 
 """
-    _convert_abs_to_k(coral_cover::Union{YAXArray,Matrix{Float64}}, site_data::DataFrame)::Union{YAXArray,Matrix{Float64}}
+    _convert_abs_to_k(coral_cover::Union{YAXArray,Matrix{Float64}}, spatial::DataFrame)::Union{YAXArray,Matrix{Float64}}
 
 Convert coral cover data from being relative to absolute location area to relative to
 \$k\$ area.
 """
-function _convert_abs_to_k(coral_cover::Union{YAXArray,Matrix{Float64}}, site_data::DataFrame)::Union{YAXArray,Matrix{Float64}}
+function _convert_abs_to_k(
+    coral_cover::Union{YAXArray,Matrix{Float64}}, spatial::DataFrame
+)::Union{YAXArray,Matrix{Float64}}
     # Initial coral cover is provided as values relative to location area.
     # Convert coral covers to be relative to k area, ignoring locations with 0 carrying
     # capacity (k area = 0.0).
-    absolute_k_area = (site_data.k .* site_data.area)'  # max possible coral area in m^2
+    absolute_k_area = (spatial.k .* spatial.area)'  # max possible coral area in m^2
     valid_locs::BitVector = absolute_k_area' .> 0.0
     coral_cover[:, valid_locs] .= (
-        (coral_cover[:, valid_locs] .* site_data.area[valid_locs]') ./
+        (coral_cover[:, valid_locs] .* spatial.area[valid_locs]') ./
         absolute_k_area[valid_locs]'
     )
 
