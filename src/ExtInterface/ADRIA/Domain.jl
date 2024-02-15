@@ -21,7 +21,7 @@ mutable struct ADRIADomain{
     site_data::D  # table of site data (depth, carrying capacity, etc)
     const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `conn`)
     const cluster_id_col::String  # column of unique site ids
-    init_coral_cover::M  # initial coral cover dataset
+    init_coral_cover::YAXArray  # initial coral cover dataset
     const coral_growth::CoralGrowth  # coral
     const site_ids::Vector{String}  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
     const removed_sites::Vector{String}  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
@@ -314,7 +314,7 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     @set! d.RCP = RCP
 
     @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw")
-    @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub")
+    # @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub")
 
     return d
 end
