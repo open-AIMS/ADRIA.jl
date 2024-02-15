@@ -184,6 +184,9 @@ Constructor for YAXArray.
 function DataCube(data::AbstractArray; kwargs...)::YAXArray
     return YAXArray(Tuple(Dim{name}(val) for (name, val) in kwargs), data)
 end
+function DataCube(data::AbstractArray, axes_names::Tuple)::YAXArray
+    return DataCube(data; NamedTuple{axes_names}(1:len for len in size(data))...)
+end
 
 """
     ZeroDataCube(T=Float64; kwargs...)::YAXArray
