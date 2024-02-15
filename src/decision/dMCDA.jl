@@ -3,7 +3,6 @@ module decision
 
 using StatsBase
 using Distances, DataFrames
-using DimensionalData
 using Combinatorics
 using JMcDM
 using InteractiveUtils: subtypes
