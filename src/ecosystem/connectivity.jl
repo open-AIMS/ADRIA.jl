@@ -130,7 +130,7 @@ function site_connectivity(
         extracted_conn[extracted_conn .< conn_cutoff] .= 0.0
     end
 
-    conn = YAXArray((Dim{:Source}(loc_ids), Dim{:Sink}(loc_ids)), extracted_conn)
+    conn = DataCube(extracted_conn; Source=loc_ids, Sink=loc_ids)
 
     @assert all(0.0 .<= conn .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
