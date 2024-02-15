@@ -59,7 +59,7 @@ end
 """
     top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
 
-Get the top n seeded sites over time by their unique site id.
+Get the top n seeded sites over time by their unique location id.
 Lower rank values are better (e.g., 1 = first choice)
 
 # Arguments
@@ -136,7 +136,7 @@ Return the top `N` sites according to the provided metric (defaulting to `mean` 
 - stat : Summary statistic to use for comparison (default: mean)
 
 # Returns
-YAXArray[:scenarios, :locations], where `locations` indicates order of site ranking as well.
+YAXArray[:scenarios, :locations], where `locations` indicates order of location ranking.
 
 # Example
 ```julia
