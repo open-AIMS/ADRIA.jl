@@ -457,8 +457,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
     # Flag indicating whether to seed or not to seed when unguided
-    apply_seeding = any(param_set(taxa_names) .> 0.0)
-    # Flag indicating whether to seed or not to seed when unguided
     is_unguided = param_set[At("guided")] == 0.0
     seeding = any(param_set[At(taxa_names)] .> 0.0)
     apply_seeding = is_unguided && seeding
@@ -643,7 +641,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             valid_criteria = seed_pref.names[.!is_const]
 
             if seed_decision_years[tstep]
-                sp = filter_constant_criteria(seed_pref, is_const)
+                sp = filter_criteria(seed_pref, is_const)
                 selected_seed_ranks = select_locations(
                     sp,
                     decision_mat[criteria=At(valid_criteria)],
@@ -651,9 +649,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                     site_data.cluster_id[considered_locs],
                     area_to_seed,
                     vec(leftover_space_m²),
-                    domain.sim_constants.n_site_int,
-                    domain.sim_constants.max_members
+                    Int64(param_set[At("min_iv_locations")]),
+                    Int64(param_set[At("cluster_max_member")])
                 )
+
                 # Log rankings as appropriate
                 if !isempty(selected_seed_ranks)
                     # Map selected locations back to their canonical ids.

@@ -128,7 +128,6 @@ function rank_locations(
         decision_mat = decision_mat[valid_locs, :]
 
         # Number of time steps in environmental layers to look ahead when making decisions
-        Main.@infiltrate
         horizon::UnitRange{Int64} = 1:1+Int64(scen[factors=At("plan_horizon")][1])
         d_s::UnitRange{Int64} = 1:length(horizon)
 
