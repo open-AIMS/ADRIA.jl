@@ -12,7 +12,7 @@ end
 
 Collates ranks into seed/shade ranking results into a common structure.
 """
-function _collate_ranks(rs::ResultSet, selected; kwargs...)::NamedDimsArray
+function _collate_ranks(rs::ResultSet, selected; kwargs...)::YAXArray
     n_steps, n_sites = size(selected)
 
     ts = timesteps(rs)
@@ -27,7 +27,12 @@ function _collate_ranks(rs::ResultSet, selected; kwargs...)::NamedDimsArray
         @warn "Length of reef ids do not match number of sites"
     end
 
-    return NamedDimsArray(selected; zip((:timesteps, :sites, :scenarios), (ts, r_ids, 1:size(selected, 3)))...)
+    return DataCube(
+        selected;
+        timesteps=ts,
+        locations=r_ids,
+        scenarios=1:size(selected, 3)
+    )
 end
 
 
@@ -59,13 +64,13 @@ Lower rank values are better (e.g., 1 = first choice)
 
 # Arguments
 - rs : ResultSet
-- n : `n` sites to retrieve
+- n : `n` locations to retrieve
 - kwargs : dimensions to slice across
 
 # Returns
-NamedDimsArray[sites, [Site Index, Unique ID, Rank], scenarios]
+YAXArray[locations, [loc_id, loc_name, rank], scenarios]
 """
-function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
+function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
     ranked_sites = seed_ranks(rs; kwargs...)
 
     r_ids = rs.site_data.reef_siteid
@@ -89,7 +94,12 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
         top_sites[:, 3, scen] .= rank_score
     end
 
-    return NamedDimsArray(top_sites, (:sites, :site_ranks, :scenarios))
+    return DataCube(
+        top_sites;
+        locations=r_ids,
+        ranks=[:loc_id, :loc_name, :rank],
+        scenarios=1:size(ranked_sites, 3)
+    )
 end
 
 """
@@ -118,16 +128,15 @@ end
 
 Return the top `N` sites according to the provided metric (defaulting to `mean` of `relative_cover`).
 
-
 # Arguments
 - rs : ResultSet
-- N : No. of best performing sites to be selected
-- metric : metric to use to order sites from best to worst,
+- N : Number of best performing sites to be selected
+- metric : Metric to use to order sites from best to worst,
            must take ResultSet as input
-- stat : summary statistic to use for comparison (default: mean)
+- stat : Summary statistic to use for comparison (default: mean)
 
 # Returns
-NamedDimsArray[:scenarios,:site_ids], where `site_ids` indicates order of site ranking as well.
+YAXArray[:scenarios, :locations], where `locations` indicates order of site ranking as well.
 
 # Example
 ```julia
@@ -136,7 +145,7 @@ ADRIA.metrics.top_N_sites(rs, 5; metric=ADRIA.metric.relative_cover)
 ADRIA.metrics.top_N_sites(rs, 5; metric=ADRIA.metric.relative_cover, stat=median)
 ```
 """
-function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover, stat=mean)::NamedDimsArray
+function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover, stat=mean)::YAXArray
     return top_N_sites(metric(rs), N; stat=stat)
 end
 function top_N_sites(data::AbstractArray{<:Real}, N::Int64; stat=mean)
@@ -149,5 +158,9 @@ function top_N_sites(data::AbstractArray{<:Real}, N::Int64; stat=mean)
         top_N_sites[scen, :] = inds[1:N]
     end
 
-    return NamedDimsArray(top_N_sites, (:scenarios, :site_ids))
+    return DataCube(
+        top_N_sites;
+        scenarios=1:size(stat_m, :scenarios),
+        locations=data.locations  # Note: assumes data holds location dimension
+    )
 end
