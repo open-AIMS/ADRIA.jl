@@ -3,30 +3,24 @@
 
 Core ADRIA domain. Represents study area.
 """
-mutable struct ADRIADomain{
-    Σ<:YAXArray,
-    M<:YAXArray,
-    D<:DataFrame,
-    Y<:Union{Matrix{<:Real},YAXArray},
-    Z<:Union{Matrix{<:Real},YAXArray},
-} <: Domain
+mutable struct ADRIADomain <: Domain
     const name::String  # human-readable name
     RCP::String  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
     scenario_invoke_time::String  # time latest set of scenarios were run
-    const conn::Σ  # connectivity data
+    const conn::YAXArray  # connectivity data
     const in_conn::Vector{Float64}  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
     const out_conn::Vector{Float64}  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strong_pred::Vector{Int64}  # strongest predecessor
-    site_data::D  # table of site data (depth, carrying capacity, etc)
+    site_data::DataFrame  # table of site data (depth, carrying capacity, etc)
     const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `conn`)
     const cluster_id_col::String  # column of unique site ids
     init_coral_cover::YAXArray  # initial coral cover dataset
     const coral_growth::CoralGrowth  # coral
     const site_ids::Vector{String}  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
     const removed_sites::Vector{String}  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
-    dhw_scens::Y  # DHW scenarios
-    wave_scens::Z  # wave scenarios
+    dhw_scens::YAXArray  # DHW scenarios
+    wave_scens::YAXArray  # wave scenarios
     cyclone_mortality_scens::Union{Matrix{<:Real},YAXArray}  # Cyclone mortality scenarios
 
     # Parameters
@@ -188,7 +182,7 @@ function Domain(
     n_sites::Int64 = coral_growth.n_sites
     n_species = coral_growth.n_species
 
-    cover_params = ispath(init_coral_fn) ? (init_coral_fn, site_data) : (n_species, n_sites)
+    cover_params = ispath(init_coral_fn) ? (init_coral_fn, ) : (n_species, n_sites)
     coral_cover = load_cover(cover_params...)
 
     dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
