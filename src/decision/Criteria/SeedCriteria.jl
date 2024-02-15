@@ -154,7 +154,7 @@ function select_locations(
 )::Matrix{Union{String,Symbol,Int64}}
     local rank_ordered_idx
     try
-        rank_ordered_idx = rank_by_index(sp, matrix, method)
+        rank_ordered_idx = rank_by_index(sp, dm, method)
     catch err
         if err isa DomainError
             # Return empty matrix to signify no ranks

@@ -359,7 +359,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     tspan::Tuple = (0.0, 1.0)
     solver::Euler = Euler()
-    MCDA_approach::Int64 = param_set[At("guided")]
 
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
@@ -372,8 +371,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     n_groups::Int64 = domain.coral_growth.n_groups
 
     # Locations to intervene
-    min_iv_locs::Int64 = param_set("min_iv_locations")
-    max_members::Int64 = param_set("cluster_max_member")
+    min_iv_locs::Int64 = param_set[At("min_iv_locations")]
+    max_members::Int64 = param_set[At("cluster_max_member")]
 
     # Years to start seeding/shading/fogging
     seed_start_year::Int64 = param_set[At("seed_year_start")]
@@ -426,15 +425,15 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
-    is_guided = param_set("guided") > 0
+    is_guided = param_set[At("guided")] > 0
     if is_guided
-        MCDA_approach = mcda_methods()[Int64(param_set("guided"))]
+        MCDA_approach = mcda_methods()[Int64(param_set[At("guided")])]
     end
 
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
     α = 0.99
-    decay = α .^ (1:Int64(param_set("plan_horizon"))+1).^2
+    decay = α .^ (1:Int64(param_set[At("plan_horizon")])+1).^2
 
     # Years at which intervention locations are re-evaluated and deployed
     seed_decision_years = decision_frequency(seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")])
@@ -457,8 +456,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
     # Flag indicating whether to seed or not to seed when unguided
-    is_unguided = param_set("guided") == 0.0
-    seeding = any(param_set(taxa_names) .> 0.0)
+    is_unguided = param_set[At("guided")] == 0.0
+    seeding = any(param_set[At(taxa_names)] .> 0.0)
     apply_seeding = is_unguided && seeding
     # Flag indicating whether to fog or not fog
     apply_fogging = is_unguided && (fogging > 0.0)
@@ -534,7 +533,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     alg_hint = Symbol[:nonstiff]
 
     area_weighted_conn = conn .* site_k_area(domain)
-    conn_cache = similar(area_weighted_conn)
+    conn_cache = similar(area_weighted_conn.data)
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(
@@ -732,7 +731,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 C_t,
                 vec(loc_k_area),
                 vec(leftover_space_m²),
-                selected_seed_ranks[:, 2],
+                Int64.(selected_seed_ranks[:, 2]),  # cast to Int type
                 seeded_area,
                 seed_sc,
                 a_adapt,
