@@ -6,6 +6,7 @@ using Distances, DataFrames
 using Combinatorics
 using JMcDM
 using InteractiveUtils: subtypes
+using YAXArrays
 using ADRIA: Domain, EcoModel, n_locations, site_area, site_k_area
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
@@ -88,7 +89,7 @@ Constuctors for DMCDA variables.
 """
 function DMCDA_vars(
     domain::Domain,
-    criteria::NamedDimsArray,
+    criteria::YAXArray,
     site_ids::AbstractArray,
     leftover_space::AbstractArray,
     area_to_seed::Float64,
@@ -112,31 +113,31 @@ function DMCDA_vars(
         site_d.depth_med,
         leftover_space,
         site_k_area(domain),
-        criteria("deployed_coral_risk_tol"),
+        criteria[At("deployed_coral_risk_tol")],
         domain.sim_constants.max_members,
         domain.site_data.UNIQUE_ID,
         area_to_seed,
-        criteria("seed_in_connectivity"),
-        criteria("seed_out_connectivity"),
-        criteria("fog_connectivity"),
-        criteria("seed_wave_stress"),
-        criteria("fog_wave_stress"),
-        criteria("seed_heat_stress"),
-        criteria("fog_heat_stress"),
-        criteria("seed_depth"),
-        criteria("coral_cover_high"),
-        criteria("coral_cover_low"),
-        criteria("seed_priority"),
-        criteria("fog_priority"),
-        criteria("seed_zone"),
-        criteria("fog_zone"),
+        criteria[At("seed_in_connectivity")],
+        criteria[At("seed_out_connectivity")],
+        criteria[At("fog_connectivity")],
+        criteria[At("seed_wave_stress")],
+        criteria[At("fog_wave_stress")],
+        criteria[At("seed_heat_stress")],
+        criteria[At("fog_heat_stress")],
+        criteria[At("seed_depth")],
+        criteria[At("coral_cover_high")],
+        criteria[At("coral_cover_low")],
+        criteria[At("seed_priority")],
+        criteria[At("fog_priority")],
+        criteria[At("seed_zone")],
+        criteria[At("fog_zone")],
     )
 
     return mcda_vars
 end
 function DMCDA_vars(
     domain::Domain,
-    criteria::NamedDimsArray,
+    criteria::YAXArray,
     site_ids::AbstractArray,
     leftover_space::AbstractArray,
     area_to_seed::Float64,
@@ -161,7 +162,7 @@ function DMCDA_vars(
     waves::AbstractArray,
     dhw::AbstractArray,
 )::DMCDA_vars
-    criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria); rows = names(criteria))
+    criteria_vec::YAXArray = DataCube(collect(criteria); rows=names(criteria))
     return DMCDA_vars(
         domain, criteria_vec, site_ids, leftover_space, area_to_seed, waves, dhw
     )
@@ -173,7 +174,7 @@ function DMCDA_vars(
     leftover_space::AbstractArray,
     area_to_seed::Float64,
 )::DMCDA_vars
-    criteria_vec::NamedDimsArray = NamedDimsArray(collect(criteria); rows = names(criteria))
+    criteria_vec::YAXArray = DataCube(collect(criteria); rows=names(criteria))
     return DMCDA_vars(domain, criteria_vec, site_ids, leftover_space, area_to_seed)
 end
 
@@ -192,7 +193,7 @@ end
 Normalize a Matrix (SE/SH) for MCDA.
 """
 function mcda_normalize(x::Matrix)::Matrix
-    return x ./ sqrt.(sum(x .^ 2; dims = 1))
+    return x ./ sqrt.(sum(x .^ 2; dims=1))
 end
 
 """
@@ -201,7 +202,7 @@ end
 Normalize weights for a set of scenarios (wse/wsh) for MCDA.
 """
 function mcda_normalize(x::DataFrame)::DataFrame
-    return x ./ sum(Matrix(x); dims = 2)
+    return x ./ sum(Matrix(x); dims=2)
 end
 
 """
@@ -212,7 +213,7 @@ Align a vector of site rankings to match the indicated order in `s_order`.
 function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # Fill target ranking column
     for (i, site_id) in enumerate(s_order[:, 1])
-        rankings[rankings[:, 1] .== site_id, col] .= i
+        rankings[rankings[:, 1].==site_id, col] .= i
     end
 
     return nothing
@@ -237,10 +238,10 @@ function rank_sites!(
     weights::Vector{Float64},
     rankings::Matrix{Int64},
     n_site_int::Int64,
-    mcda_func::Union{Function, Type{<:MCDMMethod}},
-    rank_col)::Tuple{Vector{Int64}, Matrix{Union{Float64, Int64}}}
+    mcda_func::Union{Function,Type{<:MCDMMethod}},
+    rank_col)::Tuple{Vector{Int64},Matrix{Union{Float64,Int64}}}
     # Filter out all non-preferred sites
-    selector = vec(.!all(S[:, 2:end] .== 0; dims = 1))
+    selector = vec(.!all(S[:, 2:end] .== 0; dims=1))
 
     # weights in order of: in_conn, out_conn, wave, heat, predecessors, low cover
     weights = weights[selector]
@@ -279,7 +280,7 @@ function retrieve_ranks(
     S::Matrix{Float64},
     site_ids::Vector{Float64},
     weights::Vector{Float64},
-    mcda_func::Function)::Matrix{Union{Float64, Int64}}
+    mcda_func::Function)::Matrix{Union{Float64,Int64}}
     S = mcda_normalize(S) .* weights'
     scores = mcda_func(S)
 
@@ -290,7 +291,7 @@ function retrieve_ranks(
     site_ids::Vector{Float64},
     weights::Vector{Float64},
     mcda_func::Type{<:MCDMMethod},
-)::Matrix{Union{Float64, Int64}}
+)::Matrix{Union{Float64,Int64}}
     fns = fill(maximum, length(weights))
     results = mcdm(MCDMSetting(S, weights, fns), mcda_func())
     maximize = results.bestIndex == argmax(results.scores)
@@ -301,9 +302,9 @@ function retrieve_ranks(
     site_ids::Vector{Float64},
     scores::Vector,
     maximize::Bool,
-)::Matrix{Union{Float64, Int64}}
-    s_order::Vector{Int64} = sortperm(scores; rev = maximize)
-    return Union{Float64, Int64}[Int64.(site_ids[s_order]) scores[s_order]]
+)::Matrix{Union{Float64,Int64}}
+    s_order::Vector{Int64} = sortperm(scores; rev=maximize)
+    return Union{Float64,Int64}[Int64.(site_ids[s_order]) scores[s_order]]
 end
 
 """
@@ -339,14 +340,14 @@ function create_decision_matrix(
     site_ids::Vector{Int64},
     in_conn::T,
     out_conn::T,
-    leftover_space::Union{NamedDimsArray, T},
+    leftover_space::Union{NamedDimsArray,T},
     wave_stress::T,
     heat_stress::T,
     site_depth::T,
     predec::Matrix{Float64},
     zones_criteria::T,
     risk_tol::Float64
-)::Tuple{Matrix{Float64}, BitVector} where {T <: Vector{Float64}}
+)::Tuple{Matrix{Float64},BitVector} where {T<:Vector{Float64}}
     A = zeros(length(site_ids), 9)
     A[:, 1] .= site_ids  # Column of site ids
 
@@ -378,11 +379,11 @@ function create_decision_matrix(
 
     # Filter out sites that have high risk of wave damage, specifically
     # exceeding the risk tolerance
-    A[A[:, 4] .> risk_tol, 4] .= NaN
+    A[A[:, 4].>risk_tol, 4] .= NaN
     rule = (A[:, 4] .<= risk_tol) .& (A[:, 5] .> risk_tol)
     A[rule, 5] .= NaN
 
-    filtered = vec(.!any(isnan.(A); dims = 2))
+    filtered = vec(.!any(isnan.(A); dims=2))
 
     # Remove rows with NaNs
     A = A[filtered, :]
@@ -439,7 +440,7 @@ function create_seed_matrix(
     wt_predec_zones_seed::T,
     wt_low_cover::T,
     wt_depth_seed::T
-)::Tuple{Matrix{Float64}, Vector{Float64}} where {T <: Float64}
+)::Tuple{Matrix{Float64},Vector{Float64}} where {T<:Float64}
     # Define seeding decision matrix, based on copy of A
     SE = copy(A)
 
@@ -457,10 +458,10 @@ function create_seed_matrix(
     SE[:, 4] = (1 .- SE[:, 4])  # compliment of wave risk
     SE[:, 5] = (1 .- SE[:, 5])  # compliment of heat risk
 
-    SE[SE[:, 8] .<= 0.0, 8] .= NaN # Filter out sites with no space
+    SE[SE[:, 8].<=0.0, 8] .= NaN # Filter out sites with no space
 
     # Filter out identified locations
-    SE = SE[vec(.!any(isnan.(SE); dims = 2)), :]
+    SE = SE[vec(.!any(isnan.(SE); dims=2)), :]
 
     return SE, wse
 end
@@ -507,7 +508,7 @@ function create_fog_matrix(
     wt_predec_fog::T,
     wt_predec_zones_fog::T,
     wt_hi_cover,
-)::Tuple{Matrix{Float64}, Vector{Float64}} where {T <: Float64}
+)::Tuple{Matrix{Float64},Vector{Float64}} where {T<:Float64}
 
     # Define weights vector
     wsh = [
@@ -524,14 +525,14 @@ function create_fog_matrix(
     SH = copy(A)
 
     # Remove consideration of site depth as shading not accounted for in bleaching model yet
-    SH = SH[:, 1:(end - 1)]
+    SH = SH[:, 1:(end-1)]
 
     # Get area of coral cover (m²) by subtracting leftover space from total area for coral.
     SH[:, 8] = k_area .- SH[:, 8]
 
     SH[:, 4] = (1.0 .- SH[:, 4])  # complimentary of wave damage risk
 
-    SH[SH[:, 8] .< 0, 8] .= 0  # if any negative, scale back to zero
+    SH[SH[:, 8].<0, 8] .= 0  # if any negative, scale back to zero
     return SH, wsh
 end
 
@@ -568,9 +569,9 @@ function guided_site_selection(
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
     strong_pred::Vector{Int64};
-    methods_mcda = mcda_methods()
-)::Tuple{Vector{T}, Vector{T}, Matrix{T}} where {
-    T <: Int64, IA <: AbstractArray{<:Int64}, IB <: AbstractArray{<:Int64}, B <: Bool
+    methods_mcda=mcda_methods()
+)::Tuple{Vector{T},Vector{T},Matrix{T}} where {
+    T<:Int64,IA<:AbstractArray{<:Int64},IB<:AbstractArray{<:Int64},B<:Bool
 }
     site_ids = copy(d_vars.site_ids)
     n_sites::Int64 = length(site_ids)
@@ -609,13 +610,13 @@ function guided_site_selection(
 
     for (k::Int64, z_name::String) in enumerate(zone_ids)
         # find sites which are strongest predecessors of sites in the zone
-        zone_preds_temp::Vector{Int64} = strong_pred[zones .== z_name]
+        zone_preds_temp::Vector{Int64} = strong_pred[zones.==z_name]
         for s::Int64 in unique(zone_preds_temp)
             # for each predecessor site, add zone_weights * (no. of zone sites the site is a strongest predecessor for)
-            zone_preds[site_ids .== s] .= zone_preds[site_ids .== s] .+ (zone_weights[k] .* sum(zone_preds_temp .== s))
+            zone_preds[site_ids.==s] .= zone_preds[site_ids.==s] .+ (zone_weights[k] .* sum(zone_preds_temp .== s))
         end
         # add zone_weights for sites in the zone (whether a strongest predecessor of a zone or not)
-        zone_sites[zones .== z_name] .= zone_weights[k]
+        zone_sites[zones.==z_name] .= zone_weights[k]
     end
 
     # add weights for strongest predecessors and zones to get zone criteria
@@ -735,14 +736,14 @@ Tuple :
     Values of 0 indicate sites that were not considered
 """
 function constrain_reef_cluster(
-    reefs::Union{Vector{String}, Vector{Float64}},
-    s_order::Matrix{Union{Float64, Int64}},
+    reefs::Union{Vector{String},Vector{Float64}},
+    s_order::Matrix{Union{Float64,Int64}},
     rankings::Matrix{Int64},
     area_to_seed::Float64,
     available_space::Vector{Float64},
     n_iv_locs::Int64,
     max_members::Int64
-)::Tuple{Vector{Int64}, Matrix{Int64}}
+)::Tuple{Vector{Int64},Matrix{Int64}}
     # Get ordering of locations by their preferred ranks
     loc_ordered_ids = s_order[:, 1]
 
@@ -766,10 +767,10 @@ function constrain_reef_cluster(
         pref_reefs = reefs[pref_locs]  # Reefs that selected locations sit within
 
         # Number of times a reef appears within each location
-        reef_occurances = vec(sum(pref_reefs .== unique_reefs; dims = 1))
+        reef_occurances = vec(sum(pref_reefs .== unique_reefs; dims=1))
 
         # If more than n_reefs locations in a reef, swap out the worst locations
-        reefs_swap = unique_reefs[(reef_occurances .> max_members)]
+        reefs_swap = unique_reefs[(reef_occurances.>max_members)]
 
         if isempty(reefs_swap)
             break
@@ -780,11 +781,11 @@ function constrain_reef_cluster(
         # Find locations in reefs which need replacement, and find the ids of lowest
         # ranked locations in this set
         locs_to_replace = vcat([
-            pref_locs[pref_reefs .== reef][replace_start:end] for reef in reefs_swap
+            pref_locs[pref_reefs.==reef][replace_start:end] for reef in reefs_swap
         ]...)
 
         # Acceptable reefs to switch out for
-        reef_switch_ids = unique_reefs[(reef_occurances .+ 1) .<= max_members]
+        reef_switch_ids = unique_reefs[(reef_occurances.+1).<=max_members]
 
         # Remove locations to be replaced from preferred locations
         pref_locs = setdiff(pref_locs, locs_to_replace)
@@ -800,7 +801,7 @@ function constrain_reef_cluster(
         add_locs_ind = findall(dropdims(any(
                 reshape(reefs[alternate_loc_ids], 1, length(reefs[alternate_loc_ids]))
                 .==
-                reef_switch_ids; dims = 1); dims = 1))
+                reef_switch_ids; dims=1); dims=1))
 
         # New preferred location set
         locs_to_add_inds = add_locs_ind[1:length(locs_to_replace)]
@@ -816,7 +817,7 @@ function constrain_reef_cluster(
     s_order[:, 1] .= [
         loc_ordered_ids[1:num_locs]...,
         removed_sites...,
-        loc_ordered_ids[(num_locs + 1):end]...,
+        loc_ordered_ids[(num_locs+1):end]...,
     ]
 
     # Match by site_id and assign rankings to log
@@ -852,29 +853,29 @@ function unguided_site_selection(
     n_site_int::Int64,
     available_space::Vector{Float64},
     depth::T,
-)::Tuple{Vector, Vector} where {T <: Vector{Int64}}
+)::Tuple{Vector,Vector} where {T<:Vector{Int64}}
     # Unguided deployment, seed/fog corals anywhere so long as available_space > 0.0
     # Only sites that have available space are considered, otherwise a zero-division error
     # may occur later on.
 
     # Select sites (without replacement to avoid duplicate sites)
-    candidate_sites = depth[(available_space .> 0.0)[depth]]  # Filter down to site ids to be considered
+    candidate_sites = depth[(available_space.>0.0)[depth]]  # Filter down to site ids to be considered
     num_sites = length(candidate_sites)
     s_n_site_int = num_sites < n_site_int ? num_sites : n_site_int
 
     if seed_years
         pref_seed_locs = zeros(Int64, n_site_int)
-        pref_seed_locs[1:s_n_site_int] .= StatsBase.sample(candidate_sites, s_n_site_int; replace = false)
+        pref_seed_locs[1:s_n_site_int] .= StatsBase.sample(candidate_sites, s_n_site_int; replace=false)
     end
 
     if fog_years
         pref_fog_locs = zeros(Int64, n_site_int)
         pref_fog_locs[1:s_n_site_int] .= StatsBase.sample(
-            candidate_sites, s_n_site_int; replace = false
+            candidate_sites, s_n_site_int; replace=false
         )
     end
 
-    return pref_seed_locs[pref_seed_locs .> 0], pref_fog_locs[pref_fog_locs .> 0]
+    return pref_seed_locs[pref_seed_locs.>0], pref_fog_locs[pref_fog_locs.>0]
 end
 
 """
@@ -894,10 +895,10 @@ conditions (e.g., DHWs, wave stress, etc):
 """
 function summary_stat_env(
     env_layer::AbstractArray,
-    dims::Union{Int64, Symbol, Tuple{Symbol, Symbol}};
-    w = 0.5,
+    dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
+    w=0.5,
 )::Vector{Float64}
-    return vec((mean(env_layer; dims = dims) .* w) .+ (std(env_layer; dims = dims) .* (1.0 - w)))
+    return vec((mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w)))
 end
 
 """
@@ -916,7 +917,7 @@ BitVector, of logical indices indicating locations which satisfy the depth crite
 """
 function within_depth_bounds(
     loc_depth::Vector{T}, depth_max::T, depth_min::T
-)::BitVector where {T <: Float64}
+)::BitVector where {T<:Float64}
     return (loc_depth .<= depth_max) .& (loc_depth .>= depth_min)
 end
 

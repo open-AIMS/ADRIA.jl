@@ -98,8 +98,8 @@ function _nc_dim_labels(
     sites = "reef_siteid" in keys(nc_file.vars) ? _site_labels(nc_file) : 1:size(data, 2)
 
     try
-        # This will be an issue if number of elements is equal the number of sites, two or
-        # more dimensions but so far that hasn't happened...
+        # This will be an issue if the number of elements for two or more dimensions have
+        # the same number of elements, but so far that hasn't happened...
         sites_idx = first(findall(size(data) .== length(sites)))
     catch err
         error(
@@ -183,6 +183,9 @@ Constructor for YAXArray.
 """
 function DataCube(data::AbstractArray; kwargs...)::YAXArray
     return YAXArray(Tuple(Dim{name}(val) for (name, val) in kwargs), data)
+end
+function DataCube(data::AbstractArray, axes_names::Tuple)::YAXArray
+    return DataCube(data; NamedTuple{axes_names}(1:len for len in size(data))...)
 end
 
 """

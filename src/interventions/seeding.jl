@@ -1,7 +1,7 @@
 using StatsBase
 
 """
-    distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::NamedDimsArray)::NamedDimsArray
+    distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::YAXArray)::YAXArray
 
 Calculate proportion of deployed corals to be seeded at each of the selected locations.
 Distributes seeded corals according to current available space at each selected site.
@@ -12,13 +12,13 @@ Distributes seeded corals according to current available space at each selected 
 - seeded_area : area (in m²) of each coral type to be seeded with dim taxa.
 
 # Returns
-NamedDimsArray[taxa to seed ⋅ number of seed locations], area increased relative to k area.
+YAXArray[taxa to seed ⋅ number of seed locations], area increased relative to k area.
 """
 function distribute_seeded_corals(
     seed_loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
-    seeded_area::NamedDimsArray,
-)::NamedDimsArray
+    seeded_area::YAXArray,
+)::Matrix{Float64}
 
     # Proportion of available space on each site relative to available space at these
     # locations
@@ -28,13 +28,14 @@ function distribute_seeded_corals(
     # proportions:
     #     proportion * (area of 1 coral * num seeded corals)
     # Convert to relative cover proportion by dividing by location area
-    scaled_seed = ((prop_area_avail .* seeded_area') ./ seed_loc_k_m²)'
+    scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
+    #scaled_seed = ((prop_area_avail .* seeded_area') ./ seed_loc_k_m²)'
 
     return scaled_seed
 end
 
 """
-    seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space_m²::V, seed_locs::Vector{Int64}, seeded_area::NamedDimsArray, seed_sc::BitVector, a_adapt::V, Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
+    seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space_m²::V, seed_locs::Vector{Int64}, seeded_area::YAXArray, seed_sc::BitVector, a_adapt::V, Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
 
 Deploy thermally enhanced corals to indicated locations ("seeding" or "outplanting").
 Increases indicated area covered by the given coral taxa and determines the modified
@@ -58,7 +59,7 @@ function seed_corals!(
     loc_k_area::V,
     leftover_space_m²::V,
     seed_locs::Vector{Int64},
-    seeded_area::NamedDimsArray,
+    seeded_area::YAXArray,
     seed_sc::BitVector,
     a_adapt::V,
     Yseed::SubArray,
