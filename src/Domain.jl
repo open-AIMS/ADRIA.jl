@@ -212,24 +212,6 @@ function relative_leftover_space(
 end
 
 """
-    site_k(domain::Domain)::Vector{Float64}
-
-Get maximum coral habitable area as a proportion of a location's area (\$k ∈ [0, 1]\$).
-
-WARNING: Deprecated. Use `location_k()` instead.
-"""
-function site_k(domain::Domain)::Vector{Float64}
-    msg = """
-    `site_k(domain)` is now deprecated and will be removed in ADRIA v1.0
-
-    Instead, use:
-        `location_k(domain)`
-    """
-    @warn msg
-    return domain.site_data.k
-end
-
-"""
     location_k(domain::Domain)::Vector{Float64}
 
 Get maximum coral habitable area as a proportion of a location's area (\$k ∈ [0, 1]\$).
