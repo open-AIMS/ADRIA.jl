@@ -103,6 +103,43 @@ function _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
     return seq_store
 end
 
+function _create_yax_tuple_store(
+    seq_store::Dict{Symbol,Vector{Float64}}, foi_spec::DataFrame,
+    unordered_cat::Vector{Symbol}, second_dim::Vector{Union{Int64,Any}},
+)
+    default_ax = (Dim{:default}(seq_store[:default][2:end]),)
+
+    # YAXArray storage for unordered categorical variables
+    yax_store_cat = Tuple((
+        YAXArray(
+            (Dim{fact_t}(seq_store[fact_t][2:end]),),
+            zeros(
+                Union{Missing,Float64}, (length(seq_store[fact_t][2:end]), second_dim...)
+            ),
+        ) for fact_t in unordered_cat
+    ))
+    # YAXArray storage for other variables
+    yax_store_default = Tuple(
+        YAXArray(
+            default_ax,
+            zeros(
+                Union{Missing,Float64}, (length(seq_store[:default][2:end]), second_dim...)
+            ),
+        ) for _ in 1:(length(foi_spec.field_name) - length(unordered_cat))
+    )
+
+    # Create storage NamedTuples for unordered categorical variables and other variables, then merge
+    r_s_default = NamedTuple(
+        zip(
+            Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]),
+            yax_store_default,
+        ),
+    )
+    r_s_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
+    r_s = merge(r_s_cat, r_s_default)
+    return r_s
+end
+
 """
     pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
     pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
@@ -496,37 +533,13 @@ function rsa(
 
     foi_spec = _get_factor_spec(model_spec, factors)
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
+    # Create storage for bin sequences.
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
-
-    default_ax = (Dim{:default}(seq_store[:default][2:end]),)
-
-    # YAXArray storage for unordered categorical variables
-    yax_store_cat = Tuple((
-        YAXArray(
-            (Dim{fact_t}(seq_store[fact_t][2:end]),),
-            zeros(Union{Missing,Float64}, (length(seq_store[fact_t][2:end]))),
-        ) for fact_t in unordered_cat
-    ))
-    # YAXArray storage for other variables
-    yax_store_default = Tuple(
-        YAXArray(
-            default_ax, zeros(Union{Missing,Float64}, (length(seq_store[:default][2:end])))
-        ) for _ in 1:(length(factors)-length(unordered_cat))
-    )
-
-    # Create storage NamedTuples for unordered categorical variables and other variables, then merge
-    r_s_default = NamedTuple(
-        zip(
-            Tuple(foi_spec.fieldname[foi_spec.ptype.!="unordered categorical"]),
-            yax_store_default,
-        ),
-    )
-    r_s_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
-    r_s = merge(r_s_cat, r_s_default)
+    # Create storage for sensitivities.
+    r_s = _create_yax_tuple_store(seq_store, foi_spec, unordered_cat, [])
 
     for fact_t in factors
-        f_ind = foi_spec.fieldname .== fact_t
-        ptype::String = foi_spec.ptype[foi_spec.fieldname.==fact_t][1]
+        ptype::String = foi_spec.ptype[foi_spec.fieldname .== fact_t][1]
 
         X_i .= X[:, fact_t]
 
@@ -641,46 +654,18 @@ function outcome_map(
     foi_spec = _get_factor_spec(model_spec, factors)
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
-
-    default_ax = (
-        Dim{:default}(seq_store[:default][2:end]), Dim{:CI}(["mean", "lower", "upper"])
-    )
-
-    # YAXArray storage for unordered categorical variables
-    yax_store_cat = Tuple((
-        YAXArray(
-            (Dim{fact_t}(seq_store[fact_t][2:end]), Dim{:CI}(["mean", "lower", "upper"])),
-            zeros(Union{Missing,Float64}, (length(seq_store[fact_t][2:end]), 3)),
-        ) for fact_t in unordered_cat
-    ))
-    # YAXArray storage for other variables
-    yax_store_default = Tuple(
-        YAXArray(
-            default_ax,
-            zeros(Union{Missing,Float64}, (length(seq_store[:default][2:end]), 3)),
-        ) for _ in 1:(length(factors) - length(unordered_cat))
-    )
+    p = _create_yax_tuple_store(seq_store, foi_spec, unordered_cat, [3])
 
     all_p_rule = _map_outcomes(y, rule)
     if length(all_p_rule) == 0
         @warn "No results conform to specified rule."
-        return p_table
+        return p
     end
 
     # Identify behavioural
     n_scens = size(X, 1)
     behave::BitVector = falses(n_scens)
     behave[all_p_rule] .= true
-
-    # Create storage NamedTuples for unordered categorical variables and other variables, then merge
-    p_default = NamedTuple(
-        zip(
-            Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]),
-            yax_store_default,
-        ),
-    )
-    p_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
-    p = merge(p_cat, p_default)
 
     for fact_t in factors
         X_f = X[:, fact_t]
