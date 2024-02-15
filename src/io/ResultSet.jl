@@ -9,7 +9,7 @@ using ADRIA: Domain, EnvLayer
 const RESULTS = "results"
 const LOG_GRP = "logs"
 const INPUTS = "inputs"
-const SITE_DATA = "site_data"
+const SPATIAL_DATA = "spatial"
 const ENV_STATS = "env_stats"
 const MODEL_SPEC = "model_spec"
 
@@ -166,10 +166,10 @@ function combine_results(result_sets...)::ResultSet
     )
 
     # Copy site data into result set
-    mkdir(joinpath(new_loc, SITE_DATA))
+    mkdir(joinpath(new_loc, SPATIAL_DATA))
     cp(
         attrs[:site_data_file],
-        joinpath(new_loc, SITE_DATA, basename(attrs[:site_data_file]));
+        joinpath(new_loc, SPATIAL_DATA, basename(attrs[:site_data_file]));
         force=true,
     )
 

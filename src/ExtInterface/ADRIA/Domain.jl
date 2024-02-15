@@ -256,10 +256,10 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
     end
 
     conn_path::String = joinpath(path, "connectivity/")
-    site_data::String = joinpath(path, "site_data")
+    spatial_path::String = joinpath(path, "spatial")
 
-    site_path::String = joinpath(site_data, "$(domain_name).gpkg")
-    init_coral_cov::String = joinpath(site_data, "coral_cover.nc")
+    gpkg_path::String = joinpath(spatial_path, "$(domain_name).gpkg")
+    init_coral_cov::String = joinpath(spatial_path, "coral_cover.nc")
 
     dhw_fn::String = !isempty(rcp) ? joinpath(path, "DHWs", "dhwRCP$(rcp).nc") : ""
     wave_fn::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
@@ -270,7 +270,7 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
         path,
         rcp,
         timeframe,
-        site_path,
+        gpkg_path,
         "reef_siteid",
         "cluster_id",
         init_coral_cov,
