@@ -1,5 +1,5 @@
 using ADRIA, ADRIA.DataFrames, ADRIA.CSV
-using ADRIA.YAXArrays, ADRIA.AxisKeys
+using ADRIA.YAXArrays
 import ADRIA.GDF as GDF
 
 
