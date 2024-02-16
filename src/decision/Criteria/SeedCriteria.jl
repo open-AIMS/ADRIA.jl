@@ -91,16 +91,7 @@ struct SeedPreferences <: DecisionPreference
     directions::Vector{Function}
 end
 
-function SeedPreferences(
-    dom, params::NamedDimsArray
-)::SeedPreferences
-    w::DataFrame = component_params(dom.model, SeedCriteriaWeights)
-
-    return SeedPreferences(string.(w.fieldname), params(string.(w.fieldname)), w.direction)
-end
-function SeedPreferences(
-    dom, params::YAXArray
-)::SeedPreferences
+function SeedPreferences(dom, params::YAXArray)::SeedPreferences
     w::DataFrame = component_params(dom.model, SeedCriteriaWeights)
 
     return SeedPreferences(string.(w.fieldname), params[factors=At(string.(w.fieldname))], w.direction)
