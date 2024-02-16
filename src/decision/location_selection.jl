@@ -37,15 +37,15 @@ function rank_locations(
     n_corals::Int64,
     scenarios::DataFrame;
     rcp=nothing,
-    n_iv_locs=nothing,
+    min_iv_locs=nothing,
     target_seed_sites=nothing,
     target_fog_sites=nothing,
 )::NamedDimsArray
     n_locs = n_locations(dom)
     k_area_locs = site_k_area(dom)
 
-    if isnothing(n_iv_locs)
-        n_iv_locs = dom.sim_constants.n_site_int
+    if isnothing(min_iv_locs)
+        min_iv_locs = scenarios.min_iv_locations
     end
 
     if !isnothing(rcp)
@@ -164,7 +164,7 @@ function rank_locations(
             site_data.cluster_id[valid_locs],
             area_to_seed,
             leftover_space_m²,
-            n_iv_locs,
+            min_iv_locs,
             dom.sim_constants.max_members
         )
         if !isempty(selected_seed_ranks)
@@ -172,10 +172,10 @@ function rank_locations(
         end
 
         selected_fog_ranks = select_locations(
-            fp, decision_mat, MCDA_approach, n_iv_locs
+            fp, decision_mat, MCDA_approach, min_iv_locs
         )
         if !isempty(selected_fog_ranks)
-            ranks_store[selected_fog_ranks[:, 2], 2, scen_idx] .= 1:n_iv_locs
+            ranks_store[selected_fog_ranks[:, 2], 2, scen_idx] .= 1:min_iv_locs
         end
     end
 

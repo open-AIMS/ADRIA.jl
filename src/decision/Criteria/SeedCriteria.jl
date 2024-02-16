@@ -148,17 +148,18 @@ function select_locations(
     method::Union{Function,DataType},
     cluster_ids::Vector{<:Union{Int64,String,Symbol}},
     area_to_seed::Float64,
+    considered_locs::Vector{<:Union{Int64,String,Symbol}},
     available_space::Vector{Float64},
     min_locs::Int64,
     max_members::Int64
-)::Matrix{Union{String,Symbol,Int64}}
+)::Vector{<:Union{String,Symbol,Int64}}
     local rank_ordered_idx
     try
         rank_ordered_idx = rank_by_index(sp, dm, method)
     catch err
         if err isa DomainError
             # Return empty matrix to signify no ranks
-            return [;;]
+            return []
         end
 
         rethrow(err)
@@ -167,8 +168,8 @@ function select_locations(
     # Disperse selected locations to avoid "clumping" deployment locations
     dispersed_rank_order, _, n_locs = disperse_locations(
         rank_ordered_idx,
-        cluster_ids[rank_ordered_idx],  # Reorder to match ranked location order
-        available_space[rank_ordered_idx],
+        cluster_ids[considered_locs][rank_ordered_idx],  # Reorder to match ranked location order
+        available_space[considered_locs][rank_ordered_idx],
         area_to_seed,
         min_locs,
         max_members
@@ -176,7 +177,7 @@ function select_locations(
 
     loc_names = collect(getAxis(:location, dm))
 
-    return [loc_names[dispersed_rank_order][1:n_locs] rank_ordered_idx[1:n_locs]]
+    return loc_names[dispersed_rank_order][1:n_locs]
 end
 
 """
@@ -206,7 +207,7 @@ disperse_locations(ranked_locs, cluster_ids, available_space, area_to_seed, n_iv
 - `max_iter` : maximum number of attempts before giving up
 
 # Returns
-Tuple{Vector}
+Tuple{Vector,Vector,Int64}
 - Locations in preferred order
 - their corresponding cluster ids, and
 - the number of locations selected
