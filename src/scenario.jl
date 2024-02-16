@@ -124,26 +124,33 @@ function run_scenarios(
         end
 
         @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
-
-        # Define local helper
-        func = (dfx) -> run_scenario(dfx..., data_store)
     end
 
     if parallel
-        for rcp in RCP
-            run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
+        # Define local helper
+        func = (dfx) -> run_scenario(dfx..., data_store)
 
-            # Switch RCPs so correct data is loaded
-            dom = switch_RCPs!(dom, rcp)
-            scen_args = _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
+        try
+            for rcp in RCP
+                run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
-            if show_progress
-                @showprogress desc = run_msg dt = 4 pmap(
-                    func, CachingPool(workers()), scen_args
-                )
-            else
-                pmap(func, CachingPool(workers()), scen_args)
+                # Switch RCPs so correct data is loaded
+                dom = switch_RCPs!(dom, rcp)
+                target_rows = findall(scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp))
+                scen_args = _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
+
+                if show_progress
+                    @showprogress desc = run_msg dt = 4 pmap(
+                        func, CachingPool(workers()), scen_args
+                    )
+                else
+                    pmap(func, CachingPool(workers()), scen_args)
+                end
             end
+        catch err
+            # Remove hanging workers if any error occurs
+            _remove_workers()
+            rethrow(err)
         end
     else
         # Define local helper
