@@ -241,3 +241,6 @@ function update!(dom::Domain, spec::DataFrame)::Nothing
 
     return nothing
 end
+
+# Dummy interface to allow precompilation
+function switch_RCPs!() end
