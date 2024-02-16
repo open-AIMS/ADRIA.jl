@@ -38,9 +38,9 @@ function rank_locations(
     scenarios::DataFrame;
     rcp=nothing,
     min_iv_locs=nothing,
-    target_seed_sites=nothing,
-    target_fog_sites=nothing,
-)::NamedDimsArray
+    target_seed_locs=nothing,
+    target_fog_locs=nothing,
+)::YAXArray
     n_locs = n_locations(dom)
     k_area_locs = site_k_area(dom)
 
@@ -52,24 +52,25 @@ function rank_locations(
         dom = switch_RCPs!(dom, rcp)
     end
 
-    ranks_store = NamedDimsArray(
-        zeros(n_locs, 2, nrow(scenarios)),
-        sites=1:n_locs,
+    # Set filtered locations as n_locs+1 for consistency with time dependent ranks
+    ranks_store = DataCube(
+        fill(n_locs+1, 2, nrow(scenarios));
+        locations=1:n_locs,
         intervention=["seed", "fog"],
         scenarios=1:nrow(scenarios)
     )
 
-    target_site_ids = Int64[]
-    if !isnothing(target_seed_sites)
-        append!(target_site_ids, target_seed_sites)
+    target_loc_ids = Int64[]
+    if !isnothing(target_seed_locs)
+        append!(target_loc_ids, target_seed_locs)
     end
 
-    if !isnothing(target_fog_sites)
-        append!(target_site_ids, target_fog_sites)
+    if !isnothing(target_fog_locs)
+        append!(target_loc_ids, target_fog_locs)
     end
 
-    if isnothing(target_seed_sites) && isnothing(target_fog_sites)
-        target_site_ids = dom.site_ids
+    if isnothing(target_seed_locs) && isnothing(target_fog_locs)
+        target_loc_ids = dom.site_ids
     end
 
     # Sum of coral cover (relative to k area) at each location and scenario
@@ -83,13 +84,10 @@ function rank_locations(
 
     in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, collect(sum_cover[1, :]), conn_cache)
 
-    axlist = (
-        Dim{:scenarios}(1:nrow(scenarios)),
-        Dim{:factors}(names(scenarios)),
-    )
-    scens = YAXArray(
-        axlist,
-        Matrix(scenarios)
+    scens = DataCube(
+        Matrix(scenarios);
+        scenarios=1:nrow(scenarios),
+        factors=names(scenarios)
     )
 
     seed_pref = SeedPreferences(dom, scens[1, :])
@@ -178,9 +176,6 @@ function rank_locations(
             ranks_store[selected_fog_ranks[:, 2], 2, scen_idx] .= 1:min_iv_locs
         end
     end
-
-    # Set filtered locations as n_locs+1 for consistency with time dependent ranks
-    ranks_store[ranks_store.==0.0] .= length(dom.site_ids)+1
 
     return ranks_store
 end
