@@ -171,7 +171,7 @@ function select_locations(
     catch err
         if err isa DomainError
             # Return empty matrix to signify no ranks
-            return []
+            return String[]
         end
 
         rethrow(err)

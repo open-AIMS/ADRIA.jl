@@ -158,8 +158,8 @@ function select_locations(
         rank_ordered_idx = rank_by_index(sp, dm, method)
     catch err
         if err isa DomainError
-            # Return empty matrix to signify no ranks
-            return []
+            # Return empty vector to signify no ranks
+            return String[]
         end
 
         rethrow(err)
