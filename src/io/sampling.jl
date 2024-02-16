@@ -1,9 +1,10 @@
 using Printf
 using DataFrames, Distributions, LinearAlgebra
+
 using ADRIA
 using ADRIA: model_spec, component_params
 using ADRIA.decision: mcda_normalize
-import Surrogates: sample
+import Distributions: sample
 import Surrogates.QuasiMonteCarlo as QMC
 import Surrogates.QuasiMonteCarlo: SobolSample, OwenScramble
 

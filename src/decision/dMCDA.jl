@@ -3,21 +3,29 @@ module decision
 using InteractiveUtils: subtypes
 using StatsBase
 using YAXArrays
-using ADRIA: Domain, EcoModel, n_locations, site_area, site_k_area
+
+using ADRIA:
+    Domain,
+    EcoModel,
+    n_locations,
+    site_area,
+    site_k_area,
+    component_params
+
+using ADRIA:
+    DiscreteOrderedUniformDist,
+    Factor
 
 using
     Combinatorics,
     DataFrames,
     JMcDM
 
-using ADRIA: Factor, DiscreteOrderedUniformDist, component_params
-
 # dummy dMCDA_vars() for dev
 struct DMCDA_vars end
 
 # dummy functions to allow precompilation
-function guided_site_selection() end
-function unguided_site_selection() end
+function unguided_selection() end
 function rank_sites!() end
 function adria_topsis() end
 function adria_vikor() end
@@ -125,18 +133,22 @@ factor.
 - `w` : Weighting for std offset to mean.
 
 # Returns
-Weighted combination of mean and standard deviation of the projected environmental
+If the time horizon > 1, returns the weighted combination of mean and standard deviation of the projected environmental
 conditions (e.g., DHWs, wave stress, etc):
     (μ * w) + (σ * (1 - w))
+
+Where the time horizon == 1, the original values are returned.
 """
 function summary_stat_env(
     env_layer::AbstractArray,
     dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
     w=0.5
 )::Vector{Float64}
-    return vec(
-        (mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w))
-    )
+    if size(env_layer, 1) > 1
+        return vec((mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w)))
+    end
+
+    return vec(env_layer)
 end
 
 """
@@ -197,7 +209,7 @@ function unguided_selection(
     n_iv_locs::Int64,
     k_area::Vector{Float64},
     depth::BitVector
-)::Matrix
+)::Vector{<:Union{Symbol,String,Int64}}
     # Filter down to site ids to be considered
     candidate_locs = findall((k_area .> 0.0) .& depth)
     n_locs = length(candidate_locs)
@@ -205,11 +217,12 @@ function unguided_selection(
 
     sel = StatsBase.sample(candidate_locs, s_iv_locs; replace=false)
 
-    return [location_ids[sel] sel]
+    return location_ids[sel]
 end
 
 include("Criteria/DecisionPreferences.jl")
 include("Criteria/DecisionWeights.jl")
+include("location_selection.jl")
 
 export
     SeedPreferences,
@@ -220,7 +233,6 @@ export
     update_criteria_values!,
     select_locations,
     unguided_selection,
-    map_to_canonical,
     decision_frequency,
     weighted_projection,
     within_depth_bounds,

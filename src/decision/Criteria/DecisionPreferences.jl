@@ -164,24 +164,20 @@ Index of locations ordered by their rank
 """
 function select_locations(
     dp::T, dm::YAXArray, method::Union{Function,DataType}, min_locs::Int64
-)::Matrix{Union{String,Symbol,Int64}} where {T<:DecisionPreference}
+)::Vector{<:Union{String,Symbol,Int64}} where {T<:DecisionPreference}
     local rank_idx
     try
         rank_idx = rank_by_index(dp, dm, method)
     catch err
         if err isa DomainError
             # Return empty matrix to signify no ranks
-            return [;;]
+            return String[]
         end
 
         rethrow(err)
     end
 
-    return [collect(dm.location[rank_idx][1:min_locs]) rank_idx[1:min_locs]]
-end
-
-function map_to_canonical(selected_subset, canonical, considered)
-    return canonical[considered][selected_subset]
+    return collect(dm.location[rank_idx][1:min_locs])
 end
 
 """
@@ -214,24 +210,4 @@ function apply_threshold(
     valid_locs = vec(threshold[1] .<= target_vals .<= (threshold[1]+threshold[2]))
 
     return dm[location=valid_locs]
-end
-
-"""
-    apply_depth_threshold(dom, params, decision_mat)
-
-Apply a depth thresholds using values from a parameter set.
-
-# Arguments
-- `dom` : Domain
-- `params` : Parameter specification
-- `decision_mat` : Decision matrix to update
-
-# Returns
-Updated decision matrix.
-"""
-function apply_depth_threshold(dom, params, decision_mat)
-    thresholds = component_params(dom.model, DepthThresholds)
-    threshold_vals = params(string.(thresholds.fieldname))
-
-    return apply_threshold("seed_depth", Tuple(threshold_vals), decision_mat)
 end

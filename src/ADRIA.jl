@@ -60,12 +60,11 @@ include("ecosystem/connectivity.jl")
 
 include("Domain.jl")
 include("decision/dMCDA.jl")
-include("io/inputs.jl")
-
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
 
+include("io/inputs.jl")
 include("io/ResultSet.jl")
 include("io/result_io.jl")
 include("io/result_post_processing.jl")
