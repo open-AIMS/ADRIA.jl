@@ -3,14 +3,23 @@ module decision
 using InteractiveUtils: subtypes
 using StatsBase
 using YAXArrays
-using ADRIA: Domain, EcoModel, n_locations, site_area, site_k_area
+
+using ADRIA:
+    Domain,
+    EcoModel,
+    n_locations,
+    site_area,
+    site_k_area,
+    component_params
+
+using ADRIA:
+    DiscreteOrderedUniformDist,
+    Factor
 
 using
     Combinatorics,
     DataFrames,
     JMcDM
-
-using ADRIA: Factor, DiscreteOrderedUniformDist, component_params
 
 # dummy dMCDA_vars() for dev
 struct DMCDA_vars end
