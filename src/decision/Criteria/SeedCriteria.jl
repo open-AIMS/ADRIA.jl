@@ -86,15 +86,24 @@ Preference type specific for seeding interventions to allow seeding-specific rou
 be handled.
 """
 struct SeedPreferences <: DecisionPreference
-    names::Vector{Union{String,Symbol}}
+    names::Vector{Symbol}
     weights::Vector{Float64}
     directions::Vector{Function}
 end
 
 function SeedPreferences(dom, params::YAXArray)::SeedPreferences
     w::DataFrame = component_params(dom.model, SeedCriteriaWeights)
+    cn = Symbol[Symbol(join(split(string(cn), "_")[2:end], "_")) for cn in w.fieldname]
 
-    return SeedPreferences(string.(w.fieldname), params[factors=At(string.(w.fieldname))], w.direction)
+    return SeedPreferences(cn, params[factors=At(string.(w.fieldname))], w.direction)
+end
+function SeedPreferences(dom, params...)::SeedPreferences
+    w::DataFrame = component_params(dom.model, SeedCriteriaWeights)
+    for (k, v) in params
+        w[w.fieldname .== k, :val] .= v
+    end
+
+    return SeedPreferences(string.(w.fieldname), w.val, w.direction)
 end
 
 """

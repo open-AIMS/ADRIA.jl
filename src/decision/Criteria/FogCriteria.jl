@@ -93,6 +93,7 @@ function FogPreferences(
     dom, params::YAXArray
 )::DecisionPreferences
     w::DataFrame = component_params(dom.model, FogCriteriaWeights)
+    cn = Symbol[Symbol(join(split(string(cn), "_")[2:end], "_")) for cn in w.fieldname]
 
-    return DecisionPreferences(string.(w.fieldname), params[factors=At(string.(w.fieldname))], w.direction)
+    return DecisionPreferences(cn, params[factors=At(string.(w.fieldname))], w.direction)
 end
