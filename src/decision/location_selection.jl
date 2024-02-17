@@ -92,13 +92,21 @@ function rank_locations(
 
     seed_pref = SeedPreferences(dom, scens[1, :])
     fog_pref = FogPreferences(dom, scens[1, :])
+
+    α = 0.99
+
     site_data = dom.site_data
     coral_habitable_locs = site_data.k .> 0.0
     for (scen_idx, scen) in enumerate(eachrow(scens))
+        # Decisions should place more weight on environmental conditions
+        # closer to the decision point
+        plan_horizon = Int64(scen[At("plan_horizon")])
+        decay = α .^ (1:plan_horizon+1).^2
+
         min_depth = scen[factors=At("depth_min")].data[1]
-        depth_criteria::BitArray{1} = within_depth_bounds(
-            site_data.depth_med,
-            min_depth .+ scen[factors=At("depth_offset")].data[1],
+        depth_offset = scen[factors=At("depth_offset")].data[1]
+
+        depth_criteria = identify_within_depth_bounds(site_data.depth_med, min_depth, depth_offset)
             min_depth
         )
 

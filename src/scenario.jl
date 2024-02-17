@@ -485,15 +485,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # seed at a site
     area_to_seed = sum(seeded_area)
 
-    # Filter out sites outside of desired depth range
-    # Defaults to considering all sites if depth cannot be considered.
-    depth_criteria = BitVector(fill(true, n_locs))
-    if .!all(site_data.depth_med .== 0)
-        max_depth::Float64 = param_set[At("depth_min")] + param_set[At("depth_offset")]
-        depth_criteria::BitArray{1} = within_depth_bounds(
-            site_data.depth_med, max_depth, param_set[At("depth_min")]
-        )
-    end
+    depth_criteria = identify_within_depth_bounds(
+        site_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
+    )
 
     coral_habitable_locs = site_data.k .> 0.0
     if is_guided
