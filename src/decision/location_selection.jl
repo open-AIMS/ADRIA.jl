@@ -411,15 +411,28 @@ ADRIA.decision.selection_score(ranks[scenarios=1:4], :seed)
 Selection score
 """
 function selection_score(
-    ranks::YAXArray,
-    iv_type::Symbol,
-)::YAXArray
+    ranks::YAXArray{T, 3},
+    iv_type::Union{Symbol,Int64},
+)::YAXArray where {T<:Union{Int64, Float32, Float64}}
     lowest_rank = maximum(ranks)  # 1 is best rank, n_locs + 1 is worst rank
 
     selection_score = dropdims(
         sum(lowest_rank .- ranks, dims=:scenarios); dims=:scenarios
     )[intervention=At(iv_type)]
     selection_score = selection_score ./ ((lowest_rank - 1) * prod(size(ranks, :scenarios)))
+
+    return selection_score
+end
+function selection_score(
+    ranks::YAXArray{T, 4},
+    iv_type::Union{Symbol,Int64},
+)::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    lowest_rank = maximum(ranks)  # 1 is best rank, n_locs + 1 is worst rank
+
+    selection_score = dropdims(
+        sum(lowest_rank .- ranks, dims=(:scenarios, :timesteps)); dims=(:timesteps, :scenarios)
+    )[intervention=At(iv_type)]
+    selection_score = selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in [:scenarios, :timesteps]]))
 
     return selection_score
 end
