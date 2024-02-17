@@ -10,7 +10,8 @@ using ADRIA:
     to_coral_spec,
     colony_mean_area,
     switch_RCPs!,
-    DataCube
+    DataCube,
+    copy_datacube
 
 
 """
@@ -435,4 +436,72 @@ function selection_score(
     selection_score = selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in [:scenarios, :timesteps]]))
 
     return selection_score
+end
+
+"""
+    selection_frequency(ranks::YAXArray{T, 3}, iv_type::Union{Symbol,Int64})
+    selection_frequency(ranks::YAXArray{T, 4}, iv_type::Union{Symbol,Int64})
+
+Determine normalized frequency at which a location is selected for intervention, where
+0 indicates the location is not selected at all, and 1 indicates the selection is
+selected across all time and under all conditions modelled.
+
+# Example
+```julia
+ranks = ADRIA.decision.rank_locations(dom, n_corals, scens)
+
+# Identify locations that were selected for seeding over all scenarios
+seed_freq = ADRIA.decision.selection_frequency(ranks, :seed)
+
+# Selection scores can be assessed for a subset of scenarios, including a specific scenario
+ADRIA.decision.selection_frequency(ranks[scenarios=1:4], :seed)
+
+# Assess selection frequency for scenario runs
+# Note: indices have to be used for now
+rs = ADRIA.scenario_runs(dom, 16, "45")
+scen_seed_freq = ADRIA.decision.selection_frequency(rs.ranks, 1)
+```
+
+# Arguments
+- `ranks` : Ranks to assess
+- `iv_type` : Intervention type to assess
+
+# Return
+Normalized selection frequency
+"""
+function selection_frequency(
+    ranks::YAXArray{T, 3},
+    iv_type::Union{Symbol,Int64}
+)::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    lowest_rank = maximum(ranks)  # 1 is best rank, n_locs + 1 is worst rank
+    s = copy_datacube(ranks[intervention=At(iv_type)])
+    s[s .== lowest_rank] .= 0.0
+    s[s .> 0.0] .= 1.0
+
+    selection_freq = dropdims(
+        sum(s, dims=:scenarios); dims=:scenarios
+    )
+
+    norm_freq = selection_freq ./ maximum(selection_freq)
+    norm_freq[norm_freq .> 0.0] .= 1.0 .- norm_freq[norm_freq .> 0.0]
+
+    return norm_freq
+end
+function selection_frequency(
+    ranks::YAXArray{T, 4},
+    iv_type::Union{Symbol,Int64}
+)::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    lowest_rank = maximum(ranks)  # 1 is best rank, n_locs + 1 is worst rank
+    s = copy_datacube(ranks[intervention=At(iv_type)])
+    s[s .== lowest_rank] .= 0.0
+    s[s .> 0.0] .= 1.0
+
+    selection_freq = dropdims(
+        sum(s, dims=(:scenarios, :timesteps)); dims=(:scenarios, :timesteps)
+    )
+
+    norm_freq = selection_freq ./ maximum(selection_freq)
+    norm_freq[norm_freq .> 0.0] .= 1.0 .- norm_freq[norm_freq .> 0.0]
+
+    return norm_freq
 end
