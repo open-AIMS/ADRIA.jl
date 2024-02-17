@@ -233,6 +233,7 @@ function aggregate_location_ranks(
     target_seed_locs=nothing,
     target_fog_locs=nothing,
 )::YAXArray
+    throw("Unimplemented")
     ranks = rank_locations(
         domain,
         n_corals,
