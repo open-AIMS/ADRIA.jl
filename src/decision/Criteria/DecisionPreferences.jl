@@ -123,6 +123,8 @@ end
 
 Default index rank method, returns location indices in order of their rank.
 
+Note: Ignores constant criteria values.
+
 # Arguments
 - `dp` : DecisionPreferences
 - `dm` : The decision matrix to assess
@@ -134,7 +136,14 @@ Index of locations ordered by their rank
 function rank_by_index(
     dp::T, dm::YAXArray, method::Union{Function,DataType}
 )::Vector{Int64} where {T<:DecisionPreference}
-    res = solve(dp, dm, method)
+    # Identify valid, non-constant, columns for use in MCDA
+    is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
+
+    # Recreate preferences, removing criteria that are constant for this scenario
+    _dp = filter_criteria(dp, is_const)
+
+    # Assess decision matrix only using valid (non-constant) criteria
+    res = solve(_dp, dm[criteria=.!is_const], method)
 
     scores = res.scores
     if all(isnan.(scores))
