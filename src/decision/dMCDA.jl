@@ -30,7 +30,7 @@ function unguided_selection() end
 function rank_sites!() end
 function adria_topsis() end
 function adria_vikor() end
-function create_decision_matrix() end
+function decision_matrix() end
 
 function supported_jmcdm_methods()
     # Those commented out with failed a simple test where only heat stress is considered
@@ -93,24 +93,32 @@ function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
 end
 
 """
-    within_depth_bounds(loc_depth::Vector{T}, depth_max::T, depth_min::T)::BitVector{T} where {T<:Float64}
+    identify_within_depth_bounds(
+        loc_depths::Vector{Float64},
+        min_depth::T,
+        offset::T
+    )::BitVector where {T<:Union{Int64,Float64}}
 
-Determines whether a location is within the min/max depth bounds.
-Used to filter locations based on their depth for location selection.
-
-# Arguments
-- `loc_depth` : Depths of considered locations (typically the median depth)
-- `depth_max` : Maximum depth for each considered location
-- `depth_min` : Minimum depth for each considered location
+Identify locations that are in the desired depth bounds.
 
 # Returns
 BitVector, of logical indices indicating locations which satisfy the depth criteria.
 """
-function within_depth_bounds(
-    loc_depth::Vector{T}, depth_max::T, depth_min::T
-)::BitVector where {T<:Float64}
-    @assert depth_min <= depth_max "Minimum depth must be lower than maximum depth"
-    return (loc_depth .<= depth_max) .& (loc_depth .>= depth_min)
+function identify_within_depth_bounds(
+    loc_depths::Vector{Float64},
+    min_depth::Float64,
+    offset::Float64
+)::BitVector
+    max_depth = (min_depth + offset)
+    @assert min_depth <= max_depth "Minimum depth must be lower than maximum depth"
+
+    # Default to using all locations if constant, otherwise apply bounds.
+    depth_criteria::BitArray{1} = fill(true, length(loc_depths))
+    if .!all(loc_depths .== loc_depths[1])
+        depth_criteria = (loc_depths .>= min_depth) .& (loc_depths .<= max_depth)
+    end
+
+    return depth_criteria
 end
 
 function weighted_projection(env_data, tstep, planning_horizon, decay, timeframe)
@@ -237,7 +245,7 @@ export
     unguided_selection,
     decision_frequency,
     weighted_projection,
-    within_depth_bounds,
+    identify_within_depth_bounds,
     summary_stat_env,
     mcda_methods
 end
