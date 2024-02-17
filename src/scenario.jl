@@ -499,7 +499,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         decision_mat = decision_matrix(
             domain.site_ids,
             seed_pref.names;
-            seed_depth=site_data.depth_med
+            depth=site_data.depth_med
         )
 
         # Unsure what to do with this because it is usually empty
@@ -629,17 +629,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         end
 
         if is_guided
-            # Recreate preferences, removing criteria that are constant for this timestep
-            is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
-            valid_criteria = seed_pref.names[.!is_const]
-        end
-
-        if is_guided
             if fog_decision_years[tstep] && (fogging .> 0.0)
-                fp = filter_criteria(fog_pref, is_const)
                 selected_fog_ranks = select_locations(
-                    fp,
-                    decision_mat[criteria=At(valid_criteria)],
+                    fog_pref,
+                    decision_mat,
                     MCDA_approach,
                     min_iv_locs
                 )
@@ -688,10 +681,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 seed_out_connectivity=out_conn[considered_locs]
             )
 
-            sp = filter_criteria(seed_pref, is_const)
             selected_seed_ranks = select_locations(
-                sp,
-                decision_mat[criteria=At(valid_criteria)],
+                seed_pref,
+                decision_mat,
                 MCDA_approach,
                 site_data.cluster_id,
                 area_to_seed,
