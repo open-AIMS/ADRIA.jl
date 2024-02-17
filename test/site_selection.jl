@@ -75,7 +75,7 @@ end
 @testset "Guided site selection without ADRIA ecological model" begin
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
     N = 2^3
-    scens = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
+    scens = ADRIA.sample_selection(dom, N)  # get scenario dataframe
 
     area_to_seed = 962.11  # Area of seeded corals in m^2.
 
