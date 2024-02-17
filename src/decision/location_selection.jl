@@ -189,36 +189,58 @@ function rank_locations(
 
     return ranks_store
 end
-function rank_locations(
+
+"""
+    aggregate_location_ranks(
+        dom::Domain,
+        n_corals::Int64,
+        scenarios::DataFrame,
+        agg_func::Function,
+        iv_type::Symbol;
+        rcp=nothing,
+        min_iv_locs=nothing,
+        max_members=nothing,
+        target_seed_locs=nothing,
+        target_fog_locs=nothing
+    )::YAXArray
+
+Return aggregate location ranks for a given domain and scenarios.
+
+# Arguments
+- `domain` : Domain dataset to assess
+- `n_corals` : The total number of corals to deploy
+- `scenarios` : Scenario specification
+- `agg_func` : Aggregation function to apply, e.g `ranks_to_frequencies` or
+    `ranks_to_location_order`
+- `iv_type` : Intervention type to assess (`:seed` or `:fog`)
+- `rcp` : RCP conditions to assess
+- `min_iv_locs` : Minimum number of locations to intervene
+- `max_members` : Maximum number of locations per cluster
+- `target_seed_locs` : Locations to prioritize for seeding. Currently does nothing.
+- `target_fog_locs` : Locations to prioritize for fogging. Currently does nothing.
+
+# Returns
+YAXArray[n_locations ⋅ [:seed, :fog]], with ranks aggregated according to `agg_func`.
+"""
+function aggregate_location_ranks(
     domain::Domain,
+    n_corals::Int64,
     scenarios::DataFrame,
-    sum_cover::NamedDimsArray,
-    area_to_seed::Float64,
     agg_func::Function,
-    iv_type::Union{Int64, Symbol, String};
-    target_seed_sites=nothing,
-    target_fog_sites=nothing,
-)::AbstractArray
+    iv_type::Symbol;
+    rcp=nothing,
+    target_seed_locs=nothing,
+    target_fog_locs=nothing,
+)::YAXArray
     ranks = rank_locations(
         domain,
-        scenarios,
-        sum_cover,
-        area_to_seed;
-        target_seed_sites=target_seed_sites,
-        target_fog_sites=target_fog_sites,
+        n_corals,
+        scenarios;
+        rcp=rcp,
+        target_seed_locs=target_seed_locs,
+        target_fog_locs=target_fog_locs,
     )
-    local iv_id
-    try
-        iv_id = axiskeys(ranks, :intervention)[iv_type]
-    catch err
-        if !(err isa ArgumentError)
-            rethrow(err)
-        end
-
-        iv_id = iv_type
-    end
-
-    return agg_func(ranks(intervention=iv_id))
+    return agg_func(ranks[intervention=At(iv_type)])
 end
 
 
