@@ -9,28 +9,37 @@ using ADRIA:
     n_locations,
     to_coral_spec,
     colony_mean_area,
-    switch_RCPs!
+    switch_RCPs!,
+    DataCube
 
 
 """
-    rank_locations(domain::Domain, scenarios::DataFrame, area_to_seed::Float64; target_seed_sites=nothing, target_fog_sites=nothing)::NamedDimsArray
-    rank_locations(domain::Domain,scenarios::DataFrame, area_to_seed::Float64, agg_func::Function,
-        iv_type::Union{String,Int64}; target_seed_sites=nothing, target_fog_sites=nothing)::AbstractArray
+    rank_locations(
+        dom::Domain,
+        n_corals::Int64,
+        scenarios::DataFrame;
+        rcp=nothing,
+        min_iv_locs=nothing,
+        max_members=nothing,
+        target_seed_locs=nothing,
+        target_fog_locs=nothing
+    )::YAXArray
 
 Return location ranks for a given domain and scenarios.
 
 # Arguments
-- `domain` : The geospatial domain locations were selected from
+- `domain` : Domain dataset to assess
+- `n_corals` : The total number of corals to deploy
 - `scenarios` : Scenario specification
-- `area_to_seed` : Area of coral to be seeded at each time step in km²
-- `agg_func` : Aggregation function to apply, e.g `ranks_to_frequencies` or
-    `ranks_to_location_order`
-- `iv_type` : ID of intervention (1 = seeding, 2 = fogging)
-- `target_seed_sites` : list of candidate locations for seeding (indices)
-- `target_fog_sites` : list of candidate location to fog (indices)
+- `rcp` : RCP conditions to assess
+- `min_iv_locs` : Minimum number of locations to intervene
+- `max_members` : Maximum number of locations per cluster
+- `target_seed_locs` : Locations to prioritize for seeding. Currently does nothing.
+- `target_fog_locs` : Locations to prioritize for fogging. Currently does nothing.
 
 # Returns
-Array[n_locations ⋅ 2 ⋅ n_scenarios], where columns hold seeding and shading ranks.
+YAXArray[n_locations ⋅ [:seed, :fog] ⋅ n_scenarios], ranks from 1 to number of locations + 1
+Values equal to number of locations + 1 indicate locations that unranked.
 """
 function rank_locations(
     dom::Domain,
@@ -38,14 +47,23 @@ function rank_locations(
     scenarios::DataFrame;
     rcp=nothing,
     min_iv_locs=nothing,
+    max_members=nothing,
     target_seed_locs=nothing,
-    target_fog_locs=nothing,
+    target_fog_locs=nothing
 )::YAXArray
     n_locs = n_locations(dom)
     k_area_locs = site_k_area(dom)
 
     if isnothing(min_iv_locs)
         min_iv_locs = scenarios.min_iv_locations
+    else
+        min_iv_locs = fill(min_iv_locs, nrow(scenarios))
+    end
+
+    if isnothing(max_members)
+        max_members = scenarios.cluster_max_member
+    else
+        max_members = fill(max_members, nrow(scenarios))
     end
 
     if !isnothing(rcp)
@@ -54,9 +72,9 @@ function rank_locations(
 
     # Set filtered locations as n_locs+1 for consistency with time dependent ranks
     ranks_store = DataCube(
-        fill(n_locs+1, 2, nrow(scenarios));
-        locations=1:n_locs,
-        intervention=["seed", "fog"],
+        fill(n_locs+1, n_locs, 2, nrow(scenarios));
+        locations=dom.site_ids,
+        intervention=[:seed, :fog],
         scenarios=1:nrow(scenarios)
     )
 
@@ -74,15 +92,14 @@ function rank_locations(
     end
 
     # Sum of coral cover (relative to k area) at each location and scenario
-    sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scenarios, 1))
+    sum_cover = vec(sum(dom.init_coral_cover; dims=1).data)
 
-    leftover_space_scens = relative_leftover_space(sum_cover.data) .* k_area_locs'
+    leftover_space_scens = relative_leftover_space(sum_cover) .* k_area_locs'
 
-    area_weighted_conn = dom.conn .* site_k_area(dom)
+    area_weighted_conn = dom.conn.data .* site_k_area(dom)
     conn_cache = similar(area_weighted_conn)
-    conn_names = ["seed_in_connectivity", "seed_out_connectivity", "seed_priority"]
 
-    in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, collect(sum_cover[1, :]), conn_cache)
+    in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, sum_cover, conn_cache)
 
     scens = DataCube(
         Matrix(scenarios);
@@ -107,13 +124,11 @@ function rank_locations(
         depth_offset = scen[factors=At("depth_offset")].data[1]
 
         depth_criteria = identify_within_depth_bounds(site_data.depth_med, min_depth, depth_offset)
-            min_depth
-        )
-
         valid_locs = coral_habitable_locs .& depth_criteria
+        considered_locs = findall(valid_locs)
 
         MCDA_approach = mcda_methods()[Int64(scen[factors=At("guided")][1])]
-        leftover_space_m² = vec(leftover_space_scens[scen_idx, valid_locs])
+        leftover_space_m² = vec(leftover_space_scens[scen_idx, :])
 
         corals = to_coral_spec(scenarios[scen_idx, :])
         area_to_seed = mean(n_corals * colony_mean_area(corals.mean_colony_diameter_m[corals.class_id.==2]))
@@ -121,67 +136,54 @@ function rank_locations(
         seed_pref = SeedPreferences(dom, scen)
         fog_pref = FogPreferences(dom, scen)
 
-        # Create shared decision matrix
-        decision_mat = decision_matrix(dom.site_ids, seed_pref.names)
-
-        # Set criteria values that do not change between time steps
-        decision_mat[criteria=At("seed_depth")] = site_data.depth_med
-        # Ensure what to do with this because it is usually empty
-        # decision_mat[criteria=At("seed_zone")]
-
-        # Remove locations that cannot support corals or are out of depth bounds
-        # from consideration
-        decision_mat = decision_mat[valid_locs, :]
-
-        # Number of time steps in environmental layers to look ahead when making decisions
-        horizon::UnitRange{Int64} = 1:1+Int64(scen[factors=At("plan_horizon")][1])
-        d_s::UnitRange{Int64} = 1:length(horizon)
-
+        # Determine environmental projections
         dhw_scen_idx = Int64(scen[factors=At("dhw_scenario")][1])
         wave_scen_idx = Int64(scen[factors=At("wave_scenario")][1])
         dhw_scens = dom.dhw_scens[:, :, dhw_scen_idx]
         wave_scens = dom.wave_scens[:, :, wave_scen_idx]
 
-        @views env_horizon = decay[d_s] .* dhw_scen[horizon, considered_locs]
-        decision_mat[criteria=At("seed_heat_stress")] = summary_stat_env(dhw_scens[env_horizon, valid_locs, dhw_scen_idx], :timesteps)
+        dhw_projection = weighted_projection(dhw_scens, 1, plan_horizon, decay, 75)
+        wave_projection = weighted_projection(wave_scens, 1, plan_horizon, decay, 75)
 
-        @views env_horizon = decay[d_s] .* wave_scen[horizon, considered_locs]
-        decision_mat[criteria=At("seed_wave_stress")] = summary_stat_env(wave_scens[env_horizon, valid_locs, wave_scen_idx], :timesteps)
+        # Create shared decision matrix
+        # Ignore locations that cannot support corals or are out of depth bounds
+        # from consideration
+        decision_mat = decision_matrix(
+            dom.site_ids[valid_locs],
+            seed_pref.names;
+            depth=site_data.depth_med[valid_locs],
+            in_connectivity=in_conn[valid_locs],
+            out_connectivity=out_conn[valid_locs],
+            heat_stress=dhw_projection[valid_locs],
+            wave_stress=wave_projection[valid_locs],
+            coral_cover=sum_cover[valid_locs]
+        )
 
-        decision_mat[criteria=At("seed_coral_cover")] = collect(sum_cover[scen_idx, valid_locs])
+        # Ensure what to do with this because it is usually empty
+        # seed_zone = strong_pred[valid_locs]
 
-        decision_mat[criteria=At(conn_names)] .= [
-            in_conn[valid_locs] out_conn[valid_locs] strong_pred[valid_locs]
-        ]
-
-        # Identify valid, non-constant, columns for use in MCDA
-        is_const = Bool[length(x) == 1 for x in unique.(eachcol(decision_mat.data))]
-        valid_prefs = seed_pref.names[.!is_const]
-        decision_mat = decision_mat[criteria=At(valid_prefs)]
-
-        # Recreate preferences, removing criteria that are constant for this timestep
-        sp = SeedPreferences(valid_prefs, seed_pref.weights[.!is_const], seed_pref.directions[.!is_const])
-        fp = FogPreferences(valid_prefs, fog_pref.weights[.!is_const], fog_pref.directions[.!is_const])
-
+        min_locs = min_iv_locs[scen_idx]
         selected_seed_ranks = select_locations(
-            sp,
+            seed_pref,
             decision_mat,
             MCDA_approach,
-            site_data.cluster_id[valid_locs],
+            site_data.cluster_id,
             area_to_seed,
+            considered_locs,
             leftover_space_m²,
-            min_iv_locs,
-            dom.sim_constants.max_members
+            min_locs,
+            max_members[scen_idx]
         )
+
         if !isempty(selected_seed_ranks)
-            ranks_store[selected_seed_ranks[:, 2], 1, scen_idx] .= 1:size(selected_seed_ranks, 1)
+            ranks_store[locations=At(selected_seed_ranks), intervention=At(:seed), scenarios=scen_idx] .= 1:length(selected_seed_ranks)
         end
 
         selected_fog_ranks = select_locations(
-            fp, decision_mat, MCDA_approach, min_iv_locs
+            fog_pref, decision_mat, MCDA_approach, min_locs
         )
         if !isempty(selected_fog_ranks)
-            ranks_store[selected_fog_ranks[:, 2], 2, scen_idx] .= 1:min_iv_locs
+            ranks_store[locations=At(selected_fog_ranks), intervention=At(:fog), scenarios=scen_idx] .= 1:min_locs
         end
     end
 
