@@ -356,3 +356,46 @@ function selection_score(
     selection_score = dropdims(sum(lowest_rank .- ranks; dims=dims); dims=dims[1])
     return selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in dims]))
 end
+
+"""
+    selection_score(ranks::YAXArray{D,T,3,A}; iv_type::Symbol)
+
+Calculates score ∈ [0, 1], where 1 is the highest score possible, indicative of the relative
+desirability of each location.
+
+The score reflects the location ranking and frequency of attaining a high rank.
+
+# Example
+```julia
+ranks = ADRIA.decision.rank_locations(dom, n_corals, scens)
+
+# Identify locations that were most desirable for seeding over all scenarios
+seed_scores = ADRIA.decision.selection_score(ranks, :seed)
+
+# Identify locations that were most desirable for fogging over all scenarios
+fog_scores = ADRIA.decision.selection_score(ranks, :fog)
+
+# Selection scores can be assessed for a subset of scenarios, including a specific scenario
+ADRIA.decision.selection_score(ranks[scenarios=1:4], :seed)
+```
+
+# Arguments
+- `ranks` : Rankings of locations from `rank_locations()`
+- `iv_type` : The intervention type to assess
+
+# Returns
+Selection score
+"""
+function selection_score(
+    ranks::YAXArray,
+    iv_type::Symbol,
+)::YAXArray
+    lowest_rank = maximum(ranks)  # 1 is best rank, n_locs + 1 is worst rank
+
+    selection_score = dropdims(
+        sum(lowest_rank .- ranks, dims=:scenarios); dims=:scenarios
+    )[intervention=At(iv_type)]
+    selection_score = selection_score ./ ((lowest_rank - 1) * prod(size(ranks, :scenarios)))
+
+    return selection_score
+end
