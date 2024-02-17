@@ -126,18 +126,21 @@ will relate to the position of the subset, not the canonical dataset.
 
 # Arguments
 - `sp` : SeedPreferences
-- `dm` : The decision matrix to assess
+- `dm` : The decision matrix to assess pertaining to the locations to be considered
 - `method` : MCDA method from JMcDM.jl
-- `cluster_ids` : Cluster membership for each considered location
+- `cluster_ids` : Cluster membership for *all* locations
 - `area_to_seed` : total area to be seeded in absolute units (n_corals * mean juvenile area)
-- `available_space` : available space for each location in absolute units (e.g., m²)
+- `available_space` : available space for *all* location in absolute units (e.g., m²)
 - `min_locs` : Minimum number of locations to consider
 - `max_members` : Maximum number of deployment locations per cluster
 
 # Example
 ```julia
 sp = SeedPreferences(rand(5), [minimum, maximum, maximum, minimum, minimum])
-dmat = build_decision_matrix([:DHW, :water_quality, :CoTS, :Conn_1, :Conn_2], Symbol.(collect(1:10)))
+
+location_names = Symbol.(collect(1:10))
+criteria_names = [:DHW, :water_quality, :CoTS, :Conn_1, :Conn_2]
+dm = decision_matrix(location_names, criteria_names)
 cluster_ids = [1,4,4,4,4,3,6,2,5,5,6]
 select_locations(sp, dmat, topsis, cluster_ids, sort(rand(10), rev=false), 3.0, 5, 2)
 ```
