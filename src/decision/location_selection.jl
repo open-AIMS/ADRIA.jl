@@ -408,6 +408,21 @@ fog_scores = ADRIA.decision.selection_score(ranks, :fog)
 
 # Selection scores can be assessed for a subset of scenarios, including a specific scenario
 ADRIA.decision.selection_score(ranks[scenarios=1:4], :seed)
+
+# Analysis includes the time dimension by default where scenario runs are being assessed
+# such that the score for each location is returned
+rs = ADRIA.scenario_runs(dom, scens, "45")
+ADRIA.decision.selection_score(rs.ranks, 1; keep_time=false)
+# 216-element YAXArray{Float32,1} with dimensions:
+#   Dim{:sites} Sampled{Int64} 1:216 ForwardOrdered Regular Points
+# Total size: 864.0 bytes
+
+# Change to true to keep the time dimension (to get the score per time step)
+ADRIA.decision.selection_score(rs.ranks, 1; keep_time=true)
+# 75×216 YAXArray{Float32,2} with dimensions:
+#   Dim{:timesteps} Sampled{Int64} 1:75 ForwardOrdered Regular Points,
+#   Dim{:sites} Sampled{Int64} 1:216 ForwardOrdered Regular Points
+# Total size: 63.28 KB
 ```
 
 # Arguments
@@ -432,14 +447,21 @@ function selection_score(
 end
 function selection_score(
     ranks::YAXArray{T, 4},
-    iv_type::Union{Symbol,Int64},
+    iv_type::Union{Symbol,Int64};
+    keep_time=false
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
     lowest_rank = maximum(ranks)  # 1 is best rank, n_locs + 1 is worst rank
 
+    if keep_time
+        dims = (:scenarios, )
+    else
+        dims = (:scenarios, :timesteps)
+    end
+
     selection_score = dropdims(
-        sum(lowest_rank .- ranks, dims=(:scenarios, :timesteps)); dims=(:timesteps, :scenarios)
+        sum(lowest_rank .- ranks, dims=dims); dims=dims
     )[intervention=At(iv_type)]
-    selection_score = selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in [:scenarios, :timesteps]]))
+    selection_score = selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in dims]))
 
     return selection_score
 end
