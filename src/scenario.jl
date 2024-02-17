@@ -674,11 +674,11 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
             update_criteria_values!(
                 decision_mat;
-                seed_heat_stress=dhw_projection[considered_locs],
-                seed_wave_stress=wave_projection[considered_locs],
-                seed_coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
-                seed_in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
-                seed_out_connectivity=out_conn[considered_locs]
+                heat_stress=dhw_projection[considered_locs],
+                wave_stress=wave_projection[considered_locs],
+                coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
+                in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
+                out_connectivity=out_conn[considered_locs]
             )
 
             selected_seed_ranks = select_locations(
