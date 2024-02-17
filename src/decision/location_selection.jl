@@ -26,7 +26,12 @@ using ADRIA:
         target_fog_locs=nothing
     )::YAXArray
 
-Return location ranks for a given domain and scenarios.
+Determine location ranks for a given domain and intervention scenarios.
+Locations are ranked by order of their determined deployment suitability according to
+criteria weights. Values of 1 indicate highest rank.
+
+Interventions are assessed separately such that seeding locations are not influenced by
+fogging locations.
 
 # Arguments
 - `domain` : Domain dataset to assess
