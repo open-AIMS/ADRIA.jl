@@ -7,7 +7,7 @@ using Combinatorics
 using JMcDM
 using InteractiveUtils: subtypes
 using YAXArrays
-using ADRIA: Domain, EcoModel, n_locations, site_area, site_k_area
+using ADRIA: DataCube, Domain, EcoModel, n_locations, site_area, site_k_area
 
 struct DMCDA_vars  # {V, I, F, M} where V <: Vector
     site_ids  # ::V
