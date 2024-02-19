@@ -105,16 +105,20 @@ end
 
 function _create_yax_tuple_store(
     seq_store::Dict{Symbol,Vector{Float64}}, foi_spec::DataFrame,
-    unordered_cat::Vector{Symbol}, second_dim::Vector{Union{Int64,Any}},
+    unordered_cat::Vector{Symbol}; second_dim::Union{Dim,Vector{Any}}=[],
 )
-    default_ax = (Dim{:default}(seq_store[:default][2:end]),)
+    second_dim_size = isempty(second_dim) ? [] : [length(second_dim)]
+    second_dim = isempty(second_dim) ? [] : [second_dim]
+
+    default_ax = (Dim{:default}(seq_store[:default][2:end]), second_dim...)
 
     # YAXArray storage for unordered categorical variables
     yax_store_cat = Tuple((
         YAXArray(
-            (Dim{fact_t}(seq_store[fact_t][2:end]),),
+            (Dim{fact_t}(seq_store[fact_t][2:end]), second_dim...),
             zeros(
-                Union{Missing,Float64}, (length(seq_store[fact_t][2:end]), second_dim...)
+                Union{Missing,Float64},
+                (length(seq_store[fact_t][2:end]), second_dim_size...),
             ),
         ) for fact_t in unordered_cat
     ))
@@ -123,9 +127,10 @@ function _create_yax_tuple_store(
         YAXArray(
             default_ax,
             zeros(
-                Union{Missing,Float64}, (length(seq_store[:default][2:end]), second_dim...)
+                Union{Missing,Float64},
+                (length(seq_store[:default][2:end]), second_dim_size...),
             ),
-        ) for _ in 1:(length(foi_spec.field_name) - length(unordered_cat))
+        ) for _ in 1:(length(foi_spec.fieldname) - length(unordered_cat))
     )
 
     # Create storage NamedTuples for unordered categorical variables and other variables, then merge
@@ -593,7 +598,8 @@ function rsa(
 end
 
 """
-    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::YAXArray
+    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20,
+        n_boot::Int=100, conf::Float64=0.95)::Dataset
 
 Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
 
