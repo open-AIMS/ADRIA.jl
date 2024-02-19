@@ -255,5 +255,5 @@ end
 
 function nameddimsarray2yaxarray(named_arr::NamedDimsArray)::YAXArray
     new_axes = caxes(named_arr)
-    return YAXArray(new_axes, named_arr)
+    return YAXArray(new_axes, collect(named_arr))
 end
