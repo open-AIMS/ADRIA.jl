@@ -21,9 +21,6 @@ end
     # calculate available space
     available_space = vec((total_site_area .* k) .- current_cover)
 
-    axlst::Tuple = (
-        Dim{:taxa}(["N_seed_TA", "N_seed_CA", "N_seed_SM"]),
-    )
     # Randomly generate seeded area
     seeded_area = ADRIA.DataCube(
         rand(Uniform(0.0, 500.0), 3); taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"]
