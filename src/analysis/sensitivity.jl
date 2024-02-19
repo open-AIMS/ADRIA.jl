@@ -103,45 +103,58 @@ function _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
     return seq_store
 end
 
-function _create_yax_tuple_store(
-    seq_store::Dict{Symbol,Vector{Float64}}, foi_spec::DataFrame,
+"""
+    _create_yax_store(seq_store::Dict{Symbol,Vector{Float64}}, m_spec::DataFrame,
     unordered_cat::Vector{Symbol}; second_dim::Union{Dim,Vector{Any}}=[],
-)
-    second_dim_size = isempty(second_dim) ? [] : [length(second_dim)]
-    second_dim = isempty(second_dim) ? [] : [second_dim]
+)::Dataset
 
-    default_ax = (Dim{:default}(seq_store[:default][2:end]), second_dim...)
+Get storage containing YAXArrays of correct size for each factor.
+
+# Arguments
+- `seq_store` : Dictionary for storing bin sequences (created by `_create_seq_store`)
+- `m_spec` : Model specification
+- `unordered_cat` : List of unordered categorical variables.
+- `second_dim` : second storage dimension (e.g. Dim{:CI}(["mean","lower","upper"]))
+"""
+function _create_yax_store(
+    seq_store::Dict{Symbol,Vector{Float64}}, m_spec::DataFrame,
+    unordered_cat::Vector{Symbol}, second_dim::Dim,
+)::Dataset
+    second_dim_size = length(second_dim)
+    default_ax = (Dim{:default}(seq_store[:default][2:end]), second_dim)
 
     # YAXArray storage for unordered categorical variables
     yax_store_cat = Tuple((
         YAXArray(
-            (Dim{fact_t}(seq_store[fact_t][2:end]), second_dim...),
+            (Dim{fact_t}(seq_store[fact_t][2:end]), second_dim),
             zeros(
                 Union{Missing,Float64},
-                (length(seq_store[fact_t][2:end]), second_dim_size...),
+                (length(seq_store[fact_t][2:end]), second_dim_size)
             ),
         ) for fact_t in unordered_cat
     ))
+
     # YAXArray storage for other variables
     yax_store_default = Tuple(
         YAXArray(
             default_ax,
             zeros(
                 Union{Missing,Float64},
-                (length(seq_store[:default][2:end]), second_dim_size...),
+                (length(seq_store[:default][2:end]), second_dim_size),
             ),
-        ) for _ in 1:(length(foi_spec.fieldname) - length(unordered_cat))
+        ) for _ in 1:(length(m_spec.fieldname) - length(unordered_cat))
     )
 
     # Create storage NamedTuples for unordered categorical variables and other variables, then merge
     r_s_default = NamedTuple(
         zip(
-            Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]),
+            Tuple(m_spec.fieldname[m_spec.ptype .!= "unordered categorical"]),
             yax_store_default,
         ),
     )
+
     r_s_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
-    r_s = merge(r_s_cat, r_s_default)
+    r_s = Dataset(; merge(r_s_cat, r_s_default)...)
     return r_s
 end
 
@@ -540,36 +553,12 @@ function rsa(
 
     foi_spec = _get_factor_spec(model_spec, factors)
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
+    # Create storage for bin sequences.
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
-
-    default_ax = (Dim{:default}(seq_store[:default][2:end]),)
-
-    # YAXArray storage for unordered categorical variables
-    yax_store_cat = Tuple((
-        YAXArray(
-            (Dim{fact_t}(seq_store[fact_t][2:end]),),
-            zeros(Union{Missing,Float64}, (length(seq_store[fact_t][2:end])))
-        ) for fact_t in unordered_cat
-    ))
-    # YAXArray storage for other variables
-    yax_store_default = Tuple(
-        YAXArray(
-            default_ax, zeros(Union{Missing,Float64}, (length(seq_store[:default][2:end])))
-        ) for _ in 1:(length(factors) - length(unordered_cat))
-    )
-
-    # Create storage NamedTuples for unordered categorical variables and other variables, then merge
-    r_s_default = NamedTuple(
-        zip(
-            Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]),
-            yax_store_default
-        )
-    )
-    r_s_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
-    r_s = merge(r_s_cat, r_s_default)
+    # Create storage for sensitivities.
+    r_s = _create_yax_store(seq_store, foi_spec, unordered_cat, Dim{:Si}(["Si"]))
 
     for fact_t in factors
-        f_ind = foi_spec.fieldname .== fact_t
         ptype::String = foi_spec.ptype[foi_spec.fieldname .== fact_t][1]
 
         X_i .= X[:, fact_t]
@@ -672,44 +661,29 @@ function outcome_map(
     X::DataFrame,
     y::AbstractVecOrMat{<:Real},
     rule::Union{Function,BitVector,Vector{Int64}},
-    factors::Vector{Symbol},
+    target_factors::Vector{Symbol},
     model_spec::DataFrame;
     S::Int64=10,
     n_boot::Int64=100,
     conf::Float64=0.95,
 )::Dataset
-    if !all(factors .∈ [model_spec.fieldname])
-        missing_factor = .!(factors .∈ [model_spec.fieldname])
+    if !all(target_factors .∈ [model_spec.fieldname])
+        missing_factor = .!(target_factors .∈ [model_spec.fieldname])
         error("Invalid target factors: $(factors[missing_factor])")
     end
 
-    foi_spec = _get_factor_spec(model_spec, factors)
+    foi_spec = _get_factor_spec(model_spec, target_factors)
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
 
-    default_ax = (
-        Dim{:default}(seq_store[:default][2:end]), Dim{:CI}(["mean", "lower", "upper"])
-    )
-
-    # YAXArray storage for unordered categorical variables
-    yax_store_cat = Tuple((
-        YAXArray(
-            (Dim{fact_t}(seq_store[fact_t][2:end]), Dim{:CI}(["mean", "lower", "upper"])),
-            zeros(Union{Missing,Float64}, (length(seq_store[fact_t][2:end]), 3)),
-        ) for fact_t in unordered_cat
-    ))
-    # YAXArray storage for other variables
-    yax_store_default = Tuple(
-        YAXArray(
-            default_ax,
-            zeros(Union{Missing,Float64}, (length(seq_store[:default][2:end]), 3)),
-        ) for _ in 1:(length(factors) - length(unordered_cat))
+    p = _create_yax_store(
+        seq_store, foi_spec, unordered_cat, Dim{:CI}(["mean", "lower", "upper"])
     )
 
     all_p_rule = _map_outcomes(y, rule)
     if length(all_p_rule) == 0
         @warn "No results conform to specified rule."
-        return p_table
+        return p
     end
 
     # Identify behavioural
@@ -717,17 +691,7 @@ function outcome_map(
     behave::BitVector = falses(n_scens)
     behave[all_p_rule] .= true
 
-    # Create storage NamedTuples for unordered categorical variables and other variables, then merge
-    p_default = NamedTuple(
-        zip(
-            Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]),
-            yax_store_default,
-        ),
-    )
-    p_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
-    p = merge(p_cat, p_default)
-
-    for fact_t in factors
+    for fact_t in target_factors
         X_f = X[:, fact_t]
         ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
 
