@@ -25,9 +25,8 @@ end
         Dim{:taxa}(["N_seed_TA", "N_seed_CA", "N_seed_SM"]),
     )
     # Randomly generate seeded area
-    seeded_area = YAXArray(
-        axlst,
-        rand(Uniform(0.0, 500.0), 3)
+    seeded_area = ADRIA.DataCube(
+        rand(Uniform(0.0, 500.0), 3); taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"]
     )
 
     @testset "Check coral seed distribution ($i)" for i in 1:10
