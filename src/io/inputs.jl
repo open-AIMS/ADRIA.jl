@@ -252,3 +252,8 @@ function yaxarray2nameddimsarray(cube::YAXArray)::NamedDimsArray
     axis_labels = collect.(lookup(cube, axis_names))
     return NamedDimsArray(cube.data; NamedTuple{axis_names}(axis_labels)...)
 end
+
+function nameddimsarray2yaxarray(named_arr::NamedDimsArray)::YAXArray
+    new_axes = caxes(named_arr)
+    return YAXArray(new_axes, named_arr)
+end
