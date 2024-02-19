@@ -2,7 +2,33 @@ using SIRUS
 import ADRIA.analysis: Rule
 
 """
-    ADRIA.viz.rules_scatter(rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, outcomes::NamedDimsArray, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.rules_scatter(
+        rs::ResultSet,
+        scenarios::DataFrame,
+        clusters::Vector{Int64},
+        rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
+        opts::Dict=Dict(),
+        fig_opts::Dict=Dict(),
+        axis_opts::Dict=Dict(),
+    )::Figure
+    ADRIA.viz.rules_scatter(
+        rs::ResultSet,
+        scenarios::DataFrame,
+        clusters::BitVector,
+        rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
+        opts::Dict=Dict(),
+        fig_opts::Dict=Dict(),
+        axis_opts::Dict=Dict(),
+    )::Figure
+    ADRIA.viz.rules_scatter!(
+        g::Union{GridLayout,GridPosition},
+        rs::ResultSet,
+        scenarios::DataFrame,
+        clusters::Vector{Int64},
+        rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
+        opts::Dict=Dict(),
+        axis_opts::Dict=Dict()
+    )
 
 # Description
 For each condition Rule, plots a scatter showing one condition clause at each axis.
