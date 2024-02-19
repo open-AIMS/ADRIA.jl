@@ -646,14 +646,14 @@ function outcome_map(
     X::DataFrame,
     y::AbstractVecOrMat{<:Real},
     rule::Union{Function,BitVector,Vector{Int64}},
-    factors::Vector{Symbol},
+    target_factors::Vector{Symbol},
     model_spec::DataFrame;
     S::Int64=10,
     n_boot::Int64=100,
     conf::Float64=0.95,
 )::Dataset
-    if !all(factors .∈ [model_spec.fieldname])
-        missing_factor = .!(factors .∈ [model_spec.fieldname])
+    if !all(target_factors .∈ [model_spec.fieldname])
+        missing_factor = .!(target_factors .∈ [model_spec.fieldname])
         error("Invalid target factors: $(factors[missing_factor])")
     end
 
@@ -676,7 +676,7 @@ function outcome_map(
     behave::BitVector = falses(n_scens)
     behave[all_p_rule] .= true
 
-    for fact_t in factors
+    for fact_t in target_factors
         X_f = X[:, fact_t]
         ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
 

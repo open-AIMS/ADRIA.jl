@@ -3,7 +3,7 @@ using Printf
 using ADRIA.sensitivity: _get_cat_quantile
 
 const FV_LABELS = [
-    "unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
+    "cf", "unguided", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
 ]
 
 """
