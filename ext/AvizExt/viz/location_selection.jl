@@ -31,7 +31,7 @@ Figure
 function ADRIA.viz.ranks_to_frequencies!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
-    frequencies::NamedDimsArray,
+    frequencies::YAXArray,
     rank_ids::Vector{Int64};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -88,7 +88,7 @@ end
 function ADRIA.viz.ranks_to_frequencies!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
-    frequencies::NamedDimsArray,
+    frequencies::YAXArray,
     rank_id::Int64;
     opts::Dict=Dict(),
     axis_opts::Dict=Dict())
@@ -109,7 +109,7 @@ function ADRIA.viz.ranks_to_frequencies!(
 end
 function ADRIA.viz.ranks_to_frequencies(
     rs::ResultSet,
-    frequencies::NamedDimsArray,
+    frequencies::YAXArray,
     rank_ids::Union{Int64,Vector{Int64}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(), axis_opts::Dict=Dict())

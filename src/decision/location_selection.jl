@@ -1,6 +1,8 @@
 using NamedDims, AxisKeys
-
+using YAXArrays
 using ADRIA: connectivity_strength, relative_leftover_space, site_k_area
+
+import DimensionalData: name
 
 """
     _location_selection(domain::Domain, sum_cover::AbstractArray, mcda_vars::DMCDA_vars, guided::Int64)::Matrix
@@ -202,17 +204,18 @@ Note: By default, ranks are aggregated over time where `ranks` is a 3-dimensiona
 # Returns
 Frequency with which each location was selected for each rank.
 """
-function ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)::NamedDimsArray
-    dn = NamedDims.dimnames(ranks)
-    freq_dims = [n for n in dn if n != :scenarios]
+function ranks_to_frequencies(ranks::YAXArray, n_ranks::Int64=length(ranks.sites))::YAXArray
+    dn = caxes(ranks)
+    freq_dims = [name(n) for n in dn if name(n) != :scenarios]
     dn_subset = vcat(freq_dims, [:ranks])
     freq_elements = vcat(
-        [1:size(ranks, n) for n in dn if n != :scenarios],
-        [1:size(ranks, :sites)],
+        [range(1, size(ranks, n), length=size(ranks, n)) for n in dn if name(n) != :scenarios],
+        [range(1, size(ranks, :sites), length=size(ranks, :sites))],
     )
+    axlist = Tuple(Dim{nm}(ran) for (nm, ran) in zip(dn_subset, freq_elements))
     mn = ([size(ranks, k) for k in freq_dims]..., size(ranks, :sites))
 
-    rank_frequencies = NamedDimsArray(zeros(mn...); zip(dn_subset, freq_elements)...)
+    rank_frequencies = YAXArray(axlist, zeros(mn...))
 
     for rank in 1:n_ranks
         rank_frequencies[ranks=Int64(rank)] .= sum(ranks .== rank; dims=:scenarios)[scenarios=1]
@@ -221,10 +224,10 @@ function ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)::NamedDimsA
     return rank_frequencies
 end
 function ranks_to_frequencies(
-    ranks::NamedDimsArray{D,T,3,A};
+    ranks::YAXArray{T, 3};
     n_ranks::Int64=length(ranks.sites),
     agg_func=nothing,
-)::NamedDimsArray where {D,T,A}
+)::YAXArray where T
     if !isnothing(agg_func)
         return agg_func(ranks_to_frequencies(ranks, n_ranks))
     end
@@ -232,10 +235,10 @@ function ranks_to_frequencies(
     return ranks_to_frequencies(ranks, n_ranks)
 end
 function ranks_to_frequencies(
-    ranks::NamedDimsArray{D,T,2,A};
+    ranks::YAXArray{T, 2};
     n_ranks::Int64=length(ranks.sites),
     agg_func=nothing,
-)::NamedDimsArray where {D,T,A}
+)::YAXArray where T
     if !isnothing(agg_func)
         return agg_func(ranks_to_frequencies(ranks, n_ranks))
     end

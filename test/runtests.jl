@@ -137,6 +137,7 @@ function test_rs_w_fig()
     # Calculate frequencies with which each site was selected at each rank
     rank_freq = ADRIA.decision.ranks_to_frequencies(
         rs.ranks[intervention=1];
+        n_ranks=length(rs.ranks[intervention=1].sites),
         agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),
     )
 
