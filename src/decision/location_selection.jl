@@ -1,7 +1,8 @@
 using NamedDims, AxisKeys
-using YAXArrays
+
 using ADRIA: connectivity_strength, relative_leftover_space, site_k_area
 
+using YAXArrays
 import DimensionalData: name
 
 """
@@ -187,9 +188,9 @@ end
 
 
 """
-    ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)
-    ranks_to_frequencies(ranks::NamedDimsArray{D,T,3,A}; n_ranks=length(ranks.sites), agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),) where {D,T,A}
-    ranks_to_frequencies(ranks::NamedDimsArray{D,T,2,A}; n_ranks=length(ranks.sites), agg_func=nothing) where {D,T,A}
+    ranks_to_frequencies(ranks::YAXArray, n_ranks::Int64)
+    ranks_to_frequencies(ranks::YAXArray{T,3}; n_ranks=length(ranks.sites), agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),) where T
+    ranks_to_frequencies(ranks::YAXArray{T,2}; n_ranks=length(ranks.sites), agg_func=nothing) where T
 
 Returns the frequency with which each location was ranked across scenarios.
 Uses the results from `rank_locations()`.

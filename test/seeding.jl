@@ -30,7 +30,6 @@ end
         rand(Uniform(0.0, 500.0), 3)
     )
 
-
     @testset "Check coral seed distribution ($i)" for i in 1:10
         seed_locs = rand(1:length(total_site_area), 5)
     

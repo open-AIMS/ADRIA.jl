@@ -1,12 +1,12 @@
-using AxisKeys, NamedDims
+using AxisKeys, YAXArrays
 using ADRIA: ResultSet
 
 """
     ADRIA.viz.ranks_to_frequencies!(g::Union{GridLayout,GridPosition},rs::ResultSet,
-        frequencies::NamedDimsArray,rank_ids::Vector{Int64};opts::Dict=Dict(),axis_opts::Dict=Dict(),)
+        frequencies::YAXArray,rank_ids::Vector{Int64};opts::Dict=Dict(),axis_opts::Dict=Dict(),)
     ADRIA.viz.ranks_to_frequencies!(g::Union{GridLayout,GridPosition},rs::ResultSet,
-        frequencies::NamedDimsArray,rank_id::Int64;opts::Dict=Dict(:color_map => :CMRmap),axis_opts::Dict=Dict())
-    ADRIA.viz.ranks_to_frequencies(rs::ResultSet,frequencies::NamedDimsArray,rank_ids::Union{Int64,Vector{Int64}};
+        frequencies::YAXArray,rank_id::Int64;opts::Dict=Dict(:color_map => :CMRmap),axis_opts::Dict=Dict())
+    ADRIA.viz.ranks_to_frequencies(rs::ResultSet,frequencies::YAXArray,rank_ids::Union{Int64,Vector{Int64}};
         opts::Dict=Dict(),fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
         
 Plot a spatial map of location selection frequencies.
