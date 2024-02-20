@@ -1,10 +1,99 @@
+using Distributions
+using Combinatorics, IterTools
 using Test
 using ADRIA.Distributions
-
 
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
     const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
+end
+
+function test_site_ranks(
+    weights_set::Vector{Vector{Float64}},
+    A::Matrix{Float64},
+    rankings::Matrix{Int64},
+    n_site_int::Int64,
+    mcda_func::Function,
+)
+    S = ADRIA.decision.mcda_normalize(A)
+    S[:, 1] .= A[:, 1]
+    criteria_names = [
+        "heat stress",
+        "wave stress",
+        "median depth",
+        "coral cover space",
+        "in connectivity",
+        "out connectivity",
+    ]
+    for weights in weights_set
+        # Find criteria being used for decision
+        crit_inds = findall(weights .> 0.0)
+
+        # Get site preference order
+        prefsites, s_order = ADRIA.decision.rank_sites!(
+            S, weights, rankings, n_site_int, mcda_func, 2
+        )
+
+        # Get names of criteria being used for error message
+        names_temp = criteria_names[crit_inds]
+        names_string = string(["$(name), " for name in names_temp[1:(end - 1)]]...)
+
+        # Check that 2 best sites are selected (5 and 6)
+        @test any(prefsites .== 5) & any(prefsites .== 6) || string(
+            "For the ",
+            names_string,
+            "and $(names_temp[end]) criteria, the best sites (5 and 6) were not selected.",
+        )
+        # Check that 2 worst sites aren't selected (9 and 10)
+        @test any(prefsites .!= 9) & any(prefsites .!= 10) || string(
+            "For the ",
+            names_string,
+            "and $(names_temp[end]) criteria, the worst sites (9 and 10) were selected.",
+        )
+    end
+end
+
+function test_mcda_funcs(rankings::Matrix{Int64}, S::Matrix{Float64},
+    weights::Vector{Float64}, mcda_funcs, n_site_int::Int64)
+    for mf in mcda_funcs
+        prefsites, s_order = ADRIA.decision.rank_sites!(
+            S, weights, rankings, n_site_int, mf, 2
+        )
+        # Check that 2 best sites are selected (5 and 6)
+        @test in(5, prefsites) .& in(6, prefsites) ||
+            "The best overall sites (5 and 6) were not chosen by method $mf."
+
+        # Check that 2 worst sites aren't selected (9 and 10)
+        @test any(prefsites .!= 9) & any(prefsites .!= 10) ||
+            "The worst overall sites (9 and 10) were chosen by method $mf."
+    end
+end
+
+function get_test_decision_matrix(dom::Domain)::Matrix{Float64}
+    cover = sum(dom.init_coral_cover; dims=:species)[species=1]
+    leftover_space = 1 .- cover
+    k_area = dom.site_data.area .* dom.site_data.k
+    dhw_av = ADRIA.decision.summary_stat_env(dom.dhw_scens, (:timesteps, :scenarios))
+    wave_av = ADRIA.decision.summary_stat_env(dom.wave_scens, (:timesteps, :scenarios))
+    depth_med = dom.site_data.depth_med
+
+    conn_data = ADRIA.connectivity_strength(
+        dom.conn .* ADRIA.site_k_area(dom), collect(cover), dom.conn
+    )
+
+    heat_stress =
+        1 .- vec((dhw_av .- minimum(dhw_av)) ./ (maximum(dhw_av) - minimum(dhw_av)))
+    wave_stress =
+        1 .- vec((wave_av .- minimum(wave_av)) ./ (maximum(wave_av) - minimum(wave_av)))
+    space_area = leftover_space .* k_area
+    in_conn = conn_data.in_conn
+    out_conn = conn_data.out_conn
+
+    site_ids = dom.site_data.site_id
+    # Simplified decision matrix for testing
+    A = hcat(site_ids, heat_stress, wave_stress, depth_med, space_area, in_conn, out_conn)
+
+    return A
 end
 
 @testset "site selection" begin
@@ -39,9 +128,11 @@ end
         dhw_scens,
     )
     n_sites = length(mcda_vars.site_ids)
-    @test (size(mcda_vars.conn, 1) == n_sites) && (size(mcda_vars.conn, 2) == n_sites) || "Connectivity input is incorrect size."
+    @test (size(mcda_vars.conn, 1) == n_sites) && (size(mcda_vars.conn, 2) == n_sites) ||
+        "Connectivity input is incorrect size."
     @test length(mcda_vars.dam_prob) == n_sites || "Wave damage input is incorrect size."
-    @test length(mcda_vars.heat_stress_prob) == n_sites || "Heat stress input is incorrect size."
+    @test length(mcda_vars.heat_stress_prob) == n_sites ||
+        "Heat stress input is incorrect size."
     @test length(mcda_vars.leftover_space) == n_sites ||
         "Initial cover input is incorrect size."
 end
@@ -61,7 +152,7 @@ end
         fog_years,
         5,
         max_cover,
-        depth_priority,
+        depth_priority
     )
 
     # Check that only two sites are selected (the sites where k > 0.0)
@@ -74,25 +165,37 @@ end
 
 @testset "Guided site selection without ADRIA ecological model" begin
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
-    N = 2^3
-    scens = ADRIA.sample_site_selection(dom, N)  # get scenario dataframe
+    site_ids = collect(1:length(dom.site_data.site_id))
+    mcda_funcs = ADRIA.decision.mcda_methods()
+    A = get_test_decision_matrix(dom)
+    n_sites = length(site_ids)
+    n_site_int = 5
 
-    area_to_seed = 962.11  # Area of seeded corals in m^2.
+    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
-    sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(scens, 1))
-    ranks = ADRIA.decision.rank_locations(dom, scens, sum_cover, area_to_seed)
+    # Test 0.0 or 1.0 weights in all combinations
+    weights = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-    @test length(ranks.scenarios) == sum(scens.guided .> 0) || "Specified number of scenarios was not carried out."
-    @test length(ranks.sites) == length(dom.site_ids) || "Ranks storage is not correct size for this domain."
+    for num_crit in 1:6
+        weights[num_crit] = 1.0
+        weights_set = collect(distinct(permutations(weights, 6)))
+        test_site_ranks(
+            weights_set, A, rankings, n_site_int, mcda_funcs[1]
+        )
+    end
 
-    sel_sites = unique(ranks)
-    sel_sites = sel_sites[sel_sites.!=0.0]
-    possible_ranks = collect(Float64, 1:ADRIA.n_locations(dom)+1.0)
-
-    @test all([in(ss, possible_ranks) for ss in sel_sites]) || "Impossible rank assigned."
+    # Test randomised weights in all combinations
+    weights = rand(100, 6)
+    weights = weights ./ sum(weights; dims=2)
+    for ww in eachrow(weights)
+        weights_set = collect(distinct(permutations(ww, 6)))
+        test_site_ranks(
+            weights_set, A, rankings, n_site_int, mcda_funcs[1]
+        )
+    end
 end
 
-@testset "Test ranks line up with ordering" begin
+@testset "Ranks line up with ordering" begin
     supported_methods = ADRIA.decision.mcda_methods()
     mcda_func = supported_methods[rand(1:length(supported_methods))]
     n_sites = 20
@@ -110,6 +213,28 @@ end
         S, weights, rankings, n_site_int, mcda_func, 2
     )
 
-    @test all([(rankings[rankings[:, 1].==s_order[rank, 1], 2].==rank)[1] for rank in 1:size(s_order, 1)]) || "Ranking does not match mcda score ordering"
+    @test all([
+        (rankings[rankings[:, 1] .== s_order[rank, 1], 2] .== rank)[1] for
+        rank in 1:size(s_order, 1)
+    ]) || "Ranking does not match mcda score ordering"
+end
 
+@testset "MCDA methods" begin
+    mcda_funcs = ADRIA.decision.mcda_methods()
+
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+    A = get_test_decision_matrix(dom)
+
+    site_ids = dom.site_data.site_id
+    n_sites = length(site_ids)
+    n_site_int = 5
+
+    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+
+    S = ADRIA.decision.mcda_normalize(A)
+    S[:, 1] .= A[:, 1]
+
+    weights = [1.0, 1.0, 1.0, 1.0, 0.0, 0.0]
+
+    test_mcda_funcs(rankings, S, weights, mcda_funcs, n_site_int)
 end
