@@ -308,7 +308,7 @@ Makie figure
 function ADRIA.viz.outcome_map!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
-    outcomes::NamedDimsArray,
+    outcomes::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -349,7 +349,7 @@ function ADRIA.viz.outcome_map!(
         insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
-    bin_slices, factor_list, CIs = axiskeys(outcomes)
+    bin_slices, factor_list, CIs = outcomes.axes
     b_slices = parse.(Float64, bin_slices)
 
     if any(f_names .== :guided)
@@ -376,11 +376,11 @@ function ADRIA.viz.outcome_map!(
 
             band!(
                 ax,
-                fv_s[.!ismissing.(outcomes(; factors=f_name, CI=:lower))],
-                collect(skipmissing(outcomes(; factors=f_name, CI=:lower))),
-                collect(skipmissing(outcomes(; factors=f_name, CI=:upper))),
+                fv_s[.!ismissing.(outcomes[factors=At(f_name), CI=At(:lower)])],
+                collect(skipmissing(outcomes[factors=At(f_name), CI=At(:lower)])),
+                collect(skipmissing(outcomes[factors=At(f_name), CI=At(:upper)])),
             )
-            scatterlines!(ax, fv_s, outcomes(; factors=f_name, CI=:mean); markersize=15)
+            scatterlines!(ax, fv_s, outcomes[factors=At(f_name), CI=At(:mean)]; markersize=15)
 
             if f_name == :guided
                 ax.xticks = (fv_s, fv_labels)
@@ -429,7 +429,7 @@ function ADRIA.viz.outcome_map!(
 end
 function ADRIA.viz.outcome_map(
     rs::ResultSet,
-    si::NamedDimsArray,
+    si::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
@@ -514,14 +514,15 @@ function _series_convergence(
             lines!(
                 ax,
                 n_scenarios,
-                Si_conv(; Si=:median)(; factors=factors[step]);
+                Si_conv[Si=At(:median)][factors=At(factors[step])].data;
                 color=(_colors[factors[step]], _alphas[factors[step]]),
             )
+
             band!(
                 ax,
                 n_scenarios,
-                Si_conv(; Si=:lb)(; factors=factors[step]),
-                Si_conv(; Si=:ub)(; factors=factors[step]);
+                Si_conv[Si=At(:lb), factors=At(factors[step])].data,
+                Si_conv[Si=At(:ub), factors=At(factors[step])].data;
                 color=(_colors[factors[step]], _alphas[factors[step]]),
             )
             step += 1
