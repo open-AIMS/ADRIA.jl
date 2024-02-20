@@ -443,7 +443,7 @@ function ADRIA.viz.outcome_map(
 end
 
 """
-    _series_convergence(g::GridPosition, Si_conv::NamedDimsArray, factors::Vector{Symbol};
+    _series_convergence(g::GridPosition, Si_conv::YAXArray, factors::Vector{Symbol};
         opts::Dict=Dict(:plot_overlay => true), axis_opts::Dict=Dict())
 
 Plot sensitivity values for an increasing number of scenarios as a series, with each member
@@ -462,13 +462,13 @@ Makie figure
 """
 function _series_convergence(
     g::GridPosition,
-    Si_conv::NamedDimsArray,
+    Si_conv::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(:plot_overlay => true),
     axis_opts::Dict=Dict(),
 )
     plot_overlay = get(opts, :plot_overlay, true)
-    n_scenarios = Si_conv.n_scenarios
+    n_scenarios = collect(lookup(Si_conv, :n_scenarios))
     grps = Dict(Symbol(foi_grp) => foi_grp .== factors for foi_grp in factors)
 
     xlabel = pop!(axis_opts, :xlabel, "N scenarios")
@@ -483,7 +483,7 @@ function _series_convergence(
         _colors = colors(grps)
         scenarios_confint!(
             ax,
-            permutedims(Si_conv(; Si=[:lb, :median, :ub]), (3, 1, 2)),
+            permutedims(Si_conv[Si=At([:lb, :median, :ub])], (3, 1, 2)).data,
             collect(keys(grps)),
             _colors;
             x_vals=n_scenarios,
@@ -565,7 +565,7 @@ function _series_convergence(
 end
 
 """
-    _heatmap_convergence(g::GridPosition, Si_conv::NamedDimsArray, factors::Vector{Symbol};
+    _heatmap_convergence(g::GridPosition, Si_conv::YAXArray, factors::Vector{Symbol};
         opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Plot sensitivity values for an increasing number of scenarios as a heatmap, with each row
@@ -585,7 +585,7 @@ Makie figure
 """
 function _heatmap_convergence(
     g::GridPosition,
-    Si_conv::NamedDimsArray,
+    Si_conv::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -595,7 +595,7 @@ function _heatmap_convergence(
     y_labelsize = get(axis_opts, :ylabelsize, 22)
     x_labelsize = get(axis_opts, :xlabelsize, 22)
 
-    z = Array(Si_conv(; Si=:median))
+    z = Array(Si_conv[Si=At(:median)])
     xtick_vals = (1:length(Si_conv.n_scenarios), string.(Si_conv.n_scenarios))
     ytick_vals = (1:length(factors), string.(factors))
 
@@ -618,9 +618,9 @@ function _heatmap_convergence(
 end
 
 """
-    ADRIA.viz.convergence(Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
+    ADRIA.viz.convergence(Si_conv::YAXArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
         axis_opts::Dict=Dict())
-    ADRIA.viz.convergence!(f::Figure, Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
+    ADRIA.viz.convergence!(f::Figure, Si_conv::YAXArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
         axis_opts::Dict=Dict())
 
 Plot sensitivity metric for increasing number of scenarios to illustrate convergence.
@@ -642,7 +642,7 @@ Plot sensitivity metric for increasing number of scenarios to illustrate converg
 Makie figure
 """
 function ADRIA.viz.convergence(
-    Si_conv::NamedDimsArray,
+    Si_conv::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(:viz_type => :series),
     fig_opts::Dict=Dict(),
@@ -660,7 +660,7 @@ function ADRIA.viz.convergence(
 end
 function ADRIA.viz.convergence!(
     g::Union{GridLayout,GridPosition},
-    Si_conv::NamedDimsArray,
+    Si_conv::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(:viz_type => :series),
     axis_opts::Dict=Dict(),
