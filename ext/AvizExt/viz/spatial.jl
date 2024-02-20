@@ -127,8 +127,8 @@ end
 
 """
     ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map(rs::ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map(rs::ResultSet, y::YAXArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::AbstractVector; opts=Dict(by_RCP => false), axis_opts=Dict())
 
 Plot spatial choropleth of outcomes.
 
@@ -140,15 +140,13 @@ Plot spatial choropleth of outcomes.
     - `color_map`, preferred colormap for plotting heatmaps
 - `axis_opts` : Additional options to pass to adjust Axis attributes
   See: https://docs.makie.org/v0.19/api/index.html#Axis
-- `series_opts` : Additional options to pass to adjust Series attributes
-  See: https://docs.makie.org/v0.19/api/index.html#series!
 
 # Returns
 GridPosition
 """
 function ADRIA.viz.map(
     rs::Union{Domain, ResultSet},
-    y::NamedDimsArray;
+    y::YAXArray;
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),

@@ -287,8 +287,8 @@ function ADRIA.viz.rsa(
 end
 
 """
-    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts, axis_opts)
 
 Plot outcomes mapped to factor regions for up to 30 factors.
 
