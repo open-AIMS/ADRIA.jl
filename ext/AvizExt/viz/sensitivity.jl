@@ -3,8 +3,8 @@ using Printf
 using ADRIA.sensitivity: _get_cat_quantile
 
 """
-    ADRIA.viz.pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.pawn!(f::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.pawn(Si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.pawn!(f::Union{GridLayout,GridPosition}, Si::YAXArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Display heatmap of sensitivity analysis.
 
@@ -32,7 +32,7 @@ Makie figure
 """
 function ADRIA.viz.pawn!(
     g::Union{GridLayout,GridPosition},
-    Si::NamedDimsArray;
+    Si::YAXArray;
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
@@ -40,19 +40,19 @@ function ADRIA.viz.pawn!(
 
     norm = get(opts, :normalize, true)
     if norm
-        Si = col_normalize(Si)
+        Si = YAXArray(Si.axes, col_normalize(Si.data))
     end
 
     foi = get(opts, :factors, :all)
     if foi != :all
-        Si = Si(foi, :)
+        Si = Si[factors=At(foi)]
     end
 
     # Sort by
     sort_by = get(opts, :by, :median)
-    Si = Si[sortperm(Si(Si=sort_by), rev=true), :]
+    Si = Si[sortperm(Si[Si=At(sort_by)], rev=true), :]
 
-    y, x = axiskeys(Si)
+    y, x = Si.axes
     ax = Axis(
         g[1, 1],
         xticks=(1:length(x), string.(x)),
@@ -67,7 +67,7 @@ function ADRIA.viz.pawn!(
     return g
 end
 function ADRIA.viz.pawn(
-    Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()
+    Si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
