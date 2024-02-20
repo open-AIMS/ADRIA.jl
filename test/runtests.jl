@@ -74,7 +74,7 @@ function test_rs_w_fig()
 
     # Visualize results (in terms of absolute coral cover)
     s_tac = ADRIA.metrics.scenario_total_cover(rs)
-    ADRIA.viz.scenarios(rs, s_tac)
+    ADRIA.viz.scenarios(rs, ADRIA.nameddimsarray2yaxarray(s_tac))
 
     tac = ADRIA.metrics.total_absolute_cover(rs)
     rsv = ADRIA.metrics.relative_shelter_volume(rs)
@@ -107,7 +107,7 @@ function test_rs_w_fig()
     ### Scenario outcomes
 
     fig_s_tac = ADRIA.viz.scenarios(
-        rs, s_tac; fig_opts=fig_opts, axis_opts=Dict(:ylabel => "Scenario Total Cover")
+        rs, ADRIA.nameddimsarray2yaxarray(s_tac); fig_opts=fig_opts, axis_opts=Dict(:ylabel => "Scenario Total Cover")
     )
     # save("scenarios_tac.png", fig_s_tac)
 
@@ -117,14 +117,14 @@ function test_rs_w_fig()
     ADRIA.viz.scenarios!(
         tf[1, 1],
         rs,
-        s_tac;
+        ADRIA.nameddimsarray2yaxarray(s_tac);
         opts=Dict(:by_RCP => false, :legend => false),
         axis_opts=Dict(:title => "TAC [m²]"),
     )
     ADRIA.viz.scenarios!(
         tf[1, 2],
         rs,
-        s_juves;
+        ADRIA.nameddimsarray2yaxarray(s_juves);
         opts=Dict(:summarize => false),
         axis_opts=Dict(:title => "Juveniles [%]"),
     )
@@ -136,19 +136,19 @@ function test_rs_w_fig()
 
     # Calculate frequencies with which each site was selected at each rank
     rank_freq = ADRIA.decision.ranks_to_frequencies(
-        rs.ranks[intervention=1];
+        ADRIA.yaxarray2nameddimsarray(rs.ranks[intervention=1]);
         agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),
     )
 
     # Plot 1st rank frequencies as a colormap
     rank_fig = ADRIA.viz.ranks_to_frequencies(
-        rs, rank_freq, 1; fig_opts=Dict(:size => (1200, 800))
+        rs, ADRIA.nameddimsarray2yaxarray(rank_freq), 1; fig_opts=Dict(:size => (1200, 800))
     )
     # save("single_rank_plot.png", rank_fig)
-
+    
     # Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
     rank_fig = ADRIA.viz.ranks_to_frequencies(
-        rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:size => (1200, 800))
+        rs, ADRIA.nameddimsarray2yaxarray(rank_freq), [1, 2, 3]; fig_opts=Dict(:size => (1200, 800))
     )
     # save("ranks_plot.png", rank_fig)
 
@@ -158,7 +158,7 @@ function test_rs_w_fig()
     mean_s_tac = vec(mean(s_tac; dims=1))
     tac_Si = ADRIA.sensitivity.pawn(rs, mean_s_tac)
     pawn_fig = ADRIA.viz.pawn(
-        tac_Si;
+    ADRIA.nameddimsarray2yaxarray(tac_Si);
         opts,
         fig_opts,
     )
@@ -169,7 +169,7 @@ function test_rs_w_fig()
     tsa_s = ADRIA.sensitivity.tsa(rs, s_tac)
     tsa_fig = ADRIA.viz.tsa(
         rs,
-        tsa_s;
+        ADRIA.nameddimsarray2yaxarray(tsa_s);
         opts,
         fig_opts,
     )
@@ -187,12 +187,12 @@ function test_rs_w_fig()
     # Due to the limited sample size, care should be taken when interpreting the figure.
     foi = [:dhw_scenario, :wave_scenario, :guided]
     Si_conv = ADRIA.sensitivity.convergence(scens, outcome, foi)
-    ADRIA.viz.convergence(Si_conv, foi)
+    ADRIA.viz.convergence(ADRIA.nameddimsarray2yaxarray(Si_conv), foi)
 
     # Convergence analysis of factors grouped by model component as a heat map
     components = [:EnvironmentalLayer, :Intervention, :Coral]
     Si_conv = ADRIA.sensitivity.convergence(rs, scens, outcome, components)
-    ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type => :heatmap))
+    ADRIA.viz.convergence(ADRIA.nameddimsarray2yaxarray(Si_conv), components; opts=Dict(:viz_type => :heatmap))
 
     ### Time Series Clustering
 
@@ -210,7 +210,7 @@ function test_rs_w_fig()
     )
 
     tsc_fig = ADRIA.viz.clustered_scenarios(
-        s_tac, clusters; opts=Dict(:summarize => true), fig_opts=fig_opts,
+        ADRIA.nameddimsarray2yaxarray(s_tac), clusters; opts=Dict(:summarize => true), fig_opts=fig_opts,
         axis_opts=axis_opts,
     )
 
@@ -237,7 +237,7 @@ function test_rs_w_fig()
     axis_opts = Dict(:ylabel => "Absolute Shelter Volume", :xlabel => "Timesteps [years]")
 
     tsc_asc_fig = ADRIA.viz.clustered_scenarios(
-        asv_site_series, asv_target; axis_opts=axis_opts, fig_opts=fig_opts
+        ADRIA.nameddimsarray2yaxarray(asv_site_series), asv_target; axis_opts=axis_opts, fig_opts=fig_opts
     )
 
     # Save final figure
