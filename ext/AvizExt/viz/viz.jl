@@ -1,7 +1,6 @@
 using Makie, DataFrames
 
 using ADRIA: ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
-using NamedDims, AxisKeys
 using DimensionalData, YAXArrays
 using .AvizExt
 using Makie.Colors
@@ -24,10 +23,6 @@ function _time_labels(labels; label_step=5)::Tuple{Vector{Int64},Vector{String}}
     end
 
     return tick_position, tick_label
-end
-
-function _dimkeys(outcomes::NamedDimsArray)
-    return (; zip(dimnames(outcomes), axiskeys(outcomes))...)
 end
 
 """
