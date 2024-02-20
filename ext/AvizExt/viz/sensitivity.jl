@@ -77,8 +77,8 @@ function ADRIA.viz.pawn(
 end
 
 """
-    ADRIA.viz.tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
+    ADRIA.viz.tsa(rs::ResultSet, si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray; opts, axis_opts)
 
 Display temporal sensitivity analysis
 
@@ -96,7 +96,7 @@ Display temporal sensitivity analysis
 Makie figure
 """
 function ADRIA.viz.tsa!(
-    g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts
+    g::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray; opts, axis_opts
 )
     stat = get(opts, :stat, :median)
 
@@ -104,7 +104,7 @@ function ADRIA.viz.tsa!(
     xlabel = get(axis_opts, :xlabel, "Years")
     ylabel = get(axis_opts, :ylabel, L"\text{PAWN}_\text{%$(stat)}")
 
-    factors, Si, timesteps = axiskeys(si)
+    factors, Si, timesteps = si.axes
     x_tickpos, x_ticklabel = _time_labels(timesteps)
     ax = Axis(
         g[1, 1],
@@ -129,7 +129,7 @@ function ADRIA.viz.tsa!(
     lns = Plot[
         series!(
             ax,
-            si(Si=stat)[findall(all_comps .== _cmp), :],
+            si[Si=At(stat)][findall(all_comps .== _cmp), :],
             labels=repeat([_cmp], count(all_comps .== _cmp)),
             solid_color=(dc[i], 0.2)
         )
@@ -142,7 +142,7 @@ function ADRIA.viz.tsa!(
 end
 function ADRIA.viz.tsa(
     rs::ResultSet,
-    si::NamedDimsArray;
+    si::YAXArray;
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
