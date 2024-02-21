@@ -97,7 +97,7 @@ Some options shared for the plots below are defined here.
 
 ```julia
 # Some shared options for the example plots below
-fig_opts = Dict(:resolution => (1600, 800))
+fig_opts = Dict(:size => (1600, 800))
 
 # Factors of Interest
 opts = Dict(
@@ -134,7 +134,7 @@ to plot the legend (default is `true`) and `summarize` to plot confidence interv
 of plotting each series (default is `true`):
 
 ```julia
-tf = Figure(resolution=(1600, 600))  # resolution in pixels
+tf = Figure(size=(1600, 600))  # size of figure
 
 # Implicitly create a single figure with 2 columns
 ADRIA.viz.scenarios!(
@@ -170,7 +170,7 @@ rank_freq = ADRIA.decision.ranks_to_frequencies(
 )
 
 # Plot 1st rank frequencies as a colormap
-rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:resolution=>(1200, 800)))
+rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:size=>(1200, 800)))
 
 save("single_rank_plot.png", rank_fig)
 ```
@@ -179,7 +179,7 @@ save("single_rank_plot.png", rank_fig)
 
 ```julia
 # Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
-rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:resolution=>(1200, 800)))
+rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:size=>(1200, 800)))
 
 save("ranks_plot.png", rank_fig)
 ```
@@ -456,7 +456,7 @@ As the name implies, outcome mapping aids in identifying the relationship betwee
 outputs and the region of factor space that led to those outputs.
 
 ```julia
-tf = Figure(resolution=(1600, 1200))  # resolution in pixels
+tf = Figure(size=(1600, 1200))  # size of figure
 
 # Indicate factor values that are in the top 50 percentile
 tac_om_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
