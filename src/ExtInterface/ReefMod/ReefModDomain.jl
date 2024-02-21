@@ -109,9 +109,10 @@ function load_domain(
         dom_dataset[["record_applied_DHWs"]]
     )[timestep = At(timeframe[1] : timeframe[2])]
     
-    # Redfine dimensions as ReefMod Matfiles do not contain reef ids
+    # Redfine dimensions as ReefMod Matfiles do not contain reef ids.
+    # Forcibly load data as disk arrays are not fully support.
     dhw_scens = DataCube(
-        dhws.data[:, :, :]; # still req
+        dhws.data[:, :, :]; 
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
         scenarios=1:size(dhws)[3]
