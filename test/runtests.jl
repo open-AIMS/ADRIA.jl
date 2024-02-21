@@ -338,28 +338,33 @@ function test_rs_w_fig()
     tf = Figure(; size=(1600, 1200))  # resolution in pixels
 
     # Indicate factor values that are in the top 50 percentile
-    # tac_om_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
-    # ADRIA.viz.outcome_map!(
-    #     tf[1, 1],
-    #     rs,
-    #     tac_om_50,
-    #     foi;
-    #     axis_opts=Dict(:title => "Regions which lead to Top 50th Percentile Outcomes", :ylabel => "TAC [m²]"),
-    # )
+    tac_om_50 = ADRIA.sensitivity.outcome_map(
+        rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20
+    )
+    ADRIA.viz.outcome_map!(
+        tf[1, 1],
+        rs,
+        tac_om_50,
+        foi;
+        axis_opts=Dict(
+            :title => "Regions which lead to Top 50th Percentile Outcomes",
+            :ylabel => "TAC [m²]",
+        ),
+    )
 
-    # # Indicate factor values that are in the top 30 percentile
-    # tac_om_70 = ADRIA.sensitivity.outcome_map(
-    #     rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20
-    # )
-    # ADRIA.viz.outcome_map!(
-    #     tf[2, 1],
-    #     rs,
-    #     tac_om_70,
-    #     foi;
-    #     axis_opts=Dict(
-    #         :title => "Regions which lead to Top 30th Percentile Outcomes",
-    #         :ylabel => "TAC [m²]",
-    #     ))
+    # Indicate factor values that are in the top 30 percentile
+    tac_om_70 = ADRIA.sensitivity.outcome_map(
+        rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20
+    )
+    ADRIA.viz.outcome_map!(
+        tf[2, 1],
+        rs,
+        tac_om_70,
+        foi;
+        axis_opts=Dict(
+            :title => "Regions which lead to Top 30th Percentile Outcomes",
+            :ylabel => "TAC [m²]",
+        ))
     # save("outcome_map.png", tf)
 
     return rs
@@ -378,6 +383,7 @@ include("io/inputs.jl")
 include("metrics.jl")
 include("sampling.jl")
 include("seeding.jl")
+include("mcda.jl")
 include("site_selection.jl")
 include("spatial_clustering.jl")
 include("spec.jl")
