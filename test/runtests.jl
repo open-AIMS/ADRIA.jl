@@ -7,7 +7,6 @@ using ADRIA.metrics: total_absolute_cover
 
 using WGLMakie, GeoMakie, GraphMakie
 
-
 const ADRIA_DIR = pkgdir(ADRIA)
 const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
 
@@ -142,11 +141,15 @@ function test_rs_w_fig()
     )
 
     # Plot 1st rank frequencies as a colormap
-    rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:size => (1200, 800)))
+    rank_fig = ADRIA.viz.ranks_to_frequencies(
+        rs, rank_freq, 1; fig_opts=Dict(:size => (1200, 800))
+    )
     # save("single_rank_plot.png", rank_fig)
 
     # Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
-    rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:size => (1200, 800)))
+    rank_fig = ADRIA.viz.ranks_to_frequencies(
+        rs, rank_freq, [1, 2, 3]; fig_opts=Dict(:size => (1200, 800))
+    )
     # save("ranks_plot.png", rank_fig)
 
     ### PAWN sensitivity (heatmap overview)
@@ -174,7 +177,9 @@ function test_rs_w_fig()
 
     ### Convergence Analysis
 
-    outcome = dropdims(mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps)
+    outcome = dropdims(
+        mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
+    )
 
     # Display convergence for specific factors of interest ("foi") within a single figure.
     # Bands represent the 95% confidence interval derived from the number of conditioning
@@ -205,7 +210,8 @@ function test_rs_w_fig()
     )
 
     tsc_fig = ADRIA.viz.clustered_scenarios(
-        s_tac, clusters; opts=Dict(:summarize => true), fig_opts=fig_opts, axis_opts=axis_opts
+        s_tac, clusters; opts=Dict(:summarize => true), fig_opts=fig_opts,
+        axis_opts=axis_opts,
     )
 
     # Save final figure
@@ -255,7 +261,9 @@ function test_rs_w_fig()
 
     # Filter scenarios that belong to on of the 4 high value clusters for all outcomes
     highest_clusters(x) = x .∈ [sort(x; rev=true)[1:4]]
-    robust_scens = ADRIA.analysis.find_scenarios(outcomes, outcomes_clusters, highest_clusters)
+    robust_scens = ADRIA.analysis.find_scenarios(
+        outcomes, outcomes_clusters, highest_clusters
+    )
 
     ### Time Series Clustering Map
 
@@ -303,7 +311,7 @@ function test_rs_w_fig()
         target_clusters,
         rules_iv;
         fig_opts=fig_opts,
-        opts=opts,
+        opts=opts
     )
 
     # Save final figure
@@ -311,7 +319,10 @@ function test_rs_w_fig()
 
     ### Regional Sensitivity Analysis
 
-    foi = Symbol.(["dhw_scenario", "wave_scenario", "N_seed_TA", "N_seed_CA", "fogging", "SRM"])
+    foi =
+        Symbol.([
+            "dhw_scenario", "wave_scenario", "N_seed_TA", "N_seed_CA", "fogging", "SRM"
+        ])
     tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)
     rsa_fig = ADRIA.viz.rsa(
         rs,
@@ -327,23 +338,28 @@ function test_rs_w_fig()
     tf = Figure(; size=(1600, 1200))  # resolution in pixels
 
     # Indicate factor values that are in the top 50 percentile
-    tac_om_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
-    ADRIA.viz.outcome_map!(
-        tf[1, 1],
-        rs,
-        tac_om_50,
-        foi;
-        axis_opts=Dict(:title => "Regions which lead to Top 50th Percentile Outcomes", :ylabel => "TAC [m²]"),
-    )
+    # tac_om_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
+    # ADRIA.viz.outcome_map!(
+    #     tf[1, 1],
+    #     rs,
+    #     tac_om_50,
+    #     foi;
+    #     axis_opts=Dict(:title => "Regions which lead to Top 50th Percentile Outcomes", :ylabel => "TAC [m²]"),
+    # )
 
-    # Indicate factor values that are in the top 30 percentile
-    tac_om_70 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20)
-    ADRIA.viz.outcome_map!(
-        tf[2, 1],
-        rs,
-        tac_om_70,
-        foi;
-        axis_opts=Dict(:title => "Regions which lead to Top 30th Percentile Outcomes", :ylabel => "TAC [m²]"))
+    # # Indicate factor values that are in the top 30 percentile
+    # tac_om_70 = ADRIA.sensitivity.outcome_map(
+    #     rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20
+    # )
+    # ADRIA.viz.outcome_map!(
+    #     tf[2, 1],
+    #     rs,
+    #     tac_om_70,
+    #     foi;
+    #     axis_opts=Dict(
+    #         :title => "Regions which lead to Top 30th Percentile Outcomes",
+    #         :ylabel => "TAC [m²]",
+    #     ))
     # save("outcome_map.png", tf)
 
     return rs
@@ -366,6 +382,7 @@ include("site_selection.jl")
 include("spatial_clustering.jl")
 include("spec.jl")
 include("utils/text_display.jl")
+include("YAXArrays.jl")
 
 # Always run this example test case last
 # as it sets global environment variables

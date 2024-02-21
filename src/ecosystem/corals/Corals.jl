@@ -359,18 +359,18 @@ function _update_coral_spec(spec::DataFrame, pnames::Vector{String}, coral_param
     return spec
 end
 
-function to_coral_spec(inputs::NamedDimsArray)::DataFrame
+function to_coral_spec(inputs::YAXArray)::DataFrame
     _, pnames, spec = coral_spec()
 
     coral_ids::Vector{String} = spec[:, :coral_id]
     for p in pnames
         # wrapping `p` in an array is necessary so update of DF works
-        spec[!, [p]] .= Array(inputs(coral_ids .* "_" .* p))
+        spec[!, [p]] .= Array(inputs[At(coral_ids .* "_" .* p)])
     end
 
     return spec
 end
 function to_coral_spec(inputs::DataFrameRow)::DataFrame
-    ins = NamedDimsArray(Vector(inputs), factors=names(inputs))
+    ins = DataCube(Vector(inputs); factors=names(inputs))
     return to_coral_spec(ins)
 end

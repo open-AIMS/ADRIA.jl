@@ -13,7 +13,7 @@ const SITE_DATA = "site_data"
 const ENV_STATS = "env_stats"
 const MODEL_SPEC = "model_spec"
 
-struct ResultSet{T1, T2, A, B, C, D, G, D1, D2, D3, DF}
+struct ResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF}
     name::String
     RCP::String
     invoke_time::String
@@ -72,17 +72,12 @@ function ResultSet(
         input_set.attrs["sim_constants"],
         model_spec,
         outcomes,
-        NamedDimsArray{Symbol.(Tuple(log_set["rankings"].attrs["structure"]))}(
-            log_set["rankings"]
-        ),
-        NamedDimsArray{Symbol.(Tuple(log_set["seed"].attrs["structure"]))}(log_set["seed"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["fog"].attrs["structure"]))}(log_set["fog"]),
-        NamedDimsArray{Symbol.(Tuple(log_set["shade"].attrs["structure"]))}(
-            log_set["shade"]
-        ),
-        NamedDimsArray{Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))}(
-            log_set["coral_dhw_log"]
-        ))
+        DataCube(log_set["rankings"], Symbol.(Tuple(log_set["rankings"].attrs["structure"]))),
+        DataCube(log_set["seed"], Symbol.(Tuple(log_set["seed"].attrs["structure"]))),
+        DataCube(log_set["fog"], Symbol.(Tuple(log_set["fog"].attrs["structure"]))),
+        DataCube(log_set["shade"], Symbol.(Tuple(log_set["shade"].attrs["structure"]))),
+        DataCube(log_set["coral_dhw_log"], Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))),
+    )
 end
 
 """
@@ -96,7 +91,7 @@ function _copy_env_stats(src::String, dst::String, subdir::String)::Nothing
     mkpath(dst_dir)
     src_ds = filter(d -> isdir(joinpath(src_dir, d)), readdir(src_dir))
     for ds in src_ds
-        cp(joinpath(src_dir, ds), joinpath(dst_dir, ds); force = true)
+        cp(joinpath(src_dir, ds), joinpath(dst_dir, ds); force=true)
     end
 
     return nothing
@@ -117,8 +112,8 @@ function combine_results(result_sets...)::ResultSet
 
     # Ensure all sim constants are identical
     @assert all([
-        result_sets[i].sim_constants == result_sets[i + 1].sim_constants
-        for i in 1:(length(result_sets) - 1)
+        result_sets[i].sim_constants == result_sets[i+1].sim_constants
+        for i in 1:(length(result_sets)-1)
     ])
 
     # Ensure all result sets were from the same version of ADRIA
@@ -175,7 +170,7 @@ function combine_results(result_sets...)::ResultSet
     cp(
         attrs[:site_data_file],
         joinpath(new_loc, SITE_DATA, basename(attrs[:site_data_file]));
-        force = true,
+        force=true,
     )
 
     # Store copy of model specification as CSV
@@ -186,11 +181,11 @@ function combine_results(result_sets...)::ResultSet
     input_set = zcreate(
         Float64,
         input_dims...;
-        fill_value = -9999.0,
-        fill_as_missing = false,
-        path = input_loc,
-        chunks = (1, input_dims[2]),
-        attrs = attrs,
+        fill_value=-9999.0,
+        fill_as_missing=false,
+        path=input_loc,
+        chunks=(1, input_dims[2]),
+        attrs=attrs,
     )
 
     # Store post-processed table of input parameters.
@@ -216,39 +211,39 @@ function combine_results(result_sets...)::ResultSet
             rs_scen_len = size(s_log, :scenarios)
 
             try
-                n_log[:, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
+                n_log[:, :, scen_id:(scen_id+(rs_scen_len-1))] .= s_log
             catch
-                n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
+                n_log[:, :, :, scen_id:(scen_id+(rs_scen_len-1))] .= s_log
             end
 
             scen_id = scen_id + rs_scen_len
         end
     end
 
-    compressor = Zarr.BloscCompressor(; cname = "zstd", clevel = 4, shuffle = true)
+    compressor = Zarr.BloscCompressor(; cname="zstd", clevel=4, shuffle=true)
     metrics = keys(rs1.outcomes)
     for m_name in metrics
         m_dim_names = NamedDims.dimnames(rs1.outcomes[m_name])
-        dim_struct = Dict{Symbol, Any}(
+        dim_struct = Dict{Symbol,Any}(
             :structure => m_dim_names
         )
         if :sites in m_dim_names
             dim_struct[:unique_site_ids] = rs1.site_ids
         end
 
-        result_dims = (size(rs1.outcomes[m_name])[1:(end - 1)]..., n_scenarios)
+        result_dims = (size(rs1.outcomes[m_name])[1:(end-1)]..., n_scenarios)
         m_store = zcreate(
             Float32,
             result_dims...;
-            fill_value = nothing,
-            fill_as_missing = false,
-            path = joinpath(
+            fill_value=nothing,
+            fill_as_missing=false,
+            path=joinpath(
                 z_store.folder,
                 RESULTS,
                 string(m_name)),
-            chunks = (result_dims[1:(end - 1)]..., 1),
-            attrs = dim_struct,
-            compressor = compressor,
+            chunks=(result_dims[1:(end-1)]..., 1),
+            attrs=dim_struct,
+            compressor=compressor,
         )
 
         # Copy results over
@@ -256,9 +251,9 @@ function combine_results(result_sets...)::ResultSet
         for rs in result_sets
             rs_scen_len = size(rs.outcomes[m_name], :scenarios)
             try
-                m_store[:, :, scen_id:(scen_id + (rs_scen_len - 1))] .= rs.outcomes[m_name]
+                m_store[:, :, scen_id:(scen_id+(rs_scen_len-1))] .= rs.outcomes[m_name]
             catch
-                m_store[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] .= rs.outcomes[m_name]
+                m_store[:, :, :, scen_id:(scen_id+(rs_scen_len-1))] .= rs.outcomes[m_name]
             end
 
             scen_id = scen_id + rs_scen_len
@@ -345,7 +340,7 @@ select(result, "guided .> 0.0")
 function select(r::ResultSet, op::String)
     scens = r.inputs
 
-    col, qry = split(op, " "; limit = 2)
+    col, qry = split(op, " "; limit=2)
     col = Symbol(col)
 
     df_ss = getproperty(scens, col)
@@ -424,11 +419,11 @@ Extract parameters for a specific model component from exported model specificat
 """
 function component_params(rs::ResultSet, component::T)::DataFrame where {T}
     spec = rs.model_spec
-    return spec[spec.component .== string(component), :]
+    return spec[spec.component.==string(component), :]
 end
 function component_params(rs::ResultSet, components::Vector{T})::DataFrame where {T}
     spec = rs.model_spec
-    return spec[spec.component .∈ [replace.(string.(components), "ADRIA." => "")], :]
+    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
 """

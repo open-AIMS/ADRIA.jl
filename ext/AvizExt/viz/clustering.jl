@@ -1,4 +1,3 @@
-using JuliennedArrays: Slices
 using Statistics
 
 """
@@ -8,7 +7,7 @@ using Statistics
 Visualize clustered time series of scenarios.
 
 # Arguments
-- `outcomes` : Matrix of outcomes for several scenarios or sites
+- `outcomes` : AbstractMatrix of outcomes for several scenarios or sites
 - `clusters` : Vector of numbers corresponding to clusters
 - `opts` : Aviz options
     - `summarize` : plot confidence interval. Defaults to true
@@ -17,7 +16,7 @@ Visualize clustered time series of scenarios.
 Figure
 """
 function ADRIA.viz.scenarios(
-    outcomes::NamedDimsArray,
+    outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
@@ -32,7 +31,7 @@ function ADRIA.viz.scenarios(
 end
 function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
-    outcomes::NamedDimsArray,
+    outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -57,8 +56,8 @@ function ADRIA.viz.scenarios!(
 end
 
 """
-    clustered_scenarios(outcomes::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    clustered_scenarios!(g::Union{GridLayout,GridPosition}, outcomes::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    clustered_scenarios(outcomes::AbstractMatrix{<:Real}, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    clustered_scenarios!(g::Union{GridLayout,GridPosition}, outcomes::AbstractMatrix{<:Real}, clusters::Vector{Int64}; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Visualize clustered time series of scenarios.
 
@@ -72,7 +71,7 @@ Visualize clustered time series of scenarios.
 Figure
 """
 function ADRIA.viz.clustered_scenarios(
-    outcomes::NamedDimsArray,
+    outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
@@ -84,7 +83,7 @@ function ADRIA.viz.clustered_scenarios(
 end
 function ADRIA.viz.clustered_scenarios!(
     g::Union{GridLayout,GridPosition},
-    outcomes::NamedDimsArray,
+    outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),

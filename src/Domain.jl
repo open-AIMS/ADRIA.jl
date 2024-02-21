@@ -132,24 +132,22 @@ function component_params(m::Model, component)::DataFrame
     return component_params(model_spec(m), component)
 end
 function component_params(spec::DataFrame, component)::DataFrame
-    return spec[spec.component .== replace.(string(component), "ADRIA." => ""), :]
+    return spec[spec.component.==replace.(string(component), "ADRIA." => ""), :]
 end
 function component_params(m::Model, components::Vector{T})::DataFrame where {T}
     return component_params(model_spec(m), components)
 end
 function component_params(spec::DataFrame, components::Vector{T})::DataFrame where {T}
-    return spec[spec.component .∈ [replace.(string.(components), "ADRIA." => "")], :]
+    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
 """
-    _convert_abs_to_k(coral_cover::Union{NamedDimsArray,Matrix{Float64}}, site_data::DataFrame)::Union{NamedDimsArray,Matrix{Float64}}
+    _convert_abs_to_k(coral_cover::Union{YAXArray,Matrix{Float64}}, site_data::DataFrame)::Union{YAXArray,Matrix{Float64}}
 
 Convert coral cover data from being relative to absolute location area to relative to
 \$k\$ area.
 """
-function _convert_abs_to_k(
-    coral_cover::Union{NamedDimsArray,Matrix{Float64}}, site_data::DataFrame
-)::Union{NamedDimsArray,Matrix{Float64}}
+function _convert_abs_to_k(coral_cover::Union{YAXArray,Matrix{Float64}}, site_data::DataFrame)::Union{YAXArray,Matrix{Float64}}
     # Initial coral cover is provided as values relative to location area.
     # Convert coral covers to be relative to k area, ignoring locations with 0 carrying
     # capacity (k area = 0.0).
