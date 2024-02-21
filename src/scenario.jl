@@ -140,7 +140,7 @@ function run_scenarios(
 
             # Switch RCPs so correct data is loaded
             dom = switch_RCPs!(dom, rcp)
-            scen_args = _scenario_args(dom, scenarios_matrix, rcp, length(nrow(scens)))
+            scen_args = _scenario_args(dom, scenarios_matrix, rcp, size(scenarios_matrix, 1))
 
             if show_progress
                 @showprogress desc = run_msg dt = 4 pmap(
