@@ -58,3 +58,61 @@ end
 
     @test match == true
 end
+
+@testset "ZeroDataCube" begin
+
+    ZeroDataCube = ADRIA.ZeroDataCube
+    
+    dim_1_name = :timesteps
+    dim_1_vals = rand(10)
+    dim_1 = Dim{dim_1_name}(dim_1_vals)
+    
+    dim_2_name = :location
+    dim_2_vals = ["loc 1", "loc 2", "loc 3", "loc 4", "loc 5"]
+    dim_2 = Dim{dim_2_name}(dim_2_vals)
+
+    yax_res = ZeroDataCube(Int, timesteps=dim_1_vals)
+
+    @test typeof(yax_res) <: YAXArray{Int, 1} || 
+        "Incorrect return type. Expected a subtype of YAXArray{Int, 1} \
+         but received $(typeof(yax_res))"
+
+    @test all(0 .== yax_res) || 
+        "Incorrect data contained in YAXArray. Expected all 0."
+
+    @test size(yax_res) == (10,) ||
+        "Incorrect YAXArray shape. Expected (10,) but received $(size(yax_res))"
+
+    @test name(dim_1) == name(yax_res.axes[1]) ||
+        "Incorrect dimension name. Expected $(name(dim_1)) \
+         but received $(name(yax_res.axes[1]))"
+
+    @test dim_1_vals == collect(yax_res.axes[1]) || 
+        "Incorrect axis indices. Expected $(dim_1_vals) but received $(collect(yax_res.axes[1]))"
+      
+    yax_res = ZeroDataCube(Float64, timesteps=dim_1_vals, location=dim_2_vals)
+
+    @test typeof(yax_res) <: YAXArray{Float64, 2} || 
+        "Incorrect return type. Expected a subtype of YAXArray{Int, 2} \
+         but received $(typeof(yax_res))"
+
+    @test all(0 .== yax_res) || 
+        "Incorrect data contained in YAXArray. Expected all 0."
+
+    @test size(yax_res) == (10, 5) ||
+        "Incorrect YAXArray shape. Expected (10, 5) but received $(size(yax_res))"
+
+    @test name(dim_1) == name(yax_res.axes[1]) ||
+        "Incorrect dimension name. Expected $(name(dim_1)) \
+         but received $(name(yax_res.axes[1]))"
+
+    @test name(dim_2) == name(yax_res.axes[2]) ||
+        "Incorrect dimension name. Expected $(name(dim_2)) \
+         but received $(name(yax_res.axes[2]))"
+
+    @test dim_1_vals == collect(yax_res.axes[1]) || 
+        "Incorrect axis indices. Expected $(dim_1_vals) but received $(collect(yax_res.axes[1]))"
+
+    @test dim_2_vals == collect(yax_res.axes[2]) || 
+        "Incorrect axis indices. Expected $(dim_2_vals) but received $(collect(yax_res.axes[2]))"
+end
