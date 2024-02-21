@@ -5,11 +5,9 @@ using
     Statistics
 
 using
-    AxisKeys
     DataFrames
     MAT
     ModelParameters
-    NamedDims
     NetCDF
     YAXArrays
 
@@ -109,10 +107,11 @@ function load_domain(
     # Load DHWs
     dhws = Cube(
         dom_dataset[["record_applied_DHWs"]]
-    )[timestep = At(timeframe[1] : timeframe[2])].data[:, :, :]
-
-    dhw_scens = NamedDimsArray(
-        dhws,
+    )[timestep = At(timeframe[1] : timeframe[2])]
+    
+    # Redfine dimensions as ReefMod Matfiles do not contain reef ids
+    dhw_scens = DataCube(
+        dhws.data[:, :, :]; # still req
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
         scenarios=1:size(dhws)[3]
@@ -135,9 +134,8 @@ function load_domain(
     site_data[:, :zone_type] .= ["" for _ in 1:nrow(site_data)]
 
     # timesteps, location, scenario
-    wave_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 1)
-    wave_scens = NamedDimsArray(
-        wave_scens;
+    wave_scens = ZeroDataCube(
+        Float64;
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
         scenarios=[1]
@@ -145,9 +143,8 @@ function load_domain(
     
     # Current ReefMod mat data only contains cyclone classifications not mortality
     # timesteps, location, species, scenario
-    cyc_scens = zeros(length(timeframe[1]:timeframe[2]), nrow(site_data), 6, 1)
-    cyc_scens = NamedDimsArray(
-        cyc_scens;
+    cyc_scens = ZeroDataCube(
+        Float64;
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
         species=1:6,
@@ -211,7 +208,7 @@ function load_initial_cover(
     site_data::DataFrame, 
     loc_ids::Vector{String},
     init_yr::Int=2022
-)::NamedDimsArray
+)::YAXArray
     if !haskey(dom_data.cubes, :coral_cover_per_taxa)
         @error "coral_cover_per_taxa variable not found in ReefMod data"
     end
@@ -234,7 +231,6 @@ function load_initial_cover(
     # Convert from percent to relative values.
     # YAXArray ordering is [time ⋅ location ⋅ scenario]
     icc_data = ((dropdims(mean(init_cc_per_taxa; dims=:scenario); dims=:scenario)) ./ 100.0).data
-
     # Repeat species over each size class and reshape to give ADRIA compatible size (36 * n_locs).
     # Multiply by size class weights to give initial cover distribution over each size class.
     icc_data = Matrix(hcat(reduce.(vcat, eachrow(icc_data .* [size_class_weights]))...))
@@ -244,7 +240,7 @@ function load_initial_cover(
 
     n_species = length(init_cc_per_taxa[location=1, group=:, scenario=1])
 
-    return NamedDimsArray(icc_data; species=1:(n_species * 6), locs=loc_ids)
+    return DataCube(icc_data; species=1:(n_species * 6), locs=loc_ids)
 end
 
 """
