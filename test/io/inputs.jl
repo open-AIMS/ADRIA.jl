@@ -60,7 +60,6 @@ end
 end
 
 @testset "ZeroDataCube" begin
-
     ZeroDataCube = ADRIA.ZeroDataCube
     
     dim_1_name = :timesteps
@@ -115,4 +114,38 @@ end
 
     @test dim_2_vals == collect(yax_res.axes[2]) || 
         "Incorrect axis indices. Expected $(dim_2_vals) but received $(collect(yax_res.axes[2]))"
+end
+
+function test_DataCube(data; kwargs...)
+    # Check the true values are valid
+    @assert (size(data) == Tuple(length(dm_vls) for (_, dm_vls) in kwargs)) "Data shape should agree with dimensions shape"
+    
+    yax_res = ADRIA.DataCube(data; kwargs...)
+    
+    @test data == yax_res ||
+        "Incorrect data stored in yax array."
+
+    for (axs, (nme, val)) in zip(yax_res.axes, kwargs)
+        @test name(axs) == nme ||
+            "Incorrect axis name. Expected $(nme) but received $(name(axs))"
+        @test collect(axs) == val ||
+            "Incorrect axis values. Expected $(val) but received $(collect(axs))"
+    end
+end
+
+@testset "DataCube" begin
+    dim_1_name = :timesteps
+    dim_1_vals = rand(10)
+
+    dim_2_name = :locations
+    dim_2_vals = ["loc 1", "loc 2", "loc 3", "loc 4", "loc 5"]
+
+    dim_3_name = :species
+    dim_3_vals = [:g1, :g2, :g3, :g4, :g5, :g6]
+
+    test_DataCube(rand(10); timesteps=dim_1_vals)
+    test_DataCube(rand(5); locations=dim_2_vals)
+    test_DataCube(rand(10, 5); timesteps=dim_1_vals, locations=dim_2_vals)
+    test_DataCube(rand(6); species=dim_3_vals)
+    test_DataCube(rand(6, 5, 10); species=dim_3_vals, locations=dim_2_vals, timesteps=dim_1_vals)
 end
