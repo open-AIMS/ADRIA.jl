@@ -1,5 +1,6 @@
 using JuliennedArrays: Slices
 using ADRIA.analysis: series_confint
+using ADRIA: axes_names
 
 """
     ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::YAXArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
@@ -156,7 +157,7 @@ function _confints(
 
     # Compute confints
     confints::Array{Float64} = zeros(n_timesteps, n_groups, 3)
-    agg_dim = symdiff(dimnames(outcomes), [:timesteps])[1]
+    agg_dim = symdiff(axes_names(outcomes), [:timesteps])[1]
     for (idx, group) in enumerate(groups)
         confints[:, idx, :] = series_confint(
             outcomes[:, scen_groups[group]]; agg_dim=agg_dim
