@@ -554,7 +554,7 @@ function rsa(
     # Create storage for bin sequences.
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
     # Create storage for sensitivities.
-    r_s = _create_yax_tuple_store(seq_store, foi_spec, unordered_cat)
+    r_s = _create_yax_store(seq_store, foi_spec, unordered_cat, Dim{:Si}(["Si"]))
 
     for fact_t in factors
         ptype::String = foi_spec.ptype[foi_spec.fieldname .== fact_t][1]
@@ -674,8 +674,8 @@ function outcome_map(
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
 
-    p = _create_yax_tuple_store(
-        seq_store, foi_spec, unordered_cat; second_dim=Dim{:CI}(["mean", "lower", "upper"])
+    p = _create_yax_store(
+        seq_store, foi_spec, unordered_cat, Dim{:CI}(["mean", "lower", "upper"])
     )
 
     all_p_rule = _map_outcomes(y, rule)
