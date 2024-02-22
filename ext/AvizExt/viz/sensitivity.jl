@@ -254,7 +254,7 @@ function ADRIA.viz.rsa!(
                 axis_opts...,
             )
 
-            scatterlines!(ax, fv_s, collect(si[f_name]); markersize=15)
+            scatterlines!(ax, fv_s, collect(si[f_name][Si=At("Si")]); markersize=15)
             if f_name == :guided
                 ax.xticks = (fv_s, fv_labels)
                 ax.xticklabelrotation = pi / 4
