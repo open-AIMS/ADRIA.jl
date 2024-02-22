@@ -1,11 +1,13 @@
 module analysis
 
-using ADRIA: ResultSet, n_locations
+using ADRIA: ZeroDataCube, ResultSet, n_locations
 using ADRIA.metrics: nds
 
 using JuliennedArrays: Slices
 using NamedDims, AxisKeys
 using Statistics, DataFrames
+
+using YAXArrays
 
 """
     col_normalize(data::AbstractArray)::AbstractArray
@@ -88,13 +90,13 @@ Computes confidence interval for series of data.
 
 # Arguments
 - `data` : Matrix with series of data
-- `agg_dim` : Dimension used to aggregate data if a NamedDimsArray is passed
+- `agg_dim` : Dimension used to aggregate data if a YAXArray is passed
 
 # Returns
 Confidence interval (lower bound, median and higher bound) for each series step
 """
 function series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matrix{Float64}
-    slice_dim = data isa NamedDimsArray ? NamedDims.dim(data, agg_dim) : 2
+    slice_dim = data isa YAXArray ? YAXArrays.findAxis(agg_dim, data) : 2
     return quantile.(Slices(data, slice_dim), [0.025 0.5 0.975])
 end
 
