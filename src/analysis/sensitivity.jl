@@ -566,6 +566,9 @@ function rsa(
         if ptype == "unordered categorical"
             seq = seq_store[fact_t]
             X_q = _get_cat_quantile(foi_spec, fact_t, seq)
+        elseif ptype == ("ordered categorical") || (ptype == "ordered discrete")
+            seq = seq_store[:default]
+            X_q = _get_cat_quantile(foi_spec, fact_t, seq)
         else
             seq = seq_store[:default]
             X_q = quantile(X_i, seq)
@@ -694,9 +697,11 @@ function outcome_map(
     for fact_t in target_factors
         X_f = X[:, fact_t]
         ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
-
         if ptype == "unordered categorical"
             seq = seq_store[fact_t]
+            X_q = _get_cat_quantile(foi_spec, fact_t, seq)
+        elseif ptype == "ordered categorical" || ptype == "ordered discrete"
+            seq = seq_store[:default]
             X_q = _get_cat_quantile(foi_spec, fact_t, seq)
         else
             seq = seq_store[:default]
