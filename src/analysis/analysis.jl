@@ -7,6 +7,8 @@ using JuliennedArrays: Slices
 using Statistics, DataFrames
 using YAXArrays
 
+using YAXArrays
+
 """
     col_normalize(data::AbstractArray)::AbstractArray
 
