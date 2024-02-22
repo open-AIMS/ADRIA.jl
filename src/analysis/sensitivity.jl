@@ -103,45 +103,58 @@ function _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
     return seq_store
 end
 
-function _create_yax_tuple_store(
-    seq_store::Dict{Symbol,Vector{Float64}}, foi_spec::DataFrame,
+"""
+    _create_yax_store(seq_store::Dict{Symbol,Vector{Float64}}, m_spec::DataFrame,
     unordered_cat::Vector{Symbol}; second_dim::Union{Dim,Vector{Any}}=[],
-)
-    second_dim_size = isempty(second_dim) ? [] : [length(second_dim)]
-    second_dim = isempty(second_dim) ? [] : [second_dim]
+)::Dataset
 
-    default_ax = (Dim{:default}(seq_store[:default][2:end]), second_dim...)
+Get storage containing YAXArrays of correct size for each factor.
+
+# Arguments
+- `seq_store` : Dictionary for storing bin sequences (created by `_create_seq_store`)
+- `m_spec` : Model specification
+- `unordered_cat` : List of unordered categorical variables.
+- `second_dim` : second storage dimension (e.g. Dim{:CI}(["mean","lower","upper"]))
+"""
+function _create_yax_store(
+    seq_store::Dict{Symbol,Vector{Float64}}, m_spec::DataFrame,
+    unordered_cat::Vector{Symbol}, second_dim::Dim,
+)::Dataset
+    second_dim_size = length(second_dim)
+    default_ax = (Dim{:default}(seq_store[:default][2:end]), second_dim)
 
     # YAXArray storage for unordered categorical variables
     yax_store_cat = Tuple((
         YAXArray(
-            (Dim{fact_t}(seq_store[fact_t][2:end]), second_dim...),
+            (Dim{fact_t}(seq_store[fact_t][2:end]), second_dim),
             zeros(
                 Union{Missing,Float64},
-                (length(seq_store[fact_t][2:end]), second_dim_size...),
+                (length(seq_store[fact_t][2:end]), second_dim_size)
             ),
         ) for fact_t in unordered_cat
     ))
+
     # YAXArray storage for other variables
     yax_store_default = Tuple(
         YAXArray(
             default_ax,
             zeros(
                 Union{Missing,Float64},
-                (length(seq_store[:default][2:end]), second_dim_size...),
+                (length(seq_store[:default][2:end]), second_dim_size),
             ),
-        ) for _ in 1:(length(foi_spec.fieldname) - length(unordered_cat))
+        ) for _ in 1:(length(m_spec.fieldname) - length(unordered_cat))
     )
 
     # Create storage NamedTuples for unordered categorical variables and other variables, then merge
     r_s_default = NamedTuple(
         zip(
-            Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]),
+            Tuple(m_spec.fieldname[m_spec.ptype .!= "unordered categorical"]),
             yax_store_default,
         ),
     )
+
     r_s_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
-    r_s = merge(r_s_cat, r_s_default)
+    r_s = Dataset(; merge(r_s_cat, r_s_default)...)
     return r_s
 end
 
