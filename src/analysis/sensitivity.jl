@@ -47,20 +47,21 @@ function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})::DataF
 end
 
 """
-    _category_bins(foi_spec::DataFrame)
+    _category_bins(S::Int64, foi_spec::DataFrame)::Int64
 
 Get number of bins for categorical variables.
 
 # Arguments
 - `foi_spec` : Model specification for factors of interest
 """
-function _category_bins(foi_spec::DataFrame)
+function _category_bins(foi_spec::DataFrame)::Int64
     max_bounds = maximum(foi_spec.upper_bound .- foi_spec.lower_bound)
     return round(Int64, max_bounds) + 1
 end
 
 """
-    _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})
+    _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol,
+        steps::Vector{Float64})::Vector{Float64}
 
 Get quantile value for a given categorical variable.
 
@@ -80,7 +81,8 @@ function _get_cat_quantile(
 end
 
 """
-    _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol}, S::Int64)
+    _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
+        S::Int64)::Dict{Symbol,Vector{Float64}}
 
 Get stored bin sequences for each factor type.
 
@@ -89,7 +91,8 @@ Get stored bin sequences for each factor type.
 - `unordered_cat` : Factors considered for sensitivity analysis of unordered categorical type.
 - `S` : Number of bins.
 """
-function _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol}, S::Int64)
+function _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
+    S::Int64)::Dict{Symbol,Vector{Float64}}
     seq_store::Dict{Symbol,Vector{Float64}} = Dict() # storage for bin sequences
 
     # Get unique bin sequences for unordered categorical variables and store
@@ -105,8 +108,7 @@ end
 
 """
     _create_yax_store(seq_store::Dict{Symbol,Vector{Float64}}, m_spec::DataFrame,
-    unordered_cat::Vector{Symbol}; second_dim::Union{Dim,Vector{Any}}=[],
-)::Dataset
+        unordered_cat::Vector{Symbol}; second_dim::Union{Dim,Vector{Any}}=[])::Dataset
 
 Get storage containing YAXArrays of correct size for each factor.
 
@@ -551,8 +553,10 @@ function rsa(
 
     foi_spec = _get_factor_spec(model_spec, factors)
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
+
     # Create storage for bin sequences.
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
+
     # Create storage for sensitivities.
     r_s = _create_yax_store(seq_store, foi_spec, unordered_cat, Dim{:Si}(["Si"]))
 
@@ -675,8 +679,11 @@ function outcome_map(
 
     foi_spec = _get_factor_spec(model_spec, target_factors)
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
+
+    # Create storage for bin sequences.
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
 
+    # Create storage for sensitivities.
     p = _create_yax_store(
         seq_store, foi_spec, unordered_cat, Dim{:CI}(["mean", "lower", "upper"])
     )
