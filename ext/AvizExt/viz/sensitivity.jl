@@ -1,10 +1,18 @@
 using Statistics
 using Printf
 using ADRIA.sensitivity: _get_cat_quantile
+using ADRIA: _is_discrete_factor
 
-const FV_LABELS = [
-    "cf", "unguided", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
-]
+"""
+    _get_guided_labels()::Vector{String}
+
+    Returns labels for categories of the `guided` factor.
+"""
+function _get_guided_labels()::Vector{String}
+    return [
+        "cf", "unguided", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
+    ]
+end
 
 """
     ADRIA.viz.pawn(Si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
@@ -211,7 +219,7 @@ function ADRIA.viz.rsa!(
     f_types = ms[foi, :ptype]
 
     if any(f_names .== :guided)
-        fv_labels = FV_LABELS
+        fv_labels = _get_guided_labels()
     end
 
     # Hacky special case handling for SSP/RCP
@@ -356,7 +364,7 @@ function ADRIA.viz.outcome_map!(
     b_slices = parse.(Float64, bin_slices)
 
     if any(f_names .== :guided)
-        fv_labels = FV_LABELS
+        fv_labels = _get_guided_labels()
     end
     curr::Int64 = 1
     axs = Axis[]
