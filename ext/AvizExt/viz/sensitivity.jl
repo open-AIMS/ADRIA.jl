@@ -241,7 +241,7 @@ function ADRIA.viz.rsa!(
             f_type = f_types[curr]
             f_vals = rs.inputs[:, f_name]
 
-            if f_type == "unordered categorical"
+            if _is_discrete_factor(f_type)
                 fv_s = _get_cat_quantile(
                     ms[ms.fieldname .== f_name, :], f_name, collect(si[f_name].axes[1])
                 )
@@ -374,7 +374,7 @@ function ADRIA.viz.outcome_map!(
             f_type = f_types[curr]
             f_vals = rs.inputs[:, f_name]
 
-            if f_type == "unordered categorical"
+            if _is_discrete_factor(f_type)
                 fv_s = _get_cat_quantile(
                     ms[ms.fieldname .== f_name, :], f_name,
                     collect(outcomes[f_name].axes[1]),
