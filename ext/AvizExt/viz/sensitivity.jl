@@ -216,7 +216,7 @@ function ADRIA.viz.rsa!(
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
     dist_params = ms[foi, :dist_params]
-    f_types = ms[foi, :ptype]
+    f_types::Vector{String} = ms[foi, :ptype]
 
     if any(f_names .== :guided)
         fv_labels = _get_guided_labels()
@@ -349,7 +349,7 @@ function ADRIA.viz.outcome_map!(
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
     dist_params = ms[foi, :dist_params]
-    f_types = ms[foi, :ptype]
+    f_types::Vector{String} = ms[foi, :ptype]
 
     # Hacky special case handling for SSP/RCP
     if :RCP in factors || :SSP in factors
