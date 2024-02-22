@@ -1,5 +1,5 @@
 """
-    intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::NamedDimsArray
+    intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::YAXArray
 
 Count number of times a location of selected for intervention
 Count frequency of seeded sites for scenarios satisfying a condition.
@@ -10,7 +10,7 @@ Count frequency of seeded sites for scenarios satisfying a condition.
 - 'log_type` : the intervention log to use in calculating frequencies (one of :seed, :shade or :fog).
 
 # Returns
-NamedDimsArray(:locations, :rcps)
+YAXArray(:locations, :rcps)
 
 # Example
 ```julia

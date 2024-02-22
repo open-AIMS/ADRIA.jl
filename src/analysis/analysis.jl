@@ -4,9 +4,7 @@ using ADRIA: ZeroDataCube, ResultSet, n_locations
 using ADRIA.metrics: nds
 
 using JuliennedArrays: Slices
-using NamedDims, AxisKeys
 using Statistics, DataFrames
-
 using YAXArrays
 
 """
