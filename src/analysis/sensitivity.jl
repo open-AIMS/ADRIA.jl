@@ -594,7 +594,7 @@ function rsa(
         r_s[fact_t] .= normalize!(r_s[fact_t])
     end
 
-    return Dataset(; r_s...)
+    return r_s
 end
 function rsa(
     rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
@@ -726,7 +726,7 @@ function outcome_map(
         end
     end
 
-    return Dataset(; p...)
+    return p
 end
 function outcome_map(
     X::DataFrame,
