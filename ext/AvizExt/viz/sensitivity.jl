@@ -222,7 +222,7 @@ function ADRIA.viz.rsa!(
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
     dist_params = ms[foi, :dist_params]
-    f_types = ms[foi, :ptype]
+    f_types::Vector{String} = ms[foi, :ptype]
 
     if any(f_names .== :guided)
         fv_labels = _get_guided_labels()
@@ -247,7 +247,7 @@ function ADRIA.viz.rsa!(
             f_type = f_types[curr]
             f_vals = rs.inputs[:, f_name]
 
-            if f_type == "unordered categorical"
+            if _is_discrete_factor(f_type)
                 fv_s = _get_cat_quantile(
                     ms[ms.fieldname .== f_name, :], f_name, collect(si[f_name].axes[1])
                 )
@@ -355,7 +355,7 @@ function ADRIA.viz.outcome_map!(
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
     dist_params = ms[foi, :dist_params]
-    f_types = ms[foi, :ptype]
+    f_types::Vector{String} = ms[foi, :ptype]
 
     # Hacky special case handling for SSP/RCP
     if :RCP in factors || :SSP in factors
@@ -380,7 +380,7 @@ function ADRIA.viz.outcome_map!(
             f_type = f_types[curr]
             f_vals = rs.inputs[:, f_name]
 
-            if f_type == "unordered categorical"
+            if _is_discrete_factor(f_type)
                 fv_s = _get_cat_quantile(
                     ms[ms.fieldname .== f_name, :], f_name,
                     collect(outcomes[f_name].axes[1]),
