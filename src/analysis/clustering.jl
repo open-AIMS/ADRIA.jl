@@ -148,7 +148,7 @@ clusters = ADRIA.analysis.cluster_series(s_tac, n_clusters)
 ```
 
 And perform multiple clusterings, based on multiple Metrics, passing a 3-dimensional Array
-(or NamedDimsArray) of outcomes for each timestep, scenario and Metric.
+(or YAXArray) of outcomes for each timestep, scenario and Metric.
 
 ```julia
 metrics::Vector{ADRIA.metrics.Metric} = [
