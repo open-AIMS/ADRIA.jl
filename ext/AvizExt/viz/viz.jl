@@ -1,6 +1,6 @@
 using Makie, DataFrames
 
-using ADRIA: ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
+using ADRIA: axes_names, ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
 using DimensionalData, YAXArrays
 using .AvizExt
 using Makie.Colors
@@ -37,7 +37,7 @@ Extract time step labels from outcome arrays.
 Array of time steps (years)
 """
 function timesteps(outcomes::YAXArray)::Array{Int64}
-    axis_labels = name.(caxes(outcomes))
+    axis_labels = axes_names(outcomes))
 
     if :timesteps in axis_labels
         return Array(outcomes.timesteps)
