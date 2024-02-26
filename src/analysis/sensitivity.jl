@@ -343,7 +343,7 @@ function convergence(
 end
 
 """
-    tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
+    tsa(X::DataFrame, y::AbstractMatrix)::YAXArray
 
 Perform Temporal (or time-varying) Sensitivity Analysis using the PAWN sensitivity index.
 
@@ -366,12 +366,12 @@ ADRIA.sensitivity.tsa(rs.inputs, y_tac)
 - `y` : scenario outcomes over time
 
 # Returns
-NamedDimsArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
+YAXArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
 - \$D\$ is the number of dimensions/factors
 - 6 corresponds to the min, mean, median, max, std, and cv of the PAWN indices
 - \$T\$ is the number of time steps
 """
-function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
+function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::YAXArray
     local ts
     try
         ts = axiskeys(y, 1)
@@ -383,8 +383,8 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
         end
     end
 
-    t_pawn_idx = NamedDimsArray(
-        zeros(ncol(X), 8, size(y, 1));
+    t_pawn_idx = ZeroDataCube(
+        Float64;
         factors=Symbol.(names(X)),
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
         timesteps=ts,
@@ -392,13 +392,13 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
 
     for t in axes(y, 1)
         t_pawn_idx[:, :, t] .= col_normalize(
-            pawn(X, vec(mean(y[1:t, :]; dims=1)))
+            pawn(X, vec(mean(y[1:t, :]; dims=1))).data
         )
     end
 
     return t_pawn_idx
 end
-function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
+function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::YAXArray
     return tsa(rs.inputs, y)
 end
 
