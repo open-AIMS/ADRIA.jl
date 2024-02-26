@@ -3,8 +3,8 @@ module sensitivity
 using Logging
 
 using
-    AxisKeys,
     NamedDims,
+    AxisKeys,
     StaticArrays,
     YAXArrays
 using DataFrames
@@ -18,7 +18,7 @@ using HypothesisTests: ApproximateKSTest
 
 using FLoops
 
-using ADRIA: DataCube, ResultSet, model_spec
+using ADRIA: DataCube, ResultSet, model_spec, ZeroDataCube
 
 using ADRIA.analysis: col_normalize, normalize!
 
@@ -261,8 +261,8 @@ function pawn(
 end
 
 """
-    convergence(X::DataFrame, y::NamedDimsArray, target_factors::Vector{Symbol}; n_steps::Int64=10)::NamedDimsArray
-    convergence(rs::ResultSet, X::DataFrame, y::NamedDimsArray, components::Vector{String}; n_steps::Int64=10)::NamedDimsArray
+    convergence(X::DataFrame, y::YAXArray, target_factors::Vector{Symbol}; n_steps::Int64=10)::YAXArray
+    convergence(rs::ResultSet, X::DataFrame, y::YAXArray, components::Vector{String}; n_steps::Int64=10)::YAXArray
 
 Calculates the PAWN sensitivity index for an increasing number of scenarios where the
 maximum is the total number of scenarios in scens. Number of scenario subsets determined by
@@ -278,22 +278,21 @@ model components.
 - `n_steps` : Number of steps to cut the total number of scenarios into.
 
 # Returns
-NamedDimsArray, of min, lower bound, mean, median, upper bound, max, std, and cv summary
+YAXArray, of min, lower bound, mean, median, upper bound, max, std, and cv summary
 statistics for an increasing number of scenarios.
 """
 function convergence(
     X::DataFrame,
-    y::NamedDimsArray,
+    y::YAXArray,
     target_factors::Vector{Symbol};
     Si::Function=pawn,
     n_steps::Int64=10,
-)::NamedDimsArray
+)::YAXArray
     N = length(y.scenarios)
     step_size = floor(Int64, N / n_steps)
     N_it = step_size == 0 ? collect(1:N) : collect(step_size:step_size:N)
 
-    pawn_store = NamedDimsArray(
-        zeros(length(target_factors), 8, length(N_it));
+    pawn_store = ZeroDataCube(Float64;
         factors=target_factors,
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
         n_scenarios=N_it,
@@ -301,9 +300,9 @@ function convergence(
     scens_idx = randperm(N)
 
     for nn in N_it
-        pawn_store(; n_scenarios=nn) .= Si(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]]))(;
-            factors=target_factors
-        )
+        pawn_store[n_scenarios=At(nn)] .= Si(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]]))[
+            factors=At(target_factors)
+        ]
     end
 
     return pawn_store
@@ -311,11 +310,11 @@ end
 function convergence(
     rs::ResultSet,
     X::DataFrame,
-    y::NamedDimsArray,
+    y::YAXArray,
     components::Vector{Symbol};
     Si::Function=pawn,
     n_steps::Int64=10,
-)::NamedDimsArray
+)::YAXArray
     ms = model_spec(rs)
 
     target_factors = [
@@ -326,16 +325,16 @@ function convergence(
     Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); Si=Si, n_steps=n_steps)
 
     # Note: n_steps only applies if it is > number of scenarios.
-    Si_grouped = NamedDimsArray(
-        zeros(length(components), 8, size(Si_n, 3));
+    Si_grouped = ZeroDataCube(
+        Float64;
         factors=components,
-        Si=Si_n.Si,
-        n_scenarios=Si_n.n_scenarios,
+        Si=collect(Si_n.Si),
+        n_scenarios=collect(Si_n.n_scenarios),
     )
 
     for (cc, factors) in zip(components, target_factors)
-        Si_grouped(; factors=cc) .= dropdims(
-            mean(Si_n(; factors=Symbol.(factors)); dims=:factors);
+        Si_grouped[factors=At(cc)] .= dropdims(
+            mean(Si_n[factors=At(Symbol.(factors))]; dims=:factors);
             dims=:factors
         )
     end
