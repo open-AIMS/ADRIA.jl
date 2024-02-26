@@ -18,7 +18,7 @@ using HypothesisTests: ApproximateKSTest
 
 using FLoops
 
-using ADRIA: ResultSet, model_spec
+using ADRIA: DataCube, ResultSet, model_spec
 
 using ADRIA.analysis: col_normalize, normalize!
 
@@ -83,11 +83,11 @@ function _get_cat_quantile(
 end
 
 """
-    pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
-    pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
-    pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
-    pawn(X::NamedDimsArray, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
-    pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
+    pawn(rs::ResultSet, y::Union{YAXArray,AbstractVector{<:Real}}; S::Int64=10)::YAXArray
+    pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::YAXArray
+    pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::YAXArray
+    pawn(X::YAXArray, y::Union{YAXArray,AbstractVector{<:Real}}; S::Int64=10)::YAXArray
+    pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::YAXArray
 
 Calculates the PAWN sensitivity index.
 
@@ -109,7 +109,7 @@ summary statistics (min, lower bound, mean, median, upper bound, max, std, and c
 - `S` : Number of slides (default: 10)
 
 # Returns
-NamedDimsArray, of min, mean, lower bound, median, upper bound, max, std, and cv summary statistics.
+YAXArray, of min, mean, lower bound, median, upper bound, max, std, and cv summary statistics.
 
 # Examples
 ```julia
@@ -160,7 +160,7 @@ function pawn(
     y::AbstractVector{<:Real},
     factor_names::Vector{String};
     S::Int64=10,
-)::NamedDimsArray
+)::YAXArray
     N, D = size(X)
     step = 1 / S
     seq = 0.0:step:1.0
@@ -212,23 +212,33 @@ function pawn(
     replace!(results, NaN => 0.0, Inf => 0.0)
 
     col_names = [:min, :lb, :mean, :median, :ub, :max, :std, :cv]
-    return NamedDimsArray(results; factors=Symbol.(factor_names), Si=col_names)
+    row_names = Symbol.(factor_names)
+    return DataCube(results; factors=row_names, Si=col_names)
 end
-function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
+function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::YAXArray
     return pawn(Matrix(X), y, names(X); S=S)
 end
 function pawn(
-    X::NamedDimsArray,
-    y::Union{NamedDimsArray,AbstractVector{<:Real}};
+    X::YAXArray,
+    y::AbstractVector{<:Real};
     S::Int64=10
-)::NamedDimsArray
-    return pawn(X, y, axiskeys(X, 2); S=S)
+)::YAXArray
+return pawn(X, y, collect(X.axes[2]); S=S)
 end
 function pawn(
-    X::Union{DataFrame,NamedDimsArray},
+    X::YAXArray,
+    y::YAXArray;
+    S::Int64=10
+)::YAXArray
+    # YAXrrays will raise an error if any of the masked boolean indexing in pawn is empty so
+    # vec(y) is required 
+return pawn(X, vec(y), collect(X.axes[2]); S=S)
+end
+function pawn(
+    X::Union{DataFrame,YAXArray},
     y::AbstractMatrix{<:Real};
     S::Int64=10
-)::NamedDimsArray
+)::YAXArray
     N, D = size(y)
     if N > 1 && D > 1
         msg::String = string(
@@ -244,9 +254,9 @@ function pawn(
 end
 function pawn(
     rs::ResultSet,
-    y::Union{NamedDimsArray,AbstractVector{<:Real}};
+    y::Union{YAXArray,AbstractVector{<:Real}};
     S::Int64=10
-)::NamedDimsArray
+)::YAXArray
     return pawn(rs.inputs, y; S=S)
 end
 
