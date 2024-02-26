@@ -4,7 +4,6 @@ using Logging
 
 using
     NamedDims,
-    AxisKeys,
     StaticArrays,
     YAXArrays
 using DataFrames
@@ -374,7 +373,7 @@ YAXArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
 function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::YAXArray
     local ts
     try
-        ts = axiskeys(y, 1)
+        ts = collect(y.axes[1])
     catch err
         if err isa MethodError
             ts = 1:size(y, 1)
