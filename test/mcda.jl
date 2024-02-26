@@ -179,6 +179,7 @@ end
     norm_A = mcda_normalize(A[:, 2:end])
     norm_w = mcda_normalize(w)
 
-    @test all((sqrt.(sum(norm_A .^ 2, dims=1)) .- 1.0) .< 0.0001) || "Decision matrix normalization not giving column sums = 1."
+    @test all((sqrt.(sum(norm_A .^ 2; dims=1)) .- 1.0) .< 0.0001) ||
+        "Decision matrix normalization not giving column sums = 1."
     @test (sum(norm_w) - 1.0) <= 0.001 || "MCDA weights not summing to one."
 end
