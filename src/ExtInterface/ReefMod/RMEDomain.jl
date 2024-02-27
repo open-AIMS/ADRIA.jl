@@ -420,7 +420,7 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", d::RMEDomain)::Nothing
     # df = model_spec(d)
     println("""
-        ReefMod Domain: $(d.name)
+        ReefMod Engine Domain: $(d.name)
 
         Number of sites: $(n_locations(d))
     """)
