@@ -299,7 +299,7 @@ function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)::Nothing
     println("""
         ReefMod Domain: $(d.name)
 
-        Number of site: $(n_locations(d))
+        Number of locations: $(n_locations(d))
     """)
 
     return nothing
