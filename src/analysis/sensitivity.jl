@@ -794,7 +794,7 @@ function outcome_map(
         Dim{target_factor}(seq),
         Dim{:CI}(["mean", "lower", "upper"]),
     )
-    p = YAXArray(axs, zeros(length(seq), 3))
+    p = YAXArray(axs, zeros(Union{Missing,Float64}, length(seq), 3))
 
     X_f = X[:, target_factor]
     X_q = _get_factor_quantile(seq_store, foi_spec, X_f, target_factor)
