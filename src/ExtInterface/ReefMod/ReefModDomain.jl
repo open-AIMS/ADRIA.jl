@@ -1,6 +1,6 @@
 using ADRIA: SimConstants, Domain, GDF
 
-using 
+using
     Distributions
     Statistics
 
@@ -51,7 +51,7 @@ end
         RCP::String
     )::ReefModDomain
 
-Load ReefMod Matlab Dataset stored in netcdf file format. 
+Load ReefMod Matlab Dataset stored in netcdf file format.
 Uses a path ReefMod Engine data to fill missing required data
 
 # Arguments
@@ -78,7 +78,7 @@ function load_domain(
         header=false,
         comment="#",
     )
-    
+
     # Read location data
     geodata_dir = joinpath(fn_path, "region")
     geodata_fn = _find_file(geodata_dir, ".gpkg")
@@ -87,7 +87,7 @@ function load_domain(
     site_id_col = "LOC_NAME_S"
     cluster_id_col = "LOC_NAME_S"
     site_ids = site_data[:, site_id_col]
-    
+
 
     # Re-order spatial data to match RME dataset
     # MANUAL CORRECTION
@@ -97,10 +97,10 @@ function load_domain(
 
     # Check that the two lists of location ids are identical
     @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
-    
+
     # Load reef area and convert from km^2 to m^2
     site_data[:, :area] = id_list[:, 2] .* 1e6
-    
+
     # Calculate `k` area (1.0 - "ungrazable" area)
     site_data[:, :k] = 1 .- id_list[:, 3]
 
@@ -108,16 +108,16 @@ function load_domain(
     dhws = Cube(
         dom_dataset[["record_applied_DHWs"]]
     )[timestep = At(timeframe[1] : timeframe[2])]
-    
+
     # Redfine dimensions as ReefMod Matfiles do not contain reef ids.
     # Forcibly load data as disk arrays are not fully support.
     dhw_scens = DataCube(
-        dhws.data[:, :, :]; 
+        dhws.data[:, :, :];
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
         scenarios=1:size(dhws)[3]
     )
-    
+
     # Initial coral cover is loaded from the first year of reefmod 'coral_cover_per_taxa' data
     init_coral_cover = load_initial_cover(
         ReefModDomain, dom_dataset, site_data, site_ids, timeframe[1]
@@ -141,7 +141,7 @@ function load_domain(
         locs=site_ids,
         scenarios=[1]
     )
-    
+
     # Current ReefMod mat data only contains cyclone classifications not mortality
     # timesteps, location, species, scenario
     cyc_scens = ZeroDataCube(
@@ -196,17 +196,17 @@ end
 
 """
     load_initial_cover(
-        ::Type{ReefModDomain}, 
-        dom_data::Dataset, 
-        site_data::DataFrame, 
+        ::Type{ReefModDomain},
+        dom_data::Dataset,
+        site_data::DataFrame,
         loc_ids::Vector{String},
         init_yr::Int=2022
     )::NamedDimsArray
 """
 function load_initial_cover(
-    ::Type{ReefModDomain}, 
-    dom_data::Dataset, 
-    site_data::DataFrame, 
+    ::Type{ReefModDomain},
+    dom_data::Dataset,
+    site_data::DataFrame,
     loc_ids::Vector{String},
     init_yr::Int=2022
 )::YAXArray
@@ -216,7 +216,7 @@ function load_initial_cover(
     init_cc_per_taxa::YAXArray = Cube(dom_data[["coral_cover_per_taxa"]])[time = At(init_yr)]
 
     # The following class weight calculations are taken from ReefModEngine Domain calculation
-    
+
     # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
     # as suggested by YM (pers comm. 2023-08-08 12:55pm AEST). Distribution is used to split ReefMod initial
     # species covers into ADRIA's 6 size classes by weighting with the cdf.
