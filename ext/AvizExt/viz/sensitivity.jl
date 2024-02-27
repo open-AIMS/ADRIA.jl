@@ -6,7 +6,7 @@ using ADRIA: _is_discrete_factor
 """
     _get_guided_labels()::Vector{String}
 
-    Returns labels for categories of the `guided` factor.
+Returns labels for categories of the `guided` factor.
 """
 function _get_guided_labels()::Vector{String}
     return [
@@ -300,6 +300,7 @@ end
     ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts, axis_opts)
 
+
 Plot outcomes mapped to factor regions for up to 30 factors.
 
 # Arguments
@@ -373,9 +374,12 @@ function ADRIA.viz.outcome_map!(
             f_name = factors[curr]
             ms_factor = ms[ms.fieldname .== f_name, :]
             f_vals = rs.inputs[:, f_name]
+
             ax::Axis = Axis(
                 g[r, c]; title=ms_factor.name[1], axis_opts...
             )
+
+            # Plot for individual factors on ax
             ADRIA.viz.outcome_map!(ax, outcomes[f_name], ms_factor)
 
             band!(
@@ -454,12 +458,16 @@ function ADRIA.viz.outcome_map!(
 )
     f_name = ms_factor.fieldname[1]
     f_type::String = ms_factor.ptype[1]
+
     if _is_discrete_factor(f_type)
+        # If categorical/discrete get categorical quantile
         fv_s = _get_cat_quantile(
             ms_factor, f_name,
             collect(outcomes.axes[1]),
         )
+
     else
+        # Otherwise use regular quantile
         fv_s = round.(quantile(f_vals, collect(outcome.axes[1])), digits=2)
     end
 
@@ -490,6 +498,7 @@ function ADRIA.viz.outcome_map(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.outcome_map!(g, rs, outcomes, factor; opts=opts, axis_opts=axis_opts)
+
     return f
 end
 function ADRIA.viz.outcome_map!(
@@ -511,6 +520,7 @@ function ADRIA.viz.outcome_map!(
     ms_factor = ms[ms.fieldname .== factor, :]
     ax::Axis = Axis(g[1, 1]; title=ms_factor.name[1], axis_opts...)
     ADRIA.viz.outcome_map!(ax, outcomes, ms_factor)
+
     return g
 end
 

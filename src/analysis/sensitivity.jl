@@ -69,6 +69,9 @@ Get quantile value for a given categorical variable.
 - `foi_spec` : Model specification for factors of interest
 - `factor_name` : Contains true where the factor is categorical and false otherwise
 - `steps` : Number of steps for defining bins
+
+# Returns
+- Quantile for a categorical factor.
 """
 function _get_cat_quantile(
     foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64}
@@ -84,13 +87,16 @@ end
     _get_factor_quantile(seq_store::Dict{Symbol,Vector{Float64}},foi_spec::DataFrame,
         fact_t::Symbol)
 
-Get bin sequence and quantile for a given factor.
+Checks the type of the factor to calculate its quantile.
 
 # Arguments
 - `seq_store` : storage containing bin sequences for factors considered
 - `foi_spec` : Model specification for factors of interest
 - `X_f` : Scenario dataframe for factor of interest
 - `factor_name` : Contains true where the factor is categorical and false otherwise
+
+# Returns
+- `X_q` : A quantile for factor `fact_t`, given bin sequences in `seq_store`
 """
 function _get_factor_quantile(
     seq_store::Dict{Symbol,Vector{Float64}}, foi_spec::DataFrame, X_f::Vector{Float64},
@@ -99,15 +105,21 @@ function _get_factor_quantile(
     ptype::String = foi_spec.ptype[foi_spec.fieldname .== factor_name][1]
 
     if ptype == "unordered categorical"
+        # If unordered categorical, use factor-specific binnings with categorical quantile
         seq = seq_store[factor_name]
         X_q = _get_cat_quantile(foi_spec, factor_name, seq)
+
     elseif ptype == ("ordered categorical") || (ptype == "ordered discrete")
+        # If other categorical/discrete, use default binnings with categorical quantile
         seq = seq_store[:default]
         X_q = _get_cat_quantile(foi_spec, factor_name, seq)
+
     else
+        # Otherwise use default binnings and regular quantile
         seq = seq_store[:default]
         X_q = quantile(X_f, seq)
     end
+    return X_q
 end
 
 """
@@ -120,6 +132,9 @@ Get stored bin sequences for each factor type.
 - `model_spec` : Model specification, as extracted by `ADRIA.model_spec(domain)` or from a `ResultSet`
 - `unordered_cat` : Factors considered for sensitivity analysis of unordered categorical type.
 - `S` : Number of bins.
+
+# Returns
+- `seq_store` : A dictionary containing bin sequences for each factor
 """
 function _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
     S::Int64)::Dict{Symbol,Vector{Float64}}
@@ -130,6 +145,7 @@ function _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
         S_temp = _category_bins(model_spec[model_spec.fieldname .== factor, :])
         seq_store[factor] = collect(0.0:(1 / S_temp):1.0)
     end
+
     # Other variables have default sequence using input S
     seq_store[:default] = collect(0.0:(1 / S):1.0)
 
@@ -147,6 +163,9 @@ Get storage containing YAXArrays of correct size for each factor.
 - `m_spec` : Model specification
 - `unordered_cat` : List of unordered categorical variables.
 - `second_dim` : second storage dimension (e.g. Dim{:CI}(["mean","lower","upper"]))
+
+# Returns
+- `r_s` : Dataset containing storage for sensitivity ranges for each factor.
 """
 function _create_yax_store(
     seq_store::Dict{Symbol,Vector{Float64}}, m_spec::DataFrame,
