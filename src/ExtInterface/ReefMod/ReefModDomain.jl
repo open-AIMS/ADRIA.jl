@@ -295,11 +295,12 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     return d
 end
 
-function Base.show(io::IO, mime::MIME"test/plain", d::ReefModDomain)::Nothing
+function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)::Nothing
     println("""
         ReefMod Domain: $(d.name)
 
         Number of site: $(n_locations(d))
     """)
+
     return nothing
 end
