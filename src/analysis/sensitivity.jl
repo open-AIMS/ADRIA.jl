@@ -81,6 +81,36 @@ function _get_cat_quantile(
 end
 
 """
+    _get_factor_quantile(seq_store::Dict{Symbol,Vector{Float64}},foi_spec::DataFrame,
+        fact_t::Symbol)
+
+Get bin sequence and quantile for a given factor.
+
+# Arguments
+- `seq_store` : storage containing bin sequences for factors considered
+- `foi_spec` : Model specification for factors of interest
+- `X_f` : Scenario dataframe for factor of interest
+- `factor_name` : Contains true where the factor is categorical and false otherwise
+"""
+function _get_factor_quantile(
+    seq_store::Dict{Symbol,Vector{Float64}}, foi_spec::DataFrame, X_f::Vector{Float64},
+    factor_name::Symbol,
+)
+    ptype::String = foi_spec.ptype[foi_spec.fieldname .== factor_name][1]
+
+    if ptype == "unordered categorical"
+        seq = seq_store[factor_name]
+        X_q = _get_cat_quantile(foi_spec, factor_name, seq)
+    elseif ptype == ("ordered categorical") || (ptype == "ordered discrete")
+        seq = seq_store[:default]
+        X_q = _get_cat_quantile(foi_spec, factor_name, seq)
+    else
+        seq = seq_store[:default]
+        X_q = quantile(X_f, seq)
+    end
+end
+
+"""
     _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
         S::Int64)::Dict{Symbol,Vector{Float64}}
 
@@ -561,20 +591,8 @@ function rsa(
     r_s = _create_yax_store(seq_store, foi_spec, unordered_cat, Dim{:Si}(["Si"]))
 
     for fact_t in factors
-        ptype::String = foi_spec.ptype[foi_spec.fieldname .== fact_t][1]
-
         X_i .= X[:, fact_t]
-
-        if ptype == "unordered categorical"
-            seq = seq_store[fact_t]
-            X_q = _get_cat_quantile(foi_spec, fact_t, seq)
-        elseif ptype == ("ordered categorical") || (ptype == "ordered discrete")
-            seq = seq_store[:default]
-            X_q = _get_cat_quantile(foi_spec, fact_t, seq)
-        else
-            seq = seq_store[:default]
-            X_q = quantile(X_i, seq)
-        end
+        X_q = _get_factor_quantile(seq_store, foi_spec, X_i, factor_name)
 
         sel .= X_q[1] .<= X_i .<= X_q[2]
         if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
@@ -663,6 +681,38 @@ ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 ```
 """
 function outcome_map(
+    X_f::AbstractArray,
+    X_q::AbstractArray,
+    y::AbstractVecOrMat{<:Real},
+    p::YAXArray,
+    behave::BitVector;
+    n_boot::Int64=100,
+    conf::Float64=0.95,
+)::YAXArray
+    for i in 1:length(X_q[1:(end - 1)])
+        local b::BitVector
+        if i == 1
+            b = (X_q[i] .<= X_f .<= X_q[i + 1])
+        else
+            b = (X_q[i] .< X_f .<= X_q[i + 1])
+        end
+
+        b = b .& behave
+
+        if count(b) == 0
+            # No data to bootstrap (empty region)
+            p[i, [1, 2, 3]] .= missing
+            continue
+        end
+
+        bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
+        ci = confint(bs, PercentileConfInt(conf))[1]
+
+        p[i, [1, 2, 3]] .= ci
+    end
+    return p
+end
+function outcome_map(
     X::DataFrame,
     y::AbstractVecOrMat{<:Real},
     rule::Union{Function,BitVector,Vector{Int64}},
@@ -701,42 +751,57 @@ function outcome_map(
 
     for fact_t in target_factors
         X_f = X[:, fact_t]
-        ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
-        if ptype == "unordered categorical"
-            seq = seq_store[fact_t]
-            X_q = _get_cat_quantile(foi_spec, fact_t, seq)
-        elseif ptype == "ordered categorical" || ptype == "ordered discrete"
-            seq = seq_store[:default]
-            X_q = _get_cat_quantile(foi_spec, fact_t, seq)
-        else
-            seq = seq_store[:default]
-            X_q = quantile(X_f, seq)
-        end
+        X_q = _get_factor_quantile(seq_store, foi_spec, X_f, fact_t)
 
-        for i in 1:length(X_q[1:(end-1)])
-            local b::BitVector
-            if i == 1
-                b = (X_q[i] .<= X_f .<= X_q[i+1])
-            else
-                b = (X_q[i] .< X_f .<= X_q[i+1])
-            end
-
-            b = b .& behave
-
-            if count(b) == 0
-                # No data to bootstrap (empty region)
-                p[fact_t][i, [1, 2, 3]] .= missing
-                continue
-            end
-
-            bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
-            ci = confint(bs, PercentileConfInt(conf))[1]
-
-            p[fact_t][i, [1, 2, 3]] .= ci
-        end
+        p[fact_t] .= outcome_map(
+            X_f, X_q, y, p[fact_t], behave; n_boot=n_boot, conf=conf
+        )
     end
 
     return p
+end
+function outcome_map(
+    X::DataFrame,
+    y::AbstractVecOrMat{<:Real},
+    rule::Union{Function,BitVector,Vector{Int64}},
+    target_factor::Symbol,
+    model_spec::DataFrame;
+    S::Int64=20,
+    n_boot::Int64=100,
+    conf::Float64=0.95,
+)::YAXArray
+    all_p_rule = _map_outcomes(y, rule)
+    if length(all_p_rule) == 0
+        @warn "No results conform to specified rule."
+        return p
+    end
+
+    # Identify behavioural
+    n_scens = size(X, 1)
+    behave::BitVector = falses(n_scens)
+    behave[all_p_rule] .= true
+
+    # Factor model spec and check if unordered categorical type
+    foi_spec = _get_factor_spec(model_spec, [target_factor])
+    unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
+
+    # Get bin sequence and quantile
+    seq_store = _create_seq_store(foi_spec, unordered_cat, S)
+
+    # Set up YAX storage
+    seq = seq_store[collect(keys(seq_store))[1]][2:end]
+    axs = (
+        Dim{target_factor}(seq),
+        Dim{:CI}(["mean", "lower", "upper"]),
+    )
+    p = YAXArray(axs, zeros(length(seq), 3))
+
+    X_f = X[:, target_factor]
+    X_q = _get_factor_quantile(seq_store, foi_spec, X_f, target_factor)
+
+    return outcome_map(
+        X_f, X_q, y, p, behave; n_boot=n_boot, conf=conf
+    )
 end
 function outcome_map(
     X::DataFrame,
@@ -759,6 +824,19 @@ function outcome_map(
 )::Dataset
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, target_factors, rs.model_spec; S, n_boot, conf
+    )
+end
+function outcome_map(
+    rs::ResultSet,
+    y::AbstractArray{<:Real},
+    rule::Union{Function,BitVector,Vector{Int64}},
+    target_factor::Symbol;
+    S::Int64=20,
+    n_boot::Int64=100,
+    conf::Float64=0.95,
+)::YAXArray
+    return outcome_map(
+        rs.inputs[:, Not(:RCP)], y, rule, target_factor, rs.model_spec; S, n_boot, conf
     )
 end
 function outcome_map(
