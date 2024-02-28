@@ -448,7 +448,7 @@ function ADRIA.viz.outcome_map!(
             )
 
             # Plot for individual factors on ax
-            ADRIA.viz.outcome_map!(ax, outcomes[f_name], ms_factor)
+            ADRIA.viz.outcome_map!(ax, outcomes[f_name], ms_factor, f_vals)
 
             band!(
                 ax,
@@ -537,7 +537,7 @@ function ADRIA.viz.outcome_map!(
 
     else
         # Otherwise use regular quantile
-        fv_s = round.(quantile(f_vals, collect(outcome.axes[1])), digits=2)
+        fv_s = round.(quantile(f_vals, collect(outcomes.axes[1])), digits=2)
     end
 
     band!(
