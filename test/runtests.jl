@@ -370,7 +370,7 @@ function test_rs_w_fig()
             :title => "Regions which lead to Top 30th Percentile Outcomes",
             :ylabel => "TAC [m²]",
         ))
-    save("outcome_map.png", tf)
+    # save("outcome_map.png", tf)
 
     return rs
 end
