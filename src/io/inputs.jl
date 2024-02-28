@@ -146,7 +146,7 @@ end
 
 Load initial coral cover data from netCDF.
 """
-function load_cover(data_fn::String, site_data::DataFrame)::YAXArray
+function load_cover(data_fn::String)::YAXArray
     _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
     data = load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
 
@@ -159,7 +159,7 @@ function load_cover(n_species::Int64, n_sites::Int64)::YAXArray
 end
 
 """
-    load_env_data(data_fn::String, attr::String, site_data::DataFrame)::YAXArray
+    load_env_data(data_fn::String, attr::String)::YAXArray
     load_env_data(timeframe, sites)::YAXArray
 
 Load environmental data layers (DHW, Wave) from netCDF.
