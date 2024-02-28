@@ -652,7 +652,7 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["timeframe"],
     )
 
-    outcomes = Dict{Symbol,NamedDimsArray}()
+    outcomes = Dict{Symbol,YAXArray}()
     subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS); join=true))
     for sd in subdirs
         if !(occursin(LOG_GRP, sd)) && !(occursin(INPUTS, sd))
@@ -672,7 +672,7 @@ function load_results(result_loc::String)::ResultSet
             end
 
             try
-                outcomes[Symbol(basename(sd))] = NamedDimsArray(
+                outcomes[Symbol(basename(sd))] = DataCube(
                     res; zip(Symbol.(res.attrs["structure"]), st)...
                 )
             catch err
@@ -683,7 +683,7 @@ function load_results(result_loc::String)::ResultSet
                     Structure: $(res.attrs["structure"])
                     Generated: $(Array([i[1] for i in size.(st)]))
                     """
-                    outcomes[Symbol(basename(sd))] = NamedDimsArray(
+                    outcomes[Symbol(basename(sd))] = DataCube(
                         res;
                         zip(Symbol.(res.attrs["structure"]), [1:s for s in size(res)])...,
                     )

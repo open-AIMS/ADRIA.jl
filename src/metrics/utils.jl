@@ -64,17 +64,17 @@ end
 
 
 """
-    call_metric(metric, data, args...; timesteps=(:), species=(:), sites=(:), scens=(:))
+    call_metric(metric::Union{Function,Metric}, data::YAXArray, args...; kwargs...)
 
 Convenience method that slices the data in the specified manner.
 
 # Arguments
 - `metric` : Function, the metric function to apply to "raw" data.
-- `data` : NamedDimsArray, data to pass into `metric`
+- `data` : YAXArray, data to pass into `metric`
 - `args` : Additional positional arguments to pass into `metric`
 - `dims` : dummy keyword argument, not used but defined to allow use with other methods
 """
-function call_metric(metric::Union{Function,Metric}, data::NamedDimsArray, args...; kwargs...)
+function call_metric(metric::Union{Function,Metric}, data::YAXArray, args...; kwargs...)
     dims = haskey(kwargs, :dims) ? kwargs[:dims] : nothing
     if isnothing(dims)
         return metric(slice_results(data; kwargs...), args...)
@@ -85,17 +85,16 @@ end
 
 
 """
-    slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))
+    slice_results(data::YAXArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))
 
-Slice data as indicated.
-Dimensions not found in target data are ignored.
+Slice data as indicated. Dimensions not found in target data are ignored.
 """
-function slice_results(data::NamedDimsArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))
+function slice_results(data::YAXArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))::YAXArray
     f_dims = (timesteps=timesteps, species=species, sites=sites, scenarios=scenarios)
 
     s_names = keys(f_dims)
-    d_names = NamedDims.dimnames(data)
-    common_dims = intersect(s_names, d_names)
+    d_names = axes_names(data)
+    common_dims::Vector{Symbol} = intersect(s_names, d_names)
 
     selected_slice = (; zip(common_dims, [getfield(f_dims, k) for k in common_dims])...)
     return data[selected_slice...]

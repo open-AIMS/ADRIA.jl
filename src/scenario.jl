@@ -231,19 +231,16 @@ function run_scenario(
     # Set values below threshold to 0 to save space
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
-    rs_raw = result_set.raw
+    rs_raw::Array{Float64} = result_set.raw
     vals = relative_cover(rs_raw)
     vals[vals.<threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
-    # This is temporary while we are migrating to YAXArray
-    scenario_nda::NamedDimsArray = yaxarray2nameddimsarray(scenario)
-
-    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario_nda)
+    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario_nda)
+    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
@@ -261,7 +258,7 @@ function run_scenario(
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
     vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain))
-    vals = coral_evenness(NamedDims.unname(vals))
+    vals = coral_evenness(vals.data)
     vals[vals.<threshold] .= 0.0
     data_store.coral_evenness[:, :, idx] .= vals
 
@@ -776,10 +773,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Could collate critical DHW threshold log for corals to reduce disk space...
     # dhw_tol_mean = dropdims(mean(dhw_tol_mean_log, dims=3), dims=3)
     # dhw_tol_mean_std = dropdims(mean(dhw_tol_std_log, dims=3), dims=3)
-    # collated_dhw_tol_log = NamedDimsArray(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3),
+    # collated_dhw_tol_log = DataCube(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3);
     #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
     if in_debug_mode
-        collated_dhw_tol_log = NamedDimsArray(
+        collated_dhw_tol_log = DataCube(
             dhw_tol_mean_log; timesteps=1:tf, species=corals.coral_id, sites=1:n_locs
         )
     else

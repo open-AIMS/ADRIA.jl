@@ -169,7 +169,7 @@ function load_env_data(data_fn::String, attr::String)::YAXArray
     return load_nc_data(data_fn, attr; dim_names=_dim_names)
 end
 function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArray
-    return ZeroDataCube(Float32; timesteps=timeframe, sites=sites, scenarios=1:50)
+    return ZeroDataCube(; T=Float32, timesteps=timeframe, sites=sites, scenarios=1:50)
 end
 
 """
@@ -205,22 +205,58 @@ function DataCube(data::AbstractArray, axes_names::Tuple)::YAXArray
 end
 
 """
-    ZeroDataCube(T=Float64; kwargs...)::YAXArray
+    ZeroDataCube(; T::DataType=Float64, kwargs...)::YAXArray
+    ZeroDataCube(axes_names::Tuple, axes_sizes::Tuple; T::DataType=Float64)::YAXArray
 
-Constructor for YAXArray with all entries equal zero.
+Constructor for YAXArray with all entries equal zero. When `axes_name` and `axes_sizes`
+are passed, all axes labels will be ranges.
+
+# Arguments
+- `axes_names` : Tuple of axes names
+- `axes_sizes` : Tuple of axes sizes
 """
-function ZeroDataCube(T=Float64; kwargs...)::YAXArray
+function ZeroDataCube(; T::DataType=Float64, kwargs...)::YAXArray
     return DataCube(zeros(T, [length(val) for (name, val) in kwargs]...); kwargs...)
 end
+function ZeroDataCube(axes_names::Tuple, axes_sizes::Tuple; T::DataType=Float64)::YAXArray
+    return ZeroDataCube(; T=T, NamedTuple{axes_names}(1:size for size in axes_sizes)...)
+end
 
-function axes_names(cube::YAXArray)
+"""
+    axes_names(cube::YAXArray)::Tuple
+
+Tuple of YAXArray axes names.
+"""
+function axes_names(cube::YAXArray)::Tuple
     return name.(cube.axes)
+end
+
+"""
+    axis_labels(cube::YAXArray, axis_name::Symbol)::Vector{Any}
+
+Vector of YAXArray axis labels.
+"""
+function axis_labels(cube::YAXArray, axis_name::Symbol)::Vector{Any}
+    idx = axis_index(cube, axis_name)
+    return cube.axes[idx].val.data
+end
+
+"""
+    axis_index(cube::YAXArray, axis_name::Symbol)::Int64
+
+YAXArray axis index.
+"""
+function axis_index(cube::YAXArray, axis_name::Symbol)::Int64
+    if count(axes_names(cube) .== axis_name) > 1
+        @warn "There are two or more axis with the same name. Returning the first."
+    end
+    return findfirst(axes_names(cube) .== axis_name)
 end
 
 """
     sort_axis(cube::YAXArray, axis_name::Symbol)
 
-Sorts axis labels of a given YAXArray datacube.
+Sorts axis labels of a YAXArray datacube.
 """
 function sort_axis(cube::YAXArray, axis_name::Symbol)::YAXArray
     axis_labels = collect(lookup(cube, axis_name))
