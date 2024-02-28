@@ -520,7 +520,8 @@ end
 function ADRIA.viz.outcome_map!(
     ax::Axis,
     outcomes::YAXArray,
-    ms_factor::DataFrame;
+    ms_factor::DataFrame,
+    f_vals::Vector{Float64};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
@@ -584,10 +585,12 @@ function ADRIA.viz.outcome_map!(
         title_val = pop!(axis_opts, :title)
     end
 
+    f_vals = rs.inputs[:, factor]
     ms = model_spec(rs)
     ms_factor = ms[ms.fieldname .== factor, :]
+
     ax::Axis = Axis(g[1, 1]; title=ms_factor.name[1], axis_opts...)
-    ADRIA.viz.outcome_map!(ax, outcomes, ms_factor)
+    ADRIA.viz.outcome_map!(ax, outcomes, ms_factor, f_vals)
 
     return g
 end
