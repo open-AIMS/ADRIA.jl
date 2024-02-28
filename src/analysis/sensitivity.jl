@@ -750,10 +750,10 @@ ADRIA.sensitivity.outcome_map(X, y, rule, foi; S=20, n_boot=100, conf=0.95)
 ```
 """
 function outcome_map(
-    X_f::AbstractArray,
-    X_q::AbstractArray,
-    y::AbstractVecOrMat{<:Real},
     p::YAXArray,
+    X_q::AbstractArray,
+    X_f::AbstractArray,
+    y::AbstractVecOrMat{<:Real},
     behave::BitVector;
     n_boot::Int64=100,
     conf::Float64=0.95,
@@ -796,6 +796,9 @@ function outcome_map(
         error("Invalid target factors: $(factors[missing_factor])")
     end
 
+    n_scens = size(X, 1)
+    X_f = zeros(n_scens)
+
     foi_spec = _get_factor_spec(model_spec, target_factors)
     unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
 
@@ -814,16 +817,15 @@ function outcome_map(
     end
 
     # Identify behavioural
-    n_scens = size(X, 1)
     behave::BitVector = falses(n_scens)
     behave[all_p_rule] .= true
 
     for fact_t in target_factors
-        X_f = X[:, fact_t]
+        X_f .= X[:, fact_t]
         X_q = _get_factor_quantile(seq_store, foi_spec, X_f, fact_t)
 
         p[fact_t] .= outcome_map(
-            X_f, X_q, y, p[fact_t], behave; n_boot=n_boot, conf=conf
+            p[fact_t], X_q, X_f, y, behave; n_boot=n_boot, conf=conf
         )
     end
 
@@ -869,7 +871,7 @@ function outcome_map(
     X_q = _get_factor_quantile(seq_store, foi_spec, X_f, target_factor)
 
     return outcome_map(
-        X_f, X_q, y, p, behave; n_boot=n_boot, conf=conf
+        p, X_q, X_f, y, behave; n_boot=n_boot, conf=conf
     )
 end
 function outcome_map(
