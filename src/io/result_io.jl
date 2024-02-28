@@ -365,8 +365,8 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     attrs::Dict = scenario_attributes(domain, scen_spec)
 
     # Write a copy of spatial data to the result set
-    mkdir(joinpath(log_location, "site_data"))
-    geo_fn = joinpath(log_location, "site_data", basename(attrs[:name]) * ".gpkg")
+    mkdir(joinpath(log_location, SPATIAL_DATA))
+    geo_fn = joinpath(log_location, SPATIAL_DATA, basename(attrs[:name]) * ".gpkg")
     try
         GDF.write(geo_fn, domain.site_data; driver="geojson")
     catch err
@@ -608,7 +608,7 @@ function load_results(result_loc::String)::ResultSet
     end
 
     # Spatial data
-    site_data = GDF.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
+    site_data = GDF.read(joinpath(result_loc, SPATIAL_DATA, input_set.attrs["name"] * ".gpkg"))
     sort!(site_data, [Symbol(input_set.attrs["site_id_col"])])
 
     # Model specification
