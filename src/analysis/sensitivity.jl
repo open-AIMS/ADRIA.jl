@@ -532,8 +532,10 @@ end
 
 """
     rsa(X::DataFrame, y::Vector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10)::Dataset
+    rsa(X::DataFrame, y::Vector{<:Real}, factors::Symbol, model_spec::DataFrame; S::Int64=10)::YAXArray
     rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::Dataset
     rsa(rs::ResultSet, y::AbstractArray{<:Real}, factors::Vector{Symbol}; S::Int64=10)::Dataset
+    rsa(rs::ResultSet, y::AbstractArray{<:Real}, factors::Symbol; S::Int64=10)::YAXArray
 
 Perform Regional Sensitivity Analysis.
 
@@ -611,32 +613,66 @@ function rsa(
 
     for fact_t in factors
         X_i .= X[:, fact_t]
-        X_q = _get_factor_quantile(seq_store, foi_spec, X_i, factor_name)
-
-        sel .= X_q[1] .<= X_i .<= X_q[2]
-        if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
-            # not enough samples, or inactive area of factor space
-            r_s[fact_t][1] = missing
-        else
-            r_s[fact_t][1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
-        end
-
-        for s in 2:(length(X_q)-1)
-            sel .= X_q[s] .< X_i .<= X_q[s+1]
-            if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
-                # not enough samples, or inactive area of factor space
-                r_s[fact_t][s] = missing
-                continue
-            end
-
-            # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
-            # ci = confint(bs, PercentileConfInt(conf))[1]
-            r_s[fact_t][s] = KSampleADTest(y[sel], y[Not(sel)]).A²k
-        end
-        r_s[fact_t] .= normalize!(r_s[fact_t])
+        X_q = _get_factor_quantile(seq_store, foi_spec, X_i, fact_t)
+        r_s[fact_t] .= rsa(r_s[fact_t], X_q, X_i, y, sel)
     end
 
     return r_s
+end
+function rsa(
+    r_s::YAXArray, X_q::AbstractArray, X_i::AbstractArray, y::AbstractVecOrMat{<:Real},
+    sel::BitVector,
+)::YAXArray
+    sel .= X_q[1] .<= X_i .<= X_q[2]
+    if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
+        # not enough samples, or inactive area of factor space
+        r_s[1] = missing
+
+    else
+        r_s[1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+    end
+
+    for s in 2:(length(X_q) - 1)
+        sel .= X_q[s] .< X_i .<= X_q[s + 1]
+        if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
+            # not enough samples, or inactive area of factor space
+            r_s[s] = missing
+            continue
+        end
+
+        # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
+        # ci = confint(bs, PercentileConfInt(conf))[1]
+        r_s[s] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+    end
+    return normalize!(r_s)
+end
+function rsa(
+    X::Vector{Float64}, y::AbstractVector{<:Real}, foi_spec::DataFrame;
+    S::Int64=10
+)::YAXArray
+    factor = foi_spec.fieldname[1]
+    N = length(X)
+    sel = trues(N)
+
+    # Factor model spec and check if unordered categorical type
+    unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
+
+    # Get bin sequence and quantile
+    seq_store = _create_seq_store(foi_spec, unordered_cat, S)
+
+    # Set up YAX storage
+    seq = seq_store[collect(keys(seq_store))[1]][2:end]
+    axs = (
+        Dim{factor}(seq),
+        Dim{:Si}(["Si"]),
+    )
+    r_s = YAXArray(axs, zeros(Union{Missing,Float64}, length(seq), 1))
+
+    X_q = _get_factor_quantile(seq_store, foi_spec, X, factor)
+
+    return rsa(
+        r_s, X_q, X, y, sel
+    )
 end
 function rsa(
     rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
@@ -644,7 +680,8 @@ function rsa(
     return rsa(rs.inputs[!, Not(:RCP)], y, rs.model_spec; S=S)
 end
 function rsa(
-    rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol}; S::Int64=10
+    rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol};
+    S::Int64=10
 )::Dataset
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
@@ -653,10 +690,23 @@ function rsa(
         S=S,
     )
 end
+function rsa(
+    rs::ResultSet, y::AbstractVector{<:Real}, factor::Symbol;
+    S::Int64=10
+)::YAXArray
+    return rsa(
+        rs.inputs[!, Not(:RCP)][!, factor],
+        y,
+        rs.model_spec[rs.model_spec.fieldname .== factor, :];
+        S=S,
+    )
+end
 
 """
     outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20,
         n_boot::Int=100, conf::Float64=0.95)::Dataset
+    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Symbol; S::Int=20,
+        n_boot::Int=100, conf::Float64=0.95)::YAXArray
 
 Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
 
