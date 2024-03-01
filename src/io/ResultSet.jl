@@ -14,7 +14,9 @@ const MODEL_SPEC = "model_spec"
 const RESULTS = "results"
 const SPATIAL_DATA = "spatial"
 
-struct ResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF}
+abstract type ResultSet end
+
+struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF} <: ResultSet
     name::String
     RCP::String
     invoke_time::String
@@ -56,7 +58,7 @@ function ResultSet(
     model_spec::DataFrame,
 )::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
-    return ResultSet(input_set.attrs["name"],
+    return ADRIAResultSet(input_set.attrs["name"],
         string(rcp),
         input_set.attrs["invoke_time"],
         input_set.attrs["ADRIA_VERSION"],
@@ -436,7 +438,7 @@ function model_spec(rs::ResultSet)::DataFrame
     return rs.model_spec
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
+function Base.show(io::IO, mime::MIME"text/plain", rs::ADRIAResultSet)
     vers_id = rs.ADRIA_VERSION
 
     tf, sites, scens = size(rs.outcomes[:relative_cover])
