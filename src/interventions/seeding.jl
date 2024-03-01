@@ -17,8 +17,8 @@ YAXArray[taxa to seed ⋅ number of seed locations], area increased relative to 
 function distribute_seeded_corals(
     seed_loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
-    seeded_area::YAXArray,
-)::Matrix{Float64}
+    seeded_area::YAXArray
+)::YAXArray
 
     # Proportion of available space on each site relative to available space at these
     # locations
@@ -30,8 +30,8 @@ function distribute_seeded_corals(
     # Convert to relative cover proportion by dividing by location area
     scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
     #scaled_seed = ((prop_area_avail .* seeded_area') ./ seed_loc_k_m²)'
-
-    return scaled_seed
+    
+    return DataCube(scaled_seed, taxa=caxes(seeded_area)[1].val.data, locations=1:length(available_space))
 end
 
 """
