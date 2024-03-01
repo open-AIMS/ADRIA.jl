@@ -1,11 +1,19 @@
-using ADRIA: Domain, GDF, SimConstants
-using CSV
-using DataFrames
 using Distributions
-using ModelParameters
 using Statistics
 
-mutable struct RMEDomain <: Domain
+using CSV, DataFrames, ModelParameters
+
+using ADRIA: SimConstants, Domain, GDF
+using ADRIA.decision:
+    DecisionThresholds,
+    DecisionWeights,
+    DepthThresholds
+
+using ADRIA.decision:
+    SeedCriteriaWeights,
+    FogCriteriaWeights
+
+mutable struct ReefModDomain <: Domain
     const name::String
     RCP::String
     env_layer_md::ADRIA.EnvLayer
@@ -49,8 +57,8 @@ RMEDomain
 """
 function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     data_files = joinpath(fn_path, "data_files")
-    dhw_scens = load_DHW(RMEDomain, data_files, RCP)
-    loc_ids = axiskeys(dhw_scens)[2]
+    dhw_scens::YAXArray{Float64} = load_DHW(ReefModDomain, data_files, RCP)
+    loc_ids::Vector{String} = collect(dhw_scens.locs)
 
     site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
     site_data = GDF.read(site_data_path)
@@ -81,9 +89,9 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     site_data[:, :k] .= 1.0 .- id_list[:, 3]
 
     # Need to load initial coral cover after we know `k` area.
-    init_coral_cover = load_initial_cover(RMEDomain, data_files, loc_ids, site_data)
+    init_coral_cover::YAXArray{Float64} = load_initial_cover(ReefModDomain, data_files, loc_ids, site_data)
 
-    conn_data = load_connectivity(RMEDomain, data_files, loc_ids)
+    conn_data::YAXArray{Float64} = load_connectivity(ReefModDomain, data_files, loc_ids)
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
         conn_data, vec(site_data.area .* site_data.k), similar(conn_data)
     )
@@ -129,10 +137,16 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
         timeframe_range,
     )
 
+    criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
+        SeedCriteriaWeights(),
+        FogCriteriaWeights(),
+        DepthThresholds()
+    ]
+
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
         Intervention(),
-        CriteriaWeights(),
+        criteria_weights...,
         Coral()
     ))
 
@@ -174,7 +188,7 @@ function _get_relevant_files(fn_path::String, ident::String)
 end
 
 """
-    load_DHW(::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))
+    load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::YAXArray
 
 Loads ReefMod DHW data as a datacube.
 
@@ -188,8 +202,8 @@ Loads ReefMod DHW data as a datacube.
 YAXArray[timesteps, locs, scenarios]
 """
 function load_DHW(
-    ::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100)
-)::NamedDimsArray
+    ::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100)
+)::YAXArray
     dhw_path = joinpath(data_path, "dhw")
     rcp_files = _get_relevant_files(dhw_path, rcp)
     rcp_files = filter(x -> occursin("SSP", x), rcp_files)
@@ -247,7 +261,7 @@ function load_DHW(
 end
 
 """
-    load_connectivity(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String})
+    load_connectivity(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String})::YAXArray
 
 Loads the average connectivity matrix.
 
@@ -260,8 +274,8 @@ Loads the average connectivity matrix.
 YAXArray[source, sinks]
 """
 function load_connectivity(
-    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}
-)::NamedDimsArray
+    ::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}
+)::YAXArray
     conn_path = joinpath(data_path, "con_bin")
     conn_files = _get_relevant_files(conn_path, "CONNECT_ACRO")
     if isempty(conn_files)
@@ -297,7 +311,7 @@ function load_connectivity(
 end
 
 """
-    load_cyclones(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, tf::Tuple{Int64, Int64})::NamedDimsArray
+    load_cyclones(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, tf::Tuple{Int64, Int64})::YAXArray
 
 # Arguments
 - `RMEDomain`
@@ -345,7 +359,7 @@ function load_cyclones(
 end
 
 """
-    load_initial_cover(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame)::NamedDimsArray
+    load_initial_cover(::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame)::YAXArray
 
 # Arguments
 - `RMEDomain`
@@ -356,8 +370,8 @@ end
 YAXArray[locs, species]
 """
 function load_initial_cover(
-    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame
-)::NamedDimsArray
+    ::Type{ReefModDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame
+)::YAXArray
     icc_path = joinpath(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
     if isempty(icc_files)
@@ -412,8 +426,7 @@ function switch_RCPs!(d::RMEDomain, RCP::String)::RMEDomain
     @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP)
 
     # Cyclones are not RCP-specific?
-    # loc_ids = axiskeys(d.dhw_scens)[2]
-    # @set! d.wave_scens = load_cyclones(RMEDomain, data_files, loc_ids)
+    # @set! d.wave_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
 
     return d
 end

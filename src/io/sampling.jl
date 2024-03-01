@@ -1,9 +1,10 @@
 using Printf
 using DataFrames, Distributions, LinearAlgebra
+
 using ADRIA
 using ADRIA: model_spec, component_params
 using ADRIA.decision: mcda_normalize
-import Surrogates: sample
+import Distributions: sample
 import Surrogates.QuasiMonteCarlo as QMC
 import Surrogates.QuasiMonteCarlo: SobolSample, OwenScramble
 
@@ -50,19 +51,21 @@ function adjust_samples(d::Domain, df::DataFrame)::DataFrame
     return adjust_samples(model_spec(d), df)
 end
 function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
-    crit = component_params(spec, CriteriaWeights)
     interv = component_params(spec, Intervention)
-    weights_seed_crit = criteria_params(crit, (:seed, :weight))
-    weights_fog_crit = criteria_params(crit, (:fog, :weight))
+    seed_weights = component_params(spec, SeedCriteriaWeights)
+    fog_weights = component_params(spec, FogCriteriaWeights)
 
     # If counterfactual, set all intervention options to 0.0
     df[df.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .=
         0.0
 
     # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
-    non_depth = filter(x -> x ∉ [:depth_min, :depth_offset], crit.fieldname)
-    df[df.guided .== 0.0, non_depth] .= 0.0
-    df[df.guided .== -1.0, non_depth] .= 0.0
+    non_depth_names = vcat(
+        seed_weights.fieldname,
+        fog_weights.fieldname
+    )
+    df[df.guided .== 0.0, non_depth_names] .= 0.0
+    df[df.guided .== -1.0, non_depth_names] .= 0.0
 
     # If unguided, set planning horizon to 0.
     df[df.guided .== 0.0, :plan_horizon] .= 0.0
@@ -81,13 +84,13 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
 
     # Normalize MCDA weights for fogging scenarios
     guided_fogged = (df.fogging .> 0.0) .& (df.guided .> 0)
-    df[guided_fogged, weights_fog_crit.fieldname] .= mcda_normalize(
-        df[guided_fogged, weights_fog_crit.fieldname]
+    df[guided_fogged, fog_weights.fieldname] .= mcda_normalize(
+        df[guided_fogged, fog_weights.fieldname]
     )
     # Normalize MCDA weights for seeding scenarios
     guided_seeded = .!(not_seeded) .& (df.guided .> 0)
-    df[guided_seeded, weights_seed_crit.fieldname] .= mcda_normalize(
-        df[guided_seeded, weights_seed_crit.fieldname]
+    df[guided_seeded, seed_weights.fieldname] .= mcda_normalize(
+        df[guided_seeded, seed_weights.fieldname]
     )
 
     if nrow(unique(df)) < nrow(df)
@@ -130,7 +133,7 @@ Notes:
 # Arguments
 - `dom` : Domain
 - `n` : Number of samples to create
-- `component` : Component type, e.g. CriteriaWeights
+- `component` : Component type, e.g. Intervention, Coral, etc.
 - `sample_method` : sample_method to use
 
 # Returns
@@ -192,7 +195,7 @@ end
 """
     sample_site_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
-Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, CriteriaWeights).
+Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, ...).
 All other parameters are set to their default values.
 
 # Arguments
@@ -205,7 +208,7 @@ Scenario specification
 """
 function sample_site_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
     subset_spec = component_params(
-        d.model, [EnvironmentalLayer, Intervention, CriteriaWeights]
+        d.model, [EnvironmentalLayer, Intervention, SeedCriteriaWeights, FogCriteriaWeights, DepthThresholds]
     )
 
     # Only sample guided intervention scenarios
