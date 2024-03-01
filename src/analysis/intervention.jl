@@ -41,7 +41,7 @@ function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_typ
     rcps = collect(Symbol.(keys(scen_indices)))
     n_locs = n_locations(rs)
 
-    interv_freq = ZeroDataCube(Float64, locations=rs.site_ids, rcps=rcps)
+    interv_freq = ZeroDataCube(; T=Float64, locations=rs.site_ids, rcps=rcps)
     for rcp in rcps
         # Select scenarios satisfying condition and tally selection for each location
         logged_data = dropdims(sum(interv_log[scenarios=scen_indices[rcp]], dims=:coral_id), dims=:coral_id)
