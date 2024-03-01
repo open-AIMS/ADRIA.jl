@@ -3,8 +3,8 @@ using Printf
 using ADRIA.sensitivity: _get_cat_quantile
 
 """
-    ADRIA.viz.pawn(Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.pawn!(f::Union{GridLayout,GridPosition}, Si::NamedDimsArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.pawn(Si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.pawn!(f::Union{GridLayout,GridPosition}, Si::YAXArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Display heatmap of sensitivity analysis.
 
@@ -32,7 +32,7 @@ Makie figure
 """
 function ADRIA.viz.pawn!(
     g::Union{GridLayout,GridPosition},
-    Si::NamedDimsArray;
+    Si::YAXArray;
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
 )
@@ -40,19 +40,19 @@ function ADRIA.viz.pawn!(
 
     norm = get(opts, :normalize, true)
     if norm
-        Si = col_normalize(Si)
+        Si = YAXArray(Si.axes, col_normalize(Si.data))
     end
 
     foi = get(opts, :factors, :all)
     if foi != :all
-        Si = Si(foi, :)
+        Si = Si[factors=At(foi)]
     end
 
     # Sort by
     sort_by = get(opts, :by, :median)
-    Si = Si[sortperm(Si(Si=sort_by), rev=true), :]
+    Si = Si[sortperm(Si[Si=At(sort_by)], rev=true), :]
 
-    y, x = axiskeys(Si)
+    y, x = Si.axes
     ax = Axis(
         g[1, 1],
         xticks=(1:length(x), string.(x)),
@@ -67,7 +67,7 @@ function ADRIA.viz.pawn!(
     return g
 end
 function ADRIA.viz.pawn(
-    Si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()
+    Si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -77,8 +77,8 @@ function ADRIA.viz.pawn(
 end
 
 """
-    ADRIA.viz.tsa(rs::ResultSet, si::NamedDimsArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts)
+    ADRIA.viz.tsa(rs::ResultSet, si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray; opts, axis_opts)
 
 Display temporal sensitivity analysis
 
@@ -96,7 +96,7 @@ Display temporal sensitivity analysis
 Makie figure
 """
 function ADRIA.viz.tsa!(
-    g::Union{GridLayout,GridPosition}, rs::ResultSet, si::NamedDimsArray; opts, axis_opts
+    g::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray; opts, axis_opts
 )
     stat = get(opts, :stat, :median)
 
@@ -104,7 +104,7 @@ function ADRIA.viz.tsa!(
     xlabel = get(axis_opts, :xlabel, "Years")
     ylabel = get(axis_opts, :ylabel, L"\text{PAWN}_\text{%$(stat)}")
 
-    factors, Si, timesteps = axiskeys(si)
+    factors, Si, timesteps = si.axes
     x_tickpos, x_ticklabel = _time_labels(timesteps)
     ax = Axis(
         g[1, 1],
@@ -129,7 +129,7 @@ function ADRIA.viz.tsa!(
     lns = Plot[
         series!(
             ax,
-            si(Si=stat)[findall(all_comps .== _cmp), :],
+            si[Si=At(stat)][findall(all_comps .== _cmp), :],
             labels=repeat([_cmp], count(all_comps .== _cmp)),
             solid_color=(dc[i], 0.2)
         )
@@ -142,7 +142,7 @@ function ADRIA.viz.tsa!(
 end
 function ADRIA.viz.tsa(
     rs::ResultSet,
-    si::NamedDimsArray;
+    si::YAXArray;
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -287,8 +287,8 @@ function ADRIA.viz.rsa(
 end
 
 """
-    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::NamedDimsArray, factors::Vector{String}; opts, axis_opts)
+    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts, axis_opts)
 
 Plot outcomes mapped to factor regions for up to 30 factors.
 
@@ -308,7 +308,7 @@ Makie figure
 function ADRIA.viz.outcome_map!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
-    outcomes::NamedDimsArray,
+    outcomes::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -349,7 +349,7 @@ function ADRIA.viz.outcome_map!(
         insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
-    bin_slices, factor_list, CIs = axiskeys(outcomes)
+    bin_slices, factor_list, CIs = outcomes.axes
     b_slices = parse.(Float64, bin_slices)
 
     if any(f_names .== :guided)
@@ -376,11 +376,11 @@ function ADRIA.viz.outcome_map!(
 
             band!(
                 ax,
-                fv_s[.!ismissing.(outcomes(; factors=f_name, CI=:lower))],
-                collect(skipmissing(outcomes(; factors=f_name, CI=:lower))),
-                collect(skipmissing(outcomes(; factors=f_name, CI=:upper))),
+                fv_s[.!ismissing.(outcomes[factors=At(f_name), CI=At(:lower)])],
+                collect(skipmissing(outcomes[factors=At(f_name), CI=At(:lower)])),
+                collect(skipmissing(outcomes[factors=At(f_name), CI=At(:upper)])),
             )
-            scatterlines!(ax, fv_s, outcomes(; factors=f_name, CI=:mean); markersize=15)
+            scatterlines!(ax, fv_s, outcomes[factors=At(f_name), CI=At(:mean)]; markersize=15)
 
             if f_name == :guided
                 ax.xticks = (fv_s, fv_labels)
@@ -429,7 +429,7 @@ function ADRIA.viz.outcome_map!(
 end
 function ADRIA.viz.outcome_map(
     rs::ResultSet,
-    si::NamedDimsArray,
+    si::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
@@ -443,7 +443,7 @@ function ADRIA.viz.outcome_map(
 end
 
 """
-    _series_convergence(g::GridPosition, Si_conv::NamedDimsArray, factors::Vector{Symbol};
+    _series_convergence(g::GridPosition, Si_conv::YAXArray, factors::Vector{Symbol};
         opts::Dict=Dict(:plot_overlay => true), axis_opts::Dict=Dict())
 
 Plot sensitivity values for an increasing number of scenarios as a series, with each member
@@ -462,13 +462,13 @@ Makie figure
 """
 function _series_convergence(
     g::GridPosition,
-    Si_conv::NamedDimsArray,
+    Si_conv::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(:plot_overlay => true),
     axis_opts::Dict=Dict(),
 )
     plot_overlay = get(opts, :plot_overlay, true)
-    n_scenarios = Si_conv.n_scenarios
+    n_scenarios = collect(lookup(Si_conv, :n_scenarios))
     grps = Dict(Symbol(foi_grp) => foi_grp .== factors for foi_grp in factors)
 
     xlabel = pop!(axis_opts, :xlabel, "N scenarios")
@@ -483,7 +483,7 @@ function _series_convergence(
         _colors = colors(grps)
         scenarios_confint!(
             ax,
-            permutedims(Si_conv(; Si=[:lb, :median, :ub]), (3, 1, 2)),
+            permutedims(Si_conv[Si=At([:lb, :median, :ub])], (3, 1, 2)).data,
             collect(keys(grps)),
             _colors;
             x_vals=n_scenarios,
@@ -514,14 +514,15 @@ function _series_convergence(
             lines!(
                 ax,
                 n_scenarios,
-                Si_conv(; Si=:median)(; factors=factors[step]);
+                Si_conv[Si=At(:median)][factors=At(factors[step])].data;
                 color=(_colors[factors[step]], _alphas[factors[step]]),
             )
+
             band!(
                 ax,
                 n_scenarios,
-                Si_conv(; Si=:lb)(; factors=factors[step]),
-                Si_conv(; Si=:ub)(; factors=factors[step]);
+                Si_conv[Si=At(:lb), factors=At(factors[step])].data,
+                Si_conv[Si=At(:ub), factors=At(factors[step])].data;
                 color=(_colors[factors[step]], _alphas[factors[step]]),
             )
             step += 1
@@ -565,7 +566,7 @@ function _series_convergence(
 end
 
 """
-    _heatmap_convergence(g::GridPosition, Si_conv::NamedDimsArray, factors::Vector{Symbol};
+    _heatmap_convergence(g::GridPosition, Si_conv::YAXArray, factors::Vector{Symbol};
         opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Plot sensitivity values for an increasing number of scenarios as a heatmap, with each row
@@ -585,7 +586,7 @@ Makie figure
 """
 function _heatmap_convergence(
     g::GridPosition,
-    Si_conv::NamedDimsArray,
+    Si_conv::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -595,7 +596,7 @@ function _heatmap_convergence(
     y_labelsize = get(axis_opts, :ylabelsize, 22)
     x_labelsize = get(axis_opts, :xlabelsize, 22)
 
-    z = Array(Si_conv(; Si=:median))
+    z = Array(Si_conv[Si=At(:median)])
     xtick_vals = (1:length(Si_conv.n_scenarios), string.(Si_conv.n_scenarios))
     ytick_vals = (1:length(factors), string.(factors))
 
@@ -618,9 +619,9 @@ function _heatmap_convergence(
 end
 
 """
-    ADRIA.viz.convergence(Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
+    ADRIA.viz.convergence(Si_conv::YAXArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
         axis_opts::Dict=Dict())
-    ADRIA.viz.convergence!(f::Figure, Si_conv::NamedDimsArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
+    ADRIA.viz.convergence!(f::Figure, Si_conv::YAXArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
         axis_opts::Dict=Dict())
 
 Plot sensitivity metric for increasing number of scenarios to illustrate convergence.
@@ -642,7 +643,7 @@ Plot sensitivity metric for increasing number of scenarios to illustrate converg
 Makie figure
 """
 function ADRIA.viz.convergence(
-    Si_conv::NamedDimsArray,
+    Si_conv::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(:viz_type => :series),
     fig_opts::Dict=Dict(),
@@ -660,7 +661,7 @@ function ADRIA.viz.convergence(
 end
 function ADRIA.viz.convergence!(
     g::Union{GridLayout,GridPosition},
-    Si_conv::NamedDimsArray,
+    Si_conv::YAXArray,
     factors::Vector{Symbol};
     opts::Dict=Dict(:viz_type => :series),
     axis_opts::Dict=Dict(),

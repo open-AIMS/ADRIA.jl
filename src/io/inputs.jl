@@ -148,7 +148,6 @@ Load initial coral cover data from netCDF.
 """
 function load_cover(data_fn::String)::YAXArray
     _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
-    data = load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
 
     return load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
 end
@@ -290,6 +289,7 @@ function yaxarray2nameddimsarray(cube::YAXArray)::NamedDimsArray
 end
 
 function nameddimsarray2yaxarray(named_arr::NamedDimsArray)::YAXArray
-    new_axes = caxes(named_arr)
-    return YAXArray(new_axes, collect(named_arr))
+    new_axes_nms = name.(caxes(named_arr))
+    axlst = Tuple(Dim{nm}(vals) for (nm, vals) in zip(new_axes_nms, named_arr.data.keys))
+    return YAXArray(axlst, collect(named_arr))
 end

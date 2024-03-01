@@ -1,7 +1,7 @@
 using Makie, DataFrames
 
-using ADRIA: ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
-using NamedDims, AxisKeys, YAXArrays
+using ADRIA: axes_names, ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
+using DimensionalData, YAXArrays
 using .AvizExt
 using Makie.Colors
 
@@ -25,12 +25,8 @@ function _time_labels(labels; label_step=5)::Tuple{Vector{Int64},Vector{String}}
     return tick_position, tick_label
 end
 
-function _dimkeys(outcomes::NamedDimsArray)
-    return (; zip(dimnames(outcomes), axiskeys(outcomes))...)
-end
-
 """
-    timesteps(outcomes::NamedDimsArray)::Array{Int64}
+    timesteps(outcomes::YAXArray)::Array{Int64}
 
 Extract time step labels from outcome arrays.
 
@@ -40,11 +36,11 @@ Extract time step labels from outcome arrays.
 # Returns
 Array of time steps (years)
 """
-function timesteps(outcomes::NamedDimsArray)::Array{Int64}
-    axis_labels = _dimkeys(outcomes)
+function timesteps(outcomes::YAXArray)::Array{Int64}
+    axis_labels = axes_names(outcomes))
 
-    if :timesteps in keys(axis_labels)
-        return axis_labels.timesteps
+    if :timesteps in axis_labels
+        return Array(outcomes.timesteps)
     end
 
     return Int64[]
