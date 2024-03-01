@@ -68,7 +68,7 @@ using YAXArrays
     dim_2_name = :location
     dim_2_vals = ["loc 1", "loc 2", "loc 3", "loc 4", "loc 5"]
 
-    yax_res = ZeroDataCube(Int; NamedTuple{(dim_1_name,)}((dim_1_vals,))...)
+    yax_res = ZeroDataCube(; T=Int, NamedTuple{(dim_1_name,)}((dim_1_vals,))...)
 
     @test typeof(yax_res) <: YAXArray{Int, 1} || 
         "Incorrect return type. Expected a subtype of YAXArray{Int, 1} \
@@ -87,7 +87,7 @@ using YAXArrays
     @test dim_1_vals == collect(yax_res.axes[1]) || 
         "Incorrect axis indices. Expected $(dim_1_vals) but received $(collect(yax_res.axes[1]))"
       
-        yax_res = ZeroDataCube(Float64; NamedTuple{(dim_1_name, dim_2_name)}((dim_1_vals, dim_2_vals))...)
+        yax_res = ZeroDataCube(; T=Float64, NamedTuple{(dim_1_name, dim_2_name)}((dim_1_vals, dim_2_vals))...)
 
     @test typeof(yax_res) <: YAXArray{Float64, 2} || 
         "Incorrect return type. Expected a subtype of YAXArray{Int, 2} \
