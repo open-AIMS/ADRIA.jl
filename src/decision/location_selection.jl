@@ -78,7 +78,7 @@ function rank_locations(
 
     # Set filtered locations as n_locs+1 for consistency with time dependent ranks
     ranks_store = DataCube(
-        fill(n_locs+1, n_locs, 2, nrow(scenarios));
+        fill(0.0, n_locs, 2, nrow(scenarios));
         locations=dom.site_ids,
         intervention=[:seed, :fog],
         scenarios=1:nrow(scenarios)

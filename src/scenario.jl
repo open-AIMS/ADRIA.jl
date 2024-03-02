@@ -425,7 +425,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Lower values are higher importance/ranks.
     # Values of n_locs+1 indicate locations that were not considered in rankings.
     log_location_ranks = DataCube(
-        fill(n_locs + 1, tf, n_locs, 2);  # log seeding/fogging ranks
+        fill(0.0, tf, n_locs, 2);  # log seeding/fogging ranks
         timesteps=1:tf,
         locations=domain.site_ids,
         intervention=[:seed, :fog]
