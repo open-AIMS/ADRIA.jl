@@ -238,14 +238,11 @@ function run_scenario(
     vals[vals.<threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
-    # This is temporary while we are migrating to YAXArray
-    scenario_nda::NamedDimsArray = yaxarray2nameddimsarray(scenario)
-
-    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario_nda)
+    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
     vals[vals.<threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
-    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario_nda)
+    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
     vals[vals.<threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
@@ -369,7 +366,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     tspan::Tuple = (0.0, 1.0)
     solver::Euler = Euler()
-    MCDA_approach::Int64 = param_set[At("guided")]
 
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
