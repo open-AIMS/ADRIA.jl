@@ -389,16 +389,18 @@ function selection_score(
 end
 
 """
-    selection_score(ranks::YAXArray{D,T,3,A}; iv_type::Symbol)
+    selection_score(ranks::YAXArray{T,3}; iv_type::Symbol)
+    selection_score(ranks::YAXArray{T,4}; iv_type::Symbol; keep_time=false)
 
-Calculates score ∈ [0, 1], where 1 is the highest score possible, indicative of the relative
-desirability of each location.
-
+Calculates score ∈ [0, 1] indicative of the relative desirability of each location.
 The score reflects the location ranking and frequency of attaining a high rank.
+
+Scores of 1 indicates the location was always selected.
 
 # Example
 ```julia
 ranks = ADRIA.decision.rank_locations(dom, n_corals, scens)
+# ranks will be a 3-dimensional array of [locations ⋅ interventions ⋅ scenarios]
 
 # Identify locations that were most desirable for seeding over all scenarios
 seed_scores = ADRIA.decision.selection_score(ranks, :seed)
@@ -412,6 +414,9 @@ ADRIA.decision.selection_score(ranks[scenarios=1:4], :seed)
 # Analysis includes the time dimension by default where scenario runs are being assessed
 # such that the score for each location is returned
 rs = ADRIA.scenario_runs(dom, scens, "45")
+# rs.ranks will be a 4-dimensional array of
+# [timesteps ⋅ locations ⋅ interventions ⋅ scenarios]
+
 ADRIA.decision.selection_score(rs.ranks, 1; keep_time=false)
 # 216-element YAXArray{Float32,1} with dimensions:
 #   Dim{:sites} Sampled{Int64} 1:216 ForwardOrdered Regular Points
@@ -436,32 +441,87 @@ function selection_score(
     ranks::YAXArray{T, 3},
     iv_type::Union{Symbol,Int64},
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
-    lowest_rank = maximum(ranks)  # 1 is best rank, n_locs + 1 is worst rank
+    # 1 is best rank, n_locs is worst rank, 0 are locations that were ignored
+    # Determine the lowest rank for each scenario
+    lowest_ranks = maximum([maximum(r)
+                    for r in eachcol(ranks[intervention=At(iv_type)])])
 
-    selection_score = dropdims(
-        sum(lowest_rank .- ranks, dims=:scenarios); dims=:scenarios
-    )[intervention=At(iv_type)]
-    selection_score = selection_score ./ ((lowest_rank - 1) * prod(size(ranks, :scenarios)))
-
-    return selection_score
+    return _calc_selection_score(ranks, lowest_ranks, iv_type, (:scenarios, ))
 end
 function selection_score(
     ranks::YAXArray{T, 4},
     iv_type::Union{Symbol,Int64};
     keep_time=false
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
-    lowest_rank = maximum(ranks)  # 1 is best rank, n_locs + 1 is worst rank
+    # [timesteps ⋅ locations ⋅ interventions ⋅ scenarios]
+    # 1 is best rank, n_locs is worst rank, 0 values indicate locations that were ignored
+    lowest_rank = maximum(ranks)
 
-    if keep_time
-        dims = (:scenarios, )
-    else
-        dims = (:scenarios, :timesteps)
+    # Determie dimensions to squash
+    dims = keep_time ? (:scenarios, ) : (:scenarios, :timesteps)
+
+    selection_score = _calc_selection_score(ranks, lowest_rank, iv_type, dims)
+
+    return selection_score
+end
+
+"""
+    _calc_selection_score(ranks::YAXArray, lowest_rank::Union{Int64,Float64,Float32}, iv_type::Union{Symbol,Int64}, dims::Tuple)::YAXArray
+
+Determine the selection score.
+Note: If `timesteps` are to be squashed the scores are normalized against the maximum score.
+
+# Arguments
+- `ranks` : The recorded/logged rankings
+- `lowest_rank` : The identified lowest rank
+- `iv_type` : The intervention type to assess (`:seed` or `:fog`)
+- `dims` : Dimensions to squash
+
+# Returns
+YAXArray
+"""
+function _calc_selection_score(ranks::YAXArray, lowest_rank::Union{Int64,Float64,Float32}, iv_type::Union{Symbol,Int64}, dims::Tuple)::YAXArray
+    # Subtract 1 from rank:
+    # If the best rank is 1 and lowest is 3 (out of a single scenario):
+    #     ([lowest rank] - [rank]) / [lowest rank]
+    #     (3 - 1) / 3 = 0.6666
+    # If we subtract 1 from the rank:
+    #     (3 - 0) / 3 = 1.0
+    #     (3 - 1) / 3 = 0.666
+    #     (3 - 2) / 3 = 0.333
+    # and unconsidered locations are given a score of 0.
+    # Where the number of locations are > lowest considered rank,
+    # the maximum of the rank and 0.0 is taken, so that unconsidered locations are still
+    # given zero rank.
+    # If, for example, there are 100 locations, and the lowest considered rank is 3:
+    #     max((3 - 100) / 3, 0.0)
+
+    tsliced = mapslices(x -> any(x .> 0) ? lowest_rank .- (x .- 1.0) : 0.0, ranks[intervention=At(iv_type)], dims="timesteps")
+    selection_score = dropdims(
+        sum(tsliced, dims=dims); dims=dims
+    )
+
+    times_ranked = size(ranks, :scenarios)
+
+    # Determine number of decision years if timesteps are to be kept.
+    # There's probably a better way of doing this but this works...
+    if :timesteps in dims
+        decisions = 0.0
+        for s in axes(tsliced, :scenarios)
+            for t in axes(tsliced, :timesteps)
+                if any(tsliced[timesteps=At(t), scenarios=At(s)] .> 0.0)
+                    decisions += 1.0
+                end
+            end
+        end
+
+        times_ranked = times_ranked * decisions
     end
 
-    selection_score = dropdims(
-        sum(lowest_rank .- ranks, dims=dims); dims=dims
-    )[intervention=At(iv_type)]
-    selection_score = selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in dims]))
+    selection_score = max.(selection_score ./ (lowest_rank * times_ranked), 0.0)
+    if :timesteps in dims
+        selection_score ./= maximum(selection_score)
+    end
 
     return selection_score
 end
@@ -501,9 +561,8 @@ function selection_frequency(
     ranks::YAXArray{T, 3},
     iv_type::Union{Symbol,Int64}
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
-    lowest_rank = maximum(ranks)  # 1 is best rank, n_locs + 1 is worst rank
+    # 0 is unconsidered locations, values > 0 indicate some rank was assigned.
     s = copy_datacube(ranks[intervention=At(iv_type)])
-    s[s .== lowest_rank] .= 0.0
     s[s .> 0.0] .= 1.0
 
     selection_freq = dropdims(
@@ -519,9 +578,8 @@ function selection_frequency(
     ranks::YAXArray{T, 4},
     iv_type::Union{Symbol,Int64}
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
-    lowest_rank = maximum(ranks)  # 1 is best rank, n_locs + 1 is worst rank
+    # 0 is unconsidered locations, values > 0 indicate some rank was assigned.
     s = copy_datacube(ranks[intervention=At(iv_type)])
-    s[s .== lowest_rank] .= 0.0
     s[s .> 0.0] .= 1.0
 
     selection_freq = dropdims(
