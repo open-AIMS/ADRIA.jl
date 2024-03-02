@@ -58,20 +58,13 @@ include("ecosystem/Ecosystem.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/connectivity.jl")
 
-include("decision/CriteriaWeights.jl")
-
 include("Domain.jl")
-include("io/inputs.jl")
-
-# Note: The decision module is imported after CriteriaWeights as CriteriaWeights is needed in
-# Domain.jl but Domain.jl is needed in dMCDA.jl. A restructure is needed so that Domain.jl is
-# not required in dMCDA.jl.
 include("decision/dMCDA.jl")
-
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
 
+include("io/inputs.jl")
 include("io/ResultSet.jl")
 include("io/result_io.jl")
 include("io/result_post_processing.jl")
@@ -92,7 +85,8 @@ include("viz/viz.jl")
 export
     growthODE,
     run_scenario, coral_spec,
-    create_coral_struct, Intervention, CriteriaWeights, Corals, SimConstants,
+    create_coral_struct, Intervention, Corals, SimConstants,
+    SeedCriteriaWeights, FogCriteriaWeights,
     site_area, site_k_area,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz
@@ -162,7 +156,7 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(_remove_workers)})   # time: 0.1593244
     Base.precompile(Tuple{typeof(_setup_workers)})   # time: 0.1571776
     Base.precompile(Tuple{typeof(switch_RCPs!),Domain,String})   # time: 0.1284853
-    Base.precompile(Tuple{typeof(component_params),DataFrame,Type{CriteriaWeights}})   # time: 0.1223987
+    # Base.precompile(Tuple{typeof(component_params),DataFrame,Type{CriteriaWeights}})   # time: 0.1223987
     Base.precompile(Tuple{Type{Domain},String,String,String,Vector{Int64},String,String,String,String,String,String,String})   # time: 0.1113899
     Base.precompile(Tuple{typeof(setup_cache),Domain})   # time: 0.1060752
     Base.precompile(EnvLayer, (String, String, String, String, String, String, String, String, Any))

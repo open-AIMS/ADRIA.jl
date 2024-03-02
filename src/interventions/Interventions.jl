@@ -33,6 +33,22 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Seeded Small Massives",
         description="Number of small massives/encrusting to seed per deployment year.",
     )
+    min_iv_locations::Param = Factor(
+        5;
+        ptype="ordered discrete",
+        dist=DiscreteUniform,
+        dist_params=(5.0, 20.0),
+        name="Intervention Locations",
+        description="Minimum number of deployment locations (for both seeding and fogging)."
+    )
+    cluster_max_member::Param = Factor(
+        3;
+        ptype="ordered discrete",
+        dist=DiscreteUniform,
+        dist_params=(3.0, 10.0),
+        name="Maximum Cluster Membership",
+        description="Maximum number of deployment locations within a single cluster/region/area."
+    )
     fogging::Param = Factor(
         0.16;
         ptype="continuous",
@@ -61,7 +77,7 @@ Base.@kwdef struct Intervention <: EcoModel
         10;
         ptype="ordered categorical",
         dist=DiscreteTriangularDist,
-        dist_params=(5.0, 74.0, 5.0),
+        dist_params=(5.0, 75.0, 5.0),
         name="Years to Seed",
         description="Number of years to seed for.",
     )
@@ -69,7 +85,7 @@ Base.@kwdef struct Intervention <: EcoModel
         10;
         ptype="ordered categorical",
         dist=DiscreteTriangularDist,
-        dist_params=(5.0, 74.0, 5.0),
+        dist_params=(5.0, 75.0, 5.0),
         name="Years to Shade",
         description="Number of years to shade for.",
     )
@@ -77,7 +93,7 @@ Base.@kwdef struct Intervention <: EcoModel
         10;
         ptype="ordered categorical",
         dist=DiscreteTriangularDist,
-        dist_params=(5.0, 74.0, 5.0),
+        dist_params=(5.0, 75.0, 5.0),
         name="Years to fog",
         description="Number of years to fog for.",
     )
@@ -85,33 +101,33 @@ Base.@kwdef struct Intervention <: EcoModel
         5;
         ptype="ordered categorical",
         dist=DiscreteUniform,
-        dist_params=(0.0, 40.0),
+        dist_params=(0.0, 20.0),
         name="Planning Horizon",
         description="How many years of projected data to take into account when selecting intervention locations (0 only accounts for current deployment year).",
     )
-    seed_freq::Param = Factor(
+    seed_deployment_freq::Param = Factor(
         5;
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
-        name="Seeding Frequency",
-        description="Frequency of seeding site selection (0 is set and forget).",
+        name="Selection Frequency (Seed)",
+        description="Frequency of seeding deployments (0 deploys once).",
     )
-    shade_freq::Param = Factor(
-        1;
+    fog_deployment_freq::Param = Factor(
+        5;
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 15.0),
-        name="Shading Frequency",
-        description="Frequency of shading site selection (0 is set and forget).",
+        name="Selection Frequency (Fog)",
+        description="Frequency of fogging deployments (0 deploys once).",
     )
-    fog_freq::Param = Factor(
+    shade_deployment_freq::Param = Factor(
         1;
         ptype="ordered categorical",
         dist=DiscreteUniform,
-        dist_params=(0.0, 15.0),
-        name="Fogging Frequency",
-        description="Frequency of fogging site selection (0 is set and forget).",
+        dist_params=(1.0, 15.0),
+        name="Deployment Frequency (Shading)",
+        description="Frequency of shading deployments.",
     )
     seed_year_start::Param = Factor(
         2;

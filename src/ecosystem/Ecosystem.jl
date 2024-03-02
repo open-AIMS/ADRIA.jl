@@ -130,7 +130,7 @@ function truncated_standard_normal_mean(lb::Float64, ub::Float64)::Float64
         return lb
     end
 
-    mid = (lb + ub) / 2
+    mid = (lb + ub) / 2.0
     Δ = (ub - lb) * mid
     lb′ = lb * StatsFuns.invsqrt2
     ub′ = ub * StatsFuns.invsqrt2
