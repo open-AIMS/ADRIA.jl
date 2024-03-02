@@ -37,7 +37,7 @@ Extract time step labels from outcome arrays.
 Array of time steps (years)
 """
 function timesteps(outcomes::YAXArray)::Array{Int64}
-    axis_labels = axes_names(outcomes))
+    axis_labels = axes_names(outcomes)
 
     if :timesteps in axis_labels
         return Array(outcomes.timesteps)
