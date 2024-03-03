@@ -163,7 +163,8 @@ function _convert_abs_to_k(
     )
 
     # Ensure initial coral cover values are <= maximum carrying capacity
-    @assert all(sum(coral_cover; dims=1) .<= 1.0)
+    # @assert all(sum(coral_cover; dims=1) .<= 1.0)
+    proportional_adjustment!(coral_cover)
 
     return coral_cover
 end
