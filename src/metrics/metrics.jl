@@ -39,8 +39,7 @@ function (f::Metric)(raw, args...; kwargs...)::YAXArray
     return DataCube(res.data, f.dims[1:ndims(res)])
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
-    res::YAXArray = f.func(rs, args...; kwargs...)
-    return DataCube(res.data, f.dims[1:ndims(res)])
+    return f.func(rs, args...; kwargs...)
 end
 
 
