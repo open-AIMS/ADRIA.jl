@@ -115,7 +115,7 @@ function load_domain(
         dhws.data[:, :, :];
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
-        scenarios=1:size(dhws)[3]
+        scenarios=1:size(dhws, 3)
     )
 
     # Initial coral cover is loaded from the first year of reefmod 'coral_cover_per_taxa' data
@@ -135,8 +135,8 @@ function load_domain(
     site_data[:, :zone_type] .= ["" for _ in 1:nrow(site_data)]
 
     # timesteps, location, scenario
-    wave_scens = ZeroDataCube(
-        Float64;
+    wave_scens = ZeroDataCube(;
+        T=Float64,
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
         scenarios=[1]
@@ -144,8 +144,8 @@ function load_domain(
 
     # Current ReefMod mat data only contains cyclone classifications not mortality
     # timesteps, location, species, scenario
-    cyc_scens = ZeroDataCube(
-        Float64;
+    cyc_scens = ZeroDataCube(;
+        T=Float64,
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
         species=1:6,
@@ -164,10 +164,16 @@ function load_domain(
         timeframe[1]:timeframe[2],
     )
 
+    criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
+        SeedCriteriaWeights(),
+        FogCriteriaWeights(),
+        DepthThresholds()
+    ]
+
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
         Intervention(),
-        CriteriaWeights(),
+        criteria_weights...,
         Coral()
     ))
 
@@ -232,6 +238,7 @@ function load_initial_cover(
     # Convert from percent to relative values.
     # YAXArray ordering is [time ⋅ location ⋅ scenario]
     icc_data = ((dropdims(mean(init_cc_per_taxa; dims=:scenario); dims=:scenario)) ./ 100.0).data
+
     # Repeat species over each size class and reshape to give ADRIA compatible size (36 * n_locs).
     # Multiply by size class weights to give initial cover distribution over each size class.
     icc_data = Matrix(hcat(reduce.(vcat, eachrow(icc_data .* [size_class_weights]))...))
@@ -286,7 +293,7 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     scens = 1:size(dhws)[3]
     loc_ids = d.site_ids
 
-    d.dhw_scens = NamedDimsArray(
+    d.dhw_scens = DataCube(
         dhws,
         timesteps=d.env_layer_md.timeframe,
         locs=loc_ids,
