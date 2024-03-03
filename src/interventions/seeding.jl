@@ -66,6 +66,9 @@ function seed_corals!(
     stdev::V,
     c_dist_t::Matrix{Float64},
 )::Nothing where {V<:Vector{Float64}}
+    # Selected locations can fill up over time so avoid locations with no space
+    seed_locs = seed_locs[findall(leftover_space_m²[seed_locs] .> 0.0)]
+
     # Calculate proportion to seed based on current available space
     scaled_seed = distribute_seeded_corals(
         loc_k_area[seed_locs],
