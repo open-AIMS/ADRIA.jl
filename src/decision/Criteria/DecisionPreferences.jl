@@ -1,12 +1,12 @@
 using StatsBase
-using NamedDims, YAXArrays
+using YAXArrays
 import YAXArrays.DD: At
 using ADRIA: Factor, DiscreteOrderedUniformDist, component_params
 
 abstract type DecisionPreference end
 
 struct DecisionPreferences <: DecisionPreference
-    names::Vector{Union{String,Symbol}}
+    names::Vector{Symbol}
     weights::Vector{Float64}
     directions::Vector{Function}
 end
@@ -21,22 +21,14 @@ Construct a decision matrix.
 - `loc_names` : location names
 - `criteria_names` : name of criteria being considered
 - `criteria_vals` : values for each criteria
-- `kwargs` : Preset criteria values by their names
+- `kwargs` : Preset criteria values by their names (with prefix removed)
 """
 function decision_matrix(
     loc_names::Vector{T},
     criteria_names::Vector{T2},
     criteria_vals::Matrix
 )::YAXArray where {T<:Union{String,Symbol},T2<:Union{String,Symbol}}
-    axlist = (
-        Dim{:location}(loc_names),
-        Dim{:criteria}(criteria_names),
-    )
-
-    return YAXArray(
-        axlist,
-        criteria_vals,
-    )
+    return DataCube(criteria_vals; location=loc_names, criteria=criteria_names)
 end
 function decision_matrix(
     loc_names::Vector{T},
@@ -73,7 +65,7 @@ function update_criteria_values!(dm::YAXArray, values::Matrix)::Nothing
 end
 function update_criteria_values!(dm::YAXArray; kwargs...)::Nothing
     for (criteria_name, value) in kwargs
-        dm[criteria=At(string(criteria_name))] .= value
+        dm[criteria=At(criteria_name)] .= value
     end
 
     return nothing
@@ -123,6 +115,8 @@ end
 
 Default index rank method, returns location indices in order of their rank.
 
+Note: Ignores constant criteria values.
+
 # Arguments
 - `dp` : DecisionPreferences
 - `dm` : The decision matrix to assess
@@ -134,7 +128,14 @@ Index of locations ordered by their rank
 function rank_by_index(
     dp::T, dm::YAXArray, method::Union{Function,DataType}
 )::Vector{Int64} where {T<:DecisionPreference}
-    res = solve(dp, dm, method)
+    # Identify valid, non-constant, columns for use in MCDA
+    is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
+
+    # Recreate preferences, removing criteria that are constant for this scenario
+    _dp = filter_criteria(dp, is_const)
+
+    # Assess decision matrix only using valid (non-constant) criteria
+    res = solve(_dp, dm[criteria=.!is_const], method)
 
     scores = res.scores
     if all(isnan.(scores))

@@ -86,24 +86,24 @@ Preference type specific for seeding interventions to allow seeding-specific rou
 be handled.
 """
 struct SeedPreferences <: DecisionPreference
-    names::Vector{Union{String,Symbol}}
+    names::Vector{Symbol}
     weights::Vector{Float64}
     directions::Vector{Function}
 end
 
-function SeedPreferences(
-    dom, params::NamedDimsArray
-)::SeedPreferences
+function SeedPreferences(dom, params::YAXArray)::SeedPreferences
     w::DataFrame = component_params(dom.model, SeedCriteriaWeights)
+    cn = Symbol[Symbol(join(split(string(cn), "_")[2:end], "_")) for cn in w.fieldname]
 
-    return SeedPreferences(string.(w.fieldname), params(string.(w.fieldname)), w.direction)
+    return SeedPreferences(cn, params[factors=At(string.(w.fieldname))], w.direction)
 end
-function SeedPreferences(
-    dom, params::YAXArray
-)::SeedPreferences
+function SeedPreferences(dom, params...)::SeedPreferences
     w::DataFrame = component_params(dom.model, SeedCriteriaWeights)
+    for (k, v) in params
+        w[w.fieldname .== k, :val] .= v
+    end
 
-    return SeedPreferences(string.(w.fieldname), params[factors=At(string.(w.fieldname))], w.direction)
+    return SeedPreferences(string.(w.fieldname), w.val, w.direction)
 end
 
 """
@@ -126,18 +126,21 @@ will relate to the position of the subset, not the canonical dataset.
 
 # Arguments
 - `sp` : SeedPreferences
-- `dm` : The decision matrix to assess
+- `dm` : The decision matrix to assess pertaining to the locations to be considered
 - `method` : MCDA method from JMcDM.jl
-- `cluster_ids` : Cluster membership for each considered location
+- `cluster_ids` : Cluster membership for *all* locations
 - `area_to_seed` : total area to be seeded in absolute units (n_corals * mean juvenile area)
-- `available_space` : available space for each location in absolute units (e.g., m²)
+- `available_space` : available space for *all* location in absolute units (e.g., m²)
 - `min_locs` : Minimum number of locations to consider
 - `max_members` : Maximum number of deployment locations per cluster
 
 # Example
 ```julia
 sp = SeedPreferences(rand(5), [minimum, maximum, maximum, minimum, minimum])
-dmat = build_decision_matrix([:DHW, :water_quality, :CoTS, :Conn_1, :Conn_2], Symbol.(collect(1:10)))
+
+location_names = Symbol.(collect(1:10))
+criteria_names = [:DHW, :water_quality, :CoTS, :Conn_1, :Conn_2]
+dm = decision_matrix(location_names, criteria_names)
 cluster_ids = [1,4,4,4,4,3,6,2,5,5,6]
 select_locations(sp, dmat, topsis, cluster_ids, sort(rand(10), rev=false), 3.0, 5, 2)
 ```

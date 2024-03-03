@@ -193,10 +193,10 @@ function sample(
 end
 
 """
-    sample_site_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+    sample_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
-Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, ...).
-All other parameters are set to their default values.
+Create guided samples of factors relevant to location selection.
+Coral factors are set to their default values and are not perturbed or sampled.
 
 # Arguments
 - `d` : Domain.
@@ -206,7 +206,7 @@ All other parameters are set to their default values.
 # Returns
 Scenario specification
 """
-function sample_site_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
     subset_spec = component_params(
         d.model, [EnvironmentalLayer, Intervention, SeedCriteriaWeights, FogCriteriaWeights, DepthThresholds]
     )

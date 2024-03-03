@@ -230,7 +230,7 @@ function pawn(
     S::Int64=10
 )::YAXArray
     # YAXrrays will raise an error if any of the masked boolean indexing in pawn is empty so
-    # vec(y) is required 
+    # vec(y) is required
 return pawn(X, vec(y), collect(X.axes[2]); S=S)
 end
 function pawn(

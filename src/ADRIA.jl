@@ -59,12 +59,13 @@ include("ecosystem/corals/Corals.jl")
 include("ecosystem/connectivity.jl")
 
 include("Domain.jl")
+include("io/inputs.jl")  # Need to define input types before MCDA to make types available
+
 include("decision/dMCDA.jl")
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
 
-include("io/inputs.jl")
 include("io/ResultSet.jl")
 include("io/result_io.jl")
 include("io/result_post_processing.jl")
@@ -136,7 +137,7 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(bleaching_mortality!),Matrix{Float64},Matrix{Float64},Vector{Float64},Int64,Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Float64})   # time: 0.1940948
     Base.precompile(
         Tuple{
-            typeof(decision.create_decision_matrix),
+            typeof(decision.decision_matrix),
             Vector{Int64},
             Vector{Float64},
             Vector{Float64},

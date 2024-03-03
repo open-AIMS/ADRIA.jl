@@ -117,7 +117,7 @@ end
     @testset "Site selection sampling" begin
         dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         num_samples = 32
-        scens = ADRIA.sample_site_selection(dom, num_samples)
+        scens = ADRIA.sample_selection(dom, num_samples)
 
         @test all(scens.guided .> 0) || "Intervention or counterfactual scenarios found"
 
@@ -194,7 +194,7 @@ end
         @testset "Discrete factor is sampled within specified range and is discrete" begin
             bnds = rand(0.0:1000000.0, 2)
             dom = ADRIA.set_factor_bounds(dom, :N_seed_TA, (minimum(bnds), maximum(bnds)))
-            scens = ADRIA.sample_site_selection(dom, num_samples)
+            scens = ADRIA.sample_selection(dom, num_samples)
             @test (maximum(scens[:, "N_seed_TA"]) <= maximum(bnds)) ||
                 "Sampled discrete factor is outside of specified new bounds."
             @test (minimum(scens[:, "N_seed_TA"]) >= minimum(bnds)) ||
@@ -223,7 +223,7 @@ end
                 @test factor_params.dist_params[1] == factor_params.default_dist_params[1]
                 @test factor_params.dist_params[2] == factor_params.default_dist_params[2]
 
-                scens = ADRIA.sample_site_selection(dom, num_samples)
+                scens = ADRIA.sample_selection(dom, num_samples)
                 discrete_factor_scens = scens[:, string(discrete_factor_name)]
                 @test (maximum(discrete_factor_scens) <= maximum(new_bounds))
                 @test (minimum(discrete_factor_scens) >= minimum(new_bounds))
