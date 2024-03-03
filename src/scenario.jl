@@ -625,6 +625,28 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         end
 
         if is_guided
+            if seed_decision_years[tstep] || fog_decision_years[tstep]
+                # Use modified projected DHW (may have been affected by fogging or shading)
+                dhw_p = copy_datacube(dhw_scen)
+                dhw_p[tstep, :] .= dhw_t
+
+                dhw_projection = weighted_projection(dhw_p, tstep, plan_horizon, decay, tf)
+                wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
+
+                # Determine connectivity strength weighting by area.
+                # Accounts for strength of connectivity where there is low/no coral cover
+                in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
+
+                update_criteria_values!(
+                    decision_mat;
+                    heat_stress=dhw_projection[considered_locs],
+                    wave_stress=wave_projection[considered_locs],
+                    coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
+                    in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
+                    out_connectivity=out_conn[considered_locs]
+                )
+            end
+
             if fog_decision_years[tstep] && (fogging .> 0.0)
                 selected_fog_ranks = select_locations(
                     fog_pref,
@@ -657,26 +679,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         end
 
         if is_guided && seed_decision_years[tstep]
-            # Use modified projected DHW (may have been affected by fogging or shading)
-            dhw_p = copy_datacube(dhw_scen)
-            dhw_p[tstep, :] .= dhw_t
-
-            dhw_projection = weighted_projection(dhw_p, tstep, plan_horizon, decay, tf)
-            wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
-
-            # Determine connectivity strength weighting by area.
-            # Accounts for strength of connectivity where there is low/no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
-
-            update_criteria_values!(
-                decision_mat;
-                heat_stress=dhw_projection[considered_locs],
-                wave_stress=wave_projection[considered_locs],
-                coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
-                in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
-                out_connectivity=out_conn[considered_locs]
-            )
-
             selected_seed_ranks = select_locations(
                 seed_pref,
                 decision_mat,
