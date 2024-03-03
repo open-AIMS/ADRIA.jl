@@ -85,7 +85,7 @@ function load_domain(
     site_data = GDF.read(geodata_fn)
 
     site_id_col = "LOC_NAME_S"
-    cluster_id_col = "LOC_NAME_S"
+    cluster_id_col = "UNIQUE_ID"
     site_ids = site_data[:, site_id_col]
 
 

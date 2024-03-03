@@ -173,7 +173,7 @@ function rank_locations(
             seed_pref,
             decision_mat,
             MCDA_approach,
-            site_data.cluster_id,
+            site_data[:, dom.cluster_id_col],
             area_to_seed,
             considered_locs,
             leftover_space_m²,

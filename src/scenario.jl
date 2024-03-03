@@ -681,7 +681,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 seed_pref,
                 decision_mat,
                 MCDA_approach,
-                site_data.cluster_id,
+                site_data[:, domain.cluster_id_col],
                 area_to_seed,
                 considered_locs,
                 vec(leftover_space_m²),

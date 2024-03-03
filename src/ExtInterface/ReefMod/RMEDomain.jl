@@ -63,7 +63,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
     site_data = GDF.read(site_data_path)
     site_id_col = "LOC_NAME_S"
-    cluster_id_col = "LOC_NAME_S"
+    cluster_id_col = "UNIQUE_ID"
     site_ids::Vector{String} = site_data[:, site_id_col]
 
     id_list = CSV.read(
