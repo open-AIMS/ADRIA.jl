@@ -66,7 +66,7 @@ function load_domain(
     ::Type{ReefModDomain},
     fn_path::String,
     RCP::String;
-    timeframe::Tuple=(2022, 2100)
+    timeframe::Tuple=(2008, 2100)
 )::ReefModDomain
     netcdf_file = _find_netcdf(fn_path, RCP)
     dom_dataset::Dataset = open_dataset(netcdf_file)
