@@ -129,7 +129,7 @@ function load_domain(
         conn_data, vec(site_data.area .* site_data.k), similar(conn_data)
     )
 
-    site_data[:, :depth_med] .= 6.0
+    site_data[:, :depth_med] .= 7.0
     site_data[!, :depth_med] = convert.(Float64, site_data[!, :depth_med])
     # GBRMPA zone types are not contained in matfiles
     site_data[:, :zone_type] .= ["" for _ in 1:nrow(site_data)]

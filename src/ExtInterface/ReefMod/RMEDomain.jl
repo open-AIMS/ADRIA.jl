@@ -99,7 +99,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     # Set all site depths to 6m below sea level
     # (ReefMod does not account for depth)
     # Ensure column is of float type
-    site_data[:, :depth_med] .= 6.0
+    site_data[:, :depth_med] .= 7.0
     site_data[!, :depth_med] = convert.(Float64, site_data[!, :depth_med])
 
     # Add GBRMPA zone type info as well
