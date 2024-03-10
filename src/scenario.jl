@@ -304,10 +304,6 @@ function run_scenario(
         end
     end
 
-    if (idx % 256) == 0
-        @everywhere GC.gc()
-    end
-
     return nothing
 end
 function run_scenario(
