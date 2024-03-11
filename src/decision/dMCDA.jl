@@ -132,7 +132,7 @@ function weighted_projection(env_data, tstep, planning_horizon, decay, timeframe
 end
 
 """
-    summary_stat_env(env_layer::NamedDimsArray, dims::Union{Int64, Symbol, Tuple{Symbol, Symbol}}; w=0.5)::Vector{Float64}
+    summary_stat_env(env_layer::AbstractArray, dims::Union{Int64, Symbol, Tuple{Symbol, Symbol}}; w=0.5)::Vector{Float64}
 
 Calculates weighted combinations of mean and standard deviation for a given environmental
 factor.
