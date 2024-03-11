@@ -212,7 +212,7 @@ function run_scenario(
     if domain.RCP == ""
         local rcp
         try
-            rcp = string(Int64(scenario("RCP")))  # Try extracting from NamedDimsArray
+            rcp = string(Int64(scenario[At("RCP")]))
         catch err
             if !(err isa MethodError)
                 rethrow(err)
@@ -221,9 +221,6 @@ function run_scenario(
             rcp = scenario.RCP  # Extract from dataframe
         end
 
-        domain = switch_RCPs!(domain, rcp)
-    end
-    if domain.RCP == ""
         domain = switch_RCPs!(domain, rcp)
     end
 
@@ -330,7 +327,7 @@ Only the mean site rankings are kept
 NamedTuple of collated results
 """
 function run_model(domain::Domain, param_set::DataFrameRow)::NamedTuple
-    ps = NamedDimsArray(Vector(param_set); factors=names(param_set))
+    ps = DataCube(Vector(param_set); factors=names(param_set))
     return run_model(domain, ps)
 end
 function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
@@ -441,7 +438,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
     α = 0.99
-    decay = α .^ (1:Int64(param_set[At("plan_horizon")])+1).^2
+    decay = α .^ (1:Int64(param_set[At("plan_horizon")])+1) .^ 2
 
     # Years at which intervention locations are re-evaluated and deployed
     seed_decision_years = decision_frequency(seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")])
