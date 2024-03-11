@@ -61,9 +61,9 @@ Base.@kwdef struct SRMCriteriaWeights <: DecisionWeights
 end
 
 function SRMPreferences(
-    dom, params::NamedDimsArray
+    dom, params::YAXArray
 )::DecisionPreferences
     w::DataFrame = component_params(dom.model, SRMCriteriaWeights)
 
-    return DecisionPreferences(string.(w.fieldname), params(string.(w.fieldname)), w.direction)
+    return DecisionPreferences(string.(w.fieldname), params[At(string.(w.fieldname))], w.direction)
 end
