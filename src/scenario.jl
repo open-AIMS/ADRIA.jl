@@ -359,7 +359,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     tspan::Tuple = (0.0, 1.0)
     solver::Euler = Euler()
-    MCDA_approach::Int64 = param_set[At("guided")]
+    MCDA_approach = param_set[At("guided")]
 
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
