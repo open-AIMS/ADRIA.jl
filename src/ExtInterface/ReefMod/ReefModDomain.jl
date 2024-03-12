@@ -1,4 +1,4 @@
-using ADRIA: SimConstants, Domain, GDF
+using ADRIA: SimConstants, Domain, GDF, DataCube
 
 using
     Distributions
@@ -83,9 +83,10 @@ function load_domain(
     geodata_dir = joinpath(fn_path, "region")
     geodata_fn = _find_file(geodata_dir, ".gpkg")
     site_data = GDF.read(geodata_fn)
+    rename!(site_data, Dict("LOC_NAME_S"=>"cluster_id"))
 
-    site_id_col = "LOC_NAME_S"
-    cluster_id_col = "LOC_NAME_S"
+    site_id_col = "cluster_id"
+    cluster_id_col = "cluster_id"
     site_ids = site_data[:, site_id_col]
 
 
@@ -136,7 +137,7 @@ function load_domain(
 
     # timesteps, location, scenario
     wave_scens = ZeroDataCube(
-        Float64;
+        ;T=Float64,
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
         scenarios=[1]
@@ -145,7 +146,7 @@ function load_domain(
     # Current ReefMod mat data only contains cyclone classifications not mortality
     # timesteps, location, species, scenario
     cyc_scens = ZeroDataCube(
-        Float64;
+        ;T=Float64,
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
         species=1:6,
@@ -164,10 +165,16 @@ function load_domain(
         timeframe[1]:timeframe[2],
     )
 
+    criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
+        SeedCriteriaWeights(),
+        FogCriteriaWeights(),
+        DepthThresholds()
+    ]
+
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
         Intervention(),
-        CriteriaWeights(),
+        criteria_weights...,
         Coral()
     ))
 
@@ -201,7 +208,7 @@ end
         site_data::DataFrame,
         loc_ids::Vector{String},
         init_yr::Int=2022
-    )::NamedDimsArray
+    )::YAXArray
 """
 function load_initial_cover(
     ::Type{ReefModDomain},
@@ -286,7 +293,7 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     scens = 1:size(dhws)[3]
     loc_ids = d.site_ids
 
-    d.dhw_scens = NamedDimsArray(
+    d.dhw_scens = DataCube(
         dhws,
         timesteps=d.env_layer_md.timeframe,
         locs=loc_ids,

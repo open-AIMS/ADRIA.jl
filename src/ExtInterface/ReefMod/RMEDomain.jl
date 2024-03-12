@@ -57,7 +57,7 @@ RMEDomain
 """
 function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     data_files = joinpath(fn_path, "data_files")
-    dhw_scens::YAXArray{Float64} = load_DHW(ReefModDomain, data_files, RCP)
+    dhw_scens::YAXArray{Float64} = load_DHW(RMEDomain, data_files, RCP)
     loc_ids::Vector{String} = collect(dhw_scens.locs)
 
     site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
@@ -89,9 +89,9 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     site_data[:, :k] .= 1.0 .- id_list[:, 3]
 
     # Need to load initial coral cover after we know `k` area.
-    init_coral_cover::YAXArray{Float64} = load_initial_cover(ReefModDomain, data_files, loc_ids, site_data)
+    init_coral_cover::YAXArray{Float64} = load_initial_cover(RMEDomain, data_files, loc_ids, site_data)
 
-    conn_data::YAXArray{Float64} = load_connectivity(ReefModDomain, data_files, loc_ids)
+    conn_data::YAXArray{Float64} = load_connectivity(RMEDomain, data_files, loc_ids)
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
         conn_data, vec(site_data.area .* site_data.k), similar(conn_data)
     )
@@ -122,8 +122,13 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     dim_species = Dim{:species}(1:6)
     dim_scenarios = Dim{:scenarios}([1])
 
-    wave_scens::YAXArray{Float64} = ZeroDataCube(Float64; timesteps=timeframe_range, locs=loc_ids, scenarios=[1])
-    cyc_scens::YAXArray{Float64} = ZeroDataCube(Float64; timesteps=timeframe_range, locs=loc_ids, species=1:6, scenarios=[1])
+    wave_scens::YAXArray{Float64} = ZeroDataCube(
+        ;T=Float64, timesteps=timeframe_range, locs=loc_ids, scenarios=[1]
+    )
+
+    cyc_scens::YAXArray{Float64} = ZeroDataCube(
+        ;T=Float64, timesteps=timeframe_range, locs=loc_ids, species=1:6, scenarios=[1]
+    )
 
     env_md = EnvLayer(
         fn_path,
@@ -188,7 +193,7 @@ function _get_relevant_files(fn_path::String, ident::String)
 end
 
 """
-    load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::YAXArray
+    load_DHW(::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::YAXArray
 
 Loads ReefMod DHW data as a datacube.
 
@@ -426,7 +431,7 @@ function switch_RCPs!(d::RMEDomain, RCP::String)::RMEDomain
     @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP)
 
     # Cyclones are not RCP-specific?
-    # @set! d.wave_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
+    # @set! d.wave_scens = load_cyclones(RMEDomain, data_files, loc_ids)
 
     return d
 end
