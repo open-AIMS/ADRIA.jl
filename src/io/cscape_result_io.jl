@@ -22,8 +22,7 @@ struct CScapeResultSet <: ResultSet
     outcomes
 end
 
-
-function load_results(::Type{CScapeResultSet}, result_loc::String)
+function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResultSet
     !isdir(result_loc) ? error("Expected a directory but received $(result_loc)") : nothing
     
     result_path = _get_output_path(result_loc)
@@ -34,30 +33,27 @@ function load_results(::Type{CScapeResultSet}, result_loc::String)
     
     !haskey(raw_set.cubes, :reef_siteid) ? error("Unable to find location ids.") : nothing
     location_ids = _get_reefids(raw_set.cubes[:reef_siteid])
-    # "Moore_MR_C_1" -> "MR_C_1"
-    short_loc_ids = [id[(findfirst('_', id)+1):end] for id in location_ids]
 
     gpkg_path = _get_gpkg_path(result_loc)
     geodata = GDF.read(gpkg_path)
 
-    connectivity_path = joinpath(result_loc, "connectivity", "connectivity.csv")
-    connectivity = CSV.read(connectivity_path, DataFrame, comment="#", header=false)
+    connectivity_path = joinpath(result_loc, "connectivity.csv")
+    connectivity = CSV.read(connectivity_path, DataFrame, comment="#", header=true)
     
     # There is missing location data in site data. Use intersection
-    gpkg_mask = BitVector([loc_name in short_loc_ids for loc_name in geodata.site_id])
-    res_mask  = BitVector([loc_name in geodata.site_id for loc_name in short_loc_ids])
-    conn_mask = BitVector(
-        [!ismissing(loc_name) &&
-         (loc_name in location_ids) && 
-         (loc_name[findfirst('_', loc_name)+1:end] in geodata.site_id)
-        for loc_name in connectivity[1, :]]
-    )
+    gpkg_mask = BitVector([loc_name in location_ids for loc_name in geodata.reef_siteid])
+    res_mask  = BitVector([loc_name in geodata.reef_siteid for loc_name in location_ids])
+    conn_mask = BitVector([
+        (loc_name in location_ids) && (loc_name in geodata.reef_siteid)
+        for loc_name in names(connectivity)
+    ])
 
     geodata = geodata[gpkg_mask, :]
-    conn_sites = connectivity[1, :][conn_mask] 
-    connectivity = connectivity[conn_mask, conn_mask]
-
-    geo_id_order = [first(findall(x .== geodata.site_id)) for x in short_loc_ids[res_mask]]
+    conn_sites = names(connectivity)[conn_mask] 
+    connectivity = connectivity[conn_mask[2:end], conn_mask]
+    
+    # Re order data to match location ordering
+    geo_id_order = [first(findall(x .== geodata.reef_siteid)) for x in location_ids[res_mask]]
     conn_id_order = [first(findall(x .== Vector(conn_sites))) for x in location_ids[res_mask]]
     
     geodata = geodata[geo_id_order, :]
@@ -96,22 +92,34 @@ function load_results(::Type{CScapeResultSet}, result_loc::String)
         :cover
     ]
     outcomes = Dict{Symbol, YAXArray}()
-    for outcome_key ∈ outcome_keys
-        if !haskey(raw_set.cubes, outcome_key)
-            @warn "Unable to find $(string(outcome_key). Skipping)"
-            continue
-        end
-        if outcome_key == :cover
-            outcomes[:relative_cover] = raw_set.cubes[outcome_key]
-            continue
-        end
-        outcomes[outcome_key] = raw_set.cubes[outcome_key]
+    if !haskey(raw_set.cubes, :cover)
+        @warn "Unable to find cover. Skipping)"
+    else
+        outcomes[:relative_taxa_cover] = create_relative_taxa_cover(raw_set.cover[reef_site=res_mask]) ./100
+        outcomes[:relative_cover] = create_relative_cover(raw_set.cover[reef_site=res_mask]) ./100
+        outcomes[:size_classes] = create_size_classes(raw_set.cover[reef_site=res_mask])
     end
+
+    if !haskey(raw_set.cubes, :size_classes)
+        @warn "Unable to find size_classes. Skipping"
+    else
+        outcomes[:size_classes]
+    end
+    #for outcome_key ∈ outcome_keys
+    #    if !haskey(raw_set.cubes, outcome_key)
+    #        @warn "Unable to find $(string(outcome_key). Skipping)"
+    #        continue
+    #    end
+    #    if outcome_key == :cover
+    #        continue
+    #    end
+    #    outcomes[outcome_key] = raw_set.cubes[outcome_key][reef_sites=res_mask]
+    #end
 
     return CScapeResultSet(
         res_name,
         res_rcp,
-        geodata.site_id,
+        location_ids[res_mask],
         geodata.area,
         location_max_coral_cover,
         location_centroids,
@@ -121,6 +129,28 @@ function load_results(::Type{CScapeResultSet}, result_loc::String)
         SimConstants(),
         outcomes,
     )
+end
+
+"""
+    create_size_classes(size_class_cube::YAXArray)::YAXArray
+
+Create outcome array describing the distribution of size classes.
+"""
+function create_size_classes(size_class_cube::YAXArray)::YAXArray
+    return dropdims(sum(size_class_cube, dims=:intervened), dims=:intervened)
+end
+
+function create_relative_taxa_cover(cover_cube::YAXArray)::YAXArray
+    cover_cube = rename_dims(cover_cube)
+    rel_taxa_cover::YAXArray = dropdims(sum(
+        cover_cube, dims=(:thermal_tolerance, :intervened)
+    ), dims=(:thermal_tolerance, :intervened))
+    return permutedims(rel_taxa_cover, [2, 3, 4, 1])
+end
+
+function create_relative_cover(cover_cube::YAXArray)::YAXArray
+    rel_taxa_cover = create_relative_taxa_cover(cover_cube)
+    return dropdims(sum(rel_taxa_cover, dims=:taxa), dims=:taxa)
 end
 
 """
@@ -191,7 +221,7 @@ end
 """
     _get_reefids(ds::YAXArray)::String
 
-Reef IDs are stored in a space seperated list in the properties of reef_siteids cube.
+Reef IDs are stored in a space seperated list in the properties of reef_siteid cube.
 """
 function _get_reefids(reef_cube::YAXArray)::Vector{String}
     # Site IDs are necessary to extract the correct data from the geopackage
@@ -206,11 +236,76 @@ function _get_reefids(reef_cube::YAXArray)::Vector{String}
     return reef_ids
 end
 
+function short_habitat_to_long(encoding::SubString{String})::String
+    if (encoding == "C")
+        return "Crest"
+    elseif (encoding == "OF")
+        return "Outer Flat" 
+    elseif (encoding == "S")
+        return "Slope"
+    elseif (encoding == "SS")
+        return "Sheltered Slope"
+    else 
+        return ""
+    end
+end
+
+"""
+    rename_dims(cscape_cube::YAXArray)::Nothing
+
+Rename the names of the dimensions to align with ADRIA's expected dimension names.
+"""
+function rename_dims(cscape_cube::YAXArray)::YAXArray
+    dim_names = name.(cscape_cube.axes)
+    if :draws in dim_names
+        cscape_cube = renameaxis!(cscape_cube, :draws=>:scenarios)
+    end
+    if :year in dim_names
+        cscape_cube = renameaxis!(cscape_cube, :year=>:timesteps)
+    end
+    if :reef_sites in dim_names
+        cscape_cube = renameaxis!(cscape_cube, :reef_sites=>:sites)
+    end
+    if :ft in dim_names
+        cscape_cube = renameaxis!(cscape_cube, :ft=>:taxa)
+    end
+    return cscape_cube
+end
+
+"""
+    equivalient_id(short::String, long::String)::Bool
+
+Location IDs stored in connectivity data files have a different more verbose format.
+"""
+function equivalent_id(short::String, long::String)::Bool
+    short_frags = split(short, '_')
+    long_frags = split(long, '_')
+    length(short_frags) != length(long_frags) ? error("Unexpected Reef ID format") : nothing
+    if short_frags[1] != long_frags[1]
+        return false
+    elseif short_habitat_to_long(short_frags[3]) != long_frags[3]
+        return false
+    elseif short_frags[4] != long_frags[4] && short_frags[4] != long_frags[4][1:end-1]
+        return false
+    end
+    return true
+end
+
+"""
+    conn_ids_format(loc_ids::Vector{String})::Vector{String}
+
+Reef IDs in CScape Connectivity files are named differently, so we need to create an equivalent reef ID mask for data extraction.
+"""
+function conn_ids_format(connectivity_path::String, loc_ids::Vector{String})::Vector{String}
+    fn = filter(x -> occursin("csv", x), readdir(connectivity_path))[1]
+    conn_loc_ids = names(CSV.read(fn, DataFrame, comment="#", header=true))[2:end]
+    loc_ordering = [findfirst(equivalent_id.(loc_ids, c_id)) for c_id in conn_loc_ids]
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
     rcps = rs.RCP
-    scens = length(rs.outcomes[:relative_cover].draws)
-    sites = length(rs.outcomes[:relative_cover].reef_sites)
+    scens = length(rs.outcomes[:relative_cover].scenarios)
+    sites = length(rs.outcomes[:relative_cover].sites)
     tf = rs.env_layer_md.timeframe
 
     println("""
@@ -223,4 +318,11 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
     Number of sites: $(sites)
     Timesteps: $(tf)
     """)
+end
+
+function reformat_temporal_inputs(temporal_input::DataFrame, RCP::String="1")::YAXArray
+    rcp::Int = parse(Int, RCP)
+    masked_temp_input = temporal_input[temporal_input.RCP == rcp, :]
+    year_dim = unique(masked_temp_input.year)
+    loc_dim = unique(masked_temp_input.reef_siteid)
 end
