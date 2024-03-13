@@ -194,7 +194,12 @@ end
 """
     DataCube(data::AbstractArray; kwargs...)::YAXArray
 
-Constructor for YAXArray.
+Constructor for YAXArray. When used with `axes_names`, the axes labels will be UnitRanges
+from 1 up to that axis length.
+
+# Arguments
+- `data` : Array of data to be used when building the YAXArray
+- `axes_names` :
 """
 function DataCube(data::AbstractArray; kwargs...)::YAXArray
     return YAXArray(Tuple(Dim{name}(val) for (name, val) in kwargs), data)

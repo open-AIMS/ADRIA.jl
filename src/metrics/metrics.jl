@@ -531,7 +531,7 @@ function _relative_shelter_volume(
 )::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nscens = size(inputs, 1)
-    _inputs = YAXArray(Matrix(inputs); scenarios=1:nscens, factors=names(inputs))
+    _inputs = DataCube(Matrix(inputs); scenarios=1:nscens, factors=names(inputs))
     return _relative_shelter_volume(X, k_area, _inputs)
 end
 function _relative_shelter_volume(
@@ -540,7 +540,7 @@ function _relative_shelter_volume(
     inputs::DataFrameRow
 )::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
-    _inputs = YAXArray(Matrix(Vector(inputs)'); scenarios=1, factors=names(inputs))
+    _inputs = DataCube(Matrix(Vector(inputs)'); scenarios=1, factors=names(inputs))
     return _relative_shelter_volume(X, k_area, _inputs)
 end
 function _relative_shelter_volume(
@@ -549,7 +549,7 @@ function _relative_shelter_volume(
     inputs::DataFrame
 )::AbstractArray{T} where {T<:Real}
     nscens = size(inputs, 1)
-    _inputs = YAXArray(Matrix(inputs); scenarios=1:nscens, factors=names(inputs))
+    _inputs = DataCube(Matrix(inputs); scenarios=1:nscens, factors=names(inputs))
     return _relative_shelter_volume(X, k_area, _inputs)
 end
 function _relative_shelter_volume(
@@ -557,7 +557,7 @@ function _relative_shelter_volume(
     k_area::Vector{T},
     inputs::DataFrameRow
 )::AbstractArray{T} where {T<:Real}
-    _inputs = YAXArray(Vector(inputs); scenarios=1, factors=names(inputs))
+    _inputs = DataCube(Vector(inputs); scenarios=1, factors=names(inputs))
     return _relative_shelter_volume(X, k_area, _inputs)
 end
 function _relative_shelter_volume(
