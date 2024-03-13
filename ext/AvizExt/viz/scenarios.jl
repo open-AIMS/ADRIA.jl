@@ -1,6 +1,6 @@
 using JuliennedArrays: Slices
 using ADRIA.analysis: series_confint
-using ADRIA: axes_names
+using ADRIA: axes_names, CScapeResultSet
 
 """
     ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::YAXArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
@@ -74,6 +74,25 @@ function ADRIA.viz.scenarios!(
         axis_opts=axis_opts,
         series_opts=series_opts,
     )
+end
+function ADRIA.viz.scenarios(
+    rs::CScapeResultSet,
+    outcomes::YAXArray,
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(:size=>(800, 300)),
+    axis_opts::Dict=Dict(),
+    series_opts::Dict=Dict(),
+)::Figure
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+
+    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+    ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
+
+    scen_groups = Dict(:CScape => BitVector([true for _ in 1:length(outcomes.scenarios)]))
+    ADRIA.viz.scenarios!(g, ax, outcomes, scen_groups; opts, axis_opts, series_opts)
+    return f
 end
 function ADRIA.viz.scenarios(
     scenarios::DataFrame,
