@@ -35,12 +35,10 @@ Makes Metric types callable with arbitary arguments that are passed to associate
 """
 function (f::Metric)(raw, args...; kwargs...)::YAXArray
     data = DataCube(raw, (:timesteps, :species, :sites, :scenarios)[1:ndims(raw)])
-    res::YAXArray = f.func(data, args...; kwargs...)
-    return DataCube(res.data, f.dims[1:ndims(res)])
+    return f.func(data, args...; kwargs...)
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
-    res::YAXArray = f.func(rs, args...; kwargs...)
-    return DataCube(res.data, f.dims[1:ndims(res)])
+    return f.func(rs, args...; kwargs...)
 end
 
 

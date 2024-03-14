@@ -140,7 +140,7 @@ factor.
 # Arguments
 - `env_layer` : Environmental data layer to calculate the mean of.
 - `dims` : Dimensions to aggregate over.
-- `w` : Weighting for std offset to mean.
+- `w` : Weight for mean value (the complement will be used to weight stdev).
 
 # Returns
 If the time horizon > 1, returns the weighted combination of mean and standard deviation of the projected environmental
