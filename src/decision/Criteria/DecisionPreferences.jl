@@ -131,6 +131,11 @@ function rank_by_index(
     # Identify valid, non-constant, columns for use in MCDA
     is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
 
+    # YAXArrays will throw error for all false boolean masks
+    if all(is_const)
+        throw(DomainError(is_const, "No Ranking Possible, all criteria are constant"))
+    end
+
     # Recreate preferences, removing criteria that are constant for this scenario
     _dp = filter_criteria(dp, is_const)
 

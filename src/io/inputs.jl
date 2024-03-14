@@ -281,15 +281,3 @@ function copy_datacube(cube::YAXArray)::YAXArray
     new_axlist = Tuple(ax for ax in deepcopy(cube.axes))
     return YAXArray(new_axlist, copy(cube.data))
 end
-
-function yaxarray2nameddimsarray(cube::YAXArray)::NamedDimsArray
-    axis_names = axes_names(cube)
-    axis_labels = collect.(lookup(cube, axis_names))
-    return NamedDimsArray(cube.data; NamedTuple{axis_names}(axis_labels)...)
-end
-
-function nameddimsarray2yaxarray(named_arr::NamedDimsArray)::YAXArray
-    new_axes_nms = name.(caxes(named_arr))
-    axlst = Tuple(Dim{nm}(vals) for (nm, vals) in zip(new_axes_nms, named_arr.data.keys))
-    return YAXArray(axlst, collect(named_arr))
-end

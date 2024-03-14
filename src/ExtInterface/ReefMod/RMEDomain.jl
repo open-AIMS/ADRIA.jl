@@ -13,7 +13,9 @@ using ADRIA.decision:
     SeedCriteriaWeights,
     FogCriteriaWeights
 
-mutable struct RMEDomain <: Domain
+abstract type AbstractReefModDomain <: Domain end
+
+mutable struct RMEDomain <: AbstractReefModDomain
     const name::String
     RCP::String
     env_layer_md::ADRIA.EnvLayer
@@ -43,6 +45,52 @@ mutable struct RMEDomain <: Domain
 end
 
 """
+    _standardize_cluster_ids!(spatial_data::DataFrame)::Nothing
+
+Standardize cluster id column name
+["LOC_NAME_S" or "reef_name] to ["cluster_id"]
+"""
+function _standardize_cluster_ids!(spatial_data::DataFrame)::Nothing
+    try
+        rename!(spatial_data, Dict("LOC_NAME_S"=>"cluster_id"))
+    catch err
+        if !(err isa ArgumentError)
+            rethrow(err)
+        end
+
+        rename!(spatial_data, Dict("reef_name"=>"cluster_id"))
+    end
+
+    return nothing
+end
+
+"""
+    _manual_id_corrections!(spatial_data::DataFrame)::Nothing
+
+Manual corrections to ensure correct alignment of reefs by their order.
+"""
+function _manual_id_corrections!(spatial_data::DataFrame, id_list::DataFrame)::Nothing
+    try
+        # Re-order spatial data to match RME dataset
+        # MANUAL CORRECTION
+        spatial_data[spatial_data.LABEL_ID .== "20198", :LABEL_ID] .= "20-198"
+        id_order = [first(findall(x .== spatial_data.LABEL_ID)) for x in string.(id_list[:, 1])]
+        spatial_data[!, :] = spatial_data[id_order, :]
+
+        # Check that the two lists of location ids are identical
+        @assert isempty(findall(spatial_data.LABEL_ID .!= id_list[:, 1]))
+    catch err
+        if !(err isa ArgumentError)
+            # Updated dataset already has corrections/modifications included.
+            # If it is not an ArgumentError, something else has happened.
+            rethrow(err)
+        end
+    end
+
+    return nothing
+end
+
+"""
     load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
 
 Load a ReefMod Engine dataset.
@@ -57,50 +105,56 @@ RMEDomain
 """
 function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     data_files = joinpath(fn_path, "data_files")
-    dhw_scens::YAXArray{Float64} = load_DHW(ReefModDomain, data_files, RCP)
+    dhw_scens::YAXArray{Float64} = load_DHW(RMEDomain, data_files, RCP)
     loc_ids::Vector{String} = collect(dhw_scens.locs)
 
-    site_data_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
-    site_data = GDF.read(site_data_path)
-    site_id_col = "LOC_NAME_S"
-    cluster_id_col = "LOC_NAME_S"
-    site_ids::Vector{String} = site_data[:, site_id_col]
+    # Load the geopackage file
+    gpkg_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
+    spatial_data = GDF.read(gpkg_path)
 
+    # Standardize IDs to use for site/reef and cluster
+    _standardize_cluster_ids!(spatial_data)
+
+    reef_id_col = "UNIQUE_ID"
+    cluster_id_col = "UNIQUE_ID"
+
+    reef_ids::Vector{String} = spatial_data[:, reef_id_col]
+
+    # Load accompanying ID list
+    # TODO: Create canonical geopackage file that aligns all IDs.
+    #       Doing this removes the need for the manual correction below and removes the
+    #       dependency on this file.
     id_list = CSV.read(
         joinpath(data_files, "id", "id_list_2023_03_30.csv"),
         DataFrame;
         header=false,
-        comment="#",
+        comment="#"
     )
 
-    # Re-order spatial data to match RME dataset
-    # MANUAL CORRECTION
-    site_data[site_data.LABEL_ID.=="20198", :LABEL_ID] .= "20-198"
-    id_order::Vector{Int64} = [first(findall(x .== site_data.LABEL_ID)) for x in string.(id_list[:, 1])]
-    site_data = site_data[id_order, :]
+    _manual_id_corrections!(spatial_data, id_list)
 
     # Check that the two lists of location ids are identical
-    @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
+    @assert isempty(findall(spatial_data.LABEL_ID .!= id_list[:, 1]))
 
     # Convert area in km² to m²
-    site_data[:, :area] .= id_list[:, 2] .* 1e6
+    spatial_data[:, :area] .= id_list[:, 2] .* 1e6
 
     # Calculate `k` area (1.0 - "ungrazable" area)
-    site_data[:, :k] .= 1.0 .- id_list[:, 3]
+    spatial_data[:, :k] .= 1.0 .- id_list[:, 3]
 
     # Need to load initial coral cover after we know `k` area.
-    init_coral_cover::YAXArray{Float64} = load_initial_cover(ReefModDomain, data_files, loc_ids, site_data)
+    init_coral_cover::YAXArray{Float64} = load_initial_cover(RMEDomain, data_files, loc_ids, spatial_data)
 
-    conn_data::YAXArray{Float64} = load_connectivity(ReefModDomain, data_files, loc_ids)
+    conn_data::YAXArray{Float64} = load_connectivity(RMEDomain, data_files, loc_ids)
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
-        conn_data, vec(site_data.area .* site_data.k), similar(conn_data)
+        conn_data, vec(spatial_data.area .* spatial_data.k), similar(conn_data)
     )
 
-    # Set all site depths to 6m below sea level
+    # Set all site depths to 7m below sea level
     # (ReefMod does not account for depth)
     # Ensure column is of float type
-    site_data[:, :depth_med] .= 6.0
-    site_data[!, :depth_med] = convert.(Float64, site_data[!, :depth_med])
+    spatial_data[:, :depth_med] .= 7.0
+    spatial_data[!, :depth_med] = convert.(Float64, spatial_data[!, :depth_med])
 
     # Add GBRMPA zone type info as well
     gbr_zt_path = joinpath(data_files, "region", "gbrmpa_zone_type.csv")
@@ -109,7 +163,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     gbr_zone_types[missing_rows, "GBRMPA Zone Types"] .= ""
     zones = gbr_zone_types[:, "GBRMPA Zone Types"]
     zones = replace.(zones, "Zone" => "", " " => "")
-    site_data[:, :zone_type] .= zones
+    spatial_data[:, :zone_type] .= zones
 
     # This loads cyclone categories, not mortalities, so ignoring for now.
     # cyc_scens = load_cyclones(RMEDomain, data_files, loc_ids, timeframe)
@@ -117,18 +171,19 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     timeframe = (2022, 2100)
     timeframe_range = timeframe[1]:timeframe[2]
 
-    dim_timesteps = Dim{:timesteps}(timeframe_range)
-    dim_locs = Dim{:locs}(loc_ids)
-    dim_species = Dim{:species}(1:6)
-    dim_scenarios = Dim{:scenarios}([1])
+    wave_scens::YAXArray{Float64} = ZeroDataCube(;
+        T=Float64, timesteps=timeframe_range, locs=loc_ids, scenarios=[1]
+    )
 
-    wave_scens::YAXArray{Float64} = ZeroDataCube(Float64; timesteps=timeframe_range, locs=loc_ids, scenarios=[1])
-    cyc_scens::YAXArray{Float64} = ZeroDataCube(Float64; timesteps=timeframe_range, locs=loc_ids, species=1:6, scenarios=[1])
+    functional_groups = functional_group_names()
+    cyc_scens::YAXArray{Float64} = ZeroDataCube(;
+        T=Float64, timesteps=timeframe_range, locs=loc_ids, species=functional_groups, scenarios=[1]
+    )
 
     env_md = EnvLayer(
         fn_path,
-        site_data_path,
-        site_id_col,
+        gpkg_path,
+        reef_id_col,
         cluster_id_col,
         "",
         "",
@@ -159,12 +214,12 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
         in_conn,
         out_conn,
         strong_pred,
-        site_data,
-        site_id_col,
+        spatial_data,
+        reef_id_col,
         cluster_id_col,
         init_coral_cover,
-        CoralGrowth(nrow(site_data)),
-        site_ids,
+        CoralGrowth(nrow(spatial_data)),
+        reef_ids,
         dhw_scens,
         wave_scens,
         cyc_scens,
@@ -188,7 +243,7 @@ function _get_relevant_files(fn_path::String, ident::String)
 end
 
 """
-    load_DHW(::Type{ReefModDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::YAXArray
+    load_DHW(::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::YAXArray
 
 Loads ReefMod DHW data as a datacube.
 
@@ -426,7 +481,7 @@ function switch_RCPs!(d::RMEDomain, RCP::String)::RMEDomain
     @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP)
 
     # Cyclones are not RCP-specific?
-    # @set! d.wave_scens = load_cyclones(ReefModDomain, data_files, loc_ids)
+    # @set! d.wave_scens = load_cyclones(RMEDomain, data_files, loc_ids)
 
     return d
 end
