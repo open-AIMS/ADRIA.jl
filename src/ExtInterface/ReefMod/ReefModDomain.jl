@@ -15,7 +15,8 @@ import ArchGDAL: createpoint
 
 import YAXArrays.DD: At
 
-mutable struct ReefModDomain <: Domain
+
+mutable struct ReefModDomain <: AbstractReefModDomain
     const name::String
     RCP::String
     env_layer_md
@@ -71,6 +72,21 @@ function load_domain(
     netcdf_file = _find_netcdf(fn_path, RCP)
     dom_dataset::Dataset = open_dataset(netcdf_file)
 
+    # Read location data
+    geodata_dir = joinpath(fn_path, "region")
+    geodata_fn = _find_file(geodata_dir, ".gpkg")
+    spatial_data = GDF.read(geodata_fn)
+
+    _standardize_cluster_ids!(spatial_data)
+
+    reef_id_col = "UNIQUE_ID"
+    cluster_id_col = "UNIQUE_ID"
+    site_ids = spatial_data[:, reef_id_col]
+
+    # Load accompanying ID list
+    # TODO: Create canonical geopackage file that aligns all IDs.
+    #       Doing this removes the need for the manual correction below and removes the
+    #       dependency on this file.
     id_list_fn = _find_file(joinpath(fn_path, "id"), Regex("id_list.*.csv"))
     id_list = CSV.read(
         id_list_fn,
@@ -79,31 +95,13 @@ function load_domain(
         comment="#",
     )
 
-    # Read location data
-    geodata_dir = joinpath(fn_path, "region")
-    geodata_fn = _find_file(geodata_dir, ".gpkg")
-    site_data = GDF.read(geodata_fn)
-    rename!(site_data, Dict("LOC_NAME_S"=>"cluster_id"))
-
-    site_id_col = "cluster_id"
-    cluster_id_col = "cluster_id"
-    site_ids = site_data[:, site_id_col]
-
-
-    # Re-order spatial data to match RME dataset
-    # MANUAL CORRECTION
-    site_data[site_data.LABEL_ID .== "20198", :LABEL_ID] .= "20-198"
-    id_order = [first(findall(x .== site_data.LABEL_ID)) for x in string.(id_list[:, 1])]
-    site_data = site_data[id_order, :]
-
-    # Check that the two lists of location ids are identical
-    @assert isempty(findall(site_data.LABEL_ID .!= id_list[:, 1]))
+    _manual_id_corrections!(spatial_data, id_list)
 
     # Load reef area and convert from km^2 to m^2
-    site_data[:, :area] = id_list[:, 2] .* 1e6
+    spatial_data[:, :area] = id_list[:, 2] .* 1e6
 
     # Calculate `k` area (1.0 - "ungrazable" area)
-    site_data[:, :k] = 1 .- id_list[:, 3]
+    spatial_data[:, :k] = 1 .- id_list[:, 3]
 
     # Load DHWs
     dhws = Cube(
@@ -121,23 +119,23 @@ function load_domain(
 
     # Initial coral cover is loaded from the first year of reefmod 'coral_cover_per_taxa' data
     init_coral_cover = load_initial_cover(
-        ReefModDomain, dom_dataset, site_data, site_ids, timeframe[1]
+        ReefModDomain, dom_dataset, spatial_data, site_ids, timeframe[1]
     )
 
     # Connectivity data is retireved from a subdirectory because it's not contained in matfiles
     conn_data = load_connectivity(RMEDomain, fn_path, site_ids)
     in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
-        conn_data, vec(site_data.area .* site_data.k), similar(conn_data)
+        conn_data, vec(spatial_data.area .* spatial_data.k), similar(conn_data)
     )
 
-    site_data[:, :depth_med] .= 6.0
-    site_data[!, :depth_med] = convert.(Float64, site_data[!, :depth_med])
+    spatial_data[:, :depth_med] .= 6.0
+    spatial_data[!, :depth_med] = convert.(Float64, spatial_data[!, :depth_med])
     # GBRMPA zone types are not contained in matfiles
-    site_data[:, :zone_type] .= ["" for _ in 1:nrow(site_data)]
+    spatial_data[:, :zone_type] .= ["" for _ in 1:nrow(spatial_data)]
 
     # timesteps, location, scenario
-    wave_scens = ZeroDataCube(
-        ;T=Float64,
+    wave_scens = ZeroDataCube(;
+        T=Float64,
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
         scenarios=[1]
@@ -145,18 +143,19 @@ function load_domain(
 
     # Current ReefMod mat data only contains cyclone classifications not mortality
     # timesteps, location, species, scenario
-    cyc_scens = ZeroDataCube(
-        ;T=Float64,
+    functional_groups = functional_group_names()
+    cyc_scens = ZeroDataCube(;
+        T=Float64,
         timesteps=timeframe[1]:timeframe[2],
         locs=site_ids,
-        species=1:6,
+        species=functional_groups,
         scenarios=[1]
     )
 
     env_md = EnvLayer(
         fn_path,
         geodata_fn,
-        site_id_col,
+        reef_id_col,
         cluster_id_col,
         "",
         "",
@@ -187,11 +186,11 @@ function load_domain(
         in_conn,
         out_conn,
         strong_pred,
-        site_data,
-        site_id_col,
+        spatial_data,
+        reef_id_col,
         cluster_id_col,
         init_coral_cover,
-        CoralGrowth(nrow(site_data)),
+        CoralGrowth(nrow(spatial_data)),
         site_ids,
         dhw_scens,
         wave_scens,
@@ -239,6 +238,7 @@ function load_initial_cover(
     # Convert from percent to relative values.
     # YAXArray ordering is [time ⋅ location ⋅ scenario]
     icc_data = ((dropdims(mean(init_cc_per_taxa; dims=:scenario); dims=:scenario)) ./ 100.0).data
+
     # Repeat species over each size class and reshape to give ADRIA compatible size (36 * n_locs).
     # Multiply by size class weights to give initial cover distribution over each size class.
     icc_data = Matrix(hcat(reduce.(vcat, eachrow(icc_data .* [size_class_weights]))...))
