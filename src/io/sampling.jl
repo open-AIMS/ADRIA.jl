@@ -8,6 +8,8 @@ import Distributions: sample
 import Surrogates.QuasiMonteCarlo as QMC
 import Surrogates.QuasiMonteCarlo: SobolSample, OwenScramble
 
+const DISCRETE_FACTOR_TYPES = ["ordered categorical", "unordered categorical", "ordered discrete"]
+
 """
     adjust_samples(d::Domain, df::DataFrame)::DataFrame
     adjust_samples!(spec::DataFrame, df::DataFrame)::DataFrame
@@ -377,13 +379,11 @@ function fix_factor!(d::Domain; factors...)::Nothing
     return nothing
 end
 
-const DISCRETE_FACTOR_TYPES = ["ordered categorical", "unordered categorical", "ordered discrete"]
-
 """
     _is_discrete_factor(dom::Domain, factor::Symbol)::Bool
     _is_discrete_factor(p_type::String)::Bool
 
-Check `ptype` attribute whether the factor is a discrete variable type or not. 
+Check `ptype` attribute whether the factor is a discrete variable type or not.
 Returns `true` if discrete, `false` otherwise.
 
 # Arguments
