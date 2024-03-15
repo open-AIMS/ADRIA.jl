@@ -1,4 +1,4 @@
-using NamedDims, AxisKeys, YAXArrays
+using YAXArrays
 
 using ADRIA:
     Domain,
@@ -197,200 +197,8 @@ function rank_locations(
 end
 
 """
-    aggregate_location_ranks(
-        dom::Domain,
-        n_corals::Int64,
-        scenarios::DataFrame,
-        agg_func::Function,
-        iv_type::Symbol;
-        rcp=nothing,
-        min_iv_locs=nothing,
-        max_members=nothing,
-        target_seed_locs=nothing,
-        target_fog_locs=nothing
-    )::YAXArray
-
-Return aggregate location ranks for a given domain and scenarios.
-
-# Arguments
-- `domain` : Domain dataset to assess
-- `n_corals` : The total number of corals to deploy
-- `scenarios` : Scenario specification
-- `agg_func` : Aggregation function to apply, e.g `ranks_to_frequencies` or
-    `ranks_to_location_order`
-- `iv_type` : Intervention type to assess (`:seed` or `:fog`)
-- `rcp` : RCP conditions to assess
-- `min_iv_locs` : Minimum number of locations to intervene
-- `max_members` : Maximum number of locations per cluster
-- `target_seed_locs` : Locations to prioritize for seeding. Currently does nothing.
-- `target_fog_locs` : Locations to prioritize for fogging. Currently does nothing.
-
-# Returns
-YAXArray[n_locations ⋅ [:seed, :fog]], with ranks aggregated according to `agg_func`.
-"""
-function aggregate_location_ranks(
-    domain::Domain,
-    n_corals::Int64,
-    scenarios::DataFrame,
-    agg_func::Function,
-    iv_type::Symbol;
-    rcp=nothing,
-    target_seed_locs=nothing,
-    target_fog_locs=nothing,
-)::YAXArray
-    throw("Unimplemented")
-    ranks = rank_locations(
-        domain,
-        n_corals,
-        scenarios;
-        rcp=rcp,
-        target_seed_locs=target_seed_locs,
-        target_fog_locs=target_fog_locs,
-    )
-    return agg_func(ranks[intervention=At(iv_type)])
-end
-
-
-"""
-    ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)
-    ranks_to_frequencies(ranks::NamedDimsArray{D,T,3,A}; n_ranks=length(ranks.sites), agg_func=x -> dropdims(sum(x; dims=:timesteps); dims=:timesteps),) where {D,T,A}
-    ranks_to_frequencies(ranks::NamedDimsArray{D,T,2,A}; n_ranks=length(ranks.sites), agg_func=nothing) where {D,T,A}
-
-Returns the frequency with which each location was ranked across scenarios.
-Uses the results from `rank_locations()`.
-
-Note: By default, ranks are aggregated over time where `ranks` is a 3-dimensional array.
-
-# Arguments
-- `ranks` : Location ranks from `rank_locations()`
-- `n_ranks` : Number of rankings (default is number of locations).
-- `agg_func` : Aggregation function to appy after frequencies are calculated.
-
-# Returns
-Frequency with which each location was selected for each rank.
-"""
-function ranks_to_frequencies(ranks::NamedDimsArray, n_ranks::Int64)::NamedDimsArray
-    dn = NamedDims.dimnames(ranks)
-    freq_dims = [n for n in dn if n != :scenarios]
-    dn_subset = vcat(freq_dims, [:ranks])
-    freq_elements = vcat(
-        [1:size(ranks, n) for n in dn if n != :scenarios],
-        [1:size(ranks, :sites)],
-    )
-    mn = ([size(ranks, k) for k in freq_dims]..., size(ranks, :sites))
-
-    rank_frequencies = NamedDimsArray(zeros(mn...); zip(dn_subset, freq_elements)...)
-
-    for rank in 1:n_ranks
-        rank_frequencies[ranks=Int64(rank)] .= sum(ranks .== rank; dims=:scenarios)[scenarios=1]
-    end
-
-    return rank_frequencies
-end
-function ranks_to_frequencies(
-    ranks::NamedDimsArray{D,T,3,A};
-    n_ranks::Int64=length(ranks.sites),
-    agg_func=nothing,
-)::NamedDimsArray where {D,T,A}
-    if !isnothing(agg_func)
-        return agg_func(ranks_to_frequencies(ranks, n_ranks))
-    end
-
-    return ranks_to_frequencies(ranks, n_ranks)
-end
-function ranks_to_frequencies(
-    ranks::NamedDimsArray{D,T,2,A};
-    n_ranks::Int64=length(ranks.sites),
-    agg_func=nothing,
-)::NamedDimsArray where {D,T,A}
-    if !isnothing(agg_func)
-        return agg_func(ranks_to_frequencies(ranks, n_ranks))
-    end
-
-    return ranks_to_frequencies(ranks, n_ranks)
-end
-
-"""
-    location_selection_frequencies(ranks::NamedDimsArray; n_iv_locs::Int64=5)
-    location_selection_frequencies(iv_log::NamedDimsArray{D,T,4,A}; dims::Union{Symbol,Vector{Symbol}}=:coral_id) where {D,T,A}
-
-Determines the count of times each location was selected for a specific intervention over a
-set of scenarios.
-
-# Arguments
-- `ranks` : Rankings of locations `rank_locations()`
-- `n_iv_locs` : number of locations intervened at, for each decision point
-- `iv_log` : Intervention logs
-- `dims` : dimensions to sum selection frequencies over
-
-# Returns
-Number of times each location was selected for an intervention.
-"""
-function location_selection_frequencies(
-    ranks::NamedDimsArray;
-    n_iv_locs::Int64=5,
-)::NamedDimsArray
-    ranks_frequencies = ranks_to_frequencies(ranks; n_ranks=n_iv_locs)
-    loc_count = sum(ranks_frequencies[ranks=1:n_iv_locs]; dims=:ranks)[ranks=1]
-
-    return loc_count
-end
-function location_selection_frequencies(
-    iv_log::NamedDimsArray{D,T,4,A};
-    dims::Union{Symbol,Vector{Symbol}}=:coral_id,
-)::NamedDimsArray where {D,T,A}
-    loc_count = dropdims(
-        sum(dropdims(sum(iv_log; dims=dims); dims=dims) .> 0; dims=:scenarios);
-        dims=:scenarios,
-    )
-    return loc_count
-end
-
-
-"""Drop single dimensions."""
-_drop_single(x::AbstractMatrix) = dropdims(x, dims=(findall(size(x) .== 1)...,))
-
-"""
-    selection_score(ranks::NamedDimsArray{D,T,3,A}; dims::Vector{Symbol}=[:scenarios, :timesteps]) where {D,T,A}
-    selection_score(ranks::NamedDimsArray{D,T,2,A}) where {D,T,A}
-    selection_score(ranks::NamedDimsArray, dims::Vector{Symbol})
-
-Calculates score ∈ [0, 1], where 1 is the highest score possible, indicative of the relative
-desirability of each location.
-
-The score reflects the location ranking and frequency of attaining a high rank.
-
-# Arguments
-- `ranks` : Rankings of locations from `rank_locations()`
-- `dims` : Dimensions to sum over
-
-# Returns
-Selection score
-"""
-function selection_score(
-    ranks::NamedDimsArray{D,T,3,A};
-    dims::Vector{Symbol}=[:scenarios, :timesteps],
-)::NamedDimsArray where {D,T,A}
-    return _drop_single(selection_score(ranks, dims))
-end
-function selection_score(
-    ranks::NamedDimsArray{D,T,2,A};
-    dims::Vector{Symbol}=[:scenarios],
-)::NamedDimsArray where {D,T,A}
-    return selection_score(ranks, dims)
-end
-function selection_score(
-    ranks::NamedDimsArray,
-    dims::Vector{Symbol},
-)::NamedDimsArray
-    lowest_rank = maximum(ranks)  # 1 is best rank, n_sites + 1 is worst rank
-    selection_score = dropdims(sum(lowest_rank .- ranks; dims=dims); dims=dims[1])
-    return selection_score ./ ((lowest_rank - 1) * prod([size(ranks, d) for d in dims]))
-end
-
-"""
-    selection_score(ranks::YAXArray{T,3}; iv_type::Symbol)
-    selection_score(ranks::YAXArray{T,4}; iv_type::Symbol; keep_time=false)
+    selection_score(ranks::YAXArray{T,3}; iv_type::Symbol)::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    selection_score(ranks::YAXArray{T,4}; iv_type::Symbol; keep_time=false)::YAXArray {T<:Union{Int64, Float32, Float64}}
 
 Calculates score ∈ [0, 1] indicative of the relative desirability of each location.
 The score reflects the location ranking and frequency of attaining a high rank.
@@ -438,7 +246,7 @@ ADRIA.decision.selection_score(rs.ranks, 1; keep_time=true)
 Selection score
 """
 function selection_score(
-    ranks::YAXArray{T, 3},
+    ranks::YAXArray{T,3},
     iv_type::Union{Symbol,Int64},
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
     # 1 is best rank, n_locs is worst rank, 0 are locations that were ignored
@@ -495,6 +303,7 @@ function _calc_selection_score(ranks::YAXArray, lowest_rank::Union{Int64,Float64
     # given zero rank.
     # If, for example, there are 100 locations, and the lowest considered rank is 3:
     #     max((3 - 100) / 3, 0.0)
+    #     # results in 0.0
 
     tsliced = mapslices(x -> any(x .> 0) ? lowest_rank .- (x .- 1.0) : 0.0, ranks[intervention=At(iv_type)], dims="timesteps")
     selection_score = dropdims(
@@ -527,8 +336,29 @@ function _calc_selection_score(ranks::YAXArray, lowest_rank::Union{Int64,Float64
 end
 
 """
-    selection_frequency(ranks::YAXArray{T, 3}, iv_type::Union{Symbol,Int64})
-    selection_frequency(ranks::YAXArray{T, 4}, iv_type::Union{Symbol,Int64})
+    _times_selected(ranks::YAXArray{T,3}, iv_type::Union{Symbol,Int64}, squash::Union{Symbol,Tuple})::YAXArray where {T<:Union{Int64, Float32, Float64}}
+
+Count of the number of times a location has been selected (regardless of rank).
+
+# Arguments
+- `ranks` :
+- `iv_type` : Intervention type to assess
+- `squash` : Dimensions to squash
+"""
+function _times_selected(
+    ranks::YAXArray{T},
+    iv_type::Union{Symbol,Int64},
+    squash::Union{Symbol,Tuple}
+)::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    s = copy_datacube(ranks[intervention=At(iv_type)])
+    s[s .> 0.0] .= 1.0
+
+    return dropdims(sum(s, dims=squash); dims=squash)
+end
+
+"""
+    selection_frequency(ranks::YAXArray{Union{Int64, Float32, Float64}, 3}, iv_type::Union{Symbol,Int64})::YAXArray
+    selection_frequency(ranks::YAXArray{Union{Int64, Float32, Float64}, 4}, iv_type::Union{Symbol,Int64})::YAXArray
 
 Determine normalized frequency at which a location is selected for intervention, where
 0 indicates the location is not selected at all, and 1 indicates the selection is
@@ -562,32 +392,16 @@ function selection_frequency(
     iv_type::Union{Symbol,Int64}
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
     # 0 is unconsidered locations, values > 0 indicate some rank was assigned.
-    s = copy_datacube(ranks[intervention=At(iv_type)])
-    s[s .> 0.0] .= 1.0
+    n_selected = _times_selected(ranks, iv_type, :scenarios)
 
-    selection_freq = dropdims(
-        sum(s, dims=:scenarios); dims=:scenarios
-    )
-
-    norm_freq = selection_freq ./ maximum(selection_freq)
-    norm_freq[norm_freq .> 0.0] .= 1.0 .- norm_freq[norm_freq .> 0.0]
-
-    return norm_freq
+    return n_selected ./ maximum(n_selected)
 end
 function selection_frequency(
     ranks::YAXArray{T, 4},
     iv_type::Union{Symbol,Int64}
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
     # 0 is unconsidered locations, values > 0 indicate some rank was assigned.
-    s = copy_datacube(ranks[intervention=At(iv_type)])
-    s[s .> 0.0] .= 1.0
+    n_selected = _times_selected(ranks, iv_type, (:scenarios, :timesteps))
 
-    selection_freq = dropdims(
-        sum(s, dims=(:scenarios, :timesteps)); dims=(:scenarios, :timesteps)
-    )
-
-    norm_freq = selection_freq ./ maximum(selection_freq)
-    norm_freq[norm_freq .> 0.0] .= 1.0 .- norm_freq[norm_freq .> 0.0]
-
-    return norm_freq
+    return n_selected ./ maximum(n_selected)
 end
