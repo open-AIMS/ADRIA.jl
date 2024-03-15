@@ -380,7 +380,7 @@ end
 const DISCRETE_FACTOR_TYPES = ["ordered categorical", "unordered categorical", "ordered discrete"]
 
 """
-    _is_discrete_factor(dom, factor::Symbol)::Bool
+    _is_discrete_factor(dom::Domain, factor::Symbol)::Bool
     _is_discrete_factor(p_type::String)::Bool
 
 Check `ptype` attribute whether the factor is a discrete variable type or not. 
