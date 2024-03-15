@@ -289,7 +289,8 @@ function convergence(
     step_size = floor(Int64, N / n_steps)
     N_it = step_size == 0 ? collect(1:N) : collect(step_size:step_size:N)
 
-    pawn_store = ZeroDataCube(Float64;
+    pawn_store = ZeroDataCube(;
+        T=Float64,
         factors=target_factors,
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
         n_scenarios=N_it,
@@ -322,8 +323,8 @@ function convergence(
     Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); Si=Si, n_steps=n_steps)
 
     # Note: n_steps only applies if it is > number of scenarios.
-    Si_grouped = ZeroDataCube(
-        Float64;
+    Si_grouped = ZeroDataCube(;
+        T=Float64,
         factors=components,
         Si=collect(Si_n.Si),
         n_scenarios=collect(Si_n.n_scenarios),
@@ -380,8 +381,8 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::YAXArray
         end
     end
 
-    t_pawn_idx = ZeroDataCube(
-        Float64;
+    t_pawn_idx = ZeroDataCube(;
+        T=Float64,
         factors=Symbol.(names(X)),
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
         timesteps=ts,
