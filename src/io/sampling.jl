@@ -383,7 +383,8 @@ const DISCRETE_FACTOR_TYPES = ["ordered categorical", "unordered categorical", "
     _is_discrete_factor(dom, factor::Symbol)::Bool
     _is_discrete_factor(p_type::String)::Bool
 
-Check ptype for discrete variable types. Returns true if discrete, false otherwise.
+Check `ptype` attribute whether the factor is a discrete variable type or not. 
+Returns `true` if discrete, `false` otherwise.
 
 # Arguments
 - `dom` : Domain
