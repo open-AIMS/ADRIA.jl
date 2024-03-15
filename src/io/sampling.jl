@@ -434,7 +434,7 @@ end
 """
 function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
     ms = model_spec(dom)
-    ms[ms.fieldname.==factor, attr][1]
+    return ms[ms.fieldname.==factor, attr][1]
 end
 
 """
