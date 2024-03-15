@@ -5,7 +5,7 @@ manifest_format = "2.0"
 project_hash = "693c107c21b72d71046a29e1c82f78156b683320"
 
 [[deps.ADRIA]]
-deps = ["ArchGDAL", "AxisKeys", "BlackBoxOptim", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CpuId", "DataFrames", "DataStructures", "Dates", "Distances", "Distributed", "Distributions", "FLoops", "FileIO", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Graphs", "HypothesisTests", "ImageIO", "InteractiveUtils", "Interpolations", "JMcDM", "JSON", "JuliennedArrays", "LinearAlgebra", "Logging", "MAT", "MLJ", "ModelParameters", "NCDatasets", "NamedDims", "OnlineStats", "OrderedCollections", "OrdinaryDiffEq", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "Random", "Reexport", "RelocatableFolders", "SIRUS", "SciMLBase", "Setfield", "SimpleWeightedGraphs", "SparseArrayKit", "SparseArrays", "StableRNGs", "StaticArrays", "Statistics", "StatsBase", "Surrogates", "TOML", "Zarr"]
+deps = ["ArchGDAL", "BlackBoxOptim", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CpuId", "DataFrames", "DataStructures", "Dates", "Distances", "Distributed", "Distributions", "FLoops", "FileIO", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Graphs", "HypothesisTests", "ImageIO", "InteractiveUtils", "Interpolations", "JMcDM", "JSON", "JuliennedArrays", "LinearAlgebra", "Logging", "MAT", "MLJ", "ModelParameters", "NCDatasets", "OnlineStats", "OrderedCollections", "OrdinaryDiffEq", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "Random", "Reexport", "RelocatableFolders", "SIRUS", "SciMLBase", "Setfield", "SimpleWeightedGraphs", "SparseArrayKit", "SparseArrays", "StableRNGs", "StaticArrays", "Statistics", "StatsBase", "Surrogates", "TOML", "Zarr"]
 path = ".."
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 version = "0.8.0"
@@ -153,12 +153,6 @@ deps = ["Dates", "IntervalSets", "IterTools", "RangeArrays"]
 git-tree-sha1 = "16351be62963a67ac4083f748fdb3cca58bfd52f"
 uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 version = "0.4.7"
-
-[[deps.AxisKeys]]
-deps = ["AbstractFFTs", "ChainRulesCore", "CovarianceEstimation", "IntervalSets", "InvertedIndices", "LazyStack", "LinearAlgebra", "NamedDims", "OffsetArrays", "Statistics", "StatsBase", "Tables"]
-git-tree-sha1 = "dba0fdaa3a95e591aa9cbe0df9aba41e295a2011"
-uuid = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
-version = "0.2.13"
 
 [[deps.BangBang]]
 deps = ["Compat", "ConstructionBase", "InitialValues", "LinearAlgebra", "Requires", "Setfield", "Tables"]
@@ -1137,7 +1131,7 @@ uuid = "8cdb02fc-e678-4876-92c5-9defec4f444e"
 version = "0.3.1"
 
 [[deps.LazyStack]]
-deps = ["ChainRulesCore", "LinearAlgebra", "NamedDims", "OffsetArrays"]
+deps = ["ChainRulesCore", "LinearAlgebra", "OffsetArrays"]
 git-tree-sha1 = "2eb4a5bf2eb0519ebf40c797ba5637d327863637"
 uuid = "1fad7336-0346-5a1a-a56f-a06ba010965b"
 version = "0.0.8"
@@ -1459,12 +1453,6 @@ deps = ["PrettyPrint"]
 git-tree-sha1 = "1a0fa0e9613f46c9b8c11eee38ebb4f590013c5e"
 uuid = "71a1bf82-56d0-4bbc-8a3c-48b961074391"
 version = "0.1.5"
-
-[[deps.NamedDims]]
-deps = ["AbstractFFTs", "ChainRulesCore", "CovarianceEstimation", "LinearAlgebra", "Pkg", "Requires", "Statistics"]
-git-tree-sha1 = "dc9144f80a79b302b48c282ad29b1dc2f10a9792"
-uuid = "356022a1-0364-5f58-8944-0da4b18d706f"
-version = "1.2.1"
 
 [[deps.NearestNeighbors]]
 deps = ["Distances", "StaticArrays"]

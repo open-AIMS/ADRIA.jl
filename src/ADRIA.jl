@@ -35,8 +35,6 @@ using
     SparseArrays,
     SparseArrayKit,
     LinearAlgebra,
-    NamedDims,
-    AxisKeys,
     OrdinaryDiffEq,
     OrderedCollections,
     Combinatorics,
@@ -109,7 +107,6 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(setup_result_store!),Domain,DataFrame})   # time: 4.6720815
     Base.precompile(Tuple{typeof(combine_results),Vector{String}})   # time: 4.0178256
     Base.precompile(Tuple{typeof(growthODE),Matrix{Float64},Matrix{Float64},NamedTuple{(:r, :k, :mb, :comp, :sm_comp, :small_massives, :small, :mid, :large, :acr_5_11, :acr_6_12, :rec, :sigma, :M_sm, :sXr, :X_mb, :cover),Tuple{Matrix{Float64},Vector{Float64},Matrix{Float64},Float64,Matrix{Float64},SVector{3,Int64},SVector{6,Int64},SVector{19,Int64},SVector{4,Int64},SVector{2,Int64},SVector{2,Int64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Vector{Float64}}},Float64})   # time: 1.4354926
-    # Base.precompile(Tuple{typeof(combine_results),ResultSet{String,Vector{Any},Vector{Any},Vector{Float64},NamedDimsArray{(:timesteps, :sites, :intervention, :scenarios),Float32,4,ZArray{Float32,4,Zarr.BloscCompressor,DirectoryStore}},NamedDimsArray{(:timesteps, :coral_id, :sites, :scenarios),Float32,4,ZArray{Float32,4,Zarr.BloscCompressor,DirectoryStore}},NamedDimsArray{(:timesteps, :sites, :scenarios),Float32,3,ZArray{Float32,3,Zarr.BloscCompressor,DirectoryStore}},Dict{String,AbstractArray},DataFrame}})   # time: 0.9439985
     Base.precompile(
         Tuple{
             typeof(decision.rank_sites!),
