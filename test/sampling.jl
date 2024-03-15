@@ -1,5 +1,5 @@
 using ADRIA
-using Distributions
+using ADRIA.Distributions
 
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
