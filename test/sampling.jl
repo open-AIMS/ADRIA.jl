@@ -40,6 +40,7 @@ end
                 @test all(cond) || "$msg | $(ms[.!(cond), :]) | $(not_cw_scen_vals[.!(cond)])"
                 continue
             end
+
             # When no interventions are used, e.g., for counterfactual or unguided scenarios
             # (guided ∈ [-1, 0]) intervention parameters are set to 0 so only check ecological values
             cond = lb[eco] .<= scen_vals[eco] .<= ub[eco]
