@@ -1,7 +1,7 @@
 using Test
 
 using ADRIA
-using ADRIA.NamedDims, ADRIA.Distributions
+using ADRIA.Distributions
 using ADRIA: distribute_seeded_corals, location_k, seed_corals!
 
 if !@isdefined(ADRIA_DIR)
@@ -28,7 +28,7 @@ end
 
     @testset "Check coral seed distribution ($i)" for i in 1:10
         seed_locs = rand(1:length(total_site_area), 5)
-    
+
         # evaluate seeding distributions
         seed_dist = distribute_seeded_corals(
             total_site_area[seed_locs], available_space[seed_locs], seeded_area
