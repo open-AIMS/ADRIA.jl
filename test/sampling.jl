@@ -31,7 +31,7 @@ end
         msg = "Sampled values were not in expected bounds!"
         coral_msg = "Sampled coral values were not in expected bounds!"
         for i in 1:num_samples
-            # Filter off CriteriaWeights factors
+            # Filter CriteriaWeights factors
             scen_vals = values(scens[i, :])
             not_cw_scen_vals = scen_vals[not_cw_mask]
 
