@@ -308,7 +308,7 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
         _row = to_update.fieldname .== c
         _dparams = length(to_update[_row, :dist_params][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
 
-        dval = is_discrete(to_update[_row, :ptype][1]) ? 0 : 0.0
+        dval = _is_discrete_factor(to_update[_row, :ptype][1]) ? 0 : 0.0
         to_update[_row, [:val, :lower_bound, :upper_bound, :dist_params, :is_constant]] .=
             [dval 0.0 0.0 _dparams true]
     end
@@ -380,8 +380,8 @@ end
 const DISCRETE_FACTOR_TYPES = ["ordered categorical", "unordered categorical", "ordered discrete"]
 
 """
-    is_discrete(dom, factor::Symbol)::Bool
-    is_discrete(p_type::String)::Bool
+    _is_discrete_factor(dom, factor::Symbol)::Bool
+    _is_discrete_factor(p_type::String)::Bool
 
 Check ptype for discrete variable types. Returns true if discrete, false otherwise.
 
@@ -390,10 +390,10 @@ Check ptype for discrete variable types. Returns true if discrete, false otherwi
 - `factor` : Name of model factor
 - `ptype` : String representing variable type
 """
-function is_discrete(dom::Domain, factor::Symbol)::Bool
-    return is_discrete(get_attr(dom, factor, :ptype))
+function _is_discrete_factor(dom::Domain, factor::Symbol)::Bool
+    return _is_discrete_factor(get_attr(dom, factor, :ptype))
 end
-function is_discrete(p_type::String)::Bool
+function _is_discrete_factor(p_type::String)::Bool
     return p_type ∈ DISCRETE_FACTOR_TYPES
 end
 
