@@ -1,6 +1,7 @@
-using DimensionalData
 using Random
-using YAXArrays
+
+using ADRIA.DimensionalData
+using ADRIA.YAXArrays
 
 @testset "NetCDF" begin
     @testset "Handling Vector of Strings and Matrix{ASCIIChar}" begin
