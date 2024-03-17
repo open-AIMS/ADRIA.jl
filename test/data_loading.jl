@@ -20,7 +20,7 @@ end
 end
 
 @testset "Connectivity loading" begin
-    site_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "site_data", "Test_domain.gpkg"))
+    site_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "spatial", "Test_domain.gpkg"))
     sort!(site_data, :reef_siteid)
 
     unique_site_ids = site_data.reef_siteid
@@ -38,7 +38,7 @@ end
 end
 
 @testset "Environmental data" begin
-    site_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "site_data", "Test_domain.gpkg"))
+    site_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "spatial", "Test_domain.gpkg"))
 
     sort!(site_data, :reef_siteid)
 
@@ -52,17 +52,17 @@ end
 end
 
 @testset "Initial covers" begin
-    site_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "site_data", "Test_domain.gpkg"))
+    site_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "spatial", "Test_domain.gpkg"))
     sort!(site_data, :reef_siteid)
 
-    coral_cover_fn = joinpath(TEST_DOMAIN_PATH, "site_data", "coral_cover.nc")
-    coral_covers = ADRIA.load_cover(coral_cover_fn, site_data)
+    coral_cover_fn = joinpath(TEST_DOMAIN_PATH, "spatial", "coral_cover.nc")
+    coral_covers = ADRIA.load_cover(coral_cover_fn)
 
     @test all(axes(coral_covers, 2).dim .== site_data.reef_siteid) || "Coral cover data not aligned with order specified in geospatial data"
 end
 
 @testset "Cyclone mortality data" begin
-    site_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "site_data", "Test_domain.gpkg"))
+    site_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "spatial", "Test_domain.gpkg"))
     sort!(site_data, :reef_siteid)
 
     cyclone_mortality_fn = joinpath(TEST_DOMAIN_PATH, "cyclones", "cyclone_mortality.nc")
@@ -76,7 +76,7 @@ end
         "small_massives",
         "large_massives"
     ]
-    
+
     @test all(axes(cyclone_mortality, 2).dim .== site_data.reef_siteid) || "Cyclone mortality locations do not align with location order specified in geospatial data"
     @test all(axes(cyclone_mortality, 3).dim .== expected_species_order) || "Cyclone mortality data does not list species in expected order"
 end
