@@ -22,8 +22,6 @@ using
     DataFrames,
     JMcDM
 
-# dummy dMCDA_vars() for dev
-struct DMCDA_vars end
 
 # dummy functions to allow precompilation
 function unguided_selection() end
@@ -32,32 +30,21 @@ function adria_topsis() end
 function adria_vikor() end
 function decision_matrix() end
 
-function supported_jmcdm_methods()
-    # Those commented out with failed a simple test where only heat stress is considered
-    # and the method selected the hottest locations ("**")
-    # or a nonsensical selection (e.g., 1, 2, 3, 4, 5; marked with "*^")
-    return [
-        #** JMcDM.Topsis.TopsisMethod,
-        JMcDM.VIKOR.VikorMethod,
-        #** JMcDM.ARAS.ArasMethod,
-        #*^ JMcDM.COCOSO.CocosoMethod,
-        #** JMcDM.CODAS.CodasMethod,
-        #** JMcDM.EDAS.EdasMethod,
-        #** JMcDM.GREY.GreyMethod,
-        #** JMcDM.MABAC.MabacMethod,
-        JMcDM.MAIRCA.MaircaMethod,
-        #** JMcDM.MARCOS.MarcosMethod,
-        #*^ JMcDM.MOORA.MooraMethod,
-        JMcDM.PIV.PIVMethod,
-        JMcDM.PSI.PSIMethod,
-        #** JMcDM.SAW.SawMethod,
-        #** JMcDM.WASPAS.WaspasMethod,
-        #** JMcDM.WPM.WPMMethod
-    ]
-end
+"""
+    mcda_methods()
 
+List of MCDA methods found to be suitable for use with ADRIA.
+
+See "Validate included MCDA methods" testset in `test/mcda.jl` for details.
+"""
 function mcda_methods()
-    return supported_jmcdm_methods()
+    return [
+        JMcDM.COCOSO.CocosoMethod,
+        JMcDM.MAIRCA.MaircaMethod,
+        JMcDM.MOORA.MooraMethod,
+        JMcDM.PIV.PIVMethod,
+        JMcDM.VIKOR.VikorMethod,
+    ]
 end
 
 """
