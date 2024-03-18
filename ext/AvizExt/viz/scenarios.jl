@@ -77,7 +77,7 @@ function ADRIA.viz.scenarios!(
 end
 function ADRIA.viz.scenarios(
     rs::CScapeResultSet,
-    outcomes::YAXArray,
+    outcomes::YAXArray;
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(:size=>(800, 300)),
     axis_opts::Dict=Dict(),
