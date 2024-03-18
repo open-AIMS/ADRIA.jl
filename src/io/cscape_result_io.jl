@@ -40,7 +40,7 @@ function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResult
     gpkg_path = _get_gpkg_path(result_loc)
     geodata = GDF.read(gpkg_path)
 
-    connectivity_path = joinpath(result_loc, "connectivity.csv")
+    connectivity_path = joinpath(result_loc, "connectivity/connectivity.csv")
     connectivity = CSV.read(connectivity_path, DataFrame, comment="#", header=true)
     
     # There is missing location data in site data. Use intersection
