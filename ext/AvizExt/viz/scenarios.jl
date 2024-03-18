@@ -90,7 +90,7 @@ function ADRIA.viz.scenarios(
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-    scen_groups = Dict(:CScape => BitVector([true for _ in 1:length(outcomes.scenarios)]))
+    scen_groups = rs.scenario_groups
     ADRIA.viz.scenarios!(g, ax, outcomes, scen_groups; opts, axis_opts, series_opts)
     return f
 end

@@ -15,11 +15,14 @@ struct CScapeResultSet <: ResultSet
     env_layer_md::EnvLayer
     connectivity_data
     site_data
+    scenario_groups
 
     sim_constants
 
     # raw::AbstractArray
     outcomes
+    # Cscape uses different size classes
+    coral_size_diameter::YAXArray
 end
 
 function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResultSet
@@ -91,30 +94,24 @@ function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResult
         :size_classes,
         :cover
     ]
+    compatible_keys = [
+        :larvae, 
+        :external_larvae, 
+        :internal_received_larvae, 
+        :settlers, 
+        :eggs, 
+        :size_classes,
+        :relative_cover
+    ]
     outcomes = Dict{Symbol, YAXArray}()
-    if !haskey(raw_set.cubes, :cover)
-        @warn "Unable to find cover. Skipping)"
-    else
-        outcomes[:relative_taxa_cover] = create_relative_taxa_cover(raw_set.cover[reef_site=res_mask]) ./100
-        outcomes[:relative_cover] = create_relative_cover(raw_set.cover[reef_site=res_mask]) ./100
-        outcomes[:size_classes] = create_size_classes(raw_set.cover[reef_site=res_mask])
+    for (outcome, key) in zip(outcome_keys, compatible_keys)
+        if !haskey(raw_set.cubes, outcome)
+            @warn "Unable to find "*string(outcome)*". Skipping."
+            continue
+        end
+        outcomes[key] = reformat_cube(raw_set.cubes[outcome][reef_site=res_mask])
     end
-
-    if !haskey(raw_set.cubes, :size_classes)
-        @warn "Unable to find size_classes. Skipping"
-    else
-        outcomes[:size_classes]
-    end
-    #for outcome_key ∈ outcome_keys
-    #    if !haskey(raw_set.cubes, outcome_key)
-    #        @warn "Unable to find $(string(outcome_key). Skipping)"
-    #        continue
-    #    end
-    #    if outcome_key == :cover
-    #        continue
-    #    end
-    #    outcomes[outcome_key] = raw_set.cubes[outcome_key][reef_sites=res_mask]
-    #end
+    scen_groups = Dict(:counterfactual=>BitVector(true for _ in raw_set.draws))
 
     return CScapeResultSet(
         res_name,
@@ -126,31 +123,11 @@ function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResult
         env_layer_md,
         connectivity,
         geodata,
+        scen_groups,
         SimConstants(),
         outcomes,
+        reformat_cube(raw_set.coral_size_diameter)
     )
-end
-
-"""
-    create_size_classes(size_class_cube::YAXArray)::YAXArray
-
-Create outcome array describing the distribution of size classes.
-"""
-function create_size_classes(size_class_cube::YAXArray)::YAXArray
-    return dropdims(sum(size_class_cube, dims=:intervened), dims=:intervened)
-end
-
-function create_relative_taxa_cover(cover_cube::YAXArray)::YAXArray
-    cover_cube = rename_dims(cover_cube)
-    rel_taxa_cover::YAXArray = dropdims(sum(
-        cover_cube, dims=(:thermal_tolerance, :intervened)
-    ), dims=(:thermal_tolerance, :intervened))
-    return permutedims(rel_taxa_cover, [2, 3, 4, 1])
-end
-
-function create_relative_cover(cover_cube::YAXArray)::YAXArray
-    rel_taxa_cover = create_relative_taxa_cover(cover_cube)
-    return dropdims(sum(rel_taxa_cover, dims=:taxa), dims=:taxa)
 end
 
 """
@@ -236,70 +213,41 @@ function _get_reefids(reef_cube::YAXArray)::Vector{String}
     return reef_ids
 end
 
-function short_habitat_to_long(encoding::SubString{String})::String
-    if (encoding == "C")
-        return "Crest"
-    elseif (encoding == "OF")
-        return "Outer Flat" 
-    elseif (encoding == "S")
-        return "Slope"
-    elseif (encoding == "SS")
-        return "Sheltered Slope"
-    else 
-        return ""
-    end
-end
-
 """
-    rename_dims(cscape_cube::YAXArray)::Nothing
+    reformat_cube(cscape_cube::YAXArray)::Nothing
 
-Rename the names of the dimensions to align with ADRIA's expected dimension names.
+Rename reorder the names of the dimensions to align with ADRIA's expected dimension names.
 """
-function rename_dims(cscape_cube::YAXArray)::YAXArray
+function reformat_cube(cscape_cube::YAXArray)::YAXArray
     dim_names = name.(cscape_cube.axes)
-    if :draws in dim_names
-        cscape_cube = renameaxis!(cscape_cube, :draws=>:scenarios)
+    cscape_names = [:year, :reef_sites, :ft, :draws]
+    adria_names = [:timesteps, :sites, :taxa, :scenarios]
+    final_ordering::Vector{Int} = Vector{Int}(undef, length(dim_names))
+    current_index = 1
+    # rename expected dimensions and update the permutation vector
+    for (cscape_nm, adria_nm) in zip(cscape_names, adria_names)
+        if cscape_nm ∉ dim_names
+            continue
+        end
+        cscape_cube = renameaxis!(cscape_cube, cscape_nm=>adria_nm)
+        final_ordering[current_index] = findfirst(x->x==cscape_nm, dim_names)
+        current_index += 1
     end
-    if :year in dim_names
-        cscape_cube = renameaxis!(cscape_cube, :year=>:timesteps)
+     # append the indices of non-adria axis to end of permutation vector
+    for dim_name in dim_names
+        if dim_name in cscape_names
+            continue
+        end
+        final_ordering[current_index] = findfirst(x->x==dim_name, dim_names)
+        current_index += 1;
     end
-    if :reef_sites in dim_names
-        cscape_cube = renameaxis!(cscape_cube, :reef_sites=>:sites)
+    if haskey(cscape_cube.properties, "units")
+        if cscape_cube.properties["units"] == "percent"
+            cscape_cube = cscape_cube ./ 100
+            cscape_cube.properties["units"] == "proportion [0, 1]"
+        end
     end
-    if :ft in dim_names
-        cscape_cube = renameaxis!(cscape_cube, :ft=>:taxa)
-    end
-    return cscape_cube
-end
-
-"""
-    equivalient_id(short::String, long::String)::Bool
-
-Location IDs stored in connectivity data files have a different more verbose format.
-"""
-function equivalent_id(short::String, long::String)::Bool
-    short_frags = split(short, '_')
-    long_frags = split(long, '_')
-    length(short_frags) != length(long_frags) ? error("Unexpected Reef ID format") : nothing
-    if short_frags[1] != long_frags[1]
-        return false
-    elseif short_habitat_to_long(short_frags[3]) != long_frags[3]
-        return false
-    elseif short_frags[4] != long_frags[4] && short_frags[4] != long_frags[4][1:end-1]
-        return false
-    end
-    return true
-end
-
-"""
-    conn_ids_format(loc_ids::Vector{String})::Vector{String}
-
-Reef IDs in CScape Connectivity files are named differently, so we need to create an equivalent reef ID mask for data extraction.
-"""
-function conn_ids_format(connectivity_path::String, loc_ids::Vector{String})::Vector{String}
-    fn = filter(x -> occursin("csv", x), readdir(connectivity_path))[1]
-    conn_loc_ids = names(CSV.read(fn, DataFrame, comment="#", header=true))[2:end]
-    loc_ordering = [findfirst(equivalent_id.(loc_ids, c_id)) for c_id in conn_loc_ids]
+    return permutedims(cscape_cube, final_ordering)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
@@ -318,11 +266,4 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
     Number of sites: $(sites)
     Timesteps: $(tf)
     """)
-end
-
-function reformat_temporal_inputs(temporal_input::DataFrame, RCP::String="1")::YAXArray
-    rcp::Int = parse(Int, RCP)
-    masked_temp_input = temporal_input[temporal_input.RCP == rcp, :]
-    year_dim = unique(masked_temp_input.year)
-    loc_dim = unique(masked_temp_input.reef_siteid)
 end
