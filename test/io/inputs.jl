@@ -1,6 +1,7 @@
-using DimensionalData
 using Random
-using YAXArrays
+
+using ADRIA.DimensionalData
+using ADRIA.YAXArrays
 
 @testset "NetCDF" begin
     @testset "Handling Vector of Strings and Matrix{ASCIIChar}" begin
@@ -61,20 +62,20 @@ end
 
 @testset "ZeroDataCube" begin
     ZeroDataCube = ADRIA.ZeroDataCube
-    
+
     dim_1_name = :timesteps
     dim_1_vals = rand(10)
-    
+
     dim_2_name = :location
     dim_2_vals = ["loc 1", "loc 2", "loc 3", "loc 4", "loc 5"]
 
     yax_res = ZeroDataCube(; T=Int, NamedTuple{(dim_1_name,)}((dim_1_vals,))...)
 
-    @test typeof(yax_res) <: YAXArray{Int, 1} || 
+    @test typeof(yax_res) <: YAXArray{Int, 1} ||
         "Incorrect return type. Expected a subtype of YAXArray{Int, 1} \
          but received $(typeof(yax_res))"
 
-    @test all(0 .== yax_res) || 
+    @test all(0 .== yax_res) ||
         "Incorrect data contained in YAXArray. Expected all 0."
 
     @test size(yax_res) == (10,) ||
@@ -84,16 +85,16 @@ end
         "Incorrect dimension name. Expected $(name(dim_1)) \
          but received $(name(yax_res.axes[1]))"
 
-    @test dim_1_vals == collect(yax_res.axes[1]) || 
+    @test dim_1_vals == collect(yax_res.axes[1]) ||
         "Incorrect axis indices. Expected $(dim_1_vals) but received $(collect(yax_res.axes[1]))"
-      
+
         yax_res = ZeroDataCube(; T=Float64, NamedTuple{(dim_1_name, dim_2_name)}((dim_1_vals, dim_2_vals))...)
 
-    @test typeof(yax_res) <: YAXArray{Float64, 2} || 
-        "Incorrect return type. Expected a subtype of YAXArray{Int, 2} \
+    @test typeof(yax_res) <: YAXArray{Float64, 2} ||
+        "Incorrect return type. Expected a subtype of YAXArray{Float64, 2} \
          but received $(typeof(yax_res))"
 
-    @test all(0 .== yax_res) || 
+    @test all(0 .== yax_res) ||
         "Incorrect data contained in YAXArray. Expected all 0."
 
     @test size(yax_res) == (10, 5) ||
@@ -107,16 +108,16 @@ end
         "Incorrect dimension name. Expected $(name(dim_2)) \
          but received $(name(yax_res.axes[2]))"
 
-    @test dim_1_vals == collect(yax_res.axes[1]) || 
+    @test dim_1_vals == collect(yax_res.axes[1]) ||
         "Incorrect axis indices. Expected $(dim_1_vals) but received $(collect(yax_res.axes[1]))"
 
-    @test dim_2_vals == collect(yax_res.axes[2]) || 
+    @test dim_2_vals == collect(yax_res.axes[2]) ||
         "Incorrect axis indices. Expected $(dim_2_vals) but received $(collect(yax_res.axes[2]))"
 end
 
 function test_DataCube(data; kwargs...)
     yax_res = ADRIA.DataCube(data; kwargs...)
-    
+
     @test data == yax_res ||
         "Incorrect data stored in yax array."
 
@@ -151,7 +152,7 @@ end
         rand(6); NamedTuple{(dim_3_name,)}((dim_3_vals, ))...
     )
     test_DataCube(
-        rand(6, 5, 10); 
+        rand(6, 5, 10);
         NamedTuple{(dim_3_name, dim_2_name, dim_1_name)}((dim_3_vals, dim_2_vals, dim_1_vals))...
     )
 end

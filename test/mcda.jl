@@ -1,184 +1,134 @@
 using Test
 using ADRIA.Distributions
-using ADRIA: mcda_normalize, create_decision_matrix, create_seed_matrix, create_fog_matrix
+using ADRIA.decision.JMcDM
+using ADRIA.decision: subtypes
 
 
-@testset "Create decision matrix" begin
+@testset "Validate included MCDA methods" begin
+    """
+    Identifies MCDA methods that pass a simple test to inform whether they should be included
+    in ADRIA.
 
-    # Dummy data to create decision matrix from
-    n_sites = 5
-    area = [1000.0, 800.0, 600.0, 200.0, 200.0]
-    centr_out = [1.0, 0.5, 0.5, 0.5, 0.5]
-    centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
-    dam_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    heat_stress_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
-    site_depth = [5.0, 5.2, 7.1, 6.3, 8.6]
+    - A [10 ⋅ 5] decision matrix is set up (10 alternates, 5 criteria).
+    - Only criteria 2 and 3 are considered, where Criteria 3 is given maximum weight.
+      The others are given weights of zero.
+    - The desired ranks 10 to 1 based on the values for Criteria 3
+    - The desired ranks should be flipped when the directionality of optimization is reversed
+      (e.g., minimize to maximize)
+    - Each method is tested to ensure the known ranks are produced in both directions.
 
-    # Dummy priority predecessors
-    priority_sites = zeros(n_sites)
-    predec = zeros(n_sites, 3)
-    predec[:, 1:2] .= rand(n_sites, 2)
-    predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
-    predprior = [x for x in predprior if !isnan(x)]
-    predec[predprior, 3] .= 1.0
-    risk_tol = 0.8
+    MCDA methods that are included for use with ADRIA are those that pass the above.
 
-    prop_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
-    max_cover = [0.8, 0.75, 0.95, 0.7, 0.0]
-    leftover_space = (max_cover .- prop_cover) .* area
+    This validation accepts methods that were shown to produce nonsensical results
+    when considering only a single criterion, but in practice such cases should not
+    eventuate (see notes below).
 
-    A, filtered = create_decision_matrix(
-        collect(1:n_sites),
-        centr_in,
-        centr_out,
-        leftover_space,
-        dam_prob,
-        heat_stress_prob,
-        site_depth,
-        predec,
-        zones_criteria,
-        risk_tol,
-    )
+    Notes:
+        The MooraMethod only works if there are combinations of min and max directions.
 
-    @test !any(isnan.(A)) || "NaNs found in decision matrix"
-    @test !any(isinf.(A)) || "Infs found in decision matrix"
+    Listed below are methods which failed a separate simple test where only heat stress (DHW)
+    is considered and the method selected the hottest locations (marked with "**")
+    or produced a nonsensical selection (e.g., ranks following location order such as
+    1, 2, 3, 4, 5; marked with "*^").
 
-    @test A[end, 6] == 0.0 || "Site with 0 max cover should be ignored but was not"
-end
+        - ** JMcDM.Topsis.TopsisMethod,
+        - ** JMcDM.ARAS.ArasMethod,
+        - *^ JMcDM.COCOSO.CocosoMethod,
+        - ** JMcDM.CODAS.CodasMethod,
+        - ** JMcDM.EDAS.EdasMethod,
+        - ** JMcDM.GREY.GreyMethod,
+        - ** JMcDM.MABAC.MabacMethod,
+        - ** JMcDM.MARCOS.MarcosMethod,
+        - *^ JMcDM.MOORA.MooraMethod,
+        - ** JMcDM.SAW.SawMethod,
+        - ** JMcDM.WASPAS.WaspasMethod,
+        - ** JMcDM.WPM.WPMMethod
 
+    Current identified methods (as of 2024-03-17) are:
 
-@testset "MCDA seed matrix creation" begin
-    wtconseedout, wtconseedin, wt_waves, wt_heat, wt_predec_seed, wt_zones_seed, wt_lo_cover, wt_depth_seed = [
-        1.0, 1.0, 0.7, 1.0, 0.6, 0.6, 0.6, 0.7
-    ]
+    - CoCoSo
+    - Mairca
+    - Moora
+    - PIV
+    - VIKOR
 
-    # Combine decision criteria into decision matrix A
-    n_sites = 5
-    area = [1000.0, 800.0, 600.0, 200.0, 200.0]
-    centr_out = [1.0, 0.5, 0.5, 0.5, 0.5]
-    centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
-    dam_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    heat_stress_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
-    site_depth = [5.0, 5.2, 7.1, 6.3, 8.6]
+    The PSI method passes the simple test based on heat stress mentioned above, but does not
+    pass the assessment applied in this test.
 
-    # Dummy priority predecessors
-    priority_sites = zeros(n_sites)
-    predec = zeros(n_sites, 3)
-    predec[:, 1:2] .= rand(n_sites, 2)
-    predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
-    predprior = [x for x in predprior if !isnan(x)]
-    predec[predprior, 3] .= 1.0
-    risk_tol = 0.8
+    Moora and CoCoSo also fail the heat stress test but is included based on the assessment
+    here as the conditions in which only a single criteria is examined should not occur in
+    practice.
+    """
 
-    sum_cover = [0.3, 0.5, 0.9, 0.6, 0.0]
-    max_cover = [0.8, 0.75, 0.95, 0.7, 0.0]
+    mcda_methods = subtypes(MCDMMethod)
 
-    leftover_space = (max_cover .- prop_cover) .* area
-    A, filtered = create_decision_matrix(
-        collect(1:n_sites),
-        centr_in,
-        centr_out,
-        leftover_space,
-        dam_prob,
-        heat_stress_prob,
-        site_depth,
-        predec,
-        zones_criteria,
-        0.8,
-    )
+    # Set up 10 alternates, 5 criteria
+    dm = rand(10, 5)
 
-    min_area = 20.0
-    SE, wse = create_seed_matrix(
-        A,
-        min_area,
-        wtconseedin,
-        wtconseedout,
-        wt_waves,
-        wt_heat,
-        wt_predec_seed,
-        wt_zones_seed,
-        wt_lo_cover,
-        wt_depth_seed,
-    )
+    # Only two valid criteria (criteria 2 and 3)
+    max_dir_result = collect(1:10)
+    min_dir_result = reverse(max_dir_result)
+    dm[:, 2] .= max_dir_result
+    dm[:, 3] .= min_dir_result
 
-    @test (sum(filtered)) == size(A, 1) || "Site where heat stress > risk_tol not filtered out"
-    @test size(SE, 1) == n_sites - 2 ||
-        "Sites where space available < min_area not filtered out"
-end
+    # Set weights (only really consider 3rd criteria, with some influence from 2nd)
+    # Known ranks ordered by 10 to 1 (when minimizing)
+    # i.e., Location 10 should be rank 1, and Location 1 should be rank 10
+    weights = [0.0, 0.25, 1.0, 0.0, 0.0]
+    weights = normalize(weights)
 
-@testset "MCDA fog matrix creation" begin
-    wt_conn_fog, wt_waves, wt_heat, wt_predec_fog, wt_zones_fog, wt_hi_cover = [
-        1.0, 0.7, 1.0, 0.6, 0.6, 0.6
-    ]
+    # Define direction of interest for each criteria
+    min_directions = [minimum, maximum, minimum, minimum, maximum]
+    flip_directions = [maximum, minimum, maximum, maximum, minimum]
 
-    # Combine decision criteria into decision matrix A
-    n_sites = 5
-    area = [1000.0, 800.0, 600.0, 200.0, 200.0]
-    centr_out = [1.0, 0.5, 0.5, 0.5, 0.5]
-    centr_in = [0.1, 0.0, 0.3, 0.1, 0.1]
-    dam_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    heat_stress_prob = [0.05, 0.1, 0.1, 0.5, 0.0]
-    zones_criteria = [1.0, 1.33, 0.333, 1.0, 0.333]
-    site_depth = [5.0, 5.2, 7.1, 6.3, 8.6]
+    # Results of:
+    # - Scores are not all NaN
+    # - Expected ranks when minimizing Criteria 3
+    # - Expected ranks when maximizing Criteria 3
+    test_results = zeros(length(mcda_methods), 3)
 
-    # Dummy priority predecssors
-    priority_sites = zeros(n_sites)
-    predec = zeros(n_sites, 3)
-    predec[:, 1:2] .= rand(n_sites, 2)
-    predprior = predec[in.(predec[:, 1], [priority_sites']), 2]
-    predprior = [x for x in predprior if !isnan(x)]
-    predec[predprior, 3] .= 1.0
+    for (i, method) in enumerate(mcda_methods)
+        local res
+        try
+            res = mcdm(MCDMSetting(dm, weights, min_directions), method())
+        catch err
+            # @info "$(method) failed or not supported by JMcDM yet."
+            continue
+        end
 
-    prop_cover = [0.75, 0.5, 0.3, 0.7, 0.0]
-    max_cover = [0.8, 0.75, 0.6, 0.77, 0.0]
-    area_max_cover = max_cover .* area
-    leftover_space = (max_cover .- prop_cover) .* area
+        try
+            res.scores
+        catch err
+            # @info "$(method) does not support a scoring approach"
+            continue
+        end
 
-    A, filtered = create_decision_matrix(
-        collect(1:n_sites),
-        centr_in,
-        centr_out,
-        leftover_space,
-        dam_prob,
-        heat_stress_prob,
-        site_depth,
-        predec,
-        zones_criteria,
-        0.8,
-    )
+        # Test that results are not all NaN
+        test_results[i, 1] = !all(isnan.(res.scores))
+        test_results[i, 2] = all(
+            sortperm(res.scores; rev=true) .== sortperm(min_dir_result; rev=true)
+        )
 
-    SH, wsh = create_fog_matrix(
-        A,
-        k_area[filtered],
-        area_max_cover[filtered],
-        wt_conn_fog,
-        wt_waves,
-        wt_heat,
-        wt_predec_fog,
-        wt_zones_fog,
-        wt_hi_cover,
-    )
+        # Repeat, but switch desired direction
+        try
+            res = mcdm(MCDMSetting(dm, weights, flip_directions), method())
+        catch
+            # @info "$(method) requires at least one criteria to be minimized"
+            continue
+        end
+        test_results[i, 3] = all(sortperm(res.scores) .== sortperm(max_dir_result))
+    end
 
-    @test maximum(SH[:, 8]) ==
-          (maximum(area_max_cover[convert(Vector{Int64}, A[:, 1])] .- A[:, 8])) ||
-        "Largest site with most coral area should have highest score"
-end
+    valid_method_idx = map(x -> all(x .> 0.0), eachrow(test_results))
+    valid_methods = mcda_methods[valid_method_idx]
 
-@testset "MCDA normalisation" begin
-    # randomised weights
-    w = vec(rand(Uniform(0, 1), 7))
+    msg = """
+    The number/order of valid MCDA methods has changed!
+    Either JMcDM has updated to change the order, methods have been updated, or
+    new methods have been added.
 
-    # randomised decision matrix
-    A = zeros(5, 7)
-    A[:, 1] = [1.0, 2.0, 3.0, 4.0, 5.0]
-    A[:, 2:6] = rand(Uniform(0, 1), (5, 5))
-    A[:, 7] = rand(Uniform(100, 1000), (5, 1))
+    If methods have been updated/added, these should be re-evaluated.
+    """
 
-    norm_A = mcda_normalize(A[:, 2:end])
-    norm_w = mcda_normalize(w)
-
-    @test all((sqrt.(sum(norm_A .^ 2, dims=1)) .- 1.0) .< 0.0001) || "Decision matrix normalization not giving column sums = 1."
-    @test (sum(norm_w) - 1.0) <= 0.001 || "MCDA weights not summing to one."
+    @test ADRIA.mcda_methods() == valid_methods || msg
 end

@@ -384,6 +384,7 @@ include("metrics.jl")
 include("sampling.jl")
 include("seeding.jl")
 include("spec.jl")
+include("mcda.jl")
 include("utils/text_display.jl")
 
 # TODO Fix spatial_clustering and site_selection tests
