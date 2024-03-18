@@ -91,7 +91,7 @@ end
         yax_res = ZeroDataCube(; T=Float64, NamedTuple{(dim_1_name, dim_2_name)}((dim_1_vals, dim_2_vals))...)
 
     @test typeof(yax_res) <: YAXArray{Float64, 2} ||
-        "Incorrect return type. Expected a subtype of YAXArray{Int, 2} \
+        "Incorrect return type. Expected a subtype of YAXArray{Float64, 2} \
          but received $(typeof(yax_res))"
 
     @test all(0 .== yax_res) ||
