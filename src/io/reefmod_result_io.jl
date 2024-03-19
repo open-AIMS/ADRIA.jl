@@ -15,6 +15,7 @@ struct ReefModResultSet{T1, T2, D, G, D1} <: ResultSet
     env_layer_md::EnvLayer
     connectivity_data::D
     site_data::G
+    scenario_groups
 
     sim_constants::D1
 
@@ -78,6 +79,8 @@ function load_results(::Type{ReefModResultSet}, result_loc::String, RCP::String)
         timeframe = raw_set.timestep[1]:raw_set.timestep[end]
     end
 
+    scenario_groups = Dict(:Counterfactual => BitVector(true for _ in raw_set.scenario))
+
     env_layer_md::EnvLayer = EnvLayer(
         result_loc,
         geodata_path,
@@ -120,6 +123,7 @@ function load_results(::Type{ReefModResultSet}, result_loc::String, RCP::String)
         env_layer_md,
         connectivity,
         geodata,
+        scenario_groups,
         SimConstants(),
         outcomes
 
