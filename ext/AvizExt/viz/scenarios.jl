@@ -1,6 +1,6 @@
 using JuliennedArrays: Slices
 using ADRIA.analysis: series_confint
-using ADRIA: axes_names, CScapeResultSet
+using ADRIA: axes_names, CScapeResultSet, ReefModResultSet
 
 """
     ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::YAXArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
@@ -76,7 +76,7 @@ function ADRIA.viz.scenarios!(
     )
 end
 function ADRIA.viz.scenarios(
-    rs::CScapeResultSet,
+    rs::Union{CScapeResultSet, ReefModResultSet},
     outcomes::YAXArray;
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(:size=>(800, 300)),
