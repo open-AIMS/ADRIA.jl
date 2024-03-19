@@ -67,6 +67,7 @@ include("interventions/fogging.jl")
 include("io/ResultSet.jl")
 include("io/result_io.jl")
 include("io/cscape_result_io.jl")
+include("io/reefmod_result_io.jl")
 include("io/result_post_processing.jl")
 include("io/sampling.jl")
 include("metrics/metrics.jl")
@@ -88,12 +89,15 @@ export
     create_coral_struct, Intervention, Corals, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights,
     site_area, site_k_area,
-    Domain, ADRIADomain,
+    Domain, ADRIADomain, ADRIAResultSet,
     metrics, select, timesteps, env_stats, viz
 
 # Interfaces for external models
 export RMEDomain
 export ReefModDomain
+
+export CScapeResultSet
+export ReefModResultSet
 
 # metric helper methods
 # export dims, ndims
