@@ -18,6 +18,9 @@ end
     x = ADRIA.component_params(dom.model, ADRIA.Coral)
     @test size(x, 1) > 0
 
-    x = ADRIA.component_params(dom.model, ADRIA.CriteriaWeights)
+    x = ADRIA.component_params(dom.model, ADRIA.SeedCriteriaWeights)
+    @test size(x, 1) > 0
+
+    x = ADRIA.component_params(dom.model, ADRIA.FogCriteriaWeights)
     @test size(x, 1) > 0
 end

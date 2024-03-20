@@ -1,10 +1,11 @@
 using JuliennedArrays: Slices
 using ADRIA.analysis: series_confint
+using ADRIA: axes_names
 
 """
-    ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::NamedDimsArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.scenarios(scenarios::DataFrame, outcomes::NamedDimsArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())::Figure
-    ADRIA.viz.scenarios!(g::Union{GridLayout,GridPosition}, scenarios::DataFrame, outcomes::NamedDimsArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::YAXArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
+    ADRIA.viz.scenarios(scenarios::DataFrame, outcomes::YAXArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())::Figure
+    ADRIA.viz.scenarios!(g::Union{GridLayout,GridPosition}, scenarios::DataFrame, outcomes::YAXArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
 Plot scenario outcomes over time.
 
@@ -40,7 +41,7 @@ Figure or GridPosition
 """
 function ADRIA.viz.scenarios(
     rs::ResultSet,
-    outcomes::NamedDimsArray;
+    outcomes::YAXArray;
     opts::Dict=Dict(:by_RCP => false),
     fig_opts::Dict=Dict(:size=>(800, 300)),
     axis_opts::Dict=Dict(),
@@ -58,7 +59,7 @@ end
 function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
-    outcomes::NamedDimsArray;
+    outcomes::YAXArray;
     opts::Dict=Dict(:by_RCP => false),
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
@@ -76,7 +77,7 @@ function ADRIA.viz.scenarios!(
 end
 function ADRIA.viz.scenarios(
     scenarios::DataFrame,
-    outcomes::NamedDimsArray;
+    outcomes::YAXArray;
     opts::Dict=Dict(:by_RCP => false),
     fig_opts::Dict=Dict(:size=>(800, 300)),
     axis_opts::Dict=Dict(),
@@ -93,7 +94,7 @@ end
 function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
     scenarios::DataFrame,
-    outcomes::NamedDimsArray;
+    outcomes::YAXArray;
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
     series_opts::Dict=Dict(),
@@ -109,7 +110,6 @@ function ADRIA.viz.scenarios!(
     else
         ADRIA.analysis.scenario_types(_scenarios)
     end
-
     return ADRIA.viz.scenarios!(
         g,
         ax,
@@ -123,7 +123,7 @@ end
 function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
     ax::Axis,
-    outcomes::NamedDimsArray,
+    outcomes::YAXArray,
     scen_groups::Dict{Symbol,BitVector};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -149,7 +149,7 @@ function ADRIA.viz.scenarios!(
 end
 
 function _confints(
-    outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
+    outcomes::YAXArray, scen_groups::Dict{Symbol,BitVector}
 )::Array{Float64}
     groups::Vector{Symbol} = _sort_keys(scen_groups, outcomes)
     n_timesteps::Int64 = size(outcomes, 1)
@@ -157,7 +157,7 @@ function _confints(
 
     # Compute confints
     confints::Array{Float64} = zeros(n_timesteps, n_groups, 3)
-    agg_dim = symdiff(dimnames(outcomes), [:timesteps])[1]
+    agg_dim = symdiff(axes_names(outcomes), [:timesteps])[1]
     for (idx, group) in enumerate(groups)
         confints[:, idx, :] = series_confint(
             outcomes[:, scen_groups[group]]; agg_dim=agg_dim
@@ -187,7 +187,7 @@ function scenarios_confint!(
     return nothing
 end
 function scenarios_confint!(
-    ax::Axis, outcomes::NamedDimsArray, scen_groups::Dict{Symbol,BitVector}
+    ax::Axis, outcomes::YAXArray, scen_groups::Dict{Symbol,BitVector}
 )::Nothing
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
     ordered_groups = _sort_keys(scen_groups, outcomes)
@@ -203,7 +203,7 @@ end
 
 function scenarios_series!(
     ax::Axis,
-    outcomes::NamedDimsArray,
+    outcomes::YAXArray,
     scen_groups::Dict{Symbol,BitVector};
     series_opts::Dict=Dict(),
     x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(outcomes, 1)),
@@ -223,7 +223,7 @@ end
 
 function scenarios_hist(
     g::Union{GridLayout,GridPosition},
-    outcomes::NamedDimsArray,
+    outcomes::YAXArray,
     scen_groups::Dict{<:Any,BitVector},
 )::Nothing
     scen_dist = dropdims(mean(outcomes; dims=:timesteps); dims=:timesteps)
@@ -233,7 +233,7 @@ function scenarios_hist(
     for group in _sort_keys(scen_groups, outcomes)
         color = (_colors[group], 0.7)
         dist = scen_dist[scen_groups[group]]
-        hist!(ax_hist, dist; direction=:x, color=color, bins=30, normalization=:pdf)
+        hist!(ax_hist, dist.data; direction=:x, color=color, bins=30, normalization=:pdf)
     end
 
     hidedecorations!(ax_hist)
@@ -262,7 +262,7 @@ function _render_legend(
 end
 
 """
-    _sort_keys(scenario_types::Dict{Symbol, BitVector}, outcomes::NamedDimsArray)::Vector{Symbol}
+    _sort_keys(scenario_types::Dict{Symbol, BitVector}, outcomes::YAXArray)::Vector{Symbol}
 
 Sort types by variance in reverse order.
 

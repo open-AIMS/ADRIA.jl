@@ -3,8 +3,6 @@ module sensitivity
 using Logging
 
 using
-    AxisKeys,
-    NamedDims,
     StaticArrays,
     YAXArrays
 using DataFrames
@@ -18,7 +16,7 @@ using HypothesisTests: ApproximateKSTest
 
 using FLoops
 
-using ADRIA: ResultSet, model_spec
+using ADRIA: DataCube, ResultSet, model_spec, ZeroDataCube
 
 using ADRIA.analysis: col_normalize, normalize!
 
@@ -34,7 +32,7 @@ function ks_statistic(ks::ApproximateKSTest)::Float64
 end
 
 """
-    _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
+    _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})::DataFrame
 
 Get model spec for specified factors.
 
@@ -42,19 +40,18 @@ Get model spec for specified factors.
 - `model_spec` : Model specification, as extracted by `ADRIA.model_spec(domain)` or from a `ResultSet`
 - `factors` : Factors considered for sensitivity analysis
 """
-function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})
+function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})::DataFrame
     factors_to_assess = model_spec.fieldname .∈ [factors]
     foi_attributes = Symbol[:fieldname, :ptype, :lower_bound, :upper_bound]
     return model_spec[factors_to_assess, foi_attributes]
 end
 
 """
-    _category_bins(S::Int64, foi_spec::DataFrame)
+    _category_bins(foi_spec::DataFrame)
 
 Get number of bins for categorical variables.
 
 # Arguments
-- `S` : Number of bins
 - `foi_spec` : Model specification for factors of interest
 """
 function _category_bins(foi_spec::DataFrame)
@@ -83,11 +80,11 @@ function _get_cat_quantile(
 end
 
 """
-    pawn(rs::ResultSet, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
-    pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::NamedDimsArray
-    pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
-    pawn(X::NamedDimsArray, y::Union{NamedDimsArray,AbstractVector{<:Real}}; S::Int64=10)::NamedDimsArray
-    pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::NamedDimsArray
+    pawn(rs::ResultSet, y::Union{YAXArray,AbstractVector{<:Real}}; S::Int64=10)::YAXArray
+    pawn(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real}, factor_names::Vector{String}; S::Int64=10)::YAXArray
+    pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::YAXArray
+    pawn(X::YAXArray, y::Union{YAXArray,AbstractVector{<:Real}}; S::Int64=10)::YAXArray
+    pawn(X::Union{DataFrame,AbstractMatrix{<:Real}}, y::AbstractMatrix{<:Real}; S::Int64=10)::YAXArray
 
 Calculates the PAWN sensitivity index.
 
@@ -109,7 +106,7 @@ summary statistics (min, lower bound, mean, median, upper bound, max, std, and c
 - `S` : Number of slides (default: 10)
 
 # Returns
-NamedDimsArray, of min, mean, lower bound, median, upper bound, max, std, and cv summary statistics.
+YAXArray, of min, mean, lower bound, median, upper bound, max, std, and cv summary statistics.
 
 # Examples
 ```julia
@@ -160,7 +157,7 @@ function pawn(
     y::AbstractVector{<:Real},
     factor_names::Vector{String};
     S::Int64=10,
-)::NamedDimsArray
+)::YAXArray
     N, D = size(X)
     step = 1 / S
     seq = 0.0:step:1.0
@@ -177,13 +174,13 @@ function pawn(
             X_di = @view(X[:, d_i])
             X_q .= quantile(X_di, seq)
 
-            Y_sel = @view(y[X_q[1] .<= X_di .<= X_q[2]])
+            Y_sel = @view(y[X_q[1].<=X_di.<=X_q[2]])
             if length(Y_sel) > 0
                 pawn_t[1, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, y))
             end
 
             for s in 2:S
-                Y_sel = @view(y[X_q[s] .< X_di .<= X_q[s + 1]])
+                Y_sel = @view(y[X_q[s].<X_di.<=X_q[s+1]])
                 if length(Y_sel) == 0
                     continue  # no available samples
                 end
@@ -212,23 +209,33 @@ function pawn(
     replace!(results, NaN => 0.0, Inf => 0.0)
 
     col_names = [:min, :lb, :mean, :median, :ub, :max, :std, :cv]
-    return NamedDimsArray(results; factors=Symbol.(factor_names), Si=col_names)
+    row_names = Symbol.(factor_names)
+    return DataCube(results; factors=row_names, Si=col_names)
 end
-function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::NamedDimsArray
+function pawn(X::DataFrame, y::AbstractVector{<:Real}; S::Int64=10)::YAXArray
     return pawn(Matrix(X), y, names(X); S=S)
 end
 function pawn(
-    X::NamedDimsArray,
-    y::Union{NamedDimsArray,AbstractVector{<:Real}};
+    X::YAXArray,
+    y::AbstractVector{<:Real};
     S::Int64=10
-)::NamedDimsArray
-    return pawn(X, y, axiskeys(X, 2); S=S)
+)::YAXArray
+    return pawn(X, y, collect(X.axes[2]); S=S)
 end
 function pawn(
-    X::Union{DataFrame,NamedDimsArray},
+    X::YAXArray,
+    y::YAXArray;
+    S::Int64=10
+)::YAXArray
+    # YAXrrays will raise an error if any of the masked boolean indexing in pawn is empty so
+    # vec(y) is required
+    return pawn(X, vec(y), collect(X.axes[2]); S=S)
+end
+function pawn(
+    X::Union{DataFrame,YAXArray},
     y::AbstractMatrix{<:Real};
     S::Int64=10
-)::NamedDimsArray
+)::YAXArray
     N, D = size(y)
     if N > 1 && D > 1
         msg::String = string(
@@ -244,15 +251,15 @@ function pawn(
 end
 function pawn(
     rs::ResultSet,
-    y::Union{NamedDimsArray,AbstractVector{<:Real}};
+    y::Union{YAXArray,AbstractVector{<:Real}};
     S::Int64=10
-)::NamedDimsArray
+)::YAXArray
     return pawn(rs.inputs, y; S=S)
 end
 
 """
-    convergence(X::DataFrame, y::NamedDimsArray, target_factors::Vector{Symbol}; n_steps::Int64=10)::NamedDimsArray
-    convergence(rs::ResultSet, X::DataFrame, y::NamedDimsArray, components::Vector{String}; n_steps::Int64=10)::NamedDimsArray
+    convergence(X::DataFrame, y::YAXArray, target_factors::Vector{Symbol}; n_steps::Int64=10)::YAXArray
+    convergence(rs::ResultSet, X::DataFrame, y::YAXArray, components::Vector{String}; n_steps::Int64=10)::YAXArray
 
 Calculates the PAWN sensitivity index for an increasing number of scenarios where the
 maximum is the total number of scenarios in scens. Number of scenario subsets determined by
@@ -268,22 +275,22 @@ model components.
 - `n_steps` : Number of steps to cut the total number of scenarios into.
 
 # Returns
-NamedDimsArray, of min, lower bound, mean, median, upper bound, max, std, and cv summary
+YAXArray, of min, lower bound, mean, median, upper bound, max, std, and cv summary
 statistics for an increasing number of scenarios.
 """
 function convergence(
     X::DataFrame,
-    y::NamedDimsArray,
+    y::YAXArray,
     target_factors::Vector{Symbol};
     Si::Function=pawn,
     n_steps::Int64=10,
-)::NamedDimsArray
+)::YAXArray
     N = length(y.scenarios)
     step_size = floor(Int64, N / n_steps)
     N_it = step_size == 0 ? collect(1:N) : collect(step_size:step_size:N)
 
-    pawn_store = NamedDimsArray(
-        zeros(length(target_factors), 8, length(N_it));
+    pawn_store = ZeroDataCube(;
+        T=Float64,
         factors=target_factors,
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
         n_scenarios=N_it,
@@ -291,9 +298,9 @@ function convergence(
     scens_idx = randperm(N)
 
     for nn in N_it
-        pawn_store(; n_scenarios=nn) .= Si(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]]))(;
-            factors=target_factors
-        )
+        pawn_store[n_scenarios=At(nn)] .= Si(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]]))[
+            factors=At(target_factors)
+        ]
     end
 
     return pawn_store
@@ -301,31 +308,31 @@ end
 function convergence(
     rs::ResultSet,
     X::DataFrame,
-    y::NamedDimsArray,
+    y::YAXArray,
     components::Vector{Symbol};
     Si::Function=pawn,
     n_steps::Int64=10,
-)::NamedDimsArray
+)::YAXArray
     ms = model_spec(rs)
 
     target_factors = [
-        ms[ms[:, "component"] .== cc, "fieldname"] for
+        ms[ms[:, "component"].==cc, "fieldname"] for
         cc in string.(components)
     ]
 
     Si_n = convergence(X, y, Symbol.(vcat(target_factors...)); Si=Si, n_steps=n_steps)
 
     # Note: n_steps only applies if it is > number of scenarios.
-    Si_grouped = NamedDimsArray(
-        zeros(length(components), 8, size(Si_n, 3));
+    Si_grouped = ZeroDataCube(;
+        T=Float64,
         factors=components,
-        Si=Si_n.Si,
-        n_scenarios=Si_n.n_scenarios,
+        Si=collect(Si_n.Si),
+        n_scenarios=collect(Si_n.n_scenarios),
     )
 
     for (cc, factors) in zip(components, target_factors)
-        Si_grouped(; factors=cc) .= dropdims(
-            mean(Si_n(; factors=Symbol.(factors)); dims=:factors);
+        Si_grouped[factors=At(cc)] .= dropdims(
+            mean(Si_n[factors=At(Symbol.(factors))]; dims=:factors);
             dims=:factors
         )
     end
@@ -334,7 +341,7 @@ function convergence(
 end
 
 """
-    tsa(X::DataFrame, y::AbstractMatrix)::NamedDimsArray
+    tsa(X::DataFrame, y::AbstractMatrix)::YAXArray
 
 Perform Temporal (or time-varying) Sensitivity Analysis using the PAWN sensitivity index.
 
@@ -357,15 +364,15 @@ ADRIA.sensitivity.tsa(rs.inputs, y_tac)
 - `y` : scenario outcomes over time
 
 # Returns
-NamedDimsArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
+YAXArray, of shape \$D\$ ⋅ 6 ⋅ \$T\$, where
 - \$D\$ is the number of dimensions/factors
 - 6 corresponds to the min, mean, median, max, std, and cv of the PAWN indices
 - \$T\$ is the number of time steps
 """
-function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
+function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::YAXArray
     local ts
     try
-        ts = axiskeys(y, 1)
+        ts = collect(y.axes[1])
     catch err
         if err isa MethodError
             ts = 1:size(y, 1)
@@ -374,8 +381,8 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
         end
     end
 
-    t_pawn_idx = NamedDimsArray(
-        zeros(ncol(X), 8, size(y, 1));
+    t_pawn_idx = ZeroDataCube(;
+        T=Float64,
         factors=Symbol.(names(X)),
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
         timesteps=ts,
@@ -383,13 +390,13 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::NamedDimsArray
 
     for t in axes(y, 1)
         t_pawn_idx[:, :, t] .= col_normalize(
-            pawn(X, vec(mean(y[1:t, :]; dims=1)))
+            pawn(X, vec(mean(y[1:t, :]; dims=1))).data
         )
     end
 
     return t_pawn_idx
 end
-function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::NamedDimsArray
+function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::YAXArray
     return tsa(rs.inputs, y)
 end
 
@@ -463,18 +470,18 @@ function rsa(
     X_i = zeros(N)
     sel = trues(N)
 
-    foi_spec = _get_factor_spec(model_spec, factors)
-    unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
+    foi_spec::DataFrame = _get_factor_spec(model_spec, factors)
+    unordered_cat = foi_spec.fieldname[foi_spec.ptype.=="unordered categorical"]
     seq_store::Dict{Symbol,Vector{Float64}} = Dict() # storage for bin sequences
 
     # Get unique bin sequences for unordered categorical variables and store
     for factor in unordered_cat
-        S_temp = _category_bins(foi_spec[foi_spec.fieldname .== factor, :])
-        seq_store[factor] = collect(0.0:(1 / S_temp):1.0)
+        S_temp = _category_bins(foi_spec[foi_spec.fieldname.==factor, :])
+        seq_store[factor] = collect(0.0:(1/S_temp):1.0)
     end
 
     # Other variables have default sequence using input S
-    seq_store[:default] = collect(0.0:(1 / S):1.0)
+    seq_store[:default] = collect(0.0:(1/S):1.0)
     default_ax = (Dim{:default}(seq_store[:default][2:end]),)
 
     # YAXArray storage for unordered categorical variables
@@ -488,13 +495,13 @@ function rsa(
     yax_store_default = Tuple(
         YAXArray(
             default_ax, zeros(Union{Missing,Float64}, (length(seq_store[:default][2:end])))
-        ) for _ in 1:(length(factors) - length(unordered_cat))
+        ) for _ in 1:(length(factors)-length(unordered_cat))
     )
 
     # Create storage NamedTuples for unordered categorical variables and other variables, then merge
     r_s_default = NamedTuple(
         zip(
-            Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]),
+            Tuple(foi_spec.fieldname[foi_spec.ptype.!="unordered categorical"]),
             yax_store_default,
         ),
     )
@@ -503,7 +510,7 @@ function rsa(
 
     for fact_t in factors
         f_ind = foi_spec.fieldname .== fact_t
-        ptype::String = foi_spec.ptype[foi_spec.fieldname .== fact_t][1]
+        ptype::String = foi_spec.ptype[foi_spec.fieldname.==fact_t][1]
 
         X_i .= X[:, fact_t]
 
@@ -523,8 +530,8 @@ function rsa(
             r_s[fact_t][1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
 
-        for s in 2:(length(X_q) - 1)
-            sel .= X_q[s] .< X_i .<= X_q[s + 1]
+        for s in 2:(length(X_q)-1)
+            sel .= X_q[s] .< X_i .<= X_q[s+1]
             if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
                 # not enough samples, or inactive area of factor space
                 r_s[fact_t][s] = missing
@@ -551,13 +558,13 @@ function rsa(
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
         y,
-        rs.model_spec[rs.model_spec.fieldname .∈ [factors], :];
+        rs.model_spec[rs.model_spec.fieldname.∈[factors], :];
         S=S,
     )
 end
 
 """
-    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::NamedDimsArray
+    outcome_map(X::DataFrame, y::AbstractVecOrMat, rule, target_factors::Vector; S::Int=20, n_boot::Int=100, conf::Float64=0.95)::YAXArray
 
 Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
 
@@ -580,7 +587,7 @@ Note:
 - `conf` : confidence interval (default: 0.95)
 
 # Returns
-3-dimensional NamedDimsArray, of shape \$S\$ ⋅ \$D\$ ⋅ 3, where:
+3-dimensional YAXArray, of shape \$S\$ ⋅ \$D\$ ⋅ 3, where:
 - \$S\$ is the slices,
 - \$D\$ is the number of dimensions, with
 - boostrapped mean (dim 1) and the lower/upper 95% confidence interval (dims 2 and 3).
@@ -609,22 +616,22 @@ function outcome_map(
     S::Int64=10,
     n_boot::Int64=100,
     conf::Float64=0.95,
-)::NamedDimsArray
+)::YAXArray
     if !all(target_factors .∈ [model_spec.fieldname])
         missing_factor = .!(target_factors .∈ [model_spec.fieldname])
         error("Invalid target factors: $(target_factors[missing_factor])")
     end
 
-    foi_spec = _get_factor_spec(model_spec, target_factors)
+    foi_spec::DataFrame = _get_factor_spec(model_spec, target_factors)
 
     is_cat = occursin.("categorical", foi_spec.ptype)
     if any(is_cat)
-        S = _category_bins(S, foi_spec[is_cat, :])
+        S = _category_bins(foi_spec[is_cat, :])
     end
 
-    steps = collect(0.0:(1 / S):1.0)
+    steps = collect(0.0:(1/S):1.0)
 
-    p_table = NamedDimsArray(
+    p_table = DataCube(
         zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
         bins=string.(steps[2:end]),
         factors=Symbol.(target_factors),
@@ -645,21 +652,21 @@ function outcome_map(
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
         X_f = X[:, fact_t]
-        ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
+        ptype = model_spec.ptype[model_spec.fieldname.==fact_t][1]
         if occursin("categorical", ptype)
             X_q .= _get_cat_quantile(foi_spec, fact_t, steps)
         else
             S = S_default
             steps = steps_default
-            X_q[1:(S + 1)] .= quantile(X_f, steps)
+            X_q[1:(S+1)] .= quantile(X_f, steps)
         end
 
-        for i in 1:length(X_q[1:(end - 1)])
+        for i in 1:length(X_q[1:(end-1)])
             local b::BitVector
             if i == 1
-                b = (X_q[i] .<= X_f .<= X_q[i + 1])
+                b = (X_q[i] .<= X_f .<= X_q[i+1])
             else
-                b = (X_q[i] .< X_f .<= X_q[i + 1])
+                b = (X_q[i] .< X_f .<= X_q[i+1])
             end
 
             b = b .& behave
@@ -686,7 +693,7 @@ function outcome_map(
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95,
-)::NamedDimsArray
+)::YAXArray
     return outcome_map(X, y, rule, names(X); S, n_boot, conf)
 end
 function outcome_map(
@@ -697,7 +704,7 @@ function outcome_map(
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95,
-)::NamedDimsArray
+)::YAXArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, target_factors, rs.model_spec; S, n_boot, conf
     )
@@ -709,7 +716,7 @@ function outcome_map(
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95,
-)::NamedDimsArray
+)::YAXArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf
     )

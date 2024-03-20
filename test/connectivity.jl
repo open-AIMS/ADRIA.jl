@@ -4,7 +4,7 @@ import ADRIA.GeoDataFrames as GDF
 
 @testset "Connectivity loading" begin
     site_data = GDF.read(
-        joinpath(@__DIR__, "..", "examples", "Test_domain", "site_data", "Test_domain.gpkg")
+        joinpath(@__DIR__, "..", "examples", "Test_domain", "spatial", "Test_domain.gpkg")
     )
     sort!(site_data, [:reef_siteid])
 

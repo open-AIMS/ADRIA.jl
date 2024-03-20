@@ -35,8 +35,6 @@ using
     SparseArrays,
     SparseArrayKit,
     LinearAlgebra,
-    NamedDims,
-    AxisKeys,
     OrdinaryDiffEq,
     OrderedCollections,
     Combinatorics,
@@ -58,16 +56,10 @@ include("ecosystem/Ecosystem.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/connectivity.jl")
 
-include("decision/CriteriaWeights.jl")
-
 include("Domain.jl")
-include("io/inputs.jl")
+include("io/inputs.jl")  # Need to define input types before MCDA to make types available
 
-# Note: The decision module is imported after CriteriaWeights as CriteriaWeights is needed in
-# Domain.jl but Domain.jl is needed in dMCDA.jl. A restructure is needed so that Domain.jl is
-# not required in dMCDA.jl.
 include("decision/dMCDA.jl")
-
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
@@ -84,26 +76,29 @@ include("analysis/analysis.jl")
 include("analysis/sensitivity.jl")
 
 include("ExtInterface/ADRIA/Domain.jl")
-include("ExtInterface/ReefMod/Domain.jl")
+include("ExtInterface/ReefMod/RMEDomain.jl")
+include("ExtInterface/ReefMod/ReefModDomain.jl")
 
 include("viz/viz.jl")
 
 export
     growthODE,
     run_scenario, coral_spec,
-    create_coral_struct, Intervention, CriteriaWeights, Corals, SimConstants,
+    create_coral_struct, Intervention, Corals, SimConstants,
+    SeedCriteriaWeights, FogCriteriaWeights,
     site_area, site_k_area,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz
 
 # Interfaces for external models
+export RMEDomain
 export ReefModDomain
 
 # metric helper methods
 # export dims, ndims
 
 # List out compatible domain datapackages
-const COMPAT_DPKG = ["0.5.0-rc", "0.5.0"]
+const COMPAT_DPKG = ["0.6.0-rc", "0.6.0"]
 
 # This adds ~30 seconds to package load times
 if ccall(:jl_generating_output, Cint, ()) == 1
@@ -112,7 +107,6 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(setup_result_store!),Domain,DataFrame})   # time: 4.6720815
     Base.precompile(Tuple{typeof(combine_results),Vector{String}})   # time: 4.0178256
     Base.precompile(Tuple{typeof(growthODE),Matrix{Float64},Matrix{Float64},NamedTuple{(:r, :k, :mb, :comp, :sm_comp, :small_massives, :small, :mid, :large, :acr_5_11, :acr_6_12, :rec, :sigma, :M_sm, :sXr, :X_mb, :cover),Tuple{Matrix{Float64},Vector{Float64},Matrix{Float64},Float64,Matrix{Float64},SVector{3,Int64},SVector{6,Int64},SVector{19,Int64},SVector{4,Int64},SVector{2,Int64},SVector{2,Int64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Matrix{Float64},Vector{Float64}}},Float64})   # time: 1.4354926
-    Base.precompile(Tuple{typeof(combine_results),ResultSet{String,Vector{Any},Vector{Any},Vector{Float64},NamedDimsArray{(:timesteps, :sites, :intervention, :scenarios),Float32,4,ZArray{Float32,4,Zarr.BloscCompressor,DirectoryStore}},NamedDimsArray{(:timesteps, :coral_id, :sites, :scenarios),Float32,4,ZArray{Float32,4,Zarr.BloscCompressor,DirectoryStore}},NamedDimsArray{(:timesteps, :sites, :scenarios),Float32,3,ZArray{Float32,3,Zarr.BloscCompressor,DirectoryStore}},Dict{String,AbstractArray},DataFrame}})   # time: 0.9439985
     Base.precompile(
         Tuple{
             typeof(decision.rank_sites!),
@@ -140,7 +134,7 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(bleaching_mortality!),Matrix{Float64},Matrix{Float64},Vector{Float64},Int64,Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64},Float64})   # time: 0.1940948
     Base.precompile(
         Tuple{
-            typeof(decision.create_decision_matrix),
+            typeof(decision.decision_matrix),
             Vector{Int64},
             Vector{Float64},
             Vector{Float64},
@@ -160,7 +154,7 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(_remove_workers)})   # time: 0.1593244
     Base.precompile(Tuple{typeof(_setup_workers)})   # time: 0.1571776
     Base.precompile(Tuple{typeof(switch_RCPs!),Domain,String})   # time: 0.1284853
-    Base.precompile(Tuple{typeof(component_params),DataFrame,Type{CriteriaWeights}})   # time: 0.1223987
+    # Base.precompile(Tuple{typeof(component_params),DataFrame,Type{CriteriaWeights}})   # time: 0.1223987
     Base.precompile(Tuple{Type{Domain},String,String,String,Vector{Int64},String,String,String,String,String,String,String})   # time: 0.1113899
     Base.precompile(Tuple{typeof(setup_cache),Domain})   # time: 0.1060752
     Base.precompile(EnvLayer, (String, String, String, String, String, String, String, String, Any))

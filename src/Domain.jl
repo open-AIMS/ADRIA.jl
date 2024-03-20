@@ -69,7 +69,9 @@ function model_spec(d::Domain, filepath::String)::Nothing
         write(io, "# Generated with ADRIA.jl $(vers_id) on $(current_time)\n")
     end
 
-    CSV.write(filepath, model_spec(d); header=true, append=true)
+    ms = model_spec(d)
+    ms[!, :] .= replace(Matrix(ms), nothing=>"")
+    CSV.write(filepath, ms; header=true, append=true)
 
     return nothing
 end
@@ -132,31 +134,31 @@ function component_params(m::Model, component)::DataFrame
     return component_params(model_spec(m), component)
 end
 function component_params(spec::DataFrame, component)::DataFrame
-    return spec[spec.component .== replace.(string(component), "ADRIA." => ""), :]
+    return spec[spec.component.==replace.(string(component), "ADRIA." => ""), :]
 end
 function component_params(m::Model, components::Vector{T})::DataFrame where {T}
     return component_params(model_spec(m), components)
 end
 function component_params(spec::DataFrame, components::Vector{T})::DataFrame where {T}
-    return spec[spec.component .∈ [replace.(string.(components), "ADRIA." => "")], :]
+    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
 end
 
 """
-    _convert_abs_to_k(coral_cover::Union{NamedDimsArray,Matrix{Float64}}, site_data::DataFrame)::Union{NamedDimsArray,Matrix{Float64}}
+    _convert_abs_to_k(coral_cover::Union{YAXArray,Matrix{Float64}}, spatial::DataFrame)::Union{YAXArray,Matrix{Float64}}
 
 Convert coral cover data from being relative to absolute location area to relative to
 \$k\$ area.
 """
 function _convert_abs_to_k(
-    coral_cover::Union{NamedDimsArray,Matrix{Float64}}, site_data::DataFrame
-)::Union{NamedDimsArray,Matrix{Float64}}
+    coral_cover::Union{YAXArray,Matrix{Float64}}, spatial::DataFrame
+)::Union{YAXArray,Matrix{Float64}}
     # Initial coral cover is provided as values relative to location area.
     # Convert coral covers to be relative to k area, ignoring locations with 0 carrying
     # capacity (k area = 0.0).
-    absolute_k_area = (site_data.k .* site_data.area)'  # max possible coral area in m^2
+    absolute_k_area = (spatial.k .* spatial.area)'  # max possible coral area in m^2
     valid_locs::BitVector = absolute_k_area' .> 0.0
     coral_cover[:, valid_locs] .= (
-        (coral_cover[:, valid_locs] .* site_data.area[valid_locs]') ./
+        (coral_cover[:, valid_locs] .* spatial.area[valid_locs]') ./
         absolute_k_area[valid_locs]'
     )
 
@@ -241,3 +243,6 @@ function update!(dom::Domain, spec::DataFrame)::Nothing
 
     return nothing
 end
+
+# Dummy interface to allow precompilation
+function switch_RCPs!() end

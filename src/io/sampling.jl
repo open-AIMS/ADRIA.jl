@@ -1,43 +1,14 @@
 using Printf
 using DataFrames, Distributions, LinearAlgebra
+
 using ADRIA
 using ADRIA: model_spec, component_params
 using ADRIA.decision: mcda_normalize
-import Surrogates: sample
+import Distributions: sample
 import Surrogates.QuasiMonteCarlo as QMC
 import Surrogates.QuasiMonteCarlo: SobolSample, OwenScramble
 
-const DISCRETE_FACTOR_TYPES = ["ordered categorical", "unordered categorical", "discrete"]
-
-"""
-    _is_discrete_factor(p_type::String)::Bool
-    _is_discrete_factor(dom, fieldname::Symbol)::Bool
-
-Check ptype for discrete variable types. Returns true if discrete, false otherwise.
-
-# Arguments
-- `ptype` : String representing variable type
-- `dom` : Domain
-- `fieldname` : Name of model factor
-"""
-function _is_discrete_factor(p_type::String)::Bool
-    return p_type ∈ DISCRETE_FACTOR_TYPES
-end
-function _is_discrete_factor(dom::Domain, fieldname::Symbol)::Bool
-    model::Model = dom.model
-    param_idx::Int64 = findfirst(x -> x == fieldname, model[:fieldname])
-    ptype::String = model[:ptype][param_idx]
-    return _is_discrete_factor(ptype)
-end
-
-"""
-    _distribution_type(dom::Domain, fieldname::Symbol)
-"""
-function _distribution_type(dom::Domain, fieldname::Symbol)
-    model::Model = dom.model
-    param_idx::Int64 = findfirst(x -> x == fieldname, model[:fieldname])
-    return model[:dist][param_idx]
-end
+const DISCRETE_FACTOR_TYPES = ["ordered categorical", "unordered categorical", "ordered discrete"]
 
 """
     adjust_samples(d::Domain, df::DataFrame)::DataFrame
@@ -50,22 +21,23 @@ function adjust_samples(d::Domain, df::DataFrame)::DataFrame
     return adjust_samples(model_spec(d), df)
 end
 function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
-    crit = component_params(spec, CriteriaWeights)
     interv = component_params(spec, Intervention)
-    weights_seed_crit = criteria_params(crit, (:seed, :weight))
-    weights_fog_crit = criteria_params(crit, (:fog, :weight))
+    seed_weights = component_params(spec, SeedCriteriaWeights)
+    fog_weights = component_params(spec, FogCriteriaWeights)
 
     # If counterfactual, set all intervention options to 0.0
-    df[df.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .=
-        0.0
+    df[df.guided.==-1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .= 0.0
 
     # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
-    non_depth = filter(x -> x ∉ [:depth_min, :depth_offset], crit.fieldname)
-    df[df.guided .== 0.0, non_depth] .= 0.0
-    df[df.guided .== -1.0, non_depth] .= 0.0
+    non_depth_names = vcat(
+        seed_weights.fieldname,
+        fog_weights.fieldname
+    )
+    df[df.guided.==0.0, non_depth_names] .= 0.0
+    df[df.guided.==-1.0, non_depth_names] .= 0.0
 
     # If unguided, set planning horizon to 0.
-    df[df.guided .== 0.0, :plan_horizon] .= 0.0
+    df[df.guided.==0.0, :plan_horizon] .= 0.0
 
     # If no seeding is to occur, set related variables to 0
     not_seeded = (df.N_seed_TA .== 0) .& (df.N_seed_CA .== 0) .& (df.N_seed_SM .== 0)
@@ -81,13 +53,13 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
 
     # Normalize MCDA weights for fogging scenarios
     guided_fogged = (df.fogging .> 0.0) .& (df.guided .> 0)
-    df[guided_fogged, weights_fog_crit.fieldname] .= mcda_normalize(
-        df[guided_fogged, weights_fog_crit.fieldname]
+    df[guided_fogged, fog_weights.fieldname] .= mcda_normalize(
+        df[guided_fogged, fog_weights.fieldname]
     )
     # Normalize MCDA weights for seeding scenarios
     guided_seeded = .!(not_seeded) .& (df.guided .> 0)
-    df[guided_seeded, weights_seed_crit.fieldname] .= mcda_normalize(
-        df[guided_seeded, weights_seed_crit.fieldname]
+    df[guided_seeded, seed_weights.fieldname] .= mcda_normalize(
+        df[guided_seeded, seed_weights.fieldname]
     )
 
     if nrow(unique(df)) < nrow(df)
@@ -130,7 +102,7 @@ Notes:
 # Arguments
 - `dom` : Domain
 - `n` : Number of samples to create
-- `component` : Component type, e.g. CriteriaWeights
+- `component` : Component type, e.g. Intervention, Coral, etc.
 - `sample_method` : sample_method to use
 
 # Returns
@@ -166,14 +138,20 @@ function sample(
     end
 
     # Select non-constant params
-    vary_vars = spec[spec.is_constant .== false, [:fieldname, :dist, :dist_params]]
+    vary_vars = spec[spec.is_constant.==false, [:fieldname, :dist, :dist_params]]
     n_vary_params = size(vary_vars, 1)
     if n_vary_params == 0
         throw(DomainError(n_vary_params, "Number of parameters to perturb must be > 0"))
     end
 
     # Create distribution types
-    vary_dists = map(x -> x.dist(x.dist_params...), eachrow(vary_vars))
+    vary_dists = try
+        map(x -> x.dist(x.dist_params...), eachrow(vary_vars))
+    catch err
+        err_msg = "Some dist_params could not be converted to integer"
+
+        isa(err, InexactError) ? error(err_msg) : rethrow(err)
+    end
 
     # Create uniformly distributed samples for uncertain parameters
     samples = QMC.sample(n, zeros(n_vary_params), ones(n_vary_params), sample_method)
@@ -183,17 +161,17 @@ function sample(
 
     # Combine varying and constant values (constant params use their indicated default vals)
     full_df = hcat(fill.(spec.val, n)...)
-    full_df[:, spec.is_constant .== false] .= samples
+    full_df[:, spec.is_constant.==false] .= samples
 
     # Ensure unguided scenarios do not have superfluous factor combinations
     return adjust_samples(spec, DataFrame(full_df, spec.fieldname))
 end
 
 """
-    sample_site_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+    sample_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
-Create guided samples of parameters relevant to site selection (EnvironmentalLayers, Intervention, CriteriaWeights).
-All other parameters are set to their default values.
+Create guided samples of factors relevant to location selection.
+Coral factors are set to their default values and are not perturbed or sampled.
 
 # Arguments
 - `d` : Domain.
@@ -203,9 +181,9 @@ All other parameters are set to their default values.
 # Returns
 Scenario specification
 """
-function sample_site_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
     subset_spec = component_params(
-        d.model, [EnvironmentalLayer, Intervention, CriteriaWeights]
+        d.model, [EnvironmentalLayer, Intervention, SeedCriteriaWeights, FogCriteriaWeights, DepthThresholds]
     )
 
     # Only sample guided intervention scenarios
@@ -282,7 +260,7 @@ function sample_guided(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScra
 
     # Remove unguided scenarios as an option
     # Sample without unguided (i.e., values >= 1), then revert back to original model spec
-    if !(spec_df[spec_df.fieldname .== :guided, :is_constant][1])
+    if !(spec_df[spec_df.fieldname.==:guided, :is_constant][1])
         _adjust_guided_lower_bound!(spec_df, 1)
         spec_df[!, :is_constant] .= spec_df[!, :lower_bound] .== spec_df[!, :upper_bound]
     end
@@ -365,22 +343,22 @@ fix_factor!(dom; guided=3, N_seed_TA=1e6)
 """
 function fix_factor!(d::Domain, factor::Symbol)::Nothing
     params = DataFrame(d.model)
-    default_val = params[params.fieldname .== factor, :val][1]
+    default_val = params[params.fieldname.==factor, :val][1]
 
-    dist_params = params[params.fieldname .== factor, :dist_params][1]
+    dist_params = params[params.fieldname.==factor, :dist_params][1]
     new_params = Tuple(fill(default_val, length(dist_params)))
-    params[params.fieldname .== factor, :dist_params] .= [new_params]
+    params[params.fieldname.==factor, :dist_params] .= [new_params]
 
     update!(d, params)
     return nothing
 end
 function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     params = DataFrame(d.model)
-    params[params.fieldname .== factor, :val] .= val
+    params[params.fieldname.==factor, :val] .= val
 
-    dist_params = params[params.fieldname .== factor, :dist_params][1]
+    dist_params = params[params.fieldname.==factor, :dist_params][1]
     new_dist_params = Tuple(fill(val, length(dist_params)))
-    params[params.fieldname .== factor, :dist_params] .= [new_dist_params]
+    params[params.fieldname.==factor, :dist_params] .= [new_dist_params]
 
     update!(d, params)
     return nothing
@@ -402,8 +380,27 @@ function fix_factor!(d::Domain; factors...)::Nothing
 end
 
 """
-    get_bounds(dom::Domain, factor::Symbol)::Tuple
-    get_bounds(param::Param)::Tuple
+    _is_discrete_factor(dom::Domain, factor::Symbol)::Bool
+    _is_discrete_factor(p_type::String)::Bool
+
+Check `ptype` attribute whether the factor is a discrete variable type or not.
+Returns `true` if discrete, `false` otherwise.
+
+# Arguments
+- `dom` : Domain
+- `factor` : Name of model factor
+- `ptype` : String representing variable type
+"""
+function _is_discrete_factor(dom::Domain, factor::Symbol)::Bool
+    return _is_discrete_factor(get_attr(dom, factor, :ptype))
+end
+function _is_discrete_factor(p_type::String)::Bool
+    return p_type ∈ DISCRETE_FACTOR_TYPES
+end
+
+"""
+    get_bounds(dom::Domain, factor::Symbol)::NTuple{2,Float64}
+    get_bounds(param::Param)::NTuple{2,Float64}
 
 Get factor lower and upper bounds. If the factor has a triangular distribution, it returns
 a 2-element tuple (without the peak value). Note that, for discrete factors, the actual
@@ -411,56 +408,33 @@ upper bound corresponds to the upper bound saved at the Domain's model_spec minu
 
 # Arguments
 - `dom` : Domain
-- `factor` : Name of the factor to get the bounds from
+- `factor` : Factor name
 - `param` : Parameter
 
 # Returns
 Minimum and maximum bounds associated with the parameter distribution.
 """
-function get_bounds(dom::Domain, factor::Symbol)::Tuple
-    factor_filter::BitVector = collect(dom.model[:fieldname]) .== factor
-    bounds::Tuple = dom.model[:dist_params][factor_filter][1]
-
-    return (bounds[1], bounds[2])
+function get_bounds(dom::Domain, factor::Symbol)::NTuple{2,Float64}
+    return get_attr(dom, factor, :dist_params)[1:2]
 end
-function get_bounds(param::Param)::Tuple
+function get_bounds(param::Param)::NTuple{2,Float64}
     return param.dist_params[1:2]
 end
 
 """
-    lower_bound(param::Param)::Union{Int64, Float64}
+    get_default_bounds(dom::Domain, factor::Symbol)::NTuple{2,Float64}
 
-Retrieve the lower bound of the parameter distribution
 """
-function lower_bound(param::Param)::Union{Int64, Float64}
-    return param.dist_params[1]
+function get_default_bounds(dom::Domain, factor::Symbol)::NTuple{2,Float64}
+    return get_attr(dom, factor, :default_dist_params)[1:2]
 end
 
 """
-    upper_bound(param::Param)::Union{Int64, Float64}
-
-Retrieve the upper bound of the parameter distribution
+    get_attr(dom::Domain, factor::Symbol, attr::Symbol)
 """
-function upper_bound(param::Param)::Union{Int64, Float64}
-    return param.dist_params[2]
-end
-
-"""
-    get_default_bounds(dom::Domain, factor::Symbol)::Tuple
-
-Get default distribution parameters for a factor.
-Refer to `get_bounds` for more details of how the bounds work.
-
-# Arguments
-- `dom` : Domain
-- `factor` : Name of the factor to get the bounds from
-"""
-function get_default_dist_params(dom::Domain, factor::Symbol)::Tuple
-    model::Model = dom.model
-    factor_filter::BitVector = collect(model[:fieldname]) .== factor
-    default_params::Tuple = model[:default_dist_params][factor_filter][1]
-
-    return default_params
+function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
+    ms = model_spec(dom)
+    return ms[ms.fieldname.==factor, attr][1]
 end
 
 """
@@ -487,37 +461,18 @@ must be a 2-element Tuple, with `(new_lower, new_upper)` values.
 set_factor_bounds(dom, :wave_stress, (0.1, 0.2))
 ```
 """
-function set_factor_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Domain
-    _check_bounds_range(dom, factor, new_bounds)
+function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
+    _validate_new_bounds(dom, factor, new_dist_params[1:2])
+    old_val = get_attr(dom, factor, :val)
+    new_val = mean(new_dist_params[1:2])
 
-    new_bounds, new_val = if _is_discrete_factor(dom, factor)
-        _discrete_bounds(dom, factor, new_bounds)
-    else
-        _continuous_bounds(dom, factor, new_bounds)
-    end
+    ms = model_spec(dom)
+    ms[ms.fieldname.==factor, :dist_params] .= [new_dist_params]
+    (old_val isa Int) && (new_val = round(new_val))
+    ms[ms.fieldname.==factor, :val] .= oftype(old_val, new_val)
+    ms[!, :is_constant] .= (ms[!, :lower_bound] .== ms[!, :upper_bound])
 
-    params = model_spec(dom)
-
-    old_bounds = params[params.fieldname .== factor, :dist_params][1]
-    if length(new_bounds) < length(old_bounds)
-        new_peak = old_bounds[3]
-        if contains(string(params[params.fieldname .== factor, :dist][1]), "Triang")
-            # Calculate new peak if needed
-            if !(new_bounds[1] .< new_peak .< new_bounds[2])
-                new_peak = middle(new_bounds[1], new_bounds[2])
-            end
-        end
-
-        new_bounds = (new_bounds..., new_peak)
-    end
-
-    params[params.fieldname .== factor, :dist_params] .= [new_bounds]
-
-    old_val = params[params.fieldname .== factor, :val][1]
-    params[params.fieldname .== factor, :val] .= oftype(old_val, new_val)
-    params[!, :is_constant] .= params[!, :lower_bound] .== params[!, :upper_bound]
-
-    update!(dom, params)
+    update!(dom, ms)
 
     return dom
 end
@@ -529,41 +484,15 @@ function set_factor_bounds(dom::Domain; factors...)::Domain
     return dom
 end
 
-function _continuous_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Tuple
-    new_lower, new_upper = new_bounds[1:2]
-    new_val::Float64 = new_lower + 0.5 * (new_upper - new_lower)
-    return (new_bounds, new_val)
-end
-
-function _discrete_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Tuple
-    new_lower, new_upper = new_bounds[1:2]
-    (new_lower % 1.0 == 0.0 && new_upper % 1.0 == 0.0) ||
-        @warn "Upper and/or lower bounds for discrete variables should be integers."
-
-    new_lower = round(new_lower)
-    new_upper = min(floor(new_upper), get_default_dist_params(dom, factor)[2])
-    new_bounds = (new_lower, new_upper)
-
-    new_val::Int64 = floor(new_lower + 0.5 * (new_upper - new_lower))
-
-    return (new_bounds, new_val)
-end
-
 """
-    _check_bounds_range(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
+    _validate_new_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Nothing
 
-Check new parameter bounds are within default parameter bounds
+Validate if new distribution bounds are within default bounds;
 """
-function _check_bounds_range(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
-    default_lower, default_upper = get_default_dist_params(dom, factor)
-    new_lower, new_upper = new_bounds
-
-    if contains(string(_distribution_type(dom, factor)), "Triang") && (length(new_bounds) !== 3)
-        error("Error with $(factor) - $(new_bounds): Triangular type distributions requires three parameters (minimum, maximum, peak).")
-    elseif contains(string(_distribution_type(dom, factor)), "DiscreteUniform") && (length(new_bounds) !== 2)
-        error("Error with $(factor) - $(new_bounds): Uniform distributions requires two parameters (minimum, maximum).")
-    end
-
+function _validate_new_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
+    err_msg = "Error setting new bound $new_bounds to $factor: bounds outside default range."
+    default_lb, default_ub = get_default_bounds(dom, factor)
+    (new_bounds[1] >= default_lb && new_bounds[2] <= default_ub) || error(err_msg)
     return nothing
 end
 

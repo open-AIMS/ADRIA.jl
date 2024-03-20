@@ -1,7 +1,7 @@
 using Test
 
 using ADRIA
-using ADRIA.NamedDims, ADRIA.Distributions
+using ADRIA.Distributions
 using ADRIA: distribute_seeded_corals, location_k, seed_corals!
 
 if !@isdefined(ADRIA_DIR)
@@ -21,14 +21,18 @@ end
     # calculate available space
     available_space = vec((total_site_area .* k) .- current_cover)
 
+    # Randomly generate seeded area
+    seeded_area = ADRIA.DataCube(
+        rand(Uniform(0.0, 500.0), 3); taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"]
+    )
+
     @testset "Check coral seed distribution ($i)" for i in 1:10
         seed_locs = rand(1:length(total_site_area), 5)
 
-        # Randomly generate seeded area
-        seeded_area = NamedDimsArray(rand(Uniform(0.0, 500.0), 3), taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"])
-
         # evaluate seeding distributions
-        seed_dist = distribute_seeded_corals(total_site_area[seed_locs], available_space[seed_locs], seeded_area)
+        seed_dist = distribute_seeded_corals(
+            total_site_area[seed_locs], available_space[seed_locs], seeded_area
+        )
 
         # Area to be seeded for each site
         total_area_seed = seed_dist .* total_site_area[seed_locs]'
@@ -53,14 +57,14 @@ end
         min_ind = argmin(selected_avail_space)
 
         # Distributed areas and seeded areas
-        area_TA = total_area_coral_out(taxa="N_seed_TA", _=1)
-        seed_TA = seeded_area("N_seed_TA")
+        area_TA = total_area_coral_out[taxa=At("N_seed_TA"), locations=1][1]
+        seed_TA = seeded_area[taxa=At("N_seed_TA")][1]
 
-        area_CA = total_area_coral_out(taxa="N_seed_CA", _=1)
-        seed_CA = seeded_area("N_seed_CA")
+        area_CA = total_area_coral_out[taxa=At("N_seed_CA"), locations=1][1]
+        seed_CA = seeded_area[taxa=At("N_seed_CA")][1]
 
-        area_SM = total_area_coral_out(taxa="N_seed_SM", _=1)
-        seed_SM = seeded_area("N_seed_SM")
+        area_SM = total_area_coral_out[taxa=At("N_seed_SM"), locations=1][1]
+        seed_SM = seeded_area[taxa=At("N_seed_SM")][1]
 
         approx_zero(x) = abs(x) + one(1.0) ≈ one(1.0)
         @test approx_zero(seed_TA - area_TA) && approx_zero(seed_CA - area_CA) && approx_zero(seed_CA - area_CA) || "Area of corals seeded not equal to (colony area) * (number or corals)"
@@ -79,7 +83,6 @@ end
         seed_locs = rand(1:10, 5)  # Pick 5 random locations
 
         leftover_space_m² = fill(500.0, 10)
-        seeded_area = NamedDimsArray(rand(Uniform(0.0, 500.0), 3), taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"])
 
         Yseed = zeros(2, 3, 10)
         seed_sc = BitVector([i ∈ [2, 8, 15] for i in 1:36])

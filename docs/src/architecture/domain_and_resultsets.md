@@ -33,13 +33,49 @@ Geospatial data consists of:
 - polygons defining individual reefs/sites in [geopackage format](https://www.geopackage.org/)
 - initial coral cover (as a netCDF; with dimensions: species/sizes ⋅ locations)
 
+### ReefMod Datasets
+
+Datasets from containing inputs and outputs from ReefMod can be loaded for use with
+ADRIAmod. ADRIAmod requires geospatial data in [geopackage format](https://www.geopackage.org/)
+, a csv file containing location ids and reef connectivity data in addition to ReefMod Data.
+
+```julia
+dom = ADRIA.load_domain(ReefModDomain, "path to ReefMod dataset", "45")
+```
+
+The expected directory structure is
+
+```julia
+ReefModDomain
+│   # ReefMod Data
+│   ReefMod_RCP19.nc
+│   ReefMod_RCP26.nc
+│   ReefMod_RCP45.nc
+│   ReefMod_RCP70.nc
+│   ReefMod_RCP85.nc
+│
+├───con_bin # Reef connectivity data
+│       CONNECT_ACRO_2010_11.bin
+│       CONNECT_ACRO_2011_12.bin
+│       CONNECT_ACRO_2012_13.bin
+│       CONNECT_ACRO_2014_15.bin
+│       CONNECT_ACRO_2015_16.bin
+│       CONNECT_ACRO_2016_17.bin
+│
+├───id # location ids
+│       id_list_2023_03_30.csv 
+│
+└───region # geospatial data
+        reefmod_gbr.gpkg 
+```
+
 ### ReefMod Engine datasets
 
 Datasets intended for use with the ReefMod Engine (RME) can also be loaded for use with ADRIAmod.
 The RME represents larger spatial scales typically covering the entire Great Barrier Reef.
 
 ```julia
-dom = ADRIA.load_domain(ReefModDomain, "path to ReefMod Engine dataset", "45")
+dom = ADRIA.load_domain(RMEDomain, "path to ReefMod Engine dataset", "45")
 ```
 
 ### Naming conventions

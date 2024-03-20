@@ -7,6 +7,23 @@ const HEAT_UB = 10.0
 
 
 """
+    functional_group_names()::Vector{Symbol}
+
+Name of functional groups represented by ADRIAmod.
+"""
+function functional_group_names()::Vector{Symbol}
+    return [
+        :arborescent_Acropora,
+        :tabular_Acropora,
+        :corymbose_Acropora,
+        :corymbose_non_Acropora,  # and Pocillopora
+        :small_massives,
+        :large_massives
+    ]
+end
+
+
+"""
     colony_mean_area(colony_diam_means::Array{T})::Array{T} where {T<:Real}
 
 Generate mean colony areas for given colony diameter(s).
@@ -110,14 +127,7 @@ function coral_spec()::NamedTuple
     params = DataFrame()
 
     # Coral species are divided into taxa and size classes
-    taxa_names = String[
-        "abhorescent_acropora"
-        "tabular_acropora"
-        "corymbose_acropora"
-        "corymbose_non_acropora"
-        "small_massives"
-        "large_massives"
-    ]
+    taxa_names = string.(functional_group_names())
 
     # total number of "species" modelled in the current version.
     n_classes::Int64 = 6
@@ -359,18 +369,18 @@ function _update_coral_spec(spec::DataFrame, pnames::Vector{String}, coral_param
     return spec
 end
 
-function to_coral_spec(inputs::NamedDimsArray)::DataFrame
+function to_coral_spec(inputs::YAXArray)::DataFrame
     _, pnames, spec = coral_spec()
 
     coral_ids::Vector{String} = spec[:, :coral_id]
     for p in pnames
         # wrapping `p` in an array is necessary so update of DF works
-        spec[!, [p]] .= Array(inputs(coral_ids .* "_" .* p))
+        spec[!, [p]] .= Array(inputs[At(coral_ids .* "_" .* p)])
     end
 
     return spec
 end
 function to_coral_spec(inputs::DataFrameRow)::DataFrame
-    ins = NamedDimsArray(Vector(inputs), factors=names(inputs))
+    ins = DataCube(Vector(inputs); factors=names(inputs))
     return to_coral_spec(ins)
 end

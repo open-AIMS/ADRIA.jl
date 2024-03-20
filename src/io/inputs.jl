@@ -1,4 +1,5 @@
 using JSON
+using YAXArrays
 using NetCDF
 
 """
@@ -57,72 +58,46 @@ function load_scenarios(domain::Domain, filepath::String)::DataFrame
     return df
 end
 
-function load_mat_data(
-    data_fn::String, attr::String, site_data::DataFrame
-)::NamedDimsArray{Float32}
-    data = matread(data_fn)
-    local loaded::NamedDimsArray{Float32}
-    local site_order::Vector{String}
+"""
+    load_nc_data(data_fn::String, attr::String; dim_names::Vector{Symbol}=Symbol[], dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[])::YAXArray
 
-    # Attach site names to each dimension
+Load cluster-level data for a given attribute in a netCDF.
+"""
+function load_nc_data(
+    data_fn::String,
+    attr::String;
+    dim_names::Vector{Symbol}=Symbol[],
+    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[],
+)::YAXArray
+    local data
     try
-        site_order = Vector{String}(vec(data["reef_siteid"]))
-        loaded = NamedDimsArray(data[attr]; Source=site_order, Sink=site_order)
-    catch err
-        if isa(err, KeyError)
-            @warn "Provided file $(data_fn) did not have reef_siteid! There may be a mismatch in sites."
-            if size(loaded, 2) != nrow(site_data)
-                @warn "Mismatch in number of sites ($(data_fn)).\nTruncating so that data size matches!"
-
-                # Subset down to number of sites
-                tmp = selectdim(data[attr], 2, 1:nrow(site_data))
-                loaded = NamedDimsArray(tmp; Source=site_order, Sink=site_order)
-            end
-        else
-            rethrow(err)
-        end
+        data = sort_axis(Cube(data_fn), :locations)
+    catch
+        return fallback_nc_data(data_fn, attr; dim_names, dim_names_replace)
     end
 
-    return loaded
+    return data
 end
-
-"""
-    load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-
-Load cluster-level data for a given attribute in a netCDF as a NamedDimsArray.
-"""
-function load_nc_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    local loaded_data::NamedDimsArray
-
+function fallback_nc_data(
+    data_fn::String,
+    attr::String;
+    dim_names::Vector{Symbol}=Symbol[],
+    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[],
+)::YAXArray
     NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
         data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
-        dim_names::Vector{Symbol} = Symbol[
-            Symbol(dim.name) for dim in nc_file.vars[attr].dim
-        ]
-        dim_labels::Vector{Union{UnitRange{Int64},Vector{String}}} = _nc_dim_labels(
-            data_fn, data, nc_file
-        )
 
-        try
-            loaded_data = NamedDimsArray(data; zip(dim_names, dim_labels)...)
-        catch err
-            if isa(err, KeyError)
-                n_sites = size(data, 2)
-                @warn "Provided file $(data_fn) did not have the expected dimensions " *
-                    "(one of: timesteps, reef_siteid, scenarios)."
-                if n_sites != nrow(site_data)
-                    error(
-                        "Mismatch in number of sites ($(data_fn)). " *
-                        "Expected $(nrow(site_data)), got $(n_sites)",
-                    )
-                end
-            else
-                rethrow(err)
-            end
+        if isempty(dim_names)
+            dim_names = [Symbol(dim.name) for dim in nc_file.vars[attr].dim]
         end
-    end
 
-    return loaded_data
+        if !isempty(dim_names_replace)
+            replace!(dim_names, dim_names_replace...)
+        end
+
+        dim_labels = _nc_dim_labels(data_fn, data, nc_file)
+        return sort_axis(DataCube(data; zip(dim_names, dim_labels)...), :sites)
+    end
 end
 
 """
@@ -139,8 +114,8 @@ function _nc_dim_labels(
     sites = "reef_siteid" in keys(nc_file.vars) ? _site_labels(nc_file) : 1:size(data, 2)
 
     try
-        # This will be an issue if two or more dimensions have the same number of elements
-        # as the number of sites, but so far it hasn't happened...
+        # This will be an issue if the number of elements for two or more dimensions have
+        # the same number of elements, but so far that hasn't happened...
         sites_idx = first(findall(size(data) .== length(sites)))
     catch err
         error(
@@ -166,94 +141,126 @@ function _site_labels(nc_file::NetCDF.NcFile)::Vector{String}
 end
 
 """
-    load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    load_cover(data_fn::String)::YAXArray
+    load_cover(n_species::Int64, n_sites::Int64)::YAXArray
 
 Load initial coral cover data from netCDF.
 """
-function load_covers(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    data::NamedDimsArray = load_nc_data(data_fn, attr, site_data)
-    data = NamedDims.rename(data, :covers => :species, :reef_siteid => :sites)
+function load_cover(data_fn::String)::YAXArray
+    _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
 
-    # Reorder sites to match site_data
-    data = data[sites=Key(site_data[:, :reef_siteid])]
-    data = _convert_abs_to_k(data, site_data)
+    return load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
+end
+function load_cover(n_species::Int64, n_sites::Int64)::YAXArray
+    @warn "Using random initial coral cover"
 
-    return data
+    return DataCube(rand(Float32, n_species, n_sites); species=1:(n_species), sites=1:n_sites)
 end
 
 """
-    load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
+    load_env_data(data_fn::String, attr::String)::YAXArray
+    load_env_data(timeframe, sites)::YAXArray
 
 Load environmental data layers (DHW, Wave) from netCDF.
 """
-function load_env_data(data_fn::String, attr::String, site_data::DataFrame)::NamedDimsArray
-    data::NamedDimsArray = load_nc_data(data_fn, attr, site_data)
-
-    # Re-attach correct dimension names
-    data = NamedDims.rename(data, (:timesteps, :sites, :scenarios))
-
-    # Reorder sites to match site_data
-    data = data[sites=Key(site_data[:, :reef_siteid])]
-
-    return data
+function load_env_data(data_fn::String, attr::String)::YAXArray
+    _dim_names::Vector{Symbol} = [:timesteps, :sites, :scenarios]
+    return load_nc_data(data_fn, attr; dim_names=_dim_names)
+end
+function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArray
+    return ZeroDataCube(; T=Float32, timesteps=timeframe, sites=sites, scenarios=1:50)
 end
 
 """
-    load_cyclone_mortality(data_fn::String)::NamedDimsArray
-    load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::NamedDimsArray
+    load_cyclone_mortality(data_fn::String)::YAXArray
+    load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::YAXArray
 
 Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
 ordered by :locations
 """
-function load_cyclone_mortality(data_fn::String)::NamedDimsArray
+function load_cyclone_mortality(data_fn::String)::YAXArray
     cyclone_cube::YAXArray = Cube(data_fn)
-    return _yaxarray2nameddimsarray(sort_axis(cyclone_cube, :locations))
+    return sort_axis(cyclone_cube, :locations)
 end
-function load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::NamedDimsArray
-    cube = ZeroDataCube(;
+function load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::YAXArray
+    return ZeroDataCube(;
         timesteps=1:length(timeframe),
         locations=sort(site_data.reef_siteid),
         species=ADRIA.coral_spec().taxa_names,
         scenarios=[1]
     )
-    return _yaxarray2nameddimsarray(cube)
-end
-
-function _yaxarray2nameddimsarray(yarray::YAXArray)::NamedDimsArray
-    data = yarray.data
-
-    dim_names::NTuple{4,Symbol} = name.(yarray.axes)
-    dim_labels::Vector = lookup.([yarray], dim_names)
-
-    return NamedDimsArray(data; zip(dim_names, dim_labels)...)
 end
 
 """
     DataCube(data::AbstractArray; kwargs...)::YAXArray
 
-Constructor for YAXArray.
+Constructor for YAXArray. When used with `axes_names`, the axes labels will be UnitRanges
+from 1 up to that axis length.
+
+# Arguments
+- `data` : Array of data to be used when building the YAXArray
+- `axes_names` :
 """
 function DataCube(data::AbstractArray; kwargs...)::YAXArray
     return YAXArray(Tuple(Dim{name}(val) for (name, val) in kwargs), data)
 end
-
-"""
-    ZeroDataCube(T=Float64; kwargs...)::YAXArray
-
-Constructor for YAXArray with all entries equal zero.
-"""
-function ZeroDataCube(T=Float64; kwargs...)::YAXArray
-    return DataCube(zeros(T, [length(val) for (name, val) in kwargs]...); kwargs...)
+function DataCube(data::AbstractArray, axes_names::Tuple)::YAXArray
+    return DataCube(data; NamedTuple{axes_names}(1:len for len in size(data))...)
 end
 
-function axes_names(cube::YAXArray)
+"""
+    ZeroDataCube(; T::DataType=Float64, kwargs...)::YAXArray
+    ZeroDataCube(axes_names::Tuple, axes_sizes::Tuple; T::DataType=Float64)::YAXArray
+
+Constructor for YAXArray with all entries equal zero. When `axes_name` and `axes_sizes`
+are passed, all axes labels will be ranges.
+
+# Arguments
+- `axes_names` : Tuple of axes names
+- `axes_sizes` : Tuple of axes sizes
+"""
+function ZeroDataCube(; T::DataType=Float64, kwargs...)::YAXArray
+    return DataCube(zeros(T, [length(val) for (name, val) in kwargs]...); kwargs...)
+end
+function ZeroDataCube(axes_names::Tuple, axes_sizes::Tuple; T::DataType=Float64)::YAXArray
+    return ZeroDataCube(; T=T, NamedTuple{axes_names}(1:size for size in axes_sizes)...)
+end
+
+"""
+    axes_names(cube::YAXArray)::Tuple
+
+Tuple of YAXArray axes names.
+"""
+function axes_names(cube::YAXArray)::Tuple
     return name.(cube.axes)
+end
+
+"""
+    axis_labels(cube::YAXArray, axis_name::Symbol)::Vector{Any}
+
+Vector of YAXArray axis labels.
+"""
+function axis_labels(cube::YAXArray, axis_name::Symbol)::Vector{Any}
+    idx = axis_index(cube, axis_name)
+    return cube.axes[idx].val.data
+end
+
+"""
+    axis_index(cube::YAXArray, axis_name::Symbol)::Int64
+
+YAXArray axis index.
+"""
+function axis_index(cube::YAXArray, axis_name::Symbol)::Int64
+    if count(axes_names(cube) .== axis_name) > 1
+        @warn "There are two or more axis with the same name. Returning the first."
+    end
+    return findfirst(axes_names(cube) .== axis_name)
 end
 
 """
     sort_axis(cube::YAXArray, axis_name::Symbol)
 
-Sorts axis labels of a given YAXArray datacube.
+Sorts axis labels of a YAXArray datacube.
 """
 function sort_axis(cube::YAXArray, axis_name::Symbol)::YAXArray
     axis_labels = collect(lookup(cube, axis_name))
@@ -268,4 +275,14 @@ function sort_axis(cube::YAXArray, axis_name::Symbol)::YAXArray
     selector[axis_idx] = labels_sort_idx
 
     return cube[selector...]
+end
+
+"""
+    copy(cube::YAXArray)::YAXArray
+
+Copy a YAXArray data cube.
+"""
+function copy_datacube(cube::YAXArray)::YAXArray
+    new_axlist = Tuple(ax for ax in deepcopy(cube.axes))
+    return YAXArray(new_axlist, copy(cube.data))
 end

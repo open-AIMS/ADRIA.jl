@@ -1,33 +1,36 @@
+using ADRIA.decision:
+    DecisionThresholds,
+    DecisionWeights,
+    DepthThresholds
+
+using ADRIA.decision:
+    SeedCriteriaWeights,
+    FogCriteriaWeights
+
 """
     ADRIADomain{Σ,M,I,D,X,Y,Z}
 
 Core ADRIA domain. Represents study area.
 """
-mutable struct ADRIADomain{
-    Σ<:NamedDimsArray,
-    M<:NamedDimsArray,
-    D<:DataFrame,
-    Y<:Union{Matrix{<:Real},NamedDimsArray},
-    Z<:Union{Matrix{<:Real},NamedDimsArray},
-} <: Domain
+mutable struct ADRIADomain <: Domain
     const name::String  # human-readable name
     RCP::String  # RCP scenario represented
     env_layer_md::EnvLayer  # Layers used
     scenario_invoke_time::String  # time latest set of scenarios were run
-    const conn::Σ  # connectivity data
+    const conn::YAXArray  # connectivity data
     const in_conn::Vector{Float64}  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
     const out_conn::Vector{Float64}  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
     const strong_pred::Vector{Int64}  # strongest predecessor
-    site_data::D  # table of site data (depth, carrying capacity, etc)
+    site_data::DataFrame  # table of site data (depth, carrying capacity, etc)
     const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `conn`)
     const cluster_id_col::String  # column of unique site ids
-    init_coral_cover::M  # initial coral cover dataset
+    init_coral_cover::YAXArray  # initial coral cover dataset
     const coral_growth::CoralGrowth  # coral
     const site_ids::Vector{String}  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
     const removed_sites::Vector{String}  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
-    dhw_scens::Y  # DHW scenarios
-    wave_scens::Z  # wave scenarios
-    cyclone_mortality_scens::Union{Matrix{<:Real},NamedDimsArray}  # Cyclone mortality scenarios
+    dhw_scens::YAXArray  # DHW scenarios
+    wave_scens::YAXArray  # wave scenarios
+    cyclone_mortality_scens::Union{Matrix{<:Real},YAXArray}  # Cyclone mortality scenarios
 
     # Parameters
     model::Model  # core model
@@ -41,45 +44,34 @@ function Domain(
     name::String,
     rcp::String,
     env_layers::EnvLayer,
-    TP_base::AbstractMatrix{<:T},
+    TP_base::YAXArray{T},
     in_conn::Vector{Float64},
     out_conn::Vector{Float64},
     strongest_predecessor::Vector{Int64},
     site_data::DataFrame,
     site_id_col::String,
     cluster_id_col::String,
-    init_coral_cover::NamedDimsArray,
+    init_coral_cover::YAXArray,
     coral_growth::CoralGrowth,
     site_ids::Vector{String},
     removed_sites::Vector{String},
-    DHW::NamedDimsArray,
-    wave::NamedDimsArray,
-    cyclone_mortality::NamedDimsArray,
+    DHW::YAXArray,
+    wave::YAXArray,
+    cyclone_mortality::YAXArray,
 )::ADRIADomain where {T<:Union{Float32,Float64}}
-    criteria_weights::CriteriaWeights = CriteriaWeights()
-
     sim_constants::SimConstants = SimConstants()
-
-    # Update minimum site depth to be considered if default bounds are deeper than the
-    # deepest site in the cluster
-    if lower_bound(criteria_weights.depth_min) > maximum(site_data.depth_med)
-        min_depth = minimum(site_data.depth_med)
-        fields = fieldnames(typeof(criteria))
-        c_spec = (; zip(fields, [getfield(criteria, f) for f in fields])...)
-        @set! c_spec.depth_min.dist_params = (
-            min_depth, minimum([min_depth + 2.0, maximum(site_data.depth_med)])
-        )
-
-        criteria_weights = CriteriaWeights(c_spec...)
-    end
+    criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
+        SeedCriteriaWeights(),
+        FogCriteriaWeights(),
+        DepthThresholds()
+    ]
 
     model::Model = Model((
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
         Intervention(),
-        criteria_weights,
+        criteria_weights...,
         Coral(),
     ))
-
     return ADRIADomain(
         name,
         rcp,
@@ -188,52 +180,19 @@ function Domain(
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_sites::Int64 = coral_growth.n_sites
+    n_species = coral_growth.n_species
 
-    # TODO: Clean these repetitive lines up
-    if endswith(dhw_fn, ".mat")
-        dhw::NamedDimsArray = load_mat_data(dhw_fn, "dhw", site_data)
-    elseif endswith(dhw_fn, ".nc")
-        dhw = load_env_data(dhw_fn, "dhw", site_data)
-    else
-        dhw = NamedDimsArray(
-            zeros(Float32, length(timeframe), n_sites, 50);
-            timesteps=timeframe,
-            sites=conn_ids,
-            scenarios=1:50,
-        )
-    end
+    cover_params = ispath(init_coral_fn) ? (init_coral_fn, ) : (n_species, n_sites)
+    coral_cover = load_cover(cover_params...)
 
-    if endswith(wave_fn, ".mat")
-        waves::NamedDimsArray = load_mat_data(wave_fn, "wave", site_data)
-    elseif endswith(wave_fn, ".nc")
-        waves = load_env_data(wave_fn, "Ub", site_data)
-    else
-        waves = NamedDimsArray(
-            zeros(Float32, length(timeframe), n_sites, 50);
-            timesteps=timeframe,
-            sites=conn_ids,
-            scenarios=1:50,
-        )
-    end
+    dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
+    dhw = load_env_data(dhw_params...)
 
-    if endswith(init_coral_fn, ".mat")
-        coral_cover::NamedDimsArray = load_mat_data(init_coral_fn, "covers", site_data)
-    elseif endswith(init_coral_fn, ".nc")
-        coral_cover = load_covers(init_coral_fn, "covers", site_data)
-    else
-        @warn "Using random initial coral cover"
-        coral_cover = NamedDimsArray(
-            rand(Float32, coral_growth.n_species, n_sites);
-            species=1:(coral_growth.n_species),
-            sites=1:n_sites,
-        )
-    end
+    waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
+    waves = load_env_data(waves_params...)
 
-    cyclone_mortality::NamedDimsArray = if ispath(cyclone_mortality_fn)
-        load_cyclone_mortality(cyclone_mortality_fn)
-    else
-        load_cyclone_mortality(timeframe, site_data)
-    end
+    cyc_params = ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, site_data)
+    cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
     msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
@@ -270,7 +229,7 @@ end
 - `path` : location of data package
 - `rcp` : RCP scenario to run. If none provided, no data path is set.
 """
-function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
+function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomain
     domain_name::String = basename(path)
     if length(domain_name) == 0
         domain_name = basename(dirname(path))
@@ -295,10 +254,10 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
     end
 
     conn_path::String = joinpath(path, "connectivity/")
-    site_data::String = joinpath(path, "site_data")
+    spatial_path::String = joinpath(path, "spatial")
 
-    site_path::String = joinpath(site_data, "$(domain_name).gpkg")
-    init_coral_cov::String = joinpath(site_data, "coral_cover.nc")
+    gpkg_path::String = joinpath(spatial_path, "$(domain_name).gpkg")
+    init_coral_cov::String = joinpath(spatial_path, "coral_cover.nc")
 
     dhw_fn::String = !isempty(rcp) ? joinpath(path, "DHWs", "dhwRCP$(rcp).nc") : ""
     wave_fn::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
@@ -309,7 +268,7 @@ function load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
         path,
         rcp,
         timeframe,
-        site_path,
+        gpkg_path,
         "reef_siteid",
         "cluster_id",
         init_coral_cov,
@@ -346,8 +305,8 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
     @set! d.RCP = RCP
 
-    @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw", d.site_data)
-    @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub", d.site_data)
+    @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw")
+    # @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub")
 
     return d
 end

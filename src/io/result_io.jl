@@ -1,4 +1,4 @@
-const COMPRESSOR = Zarr.BloscCompressor(; cname = "zstd", clevel = 2, shuffle = true)
+const COMPRESSOR = Zarr.BloscCompressor(; cname="zstd", clevel=2, shuffle=true)
 
 function get_geometry(df::DataFrame)
     if columnindex(df, :geometry) > 0
@@ -21,11 +21,11 @@ Extract and return long/lat from a GeoDataFrame.
 # Returns
 Array of tuples (x, y), where x and y relate to long and lat respectively.
 """
-function centroids(df::DataFrame)::Vector{Tuple{Float64, Float64}}
+function centroids(df::DataFrame)::Vector{Tuple{Float64,Float64}}
     site_centroids::Vector = AG.centroid.(get_geometry(df))
     return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
 end
-function centroids(ds::Union{Domain, ResultSet})::Vector{Tuple{Float64, Float64}}
+function centroids(ds::Union{Domain,ResultSet})::Vector{Tuple{Float64,Float64}}
     return centroids(ds.site_data)
 end
 
@@ -40,21 +40,23 @@ Matrix{Float64, 2}, of mean and standard deviation for each environmental scenar
 function summarize_env_data(data::AbstractArray)::Array{Float64}
     # TODO: Update once
     stats_store::Array{Float64} = zeros(2, size(data, 3), size(data, 2))
-    stats_store[1, :, :] .= dropdims(mean(data; dims = 1); dims = 1)'
-    stats_store[2, :, :] .= dropdims(std(data; dims = 1); dims = 1)'
+    stats_store[1, :, :] .= dropdims(mean(data; dims=1); dims=1)'
+    stats_store[2, :, :] .= dropdims(std(data; dims=1); dims=1)'
     return stats_store
 end
 
 """
-    store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, compressor::Zarr.Compressor)
+    store_env_summary(data_cube::AbstractArray, type::String, file_loc::String, rcp::String, compressor::Zarr.Compressor)::ZArray
 
 Retrieve summary statistics matrices from DataFrames of dhws and waves.
 Produce summary statistics (mean/std) for given data cube saved to a Zarr data store.
 
 # Arguments
-- `data_cube` : data to summarize
-- `type` : dimension identifier to use
-- `file_loc` : path for Zarr data store
+- `data_cube` : Data to summarize
+- `type` : Dimension identifier to use
+- `file_loc` : Path for Zarr data store
+- `rcp` : RCP
+- `compressor` : Zarr compressor
 
 # Returns
 Zarr data store holding a 2*N*M matrix.
@@ -65,7 +67,7 @@ N is the number of dhw/wave scenarios.
 M is the number of locations.
 """
 function store_env_summary(
-    data_cube::NamedDimsArray,
+    data_cube::AbstractArray,
     type::String,
     file_loc::String,
     rcp::String,
@@ -76,15 +78,15 @@ function store_env_summary(
     stats_store = zcreate(
         Float32,
         (2, size(stats, 2), size(stats, 3))...;
-        fill_value = nothing, fill_as_missing = false,
-        path = joinpath(file_loc, rcp),
-        attrs = Dict(
+        fill_value=nothing, fill_as_missing=false,
+        path=joinpath(file_loc, rcp),
+        attrs=Dict(
             :structure => ("stat", type, "locations"),
             :stats => ["mean", "std"],
             :scenarios => string.(1:size(stats, 2)),
             :locations => string.(1:size(stats, 3)),
             :rcp => rcp),
-        compressor = compressor)
+        compressor=compressor)
 
     stats_store[:, :, :] .= stats
 
@@ -92,7 +94,7 @@ function store_env_summary(
 end
 
 """
-    store_conn(conn_data::NamedDimsArray, file_loc::String, rcp::String,
+    store_conn(conn_data::YAXArray, file_loc::String, rcp::String,
         compressor::Zarr.Compressor)::ZArray
 
 Retrieve connectivity matrices from Domain for storage.
@@ -108,7 +110,7 @@ Zarr data store holding a M*M matrix.
 M is the number of locations.
 """
 function store_conn(
-    conn_data::NamedDimsArray,
+    conn_data::YAXArray,
     file_loc::String,
     rcp::String,
     compressor::Zarr.Compressor
@@ -116,14 +118,14 @@ function store_conn(
     conn_store = zcreate(
         Float32,
         size(conn_data)...;
-        fill_value = nothing, fill_as_missing = false,
-        path = joinpath(file_loc, rcp),
-        attrs = Dict(
+        fill_value=nothing, fill_as_missing=false,
+        path=joinpath(file_loc, rcp),
+        attrs=Dict(
             :structure => ("Source", "Sink"),
-            :Source => conn_data.Source,
-            :Sink => conn_data.Sink,
+            :Source => collect(conn_data.Source),
+            :Sink => collect(conn_data.Sink),
             :rcp => rcp),
-        compressor = compressor)
+        compressor=compressor)
 
     conn_store[:, :] .= Matrix(conn_data)
     return conn_store
@@ -147,7 +149,7 @@ function scenario_attributes(
     k,
     centroids,
 )::Dict
-    attrs::Dict{Symbol, Any} = Dict(
+    attrs::Dict{Symbol,Any} = Dict(
         :name => name,
         :RCP => RCP,
         :columns => input_cols,
@@ -195,11 +197,11 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
 
     # Store ranked sites
-    rank_dims::Tuple{Int64, Int64, Int64, Int64} = (tf, n_sites, 2, n_scens)  # sites, site id and rank, no. scenarios
-    fog_dims::Tuple{Int64, Int64, Int64} = (tf, n_sites, n_scens)  # timeframe, sites, no. scenarios
+    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_sites, 2, n_scens)  # sites, site id and rank, no. scenarios
+    fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_sites, n_scens)  # timeframe, sites, no. scenarios
 
     # tf, no. species to seed, site id and rank, no. scenarios
-    seed_dims::Tuple{Int64, Int64, Int64, Int64} = (tf, 3, n_sites, n_scens)
+    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 3, n_sites, n_scens)
 
     attrs = Dict(
         # Here, "intervention" refers to seeding or shading
@@ -209,12 +211,12 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     ranks = zcreate(
         Float32,
         rank_dims...;
-        name = "rankings",
-        fill_value = nothing,
-        fill_as_missing = false,
-        path = log_fn,
-        chunks = (rank_dims[1:3]..., 1),
-        attrs = attrs,
+        name="rankings",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(rank_dims[1:3]..., 1),
+        attrs=attrs,
     )
 
     attrs = Dict(
@@ -224,12 +226,12 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     seed_log = zcreate(
         Float32,
         seed_dims...;
-        name = "seed",
-        fill_value = nothing,
-        fill_as_missing = false,
-        path = log_fn,
-        chunks = (seed_dims[1:3]..., 1),
-        attrs = attrs,
+        name="seed",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(seed_dims[1:3]..., 1),
+        attrs=attrs,
     )
 
     attrs = Dict(
@@ -239,22 +241,22 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     fog_log = zcreate(
         Float32,
         fog_dims...;
-        name = "fog",
-        fill_value = nothing,
-        fill_as_missing = false,
-        path = log_fn,
-        chunks = (fog_dims[1:2]..., 1),
-        attrs = attrs,
+        name="fog",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(fog_dims[1:2]..., 1),
+        attrs=attrs,
     )
     shade_log = zcreate(
         Float32,
         fog_dims...;
-        name = "shade",
-        fill_value = nothing,
-        fill_as_missing = false,
-        path = log_fn,
-        chunks = (fog_dims[1:2]..., 1),
-        attrs = attrs,
+        name="shade",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(fog_dims[1:2]..., 1),
+        attrs=attrs,
     )
 
     # TODO: Could log bleaching mortality
@@ -279,12 +281,12 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
             36,
             n_sites,
             n_scens;
-            name = "coral_dhw_log",
-            fill_value = nothing,
-            fill_as_missing = false,
-            path = log_fn,
-            chunks = (tf, 36, n_sites, 1),
-            attrs = attrs,
+            name="coral_dhw_log",
+            fill_value=nothing,
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(tf, 36, n_sites, 1),
+            attrs=attrs,
         )
     else
         coral_dhw_log = zcreate(
@@ -293,12 +295,12 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
             36,
             1,
             n_scens;
-            name = "coral_dhw_log",
-            fill_value = 0.0,
-            fill_as_missing = false,
-            path = log_fn,
-            chunks = (tf, 36, 1, 1),
-            attrs = attrs,
+            name="coral_dhw_log",
+            fill_value=0.0,
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(tf, 36, 1, 1),
+            attrs=attrs,
         )
     end
 
@@ -359,20 +361,20 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
 
     # Store copy of inputs
     input_loc::String = joinpath(z_store.folder, INPUTS)
-    input_dims::Tuple{Int64, Int64} = size(scen_spec)
+    input_dims::Tuple{Int64,Int64} = size(scen_spec)
     attrs::Dict = scenario_attributes(domain, scen_spec)
 
     # Write a copy of spatial data to the result set
-    mkdir(joinpath(log_location, "site_data"))
-    geo_fn = joinpath(log_location, "site_data", basename(attrs[:name]) * ".gpkg")
+    mkdir(joinpath(log_location, SPATIAL_DATA))
+    geo_fn = joinpath(log_location, SPATIAL_DATA, basename(attrs[:name]) * ".gpkg")
     try
-        GDF.write(geo_fn, domain.site_data; driver = "geojson")
+        GDF.write(geo_fn, domain.site_data; driver="geojson")
     catch err
         if !isa(err, ArgumentError)
             rethrow(err)
         end
 
-        GDF.write(geo_fn, domain.site_data; geom_columns = (:geom,), driver = "geojson")
+        GDF.write(geo_fn, domain.site_data; geom_columns=(:geom,), driver="geojson")
     end
 
     # Store copy of model specification as CSV
@@ -383,11 +385,11 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     inputs = zcreate(
         Float64,
         input_dims...;
-        fill_value = -9999.0,
-        fill_as_missing = false,
-        path = input_loc,
-        chunks = input_dims,
-        attrs = attrs,
+        fill_value=-9999.0,
+        fill_as_missing=false,
+        path=input_loc,
+        chunks=input_dims,
+        attrs=attrs,
     )
 
     # Store table of factor values
@@ -421,16 +423,16 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         :structure => string.((:timesteps, :sites, :scenarios)),
         :unique_site_ids => unique_sites(domain),
     )
-    result_dims::Tuple{Int64, Int64, Int64} = dim_lengths(dim_struct[:structure])
+    result_dims::Tuple{Int64,Int64,Int64} = dim_lengths(dim_struct[:structure])
 
     # Create stores for each metric
     stores = [
         zcreate(Float32, result_dims...;
-            fill_value = nothing, fill_as_missing = false,
-            path = joinpath(z_store.folder, RESULTS, string(m_name)),
-            chunks = (result_dims[1:(end - 1)]..., 1),
-            attrs = dim_struct,
-            compressor = COMPRESSOR)
+            fill_value=nothing, fill_as_missing=false,
+            path=joinpath(z_store.folder, RESULTS, string(m_name)),
+            chunks=(result_dims[1:(end-1)]..., 1),
+            attrs=dim_struct,
+            compressor=COMPRESSOR)
         for m_name in met_names
     ]
 
@@ -438,13 +440,13 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     push!(
         stores,
         zcreate(Float32, (result_dims[1], 6, result_dims[3])...;
-            fill_value = nothing, fill_as_missing = false,
-            path = joinpath(z_store.folder, RESULTS, "relative_taxa_cover"),
-            chunks = ((result_dims[1], 6)..., 1),
-            attrs = Dict(
+            fill_value=nothing, fill_as_missing=false,
+            path=joinpath(z_store.folder, RESULTS, "relative_taxa_cover"),
+            chunks=((result_dims[1], 6)..., 1),
+            attrs=Dict(
                 :structure => string.(ADRIA.metrics.relative_taxa_cover.dims)
             ),
-            compressor = COMPRESSOR))
+            compressor=COMPRESSOR))
     push!(met_names, :relative_taxa_cover)
 
     # dhw and wave zarrays
@@ -523,19 +525,19 @@ end
 
 Recreate data structure holding RCP summary statistics from Zarr store.
 """
-function _recreate_stats_from_store(zarr_store_path::String)::Dict{String, AbstractArray}
+function _recreate_stats_from_store(zarr_store_path::String)::Dict{String,YAXArray}
     rcp_dirs = filter(d -> isdir(joinpath(zarr_store_path, d)), readdir(zarr_store_path))
     rcp_stat_dirs = joinpath.(zarr_store_path, rcp_dirs)
 
-    stat_d = Dict{String, AbstractArray}()
+    stat_d = Dict{String,YAXArray}()
     for (i, sd) in enumerate(rcp_stat_dirs)
-        store = zopen(sd; fill_as_missing = false)
+        store = zopen(sd; fill_as_missing=false)
 
         dim_names = Symbol.(store.attrs["structure"])
         stats = string.(store.attrs["stats"])
         scenario_ids = string.(store.attrs["scenarios"])
         loc_ids = string.(store.attrs["locations"])
-        stat_set = NamedDimsArray(
+        stat_set = DataCube(
             store[:, :, :];
             zip(dim_names, [stats, scenario_ids, loc_ids])...
         )
@@ -551,18 +553,18 @@ end
 
 Recreate data structure holding connectivity for each RCP from Zarr store.
 """
-function _recreate_conn_from_store(zarr_store_path::String)::Dict{String, AbstractArray}
+function _recreate_conn_from_store(zarr_store_path::String)::Dict{String,YAXArray}
     rcp_dirs = filter(d -> isdir(joinpath(zarr_store_path, d)), readdir(zarr_store_path))
     rcp_stat_dirs = joinpath.(zarr_store_path, rcp_dirs)
 
-    conn_d = Dict{String, AbstractArray}()
+    conn_d = Dict{String,YAXArray}()
     for (i, sd) in enumerate(rcp_stat_dirs)
-        store = zopen(sd; fill_as_missing = false)
+        store = zopen(sd; fill_as_missing=false)
 
         dim_names = Symbol.(store.attrs["structure"])
         source_ids = string.(store.attrs["Source"])
         sink_ids = string.(store.attrs["Sink"])
-        conn_set = NamedDimsArray(
+        conn_set = DataCube(
             store[:, :];
             zip(dim_names, [source_ids, sink_ids])...
         )
@@ -585,7 +587,7 @@ function load_results(result_loc::String)::ResultSet
     # Read in results
     local raw_set
     try
-        raw_set = zopen(joinpath(result_loc, RESULTS); fill_as_missing = false)
+        raw_set = zopen(joinpath(result_loc, RESULTS); fill_as_missing=false)
     catch err
         if !occursin("ArgumentError", sprint(showerror, err))
             rethrow(err)
@@ -593,8 +595,8 @@ function load_results(result_loc::String)::ResultSet
     end
 
     # Read in logs
-    log_set = zopen(joinpath(result_loc, LOG_GRP); fill_as_missing = false)
-    input_set = zopen(joinpath(result_loc, INPUTS); fill_as_missing = false)
+    log_set = zopen(joinpath(result_loc, LOG_GRP); fill_as_missing=false)
+    input_set = zopen(joinpath(result_loc, INPUTS); fill_as_missing=false)
 
     dhw_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "dhw"))
     wave_stat_set = _recreate_stats_from_store(joinpath(result_loc, ENV_STATS, "wave"))
@@ -602,16 +604,16 @@ function load_results(result_loc::String)::ResultSet
 
     result_loc = replace(result_loc, "\\" => "/")
     if endswith(result_loc, "/")
-        result_loc = result_loc[1:(end - 1)]
+        result_loc = result_loc[1:(end-1)]
     end
 
     # Spatial data
-    site_data = GDF.read(joinpath(result_loc, SITE_DATA, input_set.attrs["name"] * ".gpkg"))
+    site_data = GDF.read(joinpath(result_loc, SPATIAL_DATA, input_set.attrs["name"] * ".gpkg"))
     sort!(site_data, [Symbol(input_set.attrs["site_id_col"])])
 
     # Model specification
     model_spec = CSV.read(
-        joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment = "#"
+        joinpath(result_loc, MODEL_SPEC, "model_spec.csv"), DataFrame; comment="#"
     )
 
     # Standardize fieldnames to Symbol
@@ -650,11 +652,11 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["timeframe"],
     )
 
-    outcomes = Dict{Symbol, NamedDimsArray}()
-    subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS); join = true))
+    outcomes = Dict{Symbol,YAXArray}()
+    subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS); join=true))
     for sd in subdirs
         if !(occursin(LOG_GRP, sd)) && !(occursin(INPUTS, sd))
-            res = zopen(sd; fill_as_missing = false)
+            res = zopen(sd; fill_as_missing=false)
             sz = size(res)
 
             # Construct dimension names and metadata
@@ -670,7 +672,7 @@ function load_results(result_loc::String)::ResultSet
             end
 
             try
-                outcomes[Symbol(basename(sd))] = NamedDimsArray(
+                outcomes[Symbol(basename(sd))] = DataCube(
                     res; zip(Symbol.(res.attrs["structure"]), st)...
                 )
             catch err
@@ -681,7 +683,7 @@ function load_results(result_loc::String)::ResultSet
                     Structure: $(res.attrs["structure"])
                     Generated: $(Array([i[1] for i in size.(st)]))
                     """
-                    outcomes[Symbol(basename(sd))] = NamedDimsArray(
+                    outcomes[Symbol(basename(sd))] = DataCube(
                         res;
                         zip(Symbol.(res.attrs["structure"]), [1:s for s in size(res)])...,
                     )
