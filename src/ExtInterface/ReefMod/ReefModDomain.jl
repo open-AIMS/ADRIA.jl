@@ -1,14 +1,11 @@
 using ADRIA: SimConstants, Domain, GDF, DataCube
 
-using
-    Distributions
-    Statistics
+using Distributions, Statistics
 
-using
-    DataFrames
-    MAT
-    ModelParameters
-    NetCDF
+using DataFrames,
+    MAT,
+    ModelParameters,
+    NetCDF,
     YAXArrays
 
 import ArchGDAL: createpoint
@@ -37,8 +34,6 @@ mutable struct ReefModDomain <: AbstractReefModDomain
     # ADRIA's dMCDA methods
     wave_scens
 
-    # `cyclone_mortality_scens` holds dummy cyclone mortality data to maintain compatibility
-    # with ADRIA's dMCDA methods
     cyclone_mortality_scens
 
     model
@@ -106,7 +101,7 @@ function load_domain(
     # Load DHWs
     dhws = Cube(
         dom_dataset[["record_applied_DHWs"]]
-    )[timestep = At(timeframe[1] : timeframe[2])]
+    )[timestep=At(timeframe[1]:timeframe[2])]
 
     # Redfine dimensions as ReefMod Matfiles do not contain reef ids.
     # Forcibly load data as disk arrays are not fully support.
@@ -141,17 +136,6 @@ function load_domain(
         scenarios=[1]
     )
 
-    # Current ReefMod mat data only contains cyclone classifications not mortality
-    # timesteps, location, species, scenario
-    functional_groups = functional_group_names()
-    cyc_scens = ZeroDataCube(;
-        T=Float64,
-        timesteps=timeframe[1]:timeframe[2],
-        locs=site_ids,
-        species=functional_groups,
-        scenarios=[1]
-    )
-
     env_md = EnvLayer(
         fn_path,
         geodata_fn,
@@ -170,8 +154,15 @@ function load_domain(
         DepthThresholds()
     ]
 
+    cyclone_mortality_scens::YAXArray{Float64,4} = _cyclone_mortality_scens(
+        dom_dataset,
+        spatial_data,
+        site_ids,
+        timeframe
+    )
+
     model::Model = Model((
-        EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
+        EnvironmentalLayer(dhw_scens, wave_scens, cyclone_mortality_scens),
         Intervention(),
         criteria_weights...,
         Coral()
@@ -194,7 +185,7 @@ function load_domain(
         site_ids,
         dhw_scens,
         wave_scens,
-        cyc_scens,
+        cyclone_mortality_scens,
         model,
         SimConstants(),
     )
@@ -219,7 +210,7 @@ function load_initial_cover(
     if !haskey(dom_data.cubes, :coral_cover_per_taxa)
         @error "coral_cover_per_taxa variable not found in ReefMod data"
     end
-    init_cc_per_taxa::YAXArray = Cube(dom_data[["coral_cover_per_taxa"]])[time = At(init_yr)]
+    init_cc_per_taxa::YAXArray = Cube(dom_data[["coral_cover_per_taxa"]])[time=At(init_yr)]
 
     # The following class weight calculations are taken from ReefModEngine Domain calculation
 
@@ -231,7 +222,7 @@ function load_initial_cover(
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
-    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end - 1)])
+    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end-1)])
     size_class_weights = size_class_weights ./ sum(size_class_weights)
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
@@ -248,13 +239,13 @@ function load_initial_cover(
 
     n_species = length(init_cc_per_taxa[location=1, group=:, scenario=1])
 
-    return DataCube(icc_data; species=1:(n_species * 6), locs=loc_ids)
+    return DataCube(icc_data; species=1:(n_species*6), locs=loc_ids)
 end
 
 """
     _find_file(dir::String)::String
 """
-function _find_file(dir::String, ident::Union{Regex, String})::String
+function _find_file(dir::String, ident::Union{Regex,String})::String
     pos_files = filter(isfile, readdir(dir, join=true))
     pos_files = filter(x -> occursin(ident, x), pos_files)
     if length(pos_files) == 0
@@ -288,7 +279,7 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
 
     dhws = Cube(
         new_scen_dataset[["record_applied_DHWs"]]
-    )[timestep = At(d.env_layer_md.timeframe)].data[:, :, :]
+    )[timestep=At(d.env_layer_md.timeframe)].data[:, :, :]
 
     scens = 1:size(dhws)[3]
     loc_ids = d.site_ids
@@ -310,4 +301,77 @@ function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)::Nothing
     """)
 
     return nothing
+end
+
+"""
+    _cyclone_mortality_scens(dom_dataset, spatial_data, site_ids, timeframe)::YAXArray{Float64}
+
+Cyclone scenarios (from 0 to 5) are converted to mortality rates. More details of how this
+happens van be found in https://github.com/open-AIMS/rrap-dg.
+"""
+function _cyclone_mortality_scens(dom_dataset, spatial_data, site_ids, timeframe)::YAXArray{Float64}
+    # Add 1 to every scenarios so they represent indexes in cyclone_mr vectors
+    cyclone_scens::YAXArray = Cube(
+        dom_dataset[["record_applied_cyclone"]]
+    )[timestep=At(timeframe[1]:timeframe[2])] .+ 1
+
+    species::Vector{Symbol} = functional_group_names()
+    cyclone_mortality_scens::YAXArray{Float64} = ZeroDataCube(;
+        T=Float64,
+        timesteps=timeframe[1]:timeframe[2],
+        locations=site_ids,
+        species=species,
+        scenarios=1:length(cyclone_scens.scenario)
+    )
+
+    # Mortality rate was generated using rrap_dg
+    cyclone_mr::NamedTuple = _cyclone_mr()
+
+    # To filter massives/branchings
+    massives::BitVector = contains.(String.(species), ["massives"])
+    branchings::BitVector = .!massives
+
+    # Set massives mortality rates
+    mr_massives::Vector{Float64} = cyclone_mr[:massives]
+    cm_scens_massives = mr_massives[cyclone_scens].data
+    for m in species[massives]
+        cyclone_mortality_scens[species=At(m)] .= cm_scens_massives
+    end
+
+    # Set branchings deeper than 5 mortality rates
+    mask_d5::BitVector = spatial_data.Y_COORD .<= -5
+    if sum(mask_d5) > 0
+        mr_bd5::Vector{Float64} = cyclone_mr[:branching_deeper_than_5]
+        cm_scens_bd5::Array{Float64} = mr_bd5[cyclone_scens[location=mask_d5]].data
+        for b in species[branchings]
+            cyclone_mortality_scens[location=(mask_d5), species=At(b)] .= cm_scens_bd5
+        end
+    end
+
+    # Set branchings shallower than 5 mortality rates
+    mask_s5::BitVector = spatial_data.Y_COORD .> -5
+    if sum(mask_s5) > 0
+        mr_bs5::Vector{Float64} = cyclone_mr[:branching_shallower_than_5]
+        cm_scens_bs5::Array{Float64} = mr_bs5[cyclone_scens[location=(mask_s5)]].data
+        for b in species[branchings]
+            cyclone_mortality_scens[locations=(mask_s5), species=At(b)] .= cm_scens_bs5
+        end
+    end
+
+    return cyclone_mortality_scens
+end
+
+"""
+    _cyclone_mr()
+
+For each cyclone category 0 to 5, represented as indexes 1 to 6 of the arrays, there can be
+distinct mortality rates for each coral functional group and location.
+For Acropora (branching) the mortality depends on the depth (if it is deeper or shalower
+than 5 meters);
+For massives the mortality does not depend on the depth.
+"""
+function _cyclone_mr()::NamedTuple
+    return (branching_deeper_than_5=[0.0, 0.0, 0.104957, 0.979102, 0.999976, 1.0],
+        branching_shallower_than_5=[0.0, 0.0, 0.00993649, 0.497092, 0.989037, 0.99994],
+        massives=[0.0, 0.0121482, 0.0155069, 0.0197484, 0.0246357, 0.0302982])
 end
