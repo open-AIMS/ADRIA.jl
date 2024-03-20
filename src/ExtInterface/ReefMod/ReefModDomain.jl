@@ -309,7 +309,12 @@ end
 Cyclone scenarios (from 0 to 5) are converted to mortality rates. More details of how this
 happens van be found in https://github.com/open-AIMS/rrap-dg.
 """
-function _cyclone_mortality_scens(dom_dataset, spatial_data, site_ids, timeframe)::YAXArray{Float64}
+function _cyclone_mortality_scens(
+    dom_dataset::Dataset,
+    spatial_data::DataFrame,
+    site_ids::Vector{String},
+    timeframe::Tuple{Int64,Int64}
+)::YAXArray{Float64}
     # Add 1 to every scenarios so they represent indexes in cyclone_mr vectors
     cyclone_scens::YAXArray = Cube(
         dom_dataset[["record_applied_cyclone"]]
@@ -344,7 +349,7 @@ function _cyclone_mortality_scens(dom_dataset, spatial_data, site_ids, timeframe
         mr_bd5::Vector{Float64} = cyclone_mr[:branching_deeper_than_5]
         cm_scens_bd5::Array{Float64} = mr_bd5[cyclone_scens[location=mask_d5]].data
         for b in species[branchings]
-            cyclone_mortality_scens[location=(mask_d5), species=At(b)] .= cm_scens_bd5
+            cyclone_mortality_scens[locations=(mask_d5), species=At(b)] .= cm_scens_bd5
         end
     end
 
