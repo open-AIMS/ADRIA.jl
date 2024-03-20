@@ -25,6 +25,11 @@ struct CScapeResultSet <: ResultSet
     coral_size_diameter::YAXArray
 end
 
+"""
+    load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResultSet
+
+Interface for loading CScape model outputs
+"""
 function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResultSet
     !isdir(result_loc) ? error("Expected a directory but received $(result_loc)") : nothing
     
@@ -50,6 +55,8 @@ function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResult
         (loc_name in location_ids) && (loc_name in geodata.reef_siteid)
         for loc_name in names(connectivity)
     ])
+
+    raw_set.properties["location_mask"] = res_mask
 
     geodata = geodata[gpkg_mask, :]
     conn_sites = names(connectivity)[conn_mask] 
@@ -94,23 +101,18 @@ function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResult
         :size_classes,
         :cover
     ]
-    compatible_keys = [
-        :larvae, 
-        :external_larvae, 
-        :internal_received_larvae, 
-        :settlers, 
-        :eggs, 
-        :size_classes,
-        :relative_cover
-    ]
     outcomes = Dict{Symbol, YAXArray}()
-    for (outcome, key) in zip(outcome_keys, compatible_keys)
-        if !haskey(raw_set.cubes, outcome)
-            @warn "Unable to find "*string(outcome)*". Skipping."
+    for key in outcome_keys
+        if !haskey(raw_set.cubes, key)
+            @warn "Unable to find "*string(key)*". Skipping."
             continue
         end
-        outcomes[key] = reformat_cube(raw_set.cubes[outcome][reef_site=res_mask])
+        outcomes[key] = reformat_cube(raw_set.cubes[key], res_mask)
     end
+    # add precomputed metrics for comptability
+    outcomes[:relative_juveniles] = _cscape_relative_juvenile(raw_set)
+    outcomes[:relative_cover] = _cscape_relative_cover(raw_set)
+    outcomes[:relative_taxa_cover] = _cscape_relative_taxa_cover(raw_set, geodata.area)
     scen_groups = Dict(:counterfactual=>BitVector(true for _ in raw_set.draws))
 
     return CScapeResultSet(
@@ -214,10 +216,17 @@ function _get_reefids(reef_cube::YAXArray)::Vector{String}
 end
 
 """
-    reformat_cube(cscape_cube::YAXArray)::Nothing
+    reformat_cube(cscape_cube::YAXArray)::YAXArray
 
 Rename reorder the names of the dimensions to align with ADRIA's expected dimension names.
 """
+function reformat_cube(cscape_cube::YAXArray, loc_mask::BitVector)
+    cscape_cube = reformat_cube(cscape_cube)
+    if :sites ∈ name.(cscape_cube.axes)
+        cscape_cube = cscape_cube[sites=loc_mask]
+    end
+    return cscape_cube
+end
 function reformat_cube(cscape_cube::YAXArray)::YAXArray
     dim_names = name.(cscape_cube.axes)
     cscape_names = [:year, :reef_sites, :ft, :draws]
@@ -247,8 +256,103 @@ function reformat_cube(cscape_cube::YAXArray)::YAXArray
             cscape_cube.properties["units"] == "proportion [0, 1]"
         end
     end
-    return permutedims(cscape_cube, final_ordering)
+    cscape_cube = permutedims(cscape_cube, final_ordering)
+    return cscape_cube
 end
+
+"""
+    _cscape_relative_cover(dataset::Dataset)::YAXArray
+
+Calculate relative cover metric for cscape data.
+"""
+function _cscape_relative_cover(dataset::Dataset)::YAXArray
+    loc_mask = dataset.properties["location_mask"]
+    cube = reformat_cube(dataset.cover, loc_mask)
+    dim_sum = (:thermal_tolerance, :intervened, :taxa)
+    return dropdims(sum(cube, dims=dim_sum), dims=dim_sum)
+end
+
+"""
+    _cscape_relative_taxa_cover(dataset::Dataset)::YAXArray
+
+Calculate relative taxa cover metric for cscape data.
+
+Note: It would be possible to instead write this function as a wrapper of the already s
+implemented metric. However the metric computes the metrics for individual scenarios one 
+at a time so it would be slower.
+"""
+function _cscape_relative_taxa_cover(
+    dataset::Dataset, location_area::AbstractArray
+)::YAXArray
+    loc_mask = dataset.properties["location_mask"]
+    cube = reformat_cube(dataset.cover, loc_mask)
+    dim_sum = (:thermal_tolerance, :intervened)
+    cube = dropdims(sum(cube, dims=dim_sum), dims=dim_sum)
+    # Reshape to allow vectorised multiplication
+    location_area = reshape(location_area, (1, length(cube.sites), 1, 1))
+    cube = dropdims(sum(cube .* location_area, dims=:sites), dims=:sites)
+    return cube ./ sum(location_area)
+end
+
+function _cscape_relative_juvenile(dataset::Dataset)::YAXArray
+    loc_mask = dataset.properties["location_mask"]
+    cover = reformat_cube(dataset.cover, loc_mask)
+    size_counts = reformat_cube(dataset.size_classes, loc_mask)
+    size_desc = reformat_cube(dataset.coral_size_diameter)
+    return _relative_size_class_cover(cover, size_counts, size_desc, 0.0, 5.0)
+end
+
+function _safeFindFirst(condition, iterable)
+    ind = findfirst(condition, iterable)
+    isnothing(ind) && return length(iterable)
+    return ind
+end
+
+"""
+    _create_juvenile_index_threshold(size_classes::YAXArray, threshold::Float64)::Vector{Int64}
+"""
+function _create_juvenile_index_threshold(size_classes::YAXArray, threshold::Float64)::Vector{Int64}
+    return [_safeFindFirst(x -> x > threshold, size_classes[taxa=At(i)]) for i in size_classes.taxa]
+end
+
+function _relative_size_class_cover(
+    cover::AbstractArray{<:Real},
+    count::AbstractArray{<:Real},
+    size_desc::AbstractArray{<:Real},
+    lower_bound::Float64,
+    upper_bound::Float64
+)::YAXArray 
+    lb_indices::Vector{Int} = _create_juvenile_index_threshold(size_desc, lower_bound)
+    ub_indices::Vector{Int} = _create_juvenile_index_threshold(size_desc, upper_bound)
+    count = dropdims(sum(count, dims=(:thermal_tolerance, :intervened)), dims=(:thermal_tolerance, :intervened))
+    # convert coral diameter to areas and convert cm^2 to m^2
+    coral_areas = (size_desc .* size_desc .* π) ./ 4e-4
+    # Force reshape and disk array to load data and not compute reshape lazily
+    coral_areas = reshape(
+        coral_areas, (1, 1, length(coral_areas.taxa), 1, length(coral_areas.size_bins))
+    )[:, :, :, :, :]
+    relative_cover = ZeroDataCube(
+        ;T=Float64,
+        timesteps=collect(count.timesteps),
+        sites=collect(count.sites),
+        taxa=collect(count.taxa),
+        scenarios=collect(count.scenarios)
+    )
+    count = count .* coral_areas
+    for coral_class in relative_cover.taxa
+        all_relative_cover = dropdims(sum(
+            count[taxa=At(coral_class)], 
+            dims=:size_bins
+        ), dims=:size_bins)
+        all_relative_cover[all_relative_cover .== 0] .= 1.0
+        relative_cover[taxa=At(coral_class)] = dropdims(sum(
+            count[taxa=At(coral_class), size_bins=At(lb_indices[coral_class]:ub_indices[coral_class])], 
+            dims=:size_bins
+            ), dims=:size_bins) ./ all_relative_cover
+    end
+    cover = dropdims(sum(cover, dims=(:thermal_tolerance, :intervened)), dims=(:thermal_tolerance, :intervened))
+    # Force load and evaluatiun of reshape to speed up succeeding multiplication
+    return dropdims(sum(relative_cover .* cover, dims=:taxa), dims=:taxa) end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
     rcps = rs.RCP
