@@ -197,7 +197,8 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
 
     # Store ranked sites
-    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_sites, 2, n_scens)  # sites, site id and rank, no. scenarios
+    n_interventions = length(interventions())
+    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_sites, n_interventions, n_scens)  # sites, site id and rank, no. scenarios
     fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_sites, n_scens)  # timeframe, sites, no. scenarios
 
     # tf, no. species to seed, site id and rank, no. scenarios

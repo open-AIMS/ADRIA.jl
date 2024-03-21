@@ -154,3 +154,7 @@ Base.@kwdef struct Intervention <: EcoModel
         description="Start of fogging deployments after this number of years has elapsed.",
     )
 end
+
+function interventions()
+    return [:seed, :fog]
+end
