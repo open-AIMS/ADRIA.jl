@@ -27,6 +27,11 @@ struct ReefModResultSet{T1, T2, D, G, D1} <: ResultSet
     # coral_dhw_tol_log::D3
 end
 
+"""
+    load_results(::Type{ReefModResultSet}, result_loc::String, RCP::String)::ReefModResultSet
+
+Reefmod result interface.
+"""
 function load_results(::Type{ReefModResultSet}, result_loc::String, RCP::String)::ReefModResultSet
     !isdir(result_loc) ? error("Expected a directory but received $(result_loc)") : nothing
 
@@ -104,14 +109,20 @@ function load_results(::Type{ReefModResultSet}, result_loc::String, RCP::String)
         :nb_coral_recruit,
         :reef_shelter_volume_relative
     ]
+    
     outcomes::Dict{Symbol, YAXArray} = Dict()
     for outcome in outcome_keys
         if !haskey(raw_set.cubes, outcome)
             @warn "Unable to find $(string(outcome)). Skipping."
             continue
         end
+        if outcome == :reef_shelter_volume_relative
+            outcomes[:relative_shelter_volume] = reformat_cube(ReefModResultSet, raw_set.cubes[outcome])
+            continue
+        end
         outcomes[outcome] = reformat_cube(ReefModResultSet, raw_set.cubes[outcome])
     end
+    outcomes[:relative_cover] = _reefmod_relative_cover(raw_set)
 
     return ReefModResultSet(
         name,
@@ -126,10 +137,17 @@ function load_results(::Type{ReefModResultSet}, result_loc::String, RCP::String)
         scenario_groups,
         SimConstants(),
         outcomes
-
     )
 end
 
+function _reefmod_relative_cover(dataset::Dataset)::YAXArray
+    relative_cover = reformat_cube(ReefModResultSet, dataset.coral_cover_per_taxa)
+    return dropdims(sum(relative_cover, dims=:taxa), dims=:taxa) ./ 100
+end
+
+"""
+    _get_netcdf(result_loc::String, RCP::String)::String
+"""
 function _get_netcdf(result_loc::String, RCP::String)::String
     possible_files = filter(x->occursin(RCP, x), readdir(result_loc))
     possible_files = filter(x->occursin(".nc", x), possible_files)
