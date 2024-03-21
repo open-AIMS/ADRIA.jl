@@ -196,9 +196,9 @@ Run individual scenarios for a given domain, saving results to a Zarr data store
 Results are stored in Zarr format at a pre-configured location.
 Sets up a new `cache` if not provided.
 
-# Notes
-Logs of site ranks only store the mean site rankings over all environmental scenarios.
-This is to reduce the volume of data stored.
+# Arguments
+- `domain` : Domain
+- `idx` : Scenario index
 
 # Returns
 Nothing
@@ -320,9 +320,6 @@ end
 
 Core scenario running function.
 
-# Notes
-Only the mean site rankings are kept
-
 # Returns
 NamedTuple of collated results
 """
@@ -417,11 +414,11 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Avoid placing importance on sites that were not considered
     # Lower values are higher importance/ranks.
     # Values of n_locs+1 indicate locations that were not considered in rankings.
-    log_location_ranks = DataCube(
-        fill(0.0, tf, n_locs, 2);  # log seeding/fogging ranks
+    log_location_ranks = ZeroDataCube(;     # log seeding/fogging ranks
+        T=Float64,
         timesteps=1:tf,
         locations=domain.site_ids,
-        intervention=[:seed, :fog]
+        intervention=interventions()
     )
 
     Yshade = SparseArray(spzeros(tf, n_locs))

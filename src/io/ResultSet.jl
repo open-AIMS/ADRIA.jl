@@ -73,12 +73,23 @@ function ResultSet(
         input_set.attrs["sim_constants"],
         model_spec,
         outcomes,
-        DataCube(log_set["rankings"], Symbol.(Tuple(log_set["rankings"].attrs["structure"]))),
+        _rankings_data(log_set["rankings"]),
         DataCube(log_set["seed"], Symbol.(Tuple(log_set["seed"].attrs["structure"]))),
         DataCube(log_set["fog"], Symbol.(Tuple(log_set["fog"].attrs["structure"]))),
         DataCube(log_set["shade"], Symbol.(Tuple(log_set["shade"].attrs["structure"]))),
         DataCube(log_set["coral_dhw_log"], Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))),
     )
+end
+
+function _rankings_data(rankings_set::ZArray{T})::YAXArray{T} where {T}
+    ax_names = Symbol.(Tuple(rankings_set.attrs["structure"]))
+    ax_labels::Vector{Union{UnitRange{Int64},Vector{Symbol}}} = range.([1], size(rankings_set))
+
+    # Replace intervention
+    intervention_idx = findfirst(x -> x == :intervention, ax_names)
+    ax_labels[intervention_idx] = interventions()
+
+    return DataCube(rankings_set; NamedTuple{ax_names}(ax_labels)...)
 end
 
 """
