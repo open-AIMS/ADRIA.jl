@@ -12,8 +12,8 @@ struct DecisionPreferences <: DecisionPreference
 end
 
 """
-    decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T2}; kwargs...)::YAXArray where {T<:Union{String,Symbol}}
     decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T}, criteria_vals::Matrix)::YAXArray where {T<:Union{String,Symbol}}
+    decision_matrix(loc_names::Vector{T}, criteria_names::Vector{T2}; kwargs...)::YAXArray where {T<:Union{String,Symbol}}
 
 Construct a decision matrix.
 
@@ -50,10 +50,12 @@ end
 
 """
     update_criteria_values!(dm::YAXArray, values::Matrix)::Nothing
+    update_criteria_values!(dm::YAXArray; kwargs...)::Nothing
 
 # Arguments
-- `dm` : decision matrix
-- `values` : new criteria values to update decision matrix with
+- `dm` : Decision matrix
+- `values` : New criteria values to update decision matrix with
+- `kwargs` : New values to assign for specified criteria
 
 # Returns
 Nothing
@@ -72,7 +74,7 @@ function update_criteria_values!(dm::YAXArray; kwargs...)::Nothing
 end
 
 """
-    filter_criteria(prefs::T, is_const::Vector)::T where {T<:DecisionPreference}
+    filter_criteria(prefs::T, remove::Vector)::T where {T<:DecisionPreference}
 
 Filter criteria marked to be removed according to vector of true/false.
 
@@ -89,6 +91,7 @@ function filter_criteria(prefs::T, remove::Vector)::T where {T<:DecisionPreferen
 end
 
 """
+    solve(dp::T, dm::YAXArray, method::DataType) where {T<:DecisionPreference}
     solve(dp::T, dm::YAXArray, method::Function) where {T<:DecisionPreference}
 
 # Arguments
@@ -100,12 +103,12 @@ end
 JMcDM result type (to confirm)
 """
 function solve(
-    dp::T, dm::YAXArray, method::Union{DataType}
+    dp::T, dm::YAXArray, method::DataType
 ) where {T<:DecisionPreference}
     return mcdm(MCDMSetting(dm.data, dp.weights, dp.directions), method())
 end
 function solve(
-    dp::T, dm::YAXArray, method::Union{Function}
+    dp::T, dm::YAXArray, method::Function
 ) where {T<:DecisionPreference}
     return method(dm.data, dp.weights, dp.directions)
 end
@@ -142,11 +145,10 @@ function rank_by_index(
     # Assess decision matrix only using valid (non-constant) criteria
     res = solve(_dp, dm[criteria=.!is_const], method)
 
-    scores = res.scores
-    if all(isnan.(scores))
+    if all(isnan.(res.scores))
         # This may happen if there are constants in the decision matrix
         # or if the method fails for some reason...
-        throw(DomainError(scores, "No ranking possible"))
+        throw(DomainError(res.scores, "No ranking possible"))
     end
 
     is_maximal = res.bestIndex == argmax(res.scores)
@@ -154,7 +156,7 @@ function rank_by_index(
 end
 
 """
-    select_locations(dp::T, dm::YAXArray, method::Function)::Vector{<:Union{String, Symbol}} where {T<:DecisionPreference}
+    select_locations(dp::T, dm::YAXArray, method::Union{Function,DataType}, min_locs::Int64)::Vector{<:Union{String,Symbol,Int64}} where {T<:DecisionPreference}
 
 Default location selection method.
 Returns the selected location names ordered by their rank.
@@ -166,7 +168,7 @@ Returns the selected location names ordered by their rank.
 - `min_locs` : Minimum number of locations to select
 
 # Returns
-Index of locations ordered by their rank
+Name of selected locations ordered by their rank
 """
 function select_locations(
     dp::T, dm::YAXArray, method::Union{Function,DataType}, min_locs::Int64
