@@ -103,7 +103,11 @@ function SeedPreferences(dom, params...)::SeedPreferences
         w[w.fieldname .== k, :val] .= v
     end
 
-    return SeedPreferences(string.(w.fieldname), w.val, w.direction)
+    return SeedPreferences(w.fieldname, w.val, w.direction)
+end
+function SeedPreferences(dom)
+    w::DataFrame = component_params(dom.model, SeedCriteriaWeights)
+    return SeedPreferences(w.fieldname, w.val, w.direction)
 end
 
 """
@@ -113,10 +117,11 @@ end
         method::Union{Function,DataType},
         cluster_ids::Vector{<:Union{Int64,String,Symbol}},
         area_to_seed::Float64,
+        considered_locs::Vector{<:Union{Int64,String,Symbol}},
         available_space::Vector{Float64},
         min_locs::Int64,
         max_members::Int64
-    )::Matrix{Union{String,Symbol,Int64}}
+    )::Vector{<:Union{String,Symbol,Int64}}
 
 Selection locations for seeding deployments.
 Attempts to spread deployment locations based on location clusters.
@@ -130,19 +135,29 @@ will relate to the position of the subset, not the canonical dataset.
 - `method` : MCDA method from JMcDM.jl
 - `cluster_ids` : Cluster membership for *all* locations
 - `area_to_seed` : total area to be seeded in absolute units (n_corals * mean juvenile area)
+- `considered_locs` : Locations to assess, specified by name or indices
 - `available_space` : available space for *all* location in absolute units (e.g., m²)
 - `min_locs` : Minimum number of locations to consider
 - `max_members` : Maximum number of deployment locations per cluster
 
-# Example
-```julia
-sp = SeedPreferences(rand(5), [minimum, maximum, maximum, minimum, minimum])
+# Returns
+Selected location names/ids in order of their ranks.
 
-location_names = Symbol.(collect(1:10))
-criteria_names = [:DHW, :water_quality, :CoTS, :Conn_1, :Conn_2]
-dm = decision_matrix(location_names, criteria_names)
-cluster_ids = [1,4,4,4,4,3,6,2,5,5,6]
-select_locations(sp, dmat, topsis, cluster_ids, sort(rand(10), rev=false), 3.0, 5, 2)
+# Examples
+```julia
+dom = ADRIA.load_domain("... path to domain ...")
+
+seed_pref = ADRIA.SeedPreferences(dom)
+
+location_names = cluster_ids
+cluster_ids = dom.site_data.cluster_id
+dm = ADRIA.decision_matrix(location_names, seed_pref.names, rand(3806, 6))
+available_space = dom.site_data.k .* dom.site_data.area
+mcda_method = ADRIA.mcda_methods()[1]
+min_locs = 5
+max_members = 2
+
+ADRIA.select_locations(seed_pref, dm, mcda_method, cluster_ids, 2.0, collect(1:3806), available_space, min_locs, max_members)
 ```
 """
 function select_locations(
@@ -193,7 +208,7 @@ end
 Disperse selected deployment locations, ensuring deployment locations are not "clumped"
 together.
 
-# Example
+# Examples
 ```julia
 ranked_locs = string.(collect(1:15))
 available_space = rand(15)
@@ -255,17 +270,17 @@ function disperse_locations(
     c = 0
     while length(exceeded_clusters) > 0
         for rule_violator in exceeded_clusters
-            # For each cluster that violates the rule find out how much the rule was violated
-            # by. The difference is how many alternate locations we need to find.
             if !(rule_violator in keys(cluster_frequency))
                 continue
             end
 
+            # For each cluster that violates the rule find out how much the rule was
+            # violated by. The difference is how many alternate locations we need to find.
             freq = cluster_frequency[rule_violator]
             reduce_by = freq - max_members
 
             for _ in 1:reduce_by
-                # Identify viable locations that do not breach the rule
+                # Identify viable clusters that do not breach the rule
                 alternates = vcat(
                     fill(false, num_locs),
                     (cluster_ids .∈ Ref(potential_alternatives))[num_locs+1:end]
@@ -326,7 +341,7 @@ end
 
 Update list of:
 - selected clusters
-- frequency of their selection
+- number of locations selected for each cluster
 - the indices of clusters which exceed the membership rule
 - IDs of the above
 - and potential suitable alternative locations
