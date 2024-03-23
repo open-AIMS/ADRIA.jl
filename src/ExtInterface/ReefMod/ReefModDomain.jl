@@ -356,7 +356,7 @@ function _cyclone_mortality_scens(
         mr_bd5::Vector{Float64} = cyclone_mr[:branching_deeper_than_5]
         cm_scens_bd5::Array{Float64} = mr_bd5[cyclone_scens[location=below_5]].data
         for b in species[branchings]
-            cyclone_mortality_scens[locations=(below_5), species=At(b)] .= cm_scens_bd5
+            cyclone_mortality_scens[locations=below_5, species=At(b)] .= cm_scens_bd5
         end
     end
 
@@ -364,9 +364,9 @@ function _cyclone_mortality_scens(
     above_5::BitVector = spatial_data.Y_COORD .> -5
     if sum(above_5) > 0
         mr_bs5::Vector{Float64} = cyclone_mr[:branching_shallower_than_5]
-        cm_scens_bs5::Array{Float64} = mr_bs5[cyclone_scens[location=(above_5)]].data
+        cm_scens_bs5::Array{Float64} = mr_bs5[cyclone_scens[location=above_5]].data
         for b in species[branchings]
-            cyclone_mortality_scens[locations=(above_5), species=At(b)] .= cm_scens_bs5
+            cyclone_mortality_scens[locations=above_5, species=At(b)] .= cm_scens_bs5
         end
     end
 
