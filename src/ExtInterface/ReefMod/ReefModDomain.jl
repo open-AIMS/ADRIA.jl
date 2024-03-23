@@ -304,10 +304,17 @@ function Base.show(io::IO, mime::MIME"text/plain", d::ReefModDomain)::Nothing
 end
 
 """
-    _cyclone_mortality_scens(dom_dataset, spatial_data, site_ids, timeframe)::YAXArray{Float64}
+    _cyclone_mortality_scens(
+        dom_dataset::Dataset,
+        spatial_data::DataFrame,
+        site_ids::Vector{String},
+        timeframe::Tuple{Int64,Int64}
+    )::YAXArray{Float64}
 
-Cyclone scenarios (from 0 to 5) are converted to mortality rates. More details of how this
-happens van be found in https://github.com/open-AIMS/rrap-dg.
+Cyclone scenarios (from 0 to 5) are converted to mortality rates.
+
+# See also
+1. https://github.com/open-AIMS/rrap-dg/blob/main/rrap_dg/cyclones/datacube_generator.jl
 """
 function _cyclone_mortality_scens(
     dom_dataset::Dataset,
@@ -330,7 +337,7 @@ function _cyclone_mortality_scens(
     )
 
     # Mortality rate was generated using rrap_dg
-    cyclone_mr::NamedTuple = _cyclone_mr()
+    cyclone_mr::NamedTuple = _cyclone_mortalities()
 
     # To filter massives/branchings
     massives::BitVector = contains.(String.(species), ["massives"])
@@ -343,23 +350,23 @@ function _cyclone_mortality_scens(
         cyclone_mortality_scens[species=At(m)] .= cm_scens_massives
     end
 
-    # Set branchings deeper than 5 mortality rates
-    mask_d5::BitVector = spatial_data.Y_COORD .<= -5
-    if sum(mask_d5) > 0
+    # Set mortality rates for branching corals at <= 5m depth
+    below_5::BitVector = spatial_data.Y_COORD .<= -5
+    if sum(below_5) > 0
         mr_bd5::Vector{Float64} = cyclone_mr[:branching_deeper_than_5]
-        cm_scens_bd5::Array{Float64} = mr_bd5[cyclone_scens[location=mask_d5]].data
+        cm_scens_bd5::Array{Float64} = mr_bd5[cyclone_scens[location=below_5]].data
         for b in species[branchings]
-            cyclone_mortality_scens[locations=(mask_d5), species=At(b)] .= cm_scens_bd5
+            cyclone_mortality_scens[locations=(below_5), species=At(b)] .= cm_scens_bd5
         end
     end
 
-    # Set branchings shallower than 5 mortality rates
-    mask_s5::BitVector = spatial_data.Y_COORD .> -5
-    if sum(mask_s5) > 0
+    # Set mortality rates for branching corals at > 5m depth
+    above_5::BitVector = spatial_data.Y_COORD .> -5
+    if sum(above_5) > 0
         mr_bs5::Vector{Float64} = cyclone_mr[:branching_shallower_than_5]
-        cm_scens_bs5::Array{Float64} = mr_bs5[cyclone_scens[location=(mask_s5)]].data
+        cm_scens_bs5::Array{Float64} = mr_bs5[cyclone_scens[location=(above_5)]].data
         for b in species[branchings]
-            cyclone_mortality_scens[locations=(mask_s5), species=At(b)] .= cm_scens_bs5
+            cyclone_mortality_scens[locations=(above_5), species=At(b)] .= cm_scens_bs5
         end
     end
 
@@ -367,16 +374,24 @@ function _cyclone_mortality_scens(
 end
 
 """
-    _cyclone_mr()
+    _cyclone_mortalities()
 
-For each cyclone category 0 to 5, represented as indexes 1 to 6 of the arrays, there can be
-distinct mortality rates for each coral functional group and location.
-For Acropora (branching) the mortality depends on the depth (if it is deeper or shalower
-than 5 meters);
-For massives the mortality does not depend on the depth.
+Mortality rates due to cyclones for each category (0 to 5) and for coral groups and depths.
+
+# Notes
+- Cyclone categories are represented through indexes 1 to 6 of the arrays, there can be
+distinct mortality rates for each coral functional group and depth.
+- For Acropora (branching) the mortality depends on the depth (if it is deeper or shalower
+than 5 meters).
+- For massives the mortality does not depend on the depth.
+
+# See also
+https://github.com/open-AIMS/rrap-dg/blob/main/rrap_dg/cyclones/mortality_regression.jl
 """
-function _cyclone_mr()::NamedTuple
-    return (branching_deeper_than_5=[0.0, 0.0, 0.104957, 0.979102, 0.999976, 1.0],
+function _cyclone_mortalities()::NamedTuple
+    return (
+        branching_deeper_than_5=[0.0, 0.0, 0.104957, 0.979102, 0.999976, 1.0],
         branching_shallower_than_5=[0.0, 0.0, 0.00993649, 0.497092, 0.989037, 0.99994],
-        massives=[0.0, 0.0121482, 0.0155069, 0.0197484, 0.0246357, 0.0302982])
+        massives=[0.0, 0.0121482, 0.0155069, 0.0197484, 0.0246357, 0.0302982]
+    )
 end
