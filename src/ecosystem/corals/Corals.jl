@@ -171,9 +171,6 @@ function coral_spec()::NamedTuple
     # rate of growth per year
     params.growth_rate .= growth_rate(linear_extension, bin_widths)
 
-    # Adjust growth rate for size class 6 to 20% of assumed value.
-    params.growth_rate[params.class_id.==6] .= params.growth_rate[params.class_id.==6] .* 0.2
-
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
     fec_par_a = Float64[1.03; 1.03; 1.69; 0.02; 0.86; 0.86]  # fecundity parameter a
@@ -207,6 +204,20 @@ function coral_spec()::NamedTuple
         0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
         0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
         0.2 0.2 0.040 0.026 0.020 0.020])  # Large massives
+    # mb = Array{Float64,2}([
+    #     0.6 0.2 0.110 0.110 0.060 0.030    # Arborescent Acropora
+    #     0.6 0.2 0.095 0.095 0.042 0.028    # Tabular Acropora
+    #     0.6 0.2 0.083 0.083 0.038 0.023    # Corymbose Acropora
+    #     0.6 0.2 0.105 0.105 0.045 0.023    # Corymbose non-Acropora
+    #     0.6 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
+    #     0.6 0.2 0.040 0.026 0.020 0.020])  # Large massives
+    # mb = Array{Float64,2}([
+    #     0.9 0.3 0.01 0.005 0.0025 0.0005    # Arborescent Acropora
+    #     0.9 0.3 0.01 0.005 0.0025 0.0005    # Tabular Acropora
+    #     0.9 0.3 0.01 0.005 0.0025 0.0005    # Corymbose Acropora
+    #     0.9 0.3 0.01 0.005 0.0025 0.0005    # Corymbose non-Acropora
+    #     0.9 0.3 0.01 0.005 0.0025 0.0005    # Small massives and encrusting
+    #     0.9 0.3 0.01 0.005 0.0025 0.0005])  # Large massives
     params.mb_rate = mb'[:]
 
     # Natural adaptation / heritability
