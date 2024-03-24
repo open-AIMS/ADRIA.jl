@@ -1,4 +1,5 @@
 using Printf: @sprintf
+import GeoMakie: alpha
 
 const COLORS::Dict{Symbol,Union{Symbol,String}} = Dict(
     :RCP45 => :darkblue,
