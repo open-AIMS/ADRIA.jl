@@ -134,7 +134,7 @@ Alias to cluster_series.
 # Returns
 - `Vector` : Cluster ids indicating which cluster each scenario belongs to.
 
-# Example
+# Examples
 One can cluster scenarios based on a single Metric, passing a Matrix of outcomes for each
 timestep and scenario:
 
