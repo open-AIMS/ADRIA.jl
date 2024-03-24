@@ -322,6 +322,13 @@ Core scenario running function.
 
 # Returns
 NamedTuple of collated results
+- `raw` : Array, Coral cover relative to k area
+- `seed_log` : Array, Log of seeded locations
+- `fog_log` : Array, Log of fogged locations
+- `shade_log` : Array, Log of shaded locations
+- `site_ranks` : Array, Log of location rankings
+- `bleaching_mortality` : Array, Log of mortalities caused by bleaching
+- `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
 function run_model(domain::Domain, param_set::DataFrameRow)::NamedTuple
     ps = DataCube(Vector(param_set); factors=names(param_set))
