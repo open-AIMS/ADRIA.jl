@@ -118,7 +118,7 @@ function load_domain(
     # Connectivity data is retireved from a subdirectory because it's not contained in matfiles
     conn_data = load_connectivity(RMEDomain, fn_path, site_ids)
 
-    spatial_data[:, :depth_med] .= 6.0
+    spatial_data[:, :depth_med] .= 7.0
     spatial_data[!, :depth_med] = convert.(Float64, spatial_data[!, :depth_med])
     # GBRMPA zone types are not contained in matfiles
     spatial_data[:, :zone_type] .= ["" for _ in 1:nrow(spatial_data)]
