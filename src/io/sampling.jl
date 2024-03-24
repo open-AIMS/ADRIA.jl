@@ -193,7 +193,6 @@ function sample_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenS
     # Only Intervention, EnvironmentalLayer and CriteriaWeights factors are perturbed,
     # all other factors are fixed to their default values
     scens = repeat(param_table(d), n)
-    select!(scens, Not(:RCP))  # remove RCP column added by param_table()
     scens[:, subset_spec.fieldname] .= sample(subset_spec, n, sample_method)
 
     return scens
