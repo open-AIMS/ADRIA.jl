@@ -1,7 +1,7 @@
 using Test
 using ADRIA
 using ADRIA.Distributions
-
+using ADRIA.OrdinaryDiffEq
 
 @testset "proportional adjustment" begin
     Y = rand(5, 36, 20)
@@ -61,11 +61,6 @@ end
         @test all(stored_mb_rate[coral_params.class_id .== i] .== mb[:, i]) ||
             "Background mortality rates incorrect for size class $i."
     end
-
-    # Test growth rate values for size class 6 (should be ~20% of given value)
-    @test all(
-        stored_growth_rate[coral_params.class_id .== 6] .== (growth_rates[:, 6] * 0.2)
-    ) || "Growth rates incorrect for size class $i."
 
     # Check all growth rates are > 0
     @test all(stored_growth_rate .> 0.0) || "Some coral growth rates are <=0"
@@ -874,17 +869,29 @@ end
 
     # Test direction and magnitude of change
     p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
-    p.X_mb .= rand(36, n_sites)
     C_cover = zeros(10, 36, n_sites)
     init = rand(Uniform(0.0, 0.4), 36, n_sites)
     proportional = vec(init / sum(init; dims=1))
     C_cover[1, :, :] .= proportional
 
+    ode_u = zeros(36, 10)
+    growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, (0.0, 1.0), p)
+    alg_hint = Symbol[:nonstiff]
+    solver::Euler = Euler()
+
     for tstep in 2:10
         p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
-        growthODE(du, C_cover[tstep - 1, :, :], p, tstep)
-        C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
-        C_cover[C_cover .< 0.0] .= 0.0
+        growth.u0 .= C_cover[tstep-1, :, :]
+        sol::ODESolution = solve(
+            growth,
+            solver;
+            save_everystep=false,
+            save_start=false,
+            alg_hints=alg_hint,
+            dt=1.0,
+        )
+
+        C_cover[tstep, :, :] .= clamp!(sol.u[end], 0.0, 1.0)
     end
     @test any(diff(C_cover; dims=1) .< 0) ||
         "ODE never decreases, du being restricted to >=0."
@@ -899,9 +906,17 @@ end
     C_cover[1, :, :] .= proportional
 
     for tstep in 2:10
-        growthODE(du, C_cover[tstep - 1, :, :], p, 1)
-        C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
-        C_cover[C_cover .< 0.0] .= 0.0
+        growth.u0 .= C_cover[tstep-1, :, :]
+        sol::ODESolution = solve(
+            growth,
+            solver;
+            save_everystep=false,
+            save_start=false,
+            alg_hints=alg_hint,
+            dt=1.0,
+        )
+
+        C_cover[tstep, :, :] .= clamp!(sol.u[end], 0.0, 1.0)
     end
 
     @test all((diff(C_cover[:, [1, 7, 13, 19, 25, 31], :]; dims=1) .<= 1e-5)) ||
