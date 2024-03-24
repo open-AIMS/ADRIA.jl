@@ -153,7 +153,7 @@ distance measurements. Defaults to `:euclidean`
 # Returns
 - Cluster ids indicating each scenario cluster assignment.
 
-# Example
+# Examples
 One can cluster scenarios based on a single Metric, passing a Matrix of outcomes for each
 timestep and scenario:
 
