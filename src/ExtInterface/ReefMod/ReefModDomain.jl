@@ -123,7 +123,7 @@ function load_domain(
         conn_data, vec(spatial_data.area .* spatial_data.k), similar(conn_data)
     )
 
-    spatial_data[:, :depth_med] .= 6.0
+    spatial_data[:, :depth_med] .= 7.0
     spatial_data[!, :depth_med] = convert.(Float64, spatial_data[!, :depth_med])
     # GBRMPA zone types are not contained in matfiles
     spatial_data[:, :zone_type] .= ["" for _ in 1:nrow(spatial_data)]
@@ -339,7 +339,7 @@ function _cyclone_mortality_scens(dom_dataset, spatial_data, site_ids, timeframe
     end
 
     # Set branchings deeper than 5 mortality rates
-    mask_d5::BitVector = spatial_data.Y_COORD .<= -5
+    mask_d5::BitVector = spatial_data.depth_med .>= 5
     if sum(mask_d5) > 0
         mr_bd5::Vector{Float64} = cyclone_mr[:branching_deeper_than_5]
         cm_scens_bd5::Array{Float64} = mr_bd5[cyclone_scens[location=mask_d5]].data
@@ -349,7 +349,7 @@ function _cyclone_mortality_scens(dom_dataset, spatial_data, site_ids, timeframe
     end
 
     # Set branchings shallower than 5 mortality rates
-    mask_s5::BitVector = spatial_data.Y_COORD .> -5
+    mask_s5::BitVector = spatial_data.depth_med .< 5
     if sum(mask_s5) > 0
         mr_bs5::Vector{Float64} = cyclone_mr[:branching_shallower_than_5]
         cm_scens_bs5::Array{Float64} = mr_bs5[cyclone_scens[location=(mask_s5)]].data
