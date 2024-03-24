@@ -52,8 +52,8 @@ Base.@kwdef mutable struct SimConstants
     comp::Float64 = 0.3
 
     # Modified for use in ADRIA
-    max_settler_density::Vector{Float64} = Float64[100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
+    max_settler_density::Vector{Float64} = Float64[0.75, 3.75, 3.75, 2.25, 2.25, 2.25]
     max_larval_density::Vector{Float64} = Float64[
-        5000.0, 5000.0, 5000.0, 5000.0, 5000.0, 5000.0
+        12_500.0, 12_500.0, 12_500.0, 12_500.0, 12_500.0, 12_500.0
     ]
 end
