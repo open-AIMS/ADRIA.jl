@@ -132,3 +132,27 @@ using ADRIA.decision: subtypes
 
     @test ADRIA.mcda_methods() == valid_methods || msg
 end
+
+@testset "Updating decision matrices" begin
+    vals = rand(4, 3)
+    dm = ADRIA.decision_matrix(
+        [:loc1, :loc2, :loc3, :loc4],
+        [:criteria_1, :criteria_2, :criteria_3],
+        vals
+    )
+
+    new_vals = vals .+ 1.0
+    ADRIA.update_criteria_values!(dm, new_vals)
+
+    @test dm.data == new_vals || "Failed to update criteria values with matrix"
+
+    new_vals = rand(4, 3)
+    ADRIA.update_criteria_values!(
+        dm;
+        criteria_1=new_vals[:, 1],
+        criteria_2=new_vals[:, 2],
+        criteria_3=new_vals[:, 3]
+    )
+
+    @test dm.data == new_vals || "Failed to update criteria values by name"
+end
