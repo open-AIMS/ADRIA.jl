@@ -236,7 +236,7 @@ function run_scenario(
     data_store.relative_cover[:, :, idx] .= vals
 
     vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
     vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
@@ -753,8 +753,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
-            @view(C_cover[tstep, :, valid_locs]),
-            cover_tmp[valid_locs]
+            @view(C_cover[tstep, :, valid_locs]), cover_tmp[valid_locs]
         )
 
         if tstep <= tf
