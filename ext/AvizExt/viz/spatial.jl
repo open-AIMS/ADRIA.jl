@@ -37,7 +37,7 @@ function create_map!(
     color_map::Union{Symbol, Vector{Symbol}, RGBA{Float32}, Vector{RGBA{Float32}}}=:grayC,
     legend_params::Union{Tuple, Nothing}=nothing,
     axis_opts::Dict=Dict(),
-)
+)::Union{GridLayout,GridPosition}
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
@@ -58,10 +58,11 @@ function create_map!(
 
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10
+    min_val = @lift(minimum($data))
     max_val = @lift(maximum($data))
 
     # Plot geodata polygons using data as internal color
-    color_range = (0.0, max_val[])
+    color_range = min_val[] < 0 ? (min_val[], max_val[]) : (0, max_val[])
 
     poly!(
         spatial,
@@ -213,6 +214,21 @@ function ADRIA.viz.map!(
         legend_params,
         axis_opts,
     )
+end
+
+function ADRIA.viz.diff_map(
+    rs::ResultSet,
+    diff_outcome::YAXArray{Float64};
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
+)
+    # TODO hande the cases where thes only positive or only negative values
+    min_val, max_res = extrema(diff_outcome)
+    mid_val = -min_val / (max_res - min_val)
+    div_cmap::Vector{RGBA{Float32}} = diverging_palette(10, 200; mid=mid_val)
+    opts[:color_map] = div_cmap
+    return ADRIA.viz.map(rs, diff_outcome; axis_opts=axis_opts, opts=opts, fig_opts=fig_opts)
 end
 
 """
