@@ -21,19 +21,17 @@ end
 @testset "Coral Spec" begin
     linear_extension = Array{Float64,2}(
         [
-            1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora
-            1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora
-            1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
-            1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
+            1.0 3.0 3.0 4.4 4.4 4.4     # arborescent Acropora
+            1.0 3.0 3.0 4.4 4.4 4.4     # tabular Acropora
+            1.0 3.0 3.0 3.0 3.0 3.0     # corymbose Acropora
+            1.0 2.4 2.4 2.4 2.4 2.4     # corymbose non-Acropora
             1.0 1.0 1.0 1.0 0.8 0.8     # small massives
-            1.0 1.0 1.0 1.0 1.2 1.2
+            1.0 1.0 1.0 1.0 1.2 1.2     # large massives
         ],
-    )   # large massives
+    )
 
-    bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
-
-    growth_rates = (2 * linear_extension) ./ bin_widths  # growth rates as calculated without growth_rate(), maintaining species x size_class structure
-    #growth_rates[:, 6] .= 0.8 * growth_rates[:, 6]
+    # Growth rates as calculated without growth_rate(), maintaining species x size_class structure
+    growth_rates = (2 * linear_extension) ./ ADRIA.bin_widths()'
 
     mb = Array{Float64,2}(
         [
@@ -69,8 +67,7 @@ end
     @test all(stored_mb_rate .<= 1.0) || "Some coral background mortality rates are > 1."
     @test all(stored_mb_rate .>= 0.0) || "Some coral background mortality rates are <= 0."
 
-    bin_edges_cm = Float64[0, 2, 5, 10, 20, 40, 80]
-    bin_edge_diameters_cm2 = ADRIA.colony_mean_area(bin_edges_cm)
+    bin_edge_diameters_cm2 = ADRIA.colony_mean_area(bin_edges())
     stored_colony_mean_areas = ADRIA.colony_mean_area(
         coral_params.mean_colony_diameter_m .* 100.0
     )
