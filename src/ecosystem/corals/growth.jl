@@ -101,16 +101,21 @@ function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, t::Re
 
     # sXr : available space (sigma) * current cover (X) * growth rate (r)
     # X_mb : current cover (X) * background mortality (mb)
-    p.sXr .= (max.(1.0 .- sum(X, dims=1), 0.0) .* X .* p.r)
     p.X_mb .= X .* p.mb
+    p.sXr .= (max.(1.0 .- sum(X, dims=1), 0.0) .* X .* p.r)
 
     # For each size class, we determine the corals coming into size class due to growth,
     # and subtract those leaving the size class due to growth and background mortality
     # e.g., C = [corals coming in] - [corals going out]
+    #
+    # In most cases, this takes the form of:
+    # C = [growth from smaller size class - mortality of smaller size class] -
+    #     [growth to next size class + mortality of current size class]
+    #
     # The smallest size class only has corals leaving the size class.
-    @views @. du[p.small, :] = -p.sXr[p.small, :] - p.X_mb[p.small, :]
+    @views @. du[p.small, :] = -(p.sXr[p.small, :] + p.X_mb[p.small, :])
     @views @. du[p.mid, :] = (p.sXr[p.mid-1, :] - p.X_mb[p.mid-1, :]) - (p.sXr[p.mid, :] + p.X_mb[p.mid, :])
-    @views @. du[p.large, :] = (p.sXr[p.large-1, :] + p.sXr[p.large, :]) - p.X_mb[p.large, :]
+    @views @. du[p.large, :] = (p.sXr[p.large-1, :] - p.X_mb[p.large-1, :]) + (p.sXr[p.large, :] - p.X_mb[p.large, :])
 
     return nothing
 end
@@ -309,7 +314,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             mort_pop::Float64 = 0.0
             if affected_pop > 0.0
                 # Calculate depth-adjusted bleaching mortality
-                mort_pop = affected_pop * depth_coeff[loc]
+                mort_pop = (affected_pop * depth_coeff[loc])
 
                 # Set values close to 0.0 (e.g., 1e-214) to 0.0
                 # https://github.com/JuliaLang/julia/issues/23376#issuecomment-324649815
@@ -655,8 +660,10 @@ Calculates coral recruitment for each species/group and location.
 """
 function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
     α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::Matrix{T} where {T<:Float64}
-    sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
+
+    sd = settler_density.(α, β, larval_pool) .* A
     @views sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
+
     return sd
 end
 
