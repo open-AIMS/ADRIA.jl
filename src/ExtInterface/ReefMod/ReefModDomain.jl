@@ -210,7 +210,7 @@ function load_initial_cover(
     # as suggested by YM (pers comm. 2023-08-08 12:55pm AEST). Distribution is used to split ReefMod initial
     # species covers into ADRIA's 6 size classes by weighting with the cdf.
     reef_mod_area_dist = LogNormal(log(700), log(4))
-    bin_edges_area = colony_mean_area(Float64[0, 2, 5, 10, 20, 40, 80])
+    bin_edges_area = colony_mean_area(bin_edges())
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
