@@ -350,7 +350,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Extract environmental data
     dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
-    dhw_scen .= 0.0
 
     # TODO: Better conversion of Ub to wave mortality
     #       Currently scaling significant wave height by its max to non-dimensionalize values
@@ -534,9 +533,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     p.r .= corals.growth_rate
     p.mb .= corals.mb_rate
-    ode_u = zeros(n_species, n_locs)
-    growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
-    alg_hint = Symbol[:nonstiff]
 
     area_weighted_conn = conn .* site_k_area(domain)
     conn_cache = similar(area_weighted_conn.data)
@@ -554,19 +550,14 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     potential_settlers = zeros(size(fec_scope)...)
     for tstep::Int64 in 2:tf
         # Update initial condition
-        growth.u0 .= C_cover[tstep-1, :, :]
-        sol::ODESolution = solve(
-            growth,
-            solver;
-            save_everystep=false,
-            save_start=false,
-            alg_hints=alg_hint,
-            dt=1.0,
-        )
+        C_cover[tstep, :, valid_locs] = C_cover[tstep-1, :, valid_locs]
 
-        # Assign results
-        # We need to clamp values as the ODE may return negative values.
-        C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
+        s = (1.0 .- sum(C_cover[tstep, :, valid_locs], dims=1))
+        @. p.sXr = s * C_cover[tstep, :, valid_locs] * p.r
+        @. p.X_mb = C_cover[tstep, :, valid_locs] * p.mb
+        @views @. C_cover[tstep, p.large, valid_locs] += p.sXr[p.large-1, :] - p.X_mb[p.large, :]
+        @views @. C_cover[tstep, p.mid, valid_locs] += p.sXr[p.mid-1, :] - p.X_mb[p.mid-1, :]
+        C_cover[tstep, p.small, valid_locs] .= 0.0
 
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
