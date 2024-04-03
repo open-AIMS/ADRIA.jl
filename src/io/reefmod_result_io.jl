@@ -32,7 +32,9 @@ end
 
 Reefmod result interface.
 """
-function load_results(::Type{ReefModResultSet}, result_loc::String, RCP::String)::ReefModResultSet
+function load_results(
+    ::Type{ReefModResultSet}, result_loc::String, RCP::String
+)::ReefModResultSet
     !isdir(result_loc) ? error("Expected a directory but received $(result_loc)") : nothing
 
     result_path = _get_netcdf(result_loc, RCP)
@@ -117,7 +119,9 @@ function load_results(::Type{ReefModResultSet}, result_loc::String, RCP::String)
             continue
         end
         if outcome == :reef_shelter_volume_relative
-            outcomes[:relative_shelter_volume] = reformat_cube(ReefModResultSet, raw_set.cubes[outcome])
+            outcomes[:relative_shelter_volume] = reformat_cube(
+                ReefModResultSet, raw_set.cubes[outcome]
+            )
             continue
         end
         outcomes[outcome] = reformat_cube(ReefModResultSet, raw_set.cubes[outcome])
@@ -162,7 +166,7 @@ end
 """
    reformat_cube(cube::YAXArray)::YAXArray
 
-Temporary function. Reefmod NetCDF files should follow expected dimension naming and ordering.
+Rename and reorder dimensions to align with ADRIA expectations.
 """
 function reformat_cube(::Type{ReefModResultSet}, cube::YAXArray)::YAXArray
     dim_names = name.(cube.axes)

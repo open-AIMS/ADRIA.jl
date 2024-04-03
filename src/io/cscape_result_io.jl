@@ -310,8 +310,12 @@ end
 
 """
     _create_juvenile_index_threshold(size_classes::YAXArray, threshold::Float64)::Vector{Int64}
+
+Juveniles are defined as less then 5cm in diameter. Find the size indices that correspond to the juvenile size classes.
 """
-function _create_juvenile_index_threshold(size_classes::YAXArray, threshold::Float64)::Vector{Int64}
+function _create_juvenile_index_threshold(
+    size_classes::YAXArray, threshold::Float64
+)::Vector{Int64}
     return [_safeFindFirst(x -> x > threshold, size_classes[taxa=At(i)]) for i in size_classes.taxa]
 end
 
@@ -322,15 +326,21 @@ function _relative_size_class_cover(
     lower_bound::Float64,
     upper_bound::Float64
 )::YAXArray 
+    # Get indices corresponding to given size classes
     lb_indices::Vector{Int} = _create_juvenile_index_threshold(size_desc, lower_bound)
     ub_indices::Vector{Int} = _create_juvenile_index_threshold(size_desc, upper_bound)
-    count = dropdims(sum(count, dims=(:thermal_tolerance, :intervened)), dims=(:thermal_tolerance, :intervened))
+
+    # Sum number of corals over
+    count = dropdims(sum(
+        count, dims=(:thermal_tolerance, :intervened)
+    ), dims=(:thermal_tolerance, :intervened))
     # convert coral diameter to areas and convert cm^2 to m^2
     coral_areas = (size_desc .* size_desc .* π) ./ 4e-4
     # Force reshape and disk array to load data and not compute reshape lazily
     coral_areas = reshape(
         coral_areas, (1, 1, length(coral_areas.taxa), 1, length(coral_areas.size_bins))
     )[:, :, :, :, :]
+    # Pre-allocate Array
     relative_cover = ZeroDataCube(
         ;T=Float64,
         timesteps=collect(count.timesteps),
@@ -346,12 +356,17 @@ function _relative_size_class_cover(
         ), dims=:size_bins)
         all_relative_cover[all_relative_cover .== 0] .= 1.0
         relative_cover[taxa=At(coral_class)] = dropdims(sum(
-            count[taxa=At(coral_class), size_bins=At(lb_indices[coral_class]:ub_indices[coral_class])], 
+            count[
+                taxa=At(coral_class), 
+                size_bins=At(lb_indices[coral_class]:ub_indices[coral_class])
+            ], 
             dims=:size_bins
-            ), dims=:size_bins) ./ all_relative_cover
+        ), dims=:size_bins) ./ all_relative_cover
     end
-    cover = dropdims(sum(cover, dims=(:thermal_tolerance, :intervened)), dims=(:thermal_tolerance, :intervened))
-    # Force load and evaluatiun of reshape to speed up succeeding multiplication
+    cover = dropdims(sum(
+        cover, dims=(:thermal_tolerance, :intervened)
+    ), dims=(:thermal_tolerance, :intervened))
+
     return dropdims(sum(relative_cover .* cover, dims=:taxa), dims=:taxa) end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
