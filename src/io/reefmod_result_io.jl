@@ -84,7 +84,7 @@ function load_results(::Type{ReefModResultSet}, result_loc::String, RCP::String)
         timeframe = raw_set.timestep[1]:raw_set.timestep[end]
     end
 
-    scenario_groups = Dict(:Counterfactual => BitVector(true for _ in raw_set.scenario))
+    scenario_groups = Dict(:counterfactual => BitVector(true for _ in raw_set.scenario))
 
     env_layer_md::EnvLayer = EnvLayer(
         result_loc,
