@@ -85,6 +85,14 @@ function _manual_id_corrections!(spatial_data::DataFrame, id_list::DataFrame)::N
             # If it is not an ArgumentError, something else has happened.
             rethrow(err)
         end
+
+        if contains(string(err), ":LABEL_ID")
+            # Hacky manual catch for canonical dataset.
+            # Geopackage does not contain LABEL_ID, so check RME_GBRMPA_ID column.
+            # The original file had "20198", but later revisions of the RME reef id list
+            # seems to correct it.
+            spatial_data[spatial_data.RME_GBRMPA_ID .== "20198", :RME_GBRMPA_ID] .= "20-198"
+        end
     end
 
     return nothing
@@ -134,7 +142,11 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     _manual_id_corrections!(spatial_data, id_list)
 
     # Check that the two lists of location ids are identical
-    @assert isempty(findall(spatial_data.LABEL_ID .!= id_list[:, 1]))
+    try
+        @assert isempty(findall(spatial_data.LABEL_ID .!= id_list[:, 1]))
+    catch
+        @assert isempty(findall(spatial_data.RME_GBRMPA_ID .!= id_list[:, 1]))
+    end
 
     # Convert area in km² to m²
     spatial_data[:, :area] .= id_list[:, 2] .* 1e6
