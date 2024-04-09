@@ -6,11 +6,11 @@ simulations for a given spatial domain.
 
 See [Architectural overview](@ref) for more information.
 
-A `Domain` may be loaded with the `load_domain` function.
+A `Domain` may be loaded by calling the `load_domain` function with the path to the data package directory containing the *datapackage.json* file.
 By convention we assign the `Domain` to `dom`, although this variable can be named anything.
 
 ```julia
-dom = ADRIA.load_domain("path to domain data package")
+dom = ADRIA.load_domain("path to domain data package directory")
 ```
 
 ReefMod Engine datasets can also be used to run ADRIAmod simulations for the Great Barrier
