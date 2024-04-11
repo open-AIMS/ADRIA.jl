@@ -660,16 +660,20 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
             update_criteria_values!(
                 decision_mat;
-                heat_stress=dhw_projection[considered_locs],
-                wave_stress=wave_projection[considered_locs],
-                coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
-                in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
-                out_connectivity=out_conn[considered_locs]
+                heat_stress=dhw_projection[_valid_locs],
+                wave_stress=wave_projection[_valid_locs],
+                coral_cover=loc_coral_cover[_valid_locs],  # Coral cover relative to `k`
+                in_connectivity=in_conn[_valid_locs],  # area weighted connectivities for time `t`
+                out_connectivity=out_conn[_valid_locs]
             )
+
+            # IDs of valid locations considering locations that have space for corals
+            locs_with_space = vec(leftover_space_m²) .> 0.0
+            considered_locs = findall(_valid_locs .& locs_with_space)
 
             selected_seed_ranks = select_locations(
                 seed_pref,
-                decision_mat,
+                decision_mat[location=locs_with_space[_valid_locs]],
                 MCDA_approach,
                 site_data.cluster_id,
                 area_to_seed,
