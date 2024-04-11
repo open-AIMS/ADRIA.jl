@@ -168,6 +168,10 @@ function select_locations(
         rethrow(err)
     end
 
+    if length(considered_locs) == 0
+        return String[]
+    end
+
     # Disperse selected locations to avoid "clumping" deployment locations
     dispersed_rank_order, _, n_locs = disperse_locations(
         rank_ordered_idx,
