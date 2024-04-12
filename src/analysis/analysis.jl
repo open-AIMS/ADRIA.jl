@@ -13,7 +13,13 @@ using YAXArrays
 Normalize a matrix on a per-column basis (∈ [0, 1]).
 """
 function col_normalize(data::AbstractMatrix{T})::AbstractMatrix{T} where {T<:Union{Missing,Real}}
-    d = copy(data)
+    local d
+    try
+        d = copy(data)
+    catch
+        d = copy(data.data)
+    end
+
     Threads.@threads for ax in axes(d, 2)
         @inbounds d[:, ax] .= normalize!(d[:, ax])
     end
