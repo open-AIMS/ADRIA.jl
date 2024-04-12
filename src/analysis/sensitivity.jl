@@ -730,9 +730,9 @@ function _map_outcomes(
 end
 function _map_outcomes(y::AbstractArray{<:Real}, rule::Function)::Vector{Int64}
     _y = col_normalize(y)
-    all_p_rule = findall(rule, eachrow(_y))
+    all_p_rule = map(rule, _y)
 
-    return all_p_rule
+    return findall(all_p_rule)
 end
 
 end
