@@ -78,7 +78,6 @@ Hide selected scenarios by changing transparency.
 function scenario_colors!(
     obs_color::Observable,
     color_map::Vector,
-    scen_groups::Dict{Symbol,BitVector},
     scen_types::NamedTuple,
     weight::Float64,
     hide::BitVector,
