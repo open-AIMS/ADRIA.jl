@@ -50,10 +50,10 @@ Base.@kwdef struct Intervention <: EcoModel
         description="Maximum number of deployment locations within a single cluster/region/area."
     )
     fogging::Param = Factor(
-        0.16;
+        0.0;
         ptype="continuous",
         dist=TriangularDist,
-        dist_params=(0.0, 0.3, 0.16),
+        dist_params=(0.0, 0.3, 0.0),
         name="Fogging",
         description="Assumed reduction in bleaching mortality.",
     )
