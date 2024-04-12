@@ -132,8 +132,14 @@ function rank_locations(
         depth_criteria = identify_within_depth_bounds(site_data.depth_med, min_depth, depth_offset)
         valid_seed_locs = coral_habitable_locs .& depth_criteria .& (dom.site_ids .∈ Ref(target_seed_loc_ids))
         considered_seed_locs = findall(valid_seed_locs)
+        if count(valid_seed_locs) == 0
+            @warn "No valid seeding locations found for scenario $(scen_idx)"
+        end
 
         valid_fog_locs = coral_habitable_locs .& depth_criteria .& (dom.site_ids .∈ Ref(target_fog_loc_ids))
+        if count(valid_fog_locs) == 0
+            @warn "No valid fogging locations found for scenario $(scen_idx)"
+        end
 
         MCDA_approach = mcda_methods()[Int64(scen[factors=At("guided")][1])]
         leftover_space_m² = vec(leftover_space_scens[scen_idx, :])
@@ -156,52 +162,56 @@ function rank_locations(
         # Create shared decision matrix
         # Ignore locations that cannot support corals or are out of depth bounds
         # from consideration
-        seed_decision_mat = decision_matrix(
-            dom.site_ids[valid_seed_locs],
-            seed_pref.names;
-            depth=site_data.depth_med[valid_seed_locs],
-            in_connectivity=in_conn[valid_seed_locs],
-            out_connectivity=out_conn[valid_seed_locs],
-            heat_stress=dhw_projection[valid_seed_locs],
-            wave_stress=wave_projection[valid_seed_locs],
-            coral_cover=sum_cover[valid_seed_locs]
-        )
+        if count(valid_seed_locs) > 0
+            seed_decision_mat = decision_matrix(
+                dom.site_ids[valid_seed_locs],
+                seed_pref.names;
+                depth=site_data.depth_med[valid_seed_locs],
+                in_connectivity=in_conn[valid_seed_locs],
+                out_connectivity=out_conn[valid_seed_locs],
+                heat_stress=dhw_projection[valid_seed_locs],
+                wave_stress=wave_projection[valid_seed_locs],
+                coral_cover=sum_cover[valid_seed_locs]
+            )
 
-        # Ensure what to do with this because it is usually empty
-        # seed_zone = strong_pred[valid_locs]
+            # Ensure what to do with this because it is usually empty
+            # seed_zone = strong_pred[valid_locs]
 
-        min_locs = min_iv_locs[scen_idx]
-        selected_seed_ranks = select_locations(
-            seed_pref,
-            seed_decision_mat,
-            MCDA_approach,
-            site_data.cluster_id,
-            area_to_seed,
-            considered_seed_locs,
-            leftover_space_m²,
-            min_locs,
-            max_members[scen_idx]
-        )
+            min_locs = min_iv_locs[scen_idx]
+            selected_seed_ranks = select_locations(
+                seed_pref,
+                seed_decision_mat,
+                MCDA_approach,
+                site_data.cluster_id,
+                area_to_seed,
+                considered_seed_locs,
+                leftover_space_m²,
+                min_locs,
+                max_members[scen_idx]
+            )
 
-        if !isempty(selected_seed_ranks)
-            ranks_store[locations=At(selected_seed_ranks), intervention=At(:seed), scenarios=scen_idx] .= 1:length(selected_seed_ranks)
+            if !isempty(selected_seed_ranks)
+                ranks_store[locations=At(selected_seed_ranks), intervention=At(:seed), scenarios=scen_idx] .= 1:length(selected_seed_ranks)
+            end
         end
 
-        fog_decision_mat = decision_matrix(
-            dom.site_ids[valid_fog_locs],
-            seed_pref.names;
-            depth=site_data.depth_med[valid_fog_locs],
-            in_connectivity=in_conn[valid_fog_locs],
-            out_connectivity=out_conn[valid_fog_locs],
-            heat_stress=dhw_projection[valid_fog_locs],
-            wave_stress=wave_projection[valid_fog_locs],
-            coral_cover=sum_cover[valid_fog_locs]
-        )
-        selected_fog_ranks = select_locations(
-            fog_pref, fog_decision_mat, MCDA_approach, min_locs
-        )
-        if !isempty(selected_fog_ranks)
-            ranks_store[locations=At(selected_fog_ranks), intervention=At(:fog), scenarios=scen_idx] .= 1:min_locs
+        if count(valid_fog_locs) > 0
+            fog_decision_mat = decision_matrix(
+                dom.site_ids[valid_fog_locs],
+                seed_pref.names;
+                depth=site_data.depth_med[valid_fog_locs],
+                in_connectivity=in_conn[valid_fog_locs],
+                out_connectivity=out_conn[valid_fog_locs],
+                heat_stress=dhw_projection[valid_fog_locs],
+                wave_stress=wave_projection[valid_fog_locs],
+                coral_cover=sum_cover[valid_fog_locs]
+            )
+            selected_fog_ranks = select_locations(
+                fog_pref, fog_decision_mat, MCDA_approach, min_locs
+            )
+            if !isempty(selected_fog_ranks)
+                ranks_store[locations=At(selected_fog_ranks), intervention=At(:fog), scenarios=scen_idx] .= 1:min_locs
+            end
         end
     end
 
