@@ -77,7 +77,7 @@ Sum of proportional area taken up by all corals, multiplied by total site area.
 
 # Returns
 Absolute coral cover for a given location in m².
-    """
+"""
 function _total_absolute_cover(
     X::AbstractArray{<:Real},
     k_area::Vector{<:Real}

@@ -14,7 +14,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Importance of avoiding heat stress when seeding. Prefer locations with lower heat stress.",
     )
     seed_wave_stress::Param = Factor(
-        1.0;
+        0.3;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
@@ -23,7 +23,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Prefer locations with higher wave activity.",
     )
     seed_in_connectivity::Param = Factor(
-        1.0;
+        0.85;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.5, 1.0),
@@ -32,7 +32,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for coral deployments.",
     )
     seed_out_connectivity::Param = Factor(
-        1.0;
+        0.90;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.5, 1.0),
@@ -41,7 +41,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for coral deployments.",
     )
     seed_depth::Param = Factor(
-        1.0;
+        0.95;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.8, 1.0),
@@ -50,7 +50,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Give preference to deeper locations for coral deployments.",
     )
     seed_coral_cover::Param = Factor(
-        0.0;
+        0.7;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
