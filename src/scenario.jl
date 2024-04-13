@@ -503,9 +503,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         _valid_locs = coral_habitable_locs .& depth_criteria
         decision_mat = decision_mat[_valid_locs, :]
 
-        # IDs of valid locations after depth thresholds and k area filter are applied
-        considered_locs = findall(_valid_locs)
-
         # Number of time steps in environmental layers to look ahead when making decisions
         plan_horizon::Int64 = Int64(param_set[At("plan_horizon")])
     end
@@ -693,14 +690,21 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             # Accounts for strength of connectivity where there is low/no coral cover
             in_conn, out_conn, _ = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
 
-            update_criteria_values!(
-                decision_mat;
-                heat_stress=dhw_projection[_valid_locs],
-                wave_stress=wave_projection[_valid_locs],
-                coral_cover=loc_coral_cover[_valid_locs],  # Coral cover relative to `k`
-                in_connectivity=in_conn[_valid_locs],  # area weighted connectivities for time `t`
-                out_connectivity=out_conn[_valid_locs]
-            )
+            considered_locs = findall(_valid_locs .& (vec(leftover_space_m²) .> 0.0))
+            try
+                update_criteria_values!(
+                    decision_mat;
+                    heat_stress=dhw_projection[considered_locs],
+                    wave_stress=wave_projection[considered_locs],
+                    coral_cover=loc_coral_cover[considered_locs],  # Coral cover relative to `k`
+                    in_connectivity=in_conn[considered_locs],  # area weighted connectivities for time `t`
+                    out_connectivity=out_conn[considered_locs]
+                )
+            catch err
+                if !(err isa DimensionMismatch)
+                    rethrow(err)
+                end
+            end
 
             # IDs of valid locations considering locations that have space for corals
             locs_with_space = vec(leftover_space_m²) .> 0.0
