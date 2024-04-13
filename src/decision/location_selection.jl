@@ -40,8 +40,8 @@ fogging locations.
 - `rcp` : RCP conditions to assess
 - `min_iv_locs` : Minimum number of locations to intervene
 - `max_members` : Maximum number of locations per cluster
-- `target_seed_locs` : Locations to prioritize for seeding. Currently does nothing.
-- `target_fog_locs` : Locations to prioritize for fogging. Currently does nothing.
+- `target_seed_locs` : Specify locations by their IDs to consider for seeding.
+- `target_fog_locs` : Specify locations by their IDs to consider for fogging.
 
 # Returns
 YAXArray[n_locations ⋅ [:seed, :fog] ⋅ n_scenarios], ranks from 1 to number of locations + 1
@@ -84,17 +84,17 @@ function rank_locations(
         scenarios=1:nrow(scenarios)
     )
 
-    target_loc_ids = Int64[]
+    # Consider all locations
+    target_seed_loc_ids = dom.site_ids
+    target_fog_loc_ids = dom.site_ids
+
+    # Overwrite if specific locations are specified
     if !isnothing(target_seed_locs)
-        append!(target_loc_ids, target_seed_locs)
+        target_seed_loc_ids = target_seed_locs
     end
 
     if !isnothing(target_fog_locs)
-        append!(target_loc_ids, target_fog_locs)
-    end
-
-    if isnothing(target_seed_locs) && isnothing(target_fog_locs)
-        target_loc_ids = dom.site_ids
+        target_fog_loc_ids = target_fog_locs
     end
 
     # Sum of coral cover (relative to k area) at each location and scenario
@@ -130,8 +130,16 @@ function rank_locations(
         depth_offset = scen[factors=At("depth_offset")].data[1]
 
         depth_criteria = identify_within_depth_bounds(site_data.depth_med, min_depth, depth_offset)
-        valid_locs = coral_habitable_locs .& depth_criteria
-        considered_locs = findall(valid_locs)
+        valid_seed_locs = coral_habitable_locs .& depth_criteria .& (dom.site_ids .∈ Ref(target_seed_loc_ids))
+        considered_seed_locs = findall(valid_seed_locs)
+        if count(valid_seed_locs) == 0
+            @warn "No valid seeding locations found for scenario $(scen_idx)"
+        end
+
+        valid_fog_locs = coral_habitable_locs .& depth_criteria .& (dom.site_ids .∈ Ref(target_fog_loc_ids))
+        if count(valid_fog_locs) == 0
+            @warn "No valid fogging locations found for scenario $(scen_idx)"
+        end
 
         MCDA_approach = mcda_methods()[Int64(scen[factors=At("guided")][1])]
         leftover_space_m² = vec(leftover_space_scens[scen_idx, :])
@@ -154,42 +162,56 @@ function rank_locations(
         # Create shared decision matrix
         # Ignore locations that cannot support corals or are out of depth bounds
         # from consideration
-        decision_mat = decision_matrix(
-            dom.site_ids[valid_locs],
-            seed_pref.names;
-            depth=site_data.depth_med[valid_locs],
-            in_connectivity=in_conn[valid_locs],
-            out_connectivity=out_conn[valid_locs],
-            heat_stress=dhw_projection[valid_locs],
-            wave_stress=wave_projection[valid_locs],
-            coral_cover=sum_cover[valid_locs]
-        )
+        if count(valid_seed_locs) > 0
+            seed_decision_mat = decision_matrix(
+                dom.site_ids[valid_seed_locs],
+                seed_pref.names;
+                depth=site_data.depth_med[valid_seed_locs],
+                in_connectivity=in_conn[valid_seed_locs],
+                out_connectivity=out_conn[valid_seed_locs],
+                heat_stress=dhw_projection[valid_seed_locs],
+                wave_stress=wave_projection[valid_seed_locs],
+                coral_cover=sum_cover[valid_seed_locs]
+            )
 
-        # Ensure what to do with this because it is usually empty
-        # seed_zone = strong_pred[valid_locs]
+            # Ensure what to do with this because it is usually empty
+            # seed_zone = strong_pred[valid_locs]
 
-        min_locs = min_iv_locs[scen_idx]
-        selected_seed_ranks = select_locations(
-            seed_pref,
-            decision_mat,
-            MCDA_approach,
-            site_data.cluster_id,
-            area_to_seed,
-            considered_locs,
-            leftover_space_m²,
-            min_locs,
-            max_members[scen_idx]
-        )
+            min_locs = min_iv_locs[scen_idx]
+            selected_seed_ranks = select_locations(
+                seed_pref,
+                seed_decision_mat,
+                MCDA_approach,
+                site_data.cluster_id,
+                area_to_seed,
+                considered_seed_locs,
+                leftover_space_m²,
+                min_locs,
+                max_members[scen_idx]
+            )
 
-        if !isempty(selected_seed_ranks)
-            ranks_store[locations=At(selected_seed_ranks), intervention=At(:seed), scenarios=scen_idx] .= 1:length(selected_seed_ranks)
+            if !isempty(selected_seed_ranks)
+                ranks_store[locations=At(selected_seed_ranks), intervention=At(:seed), scenarios=scen_idx] .= 1:length(selected_seed_ranks)
+            end
         end
 
-        selected_fog_ranks = select_locations(
-            fog_pref, decision_mat, MCDA_approach, min_locs
-        )
-        if !isempty(selected_fog_ranks)
-            ranks_store[locations=At(selected_fog_ranks), intervention=At(:fog), scenarios=scen_idx] .= 1:min_locs
+        if count(valid_fog_locs) > 0
+            fog_decision_mat = decision_matrix(
+                dom.site_ids[valid_fog_locs],
+                seed_pref.names;
+                depth=site_data.depth_med[valid_fog_locs],
+                in_connectivity=in_conn[valid_fog_locs],
+                out_connectivity=out_conn[valid_fog_locs],
+                heat_stress=dhw_projection[valid_fog_locs],
+                wave_stress=wave_projection[valid_fog_locs],
+                coral_cover=sum_cover[valid_fog_locs]
+            )
+            selected_fog_ranks = select_locations(
+                fog_pref, fog_decision_mat, MCDA_approach, min_locs
+            )
+            if !isempty(selected_fog_ranks)
+                ranks_store[locations=At(selected_fog_ranks), intervention=At(:fog), scenarios=scen_idx] .= 1:min_locs
+            end
         end
     end
 
