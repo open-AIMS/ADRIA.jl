@@ -57,6 +57,85 @@ function seed_ranks(rs::ResultSet; kwargs...)
 end
 
 """
+    fog_ranks(rs::ResultSet; kwargs...)
+
+# Arguments
+- rs : ResultSet
+- kwargs : named dimensions to slice across
+
+# Returns
+YAXArray[timesteps, sites, scenarios]
+
+# Example
+```julia
+ADRIA.metrics.fog_ranks(rs; timesteps=1:10, scenarios=3:5)
+```
+"""
+function fog_ranks(rs::ResultSet; kwargs...)
+    selected = _get_ranks(rs, 2; kwargs...)
+    return _collate_ranks(rs, selected; kwargs...)
+end
+
+"""
+    _collate_ranked_locs(data::YAXArray)::Matrix{Int64}
+
+Collates number of ranked locations.
+"""
+function _collate_ranked_locs(data::YAXArray)::Matrix{Int64}
+    locs = zeros(Int64, size.([data], (1,3))...)
+
+    Threads.@threads for scen in axes(data, :scenarios)
+        scen_ranks = data[:, :, scen]
+
+        if all(scen_ranks .== 0.0)
+            continue
+        end
+
+        for t in axes(scen_ranks, :timesteps)
+            locs[t, scen] = count(scen_ranks[t, :] .> 0.0)
+        end
+    end
+
+    return locs
+end
+
+"""
+    n_seed_locations(rs::ResultSet; kwargs...)::Matrix{Int64}
+
+Determine the number of locations seeded at each time step, for each scenario.
+
+# Returns
+YAXArray[timesteps ⋅ scenarios] indicating the number of locations seeded at each time step.
+"""
+function n_seed_locations(rs::ResultSet; kwargs...)::YAXArray{Int64}
+    ranked_locs = seed_ranks(rs; kwargs...)
+
+    return DataCube(
+        _collate_ranked_locs(ranked_locs);
+        timesteps=collect(ranked_locs.timesteps),
+        scenarios=collect(ranked_locs.scenarios)
+    )
+end
+
+"""
+    n_fog_locations(rs::ResultSet; kwargs...)::Matrix{Int64}
+
+Determine the number of locations fogged at each time step, for each scenario.
+
+# Returns
+YAXArray[timesteps ⋅ scenarios] indicating the number of locations fogged at each time step.
+"""
+function n_fog_locations(rs::ResultSet; kwargs...)::YAXArray{Int64}
+    ranked_locs = fog_ranks(rs; kwargs...)
+
+    return DataCube(
+        _collate_ranked_locs(ranked_locs);
+        timesteps=collect(ranked_locs.timesteps),
+        scenarios=collect(ranked_locs.scenarios)
+    )
+end
+
+"""
     top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)
 
 Get the top n seeded sites over time by their unique location id.
@@ -71,17 +150,19 @@ Lower rank values are better (e.g., 1 = first choice)
 YAXArray[locations, [loc_id, loc_name, rank], scenarios]
 """
 function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
-    ranked_sites = seed_ranks(rs; kwargs...)
+    ranked_locs = seed_ranks(rs; kwargs...)
 
     r_ids = rs.site_data.reef_siteid
     min_rank = length(r_ids) + 1
 
-    c_ranks = mean(ranked_sites, dims=1)
-    top_sites = Array{Union{String,Int32,Float32,Missing}}(undef, n, 3, size(ranked_sites, 3))
-    for scen in axes(ranked_sites, 3)
-        flat = vec(c_ranks[1, :, scen])
+    c_ranks = collect(dropdims(mean(ranked_locs, dims=1), dims=1))
 
-        idx = partialsortperm(flat, 1:n)
+    top_sites = Array{Union{String,Int32,Float32,Missing}}(undef, n, 3, size(ranked_locs, 3))
+    for scen in axes(ranked_locs, 3)
+        flat = vec(c_ranks[:, scen])
+        flat[flat .== 0.0] .= min_rank
+
+        idx = collect(partialsortperm(flat, 1:n))
 
         rank_score = flat[idx]
         if all(rank_score .== min_rank)
@@ -96,9 +177,9 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
 
     return DataCube(
         top_sites;
-        locations=r_ids,
-        ranks=[:loc_id, :loc_name, :rank],
-        scenarios=1:size(ranked_sites, 3)
+        ranks=collect(1:n),
+        locations=[:loc_id, :loc_name, :rank],
+        scenarios=1:size(ranked_locs, 3)
     )
 end
 
