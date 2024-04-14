@@ -17,7 +17,7 @@ Figure
 """
 function ADRIA.viz.scenarios(
     outcomes::AbstractMatrix{<:Real},
-    clusters::Union{BitVector,Vector{Int64}};
+    clusters::Union{BitVector,AbstractVector{Int64}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
@@ -92,7 +92,7 @@ function ADRIA.viz.clustered_scenarios!(
 end
 
 """
-    map(rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    map(rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::AbstractVector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
     map(g, rs, data, clusters; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Visualize clustered time series for each site and map.
@@ -112,7 +112,7 @@ Figure
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     data::AbstractArray{<:Real},
-    clusters::Union{BitVector,Vector{Int64}};
+    clusters::Union{BitVector,AbstractVector{Int64}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),

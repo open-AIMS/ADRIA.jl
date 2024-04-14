@@ -146,7 +146,7 @@ GridPosition
 """
 function ADRIA.viz.map(
     rs::Union{Domain, ResultSet},
-    y::YAXArray;
+    y::Union{YAXArray, AbstractVector{<:Real}};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
     axis_opts::Dict=Dict(),
