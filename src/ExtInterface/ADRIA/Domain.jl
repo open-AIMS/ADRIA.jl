@@ -18,9 +18,6 @@ mutable struct ADRIADomain <: Domain
     env_layer_md::EnvLayer  # Layers used
     scenario_invoke_time::String  # time latest set of scenarios were run
     const conn::YAXArray  # connectivity data
-    const in_conn::Vector{Float64}  # sites ranked by incoming connectivity strength (i.e., number of incoming connections)
-    const out_conn::Vector{Float64}  # sites ranked by outgoing connectivity strength (i.e., number of outgoing connections)
-    const strong_pred::Vector{Int64}  # strongest predecessor
     site_data::DataFrame  # table of site data (depth, carrying capacity, etc)
     const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `conn`)
     const cluster_id_col::String  # column of unique site ids
@@ -45,9 +42,6 @@ function Domain(
     rcp::String,
     env_layers::EnvLayer,
     TP_base::YAXArray{T},
-    in_conn::Vector{Float64},
-    out_conn::Vector{Float64},
-    strongest_predecessor::Vector{Int64},
     site_data::DataFrame,
     site_id_col::String,
     cluster_id_col::String,
@@ -78,9 +72,6 @@ function Domain(
         env_layers,
         "",
         TP_base,
-        in_conn,
-        out_conn,
-        strongest_predecessor,
         site_data,
         site_id_col,
         cluster_id_col,
@@ -171,11 +162,10 @@ function Domain(
     site_data.row_id = 1:nrow(site_data)
 
     conn_ids::Vector{String} = u_sids
-    site_conn::NamedTuple = site_connectivity(conn_path, u_sids)
-    conns::NamedTuple = connectivity_strength(site_conn.conn)
+    connectivity::NamedTuple = site_connectivity(conn_path, u_sids)
 
     # Filter out missing entries
-    site_data = site_data[coalesce.(in.(conn_ids, [site_conn.site_ids]), false), :]
+    site_data = site_data[coalesce.(in.(conn_ids, [connectivity.site_ids]), false), :]
     site_data.k .= site_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
@@ -203,17 +193,14 @@ function Domain(
         name,
         rcp,
         env_layer_md,
-        site_conn.conn,
-        conns.in_conn,
-        conns.out_conn,
-        conns.strongest_predecessor,
+        connectivity.conn,
         site_data,
         site_id_col,
         cluster_id_col,
         coral_cover,
         coral_growth,
-        site_conn.site_ids,
-        site_conn.truncated,
+        connectivity.site_ids,
+        connectivity.truncated,
         dhw,
         waves,
         cyclone_mortality,

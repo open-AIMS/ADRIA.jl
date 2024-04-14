@@ -21,9 +21,6 @@ mutable struct RMEDomain <: AbstractReefModDomain
     env_layer_md::ADRIA.EnvLayer
     scenario_invoke_time::String  # time latest set of scenarios were run
     const conn::YAXArray{Float64}
-    const in_conn::Vector{Float64}
-    const out_conn::Vector{Float64}
-    const strong_pred::Vector{Int64}
     const site_data::DataFrames.DataFrame
     const site_id_col::String
     const cluster_id_col::String
@@ -158,9 +155,6 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     init_coral_cover::YAXArray{Float64} = load_initial_cover(RMEDomain, data_files, loc_ids, spatial_data)
 
     conn_data::YAXArray{Float64} = load_connectivity(RMEDomain, data_files, loc_ids)
-    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
-        conn_data, vec(spatial_data.area .* spatial_data.k), similar(conn_data)
-    )
 
     # Set all site depths to 7m below sea level
     # (ReefMod does not account for depth)
@@ -223,9 +217,6 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
         env_md,
         "",
         conn_data,
-        in_conn,
-        out_conn,
-        strong_pred,
         spatial_data,
         reef_id_col,
         cluster_id_col,
