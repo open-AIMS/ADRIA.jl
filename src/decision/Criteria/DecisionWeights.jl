@@ -15,7 +15,7 @@ Base.@kwdef struct DepthThresholds <: DecisionThresholds
         5.0;
         ptype="ordered categorical",
         dist=DiscreteOrderedUniformDist,
-        dist_params=(3.0, 5.0, 0.5),  # Half metre intervals
+        dist_params=(2.0, 5.0, 0.5),  # Half metre intervals
         name="Minimum Depth",
         description="Minimum depth for a site to be included for consideration.\nNote: This value will be replaced with the shallowest depth value found if all sites are found to be deeper than `depth_min + depth_offset`.",
     )
