@@ -1,3 +1,6 @@
+using Bootstrap
+using Random
+
 """Functions and methods to produce location-level summaries."""
 
 """
@@ -105,4 +108,41 @@ function summarize(
     timesteps::Union{UnitRange,Vector{Int64},BitVector},
 )::YAXArray where {D,T,N,A}
     return summarize(data[timesteps=timesteps], alongs_axis, metric)
+end
+
+"""
+    cf_difference_map(rs, scens, metric)
+
+Give the mean bootstraped difference from the counterfactual for a given metric.
+"""
+function cf_difference_map(rs, scens, metric)
+    # Extract some metric
+    outcomes = metric(rs)
+    locations = rs.site_data
+
+    # Mean over all timesteps
+    outcomes_mean = dropdims(mean(outcomes, dims=:timesteps), dims=:timesteps)
+
+    cf_outcomes = outcomes_mean[scenarios=scens.guided .== -1]
+    ug_outcomes = outcomes_mean[scenarios=scens.guided .== 0]
+    gd_outcomes = outcomes_mean[scenarios=scens.guided .> 0]
+
+    n_locs = length(outcomes.sites)
+
+    ug_result = ZeroDataCube(; T=Float64, sites=locations.reef_siteid)
+    gd_result = ZeroDataCube(; T=Float64, sites=locations.reef_siteid)
+    n_scens = size(cf_outcomes, :scenarios)
+    for loc in 1:n_locs
+        cf_shuf_set1 = shuffle(1:n_scens)
+        ug_shuf_set = shuffle(1:n_scens)
+        ug_diff = collect(ug_outcomes[loc, ug_shuf_set] .- cf_outcomes[loc, cf_shuf_set1])
+        ug_result[loc] = bootstrap(median, ug_diff, BalancedSampling(100)).t0[1]
+
+        cf_shuf_set2 = shuffle(1:n_scens)
+        gd_shuf_set = shuffle(1:n_scens)
+        gd_diff = collect(gd_outcomes[loc, gd_shuf_set] .- cf_outcomes[loc, cf_shuf_set2])
+        gd_result[loc] = bootstrap(median, gd_diff, BalancedSampling(100)).t0[1]
+    end
+
+    return ug_result, gd_result
 end

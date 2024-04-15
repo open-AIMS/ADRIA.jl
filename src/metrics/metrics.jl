@@ -15,7 +15,6 @@ using DataFrames
 
 using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, site_k_area, site_area
 
-
 abstract type Outcome end
 
 
@@ -608,12 +607,11 @@ function _relative_shelter_volume(rs::ResultSet)::YAXArray
 end
 relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
 
-
 include("pareto.jl")
 include("ranks.jl")
 include("reef_indices.jl")
 include("scenario.jl")
-include("site_level.jl")
+include("spatial.jl")
 include("temporal.jl")
 include("utils.jl")
 
