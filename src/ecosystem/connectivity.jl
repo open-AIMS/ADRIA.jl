@@ -159,38 +159,86 @@ function site_connectivity(
 end
 
 """
-    connectivity_strength(area_weighted_conn::AbstractMatrix{Float64}, cover::Vector{Float64}, conn_cache::AbstractMatrix{Float64})::NamedTuple
-
-Create in/out degree centralities for all nodes, and vector of their strongest predecessors.
-
-# Arguments
-- `area_weighted_conn` : Transfer probability matrix weighted by location `k` area
-- `cover` : Total relative coral cover at location
-- `conn_cache` : Cache matrix of same size as TP_base to hold intermediate values
-
-
     connectivity_strength(conn::AbstractArray)::NamedTuple
 
-Create in/out degree centralities for all nodes, and vector of their strongest predecessors.
+Determine in/out degree centralities for all nodes.
 
 # Arguments
-- `conn` : Base connectivity matrix to create Directed Graph from.
+- `conn` : Base connectivity matrix to create Directed Graph from
+- `in_method` : Centrality method used to determine incoming connectivity
+- `out_method` : Centrality method used to detemrine outgoing connectivity
 
 # Returns
 NamedTuple:
-- `in_conn` : sites ranked by incoming connectivity
-- `out_conn` : sites ranked by outgoing connectivity
-- `strongest_predecessor` : strongest predecessor for each site
+- `in_conn` : Locations ranked by incoming connectivity
+- `out_conn` : Locations ranked by outgoing connectivity
+- `network` : Generated graph network
 """
-function connectivity_strength(conn::AbstractMatrix{Float64})::NamedTuple
-    g = SimpleDiGraph(conn)
+function connectivity_strength(
+    conn::AbstractMatrix{Float64};
+    in_method=indegree_centrality,
+    out_method=outdegree_centrality
+)::NamedTuple
+    g = SimpleWeightedDiGraph(conn)
 
     # Measure centrality based on number of incoming connections
     C1 = indegree_centrality(g)
     C2 = outdegree_centrality(g)
 
+    return (in_conn=C1, out_conn=C2, network=g)
+end
+
+"""
+    connectivity_strength(area_weighted_conn::AbstractMatrix{Float64}, cover::Vector{Float64}, conn_cache::AbstractMatrix{Float64})::NamedTuple
+
+Determine in/out degree centralities for all nodes.
+
+# Arguments
+- `area_weighted_conn` : Transfer probability matrix weighted by location `k` area
+- `cover` : Total relative coral cover at location
+- `conn_cache` : Cache matrix of same size as TP_base to hold intermediate values
+- `in_method` : Centrality method used to determine incoming connectivity
+- `out_method` : Centrality method used to detemrine outgoing connectivity
+
+# Returns
+NamedTuple:
+- `in_conn` : Locations ranked by incoming connectivity
+- `out_conn` : Locations ranked by outgoing connectivity
+- `network` : Generated graph network
+"""
+function connectivity_strength(
+    area_weighted_conn::AbstractMatrix{Float64},
+    cover::Vector{<:Union{Float32,Float64}},
+    conn_cache::AbstractMatrix{Float64};
+    in_method=indegree_centrality,
+    out_method=outdegree_centrality
+)::NamedTuple
+    # Accounts for cases where there is no coral cover
+    conn_cache .= (area_weighted_conn .* cover)
+    max_conn = maximum(conn_cache)
+    if max_conn > 0.0
+        conn_cache .= conn_cache ./ max_conn
+    end
+
+    return connectivity_strength(conn_cache; in_method, out_method)
+end
+
+"""
+    strongest_source(g, indegree)::Vector{Int64}
+
+For each node in the graph, identify the neighboring node with the strongest edge weight.
+In other words, find the strongest source node.
+
+# Arguments
+- `g` : Graph network to assess
+- `indegree` : vector of indegree connections for each node/vertex (taken from indegree_centrality)
+
+# Returns
+Vector of node ids indicating the strongest source for each node.
+"""
+function strongest_source(g, indegree)::Vector{Int64}
     # For each node, find strongly connected predecessor (by number of connections)
-    strong_pred = zeros(Int64, size(C1)...)
+    strong_src = zeros(Int64, size(indegree)...)
     for v_id in vertices(g)
         incoming = inneighbors(g, v_id)
 
@@ -203,25 +251,11 @@ function connectivity_strength(conn::AbstractMatrix{Float64})::NamedTuple
             # (use `first` to get the first match in case of a tie)
             most_conns = maximum(in_conns)
             idx = first(findall(in_conns .== most_conns))
-            strong_pred[v_id] = incoming[idx]
+            strong_src[v_id] = incoming[idx]
         else
-            strong_pred[v_id] = 0
+            strong_src[v_id] = 0
         end
     end
 
-    return (in_conn=C1, out_conn=C2, strongest_predecessor=strong_pred)
-end
-function connectivity_strength(
-    area_weighted_conn::AbstractMatrix{Float64},
-    cover::Vector{<:Union{Float32,Float64}},
-    conn_cache::AbstractMatrix{Float64},
-)::NamedTuple
-    # Accounts for cases where there is no coral cover
-    conn_cache .= (area_weighted_conn .* cover)
-    max_conn = maximum(conn_cache)
-    if max_conn > 0.0
-        conn_cache .= conn_cache ./ max_conn
-    end
-
-    return connectivity_strength(conn_cache)
+    return strong_src
 end

@@ -656,7 +656,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
             # Determine connectivity strength weighting by area.
             # Accounts for strength of connectivity where there is low/no coral cover
-            in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
+            in_conn, out_conn, _ = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
 
             update_criteria_values!(
                 decision_mat;

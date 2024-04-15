@@ -105,7 +105,8 @@ function rank_locations(
     area_weighted_conn = dom.conn.data .* site_k_area(dom)
     conn_cache = similar(area_weighted_conn)
 
-    in_conn, out_conn, strong_pred = connectivity_strength(area_weighted_conn, sum_cover, conn_cache)
+    in_conn, out_conn, network = connectivity_strength(area_weighted_conn, sum_cover, conn_cache)
+    # strong_pred = strongest_source(g, network)
 
     scens = DataCube(
         Matrix(scenarios);

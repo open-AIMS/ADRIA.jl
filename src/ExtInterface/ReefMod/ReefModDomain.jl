@@ -19,9 +19,6 @@ mutable struct ReefModDomain <: AbstractReefModDomain
     env_layer_md
     scenario_invoke_time::String  # time latest set of scenarios were run
     const conn
-    const in_conn
-    const out_conn
-    const strong_pred
     const site_data
     const site_id_col
     const cluster_id_col
@@ -119,9 +116,6 @@ function load_domain(
 
     # Connectivity data is retireved from a subdirectory because it's not contained in matfiles
     conn_data = load_connectivity(RMEDomain, fn_path, site_ids)
-    in_conn, out_conn, strong_pred = ADRIA.connectivity_strength(
-        conn_data, vec(spatial_data.area .* spatial_data.k), similar(conn_data)
-    )
 
     spatial_data[:, :depth_med] .= 6.0
     spatial_data[!, :depth_med] = convert.(Float64, spatial_data[!, :depth_med])
@@ -174,9 +168,6 @@ function load_domain(
         env_md,
         "",
         conn_data,
-        in_conn,
-        out_conn,
-        strong_pred,
         spatial_data,
         reef_id_col,
         cluster_id_col,
