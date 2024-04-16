@@ -41,18 +41,20 @@ Base.@kwdef mutable struct SimConstants
     ]
 
     ## Environmental parameters
-    # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
-    DHWmaxtot::Float64 = 50.0
+    # These parameters are applied in `stressed_fecundity()` which is currenlty unused.
+    # It is a hypothetical model of fecundity following a disturbance.
+    # # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
+    # DHWmaxtot::Float64 = 50.0
 
-    # Bleaching stress and coral fecundity parameters
-    LPdhwcoeff::Float64 = 0.4  # shape parameters relating dhw affecting cover to larval production
-    LPDprm2::Float64 = 5.0  # parameter offsetting LPD curve
+    # # Bleaching stress and coral fecundity parameters
+    # LPdhwcoeff::Float64 = 0.4  # shape parameters relating dhw affecting cover to larval production
+    # LPDprm2::Float64 = 5.0  # parameter offsetting LPD curve
 
-    # competition: probability that large Tabular Acropora overtop small massives
-    comp::Float64 = 0.3
+    # # competition: probability that large Tabular Acropora overtop small massives
+    # comp::Float64 = 0.3
 
-    # Modified for use in ADRIA
-    max_settler_density::Vector{Float64} = Float64[100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
+    # Settler and larval density values adopted from ReefMod.
+    max_settler_density::Vector{Float64} = Float64[0.75, 3.75, 3.75, 2.25, 2.25, 2.25]
     max_larval_density::Vector{Float64} = Float64[
         5000.0, 5000.0, 5000.0, 5000.0, 5000.0, 5000.0
     ]

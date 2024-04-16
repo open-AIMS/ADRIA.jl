@@ -462,7 +462,6 @@ set_factor_bounds(dom, :wave_stress, (0.1, 0.2))
 ```
 """
 function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
-    _validate_new_bounds(dom, factor, new_dist_params[1:2])
     old_val = get_attr(dom, factor, :val)
     new_val = mean(new_dist_params[1:2])
 

@@ -20,7 +20,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         dist_params=(0.0, 1.0),
         direction=maximum,
         name="Seed Wave Stress",
-        description="Importance of avoiding wave stress when seeding. Prefer locations with higher wave activity.",
+        description="Prefer locations with higher wave activity.",
     )
     seed_in_connectivity::Param = Factor(
         1.0;
