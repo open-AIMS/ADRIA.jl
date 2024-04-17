@@ -211,7 +211,7 @@ function rank_locations(
                 fog_pref, fog_decision_mat, MCDA_approach, min_locs
             )
             if !isempty(selected_fog_ranks)
-                ranks_store[locations=At(selected_fog_ranks), intervention=At(:fog), scenarios=scen_idx] .= 1:min_locs
+                ranks_store[locations=At(selected_fog_ranks), intervention=At(:fog), scenarios=scen_idx] .= 1:min(min_locs, length(selected_fog_ranks))
             end
         end
     end
