@@ -226,10 +226,13 @@ function disperse_locations(
 )::Tuple{Vector,Vector,Int64}
     # Only expand the number of locations considered if there is not enough space for
     # deployed corals.
-    enough_space = findfirst(>=(area_to_seed), cumsum(available_space))
+    enough_space = findfirst(>=(area_to_seed), cumsum(available_space[ranked_locs]))
 
-    # If no combinations >= area_to_seed, then consider all potential locations
-    num_locs = isnothing(enough_space) ? length(ranked_locs) : max(enough_space, n_iv_locs)
+    num_locs = n_iv_locs
+    if isnothing(enough_space) || (enough_space < n_iv_locs)
+        # If no combinations >= area_to_seed then consider all potential locations
+        num_locs = min(length(ranked_locs), n_iv_locs)
+    end
 
     # Need to ensure max_members rule is not breached
     # Count the number of times each selected cluster appears
@@ -290,7 +293,7 @@ function disperse_locations(
 
                 # Swapping out a location may include a location with not much space
                 # so we reconsider how many locations we need
-                num_locs = max(findfirst(>=(area_to_seed), cumsum(available_space)), n_iv_locs)
+                num_locs = max(findfirst(>=(area_to_seed), cumsum(available_space[ranked_locs])), n_iv_locs)
 
                 # Update state
                 selected_clusters, cluster_frequency,
@@ -330,7 +333,7 @@ Update list of:
 - `max_members` : Maximum number of members per cluster
 """
 function _update_state(cluster_ids::Vector, num_locs::Int64, max_members::Int64)
-    selected_clusters = cluster_ids[1:num_locs]
+    selected_clusters = cluster_ids[1:min(num_locs, length(cluster_ids))]
     cluster_frequency = countmap(selected_clusters)
     rule_violators_idx = findall(values(cluster_frequency) .> max_members)
     exceeded_clusters = collect(keys(cluster_frequency))[rule_violators_idx]
