@@ -216,8 +216,8 @@ function ADRIA.viz.map!(
 end
 
 """
-    ADRIA.viz.connectivity(dom::Domain, conn_weights::AbstractVector{<:Real};opts::Dict=Dict(),fig_opts::Dict=Dict(),axis_opts::Dict=Dict())
-    ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition},dom::Domain,conn_weights::AbstractVector{<:Real};opts::Dict=Dict(),axis_opts::Dict=Dict())
+    ADRIA.viz.connectivity(dom::Domain, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), axis_opts::Dict=Dict())
 
 Plot spatial distribution of connectivity measures.
 
