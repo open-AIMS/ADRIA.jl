@@ -222,7 +222,7 @@ end
 Plot spatial distribution of connectivity measures.
 
 # Examples
-
+```julia
 in_conn, out_conn, network = ADRIA.connectivity_strength(
     dom.conn; 
     in_method=indegree_centrality, 
@@ -238,6 +238,7 @@ ADRIA.viz.connectivity(
     out_conn;
     opts
 )
+```
 
 # Arguments
 - `dom` : Domain
