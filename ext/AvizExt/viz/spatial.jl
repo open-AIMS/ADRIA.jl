@@ -216,6 +216,81 @@ function ADRIA.viz.map!(
 end
 
 """
+    ADRIA.viz.connectivity(dom::Domain, conn_weights::AbstractVector{<:Real};opts::Dict=Dict(),fig_opts::Dict=Dict(),axis_opts::Dict=Dict())
+    ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition},dom::Domain,conn_weights::AbstractVector{<:Real};opts::Dict=Dict(),axis_opts::Dict=Dict())
+
+Plot spatial distribution of connectivity measures.
+
+# Examples
+
+in_conn, out_conn, network = ADRIA.connectivity_strength(
+    dom.conn; 
+    in_method=indegree_centrality, 
+    out_method=eigenvector_centrality
+)
+
+opts = Dict(
+    :colorbar_label => "Eigenvector Centrality"
+)
+
+ADRIA.viz.connectivity(
+    dom,
+    out_conn;
+    opts
+)
+
+# Arguments
+- `dom` : Domain
+- `conn_weights` : Connectivity weights for each location
+- `opts` : Aviz options 
+- `fig_opts` : Figure options
+- `axis_opts` : Axis options
+"""
+function ADRIA.viz.connectivity(
+    dom::Domain, 
+    conn_weights::AbstractVector{<:Real};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+
+    ADRIA.viz.connectivity!(g, dom, conn_weights; opts, axis_opts)
+
+    return f
+end
+function ADRIA.viz.connectivity!(
+    g::Union{GridLayout, GridPosition},
+    dom::Domain,
+    conn_weights::AbstractVector{<:Real};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
+    geodata = get_geojson_copy(dom)
+    data = Observable(collect(conn_weights))
+
+    highlight = get(opts, :highlight, nothing)
+    c_label = get(opts, :colorbar_label, "Connectivity Measure")
+    legend_params = get(opts, :legend_params, nothing)
+    show_colorbar = get(opts, :show_colorbar, true)
+    color_map = get(opts, :color_map, :PuBuGn)
+
+    return create_map!(
+        g,
+        geodata,
+        data,
+        highlight,
+        ADRIA.centroids(dom),
+        show_colorbar,
+        c_label,
+        color_map,
+        legend_params,
+        axis_opts,
+    )
+end
+
+"""
     make_geojson_copy(ds::Union{ResultSet,Domain})::String
 
 Make a temporary copy of GeoPackage as GeoJSON.
