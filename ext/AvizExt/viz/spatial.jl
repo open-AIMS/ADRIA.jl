@@ -244,6 +244,10 @@ ADRIA.viz.connectivity(
 - `network` : SimpleWeightedDiGraph calculated from the connectivity matrix
 - `conn_weights` : Connectivity weighted for each node
 - `opts` : AvizOpts
+    - `edge_color`, vector of colours for edges. Defaults to reasonable weighting
+    - `node_color`, vector of colours for node. Defaults to conn_weights
+    - `node_size`, size of nodes in the graph
+    - `exp_node_size`, bool, indicating whether node size should be emphasised by exp.
 - `fig_opts` : Figure options
 - `axis_opts` : Axis options
 """
@@ -287,7 +291,7 @@ function ADRIA.viz.connectivity!(
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10
     
-    # Calculate alpha values for edges based on connectvity strength and weighting
+    # Calculate alpha values for edges based on connectivity strength and weighting
     edge_col = Vector{Tuple{Symbol, Float64}}(undef, ne(network))
     norm_coef = maximum(conn_weights)
     for (ind, e) in enumerate(edges(network))
@@ -322,7 +326,7 @@ function ADRIA.viz.connectivity!(
         edge_plottype=:linesegments
     )
 
-    # Plot geodata polygons using data as internal color
+    # Plot geodata polygons
     poly!(
         spatial,
         geodata;
