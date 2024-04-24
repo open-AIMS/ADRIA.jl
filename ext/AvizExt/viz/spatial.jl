@@ -238,7 +238,6 @@ ADRIA.viz.connectivity(
     axis_opts=axis_opts
 )
 ```
-
 # Arguments
 - `dom` : Domain
 - `network` : SimpleWeightedDiGraph calculated from the connectivity matrix
