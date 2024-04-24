@@ -1,4 +1,5 @@
 import GeoMakie.GeoJSON: AbstractFeatureCollection, features, bbox
+using Graphs, GraphMakie, SimpleWeightedGraphs
 
 # Temporary monkey-patch to support retrieval of multiple features
 Base.getindex(fc::AbstractFeatureCollection, i::UnitRange) = features(fc)[i]
@@ -216,39 +217,39 @@ function ADRIA.viz.map!(
 end
 
 """
-    ADRIA.viz.connectivity(dom::Domain, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.connectivity(dom::Domain, network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()) 
+    ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain,  network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), axis_opts::Dict=Dict()) 
 
-Plot spatial distribution of connectivity measures.
+Produce visualisation of connectivity between reef sites with node size and edge visability
+weighted by the connectivity values and node weights.
 
-# Examples
+# Example
 ```julia
-in_conn, out_conn, network = ADRIA.connectivity_strength(
-    dom.conn; 
-    in_method=indegree_centrality, 
-    out_method=eigenvector_centrality
-)
+dom = ADRIA.load_domain("<Path to Domain>")
 
-opts = Dict(
-    :colorbar_label => "Eigenvector Centrality"
-)
+in_conn, out_conn, network = ADRIA.connectivity_strength(dom; out_method=eigenvector_centrality)
 
 ADRIA.viz.connectivity(
     dom,
+    network,
     out_conn;
-    opts
+    opts=opts,
+    fig_opts=fig_opts,
+    axis_opts=axis_opts
 )
 ```
 
 # Arguments
 - `dom` : Domain
-- `conn_weights` : Connectivity weights for each location
-- `opts` : Aviz options 
+- `network` : SimpleWeightedDiGraph calculated from the connectivity matrix
+- `conn_weights` : Connectivity weighted for each node
+- `opts` : AvizOpts
 - `fig_opts` : Figure options
 - `axis_opts` : Axis options
 """
 function ADRIA.viz.connectivity(
-    dom::Domain, 
+    dom::Domain,
+    network::SimpleWeightedDiGraph,
     conn_weights::AbstractVector{<:Real};
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
@@ -256,39 +257,81 @@ function ADRIA.viz.connectivity(
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-
-    ADRIA.viz.connectivity!(g, dom, conn_weights; opts, axis_opts)
+    
+    ADRIA.viz.connectivity!(g, dom, network, conn_weights; opts, axis_opts)
 
     return f
 end
 function ADRIA.viz.connectivity!(
     g::Union{GridLayout, GridPosition},
-    dom::Domain,
+    dom::Domain, 
+    network::SimpleWeightedDiGraph,
     conn_weights::AbstractVector{<:Real};
     opts::Dict=Dict(),
     axis_opts::Dict=Dict()
 )
-    geodata = get_geojson_copy(dom)
-    data = Observable(collect(conn_weights))
+    axis_opts[:title] = get(axis_opts, :title, "Study Area")
+    axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
+    axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
 
-    highlight = get(opts, :highlight, nothing)
-    c_label = get(opts, :colorbar_label, "Connectivity Measure")
-    legend_params = get(opts, :legend_params, nothing)
-    show_colorbar = get(opts, :show_colorbar, true)
-    color_map = get(opts, :color_map, :PuBuGn)
-
-    return create_map!(
-        g,
-        geodata,
-        data,
-        highlight,
-        ADRIA.centroids(dom),
-        show_colorbar,
-        c_label,
-        color_map,
-        legend_params,
-        axis_opts,
+    spatial = GeoAxis(
+        g[1, 1];
+        dest="+proj=latlong +datum=WGS84",
+        axis_opts...,
     )
+
+    geodata = get_geojson_copy(dom)
+
+    spatial.xticklabelsize = 14
+    spatial.yticklabelsize = 14
+    spatial.yticklabelpad = 50
+    spatial.ytickalign = 10
+    
+    # Calculate alpha values for edges based on connectvity strength and weighting
+    edge_col = Vector{Tuple{Symbol, Float64}}(undef, ne(network))
+    norm_coef = maximum(conn_weights)
+    for (ind, e) in enumerate(edges(network))
+        if (e.src == e.dst)
+            edge_col[ind] = (:black, 0.0) 
+            continue
+        end
+        edge_col[ind] = (:black, conn_weights[e.src] * e.weight / norm_coef)
+    end
+    
+    # Rescale node size to be visible
+    node_sz = conn_weights ./ maximum(conn_weights) .* 10.0
+    
+    # Extract graph kwargs and set defaults
+    edge_col = get(opts, :edge_color, edge_col)
+    node_sz  = get(opts, :node_size, node_sz)
+    # Add emphasis on connectivity weightings by setting node size to be exponential
+    expo_size = get(opts, :exp_node_size, false)
+    if (expo_size)
+        node_sz = exp.(node_sz)
+    end
+    node_cl = get(opts, :node_color, node_sz)
+    
+    # Plot the connectivity graph
+    graphplot!(
+        spatial, 
+        network, 
+        layout=ADRIA.centroids(dom), 
+        edge_color=edge_col, 
+        node_size=node_sz, 
+        node_color=node_cl,
+        edge_plottype=:linesegments
+    )
+
+    # Plot geodata polygons using data as internal color
+    poly!(
+        spatial,
+        geodata;
+        color=:white,
+        strokecolor=(:black, 0.05),
+        strokewidth=1.0,
+    )
+
+    return g
 end
 
 """
