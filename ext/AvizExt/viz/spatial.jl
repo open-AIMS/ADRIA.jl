@@ -220,10 +220,11 @@ end
     ADRIA.viz.connectivity(dom::Domain, network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()) 
     ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain,  network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), axis_opts::Dict=Dict()) 
 
-Produce visualisation of connectivity between reef sites with node size and edge visability
+Produce visualization of connectivity between reef sites with node size and edge visibility
 weighted by the connectivity values and node weights.
 
-# Example
+# Examples
+
 ```julia
 dom = ADRIA.load_domain("<Path to Domain>")
 
@@ -238,15 +239,16 @@ ADRIA.viz.connectivity(
     axis_opts=axis_opts
 )
 ```
+
 # Arguments
 - `dom` : Domain
 - `network` : SimpleWeightedDiGraph calculated from the connectivity matrix
 - `conn_weights` : Connectivity weighted for each node
 - `opts` : AvizOpts
     - `edge_color`, vector of colours for edges. Defaults to reasonable weighting
-    - `node_color`, vector of colours for node. Defaults to conn_weights
+    - `node_color`, vector of colours for node. Defaults to `conn_weights`
     - `node_size`, size of nodes in the graph
-    - `exp_node_size`, bool, indicating whether node size should be emphasised by exp.
+    - `exp_node_size`, bool, indicating whether node size should be emphasised by exponentiation
 - `fig_opts` : Figure options
 - `axis_opts` : Axis options
 """
@@ -302,17 +304,18 @@ function ADRIA.viz.connectivity!(
     end
     
     # Rescale node size to be visible
-    node_sz = conn_weights ./ maximum(conn_weights) .* 10.0
+    node_size = conn_weights ./ maximum(conn_weights) .* 10.0
     
     # Extract graph kwargs and set defaults
     edge_col = get(opts, :edge_color, edge_col)
-    node_sz  = get(opts, :node_size, node_sz)
+    node_size  = get(opts, :node_size, node_size)
+
     # Add emphasis on connectivity weightings by setting node size to be exponential
     expo_size = get(opts, :exp_node_size, false)
     if (expo_size)
-        node_sz = exp.(node_sz)
+        node_size = exp.(node_size)
     end
-    node_cl = get(opts, :node_color, node_sz)
+    node_color = get(opts, :node_color, node_size)
     
     # Plot the connectivity graph
     graphplot!(
@@ -320,8 +323,8 @@ function ADRIA.viz.connectivity!(
         network, 
         layout=ADRIA.centroids(dom), 
         edge_color=edge_col, 
-        node_size=node_sz, 
-        node_color=node_cl,
+        node_size=node_size, 
+        node_color=node_color,
         edge_plottype=:linesegments
     )
 
