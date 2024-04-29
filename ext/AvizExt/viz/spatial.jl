@@ -310,6 +310,14 @@ function ADRIA.viz.connectivity!(
     node_size  = get(opts, :node_size, node_size)
     node_color = get(opts, :node_color, node_size)
     
+    # Plot geodata polygons
+    poly!(
+        spatial,
+        geodata;
+        color=:white,
+        strokecolor=(:black, 0.25),
+        strokewidth=1.0,
+    )
     # Plot the connectivity graph
     graphplot!(
         spatial, 
@@ -321,14 +329,6 @@ function ADRIA.viz.connectivity!(
         edge_plottype=:linesegments
     )
 
-    # Plot geodata polygons
-    poly!(
-        spatial,
-        geodata;
-        color=:white,
-        strokecolor=(:black, 0.05),
-        strokewidth=1.0,
-    )
 
     return g
 end
