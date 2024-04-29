@@ -66,6 +66,7 @@ include("interventions/fogging.jl")
 
 include("io/ResultSet.jl")
 include("io/result_io.jl")
+include("io/rme_result_io.jl")
 include("io/result_post_processing.jl")
 include("io/sampling.jl")
 include("metrics/metrics.jl")
@@ -94,6 +95,7 @@ export
 export RMEDomain
 export ReefModDomain
 
+export RMEResultSet
 # metric helper methods
 # export dims, ndims
 
