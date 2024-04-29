@@ -248,7 +248,6 @@ ADRIA.viz.connectivity(
     - `edge_color`, vector of colours for edges. Defaults to reasonable weighting
     - `node_color`, vector of colours for node. Defaults to `conn_weights`
     - `node_size`, size of nodes in the graph
-    - `exp_node_size`, bool, indicating whether node size should be emphasised by exponentiation
 - `fig_opts` : Figure options
 - `axis_opts` : Axis options
 """
@@ -309,12 +308,6 @@ function ADRIA.viz.connectivity!(
     # Extract graph kwargs and set defaults
     edge_col = get(opts, :edge_color, edge_col)
     node_size  = get(opts, :node_size, node_size)
-
-    # Add emphasis on connectivity weightings by setting node size to be exponential
-    expo_size = get(opts, :exp_node_size, false)
-    if (expo_size)
-        node_size = exp.(node_size)
-    end
     node_color = get(opts, :node_color, node_size)
     
     # Plot the connectivity graph
