@@ -16,6 +16,7 @@ makedocs(
         "Usage" => [
             "usage/getting_started.md",
             "usage/domain.md",
+            "usage/results.md",
             "usage/scenario_generation.md",
             "usage/scenario_runs.md",
             "usage/analysis.md",

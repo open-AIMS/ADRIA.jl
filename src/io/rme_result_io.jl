@@ -25,7 +25,8 @@ struct RMEResultSet{T1, T2, D, G, D1} <: ResultSet
 end
 
 """
-    load_results(::Type{RMEResultSet}, result_loc::String, RCP::String)::RMEResultSet
+    load_results(::Type{RMEResultSet}, data_dir::String)::RMEResultSet
+    load_results(::Type{RMEResultSet}, data_dir::String, result_dir::String)::RMEResultSet
 
 Reefmod result interface.
 
