@@ -1,4 +1,5 @@
 import GeoMakie.GeoJSON: AbstractFeatureCollection, features, bbox
+using Graphs, GraphMakie, SimpleWeightedGraphs
 
 # Temporary monkey-patch to support retrieval of multiple features
 Base.getindex(fc::AbstractFeatureCollection, i::UnitRange) = features(fc)[i]
@@ -213,6 +214,123 @@ function ADRIA.viz.map!(
         legend_params,
         axis_opts,
     )
+end
+
+"""
+    ADRIA.viz.connectivity(dom::Domain, network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()) 
+    ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain,  network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), axis_opts::Dict=Dict()) 
+
+Produce visualization of connectivity between reef sites with node size and edge visibility
+weighted by the connectivity values and node weights.
+
+# Examples
+
+```julia
+dom = ADRIA.load_domain("<Path to Domain>")
+
+in_conn, out_conn, network = ADRIA.connectivity_strength(dom; out_method=eigenvector_centrality)
+
+ADRIA.viz.connectivity(
+    dom,
+    network,
+    out_conn;
+    opts=opts,
+    fig_opts=fig_opts,
+    axis_opts=axis_opts
+)
+```
+
+# Arguments
+- `dom` : Domain
+- `network` : SimpleWeightedDiGraph calculated from the connectivity matrix
+- `conn_weights` : Connectivity weighted for each node
+- `opts` : AvizOpts
+    - `edge_color`, vector of colours for edges. Defaults to reasonable weighting
+    - `node_color`, vector of colours for node. Defaults to `conn_weights`
+    - `node_size`, size of nodes in the graph
+- `fig_opts` : Figure options
+- `axis_opts` : Axis options
+"""
+function ADRIA.viz.connectivity(
+    dom::Domain,
+    network::SimpleWeightedDiGraph,
+    conn_weights::AbstractVector{<:Real};
+    opts::Dict=Dict(),
+    fig_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    
+    ADRIA.viz.connectivity!(g, dom, network, conn_weights; opts, axis_opts)
+
+    return f
+end
+function ADRIA.viz.connectivity!(
+    g::Union{GridLayout, GridPosition},
+    dom::Domain, 
+    network::SimpleWeightedDiGraph,
+    conn_weights::AbstractVector{<:Real};
+    opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
+)
+    axis_opts[:title] = get(axis_opts, :title, "Study Area")
+    axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
+    axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
+
+    spatial = GeoAxis(
+        g[1, 1];
+        dest="+proj=latlong +datum=WGS84",
+        axis_opts...,
+    )
+
+    geodata = get_geojson_copy(dom)
+
+    spatial.xticklabelsize = 14
+    spatial.yticklabelsize = 14
+    spatial.yticklabelpad = 50
+    spatial.ytickalign = 10
+    
+    # Calculate alpha values for edges based on connectivity strength and weighting
+    edge_col = Vector{Tuple{Symbol, Float64}}(undef, ne(network))
+    norm_coef = maximum(conn_weights)
+    for (ind, e) in enumerate(edges(network))
+        if (e.src == e.dst)
+            edge_col[ind] = (:black, 0.0) 
+            continue
+        end
+        edge_col[ind] = (:black, conn_weights[e.src] * e.weight / norm_coef)
+    end
+    
+    # Rescale node size to be visible
+    node_size = conn_weights ./ maximum(conn_weights) .* 10.0
+    
+    # Extract graph kwargs and set defaults
+    edge_col = get(opts, :edge_color, edge_col)
+    node_size  = get(opts, :node_size, node_size)
+    node_color = get(opts, :node_color, node_size)
+    
+    # Plot geodata polygons
+    poly!(
+        spatial,
+        geodata;
+        color=:white,
+        strokecolor=(:black, 0.25),
+        strokewidth=1.0,
+    )
+    # Plot the connectivity graph
+    graphplot!(
+        spatial, 
+        network, 
+        layout=ADRIA.centroids(dom), 
+        edge_color=edge_col, 
+        node_size=node_size, 
+        node_color=node_color,
+        edge_plottype=:linesegments
+    )
+
+
+    return g
 end
 
 """

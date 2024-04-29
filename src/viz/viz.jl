@@ -42,5 +42,7 @@ function ranks_to_frequencies!() end
 # Spatial
 function map() end
 function map!() end
+function connectivity() end
+function connectivity!() end
 
 end  # module
