@@ -50,9 +50,7 @@ function load_results(
     result_path = joinpath(result_dir, "results.nc")
     raw_set = open_dataset(result_path)
 
-    input_path = joinpath(result_dir, "scenarios.csv")
-    inputs::DataFrame = CSV.read(input_path, DataFrame, header=true)
-    
+    # Name and RCP haven't been added to outputs yet.
     name::String = "ReefModEngine Result Set"
     netcdf_rcp::String = "Unknown"
     
@@ -95,27 +93,13 @@ function load_results(
     else
         timeframe = raw_set.timesteps[1]:raw_set.timesteps[end]
     end
-    
-    # Counterfactual scenario if outplant area and enrichment area are both 0
-    counterfactual_scens::BitVector = BitVector([
-        p_a == 0.0 && e_a == 0 for (p_a, e_a) 
-            in zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
-    ])
-    # Intervened if not counterfactual
-    intervened_scens::BitVector = BitVector([
-        p_a != 0 || e_a != 0 for (p_a, e_a)
-            in zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
-    ])
-    scenario_groups::Dict{Symbol, BitVector} = Dict()
-    
-    # If the runs do not contain counterfactual or intervened runs exclude the key
-    if any(counterfactual_scens)
-        scenario_groups[:counterfactual] = counterfactual_scens
-    end
-    if any(intervened_scens) 
-        scenario_groups[:intervened] = intervened_scens
-    end
 
+    input_path = joinpath(result_dir, "scenarios.csv")
+    inputs::DataFrame = _get_inputs(input_path)
+
+    # Counterfactual scenario if outplant area and enrichment area are both 0
+    scenario_groups::Dict{Symbol, BitVector} = 
+        _construct_scenario_groups(inputs, length(raw_set.scenarios))
 
     env_layer_md::EnvLayer = EnvLayer(
         data_dir,
@@ -156,6 +140,54 @@ function load_results(
         SimConstants(),
         outcomes
     )
+end
+
+"""
+    _get_inputs(filepath::String)
+
+Read in scenario dataframe from given location. Warn and default to empty dataframe if not 
+found.
+"""
+function _get_inputs(filepath::String)::DataFrame
+    if !isfile(filepath) 
+        @warn "Unable to find scenario spec at $(filepath). Skipping."
+        return DataFrame()
+    end
+    return inputs = CSV.read(filepath, DataFrame, header=true)
+end
+
+"""
+    _construct_scenario_groups(inputs::DataFrame, n_scenarios::Int)::Dict{Symbol, BitVector}
+
+Using the inputs dataframe to determine if a run was counterfactual, construct the scenario
+groupings for compatibility with ADRIA scenario plotting.
+"""
+function _construct_scenario_groups(
+    inputs::DataFrame,
+    n_scenarios::Int
+)::Dict{Symbol, BitVector}
+    if size(inputs) == (0, 0)
+        return Dict(:counterfactual => BitVector([true for _ in 1:n_scenarios]))
+    end
+    counterfactual_scens::BitVector = BitVector([
+        p_a == 0.0 && e_a == 0 for (p_a, e_a) 
+            in zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
+    ])
+    # Intervened if not counterfactual
+    intervened_scens::BitVector = BitVector([
+        p_a != 0 || e_a != 0 for (p_a, e_a)
+            in zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
+    ])
+    scenario_groups::Dict{Symbol, BitVector} = Dict()
+    
+    # If the runs do not contain counterfactual or intervened runs exclude the key
+    if any(counterfactual_scens)
+        scenario_groups[:counterfactual] = counterfactual_scens
+    end
+    if any(intervened_scens) 
+        scenario_groups[:intervened] = intervened_scens
+    end
+    return scenario_groups
 end
 
 """
