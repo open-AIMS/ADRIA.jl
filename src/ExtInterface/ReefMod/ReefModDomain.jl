@@ -379,7 +379,7 @@ end
 Mortality rates due to cyclones for each category (0 to 5) and for coral groups and depths.
 
 # Notes
-- Cyclone categories are represented through indexes 1 to 6 of the arrays, there can be
+- Cyclone categories are represented through indices 1 to 6 of the arrays, there can be
 distinct mortality rates for each coral functional group and depth.
 - For Acropora (branching) the mortality depends on the depth (if it is deeper or shallower
 than 5 meters).
