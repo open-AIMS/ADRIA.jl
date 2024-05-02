@@ -11,8 +11,8 @@ We should make this decision and move this before merging to main.
 Wraps the settler_cover function, converting all arguments to CuArray
 =#
 function settler_cover_cuda(
-    fec_scope::T,
-    conn::AbstractMatrix{Float64},
+    fec_scope::CuArray{Float64},
+    conn::CuArray{Float64},
     leftover_space::T,
     α::V,
     β::V,
@@ -28,13 +28,18 @@ function settler_cover_cuda(
     valid_sources = vec(sum(conn, dims=2) .> 0.0)
     valid_sinks = vec(sum(conn, dims=1) .> 0.0)
 
-    c_fec_scope = CuArray(fec_scope[:, valid_sources])
-    c_conn = CuArray(conn[valid_sources, valid_sinks])
+    c_fec_scope = fec_scope[:, valid_sources]
+    c_conn = conn[valid_sources, valid_sinks]
 
-    # Calculate settler cover and copy result back to host device (i.e., RAM)
+    # Copy index of valid sinks from GPU to host
+    # `sink_idx` could be preallocated or some other optimization...
+    sink_idx = zeros(Bool, length(valid_sinks))
+    copyto!(valid_sinks, sink_idx)    
+
+    # Calculate settler cover and copy result back to host
     # This matrix multiplication is the most time-consuming part
     # (`recruitment_rate()` takes < 1ms)
-    copyto!(c_fec_scope * c_conn, potential_settlers[:, valid_sinks]) 
+    copyto!(c_fec_scope * c_conn, view(potential_settlers, :, sink_idx))
 
     return ADRIA.recruitment_rate(potential_settlers, leftover_space; α=α, β=β) .* basal_area_per_settler
 end
