@@ -14,7 +14,7 @@ location_nums = [3_000]
 @testset "check settler_cover results" begin
 	for num_locs in location_nums
 		println("$(num_locs) locations")
-		args = generate_data(num_locs)
+		local args = generate_data(num_locs)
 
 		result = ADRIA.settler_cover(args...)
 		@test size(result) == (num_corals, num_locs)
@@ -27,7 +27,7 @@ end
 # Benchmark different location sizes
 for num_locs in location_nums
 	println("$(num_locs) locations benchmark")
-	args = generate_data(num_locs)
+	local args = generate_data(num_locs)
 
 	display(@benchmark ADRIA.settler_cover($args...))
 end
