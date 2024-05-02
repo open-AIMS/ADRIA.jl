@@ -26,8 +26,32 @@ end
 
 # Benchmark different location sizes
 for num_locs in location_nums
-	println("$(num_locs) locations benchmark")
+	@info "CPU - $(num_locs) locations benchmark"
 	local args = generate_data(num_locs)
 
-	display(@benchmark ADRIA.settler_cover($args...))
+	perf = @benchmark begin 
+		# Mock 75 time steps
+		for t in 1:75
+			ADRIA.settler_cover($args...)
+		end
+	end
+
+	display(perf)
+end
+
+# Benchmark different location sizes
+for num_locs in location_nums
+	@info "GPU - $(num_locs) locations benchmark"
+	local args = generate_data(num_locs)
+	fec_scope = CuArray(args[1])
+	conn = CuArray(args[2])
+
+	perf = @benchmark begin
+		# Mock 75 time steps
+		for t in 1:75
+			settler_cover_cuda($fec_scope, $conn, $args[3:end]...)
+		end
+	end
+
+	display(perf)
 end
