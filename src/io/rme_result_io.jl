@@ -20,6 +20,7 @@ struct RMEResultSet{T1, T2, D, G, D1} <: ResultSet
     inputs::DataFrame
 
     sim_constants::D1
+    model_spec::DataFrame
 
     outcomes::Dict{Symbol, YAXArray}
 end
@@ -117,13 +118,15 @@ function load_results(
     for (key, cube) in raw_set.cubes
         outcomes[key] = _reformat_cube(RMEResultSet, cube)
     end
-    
+
     # Calculate relative cover
     n_locations::Int = length(raw_set.locations)
     outcomes[:relative_cover] = 
         (outcomes[:total_cover] ./ 100) ./ reshape(geodata.k, (1, n_locations, 1))
     outcomes[:relative_taxa_cover] = 
         (outcomes[:total_taxa_cover] ./ 100) ./ reshape(geodata.k, (1, n_locations, 1))
+
+    mod_spec::DataFrame = _create_model_spec(inputs)
 
     return RMEResultSet(
         name,
@@ -138,6 +141,7 @@ function load_results(
         scenario_groups,
         inputs,
         SimConstants(),
+        mod_spec,
         outcomes
     )
 end
@@ -201,6 +205,58 @@ function _reformat_cube(::Type{RMEResultSet}, cube::YAXArray)::YAXArray
         cube = renameaxis!(cube, :locations => :sites)
     end
     return cube
+end
+
+"""
+    _create_model_spec(scenario_spec::DataFrame)::DataFrame
+
+Recreate a partial model specification to allow more analysis utilities. 
+
+Note: The model specification is incomplete as not all scenario data is extracted from 
+ReefModEngine. This partial specification will need to be updated as updates are made to 
+ReefModEngine.
+"""
+function _create_model_spec(scenario_spec::DataFrame)::DataFrame
+    # Construct default model spec
+    fieldname::Vector{Symbol} = [
+        :dhw_tolerance,
+        :outplant_count_per_m2,
+        :outplant_area_pct,
+        :n_outplant_locs,
+        :enrichment_count_per_m2,
+        :enrichment_area_pct,
+        :n_enrichment_locs
+    ]
+    descriptions::Vector{String} = [
+        "Extra DHW tolerance of thermally resistant outplanted coral",
+        "Density of coral outplants over the entire deployment area",
+        "Percentage of deployment area corals were deployed at",
+        "Number of locations corals were outplanted at",
+        "Density of coral enrichment over the entire deployment area",
+        "Percentage of deployment area enrichment took place",
+        "Number of locations enrichment took place at"
+    ]
+    field_names::Vector{String} = [
+        "Restoration DHW Tolerance Outplants",
+        "Outplant Density",
+        "Outplant Area Percentage",
+        "Outplant Location Count",
+        "Enrichment Density",
+        "Enrichment Area Percentage",
+        "Enrichment Location Count"
+    ]
+
+    default_df = DataFrame(
+        component="Intervention",
+        fieldname=fieldname,
+        description=descriptions,
+        name=field_names
+    )
+
+    # Field names are the same as column names
+    fieldnames::Vector{Symbol} = Symbol.(names(scenario_spec))
+    inds::Vector{Int} = [findfirst(x -> x == fname, default_df.fieldname) for fname in fieldnames]
+    return default_df[inds, :]
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::RMEResultSet)
