@@ -1,3 +1,5 @@
 [deps]
 ADRIA = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
