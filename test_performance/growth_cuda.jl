@@ -11,26 +11,35 @@ We should make this decision and move this before merging to main.
 Wraps the settler_cover function, converting all arguments to CuArray
 =#
 function settler_cover_cuda(
-    fec_scope::T,
-    conn::AbstractMatrix{Float64},
+    fec_scope::CuArray{Float64},
+    conn::CuArray{Float64},
     leftover_space::T,
     α::V,
     β::V,
     basal_area_per_settler::V,
     potential_settlers::T
 )::T where {T<:Matrix{Float64},V<:Vector{Float64}}
-    fec_scope = CuArray(fec_scope)
-    conn = CuArray(conn)
-    leftover_space = CuArray(leftover_space)
-    α = CuArray(α)
-    β = CuArray(β)
-    basal_area_per_settler = CuArray(basal_area_per_settler)
-    potential_settlers = CuArray(potential_settlers)
 
-    # need to construct these as CuArray and provide them to _settler_cover()
-    # settler_cover's corresponding BitVector lines causes LoadError: Scalar indexing is disallowed.
-    valid_sources = CuArray(vec(sum(conn, dims=2) .> 0.0))
-    valid_sinks = CuArray(vec(sum(conn, dims=1) .> 0.0))
+    # Potential improvement: make `conn` and `fec_scope` arguments CuArrays
+    # which means creation of indices will run on GPU and subsetting will just work.
+    # cu_conn = CUDA.rand(1000, 1000)
+    # valid_sources = vec(sum(cu_conn, dims=2) .> 0.0)
+    # valid_sinks = vec(sum(cu_conn, dims=1) .> 0.0)
+    valid_sources = vec(sum(conn, dims=2) .> 0.0)
+    valid_sinks = vec(sum(conn, dims=1) .> 0.0)
 
-    return ADRIA._settler_cover(fec_scope, conn, leftover_space, α, β, basal_area_per_settler, potential_settlers, valid_sources, valid_sinks)
+    c_fec_scope = fec_scope[:, valid_sources]
+    c_conn = conn[valid_sources, valid_sinks]
+
+    # Copy index of valid sinks from GPU to host
+    # `sink_idx` could be preallocated or some other optimization...
+    sink_idx = zeros(Bool, length(valid_sinks))
+    copyto!(valid_sinks, sink_idx)    
+
+    # Calculate settler cover and copy result back to host
+    # This matrix multiplication is the most time-consuming part
+    # (`recruitment_rate()` takes < 1ms)
+    copyto!(c_fec_scope * c_conn, view(potential_settlers, :, sink_idx))
+
+    return ADRIA.recruitment_rate(potential_settlers, leftover_space; α=α, β=β) .* basal_area_per_settler
 end
