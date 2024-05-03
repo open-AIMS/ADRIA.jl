@@ -29,11 +29,8 @@ for num_locs in location_nums
 	@info "CPU - $(num_locs) locations benchmark"
 	local args = generate_data(num_locs)
 
-	perf = @benchmark begin 
-		# Mock 75 time steps
-		for t in 1:75
-			ADRIA.settler_cover($args...)
-		end
+	perf = @benchmark begin
+		ADRIA.settler_cover($args...)
 	end
 
 	display(perf)
@@ -47,10 +44,7 @@ for num_locs in location_nums
 	conn = CuArray(args[2])
 
 	perf = @benchmark begin
-		# Mock 75 time steps
-		for t in 1:75
-			settler_cover_cuda($fec_scope, $conn, $args[3:end]...)
-		end
+		settler_cover_cuda($fec_scope, $conn, $args[3:end]...)
 	end
 
 	display(perf)

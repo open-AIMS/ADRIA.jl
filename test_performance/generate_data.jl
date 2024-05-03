@@ -19,8 +19,7 @@ function generate_matrix(nrows::Int, ncols::Int, e_min::Int, e_max::Int)
 end
 
 #=
-Generate arguments for the setter_cover function.
-data 
+Generate mock data arguments for the setter_cover function.
 
 returns (fec_scope, conn, leftover_space, alpha, beta, basal_area_per_settler, potential_settlers)
 =#

@@ -1,7 +1,7 @@
 using CUDA
 using ADRIA
 
-#= 
+#=
 Temporary location for CUDA variations of ADRIA functions.
 TBD if we put these in a Julia extension or separate package.
 We should make this decision and move this before merging to main.
@@ -34,7 +34,7 @@ function settler_cover_cuda(
     # Copy index of valid sinks from GPU to host
     # `sink_idx` could be preallocated or some other optimization...
     sink_idx = zeros(Bool, length(valid_sinks))
-    copyto!(valid_sinks, sink_idx)    
+    copyto!(valid_sinks, sink_idx)
 
     # Calculate settler cover and copy result back to host
     # This matrix multiplication is the most time-consuming part
