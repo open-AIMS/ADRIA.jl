@@ -16,13 +16,13 @@ begin
     y = CUDA.rand(n1, n2)
     z = CUDA.zeros(n2, n1)
 
-    bm = @benchmark begin
+    gpu_bm = @benchmark begin
         x .= CUDA.rand(n2, n2)
         y .= CUDA.rand(n1, n2)
         z .= x * y'
     end
 
-    display(bm)
+    display(gpu_bm)
 end
 
 
@@ -32,10 +32,13 @@ begin
     y = rand(n1, n2)
     z = zeros(n2, n1)
 
-    bm = @benchmark begin
+    cpu_bm = @benchmark begin
         x .= rand(n2, n2)
         y .= rand(n1, n2)
         z .= x * y'
     end
-    display(bm)
+    display(cpu_bm)
 end
+
+@info "ratio CPU vs GPU"
+ratio(median(cpu_bm), median(gpu_bm))

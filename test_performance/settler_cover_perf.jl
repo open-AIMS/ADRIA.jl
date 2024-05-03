@@ -29,23 +29,20 @@ for num_locs in location_nums
 	@info "CPU - $(num_locs) locations benchmark"
 	local args = generate_data(num_locs)
 
-	perf = @benchmark begin
-		ADRIA.settler_cover($args...)
-	end
+	cpu_bm = @benchmark ADRIA.settler_cover($args...)
+	display(cpu_bm)
 
-	display(perf)
-end
-
-# Benchmark different location sizes
-for num_locs in location_nums
 	@info "GPU - $(num_locs) locations benchmark"
 	local args = generate_data(num_locs)
 	fec_scope = CuArray(args[1])
 	conn = CuArray(args[2])
 
-	perf = @benchmark begin
+	gpu_bm = @benchmark begin
 		settler_cover_cuda($fec_scope, $conn, $args[3:end]...)
 	end
 
-	display(perf)
+	display(gpu_bm)
+
+	@info "ratio of median CPU/GPU"
+	display(ratio(median(cpu_bm), median(gpu_bm)))
 end
