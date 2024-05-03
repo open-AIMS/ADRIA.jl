@@ -634,7 +634,7 @@ Settler density (settlers / m²)
 2. Haddon, M. (2011). Modelling and quantitative methods in fisheries. CRC Press/Chapman and
     Hall, Boca Raton, Florida, USA.
 """
-function settler_density(α::T, β::T, L::T)::Float64 where {T<:Float64}
+function settler_density(α::T, β::T, L::Union{T, Float32})::Float64 where {T<:Float64}
     return (α .* L) ./ (β .+ L)
 end
 
@@ -652,8 +652,10 @@ Calculates coral recruitment for each species/group and location.
 
 # Returns
 λ, total coral recruitment for each coral taxa and location based on a Poisson distribution.
+
+FIXME mixing Float32 and Float64
 """
-function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
+function recruitment_rate(larval_pool::Union{AbstractArray{Float32, 2}, AbstractArray{Float64, 2}}, A::AbstractArray{T};
     α::Union{T,AbstractArray{T}}=2.5, β::Union{T,AbstractArray{T}}=5000.0)::Matrix{T} where {T<:Float64}
     sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
     @views sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))

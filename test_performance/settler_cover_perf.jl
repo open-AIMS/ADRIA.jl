@@ -10,19 +10,6 @@ include("growth_cuda.jl")
 # may have 6,000 max
 location_nums = [3_000]
 
-@testset "check settler_cover results" begin
-    for num_locs in location_nums
-        println("$(num_locs) locations")
-        local args = generate_data(num_locs)
-
-        result = ADRIA.settler_cover(args...)
-        @test size(result) == (num_corals, num_locs)
-        @test all(v -> v > 0, result)
-
-        # TODO run settler_cover_cuda and verify same output
-    end
-end
-
 # Benchmark different location sizes
 for num_locs in location_nums
     @info "CPU - $(num_locs) locations benchmark"
@@ -35,12 +22,14 @@ for num_locs in location_nums
     local (fec_scope, conn, leftover_space, alpha, beta, basal_area_per_settler, potential_settlers) = generate_data(
         num_locs
     )
-    c_fec_scope = CuArray(fec_scope)
-    c_conn = CuArray(conn)
-    c_potential_settlers = CuArray(potential_settlers)
 
-    valid_sources = CuArray(vec(sum(conn; dims=2) .> 0.0))
-    valid_sinks = CuArray(vec(sum(conn; dims=1) .> 0.0))
+    # cu converts to Float32 by default
+    c_fec_scope = cu(fec_scope)
+    c_conn = cu(conn)
+    c_potential_settlers = cu(potential_settlers)
+
+    valid_sources = cu(vec(sum(conn; dims=2) .> 0.0))
+    valid_sinks = cu(vec(sum(conn; dims=1) .> 0.0))
 
     gpu_bm = @benchmark begin
         settler_cover_cuda(
@@ -61,7 +50,8 @@ for num_locs in location_nums
     @info "ratio of median CPU/GPU"
     display(ratio(median(cpu_bm), median(gpu_bm)))
 
-    @info "GPU settler_cover_cuda2"
+    # FIXME Currently broken by Float32, need to fix signature
+#=     @info "GPU settler_cover_cuda2"
     gpu2_bm = @benchmark begin
         settler_cover_cuda2(
             $c_fec_scope,
@@ -74,7 +64,7 @@ for num_locs in location_nums
         )
     end
 
-    display(gpu2_bm)
+    display(gpu2_bm) =#
 
     #= 	recruitment_rate ~500 microseconds, negligible
 

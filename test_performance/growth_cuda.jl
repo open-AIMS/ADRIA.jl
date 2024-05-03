@@ -20,7 +20,7 @@ function settler_cover_cuda(
     potential_settlers::CA,
     valid_sources::CuArray{Bool},
     valid_sinks::CuArray{Bool}
-)::T where {T<:Matrix{Float64},V<:Vector{Float64},CA<:CuArray{Float64}}
+)::T where {T<:AbstractMatrix{Float64},V<:Vector{Float64},CA<:AbstractArray{Float32}}
     potential_settlers[:, valid_sinks] .= (
         fec_scope[:, valid_sources] * conn[valid_sources, valid_sinks]
     )
