@@ -51,13 +51,8 @@ function create_map!(
     spatial = GeoAxis(
         f[1, 1];
         dest="+proj=latlong +datum=WGS84",
-        axis_opts...,
+        axis_opts...
     )
-    # lon = first.(centroids)
-    # lat = last.(centroids)
-    # map_buffer = 0.025
-    # xlims!(spatial, minimum(lon) - map_buffer, maximum(lon) + map_buffer)
-    # ylims!(spatial, minimum(lat) - map_buffer, maximum(lat) + map_buffer)
 
     spatial.xticklabelsize = 14
     spatial.yticklabelsize = 14
@@ -76,7 +71,7 @@ function create_map!(
         colormap=color_map,
         colorrange=color_range,
         strokecolor=(:black, 0.05),
-        strokewidth=1.0,
+        strokewidth=1.0
     )
 
     if show_colorbar
@@ -85,7 +80,7 @@ function create_map!(
             colorrange=color_range,
             colormap=color_map,
             label=colorbar_label,
-            height=Relative(0.65),
+            height=Relative(0.65)
         )
     end
 
@@ -101,7 +96,7 @@ function create_map!(
                 strokecolor=highlight,
                 strokewidth=0.5,
                 linestyle=:solid,
-                overdraw=true,
+                overdraw=true
             )
         else
             hl_groups = unique(highlight)
@@ -117,7 +112,7 @@ function create_map!(
                     strokecolor=color,
                     strokewidth=0.5,
                     linestyle=:solid,
-                    overdraw=true,
+                    overdraw=true
                 )
             end
         end
@@ -212,12 +207,11 @@ function ADRIA.viz.map!(
         geodata,
         data,
         highlight,
-        ADRIA.centroids(rs),
         show_colorbar,
         c_label,
         color_map,
         legend_params,
-        axis_opts,
+        axis_opts
     )
 end
 
@@ -275,12 +269,12 @@ function ADRIA.viz.connectivity(
     return f
 end
 function ADRIA.viz.connectivity!(
-    g::Union{GridLayout, GridPosition},
-    dom::Domain, 
+    g::Union{GridLayout,GridPosition},
+    dom::Domain,
     network::SimpleWeightedDiGraph,
     conn_weights::AbstractVector{<:Real};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
@@ -289,7 +283,7 @@ function ADRIA.viz.connectivity!(
     spatial = GeoAxis(
         g[1, 1];
         dest="+proj=latlong +datum=WGS84",
-        axis_opts...,
+        axis_opts...
     )
 
     geodata = get_geojson_copy(dom)
