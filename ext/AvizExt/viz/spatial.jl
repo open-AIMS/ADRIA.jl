@@ -1,4 +1,5 @@
 import GeoMakie.GeoJSON: AbstractFeatureCollection, features, bbox
+import ArchGDAL as AG
 using Graphs, GraphMakie, SimpleWeightedGraphs
 
 # Temporary monkey-patch to support retrieval of multiple features
@@ -6,10 +7,16 @@ Base.getindex(fc::AbstractFeatureCollection, i::UnitRange) = features(fc)[i]
 Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
 
 """
-    create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSON.FeatureCollection,
-        data::Observable, highlight::Union{Vector,Tuple,Nothing},
-        centroids::Vector, show_colorbar::Bool=true, colorbar_label::String="",
-        legend_params::Union{Tuple,Nothing}=nothing, axis_opts::Dict=Dict())
+    create_map!(
+        f::Union{GridLayout,GridPosition},
+        geodata::GeoMakie.GeoJSON.FeatureCollection,
+        data::Observable,
+        highlight::Union{Vector,Tuple,Nothing},
+        show_colorbar::Bool=true,
+        colorbar_label::String="",
+        legend_params::Union{Tuple,Nothing}=nothing,
+        axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
+    )
 
 Create a spatial choropleth figure.
 
@@ -18,7 +25,6 @@ Create a spatial choropleth figure.
 - `geodata` : FeatureCollection, Geospatial data to display
 - `data` : Values to use for choropleth
 - `highlight` : Stroke colors for each location
-- `centroids` : Vector{Tuple}, of lon and lats
 - `show_colorbar` : Whether to show a colorbar (true) or not (false)
 - `colorbar_label` : Label to use for color bar
 - `color_map` : Type of colormap to use,
@@ -28,16 +34,15 @@ Create a spatial choropleth figure.
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 """
 function create_map!(
-    f::Union{GridLayout, GridPosition},
-    geodata::GeoMakie.GeoJSON.FeatureCollection,
+    f::Union{GridLayout,GridPosition},
+    geodata::Vector{<:GeoMakie.GeometryBasics.Polygon},
     data::Observable,
-    highlight::Union{Vector, Tuple, Nothing},
-    centroids::Vector,
+    highlight::Union{Vector,Tuple,Nothing},
     show_colorbar::Bool=true,
     colorbar_label::String="",
-    color_map::Union{Symbol, Vector{Symbol}, RGBA{Float32}, Vector{RGBA{Float32}}}=:grayC,
-    legend_params::Union{Tuple, Nothing}=nothing,
-    axis_opts::Dict=Dict(),
+    color_map::Union{Symbol,Vector{Symbol},RGBA{Float32},Vector{RGBA{Float32}}}=:grayC,
+    legend_params::Union{Tuple,Nothing}=nothing,
+    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
@@ -127,9 +132,9 @@ function create_map!(
 end
 
 """
-    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map(rs::ResultSet, y::YAXArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::AbstractVector; opts=Dict(by_RCP => false), axis_opts=Dict())
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), fig_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), series_opts=Dict())
+    ADRIA.viz.map(rs::ResultSet, y::YAXArray; opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), fig_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), series_opts=Dict())
+    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::AbstractVector; opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}())
 
 Plot spatial choropleth of outcomes.
 
@@ -146,11 +151,11 @@ Plot spatial choropleth of outcomes.
 GridPosition
 """
 function ADRIA.viz.map(
-    rs::Union{Domain, ResultSet},
-    y::Union{YAXArray, AbstractVector{<:Real}};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    rs::Union{Domain,ResultSet},
+    y::Union{YAXArray,AbstractVector{<:Real}};
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -160,10 +165,10 @@ function ADRIA.viz.map(
     return f
 end
 function ADRIA.viz.map(
-    rs::Union{Domain, ResultSet};
-    opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
-    fig_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
-    axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
+    rs::Union{Domain,ResultSet};
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -187,11 +192,11 @@ function ADRIA.viz.map(
     return f
 end
 function ADRIA.viz.map!(
-    g::Union{GridLayout, GridPosition},
-    rs::Union{Domain, ResultSet},
+    g::Union{GridLayout,GridPosition},
+    rs::Union{Domain,ResultSet},
     y::AbstractVector{<:Real};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )
     geodata = get_geojson_copy(rs)
     data = Observable(collect(y))
@@ -219,6 +224,9 @@ end
 """
     ADRIA.viz.connectivity(dom::Domain, network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()) 
     ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain,  network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), axis_opts::Dict=Dict()) 
+"""
+    ADRIA.viz.connectivity(dom::Domain, network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), fig_opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}())
+    ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain,  network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}())
 
 Produce visualization of connectivity between reef sites with node size and edge visibility
 weighted by the connectivity values and node weights.
@@ -255,9 +263,9 @@ function ADRIA.viz.connectivity(
     dom::Domain,
     network::SimpleWeightedDiGraph,
     conn_weights::AbstractVector{<:Real};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
