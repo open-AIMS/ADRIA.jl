@@ -321,7 +321,7 @@ function ADRIA.viz.connectivity(
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    
+
     ADRIA.viz.connectivity!(g, dom, network, conn_weights; opts, axis_opts)
 
     return f
@@ -344,51 +344,50 @@ function ADRIA.viz.connectivity!(
         axis_opts...
     )
 
-    geodata = get_geojson_copy(dom)
+    geodata = _get_geoms(dom.site_data)
 
     spatial.xticklabelsize = 14
     spatial.yticklabelsize = 14
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10
-    
+
     # Calculate alpha values for edges based on connectivity strength and weighting
-    edge_col = Vector{Tuple{Symbol, Float64}}(undef, ne(network))
+    edge_col = Vector{Tuple{Symbol,Float64}}(undef, ne(network))
     norm_coef = maximum(conn_weights)
     for (ind, e) in enumerate(edges(network))
         if (e.src == e.dst)
-            edge_col[ind] = (:black, 0.0) 
+            edge_col[ind] = (:black, 0.0)
             continue
         end
         edge_col[ind] = (:black, conn_weights[e.src] * e.weight / norm_coef)
     end
-    
+
     # Rescale node size to be visible
     node_size = conn_weights ./ maximum(conn_weights) .* 10.0
-    
+
     # Extract graph kwargs and set defaults
     edge_col = get(opts, :edge_color, edge_col)
-    node_size  = get(opts, :node_size, node_size)
+    node_size = get(opts, :node_size, node_size)
     node_color = get(opts, :node_color, node_size)
-    
+
     # Plot geodata polygons
     poly!(
         spatial,
         geodata;
         color=:white,
         strokecolor=(:black, 0.25),
-        strokewidth=1.0,
+        strokewidth=1.0
     )
     # Plot the connectivity graph
     graphplot!(
-        spatial, 
-        network, 
-        layout=ADRIA.centroids(dom), 
-        edge_color=edge_col, 
-        node_size=node_size, 
+        spatial,
+        network;
+        layout=ADRIA.centroids(dom),
+        edge_color=edge_col,
+        node_size=node_size,
         node_color=node_color,
         edge_plottype=:linesegments
     )
-
 
     return g
 end
