@@ -120,7 +120,7 @@ for further details.
 We are currently moving to follow [Blue Style Guide](https://github.com/invenia/BlueStyle).
 All PRs should follow this style guide.
 
-To set up the formatter:
+To set up the formatter (the VS Code extension, **not** the JuliaFormatter.jl package):
 
 - Go to the VS Code settings panel or press `ctrl+,`.
 - Search for "Julia Formatter"
