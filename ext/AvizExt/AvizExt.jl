@@ -38,11 +38,6 @@ include("./analysis.jl")
 include("./viz/viz.jl")
 
 
-function __init__()
-    ADRIA.viz.tmpdir = mktempdir()
-end
-
-
 """Main entry point for app."""
 function julia_main()::Cint
     if "explore" in ARGS
@@ -204,9 +199,6 @@ function ADRIA.viz.explore(rs::ResultSet)
     Label(traj_time_sld[1, 1], left_year_val)
     Label(traj_time_sld[1, 4], right_year_val)
 
-    # Get bounds to display
-    centroids = rs.site_centroids
-
     # Placeholder store to control which trajectories are visible
     X = rs.inputs
     min_color_step = (1.0 / 0.05)
@@ -357,7 +349,7 @@ function ADRIA.viz.explore(rs::ResultSet)
     @info "Generating map"
     map_display = layout.map
     geodata = get_geojson_copy(rs)
-    map_disp = create_map!(map_display, geodata, obs_mean_rc_sites, (:black, 0.05), centroids)
+    map_disp = create_map!(map_display, geodata, obs_mean_rc_sites, (:black, 0.05))
 
     curr_highlighted_sites = _get_seeded_sites(seed_log, (:), (:))
     obs_site_sel = Observable(FC(; features=geodata[curr_highlighted_sites]))

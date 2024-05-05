@@ -193,7 +193,7 @@ function ADRIA.viz.map!(
     opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
     axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )
-    geodata = get_geojson_copy(rs)
+    geodata = _get_geoms(rs.site_data)
     data = Observable(collect(y))
 
     highlight = get(opts, :highlight, nothing)
@@ -393,52 +393,26 @@ function ADRIA.viz.connectivity!(
 end
 
 """
-    make_geojson_copy(ds::Union{ResultSet,Domain})::String
+    _get_plottable_geom(gdf::DataFrame)::Union{Symbol, Bool}
 
-Make a temporary copy of GeoPackage as GeoJSON.
-
-# Arguments
-`ds` : Domain or ResultSet containing spatial data
+Retrieve first column found to hold plottable geometries.
 
 # Returns
-Path to temporary copy of GeoJSON file.
+Symbol, indicating column name or `false` if no geometries found.
 """
-function make_geojson_copy(ds::Union{ResultSet, Domain})::String
-    tmpdir = ADRIA.viz.tmpdir
-    local geo_fn = joinpath(tmpdir, "Aviz_$(ds.name).geojson")
-    if !isfile(geo_fn)
-        try
-            GDF.write(geo_fn, ds.site_data; driver="geojson")
-        catch
-            GDF.write(geo_fn, ds.site_data; geom_columns=(:geom,), driver="geojson")
-        end
+function _get_geom_col(gdf::DataFrame)::Union{Symbol,Bool}
+    col = findall(typeof.(eachcol(gdf)) .<: Vector{<:AG.IGeometry})
+    if !isempty(col)
+        return Symbol(names(gdf)[col[1]])
     end
 
-    return geo_fn
+    return false
 end
 
-"""
-    get_geojson(ds::Union{ResultSet,Domain})::FC
-
-Retrieves a temporary copy of spatial data associated with the given Domain or ResultSet as
-a FeatureCollection.
-
-# Arguments
-- `ds` : The dataset with which the spatial data is associated with
-
-# Returns
-FeatureCollection of polygons
-"""
-function get_geojson_copy(ds::Union{ResultSet, Domain})::FC
-    fn = make_geojson_copy(ds)
-
-    # Only return the set Features if filepaths match
-    if isdefined(ADRIA.viz, :tmp_geojson)
-        if ADRIA.viz.tmpdir == dirname(fn)
-            return ADRIA.viz.tmp_geojson
-        end
-    end
-
-    ADRIA.viz.tmp_geojson = GeoMakie.GeoJSON.read(read(fn))
-    return ADRIA.viz.tmp_geojson
+function _get_geoms(gdf::DataFrame)
+    geom_col = _get_geom_col(gdf)
+    return _get_geoms(gdf, geom_col)
+end
+function _get_geoms(gdf::DataFrame, geom_col::Symbol)
+    return GeoMakie.geo2basic(AG.forceto.(gdf[!, geom_col], AG.wkbPolygon))
 end
