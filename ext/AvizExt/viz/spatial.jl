@@ -182,7 +182,7 @@ function ADRIA.viz.map(
         opts[:highlight] = highlight
     end
 
-    ADRIA.viz.map!(g, rs, rs.site_data.k; opts, axis_opts)
+    ADRIA.viz.map!(g, rs, rs.site_data.k * 100.0; opts, axis_opts)
 
     return f
 end
