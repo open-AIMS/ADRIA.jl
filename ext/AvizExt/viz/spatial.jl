@@ -49,10 +49,10 @@ function create_map!(
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
     axis_opts[:xgridwidth] = get(axis_opts, :xgridwidth, 0.5)
     axis_opts[:ygridwidth] = get(axis_opts, :ygridwidth, 0.5)
+    axis_opts[:dest] = get(axis_opts, :dest, "+proj=latlong +datum=WGS84")
 
     spatial = GeoAxis(
         f[1, 1];
-        dest="+proj=latlong +datum=WGS84",
         axis_opts...
     )
 
@@ -201,6 +201,10 @@ function ADRIA.viz.map!(
     legend_params = get(opts, :legend_params, nothing)
     show_colorbar = get(opts, :show_colorbar, true)
     color_map = get(opts, :color_map, :grayC)
+    if !(:dest in keys(axis_opts))
+        col = _get_geom_col(rs.site_data)
+        axis_opts[:dest] = ADRIA.AG.toPROJ4(ADRIA.AG.getspatialref(rs.site_data[1, col]))
+    end
 
     return create_map!(
         g,
