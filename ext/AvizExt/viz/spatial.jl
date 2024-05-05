@@ -216,8 +216,66 @@ function ADRIA.viz.map!(
 end
 
 """
-    ADRIA.viz.connectivity(dom::Domain, network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()) 
-    ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain,  network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), axis_opts::Dict=Dict()) 
+    ADRIA.viz.map(gdf::DataFrame; geom_col=:geometry, color=nothing)
+
+Plot an arbitrary GeoDataFrame, optionally specifying a color for each feature.
+
+# Arguments
+- `gdf` : GeoDataFrame to plot
+- `geom_col` : Column in GeoDataFrame that holds feature data
+- `color` : Colors to use for each feature
+"""
+function ADRIA.viz.map(gdf::DataFrame; geom_col=:geometry, color=nothing)
+    f = Figure(; size=(600, 900))
+    ga = GeoAxis(
+        f[1, 1];
+        dest="+proj=latlong +datum=WGS84",
+        xlabel="Longitude",
+        ylabel="Latitude",
+        xticklabelpad=15,
+        yticklabelpad=40,
+        xticklabelsize=10,
+        yticklabelsize=10,
+        aspect=AxisAspect(0.75),
+        xgridwidth=0.5,
+        ygridwidth=0.5
+    )
+
+    ADRIA.viz.map!(ga, gdf; geom_col=geom_col, color=color)
+
+    display(f)
+
+    return f
+end
+
+"""
+    ADRIA.viz.map!(gdf::DataFrame; geom_col=:geometry, color=nothing)::Nothing
+"""
+function ADRIA.viz.map!(gdf::DataFrame; geom_col=:geometry, color=nothing)::Nothing
+    ga = current_axis()
+    ADRIA.viz.map!(ga, gdf; geom_col=geom_col, color=color)
+
+    return nothing
+end
+function ADRIA.viz.map!(
+    ga::GeoAxis, gdf::DataFrame; geom_col=:geometry, color=nothing
+)::Nothing
+    plottable = _get_geoms(dom.site_data, geom_col)
+
+    if !isnothing(color)
+        poly!(ga, plottable; color=color)
+    else
+        poly!(ga, plottable)
+    end
+
+    # Auto-determine x/y limits
+    autolimits!(ga)
+    xlims!(ga)
+    ylims!(ga)
+
+    return nothing
+end
+
 """
     ADRIA.viz.connectivity(dom::Domain, network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), fig_opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}())
     ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain,  network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}())
