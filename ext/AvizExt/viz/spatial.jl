@@ -47,6 +47,8 @@ function create_map!(
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
+    axis_opts[:xgridwidth] = get(axis_opts, :xgridwidth, 0.5)
+    axis_opts[:ygridwidth] = get(axis_opts, :ygridwidth, 0.5)
 
     spatial = GeoAxis(
         f[1, 1];
@@ -57,8 +59,6 @@ function create_map!(
     spatial.xticklabelsize = 14
     spatial.yticklabelsize = 14
 
-    spatial.yticklabelpad = 50
-    spatial.ytickalign = 10
     max_val = @lift(maximum($data))
 
     # Plot geodata polygons using data as internal color
