@@ -29,7 +29,7 @@ end
     load_results(::Type{RMEResultSet}, data_dir::String)::RMEResultSet
     load_results(::Type{RMEResultSet}, data_dir::String, result_dir::String)::RMEResultSet
 
-Reefmod result interface.
+ReefMod Engine result interface.
 
 # Arguments
 - `data_dir`: Path to directory containing geospatial and connectivity data
@@ -47,18 +47,18 @@ function load_results(
     ::Type{RMEResultSet}, data_dir::String, result_dir::String
 )::RMEResultSet
     !isdir(data_dir) ? error("Expected a directory but received $(data_dir)") : nothing
-    
+
     result_path = joinpath(result_dir, "results.nc")
     raw_set = open_dataset(result_path)
 
     # Name and RCP haven't been added to outputs yet.
     name::String = "ReefModEngine Result Set"
     netcdf_rcp::String = "Unknown"
-    
+
     geodata_path = joinpath(data_dir, "region", "reefmod_gbr.gpkg")
     geodata = GDF.read(geodata_path)
-    
-    # Correct site ids in the same manner 
+
+    # Correct site ids in the same manner
     _standardize_cluster_ids!(geodata)
 
     reef_id_col = "UNIQUE_ID"
@@ -81,7 +81,7 @@ function load_results(
 
     # Calculate `k` area (1.0 - "ungrazable" area)
     geodata[:, :k] = 1 .- id_list[:, 3]
-    
+
     # Connectivity is loaded using the same method as the Domain
     connectivity = load_connectivity(RMEDomain, data_dir, site_ids)
 
@@ -99,7 +99,7 @@ function load_results(
     inputs::DataFrame = _get_inputs(input_path)
 
     # Counterfactual scenario if outplant area and enrichment area are both 0
-    scenario_groups::Dict{Symbol, BitVector} = 
+    scenario_groups::Dict{Symbol, BitVector} =
         _construct_scenario_groups(inputs, length(raw_set.scenarios))
 
     env_layer_md::EnvLayer = EnvLayer(
@@ -113,7 +113,7 @@ function load_results(
         "",
         timeframe
     )
-    
+
     outcomes::Dict{Symbol, YAXArray} = Dict();
     for (key, cube) in raw_set.cubes
         outcomes[key] = _reformat_cube(RMEResultSet, cube)
@@ -121,9 +121,9 @@ function load_results(
 
     # Calculate relative cover
     n_locations::Int = length(raw_set.locations)
-    outcomes[:relative_cover] = 
+    outcomes[:relative_cover] =
         (outcomes[:total_cover] ./ 100) ./ reshape(geodata.k, (1, n_locations, 1))
-    outcomes[:relative_taxa_cover] = 
+    outcomes[:relative_taxa_cover] =
         (outcomes[:total_taxa_cover] ./ 100) ./ reshape(geodata.k, (1, n_locations, 1))
 
     mod_spec::DataFrame = _create_model_spec(inputs)
@@ -149,11 +149,11 @@ end
 """
     _get_inputs(filepath::String)
 
-Read in scenario dataframe from given location. Warn and default to empty dataframe if not 
+Read in scenario dataframe from given location. Warn and default to empty dataframe if not
 found.
 """
 function _get_inputs(filepath::String)::DataFrame
-    if !isfile(filepath) 
+    if !isfile(filepath)
         @warn "Unable to find scenario spec at $(filepath). Skipping."
         return DataFrame()
     end
@@ -174,7 +174,7 @@ function _construct_scenario_groups(
         return Dict(:counterfactual => BitVector([true for _ in 1:n_scenarios]))
     end
     counterfactual_scens::BitVector = BitVector([
-        p_a == 0.0 && e_a == 0 for (p_a, e_a) 
+        p_a == 0.0 && e_a == 0 for (p_a, e_a)
             in zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
     # Intervened if not counterfactual
@@ -183,12 +183,12 @@ function _construct_scenario_groups(
             in zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
     scenario_groups::Dict{Symbol, BitVector} = Dict()
-    
+
     # If the runs do not contain counterfactual or intervened runs exclude the key
     if any(counterfactual_scens)
         scenario_groups[:counterfactual] = counterfactual_scens
     end
-    if any(intervened_scens) 
+    if any(intervened_scens)
         scenario_groups[:intervened] = intervened_scens
     end
     return scenario_groups
@@ -210,10 +210,10 @@ end
 """
     _create_model_spec(scenario_spec::DataFrame)::DataFrame
 
-Recreate a partial model specification to allow more analysis utilities. 
+Recreate a partial model specification to allow more analysis utilities.
 
-Note: The model specification is incomplete as not all scenario data is extracted from 
-ReefModEngine. This partial specification will need to be updated as updates are made to 
+Note: The model specification is incomplete as not all scenario data is extracted from
+ReefModEngine. This partial specification will need to be updated as updates are made to
 ReefModEngine.
 """
 function _create_model_spec(scenario_spec::DataFrame)::DataFrame
@@ -256,6 +256,7 @@ function _create_model_spec(scenario_spec::DataFrame)::DataFrame
     # Field names are the same as column names
     fieldnames::Vector{Symbol} = Symbol.(names(scenario_spec))
     inds::Vector{Int} = [findfirst(x -> x == fname, default_df.fieldname) for fname in fieldnames]
+
     return default_df[inds, :]
 end
 
