@@ -546,21 +546,25 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
     for tstep::Int64 in 2:tf
-        # Update initial condition
-        C_cover[tstep, :, valid_locs] = C_cover[tstep-1, :, valid_locs]
 
-        s = (1.0 .- sum(C_cover[tstep, :, valid_locs], dims=1))
-        @. p.sXr = s * C_cover[tstep, :, valid_locs] * p.r
-        @. p.X_mb = C_cover[tstep, :, valid_locs] * p.mb
-        @views @. C_cover[tstep, p.large, valid_locs] += p.sXr[p.large-1, :] - p.X_mb[p.large, :]
-        @views @. C_cover[tstep, p.mid, valid_locs] += p.sXr[p.mid-1, :] - p.X_mb[p.mid-1, :]
-        C_cover[tstep, p.small, valid_locs] .= 0.0
+        # Copy cover for previous timestep as basis for current timestep
+        C_t .= C_cover[tstep-1, :, :]
+
+        s = (1.0 .- sum(C_t[:, valid_locs], dims=1))
+        @views @. p.sXr[:, valid_locs] = s * C_t[:, valid_locs] * p.r
+        @views @. p.X_mb[:, valid_locs] = C_t[:, valid_locs] * p.mb
+        @views @. C_t[p.large, valid_locs] += p.sXr[p.large-1, valid_locs] - p.X_mb[p.large, valid_locs]
+        @views @. C_t[p.mid, valid_locs] += p.sXr[p.mid-1, valid_locs] - p.X_mb[p.mid-1, valid_locs]
+        C_t[p.small, valid_locs] .= 0.0
 
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
-            @view(C_cover[tstep, :, valid_locs]),
+            @view(C_t[:, valid_locs]),
             cover_tmp[valid_locs]
         )
+
+        # Update initial condition
+        C_cover[tstep, :, valid_locs] .= C_t[:, valid_locs]
 
         if tstep <= tf
             # Natural adaptation
@@ -577,8 +581,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             end
         end
 
-        # Copy cover for previous timestep as basis for current timestep
-        C_t .= C_cover[tstep, :, :]
+
 
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
