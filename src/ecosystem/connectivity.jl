@@ -182,8 +182,8 @@ function connectivity_strength(
     g = SimpleWeightedDiGraph(conn)
 
     # Measure centrality based on number of incoming connections
-    C1 = indegree_centrality(g)
-    C2 = outdegree_centrality(g)
+    C1 = in_method(g)
+    C2 = out_method(g)
 
     return (in_conn=C1, out_conn=C2, network=g)
 end
