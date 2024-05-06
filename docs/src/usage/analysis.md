@@ -441,7 +441,7 @@ tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)
 rsa_fig = ADRIA.viz.rsa(
     rs,
     tac_rs,
-    ["dhw_scenario", "wave_scenario", "N_seed_TA", "N_seed_CA", "fogging", "SRM"];
+    [:dhw_scenario, :wave_scenario, :N_seed_TA, :N_seed_CA, :fogging, :SRM];
     opts,
     fig_opts
 )
