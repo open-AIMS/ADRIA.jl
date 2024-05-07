@@ -1,15 +1,42 @@
 import GeoMakie.GeoJSON: AbstractFeatureCollection, features, bbox
+import ArchGDAL as AG
 using Graphs, GraphMakie, SimpleWeightedGraphs
 
 # Temporary monkey-patch to support retrieval of multiple features
 Base.getindex(fc::AbstractFeatureCollection, i::UnitRange) = features(fc)[i]
 Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
 
+function set_figure_defaults(fig_opts::Dict{Symbol,<:Any})::Dict{Symbol,<:Any}
+    fig_opts[:size] = get(fig_opts, :size, (600, 900))
+    fig_opts[:xticklabelsize] = get(fig_opts, :xticklabelsize, 14)
+    fig_opts[:yticklabelsize] = get(fig_opts, :yticklabelsize, 14)
+
+    return fig_opts
+end
+
+function set_axis_defaults(axis_opts::Dict{Symbol,<:Any})::Dict{Symbol,<:Any}
+    axis_opts[:title] = get(axis_opts, :title, "Study Area")
+    axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
+    axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
+    axis_opts[:xgridwidth] = get(axis_opts, :xgridwidth, 0.5)
+    axis_opts[:ygridwidth] = get(axis_opts, :ygridwidth, 0.5)
+    axis_opts[:dest] = get(axis_opts, :dest, "+proj=latlong +datum=WGS84")
+
+    return axis_opts
+end
+
+
 """
-    create_map!(f::Union{GridLayout,GridPosition}, geodata::GeoMakie.GeoJSON.FeatureCollection,
-        data::Observable, highlight::Union{Vector,Tuple,Nothing},
-        centroids::Vector, show_colorbar::Bool=true, colorbar_label::String="",
-        legend_params::Union{Tuple,Nothing}=nothing, axis_opts::Dict=Dict())
+    create_map!(
+        f::Union{GridLayout,GridPosition},
+        geodata::GeoMakie.GeoJSON.FeatureCollection,
+        data::Observable,
+        highlight::Union{Vector,Tuple,Nothing},
+        show_colorbar::Bool=true,
+        colorbar_label::String="",
+        legend_params::Union{Tuple,Nothing}=nothing,
+        axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}())
+    )
 
 Create a spatial choropleth figure.
 
@@ -18,7 +45,6 @@ Create a spatial choropleth figure.
 - `geodata` : FeatureCollection, Geospatial data to display
 - `data` : Values to use for choropleth
 - `highlight` : Stroke colors for each location
-- `centroids` : Vector{Tuple}, of lon and lats
 - `show_colorbar` : Whether to show a colorbar (true) or not (false)
 - `colorbar_label` : Label to use for color bar
 - `color_map` : Type of colormap to use,
@@ -28,37 +54,24 @@ Create a spatial choropleth figure.
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 """
 function create_map!(
-    f::Union{GridLayout, GridPosition},
-    geodata::GeoMakie.GeoJSON.FeatureCollection,
+    f::Union{GridLayout,GridPosition},
+    geodata::Vector{<:GeoMakie.GeometryBasics.Polygon},
     data::Observable,
-    highlight::Union{Vector, Tuple, Nothing},
-    centroids::Vector,
+    highlight::Union{Vector,Tuple,Nothing},
     show_colorbar::Bool=true,
     colorbar_label::String="",
-    color_map::Union{Symbol, Vector{Symbol}, RGBA{Float32}, Vector{RGBA{Float32}}}=:grayC,
-    legend_params::Union{Tuple, Nothing}=nothing,
-    axis_opts::Dict=Dict(),
+    color_map::Union{Symbol,Vector{Symbol},RGBA{Float32},Vector{RGBA{Float32}}}=:grayC,
+    legend_params::Union{Tuple,Nothing}=nothing,
+    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
 )
-    axis_opts[:title] = get(axis_opts, :title, "Study Area")
-    axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
-    axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
-
     spatial = GeoAxis(
         f[1, 1];
-        dest="+proj=latlong +datum=WGS84",
-        axis_opts...,
+        axis_opts...
     )
-    # lon = first.(centroids)
-    # lat = last.(centroids)
-    # map_buffer = 0.025
-    # xlims!(spatial, minimum(lon) - map_buffer, maximum(lon) + map_buffer)
-    # ylims!(spatial, minimum(lat) - map_buffer, maximum(lat) + map_buffer)
 
-    spatial.xticklabelsize = 14
-    spatial.yticklabelsize = 14
+    # spatial.xticklabelsize = 14
+    # spatial.yticklabelsize = 14
 
-    spatial.yticklabelpad = 50
-    spatial.ytickalign = 10
     max_val = @lift(maximum($data))
 
     # Plot geodata polygons using data as internal color
@@ -71,7 +84,7 @@ function create_map!(
         colormap=color_map,
         colorrange=color_range,
         strokecolor=(:black, 0.05),
-        strokewidth=1.0,
+        strokewidth=1.0
     )
 
     if show_colorbar
@@ -80,7 +93,7 @@ function create_map!(
             colorrange=color_range,
             colormap=color_map,
             label=colorbar_label,
-            height=Relative(0.65),
+            height=Relative(0.70)
         )
     end
 
@@ -96,7 +109,7 @@ function create_map!(
                 strokecolor=highlight,
                 strokewidth=0.5,
                 linestyle=:solid,
-                overdraw=true,
+                overdraw=true
             )
         else
             hl_groups = unique(highlight)
@@ -112,7 +125,7 @@ function create_map!(
                     strokecolor=color,
                     strokewidth=0.5,
                     linestyle=:solid,
-                    overdraw=true,
+                    overdraw=true
                 )
             end
         end
@@ -123,13 +136,17 @@ function create_map!(
         end
     end
 
+    reset_limits!(current_axis())
+    trim!(f)
+    resize_to_layout!(current_figure())
+
     return f
 end
 
 """
-    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map(rs::ResultSet, y::YAXArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::AbstractVector; opts=Dict(by_RCP => false), axis_opts=Dict())
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), fig_opts::Dict{Symbol, <:Any}=set_figure_defaults(), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
+    ADRIA.viz.map(rs::ResultSet, y::YAXArray; opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), fig_opts::Dict{Symbol, <:Any}=set_figure_defaults(), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
+    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::AbstractVector; opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
 
 Plot spatial choropleth of outcomes.
 
@@ -146,11 +163,11 @@ Plot spatial choropleth of outcomes.
 GridPosition
 """
 function ADRIA.viz.map(
-    rs::Union{Domain, ResultSet},
-    y::Union{YAXArray, AbstractVector{<:Real}};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    rs::Union{Domain,ResultSet},
+    y::Union{YAXArray,AbstractVector{<:Real}};
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=set_figure_defaults(Dict{Symbol,Any}()),
+    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -160,10 +177,10 @@ function ADRIA.viz.map(
     return f
 end
 function ADRIA.viz.map(
-    rs::Union{Domain, ResultSet};
-    opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
-    fig_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
-    axis_opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(),
+    rs::Union{Domain,ResultSet};
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=set_figure_defaults(Dict{Symbol,Any}()),
+    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -182,18 +199,18 @@ function ADRIA.viz.map(
         opts[:highlight] = highlight
     end
 
-    ADRIA.viz.map!(g, rs, rs.site_data.k; opts, axis_opts)
+    ADRIA.viz.map!(g, rs, rs.site_data.k * 100.0; opts, axis_opts)
 
     return f
 end
 function ADRIA.viz.map!(
-    g::Union{GridLayout, GridPosition},
-    rs::Union{Domain, ResultSet},
+    g::Union{GridLayout,GridPosition},
+    rs::Union{Domain,ResultSet},
     y::AbstractVector{<:Real};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
 )
-    geodata = get_geojson_copy(rs)
+    geodata = _get_geoms(rs.site_data)
     data = Observable(collect(y))
 
     highlight = get(opts, :highlight, nothing)
@@ -201,24 +218,83 @@ function ADRIA.viz.map!(
     legend_params = get(opts, :legend_params, nothing)
     show_colorbar = get(opts, :show_colorbar, true)
     color_map = get(opts, :color_map, :grayC)
+    if !(:dest in keys(axis_opts))
+        col = _get_geom_col(rs.site_data)
+        axis_opts[:dest] = ADRIA.AG.toPROJ4(ADRIA.AG.getspatialref(rs.site_data[1, col]))
+    end
 
     return create_map!(
         g,
         geodata,
         data,
         highlight,
-        ADRIA.centroids(rs),
         show_colorbar,
         c_label,
         color_map,
         legend_params,
-        axis_opts,
+        axis_opts
     )
 end
 
 """
-    ADRIA.viz.connectivity(dom::Domain, network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()) 
-    ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain,  network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict=Dict(), axis_opts::Dict=Dict()) 
+    ADRIA.viz.map(gdf::DataFrame; geom_col=:geometry, color=nothing)
+
+Plot an arbitrary GeoDataFrame, optionally specifying a color for each feature.
+
+# Arguments
+- `gdf` : GeoDataFrame to plot
+- `geom_col` : Column in GeoDataFrame that holds feature data
+- `color` : Colors to use for each feature
+"""
+function ADRIA.viz.map(gdf::DataFrame; geom_col=:geometry, color=nothing)
+    f = Figure(; size=(600, 900), figure_padding=0.1)
+    ga = GeoAxis(
+        f[1, 1];
+        dest="+proj=latlong +datum=WGS84",
+        xlabel="Longitude",
+        ylabel="Latitude",
+        xticklabelpad=15,
+        yticklabelpad=10,
+        xticklabelsize=10,
+        yticklabelsize=10,
+        aspect=DataAspect(),
+        xgridwidth=0.5,
+        ygridwidth=0.5
+    )
+
+    ADRIA.viz.map!(ga, gdf; geom_col=geom_col, color=color)
+
+    display(f)
+
+    return f
+end
+
+"""
+    ADRIA.viz.map!(gdf::DataFrame; geom_col=:geometry, color=nothing)::Nothing
+"""
+function ADRIA.viz.map!(gdf::DataFrame; geom_col=:geometry, color=nothing)::Nothing
+    ga = current_axis()
+    ADRIA.viz.map!(ga, gdf; geom_col=geom_col, color=color)
+
+    return nothing
+end
+function ADRIA.viz.map!(
+    ga::GeoAxis, gdf::DataFrame; geom_col=:geometry, color=nothing
+)::Nothing
+    plottable = _get_geoms(gdf, geom_col)
+
+    if !isnothing(color)
+        poly!(ga, plottable; color=color)
+    else
+        poly!(ga, plottable)
+    end
+
+    return nothing
+end
+
+"""
+    ADRIA.viz.connectivity(dom::Domain, network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), fig_opts::Dict{Symbol, <:Any}=set_figure_defaults(Dict{Symbol,Any}()), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
+    ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain,  network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
 
 Produce visualization of connectivity between reef sites with node size and edge visibility
 weighted by the connectivity values and node weights.
@@ -255,24 +331,24 @@ function ADRIA.viz.connectivity(
     dom::Domain,
     network::SimpleWeightedDiGraph,
     conn_weights::AbstractVector{<:Real};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=set_figure_defaults(Dict{Symbol,Any}()),
+    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    
+
     ADRIA.viz.connectivity!(g, dom, network, conn_weights; opts, axis_opts)
 
     return f
 end
 function ADRIA.viz.connectivity!(
-    g::Union{GridLayout, GridPosition},
-    dom::Domain, 
+    g::Union{GridLayout,GridPosition},
+    dom::Domain,
     network::SimpleWeightedDiGraph,
     conn_weights::AbstractVector{<:Real};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
 )
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
@@ -281,105 +357,76 @@ function ADRIA.viz.connectivity!(
     spatial = GeoAxis(
         g[1, 1];
         dest="+proj=latlong +datum=WGS84",
-        axis_opts...,
+        axis_opts...
     )
 
-    geodata = get_geojson_copy(dom)
+    geodata = _get_geoms(dom.site_data)
 
-    spatial.xticklabelsize = 14
-    spatial.yticklabelsize = 14
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10
-    
+
     # Calculate alpha values for edges based on connectivity strength and weighting
-    edge_col = Vector{Tuple{Symbol, Float64}}(undef, ne(network))
+    edge_col = Vector{Tuple{Symbol,Float64}}(undef, ne(network))
     norm_coef = maximum(conn_weights)
     for (ind, e) in enumerate(edges(network))
         if (e.src == e.dst)
-            edge_col[ind] = (:black, 0.0) 
+            edge_col[ind] = (:black, 0.0)
             continue
         end
         edge_col[ind] = (:black, conn_weights[e.src] * e.weight / norm_coef)
     end
-    
+
     # Rescale node size to be visible
     node_size = conn_weights ./ maximum(conn_weights) .* 10.0
-    
+
     # Extract graph kwargs and set defaults
     edge_col = get(opts, :edge_color, edge_col)
-    node_size  = get(opts, :node_size, node_size)
+    node_size = get(opts, :node_size, node_size)
     node_color = get(opts, :node_color, node_size)
-    
+
     # Plot geodata polygons
     poly!(
         spatial,
         geodata;
         color=:white,
         strokecolor=(:black, 0.25),
-        strokewidth=1.0,
+        strokewidth=1.0
     )
     # Plot the connectivity graph
     graphplot!(
-        spatial, 
-        network, 
-        layout=ADRIA.centroids(dom), 
-        edge_color=edge_col, 
-        node_size=node_size, 
+        spatial,
+        network;
+        layout=ADRIA.centroids(dom),
+        edge_color=edge_col,
+        node_size=node_size,
         node_color=node_color,
         edge_plottype=:linesegments
     )
-
 
     return g
 end
 
 """
-    make_geojson_copy(ds::Union{ResultSet,Domain})::String
+    _get_plottable_geom(gdf::DataFrame)::Union{Symbol, Bool}
 
-Make a temporary copy of GeoPackage as GeoJSON.
-
-# Arguments
-`ds` : Domain or ResultSet containing spatial data
+Retrieve first column found to hold plottable geometries.
 
 # Returns
-Path to temporary copy of GeoJSON file.
+Symbol, indicating column name or `false` if no geometries found.
 """
-function make_geojson_copy(ds::Union{ResultSet, Domain})::String
-    tmpdir = ADRIA.viz.tmpdir
-    local geo_fn = joinpath(tmpdir, "Aviz_$(ds.name).geojson")
-    if !isfile(geo_fn)
-        try
-            GDF.write(geo_fn, ds.site_data; driver="geojson")
-        catch
-            GDF.write(geo_fn, ds.site_data; geom_columns=(:geom,), driver="geojson")
-        end
+function _get_geom_col(gdf::DataFrame)::Union{Symbol,Bool}
+    col = findall(typeof.(eachcol(gdf)) .<: Vector{<:AG.IGeometry})
+    if !isempty(col)
+        return Symbol(names(gdf)[col[1]])
     end
 
-    return geo_fn
+    return false
 end
 
-"""
-    get_geojson(ds::Union{ResultSet,Domain})::FC
-
-Retrieves a temporary copy of spatial data associated with the given Domain or ResultSet as
-a FeatureCollection.
-
-# Arguments
-- `ds` : The dataset with which the spatial data is associated with
-
-# Returns
-FeatureCollection of polygons
-"""
-function get_geojson_copy(ds::Union{ResultSet, Domain})::FC
-    fn = make_geojson_copy(ds)
-
-    # Only return the set Features if filepaths match
-    if isdefined(ADRIA.viz, :tmp_geojson)
-        if ADRIA.viz.tmpdir == dirname(fn)
-            return ADRIA.viz.tmp_geojson
-        end
-    end
-
-    ADRIA.viz.tmp_geojson = GeoMakie.GeoJSON.read(read(fn))
-    return ADRIA.viz.tmp_geojson
+function _get_geoms(gdf::DataFrame)
+    geom_col = _get_geom_col(gdf)
+    return _get_geoms(gdf, geom_col)
+end
+function _get_geoms(gdf::DataFrame, geom_col::Symbol)
+    return GeoMakie.geo2basic(AG.forceto.(gdf[!, geom_col], AG.wkbPolygon))
 end
