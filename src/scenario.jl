@@ -453,6 +453,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         cyclone_mortality_scen = copy(domain.cyclone_mortality_scens[:, :, :, 1])
         cyclone_mortality_scen .= 0.0
     end
+
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
 
