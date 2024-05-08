@@ -175,7 +175,7 @@ NamedTuple:
 - `network` : Generated graph network
 """
 function connectivity_strength(
-    conn::AbstractMatrix{Float64};
+    conn::AbstractMatrix{<:Union{Float32,Float64}};
     in_method=indegree_centrality,
     out_method=outdegree_centrality
 )::NamedTuple
@@ -207,7 +207,7 @@ NamedTuple:
 - `network` : Generated graph network
 """
 function connectivity_strength(
-    area_weighted_conn::AbstractMatrix{Float64},
+    area_weighted_conn::AbstractMatrix{<:Union{Float32,Float64}},
     cover::Vector{<:Union{Float32,Float64}},
     conn_cache::AbstractMatrix{Float64};
     in_method=indegree_centrality,
