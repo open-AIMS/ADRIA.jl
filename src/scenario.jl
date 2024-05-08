@@ -105,7 +105,8 @@ function run_scenarios(
     )
 
     para_threshold = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
-    parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (nrow(scens) >= para_threshold)
+    active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
+    parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false)  && (active_cores > 1) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
