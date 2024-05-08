@@ -33,6 +33,9 @@ using
     DimensionalData,
     Distances,
     Distributions,
+    DynamicCoralCoverModel,
+    StaticArrays,
+    SparseArrays,
     LinearAlgebra,
     ModelParameters,
     OrderedCollections,
@@ -101,7 +104,6 @@ export RMEResultSet
 
 # List out compatible domain datapackages
 const COMPAT_DPKG = ["0.6.0-rc", "0.6.0"]
-
 # This adds ~30 seconds to package load times
 if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(load_domain),String})   # time: 19.120537
