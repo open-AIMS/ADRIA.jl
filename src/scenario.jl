@@ -565,7 +565,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     potential_settlers = zeros(size(fec_scope)...)
     n_taxa = Int(n_species / n_groups)
     bins::Matrix{Float64} = hcat(
-        zeros(n_taxa), 
+        zeros(n_taxa),
         reshape(corals.bin_ub, (n_groups, n_taxa))'
     )
 
