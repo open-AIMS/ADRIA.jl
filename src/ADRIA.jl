@@ -36,7 +36,6 @@ using
     SparseArrays,
     SparseArrayKit,
     LinearAlgebra,
-    OrdinaryDiffEq,
     OrderedCollections,
     Combinatorics,
     Distances,
