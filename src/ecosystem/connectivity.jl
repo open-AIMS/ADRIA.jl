@@ -177,7 +177,7 @@ NamedTuple:
 function connectivity_strength(
     conn::AbstractMatrix{<:Union{Float32,Float64}};
     in_method=indegree_centrality,
-    out_method=outdegree_centrality
+    out_method=eigenvector_centrality
 )::NamedTuple
     g = SimpleWeightedDiGraph(conn)
 
@@ -211,7 +211,7 @@ function connectivity_strength(
     cover::Vector{<:Union{Float32,Float64}},
     conn_cache::AbstractMatrix{Float64};
     in_method=indegree_centrality,
-    out_method=outdegree_centrality
+    out_method=eigenvector_centrality
 )::NamedTuple
     # Accounts for cases where there is no coral cover
     conn_cache .= (area_weighted_conn .* cover)
