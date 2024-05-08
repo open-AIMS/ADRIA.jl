@@ -166,7 +166,7 @@ Determine in/out degree centralities for all nodes.
 # Arguments
 - `conn` : Base connectivity matrix to create Directed Graph from
 - `in_method` : Centrality method used to determine incoming connectivity
-- `out_method` : Centrality method used to detemrine outgoing connectivity
+- `out_method` : Centrality method used to determine outgoing connectivity
 
 # Returns
 NamedTuple:
@@ -198,7 +198,7 @@ Determine in/out degree centralities for all nodes.
 - `cover` : Total relative coral cover at location
 - `conn_cache` : Cache matrix of same size as TP_base to hold intermediate values
 - `in_method` : Centrality method used to determine incoming connectivity
-- `out_method` : Centrality method used to detemrine outgoing connectivity
+- `out_method` : Centrality method used to determine outgoing connectivity
 
 # Returns
 NamedTuple:
