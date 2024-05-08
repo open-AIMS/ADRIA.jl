@@ -86,6 +86,15 @@ function colony_areas()
     return colony_area_mean_cm2, (colony_diam_means ./ 100.0)
 end
 
+function bins_bounds(mean_diam::Matrix{Float64})::Matrix{Float64}
+    bins::Matrix{Float64} = zeros(size(mean_diam)...)
+    bins[:, 1] .= mean_diam[:, 1] .* 2
+    for i in 2:(size(mean_diam)[2])
+        bins[:, i] .= (mean_diam[:, i] .- bins[:, i-1]) .* 2 .+ bins[:, i-1]
+    end
+    return bins
+end
+
 
 """
     coral_spec()
@@ -176,7 +185,8 @@ function coral_spec()::NamedTuple
         1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
         1.0 1.0 1.0 1.0 0.8 0.8     # small massives
         1.0 1.0 1.0 1.0 1.2 1.2])   # large massives
-
+    
+    params.linear_extension = reshape(linear_extension', n_species)[:] ./ 100
     # Convert linear extensions to delta coral in two steps.
     # First calculate what proportion of coral numbers that change size class
     # given linear extensions. This is based on the simple assumption that
@@ -229,6 +239,16 @@ function coral_spec()::NamedTuple
     #     0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
     #     0.2 0.2 0.040 0.026 0.020 0.020])  # Large massives
     params.mb_rate = mb'[:]
+
+    upper_bound::Matrix{Float64} = [
+        0.02 0.05 0.1 0.2 0.4 0.8;
+        0.01 0.02 0.06 0.15 0.36 0.89;
+        0.01 0.02 0.04 0.09 0.18 0.38;
+        0.01 0.02 0.04 0.07 0.14 0.27;
+        0.01 0.02 0.05 0.08 0.12 0.26;
+        0.01 0.02 0.04 0.09 0.19 0.40
+    ]
+    params.bin_ub = reshape(upper_bound', n_species)[:]
 
     # Natural adaptation / heritability
     # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
