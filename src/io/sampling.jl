@@ -363,18 +363,20 @@ function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     return nothing
 end
 function fix_factor!(d::Domain; factors...)::Nothing
-    for (factor, val) in factors
-        try
-            fix_factor!(d, factor, val)
-        catch err
-            if !(err isa MethodError)
-                rethrow(err)
-            end
+    factor_names = keys(factors)
+    factor_vals = collect(values(factors))
 
-            # Try setting value as an integer
-            fix_factor!(d, factor, Int64(val))
-        end
-    end
+    params = DataFrame(d.model)
+
+    target_order = vcat([findall(x -> x == y, params.fieldname) for y in factor_names]...)
+    params[target_order, :val] .= factor_vals
+
+    dist_params = params[target_order, :dist_params]
+    new_dist_params = [Tuple(fill(v, length(d))) for (v, d) in zip(factor_vals, dist_params)]
+    params[target_order, :dist_params] .= new_dist_params
+
+    update!(d, params)
+
     return nothing
 end
 
