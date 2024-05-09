@@ -391,11 +391,14 @@ function _shift_distributions!(
     # Weight distributions based on growth rate and cover
     # Do from largest size class to size class 2
     # (values for size class 1 gets replaced by recruitment process)
-    for i in 6:-1:2
+    for i in length(growth_rate):-1:2
         # Skip size class if nothing is moving up
         sum(@view(cover[i-1:i])) == 0.0 ? continue : false
 
         prop_growth = @views (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
+        if sum(prop_growth) == 0.0
+            continue
+        end
 
         dist_t[i] = sum(@view(dist_t[i-1:i]), Weights(prop_growth ./ sum(prop_growth)))
     end
@@ -404,41 +407,41 @@ function _shift_distributions!(
 end
 
 """
-    adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t::Matrix{F},
+    adjust_DHW_distribution!(cover::SubArray{F}, n_sizes::Int64, dist_t::Matrix{F},
         growth_rate::Matrix{F})::Nothing where {F<:Float64}
 
-Adjust critical DHW thresholds for a given species/size class distribution as mortalities
+Adjust critical DHW thresholds for a given group/size class distribution as mortalities
 affect the distribution over time, and corals mature (moving up size classes).
 
 # Arguments
 - `cover` : Coral cover (for timestep \$t-1\$ and \$t\$)
-- `n_groups` : Number of coral groups represented
+- `n_sizes` : Number of coral size classes represented
 - `dist_t` : Distributions for timestep \$t\$
-- `growth_rate` : Growth rates for each species/size class
+- `growth_rate` : Growth rates for each group/size class
 """
 function adjust_DHW_distribution!(
     cover::SubArray{F},
-    n_groups::Int64,
+    n_sizes::Int64,
     dist_t::Matrix{F},
-    growth_rate::Vector{F}
+    growth_rate::Matrix{F}
 )::Nothing where {F<:Float64}
     _, n_sp_sc, n_locs = size(cover)
 
-    step::Int64 = n_groups - 1
+    step::Int64 = n_sizes - 1
 
     # Adjust population distribution
-    for sc1 in 1:n_groups:n_sp_sc
+    for (grp, sc1) in enumerate(1:n_sizes:n_sp_sc)
         for loc in 1:n_locs
-            sc6::Int64 = sc1 + step
+            sc_end::Int64 = sc1 + step
 
             # Skip if no cover
-            if sum(@view(cover[1, sc1:sc6, loc])) == 0.0
+            if sum(@view(cover[1, sc1:sc_end, loc])) == 0.0
                 continue
             end
 
             # Combine distributions using a MixtureModel for all non-juvenile size
-            # classes (we pass in all relevant size classes for the species group here).
-            @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc])
+            # classes (we pass in all relevant size classes for the functional group here).
+            @views _shift_distributions!(cover[1, sc1:sc_end, loc], growth_rate[grp, :], dist_t[sc1:sc_end, loc])
         end
     end
 
@@ -469,15 +472,16 @@ function settler_DHW_tolerance!(
     tp::AbstractMatrix{F},
     settlers::Matrix{F},
     fec_params_per_m²::Vector{F},
-    h²::F
+    h²::F,
+    n_sizes::Int64,
 )::Nothing where {F<:Float64}
     # Potential sink locations (TODO: pass in later)
     sink_loc_ids::Vector{Int64} = findall(k_area .> 0.0)
 
     source_locs::BitVector = falses(length(k_area))  # cache for source locations
-    reproductive_sc::BitVector = falses(6)  # cache for reproductive size classes
+    reproductive_sc::BitVector = falses(n_sizes)  # cache for reproductive size classes
 
-    settler_sc::StepRange = 1:6:36
+    settler_sc::StepRange = 1:n_sizes:length(fec_params_per_m²)
     for sink_loc in sink_loc_ids
         if sum(@views(settlers[:, sink_loc])) .== 0.0
             # Only update locations where recruitment occurred
@@ -494,13 +498,13 @@ function settler_DHW_tolerance!(
 
         # Determine new distribution mean for each species at all locations
         for (sp, sc1) in enumerate(settler_sc)
-            sc1_6::UnitRange{Int64} = sc1:sc1+5
+            sc1_end::UnitRange{Int64} = sc1:sc1+(n_sizes-1)
 
             # Get distribution mean of reproductive size classes at source locations
             # recalling that source locations may include the sink location due to
             # self-seeding.
-            reproductive_sc .= @view(fec_params_per_m²[sc1_6]) .> 0.0
-            settler_means::SubArray{Float64} = @view(c_mean_t_1[sc1_6[reproductive_sc], source_locs])
+            reproductive_sc .= @view(fec_params_per_m²[sc1_end]) .> 0.0
+            settler_means::SubArray{Float64} = @view(c_mean_t_1[sc1_end[reproductive_sc], source_locs])
 
             # Determine weights based on contribution to recruitment.
             # This weights the recruited corals by the size classes and source locations
@@ -544,17 +548,18 @@ fecundities across size classes.
 - `site_area` : Vector[n_sites], total site area in m²
 """
 function fecundity_scope!(
-    fec_groups::AbstractArray{T,2},
-    fec_all::AbstractArray{T,2},
-    fec_params::AbstractArray{T},
-    C_t::AbstractArray{T,2},
-    site_area::AbstractArray{T}
+    fec_groups::AbstractMatrix{T},
+    fec_all::AbstractMatrix{T},
+    fec_params::AbstractVector{T},
+    C_t::AbstractMatrix{T},
+    site_area::AbstractMatrix{T}
 )::Nothing where {T<:Float64}
-    ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
-    nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
+    n_groups::Int64 = size(fec_groups, 1)   # number of coral groups: 5
+    n_group_sizes::Int64 = size(fec_params, 1)  # number of coral size classes: 35
+    n_classes::Int64 = Int64(n_group_sizes / n_groups)
 
     fec_all .= fec_params .* C_t .* site_area
-    for (i, (s, e)) in enumerate(zip(1:ngroups:nclasses, ngroups:ngroups:nclasses+1))
+    for (i, (s, e)) in enumerate(zip(1:n_classes:n_group_sizes, n_classes:n_classes:n_group_sizes+1))
         @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
 

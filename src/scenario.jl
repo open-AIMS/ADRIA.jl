@@ -1,8 +1,9 @@
 """Scenario running functions"""
 
 using DynamicCoralCoverModel
-import DynamicCoralCoverModel.blocks_model.CoverBlock as CoverBlock
-import DynamicCoralCoverModel.blocks_model.SizeClass as SizeClass
+import DynamicCoralCoverModel.blocks_model: CoverBlock
+import DynamicCoralCoverModel.blocks_model: SizeClass
+
 using ADRIA.metrics:
     relative_cover,
     relative_loc_taxa_cover,
@@ -21,26 +22,73 @@ Establish tuple of matrices/vectors for use as reusable data stores to avoid rep
 function setup_cache(domain::Domain)::NamedTuple
 
     # Simulation constants
-    n_sites::Int64 = domain.coral_growth.n_sites
-    n_species::Int64 = domain.coral_growth.n_species
+    n_locs::Int64 = domain.coral_growth.n_locs
+    n_group_size::Int64 = domain.coral_growth.n_group_size
+    n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
     tf = length(timesteps(domain))
 
     cache = (
         # sf=zeros(n_groups, n_sites),  # stressed fecundity, commented out as it is disabled
-        fec_all=zeros(n_species, n_sites),  # all fecundity
-        fec_scope=zeros(n_groups, n_sites),  # fecundity scope
-        recruitment=zeros(n_groups, n_sites),  # coral recruitment
-        dhw_step=zeros(n_sites),  # DHW for each time step
-        cov_tmp=zeros(n_species, n_sites),  # Cover for previous timestep
-        depth_coeff=zeros(n_sites),  # store for depth coefficient
+        fec_all=zeros(n_group_size, n_locs),  # all fecundity
+        fec_scope=zeros(n_groups, n_locs),  # fecundity scope
+        recruitment=zeros(n_groups, n_locs),  # coral recruitment
+        dhw_step=zeros(n_locs),  # DHW for each time step
+        cov_tmp=zeros(n_groups, n_sizes, n_locs),  # Cover for previous timestep
+        depth_coeff=zeros(n_locs),  # store for depth coefficient
         site_area=Matrix{Float64}(site_area(domain)'),  # area of locations
         site_k_area=Matrix{Float64}(site_k_area(domain)'),  # location carrying capacity
-        wave_damage=zeros(tf, n_species, n_sites),  # damage coefficient for each size class
-        dhw_tol_mean_log=zeros(tf, n_species, n_sites),  # tmp log for mean dhw tolerances
+        wave_damage=zeros(tf, n_group_size, n_locs),  # damage coefficient for each size class
+        dhw_tol_mean_log=zeros(tf, n_group_size, n_locs),  # tmp log for mean dhw tolerances
     )
 
     return cache
+end
+
+"""
+    _cover_to_groups(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+
+Reshape coral cover to shape [sizes ⋅ locations ⋅ n_groups]
+"""
+function _cover_to_groups(growth_spec::CoralGrowth, data::AbstractMatrix{<:Union{Float32, Float64}})
+    return Array(reshape(
+        data,
+        (growth_spec.n_sizes, growth_spec.n_locs, growth_spec.n_groups)
+    ))
+end
+
+"""
+    _group_cover_locs(growth_spec::CoralGrowth, data::AbstractMatrix{<:Union{Float32, Float64}})
+
+Reshape coral cover of shape [groups_and_sizes ⋅ locations] to shape [groups ⋅ sizes ⋅ locations]
+"""
+function _group_cover_locs(growth_spec::CoralGrowth, data::AbstractMatrix{<:Union{Float32, Float64}})
+    return permutedims(reshape(
+        data,
+        (growth_spec.n_sizes, growth_spec.n_groups, growth_spec.n_locs)
+    ), (2, 1, 3))
+end
+
+"""
+    _flatten_cover(growth_spec::CoralGrowth, data::AbstractArray{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+
+Reshape coral cover of shape [groups ⋅ sizes ⋅ locations] to shape [groups_and_sizes ⋅ locations]
+"""
+function _flatten_cover(growth_spec::CoralGrowth, data::AbstractArray{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+    return reshape(
+        permutedims(data, [2, 1, 3]),
+        (growth_spec.n_group_size, growth_spec.n_locs)
+    )
+end
+
+"""
+    _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+
+Reshape vector to shape [groups ⋅ sizes]
+"""
+function _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+    # Data is reshaped to size ⋅ groups then transposed to maintain expected order
+    return Matrix(reshape(data, (growth_spec.n_sizes, growth_spec.n_groups))')
 end
 
 """
@@ -371,9 +419,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Sim constants
     sim_params = domain.sim_constants
     tf::Int64 = size(dhw_scen, 1)
-    n_locs::Int64 = domain.coral_growth.n_sites
-    n_species::Int64 = domain.coral_growth.n_species
+    n_locs::Int64 = domain.coral_growth.n_locs
     n_groups::Int64 = domain.coral_growth.n_groups
+    n_sizes::Int64 = domain.coral_growth.n_sizes
+    n_group_size::Int64 = domain.coral_growth.n_group_size
 
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
@@ -412,7 +461,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     depth_coeff .= depth_coefficient.(site_data.depth_med)
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
-    C_cover::Array{Float64,3} = zeros(tf, n_species, n_locs)
+    C_cover::Array{Float64,3} = zeros(tf, n_group_size, n_locs)
     if size(domain.init_coral_cover, 1) == 36
         C_cover[1, domain.coral_growth.ode_p.small, :] .= domain.init_coral_cover[species=[7, 13, 19, 25, 31]]
         C_cover[1, domain.coral_growth.ode_p.mid, :] .= domain.init_coral_cover[species=collect([8:12; 14:18; 20:24; 26:30; 32:36])]
@@ -465,7 +514,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     seeded_area = colony_areas[seed_sc] .* param_set[At(taxa_names)]
 
     # Set up assisted adaptation values
-    a_adapt = zeros(n_species)
+    a_adapt = zeros(n_group_size)
     a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
     # Flag indicating whether to seed or not to seed when unguided
@@ -520,7 +569,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
 
     # Cache for proportional mortality and coral population increases
-    bleaching_mort = zeros(tf, n_species, n_locs)
+    bleaching_mort = zeros(tf, n_group_size, n_locs)
 
     #### End coral constants
 
@@ -532,8 +581,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
-    p.r .= corals.growth_rate
-    p.mb .= corals.mb_rate
+    p.r .= _to_group_size(domain.coral_growth, corals.growth_rate)
+    p.mb .= _to_group_size(domain.coral_growth, corals.mb_rate)
 
     area_weighted_conn = conn .* site_k_area(domain)
     conn_cache = similar(area_weighted_conn.data)
@@ -549,8 +598,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
-    n_sizes = Int(n_species / n_groups)
-    bins::Matrix{Float64} = hcat(
+    C_bins::Matrix{Float64} = hcat(
         zeros(n_groups),
         reshape(corals.bin_ub, (n_sizes, n_groups))'
     )
@@ -558,13 +606,13 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     cover_blocks::Vector{Matrix{CoverBlock}} = [
         DynamicCoralCoverModel.blocks_model.CoverBlock.(
             reshape(C_cover[1, :, loc] .* site_data.area[loc], (n_sizes, n_groups))',
-            bins[:, 1:end-1],
-            bins[:, 2:end]
+            C_bins[:, 1:end-1],
+            C_bins[:, 2:end]
         ) for loc in 1:n_locs
     ]
 
     linear_extension = reshape(corals.linear_extension, (n_sizes, n_groups))'
-    survival_rate = 1 .- reshape(corals.mb_rate, (n_sizes, n_groups))'
+    survival_rate = 1.0 .- reshape(corals.mb_rate, (n_sizes, n_groups))'
 
     size_classes::Vector{Matrix{SizeClass}} = [
         SizeClass.(
@@ -574,39 +622,37 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             survival_rate
         ) for loc in 1:n_locs
     ]
-    @info "size_class size: $(size(size_classes[1]))"
+
     # Preallocate memory for temporaries
     temp_change = ones(n_groups, n_sizes, n_locs)
-    C_t = zeros(n_groups, n_sizes, n_locs) 
+    C_tmp = zeros(n_groups, n_sizes, n_locs)
+    C_t = zeros(n_group_size, n_locs)
     cover_copy = zeros(n_groups, n_sizes, n_locs)
 
     for tstep::Int64 in 2:tf
         change_view = [@view temp_change[:, :, loc] for loc in n_locs]
         DynamicCoralCoverModel.blocks_model.apply_changes!.(size_classes, change_view)
-        C_t = reshape(C_t, (n_groups, n_sizes, n_locs))
-        C_t = permutedims(
-            reshape(
-                C_cover[tstep-1, :, :] .*
-                site_data.area' .*
-                site_data.k',
-                (n_sizes, n_groups, n_locs)
-            ), 
-            [2, 1, 3]
+
+        C_tmp .= _group_cover_locs(
+            domain.coral_growth,
+            C_cover[tstep-1, :, :] .* (site_data.area .* site_data.k)'
         )
 
         for i in 1:n_locs
-            C_t[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
-                C_t[:, :, i], 
+            C_tmp[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
+                C_tmp[:, :, i],
                 size_classes[i],
                 site_data.k[i] * site_data.area[i],
                 tstep,
                 i==20
             )
         end
-        cover_copy = copy(C_t)
+        cover_copy .= copy(C_tmp)
 
-        C_t ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs));
-        C_t = reshape(permutedims(C_t, [2, 1, 3]), (n_species, n_locs))
+        C_tmp ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs))
+        replace!(C_tmp, NaN=>0.0)
+        C_t .= _flatten_cover(domain.coral_growth, C_tmp)
+
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
             @view(C_t[:, valid_locs]),
@@ -619,7 +665,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         if tstep <= tf
             # Natural adaptation
             adjust_DHW_distribution!(
-                @view(C_cover[(tstep-1):tstep, :, :]), n_groups, c_mean_t, p.r
+                @view(C_cover[(tstep-1):tstep, :, :]), n_sizes, c_mean_t, p.r
             )
 
             # Set values for t to t-1
@@ -631,8 +677,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             end
         end
 
-
-
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
 
@@ -642,7 +686,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # Reset potential settlers to zero
         potential_settlers .= 0.0
         recruitment .= 0.0
-        
+
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
         recruitment[:, valid_locs] .=
@@ -666,6 +710,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             recruitment,
             fec_params_per_m²,
             param_set[At("heritability")],
+            n_sizes
         )
 
         # Add recruits to current cover
@@ -829,12 +874,17 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
-        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
+        # TODO: Update cyclone data to hold data for relevant functional groups
+        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, 2:end]')
 
         # Update record
         C_cover[tstep, :, :] .= C_t
-        temp_change = 
-            abs.(permutedims(reshape(C_cover[tstep, :, :], (n_sizes, n_groups, n_locs)), [2, 1, 3]) .- cover_copy) ./ cover_copy
+        temp_change = abs.(
+            permutedims(
+                reshape(C_cover[tstep, :, :], (n_sizes, n_groups, n_locs)),
+                [2, 1, 3]
+            ) .- cover_copy
+        ) ./ cover_copy
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
@@ -866,13 +916,26 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     )
 end
 
+
+"""
+    cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
+
+Apply cyclone mortalities.
+
+# Arguments
+- `coral_cover` : Coral cover for current time step
+- `coral_params` : Coral parameters indicating indices of small/mid/large size classes
+- `cyclone_mortality` : Mortalities for each functional group and size class
+"""
 function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
+    # TODO: Move to own file.
+
     # Small class coral mortality
     coral_deaths_small = coral_cover[coral_params.small, :] .* cyclone_mortality
     coral_cover[coral_params.small, :] -= coral_deaths_small
 
     # Mid class coral mortality
-    coral_mid = hcat(collect(Iterators.partition(coral_params.mid, 4))...)
+    coral_mid = hcat(collect(Iterators.partition(coral_params.mid, length(coral_params.small)))...)
     for i in size(coral_mid, 1)
         coral_deaths_mid = coral_cover[coral_mid[i, :], :] .* cyclone_mortality
         coral_cover[coral_mid[i, :], :] -= coral_deaths_mid
