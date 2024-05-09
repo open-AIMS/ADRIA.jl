@@ -6,7 +6,7 @@ using SpecialFunctions
 
 
 """
-    growth_rate(linear_extension::Array{Float64}, diam_bin_widths::Array{Float64})::Vector{Float64}
+    growth_rate(linear_extension::Matrix{Float64}, diam_bin_widths::Matrix{Float64})::Matrix{Float64}
 
 Determine the rate of growth representing the proportion of each size class that moves
 up a size class each (yearly) time step. Values > 1 indicate transitions to higher size
@@ -17,11 +17,11 @@ classes occurs more than once per time step.
 - `diam_bin_widths` : diameter of each size class (bin) in cm
 
 # Returns
-Vector, of size \$N = [n_{species} ⋅ n_{classes}]\$ indicating proportional growth rates
+Matrix, of size \$[n_{species} ⋅ n_{classes}]\$ indicating proportional growth rates
 for each.
 """
-function growth_rate(linear_extension::Matrix{Float64}, diam_bin_widths::Vector{Float64})::Vector{Float64}
-    return vec(((2.0 .* linear_extension) ./ diam_bin_widths')')
+function growth_rate(linear_extension::Matrix{Float64}, diam_bin_widths::Matrix{Float64})::Matrix{Float64}
+    return ((2.0 .* linear_extension) ./ diam_bin_widths)'
 end
 
 
