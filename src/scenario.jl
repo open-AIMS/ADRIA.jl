@@ -1,8 +1,9 @@
 """Scenario running functions"""
 
 using DynamicCoralCoverModel
-import DynamicCoralCoverModel.blocks_model.CoverBlock as CoverBlock
-import DynamicCoralCoverModel.blocks_model.SizeClass as SizeClass
+import DynamicCoralCoverModel.blocks_model: CoverBlock
+import DynamicCoralCoverModel.blocks_model: SizeClass
+
 using ADRIA.metrics:
     relative_cover,
     relative_loc_taxa_cover,
