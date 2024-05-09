@@ -12,7 +12,6 @@ using ADRIA.metrics:
 using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
 using ADRIA.metrics: coral_evenness
 using ADRIA.decision
-using Infiltrator
 
 """
     setup_cache(domain::Domain)::NamedTuple
@@ -414,7 +413,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
     C_cover::Array{Float64,3} = zeros(tf, n_species, n_locs)
-    C_cover[1, :, :] .= domain.init_coral_cover
+    if size(domain.init_coral_cover, 1) == 36
+        C_cover[1, domain.coral_growth.ode_p.small, :] .= domain.init_coral_cover[species=[7, 13, 19, 25, 31]]
+        C_cover[1, domain.coral_growth.ode_p.mid, :] .= domain.init_coral_cover[species=collect([8:12; 14:18; 20:24; 26:30; 32:36])]
+    end
     cover_tmp = zeros(n_locs)
 
     # Locations that can support corals
@@ -547,60 +549,64 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
-    n_taxa = Int(n_species / n_groups)
+    n_sizes = Int(n_species / n_groups)
     bins::Matrix{Float64} = hcat(
-        zeros(n_taxa),
-        reshape(corals.bin_ub, (n_groups, n_taxa))'
+        zeros(n_groups),
+        reshape(corals.bin_ub, (n_sizes, n_groups))'
     )
 
     cover_blocks::Vector{Matrix{CoverBlock}} = [
         DynamicCoralCoverModel.blocks_model.CoverBlock.(
-            reshape(C_cover[1, :, loc] .* site_data.area[loc], (n_groups, n_taxa)),
+            reshape(C_cover[1, :, loc] .* site_data.area[loc], (n_sizes, n_groups))',
             bins[:, 1:end-1],
             bins[:, 2:end]
         ) for loc in 1:n_locs
     ]
 
-    linear_extension = reshape(corals.linear_extension, (n_groups, n_taxa))'
-    survival_rate = 1 .- reshape(corals.mb_rate, (n_groups, n_taxa))'
+    linear_extension = reshape(corals.linear_extension, (n_sizes, n_groups))'
+    survival_rate = 1 .- reshape(corals.mb_rate, (n_sizes, n_groups))'
 
     size_classes::Vector{Matrix{SizeClass}} = [
         SizeClass.(
             cover_blocks[loc],
-            repeat(1:n_groups, 1, n_taxa)',
+            repeat(1:n_sizes, 1, n_groups)',
             linear_extension,
             survival_rate
         ) for loc in 1:n_locs
     ]
-    
+    @info "size_class size: $(size(size_classes[1]))"
     # Preallocate memory for temporaries
-    temp_change = ones(n_taxa, n_groups, n_locs)
-    C_t = zeros(n_taxa, n_groups, n_locs) 
-    cover_copy = zeros(n_taxa, n_groups, n_locs)
+    temp_change = ones(n_groups, n_sizes, n_locs)
+    C_t = zeros(n_groups, n_sizes, n_locs) 
+    cover_copy = zeros(n_groups, n_sizes, n_locs)
 
     for tstep::Int64 in 2:tf
         change_view = [@view temp_change[:, :, loc] for loc in n_locs]
         DynamicCoralCoverModel.blocks_model.apply_changes!.(size_classes, change_view)
-        C_t = reshape(C_t, (n_taxa, n_groups, n_locs))
-        C_t = 
+        C_t = reshape(C_t, (n_groups, n_sizes, n_locs))
+        C_t = permutedims(
             reshape(
                 C_cover[tstep-1, :, :] .*
                 site_data.area' .*
                 site_data.k',
-                (n_groups, n_taxa, n_locs)
-            )
+                (n_sizes, n_groups, n_locs)
+            ), 
+            [2, 1, 3]
+        )
 
         for i in 1:n_locs
             C_t[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
                 C_t[:, :, i], 
                 size_classes[i],
-                site_data.k[i] * site_data.area[i]
+                site_data.k[i] * site_data.area[i],
+                tstep,
+                i==20
             )
         end
         cover_copy = copy(C_t)
 
         C_t ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs));
-        C_t = reshape(C_t, (n_species, n_locs))
+        C_t = reshape(permutedims(C_t, [2, 1, 3]), (n_species, n_locs))
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
             @view(C_t[:, valid_locs]),
@@ -636,7 +642,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # Reset potential settlers to zero
         potential_settlers .= 0.0
         recruitment .= 0.0
-
+        
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
         recruitment[:, valid_locs] .=
@@ -828,7 +834,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # Update record
         C_cover[tstep, :, :] .= C_t
         temp_change = 
-            abs.(reshape(C_cover[tstep, :, :], (n_groups, n_taxa, n_locs)) .- cover_copy) ./ cover_copy
+            abs.(permutedims(reshape(C_cover[tstep, :, :], (n_sizes, n_groups, n_locs)), [2, 1, 3]) .- cover_copy) ./ cover_copy
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
