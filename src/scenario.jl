@@ -917,13 +917,26 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     )
 end
 
+
+"""
+    cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
+
+Apply cyclone mortalities.
+
+# Arguments
+- `coral_cover` : Coral cover for current time step
+- `coral_params` : Coral parameters indicating indices of small/mid/large size classes
+- `cyclone_mortality` : Mortalities for each functional group and size class
+"""
 function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
+    # TODO: Move to own file.
+
     # Small class coral mortality
     coral_deaths_small = coral_cover[coral_params.small, :] .* cyclone_mortality
     coral_cover[coral_params.small, :] -= coral_deaths_small
 
     # Mid class coral mortality
-    coral_mid = hcat(collect(Iterators.partition(coral_params.mid, 4))...)
+    coral_mid = hcat(collect(Iterators.partition(coral_params.mid, length(coral_params.small)))...)
     for i in size(coral_mid, 1)
         coral_deaths_mid = coral_cover[coral_mid[i, :], :] .* cyclone_mortality
         coral_cover[coral_mid[i, :], :] -= coral_deaths_mid
