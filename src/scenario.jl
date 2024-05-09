@@ -625,36 +625,34 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Preallocate memory for temporaries
     temp_change = ones(n_groups, n_sizes, n_locs)
-    C_t = zeros(n_groups, n_sizes, n_locs)
+    C_tmp = zeros(n_groups, n_sizes, n_locs)
+    C_t = zeros(n_group_size, n_locs)
     cover_copy = zeros(n_groups, n_sizes, n_locs)
 
     for tstep::Int64 in 2:tf
         change_view = [@view temp_change[:, :, loc] for loc in n_locs]
         DynamicCoralCoverModel.blocks_model.apply_changes!.(size_classes, change_view)
-        C_t = reshape(C_t, (n_groups, n_sizes, n_locs))
-        C_t = permutedims(
-            reshape(
-                C_cover[tstep-1, :, :] .*
-                site_data.area' .*
-                site_data.k',
-                (n_sizes, n_groups, n_locs)
-            ),
-            [2, 1, 3]
+
+        C_tmp .= _group_cover_locs(
+            domain.coral_growth,
+            C_cover[tstep-1, :, :] .* (site_data.area .* site_data.k)'
         )
 
         for i in 1:n_locs
-            C_t[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
-                C_t[:, :, i],
+            C_tmp[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
+                C_tmp[:, :, i],
                 size_classes[i],
                 site_data.k[i] * site_data.area[i],
                 tstep,
                 i==20
             )
         end
-        cover_copy = copy(C_t)
+        cover_copy .= copy(C_tmp)
 
-        C_t ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs));
-        C_t = reshape(permutedims(C_t, [2, 1, 3]), (n_species, n_locs))
+        C_tmp ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs))
+        replace!(C_tmp, NaN=>0.0)
+        C_t .= _flatten_cover(domain.coral_growth, C_tmp)
+
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
             @view(C_t[:, valid_locs]),
@@ -667,7 +665,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         if tstep <= tf
             # Natural adaptation
             adjust_DHW_distribution!(
-                @view(C_cover[(tstep-1):tstep, :, :]), n_groups, c_mean_t, p.r
+                @view(C_cover[(tstep-1):tstep, :, :]), n_sizes, c_mean_t, p.r
             )
 
             # Set values for t to t-1
