@@ -598,8 +598,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
-    p.r .= corals.growth_rate
-    p.mb .= corals.mb_rate
+    p.r .= _to_group_size(domain.coral_growth, corals.growth_rate)
+    p.mb .= _to_group_size(domain.coral_growth, corals.mb_rate)
 
     area_weighted_conn = conn .* site_k_area(domain)
     conn_cache = similar(area_weighted_conn.data)
