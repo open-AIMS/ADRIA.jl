@@ -469,15 +469,16 @@ function settler_DHW_tolerance!(
     tp::AbstractMatrix{F},
     settlers::Matrix{F},
     fec_params_per_m²::Vector{F},
-    h²::F
+    h²::F,
+    n_sizes::Int64,
 )::Nothing where {F<:Float64}
     # Potential sink locations (TODO: pass in later)
     sink_loc_ids::Vector{Int64} = findall(k_area .> 0.0)
 
     source_locs::BitVector = falses(length(k_area))  # cache for source locations
-    reproductive_sc::BitVector = falses(6)  # cache for reproductive size classes
+    reproductive_sc::BitVector = falses(n_sizes)  # cache for reproductive size classes
 
-    settler_sc::StepRange = 1:6:36
+    settler_sc::StepRange = 1:n_sizes:length(fec_params_per_m²)
     for sink_loc in sink_loc_ids
         if sum(@views(settlers[:, sink_loc])) .== 0.0
             # Only update locations where recruitment occurred
@@ -494,13 +495,13 @@ function settler_DHW_tolerance!(
 
         # Determine new distribution mean for each species at all locations
         for (sp, sc1) in enumerate(settler_sc)
-            sc1_6::UnitRange{Int64} = sc1:sc1+5
+            sc1_end::UnitRange{Int64} = sc1:sc1+(n_sizes-1)
 
             # Get distribution mean of reproductive size classes at source locations
             # recalling that source locations may include the sink location due to
             # self-seeding.
-            reproductive_sc .= @view(fec_params_per_m²[sc1_6]) .> 0.0
-            settler_means::SubArray{Float64} = @view(c_mean_t_1[sc1_6[reproductive_sc], source_locs])
+            reproductive_sc .= @view(fec_params_per_m²[sc1_end]) .> 0.0
+            settler_means::SubArray{Float64} = @view(c_mean_t_1[sc1_end[reproductive_sc], source_locs])
 
             # Determine weights based on contribution to recruitment.
             # This weights the recruited corals by the size classes and source locations

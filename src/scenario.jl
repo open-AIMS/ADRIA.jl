@@ -713,6 +713,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             recruitment,
             fec_params_per_m²,
             param_set[At("heritability")],
+            n_sizes
         )
 
         # Add recruits to current cover
