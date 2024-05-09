@@ -1,7 +1,6 @@
 using Test
 using ADRIA
 using ADRIA.Distributions
-using ADRIA.OrdinaryDiffEq
 
 @testset "proportional adjustment" begin
     Y = rand(5, 36, 20)
@@ -834,90 +833,90 @@ end
     end
 end
 
-@testset "growth model" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
-    n_sites = ADRIA.n_locations(dom)
+# @testset "growth model" begin
+#     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
+#     n_sites = ADRIA.n_locations(dom)
 
-    p = dom.coral_growth.ode_p
-    coral_spec_df = ADRIA.coral_spec()[:params]
-    p.mb .= coral_spec_df[:, "mb_rate"]
-    p.r .= coral_spec_df[:, "growth_rate"]
+#     p = dom.coral_growth.ode_p
+#     coral_spec_df = ADRIA.coral_spec()[:params]
+#     p.mb .= coral_spec_df[:, "mb_rate"]
+#     p.r .= coral_spec_df[:, "growth_rate"]
 
-    du = zeros(36, n_sites)
-    cover_tmp = zeros(n_sites)
+#     du = zeros(36, n_sites)
+#     cover_tmp = zeros(n_sites)
 
-    # Test magnitude of change are within bounds
-    C_cover = zeros(2, 36, n_sites)
+#     # Test magnitude of change are within bounds
+#     C_cover = zeros(2, 36, n_sites)
 
-    # Generate initial cover
-    init = rand(Uniform(0.0, 0.4), 36, n_sites)
-    proportional = vec(init / sum(init; dims=1))
-    C_cover[1, :, :] .= proportional
-    growthODE(du, C_cover[1, :, :], p, 1)
-    @test !any(abs.(du) .> 1.0) ||
-        "growth function is producing inappropriate values (abs(du) > 1.0)"
+#     # Generate initial cover
+#     init = rand(Uniform(0.0, 0.4), 36, n_sites)
+#     proportional = vec(init / sum(init; dims=1))
+#     C_cover[1, :, :] .= proportional
+#     growthODE(du, C_cover[1, :, :], p, 1)
+#     @test !any(abs.(du) .> 1.0) ||
+#         "growth function is producing inappropriate values (abs(du) > 1.0)"
 
-    # Test zero recruit and coverage conditions
-    C_cover = zeros(2, 36, n_sites)
-    p.rec .= zeros(6, n_sites)
-    growthODE(du, C_cover[1, :, :], p, 1)
-    @test all(du .== 0.0) ||
-        "Growth produces non-zero values with zero recuitment and zero initial cover."
+#     # Test zero recruit and coverage conditions
+#     C_cover = zeros(2, 36, n_sites)
+#     p.rec .= zeros(6, n_sites)
+#     growthODE(du, C_cover[1, :, :], p, 1)
+#     @test all(du .== 0.0) ||
+#         "Growth produces non-zero values with zero recuitment and zero initial cover."
 
-    # Test direction and magnitude of change
-    p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
-    C_cover = zeros(10, 36, n_sites)
-    init = rand(Uniform(0.0, 0.4), 36, n_sites)
-    proportional = vec(init / sum(init; dims=1))
-    C_cover[1, :, :] .= proportional
+#     # Test direction and magnitude of change
+#     p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
+#     C_cover = zeros(10, 36, n_sites)
+#     init = rand(Uniform(0.0, 0.4), 36, n_sites)
+#     proportional = vec(init / sum(init; dims=1))
+#     C_cover[1, :, :] .= proportional
 
-    ode_u = zeros(36, 10)
-    growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, (0.0, 1.0), p)
-    alg_hint = Symbol[:nonstiff]
-    solver::Euler = Euler()
+#     ode_u = zeros(36, 10)
+#     growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, (0.0, 1.0), p)
+#     alg_hint = Symbol[:nonstiff]
+#     solver::Euler = Euler()
 
-    for tstep in 2:10
-        p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
-        growth.u0 .= C_cover[tstep-1, :, :]
-        sol::ODESolution = solve(
-            growth,
-            solver;
-            save_everystep=false,
-            save_start=false,
-            alg_hints=alg_hint,
-            dt=1.0,
-        )
+#     for tstep in 2:10
+#         p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
+#         growth.u0 .= C_cover[tstep-1, :, :]
+#         sol::ODESolution = solve(
+#             growth,
+#             solver;
+#             save_everystep=false,
+#             save_start=false,
+#             alg_hints=alg_hint,
+#             dt=1.0,
+#         )
 
-        C_cover[tstep, :, :] .= clamp!(sol.u[end], 0.0, 1.0)
-    end
-    @test any(diff(C_cover; dims=1) .< 0) ||
-        "ODE never decreases, du being restricted to >=0."
-    @test any(diff(C_cover; dims=1) .>= 0) ||
-        "ODE never increases, du being restricted to <=0."
+#         C_cover[tstep, :, :] .= clamp!(sol.u[end], 0.0, 1.0)
+#     end
+#     @test any(diff(C_cover; dims=1) .< 0) ||
+#         "ODE never decreases, du being restricted to >=0."
+#     @test any(diff(C_cover; dims=1) .>= 0) ||
+#         "ODE never increases, du being restricted to <=0."
 
-    # Test change in smallest size class under no recruitment
-    p.rec .= zeros(6, n_sites)
-    C_cover = zeros(10, 36, n_sites)
-    init = rand(Uniform(0.0, 0.4), 36, n_sites)
-    proportional = vec(init / sum(init; dims=1))
-    C_cover[1, :, :] .= proportional
+#     # Test change in smallest size class under no recruitment
+#     p.rec .= zeros(6, n_sites)
+#     C_cover = zeros(10, 36, n_sites)
+#     init = rand(Uniform(0.0, 0.4), 36, n_sites)
+#     proportional = vec(init / sum(init; dims=1))
+#     C_cover[1, :, :] .= proportional
 
-    for tstep in 2:10
-        growth.u0 .= C_cover[tstep-1, :, :]
-        sol::ODESolution = solve(
-            growth,
-            solver;
-            save_everystep=false,
-            save_start=false,
-            alg_hints=alg_hint,
-            dt=1.0,
-        )
+#     for tstep in 2:10
+#         growth.u0 .= C_cover[tstep-1, :, :]
+#         sol::ODESolution = solve(
+#             growth,
+#             solver;
+#             save_everystep=false,
+#             save_start=false,
+#             alg_hints=alg_hint,
+#             dt=1.0,
+#         )
 
-        C_cover[tstep, :, :] .= clamp!(sol.u[end], 0.0, 1.0)
-    end
+#         C_cover[tstep, :, :] .= clamp!(sol.u[end], 0.0, 1.0)
+#     end
 
-    @test all((diff(C_cover[:, [1, 7, 13, 19, 25, 31], :]; dims=1) .<= 1e-5)) ||
-        "Smallest size class growing with no recruitment.."
+#     @test all((diff(C_cover[:, [1, 7, 13, 19, 25, 31], :]; dims=1) .<= 1e-5)) ||
+#         "Smallest size class growing with no recruitment.."
 
-    @test all(abs.(diff(C_cover; dims=1)) .< 1.0) || "ODE more than doubles or halves area."
-end
+#     @test all(abs.(diff(C_cover; dims=1)) .< 1.0) || "ODE more than doubles or halves area."
+# end

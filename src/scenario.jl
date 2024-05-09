@@ -105,7 +105,8 @@ function run_scenarios(
     )
 
     para_threshold = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
-    parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (nrow(scens) >= para_threshold)
+    active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
+    parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false)  && (active_cores > 1) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
@@ -364,9 +365,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         domain.cyclone_mortality_scens[:, :, :, cyclone_mortality_idx]
     )
 
-    tspan::Tuple = (0.0, 1.0)
-    solver::Euler = Euler()
-
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
 
@@ -550,7 +548,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     potential_settlers = zeros(size(fec_scope)...)
     n_taxa = Int(n_species / n_groups)
     bins::Matrix{Float64} = hcat(
-        zeros(n_taxa), 
+        zeros(n_taxa),
         reshape(corals.bin_ub, (n_groups, n_taxa))'
     )
 
