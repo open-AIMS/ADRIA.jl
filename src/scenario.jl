@@ -595,7 +595,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     @info "size_class size: $(size(size_classes[1]))"
     # Preallocate memory for temporaries
     temp_change = ones(n_groups, n_sizes, n_locs)
-    C_t = zeros(n_groups, n_sizes, n_locs) 
+    C_t = zeros(n_groups, n_sizes, n_locs)
     cover_copy = zeros(n_groups, n_sizes, n_locs)
 
     for tstep::Int64 in 2:tf
@@ -608,13 +608,13 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 site_data.area' .*
                 site_data.k',
                 (n_sizes, n_groups, n_locs)
-            ), 
+            ),
             [2, 1, 3]
         )
 
         for i in 1:n_locs
             C_t[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
-                C_t[:, :, i], 
+                C_t[:, :, i],
                 size_classes[i],
                 site_data.k[i] * site_data.area[i],
                 tstep,
@@ -660,7 +660,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # Reset potential settlers to zero
         potential_settlers .= 0.0
         recruitment .= 0.0
-        
+
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
         recruitment[:, valid_locs] .=
