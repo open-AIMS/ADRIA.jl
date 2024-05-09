@@ -436,9 +436,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Sim constants
     sim_params = domain.sim_constants
     tf::Int64 = size(dhw_scen, 1)
-    n_locs::Int64 = domain.coral_growth.n_sites
-    n_species::Int64 = domain.coral_growth.n_species
+    n_locs::Int64 = domain.coral_growth.n_locs
     n_groups::Int64 = domain.coral_growth.n_groups
+    n_sizes::Int64 = domain.coral_growth.n_sizes
+    n_group_size::Int64 = domain.coral_growth.n_group_size
 
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
@@ -477,7 +478,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     depth_coeff .= depth_coefficient.(site_data.depth_med)
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
-    C_cover::Array{Float64,3} = zeros(tf, n_species, n_locs)
+    C_cover::Array{Float64,3} = zeros(tf, n_group_size, n_locs)
     if size(domain.init_coral_cover, 1) == 36
         C_cover[1, domain.coral_growth.ode_p.small, :] .= domain.init_coral_cover[species=[7, 13, 19, 25, 31]]
         C_cover[1, domain.coral_growth.ode_p.mid, :] .= domain.init_coral_cover[species=collect([8:12; 14:18; 20:24; 26:30; 32:36])]
@@ -530,7 +531,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     seeded_area = colony_areas[seed_sc] .* param_set[At(taxa_names)]
 
     # Set up assisted adaptation values
-    a_adapt = zeros(n_species)
+    a_adapt = zeros(n_group_size)
     a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
     # Flag indicating whether to seed or not to seed when unguided
@@ -585,7 +586,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
 
     # Cache for proportional mortality and coral population increases
-    bleaching_mort = zeros(tf, n_species, n_locs)
+    bleaching_mort = zeros(tf, n_group_size, n_locs)
 
     #### End coral constants
 
@@ -695,8 +696,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 dhw_tol_mean_log[tstep, :, :] .= mean.(c_mean_t)
             end
         end
-
-
 
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
