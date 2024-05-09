@@ -166,7 +166,7 @@ Determine in/out degree centralities for all nodes.
 # Arguments
 - `conn` : Base connectivity matrix to create Directed Graph from
 - `in_method` : Centrality method used to determine incoming connectivity
-- `out_method` : Centrality method used to detemrine outgoing connectivity
+- `out_method` : Centrality method used to determine outgoing connectivity
 
 # Returns
 NamedTuple:
@@ -175,9 +175,9 @@ NamedTuple:
 - `network` : Generated graph network
 """
 function connectivity_strength(
-    conn::AbstractMatrix{Float64};
+    conn::AbstractMatrix{<:Union{Float32,Float64}};
     in_method=indegree_centrality,
-    out_method=outdegree_centrality
+    out_method=eigenvector_centrality
 )::NamedTuple
     g = SimpleWeightedDiGraph(conn)
 
@@ -198,7 +198,7 @@ Determine in/out degree centralities for all nodes.
 - `cover` : Total relative coral cover at location
 - `conn_cache` : Cache matrix of same size as TP_base to hold intermediate values
 - `in_method` : Centrality method used to determine incoming connectivity
-- `out_method` : Centrality method used to detemrine outgoing connectivity
+- `out_method` : Centrality method used to determine outgoing connectivity
 
 # Returns
 NamedTuple:
@@ -207,11 +207,11 @@ NamedTuple:
 - `network` : Generated graph network
 """
 function connectivity_strength(
-    area_weighted_conn::AbstractMatrix{Float64},
+    area_weighted_conn::AbstractMatrix{<:Union{Float32,Float64}},
     cover::Vector{<:Union{Float32,Float64}},
     conn_cache::AbstractMatrix{Float64};
     in_method=indegree_centrality,
-    out_method=outdegree_centrality
+    out_method=eigenvector_centrality
 )::NamedTuple
     # Accounts for cases where there is no coral cover
     conn_cache .= (area_weighted_conn .* cover)

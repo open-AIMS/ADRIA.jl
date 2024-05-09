@@ -293,6 +293,8 @@ function ADRIA.viz.map!(
 end
 
 """
+    ADRIA.viz.connectivity(dom::Domain; in_method=nothing, out_method=eigenvector_centrality, opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), fig_opts::Dict{Symbol, <:Any}=set_figure_defaults(Dict{Symbol,Any}()), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
+    ADRIA.viz.connectivity(dom::Domain, conn::AbstractMatrix; in_method=nothing, out_method=eigenvector_centrality, opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), fig_opts::Dict{Symbol, <:Any}=set_figure_defaults(Dict{Symbol,Any}()), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
     ADRIA.viz.connectivity(dom::Domain, network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), fig_opts::Dict{Symbol, <:Any}=set_figure_defaults(Dict{Symbol,Any}()), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
     ADRIA.viz.connectivity!(g::Union{GridLayout, GridPosition}, dom::Domain,  network::SimpleWeightedDiGraph, conn_weights::AbstractVector{<:Real}; opts::Dict{Symbol, <:Any}=Dict{Symbol, <:Any}(), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
 
@@ -301,11 +303,34 @@ weighted by the connectivity values and node weights.
 
 # Examples
 
+Basic visualization, plotting out-centralities by default:
+
+```julia
+dom = ADRIA.load_domain("<Path to Domain>")
+ADRIA.viz.connectivity(dom)
+
+# Plot indegree centrality instead
+ADRIA.viz.connectivity(dom; in_method=indegree_centrality, out_method=nothing)
+```
+
+Finer grain control:
+
 ```julia
 dom = ADRIA.load_domain("<Path to Domain>")
 
-in_conn, out_conn, network = ADRIA.connectivity_strength(dom; out_method=eigenvector_centrality)
+in_conn, out_conn, network = ADRIA.connectivity_strength(dom.conn; out_method=eigenvector_centrality)
 
+# Plot in centrality
+ADRIA.viz.connectivity(
+    dom,
+    network,
+    in_conn;
+    opts=opts,
+    fig_opts=fig_opts,
+    axis_opts=axis_opts
+)
+
+# Plot out centrality
 ADRIA.viz.connectivity(
     dom,
     network,
@@ -327,6 +352,42 @@ ADRIA.viz.connectivity(
 - `fig_opts` : Figure options
 - `axis_opts` : Axis options
 """
+function ADRIA.viz.connectivity(
+    dom::Domain;
+    in_method=nothing,
+    out_method=eigenvector_centrality,
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=set_figure_defaults(Dict{Symbol,Any}()),
+    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
+)
+    return ADRIA.viz.connectivity(dom, dom.conn; in_method, out_method, opts, fig_opts, axis_opts)
+end
+function ADRIA.viz.connectivity(
+    dom::Domain,
+    conn::AbstractMatrix;
+    in_method=nothing,
+    out_method=eigenvector_centrality,
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=set_figure_defaults(Dict{Symbol,Any}()),
+    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
+)
+    if !isnothing(in_method) && !isnothing(out_method)
+        @warn "Both in and out centrality measures provided. Plotting out centralities."
+        _, conn_weight, network = ADRIA.connectivity_strength(conn; in_method, out_method)
+    elseif !isnothing(in_method) && isnothing(out_method)
+        conn_weight, _, network = ADRIA.connectivity_strength(conn; in_method, out_method=outdegree_centrality)
+    elseif isnothing(in_method) && isnothing(out_method)
+        error("Measure for in or out centralities needs to be provided.")
+    else
+        if isnothing(in_method)
+            in_method = indegree_centrality
+        end
+
+        _, conn_weight, network = ADRIA.connectivity_strength(conn; in_method, out_method=outdegree_centrality)
+    end
+
+    return ADRIA.viz.connectivity(dom, network, conn_weight; opts, fig_opts, axis_opts)
+end
 function ADRIA.viz.connectivity(
     dom::Domain,
     network::SimpleWeightedDiGraph,
@@ -392,6 +453,7 @@ function ADRIA.viz.connectivity!(
         strokecolor=(:black, 0.25),
         strokewidth=1.0
     )
+
     # Plot the connectivity graph
     graphplot!(
         spatial,
