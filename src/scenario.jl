@@ -851,8 +851,12 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         # Update record
         C_cover[tstep, :, :] .= C_t
-        temp_change = 
-            abs.(permutedims(reshape(C_cover[tstep, :, :], (n_sizes, n_groups, n_locs)), [2, 1, 3]) .- cover_copy) ./ cover_copy
+        temp_change = abs.(
+            permutedims(
+                reshape(C_cover[tstep, :, :], (n_sizes, n_groups, n_locs)),
+                [2, 1, 3]
+            ) .- cover_copy
+        ) ./ cover_copy
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
