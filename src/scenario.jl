@@ -12,6 +12,7 @@ using ADRIA.metrics:
 using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
 using ADRIA.metrics: coral_evenness
 using ADRIA.decision
+using Infiltrator
 
 """
     setup_cache(domain::Domain)::NamedTuple
@@ -570,8 +571,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     )
 
     cover_blocks::Vector{Matrix{CoverBlock}} = [
-        CoverBlock.(
-            reshape(C_cover[1, :, loc] .* site_data.area[loc], (n_groups, n_taxa))',
+        DynamicCoralCoverModel.blocks_model.CoverBlock.(
+            reshape(C_cover[1, :, loc] .* site_data.area[loc], (n_groups, n_taxa)),
             bins[:, 1:end-1],
             bins[:, 2:end]
         ) for loc in 1:n_locs
@@ -592,23 +593,19 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Preallocate memory for temporaries
     temp_change = ones(n_taxa, n_groups, n_locs)
     C_t = zeros(n_taxa, n_groups, n_locs) 
+    cover_copy = zeros(n_taxa, n_groups, n_locs)
 
     for tstep::Int64 in 2:tf
         change_view = [@view temp_change[:, :, loc] for loc in n_locs]
-        @info "$(size_classes[1][1, 1].cover_blocks[1].diameter_density)"
         DynamicCoralCoverModel.blocks_model.apply_changes!.(size_classes, change_view)
-        @info "$(size_classes[1][1, 1].cover_blocks[1].diameter_density)"
         C_t = reshape(C_t, (n_taxa, n_groups, n_locs))
-        permutedims!(
-            C_t,
+        C_t = 
             reshape(
                 C_cover[tstep-1, :, :] .*
-                reshape(site_data.area, (1, n_locs)) .*
-                reshape(site_data.k, (1, n_locs)),
+                site_data.area' .*
+                site_data.k',
                 (n_groups, n_taxa, n_locs)
-            ), 
-            [2, 1, 3]
-        )
+            )
 
         for i in 1:n_locs
             C_t[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
@@ -617,9 +614,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 site_data.k[i] * site_data.area[i]
             )
         end
+        cover_copy = copy(C_t)
 
         C_t ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs));
-        C_t = reshape(permutedims(C_t, [2, 1, 3]), (n_species, n_locs))
+        C_t = reshape(C_t, (n_species, n_locs))
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
             @view(C_t[:, valid_locs]),
@@ -846,11 +844,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         # Update record
         C_cover[tstep, :, :] .= C_t
-        permutedims!(
-            temp_change, 
-            reshape(C_cover[tstep, :, :] ./ C_cover[tstep-1, :, :], (n_groups, n_taxa, n_locs)),
-            [2, 1, 3]
-        )
+        temp_change = 
+            abs.(reshape(C_cover[tstep, :, :], (n_groups, n_taxa, n_locs)) .- cover_copy) ./ cover_copy
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
