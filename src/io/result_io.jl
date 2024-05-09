@@ -378,7 +378,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             if d == "timesteps"
                 append!(dl, tf)
             elseif d == "species"
-                append!(dl, domain.coral_growth.n_species)
+                append!(dl, domain.coral_growth.n_group_size)
             elseif d == "sites"
                 append!(dl, n_sites)
             elseif d == "scenarios"
