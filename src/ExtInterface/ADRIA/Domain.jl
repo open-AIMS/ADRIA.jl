@@ -169,10 +169,10 @@ function Domain(
     site_data.k .= site_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
-    n_sites::Int64 = coral_growth.n_sites
-    n_species = coral_growth.n_species
+    n_locs::Int64 = coral_growth.n_locs
+    n_group_size = coral_growth.n_group_size
 
-    cover_params = ispath(init_coral_fn) ? (init_coral_fn, ) : (n_species, n_sites)
+    cover_params = ispath(init_coral_fn) ? (init_coral_fn, ) : (n_group_size, n_locs)
     coral_cover = load_cover(cover_params...)
 
     dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
