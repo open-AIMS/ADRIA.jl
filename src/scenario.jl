@@ -615,7 +615,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
-    n_sizes = Int(n_species / n_groups)
     C_bins::Matrix{Float64} = hcat(
         zeros(n_groups),
         reshape(corals.bin_ub, (n_sizes, n_groups))'
@@ -630,7 +629,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     ]
 
     linear_extension = reshape(corals.linear_extension, (n_sizes, n_groups))'
-    survival_rate = 1 .- reshape(corals.mb_rate, (n_sizes, n_groups))'
+    survival_rate = 1.0 .- reshape(corals.mb_rate, (n_sizes, n_groups))'
 
     size_classes::Vector{Matrix{SizeClass}} = [
         SizeClass.(
@@ -640,7 +639,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             survival_rate
         ) for loc in 1:n_locs
     ]
-    @info "size_class size: $(size(size_classes[1]))"
+
     # Preallocate memory for temporaries
     temp_change = ones(n_groups, n_sizes, n_locs)
     C_t = zeros(n_groups, n_sizes, n_locs)
@@ -894,7 +893,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
-        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
+        # TODO: Update cyclone data to hold data for relevant functional groups
+        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, 2:end]')
 
         # Update record
         C_cover[tstep, :, :] .= C_t
