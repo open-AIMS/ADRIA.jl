@@ -46,6 +46,52 @@ function setup_cache(domain::Domain)::NamedTuple
 end
 
 """
+    _cover_to_groups(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+
+Reshape coral cover to shape [sizes ⋅ locations ⋅ n_groups]
+"""
+function _cover_to_groups(growth_spec::CoralGrowth, data::AbstractMatrix{<:Union{Float32, Float64}})
+    return Array(reshape(
+        data,
+        (growth_spec.n_sizes, growth_spec.n_locs, growth_spec.n_groups)
+    ))
+end
+
+"""
+    _group_cover_locs(growth_spec::CoralGrowth, data::AbstractMatrix{<:Union{Float32, Float64}})
+
+Reshape coral cover of shape [groups_and_sizes ⋅ locations] to shape [groups ⋅ sizes ⋅ locations]
+"""
+function _group_cover_locs(growth_spec::CoralGrowth, data::AbstractMatrix{<:Union{Float32, Float64}})
+    return permutedims(reshape(
+        data,
+        (growth_spec.n_sizes, growth_spec.n_groups, growth_spec.n_locs)
+    ), (2, 1, 3))
+end
+
+"""
+    _flatten_cover(growth_spec::CoralGrowth, data::AbstractArray{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+
+Reshape coral cover of shape [groups ⋅ sizes ⋅ locations] to shape [groups_and_sizes ⋅ locations]
+"""
+function _flatten_cover(growth_spec::CoralGrowth, data::AbstractArray{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+    return reshape(
+        permutedims(data, [2, 1, 3]),
+        (growth_spec.n_group_size, growth_spec.n_locs)
+    )
+end
+
+"""
+    _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+
+Reshape vector to shape [groups ⋅ sizes]
+"""
+function _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+    # Data is reshaped to size ⋅ groups then transposed to maintain expected order
+    return Matrix(reshape(data, (growth_spec.n_sizes, growth_spec.n_groups))')
+end
+
+"""
     run_scenarios(dom::Domain, scens::DataFrame, RCP::String; show_progress=true, remove_workers=true)
     run_scenarios(dom::Domain, scens::DataFrame, RCP::Vector{String}; show_progress=true, remove_workers=true)
 
