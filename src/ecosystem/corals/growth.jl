@@ -391,11 +391,14 @@ function _shift_distributions!(
     # Weight distributions based on growth rate and cover
     # Do from largest size class to size class 2
     # (values for size class 1 gets replaced by recruitment process)
-    for i in 6:-1:2
+    for i in length(growth_rate):-1:2
         # Skip size class if nothing is moving up
         sum(@view(cover[i-1:i])) == 0.0 ? continue : false
 
         prop_growth = @views (cover[i-1:i] ./ sum(cover[i-1:i])) .* (growth_rate[i-1:i] ./ sum(growth_rate[i-1:i]))
+        if sum(prop_growth) == 0.0
+            continue
+        end
 
         dist_t[i] = sum(@view(dist_t[i-1:i]), Weights(prop_growth ./ sum(prop_growth)))
     end
@@ -404,41 +407,41 @@ function _shift_distributions!(
 end
 
 """
-    adjust_DHW_distribution!(cover::SubArray{F}, n_groups::Int64, dist_t::Matrix{F},
+    adjust_DHW_distribution!(cover::SubArray{F}, n_sizes::Int64, dist_t::Matrix{F},
         growth_rate::Matrix{F})::Nothing where {F<:Float64}
 
-Adjust critical DHW thresholds for a given species/size class distribution as mortalities
+Adjust critical DHW thresholds for a given group/size class distribution as mortalities
 affect the distribution over time, and corals mature (moving up size classes).
 
 # Arguments
 - `cover` : Coral cover (for timestep \$t-1\$ and \$t\$)
-- `n_groups` : Number of coral groups represented
+- `n_sizes` : Number of coral size classes represented
 - `dist_t` : Distributions for timestep \$t\$
-- `growth_rate` : Growth rates for each species/size class
+- `growth_rate` : Growth rates for each group/size class
 """
 function adjust_DHW_distribution!(
     cover::SubArray{F},
-    n_groups::Int64,
+    n_sizes::Int64,
     dist_t::Matrix{F},
-    growth_rate::Vector{F}
+    growth_rate::Matrix{F}
 )::Nothing where {F<:Float64}
     _, n_sp_sc, n_locs = size(cover)
 
-    step::Int64 = n_groups - 1
+    step::Int64 = n_sizes - 1
 
     # Adjust population distribution
-    for sc1 in 1:n_groups:n_sp_sc
+    for (grp, sc1) in enumerate(1:n_sizes:n_sp_sc)
         for loc in 1:n_locs
-            sc6::Int64 = sc1 + step
+            sc_end::Int64 = sc1 + step
 
             # Skip if no cover
-            if sum(@view(cover[1, sc1:sc6, loc])) == 0.0
+            if sum(@view(cover[1, sc1:sc_end, loc])) == 0.0
                 continue
             end
 
             # Combine distributions using a MixtureModel for all non-juvenile size
-            # classes (we pass in all relevant size classes for the species group here).
-            @views _shift_distributions!(cover[1, sc1:sc6, loc], growth_rate[sc1:sc6], dist_t[sc1:sc6, loc])
+            # classes (we pass in all relevant size classes for the functional group here).
+            @views _shift_distributions!(cover[1, sc1:sc_end, loc], growth_rate[grp, :], dist_t[sc1:sc_end, loc])
         end
     end
 
