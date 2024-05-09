@@ -22,23 +22,24 @@ Establish tuple of matrices/vectors for use as reusable data stores to avoid rep
 function setup_cache(domain::Domain)::NamedTuple
 
     # Simulation constants
-    n_sites::Int64 = domain.coral_growth.n_sites
-    n_species::Int64 = domain.coral_growth.n_species
+    n_locs::Int64 = domain.coral_growth.n_locs
+    n_group_size::Int64 = domain.coral_growth.n_group_size
+    n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
     tf = length(timesteps(domain))
 
     cache = (
         # sf=zeros(n_groups, n_sites),  # stressed fecundity, commented out as it is disabled
-        fec_all=zeros(n_species, n_sites),  # all fecundity
-        fec_scope=zeros(n_groups, n_sites),  # fecundity scope
-        recruitment=zeros(n_groups, n_sites),  # coral recruitment
-        dhw_step=zeros(n_sites),  # DHW for each time step
-        cov_tmp=zeros(n_species, n_sites),  # Cover for previous timestep
-        depth_coeff=zeros(n_sites),  # store for depth coefficient
+        fec_all=zeros(n_group_size, n_locs),  # all fecundity
+        fec_scope=zeros(n_groups, n_locs),  # fecundity scope
+        recruitment=zeros(n_groups, n_locs),  # coral recruitment
+        dhw_step=zeros(n_locs),  # DHW for each time step
+        cov_tmp=zeros(n_groups, n_sizes, n_locs),  # Cover for previous timestep
+        depth_coeff=zeros(n_locs),  # store for depth coefficient
         site_area=Matrix{Float64}(site_area(domain)'),  # area of locations
         site_k_area=Matrix{Float64}(site_k_area(domain)'),  # location carrying capacity
-        wave_damage=zeros(tf, n_species, n_sites),  # damage coefficient for each size class
-        dhw_tol_mean_log=zeros(tf, n_species, n_sites),  # tmp log for mean dhw tolerances
+        wave_damage=zeros(tf, n_group_size, n_locs),  # damage coefficient for each size class
+        dhw_tol_mean_log=zeros(tf, n_group_size, n_locs),  # tmp log for mean dhw tolerances
     )
 
     return cache
