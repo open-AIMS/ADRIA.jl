@@ -551,7 +551,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
     n_sizes = Int(n_species / n_groups)
-    bins::Matrix{Float64} = hcat(
+    C_bins::Matrix{Float64} = hcat(
         zeros(n_groups),
         reshape(corals.bin_ub, (n_sizes, n_groups))'
     )
@@ -559,8 +559,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     cover_blocks::Vector{Matrix{CoverBlock}} = [
         DynamicCoralCoverModel.blocks_model.CoverBlock.(
             reshape(C_cover[1, :, loc] .* site_data.area[loc], (n_sizes, n_groups))',
-            bins[:, 1:end-1],
-            bins[:, 2:end]
+            C_bins[:, 1:end-1],
+            C_bins[:, 2:end]
         ) for loc in 1:n_locs
     ]
 
