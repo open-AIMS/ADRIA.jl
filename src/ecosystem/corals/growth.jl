@@ -548,17 +548,18 @@ fecundities across size classes.
 - `site_area` : Vector[n_sites], total site area in m²
 """
 function fecundity_scope!(
-    fec_groups::AbstractArray{T,2},
-    fec_all::AbstractArray{T,2},
-    fec_params::AbstractArray{T},
-    C_t::AbstractArray{T,2},
-    site_area::AbstractArray{T}
+    fec_groups::AbstractMatrix{T},
+    fec_all::AbstractMatrix{T},
+    fec_params::AbstractVector{T},
+    C_t::AbstractMatrix{T},
+    site_area::AbstractMatrix{T}
 )::Nothing where {T<:Float64}
-    ngroups::Int64 = size(fec_groups, 1)   # number of coral groups: 6
-    nclasses::Int64 = size(fec_params, 1)  # number of coral size classes: 36
+    n_groups::Int64 = size(fec_groups, 1)   # number of coral groups: 5
+    n_group_sizes::Int64 = size(fec_params, 1)  # number of coral size classes: 35
+    n_classes::Int64 = Int64(n_group_sizes / n_groups)
 
     fec_all .= fec_params .* C_t .* site_area
-    for (i, (s, e)) in enumerate(zip(1:ngroups:nclasses, ngroups:ngroups:nclasses+1))
+    for (i, (s, e)) in enumerate(zip(1:n_classes:n_group_sizes, n_classes:n_classes:n_group_sizes+1))
         @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
 
