@@ -788,7 +788,7 @@ function run_model(
         # Reset potential settlers to zero
         potential_settlers .= 0.0
         recruitment .= 0.0
-
+        
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
         @views recruitment[:, habitable_locs] .=
