@@ -133,7 +133,7 @@ between bleaching years come from [1].
 
 # Returns
 - `params` : NamedTuple[taxa_names, param_names, params], taxa names, parameter
-           names, and parameter values for each coral taxa, group and size class
+             names, and parameter values for each coral taxa, group and size class
 
 # References
 1. Lough, J. M., Anderson, K. D., & Hughes, T. P. (2018).
