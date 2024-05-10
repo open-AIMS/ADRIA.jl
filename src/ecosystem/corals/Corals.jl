@@ -42,12 +42,12 @@ Helper function defining coral colony diameter bin edges in cm.
 """
 function bin_edges()
     return Matrix([
-        0.0 0.01 0.02 0.06 0.15 0.36 0.89 0.9;
-        0.0 0.01 0.02 0.04 0.09 0.18 0.38 0.39;
-        0.0 0.01 0.02 0.04 0.07 0.14 0.27 0.28;
-        0.0 0.01 0.02 0.05 0.08 0.12 0.26 0.27;
-        0.0 0.01 0.02 0.04 0.09 0.19 0.40 0.41
-    ]) .* 100
+        0.0 1.0 2.0 6.0 15.0 36.0 89.0 90.0;
+        0.0 1.0 2.0 4.0  9.0 18.0 38.0 39.0;
+        0.0 1.0 2.0 4.0  7.0 14.0 27.0 28.0;
+        0.0 1.0 2.0 5.0  8.0 12.0 26.0 27.0;
+        0.0 1.0 2.0 4.0  9.0 19.0 40.0 41.0
+    ])
 end
 
 """
@@ -60,6 +60,23 @@ function bin_widths()
     return bins[:, 2:end] .- bins[:, 1:end-1]
 end
 
+"""
+    planar_area_params()
+
+Colony planar area parameters (see Fig 2B in Aston et al., [1])
+First column is `b`, second column is `a`
+log(S) = b + a * log(x)
+"""
+function planar_area_params()
+    return Array{Float64,2}([
+        # -8.97 3.14   # Abhorescent Acropora (using branching porites parameters as similar method of growing ever expanding colonies).
+        -8.95 2.80   # Tabular Acropora
+        -9.13 2.94   # Corymbose Acropora
+        -8.90 2.94   # Corymbose non-Acropora (using branching pocillopora values from fig2B)
+        -8.87 2.30   # Small massives
+        -8.87 2.30   # Large massives
+    ])
+end
 """
     colony_areas()
 
@@ -116,7 +133,7 @@ between bleaching years come from [1].
 
 # Returns
 - `params` : NamedTuple[taxa_names, param_names, params], taxa names, parameter
-           names, and parameter values for each coral taxa, group and size class
+             names, and parameter values for each coral taxa, group and size class
 
 # References
 1. Lough, J. M., Anderson, K. D., & Hughes, T. P. (2018).
@@ -181,8 +198,8 @@ function coral_spec()::NamedTuple
     colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
     params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_species)[:]
 
-    ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
-    # all values in cm/year
+    # Coral growth rates as linear extensions.
+    # All values in m/year and are from (unpublished) ecoRRAP data.
     linear_extension = Array{Float64,2}([
         0.006094558 0.010718383 0.025514863 0.050798784 0.094509136 0.168505241 0.0;  # Tabular Acropora
         0.007685561 0.012208521 0.01864468  0.028229656 0.035293827 0.030042179 0.0;              # Corymbose Acropora
@@ -192,16 +209,14 @@ function coral_spec()::NamedTuple
     ])
 
     params.linear_extension = reshape(linear_extension', n_species)[:]
+
     # Convert linear extensions to delta coral in two steps.
     # First calculate what proportion of coral numbers that change size class
-    # given linear extensions. This is based on the simple assumption that
-    # coral sizes are evenly distributed within each bin
-
+    #     given linear extensions. This is based on the simple assumption that
+    #     coral sizes are evenly distributed within each bin.
     # Second, growth as transitions of cover to higher bins is estimated as
-    # rate of growth per year
-    params.growth_rate .= reshape(growth_rate(linear_extension, bin_widths()), n_species)[:]
-    # params.growth_rate[1:6:36] .= 1.0
-    # params.growth_rate[6:6:36] .= 1.0
+    #     rate of growth per year. Convert bin widths in cm to m
+    params.growth_rate .= reshape(growth_rate(linear_extension, bin_widths() ./ 100), n_species)[:]
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
@@ -221,14 +236,9 @@ function coral_spec()::NamedTuple
     fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
     params.fecundity = fec_m²'[:]
 
-    ## Mortality
-    # Background mortality taken from Bozec et al. 2022 (Supplementary 2, Table S1)
-    # Using values for:
-    # - juvenile mortality (first two columns)
-    # - < 5cm diameter (Columns 1 and 2)
-    # - < 250cm diameter (Columns 3 and 4)
-    # - > 250cm diameter (Columns 5 and 6)
-    # Values for size class 4 are then interpolated by K.A
+    # Mortality
+    # Survival rates taken from (unpublished) ecoRRAP data.
+    # Background mortality is then the complement.
     survival_rate::Matrix{Float64} = [
         0.859017851 0.858528906 0.857044217 0.856477498 0.856104353 0.855852241 0.855852241;    # Tabular Acropora
         0.865006527 0.87915437 0.892044073 0.905304164 0.915373252 0.925707536 0.925707536;     # Corymbose Acropora
@@ -236,9 +246,10 @@ function coral_spec()::NamedTuple
         0.869976692 0.938029324 0.977889252 0.987199004 0.99207702 0.996931548 0.996931548;     # Small massives and encrusting
         0.9782479 0.979496637 0.980850254 0.982178103 0.983568572 0.984667677 0.984667677       # Large massives
     ]
-    mb = 1 .- survival_rate
+    mb = 1.0 .- survival_rate
     params.mb_rate = mb'[:]
 
+    # Convert meters to centimeters
     upper_bound::Matrix{Float64} = bin_edges()[:, 2:end] ./ 100
 
     params.bin_ub = reshape(upper_bound', n_species)[:]

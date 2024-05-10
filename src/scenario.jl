@@ -304,11 +304,11 @@ function run_scenario(
     vals[vals.<threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
-    vals = relative_taxa_cover(rs_raw, site_k_area(domain))
+    vals = relative_taxa_cover(rs_raw, site_k_area(domain), domain.coral_growth.n_groups)
     vals[vals.<threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
-    vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain))
+    vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain), domain.coral_growth.n_groups)
     vals = coral_evenness(vals.data)
     vals[vals.<threshold] .= 0.0
     data_store.coral_evenness[:, :, idx] .= vals
@@ -644,13 +644,13 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 size_classes[i],
                 site_data.k[i] * site_data.area[i],
                 tstep,
-                i==20
+                false
             )
         end
-        cover_copy .= copy(C_tmp)
 
         C_tmp ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs))
         replace!(C_tmp, NaN=>0.0)
+        cover_copy .= copy(C_tmp)
         C_t .= _flatten_cover(domain.coral_growth, C_tmp)
 
         # Check if size classes are inappropriately out-growing available space
@@ -879,12 +879,14 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         # Update record
         C_cover[tstep, :, :] .= C_t
-        temp_change = abs.(
-            permutedims(
-                reshape(C_cover[tstep, :, :], (n_sizes, n_groups, n_locs)),
-                [2, 1, 3]
-            ) .- cover_copy
+        cover_copy[cover_copy .== 0] .= 1.0
+        temp_change = _group_cover_locs(
+            domain.coral_growth,
+            C_cover[tstep, :, :]
         ) ./ cover_copy
+
+        # The smallest size class is reconstructed every timestep from the cover
+        temp_change[:, 1, :] .= 1.0
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
