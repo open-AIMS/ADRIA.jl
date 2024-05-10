@@ -882,6 +882,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         cover_copy[cover_copy .== 0] .= 1.0
         temp_change = 
             _group_cover_locs(domain.coral_growth, C_cover[tstep, :, :]) ./ cover_copy
+        # The smallest size class is reconstructed everytimestep from the cover
+        temp_change[:, 1, :] .= 1.0
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
