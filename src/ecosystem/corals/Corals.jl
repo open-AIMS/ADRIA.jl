@@ -61,6 +61,23 @@ function bin_widths()
 end
 
 """
+    planar_area_params()
+
+Colony planar area parameters (see Fig 2B in Aston et al., [1])
+First column is `b`, second column is `a`
+log(S) = b + a * log(x)
+"""
+function planar_area_params()
+    return Array{Float64,2}([
+        # -8.97 3.14   # Abhorescent Acropora (using branching porites parameters as similar method of growing ever expanding colonies).
+        -8.95 2.80   # Tabular Acropora
+        -9.13 2.94   # Corymbose Acropora
+        -8.90 2.94   # Corymbose non-Acropora (using branching pocillopora values from fig2B)
+        -8.87 2.30   # Small massives
+        -8.87 2.30   # Large massives
+    ])
+end
+"""
     colony_areas()
 
 Generate colony area data based on Bozec et al., [1].
