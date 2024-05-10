@@ -885,7 +885,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             C_cover[tstep, :, :]
         ) ./ cover_copy
 
-        # The smallest size class is reconstructed everytimestep from the cover
+        # The smallest size class is reconstructed every timestep from the cover
         temp_change[:, 1, :] .= 1.0
     end
 
