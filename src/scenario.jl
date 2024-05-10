@@ -898,7 +898,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         C_cover[tstep, :, :] .= C_t
         cover_copy[cover_copy .== 0] .= 1.0
         temp_change = _group_cover_locs(
-            domain.coral_growth, 
+            domain.coral_growth,
             C_cover[tstep, :, :]
         ) ./ cover_copy
 
