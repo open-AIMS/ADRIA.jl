@@ -210,6 +210,7 @@ function combine_results(result_sets...)::ResultSet
                 nrow(all_inputs),
                 size(rs1.seed_log, :timesteps),
                 size(rs1.seed_log, :sites),
+                36 # TODO: Find a way to remove this constant
             ))...
     )
 
