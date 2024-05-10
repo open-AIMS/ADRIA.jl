@@ -274,7 +274,6 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_size)
         :unique_site_ids => unique_sites,
     )
     
-    # Get the number of species/groups represented
     local coral_dhw_log
     if parse(Bool, ENV["ADRIA_DEBUG"]) == true
         coral_dhw_log = zcreate(
@@ -437,9 +436,9 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             compressor=COMPRESSOR)
         for m_name in met_names
     ]
-    n_groups::Int = domain.coral_growth.n_groups
 
     # Handle special case for relative taxa cover
+    n_groups::Int64 = domain.coral_growth.n_groups
     push!(
         stores,
         zcreate(Float32, (result_dims[1], n_groups, result_dims[3])...;
@@ -496,7 +495,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     end
     stat_store_names = vcat(dhw_stat_names, wave_stat_names)
 
-    n_group_size::Int = domain.coral_growth.n_group_size
+    n_group_size::Int64 = domain.coral_growth.n_group_size
     # Group all data stores
     stores = [
         stores...,
