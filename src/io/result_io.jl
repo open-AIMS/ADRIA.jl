@@ -436,6 +436,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             compressor=COMPRESSOR)
         for m_name in met_names
     ]
+    n_groups::Int = domain.coral_growth.n_groups
 
     # Handle special case for relative taxa cover
     n_groups::Int64 = domain.coral_growth.n_groups
