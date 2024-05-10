@@ -92,7 +92,7 @@ total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scena
 
 
 """
-    relative_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int) where {T<:Real}
+    relative_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int64) where {T<:Real}
     relative_taxa_cover(rs::ResultSet)
 
 Results grouped by taxa/species.
@@ -108,13 +108,13 @@ Coral cover, grouped by taxa for the given scenario, relative to site k area.
 function _relative_taxa_cover(
     X::AbstractArray{<:Real},
     k_area::Vector{<:Real},
-    n_groups::Int
+    n_groups::Int64
 )::AbstractArray{<:Real}
     n_steps, n_group_size, n_locs = size(X)
     if n_group_size % n_groups != 0
         throw(ArgumentError("Number of functional groups given does not divide n_group_size. n_group_size: $(n_group_size). n_groups: $(n_groups)"))
     end
-    n_sc = Int(n_group_size / n_groups)
+    n_sc::Int64 = Int64(n_group_size / n_groups)
 
     taxa_cover::YAXArray = ZeroDataCube((:timesteps, :taxa), (n_steps, n_groups))
     k_cover = zeros(n_steps, n_sc, n_locs)
@@ -135,14 +135,14 @@ end
 relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :taxa, :scenarios))
 
 """
-    relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int)::AbstractArray where {T<:Real}
+    relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int64)::AbstractArray where {T<:Real}
 """
-function _relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int)::AbstractArray where {T<:Real}
+function _relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int64)::AbstractArray where {T<:Real}
     n_steps, n_group_size, n_locs = size(X)
     if n_group_size % n_groups != 0
         throw(ArgumentError("Number of groups must divide n_group_size. n_group_size $(n_group_size), n_groups: $(n_groups)"))
     end
-    n_sc = Int(n_group_size / n_groups)
+    n_sc::Int64 = Int64(n_group_size / n_groups)
 
     taxa_cover::YAXArray = ZeroDataCube((:timesteps, :taxa, :sites), (n_steps, n_groups, n_locs))
     k_cover = zeros(n_steps, n_sc)
@@ -332,21 +332,21 @@ e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, siz
 
 # Arguments
 - `X` : raw results (proportional coral cover relative to full site area)
-- `n_species` : number of species (taxa and size classes) considered
+- `n_group_sizes` : number of species (taxa and size classes) considered
 - `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class (36)
 - `max_colony_vol_m3_per_m2` : theoretical maximum volume per m² of coverage for each taxa (6)
 - `k_area` : habitable area of site in m² (i.e., `k` area)
 """
 function _shelter_species_loop(
     X::AbstractArray{T1,3},
-    n_species::Int64,
+    n_group_sizes::Int64,
     colony_vol_m3_per_m2::Array{F},
     max_colony_vol_m3_per_m2::Array{F},
     k_area::Array{F}
 )::YAXArray where {T1<:Real,F<:Float64}
     # Calculate absolute shelter volumes first
     ASV::YAXArray = ZeroDataCube((:timesteps, :species, :sites), size(X))
-    _shelter_species_loop!(X, ASV, n_species, colony_vol_m3_per_m2, k_area)
+    _shelter_species_loop!(X, ASV, n_group_sizes, colony_vol_m3_per_m2, k_area)
 
     # Maximum shelter volume
     MSV::Matrix{Float64} = k_area' .* max_colony_vol_m3_per_m2  # in m³
@@ -355,13 +355,13 @@ function _shelter_species_loop(
     MSV[MSV.==0.0] .= 1.0
 
     # Number of functional groups
-    n_groups::Int = size(MSV, 1)
+    n_groups::Int64 = size(MSV, 1)
     # Number of size classes
-    n_sizes::Int = Int(n_species / n_groups)
+    n_sizes::Int64 = Int64(n_group_sizes / n_groups)
     # Loop over each taxa group
 
     RSV::YAXArray = ZeroDataCube((:timesteps, :species, :sites), size(X[species=1:n_groups]))
-    taxa_max_map = zip([i:(i + n_sizes - 1) for i in 1:n_sizes:n_species], 1:n_groups)  # map maximum SV for each group
+    taxa_max_map = zip([i:(i + n_sizes - 1) for i in 1:n_sizes:n_group_sizes], 1:n_groups)  # map maximum SV for each group
 
     # Work out RSV for each taxa
     for (sp, sq) in taxa_max_map
