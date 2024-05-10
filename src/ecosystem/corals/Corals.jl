@@ -199,7 +199,7 @@ function coral_spec()::NamedTuple
     params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_species)[:]
 
     ## Coral growth rates as linear extensions (Bozec et al 2021 S2, Table 1)
-    # all values in cm/year
+    # all values in m/year
     linear_extension = Array{Float64,2}([
         0.006094558 0.010718383 0.025514863 0.050798784 0.094509136 0.168505241 0.0;  # Tabular Acropora
         0.007685561 0.012208521 0.01864468  0.028229656 0.035293827 0.030042179 0.0;              # Corymbose Acropora
@@ -215,8 +215,8 @@ function coral_spec()::NamedTuple
     # coral sizes are evenly distributed within each bin
 
     # Second, growth as transitions of cover to higher bins is estimated as
-    # rate of growth per year
-    params.growth_rate .= reshape(growth_rate(linear_extension, bin_widths()), n_species)[:]
+    # rate of growth per year. Convert bin widths in cm to m
+    params.growth_rate .= reshape(growth_rate(linear_extension, bin_widths() ./ 100), n_species)[:]
     # params.growth_rate[1:6:36] .= 1.0
     # params.growth_rate[6:6:36] .= 1.0
 
