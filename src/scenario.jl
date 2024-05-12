@@ -605,7 +605,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     cover_blocks::Vector{Matrix{CoverBlock}} = [
         DynamicCoralCoverModel.blocks_model.CoverBlock.(
-            reshape(C_cover[1, :, loc] .* site_data.area[loc], (n_sizes, n_groups))',
+            reshape(C_cover[1, :, loc] .* site_data.area[loc] .* site_data.k[loc], (n_sizes, n_groups))',
             C_bins[:, 1:end-1],
             C_bins[:, 2:end]
         ) for loc in 1:n_locs
