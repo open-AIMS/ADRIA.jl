@@ -110,6 +110,7 @@ function ADRIA.viz.scenarios!(
     else
         ADRIA.analysis.scenario_types(_scenarios)
     end
+
     return ADRIA.viz.scenarios!(
         g,
         ax,

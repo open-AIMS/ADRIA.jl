@@ -45,4 +45,8 @@ function map!() end
 function connectivity() end
 function connectivity!() end
 
+# Environment
+function dhw_scenario() end
+function cyclone_scenario() end
+
 end  # module
