@@ -337,22 +337,39 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     rnd_seed_val::Int64 = floor(Int64, sum(param_set[Where(x -> x != "RCP")]))  # select everything except RCP
     Random.seed!(rnd_seed_val)
 
-    dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
-    wave_idx::Int64 = Int64(param_set[At("wave_scenario")])
-    cyclone_mortality_idx::Int64 = Int64(param_set[At("cyclone_mortality_scenario")])
-
     # Extract environmental data
-    dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
+    dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
+    if dhw_idx > 0.0
+        dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
+    else
+        # Run with no DHW disturbances
+        dhw_scen = copy(domain.dhw_scens[:, :, 1])
+        dhw_scen .= 0.0
+    end
 
-    # TODO: Better conversion of Ub to wave mortality
-    #       Currently scaling significant wave height by its max to non-dimensionalize values
-    wave_scen = copy_datacube(domain.wave_scens[:, :, wave_idx])
-    wave_scen .= wave_scen ./ maximum(wave_scen)
-    replace!(wave_scen, Inf => 0.0, NaN => 0.0)
+    wave_idx::Int64 = Int64(param_set[At("wave_scenario")])
+    if wave_idx > 0.0
+        # TODO: Better conversion of Ub to wave mortality
+        #       Currently scaling significant wave height by its max to non-dimensionalize values
+        wave_scen = copy(domain.wave_scens[:, :, wave_idx])
+        wave_scen .= wave_scen ./ maximum(wave_scen)
+        replace!(wave_scen, Inf => 0.0, NaN => 0.0)
+    else
+        # Run with no wave disturbances
+        wave_scen = copy(domain.wave_scens[:, :, 1])
+        wave_scen .= 0.0
+    end
 
-    cyclone_mortality_scen = @view(
-        domain.cyclone_mortality_scens[:, :, :, cyclone_mortality_idx]
-    )
+    cyclone_mortality_idx::Int64 = Int64(param_set[At("cyclone_mortality_scenario")])
+    if cyclone_mortality_idx > 0.0
+        cyclone_mortality_scen = @view(
+            domain.cyclone_mortality_scens[:, :, :, cyclone_mortality_idx]
+        )
+    else
+        # Run with no cyclone disturbances
+        cyclone_mortality_scen = copy(domain.cyclone_mortality_scens[:, :, :, 1])
+        cyclone_mortality_scen .= 0.0
+    end
 
     tspan::Tuple = (0.0, 1.0)
     solver::Euler = Euler()
@@ -648,7 +665,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         if is_guided && seed_decision_years[tstep]
             # Use modified projected DHW (may have been affected by fogging or shading)
-            dhw_p = copy_datacube(dhw_scen)
+            dhw_p = copy(dhw_scen)
             dhw_p[tstep, :] .= dhw_t
 
             dhw_projection = weighted_projection(dhw_p, tstep, plan_horizon, decay, tf)

@@ -278,11 +278,22 @@ function sort_axis(cube::YAXArray, axis_name::Symbol)::YAXArray
 end
 
 """
+    copy_datacube(cube::YAXArray)::YAXArray
+
+Copy a YAXArray data cube.
+
+Alias for `copy(cube)`, kept to maintain backwards compatibility.
+"""
+function copy_datacube(cube::YAXArray)::YAXArray
+    return copy(cube)
+end
+
+"""
     copy(cube::YAXArray)::YAXArray
 
 Copy a YAXArray data cube.
 """
-function copy_datacube(cube::YAXArray)::YAXArray
+function Base.copy(cube::YAXArray)::YAXArray
     new_axlist = Tuple(ax for ax in deepcopy(cube.axes))
     return YAXArray(new_axlist, copy(cube.data))
 end

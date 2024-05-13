@@ -153,9 +153,20 @@ function rank_locations(
 
         # Determine environmental projections
         dhw_scen_idx = Int64(scen[factors=At("dhw_scenario")][1])
+        if dhw_scen_idx > 0.0
+            dhw_scens = dom.dhw_scens[:, :, dhw_scen_idx]
+        else
+            dhw_scens = copy(dom.dhw_scens[:, :, 1])
+            dhw_scens .= 0.0
+        end
+
         wave_scen_idx = Int64(scen[factors=At("wave_scenario")][1])
-        dhw_scens = dom.dhw_scens[:, :, dhw_scen_idx]
-        wave_scens = dom.wave_scens[:, :, wave_scen_idx]
+        if wave_scen_idx > 0.0
+            wave_scens = dom.wave_scens[:, :, dhw_scen_idx]
+        else
+            wave_scens = copy(dom.wave_scens[:, :, 1])
+            wave_scens .= 0.0
+        end
 
         dhw_projection = weighted_projection(dhw_scens, 1, plan_horizon, decay, 75)
         wave_projection = weighted_projection(wave_scens, 1, plan_horizon, decay, 75)
@@ -373,7 +384,7 @@ function _times_selected(
     iv_type::Union{Symbol,Int64},
     squash::Union{Symbol,Tuple}
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
-    s = copy_datacube(ranks[intervention=At(iv_type)])
+    s = copy(ranks[intervention=At(iv_type)])
     s[s .> 0.0] .= 1.0
 
     return dropdims(sum(s, dims=squash); dims=squash)
