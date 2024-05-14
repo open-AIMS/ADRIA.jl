@@ -173,24 +173,29 @@ function _construct_scenario_groups(
     if size(inputs) == (0, 0)
         return Dict(:counterfactual => BitVector([true for _ in 1:n_scenarios]))
     end
+
     counterfactual_scens::BitVector = BitVector([
         p_a == 0.0 && e_a == 0 for (p_a, e_a)
             in zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
+
     # Intervened if not counterfactual
     intervened_scens::BitVector = BitVector([
         p_a != 0 || e_a != 0 for (p_a, e_a)
             in zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
+
     scenario_groups::Dict{Symbol, BitVector} = Dict()
 
     # If the runs do not contain counterfactual or intervened runs exclude the key
     if any(counterfactual_scens)
         scenario_groups[:counterfactual] = counterfactual_scens
     end
+
     if any(intervened_scens)
         scenario_groups[:intervened] = intervened_scens
     end
+
     return scenario_groups
 end
 
@@ -204,6 +209,7 @@ function _reformat_cube(::Type{RMEResultSet}, cube::YAXArray)::YAXArray
     if :locations in name.(cube.axes)
         cube = renameaxis!(cube, :locations => :sites)
     end
+
     return cube
 end
 

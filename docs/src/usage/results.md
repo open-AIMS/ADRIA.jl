@@ -2,14 +2,13 @@
 
 ## Loading ReefModEngine Results
 
-Results from ReefModEngine.jl can be loaded with the `load_results` function. There are two
-options depending on the location of the results and accompanying data files. 
+Results from ReefModEngine.jl can be loaded with the `load_results` function.
 
 ```julia
-rs = ADRIA.load_results(RMEResultSet, "<path to data dir>", "<path to results dir>")
+rs = ADRIA.load_results(RMEResultSet, "<path to data dir>")
 ```
 
-Expected data directory structure.
+Expected data directory structure:
 
 ```bash
 data_dir
@@ -25,24 +24,17 @@ data_dir
 ├───id
 │       id_list_2023_03_30.csv
 │
-└───region
-       reefmod_gbr.gpkg
+├───region
+│       reefmod_gbr.gpkg
+│
+└───results
+        results.nc
+        scenarios.csv
 ```
-
-The results data directory should contain a `results.nc` NetCDF file and `scenarios.csv`. If
-the path to the results directory is not supplied, the results are expected to be
-contained in a results subdirectory.
+In order to reduce the duplication of geospatial and conectivity data, the data directory
+and results directory can be supplied seperately to avoid having copies for each resuilt set
+analysed.
 
 ```julia
-rs = ADRIA.load_domain(RMEResultSet, "<path to data dir>")
-```
-
-Expected data directory structure for defaulted result directory.
-
-```bash
-data_dir
-├───con_bin
-├───id
-├───region
-└───results
+rs = ADRIA.load_domain(RMEResultSet, "<path to data dir>", "<path to results dir>")
 ```
