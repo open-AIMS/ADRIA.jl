@@ -649,6 +649,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     for tstep::Int64 in 2:tf
         change_view = [@view temp_change[:, :, loc] for loc in n_locs]
         DynamicCoralCoverModel.blocks_model.apply_changes!.(size_classes, change_view)
+        recruitment .*= reshape(temp_change[:, 1, :], (n_groups, n_locs))
 
         C_tmp .= _group_cover_locs(
             domain.coral_growth,
@@ -658,6 +659,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         for i in 1:n_locs
             C_tmp[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
                 C_tmp[:, :, i],
+                recruitment[:, i],
                 size_classes[i],
                 site_data.k[i] * site_data.area[i],
                 tstep,
@@ -731,7 +733,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         )
 
         # Add recruits to current cover
-        C_t[p.small, :] .= recruitment
+        C_t[p.small, :] .+= recruitment
+        cover_copy[:, 1, :] .= C_t[p.small, :]
 
         # Update available space
         loc_coral_cover = sum(C_t, dims=1)  # dims: 1 * nsites
@@ -901,9 +904,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             domain.coral_growth,
             C_cover[tstep, :, :]
         ) ./ cover_copy
-
-        # The smallest size class is reconstructed every timestep from the cover
-        temp_change[:, 1, :] .= 1.0
+        if isdefined(Main, :Infiltrator)
+          Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
+        end
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
