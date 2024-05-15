@@ -7,7 +7,7 @@ struct CoralGrowth{A<:Integer,T<:NamedTuple}
     n_locs::A
     n_groups::A
     n_sizes::A
-    n_group_size::A
+    n_group_and_size::A
 
     ode_p::T
 end
@@ -19,8 +19,8 @@ end
 Implements temporary hardcoded caches for a scenario with 35 'species' (split into 5 groups).
 """
 function CoralGrowth(n_locs::Int64)::CoralGrowth
-    n_group_size, n_groups = 35, 5
-    n_sizes = Int64(n_group_size / n_groups)
+    n_group_and_size, n_groups = 35, 5
+    n_sizes = Int64(n_group_and_size / n_groups)
 
     # Store specific indices for use in growth ODE function
     # These are specific to the 36 "species"/ 6 group formulation
@@ -52,5 +52,5 @@ function CoralGrowth(n_locs::Int64)::CoralGrowth
         zeros(n_groups, n_sizes)           # mb
     ))
 
-    return CoralGrowth(n_locs, n_groups, n_sizes, n_group_size, p)
+    return CoralGrowth(n_locs, n_groups, n_sizes, n_group_and_size, p)
 end

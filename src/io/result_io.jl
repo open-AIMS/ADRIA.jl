@@ -152,18 +152,18 @@ function scenario_attributes(domain::Domain, param_df::DataFrame)
 end
 
 """
-    setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_size)
+    setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_size)
 
 - `z_store` : ZArray
 - `unique_sites` : Unique site ids
 - `n_scens` : number of scenarios
 - `tf` : timeframe
 - `n_sites` : number of sites
-- `n_group_size` : number of function groups ⋅ number of size classes
+- `n_group_and_size` : number of function groups ⋅ number of size classes
 
 Note: This setup relies on hardcoded values for number of species represented and seeded.
 """
-function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_size)
+function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_size)
     # Set up logs for site ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
@@ -244,34 +244,34 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_size)
         :structure => ("timesteps", "species", "sites", "scenarios"),
         :unique_site_ids => unique_sites,
     )
-    
+
     local coral_dhw_log
     if parse(Bool, ENV["ADRIA_DEBUG"]) == true
         coral_dhw_log = zcreate(
             Float32,
             tf,
-            n_group_size,
+            n_group_and_size,
             n_sites,
             n_scens;
             name="coral_dhw_log",
             fill_value=nothing,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_group_size, n_sites, 1),
+            chunks=(tf, n_group_and_size, n_sites, 1),
             attrs=attrs,
         )
     else
         coral_dhw_log = zcreate(
             Float32,
             tf,
-            n_group_size,
+            n_group_and_size,
             1,
             n_scens;
             name="coral_dhw_log",
             fill_value=0.0,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_group_size, 1, 1),
+            chunks=(tf, n_group_and_size, 1, 1),
             attrs=attrs,
         )
     end
@@ -378,7 +378,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             if d == "timesteps"
                 append!(dl, tf)
             elseif d == "species"
-                append!(dl, domain.coral_growth.n_group_size)
+                append!(dl, domain.coral_growth.n_group_and_size)
             elseif d == "sites"
                 append!(dl, n_sites)
             elseif d == "scenarios"
@@ -468,14 +468,14 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     end
     stat_store_names = vcat(dhw_stat_names, wave_stat_names)
 
-    n_group_size::Int64 = domain.coral_growth.n_group_size
+    n_group_and_size::Int64 = domain.coral_growth.n_group_and_size
     # Group all data stores
     stores = [
         stores...,
         dhw_stats...,
         wave_stats...,
         connectivity...,
-        setup_logs(z_store, unique_sites(domain), nrow(scen_spec), tf, n_sites, n_group_size)...,
+        setup_logs(z_store, unique_sites(domain), nrow(scen_spec), tf, n_sites, n_group_and_size)...,
     ]
 
     return domain,

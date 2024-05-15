@@ -287,8 +287,9 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
     # Determine non-juvenile size classes.
     # First two of each functional group are the juvenile size classes
     size_classes = 1:n_sp_sc
-    juveniles = sort!(vec([size_classes[1:6:end] size_classes[2:6:end]]))
-    non_juveniles = setdiff(size_classes, juveniles)
+    group_and_sizes = 1:n_sp_sc
+    juveniles = sort!(vec([group_and_sizes[1:7:end] group_and_sizes[2:7:end]]))
+    non_juveniles = setdiff(group_and_sizes, juveniles)
 
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
@@ -555,11 +556,11 @@ function fecundity_scope!(
     site_area::AbstractMatrix{T}
 )::Nothing where {T<:Float64}
     n_groups::Int64 = size(fec_groups, 1)   # number of coral groups: 5
-    n_group_sizes::Int64 = size(fec_params, 1)  # number of coral size classes: 35
-    n_classes::Int64 = Int64(n_group_sizes / n_groups)
+    n_group_and_size::Int64 = size(fec_params, 1)  # number of coral size classes: 35
+    n_classes::Int64 = Int64(n_group_and_size / n_groups)
 
     fec_all .= fec_params .* C_t .* site_area
-    for (i, (s, e)) in enumerate(zip(1:n_classes:n_group_sizes, n_classes:n_classes:n_group_sizes+1))
+    for (i, (s, e)) in enumerate(zip(1:n_classes:n_group_and_size, n_classes:n_classes:n_group_and_size+1))
         @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
 
