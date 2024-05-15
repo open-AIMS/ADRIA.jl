@@ -1,6 +1,5 @@
 using DataEnvelopmentAnalysis: DataEnvelopmentAnalysis as DEA
 using DataFrames, YAXARrays
-using StableRNGs
 
 function deployment_cost(rs::ResultSet)::YAXArray
     scenarios = rs.inputs
@@ -14,15 +13,21 @@ function deployment_cost(rs::ResultSet)::YAXArray
     return YAXArray((Dim{scenarios}(1:size(scenarios, 1)),), prod_cost .+ logistics_cost)
 end
 function data_envelopment_analysis(
-    rs::ResultSet, metrics...; dea_function::Function=dea, rts::Symbol=:VRS,
-    orient::Symbol=:Output
+    rs::ResultSet, metrics...; rts::Symbol=:VRS,
+    orient::Symbol=:Output, dea_model::Function=deabigdata
 )::Tuple{AbstractDEAModel,AbstractArray}
-    cost = deployment_cost(rs)
     X = metrics[keys(metrics)[1]]
     for metric in keys(metrics)[2:end]
         vcat!(X, Array(metrics[metric]))
     end
 
-    result = dea_function(Array(cost), X; orient=orient, rts=rts)
+    return data_envelopment_analysis(rs, X; rts=rts, orient=orient, dea_model=dea_model)
+end
+function data_envelopment_analysis(
+    rs::ResultSet, X::Array{Float64}; rts::Symbol=:VRS,
+    orient::Symbol=:Output, dea_model::Function=deabigdata
+)::Tuple{AbstractDEAModel,AbstractArray}
+    cost = deployment_cost(rs)
+    result = dea_model(Array(cost), X; orient=orient, rts=rts)
     return result, X
 end
