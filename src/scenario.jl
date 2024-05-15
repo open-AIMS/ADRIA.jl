@@ -734,6 +734,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         # Add recruits to current cover
         C_t[p.small, :] .+= recruitment
+
+        # Cover copy needs to include recruits so overall mortality can be calculated to
+        # apply to cover blocks
         cover_copy[:, 1, :] .= C_t[p.small, :]
 
         # Update available space
@@ -875,10 +878,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 c_mean_t,
             )
 
+            # Add coral seeding to cover copy and recruitment
             recruitment += C_t[p.small, :] .- cover_copy[:, 1, :]
             cover_copy[:, 1, :] .= C_t[p.small, :]
         end
-
 
         # Calculate and apply bleaching mortality
         # Bleaching typically occurs in the warmer months (November - February)
