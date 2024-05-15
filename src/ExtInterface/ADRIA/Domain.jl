@@ -170,9 +170,9 @@ function Domain(
 
     coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
     n_locs::Int64 = coral_growth.n_locs
-    n_group_size = coral_growth.n_group_size
+    n_group_and_size = coral_growth.n_group_and_size
 
-    cover_params = ispath(init_coral_fn) ? (init_coral_fn, ) : (n_group_size, n_locs)
+    cover_params = ispath(init_coral_fn) ? (init_coral_fn, ) : (n_group_and_size, n_locs)
     coral_cover = load_cover(cover_params...)
 
     dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
