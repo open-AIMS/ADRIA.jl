@@ -874,7 +874,11 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 corals.dist_std,
                 c_mean_t,
             )
+
+            recruitment += C_t[p.small, :] .- cover_copy[:, 1, :]
+            cover_copy[:, 1, :] .= C_t[p.small, :]
         end
+
 
         # Calculate and apply bleaching mortality
         # Bleaching typically occurs in the warmer months (November - February)
