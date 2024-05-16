@@ -898,7 +898,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             corals.dist_std,
             c_mean_t_1,
             c_mean_t,
-            @view(bleaching_mort[(tstep-1):tstep, :, :])
+            @view(bleaching_mort[(tstep-1):tstep, :, :]),
+            n_sizes
         )
 
         # Coral deaths due to selected cyclone scenario
