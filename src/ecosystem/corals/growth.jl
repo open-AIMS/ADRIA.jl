@@ -225,7 +225,7 @@ end
 """
     bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
         depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix,
-        dist_t::Matrix, prop_mort::SubArray{Float64})::Nothing
+        dist_t::Matrix, prop_mort::SubArray{Float64}, n_sizes::Int64)::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
 all non-juvenile (> 5cm diameter) size classes.
@@ -248,6 +248,7 @@ Function. Bleaching mortality is then estimated with a depth-adjusted coefficien
     locations
 - `prop_mort` : Cache to store records of bleaching mortality (stores mortalities for
     t-1 and t)
+- `n_sizes` : Number of size classes within each functional group
 
 # References
 1. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021.
@@ -280,15 +281,19 @@ Function. Bleaching mortality is then estimated with a depth-adjusted coefficien
 """
 function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
     depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix{Float64},
-    dist_t::Matrix{Float64}, prop_mort::SubArray{Float64}
+    dist_t::Matrix{Float64}, prop_mort::SubArray{Float64}, n_sizes::Int64
 )::Nothing
     n_sp_sc, n_locs = size(cover)
 
     # Determine non-juvenile size classes.
-    # First two of each functional group are the juvenile size classes
-    size_classes = 1:n_sp_sc
+    # First three of each functional group are the juvenile size classes
+    # TODO: Should be a shared parameter set somewhere else...
     group_and_sizes = 1:n_sp_sc
-    juveniles = sort!(vec([group_and_sizes[1:7:end] group_and_sizes[2:7:end]]))
+    juveniles = sort!(vec(
+        [group_and_sizes[1:n_sizes:end]
+         group_and_sizes[2:n_sizes:end]
+         group_and_sizes[3:n_sizes:end]]
+    ))
     non_juveniles = setdiff(group_and_sizes, juveniles)
 
     # Adjust distributions for each functional group over all locations, ignoring juveniles
@@ -338,8 +343,6 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             end
         end
     end
-
-    clamp!(cover, 0.0, 1.0)
 
     return nothing
 end
