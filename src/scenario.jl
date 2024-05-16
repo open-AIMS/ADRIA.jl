@@ -479,7 +479,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
     C_cover::Array{Float64,3} = zeros(tf, n_group_and_size, n_locs)
     if size(domain.init_coral_cover, 1) == 36
-        @warn "Using dataset with 36 combained groups and size classes. ADRIA uses 5 function groups and 7 size classes."
+        @warn "Using dataset with 36 combined groups and size classes. ADRIA uses 5 functional groups and 7 size classes."
         C_cover[1, domain.coral_growth.ode_p.small, :] .= domain.init_coral_cover[species=[7, 13, 19, 25, 31]]
         C_cover[1, domain.coral_growth.ode_p.mid, :] .= domain.init_coral_cover[species=collect([8:12; 14:18; 20:24; 26:30; 32:36])]
     else
