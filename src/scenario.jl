@@ -883,7 +883,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         #    attempts to account for the cooling effect of storms / high wave activity
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
-        # Main.@infiltrate
         bleaching_mortality!(
             C_t,
             dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
