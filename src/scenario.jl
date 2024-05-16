@@ -429,7 +429,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         cyclone_mortality_scen = copy(domain.cyclone_mortality_scens[:, :, :, 1])
         cyclone_mortality_scen .= 0.0
     end
-
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
 
@@ -480,8 +479,11 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
     C_cover::Array{Float64,3} = zeros(tf, n_group_and_size, n_locs)
     if size(domain.init_coral_cover, 1) == 36
+        @warn "Using dataset with 36 combained groups and size classes. ADRIA uses 5 function groups and 7 size classes."
         C_cover[1, domain.coral_growth.ode_p.small, :] .= domain.init_coral_cover[species=[7, 13, 19, 25, 31]]
         C_cover[1, domain.coral_growth.ode_p.mid, :] .= domain.init_coral_cover[species=collect([8:12; 14:18; 20:24; 26:30; 32:36])]
+    else
+        C_cover[1, :, :] .= domain.init_coral_cover
     end
     cover_tmp = zeros(n_locs)
 
@@ -903,7 +905,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
         # TODO: Update cyclone data to hold data for relevant functional groups
-        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, 2:end]')
+        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
 
         # Update record
         C_cover[tstep, :, :] .= C_t
