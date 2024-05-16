@@ -179,7 +179,11 @@ function Domain(
     if size(coral_cover, 1) == 36
         n_sizes = coral_growth.n_sizes
         n_groups = coral_growth.n_groups
-        @warn "Using dataset with 36 combined groups and size classes. ADRIA uses $(n_groups) functional groups and $(n_sizes) size classes."
+        @warn """
+        Using dataset with 36 combined groups and size classes.
+        ADRIA uses $(n_groups) functional groups and $(n_sizes) size classes.
+        Skipping first functional group.
+        """
 
         cover_tmp = ZeroDataCube(;
             T=Float32,
@@ -204,7 +208,10 @@ function Domain(
     # Add compatability with non-migrated datasets but always default current coral spec
     if size(cyclone_mortality, 3) == 6
         n_groups = coral_growth.n_groups
-        @warn "Cyclone mortality uses 6 functional groups. ADRIA uses $(n_groups)."
+        @warn """
+        Cyclone mortality uses 6 functional groups. ADRIA uses $(n_groups).
+        Skipping first functional group.
+        """
         cyclone_mortality = cyclone_mortality[:, :, 2:end, :]
     end
 
