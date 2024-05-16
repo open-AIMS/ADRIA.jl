@@ -175,6 +175,23 @@ function Domain(
     cover_params = ispath(init_coral_fn) ? (init_coral_fn, ) : (n_group_and_size, n_locs)
     coral_cover = load_cover(cover_params...)
 
+    # Only use relevant initial coral cover data as appropriate
+    if size(coral_cover, 1) == 36
+        n_sizes = coral_growth.n_sizes
+        n_groups = coral_growth.n_groups
+        @warn "Using dataset with 36 combined groups and size classes. ADRIA uses $(n_groups) functional groups and $(n_sizes) size classes."
+
+        cover_tmp = ZeroDataCube(;
+            T=Float32,
+            species=1:35,
+            locations=collect(coral_cover.locations)
+        )
+
+        cover_tmp[species=Vector(coral_growth.ode_p.small)] .= coral_cover[species=[7, 13, 19, 25, 31]].data
+        cover_tmp[species=Vector(coral_growth.ode_p.mid)] .= coral_cover[species=[8:12; 14:18; 20:24; 26:30; 32:36]].data
+        coral_cover = cover_tmp
+    end
+
     dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
     dhw = load_env_data(dhw_params...)
 
@@ -183,6 +200,13 @@ function Domain(
 
     cyc_params = ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, site_data)
     cyclone_mortality = load_cyclone_mortality(cyc_params...)
+
+    # Add compatability with non-migrated datasets but always default current coral spec
+    if size(cyclone_mortality, 3) == 6
+        n_groups = coral_growth.n_groups
+        @warn "Cyclone mortality uses 6 functional groups. ADRIA uses $(n_groups)."
+        cyclone_mortality = cyclone_mortality[:, :, 2:end, :]
+    end
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
     msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
