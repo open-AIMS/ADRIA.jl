@@ -613,19 +613,19 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     potential_settlers = zeros(size(fec_scope)...)
     C_bins::Matrix{Float64} = hcat(
         zeros(n_groups),
-        reshape(corals.bin_ub, (n_sizes, n_groups))'
+        _to_group_size(domain.coral_growth, corals.bin_ub)
     )
 
     cover_blocks::Vector{Matrix{CoverBlock}} = [
         DynamicCoralCoverModel.blocks_model.CoverBlock.(
-            reshape(C_cover[1, :, loc] .* (site_data.area[loc] .* site_data.k[loc]), (n_sizes, n_groups))',
+            _to_group_size(domain.coral_growth, C_cover[1, :, loc] .* (site_data.area[loc] .* site_data.k[loc])),
             C_bins[:, 1:end-1],
             C_bins[:, 2:end]
         ) for loc in 1:n_locs
     ]
 
-    linear_extension = reshape(corals.linear_extension, (n_sizes, n_groups))'
-    survival_rate = 1.0 .- reshape(corals.mb_rate, (n_sizes, n_groups))'
+    linear_extension = _to_group_size(domain.coral_growth, corals.linear_extension)
+    survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
 
     size_classes::Vector{Matrix{SizeClass}} = [
         SizeClass.(
