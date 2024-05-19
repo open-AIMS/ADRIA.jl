@@ -289,11 +289,12 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
     # First three of each functional group are the juvenile size classes
     # TODO: Should be a shared parameter set somewhere else...
     group_and_sizes = 1:n_sp_sc
-    juveniles = sort!(vec(
-        [group_and_sizes[1:n_sizes:end]
-         group_and_sizes[2:n_sizes:end]
-         group_and_sizes[3:n_sizes:end]]
-    ))
+    # juveniles = sort!(vec(
+    #     [group_and_sizes[1:n_sizes:end]
+    #      group_and_sizes[2:n_sizes:end]
+    #      group_and_sizes[3:n_sizes:end]]
+    # ))
+    juveniles = group_and_sizes[1:n_sizes:end]
     non_juveniles = setdiff(group_and_sizes, juveniles)
 
     # Adjust distributions for each functional group over all locations, ignoring juveniles
