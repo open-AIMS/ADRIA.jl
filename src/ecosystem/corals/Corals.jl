@@ -42,13 +42,22 @@ Helper function defining coral colony diameter bin edges in cm.
 """
 function bin_edges()
     return Matrix([
-        0.0 1.0 2.0 6.0 15.0 36.0 89.0 90.0;
-        0.0 1.0 2.0 4.0  9.0 18.0 38.0 39.0;
-        0.0 1.0 2.0 4.0  7.0 14.0 27.0 28.0;
-        0.0 1.0 2.0 5.0  8.0 12.0 26.0 27.0;
-        0.0 1.0 2.0 4.0  9.0 19.0 40.0 41.0
+        0.0 5.0 7.5 10.0 20.0 40.0 100.0 150.0;
+        0.0 5.0 7.5 10.0 20.0 35.0 50.0 100.0;
+        0.0 5.0 7.5 10.0 15.0 20.0 40.0 50.0;
+        0.0 5.0 7.5 10.0 20.0 40.0 50.0 100.0;
+        0.0 5.0 7.5 10.0 20.0 40.0 50.0 100.0
     ])
 end
+# function bin_edges()
+#     return Matrix([
+#         0.0 1.0 2.0 6.0 15.0 36.0 89.0 90.0;
+#         0.0 1.0 2.0 4.0  9.0 18.0 38.0 39.0;
+#         0.0 1.0 2.0 4.0  7.0 14.0 27.0 28.0;
+#         0.0 1.0 2.0 5.0  8.0 12.0 26.0 27.0;
+#         0.0 1.0 2.0 4.0  9.0 19.0 40.0 41.0
+#     ])
+# end
 
 """
     bin_widths()
@@ -180,7 +189,7 @@ function coral_spec()::NamedTuple
     # total number of "species" modelled in the current version.
     n_taxa = length(taxa_names)
     n_classes::Int64 = 7
-    n_species::Int64 = n_taxa * n_classes
+    n_groups_and_sizes::Int64 = n_taxa * n_classes
 
     tn = repeat(taxa_names; inner=n_classes)
 
@@ -196,27 +205,26 @@ function coral_spec()::NamedTuple
     # interventions, we express coral abundance as colony numbers in different
     # size classes and growth rates as linear extension (in cm per year).
     colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
-    params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_species)[:]
+    params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_groups_and_sizes)[:]
 
     # Coral growth rates as linear extensions.
-    # All values in m/year and are from (unpublished) ecoRRAP data.
-    linear_extension = Array{Float64,2}([
-        0.006094558 0.010718383 0.025514863 0.050798784 0.094509136 0.168505241 0.0;  # Tabular Acropora
-        0.007685561 0.012208521 0.01864468  0.028229656 0.035293827 0.030042179 0.0;              # Corymbose Acropora
-        0.001904555 0.003437468 0.006154666 0.009747701 0.017007948 0.029172889 0.0;      # Corymbose non-Acropora
-        0.003180337 0.004738498 0.006837293 0.007105867 0.005810847 0.005810847 0.0;            # Small massives and encrusting
-        0.001224784 0.00217702  0.003820976 0.00718781  0.012417243 0.020854626 0.0   # Large Massive
-    ])
-
-    params.linear_extension = reshape(linear_extension', n_species)[:]
+    # All values in cm/year and are from (unpublished) ecoRRAP data.
+    linear_extension::Matrix{Float64} = [
+        0.609456  1.07184   2.55149   5.07988   9.45091   16.8505    0.0;
+        0.768556  1.22085   1.86447   2.82297   3.52938    3.00422   0.0;
+        0.190455  0.343747  0.615467  0.97477   1.70079    2.91729   0.0;
+        0.318034  0.47385   0.683729  0.710587  0.581085   0.581085  0.0;
+        0.122478  0.217702  0.382098  0.718781  1.24172    2.08546   0.0
+    ]
+    params.linear_extension = reshape(linear_extension', n_groups_and_sizes)[:]
 
     # Convert linear extensions to delta coral in two steps.
     # First calculate what proportion of coral numbers that change size class
     #     given linear extensions. This is based on the simple assumption that
     #     coral sizes are evenly distributed within each bin.
     # Second, growth as transitions of cover to higher bins is estimated as
-    #     rate of growth per year. Convert bin widths in cm to m
-    params.growth_rate .= reshape(growth_rate(linear_extension, bin_widths() ./ 100), n_species)[:]
+    #     rate of growth per year.
+    params.growth_rate .= reshape(growth_rate(linear_extension, bin_widths()), n_groups_and_sizes)[:]
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
@@ -239,20 +247,25 @@ function coral_spec()::NamedTuple
     # Mortality
     # Survival rates taken from (unpublished) ecoRRAP data.
     # Background mortality is then the complement.
+    # survival_rate::Matrix{Float64} = [
+    #     0.859017851 0.858528906 0.857044217 0.856477498 0.856104353 0.855852241 0.855852241;    # Tabular Acropora
+    #     0.865006527 0.87915437 0.892044073 0.905304164 0.915373252 0.925707536 0.925707536;     # Corymbose Acropora
+    #     0.953069031 0.959152694 0.964460394 0.968306361 0.972598906 0.97621179 0.97621179;     # Corymbose non-Acropora
+    #     0.869976692 0.938029324 0.977889252 0.987199004 0.99207702 0.996931548 0.996931548;     # Small massives and encrusting
+    #     0.9782479 0.979496637 0.980850254 0.982178103 0.983568572 0.984667677 0.984667677       # Large massives
+    # ]
     survival_rate::Matrix{Float64} = [
-        0.859017851 0.858528906 0.857044217 0.856477498 0.856104353 0.855852241 0.855852241;    # Tabular Acropora
-        0.865006527 0.87915437 0.892044073 0.905304164 0.915373252 0.925707536 0.925707536;     # Corymbose Acropora
-        0.953069031 0.959152694 0.964460394 0.968306361 0.972598906 0.97621179 0.97621179;     # Corymbose non-Acropora
-        0.869976692 0.938029324 0.977889252 0.987199004 0.99207702 0.996931548 0.996931548;     # Small massives and encrusting
-        0.9782479 0.979496637 0.980850254 0.982178103 0.983568572 0.984667677 0.984667677       # Large massives
+        0.6  0.76 0.805 0.76 0.85 0.86 0.86;    # Tabular Acropora
+        0.6  0.76 0.77 0.875 0.83 0.90 0.90;    # Corymbose Acropora
+        0.52 0.77 0.77 0.875 0.89 0.97621179 0.97621179;                # Corymbose non-Acropora
+        0.72 0.87 0.77 0.98 0.996931548 0.996931548 0.996931548;        # Small massives and encrusting
+        0.58 0.87 0.78 0.983568572 0.984667677 0.984667677 0.984667677  # Large massives
     ]
     mb = 1.0 .- survival_rate
     params.mb_rate = mb'[:]
 
-    # Convert meters to centimeters
-    upper_bound::Matrix{Float64} = bin_edges()[:, 2:end] ./ 100
-
-    params.bin_ub = reshape(upper_bound', n_species)[:]
+    upper_bound::Matrix{Float64} = bin_edges()[:, 2:end]
+    params.bin_ub = reshape(upper_bound', n_groups_and_sizes)[:]
 
     # Natural adaptation / heritability
     # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
