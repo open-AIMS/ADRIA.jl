@@ -63,7 +63,27 @@ function proportional_adjustment!(
 
     return nothing
 end
+function proportional_adjustment!(
+    coral_cover::Union{SubArray{T, 3}, Array{T, 3}}, cover_tmp::Vector{T}
+)::Nothing where {T<:Float64}
+    cover_tmp .= vec(sum(coral_cover; dims=(1, 2)))
+    cover_tmp[cover_tmp.≈1.0] .= 1.0
+    if any(cover_tmp .> 1.0)
+        exceeded::BitVector = vec(cover_tmp .> 1.0)
+        msg = """
+            Cover exceeded bounds, constraining to be within available space
+            This indicates an issue with the model.
+            Cover - Max Cover: $(sum(cover_tmp[exceeded] .- 1.0))
+        """
+        @debug msg
+        @views @. coral_cover[:, :, exceeded] = (
+            coral_cover[:, :, exceeded] / cover_tmp[exceeded]'
+        )
+    end
 
+    coral_cover .= max.(coral_cover, 0.0)
+    return nothing
+end
 """
     proportional_adjustment!(coral_cover::Union{SubArray{T},Matrix{T}})::Nothing where {T<:Float64}
 
