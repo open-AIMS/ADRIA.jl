@@ -650,13 +650,13 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         C_tmp ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs))
         replace!(C_tmp, NaN=>0.0)
         cover_copy .= copy(C_tmp)
-        C_t .= _flatten_cover(domain.coral_growth, C_tmp)
 
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
-            @view(C_t[:, valid_locs]),
+            @view(C_tmp[:, :, valid_locs]),
             cover_tmp[valid_locs]
         )
+        C_t .= _flatten_cover(domain.coral_growth, C_tmp)
 
         # Update initial condition
         C_cover[tstep, :, valid_locs] .= C_t[:, valid_locs]
