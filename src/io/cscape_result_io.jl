@@ -1,3 +1,4 @@
+using Core: Argument
 using ADRIA: EnvLayer, GDF, ZeroDataCube, DataCube
 using ArchGDAL: centroid
 using CSV
@@ -16,6 +17,7 @@ struct CScapeResultSet <: ResultSet
     connectivity_data
     site_data
     scenario_groups
+    raw_data::Vector{Dataset}
 
     inputs
     sim_constants
@@ -27,65 +29,79 @@ struct CScapeResultSet <: ResultSet
 end
 
 """
-    load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResultSet
+    load_results(::Type{CScapeResultSet}, data_dir::String)::CScapeResultSet
+    load_results(::Type{CscapeResultSet}, data_dir::String, result_dir::String)::CScapeResultSet
+    load_results(::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String})::CScapeResultSet
 
 Interface for loading CScape model outputs.
 """
-function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResultSet
-    !isdir(result_loc) ? error("Expected a directory but received $(result_loc)") : nothing
-    
-    scenario_spec_path::String = joinpath(result_loc, "ScenarioID.csv")
+function load_results(::Type{CScapeResultSet}, data_dir::String)::CScapeResultSet
+    return load_results(CScapeResultSet, data_dir, joinpath(data_dir, "results"))
+end
+function load_results(::Type{CScapeResultSet}, data_dir::String, result_dir::String)::CScapeResultSet
+    return load_results(CScapeResultSet, data_dir, _get_result_paths(result_dir))
+end
+function load_results(::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String})::CScapeResultSet
+    !isdir(data_dir) ? error("Expected a directory but received $(data_dir)") : nothing
+
+    scenario_spec_path::String = joinpath(data_dir, "ScenarioID.csv")
     scenario_spec::DataFrame = DataFrame(CSV.File(scenario_spec_path))
-    
-    result_path::Vector{String} = _get_output_path(result_loc)
-    datasets::Vector{Dataset} = open_dataset.(result_path)
+
+    datasets::Vector{Dataset} = open_dataset.(result_files)
     inputs::DataFrame = _recreate_inputs_dataframe(datasets, scenario_spec)
 
+    # Assume all result set have the same locations
     raw_set = datasets[1]
 
     res_name::String = _get_result_name(raw_set)
     res_rcp::String = _get_rcp(raw_set)
-    
-    !haskey(raw_set.cubes, :reef_siteid) ? error("Unable to find location ids.") : nothing
-    location_ids = _get_reefids(raw_set.cubes[:reef_siteid])
 
-    gpkg_path = _get_gpkg_path(result_loc)
+    init_cover_path = joinpath(data_dir, "initial_cover", "initial_cover.csv")
+    init_data::DataFrame = CSV.read(init_cover_path, DataFrame, header=true)
+
+    !haskey(raw_set.cubes, :reef_siteid) ? error("Unable to find location ids.") : nothing
+    location_ids = init_data.reef_siteid
+
+    gpkg_path = _get_gpkg_path(data_dir)
     geodata = GDF.read(gpkg_path)
 
-    connectivity_path = joinpath(result_loc, "connectivity/connectivity.csv")
+    geodata = _manual_site_additions(geodata, location_ids, raw_set)
+
+    connectivity_path = joinpath(data_dir, "connectivity/connectivity.csv")
     connectivity = CSV.read(connectivity_path, DataFrame, comment="#", header=true)
-    
+
     # There is missing location data in site data. Use intersection
     gpkg_mask = BitVector([loc_name in location_ids for loc_name in geodata.reef_siteid])
-    res_mask  = BitVector([loc_name in geodata.reef_siteid for loc_name in location_ids])
     conn_mask = BitVector([
         (loc_name in location_ids) && (loc_name in geodata.reef_siteid)
         for loc_name in names(connectivity)
     ])
 
-    raw_set.properties["location_mask"] = res_mask
-
     geodata = geodata[gpkg_mask, :]
-    conn_sites = names(connectivity)[conn_mask] 
+    conn_sites = names(connectivity)[conn_mask]
     connectivity = connectivity[conn_mask[2:end], conn_mask]
-    
+
     # Re order data to match location ordering
-    geo_id_order = [first(findall(x .== geodata.reef_siteid)) for x in location_ids[res_mask]]
-    conn_id_order = [first(findall(x .== Vector(conn_sites))) for x in location_ids[res_mask]]
-    
+    geo_id_order = [first(findall(x .== geodata.reef_siteid)) for x in location_ids]
+    conn_id_order = [first(findall(x .== Vector(conn_sites))) for x in location_ids]
+
     geodata = geodata[geo_id_order, :]
     connectivity = connectivity[conn_id_order, conn_id_order]
 
-    timeframe = 2009:2099
+    timeframe = 2007:2099
     if !haskey(raw_set.properties, "temporal_range")
         @warn "Unable to find timeframe defaulting to $(timeframe[1]):$(timeframe[end])"
     else
         tf_str = split(raw_set.properties["temporal_range"], ":")
-        timeframe = parse(Int, tf_str[1]):parse(Int, tf_str[2])
+        if tf_str[1] != "Inf"
+            timeframe = parse(Int, tf_str[1]):parse(Int, tf_str[2])
+        else
+            timeframe = raw_set.year[1]:raw_set.year[end]
+        end
     end
 
     env_layer_md::EnvLayer = EnvLayer(
-        result_loc,
+        data_dir,
         gpkg_path,
         "site_id",
         "Reef",
@@ -99,33 +115,17 @@ function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResult
     location_max_coral_cover = 1 .- geodata.k ./ 100
     location_centroids = [centroid(multipoly) for multipoly ∈ geodata.geom]
 
-    outcome_keys = [
-        :larvae, 
-        :external_larvae, 
-        :internal_received_larvae, 
-        :settlers, 
-        :eggs, 
-        :size_classes,
-        :cover
-    ]
     outcomes = Dict{Symbol, YAXArray}()
-    for key in outcome_keys
-        if !haskey(raw_set.cubes, key)
-            @warn "Unable to find "*string(key)*". Skipping."
-            continue
-        end
-        outcomes[key] = reformat_cube(concatenate_cubes(datasets, key), res_mask)
-    end
     # add precomputed metrics for comptability
-    outcomes[:relative_juveniles] = _cscape_relative_juvenile(raw_set)
-    outcomes[:relative_cover] = _cscape_relative_cover(raw_set)
-    outcomes[:relative_taxa_cover] = _cscape_relative_taxa_cover(raw_set, geodata.area)
-    scen_groups = Dict(:counterfactual=>BitVector(true for _ in raw_set.draws))
+    outcomes[:relative_cover] = _cscape_relative_cover(datasets)
+    # outcomes[:relative_taxa_cover] = _cscape_relative_taxa_cover(raw_set, geodata.area)
+
+    scen_groups = Dict(:counterfactual=>BitVector(true for _ in outcomes[:relative_cover].scenarios))
 
     return CScapeResultSet(
         res_name,
         res_rcp,
-        location_ids[res_mask],
+        location_ids,
         geodata.area,
         location_max_coral_cover,
         location_centroids,
@@ -133,11 +133,52 @@ function load_results(::Type{CScapeResultSet}, result_loc::String)::CScapeResult
         connectivity,
         geodata,
         scen_groups,
+        datasets,
         inputs,
         SimConstants(),
         outcomes,
         reformat_cube(raw_set.coral_size_diameter)
     )
+end
+
+# FIX THIS MESS
+function _manual_site_additions(geodata::DataFrame, loc_ids, dataset::Dataset)::DataFrame
+    row_indx::Int64 = findfirst(x->x=="Moore_MR_S_39", geodata.reef_siteid)
+    row_cpy = copy(geodata[row_indx, :])
+    push!(geodata, row_cpy)
+    data_indx = findfirst(x->x=="Moore_MR_S_40", loc_ids)
+    geodata[end, :site_id] = "MR_S_40"
+    geodata[end, :reef_siteid] = "Moore_MR_S_40"
+    geodata[end, :area] = sum(dataset.area[reef_sites=data_indx], dims=:intervened)[1]
+    geodata[end, :k] = dataset.k[reef_sites=data_indx][1]
+
+    row_indx = findfirst(x->x=="Milln_MR_OF_3", geodata.reef_siteid)
+    row_cpy = copy(geodata[row_indx, :])
+    push!(geodata, row_cpy)
+    data_indx = findfirst(x->x=="Milln_MR_OF_4", loc_ids)
+    geodata[end, :site_id] = "MR_OF_4"
+    geodata[end, :reef_siteid] = "Milln_MR_OF_4"
+    geodata[end, :area] = sum(dataset.area[reef_sites=data_indx], dims=:intervened)[1]
+    geodata[end, :k] = dataset.k[reef_sites=data_indx][1]
+
+    row_indx = findfirst(x->x=="Elford_ER_S_50", geodata.reef_siteid)
+    row_cpy = copy(geodata[row_indx, :])
+    push!(geodata, row_cpy)
+    data_indx = findfirst(x->x=="Elford_ER_S_51", loc_ids)
+    geodata[end, :site_id] = "ER_S_51"
+    geodata[end, :reef_siteid] = "Elford_ER_S_51"
+    geodata[end, :area] = sum(dataset.area[reef_sites=data_indx], dims=:intervened)[1]
+    geodata[end, :k] = dataset.k[reef_sites=data_indx][1]
+
+    row_indx = findfirst(x->x=="Elford_ER_S_50", geodata.reef_siteid)
+    row_cpy = copy(geodata[row_indx, :])
+    push!(geodata, row_cpy)
+    data_indx = findfirst(x->x=="Elford_ER_S_52", loc_ids)
+    geodata[end, :site_id] = "ER_S_52"
+    geodata[end, :reef_siteid] = "Elford_ER_S_52"
+    geodata[end, :area] = sum(dataset.area[reef_sites=data_indx], dims=:intervened)[1]
+    geodata[end, :k] = dataset.k[reef_sites=data_indx][1]
+    return geodata
 end
 
 function concatenate_cubes(datasets::Vector{Dataset}, variable::Symbol)::YAXArray
@@ -158,6 +199,9 @@ scenario id expected in scenario spec.
 """
 function _get_scenario_id(dataset::Dataset)::Int
     scenario_id = parse(Int, dataset.properties["scenario_ID"])
+    if scenario_id > 100000
+        return scenario_id
+    end
     return scenario_id + 100000
 end
 
@@ -173,23 +217,27 @@ function _get_functional_types(dataset::Dataset)::Vector{String}
     return string.(split(raw_names, " "))
 end
 
+function _default_missing(value, default)
+    return ismissing(value) ? default : value
+end
+
 function _recreate_inputs_dataframe(
     datasets::Vector{Dataset}, scenario_spec::DataFrame
 )::DataFrame
     # Get rows from scenario spec dataframe corresponding to the scenarios
-    scenario_idxs::Vector{Int} = 
+    scenario_idxs::Vector{Int} =
         [findfirst(x->x==idx, scenario_spec.ID) for idx in _get_scenario_id.(datasets)]
-    scenario_rows::Vector{DataFrameRow} = [scenario_spec[idx, :] for idx in scenario_idxs]
+    scenario_rows::Vector{DataFrameRow} = [scenario_spec[idx-1, :] for idx in scenario_idxs]
 
     # Convert climate scenarios to factors
-    rcps::Vector{Float64} = 
+    rcps::Vector{Float64} =
         parse.(Float64, [dataset.properties["ssp"][end-1:end] for dataset in datasets])
 
     # Convert climate models to factors
     input_scenarios::Vector{Tuple{String, Int}} = [(
         dataset.properties["climate model"], dataset.properties["climate_model_realisation_point"]
     ) for dataset in datasets]
-    input_inds::Vector{Int} = 
+    input_inds::Vector{Int} =
         [findfirst(x -> x == scen, unique(input_scenarios)) for scen in input_scenarios]
 
     fragmented_spec::Vector{DataFrame} = _create_inputs_dataframe.(
@@ -205,16 +253,16 @@ function _create_inputs_dataframe(
     input_index::Int
 )::DataFrame
     functional_types::Vector{String} = _get_functional_types(dataset)
-    n_draws::Int = length(get(dataset.axes, :draws, [1]))
-    
+    n_draws::Int = :draws in keys(dataset.axes) ? length(get(dataset.axes, :draws, [1])) : 1
+
     dhws::Vector{Float64} = Float64.(repeat([input_index], n_draws))
     cyclones::Vector{Float64} = Float64.(repeat([input_index], n_draws))
 
     # Thermal tolerance bins are stored as lb_interval_ub
-    lb_t, int_t, ub_t = parse.(
+    lb_t, int_t1, int_t2, ub_t = parse.(
         Float64, split(scenario_spec.HeatToleranceGroups, "_")
     )
-    init_heat_tol1, init_heat_tol2 = parse.(
+    init_heat_tol_mean, init_heat_tol_std = parse.(
         Float64, split(scenario_spec.HeatToleranceInit, "_")
     )
     heritability1, heritability2 = parse.(
@@ -223,36 +271,72 @@ function _create_inputs_dataframe(
     plasticity::Int64 = scenario_spec.Plasticity
 
     settle_probability = parse.(Float64, split(scenario_spec.settle_prob, "_"))
-    
+
     settle_probs_kwargs = Dict(
         Symbol(ft*"_settle_probability") => prob
         for (ft, prob) in zip(functional_types, settle_probability)
     )
+
+    # Intervention factors
+    deployment_area = _default_missing(scenario_spec[Symbol("Deployment area")], 0.0)
+    total_corals = _default_missing(scenario_spec.TotalCorals, 1.0)
+
+    n_seeded = [0.0, 0.0, 0.0, 0.0, 0.0]
+    taxa_deployed = ismissing(scenario_spec.species) ? [] : parse.(
+        Int64, split(scenario_spec.species, '_')
+    )
+    n_seeded[taxa_deployed] .= total_corals / length(taxa_deployed)
+    corals_deployed = Dict(
+        Symbol(ft*"_n_seeded") => n_corals
+        for (ft, n_corals) in zip(functional_types, n_seeded)
+    )
+
+    enhancement_mean, enhancement_std = parse.(
+        Float64, split(_default_missing(scenario_spec.Enhancement, "0_0"), '_')
+    )
+
+    intervention_start = _default_missing(
+        scenario_spec.InterventionYears_start, dataset.year[1]
+    ) - dataset.year[1]
+
+    duration = _default_missing(scenario_spec.duration, 0.0)
+    frequency = _default_missing(scenario_spec.frequency, 0.0)
+    n_dep_locations = count(x->x=='/', _default_missing(scenario_spec.Reef_siteids, ""))
+
+    coral_dict = merge(settle_probs_kwargs, corals_deployed)
+
     return DataFrame(;
         dhw_scenario=dhws,
         cyc_scenaio=cyclones,
         RCP=repeat([rcp], n_draws),
         thermal_tol_lb=repeat([lb_t], n_draws),
-        thermal_tol_int=repeat([int_t], n_draws),
+        thermal_tol_int1=repeat([int_t1], n_draws),
+        thermal_tol_int2=repeat([int_t2], n_draws),
         thermal_tol_ub=repeat([ub_t], n_draws),
-        init_heat_tol1=repeat([init_heat_tol1], n_draws),
-        init_heat_tol2=repeat([init_heat_tol2], n_draws),
+        init_heat_tol_mean=repeat([init_heat_tol_mean], n_draws),
+        init_heat_tol_std=repeat([init_heat_tol_std], n_draws),
         heritability1=repeat([heritability1], n_draws),
         heritability2=repeat([heritability2], n_draws),
         plasticity=repeat([plasticity], n_draws),
-        settle_probs_kwargs...
+        intervention_start=repeat([intervention_start], n_draws),
+        intervention_duration=repeat([duration], n_draws),
+        intervention_frequency=repeat([frequency], n_draws),
+        deployment_area=repeat([deployment_area], n_draws),
+        n_deployment_locations=repeat([n_dep_locations], n_draws),
+        enhancement_mean=repeat([enhancement_mean], n_draws),
+        enhancement_std=repeat([enhancement_std], n_draws),
+        coral_dict...
     )
 end
 
 """
-    _get_output_path(result_loc::String)::String
+    _get_result_paths(result_dir::String)::Vector{String}
 
-Get the filename of the netcdf file contained in the result subdirectory. Must have a NetCDF
-suffix and begin with `NetCDF_Scn`.
+Get the names of all result netcdf result files in the given directory. Assumes filenames
+match "NetCDF_Scn.*.nc.
 """
-function _get_output_path(result_loc::String)::Vector{String}
-    res_subdir = joinpath(result_loc, "results")
-    possible_files = filter(isfile, readdir(res_subdir, join=true))
+function _get_result_paths(result_dir::String)::Vector{String}
+    possible_files = filter(isfile, readdir(result_dir, join=true))
     possible_files = filter(x -> occursin(r"NetCDF_Scn.*.nc", x), possible_files)
     if length(possible_files) == 0
         error("Unable to find result netcdf file in subdirectory $(res_subdir)")
@@ -261,12 +345,12 @@ function _get_output_path(result_loc::String)::Vector{String}
 end
 
 """
-    _get_gpkg_path(result_loc::String)
+    _get_gpkg_path(data_dir::String)
 
-Get the path to the gpkg file contained in the site_data subdirectory. 
+Get the path to the gpkg file contained in the site_data subdirectory.
 """
-function _get_gpkg_path(result_loc::String)
-    gpkg_dir = joinpath(result_loc, "site_data")
+function _get_gpkg_path(data_dir::String)
+    gpkg_dir = joinpath(data_dir, "site_data")
     possible_files = filter(isfile, readdir(gpkg_dir, join=true))
     possible_files = filter(x -> occursin(".gpkg", x), possible_files)
     if length(possible_files) == 0
@@ -321,7 +405,7 @@ function _get_reefids(reef_cube::YAXArray)::Vector{String}
     reef_ids = split(reef_cube.properties["flag_meanings"], " ")
     if (reef_ids[1] == reef_ids[2])
         return reef_ids[2:end] # Possible first element duplication
-    end 
+    end
     return reef_ids
 end
 
@@ -370,16 +454,117 @@ function reformat_cube(cscape_cube::YAXArray)::YAXArray
     return cscape_cube
 end
 
+function _throw_missing_variable(dataset::Dataset, var_name::Symbol)::Nothing
+    throw(ArgumentError("NetCDF $(dataset.properties["scenario_ID"]) does not \
+                         contain $(String.(var_name)) variable"))
+    return nothing
+end
+
 """
-    _cscape_relative_cover(dataset::Dataset)::YAXArray
+    drop_sum(cube::YAXArray, dims)::YAXArray
+
+Sum over given dimensions and drop the same given dimensions.
+"""
+function _drop_sum(cube::YAXArray, red_dims)::YAXArray
+    return dropdims(sum(cube, dims=red_dims), dims=red_dims)
+end
+
+"""
+    _cscape_relative_cover(dataset::Dataset; loc_mask::BitVector=[])::YAXArray
 
 Calculate relative cover metric for cscape data.
 """
-function _cscape_relative_cover(dataset::Dataset)::YAXArray
-    loc_mask = dataset.properties["location_mask"]
-    cube = reformat_cube(dataset.cover, loc_mask)
-    dim_sum = (:thermal_tolerance, :intervened, :taxa)
-    return dropdims(sum(cube, dims=dim_sum), dims=dim_sum)
+function _cscape_relative_cover(dataset::Dataset)::Array
+    n_locs::Int64 = length(dataset.reef_sites)
+
+    # Throw error and identify specific misformatted file.
+    if !haskey(dataset.cubes, :cover)
+        _throw_missing_variable(dataset, :cover)
+    end
+    if !haskey(dataset.cubes, :area)
+        _throw_missing_variable(dataset, :area)
+    end
+    if !haskey(dataset.cubes, :k)
+        _throw_missing_variable(dataset, :k)
+    end
+    dim_sum = (:ft, :thermal_tolerance)
+
+    multi_scenario::Bool = :draws in keys(dataset.axes)
+
+    n_scens = multi_scenario ? length(dataset.draws) : 0
+    n_tsteps = length(dataset.year)
+
+    if multi_scenario
+        relative_cover = zeros(n_scens, n_tsteps, n_locs)
+        reshape_tuple = (1, 1, n_locs)
+    else
+        relative_cover = zeros(n_tsteps, n_locs)
+        reshape_tuple = (1, n_locs)
+    end
+
+    # Calculate relative cover from non-intervened areas
+    # Force load with dimensions [intervened ⋅ reef_sites]
+    area = dataset.area.data[:, :]
+    relative_cover .= _drop_sum(
+        dataset.cover[intervened=1], dim_sum
+    ) .* reshape(
+        area[1, :] .* dataset.k[:],
+        reshape_tuple
+    ) ./ 100
+
+    relative_cover .+= _drop_sum(
+        dataset.cover[intervened=2], dim_sum
+    ) .* reshape(
+        area[2, :] .* dataset.k[:],
+        reshape_tuple
+    ) ./ 100
+
+    # ADRIA assumes a shape of [timesteps ⋅ locations ⋅ scenarios]
+    if multi_scenario
+        return permutedims(relative_cover, (2, 3, 1))
+    end
+    return relative_cover
+end
+
+"""
+    _n_scenarios(dataset::Dataset)::Int64
+
+Get the number of scenario or draws in a dataset.
+"""
+function _n_scenarios(dataset::Dataset)::Int64
+    if :draws in keys(dataset.axes)
+        return length(dataset.draws)
+    end
+    return 1
+end
+
+function _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
+    n_locs::Int64 = length(datasets[1].reef_sites)
+
+    # Assume same number of locations and timesteps for every dataset
+    n_scens::Vector{Int64} = _n_scenarios.(datasets)
+
+    relative_cover = ZeroDataCube(
+        T=Float64,
+        timesteps=datasets[1].year.val,
+        sites=1:n_locs,
+        scenarios=1:sum(n_scens)
+    )
+
+    cur_indx = 1
+    for (n_sc, dataset) in zip(n_scens, datasets)
+        if n_sc == 1
+            relative_cover[scenarios=cur_indx] = _cscape_relative_cover(
+                dataset
+            )
+        else
+            relative_cover[scenarios=cur_indx:(cur_indx+n_sc-1)] = _cscape_relative_cover(
+                dataset
+            )
+        end
+        cur_indx += n_sc
+    end
+    return relative_cover
 end
 
 """
@@ -388,7 +573,7 @@ end
 Calculate relative taxa cover metric for cscape data.
 
 Note: It would be possible to instead write this function as a wrapper of the already s
-implemented metric. However the metric computes the metrics for individual scenarios one 
+implemented metric. However the metric computes the metrics for individual scenarios one
 at a time so it would be slower.
 """
 function _cscape_relative_taxa_cover(
@@ -435,7 +620,7 @@ function _relative_size_class_cover(
     size_desc::AbstractArray{<:Real},
     lower_bound::Float64,
     upper_bound::Float64
-)::YAXArray 
+)::YAXArray
     # Get indices corresponding to given size classes
     lb_indices::Vector{Int} = _create_juvenile_index_threshold(size_desc, lower_bound)
     ub_indices::Vector{Int} = _create_juvenile_index_threshold(size_desc, upper_bound)
@@ -461,15 +646,15 @@ function _relative_size_class_cover(
     count = count .* coral_areas
     for coral_class in relative_cover.taxa
         all_relative_cover = dropdims(sum(
-            count[taxa=At(coral_class)], 
+            count[taxa=At(coral_class)],
             dims=:size_bins
         ), dims=:size_bins)
         all_relative_cover[all_relative_cover .== 0] .= 1.0
         relative_cover[taxa=At(coral_class)] = dropdims(sum(
             count[
-                taxa=At(coral_class), 
+                taxa=At(coral_class),
                 size_bins=At(lb_indices[coral_class]:ub_indices[coral_class])
-            ], 
+            ],
             dims=:size_bins
         ), dims=:size_bins) ./ all_relative_cover
     end
