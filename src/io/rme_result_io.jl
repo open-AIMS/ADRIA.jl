@@ -126,7 +126,7 @@ function load_results(
     outcomes[:relative_taxa_cover] =
         (outcomes[:total_taxa_cover] ./ 100) ./ reshape(geodata.k, (1, n_locations, 1))
 
-    mod_spec::DataFrame = _create_model_spec(inputs)
+    mod_spec::DataFrame = _create_model_spec(RMEResultSet, inputs)
 
     return RMEResultSet(
         name,
@@ -214,7 +214,7 @@ function _reformat_cube(::Type{RMEResultSet}, cube::YAXArray)::YAXArray
 end
 
 """
-    _create_model_spec(scenario_spec::DataFrame)::DataFrame
+_create_model_spec(::Type{RMEResultSet}, scenario_spec::DataFrame)::DataFrame
 
 Recreate a partial model specification to allow more analysis utilities.
 
@@ -222,7 +222,7 @@ Note: The model specification is incomplete as not all scenario data is extracte
 ReefModEngine. This partial specification will need to be updated as updates are made to
 ReefModEngine.
 """
-function _create_model_spec(scenario_spec::DataFrame)::DataFrame
+function _create_model_spec(::Type{RMEResultSet}, scenario_spec::DataFrame)::DataFrame
     # Construct default model spec
     fieldname::Vector{Symbol} = [
         :dhw_tolerance,

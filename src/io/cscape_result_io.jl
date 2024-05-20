@@ -21,6 +21,7 @@ struct CScapeResultSet <: ResultSet
 
     inputs
     sim_constants
+    model_spec::DataFrame
 
     # raw::AbstractArray
     outcomes
@@ -49,6 +50,7 @@ function load_results(::Type{CScapeResultSet}, data_dir::String, result_files::V
 
     datasets::Vector{Dataset} = open_dataset.(result_files)
     inputs::DataFrame = _recreate_inputs_dataframe(datasets, scenario_spec)
+    model_spec::DataFrame = _create_model_spec(CScapeResultSet, inputs)
 
     # Assume all result set have the same locations
     raw_set = datasets[1]
@@ -136,6 +138,7 @@ function load_results(::Type{CScapeResultSet}, data_dir::String, result_files::V
         datasets,
         inputs,
         SimConstants(),
+        model_spec,
         outcomes,
         reformat_cube(raw_set.coral_size_diameter)
     )
@@ -329,6 +332,100 @@ function _create_inputs_dataframe(
     )
 end
 
+function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::DataFrame
+    # Retrieve coral factors
+    factor_names::Vector{String} = names(scenario_spec)
+    # Settler Probability
+    settle_names = filter(factor -> contains(factor, "settle_probability"), factor_names)
+    settle_readable = human_readable_name.(settle_names)
+    settle_names = Symbol.(settle_names)
+    # Number of corals seeded
+    seeded_names = filter(factor -> contains(factor, "n_seeded"), factor_names)
+    seeded_readable = human_readable_name.(seeded_names)
+    seeded_names = Symbol.(seeded_names)
+
+    # Construct default model spec
+    fieldname::Vector{Symbol} = [
+        :dhw_scenario, # Environment Layer
+        :cyc_scenaio,
+        :thermal_tol_lb, # Corals
+        :thermal_tol_int1,
+        :thermal_tol_int2,
+        :thermal_tol_ub,
+        :init_heat_tol_mean,
+        :init_heat_tol_std,
+        :heritability1,
+        :heritability2,
+        :plasticity,
+        :intervention_start, # Interventions
+        :intervention_duration,
+        :intervention_frequency,
+        :deployment_area,
+        :n_deployment_locations,
+        :enhancement_mean,
+        :enhancement_std,
+        settle_names..., # Corals
+        seeded_names... # Intervention
+    ]
+    descriptions::Vector{String} = [
+        "DHW Scenario",
+        "Cyclone Scenario",
+        "Natural thermal tolerance lower bound",
+        "Natural thermal tolerance int1",
+        "Natural thermal tolerance int2",
+        "Natural thermal tolerance upper bound",
+        "Initial natural thermal tolerance mean",
+        "Initial natural thermal tolerance standard deviation",
+        "Heritability mean",
+        "Heritability standard deviation",
+        "Plasticity",
+        "First Intervention Year",
+        "Duration of interventions (years)",
+        "Frequency of interventions after first year (years)",
+        "Area of coral deployments (m^2)",
+        "Number of locations intervened on",
+        "Artificial thermal tolerance enhancement mean",
+        "Artificial thermal tolerance enhancement standard deviation",
+        settle_readable...,
+        seeded_readable...
+    ]
+    human_names::Vector{String} = [
+        "DHW scenario",
+        "Cyclone scenario",
+        "Thermal Tolerance Lower Bound",
+        "Thermal Tolerance int1",
+        "Thermal Tolerance int2",
+        "Thermal Tolerance Upper Bound",
+        "Initial Thermal Tolerance Mean",
+        "Initial Thermal Tolerance Standard deviation",
+        "Heritability Mean",
+        "Heritability Standard Deviation",
+        "Plasticity",
+        "First Intervention Year",
+        "Duration of Interventions",
+        "Frequency of Interventions",
+        "Area of Deployments",
+        "Number of Deployment Locations",
+        "Enhancement Mean",
+        "Enhancement Standard Deviation",
+        settle_readable...,
+        seeded_readable...
+    ]
+    component::Vector{String} = vcat(
+        repeat(["EnvironmentalLayer"], 2),
+        repeat(["Coral"], 9),
+        repeat(["Intervention"], 7),
+        repeat(["Coral"], length(settle_names)),
+        repeat(["Intervention"], length(seeded_names))
+    )
+    return DataFrame(
+        component=component,
+        fieldname=fieldname,
+        description=descriptions,
+        name=human_names
+    )
+end
+
 """
     _get_result_paths(result_dir::String)::Vector{String}
 
@@ -475,8 +572,6 @@ end
 Calculate relative cover metric for cscape data.
 """
 function _cscape_relative_cover(dataset::Dataset)::Array
-    n_locs::Int64 = length(dataset.reef_sites)
-
     # Throw error and identify specific misformatted file.
     if !haskey(dataset.cubes, :cover)
         _throw_missing_variable(dataset, :cover)
@@ -492,7 +587,8 @@ function _cscape_relative_cover(dataset::Dataset)::Array
     multi_scenario::Bool = :draws in keys(dataset.axes)
 
     n_scens = multi_scenario ? length(dataset.draws) : 0
-    n_tsteps = length(dataset.year)
+    n_tsteps::Int64 = length(dataset.year)
+    n_locs::Int64 = length(dataset.reef_sites)
 
     if multi_scenario
         relative_cover = zeros(n_scens, n_tsteps, n_locs)
