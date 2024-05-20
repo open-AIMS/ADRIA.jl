@@ -30,7 +30,7 @@ function setup_cache(domain::Domain)::NamedTuple
 
     cache = (
         # sf=zeros(n_groups, n_sites),  # stressed fecundity, commented out as it is disabled
-        fec_all=zeros(n_group_and_size, n_locs),  # all fecundity
+        fec_all=zeros(n_groups, n_sizes, n_locs),  # all fecundity
         fec_scope=zeros(n_groups, n_locs),  # fecundity scope
         recruitment=zeros(n_groups, n_locs),  # coral recruitment
         dhw_step=zeros(n_locs),  # DHW for each time step
@@ -456,7 +456,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     fog_years::Int64 = param_set[At("fog_years")]  # number of years to fog
 
     loc_k_area::Matrix{Float64} = cache.site_k_area
-    fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
+    fec_params_per_m²::Matrix{Float64} = _to_group_size(domain.coral_growth, corals.fecundity) # number of larvae produced per m²
 
     # Caches
     conn = domain.conn
@@ -477,8 +477,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     depth_coeff .= depth_coefficient.(site_data.depth_med)
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
-    C_cover::Array{Float64,3} = zeros(tf, n_group_and_size, n_locs)
-    C_cover[1, :, :] .= domain.init_coral_cover
+    C_cover::Array{Float64,4} = zeros(tf, n_groups, n_sizes, n_locs)
+    C_cover[1, :, :] .= _group_cover_locs(domain.coral_growth, domain.init_coral_cover)
     cover_tmp = zeros(n_locs)
 
     # Locations that can support corals
@@ -574,7 +574,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_mean_t_1::Matrix{Float64} = repeat(corals.dist_mean, 1, n_locs)
+    c_mean_t_1::Array{Float64, 3} = repeat(_to_group_size(
+        domain.coral_growth, corals.dist_mean
+    ), 1, 1, n_locs)
 
     c_mean_t = copy(c_mean_t_1)
 
@@ -618,7 +620,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     cover_blocks::Vector{Matrix{CoverBlock}} = [
         DynamicCoralCoverModel.blocks_model.CoverBlock.(
-            _to_group_size(domain.coral_growth, C_cover[1, :, loc] .* (site_data.area[loc] .* site_data.k[loc])),
+            C_cover[1, :, :, loc] .* (site_data.area[loc] .* site_data.k[loc]),
             C_bins[:, 1:end-1],
             C_bins[:, 2:end]
         ) for loc in 1:n_locs
@@ -647,9 +649,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         DynamicCoralCoverModel.blocks_model.apply_changes!.(size_classes, change_view)
         recruitment .*= reshape(temp_change[:, 1, :], (n_groups, n_locs))
 
-        C_tmp .= _group_cover_locs(
-            domain.coral_growth,
-            C_cover[tstep-1, :, :] .* (site_data.area .* site_data.k)'
+        C_tmp .= C_cover[tstep-1, :, :, :] .* reshape(
+            site_data.area .* site_data.k, (1, 1, n_locs)
         )
 
         for i in 1:n_locs
@@ -678,9 +679,12 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         C_cover[tstep, :, valid_locs] .= C_t[:, valid_locs]
 
         if tstep <= tf
+            if isdefined(Main, :Infiltrator)
+                Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
+            end
             # Natural adaptation
             adjust_DHW_distribution!(
-                @view(C_cover[(tstep-1):tstep, :, :]), n_sizes, c_mean_t, p.r
+                @view(C_cover[(tstep-1), :, :]), c_mean_t, p.r
             )
 
             # Set values for t to t-1

@@ -472,6 +472,28 @@ function adjust_DHW_distribution!(
 
     return nothing
 end
+function adjust_DHW_distribution!(
+    cover_t_1::SubArray{T, 3},
+    dist_t::AbstractArray{T, 3},
+    growth_rate::Matrix{T}
+)::Nothing where {T<:Float64}
+    groups, _, locs = axes(cover_t_1)
+
+    for grp in groups
+        for loc in locs
+            if sum(@view(cover_t_1[grp, :, loc])) == 0.0
+                continue
+            end
+
+            @views _shift_distributions!(
+                cover_t_1[grp, :, loc],
+                growth_rate[grp, :],
+                dist_t[grp, :, loc]
+            )
+        end
+    end
+    return nothing
+end
 
 """
     settler_DHW_tolerance!(c_mean_t_1::Matrix{F}, c_mean_t::Matrix{F}, k_area::Vector{F}, tp::AbstractMatrix{F}, settlers::Matrix{F}, fec_params_per_m²::Vector{F}, h²::F)::Nothing where {F<:Float64}
@@ -556,6 +578,10 @@ end
                      fec_params::Array{Float64}, C_t::Array{Float64, 2},
                      k_area::Array{Float64})::Nothing
 
+    fecundity_scope!(fec_groups::AbstractMatrix{T}, fec_all::AbstractArray{T, 3},
+                     fec_params::AbstractMatrix{T}, C_t::AbstractArray{T, 3},
+                     site_area::AbstractMatrix{T})::Nothing where {T<:Float64}
+
 The scope that different coral groups and size classes have for
 producing larvae without consideration of environment.
 
@@ -590,7 +616,21 @@ function fecundity_scope!(
 
     return nothing
 end
+function fecundity_scope!(
+    fec_groups::AbstractMatrix{T},
+    fec_all::AbstractArray{T, 3},
+    fec_params::AbstractMatrix{T},
+    C_t::AbstractArray{T, 3},
+    site_area::AbstractMatrix{T}
+)::Nothing where {T<:Float64}
 
+    # Dimensions of fec all are [groups ⋅ sizes ⋅ locations]
+    fec_all .= fec_params .* C_t .* reshape(site_area, (1, size(site_area)...))
+    # Sum over size classes
+    @views fec_groups[:, :] .= dropdims(sum(fec_all, dims=2), dims=2)
+
+    return nothing
+end
 
 """
     stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
