@@ -144,7 +144,11 @@ function load_results(::Type{CScapeResultSet}, data_dir::String, result_files::V
     )
 end
 
-# FIX THIS MESS
+"""
+    _manual_site_additions(geodata::DataFrame, loc_ids, dataset::Dataset)::DataFrame
+
+Add missing sites to geopackage
+"""
 function _manual_site_additions(geodata::DataFrame, loc_ids, dataset::Dataset)::DataFrame
     row_indx::Int64 = findfirst(x->x=="Moore_MR_S_39", geodata.reef_siteid)
     row_cpy = copy(geodata[row_indx, :])
@@ -184,13 +188,6 @@ function _manual_site_additions(geodata::DataFrame, loc_ids, dataset::Dataset)::
     return geodata
 end
 
-function concatenate_cubes(datasets::Vector{Dataset}, variable::Symbol)::YAXArray
-    cubes::Vector{YAXArray} = [dataset.cubes[variable] for dataset in datasets]
-    n_draws = sum([length(cube.draws) for cube in cubes], dims=1)[1]
-    final_cube = cat(cubes..., dims=Dim{:draws}(1:n_draws))
-    return final_cube
-end
-
 """
     _get_scenario_id(datasets::Dataset)::Int
 
@@ -224,13 +221,18 @@ function _default_missing(value, default)
     return ismissing(value) ? default : value
 end
 
+"""
+    _recreate_inputs_dataframe(datasets::Vector{Dataset}, scenario_spec::DataFrame)::DataFrame
+
+Construct the inputs datadrame from dataset properties and scenario table.
+"""
 function _recreate_inputs_dataframe(
     datasets::Vector{Dataset}, scenario_spec::DataFrame
 )::DataFrame
     # Get rows from scenario spec dataframe corresponding to the scenarios
     scenario_idxs::Vector{Int} =
         [findfirst(x->x==idx, scenario_spec.ID) for idx in _get_scenario_id.(datasets)]
-    scenario_rows::Vector{DataFrameRow} = [scenario_spec[idx-1, :] for idx in scenario_idxs]
+    scenario_rows::Vector{DataFrameRow} = [scenario_spec[idx + i * 100, :] for (i, idx) in enumerate(scenario_idxs)]
 
     # Convert climate scenarios to factors
     rcps::Vector{Float64} =
@@ -249,6 +251,11 @@ function _recreate_inputs_dataframe(
     scenarios::DataFrame = reduce(vcat, fragmented_spec)
     return scenarios
 end
+"""
+    _create_inputs_dataframe(dataset::Dataset, scenario_spec::DataFrameRow, rcp::Float64, input_index::Int)::DataFrame
+
+Construct inputs dataframe for a singular netcdf file.
+"""
 function _create_inputs_dataframe(
     dataset::Dataset,
     scenario_spec::DataFrameRow,
@@ -310,7 +317,7 @@ function _create_inputs_dataframe(
 
     return DataFrame(;
         dhw_scenario=dhws,
-        cyc_scenaio=cyclones,
+        cyc_scenario=cyclones,
         RCP=repeat([rcp], n_draws),
         thermal_tol_lb=repeat([lb_t], n_draws),
         thermal_tol_int1=repeat([int_t1], n_draws),
@@ -332,6 +339,11 @@ function _create_inputs_dataframe(
     )
 end
 
+"""
+    _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::DataFrame
+
+Create partial model specification from scenario specification.
+"""
 function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::DataFrame
     # Retrieve coral factors
     factor_names::Vector{String} = names(scenario_spec)
@@ -339,15 +351,22 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
     settle_names = filter(factor -> contains(factor, "settle_probability"), factor_names)
     settle_readable = human_readable_name.(settle_names)
     settle_names = Symbol.(settle_names)
+    settle_ptype = repeat(["continuous"], length(settle_names))
+    settle_lb = repeat([0.0], length(settle_names))
+    settle_ub = repeat([1.0], length(settle_names))
+
     # Number of corals seeded
     seeded_names = filter(factor -> contains(factor, "n_seeded"), factor_names)
     seeded_readable = human_readable_name.(seeded_names)
     seeded_names = Symbol.(seeded_names)
+    seeded_ptype = repeat(["continuous"], length(settle_names))
+    seeded_lb = repeat([0.0], length(seeded_names))
+    seeded_ub = repeat([5e7], length(seeded_names))
 
     # Construct default model spec
     fieldname::Vector{Symbol} = [
         :dhw_scenario, # Environment Layer
-        :cyc_scenaio,
+        :cyc_scenario,
         :thermal_tol_lb, # Corals
         :thermal_tol_int1,
         :thermal_tol_int2,
@@ -411,6 +430,75 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         settle_readable...,
         seeded_readable...
     ]
+    ptype::Vector{String} = [
+        "unordered categorical",
+        "unordered categorical",
+        "continuous",
+        "continuous",
+        "continuous",
+        "continuous",
+        "continuous",
+        "continuous",
+        "continuous",
+        "continuous",
+        "continuous",
+        "ordered categorical",
+        "ordered categorical",
+        "ordered categorical",
+        "continuous",
+        "ordered discrete",
+        "continuous",
+        "continuous",
+        settle_ptype...,
+        seeded_ptype...
+    ]
+    lower_bound::Vector{Float64} = [
+        1.0,
+        1.0,
+        -6.0,
+        0.0,
+        0.0,
+        8.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        settle_lb...,
+        seeded_lb...
+    ]
+    upper_bound::Vector{Float64} = [
+        50.0,
+        50.0,
+        0.0,
+        40.0,
+        24.0,
+        30.0,
+        1.0,
+        3.0,
+        1.0,
+        0.5,
+        1.0,
+        25.0,
+        10.0,
+        10.0,
+        maximum(scenario_spec.deployment_area),
+        100.0,
+        30.0,
+        2.0,
+        settle_ub...,
+        seeded_ub...
+    ]
+    dist_params::Vector{String} = [
+        string((lb, ub)) for (lb, ub) in zip(lower_bound, upper_bound)
+    ]
     component::Vector{String} = vcat(
         repeat(["EnvironmentalLayer"], 2),
         repeat(["Coral"], 9),
@@ -422,7 +510,11 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         component=component,
         fieldname=fieldname,
         description=descriptions,
-        name=human_names
+        name=human_names,
+        ptype=ptype,
+        dist_params=dist_params,
+        lower_bound=lower_bound,
+        upper_bound=upper_bound
     )
 end
 
@@ -662,103 +754,6 @@ function _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
     end
     return relative_cover
 end
-
-"""
-    _cscape_relative_taxa_cover(dataset::Dataset)::YAXArray
-
-Calculate relative taxa cover metric for cscape data.
-
-Note: It would be possible to instead write this function as a wrapper of the already s
-implemented metric. However the metric computes the metrics for individual scenarios one
-at a time so it would be slower.
-"""
-function _cscape_relative_taxa_cover(
-    dataset::Dataset, location_area::AbstractArray
-)::YAXArray
-    loc_mask = dataset.properties["location_mask"]
-    cube = reformat_cube(dataset.cover, loc_mask)
-    dim_sum = (:thermal_tolerance, :intervened)
-    cube = dropdims(sum(cube, dims=dim_sum), dims=dim_sum)
-    # Reshape to allow vectorised multiplication
-    location_area = reshape(location_area, (1, length(cube.sites), 1, 1))
-    cube = dropdims(sum(cube .* location_area, dims=:sites), dims=:sites)
-    return cube ./ sum(location_area)
-end
-
-function _cscape_relative_juvenile(dataset::Dataset)::YAXArray
-    loc_mask = dataset.properties["location_mask"]
-    cover = reformat_cube(dataset.cover, loc_mask)
-    size_counts = reformat_cube(dataset.size_classes, loc_mask)
-    size_desc = reformat_cube(dataset.coral_size_diameter)
-    return _relative_size_class_cover(cover, size_counts, size_desc, 0.0, 5.0)
-end
-
-function _safeFindFirst(condition, iterable)
-    ind = findfirst(condition, iterable)
-    isnothing(ind) && return length(iterable)
-    return ind
-end
-
-"""
-    _create_juvenile_index_threshold(size_classes::YAXArray, threshold::Float64)::Vector{Int64}
-
-Juveniles are defined as less then 5cm in diameter. Find the size indices that correspond to the juvenile size classes.
-"""
-function _create_juvenile_index_threshold(
-    size_classes::YAXArray, threshold::Float64
-)::Vector{Int64}
-    return [_safeFindFirst(x -> x > threshold, size_classes[taxa=At(i)]) for i in size_classes.taxa]
-end
-
-function _relative_size_class_cover(
-    cover::AbstractArray{<:Real},
-    count::AbstractArray{<:Real},
-    size_desc::AbstractArray{<:Real},
-    lower_bound::Float64,
-    upper_bound::Float64
-)::YAXArray
-    # Get indices corresponding to given size classes
-    lb_indices::Vector{Int} = _create_juvenile_index_threshold(size_desc, lower_bound)
-    ub_indices::Vector{Int} = _create_juvenile_index_threshold(size_desc, upper_bound)
-
-    # Sum number of corals over
-    count = dropdims(sum(
-        count, dims=(:thermal_tolerance, :intervened)
-    ), dims=(:thermal_tolerance, :intervened))
-    # convert coral diameter to areas and convert cm^2 to m^2
-    coral_areas = (size_desc .* size_desc .* π) ./ 4e-4
-    # Force reshape and disk array to load data and not compute reshape lazily
-    coral_areas = reshape(
-        coral_areas, (1, 1, length(coral_areas.taxa), 1, length(coral_areas.size_bins))
-    )[:, :, :, :, :]
-    # Pre-allocate Array
-    relative_cover = ZeroDataCube(
-        ;T=Float64,
-        timesteps=collect(count.timesteps),
-        sites=collect(count.sites),
-        taxa=collect(count.taxa),
-        scenarios=collect(count.scenarios)
-    )
-    count = count .* coral_areas
-    for coral_class in relative_cover.taxa
-        all_relative_cover = dropdims(sum(
-            count[taxa=At(coral_class)],
-            dims=:size_bins
-        ), dims=:size_bins)
-        all_relative_cover[all_relative_cover .== 0] .= 1.0
-        relative_cover[taxa=At(coral_class)] = dropdims(sum(
-            count[
-                taxa=At(coral_class),
-                size_bins=At(lb_indices[coral_class]:ub_indices[coral_class])
-            ],
-            dims=:size_bins
-        ), dims=:size_bins) ./ all_relative_cover
-    end
-    cover = dropdims(sum(
-        cover, dims=(:thermal_tolerance, :intervened)
-    ), dims=(:thermal_tolerance, :intervened))
-
-    return dropdims(sum(relative_cover .* cover, dims=:taxa), dims=:taxa) end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
     rcps = rs.RCP
