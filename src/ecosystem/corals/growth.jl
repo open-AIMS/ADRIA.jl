@@ -694,8 +694,6 @@ function settler_DHW_tolerance!(
     return nothing
 end
 
-
-
 """
     fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2},
                      fec_params::Array{Float64}, C_t::Array{Float64, 2},
