@@ -246,6 +246,10 @@ end
     bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
         depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix,
         dist_t::Matrix, prop_mort::SubArray{Float64}, n_sizes::Int64)::Nothing
+    bleaching_mortality!(cover::AbstractArray{Float64, 3}, dhw::Vector{Float64},
+        depth_coeff::Vector{Float64}, stdev::AbstractMatrix{Float64},
+        dist_t_1::AbstractArray{Float64, 3}, dist_t::AbstractArray{Float64, 3},
+        prop_mort::SubArray{Float64})::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
 all non-juvenile (> 5cm diameter) size classes.
@@ -367,7 +371,71 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
 
     return nothing
 end
+function bleaching_mortality!(
+    cover::AbstractArray{Float64, 3},
+    dhw::Vector{Float64},
+    depth_coeff::Vector{Float64},
+    stdev::AbstractMatrix{Float64},
+    dist_t_1::AbstractArray{Float64, 3},
+    dist_t::AbstractArray{Float64, 3},
+    prop_mort::SubArray{Float64}
+)::Nothing
+    n_groups, n_sizes, n_locs = size(cover)
 
+    non_juveniles = 2:n_sizes
+
+    # Adjust distributions for each functional group over all locations, ignoring juveniles
+    # we assume the high background mortality of juveniles includes DHW mortality
+    for loc in 1:n_locs
+        # Skip locations that have no heat stress
+        if dhw[loc] == 0.0
+            continue
+        end
+
+        # Determine bleaching mortality for each non-juvenile species/size class
+        for grp in 1:n_groups
+            for sc in non_juveniles
+                # Skip location if there is no population
+                if cover[grp, sc, loc] == 0.0
+                    continue
+                end
+
+                μ::Float64 = dist_t_1[grp, sc, loc]
+                affected_pop::Float64 = truncated_normal_cdf(
+                    # Use previous mortality threshold as minimum
+                    dhw[loc], μ, stdev[grp, sc], prop_mort[1, grp, sc, loc], μ + HEAT_UB
+                )
+
+                mort_pop::Float64 = 0.0
+                if affected_pop > 0.0
+                    # Calculate depth-adjusted bleaching mortality
+                    mort_pop = (affected_pop * depth_coeff[loc])
+
+                    # Set values close to 0.0 (e.g., 1e-214) to 0.0
+                    # https://github.com/JuliaLang/julia/issues/23376#issuecomment-324649815
+                    if (mort_pop + one(mort_pop)) ≈ one(mort_pop)
+                        mort_pop = 0.0
+                    end
+                end
+
+                prop_mort[2, grp, sc, loc] = mort_pop
+                if mort_pop > 0.0
+                    # Re-create distribution
+                    # Use same stdev as target size class to maintain genetic variance
+                    # pers comm K.B-N (2023-08-09 16:24 AEST)
+                    dist_t[grp, sc, loc] = truncated_normal_mean(
+                        μ, stdev[grp, sc], mort_pop, μ + HEAT_UB
+                    )
+
+                    # Update population
+                    cover[grp, sc, loc] = cover[grp, sc, loc] * (1.0 - mort_pop)
+                end
+            end
+        end
+    end
+
+    return nothing
+end
 
 """
     breeders(μ_o::T, μ_s::T, h²::T)::T where {T<:Float64}
