@@ -478,7 +478,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
     C_cover::Array{Float64,4} = zeros(tf, n_groups, n_sizes, n_locs)
-    C_cover[1, :, :] .= _group_cover_locs(domain.coral_growth, domain.init_coral_cover)
+    C_cover[1, :, :, :] .= _group_cover_locs(domain.coral_growth, domain.init_coral_cover)
     cover_tmp = zeros(n_locs)
 
     # Locations that can support corals
@@ -640,8 +640,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Preallocate memory for temporaries
     temp_change = ones(n_groups, n_sizes, n_locs)
-    C_tmp = zeros(n_groups, n_sizes, n_locs)
-    C_t = zeros(n_group_and_size, n_locs)
+    C_t = zeros(n_groups, n_sizes, n_locs)
     cover_copy = zeros(n_groups, n_sizes, n_locs)
 
     for tstep::Int64 in 2:tf
@@ -649,13 +648,13 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         DynamicCoralCoverModel.blocks_model.apply_changes!.(size_classes, change_view)
         recruitment .*= reshape(temp_change[:, 1, :], (n_groups, n_locs))
 
-        C_tmp .= C_cover[tstep-1, :, :, :] .* reshape(
+        C_t .= C_cover[tstep-1, :, :, :] .* reshape(
             site_data.area .* site_data.k, (1, 1, n_locs)
         )
 
         for i in 1:n_locs
-            C_tmp[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
-                C_tmp[:, :, i],
+            C_t[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
+                C_t[:, :, i],
                 recruitment[:, i],
                 size_classes[i],
                 site_data.k[i] * site_data.area[i],
@@ -664,27 +663,23 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             )
         end
 
-        C_tmp ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs))
-        replace!(C_tmp, NaN=>0.0)
-        cover_copy .= copy(C_tmp)
+        C_t ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs))
+        replace!(C_t, NaN=>0.0)
+        cover_copy .= copy(C_t)
 
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
-            @view(C_tmp[:, :, valid_locs]),
+            @view(C_t[:, :, valid_locs]),
             cover_tmp[valid_locs]
         )
-        C_t .= _flatten_cover(domain.coral_growth, C_tmp)
 
         # Update initial condition
-        C_cover[tstep, :, valid_locs] .= C_t[:, valid_locs]
+        C_cover[tstep, :, :, valid_locs] .= C_t[:, :, valid_locs]
 
         if tstep <= tf
-            if isdefined(Main, :Infiltrator)
-                Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
-            end
             # Natural adaptation
             adjust_DHW_distribution!(
-                @view(C_cover[(tstep-1), :, :]), c_mean_t, p.r
+                @view(C_cover[(tstep-1), :, :, :]), c_mean_t, p.r
             )
 
             # Set values for t to t-1
@@ -699,7 +694,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
 
-        loc_coral_cover = sum(C_t; dims=1)  # dims: 1 * nsites
+        loc_coral_cover = dropdims(sum(C_t; dims=(1, 2)), dims=1)  # dims: 1 * nsites
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
 
         # Reset potential settlers to zero
@@ -729,18 +724,17 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             recruitment,
             fec_params_per_m²,
             param_set[At("heritability")],
-            n_sizes
         )
 
         # Add recruits to current cover
-        C_t[p.small, :] .+= recruitment
+        C_t[:, 1, :] .+= recruitment
 
         # Cover copy needs to include recruits so overall mortality can be calculated to
         # apply to cover blocks
-        cover_copy[:, 1, :] .= C_t[p.small, :]
+        cover_copy[:, 1, :] .= C_t[:, 1, :]
 
         # Update available space
-        loc_coral_cover = sum(C_t, dims=1)  # dims: 1 * nsites
+        loc_coral_cover = dropdims(sum(C_t, dims=(1, 2)), dims=1)  # dims: 1 * nsites
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
 
         # Determine intervention locations whose deployment is assumed to occur
