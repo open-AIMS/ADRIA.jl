@@ -887,15 +887,12 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
         # TODO: Update cyclone data to hold data for relevant functional groups
-        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
+        cyclone_mortality!(@views(C_t), cyclone_mortality_scen[tstep, :, :]')
 
         # Update record
-        C_cover[tstep, :, :] .= C_t
+        C_cover[tstep, :, :, :] .= C_t
         cover_copy[cover_copy .== 0] .= 1.0
-        temp_change = _group_cover_locs(
-            domain.coral_growth,
-            C_cover[tstep, :, :]
-        ) ./ cover_copy
+        temp_change = C_cover[tstep, :, :, :] ./ cover_copy
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
@@ -916,8 +913,13 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     wave_scen = nothing
     dhw_tol_mean_log = nothing
 
+    # Final reshape
+    raw = reshape(permutedims(
+        C_cover, (1, 3, 2, 4)
+    ), (tf, n_group_and_size, n_locs))
+
     return (
-        raw=C_cover,
+        raw=raw,
         seed_log=Yseed,
         fog_log=Yfog,
         shade_log=Yshade,
@@ -930,6 +932,7 @@ end
 
 """
     cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
+    cyclone_mortality!(coral_cover::AbstractArray{Float64, 3}, cyclone_mortality::AbstractMatrix{Float64})::Nothing
 
 Apply cyclone mortalities.
 
@@ -942,8 +945,8 @@ function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothi
     # TODO: Move to own file.
 
     # Small class coral mortality
-    coral_deaths_small = coral_cover[coral_params.small, :] .* cyclone_mortality
-    coral_cover[coral_params.small, :] -= coral_deaths_small
+    coral_deaths_small = coral_cover[:, 1, :] .* cyclone_mortality
+    coral_cover[coral_cover, 1, :] -= coral_deaths_small
 
     # Mid class coral mortality
     coral_mid = hcat(collect(Iterators.partition(coral_params.mid, length(coral_params.small)))...)
@@ -959,5 +962,13 @@ function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothi
     # Ensure no negative values
     clamp!(coral_cover, 0.0, 1.0)
 
+    return nothing
+end
+function cyclone_mortality!(
+    coral_cover::AbstractArray{Float64, 3}, cyclone_mortality::AbstractMatrix{Float64}
+)::Nothing
+    n_groups, n_locs = size(cyclone_mortality)
+    coral_deaths = coral_cover .* reshape(cyclone_mortality, (n_groups, 1, n_locs))
+    coral_cover -= coral_deaths
     return nothing
 end
