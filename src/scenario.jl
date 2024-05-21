@@ -573,7 +573,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
 
     # Cache for proportional mortality and coral population increases
-    bleaching_mort = zeros(tf, n_group_and_size, n_locs)
+    bleaching_mort = zeros(tf, n_groups, n_sizes, n_locs)
 
     #### End coral constants
 
@@ -878,11 +878,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             C_t,
             dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
             depth_coeff,
-            corals.dist_std,
+            c_std,
             c_mean_t_1,
             c_mean_t,
-            @view(bleaching_mort[(tstep-1):tstep, :, :]),
-            n_sizes
+            @view(bleaching_mort[(tstep-1):tstep, :, :, :])
         )
 
         # Coral deaths due to selected cyclone scenario
