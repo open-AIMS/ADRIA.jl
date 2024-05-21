@@ -86,7 +86,7 @@ end
 
 Reshape vector to shape [groups ⋅ sizes]
 """
-function _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+function _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{T})::Matrix{T} where {T<:Union{Float32, Float64, Bool}}
     # Data is reshaped to size ⋅ groups then transposed to maintain expected order
     return Matrix(reshape(data, (growth_spec.n_sizes, growth_spec.n_groups))')
 end
@@ -520,14 +520,16 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     taxa_names::Vector{String} = collect(param_set.factors[occursin.("N_seed_", param_set.factors)])
 
     # Identify taxa and size class to be seeded
-    seed_sc = (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id
+    seed_sc = _to_group_size(domain.coral_growth, (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id)
 
     # Extract colony areas for sites selected in m^2 and add adaptation values
-    colony_areas = colony_mean_area(corals.mean_colony_diameter_m)
+    colony_areas = _to_group_size(
+        domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
+    )
     seeded_area = colony_areas[seed_sc] .* param_set[At(taxa_names)]
 
     # Set up assisted adaptation values
-    a_adapt = zeros(n_group_and_size)
+    a_adapt = zeros(n_groups, n_sizes)
     a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
     # Flag indicating whether to seed or not to seed when unguided
@@ -577,6 +579,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     c_mean_t_1::Array{Float64, 3} = repeat(_to_group_size(
         domain.coral_growth, corals.dist_mean
     ), 1, 1, n_locs)
+    c_std::Array{Float64, 2} = _to_group_size(
+        domain.coral_growth, corals.dist_std
+    )
 
     c_mean_t = copy(c_mean_t_1)
 
@@ -591,7 +596,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     ## Update ecological parameters based on intervention option
 
     # Treat as enhancement from mean of "natural" DHW tolerance
-    a_adapt[a_adapt.>0.0] .+= corals.dist_mean[a_adapt.>0.0]
+    a_adapt[a_adapt.>0.0] .+= _to_group_size(
+        domain.coral_growth, corals.dist_mean
+    )[a_adapt.>0.0]
 
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
@@ -868,13 +875,13 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 seed_sc,
                 a_adapt,
                 @view(Yseed[tstep, :, :]),
-                corals.dist_std,
+                c_std,
                 c_mean_t,
             )
 
             # Add coral seeding to cover copy and recruitment
-            recruitment += C_t[p.small, :] .- cover_copy[:, 1, :]
-            cover_copy[:, 1, :] .= C_t[p.small, :]
+            recruitment += C_t[:, 1, :] .- cover_copy[:, 1, :]
+            cover_copy[:, 1, :] .= C_t[:, 1, :]
         end
 
         # Calculate and apply bleaching mortality
