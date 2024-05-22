@@ -13,7 +13,7 @@ function deployment_cost(rs::ResultSet)::YAXArray
     return YAXArray((Dim{scenarios}(1:size(scenarios, 1)),), prod_cost .+ logistics_cost)
 end
 function data_envelopment_analysis(
-    rs::ResultSet, metrics...; rts::Symbol=:VRS,
+    rs::ResultSet, cost::Vector{Float64}, metrics...; rts::Symbol=:VRS,
     orient::Symbol=:Output, dea_model::Function=deabigdata
 )::Tuple{AbstractDEAModel,AbstractArray}
     X = metrics[keys(metrics)[1]]
