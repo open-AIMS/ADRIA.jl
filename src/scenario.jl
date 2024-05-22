@@ -968,7 +968,7 @@ function cyclone_mortality!(
     coral_cover::AbstractArray{Float64, 3}, cyclone_mortality::AbstractMatrix{Float64}
 )::Nothing
     n_groups, n_locs = size(cyclone_mortality)
-    coral_deaths = coral_cover .* reshape(cyclone_mortality, (n_groups, 1, n_locs))
-    coral_cover -= coral_deaths
+    coral_cover .*= (1 .- reshape(cyclone_mortality, (n_groups, 1, n_locs)))
+    clamp!(coral_cover, 0.0, 1.0)
     return nothing
 end
