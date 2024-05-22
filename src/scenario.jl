@@ -830,7 +830,7 @@ function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothi
 
     # Mid class coral mortality
     coral_mid = hcat(collect(Iterators.partition(coral_params.mid, 4))...)
-    for i in size(coral_mid, 1)
+    for i in 1:size(coral_mid, 1)
         coral_deaths_mid = coral_cover[coral_mid[i, :], :] .* cyclone_mortality
         coral_cover[coral_mid[i, :], :] -= coral_deaths_mid
     end
