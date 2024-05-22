@@ -123,7 +123,9 @@ function ADRIA.viz.taxonomy!(
     n_timesteps::Int64 = length(relative_taxa_cover.timesteps)
 
     # Allow user to specify taxonomy colors
-    _colors = get(opts, :colors, categorical_colors(:seaborn_bright, n_groups))
+    default_color = Symbol("Set1_" * string(n_groups))
+    color = get(opts, :colors, default_color)
+    _colors = categorical_colors(color, n_groups)
 
     # Plot confidence intervals
     show_confints = get(opts, :show_confints, true)
