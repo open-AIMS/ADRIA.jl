@@ -25,8 +25,9 @@ ADRIA.viz.taxonomy(scenarios, relative_taxa_cover)
 # Keyword Arguments
 - `opts` : Aviz options
     - `by_RCP` : Split plots by RCP otherwise split by scenario type. Defaults to false.
+    - `compare_taxa` : If true, split plots by scenario types, otherwise split by taxonomy. Defaults to true.
     - `show_confints` : Show confidence intervals around series. Defaults to true.
-    - `colors` : Color for each taxonomy. Defaults to categorical colors.
+    - `colors` : Colormap for each taxonomy or scenario type. Defaults to Set1_5 for taxa and ADRIA defaults for scenario type.
 - `axis_opts` : Additional options to pass to adjust Axis attributes.
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 - `series_opts` : Additional options to pass to adjust Series attributes
@@ -96,6 +97,7 @@ function ADRIA.viz.taxonomy!(
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Year")
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "Relative Cover")
 
+    show_confints::Bool = get(opts, :show_confints, true)
     compare_taxa::Bool = get(opts, :compare_taxa, true)
     if compare_taxa
         n_groups::Int64 = length(relative_taxa_cover.taxa)
@@ -108,6 +110,7 @@ function ADRIA.viz.taxonomy!(
             relative_taxa_cover,
             scen_groups,
             _colors;
+            show_confints=show_confints,
             axis_opts,
             series_opts
         )
@@ -119,6 +122,7 @@ function ADRIA.viz.taxonomy!(
             relative_taxa_cover,
             scen_groups,
             _colors;
+            show_confints=show_confints,
             axis_opts,
             series_opts
         )
