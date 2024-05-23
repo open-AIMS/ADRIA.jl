@@ -100,11 +100,13 @@ function ADRIA.viz.taxonomy!(
     show_confints::Bool = get(opts, :show_confints, true)
     compare_taxa::Bool = get(opts, :compare_taxa, true)
     if compare_taxa
+        # Create colors
         n_groups::Int64 = length(relative_taxa_cover.taxa)
         default_color = Symbol("Set1_" * string(n_groups))
         color = get(opts, :colors, default_color)
         _colors = categorical_colors(color, n_groups)
 
+        # Plot results
         taxonomy_series_confint!(
             g,
             relative_taxa_cover,
@@ -115,8 +117,14 @@ function ADRIA.viz.taxonomy!(
             series_opts
         )
     else
-        _colors = [COLORS[scen_name] for scen_name in keys(scen_groups)]
+        # Use default ADRIA colors for scenario type if use not specified
+        n_scen_types::Int64 = length(keys(scen_groups))
+        color = get(opts, :colors, nothing)
+        _colors = isnothing(color) ? [
+            COLORS[scen_name] for scen_name in keys(scen_groups)
+        ] : categorical_colors(color, n_scen_types)
 
+        # Plot results
         taxonomy_intervened_series_confint!(
             g,
             relative_taxa_cover,
@@ -147,12 +155,14 @@ function taxonomy_series_confint!(
     axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
     series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )::Nothing where {T<:Float32}
+    # Get taxonomy names for legend
     taxa_names = human_readable_name(String.(functional_group_names()), title_case=true)
     series_opts[:labels] = get(series_opts, :labels, taxa_names)
 
+    # Get default axis options
+    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(relative_taxa_cover)))
+    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
     for (idx, scen_name) in enumerate(keys(scen_groups))
-        xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(relative_taxa_cover)))
-        xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
         ax = Axis(g[idx, 1]; title=String(scen_name), xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
         taxonomy_series_confint!(
