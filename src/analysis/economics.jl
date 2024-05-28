@@ -1,4 +1,4 @@
-#module economics
+module economics
 
 using CSV
 using DataEnvelopmentAnalysis: DataEnvelopmentAnalysis as DEA
@@ -44,4 +44,4 @@ function CAD_cost(scenarios::DataFrame; Reef::String="Moore")
     return (OP_lin.(scen_no_corals) .* scen_no_years .+ CAP_lin.(scen_no_corals)) ./ (10^6)
 end
 
-#end
+end
