@@ -10,7 +10,7 @@ Plot relative cover divided by taxonomy over time.
 
 # Examples
 ```julia
-# Plot relative cover divided by taxonomy or functonal group
+# Plot relative cover divided by taxonomy or functional group
 ADRIA.viz.taxonomy(rs)
 
 # Plot relative cover divided by taxonomy with custom scenario and relative cover inputs
