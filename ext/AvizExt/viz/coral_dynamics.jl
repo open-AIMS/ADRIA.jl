@@ -21,11 +21,9 @@ ADRIA.viz.taxonomy(scenarios, relative_taxa_cover)
 - `rs` : ADRIA result set
 - `scenarios` : Scenario specification
 - `relative_taxa_cover` : YAXArray of dimensions [timesteps ⋅ taxa ⋅ scenarios]
-
-# Keyword Arguments
 - `opts` : Aviz options
     - `by_RCP` : Split plots by RCP otherwise split by scenario type. Defaults to false.
-    - `compare_taxa` : If true, split plots by scenario types, otherwise split by taxonomy. Defaults to true.
+    - `by_functional_groups` : If true, split plots by scenario types, otherwise split by taxonomy. Defaults to true.
     - `show_confints` : Show confidence intervals around series. Defaults to true.
     - `colors` : Colormap for each taxonomy or scenario type. Defaults to Set1_5 for taxa and ADRIA defaults for scenario type.
 - `axis_opts` : Additional options to pass to adjust Axis attributes.
@@ -98,8 +96,8 @@ function ADRIA.viz.taxonomy!(
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "Relative Cover")
 
     show_confints::Bool = get(opts, :show_confints, true)
-    compare_taxa::Bool = get(opts, :compare_taxa, true)
-    if compare_taxa
+    by_functional_groups::Bool = get(opts, :by_functional_groups, true)
+    if by_functional_groups
         # Create colors
         n_groups::Int64 = length(relative_taxa_cover.taxa)
         default_color = Symbol("Set1_" * string(n_groups))
@@ -107,7 +105,7 @@ function ADRIA.viz.taxonomy!(
         _colors = categorical_colors(color, n_groups)
 
         # Plot results
-        taxonomy_series_confint!(
+        taxonomy_by_intervention!(
             g,
             relative_taxa_cover,
             scen_groups,
@@ -125,7 +123,7 @@ function ADRIA.viz.taxonomy!(
         ] : categorical_colors(color, n_scen_types)
 
         # Plot results
-        taxonomy_intervened_series_confint!(
+        intervention_by_taxonomy!(
             g,
             relative_taxa_cover,
             scen_groups,
@@ -140,13 +138,13 @@ function ADRIA.viz.taxonomy!(
 end
 
 """
-    taxonomy_series_confint!(g::Union{GridLayout, GridPosition}, relative_taxa_cover::YAXArray, scen_groups::Dict{Symbol}, colors::Union{Vector{Symbol},Vector{RGBA{T}}}; show_confints=true, axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Nothing where {T<:Float32}
-    taxonomy_series_confint!( ax::Axis, relative_taxa_cover::YAXArray, colors::Union{Vector{Symbol},Vector{RGBA{T}}}; show_confints=true, show_legend=true, series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Nothing where {T<:Float32}
+    taxonomy_by_intervention!(g::Union{GridLayout, GridPosition}, relative_taxa_cover::YAXArray, scen_groups::Dict{Symbol}, colors::Union{Vector{Symbol},Vector{RGBA{T}}}; show_confints=true, axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Nothing where {T<:Float32}
+    taxonomy_by_intervention!( ax::Axis, relative_taxa_cover::YAXArray, colors::Union{Vector{Symbol},Vector{RGBA{T}}}; show_confints=true, show_legend=true, series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Nothing where {T<:Float32}
 
 Plot relative cover divided between coral taxonomy with each grid cell a different type of
 scenario.
 """
-function taxonomy_series_confint!(
+function taxonomy_by_intervention!(
     g::Union{GridLayout, GridPosition},
     relative_taxa_cover::YAXArray,
     scen_groups::Dict{Symbol},
@@ -165,7 +163,7 @@ function taxonomy_series_confint!(
     for (idx, scen_name) in enumerate(keys(scen_groups))
         ax = Axis(g[idx, 1]; title=String(scen_name), xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-        taxonomy_series_confint!(
+        taxonomy_by_intervention!(
             ax,
             relative_taxa_cover[scenarios=scen_groups[scen_name]],
             colors;
@@ -176,7 +174,7 @@ function taxonomy_series_confint!(
     end
     return nothing
 end
-function taxonomy_series_confint!(
+function taxonomy_by_intervention!(
     ax::Axis,
     relative_taxa_cover::YAXArray,
     colors::Union{Vector{Symbol},Array{RGBA{T},1}};
@@ -205,13 +203,13 @@ function taxonomy_series_confint!(
 end
 
 """
-    taxonomy_intervened_series_confint!( g::Union{GridLayout, GridPosition}, relative_taxa_cover::YAXArray, scen_groups::Dict{Symbol,BitVector}, colors::Union{Vector{Symbol},Vector{RGBA{T}}}; show_confints::Bool=true, axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Nothing where {T<:Float32}
-    taxonomy_intervened_series_confint!( ax::Axis, relative_taxa_cover::YAXArray, colors::Union{Vector{Symbol},Vector{RGBA{T}}}, scen_groups::Dict{Symbol,BitVector}; show_confints::Bool=true, show_legend::Bool=true, series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Nothing where {T<:Float32}
+    intervention_by_taxonomy!( g::Union{GridLayout, GridPosition}, relative_taxa_cover::YAXArray, scen_groups::Dict{Symbol,BitVector}, colors::Union{Vector{Symbol},Vector{RGBA{T}}}; show_confints::Bool=true, axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Nothing where {T<:Float32}
+    intervention_by_taxonomy!( ax::Axis, relative_taxa_cover::YAXArray, colors::Union{Vector{Symbol},Vector{RGBA{T}}}, scen_groups::Dict{Symbol,BitVector}; show_confints::Bool=true, show_legend::Bool=true, series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Nothing where {T<:Float32}
 
 Plot relative cover, comparing taxa cover between different scenario groups. Each plot is a
 different coral taxonomy or functional group.
 """
-function taxonomy_intervened_series_confint!(
+function intervention_by_taxonomy!(
     g::Union{GridLayout, GridPosition},
     relative_taxa_cover::YAXArray,
     scen_groups::Dict{Symbol,BitVector},
@@ -230,7 +228,7 @@ function taxonomy_intervened_series_confint!(
         xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
         ax = Axis(g[idx, 1]; title=taxa_name, xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-        taxonomy_intervened_series_confint!(
+        intervention_by_taxonomy!(
             ax,
             relative_taxa_cover[taxa=idx],
             colors,
@@ -242,7 +240,7 @@ function taxonomy_intervened_series_confint!(
     end
     return nothing
 end
-function taxonomy_intervened_series_confint!(
+function intervention_by_taxonomy!(
     ax::Axis,
     relative_taxa_cover::YAXArray,
     colors::Union{Vector{Symbol},Vector{RGBA{T}}},
