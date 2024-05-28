@@ -81,6 +81,24 @@ DEA_scens = ADRIA.economics.data_envelopment_analysis(CAD_cost, s_tac, s_sv)
    https://doi.org/10.3390/a17030089
 
 """
+function data_envelopment_analysis(rs::ResultSet, metrics...;
+    input_function::Function=CAD_cost, rts::Symbol=:VRS, orient::Symbol=:Output,
+    dea_model::Function=DEA.deabigdata
+)::Tuple{DEA.AbstractDEAModel,AbstractArray}
+    X = input_function(rs.inputs)
+    return data_envelopment_analysis(
+        X, metrics; rts=rts, orient=orient, dea_model=dea_model
+    )
+end
+function data_envelopment_analysis(rs::ResultSet, Y::YAXArray;
+    input_function::Function=CAD_cost, rts::Symbol=:VRS, orient::Symbol=:Output,
+    dea_model::Function=DEA.deabigdata
+)::Tuple{DEA.AbstractDEAModel,AbstractArray}
+    X = input_function(rs.inputs)
+    return data_envelopment_analysis(
+        X, Y; rts=rts, orient=orient, dea_model=dea_model
+    )
+end
 function data_envelopment_analysis(
     X::YAXArray, metrics...; rts::Symbol=:VRS,
     orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
@@ -91,20 +109,19 @@ function data_envelopment_analysis(
     )
 end
 function data_envelopment_analysis(
-    rs::ResultSet, cost::Vector{Float64}, metrics...; rts::Symbol=:VRS,
+    X::YAXArray, Y::YAXArray; rts::Symbol=:VRS,
     orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
 )::Tuple{DEA.AbstractDEAModel,AbstractArray}
-    X = Array(hcat(metrics...))
     return data_envelopment_analysis(
-        rs, cost, X; rts=rts, orient=orient, dea_model=dea_model
+        Array(X), Array(Y); rts=rts, orient=orient, dea_model=dea_model
     )
 end
 function data_envelopment_analysis(
-    rs::ResultSet, cost::Vector{Float64}, X::Matrix{Float64}; rts::Symbol=:VRS,
+    X::Vector{Float64}, Y::Matrix{Float64}; rts::Symbol=:VRS,
     orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
 )::Tuple{DEA.AbstractDEAModel,AbstractArray}
-    result = dea_model(Array(cost), X; orient=orient, rts=rts)
-    return result, X
+    result = dea_model(X, Y; orient=orient, rts=rts)
+    return result, Y
 end
 
 """
@@ -147,7 +164,10 @@ function CAD_cost(scenarios::DataFrame; Reef::String="Moore")::YAXArray
         Array(deploy_cap_cost[1, :]), Array(deploy_cap_cost[2, :]), NoBoundaries()
     )
 
-    return (OP_lin.(scen_no_corals) .* scen_no_years .+ CAP_lin.(scen_no_corals)) ./ (10^6)
+    return YAXArray(
+        (Dim{:scenarios}range(1:nrows(scenarios)),),
+        (OP_lin.(scen_no_corals) .* scen_no_years .+ CAP_lin.(scen_no_corals)) ./ (10^6)
+    )
 end
 
 end
