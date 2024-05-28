@@ -141,8 +141,8 @@ end
     taxonomy_by_intervention!(g::Union{GridLayout, GridPosition}, relative_taxa_cover::YAXArray, scen_groups::Dict{Symbol}, colors::Union{Vector{Symbol},Vector{RGBA{T}}}; show_confints=true, axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Nothing where {T<:Float32}
     taxonomy_by_intervention!( ax::Axis, relative_taxa_cover::YAXArray, colors::Union{Vector{Symbol},Vector{RGBA{T}}}; show_confints=true, show_legend=true, series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Nothing where {T<:Float32}
 
-Plot relative cover divided between coral taxonomy with each grid cell a different type of
-scenario.
+Create a plot for each scenario group, displaying the relative coral cover split between
+functional groups.
 """
 function taxonomy_by_intervention!(
     g::Union{GridLayout, GridPosition},
