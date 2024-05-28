@@ -154,7 +154,7 @@ function taxonomy_by_intervention!(
     series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )::Nothing where {T<:Float32}
     # Get taxonomy names for legend
-    taxa_names = human_readable_name(String.(functional_group_names()), title_case=true)
+    taxa_names = human_readable_name(functional_group_names(), title_case=true)
     series_opts[:labels] = get(series_opts, :labels, taxa_names)
 
     # Get default axis options
@@ -218,7 +218,7 @@ function intervention_by_taxonomy!(
     axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
     series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )::Nothing where {T<:Float32}
-    taxa_names = human_readable_name(String.(functional_group_names()), title_case=true)
+    taxa_names = human_readable_name(functional_group_names(), title_case=true)
 
     scenario_group_names::Vector{Symbol} = collect(keys(scen_groups))
     series_opts[:labels] = get(series_opts, :labels, String.(scenario_group_names))
