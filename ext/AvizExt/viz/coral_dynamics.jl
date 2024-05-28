@@ -99,10 +99,10 @@ function ADRIA.viz.taxonomy!(
     by_functional_groups::Bool = get(opts, :by_functional_groups, true)
     if by_functional_groups
         # Create colors
-        n_groups::Int64 = length(relative_taxa_cover.taxa)
-        default_color = Symbol("Set1_" * string(n_groups))
+        n_functional_groups::Int64 = length(relative_taxa_cover.taxa)
+        default_color = Symbol("Set1_" * string(n_functional_groups))
         color = get(opts, :colors, default_color)
-        _colors = categorical_colors(color, n_groups)
+        _colors = categorical_colors(color, n_functional_groups)
 
         # Plot results
         taxonomy_by_intervention!(
@@ -116,11 +116,11 @@ function ADRIA.viz.taxonomy!(
         )
     else
         # Use default ADRIA colors for scenario type if use not specified
-        n_scen_types::Int64 = length(keys(scen_groups))
+        n_scenario_groups::Int64 = length(keys(scen_groups))
         color = get(opts, :colors, nothing)
         _colors = isnothing(color) ? [
             COLORS[scen_name] for scen_name in keys(scen_groups)
-        ] : categorical_colors(color, n_scen_types)
+        ] : categorical_colors(color, n_scenario_groups)
 
         # Plot results
         intervention_by_taxonomy!(
@@ -183,10 +183,10 @@ function taxonomy_by_intervention!(
     series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )::Nothing where {T<:Float32}
     n_timesteps::Int64 = length(relative_taxa_cover.timesteps)
-    n_groups::Int64 = length(relative_taxa_cover.taxa)
+    n_functional_groups::Int64 = length(relative_taxa_cover.taxa)
 
     # Plot and calculate confidence intervals
-    confints = zeros(n_timesteps, n_groups, 3)
+    confints = zeros(n_timesteps, n_functional_groups, 3)
     for (idx, taxa) in enumerate(relative_taxa_cover.taxa)
         confints[:, idx, :] = series_confint(relative_taxa_cover[taxa=At(taxa)])
         show_confints ? band!(
@@ -220,8 +220,8 @@ function intervention_by_taxonomy!(
 )::Nothing where {T<:Float32}
     taxa_names = human_readable_name(String.(functional_group_names()), title_case=true)
 
-    scenario_names::Vector{Symbol} = collect(keys(scen_groups))
-    series_opts[:labels] = get(series_opts, :labels, String.(scenario_names))
+    scenario_group_names::Vector{Symbol} = collect(keys(scen_groups))
+    series_opts[:labels] = get(series_opts, :labels, String.(scenario_group_names))
 
     for (idx, taxa_name) in enumerate(taxa_names)
         xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(relative_taxa_cover)))
@@ -249,13 +249,13 @@ function intervention_by_taxonomy!(
     show_legend::Bool=true,
     series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
 )::Nothing where {T<:Float32}
-    scenario_names::Vector{Symbol} = collect(keys(scen_groups))
+    scenario_group_names::Vector{Symbol} = collect(keys(scen_groups))
 
     n_timesteps::Int64 = length(relative_taxa_cover.timesteps)
-    n_scen_types::Int64 = length(scenario_names)
+    n_scenario_groups::Int64 = length(scenario_group_names)
 
-    confints = zeros(n_timesteps, n_scen_types, 3)
-    for (idx, scen) in enumerate(scenario_names)
+    confints = zeros(n_timesteps, n_scenario_groups, 3)
+    for (idx, scen) in enumerate(scenario_group_names)
         confints[:, idx, :] = series_confint(
             relative_taxa_cover[scenarios=scen_groups[scen]]
         )
