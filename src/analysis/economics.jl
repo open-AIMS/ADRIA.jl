@@ -1,23 +1,24 @@
+#module economics
+
+using CSV
 using DataEnvelopmentAnalysis: DataEnvelopmentAnalysis as DEA
-using DataFrames, YAXARrays
+using BasicInterpolators
+using ADRIA: ResultSet
+using DataFrames, YAXArrays
 
 function data_envelopment_analysis(
     rs::ResultSet, cost::Vector{Float64}, metrics...; rts::Symbol=:VRS,
-    orient::Symbol=:Output, dea_model::Function=deabigdata
-)::Tuple{AbstractDEAModel,AbstractArray}
-    X = metrics[keys(metrics)[1]]
-    for metric in keys(metrics)[2:end]
-        vcat!(X, Array(metrics[metric]))
-    end
-
+    orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
+)::Tuple{DEA.AbstractDEAModel,AbstractArray}
+    X = Array(hcat(metrics...))
     return data_envelopment_analysis(
         rs, cost, X; rts=rts, orient=orient, dea_model=dea_model
     )
 end
 function data_envelopment_analysis(
-    rs::ResultSet, cost::Vector{Float64}, X::Array{Float64}; rts::Symbol=:VRS,
-    orient::Symbol=:Output, dea_model::Function=deabigdata
-)::Tuple{AbstractDEAModel,AbstractArray}
+    rs::ResultSet, cost::Vector{Float64}, X::Matrix{Float64}; rts::Symbol=:VRS,
+    orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
+)::Tuple{DEA.AbstractDEAModel,AbstractArray}
     result = dea_model(Array(cost), X; orient=orient, rts=rts)
     return result, X
 end
