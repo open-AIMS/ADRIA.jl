@@ -1,5 +1,7 @@
 """
-    human_readable_name(names::Array{String}, title_case::Bool)
+    human_readable_name(names::Vector{String}, title_case::Bool)::Vector{String}
+    human_readable_name(names::Vector{Symbol}, title_case::Bool)::Vector{String}
+    human_readable_name(name::String; title_case::Bool=true)::String
 
 Make presentable parameter labels.
 Returns a copy of original array so input is not modified.
@@ -21,6 +23,9 @@ function human_readable_name(names::Vector{String}; title_case::Bool=false)::Vec
     end
 
     return converted_names
+end
+function human_readable_name(name::Vector{Symbol}; title_case::Bool=false)::Vector{String}
+    return human_readable_name(String.(name); title_case=title_case)
 end
 function human_readable_name(name::String; title_case::Bool=false)::String
     if title_case
