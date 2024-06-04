@@ -176,15 +176,24 @@ function CAD_cost(rs; Reef::String="Moore")::YAXArray
     return CAD_cost(rs.inputs; Reef=Reef)
 end
 function CAD_cost(scenarios::DataFrame; Reef::String="Moore")::YAXArray
+    # No. of deployment years
+    scen_no_years = scenarios[:, :seed_years]
+
     # No. of corals deployed in each scenario
     scen_no_corals =
-        scenarios[:, :N_seed_CA] .+ scenarios[:, :N_seed_SM] .+ scenarios[:, :N_seed_TA]
+        (
+            scenarios[:, :N_seed_CA] .+ scenarios[:, :N_seed_SM] .+ scenarios[:, :N_seed_TA]
+        ) ./ scen_no_years
+    scen_no_corals[scen_no_years .== 0.0] .= 0.0
 
-    scen_no_years = scenarios[:, :seed_years]
+    # Operational and capital cost data to train models
     deploy_op_cost = CSV.read("deploy_op_cost.csv", DataFrame; header=false)
     deploy_cap_cost = CSV.read("deploy_cap_cost.csv", DataFrame; header=false)
+
+    # Reef for deployment
     reef_ind = findfirst(deploy_op_cost[2:end, 1] .== Reef)
 
+    # Create interpolators based on cost data
     OP_lin = LinearInterpolator(
         Array(deploy_op_cost[1, 2:end]), Array(deploy_op_cost[reef_ind, 2:end]),
         NoBoundaries()
@@ -193,10 +202,14 @@ function CAD_cost(scenarios::DataFrame; Reef::String="Moore")::YAXArray
         Array(deploy_cap_cost[1, :]), Array(deploy_cap_cost[2, :]), NoBoundaries()
     )
 
+    # Return costs (capital based on total no. of corals, operational based on corals/year)
     return YAXArray(
-        (Dim{:scenarios}range(1:nrows(scenarios)),),
-        (OP_lin.(scen_no_corals) .* scen_no_years .+ CAP_lin.(scen_no_corals)) ./ (10^6)
+        (Dim{:scenarios}(1:size(scenarios, 1)),),
+        ((
+            OP_lin.(scen_no_corals) .+
+            CAP_lin.(scen_no_corals)
+        ) .* scen_no_years) ./ (10^6)
     )
 end
 
-end
+#end
