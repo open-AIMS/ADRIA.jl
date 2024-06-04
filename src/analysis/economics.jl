@@ -1,4 +1,4 @@
-module economics
+#module economics
 
 using CSV
 using DataEnvelopmentAnalysis: DataEnvelopmentAnalysis as DEA
@@ -6,13 +6,36 @@ using BasicInterpolators
 using ADRIA: ResultSet
 using DataFrames, YAXArrays
 
+struct DEAResult{V,V2,V3}
+    crs_vals::V # IUnverse efficiencies using constant returns to scale.
+    vrs_vals::V # Inverse efficiencies using variable returns to scale.
+    fdh_vals::V # Inverse efficiencies using free disposability hull (non-convexity assumption).
+    crs_peers::V2 # Scenarios on the efficiency frontier.
+    vrs_peers::V2 # Scenarios on the efficiency frontier.
+    fdh_peers::V2 # Scenarios on the efficiency frontier.
+    X::V3 # Inputs
+    Y::V # Outputs
+end
+
+function DEAResult(CRS_eff::Vector{Float64}, VRS_eff::Vector{Float64},
+    FDH_eff::Vector{Float64}, CRS_peers::Vector{Int64}, VRS_peers::Vector{Int64},
+    FDH_peers::Vector{Int64}, X::Matrix{Float64}, Y::Vector{Float64}
+)::DEAResult
+    return DEAResult(1 ./ CRS_eff,
+        1 ./ VRS_eff,
+        1 ./ FDH_eff,
+        CRS_peers,
+        VRS_peers,
+        FDH_peers,
+        X,
+        Y)
+end
+
 """
-    data_envelopment_analysis(X::YAXArray, Y::YAXArray; rts::Symbol=:VRS,
-        orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)
-        ::Tuple{DEA.AbstractDEAModel,AbstractArray}
-    data_envelopment_analysis(X::YAXArray, metrics...; rts::Symbol=:VRS,
-        orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)
-        ::Tuple{DEA.AbstractDEAModel,AbstractArray}
+    data_envelopment_analysis(X::YAXArray, Y::YAXArray; orient::Symbol=:Output,
+        dea_model::Function=DEA.deabigdata)::DEAResult
+    data_envelopment_analysis(X::YAXArray, metrics...; orient::Symbol=:Output,
+        dea_model::Function=DEA.deabigdata)::DEAResult
 
 Performs output-oriented (default) Data Envelopment Analysis (DEA) given inputs X and output
 metrics Y. DEA is used to measure the performance of entities (scenarios), where inputs are
@@ -26,20 +49,12 @@ scenarios. Scenarios with efficiencies not equal to 1 can be improved to be more
 # Arguments
 - `X` : Model inputs for each scenario (usually costs).
 - `Y` : Model outputs for each scenario (metrics such as tac, rci etc.).
-- `rts` : Returns to scale, can be constant returns to scale (assumes all scenarios are at
-    their optimal scale, ie. a multiple would not be more optimal, `rts=:CRS`), or variable
-    returns to scale (doesn't assume the optimal scale has been acheived, `rts=:VRS`)
 - `orient` : Orientation of the analysis. Can be output oriented (`orient=:Output`), which
     seeks to maximise outputs for a given level of input, or input oriented (`orient=:Input`),
     which seeks to minimise an input for a given level of output.
 
 # Returns
-DEA.AbstractDEAModel, which summarizes efficiencies and slack variables (or multipliers
-depending on the DEA method) for each scenario. Slack variables or multipliers give
-information about the effort required to move an inefficient scenario towards it's peer
-efficient scenario. X, a matrix of the outputs which can be used to plot the efficiency
-frontier.
-
+DEAResult, which summarizes inputs, outputs, efficiencies and peers for each scenario.
 
 # Examples
 ```julia
@@ -82,46 +97,60 @@ DEA_scens = ADRIA.economics.data_envelopment_analysis(CAD_cost, s_tac, s_sv)
 
 """
 function data_envelopment_analysis(rs::ResultSet, metrics...;
-    input_function::Function=CAD_cost, rts::Symbol=:VRS, orient::Symbol=:Output,
+    input_function::Function=CAD_cost, orient::Symbol=:Output,
     dea_model::Function=DEA.deabigdata
-)::Tuple{DEA.AbstractDEAModel,AbstractArray}
+)::DEAResult
     X = input_function(rs.inputs)
     return data_envelopment_analysis(
-        X, metrics; rts=rts, orient=orient, dea_model=dea_model
+        X, metrics; orient=orient, dea_model=dea_model
     )
 end
 function data_envelopment_analysis(rs::ResultSet, Y::YAXArray;
-    input_function::Function=CAD_cost, rts::Symbol=:VRS, orient::Symbol=:Output,
+    input_function::Function=CAD_cost, orient::Symbol=:Output,
     dea_model::Function=DEA.deabigdata
-)::Tuple{DEA.AbstractDEAModel,AbstractArray}
+)::DEAResult
     X = input_function(rs.inputs)
     return data_envelopment_analysis(
-        X, Y; rts=rts, orient=orient, dea_model=dea_model
+        X, Y; orient=orient, dea_model=dea_model
     )
 end
 function data_envelopment_analysis(
-    X::YAXArray, metrics...; rts::Symbol=:VRS,
-    orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
-)::Tuple{DEA.AbstractDEAModel,AbstractArray}
+    X::YAXArray, metrics...; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
+)::DEAResult
     Y = Array(hcat(metrics...))
     return data_envelopment_analysis(
-        X, Y; rts=rts, orient=orient, dea_model=dea_model
+        Array(X), Y; orient=orient, dea_model=dea_model
     )
 end
 function data_envelopment_analysis(
-    X::YAXArray, Y::YAXArray; rts::Symbol=:VRS,
-    orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
-)::Tuple{DEA.AbstractDEAModel,AbstractArray}
+    X::YAXArray, Y::YAXArray; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
+)::DEAResult
     return data_envelopment_analysis(
-        Array(X), Array(Y); rts=rts, orient=orient, dea_model=dea_model
+        Array(X), Array(Y); orient=orient, dea_model=dea_model
     )
 end
 function data_envelopment_analysis(
-    X::Vector{Float64}, Y::Matrix{Float64}; rts::Symbol=:VRS,
-    orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
-)::Tuple{DEA.AbstractDEAModel,AbstractArray}
-    result = dea_model(X, Y; orient=orient, rts=rts)
-    return result, Y
+    X::Vector{Float64}, Y::Matrix{Float64}; orient::Symbol=:Output,
+    dea_model::Function=DEA.deabigdata
+)::DEAResult
+    result_CRS = dea_model(X, Y; orient=orient, rts=:CRS)
+    result_VRS = dea_model(X, Y; orient=orient, rts=:VRS)
+    result_FDH = dea_model(X, Y; orient=orient, rts=:FDH)
+
+    CRS_peers = peers(result_CRS)
+    VRS_peers = peers(result_VRS)
+    FDH_peers = peers(result_FDH)
+
+    return DEAResult(
+        result_CRS.eff,
+        result_VRS.eff,
+        result_FDH.eff,
+        CRS_peers,
+        VRS_peers,
+        FDH_peers,
+        X,
+        Y
+    )
 end
 
 """
