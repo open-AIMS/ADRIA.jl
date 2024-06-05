@@ -53,4 +53,7 @@ function cyclone_scenario() end
 function taxonomy() end
 function taxonomy!() end
 
+# Economics
+function data_envelopment_analysis() end
+
 end  # module
