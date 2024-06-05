@@ -7,7 +7,7 @@ using ADRIA: ResultSet
 using DataFrames, YAXArrays
 
 struct DEAResult{V,V2,V3}
-    crs_vals::V # IUnverse efficiencies using constant returns to scale.
+    crs_vals::V # Inverse efficiencies using constant returns to scale.
     vrs_vals::V # Inverse efficiencies using variable returns to scale.
     fdh_vals::V # Inverse efficiencies using free disposability hull (non-convexity assumption).
     crs_peers::V2 # Scenarios on the efficiency frontier.
@@ -17,6 +17,23 @@ struct DEAResult{V,V2,V3}
     Y::V # Outputs
 end
 
+"""
+    DEAResult(CRS_eff::Vector{Float64}, VRS_eff::Vector{Float64}, FDH_eff::Vector{Float64},
+        CRS_peers::Vector{Int64}, VRS_peers::Vector{Int64}, FDH_peers::Vector{Int64},
+        X::Matrix{Float64}, Y::Vector{Float64})::DEAResult
+
+Constructor for DEAResult type.
+
+# Arguments
+- `CRS_eff` : efficiencies from CRS DEA analysis.
+- `VRS_eff` : efficiencies from VRS DEA analysis.
+- `FDH_eff` : efficiencies from FDH DEA analysis.
+- `CRS_peers` : peers indices from CRS DEA analysis.
+- `VRS_peers` : peers indices from VRS DEA analysis.
+- `FDH_peers` : peers indices from FDH DEA analysis.
+- `X` : inputs.
+- `Y` : outputs.
+"""
 function DEAResult(CRS_eff::Vector{Float64}, VRS_eff::Vector{Float64},
     FDH_eff::Vector{Float64}, CRS_peers::Vector{Int64}, VRS_peers::Vector{Int64},
     FDH_peers::Vector{Int64}, X::Matrix{Float64}, Y::Vector{Float64}
