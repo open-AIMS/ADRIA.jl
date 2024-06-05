@@ -82,6 +82,7 @@ function proportional_adjustment!(
     end
 
     coral_cover .= max.(coral_cover, 0.0)
+
     return nothing
 end
 """
@@ -94,6 +95,7 @@ function proportional_adjustment!(
     coral_cover::Union{SubArray{T},Matrix{T}}
 )::Nothing where {T<:Float64}
     cover_tmp = zeros(size(coral_cover, 2))
+
     return proportional_adjustment!(coral_cover, cover_tmp)
 end
 
@@ -560,6 +562,7 @@ function adjust_DHW_distribution!(
             )
         end
     end
+
     return nothing
 end
 
@@ -691,6 +694,7 @@ function settler_DHW_tolerance!(
             end
         end
     end
+
     return nothing
 end
 
