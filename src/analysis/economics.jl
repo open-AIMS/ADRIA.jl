@@ -184,6 +184,7 @@ function CAD_cost(scenarios::DataFrame; Reef::String="Moore")::YAXArray
         (
             scenarios[:, :N_seed_CA] .+ scenarios[:, :N_seed_SM] .+ scenarios[:, :N_seed_TA]
         ) ./ scen_no_years
+    scen_no_corals[scen_no_years .== 0.0] .= 0.0
 
     # Operational and capital cost data to train models
     deploy_op_cost = CSV.read("deploy_op_cost.csv", DataFrame; header=false)
