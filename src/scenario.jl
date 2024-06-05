@@ -1,8 +1,12 @@
 """Scenario running functions"""
 
 using DynamicCoralCoverModel
-import DynamicCoralCoverModel.blocks_model: CoverBlock
-import DynamicCoralCoverModel.blocks_model: SizeClass
+import DynamicCoralCoverModel.circular.SizeClass
+import DynamicCoralCoverModel.circular.FunctionalGroup
+import DynamicCoralCoverModel.circular.reuse_buffers!
+import DynamicCoralCoverModel.circular.apply_survival!
+import DynamicCoralCoverModel.circular.timestep!
+import DynamicCoralCoverModel.circular.coral_cover
 
 using ADRIA.metrics:
     relative_cover,
@@ -205,8 +209,27 @@ function run_scenarios(
             rethrow(err)
         end
     else
+        # The idea to initialise the functional groups here is so that each scenario run can
+        # reuse the memory. After a few scenarios runs there will be very few new
+        # allocations as buffers grow larger and are not exceeded
+        #
+        # The problem is that even if a subsequent run only has to reallocate once, the
+        # buffer is so large it takes very long regardless.
+        #
+        # This is also forced me to added an argument to run_model which breaks
+        # encapsulation, so its quite ugly
+        n_locs::Int64 = dom.coral_growth.n_locs
+        C_bins::Matrix{Float64} = bin_edges() ./ 100
+        n_sizes::Int64 = dom.coral_growth.n_sizes
+        n_groups::Int64 = dom.coral_growth.n_groups
+        functional_groups=[
+            FunctionalGroup.(
+                eachrow(C_bins[:, 1:end-1]), eachrow(C_bins[:, 2:end]), eachrow(zeros(n_groups, n_sizes))
+            ) for _ in 1:n_locs
+        ]
+
         # Define local helper
-        func = dfx -> run_scenario(dfx..., data_store)
+        func = dfx -> run_scenario(dfx..., functional_groups, data_store)
 
         for rcp in RCP
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
@@ -259,6 +282,7 @@ function run_scenario(
     domain::Domain,
     idx::Int64,
     scenario::Union{AbstractVector,DataFrameRow},
+    functional_groups::Vector{Vector{FunctionalGroup}}, # additional argument for reusable buffer
     data_store::NamedTuple,
 )::Nothing
     if domain.RCP == ""
@@ -276,7 +300,7 @@ function run_scenario(
         domain = switch_RCPs!(domain, rcp)
     end
 
-    result_set = run_model(domain, scenario)
+    result_set = run_model(domain, scenario, functional_groups)
 
     # Capture results to disk
     # Set values below threshold to 0 to save space
@@ -382,11 +406,11 @@ NamedTuple of collated results
 - `bleaching_mortality` : Array, Log of mortalities caused by bleaching
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
-function run_model(domain::Domain, param_set::DataFrameRow)::NamedTuple
+function run_model(domain::Domain, param_set::DataFrameRow, functional_groups::Vector{Vector{FunctionalGroup}})::NamedTuple
     ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps)
+    return run_model(domain, ps, functional_groups)
 end
-function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
+function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}})::NamedTuple
     p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
@@ -620,30 +644,14 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
-    C_bins::Matrix{Float64} = hcat(
-        zeros(n_groups),
-        _to_group_size(domain.coral_growth, corals.bin_ub)
-    )
-
-    cover_blocks::Vector{Matrix{CoverBlock}} = [
-        DynamicCoralCoverModel.blocks_model.CoverBlock.(
-            C_cover[1, :, :, loc] .* (site_data.area[loc] .* site_data.k[loc]),
-            C_bins[:, 1:end-1],
-            C_bins[:, 2:end]
-        ) for loc in 1:n_locs
-    ]
-
-    linear_extension = _to_group_size(domain.coral_growth, corals.linear_extension)
+    linear_extension_m = _to_group_size(domain.coral_growth, corals.linear_extension) ./ 100
     survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
 
-    size_classes::Vector{Matrix{SizeClass}} = [
-        SizeClass.(
-            cover_blocks[loc],
-            repeat(1:n_sizes, 1, n_groups)',
-            linear_extension,
-            survival_rate
-        ) for loc in 1:n_locs
-    ]
+    # Empty the old contents of the buffers and add the new blocks
+    cover_view = [@view C_cover[1, :, :, loc] for loc in 1:n_locs]
+    functional_groups = reuse_buffers!.(
+        functional_groups, (cover_view .* site_k_area(domain))
+    )
 
     # Preallocate memory for temporaries
     temp_change = ones(n_groups, n_sizes, n_locs)
@@ -652,7 +660,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     for tstep::Int64 in 2:tf
         change_view = [@view temp_change[:, :, loc] for loc in 1:n_locs]
-        DynamicCoralCoverModel.blocks_model.apply_changes!.(size_classes, change_view)
+        apply_survival!.(functional_groups, change_view)
         recruitment .*= reshape(temp_change[:, 1, :], (n_groups, n_locs))
 
         C_t .= C_cover[tstep-1, :, :, :] .* reshape(
@@ -660,14 +668,15 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         )
 
         for i in 1:n_locs
-            C_t[:, :, i] .= DynamicCoralCoverModel.blocks_model.timestep(
-                C_t[:, :, i],
+            # Perform timestep
+            timestep!(
+                functional_groups[i],
                 recruitment[:, i],
-                size_classes[i],
-                site_data.k[i] * site_data.area[i],
-                tstep,
-                false
+                linear_extension_m,
+                survival_rate
             )
+            # Write to the cover matrix
+            coral_cover(functional_groups[i], @view C_t[:, :, i])
         end
 
         C_t ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs))
@@ -944,7 +953,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         coral_dhw_log=collated_dhw_tol_log,
     )
 end
-
 
 """
     cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
