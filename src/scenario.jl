@@ -655,9 +655,10 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
     # Preallocate memory for temporaries
     temp_change = ones(n_groups, n_sizes, n_locs)
-    C_t = zeros(n_groups, n_sizes, n_locs)
+    C_t::Array{Float64, 3} = zeros(n_groups, n_sizes, n_locs)
     cover_copy = zeros(n_groups, n_sizes, n_locs)
 
+    FLoops.assistant(false)
     for tstep::Int64 in 2:tf
         change_view = [@view temp_change[:, :, loc] for loc in 1:n_locs]
         apply_survival!.(functional_groups, change_view)
@@ -676,7 +677,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
                 survival_rate
             )
             # Write to the cover matrix
-            coral_cover(functional_groups[i], @view C_t[:, :, i])
+            coral_cover(functional_groups[i], @view(C_t[:, :, i]))
         end
 
         C_t ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs))
