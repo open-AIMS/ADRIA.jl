@@ -668,7 +668,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             site_data.area .* site_data.k, (1, 1, n_locs)
         )
 
-        for i in 1:n_locs
+        @floop for i in 1:n_locs
             # Perform timestep
             timestep!(
                 functional_groups[i],
