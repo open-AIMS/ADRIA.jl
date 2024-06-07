@@ -1,3 +1,6 @@
+using Bootstrap
+using Random
+
 """Scenario-level summaries.
 
 Note: Aggregates across the `site` dimension so trajectories over time for each scenario are
@@ -278,4 +281,73 @@ function scenario_outcomes(rs::ResultSet, metrics::Vector{<:Metric})::YAXArray
     end
 
     return scen_outcomes
+end
+
+"""
+    cf_difference_scenario(rs::ResultSet, metric::Function)
+    cf_difference_scenario(scens::DataFrame, outcomes::Union{YAXArray{Float64,3},
+        YAXArray{Float64,2},YAXArray{Float32,3},YAXArray{Float32,2}})
+    cf_difference_scenario(
+        scens::DataFrame, outcomes::Union{YAXArray{Float64,1},YAXArray{Float32,1}})
+
+Get bootstrapped difference between each intervention and conterfactual scenarios.
+
+# Arguments
+- `rs` : ResultSet
+- `metric` : Function to use to calculate metric.
+- `scens` : Scenario DataFrame
+`outcomes` : YAXArray for a metric (can have 1-3 dimensions which must include :scenarios)
+
+# Returns
+YAXArray with (:timesteps, :scenarios, :outcomes)
+
+# Examples
+```
+metrics::Vector{ADRIA.metrics.Metric} = [
+    ADRIA.metrics.scenario_total_cover,
+    ADRIA.metrics.scenario_asv,
+    ADRIA.metrics.scenario_absolute_juveniles,
+]
+
+# 3-dimensional Array of outcomes
+outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
+```
+"""
+function cf_difference_scenario(rs::ResultSet, metric::Function)
+    scens = rs.outputs # Get scenario dataframe
+    outcomes = metric(rs) # Extract some metric
+    return cf_difference_scenario(scens, outcomes)
+end
+function cf_difference_scenario(
+    scens::DataFrame,
+    outcomes::Union{
+        YAXArray{Float64,3},YAXArray{Float64,2},YAXArray{Float32,3},YAXArray{Float32,2}
+    }
+)
+    # Get metric mean over all dims except scenarios
+    outcome_dims = axes_names(outcomes)[findall(axes_names(outcomes) .!= :scenarios)]
+    outcomes_mean = dropdims(mean(outcomes; dims=outcome_dims); dims=outcome_dims)
+    return cf_difference_scenario(scens, outcomes_mean)
+end
+function cf_difference_scenario(
+    scens::DataFrame, outcomes::Union{YAXArray{Float64,1},YAXArray{Float32,1}}
+)
+    itv_scenarios = findall(scens.guided .>= 0) # All intervention scenario IDs
+    cf_scenarios = findall(scens.guided .== -1) # All counterfactual scenario IDs
+    result = ZeroDataCube(; T=Float64, itv_scenarios=itv_scenarios) # Storage
+    cf_outcomes = outcomes[scenarios=cf_scenarios]
+    itv_outcomes = outcomes[scenarios=itv_scenarios]
+
+    n_scens_itv = length(itv_scenarios)
+    n_scens_cf = length(cf_scenarios)
+
+    for scen in 1:n_scens_itv
+        cf_shuf_set = shuffle(1:n_scens_cf) # shuffle counterfactual scenarios
+        itv_diff = collect(itv_outcomes[scen] .- cf_outcomes[cf_shuf_set])
+
+        # bootstap difference between an intervention scenario and counterfactuals
+        result[scen] = bootstrap(median, itv_diff, BalancedSampling(100)).t0[1]
+    end
+
+    return result
 end
