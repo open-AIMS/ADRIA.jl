@@ -156,6 +156,25 @@ function run_scenarios(
         Matrix(scenarios_df); scenarios=1:nrow(scenarios_df), factors=names(scenarios_df)
     )
 
+    # The idea to initialise the functional groups here is so that each scenario run can
+    # reuse the memory. After a few scenarios runs there will be very few new
+    # allocations as buffers grow larger and are not exceeded
+    #
+    # The problem is that even if a subsequent run only has to reallocate once, the
+    # buffer is so large it takes very long regardless.
+    #
+    # This is also forced me to added an argument to run_model which breaks
+    # encapsulation, so its quite ugly
+    n_locs::Int64 = dom.coral_growth.n_locs
+    C_bins::Matrix{Float64} = bin_edges() ./ 100
+    n_sizes::Int64 = dom.coral_growth.n_sizes
+    n_groups::Int64 = dom.coral_growth.n_groups
+    functional_groups = [
+        FunctionalGroup.(
+            eachrow(C_bins[:, 1:end-1]), eachrow(C_bins[:, 2:end]), eachrow(zeros(n_groups, n_sizes))
+        ) for _ in 1:n_locs
+    ]
+
     para_threshold = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
     active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
     parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false)  && (active_cores > 1) && (nrow(scens) >= para_threshold)
@@ -175,7 +194,7 @@ function run_scenarios(
             #       (at the cost of increased run time) but resolves the kernel crash issue.
             @sync @async @everywhere @eval begin
                 using ADRIA
-                func = (dfx) -> run_scenario(dfx..., data_store)
+                func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
             end
         end
 
@@ -184,7 +203,7 @@ function run_scenarios(
 
     if parallel
         # Define local helper
-        func = (dfx) -> run_scenario(dfx..., data_store)
+        func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
 
         try
             for rcp in RCP
@@ -209,25 +228,6 @@ function run_scenarios(
             rethrow(err)
         end
     else
-        # The idea to initialise the functional groups here is so that each scenario run can
-        # reuse the memory. After a few scenarios runs there will be very few new
-        # allocations as buffers grow larger and are not exceeded
-        #
-        # The problem is that even if a subsequent run only has to reallocate once, the
-        # buffer is so large it takes very long regardless.
-        #
-        # This is also forced me to added an argument to run_model which breaks
-        # encapsulation, so its quite ugly
-        n_locs::Int64 = dom.coral_growth.n_locs
-        C_bins::Matrix{Float64} = bin_edges() ./ 100
-        n_sizes::Int64 = dom.coral_growth.n_sizes
-        n_groups::Int64 = dom.coral_growth.n_groups
-        functional_groups=[
-            FunctionalGroup.(
-                eachrow(C_bins[:, 1:end-1]), eachrow(C_bins[:, 2:end]), eachrow(zeros(n_groups, n_sizes))
-            ) for _ in 1:n_locs
-        ]
-
         # Define local helper
         func = dfx -> run_scenario(dfx..., functional_groups, data_store)
 
