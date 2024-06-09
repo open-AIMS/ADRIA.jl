@@ -18,7 +18,7 @@ function ADRIA.viz.dhw_scenario(dom::Domain, scen_id::Int64; fig_opts=Dict(), ax
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "DHW")
     ax = Axis(f[1, 1]; axis_opts...)
 
-    each_loc = series!(ax, loc_scens'; solid_color=(:red, 0.05))
+    each_loc = series!(ax, loc_scens.data'; solid_color=(:red, 0.05))
     scen_mean = lines!(ax, mean_dhw_scen; color=(:black, 0.8))
 
     Legend(
