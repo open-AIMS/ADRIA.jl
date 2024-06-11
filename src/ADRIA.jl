@@ -32,8 +32,6 @@ using
     Statistics,
     Distributions,
     StaticArrays,
-    SparseArrays,
-    SparseArrayKit,
     LinearAlgebra,
     OrdinaryDiffEq,
     OrderedCollections,
