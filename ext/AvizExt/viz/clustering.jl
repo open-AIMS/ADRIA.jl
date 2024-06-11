@@ -92,8 +92,8 @@ function ADRIA.viz.clustered_scenarios!(
 end
 
 """
-    map(rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::AbstractVector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    map(g, rs, data, clusters; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    map(rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::AbstractVector{Int64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    map(g, rs, data, clusters; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Visualize clustered time series for each site and map.
 
