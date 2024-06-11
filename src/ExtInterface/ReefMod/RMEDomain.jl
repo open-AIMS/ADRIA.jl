@@ -109,6 +109,8 @@ Load a ReefMod Engine dataset.
 RMEDomain
 """
 function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
+    isdir(fn_path) ? true : error("Path does not exist or is not a directory.")
+
     data_files = joinpath(fn_path, "data_files")
     dhw_scens::YAXArray{Float64} = load_DHW(RMEDomain, data_files, RCP)
     loc_ids::Vector{String} = collect(dhw_scens.locs)

@@ -1,12 +1,17 @@
 # Loading a Domain
 
 ADRIA is designed to work with `Domain` data packages.
-In short, these are pre-packaged data sets that hold all the necessary data to run
-simulations for a given spatial domain.
+
+At their core, data packages are a directory containing a `datapackage.json` file,
+following the [spec](https://specs.frictionlessdata.io/data-package/) as
+outlined by Frictionless Data. In short, these are pre-packaged data sets that hold all the
+necessary data to run simulations for a given spatial domain.
 
 See [Architectural overview](@ref) for more information.
 
-A `Domain` may be loaded with the `load_domain` function.
+A `Domain` may be loaded by calling the `load_domain` function with the path to the data
+package. Note that the data package is the *directory*.
+
 By convention we assign the `Domain` to `dom`, although this variable can be named anything.
 
 ```julia

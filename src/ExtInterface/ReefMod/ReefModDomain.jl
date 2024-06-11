@@ -61,6 +61,7 @@ function load_domain(
     RCP::String;
     timeframe::Tuple=(2022, 2100)
 )::ReefModDomain
+    isdir(fn_path) ? true : error("Path does not exist or is not a directory.")
     netcdf_file = _find_netcdf(fn_path, RCP)
     dom_dataset::Dataset = open_dataset(netcdf_file)
 
