@@ -116,11 +116,10 @@ function create_map!(
 
             for color in hl_groups
                 m = findall(highlight .== [color])
-                subset_feat = FC(; features=geodata[m])
 
                 poly!(
                     spatial,
-                    subset_feat;
+                    geodata[m];
                     color="transparent",
                     strokecolor=color,
                     strokewidth=0.5,
