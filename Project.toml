@@ -1,11 +1,10 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony"]
-version = "0.11.0"
+version = "0.12.0"
 
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
-BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 Bootstrap = "e28b5b4c-05e8-5b66-bc03-6f0c0a0a06e0"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
