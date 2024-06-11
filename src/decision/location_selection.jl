@@ -439,3 +439,84 @@ function selection_frequency(
 
     return n_selected ./ maximum(n_selected)
 end
+
+"""
+    selection_ranks(ranks::YAXArray{T, 3}, iv_type::Union{Symbol,Int64}; desc::Bool=true)::Vector{Int64}
+
+Return indices of locations ranked by their selection frequency (in descending order by
+default).
+
+# Examples
+
+```julia
+rs = ADRIA.run_scenarios(dom, scens, "45")
+
+freq_rank = ADRIA.decision.selection_ranks(rs.ranks, :seed; desc=true)
+
+# Get details of locations ordered by their selection frequency.
+rs.site_data[freq_rank, :]
+```
+"""
+function selection_ranks(
+    ranks::YAXArray{T,4},
+    iv_type::Union{Symbol,Int64};
+    desc::Bool=true
+)::Vector{Int64} where {T<:Union{Int64, Float32, Float64}}
+    sel_freq::YAXArray{T, 1} = selection_frequency(ranks, iv_type)
+    ranked::Vector{Int64} = sortperm(sel_freq.data, rev=desc)
+
+    return ranked
+end
+
+"""
+    n_deployment_locations(
+        ranks::YAXArray{T,4},
+        iv_type::Union{Symbol,Int64}
+    )::YAXArray where {T<:Union{Int64, Float32, Float64}}
+
+Extract summary statistics for the number of locations where deployments occurred for
+each scenario.
+
+# Note
+Returns a YAXArray with dimensions `scenarios` and `stats`, where `scenarios` are the
+scenario ids of interest (taken from `ranks`) and `stats` are:
+
+- `min`
+- `mean`
+- `median`
+- `max`
+- `stdev`
+
+# Examples
+
+```julia
+rs = ADRIA.run_scenarios(dom, 128, "45")
+
+deployment_summary = ADRIA.decision.n_deployment_locations(gbr_rs45.ranks, :seed)
+```
+"""
+function n_deployment_locations(
+    ranks::YAXArray{T,4},
+    iv_type::Union{Symbol,Int64}
+)::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    iv_ranks = ranks[intervention=At(iv_type)]
+
+    # Min, Mean, Median, Max, stdev
+    summarized::YAXArray = DataCube(
+        zeros(length(iv_ranks.scenarios), 5);
+        scenarios=collect(iv_ranks.scenarios),
+        stats=[:lower_50, :mean, :median, :upper_50, :stdev]
+    )
+    for (idx, scen_id) in enumerate(iv_ranks.scenarios)
+        n_deploy = count.(eachrow(iv_ranks[:, :, scen_id] .> 0.0))
+        summarized[idx, :] .= (
+            quantile(n_deploy, 0.25),
+            mean(n_deploy),
+            median(n_deploy),
+            quantile(n_deploy, 0.75),
+            std(n_deploy)
+        )
+    end
+
+    return summarized
+end
