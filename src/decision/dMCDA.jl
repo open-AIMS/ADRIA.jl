@@ -224,7 +224,7 @@ include("location_selection.jl")
 export
     SeedPreferences,
     FogPreferences,
-    SRMPreferences,
+    # SRMPreferences,
     decision_matrix,
     filter_criteria,
     update_criteria_values!,
