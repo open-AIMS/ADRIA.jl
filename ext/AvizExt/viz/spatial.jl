@@ -469,7 +469,7 @@ function ADRIA.viz.connectivity!(
 end
 
 """
-    _get_plottable_geom(gdf::DataFrame)::Union{Symbol, Bool}
+    _get_geom_col(gdf::DataFrame)::Union{Symbol, Bool}
 
 Retrieve first column found to hold plottable geometries.
 
