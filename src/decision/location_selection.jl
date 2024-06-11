@@ -490,11 +490,13 @@ each scenario.
 Returns a YAXArray with dimensions `scenarios` and `stats`, where `scenarios` are the
 scenario ids of interest (taken from `ranks`) and `stats` are:
 
-- `min`
+- `lower_50`
 - `mean`
 - `median`
-- `max`
+- `upper_50`
 - `stdev`
+
+where `[lower/upper]_50` refer to the lower and upper 50th percentile.
 
 # Examples
 
