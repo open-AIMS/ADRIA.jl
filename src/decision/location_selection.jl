@@ -503,7 +503,7 @@ where `[lower/upper]_50` refer to the lower and upper 50th percentile.
 ```julia
 rs = ADRIA.run_scenarios(dom, 128, "45")
 
-deployment_summary = ADRIA.decision.n_deployment_locations(gbr_rs45.ranks, :seed)
+deployment_summary = ADRIA.decision.n_deployment_locations(rs.ranks, :seed)
 ```
 
 # Arguments
