@@ -67,9 +67,9 @@ Base.@kwdef struct Intervention <: EcoModel
     )
     a_adapt::Param = Factor(
         0.0;
-        ptype="continuous",
-        dist=TriangularDist,
-        dist_params=(0.0, 8.0, 0.0),
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.0, 15.0, 0.5),  # increase in steps of 0.5 DHW enhancement
         name="Assisted Adaptation",
         description="Assisted adaptation in terms of DHW resistance.",
     )
