@@ -13,13 +13,13 @@ struct DEAResult{V,V2,V3}
     crs_peers::V2 # Scenarios on the efficiency frontier.
     vrs_peers::V2 # Scenarios on the efficiency frontier.
     fdh_peers::V2 # Scenarios on the efficiency frontier.
-    X::V3 # Inputs
-    Y::V # Outputs
+    X::V # Inputs
+    Y::V3 # Outputs
 end
 
 """
     DEAResult(CRS_eff::Vector{Float64}, VRS_eff::Vector{Float64}, FDH_eff::Vector{Float64},
-        CRS_peers::Vector{Int64}, VRS_peers::Vector{Int64}, FDH_peers::Vector{Int64},
+        CRS_peers::DEA.DEAPeers, VRS_peers::DEA.DEAPeers, FDH_peers::DEA.DEAPeers,
         X::Matrix{Float64}, Y::Vector{Float64})::DEAResult
 
 Constructor for DEAResult type.
@@ -35,8 +35,8 @@ Constructor for DEAResult type.
 - `Y` : outputs.
 """
 function DEAResult(CRS_eff::Vector{Float64}, VRS_eff::Vector{Float64},
-    FDH_eff::Vector{Float64}, CRS_peers::Vector{Int64}, VRS_peers::Vector{Int64},
-    FDH_peers::Vector{Int64}, X::Matrix{Float64}, Y::Vector{Float64}
+    FDH_eff::Vector{Float64}, CRS_peers::DEA.DEAPeers, VRS_peers::DEA.DEAPeers,
+    FDH_peers::DEA.DEAPeers, X::Matrix{Float64}, Y::Vector{Float64}
 )::DEAResult
     return DEAResult(1 ./ CRS_eff,
         1 ./ VRS_eff,
@@ -154,9 +154,9 @@ function data_envelopment_analysis(
     result_VRS = dea_model(X, Y; orient=orient, rts=:VRS)
     result_FDH = dea_model(X, Y; orient=orient, rts=:FDH)
 
-    CRS_peers = peers(result_CRS)
-    VRS_peers = peers(result_VRS)
-    FDH_peers = peers(result_FDH)
+    CRS_peers = DEA.peers(result_CRS)
+    VRS_peers = DEA.peers(result_VRS)
+    FDH_peers = DEA.peers(result_FDH)
 
     return DEAResult(
         result_CRS.eff,
