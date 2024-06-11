@@ -370,7 +370,7 @@ function _calc_selection_score(ranks::YAXArray, lowest_rank::Union{Int64,Float64
 end
 
 """
-    _times_selected(ranks::YAXArray{T,3}, iv_type::Union{Symbol,Int64}, squash::Union{Symbol,Tuple})::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    _times_selected(ranks::YAXArray{T}, iv_type::Union{Symbol,Int64}, squash::Union{Symbol,Tuple})::YAXArray where {T<:Union{Int64, Float32, Float64}}
 
 Count of the number of times a location has been selected (regardless of rank).
 
@@ -441,7 +441,11 @@ function selection_frequency(
 end
 
 """
-    selection_ranks(ranks::YAXArray{T, 3}, iv_type::Union{Symbol,Int64}; desc::Bool=true)::Vector{Int64}
+    selection_ranks(
+        ranks::YAXArray{T,4},
+        iv_type::Union{Symbol,Int64};
+        desc::Bool=true
+    )::Vector{Int64}
 
 Return indices of locations ranked by their selection frequency (in descending order by
 default).
@@ -456,6 +460,11 @@ freq_rank = ADRIA.decision.selection_ranks(rs.ranks, :seed; desc=true)
 # Get details of locations ordered by their selection frequency.
 rs.site_data[freq_rank, :]
 ```
+
+# Arguments
+- `ranks` : Rankings from `ADRIA.decision.selection_ranks()`
+- `iv_type` : Intervention type (`:seed` or `:fog`)
+- `desc` : Return ranks from most deployed to least (defaults to `true`)
 """
 function selection_ranks(
     ranks::YAXArray{T,4},
@@ -494,6 +503,10 @@ rs = ADRIA.run_scenarios(dom, 128, "45")
 
 deployment_summary = ADRIA.decision.n_deployment_locations(gbr_rs45.ranks, :seed)
 ```
+
+# Arguments
+- `ranks` : Rankings from `ADRIA.decision.selection_ranks()`
+- `iv_type` : `:seed` or `:fog`
 """
 function n_deployment_locations(
     ranks::YAXArray{T,4},
