@@ -49,4 +49,8 @@ function connectivity!() end
 function dhw_scenario() end
 function cyclone_scenario() end
 
+# Coral Dynamics
+function taxonomy() end
+function taxonomy!() end
+
 end  # module

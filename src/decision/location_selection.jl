@@ -255,7 +255,7 @@ ADRIA.decision.selection_score(ranks[scenarios=1:4], :seed)
 
 # Analysis includes the time dimension by default where scenario runs are being assessed
 # such that the score for each location is returned
-rs = ADRIA.scenario_runs(dom, scens, "45")
+rs = ADRIA.run_scenarios(dom, scens, "45")
 # rs.ranks will be a 4-dimensional array of
 # [timesteps ⋅ locations ⋅ interventions ⋅ scenarios]
 
@@ -410,7 +410,7 @@ ADRIA.decision.selection_frequency(ranks[scenarios=1:4], :seed)
 
 # Assess selection frequency for scenario runs
 # Note: indices have to be used for now
-rs = ADRIA.scenario_runs(dom, 16, "45")
+rs = ADRIA.run_scenarios(dom, 16, "45")
 scen_seed_freq = ADRIA.decision.selection_frequency(rs.ranks, 1)
 ```
 
