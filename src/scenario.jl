@@ -658,6 +658,8 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
     C_t::Array{Float64, 3} = zeros(n_groups, n_sizes, n_locs)
     cover_copy = zeros(n_groups, n_sizes, n_locs)
 
+    growth_spatial_constraint::Vector{Float64} = zeros(n_locs)
+
     FLoops.assistant(false)
     for tstep::Int64 in 2:tf
         change_view = [@view temp_change[:, :, loc] for loc in 1:n_locs]
@@ -668,12 +670,18 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             site_data.area .* site_data.k, (1, 1, n_locs)
         )
 
+        # Constrain growth by available area
+        # Constraint Coefficient -> log(1 + left over space)
+        growth_spatial_constraint .= log.(2, 1 .+ relative_leftover_space(
+            dropdims(sum(C_t; dims=(1, 2)), dims=(1, 2))
+        ))
+
         @floop for i in 1:n_locs
             # Perform timestep
             timestep!(
                 functional_groups[i],
                 recruitment[:, i],
-                linear_extension_m,
+                linear_extension_m .* growth_spatial_constraint[i],
                 survival_rate
             )
             # Write to the cover matrix
