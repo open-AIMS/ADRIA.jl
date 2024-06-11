@@ -85,7 +85,7 @@ include("viz/viz.jl")
 export
     growthODE,
     run_scenario, coral_spec,
-    create_coral_struct, Intervention, Corals, SimConstants,
+    create_coral_struct, Intervention, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights,
     site_area, site_k_area,
     Domain, ADRIADomain,
