@@ -3,18 +3,18 @@ using ADRIA: ResultSet
 
 """
     ADRIA.viz.ranks_to_frequencies!(g::Union{GridLayout,GridPosition},rs::ResultSet,
-        frequencies::YAXArray,rank_ids::Vector{Int64};opts::Dict=Dict(),axis_opts::Dict=Dict(),)
+        frequencies::YAXArray,rank_ids::Vector{Int64};opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
     ADRIA.viz.ranks_to_frequencies!(g::Union{GridLayout,GridPosition},rs::ResultSet,
-        frequencies::YAXArray,rank_id::Int64;opts::Dict=Dict(:color_map => :CMRmap),axis_opts::Dict=Dict())
+        frequencies::YAXArray,rank_id::Int64;opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(:color_map => :CMRmap),axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
     ADRIA.viz.ranks_to_frequencies(rs::ResultSet,frequencies::YAXArray,rank_ids::Union{Int64,Vector{Int64}};
-        opts::Dict=Dict(),fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-        
+        opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+
 Plot a spatial map of location selection frequencies.
 
 # Arguments
 - `g` : Figure GridPosition or GridLayout.
 - `rs` : Result set.
-- `frequencies` : Set of frequencies for each rank over a set of scenarios and/or timesteps. 
+- `frequencies` : Set of frequencies for each rank over a set of scenarios and/or timesteps.
     As calculated using`ranks_to_frequencies`.
 - `rank_id`/`rank_ids` : Rank or set of ranks to plot frequency maps for. E.g. 1, [1,2,3].
 - `opts` : Aviz options
@@ -33,8 +33,8 @@ function ADRIA.viz.ranks_to_frequencies!(
     rs::ResultSet,
     frequencies::YAXArray,
     rank_ids::Vector{Int64};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     sym_rank_ids = Symbol.(rank_ids)
     rank_groups = Dict(rank_grp => rank_grp .== sym_rank_ids for rank_grp in sym_rank_ids)
@@ -90,8 +90,9 @@ function ADRIA.viz.ranks_to_frequencies!(
     rs::ResultSet,
     frequencies::YAXArray,
     rank_id::Int64;
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict())
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
     opts[:colorbar_label] = get(opts, :colorbar_label, "Selection frequency")
     opts[:color_map] = get(
         opts,
@@ -111,9 +112,10 @@ function ADRIA.viz.ranks_to_frequencies(
     rs::ResultSet,
     frequencies::YAXArray,
     rank_ids::Union{Int64,Vector{Int64}};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.ranks_to_frequencies!(
