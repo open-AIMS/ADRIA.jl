@@ -83,17 +83,12 @@ function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
 
     # Determines which returns to scale approach is used to select scenario peers
     # (most efficient scenarios)
-    frontier_type = get(opts, :frontier_type, "VRS")
+    frontier_type = get(opts, :frontier_type, :vrs_peers)
 
-    Y = DEA_output.Y
+    Y = DEA_output.Y # Output values
+
     # Find points on best practice frontier
-    if frontier_type == "VRS"
-        best_practice_scens = DEA_output.vrs_peers.J
-    elseif frontier_type == "CRS"
-        best_practice_scens = DEA_output.crs_peers.J
-    else
-        best_practice_scens = DEA_output.fdh_peers.J
-    end
+    best_practice_scens = DEA_output.$frontier_type.J
 
     scale_efficiency = DEA_output.crs_vals ./ DEA_output.vrs_vals
 

@@ -108,7 +108,7 @@ DEA_scens = ADRIA.economics.data_envelopment_analysis(CAD_cost, s_tac, s_sv)
    Marine Policy, 148, 105444.
    https://doi.org/10.1016/j.marpol.2022.105444
 3. Pascoe, S., 2024.
-   On the use of Data Envelopement Analysis for Multi-Criteria Decision Analysis.
+   On the use of Data Envelopment Analysis for Multi-Criteria Decision Analysis.
    Algorithms, 17:89.
    https://doi.org/10.3390/a17030089
 
