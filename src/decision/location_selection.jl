@@ -445,7 +445,7 @@ end
         ranks::YAXArray{T,4},
         iv_type::Union{Symbol,Int64};
         desc::Bool=true
-    )::Vector{Int64}
+    )::Vector{Int64} where {T<:Union{Int64, Float32, Float64}}
 
 Return indices of locations ranked by their selection frequency (in descending order by
 default).
