@@ -60,19 +60,21 @@ function ADRIA.viz.data_envelopment_analysis(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    return ADRIA.viz.data_envelopment_analysis(
+    ADRIA.viz.data_envelopment_analysis!(
         g, rs, DEA_output; opts=opts, axis_opts=axis_opts
     )
+
+    return f
 end
-function ADRIA.viz.data_envelopment_analysis(g::Union{GridLayout,GridPosition},
+function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
     rs::ResultSet, DEA_output::DEAResult; axis_opts=Dict(),
     opts=Dict()
 )
-    return ADRIA.viz.data_envelopment_analysis(
+    return ADRIA.viz.data_envelopment_analysis!(
         g, DEA_output; opts=opts, axis_opts=axis_opts
     )
 end
-function ADRIA.viz.data_envelopment_analysis(g::Union{GridLayout,GridPosition},
+function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
     DEA_output::DEAResult; axis_opts=Dict(), opts=Dict())
     line_color = get(opts, :line_color, :red)
     data_color = get(opts, :data_color, :black)
@@ -83,36 +85,32 @@ function ADRIA.viz.data_envelopment_analysis(g::Union{GridLayout,GridPosition},
     # (most efficient scenarios)
     frontier_type = get(opts, :frontier_type, "VRS")
 
-    ga = g[1, 1] = GridLayout()
-    gb = g[2, 1] = GridLayout()
-    gc = g[3, 1] = GridLayout()
-
-    X = DEA_output.X
+    Y = DEA_output.Y
     # Find points on best practice frontier
     if frontier_type == "VRS"
-        best_practice_scens = DEA_output.VRS_peers.J
+        best_practice_scens = DEA_output.vrs_peers.J
     elseif frontier_type == "CRS"
-        best_practice_scens = DEA_output.CRS_peers.J
+        best_practice_scens = DEA_output.crs_peers.J
     else
-        best_practice_scens = DEA_output.FDH_peers.J
+        best_practice_scens = DEA_output.fdh_peers.J
     end
 
-    scale_efficiency = DEA_output.CRS_eff ./ DEA_output.VRS_eff
+    scale_efficiency = DEA_output.crs_vals ./ DEA_output.vrs_vals
 
     # Plot efficiency frontier and data cloud
-    axa = Axis(ga; axis_opts...)
-    frontier = lines!(
-        axa, X[best_practice_scens, 1], X[best_practice_scens, 2]; color=line_color
+    axa = Axis(g[1, 1]; axis_opts...)
+    scatter!(axa, Y[:, 1], Y[:, 2]; color=data_color)
+    scatter!(
+        axa, Y[best_practice_scens, 1], Y[best_practice_scens, 2]; color=line_color
     )
-    data = scatter!(axa, X[:, 1], X[:, 2]; color=data_color)
-    Legend(ax, [frontier, data], [frontier_name, data_name])
+    #Legend(g[1, 2], [frontier, data], [frontier_name, data_name])
 
     # Plot the scale efficiency (ratio of efficiencies assuming CRS vs. assuming VRS)
-    axb = Axis(gb; axis_opts...)
-    scatter!(axb, scale_efficiency; color=data_color, title="Scale efficiency")
+    axb = Axis(g[2, 1]; axis_opts...)
+    scatter!(axb, scale_efficiency; color=data_color)#, title="Scale efficiency")
 
     # Plot the technical efficiency (inverse VRS efficiencies)
-    axc = Axis(gc; axis_opts...)
-    scatter!(axc, DEA_output.VRS_eff; color=data_color, title="Technical efficiency")
+    axc = Axis(g[3, 1]; axis_opts...)
+    scatter!(axc, DEA_output.vrs_vals; color=data_color)#, title="Technical efficiency")
     return g
 end
