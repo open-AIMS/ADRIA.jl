@@ -574,13 +574,16 @@ function ADRIA.viz.outcome_map!(
         title_val = ms_factor.name[1]
     end
 
-    ax::Axis = Axis(g[1, 1]; title=title_val,
+    ax::Axis = Axis(
+        g[1, 1];
+        title=title_val,
         titlesize=38,
         xlabel=xlabel,
         ylabel=ylabel,
         xlabelsize=32,
         ylabelsize=32,
-        ylabelrotation=π / 2.0, axis_opts...)
+        ylabelrotation=π / 2.0,
+        axis_opts...)
     ADRIA.viz.outcome_map!(ax, outcomes, ms_factor, f_vals)
 
     return g
