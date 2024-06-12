@@ -1,8 +1,8 @@
 using Statistics
 
 """
-    scenarios(outcomes::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    scenarios!(g::Union{GridLayout,GridPosition}, outcomes::AbstractMatrix, clusters::Vector{Int64}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    scenarios(outcomes::AbstractMatrix, clusters::Vector{Int64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    scenarios!(g::Union{GridLayout,GridPosition}, outcomes::AbstractMatrix, clusters::Vector{Int64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Visualize clustered time series of scenarios.
 
@@ -18,9 +18,9 @@ Figure
 function ADRIA.viz.scenarios(
     outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,AbstractVector{Int64}};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    fig_opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    axis_opts::OPT_TYPE=DEFAULT_OPT_VAL,
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -33,9 +33,9 @@ function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
     outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    axis_opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    series_opts::OPT_TYPE=DEFAULT_OPT_VAL,
 )::Union{GridLayout,GridPosition}
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
@@ -56,8 +56,8 @@ function ADRIA.viz.scenarios!(
 end
 
 """
-    clustered_scenarios(outcomes::AbstractMatrix{<:Real}, clusters::Vector{Int64}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    clustered_scenarios!(g::Union{GridLayout,GridPosition}, outcomes::AbstractMatrix{<:Real}, clusters::Vector{Int64}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    clustered_scenarios(outcomes::AbstractMatrix{<:Real}, clusters::Vector{Int64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    clustered_scenarios!(g::Union{GridLayout,GridPosition}, outcomes::AbstractMatrix{<:Real}, clusters::Vector{Int64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Visualize clustered time series of scenarios.
 
@@ -73,9 +73,9 @@ Figure
 function ADRIA.viz.clustered_scenarios(
     outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    fig_opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    axis_opts::OPT_TYPE=DEFAULT_OPT_VAL,
 )::Figure
     return ADRIA.viz.scenarios(
         outcomes, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
@@ -85,8 +85,8 @@ function ADRIA.viz.clustered_scenarios!(
     g::Union{GridLayout,GridPosition},
     outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    axis_opts::OPT_TYPE=DEFAULT_OPT_VAL,
 )::Union{GridLayout,GridPosition}
     return ADRIA.viz.scenarios!(g, outcomes, clusters; axis_opts=axis_opts, opts=opts)
 end
