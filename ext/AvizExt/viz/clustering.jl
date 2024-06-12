@@ -18,9 +18,9 @@ Figure
 function ADRIA.viz.scenarios(
     outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,AbstractVector{Int64}};
-    opts::OPT_TYPE=DEFAULT_OPT_VAL,
-    fig_opts::OPT_TYPE=DEFAULT_OPT_VAL,
-    axis_opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -33,9 +33,9 @@ function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
     outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
-    opts::OPT_TYPE=DEFAULT_OPT_VAL,
-    axis_opts::OPT_TYPE=DEFAULT_OPT_VAL,
-    series_opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )::Union{GridLayout,GridPosition}
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
@@ -73,9 +73,9 @@ Figure
 function ADRIA.viz.clustered_scenarios(
     outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
-    opts::OPT_TYPE=DEFAULT_OPT_VAL,
-    fig_opts::OPT_TYPE=DEFAULT_OPT_VAL,
-    axis_opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )::Figure
     return ADRIA.viz.scenarios(
         outcomes, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
@@ -85,8 +85,8 @@ function ADRIA.viz.clustered_scenarios!(
     g::Union{GridLayout,GridPosition},
     outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
-    opts::OPT_TYPE=DEFAULT_OPT_VAL,
-    axis_opts::OPT_TYPE=DEFAULT_OPT_VAL,
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )::Union{GridLayout,GridPosition}
     return ADRIA.viz.scenarios!(g, outcomes, clusters; axis_opts=axis_opts, opts=opts)
 end

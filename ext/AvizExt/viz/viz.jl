@@ -6,7 +6,7 @@ using .AvizExt
 using Makie.Colors
 
 const OPT_TYPE = Dict{Symbol,<:Any}
-const DEFAULT_OPT_VAL = Dict{Symbol,Any}()
+const DEFAULT_OPT_TYPE = Dict{Symbol,Any}
 
 """
     _time_labels(labels)

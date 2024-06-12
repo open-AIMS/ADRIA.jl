@@ -3,8 +3,8 @@ using ADRIA.analysis: series_confint
 using ADRIA: axes_names, RMEResultSet
 
 """
-    ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::YAXArray; opts=Dict(by_RCP => false), fig_opts=Dict(), axis_opts=Dict(), series_opts=Dict())
-    ADRIA.viz.scenarios(scenarios::DataFrame, outcomes::YAXArray; opts::Dict=Dict(:by_RCP => false), fig_opts::Dict=Dict(), axis_opts::Dict=Dict(), series_opts::Dict=Dict())::Figure
+    ADRIA.viz.scenarios(rs::ADRIA.ResultSet, outcomes::YAXArray; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(by_RCP => false), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.scenarios(scenarios::DataFrame, outcomes::YAXArray; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(:by_RCP => false), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Figure
     ADRIA.viz.scenarios!(g::Union{GridLayout,GridPosition}, scenarios::DataFrame, outcomes::YAXArray; opts=Dict(by_RCP => false), axis_opts=Dict(), series_opts=Dict())
 
 Plot scenario outcomes over time.
@@ -42,10 +42,10 @@ Figure or GridPosition
 function ADRIA.viz.scenarios(
     rs::ResultSet,
     outcomes::YAXArray;
-    opts::Dict=Dict(:by_RCP => false),
-    fig_opts::Dict=Dict(:size=>(800, 300)),
-    axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict()
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(:by_RCP => false),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(:size=>(800, 300)),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
     return ADRIA.viz.scenarios(
         rs.inputs,
@@ -60,9 +60,9 @@ function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
     outcomes::YAXArray;
-    opts::Dict=Dict(:by_RCP => false),
-    axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(:by_RCP => false),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
     opts[:histogram] = get(opts, :histogram, false)
 
@@ -78,10 +78,10 @@ end
 function ADRIA.viz.scenarios(
     rs::RMEResultSet,
     outcomes::YAXArray;
-    opts::Dict=Dict(:by_RCP => false),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(:by_RCP => false),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -97,7 +97,7 @@ function ADRIA.viz.scenarios(
         outcomes,
         scen_groups;
         opts=opts,
-        axis_opts=axis_opts, 
+        axis_opts=axis_opts,
         series_opts=series_opts
     )
     return f
@@ -105,10 +105,10 @@ end
 function ADRIA.viz.scenarios(
     scenarios::DataFrame,
     outcomes::YAXArray;
-    opts::Dict=Dict(:by_RCP => false),
-    fig_opts::Dict=Dict(:size=>(800, 300)),
-    axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(:by_RCP => false),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(:size=>(800, 300)),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -122,10 +122,13 @@ function ADRIA.viz.scenarios!(
     g::Union{GridLayout,GridPosition},
     scenarios::DataFrame,
     outcomes::YAXArray;
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
+    if isdefined(Main, :Infiltrator)
+      Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
+    end
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
@@ -153,9 +156,9 @@ function ADRIA.viz.scenarios!(
     ax::Axis,
     outcomes::YAXArray,
     scen_groups::Dict{Symbol,BitVector};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
-    series_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
     if get(opts, :summarize, true)
         scenarios_confint!(ax, outcomes, scen_groups)
@@ -233,7 +236,7 @@ function scenarios_series!(
     ax::Axis,
     outcomes::YAXArray,
     scen_groups::Dict{Symbol,BitVector};
-    series_opts::Dict=Dict(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(outcomes, 1)),
     sort_by=:size,
 )::Nothing
