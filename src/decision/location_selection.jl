@@ -441,11 +441,7 @@ function selection_frequency(
 end
 
 """
-    selection_ranks(
-        ranks::YAXArray{T,4},
-        iv_type::Union{Symbol,Int64};
-        desc::Bool=true
-    )::Vector{Int64} where {T<:Union{Int64, Float32, Float64}}
+    selection_ranks(ranks::YAXArray{T,4}, iv_type::Union{Symbol,Int64}; desc::Bool=true)::Vector{Int64} where {T<:Union{Int64, Float32, Float64}}
 
 Return indices of locations ranked by their selection frequency (in descending order by
 default).
@@ -465,6 +461,9 @@ rs.site_data[freq_rank, :]
 - `ranks` : Rankings from `ADRIA.decision.selection_ranks()`
 - `iv_type` : Intervention type (`:seed` or `:fog`)
 - `desc` : Return ranks from most deployed to least (defaults to `true`)
+
+# Returns
+Location indices in order of their selection rankings
 """
 function selection_ranks(
     ranks::YAXArray{T,4},
@@ -478,10 +477,7 @@ function selection_ranks(
 end
 
 """
-    n_deployment_locations(
-        ranks::YAXArray{T,4},
-        iv_type::Union{Symbol,Int64}
-    )::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    n_deployment_locations(ranks::YAXArray{T,4}, iv_type::Union{Symbol,Int64})::YAXArray where {T<:Union{Int64, Float32, Float64}}
 
 Extract summary statistics for the number of locations where deployments occurred for
 each scenario.
@@ -509,6 +505,9 @@ deployment_summary = ADRIA.decision.n_deployment_locations(rs.ranks, :seed)
 # Arguments
 - `ranks` : Rankings from `ADRIA.decision.selection_ranks()`
 - `iv_type` : `:seed` or `:fog`
+
+# Returns
+Summary stats of the number of deployment locations for each scenario
 """
 function n_deployment_locations(
     ranks::YAXArray{T,4},
