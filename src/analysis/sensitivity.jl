@@ -535,9 +535,9 @@ end
 """
     rsa(X::DataFrame, y::Vector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10)::Dataset
     rsa(X::DataFrame, y::Vector{<:Real}, factor::Symbol, model_spec::DataFrame; S::Int64=10)::YAXArray
-    rsa(rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10)::Dataset
-    rsa(rs::ResultSet, y::AbstractArray{<:Real}, factors::Vector{Symbol}; S::Int64=10)::Dataset
-    rsa(rs::ResultSet, y::AbstractArray{<:Real}, factor::Symbol; S::Int64=10)::YAXArray
+    rsa(rs::ResultSet, y::AXArray{Float64,1}; S::Int64=10)::Dataset
+    rsa(rs::ResultSet, y::AXArray{Float64,1}, factors::Vector{Symbol}; S::Int64=10)::Dataset
+    rsa(rs::ResultSet, y::AXArray{Float64,1}, factor::Symbol; S::Int64=10)::YAXArray
 
 Perform Regional Sensitivity Analysis.
 
@@ -677,28 +677,28 @@ function rsa(
     )
 end
 function rsa(
-    rs::ResultSet, y::AbstractVector{<:Real}; S::Int64=10
+    rs::ResultSet, y::YAXArray{Float64,1}; S::Int64=10
 )::Dataset
-    return rsa(rs.inputs[!, Not(:RCP)], y, rs.model_spec; S=S)
+    return rsa(rs.inputs[!, Not(:RCP)], vec(y), rs.model_spec; S=S)
 end
 function rsa(
-    rs::ResultSet, y::AbstractVector{<:Real}, factors::Vector{Symbol};
+    rs::ResultSet, y::YAXArray{Float64,1}, factors::Vector{Symbol};
     S::Int64=10
 )::Dataset
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
-        y,
+        vec(y),
         rs.model_spec[rs.model_spec.fieldname .∈ [factors], :];
         S=S
     )
 end
 function rsa(
-    rs::ResultSet, y::AbstractVector{<:Real}, factor::Symbol;
+    rs::ResultSet, y::YAXArray{Float64,1}, factor::Symbol;
     S::Int64=10
 )::YAXArray
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factor],
-        y,
+        vec(y),
         rs.model_spec[rs.model_spec.fieldname .== factor, :];
         S=S
     )
@@ -710,9 +710,9 @@ end
         conf::Float64=0.95)::YAXArray
     outcome_map(rs::ResultSet, y::AbstractArray{<:Real}, rule::Union{Function,BitVector,Vector{Int64}},
         target_factors::Vector{Symbol}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
-    outcome_map(rs::ResultSet, y::AbstractArray{<:Real}, rule::Union{Function,BitVector,Vector{Int64}},
+    outcome_map(rs::ResultSet, y::AXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}},
         target_factor::Symbol; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray
-    outcome_map(rs::ResultSet, y::AbstractArray{<:Real}, rule::Union{Function,BitVector,Vector{Int64}};
+    outcome_map(rs::ResultSet, y::AXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}};
         S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
 
 Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
@@ -883,17 +883,17 @@ function outcome_map(
 end
 function outcome_map(
     X::DataFrame,
-    y::AbstractVecOrMat{<:Real},
+    y::YAXArray{Float64,1},
     rule::Union{Function,BitVector,Vector{Int64}};
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95
 )::Dataset
-    return outcome_map(X, y, rule, names(X); S, n_boot, conf)
+    return outcome_map(X, vec(y), rule, names(X); S, n_boot, conf)
 end
 function outcome_map(
     rs::ResultSet,
-    y::AbstractArray{<:Real},
+    y::YAXArray{Float64,1},
     rule::Union{Function,BitVector,Vector{Int64}},
     target_factors::Vector{Symbol};
     S::Int64=20,
@@ -901,12 +901,13 @@ function outcome_map(
     conf::Float64=0.95
 )::Dataset
     return outcome_map(
-        rs.inputs[:, Not(:RCP)], y, rule, target_factors, rs.model_spec; S, n_boot, conf
+        rs.inputs[:, Not(:RCP)], vec(y), rule, target_factors, rs.model_spec; S, n_boot,
+        conf
     )
 end
 function outcome_map(
     rs::ResultSet,
-    y::AbstractArray{<:Real},
+    y::YAXArray{Float64,1},
     rule::Union{Function,BitVector,Vector{Int64}},
     target_factor::Symbol;
     S::Int64=20,
@@ -914,29 +915,29 @@ function outcome_map(
     conf::Float64=0.95
 )::YAXArray
     return outcome_map(
-        rs.inputs[:, Not(:RCP)], y, rule, target_factor, rs.model_spec; S, n_boot, conf
+        rs.inputs[:, Not(:RCP)], vec(y), rule, target_factor, rs.model_spec; S, n_boot, conf
     )
 end
 function outcome_map(
     rs::ResultSet,
-    y::AbstractArray{<:Real},
+    y::YAXArray{Float64,1},
     rule::Union{Function,BitVector,Vector{Int64}};
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95
 )::Dataset
     return outcome_map(
-        rs.inputs[:, Not(:RCP)], y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf
+        rs.inputs[:, Not(:RCP)], vec(y), rule, names(rs.inputs), rs.model_spec; S, n_boot,
+        conf
     )
 end
-
 function _map_outcomes(
-    y::AbstractArray{<:Real},
+    y::AbstractVecOrMat{<:Real},
     rule::Union{BitVector,Vector{Int64}}
 )::Union{BitVector,Vector{Int64}}
     return rule
 end
-function _map_outcomes(y::AbstractArray{<:Real}, rule::Function)::Vector{Int64}
+function _map_outcomes(y::AbstractVecOrMat{<:Real}, rule::Function)::Vector{Int64}
     _y = col_normalize(y)
     all_p_rule = map(rule, _y)
 
