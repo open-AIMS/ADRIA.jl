@@ -17,30 +17,31 @@ import ArchGDAL as AG
 using
     CSV,
     DataFrames,
-    GeoInterface,
+    Distributed,
+    FLoops,
     FileIO,
+    GeoInterface,
+    Graphs,
     ImageIO,
     MAT,
-    Graphs,
-    SimpleWeightedGraphs,
-    Distributed,
-    FLoops
+    SimpleWeightedGraphs
 
 # Modelling packages
 using
-    Random,
-    Statistics,
-    Distributions,
-    StaticArrays,
-    LinearAlgebra,
-    OrdinaryDiffEq,
-    OrderedCollections,
     Combinatorics,
-    Distances,
-    Setfield,
-    ModelParameters,
     DataStructures,
     DimensionalData,
+    Distances,
+    Distributions,
+    LinearAlgebra,
+    ModelParameters,
+    OrderedCollections,
+    OrdinaryDiffEq,
+    Random,
+    Setfield,
+    Statistics,
+    StaticArrays,
+    SparseArrays,
     YAXArrays
 
 include("utils/text_display.jl")  # need better name for this file
