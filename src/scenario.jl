@@ -671,8 +671,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         )
 
         # Constrain growth by available area
-        # Constraint Coefficient -> log(1 + left over space)
-        growth_spatial_constraint .= log.(2, 1 .+ relative_leftover_space(
+        growth_spatial_constraint .= log2.(1 .+ relative_leftover_space(
             dropdims(sum(C_t; dims=(1, 2)), dims=(1, 2))
         ))
 
