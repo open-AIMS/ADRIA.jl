@@ -363,19 +363,19 @@ function test_rs_w_fig()
     )
 
     # Indicate factor values that are in the top 30 percentile
-    tac_om_70 = ADRIA.sensitivity.outcome_map(
+    tac_om_30 = ADRIA.sensitivity.outcome_map(
         rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20
     )
     ADRIA.viz.outcome_map!(
         tf[2, 1],
         rs,
-        tac_om_70,
+        tac_om_30,
         foi;
         axis_opts=Dict(
             :title => "Regions which lead to Top 30th Percentile Outcomes",
             :ylabel => "TAC [m²]",
         ))
-    save("outcome_map.png", tf)
+    # save("outcome_map.png", tf)
 
     return rs
 end
