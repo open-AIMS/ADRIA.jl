@@ -437,6 +437,8 @@ in identifying which (group of) factors drive model outputs and their active are
 factor space.
 
 ```julia
+mean_s_tac = dropdims(mean(s_tac), dims=1)
+
 tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)
 rsa_fig = ADRIA.viz.rsa(
     rs,
@@ -458,6 +460,9 @@ As the name implies, outcome mapping aids in identifying the relationship betwee
 outputs and the region of factor space that led to those outputs.
 
 ```julia
+
+mean_s_tac = dropdims(mean(s_tac), dims=1)
+
 tf = Figure(size=(1600, 1200))  # size of figure
 
 # Indicate factor values that are in the top 50 percentile
