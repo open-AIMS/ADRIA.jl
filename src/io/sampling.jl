@@ -8,7 +8,9 @@ import Distributions: sample
 import Surrogates.QuasiMonteCarlo as QMC
 import Surrogates.QuasiMonteCarlo: SobolSample, OwenScramble
 
-const DISCRETE_FACTOR_TYPES = ["ordered categorical", "unordered categorical", "ordered discrete"]
+const DISCRETE_FACTOR_TYPES = [
+    "ordered categorical", "unordered categorical", "ordered discrete"
+]
 
 """
     adjust_samples(d::Domain, df::DataFrame)::DataFrame
