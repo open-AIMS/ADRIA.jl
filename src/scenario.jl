@@ -438,9 +438,9 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         intervention=interventions()
     )
 
-    Yshade = SparseArray(spzeros(tf, n_locs))
-    Yfog = SparseArray(spzeros(tf, n_locs))
-    Yseed = SparseArray(zeros(tf, 3, n_locs))  # 3 = the number of seeded coral types
+    Yshade = spzeros(tf, n_locs)
+    Yfog = spzeros(tf, n_locs)
+    Yseed = zeros(tf, 3, n_locs)  # 3 = the number of seeded coral types
 
     # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
