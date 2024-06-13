@@ -289,14 +289,15 @@ function ADRIA.viz.rsa!(
         fv_s = round.(quantile(f_vals, collect(si.axes[1])), digits=2)
     end
 
-    scatterlines!(ax, fv_s, collect(si[si=At("Si")]); markersize=15)
+    if .!all(si[si=At("Si")] .== 0.0)
+        scatterlines!(ax, fv_s, collect(si[si=At("Si")]); markersize=15)
 
-    if f_name == :guided
-        fv_labels = _get_guided_labels()
-        ax.xticks = (fv_s, fv_labels)
-        ax.xticklabelrotation = pi / 4
+        if f_name == :guided
+            fv_labels = _get_guided_labels()
+            ax.xticks = (fv_s, fv_labels)
+            ax.xticklabelrotation = pi / 4
+        end
     end
-
     return ax
 end
 function ADRIA.viz.rsa(
@@ -523,20 +524,21 @@ function ADRIA.viz.outcome_map!(
         fv_s = round.(quantile(f_vals, collect(outcomes.axes[1])), digits=2)
     end
 
-    band!(
-        ax,
-        fv_s[.!ismissing.(outcomes[CI=At("lower")])],
-        collect(skipmissing(outcomes[CI=At("lower")])),
-        collect(skipmissing(outcomes[CI=At("upper")])),
-    )
-    scatterlines!(ax, fv_s, outcomes[CI=At("mean")]; markersize=15)
+    if .!all(outcomes[CI=At("mean")] .== 0.0)
+        band!(
+            ax,
+            fv_s[.!ismissing.(outcomes[CI=At("lower")])],
+            collect(skipmissing(outcomes[CI=At("lower")])),
+            collect(skipmissing(outcomes[CI=At("upper")]))
+        )
+        scatterlines!(ax, fv_s, outcomes[CI=At("mean")]; markersize=15)
 
-    if f_name == :guided
-        fv_labels = _get_guided_labels()
-        ax.xticks = (fv_s, fv_labels)
-        ax.xticklabelrotation = pi / 4
+        if f_name == :guided
+            fv_labels = _get_guided_labels()
+            ax.xticks = (fv_s, fv_labels)
+            ax.xticklabelrotation = pi / 4
+        end
     end
-
     return ax
 end
 function ADRIA.viz.outcome_map(
