@@ -41,7 +41,6 @@ function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
     return f.func(rs, args...; kwargs...)
 end
 
-
 """
     relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
     relative_cover(rs::ResultSet)::AbstractArray{<:Real}
@@ -62,7 +61,6 @@ function _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:relative_cover]
 end
 relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
-
 
 """
     total_absolute_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
@@ -88,8 +86,6 @@ function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
     return _total_absolute_cover(rs.outcomes[:relative_cover], site_k_area(rs))
 end
 total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scenarios), "m²")
-
-
 
 """
     relative_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}) where {T<:Real}
@@ -322,7 +318,6 @@ function _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Fl
 
     return colony_vol_m3_per_m2, max_colony_vol_m3_per_m2
 end
-
 
 """
     _shelter_species_loop(X::AbstractArray{T1,3}, n_species::Int64, colony_vol_m3_per_m2::Array{F}, max_colony_vol_m3_per_m2::Array{F}, k_area::Array{F})::YAXArray where {T1<:Real,F<:Float64}
@@ -608,7 +603,6 @@ function _relative_shelter_volume(rs::ResultSet)::YAXArray
 end
 relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
 
-
 include("pareto.jl")
 include("ranks.jl")
 include("reef_indices.jl")
@@ -640,6 +634,5 @@ include("utils.jl")
 #     eval(:(($name)(X) = ($m.func)(X, $args...)))
 #     return :(Metric(eval($name), $m.dims))
 # end
-
 
 end
