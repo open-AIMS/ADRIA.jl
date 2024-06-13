@@ -211,9 +211,9 @@ function combine_results(result_sets...)::ResultSet
                 rs1.site_ids,
                 nrow(all_inputs),
                 size(rs1.seed_log, :timesteps),
-                size(rs1.seed_log, :sites),
-                36 # TODO: Find a way to remove this constant
-            ))...
+                size(rs1.seed_log, :sites)
+            )
+        )...
     )
 
     # Copy logs over
