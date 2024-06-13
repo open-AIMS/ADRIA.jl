@@ -211,8 +211,9 @@ function combine_results(result_sets...)::ResultSet
                 rs1.site_ids,
                 nrow(all_inputs),
                 size(rs1.seed_log, :timesteps),
-                size(rs1.seed_log, :sites),
-            ))...
+                size(rs1.seed_log, :sites)
+            )
+        )...
     )
 
     # Copy logs over
@@ -233,7 +234,7 @@ function combine_results(result_sets...)::ResultSet
         end
     end
 
-    compressor = Zarr.BloscCompressor(; cname="zstd", clevel=4, shuffle=true)
+    compressor = Zarr.BloscCompressor(; cname="zstd", clevel=6, shuffle=true)
     metrics = keys(rs1.outcomes)
     for m_name in metrics
         m_dim_names = axes_names(rs1.outcomes[m_name])
