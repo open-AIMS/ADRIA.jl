@@ -2,7 +2,7 @@ using ADRIA.analysis: series_confint
 using ADRIA: functional_group_names, human_readable_name
 
 """
-    ADRIA.viz.taxonomy(rs::ResultSet; opts::Dict=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Figure
+    ADRIA.viz.taxonomy(rs::ResultSet; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Figure
     ADRIA.viz.taxonomy(scenarios::DataFrame, relative_taxa_cover::YAXArray; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Figure
     ADRIA.viz.taxonomy!(g::Union{GridLayout,GridPosition}, relative_taxa_cover::YAXArray, scen_groups::Dict{Symbol, BitVector}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Union{GridLayout,GridPosition}
 
@@ -36,10 +36,10 @@ Figure or GridPosition
 """
 function ADRIA.viz.taxonomy(
     rs::ResultSet;
-    opts::Dict=Dict{Symbol,Any}(),
-    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
     if !haskey(rs.outcomes, :relative_taxa_cover)
         throw(ArgumentError("Unable to found relative_taxa_cover in outcomes. This variable may be passed manually."))
@@ -56,10 +56,10 @@ end
 function ADRIA.viz.taxonomy(
     scenarios::DataFrame,
     relative_taxa_cover::YAXArray;
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
     fig_opts[:size] = get(fig_opts, :size, (1200, 1200))
     f = Figure(; fig_opts...)
@@ -88,9 +88,9 @@ function ADRIA.viz.taxonomy!(
     g::Union{GridLayout,GridPosition},
     relative_taxa_cover::YAXArray,
     scen_groups::Dict{Symbol, BitVector};
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Year")
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "Relative Cover")
@@ -150,8 +150,8 @@ function taxonomy_by_intervention!(
     scen_groups::Dict{Symbol},
     colors::Union{Vector{Symbol},Vector{RGBA{T}}};
     show_confints=true,
-    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Nothing where {T<:Float32}
     # Get taxonomy names for legend
     taxa_names = human_readable_name(functional_group_names(), title_case=true)
@@ -180,7 +180,7 @@ function taxonomy_by_intervention!(
     colors::Union{Vector{Symbol},Array{RGBA{T},1}};
     show_confints=true,
     show_legend=true,
-    series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Nothing where {T<:Float32}
     n_timesteps::Int64 = length(relative_taxa_cover.timesteps)
     n_functional_groups::Int64 = length(relative_taxa_cover.taxa)
@@ -215,8 +215,8 @@ function intervention_by_taxonomy!(
     scen_groups::Dict{Symbol,BitVector},
     colors::Union{Vector{Symbol},Vector{RGBA{T}}};
     show_confints::Bool=true,
-    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Nothing where {T<:Float32}
     taxa_names = human_readable_name(functional_group_names(), title_case=true)
 
@@ -247,7 +247,7 @@ function intervention_by_taxonomy!(
     scen_groups::Dict{Symbol,BitVector};
     show_confints::Bool=true,
     show_legend::Bool=true,
-    series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Nothing where {T<:Float32}
     scenario_group_names::Vector{Symbol} = collect(keys(scen_groups))
 
