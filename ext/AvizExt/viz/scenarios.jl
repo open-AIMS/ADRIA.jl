@@ -126,9 +126,6 @@ function ADRIA.viz.scenarios!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
-    if isdefined(Main, :Infiltrator)
-      Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
-    end
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
