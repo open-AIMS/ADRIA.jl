@@ -625,28 +625,33 @@ function rsa(
     r_s::YAXArray, X_q::AbstractArray, X_i::AbstractArray, y::AbstractVecOrMat{<:Real},
     sel::BitVector
 )::YAXArray
-    sel .= X_q[1] .<= X_i .<= X_q[2]
-    if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
-        # not enough samples, or inactive area of factor space
-        r_s[1] = missing
-
+    if length(unique(X_i)) == 1
+        r_s .= 0.0
     else
-        r_s[1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
-    end
-
-    for s in 2:(length(X_q) - 1)
-        sel .= X_q[s] .< X_i .<= X_q[s + 1]
+        sel .= X_q[1] .<= X_i .<= X_q[2]
         if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
             # not enough samples, or inactive area of factor space
-            r_s[s] = missing
-            continue
+            r_s[1] = missing
+
+        else
+            r_s[1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
 
-        # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
-        # ci = confint(bs, PercentileConfInt(conf))[1]
-        r_s[s] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+        for s in 2:(length(X_q) - 1)
+            sel .= X_q[s] .< X_i .<= X_q[s + 1]
+            if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
+                # not enough samples, or inactive area of factor space
+                r_s[s] = missing
+                continue
+            end
+
+            # bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
+            # ci = confint(bs, PercentileConfInt(conf))[1]
+            r_s[s] = KSampleADTest(y[sel], y[Not(sel)]).A²k
+        end
+        normalize!(r_s)
     end
-    return normalize!(r_s)
+    return r_s
 end
 function rsa(
     X::Vector{Float64}, y::AbstractVector{<:Real}, foi_spec::DataFrame;
@@ -765,26 +770,30 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::YAXArray
-    for i in 1:length(X_q[1:(end - 1)])
-        local b::BitVector
-        if i == 1
-            b = (X_q[i] .<= X_f .<= X_q[i + 1])
-        else
-            b = (X_q[i] .< X_f .<= X_q[i + 1])
+    if length(unique(X_f)) == 1
+        p[:, [1, 2, 3]] .= 0.0
+    else
+        for i in 1:length(X_q[1:(end - 1)])
+            local b::BitVector
+            if i == 1
+                b = (X_q[i] .<= X_f .<= X_q[i + 1])
+            else
+                b = (X_q[i] .< X_f .<= X_q[i + 1])
+            end
+
+            b = b .& behave
+
+            if count(b) == 0
+                # No data to bootstrap (empty region)
+                p[i, [1, 2, 3]] .= missing
+                continue
+            end
+
+            bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
+            ci = confint(bs, PercentileConfInt(conf))[1]
+
+            p[i, [1, 2, 3]] .= ci
         end
-
-        b = b .& behave
-
-        if count(b) == 0
-            # No data to bootstrap (empty region)
-            p[i, [1, 2, 3]] .= missing
-            continue
-        end
-
-        bs = bootstrap(mean, y[b], BalancedSampling(n_boot))
-        ci = confint(bs, PercentileConfInt(conf))[1]
-
-        p[i, [1, 2, 3]] .= ci
     end
     return p
 end
