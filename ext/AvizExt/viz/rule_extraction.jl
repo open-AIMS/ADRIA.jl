@@ -2,9 +2,9 @@ using SIRUS
 import ADRIA.analysis: Rule
 
 """
-ADRIA.viz.rules_scatter(rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, rules::Vector{Rule{Vector{Vector}, Vector{Float64}}}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Figure
-ADRIA.viz.rules_scatter(rs::ResultSet, scenarios::DataFrame, clusters::BitVector, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Figure
-ADRIA.viz.rules_scatter!(g::Union{GridLayout,GridPosition}, rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.rules_scatter(rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, rules::Vector{Rule{Vector{Vector}, Vector{Float64}}}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Figure
+    ADRIA.viz.rules_scatter(rs::ResultSet, scenarios::DataFrame, clusters::BitVector, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Figure
+    ADRIA.viz.rules_scatter!(g::Union{GridLayout,GridPosition}, rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 # Description
 For each condition Rule, plots a scatter showing one condition clause at each axis.

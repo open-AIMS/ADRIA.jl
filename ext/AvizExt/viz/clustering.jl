@@ -113,9 +113,9 @@ function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     data::AbstractArray{<:Real},
     clusters::Union{BitVector,AbstractVector{Int64}};
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -128,8 +128,8 @@ function ADRIA.viz.map!(
     rs::Union{Domain,ResultSet},
     data::AbstractVector{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )::Union{GridLayout,GridPosition}
     # Although this function is called scenario_clusters, here we have locations clusters
     loc_groups::Dict{Symbol,BitVector} = ADRIA.analysis.scenario_clusters(clusters)

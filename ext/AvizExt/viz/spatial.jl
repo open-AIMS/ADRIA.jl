@@ -6,7 +6,7 @@ using Graphs, GraphMakie, SimpleWeightedGraphs
 Base.getindex(fc::AbstractFeatureCollection, i::UnitRange) = features(fc)[i]
 Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
 
-function set_figure_defaults(fig_opts::Dict{Symbol,<:Any})::Dict{Symbol,<:Any}
+function set_figure_defaults(fig_opts::OPT_TYPE)::OPT_TYPE
     fig_opts[:size] = get(fig_opts, :size, (600, 900))
     fig_opts[:xticklabelsize] = get(fig_opts, :xticklabelsize, 14)
     fig_opts[:yticklabelsize] = get(fig_opts, :yticklabelsize, 14)
@@ -14,7 +14,7 @@ function set_figure_defaults(fig_opts::Dict{Symbol,<:Any})::Dict{Symbol,<:Any}
     return fig_opts
 end
 
-function set_axis_defaults(axis_opts::Dict{Symbol,<:Any})::Dict{Symbol,<:Any}
+function set_axis_defaults(axis_opts::OPT_TYPE)::OPT_TYPE
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
