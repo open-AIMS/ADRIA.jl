@@ -2,9 +2,9 @@ using SIRUS
 import ADRIA.analysis: Rule
 
 """
-    ADRIA.viz.rules_scatter(rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, rules::Vector{Rule{Vector{Vector}, Vector{Float64}}}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())::Figure
-    ADRIA.viz.rules_scatter(rs::ResultSet, scenarios::DataFrame, clusters::BitVector, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())::Figure
-    ADRIA.viz.rules_scatter!(g::Union{GridLayout,GridPosition}, rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.rules_scatter(rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, rules::Vector{Rule{Vector{Vector}, Vector{Float64}}}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Figure
+    ADRIA.viz.rules_scatter(rs::ResultSet, scenarios::DataFrame, clusters::BitVector, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())::Figure
+    ADRIA.viz.rules_scatter!(g::Union{GridLayout,GridPosition}, rs::ResultSet, scenarios::DataFrame, clusters::Vector{Int64}, rules::Vector{Rule{Vector{Vector},Vector{Float64}}}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 # Description
 For each condition Rule, plots a scatter showing one condition clause at each axis.
@@ -30,9 +30,9 @@ function ADRIA.viz.rules_scatter(
     scenarios::DataFrame,
     clusters::Vector{Int64},
     rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -51,9 +51,9 @@ function ADRIA.viz.rules_scatter(
     scenarios::DataFrame,
     clusters::BitVector,
     rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
     return ADRIA.viz.rules_scatter(
         rs,
@@ -71,8 +71,8 @@ function ADRIA.viz.rules_scatter!(
     scenarios::DataFrame,
     clusters::Vector{Int64},
     rules::Vector{Rule{Vector{Vector},Vector{Float64}}};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     sub_g = g[1, 1] = GridLayout()
 

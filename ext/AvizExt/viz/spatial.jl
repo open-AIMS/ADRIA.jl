@@ -6,7 +6,7 @@ using Graphs, GraphMakie, SimpleWeightedGraphs
 Base.getindex(fc::AbstractFeatureCollection, i::UnitRange) = features(fc)[i]
 Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
 
-function set_figure_defaults(fig_opts::Dict{Symbol,<:Any})::Dict{Symbol,<:Any}
+function set_figure_defaults(fig_opts::OPT_TYPE)::OPT_TYPE
     fig_opts[:size] = get(fig_opts, :size, (600, 900))
     fig_opts[:xticklabelsize] = get(fig_opts, :xticklabelsize, 14)
     fig_opts[:yticklabelsize] = get(fig_opts, :yticklabelsize, 14)
@@ -14,7 +14,7 @@ function set_figure_defaults(fig_opts::Dict{Symbol,<:Any})::Dict{Symbol,<:Any}
     return fig_opts
 end
 
-function set_axis_defaults(axis_opts::Dict{Symbol,<:Any})::Dict{Symbol,<:Any}
+function set_axis_defaults(axis_opts::OPT_TYPE)::OPT_TYPE
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")
     axis_opts[:ylabel] = get(axis_opts, :ylabel, "Latitude")
@@ -62,7 +62,7 @@ function create_map!(
     colorbar_label::String="",
     color_map::Union{Symbol,Vector{Symbol},RGBA{Float32},Vector{RGBA{Float32}}}=:grayC,
     legend_params::Union{Tuple,Nothing}=nothing,
-    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
     spatial = GeoAxis(
         f[1, 1];
@@ -116,11 +116,10 @@ function create_map!(
 
             for color in hl_groups
                 m = findall(highlight .== [color])
-                subset_feat = FC(; features=geodata[m])
 
                 poly!(
                     spatial,
-                    subset_feat;
+                    geodata[m];
                     color="transparent",
                     strokecolor=color,
                     strokewidth=0.5,
@@ -165,9 +164,9 @@ GridPosition
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     y::Union{YAXArray,AbstractVector{<:Real}};
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    fig_opts::Dict{Symbol,<:Any}=set_figure_defaults(Dict{Symbol,Any}()),
-    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -178,9 +177,9 @@ function ADRIA.viz.map(
 end
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet};
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    fig_opts::Dict{Symbol,<:Any}=set_figure_defaults(Dict{Symbol,Any}()),
-    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -207,8 +206,8 @@ function ADRIA.viz.map!(
     g::Union{GridLayout,GridPosition},
     rs::Union{Domain,ResultSet},
     y::AbstractVector{<:Real};
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
     geodata = _get_geoms(rs.site_data)
     data = Observable(collect(y))
@@ -356,9 +355,9 @@ function ADRIA.viz.connectivity(
     dom::Domain;
     in_method=nothing,
     out_method=eigenvector_centrality,
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    fig_opts::Dict{Symbol,<:Any}=set_figure_defaults(Dict{Symbol,Any}()),
-    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
     return ADRIA.viz.connectivity(dom, dom.conn; in_method, out_method, opts, fig_opts, axis_opts)
 end
@@ -367,9 +366,9 @@ function ADRIA.viz.connectivity(
     conn::AbstractMatrix;
     in_method=nothing,
     out_method=eigenvector_centrality,
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    fig_opts::Dict{Symbol,<:Any}=set_figure_defaults(Dict{Symbol,Any}()),
-    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
     if !isnothing(in_method) && !isnothing(out_method)
         @warn "Both in and out centrality measures provided. Plotting out centralities."
@@ -392,9 +391,9 @@ function ADRIA.viz.connectivity(
     dom::Domain,
     network::SimpleWeightedDiGraph,
     conn_weights::AbstractVector{<:Real};
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    fig_opts::Dict{Symbol,<:Any}=set_figure_defaults(Dict{Symbol,Any}()),
-    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -408,8 +407,8 @@ function ADRIA.viz.connectivity!(
     dom::Domain,
     network::SimpleWeightedDiGraph,
     conn_weights::AbstractVector{<:Real};
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,<:Any}=set_axis_defaults(Dict{Symbol,Any}())
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(Dict{Symbol,Any}())
 )
     axis_opts[:title] = get(axis_opts, :title, "Study Area")
     axis_opts[:xlabel] = get(axis_opts, :xlabel, "Longitude")

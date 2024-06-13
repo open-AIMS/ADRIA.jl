@@ -3,8 +3,8 @@ using Printf
 using ADRIA.sensitivity: _get_cat_quantile
 
 """
-    ADRIA.viz.pawn(Si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.pawn!(f::Union{GridLayout,GridPosition}, Si::YAXArray; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.pawn(Si::YAXArray; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.pawn!(f::Union{GridLayout,GridPosition}, Si::YAXArray; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Display heatmap of sensitivity analysis.
 
@@ -33,8 +33,8 @@ Makie figure
 function ADRIA.viz.pawn!(
     g::Union{GridLayout,GridPosition},
     Si::YAXArray;
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
 
@@ -67,7 +67,10 @@ function ADRIA.viz.pawn!(
     return g
 end
 function ADRIA.viz.pawn(
-    Si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict()
+    Si::YAXArray;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -77,8 +80,8 @@ function ADRIA.viz.pawn(
 end
 
 """
-    ADRIA.viz.tsa(rs::ResultSet, si::YAXArray; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray; opts, axis_opts)
+    ADRIA.viz.tsa(rs::ResultSet, si::YAXArray; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.tsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Display temporal sensitivity analysis
 
@@ -96,7 +99,10 @@ Display temporal sensitivity analysis
 Makie figure
 """
 function ADRIA.viz.tsa!(
-    g::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray; opts, axis_opts
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet, si::YAXArray;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     stat = get(opts, :stat, :median)
 
@@ -143,9 +149,9 @@ end
 function ADRIA.viz.tsa(
     rs::ResultSet,
     si::YAXArray;
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -155,8 +161,8 @@ function ADRIA.viz.tsa(
 end
 
 """
-    ADRIA.viz.rsa(rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.rsa(rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Plot regional sensitivities of up to 30 factors.
 
@@ -177,8 +183,8 @@ function ADRIA.viz.rsa!(
     rs::ResultSet,
     si::Dataset,
     factors::Vector{Symbol};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )
     n_factors::Int64 = length(factors)
     if n_factors > 30
@@ -275,9 +281,9 @@ function ADRIA.viz.rsa(
     rs::ResultSet,
     si::Dataset,
     factors::Vector{Symbol};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -287,8 +293,8 @@ function ADRIA.viz.rsa(
 end
 
 """
-    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts, axis_opts)
+    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Plot outcomes mapped to factor regions for up to 30 factors.
 
@@ -310,8 +316,8 @@ function ADRIA.viz.outcome_map!(
     rs::ResultSet,
     outcomes::YAXArray,
     factors::Vector{Symbol};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )
     # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
     #       found in `rsa()`
@@ -431,9 +437,9 @@ function ADRIA.viz.outcome_map(
     rs::ResultSet,
     si::YAXArray,
     factors::Vector{Symbol};
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -444,7 +450,7 @@ end
 
 """
     _series_convergence(g::GridPosition, Si_conv::YAXArray, factors::Vector{Symbol};
-        opts::Dict=Dict(:plot_overlay => true), axis_opts::Dict=Dict())
+        opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(:plot_overlay => true), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Plot sensitivity values for an increasing number of scenarios as a series, with each member
     of the series representing a factor or model component.
@@ -464,8 +470,8 @@ function _series_convergence(
     g::GridPosition,
     Si_conv::YAXArray,
     factors::Vector{Symbol};
-    opts::Dict=Dict(:plot_overlay => true),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(:plot_overlay => true),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
 )
     plot_overlay = get(opts, :plot_overlay, true)
     n_scenarios = collect(lookup(Si_conv, :n_scenarios))
@@ -567,7 +573,7 @@ end
 
 """
     _heatmap_convergence(g::GridPosition, Si_conv::YAXArray, factors::Vector{Symbol};
-        opts::Dict=Dict(), axis_opts::Dict=Dict())
+        opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Plot sensitivity values for an increasing number of scenarios as a heatmap, with each row
     of the heatmap representing a factor or model component.
@@ -588,8 +594,8 @@ function _heatmap_convergence(
     g::GridPosition,
     Si_conv::YAXArray,
     factors::Vector{Symbol};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     y_label = get(axis_opts, :ylabel, "Factors")
     x_label = get(axis_opts, :xlabel, "N scenarios")
@@ -619,10 +625,10 @@ function _heatmap_convergence(
 end
 
 """
-    ADRIA.viz.convergence(Si_conv::YAXArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
-        axis_opts::Dict=Dict())
-    ADRIA.viz.convergence!(f::Figure, Si_conv::YAXArray, factors::Vector{Symbol}; series_opts::Dict=Dict(),
-        axis_opts::Dict=Dict())
+    ADRIA.viz.convergence(Si_conv::YAXArray, factors::Vector{Symbol}; series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+        axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.convergence!(f::Figure, Si_conv::YAXArray, factors::Vector{Symbol}; series_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+        axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Plot sensitivity metric for increasing number of scenarios to illustrate convergence.
 
@@ -645,9 +651,9 @@ Makie figure
 function ADRIA.viz.convergence(
     Si_conv::YAXArray,
     factors::Vector{Symbol};
-    opts::Dict=Dict(:viz_type => :series),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(:viz_type => :series),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f = Figure(; fig_opts...)
     ADRIA.viz.convergence!(
@@ -663,8 +669,8 @@ function ADRIA.viz.convergence!(
     g::Union{GridLayout,GridPosition},
     Si_conv::YAXArray,
     factors::Vector{Symbol};
-    opts::Dict=Dict(:viz_type => :series),
-    axis_opts::Dict=Dict(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(:viz_type => :series),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     viz_type = get(opts, :viz_type, :series)
     if viz_type == :series
