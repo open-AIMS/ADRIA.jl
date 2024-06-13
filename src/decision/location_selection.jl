@@ -370,7 +370,7 @@ function _calc_selection_score(ranks::YAXArray, lowest_rank::Union{Int64,Float64
 end
 
 """
-    _times_selected(ranks::YAXArray{T,3}, iv_type::Union{Symbol,Int64}, squash::Union{Symbol,Tuple})::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    _times_selected(ranks::YAXArray{T}, iv_type::Union{Symbol,Int64}, squash::Union{Symbol,Tuple})::YAXArray where {T<:Union{Int64, Float32, Float64}}
 
 Count of the number of times a location has been selected (regardless of rank).
 
@@ -438,4 +438,99 @@ function selection_frequency(
     n_selected = _times_selected(ranks, iv_type, (:scenarios, :timesteps))
 
     return n_selected ./ maximum(n_selected)
+end
+
+"""
+    selection_ranks(ranks::YAXArray{T,4}, iv_type::Union{Symbol,Int64}; desc::Bool=true)::Vector{Int64} where {T<:Union{Int64, Float32, Float64}}
+
+Return indices of locations ranked by their selection frequency (in descending order by
+default).
+
+# Examples
+
+```julia
+rs = ADRIA.run_scenarios(dom, scens, "45")
+
+freq_rank = ADRIA.decision.selection_ranks(rs.ranks, :seed; desc=true)
+
+# Get details of locations ordered by their selection frequency.
+rs.site_data[freq_rank, :]
+```
+
+# Arguments
+- `ranks` : Rankings from `ADRIA.decision.selection_ranks()`
+- `iv_type` : Intervention type (`:seed` or `:fog`)
+- `desc` : Return ranks from most deployed to least (defaults to `true`)
+
+# Returns
+Location indices in order of their selection rankings
+"""
+function selection_ranks(
+    ranks::YAXArray{T,4},
+    iv_type::Union{Symbol,Int64};
+    desc::Bool=true
+)::Vector{Int64} where {T<:Union{Int64, Float32, Float64}}
+    sel_freq::YAXArray{T, 1} = selection_frequency(ranks, iv_type)
+    ranked::Vector{Int64} = sortperm(sel_freq.data, rev=desc)
+
+    return ranked
+end
+
+"""
+    deployment_summary_stats(ranks::YAXArray{T,4}, iv_type::Union{Symbol,Int64})::YAXArray where {T<:Union{Int64, Float32, Float64}}
+
+Extract summary statistics for the number of locations where deployments occurred for
+each scenario.
+
+# Note
+Returns a YAXArray with dimensions `scenarios` and `stats`, where `scenarios` are the
+scenario ids of interest (taken from `ranks`) and `stats` are:
+
+- `lower_50`
+- `mean`
+- `median`
+- `upper_50`
+- `stdev`
+
+where `[lower/upper]_50` refer to the lower and upper 50th percentile.
+
+# Examples
+
+```julia
+rs = ADRIA.run_scenarios(dom, 128, "45")
+
+deployment_summary = ADRIA.decision.deployment_summary_stats(rs.ranks, :seed)
+```
+
+# Arguments
+- `ranks` : Rankings from `ADRIA.decision.selection_ranks()`
+- `iv_type` : `:seed` or `:fog`
+
+# Returns
+Summary stats of the number of deployment locations for each scenario
+"""
+function deployment_summary_stats(
+    ranks::YAXArray{T,4},
+    iv_type::Union{Symbol,Int64}
+)::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    iv_ranks = ranks[intervention=At(iv_type)]
+
+    # Min, Mean, Median, Max, stdev
+    summarized::YAXArray = DataCube(
+        zeros(length(iv_ranks.scenarios), 5);
+        scenarios=collect(iv_ranks.scenarios),
+        stats=[:lower_50, :mean, :median, :upper_50, :stdev]
+    )
+    for (idx, scen_id) in enumerate(iv_ranks.scenarios)
+        n_deploy = count.(eachrow(iv_ranks[:, :, scen_id] .> 0.0))
+        summarized[idx, :] .= (
+            quantile(n_deploy, 0.25),
+            mean(n_deploy),
+            median(n_deploy),
+            quantile(n_deploy, 0.75),
+            std(n_deploy)
+        )
+    end
+
+    return summarized
 end
