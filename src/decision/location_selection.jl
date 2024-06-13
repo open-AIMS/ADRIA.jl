@@ -477,7 +477,7 @@ function selection_ranks(
 end
 
 """
-    n_deployment_locations(ranks::YAXArray{T,4}, iv_type::Union{Symbol,Int64})::YAXArray where {T<:Union{Int64, Float32, Float64}}
+    deployment_summary_stats(ranks::YAXArray{T,4}, iv_type::Union{Symbol,Int64})::YAXArray where {T<:Union{Int64, Float32, Float64}}
 
 Extract summary statistics for the number of locations where deployments occurred for
 each scenario.
@@ -499,7 +499,7 @@ where `[lower/upper]_50` refer to the lower and upper 50th percentile.
 ```julia
 rs = ADRIA.run_scenarios(dom, 128, "45")
 
-deployment_summary = ADRIA.decision.n_deployment_locations(rs.ranks, :seed)
+deployment_summary = ADRIA.decision.deployment_summary_stats(rs.ranks, :seed)
 ```
 
 # Arguments
@@ -509,7 +509,7 @@ deployment_summary = ADRIA.decision.n_deployment_locations(rs.ranks, :seed)
 # Returns
 Summary stats of the number of deployment locations for each scenario
 """
-function n_deployment_locations(
+function deployment_summary_stats(
     ranks::YAXArray{T,4},
     iv_type::Union{Symbol,Int64}
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
