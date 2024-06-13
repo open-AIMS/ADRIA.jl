@@ -48,6 +48,7 @@ ADRIA.metrics.loc_trajectory(x -> quantile(x, 0.975), tac)
 #  Dim{:timesteps} Categorical{Any} Any[1, 2, …, 74, 75] Unordered,
 #  Dim{:sites} Categorical{Any} Any[1, 2, …, 215, 216] Unordered
 #Total size: 126.56 KB
+```
 
 # Arguments
 - metric : Any function (nominally from the Statistics package) to be applied to `data`
