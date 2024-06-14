@@ -654,17 +654,17 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
     )
 
     # Preallocate memory for temporaries
-    temp_change = ones(n_groups, n_sizes, n_locs)
-    C_t::Array{Float64, 3} = zeros(n_groups, n_sizes, n_locs)
-    cover_copy = zeros(n_groups, n_sizes, n_locs)
+    survival_rate_cache = ones(n_groups, n_sizes, n_locs)
+    C_t::Array{Float64,3} = zeros(n_groups, n_sizes, n_locs)
+    ΔC_t = zeros(n_groups, n_sizes, n_locs)
 
     growth_spatial_constraint::Vector{Float64} = zeros(n_locs)
 
     FLoops.assistant(false)
     for tstep::Int64 in 2:tf
-        change_view = [@view temp_change[:, :, loc] for loc in 1:n_locs]
-        apply_survival!.(functional_groups, change_view)
-        recruitment .*= reshape(temp_change[:, 1, :], (n_groups, n_locs))
+        survival_rate_slices = [@view survival_rate_cache[:, :, loc] for loc in 1:n_locs]
+        apply_survival!.(functional_groups, survival_rate_slices)
+        # recruitment .*= reshape(survival_rate_cache[:, 1, :], (n_groups, n_locs))
 
         C_t .= C_cover[tstep-1, :, :, :] .* reshape(
             site_data.area .* site_data.k, (1, 1, n_locs)
@@ -675,7 +675,8 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             dropdims(sum(C_t; dims=(1, 2)), dims=(1, 2))
         ))
 
-        @floop for i in 1:n_locs
+        # @floop for i in 1:n_locs
+        for i in 1:n_locs
             # Perform timestep
             timestep!(
                 functional_groups[i],
@@ -688,8 +689,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         end
 
         C_t ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs))
-        replace!(C_t, NaN=>0.0)
-        cover_copy .= copy(C_t)
+        replace!(C_t, NaN => 0.0)
 
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
@@ -755,7 +755,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
         # Cover copy needs to include recruits so overall mortality can be calculated to
         # apply to cover blocks
-        cover_copy[:, 1, :] .= C_t[:, 1, :]
+        ΔC_t[:, 1, :] .= C_t[:, 1, :]
 
         # Update available space
         loc_coral_cover = dropdims(sum(C_t, dims=(1, 2)), dims=1)  # dims: 1 * nsites
@@ -897,8 +897,9 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             )
 
             # Add coral seeding to cover copy and recruitment
-            recruitment += C_t[:, 1, :] .- cover_copy[:, 1, :]
-            cover_copy[:, 1, :] .= C_t[:, 1, :]
+            # (1,2,4) refer to the coral functional groups being seeded
+            recruitment[[1, 2, 4], :] .+= Yseed[tstep, :, :]  # C_t[:, 1, :] .- ΔC_t[:, 1, :]
+            # ΔC_t[:, 1, :] .= recruitment # C_t[:, 1, :]
         end
 
         # Calculate and apply bleaching mortality
@@ -917,15 +918,16 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             @view(bleaching_mort[(tstep-1):tstep, :, :, :])
         )
 
+        ΔC_t[:, :, :] .+= bleaching_mort[tstep, :, :, :]
+
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
         # TODO: Update cyclone data to hold data for relevant functional groups
-        cyclone_mortality!(@views(C_t), cyclone_mortality_scen[tstep, :, :]')
+        # cyclone_mortality!(@views(C_t), cyclone_mortality_scen[tstep, :, :]')
 
         # Update record
         C_cover[tstep, :, :, :] .= C_t
-        cover_copy[cover_copy .== 0] .= 1.0
-        temp_change = C_cover[tstep, :, :, :] ./ cover_copy
+        survival_rate_cache .= C_t ./ (C_t .- ΔC_t)
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
@@ -997,7 +999,7 @@ function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothi
     return nothing
 end
 function cyclone_mortality!(
-    coral_cover::AbstractArray{Float64, 3}, cyclone_mortality::AbstractMatrix{Float64}
+    coral_cover::AbstractArray{Float64,3}, cyclone_mortality::AbstractMatrix{Float64}
 )::Nothing
     n_groups, n_locs = size(cyclone_mortality)
     coral_cover .*= (1 .- reshape(cyclone_mortality, (n_groups, 1, n_locs)))
