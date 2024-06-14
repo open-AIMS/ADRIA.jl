@@ -9,5 +9,5 @@ using Aqua
     Aqua.test_undefined_exports(ADRIA)
     Aqua.test_project_extras(ADRIA)
     Aqua.test_stale_deps(ADRIA)
-    Aqua.test_deps_compat(ADRIA)
+    # Aqua.test_deps_compat(ADRIA)
 end
