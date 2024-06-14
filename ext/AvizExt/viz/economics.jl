@@ -76,10 +76,14 @@ function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
 end
 function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
     DEA_output::DEAResult; axis_opts=Dict(), opts=Dict())
-    line_color = get(opts, :line_color, :red)
+    frontier_color = get(opts, :frontier_color, :red)
     data_color = get(opts, :data_color, :black)
     frontier_name = get(opts, :frontier_name, "Best practice frontier")
     data_name = get(opts, :data_name, "Scenario data cloud")
+    scale_eff_y_lab = get(opts, :scale_eff_y_lab, L"$\frac{eff_{vrs}}{eff_{crs}}$")
+    tech_eff_y_lab = get(opts, :tech_eff_y_lab, L"$\frac{1}{eff_{vrs}}$")
+    metrics_x_lab = get(opts, :metrics_x_lab, L"$metric 1$")
+    metrics_y_lab = get(opts, :metrics_y_lab, L"$metric 2$")
 
     # Determines which returns to scale approach is used to select scenario peers
     # (most efficient scenarios)
@@ -88,24 +92,37 @@ function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
     Y = DEA_output.Y # Output values
 
     # Find points on best practice frontier
-    best_practice_scens = DEA_output.$frontier_type.J
+    best_practice_scens = getfield(DEA_output, frontier_type).J
 
     scale_efficiency = DEA_output.crs_vals ./ DEA_output.vrs_vals
 
     # Plot efficiency frontier and data cloud
-    axa = Axis(g[1, 1]; axis_opts...)
-    scatter!(axa, Y[:, 1], Y[:, 2]; color=data_color)
-    scatter!(
-        axa, Y[best_practice_scens, 1], Y[best_practice_scens, 2]; color=line_color
+    axa = Axis(g[1, 1]; xlabel=metrics_x_lab, ylabel=metrics_y_lab, axis_opts...)
+    data = scatter!(axa, Y[:, 1], Y[:, 2]; color=data_color)
+    frontier = scatter!(
+        axa, Y[best_practice_scens, 1], Y[best_practice_scens, 2]; color=frontier_color
     )
-    #Legend(g[1, 2], [frontier, data], [frontier_name, data_name])
+    Legend(g[1, 2], [frontier, data], [frontier_name, data_name])
 
     # Plot the scale efficiency (ratio of efficiencies assuming CRS vs. assuming VRS)
-    axb = Axis(g[2, 1]; axis_opts...)
-    scatter!(axb, scale_efficiency; color=data_color)#, title="Scale efficiency")
+    axb = Axis(g[2, 1]; title="Scale efficiency", ylabel=scale_eff_y_lab, axis_opts...)
+    scatter!(axb, scale_efficiency; color=data_color)
+    scatter!(
+        axb,
+        best_practice_scens,
+        scale_efficiency[best_practice_scens];
+        color=frontier_color
+    )
 
     # Plot the technical efficiency (inverse VRS efficiencies)
-    axc = Axis(g[3, 1]; axis_opts...)
-    scatter!(axc, DEA_output.vrs_vals; color=data_color)#, title="Technical efficiency")
+    axc = Axis(g[3, 1]; title="Technical efficiency", ylabel=tech_eff_y_lab, axis_opts...)
+    scatter!(axc, DEA_output.vrs_vals; color=data_color)
+    scatter!(
+        axc,
+        best_practice_scens,
+        DEA_output.vrs_vals[best_practice_scens];
+        color=frontier_color
+    )
+
     return g
 end
