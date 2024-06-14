@@ -44,8 +44,6 @@ function param_table(d::Domain)::DataFrame
     vals::Vector{<:Real} = collect(d.model[:val])
     p_df::DataFrame = DataFrame(OrderedDict(k => v for (k, v) in zip(f_names, vals)))
 
-    # p_df[!, :RCP] .= d.RCP  # Add entry to indicate which RCP scenario was used
-
     return p_df
 end
 
