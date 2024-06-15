@@ -690,8 +690,13 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             coral_cover(functional_groups[i], @view(C_t[:, :, i]))
         end
 
+        # Convert back to areas relative to `k`
+        # TODO: Something in `coral_cover()` is producing NaN values
+        #       so we replace with zero as a quick fix.
+        #       It is also producing values that resolve to > 100% cover!
         C_t[:, :, habitable_locs] ./= habitable_loc_areas′
         replace!(C_t, NaN=>0.0)
+
         ΔC_t .= copy(C_t)
 
         # Check if size classes are inappropriately out-growing available space
