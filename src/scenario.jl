@@ -825,7 +825,11 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
 
-        if is_guided && seed_decision_years[tstep]
+        # IDs of valid locations considering locations that have space for corals
+        locs_with_space = vec(leftover_space_m²) .> 0.0
+        if is_guided && seed_decision_years[tstep] && (length(locs_with_space) > 0)
+            considered_locs = findall(_valid_locs .& locs_with_space)
+
             # Use modified projected DHW (may have been affected by fogging or shading)
             dhw_p = copy(dhw_scen)
             dhw_p[tstep, :] .= dhw_t
@@ -845,14 +849,6 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
                 in_connectivity=in_conn[_valid_locs],  # area weighted connectivities for time `t`
                 out_connectivity=out_conn[_valid_locs]
             )
-
-            # IDs of valid locations considering locations that have space for corals
-            locs_with_space = vec(leftover_space_m²) .> 0.0
-            considered_locs = findall(_valid_locs .& locs_with_space)
-
-            # IDs of valid locations considering locations that have space for corals
-            locs_with_space = vec(leftover_space_m²) .> 0.0
-            considered_locs = findall(_valid_locs .& locs_with_space)
 
             selected_seed_ranks = select_locations(
                 seed_pref,
