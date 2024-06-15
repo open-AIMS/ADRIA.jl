@@ -669,6 +669,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         apply_survival!.(functional_groups, survival_rate_slices)
         recruitment .*= reshape(survival_rate_cache[:, 1, :], (n_groups, n_locs))
 
+        # Determine absolute area for coral model
         C_t[:, :, habitable_locs] .= C_cover[tstep-1, :, :, habitable_locs] .* habitable_loc_areas′
 
         # Constrain growth by available area
