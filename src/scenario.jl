@@ -540,12 +540,14 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
     seed_decision_years = decision_frequency(seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")])
     fog_decision_years = decision_frequency(fog_start_year, tf, fog_years, param_set[At("fog_deployment_freq")])
     shade_decision_years = decision_frequency(shade_start_year, tf, shade_years, param_set[At("shade_deployment_freq")])
-    # Define taxa and size class to seed, and identify their factor names
-    taxa_to_seed = [2, 3, 5]
-    target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
+
     taxa_names::Vector{String} = collect(param_set.factors[occursin.("N_seed_", param_set.factors)])
 
-    # Identify taxa and size class to be seeded
+    # Define taxa and size class to seed, and identify their factor names
+    # TODO: Seed 1-year old corals!!! If this is the 1st size class, that's fine but needs
+    # to be confirmed with ecoRRAP
+    taxa_to_seed = [2, 3, 5]
+    target_class_id::BitArray = corals.class_id .== 1
     seed_sc = _to_group_size(domain.coral_growth, (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id)
 
     # Extract colony areas for sites selected in m^2 and add adaptation values
