@@ -506,7 +506,9 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
     cover_tmp = zeros(n_locs)
 
     # Locations that can support corals
-    valid_locs::BitVector = location_k(domain) .> 0.0
+    habitable_locs::BitVector = location_k(domain) .> 0.0
+    habitable_loc_areas = site_k_area(domain)[habitable_locs]
+    habitable_loc_areas′ = reshape(habitable_loc_areas, (1, 1, length(habitable_locs)))
 
     # Avoid placing importance on sites that were not considered
     # Lower values are higher importance/ranks.
@@ -574,7 +576,6 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         site_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
 
-    coral_habitable_locs = site_data.k .> 0.0
     if is_guided
         seed_pref = SeedPreferences(domain, param_set)
         fog_pref = FogPreferences(domain, param_set)
@@ -592,7 +593,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
         # Remove locations that cannot support corals or are out of depth bounds
         # from consideration
-        _valid_locs = coral_habitable_locs .& depth_criteria
+        _valid_locs = habitable_locs .& depth_criteria
         decision_mat = decision_mat[_valid_locs, :]
 
         # Number of time steps in environmental layers to look ahead when making decisions
@@ -650,32 +651,30 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
     # Empty the old contents of the buffers and add the new blocks
     cover_view = [@view C_cover[1, :, :, loc] for loc in 1:n_locs]
     functional_groups = reuse_buffers!.(
-        functional_groups, (cover_view .* site_k_area(domain))
+        functional_groups, (cover_view .* vec(loc_k_area))
     )
 
     # Preallocate memory for temporaries
-    temp_change = ones(n_groups, n_sizes, n_locs)
+    survival_rate_cache = ones(n_groups, n_sizes, n_locs)
     C_t::Array{Float64, 3} = zeros(n_groups, n_sizes, n_locs)
-    cover_copy = zeros(n_groups, n_sizes, n_locs)
+    ΔC_t = zeros(n_groups, n_sizes, n_locs)
 
     growth_spatial_constraint::Vector{Float64} = zeros(n_locs)
 
     FLoops.assistant(false)
     for tstep::Int64 in 2:tf
-        change_view = [@view temp_change[:, :, loc] for loc in 1:n_locs]
-        apply_survival!.(functional_groups, change_view)
-        recruitment .*= reshape(temp_change[:, 1, :], (n_groups, n_locs))
+        survival_rate_slices = [@view survival_rate_cache[:, :, loc] for loc in 1:n_locs]
+        apply_survival!.(functional_groups, survival_rate_slices)
+        recruitment .*= reshape(survival_rate_cache[:, 1, :], (n_groups, n_locs))
 
-        C_t .= C_cover[tstep-1, :, :, :] .* reshape(
-            site_data.area .* site_data.k, (1, 1, n_locs)
-        )
+        C_t[:, :, habitable_locs] .= C_cover[tstep-1, :, :, habitable_locs] .* habitable_loc_areas′
 
         # Constrain growth by available area
         growth_spatial_constraint .= log2.(1 .+ relative_leftover_space(
             dropdims(sum(C_t; dims=(1, 2)), dims=(1, 2))
         ))
 
-        @floop for i in 1:n_locs
+        @floop for i in findall(habitable_locs)
             # Perform timestep
             timestep!(
                 functional_groups[i],
@@ -683,22 +682,23 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
                 linear_extension_m .* growth_spatial_constraint[i],
                 survival_rate
             )
+
             # Write to the cover matrix
             coral_cover(functional_groups[i], @view(C_t[:, :, i]))
         end
 
-        C_t ./= reshape(site_data.area .* site_data.k, (1, 1, n_locs))
+        C_t[:, :, habitable_locs] ./= habitable_loc_areas′
         replace!(C_t, NaN=>0.0)
-        cover_copy .= copy(C_t)
+        ΔC_t .= copy(C_t)
 
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
-            @view(C_t[:, :, valid_locs]),
-            cover_tmp[valid_locs]
+            @view(C_t[:, :, habitable_locs]),
+            cover_tmp[habitable_locs]
         )
 
         # Update initial condition
-        C_cover[tstep, :, :, valid_locs] .= C_t[:, :, valid_locs]
+        C_cover[tstep, :, :, habitable_locs] .= C_t[:, :, habitable_locs]
 
         if tstep <= tf
             # Natural adaptation
@@ -727,7 +727,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
-        recruitment[:, valid_locs] .=
+        recruitment[:, habitable_locs] .=
             settler_cover(
                 fec_scope,
                 conn,
@@ -737,13 +737,13 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
                 basal_area_per_settler,
                 potential_settlers,
             )[
-                :, valid_locs
-            ] ./ loc_k_area[:, valid_locs]
+                :, habitable_locs
+            ] ./ loc_k_area[:, habitable_locs]
 
         settler_DHW_tolerance!(
             c_mean_t_1,
             c_mean_t,
-            site_k_area(domain),
+            vec(loc_k_area),
             TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
             fec_params_per_m²,
@@ -755,7 +755,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
         # Cover copy needs to include recruits so overall mortality can be calculated to
         # apply to cover blocks
-        cover_copy[:, 1, :] .= C_t[:, 1, :]
+        ΔC_t[:, 1, :] .= C_t[:, 1, :]
 
         # Update available space
         loc_coral_cover = dropdims(sum(C_t, dims=(1, 2)), dims=1)  # dims: 1 * nsites
@@ -924,8 +924,8 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
         # Update record
         C_cover[tstep, :, :, :] .= C_t
-        cover_copy[cover_copy .== 0] .= 1.0
-        temp_change = C_cover[tstep, :, :, :] ./ cover_copy
+        ΔC_t[ΔC_t .== 0] .= 1.0
+        survival_rate_cache .= C_t ./ ΔC_t
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
