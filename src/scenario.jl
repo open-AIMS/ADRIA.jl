@@ -898,9 +898,13 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
                 c_mean_t,
             )
 
-            # Add coral seeding to cover copy and recruitment
-            recruitment += C_t[:, 1, :] .- cover_copy[:, 1, :]
-            cover_copy[:, 1, :] .= C_t[:, 1, :]
+            # Add coral seeding to recruitment
+            # (1,2,4) refer to the coral functional groups being seeded
+            recruitment[[1,2,4], :] .+= Yseed[tstep, :, :]
+
+            # **DO NOT** Add seeded coral to ΔC_t as it represents change due to
+            # natural reproduction
+            # ΔC_t[[1,2,4], 1, :] .+= Yseed[tstep, :, :]
         end
 
         # Calculate and apply bleaching mortality
