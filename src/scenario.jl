@@ -673,8 +673,8 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         C_t[:, :, habitable_locs] .= C_cover[tstep-1, :, :, habitable_locs] .* habitable_loc_areas′
 
         # Constrain growth by available area
-        growth_spatial_constraint .= log2.(1 .+ relative_leftover_space(
-            dropdims(sum(C_t; dims=(1, 2)), dims=(1, 2))
+        growth_spatial_constraint[habitable_locs] .= log2.(1 .+ relative_leftover_space(
+            dropdims(sum(C_cover[tstep-1, :, :, habitable_locs]; dims=(1, 2)), dims=(1, 2))
         ))
 
         @floop for i in findall(habitable_locs)
