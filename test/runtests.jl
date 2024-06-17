@@ -13,6 +13,10 @@ const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
 const TEST_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Test_domain")
 const TEST_REEFMOD_ENGINE_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Reefmod_test_domain")
 
+
+include("aqua.jl")
+
+
 """Test smaller scenario run with example scenario specification"""
 function test_small_spec_rs()
     # Load and apply configuration options

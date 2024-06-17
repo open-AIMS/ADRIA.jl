@@ -17,32 +17,32 @@ import ArchGDAL as AG
 using
     CSV,
     DataFrames,
-    GeoInterface,
+    Distributed,
+    FLoops,
     FileIO,
+    GeoInterface,
+    Graphs,
     ImageIO,
     MAT,
-    Graphs,
-    SimpleWeightedGraphs,
-    Distributed,
-    FLoops
+    SimpleWeightedGraphs
 
 # Modelling packages
 using
-    Random,
-    Statistics,
-    Distributions,
-    StaticArrays,
-    SparseArrays,
-    SparseArrayKit,
-    LinearAlgebra,
-    OrdinaryDiffEq,
-    OrderedCollections,
     Combinatorics,
-    Distances,
-    Setfield,
-    ModelParameters,
     DataStructures,
     DimensionalData,
+    Distances,
+    Distributions,
+    LinearAlgebra,
+    ModelParameters,
+    OrderedCollections,
+    OrdinaryDiffEq,
+    Random,
+    Setfield,
+    Statistics,
+    StaticArrays,
+    # SparseArrayKit,
+    SparseArrays,
     YAXArrays
 
 include("utils/text_display.jl")  # need better name for this file
@@ -85,7 +85,7 @@ include("viz/viz.jl")
 export
     growthODE,
     run_scenario, coral_spec,
-    create_coral_struct, Intervention, Corals, SimConstants,
+    create_coral_struct, Intervention, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights,
     site_area, site_k_area,
     Domain, ADRIADomain,
