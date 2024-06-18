@@ -33,7 +33,7 @@ using
     DimensionalData,
     Distances,
     Distributions,
-    DynamicCoralCoverModel,
+    CoralBlox,
     StaticArrays,
     SparseArrays,
     LinearAlgebra,
