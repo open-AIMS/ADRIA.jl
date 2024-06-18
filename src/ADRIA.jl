@@ -31,7 +31,7 @@ using
     Random,
     Statistics,
     Distributions,
-    DynamicCoralCoverModel,
+    CoralBlox,
     StaticArrays,
     SparseArrays,
     SparseArrayKit,
