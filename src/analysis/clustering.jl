@@ -78,7 +78,8 @@ function complexity_invariance_distance(
     for i in axes(data, 2)
         @floop for j in axes(data, 2)
             # Weight the WEuclidian Distance (ed) using the Correction Factor (cf)
-            ed = weuclidean(data[:, i], data[:, j], weights)
+            # ed = weuclidean(data[:, i], data[:, j], weights)
+            ed = euclidean(data[:, i], data[:, j])
             cf = correction_factor(complexity[i], complexity[j])
             cid_matrix[i, j] = cid_matrix[j, i] = ed * cf
         end
@@ -112,12 +113,17 @@ Hierarchically cluster \$S\$ scenarios with \$T\$ time steps each.
    Data Min Knowl Disc 28, 634-669.
    https://doi.org/10.1007/s10618-013-0312-3
 """
-function cluster_series(data::AbstractMatrix{<:Real}, n_clusters::Int64)::Vector{Int64}
-    # Create dendogram using distantes matrix
+function cluster_series(data::AbstractMatrix{<:Real}, n_clusters::Int64;
+    method=:kmedoids)::Vector{Int64}
+    # Calculate distantes matrix
     distances = complexity_invariance_distance(data)
-    dendogram = hclust(distances; linkage=:average)
+
+    if method == :kmedoids
+        return kmedoids(distances, n_clusters).assignments
+    end
 
     # Return hierarchical clustering with n_clusters
+    dendogram = hclust(distances; linkage=:average)
     return cutree(dendogram; k=n_clusters)
 end
 
@@ -204,7 +210,7 @@ function target_clusters(
     # Compute statistic for each cluster
     clusters_statistics::Vector{Float64} = []
     for cluster in unique(clusters)
-        normalized_outcomed = outcomes[:, clusters .== cluster] ./ maximum(outcomes)
+        normalized_outcomed = outcomes[:, clusters.==cluster] ./ maximum(outcomes)
         statistic = median(metric(normalized_outcomed))
         push!(clusters_statistics, statistic)
     end
@@ -213,7 +219,7 @@ function target_clusters(
     target_indexes = [target_index]
 
     # Merge target cluster if it is below 1% of size
-    sizes = [size(outcomes[:, clusters .== c], 2) for c in unique(clusters)]
+    sizes = [size(outcomes[:, clusters.==c], 2) for c in unique(clusters)]
     target_size = sizes[target_index] / sum(sizes)
     while target_size < size_limit
         # Nullify target_index to find the next argmax
@@ -289,7 +295,7 @@ function find_scenarios(
     clusters_summary::Vector{Float64} = zeros(length(unique(clusters)))
 
     for (idx_c, c) in enumerate(unique(clusters))
-        cluster_metric = outcomes[:, clusters .== c]
+        cluster_metric = outcomes[:, clusters.==c]
 
         # Median series for current cluster
         tf = axes(cluster_metric, :timesteps)
