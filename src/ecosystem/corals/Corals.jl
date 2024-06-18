@@ -197,7 +197,7 @@ function coral_spec()::NamedTuple
 
     # total number of "species" modelled in the current version.
     n_taxa = length(taxa_names)
-    n_classes::Int64 = 7
+    n_classes::Int64 = size(bin_edges(), 2) - 1 # 8
     n_groups_and_sizes::Int64 = n_taxa * n_classes
 
     tn = repeat(taxa_names; inner=n_classes)
