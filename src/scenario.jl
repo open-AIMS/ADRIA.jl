@@ -1,12 +1,12 @@
 """Scenario running functions"""
 
 using CoralBlox
-import CoralBlox.circular.SizeClass
-import CoralBlox.circular.FunctionalGroup
-import CoralBlox.circular.reuse_buffers!
-import CoralBlox.circular.apply_survival!
-import CoralBlox.circular.timestep!
-import CoralBlox.circular.coral_cover
+import CoralBlox.SizeClass
+import CoralBlox.FunctionalGroup
+import CoralBlox.reuse_buffers!
+import CoralBlox.apply_survival!
+import CoralBlox.timestep!
+import CoralBlox.coral_cover
 
 using ADRIA.metrics:
     relative_cover,
