@@ -123,13 +123,13 @@ A StableRules object (implemented by SIRUS).
    https://doi.org//10.1214/20-EJS1792
 """
 function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;
-    n_trees::T=1000, seed=123) where {T<:Int64}
+    n_trees::T=1000, seed=123, lambda=1e-3) where {T<:Int64}
 
     # Set seed and Random Number Generator
     rng = StableRNG(seed)
 
     # Use SIRUS Stable Rules Classifier model to extract the rules
-    model = StableRulesClassifier(; max_rules=max_rules, n_trees=n_trees, rng=rng)
+    model = StableRulesClassifier(; max_rules=max_rules, n_trees=n_trees, rng=rng, lambda=lambda)
     mach = machine(model, X, clusters)
 
     try
@@ -145,8 +145,8 @@ function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;
     return rules(mach.fitresult)
 end
 function cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;
-    n_trees::T=1000, seed=123) where {T<:Int64}
-    return cluster_rules(convert.(Int64, clusters), X, max_rules; n_trees=n_trees, seed=seed)
+    n_trees::T=1000, seed=123, lambda=1e-3) where {T<:Int64}
+    return cluster_rules(convert.(Int64, clusters), X, max_rules; n_trees=n_trees, seed=seed, lambda=lambda)
 end
 
 """
