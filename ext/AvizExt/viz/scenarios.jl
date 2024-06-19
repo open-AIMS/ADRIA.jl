@@ -199,7 +199,7 @@ function scenarios_confint!(
     ax::Axis,
     confints::AbstractArray,
     ordered_groups::Vector{Symbol},
-    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}};
+    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32},String}};
     x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1)),
 )::Nothing
 
@@ -217,7 +217,8 @@ end
 function scenarios_confint!(
     ax::Axis, outcomes::YAXArray, scen_groups::Dict{Symbol,BitVector}
 )::Nothing
-    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
+    Main.@infiltrate
+    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32},String}} = colors(scen_groups)
     ordered_groups = _sort_keys(scen_groups, outcomes)
     confints = _confints(outcomes, scen_groups)
     return scenarios_confint!(
