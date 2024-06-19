@@ -45,7 +45,7 @@ function correction_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
 end
 
 """
-    complexity_invariance_distance(data::AbstractMatrix{<:Real})::AbstractMatrix{Float64}
+    complexity_invariance_distance(data::AbstractMatrix{<:Real}; distance=:euclidean)::AbstractMatrix{Float64}
 
 Compute Complexity Invariance Distance (CID) between every matrix column pairs (`data`) of
 shape \$T ⋅ S\$. The distance between every two series is the weighted euclidian distanced
@@ -55,12 +55,15 @@ series complexities. Returns a matrix of distances (\$S ⋅ S\$).
 # Arguments
 - `data` : Matrix of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is
 number of scenarios
+- `distance` : Switch between Euclidean (`:euclidean`) or weighted Euclidean (`:weuclidean`)
+distance measurements. Defaults to `:euclidean`
 
 # Returns
 Matrix of complexity invariance distances.
 """
 function complexity_invariance_distance(
-    data::AbstractMatrix{<:Real}
+    data::AbstractMatrix{<:Real};
+    distance=:euclidean
 )::AbstractMatrix{Float64}
     # Compute complexity vector
     complexity = _complexity(data)
@@ -69,16 +72,18 @@ function complexity_invariance_distance(
     data_size = size(data, 2)
     cid_matrix::AbstractMatrix{Float64} = zeros(data_size, data_size)
 
-    # [1, 1/2, 1/3, ..., 1/n]
-    weights = sqrt.(1 ./ (1:size(data, 1)))
+    local weights::Vector{Float64}
+    if distance == :weuclidean
+        # [1, 1/2, 1/3, ..., 1/n]
+        weights = sqrt.(1 ./ (1:size(data, 1)))
+    end
+    dist_fn(x, y) = (distance == :euclidean) ? euclidean(x, y) : weuclidean(x, y, weights)
 
-    #? do we want to normalize the amplitudes of all series?
-
+    #? Do we want to normalize the amplitudes of all series?
     # Iterate over data matrix to compute CID (Complexity Invariance Distance)
     for i in axes(data, 2)
         @floop for j in axes(data, 2)
-            # Weight the WEuclidian Distance (ed) using the Correction Factor (cf)
-            ed = weuclidean(data[:, i], data[:, j], weights)
+            ed = dist_fn(data[:, i], data[:, j])
             cf = correction_factor(complexity[i], complexity[j])
             cid_matrix[i, j] = cid_matrix[j, i] = ed * cf
         end
@@ -88,18 +93,20 @@ function complexity_invariance_distance(
 end
 
 """
-    cluster_series(data::AbstractMatrix{<:Real}, n_clusters::Int64)::Vector{Int64}
+    cluster_series(data::AbstractMatrix{<:Real}, n_clusters::Int64, method::Symbol=:kmedoids, distance::Symbol=:euclidean)::Vector{Int64}
 
 Hierarchically cluster \$S\$ scenarios with \$T\$ time steps each.
-
 
 # Arguments
 - `data` : Matrix of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is
   number of scenarios
-- `n_clusters` : Number of clusters determined _a priori_.
+- `n_clusters` : Number of clusters determined _a priori_
+- `method` : Clustering method. Defaults to `:kmedoids`
+- `distance` : Switch between Euclidean (`:euclidean`) or weighted Euclidean (`:weuclidean`)
+distance measurements. Defaults to `:euclidean`
 
 # Returns
-- `Vector` : Cluster ids indicating which cluster each scenario belongs to.
+- Cluster ids indicating each scenario cluster assignment.
 
 # References
 1. Steinmann, P., Auping, W.L., Kwakkel, J.H., 2020.
@@ -112,27 +119,39 @@ Hierarchically cluster \$S\$ scenarios with \$T\$ time steps each.
    Data Min Knowl Disc 28, 634-669.
    https://doi.org/10.1007/s10618-013-0312-3
 """
-function cluster_series(data::AbstractMatrix{<:Real}, n_clusters::Int64)::Vector{Int64}
-    # Create dendogram using distantes matrix
-    distances = complexity_invariance_distance(data)
-    dendogram = hclust(distances; linkage=:average)
+function cluster_series(
+    data::AbstractMatrix{<:Real},
+    n_clusters::Int64;
+    method::Symbol=:kmedoids,
+    distance::Symbol=:euclidean
+)::Vector{Int64}
+    # Calculate distantes matrix
+    distances = complexity_invariance_distance(data; distance=distance)
+
+    if method == :kmedoids
+        return kmedoids(distances, n_clusters).assignments
+    end
 
     # Return hierarchical clustering with n_clusters
+    dendogram = hclust(distances; linkage=:average)
     return cutree(dendogram; k=n_clusters)
 end
 
 """
-    cluster_scenarios(data::AbstractArray{<:Real}, n_clusters::Int64)::Array{Int64}
+    cluster_scenarios(data::AbstractArray{<:Real}, n_clusters::Int64; method::Symbol=:kmedoids, distance::Symbol=:euclidean)::Array{Int64}
 
 Alias to cluster_series.
 
 # Arguments
 - `data` : Matrix of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is
   number of scenarios
-- `n_clusters` : Number of clusters determined _a priori_.
+- `n_clusters` : Number of clusters determined _a priori_
+- `method` : Clustering method. Defaults to `:kmedoids`
+- `distance` : Switch between Euclidean (`:euclidean`) or weighted Euclidean (`:weuclidean`)
+distance measurements. Defaults to `:euclidean`
 
 # Returns
-- `Vector` : Cluster ids indicating which cluster each scenario belongs to.
+- Cluster ids indicating each scenario cluster assignment.
 
 # Example
 One can cluster scenarios based on a single Metric, passing a Matrix of outcomes for each
@@ -165,14 +184,19 @@ num_clusters = 6
 outcomes_clusters = ADRIA.analysis.cluster_scenarios(outcomes, num_clusters)
 ```
 """
-function cluster_scenarios(data::AbstractArray{<:Real}, n_clusters::Int64)::Array{Int64}
+function cluster_scenarios(
+    data::AbstractArray{<:Real},
+    n_clusters::Int64;
+    method::Symbol=:kmedoids,
+    distance::Symbol=:euclidean
+)::Array{Int64}
     ndims(data) == 2 && return cluster_series(data, n_clusters)
 
     _, n_scenarios, n_metrics = size(data)
 
     clusters = zeros(Int64, n_scenarios, n_metrics)
     for m in 1:n_metrics
-        clusters[:, m] = cluster_series(data[:, :, m], n_clusters)
+        clusters[:, m] = cluster_series(data[:, :, m], n_clusters; method=method, distance=distance)
     end
 
     return clusters
@@ -204,7 +228,7 @@ function target_clusters(
     # Compute statistic for each cluster
     clusters_statistics::Vector{Float64} = []
     for cluster in unique(clusters)
-        normalized_outcomed = outcomes[:, clusters .== cluster] ./ maximum(outcomes)
+        normalized_outcomed = outcomes[:, clusters.==cluster] ./ maximum(outcomes)
         statistic = median(metric(normalized_outcomed))
         push!(clusters_statistics, statistic)
     end
@@ -213,7 +237,7 @@ function target_clusters(
     target_indexes = [target_index]
 
     # Merge target cluster if it is below 1% of size
-    sizes = [size(outcomes[:, clusters .== c], 2) for c in unique(clusters)]
+    sizes = [size(outcomes[:, clusters.==c], 2) for c in unique(clusters)]
     target_size = sizes[target_index] / sum(sizes)
     while target_size < size_limit
         # Nullify target_index to find the next argmax
@@ -289,7 +313,7 @@ function find_scenarios(
     clusters_summary::Vector{Float64} = zeros(length(unique(clusters)))
 
     for (idx_c, c) in enumerate(unique(clusters))
-        cluster_metric = outcomes[:, clusters .== c]
+        cluster_metric = outcomes[:, clusters.==c]
 
         # Median series for current cluster
         tf = axes(cluster_metric, :timesteps)
