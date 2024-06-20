@@ -1,14 +1,14 @@
 using Printf: @sprintf
 
-const COLORS::Dict{Symbol,Symbol} = Dict(
+const COLORS::Dict{Symbol,Union{Symbol,String}} = Dict(
     :RCP45 => :darkblue,
     :RCP60 => :seagreen,
     :RCP85 => :orangered,
     :counterfactual => :red,
     :unguided => :lawngreen,
     :guided => :dodgerblue,
-    :target => :blue,
-    :non_target => :red,
+    :target => "#1f78b4",
+    :non_target => "#ff7f00",
     :order => :dodgerblue,
     :topsis => :deepskyblue4,
     :vikor => :midnightblue,
@@ -16,7 +16,7 @@ const COLORS::Dict{Symbol,Symbol} = Dict(
 
 function colors(
     scen_groups::Dict{Symbol,BitVector}
-)::Dict{Symbol,Union{Symbol,RGBA{Float32}}}
+)::Dict{Symbol,Union{Symbol,RGBA{Float32},String}}
     group_names = keys(scen_groups)
     if count(group_names .∉ [keys(COLORS)]) > 0
         colormap = categorical_colors(:seaborn_bright, length(group_names))
@@ -42,7 +42,7 @@ function colors(
 end
 function colors(
     scen_groups::Dict{Symbol,BitVector}, weights::Dict{Symbol,Float64}
-)::Dict{Symbol,RGBA{Float32}}
+)::Dict{Symbol,RGBA{Float32},String}
     groups = collect(keys(scen_groups))
     scen_colors = colors(scen_groups)
 

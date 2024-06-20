@@ -98,15 +98,17 @@ end
 
 
 """
-    cluster_rules(clusters::Vector{T}, X::DataFrame, outcomes::AbstractMatrix{F}, max_rules::Int64; n_trees::Int64=1000) where {T<:Integer,F<:Real}
+    cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T; seed::Int64=123, kwargs...) where {T<:Integer,F<:Real}
+    cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T; kwargs...) where {T<:Int64}
 
-Use SIRUS package to extract rules from time series clusters based on some summary metric (default is median)
+Use SIRUS package to extract rules from time series clusters based on some summary metric
+(default is median). More information about the keyword arguments accepeted can be found in
+MLJ's doc (https://juliaai.github.io/MLJ.jl/dev/models/StableRulesClassifier_SIRUS/).
 
 # Arguments
 - `clusters` : Vector of cluster indexes for each scenario outcome
 - `X` : Features to be used as input by SIRUS
 - `max_rules` : Maximum number of rules, to be used as input by SIRUS
-- `n_trees` : Number of trees to be created by SIRUS algorithm
 - `seed` : Seed to be used by RGN
 
 # Returns
@@ -123,13 +125,12 @@ A StableRules object (implemented by SIRUS).
    https://doi.org//10.1214/20-EJS1792
 """
 function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;
-    n_trees::T=1000, seed=123) where {T<:Int64}
-
+    seed::Int64=123, kwargs...) where {T<:Int64}
     # Set seed and Random Number Generator
     rng = StableRNG(seed)
 
     # Use SIRUS Stable Rules Classifier model to extract the rules
-    model = StableRulesClassifier(; max_rules=max_rules, n_trees=n_trees, rng=rng)
+    model = StableRulesClassifier(; max_rules=max_rules, rng=rng, kwargs...)
     mach = machine(model, X, clusters)
 
     try
@@ -145,8 +146,8 @@ function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;
     return rules(mach.fitresult)
 end
 function cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;
-    n_trees::T=1000, seed=123) where {T<:Int64}
-    return cluster_rules(convert.(Int64, clusters), X, max_rules; n_trees=n_trees, seed=seed)
+    kwargs...) where {T<:Int64}
+    return cluster_rules(convert.(Int64, clusters), X, max_rules; kwargs...)
 end
 
 """
