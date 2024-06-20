@@ -44,6 +44,8 @@ function ADRIA.viz.scenarios!(
 
     scen_groups = ADRIA.analysis.scenario_clusters(clusters)
     opts[:histogram] = false
+    opts[:legend_labels] = sort(collect(keys(scen_groups)))
+
     return ADRIA.viz.scenarios!(
         g,
         ax,
