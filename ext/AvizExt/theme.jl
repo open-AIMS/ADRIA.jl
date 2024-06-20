@@ -1,4 +1,5 @@
 using Printf: @sprintf
+import GeoMakie: alpha
 
 const COLORS::Dict{Symbol,Union{Symbol,String}} = Dict(
     :RCP45 => :darkblue,
@@ -77,7 +78,6 @@ Hide selected scenarios by changing transparency.
 function scenario_colors!(
     obs_color::Observable,
     color_map::Vector,
-    scen_groups::Dict{Symbol,BitVector},
     scen_types::NamedTuple,
     weight::Float64,
     hide::BitVector,

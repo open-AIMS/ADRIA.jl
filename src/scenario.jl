@@ -322,6 +322,13 @@ Core scenario running function.
 
 # Returns
 NamedTuple of collated results
+- `raw` : Array, Coral cover relative to k area
+- `seed_log` : Array, Log of seeded locations
+- `fog_log` : Array, Log of fogged locations
+- `shade_log` : Array, Log of shaded locations
+- `site_ranks` : Array, Log of location rankings
+- `bleaching_mortality` : Array, Log of mortalities caused by bleaching
+- `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
 function run_model(domain::Domain, param_set::DataFrameRow)::NamedTuple
     ps = DataCube(Vector(param_set); factors=names(param_set))
@@ -513,9 +520,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         _valid_locs = coral_habitable_locs .& depth_criteria
         decision_mat = decision_mat[_valid_locs, :]
 
-        # IDs of valid locations after depth thresholds and k area filter are applied
-        considered_locs = findall(_valid_locs)
-
         # Number of time steps in environmental layers to look ahead when making decisions
         plan_horizon::Int64 = Int64(param_set[At("plan_horizon")])
     end
@@ -543,9 +547,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     p.r .= corals.growth_rate
     p.mb .= corals.mb_rate
-    ode_u = zeros(n_species, n_locs)
-    growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
-    alg_hint = Symbol[:nonstiff]
 
     area_weighted_conn = conn .* site_k_area(domain)
     conn_cache = similar(area_weighted_conn.data)
@@ -562,8 +563,42 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
     for tstep::Int64 in 2:tf
+
         # Copy cover for previous timestep as basis for current timestep
         C_t .= C_cover[tstep-1, :, :]
+
+        s = (1.0 .- sum(C_t[:, valid_locs], dims=1))
+        @views @. p.sXr[:, valid_locs] = s * C_t[:, valid_locs] * p.r
+        @views @. p.X_mb[:, valid_locs] = C_t[:, valid_locs] * p.mb
+        @views @. C_t[p.large, valid_locs] += p.sXr[p.large-1, valid_locs] - p.X_mb[p.large, valid_locs]
+        @views @. C_t[p.mid, valid_locs] += p.sXr[p.mid-1, valid_locs] - p.X_mb[p.mid-1, valid_locs]
+        C_t[p.small, valid_locs] .= 0.0
+
+        # Check if size classes are inappropriately out-growing available space
+        proportional_adjustment!(
+            @view(C_t[:, valid_locs]),
+            cover_tmp[valid_locs]
+        )
+
+        # Update initial condition
+        C_cover[tstep, :, valid_locs] .= C_t[:, valid_locs]
+
+        if tstep <= tf
+            # Natural adaptation
+            adjust_DHW_distribution!(
+                @view(C_cover[(tstep-1):tstep, :, :]), n_groups, c_mean_t, p.r
+            )
+
+            # Set values for t to t-1
+            c_mean_t_1 .= c_mean_t
+
+            if in_debug_mode
+                # Log dhw tolerances if in debug mode
+                dhw_tol_mean_log[tstep, :, :] .= mean.(c_mean_t)
+            end
+        end
+
+
 
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
@@ -688,6 +723,10 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             locs_with_space = vec(leftover_space_m²) .> 0.0
             considered_locs = findall(_valid_locs .& locs_with_space)
 
+            # IDs of valid locations considering locations that have space for corals
+            locs_with_space = vec(leftover_space_m²) .> 0.0
+            considered_locs = findall(_valid_locs .& locs_with_space)
+
             selected_seed_ranks = select_locations(
                 seed_pref,
                 decision_mat[location=locs_with_space[_valid_locs]],
@@ -696,8 +735,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 area_to_seed,
                 considered_locs,
                 vec(leftover_space_m²),
-                Int64(param_set[At("min_iv_locations")]),
-                Int64(param_set[At("cluster_max_member")])
+                min_iv_locs,
+                max_members
             )
 
             # Log rankings as appropriate
@@ -757,41 +796,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # Peak cyclone period is January to March
         cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
 
-        # Update initial condition
-        growth.u0 .= C_t
-        sol::ODESolution = solve(
-            growth,
-            solver;
-            save_everystep=false,
-            save_start=false,
-            alg_hints=alg_hint,
-            dt=1.0,
-        )
-
-        # Assign results
-        # We need to clamp values as the ODE may return negative values.
-        C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
-
-        # Check if size classes are inappropriately out-growing available space
-        proportional_adjustment!(
-            @view(C_cover[tstep, :, valid_locs]),
-            cover_tmp[valid_locs]
-        )
-
-        if tstep <= tf
-            # Natural adaptation
-            adjust_DHW_distribution!(
-                @view(C_cover[(tstep-1):tstep, :, :]), n_groups, c_mean_t, p.r
-            )
-
-            # Set values for t to t-1
-            c_mean_t_1 .= c_mean_t
-
-            if in_debug_mode
-                # Log dhw tolerances if in debug mode
-                dhw_tol_mean_log[tstep, :, :] .= mean.(c_mean_t)
-            end
-        end
+        # Update record
+        C_cover[tstep, :, :] .= C_t
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...

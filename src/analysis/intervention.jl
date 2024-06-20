@@ -12,7 +12,7 @@ Count frequency of seeded sites for scenarios satisfying a condition.
 # Returns
 YAXArray(:locations, :rcps)
 
-# Example
+# Examples
 ```julia
 using ADRIA, Statistics
 

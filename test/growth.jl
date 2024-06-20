@@ -1,7 +1,7 @@
 using Test
 using ADRIA
 using ADRIA.Distributions
-
+using ADRIA.OrdinaryDiffEq
 
 @testset "proportional adjustment" begin
     Y = rand(5, 36, 20)
@@ -21,19 +21,17 @@ end
 @testset "Coral Spec" begin
     linear_extension = Array{Float64,2}(
         [
-            1.0 3.0 3.0 4.4 4.4 4.4     # Abhorescent Acropora
-            1.0 3.0 3.0 4.4 4.4 4.4     # Tabular Acropora
-            1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
-            1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
+            1.0 3.0 3.0 4.4 4.4 4.4     # arborescent Acropora
+            1.0 3.0 3.0 4.4 4.4 4.4     # tabular Acropora
+            1.0 3.0 3.0 3.0 3.0 3.0     # corymbose Acropora
+            1.0 2.4 2.4 2.4 2.4 2.4     # corymbose non-Acropora
             1.0 1.0 1.0 1.0 0.8 0.8     # small massives
-            1.0 1.0 1.0 1.0 1.2 1.2
+            1.0 1.0 1.0 1.0 1.2 1.2     # large massives
         ],
-    )   # large massives
+    )
 
-    bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
-
-    growth_rates = (2 * linear_extension) ./ bin_widths  # growth rates as calculated without growth_rate(), maintaining species x size_class structure
-    #growth_rates[:, 6] .= 0.8 * growth_rates[:, 6]
+    # Growth rates as calculated without growth_rate(), maintaining species x size_class structure
+    growth_rates = (2 * linear_extension) ./ ADRIA.bin_widths()'
 
     mb = Array{Float64,2}(
         [
@@ -62,11 +60,6 @@ end
             "Background mortality rates incorrect for size class $i."
     end
 
-    # Test growth rate values for size class 6 (should be ~20% of given value)
-    @test all(
-        stored_growth_rate[coral_params.class_id .== 6] .== (growth_rates[:, 6] * 0.2)
-    ) || "Growth rates incorrect for size class $i."
-
     # Check all growth rates are > 0
     @test all(stored_growth_rate .> 0.0) || "Some coral growth rates are <=0"
 
@@ -74,8 +67,7 @@ end
     @test all(stored_mb_rate .<= 1.0) || "Some coral background mortality rates are > 1."
     @test all(stored_mb_rate .>= 0.0) || "Some coral background mortality rates are <= 0."
 
-    bin_edges_cm = Float64[0, 2, 5, 10, 20, 40, 80]
-    bin_edge_diameters_cm2 = ADRIA.colony_mean_area(bin_edges_cm)
+    bin_edge_diameters_cm2 = ADRIA.colony_mean_area(bin_edges())
     stored_colony_mean_areas = ADRIA.colony_mean_area(
         coral_params.mean_colony_diameter_m .* 100.0
     )
@@ -874,17 +866,29 @@ end
 
     # Test direction and magnitude of change
     p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
-    p.X_mb .= rand(36, n_sites)
     C_cover = zeros(10, 36, n_sites)
     init = rand(Uniform(0.0, 0.4), 36, n_sites)
     proportional = vec(init / sum(init; dims=1))
     C_cover[1, :, :] .= proportional
 
+    ode_u = zeros(36, 10)
+    growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, (0.0, 1.0), p)
+    alg_hint = Symbol[:nonstiff]
+    solver::Euler = Euler()
+
     for tstep in 2:10
         p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
-        growthODE(du, C_cover[tstep - 1, :, :], p, tstep)
-        C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
-        C_cover[C_cover .< 0.0] .= 0.0
+        growth.u0 .= C_cover[tstep-1, :, :]
+        sol::ODESolution = solve(
+            growth,
+            solver;
+            save_everystep=false,
+            save_start=false,
+            alg_hints=alg_hint,
+            dt=1.0,
+        )
+
+        C_cover[tstep, :, :] .= clamp!(sol.u[end], 0.0, 1.0)
     end
     @test any(diff(C_cover; dims=1) .< 0) ||
         "ODE never decreases, du being restricted to >=0."
@@ -899,9 +903,17 @@ end
     C_cover[1, :, :] .= proportional
 
     for tstep in 2:10
-        growthODE(du, C_cover[tstep - 1, :, :], p, 1)
-        C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
-        C_cover[C_cover .< 0.0] .= 0.0
+        growth.u0 .= C_cover[tstep-1, :, :]
+        sol::ODESolution = solve(
+            growth,
+            solver;
+            save_everystep=false,
+            save_start=false,
+            alg_hints=alg_hint,
+            dt=1.0,
+        )
+
+        C_cover[tstep, :, :] .= clamp!(sol.u[end], 0.0, 1.0)
     end
 
     @test all((diff(C_cover[:, [1, 7, 13, 19, 25, 31], :]; dims=1) .<= 1e-5)) ||

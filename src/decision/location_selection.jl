@@ -13,6 +13,7 @@ using ADRIA:
     DataCube,
     copy_datacube
 
+using ADRIA.Graphs
 
 """
     rank_locations(
@@ -105,7 +106,7 @@ function rank_locations(
     area_weighted_conn = dom.conn.data .* site_k_area(dom)
     conn_cache = similar(area_weighted_conn)
 
-    in_conn, out_conn, network = connectivity_strength(area_weighted_conn, sum_cover, conn_cache)
+    in_conn, out_conn, network = connectivity_strength(area_weighted_conn, sum_cover, conn_cache; out_method=eigenvector_centrality)
     # strong_pred = strongest_source(g, network)
 
     scens = DataCube(
@@ -222,7 +223,7 @@ function rank_locations(
                 fog_pref, fog_decision_mat, MCDA_approach, min_locs
             )
             if !isempty(selected_fog_ranks)
-                ranks_store[locations=At(selected_fog_ranks), intervention=At(:fog), scenarios=scen_idx] .= 1:min(min_locs, length(selected_fog_ranks))
+                ranks_store[locations=At(selected_fog_ranks), intervention=At(:fog), scenarios=scen_idx] .= 1:length(selected_fog_ranks)
             end
         end
     end

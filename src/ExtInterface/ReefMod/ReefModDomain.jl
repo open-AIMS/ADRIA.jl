@@ -118,7 +118,7 @@ function load_domain(
     # Connectivity data is retireved from a subdirectory because it's not contained in matfiles
     conn_data = load_connectivity(RMEDomain, fn_path, site_ids)
 
-    spatial_data[:, :depth_med] .= 6.0
+    spatial_data[:, :depth_med] .= 7.0
     spatial_data[!, :depth_med] = convert.(Float64, spatial_data[!, :depth_med])
     # GBRMPA zone types are not contained in matfiles
     spatial_data[:, :zone_type] .= ["" for _ in 1:nrow(spatial_data)]
@@ -210,7 +210,7 @@ function load_initial_cover(
     # as suggested by YM (pers comm. 2023-08-08 12:55pm AEST). Distribution is used to split ReefMod initial
     # species covers into ADRIA's 6 size classes by weighting with the cdf.
     reef_mod_area_dist = LogNormal(log(700), log(4))
-    bin_edges_area = colony_mean_area(Float64[0, 2, 5, 10, 20, 40, 80])
+    bin_edges_area = colony_mean_area(bin_edges())
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
