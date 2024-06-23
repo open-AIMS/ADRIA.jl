@@ -704,11 +704,11 @@ end
 
 """
     fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2},
-                     fec_params::Array{Float64}, C_t::Array{Float64, 2},
+                     fec_params::Array{Float64}, C_cover_t::Array{Float64, 2},
                      k_area::Array{Float64})::Nothing
 
     fecundity_scope!(fec_groups::AbstractMatrix{T}, fec_all::AbstractArray{T, 3},
-                     fec_params::AbstractMatrix{T}, C_t::AbstractArray{T, 3},
+                     fec_params::AbstractMatrix{T}, C_cover_t::AbstractArray{T, 3},
                      site_area::AbstractMatrix{T})::Nothing where {T<:Float64}
 
 The scope that different coral groups and size classes have for
@@ -724,21 +724,21 @@ fecundities across size classes.
 - `fec_groups` : Matrix[n_classes, n_sites], memory cache to place results into
 - `fec_all` : Matrix[n_taxa, n_sites], temporary cache to place intermediate fecundity values into
 - `fec_params` : Vector, coral fecundity parameters (in per m²) for each species/size class
-- `C_t` : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
+- `C_cover_t` : Matrix[n_taxa, n_sites], of coral cover values for the previous time step
 - `site_area` : Vector[n_sites], total site area in m²
 """
 function fecundity_scope!(
     fec_groups::AbstractMatrix{T},
     fec_all::AbstractMatrix{T},
     fec_params::AbstractVector{T},
-    C_t::AbstractMatrix{T},
+    C_cover_t::AbstractMatrix{T},
     site_area::AbstractMatrix{T}
 )::Nothing where {T<:Float64}
     n_groups::Int64 = size(fec_groups, 1)   # number of coral groups: 5
     n_group_and_size::Int64 = size(fec_params, 1)  # number of coral size classes: 35
     n_classes::Int64 = Int64(n_group_and_size / n_groups)
 
-    fec_all .= fec_params .* C_t .* site_area
+    fec_all .= fec_params .* C_cover_t .* site_area
     for (i, (s, e)) in enumerate(zip(1:n_classes:n_group_and_size, n_classes:n_classes:n_group_and_size+1))
         @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :], dims=1))
     end
@@ -749,12 +749,12 @@ function fecundity_scope!(
     fec_groups::AbstractMatrix{T},
     fec_all::AbstractArray{T, 3},
     fec_params::AbstractMatrix{T},
-    C_t::AbstractArray{T, 3},
+    C_cover_t::AbstractArray{T,3},
     site_area::AbstractMatrix{T}
 )::Nothing where {T<:Float64}
 
     # Dimensions of fec all are [groups ⋅ sizes ⋅ locations]
-    fec_all .= fec_params .* C_t .* reshape(site_area, (1, size(site_area)...))
+    fec_all .= fec_params .* C_cover_t .* reshape(site_area, (1, size(site_area)...))
     # Sum over size classes
     @views fec_groups[:, :] .= dropdims(sum(fec_all, dims=2), dims=2)
 
