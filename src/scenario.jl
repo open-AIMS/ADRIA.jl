@@ -50,27 +50,22 @@ function setup_cache(domain::Domain)::NamedTuple
 end
 
 """
-    _cover_to_groups(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+    _reshape_init_cover(data::AbstractMatrix{<:Union{Float32, Float64}})
 
-Reshape coral cover to shape [sizes ⋅ locations ⋅ n_groups]
+Reshape initial coral cover of shape [groups_and_sizes ⋅ locations] to shape
+[groups ⋅ sizes ⋅ locations]
 """
-function _cover_to_groups(growth_spec::CoralGrowth, data::AbstractMatrix{<:Union{Float32, Float64}})
-    return Array(reshape(
-        data,
-        (growth_spec.n_sizes, growth_spec.n_locs, growth_spec.n_groups)
-    ))
-end
-
-"""
-    _group_cover_locs(growth_spec::CoralGrowth, data::AbstractMatrix{<:Union{Float32, Float64}})
-
-Reshape coral cover of shape [groups_and_sizes ⋅ locations] to shape [groups ⋅ sizes ⋅ locations]
-"""
-function _group_cover_locs(growth_spec::CoralGrowth, data::AbstractMatrix{<:Union{Float32, Float64}})
-    return permutedims(reshape(
-        data,
-        (growth_spec.n_sizes, growth_spec.n_groups, growth_spec.n_locs)
-    ), (2, 1, 3))
+function _reshape_init_cover(
+    C_cover::AbstractMatrix{T},
+    dims::NTuple{3,Int64}
+)::Array{T} where {T<:Union{Float32,Float64}}
+    return permutedims(
+        reshape(
+            C_cover,
+            dims
+        ),
+        (2, 1, 3)
+    )
 end
 
 """
@@ -502,7 +497,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
     C_cover::Array{Float64,4} = zeros(tf, n_groups, n_sizes, n_locs)
-    C_cover[1, :, :, :] .= _group_cover_locs(domain.coral_growth, domain.init_coral_cover)
+    C_cover[1, :, :, :] .= _reshape_init_cover(domain.init_coral_cover, (n_sizes, n_groups, n_locs))
     loc_cover_cache = zeros(n_locs)
 
     # Locations that can support corals
