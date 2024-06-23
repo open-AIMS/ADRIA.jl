@@ -69,18 +69,6 @@ function _reshape_init_cover(
 end
 
 """
-    _flatten_cover(growth_spec::CoralGrowth, data::AbstractArray{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
-
-Reshape coral cover of shape [groups ⋅ sizes ⋅ locations] to shape [groups_and_sizes ⋅ locations]
-"""
-function _flatten_cover(growth_spec::CoralGrowth, data::AbstractArray{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
-    return reshape(
-        permutedims(data, [2, 1, 3]),
-        (growth_spec.n_group_and_size, growth_spec.n_locs)
-    )
-end
-
-"""
     _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
 
 Reshape vector to shape [groups ⋅ sizes]
