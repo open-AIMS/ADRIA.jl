@@ -503,7 +503,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
     C_cover::Array{Float64,4} = zeros(tf, n_groups, n_sizes, n_locs)
     C_cover[1, :, :, :] .= _group_cover_locs(domain.coral_growth, domain.init_coral_cover)
-    cover_tmp = zeros(n_locs)
+    loc_cover_cache = zeros(n_locs)
 
     # Locations that can support corals
     habitable_locs::BitVector = location_k(domain) .> 0.0
@@ -702,7 +702,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
             @view(C_t[:, :, habitable_locs]),
-            cover_tmp[habitable_locs]
+            loc_cover_cache[habitable_locs]
         )
 
         # Update initial condition

@@ -26,7 +26,7 @@ end
 
 
 """
-    proportional_adjustment!(coral_cover::Matrix{T}, cover_tmp::Vector{T})::Nothing where {T<:Float64}
+    proportional_adjustment!(coral_cover::Matrix{T}, loc_cover_cache::Vector{T})::Nothing where {T<:Float64}
 
 Helper method to proportionally adjust coral cover, such that:
 - `coral_cover` ∈ [0, 1].
@@ -36,27 +36,27 @@ Modifies arrays in-place.
 
 # Arguments
 - `coral_cover` : Coral cover ∈ [0, 1]
-- `cover_tmp` : temporary cache
+- `loc_cover_cache` : temporary cache
 
 # Returns
 nothing
 """
 function proportional_adjustment!(
-    coral_cover::Union{SubArray{T},Matrix{T}}, cover_tmp::Vector{T}
+    coral_cover::Union{SubArray{T},Matrix{T}}, loc_cover_cache::Vector{T}
 )::Nothing where {T<:Float64}
-    cover_tmp .= vec(sum(coral_cover; dims=1))
-    cover_tmp[cover_tmp.≈1.0] .= 1.0
-    if any(cover_tmp .> 1.0)
-        exceeded::BitVector = vec(cover_tmp .> 1.0)
+    loc_cover_cache .= vec(sum(coral_cover; dims=1))
+    loc_cover_cache[loc_cover_cache.≈1.0] .= 1.0
+    if any(loc_cover_cache .> 1.0)
+        exceeded::BitVector = vec(loc_cover_cache .> 1.0)
         msg = """
             Cover exceeded bounds, constraining to be within available space
             This indicates an issue with the model.
-            Cover - Max Cover: $(sum(cover_tmp[exceeded] .- 1.0))
+            Cover - Max Cover: $(sum(loc_cover_cache[exceeded] .- 1.0))
         """
         @debug msg
 
         @views @. coral_cover[:, exceeded] = (
-            coral_cover[:, exceeded] / cover_tmp[exceeded]'
+            coral_cover[:, exceeded] / loc_cover_cache[exceeded]'
         )
 
         coral_cover .= max.(coral_cover, 0.0)
@@ -65,22 +65,22 @@ function proportional_adjustment!(
     return nothing
 end
 function proportional_adjustment!(
-    coral_cover::Union{SubArray{T, 3}, Array{T, 3}}, cover_tmp::Vector{T}
+    coral_cover::Union{SubArray{T,3},Array{T,3}}, loc_cover_cache::Vector{T}
 )::Nothing where {T<:Float64}
-    cover_tmp .= vec(sum(coral_cover; dims=(1, 2)))
-    cover_tmp[cover_tmp.≈1.0] .= 1.0
-    if any(cover_tmp .> 1.0)
-        exceeded::Vector{Int64} = findall(vec(cover_tmp .> 1.0))
+    loc_cover_cache .= vec(sum(coral_cover; dims=(1, 2)))
+    loc_cover_cache[loc_cover_cache.≈1.0] .= 1.0
+    if any(loc_cover_cache .> 1.0)
+        exceeded::Vector{Int64} = findall(vec(loc_cover_cache .> 1.0))
         msg = """
             Cover exceeded bounds, constraining to be within available space
             This indicates an issue with the model.
-            Cover - Max Cover: $(sum(cover_tmp[exceeded] .- 1.0))
+            Cover - Max Cover: $(sum(loc_cover_cache[exceeded] .- 1.0))
         """
         @debug msg
 
         @floop for idx in exceeded
             @views @. coral_cover[:, :, idx] = (
-                coral_cover[:, :, idx] / cover_tmp[idx]'
+                coral_cover[:, :, idx] / loc_cover_cache[idx]'
             )
         end
 
@@ -98,9 +98,9 @@ covered. Assumes 1.0 represents 100% of available location area.
 function proportional_adjustment!(
     coral_cover::Union{SubArray{T},Matrix{T}}
 )::Nothing where {T<:Float64}
-    cover_tmp = zeros(size(coral_cover, 2))
+    loc_cover_cache = zeros(size(coral_cover, 2))
 
-    return proportional_adjustment!(coral_cover, cover_tmp)
+    return proportional_adjustment!(coral_cover, loc_cover_cache)
 end
 
 """
