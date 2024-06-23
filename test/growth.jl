@@ -128,7 +128,7 @@ end
         122315.9906084096,
     ]
 
-    C_t = rand(Uniform(0.0, 0.01), 36, 216)
+    C_cover_t = rand(Uniform(0.0, 0.01), 36, 216)
     total_site_area = [
         76997.8201778261,
         38180.997513339855,
@@ -348,7 +348,7 @@ end
         49022.921055841725,
     ]
 
-    ADRIA.fecundity_scope!(fec_groups, fec_all, fec_params, C_t, Matrix(total_site_area'))
+    ADRIA.fecundity_scope!(fec_groups, fec_all, fec_params, C_cover_t, Matrix(total_site_area'))
 
     @test any(fec_groups .> 1e8) ||
         "Fecundity is measured in m² and so should be a very large number"

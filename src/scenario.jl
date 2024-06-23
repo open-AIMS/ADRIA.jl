@@ -38,7 +38,7 @@ function setup_cache(domain::Domain)::NamedTuple
         fec_scope=zeros(n_groups, n_locs),  # fecundity scope
         recruitment=zeros(n_groups, n_locs),  # coral recruitment
         dhw_step=zeros(n_locs),  # DHW for each time step
-        cov_tmp=zeros(n_groups, n_sizes, n_locs),  # Cover for previous timestep
+        C_cover_t=zeros(n_groups, n_sizes, n_locs),  # Cover for previous timestep
         depth_coeff=zeros(n_locs),  # store for depth coefficient
         site_area=Matrix{Float64}(site_area(domain)'),  # area of locations
         site_k_area=Matrix{Float64}(site_k_area(domain)'),  # location carrying capacity
@@ -494,7 +494,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
     fec_scope = cache.fec_scope
     recruitment = cache.recruitment
     dhw_t = cache.dhw_step
-    C_t = cache.cov_tmp
+    C_cover_t = cache.C_cover_t
     depth_coeff = cache.depth_coeff
 
     site_data = domain.site_data
@@ -658,8 +658,8 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
     # Preallocate memory for temporaries
     survival_rate_cache = ones(n_groups, n_sizes, n_locs)
-    C_t::Array{Float64, 3} = zeros(n_groups, n_sizes, n_locs)
-    ΔC_t = zeros(n_groups, n_sizes, n_locs)
+    C_cover_t::Array{Float64,3} = zeros(n_groups, n_sizes, n_locs)
+    ΔC_cover_t = zeros(n_groups, n_sizes, n_locs)
 
     growth_spatial_constraint::Vector{Float64} = zeros(n_locs)
 
@@ -670,7 +670,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         recruitment .*= reshape(survival_rate_cache[:, 1, :], (n_groups, n_locs))
 
         # Determine absolute area for coral model
-        C_t[:, :, habitable_locs] .= C_cover[tstep-1, :, :, habitable_locs] .* habitable_loc_areas′
+        C_cover_t[:, :, habitable_locs] .= C_cover[tstep-1, :, :, habitable_locs] .* habitable_loc_areas′
 
         # Constrain growth by available area
         growth_spatial_constraint[habitable_locs] .= log2.(1 .+ relative_leftover_space(
@@ -687,26 +687,26 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             )
 
             # Write to the cover matrix
-            coral_cover(functional_groups[i], @view(C_t[:, :, i]))
+            coral_cover(functional_groups[i], @view(C_cover_t[:, :, i]))
         end
 
         # Convert back to areas relative to `k`
         # TODO: Something in `coral_cover()` is producing NaN values
         #       so we replace with zero as a quick fix.
         #       It is also producing values that resolve to > 100% cover!
-        C_t[:, :, habitable_locs] ./= habitable_loc_areas′
-        replace!(C_t, NaN=>0.0)
+        C_cover_t[:, :, habitable_locs] ./= habitable_loc_areas′
+        replace!(C_cover_t, NaN => 0.0)
 
-        ΔC_t .= copy(C_t)
+        ΔC_cover_t .= copy(C_cover_t)
 
         # Check if size classes are inappropriately out-growing available space
         proportional_adjustment!(
-            @view(C_t[:, :, habitable_locs]),
+            @view(C_cover_t[:, :, habitable_locs]),
             loc_cover_cache[habitable_locs]
         )
 
         # Update initial condition
-        C_cover[tstep, :, :, habitable_locs] .= C_t[:, :, habitable_locs]
+        C_cover[tstep, :, :, habitable_locs] .= C_cover_t[:, :, habitable_locs]
 
         if tstep <= tf
             # Natural adaptation
@@ -724,9 +724,9 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         end
 
         # Calculates scope for coral fedundity for each size class and at each location
-        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
+        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, loc_k_area)
 
-        loc_coral_cover = dropdims(sum(C_t; dims=(1, 2)), dims=1)  # dims: 1 * nsites
+        loc_coral_cover = dropdims(sum(C_cover_t; dims=(1, 2)), dims=1)  # dims: 1 * nsites
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
 
         # Reset potential settlers to zero
@@ -759,14 +759,14 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         )
 
         # Add recruits to current cover
-        C_t[:, 1, :] .+= recruitment
+        C_cover_t[:, 1, :] .+= recruitment
 
         # Cover copy needs to include recruits so overall mortality can be calculated to
         # apply to cover blocks
-        ΔC_t[:, 1, :] .= C_t[:, 1, :]
+        ΔC_cover_t[:, 1, :] .= C_cover_t[:, 1, :]
 
         # Update available space
-        loc_coral_cover = dropdims(sum(C_t, dims=(1, 2)), dims=1)  # dims: 1 * nsites
+        loc_coral_cover = dropdims(sum(C_cover_t, dims=(1, 2)), dims=1)  # dims: 1 * nsites
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
 
         # Determine intervention locations whose deployment is assumed to occur
@@ -888,7 +888,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             # Seed selected locations
             seed_locs = findall(log_location_ranks.locations .∈ [selected_seed_ranks])
             seed_corals!(
-                C_t,
+                C_cover_t,
                 vec(loc_k_area),
                 vec(leftover_space_m²),
                 seed_locs,  # use location indices
@@ -904,9 +904,9 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             # (1,2,4) refer to the coral functional groups being seeded
             recruitment[[1,2,4], :] .+= Yseed[tstep, :, :]
 
-            # **DO NOT** Add seeded coral to ΔC_t as it represents change due to
+            # **DO NOT** Add seeded coral to ΔC_cover_t as it represents change due to
             # natural reproduction
-            # ΔC_t[[1,2,4], 1, :] .+= Yseed[tstep, :, :]
+            # ΔC_cover_t[[1,2,4], 1, :] .+= Yseed[tstep, :, :]
         end
 
         # Calculate and apply bleaching mortality
@@ -916,7 +916,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
         bleaching_mortality!(
-            C_t,
+            C_cover_t,
             dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
             depth_coeff,
             c_std,
@@ -928,12 +928,12 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
         # TODO: Update cyclone data to hold data for relevant functional groups
-        cyclone_mortality!(@views(C_t), cyclone_mortality_scen[tstep, :, :]')
+        cyclone_mortality!(@views(C_cover_t), cyclone_mortality_scen[tstep, :, :]')
 
         # Update record
-        C_cover[tstep, :, :, :] .= C_t
-        ΔC_t[ΔC_t .== 0] .= 1.0
-        survival_rate_cache .= C_t ./ ΔC_t
+        C_cover[tstep, :, :, :] .= C_cover_t
+        ΔC_cover_t[ΔC_cover_t.==0] .= 1.0
+        survival_rate_cache .= C_cover_t ./ ΔC_cover_t
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
