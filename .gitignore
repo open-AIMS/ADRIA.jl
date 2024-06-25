@@ -7,7 +7,6 @@ examples/Outputs/
 /build/*.dll
 /build/*.so
 .vscode/
-.JuliaFormatter.toml
 
 JuliaSysimage.dll
 
