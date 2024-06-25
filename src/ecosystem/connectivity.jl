@@ -36,7 +36,7 @@ function site_connectivity(
     loc_ids::Vector{String};
     conn_cutoff::Float64=1e-6,
     agg_func::Function=mean,
-    swap::Bool=false,
+    swap::Bool=false
 )::NamedTuple
     if !isdir(file_path) && !isfile(file_path)
         error("Could not find location: $(file_path)")
@@ -48,7 +48,7 @@ function site_connectivity(
         first_file = conn_files[1]
     elseif isdir(file_path)
         conn_fns = readdir(file_path)
-        conn_fns = String[fn for fn in conn_fns if endswith(fn, ".csv")]
+        conn_fns = String[fn for fn ∈ conn_fns if endswith(fn, ".csv")]
 
         first_file = joinpath.(file_path, conn_fns[1])
 
@@ -56,13 +56,13 @@ function site_connectivity(
         years::Vector{String} = unique(getindex.(split.(conn_fns, "_"), 2))
 
         # Organize files by their connectivity years
-        year_conn_fns = NamedTuple{Tuple(Symbol.("year_".*years))}(
-            [filter(x -> occursin(yr, x), joinpath.(file_path, conn_fns)) for yr in years]
-        )
+        year_conn_fns = NamedTuple{Tuple(Symbol.("year_" .* years))}(
+        [filter(x -> occursin(yr, x), joinpath.(file_path, conn_fns)) for yr ∈ years]
+)
 
         # Create store for each year
         tmp_store::Vector{Matrix{Float64}} = Matrix{Float64}[]
-        for yr in years
+        for yr ∈ years
             assoc_files = getfield(year_conn_fns, Symbol.("year_" * yr))
             conn_data::Vector{Matrix{Float64}} = Matrix{Float64}[
                 Matrix(
@@ -73,9 +73,9 @@ function site_connectivity(
                         missingstring="NA",
                         transpose=swap,
                         types=Float64,
-                        drop=[1],
+                        drop=[1]
                     )
-                ) for fn in assoc_files
+                ) for fn ∈ assoc_files
             ]
 
             push!(tmp_store, agg_func(conn_data))
@@ -93,7 +93,7 @@ function site_connectivity(
         missingstring="NA",
         transpose=swap,
         types=Float64,
-        drop=[1],
+        drop=[1]
     )
 
     conn_loc_ids::Vector{String} = names(conn_file1)
@@ -114,7 +114,7 @@ function site_connectivity(
 
     # Align IDs
     loc_ids::Vector{String} = coalesce(loc_ids[valid_idx])
-    loc_order = [findfirst(c_id .== conn_loc_ids) for c_id in loc_ids]
+    loc_order = [findfirst(c_id .== conn_loc_ids) for c_id ∈ loc_ids]
 
     if length(invalid_ids) > 0
         if length(invalid_ids) >= length(conn_loc_ids)
@@ -141,7 +141,7 @@ function site_connectivity(
     unique_site_ids::Vector{Union{Missing,String}};
     con_cutoff::Float64=1e-6,
     agg_func::Function=mean,
-    swap::Bool=false,
+    swap::Bool=false
 )::NamedTuple
 
     # Remove any row marked as missing
@@ -239,13 +239,13 @@ Vector of node ids indicating the strongest source for each node.
 function strongest_source(g, indegree)::Vector{Int64}
     # For each node, find strongly connected predecessor (by number of connections)
     strong_src = zeros(Int64, size(indegree)...)
-    for v_id in vertices(g)
+    for v_id ∈ vertices(g)
         incoming = inneighbors(g, v_id)
 
         if length(incoming) > 0
             # For each incoming connection, find the one with most "in"
             # connections themselves
-            in_conns = Int64[length(inneighbors(g, in_id)) for in_id in incoming]
+            in_conns = Int64[length(inneighbors(g, in_id)) for in_id ∈ incoming]
 
             # Find index of predecessor with most connections
             # (use `first` to get the first match in case of a tie)

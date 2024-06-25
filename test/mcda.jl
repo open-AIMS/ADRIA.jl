@@ -3,7 +3,6 @@ using ADRIA.Distributions
 using ADRIA.decision.JMcDM
 using ADRIA.decision: subtypes
 
-
 @testset "Validate included MCDA methods" begin
     """
     Identifies MCDA methods that pass a simple test to inform whether they should be included
@@ -87,7 +86,7 @@ using ADRIA.decision: subtypes
     # - Expected ranks when maximizing Criteria 3
     test_results = zeros(length(mcda_methods), 3)
 
-    for (i, method) in enumerate(mcda_methods)
+    for (i, method) ∈ enumerate(mcda_methods)
         local res
         try
             res = mcdm(MCDMSetting(dm, weights, min_directions), method())

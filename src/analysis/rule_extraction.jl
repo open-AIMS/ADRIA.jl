@@ -27,8 +27,12 @@ See also [`Rule`](@ref).
 # Returns
 Vector{ADRIA.analysis.Rule{Vector{Float64}, Vector{Vector}}}
 """
-function rules(rules::SIRUS.StableRules{Int64})::Vector{Rule{Vector{Vector},Vector{Float64}}}
-    [Rule(_condition(rules, i), _consequent(rules, i)) for i in eachindex(rules.rules)]
+function rules(
+    rules::SIRUS.StableRules{Int64}
+)::Vector{Rule{Vector{Vector},Vector{Float64}}}
+    return [
+        Rule(_condition(rules, i), _consequent(rules, i)) for i ∈ eachindex(rules.rules)
+    ]
 end
 
 """
@@ -47,7 +51,7 @@ Vector of Rule condition clauses (each one being a vector itself).
 function _condition(rules::SIRUS.StableRules{Int64}, index::Int64)::Vector{Vector}
     condition::Vector{Vector} = []
 
-    for subclause in rules.rules[index].clause.subclauses
+    for subclause ∈ rules.rules[index].clause.subclauses
         feature_name::String = subclause.feature_name
         direction::Symbol = subclause.direction
         value::Float32 = subclause.splitval
@@ -88,14 +92,17 @@ compact form.
 - `rules` : Vector of Rule objects
 """
 function print_rules(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})::Nothing
-    condition(rule) = [c[2] == :L ? "$(c[1]) < $(c[3])" : "$(c[1]) ≥ $(c[3])" for c in rule.condition]
+    function condition(rule)
+        return [
+            c[2] == :L ? "$(c[1]) < $(c[3])" : "$(c[1]) ≥ $(c[3])" for c ∈ rule.condition
+        ]
+    end
     consequent(rule) = " then $(rule.consequent[1]) else $(rule.consequent[2])\n"
     rule_string(rule) = "if " * join(condition(rule), " & ") * consequent(rule)
-    print(join([rule_string(rule) for rule in rules]))
+    print(join([rule_string(rule) for rule ∈ rules]))
 
     return nothing
 end
-
 
 """
     cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T; seed::Int64=123, kwargs...) where {T<:Integer,F<:Real}
@@ -159,5 +166,5 @@ Sum of biggest probabilities for each rule consequent
 - `rules` : Vector of Rule objects
 """
 function maximum_probability(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})
-    sum([maximum(rule.consequent) for rule in rules])
+    return sum([maximum(rule.consequent) for rule ∈ rules])
 end

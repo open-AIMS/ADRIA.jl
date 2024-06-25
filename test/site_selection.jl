@@ -1,7 +1,6 @@
 using Test
 using ADRIA.Distributions
 
-
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
     const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
@@ -34,15 +33,15 @@ end
         fog_years,
         5,
         max_cover,
-        depth_priority,
+        depth_priority
     )
 
     # Check that only two sites are selected (the sites where k > 0.0)
     @test length(pref_seed_sites[pref_seed_sites .> 0]) == 2
     @test length(pref_fog_sites[pref_fog_sites .> 0]) == 2
 
-    @test all([in(sid, [2, 3]) for sid in pref_seed_sites[pref_seed_sites .> 0]])
-    @test all([in(sid, [2, 3]) for sid in pref_fog_sites[pref_fog_sites .> 0]])
+    @test all([in(sid, [2, 3]) for sid ∈ pref_seed_sites[pref_seed_sites .> 0]])
+    @test all([in(sid, [2, 3]) for sid ∈ pref_fog_sites[pref_fog_sites .> 0]])
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
@@ -52,17 +51,19 @@ end
 
     area_to_seed = 962.11  # Area of seeded corals in m^2.
 
-    sum_cover = repeat(sum(dom.init_coral_cover, dims=1), size(scens, 1))
+    sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
     ranks = ADRIA.decision.rank_locations(dom, scens, sum_cover, area_to_seed)
 
-    @test length(ranks.scenarios) == sum(scens.guided .> 0) || "Specified number of scenarios was not carried out."
-    @test length(ranks.sites) == length(dom.site_ids) || "Ranks storage is not correct size for this domain."
+    @test length(ranks.scenarios) == sum(scens.guided .> 0) ||
+        "Specified number of scenarios was not carried out."
+    @test length(ranks.sites) == length(dom.site_ids) ||
+        "Ranks storage is not correct size for this domain."
 
     sel_sites = unique(ranks)
-    sel_sites = sel_sites[sel_sites.!=0.0]
-    possible_ranks = collect(Float64, 1:ADRIA.n_locations(dom)+1.0)
+    sel_sites = sel_sites[sel_sites .!= 0.0]
+    possible_ranks = collect(Float64, 1:(ADRIA.n_locations(dom) + 1.0))
 
-    @test all([in(ss, possible_ranks) for ss in sel_sites]) || "Impossible rank assigned."
+    @test all([in(ss, possible_ranks) for ss ∈ sel_sites]) || "Impossible rank assigned."
 end
 
 @testset "Test ranks line up with ordering" begin
@@ -83,6 +84,8 @@ end
         S, weights, rankings, n_site_int, mcda_func, 2
     )
 
-    @test all([(rankings[rankings[:, 1].==s_order[rank, 1], 2].==rank)[1] for rank in 1:size(s_order, 1)]) || "Ranking does not match mcda score ordering"
-
+    @test all([
+        (rankings[rankings[:, 1] .== s_order[rank, 1], 2] .== rank)[1] for
+        rank ∈ 1:size(s_order, 1)
+    ]) || "Ranking does not match mcda score ordering"
 end

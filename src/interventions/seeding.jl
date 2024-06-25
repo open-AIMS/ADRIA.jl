@@ -30,8 +30,12 @@ function distribute_seeded_corals(
     # Convert to relative cover proportion by dividing by location area
     scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
     #scaled_seed = ((prop_area_avail .* seeded_area') ./ seed_loc_k_m²)'
-    
-    return DataCube(scaled_seed, taxa=caxes(seeded_area)[1].val.data, locations=1:length(available_space))
+
+    return DataCube(
+        scaled_seed;
+        taxa=caxes(seeded_area)[1].val.data,
+        locations=1:length(available_space)
+    )
 end
 
 """
@@ -64,7 +68,7 @@ function seed_corals!(
     a_adapt::V,
     Yseed::SubArray,
     stdev::V,
-    c_dist_t::Matrix{Float64},
+    c_dist_t::Matrix{Float64}
 )::Nothing where {V<:Vector{Float64}}
     # Selected locations can fill up over time so avoid locations with no space
     seed_locs = seed_locs[findall(leftover_space_m²[seed_locs] .> 0.0)]
@@ -73,7 +77,7 @@ function seed_corals!(
     scaled_seed = distribute_seeded_corals(
         loc_k_area[seed_locs],
         leftover_space_m²[seed_locs],
-        seeded_area,
+        seeded_area
     )
 
     # Seed each location and log
@@ -90,15 +94,16 @@ function seed_corals!(
     replace!(w_taxa, NaN => 1.0)
 
     # Update critical DHW distribution for deployed size classes
-    for (i, loc) in enumerate(seed_locs)
+    for (i, loc) ∈ enumerate(seed_locs)
         # Previous distributions
         c_dist_ti = @view(c_dist_t[seed_sc, loc])
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
-        tn::Vector{Float64} = truncated_normal_mean.(
-            a_adapt[seed_sc], stdev[seed_sc], 0.0, a_adapt[seed_sc] .+ HEAT_UB,
-        )
+        tn::Vector{Float64} =
+            truncated_normal_mean.(
+                a_adapt[seed_sc], stdev[seed_sc], 0.0, a_adapt[seed_sc] .+ HEAT_UB
+            )
 
         # If seeding an empty location, no need to do any further calculations
         if all(isapprox.(w_taxa[:, i], 1.0))

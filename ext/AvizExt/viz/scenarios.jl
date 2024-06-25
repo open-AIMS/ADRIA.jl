@@ -53,7 +53,7 @@ function ADRIA.viz.scenarios(
         opts=opts,
         fig_opts=fig_opts,
         axis_opts=axis_opts,
-        series_opts=series_opts,
+        series_opts=series_opts
     )
 end
 function ADRIA.viz.scenarios!(
@@ -72,7 +72,7 @@ function ADRIA.viz.scenarios!(
         outcomes;
         opts=opts,
         axis_opts=axis_opts,
-        series_opts=series_opts,
+        series_opts=series_opts
     )
 end
 function ADRIA.viz.scenarios(
@@ -131,7 +131,7 @@ function ADRIA.viz.scenarios!(
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
-    _scenarios = copy(scenarios[1:end.∈[outcomes.scenarios], :])
+    _scenarios = copy(scenarios[1:end .∈ [outcomes.scenarios], :])
     scen_groups = if get(opts, :by_RCP, false)
         ADRIA.analysis.scenario_rcps(_scenarios)
     else
@@ -145,7 +145,7 @@ function ADRIA.viz.scenarios!(
         scen_groups;
         opts=opts,
         axis_opts=axis_opts,
-        series_opts=series_opts,
+        series_opts=series_opts
     )
 end
 function ADRIA.viz.scenarios!(
@@ -164,7 +164,6 @@ function ADRIA.viz.scenarios!(
         scen_groups;
         by_RCP=by_RCP, by=sort_by, outcomes=outcomes, default_names=default_names
     )
-
 
     if get(opts, :summarize, true)
         scenarios_confint!(ax, outcomes, scen_groups, group_names)
@@ -197,7 +196,7 @@ function _confints(
     # Compute confints
     confints::Array{Float64} = zeros(n_timesteps, n_groups, 3)
     agg_dim = symdiff(axes_names(outcomes), [:timesteps])[1]
-    for (idx, group) in enumerate(group_names)
+    for (idx, group) ∈ enumerate(group_names)
         confints[:, idx, :] = series_confint(
             outcomes[:, scen_groups[group]]; agg_dim=agg_dim
         )
@@ -211,16 +210,15 @@ function scenarios_confint!(
     confints::AbstractArray,
     ordered_groups::Vector{Symbol},
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32},String}};
-    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1)),
+    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1))
 )::Nothing
-
-    for idx in eachindex(ordered_groups)
+    for idx ∈ eachindex(ordered_groups)
         band_color = (_colors[ordered_groups[idx]], 0.4)
         y_lower, y_upper = confints[:, idx, 1], confints[:, idx, 3]
         band!(ax, x_vals, y_lower, y_upper; color=band_color)
     end
 
-    series_colors = [_colors[group] for group in ordered_groups]
+    series_colors = [_colors[group] for group ∈ ordered_groups]
     series!(ax, x_vals, confints[:, :, 2]'; solid_color=series_colors)
 
     return nothing
@@ -248,12 +246,12 @@ function scenarios_series!(
     scen_groups::Dict{Symbol,BitVector},
     group_names::Vector{Symbol};
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(outcomes, 1)),
+    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(outcomes, 1))
 )::Nothing
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
     _alphas::Dict{Symbol,Float64} = alphas(scen_groups)
 
-    for group in group_names
+    for group ∈ group_names
         color = (_colors[group], _alphas[group])
         scens = outcomes[:, scen_groups[group]]'
         series!(ax, x_vals, scens; solid_color=color, series_opts...)
@@ -272,7 +270,7 @@ function scenarios_hist(
     ax_hist = Axis(g[1, 2]; width=100)
     _colors = colors(scen_groups)
 
-    for group in group_names
+    for group ∈ group_names
         color = (_colors[group], 0.7)
         dist = scen_dist[scen_groups[group]]
         hist!(ax_hist, dist.data; direction=:x, color=color, bins=30, normalization=:pdf)
@@ -283,7 +281,7 @@ function scenarios_hist(
     ylims!(
         ax_hist,
         minimum(scen_dist) - quantile(scen_dist, 0.05),
-        maximum(scen_dist) + quantile(scen_dist, 0.05),
+        maximum(scen_dist) + quantile(scen_dist, 0.05)
     )
 
     return nothing
@@ -296,7 +294,7 @@ function _render_legend(
     legend_labels::Vector{Symbol}
 )::Nothing
     _colors = colors(scen_groups)
-    line_els::Vector{LineElement} = [LineElement(; color=_colors[n]) for n in legend_labels]
+    line_els::Vector{LineElement} = [LineElement(; color=_colors[n]) for n ∈ legend_labels]
 
     Legend(g[legend_position...], line_els, labels(legend_labels); framevisible=false)
 
@@ -329,14 +327,14 @@ function _sort_keys(
         !isempty(default_names) && return default_names
 
         default_keys = [:counterfactual, :unguided, :guided]
-        return default_keys[default_keys.∈[scen_types]]
+        return default_keys[default_keys .∈ [scen_types]]
     elseif by == :variance
         msg = "When sorting by variance, optional parameter `outcomes` must be provided"
         isempty(outcomes) && throw(ArgumentError(msg))
         return sort(
             scen_types;
             by=type -> sum(var(outcomes[:, scenario_types[type]]; dims=2)),
-            rev=true,
+            rev=true
         )
     elseif by == :size
         msg = "When sorting by size, optional parameter `outcomes` must be provided"
@@ -345,6 +343,10 @@ function _sort_keys(
             scen_types; by=type -> size(outcomes[:, scenario_types[type]], 2), rev=true
         )
     else
-        throw(ArgumentError("Invalid 'by' option. Must be one of: [:default, :variance, :size]"))
+        throw(
+            ArgumentError(
+                "Invalid 'by' option. Must be one of: [:default, :variance, :size]"
+            )
+        )
     end
 end

@@ -10,11 +10,13 @@ X : Current coral cover, relative to `k`
 p : additional parameters
 t : time, unused, so marking with `_`
 """
-function growthODE_expanded(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real)::Nothing
+function growthODE_expanded(
+    du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real
+)::Nothing
     # `s` refers to sigma holding leftover space for each site in form of: 1 x n_sites
     s = p.sigma[:, :]
 
-    s .= max.(p.k' .- sum(X, dims=1), 0.0)  # Make relative to k (max. carrying capacity)
+    s .= max.(p.k' .- sum(X; dims=1), 0.0)  # Make relative to k (max. carrying capacity)
     s = vec(s)
 
     rec = @view p.rec[:, :]  # recruitment values
@@ -35,7 +37,7 @@ function growthODE_expanded(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedT
     du[9, :] .= (s .* X[8, :] .* r[8]) .- (s .* X[9, :] .* r[9]) .- X_mb[9, :]
     du[10, :] .= (s .* X[9, :] .* r[9]) .- (s .* X[10, :] .* r[10]) .- X_mb[10, :]
     du[11, :] .= (s .* X[10, :] .* r[10]) .- (s .* X[11, :] .* r[11]) .- X_mb[11, :]
-    du[12, :] .= (s .* X[11, :] .* r[11]).+ (s .* X[11, :] * r[11]) .- X_mb[12, :]
+    du[12, :] .= (s .* X[11, :] .* r[11]) .+ (s .* X[11, :] * r[11]) .- X_mb[12, :]
 
     # Corymbose Acropora 
     du[13, :] .= rec[3, :] .- s .* X[13, :] .* r[13] .- X_mb[13, :]
@@ -72,5 +74,5 @@ function growthODE_expanded(du::Array{Float64,2}, X::Array{Float64,2}, p::NamedT
     # Ensure no non-negative values
     du .= max.(du, 0.0)
 
-    return
+    return nothing
 end

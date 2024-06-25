@@ -1,6 +1,5 @@
 using Pkg, PackageCompiler
 
-
 # Removed ADRIA from sysimage project so line below is not needed (but could be useful later).
 # project_deps = filter!(i -> i != "ADRIA", project_deps)  # Remove ADRIA (we don't want to make this static for dev purposes)
 sysimage_fn = "ADRIA_sysimage.dll"
@@ -13,7 +12,11 @@ if "dev" in ARGS
 end
 
 project_deps = collect(keys(Pkg.project().dependencies))
-create_sysimage(project_deps; sysimage_path=sysimage_fn, precompile_execution_file="precompile_script.jl")
+create_sysimage(
+    project_deps;
+    sysimage_path=sysimage_fn,
+    precompile_execution_file="precompile_script.jl"
+)
 
 if "dev" in ARGS
     @info "Removing dev packages from project spec"

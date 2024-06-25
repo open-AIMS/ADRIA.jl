@@ -8,7 +8,9 @@ import Distributions: sample
 import Surrogates.QuasiMonteCarlo as QMC
 import Surrogates.QuasiMonteCarlo: SobolSample, OwenScramble
 
-const DISCRETE_FACTOR_TYPES = ["ordered categorical", "unordered categorical", "ordered discrete"]
+const DISCRETE_FACTOR_TYPES = [
+    "ordered categorical", "unordered categorical", "ordered discrete"
+]
 
 """
     adjust_samples(d::Domain, df::DataFrame)::DataFrame
@@ -26,18 +28,19 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     fog_weights = component_params(spec, FogCriteriaWeights)
 
     # If counterfactual, set all intervention options to 0.0
-    df[df.guided.==-1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .= 0.0
+    df[df.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .=
+        0.0
 
     # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
     non_depth_names = vcat(
         seed_weights.fieldname,
         fog_weights.fieldname
     )
-    df[df.guided.==0.0, non_depth_names] .= 0.0
-    df[df.guided.==-1.0, non_depth_names] .= 0.0
+    df[df.guided .== 0.0, non_depth_names] .= 0.0
+    df[df.guided .== -1.0, non_depth_names] .= 0.0
 
     # If unguided, set planning horizon to 0.
-    df[df.guided.==0.0, :plan_horizon] .= 0.0
+    df[df.guided .== 0.0, :plan_horizon] .= 0.0
 
     # If no seeding is to occur, set related variables to 0
     not_seeded = (df.N_seed_TA .== 0) .& (df.N_seed_CA .== 0) .& (df.N_seed_SM .== 0)
@@ -86,7 +89,9 @@ Notes:
 # Returns
 Scenario specification
 """
-function sample(dom::Domain, n::Int, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample(
+    dom::Domain, n::Int, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
+)::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
     return sample(model_spec(dom), n, sample_method)
 end
@@ -108,7 +113,12 @@ Notes:
 # Returns
 Scenario specification
 """
-function sample(dom::Domain, n::Int, component::Type, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample(
+    dom::Domain,
+    n::Int,
+    component::Type,
+    sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
+)::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
 
     spec = component_params(dom.model, component)
@@ -131,14 +141,14 @@ Scenario specification
 function sample(
     spec::DataFrame,
     n::Int64,
-    sample_method=SobolSample(R=OwenScramble(base=2, pad=32))
+    sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
     if contains(string(sample_method), "SobolSample") && !ispow2(n)
         throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
     end
 
     # Select non-constant params
-    vary_vars = spec[spec.is_constant.==false, [:fieldname, :dist, :dist_params]]
+    vary_vars = spec[spec.is_constant .== false, [:fieldname, :dist, :dist_params]]
     n_vary_params = size(vary_vars, 1)
     if n_vary_params == 0
         throw(DomainError(n_vary_params, "Number of parameters to perturb must be > 0"))
@@ -161,7 +171,7 @@ function sample(
 
     # Combine varying and constant values (constant params use their indicated default vals)
     full_df = hcat(fill.(spec.val, n)...)
-    full_df[:, spec.is_constant.==false] .= samples
+    full_df[:, spec.is_constant .== false] .= samples
 
     # Ensure unguided scenarios do not have superfluous factor combinations
     return adjust_samples(spec, DataFrame(full_df, spec.fieldname))
@@ -181,9 +191,18 @@ Coral factors are set to their default values and are not perturbed or sampled.
 # Returns
 Scenario specification
 """
-function sample_selection(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample_selection(
+    d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
+)::DataFrame
     subset_spec = component_params(
-        d.model, [EnvironmentalLayer, Intervention, SeedCriteriaWeights, FogCriteriaWeights, DepthThresholds]
+        d.model,
+        [
+            EnvironmentalLayer,
+            Intervention,
+            SeedCriteriaWeights,
+            FogCriteriaWeights,
+            DepthThresholds
+        ]
     )
 
     # Only sample guided intervention scenarios
@@ -211,7 +230,9 @@ Generate only counterfactual scenarios.
 # Returns
 Scenario specification
 """
-function sample_cf(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample_cf(
+    d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
+)::DataFrame
     spec_df = model_spec(d)
 
     # Unguided scenarios only
@@ -254,12 +275,14 @@ Generate only guided scenarios.
 # Returns
 Scenario specification
 """
-function sample_guided(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample_guided(
+    d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
+)::DataFrame
     spec_df = model_spec(d)
 
     # Remove unguided scenarios as an option
     # Sample without unguided (i.e., values >= 1), then revert back to original model spec
-    if !(spec_df[spec_df.fieldname.==:guided, :is_constant][1])
+    if !(spec_df[spec_df.fieldname .== :guided, :is_constant][1])
         _adjust_guided_lower_bound!(spec_df, 1)
         spec_df[!, :is_constant] .= spec_df[!, :lower_bound] .== spec_df[!, :upper_bound]
     end
@@ -280,7 +303,9 @@ Generate only unguided scenarios.
 # Returns
 Scenario specification
 """
-function sample_unguided(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+function sample_unguided(
+    d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
+)::DataFrame
     spec_df = model_spec(d)
 
     # Fix guided factor to 0 (i.e., unguided scenarios only)
@@ -304,10 +329,11 @@ Scenario specification
 """
 function _deactivate_interventions(to_update::DataFrame)::Nothing
     intervs = component_params(to_update, Intervention)
-    cols = Symbol[fn for fn in intervs.fieldname if fn != :guided]
-    for c in cols
+    cols = Symbol[fn for fn ∈ intervs.fieldname if fn != :guided]
+    for c ∈ cols
         _row = to_update.fieldname .== c
-        _dparams = length(to_update[_row, :dist_params][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
+        _dparams =
+            length(to_update[_row, :dist_params][1]) == 2 ? (0.0, 0.0) : (0.0, 0.0, 0.0)
 
         dval = _is_discrete_factor(to_update[_row, :ptype][1]) ? 0 : 0.0
         to_update[_row, [:val, :lower_bound, :upper_bound, :dist_params, :is_constant]] .=
@@ -342,28 +368,28 @@ fix_factor!(dom; guided=3, N_seed_TA=1e6)
 """
 function fix_factor!(d::Domain, factor::Symbol)::Nothing
     params = DataFrame(d.model)
-    default_val = params[params.fieldname.==factor, :val][1]
+    default_val = params[params.fieldname .== factor, :val][1]
 
-    dist_params = params[params.fieldname.==factor, :dist_params][1]
+    dist_params = params[params.fieldname .== factor, :dist_params][1]
     new_params = Tuple(fill(default_val, length(dist_params)))
-    params[params.fieldname.==factor, :dist_params] .= [new_params]
+    params[params.fieldname .== factor, :dist_params] .= [new_params]
 
     update!(d, params)
     return nothing
 end
 function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     params = DataFrame(d.model)
-    params[params.fieldname.==factor, :val] .= val
+    params[params.fieldname .== factor, :val] .= val
 
-    dist_params = params[params.fieldname.==factor, :dist_params][1]
+    dist_params = params[params.fieldname .== factor, :dist_params][1]
     new_dist_params = Tuple(fill(val, length(dist_params)))
-    params[params.fieldname.==factor, :dist_params] .= [new_dist_params]
+    params[params.fieldname .== factor, :dist_params] .= [new_dist_params]
 
     update!(d, params)
     return nothing
 end
 function fix_factor!(d::Domain; factors...)::Nothing
-    for (factor, val) in factors
+    for (factor, val) ∈ factors
         try
             fix_factor!(d, factor, val)
         catch err
@@ -433,7 +459,7 @@ end
 """
 function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
     ms = model_spec(dom)
-    return ms[ms.fieldname.==factor, attr][1]
+    return ms[ms.fieldname .== factor, attr][1]
 end
 
 """
@@ -465,9 +491,9 @@ function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple):
     new_val = mean(new_dist_params[1:2])
 
     ms = model_spec(dom)
-    ms[ms.fieldname.==factor, :dist_params] .= [new_dist_params]
+    ms[ms.fieldname .== factor, :dist_params] .= [new_dist_params]
     (old_val isa Int) && (new_val = round(new_val))
-    ms[ms.fieldname.==factor, :val] .= oftype(old_val, new_val)
+    ms[ms.fieldname .== factor, :val] .= oftype(old_val, new_val)
     ms[!, :is_constant] .= (ms[!, :lower_bound] .== ms[!, :upper_bound])
 
     update!(dom, ms)
@@ -475,7 +501,7 @@ function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple):
     return dom
 end
 function set_factor_bounds(dom::Domain; factors...)::Domain
-    for (factor, bounds) in factors
+    for (factor, bounds) ∈ factors
         dom = set_factor_bounds(dom, factor, bounds)
     end
 
@@ -495,7 +521,7 @@ function _validate_new_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::N
 end
 
 _unzip(a) = map(x -> getfield.(a, x), fieldnames(eltype(a)))
-_offdiag_iter(A) = collect(ι for ι in CartesianIndices(A) if ι[1] ≠ ι[2])
+_offdiag_iter(A) = collect(ι for ι ∈ CartesianIndices(A) if ι[1] ≠ ι[2])
 
 """
     offdiag(A::AbstractArray)
