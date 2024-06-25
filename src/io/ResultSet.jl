@@ -55,7 +55,7 @@ function ResultSet(
     wave_stats_set::Dict,
     conn_data::Dict,
     site_data::DataFrame,
-    model_spec::DataFrame,
+    model_spec::DataFrame
 )::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
     return ADRIAResultSet(input_set.attrs["name"],
@@ -79,13 +79,17 @@ function ResultSet(
         DataCube(log_set["seed"], Symbol.(Tuple(log_set["seed"].attrs["structure"]))),
         DataCube(log_set["fog"], Symbol.(Tuple(log_set["fog"].attrs["structure"]))),
         DataCube(log_set["shade"], Symbol.(Tuple(log_set["shade"].attrs["structure"]))),
-        DataCube(log_set["coral_dhw_log"], Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))),
+        DataCube(
+            log_set["coral_dhw_log"],
+            Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))
+        )
     )
 end
 
 function _rankings_data(rankings_set::ZArray{T})::YAXArray{T} where {T}
     ax_names = Symbol.(Tuple(rankings_set.attrs["structure"]))
-    ax_labels::Vector{Union{UnitRange{Int64},Vector{Symbol}}} = range.([1], size(rankings_set))
+    ax_labels::Vector{Union{UnitRange{Int64},Vector{Symbol}}} =
+        range.([1], size(rankings_set))
 
     # Replace intervention
     intervention_idx = findfirst(x -> x == :intervention, ax_names)
@@ -99,12 +103,14 @@ end
 
 Helper function to copy environmental data layer statistics from data store.
 """
-function _copy_env_data(src::String, dst::String, folder_name::String, subdir=""::String)::Nothing
+function _copy_env_data(
+    src::String, dst::String, folder_name::String, subdir=""::String
+)::Nothing
     src_dir = joinpath(src, folder_name, subdir)
     dst_dir = joinpath(dst, folder_name, subdir)
     mkpath(dst_dir)
     src_ds = filter(d -> isdir(joinpath(src_dir, d)), readdir(src_dir))
-    for ds in src_ds
+    for ds ∈ src_ds
         cp(joinpath(src_dir, ds), joinpath(dst_dir, ds); force=true)
     end
 
@@ -126,12 +132,12 @@ function combine_results(result_sets...)::ResultSet
 
     # Ensure all sim constants are identical
     @assert all([
-        result_sets[i].sim_constants == result_sets[i+1].sim_constants
-        for i in 1:(length(result_sets)-1)
+        result_sets[i].sim_constants == result_sets[i + 1].sim_constants
+        for i ∈ 1:(length(result_sets) - 1)
     ])
 
     # Ensure all result sets were from the same version of ADRIA
-    if length(Set([rs.ADRIA_VERSION for rs in result_sets])) != 1
+    if length(Set([rs.ADRIA_VERSION for rs ∈ result_sets])) != 1
         @warn "Results were created with different versions of ADRIA so errors may occur!"
         @warn "Results from model runs < 0.9 are no longer compatible!"
     end
@@ -140,7 +146,7 @@ function combine_results(result_sets...)::ResultSet
     canonical_name = rs1.name
     combined_time = replace(string(now()), "T" => "_", ":" => "_", "." => "_")
 
-    rcps = join(unique([rs.RCP for rs in result_sets]), "_")
+    rcps = join(unique([rs.RCP for rs ∈ result_sets]), "_")
 
     # Create new zarr store
     new_loc = joinpath(
@@ -161,10 +167,10 @@ function combine_results(result_sets...)::ResultSet
         envlayer.connectivity_fn,
         dirname(envlayer.DHW_fn),
         dirname(envlayer.wave_fn),
-        envlayer.timeframe,
+        envlayer.timeframe
     )
 
-    all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs in result_sets])
+    all_inputs = reduce(vcat, [getfield(rs, :inputs) for rs ∈ result_sets])
     input_dims = size(all_inputs)
     attrs = scenario_attributes(
         canonical_name,
@@ -176,7 +182,7 @@ function combine_results(result_sets...)::ResultSet
         rs1.site_ids,
         rs1.site_area,
         rs1.site_max_coral_cover,
-        rs1.site_centroids,
+        rs1.site_centroids
     )
 
     # Copy site data into result set
@@ -184,7 +190,7 @@ function combine_results(result_sets...)::ResultSet
     cp(
         attrs[:site_data_file],
         joinpath(new_loc, SPATIAL_DATA, basename(attrs[:site_data_file]));
-        force=true,
+        force=true
     )
 
     # Store copy of model specification as CSV
@@ -199,7 +205,7 @@ function combine_results(result_sets...)::ResultSet
         fill_as_missing=false,
         path=input_loc,
         chunks=(1, input_dims[2]),
-        attrs=attrs,
+        attrs=attrs
     )
 
     # Store post-processed table of input parameters.
@@ -217,17 +223,17 @@ function combine_results(result_sets...)::ResultSet
     )
 
     # Copy logs over
-    for log in keys(logs)
+    for log ∈ keys(logs)
         scen_id = 1
-        for rs in result_sets
+        for rs ∈ result_sets
             s_log = getfield(rs, log)
             n_log = getfield(logs, log)
             rs_scen_len = size(s_log, :scenarios)
 
             try
-                n_log[:, :, scen_id:(scen_id+(rs_scen_len-1))] .= s_log
+                n_log[:, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
             catch
-                n_log[:, :, :, scen_id:(scen_id+(rs_scen_len-1))] .= s_log
+                n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
             end
 
             scen_id = scen_id + rs_scen_len
@@ -236,7 +242,7 @@ function combine_results(result_sets...)::ResultSet
 
     compressor = Zarr.BloscCompressor(; cname="zstd", clevel=6, shuffle=true)
     metrics = keys(rs1.outcomes)
-    for m_name in metrics
+    for m_name ∈ metrics
         m_dim_names = axes_names(rs1.outcomes[m_name])
         dim_struct = Dict{Symbol,Any}(
             :structure => m_dim_names
@@ -245,7 +251,7 @@ function combine_results(result_sets...)::ResultSet
             dim_struct[:unique_site_ids] = rs1.site_ids
         end
 
-        result_dims = (size(rs1.outcomes[m_name])[1:(end-1)]..., n_scenarios)
+        result_dims = (size(rs1.outcomes[m_name])[1:(end - 1)]..., n_scenarios)
         m_store = zcreate(
             Float32,
             result_dims...;
@@ -255,19 +261,19 @@ function combine_results(result_sets...)::ResultSet
                 z_store.folder,
                 RESULTS,
                 string(m_name)),
-            chunks=(result_dims[1:(end-1)]..., 1),
+            chunks=(result_dims[1:(end - 1)]..., 1),
             attrs=dim_struct,
-            compressor=compressor,
+            compressor=compressor
         )
 
         # Copy results over
         scen_id = 1
-        for rs in result_sets
+        for rs ∈ result_sets
             rs_scen_len = size(rs.outcomes[m_name], :scenarios)
             try
-                m_store[:, :, scen_id:(scen_id+(rs_scen_len-1))] .= rs.outcomes[m_name]
+                m_store[:, :, scen_id:(scen_id + (rs_scen_len - 1))] .= rs.outcomes[m_name]
             catch
-                m_store[:, :, :, scen_id:(scen_id+(rs_scen_len-1))] .= rs.outcomes[m_name]
+                m_store[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] .= rs.outcomes[m_name]
             end
 
             scen_id = scen_id + rs_scen_len
@@ -276,7 +282,7 @@ function combine_results(result_sets...)::ResultSet
 
     # Copy env stats
     mkdir(joinpath(new_loc, ENV_STATS))
-    for rs in result_sets
+    for rs ∈ result_sets
         loc::String = rs.env_layer_md.dpkg_path
         _copy_env_data(loc, new_loc, ENV_STATS, "dhw")
         _copy_env_data(loc, new_loc, ENV_STATS, "wave")
@@ -434,11 +440,11 @@ Extract parameters for a specific model component from exported model specificat
 """
 function component_params(rs::ResultSet, component::T)::DataFrame where {T}
     spec = rs.model_spec
-    return spec[spec.component.==string(component), :]
+    return spec[spec.component .== string(component), :]
 end
 function component_params(rs::ResultSet, components::Vector{T})::DataFrame where {T}
     spec = rs.model_spec
-    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
+    return spec[spec.component .∈ [replace.(string.(components), "ADRIA." => "")], :]
 end
 
 """
@@ -472,7 +478,7 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     Input layers
     ------------""")
 
-    for fn in fieldnames(typeof(rs.env_layer_md))
+    for fn ∈ fieldnames(typeof(rs.env_layer_md))
         if fn == :timeframe
             tf = getfield(rs.env_layer_md, fn)
             println("$(fn) : $(tf[1]) - $(tf[end])")

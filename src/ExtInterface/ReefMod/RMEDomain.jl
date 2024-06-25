@@ -49,13 +49,13 @@ Standardize cluster id column name
 """
 function _standardize_cluster_ids!(spatial_data::DataFrame)::Nothing
     try
-        rename!(spatial_data, Dict("LOC_NAME_S"=>"cluster_id"))
+        rename!(spatial_data, Dict("LOC_NAME_S" => "cluster_id"))
     catch err
         if !(err isa ArgumentError)
             rethrow(err)
         end
 
-        rename!(spatial_data, Dict("reef_name"=>"cluster_id"))
+        rename!(spatial_data, Dict("reef_name" => "cluster_id"))
     end
 
     return nothing
@@ -71,7 +71,9 @@ function _manual_id_corrections!(spatial_data::DataFrame, id_list::DataFrame)::N
         # Re-order spatial data to match RME dataset
         # MANUAL CORRECTION
         spatial_data[spatial_data.LABEL_ID .== "20198", :LABEL_ID] .= "20-198"
-        id_order = [first(findall(x .== spatial_data.LABEL_ID)) for x in string.(id_list[:, 1])]
+        id_order = [
+            first(findall(x .== spatial_data.LABEL_ID)) for x ∈ string.(id_list[:, 1])
+        ]
         spatial_data[!, :] = spatial_data[id_order, :]
 
         # Check that the two lists of location ids are identical
@@ -154,7 +156,9 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     spatial_data[:, :k] .= 1.0 .- id_list[:, 3]
 
     # Need to load initial coral cover after we know `k` area.
-    init_coral_cover::YAXArray{Float64} = load_initial_cover(RMEDomain, data_files, loc_ids, spatial_data)
+    init_coral_cover::YAXArray{Float64} = load_initial_cover(
+        RMEDomain, data_files, loc_ids, spatial_data
+    )
 
     conn_data::YAXArray{Float64} = load_connectivity(RMEDomain, data_files, loc_ids)
 
@@ -185,7 +189,8 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
 
     functional_groups = functional_group_names()
     cyc_scens::YAXArray{Float64} = ZeroDataCube(;
-        T=Float64, timesteps=timeframe_range, locs=loc_ids, species=functional_groups, scenarios=[1]
+        T=Float64, timesteps=timeframe_range, locs=loc_ids, species=functional_groups,
+        scenarios=[1]
     )
 
     env_md = EnvLayer(
@@ -197,7 +202,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
         "",
         "",
         "",
-        timeframe_range,
+        timeframe_range
     )
 
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
@@ -229,7 +234,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
         wave_scens,
         cyc_scens,
         model,
-        SimConstants(),
+        SimConstants()
     )
 end
 
@@ -278,7 +283,7 @@ function load_DHW(
     tf_start = findall(timeframe[1] .∈ data_tf)[1]
     tf_end = findall(timeframe[2] .∈ data_tf)[1]
 
-    d1 = first_file[:, (tf_start+1):(tf_end+1)]
+    d1 = first_file[:, (tf_start + 1):(tf_end + 1)]
     data_shape = reverse(size(d1))
     data_cube = zeros(data_shape..., length(rcp_files))
     data_cube[:, :, 1] .= Matrix(d1)'
@@ -286,7 +291,7 @@ function load_DHW(
     local tf_start
     local tf_end
     keep_ds = fill(true, length(rcp_files))
-    for (i, rcp_data_fn) in enumerate(rcp_files[2:end])
+    for (i, rcp_data_fn) ∈ enumerate(rcp_files[2:end])
         d = CSV.read(rcp_data_fn, DataFrame)[:, 2:end]
 
         if size(d, 1) == 0
@@ -308,7 +313,7 @@ function load_DHW(
             continue
         end
 
-        data_cube[:, :, i+1] .= Matrix(d[:, tf_start:tf_end])'
+        data_cube[:, :, i + 1] .= Matrix(d[:, tf_start:tf_end])'
     end
 
     # Only return valid scenarios
@@ -316,7 +321,7 @@ function load_DHW(
         data_cube[:, :, keep_ds];
         timesteps=timeframe[1]:timeframe[2],
         locs=loc_ids,
-        scenarios=rcp_files[keep_ds],
+        scenarios=rcp_files[keep_ds]
     )
 end
 
@@ -344,7 +349,7 @@ function load_connectivity(
 
     n_locs = length(loc_ids)
     tmp_mat = zeros(n_locs, n_locs, length(conn_files))
-    for (i, fn) in enumerate(conn_files)
+    for (i, fn) ∈ enumerate(conn_files)
         # File pattern used is "CONNECT_ACRO_[YEAR]_[DAY].bin"
         # We use a clunky regex approach to identify the year.
         # tmp = replace(split(fn, r"(?=CONNECT_ACRO_[0-9,4]+)")[2], "CONNECT_ACRO_"=>"")
@@ -366,7 +371,7 @@ function load_connectivity(
     return DataCube(
         conn_data;
         Source=loc_ids,
-        Sink=loc_ids,
+        Sink=loc_ids
     )
 end
 
@@ -388,7 +393,7 @@ function load_cyclones(
     ::Type{RMEDomain},
     data_path::String,
     loc_ids::Vector{String},
-    tf::Tuple{Int64,Int64},
+    tf::Tuple{Int64,Int64}
 )::YAXArray
     # NOTE: This reads from the provided CSV files
     #       Replace with approach that reads directly from binary files
@@ -401,7 +406,7 @@ function load_cyclones(
 
     num_years = 100
     cyc_data = zeros(length(loc_ids), num_years, length(cyc_files))
-    for (i, fn) in enumerate(cyc_files)
+    for (i, fn) ∈ enumerate(cyc_files)
         # Read each cyclone trajectory
         cyc_data[:, :, i] = Matrix(
             CSV.read(fn, DataFrame; drop=[1], header=false, comment="#")
@@ -409,12 +414,12 @@ function load_cyclones(
     end
 
     # Cut down to the given time frame assuming the first entry represents the first index
-    cyc_data = permutedims(cyc_data, (2, 1, 3))[1:((tf[2]-tf[1])+1), :, :]
+    cyc_data = permutedims(cyc_data, (2, 1, 3))[1:((tf[2] - tf[1]) + 1), :, :]
     return DataCube(
         cyc_data;
         timesteps=tf[1]:tf[2],
         locs=loc_ids,
-        scenarios=1:length(cyc_files),
+        scenarios=1:length(cyc_files)
     )
 end
 
@@ -440,7 +445,7 @@ function load_initial_cover(
 
     # Shape is locations, scenarios, species
     icc_data = zeros(length(loc_ids), 20, length(icc_files))
-    for (i, fn) in enumerate(icc_files)
+    for (i, fn) ∈ enumerate(icc_files)
         icc_data[:, :, i] = Matrix(
             CSV.read(fn, DataFrame; drop=[1], header=false, comment="#")
         )
@@ -454,7 +459,7 @@ function load_initial_cover(
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
-    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end-1)])
+    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end - 1)])
     size_class_weights = size_class_weights ./ sum(size_class_weights)
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
@@ -470,8 +475,8 @@ function load_initial_cover(
 
     return DataCube(
         icc_data;
-        species=1:(length(icc_files)*6),
-        locs=loc_ids,
+        species=1:(length(icc_files) * 6),
+        locs=loc_ids
     )
 end
 

@@ -25,7 +25,6 @@ function set_axis_defaults(axis_opts::OPT_TYPE)::OPT_TYPE
     return axis_opts
 end
 
-
 """
     create_map!(
         f::Union{GridLayout,GridPosition},
@@ -114,7 +113,7 @@ function create_map!(
         else
             hl_groups = unique(highlight)
 
-            for color in hl_groups
+            for color ∈ hl_groups
                 m = findall(highlight .== [color])
 
                 poly!(
@@ -359,7 +358,9 @@ function ADRIA.viz.connectivity(
     fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
-    return ADRIA.viz.connectivity(dom, dom.conn; in_method, out_method, opts, fig_opts, axis_opts)
+    return ADRIA.viz.connectivity(
+        dom, dom.conn; in_method, out_method, opts, fig_opts, axis_opts
+    )
 end
 function ADRIA.viz.connectivity(
     dom::Domain,
@@ -374,7 +375,9 @@ function ADRIA.viz.connectivity(
         @warn "Both in and out centrality measures provided. Plotting out centralities."
         _, conn_weight, network = ADRIA.connectivity_strength(conn; in_method, out_method)
     elseif !isnothing(in_method) && isnothing(out_method)
-        conn_weight, _, network = ADRIA.connectivity_strength(conn; in_method, out_method=outdegree_centrality)
+        conn_weight, _, network = ADRIA.connectivity_strength(
+            conn; in_method, out_method=outdegree_centrality
+        )
     elseif isnothing(in_method) && isnothing(out_method)
         error("Measure for in or out centralities needs to be provided.")
     else
@@ -382,7 +385,9 @@ function ADRIA.viz.connectivity(
             in_method = indegree_centrality
         end
 
-        _, conn_weight, network = ADRIA.connectivity_strength(conn; in_method, out_method=outdegree_centrality)
+        _, conn_weight, network = ADRIA.connectivity_strength(
+            conn; in_method, out_method=outdegree_centrality
+        )
     end
 
     return ADRIA.viz.connectivity(dom, network, conn_weight; opts, fig_opts, axis_opts)
@@ -428,7 +433,7 @@ function ADRIA.viz.connectivity!(
     # Calculate alpha values for edges based on connectivity strength and weighting
     edge_col = Vector{Tuple{Symbol,Float64}}(undef, ne(network))
     norm_coef = maximum(conn_weights)
-    for (ind, e) in enumerate(edges(network))
+    for (ind, e) ∈ enumerate(edges(network))
         if (e.src == e.dst)
             edge_col[ind] = (:black, 0.0)
             continue

@@ -1,6 +1,5 @@
 using StaticArrays
 
-
 """
     dominates(x::Vector{<:Real}, y::Vector{<:Real})::Vector
 
@@ -11,14 +10,13 @@ Original function name is `dominates2()`
 """
 function dominates(x::AbstractVector{<:Real}, y::AbstractVector{<:Real})::Bool
     strict_inequality_found = false
-    for i in eachindex(x)
+    for i ∈ eachindex(x)
         y[i] > x[i] && return false
         strict_inequality_found |= x[i] > y[i]
     end
 
     return strict_inequality_found
 end
-
 
 """
     nds(X::AbstractArray{<:Real}, dist::Int64=0)::Vector{Vector{<:Int}}
@@ -43,7 +41,7 @@ function nds(X::AbstractArray{<:Real}, dist::Int64=0)::Vector{Vector{<:Int}}
     a = SVector{size(X, 2)}.(eachrow(X))
     count::Int64 = 0
     while !isempty(a)
-        red::BitVector = [all(x -> !dominates(x, y), a) for y in a]
+        red::BitVector = [all(x -> !dominates(x, y), a) for y ∈ a]
         push!(fronts, ind[red])
 
         if count == dist

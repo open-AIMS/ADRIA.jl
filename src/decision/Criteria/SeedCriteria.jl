@@ -11,7 +11,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         dist_params=(0.8, 1.0),
         direction=minimum,
         name="Seed Heat Stress",
-        description="Importance of avoiding heat stress when seeding. Prefer locations with lower heat stress.",
+        description="Importance of avoiding heat stress when seeding. Prefer locations with lower heat stress."
     )
     seed_wave_stress::Param = Factor(
         1.0;
@@ -20,7 +20,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         dist_params=(0.0, 1.0),
         direction=maximum,
         name="Seed Wave Stress",
-        description="Prefer locations with higher wave activity.",
+        description="Prefer locations with higher wave activity."
     )
     seed_in_connectivity::Param = Factor(
         1.0;
@@ -29,7 +29,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         dist_params=(0.5, 1.0),
         direction=maximum,
         name="Incoming Connectivity (Seed)",
-        description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for coral deployments.",
+        description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for coral deployments."
     )
     seed_out_connectivity::Param = Factor(
         1.0;
@@ -38,7 +38,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         dist_params=(0.5, 1.0),
         direction=maximum,
         name="Outgoing Connectivity (Seed)",
-        description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for coral deployments.",
+        description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for coral deployments."
     )
     seed_depth::Param = Factor(
         1.0;
@@ -47,7 +47,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         dist_params=(0.8, 1.0),
         direction=maximum,
         name="Depth (Seed)",
-        description="Give preference to deeper locations for coral deployments.",
+        description="Give preference to deeper locations for coral deployments."
     )
     seed_coral_cover::Param = Factor(
         0.0;
@@ -56,7 +56,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         dist_params=(0.0, 1.0),
         direction=minimum,
         name="Seed Coral Cover",
-        description="Preference locations with lower coral cover (higher available space) for seeding deployments.",
+        description="Preference locations with lower coral cover (higher available space) for seeding deployments."
     )
     # Disabled as they are currently unnecessary
     # seed_priority::Param = Factor(
@@ -93,13 +93,13 @@ end
 
 function SeedPreferences(dom, params::YAXArray)::SeedPreferences
     w::DataFrame = component_params(dom.model, SeedCriteriaWeights)
-    cn = Symbol[Symbol(join(split(string(cn), "_")[2:end], "_")) for cn in w.fieldname]
+    cn = Symbol[Symbol(join(split(string(cn), "_")[2:end], "_")) for cn ∈ w.fieldname]
 
     return SeedPreferences(cn, params[factors=At(string.(w.fieldname))], w.direction)
 end
 function SeedPreferences(dom, params...)::SeedPreferences
     w::DataFrame = component_params(dom.model, SeedCriteriaWeights)
-    for (k, v) in params
+    for (k, v) ∈ params
         w[w.fieldname .== k, :val] .= v
     end
 
@@ -242,8 +242,8 @@ function disperse_locations(
     # Count the number of times each selected cluster appears
     # then identify clusters that breach the max membership rule
     selected_clusters, cluster_frequency,
-        rule_violators_idx, exceeded_clusters,
-        potential_alternatives = _update_state(cluster_ids, num_locs, max_members)
+    rule_violators_idx, exceeded_clusters,
+    potential_alternatives = _update_state(cluster_ids, num_locs, max_members)
 
     # If no cluster breaches the rule, then nothing to do!
     if length(rule_violators_idx) == 0
@@ -254,7 +254,7 @@ function disperse_locations(
     # attempt it `max_iter` times, then abort
     c = 0
     while length(exceeded_clusters) > 0
-        for rule_violator in exceeded_clusters
+        for rule_violator ∈ exceeded_clusters
             # For each cluster that violates the rule find out how much the rule was violated
             # by. The difference is how many alternate locations we need to find.
             if !(rule_violator in keys(cluster_frequency))
@@ -264,11 +264,11 @@ function disperse_locations(
             freq = cluster_frequency[rule_violator]
             reduce_by = freq - max_members
 
-            for _ in 1:reduce_by
+            for _ ∈ 1:reduce_by
                 # Identify viable locations that do not breach the rule
                 alternates = vcat(
                     fill(false, num_locs),
-                    (cluster_ids .∈ Ref(potential_alternatives))[num_locs+1:end]
+                    (cluster_ids .∈ Ref(potential_alternatives))[(num_locs + 1):end]
                 )
 
                 if count(alternates) == 0
@@ -279,7 +279,7 @@ function disperse_locations(
 
                 # Swap the worst/lowest location for the cluster that breaches the rule
                 # for the next best location
-                worst_loc_idx = findlast(selected_clusters.==rule_violator)
+                worst_loc_idx = findlast(selected_clusters .== rule_violator)
                 next_best_loc_idx = findfirst(alternates .> 0)
 
                 # Swap selection for corresponding location, cluster ids and available space
@@ -297,12 +297,15 @@ function disperse_locations(
 
                 # Swapping out a location may include a location with not much space
                 # so we reconsider how many locations we need
-                num_locs = max(findfirst(>=(area_to_seed), cumsum(available_space[ranked_locs])), n_iv_locs)
+                num_locs = max(
+                    findfirst(>=(area_to_seed), cumsum(available_space[ranked_locs])),
+                    n_iv_locs
+                )
 
                 # Update state
                 selected_clusters, cluster_frequency,
-                    rule_violators_idx, exceeded_clusters,
-                    potential_alternatives = _update_state(cluster_ids, num_locs, max_members)
+                rule_violators_idx, exceeded_clusters,
+                potential_alternatives = _update_state(cluster_ids, num_locs, max_members)
             end
 
             if length(exceeded_clusters) == 0
@@ -343,5 +346,7 @@ function _update_state(cluster_ids::Vector, num_locs::Int64, max_members::Int64)
     exceeded_clusters = collect(keys(cluster_frequency))[rule_violators_idx]
     potential_alternatives = cluster_ids[cluster_ids .∉ Ref(exceeded_clusters)]
 
-    return selected_clusters, cluster_frequency, rule_violators_idx, exceeded_clusters, potential_alternatives
+    return selected_clusters,
+    cluster_frequency, rule_violators_idx, exceeded_clusters,
+    potential_alternatives
 end
