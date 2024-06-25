@@ -96,7 +96,7 @@ function _manual_id_corrections!(spatial_data::DataFrame, id_list::DataFrame)::N
 end
 
 """
-    load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
+    load_domain(::Type{RMEDomain}, fn_path::String, RCP::String; timeframe::Tuple{Int64, Int64}=(2022, 2100))::RMEDomain
 
 Load a ReefMod Engine dataset.
 
@@ -104,15 +104,21 @@ Load a ReefMod Engine dataset.
 - `RMEDomain` : DataType
 - `fn_path` : path to ReefMod Engine dataset
 - `RCP` : Representative Concentration Pathway scenario ID
+- `timeframe` : Timeframe for simulations to be run. Defaults to (2022, 2100)
 
 # Returns
 RMEDomain
 """
-function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
+function load_domain(
+    ::Type{RMEDomain},
+    fn_path::String,
+    RCP::String;
+    timeframe::Tuple{Int64, Int64}=(2022, 2100)
+)::RMEDomain
     isdir(fn_path) ? true : error("Path does not exist or is not a directory.")
 
     data_files = joinpath(fn_path, "data_files")
-    dhw_scens::YAXArray{Float64} = load_DHW(RMEDomain, data_files, RCP)
+    dhw_scens::YAXArray{Float64} = load_DHW(RMEDomain, data_files, RCP, timeframe)
     loc_ids::Vector{String} = collect(dhw_scens.locs)
 
     # Load the geopackage file
@@ -176,7 +182,6 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     # This loads cyclone categories, not mortalities, so ignoring for now.
     # cyc_scens = load_cyclones(RMEDomain, data_files, loc_ids, timeframe)
 
-    timeframe = (2022, 2100)
     timeframe_range = timeframe[1]:timeframe[2]
 
     wave_scens::YAXArray{Float64} = ZeroDataCube(;
@@ -483,7 +488,12 @@ Switch environmental datasets to represent the given RCP.
 function switch_RCPs!(d::RMEDomain, RCP::String)::RMEDomain
     @set! d.RCP = RCP
     data_files = joinpath(d.env_layer_md.dpkg_path, "data_files")
-    @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP)
+
+    timeframe::Tuple{Int64, Int64} = (
+        d.env_layer_md.timeframe[1],
+        d.env_layer_md.timeframe[end]
+    )
+    @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP, timeframe)
 
     # Cyclones are not RCP-specific?
     # @set! d.wave_scens = load_cyclones(RMEDomain, data_files, loc_ids)
