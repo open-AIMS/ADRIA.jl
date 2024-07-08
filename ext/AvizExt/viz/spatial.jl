@@ -55,7 +55,7 @@ Create a spatial choropleth figure.
 """
 function create_map!(
     f::Union{GridLayout,GridPosition},
-    geodata::Vector{<:GeoMakie.GeometryBasics.Polygon},
+    geodata::Vector{<:GeoMakie.GeometryBasics.MultiPolygon},
     data::Observable,
     highlight::Union{Vector,Tuple,Nothing},
     show_colorbar::Bool=true,
@@ -489,5 +489,5 @@ function _get_geoms(gdf::DataFrame)
     return _get_geoms(gdf, geom_col)
 end
 function _get_geoms(gdf::DataFrame, geom_col::Symbol)
-    return GeoMakie.geo2basic(AG.forceto.(gdf[!, geom_col], AG.wkbPolygon))
+    return GeoMakie.geo2basic(AG.forceto.(gdf[!, geom_col], AG.wkbMultiPolygon))
 end
