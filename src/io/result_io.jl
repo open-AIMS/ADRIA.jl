@@ -369,13 +369,13 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     mkdir(joinpath(log_location, SPATIAL_DATA))
     geo_fn = joinpath(log_location, SPATIAL_DATA, basename(attrs[:name]) * ".gpkg")
     try
-        GDF.write(geo_fn, domain.site_data; driver="geojson")
+        GDF.write(geo_fn, domain.site_data; driver="geopackage")
     catch err
         if !isa(err, ArgumentError)
             rethrow(err)
         end
 
-        GDF.write(geo_fn, domain.site_data; geom_columns=(:geom,), driver="geojson")
+        GDF.write(geo_fn, domain.site_data; geom_columns=(:geom,), driver="geopackage")
     end
 
     # Store copy of model specification as CSV
