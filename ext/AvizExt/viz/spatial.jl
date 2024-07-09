@@ -60,7 +60,7 @@ end
 """
     create_map!(
         f::Union{GridLayout,GridPosition},
-        geodata::GeoMakie.GeoJSON.FeatureCollection,
+        geodata::Vector{<:GeoMakie.GeometryBasics.MultiPolygon},
         data::Observable,
         highlight::Union{Vector,Tuple,Nothing},
         show_colorbar::Bool=true,
