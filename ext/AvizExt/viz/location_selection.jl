@@ -48,7 +48,7 @@ function ADRIA.viz.ranks_to_frequencies!(
     end
 
     opts[:color_map] = all_colormaps[sym_rank_ids[1]]
-    geodata = get_geojson_copy(rs)
+    geodata = _get_geoms(rs)
     legend_els = Vector{Any}(undef, length(rank_ids))
     legend_labels = Vector{String}(undef, length(rank_ids))
     opts[:show_colorbar] = get(opts, :show_colorbar, false)
