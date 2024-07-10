@@ -212,14 +212,14 @@ function test_rs_w_fig()
     n_clusters = 4
     clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
 
-    axis_opts = Dict(
+    axis_opts = Dict{Symbol,Any}(
         :title => "Time Series Clustering with $n_clusters clusters",
         :ylabel => "TAC [m²]",
         :xlabel => "Timesteps [years]",
     )
 
     tsc_fig = ADRIA.viz.clustered_scenarios(
-        s_tac, clusters; opts=Dict(:summarize => true), fig_opts=fig_opts,
+        s_tac, clusters; opts=Dict{Symbol,Any}(:summarize => true), fig_opts=fig_opts,
         axis_opts=axis_opts,
     )
 
