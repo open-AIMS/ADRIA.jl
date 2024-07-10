@@ -339,16 +339,13 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     # Write a copy of spatial data to the result set
     mkdir(joinpath(log_location, SPATIAL_DATA))
     geo_fn = joinpath(log_location, SPATIAL_DATA, basename(attrs[:name]) * ".gpkg")
-    try
-        GDF.write(geo_fn, domain.site_data; driver="GPKG")
-    catch err
-        if !isa(err, ArgumentError)
-            rethrow(err)
-        end
 
-        col = _get_geom_col(domain.site_data)
-        GDF.write(geo_fn, domain.site_data; geom_columns=(col,), driver="GPKG")
-    end
+    # Writing geopackages out does not currently automatically include CRS
+    # so we manually define it as a workaround.
+    col = _get_geom_col(domain.site_data)
+    ref = AG.getspatialref(domain.site_data[1, col])
+    proj4_gft = GFT.ProjString(AG.toPROJ4(ref))
+    GDF.write(geo_fn, domain.site_data; crs=proj4_gft, geom_columns=(col,), driver="GPKG")
 
     # Store copy of model specification as CSV
     mkdir(joinpath(log_location, "model_spec"))
