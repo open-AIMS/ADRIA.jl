@@ -4,7 +4,7 @@ using CoralBlox
 import CoralBlox.SizeClass
 import CoralBlox.FunctionalGroup
 import CoralBlox.reuse_buffers!
-import CoralBlox.apply_survival!
+import CoralBlox.apply_mortality!
 import CoralBlox.timestep!
 import CoralBlox.coral_cover
 
@@ -649,7 +649,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
     FLoops.assistant(false)
     for tstep::Int64 in 2:tf
         survival_rate_slices = [@view survival_rate_cache[:, :, loc] for loc in 1:n_locs]
-        apply_survival!.(functional_groups, survival_rate_slices)
+        apply_mortality!.(functional_groups, survival_rate_slices)
         recruitment .*= reshape(survival_rate_cache[:, 1, :], (n_groups, n_locs))
 
         # Determine absolute area for coral model
