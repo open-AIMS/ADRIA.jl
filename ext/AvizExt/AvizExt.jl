@@ -4,7 +4,6 @@ using Base.Iterators
 using Reexport
 
 using RelocatableFolders
-using Makie
 @reexport using GeoMakie
 
 using Statistics, Distributions, FLoops, Random

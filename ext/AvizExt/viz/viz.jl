@@ -1,9 +1,15 @@
-using Makie, DataFrames
+using
+    GeoMakie,
+    GeoMakie.Colors
+
+using
+    DataFrames,
+    DimensionalData,
+    YAXArrays
 
 using ADRIA: axes_names, ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
-using DimensionalData, YAXArrays
 using .AvizExt
-using Makie.Colors
+
 
 const OPT_TYPE = Dict{Symbol,<:Any}
 const DEFAULT_OPT_TYPE = Dict{Symbol,Any}

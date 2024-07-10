@@ -41,7 +41,6 @@ using
     Setfield,
     Statistics,
     StaticArrays,
-    # SparseArrayKit,
     SparseArrays,
     YAXArrays
 
