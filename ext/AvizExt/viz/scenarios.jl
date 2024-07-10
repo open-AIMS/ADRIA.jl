@@ -210,9 +210,9 @@ function scenarios_confint!(
     ax::Axis,
     confints::AbstractArray,
     ordered_groups::Vector{Symbol},
-    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32},String}};
+    _colors::Dict{Symbol, T};
     x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1)),
-)::Nothing
+)::Nothing where {T<:Union{RGBA{Float32},String,Symbol}}
 
     for idx in eachindex(ordered_groups)
         band_color = (_colors[ordered_groups[idx]], 0.4)
@@ -248,8 +248,8 @@ function scenarios_series!(
     scen_groups::Dict{Symbol,BitVector},
     group_names::Vector{Symbol};
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(outcomes, 1)),
-)::Nothing
+    x_vals::T=collect(1:size(outcomes, 1)),
+)::Nothing where {T<:Union{Vector{Int64},Vector{Float64}}}
     _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
     _alphas::Dict{Symbol,Float64} = alphas(scen_groups)
 
