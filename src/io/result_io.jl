@@ -280,33 +280,37 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites)
 end
 
 """
-    setup_result_store!(domain::Domain, param_df::DataFrame)
+    setup_result_store!(domain::Domain, scen_spec::DataFrame)
 
 Sets up an on-disk result store.
 
 ## Structure of Store
 
 ```
+├───connectivity
+├───env_stats
+├───inputs
 ├───logs
+|   ├───coral_dhw_log
 │   ├───fog
 │   ├───rankings
 │   ├───seed
 │   └───shade
-├───results
-|   ├───juvenile_indicator
-|   ├───relative_juveniles
-│   ├───relative_taxa_cover
-│   ├───relative_cover
-│   ├───relative_shelter_volume
-│   └───absolute_shelter_volume
-├───site_data
 ├───model_spec
-└───inputs
+├───results
+|   ├───absolute_shelter_volume
+|   ├───coral_evenness
+|   ├───juvenile_indicator
+│   ├───relative_cover
+|   ├───relative_juveniles
+│   ├───relative_shelter_volume
+│   └───relative_taxa_cover
+└───spatial
 ```
 
 - `inputs` : includes domain specification metadata including what connectivity/DHW/wave data was used.
-- `site_data` : contains a copy of the spatial domain data (as geopackage).
 - `model_spec` : contains a copy of the ADRIA model specification (as CSV).
+- `spatial` : contains a copy of the spatial domain data (as a geopackage).
 
 # Notes
 - `domain` is replaced with an identical copy with an updated scenario invoke time.
