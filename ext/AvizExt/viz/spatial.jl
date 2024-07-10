@@ -1,23 +1,8 @@
 import ArchGDAL as AG
 using Graphs, GraphMakie, SimpleWeightedGraphs
 
+using ADRIA: _get_geom_col
 
-"""
-    _get_geom_col(gdf::DataFrame)::Union{Symbol, Bool}
-
-Retrieve first column found to hold plottable geometries.
-
-# Returns
-Symbol, indicating column name or `false` if no geometries found.
-"""
-function _get_geom_col(gdf::DataFrame)::Union{Symbol,Bool}
-    col = findall(typeof.(eachcol(gdf)) .<: Vector{<:AG.IGeometry})
-    if !isempty(col)
-        return Symbol(names(gdf)[col[1]])
-    end
-
-    return false
-end
 
 """
     _get_geoms(gdf::DataFrame)

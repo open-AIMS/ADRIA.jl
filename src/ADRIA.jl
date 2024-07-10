@@ -64,6 +64,7 @@ include("interventions/seeding.jl")
 include("interventions/fogging.jl")
 
 include("io/ResultSet.jl")
+include("spatial/spatial.jl")
 include("io/result_io.jl")
 include("io/rme_result_io.jl")
 include("io/result_post_processing.jl")

@@ -1,34 +1,5 @@
 const COMPRESSOR = Zarr.BloscCompressor(; cname="zstd", clevel=2, shuffle=true)
 
-function get_geometry(df::DataFrame)
-    if columnindex(df, :geometry) > 0
-        return df.geometry
-    elseif columnindex(df, :geom) > 0
-        return df.geom
-    end
-
-    return error("No geometry data found")
-end
-
-"""
-    centroids(df::DataFrame)
-
-Extract and return long/lat from a GeoDataFrame.
-
-# Arguments
-- `df` : GeoDataFrame
-
-# Returns
-Array of tuples (x, y), where x and y relate to long and lat respectively.
-"""
-function centroids(df::DataFrame)::Vector{Tuple{Float64,Float64}}
-    site_centroids::Vector = AG.centroid.(get_geometry(df))
-    return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
-end
-function centroids(ds::Union{Domain,ResultSet})::Vector{Tuple{Float64,Float64}}
-    return centroids(ds.site_data)
-end
-
 """
     summarize_env_data(data_cube::AbstractArray)
 
