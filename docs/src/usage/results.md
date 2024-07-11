@@ -1,11 +1,17 @@
 # Loading Results
 
+Pre-existing results can also be reloaded by providing the path to the data store.
+
+```julia
+rs = ADRIA.load_results("<path to result set>")
+```
+
 ## Loading ReefModEngine Results
 
 Results from ReefModEngine.jl can be loaded with the `load_results` function.
 
 ```julia
-rs = ADRIA.load_results(RMEResultSet, "<path to data dir>")
+rs = ADRIA.load_results(RMEResultSet, "<path to results dir>")
 ```
 
 Expected data directory structure:
@@ -31,6 +37,7 @@ data_dir
         results.nc
         scenarios.csv
 ```
+
 In order to reduce the duplication of geospatial and conectivity data, the data directory
 and results directory can be supplied seperately to avoid having copies for each resuilt set
 analysed.
