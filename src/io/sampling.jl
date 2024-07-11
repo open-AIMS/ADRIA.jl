@@ -24,6 +24,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     interv = component_params(spec, Intervention)
     seed_weights = component_params(spec, SeedCriteriaWeights)
     fog_weights = component_params(spec, FogCriteriaWeights)
+    depth_offsets = component_params(spec, DepthThresholds)
 
     # If counterfactual, set all intervention options to 0.0
     df[df.guided.==-1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .= 0.0
@@ -33,8 +34,9 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
         seed_weights.fieldname,
         fog_weights.fieldname
     )
-    df[df.guided.==0.0, non_depth_names] .= 0.0
-    df[df.guided.==-1.0, non_depth_names] .= 0.0
+    df[df.guided.==0.0, non_depth_names] .= 0.0  # Turn off weights for unguided
+    df[df.guided.==-1.0, non_depth_names] .= 0.0  # Turn off weights for cf
+    df[df.guided.==-1.0, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
 
     # If unguided, set planning horizon to 0.
     df[df.guided.==0.0, :plan_horizon] .= 0.0
