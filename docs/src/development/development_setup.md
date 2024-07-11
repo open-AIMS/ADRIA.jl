@@ -9,14 +9,12 @@ Install Julia if not already done so, preferably using [juliaup](https://github.
 There may be issues installing juliaup from the Windows Store (or otherwise undesirable).
 In such cases, use the alternate MSIX App installer (https://install.julialang.org/Julia.appinstaller)
 
-
 ## Recommendations
 
 - It is recommended that the [juliaup](https://github.com/JuliaLang/juliaup) tool be used to ease managing Julia versions.
 - We recommend [VS Code](https://code.visualstudio.com/) with its Julia extension when developing ADRIA.
 - Install the VS Code Julia Formatter extension (note: **not** the JuliaFormatter.jl package).
 - We also recommend the built-in Julia REPL within VS Code be used (see the notes below).
-
 
 ## Initial Setup
 
@@ -80,7 +78,6 @@ Press backspace or Ctrl+C to leave the package manager.
 Development scripts/functions can now be worked on in the `sandbox` folder, and its
 sub-folders, without these polluting the ADRIA project itself.
 
-
 ## Testing
 
 To run the full test suite, rebuilding the environment as necessary:
@@ -113,7 +110,6 @@ If a new file is added to the test suite, `include()` it in `test/runtests.jl`
 
 See [the Test documentation](https://docs.julialang.org/en/v1/stdlib/Test/#Basic-Unit-Tests)
 for further details.
-
 
 ## Code Style
 

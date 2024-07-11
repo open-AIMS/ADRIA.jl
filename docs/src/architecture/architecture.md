@@ -85,8 +85,14 @@ upper bounds), and a human-readable name and description. An example from the `I
 sub-component is shown below.
 
 ```julia
-guided::N = Factor(0.0, ptype="ordered categorical", dist=(-1.0, 3.0), dist_params=DiscreteUniform,
-        name="Guided", description="Choice of MCDA approach.")
+guided::N = Factor(
+    0.0,
+    ptype="ordered categorical",
+    dist=(-1.0, 3.0),
+    dist_params=DiscreteUniform,
+    name="Guided",
+    description="Choice of MCDA approach."
+)
 ```
 
 Note that factor values are provided as floats - even where discrete values are expected -
@@ -99,7 +105,7 @@ Combinations of the realized factor values then represent a "scenario".
     See [Cookbook examples](@ref) for an example how-to on collating model factors and
     generating samples.
 
-# References
+## References
 
 Pianosi, F., K. Beven, J. Freer, J. W. Hall, J. Rougier, D. B. Stephenson, and T. Wagener. 2016.
 Sensitivity analysis of environmental models: A systematic review with practical workflow.
