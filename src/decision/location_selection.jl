@@ -409,9 +409,8 @@ seed_freq = ADRIA.decision.selection_frequency(ranks, :seed)
 ADRIA.decision.selection_frequency(ranks[scenarios=1:4], :seed)
 
 # Assess selection frequency for scenario runs
-# Note: indices have to be used for now
 rs = ADRIA.run_scenarios(dom, 16, "45")
-scen_seed_freq = ADRIA.decision.selection_frequency(rs.ranks, 1)
+scen_seed_freq = ADRIA.decision.selection_frequency(rs.ranks, :seed)
 ```
 
 # Arguments
@@ -423,7 +422,7 @@ Normalized selection frequency
 """
 function selection_frequency(
     ranks::YAXArray{T, 3},
-    iv_type::Union{Symbol,Int64}
+    iv_type::Symbol
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
     # 0 is unconsidered locations, values > 0 indicate some rank was assigned.
     n_selected = _times_selected(ranks, iv_type, :scenarios)
@@ -432,7 +431,7 @@ function selection_frequency(
 end
 function selection_frequency(
     ranks::YAXArray{T, 4},
-    iv_type::Union{Symbol,Int64}
+    iv_type::Symbol
 )::YAXArray where {T<:Union{Int64, Float32, Float64}}
     # 0 is unconsidered locations, values > 0 indicate some rank was assigned.
     n_selected = _times_selected(ranks, iv_type, (:scenarios, :timesteps))
@@ -441,10 +440,10 @@ function selection_frequency(
 end
 
 """
-    selection_ranks(ranks::YAXArray{T,4}, iv_type::Union{Symbol,Int64}; desc::Bool=true)::Vector{Int64} where {T<:Union{Int64, Float32, Float64}}
+    selection_ranks(ranks::YAXArray{T,4}, iv_type::Union{Symbol,Int64}; desc::Bool=true)::::YAXArrays.DD.DimVector{Int64} where {T<:Union{Int64, Float32, Float64}}
 
-Return indices of locations ranked by their selection frequency (in descending order by
-default).
+Return indices of locations ranked by their selection frequency (ordered by most selected
+to least selected by default).
 
 # Examples
 
@@ -458,7 +457,7 @@ rs.site_data[freq_rank, :]
 ```
 
 # Arguments
-- `ranks` : Rankings from `ADRIA.decision.selection_ranks()`
+- `ranks` : Logged rankings from scenario runs
 - `iv_type` : Intervention type (`:seed` or `:fog`)
 - `desc` : Return ranks from most deployed to least (defaults to `true`)
 
@@ -469,11 +468,10 @@ function selection_ranks(
     ranks::YAXArray{T,4},
     iv_type::Union{Symbol,Int64};
     desc::Bool=true
-)::Vector{Int64} where {T<:Union{Int64, Float32, Float64}}
-    sel_freq::YAXArray{T, 1} = selection_frequency(ranks, iv_type)
-    ranked::Vector{Int64} = sortperm(sel_freq.data, rev=desc)
+)::YAXArrays.DD.DimVector{Int64} where {T<:Union{Int64, Float32, Float64}}
+    sel_freq::YAXArray{T} = selection_frequency(ranks, iv_type)
 
-    return ranked
+    return sortperm(sel_freq, rev=desc)
 end
 
 """
