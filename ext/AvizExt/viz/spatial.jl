@@ -1,10 +1,26 @@
-import GeoMakie.GeoJSON: AbstractFeatureCollection, features, bbox
 import ArchGDAL as AG
 using Graphs, GraphMakie, SimpleWeightedGraphs
 
-# Temporary monkey-patch to support retrieval of multiple features
-Base.getindex(fc::AbstractFeatureCollection, i::UnitRange) = features(fc)[i]
-Base.getindex(fc::AbstractFeatureCollection, i::Vector) = features(fc)[i]
+using ADRIA: _get_geom_col
+
+
+"""
+    _get_geoms(gdf::DataFrame)
+
+Retrieve the vector of geometries from a GeoDataFrame.
+"""
+function _get_geoms(gdf::DataFrame)
+    return _get_geoms(gdf, _get_geom_col(gdf))
+end
+
+"""
+    _get_geoms(gdf::DataFrame, geom_col::Symbol)
+
+Retrieve the vector of geometries from a specified column.
+"""
+function _get_geoms(gdf::DataFrame, geom_col::Symbol)
+    return GeoMakie.geo2basic(AG.forceto.(gdf[!, geom_col], AG.wkbMultiPolygon))
+end
 
 function set_figure_defaults(fig_opts::OPT_TYPE)::OPT_TYPE
     fig_opts[:size] = get(fig_opts, :size, (600, 900))
@@ -29,7 +45,7 @@ end
 """
     create_map!(
         f::Union{GridLayout,GridPosition},
-        geodata::GeoMakie.GeoJSON.FeatureCollection,
+        geodata::Vector{<:GeoMakie.GeometryBasics.MultiPolygon},
         data::Observable,
         highlight::Union{Vector,Tuple,Nothing},
         show_colorbar::Bool=true,
@@ -465,29 +481,4 @@ function ADRIA.viz.connectivity!(
     )
 
     return g
-end
-
-"""
-    _get_geom_col(gdf::DataFrame)::Union{Symbol, Bool}
-
-Retrieve first column found to hold plottable geometries.
-
-# Returns
-Symbol, indicating column name or `false` if no geometries found.
-"""
-function _get_geom_col(gdf::DataFrame)::Union{Symbol,Bool}
-    col = findall(typeof.(eachcol(gdf)) .<: Vector{<:AG.IGeometry})
-    if !isempty(col)
-        return Symbol(names(gdf)[col[1]])
-    end
-
-    return false
-end
-
-function _get_geoms(gdf::DataFrame)
-    geom_col = _get_geom_col(gdf)
-    return _get_geoms(gdf, geom_col)
-end
-function _get_geoms(gdf::DataFrame, geom_col::Symbol)
-    return GeoMakie.geo2basic(AG.forceto.(gdf[!, geom_col], AG.wkbMultiPolygon))
 end

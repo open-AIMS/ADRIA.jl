@@ -1,34 +1,5 @@
 const COMPRESSOR = Zarr.BloscCompressor(; cname="zstd", clevel=2, shuffle=true)
 
-function get_geometry(df::DataFrame)
-    if columnindex(df, :geometry) > 0
-        return df.geometry
-    elseif columnindex(df, :geom) > 0
-        return df.geom
-    end
-
-    return error("No geometry data found")
-end
-
-"""
-    centroids(df::DataFrame)
-
-Extract and return long/lat from a GeoDataFrame.
-
-# Arguments
-- `df` : GeoDataFrame
-
-# Returns
-Array of tuples (x, y), where x and y relate to long and lat respectively.
-"""
-function centroids(df::DataFrame)::Vector{Tuple{Float64,Float64}}
-    site_centroids::Vector = AG.centroid.(get_geometry(df))
-    return collect(zip(AG.getx.(site_centroids, 0), AG.gety.(site_centroids, 0)))
-end
-function centroids(ds::Union{Domain,ResultSet})::Vector{Tuple{Float64,Float64}}
-    return centroids(ds.site_data)
-end
-
 """
     summarize_env_data(data_cube::AbstractArray)
 
@@ -368,15 +339,13 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     # Write a copy of spatial data to the result set
     mkdir(joinpath(log_location, SPATIAL_DATA))
     geo_fn = joinpath(log_location, SPATIAL_DATA, basename(attrs[:name]) * ".gpkg")
-    try
-        GDF.write(geo_fn, domain.site_data; driver="geojson")
-    catch err
-        if !isa(err, ArgumentError)
-            rethrow(err)
-        end
 
-        GDF.write(geo_fn, domain.site_data; geom_columns=(:geom,), driver="geojson")
-    end
+    # Writing geopackages out does not currently automatically include CRS
+    # so we manually define it as a workaround.
+    col = _get_geom_col(domain.site_data)
+    ref = AG.getspatialref(domain.site_data[1, col])
+    proj4_gft = GFT.ProjString(AG.toPROJ4(ref))
+    GDF.write(geo_fn, domain.site_data; crs=proj4_gft, geom_columns=(col,), driver="GPKG")
 
     # Store copy of model specification as CSV
     mkdir(joinpath(log_location, "model_spec"))

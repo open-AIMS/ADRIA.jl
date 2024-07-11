@@ -4,6 +4,7 @@ This section presents tools for analysing model generate data, including functio
 extract metrics and plot graphs.
 
 ## Setup
+
 ### Makie
 
 The Makie.jl ecosystem is used to produce figures.
@@ -11,7 +12,7 @@ The Makie.jl ecosystem is used to produce figures.
 Install additional packages if necessary
 
 ```julia
-]add Makie GeoMakie GraphMakie
+]add GeoMakie GraphMakie
 ```
 
 Install a Makie [backend](https://docs.makie.org/stable/explanations/backends/) of your
@@ -29,8 +30,9 @@ using ADRIA
 using Statistics
 ```
 
-Plots will appear in the VS Code plots pane.
-You may need to deactivate the inline plotting feature when displaying plots elsewhere.
+If using GLMakie, the plots will appear in the VS Code plots pane.
+You may prefer figures to appear in a separate window, in which case deactivate the inline
+plotting feature.
 
 ```julia
 Makie.inline!(false)
@@ -53,7 +55,7 @@ scens = ADRIA.sample(dom, num_samples)
 rcp_45 = "45"
 rs = ADRIA.run_scenarios(dom, scens, rcp_45)
 
-# Visualize results (in terms of absolute coral cover)
+# Visualize results (in terms of scenario absolute coral cover)
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
 ADRIA.viz.scenarios(rs, s_tac)
 ```

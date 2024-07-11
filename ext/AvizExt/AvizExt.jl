@@ -4,7 +4,6 @@ using Base.Iterators
 using Reexport
 
 using RelocatableFolders
-using Makie
 @reexport using GeoMakie
 
 using Statistics, Distributions, FLoops, Random
@@ -348,7 +347,7 @@ function ADRIA.viz.explore(rs::ResultSet)
 
     @info "Generating map"
     map_display = layout.map
-    geodata = get_geojson_copy(rs)
+    geodata = _get_geoms(rs.site_data)
     map_disp = create_map!(map_display, geodata, obs_mean_rc_sites, (:black, 0.05))
 
     curr_highlighted_sites = _get_seeded_sites(seed_log, (:), (:))
