@@ -19,11 +19,10 @@ end
     end
 
     @testset "values are within expected bounds" begin
-        #interv = (ms.component .== "Intervention") .& .!(constant_params)
         lb = values(ms[:, :lower_bound])
         ub = values(ms[:, :upper_bound])
 
-        not_cw_mask = ms.component .∉ [("SeedCriteriaWeights", "FogCriteriaWeights")]
+        not_cw_mask = ms.component .∉ [("SeedCriteriaWeights", "FogCriteriaWeights", "DepthThresholds")]
         not_cw_lb, not_cw_ub = lb[not_cw_mask], ub[not_cw_mask]
 
         eco = (ms.component .== "Coral") .& .!(constant_params)
