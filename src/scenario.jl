@@ -7,6 +7,8 @@ import CoralBlox.reuse_buffers!
 import CoralBlox.apply_mortality!
 import CoralBlox.timestep!
 import CoralBlox.coral_cover
+import CoralBlox.max_projected_cover
+import CoralBlox.adjusted_linear_extension
 
 using ADRIA.metrics:
     relative_cover,
@@ -71,9 +73,9 @@ end
 """
     _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
 
-Reshape vector to shape [groups ⋅ sizes]
+Reshape vector to shape [functional_groups ⋅ sizes]
 """
-function _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{T})::Matrix{T} where {T<:Union{Float32, Float64, Bool}}
+function _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{T})::Matrix{T} where {T<:Union{Float32,Float64,Bool}}
     # Data is reshaped to size ⋅ groups then transposed to maintain expected order
     return Matrix(reshape(data, (growth_spec.n_sizes, growth_spec.n_groups))')
 end
@@ -158,9 +160,13 @@ function run_scenarios(
         ) for _ in 1:n_locs
     ]
 
+    lin_ext = (linear_extensions() ./ 100)
+    loc_habitable_area = site_k_area(dom)
+    max_projected_cover = CoralBlox.max_projected_cover(lin_ext, C_bins, loc_habitable_area)
+
     para_threshold = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
     active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
-    parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false)  && (active_cores > 1) && (nrow(scens) >= para_threshold)
+    parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (active_cores > 1) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
@@ -177,7 +183,7 @@ function run_scenarios(
             #       (at the cost of increased run time) but resolves the kernel crash issue.
             @sync @async @everywhere @eval begin
                 using ADRIA
-                func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
+                func = (dfx) -> run_scenario(dfx..., functional_groups, max_projected_cover, data_store)
             end
         end
 
@@ -186,7 +192,7 @@ function run_scenarios(
 
     if parallel
         # Define local helper
-        func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
+        func = (dfx) -> run_scenario(dfx..., functional_groups, max_projected_cover, data_store)
 
         try
             for rcp in RCP
@@ -212,7 +218,7 @@ function run_scenarios(
         end
     else
         # Define local helper
-        func = dfx -> run_scenario(dfx..., functional_groups, data_store)
+        func = dfx -> run_scenario(dfx..., functional_groups, max_projected_cover, data_store)
 
         for rcp in RCP
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
@@ -266,6 +272,7 @@ function run_scenario(
     idx::Int64,
     scenario::Union{AbstractVector,DataFrameRow},
     functional_groups::Vector{Vector{FunctionalGroup}}, # additional argument for reusable buffer
+    max_projected_cover::Vector{Float64},
     data_store::NamedTuple,
 )::Nothing
     if domain.RCP == ""
@@ -283,7 +290,7 @@ function run_scenario(
         domain = switch_RCPs!(domain, rcp)
     end
 
-    result_set = run_model(domain, scenario, functional_groups)
+    result_set = run_model(domain, scenario, functional_groups, max_projected_cover)
 
     # Capture results to disk
     # Set values below threshold to 0 to save space
@@ -389,11 +396,11 @@ NamedTuple of collated results
 - `bleaching_mortality` : Array, Log of mortalities caused by bleaching
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
-function run_model(domain::Domain, param_set::DataFrameRow, functional_groups::Vector{Vector{FunctionalGroup}})::NamedTuple
+function run_model(domain::Domain, param_set::DataFrameRow, functional_groups::Vector{Vector{FunctionalGroup}}, max_projected_cover::Vector{Float64})::NamedTuple
     ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps, functional_groups)
+    return run_model(domain, ps, functional_groups, max_projected_cover)
 end
-function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}})::NamedTuple
+function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}, max_projected_cover::Vector{Float64})::NamedTuple
     p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
@@ -586,10 +593,10 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_mean_t_1::Array{Float64, 3} = repeat(_to_group_size(
-        domain.coral_growth, corals.dist_mean
-    ), 1, 1, n_locs)
-    c_std::Array{Float64, 2} = _to_group_size(
+    c_mean_t_1::Array{Float64,3} = repeat(_to_group_size(
+            domain.coral_growth, corals.dist_mean
+        ), 1, 1, n_locs)
+    c_std::Array{Float64,2} = _to_group_size(
         domain.coral_growth, corals.dist_std
     )
 
@@ -655,10 +662,17 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         # Determine absolute area for coral model
         C_cover_t[:, :, habitable_locs] .= C_cover[tstep-1, :, :, habitable_locs] .* habitable_loc_areas′
 
+        adjusted_lin_ext = adjusted_linear_extension(
+            C_cover_t[:, :, habitable_locs],
+            habitable_loc_areas,
+            linear_extension_m,
+            bin_edges(),
+            max_projected_cover[habitable_locs],
+        )
         # Constrain growth by available area
-        growth_spatial_constraint[habitable_locs] .= log2.(1 .+ relative_leftover_space(
-            dropdims(sum(C_cover[tstep-1, :, :, habitable_locs]; dims=(1, 2)), dims=(1, 2))
-        ))
+        # growth_spatial_constraint[habitable_locs] .= log2.(1 .+ relative_leftover_space(
+        #     dropdims(sum(C_cover[tstep-1, :, :, habitable_locs]; dims=(1, 2)), dims=(1, 2))
+        # ))
 
         @floop for i in findall(habitable_locs)
             # Perform timestep
@@ -885,7 +899,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
             # Add coral seeding to recruitment
             # (1,2,4) refer to the coral functional groups being seeded
-            recruitment[[1,2,4], :] .+= Yseed[tstep, :, :]
+            recruitment[[1, 2, 4], :] .+= Yseed[tstep, :, :]
 
             # **DO NOT** Add seeded coral to ΔC_cover_t as it represents change due to
             # natural reproduction
@@ -939,8 +953,8 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
     # Final reshape
     raw = reshape(permutedims(
-        C_cover, (1, 3, 2, 4)
-    ), (tf, n_group_and_size, n_locs))
+            C_cover, (1, 3, 2, 4)
+        ), (tf, n_group_and_size, n_locs))
 
     return (
         raw=raw,
@@ -988,7 +1002,7 @@ function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothi
     return nothing
 end
 function cyclone_mortality!(
-    coral_cover::AbstractArray{Float64, 3}, cyclone_mortality::AbstractMatrix{Float64}
+    coral_cover::AbstractArray{Float64,3}, cyclone_mortality::AbstractMatrix{Float64}
 )::Nothing
     n_groups, n_locs = size(cyclone_mortality)
     coral_cover .*= (1 .- reshape(cyclone_mortality, (n_groups, 1, n_locs)))
