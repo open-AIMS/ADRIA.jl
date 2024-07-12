@@ -3,14 +3,10 @@ using ADRIA.YAXArrays
 import ADRIA.GDF as GDF
 
 
-if !@isdefined(ADRIA_DIR)
-    const ADRIA_DIR = pkgdir(ADRIA)
-    const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
-    const TEST_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Test_domain")
-end
+include("../test_helpers.jl")
 
 @testset "Domain loading" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+    dom = get_example_domain()
     @test dom isa Domain
     @test all(dom.dhw_scens .== 0.0)
 

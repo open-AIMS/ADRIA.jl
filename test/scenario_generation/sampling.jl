@@ -1,7 +1,7 @@
 using ADRIA
 using ADRIA.Distributions
 
-include("test_helpers.jl")
+include("../test_helpers.jl")
 
 @testset "sample" begin
     dom = get_example_domain()

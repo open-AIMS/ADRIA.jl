@@ -4,10 +4,8 @@ using ADRIA
 using ADRIA.Distributions
 using ADRIA: distribute_seeded_corals, location_k, seed_corals!
 
-if !@isdefined(ADRIA_DIR)
-    const ADRIA_DIR = pkgdir(ADRIA)
-    const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
-end
+
+include("../test_helpers.jl")
 
 @testset "Seeding" begin
     # first test function on example domain
