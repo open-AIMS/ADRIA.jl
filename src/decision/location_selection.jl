@@ -308,7 +308,7 @@ function selection_score(
 end
 
 """
-    _calc_selection_score(ranks::YAXArray, lowest_rank::Union{Int64,Float64,Float32}, iv_type::Union{Symbol,Int64}, dims::Tuple)::YAXArray
+    _calc_selection_score(ranks::YAXArray{T}, lowest_rank::Union{Int64,Float64,Float32}, iv_type::Union{Symbol,Int64}, dims::Tuple)::YAXArray where {T<:Union{Int64, Float32, Float64}}
 
 Determine the selection score.
 Note: If `timesteps` are to be squashed the scores are normalized against the maximum score.
@@ -322,12 +322,17 @@ Note: If `timesteps` are to be squashed the scores are normalized against the ma
 # Returns
 YAXArray
 """
-function _calc_selection_score(ranks::YAXArray, lowest_rank::Union{Int64,Float64,Float32}, iv_type::Union{Symbol,Int64}, dims::Tuple)::YAXArray
+function _calc_selection_score(
+    ranks::YAXArray{T},
+    lowest_rank::Union{Int64,Float64,Float32},
+    iv_type::Union{Symbol,Int64},
+    dims::Tuple
+)::YAXArray where {T<:Union{Int64, Float32, Float64}}
     # Subtract 1 from rank:
     # If the best rank is 1 and lowest is 3 (out of a single scenario):
     #     ([lowest rank] - [rank]) / [lowest rank]
     #     (3 - 1) / 3 = 0.6666
-    # If we subtract 1 from the rank:
+    # If we subtract 1 from rank:
     #     (3 - 0) / 3 = 1.0
     #     (3 - 1) / 3 = 0.666
     #     (3 - 2) / 3 = 0.333
@@ -339,7 +344,7 @@ function _calc_selection_score(ranks::YAXArray, lowest_rank::Union{Int64,Float64
     #     max((3 - 100) / 3, 0.0)
     #     # results in 0.0
 
-    tsliced = mapslices(x -> any(x .> 0) ? lowest_rank .- (x .- 1.0) : 0.0, ranks[intervention=At(iv_type)], dims="timesteps")
+    tsliced = lowest_rank .- (ranks[intervention=At(iv_type)] .- 1.0)
     selection_score = dropdims(
         sum(tsliced, dims=dims); dims=dims
     )
@@ -361,7 +366,7 @@ function _calc_selection_score(ranks::YAXArray, lowest_rank::Union{Int64,Float64
         times_ranked = times_ranked * decisions
     end
 
-    selection_score = max.(selection_score ./ (lowest_rank * times_ranked), 0.0)
+    selection_score = max.(selection_score ./ ((lowest_rank+1.0) * times_ranked), 0.0)
     if :timesteps in dims
         selection_score ./= maximum(selection_score)
     end
