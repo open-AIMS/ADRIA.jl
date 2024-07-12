@@ -15,22 +15,20 @@ if !@isdefined(TEST_RS)
     const TEST_RS = test_rs_w_fig()
 end
 
-include("clustering.jl")
-include("data_loading.jl")
 include("domain.jl")
-include("Ecosystem.jl")
-include("growth.jl")
-include("io/inputs.jl")
-include("metrics.jl")
-include("sampling.jl")
-include("seeding.jl")
 include("spec.jl")
-include("mcda.jl")
+include("io/inputs.jl")
+include("io/data_loading.jl")
+include("scenario_generation/sampling.jl")
+include("ecosystem/Ecosystem.jl")
+include("ecosystem/growth.jl")
+include("ecosystem/seeding.jl")
+include("metrics/metrics.jl")
+include("analysis/clustering.jl")
+include("decision/mcda.jl")
+include("decision/rankings.jl")
+include("decision/spatial_clustering.jl")
 include("utils/text_display.jl")
-
-# TODO Fix spatial_clustering and site_selection tests
-# include("site_selection.jl")
-# include("spatial_clustering.jl")
 
 # Always run this example test case last
 # as it sets global environment variables
