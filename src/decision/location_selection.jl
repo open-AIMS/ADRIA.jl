@@ -189,7 +189,7 @@ function rank_locations(
             # Ensure what to do with this because it is usually empty
             # seed_zone = strong_pred[valid_locs]
 
-            min_locs = min_iv_locs[scen_idx]
+            min_locs = Int64(min_iv_locs[scen_idx])
             selected_seed_ranks = select_locations(
                 seed_pref,
                 seed_decision_mat,
@@ -199,7 +199,7 @@ function rank_locations(
                 considered_seed_locs,
                 leftover_space_m²,
                 min_locs,
-                max_members[scen_idx]
+                Int64(max_members[scen_idx])
             )
 
             if !isempty(selected_seed_ranks)
