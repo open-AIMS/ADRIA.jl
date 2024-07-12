@@ -299,7 +299,7 @@ function selection_score(
     # 1 is best rank, n_locs is worst rank, 0 values indicate locations that were ignored
     lowest_rank = maximum(ranks)
 
-    # Determie dimensions to squash
+    # Determine dimensions to squash
     dims = keep_time ? (:scenarios, ) : (:scenarios, :timesteps)
 
     selection_score = _calc_selection_score(ranks, lowest_rank, iv_type, dims)
