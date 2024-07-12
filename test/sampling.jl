@@ -1,13 +1,10 @@
 using ADRIA
 using ADRIA.Distributions
 
-if !@isdefined(ADRIA_DIR)
-    const ADRIA_DIR = pkgdir(ADRIA)
-    const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
-end
+include("test_helpers.jl")
 
 @testset "sample" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+    dom = get_example_domain()
     num_samples = 32
     scens = ADRIA.sample(dom, num_samples)
     ms = ADRIA.model_spec(dom)
@@ -53,7 +50,7 @@ end
 
 @testset "Targeted sampling" begin
     @testset "Counterfactual sampling" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        dom = get_example_domain()
         num_samples = 32
         scens = ADRIA.sample_cf(dom, num_samples)
 
@@ -72,7 +69,7 @@ end
     end
 
     @testset "Guided sampling" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        dom = get_example_domain()
         num_samples = 32
         scens = ADRIA.sample_guided(dom, num_samples)
         ms = ADRIA.model_spec(dom)
@@ -102,7 +99,7 @@ end
     end
 
     @testset "Unguided sampling" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        dom = get_example_domain()
         num_samples = 32
         scens = ADRIA.sample_unguided(dom, num_samples)
 
@@ -125,7 +122,7 @@ end
     end
 
     @testset "Site selection sampling" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        dom = get_example_domain()
         num_samples = 32
         scens = ADRIA.sample_selection(dom, num_samples)
 
@@ -164,7 +161,7 @@ end
 
 @testset "Sample bounds" begin
     @testset "Get sampling bounds" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        dom = get_example_domain()
         ms = ADRIA.model_spec(dom)
 
         @testset "Continuous variables" begin
@@ -195,7 +192,7 @@ end
     @testset "Set new sampling bounds" begin
         set_factor_bounds = ADRIA.set_factor_bounds
 
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        dom = get_example_domain()
         num_samples = 32
         ms = ADRIA.model_spec(dom)
 

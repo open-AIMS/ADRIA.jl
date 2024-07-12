@@ -3,7 +3,7 @@ using ADRIA: DataCube, ZeroDataCube
 
 @testset "Relative Shelter Volume" begin
     # Create scenario spec
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+    dom = get_example_domain()
 
     # Create scenario spec
     test_scens = ADRIA.sample(dom, 8)

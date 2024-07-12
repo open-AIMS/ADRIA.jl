@@ -1,7 +1,4 @@
-if !@isdefined(ADRIA_DIR)
-    const ADRIA_DIR = pkgdir(ADRIA)
-    const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
-end
+include("test_helpers.jl")
 
 @testset "Extracting component parameters" begin
     # Run full example to make sure nothing errors

@@ -20,7 +20,7 @@ using ADRIA
     @testset "Discrete parameters" begin
         site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
         conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        dom = get_example_domain()
 
         # Create scenario spec
         samples = ADRIA.sample(dom, 8)
