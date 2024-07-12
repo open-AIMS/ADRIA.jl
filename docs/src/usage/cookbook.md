@@ -133,6 +133,72 @@ sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
 ranks = rank_locations(dom, scens, sum_cover, area_to_seed)
 ```
 
+## Location Rankings
+
+Scenarios with interventions are defined by a set of factors that control deployment
+behavior. Examples include frequency of deployment, the start and end date of the deployment
+program, preferences related to deployment locations, and so on. These can reflect
+assumptions (and uncertainty) around logistic availability, environmental constraints, or
+management preferences.
+
+Details of the deployments that occurred within each scenario is an emergent property which
+arises from the combination of factors described above.
+
+ADRIA has a set of methods to extract deployment details to enable analysis.
+
+```julia
+using WGLMakie, GeoMakie, GraphMakie
+using ADRIA
+
+# Obtain results
+dom = ADRIA.load_domain("path to domain")
+scens = ADRIA.sample(dom, 32)
+rs = ADRIA.run_scenarios(dom, scens, "45")
+
+
+# Number of coral seeding deployments per time step for each scenario.
+ADRIA.metrics.n_seed_locations(rs)
+
+# Specific time ranges for specific scenarios can also be requested.
+ADRIA.metrics.n_seed_locations(rs; timesteps=1:10, scenarios=1:2)
+
+# Number of locations fogged each time step for each scenario.
+ADRIA.metrics.n_fog_locations(rs)
+ADRIA.metrics.n_fog_locations(rs; timesteps=1:10, scenarios=1:2)
+
+# For the above, the basic plotting functionality can be used to get an indication
+# of what happened in each scenario:
+heatmap(ADRIA.metrics.n_seed_locations(rs))
+
+# Obtain the summary stats for the number of deployments for each scenario
+# lower_50, mean, median, upper_50, stdev
+ADRIA.decision.deployment_summary_stats(rs.ranks, :seed)
+ADRIA.decision.deployment_summary_stats(rs.ranks, :fog)
+
+# Get the location ranks for seeding deployments for all timesteps, locations, and scenarios
+ADRIA.metrics.seed_ranks(rs)
+ADRIA.metrics.seed_ranks(rs; timesteps=1:10, scenarios=1:2)
+
+# As above, but for fogging interventions
+ADRIA.metrics.fog_ranks(rs)
+ADRIA.metrics.fog_ranks(rs; timesteps=1:10, scenarios=1:2)
+
+# Top locations according to mean relative cover
+# Second example shows the options with their defaults
+ADRIA.metrics.top_n_locs(rs, 10)
+ADRIA.metrics.top_n_locs(rs, 10; stat=mean, metric=ADRIA.metric.relative_cover)
+
+# Get the rankings / selection frequency / selection score for each location
+loc_rankings = ADRIA.decision.selection_ranks(rs.ranks, :seed)
+loc_sel_freq = ADRIA.decision.selection_frequency(rs.ranks, :seed)
+loc_sel_score = ADRIA.decision.selection_score(rs.ranks, :seed)
+
+# The above can be visualized spatially:
+ADRIA.viz.map(rs, loc_rankings)
+ADRIA.viz.map(rs, loc_sel_freq)
+ADRIA.viz.map(rs, loc_sel_score)
+```
+
 ## Intervention location selection - summary functions
 
 ```julia
