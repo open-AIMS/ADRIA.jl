@@ -170,6 +170,8 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
     c_ranks = collect(dropdims(mean(ranked_locs, dims=1), dims=1))
 
     top_sites = Array{Union{String,Int32,Float32,Missing}}(undef, n, 3, size(ranked_locs, 3))
+    fill!(top_sites, missing)
+
     for scen in axes(ranked_locs, 3)
         flat = vec(c_ranks[:, scen])
         flat[flat .== 0.0] .= min_rank
@@ -177,10 +179,6 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
         idx = collect(partialsortperm(flat, 1:n))
 
         rank_score = flat[idx]
-        if all(rank_score .== min_rank)
-            top_sites[:, :, scen] .= missing
-            continue
-        end
 
         top_sites[:, 1, scen] .= Int32.(idx)
         top_sites[:, 2, scen] .= r_ids[idx]
