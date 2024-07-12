@@ -216,11 +216,11 @@ function shade_ranks(rs::ResultSet; kwargs...)
 end
 
 """
-    top_N_locs(rs::ResultSet; N::Int64; metric::relative_cover)
-    top_N_locs(data::AbstractArray{Real}, N::Int64; stat=mean)
+    top_n_locs(rs::ResultSet; n::Int64; metric::relative_cover)
+    top_n_locs(data::AbstractArray{Real}, n::Int64; stat=mean)
 
-Determine the top `N` locations according to the provided metric (defaulting to `mean` of `relative_cover`).
-Assumes higher metric scores should be ranked higher.
+Determine the top \$n\$ locations according to the provided metric (defaulting to `mean` of
+`relative_cover`). Assumes higher metric scores should be ranked higher.
 
 # Arguments
 - rs : ResultSet
@@ -231,7 +231,7 @@ Assumes higher metric scores should be ranked higher.
 
 # Returns
 YAXArray[:scenarios, :rank], set of location indices where rows relate to the scenario and
-columns indicate the location rank from 1 to N.
+columns indicate the location rank from 1 to \$n\$.
 
 # Example
 ```julia
@@ -239,33 +239,33 @@ columns indicate the location rank from 1 to N.
 scens = ADRIA.sample(dom, 64)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 
-ADRIA.metrics.top_N_locs(rs, 5).data
+ADRIA.metrics.top_n_locs(rs, 5).data
 # 64×5 Matrix{Int64}:
 #  291  228  267  288  270
 #  211   60   24   54   43
 #    ⋮
 #  106  118   67  144  102
 
-ADRIA.metrics.top_N_locs(rs, 5; metric=ADRIA.metric.relative_cover)
-ADRIA.metrics.top_N_locs(rs, 5; metric=ADRIA.metric.relative_cover, stat=median)
+ADRIA.metrics.top_n_locs(rs, 5; metric=ADRIA.metric.relative_cover)
+ADRIA.metrics.top_n_locs(rs, 5; metric=ADRIA.metric.relative_cover, stat=median)
 ```
 """
-function top_N_locs(rs::ResultSet, N::Int64; metric=relative_cover, stat=mean)::YAXArray
-    return top_N_locs(metric(rs), N; stat=stat)
+function top_n_locs(rs::ResultSet, n::Int64; metric=relative_cover, stat=mean)::YAXArray
+    return top_n_locs(metric(rs), n; stat=stat)
 end
-function top_N_locs(data::AbstractArray{<:Real}, N::Int64; stat=mean)
+function top_n_locs(data::AbstractArray{<:Real}, n::Int64; stat=mean)
     stat_m = dropdims(stat(data, dims=:timesteps), dims=:timesteps)
 
-    top_locs = zeros(Int64, size(stat_m, :scenarios), N)
+    top_locs = zeros(Int64, size(stat_m, :scenarios), n)
     for scen in axes(stat_m, :scenarios)
         # Sort each scenario according to metric and get indexes
         inds = sortperm(stat_m[:, scen], rev=true)
-        top_locs[scen, :] = inds[1:N]
+        top_locs[scen, :] = inds[1:n]
     end
 
     return DataCube(
         top_locs;
         scenarios=1:size(stat_m, :scenarios),
-        rank=1:N
+        rank=1:n
     )
 end
