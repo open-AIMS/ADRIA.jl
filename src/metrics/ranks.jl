@@ -16,7 +16,19 @@ function _collate_ranks(rs::ResultSet, selected; kwargs...)::YAXArray
     n_steps, n_sites = size(selected)
 
     ts = timesteps(rs)
-    @assert length(ts) == n_steps
+    if :timesteps in keys(kwargs)
+        try
+            ts = ts[kwargs[:timesteps]]
+        catch err
+            if err isa BoundsError
+                error("Requested timesteps not in bounds")
+            end
+
+            rethrow(err)
+        else
+            @assert length(ts) == n_steps "Mismatch between dataset and requested time range"
+        end
+    end
 
     r_ids = rs.site_data.reef_siteid
     if haskey(kwargs, :sites)
