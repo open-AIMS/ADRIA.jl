@@ -151,18 +151,22 @@ function run_scenarios(
     # This is also forced me to added an argument to run_model which breaks
     # encapsulation, so its quite ugly
     n_locs::Int64 = dom.coral_growth.n_locs
-    C_bins::Matrix{Float64} = bin_edges() ./ 100
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
     functional_groups = [
         FunctionalGroup.(
-            eachrow(C_bins[:, 1:end-1]), eachrow(C_bins[:, 2:end]), eachrow(zeros(n_groups, n_sizes))
+            eachrow(bin_edges()[:, 1:end-1]),
+            eachrow(bin_edges()[:, 2:end]),
+            eachrow(zeros(n_groups, n_sizes))
         ) for _ in 1:n_locs
     ]
 
-    lin_ext = (linear_extensions() ./ 100)
     loc_habitable_area = site_k_area(dom)
-    max_projected_cover = CoralBlox.max_projected_cover(lin_ext, C_bins, loc_habitable_area)
+    max_projected_cover = CoralBlox.max_projected_cover(
+        linear_extensions(),
+        bin_edges(),
+        loc_habitable_area
+    )
 
     para_threshold = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
     active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
@@ -637,7 +641,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
-    linear_extension_m = _to_group_size(domain.coral_growth, corals.linear_extension) ./ 100
+    linear_extension_m = _to_group_size(domain.coral_growth, corals.linear_extension)
     survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
 
     # Empty the old contents of the buffers and add the new blocks
@@ -665,7 +669,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         adjusted_lin_ext = adjusted_linear_extension(
             C_cover_t[:, :, habitable_locs],
             habitable_loc_areas,
-            linear_extension_m,
+            linear_extensions(),
             bin_edges(),
             max_projected_cover[habitable_locs],
         )

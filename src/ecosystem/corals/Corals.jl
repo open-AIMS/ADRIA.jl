@@ -38,31 +38,33 @@ end
 """
     linear_extensions()
 
-Linear extensions for each
+Linear extensions. The values are converted from `cm` to the desired unit.
+The default unit is `m`.
 """
-function linear_extensions()::Matrix{Float64}
+function linear_extensions(; unit=:m)::Matrix{Float64}
     return [
         0.609456 1.07184 2.55149 5.07988 9.45091 16.8505 0.0;
         0.768556 1.22085 1.86447 2.82297 3.52938 3.00422 0.0;
         0.190455 0.343747 0.615467 0.97477 1.70079 2.91729 0.0;
         0.318034 0.47385 0.683729 0.710587 0.581085 0.581085 0.0;
         0.122478 0.217702 0.382098 0.718781 1.24172 2.08546 0.0
-    ]
+    ] .* linear_scale(:cm, unit)
 end
 
 """
     bin_edges()
 
-Helper function defining coral colony diameter bin edges in cm.
+Helper function defining coral colony diameter bin edges. The values are converted from `cm`
+to the desired unit. The default unit is `m`.
 """
-function bin_edges()
+function bin_edges(; unit=:m)
     return Matrix([
         0.0 5.0 7.5 10.0 20.0 40.0 100.0 150.0;
         0.0 5.0 7.5 10.0 20.0 35.0 50.0 100.0;
         0.0 5.0 7.5 10.0 15.0 20.0 40.0 50.0;
         0.0 5.0 7.5 10.0 20.0 40.0 50.0 100.0;
         0.0 5.0 7.5 10.0 20.0 40.0 50.0 100.0
-    ])
+    ]) .* linear_scale(:cm, unit)
 end
 # function bin_edges()
 #     return Matrix([
@@ -77,11 +79,10 @@ end
 """
     bin_widths()
 
-Helper function defining coral colony diameter bin widths in cm.
+Helper function defining coral colony diameter bin widths.
 """
 function bin_widths()
-    bins::Matrix{Float64} = bin_edges()
-    return bins[:, 2:end] .- bins[:, 1:end-1]
+    return bin_edges()[:, 2:end] .- bin_edges()[:, 1:end-1]
 end
 
 """
@@ -121,7 +122,7 @@ Generate colony area data based on Bozec et al., [1].
 """
 function colony_areas()
     # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
-    edges = bin_edges()
+    edges = bin_edges(; unit=:cm)
 
     # Diameters in cm
     mean_cm_diameters = edges[:, 1:end-1] + (edges[:, 2:end] - edges[:, 1:end-1]) / 2.0
@@ -129,7 +130,7 @@ function colony_areas()
     # To convert to cover we locate bin means and calculate bin mean areas
     colony_area_mean_cm2 = colony_mean_area(mean_cm_diameters)
 
-    return colony_area_mean_cm2, (mean_cm_diameters ./ 100.0)
+    return colony_area_mean_cm2, linear_scale.(mean_cm_diameters, :cm, :m)
 end
 
 function bins_bounds(mean_diam::Matrix{Float64})::Matrix{Float64}
