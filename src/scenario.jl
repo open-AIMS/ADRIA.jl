@@ -401,6 +401,27 @@ NamedTuple of collated results
 - `bleaching_mortality` : Array, Log of mortalities caused by bleaching
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
+function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})
+    n_locs::Int64 = domain.coral_growth.n_locs
+    n_sizes::Int64 = domain.coral_growth.n_sizes
+    n_groups::Int64 = domain.coral_growth.n_groups
+    functional_groups = [
+        FunctionalGroup.(
+            eachrow(bin_edges()[:, 1:end-1]),
+            eachrow(bin_edges()[:, 2:end]),
+            eachrow(zeros(n_groups, n_sizes))
+        ) for _ in 1:n_locs
+    ]
+
+    loc_habitable_area = site_k_area(domain)
+    max_projected_cover = CoralBlox.max_projected_cover(
+        linear_extensions(),
+        bin_edges(),
+        loc_habitable_area
+    )
+
+    return run_model(domain, param_set, functional_groups, max_projected_cover)
+end
 function run_model(domain::Domain, param_set::DataFrameRow, functional_groups::Vector{Vector{FunctionalGroup}}, max_projected_cover::Vector{Float64})::NamedTuple
     ps = DataCube(Vector(param_set); factors=names(param_set))
     return run_model(domain, ps, functional_groups, max_projected_cover)
