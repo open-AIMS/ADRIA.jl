@@ -276,8 +276,8 @@ function coral_spec()::NamedTuple
     mb = 1.0 .- survival_rate
     params.mb_rate = mb'[:]
 
-    upper_bound::Matrix{Float64} = bin_edges()[:, 2:end]
-    params.bin_ub = reshape(upper_bound', n_groups_and_sizes)[:]
+    # upper_bound::Matrix{Float64} = bin_edges()[:, 2:end]
+    # params.bin_ub = reshape(upper_bound', n_groups_and_sizes)[:]
 
     # Natural adaptation / heritability
     # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
