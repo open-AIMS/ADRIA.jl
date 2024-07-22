@@ -672,7 +672,7 @@ function settler_DHW_tolerance!(
         source_locs .= @view(tp[:, sink_loc]) .> 0.0
 
         # Calculate contribution to cover to determine weights for each species/group
-        w = @views settlers[:, sink_loc]' .* tp[source_locs, sink_loc].data
+        w = @views settlers[:, sink_loc]' .* tp.data[source_locs, sink_loc]
         w_per_group = w ./ sum(w, dims=1)
         replace!(w_per_group, NaN => 0.0)
 
@@ -860,7 +860,7 @@ Calculates coral recruitment for each species/group and location.
 function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
     α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::Matrix{T} where {T<:Float64}
 
-    sd = settler_density.(α, β, larval_pool) .* A
+    sd = settler_density.(α, β, larval_pool) .* A'
     @views sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
 
     return sd
