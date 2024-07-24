@@ -153,7 +153,7 @@ function run_scenarios(
     n_locs::Int64 = dom.coral_growth.n_locs
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
-    _bin_edges = bin_edges()
+    _bin_edges::Matrix{Float64} = bin_edges()
     functional_groups = [
         FunctionalGroup.(
             eachrow(_bin_edges[:, 1:end-1]),
@@ -161,13 +161,6 @@ function run_scenarios(
             eachrow(zeros(n_groups, n_sizes))
         ) for _ in 1:n_locs
     ]
-
-    loc_habitable_area = site_k_area(dom)
-    max_projected_cover = CoralBlox.max_projected_cover(
-        linear_extensions(),
-        _bin_edges,
-        loc_habitable_area
-    )
 
     para_threshold = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
     active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
@@ -188,7 +181,7 @@ function run_scenarios(
             #       (at the cost of increased run time) but resolves the kernel crash issue.
             @sync @async @everywhere @eval begin
                 using ADRIA
-                func = (dfx) -> run_scenario(dfx..., functional_groups, max_projected_cover, data_store)
+                func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
             end
         end
 
@@ -197,7 +190,7 @@ function run_scenarios(
 
     if parallel
         # Define local helper
-        func = (dfx) -> run_scenario(dfx..., functional_groups, max_projected_cover, data_store)
+        func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
 
         try
             for rcp in RCP
@@ -223,7 +216,7 @@ function run_scenarios(
         end
     else
         # Define local helper
-        func = dfx -> run_scenario(dfx..., functional_groups, max_projected_cover, data_store)
+        func = dfx -> run_scenario(dfx..., functional_groups, data_store)
 
         for rcp in RCP
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
@@ -256,10 +249,9 @@ function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
 end
 
 """
-    run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector, DataFrameRow}, data_store::NamedTuple)::Nothing
-    run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
-    run_scenario(domain::Domain, scenario::Union{AbstractVector, DataFrameRow})::NamedTuple
-    run_scenario(domain::Domain, scenario::NamedTuple)::NamedTuple
+    run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector,DataFrameRow}, functional_groups::Vector{Vector{FunctionalGroup}}, data_store::NamedTuple)::Nothing
+    run_scenario(domain::Domain, scenario::Union{AbstractVector,DataFrameRow})::NamedTuple
+    run_scenario(domain::Domain, scenario::Union{AbstractVector,DataFrameRow}, RCP::String)::NamedTuple
 
 Run individual scenarios for a given domain, saving results to a Zarr data store.
 Results are stored in Zarr format at a pre-configured location.
@@ -277,7 +269,6 @@ function run_scenario(
     idx::Int64,
     scenario::Union{AbstractVector,DataFrameRow},
     functional_groups::Vector{Vector{FunctionalGroup}}, # additional argument for reusable buffer
-    max_projected_cover::Vector{Float64},
     data_store::NamedTuple,
 )::Nothing
     if domain.RCP == ""
@@ -295,7 +286,7 @@ function run_scenario(
         domain = switch_RCPs!(domain, rcp)
     end
 
-    result_set = run_model(domain, scenario, functional_groups, max_projected_cover)
+    result_set = run_model(domain, scenario, functional_groups)
 
     # Capture results to disk
     # Set values below threshold to 0 to save space
@@ -387,9 +378,12 @@ function run_scenario(
 end
 
 """
-    run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow})::NamedTuple
+    run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})::NamedTuple
+    run_model(domain::Domain, param_set::DataFrameRow, functional_groups::Vector{Vector{FunctionalGroup}})::NamedTuple
+    run_model(domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}})::NamedTuple
 
-Core scenario running function.
+Core scenario running function. When called with only `domain` and `param_set` arguments,
+`ADRIA.setup()` must be run beforehand.
 
 # Returns
 NamedTuple of collated results
@@ -401,11 +395,31 @@ NamedTuple of collated results
 - `bleaching_mortality` : Array, Log of mortalities caused by bleaching
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
-function run_model(domain::Domain, param_set::DataFrameRow, functional_groups::Vector{Vector{FunctionalGroup}}, max_projected_cover::Vector{Float64})::NamedTuple
-    ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps, functional_groups, max_projected_cover)
+function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})::NamedTuple
+    n_locs::Int64 = domain.coral_growth.n_locs
+    n_sizes::Int64 = domain.coral_growth.n_sizes
+    n_groups::Int64 = domain.coral_growth.n_groups
+    _bin_edges::Matrix{Float64} = bin_edges()
+    functional_groups = [
+        FunctionalGroup.(
+            eachrow(_bin_edges[:, 1:end-1]),
+            eachrow(_bin_edges[:, 2:end]),
+            eachrow(zeros(n_groups, n_sizes))
+        ) for _ in 1:n_locs
+    ]
+    return run_model(domain, param_set, functional_groups)
 end
-function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}, max_projected_cover::Vector{Float64})::NamedTuple
+function run_model(
+    domain::Domain,
+    param_set::DataFrameRow,
+    functional_groups::Vector{Vector{FunctionalGroup}}
+)::NamedTuple
+    ps = DataCube(Vector(param_set); factors=names(param_set))
+    return run_model(domain, ps, functional_groups)
+end
+function run_model(
+    domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}
+)::NamedTuple
     p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
@@ -646,7 +660,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
-    linear_extension = _to_group_size(domain.coral_growth, corals.linear_extension)
+    _linear_extensions = _to_group_size(domain.coral_growth, corals.linear_extension)
     _bin_edges = bin_edges()
     survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
 
@@ -661,7 +675,12 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
     C_cover_t::Array{Float64,3} = zeros(n_groups, n_sizes, n_locs)
     ΔC_cover_t = zeros(n_groups, n_sizes, n_locs)
 
-    growth_spatial_constraint::Vector{Float64} = zeros(n_locs)
+    # Max projected cover is used on linear extensions scale factors
+    habitable_max_projected_cover = max_projected_cover(
+        _linear_extensions,
+        _bin_edges,
+        habitable_loc_areas
+    )
 
     FLoops.assistant(false)
     for tstep::Int64 in 2:tf
@@ -671,9 +690,9 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
         lin_ext_scale_factors::Vector{Float64} = linear_extension_scale_factors(
             C_cover_t[:, :, habitable_locs],
             habitable_loc_areas,
-            linear_extension,
+            _linear_extensions,
             _bin_edges,
-            max_projected_cover[habitable_locs],
+            habitable_max_projected_cover,
         )
 
         # ? Should we bring this inside CoralBlox?
@@ -686,7 +705,7 @@ function run_model(domain::Domain, param_set::YAXArray, functional_groups::Vecto
             timestep!(
                 functional_groups[i],
                 recruitment[:, i],
-                linear_extension .* lin_ext_scale_factors[i],
+                _linear_extensions .* lin_ext_scale_factors[i],
                 survival_rate
             )
 
