@@ -13,18 +13,25 @@ on:
 jobs:
   update-provena-item:
     runs-on: ubuntu-latest
+    env:
+      PROVENA_DOMAIN: ${{ secrets.PROVENA_DOMAIN }}
+      PROVENA_REALM_NAME: ${{ secrets.PROVENA_REALM_NAME }}
+      PROVENA_ITEM_ID: ${{ secrets.PROVENA_ITEM_ID }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Debug - Print Environment Variables (Redacted)
+        run: |
+          echo "PROVENA_DOMAIN: ${PROVENA_DOMAIN//./__}"
+          echo "PROVENA_REALM_NAME: ${PROVENA_REALM_NAME:0:3}..."
+          echo "PROVENA_ITEM_ID: ${PROVENA_ITEM_ID:0:3}..."
 
       - name: Update Provena registry item
         uses: provena/version-update-item-action@main
         id: update-item
         with:
           offline_token: ${{ secrets.PROVENA_OFFLINE_TOKEN }}
-          domain: ${{ secrets.PROVENA_DOMAIN }}
-          realm_name: ${{ secrets.PROVENA_REALM_NAME }}
-          item_id: ${{ secrets.PROVENA_ITEM_ID }}
+          domain: ${{ env.PROVENA_DOMAIN }}
+          realm_name: ${{ env.PROVENA_REALM_NAME }}
+          item_id: ${{ env.PROVENA_ITEM_ID }}
           version_reason: "New ADRIA code release on GitHub. Version ${{ github.ref_type == 'tag' && github.ref_name || 'Unknown.' }}"
           update_reason: "Updating metadata attributes to specify new git hash, branch and release if available."
           attribute_updates: |
