@@ -210,7 +210,7 @@ function scenarios_confint!(
     ax::Axis,
     confints::AbstractArray,
     ordered_groups::Vector{Symbol},
-    _colors::Dict{Symbol, T};
+    _colors::Dict{Symbol,T};
     x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1)),
 )::Nothing where {T<:Union{RGBA{Float32},String,Symbol}}
 
@@ -256,7 +256,7 @@ function scenarios_series!(
     for group in group_names
         color = (_colors[group], _alphas[group])
         scens = outcomes[:, scen_groups[group]]'
-        series!(ax, x_vals, scens; solid_color=color, series_opts...)
+        series!(ax, x_vals, scens.data; solid_color=color, series_opts...)
     end
 
     return nothing
