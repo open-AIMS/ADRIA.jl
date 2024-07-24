@@ -1,0 +1,32 @@
+name: Update Provena Registry Item
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-provena-item:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Provena ADRIA model
+        uses: provena/version-update-item-action@main
+        id: update-model
+        with:
+          offline_token: ${{ secrets.PROVENA_PROD_TOKEN }}
+          domain: ${{ secrets.PROVENA_PROD_DOMAIN }}
+          realm_name: ${{ secrets.PROVENA_PROD_REALM_NAME }}
+          item_id: ${{ secrets.PROVENA_PROD_ITEM_ID }}
+          version_reason: "New ADRIA code release on GitHub. Version ${{ github.ref_type == 'tag' && github.ref_name || 'Unknown.' }}"
+          update_reason: "Updating metadata attributes to specify new git hash, branch and release if available."
+          attribute_updates: |
+            {
+              "user_metadata": {
+                "git_hash": "${{ github.sha }}",
+                "git_branch": "${{ github.ref_name }}",
+                "git_release": "${{ github.ref_type == 'tag' && github.ref_name || '' }}"
+              },
+              "source_url": "https://github.com/${{ github.repository }}"
+            }
+
+      - name: Display updated model ID
+        run: echo "Updated ADRIA model version ID is ${{ steps.update-item.outputs.new_id }}"
