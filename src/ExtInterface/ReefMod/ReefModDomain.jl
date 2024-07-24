@@ -97,18 +97,15 @@ function load_domain(
     spatial_data[:, :k] = 1 .- id_list[:, 3]
 
     # Load DHWs
-    dhws = Cube(
-        dom_dataset[["record_applied_DHWs"]]
-    )[timestep=At(timeframe[1]:timeframe[2])]
-
-    # Redfine dimensions as ReefMod Matfiles do not contain reef ids.
+    # Redefine dimensions as ReefMod Matfiles do not contain reef ids.
     # Forcibly load data as disk arrays are not fully support.
+    cube_axes = caxes(dom_dataset.record_applied_DHWs)
     dhw_scens = DataCube(
-        dhws.data[:, :, :];
-        timesteps=timeframe[1]:timeframe[2],
-        locs=site_ids,
-        scenarios=1:size(dhws)[3]
-    )
+        read(dom_dataset.record_applied_DHWs); 
+        timestep=Int64.(collect(cube_axes[1])), 
+        location=site_ids, 
+        scenario=Int64.(collect(cube_axes[3]))
+    )[timestep=At(timeframe[1]:timeframe[2])]
 
     # Initial coral cover is loaded from the first year of reefmod 'coral_cover_per_taxa' data
     init_coral_cover = load_initial_cover(
@@ -202,7 +199,16 @@ function load_initial_cover(
     if !haskey(dom_data.cubes, :coral_cover_per_taxa)
         @error "coral_cover_per_taxa variable not found in ReefMod data"
     end
-    init_cc_per_taxa::YAXArray = Cube(dom_data[["coral_cover_per_taxa"]])[time=At(init_yr)]
+
+    c_axes = caxes(dom_data.coral_cover_per_taxa)
+    init_cc_per_taxa::YAXArray = DataCube(
+        read(dom_data.coral_cover_per_taxa);
+        timestep=Int64.(collect(c_axes[1])),
+        location=Int64.(collect(c_axes[2])),
+        group=Int64.(collect(c_axes[3])),
+        scenario=Int64.(collect(c_axes[4]))
+    )[timestep=At(init_yr)]
+
     init_cc_per_taxa = init_cc_per_taxa[group=At(2:6)]
     # The following class weight calculations are taken from ReefModEngine Domain calculation
 
@@ -281,19 +287,16 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     new_scen_fn = _find_netcdf(d.env_layer_md.dpkg_path, RCP)
     new_scen_dataset = open_dataset(new_scen_fn)
 
-    dhws = Cube(
-        new_scen_dataset[["record_applied_DHWs"]]
-    )[timestep=At(d.env_layer_md.timeframe)].data[:, :, :]
+    cube_axes = caxes(new_scen_dataset.record_applied_DHWs)
+    dhws = DataCube(
+        read(new_scen_dataset.record_applied_DHWs); 
+        timestep=Int64.(collect(cube_axes[1])), 
+        location=d.site_ids,
+        scenario=Int64.(collect(cube_axes[3]))
+    )[timestep=At(d.env_layer_md.timeframe)]
 
-    scens = 1:size(dhws)[3]
-    loc_ids = d.site_ids
+    d.dhw_scens = dhws
 
-    d.dhw_scens = DataCube(
-        dhws,
-        timesteps=d.env_layer_md.timeframe,
-        locs=loc_ids,
-        scenarios=scens
-    )
     return d
 end
 
@@ -327,8 +330,13 @@ function _cyclone_mortality_scens(
     timeframe::Tuple{Int64,Int64}
 )::YAXArray{Float64}
     # Add 1 to every scenarios so they represent indexes in cyclone_mr vectors
-    cyclone_scens::YAXArray = Cube(
-        dom_dataset[["record_applied_cyclone"]]
+    cyclone_data::YAXArray = Cube(dom_dataset[["record_applied_cyclone"]])
+    c_axes = caxes(cyclone_data)
+    cyclone_scens::YAXArray = DataCube(
+        read(cyclone_data);
+        timestep=Int64.(collect(c_axes[1])),
+        location=Int64.(collect(c_axes[2])),
+        scenario=Int64.(collect(c_axes[3]))
     )[timestep=At(timeframe[1]:timeframe[2])] .+ 1
 
     species::Vector{Symbol} = functional_group_names()
