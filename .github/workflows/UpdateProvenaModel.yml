@@ -1,24 +1,18 @@
 name: Update Provena Registry Item
 
 on:
-  # Commented out release trigger
-  # release:
-  #   types: [published]
-
-  # Testing trigger: run on every commit to provena-update branch
-  push:
-    branches:
-      - provena-update
+  release:
+    types: [published]
 
 jobs:
   update-provena-item:
     runs-on: ubuntu-latest
     steps:
-      - name: Update Provena registry item
+      - name: Update Provena ADRIA model
         uses: provena/version-update-item-action@main
-        id: update-item
+        id: update-model
         with:
-          offline_token: ${{ secrets.PROVENA_DEV_TOKEN }}
+          offline_token: ${{ secrets.PROVENA_PROD_TOKEN }}
           domain: ${{ secrets.PROVENA_DOMAIN }}
           realm_name: ${{ secrets.PROVENA_REALM_NAME }}
           item_id: ${{ secrets.PROVENA_ITEM_ID }}
