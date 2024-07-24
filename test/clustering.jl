@@ -54,7 +54,8 @@
         end
 
         @testset "Call cluster_series function" begin
-            num_clusters = 5
+            # Since test_data is a 3x3 matrix, Clustering.kmeioids requires num_clusters ≤ 3
+            num_clusters = 3
             clusters = ADRIA.analysis.cluster_series(test_data, num_clusters)
 
             @test length(clusters) == size(test_data, 2)
