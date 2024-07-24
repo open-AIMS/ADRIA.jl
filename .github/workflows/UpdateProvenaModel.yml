@@ -13,9 +13,9 @@ jobs:
         id: update-model
         with:
           offline_token: ${{ secrets.PROVENA_PROD_TOKEN }}
-          domain: ${{ secrets.PROVENA_DOMAIN }}
-          realm_name: ${{ secrets.PROVENA_REALM_NAME }}
-          item_id: ${{ secrets.PROVENA_ITEM_ID }}
+          domain: ${{ secrets.PROVENA_PROD_DOMAIN }}
+          realm_name: ${{ secrets.PROVENA_PROD_REALM_NAME }}
+          item_id: ${{ secrets.PROVENA_PROD_ITEM_ID }}
           version_reason: "New ADRIA code release on GitHub. Version ${{ github.ref_type == 'tag' && github.ref_name || 'Unknown.' }}"
           update_reason: "Updating metadata attributes to specify new git hash, branch and release if available."
           attribute_updates: |
