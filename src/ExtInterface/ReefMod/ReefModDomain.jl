@@ -239,7 +239,7 @@ function load_initial_cover(
     icc_data = icc_data ./ site_data.k'
     icc_data_sum = dropdims(sum(icc_data, dims=1), dims=1)
     if any(icc_data_sum .> 1.0)
-        @warn "Initial cover exceeds habiatable area, there is most likely an issue with the data package. Constraining to 1.0"
+        @warn "Initial cover exceeds habitable area, there is most likely an issue with the data package. Constraining to 1.0"
         icc_data[:, icc_data_sum .> 1.0] ./= icc_data_sum[icc_data_sum .> 1.0]'
     end
 
