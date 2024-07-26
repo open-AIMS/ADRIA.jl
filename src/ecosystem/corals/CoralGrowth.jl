@@ -18,9 +18,12 @@ end
 
 Implements temporary hardcoded caches for a scenario with 35 'species' (split into 5 groups).
 """
-function CoralGrowth(n_locs::Int64)::CoralGrowth
-    n_group_and_size, n_groups = 35, 5
-    n_sizes = Int64(n_group_and_size / n_groups)
+function CoralGrowth(n_locs::Int64)
+    n_groups::Int64, n_sizes::Int64 = 5, 6
+    return CoralGrowth(n_locs, n_groups, n_sizes)
+end
+function CoralGrowth(n_locs::Int64, n_groups::Int64, n_sizes::Int64)::CoralGrowth
+    n_group_and_size::Int64 = n_groups * n_sizes
 
     # Store specific indices for use in growth ODE function
     # These are specific to the 35 "species"/ 5 group formulation
