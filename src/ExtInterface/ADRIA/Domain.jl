@@ -168,33 +168,14 @@ function Domain(
     site_data = site_data[coalesce.(in.(conn_ids, [connectivity.site_ids]), false), :]
     site_data.k .= site_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
 
-    coral_growth::CoralGrowth = CoralGrowth(nrow(site_data))
-    n_locs::Int64 = coral_growth.n_locs
+    n_locs::Int64 = nrow(site_data)
+    n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
+    coral_growth::CoralGrowth = CoralGrowth(n_locs, n_groups, n_sizes)
     n_group_and_size = coral_growth.n_group_and_size
 
+    # Load initial coral cover relative to k area
     cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_group_and_size, n_locs)
-    coral_cover = load_cover(cover_params...)
-
-    # Only use relevant initial coral cover data as appropriate
-    if size(coral_cover, 1) == 36
-        n_sizes = coral_growth.n_sizes
-        n_groups = coral_growth.n_groups
-        @warn """
-        Using dataset with 36 combined groups and size classes.
-        ADRIA uses $(n_groups) functional groups and $(n_sizes) size classes.
-        Skipping first functional group.
-        """
-
-        cover_tmp = ZeroDataCube(;
-            T=Float32,
-            species=1:35,
-            locations=collect(coral_cover.sites)
-        )
-
-        cover_tmp[species=Vector(coral_growth.ode_p.small)] .= coral_cover[species=[7, 13, 19, 25, 31]].data
-        cover_tmp[species=Vector(coral_growth.ode_p.mid)] .= coral_cover[species=[8:12; 14:18; 20:24; 26:30; 32:36]].data
-        coral_cover = cover_tmp
-    end
+    init_coral_cover = load_cover(cover_params...)
 
     dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
     dhw = load_env_data(dhw_params...)
@@ -228,7 +209,7 @@ function Domain(
         site_data,
         site_id_col,
         cluster_id_col,
-        coral_cover,
+        init_coral_cover,
         coral_growth,
         connectivity.site_ids,
         connectivity.truncated,
@@ -273,6 +254,9 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         timeframe = parse.(Int64, md_timeframe)
     end
 
+    site_id_col::String = "reef_siteid"
+    cluster_id_col::String = "cluster_id"
+
     conn_path::String = joinpath(path, "connectivity/")
     spatial_path::String = joinpath(path, "spatial")
 
@@ -289,8 +273,8 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         rcp,
         timeframe,
         gpkg_path,
-        "reef_siteid",
-        "cluster_id",
+        site_id_col,
+        cluster_id_col,
         init_coral_cov,
         conn_path,
         dhw_fn,
