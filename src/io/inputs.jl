@@ -1,6 +1,7 @@
-using JSON
-using YAXArrays
-using NetCDF
+using Distributions,
+    JSON,
+    NetCDF,
+    YAXArrays
 
 """
     _check_compat(dpkg_details::Dict)
@@ -138,23 +139,6 @@ function _site_labels(nc_file::NetCDF.NcFile)::Vector{String}
     site_ids = NetCDF.readvar(nc_file, "reef_siteid")
     # Converts character array entries in netCDFs to string if needed
     return site_ids isa Matrix ? nc_char2string(site_ids) : site_ids
-end
-
-"""
-    load_cover(data_fn::String)::YAXArray
-    load_cover(n_species::Int64, n_sites::Int64)::YAXArray
-
-Load initial coral cover data from netCDF.
-"""
-function load_cover(data_fn::String)::YAXArray
-    _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
-
-    return load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
-end
-function load_cover(n_species::Int64, n_sites::Int64)::YAXArray
-    @warn "Using random initial coral cover"
-
-    return DataCube(rand(Float32, n_species, n_sites); species=1:(n_species), sites=1:n_sites)
 end
 
 """
