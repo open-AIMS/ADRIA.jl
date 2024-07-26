@@ -56,6 +56,7 @@ include("ecosystem/corals/Corals.jl")
 include("ecosystem/connectivity.jl")
 
 include("Domain.jl")
+include("io/datacubes.jl")
 include("io/inputs.jl")  # Need to define input types before MCDA to make types available
 
 include("decision/dMCDA.jl")
