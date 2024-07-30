@@ -2,7 +2,7 @@
   "name": "Test_domain",
   "title": "Test reef cluster data package",
   "description": "Test data package for ADRIA",
-  "version": "0.6.0-rc",
+  "version": "0.7.0-rc",
   "sources": [],
   "simulation_metadata": {
     "timeframe": [
