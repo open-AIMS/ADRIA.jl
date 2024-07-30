@@ -34,16 +34,13 @@ using
     Distances,
     Distributions,
     CoralBlox,
-    StaticArrays,
-    SparseArrays,
     LinearAlgebra,
     OrderedCollections,
-    Combinatorics,
-    Distances,
     Setfield,
     Statistics,
     StaticArrays,
     SparseArrays,
+    Random,
     YAXArrays
 
 include("utils/text_display.jl")  # need better name for this file
