@@ -3,6 +3,7 @@ using Test
 using ADRIA
 using ADRIA.Distributions
 using ADRIA: distribute_seeded_corals, location_k, seed_corals!
+using ADRIA: At
 
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
