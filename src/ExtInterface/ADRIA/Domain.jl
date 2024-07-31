@@ -188,7 +188,7 @@ function Domain(
         cover_tmp = ZeroDataCube(;
             T=Float32,
             species=1:35,
-            locations=collect(coral_cover.locations)
+            locations=collect(coral_cover.sites)
         )
 
         cover_tmp[species=Vector(coral_growth.ode_p.small)] .= coral_cover[species=[7, 13, 19, 25, 31]].data
