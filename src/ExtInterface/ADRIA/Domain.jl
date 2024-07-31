@@ -175,7 +175,7 @@ function Domain(
 
     # Load initial coral cover relative to k area
     cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_group_and_size, n_locs)
-    init_coral_cover = load_cover(cover_params...)
+    init_coral_cover = load_initial_cover(cover_params...)
 
     dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
     dhw = load_env_data(dhw_params...)
