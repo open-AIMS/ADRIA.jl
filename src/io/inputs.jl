@@ -1,7 +1,7 @@
-using Distributions,
-    JSON,
-    NetCDF,
-    YAXArrays
+using Distributions
+using JSON
+using NetCDF
+using YAXArrays
 
 """
     _check_compat(dpkg_details::Dict)
