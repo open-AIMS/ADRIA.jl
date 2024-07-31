@@ -333,8 +333,8 @@ e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, siz
 # Arguments
 - `X` : raw results (proportional coral cover relative to full site area)
 - `n_group_and_size` : number of species (taxa and size classes) considered
-- `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class (36)
-- `max_colony_vol_m3_per_m2` : theoretical maximum volume per m² of coverage for each taxa (6)
+- `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class
+- `max_colony_vol_m3_per_m2` : theoretical maximum volume per m² of coverage for each taxa
 - `k_area` : habitable area of site in m² (i.e., `k` area)
 """
 function _shelter_species_loop(
@@ -361,7 +361,7 @@ function _shelter_species_loop(
     # Loop over each taxa group
 
     RSV::YAXArray = ZeroDataCube((:timesteps, :species, :sites), size(X[species=1:n_groups]))
-    taxa_max_map = zip([i:(i + n_sizes - 1) for i in 1:n_sizes:n_group_and_size], 1:n_groups)  # map maximum SV for each group
+    taxa_max_map = zip([i:(i+n_sizes-1) for i in 1:n_sizes:n_group_and_size], 1:n_groups)  # map maximum SV for each group
 
     # Work out RSV for each taxa
     for (sp, sq) in taxa_max_map
@@ -386,7 +386,7 @@ Helper method to calculate absolute shelter volume metric across each species/si
 - `ASV` : matrix to hold shelter volume results
 - `nspecies` : number of species (taxa and size classes) considered
 - `scen` : scenario number to calculate metric for
-- `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class (36)
+- `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class
 - `k_area` : habitable area of site in m²
 """
 function _shelter_species_loop!(
@@ -592,7 +592,8 @@ function _relative_shelter_volume(
     nscens::Int64 = size(X, :scenarios)
 
     # Result template - six entries, one for each taxa
-    RSV::YAXArray = ZeroDataCube((:timesteps, :species, :sites, :scenarios), size(X[:, 1:6, :, :]))
+    n_groups::Int64 = length(coral_spec().taxa_names)
+    RSV::YAXArray = ZeroDataCube((:timesteps, :species, :sites, :scenarios), size(X[:, 1:n_groups, :, :]))
     for scen::Int64 in 1:nscens
         colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs[scen, :])
         RSV[scenarios=scen] .= _shelter_species_loop(X[scenarios=scen], nspecies, colony_vol, max_colony_vol, k_area)
