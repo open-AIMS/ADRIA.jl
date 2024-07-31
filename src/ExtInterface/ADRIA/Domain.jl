@@ -172,7 +172,7 @@ function Domain(
     n_locs::Int64 = coral_growth.n_locs
     n_group_and_size = coral_growth.n_group_and_size
 
-    cover_params = ispath(init_coral_fn) ? (init_coral_fn, ) : (n_group_and_size, n_locs)
+    cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_group_and_size, n_locs)
     coral_cover = load_cover(cover_params...)
 
     # Only use relevant initial coral cover data as appropriate
