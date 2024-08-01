@@ -178,15 +178,15 @@ function coral_spec()::NamedTuple
     # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
     fec_par_a = Float64[1.03; 1.03; 1.69; 0.02; 0.86; 0.86]  # fecundity parameter a
     fec_par_b = Float64[1.28; 1.28; 1.05; 2.27; 1.21; 1.21]  # fecundity parameter b
-    min_size_full_fec_cm2 = Float64[123.0; 123.0; 134.0; 134.0; 38.0; 38.0]
+    min_colony_area_full_fec = Float64[123.0; 123.0; 134.0; 134.0; 38.0; 38.0]
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
     colony_area_cm2 = colony_mean_area(mean_colony_diameter_m .* 100.0)
     fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
 
-    # Size classes below indicated size are not fecund (reproductive)
-    fec[colony_area_cm2.<min_size_full_fec_cm2] .= 0.0
+    # Colonies with area (in cm2) below indicated size are not fecund (reproductive)
+    fec[colony_area_cm2 .< min_colony_area_full_fec] .= 0.0
 
     # then convert to number of larvae produced per m2
     fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
