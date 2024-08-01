@@ -270,7 +270,7 @@ end
             @testset "set_factor_bounds" begin
                 bounds_ranges = [b[1]:b[2] for b in factors.default_dist_params]
                 new_bounds = Tuple.(sort.(rand.(bounds_ranges, 2)))
-                new_steps = [round((nb[2] - nb[1]) / 10) for nb in new_bounds]
+                new_steps = [ceil((nb[2] - nb[1]) / 10) for nb in new_bounds]
                 new_dist_params = [(b[1], b[2], s) for (b, s) in zip(new_bounds, new_steps)]
                 dom = set_factor_bounds(dom; NamedTuple{factor_fieldnames}(new_dist_params)...)
                 scens = ADRIA.sample_guided(dom, num_samples)
