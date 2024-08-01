@@ -223,7 +223,7 @@ end
         dist_t::Matrix, prop_mort::SubArray{Float64})::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
-all non-settler (> 5cm diameter) size classes.
+all non-juvenile (> 5cm diameter) size classes.
 
 Distributions are informed by learnings from Bairos-Novak et al., [1] and (unpublished)
 data referred to in Hughes et al., [2]. Juvenile mortality is assumed to be primarily

@@ -185,8 +185,8 @@ function coral_spec()::NamedTuple
     colony_area_cm2 = colony_mean_area(mean_colony_diameter_m .* 100.0)
     fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
 
-    # Colonies with area (cm2) below indicated size are not fecund (reproductive)
-    fec[colony_area_cm2.<min_colony_area_full_fec] .= 0.0
+    # Colonies with area (in cm2) below indicated size are not fecund (reproductive)
+    fec[colony_area_cm2 .< min_colony_area_full_fec] .= 0.0
 
     # then convert to number of larvae produced per m2
     fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
