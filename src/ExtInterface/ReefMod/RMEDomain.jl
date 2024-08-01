@@ -476,7 +476,7 @@ function load_initial_cover(
     # Reshape and Permute icc_data from
     # [n_locs ⋅ n_groups ⋅ n_sizes] to [(n_groups × n_sizes) ⋅ n_locs]
     icc_data = reshape(
-        permutedims(icc_data, (2, 3, 1)), (n_sizes * n_groups, n_locs)
+        permutedims(icc_data, (3, 2, 1)), (n_sizes * n_groups, n_locs)
     )
 
     # Convert values relative to absolute area to values relative to k area
