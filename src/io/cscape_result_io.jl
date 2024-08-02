@@ -230,9 +230,10 @@ function _recreate_inputs_dataframe(
     datasets::Vector{Dataset}, scenario_spec::DataFrame
 )::DataFrame
     # Get rows from scenario spec dataframe corresponding to the scenarios
-    scenario_idxs::Vector{Int} =
-        [findfirst(x->x==idx, scenario_spec.ID) for idx in _get_scenario_id.(datasets)]
-    scenario_rows::Vector{DataFrameRow} = [scenario_spec[idx + i * 100, :] for (i, idx) in enumerate(scenario_idxs)]
+    scenario_idxs::Vector{Int} = [
+        findfirst(x->x==idx, scenario_spec.ID) for idx in _get_scenario_id.(datasets)
+    ]
+    scenario_rows::Vector{DataFrameRow} = [scenario_spec[idx, :] for idx in scenario_idxs]
 
     # Convert climate scenarios to factors
     rcps::Vector{Float64} =
