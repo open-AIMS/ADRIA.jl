@@ -634,7 +634,7 @@ Settler density (settlers / m²)
 2. Haddon, M. (2011). Modelling and quantitative methods in fisheries. CRC Press/Chapman and
     Hall, Boca Raton, Florida, USA.
 """
-function settler_density(α::T, β::T, L::T)::Float64 where {T<:Float64}
+function settler_density(α::T, β::T, L::Union{T, Float32})::Float64 where {T<:Float64}
     return (α .* L) ./ (β .+ L)
 end
 
@@ -652,9 +652,11 @@ Calculates coral recruitment for each species/group and location.
 
 # Returns
 λ, total coral recruitment for each coral taxa and location based on a Poisson distribution.
+
+FIXME mixing Float32 and Float64
 """
-function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
-    α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::Matrix{T} where {T<:Float64}
+function recruitment_rate(larval_pool::Union{AbstractArray{Float32, 2}, AbstractArray{Float64, 2}}, A::AbstractArray{T};
+    α::Union{T,AbstractArray{T}}=2.5, β::Union{T,AbstractArray{T}}=5000.0)::Matrix{T} where {T<:Float64}
     sd = replace(settler_density.(α, β, larval_pool), Inf => 0.0, NaN => 0.0) .* A
     @views sd[sd.>0.0] .= rand.(Poisson.(sd[sd.>0.0]))
     return sd
@@ -689,12 +691,25 @@ function settler_cover(
     β::V,
     basal_area_per_settler::V,
     potential_settlers::T
-)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
-
+)::T where {T<:AbstractMatrix{Float64},V<:AbstractArray{Float64}}
     # Determine active sources and sinks
     valid_sources::BitVector = vec(sum(conn, dims=2) .> 0.0)
     valid_sinks::BitVector = vec(sum(conn, dims=1) .> 0.0)
 
+    return _settler_cover(fec_scope, conn, leftover_space, α, β, basal_area_per_settler, potential_settlers, valid_sources, valid_sinks)
+end
+
+function _settler_cover(
+    fec_scope::T,
+    conn::AbstractMatrix{Float64},
+    leftover_space::T,
+    α::V,
+    β::V,
+    basal_area_per_settler::V,
+    potential_settlers::T,
+    valid_sources::AbstractArray{Bool},
+    valid_sinks::AbstractArray{Bool}
+)::T where {T<:AbstractMatrix{Float64},V<:AbstractArray{Float64}}
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
     # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae
     # which do not settle. Pers comm with C. Ani (2023-01-29 13:24 AEST).
