@@ -76,7 +76,7 @@ function ADRIA.viz.scenarios!(
     )
 end
 function ADRIA.viz.scenarios(
-    rs::RMEResultSet,
+    rs::Union{RMEResultSet, CScapeResultSet},
     outcomes::YAXArray;
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(:by_RCP => false),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
