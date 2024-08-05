@@ -756,6 +756,63 @@ function _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
     return relative_cover
 end
 
+"""
+    load_variable!(rs::CScapeResultSet, variable_name::Symbol; aggregate_ttol=sum)::YAXArray
+
+Load given variable into a single YAXArray from all datasets in the result store.
+If thermal tolerance is present remove the dimension using the aggregation function. Convert
+dimensions and dimension ordering to standard ADRIA ordering.
+
+Return the variable and write the variable to the outcomes dictionary.
+"""
+function load_variable!(
+    rs::CScapeResultSet,
+    variable_name::Symbol;
+    aggregate_ttol=sum
+)::YAXArray
+    if !haskey(rs.raw_data[1].cubes, variable_name)
+        throw(ArgumentError("Unable to find variable $(String(variable_name)) in datasets"))
+    end
+    n_scens::Vector{Int64} = _n_scenarios.(rs.raw_data)
+
+    dims = Tuple(
+        d for d in rs.raw_data[1].cubes[variable_name].axes
+        if !(name(d) in [:thermal_tolerance, :draws])
+    )
+    dims = (
+        Dim{:draws}(1:sum(n_scens)),
+        dims...
+    )
+    shape = Tuple(length(d) for d in dims)
+    output_variable = YAXArray(
+        dims,
+        zeros(eltype(rs.raw_data[1].cubes[variable_name]), shape...)
+    )
+
+    # Only aggregate the thermal tolerance if the dimension is present
+    agg_func = x -> x
+    if :thermal_tolerance in name.(rs.raw_data[1].cubes[variable_name].axes)
+        agg_func = x -> dropdims(aggregate_ttol(
+            x.cubes[variable_name], dims=:thermal_tolerance
+        ), dims=:thermal_tolerance)
+    end
+
+    cur_indx = 1
+    @showprogress for (n_sc, dataset) in zip(n_scens, rs.raw_data)
+        if n_sc == 1
+            output_variable[draws=cur_indx] = agg_func(dataset)
+        else
+            output_variable[draws=cur_indx:cur_indx+n_sc-1] = agg_func(dataset)
+        end
+        cur_indx += n_sc
+    end
+    # Convert cscape yaxarray to standard ADRIA formats
+    output_variable = reformat_cube(output_variable)
+    rs.outcomes[variable_name] = output_variable
+
+    return output_variable
+end
+
 function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
     rcps = rs.RCP
     scens = length(rs.outcomes[:relative_cover].scenarios)
