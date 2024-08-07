@@ -64,7 +64,7 @@ function update_criteria_values!(dm::YAXArray, values::Matrix)::Nothing
     return nothing
 end
 function update_criteria_values!(dm::YAXArray; kwargs...)::Nothing
-    for (criteria_name, value) in kwargs
+    for (criteria_name, value) ∈ kwargs
         dm[criteria=At(criteria_name)] .= value
     end
 
@@ -129,7 +129,7 @@ function rank_by_index(
     dp::T, dm::YAXArray, method::Union{Function,DataType}
 )::Vector{Int64} where {T<:DecisionPreference}
     # Identify valid, non-constant, columns for use in MCDA
-    is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
+    is_const = Bool[length(x) == 1 for x ∈ unique.(eachcol(dm.data))]
 
     # YAXArrays will throw error for all false boolean masks
     if all(is_const)
@@ -214,7 +214,7 @@ function apply_threshold(
     target_criteria = dm.criteria .== criteria_name
     target_vals = dm.data[:, target_criteria]
 
-    valid_locs = vec(threshold[1] .<= target_vals .<= (threshold[1]+threshold[2]))
+    valid_locs = vec(threshold[1] .<= target_vals .<= (threshold[1] + threshold[2]))
 
     return dm[location=valid_locs]
 end

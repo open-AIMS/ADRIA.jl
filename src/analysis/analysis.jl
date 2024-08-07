@@ -12,15 +12,19 @@ using YAXArrays
 
 Normalize a matrix on a per-column basis (∈ [0, 1]).
 """
-function col_normalize(data::AbstractMatrix{T})::AbstractMatrix{T} where {T<:Union{Missing,Real}}
+function col_normalize(
+    data::AbstractMatrix{T}
+)::AbstractMatrix{T} where {T<:Union{Missing,Real}}
     d = copy(data)
-    Threads.@threads for ax in axes(d, 2)
+    Threads.@threads for ax ∈ axes(d, 2)
         @inbounds d[:, ax] .= normalize!(d[:, ax])
     end
 
     return d
 end
-function col_normalize(data::AbstractVector{T})::AbstractVector{T} where {T<:Union{Missing,Real}}
+function col_normalize(
+    data::AbstractVector{T}
+)::AbstractVector{T} where {T<:Union{Missing,Real}}
     return normalize(data)
 end
 
@@ -54,7 +58,7 @@ function normalize!(data::AbstractArray{T})::AbstractArray{T} where {T<:Union{Mi
         return data
     end
 
-    data .= (data .- mi) ./ (ma - mi)
+    return data .= (data .- mi) ./ (ma - mi)
 end
 
 """
@@ -68,13 +72,13 @@ S-1 := 0.9 - 0.8
 etc
 """
 function discretize_outcomes(y; S=20)
-    steps = 0.0:(1/S):1.0
+    steps = 0.0:(1 / S):1.0
 
     y_s_hat = col_normalize(y)
     y_disc = zeros(size(y)...)
-    for i in axes(steps, 1)[2:end]
-        Threads.@threads for j in size(y_s_hat, 2)
-            y_disc[steps[i-1].<y_s_hat[:, j].<=steps[i], j] .= steps[i-j]
+    for i ∈ axes(steps, 1)[2:end]
+        Threads.@threads for j ∈ size(y_s_hat, 2)
+            y_disc[steps[i - 1] .< y_s_hat[:, j] .<= steps[i], j] .= steps[i - j]
         end
     end
 

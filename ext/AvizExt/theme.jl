@@ -11,7 +11,7 @@ const COLORS::Dict{Symbol,Union{Symbol,String}} = Dict(
     :non_target => "#ff7f00",
     :order => :dodgerblue,
     :topsis => :deepskyblue4,
-    :vikor => :midnightblue,
+    :vikor => :midnightblue
 )
 
 function colors(
@@ -20,25 +20,25 @@ function colors(
     group_names = keys(scen_groups)
     if count(group_names .∉ [keys(COLORS)]) > 0
         colormap = categorical_colors(:seaborn_bright, length(group_names))
-        return Dict(group => colormap[idx] for (idx, group) in enumerate(group_names))
+        return Dict(group => colormap[idx] for (idx, group) ∈ enumerate(group_names))
     else
-        return Dict(group => COLORS[group] for group in group_names)
+        return Dict(group => COLORS[group] for group ∈ group_names)
     end
 end
 function colors(
     scen_groups::Dict{Symbol,BitVector},
-    weight::Float64,
+    weight::Float64
 )::Vector{Tuple{Symbol,Float64}}
     groups = collect(keys(scen_groups))
     n_scens = length(scen_groups[groups[1]])
     _colors = Vector{Symbol}(undef, n_scens)
     scen_colors = colors(scen_groups)
 
-    for (group, scens) in scen_groups
+    for (group, scens) ∈ scen_groups
         _colors[scens] .= [scen_colors[group]]
     end
 
-    return [(c, weight) for c in _colors]
+    return [(c, weight) for c ∈ _colors]
 end
 function colors(
     scen_groups::Dict{Symbol,BitVector}, weights::Dict{Symbol,Float64}
@@ -51,13 +51,13 @@ function colors(
             scen_colors[group].r,
             scen_colors[group].g,
             scen_colors[group].b,
-            weights[group],
-        ) for group in groups
+            weights[group]
+        ) for group ∈ groups
     )
 end
 
 function alphas(scen_groups::Dict{Symbol,BitVector})::Dict{Symbol,Float64}
-    return Dict(name => alpha(scens) for (name, scens) in scen_groups)
+    return Dict(name => alpha(scens) for (name, scens) ∈ scen_groups)
 end
 
 function alpha(scens::BitVector)::Float64
@@ -66,7 +66,7 @@ function alpha(scens::BitVector)::Float64
 end
 
 function labels(group_names::Vector{Symbol})::Vector{String}
-    return [uppercasefirst(replace(string(name), '_' => ' ')) for name in group_names]
+    return [uppercasefirst(replace(string(name), '_' => ' ')) for name ∈ group_names]
 end
 
 """
@@ -81,10 +81,10 @@ function scenario_colors!(
     scen_types::NamedTuple,
     weight::Float64,
     hide::BitVector,
-    guide_toggle_map,
+    guide_toggle_map
 )
     color_map .= obs_color[]
-    for (t, l, c) in guide_toggle_map
+    for (t, l, c) ∈ guide_toggle_map
         if !t.active[]
             continue
         end

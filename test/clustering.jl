@@ -40,7 +40,7 @@
             @test size(cid, 1) == size(cid, 2) == size(test_data, 2)
 
             # All CID are positive
-            @testset "CID positivity" for i in cid
+            @testset "CID positivity" for i ∈ cid
                 @test i >= 0
             end
 

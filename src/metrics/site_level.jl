@@ -86,7 +86,7 @@ YAXArray with summary metric for the remaining axis.
 function summarize(
     data::YAXArray{D,T,N,A}, alongs_axis::Vector{Symbol}, metric::Function
 )::YAXArray where {D,T,N,A}
-    alongs = sort([axis_index(data, axis) for axis in alongs_axis])
+    alongs = sort([axis_index(data, axis) for axis ∈ alongs_axis])
 
     # Use of JuliennedArrays is in an attempt to speed up calculation of summary statistics.
     #   We see a small but still worthwhile improvement in practice.
@@ -95,7 +95,7 @@ function summarize(
     summarized_data = map(metric, data_slices)
 
     new_dims = setdiff(axes_names(data), alongs_axis)
-    new_axis = [axis_labels(data, ax) for ax in new_dims]
+    new_axis = [axis_labels(data, ax) for ax ∈ new_dims]
 
     return DataCube(summarized_data; NamedTuple{Tuple(new_dims)}(new_axis)...)
 end
@@ -103,7 +103,7 @@ function summarize(
     data::YAXArray{D,T,N,A},
     alongs_axis::Vector{Symbol},
     metric::Function,
-    timesteps::Union{UnitRange,Vector{Int64},BitVector},
+    timesteps::Union{UnitRange,Vector{Int64},BitVector}
 )::YAXArray where {D,T,N,A}
     return summarize(data[timesteps=timesteps], alongs_axis, metric)
 end
