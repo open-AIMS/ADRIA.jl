@@ -97,7 +97,8 @@ function pairplot!(display, data, names)
     end
 
     rowgap!(display, 20)
-    return colgap!(display, 20)
+    colgap!(display, 20)
+    return nothing
 end
 
 """
@@ -128,7 +129,7 @@ end
 
 #     for i in 1:k
 #         # get(c_scheme, (i - 1) / (k - 1))
-#         # show_axis = false, 
+#         # show_axis = false,
 #         # color = :inferno
 
 #         # (d[i] - l[1]) ./ (l[2] - l[1])

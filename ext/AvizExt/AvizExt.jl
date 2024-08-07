@@ -101,7 +101,8 @@ function main_menu()
     end
 
     gl_screen = display(f)
-    return wait(gl_screen)
+    wait(gl_screen)
+    return nothing
 end
 
 function _get_seeded_sites(seed_log, ts, scens; N=10)
@@ -131,7 +132,8 @@ function display_loader(fig, anim)
 end
 function remove_loader(fig, task)
     Base.throwto(task, InterruptException())
-    return empty!(fig)
+    empty!(fig)
+    return nothing
 end
 
 """
@@ -524,10 +526,11 @@ function ADRIA.viz.explore(rs::ResultSet)
 
         # Update bar plot of outcome probability
         probas[] = outcome_probability(scen_dist[show_idx])
-        return ylims!(layout.outcomes, minimum(probas[].values), maximum(probas[].values))
+        ylims!(layout.outcomes, minimum(probas[].values), maximum(probas[].values))
 
         # Clear loading animation
         # remove_loader(traj_display[2, 1], loader_anim_display)
+        return nothing
     end
 
     # Trigger update only after some time since last interaction
@@ -559,8 +562,9 @@ function ADRIA.viz.explore(rs::ResultSet)
     gl_screen = display(f)
     # DataInspector()
 
-    return wait(gl_screen)
+    wait(gl_screen)
     # close(up_timer)
+    return nothing
 end
 function ADRIA.viz.explore(rs_path::String)
     return ADRIA.viz.explore(load_results(rs_path))

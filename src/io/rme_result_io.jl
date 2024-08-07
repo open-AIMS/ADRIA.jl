@@ -277,7 +277,7 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::RMEResultSet)
     locations = length(rs.outcomes[:total_cover].sites)
     tf = rs.env_layer_md.timeframe
 
-    return println("""
+    println("""
            Name: $(rs.name)
 
            Results stored at: $(rs.env_layer_md.dpkg_path)
@@ -287,4 +287,5 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::RMEResultSet)
            Number of locations: $(locations)
            Timesteps: $(tf)
            """)
+    return nothing
 end
