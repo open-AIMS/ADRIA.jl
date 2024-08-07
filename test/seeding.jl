@@ -26,7 +26,7 @@ end
         rand(Uniform(0.0, 500.0), 3); taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"]
     )
 
-    @testset "Check coral seed distribution ($i)" for i in 1:10
+    @testset "Check coral seed distribution ($i)" for i ∈ 1:10
         seed_locs = rand(1:length(total_site_area), 5)
 
         # evaluate seeding distributions
@@ -38,7 +38,7 @@ end
         total_area_seed = seed_dist .* total_site_area[seed_locs]'
 
         # total area of seeded corals
-        total_area_coral_out = sum(total_area_seed, dims=2)
+        total_area_coral_out = sum(total_area_seed; dims=2)
 
         # absolute available area to seed for selected sites
         selected_avail_space = available_space[seed_locs]
@@ -67,12 +67,17 @@ end
         seed_SM = seeded_area[taxa=At("N_seed_SM")][1]
 
         approx_zero(x) = abs(x) + one(1.0) ≈ one(1.0)
-        @test approx_zero(seed_TA - area_TA) && approx_zero(seed_CA - area_CA) && approx_zero(seed_CA - area_CA) || "Area of corals seeded not equal to (colony area) * (number or corals)"
+        @test approx_zero(seed_TA - area_TA) && approx_zero(seed_CA - area_CA) &&
+              approx_zero(seed_CA - area_CA) ||
+            "Area of corals seeded not equal to (colony area) * (number or corals)"
         @test all(seed_dist .< 1.0) || "Some proportions of seeded corals greater than 1"
         @test all(seed_dist .>= 0.0) || "Some proportions of seeded corals less than zero"
-        @test all(total_area_seed .< selected_avail_space') || "Area seeded greater than available area"
-        @test (max_ind_out == max_ind) || "Maximum distributed proportion of seeded coral not seeded in largest available area."
-        @test (min_ind_out == min_ind) || "Minimum distributed proportion of seeded coral not seeded in smallest available area."
+        @test all(total_area_seed .< selected_avail_space') ||
+            "Area seeded greater than available area"
+        @test (max_ind_out == max_ind) ||
+            "Maximum distributed proportion of seeded coral not seeded in largest available area."
+        @test (min_ind_out == min_ind) ||
+            "Minimum distributed proportion of seeded coral not seeded in smallest available area."
     end
 
     @testset "DHW distribution priors" begin
@@ -85,7 +90,7 @@ end
         leftover_space_m² = fill(500.0, 10)
 
         Yseed = zeros(2, 3, 10)
-        seed_sc = BitVector([i ∈ [2, 8, 15] for i in 1:36])
+        seed_sc = BitVector([i ∈ [2, 8, 15] for i ∈ 1:36])
 
         # Initial distributions
         d = truncated(Normal(1.0, 0.15), 0.0, 3.0)
@@ -93,15 +98,17 @@ end
         orig_dist = copy(c_dist_t)
 
         dist_std = rand(36)
-        seed_corals!(C_t, total_location_area, leftover_space_m², seed_locs, seeded_area, seed_sc,
+        seed_corals!(C_t, total_location_area, leftover_space_m², seed_locs, seeded_area,
+            seed_sc,
             a_adapt, @view(Yseed[1, :, :]), dist_std, c_dist_t)
 
         # Ensure correct priors/weightings for each location
-        for loc in seed_locs
-            for (i, sc) in enumerate(findall(seed_sc))
+        for loc ∈ seed_locs
+            for (i, sc) ∈ enumerate(findall(seed_sc))
                 prior1 = Yseed[1, i, loc] ./ C_t[sc, loc]
                 expected = [prior1, 1.0 - prior1]
-                @test c_dist_t[sc, loc] > orig_dist[sc, loc] || "Expected mean of distribution to shift | SC: $sc ; Location: $loc"
+                @test c_dist_t[sc, loc] > orig_dist[sc, loc] ||
+                    "Expected mean of distribution to shift | SC: $sc ; Location: $loc"
             end
         end
     end

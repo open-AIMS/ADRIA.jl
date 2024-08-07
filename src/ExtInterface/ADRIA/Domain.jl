@@ -51,7 +51,7 @@ function Domain(
     removed_sites::Vector{String},
     DHW::YAXArray,
     wave::YAXArray,
-    cyclone_mortality::YAXArray,
+    cyclone_mortality::YAXArray
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     sim_constants::SimConstants = SimConstants()
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
@@ -64,7 +64,7 @@ function Domain(
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
         Intervention(),
         criteria_weights...,
-        Coral(),
+        Coral()
     ))
     return ADRIADomain(
         name,
@@ -83,7 +83,7 @@ function Domain(
         wave,
         cyclone_mortality,
         model,
-        sim_constants,
+        sim_constants
     )
 end
 
@@ -118,7 +118,7 @@ function Domain(
     conn_path::String,
     dhw_fn::String,
     wave_fn::String,
-    cyclone_mortality_fn::String,
+    cyclone_mortality_fn::String
 )::ADRIADomain
     local site_data::DataFrame
     try
@@ -148,7 +148,7 @@ function Domain(
         conn_path,
         dhw_fn,
         wave_fn,
-        timeframe,
+        timeframe
     )
 
     # Sort data to maintain consistent order
@@ -156,7 +156,7 @@ function Domain(
     u_sids::Vector{String} = string.(collect(site_data[!, site_id_col]))
     # If site id column is missing then derive it from the Unique IDs
     if !in(site_id_col, names(site_data))
-        site_data[!, site_id_col] .= String[d[2] for d in split.(u_sids, "_"; limit=2)]
+        site_data[!, site_id_col] .= String[d[2] for d ∈ split.(u_sids, "_"; limit=2)]
     end
 
     site_data.row_id = 1:nrow(site_data)
@@ -172,7 +172,7 @@ function Domain(
     n_sites::Int64 = coral_growth.n_sites
     n_species = coral_growth.n_species
 
-    cover_params = ispath(init_coral_fn) ? (init_coral_fn, ) : (n_species, n_sites)
+    cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_species, n_sites)
     coral_cover = load_cover(cover_params...)
 
     dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
@@ -181,7 +181,8 @@ function Domain(
     waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
     waves = load_env_data(waves_params...)
 
-    cyc_params = ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, site_data)
+    cyc_params =
+        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, site_data)
     cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
@@ -203,7 +204,7 @@ function Domain(
         connectivity.truncated,
         dhw,
         waves,
-        cyclone_mortality,
+        cyclone_mortality
     )
 end
 
@@ -264,7 +265,7 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         conn_path,
         dhw_fn,
         wave_fn,
-        cyclone_mortality_fn,
+        cyclone_mortality_fn
     )
 end
 function load_domain(path::String, rcp::String)::ADRIADomain

@@ -67,7 +67,7 @@ function load_nc_data(
     data_fn::String,
     attr::String;
     dim_names::Vector{Symbol}=Symbol[],
-    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[],
+    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
     local data
     try
@@ -82,13 +82,13 @@ function fallback_nc_data(
     data_fn::String,
     attr::String;
     dim_names::Vector{Symbol}=Symbol[],
-    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[],
+    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
     NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
         data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
 
         if isempty(dim_names)
-            dim_names = [Symbol(dim.name) for dim in nc_file.vars[attr].dim]
+            dim_names = [Symbol(dim.name) for dim ∈ nc_file.vars[attr].dim]
         end
 
         if !isempty(dim_names_replace)
@@ -120,11 +120,11 @@ function _nc_dim_labels(
     catch err
         error(
             "Error loading $data_fn : could not determine number of locations." *
-            "Detected size: $(size(data)) | Known number of locations: $(length(sites))",
+            "Detected size: $(size(data)) | Known number of locations: $(length(sites))"
         )
     end
 
-    dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
+    dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n ∈ size(data)]
     dim_labels[sites_idx] = sites
 
     return dim_labels
@@ -154,7 +154,9 @@ end
 function load_cover(n_species::Int64, n_sites::Int64)::YAXArray
     @warn "Using random initial coral cover"
 
-    return DataCube(rand(Float32, n_species, n_sites); species=1:(n_species), sites=1:n_sites)
+    return DataCube(
+        rand(Float32, n_species, n_sites); species=1:(n_species), sites=1:n_sites
+    )
 end
 
 """
@@ -202,10 +204,10 @@ from 1 up to that axis length.
 - `axes_names` :
 """
 function DataCube(data::AbstractArray; kwargs...)::YAXArray
-    return YAXArray(Tuple(Dim{name}(val) for (name, val) in kwargs), data)
+    return YAXArray(Tuple(Dim{name}(val) for (name, val) ∈ kwargs), data)
 end
 function DataCube(data::AbstractArray, axes_names::Tuple)::YAXArray
-    return DataCube(data; NamedTuple{axes_names}(1:len for len in size(data))...)
+    return DataCube(data; NamedTuple{axes_names}(1:len for len ∈ size(data))...)
 end
 
 """
@@ -220,10 +222,10 @@ are passed, all axes labels will be ranges.
 - `axes_sizes` : Tuple of axes sizes
 """
 function ZeroDataCube(; T::DataType=Float64, kwargs...)::YAXArray
-    return DataCube(zeros(T, [length(val) for (name, val) in kwargs]...); kwargs...)
+    return DataCube(zeros(T, [length(val) for (name, val) ∈ kwargs]...); kwargs...)
 end
 function ZeroDataCube(axes_names::Tuple, axes_sizes::Tuple; T::DataType=Float64)::YAXArray
-    return ZeroDataCube(; T=T, NamedTuple{axes_names}(1:size for size in axes_sizes)...)
+    return ZeroDataCube(; T=T, NamedTuple{axes_names}(1:size for size ∈ axes_sizes)...)
 end
 
 """
@@ -294,6 +296,6 @@ end
 Copy a YAXArray data cube.
 """
 function Base.copy(cube::YAXArray)::YAXArray
-    new_axlist = Tuple(ax for ax in deepcopy(cube.axes))
+    new_axlist = Tuple(ax for ax ∈ deepcopy(cube.axes))
     return YAXArray(new_axlist, copy(cube.data))
 end

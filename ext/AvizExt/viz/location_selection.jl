@@ -37,7 +37,7 @@ function ADRIA.viz.ranks_to_frequencies!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     sym_rank_ids = Symbol.(rank_ids)
-    rank_groups = Dict(rank_grp => rank_grp .== sym_rank_ids for rank_grp in sym_rank_ids)
+    rank_groups = Dict(rank_grp => rank_grp .== sym_rank_ids for rank_grp ∈ sym_rank_ids)
 
     if :colormap in keys(opts)
         @assert opts[:color_map] isa Dict
@@ -58,7 +58,7 @@ function ADRIA.viz.ranks_to_frequencies!(
         rs,
         frequencies[ranks=rank_ids[1]];
         opts=opts,
-        axis_opts=axis_opts,
+        axis_opts=axis_opts
     )
     legend_els[1] = PolyElement(;
         color=all_colormaps[Symbol(rank_ids[1])][2], strokecolor=:grey, strokewidth=1
@@ -66,7 +66,7 @@ function ADRIA.viz.ranks_to_frequencies!(
     legend_labels[1] = string("Rank ", string(rank_ids[1]))
     ax = content(g[1, 1])  # get GeoAxis
 
-    for rr in rank_ids[2:end]
+    for rr ∈ rank_ids[2:end]
         poly!(
             ax,
             geodata;
@@ -75,7 +75,7 @@ function ADRIA.viz.ranks_to_frequencies!(
             strokecolor=:grey,
             strokewidth=0.5,
             linestyle=:solid,
-            overdraw=true,
+            overdraw=true
         )
         legend_els[rr] = PolyElement(;
             color=all_colormaps[Symbol(rr)][2], strokecolor=:grey, strokewidth=1
@@ -97,7 +97,7 @@ function ADRIA.viz.ranks_to_frequencies!(
     opts[:color_map] = get(
         opts,
         :color_map,
-        [RGBA{Float32}(1.0, 1.0, 1.0, 1.0), RGBA{Float32}(0.00784314, 0.243137, 1.0, 1.0)],
+        [RGBA{Float32}(1.0, 1.0, 1.0, 1.0), RGBA{Float32}(0.00784314, 0.243137, 1.0, 1.0)]
     )
 
     return ADRIA.viz.map!(
@@ -105,7 +105,7 @@ function ADRIA.viz.ranks_to_frequencies!(
         rs,
         frequencies[ranks=rank_id].data;
         opts=opts,
-        axis_opts=axis_opts,
+        axis_opts=axis_opts
     )
 end
 function ADRIA.viz.ranks_to_frequencies(
@@ -124,7 +124,7 @@ function ADRIA.viz.ranks_to_frequencies(
         frequencies,
         rank_ids;
         opts=opts,
-        axis_opts=axis_opts,
+        axis_opts=axis_opts
     )
 
     return f
@@ -150,6 +150,6 @@ function _default_colormap(
     return Dict(
         rank_grp =>
             [RGBA{Float32}(1.0, 1.0, 1.0, 0.1), rank_colors[rank_grp]] for
-        rank_grp in rank_ids
+        rank_grp ∈ rank_ids
     )
 end

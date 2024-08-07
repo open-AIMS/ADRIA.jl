@@ -2,15 +2,14 @@ using Test
 using ADRIA
 using ADRIA.Distributions
 
-
 @testset "proportional adjustment" begin
     Y = rand(5, 36, 20)
-    for i in axes(Y, 1)
+    for i ∈ axes(Y, 1)
         Y[i, :, :] .= Y[i, :, :] / sum(Y[i, :, :]; dims=1)
     end
 
     tmp = zeros(20)
-    for i in axes(Y, 1)
+    for i ∈ axes(Y, 1)
         # No warning should be emitted when values are between 0 and 1
         Test.@test_nowarn ADRIA.proportional_adjustment!(Y[i, :, :], tmp)
 
@@ -27,7 +26,7 @@ end
             1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
             1.0 1.0 1.0 1.0 0.8 0.8     # small massives
             1.0 1.0 1.0 1.0 1.2 1.2
-        ],
+        ]
     )   # large massives
 
     bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
@@ -43,7 +42,7 @@ end
             0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
             0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
             0.2 0.2 0.040 0.026 0.020 0.020
-        ],
+        ]
     )   # Large massives
 
     coral_params = ADRIA.coral_spec().params
@@ -51,7 +50,7 @@ end
     stored_mb_rate = coral_params.mb_rate
 
     # check each size class parameter matches that stored for it's size class
-    for i in 1:6
+    for i ∈ 1:6
         if i != 6
             @test all(
                 stored_growth_rate[coral_params.class_id .== i] .== growth_rates[:, i]
@@ -81,15 +80,15 @@ end
     )
 
     # check colony areas in cm^2 are within bounds designated by bin edges
-    for k in 1:6
+    for k ∈ 1:6
         @test all(
             stored_colony_mean_areas[coral_params.class_id .== k] .>=
-            bin_edge_diameters_cm2[k],
+            bin_edge_diameters_cm2[k]
         ) ||
             "Some colony areas for size class $k are larger than the size class upper bound."
         @test all(
             stored_colony_mean_areas[coral_params.class_id .== k] .>=
-            bin_edge_diameters_cm2[k],
+            bin_edge_diameters_cm2[k]
         ) ||
             "Some colony areas for size class $k are smaller than the size class lower bound."
     end
@@ -134,7 +133,7 @@ end
         51072.30305499843,
         68331.04154366927,
         91421.98332850973,
-        122315.9906084096,
+        122315.9906084096
     ]
 
     C_t = rand(Uniform(0.0, 0.01), 36, 216)
@@ -354,7 +353,7 @@ end
         140815.23524318123,
         60269.32989888545,
         51815.93369295262,
-        49022.921055841725,
+        49022.921055841725
     ]
 
     ADRIA.fecundity_scope!(fec_groups, fec_all, fec_params, C_t, Matrix(total_site_area'))
@@ -382,7 +381,7 @@ end
         LPdhwcoeff,
         DHWmaxtot,
         LPDprm2,
-        n_groups,
+        n_groups
     )
     @test all(0.0 .<= LPs .< 1.0) || "Larval Production must be between 0 and 1"
 end
@@ -604,7 +603,7 @@ end
         140815.23524318123,
         60269.32989888545,
         51815.93369295262,
-        49022.921055841725,
+        49022.921055841725
     ]
 
     max_cover = [
@@ -823,7 +822,7 @@ end
         0.17808912896691426,
         0.2891167192429022,
         0.26555555555555554,
-        0.5870553359683794,
+        0.5870553359683794
     ]
 
     avail_area = rand(1, 216)
@@ -836,7 +835,7 @@ end
     @test any(abs_recruits .> 10^4) || "At least some recruitment values should be > 10,000"
 
     theoretical_max = ((avail_area' .* max_cover .* total_site_area)' * 51.8)
-    for (i, rec) in enumerate(eachrow(abs_recruits))
+    for (i, rec) ∈ enumerate(eachrow(abs_recruits))
         @test all(rec' .<= theoretical_max) ||
             "Species group $i exceeded maximum theoretical number of settlers"
     end
@@ -880,7 +879,7 @@ end
     proportional = vec(init / sum(init; dims=1))
     C_cover[1, :, :] .= proportional
 
-    for tstep in 2:10
+    for tstep ∈ 2:10
         p.rec .= rand(Uniform(0.0, 0.1), 6, n_sites)
         growthODE(du, C_cover[tstep - 1, :, :], p, tstep)
         C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
@@ -898,7 +897,7 @@ end
     proportional = vec(init / sum(init; dims=1))
     C_cover[1, :, :] .= proportional
 
-    for tstep in 2:10
+    for tstep ∈ 2:10
         growthODE(du, C_cover[tstep - 1, :, :], p, 1)
         C_cover[tstep, :, :] .= C_cover[tstep - 1, :, :] .+ du
         C_cover[C_cover .< 0.0] .= 0.0

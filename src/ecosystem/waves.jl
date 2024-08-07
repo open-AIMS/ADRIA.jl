@@ -16,7 +16,7 @@ Proportion of corals that survive wave stress
 function wave_damage!(
     Sw_t::Matrix{T}, wave_scen::Array{T,3}, wave_mortality::Vector{T}, n_species::Int64
 )::Array{Float64,3} where {T<:Float64}
-    for sp::Int64 in 1:n_species
+    for sp::Int64 ∈ 1:n_species
         @views Sw_t[:, sp, :] .= wave_mortality[sp] .* wave_scen
     end
 

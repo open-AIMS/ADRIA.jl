@@ -1,6 +1,5 @@
 """Functions to interact with spatial datasets."""
 
-
 """
     _get_geom_col(gdf::DataFrame)::Union{Symbol, Bool}
 
