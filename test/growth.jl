@@ -25,9 +25,9 @@ end
             1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
             1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
             1.0 1.0 1.0 1.0 0.8 0.8     # small massives
-            1.0 1.0 1.0 1.0 1.2 1.2
+            1.0 1.0 1.0 1.0 1.2 1.2     # large massives
         ]
-    )   # large massives
+    )
 
     bin_widths = Float64[2, 3, 5, 10, 20, 40]'  # These bin widths have to line up with values in colony_areas()
 
@@ -41,9 +41,9 @@ end
             0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora
             0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
             0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
-            0.2 0.2 0.040 0.026 0.020 0.020
+            0.2 0.2 0.040 0.026 0.020 0.020    # Large massives
         ]
-    )   # Large massives
+    )
 
     coral_params = ADRIA.coral_spec().params
     stored_growth_rate = coral_params.growth_rate

@@ -156,8 +156,8 @@ function coral_spec()::NamedTuple
             1.0 3.0 3.0 3.0 3.0 3.0     # Corymbose Acropora
             1.0 2.4 2.4 2.4 2.4 2.4     # Corymbose non-Acropora
             1.0 1.0 1.0 1.0 0.8 0.8     # small massives
-            1.0 1.0 1.0 1.0 1.2 1.2]
-    )   # large massives
+            1.0 1.0 1.0 1.0 1.2 1.2]    # large massives
+    )
 
     # Convert linear extensions to delta coral in two steps.
     # First calculate what proportion of coral numbers that change size class
@@ -207,8 +207,8 @@ function coral_spec()::NamedTuple
             0.2 0.2 0.172 0.172 0.088 0.088    # Corymbose Acropora
             0.2 0.2 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
             0.2 0.2 0.040 0.026 0.020 0.020    # Small massives and encrusting
-            0.2 0.2 0.040 0.026 0.020 0.020]
-    )  # Large massives
+            0.2 0.2 0.040 0.026 0.020 0.020]   # Large massives
+    )
     params.mb_rate = mb'[:]
 
     # Natural adaptation / heritability
