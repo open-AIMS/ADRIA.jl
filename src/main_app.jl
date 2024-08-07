@@ -65,7 +65,8 @@ function adria_cmd_run()
 
     println("Results stored in: $(ADRIA.result_location(res))")
 
-    return _indicative_result_display(res)
+    _indicative_result_display(res)
+    return nothing
 end
 
 function adria_cmd_load()
@@ -73,7 +74,8 @@ function adria_cmd_load()
     println("Loading results stored in: $(res_loc)")
 
     res = ADRIA.load_results(res_loc)
-    return _indicative_result_display(res)
+    _indicative_result_display(res)
+    return nothing
 end
 
 """
@@ -126,8 +128,9 @@ function _indicative_result_display(res)
     # display(fig)
     # gui(fig)
 
-    return savefig(joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(ADRIA.store_name(res)).png"))
+    savefig(joinpath(ENV["ADRIA_OUTPUT_DIR"], "$(ADRIA.store_name(res)).png"))
 
     # TODO: Force display from commandline
     # https://discourse.julialang.org/t/how-to-display-the-plots-by-executing-the-file-from-command-line/13822/2
+    return nothing
 end

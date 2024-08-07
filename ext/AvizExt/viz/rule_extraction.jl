@@ -150,7 +150,8 @@ function _highlight_target_area(ax::Axis, condition::Vector{Vector}, scenarios::
     hlines!(ax, [last(condition[2])]; color=(:black, 0.4))
 
     # Highlight target area
-    return poly!(ax, _target_area(scenarios, condition); color=(:black, 0.08))
+    poly!(ax, _target_area(scenarios, condition); color=(:black, 0.08))
+    return nothing
 end
 
 function _find_limits(features::Vector{<:Real})
