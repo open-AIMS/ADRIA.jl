@@ -201,20 +201,23 @@ function coral_spec()::NamedTuple
     params = DataFrame()
 
     # Coral species are divided into taxa and size classes
-    taxa_names = string.(functional_group_names())
+    group_names = string.(functional_group_names())
 
-    # total number of "species" modelled in the current version.
-    n_taxa = length(taxa_names)
-    n_classes::Int64 = 7
-    n_groups_and_sizes::Int64 = n_taxa * n_classes
+    # Coral growth rates as linear extensions.
+    # All values in cm/year and are from (unpublished) ecoRRAP data.
+    _linear_extensions::Matrix{Float64} = linear_extensions()
 
-    tn = repeat(taxa_names; inner=n_classes)
+    # number of functional groups and size classes modelled in the current version.
+    n_groups::Int64, n_sizes::Int64 = size(_linear_extensions)
+    n_groups_and_sizes::Int64 = n_groups * n_sizes
+
+    tn = repeat(group_names; inner=n_sizes)
 
     # Create combinations of taxa names and size classes
     params.name = human_readable_name(tn; title_case=true)
-    params.taxa_id = repeat(1:n_taxa; inner=n_classes)
+    params.taxa_id = repeat(1:n_groups; inner=n_sizes)
 
-    params.class_id = repeat(1:n_classes, n_taxa)::Vector{Int64}
+    params.class_id = repeat(1:n_sizes, n_groups)::Vector{Int64}
     params.coral_id = String[join(x, "_") for x in zip(tn, params.taxa_id, params.class_id)]
 
     # Ecological parameters
@@ -223,12 +226,7 @@ function coral_spec()::NamedTuple
     # size classes and growth rates as linear extension (in cm per year).
     colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
     params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_groups_and_sizes)[:]
-
-    # Coral growth rates as linear extensions.
-    # All values in cm/year and are from (unpublished) ecoRRAP data.
-    linear_extension::Matrix{Float64} = linear_extensions()
-
-    params.linear_extension = reshape(linear_extension', n_groups_and_sizes)[:]
+    params.linear_extension = reshape(_linear_extensions', n_groups_and_sizes)[:]
 
     # Convert linear extensions to delta coral in two steps.
     # First calculate what proportion of coral numbers that change size class
@@ -236,7 +234,7 @@ function coral_spec()::NamedTuple
     #     coral sizes are evenly distributed within each bin.
     # Second, growth as transitions of cover to higher bins is estimated as
     #     rate of growth per year.
-    params.growth_rate .= reshape(growth_rate(linear_extension, bin_widths()), n_groups_and_sizes)[:]
+    params.growth_rate .= reshape(growth_rate(_linear_extensions, bin_widths()), n_groups_and_sizes)[:]
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
@@ -250,7 +248,7 @@ function coral_spec()::NamedTuple
     fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
 
     # Colonies with area (in cm2) below indicated size are not fecund (reproductive)
-    fec[colony_area_cm2 .< min_colony_area_full_fec] .= 0.0
+    fec[colony_area_cm2.<min_colony_area_full_fec] .= 0.0
 
     # then convert to number of larvae produced per m2
     fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
@@ -290,7 +288,7 @@ function coral_spec()::NamedTuple
             4.487465256,  # Pocillopora + non-Acropora corymbose
             6.165751937,  # Small massives and encrusting
             7.153507902   # Large massives
-        ], inner=n_classes)
+        ], inner=n_sizes)
 
     params.dist_std = repeat(Float64[
             # 2.590016677,  # arborescent Acropora
@@ -299,13 +297,13 @@ function coral_spec()::NamedTuple
             3.474118416,  # Pocillopora + non-Acropora corymbose
             4.773419097,  # Small massives and encrusting
             5.538122776   # Large massives
-        ], inner=n_classes)
+        ], inner=n_sizes)
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list
     param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "coral_id"])
 
-    return (taxa_names=taxa_names, param_names=param_names, params=params)
+    return (taxa_names=group_names, param_names=param_names, params=params)
 end
 
 """
