@@ -64,7 +64,8 @@ function normalize!(data::AbstractArray{T})::AbstractArray{T} where {T<:Union{Mi
         return data
     end
 
-    return data .= (data .- mi) ./ (ma - mi)
+    data .= (data .- mi) ./ (ma - mi)
+    return data
 end
 
 """
