@@ -1,12 +1,13 @@
 """
-    CoralGrowth(n_sites::Integer, n_species::Integer, n_groups::Integer, ode_p::NamedTuple)
+    CoralGrowth(n_locs::Integer, n_groups::Integer, n_sizes::Integer, ode_p::NamedTuple)
 
 Coral growth specification for growth ODE model.
 """
 struct CoralGrowth{A<:Integer,T<:NamedTuple}
-    n_sites::A
-    n_species::A
+    n_locs::A
     n_groups::A
+    n_sizes::A
+    n_group_and_size::A
 
     ode_p::T
 end
@@ -15,37 +16,44 @@ end
 """
     CoralGrowth(n_sites)
 
-Implements temporary hardcoded caches for a scenario with 36 'species' (split into 6 groups).
+Implements temporary hardcoded caches for a scenario with 35 'species' (split into 5 groups).
 """
-function CoralGrowth(n_sites::Int64)::CoralGrowth
-    n_species, n_groups = 36, 6
+function CoralGrowth(n_locs::Int64)
+    n_groups::Int64, n_sizes::Int64 = 5, 6
+    return CoralGrowth(n_locs, n_groups, n_sizes)
+end
+function CoralGrowth(n_locs::Int64, n_groups::Int64, n_sizes::Int64)::CoralGrowth
+    n_group_and_size::Int64 = n_groups * n_sizes
 
     # Store specific indices for use in growth ODE function
-    # These are specific to the 36 "species"/ 6 group formulation
-    small::SVector = @SVector [1, 7, 13, 19, 25, 31]
-    mid::SVector = SVector{24}(collect([2:5; 8:11; 14:17; 20:23; 26:29; 32:35]))
-    large::SVector = @SVector [6, 12, 18, 24, 30, 36]
+    # These are specific to the 35 "species"/ 5 group formulation
+    small::SVector = @SVector [1, 8, 15, 22, 29]
+    mid::SVector = SVector{25}(collect([2:6; 9:13; 16:20; 23:27; 30:34]))
+    large::SVector = @SVector [7, 14, 21, 28, 35]
 
+    # Values for ode_p
+    # TODO: The named tuple was for use with ODE solvers, which is no unneeded.
+    # These caches should all be moved into the `CoralGrowth` struct.
     p = @NamedTuple{
-            small::StaticArrays.SVector{6,Int64},           # indices for small size classes
-            mid::StaticArrays.SVector{24,Int64},            # indices for mid-size corals
-            large::StaticArrays.SVector{6,Int64},           # indices for large corals
-            rec::Matrix{Float64},                           # recruitment values, where `s` relates to available space (not max carrying capacity)
-            sXr::Matrix{Float64},                           # s * X * r
-            X_mb::Matrix{Float64},                          # X * mb
-            r::Vector{Float64},                             # growth rate
-            mb::Vector{Float64}                             # background mortality
+            small::StaticArrays.SVector{5,Int64},  # indices for small size classes
+            mid::StaticArrays.SVector{25,Int64},   # indices for mid-size corals
+            large::StaticArrays.SVector{5,Int64},  # indices for large corals
+            rec::Matrix{Float64},                  # recruitment values, where `s` relates to available space (not max carrying capacity)
+            sXr::Array{Float64, 3},                  # s * X * r
+            X_mb::Array{Float64, 3},                 # X * mb
+            r::Matrix{Float64},                    # growth rate
+            mb::Matrix{Float64}                    # background mortality
         }((                        # cache matrix to hold X (current coral cover)
-        # cached indices
+        # Cached indices
         small, mid, large,
 
-        # cache matrices
-        zeros(n_groups, n_sites),  # rec
-        zeros(n_species, n_sites), # sXr
-        zeros(n_species, n_sites),  # X_mb
-        zeros(n_species),  # r
-        zeros(n_species)   # mb
+        # Cache matrices
+        zeros(n_groups, n_locs),           # rec
+        zeros(n_groups, n_sizes, n_locs),  # sXr
+        zeros(n_groups, n_sizes, n_locs),  # X_mb
+        zeros(n_groups, n_sizes),          # r
+        zeros(n_groups, n_sizes)           # mb
     ))
 
-    return CoralGrowth(n_sites, n_species, n_groups, p)
+    return CoralGrowth(n_locs, n_groups, n_sizes, n_group_and_size, p)
 end

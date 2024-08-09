@@ -30,7 +30,7 @@ function distribute_seeded_corals(
     # Convert to relative cover proportion by dividing by location area
     scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
     #scaled_seed = ((prop_area_avail .* seeded_area') ./ seed_loc_k_m²)'
-    
+
     return DataCube(scaled_seed, taxa=caxes(seeded_area)[1].val.data, locations=1:length(available_space))
 end
 
@@ -78,6 +78,68 @@ function seed_corals!(
 
     # Seed each location and log
     @views cover[seed_sc, seed_locs] .+= scaled_seed
+    Yseed[:, seed_locs] .= scaled_seed
+
+    # Calculate distribution weights using proportion of area (used as priors for MixtureModel)
+    # Note: It is entirely possible for a location to be ranked in the top N, but
+    #       with no deployments (for a given species). A location with 0 cover
+    #       and no deployments will therefore be NaN due to zero division.
+    #       These are replaced with 1.0 so that the distribution for unseeded
+    #       corals are used.
+    w_taxa::Matrix{Float64} = scaled_seed ./ cover[seed_sc, seed_locs]
+    replace!(w_taxa, NaN => 1.0)
+
+    # Update critical DHW distribution for deployed size classes
+    for (i, loc) in enumerate(seed_locs)
+        # Previous distributions
+        c_dist_ti = @view(c_dist_t[seed_sc, loc])
+
+        # Truncated normal distributions for deployed corals
+        # Assume same stdev and bounds as original
+        tn::Vector{Float64} = truncated_normal_mean.(
+            a_adapt[seed_sc], stdev[seed_sc], 0.0, a_adapt[seed_sc] .+ HEAT_UB,
+        )
+
+        # If seeding an empty location, no need to do any further calculations
+        if all(isapprox.(w_taxa[:, i], 1.0))
+            c_dist_t[seed_sc, loc] .= tn
+            continue
+        end
+
+        # Create new distributions by mixing previous and current distributions using
+        # proportional cover as the priors/weights
+        # Priors (weights based on cover for each species)
+        tx::Vector{Weights} = Weights.(eachcol(vcat(w_taxa[:, i]', 1.0 .- w_taxa[:, i]')))
+        c_dist_t[seed_sc, loc] = sum.(eachcol(vcat(c_dist_ti', tn')), tx)
+    end
+
+    return nothing
+end
+function seed_corals!(
+    cover::AbstractArray{Float64, 3},
+    loc_k_area::Vector{T},
+    leftover_space_m²::Vector{T},
+    seed_locs::Vector{Int64},
+    seeded_area::YAXArray,
+    seed_sc::Matrix{Bool},
+    a_adapt::Matrix{T},
+    Yseed::SubArray,
+    stdev::Matrix{T},
+    c_dist_t::Array{Float64, 3},
+)::Nothing where {T<:Float64}
+    # Selected locations can fill up over time so avoid locations with no space
+    seed_locs = seed_locs[findall(leftover_space_m²[seed_locs] .> 0.0)]
+    loc_mask::BitVector = [loc in seed_locs for loc in 1:length(loc_k_area)]
+
+    # Calculate proportion to seed based on current available space
+    scaled_seed = distribute_seeded_corals(
+        loc_k_area[seed_locs],
+        leftover_space_m²[seed_locs],
+        seeded_area,
+    )
+
+    # Seed each location and log
+    cover[seed_sc, loc_mask] .+= scaled_seed
     Yseed[:, seed_locs] .= scaled_seed
 
     # Calculate distribution weights using proportion of area (used as priors for MixtureModel)

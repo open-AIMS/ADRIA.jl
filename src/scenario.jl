@@ -1,5 +1,15 @@
 """Scenario running functions"""
 
+using CoralBlox
+import CoralBlox.SizeClass
+import CoralBlox.FunctionalGroup
+import CoralBlox.reuse_buffers!
+import CoralBlox.apply_mortality!
+import CoralBlox.timestep!
+import CoralBlox.coral_cover
+import CoralBlox.max_projected_cover
+import CoralBlox.linear_extension_scale_factors
+
 using ADRIA.metrics:
     relative_cover,
     relative_loc_taxa_cover,
@@ -18,26 +28,56 @@ Establish tuple of matrices/vectors for use as reusable data stores to avoid rep
 function setup_cache(domain::Domain)::NamedTuple
 
     # Simulation constants
-    n_sites::Int64 = domain.coral_growth.n_sites
-    n_species::Int64 = domain.coral_growth.n_species
+    n_locs::Int64 = domain.coral_growth.n_locs
+    n_group_and_size::Int64 = domain.coral_growth.n_group_and_size
+    n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
     tf = length(timesteps(domain))
 
     cache = (
         # sf=zeros(n_groups, n_sites),  # stressed fecundity, commented out as it is disabled
-        fec_all=zeros(n_species, n_sites),  # all fecundity
-        fec_scope=zeros(n_groups, n_sites),  # fecundity scope
-        recruitment=zeros(n_groups, n_sites),  # coral recruitment
-        dhw_step=zeros(n_sites),  # DHW for each time step
-        cov_tmp=zeros(n_species, n_sites),  # Cover for previous timestep
-        depth_coeff=zeros(n_sites),  # store for depth coefficient
+        fec_all=zeros(n_groups, n_sizes, n_locs),  # all fecundity
+        fec_scope=zeros(n_groups, n_locs),  # fecundity scope
+        recruitment=zeros(n_groups, n_locs),  # coral recruitment
+        dhw_step=zeros(n_locs),  # DHW for each time step
+        C_cover_t=zeros(n_groups, n_sizes, n_locs),  # Cover for previous timestep
+        depth_coeff=zeros(n_locs),  # store for depth coefficient
         site_area=Matrix{Float64}(site_area(domain)'),  # area of locations
         site_k_area=Matrix{Float64}(site_k_area(domain)'),  # location carrying capacity
-        wave_damage=zeros(tf, n_species, n_sites),  # damage coefficient for each size class
-        dhw_tol_mean_log=zeros(tf, n_species, n_sites),  # tmp log for mean dhw tolerances
+        wave_damage=zeros(tf, n_group_and_size, n_locs),  # damage coefficient for each size class
+        dhw_tol_mean_log=zeros(tf, n_group_and_size, n_locs),  # tmp log for mean dhw tolerances
     )
 
     return cache
+end
+
+"""
+    _reshape_init_cover(data::AbstractMatrix{<:Union{Float32, Float64}})
+
+Reshape initial coral cover of shape [groups_and_sizes ⋅ locations] to shape
+[groups ⋅ sizes ⋅ locations]
+"""
+function _reshape_init_cover(
+    C_cover::AbstractMatrix{T},
+    dims::NTuple{3,Int64}
+)::Array{T} where {T<:Union{Float32,Float64}}
+    return permutedims(
+        reshape(
+            C_cover,
+            dims
+        ),
+        (2, 1, 3)
+    )
+end
+
+"""
+    _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+
+Reshape vector to shape [functional_groups ⋅ sizes]
+"""
+function _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{T})::Matrix{T} where {T<:Union{Float32,Float64,Bool}}
+    # Data is reshaped to size ⋅ groups then transposed to maintain expected order
+    return Matrix(reshape(data, (growth_spec.n_sizes, growth_spec.n_groups))')
 end
 
 """
@@ -101,8 +141,30 @@ function run_scenarios(
         Matrix(scenarios_df); scenarios=1:nrow(scenarios_df), factors=names(scenarios_df)
     )
 
+    # The idea to initialise the functional groups here is so that each scenario run can
+    # reuse the memory. After a few scenarios runs there will be very few new
+    # allocations as buffers grow larger and are not exceeded
+    #
+    # The problem is that even if a subsequent run only has to reallocate once, the
+    # buffer is so large it takes very long regardless.
+    #
+    # This is also forced me to added an argument to run_model which breaks
+    # encapsulation, so its quite ugly
+    n_locs::Int64 = dom.coral_growth.n_locs
+    n_sizes::Int64 = dom.coral_growth.n_sizes
+    n_groups::Int64 = dom.coral_growth.n_groups
+    _bin_edges::Matrix{Float64} = bin_edges()
+    functional_groups = [
+        FunctionalGroup.(
+            eachrow(_bin_edges[:, 1:end-1]),
+            eachrow(_bin_edges[:, 2:end]),
+            eachrow(zeros(n_groups, n_sizes))
+        ) for _ in 1:n_locs
+    ]
+
     para_threshold = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
-    parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (nrow(scens) >= para_threshold)
+    active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
+    parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (active_cores > 1) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
@@ -119,7 +181,7 @@ function run_scenarios(
             #       (at the cost of increased run time) but resolves the kernel crash issue.
             @sync @async @everywhere @eval begin
                 using ADRIA
-                func = (dfx) -> run_scenario(dfx..., data_store)
+                func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
             end
         end
 
@@ -128,7 +190,7 @@ function run_scenarios(
 
     if parallel
         # Define local helper
-        func = (dfx) -> run_scenario(dfx..., data_store)
+        func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
 
         try
             for rcp in RCP
@@ -154,7 +216,7 @@ function run_scenarios(
         end
     else
         # Define local helper
-        func = dfx -> run_scenario(dfx..., data_store)
+        func = dfx -> run_scenario(dfx..., functional_groups, data_store)
 
         for rcp in RCP
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
@@ -187,10 +249,9 @@ function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
 end
 
 """
-    run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector, DataFrameRow}, data_store::NamedTuple)::Nothing
-    run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector, DataFrameRow}, domain::Domain, data_store::NamedTuple)::Nothing
-    run_scenario(domain::Domain, scenario::Union{AbstractVector, DataFrameRow})::NamedTuple
-    run_scenario(domain::Domain, scenario::NamedTuple)::NamedTuple
+    run_scenario(domain::Domain, idx::Int64, scenario::Union{AbstractVector,DataFrameRow}, functional_groups::Vector{Vector{FunctionalGroup}}, data_store::NamedTuple)::Nothing
+    run_scenario(domain::Domain, scenario::Union{AbstractVector,DataFrameRow})::NamedTuple
+    run_scenario(domain::Domain, scenario::Union{AbstractVector,DataFrameRow}, RCP::String)::NamedTuple
 
 Run individual scenarios for a given domain, saving results to a Zarr data store.
 Results are stored in Zarr format at a pre-configured location.
@@ -207,6 +268,7 @@ function run_scenario(
     domain::Domain,
     idx::Int64,
     scenario::Union{AbstractVector,DataFrameRow},
+    functional_groups::Vector{Vector{FunctionalGroup}}, # additional argument for reusable buffer
     data_store::NamedTuple,
 )::Nothing
     if domain.RCP == ""
@@ -224,7 +286,7 @@ function run_scenario(
         domain = switch_RCPs!(domain, rcp)
     end
 
-    result_set = run_model(domain, scenario)
+    result_set = run_model(domain, scenario, functional_groups)
 
     # Capture results to disk
     # Set values below threshold to 0 to save space
@@ -252,11 +314,11 @@ function run_scenario(
     vals[vals.<threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
-    vals = relative_taxa_cover(rs_raw, site_k_area(domain))
+    vals = relative_taxa_cover(rs_raw, site_k_area(domain), domain.coral_growth.n_groups)
     vals[vals.<threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
-    vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain))
+    vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain), domain.coral_growth.n_groups)
     vals = coral_evenness(vals.data)
     vals[vals.<threshold] .= 0.0
     data_store.coral_evenness[:, :, idx] .= vals
@@ -316,18 +378,48 @@ function run_scenario(
 end
 
 """
-    run_model(domain::Domain, param_set::Union{NamedTuple,DataFrameRow})::NamedTuple
+    run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})::NamedTuple
+    run_model(domain::Domain, param_set::DataFrameRow, functional_groups::Vector{Vector{FunctionalGroup}})::NamedTuple
+    run_model(domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}})::NamedTuple
 
-Core scenario running function.
+Core scenario running function. When called with only `domain` and `param_set` arguments,
+`ADRIA.setup()` must be run beforehand.
 
 # Returns
 NamedTuple of collated results
+- `raw` : Array, Coral cover relative to k area
+- `seed_log` : Array, Log of seeded locations
+- `fog_log` : Array, Log of fogged locations
+- `shade_log` : Array, Log of shaded locations
+- `site_ranks` : Array, Log of location rankings
+- `bleaching_mortality` : Array, Log of mortalities caused by bleaching
+- `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
-function run_model(domain::Domain, param_set::DataFrameRow)::NamedTuple
-    ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps)
+function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})::NamedTuple
+    n_locs::Int64 = domain.coral_growth.n_locs
+    n_sizes::Int64 = domain.coral_growth.n_sizes
+    n_groups::Int64 = domain.coral_growth.n_groups
+    _bin_edges::Matrix{Float64} = bin_edges()
+    functional_groups = [
+        FunctionalGroup.(
+            eachrow(_bin_edges[:, 1:end-1]),
+            eachrow(_bin_edges[:, 2:end]),
+            eachrow(zeros(n_groups, n_sizes))
+        ) for _ in 1:n_locs
+    ]
+    return run_model(domain, param_set, functional_groups)
 end
-function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
+function run_model(
+    domain::Domain,
+    param_set::DataFrameRow,
+    functional_groups::Vector{Vector{FunctionalGroup}}
+)::NamedTuple
+    ps = DataCube(Vector(param_set); factors=names(param_set))
+    return run_model(domain, ps, functional_groups)
+end
+function run_model(
+    domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}
+)::NamedTuple
     p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
@@ -370,19 +462,16 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         cyclone_mortality_scen = copy(domain.cyclone_mortality_scens[:, :, :, 1])
         cyclone_mortality_scen .= 0.0
     end
-
-    tspan::Tuple = (0.0, 1.0)
-    solver::Euler = Euler()
-
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
 
     # Sim constants
     sim_params = domain.sim_constants
     tf::Int64 = size(dhw_scen, 1)
-    n_locs::Int64 = domain.coral_growth.n_sites
-    n_species::Int64 = domain.coral_growth.n_species
+    n_locs::Int64 = domain.coral_growth.n_locs
     n_groups::Int64 = domain.coral_growth.n_groups
+    n_sizes::Int64 = domain.coral_growth.n_sizes
+    n_group_and_size::Int64 = domain.coral_growth.n_group_and_size
 
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
@@ -400,7 +489,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     fog_years::Int64 = param_set[At("fog_years")]  # number of years to fog
 
     loc_k_area::Matrix{Float64} = cache.site_k_area
-    fec_params_per_m²::Vector{Float64} = corals.fecundity  # number of larvae produced per m²
+    fec_params_per_m²::Matrix{Float64} = _to_group_size(domain.coral_growth, corals.fecundity) # number of larvae produced per m²
 
     # Caches
     conn = domain.conn
@@ -408,25 +497,28 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     # Determine contribution of each source to a sink location
     # i.e., columns should sum to 1!
     TP_data = conn ./ sum(conn; dims=1)
+    replace!(TP_data, NaN => 0)
 
     # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
     fec_scope = cache.fec_scope
     recruitment = cache.recruitment
     dhw_t = cache.dhw_step
-    C_t = cache.cov_tmp
+    C_cover_t = cache.C_cover_t
     depth_coeff = cache.depth_coeff
 
     site_data = domain.site_data
     depth_coeff .= depth_coefficient.(site_data.depth_med)
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
-    C_cover::Array{Float64,3} = zeros(tf, n_species, n_locs)
-    C_cover[1, :, :] .= domain.init_coral_cover
-    cover_tmp = zeros(n_locs)
+    C_cover::Array{Float64,4} = zeros(tf, n_groups, n_sizes, n_locs)
+    C_cover[1, :, :, :] .= _reshape_init_cover(domain.init_coral_cover, (n_sizes, n_groups, n_locs))
+    loc_cover_cache = zeros(n_locs)
 
     # Locations that can support corals
-    valid_locs::BitVector = location_k(domain) .> 0.0
+    habitable_locs::BitVector = location_k(domain) .> 0.0
+    habitable_loc_areas = site_k_area(domain)[habitable_locs]
+    habitable_loc_areas′ = reshape(habitable_loc_areas, (1, 1, length(habitable_locs)))
 
     # Avoid placing importance on sites that were not considered
     # Lower values are higher importance/ranks.
@@ -458,20 +550,24 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     seed_decision_years = decision_frequency(seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")])
     fog_decision_years = decision_frequency(fog_start_year, tf, fog_years, param_set[At("fog_deployment_freq")])
     shade_decision_years = decision_frequency(shade_start_year, tf, shade_years, param_set[At("shade_deployment_freq")])
-    # Define taxa and size class to seed, and identify their factor names
-    taxa_to_seed = [2, 3, 5]
-    target_class_id::BitArray = corals.class_id .== 2  # seed second smallest size class
+
     taxa_names::Vector{String} = collect(param_set.factors[occursin.("N_seed_", param_set.factors)])
 
-    # Identify taxa and size class to be seeded
-    seed_sc = (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id
+    # Define taxa and size class to seed, and identify their factor names
+    # TODO: Seed 1-year old corals!!! If this is the 1st size class, that's fine but needs
+    # to be confirmed with ecoRRAP
+    taxa_to_seed = [2, 3, 5]
+    target_class_id::BitArray = corals.class_id .== 1
+    seed_sc = _to_group_size(domain.coral_growth, (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id)
 
     # Extract colony areas for sites selected in m^2 and add adaptation values
-    colony_areas = colony_mean_area(corals.mean_colony_diameter_m)
+    colony_areas = _to_group_size(
+        domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
+    )
     seeded_area = colony_areas[seed_sc] .* param_set[At(taxa_names)]
 
     # Set up assisted adaptation values
-    a_adapt = zeros(n_species)
+    a_adapt = zeros(n_groups, n_sizes)
     a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
     # Flag indicating whether to seed or not to seed when unguided
@@ -492,7 +588,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         site_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
 
-    coral_habitable_locs = site_data.k .> 0.0
     if is_guided
         seed_pref = SeedPreferences(domain, param_set)
         fog_pref = FogPreferences(domain, param_set)
@@ -510,18 +605,23 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         # Remove locations that cannot support corals or are out of depth bounds
         # from consideration
-        _valid_locs = coral_habitable_locs .& depth_criteria
+        _valid_locs = habitable_locs .& depth_criteria
         decision_mat = decision_mat[_valid_locs, :]
-
-        # IDs of valid locations after depth thresholds and k area filter are applied
-        considered_locs = findall(_valid_locs)
 
         # Number of time steps in environmental layers to look ahead when making decisions
         plan_horizon::Int64 = Int64(param_set[At("plan_horizon")])
     end
 
     # Set up distributions for natural adaptation/heritability
-    c_mean_t_1::Matrix{Float64} = repeat(corals.dist_mean, 1, n_locs)
+    c_mean_t_1::Array{Float64,3} = repeat(
+        _to_group_size(domain.coral_growth, corals.dist_mean),
+        1,
+        1,
+        n_locs
+    )
+    c_std::Array{Float64,2} = _to_group_size(
+        domain.coral_growth, corals.dist_std
+    )
 
     c_mean_t = copy(c_mean_t_1)
 
@@ -529,23 +629,22 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
 
     # Cache for proportional mortality and coral population increases
-    bleaching_mort = zeros(tf, n_species, n_locs)
+    bleaching_mort = zeros(tf, n_groups, n_sizes, n_locs)
 
     #### End coral constants
 
     ## Update ecological parameters based on intervention option
 
     # Treat as enhancement from mean of "natural" DHW tolerance
-    a_adapt[a_adapt.>0.0] .+= corals.dist_mean[a_adapt.>0.0]
+    a_adapt[a_adapt.>0.0] .+= _to_group_size(
+        domain.coral_growth, corals.dist_mean
+    )[a_adapt.>0.0]
 
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
-    p.r .= corals.growth_rate
-    p.mb .= corals.mb_rate
-    ode_u = zeros(n_species, n_locs)
-    growth::ODEProblem = ODEProblem{true}(growthODE, ode_u, tspan, p)
-    alg_hint = Symbol[:nonstiff]
+    p.r .= _to_group_size(domain.coral_growth, corals.growth_rate)
+    p.mb .= _to_group_size(domain.coral_growth, corals.mb_rate)
 
     area_weighted_conn = conn .* site_k_area(domain)
     conn_cache = similar(area_weighted_conn.data)
@@ -561,15 +660,87 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
+    _linear_extensions = _to_group_size(domain.coral_growth, corals.linear_extension)
+    _bin_edges = bin_edges()
+    survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
+
+    # Empty the old contents of the buffers and add the new blocks
+    cover_view = [@view C_cover[1, :, :, loc] for loc in 1:n_locs]
+    functional_groups = reuse_buffers!.(
+        functional_groups, (cover_view .* vec(loc_k_area))
+    )
+
+    # Preallocate memory for temporaries
+    survival_rate_cache = ones(n_groups, n_sizes, n_locs)
+    C_cover_t::Array{Float64,3} = zeros(n_groups, n_sizes, n_locs)
+    ΔC_cover_t = zeros(n_groups, n_sizes, n_locs)
+
+    # Max projected cover is used on linear extensions scale factors
+    habitable_max_projected_cover = max_projected_cover(
+        _linear_extensions,
+        _bin_edges,
+        habitable_loc_areas
+    )
+
+    FLoops.assistant(false)
     for tstep::Int64 in 2:tf
-        # Copy cover for previous timestep as basis for current timestep
-        C_t .= C_cover[tstep-1, :, :]
+        # Convert cover to absolute values to use within CoralBlox model
+        C_cover_t[:, :, habitable_locs] .= C_cover[tstep-1, :, :, habitable_locs] .* habitable_loc_areas′
 
+        lin_ext_scale_factors::Vector{Float64} = linear_extension_scale_factors(
+            C_cover_t[:, :, habitable_locs],
+            habitable_loc_areas,
+            _linear_extensions,
+            _bin_edges,
+            habitable_max_projected_cover,
+        )
+
+        # ? Should we bring this inside CoralBlox?
+        lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs].<(0.7 .* habitable_loc_areas)] .= 1
+
+        @floop for i in findall(habitable_locs)
+            # TODO Skip when _loc_rel_leftover_space[i] == 0
+
+            # Perform timestep
+            timestep!(
+                functional_groups[i],
+                recruitment[:, i],
+                _linear_extensions .* lin_ext_scale_factors[i],
+                survival_rate
+            )
+
+            # Write to the cover matrix
+            coral_cover(functional_groups[i], @view(C_cover_t[:, :, i]))
+        end
+
+        # Check if size classes are inappropriately out-growing habitable area
+        @assert (sum(_loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas) == 0) "Cover outgrowing habitable area"
+
+        # Convert C_cover_t to relative values after CoralBlox was run
+        C_cover_t[:, :, habitable_locs] .= C_cover_t[:, :, habitable_locs] ./ habitable_loc_areas′
+        C_cover[tstep, :, :, habitable_locs] .= C_cover_t[:, :, habitable_locs]
+
+        # Natural adaptation (doesn't change C_cover_t)
+        if tstep <= tf
+            adjust_DHW_distribution!(
+                @view(C_cover[(tstep-1), :, :, :]), c_mean_t, p.r
+            )
+
+            # Set values for t to t-1
+            c_mean_t_1 .= c_mean_t
+
+            if in_debug_mode
+                # Log dhw tolerances if in debug mode
+                dhw_tol_mean_log[tstep, :, :] .= mean.(c_mean_t)
+            end
+        end
+
+        # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
-        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_t, loc_k_area)
+        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, loc_k_area)
 
-        loc_coral_cover = sum(C_t; dims=1)  # dims: 1 * nsites
-        leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
+        loc_coral_cover = _loc_coral_cover(C_cover_t)
+        leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area'
 
         # Reset potential settlers to zero
         potential_settlers .= 0.0
@@ -577,7 +748,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
 
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
-        recruitment[:, valid_locs] .=
+        recruitment[:, habitable_locs] .=
             settler_cover(
                 fec_scope,
                 conn,
@@ -587,25 +758,18 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 basal_area_per_settler,
                 potential_settlers,
             )[
-                :, valid_locs
-            ] ./ loc_k_area[:, valid_locs]
+                :, habitable_locs
+            ] ./ loc_k_area[:, habitable_locs]
 
         settler_DHW_tolerance!(
             c_mean_t_1,
             c_mean_t,
-            site_k_area(domain),
+            vec(loc_k_area),
             TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
             fec_params_per_m²,
             param_set[At("heritability")],
         )
-
-        # Add recruits to current cover
-        C_t[p.small, :] .= recruitment
-
-        # Update available space
-        loc_coral_cover = sum(C_t, dims=1)  # dims: 1 * nsites
-        leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area
 
         # Determine intervention locations whose deployment is assumed to occur
         # between November to February.
@@ -622,6 +786,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # after spawning. If bio-banking or similar tech comes up to speed then we could
         # potentially deploy at alternate times.
 
+        # Shading
         # Apply regional cooling effect before selecting locations to seed
         dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         if apply_shading && shade_decision_years[tstep]
@@ -631,6 +796,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             dhw_t .= max.(0.0, dhw_t .- srm)
         end
 
+        # Fogging
         if is_guided
             if fog_decision_years[tstep] && (fogging .> 0.0)
                 selected_fog_ranks = select_locations(
@@ -663,7 +829,12 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
 
-        if is_guided && seed_decision_years[tstep]
+        # Seeding
+        # IDs of valid locations considering locations that have space for corals
+        locs_with_space = vec(leftover_space_m²) .> 0.0
+        if is_guided && seed_decision_years[tstep] && (length(locs_with_space) > 0)
+            considered_locs = findall(_valid_locs .& locs_with_space)
+
             # Use modified projected DHW (may have been affected by fogging or shading)
             dhw_p = copy(dhw_scen)
             dhw_p[tstep, :] .= dhw_t
@@ -684,10 +855,6 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 out_connectivity=out_conn[_valid_locs]
             )
 
-            # IDs of valid locations considering locations that have space for corals
-            locs_with_space = vec(leftover_space_m²) .> 0.0
-            considered_locs = findall(_valid_locs .& locs_with_space)
-
             selected_seed_ranks = select_locations(
                 seed_pref,
                 decision_mat[location=locs_with_space[_valid_locs]],
@@ -696,8 +863,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 area_to_seed,
                 considered_locs,
                 vec(leftover_space_m²),
-                Int64(param_set[At("min_iv_locations")]),
-                Int64(param_set[At("cluster_max_member")])
+                min_iv_locs,
+                max_members
             )
 
             # Log rankings as appropriate
@@ -714,6 +881,8 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             )
 
             log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .= 1.0
+
+            # Estimate proportional change in cover to apply to cubes
         end
 
         # Check if locations are selected (can reuse previous selection)
@@ -724,7 +893,7 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
             # Seed selected locations
             seed_locs = findall(log_location_ranks.locations .∈ [selected_seed_ranks])
             seed_corals!(
-                C_t,
+                C_cover_t,
                 vec(loc_k_area),
                 vec(leftover_space_m²),
                 seed_locs,  # use location indices
@@ -732,11 +901,21 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
                 seed_sc,
                 a_adapt,
                 @view(Yseed[tstep, :, :]),
-                corals.dist_std,
+                c_std,
                 c_mean_t,
             )
+
+            # Add coral seeding to recruitment
+            # (1,2,4) refer to the coral functional groups being seeded
+            recruitment[[1, 2, 4], :] .+= Yseed[tstep, :, :]
         end
 
+        # Apply disturbances
+
+        # ΔC_cover_t should only hold changes in cover due to env. disturbances
+        ΔC_cover_t .= copy(C_cover_t)
+
+        # Bleaching
         # Calculate and apply bleaching mortality
         # Bleaching typically occurs in the warmer months (November - February)
         #    This: `dhw_t .* (1.0 .- wave_scen[tstep, :])`
@@ -744,54 +923,30 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
         # `wave_scen` is normalized to the maximum value found for the given wave scenario
         # so what causes 100% mortality can differ between runs.
         bleaching_mortality!(
-            C_t,
+            C_cover_t,
             dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
             depth_coeff,
-            corals.dist_std,
+            c_std,
             c_mean_t_1,
             c_mean_t,
-            @view(bleaching_mort[(tstep-1):tstep, :, :])
+            @view(bleaching_mort[(tstep-1):tstep, :, :, :])
         )
 
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
-        cyclone_mortality!(@views(C_t), p, cyclone_mortality_scen[tstep, :, :]')
+        # TODO: Update cyclone data to hold data for relevant functional groups
+        cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
 
-        # Update initial condition
-        growth.u0 .= C_t
-        sol::ODESolution = solve(
-            growth,
-            solver;
-            save_everystep=false,
-            save_start=false,
-            alg_hints=alg_hint,
-            dt=1.0,
-        )
+        # Calculate survival_rate due to env. disturbances
+        ΔC_cover_t[ΔC_cover_t.==0.0] .= 1.0
+        survival_rate_cache .= C_cover_t ./ ΔC_cover_t
+        @assert sum(survival_rate_cache .> 1) == 0 "Survival rate should be <= 1"
 
-        # Assign results
-        # We need to clamp values as the ODE may return negative values.
-        C_cover[tstep, :, valid_locs] .= clamp!(sol.u[end][:, valid_locs], 0.0, 1.0)
+        survival_rate_slices = [@view survival_rate_cache[:, :, loc] for loc in 1:n_locs]
+        apply_mortality!.(functional_groups, survival_rate_slices)
+        recruitment .*= reshape(survival_rate_cache[:, 1, :], (n_groups, n_locs))
 
-        # Check if size classes are inappropriately out-growing available space
-        proportional_adjustment!(
-            @view(C_cover[tstep, :, valid_locs]),
-            cover_tmp[valid_locs]
-        )
-
-        if tstep <= tf
-            # Natural adaptation
-            adjust_DHW_distribution!(
-                @view(C_cover[(tstep-1):tstep, :, :]), n_groups, c_mean_t, p.r
-            )
-
-            # Set values for t to t-1
-            c_mean_t_1 .= c_mean_t
-
-            if in_debug_mode
-                # Log dhw tolerances if in debug mode
-                dhw_tol_mean_log[tstep, :, :] .= mean.(c_mean_t)
-            end
-        end
+        C_cover[tstep, :, :, :] .= C_cover_t
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
@@ -812,8 +967,14 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     wave_scen = nothing
     dhw_tol_mean_log = nothing
 
+    # Final reshape
+    raw = reshape(
+        permutedims(C_cover, (1, 3, 2, 4)),
+        (tf, n_group_and_size, n_locs)
+    )
+
     return (
-        raw=C_cover,
+        raw=raw,
         seed_log=Yseed,
         fog_log=Yfog,
         shade_log=Yshade,
@@ -823,16 +984,29 @@ function run_model(domain::Domain, param_set::YAXArray)::NamedTuple
     )
 end
 
+"""
+    cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
+    cyclone_mortality!(coral_cover::AbstractArray{Float64, 3}, cyclone_mortality::AbstractMatrix{Float64})::Nothing
+
+Apply cyclone mortalities.
+
+# Arguments
+- `coral_cover` : Coral cover for current time step
+- `coral_params` : Coral parameters indicating indices of small/mid/large size classes
+- `cyclone_mortality` : Mortalities for each functional group and size class
+"""
 function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
+    # TODO: Move to own file.
+
     # Small class coral mortality
-    coral_deaths_small = coral_cover[coral_params.small, :] .* cyclone_mortality
-    coral_cover[coral_params.small, :] -= coral_deaths_small
+    coral_deaths_small = coral_cover[:, 1, :] .* cyclone_mortality
+    coral_cover[coral_cover, 1, :] -= coral_deaths_small
 
     # Mid class coral mortality
-    coral_mid = hcat(collect(Iterators.partition(coral_params.mid, 4))...)
-    for row in eachrow(coral_mid)
-        coral_deaths_mid = coral_cover[row, :] .* cyclone_mortality
-        coral_cover[row, :] -= coral_deaths_mid
+    coral_mid = hcat(collect(Iterators.partition(coral_params.mid, length(coral_params.small)))...)
+    for i in 1:size(coral_mid, 1)
+        coral_deaths_mid = coral_cover[coral_mid[i, :], :] .* cyclone_mortality
+        coral_cover[coral_mid[i, :], :] -= coral_deaths_mid
     end
 
     # Large class coral mortality
@@ -844,3 +1018,13 @@ function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothi
 
     return nothing
 end
+function cyclone_mortality!(
+    coral_cover::AbstractArray{Float64,3}, cyclone_mortality::AbstractMatrix{Float64}
+)::Nothing
+    n_groups, n_locs = size(cyclone_mortality)
+    coral_cover .= coral_cover .* (1 .- reshape(cyclone_mortality, (n_groups, 1, n_locs)))
+    clamp!(coral_cover, 0.0, 1.0)
+    return nothing
+end
+
+_loc_coral_cover(C_cover_t::Array{Float64,3}) = dropdims(sum(C_cover_t; dims=(1, 2)), dims=(1, 2))

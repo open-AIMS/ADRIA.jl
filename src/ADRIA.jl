@@ -33,19 +33,19 @@ using
     DimensionalData,
     Distances,
     Distributions,
+    CoralBlox,
     LinearAlgebra,
-    ModelParameters,
     OrderedCollections,
-    OrdinaryDiffEq,
-    Random,
     Setfield,
     Statistics,
     StaticArrays,
     SparseArrays,
+    Random,
     YAXArrays
 
 include("utils/text_display.jl")  # need better name for this file
 include("utils/setup.jl")
+include("utils/scale.jl")
 include("factors/Factors.jl")
 include("factors/const_params.jl")
 
@@ -56,7 +56,9 @@ include("ecosystem/corals/Corals.jl")
 include("ecosystem/connectivity.jl")
 
 include("Domain.jl")
+include("io/datacubes.jl")
 include("io/inputs.jl")  # Need to define input types before MCDA to make types available
+include("io/initial_coral_cover.jl")
 
 include("decision/dMCDA.jl")
 include("interventions/Interventions.jl")
@@ -100,8 +102,7 @@ export RMEResultSet
 # export dims, ndims
 
 # List out compatible domain datapackages
-const COMPAT_DPKG = ["0.6.0-rc", "0.6.0"]
-
+const COMPAT_DPKG = ["0.7.0-rc", "0.7.0"]
 # This adds ~30 seconds to package load times
 if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(load_domain),String})   # time: 19.120537

@@ -8,10 +8,10 @@ using StatsFuns
 
 abstract type EcoModel end
 
-struct EnvironmentalLayer{P<:Param} <: EcoModel
-    dhw_scenario::P
-    wave_scenario::P
-    cyclone_mortality_scenario::P
+struct EnvironmentalLayer <: EcoModel
+    dhw_scenario::Param
+    wave_scenario::Param
+    cyclone_mortality_scenario::Param
 end
 
 function EnvironmentalLayer(
@@ -54,11 +54,11 @@ Rational approximation of the error function only using elementary functions [1]
 Maximum error of 1.5 × 10^{-7}.
 
 # References
-1. Abramowitz, Milton; Stegun, Irene Ann, eds. (1983) [June 1964]. "Chapter 7". 
-   Handbook of Mathematical Functions with Formulas, Graphs, and Mathematical Tables. 
-   Applied Mathematics Series. Vol. 55 (Ninth reprint with additional corrections of 
-   tenth original printing with corrections (December 1972); first ed.). Washington D.C.; 
-   New York: United States Department of Commerce, National Bureau of Standards; 
+1. Abramowitz, Milton; Stegun, Irene Ann, eds. (1983) [June 1964]. "Chapter 7".
+   Handbook of Mathematical Functions with Formulas, Graphs, and Mathematical Tables.
+   Applied Mathematics Series. Vol. 55 (Ninth reprint with additional corrections of
+   tenth original printing with corrections (December 1972); first ed.). Washington D.C.;
+   New York: United States Department of Commerce, National Bureau of Standards;
    Dover Publications. p. 297
 """
 function rational_erf(x::Float64)::Float64
@@ -95,7 +95,7 @@ end
 """
     rational_erfcx(x::Float64)::Float64
 
-Approximation of erfcx using a rational approximation of the error function. 
+Approximation of erfcx using a rational approximation of the error function.
 
 erfcx(x) = e^{x^2} ⋅ (1 - erf(x))
 """
@@ -216,7 +216,7 @@ function truncated_normal_cdf(
             \nLower and upper bounds of the truncated normal distribution are \
             $(alpha) and $(beta) standard deviations from the normal mean respectively. \
             Falling back to more accurate calculation."
-        
+
         return erf(alpha * StatsFuns.invsqrt2, zeta * StatsFuns.invsqrt2) /
                erf(alpha * StatsFuns.invsqrt2, beta * StatsFuns.invsqrt2)
     end

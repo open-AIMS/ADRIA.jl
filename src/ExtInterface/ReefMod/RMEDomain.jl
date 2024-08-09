@@ -434,6 +434,11 @@ function load_initial_cover(
 )::YAXArray
     icc_path = joinpath(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
+
+    # ADRIA no longer models Arborescent Acropora
+    file_mask = [!contains(filename, "coral_sp1") for filename in icc_files]
+    icc_files = icc_files[file_mask]
+
     if isempty(icc_files)
         ArgumentError("No coral cover data files found in: $(icc_path)")
     end
@@ -448,29 +453,38 @@ function load_initial_cover(
 
     # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
     # as suggested by YM (pers comm. 2023-08-08 12:55pm AEST). Distribution is used to split ReefMod initial
-    # species covers into ADRIA's 6 size classes by weighting with the cdf.
+    # species covers into ADRIA's size classes by weighting with the cdf.
     reef_mod_area_dist = LogNormal(log(700), log(4))
-    bin_edges_area = colony_mean_area(Float64[0, 2, 5, 10, 20, 40, 80])
+    bin_edges_area = colony_mean_area(bin_edges())
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
-    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end-1)])
-    size_class_weights = size_class_weights ./ sum(size_class_weights)
+    size_class_weights = (cdf_integral[:, 2:end] .- cdf_integral[:, 1:(end-1)])
+    size_class_weights = size_class_weights ./ sum(size_class_weights, dims=2)
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
     # Convert from percent to relative values.
     icc_data = ((dropdims(mean(icc_data; dims=2); dims=2)) ./ 100.0)
 
-    # Repeat species over each size class and reshape to give ADRIA compatible size (36 * n_locs).
+    # Repeat species over each size class and reshape to give ADRIA compatible size
+    # [(n_groups × n_sizes) ⋅ n_locs]
     # Multiply by size class weights to give initial cover distribution over each size class.
-    icc_data = Matrix(hcat(reduce.(vcat, eachrow(icc_data .* [size_class_weights]))...))
+    n_sizes = size(size_class_weights, 2)
+    n_groups = length(icc_files)
+    n_locs = size(icc_data, 1)
+    icc_data = icc_data .* reshape(size_class_weights, (1, n_groups, n_sizes))
+    # Reshape and Permute icc_data from
+    # [n_locs ⋅ n_groups ⋅ n_sizes] to [(n_groups × n_sizes) ⋅ n_locs]
+    icc_data = reshape(
+        permutedims(icc_data, (3, 2, 1)), (n_sizes * n_groups, n_locs)
+    )
 
     # Convert values relative to absolute area to values relative to k area
     icc_data = _convert_abs_to_k(icc_data, site_data)
 
     return DataCube(
         icc_data;
-        species=1:(length(icc_files)*6),
+        species=1:(length(icc_files)*n_sizes),
         locs=loc_ids,
     )
 end
