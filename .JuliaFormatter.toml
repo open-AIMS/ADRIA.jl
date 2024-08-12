@@ -1,7 +1,7 @@
 style="blue"
 indent=4
 margin=92
-always_for_in=true
+always_for_in="nothing"
 for_in_replacement="∈"
 whitespace_typedefs=false
 import_to_using=true
@@ -16,3 +16,5 @@ indent_submodule=true
 surround_whereop_typeparameters=false
 yas_style_nesting=true
 trailing_comma=false
+short_to_long_function_def=false
+conditional_to_if=false
