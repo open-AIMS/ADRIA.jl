@@ -112,19 +112,35 @@ function _indicative_result_display(res)
 
     plot!(upper; fillrange=lower, color=:lightseagreen, alpha=0.4, label="")
     plot!(Y_g[:median];
-        label="Guided median", linecolor=:green, alpha=0.4,
-        xlabel="Year", ylabel="Relative Cover",
+        label="Guided median",
+        linecolor=:green,
+        alpha=0.4,
+        xlabel="Year",
+        ylabel="Relative Cover",
         xticks=(1:75, year_axis))
 
-    p2 = plot(Y_ung[:mean] - Y_no[:mean]; label="Guided - No Deployment (μ)",
-        xlabel="Year", ylabel="δ Relative Cover",
-        xticks=(1:75, year_axis), color=:red
+    p2 = plot(
+        Y_ung[:mean] - Y_no[:mean];
+        label="Guided - No Deployment (μ)",
+        xlabel="Year",
+        ylabel="δ Relative Cover",
+        xticks=(1:75, year_axis),
+        color=:red
     )
     plot!(Y_g[:mean] - Y_ung[:mean]; label="Guided - Unguided (μ)", color=:blue)
 
-    fig = plot(p, p2; size=(1000, 500), layout=(1, 2), left_margin=5mm, bottom_margin=5mm,
+    fig = plot(
+        p,
+        p2;
+        size=(1000, 500),
+        layout=(1, 2),
+        left_margin=5mm,
+        bottom_margin=5mm,
         xrotation=45,
-        legend=:best, fg_legend=:transparent, bg_legend=:transparent)
+        legend=:best,
+        fg_legend=:transparent,
+        bg_legend=:transparent
+    )
     # display(fig)
     # gui(fig)
 

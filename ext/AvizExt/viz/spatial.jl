@@ -401,7 +401,7 @@ function ADRIA.viz.connectivity(
         end
 
         _, conn_weight, network = ADRIA.connectivity_strength(
-            conn; in_method, out_method=outdegree_centrality
+            conn; in_method=in_method, out_method=outdegree_centrality
         )
     end
 

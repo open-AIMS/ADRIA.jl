@@ -92,8 +92,9 @@ compact form.
 - `rules` : Vector of Rule objects
 """
 function print_rules(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})::Nothing
-    condition(rule) =
-        [c[2] == :L ? "$(c[1]) < $(c[3])" : "$(c[1]) ≥ $(c[3])" for c in rule.condition]
+    condition(rule) = [
+        c[2] == :L ? "$(c[1]) < $(c[3])" : "$(c[1]) ≥ $(c[3])" for c in rule.condition
+    ]
     consequent(rule) = " then $(rule.consequent[1]) else $(rule.consequent[2])\n"
     rule_string(rule) = "if " * join(condition(rule), " & ") * consequent(rule)
     print(join([rule_string(rule) for rule in rules]))

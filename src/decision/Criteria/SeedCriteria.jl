@@ -362,6 +362,8 @@ function _update_state(cluster_ids::Vector, num_locs::Int64, max_members::Int64)
     potential_alternatives = cluster_ids[cluster_ids .∉ Ref(exceeded_clusters)]
 
     return selected_clusters,
-    cluster_frequency, rule_violators_idx, exceeded_clusters,
+    cluster_frequency,
+    rule_violators_idx,
+    exceeded_clusters,
     potential_alternatives
 end

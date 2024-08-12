@@ -189,7 +189,10 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
 
     functional_groups = functional_group_names()
     cyc_scens::YAXArray{Float64} = ZeroDataCube(;
-        T=Float64, timesteps=timeframe_range, locs=loc_ids, species=functional_groups,
+        T=Float64,
+        timesteps=timeframe_range,
+        locs=loc_ids,
+        species=functional_groups,
         scenarios=[1]
     )
 
