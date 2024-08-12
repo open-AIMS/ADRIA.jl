@@ -3,7 +3,6 @@ using Statistics, Distributions
 using Makie.GeometryBasics
 using ADRIA, Makie
 
-
 precompile(CSV.read, (String, DataFrame))
 precompile(GeoDataFrames.read, (String,))
 

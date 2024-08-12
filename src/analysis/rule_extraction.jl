@@ -27,8 +27,12 @@ See also [`Rule`](@ref).
 # Returns
 Vector{ADRIA.analysis.Rule{Vector{Float64}, Vector{Vector}}}
 """
-function rules(rules::SIRUS.StableRules{Int64})::Vector{Rule{Vector{Vector},Vector{Float64}}}
-    [Rule(_condition(rules, i), _consequent(rules, i)) for i in eachindex(rules.rules)]
+function rules(
+    rules::SIRUS.StableRules{Int64}
+)::Vector{Rule{Vector{Vector},Vector{Float64}}}
+    return [
+        Rule(_condition(rules, i), _consequent(rules, i)) for i in eachindex(rules.rules)
+    ]
 end
 
 """
@@ -88,14 +92,14 @@ compact form.
 - `rules` : Vector of Rule objects
 """
 function print_rules(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})::Nothing
-    condition(rule) = [c[2] == :L ? "$(c[1]) < $(c[3])" : "$(c[1]) ≥ $(c[3])" for c in rule.condition]
+    condition(rule) =
+        [c[2] == :L ? "$(c[1]) < $(c[3])" : "$(c[1]) ≥ $(c[3])" for c in rule.condition]
     consequent(rule) = " then $(rule.consequent[1]) else $(rule.consequent[2])\n"
     rule_string(rule) = "if " * join(condition(rule), " & ") * consequent(rule)
     print(join([rule_string(rule) for rule in rules]))
 
     return nothing
 end
-
 
 """
     cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T; seed::Int64=123, kwargs...) where {T<:Integer,F<:Real}
@@ -159,5 +163,5 @@ Sum of biggest probabilities for each rule consequent
 - `rules` : Vector of Rule objects
 """
 function maximum_probability(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})
-    sum([maximum(rule.consequent) for rule in rules])
+    return sum([maximum(rule.consequent) for rule in rules])
 end

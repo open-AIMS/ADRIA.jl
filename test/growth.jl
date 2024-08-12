@@ -28,15 +28,15 @@ end
     # check colony areas in cm^2 are within bounds designated by bin edges
     for k in 1:6
         @test all(
-            stored_colony_mean_areas[coral_params.class_id.==k] .>=
-            bin_edge_diameters_cm2[k],
+            stored_colony_mean_areas[coral_params.class_id .== k] .>=
+            bin_edge_diameters_cm2[k]
         ) ||
-              "Some colony areas for size class $k are larger than the size class upper bound."
+            "Some colony areas for size class $k are larger than the size class upper bound."
         @test all(
-            stored_colony_mean_areas[coral_params.class_id.==k] .>=
-            bin_edge_diameters_cm2[k],
+            stored_colony_mean_areas[coral_params.class_id .== k] .>=
+            bin_edge_diameters_cm2[k]
         ) ||
-              "Some colony areas for size class $k are smaller than the size class lower bound."
+            "Some colony areas for size class $k are smaller than the size class lower bound."
     end
 end
 
@@ -79,7 +79,7 @@ end
         51072.30305499843,
         68331.04154366927,
         91421.98332850973,
-        122315.9906084096,
+        122315.9906084096
     ]
 
     C_cover_t = rand(Uniform(0.0, 0.01), 36, 216)
@@ -299,13 +299,15 @@ end
         140815.23524318123,
         60269.32989888545,
         51815.93369295262,
-        49022.921055841725,
+        49022.921055841725
     ]
 
-    ADRIA.fecundity_scope!(fec_groups, fec_all, fec_params, C_cover_t, Matrix(total_site_area'))
+    ADRIA.fecundity_scope!(
+        fec_groups, fec_all, fec_params, C_cover_t, Matrix(total_site_area')
+    )
 
     @test any(fec_groups .> 1e8) ||
-          "Fecundity is measured in m² and so should be a very large number"
+        "Fecundity is measured in m² and so should be a very large number"
     @test !any(fec_groups .< 0.0) || "Negative fecundity is not allowed"
 end
 
@@ -323,11 +325,11 @@ end
         tstep,
         a_adapt,
         n_adapt,
-        dhw_scen[tstep-1, :],
+        dhw_scen[tstep - 1, :],
         LPdhwcoeff,
         DHWmaxtot,
         LPDprm2,
-        n_groups,
+        n_groups
     )
     @test all(0.0 .<= LPs .< 1.0) || "Larval Production must be between 0 and 1"
 end
@@ -349,6 +351,6 @@ end
     theoretical_max = ((avail_area .* max_cover .* total_site_area)' * 51.8)
     for (i, rec) in enumerate(eachrow(abs_recruits))
         @test all(rec' .<= theoretical_max) ||
-              "Species group $i exceeded maximum theoretical number of settlers"
+            "Species group $i exceeded maximum theoretical number of settlers"
     end
 end

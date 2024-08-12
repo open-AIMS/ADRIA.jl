@@ -3,10 +3,9 @@ push!(LOAD_PATH, "../src/")
 
 using Documenter, ADRIA
 
-
-makedocs(
+makedocs(;
     sitename="ADRIA.jl",
-    format=Documenter.HTML(
+    format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", nothing) == "true",
         assets=["assets/favicon.ico"]
     ),
@@ -43,7 +42,7 @@ makedocs(
     ]
 )
 
-deploydocs(
+deploydocs(;
     repo="github.com/open-AIMS/ADRIA.jl.git",
     devbranch="main",
     target="build",

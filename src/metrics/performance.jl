@@ -3,7 +3,6 @@ module performance
 using Statistics, Distributions, DataFrames, StatsBase
 using ADRIA
 
-
 """
     normalize(vals::AbstractArray{<:Real})
 
@@ -21,7 +20,6 @@ end
 """Root Mean Square Error"""
 RMSE(obs, sim) = (sum((sim .- obs) .^ 2) / length(sim))^0.5
 
-
 """
     probability(vals::AbstractArray{<:Real})
 
@@ -30,7 +28,6 @@ Calculate probability of individual trajectories, given a scenario ensemble \$S\
 function probability(S::AbstractArray{<:Real})
     return cdf.(fit(Normal, S), S)
 end
-
 
 """
     gmd(vals::AbstractVector{<:Real})::Float64
@@ -65,7 +62,6 @@ end
 function gmd(vals::AbstractMatrix{<:Real})
     return gmd.(eachcol(vals))
 end
-
 
 """
     temporal_variability(x::AbstractVector{<:Real})
@@ -104,7 +100,6 @@ function temporal_variability(x::AbstractArray{<:Real}, func_or_data...)
     return mean([map(f -> f isa Function ? f(x) : f, func_or_data)...])
 end
 
-
 """
     intervention_effort(ms, inputs_i)
 
@@ -131,20 +126,25 @@ function intervention_effort(ms::DataFrame, X::DataFrame;
         :SRM,
         :seed_years,
         :shade_years,
-        :fog_years,
-    ],
+        :fog_years
+    ]
 )
-
-    interv_s = ms[findall(in(interv_cols), Symbol.(ms.fieldname)), ["fieldname", "lower_bound", "upper_bound"]]
+    interv_s = ms[
+        findall(in(interv_cols), Symbol.(ms.fieldname)),
+        ["fieldname", "lower_bound", "upper_bound"]
+    ]
     @assert nrow(interv_s) > 0 "No parameters for $(interv_cols) found."
 
     ub = interv_s[:, "upper_bound"]
     lb = interv_s[:, "lower_bound"]
 
-    return hcat([intervention_effort(values(X[:, interv_cols[i]]), ub[i], lb[i])
-                 for i in eachindex(interv_cols)]...)
+    return hcat(
+        [
+            intervention_effort(values(X[:, interv_cols[i]]), ub[i], lb[i])
+            for i in eachindex(interv_cols)
+        ]...
+    )
 end
-
 
 """
     intervention_diversity(ms, inputs_i)
@@ -162,7 +162,6 @@ function intervention_diversity(ms, inputs_i)
     return mean(gmd(intervention_effort(ms, inputs_i)))
 end
 
-
 """
     environmental_diversity(ms, inputs_i)
 
@@ -178,7 +177,10 @@ This is referred to as \$E\$.
 """
 function environmental_diversity(ms, inputs_i)
     env_cols = Symbol.(ADRIA.component_params(ms, ADRIA.EnvironmentalLayer).fieldname)
-    env_s = ms[findall(in(env_cols), Symbol.(ms.fieldname)), ["fieldname", "lower_bound", "upper_bound"]]
+    env_s = ms[
+        findall(in(env_cols), Symbol.(ms.fieldname)),
+        ["fieldname", "lower_bound", "upper_bound"]
+    ]
     @assert nrow(env_s) > 0 "No parameters for $(env_cols) found."
 
     push!(env_s, ["RCP", 26, 85])  # Add lower/upper bound
@@ -194,8 +196,7 @@ function environmental_diversity(ms, inputs_i)
         replace!(Et, NaN => 0.0)
     end
 
-    return mean(mean(Et, dims=1))
+    return mean(mean(Et; dims=1))
 end
-
 
 end  # module

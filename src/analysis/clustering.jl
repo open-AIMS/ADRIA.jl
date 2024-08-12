@@ -196,7 +196,9 @@ function cluster_scenarios(
 
     clusters = zeros(Int64, n_scenarios, n_metrics)
     for m in 1:n_metrics
-        clusters[:, m] = cluster_series(data[:, :, m], n_clusters; method=method, distance=distance)
+        clusters[:, m] = cluster_series(
+            data[:, :, m], n_clusters; method=method, distance=distance
+        )
     end
 
     return clusters
@@ -222,13 +224,13 @@ function target_clusters(
     clusters::Vector{T},
     outcomes::AbstractMatrix{<:Real};
     metric=temporal_variability,
-    size_limit=0.01,
+    size_limit=0.01
 )::Vector{T} where {T<:Int64}
 
     # Compute statistic for each cluster
     clusters_statistics::Vector{Float64} = []
     for cluster in unique(clusters)
-        normalized_outcomed = outcomes[:, clusters.==cluster] ./ maximum(outcomes)
+        normalized_outcomed = outcomes[:, clusters .== cluster] ./ maximum(outcomes)
         statistic = median(metric(normalized_outcomed))
         push!(clusters_statistics, statistic)
     end
@@ -237,7 +239,7 @@ function target_clusters(
     target_indexes = [target_index]
 
     # Merge target cluster if it is below 1% of size
-    sizes = [size(outcomes[:, clusters.==c], 2) for c in unique(clusters)]
+    sizes = [size(outcomes[:, clusters .== c], 2) for c in unique(clusters)]
     target_size = sizes[target_index] / sum(sizes)
     while target_size < size_limit
         # Nullify target_index to find the next argmax
@@ -308,12 +310,12 @@ function find_scenarios(
     outcomes::AbstractMatrix{<:Real},
     clusters::AbstractVector{Int64},
     filter_func::Function;
-    aggregation_func::Function=temporal_variability,
+    aggregation_func::Function=temporal_variability
 )::BitVector
     clusters_summary::Vector{Float64} = zeros(length(unique(clusters)))
 
     for (idx_c, c) in enumerate(unique(clusters))
-        cluster_metric = outcomes[:, clusters.==c]
+        cluster_metric = outcomes[:, clusters .== c]
 
         # Median series for current cluster
         tf = axes(cluster_metric, :timesteps)
@@ -330,7 +332,7 @@ function find_scenarios(
     outcomes::AbstractArray{<:Real,3},
     clusters::AbstractMatrix{Int64},
     filter_funcs::Vector{Function};
-    aggregation_func::Function=temporal_variability,
+    aggregation_func::Function=temporal_variability
 )::BitVector
     scenarios = trues(size(clusters, 1))
 
@@ -341,7 +343,7 @@ function find_scenarios(
                 outcomes[:, :, idx],
                 collect(clust),
                 filter_funcs[idx];
-                aggregation_func=aggregation_func,
+                aggregation_func=aggregation_func
             )
     end
 
@@ -351,7 +353,7 @@ function find_scenarios(
     outcomes::AbstractArray{<:Real,3},
     clusters::AbstractMatrix{Int64},
     filter_func::Function;
-    aggregation_func::Function=temporal_variability,
+    aggregation_func::Function=temporal_variability
 )::BitVector
     filter_funcs::Vector{Function} = fill(filter_func, size(clusters, 2))
     return find_scenarios(

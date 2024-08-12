@@ -3,7 +3,6 @@ using Graphs, GraphMakie, SimpleWeightedGraphs
 
 using ADRIA: _get_geom_col
 
-
 """
     _get_geoms(gdf::DataFrame)
 
@@ -40,7 +39,6 @@ function set_axis_defaults(axis_opts::OPT_TYPE)::OPT_TYPE
 
     return axis_opts
 end
-
 
 """
     create_map!(
@@ -375,7 +373,9 @@ function ADRIA.viz.connectivity(
     fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
-    return ADRIA.viz.connectivity(dom, dom.conn; in_method, out_method, opts, fig_opts, axis_opts)
+    return ADRIA.viz.connectivity(
+        dom, dom.conn; in_method, out_method, opts, fig_opts, axis_opts
+    )
 end
 function ADRIA.viz.connectivity(
     dom::Domain,
@@ -390,7 +390,9 @@ function ADRIA.viz.connectivity(
         @warn "Both in and out centrality measures provided. Plotting out centralities."
         _, conn_weight, network = ADRIA.connectivity_strength(conn; in_method, out_method)
     elseif !isnothing(in_method) && isnothing(out_method)
-        conn_weight, _, network = ADRIA.connectivity_strength(conn; in_method, out_method=outdegree_centrality)
+        conn_weight, _, network = ADRIA.connectivity_strength(
+            conn; in_method, out_method=outdegree_centrality
+        )
     elseif isnothing(in_method) && isnothing(out_method)
         error("Measure for in or out centralities needs to be provided.")
     else
@@ -398,7 +400,9 @@ function ADRIA.viz.connectivity(
             in_method = indegree_centrality
         end
 
-        _, conn_weight, network = ADRIA.connectivity_strength(conn; in_method, out_method=outdegree_centrality)
+        _, conn_weight, network = ADRIA.connectivity_strength(
+            conn; in_method, out_method=outdegree_centrality
+        )
     end
 
     return ADRIA.viz.connectivity(dom, network, conn_weight; opts, fig_opts, axis_opts)

@@ -12,7 +12,6 @@ import ArchGDAL: createpoint
 
 import YAXArrays.DD: At
 
-
 mutable struct ReefModDomain <: AbstractReefModDomain
     const name::String
     RCP::String
@@ -85,7 +84,7 @@ function load_domain(
         id_list_fn,
         DataFrame;
         header=false,
-        comment="#",
+        comment="#"
     )
 
     _manual_id_corrections!(spatial_data, id_list)
@@ -140,7 +139,7 @@ function load_domain(
         "",
         "",
         "",
-        timeframe[1]:timeframe[2],
+        timeframe[1]:timeframe[2]
     )
 
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
@@ -179,7 +178,7 @@ function load_domain(
         wave_scens,
         cyclone_mortality_scens,
         model,
-        SimConstants(),
+        SimConstants()
     )
 end
 
@@ -214,13 +213,14 @@ function load_initial_cover(
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
-    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end-1)])
+    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end - 1)])
     size_class_weights = size_class_weights ./ sum(size_class_weights)
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
     # Convert from percent to relative values.
     # YAXArray ordering is [time ⋅ location ⋅ scenario]
-    icc_data = ((dropdims(mean(init_cc_per_taxa; dims=:scenario); dims=:scenario)) ./ 100.0).data
+    icc_data =
+        ((dropdims(mean(init_cc_per_taxa; dims=:scenario); dims=:scenario)) ./ 100.0).data
 
     # Repeat species over each size class and reshape to give ADRIA compatible size (36 * n_locs).
     # Multiply by size class weights to give initial cover distribution over each size class.
@@ -231,14 +231,14 @@ function load_initial_cover(
 
     n_species = length(init_cc_per_taxa[location=1, group=:, scenario=1])
 
-    return DataCube(icc_data; species=1:(n_species*6), locs=loc_ids)
+    return DataCube(icc_data; species=1:(n_species * 6), locs=loc_ids)
 end
 
 """
     _find_file(dir::String)::String
 """
 function _find_file(dir::String, ident::Union{Regex,String})::String
-    pos_files = filter(isfile, readdir(dir, join=true))
+    pos_files = filter(isfile, readdir(dir; join=true))
     pos_files = filter(x -> occursin(ident, x), pos_files)
     if length(pos_files) == 0
         ArgumentError("Unable to find file in $(dir)")
@@ -249,7 +249,7 @@ function _find_file(dir::String, ident::Union{Regex,String})::String
 end
 
 function _find_netcdf(dir::String, scenario::String)::String
-    pos_files = filter(isfile, readdir(dir, join=true))
+    pos_files = filter(isfile, readdir(dir; join=true))
     pos_files = filter(x -> occursin(".nc", x), pos_files)
     pos_files = filter(x -> occursin(scenario, x), pos_files)
     if length(pos_files) == 0
@@ -270,14 +270,14 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     new_scen_dataset = open_dataset(new_scen_fn)
 
     dhws = Cube(
-        new_scen_dataset[["record_applied_DHWs"]]
-    )[timestep=At(d.env_layer_md.timeframe)].data[:, :, :]
+    new_scen_dataset[["record_applied_DHWs"]]
+)[timestep=At(d.env_layer_md.timeframe)].data[:, :, :]
 
     scens = 1:size(dhws)[3]
     loc_ids = d.site_ids
 
     d.dhw_scens = DataCube(
-        dhws,
+        dhws;
         timesteps=d.env_layer_md.timeframe,
         locs=loc_ids,
         scenarios=scens
@@ -315,9 +315,10 @@ function _cyclone_mortality_scens(
     timeframe::Tuple{Int64,Int64}
 )::YAXArray{Float64}
     # Add 1 to every scenarios so they represent indexes in cyclone_mr vectors
-    cyclone_scens::YAXArray = Cube(
-        dom_dataset[["record_applied_cyclone"]]
-    )[timestep=At(timeframe[1]:timeframe[2])] .+ 1
+    cyclone_scens::YAXArray =
+        Cube(
+            dom_dataset[["record_applied_cyclone"]]
+        )[timestep=At(timeframe[1]:timeframe[2])] .+ 1
 
     species::Vector{Symbol} = functional_group_names()
     cyclone_mortality_scens::YAXArray{Float64} = ZeroDataCube(;

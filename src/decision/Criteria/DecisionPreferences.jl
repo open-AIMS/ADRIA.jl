@@ -216,7 +216,7 @@ function apply_threshold(
     target_criteria = dm.criteria .== criteria_name
     target_vals = dm.data[:, target_criteria]
 
-    valid_locs = vec(threshold[1] .<= target_vals .<= (threshold[1]+threshold[2]))
+    valid_locs = vec(threshold[1] .<= target_vals .<= (threshold[1] + threshold[2]))
 
     return dm[location=valid_locs]
 end

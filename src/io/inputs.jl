@@ -68,7 +68,7 @@ function load_nc_data(
     data_fn::String,
     attr::String;
     dim_names::Vector{Symbol}=Symbol[],
-    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[],
+    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
     local data
     try
@@ -83,7 +83,7 @@ function fallback_nc_data(
     data_fn::String,
     attr::String;
     dim_names::Vector{Symbol}=Symbol[],
-    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[],
+    dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
     NetCDF.open(data_fn; mode=NC_NOWRITE) do nc_file
         data::Array{<:AbstractFloat} = NetCDF.readvar(nc_file, attr)
@@ -121,7 +121,7 @@ function _nc_dim_labels(
     catch err
         error(
             "Error loading $data_fn : could not determine number of locations." *
-            "Detected size: $(size(data)) | Known number of locations: $(length(sites))",
+            "Detected size: $(size(data)) | Known number of locations: $(length(sites))"
         )
     end
 

@@ -12,7 +12,7 @@ Then orders sites from highest aggregate score to lowest.
 - aggregate score for ranking.
 """
 function order_ranking(S::Array{Float64,2})::Array{Float64}
-    return sum(S, dims=2)
+    return sum(S; dims=2)
 end
 
 """
@@ -47,21 +47,20 @@ S_p  = √{∑(criteria .- NIS)²}
 function adria_topsis(S::Array{Float64,2})::Array{Float64}
 
     # compute the set of positive ideal solutions for each criteria
-    PIS = maximum(S, dims=1)
+    PIS = maximum(S; dims=1)
 
     # compute the set of negative ideal solutions for each criteria
-    NIS = minimum(S, dims=1)
+    NIS = minimum(S; dims=1)
 
     # calculate separation distance from the ideal and non-ideal solutions
-    S_p = sqrt.(sum((S .- PIS) .^ 2, dims=2))
-    S_n = sqrt.(sum((S .- NIS) .^ 2, dims=2))
+    S_p = sqrt.(sum((S .- PIS) .^ 2; dims=2))
+    S_n = sqrt.(sum((S .- NIS) .^ 2; dims=2))
 
     # final ranking measure of relative closeness C
     C = S_n ./ (S_p + S_n)
 
     return C
 end
-
 
 """
     adria_vikor(S; v=0.5)
@@ -114,8 +113,8 @@ function adria_vikor(S::Matrix{Float64}; v::Float64=0.5)::Array{Float64}
     # Compute utility of the majority Sr (Manhatten Distance)
     # Compute individual regret R (Chebyshev distance)
     sr_arg = maximum(S) .- S
-    Sr = sum(sr_arg, dims=2)
-    R = maximum(sr_arg, dims=2)
+    Sr = sum(sr_arg; dims=2)
+    R = maximum(sr_arg; dims=2)
 
     # Compute the VIKOR compromise Q
     S_h, S_s = extrema(Sr)

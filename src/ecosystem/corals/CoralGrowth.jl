@@ -12,7 +12,6 @@ struct CoralGrowth{A<:Integer,T<:NamedTuple}
     ode_p::T
 end
 
-
 """
     CoralGrowth(n_sites)
 
@@ -35,15 +34,15 @@ function CoralGrowth(n_locs::Int64, n_groups::Int64, n_sizes::Int64)::CoralGrowt
     # TODO: The named tuple was for use with ODE solvers, which is no unneeded.
     # These caches should all be moved into the `CoralGrowth` struct.
     p = @NamedTuple{
-            small::StaticArrays.SVector{5,Int64},  # indices for small size classes
-            mid::StaticArrays.SVector{25,Int64},   # indices for mid-size corals
-            large::StaticArrays.SVector{5,Int64},  # indices for large corals
-            rec::Matrix{Float64},                  # recruitment values, where `s` relates to available space (not max carrying capacity)
-            sXr::Array{Float64, 3},                  # s * X * r
-            X_mb::Array{Float64, 3},                 # X * mb
-            r::Matrix{Float64},                    # growth rate
-            mb::Matrix{Float64}                    # background mortality
-        }((                        # cache matrix to hold X (current coral cover)
+        small::StaticArrays.SVector{5,Int64},  # indices for small size classes
+        mid::StaticArrays.SVector{25,Int64},   # indices for mid-size corals
+        large::StaticArrays.SVector{5,Int64},  # indices for large corals
+        rec::Matrix{Float64},                  # recruitment values, where `s` relates to available space (not max carrying capacity)
+        sXr::Array{Float64,3},                  # s * X * r
+        X_mb::Array{Float64,3},                 # X * mb
+        r::Matrix{Float64},                    # growth rate
+        mb::Matrix{Float64}                    # background mortality
+    }((                        # cache matrix to hold X (current coral cover)
         # Cached indices
         small, mid, large,
 

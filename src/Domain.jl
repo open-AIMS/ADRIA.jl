@@ -68,7 +68,7 @@ function model_spec(d::Domain, filepath::String)::Nothing
     end
 
     ms = model_spec(d)
-    ms[!, :] .= replace(Matrix(ms), nothing=>"")
+    ms[!, :] .= replace(Matrix(ms), nothing => "")
     CSV.write(filepath, ms; header=true, append=true)
 
     return nothing
@@ -78,7 +78,8 @@ function model_spec(m::Model)::DataFrame
     dist_params = spec[!, :dist_params]
 
     DataFrames.hcat!(
-        spec, DataFrame(
+        spec,
+        DataFrame(
             :lower_bound => first.(dist_params),
             :upper_bound => getindex.(dist_params, 2)
         )
@@ -132,13 +133,13 @@ function component_params(m::Model, component)::DataFrame
     return component_params(model_spec(m), component)
 end
 function component_params(spec::DataFrame, component)::DataFrame
-    return spec[spec.component.==replace.(string(component), "ADRIA." => ""), :]
+    return spec[spec.component .== replace.(string(component), "ADRIA." => ""), :]
 end
 function component_params(m::Model, components::Vector{T})::DataFrame where {T}
     return component_params(model_spec(m), components)
 end
 function component_params(spec::DataFrame, components::Vector{T})::DataFrame where {T}
-    return spec[spec.component.∈[replace.(string.(components), "ADRIA." => "")], :]
+    return spec[spec.component .∈ [replace.(string.(components), "ADRIA." => "")], :]
 end
 
 """
@@ -206,7 +207,7 @@ over species.
 Leftover space ∈ [0, 1]
 """
 function relative_leftover_space(
-    loc_coral_cover::AbstractArray,
+    loc_coral_cover::AbstractArray
 )::AbstractArray
     return max.(1.0 .- loc_coral_cover, 0.0)
 end

@@ -42,7 +42,7 @@ function store_env_summary(
     type::String,
     file_loc::String,
     rcp::String,
-    compressor::Zarr.Compressor,
+    compressor::Zarr.Compressor
 )::ZArray
     stats = summarize_env_data(data_cube)
 
@@ -118,7 +118,7 @@ function scenario_attributes(
     unique_sites,
     area,
     k,
-    centroids,
+    centroids
 )::Dict
     attrs::Dict{Symbol,Any} = Dict(
         :name => name,
@@ -138,7 +138,7 @@ function scenario_attributes(
         :site_ids => unique_sites,
         :site_area => area,
         :site_max_coral_cover => k,
-        :site_centroids => centroids,
+        :site_centroids => centroids
     )
 
     return attrs
@@ -179,7 +179,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
     attrs = Dict(
         # Here, "intervention" refers to seeding or shading
         :structure => ("timesteps", "sites", "intervention", "scenarios"),
-        :unique_site_ids => unique_sites,
+        :unique_site_ids => unique_sites
     )
     ranks = zcreate(
         Float32,
@@ -189,12 +189,12 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
         fill_as_missing=false,
         path=log_fn,
         chunks=(rank_dims[1:3]..., 1),
-        attrs=attrs,
+        attrs=attrs
     )
 
     attrs = Dict(
         :structure => ("timesteps", "coral_id", "sites", "scenarios"),
-        :unique_site_ids => unique_sites,
+        :unique_site_ids => unique_sites
     )
     seed_log = zcreate(
         Float32,
@@ -204,7 +204,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
         fill_as_missing=false,
         path=log_fn,
         chunks=(seed_dims[1:3]..., 1),
-        attrs=attrs,
+        attrs=attrs
     )
 
     attrs = Dict(
@@ -219,7 +219,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
         fill_as_missing=false,
         path=log_fn,
         chunks=(fog_dims[1:2]..., 1),
-        attrs=attrs,
+        attrs=attrs
     )
     shade_log = zcreate(
         Float32,
@@ -229,7 +229,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
         fill_as_missing=false,
         path=log_fn,
         chunks=(fog_dims[1:2]..., 1),
-        attrs=attrs,
+        attrs=attrs
     )
 
     # TODO: Could log bleaching mortality
@@ -242,7 +242,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
     # Log for coral DHW thresholds
     attrs = Dict(
         :structure => ("timesteps", "species", "sites", "scenarios"),
-        :unique_site_ids => unique_sites,
+        :unique_site_ids => unique_sites
     )
 
     local coral_dhw_log
@@ -258,7 +258,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
             fill_as_missing=false,
             path=log_fn,
             chunks=(tf, n_group_and_size, n_sites, 1),
-            attrs=attrs,
+            attrs=attrs
         )
     else
         coral_dhw_log = zcreate(
@@ -272,7 +272,7 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
             fill_as_missing=false,
             path=log_fn,
             chunks=(tf, n_group_and_size, 1, 1),
-            attrs=attrs,
+            attrs=attrs
         )
     end
 
@@ -363,7 +363,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         fill_as_missing=false,
         path=input_loc,
         chunks=input_dims,
-        attrs=attrs,
+        attrs=attrs
     )
 
     # Store table of factor values
@@ -390,12 +390,12 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     end
 
     met_names = [:relative_cover, :relative_shelter_volume,
-        :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator, :coral_evenness,
+        :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator, :coral_evenness
     ]
 
     dim_struct = Dict(
         :structure => string.((:timesteps, :sites, :scenarios)),
-        :unique_site_ids => unique_sites(domain),
+        :unique_site_ids => unique_sites(domain)
     )
     result_dims::Tuple{Int64,Int64,Int64} = dim_lengths(dim_struct[:structure])
 
@@ -404,7 +404,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         zcreate(Float32, result_dims...;
             fill_value=nothing, fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, string(m_name)),
-            chunks=(result_dims[1:(end-1)]..., 1),
+            chunks=(result_dims[1:(end - 1)]..., 1),
             attrs=dim_struct,
             compressor=COMPRESSOR)
         for m_name in met_names
@@ -439,8 +439,8 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
                 "dhw_scenario",
                 joinpath(z_store.folder, ENV_STATS, "dhw"),
                 rcp,
-                COMPRESSOR,
-            ),
+                COMPRESSOR
+            )
         )
         push!(
             wave_stats,
@@ -449,8 +449,8 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
                 "wave_scenario",
                 joinpath(z_store.folder, ENV_STATS, "wave"),
                 rcp,
-                COMPRESSOR,
-            ),
+                COMPRESSOR
+            )
         )
         push!(
             connectivity,
@@ -459,7 +459,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
                 joinpath(z_store.folder, "connectivity"),
                 rcp,
                 COMPRESSOR
-            ),
+            )
         )
 
         push!(dhw_stat_names, Symbol("dhw_stat_$rcp"))
@@ -475,7 +475,9 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         dhw_stats...,
         wave_stats...,
         connectivity...,
-        setup_logs(z_store, unique_sites(domain), nrow(scen_spec), tf, n_sites, n_group_and_size)...,
+        setup_logs(
+            z_store, unique_sites(domain), nrow(scen_spec), tf, n_sites, n_group_and_size
+        )...
     ]
 
     return domain,
@@ -489,9 +491,9 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
                 :seed_log,
                 :fog_log,
                 :shade_log,
-                :coral_dhw_log,
+                :coral_dhw_log
             ),
-            stores,
+            stores
         )...
     )
 end
@@ -580,11 +582,13 @@ function load_results(result_loc::String)::ResultSet
 
     result_loc = replace(result_loc, "\\" => "/")
     if endswith(result_loc, "/")
-        result_loc = result_loc[1:(end-1)]
+        result_loc = result_loc[1:(end - 1)]
     end
 
     # Spatial data
-    site_data = GDF.read(joinpath(result_loc, SPATIAL_DATA, input_set.attrs["name"] * ".gpkg"))
+    site_data = GDF.read(
+        joinpath(result_loc, SPATIAL_DATA, input_set.attrs["name"] * ".gpkg")
+    )
     sort!(site_data, [Symbol(input_set.attrs["site_id_col"])])
 
     # Model specification
@@ -625,7 +629,7 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["connectivity_file"],
         input_set.attrs["DHW_file"],
         input_set.attrs["wave_file"],
-        input_set.attrs["timeframe"],
+        input_set.attrs["timeframe"]
     )
 
     outcomes = Dict{Symbol,YAXArray}()
@@ -661,7 +665,7 @@ function load_results(result_loc::String)::ResultSet
                     """
                     outcomes[Symbol(basename(sd))] = DataCube(
                         res;
-                        zip(Symbol.(res.attrs["structure"]), [1:s for s in size(res)])...,
+                        zip(Symbol.(res.attrs["structure"]), [1:s for s in size(res)])...
                     )
                 else
                     rethrow(err)
@@ -680,7 +684,7 @@ function load_results(result_loc::String)::ResultSet
         wave_stat_set,
         conn_set,
         site_data,
-        model_spec,
+        model_spec
     )
 end
 function load_results(domain::Domain)::ResultSet
@@ -706,6 +710,6 @@ Generate path to the data store of results for the given Domain and RCPs names.
 function _result_location(d::Domain, rcps::Vector{String})::String
     return joinpath(
         ENV["ADRIA_OUTPUT_DIR"],
-        "$(d.name)__RCPs_$(join(rcps, "_"))__$(d.scenario_invoke_time)",
+        "$(d.name)__RCPs_$(join(rcps, "_"))__$(d.scenario_invoke_time)"
     )
 end

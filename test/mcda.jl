@@ -3,7 +3,6 @@ using ADRIA.Distributions
 using ADRIA.decision.JMcDM
 using ADRIA.decision: subtypes
 
-
 @testset "Validate included MCDA methods" begin
     """
     Identifies MCDA methods that pass a simple test to inform whether they should be included

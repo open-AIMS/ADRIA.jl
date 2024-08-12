@@ -5,7 +5,6 @@ Provides summary statistics across selected scenarios.
 
 import Interpolations: GriddedInterpolation
 
-
 function summarize_trajectory(data::YAXArray)::Dict{Symbol,AbstractArray{<:Real}}
     squash = nothing
     if :sites in axes_names(data)
@@ -15,8 +14,10 @@ function summarize_trajectory(data::YAXArray)::Dict{Symbol,AbstractArray{<:Real}
     end
 
     if !isnothing(squash)
-        summarized::Dict{Symbol,AbstractArray{<:Real}} = Dict(Symbol(f) => collect(dropdims(f(data, dims=squash), dims=squash))
-                                                              for f in [mean, median, std, minimum, maximum])
+        summarized::Dict{Symbol,AbstractArray{<:Real}} = Dict(
+            Symbol(f) => collect(dropdims(f(data; dims=squash); dims=squash))
+            for f in [mean, median, std, minimum, maximum]
+        )
     else
         # Only a single scenario so don't bother doing anything
         summarized = Dict(Symbol(f) => data for f in [mean, median, minimum, maximum])
@@ -39,7 +40,6 @@ function summarize_trajectory(data::YAXArray)::Dict{Symbol,AbstractArray{<:Real}
     return summarized
 end
 
-
 """
     summarize_raw(data::YAXArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
 
@@ -52,7 +52,6 @@ end
 function summarize_raw(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     return summarize_raw(rs.raw; kwargs...)
 end
-
 
 # function summarize_rci(rs::ResultSet; kwargs...)
 #     rc::AbstractArray{<:Real} = call_metric(relative_cover, rs.inputs; kwargs...)
@@ -72,24 +71,26 @@ end
 #     return summarize_trajectory(rci)
 # end
 
-
 """
     summarize_total_cover(raw::YAXArray, areas::AbstractArray{<:Real}; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
     summarize_total_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
 
 Calculate summarized total absolute cover.
 """
-function summarize_total_cover(raw::YAXArray, areas::AbstractArray{<:Real}; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+function summarize_total_cover(
+    raw::YAXArray, areas::AbstractArray{<:Real}; kwargs...
+)::Dict{Symbol,AbstractArray{<:Real}}
     sites = haskey(kwargs, :sites) ? kwargs[:sites] : (:)
     tac = call_metric(total_absolute_cover, raw, areas[sites]; kwargs...)
-    tac = dropdims(sum(tac, dims=:sites), dims=:sites)
+    tac = dropdims(sum(tac; dims=:sites); dims=:sites)
     return summarize_trajectory(tac)
 end
 function summarize_total_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
-    tac = dropdims(sum(slice_results(_total_absolute_cover(rs); kwargs...), dims=:sites), dims=:sites)
+    tac = dropdims(
+        sum(slice_results(_total_absolute_cover(rs); kwargs...); dims=:sites); dims=:sites
+    )
     return summarize_trajectory(tac)
 end
-
 
 """
     summarize_relative_cover(rc::YAXArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
@@ -97,14 +98,17 @@ end
 
 Calculate summarized relative cover.
 """
-function summarize_relative_cover(rc::YAXArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+function summarize_relative_cover(
+    rc::YAXArray; kwargs...
+)::Dict{Symbol,AbstractArray{<:Real}}
     rc_sliced = slice_results(rc; kwargs...)
     return summarize_trajectory(rc_sliced)
 end
-function summarize_relative_cover(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+function summarize_relative_cover(
+    rs::ResultSet; kwargs...
+)::Dict{Symbol,AbstractArray{<:Real}}
     return summarize_relative_cover(rs.outcomes[:relative_cover]; kwargs...)
 end
-
 
 """
     summarize_coral_evenness(raw::YAXArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
@@ -112,14 +116,17 @@ end
 
 Calculate summarized coral evenness.
 """
-function summarize_coral_evenness(raw::YAXArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+function summarize_coral_evenness(
+    raw::YAXArray; kwargs...
+)::Dict{Symbol,AbstractArray{<:Real}}
     ce::AbstractArray{<:Real} = call_metric(coral_evenness, raw; kwargs...)
     return summarize_trajectory(ce)
 end
-function summarize_coral_evenness(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+function summarize_coral_evenness(
+    rs::ResultSet; kwargs...
+)::Dict{Symbol,AbstractArray{<:Real}}
     return summarize_coral_evenness(rs.raw; kwargs...)
 end
-
 
 """
     summarize_absolute_shelter_volume(sv::YAXArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
@@ -127,14 +134,17 @@ end
 
 Calculate summarized coral evenness.
 """
-function summarize_absolute_shelter_volume(sv::YAXArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+function summarize_absolute_shelter_volume(
+    sv::YAXArray; kwargs...
+)::Dict{Symbol,AbstractArray{<:Real}}
     return summarize_trajectory(slice_results(sv; kwargs...))
 end
-function summarize_absolute_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+function summarize_absolute_shelter_volume(
+    rs::ResultSet; kwargs...
+)::Dict{Symbol,AbstractArray{<:Real}}
     sv_sliced = slice_results(rs.outcomes[:absolute_shelter_volume]; kwargs...)
     return summarize_trajectory(sv_sliced)
 end
-
 
 """
     summarize_relative_shelter_volume(sv::YAXArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
@@ -142,21 +152,22 @@ end
 
 Calculate summarized coral evenness.
 """
-function summarize_relative_shelter_volume(sv::YAXArray; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+function summarize_relative_shelter_volume(
+    sv::YAXArray; kwargs...
+)::Dict{Symbol,AbstractArray{<:Real}}
     return summarize_trajectory(slice_results(sv; kwargs...))
 end
-function summarize_relative_shelter_volume(rs::ResultSet; kwargs...)::Dict{Symbol,AbstractArray{<:Real}}
+function summarize_relative_shelter_volume(
+    rs::ResultSet; kwargs...
+)::Dict{Symbol,AbstractArray{<:Real}}
     sv_sliced = slice_results(rs.outcomes[:relative_shelter_volume]; kwargs...)
     return summarize_trajectory(sv_sliced)
 end
-
-
 
 function summarize_trajectories(rs::ResultSet, ts_name; kwargs...)
     sliced = slice_results(rs.outcomes[ts_name]; kwargs...)
     return summarize_trajectory(sliced)
 end
-
 
 """
     trajectory_heatmap(data::YAXArray)::HeatMap
@@ -176,7 +187,6 @@ function trajectory_heatmap(data::YAXArray)::HeatMap
     return o
 end
 
-
 """
     trajectory_heatmap_data(data::YAXArray)::Tuple{Vector{Float64},Vector{Float64},Matrix{Int64}}
 
@@ -188,7 +198,9 @@ Estimate heatmap of trajectories from a 2D dataset.
 # Returns
 Tuple of xedges, yedges, and bi-dimensional histogram matrix
 """
-function trajectory_heatmap_data(data::YAXArray)::Tuple{Vector{Float64},Vector{Float64},Matrix{Int64}}
+function trajectory_heatmap_data(
+    data::YAXArray
+)::Tuple{Vector{Float64},Vector{Float64},Matrix{Int64}}
     o::HeatMap = trajectory_heatmap(data)
 
     return collect(o.xedges), collect(o.yedges), o.counts

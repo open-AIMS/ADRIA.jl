@@ -1,6 +1,5 @@
 using StaticArrays
 
-
 """
     dominates(x::Vector{<:Real}, y::Vector{<:Real})::Vector
 
@@ -18,7 +17,6 @@ function dominates(x::AbstractVector{<:Real}, y::AbstractVector{<:Real})::Bool
 
     return strict_inequality_found
 end
-
 
 """
     nds(X::AbstractArray{<:Real}, dist::Int64=0)::Vector{Vector{<:Int}}

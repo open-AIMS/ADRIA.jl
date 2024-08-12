@@ -52,7 +52,6 @@ function dims(m::Metric)::Tuple
     return m.dims
 end
 
-
 """
     ndims(m::Metric)::Int64
 
@@ -61,7 +60,6 @@ Infer the number of dimensions for a given outcome/metric.
 function Base.ndims(m::Metric)::Int64
     return length(dims(m))
 end
-
 
 """
     call_metric(metric::Union{Function,Metric}, data::YAXArray, args...; kwargs...)
@@ -83,13 +81,14 @@ function call_metric(metric::Union{Function,Metric}, data::YAXArray, args...; kw
     end
 end
 
-
 """
     slice_results(data::YAXArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))
 
 Slice data as indicated. Dimensions not found in target data are ignored.
 """
-function slice_results(data::YAXArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))::YAXArray
+function slice_results(
+    data::YAXArray; timesteps=(:), species=(:), sites=(:), scenarios=(:)
+)::YAXArray
     f_dims = (timesteps=timesteps, species=species, sites=sites, scenarios=scenarios)
 
     s_names = keys(f_dims)
