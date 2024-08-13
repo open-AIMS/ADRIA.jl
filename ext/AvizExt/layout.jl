@@ -22,7 +22,7 @@
 └─────┘ └────────────────┘ └────────────────────────────────────────┘
 """
 function comms_layout(; size=(1920, 1080))
-    f = Figure(size=size)
+    f = Figure(; size=size)
 
     main = f[1:6, 1:9] = GridLayout()
 
@@ -32,7 +32,7 @@ function comms_layout(; size=(1920, 1080))
     # Trajectories and density plot
     trajectory = main[1:2, 3:8] = GridLayout()
     temporal = Axis(
-        trajectory[1, 2:7],
+        trajectory[1, 2:7];
         title="Scenario Trajectories",
         xlabel="Year",
         ylabel="Mean TAC (m²)"
@@ -64,11 +64,17 @@ function comms_layout(; size=(1920, 1080))
     # Outcome probabilities
     outcome_view = main[3:5, 8:9]
     outcomes = Axis(
-        outcome_view,
+        outcome_view;
         title="Probability Occurrence",
         xlabel="Outcomes",
         xticks=([1, 2, 3, 4, 5],
-            ["Very High\n> 80%", "High\n70 - 80%", "Medium\n50 - 70%", "Low\n20 - 50%", "Very Low\n< 20%"])
+            [
+                "Very High\n> 80%",
+                "High\n70 - 80%",
+                "Medium\n50 - 70%",
+                "Low\n20 - 50%",
+                "Very Low\n< 20%"
+            ])
     )
 
     messages = Axis(main[6, 5:9])
@@ -76,7 +82,7 @@ function comms_layout(; size=(1920, 1080))
     hidespines!(messages)
     text!(messages,
         0.0,
-        0.5,
+        0.5;
         text="Zoom: Mouse wheel\nPan: Hold right-click\nReset view: Ctrl + Left-click",
         align=(:left, :center),
         justification=:left,
@@ -84,15 +90,15 @@ function comms_layout(; size=(1920, 1080))
 
     return (figure=f,
         controls=controls,
-        trajectory=(temporal=temporal, outcome_slider=traj_outcome_sld, time_slider=traj_time_sld),
+        trajectory=(
+            temporal=temporal, outcome_slider=traj_outcome_sld, time_slider=traj_time_sld
+        ),
         scen_hist=scen_hist,
         map=map[1, 1],
         importance=feat_importance,
         outcomes=outcomes,
         messages)
 end
-
-
 
 """
 ┌──┐ ┌─────────────────────────┐ ┌─────┐  ┌──────────────┐
@@ -119,7 +125,7 @@ end
      └────────────────────────────┘  └───────────────────┘
 """
 function modeler_layout(; size=(1920, 1080))
-    f = Figure(size=size)
+    f = Figure(; size=size)
 
     # controls = f[1:3, 1] = GridLayout()
     main = f[1:3, 1:6] = GridLayout()
@@ -130,7 +136,7 @@ function modeler_layout(; size=(1920, 1080))
     traj_outcome_sld = spatial_temporal[1, 1]
 
     temporal = Axis(
-        spatial_temporal[1, 2:4],
+        spatial_temporal[1, 2:4];
         title="Scenario Trajectories",
         xlabel="Year",
         ylabel="Mean TAC (m²)"
@@ -148,25 +154,26 @@ function modeler_layout(; size=(1920, 1080))
     spatial = spatial_temporal[1, 6]
 
     interv_pcp = Axis(
-        main[2, 1:6],
+        main[2, 1:6];
         title="Interventions"
     )
 
     outcomes = main[3, 1:6] = GridLayout()
     pairplot = outcomes[1:3, 1:3] = GridLayout()
     outcome_pcp = Axis(
-        outcomes[1:3, 4:6],
+        outcomes[1:3, 4:6];
         title="Outcomes"
     )
 
     return (figure=f,
         # controls=controls,
-        trajectory=(temporal=temporal, outcome_slider=traj_outcome_sld, time_slider=traj_time_sld),
+        trajectory=(
+            temporal=temporal, outcome_slider=traj_outcome_sld, time_slider=traj_time_sld
+        ),
         scen_hist=scen_hist, map=spatial,
         interv_pcp=interv_pcp,
         pairplot=pairplot, outcome_pcp=outcome_pcp)
 end
-
 
 # """
 # ┌─────────────┐  ┌─────────────────────┐ ┌────────┐

@@ -35,7 +35,6 @@ function _collate_ranks(rs::ResultSet, selected; kwargs...)::YAXArray
     )
 end
 
-
 """
     seed_ranks(rs::ResultSet; kwargs...)
 
@@ -82,7 +81,7 @@ end
 Collates number of ranked locations.
 """
 function _collate_ranked_locs(data::YAXArray)::Matrix{Int64}
-    locs = zeros(Int64, size.([data], (1,3))...)
+    locs = zeros(Int64, size.([data], (1, 3))...)
 
     Threads.@threads for scen in axes(data, :scenarios)
         scen_ranks = data[:, :, scen]
@@ -155,9 +154,11 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
     r_ids = rs.site_data.reef_siteid
     min_rank = length(r_ids) + 1
 
-    c_ranks = collect(dropdims(mean(ranked_locs, dims=1), dims=1))
+    c_ranks = collect(dropdims(mean(ranked_locs; dims=1); dims=1))
 
-    top_sites = Array{Union{String,Int32,Float32,Missing}}(undef, n, 3, size(ranked_locs, 3))
+    top_sites = Array{Union{String,Int32,Float32,Missing}}(
+        undef, n, 3, size(ranked_locs, 3)
+    )
     for scen in axes(ranked_locs, 3)
         flat = vec(c_ranks[:, scen])
         flat[flat .== 0.0] .= min_rank
@@ -230,12 +231,12 @@ function top_N_sites(rs::ResultSet, N::Int64; metric=relative_cover, stat=mean):
     return top_N_sites(metric(rs), N; stat=stat)
 end
 function top_N_sites(data::AbstractArray{<:Real}, N::Int64; stat=mean)
-    stat_m = dropdims(stat(data, dims=:timesteps), dims=:timesteps)
+    stat_m = dropdims(stat(data; dims=:timesteps); dims=:timesteps)
 
     top_N_sites = zeros(Int64, size(stat_m, :scenarios), N)
     for scen in axes(stat_m, :scenarios)
         # sort each scenario according to metric and get indexes
-        inds = sortperm(stat_m[:, scen], rev=true)
+        inds = sortperm(stat_m[:, scen]; rev=true)
         top_N_sites[scen, :] = inds[1:N]
     end
 

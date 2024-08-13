@@ -34,7 +34,8 @@ function _reef_condition_index(
     # Compare outputs against reef condition criteria provided by experts
     # These are median values for 8 experts.
     condition_category = [:lower, :very_poor, :poor, :fair, :good, :very_good, :very_good]
-    criteria = DataCube([
+    criteria = DataCube(
+        [
             0.0 0.0 0.0 0.0
             0.05 0.15 0.175 0.15  # Very Poor [0 to these values]
             0.15 0.25 0.3 0.25    # Poor
@@ -48,9 +49,9 @@ function _reef_condition_index(
     )
     index_metrics = zeros(size(rc)..., 4)
     @floop for (idx, met) in enumerate([rc, evenness, sv, juves])
-        lower = collect(criteria[1:end-1, idx])
+        lower = collect(criteria[1:(end - 1), idx])
         upper = collect(criteria[2:end, idx])
-        met_cp = map(x -> criteria[2:end, idx][lower.<=x.<upper][1], met.data)
+        met_cp = map(x -> criteria[2:end, idx][lower .<= x .< upper][1], met.data)
         replace!(met_cp, Inf => 0.9)
         index_metrics[:, :, :, idx] .= met_cp
     end
@@ -63,16 +64,19 @@ function _reef_condition_index(
         axes(index_metrics, 2),
         axes(index_metrics, 3))
 
-
         # Find the category name condition score relates to for each metric
-        rci_cats = [condition_category[argmax(index_metrics[ts, loc, scen, i] .== criteria[:, i])]
-                    for i in axes(index_metrics, 4)]
+        rci_cats = [
+            condition_category[argmax(index_metrics[ts, loc, scen, i] .== criteria[:, i])]
+            for i in axes(index_metrics, 4)
+        ]
         c = counter(rci_cats)
 
         # Get the corresponding score values by index (based on RC only)
         # Because the index is used and not the score value (0.15, 0.25, etc), it will
         # always align with the correct category ("poor", "good", etc)
-        scores = dropdims(criteria[condition=At(collect(keys(c))), metric=At([:RC])], dims=2)
+        scores = dropdims(
+            criteria[condition=At(collect(keys(c))), metric=At([:RC])]; dims=2
+        )
 
         # RCI is assigned the minimunm score of the greatest number of metrics that meet
         # `threshold`.
@@ -80,7 +84,7 @@ function _reef_condition_index(
         #       the score is "poor".
         #       If scores are spread out (e.g., unique values), we return the 2nd lowest score
         if any(values(c) .>= threshold)
-            rci[ts, loc, scen] = minimum(scores[values(c).>=threshold])
+            rci[ts, loc, scen] = minimum(scores[values(c) .>= threshold])
         else
             rci[ts, loc, scen] = sort(scores)[2]
         end
@@ -152,11 +156,14 @@ function _reef_tourism_index(
 
     # TODO: Ryan to reinterpolate to account for no CoTS and no rubble
     # Apply unique intercepts for each scenario
-    rti = cat(map(axe -> (intcp[axe] .+ (0.12764 .* rc[:, :, axe]) .+
-                          (0.31946 .* evenness[:, :, axe]) .+
-                          (0.11676 .* sv[:, :, axe]) .+
-                          (-0.0036065 .* juves[:, :, axe])
-            ), axes(rc, 3))..., dims=3)
+    rti = cat(
+        map(
+            axe -> (
+                intcp[axe] .+ (0.12764 .* rc[:, :, axe]) .+
+                (0.31946 .* evenness[:, :, axe]) .+
+                (0.11676 .* sv[:, :, axe]) .+
+                (-0.0036065 .* juves[:, :, axe])
+            ), axes(rc, 3))...; dims=3)
 
     return round.(clamp.(rti, 0.1, 0.9), digits=2)
 end
@@ -223,11 +230,15 @@ function _reef_fish_index(rc::AbstractArray, intcp_u1, intcp_u2)
     slope2 = 1883.3
 
     # Apply unique intercepts for each scenario
-    rfi = cat(map(axe -> 0.01 .* (
-                intcp2[axe] .+ slope2 .*
-                               (intcp1[axe] .+ slope1 .* (rc[:, :, axe] .* 100.0))
-            ),
-            axes(rc, 3))...,
+    rfi = cat(
+        map(
+            axe ->
+                0.01 .* (
+                    intcp2[axe] .+
+                    slope2 .*
+                    (intcp1[axe] .+ slope1 .* (rc[:, :, axe] .* 100.0))
+                ),
+            axes(rc, 3))...;
         dims=3)
 
     # Calculate total fish biomass, kg km2
@@ -243,8 +254,6 @@ function _reef_fish_index(rs::ResultSet; intcp_u1::Bool=false, intcp_u2::Bool=fa
     return _reef_fish_index(rc, icp1, icp2)
 end
 reef_fish_index = Metric(_reef_fish_index, (:timesteps, :sites, :scenarios))
-
-
 
 """
 scenario_rfi(rfi::YAXArray; kwargs...)

@@ -12,7 +12,7 @@ const COLORS::Dict{Symbol,Union{Symbol,String}} = Dict(
     :non_target => "#ff7f00",
     :order => :dodgerblue,
     :topsis => :deepskyblue4,
-    :vikor => :midnightblue,
+    :vikor => :midnightblue
 )
 
 function colors(
@@ -28,7 +28,7 @@ function colors(
 end
 function colors(
     scen_groups::Dict{Symbol,BitVector},
-    weight::Float64,
+    weight::Float64
 )::Vector{Tuple{Symbol,Float64}}
     groups = collect(keys(scen_groups))
     n_scens = length(scen_groups[groups[1]])
@@ -52,7 +52,7 @@ function colors(
             scen_colors[group].r,
             scen_colors[group].g,
             scen_colors[group].b,
-            weights[group],
+            weights[group]
         ) for group in groups
     )
 end
@@ -81,7 +81,7 @@ function scenario_colors!(
     scen_types::NamedTuple,
     weight::Float64,
     hide::BitVector,
-    guide_toggle_map,
+    guide_toggle_map
 )
     color_map .= obs_color[]
     for (t, l, c) in guide_toggle_map

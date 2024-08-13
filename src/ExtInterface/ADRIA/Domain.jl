@@ -51,7 +51,7 @@ function Domain(
     removed_sites::Vector{String},
     DHW::YAXArray,
     wave::YAXArray,
-    cyclone_mortality::YAXArray,
+    cyclone_mortality::YAXArray
 )::ADRIADomain where {T<:Union{Float32,Float64}}
     sim_constants::SimConstants = SimConstants()
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
@@ -64,7 +64,7 @@ function Domain(
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
         Intervention(),
         criteria_weights...,
-        Coral(),
+        Coral()
     ))
     return ADRIADomain(
         name,
@@ -83,7 +83,7 @@ function Domain(
         wave,
         cyclone_mortality,
         model,
-        sim_constants,
+        sim_constants
     )
 end
 
@@ -118,7 +118,7 @@ function Domain(
     conn_path::String,
     dhw_fn::String,
     wave_fn::String,
-    cyclone_mortality_fn::String,
+    cyclone_mortality_fn::String
 )::ADRIADomain
     local site_data::DataFrame
     try
@@ -148,7 +148,7 @@ function Domain(
         conn_path,
         dhw_fn,
         wave_fn,
-        timeframe,
+        timeframe
     )
 
     # Sort data to maintain consistent order
@@ -183,7 +183,8 @@ function Domain(
     waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
     waves = load_env_data(waves_params...)
 
-    cyc_params = ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, site_data)
+    cyc_params =
+        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, site_data)
     cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     # Add compatability with non-migrated datasets but always default current coral spec
@@ -215,7 +216,7 @@ function Domain(
         connectivity.truncated,
         dhw,
         waves,
-        cyclone_mortality,
+        cyclone_mortality
     )
 end
 
@@ -279,7 +280,7 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         conn_path,
         dhw_fn,
         wave_fn,
-        cyclone_mortality_fn,
+        cyclone_mortality_fn
     )
 end
 function load_domain(path::String, rcp::String)::ADRIADomain

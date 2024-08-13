@@ -22,9 +22,10 @@ Matrix[timesteps ⋅ scenarios]
 function scenario_trajectory(data::AbstractArray; metric=mean)::YAXArray{<:Real}
     tf_labels = axis_labels(data, :timesteps)
 
-    s::Matrix{eltype(data)} = metric.(
-        JuliennedArrays.Slices(data[timesteps=At(tf_labels)], axis_index(data, :sites))
-    )
+    s::Matrix{eltype(data)} =
+        metric.(
+            JuliennedArrays.Slices(data[timesteps=At(tf_labels)], axis_index(data, :sites))
+        )
 
     return DataCube(s; timesteps=tf_labels, scenarios=1:size(s, 2))
 end
@@ -35,11 +36,11 @@ end
 Calculate the mean absolute coral for each scenario for the entire domain.
 """
 function _scenario_total_cover(X::AbstractArray; kwargs...)::AbstractArray{<:Real}
-    return dropdims(sum(slice_results(X; kwargs...), dims=:sites), dims=:sites)
+    return dropdims(sum(slice_results(X; kwargs...); dims=:sites); dims=:sites)
 end
 function _scenario_total_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     tac = total_absolute_cover(rs)
-    return dropdims(sum(slice_results(tac; kwargs...), dims=:sites), dims=:sites)
+    return dropdims(sum(slice_results(tac; kwargs...); dims=:sites); dims=:sites)
 end
 scenario_total_cover = Metric(_scenario_total_cover, (:timesteps, :scenarios), "m²")
 
@@ -69,12 +70,12 @@ function _scenario_relative_juveniles(
     kwargs...
 )::AbstractArray{<:Real}
     ajuv = call_metric(absolute_juveniles, data, coral_spec; kwargs...)
-    return dropdims(sum(ajuv, dims=:sites), dims=:sites) / sum(k_area)
+    return dropdims(sum(ajuv; dims=:sites); dims=:sites) / sum(k_area)
 end
 function _scenario_relative_juveniles(rs::ResultSet; kwargs...)::YAXArray
     # Calculate relative domain-wide cover based on absolute values
     aj = absolute_juveniles(rs)
-    return dropdims(sum(aj, dims=:sites), dims=:sites) ./ sum(site_k_area(rs))
+    return dropdims(sum(aj; dims=:sites); dims=:sites) ./ sum(site_k_area(rs))
 end
 scenario_relative_juveniles = Metric(_scenario_relative_juveniles, (:timesteps, :scenarios))
 
@@ -91,11 +92,11 @@ function _scenario_absolute_juveniles(
     kwargs...
 )::AbstractArray{<:Real}
     juv = call_metric(absolute_juveniles, data, coral_spec; kwargs...)
-    return dropdims(sum(juv, dims=:sites), dims=:sites) / sum(k_area)
+    return dropdims(sum(juv; dims=:sites); dims=:sites) / sum(k_area)
 end
 function _scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     # Calculate relative domain-wide cover based on absolute values
-    return dropdims(sum(absolute_juveniles(rs), dims=:sites), dims=:sites)
+    return dropdims(sum(absolute_juveniles(rs); dims=:sites); dims=:sites)
 end
 scenario_absolute_juveniles = Metric(_scenario_absolute_juveniles, (:timesteps, :scenarios))
 
@@ -112,10 +113,10 @@ function _scenario_juvenile_indicator(
     kwargs...
 )::AbstractArray{<:Real}
     juv = call_metric(juvenile_indicator, data, coral_spec, k_area; kwargs...)
-    return dropdims(mean(juv, dims=:sites), dims=:sites) / sum(k_area)
+    return dropdims(mean(juv; dims=:sites); dims=:sites) / sum(k_area)
 end
 function _scenario_juvenile_indicator(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
-    return dropdims(mean(juvenile_indicator(rs), dims=:sites), dims=:sites)
+    return dropdims(mean(juvenile_indicator(rs); dims=:sites); dims=:sites)
 end
 scenario_juvenile_indicator = Metric(_scenario_juvenile_indicator, (:timesteps, :scenarios))
 
@@ -127,7 +128,7 @@ Calculate the mean absolute shelter volumes for each scenario for the entire dom
 """
 function _scenario_asv(sv::YAXArray; kwargs...)::AbstractArray{<:Real}
     sv_sliced = slice_results(sv; kwargs...)
-    return dropdims(sum(sv_sliced, dims=:sites), dims=:sites)
+    return dropdims(sum(sv_sliced; dims=:sites); dims=:sites)
 end
 function _scenario_asv(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_asv(rs.outcomes[:absolute_shelter_volume]; kwargs...)
@@ -142,7 +143,7 @@ Calculate the mean relative shelter volumes for each scenario for the entire dom
 """
 function _scenario_rsv(sv::YAXArray; kwargs...)::AbstractArray{<:Real}
     sv_sliced = slice_results(sv; kwargs...)
-    return dropdims(mean(sv_sliced, dims=:sites), dims=:sites)
+    return dropdims(mean(sv_sliced; dims=:sites); dims=:sites)
 end
 function _scenario_rsv(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_rsv(rs.outcomes[:relative_shelter_volume]; kwargs...)
@@ -195,7 +196,7 @@ function scenario_outcomes(rs::ResultSet, metrics::Vector{<:Metric})::YAXArray
     scen_outcomes = ZeroDataCube(;
         timesteps=timesteps(rs),
         scenarios=1:n_scenarios,
-        outcomes=to_symbol.(metrics),
+        outcomes=to_symbol.(metrics)
     )
 
     for (i, metric) in enumerate(metrics)

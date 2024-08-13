@@ -20,7 +20,7 @@ function ADRIA.viz.scenarios(
     clusters::Union{BitVector,AbstractVector{Int64}};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -35,7 +35,7 @@ function ADRIA.viz.scenarios!(
     clusters::Union{BitVector,Vector{Int64}};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
@@ -53,7 +53,7 @@ function ADRIA.viz.scenarios!(
         scen_groups;
         opts=opts,
         axis_opts=axis_opts,
-        series_opts=series_opts,
+        series_opts=series_opts
     )
 end
 
@@ -77,7 +77,7 @@ function ADRIA.viz.clustered_scenarios(
     clusters::Union{BitVector,Vector{Int64}};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
     return ADRIA.viz.scenarios(
         outcomes, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
@@ -88,7 +88,7 @@ function ADRIA.viz.clustered_scenarios!(
     outcomes::AbstractMatrix{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
     return ADRIA.viz.scenarios!(g, outcomes, clusters; axis_opts=axis_opts, opts=opts)
 end
@@ -117,7 +117,7 @@ function ADRIA.viz.map(
     clusters::Union{BitVector,AbstractVector{Int64}};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -131,7 +131,7 @@ function ADRIA.viz.map!(
     data::AbstractVector{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
     # Although this function is called scenario_clusters, here we have locations clusters
     loc_groups::Dict{Symbol,BitVector} = ADRIA.analysis.scenario_clusters(clusters)
@@ -174,7 +174,7 @@ legend_title (in that order).
 function _cluster_legend_params(
     data::AbstractVector{<:Real},
     loc_groups::Dict{Symbol,BitVector},
-    group_colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}},
+    group_colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}}
 )::Tuple
     group_keys = sort(collect(keys(group_colors)))
     colors = [group_colors[key] for key in group_keys]

@@ -22,7 +22,6 @@ using
     DataFrames,
     JMcDM
 
-
 # dummy functions to allow precompilation
 function unguided_selection() end
 function rank_sites!() end
@@ -43,7 +42,7 @@ function mcda_methods()
         JMcDM.MAIRCA.MaircaMethod,
         JMcDM.MOORA.MooraMethod,
         JMcDM.PIV.PIVMethod,
-        JMcDM.VIKOR.VikorMethod,
+        JMcDM.VIKOR.VikorMethod
     ]
 end
 
@@ -73,7 +72,7 @@ Align a vector of site rankings to match the indicated order in `s_order`.
 function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # Fill target ranking column
     for (i, site_id) in enumerate(s_order[:, 1])
-        rankings[rankings[:, 1].==site_id, col] .= i
+        rankings[rankings[:, 1] .== site_id, col] .= i
     end
 
     return nothing
@@ -142,7 +141,9 @@ function summary_stat_env(
     w=0.5
 )::Vector{Float64}
     if size(env_layer, 1) > 1
-        return vec((mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w)))
+        return vec(
+            (mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w))
+        )
     end
 
     return vec(env_layer)

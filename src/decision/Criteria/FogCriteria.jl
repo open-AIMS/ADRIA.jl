@@ -4,59 +4,59 @@
 Criteria weights for fogging interventions.
 """
 Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
-    fog_heat_stress::Param= Factor(
+    fog_heat_stress::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=minimum,
         name="Fog Heat Stress",
-        description="Preference locations with lower heat stress for fogging.",
+        description="Preference locations with lower heat stress for fogging."
     )
-    fog_wave_stress::Param= Factor(
+    fog_wave_stress::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=minimum,
         name="Fog Wave Stress",
-        description="Preference locations with lower wave activity for fogging.",
+        description="Preference locations with lower wave activity for fogging."
     )
-    fog_in_connectivity::Param= Factor(
+    fog_in_connectivity::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=maximum,
         name="Incoming Connectivity (Fog)",
-        description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for fogging deployments.",
+        description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for fogging deployments."
     )
-    fog_out_connectivity::Param= Factor(
+    fog_out_connectivity::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=maximum,
         name="Outgoing Connectivity (Fog)",
-        description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for fogging deployments.",
+        description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for fogging deployments."
     )
-    fog_depth::Param= Factor(
+    fog_depth::Param = Factor(
         1.0;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=minimum,
         name="Depth (Fog)",
-        description="Give preference to shallower locations for fogging deployments.",
+        description="Give preference to shallower locations for fogging deployments."
     )
-    fog_coral_cover::Param= Factor(
+    fog_coral_cover::Param = Factor(
         0.0;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
         direction=maximum,
         name="Fog Coral Cover",
-        description="Higher values give preference to sites with high coral cover for fogging deployments.",
+        description="Higher values give preference to sites with high coral cover for fogging deployments."
     )
     # Disabled as they are currently unnecessary
     # fog_priority::Param= Factor(
@@ -80,7 +80,8 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
 end
 
 # Alias default constructor
-FogPreferences(names, criteria, directions) = DecisionPreferences(names, criteria, directions)
+FogPreferences(names, criteria, directions) =
+    DecisionPreferences(names, criteria, directions)
 
 function FogPreferences(
     dom, params::YAXArray

@@ -26,7 +26,7 @@ function EnvironmentalLayer(
             dist=DiscreteUniform,
             dist_params=(1.0, Float64(size(dhw, 3))),
             name="DHW Scenario",
-            description="DHW scenario member identifier.",
+            description="DHW scenario member identifier."
         ),
         Factor(
             1;
@@ -34,7 +34,7 @@ function EnvironmentalLayer(
             dist=DiscreteUniform,
             dist_params=(1.0, Float64(size(wave, 3))),
             name="Wave Scenario",
-            description="Wave scenario member identifier.",
+            description="Wave scenario member identifier."
         ),
         Factor(
             1;
@@ -42,8 +42,8 @@ function EnvironmentalLayer(
             dist=DiscreteUniform,
             dist_params=(1.0, Float64(size(cyclone_mortality, 4))),
             name="Cyclone Mortality",
-            description="Cyclone mortality scenario identifier.",
-        ),
+            description="Cyclone mortality scenario identifier."
+        )
     )
 end
 
@@ -166,7 +166,9 @@ Calculates the mean of the truncated normal distribution.
 # Returns
 The mean of the truncated normal distribution
 """
-function truncated_normal_mean(normal_mean::Float64, normal_stdev::Float64, lower_bound::Float64, upper_bound::Float64)::Float64
+function truncated_normal_mean(
+    normal_mean::Float64, normal_stdev::Float64, lower_bound::Float64, upper_bound::Float64
+)::Float64
     alpha::Float64 = (lower_bound - normal_mean) / normal_stdev
     beta::Float64 = (upper_bound - normal_mean) / normal_stdev
 
@@ -223,7 +225,6 @@ function truncated_normal_cdf(
 
     # Store error function of alpha to avoid duplicate calculations
     erf_alpha = rational_erf(alpha * StatsFuns.invsqrt2)
-
 
     return (rational_erf(zeta * StatsFuns.invsqrt2) - erf_alpha) /
            (rational_erf(beta * StatsFuns.invsqrt2) - erf_alpha)

@@ -33,19 +33,19 @@ function Factor(val; kwargs...)::Param
     return Param((; val=val, nt...))
 end
 
-function _set_factor_defaults(kwargs::NT) where {NT <: NamedTuple}
+function _set_factor_defaults(kwargs::NT) where {NT<:NamedTuple}
     missing_defaults = (; default_dist_params=kwargs.dist_params)
 
     for k in keys(missing_defaults)
         if !haskey(kwargs, k)
-            kwargs = (; kwargs..., k=>missing_defaults[k])
+            kwargs = (; kwargs..., k => missing_defaults[k])
         end
     end
 
     return kwargs
 end
 
-function _check_has_required_info(kwargs::NT) where {NT <: NamedTuple}
+function _check_has_required_info(kwargs::NT) where {NT<:NamedTuple}
     @assert haskey(kwargs, :ptype) "Missing factor field `ptype`"
     @assert haskey(kwargs, :dist) "Missing factor field `dist`"
     @assert haskey(kwargs, :dist_params) "Missing factor field `dist_params`"
@@ -53,7 +53,11 @@ function _check_has_required_info(kwargs::NT) where {NT <: NamedTuple}
     @assert haskey(kwargs, :description) "Missing factor field `description`"
 
     param_dist_types = [
-        "continuous", "ordered categorical", "unordered categorical", "ordered discrete", "discrete"
+        "continuous",
+        "ordered categorical",
+        "unordered categorical",
+        "ordered discrete",
+        "discrete"
     ]
     @assert any(occursin.(kwargs[:ptype], param_dist_types)) "`ptype` field is not one of $(param_dist_types)"
 end
@@ -116,10 +120,10 @@ function DiscreteTriangularDist(
     lb::T,
     ub::T,
     peak::T
-)::DiscreteNonParametric where {T<:Union{Int64, Float64}}
+)::DiscreteNonParametric where {T<:Union{Int64,Float64}}
     # The lower bound will always resolve to 0 probability
     # so we extend the lower bound to capture the edge.
-    _lb, ub, peak = trunc.(Int64, [lb-1, ub, peak])
+    _lb, ub, peak = trunc.(Int64, [lb - 1, ub, peak])
     dist = TriangularDist(_lb, ub, peak)
 
     # Approximate discrete probabilities using extended lower bound.
@@ -159,5 +163,5 @@ function DiscreteOrderedUniformDist(
     options = lb:step:ub
     n_opts = length(options)
 
-    return DiscreteNonParametric(options, fill(1.0/n_opts, n_opts))
+    return DiscreteNonParametric(options, fill(1.0 / n_opts, n_opts))
 end

@@ -10,7 +10,6 @@ using
 using ADRIA: axes_names, ResultSet, metrics.metric_label, analysis.col_normalize, model_spec
 using .AvizExt
 
-
 const OPT_TYPE = Dict{Symbol,<:Any}
 const DEFAULT_OPT_TYPE = Dict{Symbol,Any}
 

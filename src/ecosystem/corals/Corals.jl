@@ -1,10 +1,8 @@
 using DataFrames
 import ModelParameters: Model
 
-
 # Upper bound offset to use when re-creating critical DHW distributions
 const HEAT_UB = 10.0
-
 
 """
     functional_group_names()::Vector{Symbol}
@@ -21,7 +19,6 @@ function functional_group_names()::Vector{Symbol}
         :large_massives
     ]
 end
-
 
 """
     colony_mean_area(colony_diam_means::Array{T})::Array{T} where {T<:Real}
@@ -58,13 +55,15 @@ Helper function defining coral colony diameter bin edges. The values are convert
 to the desired unit. The default unit is `m`.
 """
 function bin_edges(; unit=:m)
-    return Matrix([
-        0.0 5.0 7.5 10.0 20.0 40.0 100.0 150.0;
-        0.0 5.0 7.5 10.0 20.0 35.0 50.0 100.0;
-        0.0 5.0 7.5 10.0 15.0 20.0 40.0 50.0;
-        0.0 5.0 7.5 10.0 20.0 40.0 50.0 100.0;
-        0.0 5.0 7.5 10.0 20.0 40.0 50.0 100.0
-    ]) .* linear_scale(:cm, unit)
+    return Matrix(
+        [
+            0.0 5.0 7.5 10.0 20.0 40.0 100.0 150.0;
+            0.0 5.0 7.5 10.0 20.0 35.0 50.0 100.0;
+            0.0 5.0 7.5 10.0 15.0 20.0 40.0 50.0;
+            0.0 5.0 7.5 10.0 20.0 40.0 50.0 100.0;
+            0.0 5.0 7.5 10.0 20.0 40.0 50.0 100.0
+        ]
+    ) .* linear_scale(:cm, unit)
 end
 # function bin_edges()
 #     return Matrix([
@@ -82,7 +81,7 @@ end
 Helper function defining coral colony diameter bin widths.
 """
 function bin_widths()
-    return bin_edges()[:, 2:end] .- bin_edges()[:, 1:end-1]
+    return bin_edges()[:, 2:end] .- bin_edges()[:, 1:(end - 1)]
 end
 
 """
@@ -125,7 +124,8 @@ function colony_areas()
     edges = bin_edges(; unit=:cm)
 
     # Diameters in cm
-    mean_cm_diameters = edges[:, 1:end-1] + (edges[:, 2:end] - edges[:, 1:end-1]) / 2.0
+    mean_cm_diameters =
+        edges[:, 1:(end - 1)] + (edges[:, 2:end] - edges[:, 1:(end - 1)]) / 2.0
 
     # To convert to cover we locate bin means and calculate bin mean areas
     colony_area_mean_cm2 = colony_mean_area(mean_cm_diameters)
@@ -137,11 +137,10 @@ function bins_bounds(mean_diam::Matrix{Float64})::Matrix{Float64}
     bins::Matrix{Float64} = zeros(size(mean_diam)...)
     bins[:, 1] .= mean_diam[:, 1] .* 2
     for i in 2:(size(mean_diam)[2])
-        bins[:, i] .= (mean_diam[:, i] .- bins[:, i-1]) .* 2 .+ bins[:, i-1]
+        bins[:, i] .= (mean_diam[:, i] .- bins[:, i - 1]) .* 2 .+ bins[:, i - 1]
     end
     return bins
 end
-
 
 """
     coral_spec()
@@ -234,7 +233,9 @@ function coral_spec()::NamedTuple
     #     coral sizes are evenly distributed within each bin.
     # Second, growth as transitions of cover to higher bins is estimated as
     #     rate of growth per year.
-    params.growth_rate .= reshape(growth_rate(_linear_extensions, bin_widths()), n_groups_and_sizes)[:]
+    params.growth_rate .= reshape(
+        growth_rate(_linear_extensions, bin_widths()), n_groups_and_sizes
+    )[:]
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
@@ -248,7 +249,7 @@ function coral_spec()::NamedTuple
     fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
 
     # Colonies with area (in cm2) below indicated size are not fecund (reproductive)
-    fec[colony_area_cm2.<min_colony_area_full_fec] .= 0.0
+    fec[colony_area_cm2 .< min_colony_area_full_fec] .= 0.0
 
     # then convert to number of larvae produced per m2
     fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
@@ -281,23 +282,25 @@ function coral_spec()::NamedTuple
     # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
     # Hughes et al., (2018)
     # Mean and std for each species (row) and size class (cols)
-    params.dist_mean = repeat(Float64[
+    params.dist_mean = repeat(
+        Float64[
             # 3.345484656,  # arborescent Acropora
             3.751612251,  # tabular Acropora
             4.081622683,  # corymbose Acropora
             4.487465256,  # Pocillopora + non-Acropora corymbose
             6.165751937,  # Small massives and encrusting
             7.153507902   # Large massives
-        ], inner=n_sizes)
+        ]; inner=n_sizes)
 
-    params.dist_std = repeat(Float64[
+    params.dist_std = repeat(
+        Float64[
             # 2.590016677,  # arborescent Acropora
             2.904433676,  # tabular Acropora
             3.159922076,  # corymbose Acropora
             3.474118416,  # Pocillopora + non-Acropora corymbose
             4.773419097,  # Small massives and encrusting
             5.538122776   # Large massives
-        ], inner=n_sizes)
+        ]; inner=n_sizes)
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list
@@ -344,7 +347,7 @@ function _coral_struct(field_defs::OrderedDict)::Nothing
     write(s, "end")
     eval(Meta.parse(String(take!(s))))
 
-    return
+    return nothing
 end
 
 """
@@ -374,27 +377,27 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
         dist=Uniform,
         dist_params=(0.25, 0.5),
         name="Heritability",
-        description="Heritability of DHW tolerance.",
+        description="Heritability of DHW tolerance."
     )
 
     for c_id in p_vals.coral_id
         for p in base_coral_params
             f_name::String = c_id * "_" * p
-            f_val = p_vals[p_vals.coral_id.==c_id, p][1]
+            f_val = p_vals[p_vals.coral_id .== c_id, p][1]
             struct_fields[f_name] = Factor(
                 f_val;
                 ptype="continuous",
                 dist=TriangularDist,
                 dist_params=(f_val * bounds[1], f_val * bounds[2], f_val),
                 name=human_readable_name(f_name; title_case=true),
-                description="",
+                description=""
             )
         end
     end
 
     _coral_struct(struct_fields)
 
-    return
+    return nothing
 end
 
 # Generate base coral struct from default spec.
@@ -424,13 +427,15 @@ function to_coral_spec(coral_df::DataFrame)::DataFrame
     return _update_coral_spec(spec, pnames, coral_df)
 end
 
-function _update_coral_spec(spec::DataFrame, pnames::Vector{String}, coral_params::DataFrame)::DataFrame
+function _update_coral_spec(
+    spec::DataFrame, pnames::Vector{String}, coral_params::DataFrame
+)::DataFrame
     fnames::Vector{String} = String.(coral_params[!, :fieldname])
     for p in pnames
         target::BitVector = occursin.(p, fnames)
         for tn in fnames[target]
-            idx::BitVector = spec.coral_id .== rsplit(tn, "_$p", keepempty=false)
-            spec[idx, [p]] .= coral_params[coral_params.fieldname.==tn, :val]
+            idx::BitVector = spec.coral_id .== rsplit(tn, "_$p"; keepempty=false)
+            spec[idx, [p]] .= coral_params[coral_params.fieldname .== tn, :val]
         end
     end
 
@@ -459,9 +464,16 @@ default_scen = ADRIA._update_coral_factors(default_scen, ADRIA.coral_spec().para
 """
 function _update_coral_factors(spec::DataFrame, coral_params::DataFrame)::DataFrame
     c_ids = coral_params.coral_id
-    for factor in ["mean_colony_diameter_m", "growth_rate", "fecundity", "mb_rate", "dist_mean", "dist_std"]
+    for factor in [
+        "mean_colony_diameter_m",
+        "growth_rate",
+        "fecundity",
+        "mb_rate",
+        "dist_mean",
+        "dist_std"
+    ]
         for id in c_ids
-            spec[!, "$(id)_$(factor)"] = coral_params[coral_params.coral_id.==id, factor]
+            spec[!, "$(id)_$(factor)"] = coral_params[coral_params.coral_id .== id, factor]
         end
     end
 

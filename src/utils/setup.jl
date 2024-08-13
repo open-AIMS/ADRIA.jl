@@ -15,7 +15,8 @@ function setup()::Nothing
         ENV["ADRIA_OUTPUT_DIR"] = config["results"]["output_dir"]
         ENV["ADRIA_NUM_CORES"] = config["operation"]["num_cores"]
         ENV["ADRIA_THRESHOLD"] = config["operation"]["threshold"]
-        ENV["ADRIA_DEBUG"] = haskey(config["operation"], "debug") ? config["operation"]["debug"] : false
+        ENV["ADRIA_DEBUG"] =
+            haskey(config["operation"], "debug") ? config["operation"]["debug"] : false
     catch
         @warn "Could not find config.toml file.\nApplying default configuration and saving results to 'Outputs' in current directory."
 
@@ -28,7 +29,6 @@ function setup()::Nothing
 
     return nothing
 end
-
 
 """Check to ensure setup has been run."""
 function has_setup()::Bool

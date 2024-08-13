@@ -2,7 +2,6 @@
 
 using Pkg, PackageCompiler
 
-
 here = @__DIR__
 cd(here)
 
@@ -11,7 +10,9 @@ if "app" in ARGS
 
     cd("../..")
 
-    create_app("Aviz", "adria_aviz"; include_lazy_artifacts=true, force=true, incremental=true)
+    create_app(
+        "Aviz", "adria_aviz"; include_lazy_artifacts=true, force=true, incremental=true
+    )
     exit()
 end
 
@@ -29,7 +30,11 @@ if "sysimage" in ARGS
 
     project_deps = collect(keys(Pkg.project().dependencies))
     try
-        create_sysimage(project_deps; sysimage_path=sysimage_fn, precompile_execution_file="precompile_script.jl")
+        create_sysimage(
+            project_deps;
+            sysimage_path=sysimage_fn,
+            precompile_execution_file="precompile_script.jl"
+        )
     catch
         @info "Sysimage build failed..."
     end

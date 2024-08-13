@@ -156,7 +156,7 @@ function pawn(
     X::AbstractMatrix{<:Real},
     y::AbstractVector{<:Real},
     factor_names::Vector{String};
-    S::Int64=10,
+    S::Int64=10
 )::YAXArray
     N, D = size(X)
     step = 1 / S
@@ -174,13 +174,13 @@ function pawn(
             X_di = @view(X[:, d_i])
             X_q .= quantile(X_di, seq)
 
-            Y_sel = @view(y[X_q[1].<=X_di.<=X_q[2]])
+            Y_sel = @view(y[X_q[1] .<= X_di .<= X_q[2]])
             if length(Y_sel) > 0
                 pawn_t[1, d_i] = ks_statistic(ApproximateTwoSampleKSTest(Y_sel, y))
             end
 
             for s in 2:S
-                Y_sel = @view(y[X_q[s].<X_di.<=X_q[s+1]])
+                Y_sel = @view(y[X_q[s] .< X_di .<= X_q[s + 1]])
                 if length(Y_sel) == 0
                     continue  # no available samples
                 end
@@ -240,7 +240,7 @@ function pawn(
     if N > 1 && D > 1
         msg::String = string(
             "The current implementation of PAWN can only assess a single quantity",
-            " of interest at a time.",
+            " of interest at a time."
         )
         throw(ArgumentError(msg))
     end
@@ -283,7 +283,7 @@ function convergence(
     y::YAXArray,
     target_factors::Vector{Symbol};
     Si::Function=pawn,
-    n_steps::Int64=10,
+    n_steps::Int64=10
 )::YAXArray
     N = length(y.scenarios)
     step_size = floor(Int64, N / n_steps)
@@ -293,14 +293,16 @@ function convergence(
         T=Float64,
         factors=target_factors,
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
-        n_scenarios=N_it,
+        n_scenarios=N_it
     )
     scens_idx = randperm(N)
 
     for nn in N_it
-        pawn_store[n_scenarios=At(nn)] .= Si(X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]]))[
-            factors=At(target_factors)
-        ]
+        pawn_store[n_scenarios=At(nn)] .= Si(
+            X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])
+        )[
+        factors=At(target_factors)
+]
     end
 
     return pawn_store
@@ -311,12 +313,12 @@ function convergence(
     y::YAXArray,
     components::Vector{Symbol};
     Si::Function=pawn,
-    n_steps::Int64=10,
+    n_steps::Int64=10
 )::YAXArray
     ms = model_spec(rs)
 
     target_factors = [
-        ms[ms[:, "component"].==cc, "fieldname"] for
+        ms[ms[:, "component"] .== cc, "fieldname"] for
         cc in string.(components)
     ]
 
@@ -327,7 +329,7 @@ function convergence(
         T=Float64,
         factors=components,
         Si=collect(Si_n.Si),
-        n_scenarios=collect(Si_n.n_scenarios),
+        n_scenarios=collect(Si_n.n_scenarios)
     )
 
     for (cc, factors) in zip(components, target_factors)
@@ -385,7 +387,7 @@ function tsa(X::DataFrame, y::AbstractMatrix{<:Real})::YAXArray
         T=Float64,
         factors=Symbol.(names(X)),
         Si=[:min, :lb, :mean, :median, :ub, :max, :std, :cv],
-        timesteps=ts,
+        timesteps=ts
     )
 
     for t in axes(y, 1)
@@ -471,46 +473,46 @@ function rsa(
     sel = trues(N)
 
     foi_spec::DataFrame = _get_factor_spec(model_spec, factors)
-    unordered_cat = foi_spec.fieldname[foi_spec.ptype.=="unordered categorical"]
+    unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
     seq_store::Dict{Symbol,Vector{Float64}} = Dict() # storage for bin sequences
 
     # Get unique bin sequences for unordered categorical variables and store
     for factor in unordered_cat
-        S_temp = _category_bins(foi_spec[foi_spec.fieldname.==factor, :])
-        seq_store[factor] = collect(0.0:(1/S_temp):1.0)
+        S_temp = _category_bins(foi_spec[foi_spec.fieldname .== factor, :])
+        seq_store[factor] = collect(0.0:(1 / S_temp):1.0)
     end
 
     # Other variables have default sequence using input S
-    seq_store[:default] = collect(0.0:(1/S):1.0)
+    seq_store[:default] = collect(0.0:(1 / S):1.0)
     default_ax = (Dim{:default}(seq_store[:default][2:end]),)
 
     # YAXArray storage for unordered categorical variables
     yax_store_cat = Tuple((
         YAXArray(
             (Dim{fact_t}(seq_store[fact_t][2:end]),),
-            zeros(Union{Missing,Float64}, (length(seq_store[fact_t][2:end]))),
+            zeros(Union{Missing,Float64}, (length(seq_store[fact_t][2:end])))
         ) for fact_t in unordered_cat
     ))
     # YAXArray storage for other variables
     yax_store_default = Tuple(
         YAXArray(
             default_ax, zeros(Union{Missing,Float64}, (length(seq_store[:default][2:end])))
-        ) for _ in 1:(length(factors)-length(unordered_cat))
+        ) for _ in 1:(length(factors) - length(unordered_cat))
     )
 
     # Create storage NamedTuples for unordered categorical variables and other variables, then merge
     r_s_default = NamedTuple(
         zip(
-            Tuple(foi_spec.fieldname[foi_spec.ptype.!="unordered categorical"]),
-            yax_store_default,
-        ),
+            Tuple(foi_spec.fieldname[foi_spec.ptype .!= "unordered categorical"]),
+            yax_store_default
+        )
     )
     r_s_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
     r_s = merge(r_s_cat, r_s_default)
 
     for fact_t in factors
         f_ind = foi_spec.fieldname .== fact_t
-        ptype::String = foi_spec.ptype[foi_spec.fieldname.==fact_t][1]
+        ptype::String = foi_spec.ptype[foi_spec.fieldname .== fact_t][1]
 
         X_i .= X[:, fact_t]
 
@@ -530,8 +532,8 @@ function rsa(
             r_s[fact_t][1] = KSampleADTest(y[sel], y[Not(sel)]).A²k
         end
 
-        for s in 2:(length(X_q)-1)
-            sel .= X_q[s] .< X_i .<= X_q[s+1]
+        for s in 2:(length(X_q) - 1)
+            sel .= X_q[s] .< X_i .<= X_q[s + 1]
             if count(sel) == 0 || length(y[Not(sel)]) == 0 || length(unique(y[sel])) == 1
                 # not enough samples, or inactive area of factor space
                 r_s[fact_t][s] = missing
@@ -558,8 +560,8 @@ function rsa(
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
         y,
-        rs.model_spec[rs.model_spec.fieldname.∈[factors], :];
-        S=S,
+        rs.model_spec[rs.model_spec.fieldname .∈ [factors], :];
+        S=S
     )
 end
 
@@ -615,7 +617,7 @@ function outcome_map(
     model_spec::DataFrame;
     S::Int64=10,
     n_boot::Int64=100,
-    conf::Float64=0.95,
+    conf::Float64=0.95
 )::YAXArray
     if !all(target_factors .∈ [model_spec.fieldname])
         missing_factor = .!(target_factors .∈ [model_spec.fieldname])
@@ -629,13 +631,13 @@ function outcome_map(
         S = _category_bins(foi_spec[is_cat, :])
     end
 
-    steps = collect(0.0:(1/S):1.0)
+    steps = collect(0.0:(1 / S):1.0)
 
     p_table = DataCube(
         zeros(Union{Missing,Float64}, length(steps) - 1, length(target_factors), 3);
         bins=string.(steps[2:end]),
         factors=Symbol.(target_factors),
-        CI=[:mean, :lower, :upper],
+        CI=[:mean, :lower, :upper]
     )
 
     all_p_rule = _map_outcomes(y, rule)
@@ -652,21 +654,21 @@ function outcome_map(
     X_q = zeros(S + 1)
     for (j, fact_t) in enumerate(target_factors)
         X_f = X[:, fact_t]
-        ptype = model_spec.ptype[model_spec.fieldname.==fact_t][1]
+        ptype = model_spec.ptype[model_spec.fieldname .== fact_t][1]
         if occursin("categorical", ptype)
             X_q .= _get_cat_quantile(foi_spec, fact_t, steps)
         else
             S = S_default
             steps = steps_default
-            X_q[1:(S+1)] .= quantile(X_f, steps)
+            X_q[1:(S + 1)] .= quantile(X_f, steps)
         end
 
-        for i in 1:length(X_q[1:(end-1)])
+        for i in 1:length(X_q[1:(end - 1)])
             local b::BitVector
             if i == 1
-                b = (X_q[i] .<= X_f .<= X_q[i+1])
+                b = (X_q[i] .<= X_f .<= X_q[i + 1])
             else
-                b = (X_q[i] .< X_f .<= X_q[i+1])
+                b = (X_q[i] .< X_f .<= X_q[i + 1])
             end
 
             b = b .& behave
@@ -692,7 +694,7 @@ function outcome_map(
     rule::Union{Function,BitVector,Vector{Int64}};
     S::Int64=20,
     n_boot::Int64=100,
-    conf::Float64=0.95,
+    conf::Float64=0.95
 )::YAXArray
     return outcome_map(X, y, rule, names(X); S, n_boot, conf)
 end
@@ -703,7 +705,7 @@ function outcome_map(
     target_factors::Vector{Symbol};
     S::Int64=20,
     n_boot::Int64=100,
-    conf::Float64=0.95,
+    conf::Float64=0.95
 )::YAXArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, target_factors, rs.model_spec; S, n_boot, conf
@@ -715,7 +717,7 @@ function outcome_map(
     rule::Union{Function,BitVector,Vector{Int64}};
     S::Int64=20,
     n_boot::Int64=100,
-    conf::Float64=0.95,
+    conf::Float64=0.95
 )::YAXArray
     return outcome_map(
         rs.inputs[:, Not(:RCP)], y, rule, names(rs.inputs), rs.model_spec; S, n_boot, conf

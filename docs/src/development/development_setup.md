@@ -118,37 +118,25 @@ for further details.
 ## Code Style
 
 We are currently moving to follow [Blue Style Guide](https://github.com/invenia/BlueStyle).
-All PRs should follow this style guide.
+All PRs should follow this style guide. The [julia-format](https://github.com/julia-actions/julia-format)
+GitHub workflow will check that your PR's code is formatted. Note that this check requires
+all code in the repo to be formatted, not only the files modified by your PR.
 
-To set up the formatter (the VS Code extension, **not** the JuliaFormatter.jl package):
+Use the VSCode `Format Document` or `Format Selection` actions to format your code.
 
-- Go to the VS Code settings panel or press `ctrl+,`.
-- Search for "Julia Formatter"
-
-One of the top matches, if not the first match, should be the configuration flags for the
-formatter.
-
-```bash
-Julia-format: Flag
-Flag(s) for JuliaFormatter. See Formatting Options and options.jl.
+To reformat the entire project:
+```julia
+using JuliaFormatter
+format(".")
 ```
+*If this returns `false`, call `format()` again.*
 
-The team has adopted the following configuration options for auto-formatting:
+Formatter configuration is defined in `.JuliaFormatter.toml`, see
+[JuliaFormatter docs](https://domluna.github.io/JuliaFormatter.jl/stable/).
 
-```bash
-style=BlueStyle(), indent=4, margin=92, always_for_in=true, for_in_replacement="∈", whitespace_typedefs=false, import_to_using=true, align_struct_field=true, align_assignment=false, align_conditional=true, align_pair_arrow=false, normalize_line_endings="unix", align_matrix=true, join_lines_based_on_source=true, indent_submodule=true, surround_whereop_typeparameters=false, yas_style_nesting=true, trailing_comma=false
-```
+### VSCode Settings
 
-Under the tabs option:
-
-```bash
-Julia-format: Tabs
-Tab size, which should be the same as indent's value in Julia-format: Flag. Or, set this to 0 to use space(s).
-```
-
-Set this to 0 to ensure spaces are always used for indentation.
-
-Next, search for `trim` and ensure the following options are all ticked/enabled:
+Open Settings (`Ctrl+,`). Search for `trim` and ensure the following options are all ticked/enabled:
 
 - Files: Trim Final Newlines
 - Files: Trim Trailing Whitespace
@@ -168,6 +156,10 @@ Add "92" to the list of ruler lengths, such that the `editor.rulers` entry looks
 ```
 
 Adding multiple values adds more guide lines at the indicated widths.
+
+*Important:* if you installed the *oh7z Julia Formatter* VSCode extension, uninstall or disable it for this workspace.
+That extension always uses its formatter settings and does not support `.JuliaFormatter.toml` whereas the main Julia extension does.
+The only reason to use the oh7z extension is for Julia projects that do not have a `.JuliaFormatter.toml` file.
 
 ## Notes
 

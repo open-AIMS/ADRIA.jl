@@ -21,16 +21,16 @@ using ADRIA.Random
 
     @test all(mean_diffs .< 1e-10) ||
         "calculated truncated normal with symmetric bounds mean not equal to normal mean"
-    
+
     mean_diffs = zeros(n_checks)
-    
+
     # The calculated truncated normal mean should agree with the Distributions.jl implementation
     for i in 1:n_checks
         mu = rand(Uniform(0, 10))
         stdev = rand(Uniform(0.01, 10))
         lb = rand(Uniform(mu - 6.0 * stdev, mu + 3.0 * stdev))
         ub = rand(Uniform(lb, lb + 3.0 * stdev))
-        
+
         calculated = ADRIA.truncated_normal_mean(
             mu, stdev, lb, ub
         )
@@ -56,15 +56,21 @@ end
         lb = mu - n_std * stdev
         ub = mu + n_std * stdev
 
-        cdf_diffs[3 * (i - 1) + 1] = abs(0.0 - ADRIA.truncated_normal_cdf(
-            lb, mu, stdev, lb, ub
-        ))
-        cdf_diffs[3 * (i - 1) + 2] = abs(0.5 - ADRIA.truncated_normal_cdf(
-            mu, mu, stdev, lb, ub
-        ))
-        cdf_diffs[3 * (i - 1) + 3] = abs(1.0 - ADRIA.truncated_normal_cdf(
-            ub, mu, stdev, lb, ub
-        ))
+        cdf_diffs[3 * (i - 1) + 1] = abs(
+            0.0 - ADRIA.truncated_normal_cdf(
+                lb, mu, stdev, lb, ub
+            )
+        )
+        cdf_diffs[3 * (i - 1) + 2] = abs(
+            0.5 - ADRIA.truncated_normal_cdf(
+                mu, mu, stdev, lb, ub
+            )
+        )
+        cdf_diffs[3 * (i - 1) + 3] = abs(
+            1.0 - ADRIA.truncated_normal_cdf(
+                ub, mu, stdev, lb, ub
+            )
+        )
     end
 
     @test all(cdf_diffs .< 1e-7) ||

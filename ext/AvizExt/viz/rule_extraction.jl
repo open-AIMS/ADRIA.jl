@@ -62,7 +62,7 @@ function ADRIA.viz.rules_scatter(
         rules;
         opts=opts,
         fig_opts=fig_opts,
-        axis_opts=axis_opts,
+        axis_opts=axis_opts
     )
 end
 function ADRIA.viz.rules_scatter!(
@@ -98,13 +98,13 @@ function ADRIA.viz.rules_scatter!(
             feature_names = _feature_names(fieldnames, spec)
 
             ax::Axis = Axis(
-                sub_g[r, c],
+                sub_g[r, c];
                 xlabel=feature_names[1],
                 ylabel=feature_names[2],
                 title=_readable_condition(condition, feature_names),
                 titlesize=title_size,
                 xlabelsize=labels_size,
-                ylabelsize=labels_size;
+                ylabelsize=labels_size,
                 axis_opts...
             )
 
@@ -117,10 +117,10 @@ function ADRIA.viz.rules_scatter!(
             xlims!(x_min, x_max), ylims!(y_min, y_max)
 
             for c in unique(clusters)
-                x = x_features[c.==clusters]
-                y = y_features[c.==clusters]
+                x = x_features[c .== clusters]
+                y = y_features[c .== clusters]
                 cat_color = c == 1 ? colors[1] : colors[2]
-                scatter!(ax, x, y, color=cat_color, marker=marker, markersize=4)
+                scatter!(ax, x, y; color=cat_color, marker=marker, markersize=4)
             end
 
             if get(opts, :target_area, true)
@@ -130,38 +130,39 @@ function ADRIA.viz.rules_scatter!(
     end
 
     # Create Legend
-    markers = MarkerElement[MarkerElement(color=_c, marker=marker) for _c in colors]
+    markers = MarkerElement[MarkerElement(; color=_c, marker=marker) for _c in colors]
     Legend(
-        sub_g[1, n_cols+1],
+        sub_g[1, n_cols + 1],
         markers,
         labels,
-        "Clusters",
+        "Clusters";
         halign=:left,
         valign=:top,
         margin=(5, 5, 5, 5)
     )
 
-    g
+    return g
 end
 
 function _highlight_target_area(ax::Axis, condition::Vector{Vector}, scenarios::DataFrame)
     # Draw lines at clause breakpoints
-    vlines!(ax, [last(condition[1])], color=(:black, 0.4))
-    hlines!(ax, [last(condition[2])], color=(:black, 0.4))
+    vlines!(ax, [last(condition[1])]; color=(:black, 0.4))
+    hlines!(ax, [last(condition[2])]; color=(:black, 0.4))
 
     # Highlight target area
-    poly!(ax, _target_area(scenarios, condition), color=(:black, 0.08))
+    poly!(ax, _target_area(scenarios, condition); color=(:black, 0.08))
+    return nothing
 end
 
 function _find_limits(features::Vector{<:Real})
     delta = (maximum(features) - minimum(features)) * 0.1
-    [minimum(features) - delta, maximum(features) + delta]
+    return [minimum(features) - delta, maximum(features) + delta]
 end
 
 function _readable_condition(condition::Vector{Vector}, feature_names::Vector{String})
     inequalities = [c[2] == :L ? " < " : " ≥ " for c in condition]
     values = string.([round(c[3]; digits=2) for c in condition])
-    join(feature_names .* inequalities .* values, "\n")
+    return join(feature_names .* inequalities .* values, "\n")
 end
 
 function _target_area(scenarios::DataFrame, condition::Vector{Vector})
@@ -172,9 +173,9 @@ function _target_area(scenarios::DataFrame, condition::Vector{Vector})
     x, y = [c[2] == :L ? l[1] : c[3] for (c, l) in zip(condition, lims)]
     w, h = [c[2] == :L ? c[3] - l[1] : l[2] - c[3] for (c, l) in zip(condition, lims)]
 
-    Rect(x, y, w, h)
+    return Rect(x, y, w, h)
 end
 
 function _feature_names(fieldnames::Vector{String}, spec::DataFrame)::Vector{String}
-    return [spec[spec.fieldname.==f, :name][1] for f in Symbol.(fieldnames)]
+    return [spec[spec.fieldname .== f, :name][1] for f in Symbol.(fieldnames)]
 end

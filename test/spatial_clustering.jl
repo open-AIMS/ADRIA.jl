@@ -16,7 +16,7 @@ using Statistics
     prefsites = site_order[1:5]
     reef_locs = [fill("1", 10)..., fill("2", 10)..., fill("3", 10)...]
 
-    s_order = Union{Float64, Int64}[Int64.(site_order) rand(n_sites)]
+    s_order = Union{Float64,Int64}[Int64.(site_order) rand(n_sites)]
     # All selected sites are in the same reef, so 2 should be replaced
     reef_locs[prefsites] .= "2"
     # Empty ranking just for testing
@@ -44,7 +44,7 @@ using Statistics
     # Set no 3 sites to be in the same reef and check none are replaced
     reef_locs[prefsites] .= ["1", "2", "3", "4", "1"]
 
-    s_order = Union{Float64, Int64}[Int64.(orig_site_order) rand(n_sites)]
+    s_order = Union{Float64,Int64}[Int64.(orig_site_order) rand(n_sites)]
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
     new_prefsites, rankings = constrain_reef_cluster(
@@ -54,7 +54,7 @@ using Statistics
         area_to_seed,
         available_space,
         n_iv_locs,
-        3,
+        3
     )
 
     @test all(new_prefsites .== prefsites) ||
@@ -64,7 +64,7 @@ using Statistics
     available_space[prefsites] .= (area_to_seed - 100.0) / n_iv_locs
     available_space[s_order[n_iv_locs + 1, 1]] = area_to_seed
 
-    s_order = Union{Float64, Int64}[Int64.(orig_site_order) rand(n_sites)]
+    s_order = Union{Float64,Int64}[Int64.(orig_site_order) rand(n_sites)]
     rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
 
     new_prefsites, rankings = constrain_reef_cluster(

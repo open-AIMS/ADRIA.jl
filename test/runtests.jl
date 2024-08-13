@@ -13,9 +13,7 @@ const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
 const TEST_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Test_domain")
 const TEST_REEFMOD_ENGINE_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Reefmod_test_domain")
 
-
 include("aqua.jl")
-
 
 """Test smaller scenario run with example scenario specification"""
 function test_small_spec_rs()
@@ -107,8 +105,8 @@ function test_rs_w_fig()
             :N_seed_CA,
             :fogging,
             :SRM,
-            :a_adapt,
-        ],
+            :a_adapt
+        ]
     )
 
     ### Scenario outcomes
@@ -126,14 +124,14 @@ function test_rs_w_fig()
         rs,
         s_tac;
         opts=Dict(:by_RCP => false, :legend => false),
-        axis_opts=Dict(:title => "TAC [m²]"),
+        axis_opts=Dict(:title => "TAC [m²]")
     )
     ADRIA.viz.scenarios!(
         tf[1, 2],
         rs,
         s_juves;
         opts=Dict(:summarize => false),
-        axis_opts=Dict(:title => "Juveniles [%]"),
+        axis_opts=Dict(:title => "Juveniles [%]")
     )
 
     # tf  # display the figure
@@ -169,7 +167,7 @@ function test_rs_w_fig()
     pawn_fig = ADRIA.viz.pawn(
         tac_Si;
         opts,
-        fig_opts,
+        fig_opts
     )
     # save("pawn_si.png", pawn_fig)
 
@@ -180,7 +178,7 @@ function test_rs_w_fig()
         rs,
         tsa_s;
         opts,
-        fig_opts,
+        fig_opts
     )
     # save("tsa.png", tsa_fig)
 
@@ -215,12 +213,12 @@ function test_rs_w_fig()
     axis_opts = Dict{Symbol,Any}(
         :title => "Time Series Clustering with $n_clusters clusters",
         :ylabel => "TAC [m²]",
-        :xlabel => "Timesteps [years]",
+        :xlabel => "Timesteps [years]"
     )
 
     tsc_fig = ADRIA.viz.clustered_scenarios(
         s_tac, clusters; opts=Dict{Symbol,Any}(:summarize => true), fig_opts=fig_opts,
-        axis_opts=axis_opts,
+        axis_opts=axis_opts
     )
 
     # Save final figure
@@ -257,7 +255,7 @@ function test_rs_w_fig()
     metrics::Vector{ADRIA.metrics.Metric} = [
         ADRIA.metrics.scenario_total_cover,
         ADRIA.metrics.scenario_asv,
-        ADRIA.metrics.scenario_absolute_juveniles,
+        ADRIA.metrics.scenario_absolute_juveniles
     ]
 
     outcomes = ADRIA.metrics.scenario_outcomes(rs, metrics)
@@ -306,7 +304,10 @@ function test_rs_w_fig()
     target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)
 
     # Select only desired features
-    fields_iv = ADRIA.component_params(rs, [Intervention, FogCriteriaWeights, SeedCriteriaWeights]).fieldname
+    fields_iv =
+        ADRIA.component_params(
+            rs, [Intervention, FogCriteriaWeights, SeedCriteriaWeights]
+        ).fieldname
     scenarios_iv = scens[:, fields_iv]
 
     # Use SIRUS algorithm to extract rules
@@ -338,7 +339,7 @@ function test_rs_w_fig()
         tac_rs,
         foi;
         opts,
-        fig_opts,
+        fig_opts
     )
     # save("rsa.png", rsa_fig)
 

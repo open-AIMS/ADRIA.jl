@@ -103,7 +103,7 @@ function summarize(
     data::YAXArray{D,T,N,A},
     alongs_axis::Vector{Symbol},
     metric::Function,
-    timesteps::Union{UnitRange,Vector{Int64},BitVector},
+    timesteps::Union{UnitRange,Vector{Int64},BitVector}
 )::YAXArray where {D,T,N,A}
     return summarize(data[timesteps=timesteps], alongs_axis, metric)
 end

@@ -45,7 +45,7 @@ function setup_cache(domain::Domain)::NamedTuple
         site_area=Matrix{Float64}(site_area(domain)'),  # area of locations
         site_k_area=Matrix{Float64}(site_k_area(domain)'),  # location carrying capacity
         wave_damage=zeros(tf, n_group_and_size, n_locs),  # damage coefficient for each size class
-        dhw_tol_mean_log=zeros(tf, n_group_and_size, n_locs),  # tmp log for mean dhw tolerances
+        dhw_tol_mean_log=zeros(tf, n_group_and_size, n_locs)  # tmp log for mean dhw tolerances
     )
 
     return cache
@@ -75,7 +75,9 @@ end
 
 Reshape vector to shape [functional_groups ⋅ sizes]
 """
-function _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{T})::Matrix{T} where {T<:Union{Float32,Float64,Bool}}
+function _to_group_size(
+    growth_spec::CoralGrowth, data::AbstractVector{T}
+)::Matrix{T} where {T<:Union{Float32,Float64,Bool}}
     # Data is reshaped to size ⋅ groups then transposed to maintain expected order
     return Matrix(reshape(data, (growth_spec.n_sizes, growth_spec.n_groups))')
 end
@@ -118,7 +120,7 @@ function run_scenarios(
     scens::DataFrame,
     RCP::Vector{String};
     show_progress=true,
-    remove_workers=true,
+    remove_workers=true
 )::ResultSet
     # Initialize ADRIA configuration options
     setup()
@@ -156,15 +158,18 @@ function run_scenarios(
     _bin_edges::Matrix{Float64} = bin_edges()
     functional_groups = [
         FunctionalGroup.(
-            eachrow(_bin_edges[:, 1:end-1]),
+            eachrow(_bin_edges[:, 1:(end - 1)]),
             eachrow(_bin_edges[:, 2:end]),
             eachrow(zeros(n_groups, n_sizes))
         ) for _ in 1:n_locs
     ]
 
-    para_threshold = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
+    para_threshold =
+        ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
     active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
-    parallel = (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (active_cores > 1) && (nrow(scens) >= para_threshold)
+    parallel =
+        (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (active_cores > 1) &&
+        (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
@@ -198,7 +203,9 @@ function run_scenarios(
 
                 # Switch RCPs so correct data is loaded
                 dom = switch_RCPs!(dom, rcp)
-                target_rows = findall(scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp))
+                target_rows = findall(
+                    scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp)
+                )
                 scen_args = _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
 
                 if show_progress
@@ -223,7 +230,9 @@ function run_scenarios(
 
             # Switch RCPs so correct data is loaded
             dom = switch_RCPs!(dom, rcp)
-            scen_args = _scenario_args(dom, scenarios_matrix, rcp, size(scenarios_matrix, 1))
+            scen_args = _scenario_args(
+                dom, scenarios_matrix, rcp, size(scenarios_matrix, 1)
+            )
 
             if show_progress
                 @showprogress desc = run_msg dt = 4 map(func, scen_args)
@@ -269,7 +278,7 @@ function run_scenario(
     idx::Int64,
     scenario::Union{AbstractVector,DataFrameRow},
     functional_groups::Vector{Vector{FunctionalGroup}}, # additional argument for reusable buffer
-    data_store::NamedTuple,
+    data_store::NamedTuple
 )::Nothing
     if domain.RCP == ""
         local rcp
@@ -294,33 +303,35 @@ function run_scenario(
 
     rs_raw::Array{Float64} = result_set.raw
     vals = relative_cover(rs_raw)
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
     vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
 
     vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
     coral_spec::DataFrame = to_coral_spec(scenario)
     vals .= relative_juveniles(rs_raw, coral_spec)
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
 
     vals .= juvenile_indicator(rs_raw, coral_spec, site_k_area(domain))
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
     vals = relative_taxa_cover(rs_raw, site_k_area(domain), domain.coral_growth.n_groups)
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
-    vals = relative_loc_taxa_cover(rs_raw, site_k_area(domain), domain.coral_growth.n_groups)
+    vals = relative_loc_taxa_cover(
+        rs_raw, site_k_area(domain), domain.coral_growth.n_groups
+    )
     vals = coral_evenness(vals.data)
-    vals[vals.<threshold] .= 0.0
+    vals[vals .< threshold] .= 0.0
     data_store.coral_evenness[:, :, idx] .= vals
 
     # Store raw results if no metrics specified
@@ -341,7 +352,7 @@ function run_scenario(
         vals = getfield(result_set, k)
 
         try
-            vals[vals.<threshold] .= Float32(0.0)
+            vals[vals .< threshold] .= Float32(0.0)
         catch err
             err isa MethodError ? nothing : rethrow(err)
         end
@@ -402,7 +413,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})::Nam
     _bin_edges::Matrix{Float64} = bin_edges()
     functional_groups = [
         FunctionalGroup.(
-            eachrow(_bin_edges[:, 1:end-1]),
+            eachrow(_bin_edges[:, 1:(end - 1)]),
             eachrow(_bin_edges[:, 2:end]),
             eachrow(zeros(n_groups, n_sizes))
         ) for _ in 1:n_locs
@@ -489,7 +500,9 @@ function run_model(
     fog_years::Int64 = param_set[At("fog_years")]  # number of years to fog
 
     loc_k_area::Matrix{Float64} = cache.site_k_area
-    fec_params_per_m²::Matrix{Float64} = _to_group_size(domain.coral_growth, corals.fecundity) # number of larvae produced per m²
+    fec_params_per_m²::Matrix{Float64} = _to_group_size(
+        domain.coral_growth, corals.fecundity
+    ) # number of larvae produced per m²
 
     # Caches
     conn = domain.conn
@@ -512,7 +525,9 @@ function run_model(
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
     C_cover::Array{Float64,4} = zeros(tf, n_groups, n_sizes, n_locs)
-    C_cover[1, :, :, :] .= _reshape_init_cover(domain.init_coral_cover, (n_sizes, n_groups, n_locs))
+    C_cover[1, :, :, :] .= _reshape_init_cover(
+        domain.init_coral_cover, (n_sizes, n_groups, n_locs)
+    )
     loc_cover_cache = zeros(n_locs)
 
     # Locations that can support corals
@@ -544,21 +559,31 @@ function run_model(
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
     α = 0.99
-    decay = α .^ (1:Int64(param_set[At("plan_horizon")])+1) .^ 2
+    decay = α .^ (1:(Int64(param_set[At("plan_horizon")]) + 1)) .^ 2
 
     # Years at which intervention locations are re-evaluated and deployed
-    seed_decision_years = decision_frequency(seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")])
-    fog_decision_years = decision_frequency(fog_start_year, tf, fog_years, param_set[At("fog_deployment_freq")])
-    shade_decision_years = decision_frequency(shade_start_year, tf, shade_years, param_set[At("shade_deployment_freq")])
+    seed_decision_years = decision_frequency(
+        seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")]
+    )
+    fog_decision_years = decision_frequency(
+        fog_start_year, tf, fog_years, param_set[At("fog_deployment_freq")]
+    )
+    shade_decision_years = decision_frequency(
+        shade_start_year, tf, shade_years, param_set[At("shade_deployment_freq")]
+    )
 
-    taxa_names::Vector{String} = collect(param_set.factors[occursin.("N_seed_", param_set.factors)])
+    taxa_names::Vector{String} = collect(
+        param_set.factors[occursin.("N_seed_", param_set.factors)]
+    )
 
     # Define taxa and size class to seed, and identify their factor names
     # TODO: Seed 1-year old corals!!! If this is the 1st size class, that's fine but needs
     # to be confirmed with ecoRRAP
     taxa_to_seed = [2, 3, 5]
     target_class_id::BitArray = corals.class_id .== 1
-    seed_sc = _to_group_size(domain.coral_growth, (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id)
+    seed_sc = _to_group_size(
+        domain.coral_growth, (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id
+    )
 
     # Extract colony areas for sites selected in m^2 and add adaptation values
     colony_areas = _to_group_size(
@@ -636,9 +661,9 @@ function run_model(
     ## Update ecological parameters based on intervention option
 
     # Treat as enhancement from mean of "natural" DHW tolerance
-    a_adapt[a_adapt.>0.0] .+= _to_group_size(
+    a_adapt[a_adapt .> 0.0] .+= _to_group_size(
         domain.coral_growth, corals.dist_mean
-    )[a_adapt.>0.0]
+    )[a_adapt .> 0.0]
 
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
@@ -651,7 +676,7 @@ function run_model(
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(
-        corals.mean_colony_diameter_m[corals.class_id.==1]
+        corals.mean_colony_diameter_m[corals.class_id .== 1]
     )
 
     # Dummy vars to fill/replace with ranks of selected locations
@@ -685,18 +710,20 @@ function run_model(
     FLoops.assistant(false)
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
-        C_cover_t[:, :, habitable_locs] .= C_cover[tstep-1, :, :, habitable_locs] .* habitable_loc_areas′
+        C_cover_t[:, :, habitable_locs] .=
+            C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
 
         lin_ext_scale_factors::Vector{Float64} = linear_extension_scale_factors(
             C_cover_t[:, :, habitable_locs],
             habitable_loc_areas,
             _linear_extensions,
             _bin_edges,
-            habitable_max_projected_cover,
+            habitable_max_projected_cover
         )
 
         # ? Should we bring this inside CoralBlox?
-        lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs].<(0.7 .* habitable_loc_areas)] .= 1
+        lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs] .< (0.7 .* habitable_loc_areas)] .=
+            1
 
         @floop for i in findall(habitable_locs)
             # TODO Skip when _loc_rel_leftover_space[i] == 0
@@ -714,16 +741,19 @@ function run_model(
         end
 
         # Check if size classes are inappropriately out-growing habitable area
-        @assert (sum(_loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas) == 0) "Cover outgrowing habitable area"
+        @assert (
+            sum(_loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas) == 0
+        ) "Cover outgrowing habitable area"
 
         # Convert C_cover_t to relative values after CoralBlox was run
-        C_cover_t[:, :, habitable_locs] .= C_cover_t[:, :, habitable_locs] ./ habitable_loc_areas′
+        C_cover_t[:, :, habitable_locs] .=
+            C_cover_t[:, :, habitable_locs] ./ habitable_loc_areas′
         C_cover[tstep, :, :, habitable_locs] .= C_cover_t[:, :, habitable_locs]
 
         # Natural adaptation (doesn't change C_cover_t)
         if tstep <= tf
             adjust_DHW_distribution!(
-                @view(C_cover[(tstep-1), :, :, :]), c_mean_t, p.r
+                @view(C_cover[(tstep - 1), :, :, :]), c_mean_t, p.r
             )
 
             # Set values for t to t-1
@@ -756,7 +786,7 @@ function run_model(
                 sim_params.max_settler_density,
                 sim_params.max_larval_density,
                 basal_area_per_settler,
-                potential_settlers,
+                potential_settlers
             )[
                 :, habitable_locs
             ] ./ loc_k_area[:, habitable_locs]
@@ -768,7 +798,7 @@ function run_model(
             TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
             fec_params_per_m²,
-            param_set[At("heritability")],
+            param_set[At("heritability")]
         )
 
         # Determine intervention locations whose deployment is assumed to occur
@@ -807,7 +837,8 @@ function run_model(
                 )
 
                 if !isempty(selected_fog_ranks)
-                    log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .= 1:length(selected_fog_ranks)
+                    log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .=
+                        1:length(selected_fog_ranks)
                 end
             end
         elseif apply_fogging && fog_decision_years[tstep]
@@ -844,7 +875,9 @@ function run_model(
 
             # Determine connectivity strength weighting by area.
             # Accounts for strength of connectivity where there is low/no coral cover
-            in_conn, out_conn, _ = connectivity_strength(area_weighted_conn, vec(loc_coral_cover), conn_cache)
+            in_conn, out_conn, _ = connectivity_strength(
+                area_weighted_conn, vec(loc_coral_cover), conn_cache
+            )
 
             update_criteria_values!(
                 decision_mat;
@@ -869,7 +902,8 @@ function run_model(
 
             # Log rankings as appropriate
             if !isempty(selected_seed_ranks)
-                log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .= 1:length(selected_seed_ranks)
+                log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
+                    1:length(selected_seed_ranks)
             end
         elseif apply_seeding && seed_decision_years[tstep]
             # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
@@ -902,7 +936,7 @@ function run_model(
                 a_adapt,
                 @view(Yseed[tstep, :, :]),
                 c_std,
-                c_mean_t,
+                c_mean_t
             )
 
             # Add coral seeding to recruitment
@@ -929,7 +963,7 @@ function run_model(
             c_std,
             c_mean_t_1,
             c_mean_t,
-            @view(bleaching_mort[(tstep-1):tstep, :, :, :])
+            @view(bleaching_mort[(tstep - 1):tstep, :, :, :])
         )
 
         # Coral deaths due to selected cyclone scenario
@@ -938,7 +972,7 @@ function run_model(
         cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
 
         # Calculate survival_rate due to env. disturbances
-        ΔC_cover_t[ΔC_cover_t.==0.0] .= 1.0
+        ΔC_cover_t[ΔC_cover_t .== 0.0] .= 1.0
         survival_rate_cache .= C_cover_t ./ ΔC_cover_t
         @assert sum(survival_rate_cache .> 1) == 0 "Survival rate should be <= 1"
 
@@ -980,7 +1014,7 @@ function run_model(
         shade_log=Yshade,
         site_ranks=log_location_ranks,
         bleaching_mortality=bleaching_mort,
-        coral_dhw_log=collated_dhw_tol_log,
+        coral_dhw_log=collated_dhw_tol_log
     )
 end
 
@@ -1003,7 +1037,9 @@ function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothi
     coral_cover[coral_cover, 1, :] -= coral_deaths_small
 
     # Mid class coral mortality
-    coral_mid = hcat(collect(Iterators.partition(coral_params.mid, length(coral_params.small)))...)
+    coral_mid = hcat(
+        collect(Iterators.partition(coral_params.mid, length(coral_params.small)))...
+    )
     for i in 1:size(coral_mid, 1)
         coral_deaths_mid = coral_cover[coral_mid[i, :], :] .* cyclone_mortality
         coral_cover[coral_mid[i, :], :] -= coral_deaths_mid
@@ -1027,4 +1063,5 @@ function cyclone_mortality!(
     return nothing
 end
 
-_loc_coral_cover(C_cover_t::Array{Float64,3}) = dropdims(sum(C_cover_t; dims=(1, 2)), dims=(1, 2))
+_loc_coral_cover(C_cover_t::Array{Float64,3}) =
+    dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))

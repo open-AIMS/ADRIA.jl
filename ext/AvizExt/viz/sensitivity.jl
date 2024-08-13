@@ -34,7 +34,7 @@ function ADRIA.viz.pawn!(
     g::Union{GridLayout,GridPosition},
     Si::YAXArray;
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     xtick_rot = get(axis_opts, :xticklabelrotation, 2.0 / π)
 
@@ -50,14 +50,14 @@ function ADRIA.viz.pawn!(
 
     # Sort by
     sort_by = get(opts, :by, :median)
-    Si = Si[sortperm(Si[Si=At(sort_by)], rev=true), :]
+    Si = Si[sortperm(Si[Si=At(sort_by)]; rev=true), :]
 
     y, x = Si.axes
     ax = Axis(
-        g[1, 1],
+        g[1, 1];
         xticks=(1:length(x), string.(x)),
         yticks=(1:length(y), string.(y)),
-        xticklabelrotation=xtick_rot;
+        xticklabelrotation=xtick_rot,
         axis_opts...
     )
     ax.yreversed = true
@@ -113,11 +113,11 @@ function ADRIA.viz.tsa!(
     factors, Si, timesteps = si.axes
     x_tickpos, x_ticklabel = _time_labels(timesteps)
     ax = Axis(
-        g[1, 1],
+        g[1, 1];
         xticks=(x_tickpos, x_ticklabel),
         xticklabelrotation=xtick_rot,
         xlabel=xlabel,
-        ylabel=ylabel;
+        ylabel=ylabel,
         axis_opts...
     )
 
@@ -131,11 +131,11 @@ function ADRIA.viz.tsa!(
     # min_step = (1 / 0.05)
     # color_weight = min((1.0 / (length(factors) / min_step)), 0.6)
     comps = unique(all_comps)
-    dc = distinguishable_colors(length(comps), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
+    dc = distinguishable_colors(length(comps), [RGB(1, 1, 1), RGB(0, 0, 0)]; dropseed=true)
     lns = Plot[
         series!(
             ax,
-            si[Si=At(stat)][findall(all_comps .== _cmp), :],
+            si[Si=At(stat)][findall(all_comps .== _cmp), :];
             labels=repeat([_cmp], count(all_comps .== _cmp)),
             solid_color=(dc[i], 0.2)
         )
@@ -184,7 +184,7 @@ function ADRIA.viz.rsa!(
     si::Dataset,
     factors::Vector{Symbol};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     n_factors::Int64 = length(factors)
     if n_factors > 30
@@ -247,7 +247,7 @@ function ADRIA.viz.rsa!(
             ax::Axis = Axis(
                 g[r, c];
                 title=h_names[f_names .== f_name][1],
-                axis_opts...,
+                axis_opts...
             )
 
             scatterlines!(ax, fv_s, collect(si[f_name]); markersize=15)
@@ -265,11 +265,11 @@ function ADRIA.viz.rsa!(
     end
 
     linkyaxes!(axs...)
-    Label(g[end+1, :], text=xlabel, fontsize=32)
+    Label(g[end + 1, :]; text=xlabel, fontsize=32)
     Label(g[1:(end - 1), 0]; text=ylabel, fontsize=32, rotation=π / 2.0)
 
     if :title in keys(axis_opts)
-        Label(g[0, :], text=title_val, fontsize=40)
+        Label(g[0, :]; text=title_val, fontsize=40)
     end
 
     # Clear empty figures
@@ -317,7 +317,7 @@ function ADRIA.viz.outcome_map!(
     outcomes::YAXArray,
     factors::Vector{Symbol};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     # TODO: Clean up and compartmentalize as a lot of code here are duplicates of those
     #       found in `rsa()`
@@ -384,9 +384,11 @@ function ADRIA.viz.outcome_map!(
                 ax,
                 fv_s[.!ismissing.(outcomes[factors=At(f_name), CI=At(:lower)])],
                 collect(skipmissing(outcomes[factors=At(f_name), CI=At(:lower)])),
-                collect(skipmissing(outcomes[factors=At(f_name), CI=At(:upper)])),
+                collect(skipmissing(outcomes[factors=At(f_name), CI=At(:upper)]))
             )
-            scatterlines!(ax, fv_s, outcomes[factors=At(f_name), CI=At(:mean)]; markersize=15)
+            scatterlines!(
+                ax, fv_s, outcomes[factors=At(f_name), CI=At(:mean)]; markersize=15
+            )
 
             if f_name == :guided
                 ax.xticks = (fv_s, fv_labels)
@@ -439,7 +441,7 @@ function ADRIA.viz.outcome_map(
     factors::Vector{Symbol};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -471,7 +473,7 @@ function _series_convergence(
     Si_conv::YAXArray,
     factors::Vector{Symbol};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(:plot_overlay => true),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     plot_overlay = get(opts, :plot_overlay, true)
     n_scenarios = collect(lookup(Si_conv, :n_scenarios))
@@ -492,7 +494,7 @@ function _series_convergence(
             permutedims(Si_conv[Si=At([:lb, :median, :ub])], (3, 1, 2)).data,
             collect(keys(grps)),
             _colors;
-            x_vals=n_scenarios,
+            x_vals=n_scenarios
         )
         ax.xlabel = xlabel
         ax.ylabel = ylabel
@@ -521,7 +523,7 @@ function _series_convergence(
                 ax,
                 n_scenarios,
                 Si_conv[Si=At(:median)][factors=At(factors[step])].data;
-                color=(_colors[factors[step]], _alphas[factors[step]]),
+                color=(_colors[factors[step]], _alphas[factors[step]])
             )
 
             band!(
@@ -529,7 +531,7 @@ function _series_convergence(
                 n_scenarios,
                 Si_conv[Si=At(:lb), factors=At(factors[step])].data,
                 Si_conv[Si=At(:ub), factors=At(factors[step])].data;
-                color=(_colors[factors[step]], _alphas[factors[step]]),
+                color=(_colors[factors[step]], _alphas[factors[step]])
             )
             step += 1
             push!(axs, ax)
@@ -566,7 +568,6 @@ function _series_convergence(
                 rethrow(err)
             end
         end
-
     end
     return g
 end
@@ -614,7 +615,7 @@ function _heatmap_convergence(
         ylabel=y_label,
         xlabelsize=x_labelsize,
         ylabelsize=y_labelsize,
-        axis_opts...,
+        axis_opts...
     )
     heatmap!(ax, z')
     colorbar_label = get(opts, :colorbar_label, "Relative Sensitivity")
@@ -661,7 +662,7 @@ function ADRIA.viz.convergence(
         Si_conv,
         factors;
         opts=opts,
-        axis_opts=axis_opts,
+        axis_opts=axis_opts
     )
     return f
 end
@@ -680,5 +681,4 @@ function ADRIA.viz.convergence!(
     else
         error("Convergence plot $(viz_type) is not expected.")
     end
-
 end

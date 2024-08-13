@@ -71,7 +71,7 @@ end
 
     yax_res = ZeroDataCube(; T=Int, NamedTuple{(dim_1_name,)}((dim_1_vals,))...)
 
-    @test typeof(yax_res) <: YAXArray{Int, 1} ||
+    @test typeof(yax_res) <: YAXArray{Int,1} ||
         "Incorrect return type. Expected a subtype of YAXArray{Int, 1} \
          but received $(typeof(yax_res))"
 
@@ -88,9 +88,11 @@ end
     @test dim_1_vals == collect(yax_res.axes[1]) ||
         "Incorrect axis indices. Expected $(dim_1_vals) but received $(collect(yax_res.axes[1]))"
 
-        yax_res = ZeroDataCube(; T=Float64, NamedTuple{(dim_1_name, dim_2_name)}((dim_1_vals, dim_2_vals))...)
+    yax_res = ZeroDataCube(;
+        T=Float64, NamedTuple{(dim_1_name, dim_2_name)}((dim_1_vals, dim_2_vals))...
+    )
 
-    @test typeof(yax_res) <: YAXArray{Float64, 2} ||
+    @test typeof(yax_res) <: YAXArray{Float64,2} ||
         "Incorrect return type. Expected a subtype of YAXArray{Float64, 2} \
          but received $(typeof(yax_res))"
 
@@ -149,10 +151,12 @@ end
         rand(10, 5); NamedTuple{(dim_1_name, dim_2_name)}((dim_1_vals, dim_2_vals))...
     )
     test_DataCube(
-        rand(6); NamedTuple{(dim_3_name,)}((dim_3_vals, ))...
+        rand(6); NamedTuple{(dim_3_name,)}((dim_3_vals,))...
     )
     test_DataCube(
         rand(6, 5, 10);
-        NamedTuple{(dim_3_name, dim_2_name, dim_1_name)}((dim_3_vals, dim_2_vals, dim_1_vals))...
+        NamedTuple{(dim_3_name, dim_2_name, dim_1_name)}((
+            dim_3_vals, dim_2_vals, dim_1_vals
+        ))...
     )
 end

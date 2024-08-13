@@ -33,7 +33,9 @@ robust_scens = ADRIA.analysis.find_robust(rs, y, rule_func, [45, 60])
 # Retrieve seeding intervention frequency for robust scenarios
 robust_selection_frequencies = ADRIA.analysis.intervention_frequency(rs, robust_scens, :seed)
 """
-function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::YAXArray
+function intervention_frequency(
+    rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol
+)::YAXArray
     log_type ∈ [:seed, :shade, :fog] || ArgumentError("Unsupported log")
 
     # Get requested log
@@ -44,8 +46,12 @@ function intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_typ
     interv_freq = ZeroDataCube(; T=Float64, locations=rs.site_ids, rcps=rcps)
     for rcp in rcps
         # Select scenarios satisfying condition and tally selection for each location
-        logged_data = dropdims(sum(interv_log[scenarios=scen_indices[rcp]], dims=:coral_id), dims=:coral_id)
-        interv_freq[rcps=At(rcp)] .= vec(dropdims(sum(logged_data .> 0, dims=(:timesteps, :scenarios)), dims=:timesteps))
+        logged_data = dropdims(
+            sum(interv_log[scenarios=scen_indices[rcp]]; dims=:coral_id); dims=:coral_id
+        )
+        interv_freq[rcps=At(rcp)] .= vec(
+            dropdims(sum(logged_data .> 0; dims=(:timesteps, :scenarios)); dims=:timesteps)
+        )
     end
 
     return interv_freq

@@ -5,7 +5,7 @@ using DataFrames,
     NetCDF,
     YAXArrays
 
-struct RMEResultSet{T1, T2, D, G, D1} <: ResultSet
+struct RMEResultSet{T1,T2,D,G,D1} <: ResultSet
     name::String
     RCP::String
 
@@ -22,7 +22,7 @@ struct RMEResultSet{T1, T2, D, G, D1} <: ResultSet
     sim_constants::D1
     model_spec::DataFrame
 
-    outcomes::Dict{Symbol, YAXArray}
+    outcomes::Dict{Symbol,YAXArray}
 end
 
 """
@@ -71,7 +71,7 @@ function load_results(
         id_list_fn,
         DataFrame;
         header=false,
-        comment="#",
+        comment="#"
     )
 
     _manual_id_corrections!(geodata, id_list)
@@ -99,8 +99,9 @@ function load_results(
     inputs::DataFrame = _get_inputs(input_path)
 
     # Counterfactual scenario if outplant area and enrichment area are both 0
-    scenario_groups::Dict{Symbol, BitVector} =
-        _construct_scenario_groups(inputs, length(raw_set.scenarios))
+    scenario_groups::Dict{Symbol,BitVector} = _construct_scenario_groups(
+        inputs, length(raw_set.scenarios)
+    )
 
     env_layer_md::EnvLayer = EnvLayer(
         data_dir,
@@ -114,7 +115,7 @@ function load_results(
         timeframe
     )
 
-    outcomes::Dict{Symbol, YAXArray} = Dict();
+    outcomes::Dict{Symbol,YAXArray} = Dict()
     for (key, cube) in raw_set.cubes
         outcomes[key] = _reformat_cube(RMEResultSet, cube)
     end
@@ -157,7 +158,7 @@ function _get_inputs(filepath::String)::DataFrame
         @warn "Unable to find scenario spec at $(filepath). Skipping."
         return DataFrame()
     end
-    return inputs = CSV.read(filepath, DataFrame, header=true)
+    return inputs = CSV.read(filepath, DataFrame; header=true)
 end
 
 """
@@ -169,23 +170,25 @@ groupings for compatibility with ADRIA scenario plotting.
 function _construct_scenario_groups(
     inputs::DataFrame,
     n_scenarios::Int
-)::Dict{Symbol, BitVector}
+)::Dict{Symbol,BitVector}
     if size(inputs) == (0, 0)
         return Dict(:counterfactual => BitVector([true for _ in 1:n_scenarios]))
     end
 
     counterfactual_scens::BitVector = BitVector([
         p_a == 0.0 && e_a == 0 for (p_a, e_a)
-            in zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
+        in
+        zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
 
     # Intervened if not counterfactual
     intervened_scens::BitVector = BitVector([
         p_a != 0 || e_a != 0 for (p_a, e_a)
-            in zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
+        in
+        zip(inputs.outplant_area_pct, inputs.enrichment_area_pct)
     ])
 
-    scenario_groups::Dict{Symbol, BitVector} = Dict()
+    scenario_groups::Dict{Symbol,BitVector} = Dict()
 
     # If the runs do not contain counterfactual or intervened runs exclude the key
     if any(counterfactual_scens)
@@ -252,7 +255,7 @@ function _create_model_spec(scenario_spec::DataFrame)::DataFrame
         "Enrichment Location Count"
     ]
 
-    default_df = DataFrame(
+    default_df = DataFrame(;
         component="Intervention",
         fieldname=fieldname,
         description=descriptions,
@@ -261,7 +264,9 @@ function _create_model_spec(scenario_spec::DataFrame)::DataFrame
 
     # Field names are the same as column names
     fieldnames::Vector{Symbol} = Symbol.(names(scenario_spec))
-    inds::Vector{Int} = [findfirst(x -> x == fname, default_df.fieldname) for fname in fieldnames]
+    inds::Vector{Int} = [
+        findfirst(x -> x == fname, default_df.fieldname) for fname in fieldnames
+    ]
 
     return default_df[inds, :]
 end
@@ -273,13 +278,14 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::RMEResultSet)
     tf = rs.env_layer_md.timeframe
 
     println("""
-    Name: $(rs.name)
+           Name: $(rs.name)
 
-    Results stored at: $(rs.env_layer_md.dpkg_path)
+           Results stored at: $(rs.env_layer_md.dpkg_path)
 
-    RCP(s) represented: $(rcps)
-    Scenarios run: $(scens)
-    Number of locations: $(locations)
-    Timesteps: $(tf)
-    """)
+           RCP(s) represented: $(rcps)
+           Scenarios run: $(scens)
+           Number of locations: $(locations)
+           Timesteps: $(tf)
+           """)
+    return nothing
 end

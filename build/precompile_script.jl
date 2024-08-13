@@ -1,9 +1,7 @@
 using CSV, DataFrames, GeoDataFrames
 
-
 precompile(CSV.read, (String, DataFrame))
 precompile(GeoDataFrames.read, (String,))
-
 
 # precompile(load_domain, (String, Int64))
 # precompile(Domain, (String, Int64, String, String, String, String, String, String, String))

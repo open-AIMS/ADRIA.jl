@@ -1,6 +1,5 @@
 using ADRIA.analysis: col_normalize
 
-
 function pairplot!(display, outcomes::NamedTuple)
     n_outcomes = length(outcomes)
     for (row, (r_m, r_out)) in zip(1:n_outcomes, pairs(outcomes))  # rows
@@ -13,10 +12,10 @@ function pairplot!(display, outcomes::NamedTuple)
             if 1 <= col <= n_outcomes
                 if row == 1 & col != 2
                     # show y-axis on second plot on first row
-                    hideydecorations!(t, grid=false, ticks=false)
+                    hideydecorations!(t; grid=false, ticks=false)
                 elseif row > 1 && col > 1
                     # show y-axis only in first column
-                    hideydecorations!(t, grid=false, ticks=false)
+                    hideydecorations!(t; grid=false, ticks=false)
                 end
             end
 
@@ -25,10 +24,10 @@ function pairplot!(display, outcomes::NamedTuple)
                 # and second-last row of the final column
                 if col == n_outcomes
                     if row != n_outcomes - 1
-                        hidexdecorations!(t, grid=false, ticks=false)
+                        hidexdecorations!(t; grid=false, ticks=false)
                     end
                 else
-                    hidexdecorations!(t, grid=false, ticks=false)
+                    hidexdecorations!(t; grid=false, ticks=false)
                 end
             end
 
@@ -37,7 +36,7 @@ function pairplot!(display, outcomes::NamedTuple)
             end
 
             if r_m == c_m
-                hidedecorations!(t, label=false)
+                hidedecorations!(t; label=false)
                 hidespines!(t)
                 continue
             end
@@ -46,7 +45,6 @@ function pairplot!(display, outcomes::NamedTuple)
         end
     end
 end
-
 
 function pairplot!(display, data, names)
     n_outcomes = size(data, 2)
@@ -65,11 +63,11 @@ function pairplot!(display, data, names)
             if row == 1 && col != 2
                 # show y-axis on second plot on first row
                 if col > 1
-                    hideydecorations!(t, grid=false, ticks=false)
+                    hideydecorations!(t; grid=false, ticks=false)
                 end
             elseif row > 1 && col > 1
                 # show y-axis only in first column
-                hideydecorations!(t, grid=false, ticks=false)
+                hideydecorations!(t; grid=false, ticks=false)
             end
 
             if row < n_outcomes
@@ -77,10 +75,10 @@ function pairplot!(display, data, names)
                 # and second-last row of the final column
                 if col == n_outcomes
                     if row != n_outcomes - 1
-                        hidexdecorations!(t, grid=false, ticks=false)
+                        hidexdecorations!(t; grid=false, ticks=false)
                     end
                 else
-                    hidexdecorations!(t, grid=false, ticks=false)
+                    hidexdecorations!(t; grid=false, ticks=false)
                 end
             end
 
@@ -89,17 +87,18 @@ function pairplot!(display, data, names)
             end
 
             if r_m == c_m
-                hidedecorations!(t, label=false)
+                hidedecorations!(t; label=false)
                 hidespines!(t)
                 continue
             end
 
-            scatter!(t, vec(c_out), vec(r_out), markersize=1)
+            scatter!(t, vec(c_out), vec(r_out); markersize=1)
         end
     end
 
     rowgap!(display, 20)
     colgap!(display, 20)
+    return nothing
 end
 
 """
@@ -130,7 +129,7 @@ end
 
 #     for i in 1:k
 #         # get(c_scheme, (i - 1) / (k - 1))
-#         # show_axis = false, 
+#         # show_axis = false,
 #         # color = :inferno
 
 #         # (d[i] - l[1]) ./ (l[2] - l[1])
@@ -156,7 +155,7 @@ function pcp!(ax, data, names::Union{Vector,Tuple}; color=(:blue, 0.1))
     n = size(data, 2)
 
     vlines!(ax, 1:n; color=:black)
-    series!(ax, 1:n, data, color=color)
+    series!(ax, 1:n, data; color=color)
 
     ax.xticks = (1:n, [string.(names)...])
     ax.xticklabelrotation = 0.45

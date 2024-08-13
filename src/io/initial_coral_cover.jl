@@ -10,7 +10,9 @@ Load initial coral cover data from netCDF.
 """
 function load_initial_cover(data_fn::String)::YAXArray
     _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
-    return _split_cover(load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace))
+    return _split_cover(
+        load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
+    )
 end
 function load_initial_cover(n_group_and_size::Int64, n_sites::Int64)::YAXArray
     @warn "Using random initial coral cover"
@@ -34,8 +36,9 @@ function _split_cover(cover::YAXArray)::YAXArray
     # Build initial cover final data
     n_groups::Int64, n_sizes::Int64 = size(init_cover_weights)
     n_groups_sizes::Int64 = n_groups * n_sizes
-    cover_data::Matrix{Float64} = reshape(init_cover_weights', n_groups_sizes) .*
-                                  repeat(cover[selected_groups, :]; inner=(n_sizes, 1))
+    cover_data::Matrix{Float64} =
+        reshape(init_cover_weights', n_groups_sizes) .*
+        repeat(cover[selected_groups, :]; inner=(n_sizes, 1))
 
     return DataCube(cover_data; _cover_labels(cover, n_sizes, selected_groups)...)
 end
@@ -79,8 +82,10 @@ function _init_cover_weights()::Matrix{Float64}
 
     bin_edges_area::Matrix{Float64} = colony_mean_area(_bin_edges)
     cdf_integral::Matrix{Float64} = cdf.(reef_mod_area_dist, bin_edges_area)
-    init_cover_fracs::Matrix{Float64} = (cdf_integral[:, 2:end] .- cdf_integral[:, 1:(end-1)])
-    init_cover_fracs = init_cover_fracs ./ sum(init_cover_fracs, dims=2)
+    init_cover_fracs::Matrix{Float64} = (
+        cdf_integral[:, 2:end] .- cdf_integral[:, 1:(end - 1)]
+    )
+    init_cover_fracs = init_cover_fracs ./ sum(init_cover_fracs; dims=2)
     return replace!(init_cover_fracs, NaN => 0.0)
 end
 

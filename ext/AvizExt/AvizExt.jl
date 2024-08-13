@@ -22,20 +22,17 @@ using ADRIA:
 import ADRIA: timesteps as AD_timesteps
 import ADRIA.viz: explore
 
-
 Random.seed!(101)
 
 const ASSETS = @path joinpath(pkgdir(ADRIA), "assets")
 const LOGO = @path joinpath(ASSETS, "imgs", "ADRIA_logo.png")
 const LOADER = @path joinpath(ASSETS, "imgs", "ADRIA_loader.gif")
 
-
 include("./plotting.jl")
 include("./layout.jl")
 include("./theme.jl")
 include("./analysis.jl")
 include("./viz/viz.jl")
-
 
 """Main entry point for app."""
 function julia_main()::Cint
@@ -68,7 +65,7 @@ function main_menu()
 
     logo = image(
         f[1, 1],
-        rotr90(load(convert(String, LOGO))),
+        rotr90(load(convert(String, LOGO)));
         axis=(aspect=DataAspect(),)
     )
 
@@ -76,11 +73,11 @@ function main_menu()
     hidespines!(f.content[1])
 
     Label(f[2, 1], "Enter ADRIA Result Set to analyze")
-    rs_path_tb = Textbox(f[3, 1], placeholder="./Moore_RS")
+    rs_path_tb = Textbox(f[3, 1]; placeholder="./Moore_RS")
     rs_path_tb.stored_string[] = "./Moore_RS"
     status_label = Label(f[4, 1], "")
 
-    launch_button = Button(f[5, 1], label="Explore")
+    launch_button = Button(f[5, 1]; label="Explore")
 
     on(launch_button.clicks) do c
         rs_path = rs_path_tb.stored_string[]
@@ -105,12 +102,14 @@ function main_menu()
 
     gl_screen = display(f)
     wait(gl_screen)
+    return nothing
 end
 
-
 function _get_seeded_sites(seed_log, ts, scens; N=10)
-    t = dropdims(sum(seed_log[timesteps=ts, scenarios=scens], dims=:timesteps), dims=:timesteps)
-    site_scores = dropdims(sum(t, dims=:scenarios), dims=:scenarios)
+    t = dropdims(
+        sum(seed_log[timesteps=ts, scenarios=scens]; dims=:timesteps); dims=:timesteps
+    )
+    site_scores = dropdims(sum(t; dims=:scenarios); dims=:scenarios)
 
     # @info "Scores", site_scores
     if length(unique(site_scores)) == 1
@@ -134,8 +133,8 @@ end
 function remove_loader(fig, task)
     Base.throwto(task, InterruptException())
     empty!(fig)
+    return nothing
 end
-
 
 """
     ADRIA.viz.explore(rs::String)
@@ -145,7 +144,7 @@ Display GUI for quick visualization and analysis of results.
 """
 function ADRIA.viz.explore(rs::ResultSet)
     @info "Creating display"
-    layout = comms_layout(size=(1920, 1080))
+    layout = comms_layout(; size=(1920, 1080))
 
     f = layout.figure
     traj_display = layout.trajectory.temporal
@@ -159,20 +158,22 @@ function ADRIA.viz.explore(rs::ResultSet)
     tac_min_max = (minimum(tac_scens), maximum(tac_scens))
 
     mean_rc_sites = metrics.relative_cover(rs)
-    obs_rc = vec(mean(mean_rc_sites, dims=(:scenarios, :timesteps)))
+    obs_rc = vec(mean(mean_rc_sites; dims=(:scenarios, :timesteps)))
     obs_mean_rc_sites = Observable(obs_rc)
 
     asv_scens = metrics.scenario_asv(rs)
-    asv_scen_dist = dropdims(mean(asv_scens, dims=:timesteps), dims=:timesteps)
+    asv_scen_dist = dropdims(mean(asv_scens; dims=:timesteps); dims=:timesteps)
 
     juves_scens = metrics.scenario_relative_juveniles(rs)
-    juves_scen_dist = dropdims(mean(juves_scens, dims=:timesteps), dims=:timesteps)
+    juves_scen_dist = dropdims(mean(juves_scens; dims=:timesteps); dims=:timesteps)
 
     # Generate trajectory controls
     @info "Creating controls"
     num_steps = Int(ceil((tac_min_max[2] - tac_min_max[1]) + 1))
-    tac_slider = IntervalSlider(traj_outcome_sld[2, 1],
-        range=LinRange(floor(Int64, tac_min_max[1]) - 1, ceil(Int64, tac_min_max[2]) + 1, num_steps),
+    tac_slider = IntervalSlider(traj_outcome_sld[2, 1];
+        range=LinRange(
+            floor(Int64, tac_min_max[1]) - 1, ceil(Int64, tac_min_max[2]) + 1, num_steps
+        ),
         startvalues=tac_min_max,
         horizontal=false
     )
@@ -187,7 +188,7 @@ function ADRIA.viz.explore(rs::ResultSet)
     years = AD_timesteps(rs)
     year_range = first(years), last(years)
     time_slider = IntervalSlider(
-        traj_time_sld[1, 2:3],
+        traj_time_sld[1, 2:3];
         range=LinRange(year_range[1], year_range[2], (year_range[2] - year_range[1]) + 1),
         startvalues=year_range
     )
@@ -211,7 +212,7 @@ function ADRIA.viz.explore(rs::ResultSet)
     seed_log = rs.seed_log[:, 1, :, :]
 
     # Trajectories
-    series!(traj_display, years, tac_data, color=obs_color)
+    series!(traj_display, years, tac_data; color=obs_color)
 
     # Color transparency for density plots
     # Note: Density plots currently cannot handle empty datasets
@@ -226,22 +227,22 @@ function ADRIA.viz.explore(rs::ResultSet)
     has_g = count(scen_groups[:guided]) > 0
 
     # Density (TODO: Separate into own function)
-    tac_scen_dist = dropdims(mean(tac_scens, dims=:timesteps), dims=:timesteps)
+    tac_scen_dist = dropdims(mean(tac_scens; dims=:timesteps); dims=:timesteps)
     obs_cf_scen_dist = Observable(tac_scen_dist[scen_groups[:counterfactual]])
 
     scen_hist = layout.scen_hist
     if has_cf
-        density!(scen_hist, obs_cf_scen_dist, direction=:y, color=cf_hist_alpha)
+        density!(scen_hist, obs_cf_scen_dist; direction=:y, color=cf_hist_alpha)
     end
 
     obs_ug_scen_dist = Observable(tac_scen_dist[scen_groups[:unguided]])
     if has_ug
-        density!(scen_hist, obs_ug_scen_dist, direction=:y, color=ug_hist_alpha)
+        density!(scen_hist, obs_ug_scen_dist; direction=:y, color=ug_hist_alpha)
     end
 
     obs_g_scen_dist = Observable(tac_scen_dist[scen_groups[:guided]])
     if has_g
-        density!(scen_hist, obs_g_scen_dist, direction=:y, color=g_hist_alpha)
+        density!(scen_hist, obs_g_scen_dist; direction=:y, color=g_hist_alpha)
     end
 
     hidedecorations!(scen_hist)
@@ -249,7 +250,10 @@ function ADRIA.viz.explore(rs::ResultSet)
     ylims!(scen_hist, 0.0, maximum(tac_scen_dist))
 
     ms = rs.model_spec
-    intervention_components = ms[(ms.component.=="Intervention").&(ms.fieldname.!="guided"), [:name, :fieldname, :lower_bound, :upper_bound]]
+    intervention_components = ms[
+        (ms.component .== "Intervention") .& (ms.fieldname .!= "guided"),
+        [:name, :fieldname, :lower_bound, :upper_bound]
+    ]
     interv_names = intervention_components.fieldname
     interv_idx = findall(x -> x in interv_names, names(X))
 
@@ -258,14 +262,20 @@ function ADRIA.viz.explore(rs::ResultSet)
     has_45 = count(X.RCP .== 45) > 0
     has_60 = count(X.RCP .== 60) > 0
     has_85 = count(X.RCP .== 85) > 0
-    t_toggles = [Toggle(f, active=active) for active in [has_45, has_60, has_85, has_cf, has_ug, has_g]]
+    t_toggles = [
+        Toggle(f; active=active) for
+        active in [has_45, has_60, has_85, has_cf, has_ug, has_g]
+    ]
     t_toggle_map = zip(
         t_toggles,
         ["RCP 4.5", "RCP 6.0", "RCP 8.5", "Counterfactual", "Unguided", "Guided"],
         [:black, :black, :black, :red, :green, :blue]
     )
-    labels = [Label(f, "$l", color=lift(x -> x ? c : :gray, t.active)) for (t, l, c) in t_toggle_map]
-    layout.controls[1:2, 1:2] = grid!(hcat(t_toggles, labels), tellheight=false)
+    labels = [
+        Label(f, "$l"; color=lift(x -> x ? c : :gray, t.active)) for
+        (t, l, c) in t_toggle_map
+    ]
+    layout.controls[1:2, 1:2] = grid!(hcat(t_toggles, labels); tellheight=false)
 
     # Controls for guided type
     guide_toggle_map = zip(
@@ -286,7 +296,7 @@ function ADRIA.viz.explore(rs::ResultSet)
         l2 = Observable("$(round(x[2], digits=2))")
         push!(interv_sliders,
             IntervalSlider(
-                lc[i, 2],
+                lc[i, 2];
                 range=LinRange(x[1], x[2], 10),
                 startvalues=(x[1], x[2])
             )
@@ -315,7 +325,7 @@ function ADRIA.viz.explore(rs::ResultSet)
     # g_cv = std(tac_scen_dist[scen_groups[:guided]]) ./ mean(tac_scen_dist[scen_groups[:guided]])
 
     ft_import = Axis(
-        layout.importance[1, 1],
+        layout.importance[1, 1];
         xticks=([1, 2, 3], ["Mean TAC", "Mean ASV", "Mean Juveniles"]),
         yticks=(1:length(interv_names), intervention_components.name),
         title="Relative Importance"
@@ -335,7 +345,7 @@ function ADRIA.viz.explore(rs::ResultSet)
     probas = Observable(outcome_probability(scen_dist))
     barplot!(
         outcomes_ax,
-        @lift($(probas).values),
+        @lift($(probas).values);
         bar_labels=:y,
         direction=:y,
         flip_labels_at=@lift(maximum($(probas).values) * 0.9),
@@ -353,13 +363,22 @@ function ADRIA.viz.explore(rs::ResultSet)
     curr_highlighted_sites = _get_seeded_sites(seed_log, (:), (:))
     obs_site_sel = Observable(FC(; features=geodata[curr_highlighted_sites]))
     obs_site_highlight = Observable((:lightgreen, 1.0))
-    poly!(map_disp[1, 1], obs_site_sel, color=(:white, 0.0), strokecolor=obs_site_highlight, strokewidth=0.75, overdraw=true)
+    poly!(
+        map_disp[1, 1],
+        obs_site_sel;
+        color=(:white, 0.0),
+        strokecolor=obs_site_highlight,
+        strokewidth=0.75,
+        overdraw=true
+    )
 
     # Image file for loading animation
     # loader_anim = load(LOADER)
 
     @info "Setting up interactions"
-    function update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, disp_vals...)
+    function update_disp(
+        time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, disp_vals...
+    )
         # Display loading animation
         # load_anim_display = @async display_loader(traj_display[2, 1], loader_anim)
 
@@ -375,7 +394,11 @@ function ADRIA.viz.explore(rs::ResultSet)
             bnds[1][] = "$(round(disp_vals[intv][1], digits=2))"
             bnds[2][] = "$(round(disp_vals[intv][2], digits=2))"
 
-            show_idx .= show_idx .& ((X[:, interv_names[intv]] .>= disp_vals[intv][1]) .& (X[:, interv_names[intv]] .<= disp_vals[intv][2]))
+            show_idx .=
+                show_idx .& (
+                    (X[:, interv_names[intv]] .>= disp_vals[intv][1]) .&
+                    (X[:, interv_names[intv]] .<= disp_vals[intv][2])
+                )
         end
 
         # Hide/display scenario types
@@ -408,7 +431,12 @@ function ADRIA.viz.explore(rs::ResultSet)
         hide_idx .= Bool.(ones(Int64, length(hide_idx)) .⊻ show_idx)
 
         # Update map
-        obs_mean_rc_sites[] = vec(mean(mean_rc_sites(timesteps=timespan)[scenarios=show_idx], dims=(:scenarios, :timesteps)))
+        obs_mean_rc_sites[] = vec(
+            mean(
+                mean_rc_sites(; timesteps=timespan)[scenarios=show_idx];
+                dims=(:scenarios, :timesteps)
+            )
+        )
 
         seeded_sites = _get_seeded_sites(seed_log, (:), show_idx)
         site_alpha = 1.0
@@ -428,7 +456,9 @@ function ADRIA.viz.explore(rs::ResultSet)
         obs_site_highlight[] = (:lightgreen, site_alpha)
 
         # Update scenario density
-        scen_dist = dropdims(mean(tac_scens(timesteps=timespan), dims=:timesteps), dims=:timesteps)
+        scen_dist = dropdims(
+            mean(tac_scens(; timesteps=timespan); dims=:timesteps); dims=:timesteps
+        )
         # Hide scenarios that were filtered out
         cf_dist = scen_dist[show_idx .& scen_groups[:counterfactual]]
         ug_dist = scen_dist[show_idx .& scen_groups[:unguided]]
@@ -469,10 +499,18 @@ function ADRIA.viz.explore(rs::ResultSet)
         if count(show_idx) > 16
             mean_tac_med = relative_sensitivities(X[show_idx, :], scen_dist[show_idx])[interv_idx]
 
-            sel_asv_scens = dropdims(mean(asv_scens(timesteps=timespan)[scenarios=show_idx], dims=:timesteps), dims=:timesteps)
+            sel_asv_scens = dropdims(
+                mean(asv_scens(; timesteps=timespan)[scenarios=show_idx]; dims=:timesteps);
+                dims=:timesteps
+            )
             mean_asv_med = relative_sensitivities(X[show_idx, :], sel_asv_scens)[interv_idx]
 
-            sel_juves_scens = dropdims(mean(juves_scens(timesteps=timespan)[scenarios=show_idx], dims=:timesteps), dims=:timesteps)
+            sel_juves_scens = dropdims(
+                mean(
+                    juves_scens(; timesteps=timespan)[scenarios=show_idx]; dims=:timesteps
+                );
+                dims=:timesteps
+            )
             mean_juves_med = relative_sensitivities(X[show_idx, :], sel_juves_scens)[interv_idx]
         else
             # Display nothing if no data is available
@@ -492,6 +530,7 @@ function ADRIA.viz.explore(rs::ResultSet)
 
         # Clear loading animation
         # remove_loader(traj_display[2, 1], loader_anim_display)
+        return nothing
     end
 
     # Trigger update only after some time since last interaction
@@ -499,7 +538,8 @@ function ADRIA.viz.explore(rs::ResultSet)
     # up_timer = Timer(x -> x, 0.25)
     onany(time_slider.interval, tac_slider.interval,
         [t.active for t in t_toggles]...,
-        [sld.interval for sld in interv_sliders]...) do time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, intervs... # i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val
+        [sld.interval for sld in interv_sliders]...
+    ) do time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, intervs... # i1_val, i2_val, i3_val, i4_val, i5_val, i6_val, i7_val, i8_val, i9_val, i10_val, i11_val, i12_val
 
         # Update slider labels
         left_year_val[] = "$(Int(floor(time_val[1])))"
@@ -510,7 +550,12 @@ function ADRIA.viz.explore(rs::ResultSet)
         if @isdefined up_timer
             close(up_timer)
         end
-        up_timer = Timer(x -> update_disp(time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, intervs...), 2)
+        up_timer = Timer(
+            x -> update_disp(
+                time_val, tac_val, rcp45, rcp60, rcp85, c_tog, u_tog, g_tog, intervs...
+            ),
+            2
+        )
     end
 
     @info "Displaying UI"
@@ -519,11 +564,11 @@ function ADRIA.viz.explore(rs::ResultSet)
 
     wait(gl_screen)
     # close(up_timer)
+    return nothing
 end
 function ADRIA.viz.explore(rs_path::String)
     return ADRIA.viz.explore(load_results(rs_path))
 end
-
 
 # function explore(rs::ADRIA.ResultSet)
 #     layout = modeler_layout(size=(1920, 1080))
@@ -622,7 +667,6 @@ end
 #     input_names = vcat(["RCP", interv_criteria.fieldname...])
 #     in_pcp_data = normalize(Matrix(rs.inputs[:, input_names]))
 #     # in_pcp_lines = Observable(in_pcp_data)
-
 
 #     # Get mean outcomes for each scenario
 #     outcome_pcp_data = hcat([
@@ -756,7 +800,6 @@ end
 # end
 
 end  # module
-
 
 # Allow use from terminal if this file is run directly
 # if abspath(PROGRAM_FILE) == @__FILE__

@@ -58,7 +58,7 @@ function ADRIA.viz.ranks_to_frequencies!(
         rs,
         frequencies[ranks=rank_ids[1]];
         opts=opts,
-        axis_opts=axis_opts,
+        axis_opts=axis_opts
     )
     legend_els[1] = PolyElement(;
         color=all_colormaps[Symbol(rank_ids[1])][2], strokecolor=:grey, strokewidth=1
@@ -75,7 +75,7 @@ function ADRIA.viz.ranks_to_frequencies!(
             strokecolor=:grey,
             strokewidth=0.5,
             linestyle=:solid,
-            overdraw=true,
+            overdraw=true
         )
         legend_els[rr] = PolyElement(;
             color=all_colormaps[Symbol(rr)][2], strokecolor=:grey, strokewidth=1
@@ -97,7 +97,7 @@ function ADRIA.viz.ranks_to_frequencies!(
     opts[:color_map] = get(
         opts,
         :color_map,
-        [RGBA{Float32}(1.0, 1.0, 1.0, 1.0), RGBA{Float32}(0.00784314, 0.243137, 1.0, 1.0)],
+        [RGBA{Float32}(1.0, 1.0, 1.0, 1.0), RGBA{Float32}(0.00784314, 0.243137, 1.0, 1.0)]
     )
 
     return ADRIA.viz.map!(
@@ -105,7 +105,7 @@ function ADRIA.viz.ranks_to_frequencies!(
         rs,
         frequencies[ranks=rank_id].data;
         opts=opts,
-        axis_opts=axis_opts,
+        axis_opts=axis_opts
     )
 end
 function ADRIA.viz.ranks_to_frequencies(
@@ -124,7 +124,7 @@ function ADRIA.viz.ranks_to_frequencies(
         frequencies,
         rank_ids;
         opts=opts,
-        axis_opts=axis_opts,
+        axis_opts=axis_opts
     )
 
     return f
