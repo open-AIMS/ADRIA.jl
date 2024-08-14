@@ -31,10 +31,46 @@ data_dir
         results.nc
         scenarios.csv
 ```
-In order to reduce the duplication of geospatial and conectivity data, the data directory
-and results directory can be supplied seperately to avoid having copies for each resuilt set
+In order to reduce the duplication of geospatial and connectivity data, the data directory
+and results directory can be supplied separately to avoid having copies for each result set
 analysed.
 
 ```julia
 rs = ADRIA.load_domain(RMEResultSet, "<path to data dir>", "<path to results dir>")
+```
+
+## Loading CScape Results
+
+Results from CScape can be loaded with the `load_results` function.
+
+```julia
+# Assumes NetCDFs are contained in result subdirectory
+rs = ADRIA.load_results(RMEResultSet, "<path to data dir>")
+
+# Retrieves NetCDFs from seperate directory
+rs = ADRIA.load_results(RMEResultSet, "<path to data dir>", "<path to result directory>")
+
+# Manually passes a list of files to load as results
+rs = ADRIA.load_results(RMEResultSet, "<path to data dir>", ["netcdf_fn1", "netcdf_fn2", ...])
+```
+
+The expected directory structure is
+```bash
+data_dir
+│   ScenarioID.csv
+│
+├───connectivity
+│       connectivity.csv
+│
+├───site_data
+│       geospatial_data.gpkg
+│
+├───initial_cover
+│       initial_cover.csv
+│
+└───results (optional)
+        NetCDF_Scn_140001.nc
+        NetCDF_Scn_140002.nc
+        NetCDF_Scn_140003.nc
+        ...
 ```
