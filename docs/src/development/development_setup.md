@@ -161,6 +161,15 @@ Adding multiple values adds more guide lines at the indicated widths.
 That extension always uses its formatter settings and does not support `.JuliaFormatter.toml` whereas the main Julia extension does.
 The only reason to use the oh7z extension is for Julia projects that do not have a `.JuliaFormatter.toml` file.
 
+## Git blame ignore revs
+
+If you have GitLens (or similar extension), it will show the author of a line of code using git blame.
+To ignore commits like "re-format entire project", run this once:
+
+`git config --local blame.ignoreRevsFile .git-blame-ignore-revs`
+
+If you reformat code and want to ignore that commit, simply add the commit SHA to the `.git-blame-ignore-revs` file.
+
 ## Notes
 
 The very first import of the ADRIA package will be very slow as it attempts to precompile common functions to reduce later start up time.
