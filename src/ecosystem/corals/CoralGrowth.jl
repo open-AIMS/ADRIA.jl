@@ -18,7 +18,7 @@ end
 Implements temporary hardcoded caches for a scenario with 35 'species' (split into 5 groups).
 """
 function CoralGrowth(n_locs::Int64)
-    n_groups::Int64, n_sizes::Int64 = 5, 7
+    n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
     return CoralGrowth(n_locs, n_groups, n_sizes)
 end
 function CoralGrowth(n_locs::Int64, n_groups::Int64, n_sizes::Int64)::CoralGrowth
