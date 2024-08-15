@@ -100,11 +100,13 @@ function load_domain(
     # Forcibly load data as disk arrays are not fully support.
     cube_axes = caxes(dom_dataset.record_applied_DHWs)
     dhw_scens = DataCube(
-        read(dom_dataset.record_applied_DHWs); 
-        timestep=Int64.(collect(cube_axes[1])), 
-        location=site_ids, 
+        read(dom_dataset.record_applied_DHWs);
+        timestep=Int64.(collect(cube_axes[1])),
+        location=site_ids,
         scenario=Int64.(collect(cube_axes[3]))
     )[timestep=At(timeframe[1]:timeframe[2])]
+
+    dhw_scens = correct_axis_names!(dhw_scens)
 
     # Initial coral cover is loaded from the first year of reefmod 'coral_cover_per_taxa' data
     init_coral_cover = load_initial_cover(
@@ -284,6 +286,13 @@ function _find_netcdf(dir::String, scenario::String)::String
     return pos_files[1]
 end
 
+function correct_axis_names!(reefmod_cube::YAXArray)::YAXArray
+    reefmod_cube = renameaxis!(reefmod_cube, :timestep => :timesteps)
+    reefmod_cube = renameaxis!(reefmod_cube, :location => :locs)
+    reefmod_cube = renameaxis!(reefmod_cube, :scenario => :scenarios)
+    return reefmod_cube
+end
+
 """
     switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
 
@@ -295,11 +304,13 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
 
     cube_axes = caxes(new_scen_dataset.record_applied_DHWs)
     dhws = DataCube(
-        read(new_scen_dataset.record_applied_DHWs); 
-        timestep=Int64.(collect(cube_axes[1])), 
+        read(new_scen_dataset.record_applied_DHWs);
+        timestep=Int64.(collect(cube_axes[1])),
         location=d.site_ids,
         scenario=Int64.(collect(cube_axes[3]))
     )[timestep=At(d.env_layer_md.timeframe)]
+
+    dhws = correct_axis_names!(dhws)
 
     d.dhw_scens = dhws
 
