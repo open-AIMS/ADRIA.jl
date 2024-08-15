@@ -45,13 +45,13 @@ Results from CScape can be loaded with the `load_results` function.
 
 ```julia
 # Assumes NetCDFs are contained in result subdirectory
-rs = ADRIA.load_results(RMEResultSet, "<path to data dir>")
+rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>")
 
 # Retrieves NetCDFs from separate directory
-rs = ADRIA.load_results(RMEResultSet, "<path to data dir>", "<path to result directory>")
+rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>", "<path to result directory>")
 
 # Manually passes a list of files to load as results
-rs = ADRIA.load_results(RMEResultSet, "<path to data dir>", ["netcdf_fn1", "netcdf_fn2", ...])
+rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>", ["netcdf_fn1", "netcdf_fn2", ...])
 ```
 
 The expected directory structure is
