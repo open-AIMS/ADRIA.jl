@@ -228,7 +228,6 @@ save("tsa.png", tsa_fig)
 
 ![Plots of Temporal Sensitivities](../assets/imgs/analysis/tsa.png)
 
-
 ### Convergence Analysis
 
 When undertaking sensitivity analysis it is important to have a sufficient number of samples

@@ -320,7 +320,7 @@ function ADRIA.viz.rsa(
     factor::Symbol;
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -334,7 +334,7 @@ function ADRIA.viz.rsa!(
     si::YAXArray,
     factor::Symbol;
     opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
 )
     xlabel = get(axis_opts, :xlabel, "Factor Value")
     ylabel = get(axis_opts, :ylabel, L"\text{Relative } S_{i}")
@@ -359,7 +359,7 @@ function ADRIA.viz.rsa!(
         xlabelsize=32,
         ylabelsize=32,
         ylabelrotation=π / 2.0,
-        axis_opts...,
+        axis_opts...
     )
     ADRIA.viz.rsa!(ax, si, ms_factor, f_vals)
 
@@ -507,7 +507,7 @@ function ADRIA.viz.outcome_map!(
     ms_factor::DataFrame,
     f_vals::Vector{Float64};
     opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
 )
     f_name = ms_factor.fieldname[1]
     f_type::String = ms_factor.ptype[1]
@@ -516,7 +516,7 @@ function ADRIA.viz.outcome_map!(
         # If categorical/discrete get categorical quantile
         fv_s = _get_cat_quantile(
             ms_factor, f_name,
-            collect(outcomes.axes[1]),
+            collect(outcomes.axes[1])
         )
 
     else
@@ -531,7 +531,7 @@ function ADRIA.viz.outcome_map!(
             collect(skipmissing(outcomes[CI=At("lower")])),
             collect(skipmissing(outcomes[CI=At("upper")]))
         )
-        scatterlines!(ax, fv_s, outcomes[CI=At("mean")]; markersize=15)
+        scatterlines!(ax, fv_s, collect(outcomes[CI=At("mean")]); markersize=15)
 
         if f_name == :guided
             fv_labels = _get_guided_labels()
@@ -547,7 +547,7 @@ function ADRIA.viz.outcome_map(
     factor::Symbol;
     opts::Dict=Dict(),
     fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -561,7 +561,7 @@ function ADRIA.viz.outcome_map!(
     outcomes::YAXArray,
     factor::Symbol;
     opts::Dict=Dict(),
-    axis_opts::Dict=Dict(),
+    axis_opts::Dict=Dict()
 )
     xlabel = pop!(axis_opts, :xlabel, "Factor Value")
     ylabel = pop!(axis_opts, :ylabel, "Outcome")

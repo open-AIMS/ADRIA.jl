@@ -358,8 +358,8 @@ function test_rs_w_fig()
         foi;
         axis_opts=Dict(
             :title => "Regions which lead to Top 50th Percentile Outcomes",
-            :ylabel => "TAC [m²]",
-        ),
+            :ylabel => "TAC [m²]"
+        )
     )
 
     # Indicate factor values that are in the top 30 percentile
@@ -373,7 +373,7 @@ function test_rs_w_fig()
         foi;
         axis_opts=Dict(
             :title => "Regions which lead to Top 30th Percentile Outcomes",
-            :ylabel => "TAC [m²]",
+            :ylabel => "TAC [m²]"
         ))
     # save("outcome_map.png", tf)
 
