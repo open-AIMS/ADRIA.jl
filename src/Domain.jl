@@ -30,8 +30,8 @@ function load_domain(path::String)::Domain
     return load_domain(path, "")
 end
 
-function unique_sites(d::Domain)::Vector{String}
-    return d.site_data[:, d.cluster_id_col]
+function unique_loc_ids(d::Domain)::Vector{String}
+    return d.site_data[:, d.site_id_col]
 end
 
 """

@@ -103,7 +103,7 @@ function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
 
     return _reef_condition_index(rc, evenness, sv, juves)
 end
-reef_condition_index = Metric(_reef_condition_index, (:timesteps, :sites, :scenarios))
+reef_condition_index = Metric(_reef_condition_index, (:timesteps, :locations, :scenarios))
 
 """
     scenario_rci(rci::YAXArray, tac::YAXArray; kwargs...)
@@ -163,7 +163,18 @@ function _reef_tourism_index(
                 (0.31946 .* evenness[:, :, axe]) .+
                 (0.11676 .* sv[:, :, axe]) .+
                 (-0.0036065 .* juves[:, :, axe])
-            ), axes(rc, 3))...; dims=3)
+            ),
+            axes(rc, 3)
+        )...;
+        dims=3
+    )
+
+    timesteps = rti.timesteps.val.data
+    locations = rti.locations.val.data
+    n_scenarios = size(rti, 3)
+    rti = DataCube(
+        rti.data; timesteps=timesteps, locations=locations, scenarios=1:n_scenarios
+    )
 
     return round.(clamp.(rti, 0.1, 0.9), digits=2)
 end
@@ -178,7 +189,7 @@ function _reef_tourism_index(rs::ResultSet; intcp_u::Bool=false)::AbstractArray
 
     return _reef_tourism_index(rc, evenness, sv, juves, intcp)
 end
-reef_tourism_index = Metric(_reef_tourism_index, (:timesteps, :sites, :scenarios))
+reef_tourism_index = Metric(_reef_tourism_index, (:timesteps, :locations, :scenarios))
 
 """
     scenario_rti(rti::YAXArray; kwargs...)
@@ -241,6 +252,13 @@ function _reef_fish_index(rc::AbstractArray, intcp_u1, intcp_u2)
             axes(rc, 3))...;
         dims=3)
 
+    timesteps = rfi.timesteps.val.data
+    locations = rfi.locations.val.data
+    n_scenarios = size(rfi, 3)
+    rfi = DataCube(
+        rfi.data; timesteps=timesteps, locations=locations, scenarios=1:n_scenarios
+    )
+
     # Calculate total fish biomass, kg km2
     # 0.01 coefficient is to convert from kg ha to kg km2
     return round.(rfi, digits=2)
@@ -253,7 +271,7 @@ function _reef_fish_index(rs::ResultSet; intcp_u1::Bool=false, intcp_u2::Bool=fa
 
     return _reef_fish_index(rc, icp1, icp2)
 end
-reef_fish_index = Metric(_reef_fish_index, (:timesteps, :sites, :scenarios))
+reef_fish_index = Metric(_reef_fish_index, (:timesteps, :locations, :scenarios))
 
 """
 scenario_rfi(rfi::YAXArray; kwargs...)

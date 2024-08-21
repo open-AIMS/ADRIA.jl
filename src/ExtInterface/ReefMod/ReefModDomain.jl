@@ -73,7 +73,7 @@ function load_domain(
 
     reef_id_col = "UNIQUE_ID"
     cluster_id_col = "UNIQUE_ID"
-    site_ids = spatial_data[:, reef_id_col]
+    location_ids = spatial_data[:, reef_id_col]
 
     # Load accompanying ID list
     # TODO: Create canonical geopackage file that aligns all IDs.
@@ -105,17 +105,17 @@ function load_domain(
     dhw_scens = DataCube(
         dhws.data[:, :, :];
         timesteps=timeframe[1]:timeframe[2],
-        locs=site_ids,
+        locs=location_ids,
         scenarios=1:size(dhws)[3]
     )
 
     # Initial coral cover is loaded from the first year of reefmod 'coral_cover_per_taxa' data
     init_coral_cover = load_initial_cover(
-        ReefModDomain, dom_dataset, spatial_data, site_ids, timeframe[1]
+        ReefModDomain, dom_dataset, spatial_data, location_ids, timeframe[1]
     )
 
     # Connectivity data is retireved from a subdirectory because it's not contained in matfiles
-    conn_data = load_connectivity(RMEDomain, fn_path, site_ids)
+    conn_data = load_connectivity(RMEDomain, fn_path, location_ids)
 
     spatial_data[:, :depth_med] .= 7.0
     spatial_data[!, :depth_med] = convert.(Float64, spatial_data[!, :depth_med])
@@ -126,7 +126,7 @@ function load_domain(
     wave_scens = ZeroDataCube(;
         T=Float64,
         timesteps=timeframe[1]:timeframe[2],
-        locs=site_ids,
+        locs=location_ids,
         scenarios=[1]
     )
 
@@ -151,7 +151,7 @@ function load_domain(
     cyclone_mortality_scens::YAXArray{Float64,4} = _cyclone_mortality_scens(
         dom_dataset,
         spatial_data,
-        site_ids,
+        location_ids,
         timeframe
     )
 
@@ -173,7 +173,7 @@ function load_domain(
         cluster_id_col,
         init_coral_cover,
         CoralGrowth(nrow(spatial_data)),
-        site_ids,
+        location_ids,
         dhw_scens,
         wave_scens,
         cyclone_mortality_scens,
@@ -186,7 +186,7 @@ end
     load_initial_cover(
         ::Type{ReefModDomain},
         dom_data::Dataset,
-        site_data::DataFrame,
+        location_data::DataFrame,
         loc_ids::Vector{String},
         init_yr::Int=2022
     )::YAXArray
@@ -194,7 +194,7 @@ end
 function load_initial_cover(
     ::Type{ReefModDomain},
     dom_data::Dataset,
-    site_data::DataFrame,
+    location_data::DataFrame,
     loc_ids::Vector{String},
     init_yr::Int=2022
 )::YAXArray
@@ -227,10 +227,9 @@ function load_initial_cover(
     icc_data = Matrix(hcat(reduce.(vcat, eachrow(icc_data .* [size_class_weights]))...))
 
     # Convert values relative to absolute area to values relative to k area
-    icc_data = _convert_abs_to_k(icc_data, site_data)
+    icc_data = _convert_abs_to_k(icc_data, location_data)
 
     n_species = length(init_cc_per_taxa[location=1, group=:, scenario=1])
-
     return DataCube(icc_data; species=1:(n_species * 6), locs=loc_ids)
 end
 
@@ -299,7 +298,7 @@ end
     _cyclone_mortality_scens(
         dom_dataset::Dataset,
         spatial_data::DataFrame,
-        site_ids::Vector{String},
+        location_ids::Vector{String},
         timeframe::Tuple{Int64,Int64}
     )::YAXArray{Float64}
 
@@ -311,7 +310,7 @@ Cyclone scenarios (from 0 to 5) are converted to mortality rates.
 function _cyclone_mortality_scens(
     dom_dataset::Dataset,
     spatial_data::DataFrame,
-    site_ids::Vector{String},
+    location_ids::Vector{String},
     timeframe::Tuple{Int64,Int64}
 )::YAXArray{Float64}
     # Add 1 to every scenarios so they represent indexes in cyclone_mr vectors
@@ -324,7 +323,7 @@ function _cyclone_mortality_scens(
     cyclone_mortality_scens::YAXArray{Float64} = ZeroDataCube(;
         T=Float64,
         timesteps=timeframe[1]:timeframe[2],
-        locations=site_ids,
+        locations=location_ids,
         species=species,
         scenarios=1:length(cyclone_scens.scenario)
     )
