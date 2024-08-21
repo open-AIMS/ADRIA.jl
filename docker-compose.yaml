@@ -1,0 +1,43 @@
+---
+#-------------------------------------------------------------------------------
+# Docker development environment composition for ADRIA-Docker
+# (Not for production use!)
+#-------------------------------------------------------------------------------
+version: "3.8"
+
+services:
+  adria-base:
+    build:
+      args:
+        ADRIA_REFSPEC: "v0.11.0"
+        JULIA_VERSION: "1.10.1"
+      context: .
+      target: adria-base
+    image: ADRIA.jl/adria-base:latest
+
+  adria-dev:
+    build:
+      context: .
+      target: adria-dev
+    image: ADRIA.jl/adria-dev:latest
+    volumes:
+      - ./src:/usr/local/src/adria/src
+      - ./test:/usr/local/src/adria/test
+      - ./Aviz:/usr/local/src/adria/Aviz
+      - ./ext:/usr/local/src/adria/ext
+
+  adria-sandbox:
+    build:
+      args:
+        SANDBOX_FROM: "adria-dev"
+      context: .
+      target: adria-sandbox
+    image: ADRIA.jl/adria-sandbox:latest
+    volumes:
+      - ./input:/data/input
+      - ./output:/data/output
+      - ./sandbox/:/opt/adria-sandbox/src/
+      - ./src:/usr/local/src/adria/src
+      - ./test:/usr/local/src/adria/test
+      - ./Aviz:/usr/local/src/adria/Aviz
+      - ./ext:/usr/local/src/adria/ext
