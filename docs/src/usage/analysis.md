@@ -128,7 +128,7 @@ fig_s_tac = ADRIA.viz.scenarios(
 save("scenarios_tac.png", fig_s_tac)
 ```
 
-![Quick scenario plots](/ADRIA.jl/dev/assets/imgs/analysis/scenarios_tac.png?raw=true "Quick scenario plot")
+![Quick scenario plots](../assets/imgs/analysis/scenarios_tac.png)
 
 And compose a figure with subplots. In the example below we also use the parameter `opts`
 that accepts the keys `by_RCP` to group scenarios by RCP (default is `false`), `legend`
@@ -158,7 +158,7 @@ tf  # display the figure
 save("aviz_scenario.png", tf)  # save the figure to a file
 ```
 
-![Scenarios with subplots](/ADRIA.jl/dev/assets/imgs/analysis/aviz_scenario.png?raw=true "Scenarios with subplots")
+![Scenarios with subplots](../assets/imgs/analysis/aviz_scenario.png)
 
 ### Intervention location selection - visualisation
 
@@ -177,7 +177,7 @@ rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, 1; fig_opts=Dict(:size=
 save("single_rank_plot.png", rank_fig)
 ```
 
-![Rank frequency plots for single rank](/ADRIA.jl/dev/assets/imgs/analysis/single_rank_plot.png?raw=true "Rank frequency plot 1 rank")
+![Rank frequency plots for single rank](../assets/imgs/analysis/single_rank_plot.png)
 
 ```julia
 # Plot 1st, 2nd and 3rd rank frequencies as an overlayed colormap
@@ -186,7 +186,7 @@ rank_fig = ADRIA.viz.ranks_to_frequencies(rs, rank_freq, [1, 2, 3]; fig_opts=Dic
 save("ranks_plot.png", rank_fig)
 ```
 
-![Rank frequency plots for multiple ranks](/ADRIA.jl/dev/assets/imgs/analysis/ranks_plot.png?raw=true "Rank frequency plot 3 ranks")
+![Rank frequency plots for multiple ranks](../assets/imgs/analysis/ranks_plot.png)
 
 ### PAWN sensitivity (heatmap overview)
 
@@ -207,7 +207,7 @@ pawn_fig = ADRIA.viz.pawn(
 save("pawn_si.png", pawn_fig)
 ```
 
-![PAWN sensitivity plots](/ADRIA.jl/dev/assets/imgs/analysis/pawn_si.png?raw=true "PAWN sensitivity plots")
+![PAWN sensitivity plots](../assets/imgs/analysis/pawn_si.png)
 
 ### Temporal Sensitivity Analysis
 
@@ -226,7 +226,7 @@ tsa_fig = ADRIA.viz.tsa(
 save("tsa.png", tsa_fig)
 ```
 
-![Plots of Temporal Sensitivities](/ADRIA.jl/dev/assets/imgs/analysis/tsa.png?raw=true "Temporal Sensitivity Analysis")
+![Plots of Temporal Sensitivities](../assets/imgs/analysis/tsa.png)
 
 
 ### Convergence Analysis
@@ -263,8 +263,8 @@ conv_hm_fig = ADRIA.viz.convergence(Si_conv, components; opts=Dict(:viz_type=>:h
 save("convergence_components_heatmap.png", conv_hm_fig)
 ```
 
-![Convergence analysis of factors overlayed](/ADRIA.jl/dev/assets/imgs/analysis/convergence_factors_series.png?raw=true "Convergence Analysis - factors")
-![Grouped convergence analysis](/ADRIA.jl/dev/assets/imgs/analysis/convergence_components_heatmap.png?raw=true "Convergence Analysis - model components as a heatmap")
+![Convergence analysis of factors overlayed](../assets/imgs/analysis/convergence_factors_series.png)
+![Grouped convergence analysis](../assets/imgs/analysis/convergence_components_heatmap.png)
 
 ### Time Series Clustering
 
@@ -297,7 +297,7 @@ tsc_fig = ADRIA.viz.clustered_scenarios(
 save("tsc.png", tsc_fig)
 ```
 
-![Plots of Time Series Cluster](/ADRIA.jl/dev/assets/imgs/analysis/tsc.png?raw=true "Time Series Cluster")
+![Plots of Time Series Cluster](../assets/imgs/analysis/tsc.png)
 
 ### Target clusters
 
@@ -330,7 +330,7 @@ tsc_asc_fig = ADRIA.viz.clustered_scenarios(
 save("tsc_asv.png", tsc_asc_fig)
 ```
 
-![Plots of targeted lowest clusters](/ADRIA.jl/dev/assets/imgs/analysis/tsc_asv.png?raw=true "Targeted lowest clusters")
+![Plots of targeted lowest clusters](../assets/imgs/analysis/tsc_asv.png)
 
 ### Multiple Time Series Clustering
 
@@ -384,7 +384,7 @@ tsc_map_fig = ADRIA.viz.map(rs, tac_sites, clusters)
 save("tsc_map.png", tsc_map_fig)
 ```
 
-![Plots of Spatial Time Series Clusters](/ADRIA.jl/dev/assets/imgs/analysis/tsc_map.png?raw=true "Spatial Time Series Cluster")
+![Plots of Spatial Time Series Clusters](../assets/imgs/analysis/tsc_map.png)
 
 ### Rule Induction (using Series Clusters)
 
@@ -428,7 +428,7 @@ rules_scatter_fig = ADRIA.viz.rules_scatter(
 save("rules_scatter.png", rules_scatter_fig)
 ```
 
-![Plots of Rule Induction](/ADRIA.jl/dev/assets/imgs/analysis/rules_scatter.png?raw=true "Rule Induction")
+![Plots of Rule Induction](../assets/imgs/analysis/rules_scatter.png)
 
 ### Regional Sensitivity Analysis
 
@@ -448,7 +448,7 @@ rsa_fig = ADRIA.viz.rsa(
 save("rsa.png", rsa_fig)
 ```
 
-![Plots of Regional Sensitivities](/ADRIA.jl/dev/assets/imgs/analysis/rsa.png?raw=true "Regional Sensitivity Analysis")
+![Plots of Regional Sensitivities](../assets/imgs/analysis/rsa.png)
 
 ### Outcome mapping
 
@@ -482,7 +482,7 @@ ADRIA.viz.outcome_map!(
 save("outcome_map.png", tf)
 ```
 
-![Outcome mapping](/ADRIA.jl/dev/assets/imgs/analysis/outcome_map.png?raw=true "Outcome mapping")
+![Outcome mapping](../assets/imgs/analysis/outcome_map.png)
 
 ### GUI for high-level exploration (prototype only!)
 
@@ -494,4 +494,4 @@ ADRIA.viz.explore("path to Result Set")
 # ADRIA.viz.explore(rs)
 ```
 
-![Standalone app for data exploration](/ADRIA.jl/dev/assets/imgs/analysis/aviz_app.png?raw=true "Data Exploration App")
+![Standalone app for data exploration](../assets/imgs/analysis/aviz_app.png)

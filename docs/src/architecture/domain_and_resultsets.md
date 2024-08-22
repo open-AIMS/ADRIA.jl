@@ -8,7 +8,7 @@ Data specifications are outlined/stored in this repository: https://github.com/o
 
 The overall structure and data formats of the data packages are illustrated in the diagram below.
 
-![Domain-Results Diagram](../assets/imgs/domain_and_resultsets/ADRIA_Input_Output_diagram.png?raw=true "Domain-Results Diagram")
+![Domain-Results Diagram](../assets/imgs/domain_and_resultsets/ADRIA_Input_Output_diagram.png)
 
 ## Domain data package
 
@@ -63,10 +63,10 @@ ReefModDomain
 │       CONNECT_ACRO_2016_17.bin
 │
 ├───id # location ids
-│       id_list_2023_03_30.csv 
+│       id_list_2023_03_30.csv
 │
 └───region # geospatial data
-        reefmod_gbr.gpkg 
+        reefmod_gbr.gpkg
 ```
 
 ### ReefMod Engine datasets
@@ -153,7 +153,7 @@ Example_domain
 
 The directory holding results is also treated as a data package referred to as a `ResultSet`.
 Scenario outcomes are written out to disk as they complete to a directory located in the
-user-defined `Output` directory (see [Getting started](@ref)).
+user-defined `Output` directory (see [Getting Started](@ref)).
 
 The directory name follows the convention of `[Domain Name]__[IDs of RCPs]__[date/time of run]`.
 For example: `Moore_2022-11-17__RCPs45_60__2023-01-01_19_00_00_000`
