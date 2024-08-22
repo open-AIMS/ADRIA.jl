@@ -1,7 +1,7 @@
 """
     _get_ranks(rs::ResultSet, intervention::Int64; kwargs...)
 
-Extracts results for a specific intervention (seeding [1] or shading [2])
+Extracts results for a specific intervention (:seed or :fog)
 """
 function _get_ranks(rs::ResultSet, intervention::Symbol; kwargs...)
     return slice_results(rs.ranks[intervention=At(intervention)]; kwargs...)
@@ -10,7 +10,7 @@ end
 """
     _collate_ranks(rs, selected)
 
-Collates ranks into seed/shade ranking results into a common structure.
+Collates ranks into seed/fog ranking results into a common structure.
 """
 function _collate_ranks(rs::ResultSet, selected; kwargs...)::YAXArray
     n_steps, n_sites = size(selected)
@@ -182,27 +182,6 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
         scenarios=1:n_scenarios
     )
 end
-
-"""
-    shade_ranks(rs::ResultSet; kwargs...)
-
-# Arguments
-- rs : ResultSet
-- kwargs : named dimensions to slice across
-
-# Returns
-YAXArray[timesteps, sites, scenarios]
-
-# Example
-```julia
-ADRIA.metrics.shade_ranks(rs; timesteps=1:10, scenarios=3:5)
-```
-"""
-# There is no shade rank
-# function shade_ranks(rs::ResultSet; kwargs...)
-#     selected = _get_ranks(rs, 2; kwargs...)
-#     return _collate_ranks(rs, selected; kwargs...)
-# end
 
 """
     top_N_sites(rs::ResultSet; N::Int64; metric::relative_cover)
