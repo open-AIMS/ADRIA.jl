@@ -761,7 +761,9 @@ function run_model(
 
             if in_debug_mode
                 # Log dhw tolerances if in debug mode
-                dhw_tol_mean_log[tstep, :, :] .= mean.(c_mean_t)
+                dhw_tol_mean_log[tstep, :, :] .= reshape(
+                    mean.(c_mean_t), size(dhw_tol_mean_log)[2:3]
+                )
             end
         end
 

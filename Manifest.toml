@@ -2,22 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "e35ccc15450176d4831d929d116e08a04017e2ea"
-
-[[deps.ADRIA]]
-deps = ["ArchGDAL", "Bootstrap", "CSV", "Clustering", "Combinatorics", "CoralBlox", "CpuId", "DataFrames", "DataStructures", "Dates", "DimensionalData", "Distances", "Distributed", "Distributions", "FLoops", "FileIO", "GDAL_jll", "GeoDataFrames", "GeoFormatTypes", "GeoInterface", "Graphs", "HypothesisTests", "ImageIO", "InteractiveUtils", "Interpolations", "JMcDM", "JSON", "JuliennedArrays", "LinearAlgebra", "Logging", "MAT", "MLJ", "ModelParameters", "NetCDF", "OnlineStats", "OrderedCollections", "Pkg", "PkgVersion", "PrecompileTools", "Printf", "ProgressMeter", "Random", "Reexport", "RelocatableFolders", "SIRUS", "Setfield", "SimpleWeightedGraphs", "SparseArrays", "SpecialFunctions", "StableRNGs", "StaticArrays", "Statistics", "StatsBase", "StatsFuns", "Surrogates", "TOML", "YAXArrays", "Zarr"]
-path = "/usr/local/src/adria"
-uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
-version = "0.11.0"
-
-    [deps.ADRIA.extensions]
-    AvizExt = ["Makie", "GeoMakie", "GraphMakie"]
-
-    [deps.ADRIA.weakdeps]
-    BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
-    GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
-    GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
-    Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+project_hash = "1237e1adc6bf13edf1d6d7b99f4f4e0cf9fe6e74"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
