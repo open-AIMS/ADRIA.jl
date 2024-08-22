@@ -12,8 +12,8 @@ Note that the unit of measure is optional and can be left out.
 Below is the implementation of the `total_absolute_cover` metric.
 
 ```julia
-function _total_absolute_cover(X::AbstractArray{<:Real}, site_area::Vector{<:Real})::AbstractArray{<:Real}
-    return dropdims(sum(X, dims=:species), dims=:species) .* site_area'
+function _total_absolute_cover(X::AbstractArray{<:Real}, loc_area::Vector{<:Real})::AbstractArray{<:Real}
+    return dropdims(sum(X, dims=:species), dims=:species) .* loc_area'
 end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:total_absolute_cover]

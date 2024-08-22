@@ -3,15 +3,14 @@ module decision
 using InteractiveUtils: subtypes
 using StatsBase
 using YAXArrays
-using ADRIA: DataCube, Domain, EcoModel, n_locations, site_area, site_k_area
-
 using ADRIA:
+    component_params,
+    DataCube,
     Domain,
     EcoModel,
     n_locations,
-    site_area,
-    site_k_area,
-    component_params
+    loc_area,
+    site_k_area
 
 using ADRIA:
     DiscreteOrderedUniformDist,
@@ -71,8 +70,8 @@ Align a vector of site rankings to match the indicated order in `s_order`.
 """
 function align_rankings!(rankings::Array, s_order::Matrix, col::Int64)::Nothing
     # Fill target ranking column
-    for (i, site_id) in enumerate(s_order[:, 1])
-        rankings[rankings[:, 1] .== site_id, col] .= i
+    for (i, loc_id) in enumerate(s_order[:, 1])
+        rankings[rankings[:, 1] .== loc_id, col] .= i
     end
 
     return nothing

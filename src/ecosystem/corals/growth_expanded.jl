@@ -13,7 +13,7 @@ t : time, unused, so marking with `_`
 function growthODE_expanded(
     du::Array{Float64,2}, X::Array{Float64,2}, p::NamedTuple, _::Real
 )::Nothing
-    # `s` refers to sigma holding leftover space for each site in form of: 1 x n_sites
+    # `s` refers to sigma holding leftover space for each site in form of: 1 x n_locs
     s = p.sigma[:, :]
 
     s .= max.(p.k' .- sum(X; dims=1), 0.0)  # Make relative to k (max. carrying capacity)
@@ -31,7 +31,7 @@ function growthODE_expanded(
     du[5, :] .= (s .* X[4, :] .* r[4]) .- (s .* X[5, :] .* r[5]) .- X_mb[5, :]
     du[6, :] .= (s .* X[5, :] .* r[5]) .+ (s .* X[6, :] .* r[6]) .- X_mb[6, :]
 
-    # Tabular Acropora 
+    # Tabular Acropora
     du[7, :] .= rec[2, :] .- (s .* X[7, :] .* r[7]) .- X_mb[2, :]
     du[8, :] .= (s .* X[7, :] .* r[7]) .- (s .* X[8, :] .* r[8]) .- X_mb[8, :]
     du[9, :] .= (s .* X[8, :] .* r[8]) .- (s .* X[9, :] .* r[9]) .- X_mb[9, :]
@@ -39,7 +39,7 @@ function growthODE_expanded(
     du[11, :] .= (s .* X[10, :] .* r[10]) .- (s .* X[11, :] .* r[11]) .- X_mb[11, :]
     du[12, :] .= (s .* X[11, :] .* r[11]) .+ (s .* X[11, :] * r[11]) .- X_mb[12, :]
 
-    # Corymbose Acropora 
+    # Corymbose Acropora
     du[13, :] .= rec[3, :] .- s .* X[13, :] .* r[13] .- X_mb[13, :]
     du[14, :] .= (s .* X[13, :] .* r[13]) .- (s .* X[14, :] .* r[14]) .- X_mb[14, :]
     du[15, :] .= (s .* X[14, :] .* r[14]) .- (s .* X[15, :] .* r[15]) .- X_mb[15, :]
@@ -63,7 +63,7 @@ function growthODE_expanded(
     du[29, :] .= (s .* X[28, :] .* r[28]) .- (s .* X[29, :] .* r[29]) .- X_mb[29, :]
     du[30, :] .= (s .* X[29, :] .* r[29]) .+ (s .* X[30, :] .* r[30]) .- X_mb[30, :]
 
-    # Large massives 
+    # Large massives
     du[31, :] .= rec[6, :] .- s .* X[31, :] .* r[31] .- X_mb[6, :]
     du[32, :] .= (s .* X[31, :] .* r[31]) .- (s .* X[32, :] .* r[32]) .- X_mb[32, :]
     du[33, :] .= (s .* X[32, :] .* r[32]) .- (s .* X[33, :] .* r[33]) .- X_mb[33, :]

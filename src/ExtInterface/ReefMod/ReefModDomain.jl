@@ -18,12 +18,12 @@ mutable struct ReefModDomain <: AbstractReefModDomain
     env_layer_md
     scenario_invoke_time::String  # time latest set of scenarios were run
     const conn
-    const site_data
-    const site_id_col
+    const loc_data
+    const loc_id_col
     const cluster_id_col
     init_coral_cover
     const coral_growth::CoralGrowth
-    const site_ids
+    const loc_ids
     dhw_scens
 
     # `wave_scens` holds empty wave data to maintain compatibility with
@@ -273,7 +273,7 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
 )[timestep=At(d.env_layer_md.timeframe)].data[:, :, :]
 
     scens = 1:size(dhws)[3]
-    loc_ids = d.site_ids
+    loc_ids = d.loc_ids
 
     d.dhw_scens = DataCube(
         dhws;

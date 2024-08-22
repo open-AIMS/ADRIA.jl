@@ -13,7 +13,7 @@ using ADRIA: DataCube, ZeroDataCube, axes_names, axis_labels, axis_index
 using FLoops
 using DataFrames
 
-using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, site_k_area, site_area,
+using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, site_k_area, loc_area,
     planar_area_params
 
 abstract type Outcome end
@@ -441,8 +441,8 @@ shelter volume (a 3D metric).
 
 # Arguments
 - `X` : raw results
-- `site_area` : area in m^2 for each site
-- `max_cover` : maximum possible coral cover for each site (in percentage of site_area)
+- `k_area` : area in m^2 for each site
+- `max_cover` : maximum possible coral cover for each site (in percentage of loc_area)
 - `inputs` : DataFrame of scenario inputs
 
 # References
@@ -670,9 +670,9 @@ include("utils.jl")
 
 # ```julia
 # using ADRIA.metrics: total_absolute_cover
-# extended_metric = @extend_metric(example_func, total_absolute_cover, [site_area(domain)])
+# extended_metric = @extend_metric(example_func, total_absolute_cover, [loc_area(domain)])
 
-# Y = extended_metric(raw_results)  # Equivalent to total_absolute_cover(raw_results, site_area(domain))
+# Y = extended_metric(raw_results)  # Equivalent to total_absolute_cover(raw_results, loc_area(domain))
 # ```
 # """
 # macro extend_metric(name, m, args)

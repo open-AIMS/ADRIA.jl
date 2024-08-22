@@ -204,15 +204,15 @@ function ADRIA.viz.map(
     if opts[:show_management_zones]
         local highlight
         try
-            highlight = Symbol.(lowercase.(rs.site_data.zone_type))
+            highlight = Symbol.(lowercase.(rs.loc_data.zone_type))
         catch
             # Annoyingly, the case of the name may have changed...
-            highlight = Symbol.(lowercase.(rs.site_data.ZONE_TYPE))
+            highlight = Symbol.(lowercase.(rs.loc_data.ZONE_TYPE))
         end
         opts[:highlight] = highlight
     end
 
-    ADRIA.viz.map!(g, rs, rs.site_data.k * 100.0; opts, axis_opts)
+    ADRIA.viz.map!(g, rs, rs.loc_data.k * 100.0; opts, axis_opts)
 
     return f
 end
@@ -223,7 +223,7 @@ function ADRIA.viz.map!(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
-    geodata = _get_geoms(rs.site_data)
+    geodata = _get_geoms(rs.loc_data)
     data = Observable(collect(y))
 
     highlight = get(opts, :highlight, nothing)
@@ -232,8 +232,8 @@ function ADRIA.viz.map!(
     show_colorbar = get(opts, :show_colorbar, true)
     color_map = get(opts, :color_map, :grayC)
     if !(:dest in keys(axis_opts))
-        col = _get_geom_col(rs.site_data)
-        axis_opts[:dest] = ADRIA.AG.toPROJ4(ADRIA.AG.getspatialref(rs.site_data[1, col]))
+        col = _get_geom_col(rs.loc_data)
+        axis_opts[:dest] = ADRIA.AG.toPROJ4(ADRIA.AG.getspatialref(rs.loc_data[1, col]))
     end
 
     return create_map!(
@@ -440,7 +440,7 @@ function ADRIA.viz.connectivity!(
         axis_opts...
     )
 
-    geodata = _get_geoms(dom.site_data)
+    geodata = _get_geoms(dom.loc_data)
 
     spatial.yticklabelpad = 50
     spatial.ytickalign = 10

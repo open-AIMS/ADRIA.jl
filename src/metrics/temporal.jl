@@ -57,7 +57,7 @@ end
 #     rc::AbstractArray{<:Real} = call_metric(relative_cover, rs.inputs; kwargs...)
 
 #     # Divide across locations by the max possible proportional coral cover
-#     rc .= mapslices((s) -> s ./ (rs.site_max_coral_cover / 100.0), rc, dims=:locations)
+#     rc .= mapslices((s) -> s ./ (rs.loc_max_coral_cover / 100.0), rc, dims=:locations)
 
 #     # Empty representation of evenness - currently ignored
 #     E::AbstractArray{<:Real} = Array(Float32[])

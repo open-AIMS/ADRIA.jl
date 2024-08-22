@@ -80,14 +80,14 @@ function rank_locations(
     # Set filtered locations as n_locs+1 for consistency with time dependent ranks
     ranks_store = DataCube(
         fill(0.0, n_locs, 2, nrow(scenarios));
-        locations=dom.site_ids,
+        locations=dom.loc_ids,
         intervention=[:seed, :fog],
         scenarios=1:nrow(scenarios)
     )
 
     # Consider all locations
-    target_seed_loc_ids = dom.site_ids
-    target_fog_loc_ids = dom.site_ids
+    target_seed_loc_ids = dom.loc_ids
+    target_fog_loc_ids = dom.loc_ids
 
     # Overwrite if specific locations are specified
     if !isnothing(target_seed_locs)
@@ -122,8 +122,8 @@ function rank_locations(
 
     α = 0.99
 
-    site_data = dom.site_data
-    coral_habitable_locs = site_data.k .> 0.0
+    loc_data = dom.loc_data
+    coral_habitable_locs = loc_data.k .> 0.0
     for (scen_idx, scen) in enumerate(eachrow(scens))
         # Decisions should place more weight on environmental conditions
         # closer to the decision point
@@ -134,11 +134,11 @@ function rank_locations(
         depth_offset = scen[factors=At("depth_offset")].data[1]
 
         depth_criteria = identify_within_depth_bounds(
-            site_data.depth_med, min_depth, depth_offset
+            loc_data.depth_med, min_depth, depth_offset
         )
         valid_seed_locs =
             coral_habitable_locs .& depth_criteria .&
-            (dom.site_ids .∈ Ref(target_seed_loc_ids))
+            (dom.loc_ids .∈ Ref(target_seed_loc_ids))
         considered_seed_locs = findall(valid_seed_locs)
         if count(valid_seed_locs) == 0
             @warn "No valid seeding locations found for scenario $(scen_idx)"
@@ -146,7 +146,7 @@ function rank_locations(
 
         valid_fog_locs =
             coral_habitable_locs .& depth_criteria .&
-            (dom.site_ids .∈ Ref(target_fog_loc_ids))
+            (dom.loc_ids .∈ Ref(target_fog_loc_ids))
         if count(valid_fog_locs) == 0
             @warn "No valid fogging locations found for scenario $(scen_idx)"
         end
@@ -188,9 +188,9 @@ function rank_locations(
         # from consideration
         if count(valid_seed_locs) > 0
             seed_decision_mat = decision_matrix(
-                dom.site_ids[valid_seed_locs],
+                dom.loc_ids[valid_seed_locs],
                 seed_pref.names;
-                depth=site_data.depth_med[valid_seed_locs],
+                depth=loc_data.depth_med[valid_seed_locs],
                 in_connectivity=in_conn[valid_seed_locs],
                 out_connectivity=out_conn[valid_seed_locs],
                 heat_stress=dhw_projection[valid_seed_locs],
@@ -206,7 +206,7 @@ function rank_locations(
                 seed_pref,
                 seed_decision_mat,
                 MCDA_approach,
-                site_data.cluster_id,
+                loc_data.cluster_id,
                 area_to_seed,
                 considered_seed_locs,
                 leftover_space_m²,
@@ -225,9 +225,9 @@ function rank_locations(
 
         if count(valid_fog_locs) > 0
             fog_decision_mat = decision_matrix(
-                dom.site_ids[valid_fog_locs],
+                dom.loc_ids[valid_fog_locs],
                 seed_pref.names;
-                depth=site_data.depth_med[valid_fog_locs],
+                depth=loc_data.depth_med[valid_fog_locs],
                 in_connectivity=in_conn[valid_fog_locs],
                 out_connectivity=out_conn[valid_fog_locs],
                 heat_stress=dhw_projection[valid_fog_locs],
@@ -483,7 +483,7 @@ rs = ADRIA.run_scenarios(dom, scens, "45")
 freq_rank = ADRIA.decision.selection_ranks(rs.ranks, :seed; desc=true)
 
 # Get details of locations ordered by their selection frequency.
-rs.site_data[freq_rank, :]
+rs.loc_data[freq_rank, :]
 ```
 
 # Arguments

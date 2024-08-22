@@ -7,8 +7,8 @@ Store environmental data layers used for scenario
 """
 mutable struct EnvLayer{S<:AbstractString,TF}
     dpkg_path::S
-    site_data_fn::S
-    const site_id_col::S
+    loc_data_fn::S
+    const loc_id_col::S
     const cluster_id_col::S
     init_coral_cov_fn::S
     connectivity_fn::S
@@ -31,7 +31,7 @@ function load_domain(path::String)::Domain
 end
 
 function unique_loc_ids(d::Domain)::Vector{String}
-    return d.site_data[:, d.site_id_col]
+    return d.loc_data[:, d.loc_id_col]
 end
 
 """
@@ -168,12 +168,12 @@ function _convert_abs_to_k(
 end
 
 """
-    site_area(domain::Domain)::Vector{Float64}
+    loc_area(domain::Domain)::Vector{Float64}
 
 Get site area for the given domain.
 """
-function site_area(domain::Domain)::Vector{Float64}
-    return domain.site_data.area
+function loc_area(domain::Domain)::Vector{Float64}
+    return domain.loc_data.area
 end
 
 """
@@ -182,7 +182,7 @@ end
 Get maximum coral cover area for the given domain in absolute area.
 """
 function site_k_area(domain::Domain)::Vector{Float64}
-    return location_k(domain) .* site_area(domain)
+    return location_k(domain) .* loc_area(domain)
 end
 
 """
@@ -191,7 +191,7 @@ end
 Returns the number of locations (sites/reefs/clusters) represented within the domain.
 """
 function n_locations(domain::Domain)::Int64
-    return size(domain.site_data, 1)
+    return size(domain.loc_data, 1)
 end
 
 """
@@ -218,7 +218,7 @@ end
 Get maximum coral habitable area as a proportion of a location's area (\$k ∈ [0, 1]\$).
 """
 function location_k(domain::Domain)
-    return domain.site_data.k
+    return domain.loc_data.k
 end
 
 """Extract the time steps represented in the data package."""

@@ -357,7 +357,7 @@ function ADRIA.viz.explore(rs::ResultSet)
 
     @info "Generating map"
     map_display = layout.map
-    geodata = _get_geoms(rs.site_data)
+    geodata = _get_geoms(rs.loc_data)
     map_disp = create_map!(map_display, geodata, obs_mean_rc_sites, (:black, 0.05))
 
     curr_highlighted_sites = _get_seeded_sites(seed_log, (:), (:))
@@ -759,11 +759,11 @@ end
 #     # TODO: Separate this out into own function
 #     # Make temporary copy of GeoPackage as GeoJSON
 #     tmpdir = mktempdir()
-#     geo_fn = GDF.write(joinpath(tmpdir, "Aviz_$(rs.name).geojson"), rs.site_data; driver="geojson")
+#     geo_fn = GDF.write(joinpath(tmpdir, "Aviz_$(rs.name).geojson"), rs.loc_data; driver="geojson")
 #     geodata = GeoMakie.GeoJSON.read(read(geo_fn))
 
 #     # Get bounds to display
-#     centroids = rs.site_centroids
+#     centroids = rs.loc_centroids
 #     lon = first.(centroids)
 #     lat = last.(centroids)
 

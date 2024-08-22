@@ -18,13 +18,13 @@ mutable struct ADRIADomain <: Domain
     env_layer_md::EnvLayer  # Layers used
     scenario_invoke_time::String  # time latest set of scenarios were run
     const conn::YAXArray  # connectivity data
-    site_data::DataFrame  # table of location data (depth, carrying capacity, etc)
-    const site_id_col::String  # column to use as location ids, also used by the connectivity dataset (indicates order of `conn`)
+    loc_data::DataFrame  # table of location data (depth, carrying capacity, etc)
+    const loc_id_col::String  # column to use as location ids, also used by the connectivity dataset (indicates order of `conn`)
     const cluster_id_col::String  # column of unique cluster ids
     init_coral_cover::YAXArray  # initial coral cover dataset
     const coral_growth::CoralGrowth  # coral
-    const site_ids::Vector{String}  # Location IDs that are represented (i.e., subset of site_data[:, location_id_col], after missing locations are filtered)
-    const removed_sites::Vector{String}  # indices of locations that were removed. Used to align site_data, DHW, connectivity, etc.
+    const loc_ids::Vector{String}  # Location IDs that are represented (i.e., subset of loc_data[:, location_id_col], after missing locations are filtered)
+    const removed_locs::Vector{String}  # indices of locations that were removed. Used to align loc_data, DHW, connectivity, etc.
     dhw_scens::YAXArray  # DHW scenarios
     wave_scens::YAXArray  # wave scenarios
     cyclone_mortality_scens::Union{Matrix{<:Real},YAXArray}  # Cyclone mortality scenarios
@@ -167,11 +167,11 @@ function Domain(
     location_data.row_id = 1:nrow(location_data)
 
     conn_ids::Vector{String} = u_sids
-    connectivity::NamedTuple = site_connectivity(conn_path, u_sids)
+    connectivity::NamedTuple = location_connectivity(conn_path, u_sids)
 
     # Filter out missing entries
     location_data = location_data[
-        coalesce.(in.(conn_ids, [connectivity.site_ids]), false), :
+        coalesce.(in.(conn_ids, [connectivity.loc_ids]), false), (:)
     ]
     location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
 
@@ -219,7 +219,7 @@ function Domain(
         cluster_id_col,
         init_coral_cover,
         coral_growth,
-        connectivity.site_ids,
+        connectivity.loc_ids,
         connectivity.truncated,
         dhw,
         waves,
@@ -329,7 +329,7 @@ function Base.show(io::IO, mime::MIME"text/plain", d::ADRIADomain)::Nothing
         Domain: $(d.name)
 
         Number of locations: $(n_locations(d))
-        Location data file: $(d.env_layer_md.site_data_fn)
+        Location data file: $(d.env_layer_md.loc_data_fn)
         Connectivity file: $(d.env_layer_md.connectivity_fn)
         DHW file: $(d.env_layer_md.DHW_fn)
         Wave file: $(d.env_layer_md.wave_fn)

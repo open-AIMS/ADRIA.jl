@@ -35,14 +35,14 @@ function setup_cache(domain::Domain)::NamedTuple
     tf = length(timesteps(domain))
 
     cache = (
-        # sf=zeros(n_groups, n_sites),  # stressed fecundity, commented out as it is disabled
+        # sf=zeros(n_groups, n_locs),  # stressed fecundity, commented out as it is disabled
         fec_all=zeros(n_groups, n_sizes, n_locs),  # all fecundity
         fec_scope=zeros(n_groups, n_locs),  # fecundity scope
         recruitment=zeros(n_groups, n_locs),  # coral recruitment
         dhw_step=zeros(n_locs),  # DHW for each time step
         C_cover_t=zeros(n_groups, n_sizes, n_locs),  # Cover for previous timestep
         depth_coeff=zeros(n_locs),  # store for depth coefficient
-        site_area=Matrix{Float64}(site_area(domain)'),  # area of locations
+        loc_area=Matrix{Float64}(loc_area(domain)'),  # area of locations
         site_k_area=Matrix{Float64}(site_k_area(domain)'),  # location carrying capacity
         wave_damage=zeros(tf, n_group_and_size, n_locs),  # damage coefficient for each size class
         dhw_tol_mean_log=zeros(tf, n_group_and_size, n_locs)  # tmp log for mean dhw tolerances
@@ -520,8 +520,8 @@ function run_model(
     C_cover_t = cache.C_cover_t
     depth_coeff = cache.depth_coeff
 
-    site_data = domain.site_data
-    depth_coeff .= depth_coefficient.(site_data.depth_med)
+    loc_data = domain.loc_data
+    depth_coeff .= depth_coefficient.(loc_data.depth_med)
 
     # Coral cover relative to available area (i.e., 1.0 == site is filled to max capacity)
     C_cover::Array{Float64,4} = zeros(tf, n_groups, n_sizes, n_locs)
@@ -541,7 +541,7 @@ function run_model(
     log_location_ranks = ZeroDataCube(;     # log seeding/fogging ranks
         T=Float64,
         timesteps=1:tf,
-        locations=domain.site_ids,
+        locations=domain.loc_ids,
         intervention=interventions()
     )
 
@@ -610,7 +610,7 @@ function run_model(
     area_to_seed = sum(seeded_area)
 
     depth_criteria = identify_within_depth_bounds(
-        site_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
+        loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
 
     if is_guided
@@ -620,9 +620,9 @@ function run_model(
         # Create shared decision matrix, setting criteria values that do not change
         # between time steps
         decision_mat = decision_matrix(
-            domain.site_ids,
+            domain.loc_ids,
             seed_pref.names;
-            depth=site_data.depth_med
+            depth=loc_data.depth_med
         )
 
         # Unsure what to do with this because it is usually empty
@@ -845,7 +845,7 @@ function run_model(
             end
         elseif apply_fogging && fog_decision_years[tstep]
             selected_fog_ranks = unguided_selection(
-                domain.site_ids,
+                domain.loc_ids,
                 min_iv_locs,
                 vec(leftover_space_m²),
                 depth_criteria
@@ -894,7 +894,7 @@ function run_model(
                 seed_pref,
                 decision_mat[location=locs_with_space[_valid_locs]],
                 MCDA_approach,
-                site_data.cluster_id,
+                loc_data.cluster_id,
                 area_to_seed,
                 considered_locs,
                 vec(leftover_space_m²),
@@ -910,7 +910,7 @@ function run_model(
         elseif apply_seeding && seed_decision_years[tstep]
             # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
             selected_seed_ranks = unguided_selection(
-                domain.site_ids,
+                domain.loc_ids,
                 min_iv_locs,
                 vec(leftover_space_m²),
                 depth_criteria

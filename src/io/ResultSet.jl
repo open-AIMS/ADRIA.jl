@@ -22,15 +22,15 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF} <: ResultSet
     invoke_time::String
     ADRIA_VERSION::String
 
-    site_ids::T1
-    site_area::Vector{Float64}
-    site_max_coral_cover::Vector{Float64}
-    site_centroids::T2
+    loc_ids::T1
+    loc_area::Vector{Float64}
+    loc_max_coral_cover::Vector{Float64}
+    loc_centroids::T2
     env_layer_md::EnvLayer
     dhw_stats::D
     wave_stats::D
     connectivity_data::D
-    site_data::G
+    loc_data::G
 
     inputs::G
     sim_constants::D1
@@ -54,7 +54,7 @@ function ResultSet(
     dhw_stats_set::Dict,
     wave_stats_set::Dict,
     conn_data::Dict,
-    site_data::DataFrame,
+    loc_data::DataFrame,
     model_spec::DataFrame
 )::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
@@ -62,15 +62,15 @@ function ResultSet(
         string(rcp),
         input_set.attrs["invoke_time"],
         input_set.attrs["ADRIA_VERSION"],
-        input_set.attrs["site_ids"],
-        convert.(Float64, input_set.attrs["site_area"]),
-        convert.(Float64, input_set.attrs["site_max_coral_cover"]),
-        input_set.attrs["site_centroids"],
+        input_set.attrs["loc_ids"],
+        convert.(Float64, input_set.attrs["loc_area"]),
+        convert.(Float64, input_set.attrs["loc_max_coral_cover"]),
+        input_set.attrs["loc_centroids"],
         env_layer_md,
         dhw_stats_set,
         wave_stats_set,
         conn_data,
-        site_data,
+        loc_data,
         inputs_used,
         input_set.attrs["sim_constants"],
         model_spec,
@@ -160,8 +160,8 @@ function combine_results(result_sets...)::ResultSet
     envlayer = rs1.env_layer_md
     env_md = EnvLayer(
         envlayer.dpkg_path,
-        envlayer.site_data_fn,
-        envlayer.site_id_col,
+        envlayer.loc_data_fn,
+        envlayer.loc_id_col,
         envlayer.cluster_id_col,
         envlayer.init_coral_cov_fn,
         envlayer.connectivity_fn,
@@ -179,17 +179,17 @@ function combine_results(result_sets...)::ResultSet
         combined_time,
         env_md,
         rs1.sim_constants,
-        rs1.site_ids,
-        rs1.site_area,
-        rs1.site_max_coral_cover,
-        rs1.site_centroids
+        rs1.loc_ids,
+        rs1.loc_area,
+        rs1.loc_max_coral_cover,
+        rs1.loc_centroids
     )
 
-    # Copy site data into result set
+    # Copy location data into result set
     mkdir(joinpath(new_loc, SPATIAL_DATA))
     cp(
-        attrs[:site_data_file],
-        joinpath(new_loc, SPATIAL_DATA, basename(attrs[:site_data_file]));
+        attrs[:loc_data_file],
+        joinpath(new_loc, SPATIAL_DATA, basename(attrs[:loc_data_file]));
         force=true
     )
 
@@ -214,10 +214,10 @@ function combine_results(result_sets...)::ResultSet
         zip([:ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_tol_log],
             setup_logs(
                 z_store,
-                rs1.site_ids,
+                rs1.loc_ids,
                 nrow(all_inputs),
                 size(rs1.seed_log, :timesteps),
-                size(rs1.seed_log, :sites)
+                size(rs1.seed_log, :locations)
             )
         )...
     )
@@ -247,8 +247,8 @@ function combine_results(result_sets...)::ResultSet
         dim_struct = Dict{Symbol,Any}(
             :structure => m_dim_names
         )
-        if :sites in m_dim_names
-            dim_struct[:unique_site_ids] = rs1.site_ids
+        if :locations in m_dim_names
+            dim_struct[:unique_loc_ids] = rs1.loc_ids
         end
 
         result_dims = (size(rs1.outcomes[m_name])[1:(end - 1)]..., n_scenarios)
@@ -387,7 +387,7 @@ end
 Extract vector of a location's coral carrying capacity in terms of absolute area.
 """
 function site_k_area(rs::ResultSet)::Vector{Float64}
-    return rs.site_max_coral_cover .* rs.site_area
+    return rs.loc_max_coral_cover .* rs.loc_area
 end
 
 """
@@ -397,16 +397,16 @@ Extract vector of a location's coral carrying capacity in as a proportion relati
 location's total area.
 """
 function site_k(rs::ResultSet)::Vector{Float64}
-    return rs.site_max_coral_cover
+    return rs.loc_max_coral_cover
 end
 
 """
-    site_area(rs::ResultSet)::Vector{Float64}
+    loc_area(rs::ResultSet)::Vector{Float64}
 
 Extract vector of a location's total area in its areal unit (m², km², etc).
 """
-function site_area(rs::ResultSet)::Vector{Float64}
-    return rs.site_area
+function loc_area(rs::ResultSet)::Vector{Float64}
+    return rs.loc_area
 end
 
 """
@@ -418,7 +418,7 @@ Retrieve the number of locations represented in the result set.
 - `rs` : ResultSet
 """
 function n_locations(rs::ResultSet)::Int64
-    return size(rs.site_ids, 1)
+    return size(rs.loc_ids, 1)
 end
 
 """
@@ -459,7 +459,7 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     vers_id = rs.ADRIA_VERSION
 
-    tf, sites, scens = size(rs.outcomes[:relative_cover])
+    tf, locs, scens = size(rs.outcomes[:relative_cover])
     # Species/size groups represented: $(species)
 
     rcps = join(split(rs.RCP, "_"), ", ")
@@ -472,7 +472,7 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
 
     RCP(s) represented: $(rcps)
     Scenarios run: $(scens)
-    Number of sites: $(sites)
+    Number of locations: $(locs)
     Timesteps: $(tf)
 
     Input layers

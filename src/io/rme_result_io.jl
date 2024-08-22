@@ -9,13 +9,13 @@ struct RMEResultSet{T1,T2,D,G,D1} <: ResultSet
     name::String
     RCP::String
 
-    site_ids::T1
-    site_area::Vector{Float64}
-    site_max_coral_cover::Vector{Float64}
-    site_centroids::T2
+    loc_ids::T1
+    loc_area::Vector{Float64}
+    loc_max_coral_cover::Vector{Float64}
+    loc_centroids::T2
     env_layer_md::EnvLayer
     connectivity_data::D
-    site_data::G
+    loc_data::G
     scenario_groups
     inputs::DataFrame
 
@@ -63,7 +63,7 @@ function load_results(
 
     reef_id_col = "UNIQUE_ID"
     cluster_id_col = "UNIQUE_ID"
-    site_ids = geodata[:, reef_id_col]
+    loc_ids = geodata[:, reef_id_col]
 
     # Load accompanying ID list
     id_list_fn = _find_file(joinpath(data_dir, "id"), Regex("id_list.*.csv"))
@@ -83,7 +83,7 @@ function load_results(
     geodata[:, :k] = 1 .- id_list[:, 3]
 
     # Connectivity is loaded using the same method as the Domain
-    connectivity = load_connectivity(RMEDomain, data_dir, site_ids)
+    connectivity = load_connectivity(RMEDomain, data_dir, loc_ids)
 
     location_max_coral_cover = 1 .- geodata.k ./ 100
     location_centroids = [centroid(multipoly) for multipoly ∈ geodata.geom]
@@ -132,7 +132,7 @@ function load_results(
     return RMEResultSet(
         name,
         netcdf_rcp,
-        site_ids,
+        loc_ids,
         geodata.area,
         location_max_coral_cover,
         location_centroids,

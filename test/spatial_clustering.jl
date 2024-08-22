@@ -5,10 +5,10 @@ using Random
 using Statistics
 
 @testset "Constrain spatial groups" begin
-    n_sites = 30
-    site_ids = collect(1:n_sites)
+    n_locs = 30
+    loc_ids = collect(1:n_locs)
     area_to_seed = 695.11
-    orig_site_order = shuffle(Vector(1:n_sites))
+    orig_site_order = shuffle(Vector(1:n_locs))
     site_order = copy(orig_site_order)
     available_space = rand(Uniform(area_to_seed + 100.0, area_to_seed + 1000.0), 30)
     n_iv_locs = 5
@@ -16,11 +16,11 @@ using Statistics
     prefsites = site_order[1:5]
     reef_locs = [fill("1", 10)..., fill("2", 10)..., fill("3", 10)...]
 
-    s_order = Union{Float64,Int64}[Int64.(site_order) rand(n_sites)]
+    s_order = Union{Float64,Int64}[Int64.(site_order) rand(n_locs)]
     # All selected sites are in the same reef, so 2 should be replaced
     reef_locs[prefsites] .= "2"
     # Empty ranking just for testing
-    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+    rankings = Int64[loc_ids zeros(Int64, n_locs) zeros(Int64, n_locs)]
 
     new_prefsites, rankings = constrain_reef_cluster(
         reef_locs,
@@ -44,8 +44,8 @@ using Statistics
     # Set no 3 sites to be in the same reef and check none are replaced
     reef_locs[prefsites] .= ["1", "2", "3", "4", "1"]
 
-    s_order = Union{Float64,Int64}[Int64.(orig_site_order) rand(n_sites)]
-    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+    s_order = Union{Float64,Int64}[Int64.(orig_site_order) rand(n_locs)]
+    rankings = Int64[loc_ids zeros(Int64, n_locs) zeros(Int64, n_locs)]
 
     new_prefsites, rankings = constrain_reef_cluster(
         reef_locs,
@@ -64,8 +64,8 @@ using Statistics
     available_space[prefsites] .= (area_to_seed - 100.0) / n_iv_locs
     available_space[s_order[n_iv_locs + 1, 1]] = area_to_seed
 
-    s_order = Union{Float64,Int64}[Int64.(orig_site_order) rand(n_sites)]
-    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+    s_order = Union{Float64,Int64}[Int64.(orig_site_order) rand(n_locs)]
+    rankings = Int64[loc_ids zeros(Int64, n_locs) zeros(Int64, n_locs)]
 
     new_prefsites, rankings = constrain_reef_cluster(
         reef_locs, s_order, rankings, area_to_seed, available_space, n_iv_locs, 3

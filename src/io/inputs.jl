@@ -110,14 +110,14 @@ because this can be incorrect. Instead, match by number of sites.
 function _nc_dim_labels(
     data_fn::String, data::Array{<:Real}, nc_file::NetCDF.NcFile
 )::Vector{Union{UnitRange{Int64},Vector{String}}}
-    local sites_idx::Int64
+    local locs_idx::Int64
 
     sites = "reef_siteid" in keys(nc_file.vars) ? _site_labels(nc_file) : 1:size(data, 2)
 
     try
         # This will be an issue if the number of elements for two or more dimensions have
         # the same number of elements, but so far that hasn't happened...
-        sites_idx = first(findall(size(data) .== length(sites)))
+        locs_idx = first(findall(size(data) .== length(sites)))
     catch err
         error(
             "Error loading $data_fn : could not determine number of locations." *
@@ -126,7 +126,7 @@ function _nc_dim_labels(
     end
 
     dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
-    dim_labels[sites_idx] = sites
+    dim_labels[locs_idx] = sites
 
     return dim_labels
 end
@@ -136,9 +136,9 @@ Some packages used to write out netCDFs do not yet support string values, and in
 reverts to writing out character arrays.
 """
 function _site_labels(nc_file::NetCDF.NcFile)::Vector{String}
-    site_ids = NetCDF.readvar(nc_file, "reef_siteid")
+    loc_ids = NetCDF.readvar(nc_file, "reef_siteid")
     # Converts character array entries in netCDFs to string if needed
-    return site_ids isa Matrix ? nc_char2string(site_ids) : site_ids
+    return loc_ids isa Matrix ? nc_char2string(loc_ids) : loc_ids
 end
 
 """
@@ -157,7 +157,7 @@ end
 
 """
     load_cyclone_mortality(data_fn::String)::YAXArray
-    load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::YAXArray
+    load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
 
 Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
 ordered by :locations
@@ -166,10 +166,10 @@ function load_cyclone_mortality(data_fn::String)::YAXArray
     cyclone_cube::YAXArray = Cube(data_fn)
     return sort_axis(cyclone_cube, :locations)
 end
-function load_cyclone_mortality(timeframe::Vector{Int64}, site_data::DataFrame)::YAXArray
+function load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
     return ZeroDataCube(;
         timesteps=1:length(timeframe),
-        locations=sort(site_data.reef_siteid),
+        locations=sort(loc_data.reef_siteid),
         species=ADRIA.coral_spec().taxa_names,
         scenarios=[1]
     )
