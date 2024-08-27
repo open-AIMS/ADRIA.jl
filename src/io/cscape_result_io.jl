@@ -721,9 +721,10 @@ function _cscape_relative_cover(dataset::Dataset)::Array
     return relative_cover
 end
 function _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
+    # Assume same number of locations and timesteps for every dataset
     n_locs::Int64 = length(datasets[1].reef_sites)
 
-    # Assume same number of locations and timesteps for every dataset
+    # Determine the number of entries for each file
     n_scens::Vector{Int64} = _n_scenarios.(datasets)
 
     relative_cover = ZeroDataCube(
