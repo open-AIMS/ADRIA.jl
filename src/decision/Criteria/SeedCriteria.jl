@@ -150,9 +150,9 @@ dom = ADRIA.load_domain("... path to domain ...")
 seed_pref = ADRIA.SeedPreferences(dom)
 
 location_names = cluster_ids
-cluster_ids = dom.site_data.cluster_id
+cluster_ids = dom.loc_data.cluster_id
 dm = ADRIA.decision_matrix(location_names, seed_pref.names, rand(3806, 6))
-available_space = dom.site_data.k .* dom.site_data.area
+available_space = dom.loc_data.k .* dom.loc_data.area
 mcda_method = ADRIA.mcda_methods()[1]
 min_locs = 5
 max_members = 2

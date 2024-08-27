@@ -15,12 +15,12 @@ end
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
 
     # extract inputs for function
-    total_site_area = site_area(dom)
+    total_loc_area = loc_area(dom)
     k = location_k(dom)
-    current_cover = zeros(size(total_site_area))
+    current_cover = zeros(size(total_loc_area))
 
     # calculate available space
-    available_space = vec((total_site_area .* k) .- current_cover)
+    available_space = vec((total_loc_area .* k) .- current_cover)
 
     # Randomly generate seeded area
     seeded_area = ADRIA.DataCube(
@@ -28,15 +28,15 @@ end
     )
 
     @testset "Check coral seed distribution ($i)" for i in 1:10
-        seed_locs = rand(1:length(total_site_area), 5)
+        seed_locs = rand(1:length(total_loc_area), 5)
 
         # evaluate seeding distributions
         seed_dist = distribute_seeded_corals(
-            total_site_area[seed_locs], available_space[seed_locs], seeded_area
+            total_loc_area[seed_locs], available_space[seed_locs], seeded_area
         )
 
         # Area to be seeded for each site
-        total_area_seed = seed_dist .* total_site_area[seed_locs]'
+        total_area_seed = seed_dist .* total_loc_area[seed_locs]'
 
         # total area of seeded corals
         total_area_coral_out = sum(total_area_seed; dims=2)
@@ -46,7 +46,7 @@ end
 
         # Index of max proportion for available space
         # The selected location (row number) should match
-        abs_seed_area = seed_dist' .* total_site_area[seed_locs]
+        abs_seed_area = seed_dist' .* total_loc_area[seed_locs]
         max_ind_out = argmax(abs_seed_area)[1]
         max_ind = argmax(selected_avail_space)
 

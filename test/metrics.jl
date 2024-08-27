@@ -50,7 +50,7 @@ end
 
 # @testset "metric modifications" begin
 #     dom = ADRIA.load_domain(joinpath(@__DIR__, "..", "examples", "Example_domain"), 45)
-#     sa = site_area(dom)
+#     sa = loc_area(dom)
 #     tac_metric = @extend_metric(TAC, total_absolute_cover, [sa])
 
 #     @test tac_metric(rand(5, 26, 5, 5))

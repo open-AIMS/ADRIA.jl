@@ -12,7 +12,7 @@ the location-level at indicated time (or across timesteps).
 - timesteps : timesteps to apply `metric` across
 
 # Returns
-Named Vector of \$N\$ elements, where \$N\$ is the number of sites.
+Named Vector of \$N\$ elements, where \$N\$ is the number of locations.
 """
 function per_loc(metric, data::YAXArray{D,T,N,A})::YAXArray where {D,T,N,A}
     return summarize(data, [:scenarios, :timesteps], metric)
@@ -39,14 +39,14 @@ tac = ADRIA.metrics.total_absolute_cover(rs)
 ADRIA.metrics.loc_trajectory(median, tac)
 #75×216 YAXArray{Float64,2} with dimensions:
 #  Dim{:timesteps} Categorical{Any} Any[1, 2, …, 74, 75] Unordered,
-#  Dim{:sites} Categorical{Any} Any[1, 2, …, 215, 216] Unordered
+#  Dim{:locations} Categorical{Any} Any[1, 2, …, 215, 216] Unordered
 #Total size: 126.56 KB
 
 # Get upper 95% CI for each site
 ADRIA.metrics.loc_trajectory(x -> quantile(x, 0.975), tac)
 #75×216 YAXArray{Float64,2} with dimensions:
 #  Dim{:timesteps} Categorical{Any} Any[1, 2, …, 74, 75] Unordered,
-#  Dim{:sites} Categorical{Any} Any[1, 2, …, 215, 216] Unordered
+#  Dim{:locations} Categorical{Any} Any[1, 2, …, 215, 216] Unordered
 #Total size: 126.56 KB
 ```
 
@@ -55,7 +55,7 @@ ADRIA.metrics.loc_trajectory(x -> quantile(x, 0.975), tac)
 - data : Data set to apply metric to
 
 # Returns
-2D array of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is number of sites
+2D array of \$T ⋅ S\$, where \$T\$ is total number of time steps and \$S\$ is number of locations
 """
 function loc_trajectory(
     metric, data::YAXArray{D,T,N,A}

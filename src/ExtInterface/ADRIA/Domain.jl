@@ -18,13 +18,13 @@ mutable struct ADRIADomain <: Domain
     env_layer_md::EnvLayer  # Layers used
     scenario_invoke_time::String  # time latest set of scenarios were run
     const conn::YAXArray  # connectivity data
-    site_data::DataFrame  # table of site data (depth, carrying capacity, etc)
-    const site_id_col::String  # column to use as site ids, also used by the connectivity dataset (indicates order of `conn`)
-    const cluster_id_col::String  # column of unique site ids
+    loc_data::DataFrame  # table of location data (depth, carrying capacity, etc)
+    const loc_id_col::String  # column to use as location ids, also used by the connectivity dataset (indicates order of `conn`)
+    const cluster_id_col::String  # column of unique cluster ids
     init_coral_cover::YAXArray  # initial coral cover dataset
     const coral_growth::CoralGrowth  # coral
-    const site_ids::Vector{String}  # Site IDs that are represented (i.e., subset of site_data[:, site_id_col], after missing sites are filtered)
-    const removed_sites::Vector{String}  # indices of sites that were removed. Used to align site_data, DHW, connectivity, etc.
+    const loc_ids::Vector{String}  # Location IDs that are represented (i.e., subset of loc_data[:, location_id_col], after missing locations are filtered)
+    const removed_locs::Vector{String}  # indices of locations that were removed. Used to align loc_data, DHW, connectivity, etc.
     dhw_scens::YAXArray  # DHW scenarios
     wave_scens::YAXArray  # wave scenarios
     cyclone_mortality_scens::Union{Matrix{<:Real},YAXArray}  # Cyclone mortality scenarios
@@ -42,13 +42,13 @@ function Domain(
     rcp::String,
     env_layers::EnvLayer,
     TP_base::YAXArray{T},
-    site_data::DataFrame,
-    site_id_col::String,
+    location_data::DataFrame,
+    location_id_col::String,
     cluster_id_col::String,
     init_coral_cover::YAXArray,
     coral_growth::CoralGrowth,
-    site_ids::Vector{String},
-    removed_sites::Vector{String},
+    location_ids::Vector{String},
+    removed_locations::Vector{String},
     DHW::YAXArray,
     wave::YAXArray,
     cyclone_mortality::YAXArray
@@ -72,13 +72,13 @@ function Domain(
         env_layers,
         "",
         TP_base,
-        site_data,
-        site_id_col,
+        location_data,
+        location_id_col,
         cluster_id_col,
         init_coral_cover,
         coral_growth,
-        site_ids,
-        removed_sites,
+        location_ids,
+        removed_locations,
         DHW,
         wave,
         cyclone_mortality,
@@ -88,7 +88,7 @@ function Domain(
 end
 
 """
-    Domain(name::String, rcp::String, timeframe::Vector, site_data_fn::String, site_id_col::String, cluster_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String)::Domain
+    Domain(name::String, rcp::String, timeframe::Vector, location_data_fn::String, location_id_col::String, cluster_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String)::Domain
 
 Convenience constructor for Domain.
 
@@ -97,9 +97,9 @@ Convenience constructor for Domain.
 - `dpkg_path` : location of data package
 - `rcp` : RCP scenario represented
 - `timeframe` : Time steps represented
-- `site_data_fn` : File name of spatial data used
-- `site_id_col` : Column holding name of reef the site is associated with (non-unique)
-- `cluster_id_col` : Column holding unique site names/ids
+- `location_data_fn` : File name of spatial data used
+- `location_id_col` : Column holding name of reef the location is associated with (non-unique)
+- `cluster_id_col` : Column holding unique cluster names/ids
 - `init_coral_fn` : Name of file holding initial coral cover values
 - `conn_path` : Path to directory holding connectivity data
 - `dhw_fn` : Filename of DHW data cube in use
@@ -111,8 +111,8 @@ function Domain(
     dpkg_path::String,
     rcp::String,
     timeframe::Vector,
-    site_data_fn::String,
-    site_id_col::String,
+    location_data_fn::String,
+    location_id_col::String,
     cluster_id_col::String,
     init_coral_fn::String,
     conn_path::String,
@@ -120,29 +120,32 @@ function Domain(
     wave_fn::String,
     cyclone_mortality_fn::String
 )::ADRIADomain
-    local site_data::DataFrame
+    local location_data::DataFrame
     try
-        site_data = GDF.read(site_data_fn)
+        location_data = GDF.read(location_data_fn)
     catch err
-        if !isfile(site_data_fn)
-            error("Provided site data path is not valid or missing: $(site_data_fn).")
+        if !isfile(location_data_fn)
+            error(
+                "Provided location data path is not valid or missing: $(location_data_fn)."
+            )
         else
             rethrow(err)
         end
     end
 
-    if cluster_id_col ∉ names(site_data)
+    if cluster_id_col ∉ names(location_data)
         @warn "Cluster ID column $(cluster_id_col) not found. Defaulting to UNIQUE_ID."
         cluster_id_col = "UNIQUE_ID"
     end
-    if typeof(site_data[:, cluster_id_col][1]) != String
-        site_data[!, cluster_id_col] .= string.(Int64.(site_data[:, cluster_id_col]))
+    if typeof(location_data[:, cluster_id_col][1]) != String
+        location_data[!, cluster_id_col] .=
+            string.(Int64.(location_data[:, cluster_id_col]))
     end
 
     env_layer_md::EnvLayer = EnvLayer(
         dpkg_path,
-        site_data_fn,
-        site_id_col,
+        location_data_fn,
+        location_id_col,
         cluster_id_col,
         init_coral_fn,
         conn_path,
@@ -152,23 +155,27 @@ function Domain(
     )
 
     # Sort data to maintain consistent order
-    sort!(site_data, Symbol[Symbol(site_id_col)])
-    u_sids::Vector{String} = string.(collect(site_data[!, site_id_col]))
-    # If site id column is missing then derive it from the Unique IDs
-    if !in(site_id_col, names(site_data))
-        site_data[!, site_id_col] .= String[d[2] for d in split.(u_sids, "_"; limit=2)]
+    sort!(location_data, Symbol[Symbol(location_id_col)])
+    u_sids::Vector{String} = string.(collect(location_data[!, location_id_col]))
+    # If location id column is missing then derive it from the Unique IDs
+    if !in(location_id_col, names(location_data))
+        location_data[!, location_id_col] .= String[
+            d[2] for d in split.(u_sids, "_"; limit=2)
+        ]
     end
 
-    site_data.row_id = 1:nrow(site_data)
+    location_data.row_id = 1:nrow(location_data)
 
     conn_ids::Vector{String} = u_sids
-    connectivity::NamedTuple = site_connectivity(conn_path, u_sids)
+    connectivity::NamedTuple = location_connectivity(conn_path, u_sids)
 
     # Filter out missing entries
-    site_data = site_data[coalesce.(in.(conn_ids, [connectivity.site_ids]), false), :]
-    site_data.k .= site_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
+    location_data = location_data[
+        coalesce.(in.(conn_ids, [connectivity.loc_ids]), false), (:)
+    ]
+    location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
 
-    n_locs::Int64 = nrow(site_data)
+    n_locs::Int64 = nrow(location_data)
     n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
     coral_growth::CoralGrowth = CoralGrowth(n_locs, n_groups, n_sizes)
     n_group_and_size = coral_growth.n_group_and_size
@@ -184,7 +191,7 @@ function Domain(
     waves = load_env_data(waves_params...)
 
     cyc_params =
-        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, site_data)
+        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, location_data)
     cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     # Add compatability with non-migrated datasets but always default current coral spec
@@ -207,12 +214,12 @@ function Domain(
         rcp,
         env_layer_md,
         connectivity.conn,
-        site_data,
-        site_id_col,
+        location_data,
+        location_id_col,
         cluster_id_col,
         init_coral_cover,
         coral_growth,
-        connectivity.site_ids,
+        connectivity.loc_ids,
         connectivity.truncated,
         dhw,
         waves,
@@ -255,7 +262,7 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         timeframe = parse.(Int64, md_timeframe)
     end
 
-    site_id_col::String = "reef_siteid"
+    location_id_col::String = "reef_siteid"
     cluster_id_col::String = "cluster_id"
 
     conn_path::String = joinpath(path, "connectivity/")
@@ -274,7 +281,7 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         rcp,
         timeframe,
         gpkg_path,
-        site_id_col,
+        location_id_col,
         cluster_id_col,
         init_coral_cov,
         conn_path,
@@ -321,8 +328,8 @@ function Base.show(io::IO, mime::MIME"text/plain", d::ADRIADomain)::Nothing
     println("""
         Domain: $(d.name)
 
-        Number of sites: $(n_locations(d))
-        Site data file: $(d.env_layer_md.site_data_fn)
+        Number of locations: $(n_locations(d))
+        Location data file: $(d.env_layer_md.loc_data_fn)
         Connectivity file: $(d.env_layer_md.connectivity_fn)
         DHW file: $(d.env_layer_md.DHW_fn)
         Wave file: $(d.env_layer_md.wave_fn)

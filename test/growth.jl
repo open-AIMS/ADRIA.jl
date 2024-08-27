@@ -83,7 +83,7 @@ end
     ]
 
     C_cover_t = rand(Uniform(0.0, 0.01), 36, 216)
-    total_site_area = [
+    total_loc_area = [
         76997.8201778261,
         38180.997513339855,
         334269.6228868989,
@@ -303,7 +303,7 @@ end
     ]
 
     ADRIA.fecundity_scope!(
-        fec_groups, fec_all, fec_params, C_cover_t, Matrix(total_site_area')
+        fec_groups, fec_all, fec_params, C_cover_t, Matrix(total_loc_area')
     )
 
     @test any(fec_groups .> 1e8) ||
@@ -335,20 +335,20 @@ end
 end
 
 @testset "Recruitment" begin
-    n_sites = 334
+    n_locs = 334
     n_groups = 5
 
-    total_site_area = rand(n_sites) .* 1e6
-    max_cover = rand(n_sites)
-    avail_area = rand(n_sites)
-    larval_pool = rand(n_groups, n_sites) .* 1e8
+    total_loc_area = rand(n_locs) .* 1e6
+    max_cover = rand(n_locs)
+    avail_area = rand(n_locs)
+    larval_pool = rand(n_groups, n_locs) .* 1e8
 
     recruits_per_m² = ADRIA.recruitment_rate(larval_pool, avail_area)
-    abs_recruits = recruits_per_m² .* (avail_area .* max_cover .* total_site_area)'
+    abs_recruits = recruits_per_m² .* (avail_area .* max_cover .* total_loc_area)'
 
     @test any(abs_recruits .> 10^4) || "At least some recruitment values should be > 10,000"
 
-    theoretical_max = ((avail_area .* max_cover .* total_site_area)' * 51.8)
+    theoretical_max = ((avail_area .* max_cover .* total_loc_area)' * 51.8)
     for (i, rec) in enumerate(eachrow(abs_recruits))
         @test all(rec' .<= theoretical_max) ||
             "Species group $i exceeded maximum theoretical number of settlers"

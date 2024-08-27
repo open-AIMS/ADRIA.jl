@@ -103,7 +103,7 @@ function store_conn(
 end
 
 """
-    scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_sites, area, k)
+    scenario_attributes(name, RCP, input_cols, invoke_time, env_layer, sim_constants, unique_loc_ids, area, k, centroids)
     scenario_attributes(domain::Domain, param_df::DataFrame)
 
 Generate dictionary of scenario attributes.
@@ -115,19 +115,19 @@ function scenario_attributes(
     invoke_time,
     env_layer,
     sim_constants,
-    unique_sites,
+    unique_loc_ids,
     area,
     k,
     centroids
-)::Dict
+)::Dict{Symbol,Any}
     attrs::Dict{Symbol,Any} = Dict(
         :name => name,
         :RCP => RCP,
         :columns => input_cols,
         :invoke_time => invoke_time,
         :ADRIA_VERSION => "v" * string(PkgVersion.Version(@__MODULE__)),
-        :site_data_file => env_layer.site_data_fn,
-        :site_id_col => env_layer.site_id_col,
+        :loc_data_file => env_layer.loc_data_fn,
+        :loc_id_col => env_layer.loc_id_col,
         :cluster_id_col => env_layer.cluster_id_col,
         :init_coral_cover_file => env_layer.init_coral_cov_fn,
         :connectivity_file => env_layer.connectivity_fn,
@@ -135,51 +135,61 @@ function scenario_attributes(
         :wave_file => env_layer.wave_fn,
         :timeframe => env_layer.timeframe,
         :sim_constants => sim_constants,
-        :site_ids => unique_sites,
-        :site_area => area,
-        :site_max_coral_cover => k,
-        :site_centroids => centroids
+        :loc_ids => unique_loc_ids,
+        :loc_area => area,
+        :loc_max_coral_cover => k,
+        :loc_centroids => centroids
     )
 
     return attrs
 end
-function scenario_attributes(domain::Domain, param_df::DataFrame)
-    return scenario_attributes(domain.name, domain.RCP, names(param_df),
+function scenario_attributes(domain::Domain, param_df::DataFrame)::Dict{Symbol,Any}
+    return scenario_attributes(
+        domain.name,
+        domain.RCP,
+        names(param_df),
         domain.scenario_invoke_time,
-        domain.env_layer_md, domain.sim_constants,
-        unique_sites(domain), site_area(domain), domain.site_data.k,
-        centroids(domain.site_data))
+        domain.env_layer_md,
+        domain.sim_constants,
+        unique_loc_ids(domain),
+        loc_area(domain),
+        domain.loc_data.k,
+        centroids(domain.loc_data)
+    )
 end
 
 """
-    setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_size)
+    setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_group_and_size)
 
+Setup logs for ranks, seed_log, fog_log, shade_log and coral_dhw_log.
+
+# Arguments
 - `z_store` : ZArray
-- `unique_sites` : Unique site ids
+- `unique_loc_ids` : Unique location ids
 - `n_scens` : number of scenarios
 - `tf` : timeframe
-- `n_sites` : number of sites
+- `n_locs` : number of location
 - `n_group_and_size` : number of function groups ⋅ number of size classes
 
 Note: This setup relies on hardcoded values for number of species represented and seeded.
 """
-function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_size)
-    # Set up logs for site ranks, seed/fog log
+function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_group_and_size)
+    # Set up logs for location ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
 
-    # Store ranked sites
+    # Store ranked location
     n_interventions = length(interventions())
-    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_sites, n_interventions, n_scens)  # sites, site id and rank, no. scenarios
-    fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_sites, n_scens)  # timeframe, sites, no. scenarios
+    rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, n_interventions, n_scens)  # locations, location id and rank, no. scenarios
+    fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_locs, n_scens)  # timeframe, location, no. scenarios
 
-    # tf, no. species to seed, site id and rank, no. scenarios
-    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 3, n_sites, n_scens)
+    # tf, no. species to seed, location id and rank, no. scenarios
+    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 3, n_locs, n_scens)
 
     attrs = Dict(
         # Here, "intervention" refers to seeding or shading
-        :structure => ("timesteps", "sites", "intervention", "scenarios"),
-        :unique_site_ids => unique_sites
+        :structure => ("timesteps", "locations", "intervention", "scenarios"),
+        :unique_loc_ids => unique_loc_ids
     )
     ranks = zcreate(
         Float32,
@@ -193,8 +203,8 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
     )
 
     attrs = Dict(
-        :structure => ("timesteps", "coral_id", "sites", "scenarios"),
-        :unique_site_ids => unique_sites
+        :structure => ("timesteps", "coral_id", "locations", "scenarios"),
+        :unique_loc_ids => unique_loc_ids
     )
     seed_log = zcreate(
         Float32,
@@ -208,8 +218,8 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
     )
 
     attrs = Dict(
-        :structure => ("timesteps", "sites", "scenarios"),
-        :unique_site_ids => unique_sites
+        :structure => ("timesteps", "locations", "scenarios"),
+        :unique_loc_ids => unique_loc_ids
     )
     fog_log = zcreate(
         Float32,
@@ -234,15 +244,15 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
 
     # TODO: Could log bleaching mortality
     # attrs = Dict(
-    #     :structure => ("timesteps", "sites", "scenarios"),
-    #     :unique_site_ids => unique_sites,
+    #     :structure => ("timesteps", "locations", "scenarios"),
+    #     :unique_loc_ids => unique_loc_ids,
     # )
     # bleach_log = zcreate(Float32, fog_dims...; name="bleaching_mortality", fill_value=nothing, fill_as_missing=false, path=log_fn, chunks=(fog_dims[1:2]..., 1), attrs=attrs)
 
     # Log for coral DHW thresholds
     attrs = Dict(
-        :structure => ("timesteps", "species", "sites", "scenarios"),
-        :unique_site_ids => unique_sites
+        :structure => ("timesteps", "species", "locations", "scenarios"),
+        :unique_loc_ids => unique_loc_ids
     )
 
     local coral_dhw_log
@@ -251,13 +261,13 @@ function setup_logs(z_store, unique_sites, n_scens, tf, n_sites, n_group_and_siz
             Float32,
             tf,
             n_group_and_size,
-            n_sites,
+            n_locs,
             n_scens;
             name="coral_dhw_log",
             fill_value=nothing,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_group_and_size, n_sites, 1),
+            chunks=(tf, n_group_and_size, n_locs, 1),
             attrs=attrs
         )
     else
@@ -346,10 +356,10 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
 
     # Writing geopackages out does not currently automatically include CRS
     # so we manually define it as a workaround.
-    col = _get_geom_col(domain.site_data)
-    ref = AG.getspatialref(domain.site_data[1, col])
+    col = _get_geom_col(domain.loc_data)
+    ref = AG.getspatialref(domain.loc_data[1, col])
     proj4_gft = GFT.ProjString(AG.toPROJ4(ref))
-    GDF.write(geo_fn, domain.site_data; crs=proj4_gft, geom_columns=(col,), driver="GPKG")
+    GDF.write(geo_fn, domain.loc_data; crs=proj4_gft, geom_columns=(col,), driver="GPKG")
 
     # Store copy of model specification as CSV
     mkdir(joinpath(log_location, "model_spec"))
@@ -369,7 +379,8 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     # Store table of factor values
     inputs[:, :] = Matrix(scen_spec)
 
-    tf, n_sites, _ = size(domain.dhw_scens)
+    tf, n_locations, _ = size(domain.dhw_scens)
+    n_scenarios = nrow(scen_spec)
 
     # Set up stores for each metric
     function dim_lengths(metric_structure)
@@ -379,49 +390,62 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
                 append!(dl, tf)
             elseif d == "species"
                 append!(dl, domain.coral_growth.n_group_and_size)
-            elseif d == "sites"
-                append!(dl, n_sites)
+            elseif d == "locations"
+                append!(dl, n_locations)
             elseif d == "scenarios"
-                append!(dl, nrow(scen_spec))
+                append!(dl, n_scenarios)
             end
         end
 
         return (dl...,)
     end
 
-    met_names = [:relative_cover, :relative_shelter_volume,
-        :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator, :coral_evenness
+    met_names = [
+        :relative_cover,
+        :relative_shelter_volume,
+        :absolute_shelter_volume,
+        :relative_juveniles,
+        :juvenile_indicator,
+        :coral_evenness
     ]
 
+    _unique_loc_ids = unique_loc_ids(domain)
+
     dim_struct = Dict(
-        :structure => string.((:timesteps, :sites, :scenarios)),
-        :unique_site_ids => unique_sites(domain)
+        :structure => string.((:timesteps, :locations, :scenarios)),
+        :unique_loc_ids => _unique_loc_ids
     )
     result_dims::Tuple{Int64,Int64,Int64} = dim_lengths(dim_struct[:structure])
 
     # Create stores for each metric
     stores = [
-        zcreate(Float32, result_dims...;
-            fill_value=nothing, fill_as_missing=false,
+        zcreate(
+            Float32,
+            result_dims...;
+            fill_value=nothing,
+            fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, string(m_name)),
             chunks=(result_dims[1:(end - 1)]..., 1),
             attrs=dim_struct,
-            compressor=COMPRESSOR)
-        for m_name in met_names
+            compressor=COMPRESSOR
+        ) for m_name in met_names
     ]
 
     # Handle special case for relative taxa cover
     n_groups::Int64 = domain.coral_growth.n_groups
     push!(
         stores,
-        zcreate(Float32, (result_dims[1], n_groups, result_dims[3])...;
-            fill_value=nothing, fill_as_missing=false,
+        zcreate(
+            Float32,
+            (result_dims[1], n_groups, result_dims[3])...;
+            fill_value=nothing,
+            fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, "relative_taxa_cover"),
             chunks=((result_dims[1], n_groups)..., 1),
-            attrs=Dict(
-                :structure => string.(ADRIA.metrics.relative_taxa_cover.dims)
-            ),
-            compressor=COMPRESSOR))
+            attrs=Dict(:structure => string.(ADRIA.metrics.relative_taxa_cover.dims)),
+            compressor=COMPRESSOR
+        )
+    )
     push!(met_names, :relative_taxa_cover)
 
     # dhw and wave zarrays
@@ -476,7 +500,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         wave_stats...,
         connectivity...,
         setup_logs(
-            z_store, unique_sites(domain), nrow(scen_spec), tf, n_sites, n_group_and_size
+            z_store, _unique_loc_ids, nrow(scen_spec), tf, n_locations, n_group_and_size
         )...
     ]
 
@@ -586,10 +610,10 @@ function load_results(result_loc::String)::ResultSet
     end
 
     # Spatial data
-    site_data = GDF.read(
+    loc_data = GDF.read(
         joinpath(result_loc, SPATIAL_DATA, input_set.attrs["name"] * ".gpkg")
     )
-    sort!(site_data, [Symbol(input_set.attrs["site_id_col"])])
+    sort!(loc_data, [Symbol(input_set.attrs["loc_id_col"])])
 
     # Model specification
     model_spec = CSV.read(
@@ -622,8 +646,8 @@ function load_results(result_loc::String)::ResultSet
     # Details of the environmental data layer used for the sims
     env_layer_md::EnvLayer = EnvLayer(
         result_loc,
-        input_set.attrs["site_data_file"],
-        input_set.attrs["site_id_col"],
+        input_set.attrs["loc_data_file"],
+        input_set.attrs["loc_id_col"],
         input_set.attrs["cluster_id_col"],
         input_set.attrs["init_coral_cover_file"],
         input_set.attrs["connectivity_file"],
@@ -644,8 +668,8 @@ function load_results(result_loc::String)::ResultSet
             for (i, s) in enumerate(res.attrs["structure"])
                 if s == "timesteps"
                     push!(st, input_set.attrs["timeframe"])
-                elseif s == "sites"
-                    push!(st, res.attrs["unique_site_ids"])
+                elseif s == "locations"
+                    push!(st, res.attrs["unique_loc_ids"])
                 else
                     push!(st, 1:sz[i])
                 end
@@ -683,7 +707,7 @@ function load_results(result_loc::String)::ResultSet
         dhw_stat_set,
         wave_stat_set,
         conn_set,
-        site_data,
+        loc_data,
         model_spec
     )
 end

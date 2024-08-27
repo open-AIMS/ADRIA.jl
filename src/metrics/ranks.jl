@@ -1,29 +1,29 @@
 """
     _get_ranks(rs::ResultSet, intervention::Int64; kwargs...)
 
-Extracts results for a specific intervention (seeding [1] or shading [2])
+Extracts results for a specific intervention (:seed or :fog)
 """
-function _get_ranks(rs::ResultSet, intervention::Int64; kwargs...)
-    return slice_results(rs.ranks[intervention=intervention]; kwargs...)
+function _get_ranks(rs::ResultSet, intervention::Symbol; kwargs...)
+    return slice_results(rs.ranks[intervention=At(intervention)]; kwargs...)
 end
 
 """
     _collate_ranks(rs, selected)
 
-Collates ranks into seed/shade ranking results into a common structure.
+Collates ranks into seed/fog ranking results into a common structure.
 """
 function _collate_ranks(rs::ResultSet, selected; kwargs...)::YAXArray
-    n_steps, n_sites = size(selected)
+    n_steps, n_locs = size(selected)
 
     ts = timesteps(rs)
     @assert length(ts) == n_steps
 
-    r_ids = rs.site_data.reef_siteid
+    r_ids = rs.loc_data.reef_siteid
     if haskey(kwargs, :sites)
         r_ids = r_ids[kwargs[:sites]]
     end
 
-    if length(r_ids) != n_sites
+    if length(r_ids) != n_locs
         @warn "Length of reef ids do not match number of sites"
     end
 
@@ -51,7 +51,7 @@ ADRIA.metrics.seed_ranks(rs; timesteps=1:10, scenarios=3:5)
 ```
 """
 function seed_ranks(rs::ResultSet; kwargs...)
-    selected = _get_ranks(rs, 1; kwargs...)
+    selected = _get_ranks(rs, :seed; kwargs...)
     return _collate_ranks(rs, selected; kwargs...)
 end
 
@@ -71,7 +71,7 @@ ADRIA.metrics.fog_ranks(rs; timesteps=1:10, scenarios=3:5)
 ```
 """
 function fog_ranks(rs::ResultSet; kwargs...)
-    selected = _get_ranks(rs, 2; kwargs...)
+    selected = _get_ranks(rs, :fog; kwargs...)
     return _collate_ranks(rs, selected; kwargs...)
 end
 
@@ -151,14 +151,13 @@ YAXArray[locations, [loc_id, loc_name, rank], scenarios]
 function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
     ranked_locs = seed_ranks(rs; kwargs...)
 
-    r_ids = rs.site_data.reef_siteid
+    r_ids = rs.loc_data.reef_siteid
     min_rank = length(r_ids) + 1
 
     c_ranks = collect(dropdims(mean(ranked_locs; dims=1); dims=1))
 
-    top_sites = Array{Union{String,Int32,Float32,Missing}}(
-        undef, n, 3, size(ranked_locs, 3)
-    )
+    n_scenarios = size(ranked_locs, 3)
+    top_sites = Array{Union{String,Int32,Float32,Missing}}(undef, n, 3, n_scenarios)
     for scen in axes(ranked_locs, 3)
         flat = vec(c_ranks[:, scen])
         flat[flat .== 0.0] .= min_rank
@@ -178,30 +177,10 @@ function top_n_seeded_sites(rs::ResultSet, n::Int64; kwargs...)::YAXArray
 
     return DataCube(
         top_sites;
-        ranks=collect(1:n),
+        ranks=1:n,
         locations=[:loc_id, :loc_name, :rank],
-        scenarios=1:size(ranked_locs, 3)
+        scenarios=1:n_scenarios
     )
-end
-
-"""
-    shade_ranks(rs::ResultSet; kwargs...)
-
-# Arguments
-- rs : ResultSet
-- kwargs : named dimensions to slice across
-
-# Returns
-YAXArray[timesteps, sites, scenarios]
-
-# Example
-```julia
-ADRIA.metrics.shade_ranks(rs; timesteps=1:10, scenarios=3:5)
-```
-"""
-function shade_ranks(rs::ResultSet; kwargs...)
-    selected = _get_ranks(rs, 2; kwargs...)
-    return _collate_ranks(rs, selected; kwargs...)
 end
 
 """

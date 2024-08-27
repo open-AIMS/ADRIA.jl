@@ -1,5 +1,5 @@
 """
-site_connectivity(file_loc::String, unique_site_ids::Vector{String};
+location_connectivity(file_loc::String, unique_loc_ids::Vector{String};
                   con_cutoff::Float64=1e-6, agg_func::Function=mean, swap::Bool=false)::NamedTuple
 
 Create transitional probability matrix indicating connectivity between
@@ -11,8 +11,8 @@ NOTE: Transposes transitional probability matrix if `swap == true`
 
 # Examples
 ```julia
-    site_connectivity("MooreTPmean.csv", site_order)
-    site_connectivity("MooreTPmean.csv", site_order; con_cutoff=0.02, agg_func=mean, swap=true)
+    location_connectivity("MooreTPmean.csv", site_order)
+    location_connectivity("MooreTPmean.csv", site_order; con_cutoff=0.02, agg_func=mean, swap=true)
 ```
 
 # Arguments
@@ -29,9 +29,9 @@ NamedTuple:
 - `conn` : Matrix, containing the connectivity for all locations.
            Accounts for larvae which do not settle, so rows are not required to sum to 1
 - `truncated` : ID of locations removed
-- `site_ids` : ID of locations kept
+- `loc_ids` : ID of locations kept
 """
-function site_connectivity(
+function location_connectivity(
     file_path::String,
     loc_ids::Vector{String};
     conn_cutoff::Float64=1e-6,
@@ -134,27 +134,27 @@ function site_connectivity(
 
     @assert all(0.0 .<= conn .<= 1.0) "Connectivity data not scaled between 0 - 1"
 
-    return (conn=conn, truncated=invalid_ids, site_ids=loc_ids)
+    return (conn=conn, truncated=invalid_ids, loc_ids=loc_ids)
 end
-function site_connectivity(
+function location_connectivity(
     file_loc::String,
-    unique_site_ids::Vector{Union{Missing,String}};
+    unique_loc_ids::Vector{Union{Missing,String}};
     con_cutoff::Float64=1e-6,
     agg_func::Function=mean,
     swap::Bool=false
 )::NamedTuple
 
     # Remove any row marked as missing
-    if any(ismissing.(unique_site_ids))
+    if any(ismissing.(unique_loc_ids))
         @warn "Removing entries marked as `missing` from provided list of sites."
-        unique_site_ids::Vector{String} =
-            String.(unique_site_ids[.!ismissing.(unique_site_ids)])
+        unique_loc_ids::Vector{String} =
+            String.(unique_loc_ids[.!ismissing.(unique_loc_ids)])
     else
-        unique_site_ids = String.(unique_site_ids)
+        unique_loc_ids = String.(unique_loc_ids)
     end
 
-    return site_connectivity(
-        file_loc, unique_site_ids; con_cutoff=con_cutoff, agg_func=agg_func, swap=swap
+    return location_connectivity(
+        file_loc, unique_loc_ids; con_cutoff=con_cutoff, agg_func=agg_func, swap=swap
     )
 end
 

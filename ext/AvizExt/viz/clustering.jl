@@ -7,7 +7,7 @@ using Statistics
 Visualize clustered time series of scenarios.
 
 # Arguments
-- `outcomes` : AbstractMatrix of outcomes for several scenarios or sites
+- `outcomes` : AbstractMatrix of outcomes for several scenarios or locations
 - `clusters` : Vector of numbers corresponding to clusters
 - `opts` : Aviz options
     - `summarize` : plot confidence interval. Defaults to true
@@ -64,7 +64,7 @@ end
 Visualize clustered time series of scenarios.
 
 # Arguments
-- `outcomes` : Matrix of outcomes for several scenarios or sites
+- `outcomes` : Matrix of outcomes for several scenarios or locations
 - `clusters` : Vector of numbers corresponding to clusters
 - `opts` : Aviz options
     - `summarize` : plot confidence interval. Defaults to true
@@ -97,7 +97,7 @@ end
     map(rs::Union{Domain,ResultSet}, data::AbstractMatrix, clusters::AbstractVector{Int64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
     map(g, rs, data, clusters; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
-Visualize clustered time series for each site and map.
+Visualize clustered time series for each location and map.
 
 # Arguments
 - `rs` : ResultSet
@@ -161,7 +161,7 @@ end
 Color parameter for current cluster weighted by number of scenarios.
 
 # Arguments
-- `data` : Vector of some metric outcome for each site
+- `data` : Vector of some metric outcome for each location
 - `loc_groups` : Dictionary of (group_names => filter), where filter is a BitVector to
 select locations that belong to each group
 - `group_colors` : Dictionary of (group_names => colors), where colors can be Symbols or

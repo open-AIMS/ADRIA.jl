@@ -13,7 +13,7 @@ using ADRIA: DataCube, ZeroDataCube, axes_names, axis_labels, axis_index
 using FLoops
 using DataFrames
 
-using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, site_k_area, site_area,
+using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, site_k_area, loc_area,
     planar_area_params
 
 abstract type Outcome end
@@ -32,7 +32,7 @@ Metric(f, d) = Metric(f, d, "")
 Makes Metric types callable with arbitary arguments that are passed to associated function.
 """
 function (f::Metric)(raw, args...; kwargs...)::YAXArray
-    data = DataCube(raw, (:timesteps, :species, :sites, :scenarios)[1:ndims(raw)])
+    data = DataCube(raw, (:timesteps, :species, :locations, :scenarios)[1:ndims(raw)])
     return f.func(data, args...; kwargs...)
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
@@ -58,7 +58,7 @@ end
 function _relative_cover(rs::ResultSet)::AbstractArray{<:Real}
     return rs.outcomes[:relative_cover]
 end
-relative_cover = Metric(_relative_cover, (:timesteps, :sites, :scenarios))
+relative_cover = Metric(_relative_cover, (:timesteps, :locations, :scenarios))
 
 """
     total_absolute_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
@@ -83,7 +83,9 @@ end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
     return _total_absolute_cover(rs.outcomes[:relative_cover], site_k_area(rs))
 end
-total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scenarios), "m²")
+total_absolute_cover = Metric(
+    _total_absolute_cover, (:timesteps, :locations, :scenarios), "m²"
+)
 
 """
     relative_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int64) where {T<:Real}
@@ -149,7 +151,7 @@ function _relative_loc_taxa_cover(
     n_sc::Int64 = Int64(n_group_and_size / n_groups)
 
     taxa_cover::YAXArray = ZeroDataCube(
-        (:timesteps, :taxa, :sites), (n_steps, n_groups, n_locs)
+        (:timesteps, :taxa, :locations), (n_steps, n_groups, n_locs)
     )
     k_cover = zeros(n_steps, n_sc)
     for (taxa_id, grp) in enumerate([i:(i + (n_sc - 1)) for i in 1:n_sc:n_group_and_size])
@@ -168,7 +170,7 @@ end
 # end
 
 relative_loc_taxa_cover = Metric(
-    _relative_loc_taxa_cover, (:timesteps, :taxa, :sites, :scenarios)
+    _relative_loc_taxa_cover, (:timesteps, :taxa, :locations, :scenarios)
 )
 
 """
@@ -189,7 +191,7 @@ end
 function _relative_juveniles(rs::ResultSet)::AbstractArray
     return rs.outcomes[:relative_juveniles]
 end
-relative_juveniles = Metric(_relative_juveniles, (:timesteps, :sites, :scenarios))
+relative_juveniles = Metric(_relative_juveniles, (:timesteps, :locations, :scenarios))
 
 """
     absolute_juveniles(X::AbstractArray{T}, coral_spec::DataFrame, area::AbstractVector{T})::AbstractArray{T} where {T<:Real}
@@ -205,7 +207,7 @@ end
 function _absolute_juveniles(rs::ResultSet)::AbstractArray
     return rs.outcomes[:relative_juveniles] .* site_k_area(rs)'
 end
-absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :sites, :scenarios), "m²")
+absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :locations, :scenarios), "m²")
 
 """
     _max_juvenile_area(coral_params::DataFrame, max_juv_density::Float64=51.8)
@@ -247,7 +249,7 @@ end
 function _juvenile_indicator(rs::ResultSet)::AbstractArray
     return rs.outcomes[:juvenile_indicator]
 end
-juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :sites, :scenarios))
+juvenile_indicator = Metric(_juvenile_indicator, (:timesteps, :locations, :scenarios))
 
 """
     coral_evenness(r_taxa_cover::AbstractArray{T})::AbstractArray{T} where {T<:Real}
@@ -268,8 +270,8 @@ function _coral_evenness(r_taxa_cover::AbstractArray{T})::AbstractArray{T} where
 
     # Sum across groups represents functional diversity
     # Group evenness (Hill 1973, Ecology 54:427-432)
+    simpsons_diversity::YAXArray = ZeroDataCube((:timesteps, :locations), (n_steps, n_locs))
     loc_cover = dropdims(sum(r_taxa_cover; dims=2); dims=2)
-    simpsons_diversity::YAXArray = ZeroDataCube((:timesteps, :sites), (n_steps, n_locs))
     for loc in axes(loc_cover, 2)
         simpsons_diversity[:, loc] =
             1.0 ./ sum((r_taxa_cover[:, :, loc] ./ loc_cover[:, loc]) .^ 2; dims=2)
@@ -280,7 +282,7 @@ end
 function _coral_evenness(rs::ResultSet)::AbstractArray
     return rs.outcomes[:coral_evenness]
 end
-coral_evenness = Metric(_coral_evenness, (:timesteps, :sites, :scenarios))
+coral_evenness = Metric(_coral_evenness, (:timesteps, :locations, :scenarios))
 
 """
     _colony_Lcm2_to_m3m2(inputs::DataFrame)::Tuple
@@ -361,7 +363,7 @@ function _shelter_species_loop(
     k_area::Array{F}
 )::YAXArray where {T1<:Real,F<:Float64}
     # Calculate absolute shelter volumes first
-    ASV::YAXArray = ZeroDataCube((:timesteps, :species, :sites), size(X))
+    ASV::YAXArray = ZeroDataCube((:timesteps, :species, :locations), size(X))
     _shelter_species_loop!(X, ASV, n_group_and_size, colony_vol_m3_per_m2, k_area)
 
     # Maximum shelter volume
@@ -377,7 +379,7 @@ function _shelter_species_loop(
     # Loop over each taxa group
 
     RSV::YAXArray = ZeroDataCube(
-        (:timesteps, :species, :sites), size(X[species=1:n_groups])
+        (:timesteps, :species, :locations), size(X[species=1:n_groups])
     )
     taxa_max_map = zip(
         [i:(i + n_sizes - 1) for i in 1:n_sizes:n_group_and_size], 1:n_groups
@@ -385,10 +387,11 @@ function _shelter_species_loop(
 
     # Work out RSV for each taxa
     for (sp, sq) in taxa_max_map
-        for site in 1:size(ASV, :sites)
-            RSV[species=At(sq), sites=At(site)] .=
+        for site in 1:size(ASV, :locations)
+            RSV[species=At(sq), locations=At(site)] .=
                 dropdims(
-                    sum(ASV[species=At(sp), sites=At(site)]; dims=:species); dims=:species
+                    sum(ASV[species=At(sp), locations=At(site)]; dims=:species);
+                    dims=:species
                 ) ./ MSV[sq, site]
         end
     end
@@ -438,8 +441,8 @@ shelter volume (a 3D metric).
 
 # Arguments
 - `X` : raw results
-- `site_area` : area in m^2 for each site
-- `max_cover` : maximum possible coral cover for each site (in percentage of site_area)
+- `k_area` : area in m^2 for each site
+- `max_cover` : maximum possible coral cover for each site (in percentage of loc_area)
 - `inputs` : DataFrame of scenario inputs
 
 # References
@@ -480,7 +483,7 @@ function _absolute_shelter_volume(
     nspecies::Int64 = size(X, :species)
 
     # Calculate shelter volume of groups and size classes and multiply with area covered
-    ASV::YAXArray = ZeroDataCube((:timesteps, :species, :sites), size(X))
+    ASV::YAXArray = ZeroDataCube((:timesteps, :species, :locations), size(X))
     colony_vol, _ = _colony_Lcm2_to_m3m2(inputs)
     _shelter_species_loop!(X, ASV, nspecies, colony_vol, k_area)
 
@@ -496,7 +499,7 @@ function _absolute_shelter_volume(
 
     # Calculate shelter volume of groups and size classes and multiply with area covered
     nscens::Int64 = size(X, :scenarios)
-    ASV::YAXArray = ZeroDataCube((:timesteps, :species, :sites, :scenarios), size(X))
+    ASV::YAXArray = ZeroDataCube((:timesteps, :species, :locations, :scenarios), size(X))
     for scen::Int64 in 1:nscens
         colony_vol, _ = _colony_Lcm2_to_m3m2(inputs[scen, :])
         _shelter_species_loop!(X[scenarios=scen], ASV, nspecies, colony_vol, k_area)
@@ -508,7 +511,9 @@ end
 function _absolute_shelter_volume(rs::ResultSet)::AbstractArray
     return rs.outcomes[:absolute_shelter_volume]
 end
-absolute_shelter_volume = Metric(_absolute_shelter_volume, (:timesteps, :sites, :scenarios))
+absolute_shelter_volume = Metric(
+    _absolute_shelter_volume, (:timesteps, :locations, :scenarios)
+)
 
 """
     relative_shelter_volume(X::AbstractArray{T,3}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
@@ -620,7 +625,7 @@ function _relative_shelter_volume(
     # Result template - six entries, one for each taxa
     n_groups::Int64 = length(coral_spec().taxa_names)
     RSV::YAXArray = ZeroDataCube(
-        (:timesteps, :species, :sites, :scenarios), size(X[:, 1:n_groups, :, :])
+        (:timesteps, :species, :locations, :scenarios), size(X[:, 1:n_groups, :, :])
     )
     for scen::Int64 in 1:nscens
         colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(inputs[scen, :])
@@ -639,7 +644,9 @@ end
 function _relative_shelter_volume(rs::ResultSet)::YAXArray
     return rs.outcomes[:relative_shelter_volume]
 end
-relative_shelter_volume = Metric(_relative_shelter_volume, (:timesteps, :sites, :scenarios))
+relative_shelter_volume = Metric(
+    _relative_shelter_volume, (:timesteps, :locations, :scenarios)
+)
 
 include("pareto.jl")
 include("ranks.jl")
@@ -663,9 +670,9 @@ include("utils.jl")
 
 # ```julia
 # using ADRIA.metrics: total_absolute_cover
-# extended_metric = @extend_metric(example_func, total_absolute_cover, [site_area(domain)])
+# extended_metric = @extend_metric(example_func, total_absolute_cover, [loc_area(domain)])
 
-# Y = extended_metric(raw_results)  # Equivalent to total_absolute_cover(raw_results, site_area(domain))
+# Y = extended_metric(raw_results)  # Equivalent to total_absolute_cover(raw_results, loc_area(domain))
 # ```
 # """
 # macro extend_metric(name, m, args)

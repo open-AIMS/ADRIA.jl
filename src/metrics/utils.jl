@@ -82,14 +82,16 @@ function call_metric(metric::Union{Function,Metric}, data::YAXArray, args...; kw
 end
 
 """
-    slice_results(data::YAXArray; timesteps=(:), species=(:), sites=(:), scenarios=(:))
+    slice_results(data::YAXArray; timesteps=(:), species=(:), locations=(:), scenarios=(:))
 
 Slice data as indicated. Dimensions not found in target data are ignored.
 """
 function slice_results(
-    data::YAXArray; timesteps=(:), species=(:), sites=(:), scenarios=(:)
+    data::YAXArray; timesteps=(:), species=(:), locations=(:), scenarios=(:)
 )::YAXArray
-    f_dims = (timesteps=timesteps, species=species, sites=sites, scenarios=scenarios)
+    f_dims = (
+        timesteps=timesteps, species=species, locations=locations, scenarios=scenarios
+    )
 
     s_names = keys(f_dims)
     d_names = axes_names(data)

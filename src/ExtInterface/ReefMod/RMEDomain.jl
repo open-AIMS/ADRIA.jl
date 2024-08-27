@@ -21,12 +21,12 @@ mutable struct RMEDomain <: AbstractReefModDomain
     env_layer_md::ADRIA.EnvLayer
     scenario_invoke_time::String  # time latest set of scenarios were run
     const conn::YAXArray{Float64}
-    const site_data::DataFrames.DataFrame
-    const site_id_col::String
+    const loc_data::DataFrames.DataFrame
+    const loc_id_col::String
     const cluster_id_col::String
     init_coral_cover::YAXArray{Float64}
     const coral_growth::CoralGrowth
-    const site_ids::Vector{String}
+    const loc_ids::Vector{String}
     dhw_scens::YAXArray{Float64}
 
     # `wave_scens` holds empty wave data to maintain compatibility with
@@ -427,7 +427,7 @@ function load_cyclones(
 end
 
 """
-    load_initial_cover(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame)::YAXArray
+    load_initial_cover(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame)::YAXArray
 
 # Arguments
 - `RMEDomain`
@@ -438,7 +438,7 @@ end
 YAXArray[locs, species]
 """
 function load_initial_cover(
-    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, site_data::DataFrame
+    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame
 )::YAXArray
     icc_path = joinpath(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
@@ -488,7 +488,7 @@ function load_initial_cover(
     )
 
     # Convert values relative to absolute area to values relative to k area
-    icc_data = _convert_abs_to_k(icc_data, site_data)
+    icc_data = _convert_abs_to_k(icc_data, loc_data)
 
     return DataCube(
         icc_data;

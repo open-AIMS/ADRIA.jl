@@ -18,9 +18,9 @@ end
 end
 
 @testset "Unguided site selection" begin
-    n_intervention_sites = 5
-    pref_seed_sites = zeros(Int64, n_intervention_sites)
-    pref_fog_sites = zeros(Int64, n_intervention_sites)
+    n_intervention_locs = 5
+    pref_seed_sites = zeros(Int64, n_intervention_locs)
+    pref_fog_sites = zeros(Int64, n_intervention_locs)
     seed_years = true
     fog_years = true
     max_cover = [0.0, 3000.0, 5000.0, 0.0, 0.0]
@@ -56,7 +56,7 @@ end
 
     @test length(ranks.scenarios) == sum(scens.guided .> 0) ||
         "Specified number of scenarios was not carried out."
-    @test length(ranks.sites) == length(dom.site_ids) ||
+    @test length(ranks.sites) == length(dom.loc_ids) ||
         "Ranks storage is not correct size for this domain."
 
     sel_sites = unique(ranks)
@@ -69,16 +69,16 @@ end
 @testset "Test ranks line up with ordering" begin
     supported_methods = ADRIA.decision.mcda_methods()
     mcda_func = supported_methods[rand(1:length(supported_methods))]
-    n_sites = 20
+    n_locs = 20
 
-    S = ADRIA.decision.mcda_normalize(rand(Uniform(0, 1), n_sites, 6))
+    S = ADRIA.decision.mcda_normalize(rand(Uniform(0, 1), n_locs, 6))
 
     weights = ADRIA.decision.mcda_normalize(rand(Uniform(0, 1), 6))
     n_site_int = 5
-    site_ids = collect(1:n_sites)
-    S = hcat(site_ids, S)
+    loc_ids = collect(1:n_locs)
+    S = hcat(loc_ids, S)
 
-    rankings = Int64[site_ids zeros(Int64, n_sites) zeros(Int64, n_sites)]
+    rankings = Int64[loc_ids zeros(Int64, n_locs) zeros(Int64, n_locs)]
 
     prefsites, s_order = ADRIA.decision.rank_sites!(
         S, weights, rankings, n_site_int, mcda_func, 2

@@ -43,7 +43,7 @@ function intervention_frequency(
     rcps = collect(Symbol.(keys(scen_indices)))
     n_locs = n_locations(rs)
 
-    interv_freq = ZeroDataCube(; T=Float64, locations=rs.site_ids, rcps=rcps)
+    interv_freq = ZeroDataCube(; T=Float64, locations=rs.loc_ids, rcps=rcps)
     for rcp in rcps
         # Select scenarios satisfying condition and tally selection for each location
         logged_data = dropdims(

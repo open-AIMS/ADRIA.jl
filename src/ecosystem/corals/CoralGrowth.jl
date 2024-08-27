@@ -13,7 +13,7 @@ struct CoralGrowth{A<:Integer,T<:NamedTuple}
 end
 
 """
-    CoralGrowth(n_sites)
+    CoralGrowth(n_locs)
 
 Implements temporary hardcoded caches for a scenario with 35 'species' (split into 5 groups).
 """

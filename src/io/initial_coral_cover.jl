@@ -4,7 +4,7 @@ using Distributions,
 
 """
     load_initial_cover(data_fn::String)::YAXArray
-    load_initial_cover(n_species::Int64, n_sites::Int64)::YAXArray
+    load_initial_cover(n_species::Int64, n_locs::Int64)::YAXArray
 
 Load initial coral cover data from netCDF.
 """
@@ -14,10 +14,10 @@ function load_initial_cover(data_fn::String)::YAXArray
         load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
     )
 end
-function load_initial_cover(n_group_and_size::Int64, n_sites::Int64)::YAXArray
+function load_initial_cover(n_group_and_size::Int64, n_locs::Int64)::YAXArray
     @warn "Using random initial coral cover"
-    random_cover_data = rand(Float32, n_group_and_size, n_sites)
-    return DataCube(random_cover_data; species=1:n_group_and_size, sites=1:n_sites)
+    random_cover_data = rand(Float32, n_group_and_size, n_locs)
+    return DataCube(random_cover_data; species=1:n_group_and_size, sites=1:n_locs)
 end
 
 """
