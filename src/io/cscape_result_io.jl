@@ -698,6 +698,14 @@ function _cscape_relative_cover(dataset::Dataset)::Array
 
     # Calculate relative cover from non-intervened areas
     # Force load with dimensions [intervened ⋅ reef_sites]
+
+    # We want to read in data before any calculations are conducted to maintain
+    # speed/performance. Using `read()` converts data into a base Matrix, so we
+    # use a dummy selector to retain the nice YAXArray data type while also reading
+    # the data into memory.
+    n_dims = length(dims(dataset.cover))
+    dummy_selector = fill((:), n_dims-1)
+
     area = dataset.area.data[:, :]
     relative_cover .= _drop_sum(
         dataset.cover[intervened=1], dim_sum
