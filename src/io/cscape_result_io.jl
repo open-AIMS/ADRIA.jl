@@ -708,7 +708,7 @@ function _cscape_relative_cover(dataset::Dataset)::Array
 
     area = dataset.area.data[:, :]
     relative_cover .= _drop_sum(
-        dataset.cover[intervened=1], dim_sum
+        dataset.cover[intervened=1][dummy_selector...], dim_sum
     ) .* reshape(
         area[1, :] .* dataset.k[:],
         reshape_tuple
