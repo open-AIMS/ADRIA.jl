@@ -717,21 +717,9 @@ function _cscape_relative_cover(dataset::Dataset)::Array
     if multi_scenario
         return permutedims(relative_cover, (2, 3, 1))
     end
+
     return relative_cover
 end
-
-"""
-    _n_scenarios(dataset::Dataset)::Int64
-
-Get the number of scenario or draws in a dataset.
-"""
-function _n_scenarios(dataset::Dataset)::Int64
-    if :draws in keys(dataset.axes)
-        return length(dataset.draws)
-    end
-    return 1
-end
-
 function _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
     n_locs::Int64 = length(datasets[1].reef_sites)
 
@@ -745,20 +733,70 @@ function _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
         scenarios=1:sum(n_scens)
     )
 
-    cur_indx = 1
-    for (n_sc, dataset) in zip(n_scens, datasets)
-        if n_sc == 1
-            relative_cover[scenarios=cur_indx] = _cscape_relative_cover(
-                dataset
-            )
-        else
-            relative_cover[scenarios=cur_indx:(cur_indx+n_sc-1)] = _cscape_relative_cover(
-                dataset
-            )
-        end
-        cur_indx += n_sc
+    # Could implement a simpler loading strategy in the case where all datasets hold a
+    # single scenario. This would simplify loading...
+    # all(diff(cumsum(n_scens)) .== 1)
+
+    start_end_pos = _data_position(n_scens)
+    for (ds_idx, dataset) in zip(start_end_pos, datasets)
+        relative_cover[scenarios=ds_idx[1]:ds_idx[2]] = _cscape_relative_cover(dataset)
     end
+
     return relative_cover
+end
+
+"""
+    _n_scenarios(dataset::Dataset)::Int64
+
+Get the number of scenario or draws in a dataset.
+"""
+function _n_scenarios(dataset::Dataset)::Int64
+    if :draws in keys(dataset.axes)
+        return length(dataset.draws)
+    end
+
+    return 1
+end
+
+"""
+    _data_position(n_per_dataset::Vector{Int})
+
+Determine the index positions of a set of data if they were collated into a single dataset.
+
+# Examples
+
+```julia
+# Here we have five datasets with hetrogenous number of data
+n_scens = [1, 10, 5, 1, 12]
+start_pos, end_pos = _data_position(n_scens)
+# 5-element Vector{Tuple{Int64, Int64}}:
+#  (1, 1)
+#  (2, 11)
+#  (12, 16)
+#  (17, 17)
+#  (18, 29)
+```
+
+# Arguments
+- `n_per_dataset` : Indicates the number of scenarios per entry
+
+# Returns
+The start and end position of each entry
+"""
+function _data_position(n_per_dataset::Vector{Int})::Vector{Tuple{Int64, Int64}}
+    n = length(n_per_dataset)
+    starts = Vector{Int}(undef, n)
+    ends = Vector{Int}(undef, n)
+
+    starts[1] = 1
+    ends[1] = n_per_dataset[1]
+
+    for i in 2:n
+        starts[i] = ends[i-1] + 1
+        ends[i] = starts[i] + n_per_dataset[i] - 1
+    end
+
+    return collect(zip(starts, ends))
 end
 
 """
