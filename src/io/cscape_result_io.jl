@@ -759,7 +759,7 @@ function _n_scenarios(dataset::Dataset)::Int64
 end
 
 """
-    _data_position(n_per_dataset::Vector{Int})
+    _data_position(n_per_dataset::Vector{Int64})
 
 Determine the index positions of a set of data if they were collated into a single dataset.
 
@@ -783,10 +783,10 @@ start_pos, end_pos = _data_position(n_scens)
 # Returns
 The start and end position of each entry
 """
-function _data_position(n_per_dataset::Vector{Int})::Vector{Tuple{Int64, Int64}}
+function _data_position(n_per_dataset::Vector{Int64})::Vector{Tuple{Int64, Int64}}
     n = length(n_per_dataset)
-    starts = Vector{Int}(undef, n)
-    ends = Vector{Int}(undef, n)
+    starts = Vector{Int64}(undef, n)
+    ends = Vector{Int64}(undef, n)
 
     starts[1] = 1
     ends[1] = n_per_dataset[1]
