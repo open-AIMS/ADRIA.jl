@@ -654,11 +654,11 @@ function _throw_missing_variable(dataset::Dataset, var_name::Symbol)::Nothing
 end
 
 """
-    _drop_sum(cube::YAXArray, red_dims)::YAXArray
+    _drop_sum(cube::YAXArray, red_dims::Tuple)::YAXArray
 
 Sum over given dimensions and drop the same given dimensions.
 """
-function _drop_sum(cube::YAXArray, red_dims)::YAXArray
+function _drop_sum(cube::YAXArray, red_dims::Tuple)::YAXArray
     return dropdims(sum(cube, dims=red_dims), dims=red_dims)
 end
 
