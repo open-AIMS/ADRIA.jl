@@ -1,6 +1,20 @@
 using Statistics
 using Printf
 using ADRIA.sensitivity: _get_cat_quantile
+using ADRIA: _is_discrete_factor
+
+
+"""
+    _get_guided_labels()::Vector{String}
+Returns labels for categories of the `guided` factor.
+"""
+function _get_guided_labels()::Vector{String}
+    return [
+        "cf",
+        "unguided",
+        last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
+    ]
+end
 
 """
     ADRIA.viz.pawn(Si::YAXArray; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
@@ -162,7 +176,10 @@ end
 
 """
     ADRIA.viz.rsa(rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.rsa(rs::ResultSet, si::YAXArray, factor::Symbol; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.rsa!(ax::Axis, si::YAXArray, ms_factor::DataFrame, f_vals::Vector{Float64})
     ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray, factor::Symbol; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Plot regional sensitivities of up to 30 factors.
 
@@ -210,13 +227,6 @@ function ADRIA.viz.rsa!(
     f_names = ms[foi, :fieldname]
     h_names = ms[foi, :name]
     dist_params = ms[foi, :dist_params]
-    f_types = ms[foi, :ptype]
-
-    if any(f_names .== :guided)
-        fv_labels = [
-            "unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
-        ]
-    end
 
     # Hacky special case handling for SSP/RCP
     if :RCP in factors || :SSP in factors
@@ -233,8 +243,8 @@ function ADRIA.viz.rsa!(
     axs = Axis[]
     for r in 1:n_rows
         for c in 1:n_cols
-            f_name = factors[curr]
-            f_type = f_types[curr]
+            f_name = Symbol(factors[curr])
+            ms_factor = ms[ms.fieldname .== f_name, :]
             f_vals = rs.inputs[:, f_name]
 
             if f_type == "unordered categorical"
@@ -250,11 +260,9 @@ function ADRIA.viz.rsa!(
                 axis_opts...
             )
 
-            scatterlines!(ax, fv_s, collect(si[f_name]); markersize=15)
-            if f_name == :guided
-                ax.xticks = (fv_s, fv_labels)
-                ax.xticklabelrotation = pi / 4
-            end
+            # Plot for individual factors on ax
+            ADRIA.viz.rsa!(ax, si[f_name], ms_factor, f_vals)
+
             push!(axs, ax)
             curr += 1
 
@@ -277,6 +285,35 @@ function ADRIA.viz.rsa!(
 
     return g
 end
+function ADRIA.viz.rsa!(
+    ax::Axis,
+    si::YAXArray,
+    ms_factor::DataFrame,
+    f_vals::Vector{Float64}
+)
+    f_name = ms_factor.fieldname[1]
+    f_type::String = ms_factor.ptype[1]
+
+    if _is_discrete_factor(f_type)
+        fv_s = _get_cat_quantile(
+            ms_factor, f_name, collect(si.axes[1])
+        )
+    else
+        fv_s = round.(quantile(f_vals, collect(si.axes[1])), digits=2)
+    end
+
+    if .!all(si[si=At("Si")] .== 0.0)
+        scatterlines!(ax, fv_s, collect(si[si=At("Si")]); markersize=15)
+
+        if f_name == :guided
+            fv_labels = _get_guided_labels()
+            ax.xticks = (fv_s, fv_labels)
+            ax.xticklabelrotation = pi / 4
+        end
+    end
+
+    return ax
+end
 function ADRIA.viz.rsa(
     rs::ResultSet,
     si::Dataset,
@@ -291,10 +328,63 @@ function ADRIA.viz.rsa(
 
     return f
 end
+function ADRIA.viz.rsa(
+    rs::ResultSet,
+    si::YAXArray,
+    factor::Symbol;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.rsa!(g, rs, si, factor; opts=opts, axis_opts=axis_opts)
+
+    return f
+end
+function ADRIA.viz.rsa!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    si::YAXArray,
+    factor::Symbol;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    xlabel = get(axis_opts, :xlabel, "Factor Value")
+    ylabel = get(axis_opts, :ylabel, L"\text{Relative } S_{i}")
+
+    ms = model_spec(rs)
+    ms_factor = ms[ms.fieldname .== factor, :]
+
+    if :title in keys(axis_opts)
+        title_val = pop!(axis_opts, :title)
+    else
+        title_val = ms_factor.name[1]
+    end
+
+    f_vals = rs.inputs[:, factor]
+
+    ax::Axis = Axis(
+        g[1, 1];
+        title=title_val,
+        titlesize=38,
+        xlabel=xlabel,
+        ylabel=ylabel,
+        xlabelsize=32,
+        ylabelsize=32,
+        ylabelrotation=π / 2.0,
+        axis_opts...
+    )
+    ADRIA.viz.rsa!(ax, si, ms_factor, f_vals)
+
+    return g
+end
 
 """
     ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
-    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factor::Symbol; opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE())
+    ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.outcome_map!(ax::Axis, outcomes::YAXArray, ms_factor::DataFrame, f_vals::Vector{Float64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Plot outcomes mapped to factor regions for up to 30 factors.
 
@@ -368,6 +458,7 @@ function ADRIA.viz.outcome_map!(
     for r in 1:n_rows
         for c in 1:n_cols
             f_name = Symbol(factors[curr])
+            ms_factor = ms[ms.fieldname .== f_name, :]
             f_vals = rs.inputs[:, f_name]
 
             if f_name == :guided
@@ -377,23 +468,11 @@ function ADRIA.viz.outcome_map!(
             end
 
             ax::Axis = Axis(
-                g[r, c]; title=h_names[f_names .== factors[curr]][1], axis_opts...
+                g[r, c]; title=ms_factor.name[1], axis_opts...
             )
 
-            band!(
-                ax,
-                fv_s[.!ismissing.(outcomes[factors=At(f_name), CI=At(:lower)])],
-                collect(skipmissing(outcomes[factors=At(f_name), CI=At(:lower)])),
-                collect(skipmissing(outcomes[factors=At(f_name), CI=At(:upper)]))
-            )
-            scatterlines!(
-                ax, fv_s, outcomes[factors=At(f_name), CI=At(:mean)]; markersize=15
-            )
-
-            if f_name == :guided
-                ax.xticks = (fv_s, fv_labels)
-                ax.xticklabelrotation = pi / 4
-            end
+            # Plot for individual factors on ax
+            ADRIA.viz.outcome_map!(ax, outcomes[f_name], ms_factor, f_vals)
 
             push!(axs, ax)
             curr += 1
@@ -435,6 +514,46 @@ function ADRIA.viz.outcome_map!(
 
     return g
 end
+function ADRIA.viz.outcome_map!(
+    ax::Axis,
+    outcomes::YAXArray,
+    ms_factor::DataFrame,
+    f_vals::Vector{Float64};
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    f_name = ms_factor.fieldname[1]
+    f_type::String = ms_factor.ptype[1]
+
+    if _is_discrete_factor(f_type)
+        # If categorical/discrete get categorical quantile
+        fv_s = _get_cat_quantile(
+            ms_factor, f_name,
+            collect(outcomes.axes[1])
+        )
+    else
+        # Otherwise use regular quantile
+        fv_s = round.(quantile(f_vals, collect(outcomes.axes[1])), digits=2)
+    end
+
+    if .!all(outcomes[CI=At("mean")] .== 0.0)
+        band!(
+            ax,
+            fv_s[.!ismissing.(outcomes[CI=At("lower")])],
+            collect(skipmissing(outcomes[CI=At("lower")])),
+            collect(skipmissing(outcomes[CI=At("upper")]))
+        )
+        scatterlines!(ax, fv_s, collect(outcomes[CI=At("mean")]); markersize=15)
+
+        if f_name == :guided
+            fv_labels = _get_guided_labels()
+            ax.xticks = (fv_s, fv_labels)
+            ax.xticklabelrotation = pi / 4
+        end
+    end
+
+    return ax
+end
 function ADRIA.viz.outcome_map(
     rs::ResultSet,
     si::YAXArray,
@@ -448,6 +567,23 @@ function ADRIA.viz.outcome_map(
     ADRIA.viz.outcome_map!(g, rs, si, factors; opts=opts, axis_opts=axis_opts)
 
     return f
+end
+function ADRIA.viz.outcome_map(
+    rs::ResultSet,
+    outcomes::YAXArray,
+    factor::Symbol;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    return ADRIA.viz.outcome_map(
+        rs,
+        outcomes,
+        [factor];
+        opts=opts,
+        fig_opts=fig_opts,
+        axis_opts=axis_opts
+    )
 end
 
 """
