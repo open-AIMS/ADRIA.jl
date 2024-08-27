@@ -654,7 +654,7 @@ function _throw_missing_variable(dataset::Dataset, var_name::Symbol)::Nothing
 end
 
 """
-    drop_sum(cube::YAXArray, dims)::YAXArray
+    _drop_sum(cube::YAXArray, red_dims)::YAXArray
 
 Sum over given dimensions and drop the same given dimensions.
 """
@@ -663,9 +663,10 @@ function _drop_sum(cube::YAXArray, red_dims)::YAXArray
 end
 
 """
-    _cscape_relative_cover(dataset::Dataset; loc_mask::BitVector=[])::YAXArray
+    _cscape_relative_cover(dataset::Dataset)::YAXArray
+    _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
 
-Calculate relative cover metric for cscape data.
+Calculate relative cover metric for C~scape data.
 """
 function _cscape_relative_cover(dataset::Dataset)::Array
     # Throw error and identify specific misformatted file.
@@ -678,6 +679,7 @@ function _cscape_relative_cover(dataset::Dataset)::Array
     if !haskey(dataset.cubes, :k)
         _throw_missing_variable(dataset, :k)
     end
+
     dim_sum = (:ft, :thermal_tolerance)
 
     multi_scenario::Bool = :draws in keys(dataset.axes)
