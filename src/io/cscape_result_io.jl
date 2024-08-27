@@ -558,8 +558,9 @@ Get the name of the data set from the properties of the dataset.
 function _get_result_name(ds::Dataset)::String
     name = "CScape Results"
     if !haskey(ds.properties, "title")
-        @warn "Unable to find key `title` in dataset properties, \
-               defaulting to `CScape Results`"
+        msg = "Unable to find key `title` in dataset properties, "
+        msg *= "defaulting to `CScape Results`"
+        @warn msg
     else
         name = ds.properties["title"]
     end
@@ -645,8 +646,10 @@ function reformat_cube(cscape_cube::YAXArray)::YAXArray
 end
 
 function _throw_missing_variable(dataset::Dataset, var_name::Symbol)::Nothing
-    throw(ArgumentError("NetCDF $(dataset.properties["scenario_ID"]) does not \
-                         contain $(String.(var_name)) variable"))
+    msg = "NetCDF $(dataset.properties["scenario_ID"]) does not "
+    msg *= "contain $(String.(var_name)) variable"
+    throw(ArgumentError(msg))
+
     return nothing
 end
 
