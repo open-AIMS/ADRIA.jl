@@ -778,7 +778,7 @@ function _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
     # all(diff(cumsum(n_scens)) .== 1)
 
     start_end_pos = _data_position(n_scens)
-    for (ds_idx, dataset) in zip(start_end_pos, datasets)
+    @showprogress desc="Loading datasets" for (ds_idx, dataset) in zip(start_end_pos, datasets)
         relative_cover[scenarios=ds_idx[1]:ds_idx[2]] = _cscape_relative_cover(dataset)
     end
 
