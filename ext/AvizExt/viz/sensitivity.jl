@@ -237,8 +237,6 @@ function ADRIA.viz.rsa!(
         insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
-    # comps = unique(all_comps)
-    # dc = distinguishable_colors(length(comps), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
     curr::Int64 = 1
     axs = Axis[]
     for r in 1:n_rows
@@ -247,13 +245,6 @@ function ADRIA.viz.rsa!(
             ms_factor = ms[ms.fieldname .== f_name, :]
             f_vals = rs.inputs[:, f_name]
 
-            if f_type == "unordered categorical"
-                fv_s = _get_cat_quantile(
-                    ms[ms.fieldname .== f_name, :], f_name, collect(si[f_name].axes[1])
-                )
-            else
-                fv_s = round.(quantile(f_vals, collect(si[f_name].axes[1])), digits=2)
-            end
             ax::Axis = Axis(
                 g[r, c];
                 title=h_names[f_names .== f_name][1],
@@ -272,12 +263,17 @@ function ADRIA.viz.rsa!(
         end
     end
 
-    linkyaxes!(axs...)
-    Label(g[end + 1, :]; text=xlabel, fontsize=32)
-    Label(g[1:(end - 1), 0]; text=ylabel, fontsize=32, rotation=π / 2.0)
+    if n_factors > 1
+        linkyaxes!(axs...)
+        Label(g[end + 1, :]; text=xlabel, fontsize=18)
+        Label(g[1:(end - 1), 0]; text=ylabel, fontsize=18, rotation=π / 2.0)
+    else
+        axs[1].xlabel = xlabel
+        axs[1].ylabel = ylabel
+    end
 
     if :title in keys(axis_opts)
-        Label(g[0, :]; text=title_val, fontsize=40)
+        Label(g[0, :]; text=title_val, fontsize=24)
     end
 
     # Clear empty figures
@@ -497,11 +493,11 @@ function ADRIA.viz.outcome_map!(
 
     if n_factors > 1
         linkyaxes!(axs...)
-        Label(g[n_rows + 1, :]; text=xlabel, fontsize=24)
-        Label(g[:, 0]; text=ylabel, fontsize=24, rotation=pi / 2)
+        Label(g[n_rows + 1, :]; text=xlabel, fontsize=18)
+        Label(g[:, 0]; text=ylabel, fontsize=18, rotation=pi / 2)
 
         if @isdefined(title_val)
-            Label(g[0, :]; text=title_val, fontsize=32)
+            Label(g[0, :]; text=title_val, fontsize=24)
         end
     else
         axs[1].xlabel = xlabel
@@ -690,11 +686,11 @@ function _series_convergence(
 
         if n_factors > 1
             linkyaxes!(axs...)
-            Label(g[n_rows + 1, :]; text=xlabel, fontsize=24)
-            Label(g[:, 0]; text=ylabel, fontsize=24, rotation=pi / 2)
+            Label(g[n_rows + 1, :]; text=xlabel, fontsize=18)
+            Label(g[:, 0]; text=ylabel, fontsize=18, rotation=pi / 2)
 
             if @isdefined(title_val)
-                Label(g[0, :]; text=title_val, fontsize=32)
+                Label(g[0, :]; text=title_val, fontsize=24)
             end
         else
             axs[1].xlabel = xlabel
