@@ -950,6 +950,23 @@ function outcome_map(
         conf
     )
 end
+"""
+    _map_outcomes(y::AbstractVecOrMat{<:Real}, rule::Union{BitVector,Vector{Int64}})::Union{BitVector,Vector{Int64}}
+    _map_outcomes(y::AbstractVecOrMat{<:Real}, rule::Function)::Vector{Int64}
+
+Apply rule to create mapping between \$X\$ (model inputs/parameters/factors) and
+\$y\$ (model outcomes).
+
+# Note
+Where the rule is a vector indicating true/false, the `y` argument is ignored.
+The function accepts the `y` argument simply to maintain compatibility so the same method
+name can be applied.
+
+# Arguments
+- `y` : Model outputs/outcomes
+- `rule` : BitVector, or Function that returns a BitVector, indicating outcomes that meet
+           some desired threshold/behavior.
+"""
 function _map_outcomes(
     y::AbstractVecOrMat{<:Real},
     rule::Union{BitVector,Vector{Int64}}
