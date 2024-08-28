@@ -200,7 +200,7 @@ function _foi_data_stores(
             T=Union{Missing,Float64},
             default=seq_store[:default][2:end],
             second_dim...
-        ) for _ in 1:(length(factors) - length(unordered_cat))
+        ) for _ in 1:(length(m_spec.fieldname) - length(unordered_cat))
     )
 
     # Create storage NamedTuples for unordered categorical variables and other variables, then merge
