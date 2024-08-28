@@ -453,14 +453,6 @@ function ADRIA.viz.outcome_map!(
         insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
-    bin_slices, factor_list, CIs = outcomes.axes
-    b_slices = parse.(Float64, bin_slices)
-
-    if any(f_names .== :guided)
-        fv_labels = [
-            "unguided", "cf", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
-        ]
-    end
     curr::Int64 = 1
     axs = Axis[]
     for r in 1:n_rows
@@ -468,12 +460,6 @@ function ADRIA.viz.outcome_map!(
             f_name = Symbol(factors[curr])
             ms_factor = ms[ms.fieldname .== f_name, :]
             f_vals = rs.inputs[:, f_name]
-
-            if f_name == :guided
-                fv_s = collect(1:length(fv_labels))
-            else
-                fv_s = round.(quantile(f_vals, b_slices), digits=2)
-            end
 
             ax::Axis = Axis(
                 g[r, c]; title=ms_factor.name[1], axis_opts...
