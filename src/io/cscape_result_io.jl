@@ -34,7 +34,14 @@ end
     load_results(::Type{CscapeResultSet}, data_dir::String, result_dir::String)::CScapeResultSet
     load_results(::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String})::CScapeResultSet
 
-Interface for loading CScape model outputs.
+Interface for loading C~scape model outputs.
+
+See the [Loading C~scape Results](@ref) section for details on expected directory structure.
+
+# Examples
+```julia
+rs = ADRIA.load_results(CScapeResultSet, "a C~scape dataset of interest")
+```
 """
 function load_results(::Type{CScapeResultSet}, data_dir::String)::CScapeResultSet
     return load_results(CScapeResultSet, data_dir, joinpath(data_dir, "results"))
