@@ -665,6 +665,7 @@ function rsa(
         end
         normalize!(r_s)
     end
+
     return r_s
 end
 function rsa(
