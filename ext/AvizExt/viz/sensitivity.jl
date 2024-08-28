@@ -330,6 +330,18 @@ function ADRIA.viz.rsa(
 end
 function ADRIA.viz.rsa(
     rs::ResultSet,
+    si::Dataset,
+    factor::Symbol;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    return ADRIA.viz.rsa(
+        rs, si, [factor]; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
+    )
+end
+function ADRIA.viz.rsa(
+    rs::ResultSet,
     si::YAXArray,
     factor::Symbol;
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
@@ -404,7 +416,7 @@ Makie figure
 function ADRIA.viz.outcome_map!(
     g::Union{GridLayout,GridPosition},
     rs::ResultSet,
-    outcomes::YAXArray,
+    outcomes::Dataset,
     factors::Vector{Symbol};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
@@ -556,7 +568,7 @@ function ADRIA.viz.outcome_map!(
 end
 function ADRIA.viz.outcome_map(
     rs::ResultSet,
-    si::YAXArray,
+    si::Dataset,
     factors::Vector{Symbol};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
@@ -570,7 +582,7 @@ function ADRIA.viz.outcome_map(
 end
 function ADRIA.viz.outcome_map(
     rs::ResultSet,
-    outcomes::YAXArray,
+    outcomes::Dataset,
     factor::Symbol;
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
