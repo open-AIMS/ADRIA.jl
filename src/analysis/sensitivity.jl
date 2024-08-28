@@ -725,10 +725,13 @@ function rsa(
 end
 
 """
+    outcome_map(p::YAXArray, X_q::AbstractArray, X_f::AbstractArray, y::AbstractVecOrMat{<:Real}, behave::BitVector; n_boot::Int64=100, conf::Float64=0.95)::YAXArray
+    outcome_map(X::DataFrame, y::AbstractVecOrMat{<:Real}, rule::Union{Function,BitVector,Vector{Int64}}, target_factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10, n_boot::Int64=100, conf::Float64=0.95)::Dataset
     outcome_map(X::DataFrame, y::AbstractVecOrMat{<:Real}, rule::Union{Function,BitVector,Vector{Int64}}, target_factor::Symbol, model_spec::DataFrame; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray
-    outcome_map(rs::ResultSet, y::AbstractArray{<:Real}, rule::Union{Function,BitVector,Vector{Int64}}, target_factors::Vector{Symbol}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
-    outcome_map(rs::ResultSet, y::AXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}, target_factor::Symbol; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray
-    outcome_map(rs::ResultSet, y::AXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
+    outcome_map(X::DataFrame, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
+    outcome_map(rs::ResultSet, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}, target_factors::Vector{Symbol}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
+    outcome_map(rs::ResultSet, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}, target_factor::Symbol; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray
+    outcome_map(rs::ResultSet, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
 
 Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
 
@@ -867,37 +870,8 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::YAXArray
-    all_p_rule = _map_outcomes(y, rule)
-    if length(all_p_rule) == 0
-        @warn "No results conform to specified rule."
-        return p
-    end
-
-    # Identify behavioural
-    n_scens = size(X, 1)
-    behave::BitVector = falses(n_scens)
-    behave[all_p_rule] .= true
-
-    # Factor model spec and check if it is an unordered categorical type
-    foi_spec = _get_factor_spec(model_spec, [target_factor])
-    unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
-
-    # Get bin sequence and quantile
-    seq_store = _create_seq_store(foi_spec, unordered_cat, S)
-
-    # Set up YAX storage
-    seq = seq_store[collect(keys(seq_store))[1]][2:end]
-    p = ZeroDataCube(;
-        T=Union{Missing,Float64},
-        target_factor=seq,
-        CI=["mean", "lower", "upper"]
-    )
-
-    X_f = X[:, target_factor]
-    X_q = _get_factor_quantile(seq_store, foi_spec, X_f, target_factor)
-
     return outcome_map(
-        p, X_q, X_f, y, behave; n_boot=n_boot, conf=conf
+        X, y, rule, [target_factor], model_spec; S=S, n_boot=n_boot, conf=conf
     )
 end
 function outcome_map(
@@ -920,7 +894,13 @@ function outcome_map(
     conf::Float64=0.95
 )::Dataset
     return outcome_map(
-        rs.inputs[:, Not(:RCP)], vec(y), rule, target_factors, rs.model_spec; S, n_boot,
+        rs.inputs[:, Not(:RCP)],
+        vec(y),
+        rule,
+        target_factors,
+        rs.model_spec;
+        S,
+        n_boot,
         conf
     )
 end
@@ -934,7 +914,14 @@ function outcome_map(
     conf::Float64=0.95
 )::YAXArray
     return outcome_map(
-        rs.inputs[:, Not(:RCP)], vec(y), rule, target_factor, rs.model_spec; S, n_boot, conf
+        rs.inputs[:, Not(:RCP)],
+        vec(y),
+        rule,
+        [target_factor],
+        rs.model_spec;
+        S,
+        n_boot,
+        conf
     )
 end
 function outcome_map(
@@ -946,10 +933,17 @@ function outcome_map(
     conf::Float64=0.95
 )::Dataset
     return outcome_map(
-        rs.inputs[:, Not(:RCP)], vec(y), rule, names(rs.inputs), rs.model_spec; S, n_boot,
+        rs.inputs[:, Not(:RCP)],
+        vec(y),
+        rule,
+        names(rs.inputs),
+        rs.model_spec;
+        S,
+        n_boot,
         conf
     )
 end
+
 """
     _map_outcomes(y::AbstractVecOrMat{<:Real}, rule::Union{BitVector,Vector{Int64}})::Union{BitVector,Vector{Int64}}
     _map_outcomes(y::AbstractVecOrMat{<:Real}, rule::Function)::Vector{Int64}
