@@ -73,8 +73,12 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
             type=semver,pattern={{major}}
-            latest
+            type=ref,event=branch
+            type=sha,format=long
+            type=sha,format=short
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
 
       # Step 5: Build and push the Docker image
       # This step builds the adria-base image and pushes it to the registry
