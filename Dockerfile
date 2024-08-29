@@ -1,13 +1,13 @@
+# What base image should be used for the sandbox
 ARG SANDBOX_FROM="adria-dev"
+
+# See https://hub.docker.com/_/julia for valid versions.
+ARG JULIA_VERSION="1.10.4"
 
 #------------------------------------------------------------------------------
 # internal-base build target: julia with OS updates and an empty @adria
 # Julia environment prepared for use. NOT intended for standalone use.
 #------------------------------------------------------------------------------
-# Work with an apt-based Debian 12 (bookworm) OS, but allow
-# the Julia platform version to be overridden at build-time
-# See https://hub.docker.com/_/julia for valid versions.
-ARG JULIA_VERSION="1.10.4"
 FROM julia:${JULIA_VERSION}-bookworm AS internal-base
 
 # Record the actual base image used from the FROM command as label in the compiled image
@@ -21,9 +21,9 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     apt-get update \
     && apt-get -y upgrade \
     && apt-get install --no-install-recommends -y \
-        git \
-        less \
-        nano \
+    git \
+    less \
+    nano \
     && apt-get clean \
     && apt-get autoremove --purge \
     && rm -rf /var/lib/apt/lists/*
@@ -35,7 +35,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 # user accounts, but still activate environments configured by this dockerfile.
 ENV JULIA_DEPOT_PATH="/usr/local/share/julia"
 
-# Prepare an empty @adria Julia environment for derived images to use
+# Prepare an empty @adria Julia environment for derived images to use - this is created in the shared depot path
 RUN mkdir -p "${JULIA_DEPOT_PATH}" && \
     chmod 0755 "${JULIA_DEPOT_PATH}" && \
     julia -e 'using Pkg; Pkg.activate("adria", shared=true)'
@@ -56,18 +56,23 @@ ENTRYPOINT ["julia"]
 #------------------------------------------------------------------------------
 FROM internal-base AS adria-base
 
+# What version of ADRIA from package registry to install in adria-base
+ARG ADRIA_VERSION="0.11.0"
+
+# Which julia package registry version to install
+ENV ADRIA_VERSION=$ADRIA_VERSION
+
+
 # Install ADRIA.jl into the @adria shared environment as an unregistered package.
 # - Allow the package source and version to be overridden at build-time.
 # - Include citation information for ADRIA.jl in the image labels.
-ARG ADRIA_REPO="https://github.com/open-AIMS/ADRIA.jl.git" \
-    ADRIA_REFSPEC="main"
 RUN mkdir -p "${JULIA_DEPOT_PATH}" && \
     chmod 0755 "${JULIA_DEPOT_PATH}" && \
-    julia --project=@adria -e "using Pkg; Pkg.add(url=\"${ADRIA_REPO}\", rev=\"${ADRIA_REFSPEC}\"); using ADRIA"
-LABEL au.gov.aims.adria.source="${ADRIA_REPO}" \
-      au.gov.aims.adria.branch="${ADRIA_REFSPEC}" \
-      au.gov.aims.adria.vendor="Australian Institute of Marine Science" \
-      au.gov.aims.adria.licenses=MIT
+    julia --project=@adria -e "using Pkg; Pkg.add(name=\"ADRIA\", version=\"${ADRIA_VERSION}\"); using ADRIA"
+LABEL au.gov.aims.adria.source="https://github.com/open-AIMS/ADRIA.jl/releases/tag/v${ADRIA_VERSION}" \
+    au.gov.aims.adria.version="${ADRIA_VERSION}" \
+    au.gov.aims.adria.vendor="Australian Institute of Marine Science" \
+    au.gov.aims.adria.licenses=MIT
 
 #------------------------------------------------------------------------------
 # adria-dev build target: Assumes you have the ADRIA.jl source code
@@ -91,9 +96,8 @@ ENV ADRIA_ENV_DIR="${JULIA_DEPOT_PATH}/environments/adria" \
 #       in this adria-docker repository instead is a horrible hack, but works.
 WORKDIR "${ADRIA_SRC_DIR}"
 COPY ./Project.toml ./Project.toml
-# TODO bring this back but for now let it build the manifest
-#COPY ./Manifest.toml ./Manifest.toml
-RUN julia --project=@adria -e 'using Pkg;  Pkg.instantiate(verbose=true);'
+COPY ./Manifest.toml ./Manifest.toml
+RUN julia --project=@adria -e 'using Pkg;  Pkg.instantiate(verbose=true)'
 
 # Install the ADRIA source code and configure it as a development
 # package in the @adria shared environment.
@@ -101,7 +105,7 @@ RUN julia --project=@adria -e 'using Pkg;  Pkg.instantiate(verbose=true);'
 # dependencies *should* already be installed.
 COPY . .
 RUN julia --project=@adria \
-          -e  'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.precompile(); using ADRIA;'
+    -e  'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.precompile(); using ADRIA;'
 
 
 #------------------------------------------------------------------------------

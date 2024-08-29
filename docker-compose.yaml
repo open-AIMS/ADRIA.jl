@@ -38,6 +38,7 @@ services:
       - ./output:/data/output
       - ./sandbox/:/opt/adria-sandbox/src/
       - ./src:/usr/local/src/adria/src
+      - ./assets:/usr/local/src/adria/assets
       - ./test:/usr/local/src/adria/test
       - ./Aviz:/usr/local/src/adria/Aviz
       - ./ext:/usr/local/src/adria/ext

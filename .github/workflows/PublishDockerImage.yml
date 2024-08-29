@@ -1,0 +1,77 @@
+# This workflow builds and publishes the ADRIA base Docker image to GitHub Container Registry (ghcr.io)
+# It is triggered when a new release is published in the repository
+
+# Additional notes:
+# - The workflow uses the github.repository context to name the image, ensuring it's tied to your repository
+# - The GITHUB_TOKEN is automatically provided by GitHub Actions, no need to set it up manually
+# - The Docker metadata action automatically generates appropriate tags based on the release version
+# - The Julia version can be easily updated by changing the JULIA_VERSION environment variable at the top of the workflow
+
+name: Build and Publish ADRIA Base Docker Image
+
+on:
+  release:
+    types: [published]
+  push:
+    branches:
+      - feat/merging-adria-docker
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/adria-base
+  JULIA_VERSION: 1.10.4
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # Step 1: Checkout the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Extract the version number from the release tag
+      # This removes the 'v' prefix from the tag (e.g., 'v1.2.3' becomes '1.2.3')
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      # Step 3: Log in to the GitHub Container Registry
+      # This uses the provided GitHub token for authentication
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 4: Extract metadata for Docker
+      # This step generates tags and labels for the Docker image
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            latest
+
+      # Step 5: Build and push the Docker image
+      # This step builds the adria-base image and pushes it to the registry
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          target: adria-base # Specifies which stage of the Dockerfile to build
+          push: true # Pushes the image to the registry
+          tags: ${{ steps.meta.outputs.tags }} # Uses the tags generated in the metadata step
+          labels: ${{ steps.meta.outputs.labels }} # Uses the labels generated in the metadata step
+          # Passes the Julia and ADRIA versions to the Dockerfile
+          build-args: |
+            ADRIA_VERSION=${{ steps.get_version.outputs.VERSION }}
+            JULIA_VERSION=${{ env.JULIA_VERSION }}

@@ -2,7 +2,7 @@
 
 ADRIA: Adaptive Dynamic Reef Intervention Algorithms.
 
-[![Release](https://img.shields.io/github/v/release/open-AIMS/ADRIA.jl)](https://github.com/open-AIMS/ADRIA.jl/releases)  [![DOI](https://zenodo.org/badge/483052659.svg)](https://zenodo.org/badge/latestdoi/483052659)
+[![Release](https://img.shields.io/github/v/release/open-AIMS/ADRIA.jl)](https://github.com/open-AIMS/ADRIA.jl/releases) [![DOI](https://zenodo.org/badge/483052659.svg)](https://zenodo.org/badge/latestdoi/483052659)
 
 [![Documentation](https://img.shields.io/badge/docs-stable-blue)](https://open-aims.github.io/ADRIA.jl/stable/) [![Documentation](https://img.shields.io/badge/docs-dev-blue)](https://open-aims.github.io/ADRIA.jl/dev/)
 
@@ -37,6 +37,7 @@ For developers, refer to the
 
 This repo contains a multistage Dockerfile for generating containerised applications based on the ADRIA source code in this repository.
 
+- [docker configuration](#docker-configuration)
 - [adria-base](#adria-base)
   - [Building `adria-base`](#building-adria-base)
   - [Running `adria-base` with a non-interactive Julia command](#running-adria-base-with-a-non-interactive-julia-command)
@@ -54,6 +55,16 @@ This repo contains a multistage Dockerfile for generating containerised applicat
   - [Interacting with `adria-sandbox`](#interacting-with-adria-sandbox)
 
 ---
+
+## Docker configuration
+
+The following build args and defaults are available to configure the build behaviour.
+
+- ARG SANDBOX_FROM="adria-dev": What base image should be used for the sandbox
+
+- ARG ADRIA_VERSION="0.11.0": What version of ADRIA from package registry to install in adria-base
+
+- ARG JULIA_VERSION="1.10.4": See https://hub.docker.com/\*/julia for valid versions.
 
 ## adria-base
 
@@ -75,9 +86,9 @@ docker build --target "adria-base" --tag ADRIA.jl/adria-base:latest .
 
 You can also opt to specify some custom [build arguments](https://docs.docker.com/reference/cli/docker/image/build/#build-arg) to change the versions of Julia or ADRIA.jl that get installed. Supported arguments are:
 
-- `ADRIA_REPO`:  URL for the repository that ADRIA.jl should be cloned from. Defaults to <https://github.com/open-AIMS/ADRIA.jl.git>
+- `ADRIA_REPO`: URL for the repository that ADRIA.jl should be cloned from. Defaults to <https://github.com/open-AIMS/ADRIA.jl.git>
 - `ADRIA_REFSPEC`: the branch-name or tag of the `ADRIA_REPO` that you want to install. Defaults to `main`.
-- `JULIA_VERSION`: The version of the Julia platform you want to install ADRIA.jl into.  This must be one of the versions available for the official [Julia base image](https://hub.docker.com/_/julia). Defaults to `1.10.1`.
+- `JULIA_VERSION`: The version of the Julia platform you want to install ADRIA.jl into. This must be one of the versions available for the official [Julia base image](https://hub.docker.com/_/julia). Defaults to `1.10.1`.
 
 See the [docker-compose.yaml](./docker-compose.yaml) file for an example of how to specify build arguments in docker compose.
 
@@ -86,7 +97,6 @@ See the [docker-compose.yaml](./docker-compose.yaml) file for an example of how 
 ### Running `adria-base` with a non-interactive Julia command
 
 e.g. to list the packages installed in the `@adria` shared environment:
-
 
 ```bash
 # EITHER using docker compose:
@@ -97,7 +107,6 @@ docker run --rm ADRIA.jl/adria-base:latest --project=@adria -e 'using Pkg; Pkg.s
 ```
 
 &nbsp;
-
 
 ### Running `adria-base` as an interactive Julia shell
 
@@ -115,10 +124,9 @@ In both cases, type `CTRL-d` to exit the shell and stop the container.
 
 &nbsp;
 
-
 ### Running `adria-base` with a non-Julia entrypoint
 
-If you want to use this image to run something *other* than a Julia command, you can specify an alternate entrypoint at runtime as well as an alternate command. e.g. to launch an interactive `bash` shell in the container for checking filesystem permissions or similar:
+If you want to use this image to run something _other_ than a Julia command, you can specify an alternate entrypoint at runtime as well as an alternate command. e.g. to launch an interactive `bash` shell in the container for checking filesystem permissions or similar:
 
 ```bash
 # EITHER using docker compose:
@@ -145,11 +153,11 @@ The section of the [Dockerfile](./Dockerfile) that defines the `adria-sandbox` t
 
 ## adria-dev
 
-The `adria-dev` image variant is an *alternative* to the `adria-base` image, not a derived application.
+The `adria-dev` image variant is an _alternative_ to the `adria-base` image, not a derived application.
 Instead of installing [ADRIA.jl](https://github.com/open-AIMS/ADRIA.jl) as a normal package, it looks for
 the ADRIA.jl source code in a local subdirectory, and installs that as a [Julia development package](https://pkgdocs.julialang.org/v1/api/#Pkg.develop).
 
-This allows you to use the `adria-dev` container as an `ADRIA.jl` development environment:  you can run tests,
+This allows you to use the `adria-dev` container as an `ADRIA.jl` development environment: you can run tests,
 bind-mount and edit the code, re-resolve dependencies and all sorts of other useful things without needing
 to a native installation of Julia.
 
@@ -164,7 +172,7 @@ If you are not familiar with git submodules, some useful commands are:
 - to switch to an existing branch of ADRIA.jl: `cd ADRIA.jl && git checkout <branch-name>`
 - to pull recent commits on your current branch of ADRIA.jl: `cd ADRIA.jl && git pull`
 - To commit and push changes you have made to ADRIA.jl source:
-  - First, commit and push just as usual from *inside* the submodule repository. As per good development practice, work in a dedicated branch:
+  - First, commit and push just as usual from _inside_ the submodule repository. As per good development practice, work in a dedicated branch:
     ```bash
     cd ADRIA.jl
     git checkout -b my-dev-branch
@@ -174,7 +182,7 @@ If you are not familiar with git submodules, some useful commands are:
     ```
   - At this point, your changes will be safely pushed to a new branch of the
     [ADRIA.jl origin repository](https://github.com/open-AIMS/ADRIA.jl), and you can make pull requests just like normal.
-  - Then from the root of *this* repository:
+  - Then from the root of _this_ repository:
     ```bash
     git add ADRIA.jl
     git commit -m"explain your changes again"
@@ -197,7 +205,6 @@ docker build --target "adria-dev" --tag ADRIA.jl/adria-dev:latest .
 The same `JULIA_VERSION` build argument that works with `adria-base` will also work with `adria-dev`.
 
 &nbsp;
-
 
 ### Running `adria-dev` as an interactive Julia shell
 
@@ -245,7 +252,7 @@ This method of running tests is suitable to use in a containerised continuous in
 
 The `adria-sandbox` image variant is set up to run the `sandbox` Julia application which has its source code in this repository.
 
-This application uses the pre-installed ADRIA package, and can be built on *either* of `adria-base` or `adria-dev`,
+This application uses the pre-installed ADRIA package, and can be built on _either_ of `adria-base` or `adria-dev`,
 depending on whether you want the development version of the package or not.
 
 It depends on input and output data files which must be provided at runtime.
@@ -279,7 +286,6 @@ This documentation and the [docker-compose.yaml](./docker-compose.yaml) file in 
 using [bind mounts](https://docs.docker.com/storage/bind-mounts/) to data-directories which are local to
 your current working directory for this purpose, but [docker volumes](https://docs.docker.com/storage/volumes/)
 with any supported storage driver should also work fine.
-
 
 ```bash
 # EITHER using docker compose (which has the bind-mounts predefined):
@@ -327,4 +333,4 @@ julia --project=@. dev.jl
 ```
 
 **Warning:** For `julia` commands, you will probably need to use the `--project=@.` argument. This tells Julia that it's working environment is based in a parent directory of the one the sandbox source code is installed to, which is where the build
-configured all the precompiled dependencies.   If you omit this, the pre-installed packages may not all be available.
+configured all the precompiled dependencies. If you omit this, the pre-installed packages may not all be available.
