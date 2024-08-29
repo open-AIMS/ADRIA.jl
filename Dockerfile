@@ -47,7 +47,7 @@ ENV JULIA_LOAD_PATH="@:@adria:@v#.#:@stdlib"
 
 # Run Julia commands by default as the container launches.
 # Derived applications should override the command.
-ENTRYPOINT ["julia"]
+ENTRYPOINT ["julia", "--project=@adria"]
 
 
 #------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ ENV ADRIA_VERSION=$ADRIA_VERSION
 # - Include citation information for ADRIA.jl in the image labels.
 RUN mkdir -p "${JULIA_DEPOT_PATH}" && \
     chmod 0755 "${JULIA_DEPOT_PATH}" && \
-    julia --project=@adria -e "using Pkg; Pkg.add(name=\"ADRIA\", version=\"${ADRIA_VERSION}\"); using ADRIA"
+    julia --project=@adria -e "using Pkg; Pkg.add(name=\"ADRIA\", version=\"${ADRIA_VERSION}\"); Pkg.precompile(); using ADRIA;"
 LABEL au.gov.aims.adria.source="https://github.com/open-AIMS/ADRIA.jl/releases/tag/v${ADRIA_VERSION}" \
     au.gov.aims.adria.version="${ADRIA_VERSION}" \
     au.gov.aims.adria.vendor="Australian Institute of Marine Science" \
