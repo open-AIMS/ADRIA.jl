@@ -62,6 +62,8 @@ ARG ADRIA_VERSION="0.11.0"
 # Which julia package registry version to install
 ENV ADRIA_VERSION=$ADRIA_VERSION
 
+# Try to coerce Julia to build across multiple targets
+ENV JULIA_CPU_TARGET=x86_64;haswell;skylake;skylake-avx512;tigerlake
 
 # Install ADRIA.jl into the @adria shared environment as an unregistered package.
 # - Allow the package source and version to be overridden at build-time.
