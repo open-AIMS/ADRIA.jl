@@ -12,9 +12,6 @@ name: Build and Publish ADRIA Base Docker Image
 on:
   release:
     types: [published]
-  push:
-    branches:
-      - feat/merging-adria-docker
 
 env:
   REGISTRY: ghcr.io

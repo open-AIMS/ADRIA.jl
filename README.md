@@ -39,6 +39,8 @@ This repo contains a multistage Dockerfile for generating containerised applicat
 
 - [docker configuration](#docker-configuration)
 - [adria-base](#adria-base)
+  - [A note about platform build targets](#a-note-about-platform-build-targets)
+  - [Published base images](#published-base-images)
   - [Building `adria-base`](#building-adria-base)
   - [Running `adria-base` with a non-interactive Julia command](#running-adria-base-with-a-non-interactive-julia-command)
   - [Running `adria-base` as an interactive Julia shell](#running-adria-base-as-an-interactive-julia-shell)
@@ -73,6 +75,27 @@ The `adria-base` image variant is a Julia image with [ADRIA.jl](https://github.c
 The Docker entrypoint for the `adria-base` image is the `julia` binary, so you can run just this base container if you want to invoke julia commands, including commands that depend on the ADRIA package being installed.
 
 It can also be used as a base-image for any Julia application that needs to use ADRIA.
+
+### A note about platform build targets
+
+This line in the Dockerfile prompts Julia to precompile the ADRIA package and it's predependencies for a larger range of target platforms. Given that the building of the image could occur on any host, we need to specify a range of platforms so that precompilation (which is CPU architecture dependent) does not need to reoccur when the Docker image is run on the user's system.
+
+The below list came from [here](https://discourse.julialang.org/t/seemingly-unnecessary-precompilation-with-julia-1-9-in-a-docker-container/99892/3) and is confirmed to work for a `x86_64` based architecture.
+
+```Dockerfile
+# Try to coerce Julia to build across multiple targets
+ENV JULIA_CPU_TARGET=x86_64;haswell;skylake;skylake-avx512;tigerlake
+```
+
+If more platforms are needing to be targeted, please lodge a pull request with the output of `uname -m` and other details, and we can expand this list of target platforms.
+
+### Published base images
+
+This repository uses GitHub actions to publish, upon version release, the `adria-base` image - see `.github/workflows/PublishDockerImage.yml`. The below commands such as running and using the ADRIA base image apply to these published images, replacing your locally tagged image with the GitHub Container Registry label e.g. the following will run in an interactive Julia shell, a precompiled terminal with `ADRIA` installed, ready to be used.
+
+```
+docker run --tty --interactive ghcr.io/open-aims/adria.jl/adria-base:latest
+```
 
 ### Building `adria-base`
 
