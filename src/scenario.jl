@@ -755,6 +755,9 @@ function run_model(
             coral_cover(functional_groups[i], @view(C_cover_t[:, :, i]))
         end
 
+        if !(sum(_loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas) == 0)
+            @warn "Cover outgrowing habitable area. Exiting."
+        end
         # Check if size classes are inappropriately out-growing habitable area
         @assert (
             sum(_loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas) == 0
@@ -793,7 +796,7 @@ function run_model(
         # Reset potential settlers to zero
         potential_settlers .= 0.0
         recruitment .= 0.0
-        
+
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
         @views recruitment[:, habitable_locs] .=
