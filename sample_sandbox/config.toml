@@ -1,7 +1,0 @@
-[operation]
-num_cores=2
-threshold = 1e-6
-debug = false
-
-[results]
-output_dir = "/data/output"
