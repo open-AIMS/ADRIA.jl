@@ -395,7 +395,6 @@ end
     ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
     ADRIA.viz.outcome_map!(ax::Axis, outcomes::YAXArray, ms_factor::DataFrame, f_vals::Vector{Float64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
-
 Plot outcomes mapped to factor regions for up to 30 factors.
 
 # Arguments
@@ -552,7 +551,7 @@ function ADRIA.viz.outcome_map!(
 end
 function ADRIA.viz.outcome_map(
     rs::ResultSet,
-    si::Dataset,
+    outcomes::Dataset,
     factors::Vector{Symbol};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
@@ -587,7 +586,7 @@ end
         opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(:plot_overlay => true), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Plot sensitivity values for an increasing number of scenarios as a series, with each member
-    of the series representing a factor or model component.
+of the series representing a factor or model component.
 
 # Arguments
 - `Si_conv` : Produced using ADRIA.analysis.convergence()
@@ -701,6 +700,7 @@ function _series_convergence(
             end
         end
     end
+
     return g
 end
 
@@ -709,7 +709,7 @@ end
         opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Plot sensitivity values for an increasing number of scenarios as a heatmap, with each row
-    of the heatmap representing a factor or model component.
+of the heatmap representing a factor or model component.
 
 # Arguments
 - `Si_conv` : Produced using ADRIA.analysis.convergence()
