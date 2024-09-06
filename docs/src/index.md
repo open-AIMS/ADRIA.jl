@@ -14,6 +14,10 @@ Among the most common usecases are:
 
 More details about each of these can be found in the next sections.
 
+## Docker documentation
+
+`ADRIA.jl` features a set of Docker build targets which allow usage, development and experimentation of the `ADRIA` Julia package. See [ADRIA Docker Setup](@ref) for more information.
+
 ## Troubleshooting F.A.Q
 
 ADRIA.jl is under active development and from time to time issues may arise.

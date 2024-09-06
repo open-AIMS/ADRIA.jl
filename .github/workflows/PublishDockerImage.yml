@@ -1,0 +1,93 @@
+# This workflow builds and publishes the ADRIA base Docker image to GitHub Container Registry (ghcr.io)
+# It is triggered when a new release is published in the repository
+
+# Additional notes:
+# - The workflow uses the github.repository context to name the image, ensuring it's tied to your repository
+# - The GITHUB_TOKEN is automatically provided by GitHub Actions, no need to set it up manually
+# - The Docker metadata action automatically generates appropriate tags based on the release version
+# - The Julia version can be easily updated by changing the JULIA_VERSION environment variable at the top of the workflow
+
+name: Build and Publish ADRIA Base Docker Image
+
+on:
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/adria-base
+  JULIA_VERSION: 1.10.4
+  # Set to true to use a fixed ADRIA version for debugging, false to use the release version
+  USE_FIXED_ADRIA_VERSION: true
+  # The fixed ADRIA version to use when USE_FIXED_ADRIA_VERSION is true
+  FIXED_ADRIA_VERSION: "0.11.0"
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # Step 1: Checkout the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Extract the version number from the release tag
+      # This removes the 'v' prefix from the tag (e.g., 'v1.2.3' becomes '1.2.3')
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          if ${{ env.USE_FIXED_ADRIA_VERSION == 'true' }}; then
+            echo "Using fixed ADRIA version: ${{ env.FIXED_ADRIA_VERSION }}"
+            echo "VERSION=${{ env.FIXED_ADRIA_VERSION }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            RELEASE_VERSION=${GITHUB_REF#refs/tags/v}
+            echo "Using release version: $RELEASE_VERSION"
+            echo "VERSION=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "No version specified and not a release event. Using default version."
+            echo "VERSION=${{ env.FIXED_ADRIA_VERSION }}" >> $GITHUB_OUTPUT
+          fi
+
+      # Step 3: Log in to the GitHub Container Registry
+      # This uses the provided GitHub token for authentication
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 4: Extract metadata for Docker
+      # This step generates tags and labels for the Docker image
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
+            type=semver,pattern={{major}}
+            type=ref,event=branch
+            type=sha,format=long
+            type=sha,format=short
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'main') }}
+
+      # Step 5: Build and push the Docker image
+      # This step builds the adria-base image and pushes it to the registry
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          target: adria-base # Specifies which stage of the Dockerfile to build
+          push: true # Pushes the image to the registry
+          tags: ${{ steps.meta.outputs.tags }} # Uses the tags generated in the metadata step
+          labels: ${{ steps.meta.outputs.labels }} # Uses the labels generated in the metadata step
+          # Passes the Julia and ADRIA versions to the Dockerfile
+          build-args: |
+            ADRIA_VERSION=${{ steps.get_version.outputs.VERSION }}
+            JULIA_VERSION=${{ env.JULIA_VERSION }}
