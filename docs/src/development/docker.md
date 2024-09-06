@@ -77,7 +77,7 @@ You can also opt to specify some custom [build arguments](https://docs.docker.co
 - `ADRIA_REFSPEC`: the branch-name or tag of the `ADRIA_REPO` that you want to install. Defaults to `main`.
 - `JULIA_VERSION`: The version of the Julia platform you want to install ADRIA.jl into. This must be one of the versions available for the official [Julia base image](https://hub.docker.com/_/julia). Defaults to `1.10.1`.
 
-See the [docker-compose.yaml](./docker-compose.yaml) file for an example of how to specify build arguments in docker compose.
+See the `docker-compose.yaml` file for an example of how to specify build arguments in docker compose.
 
 ### Running `adria-base` with a non-interactive Julia command
 
@@ -124,7 +124,7 @@ To make a derived ADRIA application:
 - Use `FROM ADRIA.jl/adria-base:latest` (or a related tag)
 - Include a `CMD` line in your Dockerfile that provides appropriate arguments to the `julia` command line to invoke your application.
 
-The section of the [Dockerfile](./Dockerfile) that defines the `adria-sandbox` target described below might be useful inspiration.
+The section of the `Dockerfile` that defines the `adria-sandbox` target described below might be useful inspiration.
 
 ---
 
@@ -222,7 +222,7 @@ For that script to be useful, though, you must first mount two filesystem locati
 - A directory containing your input data files should be mounted at `/data/input`
 - A directory where the sandbox application can create output files should be mounted at `/data/output`
 
-This documentation and the [docker-compose.yaml](./docker-compose.yaml) file in the repository demonstrate
+This documentation and the `docker-compose.yaml` file in the repository demonstrate
 using [bind mounts](https://docs.docker.com/storage/bind-mounts/) to data-directories which are local to
 your current working directory for this purpose, but [docker volumes](https://docs.docker.com/storage/volumes/)
 with any supported storage driver should also work fine.
