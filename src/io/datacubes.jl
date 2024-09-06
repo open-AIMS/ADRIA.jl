@@ -31,7 +31,9 @@ are passed, all axes labels will be ranges.
 function ZeroDataCube(; T::Type{D}=Float64, kwargs...)::YAXArray where {D}
     return DataCube(zeros(T, [length(val) for (name, val) in kwargs]...); kwargs...)
 end
-function ZeroDataCube(axes_names::Tuple, axes_sizes::Tuple; T::Type{D}=Float64)::YAXArray where {D}
+function ZeroDataCube(
+    axes_names::Tuple, axes_sizes::Tuple; T::Type{D}=Float64
+)::YAXArray where {D}
     return ZeroDataCube(; T=T, NamedTuple{axes_names}(1:size for size in axes_sizes)...)
 end
 

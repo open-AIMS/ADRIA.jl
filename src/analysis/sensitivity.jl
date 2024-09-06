@@ -622,7 +622,7 @@ function rsa(
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
 
     # Create storage for sensitivities.
-    r_s::Dataset = _foi_data_stores(seq_store, foi_spec, unordered_cat, (Si=["Si"], ))
+    r_s::Dataset = _foi_data_stores(seq_store, foi_spec, unordered_cat, (Si=["Si"],))
 
     for fact_t in factors
         X_i .= X[:, fact_t]
@@ -836,7 +836,7 @@ function outcome_map(
 
     # Create storage for sensitivities.
     pawn_results::Dataset = _foi_data_stores(
-        seq_store, foi_spec, unordered_cat, (CI=["mean", "lower", "upper"], )
+        seq_store, foi_spec, unordered_cat, (CI=["mean", "lower", "upper"],)
     )
 
     all_p_rule = _map_outcomes(y, rule)

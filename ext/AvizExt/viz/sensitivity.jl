@@ -3,7 +3,6 @@ using Printf
 using ADRIA.sensitivity: _get_cat_quantile
 using ADRIA: _is_discrete_factor
 
-
 """
     _get_guided_labels()::Vector{String}
 
