@@ -4,11 +4,11 @@ on:
     branches:
       - main
       - "v*"
+      # TODO remove before merging
+      - feat/caching-and-restoring-unit-tests
   pull_request:
     branches:
       - main
-      # TODO remove before merging
-      - feat/caching-and-restoring-unit-tests
       - "v*"
 
 jobs:
