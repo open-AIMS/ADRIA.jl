@@ -1,4 +1,4 @@
-name: CI
+name: UnitTests
 on:
   # Trigger manually or on merge to main
   push:
