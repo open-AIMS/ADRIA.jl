@@ -3,6 +3,7 @@ using Printf
 using ADRIA.sensitivity: _get_cat_quantile
 using ADRIA: _is_discrete_factor
 
+
 """
     _get_guided_labels()::Vector{String}
 
@@ -10,7 +11,9 @@ Returns labels for categories of the `guided` factor.
 """
 function _get_guided_labels()::Vector{String}
     return [
-        "cf", "unguided", last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
+        "cf",
+        "unguided",
+        last.(split.(string.(ADRIA.decision.mcda_methods()), "."))...
     ]
 end
 
@@ -173,10 +176,11 @@ function ADRIA.viz.tsa(
 end
 
 """
-    ADRIA.viz.rsa(rs::ResultSet, si::Dataset, factors::Vector{Symbol}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::Dataset, factors::Vector{Symbol}; opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.rsa(rs::ResultSet, si::YAXArray, factor::Symbol; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray, factor::Symbol; opts::Dict=Dict(), axis_opts::Dict=Dict())
+    ADRIA.viz.rsa(rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.rsa(rs::ResultSet, si::YAXArray, factor::Symbol; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.rsa!(ax::Axis, si::YAXArray, ms_factor::DataFrame, f_vals::Vector{Float64})
+    ADRIA.viz.rsa!(f::Union{GridLayout,GridPosition}, rs::ResultSet, si::Dataset, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.rsa!(g::Union{GridLayout,GridPosition}, rs::ResultSet, si::YAXArray, factor::Symbol; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 Plot regional sensitivities of up to 30 factors.
 
@@ -234,13 +238,11 @@ function ADRIA.viz.rsa!(
         insert!(dist_params, loc, (1, length(unique(rs.inputs.RCP))))
     end
 
-    # comps = unique(all_comps)
-    # dc = distinguishable_colors(length(comps), [RGB(1, 1, 1), RGB(0, 0, 0)], dropseed=true)
     curr::Int64 = 1
     axs = Axis[]
     for r in 1:n_rows
         for c in 1:n_cols
-            f_name = factors[curr]
+            f_name = Symbol(factors[curr])
             ms_factor = ms[ms.fieldname .== f_name, :]
             f_vals = rs.inputs[:, f_name]
 
@@ -262,12 +264,17 @@ function ADRIA.viz.rsa!(
         end
     end
 
-    linkyaxes!(axs...)
-    Label(g[end + 1, :]; text=xlabel, fontsize=32)
-    Label(g[1:(end - 1), 0]; text=ylabel, fontsize=32, rotation=π / 2.0)
+    if n_factors > 1
+        linkyaxes!(axs...)
+        Label(g[end + 1, :]; text=xlabel, fontsize=18)
+        Label(g[1:(end - 1), 0]; text=ylabel, fontsize=18, rotation=π / 2.0)
+    else
+        axs[1].xlabel = xlabel
+        axs[1].ylabel = ylabel
+    end
 
     if :title in keys(axis_opts)
-        Label(g[0, :]; text=title_val, fontsize=40)
+        Label(g[0, :]; text=title_val, fontsize=24)
     end
 
     # Clear empty figures
@@ -276,7 +283,10 @@ function ADRIA.viz.rsa!(
     return g
 end
 function ADRIA.viz.rsa!(
-    ax::Axis, si::YAXArray, ms_factor::DataFrame, f_vals::Vector{Float64}
+    ax::Axis,
+    si::YAXArray,
+    ms_factor::DataFrame,
+    f_vals::Vector{Float64}
 )
     f_name = ms_factor.fieldname[1]
     f_type::String = ms_factor.ptype[1]
@@ -298,6 +308,7 @@ function ADRIA.viz.rsa!(
             ax.xticklabelrotation = pi / 4
         end
     end
+
     return ax
 end
 function ADRIA.viz.rsa(
@@ -316,11 +327,23 @@ function ADRIA.viz.rsa(
 end
 function ADRIA.viz.rsa(
     rs::ResultSet,
+    si::Dataset,
+    factor::Symbol;
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    return ADRIA.viz.rsa(
+        rs, si, [factor]; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
+    )
+end
+function ADRIA.viz.rsa(
+    rs::ResultSet,
     si::YAXArray,
     factor::Symbol;
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -333,8 +356,8 @@ function ADRIA.viz.rsa!(
     rs::ResultSet,
     si::YAXArray,
     factor::Symbol;
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     xlabel = get(axis_opts, :xlabel, "Factor Value")
     ylabel = get(axis_opts, :ylabel, L"\text{Relative } S_{i}")
@@ -367,10 +390,10 @@ function ADRIA.viz.rsa!(
 end
 
 """
-    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::Dataset, factors::Vector{Symbol}; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::Dataset, factors::Vector{Symbol}; opts, axis_opts)
-    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factors::Symbol; opts::Dict=Dict(), fig_opts::Dict=Dict(), axis_opts::Dict=Dict())
-    ADRIA.viz.outcome_map!(f::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Symbol; opts, axis_opts)
+    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.outcome_map(rs::ResultSet, outcomes::YAXArray, factor::Symbol; opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE())
+    ADRIA.viz.outcome_map!(g::Union{GridLayout,GridPosition}, rs::ResultSet, outcomes::YAXArray, factors::Vector{String}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
+    ADRIA.viz.outcome_map!(ax::Axis, outcomes::YAXArray, ms_factor::DataFrame, f_vals::Vector{Float64}; opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(), axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}())
 
 
 Plot outcomes mapped to factor regions for up to 30 factors.
@@ -436,7 +459,7 @@ function ADRIA.viz.outcome_map!(
     axs = Axis[]
     for r in 1:n_rows
         for c in 1:n_cols
-            f_name = factors[curr]
+            f_name = Symbol(factors[curr])
             ms_factor = ms[ms.fieldname .== f_name, :]
             f_vals = rs.inputs[:, f_name]
 
@@ -458,11 +481,11 @@ function ADRIA.viz.outcome_map!(
 
     if n_factors > 1
         linkyaxes!(axs...)
-        Label(g[n_rows + 1, :]; text=xlabel, fontsize=24)
-        Label(g[:, 0]; text=ylabel, fontsize=24, rotation=pi / 2)
+        Label(g[n_rows + 1, :]; text=xlabel, fontsize=18)
+        Label(g[:, 0]; text=ylabel, fontsize=18, rotation=pi / 2)
 
         if @isdefined(title_val)
-            Label(g[0, :]; text=title_val, fontsize=32)
+            Label(g[0, :]; text=title_val, fontsize=24)
         end
     else
         axs[1].xlabel = xlabel
@@ -487,27 +510,13 @@ function ADRIA.viz.outcome_map!(
 
     return g
 end
-function ADRIA.viz.outcome_map(
-    rs::ResultSet,
-    outcomes::Dataset,
-    factors::Vector{Symbol};
-    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
-)
-    f = Figure(; fig_opts...)
-    g = f[1, 1] = GridLayout()
-    ADRIA.viz.outcome_map!(g, rs, outcomes, factors; opts=opts, axis_opts=axis_opts)
-
-    return f
-end
 function ADRIA.viz.outcome_map!(
     ax::Axis,
     outcomes::YAXArray,
     ms_factor::DataFrame,
     f_vals::Vector{Float64};
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f_name = ms_factor.fieldname[1]
     f_type::String = ms_factor.ptype[1]
@@ -518,7 +527,6 @@ function ADRIA.viz.outcome_map!(
             ms_factor, f_name,
             collect(outcomes.axes[1])
         )
-
     else
         # Otherwise use regular quantile
         fv_s = round.(quantile(f_vals, collect(outcomes.axes[1])), digits=2)
@@ -539,56 +547,39 @@ function ADRIA.viz.outcome_map!(
             ax.xticklabelrotation = pi / 4
         end
     end
+
     return ax
 end
 function ADRIA.viz.outcome_map(
     rs::ResultSet,
-    outcomes::YAXArray,
-    factor::Symbol;
-    opts::Dict=Dict(),
-    fig_opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    si::Dataset,
+    factors::Vector{Symbol};
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    ADRIA.viz.outcome_map!(g, rs, outcomes, factor; opts=opts, axis_opts=axis_opts)
+    ADRIA.viz.outcome_map!(g, rs, outcomes, factors; opts=opts, axis_opts=axis_opts)
 
     return f
 end
-function ADRIA.viz.outcome_map!(
-    g::Union{GridLayout,GridPosition},
+function ADRIA.viz.outcome_map(
     rs::ResultSet,
-    outcomes::YAXArray,
+    outcomes::Dataset,
     factor::Symbol;
-    opts::Dict=Dict(),
-    axis_opts::Dict=Dict()
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
-    xlabel = pop!(axis_opts, :xlabel, "Factor Value")
-    ylabel = pop!(axis_opts, :ylabel, "Outcome")
-
-    f_vals = rs.inputs[:, factor]
-    ms = model_spec(rs)
-    ms_factor = ms[ms.fieldname .== factor, :]
-
-    if :title in keys(axis_opts)
-        title_val = pop!(axis_opts, :title)
-    else
-        title_val = ms_factor.name[1]
-    end
-
-    ax::Axis = Axis(
-        g[1, 1];
-        title=title_val,
-        titlesize=38,
-        xlabel=xlabel,
-        ylabel=ylabel,
-        xlabelsize=32,
-        ylabelsize=32,
-        ylabelrotation=π / 2.0,
-        axis_opts...)
-    ADRIA.viz.outcome_map!(ax, outcomes, ms_factor, f_vals)
-
-    return g
+    return ADRIA.viz.outcome_map(
+        rs,
+        outcomes,
+        [factor];
+        opts=opts,
+        fig_opts=fig_opts,
+        axis_opts=axis_opts
+    )
 end
 
 """
@@ -683,11 +674,11 @@ function _series_convergence(
 
         if n_factors > 1
             linkyaxes!(axs...)
-            Label(g[n_rows + 1, :]; text=xlabel, fontsize=24)
-            Label(g[:, 0]; text=ylabel, fontsize=24, rotation=pi / 2)
+            Label(g[n_rows + 1, :]; text=xlabel, fontsize=18)
+            Label(g[:, 0]; text=ylabel, fontsize=18, rotation=pi / 2)
 
             if @isdefined(title_val)
-                Label(g[0, :]; text=title_val, fontsize=32)
+                Label(g[0, :]; text=title_val, fontsize=24)
             end
         else
             axs[1].xlabel = xlabel

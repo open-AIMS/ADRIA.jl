@@ -47,12 +47,15 @@ function _get_factor_spec(model_spec::DataFrame, factors::Vector{Symbol})::DataF
 end
 
 """
-    _category_bins(S::Int64, foi_spec::DataFrame)::Int64
+    _category_bins(foi_spec::DataFrame)::Int64
 
 Get number of bins for categorical variables.
 
 # Arguments
 - `foi_spec` : Model specification for factors of interest
+
+# Returns
+Number of bins relevant to the factor of interest
 """
 function _category_bins(foi_spec::DataFrame)::Int64
     max_bounds = maximum(foi_spec.upper_bound .- foi_spec.lower_bound)
@@ -60,10 +63,9 @@ function _category_bins(foi_spec::DataFrame)::Int64
 end
 
 """
-    _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol,
-        steps::Vector{Float64})::Vector{Float64}
+    _get_cat_quantile(foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64})::Vector{Float64}
 
-Get quantile value for a given categorical variable.
+Get quantiles for a given categorical variable.
 
 # Arguments
 - `foi_spec` : Model specification for factors of interest
@@ -71,7 +73,7 @@ Get quantile value for a given categorical variable.
 - `steps` : Number of steps for defining bins
 
 # Returns
-- Quantile for a categorical factor.
+Quantile for a categorical factor.
 """
 function _get_cat_quantile(
     foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64}
@@ -84,8 +86,7 @@ function _get_cat_quantile(
 end
 
 """
-    _get_factor_quantile(seq_store::Dict{Symbol,Vector{Float64}},foi_spec::DataFrame,
-        fact_t::Symbol)
+    _get_factor_quantile(seq_store::Dict{Symbol,Vector{Float64}}, foi_spec::DataFrame, fact_t::Symbol)
 
 Checks the type of the factor to calculate its quantile.
 
@@ -96,35 +97,32 @@ Checks the type of the factor to calculate its quantile.
 - `factor_name` : Contains true where the factor is categorical and false otherwise
 
 # Returns
-- `X_q` : A quantile for factor `fact_t`, given bin sequences in `seq_store`
+Quantile for factor `fact_t`, given bin sequences in `seq_store`
 """
 function _get_factor_quantile(
     seq_store::Dict{Symbol,Vector{Float64}}, foi_spec::DataFrame, X_f::Vector{Float64},
     factor_name::Symbol
 )
     ptype::String = foi_spec.ptype[foi_spec.fieldname .== factor_name][1]
-
     if ptype == "unordered categorical"
         # If unordered categorical, use factor-specific binnings with categorical quantile
         seq = seq_store[factor_name]
         X_q = _get_cat_quantile(foi_spec, factor_name, seq)
-
     elseif ptype == ("ordered categorical") || (ptype == "ordered discrete")
         # If other categorical/discrete, use default binnings with categorical quantile
         seq = seq_store[:default]
         X_q = _get_cat_quantile(foi_spec, factor_name, seq)
-
     else
         # Otherwise use default binnings and regular quantile
         seq = seq_store[:default]
         X_q = quantile(X_f, seq)
     end
+
     return X_q
 end
 
 """
-    _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
-        S::Int64)::Dict{Symbol,Vector{Float64}}
+    _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol}, S::Int64)::Dict{Symbol,Vector{Float64}}
 
 Get stored bin sequences for each factor type.
 
@@ -134,11 +132,15 @@ Get stored bin sequences for each factor type.
 - `S` : Number of bins.
 
 # Returns
-- `seq_store` : A dictionary containing bin sequences for each factor
+A dictionary containing bin sequences for each factor
 """
-function _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
-    S::Int64)::Dict{Symbol,Vector{Float64}}
-    seq_store::Dict{Symbol,Vector{Float64}} = Dict() # storage for bin sequences
+function _create_seq_store(
+    model_spec::DataFrame,
+    unordered_cat::Vector{Symbol},
+    S::Int64
+)::Dict{Symbol,Vector{Float64}}
+    # Store of bin sequences
+    seq_store::Dict{Symbol,Vector{Float64}} = Dict{Symbol,Vector{Float64}}()
 
     # Get unique bin sequences for unordered categorical variables and store
     for factor in unordered_cat
@@ -153,46 +155,51 @@ function _create_seq_store(model_spec::DataFrame, unordered_cat::Vector{Symbol},
 end
 
 """
-    _create_yax_store(seq_store::Dict{Symbol,Vector{Float64}}, m_spec::DataFrame,
-        unordered_cat::Vector{Symbol}; second_dim::Union{Dim,Vector{Any}}=[])::Dataset
+    _foi_data_stores(
+        seq_store::Dict{Symbol,Vector{Float64}},
+        m_spec::DataFrame,
+        unordered_cat::Vector{Symbol};
+        second_dim::NamedTuple
+    )::Dataset
 
-Get storage containing YAXArrays of correct size for each factor.
+Generate data stores of correct size for each factor of interest.
 
 # Arguments
 - `seq_store` : Dictionary for storing bin sequences (created by `_create_seq_store`)
 - `m_spec` : Model specification
 - `unordered_cat` : List of unordered categorical variables.
-- `second_dim` : second storage dimension (e.g. Dim{:CI}(["mean","lower","upper"]))
+- `second_dim` : second storage dimension (e.g. (CI=["mean","lower","upper"], ))
 
 # Returns
-- `r_s` : Dataset containing storage for sensitivity ranges for each factor.
+Dataset containing storage for sensitivity ranges for each factor.
 """
-function _create_yax_store(
-    seq_store::Dict{Symbol,Vector{Float64}}, m_spec::DataFrame,
-    unordered_cat::Vector{Symbol}, second_dim::Dim
+function _foi_data_stores(
+    seq_store::Dict{Symbol,Vector{Float64}},
+    m_spec::DataFrame,
+    unordered_cat::Vector{Symbol},
+    second_dim::NamedTuple
 )::Dataset
-    second_dim_size = length(second_dim)
-    default_ax = (Dim{:default}(seq_store[:default][2:end]), second_dim)
+    # Associate dimension names with data
+    dim_dicts = [
+        Dict(name => seq_store[name][2:end])
+        for name in unordered_cat
+    ]
 
-    # YAXArray storage for unordered categorical variables
-    yax_store_cat = Tuple((
-        YAXArray(
-            (Dim{fact_t}(seq_store[fact_t][2:end]), second_dim),
-            zeros(
-                Union{Missing,Float64},
-                (length(seq_store[fact_t][2:end]), second_dim_size)
-            )
-        ) for fact_t in unordered_cat
+    # Create data store for unordered categorical variables
+    cat_store = Tuple((
+        ZeroDataCube(;
+            T=Union{Missing,Float64},
+            first_dim...,
+            second_dim...
+        ) for first_dim in dim_dicts
     ))
 
-    # YAXArray storage for other variables
-    yax_store_default = Tuple(
-        YAXArray(
-            default_ax,
-            zeros(
-                Union{Missing,Float64},
-                (length(seq_store[:default][2:end]), second_dim_size)
-            )
+    # Create store for other variables
+    default_store = Tuple(
+        ZeroDataCube(;
+            T=Union{Missing,Float64},
+            default=seq_store[:default][2:end],
+            second_dim...
         ) for _ in 1:(length(m_spec.fieldname) - length(unordered_cat))
     )
 
@@ -200,12 +207,13 @@ function _create_yax_store(
     r_s_default = NamedTuple(
         zip(
             Tuple(m_spec.fieldname[m_spec.ptype .!= "unordered categorical"]),
-            yax_store_default
+            default_store
         )
     )
 
-    r_s_cat = NamedTuple(zip(Tuple(unordered_cat), yax_store_cat))
+    r_s_cat = NamedTuple(zip(Tuple(unordered_cat), cat_store))
     r_s = Dataset(; merge(r_s_cat, r_s_default)...)
+
     return r_s
 end
 
@@ -533,11 +541,12 @@ function tsa(rs::ResultSet, y::AbstractMatrix{<:Real})::YAXArray
 end
 
 """
-    rsa(X::DataFrame, y::Vector{<:Real}, factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10)::Dataset
-    rsa(X::DataFrame, y::Vector{<:Real}, factor::Symbol, model_spec::DataFrame; S::Int64=10)::YAXArray
-    rsa(rs::ResultSet, y::AXArray{Float64,1}; S::Int64=10)::Dataset
-    rsa(rs::ResultSet, y::AXArray{Float64,1}, factors::Vector{Symbol}; S::Int64=10)::Dataset
-    rsa(rs::ResultSet, y::AXArray{Float64,1}, factor::Symbol; S::Int64=10)::YAXArray
+    rsa(X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64=10)::Dataset
+    rsa(r_s::YAXArray, X_q::AbstractArray, X_i::AbstractArray, y::AbstractVecOrMat{<:Real}, sel::BitVector)::YAXArray
+    rsa(X::Vector{Float64}, y::AbstractVector{<:Real}, foi_spec::DataFrame; S::Int64=10)::YAXArray
+    rsa(rs::ResultSet, y::YAXArray{Float64,1}; S::Int64=10)::Dataset
+    rsa(rs::ResultSet, y::YAXArray{Float64,1}, factors::Vector{Symbol}; S::Int64=10)::Dataset
+    rsa(rs::ResultSet, y::YAXArray{Float64,1}, factor::Symbol; S::Int64=10)::YAXArray
 
 Perform Regional Sensitivity Analysis.
 
@@ -595,7 +604,9 @@ ADRIA.sensitivity.rsa(X, y; S=10)
    Accessible at: http://www.andreasaltelli.eu/file/repository/Primer_Corrected_2022.pdf
 """
 function rsa(
-    X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame;
+    X::DataFrame,
+    y::AbstractVector{<:Real},
+    model_spec::DataFrame;
     S::Int64=10
 )::Dataset
     factors = Symbol.(names(X))
@@ -611,7 +622,7 @@ function rsa(
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
 
     # Create storage for sensitivities.
-    r_s = _create_yax_store(seq_store, foi_spec, unordered_cat, Dim{:Si}(["Si"]))
+    r_s::Dataset = _foi_data_stores(seq_store, foi_spec, unordered_cat, (Si=["Si"], ))
 
     for fact_t in factors
         X_i .= X[:, fact_t]
@@ -622,7 +633,10 @@ function rsa(
     return r_s
 end
 function rsa(
-    r_s::YAXArray, X_q::AbstractArray, X_i::AbstractArray, y::AbstractVecOrMat{<:Real},
+    r_s::YAXArray,
+    X_q::AbstractArray,
+    X_i::AbstractArray,
+    y::AbstractVecOrMat{<:Real},
     sel::BitVector
 )::YAXArray
     if length(unique(X_i)) == 1
@@ -651,10 +665,13 @@ function rsa(
         end
         normalize!(r_s)
     end
+
     return r_s
 end
 function rsa(
-    X::Vector{Float64}, y::AbstractVector{<:Real}, foi_spec::DataFrame;
+    X::Vector{Float64},
+    y::AbstractVector{<:Real},
+    foi_spec::DataFrame;
     S::Int64=10
 )::YAXArray
     factor = foi_spec.fieldname[1]
@@ -667,13 +684,9 @@ function rsa(
     # Get bin sequence and quantile
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
 
-    # Set up YAX storage
+    # Set up result store
     seq = seq_store[collect(keys(seq_store))[1]][2:end]
-    axs = (
-        Dim{factor}(seq),
-        Dim{:Si}(["Si"])
-    )
-    r_s = YAXArray(axs, zeros(Union{Missing,Float64}, length(seq), 1))
+    r_s = ZeroDataCube(; T=Union{Missing,Float64}, factor=seq, Si=["Si"])
 
     X_q = _get_factor_quantile(seq_store, foi_spec, X, factor)
 
@@ -681,24 +694,26 @@ function rsa(
         r_s, X_q, X, y, sel
     )
 end
-function rsa(
-    rs::ResultSet, y::YAXArray{Float64,1}; S::Int64=10
-)::Dataset
+function rsa(rs::ResultSet, y::YAXArray{Float64,1}; S::Int64=10)::Dataset
     return rsa(rs.inputs[!, Not(:RCP)], vec(y), rs.model_spec; S=S)
 end
 function rsa(
-    rs::ResultSet, y::YAXArray{Float64,1}, factors::Vector{Symbol};
+    rs::ResultSet,
+    y::YAXArray{Float64,1},
+    factors::Vector{Symbol};
     S::Int64=10
 )::Dataset
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
         vec(y),
-        rs.model_spec[rs.model_spec.fieldname .∈ [factors], :];
+        rs.model_spec[rs.model_spec.fieldname .∈ factors, :];
         S=S
     )
 end
 function rsa(
-    rs::ResultSet, y::YAXArray{Float64,1}, factor::Symbol;
+    rs::ResultSet,
+    y::YAXArray{Float64,1},
+    factor::Symbol;
     S::Int64=10
 )::YAXArray
     return rsa(
@@ -710,15 +725,13 @@ function rsa(
 end
 
 """
-    outcome_map(X::DataFrame, y::AbstractVecOrMat{<:Real}, rule::Union{Function,BitVector,Vector{Int64}},
-        target_factor::Symbol, model_spec::DataFrame; S::Int64=20, n_boot::Int64=100,
-        conf::Float64=0.95)::YAXArray
-    outcome_map(rs::ResultSet, y::AbstractArray{<:Real}, rule::Union{Function,BitVector,Vector{Int64}},
-        target_factors::Vector{Symbol}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
-    outcome_map(rs::ResultSet, y::AXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}},
-        target_factor::Symbol; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray
-    outcome_map(rs::ResultSet, y::AXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}};
-        S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
+    outcome_map(p::YAXArray, X_q::AbstractArray, X_f::AbstractArray, y::AbstractVecOrMat{<:Real}, behave::BitVector; n_boot::Int64=100, conf::Float64=0.95)::YAXArray
+    outcome_map(X::DataFrame, y::AbstractVecOrMat{<:Real}, rule::Union{Function,BitVector,Vector{Int64}}, target_factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10, n_boot::Int64=100, conf::Float64=0.95)::Dataset
+    outcome_map(X::DataFrame, y::AbstractVecOrMat{<:Real}, rule::Union{Function,BitVector,Vector{Int64}}, target_factor::Symbol, model_spec::DataFrame; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray
+    outcome_map(X::DataFrame, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
+    outcome_map(rs::ResultSet, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}, target_factors::Vector{Symbol}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
+    outcome_map(rs::ResultSet, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}, target_factor::Symbol; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray
+    outcome_map(rs::ResultSet, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
 
 Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
 
@@ -822,14 +835,14 @@ function outcome_map(
     seq_store = _create_seq_store(foi_spec, unordered_cat, S)
 
     # Create storage for sensitivities.
-    p = _create_yax_store(
-        seq_store, foi_spec, unordered_cat, Dim{:CI}(["mean", "lower", "upper"])
+    pawn_results::Dataset = _foi_data_stores(
+        seq_store, foi_spec, unordered_cat, (CI=["mean", "lower", "upper"], )
     )
 
     all_p_rule = _map_outcomes(y, rule)
     if length(all_p_rule) == 0
         @warn "No results conform to specified rule."
-        return p
+        return pawn_results
     end
 
     # Identify behavioural
@@ -840,12 +853,12 @@ function outcome_map(
         X_f .= X[:, fact_t]
         X_q = _get_factor_quantile(seq_store, foi_spec, X_f, fact_t)
 
-        p[fact_t] .= outcome_map(
-            p[fact_t], X_q, X_f, y, behave; n_boot=n_boot, conf=conf
+        pawn_results[fact_t] .= outcome_map(
+            pawn_results[fact_t], X_q, X_f, y, behave; n_boot=n_boot, conf=conf
         )
     end
 
-    return p
+    return pawn_results
 end
 function outcome_map(
     X::DataFrame,
@@ -857,37 +870,8 @@ function outcome_map(
     n_boot::Int64=100,
     conf::Float64=0.95
 )::YAXArray
-    all_p_rule = _map_outcomes(y, rule)
-    if length(all_p_rule) == 0
-        @warn "No results conform to specified rule."
-        return p
-    end
-
-    # Identify behavioural
-    n_scens = size(X, 1)
-    behave::BitVector = falses(n_scens)
-    behave[all_p_rule] .= true
-
-    # Factor model spec and check if unordered categorical type
-    foi_spec = _get_factor_spec(model_spec, [target_factor])
-    unordered_cat = foi_spec.fieldname[foi_spec.ptype .== "unordered categorical"]
-
-    # Get bin sequence and quantile
-    seq_store = _create_seq_store(foi_spec, unordered_cat, S)
-
-    # Set up YAX storage
-    seq = seq_store[collect(keys(seq_store))[1]][2:end]
-    axs = (
-        Dim{target_factor}(seq),
-        Dim{:CI}(["mean", "lower", "upper"])
-    )
-    p = YAXArray(axs, zeros(Union{Missing,Float64}, length(seq), 3))
-
-    X_f = X[:, target_factor]
-    X_q = _get_factor_quantile(seq_store, foi_spec, X_f, target_factor)
-
     return outcome_map(
-        p, X_q, X_f, y, behave; n_boot=n_boot, conf=conf
+        X, y, rule, [target_factor], model_spec; S=S, n_boot=n_boot, conf=conf
     )
 end
 function outcome_map(
@@ -910,7 +894,13 @@ function outcome_map(
     conf::Float64=0.95
 )::Dataset
     return outcome_map(
-        rs.inputs[:, Not(:RCP)], vec(y), rule, target_factors, rs.model_spec; S, n_boot,
+        rs.inputs[:, Not(:RCP)],
+        vec(y),
+        rule,
+        target_factors,
+        rs.model_spec;
+        S,
+        n_boot,
         conf
     )
 end
@@ -924,7 +914,14 @@ function outcome_map(
     conf::Float64=0.95
 )::YAXArray
     return outcome_map(
-        rs.inputs[:, Not(:RCP)], vec(y), rule, target_factor, rs.model_spec; S, n_boot, conf
+        rs.inputs[:, Not(:RCP)],
+        vec(y),
+        rule,
+        [target_factor],
+        rs.model_spec;
+        S,
+        n_boot,
+        conf
     )
 end
 function outcome_map(
@@ -936,10 +933,34 @@ function outcome_map(
     conf::Float64=0.95
 )::Dataset
     return outcome_map(
-        rs.inputs[:, Not(:RCP)], vec(y), rule, names(rs.inputs), rs.model_spec; S, n_boot,
+        rs.inputs[:, Not(:RCP)],
+        vec(y),
+        rule,
+        names(rs.inputs),
+        rs.model_spec;
+        S,
+        n_boot,
         conf
     )
 end
+
+"""
+    _map_outcomes(y::AbstractVecOrMat{<:Real}, rule::Union{BitVector,Vector{Int64}})::Union{BitVector,Vector{Int64}}
+    _map_outcomes(y::AbstractVecOrMat{<:Real}, rule::Function)::Vector{Int64}
+
+Apply rule to create mapping between \$X\$ (model inputs/parameters/factors) and
+\$y\$ (model outcomes).
+
+# Note
+Where the rule is a vector indicating true/false, the `y` argument is ignored.
+The function accepts the `y` argument simply to maintain compatibility so the same method
+name can be applied.
+
+# Arguments
+- `y` : Model outputs/outcomes
+- `rule` : BitVector, or Function that returns a BitVector, indicating outcomes that meet
+           some desired threshold/behavior.
+"""
 function _map_outcomes(
     y::AbstractVecOrMat{<:Real},
     rule::Union{BitVector,Vector{Int64}}

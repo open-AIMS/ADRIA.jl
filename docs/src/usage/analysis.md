@@ -446,6 +446,7 @@ rsa_fig = ADRIA.viz.rsa(
     opts,
     fig_opts
 )
+
 save("rsa.png", rsa_fig)
 ```
 
@@ -459,27 +460,26 @@ As the name implies, outcome mapping aids in identifying the relationship betwee
 outputs and the region of factor space that led to those outputs.
 
 ```julia
-
 mean_s_tac = dropdims(mean(s_tac), dims=1)
 
 tf = Figure(size=(1600, 1200))  # size of figure
 
 # Indicate factor values that are in the top 50 percentile
-tac_om_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
+tac_top_50 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.5), foi; S=20)
 ADRIA.viz.outcome_map!(
     tf[1, 1],
     rs,
-    tac_om_50,
+    tac_top_50,
     foi;
     axis_opts=Dict(:title => "Regions which lead to Top 50th Percentile Outcomes", :ylabel => "TAC [m²]")
 )
 
 # Indicate factor values that are in the top 30 percentile
-tac_om_70 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20)
+tac_top_30 = ADRIA.sensitivity.outcome_map(rs, mean_s_tac, x -> any(x .>= 0.7), foi; S=20)
 ADRIA.viz.outcome_map!(
     tf[2, 1],
     rs,
-    tac_om_70,
+    tac_top_30,
     foi;
     axis_opts=Dict(:title => "Regions which lead to Top 30th Percentile Outcomes", :ylabel => "TAC [m²]"))
 
