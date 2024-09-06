@@ -79,8 +79,6 @@ You can also opt to specify some custom [build arguments](https://docs.docker.co
 
 See the [docker-compose.yaml](./docker-compose.yaml) file for an example of how to specify build arguments in docker compose.
 
-&nbsp;
-
 ### Running `adria-base` with a non-interactive Julia command
 
 e.g. to list the packages installed in the `@adria` shared environment:
@@ -92,8 +90,6 @@ docker compose run --rm adria-base --project=@adria -e 'using Pkg; Pkg.status()'
 # OR using just docker run:
 docker run --rm ADRIA.jl/adria-base:latest --project=@adria -e 'using Pkg; Pkg.status()'
 ```
-
-&nbsp;
 
 ### Running `adria-base` as an interactive Julia shell
 
@@ -109,8 +105,6 @@ docker run --rm --interactive --tty ADRIA.jl/adria-base:latest
 
 In both cases, type `CTRL-d` to exit the shell and stop the container.
 
-&nbsp;
-
 ### Running `adria-base` with a non-Julia entrypoint
 
 If you want to use this image to run something _other_ than a Julia command, you can specify an alternate entrypoint at runtime as well as an alternate command. e.g. to launch an interactive `bash` shell in the container for checking filesystem permissions or similar:
@@ -123,8 +117,6 @@ docker compose run --rm --entrypoint /bin/bash adria-base
 docker run --rm --interactive --tty --entrypoint /bin/bash ADRIA.jl/adria-base:latest
 ```
 
-&nbsp;
-
 ### Deriving an image from `adria-base`
 
 To make a derived ADRIA application:
@@ -133,8 +125,6 @@ To make a derived ADRIA application:
 - Include a `CMD` line in your Dockerfile that provides appropriate arguments to the `julia` command line to invoke your application.
 
 The section of the [Dockerfile](./Dockerfile) that defines the `adria-sandbox` target described below might be useful inspiration.
-
-&nbsp;
 
 ---
 
@@ -162,8 +152,6 @@ docker build --target "adria-dev" --tag ADRIA.jl/adria-dev:latest .
 
 The same `JULIA_VERSION` build argument that works with `adria-base` will also work with `adria-dev`.
 
-&nbsp;
-
 ### Running `adria-dev` as an interactive Julia shell
 
 Very useful for running commands to update Package manifests and similar!
@@ -182,8 +170,6 @@ docker run --rm --interactive --tty \
 
 In both cases, type `CTRL-d` to exit the shell and stop the container.
 
-&nbsp;
-
 ---
 
 ### Running ADRIA tests with `adria-dev`
@@ -201,8 +187,6 @@ docker run --rm ADRIA.jl/adria-dev:latest --project=. -e 'using Pkg; Pkg.test();
 ```
 
 This method of running tests is suitable to use in a containerised continuous integration pipeline.
-
-&nbsp;
 
 ---
 
@@ -227,8 +211,6 @@ docker compose build adria-sandbox
 # OR using just `docker build`:
 docker build --build-arg SANDBOX_FROM=adria-dev --target "adria-sandbox" --tag ADRIA.jl/adria-sandbox:latest .
 ```
-
-&nbsp;
 
 ### Running `adria-sandbox`
 
@@ -258,8 +240,6 @@ docker run --rm \
 
 The `dev.jl` script should run with any files you have provided in your input volume, and will
 create and output files in your output volume. The container will be removed once the script completes.
-
-&nbsp;
 
 ### Interacting with `adria-sandbox`
 
