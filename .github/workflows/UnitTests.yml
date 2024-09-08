@@ -3,6 +3,7 @@ on:
   # Trigger manually or on merge to main
   push:
     branches:
+      - feat/caching-and-restoring-unit-tests
       - main
   workflow_dispatch:
 
