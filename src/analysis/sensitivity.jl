@@ -605,10 +605,10 @@ ADRIA.sensitivity.rsa(X, y; S=10)
 """
 function rsa(
     X::DataFrame,
-    y::AbstractVector{<:Real},
+    y::AbstractVector{T},
     model_spec::DataFrame;
     S::Int64=10
-)::Dataset
+)::Dataset where {T<:Real}
     factors = Symbol.(names(X))
     N, D = size(X)
 
@@ -670,10 +670,10 @@ function rsa(
 end
 function rsa(
     X::Vector{Float64},
-    y::AbstractVector{<:Real},
+    y::AbstractVector{T},
     foi_spec::DataFrame;
     S::Int64=10
-)::YAXArray
+)::YAXArray where {T<:Real}
     factor = foi_spec.fieldname[1]
     N = length(X)
     sel = trues(N)
@@ -694,15 +694,15 @@ function rsa(
         r_s, X_q, X, y, sel
     )
 end
-function rsa(rs::ResultSet, y::YAXArray{Float64,1}; S::Int64=10)::Dataset
+function rsa(rs::ResultSet, y::AbstractVector{T}; S::Int64=10)::Dataset where {T<:Real}
     return rsa(rs.inputs[!, Not(:RCP)], vec(y), rs.model_spec; S=S)
 end
 function rsa(
     rs::ResultSet,
-    y::YAXArray{Float64,1},
+    y::AbstractVector{T},
     factors::Vector{Symbol};
     S::Int64=10
-)::Dataset
+)::Dataset where {T<:Real}
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factors],
         vec(y),
@@ -712,10 +712,10 @@ function rsa(
 end
 function rsa(
     rs::ResultSet,
-    y::YAXArray{Float64,1},
+    y::AbstractVector{T},
     factor::Symbol;
     S::Int64=10
-)::YAXArray
+)::YAXArray where {T<:Real}
     return rsa(
         rs.inputs[!, Not(:RCP)][!, factor],
         vec(y),
