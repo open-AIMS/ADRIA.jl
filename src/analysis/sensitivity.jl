@@ -544,9 +544,9 @@ end
     rsa(X::DataFrame, y::AbstractVector{<:Real}, model_spec::DataFrame; S::Int64=10)::Dataset
     rsa(r_s::YAXArray, X_q::AbstractArray, X_i::AbstractArray, y::AbstractVecOrMat{<:Real}, sel::BitVector)::YAXArray
     rsa(X::Vector{Float64}, y::AbstractVector{<:Real}, foi_spec::DataFrame; S::Int64=10)::YAXArray
-    rsa(rs::ResultSet, y::YAXArray{Float64,1}; S::Int64=10)::Dataset
-    rsa(rs::ResultSet, y::YAXArray{Float64,1}, factors::Vector{Symbol}; S::Int64=10)::Dataset
-    rsa(rs::ResultSet, y::YAXArray{Float64,1}, factor::Symbol; S::Int64=10)::YAXArray
+    rsa(rs::ResultSet, y::AbstractVector{T}; S::Int64=10)::Dataset where {T<:Real}
+    rsa(rs::ResultSet, y::AbstractVector{T}, factors::Vector{Symbol}; S::Int64=10)::Dataset where {T<:Real}
+    rsa(rs::ResultSet, y::AbstractVector{T}, factor::Symbol; S::Int64=10)::YAXArray where {T<:Real}
 
 Perform Regional Sensitivity Analysis.
 
@@ -728,10 +728,10 @@ end
     outcome_map(p::YAXArray, X_q::AbstractArray, X_f::AbstractArray, y::AbstractVecOrMat{<:Real}, behave::BitVector; n_boot::Int64=100, conf::Float64=0.95)::YAXArray
     outcome_map(X::DataFrame, y::AbstractVecOrMat{<:Real}, rule::Union{Function,BitVector,Vector{Int64}}, target_factors::Vector{Symbol}, model_spec::DataFrame; S::Int64=10, n_boot::Int64=100, conf::Float64=0.95)::Dataset
     outcome_map(X::DataFrame, y::AbstractVecOrMat{<:Real}, rule::Union{Function,BitVector,Vector{Int64}}, target_factor::Symbol, model_spec::DataFrame; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray
-    outcome_map(X::DataFrame, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
-    outcome_map(rs::ResultSet, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}, target_factors::Vector{Symbol}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
-    outcome_map(rs::ResultSet, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}, target_factor::Symbol; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray
-    outcome_map(rs::ResultSet, y::YAXArray{Float64,1}, rule::Union{Function,BitVector,Vector{Int64}}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset
+    outcome_map(X::DataFrame, y::AbstractVector{T}, rule::Union{Function,BitVector,Vector{Int64}}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset where {T<:Real}
+    outcome_map(rs::ResultSet, y::AbstractVector{T}, rule::Union{Function,BitVector,Vector{Int64}}, target_factors::Vector{Symbol}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset where {T<:Real}
+    outcome_map(rs::ResultSet, y::AbstractVector{T}, rule::Union{Function,BitVector,Vector{Int64}}, target_factor::Symbol; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::YAXArray where {T<:Real}
+    outcome_map(rs::ResultSet, y::AbstractVector{T}, rule::Union{Function,BitVector,Vector{Int64}}; S::Int64=20, n_boot::Int64=100, conf::Float64=0.95)::Dataset where {T<:Real}
 
 Map normalized outcomes (defined by `rule`) to factor values discretized into `S` bins.
 
@@ -876,23 +876,23 @@ function outcome_map(
 end
 function outcome_map(
     X::DataFrame,
-    y::YAXArray{Float64,1},
+    y::AbstractVector{T},
     rule::Union{Function,BitVector,Vector{Int64}};
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95
-)::Dataset
+)::Dataset where {T<:Real}
     return outcome_map(X, vec(y), rule, names(X); S, n_boot, conf)
 end
 function outcome_map(
     rs::ResultSet,
-    y::YAXArray{Float64,1},
+    y::AbstractVector{T},
     rule::Union{Function,BitVector,Vector{Int64}},
     target_factors::Vector{Symbol};
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95
-)::Dataset
+)::Dataset where {T<:Real}
     return outcome_map(
         rs.inputs[:, Not(:RCP)],
         vec(y),
@@ -906,13 +906,13 @@ function outcome_map(
 end
 function outcome_map(
     rs::ResultSet,
-    y::YAXArray{Float64,1},
+    y::AbstractVector{T},
     rule::Union{Function,BitVector,Vector{Int64}},
     target_factor::Symbol;
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95
-)::YAXArray
+)::YAXArray where {T<:Real}
     return outcome_map(
         rs.inputs[:, Not(:RCP)],
         vec(y),
@@ -926,12 +926,12 @@ function outcome_map(
 end
 function outcome_map(
     rs::ResultSet,
-    y::YAXArray{Float64,1},
+    y::AbstractVector{T},
     rule::Union{Function,BitVector,Vector{Int64}};
     S::Int64=20,
     n_boot::Int64=100,
     conf::Float64=0.95
-)::Dataset
+)::Dataset where {T<:Real}
     return outcome_map(
         rs.inputs[:, Not(:RCP)],
         vec(y),
