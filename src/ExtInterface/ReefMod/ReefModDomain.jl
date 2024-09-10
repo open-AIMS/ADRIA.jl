@@ -222,15 +222,16 @@ function load_initial_cover(
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
-    size_class_weights = (cdf_integral[:, 2:end] .- cdf_integral[:, 1:(end-1)])
-    size_class_weights = size_class_weights ./ sum(size_class_weights, dims=2)
+    size_class_weights = (cdf_integral[:, 2:end] .- cdf_integral[:, 1:(end - 1)])
+    size_class_weights = size_class_weights ./ sum(size_class_weights; dims=2)
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
     # Convert from percent to relative values.
     # YAXArray ordering is [time ⋅ location ⋅ scenario]
-    icc_data = (
-        (dropdims(mean(init_cc_per_taxa; dims=:scenario); dims=:scenario)) ./ 100.0
-    ).data
+    icc_data =
+        (
+            (dropdims(mean(init_cc_per_taxa; dims=:scenario); dims=:scenario)) ./ 100.0
+        ).data
     # Repeat species over each size class and reshape to give ADRIA compatible size
     # [(n_groups × n_sizes) ⋅ n_locs]
     # Multiply by size class weights to give initial cover distribution over each size class.
@@ -246,7 +247,7 @@ function load_initial_cover(
 
     # Convert values relative to absolute area to values relative to k area
     icc_data = icc_data ./ site_data.k'
-    icc_data_sum = dropdims(sum(icc_data, dims=1), dims=1)
+    icc_data_sum = dropdims(sum(icc_data; dims=1); dims=1)
     if any(icc_data_sum .> 1.0)
         msg = "Initial cover exceeds habitable area, "
         msg *= "there is most likely an issue with the data package. Constraining to 1.0"
@@ -254,7 +255,7 @@ function load_initial_cover(
         icc_data[:, icc_data_sum .> 1.0] ./= icc_data_sum[icc_data_sum .> 1.0]'
     end
 
-    return DataCube(icc_data; species=1:(n_groups*n_sizes), locs=loc_ids)
+    return DataCube(icc_data; species=1:(n_groups * n_sizes), locs=loc_ids)
 end
 
 """
