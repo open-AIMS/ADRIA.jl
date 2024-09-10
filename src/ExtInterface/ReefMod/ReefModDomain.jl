@@ -194,15 +194,24 @@ end
 function load_initial_cover(
     ::Type{ReefModDomain},
     dom_data::Dataset,
-    location_data::DataFrame,
+    site_data::DataFrame,
     loc_ids::Vector{String},
     init_yr::Int=2022
 )::YAXArray
     if !haskey(dom_data.cubes, :coral_cover_per_taxa)
         @error "coral_cover_per_taxa variable not found in ReefMod data"
     end
-    init_cc_per_taxa::YAXArray = Cube(dom_data[["coral_cover_per_taxa"]])[time=At(init_yr)]
 
+    c_axes = caxes(dom_data.coral_cover_per_taxa)
+    init_cc_per_taxa::YAXArray = DataCube(
+        read(dom_data.coral_cover_per_taxa);
+        timestep=Int64.(collect(c_axes[1])),
+        location=Int64.(collect(c_axes[2])),
+        group=Int64.(collect(c_axes[3])),
+        scenario=Int64.(collect(c_axes[4]))
+    )[timestep=At(init_yr)]
+
+    init_cc_per_taxa = init_cc_per_taxa[group=At(2:6)]
     # The following class weight calculations are taken from ReefModEngine Domain calculation
 
     # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
@@ -213,24 +222,36 @@ function load_initial_cover(
 
     # Find integral density between bounds of each size class areas to create weights for each size class.
     cdf_integral = cdf.(reef_mod_area_dist, bin_edges_area)
-    size_class_weights = (cdf_integral[2:end] .- cdf_integral[1:(end - 1)])
-    size_class_weights = size_class_weights ./ sum(size_class_weights)
+    size_class_weights = (cdf_integral[:, 2:end] .- cdf_integral[:, 1:(end-1)])
+    size_class_weights = size_class_weights ./ sum(size_class_weights, dims=2)
 
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
     # Convert from percent to relative values.
     # YAXArray ordering is [time ⋅ location ⋅ scenario]
     icc_data =
         ((dropdims(mean(init_cc_per_taxa; dims=:scenario); dims=:scenario)) ./ 100.0).data
-
-    # Repeat species over each size class and reshape to give ADRIA compatible size (36 * n_locs).
+    # Repeat species over each size class and reshape to give ADRIA compatible size
+    # [(n_groups × n_sizes) ⋅ n_locs]
     # Multiply by size class weights to give initial cover distribution over each size class.
-    icc_data = Matrix(hcat(reduce.(vcat, eachrow(icc_data .* [size_class_weights]))...))
+    n_sizes = size(size_class_weights, 2)
+    n_groups = size(size_class_weights, 1)
+    n_locs = size(icc_data, 1)
+    icc_data = icc_data .* reshape(size_class_weights, (1, n_groups, n_sizes))
+    # Reshape and Permute icc_data from
+    # [n_locs ⋅ n_groups ⋅ n_sizes] to [(n_groups × n_sizes) ⋅ n_locs]
+    icc_data = reshape(
+        permutedims(icc_data, (3, 2, 1)), (n_sizes * n_groups, n_locs)
+    )
 
     # Convert values relative to absolute area to values relative to k area
-    icc_data = _convert_abs_to_k(icc_data, location_data)
+    icc_data = icc_data ./ site_data.k'
+    icc_data_sum = dropdims(sum(icc_data, dims=1), dims=1)
+    if any(icc_data_sum .> 1.0)
+        @warn "Initial cover exceeds habitable area, there is most likely an issue with the data package. Constraining to 1.0"
+        icc_data[:, icc_data_sum .> 1.0] ./= icc_data_sum[icc_data_sum .> 1.0]'
+    end
 
-    n_species = length(init_cc_per_taxa[location=1, group=:, scenario=1])
-    return DataCube(icc_data; species=1:(n_species * 6), locs=loc_ids)
+    return DataCube(icc_data; species=1:(n_groups*n_sizes), locs=loc_ids)
 end
 
 """
