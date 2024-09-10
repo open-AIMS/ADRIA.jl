@@ -228,8 +228,9 @@ function load_initial_cover(
     # Take the mean over repeats, as suggested by YM (pers comm. 2023-02-27 12:40pm AEDT).
     # Convert from percent to relative values.
     # YAXArray ordering is [time ⋅ location ⋅ scenario]
-    icc_data =
-        ((dropdims(mean(init_cc_per_taxa; dims=:scenario); dims=:scenario)) ./ 100.0).data
+    icc_data = (
+        (dropdims(mean(init_cc_per_taxa; dims=:scenario); dims=:scenario)) ./ 100.0
+    ).data
     # Repeat species over each size class and reshape to give ADRIA compatible size
     # [(n_groups × n_sizes) ⋅ n_locs]
     # Multiply by size class weights to give initial cover distribution over each size class.
