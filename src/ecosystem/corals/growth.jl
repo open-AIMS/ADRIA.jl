@@ -469,6 +469,21 @@ function breeders(μ_o::T, μ_s::T, h²::T)::T where {T<:Float64}
     return μ_o + ((μ_s - μ_o) * h²)
 end
 
+function _weighted_sum(
+    values::AbstractVector{T},
+    weights::AbstractVector{T}
+)::T where {T<:AbstractFloat}
+    sum_weighted = zero(T)
+    sum_weights = zero(T)
+
+    @inbounds for i in eachindex(values, weights)
+        sum_weighted += values[i] * weights[i]
+        sum_weights += weights[i]
+    end
+
+    return sum_weighted / sum_weights
+end
+
 """
     _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{F})::Nothing where {F<:Float64}
 
