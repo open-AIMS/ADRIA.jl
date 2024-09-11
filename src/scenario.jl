@@ -411,7 +411,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})::Nam
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
     _bin_edges::Matrix{Float64} = bin_edges()
-    functional_groups = [
+    functional_groups = Vector{FunctionalGroup}[
         FunctionalGroup.(
             eachrow(_bin_edges[:, 1:(end - 1)]),
             eachrow(_bin_edges[:, 2:end]),
@@ -425,6 +425,7 @@ function run_model(
     param_set::DataFrameRow,
     functional_groups::Vector{Vector{FunctionalGroup}}
 )::NamedTuple
+    setup()
     ps = DataCube(Vector(param_set); factors=names(param_set))
     return run_model(domain, ps, functional_groups)
 end
@@ -531,8 +532,9 @@ function run_model(
     loc_cover_cache = zeros(n_locs)
 
     # Locations that can support corals
+    vec_abs_k = site_k_area(domain)
     habitable_locs::BitVector = location_k(domain) .> 0.0
-    habitable_loc_areas = site_k_area(domain)[habitable_locs]
+    habitable_loc_areas = vec_abs_k[habitable_locs]
     habitable_loc_areas′ = reshape(habitable_loc_areas, (1, 1, length(habitable_locs)))
 
     # Avoid placing importance on sites that were not considered
@@ -671,7 +673,7 @@ function run_model(
     p.r .= _to_group_size(domain.coral_growth, corals.growth_rate)
     p.mb .= _to_group_size(domain.coral_growth, corals.mb_rate)
 
-    area_weighted_conn = conn .* site_k_area(domain)
+    area_weighted_conn = conn .* vec_abs_k
     conn_cache = similar(area_weighted_conn.data)
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
@@ -692,7 +694,7 @@ function run_model(
     # Empty the old contents of the buffers and add the new blocks
     cover_view = [@view C_cover[1, :, :, loc] for loc in 1:n_locs]
     functional_groups = reuse_buffers!.(
-        functional_groups, (cover_view .* vec(loc_k_area))
+        functional_groups, (cover_view .* vec_abs_k)
     )
 
     # Preallocate memory for temporaries
@@ -737,7 +739,7 @@ function run_model(
             )
 
             # Write to the cover matrix
-            coral_cover(functional_groups[i], @view(C_cover_t[:, :, i]))
+            coral_cover(functional_groups[i], view(C_cover_t, :, :, i))
         end
 
         # Check if size classes are inappropriately out-growing habitable area
@@ -746,14 +748,15 @@ function run_model(
         ) "Cover outgrowing habitable area"
 
         # Convert C_cover_t to relative values after CoralBlox was run
-        C_cover_t[:, :, habitable_locs] .=
-            C_cover_t[:, :, habitable_locs] ./ habitable_loc_areas′
+        C_cover_t[:, :, habitable_locs] .= (
+            view(C_cover_t, :, :, habitable_locs) ./ habitable_loc_areas′
+        )
         C_cover[tstep, :, :, habitable_locs] .= C_cover_t[:, :, habitable_locs]
 
         # Natural adaptation (doesn't change C_cover_t)
         if tstep <= tf
             adjust_DHW_distribution!(
-                @view(C_cover[(tstep - 1), :, :, :]), c_mean_t, p.r
+                view(C_cover, (tstep - 1), :, :, :), c_mean_t, p.r
             )
 
             # Set values for t to t-1
@@ -772,7 +775,7 @@ function run_model(
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, loc_k_area)
 
         loc_coral_cover = _loc_coral_cover(C_cover_t)
-        leftover_space_m² = relative_leftover_space(loc_coral_cover) .* loc_k_area'
+        leftover_space_m² = relative_leftover_space(loc_coral_cover) .* vec_abs_k
 
         # Reset potential settlers to zero
         potential_settlers .= 0.0
@@ -780,7 +783,7 @@ function run_model(
 
         # Recruitment represents additional cover, relative to total site area
         # Recruitment/settlement occurs after the full moon in October/November
-        recruitment[:, habitable_locs] .=
+        @views recruitment[:, habitable_locs] .=
             settler_cover(
                 fec_scope,
                 conn,
@@ -796,7 +799,7 @@ function run_model(
         settler_DHW_tolerance!(
             c_mean_t_1,
             c_mean_t,
-            vec(loc_k_area),
+            vec_abs_k,
             TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
             fec_params_per_m²,
@@ -930,7 +933,7 @@ function run_model(
             seed_locs = findall(log_location_ranks.locations .∈ [selected_seed_ranks])
             seed_corals!(
                 C_cover_t,
-                vec(loc_k_area),
+                vec_abs_k,
                 vec(leftover_space_m²),
                 seed_locs,  # use location indices
                 seeded_area,
