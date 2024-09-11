@@ -509,17 +509,19 @@ function _shift_distributions!(
     # Weight distributions based on growth rate and cover
     # Do from largest size class to size class 2
     # (values for size class 1 gets replaced by recruitment process)
+    prop_growth = MVector{2, F}(0.0,0.0)
     for i in length(growth_rate):-1:2
         # Skip size class if nothing is moving up
-        sum(@view(cover[(i - 1):i])) == 0.0 ? continue : false
+        sum(view(cover, (i - 1):i)) == 0.0 ? continue : false
 
-        prop_growth = @views (cover[(i - 1):i] ./ sum(cover[(i - 1):i])) .*
+        prop_growth .= @views (cover[(i - 1):i] ./ sum(cover[(i - 1):i])) .*
             (growth_rate[(i - 1):i] ./ sum(growth_rate[(i - 1):i]))
         if sum(prop_growth) == 0.0
             continue
         end
 
-        dist_t[i] = sum(@view(dist_t[(i - 1):i]), Weights(prop_growth ./ sum(prop_growth)))
+        # Weighted sum
+        dist_t[i] = (dist_t[i-1] * prop_growth[1] + dist_t[i] * prop_growth[2]) / sum(prop_growth)
     end
 
     return nothing
