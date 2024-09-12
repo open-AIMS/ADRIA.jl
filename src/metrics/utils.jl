@@ -3,11 +3,12 @@
 
 Get name of metric as a string.
 """
-function to_string(m::Metric)::String
-    return to_string(m.func)
+function to_string(m::Metric; is_titlecase=false)::String
+    return to_string(m.func; is_titlecase=is_titlecase)
 end
-function to_string(f::Function)::String
-    return join(split(String(Symbol(f))[2:end], "_"), " ")
+function to_string(f::Function; is_titlecase=false)::String
+    metric_string::String = join(split(String(Symbol(f))[2:end], "_"), " ")
+    return is_titlecase ? titlecase(metric_string) : metric_string
 end
 
 """
@@ -41,6 +42,15 @@ function metric_label(f::Function, unit::String)::String
     end
 
     return n
+end
+
+"""
+    axes_units(axes_names::Tuple)::Tuple
+
+Units for each metric axis.
+"""
+function axes_units(axes_names::Tuple)::Tuple
+    return values((timesteps="year", species="", locations="", scenarios="")[axes_names])
 end
 
 """
@@ -79,6 +89,23 @@ function call_metric(metric::Union{Function,Metric}, data::YAXArray, args...; kw
     else
         return metric(slice_results(data; kwargs...), args...; dims=dims)
     end
+end
+
+"""
+    fill_axes_properties(datacube::YAXArray)::YAXArray
+
+Fill :axes_names and :axes_units properties of datacube
+
+# Arguments
+- `datacube` : YAXArray datacube
+"""
+function fill_axes_properties(datacube::YAXArray)::YAXArray
+    _axes_names::Tuple = axes_names(datacube)
+    datacube.properties[:axes_names] = parentmodule(metrics).human_readable_name(
+        _axes_names
+    )
+    datacube.properties[:axes_units] = axes_units(_axes_names)
+    return datacube
 end
 
 """

@@ -1,6 +1,7 @@
 """
     human_readable_name(names::Vector{String}, title_case::Bool)::Vector{String}
     human_readable_name(names::Vector{Symbol}, title_case::Bool)::Vector{String}
+    human_readable_name(name::NTuple{Symbol}; title_case::Bool=false)::NTuple{String}
     human_readable_name(name::String; title_case::Bool=true)::String
 
 Make presentable parameter labels.
@@ -26,6 +27,11 @@ function human_readable_name(names::Vector{String}; title_case::Bool=false)::Vec
 end
 function human_readable_name(name::Vector{Symbol}; title_case::Bool=false)::Vector{String}
     return human_readable_name(String.(name); title_case=title_case)
+end
+function human_readable_name(
+    names::NTuple{N,Symbol}; title_case::Bool=false
+)::NTuple{N,String} where N
+    return human_readable_name.(String.(names); title_case=title_case)
 end
 function human_readable_name(name::String; title_case::Bool=false)::String
     if title_case

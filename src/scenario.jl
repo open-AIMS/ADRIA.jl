@@ -306,20 +306,19 @@ function run_scenario(
     vals[vals .< threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
-    vals .= absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
+    vals = absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
     vals[vals .< threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
-
-    vals .= relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
+    vals = relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
     vals[vals .< threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
     coral_spec::DataFrame = to_coral_spec(scenario)
-    vals .= relative_juveniles(rs_raw, coral_spec)
+    vals = relative_juveniles(rs_raw, coral_spec)
     vals[vals .< threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
 
-    vals .= juvenile_indicator(rs_raw, coral_spec, site_k_area(domain))
+    vals = juvenile_indicator(rs_raw, coral_spec, site_k_area(domain))
     vals[vals .< threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
@@ -330,6 +329,7 @@ function run_scenario(
     vals = relative_loc_taxa_cover(
         rs_raw, site_k_area(domain), domain.coral_growth.n_groups
     )
+
     vals = coral_evenness(vals.data)
     vals[vals .< threshold] .= 0.0
     data_store.coral_evenness[:, :, idx] .= vals

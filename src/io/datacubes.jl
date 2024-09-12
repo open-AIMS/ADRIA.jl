@@ -8,13 +8,27 @@ from 1 up to that axis length.
 
 # Arguments
 - `data` : Array of data to be used when building the YAXArray
-- `axes_names` :
+- `axes_names` : Tuple of axes names
+- `properties` : NamedTuple of metadata to be added to the YAXArray
 """
-function DataCube(data::AbstractArray; kwargs...)::YAXArray
-    return YAXArray(Tuple(Dim{name}(val) for (name, val) in kwargs), data)
+function DataCube(
+    data::AbstractArray; properties::Dict{Symbol,Any}=Dict{Symbol,Any}(), kwargs...
+)::YAXArray
+    return YAXArray(Tuple(Dim{name}(val) for (name, val) in kwargs), data, properties)
 end
-function DataCube(data::AbstractArray, axes_names::Tuple)::YAXArray
-    return DataCube(data; NamedTuple{axes_names}(1:len for len in size(data))...)
+function DataCube(
+    data::AbstractArray, axes_names::Tuple; properties::Dict{Symbol,Any}=Dict{Symbol,Any}()
+)::YAXArray
+    return DataCube(
+        data; properties=properties, NamedTuple{axes_names}(1:len for len in size(data))...
+    )
+end
+function DataCube(
+    data::AbstractArray, axes_names::Tuple, properties::Dict{Symbol,Any}
+)::YAXArray
+    return DataCube(
+        data; properties=properties, NamedTuple{axes_names}(1:len for len in size(data))...
+    )
 end
 
 """
@@ -27,14 +41,35 @@ are passed, all axes labels will be ranges.
 # Arguments
 - `axes_names` : Tuple of axes names
 - `axes_sizes` : Tuple of axes sizes
+- `properties` : NamedTuple of metadata to be added to the YAXArray
 """
-function ZeroDataCube(; T::Type{D}=Float64, kwargs...)::YAXArray where {D}
-    return DataCube(zeros(T, [length(val) for (name, val) in kwargs]...); kwargs...)
+function ZeroDataCube(;
+    T::Type{D}=Float64, properties::Dict{Symbol,Any}=Dict{Symbol,Any}(), kwargs...
+)::YAXArray where {D}
+    return DataCube(
+        zeros(T, [length(val) for (name, val) in kwargs]...); properties=properties,
+        kwargs...
+    )
 end
 function ZeroDataCube(
-    axes_names::Tuple, axes_sizes::Tuple; T::Type{D}=Float64
+    axes_names::Tuple,
+    axes_sizes::Tuple;
+    properties::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+    T::Type{D}=Float64
 )::YAXArray where {D}
-    return ZeroDataCube(; T=T, NamedTuple{axes_names}(1:size for size in axes_sizes)...)
+    return ZeroDataCube(;
+        T=T, properties=properties, NamedTuple{axes_names}(1:size for size in axes_sizes)...
+    )
+end
+function ZeroDataCube(
+    axes_names::Tuple,
+    axes_sizes::Tuple,
+    properties::Dict{Symbol,Any};
+    T::Type{D}=Float64
+)::YAXArray where {D}
+    return ZeroDataCube(;
+        T=T, properties=properties, NamedTuple{axes_names}(1:size for size in axes_sizes)...
+    )
 end
 
 """

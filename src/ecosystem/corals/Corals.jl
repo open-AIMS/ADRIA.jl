@@ -495,3 +495,19 @@ function to_coral_spec(inputs::DataFrameRow)::DataFrame
     ins = DataCube(Vector(inputs); factors=names(inputs))
     return to_coral_spec(ins)
 end
+
+function n_sizes(n_groups::Int64, n_group_sizes::Int64)::Int64
+    if n_group_sizes % n_groups != 0
+        throw(
+            ArgumentError(
+                "Number of groups must divide n_group_sizes. " *
+                "n_group_sizes: $(n_group_sizes), n_groups: $(n_groups)"
+            )
+        )
+    end
+    return Int64(n_group_sizes / n_groups)
+end
+
+function group_indices(n_sizes::Int64, n_group_sizes::Int64)::Vector{UnitRange{Int64}}
+    return [i:(i + (n_sizes - 1)) for i in 1:n_sizes:n_group_sizes]
+end
