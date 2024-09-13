@@ -709,7 +709,7 @@ include("pareto.jl")
 include("ranks.jl")
 include("reef_indices.jl")
 include("scenario.jl")
-include("site_level.jl")
+include("spatial.jl")
 include("temporal.jl")
 include("utils.jl")
 
