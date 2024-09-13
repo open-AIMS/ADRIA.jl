@@ -7,9 +7,6 @@ if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
 end
 
-# Set result location to temporary folder within the current path
-ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
-
 """Test larger scenario run with figure creation"""
 function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame)
     Makie.inline!(false)

@@ -12,11 +12,14 @@ const TEST_REEFMOD_ENGINE_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Reefmod_test_do
 
 include("aqua.jl")
 
+# Load and apply configuration options
+ADRIA.setup()
+
+# Set result location to temporary folder within the current path
+ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
+
 """Test smaller scenario run with example scenario specification"""
 function test_small_spec_rs()
-    # Load and apply configuration options
-    ADRIA.setup()
-
     # Run scenarios with example Domain
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
 
@@ -37,18 +40,12 @@ end
 
 """Test ReefMod Engine domain loading"""
 function test_reefmod_engine_domain()
-    # Load and apply configuration options
-    ADRIA.setup()
-
     # Load test RMEDomain
     return ADRIA.load_domain(RMEDomain, TEST_REEFMOD_ENGINE_DOMAIN_PATH, "45")
 end
 
 """Test result set. Return domain, n_samples, scenarios and result set"""
 function test_rs()
-    # Load and apply configuration options
-    ADRIA.setup()
-
     # Load domain data
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
 
