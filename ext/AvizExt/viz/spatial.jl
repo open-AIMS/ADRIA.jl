@@ -50,6 +50,7 @@ end
         highlight::Union{Vector,Tuple,Nothing},
         show_colorbar::Bool=true,
         colorbar_label::String="",
+        color_map::$COLORMAP_TYPE_DOCSTRING,
         legend_params::Union{Tuple,Nothing}=nothing,
         axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}())
     )
@@ -73,13 +74,13 @@ function create_map!(
     f::Union{GridLayout,GridPosition},
     geodata::Vector{<:GeoMakie.MultiPolygon},
     data::Observable,
-    highlight::Union{Vector,Tuple,Nothing},
+    highlight::Union{Vector,Tuple,Nothing};
     show_colorbar::Bool=true,
     colorbar_label::String="",
-    color_map::Union{Symbol,Vector{Symbol},RGBA{Float32},Vector{RGBA{Float32}}}=:grayC,
+    color_map::COLORMAP_TYPE(T)=:grayC,
     legend_params::Union{Tuple,Nothing}=nothing,
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
-)
+)::Union{GridLayout,GridPosition} where {T<:Real}
     spatial = GeoAxis(
         f[1, 1];
         axis_opts...
@@ -88,10 +89,11 @@ function create_map!(
     # spatial.xticklabelsize = 14
     # spatial.yticklabelsize = 14
 
+    min_val = @lift(minimum($data))
     max_val = @lift(maximum($data))
 
     # Plot geodata polygons using data as internal color
-    color_range = (0.0, max_val[])
+    color_range = min_val[] < 0 ? (min_val[], max_val[]) : (0, max_val[])
 
     poly!(
         spatial,
@@ -243,12 +245,30 @@ function ADRIA.viz.map!(
         g,
         geodata,
         data,
-        highlight,
-        show_colorbar,
-        c_label,
-        color_map,
-        legend_params,
-        axis_opts
+        highlight;
+        show_colorbar=show_colorbar,
+        colorbar_label=c_label,
+        color_map=color_map,
+        legend_params=legend_params,
+        axis_opts=axis_opts
+    )
+end
+
+function ADRIA.viz.diff_map(
+    rs::ResultSet,
+    diff_outcome::YAXArray{T};
+    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
+    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
+) where {T}
+    # TODO hande the cases where thes only positive or only negative values
+    min_val, max_res = extrema(diff_outcome)
+    mid_val = -min_val / (max_res - min_val)
+
+    div_cmap::Vector{RGB{Float64}} = diverging_palette(10, 200; mid=mid_val)
+    opts[:color_map] = div_cmap
+    return ADRIA.viz.map(
+        rs, diff_outcome; axis_opts=axis_opts, opts=opts, fig_opts=fig_opts
     )
 end
 

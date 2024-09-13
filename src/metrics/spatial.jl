@@ -136,6 +136,27 @@ each location.
 - `outcome` : Metric outcome with dimensions (:timesteps, :locations, :scenarios)
 - `scens` : Scenarios DataFrame
 
+# Examples
+```
+# Load domain
+dom = ADRIA.load_domain(path_to_domain)
+
+# Create scenarios
+num_scens = 2^6
+scens = ADRIA.sample(dom, num_scens)
+
+# Run model
+rs = ADRIA.run_scenarios(dom, scens, "45")
+
+# Calculate difference to the counterfactual for given metric
+_relative_cover = metrics.relative_cover(rs)
+gd_results, ug_results = metrics.cf_difference_loc(_relative_cover, scens)
+
+# Plot maps of difference to the counterfactual
+ADRIA.viz.diff_map(rs, gd_results[2, :])
+ADRIA.viz.diff_map(rs, ug_results[2, :])
+```
+
 # Returns
 Two elements tuple with mean bootstrapped difference (counterfactual - guided) and
 (counterfactual - unguided) for each location.
