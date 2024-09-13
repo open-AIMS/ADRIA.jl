@@ -1,5 +1,8 @@
 """Functions and methods to produce location-level summaries."""
 
+using Bootstrap
+using Random
+
 """
     per_loc(metric, data::YAXArray{D,T,N,A})::YAXArray where {D,T,N,A}
 
@@ -121,4 +124,64 @@ function summarize(
     timesteps::Union{UnitRange,Vector{Int64},BitVector}
 )::YAXArray where {D,T,N,A}
     return summarize(data[timesteps=timesteps], alongs_axis, metric)
+end
+
+"""
+    cf_difference_loc(rs, scens, metric)
+
+Mean bootstrapped differences (counterfactual - guided) and (counterfactual - unguided) for
+each location.
+
+# Arguments
+- `outcome` : Metric outcome with dimensions (:timesteps, :locations, :scenarios)
+- `scens` : Scenarios DataFrame
+
+# Returns
+Two elements tuple with mean bootstrapped difference (counterfactual - guided) and
+(counterfactual - unguided) for each location.
+"""
+function cf_difference_loc(
+    outcome::YAXArray{T,3}, scens::DataFrame; conf::Float64=0.95
+)::Tuple where {T}
+    # Mean over all timesteps
+    outcomes_agg = dropdims(mean(outcome; dims=:timesteps); dims=:timesteps)
+
+    # Counterfactual, guided and unguided outcomes
+    cf_outcomes = outcomes_agg[scenarios=scens.guided .== -1]
+    gd_outcomes = outcomes_agg[scenarios=scens.guided .> 0]
+    ug_outcomes = outcomes_agg[scenarios=scens.guided .== 0]
+
+    # Find the smallest set of outcomes because they might not have the same size
+    n_cf_outcomes = size(cf_outcomes, :scenarios)
+    n_gd_outcomes = size(gd_outcomes, :scenarios)
+    n_ug_outcomes = size(ug_outcomes, :scenarios)
+    min_n_outcomes = min(n_cf_outcomes, n_gd_outcomes, n_ug_outcomes)
+
+    # Build (counterfactual-guided) and (counterfactual-unguided) result DataCubes
+    _locations = axis_labels(outcome, :locations)
+    gd_result = ZeroDataCube(;
+        T=T, value=[:lower_bound, :value, :upper_bound], locations=_locations
+    )
+    ug_result = ZeroDataCube(;
+        T=T, value=[:lower_bound, :value, :upper_bound], locations=_locations
+    )
+
+    n_locs = length(_locations)
+    for loc in 1:n_locs
+        cf_shuf_set::Vector{Int64} = shuffle(1:n_cf_outcomes)[1:min_n_outcomes]
+        gd_shuf_set::Vector{Int64} = shuffle(1:n_gd_outcomes)[1:min_n_outcomes]
+        ug_shuf_set::Vector{Int64} = shuffle(1:n_ug_outcomes)[1:min_n_outcomes]
+
+        # Counterfactual - Guided
+        gd_diff = collect(gd_outcomes[loc, gd_shuf_set] .- cf_outcomes[loc, cf_shuf_set])
+        cf_gd_bootstrap = bootstrap(median, gd_diff, BalancedSampling(100))
+        gd_result[[2, 1, 3], loc] .= confint(cf_gd_bootstrap, PercentileConfInt(conf))[1]
+
+        # Counterfactual - Unguided
+        ug_diff = collect(ug_outcomes[loc, ug_shuf_set] .- cf_outcomes[loc, cf_shuf_set])
+        cf_ug_bootstrap = bootstrap(median, ug_diff, BalancedSampling(100))
+        ug_result[[2, 1, 3], loc] .= confint(cf_ug_bootstrap, PercentileConfInt(conf))[1]
+    end
+
+    return gd_result, ug_result
 end
