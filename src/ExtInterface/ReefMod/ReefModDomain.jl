@@ -194,7 +194,7 @@ end
 function load_initial_cover(
     ::Type{ReefModDomain},
     dom_data::Dataset,
-    site_data::DataFrame,
+    location_data::DataFrame,
     loc_ids::Vector{String},
     init_yr::Int=2022
 )::YAXArray
@@ -246,7 +246,7 @@ function load_initial_cover(
     )
 
     # Convert values relative to absolute area to values relative to k area
-    icc_data = icc_data ./ site_data.k'
+    icc_data = icc_data ./ location_data.k'
     icc_data_sum = dropdims(sum(icc_data; dims=1); dims=1)
     if any(icc_data_sum .> 1.0)
         msg = "Initial cover exceeds habitable area, "
