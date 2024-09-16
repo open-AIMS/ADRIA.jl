@@ -125,7 +125,7 @@ function load_results(
         timeframe
     )
 
-    location_max_coral_cover = 1 .- geodata.k ./ 100
+    location_max_coral_cover = geodata.k ./ 100
     location_centroids = [centroid(multipoly) for multipoly ∈ geodata.geom]
 
     outcomes = Dict{Symbol,YAXArray}()
