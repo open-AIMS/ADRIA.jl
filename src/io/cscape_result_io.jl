@@ -9,13 +9,13 @@ struct CScapeResultSet <: ResultSet
     name::String
     RCP::String
 
-    site_ids
-    site_area::Vector{Float64}
-    site_max_coral_cover::Vector{Float64}
-    site_centroids
+    loc_ids
+    loc_area::Vector{Float64}
+    loc_max_coral_cover::Vector{Float64}
+    loc_centroids
     env_layer_md::EnvLayer
     connectivity_data
-    site_data
+    loc_data
     scenario_groups
     raw_data::Vector{Dataset}
 
