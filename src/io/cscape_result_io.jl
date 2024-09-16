@@ -78,8 +78,6 @@ function load_results(
     gpkg_path = _get_gpkg_path(data_dir)
     geodata = GDF.read(gpkg_path)
 
-    geodata = _manual_site_additions(geodata, location_ids, raw_set)
-
     connectivity_path = joinpath(data_dir, "connectivity/connectivity.csv")
     connectivity = CSV.read(connectivity_path, DataFrame; comment="#", header=true)
 
@@ -155,50 +153,6 @@ function load_results(
         outcomes,
         reformat_cube(raw_set.coral_size_diameter)
     )
-end
-
-"""
-    _manual_site_additions(geodata::DataFrame, loc_ids, dataset::Dataset)::DataFrame
-
-Add missing sites to geopackage
-"""
-function _manual_site_additions(geodata::DataFrame, loc_ids, dataset::Dataset)::DataFrame
-    row_indx::Int64 = findfirst(x -> x == "Moore_MR_S_39", geodata.reef_siteid)
-    row_cpy = copy(geodata[row_indx, :])
-    push!(geodata, row_cpy)
-    data_indx = findfirst(x -> x == "Moore_MR_S_40", loc_ids)
-    geodata[end, :site_id] = "MR_S_40"
-    geodata[end, :reef_siteid] = "Moore_MR_S_40"
-    geodata[end, :area] = sum(dataset.area[reef_sites=data_indx]; dims=:intervened)[1]
-    geodata[end, :k] = dataset.k[reef_sites=data_indx][1]
-
-    row_indx = findfirst(x -> x == "Milln_MR_OF_3", geodata.reef_siteid)
-    row_cpy = copy(geodata[row_indx, :])
-    push!(geodata, row_cpy)
-    data_indx = findfirst(x -> x == "Milln_MR_OF_4", loc_ids)
-    geodata[end, :site_id] = "MR_OF_4"
-    geodata[end, :reef_siteid] = "Milln_MR_OF_4"
-    geodata[end, :area] = sum(dataset.area[reef_sites=data_indx]; dims=:intervened)[1]
-    geodata[end, :k] = dataset.k[reef_sites=data_indx][1]
-
-    row_indx = findfirst(x -> x == "Elford_ER_S_50", geodata.reef_siteid)
-    row_cpy = copy(geodata[row_indx, :])
-    push!(geodata, row_cpy)
-    data_indx = findfirst(x -> x == "Elford_ER_S_51", loc_ids)
-    geodata[end, :site_id] = "ER_S_51"
-    geodata[end, :reef_siteid] = "Elford_ER_S_51"
-    geodata[end, :area] = sum(dataset.area[reef_sites=data_indx]; dims=:intervened)[1]
-    geodata[end, :k] = dataset.k[reef_sites=data_indx][1]
-
-    row_indx = findfirst(x -> x == "Elford_ER_S_50", geodata.reef_siteid)
-    row_cpy = copy(geodata[row_indx, :])
-    push!(geodata, row_cpy)
-    data_indx = findfirst(x -> x == "Elford_ER_S_52", loc_ids)
-    geodata[end, :site_id] = "ER_S_52"
-    geodata[end, :reef_siteid] = "Elford_ER_S_52"
-    geodata[end, :area] = sum(dataset.area[reef_sites=data_indx]; dims=:intervened)[1]
-    geodata[end, :k] = dataset.k[reef_sites=data_indx][1]
-    return geodata
 end
 
 """
