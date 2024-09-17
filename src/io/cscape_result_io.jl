@@ -63,8 +63,8 @@ function load_results(
     inputs::DataFrame = _recreate_inputs_dataframe(datasets, scenario_spec)
     model_spec::DataFrame = _create_model_spec(CScapeResultSet, inputs)
 
-    # Assume all result set have the same locations
-    raw_set = datasets[1]
+    # NetCDF auto closes when the reference to raw_set is lost
+    raw_set = NetCDF.open(result_files[1])
 
     res_name::String = _get_result_name(raw_set)
     res_rcp::String = _get_rcp(raw_set)
@@ -72,7 +72,7 @@ function load_results(
     init_cover_path = joinpath(data_dir, "initial_cover", "initial_cover.csv")
     init_data::DataFrame = CSV.read(init_cover_path, DataFrame; header=true)
 
-    !haskey(raw_set.cubes, :reef_siteid) ? error("Unable to find location ids.") : nothing
+    !haskey(raw_set.vars, "reef_siteid") ? error("Unable to find location ids.") : nothing
     location_ids = init_data.reef_siteid
 
     gpkg_path = _get_gpkg_path(data_dir)
@@ -100,14 +100,14 @@ function load_results(
     connectivity = connectivity[conn_id_order, conn_id_order]
 
     timeframe = 2007:2099
-    if !haskey(raw_set.properties, "temporal_range")
+    if !haskey(raw_set.gatts, "temporal_range")
         @warn "Unable to find timeframe defaulting to $(timeframe[1]):$(timeframe[end])"
     else
-        tf_str = split(raw_set.properties["temporal_range"], ":")
+        tf_str = split(raw_set.gatts["temporal_range"], ":")
         if tf_str[1] != "Inf"
             timeframe = parse(Int, tf_str[1]):parse(Int, tf_str[2])
         else
-            timeframe = raw_set.year[1]:raw_set.year[end]
+            timeframe = raw_set.vars["year"][1]:raw_set.vars["year"][end]
         end
     end
 
@@ -129,7 +129,6 @@ function load_results(
     outcomes = Dict{Symbol,YAXArray}()
     # add precomputed metrics for comptability
     outcomes[:relative_cover] = _cscape_relative_cover(datasets)
-    # outcomes[:relative_taxa_cover] = _cscape_relative_taxa_cover(raw_set, geodata.area)
 
     scen_groups = Dict(
         :counterfactual => BitVector(true for _ in outcomes[:relative_cover].scenarios)
@@ -151,7 +150,7 @@ function load_results(
         SimConstants(),
         model_spec,
         outcomes,
-        reformat_cube(raw_set.coral_size_diameter)
+        reformat_cube(datasets[1].coral_size_diameter)
     )
 end
 
@@ -535,29 +534,29 @@ end
 
 Get the name of the data set from the properties of the dataset.
 """
-function _get_result_name(ds::Dataset)::String
+function _get_result_name(ds::NcFile)::String
     name = "CScape Results"
-    if !haskey(ds.properties, "title")
+    if !haskey(ds.gatts, "title")
         msg = "Unable to find key `title` in dataset properties, "
         msg *= "defaulting to `CScape Results`"
         @warn msg
     else
-        name = ds.properties["title"]
+        name = ds.gatts["title"]
     end
     return name
 end
 
 """
-    _get_rcp(ds::Datset)::String
+    _get_rcp(ds::NcFile)::String
 
 Get the RCP from the ssp field in dataset properties. Assume RCP is last two numbers.
 """
-function _get_rcp(ds::Dataset)::String
+function _get_rcp(ds::NcFile)::String
     rcp = ""
-    if !haskey(ds.properties, "ssp")
+    if !haskey(ds.gatts, "ssp")
         @warn "Unable to find key `ssp` in dataset properties."
     else
-        rcp = ds.properties["ssp"][(end - 1):end]
+        rcp = ds.gatts["ssp"][(end - 1):end]
     end
     return rcp
 end
