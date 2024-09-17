@@ -707,7 +707,7 @@ function _cscape_relative_cover(dataset::Dataset)::Array
     end
 
     relative_cover ./= reshape(
-        sum(area, dims=1), reshape_tuple
+        sum(area; dims=1), reshape_tuple
     ) .* 100
 
     # ADRIA assumes a shape of [timesteps ⋅ locations ⋅ scenarios]
