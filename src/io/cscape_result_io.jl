@@ -691,9 +691,9 @@ function _cscape_relative_cover(dataset::Dataset)::Array
         _drop_sum(
             dataset.cover[intervened=1][dummy_selector...], dim_sum
         ) .* reshape(
-            area[1, :] .* dataset.k[:],
+            area[1, :],
             reshape_tuple
-        ) ./ 100.0
+        )
 
     # Only calculate if there are area values > 0
     if !any(area[2, :] .> 0.0)
@@ -701,10 +701,14 @@ function _cscape_relative_cover(dataset::Dataset)::Array
             _drop_sum(
                 dataset.cover[intervened=2][dummy_selector...], dim_sum
             ) .* reshape(
-                area[2, :] .* dataset.k[:],
+                area[2, :],
                 reshape_tuple
-            ) ./ 100.0
+            )
     end
+
+    relative_cover ./= reshape(
+        sum(area; dims=1) .* dataset.k' ./ 100, reshape_tuple
+    ) .* 100
 
     # ADRIA assumes a shape of [timesteps ⋅ locations ⋅ scenarios]
     if multi_scenario
