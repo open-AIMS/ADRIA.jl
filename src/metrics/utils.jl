@@ -80,10 +80,11 @@ Convenience method that slices the data in the specified manner.
 - `metric` : Function, the metric function to apply to "raw" data.
 - `data` : YAXArray, data to pass into `metric`
 - `args` : Additional positional arguments to pass into `metric`
-- `dims` : dummy keyword argument, not used but defined to allow use with other methods
+- `kwargs` : Additional keyword arguments to pass into `slice_results`
+    - `dims` : dummy keyword argument, not used but defined to allow use with other methods
 """
 function call_metric(metric::Union{Function,Metric}, data::YAXArray, args...; kwargs...)
-    dims = haskey(kwargs, :dims) ? kwargs[:dims] : nothing
+    dims = get(kwargs, :dims, nothing)
     if isnothing(dims)
         return metric(slice_results(data; kwargs...), args...)
     else
