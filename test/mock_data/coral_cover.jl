@@ -7,7 +7,7 @@ function coral_cover(;
     n_locations::Int64=5,
     n_scenarios::Int64=32
 )::YAXArray{Float64,4}
-    coral_cover = Factories.full_coral_cover(;
+    coral_cover = MockData.full_coral_cover(;
         n_timesteps, n_group_sizes, n_locations, n_scenarios
     )
 

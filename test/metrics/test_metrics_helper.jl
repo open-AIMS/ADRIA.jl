@@ -21,9 +21,9 @@ function test_covers()::Vector{YAXArray{Float64,4}}
         n_scenarios=n_scenarios
     )
 
-    coral_cover::YAXArray{Float64,4} = Factories.coral_cover(; cover_params...)
-    zero_coral_cover::YAXArray{Float64,4} = Factories.zero_coral_cover(; cover_params...)
-    full_coral_cover::YAXArray{Float64,4} = Factories.full_coral_cover(; cover_params...)
+    coral_cover::YAXArray{Float64,4} = MockData.coral_cover(; cover_params...)
+    zero_coral_cover::YAXArray{Float64,4} = MockData.zero_coral_cover(; cover_params...)
+    full_coral_cover::YAXArray{Float64,4} = MockData.full_coral_cover(; cover_params...)
     return [coral_cover, zero_coral_cover, full_coral_cover]
 end
 
