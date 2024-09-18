@@ -1,15 +1,10 @@
-using ADRIA: metrics, DataFrame
-using ADRIA: Coral, Model
+using ADRIA: metrics
+
 if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
 end
 
 @testset "temporal.jl" begin
-    # n_scenarios::Int64 = size(TEST_SCENS, 1)
-    # test_scens_datacube::YAXArray{Float64,2} = DataCube(
-    #     Matrix(TEST_SCENS); scenarios=1:n_scenarios, factors=names(TEST_SCENS)
-    # )
-
     _test_covers::Vector{YAXArray{Float64,4}} = test_covers()
     _k_area::Vector{Float64} = k_area()
 
