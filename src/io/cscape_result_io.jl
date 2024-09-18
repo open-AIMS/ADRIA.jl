@@ -150,8 +150,57 @@ function load_results(
         SimConstants(),
         model_spec,
         outcomes,
-        reformat_cube(datasets[1].coral_size_diameter)
+        _construct_coral_sizes(raw_set)
     )
+end
+
+"""
+    _ncvar_dim_names(ncvar::NcVar)::Vector{Symbol}
+
+Get the dimension names from a netcdf variable
+"""
+function _ncvar_dim_names(::Type{String}, ncvar::NcVar)::Vector{Symbol}
+    return [Symbol(d.name) for d in ncvar.dim]
+end
+
+"""
+    _construct_dim(nc_dim::NcDim, nc_handle::NcFile)::Dim
+
+Construct a dimension from from the netcdf file. If the dimension has no variable array
+associated with it, default to standard index range.
+"""
+function _construct_dim(nc_dim::NcDim, nc_handle::NcFile)::Dim
+    dim_name::String = nc_dim.name
+
+    # If there is variable for the dimension return the standard index range, 1:n
+    if !haskey(nc_handle.vars, dim_name)
+        return Dim{Symbol(dim_name)}(1:Int64(nc_dim.dimlen))
+    end
+
+    return Dim{Symbol(dim_name)}(collect(nc_handle[dim_name]))
+end
+
+"""
+    _construct_axlist(nc_var::NcVar, nc_handle::NcFile)::Tuple
+
+Construct the axis list required for the construction of a YAXrrays.
+"""
+function _construct_axlist(nc_var::NcVar, nc_handle::NcFile)::Tuple
+    return axlist = Tuple([
+        _construct_dim(d, nc_handle) for d in nc_var.dim
+    ])
+end
+
+"""
+    _construct_coral_sizes(nc_handle::NcFile)::YAXArray
+
+Construct the coral size diameter YAXArray for the ResultSet.
+"""
+function _construct_coral_sizes(nc_handle::NcFile)::YAXArray
+    coral_size_var = nc_handle["coral_size_diameter"]
+    coral_sizes::Matrix{Float64} = NetCDF.readvar(coral_size_var)
+    dims::Tuple = _construct_axlist(coral_size_var, nc_handle)
+    return YAXArray(dims, coral_sizes, coral_size_var.atts)
 end
 
 """
