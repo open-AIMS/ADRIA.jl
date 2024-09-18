@@ -120,8 +120,8 @@ function _scenario_rci(rci::YAXArray, tac::YAXArray; kwargs...)
     return scenario_trajectory(tac_sliced .* (rci_sliced .> 0.35); metric=sum)
 end
 function _scenario_rci(rs::ResultSet; kwargs...)
-    tac = total_absolute_cover(rs)
     rci = reef_condition_index(rs)
+    tac = total_absolute_cover(rs)
 
     return _scenario_rci(rci, tac; kwargs...)
 end
