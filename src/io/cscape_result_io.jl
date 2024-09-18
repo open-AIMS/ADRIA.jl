@@ -17,7 +17,7 @@ struct CScapeResultSet <: ResultSet
     connectivity_data
     loc_data
     scenario_groups
-    raw_data::Vector{Dataset}
+    raw_data::Vector{NcFile}
 
     inputs
     sim_constants
@@ -59,12 +59,13 @@ function load_results(
     scenario_spec_path::String = joinpath(data_dir, "ScenarioID.csv")
     scenario_spec::DataFrame = DataFrame(CSV.File(scenario_spec_path))
 
-    datasets::Vector{Dataset} = open_dataset.(result_files)
+    # 100x faster then YAXArrays
+    datasets::Vector{NcFile} = NetCDF.open.(result_files)
     inputs::DataFrame = _recreate_inputs_dataframe(datasets, scenario_spec)
     model_spec::DataFrame = _create_model_spec(CScapeResultSet, inputs)
 
     # NetCDF auto closes when the reference to raw_set is lost
-    raw_set = NetCDF.open(result_files[1])
+    raw_set = datasets[1]
 
     res_name::String = _get_result_name(raw_set)
     res_rcp::String = _get_rcp(raw_set)
@@ -212,8 +213,8 @@ scenario id expected in scenario spec.
 1   -> 100001
 701 -> 100701
 """
-function _get_scenario_id(dataset::Dataset)::Int
-    scenario_id = parse(Int, dataset.properties["scenario_ID"])
+function _get_scenario_id(nc_handle::NcFile)::Int
+    scenario_id = parse(Int, nc_handle.gatts["scenario_ID"])
     if scenario_id > 100000
         return scenario_id
     end
@@ -221,14 +222,10 @@ function _get_scenario_id(dataset::Dataset)::Int
 end
 
 """
-    _get_functional_types(dataset::Dataset)::Vector{String}
+    _get_functional_types(nc_handle::NcFile)::Vector{String}
 """
-function _get_functional_types(dataset::Dataset)::Vector{String}
-    if !haskey(dataset.coral_size_diameter.properties, "column_names")
-        @warn "Unable to find names of functional types. Skipping."
-        return Vector{String}(undef, 0)
-    end
-    raw_names::String = dataset.coral_size_diameter.properties["column_names"]
+function _get_functional_types(nc_handle::NcFile)::Vector{String}
+    raw_names::String = nc_handle["coral_size_diameter"].atts["column_names"]
     return string.(split(raw_names, " "))
 end
 
@@ -237,29 +234,29 @@ function _default_missing(value, default)
 end
 
 """
-    _recreate_inputs_dataframe(datasets::Vector{Dataset}, scenario_spec::DataFrame)::DataFrame
+    _recreate_inputs_dataframe(nc_handles::Vector{NcFile}, scenario_spec::DataFrame)::DataFrame
 
 Construct the inputs datadrame from dataset properties and scenario table.
 """
 function _recreate_inputs_dataframe(
-    datasets::Vector{Dataset}, scenario_spec::DataFrame
+    nc_handles::Vector{NcFile}, scenario_spec::DataFrame
 )::DataFrame
     # Get rows from scenario spec dataframe corresponding to the scenarios
     scenario_idxs::Vector{Int} = [
-        findfirst(x -> x == idx, scenario_spec.ID) for idx in _get_scenario_id.(datasets)
+        findfirst(x -> x == idx, scenario_spec.ID) for idx in _get_scenario_id.(nc_handles)
     ]
     scenario_rows::Vector{DataFrameRow} = [scenario_spec[idx, :] for idx in scenario_idxs]
 
     # Convert climate scenarios to factors
     rcps::Vector{Float64} =
-        parse.(Float64, [dataset.properties["ssp"][(end - 1):end] for dataset in datasets])
+        parse.(Float64, [nc_handle.gatts["ssp"][(end - 1):end] for nc_handle in nc_handles])
 
     # Convert climate models to factors
     input_scenarios::Vector{Tuple{String,Int}} = [
         (
-            dataset.properties["climate model"],
-            dataset.properties["climate_model_realisation_point"]
-        ) for dataset in datasets
+            nc_handle.gatts["climate model"],
+            nc_handle.gatts["climate_model_realisation_point"]
+        ) for nc_handle in nc_handles
     ]
     input_inds::Vector{Int} = [
         findfirst(x -> x == scen, unique(input_scenarios)) for scen in input_scenarios
@@ -267,24 +264,24 @@ function _recreate_inputs_dataframe(
 
     fragmented_spec::Vector{DataFrame} =
         _create_inputs_dataframe.(
-            datasets, scenario_rows, rcps, input_inds
+            nc_handles, scenario_rows, rcps, input_inds
         )
     scenarios::DataFrame = reduce(vcat, fragmented_spec)
     return scenarios
 end
 """
-    _create_inputs_dataframe(dataset::Dataset, scenario_spec::DataFrameRow, rcp::Float64, input_index::Int)::DataFrame
+    _create_inputs_dataframe(nc_handle::NcFile, scenario_spec::DataFrameRow, rcp::Float64, input_index::Int)::DataFrame
 
 Construct inputs dataframe for a singular netcdf file.
 """
 function _create_inputs_dataframe(
-    dataset::Dataset,
+    nc_handle::NcFile,
     scenario_spec::DataFrameRow,
     rcp::Float64,
     input_index::Int
 )::DataFrame
-    functional_types::Vector{String} = _get_functional_types(dataset)
-    n_draws::Int = :draws in keys(dataset.axes) ? length(get(dataset.axes, :draws, [1])) : 1
+    functional_types::Vector{String} = _get_functional_types(nc_handle)
+    n_draws::Int = "draws" in keys(nc_handle.dim) ? length(get(nc_handle.dim, "draws", [1])) : 1
 
     dhws::Vector{Float64} = Float64.(repeat([input_index], n_draws))
     cyclones::Vector{Float64} = Float64.(repeat([input_index], n_draws))
@@ -335,8 +332,8 @@ function _create_inputs_dataframe(
 
     intervention_start =
         _default_missing(
-            scenario_spec.InterventionYears_start, dataset.year[1]
-        ) - dataset.year[1]
+            scenario_spec.InterventionYears_start, nc_handle["year"][1]
+        ) - nc_handle["year"][1]
 
     duration = _default_missing(scenario_spec.duration, 0.0)
     frequency = _default_missing(scenario_spec.frequency, 0.0)
@@ -673,8 +670,8 @@ function reformat_cube(cscape_cube::YAXArray)::YAXArray
     return cscape_cube
 end
 
-function _throw_missing_variable(dataset::Dataset, var_name::Symbol)::Nothing
-    msg = "NetCDF $(dataset.properties["scenario_ID"]) does not "
+function _throw_missing_variable(nc_handle::NcFile, var_name::String)::Nothing
+    msg = "NetCDF $(nc_handle.gatts["scenario_ID"]) does not "
     msg *= "contain $(String.(var_name)) variable"
     throw(ArgumentError(msg))
 
@@ -689,32 +686,36 @@ Sum over given dimensions and drop the same given dimensions.
 function _drop_sum(cube::YAXArray, red_dims::Tuple)::YAXArray
     return dropdims(sum(cube; dims=red_dims); dims=red_dims)
 end
+function _drop_sum(cube::AbstractArray, red_dims::Tuple)::AbstractArray
+    return dropdims(sum(cube; dims=red_dims), dims=red_dims)
+end
 
 """
-    _cscape_relative_cover(dataset::Dataset)::YAXArray
-    _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
+    _cscape_relative_cover(nc_handle::NcFile)::YAXArray
+    _cscape_relative_cover(nc_handles::Vector{NcFiles})::YAXArray
 
 Calculate relative cover metric for C~scape data.
 """
-function _cscape_relative_cover(dataset::Dataset)::Array
+function _cscape_relative_cover(nc_handle::NcFile)::Array
     # Throw error and identify specific misformatted file.
-    if !haskey(dataset.cubes, :cover)
-        _throw_missing_variable(dataset, :cover)
+    if !haskey(nc_handle.vars, "cover")
+        _throw_missing_variable(nc_handle, :cover)
     end
-    if !haskey(dataset.cubes, :area)
-        _throw_missing_variable(dataset, :area)
+    if !haskey(nc_handle.vars, "area")
+        _throw_missing_variable(nc_handle, "area")
     end
-    if !haskey(dataset.cubes, :k)
-        _throw_missing_variable(dataset, :k)
+    if !haskey(nc_handle.vars, "k")
+        _throw_missing_variable(nc_handle, "k")
     end
 
-    dim_sum = (:ft, :thermal_tolerance)
+    # thermal tolerance and functional group dimensions
+    dim_sum = (3, 4)
 
-    multi_scenario::Bool = :draws in keys(dataset.axes)
+    multi_scenario::Bool = :draws in keys(nc_handle.dim)
 
-    n_scens = multi_scenario ? length(dataset.draws) : 0
-    n_tsteps::Int64 = length(dataset.year)
-    n_locs::Int64 = length(dataset.reef_sites)
+    n_scens = multi_scenario ? Int64(nc_handle.dim["draws"].dimlen) : 0
+    n_tsteps::Int64 = Int64(nc_handle.dim["year"].dimlen)
+    n_locs::Int64 = Int64(nc_handle.dim["reef_sites"].dimlen)
 
     if multi_scenario
         relative_cover = zeros(n_scens, n_tsteps, n_locs)
@@ -731,13 +732,14 @@ function _cscape_relative_cover(dataset::Dataset)::Array
     # speed/performance. Using `read()` converts data into a base Matrix, so we
     # use a dummy selector to retain the nice YAXArray data type while also reading
     # the data into memory.
-    n_dims = length(dims(dataset.cover))
-    dummy_selector = fill((:), n_dims - 1)
+    n_dims = nc_handle["cover"].ndim
 
-    area = dataset.area.data[:, :]
+    area::Matrix{Float64} = NetCDF.readvar(nc_handle["area"])
+    habitable_area::Vector{Float64} = NetCDF.readvar(nc_handle["k"])
+    cover = NetCDF.readvar(nc_handle["cover"])
     relative_cover .=
         _drop_sum(
-            dataset.cover[intervened=1][dummy_selector...], dim_sum
+            cover[:, :, 1, :, :], dim_sum
         ) .* reshape(
             area[1, :],
             reshape_tuple
@@ -747,7 +749,7 @@ function _cscape_relative_cover(dataset::Dataset)::Array
     if !any(area[2, :] .> 0.0)
         relative_cover .+=
             _drop_sum(
-                dataset.cover[intervened=2][dummy_selector...], dim_sum
+                cover[:, :, 2, :, :], dim_sum
             ) .* reshape(
                 area[2, :],
                 reshape_tuple
@@ -755,7 +757,7 @@ function _cscape_relative_cover(dataset::Dataset)::Array
     end
 
     relative_cover ./= reshape(
-        sum(area; dims=1) .* dataset.k' ./ 100, reshape_tuple
+        sum(area; dims=1) .* habitable_area' ./ 100, reshape_tuple
     ) .* 100
 
     # ADRIA assumes a shape of [timesteps ⋅ locations ⋅ scenarios]
@@ -765,16 +767,16 @@ function _cscape_relative_cover(dataset::Dataset)::Array
 
     return relative_cover
 end
-function _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
+function _cscape_relative_cover(nc_handles::Vector{NcFile})::YAXArray
     # Assume same number of locations and timesteps for every dataset
-    n_locs::Int64 = length(datasets[1].reef_sites)
+    n_locs::Int64 = nc_handles[1].dim["reef_sites"].dimlen
 
     # Determine the number of entries for each file
-    n_scens::Vector{Int64} = _n_scenarios.(datasets)
+    n_scens::Vector{Int64} = _n_scenarios.(nc_handles)
 
     relative_cover = ZeroDataCube(;
         T=Float64,
-        timesteps=datasets[1].year.val,
+        timesteps=Vector(NetCDF.readvar(nc_handles[1]["year"])),
         sites=1:n_locs,
         scenarios=1:sum(n_scens)
     )
@@ -784,22 +786,22 @@ function _cscape_relative_cover(datasets::Vector{Dataset})::YAXArray
     # all(diff(cumsum(n_scens)) .== 1)
 
     start_end_pos = _data_position(n_scens)
-    @showprogress desc = "Loading datasets" for (ds_idx, dataset) in
-                                                zip(start_end_pos, datasets)
-        relative_cover[scenarios=ds_idx[1]:ds_idx[2]] = _cscape_relative_cover(dataset)
+    @showprogress desc = "Loading datasets" for (ds_idx, nc_handle) in
+                                                zip(start_end_pos, nc_handles)
+        relative_cover[scenarios=ds_idx[1]:ds_idx[2]] = _cscape_relative_cover(nc_handle)
     end
 
     return relative_cover
 end
 
 """
-    _n_scenarios(dataset::Dataset)::Int64
+    _n_scenarios(nc_handle::NcFile)::Int64
 
 Get the number of scenario or draws in a dataset.
 """
-function _n_scenarios(dataset::Dataset)::Int64
-    if :draws in keys(dataset.axes)
-        return length(dataset.draws)
+function _n_scenarios(nc_handle::NcFile)::Int64
+    if "draws" in keys(nc_handle.dim)
+        return nc_handle.dim["draws"].dimlen
     end
 
     return 1
