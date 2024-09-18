@@ -6,48 +6,14 @@ if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
 end
 
-function _test_metrics(
-    metric::metrics.Metric, params::Tuple; relative::Bool=false
-)::Nothing
-    metric_result = metric(params...)
-    @test all(haskey.([metric_result.properties], (:metric_name, :metric_unit)))
-    @test all(0.0 .<= metric_result.data)
-    relative && @test all(metric_result.data .<= 1.0)
-    return nothing
-end
-
-function test_relative_metric(metric::metrics.Metric, params::Tuple)::Nothing
-    return _test_metrics(metric, params; relative=true)
-end
-
-function test_absolute_metric(metric::metrics.Metric, params::Tuple)::Nothing
-    return _test_metrics(metric, params; relative=false)
-end
-
 @testset "metrics.jl" begin
-    n_timesteps::Int64 = length(TEST_RS.env_layer_md.timeframe)
-    n_groups::Int64 = length(ADRIA.coral_spec().taxa_names)
-    n_sizes::Int64 = length(ADRIA.coral_spec().params.name) / n_groups
-    n_group_sizes::Int64 = n_groups * n_sizes
-    n_locations::Int64 = length(TEST_RS.coral_dhw_tol_log.locations)
     n_scenarios::Int64 = size(TEST_SCENS, 1)
     test_scens_datacube::YAXArray{Float64,2} = DataCube(
         Matrix(TEST_SCENS); scenarios=1:n_scenarios, factors=names(TEST_SCENS)
     )
-    cover_params = (
-        n_timesteps=n_timesteps,
-        n_group_sizes=n_group_sizes,
-        n_locations=n_locations,
-        n_scenarios=n_scenarios
-    )
 
-    coral_cover::YAXArray{Float64,4} = Factories.coral_cover(; cover_params...)
-    zero_coral_cover::YAXArray{Float64,4} = Factories.zero_coral_cover(; cover_params...)
-    full_coral_cover::YAXArray{Float64,4} = Factories.full_coral_cover(; cover_params...)
-    test_covers::Vector{YAXArray{Float64,4}} = [
-        coral_cover, zero_coral_cover, full_coral_cover
-    ]
-    k_area::Vector{Float64} = round.(rand(n_locations) .* 100; digits=2)
+    test_covers::Vector{YAXArray{Float64,4}} = test_covers()
+    _k_area::Vector{Float64} = k_area()
 
     @testset "relative_cover" begin
         test_relative_metric(metrics.relative_cover, (TEST_RS,))
@@ -60,16 +26,17 @@ end
         test_absolute_metric(metrics.total_absolute_cover, (TEST_RS,))
         for cover in test_covers
             test_absolute_metric(
-                metrics.total_absolute_cover, (metrics.relative_cover(cover), k_area)
+                metrics.total_absolute_cover, (metrics.relative_cover(cover), _k_area)
             )
         end
     end
 
     @testset "relative_taxa_cover" begin
         test_relative_metric(metrics.relative_taxa_cover, (TEST_RS,))
+        n_groups::Int64 = length(ADRIA.coral_spec().taxa_names)
         for cover in test_covers
             test_relative_metric(
-                metrics.relative_taxa_cover, (cover[:, :, :, 1], k_area, n_groups)
+                metrics.relative_taxa_cover, (cover[:, :, :, 1], _k_area, n_groups)
             )
         end
     end
@@ -77,7 +44,7 @@ end
     @testset "relative_loc_taxa_cover" begin
         for cover in test_covers
             test_relative_metric(
-                metrics.relative_loc_taxa_cover, (cover[:, :, :, 1], k_area, n_groups)
+                metrics.relative_loc_taxa_cover, (cover[:, :, :, 1], _k_area, n_groups)
             )
         end
     end
@@ -99,7 +66,7 @@ end
         test_absolute_metric(metrics.absolute_juveniles, (TEST_RS,))
         for cover in test_covers
             test_absolute_metric(
-                metrics.absolute_juveniles, (cover[:, :, :, scen_idx], coral_spec, k_area)
+                metrics.absolute_juveniles, (cover[:, :, :, scen_idx], coral_spec, _k_area)
             )
         end
     end
@@ -110,7 +77,7 @@ end
         test_absolute_metric(metrics.juvenile_indicator, (TEST_RS,))
         for cover in test_covers
             test_absolute_metric(
-                metrics.juvenile_indicator, (cover[:, :, :, scen_idx], coral_spec, k_area)
+                metrics.juvenile_indicator, (cover[:, :, :, scen_idx], coral_spec, _k_area)
             )
         end
     end
@@ -121,7 +88,7 @@ end
             test_absolute_metric(
                 metrics.coral_evenness,
                 (
-                    metrics.relative_loc_taxa_cover(cover[:, :, :, 1], k_area, n_groups),
+                    metrics.relative_loc_taxa_cover(cover[:, :, :, 1], _k_area, n_groups),
                 )
             )
         end
@@ -131,19 +98,19 @@ end
         test_absolute_metric(metrics.absolute_shelter_volume, (TEST_RS,))
         for cover in test_covers
             test_absolute_metric(
-                metrics.absolute_shelter_volume, (cover, k_area, TEST_SCENS)
+                metrics.absolute_shelter_volume, (cover, _k_area, TEST_SCENS)
             )
             test_absolute_metric(
                 metrics.absolute_shelter_volume,
-                (cover[:, :, :, 1], k_area, TEST_SCENS[1, :])
+                (cover[:, :, :, 1], _k_area, TEST_SCENS[1, :])
             )
             test_absolute_metric(
-                metrics.absolute_shelter_volume, (cover, k_area, test_scens_datacube)
+                metrics.absolute_shelter_volume, (cover, _k_area, test_scens_datacube)
             )
             test_absolute_metric(
                 metrics.absolute_shelter_volume,
                 (
-                    cover[:, :, :, 1], k_area, test_scens_datacube[1, :]
+                    cover[:, :, :, 1], _k_area, test_scens_datacube[1, :]
                 )
             )
         end
@@ -160,7 +127,7 @@ end
         @testset "one scenario case" begin
             for scens in [scens_row, scens_df, scens_cube]
                 rsv = ADRIA.metrics.relative_shelter_volume(
-                    coral_cover[:, :, :, 1], k_area, scens
+                    coral_cover[:, :, :, 1], _k_area, scens
                 )
 
                 @test all(0.0 .<= rsv .<= 1.0)
@@ -173,7 +140,7 @@ end
         @testset "multi-scenario case" begin
             for scens in [scens_row, scens_df, scens_cube]
                 rsv = ADRIA.metrics.relative_shelter_volume(
-                    coral_cover, k_area, TEST_SCENS
+                    coral_cover, _k_area, TEST_SCENS
                 )
 
                 @test all(0.0 .<= rsv .<= 1.0) ||
@@ -186,13 +153,13 @@ end
 
         # Zero cover case
         zero_rsv = ADRIA.metrics.relative_shelter_volume(
-            zero_coral_cover, k_area, DataFrame(TEST_SCENS)
+            zero_coral_cover, _k_area, DataFrame(TEST_SCENS)
         )
         @test all(zero_rsv .== 0.0)
 
         # Full cover case
         full_rsv = ADRIA.metrics.relative_shelter_volume(
-            full_coral_cover, k_area, DataFrame(TEST_SCENS)
+            full_coral_cover, _k_area, DataFrame(TEST_SCENS)
         )
         @test all(0.0 .<= full_rsv .<= 1.0)
 
@@ -204,9 +171,9 @@ end
         #     (:timesteps, :species, :locations, :scenarios)
         # )
         # Coral type with maximum shelter density
-        # max_coral_cover[species=24, locations=1:3] .= k_area'
+        # max_coral_cover[species=24, locations=1:3] .= _k_area'
         # max_rsv = ADRIA.metrics.relative_shelter_volume(
-        #     max_coral_cover, k_area, DataFrame(TEST_SCENS)
+        #     max_coral_cover, _k_area, DataFrame(TEST_SCENS)
         # )
         # @test all(max_rsv .== 1.0) ||
         #     "Scenario with complete coral cover does not achieve max RSV |
