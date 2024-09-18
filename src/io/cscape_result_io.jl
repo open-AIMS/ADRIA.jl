@@ -1,4 +1,3 @@
-using Core: Argument
 using ADRIA: EnvLayer, GDF, ZeroDataCube, DataCube
 using ArchGDAL: centroid
 using CSV
@@ -160,7 +159,7 @@ end
 
 Get the dimension names from a netcdf variable
 """
-function _ncvar_dim_names(::Type{String}, ncvar::NcVar)::Vector{Symbol}
+function _ncvar_dim_names(ncvar::NcVar)::Vector{Symbol}
     return [Symbol(d.name) for d in ncvar.dim]
 end
 
@@ -862,14 +861,15 @@ function load_variable!(
     variable_name::Symbol;
     aggregate_ttol=sum
 )::YAXArray
-    if !haskey(rs.raw_data[1].cubes, variable_name)
-        throw(ArgumentError("Unable to find variable $(String(variable_name)) in datasets"))
+    var_name::String = String(variable_name)
+    if !haskey(rs.raw_data[1].vars, var_name)
+        throw(ArgumentError("Unable to find variable $(var_name) in datasets"))
     end
     n_scens::Vector{Int64} = _n_scenarios.(rs.raw_data)
 
     dims = Tuple(
-        d for d in rs.raw_data[1].cubes[variable_name].axes
-        if !(name(d) in [:thermal_tolerance, :draws])
+        _construct_dim(d, rs.raw_data[1]) for d in rs.raw_data[1].vars[var_name].dim
+        if !(d.name in ["thermal_tolerance", "draws"])
     )
     dims = (
         Dim{:draws}(1:sum(n_scens)),
@@ -878,24 +878,28 @@ function load_variable!(
     shape = Tuple(length(d) for d in dims)
     output_variable = YAXArray(
         dims,
-        zeros(eltype(rs.raw_data[1].cubes[variable_name]), shape...)
+        zeros(eltype(rs.raw_data[1][var_name]), shape...)
     )
 
     # Only aggregate the thermal tolerance if the dimension is present
-    agg_func = x -> x
-    if :thermal_tolerance in name.(rs.raw_data[1].cubes[variable_name].axes)
+    agg_func = x -> NetCDF.readvar(x[var_name])
+    if :thermal_tolerance in _ncvar_dim_names(rs.raw_data[1].vars[var_name])
+        thermal_tol_dim_idx::Int64 = findfirst(
+            x->x==:thermal_tolerance,
+            _ncvar_dim_names(rs.raw_data[1].vars[var_name])
+        )
         agg_func =
             x -> dropdims(aggregate_ttol(
-                    x.cubes[variable_name]; dims=:thermal_tolerance
-                ); dims=:thermal_tolerance)
+                    NetCDF.readvar(x[var_name]); dims=thermal_tol_dim_idx
+                ); dims=thermal_tol_dim_idx)
     end
 
     cur_indx = 1
-    @showprogress for (n_sc, dataset) in zip(n_scens, rs.raw_data)
+    @showprogress for (n_sc, nc_handle) in zip(n_scens, rs.raw_data)
         if n_sc == 1
-            output_variable[draws=cur_indx] = agg_func(dataset)
+            output_variable[draws=cur_indx] .= agg_func(nc_handle)
         else
-            output_variable[draws=cur_indx:(cur_indx + n_sc - 1)] = agg_func(dataset)
+            output_variable[draws=cur_indx:(cur_indx + n_sc - 1)] .= agg_func(nc_handle)
         end
         cur_indx += n_sc
     end
