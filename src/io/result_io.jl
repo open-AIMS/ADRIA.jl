@@ -675,7 +675,9 @@ function load_results(result_loc::String)::ResultSet
         try
             outcomes[Symbol(basename(sd))] = DataCube(
                 data;
-                properties=Dict(p => data.attrs[string(p)] for p in outcomes_properties),
+                properties=Dict(
+                    p => data.attrs[string(p)] for p in outcomes_properties
+                ),
                 zip(Symbol.(data.attrs["structure"]), dims)...
             )
         catch err

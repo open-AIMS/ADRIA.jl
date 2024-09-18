@@ -35,14 +35,11 @@ Makes Metric types callable with arbitary arguments that are passed to associate
 """
 function (f::Metric)(raw, args...; kwargs...)::YAXArray
     axes::Tuple = (:timesteps, :species, :locations, :scenarios)[1:ndims(raw)]
-    properties::Dict{Symbol,Any} = Dict(
-        :metric_name => metric_label(f),
-        :metric_unit => f.unit
-    )
-    return f.func(DataCube(raw, axes, properties), args...; kwargs...)
+
+    return fill_axes_properties(f, f.func(DataCube(raw, axes), args...; kwargs...))
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
-    return f.func(rs, args...; kwargs...)
+    return fill_axes_properties(f, (f.func(rs, args...; kwargs...)))
 end
 
 """
@@ -61,7 +58,7 @@ Coral cover [0 - 1], relative to available \$k\$ area for a given location.
 function _relative_cover(X::YAXArray{<:Real})::YAXArray{<:Real}
     # Sum over all species and size classes
     result::YAXArray = dropdims(sum(X; dims=2); dims=2)
-    return fill_axes_properties(result)
+    return result
 end
 function _relative_cover(rs::ResultSet)::YAXArray{<:Real}
     return rs.outcomes[:relative_cover]
@@ -87,7 +84,7 @@ function _total_absolute_cover(
     relative_cover::AbstractArray{<:Real},
     k_area::Vector{<:Real}
 )::AbstractArray{<:Real}
-    return fill_axes_properties(relative_cover .* k_area')
+    return relative_cover .* k_area'
 end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
     return _total_absolute_cover(rs.outcomes[:relative_cover], site_k_area(rs))
@@ -135,7 +132,7 @@ function _relative_taxa_cover(
         taxa_cover[:, idx_group] = vec(sum(k_cover; dims=(2, 3))) ./ sum(k_area)
     end
 
-    return fill_axes_properties(taxa_cover)
+    return taxa_cover
 end
 function _relative_taxa_cover(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_taxa_cover]
@@ -175,7 +172,7 @@ function _relative_loc_taxa_cover(
         end
     end
 
-    return replace!(fill_axes_properties(taxa_cover), NaN => 0.0)
+    return replace!(taxa_cover, NaN => 0.0)
 end
 relative_loc_taxa_cover = Metric(
     _relative_loc_taxa_cover, (:timesteps, :species, :locations, :scenarios)
@@ -199,7 +196,7 @@ function _relative_juveniles(
     juv_groups =
         X[species=(coral_spec.class_id .== 1)] .+ X[species=(coral_spec.class_id .== 2)]
 
-    return fill_axes_properties(dropdims(sum(juv_groups; dims=:species); dims=:species))
+    return dropdims(sum(juv_groups; dims=:species); dims=:species)
 end
 function _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_juveniles]
@@ -307,7 +304,7 @@ function _coral_evenness(
     end
 
     return replace!(
-        fill_axes_properties(simpsons_diversity), NaN => 0.0, Inf => 0.0
+        simpsons_diversity, NaN => 0.0, Inf => 0.0
     ) ./ n_grps
 end
 function _coral_evenness(rs::ResultSet)::AbstractArray{<:Real,3}
@@ -527,7 +524,7 @@ function _absolute_shelter_volume(
     _shelter_species_loop!(X, ASV, nspecies, colony_vol, k_area)
 
     # Sum over groups and size classes to estimate total shelter volume per site
-    return fill_axes_properties(dropdims(sum(ASV; dims=:species); dims=:species))
+    return dropdims(sum(ASV; dims=:species); dims=:species)
 end
 function _absolute_shelter_volume(
     X::YAXArray{T,4},
@@ -550,7 +547,7 @@ function _absolute_shelter_volume(
     end
 
     # Sum over groups and size classes to estimate total shelter volume per site
-    return fill_axes_properties(dropdims(sum(ASV; dims=:species); dims=:species))
+    return dropdims(sum(ASV; dims=:species); dims=:species)
 end
 function _absolute_shelter_volume(rs::ResultSet)::AbstractArray
     return rs.outcomes[:absolute_shelter_volume]
@@ -611,6 +608,7 @@ function _relative_shelter_volume(
     k_area::Vector{T},
     scens::DataFrame
 )::AbstractArray{T} where {T<:Real}
+    @assert size(scens, 1) == 1 "Scens DataFrame should have only one line"
     _inputs::YAXArray = DataCube(
         Matrix(scens); scenarios=axes(scens, 1), factors=names(scens)
     )
@@ -635,7 +633,7 @@ function _relative_shelter_volume(
     RSV = dropdims(sum(RSV; dims=:species); dims=:species)
 
     clamp!(RSV, 0.0, 1.0)
-    return fill_axes_properties(RSV)
+    return RSV
 end
 function _relative_shelter_volume(
     X::AbstractArray{T,4},
@@ -683,7 +681,7 @@ function _relative_shelter_volume(
     RSV = dropdims(sum(RSV; dims=:species); dims=:species)
 
     clamp!(RSV, 0.0, 1.0)
-    return fill_axes_properties(RSV)
+    return RSV
 end
 function _relative_shelter_volume(rs::ResultSet)::YAXArray
     return rs.outcomes[:relative_shelter_volume]

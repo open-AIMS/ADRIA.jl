@@ -99,13 +99,18 @@ Fill :axes_names and :axes_units properties of datacube
 # Arguments
 - `datacube` : YAXArray datacube
 """
-function fill_axes_properties(datacube::YAXArray)::YAXArray
-    _axes_names::Tuple = axes_names(datacube)
-    datacube.properties[:axes_names] = parentmodule(metrics).human_readable_name(
-        _axes_names
+function fill_axes_properties(metric::Metric, metric_result::YAXArray)::YAXArray
+    metric_result.properties[:metric_name] = metric_label(metric)
+    metric_result.properties[:metric_unit] = metric.unit
+
+    _axes_names::Tuple = axes_names(metric_result)
+    metric_result.properties[:axes_names] = collect(
+        parentmodule(metrics).human_readable_name(
+            _axes_names
+        )
     )
-    datacube.properties[:axes_units] = axes_units(_axes_names)
-    return datacube
+    metric_result.properties[:axes_units] = collect(axes_units(_axes_names))
+    return metric_result
 end
 
 """
