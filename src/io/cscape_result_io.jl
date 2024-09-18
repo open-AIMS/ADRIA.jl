@@ -280,7 +280,8 @@ function _create_inputs_dataframe(
     input_index::Int
 )::DataFrame
     functional_types::Vector{String} = _get_functional_types(nc_handle)
-    n_draws::Int = "draws" in keys(nc_handle.dim) ? length(get(nc_handle.dim, "draws", [1])) : 1
+    n_draws::Int =
+        "draws" in keys(nc_handle.dim) ? length(get(nc_handle.dim, "draws", [1])) : 1
 
     dhws::Vector{Float64} = Float64.(repeat([input_index], n_draws))
     cyclones::Vector{Float64} = Float64.(repeat([input_index], n_draws))
@@ -686,7 +687,7 @@ function _drop_sum(cube::YAXArray, red_dims::Tuple)::YAXArray
     return dropdims(sum(cube; dims=red_dims); dims=red_dims)
 end
 function _drop_sum(cube::AbstractArray, red_dims::Tuple)::AbstractArray
-    return dropdims(sum(cube; dims=red_dims), dims=red_dims)
+    return dropdims(sum(cube; dims=red_dims); dims=red_dims)
 end
 
 """
@@ -755,9 +756,10 @@ function _cscape_relative_cover(nc_handle::NcFile)::Array
             )
     end
 
-    relative_cover ./= reshape(
-        sum(area; dims=1) .* habitable_area' ./ 100, reshape_tuple
-    ) .* 100
+    relative_cover ./=
+        reshape(
+            sum(area; dims=1) .* habitable_area' ./ 100, reshape_tuple
+        ) .* 100
 
     # ADRIA assumes a shape of [timesteps ⋅ locations ⋅ scenarios]
     if multi_scenario
@@ -885,11 +887,12 @@ function load_variable!(
     agg_func = x -> NetCDF.readvar(x[var_name])
     if :thermal_tolerance in _ncvar_dim_names(rs.raw_data[1].vars[var_name])
         thermal_tol_dim_idx::Int64 = findfirst(
-            x->x==:thermal_tolerance,
+            x -> x == :thermal_tolerance,
             _ncvar_dim_names(rs.raw_data[1].vars[var_name])
         )
         agg_func =
-            x -> dropdims(aggregate_ttol(
+            x -> dropdims(
+                aggregate_ttol(
                     NetCDF.readvar(x[var_name]); dims=thermal_tol_dim_idx
                 ); dims=thermal_tol_dim_idx)
     end
