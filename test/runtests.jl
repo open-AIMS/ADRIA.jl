@@ -8,7 +8,7 @@ include("aqua.jl")
 
 include("result_set.jl")
 
-
+include("metrics/test_metrics_helper.jl")
 # Set result location to temporary folder within the current path
 include("clustering.jl")
 include("data_loading.jl")
