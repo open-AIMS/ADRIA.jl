@@ -1,7 +1,36 @@
-@testset "text_display" begin
-    @testset "get_scientific_factors" begin
-        get_scientific_factors = ADRIA.get_scientific_factors
+using ADRIA: human_readable_name, get_scientific_factors
 
+@testset "text_display" begin
+    @testset "human_readable_name" begin
+        @testset "Symbols inputs" begin
+            input_vector_symbols = [:time_steps, :locations]
+            input_single_symbol = :time_steps
+
+            @test human_readable_name(input_vector_symbols) ==
+                ["time steps", "locations"]
+            @test human_readable_name(input_vector_symbols; title_case=true) ==
+                ["Time Steps", "Locations"]
+            @test human_readable_name(input_single_symbol) == "time steps"
+            @test human_readable_name(input_single_symbol; title_case=true) ==
+                "Time Steps"
+        end
+
+        @testset "Strings inputs" begin
+            input_vector_strings = ["coral_cover", "1234_test"]
+            input_string = "coral_cover"
+
+            @test human_readable_name(
+                input_vector_strings
+            ) == ["coral cover", "1234 test"]
+            @test human_readable_name(input_vector_strings; title_case=true) ==
+                ["Coral Cover", "1234 Test"]
+            @test human_readable_name(input_string) == "coral cover"
+            @test human_readable_name(input_string; title_case=true) ==
+                "Coral Cover"
+        end
+    end
+
+    @testset "get_scientific_factors" begin
         @testset "Edgecases" begin
             @test get_scientific_factors(0.0) == (0.0, 0)
             @test get_scientific_factors(1.0) == (1.0, 0)

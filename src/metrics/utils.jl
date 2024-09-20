@@ -106,7 +106,7 @@ function fill_axes_properties(metric::Metric, metric_result::YAXArray)::YAXArray
 
     _axes_names::Tuple = axes_names(metric_result)
     metric_result.properties[:axes_names] = collect(
-        parentmodule(metrics).human_readable_name(
+        parentmodule(metrics).human_readable_name.(
             _axes_names
         )
     )
