@@ -65,7 +65,6 @@ function _relative_cover(rs::ResultSet)::YAXArray{<:Real}
 end
 relative_cover = Metric(_relative_cover, (:timesteps, :locations, :scenarios))
 
-#TODO
 """
     total_absolute_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
     total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
