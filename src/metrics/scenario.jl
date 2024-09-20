@@ -48,7 +48,7 @@ function _scenario_total_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     tac = total_absolute_cover(rs)
     return _scenario_total_cover(tac::AbstractArray; kwargs...)
 end
-scenario_total_cover = Metric(_scenario_total_cover, (:timesteps, :scenarios), "m²")
+scenario_total_cover = Metric(_scenario_total_cover, (:timesteps, :scenarios), UNIT_AREA)
 
 """
     scenario_relative_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
@@ -174,7 +174,7 @@ end
 function _scenario_asv(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_asv(rs.outcomes[:absolute_shelter_volume]; kwargs...)
 end
-scenario_asv = Metric(_scenario_asv, (:timesteps, :scenarios), "m³/m²")
+scenario_asv = Metric(_scenario_asv, (:timesteps, :scenarios), "$UNIT_VOLUME/$UNIT_AREA")
 
 """
     scenario_rsv(sv::YAXArray; kwargs...)::AbstractArray{<:Real}

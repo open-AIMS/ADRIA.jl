@@ -20,6 +20,10 @@ using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, site_k_area, lo
 
 abstract type Outcome end
 
+const UNIT_VOLUME = "m³"
+const UNIT_AREA = "m²"
+const UNIT_AREA_INVERSE = "m⁻²"
+
 struct Metric{F<:Function,T<:Tuple,S<:String} <: Outcome
     func::F
     dims::T     # output dimension axes ?
@@ -77,7 +81,7 @@ Sum of proportional area taken up by all corals, multiplied by total site area.
 - `k_area` : Site areas, with sites following the same order as given indicated in X.
 
 # Returns
-Absolute coral cover for a given location in m².
+Absolute coral cover for a given location in $UNIT_AREA.
 """
 function _total_absolute_cover(
     relative_cover::AbstractArray{<:Real},
@@ -89,7 +93,7 @@ function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
     return _total_absolute_cover(rs.outcomes[:relative_cover], site_k_area(rs))
 end
 total_absolute_cover = Metric(
-    _total_absolute_cover, (:timesteps, :locations, :scenarios), "m²"
+    _total_absolute_cover, (:timesteps, :locations, :scenarios), UNIT_AREA
 )
 
 """
@@ -222,7 +226,9 @@ end
 function _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_juveniles] .* site_k_area(rs)'
 end
-absolute_juveniles = Metric(_absolute_juveniles, (:timesteps, :locations, :scenarios), "m²")
+absolute_juveniles = Metric(
+    _absolute_juveniles, (:timesteps, :locations, :scenarios), UNIT_AREA
+)
 
 """
     _max_juvenile_area(coral_params::DataFrame, max_juv_density::Float64=51.8)
@@ -269,8 +275,7 @@ function _juvenile_indicator(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:juvenile_indicator]
 end
 juvenile_indicator = Metric(
-    _juvenile_indicator, (:timesteps, :locations, :scenarios), "m⁻²"
-)
+    _juvenile_indicator, (:timesteps, :locations, :scenarios), UNIT_AREA_INVERSE)
 
 """
     coral_evenness(r_taxa_cover::AbstractArray{T})::AbstractArray{T} where {T<:Real}
@@ -552,7 +557,7 @@ function _absolute_shelter_volume(rs::ResultSet)::AbstractArray
     return rs.outcomes[:absolute_shelter_volume]
 end
 absolute_shelter_volume = Metric(
-    _absolute_shelter_volume, (:timesteps, :locations, :scenarios), "m³"
+    _absolute_shelter_volume, (:timesteps, :locations, :scenarios), UNIT_VOLUME
 )
 
 """
@@ -686,7 +691,7 @@ function _relative_shelter_volume(rs::ResultSet)::YAXArray
     return rs.outcomes[:relative_shelter_volume]
 end
 relative_shelter_volume = Metric(
-    _relative_shelter_volume, (:timesteps, :locations, :scenarios), "m³"
+    _relative_shelter_volume, (:timesteps, :locations, :scenarios), UNIT_VOLUME
 )
 
 include("pareto.jl")
