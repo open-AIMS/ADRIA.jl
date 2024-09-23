@@ -908,7 +908,7 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
     rcps = rs.RCP
-    scens     = length(rs.outcomes[:relative_cover].scenarios)
+    scens = length(rs.outcomes[:relative_cover].scenarios)
     locations = length(rs.outcomes[:relative_cover].locations)
     tf = rs.env_layer_md.timeframe
 
