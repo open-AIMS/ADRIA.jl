@@ -1,3 +1,8 @@
+using WGLMakie, GeoMakie, GraphMakie
+using ADRIA
+using ADRIA.metrics: total_absolute_cover
+using Statistics
+
 const ADRIA_DIR = pkgdir(ADRIA)
 const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
 

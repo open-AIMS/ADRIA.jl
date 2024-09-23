@@ -6,10 +6,9 @@ include("mock_data/mock_data.jl")
 
 include("aqua.jl")
 
-include("result_set.jl")
+include("run_scenarios.jl")
 
-include("metrics/test_metrics_helper.jl")
-include("metrics/scenario.jl")
+include("analysis.jl")
 include("clustering.jl")
 include("data_loading.jl")
 include("domain.jl")
@@ -20,10 +19,11 @@ include("sampling.jl")
 include("seeding.jl")
 include("spec.jl")
 include("mcda.jl")
+include("metrics/test_metrics_helper.jl")
+include("metrics/scenario.jl")
 include("metrics/metrics.jl")
 include("utils/scale.jl")
 include("utils/text_display.jl")
-include("viz.jl")
 
 # TODO Fix spatial_clustering and site_selection tests
 # include("site_selection.jl")
