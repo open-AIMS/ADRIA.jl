@@ -385,14 +385,14 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     # Set up stores for each metric
     function dim_lengths(metric_structure::NTuple{3,Symbol})
         dl = []
-        for d in string.(metric_structure)
-            if d == "timesteps"
+        for d in metric_structure
+            if d == :timesteps
                 append!(dl, tf)
-            elseif d == "species"
+            elseif d == :species
                 append!(dl, domain.coral_growth.n_groups)
-            elseif d == "locations"
+            elseif d == :locations
                 append!(dl, n_locations)
-            elseif d == "scenarios"
+            elseif d == :scenarios
                 append!(dl, n_scenarios)
             end
         end
