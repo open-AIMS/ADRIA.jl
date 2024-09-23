@@ -630,17 +630,10 @@ end
 
 Rename reorder the names of the dimensions to align with ADRIA's expected dimension names.
 """
-function reformat_cube(cscape_cube::YAXArray, loc_mask::BitVector)
-    cscape_cube = reformat_cube(cscape_cube)
-    if :sites ∈ name.(cscape_cube.axes)
-        cscape_cube = cscape_cube[sites=loc_mask]
-    end
-    return cscape_cube
-end
 function reformat_cube(cscape_cube::YAXArray)::YAXArray
     dim_names = name.(cscape_cube.axes)
     cscape_names = [:year, :reef_sites, :ft, :draws]
-    adria_names = [:timesteps, :sites, :taxa, :scenarios]
+    adria_names = [:timesteps, :locations, :taxa, :scenarios]
     final_ordering::Vector{Int} = Vector{Int}(undef, length(dim_names))
     current_index = 1
     # rename expected dimensions and update the permutation vector
@@ -778,7 +771,7 @@ function _cscape_relative_cover(nc_handles::Vector{NcFile})::YAXArray
     relative_cover = ZeroDataCube(;
         T=Float64,
         timesteps=Vector(NetCDF.readvar(nc_handles[1]["year"])),
-        sites=1:n_locs,
+        locations=1:n_locs,
         scenarios=1:sum(n_scens)
     )
 
@@ -916,7 +909,7 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
     rcps = rs.RCP
     scens = length(rs.outcomes[:relative_cover].scenarios)
-    sites = length(rs.outcomes[:relative_cover].sites)
+    locations = length(rs.outcomes[:relative_cover].locations)
     tf = rs.env_layer_md.timeframe
 
     return println("""
@@ -926,7 +919,7 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
 
         RCP(s) represented: $(rcps)
         Scenarios run: $(scens)
-        Number of sites: $(sites)
+        Number of locations: $(locations)
         Timesteps: $(tf)
     """)
 end
