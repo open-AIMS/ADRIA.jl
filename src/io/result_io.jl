@@ -412,7 +412,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
 
     metric_symbols::Vector{Symbol} = metrics.to_symbol.(outcome_metrics)
     metric_names::Vector{String} = metrics.to_string.(outcome_metrics; is_titlecase=true)
-    metric_units::Vector{String} = [metric.unit for metric in outcome_metrics]
+    metric_units::Vector{String} = getfield.(outcome_metrics, :unit)
     axes_names::Vector{NTuple{3,Symbol}} = fill(
         (:timesteps, :locations, :scenarios), length(outcome_metrics) - 1
     )
