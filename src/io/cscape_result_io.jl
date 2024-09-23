@@ -285,6 +285,7 @@ function _create_inputs_dataframe(
 
     dhws::Vector{Float64} = Float64.(repeat([input_index], n_draws))
     cyclones::Vector{Float64} = Float64.(repeat([input_index], n_draws))
+    scenario_id::Vector{Int64} = Int64.(repeat([scenario_spec.ID], n_draws))
 
     # Thermal tolerance bins are stored as lb_interval_ub
     lb_t, int_t1, int_t2, ub_t =
@@ -342,6 +343,7 @@ function _create_inputs_dataframe(
     coral_dict = merge(settle_probs_kwargs, corals_deployed)
 
     return DataFrame(;
+        scenario_id=scenario_id,
         dhw_scenario=dhws,
         cyc_scenario=cyclones,
         RCP=repeat([rcp], n_draws),
@@ -391,6 +393,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
 
     # Construct default model spec
     fieldname::Vector{Symbol} = [
+        :scenario_id,
         :dhw_scenario, # Environment Layer
         :cyc_scenario,
         :thermal_tol_lb, # Corals
@@ -413,6 +416,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         seeded_names... # Intervention
     ]
     descriptions::Vector{String} = [
+        "Scenario ID",
         "DHW Scenario",
         "Cyclone Scenario",
         "Natural thermal tolerance lower bound",
@@ -435,6 +439,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         seeded_readable...
     ]
     human_names::Vector{String} = [
+        "Scenario ID",
         "DHW scenario",
         "Cyclone scenario",
         "Thermal Tolerance Lower Bound",
@@ -459,6 +464,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
     ptype::Vector{String} = [
         "unordered categorical",
         "unordered categorical",
+        "unordered categorical",
         "continuous",
         "continuous",
         "continuous",
@@ -481,6 +487,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
     lower_bound::Vector{Float64} = [
         1.0,
         1.0,
+        1.0,
         -6.0,
         0.0,
         0.0,
@@ -501,6 +508,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         seeded_lb...
     ]
     upper_bound::Vector{Float64} = [
+        150000.0,
         50.0,
         50.0,
         0.0,
@@ -526,7 +534,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         string((lb, ub)) for (lb, ub) in zip(lower_bound, upper_bound)
     ]
     component::Vector{String} = vcat(
-        repeat(["EnvironmentalLayer"], 2),
+        repeat(["EnvironmentalLayer"], 3),
         repeat(["Coral"], 9),
         repeat(["Intervention"], 7),
         repeat(["Coral"], length(settle_names)),
