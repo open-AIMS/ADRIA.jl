@@ -496,6 +496,15 @@ function to_coral_spec(inputs::DataFrameRow)::DataFrame
     return to_coral_spec(ins)
 end
 
+"""
+    n_sizes(n_groups::Int64, n_group_sizes::Int64)::Int64
+
+Number of size classes. `n_groups` must exactly divide `n_group_sizes`.
+
+# Arguments
+- `n_groups` : Number of functional groups.
+- `n_group_sizes` : Number of functional groups multiplied by number of size classes.
+"""
 function n_sizes(n_groups::Int64, n_group_sizes::Int64)::Int64
     if n_group_sizes % n_groups != 0
         throw(
