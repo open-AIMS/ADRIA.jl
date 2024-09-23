@@ -654,7 +654,7 @@ function load_results(result_loc::String)::ResultSet
     )
 
     outcomes = Dict{Symbol,YAXArray}()
-    outcomes_properties = [:metric_name, :metric_unit, :axes_names, :axes_units]
+    outcome_properties = [:metric_name, :metric_unit, :axes_names, :axes_units]
     subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS); join=true))
     for sd in subdirs
         data = zopen(sd; fill_as_missing=false)
