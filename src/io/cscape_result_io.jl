@@ -548,13 +548,14 @@ end
     _get_result_paths(result_dir::String)::Vector{String}
 
 Get the names of all result netcdf result files in the given directory. Assumes filenames
-match "NetCDF_Scn.*.nc.
+match "NetCDF_Scn.*.nc".
 """
 function _get_result_paths(result_dir::String)::Vector{String}
     possible_files = filter(isfile, readdir(result_dir; join=true))
     possible_files = filter(x -> occursin(r"NetCDF_Scn.*.nc", x), possible_files)
     if length(possible_files) == 0
-        error("Unable to find result netcdf file in subdirectory $(res_subdir)")
+        msg = "Unable to find result netcdf file in subdirectory \"$(result_dir)\""
+        throw(ArgumentError(msg))
     end
     return possible_files
 end
