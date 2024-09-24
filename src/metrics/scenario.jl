@@ -64,16 +64,16 @@ end
 scenario_relative_cover = Metric(_scenario_relative_cover, (:timesteps, :scenarios))
 
 """
-    scenario_relative_juveniles(data::YAXArray{<:Real,3}, coral_spec::DataFrame, k_area::AbstractVector{<:Real}; kwargs...)::AbstractArray{<:Real}
+    scenario_relative_juveniles(X::YAXArray{<:Real,3}, coral_spec::DataFrame, k_area::AbstractVector{<:Real}; kwargs...)::AbstractArray{<:Real}
     scenario_relative_juveniles(rs::ResultSet; kwargs...)::YAXArray
 
 Calculate the mean relative juvenile population for each scenario for the entire domain.
 
 # Arguments
 - `X` : Raw data for a single scenario.
+- `rs` : Resultset.
 - `coral_spec` : Coral spec DataFrame.
 - `k_area` : K_area.
-- `rs` : Resultset.
 
 # Examples
 ```
