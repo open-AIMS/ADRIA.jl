@@ -383,7 +383,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     n_scenarios = nrow(scen_spec)
 
     # Set up stores for each metric
-    function dim_lengths(metric_structure::NTuple{3,Symbol})
+    function dim_lengths(metric_structure::Vector{Symbol})
         dl = []
         for d in metric_structure
             if d == :timesteps
@@ -413,23 +413,25 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     metric_symbols::Vector{Symbol} = metrics.to_symbol.(outcome_metrics)
     metric_names::Vector{String} = metrics.to_string.(outcome_metrics; is_titlecase=true)
     metric_units::Vector{String} = getfield.(outcome_metrics, :unit)
-    axes_names::Vector{NTuple{3,Symbol}} = fill(
-        (:timesteps, :locations, :scenarios), length(outcome_metrics) - 1
+    axis_names::Vector{Vector{Symbol}} = fill(
+        [:timesteps, :locations, :scenarios], length(outcome_metrics) - 1
     )
-    push!(axes_names, (:timesteps, :species, :scenarios))
+    # Add axis names relative to the last metric (relative_taxa_cover) separate as they are
+    # different from the other metrics
+    push!(axis_names, [:timesteps, :species, :scenarios])
     _unique_loc_ids::Vector{String} = unique_loc_ids(domain)
 
     outcomes_attrs::Vector{Dict{Symbol,Any}} = [
         Dict(
             :unique_loc_ids => _unique_loc_ids,
-            :structure => axes_names[idx],
+            :structure => axis_names[idx],
             :metric_name => metric_names[idx],
             :metric_unit => metric_units[idx],
-            :axes_names => axes_names[idx],
-            :axes_units => metrics.axes_units(axes_names[idx])
+            :axes_names => axis_names[idx],
+            :axes_units => metrics.axes_units(axis_names[idx])
         ) for (idx, _) in enumerate(metric_symbols)
     ]
-    result_dims::Vector{NTuple{3,Int64}} = dim_lengths.(axes_names)
+    result_dims::Vector{NTuple{3,Int64}} = dim_lengths.(axis_names)
 
     # Create stores for each metric
     stores = [
@@ -661,14 +663,14 @@ function load_results(result_loc::String)::ResultSet
         data_size = size(data)
 
         # Construct dimension names and metadata
-        dims = []
-        for (idx, dim) in enumerate(data.attrs["structure"])
-            if dim == "timesteps"
-                push!(dims, input_set.attrs["timeframe"])
-            elseif dim == "locations"
-                push!(dims, data.attrs["unique_loc_ids"])
+        dim_names = []
+        for (idx, dim_name) in enumerate(data.attrs["structure"])
+            if dim_name == "timesteps"
+                push!(dim_names, input_set.attrs["timeframe"])
+            elseif dim_name == "locations"
+                push!(dim_names, data.attrs["unique_loc_ids"])
             else
-                push!(dims, 1:data_size[idx])
+                push!(dim_names, 1:data_size[idx])
             end
         end
 
@@ -676,9 +678,9 @@ function load_results(result_loc::String)::ResultSet
             outcomes[Symbol(basename(sd))] = DataCube(
                 data;
                 properties=Dict(
-                    p => data.attrs[string(p)] for p in outcomes_properties
+                    p => data.attrs[string(p)] for p in outcome_properties
                 ),
-                zip(Symbol.(data.attrs["structure"]), dims)...
+                zip(Symbol.(data.attrs["structure"]), dim_names)...
             )
         catch err
             if err isa ArgumentError
@@ -686,7 +688,7 @@ function load_results(result_loc::String)::ResultSet
                 For group $(sd)
                 Got: $(size(data))
                 Structure: $(data.attrs["structure"])
-                Generated: $(Array([i[1] for i in size.(dims)]))
+                Generated: $(Array([i[1] for i in size.(dim_names)]))
                 """
                 outcomes[Symbol(basename(sd))] = DataCube(
                     data;

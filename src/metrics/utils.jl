@@ -49,7 +49,7 @@ end
 
 Units for each metric axis.
 """
-function axes_units(axes_names::Tuple)::Tuple
+function axes_units(axes_names::Union{Vector{Symbol},Tuple})::Tuple
     return values((timesteps="year", species="", locations="", scenarios="")[axes_names])
 end
 
