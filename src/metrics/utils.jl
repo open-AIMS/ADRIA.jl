@@ -93,9 +93,9 @@ function call_metric(metric::Union{Function,Metric}, data::YAXArray, args...; kw
 end
 
 """
-    fill_axes_properties(datacube::YAXArray)::YAXArray
+    fill_axes_properties(metric::Metric, metric_result::YAXArray)::YAXArray
 
-Fill :axes_names and :axes_units properties of datacube
+Fill `:axes_names` and `:axes_units` properties of the datacube.
 
 # Arguments
 - `datacube` : YAXArray datacube
