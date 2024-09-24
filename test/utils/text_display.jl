@@ -2,7 +2,7 @@ using ADRIA: human_readable_name, get_scientific_factors
 
 @testset "text_display" begin
     @testset "human_readable_name" begin
-        @testset "Symbols inputs" begin
+        @testset "Symbol inputs" begin
             input_vector_symbols = [:time_steps, :locations]
             input_single_symbol = :time_steps
 
