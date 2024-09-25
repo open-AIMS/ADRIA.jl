@@ -85,6 +85,7 @@ function _calc_gridsize(n_factors::Int64; max_cols::Int64=4)::Tuple{Int64,Int64}
     return n_rows, n_cols
 end
 
+include("../outcome_metadata.jl")
 include("scenarios.jl")
 include("sensitivity.jl")
 include("clustering.jl")

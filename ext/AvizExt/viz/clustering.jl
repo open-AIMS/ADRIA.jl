@@ -79,6 +79,10 @@ function ADRIA.viz.clustered_scenarios(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
+    if !haskey(axis_opts, :title)
+        axis_opts[:title] = "$(outcome_title(outcomes)) Clusters"
+    end
+
     return ADRIA.viz.scenarios(
         outcomes, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
     )
