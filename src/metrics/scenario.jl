@@ -129,7 +129,9 @@ function _scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray{<
     # Calculate relative domain-wide cover based on absolute values
     return dropdims(sum(absolute_juveniles(rs); dims=:locations); dims=:locations)
 end
-scenario_absolute_juveniles = Metric(_scenario_absolute_juveniles, (:timesteps, :scenarios))
+scenario_absolute_juveniles = Metric(
+    _scenario_absolute_juveniles, (:timesteps, :scenarios), UNIT_AREA
+)
 
 """
     scenario_juvenile_indicator(data::YAXArray, coral_spec::DataFrame, k_area::AbstractVector{<:Real}; kwargs...)::AbstractArray{<:Real}
