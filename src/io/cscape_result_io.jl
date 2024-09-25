@@ -283,9 +283,9 @@ function _create_inputs_dataframe(
     n_draws::Int =
         "draws" in keys(nc_handle.dim) ? length(get(nc_handle.dim, "draws", [1])) : 1
 
-    dhws::Vector{Float64} = Float64.(fill(input_index, (n_draws,)))
-    cyclones::Vector{Float64} = Float64.(fill(input_index, (n_draws,)))
-    scenario_id::Vector{Int64} = Int64.(fill(scenario_spec.ID, (n_draws,)))
+    dhws::Vector{Float64} = Float64.(fill(input_index, n_draws))
+    cyclones::Vector{Float64} = Float64.(fill(input_index, n_draws))
+    scenario_id::Vector{Int64} = Int64.(fill(scenario_spec.ID, n_draws))
 
     # Thermal tolerance bins are stored as lb_interval_ub
     lb_t, int_t1, int_t2, ub_t =
@@ -346,23 +346,23 @@ function _create_inputs_dataframe(
         scenario_id=scenario_id,
         dhw_scenario=dhws,
         cyc_scenario=cyclones,
-        RCP=fill(rcp, (n_draws,)),
-        thermal_tol_lb=fill(lb_t, (n_draws,)),
-        thermal_tol_int1=fill(int_t1, (n_draws,)),
-        thermal_tol_int2=fill(int_t2, (n_draws,)),
-        thermal_tol_ub=fill(ub_t, (n_draws,)),
-        init_heat_tol_mean=fill(init_heat_tol_mean, (n_draws,)),
-        init_heat_tol_std=fill(init_heat_tol_std, (n_draws,)),
-        heritability1=fill(heritability1, (n_draws,)),
-        heritability2=fill(heritability2, (n_draws,)),
-        plasticity=fill(plasticity, (n_draws,)),
-        intervention_start=fill(intervention_start, (n_draws,)),
-        intervention_duration=fill(duration, (n_draws,)),
-        intervention_frequency=fill(frequency, (n_draws,)),
-        deployment_area=fill(deployment_area, (n_draws,)),
-        n_deployment_locations=fill(n_dep_locations, (n_draws,)),
-        enhancement_mean=fill(enhancement_mean, (n_draws,)),
-        enhancement_std=fill(enhancement_std, (n_draws,)),
+        RCP=fill(rcp, n_draws),
+        thermal_tol_lb=fill(lb_t, n_draws),
+        thermal_tol_int1=fill(int_t1, n_draws),
+        thermal_tol_int2=fill(int_t2, n_draws),
+        thermal_tol_ub=fill(ub_t, n_draws),
+        init_heat_tol_mean=fill(init_heat_tol_mean, n_draws),
+        init_heat_tol_std=fill(init_heat_tol_std, n_draws),
+        heritability1=fill(heritability1, n_draws),
+        heritability2=fill(heritability2, n_draws),
+        plasticity=fill(plasticity, n_draws),
+        intervention_start=fill(intervention_start, n_draws),
+        intervention_duration=fill(duration, n_draws),
+        intervention_frequency=fill(frequency, n_draws),
+        deployment_area=fill(deployment_area, n_draws),
+        n_deployment_locations=fill(n_dep_locations, n_draws),
+        enhancement_mean=fill(enhancement_mean, n_draws),
+        enhancement_std=fill(enhancement_std, n_draws),
         coral_dict...
     )
 end
