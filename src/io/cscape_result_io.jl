@@ -283,8 +283,9 @@ function _create_inputs_dataframe(
     n_draws::Int =
         "draws" in keys(nc_handle.dim) ? length(get(nc_handle.dim, "draws", [1])) : 1
 
-    dhws::Vector{Float64} = Float64.(repeat([input_index], n_draws))
-    cyclones::Vector{Float64} = Float64.(repeat([input_index], n_draws))
+    dhws::Vector{Float64} = Float64.(fill(input_index, n_draws))
+    cyclones::Vector{Float64} = Float64.(fill(input_index, n_draws))
+    scenario_id::Vector{Int64} = Int64.(fill(scenario_spec.ID, n_draws))
 
     # Thermal tolerance bins are stored as lb_interval_ub
     lb_t, int_t1, int_t2, ub_t =
@@ -342,25 +343,26 @@ function _create_inputs_dataframe(
     coral_dict = merge(settle_probs_kwargs, corals_deployed)
 
     return DataFrame(;
+        scenario_id=scenario_id,
         dhw_scenario=dhws,
         cyc_scenario=cyclones,
-        RCP=repeat([rcp], n_draws),
-        thermal_tol_lb=repeat([lb_t], n_draws),
-        thermal_tol_int1=repeat([int_t1], n_draws),
-        thermal_tol_int2=repeat([int_t2], n_draws),
-        thermal_tol_ub=repeat([ub_t], n_draws),
-        init_heat_tol_mean=repeat([init_heat_tol_mean], n_draws),
-        init_heat_tol_std=repeat([init_heat_tol_std], n_draws),
-        heritability1=repeat([heritability1], n_draws),
-        heritability2=repeat([heritability2], n_draws),
-        plasticity=repeat([plasticity], n_draws),
-        intervention_start=repeat([intervention_start], n_draws),
-        intervention_duration=repeat([duration], n_draws),
-        intervention_frequency=repeat([frequency], n_draws),
-        deployment_area=repeat([deployment_area], n_draws),
-        n_deployment_locations=repeat([n_dep_locations], n_draws),
-        enhancement_mean=repeat([enhancement_mean], n_draws),
-        enhancement_std=repeat([enhancement_std], n_draws),
+        RCP=fill(rcp, n_draws),
+        thermal_tol_lb=fill(lb_t, n_draws),
+        thermal_tol_int1=fill(int_t1, n_draws),
+        thermal_tol_int2=fill(int_t2, n_draws),
+        thermal_tol_ub=fill(ub_t, n_draws),
+        init_heat_tol_mean=fill(init_heat_tol_mean, n_draws),
+        init_heat_tol_std=fill(init_heat_tol_std, n_draws),
+        heritability1=fill(heritability1, n_draws),
+        heritability2=fill(heritability2, n_draws),
+        plasticity=fill(plasticity, n_draws),
+        intervention_start=fill(intervention_start, n_draws),
+        intervention_duration=fill(duration, n_draws),
+        intervention_frequency=fill(frequency, n_draws),
+        deployment_area=fill(deployment_area, n_draws),
+        n_deployment_locations=fill(n_dep_locations, n_draws),
+        enhancement_mean=fill(enhancement_mean, n_draws),
+        enhancement_std=fill(enhancement_std, n_draws),
         coral_dict...
     )
 end
@@ -391,6 +393,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
 
     # Construct default model spec
     fieldname::Vector{Symbol} = [
+        :scenario_id,
         :dhw_scenario, # Environment Layer
         :cyc_scenario,
         :thermal_tol_lb, # Corals
@@ -413,6 +416,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         seeded_names... # Intervention
     ]
     descriptions::Vector{String} = [
+        "Scenario ID",
         "DHW Scenario",
         "Cyclone Scenario",
         "Natural thermal tolerance lower bound",
@@ -435,6 +439,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         seeded_readable...
     ]
     human_names::Vector{String} = [
+        "Scenario ID",
         "DHW scenario",
         "Cyclone scenario",
         "Thermal Tolerance Lower Bound",
@@ -459,6 +464,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
     ptype::Vector{String} = [
         "unordered categorical",
         "unordered categorical",
+        "unordered categorical",
         "continuous",
         "continuous",
         "continuous",
@@ -481,6 +487,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
     lower_bound::Vector{Float64} = [
         1.0,
         1.0,
+        1.0,
         -6.0,
         0.0,
         0.0,
@@ -501,6 +508,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         seeded_lb...
     ]
     upper_bound::Vector{Float64} = [
+        150000.0,
         50.0,
         50.0,
         0.0,
@@ -526,7 +534,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         string((lb, ub)) for (lb, ub) in zip(lower_bound, upper_bound)
     ]
     component::Vector{String} = vcat(
-        repeat(["EnvironmentalLayer"], 2),
+        repeat(["EnvironmentalLayer"], 3),
         repeat(["Coral"], 9),
         repeat(["Intervention"], 7),
         repeat(["Coral"], length(settle_names)),
