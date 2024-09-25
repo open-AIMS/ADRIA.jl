@@ -86,6 +86,13 @@ YAXArray with summary metric for the remaining axis.
 function summarize(
     data::YAXArray{D,T,N,A}, alongs_axis::Vector{Symbol}, metric::Function
 )::YAXArray where {D,T,N,A}
+    # Check if there's enough space to read(data)
+    data_size = Base.summarysize(data)
+    free_ram = Sys.free_memory()
+    if data_size > free_ram
+        return D.(mapslices(metric, data; dims=alongs_axis))
+    end
+
     alongs = sort([axis_index(data, axis) for axis in alongs_axis])
 
     # Use of JuliennedArrays is in an attempt to speed up calculation of summary statistics.
