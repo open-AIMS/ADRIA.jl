@@ -91,7 +91,7 @@ function summarize(
     # Use of JuliennedArrays is in an attempt to speed up calculation of summary statistics.
     #   We see a small but still worthwhile improvement in practice.
     #   see: https://stackoverflow.com/a/62040897
-    data_slices = JuliennedArrays.Slices(data.data, alongs...)
+    data_slices = JuliennedArrays.Slices(read(data), alongs...)
     summarized_data = map(metric, data_slices)
 
     new_dims = setdiff(axes_names(data), alongs_axis)
