@@ -691,7 +691,7 @@ function _relative_shelter_volume(rs::ResultSet)::YAXArray
     return rs.outcomes[:relative_shelter_volume]
 end
 relative_shelter_volume = Metric(
-    _relative_shelter_volume, (:timesteps, :locations, :scenarios), UNIT_VOLUME
+    _relative_shelter_volume, (:timesteps, :locations, :scenarios)
 )
 
 include("pareto.jl")
