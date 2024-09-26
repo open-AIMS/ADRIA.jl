@@ -93,7 +93,7 @@ function summarize(
     available_ram = Sys.free_memory() * 0.7
     data_size = sizeof(eltype(data)) * length(data)
 
-    # Only use this approach when data occupies more than 70% of available space in RAM
+    # Only use this approach when data occupies more than 70% of available RAM
     if data_size > available_ram
         # `D.` is ensuring the returned YAXArray has the same type as the input `data`
         return D.(mapslices(metric, data; dims=alongs_axis))
