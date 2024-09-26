@@ -6,7 +6,7 @@ if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
 end
 
-function test_covers()::Vector{YAXArray{Float64,4}}
+function mock_covers()::Vector{YAXArray{Float64,4}}
     n_timesteps::Int64 = length(TEST_RS.env_layer_md.timeframe)
     n_groups::Int64 = length(ADRIA.coral_spec().taxa_names)
     n_sizes::Int64 = length(ADRIA.coral_spec().params.name) / n_groups
@@ -32,12 +32,11 @@ function k_area()::Vector{Float64}
     return round.(rand(n_locations) .* 100; digits=2)
 end
 
-function _test_metrics(
-    metric::metrics.Metric, params::Tuple; relative::Bool=false
-)::Nothing
+function test_metric(metric::metrics.Metric, params::Tuple)::Nothing
     metric_result = metric(params...)
     @test all(0.0 .<= metric_result.data)
-    relative && @test all(metric_result.data .<= 1.0)
+
+    metric.is_relative && @test all(metric_result.data .<= 1.0)
 
     _test_properties(metric, metric_result)
     return nothing
@@ -67,12 +66,4 @@ function _test_properties(metric::metrics.Metric, metric_result::YAXArray)
         # Number of axes_names match number of axes_units
         @test length(result_prop_axes_names) == length(result_prop_axes_units)
     end
-end
-
-function test_relative_metric(metric::metrics.Metric, params::Tuple)::Nothing
-    return _test_metrics(metric, params; relative=true)
-end
-
-function test_absolute_metric(metric::metrics.Metric, params::Tuple)::Nothing
-    return _test_metrics(metric, params; relative=false)
 end
