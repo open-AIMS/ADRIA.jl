@@ -90,12 +90,11 @@ function summarize(
     # mapslices only when we `read(data)`. Since `read(data)` loads all the data from disk
     # into memory, we only want to use that approach when there is a reasonable amount of
     # available space in RAM
-    data_size = Base.summarysize(data)
-    free_ram = Sys.free_memory()
-    proportional_usage = data_size / free_ram
+    available_ram = Sys.free_memory() * 0.7
+    data_size = sizeof(eltype(data)) * length(data)
 
     # Only use this approach when data occupies more than 70% of available space in RAM
-    if proportional_usage > 0.7 * free_ram
+    if data_size > available_ram
         # `D.` is ensuring the returned YAXArray has the same type as the input `data`
         return D.(mapslices(metric, data; dims=alongs_axis))
     end
