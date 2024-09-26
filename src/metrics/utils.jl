@@ -103,6 +103,7 @@ Fill `:axes_names` and `:axes_units` properties of the datacube.
 function fill_axes_properties(metric::Metric, metric_result::YAXArray)::YAXArray
     metric_result.properties[:metric_name] = metric_label(metric)
     metric_result.properties[:metric_unit] = metric.unit
+    metric_result.properties[:is_relative] = metric.is_relative
 
     _axes_names::Tuple = axes_names(metric_result)
     metric_result.properties[:axes_names] = collect(

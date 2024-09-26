@@ -23,13 +23,16 @@ abstract type Outcome end
 const UNIT_VOLUME = "m³"
 const UNIT_AREA = "m²"
 const UNIT_AREA_INVERSE = "m⁻²"
+const IS_RELATIVE = true
+const IS_NOT_RELATIVE = false
 
-struct Metric{F<:Function,T<:Tuple,S<:String} <: Outcome
+struct Metric{F<:Function,T<:Tuple,S<:String,B<:Bool} <: Outcome
     func::F
     dims::T     # output dimension axes ?
+    is_relative::B
     unit::S
 end
-Metric(f, d) = Metric(f, d, "")
+Metric(f, d, r) = Metric(f, d, r, "")
 
 """
     (f::Metric)(raw, args...; kwargs...)
@@ -67,7 +70,7 @@ end
 function _relative_cover(rs::ResultSet)::YAXArray{<:Real}
     return rs.outcomes[:relative_cover]
 end
-relative_cover = Metric(_relative_cover, (:timesteps, :locations, :scenarios))
+relative_cover = Metric(_relative_cover, (:timesteps, :locations, :scenarios), IS_RELATIVE)
 
 """
     total_absolute_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
@@ -93,7 +96,7 @@ function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
     return _total_absolute_cover(rs.outcomes[:relative_cover], site_k_area(rs))
 end
 total_absolute_cover = Metric(
-    _total_absolute_cover, (:timesteps, :locations, :scenarios), UNIT_AREA
+    _total_absolute_cover, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE, UNIT_AREA
 )
 
 """
@@ -140,7 +143,9 @@ end
 function _relative_taxa_cover(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_taxa_cover]
 end
-relative_taxa_cover = Metric(_relative_taxa_cover, (:timesteps, :species, :scenarios))
+relative_taxa_cover = Metric(
+    _relative_taxa_cover, (:timesteps, :species, :scenarios), IS_RELATIVE
+)
 
 """
     relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int64)::AbstractArray{T,3} where {T<:Real}
@@ -178,7 +183,7 @@ function _relative_loc_taxa_cover(
     return replace!(taxa_cover, NaN => 0.0)
 end
 relative_loc_taxa_cover = Metric(
-    _relative_loc_taxa_cover, (:timesteps, :species, :locations, :scenarios)
+    _relative_loc_taxa_cover, (:timesteps, :species, :locations, :scenarios), IS_RELATIVE
 )
 
 """
@@ -204,7 +209,9 @@ end
 function _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_juveniles]
 end
-relative_juveniles = Metric(_relative_juveniles, (:timesteps, :locations, :scenarios))
+relative_juveniles = Metric(
+    _relative_juveniles, (:timesteps, :locations, :scenarios), IS_RELATIVE
+)
 
 """
     absolute_juveniles(X::AbstractArray{T,3}, coral_spec::DataFrame, k_area::AbstractVector{T})::AbstractArray{T,2} where {T<:Real}
@@ -227,7 +234,7 @@ function _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_juveniles] .* site_k_area(rs)'
 end
 absolute_juveniles = Metric(
-    _absolute_juveniles, (:timesteps, :locations, :scenarios), UNIT_AREA
+    _absolute_juveniles, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE, UNIT_AREA
 )
 
 """
@@ -275,7 +282,8 @@ function _juvenile_indicator(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:juvenile_indicator]
 end
 juvenile_indicator = Metric(
-    _juvenile_indicator, (:timesteps, :locations, :scenarios), UNIT_AREA_INVERSE)
+    _juvenile_indicator, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE,
+    UNIT_AREA_INVERSE)
 
 """
     coral_evenness(r_taxa_cover::AbstractArray{T})::AbstractArray{T} where {T<:Real}
@@ -314,7 +322,9 @@ end
 function _coral_evenness(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:coral_evenness]
 end
-coral_evenness = Metric(_coral_evenness, (:timesteps, :locations, :scenarios))
+coral_evenness = Metric(
+    _coral_evenness, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE
+)
 
 """
     _colony_Lcm2_to_m3m2(inputs::DataFrame)::Tuple
@@ -557,7 +567,8 @@ function _absolute_shelter_volume(rs::ResultSet)::AbstractArray
     return rs.outcomes[:absolute_shelter_volume]
 end
 absolute_shelter_volume = Metric(
-    _absolute_shelter_volume, (:timesteps, :locations, :scenarios), UNIT_VOLUME
+    _absolute_shelter_volume, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE,
+    UNIT_VOLUME
 )
 
 """
@@ -691,7 +702,7 @@ function _relative_shelter_volume(rs::ResultSet)::YAXArray
     return rs.outcomes[:relative_shelter_volume]
 end
 relative_shelter_volume = Metric(
-    _relative_shelter_volume, (:timesteps, :locations, :scenarios)
+    _relative_shelter_volume, (:timesteps, :locations, :scenarios), IS_RELATIVE
 )
 
 include("pareto.jl")
