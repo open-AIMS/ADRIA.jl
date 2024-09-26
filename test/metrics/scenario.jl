@@ -4,7 +4,7 @@ if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
 end
 
-@testset "temporal.jl" begin
+@testset "scenario.jl" begin
     _test_covers::Vector{YAXArray{Float64,4}} = mock_covers()
     _k_area::Vector{Float64} = k_area()
 
