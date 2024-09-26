@@ -86,18 +86,25 @@ YAXArray with summary metric for the remaining axis.
 function summarize(
     data::YAXArray{D,T,N,A}, alongs_axis::Vector{Symbol}, metric::Function
 )::YAXArray where {D,T,N,A}
-    # Check if there's enough space to read(data)
+    # The approach using JuliennedArrays is faster then directly passing the YAXArray to
+    # mapslices only when we `read(data)`. Since `read(data)` loads all the data from disk
+    # into memory, we only want to use that approach when there is a reasonable amount of
+    # available space in RAM
     data_size = Base.summarysize(data)
     free_ram = Sys.free_memory()
-    if data_size > free_ram
+    proportional_usage = data_size / free_ram
+
+    # Only use this approach when data occupies more than 70% of available space in RAM
+    if proportional_usage > 0.7 * free_ram
+        # `D.` is ensuring the returned YAXArray has the same type as the input `data`
         return D.(mapslices(metric, data; dims=alongs_axis))
     end
 
     alongs = sort([axis_index(data, axis) for axis in alongs_axis])
 
     # Use of JuliennedArrays is in an attempt to speed up calculation of summary statistics.
-    #   We see a small but still worthwhile improvement in practice.
-    #   see: https://stackoverflow.com/a/62040897
+    # We see a small but still worthwhile improvement in practice.
+    # see: https://stackoverflow.com/a/62040897
     data_slices = JuliennedArrays.Slices(read(data), alongs...)
     summarized_data = map(metric, data_slices)
 
