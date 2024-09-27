@@ -1,19 +1,25 @@
 const METRIC_METADATA = (:metric_name, :metric_feature, :is_relative, :metric_unit)
 const AXIS_METADATA = (:axes_names, :axes_units)
 
+"""
+    metadata(outcomes::YAXArray)::Dict{Symbol,Any}
+
+Helper function to extract metadata from YAXArrays.
+"""
 function metadata(outcomes::YAXArray)::Dict{Symbol,Any}
     return outcomes.properties
 end
 
 """
-    fill_metadata!(outcomes::YAXArray, metric::Metric)::Nothing
-    fill_metadata!(outcomes::YAXArray; kwargs...)::Nothing
+    fill_metadata!(outcomes::YAXArray{T,N,A}, metric::Metric)::YAXArray{T,N,A} where {T,N,A}
+    fill_metadata!(outcomes::YAXArray{T,N,A}, metadata::Dict{Symbol,Any})::YAXArray{T,N,A} where {T,N,A}
 
-Fill `:axes_names` and `:axes_units` properties of the datacube.
+Fill outcomes YAXArray metadata (`properties` attribute).
 
 # Arguments
-- `outcomes` : YAXArray datacube of metric outcomes
-- `metric` : ADRIA.metrics.Metric object
+- `outcomes` : YAXArray datacube of metric outcomes.
+- `metric` : ADRIA.metrics.Metric object.
+- `metadata` : Dict to be used to fill outcomes metrics metadata.
 """
 function fill_metadata!(
     outcomes::YAXArray{T,N,A}, metric::Metric
@@ -51,6 +57,11 @@ function fill_metadata!(
     return outcomes
 end
 
+"""
+    fill_axes_metadata!(outcomes::YAXArray)::Nothing
+
+Fill outcomes axes metadata.
+"""
 function fill_axes_metadata!(outcomes::YAXArray)::Nothing
     _axes_names::Tuple = axes_names(outcomes)
     outcomes.properties[:axes_names] = collect(
@@ -63,9 +74,9 @@ function fill_axes_metadata!(outcomes::YAXArray)::Nothing
 end
 
 """
-    axes_units(axes_names::Tuple)::Tuple
+    axes_units(axes_names::Union{Vector{Symbol},Tuple})::Tuple
 
-Units for each metric axis.
+Get units for each metric axis.
 """
 function axes_units(axes_names::Union{Vector{Symbol},Tuple})::Tuple
     return values((timesteps="years", species="", locations="", scenarios="")[axes_names])
