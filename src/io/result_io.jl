@@ -383,16 +383,16 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     n_scenarios = nrow(scen_spec)
 
     # Set up stores for each metric
-    function dim_lengths(metric_structure)
+    function dim_lengths(metric_structure::Vector{Symbol})
         dl = []
         for d in metric_structure
-            if d == "timesteps"
+            if d == :timesteps
                 append!(dl, tf)
-            elseif d == "species"
-                append!(dl, domain.coral_growth.n_group_and_size)
-            elseif d == "locations"
+            elseif d == :species
+                append!(dl, domain.coral_growth.n_groups)
+            elseif d == :locations
                 append!(dl, n_locations)
-            elseif d == "scenarios"
+            elseif d == :scenarios
                 append!(dl, n_scenarios)
             end
         end
@@ -400,53 +400,52 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         return (dl...,)
     end
 
-    met_names = [
-        :relative_cover,
-        :relative_shelter_volume,
-        :absolute_shelter_volume,
-        :relative_juveniles,
-        :juvenile_indicator,
-        :coral_evenness
+    outcome_metrics::Vector{metrics.Metric} = [
+        metrics.relative_cover,
+        metrics.relative_shelter_volume,
+        metrics.absolute_shelter_volume,
+        metrics.relative_juveniles,
+        metrics.juvenile_indicator,
+        metrics.coral_evenness,
+        metrics.relative_taxa_cover
     ]
 
-    _unique_loc_ids = unique_loc_ids(domain)
-
-    dim_struct = Dict(
-        :structure => string.((:timesteps, :locations, :scenarios)),
-        :unique_loc_ids => _unique_loc_ids
+    metric_symbols::Vector{Symbol} = metrics.to_symbol.(outcome_metrics)
+    metric_names::Vector{String} = metrics.to_string.(outcome_metrics; is_titlecase=true)
+    metric_units::Vector{String} = getfield.(outcome_metrics, :unit)
+    axis_names::Vector{Vector{Symbol}} = fill(
+        [:timesteps, :locations, :scenarios], length(outcome_metrics) - 1
     )
-    result_dims::Tuple{Int64,Int64,Int64} = dim_lengths(dim_struct[:structure])
+    # Add axis names relative to the last metric (relative_taxa_cover) separate as they are
+    # different from the other metrics
+    push!(axis_names, [:timesteps, :species, :scenarios])
+    _unique_loc_ids::Vector{String} = unique_loc_ids(domain)
+
+    outcomes_attrs::Vector{Dict{Symbol,Any}} = [
+        Dict(
+            :unique_loc_ids => _unique_loc_ids,
+            :structure => axis_names[idx],
+            :metric_name => metric_names[idx],
+            :metric_unit => metric_units[idx],
+            :axes_names => axis_names[idx],
+            :axes_units => metrics.axes_units(axis_names[idx])
+        ) for (idx, _) in enumerate(metric_symbols)
+    ]
+    result_dims::Vector{NTuple{3,Int64}} = dim_lengths.(axis_names)
 
     # Create stores for each metric
     stores = [
         zcreate(
             Float32,
-            result_dims...;
+            result_dims[idx]...;
             fill_value=nothing,
             fill_as_missing=false,
             path=joinpath(z_store.folder, RESULTS, string(m_name)),
-            chunks=(result_dims[1:(end - 1)]..., 1),
-            attrs=dim_struct,
+            chunks=(result_dims[idx][1:(end - 1)]..., 1),
+            attrs=outcomes_attrs[idx],
             compressor=COMPRESSOR
-        ) for m_name in met_names
+        ) for (idx, m_name) in enumerate(metric_symbols)
     ]
-
-    # Handle special case for relative taxa cover
-    n_groups::Int64 = domain.coral_growth.n_groups
-    push!(
-        stores,
-        zcreate(
-            Float32,
-            (result_dims[1], n_groups, result_dims[3])...;
-            fill_value=nothing,
-            fill_as_missing=false,
-            path=joinpath(z_store.folder, RESULTS, "relative_taxa_cover"),
-            chunks=((result_dims[1], n_groups)..., 1),
-            attrs=Dict(:structure => string.(ADRIA.metrics.relative_taxa_cover.dims)),
-            compressor=COMPRESSOR
-        )
-    )
-    push!(met_names, :relative_taxa_cover)
 
     # dhw and wave zarrays
     dhw_stats = []
@@ -508,7 +507,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     (;
         zip(
             (
-                met_names...,
+                metric_symbols...,
                 stat_store_names...,
                 conn_names...,
                 :site_ranks,
@@ -657,43 +656,46 @@ function load_results(result_loc::String)::ResultSet
     )
 
     outcomes = Dict{Symbol,YAXArray}()
+    outcome_properties = [:metric_name, :metric_unit, :axes_names, :axes_units]
     subdirs = filter(isdir, readdir(joinpath(result_loc, RESULTS); join=true))
     for sd in subdirs
-        if !(occursin(LOG_GRP, sd)) && !(occursin(INPUTS, sd))
-            res = zopen(sd; fill_as_missing=false)
-            sz = size(res)
+        data = zopen(sd; fill_as_missing=false)
+        data_size = size(data)
 
-            # Construct dimension names and metadata
-            st = []
-            for (i, s) in enumerate(res.attrs["structure"])
-                if s == "timesteps"
-                    push!(st, input_set.attrs["timeframe"])
-                elseif s == "locations"
-                    push!(st, res.attrs["unique_loc_ids"])
-                else
-                    push!(st, 1:sz[i])
-                end
+        # Construct dimension names and metadata
+        dim_names = []
+        for (idx, dim_name) in enumerate(data.attrs["structure"])
+            if dim_name == "timesteps"
+                push!(dim_names, input_set.attrs["timeframe"])
+            elseif dim_name == "locations"
+                push!(dim_names, data.attrs["unique_loc_ids"])
+            else
+                push!(dim_names, 1:data_size[idx])
             end
+        end
 
-            try
+        try
+            outcomes[Symbol(basename(sd))] = DataCube(
+                data;
+                properties=Dict(
+                    p => data.attrs[string(p)] for p in outcome_properties
+                ),
+                zip(Symbol.(data.attrs["structure"]), dim_names)...
+            )
+        catch err
+            if err isa ArgumentError
+                @warn """Unable to resolve result structure, reverting to numbered keys.
+                For group $(sd)
+                Got: $(size(data))
+                Structure: $(data.attrs["structure"])
+                Generated: $(Array([i[1] for i in size.(dim_names)]))
+                """
                 outcomes[Symbol(basename(sd))] = DataCube(
-                    res; zip(Symbol.(res.attrs["structure"]), st)...
+                    data;
+                    zip(Symbol.(data.attrs["structure"]), [1:s for s in size(data)])...
                 )
-            catch err
-                if err isa ArgumentError
-                    @warn """Unable to resolve result structure, reverting to numbered keys.
-                    For group $(sd)
-                    Got: $(size(res))
-                    Structure: $(res.attrs["structure"])
-                    Generated: $(Array([i[1] for i in size.(st)]))
-                    """
-                    outcomes[Symbol(basename(sd))] = DataCube(
-                        res;
-                        zip(Symbol.(res.attrs["structure"]), [1:s for s in size(res)])...
-                    )
-                else
-                    rethrow(err)
-                end
+            else
+                rethrow(err)
             end
         end
     end

@@ -103,7 +103,9 @@ function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
 
     return _reef_condition_index(rc, evenness, sv, juves)
 end
-reef_condition_index = Metric(_reef_condition_index, (:timesteps, :locations, :scenarios))
+reef_condition_index = Metric(
+    _reef_condition_index, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE
+)
 
 """
     scenario_rci(rci::YAXArray, tac::YAXArray; kwargs...)
@@ -120,12 +122,12 @@ function _scenario_rci(rci::YAXArray, tac::YAXArray; kwargs...)
     return scenario_trajectory(tac_sliced .* (rci_sliced .> 0.35); metric=sum)
 end
 function _scenario_rci(rs::ResultSet; kwargs...)
-    tac = total_absolute_cover(rs)
     rci = reef_condition_index(rs)
+    tac = total_absolute_cover(rs)
 
     return _scenario_rci(rci, tac; kwargs...)
 end
-scenario_rci = Metric(_scenario_rci, (:timesteps, :scenarios))
+scenario_rci = Metric(_scenario_rci, (:timesteps, :scenarios), IS_NOT_RELATIVE)
 
 """
     reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray, intcp_u::Vector)::AbstractArray
@@ -189,7 +191,9 @@ function _reef_tourism_index(rs::ResultSet; intcp_u::Bool=false)::AbstractArray
 
     return _reef_tourism_index(rc, evenness, sv, juves, intcp)
 end
-reef_tourism_index = Metric(_reef_tourism_index, (:timesteps, :locations, :scenarios))
+reef_tourism_index = Metric(
+    _reef_tourism_index, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE
+)
 
 """
     scenario_rti(rti::YAXArray; kwargs...)
@@ -204,7 +208,7 @@ end
 function _scenario_rti(rs::ResultSet; kwargs...)
     return _scenario_rti(reef_tourism_index(rs); kwargs...)
 end
-scenario_rti = Metric(_scenario_rti, (:timesteps, :scenarios))
+scenario_rti = Metric(_scenario_rti, (:timesteps, :scenarios), IS_NOT_RELATIVE)
 
 """
     reef_fish_index(rc::AbstractArray)
@@ -271,7 +275,9 @@ function _reef_fish_index(rs::ResultSet; intcp_u1::Bool=false, intcp_u2::Bool=fa
 
     return _reef_fish_index(rc, icp1, icp2)
 end
-reef_fish_index = Metric(_reef_fish_index, (:timesteps, :locations, :scenarios))
+reef_fish_index = Metric(
+    _reef_fish_index, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE
+)
 
 """
 scenario_rfi(rfi::YAXArray; kwargs...)
@@ -286,4 +292,4 @@ end
 function _scenario_rfi(rs::ResultSet; kwargs...)
     return _scenario_rfi(reef_fish_index(rs); kwargs...)
 end
-scenario_rfi = Metric(_scenario_rfi, (:timesteps, :scenarios))
+scenario_rfi = Metric(_scenario_rfi, (:timesteps, :scenarios), IS_NOT_RELATIVE)
