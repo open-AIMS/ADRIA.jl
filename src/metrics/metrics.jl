@@ -44,11 +44,10 @@ Makes Metric types callable with arbitary arguments that are passed to associate
 """
 function (f::Metric)(raw, args...; kwargs...)::YAXArray
     axes::Tuple = (:timesteps, :species, :locations, :scenarios)[1:ndims(raw)]
-
-    return fill_axes_properties(f, f.func(DataCube(raw, axes), args...; kwargs...))
+    return fill_metadata!(@views(f.func(DataCube(raw, axes), args...; kwargs...)), f)
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
-    return fill_axes_properties(f, (f.func(rs, args...; kwargs...)))
+    return fill_metadata!(@views(f.func(rs, args...; kwargs...)), f)
 end
 
 """
@@ -732,11 +731,12 @@ relative_shelter_volume = Metric(
     IS_RELATIVE
 )
 
+include("metadata.jl")
 include("pareto.jl")
 include("ranks.jl")
 include("reef_indices.jl")
 include("scenario.jl")
-include("site_level.jl")
+include("spatial.jl")
 include("temporal.jl")
 include("utils.jl")
 
