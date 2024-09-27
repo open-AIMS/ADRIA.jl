@@ -105,7 +105,7 @@ Visualize clustered time series for each location and map.
 
 # Arguments
 - `rs` : ResultSet
-- `data` : Vector of summary statistics data for each location
+- `loc_outcomes` : Vector of summary statistics data for each location
 - `clusters` : Vector of numbers corresponding to clusters
 - `opts` : Options specific to this plotting method
     - `highlight` : Vector of colors indicating cluster membership for each location.
@@ -117,7 +117,7 @@ Figure
 """
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
-    data::AbstractArray{<:Real},
+    loc_outcomes::AbstractVector{<:Real},
     clusters::Union{BitVector,AbstractVector{Int64}};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
@@ -125,14 +125,21 @@ function ADRIA.viz.map(
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
-    ADRIA.viz.map!(g, rs, data, clusters; opts=opts, axis_opts=axis_opts)
+
+    if !haskey(axis_opts, :title)
+        axis_opts[:title] = "$(outcome_title(loc_outcomes)) Clusters"
+    end
+
+    opts[:colorbar_label] = get(opts, :colorbar_label, outcome_label(loc_outcomes))
+
+    ADRIA.viz.map!(g, rs, loc_outcomes, clusters; opts=opts, axis_opts=axis_opts)
 
     return f
 end
 function ADRIA.viz.map!(
     g::Union{GridLayout,GridPosition},
     rs::Union{Domain,ResultSet},
-    data::AbstractVector{<:Real},
+    loc_outcomes::AbstractVector{<:Real},
     clusters::Union{BitVector,Vector{Int64}};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
@@ -141,7 +148,7 @@ function ADRIA.viz.map!(
     loc_groups::Dict{Symbol,BitVector} = ADRIA.analysis.scenario_clusters(clusters)
     group_colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(loc_groups)
 
-    legend_params::Tuple = _cluster_legend_params(data, loc_groups, group_colors)
+    legend_params::Tuple = _cluster_legend_params(loc_outcomes, loc_groups, group_colors)
 
     _colors::Vector{Union{Symbol,RGBA{Float32}}} = Vector{Union{Symbol,RGBA{Float32}}}(
         undef, length(clusters)
@@ -154,7 +161,7 @@ function ADRIA.viz.map!(
     opts[:highlight] = get(opts, :highlight, _colors)
     opts[:legend_params] = get(opts, :legend_params, legend_params)
 
-    ADRIA.viz.map!(g, rs, data; opts=opts, axis_opts=axis_opts)
+    ADRIA.viz.map!(g, rs, loc_outcomes; opts=opts, axis_opts=axis_opts)
 
     return g
 end
@@ -191,7 +198,7 @@ function _cluster_legend_params(
 
     legend_labels =
         labels(group_keys) .* ": " .* ADRIA.to_scientific.(label_means, digits=2)
-    legend_title = "Cluster mean"
+    legend_title = "Cluster mean $(outcome_label(data; label_case=lowercase))"
 
     return (legend_entries, legend_labels, legend_title)
 end
