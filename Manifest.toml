@@ -1510,6 +1510,7 @@ version = "0.4.20"
 [[deps.NetCDF]]
 deps = ["DiskArrays", "NetCDF_jll"]
 git-tree-sha1 = "c8ec10c6b72e35f7020b83330f8054908ba454eb"
+pinned = true
 uuid = "30363a11-5582-574a-97bb-aa9a979735b9"
 version = "0.11.8"
 
