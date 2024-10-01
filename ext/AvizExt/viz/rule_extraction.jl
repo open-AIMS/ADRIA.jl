@@ -141,6 +141,11 @@ function ADRIA.viz.rules_scatter!(
         margin=(5, 5, 5, 5)
     )
 
+    Label(
+        g[1, :, Top()], "SIRUS extracted rules"; padding=(0, 0, 50, 0), font=:bold,
+        valign=:bottom
+    )
+
     return g
 end
 
