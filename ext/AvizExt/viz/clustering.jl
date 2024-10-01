@@ -120,9 +120,13 @@ function ADRIA.viz.map(
     loc_outcomes::AbstractVector{<:Real},
     clusters::Union{BitVector,AbstractVector{Int64}};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )::Figure
+    # Setup fig_opts size before the other default fig_opts
+    fig_opts[:size] = get(fig_opts, :size, (800, 700))
+    set_figure_defaults(fig_opts)
+
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
