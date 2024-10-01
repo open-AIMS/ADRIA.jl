@@ -34,11 +34,17 @@ function ADRIA.viz.rules_scatter(
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
-    f = Figure(; fig_opts...)
-    g = f[1, 1] = GridLayout()
-
     # For now we only plot conditions with two clauses
     rules = filter(r -> length(r.condition) == 2, rules)
+
+    # Setup figure size
+    n_rows = ceil(10 / 4)
+    base_width = 1200
+    base_height = n_rows * base_width / 5
+    fig_opts[:size] = get(fig_opts, :size, (base_width, base_height))
+
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
 
     ADRIA.viz.rules_scatter!(
         g, rs, scenarios, clusters, rules; opts=opts, axis_opts=axis_opts
