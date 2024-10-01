@@ -120,17 +120,13 @@ function ADRIA.viz.map(
     loc_outcomes::AbstractVector{<:Real},
     clusters::Union{BitVector,AbstractVector{Int64}};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )::Figure
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    if !haskey(axis_opts, :title)
-        axis_opts[:title] = "$(outcome_title(loc_outcomes)) Clusters"
-    end
-
-    opts[:colorbar_label] = get(opts, :colorbar_label, outcome_label(loc_outcomes))
+    set_plot_opts!(loc_outcomes, opts, :colorbar_label)
 
     ADRIA.viz.map!(g, rs, loc_outcomes, clusters; opts=opts, axis_opts=axis_opts)
 
