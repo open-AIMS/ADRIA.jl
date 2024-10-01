@@ -139,6 +139,10 @@ function ADRIA.viz.taxonomy!(
         )
     end
 
+    Label(
+        g[1, :, Top()], "Taxa dynamics"; padding=(0, 0, 30, 0), font=:bold, valign=:bottom
+    )
+
     return g
 end
 
