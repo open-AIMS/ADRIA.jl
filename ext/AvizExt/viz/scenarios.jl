@@ -184,7 +184,7 @@ function ADRIA.viz.scenarios!(
         _render_legend(g, scen_groups, legend_position, legend_labels)
     end
 
-    ax.xlabel = "Time [years]"
+    ax.xlabel = "Year"
     ax.ylabel = outcome_label(outcomes)
     return g
 end
