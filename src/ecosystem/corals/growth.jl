@@ -849,12 +849,9 @@ function settler_cover(
     # this is known as in-water mortality.
     # Set to 0.0 as it is now taken care of by connectivity data.
     # Mwater::Float64 = 0.0
-    # @views @inbounds potential_settlers[:, valid_sinks] .= (
-    #     fec_scope[:, valid_sources] * conn.data[valid_sources, valid_sinks]
-    # )
-    @inbounds @views mul!(potential_settlers[:, valid_sinks],
-                      fec_scope[:, valid_sources],
-                      conn.data[valid_sources, valid_sinks])
+    @views @inbounds potential_settlers[:, valid_sinks] .= (
+        fec_scope[:, valid_sources] * conn.data[valid_sources, valid_sinks]
+    )
 
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
