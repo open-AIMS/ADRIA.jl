@@ -469,21 +469,6 @@ function breeders(μ_o::T, μ_s::T, h²::T)::T where {T<:Float64}
     return μ_o + ((μ_s - μ_o) * h²)
 end
 
-function _weighted_sum(
-    values::AbstractVector{T},
-    weights::AbstractVector{T}
-)::T where {T<:AbstractFloat}
-    sum_weighted = zero(T)
-    sum_weights = zero(T)
-
-    @inbounds for i in eachindex(values, weights)
-        sum_weighted += values[i] * weights[i]
-        sum_weights += weights[i]
-    end
-
-    return sum_weighted / sum_weights
-end
-
 """
     _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{F})::Nothing where {F<:Float64}
 
@@ -612,8 +597,9 @@ function settler_DHW_tolerance!(
     n_reproductive = sum(view(fec_params_per_m², :, :) .> 0.0, dims=2)
     reproductive_sc::BitVector = falses(sizes)  # cache for reproductive size classes
 
-    for sink_loc in sink_loc_ids
-        if sum(view(settlers, :, sink_loc)) .== 0.0
+    @inbounds for sink_loc in sink_loc_ids
+        sink_settlers = view(settlers, :, sink_loc)'
+        if sum(sink_settlers) .== 0.0
             # Only update locations where recruitment occurred
             continue
         end
@@ -623,9 +609,9 @@ function settler_DHW_tolerance!(
         source_locs .= view(tp.data, :, sink_loc) .> 0.0
 
         # Calculate contribution to cover to determine weights for each functional group
-        w::Matrix{Float64} = view(settlers, :, sink_loc)' .* view(tp.data, source_locs, sink_loc)
+        w::Matrix{Float64} = sink_settlers .* view(tp.data, source_locs, sink_loc)
         w_per_group::Matrix{Float64} = w ./ sum(w; dims=1)
-        ew::Matrix{Float64} = zeros(1, size(w,1))
+        ew::Vector{Float64} = zeros(count(source_locs))
 
         for grp in groups
             # Determine weights based on contribution to recruitment.
@@ -639,9 +625,9 @@ function settler_DHW_tolerance!(
 
                 # Determine combined mean
                 # https://en.wikipedia.org/wiki/Mixture_distribution#Properties
-                ew .= view(w_per_group, :, grp)'
-                settler_means = view(c_mean_t_1, grp, reproductive_sc, source_locs)
-                recruit_μ::Float64 = sum((settler_means .* ew)) / n_reproductive[grp]
+                ew .= view(w_per_group, :, grp)
+                settler_means::SubArray = view(c_mean_t_1, grp, reproductive_sc, source_locs)
+                recruit_μ::Float64 = sum(settler_means .* ew') / n_reproductive[grp]
 
                 # Mean for generation t is determined through Breeder's equation
                 @views c_mean_t[grp, 1, sink_loc] = breeders(
@@ -863,9 +849,12 @@ function settler_cover(
     # this is known as in-water mortality.
     # Set to 0.0 as it is now taken care of by connectivity data.
     # Mwater::Float64 = 0.0
-    @views @inbounds potential_settlers[:, valid_sinks] .= (
-        fec_scope[:, valid_sources] * conn.data[valid_sources, valid_sinks]
-    )
+    # @views @inbounds potential_settlers[:, valid_sinks] .= (
+    #     fec_scope[:, valid_sources] * conn.data[valid_sources, valid_sinks]
+    # )
+    @inbounds @views mul!(potential_settlers[:, valid_sinks],
+                      fec_scope[:, valid_sources],
+                      conn.data[valid_sources, valid_sinks])
 
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
