@@ -710,6 +710,7 @@ function run_model(
     )
 
     FLoops.assistant(false)
+    habitable_loc_idxs = findall(habitable_locs)
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
@@ -727,7 +728,7 @@ function run_model(
         lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs] .< (0.7 .* habitable_loc_areas)] .=
             1
 
-        @floop for i in findall(habitable_locs)
+        @floop for i in habitable_loc_idxs
             # TODO Skip when _loc_rel_leftover_space[i] == 0
 
             # Perform timestep
