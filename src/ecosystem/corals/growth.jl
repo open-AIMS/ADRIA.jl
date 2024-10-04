@@ -494,7 +494,7 @@ function _shift_distributions!(
     # Weight distributions based on growth rate and cover
     # Do from largest size class to size class 2
     # (values for size class 1 gets replaced by recruitment process)
-    prop_growth = MVector{2, F}(0.0,0.0)
+    prop_growth = MVector{2,F}(0.0, 0.0)
     for i in length(growth_rate):-1:2
         # Skip size class if nothing is moving up
         sum(view(cover, (i - 1):i)) == 0.0 ? continue : false
@@ -506,7 +506,8 @@ function _shift_distributions!(
         end
 
         # Weighted sum
-        dist_t[i] = (dist_t[i-1] * prop_growth[1] + dist_t[i] * prop_growth[2]) / sum(prop_growth)
+        dist_t[i] =
+            (dist_t[i - 1] * prop_growth[1] + dist_t[i] * prop_growth[2]) / sum(prop_growth)
     end
 
     return nothing
@@ -594,7 +595,7 @@ function settler_DHW_tolerance!(
     source_locs::BitVector = falses(length(k_area))  # cache for source locations
 
     # Number of reproductive size classes for each group
-    n_reproductive = sum(view(fec_params_per_m², :, :) .> 0.0, dims=2)
+    n_reproductive = sum(view(fec_params_per_m², :, :) .> 0.0; dims=2)
     reproductive_sc::BitVector = falses(sizes)  # cache for reproductive size classes
 
     @inbounds for sink_loc in sink_loc_ids
@@ -626,7 +627,9 @@ function settler_DHW_tolerance!(
                 # Determine combined mean
                 # https://en.wikipedia.org/wiki/Mixture_distribution#Properties
                 ew .= view(w_per_group, :, grp)
-                settler_means::SubArray = view(c_mean_t_1, grp, reproductive_sc, source_locs)
+                settler_means::SubArray = view(
+                    c_mean_t_1, grp, reproductive_sc, source_locs
+                )
                 recruit_μ::Float64 = sum(settler_means .* ew') / n_reproductive[grp]
 
                 # Mean for generation t is determined through Breeder's equation
