@@ -709,6 +709,10 @@ function run_model(
         habitable_loc_areas
     )
 
+    # Preallocated cache for source/sink locations
+    valid_sources::BitVector = falses(size(conn, 2))
+    valid_sinks::BitVector = falses(size(conn, 1))
+
     FLoops.assistant(false)
     habitable_loc_idxs = findall(habitable_locs)
     for tstep::Int64 in 2:tf
@@ -792,7 +796,9 @@ function run_model(
                 sim_params.max_settler_density,
                 sim_params.max_larval_density,
                 basal_area_per_settler,
-                potential_settlers
+                potential_settlers,
+                valid_sources,
+                valid_sinks
             )[
                 :, habitable_locs
             ] ./ loc_k_area[:, habitable_locs]
