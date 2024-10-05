@@ -740,7 +740,7 @@ function run_model(
             )
 
             # Write to the cover matrix
-            coral_cover(functional_groups[i], view(C_cover_t, :, :, i))
+            coral_cover(functional_groups[i], @view(C_cover_t[:, :, i]))
         end
 
         # Check if size classes are inappropriately out-growing habitable area
@@ -750,14 +750,14 @@ function run_model(
 
         # Convert C_cover_t to relative values after CoralBlox was run
         C_cover_t[:, :, habitable_locs] .= (
-            view(C_cover_t, :, :, habitable_locs) ./ habitable_loc_areas′
+            @view(C_cover_t[:, :, habitable_locs]) ./ habitable_loc_areas′
         )
-        C_cover[tstep, :, :, habitable_locs] .= C_cover_t[:, :, habitable_locs]
+        C_cover[tstep, :, :, habitable_locs] .= @view(C_cover_t[:, :, habitable_locs])
 
         # Natural adaptation (doesn't change C_cover_t)
         if tstep <= tf
             adjust_DHW_distribution!(
-                view(C_cover, (tstep - 1), :, :, :), c_mean_t, p.r
+                @view(C_cover[tstep - 1, :, :, :]), c_mean_t, p.r
             )
 
             # Set values for t to t-1
