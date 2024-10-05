@@ -619,7 +619,7 @@ function settler_DHW_tolerance!(
 
         # If there is any influence from another location for a group, the tolerance
         # values should be updated.
-        update_group::BitMatrix = sum(w_per_group, dims=1) .> 0.0
+        update_group::BitMatrix = sum(w_per_group; dims=1) .> 0.0
 
         for grp in groups
             # Determine weights based on contribution to recruitment.
@@ -853,8 +853,8 @@ function settler_cover(
 )::T where {T<:AbstractMatrix{Float64},V<:Vector{Float64}}
 
     # Determine active sources and sinks
-    valid_sources .= dropdims(sum(conn.data; dims=2) .> 0.0, dims=2)
-    valid_sinks .= dropdims(sum(conn.data; dims=1) .> 0.0, dims=1)
+    valid_sources .= dropdims(sum(conn.data; dims=2) .> 0.0; dims=2)
+    valid_sinks .= dropdims(sum(conn.data; dims=1) .> 0.0; dims=1)
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
     # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae
