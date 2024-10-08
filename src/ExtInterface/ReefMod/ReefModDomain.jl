@@ -102,7 +102,7 @@ function load_domain(
     dhw_scens = DataCube(
         read(dom_dataset.record_applied_DHWs);
         timestep=Int64.(collect(cube_axes[1])),
-        location=site_ids,
+        location=location_ids,
         scenario=Int64.(collect(cube_axes[3]))
     )[timestep=At(timeframe[1]:timeframe[2])]
 
@@ -303,7 +303,7 @@ function switch_RCPs!(d::ReefModDomain, RCP::String)::ReefModDomain
     dhws = DataCube(
         read(new_scen_dataset.record_applied_DHWs);
         timestep=Int64.(collect(cube_axes[1])),
-        location=d.site_ids,
+        location=d.loc_ids,
         scenario=Int64.(collect(cube_axes[3]))
     )[timestep=At(d.env_layer_md.timeframe)]
 
