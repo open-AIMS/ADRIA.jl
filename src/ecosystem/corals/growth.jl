@@ -494,17 +494,20 @@ function _shift_distributions!(
     # Weight distributions based on growth rate and cover
     # Do from largest size class to size class 2
     # (values for size class 1 gets replaced by recruitment process)
+    prop_growth = MVector{2,F}(0.0, 0.0)
     for i in length(growth_rate):-1:2
         # Skip size class if nothing is moving up
-        sum(@view(cover[(i - 1):i])) == 0.0 ? continue : false
+        sum(view(cover, (i - 1):i)) == 0.0 ? continue : false
 
-        prop_growth = @views (cover[(i - 1):i] ./ sum(cover[(i - 1):i])) .*
+        prop_growth .= @views (cover[(i - 1):i] ./ sum(cover[(i - 1):i])) .*
             (growth_rate[(i - 1):i] ./ sum(growth_rate[(i - 1):i]))
         if sum(prop_growth) == 0.0
             continue
         end
 
-        dist_t[i] = sum(@view(dist_t[(i - 1):i]), Weights(prop_growth ./ sum(prop_growth)))
+        # Weighted sum
+        dist_t[i] =
+            (dist_t[i - 1] * prop_growth[1] + dist_t[i] * prop_growth[2]) / sum(prop_growth)
     end
 
     return nothing
@@ -577,86 +580,6 @@ function adjust_DHW_distribution!(
     return nothing
 end
 
-"""
-    settler_DHW_tolerance!(c_mean_t_1::Matrix{F}, c_mean_t::Matrix{F}, k_area::Vector{F}, tp::AbstractMatrix{F}, settlers::Matrix{F}, fec_params_per_m²::Vector{F}, h²::F)::Nothing where {F<:Float64}
-
-Update DHW tolerance means of newly settled corals into the distributions for the sink
-locations.
-
-# Arguments
-- `c_mean_t_1` : DHW tolerance distribution for previous timestep (t - 1)
-- `c_mean_t` : DHW tolerance distribution for current timestep (t)
-- `k_area` : Absolute coral habitable area
-- `tp` : Transition Probability matrix indicating the proportion of larvae that reaches a
-    sink location (columns) from a given source location (rows)
-    Columns should sum to 1
-- `settlers` : recruited corals for each sink location
-- `fec_params_per_m²` : Fecundity parameters for each species/size class combination
-- `h²` : narrow-sense heritability
-"""
-function settler_DHW_tolerance!(
-    c_mean_t_1::Matrix{F},
-    c_mean_t::Matrix{F},
-    k_area::Vector{F},
-    tp::AbstractMatrix{F},
-    settlers::Matrix{F},
-    fec_params_per_m²::Vector{F},
-    h²::F,
-    n_sizes::Int64
-)::Nothing where {F<:Float64}
-    # Potential sink locations (TODO: pass in later)
-    sink_loc_ids::Vector{Int64} = findall(k_area .> 0.0)
-
-    source_locs::BitVector = falses(length(k_area))  # cache for source locations
-    reproductive_sc::BitVector = falses(n_sizes)  # cache for reproductive size classes
-
-    settler_sc::StepRange = 1:n_sizes:length(fec_params_per_m²)
-    for sink_loc in sink_loc_ids
-        if sum(@views(settlers[:, sink_loc])) .== 0.0
-            # Only update locations where recruitment occurred
-            continue
-        end
-
-        # Note: source locations can include the sink location (self-seeding)
-        source_locs .= @view(tp[:, sink_loc]) .> 0.0
-
-        # Calculate contribution to cover to determine weights for each species/group
-        w = @views settlers[:, sink_loc]' .* tp[source_locs, sink_loc].data
-        w_per_group = w ./ sum(w; dims=1)
-        replace!(w_per_group, NaN => 0.0)
-
-        # Determine new distribution mean for each species at all locations
-        for (sp, sc1) in enumerate(settler_sc)
-            sc1_end::UnitRange{Int64} = sc1:(sc1 + (n_sizes - 1))
-
-            # Get distribution mean of reproductive size classes at source locations
-            # recalling that source locations may include the sink location due to
-            # self-seeding.
-            reproductive_sc .= @view(fec_params_per_m²[sc1_end]) .> 0.0
-            settler_means::SubArray{Float64} = @view(
-                c_mean_t_1[sc1_end[reproductive_sc], source_locs]
-            )
-
-            # Determine weights based on contribution to recruitment.
-            # This weights the recruited corals by the size classes and source locations
-            # which contributed to recruitment.
-            if sum(w_per_group[:, sp]) > 0.0
-                ew::Vector{Float64} = repeat(
-                    w_per_group[:, sp]; inner=count(reproductive_sc)
-                )
-
-                # Determine combined mean
-                # https://en.wikipedia.org/wiki/Mixture_distribution#Properties
-                recruit_μ::Float64 = sum(settler_means, Weights(ew ./ sum(ew)))
-
-                # Mean for generation t is determined through Breeder's equation
-                c_mean_t[sc1, sink_loc] = breeders(c_mean_t_1[sc1, sink_loc], recruit_μ, h²)
-            end
-        end
-    end
-
-    return nothing
-end
 function settler_DHW_tolerance!(
     c_mean_t_1::AbstractArray{F,3},
     c_mean_t::AbstractArray{F,3},
@@ -669,47 +592,59 @@ function settler_DHW_tolerance!(
     groups, sizes, _ = axes(c_mean_t_1)
 
     sink_loc_ids::Vector{Int64} = findall(k_area .> 0.0)
+    source_locs::BitVector = BitVector(undef, length(k_area))  # cache for source locations
 
-    source_locs::BitVector = falses(length(k_area))  # cache for source locations
-    reproductive_sc::BitVector = falses(length(sizes))  # cache for reproductive size classes
+    # Number of reproductive size classes for each group
+    n_reproductive::Matrix{Int64} = sum(fec_params_per_m² .> 0.0; dims=2)
 
-    for sink_loc in sink_loc_ids
-        if sum(@views(settlers[:, sink_loc])) .== 0.0
+    # Cache to hold indication of which size classes are considered reproductive
+    reproductive_sc::BitVector = falses(sizes)
+
+    @inbounds for sink_loc in sink_loc_ids
+        sink_settlers = @view(settlers[:, sink_loc])'
+        if sum(sink_settlers) .== 0.0
             # Only update locations where recruitment occurred
             continue
         end
 
+        # Find sources for each sink
         # Note: source locations can include the sink location (self-seeding)
-        source_locs .= @view(tp[:, sink_loc]) .> 0.0
+        @inbounds for i in axes(@view(tp.data[:, sink_loc]), 1)
+            source_locs[i] = tp.data[i, sink_loc] > 0.0
+        end
 
-        # Calculate contribution to cover to determine weights for each species/group
-        w = @views settlers[:, sink_loc]' .* tp.data[source_locs, sink_loc]
-        w_per_group = w ./ sum(w; dims=1)
-        replace!(w_per_group, NaN => 0.0)
+        # Calculate contribution to cover to determine weights for each functional group
+        w::Matrix{F} = sink_settlers .* @view(tp.data[source_locs, sink_loc])
+        w_per_group::Matrix{F} = w ./ sum(w; dims=1)
+
+        # If there is any influence from another location for a group, the tolerance
+        # values should be updated.
+        update_group::BitMatrix = sum(w_per_group; dims=1) .> 0.0
 
         for grp in groups
-            # Get distribution mean of reproductive size classes at source locations
-            # recalling that source locations may include the sink location due to
-            # self-seeding.
-            reproductive_sc .= @view(fec_params_per_m²[grp, :]) .> 0.0
-            settler_means::SubArray{Float64} = @view(
-                c_mean_t_1[grp, reproductive_sc, source_locs]
-            )
-
             # Determine weights based on contribution to recruitment.
             # This weights the recruited corals by the size classes and source locations
             # which contributed to recruitment.
-            if sum(w_per_group[:, grp]) > 0.0
-                ew::Vector{Float64} = repeat(
-                    w_per_group[:, grp]; inner=count(reproductive_sc)
-                )
+            if update_group[1, grp]
+                # Get distribution mean of reproductive size classes at source locations
+                # recalling that source locations may include the sink location due to
+                # self-seeding.
+                reproductive_sc .= @view(fec_params_per_m²[grp, :]) .> 0.0
 
                 # Determine combined mean
                 # https://en.wikipedia.org/wiki/Mixture_distribution#Properties
-                recruit_μ::Float64 = sum(settler_means, Weights(ew ./ sum(ew)))
+                settler_means::SubArray{F} = @view(
+                    c_mean_t_1[grp, reproductive_sc, source_locs]
+                )
+
+                recruit_μ::F = 0.0
+                @inbounds for i in axes(settler_means, 1), j in axes(settler_means, 2)
+                    recruit_μ += settler_means[i, j] * w_per_group[j, grp]
+                end
+                recruit_μ /= n_reproductive[grp]
 
                 # Mean for generation t is determined through Breeder's equation
-                c_mean_t[grp, 1, sink_loc] = breeders(
+                @views c_mean_t[grp, 1, sink_loc] = breeders(
                     c_mean_t_1[grp, 1, sink_loc], recruit_μ, h²
                 )
             end
@@ -908,16 +843,18 @@ Area covered by recruited larvae (in m²)
 function settler_cover(
     fec_scope::T,
     conn::AbstractMatrix{Float64},
-    leftover_space::T,
+    leftover_space::V,
     α::V,
     β::V,
     basal_area_per_settler::V,
-    potential_settlers::T
-)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
+    potential_settlers::T,
+    valid_sources::BitVector,
+    valid_sinks::BitVector
+)::T where {T<:AbstractMatrix{Float64},V<:Vector{Float64}}
 
     # Determine active sources and sinks
-    valid_sources::BitVector = vec(sum(conn; dims=2) .> 0.0)
-    valid_sinks::BitVector = vec(sum(conn; dims=1) .> 0.0)
+    valid_sources .= dropdims(sum(conn.data; dims=2) .> 0.0; dims=2)
+    valid_sinks .= dropdims(sum(conn.data; dims=1) .> 0.0; dims=1)
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
     # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae
@@ -926,8 +863,8 @@ function settler_cover(
     # this is known as in-water mortality.
     # Set to 0.0 as it is now taken care of by connectivity data.
     # Mwater::Float64 = 0.0
-    @views potential_settlers[:, valid_sinks] .= (
-        fec_scope[:, valid_sources] * conn[valid_sources, valid_sinks]
+    @views @inbounds potential_settlers[:, valid_sinks] .= (
+        fec_scope[:, valid_sources] * conn.data[valid_sources, valid_sinks]
     )
 
     # Larvae have landed, work out how many are recruited
