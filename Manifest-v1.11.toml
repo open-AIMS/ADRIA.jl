@@ -2,7 +2,7 @@
 
 julia_version = "1.11.0"
 manifest_format = "2.0"
-project_hash = "d7b3960efa61322e2915510de223bd9f268aae9a"
+project_hash = "dec86e88ac8668ab716bcc986d681b7085c4ae8d"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -492,9 +492,9 @@ version = "1.15.1"
 
 [[deps.DimensionalData]]
 deps = ["Adapt", "ArrayInterface", "ConstructionBase", "DataAPI", "Dates", "Extents", "Interfaces", "IntervalSets", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "PrecompileTools", "Random", "RecipesBase", "SparseArrays", "Statistics", "TableTraits", "Tables"]
-git-tree-sha1 = "7723a66edfd3bfff65ec510959b6683f8acfb111"
+git-tree-sha1 = "cbd9925bb2297608633af59a7f38b764109fe154"
 uuid = "0703355e-b756-11e9-17c0-8b28908087d0"
-version = "0.27.9"
+version = "0.28.2"
 
     [deps.DimensionalData.extensions]
     DimensionalDataCategoricalArraysExt = "CategoricalArrays"
@@ -513,6 +513,7 @@ version = "0.1.10"
 [[deps.DiskArrays]]
 deps = ["LRUCache", "OffsetArrays"]
 git-tree-sha1 = "ef25c513cad08d7ebbed158c91768ae32f308336"
+pinned = true
 uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
 version = "0.3.23"
 
@@ -1526,7 +1527,6 @@ version = "0.4.20"
 [[deps.NetCDF]]
 deps = ["DiskArrays", "NetCDF_jll"]
 git-tree-sha1 = "c8ec10c6b72e35f7020b83330f8054908ba454eb"
-pinned = true
 uuid = "30363a11-5582-574a-97bb-aa9a979735b9"
 version = "0.11.8"
 
@@ -2423,7 +2423,6 @@ version = "0.5.11"
 [[deps.Zarr]]
 deps = ["AWSS3", "Blosc", "CodecZlib", "DataStructures", "Dates", "DiskArrays", "HTTP", "JSON", "LRUCache", "OffsetArrays", "OpenSSL", "Pkg", "URIs", "ZipArchives"]
 git-tree-sha1 = "2b81c3b4ddc0588338a4e5379fc18eeecaae5611"
-pinned = true
 uuid = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 version = "0.9.3"
 
