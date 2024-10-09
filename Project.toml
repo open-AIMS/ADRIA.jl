@@ -1,7 +1,6 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
-authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony",
-"Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
+authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony", "Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
 version = "0.11.0"
 
 [deps]
@@ -16,6 +15,7 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
+DiskArrays = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -88,6 +88,7 @@ DataFrames = "1"
 DataStructures = "0.18, 0.2"
 Dates = "1"
 DimensionalData = "0.25, 0.26, 0.27, 0.28"
+DiskArrays = "0.3.23"
 Distances = "0.10"
 Distributed = "1"
 Distributions = "0.25"
@@ -115,7 +116,7 @@ MAT = "0.10"
 MLJ = "0.19.2, 0.20"
 Makie = "0.20.8, 0.21"
 ModelParameters = "0.4"
-NetCDF = "0.12"
+NetCDF = "0.11, 0.12"
 OnlineStats = "1.5"
 OrderedCollections = "1"
 PkgVersion = "0.2, 0.3"
