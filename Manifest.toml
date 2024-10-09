@@ -2,7 +2,7 @@
 
 julia_version = "1.10.5"
 manifest_format = "2.0"
-project_hash = "6b73c0fcd25842bec60d3f0fed2422d18c1a0d2c"
+project_hash = "d9c2ea247d858818918b29c559482ae94d458f35"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -510,6 +510,7 @@ version = "0.1.10"
 [[deps.DiskArrays]]
 deps = ["LRUCache", "OffsetArrays"]
 git-tree-sha1 = "ef25c513cad08d7ebbed158c91768ae32f308336"
+pinned = true
 uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
 version = "0.3.23"
 
@@ -1512,7 +1513,6 @@ version = "0.4.20"
 [[deps.NetCDF]]
 deps = ["DiskArrays", "NetCDF_jll"]
 git-tree-sha1 = "c8ec10c6b72e35f7020b83330f8054908ba454eb"
-pinned = true
 uuid = "30363a11-5582-574a-97bb-aa9a979735b9"
 version = "0.11.8"
 
@@ -2387,7 +2387,6 @@ version = "0.5.11"
 [[deps.Zarr]]
 deps = ["AWSS3", "Blosc", "CodecZlib", "DataStructures", "Dates", "DiskArrays", "HTTP", "JSON", "LRUCache", "OffsetArrays", "OpenSSL", "Pkg", "URIs", "ZipArchives"]
 git-tree-sha1 = "2b81c3b4ddc0588338a4e5379fc18eeecaae5611"
-pinned = true
 uuid = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 version = "0.9.3"
 
