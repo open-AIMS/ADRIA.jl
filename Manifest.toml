@@ -586,9 +586,9 @@ version = "0.1.10"
 
 [[deps.ExtendableSparse]]
 deps = ["DocStringExtensions", "ILUZero", "LinearAlgebra", "Printf", "SparseArrays", "Sparspak", "StaticArrays", "SuiteSparse", "Test"]
-git-tree-sha1 = "1f90313d700e95d5096809f1d5f457527d658d85"
+git-tree-sha1 = "3dc0ead7baa71735e03be4379d812dd8167e904a"
 uuid = "95c220a8-a1cf-11e9-0c77-dbfce5f500b3"
-version = "1.5.1"
+version = "1.5.2"
 
     [deps.ExtendableSparse.extensions]
     ExtendableSparseAMGCLWrapExt = "AMGCLWrap"
@@ -669,19 +669,21 @@ weakdeps = ["PDMats", "SparseArrays", "Statistics"]
     FillArraysStatisticsExt = "Statistics"
 
 [[deps.FiniteDiff]]
-deps = ["ArrayInterface", "LinearAlgebra", "Setfield", "SparseArrays"]
-git-tree-sha1 = "f9219347ebf700e77ca1d48ef84e4a82a6701882"
+deps = ["ArrayInterface", "LinearAlgebra", "Setfield"]
+git-tree-sha1 = "b10bdafd1647f57ace3885143936749d61638c3b"
 uuid = "6a86dc24-6348-571c-b903-95158fe2bd41"
-version = "2.24.0"
+version = "2.26.0"
 
     [deps.FiniteDiff.extensions]
     FiniteDiffBandedMatricesExt = "BandedMatrices"
     FiniteDiffBlockBandedMatricesExt = "BlockBandedMatrices"
+    FiniteDiffSparseArraysExt = "SparseArrays"
     FiniteDiffStaticArraysExt = "StaticArrays"
 
     [deps.FiniteDiff.weakdeps]
     BandedMatrices = "aae01518-5342-5314-be14-df237901396f"
     BlockBandedMatrices = "ffab5731-97b5-5995-9138-79e8c1846df0"
+    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
     StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [[deps.FixedPointNumbers]]
@@ -853,9 +855,9 @@ version = "0.3.24"
 
 [[deps.HypothesisTests]]
 deps = ["Combinatorics", "Distributions", "LinearAlgebra", "Printf", "Random", "Rmath", "Roots", "Statistics", "StatsAPI", "StatsBase"]
-git-tree-sha1 = "35235811ebde579eb0d4eb9f89cc8fc3c31d103d"
+git-tree-sha1 = "6c3ce99fdbaf680aa6716f4b919c19e902d67c9c"
 uuid = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
-version = "0.11.2"
+version = "0.11.3"
 
 [[deps.ICU_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1074,9 +1076,9 @@ version = "1.19.3+0"
 
 [[deps.KernelAbstractions]]
 deps = ["Adapt", "Atomix", "InteractiveUtils", "MacroTools", "PrecompileTools", "Requires", "StaticArrays", "UUIDs", "UnsafeAtomics", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "5126765c5847f74758c411c994312052eb7117ef"
+git-tree-sha1 = "04e52f596d0871fa3890170fa79cb15e481e4cd8"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
-version = "0.9.27"
+version = "0.9.28"
 
     [deps.KernelAbstractions.extensions]
     EnzymeExt = "EnzymeCore"
@@ -1370,9 +1372,9 @@ version = "0.4.4"
 
 [[deps.MPICH_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML"]
-git-tree-sha1 = "19d4bd098928a3263693991500d05d74dbdc2004"
+git-tree-sha1 = "7715e65c47ba3941c502bffb7f266a41a7f54423"
 uuid = "7cb0a576-ebde-5e09-9194-50597f1243b4"
-version = "4.2.2+0"
+version = "4.2.3+0"
 
 [[deps.MPIPreferences]]
 deps = ["Libdl", "Preferences"]
@@ -1382,9 +1384,9 @@ version = "0.1.11"
 
 [[deps.MPItrampoline_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML"]
-git-tree-sha1 = "fde81c9f9c94fe5fbeaed7b3f1330305cf9a327c"
+git-tree-sha1 = "70e830dab5d0775183c99fc75e4c24c614ed7142"
 uuid = "f1f71cc9-e9ae-5b93-9b94-4fe0e1ad3748"
-version = "5.5.0+0"
+version = "5.5.1+0"
 
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
@@ -1394,9 +1396,9 @@ version = "0.5.13"
 
 [[deps.MakieCore]]
 deps = ["ColorTypes", "GeometryBasics", "IntervalSets", "Observables"]
-git-tree-sha1 = "22fed09860ca73537a36d4e5a9bce0d9e80ee8a8"
+git-tree-sha1 = "4604f03e5b057e8e62a95a44929cafc9585b0fe9"
 uuid = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
-version = "0.8.8"
+version = "0.8.9"
 
 [[deps.MappedArrays]]
 git-tree-sha1 = "2dab0221fe2b0f2cb6754eaa743cc266339f527e"
@@ -2203,17 +2205,18 @@ uuid = "731e570b-9d59-4bfa-96dc-6df516fadf69"
 version = "0.10.0"
 
 [[deps.TranscodingStreams]]
-git-tree-sha1 = "e84b3a11b9bece70d14cce63406bbc79ed3464d2"
+git-tree-sha1 = "0c45878dcfdcfa8480052b6ab162cdd138781742"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.11.2"
+version = "0.11.3"
 
 [[deps.Transducers]]
-deps = ["Accessors", "Adapt", "ArgCheck", "BangBang", "Baselet", "CompositionsBase", "ConstructionBase", "DefineSingletons", "Distributed", "InitialValues", "Logging", "Markdown", "MicroCollections", "Requires", "SplittablesBase", "Tables"]
-git-tree-sha1 = "5215a069867476fc8e3469602006b9670e68da23"
+deps = ["Accessors", "ArgCheck", "BangBang", "Baselet", "CompositionsBase", "ConstructionBase", "DefineSingletons", "Distributed", "InitialValues", "Logging", "Markdown", "MicroCollections", "Requires", "SplittablesBase", "Tables"]
+git-tree-sha1 = "2485554c5b6b039316634f9c676e1bdd84a13e31"
 uuid = "28d57a85-8fef-5791-bfe6-a80928e7c999"
-version = "0.4.82"
+version = "0.4.83"
 
     [deps.Transducers.extensions]
+    TransducersAdaptExt = "Adapt"
     TransducersBlockArraysExt = "BlockArrays"
     TransducersDataFramesExt = "DataFrames"
     TransducersLazyArraysExt = "LazyArrays"
@@ -2221,6 +2224,7 @@ version = "0.4.82"
     TransducersReferenceablesExt = "Referenceables"
 
     [deps.Transducers.weakdeps]
+    Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
     BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
     DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
     LazyArrays = "5078a376-72f3-5289-bfd5-ec5146d43c02"
@@ -2389,9 +2393,9 @@ version = "0.9.3"
 
 [[deps.ZipArchives]]
 deps = ["ArgCheck", "CodecInflate64", "CodecZlib", "InputBuffers", "PrecompileTools", "TranscodingStreams", "Zlib_jll"]
-git-tree-sha1 = "c77707ebf7aad0caa57ad7b561b4f89b0caefc73"
+git-tree-sha1 = "f7fd93aa03f519c25b8b328693f2d36ce01220a9"
 uuid = "49080126-0e18-4c2a-b176-c102e4b3760c"
-version = "2.3.0"
+version = "2.4.0"
 
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
