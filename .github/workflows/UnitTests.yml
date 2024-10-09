@@ -3,7 +3,6 @@ on:
   # Trigger manually or on merge to main
   push:
     branches:
-      - julia-1-11-update
       - main
   workflow_dispatch:
 
