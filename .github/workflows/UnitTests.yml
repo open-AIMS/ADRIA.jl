@@ -3,7 +3,7 @@ on:
   # Trigger manually or on merge to main
   push:
     branches:
-      - feat/caching-and-restoring-unit-tests
+      - julia-1-11-update
       - main
   workflow_dispatch:
 
