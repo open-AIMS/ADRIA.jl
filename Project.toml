@@ -1,6 +1,7 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
-authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony"]
+authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony",
+"Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
 version = "0.11.0"
 
 [deps]
@@ -32,6 +33,7 @@ Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 JMcDM = "358108f5-d052-4d0a-8344-d5384e00c0e5"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 JuliennedArrays = "5cadff95-7770-533d-a838-a1bf817ee6e0"
+LERC_jll = "88015f11-f218-50d7-93a8-a6af411a945d"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
@@ -106,6 +108,7 @@ IterTools = "1"
 JMcDM = "0.7"
 JSON = "0.21.3"
 JuliennedArrays = "0.4"
+LERC_jll = "3"
 LinearAlgebra = "1"
 Logging = "1"
 MAT = "0.10"
