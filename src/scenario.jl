@@ -406,7 +406,7 @@ NamedTuple of collated results
 - `bleaching_mortality` : Array, Log of mortalities caused by bleaching
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
-function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})
+function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray}, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64})
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
@@ -426,19 +426,21 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})
         loc_habitable_area
     )
 
-    return run_model(domain, param_set, functional_groups, max_projected_cover)
+    return run_model(domain, param_set, functional_groups, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64})
 end
 function run_model(
     domain::Domain,
     param_set::DataFrameRow,
-    functional_groups::Vector{Vector{FunctionalGroup}}
+    functional_groups::Vector{Vector{FunctionalGroup}},
+    coefs::Array{Float64, 3},
+    cloc_idxs::Vector{Int64}
 )::NamedTuple
     setup()
     ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps, functional_groups)
+    return run_model(domain, ps, functional_groups, coefs, cloc_idxs)
 end
 function run_model(
-    domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}
+    domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64}
 )::NamedTuple
     p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
@@ -717,6 +719,15 @@ function run_model(
         habitable_loc_areas
     )
 
+    n_custom_locs::Int64 = length(cloc_idxs)
+    cloc_lin_ext::Array{Float64, 3} = repeat(_linear_extensions, 1, 1, n_custom_locs)
+    cloc_survival::Array{Float64, 3} = repeat(survival_rate, 1, 1, n_custom_locs)
+    cloc_lin_ext_scale_factors::Vector{Float64} = zeros(Float64, n_custom_locs)
+    for i in 1:length(cloc_idxs)
+        cloc_lin_ext[:, :, i] .*= coefs[:, i, 1]
+        cloc_survival[:, :, i] .*= coefs[:, i, 2]
+    end
+
     # Preallocated cache for source/sink locations
     valid_sources::BitVector = falses(size(conn, 2))
     valid_sinks::BitVector = falses(size(conn, 1))
@@ -735,21 +746,40 @@ function run_model(
             _bin_edges,
             habitable_max_projected_cover
         )
+        cloc_lin_ext_scale_factors .= [
+            linear_extension_scale_factors(
+                C_cover_t[:, :, loc_idx],
+                vec_abs_k[loc_idx],
+                cloc_lin_ext[:, :, idx],
+                _bin_edges,
+                habitable_max_projected_cover[loc_idx]
+            ) for (idx, loc_idx) in enumerate(cloc_idxs)
+        ]
 
         # ? Should we bring this inside CoralBlox?
         lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs] .< (0.7 .* habitable_loc_areas)] .=
             1
 
-        @floop for i in habitable_loc_idxs
+        for i in habitable_loc_idxs
             # TODO Skip when _loc_rel_leftover_space[i] == 0
 
             # Perform timestep
-            timestep!(
-                functional_groups[i],
-                recruitment[:, i],
-                _linear_extensions .* lin_ext_scale_factors[i],
-                survival_rate
-            )
+            if i in cloc_idxs
+                cloc_i = findfirst(x->x==i, cloc_idxs)
+                timestep!(
+                    functional_groups[i],
+                    recruitment[:, i],
+                    cloc_lin_ext[:, :, cloc_i] .* cloc_lin_ext[cloc_i],
+                    cloc_survival[:, :, cloc_i]
+                )
+            else
+                timestep!(
+                    functional_groups[i],
+                    recruitment[:, i],
+                    _linear_extensions .* lin_ext_scale_factors[i],
+                    survival_rate
+                )
+            end
 
             # Write to the cover matrix
             coral_cover(functional_groups[i], @view(C_cover_t[:, :, i]))
@@ -789,6 +819,7 @@ function run_model(
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, loc_k_area)
+        fec_scope[:, cloc_idxs] .*= coefs[:, :, 3]
 
         loc_coral_cover = _loc_coral_cover(C_cover_t)
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* vec_abs_k
