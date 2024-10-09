@@ -764,7 +764,7 @@ function run_model(
         lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs] .< (0.7 .* habitable_loc_areas)] .=
             1
 
-        for i in habitable_loc_idxs
+        @floop for i in habitable_loc_idxs
             # TODO Skip when _loc_rel_leftover_space[i] == 0
 
             # Perform timestep
