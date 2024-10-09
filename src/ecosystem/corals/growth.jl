@@ -609,19 +609,17 @@ function settler_DHW_tolerance!(
 
         # Find sources for each sink
         # Note: source locations can include the sink location (self-seeding)
-        @inbounds for i in axes(@view(tp.data[:, sink_loc]), 1)
-            source_locs[i] = tp.data[i, sink_loc] > 0.0
-        end
+        @inbounds source_locs .= @view(tp.data[:, sink_loc]) .> 0.0
 
         # Calculate contribution to cover to determine weights for each functional group
-        w::Matrix{F} = sink_settlers .* @view(tp.data[source_locs, sink_loc])
+        @inbounds w::Matrix{F} = sink_settlers .* @view(tp.data[source_locs, sink_loc])
         w_per_group::Matrix{F} = w ./ sum(w; dims=1)
 
         # If there is any influence from another location for a group, the tolerance
         # values should be updated.
         update_group::BitMatrix = sum(w_per_group; dims=1) .> 0.0
 
-        for grp in groups
+        @inbounds for grp in groups
             # Determine weights based on contribution to recruitment.
             # This weights the recruited corals by the size classes and source locations
             # which contributed to recruitment.
