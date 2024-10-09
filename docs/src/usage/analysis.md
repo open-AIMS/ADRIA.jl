@@ -405,18 +405,18 @@ scenario, it is possible to use a Rule Induction algorithm (SIRUS) and plot each
 rule as a scatter graph:
 
 ```julia
-# Select only desired features
-fields_iv = ADRIA.component_params(rs, [Intervention, CriteriaWeights]).fieldname
-scenarios_iv = scens[:, fields_iv]
+# Select features of interest
+foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
 
 # Use SIRUS algorithm to extract rules
 max_rules = 10
-rules_iv = ADRIA.analysis.cluster_rules(target_clusters, scenarios_iv, max_rules)
+rules_iv = ADRIA.analysis.cluster_rules(dom, target_clusters, scens, foi, max_rules)
+
 
 # Plot scatters for each rule highlighting the area selected them
 rules_scatter_fig = ADRIA.viz.rules_scatter(
     rs,
-    scenarios_iv,
+    scens,
     target_clusters,
     rules_iv;
     fig_opts=fig_opts,

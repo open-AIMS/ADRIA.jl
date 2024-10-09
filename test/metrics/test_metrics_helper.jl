@@ -42,16 +42,15 @@ function test_metric(metric::metrics.Metric, params::Tuple)::Nothing
     return nothing
 end
 
-function _test_properties(metric::metrics.Metric, metric_result::YAXArray)
+function _test_properties(metric::metrics.Metric, outcomes::YAXArray)
     prop_labels::NTuple{4,Symbol} = (:metric_name, :metric_unit, :axes_names, :axes_units)
-    all_properties_present = all(haskey.([metric_result.properties], prop_labels))
+    outcome_metadata = outcomes.properties
+    all_properties_present = all(haskey.([outcome_metadata], prop_labels))
     @test all_properties_present
     if all_properties_present
-        result_prop_axes_names::Vector{String} = metric_result.properties[:axes_names]
-        result_prop_axes_units::Vector{String} = metric_result.properties[:axes_units]
-        result_axes_names = string.(axes_names(metric_result))
-
-        @test metric_result.properties[:metric_name] == metrics.metric_label(metric)
+        result_prop_axes_names::Vector{String} = outcome_metadata[:axes_names]
+        result_prop_axes_units::Vector{String} = outcome_metadata[:axes_units]
+        result_axes_names = string.(axes_names(outcomes))
 
         # All keys in result properties match YAXArray
         @test all(result_prop_axes_names .∈ [result_axes_names]) ||

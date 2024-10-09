@@ -103,16 +103,18 @@ function print_rules(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})::Nothi
 end
 
 """
-    cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T; seed::Int64=123, kwargs...) where {T<:Integer,F<:Real}
-    cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T; kwargs...) where {T<:Int64}
+    cluster_rules(domain::Domain, clusters::Vector{T}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, kwargs...) where {T<:Integer,F<:Real}
+    cluster_rules(domain::Domain, clusters::Union{BitVector,Vector{Bool}}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; kwargs...) where {T<:Int64}
 
 Use SIRUS package to extract rules from time series clusters based on some summary metric
 (default is median). More information about the keyword arguments accepeted can be found in
 MLJ's doc (https://juliaai.github.io/MLJ.jl/dev/models/StableRulesClassifier_SIRUS/).
 
 # Arguments
+- `domain` : Domain
 - `clusters` : Vector of cluster indexes for each scenario outcome
-- `X` : Features to be used as input by SIRUS
+- `scenarios` : Scenarios DataFrame
+- `factors` : Vector of factors of interest
 - `max_rules` : Maximum number of rules, to be used as input by SIRUS
 - `seed` : Seed to be used by RGN
 
@@ -129,8 +131,24 @@ A StableRules object (implemented by SIRUS).
    Electron. J. Statist. 15 (1) 427 - 505.
    https://doi.org//10.1214/20-EJS1792
 """
-function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;
-    seed::Int64=123, kwargs...) where {T<:Int64}
+function cluster_rules(
+    domain::ADRIA.Domain,
+    clusters::Vector{T},
+    scenarios::DataFrame,
+    factors::Vector{Symbol},
+    max_rules::T;
+    seed::Int64=123,
+    kwargs...
+) where {T<:Int64}
+    ms = ADRIA.model_spec(domain)
+    variable_factors_filter::BitVector = .!ms[ms.fieldname .∈ [factors], :is_constant]
+    variable_factors::Vector{Symbol} = factors[variable_factors_filter]
+
+    if isempty(variable_factors)
+        throw(ArgumentError("Factors of interest have to be non constant."))
+    end
+
+    X = scenarios[:, variable_factors]
     # Set seed and Random Number Generator
     rng = StableRNG(seed)
 
@@ -150,9 +168,17 @@ function cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;
 
     return rules(mach.fitresult)
 end
-function cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;
-    kwargs...) where {T<:Int64}
-    return cluster_rules(convert.(Int64, clusters), X, max_rules; kwargs...)
+function cluster_rules(
+    domain::ADRIA.Domain,
+    clusters::Union{BitVector,Vector{Bool}},
+    scenarios::DataFrame,
+    factors::Vector{Symbol},
+    max_rules::T;
+    kwargs...
+) where {T<:Int64}
+    return cluster_rules(
+        domain, convert.(Int64, clusters), scenarios, factors, max_rules; kwargs...
+    )
 end
 
 """
