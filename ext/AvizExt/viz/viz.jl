@@ -13,6 +13,13 @@ using .AvizExt
 const OPT_TYPE = Dict{Symbol,<:Any}
 const DEFAULT_OPT_TYPE = Dict{Symbol,Any}
 
+const COLORMAP_TYPE_DOCSTRING = replace("""
+Union{
+Symbol,RGB{T},RGBA{T},Vector{Symbol},Vector{RGBA{T}},Vector{RGB{T}}
+}
+""", "\n" => "")
+const COLORMAP_TYPE = eval(Meta.parse("f(T)=$COLORMAP_TYPE_DOCSTRING"))
+
 """
     _time_labels(labels)
 
