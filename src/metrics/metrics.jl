@@ -44,10 +44,10 @@ Makes Metric types callable with arbitary arguments that are passed to associate
 """
 function (f::Metric)(raw, args...; kwargs...)::YAXArray
     axes::Tuple = (:timesteps, :species, :locations, :scenarios)[1:ndims(raw)]
-    return fill_metadata!(@views(f.func(DataCube(raw, axes), args...; kwargs...)), f)
+    return fill_metadata!(f.func(DataCube(raw, axes), args...; kwargs...), f)
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
-    return fill_metadata!(@views(f.func(rs, args...; kwargs...)), f)
+    return fill_metadata!(f.func(rs, args...; kwargs...), f)
 end
 
 """
