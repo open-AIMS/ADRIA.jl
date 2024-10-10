@@ -49,7 +49,7 @@ function _scenario_total_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_total_cover(tac::AbstractArray; kwargs...)
 end
 scenario_total_cover = Metric(
-    _scenario_total_cover, (:timesteps, :scenarios), IS_NOT_RELATIVE, UNIT_AREA
+    _scenario_total_cover, (:timesteps, :scenarios), "Cover", IS_NOT_RELATIVE, UNIT_AREA
 )
 
 """
@@ -64,7 +64,7 @@ function _scenario_relative_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Rea
     return _scenario_total_cover(rs; kwargs...) ./ target_area
 end
 scenario_relative_cover = Metric(
-    _scenario_relative_cover, (:timesteps, :scenarios), IS_RELATIVE
+    _scenario_relative_cover, (:timesteps, :scenarios), "Relative Cover", IS_RELATIVE
 )
 
 """
@@ -107,7 +107,10 @@ function _scenario_relative_juveniles(rs::ResultSet; kwargs...)::YAXArray
     return dropdims(sum(aj; dims=:locations); dims=:locations) ./ sum(site_k_area(rs))
 end
 scenario_relative_juveniles = Metric(
-    _scenario_relative_juveniles, (:timesteps, :scenarios), IS_RELATIVE
+    _scenario_relative_juveniles,
+    (:timesteps, :scenarios),
+    "Relative Juveniles",
+    IS_RELATIVE
 )
 
 """
@@ -136,7 +139,11 @@ function _scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray{<
     return dropdims(sum(absolute_juveniles(rs); dims=:locations); dims=:locations)
 end
 scenario_absolute_juveniles = Metric(
-    _scenario_absolute_juveniles, (:timesteps, :scenarios), IS_NOT_RELATIVE, UNIT_AREA
+    _scenario_absolute_juveniles,
+    (:timesteps, :scenarios),
+    "Number of Juveniles",
+    IS_NOT_RELATIVE,
+    UNIT_AREA
 )
 
 """
@@ -164,7 +171,10 @@ function _scenario_juvenile_indicator(rs::ResultSet; kwargs...)::AbstractArray{<
     return dropdims(mean(juvenile_indicator(rs); dims=:locations); dims=:locations)
 end
 scenario_juvenile_indicator = Metric(
-    _scenario_juvenile_indicator, (:timesteps, :scenarios), IS_RELATIVE
+    _scenario_juvenile_indicator,
+    (:timesteps, :scenarios),
+    "Juvenile Indicator",
+    IS_RELATIVE
 )
 
 """
@@ -185,7 +195,11 @@ function _scenario_asv(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_asv(rs.outcomes[:absolute_shelter_volume]; kwargs...)
 end
 scenario_asv = Metric(
-    _scenario_asv, (:timesteps, :scenarios), IS_NOT_RELATIVE, "$UNIT_VOLUME/$UNIT_AREA"
+    _scenario_asv,
+    (:timesteps, :scenarios),
+    "Volume",
+    IS_NOT_RELATIVE,
+    "$UNIT_VOLUME/$UNIT_AREA"
 )
 
 """
@@ -201,7 +215,9 @@ end
 function _scenario_rsv(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_rsv(rs.outcomes[:relative_shelter_volume]; kwargs...)
 end
-scenario_rsv = Metric(_scenario_rsv, (:timesteps, :scenarios), IS_RELATIVE)
+scenario_rsv = Metric(
+    _scenario_rsv, (:timesteps, :scenarios), "Relative Volume", IS_RELATIVE
+)
 
 """
     scenario_evenness(ev::YAXArray; kwargs...)::AbstractArray{<:Real}
@@ -217,7 +233,12 @@ end
 function _scenario_evenness(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_evenness(rs.outcomes[:coral_evenness]; kwargs...)
 end
-scenario_evenness = Metric(_scenario_evenness, (:timesteps, :scenarios), IS_NOT_RELATIVE)
+scenario_evenness = Metric(
+    _scenario_evenness,
+    (:timesteps, :scenarios),
+    "Evenness Indicator",
+    IS_NOT_RELATIVE
+)
 
 """
     scenario_outcomes(rs::ResultSet, metrics::Vector{Metric})::YAXArray

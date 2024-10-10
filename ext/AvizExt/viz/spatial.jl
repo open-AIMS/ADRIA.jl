@@ -182,6 +182,8 @@ function ADRIA.viz.map(
     fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
+    set_plot_opts!(y, opts, :colorbar_label; metadata_key=:metric_name)
+
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 

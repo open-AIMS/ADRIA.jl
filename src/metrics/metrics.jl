@@ -29,10 +29,12 @@ const IS_NOT_RELATIVE = false
 struct Metric{F<:Function,T<:Tuple,S<:String,B<:Bool} <: Outcome
     func::F
     dims::T     # output dimension axes ?
+    feature::S
     is_relative::B
     unit::S
 end
-Metric(f, d, r) = Metric(f, d, r, "")
+
+Metric(func, dims, feature, is_relative) = Metric(func, dims, feature, is_relative, "")
 
 """
     (f::Metric)(raw, args...; kwargs...)
@@ -42,11 +44,10 @@ Makes Metric types callable with arbitary arguments that are passed to associate
 """
 function (f::Metric)(raw, args...; kwargs...)::YAXArray
     axes::Tuple = (:timesteps, :species, :locations, :scenarios)[1:ndims(raw)]
-
-    return fill_axes_properties(f, f.func(DataCube(raw, axes), args...; kwargs...))
+    return fill_metadata!(f.func(DataCube(raw, axes), args...; kwargs...), f)
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
-    return fill_axes_properties(f, (f.func(rs, args...; kwargs...)))
+    return fill_metadata!(f.func(rs, args...; kwargs...), f)
 end
 
 """
@@ -70,7 +71,9 @@ end
 function _relative_cover(rs::ResultSet)::YAXArray{<:Real}
     return rs.outcomes[:relative_cover]
 end
-relative_cover = Metric(_relative_cover, (:timesteps, :locations, :scenarios), IS_RELATIVE)
+relative_cover = Metric(
+    _relative_cover, (:timesteps, :locations, :scenarios), "Relative Cover", IS_RELATIVE
+)
 
 """
     total_absolute_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
@@ -96,7 +99,11 @@ function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
     return _total_absolute_cover(rs.outcomes[:relative_cover], site_k_area(rs))
 end
 total_absolute_cover = Metric(
-    _total_absolute_cover, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE, UNIT_AREA
+    _total_absolute_cover,
+    (:timesteps, :locations, :scenarios),
+    "Cover",
+    IS_NOT_RELATIVE,
+    UNIT_AREA
 )
 
 """
@@ -144,7 +151,7 @@ function _relative_taxa_cover(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_taxa_cover]
 end
 relative_taxa_cover = Metric(
-    _relative_taxa_cover, (:timesteps, :species, :scenarios), IS_RELATIVE
+    _relative_taxa_cover, (:timesteps, :species, :scenarios), "Cover", IS_RELATIVE
 )
 
 """
@@ -183,7 +190,10 @@ function _relative_loc_taxa_cover(
     return replace!(taxa_cover, NaN => 0.0)
 end
 relative_loc_taxa_cover = Metric(
-    _relative_loc_taxa_cover, (:timesteps, :species, :locations, :scenarios), IS_RELATIVE
+    _relative_loc_taxa_cover,
+    (:timesteps, :species, :locations, :scenarios),
+    "Relative Cover",
+    IS_RELATIVE
 )
 
 """
@@ -210,7 +220,7 @@ function _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_juveniles]
 end
 relative_juveniles = Metric(
-    _relative_juveniles, (:timesteps, :locations, :scenarios), IS_RELATIVE
+    _relative_juveniles, (:timesteps, :locations, :scenarios), "Relative Cover", IS_RELATIVE
 )
 
 """
@@ -234,7 +244,11 @@ function _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_juveniles] .* site_k_area(rs)'
 end
 absolute_juveniles = Metric(
-    _absolute_juveniles, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE, UNIT_AREA
+    _absolute_juveniles,
+    (:timesteps, :locations, :scenarios),
+    "Cover",
+    IS_NOT_RELATIVE,
+    UNIT_AREA
 )
 
 """
@@ -282,7 +296,10 @@ function _juvenile_indicator(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:juvenile_indicator]
 end
 juvenile_indicator = Metric(
-    _juvenile_indicator, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE,
+    _juvenile_indicator,
+    (:timesteps, :locations, :scenarios),
+    "Density Indicator",
+    IS_NOT_RELATIVE,
     UNIT_AREA_INVERSE)
 
 """
@@ -323,7 +340,10 @@ function _coral_evenness(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:coral_evenness]
 end
 coral_evenness = Metric(
-    _coral_evenness, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE
+    _coral_evenness,
+    (:timesteps, :locations, :scenarios),
+    "Evenness Indicator",
+    IS_NOT_RELATIVE
 )
 
 """
@@ -567,7 +587,10 @@ function _absolute_shelter_volume(rs::ResultSet)::AbstractArray
     return rs.outcomes[:absolute_shelter_volume]
 end
 absolute_shelter_volume = Metric(
-    _absolute_shelter_volume, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE,
+    _absolute_shelter_volume,
+    (:timesteps, :locations, :scenarios),
+    "Volume",
+    IS_NOT_RELATIVE,
     UNIT_VOLUME
 )
 
@@ -702,14 +725,18 @@ function _relative_shelter_volume(rs::ResultSet)::YAXArray
     return rs.outcomes[:relative_shelter_volume]
 end
 relative_shelter_volume = Metric(
-    _relative_shelter_volume, (:timesteps, :locations, :scenarios), IS_RELATIVE
+    _relative_shelter_volume,
+    (:timesteps, :locations, :scenarios),
+    "Relative Volume",
+    IS_RELATIVE
 )
 
+include("metadata.jl")
 include("pareto.jl")
 include("ranks.jl")
 include("reef_indices.jl")
 include("scenario.jl")
-include("site_level.jl")
+include("spatial.jl")
 include("temporal.jl")
 include("utils.jl")
 

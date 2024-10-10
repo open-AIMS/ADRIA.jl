@@ -129,6 +129,11 @@ function ADRIA.viz.scenarios!(
     # Ensure last year is always shown in x-axis
     xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
     xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+
+    if !haskey(axis_opts, :title)
+        axis_opts[:title] = outcome_title(outcomes)
+    end
+
     ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
 
     _scenarios = copy(scenarios[1:end .∈ [outcomes.scenarios], :])
@@ -180,8 +185,7 @@ function ADRIA.viz.scenarios!(
     end
 
     ax.xlabel = "Year"
-    # ax.ylabel = metric_label(metric)
-
+    ax.ylabel = outcome_label(outcomes)
     return g
 end
 
@@ -198,7 +202,7 @@ function _confints(
     agg_dim = symdiff(axes_names(outcomes), [:timesteps])[1]
     for (idx, group) in enumerate(group_names)
         confints[:, idx, :] = series_confint(
-            outcomes[:, scen_groups[group]]; agg_dim=agg_dim
+            outcomes.data[:, scen_groups[group]]; agg_dim=agg_dim
         )
     end
 
