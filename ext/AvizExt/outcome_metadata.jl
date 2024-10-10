@@ -21,15 +21,14 @@ function outcome_label(
 )::String
     outcome_metadata = outcomes.properties
 
-    return if all(haskey.([outcome_metadata], [metadata_key, :metric_unit]))
+    _outcome_label = if all(haskey.([outcome_metadata], [metadata_key, :metric_unit]))
         _metric_feature = label_case(outcome_metadata[metadata_key])
-        _metric_label = if !isempty(outcome_metadata[:metric_unit])
-            "[$(outcome_metadata[:metric_unit])]"
-        else
-            ""
-        end
+        _metric_unit = outcome_metadata[:metric_unit]
+        _metric_label = !isempty(_metric_unit) ? "[$(_metric_unit)]" : ""
         "$(_metric_feature) $(_metric_label)"
     else
         ""
     end
+
+    return _outcome_label
 end
