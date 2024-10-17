@@ -4,21 +4,21 @@ using Graphs, GraphMakie, SimpleWeightedGraphs
 using ADRIA: _get_geom_col
 
 """
+    _get_geoms(gdf::DataFrame, geom_col::Symbol)
+
+Retrieve the vector of geometries from a specified column.
+"""
+function _get_geoms(gdf::DataFrame, geom_col::Symbol)
+    return GeoMakie.to_multipoly(gdf[:, geom_col])
+end
+
+"""
     _get_geoms(gdf::DataFrame)
 
 Retrieve the vector of geometries from a GeoDataFrame.
 """
 function _get_geoms(gdf::DataFrame)
     return _get_geoms(gdf, _get_geom_col(gdf))
-end
-
-"""
-    _get_geoms(gdf::DataFrame, geom_col::Symbol)
-
-Retrieve the vector of geometries from a specified column.
-"""
-function _get_geoms(gdf::DataFrame, geom_col::Symbol)
-    return GeoMakie.geo2basic(AG.forceto.(gdf[!, geom_col], AG.wkbMultiPolygon))
 end
 
 function set_figure_defaults(fig_opts::OPT_TYPE)::OPT_TYPE
