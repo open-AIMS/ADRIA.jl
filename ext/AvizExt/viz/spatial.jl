@@ -56,7 +56,7 @@ Create a spatial choropleth figure.
 
 # Arguments
 - `f` : Makie figure to create plot in
-- `geodata` : FeatureCollection, Geospatial data to display
+- `geodata` : MultiPolygon features to display
 - `data` : Values to use for choropleth
 - `highlight` : Stroke colors for each location
 - `show_colorbar` : Whether to show a colorbar (true) or not (false)
@@ -69,7 +69,7 @@ Create a spatial choropleth figure.
 """
 function create_map!(
     f::Union{GridLayout,GridPosition},
-    geodata::Vector{<:GeoMakie.GeometryBasics.MultiPolygon},
+    geodata::Vector{<:GeoMakie.MultiPolygon},
     data::Observable,
     highlight::Union{Vector,Tuple,Nothing},
     show_colorbar::Bool=true,
