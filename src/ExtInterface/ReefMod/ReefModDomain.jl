@@ -407,8 +407,8 @@ https://github.com/open-AIMS/rrap-dg/blob/main/rrap_dg/cyclones/mortality_regres
 """
 function _cyclone_mortalities()::NamedTuple
     return (
-        branching_deeper_than_5=[0.0, 0.0, 0.104957, 0.979102, 0.999976, 1.0],
-        branching_shallower_than_5=[0.0, 0.0, 0.00993649, 0.497092, 0.989037, 0.99994],
+        branching_deeper_than_5=[0.0, 0.0, 0.00993649, 0.497092, 0.989037, 0.99994],
+        branching_shallower_than_5=[0.0, 0.0, 0.104957, 0.979102, 0.999976, 1.0],
         massives=[0.0, 0.0121482, 0.0155069, 0.0197484, 0.0246357, 0.0302982]
     )
 end
