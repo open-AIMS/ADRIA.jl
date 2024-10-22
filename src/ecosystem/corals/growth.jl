@@ -388,7 +388,8 @@ function bleaching_mortality!(
     stdev::AbstractMatrix{Float64},
     dist_t_1::AbstractArray{Float64,3},
     dist_t::AbstractArray{Float64,3},
-    prop_mort::SubArray{Float64}
+    prop_mort::SubArray{Float64},
+    threshold::Float64
 )::Nothing
     n_groups, n_sizes, n_locs = size(cover)
 
@@ -413,7 +414,7 @@ function bleaching_mortality!(
                 μ::Float64 = dist_t_1[grp, sc, loc]
                 affected_pop::Float64 = truncated_normal_cdf(
                     # Use previous mortality threshold as minimum
-                    dhw[loc], μ, stdev[grp, sc], prop_mort[1, grp, sc, loc], μ + HEAT_UB
+                    dhw[loc], μ, stdev[grp, sc], threshold, μ + HEAT_UB
                 )
 
                 mort_pop::Float64 = 0.0
