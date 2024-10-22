@@ -20,12 +20,12 @@ ADRIA.viz.taxonomy(scenarios, relative_taxa_cover)
 # Arguments
 - `rs` : ADRIA result set
 - `scenarios` : Scenario specification
-- `relative_taxa_cover` : YAXArray of dimensions [timesteps ⋅ taxa ⋅ scenarios]
+- `relative_taxa_cover` : YAXArray of dimensions [timesteps ⋅ species ⋅ scenarios]
 - `opts` : Aviz options
     - `by_RCP` : Split plots by RCP otherwise split by scenario type. Defaults to false.
     - `by_functional_groups` : If true, split plots by scenario types, otherwise split by taxonomy. Defaults to true.
     - `show_confints` : Show confidence intervals around series. Defaults to true.
-    - `colors` : Colormap for each taxonomy or scenario type. Defaults to Set1_5 for taxa and ADRIA defaults for scenario type.
+    - `colors` : Colormap for each taxonomy or scenario type. Defaults to Set1_5 for species and ADRIA defaults for scenario type.
 - `axis_opts` : Additional options to pass to adjust Axis attributes.
   See: https://docs.makie.org/v0.19/api/index.html#Axis
 - `series_opts` : Additional options to pass to adjust Series attributes
@@ -103,7 +103,7 @@ function ADRIA.viz.taxonomy!(
     by_functional_groups::Bool = get(opts, :by_functional_groups, true)
     if by_functional_groups
         # Create colors
-        n_functional_groups::Int64 = length(relative_taxa_cover.taxa)
+        n_functional_groups::Int64 = length(relative_taxa_cover.species)
         default_color = Symbol("Set1_" * string(n_functional_groups))
         color = get(opts, :colors, default_color)
         _colors = categorical_colors(color, n_functional_groups)
@@ -138,6 +138,10 @@ function ADRIA.viz.taxonomy!(
             series_opts
         )
     end
+
+    Label(
+        g[1, :, Top()], "Taxa dynamics"; padding=(0, 0, 30, 0), font=:bold, valign=:bottom
+    )
 
     return g
 end
@@ -193,12 +197,13 @@ function taxonomy_by_intervention!(
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Nothing where {T<:Float32}
     n_timesteps::Int64 = length(relative_taxa_cover.timesteps)
-    n_functional_groups::Int64 = length(relative_taxa_cover.taxa)
+    functional_groups::Vector{Int64} = ADRIA.axis_labels(relative_taxa_cover, :species)
+    n_functional_groups::Int64 = length(functional_groups)
 
     # Plot and calculate confidence intervals
     confints = zeros(n_timesteps, n_functional_groups, 3)
-    for (idx, taxa) in enumerate(relative_taxa_cover.taxa)
-        confints[:, idx, :] = series_confint(relative_taxa_cover[taxa=At(taxa)])
+    for (idx, group) in enumerate(functional_groups)
+        confints[:, idx, :] = series_confint(relative_taxa_cover[species=At(group)])
         show_confints ?
         band!(
             ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
@@ -247,7 +252,7 @@ function intervention_by_taxonomy!(
 
         intervention_by_taxonomy!(
             ax,
-            relative_taxa_cover[taxa=idx],
+            relative_taxa_cover[species=idx],
             colors,
             scen_groups;
             show_confints=show_confints,

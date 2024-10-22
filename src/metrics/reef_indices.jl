@@ -104,7 +104,10 @@ function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
     return _reef_condition_index(rc, evenness, sv, juves)
 end
 reef_condition_index = Metric(
-    _reef_condition_index, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE
+    _reef_condition_index,
+    (:timesteps, :locations, :scenarios),
+    "RCI",
+    IS_NOT_RELATIVE
 )
 
 """
@@ -127,7 +130,7 @@ function _scenario_rci(rs::ResultSet; kwargs...)
 
     return _scenario_rci(rci, tac; kwargs...)
 end
-scenario_rci = Metric(_scenario_rci, (:timesteps, :scenarios), IS_NOT_RELATIVE)
+scenario_rci = Metric(_scenario_rci, (:timesteps, :scenarios), "RCI", IS_NOT_RELATIVE)
 
 """
     reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray, intcp_u::Vector)::AbstractArray
@@ -192,7 +195,7 @@ function _reef_tourism_index(rs::ResultSet; intcp_u::Bool=false)::AbstractArray
     return _reef_tourism_index(rc, evenness, sv, juves, intcp)
 end
 reef_tourism_index = Metric(
-    _reef_tourism_index, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE
+    _reef_tourism_index, (:timesteps, :locations, :scenarios), "RTI", IS_NOT_RELATIVE
 )
 
 """
@@ -208,7 +211,7 @@ end
 function _scenario_rti(rs::ResultSet; kwargs...)
     return _scenario_rti(reef_tourism_index(rs); kwargs...)
 end
-scenario_rti = Metric(_scenario_rti, (:timesteps, :scenarios), IS_NOT_RELATIVE)
+scenario_rti = Metric(_scenario_rti, (:timesteps, :scenarios), "RTI", IS_NOT_RELATIVE)
 
 """
     reef_fish_index(rc::AbstractArray)
@@ -276,7 +279,7 @@ function _reef_fish_index(rs::ResultSet; intcp_u1::Bool=false, intcp_u2::Bool=fa
     return _reef_fish_index(rc, icp1, icp2)
 end
 reef_fish_index = Metric(
-    _reef_fish_index, (:timesteps, :locations, :scenarios), IS_NOT_RELATIVE
+    _reef_fish_index, (:timesteps, :locations, :scenarios), "RFI", IS_NOT_RELATIVE
 )
 
 """
@@ -292,4 +295,4 @@ end
 function _scenario_rfi(rs::ResultSet; kwargs...)
     return _scenario_rfi(reef_fish_index(rs); kwargs...)
 end
-scenario_rfi = Metric(_scenario_rfi, (:timesteps, :scenarios), IS_NOT_RELATIVE)
+scenario_rfi = Metric(_scenario_rfi, (:timesteps, :scenarios), "RFI", IS_NOT_RELATIVE)

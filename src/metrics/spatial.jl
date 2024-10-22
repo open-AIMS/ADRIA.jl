@@ -96,7 +96,7 @@ function summarize(
     # Only use this approach when data occupies more than 70% of available RAM
     if data_size > available_ram
         # `D.` is ensuring the returned YAXArray has the same type as the input `data`
-        return D.(mapslices(metric, data; dims=alongs_axis))
+        return fill_metadata!(D.(mapslices(metric, data; dims=alongs_axis)), metadata(data))
     end
 
     alongs = sort([axis_index(data, axis) for axis in alongs_axis])
@@ -110,7 +110,9 @@ function summarize(
     new_dims = setdiff(axes_names(data), alongs_axis)
     new_axis = [axis_labels(data, ax) for ax in new_dims]
 
-    return DataCube(summarized_data; NamedTuple{Tuple(new_dims)}(new_axis)...)
+    return fill_metadata!(
+        DataCube(summarized_data; NamedTuple{Tuple(new_dims)}(new_axis)...), metadata(data)
+    )
 end
 function summarize(
     data::YAXArray{D,T,N,A},
