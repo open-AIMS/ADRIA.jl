@@ -127,16 +127,23 @@ function summarize(
 end
 
 """
-    cf_difference_loc(rs, scens, metric)
+    ensemble_loc_difference(outcome::YAXArray{T,3}, scens::DataFrame; agg_metric::Union{Function,AbstractFloat}=median, diff_target=:guided, conf::Float64=0.95, rand_seed=1234)::YAXArray where {T}
 
-Mean bootstrapped differences (counterfactual - guided) and (counterfactual - unguided) for
+Mean bootstrapped difference (counterfactual - target) between some outcome aggregated for
 each location.
 
 # Arguments
-- `outcome` : Metric outcome with dimensions (:timesteps, :locations, :scenarios)
-- `scens` : Scenarios DataFrame
+- `outcome` : Metric outcome with dimensions (:timesteps, :locations, :scenarios).
+- `scens` : Scenarios DataFrame.
+- `agg_metric` : Metric used to aggregate scenarios when comparing between counterfactual and
+target. If it is an `AbstractFloat` between 0 and 1, it uses the `bs_metric`-th quantile.
+Defaults to `median`.
+- `diff_target` : Target group of scenarios to compare with. Valid options are `:guided` and
+`:unguided`. Defaults to `:guided`
+- `conf` : Percentile used for the confidence interval. Defaults to 0.95.
+- `rand_seed` : Seed used for random number generator. Defaults to 1234.
 
-# Examples
+# Example
 ```
 # Load domain
 dom = ADRIA.load_domain(path_to_domain)
@@ -150,21 +157,36 @@ rs = ADRIA.run_scenarios(dom, scens, "45")
 
 # Calculate difference to the counterfactual for given metric
 _relative_cover = metrics.relative_cover(rs)
-gd_results, ug_results = metrics.cf_difference_loc(_relative_cover, scens)
+
+# Compute difference between guided and counterfactual using the 0.6-th quantile
+gd_res = metrics.ensemble_loc_difference(r_cover, scens; agg_metric=0.6)
+
+# Compute difference between unguided and counterfactual using the median
+ug_res = metrics.cf_difference_loc(r_cover, scens; diff_target=:unguided)
 
 # Plot maps of difference to the counterfactual
-ADRIA.viz.diff_map(rs, gd_results[2, :])
-ADRIA.viz.diff_map(rs, ug_results[2, :])
+ADRIA.viz.diff_map(rs, gd_res[2, :])
+ADRIA.viz.diff_map(rs, ug_res[2, :])
 ```
 
 # Returns
-Two elements tuple with mean bootstrapped difference (counterfactual - guided) and
-(counterfactual - unguided) for each location.
+Vector with bootstrapped difference (counterfactual - guided) for each location.
 """
 function ensemble_loc_difference(
-    outcome::YAXArray{T,3}, scens::DataFrame;
-    bootstrap_metric::Function=median, diff_target=:guided, conf::Float64=0.95
+    outcome::YAXArray{T,3},
+    scens::DataFrame;
+    agg_metric::Union{Function,AbstractFloat}=median,
+    diff_target=:guided,
+    conf::Float64=0.95,
+    rand_seed=1234
 )::YAXArray where {T}
+    is_quantile_metric = isa(agg_metric, AbstractFloat)
+    if is_quantile_metric && !(0 <= agg_metric <= 1)
+        error("When metric is a number, it must be within the interval [0,1]")
+    end
+
+    Random.seed!(rand_seed)
+
     # Mean over all timesteps
     outcomes_agg = dropdims(mean(outcome; dims=:timesteps); dims=:timesteps)
 
@@ -197,9 +219,9 @@ function ensemble_loc_difference(
         @views target_diff = collect(
             target_outcomes[loc, target_shuf_set] .- cf_outcomes[loc, cf_shuf_set]
         )
-        cf_target_bootstrap = bootstrap(
-            bootstrap_metric, target_diff, BalancedSampling(100)
-        )
+
+        bootstrap_func(x) = is_quantile_metric ? quantile(x, agg_metric) : agg_metric(x)
+        cf_target_bootstrap = bootstrap(bootstrap_func, target_diff, BalancedSampling(100))
         results[[2, 1, 3], loc] .= confint(cf_target_bootstrap, PercentileConfInt(conf))[1]
     end
 
