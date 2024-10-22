@@ -4,21 +4,21 @@ using Graphs, GraphMakie, SimpleWeightedGraphs
 using ADRIA: _get_geom_col
 
 """
+    _get_geoms(gdf::DataFrame, geom_col::Symbol)
+
+Retrieve the vector of geometries from a specified column.
+"""
+function _get_geoms(gdf::DataFrame, geom_col::Symbol)
+    return GeoMakie.to_multipoly(gdf[:, geom_col])
+end
+
+"""
     _get_geoms(gdf::DataFrame)
 
 Retrieve the vector of geometries from a GeoDataFrame.
 """
 function _get_geoms(gdf::DataFrame)
     return _get_geoms(gdf, _get_geom_col(gdf))
-end
-
-"""
-    _get_geoms(gdf::DataFrame, geom_col::Symbol)
-
-Retrieve the vector of geometries from a specified column.
-"""
-function _get_geoms(gdf::DataFrame, geom_col::Symbol)
-    return GeoMakie.geo2basic(AG.forceto.(gdf[!, geom_col], AG.wkbMultiPolygon))
 end
 
 function set_figure_defaults(fig_opts::OPT_TYPE)::OPT_TYPE
@@ -56,7 +56,7 @@ Create a spatial choropleth figure.
 
 # Arguments
 - `f` : Makie figure to create plot in
-- `geodata` : FeatureCollection, Geospatial data to display
+- `geodata` : MultiPolygon features to display
 - `data` : Values to use for choropleth
 - `highlight` : Stroke colors for each location
 - `show_colorbar` : Whether to show a colorbar (true) or not (false)
@@ -69,7 +69,7 @@ Create a spatial choropleth figure.
 """
 function create_map!(
     f::Union{GridLayout,GridPosition},
-    geodata::Vector{<:GeoMakie.GeometryBasics.MultiPolygon},
+    geodata::Vector{<:GeoMakie.MultiPolygon},
     data::Observable,
     highlight::Union{Vector,Tuple,Nothing},
     show_colorbar::Bool=true,
