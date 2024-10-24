@@ -149,9 +149,8 @@ function create_map!(
         end
     end
 
-    reset_limits!(current_axis())
+    # Remove any empty subplots
     trim!(f)
-    resize_to_layout!(current_figure())
 
     return f
 end
