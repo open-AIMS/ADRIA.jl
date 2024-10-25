@@ -188,6 +188,35 @@ save("ranks_plot.png", rank_fig)
 
 ![Rank frequency plots for multiple ranks](../assets/imgs/analysis/ranks_plot.png)
 
+## Intervention location selection - plot criteria maps
+
+```julia
+
+dom = ADRIA.load_domain("path to domain", "45")
+scens = ADRIA.sample_guided(dom, 8)
+
+mcda_funcs = ADRIA.decision.mcda_methods()
+
+scens = ADRIA.sample_guided(dom, 2^5)
+rs = ADRIA.run_scenarios(dom, scens, "45")
+
+# Remove any risk filtering
+scens[1, ["deployed_coral_risk_tol"]] .= [1.0]
+
+# Create decision matrices for first scenario, get aggregate score using the
+# first MCDA method
+decision_dict = ADRIA.decision.decision_matrices(rs, scens[1, :], mcda_funcs[1])
+
+# Plot maps of seeding criteria and aggreagte selection score
+fig_criteria = hs = ADRIA.viz.map(
+    rs, decision_dict[:seed_matrix], decision_dict[:seed_scores]
+)
+save("criteria_maps.png", fig_criteria)
+```
+
+![Spatial maps of location selection criteria](/ADRIA.jl/dev/assets/imgs/criteria_spatial_plots.png?raw=true "Spatial maps of location selection criteria")
+
+
 ### PAWN sensitivity (heatmap overview)
 
 The PAWN sensitivity analysis method is a moment-independent approach to Global Sensitivity
