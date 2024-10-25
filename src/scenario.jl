@@ -406,7 +406,7 @@ NamedTuple of collated results
 - `bleaching_mortality` : Array, Log of mortalities caused by bleaching
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
-function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray}, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64}, bleaching_threshold::Float64)
+function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray}, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64})
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
@@ -426,22 +426,21 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray}, coef
         loc_habitable_area
     )
 
-    return run_model(domain, param_set, functional_groups, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64}, bleaching_threshold)
+    return run_model(domain, param_set, functional_groups, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64})
 end
 function run_model(
     domain::Domain,
     param_set::DataFrameRow,
     functional_groups::Vector{Vector{FunctionalGroup}},
     coefs::Array{Float64, 3},
-    cloc_idxs::Vector{Int64},
-    bleaching_threshold::Float64
+    cloc_idxs::Vector{Int64}
 )::NamedTuple
     setup()
     ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps, functional_groups, coefs, cloc_idxs, bleaching_threshold)
+    return run_model(domain, ps, functional_groups, coefs, cloc_idxs)
 end
 function run_model(
-    domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64}, bleaching_threshold::Float64
+    domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64}
 )::NamedTuple
     p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
@@ -1048,8 +1047,7 @@ function run_model(
             c_std,
             c_mean_t_1,
             c_mean_t,
-            @view(bleaching_mort[(tstep - 1):tstep, :, :, :]),
-            bleaching_threshold
+            @view(bleaching_mort[(tstep - 1):tstep, :, :, :])
         )
 
         # Coral deaths due to selected cyclone scenario
