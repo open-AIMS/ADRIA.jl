@@ -192,26 +192,51 @@ save("ranks_plot.png", rank_fig)
 
 ```julia
 
-dom = ADRIA.load_domain("path to domain", "45")
-scens = ADRIA.sample_guided(dom, 8)
-
 mcda_funcs = ADRIA.decision.mcda_methods()
 
-scens = ADRIA.sample_guided(dom, 2^5)
-rs = ADRIA.run_scenarios(dom, scens, "45")
+dom = ADRIA.load_domain("path to domain","45")
 
-# Remove any risk filtering
-scens[1, ["deployed_coral_risk_tol"]] .= [1.0]
+# Plot using weightings from first scenario
+scens = ADRIA.sample_guided(dom, 2^2)
+scen = scens[1, :]
 
-# Create decision matrices for first scenario, get aggregate score using the
-# first MCDA method
-decision_dict = ADRIA.decision.decision_matrices(rs, scens[1, :], mcda_funcs[1])
+# Get seeding preferences
+seed_pref = ADRIA.decision.SeedPreferences(dom, scen)
 
-# Plot maps of seeding criteria and aggreagte selection score
-fig_criteria = hs = ADRIA.viz.map(
-    rs, decision_dict[:seed_matrix], decision_dict[:seed_scores]
+# Calculate criteria vectors
+# Cover
+sum_cover = vec(sum(dom.init_coral_cover; dims=1).data)
+# DHWS
+dhw_scens = dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]
+plan_horizon = Int64(scen["plan_horizon"])
+decay = 0.99 .^ (1:(plan_horizon + 1)) .^ 2
+dhw_projection = ADRIA.decision.weighted_projection(dhw_scens, 1, plan_horizon, decay, 75)
+# Connectivity
+area_weighted_conn = dom.conn.data .* ADRIA.site_k_area(dom)
+conn_cache = similar(area_weighted_conn)
+in_conn, out_conn, network = ADRIA.connectivity_strength(
+    area_weighted_conn, sum_cover, conn_cache
 )
-save("criteria_maps.png", fig_criteria)
+
+# Create decision matrix
+seed_decision_mat = ADRIA.decision.decision_matrix(
+    dom.loc_ids,
+    seed_pref.names;
+    seed_in_connectivity=in_conn,
+    seed_out_connectivity=out_conn,
+    seed_heat_stress=dhw_projection,
+    seed_coral_cover=sum_cover
+)
+
+# Get results from applying MCDA algorithm
+crit_agg =  ADRIA.decision.get_criteria_aggregate(seed_pref, seed_decision_mat, mcda_funcs[1])
+
+# Don't plot constant criteria
+is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))]
+
+# Plot normalized scores and criteria as map
+fig = ADRIA.viz.map(dom, seed_decision_mat[criteria=.!is_const], crit_agg.scores./maximum(crit_agg.scores))
+save("criteria_plots.png", fig)
 ```
 
 ![Spatial maps of location selection criteria](/ADRIA.jl/dev/assets/imgs/criteria_spatial_plots.png?raw=true "Spatial maps of location selection criteria")
