@@ -171,7 +171,7 @@ Plot spatial choropleth of outcomes.
 - `y` : results of scenario metric
 - `S` : A normalised decision matrix calculated using decison.decision_matrices
 - `scores` : Aggregated criteria scores.
-- `criteria` : Names of criteria to be plotted, if not specified all criteria in 
+- `criteria` : Names of criteria to be plotted, if not specified all criteria in
     S will be plotted.
 - `diverging` : If true, uses a diverging color map.
 - `opts` : Aviz options
@@ -265,7 +265,7 @@ function ADRIA.viz.map!(
 end
 function ADRIA.viz.map(
     rs::ResultSet,
-    S::NamedDimsArray,
+    S::YAXArray,
     scores::Vector{Float64};
     criteria::Vector{Symbol} = S.criteria,
     opts::Dict = Dict(),
@@ -282,7 +282,7 @@ end
 function ADRIA.viz.map!(
     g::Union{GridLayout, GridPosition},
     rs::ResultSet,
-    S::NamedDimsArray,
+    S::YAXArray,
     scores::Vector{Float64};
     criteria::Vector{Symbol} = S.criteria,
     opts::Dict = Dict(),
