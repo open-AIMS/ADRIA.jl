@@ -131,28 +131,49 @@ Index of locations ordered by their rank
 function rank_by_index(
     dp::T, dm::YAXArray, method::Union{Function,DataType}
 )::Vector{Int64} where {T<:DecisionPreference}
-    # Identify valid, non-constant, columns for use in MCDA
-    is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
-
-    # YAXArrays will throw error for all false boolean masks
-    if all(is_const)
-        throw(DomainError(is_const, "No Ranking Possible, all criteria are constant"))
-    end
-
-    # Recreate preferences, removing criteria that are constant for this scenario
-    _dp = filter_criteria(dp, is_const)
-
-    # Assess decision matrix only using valid (non-constant) criteria
-    res = solve(_dp, dm[criteria=.!is_const], method)
-
-    if all(isnan.(res.scores))
-        # This may happen if there are constants in the decision matrix
-        # or if the method fails for some reason...
-        throw(DomainError(res.scores, "No ranking possible"))
-    end
-
+    res = get_criteria_aggregate(dp, dm, method)
     is_maximal = res.bestIndex == argmax(res.scores)
     return sortperm(res.scores; rev=is_maximal)
+end
+
+"""
+    get_criteria_aggregate(dp::T, dm::YAXArray, method::Function)::Tuple{Vector{Float64,Int64}}
+     where {T<:DecisionPreference}
+
+Calculates raw aggreagted score for a set of locations, in order of the location indices.
+
+Note: Ignores constant criteria values.
+
+# Arguments
+- `dp` : DecisionPreferences
+- `dm` : The decision matrix to assess
+- `method` : An MCDA method provided by the JMcDM package
+
+# Returns
+Returns raw aggreagted score for a set of locations
+"""
+function get_criteria_aggregate(dp::T, dm::YAXArray, method::Union{Function,DataType}
+    )where {T<:DecisionPreference}
+     # Identify valid, non-constant, columns for use in MCDA
+     is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
+
+     # YAXArrays will throw error for all false boolean masks
+     if all(is_const)
+         throw(DomainError(is_const, "No Ranking Possible, all criteria are constant"))
+     end
+
+     # Recreate preferences, removing criteria that are constant for this scenario
+     _dp = filter_criteria(dp, is_const)
+
+     # Assess decision matrix only using valid (non-constant) criteria
+     res = solve(_dp, dm[criteria=.!is_const], method)
+
+     if all(isnan.(res.scores))
+         # This may happen if there are constants in the decision matrix
+         # or if the method fails for some reason...
+         throw(DomainError(res.scores, "No ranking possible"))
+     end
+     return (scores=res.scores, bestIndex=res.bestIndex)
 end
 
 """
