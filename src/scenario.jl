@@ -410,7 +410,6 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray}, coef
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
-    _bin_edges::Matrix{Float64} = bin_edges()
     functional_groups = Vector{FunctionalGroup}[
         FunctionalGroup.(
             eachrow(bin_edges()[:, 1:end-1]),
@@ -418,13 +417,6 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray}, coef
             eachrow(zeros(n_groups, n_sizes))
         ) for _ in 1:n_locs
     ]
-
-    loc_habitable_area = site_k_area(domain)
-    max_projected_cover = CoralBlox.max_projected_cover(
-        linear_extensions(),
-        bin_edges(),
-        loc_habitable_area
-    )
 
     return run_model(domain, param_set, functional_groups, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64})
 end
