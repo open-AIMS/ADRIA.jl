@@ -438,6 +438,12 @@ function run_model(
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
 
+    # Determine growth rate based on linear extension
+    lin_ext = Matrix{Float64}(reshape(corals.linear_extension, 7, 5)')
+    coral_growth_rate = reshape(
+        growth_rate(lin_ext, bin_widths()), dom.coral_growth.n_group_and_size
+    )[:]
+
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
     rnd_seed_val::Int64 = floor(Int64, sum(param_set[Where(x -> x != "RCP")]))  # select everything except RCP
@@ -671,7 +677,7 @@ function run_model(
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
-    p.r .= _to_group_size(domain.coral_growth, corals.growth_rate)
+    p.r .= _to_group_size(domain.coral_growth, coral_growth_rate)
     p.mb .= _to_group_size(domain.coral_growth, corals.mb_rate)
 
     area_weighted_conn = conn .* vec_abs_k
