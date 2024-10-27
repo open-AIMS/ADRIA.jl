@@ -441,7 +441,7 @@ function run_model(
     # Determine growth rate based on linear extension
     lin_ext = Matrix{Float64}(reshape(corals.linear_extension, 7, 5)')
     coral_growth_rate = reshape(
-        growth_rate(lin_ext, bin_widths()), dom.coral_growth.n_group_and_size
+        growth_rate(lin_ext, bin_widths()), domain.coral_growth.n_group_and_size
     )[:]
 
     # Set random seed using intervention values
