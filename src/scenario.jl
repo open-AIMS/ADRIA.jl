@@ -439,7 +439,7 @@ function run_model(
     cache = setup_cache(domain)
 
     # Determine growth rate based on linear extension
-    lin_ext = Matrix{Float64}(reshape(corals.linear_extension, 7, 5)')
+    lin_ext = Matrix{Float64}(reshape(corals.linear_extension, domain.coral_growth.n_sizes, domain.coral_growth.n_groups)')
     coral_growth_rate = reshape(
         growth_rate(lin_ext, bin_widths()), domain.coral_growth.n_group_and_size
     )[:]
