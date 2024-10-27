@@ -1,4 +1,4 @@
-using ADRIA: DEAResult
+using ADRIA.economics: DEAResult
 
 """
     ADRIA.viz.data_envelopment_analysis(rs::ResultSet, DEA_output::DEAResult;axis_opts=Dict(),
@@ -18,7 +18,7 @@ scens = ADRIA.sample(dom, 2^12)
 rs = ADRIA.run_scenarios(dom, scens, ["45"])
 
 # Compute cost an mean metrics for each scenario
-CAD_cost = ADRIA.CAD_cost(scens)
+cost = cost_function(scens)
 s_tac::Vector{Float64} = Array(
     dropdims(
         mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
@@ -32,9 +32,9 @@ s_sv::Vector{Float64} = Array(
 )
 
 # Apply DEA analysis
-DEA_output = ADRIA.data_envelopment_analysis(CAD_cost, s_tac, s_sv)
+DEA_output = ADRIA.data_envelopment_analysis(cost, s_tac, s_sv)
 
-# Plot frontier, sclae and technical efficiencies
+# Plot frontier, scale and technical efficiencies
 ADRIA.viz.data_envelopment_analysis(rs, DEA_output)
 ```
 
@@ -54,65 +54,76 @@ ADRIA.viz.data_envelopment_analysis(rs, DEA_output)
 """
 function ADRIA.viz.data_envelopment_analysis(
     rs::ResultSet, DEA_output::DEAResult;
-    axis_opts=Dict(), fig_opts=Dict(),
-    opts=Dict()
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    return ADRIA.viz.data_envelopment_analysis(
+    ADRIA.viz.data_envelopment_analysis!(
         g, rs, DEA_output; opts=opts, axis_opts=axis_opts
     )
+
+    return f
 end
-function ADRIA.viz.data_envelopment_analysis(g::Union{GridLayout,GridPosition},
-    rs::ResultSet, DEA_output::DEAResult; axis_opts=Dict(),
-    opts=Dict()
+function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
+    rs::ResultSet, DEA_output::DEAResult; axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
-    return ADRIA.viz.data_envelopment_analysis(
+    return ADRIA.viz.data_envelopment_analysis!(
         g, DEA_output; opts=opts, axis_opts=axis_opts
     )
 end
-function ADRIA.viz.data_envelopment_analysis(g::Union{GridLayout,GridPosition},
-    DEA_output::DEAResult; axis_opts=Dict(), opts=Dict())
-    line_color = get(opts, :line_color, :red)
+function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
+    DEA_output::DEAResult; axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE())
+    frontier_color = get(opts, :frontier_color, :red)
     data_color = get(opts, :data_color, :black)
     frontier_name = get(opts, :frontier_name, "Best practice frontier")
     data_name = get(opts, :data_name, "Scenario data cloud")
+    scale_eff_y_lab = get(opts, :scale_eff_y_lab, L"$\frac{eff_{vrs}}{eff_{crs}}$")
+    tech_eff_y_lab = get(opts, :tech_eff_y_lab, L"$\frac{1}{eff_{vrs}}$")
+    metrics_x_lab = get(opts, :metrics_x_lab, L"$metric 1$")
+    metrics_y_lab = get(opts, :metrics_y_lab, L"$metric 2$")
 
     # Determines which returns to scale approach is used to select scenario peers
     # (most efficient scenarios)
-    frontier_type = get(opts, :frontier_type, "VRS")
+    frontier_type = get(opts, :frontier_type, :vrs_peers)
 
-    ga = g[1, 1] = GridLayout()
-    gb = g[2, 1] = GridLayout()
-    gc = g[3, 1] = GridLayout()
+    Y = DEA_output.Y # Output values
 
-    X = DEA_output.X
     # Find points on best practice frontier
-    if frontier_type == "VRS"
-        best_practice_scens = DEA_output.VRS_peers.J
-    elseif frontier_type == "CRS"
-        best_practice_scens = DEA_output.CRS_peers.J
-    else
-        best_practice_scens = DEA_output.FDH_peers.J
-    end
+    best_practice_scens = getfield(DEA_output, frontier_type).J
 
-    scale_efficiency = DEA_output.CRS_eff ./ DEA_output.VRS_eff
+    scale_efficiency = DEA_output.crs_vals ./ DEA_output.vrs_vals
 
     # Plot efficiency frontier and data cloud
-    axa = Axis(ga; axis_opts...)
-    frontier = lines!(
-        axa, X[best_practice_scens, 1], X[best_practice_scens, 2]; color=line_color
+    axa = Axis(g[1, 1]; xlabel=metrics_x_lab, ylabel=metrics_y_lab, axis_opts...)
+    data = scatter!(axa, Y[:, 1], Y[:, 2]; color=data_color)
+    frontier = scatter!(
+        axa, Y[best_practice_scens, 1], Y[best_practice_scens, 2]; color=frontier_color
     )
-    data = scatter!(axa, X[:, 1], X[:, 2]; color=data_color)
-    Legend(ax, [frontier, data], [frontier_name, data_name])
+    Legend(g[1, 2], [frontier, data], [frontier_name, data_name])
 
     # Plot the scale efficiency (ratio of efficiencies assuming CRS vs. assuming VRS)
-    axb = Axis(gb; axis_opts...)
-    scatter!(axb, scale_efficiency; color=data_color, title="Scale efficiency")
+    axb = Axis(g[2, 1]; title="Scale efficiency", ylabel=scale_eff_y_lab, axis_opts...)
+    scatter!(axb, scale_efficiency; color=data_color)
+    scatter!(
+        axb,
+        best_practice_scens,
+        scale_efficiency[best_practice_scens];
+        color=frontier_color
+    )
 
     # Plot the technical efficiency (inverse VRS efficiencies)
-    axc = Axis(gc; axis_opts...)
-    scatter!(axc, DEA_output.VRS_eff; color=data_color, title="Technical efficiency")
+    axc = Axis(g[3, 1]; title="Technical efficiency", ylabel=tech_eff_y_lab, axis_opts...)
+    scatter!(axc, DEA_output.vrs_vals; color=data_color)
+    scatter!(
+        axc,
+        best_practice_scens,
+        DEA_output.vrs_vals[best_practice_scens];
+        color=frontier_color
+    )
+
     return g
 end
