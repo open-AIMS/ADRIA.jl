@@ -5,7 +5,7 @@ if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
 end
 
-@testset "cf_difference_loc" begin
+@testset "Spatially aggregated bootstrapped ensembled differences" begin
     test_metrics = [
         metrics.relative_cover,
         metrics.juvenile_indicator,
@@ -15,13 +15,31 @@ end
         metrics.relative_shelter_volume
     ]
 
-    for metric in test_metrics
-        gd_diff::YAXArray{<:Real,2}, ug_diff::YAXArray{<:Real,2} = cf_difference_loc(
-            metric(TEST_RS), TEST_SCENS
-        )
+    @testset "Values within bounds for guided/unguided diffs" begin
+        for metric in test_metrics
+            @testset "Default agg_metric (median)" begin
+                guided_diff = metrics.ensemble_loc_difference(metric(TEST_RS), TEST_SCENS)
+                unguided_diff = metrics.ensemble_loc_difference(
+                    metric(TEST_RS), TEST_SCENS; diff_target=:unguided
+                )
 
-        for diff in [gd_diff, ug_diff]
-            @test all(diff[1, :] .<= diff[2, :] .<= diff[3, :])
+                for diff in [guided_diff, unguided_diff]
+                    @test all(diff[1, :] .<= diff[2, :] .<= diff[3, :])
+                end
+            end
+
+            @testset "Quantile as agg_metric" begin
+                guided_diff = metrics.ensemble_loc_difference(
+                    metric(TEST_RS), TEST_SCENS; agg_metric=0.3
+                )
+                unguided_diff = metrics.ensemble_loc_difference(
+                    metric(TEST_RS), TEST_SCENS; diff_target=:unguided, agg_metric=0.7
+                )
+
+                for diff in [guided_diff, unguided_diff]
+                    @test all(diff[1, :] .<= diff[2, :] .<= diff[3, :])
+                end
+            end
         end
     end
 end
