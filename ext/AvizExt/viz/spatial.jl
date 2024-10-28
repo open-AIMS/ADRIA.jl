@@ -36,6 +36,8 @@ function set_axis_defaults(axis_opts::OPT_TYPE)::OPT_TYPE
     axis_opts[:xgridwidth] = get(axis_opts, :xgridwidth, 0.5)
     axis_opts[:ygridwidth] = get(axis_opts, :ygridwidth, 0.5)
     axis_opts[:dest] = get(axis_opts, :dest, "+proj=latlong +datum=WGS84")
+    axis_opts[:xgridvisible] = get(axis_opts, :xgridvisible, false)
+    axis_opts[:ygridvisible] = get(axis_opts, :ygridvisible, false)
 
     return axis_opts
 end
@@ -149,9 +151,8 @@ function create_map!(
         end
     end
 
-    reset_limits!(current_axis())
+    # Remove any empty subplots
     trim!(f)
-    resize_to_layout!(current_figure())
 
     return f
 end
