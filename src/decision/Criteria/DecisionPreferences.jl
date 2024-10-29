@@ -152,28 +152,29 @@ Note: Ignores constant criteria values.
 # Returns
 Returns raw aggreagted score for a set of locations
 """
-function get_criteria_aggregate(dp::T, dm::YAXArray, method::Union{Function,DataType}
-    )where {T<:DecisionPreference}
-     # Identify valid, non-constant, columns for use in MCDA
-     is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
+function get_criteria_aggregate(
+    dp::T, dm::YAXArray, method::Union{Function,DataType}
+) where {T<:DecisionPreference}
+    # Identify valid, non-constant, columns for use in MCDA
+    is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
 
-     # YAXArrays will throw error for all false boolean masks
-     if all(is_const)
-         throw(DomainError(is_const, "No Ranking Possible, all criteria are constant"))
-     end
+    # YAXArrays will throw error for all false boolean masks
+    if all(is_const)
+        throw(DomainError(is_const, "No Ranking Possible, all criteria are constant"))
+    end
 
-     # Recreate preferences, removing criteria that are constant for this scenario
-     _dp = filter_criteria(dp, is_const)
+    # Recreate preferences, removing criteria that are constant for this scenario
+    _dp = filter_criteria(dp, is_const)
 
-     # Assess decision matrix only using valid (non-constant) criteria
-     res = solve(_dp, dm[criteria=.!is_const], method)
+    # Assess decision matrix only using valid (non-constant) criteria
+    res = solve(_dp, dm[criteria=.!is_const], method)
 
-     if all(isnan.(res.scores))
-         # This may happen if there are constants in the decision matrix
-         # or if the method fails for some reason...
-         throw(DomainError(res.scores, "No ranking possible"))
-     end
-     return (scores=res.scores, bestIndex=res.bestIndex)
+    if all(isnan.(res.scores))
+        # This may happen if there are constants in the decision matrix
+        # or if the method fails for some reason...
+        throw(DomainError(res.scores, "No ranking possible"))
+    end
+    return (scores=res.scores, bestIndex=res.bestIndex)
 end
 
 """

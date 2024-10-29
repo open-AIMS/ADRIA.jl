@@ -151,11 +151,9 @@ function create_map!(
         end
     end
 
-    reset_limits!(current_axis())
-    if typeof(f)==GridLayout
+    if typeof(f) == GridLayout
         trim!(f)
     end
-    resize_to_layout!(current_figure())
 
     return f
 end
@@ -262,7 +260,7 @@ function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     M::YAXArray,
     scores::Vector{Float64};
-    criteria::Vector{Symbol} = Array(M.criteria),
+    criteria::Vector{Symbol}=Array(M.criteria),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
@@ -270,16 +268,16 @@ function ADRIA.viz.map(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.map!(
-        g, rs, M, scores; criteria = criteria, opts = opts, axis_opts = axis_opts
+        g, rs, M, scores; criteria=criteria, opts=opts, axis_opts=axis_opts
     )
     return f
 end
 function ADRIA.viz.map!(
-    g::Union{GridLayout, GridPosition},
+    g::Union{GridLayout,GridPosition},
     rs::Union{Domain,ResultSet},
     M::YAXArray,
     scores::Vector{Float64};
-    criteria::Vector{Symbol} = Array(M.criteria),
+    criteria::Vector{Symbol}=Array(M.criteria),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
@@ -294,9 +292,9 @@ function ADRIA.viz.map!(
     criteria_names::Vector{String} = m_spec[
         dropdims(
             any(
-                reshape(criteria, 1, length(criteria)) .== m_spec[:, "fieldname"]; dims = 2
+                reshape(criteria, 1, length(criteria)) .== m_spec[:, "fieldname"]; dims=2
             );
-            dims = 2,
+            dims=2
         ), "name"]
     n_criteria::Int64 = length(criteria)
     n_rows, n_cols = _calc_gridsize(n_criteria + 1)
@@ -309,8 +307,8 @@ function ADRIA.viz.map!(
                 g[row, col],
                 rs,
                 vec(scores);
-                opts = opts,
-                axis_opts = axis_opts,
+                opts=opts,
+                axis_opts=axis_opts
             )
             break
         end
@@ -319,8 +317,8 @@ function ADRIA.viz.map!(
             g[row, col],
             rs,
             vec(M[criteria=At(criteria[step])]);
-            opts = opts,
-            axis_opts = axis_opts
+            opts=opts,
+            axis_opts=axis_opts
         )
 
         step += 1
