@@ -410,7 +410,7 @@ foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
 
 # Use SIRUS algorithm to extract rules
 max_rules = 10
-rules_iv = ADRIA.analysis.cluster_rules(dom, target_clusters, scens, foi, max_rules)
+rules_iv = ADRIA.analysis.cluster_rules(rs, target_clusters, scens, foi, max_rules)
 
 
 # Plot scatters for each rule highlighting the area selected them

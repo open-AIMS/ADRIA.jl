@@ -109,15 +109,15 @@ function print_rules(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})::Nothi
 end
 
 """
-    cluster_rules(domain::ADRIA.Domain, clusters::Vector{T}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
-    cluster_rules(domain::ADRIA.Domain, clusters::Union{BitVector,Vector{Bool}}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...) where {T<:Int64}
+    cluster_rules(result_set::ADRIA.ResultSet, clusters::Vector{T}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
+    cluster_rules(result_set::ADRIA.ResultSet, clusters::Union{BitVector,Vector{Bool}}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
 
 Use SIRUS package to extract rules from time series clusters based on some summary metric
 (default is median). More information about the keyword arguments accepeted can be found in
 MLJ's doc (https://juliaai.github.io/MLJ.jl/dev/models/StableRulesClassifier_SIRUS/).
 
 # Arguments
-- `domain` : Domain.
+- `result_set` : ResultSet.
 - `clusters` : Vector of cluster indexes for each scenario outcome.
 - `scenarios` : Scenarios DataFrame.
 - `factors` : Vector of factors of interest.
@@ -141,7 +141,7 @@ A StableRules object (implemented by SIRUS).
    https://doi.org//10.1214/20-EJS1792
 """
 function cluster_rules(
-    domain::ADRIA.Domain,
+    result_set::ADRIA.ResultSet,
     clusters::Vector{T},
     scenarios::DataFrame,
     factors::Vector{Symbol},
@@ -150,7 +150,8 @@ function cluster_rules(
     remove_duplicates::Bool=true,
     kwargs...
 )::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
-    ms = ADRIA.model_spec(domain)
+    ms = ADRIA.model_spec(result_set)
+
     variable_factors_filter::BitVector = .!ms[ms.fieldname .∈ [factors], :is_constant]
     variable_factors::Vector{Symbol} = factors[variable_factors_filter]
 
@@ -184,7 +185,7 @@ function cluster_rules(
     end
 end
 function cluster_rules(
-    domain::ADRIA.Domain,
+    result_set::ADRIA.ResultSet,
     clusters::Union{BitVector,Vector{Bool}},
     scenarios::DataFrame,
     factors::Vector{Symbol},
@@ -192,11 +193,12 @@ function cluster_rules(
     seed::Int64=123,
     remove_duplicates::Bool=true,
     kwargs...
-) where {T<:Int64}
+)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
     return cluster_rules(
-        domain, convert.(Int64, clusters), scenarios, factors, max_rules;
+        result_set, convert.(Int64, clusters), scenarios, factors, max_rules;
         seed=seed, remove_duplicates=remove_duplicates, kwargs...
     )
+end
 
 """
     _remove_duplicates(rules)::Vector{Rule{Vector{Vector},Vector{Float64}}}
