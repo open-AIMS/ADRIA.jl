@@ -155,7 +155,7 @@ function cluster_rules(
     variable_factors::Vector{Symbol} = factors[variable_factors_filter]
 
     if isempty(variable_factors)
-        throw(ArgumentError("Factors of interest have to be non constant."))
+        throw(ArgumentError("Factors of interest cannot be constant"))
     end
 
     X = scenarios[:, variable_factors]
