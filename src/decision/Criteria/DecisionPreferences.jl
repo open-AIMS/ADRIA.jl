@@ -131,9 +131,9 @@ Index of locations ordered by their rank
 function rank_by_index(
     dp::T, dm::YAXArray, method::Union{Function,DataType}
 )::Vector{Int64} where {T<:DecisionPreference}
-    res = criteria_aggregated_scores(dp, dm, method)
-    is_maximal = res.bestIndex == argmax(res.scores)
-    return sortperm(res.scores; rev=is_maximal)
+    decision_results = criteria_aggregated_scores(dp, dm, method)
+    is_maximal = decision_results.bestIndex == argmax(decision_results.scores)
+    return sortperm(decision_results.scores; rev=is_maximal)
 end
 
 """
