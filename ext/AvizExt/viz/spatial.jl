@@ -170,10 +170,6 @@ Plot spatial choropleth of outcomes.
 # Arguments
 - `rs` : ResultSet
 - `y` : results of scenario metric
-- `S` : A normalised decision matrix calculated using decison.decision_matrices
-- `scores` : Aggregated criteria scores.
-- `criteria` : Names of criteria to be plotted, if not specified all criteria in
-    S will be plotted.
 - `diverging` : If true, uses a diverging color map.
 - `opts` : Aviz options
     - `colorbar_label`, label for colorbar. Defaults to "Relative Cover"
@@ -264,10 +260,28 @@ function ADRIA.viz.map!(
         axis_opts=axis_opts
     )
 end
+
+"""
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}, outputs_matrix::Matrix, map_titles::Vector{String};opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+        fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
+
+Plot a series of maps from an arbitrary (n_locs*n_maps) matrix of outputs.
+
+# Arguments
+- `rs` : ResultSet
+- `outputs_matrix` : Matrix of outputs where n_locs is the numberof locations and n_maps is the number of different
+    maps to plot.
+- `map_titles` : Title for each map to be plotted.
+- `opts` : Aviz options
+    - `colorbar_label`, label for colorbar. Defaults to "Relative Cover"
+    - `color_map`, preferred colormap for plotting heatmaps
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+"""
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
-    M::YAXArray,
-    scores::Vector{Float64};
+    outputs_matrix::Matrix,
+    map_titles::Vector{String};
     criteria::Vector{Symbol}=Array(M.criteria),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
@@ -276,16 +290,15 @@ function ADRIA.viz.map(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
     ADRIA.viz.map!(
-        g, rs, M, scores; criteria=criteria, opts=opts, axis_opts=axis_opts
+        g, rs, outputs_matrix, map_titles; criteria=criteria, opts=opts, axis_opts=axis_opts
     )
     return f
 end
 function ADRIA.viz.map!(
     g::Union{GridLayout,GridPosition},
     rs::Union{Domain,ResultSet},
-    M::YAXArray,
-    scores::Vector{Float64};
-    criteria::Vector{Symbol}=Array(M.criteria),
+    outputs_matrix::Matrix,
+    map_titles::Vector{String};
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
@@ -293,49 +306,22 @@ function ADRIA.viz.map!(
         error("Only unfiltered decision matrices can be plotted.")
     end
 
-function _diverging_cmap(outcomes::YAXArray)::Vector{RGB{Float64}}
-    min_val, max_val = extrema(outcomes)
-
-    # Hande only positive or only negative value cases
-    min_val = min_val > 0 ? 0 : min_val
-    max_val = max_val < 0 ? 0 : max_val
-
-    mid_val = -min_val / (max_val - min_val)
-    return diverging_palette(10, 200; mid=mid_val)
-end
-
     opts[:color_map] = get(opts, :color_map, :viridis)
     opts[:colorbar_limits] = get(opts, :colorbar_limits, (0.0, 1.0))
 
-    m_spec = model_spec(rs)
-    criteria_names::Vector{String} = m_spec[
-        dropdims(
-            any(
-                reshape(criteria, 1, length(criteria)) .== m_spec[:, "fieldname"]; dims=2
-            );
-            dims=2
-        ), "name"]
-    n_criteria::Int64 = length(criteria)
-    n_rows, n_cols = _calc_gridsize(n_criteria + 1)
+    n_plots::Int64 = length(map_titles)
+    n_rows, n_cols = _calc_gridsize(n_plots)
     step::Int64 = 1
 
     for row in 1:n_rows, col in 1:n_cols
-        if step > length(criteria_names)
-            axis_opts[:title] = "Aggregate criteria score"
-            ADRIA.viz.map!(
-                g[row, col],
-                rs,
-                vec(scores);
-                opts=opts,
-                axis_opts=axis_opts
-            )
+        if step > length(map_titles)
             break
         end
-        axis_opts[:title] = string(criteria_names[step])
+        axis_opts[:title] = map_titles[step]
         ADRIA.viz.map!(
             g[row, col],
             rs,
-            vec(M[criteria=At(criteria[step])]);
+            vec(outputs_matrix[:, step]);
             opts=opts,
             axis_opts=axis_opts
         )
