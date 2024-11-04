@@ -196,7 +196,6 @@ mcda_funcs = ADRIA.decision.mcda_methods()
 
 dom = ADRIA.load_domain("path to domain","45")
 
-# Plot using weightings from first scenario
 scens = ADRIA.sample_guided(dom, 2^2)
 scen = scens[1, :]
 
@@ -229,13 +228,17 @@ seed_decision_mat = ADRIA.decision.decision_matrix(
 )
 
 # Get results from applying MCDA algorithm
-crit_agg =  ADRIA.decision.get_criteria_aggregate(seed_pref, seed_decision_mat, mcda_funcs[1])
+crit_agg = ADRIA.decision.criteria_aggregated_scores(
+    seed_pref, seed_decision_mat, mcda_funcs[1]
+)
 
 # Don't plot constant criteria
 is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))]
 
 # Plot normalized scores and criteria as map
-fig = ADRIA.viz.map(dom, seed_decision_mat[criteria=.!is_const], crit_agg.scores./maximum(crit_agg.scores))
+fig = ADRIA.viz.selection_criteria_map(
+    dom, seed_decision_mat[criteria=.!is_const], crit_agg.scores ./ maximum(crit_agg.scores)
+)
 save("criteria_plots.png", fig)
 ```
 
