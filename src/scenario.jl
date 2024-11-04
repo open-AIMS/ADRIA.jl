@@ -757,7 +757,9 @@ function run_model(
         lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs] .< (0.7 .* habitable_loc_areas)] .=
             1
 
-        @floop for i in habitable_loc_idxs
+        cloc_lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[cloc_idxs] .< (0.7 * vec_abs_k[cloc_idxs])] .= 1.0
+
+        for i in habitable_loc_idxs
             # TODO Skip when _loc_rel_leftover_space[i] == 0
 
             # Perform timestep
@@ -766,7 +768,7 @@ function run_model(
                 timestep!(
                     functional_groups[i],
                     recruitment[:, i],
-                    cloc_lin_ext[:, :, cloc_i] .* cloc_lin_ext[cloc_i],
+                    cloc_lin_ext[:, :, cloc_i] .* cloc_lin_ext_scale_factors[cloc_i],
                     cloc_survival[:, :, cloc_i]
                 )
             else
@@ -783,7 +785,9 @@ function run_model(
         end
 
         if !(sum(_loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas) == 0)
-            @warn "Cover outgrowing habitable area. Exiting."
+            msk = _loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas
+            C_cover_t[:, :, msk .&& habitable_locs] .*= reshape(vec_abs_k[msk .&& habitable_locs] ./ _loc_coral_cover(C_cover_t)[msk .&& habitable_locs], (1, 1, count(msk .&& habitable_locs))) .* 0.999
+            @warn "Cover outgrowing habitable area. Constraining."
         end
         # Check if size classes are inappropriately out-growing habitable area
         @assert (
@@ -981,7 +985,7 @@ function run_model(
                 C_cover_t,
                 vec_abs_k,
                 vec(leftover_space_m²),
-                seed_locs,  # use location indices
+               seed_locs,  # use location indices
                 seeded_area,
                 seed_sc,
                 a_adapt,
