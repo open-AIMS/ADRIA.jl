@@ -262,8 +262,10 @@ function ADRIA.viz.map!(
 end
 
 """
-    ADRIA.viz.map(rs::Union{Domain,ResultSet}, outputs_matrix::Matrix, map_titles::Vector{String};opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}, outputs_matrix::Matrix, map_titles::Vector{String}; opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
         fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
+    ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, outputs_matrix::Matrix, map_titles::Vector{String};
+        opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
 
 Plot a series of maps from an arbitrary (n_locs*n_maps) matrix of outputs.
 
@@ -271,7 +273,7 @@ Plot a series of maps from an arbitrary (n_locs*n_maps) matrix of outputs.
 - `rs` : ResultSet
 - `outputs_matrix` : Matrix of outputs where n_locs is the numberof locations and n_maps is the number of different
     maps to plot.
-- `map_titles` : Title for each map to be plotted.
+- `map_titles` : Titles for each map to be plotted.
 - `opts` : Aviz options
     - `colorbar_label`, label for colorbar. Defaults to "Relative Cover"
     - `color_map`, preferred colormap for plotting heatmaps
