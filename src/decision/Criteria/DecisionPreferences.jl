@@ -114,7 +114,7 @@ function solve(
 end
 
 """
-    rank_by_index(dp::T, dm::YAXArray, method::Function)::Vector{Int64} where {T<:DecisionPreference}
+    rank_by_index(dp::T, dm::YAXArray, method::Union{Function,DataType})::Vector{Int64} where {T<:DecisionPreference}
 
 Default index rank method, returns location indices in order of their rank.
 
@@ -131,14 +131,13 @@ Index of locations ordered by their rank
 function rank_by_index(
     dp::T, dm::YAXArray, method::Union{Function,DataType}
 )::Vector{Int64} where {T<:DecisionPreference}
-    res = get_criteria_aggregate(dp, dm, method)
+    res = criteria_aggregated_scores(dp, dm, method)
     is_maximal = res.bestIndex == argmax(res.scores)
     return sortperm(res.scores; rev=is_maximal)
 end
 
 """
-    get_criteria_aggregate(dp::T, dm::YAXArray, method::Function)::Tuple{Vector{Float64,Int64}}
-     where {T<:DecisionPreference}
+    criteria_aggregated_scores(dp::T, dm::YAXArray, method::Function)::NamedTuple where {T<:DecisionPreference}
 
 Calculates raw aggreagted score for a set of locations, in order of the location indices.
 
@@ -152,9 +151,9 @@ Note: Ignores constant criteria values.
 # Returns
 Returns raw aggreagted score for a set of locations
 """
-function get_criteria_aggregate(
+function criteria_aggregated_scores(
     dp::T, dm::YAXArray, method::Union{Function,DataType}
-) where {T<:DecisionPreference}
+)::NamedTuple where {T<:DecisionPreference}
     # Identify valid, non-constant, columns for use in MCDA
     is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
 
