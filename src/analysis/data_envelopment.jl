@@ -1,5 +1,3 @@
-module economics
-
 using DataEnvelopmentAnalysis: DataEnvelopmentAnalysis as DEA
 using ADRIA: ResultSet
 using DataFrames, YAXArrays
@@ -16,41 +14,11 @@ struct DEAResult{V,V2,V3}
 end
 
 """
-    DEAResult(CRS_eff::Vector{Float64}, VRS_eff::Vector{Float64}, FDH_eff::Vector{Float64},
-        CRS_peers::DEA.DEAPeers, VRS_peers::DEA.DEAPeers, FDH_peers::DEA.DEAPeers,
-        X::Matrix{Float64}, Y::Vector{Float64})::DEAResult
-
-Constructor for DEAResult type.
-
-# Arguments
-- `CRS_eff` : efficiencies from CRS DEA analysis.
-- `VRS_eff` : efficiencies from VRS DEA analysis.
-- `FDH_eff` : efficiencies from FDH DEA analysis.
-- `CRS_peers` : peers indices from CRS DEA analysis.
-- `VRS_peers` : peers indices from VRS DEA analysis.
-- `FDH_peers` : peers indices from FDH DEA analysis.
-- `X` : inputs.
-- `Y` : outputs.
-"""
-function DEAResult(CRS_eff::Vector{Float64}, VRS_eff::Vector{Float64},
-    FDH_eff::Vector{Float64}, CRS_peers::DEA.DEAPeers, VRS_peers::DEA.DEAPeers,
-    FDH_peers::DEA.DEAPeers, X::Matrix{Float64}, Y::Vector{Float64}
-)::DEAResult
-    return DEAResult(1 ./ CRS_eff,
-        1 ./ VRS_eff,
-        1 ./ FDH_eff,
-        CRS_peers,
-        VRS_peers,
-        FDH_peers,
-        X,
-        Y)
-end
-
-"""
-    data_envelopment_analysis(X::YAXArray, Y::YAXArray; orient::Symbol=:Output,
-        dea_model::Function=DEA.deabigdata)::DEAResult
-    data_envelopment_analysis(X::YAXArray, metrics...; orient::Symbol=:Output,
-        dea_model::Function=DEA.deabigdata)::DEAResult
+    data_envelopment_analysis(rs::ResultSet, input_function::Function, metrics...; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
+    data_envelopment_analysis(rs::ResultSet, Y::YAXArray, input_function::Function; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
+    data_envelopment_analysis(X::YAXArray, metrics...; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
+    data_envelopment_analysis(X::YAXArray, Y::YAXArray; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
+    data_envelopment_analysis(X::Union{Vector{Float64},Matrix{Float64}}, Y::Matrix{Float64}; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
 
 Performs output-oriented (default) Data Envelopment Analysis (DEA) given inputs X and output
 metrics Y. DEA is used to measure the performance of entities (scenarios), where inputs are
@@ -60,13 +28,16 @@ cannot be further increased by changing inputs (scenario settings). Scenarios on
 frontier serve as "benchmarks" or "peers", associated with best practice restoration
 scenarios. Scenarios with efficiencies not equal to 1 can be improved to be more efficient.
 
-
 # Arguments
+- `rs` : ADRIA ResultSet
+- `input_function` : function which calculates an input for each scenario (e.g. cost, effort) given the scenario
+    dataframe as input.
 - `X` : Model inputs for each scenario (usually costs).
 - `Y` : Model outputs for each scenario (metrics such as tac, rci etc.).
 - `orient` : Orientation of the analysis. Can be output oriented (`orient=:Output`), which
     seeks to maximise outputs for a given level of input, or input oriented (`orient=:Input`),
     which seeks to minimise an input for a given level of output.
+- `dea_model` : model to use to calculate DEA frontier (see https://javierbarbero.github.io/DataEnvelopmentAnalysis.jl/stable/)
 
 # Returns
 DEAResult, which summarizes inputs, outputs, efficiencies and peers for each scenario.
@@ -84,18 +55,14 @@ cost = cost_function(scens)
 s_tac = dropdims(
     mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
 )
-s_sv::Vector{Float64} =
-    dropdims(
-        mean(mean(ADRIA.metrics.absolute_shelter_volume(rs); dims=:timesteps); dims=:sites);
-        dims=(:timesteps, :sites)
+s_sv = dropdims(
+    mean(ADRIA.metrics.scenario_shelter_volume(rs); dims=:timesteps); dims=:timesteps
     )
 
 # Do output oriented DEA analysis seeking to maximise cover and shelter volume for minimum
-# deployment cost.
-DEA_scens = ADRIA.economics.data_envelopment_analysis(cost, s_tac, s_sv)
+# deployment cost.analysis.data_envelopment_analysis(cost, s_tac, s_sv)
 
 ```
-
 # References
 1. Huguenin, J-M., 2012.
    Data Envelopment Analysis (DEA): A pedagogical guide for decision makers in the public
@@ -109,61 +76,68 @@ DEA_scens = ADRIA.economics.data_envelopment_analysis(cost, s_tac, s_sv)
    On the use of Data Envelopment Analysis for Multi-Criteria Decision Analysis.
    Algorithms, 17:89.
    https://doi.org/10.3390/a17030089
-
 """
-function data_envelopment_analysis(rs::ResultSet, input_function::Function,
-    metrics...; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
+function data_envelopment_analysis(
+    rs::ResultSet,
+    input_function::Function,
+    metrics...;
+    orient::Symbol=:Output,
+    dea_model::Function=DEA.deabigdata
 )::DEAResult
-    X = input_function(rs.inputs)
     return data_envelopment_analysis(
-        X, metrics; orient=orient, dea_model=dea_model
-    )
-end
-function data_envelopment_analysis(rs::ResultSet, Y::YAXArray, input_function::Function;
-    orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
-)::DEAResult
-    X = input_function(rs.inputs)
-    return data_envelopment_analysis(
-        X, Y; orient=orient, dea_model=dea_model
+        input_function(rs.inputs), metrics; orient=orient, dea_model=dea_model
     )
 end
 function data_envelopment_analysis(
-    X::YAXArray, metrics...; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
+    rs::ResultSet,
+    Y::AbstractArray,
+    input_function::Function;
+    orient::Symbol=:Output,
+    dea_model::Function=DEA.deabigdata
+)::DEAResult
+    return data_envelopment_analysis(
+        input_function(rs.inputs), Y; orient=orient, dea_model=dea_model
+    )
+end
+function data_envelopment_analysis(
+    X::YAXArray,
+    metrics...;
+    orient::Symbol=:Output,
+    dea_model::Function=DEA.deabigdata
 )::DEAResult
     Y = Array(hcat(metrics...))
     return data_envelopment_analysis(
-        Array(X), Y; orient=orient, dea_model=dea_model
+        X.data, Y; orient=orient, dea_model=dea_model
     )
 end
 function data_envelopment_analysis(
-    X::YAXArray, Y::YAXArray; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata
+    X::YAXArray,
+    Y::AbstractArray;
+    orient::Symbol=:Output,
+    dea_model::Function=DEA.deabigdata
 )::DEAResult
     return data_envelopment_analysis(
-        Array(X), Array(Y); orient=orient, dea_model=dea_model
+        X.data, Array(Y); orient=orient, dea_model=dea_model
     )
 end
 function data_envelopment_analysis(
-    X::Vector{Float64}, Y::Matrix{Float64}; orient::Symbol=:Output,
+    X::Union{Vector{Float64},Matrix{Float64}},
+    Y::Matrix{Float64};
+    orient::Symbol=:Output,
     dea_model::Function=DEA.deabigdata
 )::DEAResult
     result_CRS = dea_model(X, Y; orient=orient, rts=:CRS)
     result_VRS = dea_model(X, Y; orient=orient, rts=:VRS)
     result_FDH = dea_model(X, Y; orient=orient, rts=:FDH)
 
-    CRS_peers = DEA.peers(result_CRS)
-    VRS_peers = DEA.peers(result_VRS)
-    FDH_peers = DEA.peers(result_FDH)
-
     return DEAResult(
-        result_CRS.eff,
-        result_VRS.eff,
-        result_FDH.eff,
-        CRS_peers,
-        VRS_peers,
-        FDH_peers,
+        1 ./ result_CRS.eff,
+        1 ./ result_VRS.eff,
+        1 ./ result_FDH.eff,
+        DEA.peers(result_CRS),
+        DEA.peers(result_VRS),
+        DEA.peers(result_FDH),
         X,
         Y
     )
-end
-
 end
