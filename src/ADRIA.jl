@@ -77,7 +77,6 @@ include("metrics/performance.jl")
 include("scenario.jl")
 include("analysis/analysis.jl")
 include("analysis/sensitivity.jl")
-include("analysis/economics.jl")
 
 include("ExtInterface/ADRIA/Domain.jl")
 include("ExtInterface/ReefMod/RMEDomain.jl")
