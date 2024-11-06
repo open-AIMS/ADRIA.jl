@@ -249,6 +249,10 @@ function run_scenarios(
     return load_results(_result_location(dom, RCP))
 end
 
+function growth_acceleration(height::Float64, midpoint::Float64, steepness::Float64, available_space::Vector{Float64})
+    return height ./ (1 .+ exp.(-steepness .* (available_space .- midpoint))) .+ 1.0
+end
+
 function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
     target_rows = findall(scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp))
     rep_doms = Iterators.repeated(dom, n)
@@ -437,6 +441,10 @@ function run_model(
     p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
+
+    growth_acc_steepness::Float64 = param_set[factors = At("steepness")][1]
+    growth_acc_height::Float64 = param_set[factors = At("height")][1]
+    growth_acc_midpoint::Float64 = param_set[factors = At("midpoint")][1]
 
     # Determine growth rate based on linear extension
     lin_ext = Matrix{Float64}(reshape(corals.linear_extension, domain.coral_growth.n_sizes, domain.coral_growth.n_groups)')
@@ -753,11 +761,22 @@ function run_model(
             ) for (idx, loc_idx) in enumerate(cloc_idxs)
         ]
 
-        # ? Should we bring this inside CoralBlox?
-        lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs] .< (0.7 .* habitable_loc_areas)] .=
-            1
+        relative_habitable_cover = _loc_coral_cover(C_cover_t) ./ vec_abs_k
+        no_constraint_mask = relative_habitable_cover .< 0.7
+        lin_ext_scale_factors[no_constraint_mask] .= growth_acceleration(
+            growth_acc_height,
+            growth_acc_midpoint,
+            growth_acc_steepness,
+            relative_habitable_cover[no_constraint_mask]
+        )
 
-        cloc_lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[cloc_idxs] .< (0.7 * vec_abs_k[cloc_idxs])] .= 1.0
+        cloc_no_constraint_mask = relative_habitable_cover[cloc_idxs] .< 0.7
+        cloc_lin_ext_scale_factors[cloc_no_constraint_mask] .= growth_acceleration(
+            growth_acc_height,
+            growth_acc_midpoint,
+            growth_acc_steepness,
+            relative_habitable_cover[cloc_idxs][cloc_no_constraint_mask]
+        )
 
         for i in habitable_loc_idxs
             # TODO Skip when _loc_rel_leftover_space[i] == 0
