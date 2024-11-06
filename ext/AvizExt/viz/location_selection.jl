@@ -186,13 +186,15 @@ function ADRIA.viz.selection_criteria_map!(
     if length(rs.loc_data.site_id) != size(decision_matrix, 1)
         error("Only unfiltered decision matrices can be plotted.")
     end
+
     outputs_matrix = hcat(Matrix(decision_matrix), scores)
+    titles = human_readable_name(string.(vcat(criteria, :agregate_score)); title_case=true)
 
     return ADRIA.viz.map!(
         g,
         rs,
         outputs_matrix,
-        string.(vcat(criteria, :agregate_score));
+        titles;
         opts=opts,
         axis_opts=axis_opts
     )
