@@ -1,4 +1,4 @@
-using ADRIA.economics: DEAResult
+using ADRIA.analysis: DEAResult
 
 """
     ADRIA.viz.data_envelopment_analysis(rs::ResultSet, DEA_output::DEAResult;axis_opts=Dict(),
@@ -41,16 +41,20 @@ ADRIA.viz.data_envelopment_analysis(rs, DEA_output)
 # Arguments
 - `rs` : ResultSet
 - `DEA_output` : output structure from a DEA analysis, carried out using `data_envelopment_analysis`
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+- `fig_opts` : Additional options to pass to adjust Figure creation
+  See: https://docs.makie.org/v0.19/api/index.html#Figure
 - `opts` : Aviz options
     - `frontier_type`, type of frontier to plot: "CRS","VRS" or "FDH".
     - `line_color`, color to use for best practice frontier.
     - `data_color`, color to use for data cloud when plotting efficiency frontier.
     - `frontier_name`, text to label efficiency frontier.
     - `data_name`, text to label data cloud used to plot efficiency frontier.
-- `axis_opts` : Additional options to pass to adjust Axis attributes
-  See: https://docs.makie.org/v0.19/api/index.html#Axis
-- `fig_opts` : Additional options to pass to adjust Figure creation
-  See: https://docs.makie.org/v0.19/api/index.html#Figure
+    - `metrics_x_lab` : Name of metric on x axis.
+    - `metrics_y_lab` : Name of metric on y axis.
+    - `scale_eff_y_lab` : Label for scale efficiency.
+    - `scale_eff_y_lab` : Label for technical efficiency.
 """
 function ADRIA.viz.data_envelopment_analysis(
     rs::ResultSet, DEA_output::DEAResult;
@@ -98,28 +102,28 @@ function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
     scale_efficiency = DEA_output.crs_vals ./ DEA_output.vrs_vals
 
     # Plot efficiency frontier and data cloud
-    axa = Axis(g[1, 1]; xlabel=metrics_x_lab, ylabel=metrics_y_lab, axis_opts...)
-    data = scatter!(axa, Y[:, 1], Y[:, 2]; color=data_color)
+    ax_a = Axis(g[1, 1]; xlabel=metrics_x_lab, ylabel=metrics_y_lab, axis_opts...)
+    data_cloud = scatter!(ax_a, Y[:, 1], Y[:, 2]; color=data_color)
     frontier = scatter!(
-        axa, Y[best_practice_scens, 1], Y[best_practice_scens, 2]; color=frontier_color
+        ax_a, Y[best_practice_scens, 1], Y[best_practice_scens, 2]; color=frontier_color
     )
-    Legend(g[1, 2], [frontier, data], [frontier_name, data_name])
+    Legend(g[1, 2], [frontier, data_cloud], [frontier_name, data_name])
 
     # Plot the scale efficiency (ratio of efficiencies assuming CRS vs. assuming VRS)
-    axb = Axis(g[2, 1]; title="Scale efficiency", ylabel=scale_eff_y_lab, axis_opts...)
-    scatter!(axb, scale_efficiency; color=data_color)
+    ax_b = Axis(g[2, 1]; title="Scale efficiency", ylabel=scale_eff_y_lab, axis_opts...)
+    scatter!(ax_b, scale_efficiency; color=data_color)
     scatter!(
-        axb,
+        ax_b,
         best_practice_scens,
         scale_efficiency[best_practice_scens];
         color=frontier_color
     )
 
     # Plot the technical efficiency (inverse VRS efficiencies)
-    axc = Axis(g[3, 1]; title="Technical efficiency", ylabel=tech_eff_y_lab, axis_opts...)
-    scatter!(axc, DEA_output.vrs_vals; color=data_color)
+    ax_c = Axis(g[3, 1]; title="Technical efficiency", ylabel=tech_eff_y_lab, axis_opts...)
+    scatter!(ax_c, DEA_output.vrs_vals; color=data_color)
     scatter!(
-        axc,
+        ax_c,
         best_practice_scens,
         DEA_output.vrs_vals[best_practice_scens];
         color=frontier_color
