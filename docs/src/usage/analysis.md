@@ -513,13 +513,15 @@ cost = cost_function(scens)
 s_tac = dropdims(
     mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
 )
-s_sv = dropdims(
-    mean(ADRIA.metrics.scenario_shelter_volume(rs); dims=:timesteps); dims=:timesteps
+s_sv =
+    dropdims(
+        mean(mean(ADRIA.metrics.absolute_shelter_volume(rs); dims=:timesteps); dims=:locations);
+        dims=(:timesteps,:locations)
     )
 
 # Do output oriented DEA analysis seeking to maximise cover and shelter volume for minimum
 # deployment cost.
-DEA_scens = ADRIA.economics.data_envelopment_analysis(cost, s_tac, s_sv)
+DEA_scens = ADRIA.analysis.data_envelopment_analysis(cost, s_tac, s_sv)
 dea_fig = ADRIA.viz.data_envelopment_analysis(rs, DEA_scens)
 
 ![DEA](../assets/imgs/analysis/example_dea_fig.png)
