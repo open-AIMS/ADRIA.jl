@@ -249,8 +249,8 @@ function run_scenarios(
     return load_results(_result_location(dom, RCP))
 end
 
-function growth_acceleration(height::Float64, midpoint::Float64, steepness::Float64, available_space::Vector{Float64})
-    return height ./ (1 .+ exp.(-steepness .* (available_space .- midpoint))) .+ 1.0
+function growth_acceleration(height::Float64, midpoint::Float64, steepness::Float64, available_space::Float64)
+    return height / (1 + exp(-steepness * (available_space - midpoint))) + 1.0
 end
 
 function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
@@ -410,7 +410,13 @@ NamedTuple of collated results
 - `bleaching_mortality` : Array, Log of mortalities caused by bleaching
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
-function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray}, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64})
+function run_model(
+    domain::Domain,
+    param_set::Union{DataFrameRow,YAXArray},
+    coefs::Array{Float64, 3}=zeros(Float64, 5, 0, 3),
+    growth_accel_parameters::Array{Float64, 2}=zeros(Float64, 3, 0),
+    cloc_idxs::Vector{Int64}=zeros(Float64, 0)
+)
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
@@ -422,29 +428,40 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray}, coef
         ) for _ in 1:n_locs
     ]
 
-    return run_model(domain, param_set, functional_groups, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64})
+    return run_model(domain, param_set, functional_groups, coefs, growth_accel_parameters, cloc_idxs)
 end
 function run_model(
     domain::Domain,
     param_set::DataFrameRow,
     functional_groups::Vector{Vector{FunctionalGroup}},
-    coefs::Array{Float64, 3},
-    cloc_idxs::Vector{Int64}
+    coefs::Array{Float64, 3}=zeros(Float64, 5, 0, 3),
+    growth_accel_parameters::Array{Float64, 2}=zeros(Float64, 3, 0),
+    cloc_idxs::Vector{Int64} =zeros(Float64, 0)
 )::NamedTuple
     setup()
     ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps, functional_groups, coefs, cloc_idxs)
+    return run_model(domain, ps, functional_groups, coefs, growth_accel_parameters, cloc_idxs)
 end
 function run_model(
-    domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}, coefs::Array{Float64, 3}, cloc_idxs::Vector{Int64}
+    domain::Domain,
+    param_set::YAXArray,
+    functional_groups::Vector{Vector{FunctionalGroup}},
+    coefs::Array{Float64, 3}=zeros(Float64, 5, 0, 3),
+    growth_accel_parameters::Array{Float64, 2}=zeros(Float64, 3, 0),
+    cloc_idxs::Vector{Int64}=zeros(Float64, 0)
 )::NamedTuple
     p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
 
-    growth_acc_steepness::Float64 = param_set[factors = At("steepness")][1]
-    growth_acc_height::Float64 = param_set[factors = At("height")][1]
-    growth_acc_midpoint::Float64 = param_set[factors = At("midpoint")][1]
+    growth_acc_steepness::Vector{Float64} = growth_accel_parameters[1, :]
+    growth_acc_height::Vector{Float64} = growth_accel_parameters[2, :]
+    growth_acc_midpoint::Vector{Float64} = growth_accel_parameters[3, :]
+
+    # parameters for non target location
+    g_steepness::Float64 = mean(growth_acc_steepness)
+    g_height::Float64 = mean(growth_acc_height)
+    g_midpoint::Float64 = mean(growth_acc_midpoint)
 
     # Determine growth rate based on linear extension
     lin_ext = Matrix{Float64}(reshape(corals.linear_extension, domain.coral_growth.n_sizes, domain.coral_growth.n_groups)')
@@ -772,18 +789,18 @@ function run_model(
 
         relative_habitable_cover = _loc_coral_cover(C_cover_t) ./ vec_abs_k
         no_constraint_mask = relative_habitable_cover .< 0.7
-        lin_ext_scale_factors[no_constraint_mask] .= growth_acceleration(
-            growth_acc_height,
-            growth_acc_midpoint,
-            growth_acc_steepness,
+        lin_ext_scale_factors[no_constraint_mask] .= growth_acceleration.(
+            g_height,
+            g_midpoint,
+            g_steepness,
             relative_habitable_cover[no_constraint_mask]
         )
 
         cloc_no_constraint_mask = relative_habitable_cover[cloc_idxs] .< 0.7
-        cloc_lin_ext_scale_factors[cloc_no_constraint_mask] .= growth_acceleration(
-            growth_acc_height,
-            growth_acc_midpoint,
-            growth_acc_steepness,
+        cloc_lin_ext_scale_factors[cloc_no_constraint_mask] .= growth_acceleration.(
+            growth_acc_height[cloc_no_constraint_mask],
+            growth_acc_midpoint[cloc_no_constraint_mask],
+            growth_acc_steepness[cloc_no_constraint_mask],
             relative_habitable_cover[cloc_idxs][cloc_no_constraint_mask]
         )
 
