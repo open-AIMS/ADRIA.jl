@@ -1,12 +1,9 @@
 using ADRIA.analysis: DEAResult
 
 """
-    ADRIA.viz.data_envelopment_analysis(rs::ResultSet, DEA_output::DEAResult;axis_opts=Dict(),
-        fig_opts=Dict(), opts=Dict())
-    ADRIA.viz.data_envelopment_analysis(g::Union{GridLayout,GridPosition},rs::ResultSet,
-        DEA_output::DEAResult; axis_opts=Dict(),opts=Dict())
-    ADRIA.viz.data_envelopment_analysis(g::Union{GridLayout,GridPosition}, DEA_output::DEAResult;
-        axis_opts=Dict(), opts=Dict())
+    ADRIA.viz.data_envelopment_analysis(rs::ResultSet, DEA_output::DEAResult; axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), opts::OPT_TYPE=DEFAULT_OPT_TYPE())
+    ADRIA.viz.data_envelopment_analysis(g::Union{GridLayout,GridPosition}, rs::ResultSet, DEA_output::DEAResult; axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), opts::OPT_TYPE=DEFAULT_OPT_TYPE())
+    ADRIA.viz.data_envelopment_analysis(g::Union{GridLayout,GridPosition}, DEA_output::DEAResult; axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), opts::OPT_TYPE=DEFAULT_OPT_TYPE())
 
 Plot results from a DEA analysis. Plots the first 2 dimensions of the effificency frontier,
 along side the technical and scale efficiencies.
@@ -57,8 +54,10 @@ ADRIA.viz.data_envelopment_analysis(rs, DEA_output)
     - `scale_eff_y_lab` : Label for technical efficiency.
 """
 function ADRIA.viz.data_envelopment_analysis(
-    rs::ResultSet, DEA_output::DEAResult;
-    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    rs::ResultSet,
+    DEA_output::DEAResult;
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     f = Figure(; fig_opts...)
@@ -70,8 +69,11 @@ function ADRIA.viz.data_envelopment_analysis(
 
     return f
 end
-function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
-    rs::ResultSet, DEA_output::DEAResult; axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+function ADRIA.viz.data_envelopment_analysis!(
+    g::Union{GridLayout,GridPosition},
+    rs::ResultSet,
+    DEA_output::DEAResult;
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     return ADRIA.viz.data_envelopment_analysis!(

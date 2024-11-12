@@ -15,10 +15,10 @@ end
 
 """
     data_envelopment_analysis(rs::ResultSet, input_function::Function, metrics...; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
-    data_envelopment_analysis(rs::ResultSet, Y::YAXArray, input_function::Function; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
+    data_envelopment_analysis(rs::ResultSet, Y::AbstractArray, input_function::Function; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
     data_envelopment_analysis(X::YAXArray, metrics...; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
-    data_envelopment_analysis(X::YAXArray, Y::YAXArray; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
-    data_envelopment_analysis(X::Union{Vector{Float64},Matrix{Float64}}, Y::Matrix{Float64}; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
+    data_envelopment_analysis(X::YAXArray, Y::AbstractArray; orient::Symbol=:Output, dea_model::Function=DEA.deabigdata)::DEAResult
+    data_envelopment_analysis(X::Union{Vector{Float64}, Matrix{Float64}}, Y::Matrix{Float64}; dea_model::Function=DEA.deabigdata)::DEAResult
 
 Performs output-oriented (default) Data Envelopment Analysis (DEA) given inputs X and output
 metrics Y. DEA is used to measure the performance of entities (scenarios), where inputs are
