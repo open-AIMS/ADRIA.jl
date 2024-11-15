@@ -13,6 +13,13 @@ past of the 'positive class' given that the condition is true or false.
 struct Rule{V<:Vector{Vector},W<:Vector{Float64}}
     condition::V
     consequent::W
+
+    function Rule(condition, consequent)
+        condition_order = sortperm(condition; by=x -> x[1])
+        return new{typeof(condition),typeof(consequent)}(
+            condition[condition_order], consequent[condition_order]
+        )
+    end
 end
 
 """
