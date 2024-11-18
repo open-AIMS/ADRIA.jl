@@ -245,8 +245,13 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame)
     scenarios_iv = scens[:, fields_iv]
 
     # Use SIRUS algorithm to extract rules
-    max_rules = 4
-    rules_iv = ADRIA.analysis.cluster_rules(target_clusters, scenarios_iv, max_rules)
+    max_rules = 10
+    rules_iv = ADRIA.analysis.cluster_rules(
+        target_clusters, scenarios_iv, max_rules; remove_duplicates=true
+    )
+    rules_iv_duplicates = ADRIA.analysis.cluster_rules(
+        target_clusters, scenarios_iv, max_rules; remove_duplicates=false
+    )
 
     # Plot scatters for each rule highlighting the area selected them
     rules_scatter_fig = ADRIA.viz.rules_scatter(
@@ -254,6 +259,15 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame)
         scenarios_iv,
         target_clusters,
         rules_iv;
+        fig_opts=fig_opts,
+        opts=opts
+    )
+
+    ADRIA.viz.rules_scatter(
+        rs,
+        scenarios_iv,
+        target_clusters,
+        rules_iv_duplicates;
         fig_opts=fig_opts,
         opts=opts
     )
