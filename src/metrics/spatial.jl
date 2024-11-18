@@ -162,7 +162,7 @@ _relative_cover = metrics.relative_cover(rs)
 gd_res = metrics.ensemble_loc_difference(r_cover, scens; agg_metric=0.6)
 
 # Compute difference between unguided and counterfactual using the median
-ug_res = metrics.cf_difference_loc(r_cover, scens; diff_target=:unguided)
+ug_res = metrics.ensemble_loc_difference(r_cover, scens; diff_target=:unguided)
 
 # Plot maps of difference to the counterfactual
 ADRIA.viz.diff_map(rs, gd_res[2, :])
