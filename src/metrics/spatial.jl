@@ -127,7 +127,7 @@ function summarize(
 end
 
 """
-    ensemble_loc_difference(outcome::YAXArray{T,3}, scens::DataFrame; agg_metric::Union{Function,AbstractFloat}=median, diff_target=:guided, conf::Float64=0.95, rand_seed=1234)::YAXArray where {T}
+    ensemble_loc_difference(outcome::YAXArray{T,3}, scens::DataFrame; agg_metric::Union{Function,AbstractFloat}=median, diff_target=:guided, conf::Float64=0.95, rng::AbstractRNG=Random.GLOBAL_RNG)::YAXArray where {T}
 
 Mean bootstrapped difference (counterfactual - target) between some outcome aggregated for
 each location.
@@ -141,7 +141,7 @@ Defaults to `median`.
 - `diff_target` : Target group of scenarios to compare with. Valid options are `:guided` and
 `:unguided`. Defaults to `:guided`
 - `conf` : Percentile used for the confidence interval. Defaults to 0.95.
-- `rand_seed` : Seed used for random number generator. Defaults to 1234.
+- `rng` : Pseudorandom number generator.
 
 # Example
 ```
@@ -178,14 +178,12 @@ function ensemble_loc_difference(
     agg_metric::Union{Function,AbstractFloat}=median,
     diff_target=:guided,
     conf::Float64=0.95,
-    rand_seed=1234
+    rng::AbstractRNG=Random.GLOBAL_RNG
 )::YAXArray where {T}
     is_quantile_metric = isa(agg_metric, AbstractFloat)
     if is_quantile_metric && !(0 <= agg_metric <= 1)
         error("When metric is a number, it must be within the interval [0,1]")
     end
-
-    Random.seed!(rand_seed)
 
     # Mean over all timesteps
     outcomes_agg = dropdims(mean(outcome; dims=:timesteps); dims=:timesteps)
@@ -213,8 +211,8 @@ function ensemble_loc_difference(
 
     n_locs = length(_locations)
     for loc in 1:n_locs
-        cf_shuf_set::Vector{Int64} = shuffle(1:n_cf_outcomes)[1:min_n_outcomes]
-        target_shuf_set::Vector{Int64} = shuffle(1:n_target_outcomes)[1:min_n_outcomes]
+        cf_shuf_set::Vector{Int64} = shuffle(rng, 1:n_cf_outcomes)[1:min_n_outcomes]
+        target_shuf_set::Vector{Int64} = shuffle(rng, 1:n_target_outcomes)[1:min_n_outcomes]
 
         @views target_diff = collect(
             target_outcomes[loc, target_shuf_set] .- cf_outcomes[loc, cf_shuf_set]
