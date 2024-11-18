@@ -110,18 +110,21 @@ function print_rules(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})::Nothi
 end
 
 """
-    cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;seed::Int64=123, remove_duplicates=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
-    cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
+    cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
+    cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
 
 Use SIRUS package to extract rules from time series clusters based on some summary metric
 (default is median). More information about the keyword arguments accepeted can be found in
 MLJ's doc (https://juliaai.github.io/MLJ.jl/dev/models/StableRulesClassifier_SIRUS/).
 
 # Arguments
-- `clusters` : Vector of cluster indexes for each scenario outcome
-- `X` : Features to be used as input by SIRUS
-- `max_rules` : Maximum number of rules, to be used as input by SIRUS
-- `seed` : Seed to be used by RGN
+- `clusters` : Vector of cluster indexes for each scenario outcome.
+- `X` : Features to be used as input by SIRUS.
+- `max_rules` : Maximum number of rules, to be used as input by SIRUS.
+- `seed` : Seed to be used by RGN. Defaults to 123.
+- `remove_duplicates` : If true, duplicate rules will be removed from resulting ruleset. In
+that case, the rule with the highest probability score is kept. Defaults to true.
+- `kwargs` : Keyword arguments to be passed to `StableRulesClassifier`.
 
 # Returns
 A StableRules object (implemented by SIRUS).
@@ -138,7 +141,7 @@ A StableRules object (implemented by SIRUS).
 """
 function cluster_rules(
     clusters::Vector{T}, X::DataFrame, max_rules::T;
-    seed::Int64=123, remove_duplicates=true, kwargs...
+    seed::Int64=123, remove_duplicates::Bool=true, kwargs...
 )::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
     # Set seed and Random Number Generator
     rng = StableRNG(seed)
@@ -165,9 +168,12 @@ function cluster_rules(
 end
 function cluster_rules(
     clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;
-    kwargs...
+    seed::Int64=123, remove_duplicates::Bool=true, kwargs...
 )::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
-    return cluster_rules(convert.(Int64, clusters), X, max_rules; kwargs...)
+    return cluster_rules(
+        convert.(Int64, clusters), X, max_rules;
+        seed=seed, remove_duplicates=remove_duplicates, kwargs...
+    )
 end
 
 """
