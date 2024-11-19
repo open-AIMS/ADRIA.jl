@@ -19,7 +19,7 @@ Makie.inline!(false)
             metrics.relative_cover(TEST_RS), TEST_SCENS; diff_target=:unguided
         )
 
-        viz.diff_map(TEST_RS, guided_diff[2, :]; fig_opts=fig_opts)
-        viz.diff_map(TEST_RS, unguided_diff[2, :]; fig_opts=fig_opts)
+        viz.map(TEST_RS, guided_diff[2, :]; diverging=true, fig_opts=fig_opts)
+        viz.map(TEST_RS, unguided_diff[2, :]; diverging=true, fig_opts=fig_opts)
     end
 end

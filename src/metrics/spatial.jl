@@ -165,8 +165,8 @@ gd_res = metrics.ensemble_loc_difference(r_cover, scens; agg_metric=0.6)
 ug_res = metrics.ensemble_loc_difference(r_cover, scens; diff_target=:unguided)
 
 # Plot maps of difference to the counterfactual
-ADRIA.viz.diff_map(rs, gd_res[2, :])
-ADRIA.viz.diff_map(rs, ug_res[2, :])
+ADRIA.viz.map(rs, gd_res[2, :]; diverging=true)
+ADRIA.viz.map(rs, ug_res[2, :]; diverging=true)
 ```
 
 # Returns

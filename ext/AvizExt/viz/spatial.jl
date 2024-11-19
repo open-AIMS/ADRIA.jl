@@ -181,11 +181,16 @@ GridPosition
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     y::Union{YAXArray,AbstractVector{<:Real}};
+    diverging::Bool=false,
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
     set_plot_opts!(y, opts, :colorbar_label; metadata_key=:metric_name)
+
+    if diverging
+        opts[:color_map] = _diverging_cmap(y)
+    end
 
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -254,22 +259,15 @@ function ADRIA.viz.map!(
     )
 end
 
-function ADRIA.viz.diff_map(
-    rs::ResultSet,
-    diff_outcome::YAXArray{T};
-    opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    fig_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}(),
-    axis_opts::Dict{Symbol,<:Any}=Dict{Symbol,Any}()
-) where {T}
-    # TODO hande the cases where thes only positive or only negative values
-    min_val, max_res = extrema(diff_outcome)
-    mid_val = -min_val / (max_res - min_val)
+function _diverging_cmap(outcomes::YAXArray)::Vector{RGB{Float64}}
+    min_val, max_val = extrema(outcomes)
 
-    div_cmap::Vector{RGB{Float64}} = diverging_palette(10, 200; mid=mid_val)
-    opts[:color_map] = div_cmap
-    return ADRIA.viz.map(
-        rs, diff_outcome; axis_opts=axis_opts, opts=opts, fig_opts=fig_opts
-    )
+    # Hande only positive or only negative value cases
+    min_val = min_val > 0 ? 0 : min_val
+    max_val = max_val < 0 ? 0 : max_val
+
+    mid_val = -min_val / (max_val - min_val)
+    return diverging_palette(10, 200; mid=mid_val)
 end
 
 """
