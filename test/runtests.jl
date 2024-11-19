@@ -22,9 +22,11 @@ include("mcda.jl")
 include("metrics/test_metrics_helper.jl")
 include("metrics/scenario.jl")
 include("metrics/metrics.jl")
+include("metrics/spatial.jl")
 include("utils/scale.jl")
 include("utils/text_display.jl")
 include("viz/taxa_dynamics.jl")
+include("viz/spatial.jl")
 
 # TODO Fix spatial_clustering and site_selection tests
 # include("site_selection.jl")

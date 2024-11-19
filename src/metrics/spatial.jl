@@ -1,5 +1,8 @@
 """Functions and methods to produce location-level summaries."""
 
+using Bootstrap
+using Random
+
 """
     per_loc(metric, data::YAXArray{D,T,N,A})::YAXArray where {D,T,N,A}
 
@@ -121,4 +124,104 @@ function summarize(
     timesteps::Union{UnitRange,Vector{Int64},BitVector}
 )::YAXArray where {D,T,N,A}
     return summarize(data[timesteps=timesteps], alongs_axis, metric)
+end
+
+"""
+    ensemble_loc_difference(outcome::YAXArray{T,3}, scens::DataFrame; agg_metric::Union{Function,AbstractFloat}=median, diff_target=:guided, conf::Float64=0.95, rng::AbstractRNG=Random.GLOBAL_RNG)::YAXArray where {T}
+
+Mean bootstrapped difference (counterfactual - target) between some outcome aggregated for
+each location.
+
+# Arguments
+- `outcome` : Metric outcome with dimensions (:timesteps, :locations, :scenarios).
+- `scens` : Scenarios DataFrame.
+- `agg_metric` : Metric used to aggregate scenarios when comparing between counterfactual and
+target. If it is an `AbstractFloat` between 0 and 1, it uses the `bs_metric`-th quantile.
+Defaults to `median`.
+- `diff_target` : Target group of scenarios to compare with. Valid options are `:guided` and
+`:unguided`. Defaults to `:guided`
+- `conf` : Percentile used for the confidence interval. Defaults to 0.95.
+- `rng` : Pseudorandom number generator.
+
+# Example
+```
+# Load domain
+dom = ADRIA.load_domain(path_to_domain)
+
+# Create scenarios
+num_scens = 2^6
+scens = ADRIA.sample(dom, num_scens)
+
+# Run model
+rs = ADRIA.run_scenarios(dom, scens, "45")
+
+# Calculate difference to the counterfactual for given metric
+_relative_cover = metrics.relative_cover(rs)
+
+# Compute difference between guided and counterfactual using the 0.6-th quantile
+gd_res = metrics.ensemble_loc_difference(r_cover, scens; agg_metric=0.6)
+
+# Compute difference between unguided and counterfactual using the median
+ug_res = metrics.ensemble_loc_difference(r_cover, scens; diff_target=:unguided)
+
+# Plot maps of difference to the counterfactual
+ADRIA.viz.map(rs, gd_res[summary=At(:agg_value)]; diverging=true)
+ADRIA.viz.map(rs, ug_res[summary=At(:agg_value)]; diverging=true)
+```
+
+# Returns
+Vector with bootstrapped difference (counterfactual - guided) for each location.
+"""
+function ensemble_loc_difference(
+    outcome::YAXArray{T,3},
+    scens::DataFrame;
+    agg_metric::Union{Function,AbstractFloat}=median,
+    diff_target=:guided,
+    conf::Float64=0.95,
+    rng::AbstractRNG=Random.GLOBAL_RNG
+)::YAXArray where {T}
+    is_quantile_metric = isa(agg_metric, AbstractFloat)
+    if is_quantile_metric && !(0 <= agg_metric <= 1)
+        error("When metric is a number, it must be within the interval [0,1]")
+    end
+
+    # Mean over all timesteps
+    outcomes_agg = dropdims(mean(outcome; dims=:timesteps); dims=:timesteps)
+
+    # Counterfactual, target outcomes
+    cf_outcomes = outcomes_agg[scenarios=scens.guided .== -1]
+    target_outcomes = if diff_target == :guided
+        outcomes_agg[scenarios=scens.guided .> 0]
+    elseif diff_target == :unguided
+        outcomes_agg[scenarios=scens.guided .== 0]
+    else
+        error("Invalid diff_target value. Valid values are :guided and :unguided.")
+    end
+
+    # Find the smallest set of outcomes because they might not have the same size
+    n_cf_outcomes = size(cf_outcomes, :scenarios)
+    n_target_outcomes = size(target_outcomes, :scenarios)
+    min_n_outcomes = min(n_cf_outcomes, n_target_outcomes)
+
+    # Build (counterfactual-guided) and (counterfactual-unguided) result DataCubes
+    _locations = axis_labels(outcome, :locations)
+    results = ZeroDataCube(;
+        T=T, summary=[:lower_bound, :agg_value, :upper_bound], locations=_locations
+    )
+
+    n_locs = length(_locations)
+    for loc in 1:n_locs
+        cf_shuf_set::Vector{Int64} = shuffle(rng, 1:n_cf_outcomes)[1:min_n_outcomes]
+        target_shuf_set::Vector{Int64} = shuffle(rng, 1:n_target_outcomes)[1:min_n_outcomes]
+
+        @views target_diff = collect(
+            target_outcomes[loc, target_shuf_set] .- cf_outcomes[loc, cf_shuf_set]
+        )
+
+        bootstrap_func(x) = is_quantile_metric ? quantile(x, agg_metric) : agg_metric(x)
+        cf_target_bootstrap = bootstrap(bootstrap_func, target_diff, BalancedSampling(100))
+        results[[2, 1, 3], loc] .= confint(cf_target_bootstrap, PercentileConfInt(conf))[1]
+    end
+
+    return results
 end

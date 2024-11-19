@@ -50,6 +50,7 @@ end
         highlight::Union{Vector,Tuple,Nothing},
         show_colorbar::Bool=true,
         colorbar_label::String="",
+        color_map::$COLORMAP_TYPE_DOCSTRING,
         legend_params::Union{Tuple,Nothing}=nothing,
         axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}())
     )
@@ -73,13 +74,13 @@ function create_map!(
     f::Union{GridLayout,GridPosition},
     geodata::Vector{<:GeoMakie.MultiPolygon},
     data::Observable,
-    highlight::Union{Vector,Tuple,Nothing},
+    highlight::Union{Vector,Tuple,Nothing};
     show_colorbar::Bool=true,
     colorbar_label::String="",
-    color_map::Union{Symbol,Vector{Symbol},RGBA{Float32},Vector{RGBA{Float32}}}=:grayC,
+    color_map::COLORMAP_TYPE(T)=:grayC,
     legend_params::Union{Tuple,Nothing}=nothing,
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
-)
+)::Union{GridLayout,GridPosition} where {T<:Real}
     spatial = GeoAxis(
         f[1, 1];
         axis_opts...
@@ -88,10 +89,11 @@ function create_map!(
     # spatial.xticklabelsize = 14
     # spatial.yticklabelsize = 14
 
+    min_val = @lift(minimum($data))
     max_val = @lift(maximum($data))
 
     # Plot geodata polygons using data as internal color
-    color_range = (0.0, max_val[])
+    color_range = min_val[] < 0 ? (min_val[], max_val[]) : (0, max_val[])
 
     poly!(
         spatial,
@@ -158,15 +160,16 @@ function create_map!(
 end
 
 """
-    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), fig_opts::Dict{Symbol, <:Any}=set_figure_defaults(), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
-    ADRIA.viz.map(rs::ResultSet, y::YAXArray; opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), fig_opts::Dict{Symbol, <:Any}=set_figure_defaults(), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
-    ADRIA.viz.map!(f::Union{GridLayout,GridPosition}, rs::ADRIA.ResultSet, y::AbstractVector; opts::Dict{Symbol, <:Any}=Dict{Symbol, Any}(), axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}()))
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}, y::Union{YAXArray,AbstractVector{<:Real}}; diverging::Bool=false, opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}; opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
+    ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, y::AbstractVector{<:Real}; opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
 
 Plot spatial choropleth of outcomes.
 
 # Arguments
 - `rs` : ResultSet
 - `y` : results of scenario metric
+- `diverging` : If true, uses a diverging color map.
 - `opts` : Aviz options
     - `colorbar_label`, label for colorbar. Defaults to "Relative Cover"
     - `color_map`, preferred colormap for plotting heatmaps
@@ -179,11 +182,16 @@ GridPosition
 function ADRIA.viz.map(
     rs::Union{Domain,ResultSet},
     y::Union{YAXArray,AbstractVector{<:Real}};
+    diverging::Bool=false,
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
     set_plot_opts!(y, opts, :colorbar_label; metadata_key=:metric_name)
+
+    if diverging
+        opts[:color_map] = _diverging_cmap(y)
+    end
 
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
@@ -243,13 +251,24 @@ function ADRIA.viz.map!(
         g,
         geodata,
         data,
-        highlight,
-        show_colorbar,
-        c_label,
-        color_map,
-        legend_params,
-        axis_opts
+        highlight;
+        show_colorbar=show_colorbar,
+        colorbar_label=c_label,
+        color_map=color_map,
+        legend_params=legend_params,
+        axis_opts=axis_opts
     )
+end
+
+function _diverging_cmap(outcomes::YAXArray)::Vector{RGB{Float64}}
+    min_val, max_val = extrema(outcomes)
+
+    # Hande only positive or only negative value cases
+    min_val = min_val > 0 ? 0 : min_val
+    max_val = max_val < 0 ? 0 : max_val
+
+    mid_val = -min_val / (max_val - min_val)
+    return diverging_palette(10, 200; mid=mid_val)
 end
 
 """
