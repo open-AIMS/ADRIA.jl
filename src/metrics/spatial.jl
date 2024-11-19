@@ -165,8 +165,8 @@ gd_res = metrics.ensemble_loc_difference(r_cover, scens; agg_metric=0.6)
 ug_res = metrics.ensemble_loc_difference(r_cover, scens; diff_target=:unguided)
 
 # Plot maps of difference to the counterfactual
-ADRIA.viz.map(rs, gd_res[2, :]; diverging=true)
-ADRIA.viz.map(rs, ug_res[2, :]; diverging=true)
+ADRIA.viz.map(rs, gd_res[summary=At(:agg_value)]; diverging=true)
+ADRIA.viz.map(rs, ug_res[summary=At(:agg_value)]; diverging=true)
 ```
 
 # Returns
@@ -206,7 +206,7 @@ function ensemble_loc_difference(
     # Build (counterfactual-guided) and (counterfactual-unguided) result DataCubes
     _locations = axis_labels(outcome, :locations)
     results = ZeroDataCube(;
-        T=T, value=[:lower_bound, :value, :upper_bound], locations=_locations
+        T=T, summary=[:lower_bound, :agg_value, :upper_bound], locations=_locations
     )
 
     n_locs = length(_locations)

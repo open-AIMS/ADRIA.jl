@@ -37,7 +37,13 @@ end
                 )
 
                 for diff in [guided_diff, unguided_diff]
+                    # 1 and 3 are the indexes for the lower and upper bounds of the
+                    # confidence interval and 2 is the index for the aggregate metric
                     @test all(diff[1, :] .<= diff[2, :] .<= diff[3, :])
+                    @test all(
+                        diff[summary=At(:lower_bound)] .<= diff[summary=At(:agg_value)] .<=
+                        diff[summary=At(:upper_bound)]
+                    )
                 end
             end
         end
