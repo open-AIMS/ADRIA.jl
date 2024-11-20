@@ -183,14 +183,20 @@ which rule to keep is based on the rule consequence probability (the one with th
 probability is kept). If there are more than one rule with the same highest probability,
 then the first one is chosen.
 """
-function _remove_duplicates(rules)::Vector{Rule{Vector{Vector},Vector{Float64}}}
+function _remove_duplicates(
+    rules::T
+)::T where {T<:Vector{Rule{Vector{Vector},Vector{Float64}}}}
     # Extract subclauses from each rule without value
     subclauses = join.([_strip_value.(r.condition) for r in rules], "_&_")
     unique_subclauses = unique(subclauses)
 
     # Return rules if there are no duplicate rules
     n_unique_rules = length(unique_subclauses)
-    n_unique_rules == length(rules) && return rules
+    (n_unique_rules == length(rules)) && return rules
+
+    n_rules = length(rules)
+    n_duplicates = n_rules - n_unique_rules
+    @warn "$n_duplicates of $n_rules duplicated rules were found and are going to be removed."
 
     unique_rules::Vector{Rule} = Vector{Rule}(undef, n_unique_rules)
     for (unique_idx, unique_subclause) in enumerate(unique_subclauses)
