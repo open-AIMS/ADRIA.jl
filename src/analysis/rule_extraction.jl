@@ -180,8 +180,8 @@ end
 
 Returns `Vector{Rule}` without duplicate rules (if there's any). The criteria to choose
 which rule to keep is based on the rule consequence probability (the one with the highest
-probability one is kept). If more than one rule has the same highest probability, the first
-one is chosen.
+probability is kept). If there are more than one rule with the same highest probability,
+then the first one is chosen.
 """
 function _remove_duplicates(rules)::Vector{Rule{Vector{Vector},Vector{Float64}}}
     # Extract subclauses from each rule without value
@@ -213,7 +213,9 @@ end
 """
     _strip_value(condition_subclause::Vector)
 
-Helper function that extracts factor name and direction from a rule condition subclause
+Helper function that extracts factor name and direction from a rule condition subclause.
+Besides having just one line, this was extracted to a separate function to allow/facilitate
+broadcasting this operation.
 """
 function _strip_value(condition_subclause::Vector)
     return join(condition_subclause[1:2], "__")
