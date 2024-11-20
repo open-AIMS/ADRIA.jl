@@ -252,6 +252,8 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame)
     rules_iv_duplicates = ADRIA.analysis.cluster_rules(
         target_clusters, scenarios_iv, max_rules; remove_duplicates=false
     )
+    ADRIA.analysis.print_rules(rules_iv)
+    ADRIA.analysis.print_rules(rules_iv_duplicates)
 
     # Plot scatters for each rule highlighting the area selected them
     rules_scatter_fig = ADRIA.viz.rules_scatter(
