@@ -15,9 +15,8 @@ struct Rule{V<:Vector{Vector},W<:Vector{Float64}}
     consequent::W
 
     function Rule(condition, consequent)
-        condition_order = sortperm(condition; by=x -> x[1])
         return new{typeof(condition),typeof(consequent)}(
-            condition[condition_order], consequent[condition_order]
+            sort(condition; by=x -> x[1]), consequent
         )
     end
 end
