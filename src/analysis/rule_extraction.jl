@@ -109,8 +109,8 @@ function print_rules(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})::Nothi
 end
 
 """
-    cluster_rules(result_set::ADRIA.ResultSet, clusters::Vector{T}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
-    cluster_rules(result_set::ADRIA.ResultSet, clusters::Union{BitVector,Vector{Bool}}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
+    cluster_rules(result_set::ResultSet, clusters::Vector{T}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
+    cluster_rules(result_set::ResultSet, clusters::Union{BitVector,Vector{Bool}}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
 
 Use SIRUS package to extract rules from time series clusters based on some summary metric
 (default is median). More information about the keyword arguments accepeted can be found in
@@ -141,7 +141,7 @@ A StableRules object (implemented by SIRUS).
    https://doi.org//10.1214/20-EJS1792
 """
 function cluster_rules(
-    result_set::ADRIA.ResultSet,
+    result_set::ResultSet,
     clusters::Vector{T},
     scenarios::DataFrame,
     factors::Vector{Symbol},
@@ -185,7 +185,7 @@ function cluster_rules(
     end
 end
 function cluster_rules(
-    result_set::ADRIA.ResultSet,
+    result_set::ResultSet,
     clusters::Union{BitVector,Vector{Bool}},
     scenarios::DataFrame,
     factors::Vector{Symbol},
