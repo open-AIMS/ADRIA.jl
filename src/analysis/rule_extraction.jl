@@ -110,7 +110,7 @@ end
 
 """
     cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T;seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
-    cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
+    cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
 
 Use SIRUS package to extract rules from time series clusters based on some summary metric
 (default is median). More information about the keyword arguments accepeted can be found in
