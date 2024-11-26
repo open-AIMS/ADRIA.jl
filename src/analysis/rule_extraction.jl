@@ -178,10 +178,14 @@ end
 """
     _remove_duplicates(rules)::Vector{Rule{Vector{Vector},Vector{Float64}}}
 
-Returns `Vector{Rule}` without duplicate rules (if there's any). The criteria to choose
-which rule to keep is based on the rule consequence probability (the one with the highest
+Identifies and removes duplicate rulesets (if any are found).
+
+The criteria to choose which rule to keep is based on the rule consequence probability (the one with the highest
 probability is kept). If there are more than one rule with the same highest probability,
 then the first one is chosen.
+
+# Returns
+A ruleset with duplicate rules removed
 """
 function _remove_duplicates(
     rules::T
