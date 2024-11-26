@@ -194,9 +194,11 @@ function _remove_duplicates(
     subclauses = join.([_strip_value.(r.condition) for r in rules], "_&_")
     unique_subclauses = unique(subclauses)
 
-    # Return rules if there are no duplicate rules
+    # Check if there are duplicate rules before moving on
     n_unique_rules = length(unique_subclauses)
-    (n_unique_rules == length(rules)) && return rules
+    if n_unique_rules == length(rules)
+        return rules
+    end
 
     n_rules = length(rules)
     n_duplicates = n_rules - n_unique_rules
