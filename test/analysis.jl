@@ -268,7 +268,7 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame)
 
     ADRIA.viz.rules_scatter(
         rs,
-        scenarios_iv,
+        scens,
         target_clusters,
         rules_iv_duplicates;
         fig_opts=fig_opts,
