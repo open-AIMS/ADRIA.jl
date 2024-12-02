@@ -393,8 +393,8 @@ median outcome temporal variability:
 ```julia
 # Find Time Series Clusters
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
-num_clusters = 6
-clusters = ADRIA.analysis.cluster_scenarios(s_tac, num_clusters)
+n_clusters = 6
+clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
 
 # Target scenarios
 target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)
@@ -408,9 +408,11 @@ rule as a scatter graph:
 # Select features of interest
 foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
 
-# Use SIRUS algorithm to extract rules
+# Use SIRUS algorithm to extract rules.
 max_rules = 10
-rules_iv = ADRIA.analysis.cluster_rules(rs, target_clusters, scens, foi, max_rules)
+rules_iv = ADRIA.analysis.cluster_rules(
+    rs, target_clusters, scens, foi, max_rules; remove_duplicates=true
+)
 
 
 # Plot scatters for each rule highlighting the area selected them
