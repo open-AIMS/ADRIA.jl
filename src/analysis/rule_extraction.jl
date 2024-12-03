@@ -109,16 +109,18 @@ function print_rules(rules::Vector{Rule{Vector{Vector},Vector{Float64}}})::Nothi
 end
 
 """
-    cluster_rules(clusters::Vector{T}, X::DataFrame, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
-    cluster_rules(clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
+    cluster_rules(result_set::ResultSet, clusters::Vector{T}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
+    cluster_rules(result_set::ResultSet, clusters::Union{BitVector,Vector{Bool}}, scenarios::DataFrame, factors::Vector{Symbol}, max_rules::T; seed::Int64=123, remove_duplicates::Bool=true, kwargs...)::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
 
 Use SIRUS package to extract rules from time series clusters based on some summary metric
 (default is median). More information about the keyword arguments accepeted can be found in
 MLJ's doc (https://juliaai.github.io/MLJ.jl/dev/models/StableRulesClassifier_SIRUS/).
 
 # Arguments
+- `result_set` : ResultSet.
 - `clusters` : Vector of cluster indexes for each scenario outcome.
-- `X` : Features to be used as input by SIRUS.
+- `scenarios` : Scenarios DataFrame.
+- `factors` : Vector of factors of interest.
 - `max_rules` : Maximum number of rules, to be used as input by SIRUS.
 - `seed` : Seed to be used by RGN. Defaults to 123.
 - `remove_duplicates` : If true, duplicate rules will be removed from resulting ruleset. In
@@ -139,9 +141,26 @@ A StableRules object (implemented by SIRUS).
    https://doi.org//10.1214/20-EJS1792
 """
 function cluster_rules(
-    clusters::Vector{T}, X::DataFrame, max_rules::T;
-    seed::Int64=123, remove_duplicates::Bool=true, kwargs...
+    result_set::ResultSet,
+    clusters::Vector{T},
+    scenarios::DataFrame,
+    factors::Vector{Symbol},
+    max_rules::T;
+    seed::Int64=123,
+    remove_duplicates::Bool=true,
+    kwargs...
 )::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
+    ms = ADRIA.model_spec(result_set)
+
+    variable_factors_filter::BitVector = .!ms[ms.fieldname .∈ [factors], :is_constant]
+    variable_factors::Vector{Symbol} = factors[variable_factors_filter]
+
+    if isempty(variable_factors)
+        throw(ArgumentError("Factors of interest cannot be constant"))
+    end
+
+    X = scenarios[:, variable_factors]
+
     # Set seed and Random Number Generator
     rng = StableRNG(seed)
 
@@ -166,11 +185,17 @@ function cluster_rules(
     end
 end
 function cluster_rules(
-    clusters::Union{BitVector,Vector{Bool}}, X::DataFrame, max_rules::T;
-    seed::Int64=123, remove_duplicates::Bool=true, kwargs...
+    result_set::ResultSet,
+    clusters::Union{BitVector,Vector{Bool}},
+    scenarios::DataFrame,
+    factors::Vector{Symbol},
+    max_rules::T;
+    seed::Int64=123,
+    remove_duplicates::Bool=true,
+    kwargs...
 )::Vector{Rule{Vector{Vector},Vector{Float64}}} where {T<:Int64}
     return cluster_rules(
-        convert.(Int64, clusters), X, max_rules;
+        result_set, convert.(Int64, clusters), scenarios, factors, max_rules;
         seed=seed, remove_duplicates=remove_duplicates, kwargs...
     )
 end
