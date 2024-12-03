@@ -173,22 +173,24 @@ tsc_map_fig = ADRIA.viz.map(rs, tac_sites, clusters)
 # Save final figure
 save(&quot;tsc_map.png&quot;, tsc_map_fig)</code></pre><p><img src="../../assets/imgs/analysis/tsc_map.png" alt="Plots of Spatial Time Series Clusters"/></p><h3 id="Rule-Induction-(using-Series-Clusters)"><a class="docs-heading-anchor" href="#Rule-Induction-(using-Series-Clusters)">Rule Induction (using Series Clusters)</a><a id="Rule-Induction-(using-Series-Clusters)-1"></a><a class="docs-heading-anchor-permalink" href="#Rule-Induction-(using-Series-Clusters)" title="Permalink"></a></h3><p>After clustering, it is possible to target some specific scenarios based on each cluster median outcome temporal variability:</p><pre><code class="language-julia hljs"># Find Time Series Clusters
 s_tac = ADRIA.metrics.scenario_total_cover(rs)
-num_clusters = 6
-clusters = ADRIA.analysis.cluster_scenarios(s_tac, num_clusters)
+n_clusters = 6
+clusters = ADRIA.analysis.cluster_scenarios(s_tac, n_clusters)
 
 # Target scenarios
-target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)</code></pre><p>Using this vector if target clusters, together with the parameters used to generate each scenario, it is possible to use a Rule Induction algorithm (SIRUS) and plot each extracted rule as a scatter graph:</p><pre><code class="language-julia hljs"># Select only desired features
-fields_iv = ADRIA.component_params(rs, [Intervention, CriteriaWeights]).fieldname
-scenarios_iv = scens[:, fields_iv]
+target_clusters = ADRIA.analysis.target_clusters(clusters, s_tac)</code></pre><p>Using this vector if target clusters, together with the parameters used to generate each scenario, it is possible to use a Rule Induction algorithm (SIRUS) and plot each extracted rule as a scatter graph:</p><pre><code class="language-julia hljs"># Select features of interest
+foi = ADRIA.component_params(rs, [Intervention, SeedCriteriaWeights]).fieldname
 
-# Use SIRUS algorithm to extract rules
+# Use SIRUS algorithm to extract rules.
 max_rules = 10
-rules_iv = ADRIA.analysis.cluster_rules(target_clusters, scenarios_iv, max_rules)
+rules_iv = ADRIA.analysis.cluster_rules(
+    rs, target_clusters, scens, foi, max_rules; remove_duplicates=true
+)
+
 
 # Plot scatters for each rule highlighting the area selected them
 rules_scatter_fig = ADRIA.viz.rules_scatter(
     rs,
-    scenarios_iv,
+    scens,
     target_clusters,
     rules_iv;
     fig_opts=fig_opts,
@@ -234,4 +236,4 @@ save(&quot;outcome_map.png&quot;, tf)</code></pre><p><img src="../../assets/imgs
 ADRIA.viz.explore(&quot;path to Result Set&quot;)
 
 # or, if the result set is already loaded:
-# ADRIA.viz.explore(rs)</code></pre><p><img src="../../assets/imgs/analysis/aviz_app.png" alt="Standalone app for data exploration"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../scenario_runs/">« Running scenarios</a><a class="docs-footer-nextpage" href="../cookbook/">Cookbook examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.6.0 on <span class="colophon-date" title="Tuesday 26 November 2024 09:49">Tuesday 26 November 2024</span>. Using Julia version 1.10.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# ADRIA.viz.explore(rs)</code></pre><p><img src="../../assets/imgs/analysis/aviz_app.png" alt="Standalone app for data exploration"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../scenario_runs/">« Running scenarios</a><a class="docs-footer-nextpage" href="../cookbook/">Cookbook examples »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.6.0 on <span class="colophon-date" title="Tuesday 3 December 2024 00:09">Tuesday 3 December 2024</span>. Using Julia version 1.10.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
