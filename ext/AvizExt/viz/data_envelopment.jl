@@ -80,13 +80,15 @@ function ADRIA.viz.data_envelopment_analysis!(
         g, DEA_output; opts=opts, axis_opts=axis_opts
     )
 end
-function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
-    DEA_output::DEAResult; axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+function ADRIA.viz.data_envelopment_analysis!(
+    g::Union{GridLayout,GridPosition},
+    DEA_output::DEAResult;
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE())
-    frontier_color = get(opts, :frontier_color, :red)
-    data_color = get(opts, :data_color, :black)
-    frontier_name = get(opts, :frontier_name, "Best practice frontier")
-    data_name = get(opts, :data_name, "Scenario data cloud")
+    scatter_colors = get(opts, :scatter_colors, [:red, :black])
+    legend_names = get(
+        opts, :legend_names, ["Best practice frontier", "Scenario data cloud"]
+    )
     scale_eff_y_lab = get(opts, :scale_eff_y_lab, L"$\frac{eff_{vrs}}{eff_{crs}}$")
     tech_eff_y_lab = get(opts, :tech_eff_y_lab, L"$\frac{1}{eff_{vrs}}$")
     metrics_x_lab = get(opts, :metrics_x_lab, L"$metric 1$")
@@ -105,31 +107,44 @@ function ADRIA.viz.data_envelopment_analysis!(g::Union{GridLayout,GridPosition},
 
     # Plot efficiency frontier and data cloud
     ax_a = Axis(g[1, 1]; xlabel=metrics_x_lab, ylabel=metrics_y_lab, axis_opts...)
-    data_cloud = scatter!(ax_a, Y[:, 1], Y[:, 2]; color=data_color)
-    frontier = scatter!(
-        ax_a, Y[best_practice_scens, 1], Y[best_practice_scens, 2]; color=frontier_color
+    scatter!(ax_a, Y[:, 1], Y[:, 2]; color=scatter_colors[2])
+    scatter!(
+        ax_a, Y[best_practice_scens, 1], Y[best_practice_scens, 2]; color=scatter_colors[1]
     )
-    Legend(g[1, 2], [frontier, data_cloud], [frontier_name, data_name])
+    _render_marker_legend(g, (1, 2), legend_names, scatter_colors)
 
     # Plot the scale efficiency (ratio of efficiencies assuming CRS vs. assuming VRS)
     ax_b = Axis(g[2, 1]; title="Scale efficiency", ylabel=scale_eff_y_lab, axis_opts...)
-    scatter!(ax_b, scale_efficiency; color=data_color)
+    scatter!(ax_b, scale_efficiency; color=scatter_colors[2])
     scatter!(
         ax_b,
         best_practice_scens,
         scale_efficiency[best_practice_scens];
-        color=frontier_color
+        color=scatter_colors[1]
     )
 
     # Plot the technical efficiency (inverse VRS efficiencies)
     ax_c = Axis(g[3, 1]; title="Technical efficiency", ylabel=tech_eff_y_lab, axis_opts...)
-    scatter!(ax_c, DEA_output.vrs_vals; color=data_color)
+    scatter!(ax_c, DEA_output.vrs_vals; color=scatter_colors[2])
     scatter!(
         ax_c,
         best_practice_scens,
         DEA_output.vrs_vals[best_practice_scens];
-        color=frontier_color
+        color=scatter_colors[1]
     )
 
     return g
+end
+
+function _render_marker_legend(g::Union{GridLayout,GridPosition},
+    legend_position::Tuple{Int64,Int64},
+    legend_labels::Union{Vector{Symbol},Vector{String}},
+    colors::Union{Vector{Symbol},RGBA{Float32}}
+)::Nothing
+    marker_els::Vector{MarkerElement} = [
+        MarkerElement(; color=color, marker=:circle) for color in colors
+    ]
+    Legend(g[legend_position...], marker_els, legend_labels; framevisible=false)
+
+    return nothing
 end
