@@ -139,7 +139,7 @@ StatsFuns = "1"
 Surrogates = "6"
 TOML = "1"
 Test = "1"
-YAXArrays = "0.5"
+YAXArrays = "0.5, 0.6"
 Zarr = "0.9"
 julia = "1.10"
 
