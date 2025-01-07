@@ -71,7 +71,7 @@ function _reshape_init_cover(
 end
 
 """
-    scale_factor_vec_to_array(sf_vec::Vector{T}, n_taxa::Int64, n_biogroups::Int64, n_p_types::Int64)::Array{T, 3} where T <: Union{Float64, String}
+    scale_factor_vec_to_array(sf_vec::AbstractVector{T}, n_taxa::Int64, n_biogroups::Int64, n_p_types::Int64)::Array{T, 3} where T <: Union{Float64, String}
 
 Reshape a scale factor vector to be an array of dimensions [taxa ⋅ param_type ⋅ biogroups].
 Wrapper of reshape(vec, (n_taxa, n_p_types, n_biogroups)) for consistency. Allow for symbol
@@ -87,14 +87,14 @@ arrays to index data frame columns in the correct order.
 - reshape(sf_vec, (n_taxa, n_p_types, n_biogroups))
 """
 function scale_factor_vec_to_array(
-    sf_vec::Vector{T}, n_taxa::Int64, n_p_types::Int64, n_biogroups::Int64
+    sf_vec::AbstractVector{T}, n_taxa::Int64, n_biogroups::Int64, n_p_types::Int64
 )::Array{T, 3} where T <: Union{Float64, String}
 
     return reshape(sf_vec, (n_taxa, n_p_types, n_biogroups))
 end
 
 """
-    scale_factor_array_to_vec(sf_vec::Array{T, 3})::Vector{T} where T <: Union{Float64, Symbol}
+    scale_factor_array_to_vec(sf_vec::Array{T, 3})::Vector{T} where T <: Union{Float64, String}
 
 Reshape a scale factor array of dimensions [taxa ⋅ param_type ⋅ biogroups] to a flatenned
 vector. The implementastion is a simple wrapper of vec(arr) for consistency. Allow for
@@ -135,26 +135,26 @@ function generate_scale_factor_names(bioregion_ids::Vector{Int64})::Array{String
     for (bg_idx, bg) in enumerate(bioregion_ids),
         (pn_idx, pn) in enumerate(param_names),
         (fg_idx, fg) in enumerate(fg_names)
-        factor_names[fg_idx, pn_idx, bg_idx] = "biogroup_$(string(bg))_$(pn)_$(fg))"
+        factor_names[fg_idx, pn_idx, bg_idx] = "biogroup_$(string(bg))_$(pn)_$(fg)"
     end
 
     return factor_names
 end
 
 """
-    accel_params_array_to_vec(accel_params::Array{T, 2})::Vector{T} where T <: Union{Float64, String}
+    accel_params_array_to_vec(accel_params::AbstractArray{T, 2})::Vector{T} where T <: Union{Float64, String}
 """
 function accel_params_array_to_vec(
-    accel_params::Array{T, 2}
+    accel_params::AbstractArray{T, 2}
 )::Vector{T} where T <: Union{Float64, String}
     return vec(accel_params)
 end
 
 """
-    accel_params_vec_to_array(accel_params::Vector{T}, n_biogroups::Int64)::Array{T, 2} where T <: Union{Float64, String}
+    accel_params_vec_to_array(accel_params::AbstractVector{T}, n_biogroups::Int64)::Array{T, 2} where T <: Union{Float64, String}
 """
 function accel_params_vec_to_array(
-    accel_params::Vector{T},
+    accel_params::AbstractVector{T},
     n_biogroups::Int64
 )::Array{T, 2} where T <: Union{Float64, String}
     return reshape(accel_params, (n_biogroups, 3))
@@ -522,10 +522,7 @@ NamedTuple of collated results
 """
 function run_model(
     domain::Domain,
-    param_set::Union{DataFrameRow,YAXArray},
-    coefs::Array{Float64, 3}=zeros(Float64, 5, 0, 3),
-    growth_accel_parameters::Array{Float64, 2}=zeros(Float64, 3, 0),
-    cloc_idxs::Vector{Int64}=zeros(Float64, 0)
+    param_set::Union{DataFrameRow,YAXArray}
 )
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
@@ -538,19 +535,16 @@ function run_model(
         ) for _ in 1:n_locs
     ]
 
-    return run_model(domain, param_set, functional_groups, coefs, growth_accel_parameters, cloc_idxs)
+    return run_model(domain, param_set, functional_groups)
 end
 function run_model(
     domain::Domain,
     param_set::DataFrameRow,
     functional_groups::Vector{Vector{FunctionalGroup}},
-    coefs::Array{Float64, 3}=zeros(Float64, 5, 0, 3),
-    growth_accel_parameters::Array{Float64, 2}=zeros(Float64, 3, 0),
-    cloc_idxs::Vector{Int64} =zeros(Float64, 0)
 )::NamedTuple
     setup()
     ps = DataCube(Vector(param_set); factors=names(param_set))
-    return run_model(domain, ps, functional_groups, coefs, growth_accel_parameters, cloc_idxs)
+    return run_model(domain, ps, functional_groups)
 end
 function run_model(
     domain::Domain,
@@ -856,7 +850,7 @@ function run_model(
         generate_growth_accel_names(unique_biogroups)
     )
     growth_accel_parameters::Matrix{Float64} = accel_params_vec_to_array(
-        param_set[growth_acc_names], n_biogroups
+        param_set[factors=At(growth_acc_names)], n_biogroups
     )
 
     growth_acc_steepness::Vector{Float64} = growth_accel_parameters[:, 1]
@@ -869,12 +863,12 @@ function run_model(
     g_midpoint::Float64 = mean(growth_acc_midpoint)
 
 
-    sf_col_names::Vector{Symbol} = scale_factor_array_to_vec(
+    sf_col_names::Vector{String} = scale_factor_array_to_vec(
         generate_scale_factor_names(unique_biogroups)
     )
     # Extract scale factors array of dimensions [taxa ⋅ param_type · bioregion_group]
     scale_factors::Array{Float64, 3} = scale_factor_vec_to_array(
-        param_set[sf_col_names],
+        param_set[factors=At(sf_col_names)],
         n_groups,
         n_biogroups,
         2
