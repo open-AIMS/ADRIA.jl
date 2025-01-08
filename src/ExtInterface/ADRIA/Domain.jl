@@ -175,7 +175,8 @@ function Domain(
     location_data = location_data[
         coalesce.(in.(conn_ids, [connectivity.loc_ids]), false), (:)
     ]
-    if ("k" ∉ names(location_data)) & ("ReefMod_habitable_proportion" ∈ names(location_data))
+    if ("k" ∉ names(location_data)) &
+        ("ReefMod_habitable_proportion" ∈ names(location_data))
         # k column not found in gbr-wide canonical-reefs gpkg. 
         # Defaulting to ReefMod_habitable_proportion (in proportion 0-1 scale).
         rename!(location_data, :ReefMod_habitable_proportion => :k)
@@ -199,7 +200,8 @@ function Domain(
     waves = load_env_data(waves_params...)
 
     cyc_params =
-        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, location_data, location_id_col)
+        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) :
+        (timeframe, location_data, location_id_col)
     cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     # Add compatability with non-migrated datasets but always default current coral spec
@@ -263,7 +265,7 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
     dpkg_details::Dict{String,Any} = _load_dpkg(path)
     location_id_col = _get_id_col(dpkg_details)
     cluster_id_col::String = "cluster_id"
-    
+
     # Handle compatibility
     # Extract the time frame represented in this data package
     md_timeframe::Tuple{Int64,Int64} = Tuple(
