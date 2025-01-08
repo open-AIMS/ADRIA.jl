@@ -165,7 +165,9 @@ function load_cyclone_mortality(data_fn::String)::YAXArray
     cyclone_cube::YAXArray = Cube(data_fn)
     return sort_axis(cyclone_cube, :locations)
 end
-function load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame, location_id_col::String)::YAXArray
+function load_cyclone_mortality(
+    timeframe::Vector{Int64}, loc_data::DataFrame, location_id_col::String
+)::YAXArray
     return ZeroDataCube(;
         timesteps=1:length(timeframe),
         locations=loc_data[:, location_id_col],
