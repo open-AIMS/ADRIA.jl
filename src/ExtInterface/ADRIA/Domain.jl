@@ -176,7 +176,8 @@ function Domain(
         coalesce.(in.(conn_ids, [connectivity.loc_ids]), false), (:)
     ]
     if "k" ∉ names(location_data)
-        # k column not found in gbr-wide canonical-reefs gpkg. Defaulting to ReefMod_habitable_proportion
+        # k column not found in gbr-wide canonical-reefs gpkg. 
+        # Defaulting to ReefMod_habitable_proportion (in proportion 0-1 scale).
         rename!(location_data, :ReefMod_habitable_proportion => :k)
     else
         location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent in cluster-scale data).
