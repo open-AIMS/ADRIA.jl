@@ -214,6 +214,9 @@ function Domain(
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
     msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
+
+    # ReefMod DHW timeseries data (2000:2100) do not match the length of waves/cyclone 
+    # data (2025:2099). Can be fixed when AIMS-sourced DHW trajectories become available. 
     if size(dhw, 1) > size(waves, 1)
         first_year = findfirst(collect(2000:2100) .== first(timeframe))
         last_year = findfirst(collect(2000:2100) .== last(timeframe))
