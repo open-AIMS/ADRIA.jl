@@ -102,7 +102,7 @@ export RMEResultSet
 # export dims, ndims
 
 # List out compatible domain datapackages
-const COMPAT_DPKG = ["0.7.0-rc", "0.7.0"]
+const COMPAT_DPKG = ["0.7.0-rc", "0.7.0", "0.1.0-gbr"]
 # This adds ~30 seconds to package load times
 if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(load_domain),String})   # time: 19.120537
