@@ -154,8 +154,10 @@ function Domain(
         timeframe
     )
 
-    # Sort data to maintain consistent order
-    sort!(location_data, Symbol[Symbol(location_id_col)])
+    if cluster_id_col == "cluster_id"
+        # Sort data to maintain consistent order (only if domain is cluster-scale).
+        sort!(location_data, Symbol[Symbol(location_id_col)])
+    end
     u_sids::Vector{String} = string.(collect(location_data[!, location_id_col]))
     # If location id column is missing then derive it from the Unique IDs
     if !in(location_id_col, names(location_data))
@@ -173,7 +175,12 @@ function Domain(
     location_data = location_data[
         coalesce.(in.(conn_ids, [connectivity.loc_ids]), false), (:)
     ]
-    location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
+    if "k" ∉ names(location_data)
+        # k column not found in gbr-wide canonical-reefs gpkg. Defaulting to ReefMod_habitable_proportion
+        rename!(location_data, :ReefMod_habitable_proportion => :k)
+    else
+        location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent in cluster-scale data).
+    end
 
     n_locs::Int64 = nrow(location_data)
     n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
@@ -191,7 +198,7 @@ function Domain(
     waves = load_env_data(waves_params...)
 
     cyc_params =
-        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, location_data)
+        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, location_data, location_id_col)
     cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     # Add compatability with non-migrated datasets but always default current coral spec
@@ -206,6 +213,11 @@ function Domain(
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
     msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
+    if size(dhw, 1) > size(waves, 1)
+        first_year = findfirst(collect(2000:2100) .== first(timeframe))
+        last_year = findfirst(collect(2000:2100) .== last(timeframe))
+        dhw = dhw[first_year:last_year, :, :]
+    end
 
     @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
@@ -245,7 +257,9 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
     end
 
     dpkg_details::Dict{String,Any} = _load_dpkg(path)
-
+    location_id_col = _get_id_col(dpkg_details)
+    cluster_id_col::String = "cluster_id"
+    
     # Handle compatibility
     # Extract the time frame represented in this data package
     md_timeframe::Tuple{Int64,Int64} = Tuple(
@@ -261,9 +275,6 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         # Otherwise assume entry specifies yearly timesteps
         timeframe = parse.(Int64, md_timeframe)
     end
-
-    location_id_col::String = "reef_siteid"
-    cluster_id_col::String = "cluster_id"
 
     conn_path::String = joinpath(path, "connectivity/")
     spatial_path::String = joinpath(path, "spatial")
@@ -290,6 +301,7 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         cyclone_mortality_fn
     )
 end
+
 function load_domain(path::String, rcp::String)::ADRIADomain
     return load_domain(ADRIADomain, path, rcp)
 end
@@ -305,6 +317,15 @@ end
 """Get the path to the wave data associated with the domain."""
 function get_wave_data(d::ADRIADomain, RCP::String)::String
     return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).nc")
+end
+
+function _get_id_col(dpkg_details)
+    spatial_resources = findfirst(
+        [x["name"] for x in dpkg_details["resources"]] .== "spatial_data"
+    )
+    spatial_resources = dpkg_details["resources"][spatial_resources]
+
+    return first(spatial_resources["data"])
 end
 
 """

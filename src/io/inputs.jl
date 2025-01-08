@@ -165,10 +165,10 @@ function load_cyclone_mortality(data_fn::String)::YAXArray
     cyclone_cube::YAXArray = Cube(data_fn)
     return sort_axis(cyclone_cube, :locations)
 end
-function load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
+function load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame, location_id_col::String)::YAXArray
     return ZeroDataCube(;
         timesteps=1:length(timeframe),
-        locations=sort(loc_data.reef_siteid),
+        locations=loc_data[:, location_id_col],
         species=ADRIA.coral_spec().taxa_names,
         scenarios=[1]
     )
