@@ -84,7 +84,7 @@ Calculate the mean relative juvenile population for each scenario for the entire
 num_scens = 2^5
 scens = ADRIA.sample(dom, num_scens)
 
-_coral_spec = ADRIA.to_coral_spec(scens[1,:])
+_coral_spec = ADRIA.to_coral_spec(dom.coral_params, scens[1,:])
 _k_area = site_k_area(dom)
 
 # X contains raw coral cover results for a single scenario

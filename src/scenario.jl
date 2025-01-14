@@ -155,7 +155,7 @@ function run_scenarios(
     n_locs::Int64 = dom.coral_growth.n_locs
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
-    _bin_edges::Matrix{Float64} = bin_edges()
+    _bin_edges::Matrix{Float64} = dom.coral_params[:bin_edges]
     functional_groups = [
         FunctionalGroup.(
             eachrow(_bin_edges[:, 1:(end - 1)]),
@@ -306,14 +306,18 @@ function run_scenario(
     vals[vals .< threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
-    vals = absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
+    vals = absolute_shelter_volume(
+        rs_raw, site_k_area(domain), scenario; coral_params=domain.coral_params
+    )
     vals[vals .< threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
-    vals = relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
+    vals = relative_shelter_volume(
+        rs_raw, site_k_area(domain), scenario; coral_params=domain.coral_params
+    )
     vals[vals .< threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
-    coral_spec::DataFrame = to_coral_spec(scenario)
+    coral_spec::DataFrame = to_coral_spec(domain.coral_params, scenario)
     vals = relative_juveniles(rs_raw, coral_spec)
     vals[vals .< threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
@@ -410,7 +414,7 @@ function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})::Nam
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
-    _bin_edges::Matrix{Float64} = bin_edges()
+    _bin_edges::Matrix{Float64} = domain.coral_params[:bin_edges]
     functional_groups = Vector{FunctionalGroup}[
         FunctionalGroup.(
             eachrow(_bin_edges[:, 1:(end - 1)]),
@@ -433,7 +437,7 @@ function run_model(
     domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}
 )::NamedTuple
     p = domain.coral_growth.ode_p
-    corals = to_coral_spec(param_set)
+    corals = to_coral_spec(domain.coral_params, param_set)
     cache = setup_cache(domain)
 
     # Set random seed using intervention values
@@ -687,8 +691,8 @@ function run_model(
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
-    _linear_extensions = _to_group_size(domain.coral_growth, corals.linear_extension)
-    _bin_edges = bin_edges()
+    _linear_extensions::Matrix{Float64} = _to_group_size(domain.coral_growth, corals.linear_extension)
+    _bin_edges::Matrix{Float64} = domain.coral_params[:bin_edges]
     survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
 
     # Empty the old contents of the buffers and add the new blocks
@@ -1076,5 +1080,6 @@ function cyclone_mortality!(
     return nothing
 end
 
-_loc_coral_cover(C_cover_t::Array{Float64,3}) =
-    dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+function _loc_coral_cover(C_cover_t::Array{Float64,3})
+    return dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+end
