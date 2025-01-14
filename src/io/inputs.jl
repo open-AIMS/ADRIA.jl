@@ -170,7 +170,7 @@ function load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::
     return ZeroDataCube(;
         timesteps=1:length(timeframe),
         locations=sort(loc_data.reef_siteid),
-        species=ADRIA.coral_spec().taxa_names,
+        species=ADRIA.default_coral_spec().taxa_names,
         scenarios=[1]
     )
 end

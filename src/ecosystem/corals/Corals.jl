@@ -141,7 +141,7 @@ function bins_bounds(mean_diam::Matrix{Float64})::Matrix{Float64}
 end
 
 """
-    coral_spec(coral_params::Dict{Symbol,Any})
+    coral_spec(coral_params::Dict{Symbol,Any})::NamedTuple
 
 Template for coral parameter values for ADRIA.
 Includes "vital" bio/ecological parameters, to be filled with
@@ -153,6 +153,16 @@ made available to the ADRIA model.
 Notes:
 Values for the historical, temporal patterns of degree heating weeks
 between bleaching years come from [1].
+
+# Returns
+- `coral_params` A dictionary containing key coral parameters, can be loaded from file or using `default_coral_params()`.
+    Must include the keys
+    - `linear_extension` : Radial extensions per year for each functional group and size class
+    - `bin_edges` : The edges for the size class bins for each functional group
+    - `survival_rate` : The survival proportion for each functional group and size class per year due to background mortality
+    - `dist_mean`, `dist_std` : Mean and standard deviation in heat stress survival curve for each functional group (in DHW)
+    - `min_colony_area_full_fec`, `fec_par_a` and `fec_par_b` : See Hall and Hughes 1996
+    - `group_names` : Name of each functional group as strings
 
 # Returns
 - `params` : NamedTuple[taxa_names, param_names, params], taxa names, parameter
@@ -272,6 +282,14 @@ function coral_spec(coral_params::Dict{Symbol,Any})::NamedTuple
     return (taxa_names=group_names, param_names=param_names, params=params)
 end
 
+"""
+    default_coral_params()::Dict{Symbol,Any}
+
+Returns the default coral parameters for 5 functional groups and 7 size classes.
+
+# Returns
+- `coral_params` : A dictionary of key coral parameters and their default values
+"""
 function default_coral_params()::Dict{Symbol,Any}
     coral_params::Dict{Symbol,Any} = Dict(:group_names => string.(functional_group_names()))
 
@@ -327,6 +345,16 @@ function default_coral_params()::Dict{Symbol,Any}
         5.538122776   # Large massives
     ]
     return coral_params
+end
+
+"""
+    default_coral_spec()::NamedTuple
+
+Returns the default coral specification for 5 functional groups and 7 size classes.
+
+"""
+function default_coral_spec()::NamedTuple
+    return coral_spec(default_coral_params())
 end
 
 """
@@ -485,7 +513,7 @@ default_scen = ADRIA.param_table(dom)
 # ... modify the coral specification at some point
 # this would normally require restarting the Julia session for changes to take effect.
 # Instead, we update the specification with the updated values instead.
-default_scen = ADRIA._update_coral_factors(default_scen, ADRIA.coral_spec().params)
+default_scen = ADRIA._update_coral_factors(default_scen, ADRIA.default_coral_spec().params)
 ```
 """
 function _update_coral_factors(spec::DataFrame, coral_params::DataFrame)::DataFrame

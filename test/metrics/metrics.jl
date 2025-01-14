@@ -8,7 +8,7 @@ end
 
 @testset "metrics.jl" begin
     n_scenarios::Int64 = size(TEST_SCENS, 1)
-    n_groups::Int64 = length(ADRIA.coral_spec().taxa_names)
+    n_groups::Int64 = length(ADRIA.default_coral_spec().taxa_names)
     test_scens_datacube::YAXArray{Float64,2} = DataCube(
         Matrix(TEST_SCENS); scenarios=1:n_scenarios, factors=names(TEST_SCENS)
     )

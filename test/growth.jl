@@ -18,7 +18,7 @@ using ADRIA.Distributions
 end
 
 @testset "Coral Spec" begin
-    coral_params = ADRIA.coral_spec().params
+    coral_params = ADRIA.default_coral_spec().params
 
     bin_edge_diameters_cm2 = ADRIA.colony_mean_area(ADRIA.bin_edges())
     stored_colony_mean_areas = ADRIA.colony_mean_area(

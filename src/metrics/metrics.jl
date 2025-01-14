@@ -711,7 +711,7 @@ function _relative_shelter_volume(
     nscens::Int64 = size(X, :scenarios)
 
     # Result template - six entries, one for each taxa
-    n_groups::Int64 = length(coral_spec().taxa_names)
+    n_groups::Int64 = length(default_coral_spec().taxa_names)
     RSV::YAXArray = ZeroDataCube(
         (:timesteps, :species, :locations, :scenarios),
         size(X[:, 1:n_groups, :, :]),
