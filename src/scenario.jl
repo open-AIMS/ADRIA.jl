@@ -815,7 +815,7 @@ function run_model(
             param_set[At("heritability")]
         )
 
-        leftover_space_m² .-= dropdims(sum(recruitment, dims=1), dims=1) .* vec_abs_k
+        leftover_space_m² .-= dropdims(sum(recruitment; dims=1); dims=1) .* vec_abs_k
 
         # Determine intervention locations whose deployment is assumed to occur
         # between November to February.
