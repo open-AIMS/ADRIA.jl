@@ -346,9 +346,10 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
 end
 
 """
-    fix_factor!(d::Domain, factor::Symbol)
-    fix_factor!(d::Domain, factor::Symbol, val::Real)
-    fix_factor!(d::Domain, factors...)
+    fix_factor!(d::Domain, factor::Symbol)::Nothing
+    fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
+    fix_factor!(d::Domain, factors::Vector{Symbol})::Nothing
+    fix_factor!(d::Domain; factors...)::Nothing
 
 Fix a factor so it gets ignored for the purpose of constructing samples.
 If no value is provided, the default is used.
@@ -363,6 +364,9 @@ fix_factor!(dom, :guided)
 
 # Fix `guided` to specified value
 fix_factor!(dom, :guided, 3)
+
+# Fix a set of factors to their default values
+fix_factor!(dom, [:guided, :N_seed_TA])
 
 # Fix specified factors to provided values
 fix_factor!(dom; guided=3, N_seed_TA=1e6)
@@ -388,6 +392,13 @@ function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     params[params.fieldname .== factor, :dist_params] .= [new_dist_params]
 
     update!(d, params)
+    return nothing
+end
+function fix_factor!(d::Domain, factors::Vector{Symbol})::Nothing
+    for f in factors
+        fix_factor!(d, f)
+    end
+
     return nothing
 end
 function fix_factor!(d::Domain; factors...)::Nothing
