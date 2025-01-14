@@ -23,7 +23,7 @@ function distribute_seeded_corals(
     available_space::Vector{Float64},
     seeded_area::YAXArray,
     seed_volume::Vector{Float64}
-)::Tuple{YAXArray, Matrix{Float64}}
+)::Tuple{YAXArray,Matrix{Float64}}
     total_seeded_area::Float64 = sum(seeded_area)
     total_available_space::Float64 = sum(available_space)
 
