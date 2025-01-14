@@ -720,6 +720,7 @@ function run_model(
         C_cover_t[:, :, habitable_locs] .=
             C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
 
+        # Settlers from t-1 grow into observable sizes.
         C_cover_t[:, 1, habitable_locs] .+= recruitment
 
         lin_ext_scale_factors::Vector{Float64} = linear_extension_scale_factors(
