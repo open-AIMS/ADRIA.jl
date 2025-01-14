@@ -44,9 +44,10 @@ function distribute_seeded_corals(
 end
 
 """
-    seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space_m²::V, seed_locs::Vector{Int64}, seeded_area::YAXArray, seed_sc::BitVector, a_adapt::V, Yseed::SubArray, stdev::V, c_dist_t::Matrix)::Nothing where {V<:Vector{Float64}}
+    seed_corals!(cover::Matrix{Float64}, loc_k_area::V, leftover_space_m²::V, seed_locs::Vector{Int64}, seeded_area::YAXArray, seed_sc::BitVector, a_adapt::V, Yseed::SubArray, stdev::V, c_dist_t::Matrix{Float64})::Nothing where {V<:Vector{Float64}}
+    seed_corals!(cover::AbstractArray{Float64,3}, loc_k_area::Vector{T}, leftover_space_m²::Vector{T}, seed_locs::Vector{Int64}, seeded_area::YAXArray, seed_sc::Matrix{Bool}, a_adapt::Matrix{T}, Yseed::SubArray, stdev::Matrix{T}, c_dist_t::Array{Float64,3})::Nothing where {T<:Float64}
 
-Deploy thermally enhanced corals to indicated locations ("seeding" or "outplanting").
+Deploy corals to indicated locations ("seeding" or "outplanting").
 Increases indicated area covered by the given coral taxa and determines the modified
 distribution of critical DHW thresholds.
 
