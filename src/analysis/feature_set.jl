@@ -30,18 +30,12 @@ function _seeded(rs::ResultSet)::Tuple{DataFrame,DataFrame}
     deployed_corals = rs.seed_log.coral_id
 
     mean_deployment = [
-        mean(
-            sum(rs.seed_log[:, c_id, :, :], dims=:timesteps),
-            dims=:locations
-        ).data[:]
+        mean(sum(rs.seed_log[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
         for c_id in deployed_corals
     ]
 
     total_deployment = [
-        sum(
-            sum(rs.seed_log[:, c_id, :, :], dims=:timesteps),
-            dims=:locations
-        ).data[:]
+        sum(sum(rs.seed_log[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
         for c_id in deployed_corals
     ]
 
@@ -67,7 +61,7 @@ function feature_set(rs::ResultSet)::DataFrame
     end
 
     # Add DHW statistics
-    dhw_stat = mean(rs.dhw_stats[rcp_id], dims=:locations)
+    dhw_stat = mean(rs.dhw_stats[rcp_id]; dims=:locations)
     dhw_means = dhw_stat[stat=At("mean")].data[:]
     dhw_stdevs = dhw_stat[stat=At("std")].data[:]
 
@@ -87,8 +81,8 @@ function feature_set(rs::ResultSet)::DataFrame
     # Only attach mean of deployment effort
     insertcols!(
         scens,
-        :n_loc_seed_mean=>seed_stats[stats=At(:mean)].data[:],
-        :n_loc_fog_mean=>fog_stats[stats=At(:mean)].data[:]
+        :n_loc_seed_mean => seed_stats[stats=At(:mean)].data[:],
+        :n_loc_fog_mean => fog_stats[stats=At(:mean)].data[:]
     )
 
     # Replace `depth_offset` with maximum depth
@@ -110,7 +104,7 @@ function feature_set(rs::ResultSet)::DataFrame
 
     # Set missing values to 0
     for col in eachcol(scens)
-        replace!(col, missing=>0.0)
+        replace!(col, missing => 0.0)
     end
 
     return _filter_constants(scens)
