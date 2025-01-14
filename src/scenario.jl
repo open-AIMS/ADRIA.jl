@@ -716,9 +716,12 @@ function run_model(
     FLoops.assistant(false)
     habitable_loc_idxs = findall(habitable_locs)
     for tstep::Int64 in 2:tf
+
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
             C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
+
+        C_cover_t[:, 1, habitable_locs] .+= recruitment
 
         lin_ext_scale_factors::Vector{Float64} = linear_extension_scale_factors(
             C_cover_t[:, :, habitable_locs],
@@ -727,7 +730,6 @@ function run_model(
             _bin_edges,
             habitable_max_projected_cover
         )
-
         # ? Should we bring this inside CoralBlox?
         lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs] .< (0.7 .* habitable_loc_areas)] .=
             1
@@ -812,6 +814,8 @@ function run_model(
             fec_params_per_m²,
             param_set[At("heritability")]
         )
+
+        leftover_space_m² .-= dropdims(sum(recruitment, dims=1), dims=1) .* vec_abs_k
 
         # Determine intervention locations whose deployment is assumed to occur
         # between November to February.

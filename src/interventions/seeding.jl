@@ -19,17 +19,22 @@ function distribute_seeded_corals(
     available_space::Vector{Float64},
     seeded_area::YAXArray
 )::YAXArray
+    total_seeded_area::Float64 = sum(seeded_area)
+    total_available_space::Float64 = sum(available_space)
 
     # Proportion of available space on each site relative to available space at these
     # locations
-    prop_area_avail = available_space ./ sum(available_space)
+    prop_area_avail = available_space ./ total_available_space
+    if total_seeded_area > total_available_space
+        @warn "Seeded area exceeds available space. Restricting to available space."
+        seeded_area .*= total_available_space / total_seeded_area
+    end
 
     # Distribute seeded corals (as area) across locations according to available space
     # proportions:
     #     proportion * (area of 1 coral * num seeded corals)
     # Convert to relative cover proportion by dividing by location area
     scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
-    #scaled_seed = ((prop_area_avail .* seeded_area') ./ seed_loc_k_m²)'
 
     return DataCube(
         scaled_seed;
@@ -80,8 +85,7 @@ function seed_corals!(
         seeded_area
     )
 
-    # Seed each location and log
-    @views cover[seed_sc, seed_locs] .+= scaled_seed
+    # Log seeded corals
     Yseed[:, seed_locs] .= scaled_seed
 
     # Calculate distribution weights using proportion of area (used as priors for MixtureModel)
@@ -90,7 +94,7 @@ function seed_corals!(
     #       and no deployments will therefore be NaN due to zero division.
     #       These are replaced with 1.0 so that the distribution for unseeded
     #       corals are used.
-    w_taxa::Matrix{Float64} = scaled_seed ./ cover[seed_sc, seed_locs]
+    w_taxa::Matrix{Float64} = scaled_seed ./ (cover[seed_sc, seed_locs] .+ scaled_seed)
     replace!(w_taxa, NaN => 1.0)
 
     # Update critical DHW distribution for deployed size classes
@@ -144,7 +148,6 @@ function seed_corals!(
     )
 
     # Seed each location and log
-    cover[seed_sc, loc_mask] .+= scaled_seed
     Yseed[:, seed_locs] .= scaled_seed
 
     # Calculate distribution weights using proportion of area (used as priors for MixtureModel)
@@ -153,7 +156,7 @@ function seed_corals!(
     #       and no deployments will therefore be NaN due to zero division.
     #       These are replaced with 1.0 so that the distribution for unseeded
     #       corals are used.
-    w_taxa::Matrix{Float64} = scaled_seed ./ cover[seed_sc, seed_locs]
+    w_taxa::Matrix{Float64} = scaled_seed ./ (cover[seed_sc, seed_locs] .+ scaled_seed)
     replace!(w_taxa, NaN => 1.0)
 
     # Update critical DHW distribution for deployed size classes
