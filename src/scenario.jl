@@ -529,7 +529,6 @@ function run_model(
     C_cover[1, :, :, :] .= _reshape_init_cover(
         domain.init_coral_cover, (n_sizes, n_groups, n_locs)
     )
-    loc_cover_cache = zeros(n_locs)
 
     # Locations that can support corals
     vec_abs_k = site_k_area(domain)
