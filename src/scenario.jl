@@ -529,7 +529,6 @@ function run_model(
     C_cover[1, :, :, :] .= _reshape_init_cover(
         domain.init_coral_cover, (n_sizes, n_groups, n_locs)
     )
-    loc_cover_cache = zeros(n_locs)
 
     # Locations that can support corals
     vec_abs_k = site_k_area(domain)
@@ -721,6 +720,7 @@ function run_model(
         C_cover_t[:, :, habitable_locs] .=
             C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
 
+        # Settlers from t-1 grow into observable sizes.
         C_cover_t[:, 1, habitable_locs] .+= recruitment
 
         lin_ext_scale_factors::Vector{Float64} = linear_extension_scale_factors(
@@ -941,23 +941,33 @@ function run_model(
         # Apply seeding (assumed to occur after spawning)
         if seed_decision_years[tstep] && has_seed_locs
             # Seed selected locations
+            # Selected locations can fill up over time so avoid locations with no space
             seed_locs = findall(log_location_ranks.locations .∈ [selected_seed_ranks])
-            seed_corals!(
-                C_cover_t,
-                vec_abs_k,
-                vec(leftover_space_m²),
-                seed_locs,  # use location indices
-                seeded_area,
-                seed_sc,
-                a_adapt,
-                @view(Yseed[tstep, :, :]),
-                c_std,
-                c_mean_t
+            seed_locs = seed_locs[findall(leftover_space_m²[seed_locs] .> 0.0)]
+
+            # Calculate proportion to seed based on current available space
+            scaled_seed = distribute_seeded_corals(
+                vec_abs_k[seed_locs],
+                leftover_space_m²[seed_locs],
+                seeded_area
             )
+
+            # Log seeded corals
+            Yseed[tstep, :, seed_locs] .= scaled_seed
 
             # Add coral seeding to recruitment
             # (1,2,4) refer to the coral functional groups being seeded
             recruitment[[1, 2, 4], :] .+= Yseed[tstep, :, :]
+
+            update_tolerance_distribution!(
+                scaled_seed,
+                C_cover_t,
+                c_mean_t,
+                c_std,
+                seed_locs,
+                seed_sc,
+                a_adapt
+            )
         end
 
         # Apply disturbances
