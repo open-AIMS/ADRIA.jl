@@ -13,8 +13,6 @@ Distributes seeded corals according to current available space at each selected 
 - seed_volume : Absolute number of coral to deploy.
 
 # Returns
-YAXArray[taxa to seed ⋅ number of seed locations], area increased relative to k area.
-
 - YAXArray[taxa to seed ⋅ number of seed locations], Proportional increase in cover relative to locations' `k` area
 - Matrix[seed locations ⋅ taxa to seed], Number of coral deployed
 """
