@@ -1,7 +1,8 @@
 using Statistics
 
 function ADRIA.viz.cyclone_scenario(
-    dom::Domain, scen_id::Int64; fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+    dom::Domain, scen_id::Int64;
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     taxa_mean = dropdims(
         mean(dom.cyclone_mortality_scens[:, :, :, scen_id] .* 100.0; dims=:species);

@@ -1,7 +1,8 @@
 using Statistics
 
 function ADRIA.viz.dhw_scenario(
-    dom::Domain, scen_id::Int64; fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+    dom::Domain, scen_id::Int64;
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
     loc_scens = dom.dhw_scens[:, :, scen_id]
     mean_dhw_scen = dropdims(mean(loc_scens; dims=2); dims=2)
