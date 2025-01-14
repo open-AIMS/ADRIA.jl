@@ -122,13 +122,17 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
 end
 
 """
+    component_params(dom::Domain, component)::DataFrame
     component_params(m::Model, component)::DataFrame
     component_params(spec::DataFrame, component)::DataFrame
-    component_params(m::Model, components::Vector)::DataFrame
-    component_params(spec::DataFrame, components::Vector)::DataFrame
+    component_params(m::Model, components::Vector{T})::DataFrame
+    component_params(spec::DataFrame, components::Vector{T})::DataFrame
 
 Extract parameters for a specific model component.
 """
+function component_params(dom::Domain, component)::DataFrame
+    return component_params(model_spec(dom), component)
+end
 function component_params(m::Model, component)::DataFrame
     return component_params(model_spec(m), component)
 end
