@@ -369,7 +369,9 @@ function _colony_Lcm2_to_m3m2(inputs::DataFrame, coral_params::Dict)::Tuple
     _inputs = DataCube(Matrix(inputs); scenarios=1:nrow(inputs), factors=names(inputs))
     return _colony_Lcm2_to_m3m2(_inputs, coral_params)
 end
-function _colony_Lcm2_to_m3m2(inputs::YAXArray, coral_params::Dict)::Tuple{Vector{Float64},Vector{Float64}}
+function _colony_Lcm2_to_m3m2(
+    inputs::YAXArray, coral_params::Dict
+)::Tuple{Vector{Float64},Vector{Float64}}
     _, _, cs_p::DataFrame = coral_spec(coral_params)
     n_sizes::Int64 = length(unique(cs_p.class_id))
 
@@ -529,7 +531,7 @@ function _absolute_shelter_volume(
         Matrix(Vector(inputs)'); scenarios=1:1, factors=names(inputs)
     )
 
-    return _absolute_shelter_volume(X, k_area, _inputs, coral_params=coral_params)
+    return _absolute_shelter_volume(X, k_area, _inputs; coral_params=coral_params)
 end
 function _absolute_shelter_volume(
     X::YAXArray{T,4},
@@ -541,7 +543,7 @@ function _absolute_shelter_volume(
         Matrix(inputs); scenarios=1:size(inputs, 1), factors=names(inputs)
     )
 
-    return _absolute_shelter_volume(X, k_area, _inputs, coral_params=coral_params)
+    return _absolute_shelter_volume(X, k_area, _inputs; coral_params=coral_params)
 end
 function _absolute_shelter_volume(
     X::YAXArray{T,3},
@@ -720,7 +722,7 @@ function _relative_shelter_volume(
     for scen::Int64 in 1:nscens
         colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(scens[scen, :], coral_params)
         RSV[scenarios=scen] .= _shelter_species_loop(
-            X[scenarios=scen], nspecies, colony_vol, max_colony_vol, k_area,
+            X[scenarios=scen], nspecies, colony_vol, max_colony_vol, k_area
         )
     end
 
