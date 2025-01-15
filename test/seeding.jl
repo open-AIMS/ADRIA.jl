@@ -2,7 +2,7 @@ using Test
 
 using ADRIA
 using ADRIA.Distributions
-using ADRIA: distribute_seeded_corals, location_k, seed_corals!
+using ADRIA: distribute_seeded_corals, location_k, update_tolerance_distribution!
 using ADRIA: At
 
 if !@isdefined(ADRIA_DIR)
@@ -26,13 +26,14 @@ end
     seeded_area = ADRIA.DataCube(
         rand(Uniform(0.0, 500.0), 3); taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"]
     )
-
+    # Aprroximate number of corals deployed from the seeded_area
+    seeded_volume = seeded_area.data ./ (pi * (3.5 / 2)^2)
     @testset "Check coral seed distribution ($i)" for i in 1:10
         seed_locs = rand(1:length(total_loc_area), 5)
 
         # evaluate seeding distributions
-        seed_dist = distribute_seeded_corals(
-            total_loc_area[seed_locs], available_space[seed_locs], seeded_area
+        seed_dist, _ = distribute_seeded_corals(
+            total_loc_area[seed_locs], available_space[seed_locs], seeded_area, seeded_volume
         )
 
         # Area to be seeded for each site
@@ -82,32 +83,45 @@ end
     end
 
     @testset "DHW distribution priors" begin
-        C_cover_t = rand(36, 10)  # size class, locations
-        a_adapt = rand(2.0:6.0, 36)
+        C_cover_t = rand(5, 7, 10)  # size class, locations
+        a_adapt = rand(2.0:6.0, 5, 7)
         total_location_area = fill(5000.0, 10)
 
         seed_locs = rand(1:10, 5)  # Pick 5 random locations
 
         leftover_space_m² = fill(500.0, 10)
-
-        Yseed = zeros(2, 3, 10)
-        seed_sc = BitVector([i ∈ [2, 8, 15] for i in 1:36])
+        seed_sc = falses(5, 7)
+        seed_sc[[2, 3, 5], 1] .= true
 
         # Initial distributions
         d = truncated(Normal(1.0, 0.15), 0.0, 3.0)
-        c_dist_t = rand(d, 36, 10)
+        c_dist_t = rand(d, 5, 7, 10)
         orig_dist = copy(c_dist_t)
 
-        dist_std = rand(36)
-        seed_corals!(C_cover_t, total_location_area, leftover_space_m², seed_locs,
-            seeded_area, seed_sc,
-            a_adapt, @view(Yseed[1, :, :]), dist_std, c_dist_t)
+        dist_std = rand(5, 7)
+
+        # Absolute number of corals seeded is not required
+        proportional_increase, _ = distribute_seeded_corals(
+            total_location_area[seed_locs],
+            leftover_space_m²[seed_locs],
+            seeded_area,
+            seeded_volume
+        )
+        Main.@infiltrate
+
+        update_tolerance_distribution!(
+            proportional_increase,
+            C_cover_t,
+            c_dist_t,
+            dist_std,
+            seed_locs,
+            seed_sc,
+            a_adapt
+        )
 
         # Ensure correct priors/weightings for each location
         for loc in seed_locs
             for (i, sc) in enumerate(findall(seed_sc))
-                prior1 = Yseed[1, i, loc] ./ C_cover_t[sc, loc]
-                expected = [prior1, 1.0 - prior1]
                 @test c_dist_t[sc, loc] > orig_dist[sc, loc] ||
                     "Expected mean of distribution to shift | SC: $sc ; Location: $loc"
             end
