@@ -691,7 +691,9 @@ function run_model(
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
-    _linear_extensions::Matrix{Float64} = _to_group_size(domain.coral_growth, corals.linear_extension)
+    _linear_extensions::Matrix{Float64} = _to_group_size(
+        domain.coral_growth, corals.linear_extension
+    )
     _bin_edges::Matrix{Float64} = domain.coral_params[:bin_edges]
     survival_rate = 1.0 .- _to_group_size(domain.coral_growth, corals.mb_rate)
 

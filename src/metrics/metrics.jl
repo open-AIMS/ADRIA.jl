@@ -9,7 +9,7 @@ using
 
 using YAXArrays
 using ADRIA:
-    DataCube, ZeroDataCube, axes_names, axis_labels, axis_index
+    DataCube, ZeroDataCube, axes_names, axis_labels, axis_index, default_coral_params, default_coral_spec
 using ADRIA: n_sizes, group_indices
 
 using FLoops
@@ -378,6 +378,7 @@ function _colony_Lcm2_to_m3m2(
     # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
     n_groups_sizes::Int64 = size(cs_p, 1)
+    #Main.@infiltrate
     colony_mean_diams_cm::Vector{Float64} = reshape(
         (inputs[factors=At(cs_p.coral_id .* "_mean_colony_diameter_m")] .* 100.0).data,
         n_groups_sizes
@@ -386,7 +387,7 @@ function _colony_Lcm2_to_m3m2(
     # Colony planar area parameters (see Fig 2B in Aston et al., [1])
     # First column is `b`, second column is `a`
     # log(S) = b + a * log(x)
-    pa_params::Array{Float64,2} = planar_area_params()
+    pa_params::Array{Float64,2} = coral_params[:planar_area_params]
 
     # Repeat each entry `n_sizes` times to cover the number size classes represented
     pa_params = repeat(pa_params; inner=(n_sizes, 1))
@@ -431,6 +432,7 @@ function _shelter_species_loop(
 )::YAXArray where {T1<:Real,F<:Float64}
     # Calculate absolute shelter volumes first
     ASV::YAXArray = ZeroDataCube((:timesteps, :species, :locations), size(X))
+
     _shelter_species_loop!(X, ASV, n_group_and_size, colony_vol_m3_per_m2, k_area)
 
     # Maximum shelter volume

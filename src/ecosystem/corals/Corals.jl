@@ -231,7 +231,9 @@ function coral_spec(coral_params::Dict{Symbol,Any})::NamedTuple
     # To be more consistent with parameters in ReefMod, C~Scape and RRAP
     # interventions, we express coral abundance as colony numbers in different
     # size classes and growth rates as linear extension (in cm per year).
-    colony_area_mean_cm², mean_colony_diameter_m = colony_areas(coral_params[:bin_edges])
+    colony_area_mean_cm², mean_colony_diameter_m = colony_areas(
+        coral_params[:bin_edges] .* 100
+    )
     params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_groups_and_sizes)[:]
     params.linear_extension = reshape(_linear_extensions', n_groups_and_sizes)[:]
 
@@ -299,6 +301,9 @@ function default_coral_params()::Dict{Symbol,Any}
 
     # Edges of size class bins
     coral_params[:bin_edges] = bin_edges()
+
+    # Planar area for each functional group
+    coral_params[:planar_area_params] = planar_area_params()
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation

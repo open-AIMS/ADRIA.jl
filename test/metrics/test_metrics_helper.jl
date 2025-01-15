@@ -36,7 +36,6 @@ end
 function test_metric(metric::metrics.Metric, params::Tuple)::Nothing
     metric_result = metric(params...)
     @test all(0.0 .<= metric_result.data)
-
     metric.is_relative && @test all(metric_result.data .<= 1.0)
 
     _test_properties(metric, metric_result)

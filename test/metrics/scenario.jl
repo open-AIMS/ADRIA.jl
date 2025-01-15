@@ -28,7 +28,7 @@ end
 
     @testset "scenario_relative_juveniles" begin
         test_metric(metrics.scenario_relative_juveniles, (TEST_RS,))
-        _coral_spec = ADRIA.to_coral_spec(ADRA.default_coral_params(), TEST_SCENS[1, :])
+        _coral_spec = ADRIA.to_coral_spec(ADRIA.default_coral_params(), TEST_SCENS[1, :])
 
         for cover in _test_covers
             test_metric(
@@ -40,7 +40,7 @@ end
 
     @testset "scenario_absolute_juveniles" begin
         test_metric(metrics.scenario_absolute_juveniles, (TEST_RS,))
-        _coral_spec = ADRIA.to_coral_spec(TEST_SCENS[1, :])
+        _coral_spec = ADRIA.to_coral_spec(ADRIA.default_coral_params(), TEST_SCENS[1, :])
 
         for cover in _test_covers
             test_metric(
@@ -52,7 +52,7 @@ end
 
     @testset "scenario_juvenile_indicator" begin
         test_metric(metrics.scenario_juvenile_indicator, (TEST_RS,))
-        _coral_spec = ADRIA.to_coral_spec(TEST_SCENS[1, :])
+        _coral_spec = ADRIA.to_coral_spec(ADRIA.default_coral_params(), TEST_SCENS[1, :])
 
         for cover in _test_covers
             test_metric(
