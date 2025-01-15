@@ -52,7 +52,9 @@ end
 
     @testset "relative_juveniles" begin
         scen_idx = 1
-        coral_spec::DataFrame = ADRIA.to_coral_spec(ADRIA.default_coral_params(), TEST_SCENS[scen_idx, :])
+        coral_spec::DataFrame = ADRIA.to_coral_spec(
+            ADRIA.default_coral_params(), TEST_SCENS[scen_idx, :]
+        )
         test_metric(metrics.relative_juveniles, (TEST_RS,))
         for cover in _test_covers
             test_metric(
@@ -63,7 +65,9 @@ end
 
     @testset "absolute_juveniles" begin
         scen_idx = 1
-        coral_spec::DataFrame = ADRIA.to_coral_spec(ADRIA.default_coral_params(), TEST_SCENS[scen_idx, :])
+        coral_spec::DataFrame = ADRIA.to_coral_spec(
+            ADRIA.default_coral_params(), TEST_SCENS[scen_idx, :]
+        )
         test_metric(metrics.absolute_juveniles, (TEST_RS,))
         for cover in _test_covers
             test_metric(
@@ -74,7 +78,9 @@ end
 
     @testset "juvenile_indicator" begin
         scen_idx = 1
-        coral_spec::DataFrame = ADRIA.to_coral_spec(ADRIA.default_coral_params(), TEST_SCENS[scen_idx, :])
+        coral_spec::DataFrame = ADRIA.to_coral_spec(
+            ADRIA.default_coral_params(), TEST_SCENS[scen_idx, :]
+        )
         test_metric(metrics.juvenile_indicator, (TEST_RS,))
         for cover in _test_covers
             test_metric(
