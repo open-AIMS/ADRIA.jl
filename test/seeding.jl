@@ -33,7 +33,8 @@ end
 
         # evaluate seeding distributions
         seed_dist, _ = distribute_seeded_corals(
-            total_loc_area[seed_locs], available_space[seed_locs], seeded_area, seeded_volume
+            total_loc_area[seed_locs], available_space[seed_locs], seeded_area,
+            seeded_volume
         )
 
         # Area to be seeded for each site
@@ -107,7 +108,6 @@ end
             seeded_area,
             seeded_volume
         )
-        Main.@infiltrate
 
         update_tolerance_distribution!(
             proportional_increase,
