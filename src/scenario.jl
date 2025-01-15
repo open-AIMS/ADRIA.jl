@@ -950,33 +950,39 @@ function run_model(
             seed_locs = findall(log_location_ranks.locations .∈ [selected_seed_ranks])
 
             available_space = leftover_space_m²[seed_locs]
-            seed_locs = seed_locs[findall(available_space .> 0.0)]
+            locs_with_space = findall(available_space .> 0.0)
 
-            # Calculate proportion to seed based on current available space
-            proportional_increase, n_corals_seeded = distribute_seeded_corals(
-                vec_abs_k[seed_locs],
-                available_space,
-                max_seeded_area,
-                seed_volume.data
-            )
+            # If there are locations with space to select from, then deploy what we can
+            # Otherwise, do nothing.
+            if length(locs_with_space) > 0
+                seed_locs = seed_locs[locs_with_space]
 
-            # Log estimated number of corals seeded
-            Yseed[tstep, :, seed_locs] .= n_corals_seeded'
+                # Calculate proportion to seed based on current available space
+                proportional_increase, n_corals_seeded = distribute_seeded_corals(
+                    vec_abs_k[seed_locs],
+                    available_space,
+                    max_seeded_area,
+                    seed_volume.data
+                )
 
-            # Add coral seeding to recruitment
-            # (1,2,4) refer to the coral functional groups being seeded
-            # These are tabular Acropora, corymbose Acropora, and small massives
-            recruitment[[1, 2, 4], seed_locs] .+= proportional_increase
+                # Log estimated number of corals seeded
+                Yseed[tstep, :, seed_locs] .= n_corals_seeded'
 
-            update_tolerance_distribution!(
-                proportional_increase,
-                C_cover_t,
-                c_mean_t,
-                c_std,
-                seed_locs,
-                seed_sc,
-                a_adapt
-            )
+                # Add coral seeding to recruitment
+                # (1,2,4) refer to the coral functional groups being seeded
+                # These are tabular Acropora, corymbose Acropora, and small massives
+                recruitment[[1, 2, 4], seed_locs] .+= proportional_increase
+
+                update_tolerance_distribution!(
+                    proportional_increase,
+                    C_cover_t,
+                    c_mean_t,
+                    c_std,
+                    seed_locs,
+                    seed_sc,
+                    a_adapt
+                )
+            end
         end
 
         # Apply disturbances
