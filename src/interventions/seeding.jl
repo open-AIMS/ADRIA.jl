@@ -45,7 +45,10 @@ function distribute_seeded_corals(
         locations=1:length(available_space)
     )
 
-    n_deployed_coral = prop_area_avail .* seed_volume'
+    n_deployed_coral =
+        prop_area_avail .* seed_volume' .* max(
+            total_available_space / total_seeded_area, 1.0
+        )
 
     return proportional_increase, n_deployed_coral
 end
