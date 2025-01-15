@@ -953,7 +953,7 @@ function run_model(
             seed_locs = seed_locs[findall(available_space .> 0.0)]
 
             # Calculate proportion to seed based on current available space
-            proportional_increase, abs_seeded_area = distribute_seeded_corals(
+            proportional_increase, n_corals_seeded = distribute_seeded_corals(
                 vec_abs_k[seed_locs],
                 available_space,
                 max_seeded_area,
@@ -961,7 +961,7 @@ function run_model(
             )
 
             # Log estimated number of corals seeded
-            Yseed[tstep, :, seed_locs] .= abs_seeded_area'
+            Yseed[tstep, :, seed_locs] .= n_corals_seeded'
 
             # Add coral seeding to recruitment
             # (1,2,4) refer to the coral functional groups being seeded
