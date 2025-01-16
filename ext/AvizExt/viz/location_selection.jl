@@ -131,12 +131,8 @@ function ADRIA.viz.ranks_to_frequencies(
 end
 
 """
-    ADRIA.viz.selection_criteria_map(rs::Union{Domain,ResultSet}, decision_matrix::YAXArray, scores::Vector{Float64};
-        criteria::Vector{Symbol}=Array(decision_matrix.criteria), opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
-        axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
-    ADRIA.viz.selection_criteria_map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, decision_matrix::YAXArray,
-        scores::Vector{Float64}; criteria::Vector{Symbol}=Array(decision_matrix.criteria), opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
-        axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
+    ADRIA.viz.selection_criteria_map(rs::Union{Domain,ResultSet}, decision_matrix::YAXArray, scores::Vector{Float64}; criteria::Vector{Symbol}=Array(decision_matrix.criteria), opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
+    ADRIA.viz.selection_criteria_map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, decision_matrix::YAXArray, scores::Vector{Float64}; criteria::Vector{Symbol}=Array(decision_matrix.criteria), opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
 
 Plot several spatial maps showing spatial distribution of location selection criteria, with the final map being the
 aggregate location selection score.
