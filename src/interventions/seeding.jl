@@ -7,18 +7,21 @@ Calculate proportion of deployed corals to be seeded at each of the selected loc
 Distributes seeded corals according to current available space at each selected site.
 
 # Arguments
-- seed_loc_k_m² : carrying capacity area of locations to seed in m².
-- available_space : currently available space at each seed location in m².
-- seeded_area : area (in m²) of each coral type to be seeded with dim taxa.
+- seed_loc_k_m² : Carrying capacity area of locations to seed in m².
+- available_space : Currently available space at each seed location in m².
+- seeded_area : Area (in m²) of each coral type to be seeded with dim taxa.
+- seed_volume : Absolute number of coral to deploy.
 
 # Returns
-YAXArray[taxa to seed ⋅ number of seed locations], area increased relative to k area.
+- YAXArray[taxa to seed ⋅ number of seed locations], Proportional increase in cover relative to locations' `k` area
+- Matrix[seed locations ⋅ taxa to seed], Number of coral deployed
 """
 function distribute_seeded_corals(
     seed_loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
-    seeded_area::YAXArray
-)::YAXArray
+    seeded_area::YAXArray,
+    seed_volume::Vector{Float64}
+)::Tuple{YAXArray,Matrix{Float64}}
     total_seeded_area::Float64 = sum(seeded_area)
     total_available_space::Float64 = sum(available_space)
 
@@ -27,6 +30,7 @@ function distribute_seeded_corals(
     prop_area_avail = available_space ./ total_available_space
     if total_seeded_area > total_available_space
         @warn "Seeded area exceeds available space. Restricting to available space."
+        seeded_area = copy(seeded_area)
         seeded_area .*= total_available_space / total_seeded_area
     end
 
@@ -35,12 +39,18 @@ function distribute_seeded_corals(
     #     proportion * (area of 1 coral * num seeded corals)
     # Convert to relative cover proportion by dividing by location area
     scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
-
-    return DataCube(
+    proportional_increase = DataCube(
         scaled_seed;
         taxa=caxes(seeded_area)[1].val.data,
         locations=1:length(available_space)
     )
+
+    n_deployed_coral =
+        prop_area_avail .* seed_volume' .* max(
+            total_available_space / total_seeded_area, 1.0
+        )
+
+    return proportional_increase, n_deployed_coral
 end
 
 """

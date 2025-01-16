@@ -586,11 +586,12 @@ function run_model(
         domain.coral_growth, (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id
     )
 
-    # Extract colony areas for sites selected in m^2 and add adaptation values
+    # Extract colony areas and determine approximate seeded area in m^2
+    seed_volume = param_set[At(taxa_names)]
     colony_areas = _to_group_size(
         domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
     )
-    seeded_area = colony_areas[seed_sc] .* param_set[At(taxa_names)]
+    max_seeded_area = colony_areas[seed_sc] .* seed_volume
 
     # Set up assisted adaptation values
     a_adapt = zeros(n_groups, n_sizes)
@@ -608,7 +609,7 @@ function run_model(
 
     # Calculate total area to seed respecting tolerance for minimum available space to still
     # seed at a site
-    area_to_seed = sum(seeded_area)
+    max_area_to_seed = sum(max_seeded_area)
 
     depth_criteria = identify_within_depth_bounds(
         loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
@@ -871,7 +872,7 @@ function run_model(
         has_fog_locs::Bool = !isempty(selected_fog_ranks)
 
         # Fog selected locations
-        if fog_decision_years[tstep] && has_fog_locs
+        if has_fog_locs  # fog_decision_years[tstep] &&
             fog_locs = findall(log_location_ranks.locations .∈ [selected_fog_ranks])
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
@@ -879,7 +880,11 @@ function run_model(
         # Seeding
         # IDs of valid locations considering locations that have space for corals
         locs_with_space = vec(leftover_space_m²) .> 0.0
-        if is_guided && seed_decision_years[tstep] && (length(locs_with_space) > 0)
+        if is_guided
+            considered_locs = findall(_valid_locs .& locs_with_space)
+        end
+
+        if is_guided && seed_decision_years[tstep] && (length(considered_locs) > 0)
             considered_locs = findall(_valid_locs .& locs_with_space)
 
             # Use modified projected DHW (may have been affected by fogging or shading)
@@ -909,7 +914,7 @@ function run_model(
                 decision_mat[location=locs_with_space[_valid_locs]],
                 MCDA_approach,
                 loc_data.cluster_id,
-                area_to_seed,
+                max_area_to_seed,
                 considered_locs,
                 vec(leftover_space_m²),
                 min_iv_locs,
@@ -939,35 +944,45 @@ function run_model(
         has_seed_locs::Bool = !isempty(selected_seed_ranks)
 
         # Apply seeding (assumed to occur after spawning)
-        if seed_decision_years[tstep] && has_seed_locs
+        if has_seed_locs  # seed_decision_years[tstep] &&
             # Seed selected locations
             # Selected locations can fill up over time so avoid locations with no space
             seed_locs = findall(log_location_ranks.locations .∈ [selected_seed_ranks])
-            seed_locs = seed_locs[findall(leftover_space_m²[seed_locs] .> 0.0)]
 
-            # Calculate proportion to seed based on current available space
-            scaled_seed = distribute_seeded_corals(
-                vec_abs_k[seed_locs],
-                leftover_space_m²[seed_locs],
-                seeded_area
-            )
+            available_space = leftover_space_m²[seed_locs]
+            locs_with_space = findall(available_space .> 0.0)
 
-            # Log seeded corals
-            Yseed[tstep, :, seed_locs] .= scaled_seed
+            # If there are locations with space to select from, then deploy what we can
+            # Otherwise, do nothing.
+            if length(locs_with_space) > 0
+                seed_locs = seed_locs[locs_with_space]
 
-            # Add coral seeding to recruitment
-            # (1,2,4) refer to the coral functional groups being seeded
-            recruitment[[1, 2, 4], :] .+= Yseed[tstep, :, :]
+                # Calculate proportion to seed based on current available space
+                proportional_increase, n_corals_seeded = distribute_seeded_corals(
+                    vec_abs_k[seed_locs],
+                    available_space,
+                    max_seeded_area,
+                    seed_volume.data
+                )
 
-            update_tolerance_distribution!(
-                scaled_seed,
-                C_cover_t,
-                c_mean_t,
-                c_std,
-                seed_locs,
-                seed_sc,
-                a_adapt
-            )
+                # Log estimated number of corals seeded
+                Yseed[tstep, :, seed_locs] .= n_corals_seeded'
+
+                # Add coral seeding to recruitment
+                # (1,2,4) refer to the coral functional groups being seeded
+                # These are tabular Acropora, corymbose Acropora, and small massives
+                recruitment[[1, 2, 4], seed_locs] .+= proportional_increase
+
+                update_tolerance_distribution!(
+                    proportional_increase,
+                    C_cover_t,
+                    c_mean_t,
+                    c_std,
+                    seed_locs,
+                    seed_sc,
+                    a_adapt
+                )
+            end
         end
 
         # Apply disturbances
