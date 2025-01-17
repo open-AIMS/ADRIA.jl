@@ -42,16 +42,16 @@ See the [Loading C~scape Results](@ref) section for details on expected director
 rs = ADRIA.load_results(CScapeResultSet, "a C~scape dataset of interest")
 ```
 """
-function load_results(::Type{CScapeResultSet}, data_dir::String)::CScapeResultSet
-    return load_results(CScapeResultSet, data_dir, joinpath(data_dir, "results"))
+function load_results(::Type{CScapeResultSet}, data_dir::String; show_progress::Bool=true)::CScapeResultSet
+    return load_results(CScapeResultSet, data_dir, joinpath(data_dir, "results"); show_progress=show_progress)
 end
 function load_results(
-    ::Type{CScapeResultSet}, data_dir::String, result_dir::String
+    ::Type{CScapeResultSet}, data_dir::String, result_dir::String; show_progress::Bool=true
 )::CScapeResultSet
-    return load_results(CScapeResultSet, data_dir, _get_result_paths(result_dir))
+    return load_results(CScapeResultSet, data_dir, _get_result_paths(result_dir); show_progress=show_progress)
 end
 function load_results(
-    ::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String}
+    ::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String}; show_progress::Bool=true
 )::CScapeResultSet
     !isdir(data_dir) ? error("Expected a directory but received $(data_dir)") : nothing
 
@@ -128,7 +128,7 @@ function load_results(
 
     outcomes = Dict{Symbol,YAXArray}()
     # add precomputed metrics for comptability
-    outcomes[:relative_cover] = _cscape_relative_cover(datasets)
+    outcomes[:relative_cover] = _cscape_relative_cover(datasets; show_progress=show_progress)
 
     scen_groups = Dict(
         :counterfactual => BitVector(true for _ in outcomes[:relative_cover].scenarios)
@@ -770,7 +770,7 @@ function _cscape_relative_cover(nc_handle::NcFile)::Array
 
     return relative_cover
 end
-function _cscape_relative_cover(nc_handles::Vector{NcFile})::YAXArray
+function _cscape_relative_cover(nc_handles::Vector{NcFile}; show_progress::Bool=true)::YAXArray
     # Assume same number of locations and timesteps for every dataset
     n_locs::Int64 = nc_handles[1].dim["reef_sites"].dimlen
 
@@ -789,7 +789,7 @@ function _cscape_relative_cover(nc_handles::Vector{NcFile})::YAXArray
     # all(diff(cumsum(n_scens)) .== 1)
 
     start_end_pos = _data_position(n_scens)
-    @showprogress desc = "Loading datasets" for (ds_idx, nc_handle) in
+    @showprogress desc = "Loading datasets" enabled = show_progress for (ds_idx, nc_handle) in
                                                 zip(start_end_pos, nc_handles)
         relative_cover[scenarios=ds_idx[1]:ds_idx[2]] = _cscape_relative_cover(nc_handle)
     end
