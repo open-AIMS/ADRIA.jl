@@ -65,7 +65,7 @@ function ADRIA.viz.taxonomy(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
-    fig_opts[:size] = get(fig_opts, :size, (1200, 1200))
+    fig_opts[:size] = get(fig_opts, :size, (1200, 600))
     f = Figure(; fig_opts...)
 
     g = f[1, 1] = GridLayout()
@@ -140,7 +140,7 @@ function ADRIA.viz.taxonomy!(
     end
 
     Label(
-        g[1, :, Top()], "Taxa dynamics"; padding=(0, 0, 30, 0), font=:bold, valign=:bottom
+        g[1, :, Top()], "Taxa Dynamics"; padding=(0, 0, 30, 0), font=:bold, valign=:bottom
     )
 
     return g
@@ -213,7 +213,7 @@ function taxonomy_by_intervention!(
 
     # Plot series
     series!(ax, 1:n_timesteps, confints[:, :, 2]'; solid_color=colors, series_opts...)
-    show_legend ? axislegend(ax) : nothing
+    show_legend ? axislegend(ax; position=:lt) : nothing
 
     return nothing
 end
@@ -237,7 +237,7 @@ function intervention_by_taxonomy!(
     taxa_names = human_readable_name(functional_group_names(); title_case=true)
 
     scenario_group_names::Vector{Symbol} = collect(keys(scen_groups))
-    series_opts[:labels] = get(series_opts, :labels, String.(scenario_group_names))
+    series_opts[:labels] = get(series_opts, :labels, titlecase.(String.(scenario_group_names)))
 
     for (idx, taxa_name) in enumerate(taxa_names)
         xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(relative_taxa_cover)))
@@ -289,7 +289,7 @@ function intervention_by_taxonomy!(
 
     # Plot series
     series!(ax, 1:n_timesteps, confints[:, :, 2]'; solid_color=colors, series_opts...)
-    show_legend ? axislegend(ax) : nothing
+    show_legend ? axislegend(ax; position=:lt) : nothing
 
     return nothing
 end
