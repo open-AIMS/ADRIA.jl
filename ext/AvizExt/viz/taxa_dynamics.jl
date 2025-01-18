@@ -123,9 +123,13 @@ function ADRIA.viz.taxonomy!(
         n_scenario_groups::Int64 = length(keys(scen_groups))
         color = get(opts, :colors, nothing)
         _colors =
-            isnothing(color) ? [
+            if isnothing(color)
+                [
                 COLORS[scen_name] for scen_name in keys(scen_groups)
-            ] : categorical_colors(color, n_scenario_groups)
+            ]
+            else
+                categorical_colors(color, n_scenario_groups)
+            end
 
         # Plot results
         intervention_by_taxonomy!(
@@ -204,11 +208,14 @@ function taxonomy_by_intervention!(
     confints = zeros(n_timesteps, n_functional_groups, 3)
     for (idx, group) in enumerate(functional_groups)
         confints[:, idx, :] = series_confint(relative_taxa_cover[species=At(group)])
-        show_confints ?
-        band!(
+        if show_confints
+            band!(
             ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
             color=(colors[idx], 0.4)
-        ) : nothing
+        )
+        else
+            nothing
+        end
     end
 
     # Plot series
@@ -237,7 +244,9 @@ function intervention_by_taxonomy!(
     taxa_names = human_readable_name(functional_group_names(); title_case=true)
 
     scenario_group_names::Vector{Symbol} = collect(keys(scen_groups))
-    series_opts[:labels] = get(series_opts, :labels, titlecase.(String.(scenario_group_names)))
+    series_opts[:labels] = get(
+        series_opts, :labels, titlecase.(String.(scenario_group_names))
+    )
 
     for (idx, taxa_name) in enumerate(taxa_names)
         xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(relative_taxa_cover)))
@@ -280,11 +289,14 @@ function intervention_by_taxonomy!(
         confints[:, idx, :] = series_confint(
             relative_taxa_cover[scenarios=scen_groups[scen]]
         )
-        show_confints ?
-        band!(
+        if show_confints
+            band!(
             ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
             color=(colors[idx], 0.4)
-        ) : nothing
+        )
+        else
+            nothing
+        end
     end
 
     # Plot series
