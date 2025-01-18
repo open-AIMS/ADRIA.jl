@@ -125,8 +125,8 @@ function ADRIA.viz.taxonomy!(
         _colors =
             if isnothing(color)
                 [
-                COLORS[scen_name] for scen_name in keys(scen_groups)
-            ]
+                    COLORS[scen_name] for scen_name in keys(scen_groups)
+                ]
             else
                 categorical_colors(color, n_scenario_groups)
             end
@@ -210,9 +210,9 @@ function taxonomy_by_intervention!(
         confints[:, idx, :] = series_confint(relative_taxa_cover[species=At(group)])
         if show_confints
             band!(
-            ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
-            color=(colors[idx], 0.4)
-        )
+                ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
+                color=(colors[idx], 0.4)
+            )
         else
             nothing
         end
@@ -291,9 +291,9 @@ function intervention_by_taxonomy!(
         )
         if show_confints
             band!(
-            ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
-            color=(colors[idx], 0.4)
-        )
+                ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
+                color=(colors[idx], 0.4)
+            )
         else
             nothing
         end
