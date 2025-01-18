@@ -158,8 +158,8 @@ relative_taxa_cover = Metric(
     relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int64)::AbstractArray{T,3} where {T<:Real}
 
 # Arguments
-- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group_sizes,
-n_locations)
+- `X` : Raw model results for a single scenario. Dimensions \
+        (n_timesteps, n_group_sizes, n_locations)
 - `k_area` : The coral habitable area.
 - `n_groups` : Number of function coral groups.
 
@@ -174,8 +174,12 @@ function _relative_loc_taxa_cover(
     _n_sizes::Int64 = n_sizes(n_groups, n_group_sizes)
 
     taxa_cover::YAXArray = ZeroDataCube(
-        (:timesteps, :species, :locations), (n_timesteps, n_groups, n_locs), X.properties
+        timesteps=1:n_timesteps,
+        species=functional_group_names(),
+        locations=1:n_locs,
+        properties=X.properties
     )
+
     k_cover = zeros(n_timesteps, _n_sizes)
     _group_indices::Vector{UnitRange{Int64}} = group_indices(_n_sizes, n_group_sizes)
     for (idx_group, group) in enumerate(_group_indices)
