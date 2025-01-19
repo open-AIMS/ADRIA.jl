@@ -303,7 +303,7 @@ function ADRIA.viz.map!(
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )
-    if length(rs.loc_data.site_id) != size(M, 1)
+    if length(rs.loc_data.site_id) != size(outputs_matrix, 1)
         error("Only unfiltered decision matrices can be plotted.")
     end
 
