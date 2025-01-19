@@ -114,7 +114,7 @@ function solve(
 end
 
 """
-    rank_by_index(dp::T, dm::YAXArray, method::Function)::Vector{Int64} where {T<:DecisionPreference}
+    rank_by_index(dp::T, dm::YAXArray, method::Union{Function,DataType})::Vector{Int64} where {T<:DecisionPreference}
 
 Default index rank method, returns location indices in order of their rank.
 
@@ -131,6 +131,29 @@ Index of locations ordered by their rank
 function rank_by_index(
     dp::T, dm::YAXArray, method::Union{Function,DataType}
 )::Vector{Int64} where {T<:DecisionPreference}
+    decision_results = criteria_aggregated_scores(dp, dm, method)
+    is_maximal = decision_results.bestIndex == argmax(decision_results.scores)
+    return sortperm(decision_results.scores; rev=is_maximal)
+end
+
+"""
+    criteria_aggregated_scores(dp::T, dm::YAXArray, method::Function)::NamedTuple where {T<:DecisionPreference}
+
+Calculates raw aggreagted score for a set of locations, in order of the location indices.
+
+Note: Ignores constant criteria values.
+
+# Arguments
+- `dp` : DecisionPreferences
+- `dm` : The decision matrix to assess
+- `method` : An MCDA method provided by the JMcDM package
+
+# Returns
+Returns raw aggreagted score for a set of locations
+"""
+function criteria_aggregated_scores(
+    dp::T, dm::YAXArray, method::Union{Function,DataType}
+)::NamedTuple where {T<:DecisionPreference}
     # Identify valid, non-constant, columns for use in MCDA
     is_const = Bool[length(x) == 1 for x in unique.(eachcol(dm.data))]
 
@@ -150,9 +173,7 @@ function rank_by_index(
         # or if the method fails for some reason...
         throw(DomainError(res.scores, "No ranking possible"))
     end
-
-    is_maximal = res.bestIndex == argmax(res.scores)
-    return sortperm(res.scores; rev=is_maximal)
+    return (scores=res.scores, bestIndex=res.bestIndex)
 end
 
 """

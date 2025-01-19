@@ -38,6 +38,8 @@ function rules_scatter!() end
 # Location selection plots
 function ranks_to_frequencies() end
 function ranks_to_frequencies!() end
+function selection_criteria_map() end
+function selection_criteria_map!() end
 
 # Spatial
 function map() end
