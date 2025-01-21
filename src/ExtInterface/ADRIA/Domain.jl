@@ -177,11 +177,22 @@ function Domain(
     ]
     if ("k" ∉ names(location_data)) &
         ("ReefMod_habitable_proportion" ∈ names(location_data))
-        # k column not found in gbr-wide canonical-reefs gpkg. 
+        @warn "
+        k column not found in gbr-wide canonical-reefs gpkg. 
         # Defaulting to ReefMod_habitable_proportion (in proportion 0-1 scale).
+        "
         rename!(location_data, :ReefMod_habitable_proportion => :k)
     else
         location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent in cluster-scale data).
+    end
+
+    if ("area" ∉ names(location_data)) &
+        ("ReefMod_area_m2" ∈ names(location_data))
+        @warn " 
+        # area column not found in gbr-wide canonical-reefs gpkg. 
+        # Defaulting to ReefMod_area_m2 (Total possible coral area in m2).
+        "
+        rename!(location_data, :ReefMod_area_m2 => :area)
     end
 
     n_locs::Int64 = nrow(location_data)
