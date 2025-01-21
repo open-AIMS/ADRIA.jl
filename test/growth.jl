@@ -354,3 +354,41 @@ end
             "Species group $i exceeded maximum theoretical number of settlers"
     end
 end
+
+@testset "Mortality Scaling Tests" begin
+    survival_probability::Matrix{Float64} = Matrix{Float64}(undef, 5, 7)
+    expected_survival_p::Matrix{Float64} = Matrix{Float64}(undef, 5, 7)
+
+    scaling_params::Vector{Float64} = [1.0, 1.0, 1.0, 1.0, 1.0]
+    survival_probability .= 0.7
+    expected_survival_p .= 0.85
+
+    @test all(
+        expected_survival_p .≈ ADRIA.apply_mortality_scaling(
+            survival_probability, scaling_params
+        )
+    ) || "Given a survival probabilty of 0.7 and a scaling parameter of 1.0, expected 0.85"
+
+    scaling_params .= -1.0
+    survival_probability .= 0.7
+    expected_survival_p .= 0.55
+
+    @test all(
+        expected_survival_p .≈ ADRIA.apply_mortality_scaling(
+            survival_probability, scaling_params
+        )
+    ) || "Given a survival probabilty of 0.7 and a scaling parameter of -1.0, expected 0.65"
+
+    scaling_params .= [1.0, -1.0, 0.5, -0.5, 0.0]
+    expected_survival_p[1, :] .= 0.85
+    expected_survival_p[2, :] .= 0.55
+    expected_survival_p[3, :] .= 0.775
+    expected_survival_p[4, :] .= 0.625
+    expected_survival_p[5, :] .= 0.7
+
+    @test all(
+        expected_survival_p .≈ ADRIA.apply_mortality_scaling(
+            survival_probability, scaling_params
+        )
+    ) || "Unexpected survival probabilities after scaling."
+end
