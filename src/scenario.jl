@@ -181,6 +181,16 @@ function generate_growth_accel_names(biogroup_ids::Vector{Int64})::Array{String,
 end
 
 """
+    apply_mortality_scaling(mortality::AbstractMatrix, scaling_param::AbstractVector)::AbstractMatrix
+"""
+function apply_mortality_scaling(
+    mortality::AbstractMatrix,
+    scaling_param::AbstractVector
+)::AbstractMatrix
+    return mortality .+ 0.5 .* (1 .- mortality) .* scaling_param
+end
+
+"""
     _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64, Tuple}})::Matrix{<:Union{Float32, Float64}}
 
 Reshape vector to shape [functional_groups ⋅ sizes]
@@ -877,7 +887,9 @@ function run_model(
     biogrp_survival::Array{Float64, 3} = repeat(survival_rate, 1, 1, n_biogroups)
     for i in 1:n_biogroups
         biogrp_lin_ext[:, :, i] .*= scale_factors[:, 1, i]
-        biogrp_survival[:, :, i] .*= scale_factors[:, 2, i]
+        biogrp_survival[:, :, i] .= apply_mortality_scaling(
+            biogrp_survival[:, :, i], scale_factors[:, 2, i]
+        )
     end
 
     # Preallocate vector for growth constraints
