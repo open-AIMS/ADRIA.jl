@@ -71,7 +71,7 @@ function _reshape_init_cover(
 end
 
 """
-    scale_factor_vec_to_array(sf_vec::AbstractVector{T}, n_taxa::Int64, n_biogroups::Int64, n_p_types::Int64)::Array{T, 3} where T <: Union{Float64, String}
+    scale_factor_vec_to_array(sf_vec::AbstractVector{T}, n_taxa::Int64, n_biogroups::Int64, n_p_types::Int64)::Array{T, 3} where T <: Union{Float64, String, Tuple}
 
 Reshape a scale factor vector to be an array of dimensions [taxa ⋅ param_type ⋅ biogroups].
 Wrapper of reshape(vec, (n_taxa, n_p_types, n_biogroups)) for consistency. Allow for symbol
@@ -88,13 +88,13 @@ arrays to index data frame columns in the correct order.
 """
 function scale_factor_vec_to_array(
     sf_vec::AbstractVector{T}, n_taxa::Int64, n_biogroups::Int64, n_p_types::Int64
-)::Array{T, 3} where T <: Union{Float64, String}
+)::Array{T, 3} where T <: Union{Float64, String, Tuple}
 
     return reshape(sf_vec, (n_taxa, n_p_types, n_biogroups))
 end
 
 """
-    scale_factor_array_to_vec(sf_vec::Array{T, 3})::Vector{T} where T <: Union{Float64, String}
+    scale_factor_array_to_vec(sf_vec::Array{T, 3})::Vector{T} where T <: Union{Float64, String, Tuple}
 
 Reshape a scale factor array of dimensions [taxa ⋅ param_type ⋅ biogroups] to a flatenned
 vector. The implementastion is a simple wrapper of vec(arr) for consistency. Allow for
@@ -108,7 +108,7 @@ string arrays to index data frame columns in the correct order.
 """
 function scale_factor_array_to_vec(
     sf_arr::Array{T, 3}
-)::Vector{T} where T <: Union{Float64, String}
+)::Vector{T} where T <: Union{Float64, String, Tuple}
 
     return vec(sf_arr)
 end
@@ -142,21 +142,21 @@ function generate_scale_factor_names(bioregion_ids::Vector{Int64})::Array{String
 end
 
 """
-    accel_params_array_to_vec(accel_params::AbstractArray{T, 2})::Vector{T} where T <: Union{Float64, String}
+    accel_params_array_to_vec(accel_params::AbstractArray{T, 2})::Vector{T} where T <: Union{Float64, String, Tuple}
 """
 function accel_params_array_to_vec(
     accel_params::AbstractArray{T, 2}
-)::Vector{T} where T <: Union{Float64, String}
+)::Vector{T} where T <: Union{Float64, String, Tuple}
     return vec(accel_params)
 end
 
 """
-    accel_params_vec_to_array(accel_params::AbstractVector{T}, n_biogroups::Int64)::Array{T, 2} where T <: Union{Float64, String}
+    accel_params_vec_to_array(accel_params::AbstractVector{T}, n_biogroups::Int64)::Array{T, 2} where T <: Union{Float64, String, Tuple}
 """
 function accel_params_vec_to_array(
     accel_params::AbstractVector{T},
     n_biogroups::Int64
-)::Array{T, 2} where T <: Union{Float64, String}
+)::Array{T, 2} where T <: Union{Float64, String, Tuple}
     return reshape(accel_params, (n_biogroups, 3))
 end
 
@@ -181,7 +181,7 @@ function generate_growth_accel_names(biogroup_ids::Vector{Int64})::Array{String,
 end
 
 """
-    _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+    _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64, Tuple}})::Matrix{<:Union{Float32, Float64}}
 
 Reshape vector to shape [functional_groups ⋅ sizes]
 """
