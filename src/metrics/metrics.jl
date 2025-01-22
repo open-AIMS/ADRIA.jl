@@ -16,13 +16,14 @@ using FLoops
 using DataFrames
 
 using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, site_k_area, loc_area,
-    planar_area_params
+    planar_area_params, functional_group_names
 
 abstract type Outcome end
 
 const UNIT_VOLUME = "m³"
 const UNIT_AREA = "m²"
 const UNIT_AREA_INVERSE = "m⁻²"
+const UNIT_PERCENT = "%"
 const IS_RELATIVE = true
 const IS_NOT_RELATIVE = false
 
@@ -152,6 +153,25 @@ function _relative_taxa_cover(rs::ResultSet)::AbstractArray{<:Real,3}
 end
 relative_taxa_cover = Metric(
     _relative_taxa_cover, (:timesteps, :species, :scenarios), "Cover", IS_RELATIVE
+)
+
+"""
+    _ltmp_taxa_cover(rs::ResultSet)::AbstractArray{<:Real,2}
+
+Coral cover relative to the total area for the location, analogous to LTMP observations.
+
+# Arguments
+- `rs` : ADRIA ResultSet
+
+# Returns
+Coral cover, grouped by taxa for the given scenario, summed up across all locations and
+made relative to total location area.
+"""
+function _ltmp_taxa_cover(rs::ResultSet)::AbstractArray{<:Real,3}
+    return (rs.outcomes[:relative_taxa_cover] .* sum(site_k_area(rs))) ./ sum(loc_area(rs))
+end
+ltmp_taxa_cover = Metric(
+    _ltmp_taxa_cover, (:timesteps, :species, :scenarios), "LTMP Cover", IS_RELATIVE
 )
 
 """

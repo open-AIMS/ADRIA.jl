@@ -209,7 +209,7 @@ function ADRIA.viz.map(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    opts[:colorbar_label] = get(opts, :colorbar_label, "Coral Real Estate [%]")
+    opts[:colorbar_label] = get(opts, :colorbar_label, "Coral Habitable Area [%]")
 
     opts[:show_management_zones] = get(opts, :show_management_zones, false)
     if opts[:show_management_zones]

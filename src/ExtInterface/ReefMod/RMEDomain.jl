@@ -273,7 +273,18 @@ function load_DHW(
     ::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100)
 )::YAXArray
     dhw_path = joinpath(data_path, "dhw")
-    rcp_files = _get_relevant_files(dhw_path, rcp)
+    rcp_files = try
+        _get_relevant_files(dhw_path, rcp)
+    catch err
+        if !(err isa Base.IOError)
+            rethrow(err)
+        end
+
+        # Handle change in directory structure (RME v1.0.33 and above)
+        dhw_path = joinpath(data_path, "dhw_csv")
+        _get_relevant_files(dhw_path, rcp)
+    end
+
     rcp_files = filter(x -> occursin("SSP", x), rcp_files)
     if isempty(rcp_files)
         ArgumentError("No DHW data files found in: $(dhw_path)")
@@ -344,7 +355,7 @@ YAXArray[source, sinks]
 function load_connectivity(
     ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}
 )::YAXArray
-    conn_path = joinpath(data_path, "con_bin")
+    conn_path = joinpath(data_path, "con_csv")
     conn_files = _get_relevant_files(conn_path, "CONNECT_ACRO")
     if isempty(conn_files)
         ArgumentError("No CONNECT_ACRO data files found in: $(conn_path)")
@@ -361,12 +372,15 @@ function load_connectivity(
         # Turns out, there's only data for each year so just read in directly
         # Have to read in binary data - read first two values as Int32, and the rest
         # as Float32. Then reshape into a square (n_locs * n_locs) matrix.
-        data = IOBuffer(read(fn))
-        x = read(data, Int32)
-        y = read(data, Int32)
+        # data = IOBuffer(read(fn))
+        # x = read(data, Int32)  # Read moves the file pointer
+        # y = read(data, Int32)
 
-        ds = Vector{Float32}(undef, x * y)
-        tmp_mat[:, :, i] .= reshape(read!(data, ds), (n_locs, n_locs))
+        # ds = Vector{Float32}(undef, x * y)
+
+        # tmp_mat[:, :, i] .= reshape(read!(data, ds), (n_locs, n_locs))
+
+        tmp_mat[:, :, i] .= Matrix(CSV.read(fn, DataFrame; header=false))
     end
 
     # Mean over all years
@@ -441,7 +455,19 @@ function load_initial_cover(
     ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame
 )::YAXArray
     icc_path = joinpath(data_path, "initial")
-    icc_files = _get_relevant_files(icc_path, "coral_")
+
+
+    icc_files = try
+        _get_relevant_files(icc_path, "coral_")
+    catch err
+        if !(err isa Base.IOError)
+            rethrow(err)
+        end
+
+        # Handle directory structure change in RME v1.0.33+
+        icc_path = joinpath(data_path, "initial_csv")
+        _get_relevant_files(icc_path, "coral_")
+    end
 
     # ADRIA no longer models Arborescent Acropora
     file_mask = [!contains(filename, "coral_sp1") for filename in icc_files]

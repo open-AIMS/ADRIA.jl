@@ -43,7 +43,7 @@ function ADRIA.viz.scenarios(
     rs::ResultSet,
     outcomes::YAXArray;
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(:by_RCP => false),
-    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(:size => (800, 300)),
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(:size => (1000, 450)),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
@@ -172,6 +172,7 @@ function ADRIA.viz.scenarios!(
 
     if get(opts, :summarize, true)
         scenarios_confint!(ax, outcomes, scen_groups, group_names)
+        # scenarios_series!(ax, outcomes, scen_groups, group_names; series_opts=series_opts)
     else
         scenarios_series!(ax, outcomes, scen_groups, group_names; series_opts=series_opts)
     end

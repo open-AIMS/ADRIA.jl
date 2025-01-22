@@ -61,11 +61,26 @@ function _scenario_relative_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Rea
     target_sites = haskey(kwargs, :locations) ? kwargs[:locations] : (:)
     target_area = sum(site_k_area(rs)[target_sites])
 
-    return _scenario_total_cover(rs; kwargs...) ./ target_area
+    return (_scenario_total_cover(rs; kwargs...) ./ target_area) .* 100.0
 end
 scenario_relative_cover = Metric(
-    _scenario_relative_cover, (:timesteps, :scenarios), "Relative Cover", IS_RELATIVE
+    _scenario_relative_cover, (:timesteps, :scenarios), "Relative Cover", IS_RELATIVE, UNIT_PERCENT
 )
+
+function _scenario_ltmp_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
+    target_sites = haskey(kwargs, :locations) ? kwargs[:locations] : (:)
+    target_area = sum(loc_area(rs)[target_sites])
+
+    return (_scenario_total_cover(rs; kwargs...) ./ target_area) .* 100.0
+end
+scenario_ltmp_cover = Metric(
+    _scenario_ltmp_cover, (:timesteps, :scenarios), "LTMP Cover", IS_RELATIVE, UNIT_PERCENT
+)
+
+function _ltmp_cover(X::YAXArray{<:Real})::YAXArray{<:Real}
+    result::YAXArray = dropdims(sum(X; dims=2); dims=2)
+    return result
+end
 
 """
     scenario_relative_juveniles(X::YAXArray{<:Real,3}, coral_spec::DataFrame, k_area::AbstractVector{<:Real}; kwargs...)::AbstractArray{<:Real}

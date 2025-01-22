@@ -436,6 +436,12 @@ function run_model(
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
 
+    # Determine growth rate based on linear extension
+    lin_ext = Matrix{Float64}(reshape(corals.linear_extension, 7, 5)')
+    coral_growth_rate = reshape(
+        growth_rate(lin_ext, bin_widths(; unit=:cm)), domain.coral_growth.n_group_and_size
+    )[:]
+
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
     rnd_seed_val::Int64 = floor(Int64, sum(param_set[Where(x -> x != "RCP")]))  # select everything except RCP
@@ -444,11 +450,16 @@ function run_model(
     # Extract environmental data
     dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
     if dhw_idx > 0.0
+        # Mung dataset so we start with data ~2045 with the tail end repeating
+        # dhw_scen = copy(domain.dhw_scens[:, :, dhw_idx])
+        # dhw_scen[1:(75-21)+1, :] .= dhw_scen[21:end, :]
+
         dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
     else
         # Run with no DHW disturbances
         dhw_scen = copy(domain.dhw_scens[:, :, 1])
         dhw_scen .= 0.0
+        # dhw_scen[11, :] .= 10.0  # Add a single event at t=11 (2035). TODO: Remove this.
     end
 
     wave_idx::Int64 = Int64(param_set[At("wave_scenario")])
@@ -669,8 +680,7 @@ function run_model(
 
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
-
-    p.r .= _to_group_size(domain.coral_growth, corals.growth_rate)
+    p.r .= _to_group_size(domain.coral_growth, coral_growth_rate)
     p.mb .= _to_group_size(domain.coral_growth, corals.mb_rate)
 
     area_weighted_conn = conn .* vec_abs_k
@@ -966,7 +976,7 @@ function run_model(
                 )
 
                 # Log estimated number of corals seeded
-                Yseed[tstep, :, seed_locs] .= n_corals_seeded'
+                Yseed[tstep, :, seed_locs] .= n_corals_seeded
 
                 # Add coral seeding to recruitment
                 # (1,2,4) refer to the coral functional groups being seeded

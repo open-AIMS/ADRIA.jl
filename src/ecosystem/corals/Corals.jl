@@ -39,13 +39,88 @@ Linear extensions. The values are converted from `cm` to the desired unit.
 The default unit is `m`.
 """
 function linear_extensions(; unit=:m)::Matrix{Float64}
+    # EcoRRAP derived linear extensions
     return [
-        0.609456 1.07184 2.55149 5.07988 9.45091 16.8505 0.0;
-        0.768556 1.22085 1.86447 2.82297 3.52938 3.00422 0.0;
-        0.190455 0.343747 0.615467 0.97477 1.70079 2.91729 0.0;
-        0.318034 0.47385 0.683729 0.710587 0.581085 0.581085 0.0;
-        0.122478 0.217702 0.382098 0.718781 1.24172 2.08546 0.0
+        1.52723  2.23022   2.84156   3.37276   4.90508   6.30571   0.0;
+        1.55324  2.04203   2.3019    2.43126   2.47911   2.85276   0.0;
+        2.00204  2.08516   2.04019   1.94822   1.75621   1.65559   0.0;
+        1.0263   0.995605  0.870596  0.772637  0.767516  0.996687  0.0;
+        0.78544  0.721021  0.696221  0.705864  0.952828  1.66627   0.0
     ] .* linear_scale(:cm, unit)
+
+    # "Original" values
+    #     return [
+    #         0.609456 1.07184 2.55149 5.07988 9.45091 16.8505 0.0;
+    #         0.768556 1.22085 1.86447 2.82297 3.52938 3.00422 0.0;
+    #         0.190455 0.343747 0.615467 0.97477 1.70079 2.91729 0.0;
+    #         0.318034 0.47385 0.683729 0.710587 0.581085 0.581085 0.0;
+    #         0.122478 0.217702 0.382098 0.718781 1.24172 2.08546 0.0
+    #     ] .* linear_scale(:cm, unit)
+end
+
+function survival_probability()
+    # Manually calibrated based on the findings below
+    return [
+        0.635872  0.8832    0.8292    0.8292    0.8292    0.8292    0.841817  # Tabular Acropora
+        0.659048  0.685825  0.712293  0.738289  0.8342    0.986815  0.99       # Corymbose Acropora
+        0.662617  0.692894  0.72272   0.751852  0.807062  0.977023  0.99  # Corymbose non-Acropora
+
+        # Modified based on ReefMod "tuned" parameterization
+        0.60  0.65  0.70  0.81  0.91  0.91  0.98;  # Small massives and encrusting
+        0.62  0.66  0.71  0.82  0.92  0.92  0.98   # Large massives
+    ]
+
+    # Based on Random Forest
+    # return [
+    #     0.3078  0.8832  0.8292  0.9958  0.1018  0.4678  0.95  # Tabular Acropora
+    #     0.3142  0.8964  0.4632  0.2346  0.9974  0.9994  0.9432  # Corymbose Acropora
+    #     0.1844  0.5484  0.0608  0.4726  0.116   0.95    0.95  # Corymbose non-Acropora
+    #     0.60  0.65  0.70  0.81  0.91  0.91  0.95;  # Small massives and encrusting
+    #     0.62  0.66  0.71  0.82  0.92  0.92  0.95  # Large massives
+    # ]
+
+    # Based on Logistic regression (CLogLogLink)
+    # return [
+    #     0.635872  0.639624  0.643375  0.647124  0.662102  0.777704  0.841817  # Tabular Acropora
+    #     0.659048  0.685825  0.712293  0.738289  0.8342    0.986815  1.0       # Corymbose Acropora
+    #     0.662617  0.692894  0.72272   0.751852  0.807062  0.977023  0.994799  # Corymbose non-Acropora
+
+    #     # Modified based on ReefMod "tuned" parameterization
+    #     0.60  0.65  0.70  0.81  0.91  0.91  0.98;  # Small massives and encrusting
+    #     0.62  0.66  0.71  0.82  0.92  0.92  0.98   # Large massives
+    # ]
+
+    # Based on Logistic regression (ProbitLink)
+    # return [
+    #     0.511992  0.523973  0.535932  0.547859  0.595031  0.885422  0.964369;
+    #     0.552113  0.603341  0.652842  0.699863  0.852684  0.995604  1.0;
+    #     0.557256  0.613339  0.667147  0.717715  0.806233  0.989396  0.998014;
+
+    #     # Modified based on ReefMod "tuned" parameterization
+    #     0.60  0.65  0.70  0.81  0.91  0.91  0.98;  # Small massives and encrusting
+    #     0.62  0.66  0.71  0.82  0.92  0.92  0.98   # Large massives
+    # ]
+
+    # # Based on logistic regression (LogitLink)
+    # return [
+    #     0.512516  0.525015  0.537484  0.549906  0.598827  0.690222  0.881101;  # Tabular Acropora
+    #     0.558176  0.614798  0.668474  0.7181    0.866471  0.96348   0.990763;  # Corymbose Acropora
+    #     0.559999  0.618294  0.673371  0.724047  0.809527  0.873167  0.979337;  # Corymbose non-Acropora
+    #     0.60  0.65  0.70  0.81  0.91  0.91  0.95;  # Small massives and encrusting
+    #     0.62  0.66  0.71  0.82  0.92  0.92  0.95  # Large massives
+
+    #     # EcoRRAP derived parameters (based on two transition periods / 3 years of data)
+    #     # 0.670344  0.805258  0.893712  0.944746  0.996591  0.999988  0.999999  1.0;  # Small massives and encrusting
+    #     # 0.692327  0.835077  0.919314  0.96246   0.998481  0.999998  1.0       1.0  # Large massives
+    # ]
+
+    # mb = Array{Float64,2}([
+    #     0.2 0.3 0.004 0.004 0.002 0.002    # Arborescent Acropora
+    #     0.2 0.3 0.190 0.190 0.098 0.098    # Tabular Acropora
+    #     0.2 0.3 0.172 0.172 0.088 0.088    # Corymbose Acropora
+    #     0.2 0.3 0.226 0.226 0.116 0.116    # Corymbose non-Acropora
+    #     0.2 0.3 0.040 0.026 0.020 0.020    # Small massives and encrusting
+    #     0.2 0.3 0.040 0.026 0.020 0.020])  # Large massives
 end
 
 """
@@ -65,23 +140,15 @@ function bin_edges(; unit=:m)
         ]
     ) .* linear_scale(:cm, unit)
 end
-# function bin_edges()
-#     return Matrix([
-#         0.0 1.0 2.0 6.0 15.0 36.0 89.0 90.0;
-#         0.0 1.0 2.0 4.0  9.0 18.0 38.0 39.0;
-#         0.0 1.0 2.0 4.0  7.0 14.0 27.0 28.0;
-#         0.0 1.0 2.0 5.0  8.0 12.0 26.0 27.0;
-#         0.0 1.0 2.0 4.0  9.0 19.0 40.0 41.0
-#     ])
-# end
 
 """
-    bin_widths()
+    bin_widths(; unit=:m)
 
 Helper function defining coral colony diameter bin widths.
 """
-function bin_widths()
-    return bin_edges()[:, 2:end] .- bin_edges()[:, 1:(end - 1)]
+function bin_widths(; unit=:m)
+    edge = bin_edges(; unit=unit)
+    return edge[:, 2:end] .- edge[:, 1:(end - 1)]
 end
 
 """
@@ -227,16 +294,6 @@ function coral_spec()::NamedTuple
     params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_groups_and_sizes)[:]
     params.linear_extension = reshape(_linear_extensions', n_groups_and_sizes)[:]
 
-    # Convert linear extensions to delta coral in two steps.
-    # First calculate what proportion of coral numbers that change size class
-    #     given linear extensions. This is based on the simple assumption that
-    #     coral sizes are evenly distributed within each bin.
-    # Second, growth as transitions of cover to higher bins is estimated as
-    #     rate of growth per year.
-    params.growth_rate .= reshape(
-        growth_rate(_linear_extensions, bin_widths()), n_groups_and_sizes
-    )[:]
-
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
     fec_par_a = Float64[1.03; 1.69; 0.02; 0.86; 0.86]  # fecundity parameter a
@@ -265,13 +322,8 @@ function coral_spec()::NamedTuple
     #     0.869976692 0.938029324 0.977889252 0.987199004 0.99207702 0.996931548 0.996931548;     # Small massives and encrusting
     #     0.9782479 0.979496637 0.980850254 0.982178103 0.983568572 0.984667677 0.984667677       # Large massives
     # ]
-    survival_rate::Matrix{Float64} = [
-        0.6 0.76 0.805 0.76 0.85 0.86 0.86;    # Tabular Acropora
-        0.6 0.76 0.77 0.875 0.83 0.90 0.90;    # Corymbose Acropora
-        0.52 0.77 0.77 0.875 0.89 0.97621179 0.97621179;                # Corymbose non-Acropora
-        0.72 0.87 0.77 0.98 0.996931548 0.996931548 0.996931548;        # Small massives and encrusting
-        0.58 0.87 0.78 0.983568572 0.984667677 0.984667677 0.984667677  # Large massives
-    ]
+    survival_rate::Matrix{Float64} = survival_probability()
+
     mb = 1.0 .- survival_rate
     params.mb_rate = mb'[:]
 

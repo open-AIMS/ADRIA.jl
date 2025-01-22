@@ -244,9 +244,7 @@ function intervention_by_taxonomy!(
     taxa_names = human_readable_name(functional_group_names(); title_case=true)
 
     scenario_group_names::Vector{Symbol} = collect(keys(scen_groups))
-    series_opts[:labels] = get(
-        series_opts, :labels, titlecase.(String.(scenario_group_names))
-    )
+    series_opts[:labels] = get(series_opts, :labels, titlecase.(String.(scenario_group_names)))
 
     for (idx, taxa_name) in enumerate(taxa_names)
         xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(relative_taxa_cover)))

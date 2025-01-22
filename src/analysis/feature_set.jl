@@ -35,7 +35,7 @@ function _seeded(rs::ResultSet)::Tuple{DataFrame,DataFrame}
     ]
 
     total_deployment = [
-        sum(sum(rs.seed_log[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
+        dropdims(sum(rs.seed_log[:, c_id, :, :]; dims=(:timesteps, :locations)); dims=(:timesteps, :locations)).data[:]
         for c_id in deployed_corals
     ]
 
@@ -89,7 +89,7 @@ function feature_set(rs::ResultSet)::DataFrame
     scens.depth_max = scens.depth_min .+ scens.depth_offset
     scens = scens[:, Not(:depth_offset)]
 
-    total_seeded, mean_seeded = _seeded(rs)
+    mean_seeded, total_seeded = _seeded(rs)
     DataFrames.hcat!(scens, mean_seeded)
     DataFrames.hcat!(scens, total_seeded)
     scens.total_deployed_coral = sum.(eachrow(total_seeded))

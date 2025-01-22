@@ -50,6 +50,8 @@ function dhw_scenario() end
 function dhw_scenarios() end
 function cyclone_scenario() end
 
+function dhw_scenarios() end
+
 # Coral Dynamics
 function taxonomy() end
 function taxonomy!() end

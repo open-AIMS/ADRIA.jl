@@ -38,17 +38,26 @@ function distribute_seeded_corals(
     # proportions:
     #     proportion * (area of 1 coral * num seeded corals)
     # Convert to relative cover proportion by dividing by location area
-    scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
+    n_deployed_coral = prop_area_avail' .* seed_volume
+    area_increase_m2 = (prop_area_avail .* seeded_area.data')
+
     proportional_increase = DataCube(
-        scaled_seed;
+        (area_increase_m2 ./ seed_loc_k_m²)';
         taxa=caxes(seeded_area)[1].val.data,
         locations=1:length(available_space)
     )
 
-    n_deployed_coral =
-        prop_area_avail .* seed_volume' .* max(
-            total_available_space / total_seeded_area, 1.0
-        )
+    # scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
+    # proportional_increase = DataCube(
+    #     scaled_seed;
+    #     taxa=caxes(seeded_area)[1].val.data,
+    #     locations=1:length(available_space)
+    # )
+
+    # n_deployed_coral =
+    #     prop_area_avail .* seed_volume' .* max(
+    #         total_available_space / total_seeded_area, 1.0
+    #     )
 
     return proportional_increase, n_deployed_coral
 end
