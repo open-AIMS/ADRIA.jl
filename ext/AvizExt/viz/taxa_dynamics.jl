@@ -176,7 +176,7 @@ function taxonomy_by_intervention!(
     for (idx, scen_name) in enumerate(keys(scen_groups))
         ax = Axis(
             g[idx, 1];
-            title=String(scen_name),
+            title=titlecase(String(scen_name)),
             xticks=xtick_vals,
             xticklabelrotation=xtick_rot,
             axis_opts...
