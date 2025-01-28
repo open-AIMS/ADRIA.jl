@@ -1,3 +1,6 @@
+using Bootstrap
+using Random
+
 """Scenario-level summaries.
 
 Note: Aggregates across the `site` dimension so trajectories over time for each scenario are

@@ -1,7 +1,7 @@
 using WGLMakie, GeoMakie, GraphMakie
 using ADRIA
 using ADRIA.metrics: total_absolute_cover
-using Statistics
+using Statistics, YAXArrays, Distributions
 
 if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
@@ -332,6 +332,32 @@ function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame)
             :ylabel => "TAC [m²]"
         ))
     # save("outcome_map.png", tf)
+
+    ## Data Envelopement Analysis
+    n_scens = size(scens, 1)
+
+    # Get cost of deploying corals in each scenario, with user-specified function
+    cost = YAXArray(
+        collect(range(100; stop=1000000, length=n_scens)) .+
+        rand(Uniform(1000, 2000), n_scens)
+    )
+
+    # Get mean coral cover and shelter volume for each scenario
+    s_tac = dropdims(
+        mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
+    )
+    s_sv = dropdims(
+        mean(
+            mean(ADRIA.metrics.absolute_shelter_volume(rs); dims=:timesteps);
+            dims=:locations
+        );
+        dims=(:timesteps, :locations)
+    )
+
+    # Do output oriented DEA analysis seeking to maximise cover and shelter volume for minimum
+    # deployment cost.
+    DEA_scens = ADRIA.analysis.data_envelopment_analysis(cost, s_tac, s_sv)
+    dea_fig = ADRIA.viz.data_envelopment_analysis(rs, DEA_scens)
 
     return rs
 end
