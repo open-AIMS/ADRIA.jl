@@ -65,17 +65,23 @@ function ADRIA.viz.taxonomy(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
-    fig_opts[:size] = get(fig_opts, :size, (1200, 600))
-    f = Figure(; fig_opts...)
-
-    g = f[1, 1] = GridLayout()
-
     _scenarios = copy(scenarios[1:end .∈ [relative_taxa_cover.scenarios], :])
     scen_groups = if get(opts, :by_RCP, false)
         ADRIA.analysis.scenario_rcps(_scenarios)
     else
         ADRIA.analysis.scenario_types(_scenarios)
     end
+
+    by_functional_groups::Bool = get(opts, :by_functional_groups, true)
+
+    fig_height::Int64 = _fig_height_taxonomy(
+        by_functional_groups, scen_groups, relative_taxa_cover
+    )
+
+    fig_opts[:size] = get(fig_opts, :size, (1200, fig_height))
+    f = Figure(; fig_opts...)
+
+    g = f[1, 1] = GridLayout()
 
     ADRIA.viz.taxonomy!(
         g,
@@ -304,4 +310,31 @@ function intervention_by_taxonomy!(
     show_legend ? axislegend(ax; position=:lt) : nothing
 
     return nothing
+end
+
+"""
+    _fig_height_taxonomy(
+        by_functional_groups::Bool,
+        scen_groups::Dict{Symbol,BitVector},
+        relative_taxa_cover::YAXArray
+    )::Int64
+
+Auto-adjust taxonomy figure height based on number of plots.
+"""
+function _fig_height_taxonomy(
+    by_functional_groups::Bool,
+    scen_groups::Dict{Symbol,BitVector},
+    relative_taxa_cover::YAXArray
+)::Int64
+    fig_base_height::Int64 = 1200
+    fig_height = if by_functional_groups
+        n_scen_groups = length(scen_groups)
+        base_n_scen_groups = 3
+        fig_base_height * (n_scen_groups / base_n_scen_groups)
+    else
+        n_functional_groups = length(relative_taxa_cover.species)
+        base_n_functional_groups = 5
+        fig_base_height * (n_functional_groups / base_n_functional_groups)
+    end
+    return Int64(ceil(fig_height))
 end
