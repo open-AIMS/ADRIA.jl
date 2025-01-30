@@ -1106,5 +1106,6 @@ function cyclone_mortality!(
     return nothing
 end
 
-_loc_coral_cover(C_cover_t::Array{Float64,3}) =
-    dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+function _loc_coral_cover(C_cover_t::Array{Float64,3})
+    return dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+end
