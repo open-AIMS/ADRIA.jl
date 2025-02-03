@@ -285,7 +285,7 @@ function _create_inputs_dataframe(
 
     dhws::Vector{Float64} = Float64.(fill(input_index, n_draws))
     cyclones::Vector{Float64} = Float64.(fill(input_index, n_draws))
-    scenario_id::Vector{Int64} = Int64.(fill(scenario_spec.ID, n_draws))
+    scenario_id::Vector{Float64} = Int64.(fill(scenario_spec.ID, n_draws))
 
     # Thermal tolerance bins are stored as lb_interval_ub
     lb_t, int_t1, int_t2, ub_t =
@@ -299,7 +299,7 @@ function _create_inputs_dataframe(
     heritability1, heritability2 = parse.(
         Float64, split(scenario_spec.Heritability, "_")
     )
-    plasticity::Int64 = scenario_spec.Plasticity
+    plasticity::Float64 = scenario_spec.Plasticity
 
     settle_probability = parse.(Float64, split(scenario_spec.settle_prob, "_"))
 
@@ -310,7 +310,7 @@ function _create_inputs_dataframe(
 
     # Intervention factors
     deployment_area = _default_missing(scenario_spec[Symbol("Deployment area")], 0.0)
-    total_corals = _default_missing(scenario_spec.TotalCorals, 1.0)
+    total_corals = Float64.(_default_missing(scenario_spec.TotalCorals, 1.0))
 
     n_seeded = [0.0, 0.0, 0.0, 0.0, 0.0]
     taxa_deployed = if ismissing(scenario_spec.species)
@@ -332,13 +332,13 @@ function _create_inputs_dataframe(
         )
 
     intervention_start =
-        _default_missing(
+        Float64.(_default_missing(
             scenario_spec.InterventionYears_start, nc_handle["year"][1]
-        ) - nc_handle["year"][1]
+        ) - nc_handle["year"][1])
 
-    duration = _default_missing(scenario_spec.duration, 0.0)
-    frequency = _default_missing(scenario_spec.frequency, 0.0)
-    n_dep_locations = count(x -> x == '/', _default_missing(scenario_spec.Reef_siteids, ""))
+    duration = Float64.(_default_missing(scenario_spec.duration, 0.0))
+    frequency = Float64.(_default_missing(scenario_spec.frequency, 0.0))
+    n_dep_locations = Float64.(count(x -> x == '/', _default_missing(scenario_spec.Reef_siteids, "")))
 
     coral_dict = merge(settle_probs_kwargs, corals_deployed)
 
@@ -540,6 +540,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         repeat(["Coral"], length(settle_names)),
         repeat(["Intervention"], length(seeded_names))
     )
+    is_constant::Vector{Bool} = fill(false, length(component))
     return DataFrame(;
         component=component,
         fieldname=fieldname,
@@ -548,7 +549,8 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
         ptype=ptype,
         dist_params=dist_params,
         lower_bound=lower_bound,
-        upper_bound=upper_bound
+        upper_bound=upper_bound,
+        is_constant=is_constant
     )
 end
 
