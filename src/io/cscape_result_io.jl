@@ -129,9 +129,18 @@ function load_results(
     outcomes = Dict{Symbol,YAXArray}()
     # add precomputed metrics for comptability
     outcomes[:relative_cover] = _cscape_relative_cover(datasets; show_progress=show_progress)
+    
+    intervention_params::Vector{Symbol} = model_spec.fieldname[
+        model_spec.component .== "Intervention"
+    ]
 
     scen_groups = Dict(
-        :counterfactual => BitVector(true for _ in outcomes[:relative_cover].scenarios)
+        :counterfactual => BitVector(
+            all(collect(scen_row[intervention_params]) .== 0.0) for scen_row in eachrow(inputs)
+        ),
+        :unguided => BitVector(
+            any(collect(scen_row[intervention_params]) .!= 0.0) for scen_row in eachrow(inputs)
+        )
     )
 
     return CScapeResultSet(
@@ -218,6 +227,22 @@ function _get_scenario_id(nc_handle::NcFile)::Int
         return scenario_id
     end
     return scenario_id + 100000
+end
+
+"""
+    _ft_acronym(ft_name::String)::String
+
+Convert the full functional type names to acronyms for comptability with ADRIA.
+"""
+function _ft_acronym(ft_name::String)::String
+    ft_name_map::Dict{String, String} = Dict{String, String}(
+        "acro_corym" => "CA",
+        "small_massive" => "SM",
+        "corym_non_acro" => "CNA",
+        "acro_table" => "TA",
+        "large_massive" => "LM"
+    )
+    return ft_name_map[ft_name]
 end
 
 """
@@ -322,7 +347,7 @@ function _create_inputs_dataframe(
     end
     n_seeded[taxa_deployed] .= total_corals / length(taxa_deployed)
     corals_deployed = Dict(
-        Symbol(ft * "_n_seeded") => n_corals
+        Symbol("N_seed_" * _ft_acronym(ft)) => n_corals
         for (ft, n_corals) in zip(functional_types, n_seeded)
     )
 
@@ -384,7 +409,7 @@ function _create_model_spec(::Type{CScapeResultSet}, scenario_spec::DataFrame)::
     settle_ub = repeat([1.0], length(settle_names))
 
     # Number of corals seeded
-    seeded_names = filter(factor -> contains(factor, "n_seeded"), factor_names)
+    seeded_names = filter(factor -> contains(factor, "N_seed_"), factor_names)
     seeded_readable = human_readable_name.(seeded_names)
     seeded_names = Symbol.(seeded_names)
     seeded_ptype = repeat(["continuous"], length(settle_names))
@@ -644,7 +669,7 @@ Rename reorder the names of the dimensions to align with ADRIA's expected dimens
 function reformat_cube(cscape_cube::YAXArray)::YAXArray
     dim_names = name.(cscape_cube.axes)
     cscape_names = [:year, :reef_sites, :ft, :draws]
-    adria_names = [:timesteps, :locations, :taxa, :scenarios]
+    adria_names = [:timesteps, :locations, :species, :scenarios]
     final_ordering::Vector{Int} = Vector{Int}(undef, length(dim_names))
     current_index = 1
     # rename expected dimensions and update the permutation vector
@@ -801,6 +826,7 @@ end
 
 """
     _n_scenarios(nc_handle::NcFile)::Int64
+    _n_scenarios(nc_var::NcVar)::Int64
 
 Get the number of scenario or draws in a dataset.
 """
@@ -809,6 +835,14 @@ function _n_scenarios(nc_handle::NcFile)::Int64
         return nc_handle.dim["draws"].dimlen
     end
 
+    return 1
+end
+function _n_scenarios(nc_var::NcVar)::Int64
+    draws_idx = findfirst(getfield.(nc_var.dim, :name) .== "draws")
+    # If draws contained in variable then it contains multiple scenarios
+    if !isnothing(draws_idx)
+        return nc_var.dim[draws_idx].dimlen
+    end
     return 1
 end
 
@@ -853,6 +887,56 @@ function _data_position(n_per_dataset::Vector{Int64})::Vector{Tuple{Int64,Int64}
     return collect(zip(starts, ends))
 end
 
+
+function _combine_intervention_sites(nc_handle::NcFile, scenario_idx::Int64)::Array{<:Real}
+    cover::Array = NetCDF.readvar(nc_handle["cover"]) ./ 100
+    area::Array{Float64, 2} = NetCDF.readvar(nc_handle["area"])
+    area_shape = (1, 1, :, 1, 1, 1)
+    non_int_idx = (scenario_idx, :, :, 1, :, :)
+    int_idx = (scenario_idx, :, :, 2, :, :)
+    return (@view(cover[non_int_idx...]) .* reshape(@view(area[1, :]), area_shape) .+ 
+            @view(cover[int_idx...]) .* reshape(@view(area[2, :]), area_shape)) ./ reshape(sum(area, dims=1), area_shape)
+end
+function _combine_intervention_sites(nc_handle::NcFile)::Array{<:Real}
+    cover::Array = NetCDF.readvar(nc_handle["cover"]) ./ 100
+    area::Array{Float64, 2} = NetCDF.readvar(nc_handle["area"])
+    area_shape = (1, :, 1, 1, 1)
+    non_int_idx = (:, :, 1, :, :)
+    int_idx = (:, :, 2, :, :)
+    return (@view(cover[non_int_idx...]) .* reshape(@view(area[1, :]), area_shape) .+ 
+            @view(cover[int_idx...]) .* reshape(@view(area[2, :]), area_shape)) ./ reshape(sum(area, dims=1), area_shape)
+end
+
+"""
+    _calculate_first_scenario(nc_var::NcVar, scenario_func)::Array
+
+Calculate the first scenario checking first the existence of a scenario dimension in the
+NetCDF.
+"""
+function _calculate_first_scenario(
+    nc_handle::NcFile,
+    var_name::String,
+    scenario_func,
+    use_combined_cover::Bool
+)::Array
+    n_scens::Int64 = _n_scenarios(nc_handle)
+    # Check if the first variable contains the draw dimension
+    if n_scens > 1
+        dim_sel = Tuple(Colon() for _ in 2:length(size(nc_var)))
+        out_var = scenario_func(
+            use_combined_cover ? _combine_intervention_sites(
+                nc_handle, 1
+            ) : NetCDF.readvar(nc_handle[var_name])[dim_sel...]
+        )
+        return out_var
+    end
+    return scenario_func(
+        use_combined_cover ? _combine_intervention_sites(
+            nc_handle
+        ) : NetCDF.readvar(nc_handle[var_name])
+    )
+end
+
 """
     load_variable!(rs::CScapeResultSet, variable_name::Symbol; aggregate_ttol=sum)::YAXArray
 
@@ -862,57 +946,65 @@ dimensions and dimension ordering to standard ADRIA ordering.
 
 Return the variable and write the variable to the outcomes dictionary.
 """
-function load_variable!(
-    rs::CScapeResultSet,
-    variable_name::Symbol;
-    aggregate_ttol=sum
+function _load_variable!(
+    rs::ResultSet,
+    variable_name::Symbol,
+    out_dims::Tuple,
+    scenario_func,
+    out_name::Symbol;
+    use_combined_cover=false,
+    show_progress=true
 )::YAXArray
-    var_name::String = String(variable_name)
-    if !haskey(rs.raw_data[1].vars, var_name)
-        throw(ArgumentError("Unable to find variable $(var_name) in datasets"))
-    end
-    n_scens::Vector{Int64} = _n_scenarios.(rs.raw_data)
-
-    dims = Tuple(
-        _construct_dim(d, rs.raw_data[1]) for d in rs.raw_data[1].vars[var_name].dim
-        if !(d.name in ["thermal_tolerance", "draws"])
+    var_name_str::String = String(variable_name)
+    
+    # Calculate the shape and dimensions of the new array given the aggregation function
+    first_comp::Array = _calculate_first_scenario(
+        rs.raw_data[1], var_name_str, scenario_func, use_combined_cover
     )
+
+    # Use the shape of the first calculation to preallocate the space for the rest
+    non_scenario_dims = Tuple(
+        Dim{dim_name}(1:dim_size) for (dim_name, dim_size) in zip(out_dims, size(first_comp))
+    )
+    n_scens::Vector{Int64} = _n_scenarios.(rs.raw_data)
     dims = (
         Dim{:draws}(1:sum(n_scens)),
-        dims...
+        non_scenario_dims...
     )
-    shape = Tuple(length(d) for d in dims)
+    out_shape = Tuple(length(d) for d in dims)
     output_variable = YAXArray(
         dims,
-        zeros(eltype(rs.raw_data[1][var_name]), shape...)
+        zeros(eltype(rs.raw_data[1][var_name_str]), out_shape...),
+        Dict{Symbol, Any}()
     )
 
-    # Only aggregate the thermal tolerance if the dimension is present
-    agg_func = x -> NetCDF.readvar(x[var_name])
-    if :thermal_tolerance in _ncvar_dim_names(rs.raw_data[1].vars[var_name])
-        thermal_tol_dim_idx::Int64 = findfirst(
-            x -> x == :thermal_tolerance,
-            _ncvar_dim_names(rs.raw_data[1].vars[var_name])
-        )
-        agg_func =
-            x -> dropdims(
-                aggregate_ttol(
-                    NetCDF.readvar(x[var_name]); dims=thermal_tol_dim_idx
-                ); dims=thermal_tol_dim_idx)
-    end
+    # The scenario function does not operate on the scenario dimension
+    dim_sel = Tuple(Colon() for _ in 1:(length(size(non_scenario_dims))))
 
     cur_indx = 1
-    @showprogress for (n_sc, nc_handle) in zip(n_scens, rs.raw_data)
+    @showprogress desc="Calculating $(out_name)" enabled=show_progress for (n_sc, nc_handle) in zip(n_scens, rs.raw_data)
         if n_sc == 1
-            output_variable[draws=cur_indx] .= agg_func(nc_handle)
+            output_variable[draws=cur_indx] .= scenario_func(
+                use_combined_cover ? _combine_intervention_sites(
+                    nc_handle
+                ) : nc_handle[var_name_str]
+            )
         else
-            output_variable[draws=cur_indx:(cur_indx + n_sc - 1)] .= agg_func(nc_handle)
+            for j in 0:(n_sc - 1)
+                output_variable[draws=cur_indx + j] .= scenario_func(
+                    use_combined_cover ? _combine_intervention_sites(
+                        nc_handle, j
+                    ) : nc_handle[var_name_str][j, dim_sel...]
+                )
+            end
         end
         cur_indx += n_sc
     end
-    # Convert cscape yaxarray to standard ADRIA formats
+    # Reformat cube to use ADRIA expected dimension name
     output_variable = reformat_cube(output_variable)
-    rs.outcomes[variable_name] = output_variable
+
+    # Save calculated variable in outcomes result set
+    rs.outcomes[out_name] = output_variable
 
     return output_variable
 end
