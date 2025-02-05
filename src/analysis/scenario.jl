@@ -21,15 +21,28 @@ end
 
 function counterfactual(scenarios::DataFrame)::BitVector
     no_seed = _no_seed(scenarios)
-    no_fog = scenarios.fogging .== 0
-    no_SRM = scenarios.SRM .== 0
+    has_fog_col = "fogging" in names(scenarios)
+    no_fog = has_fog_col ? scenarios.fogging .== 0 : fill(true, size(scenarios, 1))
+    has_SRM_col = "SRM" in names(scenarios)
+    no_SRM = has_SRM_col ? scenarios.SRM .== 0 : fill(true, size(scenarios, 1))
+
     return no_seed .& no_fog .& no_SRM
 end
 
 function unguided(scenarios::DataFrame)::BitVector
+    has_guided_col = "guided" in names(scenarios)
+    is_unguided = has_guided_col ? scenarios.guided .== 0 : fill(false, size(scenarios, 1))
+
+    has_fog_col = "fogging" in names(scenarios)
+    has_fog = has_fog_col ? scenarios.fogging .> 0 : fill(true, size(scenarios, 1))
+
+    has_SRM_col = "SRM" in names(scenarios)
+    has_SRM = has_SRM_col ? scenarios.SRM .> 0 : fill(true, size(scenarios, 1))
+
     has_seed = .!_no_seed(scenarios)
-    has_shade = (scenarios.fogging .> 0) .| (scenarios.SRM .> 0)
-    return (scenarios.guided .== 0) .& (has_seed .| has_shade)
+    has_shade = (has_fog) .| (has_SRM)
+
+    return is_unguided .& (has_seed .| has_shade)
 end
 
 function guided(scenarios::DataFrame)::BitVector
@@ -37,7 +50,11 @@ function guided(scenarios::DataFrame)::BitVector
 end
 
 function _no_seed(scenarios::DataFrame)::BitVector
-    return (scenarios.N_seed_TA .== 0) .&
-           (scenarios.N_seed_CA .== 0) .&
-           (scenarios.N_seed_SM .== 0)
+    seed_cols::Vector{String} = filter(
+        x -> contains(x, "N_seed_"), names(scenarios)
+    )
+
+    return BitVector(
+        all(collect(scen_row) .== 0) for scen_row in eachrow(scenarios[:, seed_cols])
+    )
 end
