@@ -31,7 +31,8 @@ end
 
 function unguided(scenarios::DataFrame)::BitVector
     has_guided_col = "guided" in names(scenarios)
-    is_unguided = has_guided_col ? scenarios.guided .== 0 : fill(false, size(scenarios, 1))
+    # If the results set does not have a guided type column default to unguided
+    is_unguided = has_guided_col ? scenarios.guided .== 0 : fill(true, size(scenarios, 1))
 
     has_fog_col = "fogging" in names(scenarios)
     has_fog = has_fog_col ? scenarios.fogging .> 0 : fill(true, size(scenarios, 1))
