@@ -818,14 +818,14 @@ function _load_variable!(
             output_variable[draws=cur_indx] .= scenario_func(
                 use_combined_cover ? _combine_intervention_sites(
                     nc_handle
-                ) : nc_handle[var_name_str]
+                ) : NetCDF.readvar(nc_handle[var_name_str])
             )
         else
             for j in 0:(n_sc - 1)
                 output_variable[draws=cur_indx + j] .= scenario_func(
                     use_combined_cover ? _combine_intervention_sites(
                         nc_handle, j
-                    ) : nc_handle[var_name_str][j, dim_sel...]
+                    ) : NetCDF.readvar(nc_handle[var_name_str])[j, dim_sel...]
                 )
             end
         end
