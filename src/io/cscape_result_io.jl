@@ -127,8 +127,6 @@ function load_results(
     location_centroids = [centroid(multipoly) for multipoly ∈ geodata.geom]
 
     outcomes = Dict{Symbol,YAXArray}()
-    # add precomputed metrics for comptability
-    outcomes[:relative_cover] = _cscape_relative_cover(datasets; show_progress=show_progress)
     
     intervention_params::Vector{Symbol} = model_spec.fieldname[
         model_spec.component .== "Intervention"
@@ -699,131 +697,6 @@ function reformat_cube(cscape_cube::YAXArray)::YAXArray
     return cscape_cube
 end
 
-function _throw_missing_variable(nc_handle::NcFile, var_name::String)::Nothing
-    msg = "NetCDF $(nc_handle.gatts["scenario_ID"]) does not "
-    msg *= "contain $(String.(var_name)) variable"
-    throw(ArgumentError(msg))
-
-    return nothing
-end
-
-"""
-    _drop_sum(cube::YAXArray, red_dims::Tuple)::YAXArray
-
-Sum over given dimensions and drop the same given dimensions.
-"""
-function _drop_sum(cube::YAXArray, red_dims::Tuple)::YAXArray
-    return dropdims(sum(cube; dims=red_dims); dims=red_dims)
-end
-function _drop_sum(cube::AbstractArray, red_dims::Tuple)::AbstractArray
-    return dropdims(sum(cube; dims=red_dims); dims=red_dims)
-end
-
-"""
-    _cscape_relative_cover(nc_handle::NcFile)::YAXArray
-    _cscape_relative_cover(nc_handles::Vector{NcFiles})::YAXArray
-
-Calculate relative cover metric for C~scape data.
-"""
-function _cscape_relative_cover(nc_handle::NcFile)::Array
-    # Throw error and identify specific misformatted file.
-    if !haskey(nc_handle.vars, "cover")
-        _throw_missing_variable(nc_handle, :cover)
-    end
-    if !haskey(nc_handle.vars, "area")
-        _throw_missing_variable(nc_handle, "area")
-    end
-    if !haskey(nc_handle.vars, "k")
-        _throw_missing_variable(nc_handle, "k")
-    end
-
-    # thermal tolerance and functional group dimensions
-    dim_sum = (3, 4)
-
-    multi_scenario::Bool = :draws in keys(nc_handle.dim)
-
-    n_scens = multi_scenario ? Int64(nc_handle.dim["draws"].dimlen) : 0
-    n_tsteps::Int64 = Int64(nc_handle.dim["year"].dimlen)
-    n_locs::Int64 = Int64(nc_handle.dim["reef_sites"].dimlen)
-
-    if multi_scenario
-        relative_cover = zeros(n_scens, n_tsteps, n_locs)
-        reshape_tuple = (1, 1, n_locs)
-    else
-        relative_cover = zeros(n_tsteps, n_locs)
-        reshape_tuple = (1, n_locs)
-    end
-
-    # Calculate relative cover from non-intervened areas
-    # Force load with dimensions [intervened ⋅ reef_sites]
-
-    # We want to read in data before any calculations are conducted to maintain
-    # speed/performance. Using `read()` converts data into a base Matrix, so we
-    # use a dummy selector to retain the nice YAXArray data type while also reading
-    # the data into memory.
-    n_dims = nc_handle["cover"].ndim
-
-    area::Matrix{Float64} = NetCDF.readvar(nc_handle["area"])
-    habitable_area::Vector{Float64} = NetCDF.readvar(nc_handle["k"])
-    cover = NetCDF.readvar(nc_handle["cover"])
-    relative_cover .=
-        _drop_sum(
-            cover[:, :, 1, :, :], dim_sum
-        ) .* reshape(
-            area[1, :],
-            reshape_tuple
-        )
-
-    # Only calculate if there are area values > 0
-    if !any(area[2, :] .> 0.0)
-        relative_cover .+=
-            _drop_sum(
-                cover[:, :, 2, :, :], dim_sum
-            ) .* reshape(
-                area[2, :],
-                reshape_tuple
-            )
-    end
-
-    relative_cover ./=
-        reshape(
-            sum(area; dims=1) .* habitable_area' ./ 100, reshape_tuple
-        ) .* 100
-
-    # ADRIA assumes a shape of [timesteps ⋅ locations ⋅ scenarios]
-    if multi_scenario
-        return permutedims(relative_cover, (2, 3, 1))
-    end
-
-    return relative_cover
-end
-function _cscape_relative_cover(nc_handles::Vector{NcFile}; show_progress::Bool=true)::YAXArray
-    # Assume same number of locations and timesteps for every dataset
-    n_locs::Int64 = nc_handles[1].dim["reef_sites"].dimlen
-
-    # Determine the number of entries for each file
-    n_scens::Vector{Int64} = _n_scenarios.(nc_handles)
-
-    relative_cover = ZeroDataCube(;
-        T=Float64,
-        timesteps=Vector(NetCDF.readvar(nc_handles[1]["year"])),
-        locations=1:n_locs,
-        scenarios=1:sum(n_scens)
-    )
-
-    # Could implement a simpler loading strategy in the case where all datasets hold a
-    # single scenario. This would simplify loading...
-    # all(diff(cumsum(n_scens)) .== 1)
-
-    start_end_pos = _data_position(n_scens)
-    @showprogress desc = "Loading datasets" enabled = show_progress for (ds_idx, nc_handle) in
-                                                zip(start_end_pos, nc_handles)
-        relative_cover[scenarios=ds_idx[1]:ds_idx[2]] = _cscape_relative_cover(nc_handle)
-    end
-
-    return relative_cover
-end
-
 """
     _n_scenarios(nc_handle::NcFile)::Int64
     _n_scenarios(nc_var::NcVar)::Int64
@@ -845,48 +718,6 @@ function _n_scenarios(nc_var::NcVar)::Int64
     end
     return 1
 end
-
-"""
-    _data_position(n_per_dataset::Vector{Int64})
-
-Determine the index positions of a set of data if they were collated into a single dataset.
-
-# Examples
-
-```julia
-# Here we have five datasets with hetrogenous number of data
-n_scens = [1, 10, 5, 1, 12]
-start_pos, end_pos = _data_position(n_scens)
-# 5-element Vector{Tuple{Int64, Int64}}:
-#  (1, 1)
-#  (2, 11)
-#  (12, 16)
-#  (17, 17)
-#  (18, 29)
-```
-
-# Arguments
-- `n_per_dataset` : Indicates the number of scenarios per entry
-
-# Returns
-The start and end position of each entry
-"""
-function _data_position(n_per_dataset::Vector{Int64})::Vector{Tuple{Int64,Int64}}
-    n = length(n_per_dataset)
-    starts = Vector{Int64}(undef, n)
-    ends = Vector{Int64}(undef, n)
-
-    starts[1] = 1
-    ends[1] = n_per_dataset[1]
-
-    for i in 2:n
-        starts[i] = ends[i - 1] + 1
-        ends[i] = starts[i] + n_per_dataset[i] - 1
-    end
-
-    return collect(zip(starts, ends))
-end
-
 
 function _combine_intervention_sites(nc_handle::NcFile, scenario_idx::Int64)::Array{<:Real}
     cover::Array = NetCDF.readvar(nc_handle["cover"]) ./ 100
@@ -938,7 +769,7 @@ function _calculate_first_scenario(
 end
 
 """
-    load_variable!(rs::CScapeResultSet, variable_name::Symbol; aggregate_ttol=sum)::YAXArray
+    _load_variable!(rs::ResultSet, variable_name::Symbol, out_dims::Tuple, scenario_func, out_name::Symbol; use_combined_cover=false, show_progress=true)::YAXArray
 
 Load given variable into a single YAXArray from all datasets in the result store.
 If thermal tolerance is present remove the dimension using the aggregation function. Convert
@@ -1011,8 +842,8 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
     rcps = rs.RCP
-    scens = length(rs.outcomes[:relative_cover].scenarios)
-    locations = length(rs.outcomes[:relative_cover].locations)
+    n_netcdfs = length(rs.raw_data)
+    n_locations = length(rs.loc_ids)
     tf = rs.env_layer_md.timeframe
 
     return println("""
@@ -1021,8 +852,8 @@ function Base.show(io::IO, mime::MIME"text/plain", rs::CScapeResultSet)
         Results stored at: $(rs.env_layer_md.dpkg_path)
 
         RCP(s) represented: $(rcps)
-        Scenarios run: $(scens)
-        Number of locations: $(locations)
+        NetCDFs loaded: $(n_netcdfs)
+        Number of locations: $(n_locations)
         Timesteps: $(tf)
     """)
 end
