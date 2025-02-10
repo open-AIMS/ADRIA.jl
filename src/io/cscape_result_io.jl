@@ -15,7 +15,6 @@ struct CScapeResultSet <: ResultSet
     env_layer_md::EnvLayer
     connectivity_data
     loc_data
-    scenario_groups
     raw_data::Vector{NcFile}
 
     inputs
@@ -132,15 +131,6 @@ function load_results(
         model_spec.component .== "Intervention"
     ]
 
-    scen_groups = Dict(
-        :counterfactual => BitVector(
-            all(collect(scen_row[intervention_params]) .== 0.0) for scen_row in eachrow(inputs)
-        ),
-        :unguided => BitVector(
-            any(collect(scen_row[intervention_params]) .!= 0.0) for scen_row in eachrow(inputs)
-        )
-    )
-
     return CScapeResultSet(
         res_name,
         res_rcp,
@@ -151,7 +141,6 @@ function load_results(
         env_layer_md,
         connectivity,
         geodata,
-        scen_groups,
         datasets,
         inputs,
         SimConstants(),
