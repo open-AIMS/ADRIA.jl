@@ -41,16 +41,29 @@ See the [Loading C~scape Results](@ref) section for details on expected director
 rs = ADRIA.load_results(CScapeResultSet, "a C~scape dataset of interest")
 ```
 """
-function load_results(::Type{CScapeResultSet}, data_dir::String; show_progress::Bool=true)::CScapeResultSet
-    return load_results(CScapeResultSet, data_dir, joinpath(data_dir, "results"); show_progress=show_progress)
+function load_results(
+    ::Type{CScapeResultSet}, data_dir::String; show_progress::Bool=true
+)::CScapeResultSet
+    return load_results(
+        CScapeResultSet,
+        data_dir,
+        joinpath(data_dir, "results");
+        show_progress=show_progress
+    )
 end
 function load_results(
     ::Type{CScapeResultSet}, data_dir::String, result_dir::String; show_progress::Bool=true
 )::CScapeResultSet
-    return load_results(CScapeResultSet, data_dir, _get_result_paths(result_dir); show_progress=show_progress)
+    return load_results(
+        CScapeResultSet,
+        data_dir,
+        _get_result_paths(result_dir);
+        show_progress=show_progress
+    )
 end
 function load_results(
-    ::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String}; show_progress::Bool=true
+    ::Type{CScapeResultSet}, data_dir::String, result_files::Vector{String};
+    show_progress::Bool=true
 )::CScapeResultSet
     !isdir(data_dir) ? error("Expected a directory but received $(data_dir)") : nothing
 
@@ -126,10 +139,10 @@ function load_results(
     location_centroids = [centroid(multipoly) for multipoly ∈ geodata.geom]
 
     outcomes = Dict{Symbol,YAXArray}()
-    
+
     intervention_params::Vector{Symbol} = model_spec.fieldname[
-        model_spec.component .== "Intervention"
-    ]
+    model_spec.component .== "Intervention"
+]
 
     return CScapeResultSet(
         res_name,
@@ -222,7 +235,7 @@ end
 Convert the full functional type names to acronyms for comptability with ADRIA.
 """
 function _ft_acronym(ft_name::String)::String
-    ft_name_map::Dict{String, String} = Dict{String, String}(
+    ft_name_map::Dict{String,String} = Dict{String,String}(
         "acro_corym" => "CA",
         "small_massive" => "SM",
         "corym_non_acro" => "CNA",
@@ -344,13 +357,16 @@ function _create_inputs_dataframe(
         )
 
     intervention_start =
-        Float64.(_default_missing(
-            scenario_spec.InterventionYears_start, nc_handle["year"][1]
-        ) - nc_handle["year"][1])
+        Float64.(
+            _default_missing(
+                scenario_spec.InterventionYears_start, nc_handle["year"][1]
+            ) - nc_handle["year"][1]
+        )
 
     duration = Float64.(_default_missing(scenario_spec.duration, 0.0))
     frequency = Float64.(_default_missing(scenario_spec.frequency, 0.0))
-    n_dep_locations = Float64.(count(x -> x == '/', _default_missing(scenario_spec.Reef_siteids, "")))
+    n_dep_locations =
+        Float64.(count(x -> x == '/', _default_missing(scenario_spec.Reef_siteids, "")))
 
     coral_dict = merge(settle_probs_kwargs, corals_deployed)
 
@@ -710,21 +726,25 @@ end
 
 function _combine_intervention_sites(nc_handle::NcFile, scenario_idx::Int64)::Array{<:Real}
     cover::Array = NetCDF.readvar(nc_handle["cover"]) ./ 100
-    area::Array{Float64, 2} = NetCDF.readvar(nc_handle["area"])
+    area::Array{Float64,2} = NetCDF.readvar(nc_handle["area"])
     area_shape = (1, 1, :, 1, 1, 1)
     non_int_idx = (scenario_idx, :, :, 1, :, :)
     int_idx = (scenario_idx, :, :, 2, :, :)
-    return (@view(cover[non_int_idx...]) .* reshape(@view(area[1, :]), area_shape) .+ 
-            @view(cover[int_idx...]) .* reshape(@view(area[2, :]), area_shape)) ./ reshape(sum(area, dims=1), area_shape)
+    return (
+        @view(cover[non_int_idx...]) .* reshape(@view(area[1, :]), area_shape) .+
+        @view(cover[int_idx...]) .* reshape(@view(area[2, :]), area_shape)
+    ) ./ reshape(sum(area; dims=1), area_shape)
 end
 function _combine_intervention_sites(nc_handle::NcFile)::Array{<:Real}
     cover::Array = NetCDF.readvar(nc_handle["cover"]) ./ 100
-    area::Array{Float64, 2} = NetCDF.readvar(nc_handle["area"])
+    area::Array{Float64,2} = NetCDF.readvar(nc_handle["area"])
     area_shape = (1, :, 1, 1, 1)
     non_int_idx = (:, :, 1, :, :)
     int_idx = (:, :, 2, :, :)
-    return (@view(cover[non_int_idx...]) .* reshape(@view(area[1, :]), area_shape) .+ 
-            @view(cover[int_idx...]) .* reshape(@view(area[2, :]), area_shape)) ./ reshape(sum(area, dims=1), area_shape)
+    return (
+        @view(cover[non_int_idx...]) .* reshape(@view(area[1, :]), area_shape) .+
+        @view(cover[int_idx...]) .* reshape(@view(area[2, :]), area_shape)
+    ) ./ reshape(sum(area; dims=1), area_shape)
 end
 
 """
@@ -776,7 +796,7 @@ function _load_variable!(
     show_progress=true
 )::YAXArray
     var_name_str::String = String(variable_name)
-    
+
     # Calculate the shape and dimensions of the new array given the aggregation function
     first_comp::Array = _calculate_first_scenario(
         rs.raw_data[1], var_name_str, scenario_func, use_combined_cover
@@ -784,7 +804,8 @@ function _load_variable!(
 
     # Use the shape of the first calculation to preallocate the space for the rest
     non_scenario_dims = Tuple(
-        Dim{dim_name}(1:dim_size) for (dim_name, dim_size) in zip(out_dims, size(first_comp))
+        Dim{dim_name}(1:dim_size) for
+        (dim_name, dim_size) in zip(out_dims, size(first_comp))
     )
     n_scens::Vector{Int64} = _n_scenarios.(rs.raw_data)
     dims = (
@@ -795,14 +816,18 @@ function _load_variable!(
     output_variable = YAXArray(
         dims,
         zeros(eltype(rs.raw_data[1][var_name_str]), out_shape...),
-        Dict{Symbol, Any}()
+        Dict{Symbol,Any}()
     )
 
     # The scenario function does not operate on the scenario dimension
     dim_sel = Tuple(Colon() for _ in 1:(length(size(non_scenario_dims))))
 
     cur_indx = 1
-    @showprogress desc="Calculating $(out_name)" enabled=show_progress for (n_sc, nc_handle) in zip(n_scens, rs.raw_data)
+    @showprogress desc = "Calculating $(out_name)" enabled = show_progress for (
+        n_sc, nc_handle
+    ) in zip(
+        n_scens, rs.raw_data
+    )
         if n_sc == 1
             output_variable[draws=cur_indx] .= scenario_func(
                 use_combined_cover ? _combine_intervention_sites(
