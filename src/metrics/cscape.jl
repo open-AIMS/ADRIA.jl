@@ -258,18 +258,34 @@ function _relative_loc_taxa_cover(rs::CScapeResultSet; show_progress=true)::YAXA
     )
 end
 
-function _relative_taxa_cover(rs::CScapeResultSet)::YAXArray{<:Real}
+function _relative_taxa_cover(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :relative_taxa_cover
     if outcome_name in keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
     _site_k_area = reshape(site_k_area(rs), (1, :, 1, 1))
-    loc_taxa_cover::YAXArray = relative_loc_taxa_cover(rs; show_progress=false)
+    loc_taxa_cover::YAXArray = relative_loc_taxa_cover(rs; show_progress=show_progress)
     taxa_cover = dropdims(sum(
         loc_taxa_cover .* _site_k_area, dims=:locations
     ) ./ sum(_site_k_area), dims=:locations)
     rs.outcomes[outcome_name] = taxa_cover
 
     return taxa_cover
+end
+
+function _relative_cover(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
+    outcome_name::Symbol = :relative_cover
+    if outcome_name in keys(rs.outcomes)
+        return rs.outcomes[outcome_name]
+    end
+
+    # Clarify to the user why relative species cover is being calculated to prevent
+    # confusion.
+    @info "Calculating relative species cover for relative cover."
+    rel_taxa_loc_cover = relative_loc_taxa_cover(rs; show_progress=show_progress)
+    rel_cover = dropdims(sum(rel_taxa_loc_cover, dims=:species), dims=:species)
+    rs.outcomes[outcome_name] = rel_cover
+
+    return rs.outcomes[outcome_name]
 end

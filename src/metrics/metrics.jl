@@ -96,7 +96,7 @@ function _total_absolute_cover(
     return relative_cover .* k_area'
 end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
-    return _total_absolute_cover(rs.outcomes[:relative_cover], site_k_area(rs))
+    return _total_absolute_cover(relative_cover(rs), site_k_area(rs))
 end
 total_absolute_cover = Metric(
     _total_absolute_cover,
