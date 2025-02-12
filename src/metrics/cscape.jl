@@ -8,7 +8,7 @@ NetCDF variable "internal_received_larvae".
 """
 function _total_internal_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :total_internal_larvae
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
@@ -38,7 +38,7 @@ variable "internal_received_larvae".
 """
 function _loc_internal_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :loc_internal_larvae
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
@@ -68,7 +68,7 @@ the NetCDF "external_larvae".
 """
 function _total_external_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :total_external_larvae
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
@@ -98,7 +98,7 @@ from the NetCDF variable "external_larvae".
 """
 function _loc_external_larvae(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :loc_external_larvae
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
@@ -128,7 +128,7 @@ Get the number of eggs produced across the entire domain. Calculated from the Ne
 """
 function _total_eggs_produced(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :total_eggs_produced
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
@@ -158,12 +158,12 @@ variable "eggs".
 """
 function _loc_eggs_produced(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :loc_eggs_produced
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
     # Expected dimensions after aggregation excluding dimensions
-    out_dims::Tuple = (:year, :reef_sites)
+    out_dims::Tuple ∈ (:year, :reef_sites)
     agg_f = x -> dropdims(sum(x; dims=(3, 4, 5)); dims=(3, 4, 5))
 
     # name of variable to be used for calculation
@@ -188,7 +188,7 @@ NetCDF variable "settlers".
 """
 function _total_settlers(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :total_settlers
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
@@ -218,7 +218,7 @@ Get the number of coral settlers at each location. Calculated from NetCDF variab
 """
 function _loc_settlers(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :loc_settlers
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
@@ -242,7 +242,7 @@ loc_settlers = Metric(
 
 function _relative_loc_taxa_cover(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :relative_loc_taxa_cover
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
@@ -260,11 +260,11 @@ end
 
 function _relative_taxa_cover(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :relative_taxa_cover
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
-    _site_k_area = reshape(site_k_area(rs), (1, :, 1, 1))
+    _site_k_area = reshape(site_k_area(rs), (1, 1, :, 1))
     loc_taxa_cover::YAXArray = relative_loc_taxa_cover(rs; show_progress=show_progress)
     taxa_cover = dropdims(
         sum(
@@ -277,7 +277,7 @@ end
 
 function _relative_cover(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
     outcome_name::Symbol = :relative_cover
-    if outcome_name in keys(rs.outcomes)
+    if outcome_name ∈ keys(rs.outcomes)
         return rs.outcomes[outcome_name]
     end
 
@@ -289,4 +289,36 @@ function _relative_cover(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Re
     rs.outcomes[outcome_name] = rel_cover
 
     return rs.outcomes[outcome_name]
+end
+
+function _coral_evenness(rs::CScapeResultSet; show_progress=true)::YAXArray{<:Real}
+    outcome_name::Symbol = :coral_evenness
+    if outcome_name ∈ keys(rs.outcomes)
+        return rs.outcomes[outcome_name]
+    end
+
+    # Warn user about different metric calculation, otherwise progress bar may be mistaken
+    # for a bug.
+    if :relative_taxa_cover ∉ keys(rs.outcomes)
+        @info "Calculating relative location species cover for coral evenness index."
+    end
+    loc_taxa_cover = relative_loc_taxa_cover(rs; show_progress=show_progress)
+
+    _cor_evenness = YAXArray(
+        (loc_taxa_cover.timesteps, loc_taxa_cover.locations, loc_taxa_cover.scenarios),
+        zeros(
+            Float64,
+            length(loc_taxa_cover.timesteps),
+            length(loc_taxa_cover.locations),
+            length(loc_taxa_cover.scenarios)
+        ),
+        Dict{Symbol,Any}()
+    )
+
+    for scen_idx in size(_cor_evenness, :scenarios)
+        _cor_evenness[:, :, scen_idx] .= coral_evenness(
+            @view(loc_taxa_cover[:, :, :, scen_idx])
+        )
+    end
+    return _cor_evenness
 end
