@@ -90,7 +90,7 @@ those factors as constants. These then get ignored for the purpose of scenario
 generation.
 
 ```julia
-dom = ADRIA.load_domain()
+dom = ADRIA.load_domain("path to domain data package")
 
 # Could keep a copy of the original model parameters/bounds
 # to reset to later.
@@ -123,7 +123,7 @@ Samples can also be taken over a constrained range. For example, if one wanted t
 scenarios with high fogging and seeding, the following could be used:
 
 ```julia
-dom = ADRIA.load_domain()
+dom = ADRIA.load_domain("path to domain data package")
 
 # Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in
 # question have a uniform distribution.
