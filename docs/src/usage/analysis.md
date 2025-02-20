@@ -287,9 +287,10 @@ axis_opts = Dict(
     :ylabel => "TAC [m²]",
     :xlabel => "Timesteps [years]",
 )
+opts = Dict{Symbol, Any}(:summarize => true)
 
 tsc_fig = ADRIA.viz.clustered_scenarios(
-    s_tac, clusters; opts=Dict(:summarize => true), fig_opts=fig_opts, axis_opts=axis_opts
+    s_tac, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
 )
 
 # Save final figure
@@ -438,7 +439,7 @@ in identifying which (group of) factors drive model outputs and their active are
 factor space.
 
 ```julia
-mean_s_tac = dropdims(mean(s_tac), dims=1)
+mean_s_tac = dropdims(mean(s_tac, dims=1), dims=1)
 
 tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)
 rsa_fig = ADRIA.viz.rsa(
@@ -462,7 +463,7 @@ As the name implies, outcome mapping aids in identifying the relationship betwee
 outputs and the region of factor space that led to those outputs.
 
 ```julia
-mean_s_tac = dropdims(mean(s_tac), dims=1)
+mean_s_tac = dropdims(mean(s_tac, dims=1), dims=1)
 
 tf = Figure(size=(1600, 1200))  # size of figure
 

@@ -90,7 +90,7 @@ those factors as constants. These then get ignored for the purpose of scenario
 generation.
 
 ```julia
-dom = ADRIA.load_domain()
+dom = ADRIA.load_domain("path to domain data package")
 
 # Could keep a copy of the original model parameters/bounds
 # to reset to later.
@@ -105,8 +105,8 @@ ADRIA.fix_factor!(dom, :a_adapt, 3.0)
 # Pass in factor names and their constant values as named arguments
 # to fix a set of factors.
 ADRIA.fix_factor!(dom;
-    seed_TA=Int64(5e5),
-    seed_CA=Int64(5e5),
+    N_seed_TA=Int64(5e5),
+    N_seed_CA=Int64(5e5),
     SRM=0.0,  # Never shade
     fogging=0.0,  # Never fog
     a_adapt=3.0,  # only deploy +3 DHW enhanced corals
@@ -115,7 +115,7 @@ ADRIA.fix_factor!(dom;
     seed_deployment_freq=0,
     seed_year_start=3,
     shade_year_start=3,
-    coral_cover_tol=1.0
+    seed_coral_cover=1.0
 )
 ```
 
@@ -123,7 +123,7 @@ Samples can also be taken over a constrained range. For example, if one wanted t
 scenarios with high fogging and seeding, the following could be used:
 
 ```julia
-dom = ADRIA.load_domain()
+dom = ADRIA.load_domain("path to domain data package")
 
 # Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in
 # question have a uniform distribution.
@@ -137,7 +137,7 @@ dom = ADRIA.set_factor_bounds(dom, :fogging, (0.2, 0.3, 0.1))
 
 # Adjust multiple factors simultaneously.
 dom = ADRIA.set_factor_bounds(dom;
-    heat_stress=(0.3, 0.7),
+    seed_heat_stress=(0.3, 0.7),
     N_seed_TA=(500000.0, 1000000.0),
     N_seed_CA=(500000.0, 1000000.0))
 ```
