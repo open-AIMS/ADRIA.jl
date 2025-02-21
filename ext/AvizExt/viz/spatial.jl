@@ -153,8 +153,9 @@ function create_map!(
         end
     end
 
-    # Remove any empty subplots
-    trim!(f)
+    if typeof(f) == GridLayout
+        trim!(f)
+    end
 
     return f
 end
@@ -258,6 +259,77 @@ function ADRIA.viz.map!(
         legend_params=legend_params,
         axis_opts=axis_opts
     )
+end
+
+"""
+    ADRIA.viz.map(rs::Union{Domain,ResultSet}, outputs_matrix::Matrix, map_titles::Vector{String}; opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
+    ADRIA.viz.map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, outputs_matrix::Matrix, map_titles::Vector{String}; opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
+
+Plot a series of maps from an arbitrary (n_locs*n_maps) matrix of outputs.
+
+# Arguments
+- `rs` : ResultSet
+- `g` : Figure GridPosition or GridLayout.
+- `outputs_matrix` : Matrix of outputs where n_locs is the numberof locations and n_maps is the number of different
+    maps to plot.
+- `map_titles` : Titles for each map to be plotted.
+- `opts` : Aviz options
+    - `colorbar_label`, label for colorbar. Defaults to "Relative Cover"
+    - `color_map`, preferred colormap for plotting heatmaps
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+"""
+function ADRIA.viz.map(
+    rs::Union{Domain,ResultSet},
+    outputs_matrix::Matrix,
+    map_titles::Vector{String};
+    criteria::Vector{Symbol}=Array(M.criteria),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.map!(
+        g, rs, outputs_matrix, map_titles; criteria=criteria, opts=opts, axis_opts=axis_opts
+    )
+    return f
+end
+function ADRIA.viz.map!(
+    g::Union{GridLayout,GridPosition},
+    rs::Union{Domain,ResultSet},
+    outputs_matrix::Matrix,
+    map_titles::Vector{String};
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
+)
+    if length(rs.loc_data.site_id) != size(outputs_matrix, 1)
+        error("Only unfiltered decision matrices can be plotted.")
+    end
+
+    opts[:color_map] = get(opts, :color_map, :viridis)
+    opts[:colorbar_limits] = get(opts, :colorbar_limits, (0.0, 1.0))
+
+    n_plots::Int64 = length(map_titles)
+    n_rows, n_cols = _calc_gridsize(n_plots)
+    step::Int64 = 1
+
+    for row in 1:n_rows, col in 1:n_cols
+        if step > length(map_titles)
+            break
+        end
+        axis_opts[:title] = map_titles[step]
+        ADRIA.viz.map!(
+            g[row, col],
+            rs,
+            vec(outputs_matrix[:, step]);
+            opts=opts,
+            axis_opts=axis_opts
+        )
+
+        step += 1
+    end
+    return g
 end
 
 function _diverging_cmap(outcomes::YAXArray)::Vector{RGB{Float64}}
