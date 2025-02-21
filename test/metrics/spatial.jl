@@ -1,4 +1,4 @@
-using ADRIA: metrics, metrics.cf_difference_loc
+using ADRIA: metrics
 using ADRIA: YAXArray
 
 if !@isdefined(TEST_RS)

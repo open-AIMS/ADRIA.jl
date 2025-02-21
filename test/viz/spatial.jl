@@ -1,7 +1,7 @@
 using WGLMakie, GeoMakie, GraphMakie
 using ADRIA: viz
 using ADRIA: YAXArray
-using ADRIA: metrics, metrics.cf_difference_loc
+using ADRIA: metrics
 
 if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
