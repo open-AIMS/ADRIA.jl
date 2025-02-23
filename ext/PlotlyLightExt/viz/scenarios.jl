@@ -1,6 +1,5 @@
 using Statistics
 
-
 """
     ADRIA.viz.scenarios(rs::ResultSet, outcomes::YAXArray)
 
@@ -22,15 +21,16 @@ function ADRIA.viz.scenarios(rs::ResultSet, outcomes::YAXArray)
         scen_sel = rs.inputs.guided .== g_id
         subset = outcomes[:, scen_sel]
 
-        q50 = median(subset, dims=:scenarios)[:]
-        ci_bounds = Matrix(mapreduce(
-            collect,
-            hcat,
-            quantile.(eachrow(subset), [_calc_confint(0.95)]))'
+        q50 = median(subset; dims=:scenarios)[:]
+        ci_bounds = Matrix(
+            mapreduce(
+                collect,
+                hcat,
+                quantile.(eachrow(subset), [_calc_confint(0.95)]))'
         )
-        ci_bound_opts = Dict(:width=>0, :color=>guided_colors[i])
+        ci_bound_opts = Dict(:width => 0, :color => guided_colors[i])
 
-        res.scatter(
+        res.scatter(;
             x=ts,
             y=ci_bounds[:, 1],
             mode="lines",
@@ -38,7 +38,7 @@ function ADRIA.viz.scenarios(rs::ResultSet, outcomes::YAXArray)
             line=ci_bound_opts,
             showlegend=false,
             opacity=0.05
-        ).scatter(
+        ).scatter(;
             x=ts,
             y=ci_bounds[:, 2],
             mode="lines",
@@ -47,11 +47,11 @@ function ADRIA.viz.scenarios(rs::ResultSet, outcomes::YAXArray)
             showlegend=false,
             opacity=0.05,
             fill="tonexty"
-        ).scatter(
+        ).scatter(;
             x=ts,
             y=q50,
             name=g_str,
-            line=Dict(:color=>guided_colors[i])
+            line=Dict(:color => guided_colors[i])
         )
     end
 
