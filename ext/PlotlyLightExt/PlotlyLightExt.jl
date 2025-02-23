@@ -36,6 +36,13 @@ function _get_guided_labels()::Vector{String}
     ]
 end
 
+"""
+    outcome_label(
+        outcomes::YAXArray; metadata_key::Symbol=:metric_feature, label_case=titlecase
+    )::String
+
+Smartly create labels for visualizations based on metadata/properties.
+"""
 function outcome_label(
     outcomes::YAXArray; metadata_key::Symbol=:metric_feature, label_case=titlecase
 )::String
