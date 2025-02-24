@@ -512,7 +512,8 @@ set_factor_bounds(dom, :wave_stress, (0.1, 0.2))
 ```
 """
 function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
-    Base.@warn "set_factor_bounds is deprecated, use set_factor_bounds! instead" maxlog=1 _category=:deprecation
+    Base.@warn "set_factor_bounds is deprecated, use set_factor_bounds! instead" maxlog = 1
+    _category = :deprecation
 
     set_factor_bounds!(dom, factor, new_dist_params)
     return dom
@@ -528,16 +529,17 @@ function set_factor_bounds!(dom::Domain, factor::Symbol, new_dist_params::Tuple)
     ms[!, :is_constant] .= (ms[!, :lower_bound] .== ms[!, :upper_bound])
 
     update!(dom, ms)
-    return nothing
+    return dom
 end
 
 function set_factor_bounds(dom::Domain; factors...)::Domain
-    Base.@warn "set_factor_bounds is deprecated, use set_factor_bounds! instead" maxlog=1 _category=:deprecation
+    Base.@warn "set_factor_bounds is deprecated, use set_factor_bounds! instead" maxlog = 1
+    _category = :deprecation
 
     set_factor_bounds!(dom; factors...)
     return dom
 end
-function set_factor_bounds!(dom::Domain; factors...)::Nothing
+function set_factor_bounds!(dom::Domain; factors...)::Domain
     ms = model_spec(dom)
     factor_symbols = collect(keys(factors))
     factor_rows = findall(in(factor_symbols), ms.fieldname)
@@ -549,13 +551,15 @@ function set_factor_bounds!(dom::Domain; factors...)::Nothing
     # Calculate new values preserving types
     old_vals = ms[factor_rows, :val]
     new_vals = mean.(zip(first.(new_params), last.(new_params)))
-    ms[factor_rows, :val] .= [v isa Int ? round(n) : n for (v, n) in zip(old_vals, new_vals)]
+    ms[factor_rows, :val] .= [
+        v isa Int ? round(n) : n for (v, n) in zip(old_vals, new_vals)
+    ]
 
     # Update `is_constant` column
     ms[!, :is_constant] .= (ms[!, :lower_bound] .== ms[!, :upper_bound])
 
     update!(dom, ms)
-    return nothing
+    return dom
 end
 
 """
