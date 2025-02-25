@@ -395,10 +395,18 @@ function fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     return nothing
 end
 function fix_factor!(d::Domain, factors::Vector{Symbol})::Nothing
-    for f in factors
-        fix_factor!(d, f)
-    end
+    params = DataFrame(d.model)
+    factor_rows = findall(in(factors), params.fieldname)
 
+    # Get current values and dist_params lengths
+    vals = params[factor_rows, :val]
+    dist_lens = length.(params[factor_rows, :dist_params])
+
+    # Create new dist_params tuples
+    new_params = [Tuple(fill(v, len)) for (v, len) in zip(vals, dist_lens)]
+    params[factor_rows, :dist_params] .= new_params
+
+    update!(d, params)
     return nothing
 end
 function fix_factor!(d::Domain; factors...)::Nothing
@@ -480,8 +488,8 @@ function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
 end
 
 """
-    set_factor_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
-    set_factor_bounds(dom::Domain; factors...)::Nothing
+    set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
+    set_factor_bounds!(dom::Domain; factors...)::Nothing
 
 Set new bound values for a given parameter. Sampled values for a parameter will lie
 within the range `lower_bound ≤ s ≤ upper_bound`, for every sample value `s`.
@@ -504,6 +512,13 @@ set_factor_bounds(dom, :wave_stress, (0.1, 0.2))
 ```
 """
 function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
+    Base.@warn "set_factor_bounds is deprecated, use set_factor_bounds! instead" maxlog =
+        1 _category = :deprecation
+
+    set_factor_bounds!(dom, factor, new_dist_params)
+    return dom
+end
+function set_factor_bounds!(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
     old_val = get_attr(dom, factor, :val)
     new_val = mean(new_dist_params[1:2])
 
@@ -514,14 +529,36 @@ function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple):
     ms[!, :is_constant] .= (ms[!, :lower_bound] .== ms[!, :upper_bound])
 
     update!(dom, ms)
-
     return dom
 end
-function set_factor_bounds(dom::Domain; factors...)::Domain
-    for (factor, bounds) in factors
-        dom = set_factor_bounds(dom, factor, bounds)
-    end
 
+function set_factor_bounds(dom::Domain; factors...)::Domain
+    Base.@warn "set_factor_bounds is deprecated, use set_factor_bounds! instead" maxlog =
+        1 _category = :deprecation
+
+    set_factor_bounds!(dom; factors...)
+    return dom
+end
+function set_factor_bounds!(dom::Domain; factors...)::Domain
+    ms = model_spec(dom)
+    factor_symbols = collect(keys(factors))
+    factor_rows = findall(in(factor_symbols), ms.fieldname)
+
+    # Update dist_params and values in bulk
+    new_params = collect(values(factors))
+    ms[factor_rows, :dist_params] .= new_params
+
+    # Calculate new values preserving types
+    old_vals = ms[factor_rows, :val]
+    new_vals = mean.(zip(first.(new_params), last.(new_params)))
+    ms[factor_rows, :val] .= [
+        v isa Int ? round(n) : n for (v, n) in zip(old_vals, new_vals)
+    ]
+
+    # Update `is_constant` column
+    ms[!, :is_constant] .= (ms[!, :lower_bound] .== ms[!, :upper_bound])
+
+    update!(dom, ms)
     return dom
 end
 
