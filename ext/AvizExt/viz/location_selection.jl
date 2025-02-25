@@ -131,6 +131,72 @@ function ADRIA.viz.ranks_to_frequencies(
 end
 
 """
+    ADRIA.viz.selection_criteria_map(rs::Union{Domain,ResultSet}, decision_matrix::YAXArray, scores::Vector{Float64}; criteria::Vector{Symbol}=Array(decision_matrix.criteria), opts::OPT_TYPE=DEFAULT_OPT_TYPE(), fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
+    ADRIA.viz.selection_criteria_map!(g::Union{GridLayout,GridPosition}, rs::Union{Domain,ResultSet}, decision_matrix::YAXArray, scores::Vector{Float64}; criteria::Vector{Symbol}=Array(decision_matrix.criteria), opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE()))
+
+Plot several spatial maps showing spatial distribution of location selection criteria, with the final map being the
+aggregate location selection score.
+
+# Arguments
+- `g` : Figure GridPosition or GridLayout.
+- `rs` : Result set or Domain.
+- `decision_matrix` : Decision matrix of size (n_locs*n_criteria)
+- `scores` : Aggregate criteria scores calculated from `decision_matrix`.
+- `criteria` : Names of criteria used, default uses decision matrix YAXArray dimension names.
+- `opts` : Aviz options
+    - `colorbar_label`, label for colorbar. Defaults to "Relative Cover".
+    - `color_map`, preferred colormap for plotting heatmaps.
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+- `fig_opts` : Additional options to pass to adjust Figure creation
+  See: https://docs.makie.org/v0.19/api/index.html#Figure
+
+# Returns
+Figure
+"""
+function ADRIA.viz.selection_criteria_map(
+    rs::Union{Domain,ResultSet},
+    decision_matrix::YAXArray,
+    scores::Vector{Float64};
+    criteria::Vector{Symbol}=Array(decision_matrix.criteria),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    fig_opts::OPT_TYPE=set_figure_defaults(DEFAULT_OPT_TYPE()),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
+)
+    f = Figure(; fig_opts...)
+    g = f[1, 1] = GridLayout()
+    ADRIA.viz.selection_criteria_map!(
+        g, rs, decision_matrix, scores; criteria=criteria, opts=opts, axis_opts=axis_opts
+    )
+    return f
+end
+function ADRIA.viz.selection_criteria_map!(
+    g::Union{GridLayout,GridPosition},
+    rs::Union{Domain,ResultSet},
+    decision_matrix::YAXArray,
+    scores::Vector{Float64};
+    criteria::Vector{Symbol}=Array(decision_matrix.criteria),
+    opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
+)
+    if length(rs.loc_data.site_id) != size(decision_matrix, 1)
+        error("Only unfiltered decision matrices can be plotted.")
+    end
+
+    outputs_matrix = hcat(Matrix(decision_matrix), scores)
+    titles = human_readable_name(string.(vcat(criteria, :agregate_score)); title_case=true)
+
+    return ADRIA.viz.map!(
+        g,
+        rs,
+        outputs_matrix,
+        titles;
+        opts=opts,
+        axis_opts=axis_opts
+    )
+end
+
+"""
     _default_colormap(rank_groups::Dict{Symbol,BitVector}, alpha_vals::Dict{Symbol,Float64})
 
 Retrieve set of colormaps for plotting overlayed colormaps.
