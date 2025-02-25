@@ -2,7 +2,7 @@
 
 julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "4ffb592df61e4d217c5b2589556288d921d4ba0f"
+project_hash = "5b975ff5ee93b291c8ca4988afc831aa04ba535d"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -535,10 +535,11 @@ uuid = "fcd2136c-9f69-4db6-97e5-f31981721d63"
 version = "0.1.10"
 
 [[deps.DiskArrays]]
-deps = ["LRUCache", "OffsetArrays"]
-git-tree-sha1 = "e0e89a60637a62d13aa2107f0acd169b9b9b77e7"
+deps = ["LRUCache", "Mmap", "OffsetArrays"]
+git-tree-sha1 = "64650943240652ebedc6c43d03cccda247b327a3"
+pinned = true
 uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
-version = "0.4.6"
+version = "0.4.9"
 
 [[deps.Distances]]
 deps = ["LinearAlgebra", "Statistics", "StatsAPI"]
