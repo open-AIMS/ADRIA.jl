@@ -1,3 +1,5 @@
+using CategoricalArrays
+
 """
     Factor(val; kwargs...)::Param
 

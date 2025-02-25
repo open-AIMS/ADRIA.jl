@@ -46,6 +46,21 @@ function mcda_methods()
 end
 
 """
+    mcda_method_names()::Vector{String}
+
+List of MCDA methods names used in ADRIA.
+"""
+function mcda_method_names()::Vector{String}
+    return [
+        "Cocoso",
+        "Mairca",
+        "Moora",
+        "Piv",
+        "Vikor"
+    ]
+end
+
+"""
     mcda_normalize(x::Vector)::Vector
     mcda_normalize(x::Matrix)::Matrix
     mcda_normalize(x::DataFrame)::DataFrame

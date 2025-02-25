@@ -4,8 +4,8 @@ Base.@kwdef struct Intervention <: EcoModel
     guided::Param = Factor(
         0;
         ptype="unordered categorical",
-        dist=DiscreteUniform,
-        dist_params=(-1.0, Float64(length(decision.mcda_methods()))),
+        dist=CategoricalDistribution,
+        dist_params=("counterfactual", "unguided", decision.mcda_method_names()...),
         name="Guided",
         description="Choice of MCDA approach."
     )
