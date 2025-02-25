@@ -72,9 +72,11 @@ BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+PlotlyLight = "ca7969ec-10b3-423e-8d99-40f33abb42bf"
 
 [extensions]
 AvizExt = ["Makie", "GeoMakie", "GraphMakie"]
+PlotlyLightExt = ["PlotlyLight"]
 
 [compat]
 Aqua = "0.8, 0.9"
@@ -91,7 +93,7 @@ DataFrames = "1"
 DataStructures = "0.18, 0.2"
 Dates = "1"
 DimensionalData = "0.25, 0.26, 0.27"
-DiskArrays = "=0.3.23, ^0.4.5"
+DiskArrays = "^0.4.5"
 Distances = "0.10"
 Distributed = "1"
 Distributions = "0.25"
@@ -123,6 +125,7 @@ NetCDF = "0.11, 0.12"
 OnlineStats = "1.5"
 OrderedCollections = "1"
 PkgVersion = "0.2, 0.3"
+PlotlyLight = "0.11"
 PrecompileTools = "1"
 Printf = "1"
 ProgressMeter = "1"
@@ -151,6 +154,7 @@ Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
+PlotlyLight = "ca7969ec-10b3-423e-8d99-40f33abb42bf"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 
