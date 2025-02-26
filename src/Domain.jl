@@ -75,13 +75,12 @@ function model_spec(d::Domain, filepath::String)::Nothing
 end
 function model_spec(m::Model)::DataFrame
     spec = DataFrame(m)
-    dist_params = spec[!, :dist_params]
 
     DataFrames.hcat!(
         spec,
         DataFrame(
-            :lower_bound => first.(dist_params),
-            :upper_bound => getindex.(dist_params, 2)
+            :lower_bound => factor_lower_bounds.(eachrow(spec)),
+            :upper_bound => factor_upper_bounds.(eachrow(spec))
         )
     )
 
