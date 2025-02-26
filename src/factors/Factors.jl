@@ -165,3 +165,58 @@ function DiscreteOrderedUniformDist(
 
     return DiscreteNonParametric(options, fill(1.0 / n_opts, n_opts))
 end
+
+struct CategoricalVariable{T}
+    categories::Vector{T}
+    distribution::Categorical
+end
+
+"""
+    CategoricalVariable(categories::Vector{T}, weights::Vector{Float64})::CategoricalVariable{T} where T
+    CategoricalVariable(categories::Vector{T})::CategoricalVariable{T} where T
+
+Construct a categorical variable. Default to a uniform cateforical variable if the 
+probability weightings are not provided.
+"""
+function CategoricalVariable(categories::Vector{T}, weights::Vector{Float64})::CategoricalVariable{T} where T
+    if length(unique(categories)) != length(categories)
+        throw(ArgumentError("Categories in a categorical variable must be unique."))
+    end
+    if length(categories) != length(weights)
+        msg = "Length of categories and weightings do not match."
+        msg *= " Got $(length(categories)) and $(length(weights))."
+        throw(ArgumentError(msg))
+    end
+    if sum(weights) ≈ 1 && all(weights >= 0.0)
+        throw(ArgumentError("Weights must sum to one."))
+    end
+    return CategoricalVariable(
+        categories,
+        Categorical(weights))
+end
+function CategoricalVariable(categories::Vector{T})::CategoricalVariable{T} where T
+    n_categories::Int64 = length(categories)
+    return CategoricalVariable(categories, fill(1/n_categories, n_categories))
+end
+
+function Distributions.quantile(dist::CategoricalVariable{T}, q::Real)::T where T
+    underlying_idx::Int64 = Distributions.quantile(dist.distribution, q)
+    return dist.categories[underlying_idx]
+end
+
+"""
+    lower_bound(dist::CategoricalVariable{T})::T where T <: Real
+
+Return the lower bound of the underlying categories if they are numerical.
+"""
+function lower_bound(dist::CategoricalVariable{T})::T where T <: Real
+    return minimum(dist.categories)
+end
+"""
+    upper_bound(dist::CategoricalVariable{T})::T where T <: Real
+
+Return the upper bound of the unerling categories if they are numerical.
+"""
+function upper_bound(dist::CategoricalVariable{T})::T where T <: Real
+    return maximum(dist.categories)
+end
