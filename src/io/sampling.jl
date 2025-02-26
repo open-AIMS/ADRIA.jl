@@ -527,6 +527,33 @@ function set_factor_bounds(dom::Domain; factors...)::Domain
     return dom
 end
 
+function _update_categorical_dist(
+    dom::Domain, 
+    factor::Symbol, 
+    new_dist_params,::Tuple
+)::Domain
+    # Assert element types are the same
+    
+    # Get range of possible categories the factor can take.
+    default_values::CategoricalVector = get_attr(dom, factor, :dist_params)
+    match_idxs = [
+        findfirst(default_values .== categ) for categ in new_dist_params
+    ]
+    if any(isnothing.(match_idxs))
+        msg = "Unable to find $(new_dist_params[isnothing.(match_idxs)]) "
+        msg *= "in possible $(factor) values. Possible values are $(default_values)"
+    end
+    
+    # new values must be created by indexing the range of possibles values
+    new_values = default_values[match_idxs]
+    ms = model_spec(dom)
+    ms[ms.fieldname .== factor, :dist_params] .= [(new_values)]
+
+    update!(dom, ms)
+
+    return dom
+end
+
 """
     _validate_new_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Nothing
 

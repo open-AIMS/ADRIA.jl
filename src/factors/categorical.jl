@@ -6,24 +6,18 @@ struct CategoricalDistribution
     distribution::Categorical
 end
 
-function CategoricalDistribution(
-    categories::AbstractVector
-)::CategoricalDistribution
-    n_categories::Int64 = size(categories, 1)
-    cat_arr::CategoricalVector = CategoricalVector(
-        categories; levels=categories, ordered=true
-    )
-    return CategoricalDistribution(
-        cat_arr,
-        Categorical(fill(1/n_categories, n_categories))
-    )
+function OrderedCategoricalVector(categories::AbstractVector)::CategoricalVector
+    return CategoricalVector(categories; levels=categories, ordered=true)
 end
 
 function CategoricalDistribution(
-    categories...
+    categories::CategoricalVector
 )::CategoricalDistribution
-    _categories = collect(categories)
-    return CategoricalDistribution(_categories)
+    n_categories::Int64 = size(categories, 1)
+    return CategoricalDistribution(
+        categories,
+        Categorical(fill(1/n_categories, n_categories))
+    )
 end
 
 function Distributions.quantile(categorical::CategoricalDistribution, q::Real)::Int64
