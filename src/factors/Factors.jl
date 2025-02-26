@@ -46,8 +46,6 @@ function _set_factor_defaults(kwargs::NT) where {NT<:NamedTuple}
 
     return kwargs
 end
-
-function _check_has_required_info(kwargs::NT) where {NT<:NamedTuple}
     @assert haskey(kwargs, :ptype) "Missing factor field `ptype`"
     @assert haskey(kwargs, :dist) "Missing factor field `dist`"
     @assert haskey(kwargs, :dist_params) "Missing factor field `dist_params`"
@@ -62,6 +60,19 @@ function _check_has_required_info(kwargs::NT) where {NT<:NamedTuple}
         "discrete"
     ]
     @assert any(occursin.(kwargs[:ptype], param_dist_types)) "`ptype` field is not one of $(param_dist_types)"
+end
+
+function factor_lower_bounds(params::Tuple)::Real
+    if typeof(first(params)) <: CategoricalVector
+        return 1
+    end
+    return first(params)
+end
+function factor_upper_bounds(params::Tuple)::Real
+    if typeof(first(params)) <: CategoricalVector
+        return length(first(params))
+    end
+    return getindex(params, 2)
 end
 
 """

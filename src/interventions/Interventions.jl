@@ -2,7 +2,7 @@ Base.@kwdef struct Intervention <: EcoModel
     # Intervention Factors
     # Bounds are defined as floats to maintain type stability
     guided::Param = Factor(
-        0;
+        1;
         ptype="unordered categorical",
         dist=CategoricalDistribution,
         dist_params=(OrderedCategoricalVector(

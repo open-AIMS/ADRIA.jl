@@ -80,8 +80,8 @@ function model_spec(m::Model)::DataFrame
     DataFrames.hcat!(
         spec,
         DataFrame(
-            :lower_bound => first.(dist_params),
-            :upper_bound => getindex.(dist_params, 2)
+            :lower_bound => factor_lower_bounds.(dist_params),
+            :upper_bound => factor_upper_bounds.(dist_params)
         )
     )
 
