@@ -169,7 +169,7 @@ function sample(
     samples = QMC.sample(n, zeros(n_vary_params), ones(n_vary_params), sample_method)
 
     # Scale uniform samples to indicated distributions using the inverse CDF method
-    samples = Matrix(quantile.(vary_dists, samples)')
+    samples = Matrix(Distributions.quantile.(vary_dists, samples)')
 
     # Combine varying and constant values (constant params use their indicated default vals)
     full_df = hcat(fill.(spec.val, n)...)

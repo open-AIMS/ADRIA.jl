@@ -1,5 +1,5 @@
 """
-    intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::YAXArray
+    intervention_frequency(rs::ResultSet, scen_indices::NamedTuple, log_type::Symbol)::YAXArrayintervention.jl
 
 Count number of times a location of selected for intervention
 Count frequency of seeded sites for scenarios satisfying a condition.

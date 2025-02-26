@@ -174,6 +174,7 @@ end
 """
     CategoricalDistribution(categories::Vector{T}, weights::Vector{Float64})::CategoricalDistribution{T} where T
     CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where T
+    CategoricalDistribution(categories...)::CategoricalDistribution
 
 Construct a categorical variable. Default to a uniform cateforical variable if the 
 probability weightings are not provided.
@@ -187,7 +188,7 @@ function CategoricalDistribution(categories::Vector{T}, weights::Vector{Float64}
         msg *= " Got $(length(categories)) and $(length(weights))."
         throw(ArgumentError(msg))
     end
-    if sum(weights) ≈ 1 && all(weights >= 0.0)
+    if !(sum(weights) ≈ 1) && all(weights .>= 0.0)
         throw(ArgumentError("Weights must sum to one."))
     end
     return CategoricalDistribution(
@@ -197,6 +198,10 @@ end
 function CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where T
     n_categories::Int64 = length(categories)
     return CategoricalDistribution(categories, fill(1/n_categories, n_categories))
+end
+function CategoricalDistribution(categories...)::CategoricalDistribution
+    cats = collect(categories)
+    return CategoricalDistribution(cats)
 end
 
 function Distributions.quantile(dist::CategoricalDistribution{T}, q::Real)::T where T
