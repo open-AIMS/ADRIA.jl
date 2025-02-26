@@ -33,6 +33,19 @@ function Factor(val; kwargs...)::Param
     return Param((; val=val, nt...))
 end
 
+function factor_lower_bounds(factor::DataFrameRow)::Float64
+    if factor.dist == CategoricalDistribution
+        return minimum(factor.dist_params)
+    end
+    return first(factor.dist_params)
+end
+function factor_upper_bounds(factor::DataFrameRow)::Float64
+    if factor.dist == CategoricalDistribution
+        return maximum(factor.dist_params)
+    end
+    return getindex(factor.dist_params, 2)
+end
+
 function _set_factor_defaults(kwargs::NT) where {NT<:NamedTuple}
     missing_defaults = (; default_dist_params=kwargs.dist_params)
 
