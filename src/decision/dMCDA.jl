@@ -60,8 +60,8 @@ function mcda_method_names()::Vector{String}
         "Cocoso",
         "Mairca",
         "Moora",
-        "PIV",
-        "VikorMethod"
+        "Piv",
+        "Vikor"
     ]
 end
 
