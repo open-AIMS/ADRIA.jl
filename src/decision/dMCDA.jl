@@ -1,6 +1,5 @@
 module decision
 
-using Core: Argument
 using InteractiveUtils: subtypes
 using StatsBase
 using YAXArrays
