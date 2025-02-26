@@ -46,6 +46,8 @@ function _set_factor_defaults(kwargs::NT) where {NT<:NamedTuple}
 
     return kwargs
 end
+
+function _check_has_required_info(kwargs::NT) where {NT<:NamedTuple}
     @assert haskey(kwargs, :ptype) "Missing factor field `ptype`"
     @assert haskey(kwargs, :dist) "Missing factor field `dist`"
     @assert haskey(kwargs, :dist_params) "Missing factor field `dist_params`"
@@ -63,14 +65,15 @@ end
 end
 
 function factor_lower_bounds(params::Tuple)::Real
-    if typeof(first(params)) <: CategoricalVector
-        return 1
+    factor_first_param = first(params)
+    if typeof(factor_first_param) <: CategoricalVector
+        return minimum(levelcode.(factor_first_param)) - 2
     end
-    return first(params)
+    return factor_first_param
 end
 function factor_upper_bounds(params::Tuple)::Real
     if typeof(first(params)) <: CategoricalVector
-        return length(first(params))
+        return maximum(levelcode.(first(params))) - 2
     end
     return getindex(params, 2)
 end

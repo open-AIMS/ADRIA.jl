@@ -481,6 +481,34 @@ function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
     return ms[ms.fieldname .== factor, attr][1]
 end
 
+function _update_categorical_dist(
+    dom::Domain,
+    factor::Symbol,
+    new_dist_params::Tuple
+)::Domain
+    # Assert element types are the same
+
+    # Get range of possible categories the factor can take.
+    default_values = first(get_attr(dom, factor, :default_dist_params))
+    match_idxs = [
+        findfirst(default_values .== categ) for categ in new_dist_params
+    ]
+    if any(isnothing.(match_idxs))
+        msg = "Unable to find $(new_dist_params[isnothing.(match_idxs)]) "
+        msg *= "in possible $(factor) values. Possible values are $(default_values)"
+    end
+
+    # new values must be created by indexing the range of possibles values
+    new_values = default_values[match_idxs]
+    ms = model_spec(dom)
+    ms[ms.fieldname .== factor, :dist_params] .= [(new_values,)]
+
+    update!(dom, ms)
+
+    return dom
+end
+
+
 """
     set_factor_bounds(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
     set_factor_bounds(dom::Domain; factors...)::Nothing
@@ -506,6 +534,10 @@ set_factor_bounds(dom, :wave_stress, (0.1, 0.2))
 ```
 """
 function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
+    if (get_attr(dom, factor, :dist) == CategoricalDistribution)
+        return _update_categorical_dist(dom, factor, new_dist_params)
+    end
+
     old_val = get_attr(dom, factor, :val)
     new_val = mean(new_dist_params[1:2])
 
@@ -523,33 +555,6 @@ function set_factor_bounds(dom::Domain; factors...)::Domain
     for (factor, bounds) in factors
         dom = set_factor_bounds(dom, factor, bounds)
     end
-
-    return dom
-end
-
-function _update_categorical_dist(
-    dom::Domain, 
-    factor::Symbol, 
-    new_dist_params,::Tuple
-)::Domain
-    # Assert element types are the same
-    
-    # Get range of possible categories the factor can take.
-    default_values::CategoricalVector = get_attr(dom, factor, :dist_params)
-    match_idxs = [
-        findfirst(default_values .== categ) for categ in new_dist_params
-    ]
-    if any(isnothing.(match_idxs))
-        msg = "Unable to find $(new_dist_params[isnothing.(match_idxs)]) "
-        msg *= "in possible $(factor) values. Possible values are $(default_values)"
-    end
-    
-    # new values must be created by indexing the range of possibles values
-    new_values = default_values[match_idxs]
-    ms = model_spec(dom)
-    ms[ms.fieldname .== factor, :dist_params] .= [(new_values)]
-
-    update!(dom, ms)
 
     return dom
 end

@@ -22,5 +22,6 @@ end
 
 function Distributions.quantile(categorical::CategoricalDistribution, q::Real)::Int64
     underlying_q::Int64 = Distributions.quantile(categorical.distribution, q)
-    return levelcode(categorical.child[underlying_q])
+    # Subtract 2 for compatibility with existing encoding
+    return levelcode(categorical.child[underlying_q]) - 2
 end
