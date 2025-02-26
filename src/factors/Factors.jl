@@ -33,17 +33,27 @@ function Factor(val; kwargs...)::Param
     return Param((; val=val, nt...))
 end
 
+# Some distributions have in built methods for bounds, however that would involve
+# constructing the distribution
+
+function distribution_lower_bound(::CategoricalDistribution, dist_params)::Float64
+    return minimum(dist_params)
+end
+function distribution_upper_bound(::CategoricalDistribution, dist_params)::Float64
+    return maximum(dist_params)
+end
+function distribution_lower_bound(::T, dist_params)::Float64 where T
+    return first(dist_params) 
+end
+function distribution_upper_bound(::T, dist_params)::Float64 where T
+    return getindex(dist_params, 2) 
+end
+
 function factor_lower_bounds(factor::DataFrameRow)::Float64
-    if factor.dist == CategoricalDistribution
-        return minimum(factor.dist_params)
-    end
-    return first(factor.dist_params)
+    return distribution_lower_bound(factor.dist, factor.dist_params)
 end
 function factor_upper_bounds(factor::DataFrameRow)::Float64
-    if factor.dist == CategoricalDistribution
-        return maximum(factor.dist_params)
-    end
-    return getindex(factor.dist_params, 2)
+    return distribution_upper_bound(factor.dist, factor.dist_params)
 end
 
 function _set_factor_defaults(kwargs::NT) where {NT<:NamedTuple}
