@@ -15,7 +15,7 @@ Base.@kwdef struct Intervention <: EcoModel
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
         name="Seeded Tabular Acropora",
-        description="Number of Tabular Acropora to seed per deployment year."
+        description="Number of Tabular Acropora to seed per deployment event."
     )
     N_seed_CA::Param = Factor(
         0;
@@ -23,7 +23,7 @@ Base.@kwdef struct Intervention <: EcoModel
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
         name="Seeded Corymbose Acropora",
-        description="Number of Corymbose Acropora to seed per deployment year."
+        description="Number of Corymbose Acropora to seed per deployment event."
     )
     N_seed_SM::Param = Factor(
         0;
@@ -31,7 +31,7 @@ Base.@kwdef struct Intervention <: EcoModel
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
         name="Seeded Small Massives",
-        description="Number of small massives/encrusting to seed per deployment year."
+        description="Number of small massives/encrusting to seed per deployment event."
     )
     min_iv_locations::Param = Factor(
         5;
