@@ -47,10 +47,15 @@ function connectivity!() end
 
 # Environment
 function dhw_scenario() end
+function dhw_scenarios() end
 function cyclone_scenario() end
 
 # Coral Dynamics
 function taxonomy() end
 function taxonomy!() end
+
+# Economics
+function data_envelopment_analysis() end
+function data_envelopment_analysis!() end
 
 end  # module

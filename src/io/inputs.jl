@@ -70,11 +70,10 @@ function load_nc_data(
     dim_names::Vector{Symbol}=Symbol[],
     dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
-    local data
-    try
-        data = sort_axis(Cube(data_fn), :locations)
+    data = try
+        sort_axis(Cube(data_fn), :locations)
     catch
-        return fallback_nc_data(data_fn, attr; dim_names, dim_names_replace)
+        fallback_nc_data(data_fn, attr; dim_names, dim_names_replace)
     end
 
     return data

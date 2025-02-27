@@ -4,12 +4,10 @@
 Filter out features/factors that do not vary.
 """
 function _filter_constants(scens::DataFrame)::DataFrame
-    varying_cols = []
-    for (i, col) in enumerate(eachcol(scens))
-        if !all(col .== col[1])
-            push!(varying_cols, i)
-        end
-    end
+    varying_cols = [
+        i for (i, col) in enumerate(eachcol(scens))
+        if !all(==(first(col)), col)
+    ]
 
     return scens[:, varying_cols]
 end

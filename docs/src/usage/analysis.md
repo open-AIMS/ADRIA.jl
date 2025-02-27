@@ -287,9 +287,10 @@ axis_opts = Dict(
     :ylabel => "TAC [m²]",
     :xlabel => "Timesteps [years]",
 )
+opts = Dict{Symbol, Any}(:summarize => true)
 
 tsc_fig = ADRIA.viz.clustered_scenarios(
-    s_tac, clusters; opts=Dict(:summarize => true), fig_opts=fig_opts, axis_opts=axis_opts
+    s_tac, clusters; opts=opts, fig_opts=fig_opts, axis_opts=axis_opts
 )
 
 # Save final figure
@@ -438,7 +439,7 @@ in identifying which (group of) factors drive model outputs and their active are
 factor space.
 
 ```julia
-mean_s_tac = dropdims(mean(s_tac), dims=1)
+mean_s_tac = dropdims(mean(s_tac, dims=1), dims=1)
 
 tac_rs = ADRIA.sensitivity.rsa(rs, mean_s_tac; S=10)
 rsa_fig = ADRIA.viz.rsa(
@@ -462,7 +463,7 @@ As the name implies, outcome mapping aids in identifying the relationship betwee
 outputs and the region of factor space that led to those outputs.
 
 ```julia
-mean_s_tac = dropdims(mean(s_tac), dims=1)
+mean_s_tac = dropdims(mean(s_tac, dims=1), dims=1)
 
 tf = Figure(size=(1600, 1200))  # size of figure
 
@@ -490,6 +491,42 @@ save("outcome_map.png", tf)
 
 ![Outcome mapping](../assets/imgs/analysis/outcome_map.png)
 
+### Data Envelopment Analysis
+
+Performs output-oriented (default, input-oriented can also be applied) Data Envelopment Analysis (DEA)
+given inputs X and output metrics Y. DEA is used to measure the performance of entities (scenarios),
+where inputs are converted to outputs via some process. Each scenario's "efficiency score" is calculated
+relative to an "efficiency fromtier", a region representing scenarios for which outputs cannot be further
+increased by changing inputs (scenario settings).
+
+```julia
+dom = ADRIA.load_domain("path to domain", "45")
+
+scens = ADRIA.sample(dom, 128)
+rs = ADRIA.run_scenarios(dom, scens, "45")
+
+n_scens = size(scens,1)
+
+# Get cost of deploying corals in each scenario, with user-specified function
+cost = cost_function(scens)
+
+# Get mean coral cover and shelter volume for each scenario
+s_tac = dropdims(
+    mean(ADRIA.metrics.scenario_total_cover(rs); dims=:timesteps); dims=:timesteps
+)
+s_sv =
+    dropdims(
+        mean(mean(ADRIA.metrics.absolute_shelter_volume(rs); dims=:timesteps); dims=:locations);
+        dims=(:timesteps,:locations)
+    )
+
+# Do output oriented DEA analysis seeking to maximise cover and shelter volume for minimum
+# deployment cost.
+DEA_scens = ADRIA.analysis.data_envelopment_analysis(cost, s_tac, s_sv)
+dea_fig = ADRIA.viz.data_envelopment_analysis(rs, DEA_scens)
+
+![DEA](../assets/imgs/analysis/example_dea_fig.png)
+```
 ### GUI for high-level exploration (prototype only!)
 
 ```julia

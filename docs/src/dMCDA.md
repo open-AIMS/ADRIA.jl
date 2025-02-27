@@ -24,11 +24,11 @@ $$r = g(X, w, d)$$
 
 where:
 
-- $g()$ refers to a given MCDA algorithm (see [JMcDM.jl](https://jbytecode.github.io)).
-- $X$ is the decision matrix
-- $w$ is the weights afforded to each criteria, indicating their relative importance
-- $d$ is the desired directionality for each criterion (to minimize the criteria value, or to maximize)
-- $r$ is the ranking determined by $g()$
+- ``g()`` refers to a given MCDA algorithm (see [JMcDM.jl](https://jbytecode.github.io)).
+- ``X`` is the decision matrix
+- ``w`` is the weights afforded to each criteria, indicating their relative importance
+- ``d`` is the desired directionality for each criterion (to minimize the criteria value, or to maximize)
+- ``r`` is the ranking determined by ``g()``
 
 When applied in conjunction with scenario analyses, locations are assessed at each decision
 point.
