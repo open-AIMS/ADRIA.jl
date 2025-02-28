@@ -114,6 +114,7 @@ include("intervention.jl")
 include("clustering.jl")
 include("rule_extraction.jl")
 include("scenario.jl")
+include("feature_set.jl")
 include("data_envelopment.jl")
 
 end

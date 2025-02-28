@@ -13,7 +13,7 @@ function _filter_constants(scens::DataFrame)::DataFrame
 end
 
 """
-    _seeded(rs::ResultSet)::Tuple{Vector}
+    _seeding_stats(rs::ResultSet)::Tuple{Vector}
 
 Extract total and average deployment, currently in terms of proportional increase to cover
 relative to the locations' carrying capacity.
@@ -24,7 +24,7 @@ relative to the locations' carrying capacity.
 # Returns
 DataFrames of mean and total deployment for each coral group
 """
-function _seeded(rs::ResultSet)::Tuple{DataFrame,DataFrame}
+function _seeding_stats(rs::ResultSet)::Tuple{DataFrame,DataFrame}
     deployed_corals = rs.seed_log.coral_id
 
     mean_deployment = [
@@ -87,7 +87,7 @@ function feature_set(rs::ResultSet)::DataFrame
     scens.depth_max = scens.depth_min .+ scens.depth_offset
     scens = scens[:, Not(:depth_offset)]
 
-    total_seeded, mean_seeded = _seeded(rs)
+    total_seeded, mean_seeded = _seeding_stats(rs)
     DataFrames.hcat!(scens, mean_seeded)
     DataFrames.hcat!(scens, total_seeded)
     scens.total_deployed_coral = sum.(eachrow(total_seeded))
