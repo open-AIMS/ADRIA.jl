@@ -54,13 +54,7 @@ end
 List of MCDA method names.
 """
 function mcda_method_names()::Vector{String}
-    return [
-        "Cocoso",
-        "Mairca",
-        "Moora",
-        "Piv",
-        "Vikor"
-    ]
+    return getindex.(split.(string.(mcda_methods()), "."), 2)
 end
 
 """
@@ -70,9 +64,9 @@ Find the scenario encoding of the given mcda method. Throws `ArgumentError` if m
 found.
 """
 function mcda_method_encoding(mcda_name::String)::Int64
-    method_idx = findfirst(mcda_method_names() .== mcda_name)
+    method_idx = findfirst(mcda_method_names() .== uppercase(mcda_name))
     if isnothing(method_idx)
-        msg = "Given MCDA method $(mcda_name) is not in list of mcda methods. "
+        msg = "Given MCDA method $(mcda_name) is not in list of mcda methods.\n"
         msg *= "Possible MCDA methods are $(mcda_method_names())"
         throw(ArgumentError(msg))
     end
@@ -89,10 +83,9 @@ function decision_method_encoding(method_name::String)::Int64
         return COUNTERFACTUAL_SCEN_ENCODING
     elseif method_name == "unguided"
         return UNGUIDED_SCEN_ENCODING
-    else
-        return mcda_method_encoding(method_name)
     end
-    return nothing
+
+    return mcda_method_encoding(method_name)
 end
 
 """
