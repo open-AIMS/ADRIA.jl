@@ -487,7 +487,7 @@ function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
     return ms[ms.fieldname .== factor, attr][1]
 end
 
-function _update_decision_method(dom, new_dist_params::Tuple)::Domain
+function _update_decision_method!(dom, new_dist_params::Tuple)::Domain
     new_method_names::Vector{String} = collect(new_dist_params)
 
     # Get encoding method will throw if given params are not
@@ -499,6 +499,7 @@ function _update_decision_method(dom, new_dist_params::Tuple)::Domain
 
     ms[guided_row, :dist_params] = Tuple(new_method_idxs)
     ms[guided_row, :val] = first(new_method_idxs)
+    ms[guided_row, :is_constant] = length(new_method_idxs) == 1
     update!(dom, ms)
 
     return dom
@@ -537,7 +538,7 @@ function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple):
 end
 function set_factor_bounds!(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
     if factor == :guided
-        return _update_decision_method(dom, new_dist_params)
+        return _update_decision_method!(dom, new_dist_params)
     end
 
     old_val = get_attr(dom, factor, :val)
@@ -561,12 +562,23 @@ function set_factor_bounds(dom::Domain; factors...)::Domain
     return dom
 end
 function set_factor_bounds!(dom::Domain; factors...)::Domain
-    ms = model_spec(dom)
+    # Extract factor names and values
     factor_symbols = collect(keys(factors))
+    new_params = collect(values(factors))
+
+    # Handle categorical guided factor separately
+    if :guided in factor_symbols
+        factor_idx::Int64 = findfirst(factor_symbols .== :guided)
+        dom = _update_decision_method!(dom, new_params[factor_idx])
+        factor_symbols = factor_symbols[1:end .!= factor_idx]
+        new_params = new_params[1:end .!= factor_idx]
+    end
+
+    ms = model_spec(dom)
+
     factor_rows = findall(in(factor_symbols), ms.fieldname)
 
     # Update dist_params and values in bulk
-    new_params = collect(values(factors))
     ms[factor_rows, :dist_params] .= new_params
 
     # Calculate new values preserving types
