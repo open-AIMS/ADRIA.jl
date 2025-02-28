@@ -67,7 +67,9 @@ function CategoricalDistribution(
         categories,
         Categorical(weights))
 end
-function CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where {T}
+function CategoricalDistribution(
+    categories::Vector{T}
+)::CategoricalDistribution{T} where {T}
     n_categories::Int64 = length(categories)
     return CategoricalDistribution(categories, fill(1 / n_categories, n_categories))
 end
