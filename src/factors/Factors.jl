@@ -43,7 +43,7 @@ end
     CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where {T}
     CategoricalDistribution(categories...)::CategoricalDistribution
 
-Construct a categorical variable. Default to a uniform cateforical variable if the 
+Construct a categorical variable. Default to a uniform categorical variable if the 
 probability weightings are not provided.
 """
 function CategoricalDistribution(
@@ -52,14 +52,17 @@ function CategoricalDistribution(
     if length(unique(categories)) != length(categories)
         throw(ArgumentError("Categories in a categorical variable must be unique."))
     end
+
     if length(categories) != length(weights)
         msg = "Length of categories and weightings do not match."
         msg *= " Got $(length(categories)) and $(length(weights))."
         throw(ArgumentError(msg))
     end
+
     if !(sum(weights) ≈ 1) && all(weights .>= 0.0)
         throw(ArgumentError("Weights must sum to one."))
     end
+
     return CategoricalDistribution(
         categories,
         Categorical(weights))
