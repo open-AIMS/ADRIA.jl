@@ -62,7 +62,7 @@ Calculate the mean relative coral cover for each scenario for the entire domain.
 """
 function _scenario_relative_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     target_sites = haskey(kwargs, :locations) ? kwargs[:locations] : (:)
-    target_area = sum(site_k_area(rs)[target_sites])
+    target_area = sum(loc_k_area(rs)[target_sites])
 
     return _scenario_total_cover(rs; kwargs...) ./ target_area
 end
@@ -88,7 +88,7 @@ num_scens = 2^5
 scens = ADRIA.sample(dom, num_scens)
 
 _coral_spec = ADRIA.to_coral_spec(scens[1,:])
-_k_area = site_k_area(dom)
+_k_area = loc_k_area(dom)
 
 # X contains raw coral cover results for a single scenario
 ADRIA.metrics.scenario_relative_juveniles(X, _coral_spec, _k_area)
@@ -107,7 +107,7 @@ end
 function _scenario_relative_juveniles(rs::ResultSet; kwargs...)::YAXArray
     # Calculate relative domain-wide cover based on absolute values
     aj = absolute_juveniles(rs)
-    return dropdims(sum(aj; dims=:locations); dims=:locations) ./ sum(site_k_area(rs))
+    return dropdims(sum(aj; dims=:locations); dims=:locations) ./ sum(loc_k_area(rs))
 end
 scenario_relative_juveniles = Metric(
     _scenario_relative_juveniles,

@@ -381,22 +381,25 @@ function timesteps(rs::ResultSet)
     return rs.env_layer_md.timeframe
 end
 
+@deprecate site_k_area(rs) loc_k_area(rs)
+@deprecate site_k(rs) loc_k(rs)
+
 """
-    site_k_area(rs::ResultSet)::Vector{Float64}
+    loc_k_area(rs::ResultSet)::Vector{Float64}
 
 Extract vector of a location's coral carrying capacity in terms of absolute area.
 """
-function site_k_area(rs::ResultSet)::Vector{Float64}
+function loc_k_area(rs::ResultSet)::Vector{Float64}
     return rs.loc_max_coral_cover .* rs.loc_area
 end
 
 """
-    site_k(rs::ResultSet)::Vector{Float64}
+    loc_k(rs::ResultSet)::Vector{Float64}
 
 Extract vector of a location's coral carrying capacity in as a proportion relative to the
 location's total area.
 """
-function site_k(rs::ResultSet)::Vector{Float64}
+function loc_k(rs::ResultSet)::Vector{Float64}
     return rs.loc_max_coral_cover
 end
 
