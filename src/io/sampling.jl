@@ -493,8 +493,11 @@ function _update_decision_method(dom, new_dist_params::Tuple)::Domain
     new_method_idxs = decision.decision_method_encoding.(new_method_names)
 
     ms = model_spec(dom)
-    ms[ms.fieldname .== :guided, :dist_params] .= [Tuple(new_method_idxs)]
+    guided_row = findfirst(ms.fieldname .== :guided)
+    @assert !isnothing(guided_row) "Guided variable not found in model spec."
 
+    ms[guided_row, :dist_params] = Tuple(new_method_idxs)
+    ms[guided_row, :val] = first(new_method_idxs)
     update!(dom, ms)
 
     return dom
