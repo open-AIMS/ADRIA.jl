@@ -39,14 +39,16 @@ struct CategoricalDistribution{T}
 end
 
 """
-    CategoricalDistribution(categories::Vector{T}, weights::Vector{Float64})::CategoricalDistribution{T} where T
-    CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where T
+    CategoricalDistribution(categories::Vector{T}, weights::Vector{Float64})::CategoricalDistribution{T} where {T}
+    CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where {T}
     CategoricalDistribution(categories...)::CategoricalDistribution
 
 Construct a categorical variable. Default to a uniform cateforical variable if the 
 probability weightings are not provided.
 """
-function CategoricalDistribution(categories::Vector{T}, weights::Vector{Float64})::CategoricalDistribution{T} where T
+function CategoricalDistribution(
+    categories::Vector{T}, weights::Vector{Float64}
+)::CategoricalDistribution{T} where {T}
     if length(unique(categories)) != length(categories)
         throw(ArgumentError("Categories in a categorical variable must be unique."))
     end
@@ -62,34 +64,34 @@ function CategoricalDistribution(categories::Vector{T}, weights::Vector{Float64}
         categories,
         Categorical(weights))
 end
-function CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where T
+function CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where {T}
     n_categories::Int64 = length(categories)
-    return CategoricalDistribution(categories, fill(1/n_categories, n_categories))
+    return CategoricalDistribution(categories, fill(1 / n_categories, n_categories))
 end
 function CategoricalDistribution(categories...)::CategoricalDistribution
     cats = collect(categories)
     return CategoricalDistribution(cats)
 end
 
-function Distributions.quantile(dist::CategoricalDistribution{T}, q::Real)::T where T
+function Distributions.quantile(dist::CategoricalDistribution{T}, q::Real)::T where {T}
     underlying_idx::Int64 = Distributions.quantile(dist.distribution, q)
     return dist.categories[underlying_idx]
 end
 
 """
-    lower_bound(dist::CategoricalDistribution{T})::T where T <: Real
+    lower_bound(dist::CategoricalDistribution{T})::T where {T<:Real}
 
 Return the lower bound of the underlying categories if they are numerical.
 """
-function lower_bound(dist::CategoricalDistribution{T})::T where T <: Real
+function lower_bound(dist::CategoricalDistribution{T})::T where {T<:Real}
     return minimum(dist.categories)
 end
 """
-    upper_bound(dist::CategoricalDistribution{T})::T where T <: Real
+    upper_bound(dist::CategoricalDistribution{T})::T where {T<:Real}
 
 Return the upper bound of the unerling categories if they are numerical.
 """
-function upper_bound(dist::CategoricalDistribution{T})::T where T <: Real
+function upper_bound(dist::CategoricalDistribution{T})::T where {T<:Real}
     return maximum(dist.categories)
 end
 
@@ -105,22 +107,22 @@ end
 function distribution_lower_bound(
     ::Type{T}, dist_params
 )::Float64 where {T<:Union{DiscreteUniform,Uniform,TriangularDist}}
-    return first(dist_params) 
+    return first(dist_params)
 end
 function distribution_upper_bound(
     ::Type{T}, dist_params
 )::Float64 where {T<:Union{DiscreteUniform,Uniform,TriangularDist}}
-    return getindex(dist_params, 2) 
+    return getindex(dist_params, 2)
 end
 function distribution_lower_bound(
     ::T, dist_params
 )::Float64 where {T}
-    return first(dist_params) 
+    return first(dist_params)
 end
 function distribution_upper_bound(
     ::T, dist_params
 )::Float64 where {T}
-    return getindex(dist_params, 2) 
+    return getindex(dist_params, 2)
 end
 
 function factor_lower_bounds(factor::DataFrameRow)::Float64

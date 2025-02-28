@@ -76,7 +76,7 @@ end
 function model_spec(m::Model)::DataFrame
     spec = DataFrame(m)
     # Model parameter distributions have at last one argument
-    spec[!, :dist_params] = Vector{Tuple{Float64, Vararg{Float64}}}(spec.dist_params)
+    spec[!, :dist_params] = Vector{Tuple{Float64,Vararg{Float64}}}(spec.dist_params)
 
     DataFrames.hcat!(
         spec,
