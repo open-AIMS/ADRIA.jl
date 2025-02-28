@@ -118,7 +118,7 @@ end
             ("Cocoso", "Mairca", "Moora", "Piv", "Vikor")
         ]
         test_output = [
-            [1], [2], [-1, 0], [-1, 0, 4], [-1, 0, 1, 3, 4, 5], 
+            [1], [2], [-1, 0], [-1, 0, 4], [-1, 0, 1, 3, 4, 5]
         ]
 
         for (inp, out) in zip(test_inputs, test_output)
