@@ -20,41 +20,41 @@ end
             "Constant params are not constant!"
     end
 
-    #@testset "values are within expected bounds" begin
-    #    lb = values(ms[:, :lower_bound])
-    #    ub = values(ms[:, :upper_bound])
+    @testset "values are within expected bounds" begin
+        lb = values(ms[:, :lower_bound])
+        ub = values(ms[:, :upper_bound])
 
-    #    not_cw_mask =
-    #        ms.component .∉
-    #        [("SeedCriteriaWeights", "FogCriteriaWeights", "DepthThresholds")]
-    #    not_cw_lb, not_cw_ub = lb[not_cw_mask], ub[not_cw_mask]
+        not_cw_mask =
+            ms.component .∉
+            [("SeedCriteriaWeights", "FogCriteriaWeights", "DepthThresholds")]
+        not_cw_lb, not_cw_ub = lb[not_cw_mask], ub[not_cw_mask]
 
-    #    eco = (ms.component .== "Coral") .& .!(constant_params)
+        eco = (ms.component .== "Coral") .& .!(constant_params)
 
-    #    msg = "Sampled values were not in expected bounds!"
-    #    coral_msg = "Sampled coral values were not in expected bounds!"
-    #    for i in 1:num_samples
-    #        # Filter CriteriaWeights factors
-    #        scen_vals = values(scens[i, :])
-    #        not_cw_scen_vals = scen_vals[not_cw_mask]
+        msg = "Sampled values were not in expected bounds!"
+        coral_msg = "Sampled coral values were not in expected bounds!"
+        for i in 1:num_samples
+            # Filter CriteriaWeights factors
+            scen_vals = values(scens[i, :])
+            not_cw_scen_vals = scen_vals[not_cw_mask]
 
-    #        if scens[i, :guided] > 0
-    #            cond = not_cw_lb .<= not_cw_scen_vals .<= not_cw_ub
-    #            @test all(cond) ||
-    #                "$msg | $(ms[.!(cond), :]) | $(not_cw_scen_vals[.!(cond)])"
-    #            continue
-    #        end
+            if scens[i, :guided] > 0
+                cond = not_cw_lb .<= not_cw_scen_vals .<= not_cw_ub
+                @test all(cond) ||
+                    "$msg | $(ms[.!(cond), :]) | $(not_cw_scen_vals[.!(cond)])"
+                continue
+            end
 
-    #        # When no interventions are used, e.g., for counterfactual or unguided scenarios
-    #        # (guided ∈ [-1, 0]) intervention parameters are set to 0 so only check ecological values
-    #        cond = lb[eco] .<= scen_vals[eco] .<= ub[eco]
-    #        @test all(cond) ||
-    #            "$coral_msg | $(ms[.!(cond), :]) | $(scen_vals[eco][.!(cond)])"
+            # When no interventions are used, e.g., for counterfactual or unguided scenarios
+            # (guided ∈ [-1, 0]) intervention parameters are set to 0 so only check ecological values
+            cond = lb[eco] .<= scen_vals[eco] .<= ub[eco]
+            @test all(cond) ||
+                "$coral_msg | $(ms[.!(cond), :]) | $(scen_vals[eco][.!(cond)])"
 
-    #        # Note: Test to ensure all intervention factors are set to 0 is covered by the guided
-    #        # sampling test below
-    #    end
-    #end
+            # Note: Test to ensure all intervention factors are set to 0 is covered by the guided
+            # sampling test below
+        end
+    end
 end
 
 @testset "Targeted sampling" begin
