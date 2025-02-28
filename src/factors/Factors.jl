@@ -33,19 +33,93 @@ function Factor(val; kwargs...)::Param
     return Param((; val=val, nt...))
 end
 
+struct CategoricalDistribution{T}
+    categories::Vector{T}
+    distribution::Categorical
+end
+
+"""
+    CategoricalDistribution(categories::Vector{T}, weights::Vector{Float64})::CategoricalDistribution{T} where T
+    CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where T
+    CategoricalDistribution(categories...)::CategoricalDistribution
+
+Construct a categorical variable. Default to a uniform cateforical variable if the 
+probability weightings are not provided.
+"""
+function CategoricalDistribution(categories::Vector{T}, weights::Vector{Float64})::CategoricalDistribution{T} where T
+    if length(unique(categories)) != length(categories)
+        throw(ArgumentError("Categories in a categorical variable must be unique."))
+    end
+    if length(categories) != length(weights)
+        msg = "Length of categories and weightings do not match."
+        msg *= " Got $(length(categories)) and $(length(weights))."
+        throw(ArgumentError(msg))
+    end
+    if !(sum(weights) ≈ 1) && all(weights .>= 0.0)
+        throw(ArgumentError("Weights must sum to one."))
+    end
+    return CategoricalDistribution(
+        categories,
+        Categorical(weights))
+end
+function CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where T
+    n_categories::Int64 = length(categories)
+    return CategoricalDistribution(categories, fill(1/n_categories, n_categories))
+end
+function CategoricalDistribution(categories...)::CategoricalDistribution
+    cats = collect(categories)
+    return CategoricalDistribution(cats)
+end
+
+function Distributions.quantile(dist::CategoricalDistribution{T}, q::Real)::T where T
+    underlying_idx::Int64 = Distributions.quantile(dist.distribution, q)
+    return dist.categories[underlying_idx]
+end
+
+"""
+    lower_bound(dist::CategoricalDistribution{T})::T where T <: Real
+
+Return the lower bound of the underlying categories if they are numerical.
+"""
+function lower_bound(dist::CategoricalDistribution{T})::T where T <: Real
+    return minimum(dist.categories)
+end
+"""
+    upper_bound(dist::CategoricalDistribution{T})::T where T <: Real
+
+Return the upper bound of the unerling categories if they are numerical.
+"""
+function upper_bound(dist::CategoricalDistribution{T})::T where T <: Real
+    return maximum(dist.categories)
+end
+
 # Some distributions have in built methods for bounds, however that would involve
 # constructing the distribution
 
-function distribution_lower_bound(::CategoricalDistribution, dist_params)::Float64
+function distribution_lower_bound(::Type{CategoricalDistribution}, dist_params)::Float64
     return minimum(dist_params)
 end
-function distribution_upper_bound(::CategoricalDistribution, dist_params)::Float64
+function distribution_upper_bound(::Type{CategoricalDistribution}, dist_params)::Float64
     return maximum(dist_params)
 end
-function distribution_lower_bound(::T, dist_params)::Float64 where T
+function distribution_lower_bound(
+    ::Type{T}, dist_params
+)::Float64 where {T<:Union{DiscreteUniform,Uniform,TriangularDist}}
     return first(dist_params) 
 end
-function distribution_upper_bound(::T, dist_params)::Float64 where T
+function distribution_upper_bound(
+    ::Type{T}, dist_params
+)::Float64 where {T<:Union{DiscreteUniform,Uniform,TriangularDist}}
+    return getindex(dist_params, 2) 
+end
+function distribution_lower_bound(
+    ::T, dist_params
+)::Float64 where {T}
+    return first(dist_params) 
+end
+function distribution_upper_bound(
+    ::T, dist_params
+)::Float64 where {T}
     return getindex(dist_params, 2) 
 end
 
@@ -187,64 +261,4 @@ function DiscreteOrderedUniformDist(
     n_opts = length(options)
 
     return DiscreteNonParametric(options, fill(1.0 / n_opts, n_opts))
-end
-
-struct CategoricalDistribution{T}
-    categories::Vector{T}
-    distribution::Categorical
-end
-
-"""
-    CategoricalDistribution(categories::Vector{T}, weights::Vector{Float64})::CategoricalDistribution{T} where T
-    CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where T
-    CategoricalDistribution(categories...)::CategoricalDistribution
-
-Construct a categorical variable. Default to a uniform cateforical variable if the 
-probability weightings are not provided.
-"""
-function CategoricalDistribution(categories::Vector{T}, weights::Vector{Float64})::CategoricalDistribution{T} where T
-    if length(unique(categories)) != length(categories)
-        throw(ArgumentError("Categories in a categorical variable must be unique."))
-    end
-    if length(categories) != length(weights)
-        msg = "Length of categories and weightings do not match."
-        msg *= " Got $(length(categories)) and $(length(weights))."
-        throw(ArgumentError(msg))
-    end
-    if !(sum(weights) ≈ 1) && all(weights .>= 0.0)
-        throw(ArgumentError("Weights must sum to one."))
-    end
-    return CategoricalDistribution(
-        categories,
-        Categorical(weights))
-end
-function CategoricalDistribution(categories::Vector{T})::CategoricalDistribution{T} where T
-    n_categories::Int64 = length(categories)
-    return CategoricalDistribution(categories, fill(1/n_categories, n_categories))
-end
-function CategoricalDistribution(categories...)::CategoricalDistribution
-    cats = collect(categories)
-    return CategoricalDistribution(cats)
-end
-
-function Distributions.quantile(dist::CategoricalDistribution{T}, q::Real)::T where T
-    underlying_idx::Int64 = Distributions.quantile(dist.distribution, q)
-    return dist.categories[underlying_idx]
-end
-
-"""
-    lower_bound(dist::CategoricalDistribution{T})::T where T <: Real
-
-Return the lower bound of the underlying categories if they are numerical.
-"""
-function lower_bound(dist::CategoricalDistribution{T})::T where T <: Real
-    return minimum(dist.categories)
-end
-"""
-    upper_bound(dist::CategoricalDistribution{T})::T where T <: Real
-
-Return the upper bound of the unerling categories if they are numerical.
-"""
-function upper_bound(dist::CategoricalDistribution{T})::T where T <: Real
-    return maximum(dist.categories)
 end
