@@ -489,6 +489,7 @@ end
 
 function _update_decision_method(dom, new_dist_params::Tuple)::Domain
     new_method_names::Vector{String} = collect(new_dist_params)
+
     # Get encoding method will throw if given params are not
     new_method_idxs = decision.decision_method_encoding.(new_method_names)
 

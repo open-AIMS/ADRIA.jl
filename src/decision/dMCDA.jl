@@ -21,7 +21,6 @@ using
     DataFrames,
     JMcDM
 
-
 const COUNTERFACTUAL_SCEN_ENCODING::Int64 = -1
 const UNGUIDED_SCEN_ENCODING::Int64 = 0
 
