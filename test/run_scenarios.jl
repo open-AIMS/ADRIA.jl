@@ -47,7 +47,7 @@ function test_rs()
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
 
     # Set min_iv_locations upper to 10 as this is the number of locations used in tests
-    dom = ADRIA.set_factor_bounds(dom, :min_iv_locations, (5.0, 10.0))
+    dom = ADRIA.set_factor_bounds!(dom, :min_iv_locations, (5.0, 10.0))
 
     # Create some scenarios
     # The number of scenarios set here seem to be the rough minimum for SIRUS to produce
