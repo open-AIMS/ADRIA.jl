@@ -180,12 +180,14 @@ function loc_area(domain::Domain)::Vector{Float64}
     return domain.loc_data.area
 end
 
+@deprecate site_k_area(dom) loc_k_area(dom)
+
 """
-    site_k_area(domain::Domain)::Vector{Float64}
+    loc_k_area(domain::Domain)::Vector{Float64}
 
 Get maximum coral cover area for the given domain in absolute area.
 """
-function site_k_area(domain::Domain)::Vector{Float64}
+function loc_k_area(domain::Domain)::Vector{Float64}
     return location_k(domain) .* loc_area(domain)
 end
 

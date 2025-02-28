@@ -15,7 +15,7 @@ using ADRIA: n_sizes, group_indices
 using FLoops
 using DataFrames
 
-using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, site_k_area, loc_area,
+using ADRIA: coral_spec, colony_mean_area, ResultSet, timesteps, loc_k_area, loc_area,
     planar_area_params
 
 abstract type Outcome end
@@ -96,7 +96,7 @@ function _total_absolute_cover(
     return relative_cover .* k_area'
 end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
-    return _total_absolute_cover(rs.outcomes[:relative_cover], site_k_area(rs))
+    return _total_absolute_cover(rs.outcomes[:relative_cover], loc_k_area(rs))
 end
 total_absolute_cover = Metric(
     _total_absolute_cover,
@@ -241,7 +241,7 @@ function _absolute_juveniles(
     return _relative_juveniles(X, coral_spec) .* k_area'
 end
 function _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real,3}
-    return rs.outcomes[:relative_juveniles] .* site_k_area(rs)'
+    return rs.outcomes[:relative_juveniles] .* loc_k_area(rs)'
 end
 absolute_juveniles = Metric(
     _absolute_juveniles,
