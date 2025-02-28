@@ -95,7 +95,7 @@ end
     solve(dp::T, dm::YAXArray, method::Function) where {T<:DecisionPreference}
 
 # Arguments
-- `dp` : DecisionPreferences
+- `dp` : DecisionPreference
 - `dm` : the decision matrix to assess
 - `method` : An MCDA method provided by the JMcDM package
 
