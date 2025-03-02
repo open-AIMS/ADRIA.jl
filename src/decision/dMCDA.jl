@@ -117,7 +117,8 @@ function weighted_projection(env_data, tstep, planning_horizon, decay, timeframe
 end
 
 """
-    summary_stat_env(env_layer::AbstractArray, dims::Union{Int64, Symbol, Tuple{Symbol, Symbol}}; w=0.5)::Vector{Float64}
+    summary_stat_env(env_layer::AbstractArray, dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)::Vector{Float64}
+    summary_stat_env(env_layer::Matrix{<:AbstractFloat}, dims::Int64; w=0.5)::Vector{Float64}
 
 Calculates weighted combinations of mean and standard deviation for a given environmental
 factor.
@@ -136,7 +137,20 @@ Where the time horizon == 1, the original values are returned.
 """
 function summary_stat_env(
     env_layer::AbstractArray,
-    dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
+    dims::Union{Symbol,Tuple{Symbol,Symbol}};
+    w=0.5
+)::Vector{Float64}
+    if size(env_layer, 1) > 1
+        return vec(
+            (mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w))
+        )
+    end
+
+    return vec(env_layer)
+end
+function summary_stat_env(
+    env_layer::Matrix{<:AbstractFloat},
+    dims::Int64;
     w=0.5
 )::Vector{Float64}
     if size(env_layer, 1) > 1
