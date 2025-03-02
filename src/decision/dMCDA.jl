@@ -180,14 +180,14 @@ end
 Vector of true/false indicating which years in simulation period to apply a decision.
 """
 function decision_frequency(
-    start_year::Int64, timeframe::Int64, n_years::Int64, freq::Union{Float64,Int64}
+    start_year::Int64, timeframe::Int64, n_years::Int64, freq::Int64
 )::Vector{Bool}
     freq_timeframe = fill(false, timeframe)
 
     start_year = max(start_year, 2)
     if freq > 0
         max_consider = min(start_year + n_years - 1, timeframe)
-        freq_timeframe[start_year:Int64(freq):max_consider] .= true
+        freq_timeframe[start_year:freq:max_consider] .= true
     else
         # Start at year 2 or the given specified start year
         freq_timeframe[start_year] = true
@@ -221,7 +221,7 @@ function unguided_selection(
     k_area::Vector{Float64},
     depth::BitVector
 )::Vector{<:Union{Symbol,String,Int64}}
-    # Filter down to site ids to be considered
+    # Filter down to location ids to be considered
     candidate_locs = findall((k_area .> 0.0) .& depth)
     n_locs = length(candidate_locs)
     s_iv_locs = n_locs < n_iv_locs ? n_locs : n_iv_locs
