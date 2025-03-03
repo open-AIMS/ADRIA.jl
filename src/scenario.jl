@@ -133,10 +133,10 @@ function run_scenarios(
         ) for _ in 1:n_locs
     ]
 
-    para_threshold =
+    para_threshold::Int64 =
         ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
     active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
-    parallel =
+    parallel::Bool =
         (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (active_cores > 1) &&
         (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
