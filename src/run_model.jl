@@ -625,13 +625,8 @@ function recruitment_phase!(
         ] ./ habitable_area[:, ctx.habitable_locs]
 
     # Calculate transition probability matrix
-    TP_data = conn ./ sum(conn; dims=1)
-    replace!(TP_data, NaN => 0)
-
-    # Calculate fecundity parameters
-    fec_params_per_m² = _to_group_size(
-        ctx.domain.coral_growth, ctx.corals.fecundity
-    )
+    TP_data::YAXArray{Float64,2} = conn ./ sum(conn; dims=1)
+    replace!(TP_data, NaN => 0.0)
 
     # Update settler DHW tolerance
     settler_DHW_tolerance!(
@@ -640,7 +635,7 @@ function recruitment_phase!(
         vec_abs_k,
         TP_data,  # Pass transition probability matrix, not connectivity
         ctx.recruitment,
-        fec_params_per_m²,
+        ctx.fec_params_per_m²,
         ctx.param_set[At("heritability")]
     )
 
