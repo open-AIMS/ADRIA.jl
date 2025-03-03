@@ -487,10 +487,14 @@ function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
     return ms[ms.fieldname .== factor, attr][1]
 end
 
+"""
+    _update_decision_method!(dom, new_dist_params::Tuple)::Domain
+
+Update the model spec with the tuple of DMCA methods to use.
+"""
 function _update_decision_method!(dom, new_dist_params::Tuple)::Domain
     new_method_names::Vector{String} = collect(new_dist_params)
 
-    # Get encoding method will throw if given params are not
     new_method_idxs = decision.decision_method_encoding.(new_method_names)
 
     ms = model_spec(dom)
