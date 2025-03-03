@@ -83,7 +83,6 @@ mutable struct SimulationContext
     dhw_tol_mean_log::Array{Float64,3}
 
     # Caches and temporary variables
-    cache::Any
     dhw_t::Vector{Float64}
     C_cover_t::Array{Float64,3}
     ΔC_cover_t::Array{Float64,3}
