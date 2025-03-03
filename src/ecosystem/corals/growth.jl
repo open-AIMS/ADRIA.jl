@@ -104,52 +104,6 @@ function proportional_adjustment!(
 end
 
 """
-    growthODE(du, X, p, _)
-
-Base coral growth function.
-
-Proportion of corals within a size class are modeled to transition to the
-next size class up. Assumes colony sizes are evenly distributed within each
-size bin. Transitions are a ratio of the change in colony size to the width
-of the bin. See `coral_spec()` for further detail.
-
-Note that recruitment pertains to coral groups (\$n = 6\$) and represents
-the contribution to the cover of the smallest size class within each
-group.  While growth and mortality metrics pertain to groups (6) as well
-as size classes (6) across all sites (total of 36 by \$n_locs\$), recruitment is
-a 6 by \$n_locs\$ array.
-"""
-function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, t::Real)::Nothing
-    # Indices
-    # small = [1, 7, 13, 19, 25, 31]
-    # mid = [2:5; 8:11; 14:17; 20:23; 26:29; 32:35]
-    # large = [6, 12, 18, 24, 30, 36]
-
-    # sXr : available space (sigma) * current cover (X) * growth rate (r)
-    # X_mb : current cover (X) * background mortality (mb)
-    p.X_mb .= X .* p.mb
-    p.sXr .= (max.(1.0 .- sum(X; dims=1), 0.0) .* X .* p.r)
-
-    # For each size class, we determine the corals coming into size class due to growth,
-    # and subtract those leaving the size class due to growth and background mortality
-    # e.g., C = [corals coming in] - [corals going out]
-    #
-    # In most cases, this takes the form of:
-    # C = [growth from smaller size class - mortality of smaller size class] -
-    #     [growth to next size class + mortality of current size class]
-    #
-    # The smallest size class only has corals leaving the size class.
-    @views @. du[p.small, :] = -(p.sXr[p.small, :] + p.X_mb[p.small, :])
-    @views @. du[p.mid, :] =
-        (p.sXr[p.mid - 1, :] - p.X_mb[p.mid - 1, :]) - (p.sXr[p.mid, :] + p.X_mb[p.mid, :])
-    @views @. du[p.large, :] =
-        (p.sXr[p.large - 1, :] - p.X_mb[p.large - 1, :]) +
-        (p.sXr[p.large, :] - p.X_mb[p.large, :])
-
-    return nothing
-end
-
-"""
     depth_coefficient(d::Union{Int64,Float64})::Float64
 
 Model by Baird et al., [1] providing an indication of a relationship between bleaching
@@ -253,9 +207,6 @@ function bleaching_mortality!(Y::AbstractArray{Float64,2},
 end
 
 """
-    bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
-        depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix,
-        dist_t::Matrix, prop_mort::SubArray{Float64}, n_sizes::Int64)::Nothing
     bleaching_mortality!(cover::AbstractArray{Float64, 3}, dhw::Vector{Float64},
         depth_coeff::Vector{Float64}, stdev::AbstractMatrix{Float64},
         dist_t_1::AbstractArray{Float64, 3}, dist_t::AbstractArray{Float64, 3},
@@ -313,74 +264,6 @@ Function. Bleaching mortality is then estimated with a depth-adjusted coefficien
    Marine Ecology Progress Series, 603, 257-264.
    https://doi.org/10.3354/meps12732
 """
-function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
-    depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix{Float64},
-    dist_t::Matrix{Float64}, prop_mort::SubArray{Float64}, n_sizes::Int64
-)::Nothing
-    n_sp_sc, n_locs = size(cover)
-
-    # Determine non-juvenile size classes.
-    # First three of each functional group are the juvenile size classes
-    # TODO: Should be a shared parameter set somewhere else...
-    group_and_sizes = 1:n_sp_sc
-    # juveniles = sort!(vec(
-    #     [group_and_sizes[1:n_sizes:end]
-    #      group_and_sizes[2:n_sizes:end]
-    #      group_and_sizes[3:n_sizes:end]]
-    # ))
-    juveniles = group_and_sizes[1:n_sizes:end]
-    non_juveniles = setdiff(group_and_sizes, juveniles)
-
-    # Adjust distributions for each functional group over all locations, ignoring juveniles
-    # we assume the high background mortality of juveniles includes DHW mortality
-    for loc in 1:n_locs
-        # Skip locations that have no heat stress
-        if dhw[loc] == 0.0
-            continue
-        end
-
-        # Determine bleaching mortality for each non-juvenile species/size class
-        for sp_sc in non_juveniles
-            # Skip location if there is no population
-            if cover[sp_sc, loc] == 0.0
-                continue
-            end
-
-            μ::Float64 = dist_t_1[sp_sc, loc]
-            affected_pop::Float64 = truncated_normal_cdf(
-                # Use previous mortality threshold as minimum
-                dhw[loc], μ, stdev[sp_sc], prop_mort[1, sp_sc, loc], μ + HEAT_UB
-            )
-
-            mort_pop::Float64 = 0.0
-            if affected_pop > 0.0
-                # Calculate depth-adjusted bleaching mortality
-                mort_pop = (affected_pop * depth_coeff[loc])
-
-                # Set values close to 0.0 (e.g., 1e-214) to 0.0
-                # https://github.com/JuliaLang/julia/issues/23376#issuecomment-324649815
-                if (mort_pop + one(mort_pop)) ≈ one(mort_pop)
-                    mort_pop = 0.0
-                end
-            end
-
-            prop_mort[2, sp_sc, loc] = mort_pop
-            if mort_pop > 0.0
-                # Re-create distribution
-                # Use same stdev as target size class to maintain genetic variance
-                # pers comm K.B-N (2023-08-09 16:24 AEST)
-                dist_t[sp_sc, loc] = truncated_normal_mean(
-                    μ, stdev[sp_sc], mort_pop, μ + HEAT_UB
-                )
-
-                # Update population
-                cover[sp_sc, loc] = cover[sp_sc, loc] * (1.0 - mort_pop)
-            end
-        end
-    end
-
-    return nothing
-end
 function bleaching_mortality!(
     cover::AbstractArray{Float64,3},
     dhw::Vector{Float64},
@@ -473,12 +356,12 @@ end
     _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{F})::Nothing where {F<:Float64}
 
 Combines distributions between size classes > 1 to represent the shifts that occur as each
-size class grows. Priors for the distributions are based on proportional cover and the
+size class grows. Weights for the distributions are based on proportional cover and the
 assumed growth rates for each size class.
 
 i.e., \$(w_{i+1,1}, w_{i+1,2}) := (c_{i-1,i} / sum(c_{i-1,i})) * (g_{i-1,i} / sum(g_{i-1,i}))\$
 
-where \$w\$ are the weights/priors and \$g\$ is the growth rates.
+where \$w\$ are the weights and \$g\$ is the growth rates.
 
 # Arguments
 - `cover` : Coral cover for \$t-1\$
@@ -514,8 +397,12 @@ function _shift_distributions!(
 end
 
 """
-    adjust_DHW_distribution!(cover::SubArray{F}, n_sizes::Int64, dist_t::Matrix{F},
-        growth_rate::Matrix{F})::Nothing where {F<:Float64}
+    adjust_DHW_distribution!(
+        cover::SubArray{F},
+        n_sizes::Int64,
+        dist_t::Matrix{F},
+        growth_rate::Matrix{F}
+    )::Nothing where {F<:Float64}
 
 Adjust critical DHW thresholds for a given group/size class distribution as mortalities
 affect the distribution over time, and corals mature (moving up size classes).
