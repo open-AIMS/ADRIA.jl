@@ -601,50 +601,6 @@ function fecundity_scope!(
 end
 
 """
-    stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
-
-Estimate how scope for larval production by each coral type changes as a
-function of last year's heat stress. The function is theoretical and is not
-yet verified by data.
-
-Stressed Fecundity (sf) is based on the proportion of baseline fecundity
-that is unaffected by heat stress in the previous year - e.g., a value
-of 0.9 inside sf(i, j) indicates that species i at site j can only produce
-90% of its usual larval output.
-
-# Arguments
-- `tstep` : Current time step
-- `a_adapt` : DHW reduction of enhanced corals
-- `n_adapt` : DHWs reduction (linearly scales with `tstep`)
-- `stresspast` : DHW at previous time step for each site
-- `LPdhwcoeff` :
-- `DHWmaxtot` : Maximum DHW
-- `LPDprm2` : Larval production parameter 2
-- `n_groups` : Number of groups
-
-# Returns
-`sf` : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
-"""
-function stressed_fecundity(tstep::Int64, a_adapt::Vector{T}, n_adapt::T,
-    stresspast::Vector{T}, LPdhwcoeff::T, DHWmaxtot::T, LPDprm2::T, n_groups::Int64
-)::Matrix{T} where {T<:Float64}
-    ad::Vector{Float64} = @. a_adapt + tstep * n_adapt
-
-    # using half of DHWmaxtot as a placeholder
-    # for the maximum capacity for thermal adaptation
-    tmp_ad::Vector{Float64} = @. (1.0 - (ad / (DHWmaxtot / 2.0)))
-
-    # One way around dimensional issue - tmp_ad for each class as the averaged
-    # of the enhanced and unenhanced corals in that class
-    # KA note: this works as it averages over size classes and not across groups.
-    tmp_ad2::Vector{Float64} = vec(
-        mean(reshape(tmp_ad, Int64(length(tmp_ad) / n_groups), n_groups); dims=1)
-    )
-
-    return 1.0 .- exp.(.-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2 .- LPDprm2))))
-end
-
-"""
     settler_density(α, β, L)
 
 Density potential for settlers estimated with a Beverton-Holt (B-H) function, following [1]
