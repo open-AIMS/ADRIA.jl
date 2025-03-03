@@ -27,7 +27,7 @@ mutable struct RMEDomain <: AbstractReefModDomain
     const loc_id_col::String
     const cluster_id_col::String
     init_coral_cover::YAXArray{Float64}
-    const coral_growth::CoralGrowth
+    const coral_growth::CoralDetails
     const loc_ids::Vector{String}
     dhw_scens::YAXArray{Float64}
 
@@ -282,25 +282,23 @@ function load_domain(
         GrowthAcceleration()
     ))
 
-    return adjust_sampling_bounds(
-        RMEDomain(
-            "ReefMod Engine",
-            RCP,
-            env_md,
-            "",
-            conn_data,
-            spatial_data,
-            reef_id_col,
-            cluster_id_col,
-            init_coral_cover,
-            CoralGrowth(nrow(spatial_data)),
-            reef_ids,
-            dhw_scens,
-            wave_scens,
-            cyc_scens,
-            model,
-            SimConstants()
-        )
+    return RMEDomain(
+        "ReefMod Engine",
+        RCP,
+        env_md,
+        "",
+        conn_data,
+        spatial_data,
+        reef_id_col,
+        cluster_id_col,
+        init_coral_cover,
+        CoralDetails(nrow(spatial_data)),
+        reef_ids,
+        dhw_scens,
+        wave_scens,
+        cyc_scens,
+        model,
+        SimConstants()
     )
 end
 

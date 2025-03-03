@@ -52,7 +52,7 @@ include("factors/const_params.jl")
 
 include("ecosystem/corals/coral_factors.jl")
 include("ecosystem/corals/growth.jl")
-include("ecosystem/corals/CoralGrowth.jl")
+include("ecosystem/corals/CoralDetails.jl")
 include("ecosystem/Ecosystem.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/corals/GrowthAcceleration.jl")
