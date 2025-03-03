@@ -311,14 +311,25 @@ end
     switch_RCPs!(d::Domain, RCP::String)::Domain
 
 Switch environmental datasets to represent the given RCP.
+
+# Examples
+```julia
+dom = ADRIA.load_domain(<path to domain>, "45")
+
+@info dom.RCP
+# "45"
+
+ADRIA.switch_RCPs!(dom, "85")
+@info dom.RCP
+# "85"
+```
 """
 function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
-    @set! d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
-    @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
-    @set! d.RCP = RCP
+    d.env_layer_md.DHW_fn = get_DHW_data(d, RCP)
+    d.env_layer_md.wave_fn = get_wave_data(d, RCP)
+    d.RCP = RCP
 
-    @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw")
-    # @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub")
+    d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw")
 
     return d
 end
