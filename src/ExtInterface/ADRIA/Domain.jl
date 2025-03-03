@@ -22,7 +22,7 @@ mutable struct ADRIADomain <: Domain
     const loc_id_col::String  # column to use as location ids, also used by the connectivity dataset (indicates order of `conn`)
     const cluster_id_col::String  # column of unique cluster ids
     init_coral_cover::YAXArray  # initial coral cover dataset
-    const coral_growth::CoralGrowth  # coral
+    const coral_growth::CoralDetails  # coral
     const loc_ids::Vector{String}  # Location IDs that are represented (i.e., subset of loc_data[:, location_id_col], after missing locations are filtered)
     const removed_locs::Vector{String}  # indices of locations that were removed. Used to align loc_data, DHW, connectivity, etc.
     dhw_scens::YAXArray  # DHW scenarios
@@ -46,7 +46,7 @@ function Domain(
     location_id_col::String,
     cluster_id_col::String,
     init_coral_cover::YAXArray,
-    coral_growth::CoralGrowth,
+    coral_growth::CoralDetails,
     location_ids::Vector{String},
     removed_locations::Vector{String},
     DHW::YAXArray,
@@ -177,7 +177,7 @@ function Domain(
 
     n_locs::Int64 = nrow(location_data)
     n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
-    coral_growth::CoralGrowth = CoralGrowth(n_locs, n_groups, n_sizes)
+    coral_growth::CoralDetails = CoralDetails(n_groups, n_sizes)
     n_group_and_size = coral_growth.n_group_and_size
 
     # Load initial coral cover relative to k area

@@ -22,7 +22,7 @@ mutable struct ReefModDomain <: AbstractReefModDomain
     const loc_id_col
     const cluster_id_col
     init_coral_cover
-    const coral_growth::CoralGrowth
+    const coral_growth::CoralDetails
     const loc_ids
     dhw_scens
 
@@ -172,7 +172,7 @@ function load_domain(
         reef_id_col,
         cluster_id_col,
         init_coral_cover,
-        CoralGrowth(nrow(spatial_data)),
+        CoralDetails(nrow(spatial_data)),
         location_ids,
         dhw_scens,
         wave_scens,

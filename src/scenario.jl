@@ -40,12 +40,12 @@ function _reshape_init_cover(
 end
 
 """
-    _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+    _to_group_size(growth_spec::CoralDetails, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
 
 Reshape vector to shape [functional_groups ⋅ sizes]
 """
 function _to_group_size(
-    growth_spec::CoralGrowth, data::AbstractVector{T}
+    growth_spec::CoralDetails, data::AbstractVector{T}
 )::Matrix{T} where {T<:Union{AbstractFloat,Bool}}
     # Data is reshaped to size ⋅ groups then transposed to maintain expected order
     return Matrix(reshape(data, (growth_spec.n_sizes, growth_spec.n_groups))')
@@ -121,7 +121,7 @@ function run_scenarios(
     #
     # This is also forced me to added an argument to run_model which breaks
     # encapsulation, so its quite ugly
-    n_locs::Int64 = dom.coral_growth.n_locs
+    n_locs::Int64 = n_locations(dom)
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
     _bin_edges::Matrix{Float64} = bin_edges()
