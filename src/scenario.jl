@@ -356,11 +356,6 @@ function run_scenario(
     vals[vals .< threshold] .= 0.0
     data_store.coral_evenness[:, :, idx] .= vals
 
-    # Store raw results if no metrics specified
-    # if length(metrics) == 0
-    #     data_store.raw[:, :, :, idx] .= r.raw
-    # end
-
     # Store logs
     c_dim = Base.ndims(result_set.raw) + 1
     log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log)
