@@ -1,9 +1,9 @@
 """
-    CoralDetails(n_locs::Integer, n_groups::Integer, n_sizes::Integer, ode_p::NamedTuple)
+    CoralDetails{A<:Int64}
 
-Coral details of locations, groups, sizesspecification for growth ODE model.
+Convenience store of coral groups and size classes.
 """
-struct CoralDetails{A<:Int}
+struct CoralDetails{A<:Int64}
     n_groups::A
     n_sizes::A
     n_group_and_size::A
