@@ -25,7 +25,7 @@ mutable struct RMEDomain <: AbstractReefModDomain
     const loc_id_col::String
     const cluster_id_col::String
     init_coral_cover::YAXArray{Float64}
-    const coral_growth::CoralGrowth
+    const coral_growth::CoralDetails
     const loc_ids::Vector{String}
     dhw_scens::YAXArray{Float64}
 
@@ -231,7 +231,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
         reef_id_col,
         cluster_id_col,
         init_coral_cover,
-        CoralGrowth(nrow(spatial_data)),
+        CoralDetails(nrow(spatial_data)),
         reef_ids,
         dhw_scens,
         wave_scens,
