@@ -22,7 +22,7 @@ mutable struct ReefModDomain <: AbstractReefModDomain
     const loc_id_col
     const cluster_id_col
     init_coral_cover
-    const coral_growth::CoralDetails
+    const coral_details::CoralDetails
     const loc_ids
     dhw_scens
 
