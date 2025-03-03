@@ -389,7 +389,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             if d == :timesteps
                 append!(dl, tf)
             elseif d == :species
-                append!(dl, domain.coral_growth.n_groups)
+                append!(dl, domain.coral_details.n_groups)
             elseif d == :locations
                 append!(dl, n_locations)
             elseif d == :scenarios
@@ -491,7 +491,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     end
     stat_store_names = vcat(dhw_stat_names, wave_stat_names)
 
-    n_group_and_size::Int64 = domain.coral_growth.n_group_and_size
+    n_group_and_size::Int64 = domain.coral_details.n_group_and_size
     # Group all data stores
     stores = [
         stores...,

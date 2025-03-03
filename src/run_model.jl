@@ -126,9 +126,9 @@ function initialize_context!(ctx::SimulationContext)
     # Set up simulation constants
     ctx.tf = size(ctx.dhw_scen, 1)
     ctx.n_locs = n_locations(ctx.domain)
-    ctx.n_groups = ctx.domain.coral_growth.n_groups
-    ctx.n_sizes = ctx.domain.coral_growth.n_sizes
-    ctx.n_group_and_size = ctx.domain.coral_growth.n_group_and_size
+    ctx.n_groups = ctx.domain.coral_details.n_groups
+    ctx.n_sizes = ctx.domain.coral_details.n_sizes
+    ctx.n_group_and_size = ctx.domain.coral_details.n_group_and_size
 
     # Initialize habitat information
     initialize_habitat_data!(ctx)
@@ -147,11 +147,11 @@ function initialize_context!(ctx::SimulationContext)
 
     # Initialize coral fecundity parameters
     ctx.fec_params_per_m² = _to_group_size(
-        ctx.domain.coral_growth, ctx.corals.fecundity
+        ctx.domain.coral_details, ctx.corals.fecundity
     )
 
     ctx.linear_extensions = _to_group_size(
-        ctx.domain.coral_growth, ctx.corals.linear_extension
+        ctx.domain.coral_details, ctx.corals.linear_extension
     )
 
     ctx.bin_edges = bin_edges()
@@ -304,14 +304,14 @@ function initialize_seeding_parameters!(ctx::SimulationContext, taxa_names::Vect
     taxa_to_seed = [2, 3, 5]
     target_class_id = ctx.corals.class_id .== 1
     ctx.seed_sc = _to_group_size(
-        ctx.domain.coral_growth,
+        ctx.domain.coral_details,
         (ctx.corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id
     )
 
     # Extract colony areas and determine approximate seeded area in m^2
     seed_volume = ctx.param_set[At(taxa_names)]
     colony_areas = _to_group_size(
-        ctx.domain.coral_growth,
+        ctx.domain.coral_details,
         colony_mean_area(ctx.corals.mean_colony_diameter_m)
     )
     ctx.max_seeded_area = colony_areas[ctx.seed_sc] .* seed_volume
@@ -322,7 +322,7 @@ function initialize_seeding_parameters!(ctx::SimulationContext, taxa_names::Vect
 
     # Enhance from mean of "natural" DHW tolerance
     ctx.a_adapt[ctx.a_adapt .> 0.0] .+= _to_group_size(
-        ctx.domain.coral_growth, ctx.corals.dist_mean
+        ctx.domain.coral_details, ctx.corals.dist_mean
     )[ctx.a_adapt .> 0.0]
 
     # Calculate total area to seed
@@ -385,10 +385,10 @@ function initialize_result_matrices!(ctx::SimulationContext)::Nothing
 
     # Set up distributions for natural adaptation/heritability
     ctx.c_mean_t_1 = repeat(
-        _to_group_size(ctx.domain.coral_growth, ctx.corals.dist_mean),
+        _to_group_size(ctx.domain.coral_details, ctx.corals.dist_mean),
         1, 1, n_locs
     )
-    ctx.c_std = _to_group_size(ctx.domain.coral_growth, ctx.corals.dist_std)
+    ctx.c_std = _to_group_size(ctx.domain.coral_details, ctx.corals.dist_std)
     ctx.c_mean_t = copy(ctx.c_mean_t_1)
 
     # Initialize intermediate/tracking arrays
@@ -461,7 +461,7 @@ function growth_phase!(ctx::SimulationContext, tstep::Int64)::Nothing
     lin_ext_scale_factors = calculate_linear_extension_factors(ctx)
 
     # Perform timestep for each location
-    coral_growth!(ctx, tstep, lin_ext_scale_factors)
+    coral_details!(ctx, tstep, lin_ext_scale_factors)
 
     # Convert C_cover_t to relative values after CoralBlox was run
     ctx.C_cover_t[:, :, ctx.habitable_locs] .= (
@@ -502,12 +502,12 @@ function calculate_linear_extension_factors(ctx::SimulationContext)
 end
 
 """
-    coral_growth!(ctx::SimulationContext, tstep::Int64, lin_ext_scale_factors::Vector{Float64})
+    coral_details!(ctx::SimulationContext, tstep::Int64, lin_ext_scale_factors::Vector{Float64})
 
 Perform growth calculations for all locations.
 """
-function coral_growth!(ctx::SimulationContext, tstep::Int64, lin_ext_scale_factors::Vector{Float64})
-    survival_rate = 1.0 .- _to_group_size(ctx.domain.coral_growth, ctx.corals.mb_rate)
+function coral_details!(ctx::SimulationContext, tstep::Int64, lin_ext_scale_factors::Vector{Float64})
+    survival_rate = 1.0 .- _to_group_size(ctx.domain.coral_details, ctx.corals.mb_rate)
 
     @floop for i in ctx.habitable_loc_idxs
         # Perform timestep
@@ -979,10 +979,10 @@ end
 Core scenario running function.
 """
 function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})::NamedTuple
-    n_locs = domain.coral_growth.n_locs
-    n_sizes = domain.coral_growth.n_sizes
-    n_groups = domain.coral_growth.n_groups
-    _bin_edges = bin_edges()
+    n_locs = domain.coral_details.n_locs
+    n_sizes = domain.coral_details.n_sizes
+    n_groups = domain.coral_details.n_groups
+    _bin_edges = bin_edges()  # TODO: Move to CoralDetails
     functional_groups = Vector{FunctionalGroup}[
         FunctionalGroup.(
             eachrow(_bin_edges[:, 1:(end - 1)]),
