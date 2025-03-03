@@ -468,12 +468,12 @@ function adjust_DHW_distribution!(
 end
 
 function settler_DHW_tolerance!(
-    c_mean_t_1::AbstractArray{F,3},
-    c_mean_t::AbstractArray{F,3},
+    c_mean_t_1::Array{F,3},
+    c_mean_t::Array{F,3},
     k_area::Vector{F},
-    tp::AbstractMatrix{F},
-    settlers::AbstractMatrix{F},
-    fec_params_per_m²::AbstractMatrix{F},
+    tp::YAXArray{F,2,Matrix{F}},
+    settlers::Matrix{F},
+    fec_params_per_m²::Matrix{F},
     h²::F
 )::Nothing where {F<:Float64}
     groups, sizes, _ = axes(c_mean_t_1)
@@ -691,7 +691,7 @@ function settler_cover(
     potential_settlers::T,
     valid_sources::BitVector,
     valid_sinks::BitVector
-)::T where {T<:AbstractMatrix{Float64},V<:Vector{Float64}}
+)::Matrix{Float64} where {T<:AbstractMatrix{Float64},V<:Vector{Float64}}
 
     # Determine active sources and sinks
     valid_sources .= dropdims(sum(conn.data; dims=2) .> 0.0; dims=2)
