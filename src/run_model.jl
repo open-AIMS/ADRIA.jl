@@ -449,9 +449,12 @@ function growth_phase!(ctx::SimulationContext, tstep::Int64)::Nothing
     # IMPORTANT: Update functional groups with current cover state
     cover_view = [@view ctx.C_cover[tstep-1, :, :, loc] for loc in 1:(ctx.n_locs)]
     vec_abs_k = ctx.habitable_area[1, :]
-    ctx.functional_groups = reuse_buffers!.(
-        ctx.functional_groups, (cover_view .* vec_abs_k)
-    )
+    for i in 1:length(ctx.functional_groups)
+        ctx.functional_groups[i] = reuse_buffers!(
+            ctx.functional_groups[i],
+            cover_view[i] * vec_abs_k[i]
+        )
+    end
 
     # Settlers from t-1 grow into observable sizes
     ctx.C_cover_t[:, 1, ctx.habitable_locs] .+= ctx.recruitment
