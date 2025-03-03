@@ -58,7 +58,8 @@ function ResultSet(
     model_spec::DataFrame
 )::ResultSet
     rcp = "RCP" in keys(input_set.attrs) ? input_set.attrs["RCP"] : input_set.attrs["rcp"]
-    return ADRIAResultSet(input_set.attrs["name"],
+    return ADRIAResultSet(
+        input_set.attrs["name"],
         string(rcp),
         input_set.attrs["invoke_time"],
         input_set.attrs["ADRIA_VERSION"],
