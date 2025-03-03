@@ -8,9 +8,14 @@ Holds the state during a model run, separating the data flow from processing log
 mutable struct SimulationContext
     # Domain data
     domain::Domain
+
+    # Scenario factors/settings
     param_set::YAXArray
+
+    # Coral parameters
     corals::DataFrame
     functional_groups::Vector{Vector{FunctionalGroup}}
+    fec_params_per_m²::Matrix{AbstractFloat}
 
     # Environmental scenarios
     dhw_scen::YAXArray
@@ -135,6 +140,11 @@ function initialize_context!(ctx::SimulationContext)
     cover_view = [@view ctx.C_cover[1, :, :, loc] for loc in 1:(ctx.n_locs)]
     ctx.functional_groups = reuse_buffers!.(
         ctx.functional_groups, (cover_view .* loc_k_area(ctx.domain))
+    )
+
+    # Initialize coral fecundity parameters
+    ctx.fec_params_per_m² = _to_group_size(
+        ctx.domain.coral_growth, ctx.corals.fecundity
     )
 
     # Set up derived parameters
@@ -389,15 +399,11 @@ function initialize_result_matrices!(ctx::SimulationContext)::Nothing
 end
 
 """
-    simulation_step!(
-        ctx::SimulationContext, fec_params_per_m²::Matrix{T}
-    ) where {T<:Union{AbstractFloat,Bool}}
+    simulation_step!(ctx::SimulationContext)::SimulationContext
 
 Perform one time step of the simulation.
 """
-function simulation_step!(
-    ctx::SimulationContext, fec_params_per_m²::Matrix{T}
-) where {T<:Union{AbstractFloat,Bool}}
+function simulation_step!(ctx::SimulationContext)::SimulationContext
     tstep = ctx.current_tstep + 1
 
     # Run growth stage
@@ -407,7 +413,7 @@ function simulation_step!(
     adaptation_phase!(ctx, tstep)
 
     # Run reproduction phase
-    leftover_space_m² = reproduction_phase!(ctx, fec_params_per_m²)
+    leftover_space_m² = reproduction_phase!(ctx)
 
     # Run intervention phases (shading, fogging, seeding)
     intervention_phases!(ctx, tstep, leftover_space_m²)
@@ -547,16 +553,14 @@ function adaptation_phase!(ctx::SimulationContext, tstep::Int64)
 end
 
 """
-    reproduction_phase!(ctx::SimulationContext, tstep::Int64)
+    reproduction_phase!(ctx::SimulationContext)::Vector{Float64}
 
 Perform the coral reproduction and settlement phase.
 """
-function reproduction_phase!(
-    ctx::SimulationContext, fec_params_per_m²::Matrix{T}
-) where {T<:Union{AbstractFloat,Bool}}
+function reproduction_phase!(ctx::SimulationContext)::Vector{Float64}
     # Calculate fecundity scope
     fecundity_scope!(
-        ctx.fec_scope, ctx.fec_all, fec_params_per_m², ctx.C_cover_t, ctx.habitable_area
+        ctx.fec_scope, ctx.fec_all, ctx.fec_params_per_m², ctx.C_cover_t, ctx.habitable_area
     )
 
     # Calculate leftover space
@@ -1007,15 +1011,9 @@ function run_model(
     ctx = SimulationContext(domain, param_set, functional_groups)
     initialize_context!(ctx)
 
-    # Get fecundity parameters
-    fec_params_per_m² = _to_group_size(
-        ctx.domain.coral_growth, ctx.corals.fecundity
-    )
-
     # Run simulation for all time steps
     for _ in 2:(ctx.tf)
-        # Run one simulation step
-        simulation_step!(ctx, fec_params_per_m²)
+        simulation_step!(ctx)
     end
 
     # Process and return results
