@@ -15,7 +15,10 @@ mutable struct SimulationContext
     # Coral parameters
     corals::DataFrame
     functional_groups::Vector{Vector{FunctionalGroup}}
-    fec_params_per_m²::Matrix{AbstractFloat}
+    fec_params_per_m²::Matrix{Float64}
+    linear_extensions::Matrix{Float64}
+    bin_edges::Matrix{Float64}
+    growth_rate::Matrix{Float64}
 
     # Environmental scenarios
     dhw_scen::YAXArray
@@ -122,7 +125,7 @@ function initialize_context!(ctx::SimulationContext)
 
     # Set up simulation constants
     ctx.tf = size(ctx.dhw_scen, 1)
-    ctx.n_locs = ctx.domain.coral_growth.n_locs
+    ctx.n_locs = n_locations(ctx.domain)
     ctx.n_groups = ctx.domain.coral_growth.n_groups
     ctx.n_sizes = ctx.domain.coral_growth.n_sizes
     ctx.n_group_and_size = ctx.domain.coral_growth.n_group_and_size
@@ -146,6 +149,13 @@ function initialize_context!(ctx::SimulationContext)
     ctx.fec_params_per_m² = _to_group_size(
         ctx.domain.coral_growth, ctx.corals.fecundity
     )
+
+    ctx.linear_extensions = _to_group_size(
+        ctx.domain.coral_growth, ctx.corals.linear_extension
+    )
+
+    ctx.bin_edges = bin_edges()
+    ctx.growth_rate = growth_rate(ctx.linear_extensions, bin_widths())
 
     # Set up derived parameters
     ctx.current_tstep = 1
@@ -467,16 +477,11 @@ end
 Calculate linear extension scale factors for coral growth.
 """
 function calculate_linear_extension_factors(ctx::SimulationContext)
-    # Get linear extensions and bin edges
-    _linear_extensions = _to_group_size(
-        ctx.domain.coral_growth, ctx.corals.linear_extension
-    )
-    _bin_edges = bin_edges()
 
     # Calculate max projected cover
     habitable_max_projected_cover = max_projected_cover(
-        _linear_extensions,
-        _bin_edges,
+        ctx.linear_extensions,
+        ctx.bin_edges,
         ctx.habitable_loc_areas
     )
 
@@ -484,8 +489,8 @@ function calculate_linear_extension_factors(ctx::SimulationContext)
     lin_ext_scale_factors = linear_extension_scale_factors(
         ctx.C_cover_t[:, :, ctx.habitable_locs],
         ctx.habitable_loc_areas,
-        _linear_extensions,
-        _bin_edges,
+        ctx.linear_extensions,
+        ctx.bin_edges,
         habitable_max_projected_cover
     )
 
@@ -502,10 +507,6 @@ end
 Perform growth calculations for all locations.
 """
 function coral_growth!(ctx::SimulationContext, tstep::Int64, lin_ext_scale_factors::Vector{Float64})
-    # Get needed parameters
-    _linear_extensions = _to_group_size(
-        ctx.domain.coral_growth, ctx.corals.linear_extension
-    )
     survival_rate = 1.0 .- _to_group_size(ctx.domain.coral_growth, ctx.corals.mb_rate)
 
     @floop for i in ctx.habitable_loc_idxs
@@ -513,7 +514,7 @@ function coral_growth!(ctx::SimulationContext, tstep::Int64, lin_ext_scale_facto
         timestep!(
             ctx.functional_groups[i],
             ctx.recruitment[:, i],
-            _linear_extensions .* lin_ext_scale_factors[i],
+            ctx.linear_extensions .* lin_ext_scale_factors[i],
             survival_rate
         )
 
