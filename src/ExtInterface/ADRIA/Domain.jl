@@ -22,7 +22,7 @@ mutable struct ADRIADomain <: Domain
     const loc_id_col::String  # column to use as location ids, also used by the connectivity dataset (indicates order of `conn`)
     const cluster_id_col::String  # column of unique cluster ids
     init_coral_cover::YAXArray  # initial coral cover dataset
-    const coral_growth::CoralDetails  # coral
+    const coral_details::CoralDetails  # coral
     const loc_ids::Vector{String}  # Location IDs that are represented (i.e., subset of loc_data[:, location_id_col], after missing locations are filtered)
     const removed_locs::Vector{String}  # indices of locations that were removed. Used to align loc_data, DHW, connectivity, etc.
     dhw_scens::YAXArray  # DHW scenarios
@@ -46,7 +46,7 @@ function Domain(
     location_id_col::String,
     cluster_id_col::String,
     init_coral_cover::YAXArray,
-    coral_growth::CoralDetails,
+    coral_details::CoralDetails,
     location_ids::Vector{String},
     removed_locations::Vector{String},
     DHW::YAXArray,
@@ -76,7 +76,7 @@ function Domain(
         location_id_col,
         cluster_id_col,
         init_coral_cover,
-        coral_growth,
+        coral_details,
         location_ids,
         removed_locations,
         DHW,
@@ -177,8 +177,8 @@ function Domain(
 
     n_locs::Int64 = nrow(location_data)
     n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
-    coral_growth::CoralDetails = CoralDetails(n_groups, n_sizes)
-    n_group_and_size = coral_growth.n_group_and_size
+    coral_details::CoralDetails = CoralDetails(n_groups, n_sizes)
+    n_group_and_size = coral_details.n_group_and_size
 
     # Load initial coral cover relative to k area
     cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_group_and_size, n_locs)
@@ -196,7 +196,7 @@ function Domain(
 
     # Add compatability with non-migrated datasets but always default current coral spec
     if size(cyclone_mortality, 3) == 6
-        n_groups = coral_growth.n_groups
+        n_groups = coral_details.n_groups
         @warn """
         Cyclone mortality uses 6 functional groups. ADRIA uses $(n_groups).
         Skipping first functional group.
@@ -218,7 +218,7 @@ function Domain(
         location_id_col,
         cluster_id_col,
         init_coral_cover,
-        coral_growth,
+        coral_details,
         connectivity.loc_ids,
         connectivity.truncated,
         dhw,

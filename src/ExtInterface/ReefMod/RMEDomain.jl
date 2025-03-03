@@ -25,7 +25,7 @@ mutable struct RMEDomain <: AbstractReefModDomain
     const loc_id_col::String
     const cluster_id_col::String
     init_coral_cover::YAXArray{Float64}
-    const coral_growth::CoralDetails
+    const coral_details::CoralDetails
     const loc_ids::Vector{String}
     dhw_scens::YAXArray{Float64}
 

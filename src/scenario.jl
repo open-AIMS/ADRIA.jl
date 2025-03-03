@@ -122,8 +122,8 @@ function run_scenarios(
     # This is also forced me to added an argument to run_model which breaks
     # encapsulation, so its quite ugly
     n_locs::Int64 = n_locations(dom)
-    n_sizes::Int64 = dom.coral_growth.n_sizes
-    n_groups::Int64 = dom.coral_growth.n_groups
+    n_sizes::Int64 = dom.coral_details.n_sizes
+    n_groups::Int64 = dom.coral_details.n_groups
     _bin_edges::Matrix{Float64} = bin_edges()
     functional_groups = [
         FunctionalGroup.(
@@ -291,12 +291,12 @@ function run_scenario(
     vals[vals .< threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
-    vals = relative_taxa_cover(rs_raw, loc_k_area(domain), domain.coral_growth.n_groups)
+    vals = relative_taxa_cover(rs_raw, loc_k_area(domain), domain.coral_details.n_groups)
     vals[vals .< threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
     vals = relative_loc_taxa_cover(
-        rs_raw, loc_k_area(domain), domain.coral_growth.n_groups
+        rs_raw, loc_k_area(domain), domain.coral_details.n_groups
     )
 
     vals = coral_evenness(vals.data)
