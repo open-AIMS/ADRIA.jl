@@ -23,6 +23,9 @@
       "name": "spatial_data",
       "description": "spatial data for test cluster",
       "path": "site_data/Test_domain.gpkg",
+      "data": [
+        "reef_siteid"
+      ],
       "format": "geopackage"
     },
     {
