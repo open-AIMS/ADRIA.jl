@@ -224,10 +224,6 @@ function Domain(
             timeframe, location_data, location_id_col
         )
     end
-    cyc_params =
-        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) :
-        (timeframe, location_data, location_id_col)
-    cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     # Add compatability with non-migrated datasets but always default current coral spec
     if size(cyclone_mortality, 3) == 6
