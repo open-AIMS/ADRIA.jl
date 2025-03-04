@@ -210,7 +210,7 @@ function Domain(
 
     waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
     waves = load_env_data(waves_params...)
-    
+
     cyclone_mortality = nothing
     cyc_from_file::Bool = ispath(cyclone_mortality_fn)
     if cyc_from_file && is_cyclone_category
@@ -220,7 +220,9 @@ function Domain(
     elseif cyc_from_file
         cyclone_mortality = load_cyclone_mortality(cyclone_mortality_fn)
     else
-        cyclone_mortality = load_cyclone_mortality(timeframe, location_data, location_id_col)
+        cyclone_mortality = load_cyclone_mortality(
+            timeframe, location_data, location_id_col
+        )
     end
     cyc_params =
         ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) :
@@ -313,12 +315,10 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
 
     dhw_dir::String = joinpath(path, "DHWs")
     # A default DHW must be loaded to know how many scenarios are available.
-    dhw_fn::String = !isempty(rcp) ? joinpath(
-        dhw_dir, "dhwRCP$(rcp).nc"
-    ) : joinpath(dhw_dir, _get_any_dhw(dhw_dir))
-
-
-    Main.@infiltrate
+    dhw_fn::String =
+        !isempty(rcp) ? joinpath(
+            dhw_dir, "dhwRCP$(rcp).nc"
+        ) : joinpath(dhw_dir, _get_any_dhw(dhw_dir))
 
     wave_fn::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
     cyclone_data_fn::String, cyclone_type_flag = get_cyclone_info(dpkg_details)
@@ -375,9 +375,13 @@ Get the path to the cyclone mortality or category data.
 # Returns
 Path to cyclone data, Boolean true if cyclone category false if mortality
 """
-function get_cyclone_info(dpkg_details)::Tuple{String, Bool}
-    cyclone_mortality_idx = findfirst(get.(dpkg_details["resources"], "name", "") .== "cyclone_mortality")
-    cyclone_category_idx = findfirst(get.(dpkg_details["resources"], "name", "") .== "cyclone_category")
+function get_cyclone_info(dpkg_details)::Tuple{String,Bool}
+    cyclone_mortality_idx = findfirst(
+        get.(dpkg_details["resources"], "name", "") .== "cyclone_mortality"
+    )
+    cyclone_category_idx = findfirst(
+        get.(dpkg_details["resources"], "name", "") .== "cyclone_category"
+    )
     if !isnothing(cyclone_mortality_idx) && !isnothing(cyclone_category_idx)
         msg = "Domain data package provides both cyclone mortality and category data. "
         msg *= "Using mortality data."
