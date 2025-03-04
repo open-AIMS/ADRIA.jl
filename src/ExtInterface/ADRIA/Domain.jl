@@ -118,7 +118,8 @@ function Domain(
     conn_path::String,
     dhw_fn::String,
     wave_fn::String,
-    cyclone_mortality_fn::String
+    cyclone_mortality_fn::String;
+    is_cyclone_category::Bool=false
 )::ADRIADomain
     local location_data::DataFrame
     try
@@ -209,7 +210,18 @@ function Domain(
 
     waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
     waves = load_env_data(waves_params...)
-
+    
+    cyclone_mortality = nothing
+    cyc_from_file::Bool = ispath(cyclone_mortality_fn)
+    if cyc_from_file && is_cyclone_category
+        cyclone_mortality = load_cyclones(
+            RMEDomain, cyclone_mortality_fn, u_sids, timeframe
+        )
+    elseif cyc_from_file
+        cyclone_mortality = load_cyclone_mortality(cyclone_mortality_fn)
+    else
+        cyclone_mortality = load_cyclone_mortality(timeframe, location_data, location_id_col)
+    end
     cyc_params =
         ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) :
         (timeframe, location_data, location_id_col)
@@ -299,9 +311,18 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
     gpkg_path::String = joinpath(spatial_path, "$(domain_name).gpkg")
     init_coral_cov::String = joinpath(spatial_path, "coral_cover.nc")
 
-    dhw_fn::String = !isempty(rcp) ? joinpath(path, "DHWs", "dhwRCP$(rcp).nc") : ""
+    dhw_dir::String = joinpath(path, "DHWs")
+    # A default DHW must be loaded to know how many scenarios are available.
+    dhw_fn::String = !isempty(rcp) ? joinpath(
+        dhw_dir, "dhwRCP$(rcp).nc"
+    ) : joinpath(dhw_dir, _get_any_dhw(dhw_dir))
+
+
+    Main.@infiltrate
+
     wave_fn::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
-    cyclone_mortality_fn::String = joinpath(path, "cyclones", "cyclone_mortality.nc")
+    cyclone_data_fn::String, cyclone_type_flag = get_cyclone_info(dpkg_details)
+    cyclone_data_fn = joinpath(path, cyclone_data_fn)
 
     return Domain(
         domain_name,
@@ -315,7 +336,8 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         conn_path,
         dhw_fn,
         wave_fn,
-        cyclone_mortality_fn
+        cyclone_data_fn;
+        is_cyclone_category=cyclone_type_flag
     )
 end
 
@@ -343,6 +365,40 @@ function _get_id_col(dpkg_details)
     spatial_resources = dpkg_details["resources"][spatial_resources]
 
     return first(spatial_resources["data"])
+end
+
+"""
+    get_cyclone_info(dpkg_details)::Tuple{String, Bool}
+
+Get the path to the cyclone mortality or category data.
+
+# Returns
+Path to cyclone data, Boolean true if cyclone category false if mortality
+"""
+function get_cyclone_info(dpkg_details)::Tuple{String, Bool}
+    cyclone_mortality_idx = findfirst(get.(dpkg_details["resources"], "name", "") .== "cyclone_mortality")
+    cyclone_category_idx = findfirst(get.(dpkg_details["resources"], "name", "") .== "cyclone_category")
+    if !isnothing(cyclone_mortality_idx) && !isnothing(cyclone_category_idx)
+        msg = "Domain data package provides both cyclone mortality and category data. "
+        msg *= "Using mortality data."
+        @warn msg
+    end
+    if !isnothing(cyclone_mortality_idx)
+        return dpkg_details["resources"][cyclone_mortality_idx]["path"], false
+    elseif !isnothing(cyclone_category_idx)
+        return dpkg_details["resources"][cyclone_category_idx]["path"], true
+    else
+        throw(ArgumentError("Unable to find cyclone resource in data package details."))
+    end
+end
+
+"""Get the path of a DHW file in the domain to load as default."""
+function _get_any_dhw(dhw_dir::String)::String
+    dhw_files = filter(x -> !isnothing(match(r"dhwRCP[0-9]+.nc", x)), readdir(dhw_dir))
+    if length(dhw_files) == 0
+        throw(ArgumentError("No DHW files found in $(dhw_dir)."))
+    end
+    return first(dhw_files)
 end
 
 """
