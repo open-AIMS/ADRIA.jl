@@ -214,8 +214,8 @@ function Domain(
     cyclone_mortality = nothing
     cyc_from_file::Bool = ispath(cyclone_mortality_fn)
     if cyc_from_file && is_cyclone_category
-        cyclone_mortality = load_cyclones(
-            RMEDomain, cyclone_mortality_fn, u_sids, timeframe
+        cyclone_mortality = load_cyclone_mortality_from_category(
+            cyclone_mortality_fn, location_data, timeframe
         )
     elseif cyc_from_file
         cyclone_mortality = load_cyclone_mortality(cyclone_mortality_fn)
