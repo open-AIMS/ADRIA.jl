@@ -1,4 +1,7 @@
+import CoralBlox: FunctionalGroup
+
 import .decision: DecisionPreference
+
 
 """
     SimulationContext
