@@ -54,6 +54,8 @@ include("ecosystem/corals/CoralDetails.jl")
 include("ecosystem/Ecosystem.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/connectivity.jl")
+include("ecosystem/waves.jl")
+include("ecosystem/cyclones.jl")
 
 include("Domain.jl")
 include("io/datacubes.jl")
@@ -64,6 +66,7 @@ include("decision/dMCDA.jl")
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
+include("interventions/shading.jl")  # To be removed once SRM scenarios are available.
 
 include("io/ResultSet.jl")
 include("spatial/spatial.jl")
