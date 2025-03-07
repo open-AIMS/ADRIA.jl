@@ -77,8 +77,10 @@ include("io/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")
 
-include("scenario.jl")
-include("run_model.jl")
+include("model_run/SimulationContext.jl")
+include("model_run/scenario.jl")
+include("model_run/run_model.jl")
+
 include("analysis/analysis.jl")
 include("analysis/sensitivity.jl")
 
