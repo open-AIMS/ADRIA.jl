@@ -227,16 +227,6 @@ function coral_spec()::NamedTuple
     params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_groups_and_sizes)[:]
     params.linear_extension = reshape(_linear_extensions', n_groups_and_sizes)[:]
 
-    # Convert linear extensions to delta coral in two steps.
-    # First calculate what proportion of coral numbers that change size class
-    #     given linear extensions. This is based on the simple assumption that
-    #     coral sizes are evenly distributed within each bin.
-    # Second, growth as transitions of cover to higher bins is estimated as
-    #     rate of growth per year.
-    params.growth_rate .= reshape(
-        growth_rate(_linear_extensions, bin_widths()), n_groups_and_sizes
-    )[:]
-
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
     fec_par_a = Float64[1.03; 1.69; 0.02; 0.86; 0.86]  # fecundity parameter a
