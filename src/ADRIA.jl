@@ -63,6 +63,7 @@ include("io/inputs.jl")  # Need to define input types before MCDA to make types 
 include("io/initial_coral_cover.jl")
 
 include("decision/dMCDA.jl")
+include("model_run/SimulationContext.jl")
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
@@ -77,7 +78,6 @@ include("io/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")
 
-include("model_run/SimulationContext.jl")
 include("model_run/scenario.jl")
 include("model_run/run_model.jl")
 
