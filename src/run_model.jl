@@ -764,7 +764,9 @@ function seeding_intervention!(
     end
 
     # Apply seeding if locations were selected
-    seed_locations!(ctx, tstep, selected_seed_ranks, leftover_space_m²)
+    if !isempty(selected_seed_ranks)
+        seed_locations!(ctx, tstep, selected_seed_ranks, leftover_space_m²)
+    end
 
     return selected_seed_ranks
 end
@@ -854,12 +856,6 @@ function seed_locations!(
     ctx::SimulationContext, tstep::Int64, selected_seed_ranks::Vector,
     leftover_space_m²::Vector{Float64}
 )
-    # Skip if no locations selected
-    has_seed_locs = !isempty(selected_seed_ranks)
-    if !has_seed_locs
-        return nothing
-    end
-
     # Find selected locations
     seed_locs = findall(ctx.log_location_ranks.locations .∈ [selected_seed_ranks])
 
