@@ -234,13 +234,13 @@ function recruitment_phase!(
 end
 
 """
-    intervention_phases!(ctx::SimulationContext, tstep::Int64, leftover_space_m²::Vector{Float64})::Vector
+    intervention_phases!(ctx::SimulationContext, tstep::Int64, leftover_space_m²::Vector{Float64})::Nothing
 
 Process all intervention phases (shading, fogging, seeding).
 """
 function intervention_phases!(
     ctx::SimulationContext, tstep::Int64, leftover_space_m²::Vector{Float64}
-)
+)::Nothing
     # Process DHW for this timestep
     ctx.dhw_t .= ctx.dhw_scen[tstep, :]
 
@@ -251,7 +251,9 @@ function intervention_phases!(
     fogging_intervention!(ctx, tstep, leftover_space_m²)
 
     # Process seeding intervention
-    return seeding_intervention!(ctx, tstep, leftover_space_m²)
+    seeding_intervention!(ctx, tstep, leftover_space_m²)
+
+    return nothing
 end
 
 """
