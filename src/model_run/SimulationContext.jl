@@ -102,6 +102,22 @@ mutable struct SimulationContext
     seed_pref::Union{Nothing,DecisionPreference}
     fog_pref::Union{Nothing,DecisionPreference}
 
+    # Bioregion-related fields
+    unique_biogroups::Vector{Int64}
+    n_biogroups::Int64
+    biogroup_masks::BitMatrix
+    loc_biogrp_idxs::Vector{Int64}
+
+    # Scale factors
+    growth_accel_parameters::Matrix{Float64}
+    growth_acc_steepness::Vector{Float64}
+    growth_acc_height::Vector{Float64}
+    growth_acc_midpoint::Vector{Float64}
+    scale_factors::Array{Float64, 3}
+    biogrp_lin_ext::Array{Float64, 3}
+    biogrp_survival::Array{Float64, 3}
+    growth_constraints::Vector{Float64}
+
     # Constructor (with defaults for optional params)
     function SimulationContext(
         domain::Domain, param_set::YAXArray,
@@ -140,6 +156,9 @@ function initialize_context!(ctx::SimulationContext)
 
     # Create results storage
     initialize_result_matrices!(ctx)
+
+    # Initialize bioregion-related properties
+    initialize_bioregions!(ctx)
 
     # Empty the old contents of the buffers and add the new blocks
     cover_view = [@view ctx.C_cover[1, :, :, loc] for loc in 1:(ctx.n_locs)]
@@ -408,4 +427,64 @@ function initialize_result_matrices!(ctx::SimulationContext)::Nothing
     ctx.potential_settlers = zeros(size(ctx.fec_scope)...)
 
     return nothing
+end
+
+function initialize_bioregions!(ctx::SimulationContext)
+    if !("GROUPED_BIOREGION" in names(ctx.domain.loc_data))
+        ctx.domain.loc_data.GROUPED_BIOREGION .= 1
+    end
+
+    loc_data = ctx.domain.loc_data
+
+    # Extract unique biogroups
+    ctx.unique_biogroups = unique(loc_data.GROUPED_BIOREGION)
+    ctx.n_biogroups = length(ctx.unique_biogroups)
+
+    # Create biogroup masks
+    ctx.biogroup_masks = falses(ctx.n_locs, ctx.n_biogroups)
+    for (idx, biogroup) in enumerate(ctx.unique_biogroups)
+        ctx.biogroup_masks[:, idx] .= loc_data.GROUPED_BIOREGION .== biogroup
+    end
+
+    # Create biogroup indices for each location
+    ctx.loc_biogrp_idxs = [
+        findfirst(x -> x == biogrp, ctx.unique_biogroups)
+        for biogrp in loc_data.GROUPED_BIOREGION
+    ]
+
+    # Extract growth acceleration parameters
+    growth_acc_names = accel_params_array_to_vec(
+        generate_growth_accel_names(ctx.unique_biogroups)
+    )
+    ctx.growth_accel_parameters = accel_params_vec_to_array(
+        ctx.param_set[factors=At(growth_acc_names)], ctx.n_biogroups
+    )
+
+    ctx.growth_acc_steepness = ctx.growth_accel_parameters[:, 1]
+    ctx.growth_acc_height = ctx.growth_accel_parameters[:, 2]
+    ctx.growth_acc_midpoint = ctx.growth_accel_parameters[:, 3]
+
+    # Extract scale factors
+    sf_col_names = scale_factor_array_to_vec(
+        generate_scale_factor_names(ctx.unique_biogroups)
+    )
+    ctx.scale_factors = scale_factor_vec_to_array(
+        ctx.param_set[factors=At(sf_col_names)],
+        ctx.n_groups,
+        ctx.n_biogroups,
+        2
+    )
+
+    # Initialize bioregion-specific extensions and survival rates
+    ctx.biogrp_lin_ext = repeat(ctx.linear_extensions, 1, 1, ctx.n_biogroups)
+    ctx.biogrp_survival = repeat(ctx.survival_rate, 1, 1, ctx.n_biogroups)
+    for i in 1:ctx.n_biogroups
+        ctx.biogrp_lin_ext[:, :, i] .*= ctx.scale_factors[:, 1, i]
+        ctx.biogrp_survival[:, :, i] .= apply_mortality_scaling(
+            ctx.biogrp_survival[:, :, i], ctx.scale_factors[:, 2, i]
+        )
+    end
+
+    # Preallocate vector for growth constraints
+    ctx.growth_constraints = zeros(Float64, ctx.n_locs)
 end

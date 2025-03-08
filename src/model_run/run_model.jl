@@ -38,7 +38,7 @@ function growth_phase!(ctx::SimulationContext, tstep::Int64)::Nothing
         ctx.C_cover[tstep - 1, :, :, ctx.habitable_locs] .* ctx.habitable_loc_areas′
 
     # IMPORTANT: Update functional groups with current cover state
-    cover_view = [@view ctx.C_cover[tstep-1, :, :, loc] for loc in 1:(ctx.n_locs)]
+    cover_view = [@view ctx.C_cover[tstep - 1, :, :, loc] for loc in 1:(ctx.n_locs)]
     vec_abs_k = ctx.habitable_area[1, :]
     for i in 1:length(ctx.functional_groups)
         ctx.functional_groups[i] = reuse_buffers!(
@@ -95,20 +95,58 @@ function calculate_linear_extension_factors(ctx::SimulationContext)
 end
 
 """
-    coral_growth!(ctx::SimulationContext, lin_ext_scale_factors::Vector{Float64})
+    coral_growth!(ctx::SimulationContext, lin_ext_scale_factors::Vector{Float64})::Nothing
 
-Perform growth calculations for all locations.
+Perform growth calculations for all locations, applying bioregion-specific
+parameters and growth acceleration factors.
 """
-function coral_growth!(ctx::SimulationContext, lin_ext_scale_factors::Vector{Float64})
-    survival_rate = 1.0 .- _to_group_size(ctx.domain.coral_details, ctx.corals.mb_rate)
+function coral_growth!(
+    ctx::SimulationContext, lin_ext_scale_factors::Vector{Float64}
+)::Nothing
+    # Calculate growth constraints for each bioregion
+    for idx in 1:(ctx.n_biogroups)
+        bioregion_mask = ctx.biogroup_masks[:, idx]
+        ctx.growth_constraints[bioregion_mask] .= lin_ext_scale_factors[bioregion_mask]
+    end
 
+    # Apply growth acceleration based on available space
+    relative_habitable_cover = _loc_coral_cover(ctx.C_cover_t) ./ loc_k_area(ctx.domain)
+    no_constraint_mask = relative_habitable_cover .< 0.7
+
+    for idx in 1:(ctx.n_biogroups)
+        # Create mask for locations in this bioregion with room to grow
+        bioregion_growth_mask = no_constraint_mask .& ctx.biogroup_masks[:, idx]
+
+        if any(bioregion_growth_mask)
+            # Apply logistic growth acceleration function
+            ctx.growth_constraints[bioregion_growth_mask] .=
+                growth_acceleration.(
+                    ctx.growth_acc_height[idx],
+                    ctx.growth_acc_midpoint[idx],
+                    ctx.growth_acc_steepness[idx],
+                    relative_habitable_cover[bioregion_growth_mask]
+                )
+        end
+    end
+
+    # Perform growth calculations for each location
     @floop for i in ctx.habitable_loc_idxs
+        # Get bioregion index for this location
+        bioregion_idx = ctx.loc_biogrp_idxs[i]
+
+        # Apply bioregion-specific linear extensions with growth constraint multiplier
+        scaled_linear_extensions =
+            ctx.biogrp_lin_ext[:, :, bioregion_idx] .* ctx.growth_constraints[i]
+
+        # Apply bioregion-specific survival rates
+        bioregion_survival = ctx.biogrp_survival[:, :, bioregion_idx]
+
         # Perform timestep
         timestep!(
             ctx.functional_groups[i],
             ctx.recruitment[:, i],
-            ctx.linear_extensions .* lin_ext_scale_factors[i],
-            survival_rate
+            scaled_linear_extensions,
+            bioregion_survival
         )
 
         # Write to the cover matrix
@@ -116,11 +154,35 @@ function coral_growth!(ctx::SimulationContext, lin_ext_scale_factors::Vector{Flo
     end
 
     # Check if size classes are inappropriately out-growing habitable area
-    @assert (
+    habitable_area_exceeded =
+        _loc_coral_cover(ctx.C_cover_t)[ctx.habitable_locs] .> ctx.habitable_loc_areas
+
+    if any(habitable_area_exceeded)
+        # Proportionally scale back coral cover to fit within habitable area
+        exceeded_indices = findall(habitable_area_exceeded)
+        for idx in exceeded_indices
+            loc_index = ctx.habitable_loc_idxs[idx]
+            scaling_factor =
+                0.999 * ctx.habitable_loc_areas[idx] /
+                _loc_coral_cover(ctx.C_cover_t)[loc_index]
+            ctx.C_cover_t[:, :, loc_index] .*= scaling_factor
+        end
+
+        @warn """
+        Cover exceeding habitable area detected.
+        Proportionally scaling back $(length(exceeded_indices)) locations.
+        """
+    end
+
+    # Final validation
+    @assert(
         sum(
             _loc_coral_cover(ctx.C_cover_t)[ctx.habitable_locs] .> ctx.habitable_loc_areas
-        ) == 0
-    ) "Cover outgrowing habitable area"
+        ) == 0,
+        "Cover outgrowing habitable area detected after scaling. This indicates a model inconsistency."
+    )
+
+    return nothing
 end
 
 """
