@@ -76,15 +76,15 @@ relative_cover = Metric(
 )
 
 """
-    total_absolute_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
+    total_absolute_cover(relative_cover::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
     total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 The Total Absolute Coral Cover.
-Sum of proportional area taken up by all corals, multiplied by total site area.
+Sum of proportional area taken up by all corals, multiplied by the location area.
 
 # Arguments
 - `relative_cover` : Array with relative_cover
-- `k_area` : Site areas, with sites following the same order as given indicated in X.
+- `k_area` : Proportional area, with locations following the same order as given indicated in `relative_cover`.
 
 # Returns
 Absolute coral cover for a given location in $UNIT_AREA.
@@ -200,7 +200,7 @@ relative_loc_taxa_cover = Metric(
     relative_juveniles(X::AbstractArray{T,3}, coral_spec::DataFrame)::AbstractArray{T,2} where {T<:Real}
     relative_juveniles(rs::ResultSet)::AbstractArray{<:Real,2}
 
-Juvenile coral cover relative to total site area.
+Juvenile coral cover relative to the location's area.
 
 # Arguments
 - `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group_sizes,
@@ -414,7 +414,7 @@ Note: Species dimension is an amalgamation of taxa and size class.
 e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, size class 1-6, etc.
 
 # Arguments
-- `X` : raw results (proportional coral cover relative to full site area)
+- `X` : raw results (proportional coral cover relative to total area)
 - `n_group_and_size` : number of species (taxa and size classes) considered
 - `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class
 - `max_colony_vol_m3_per_m2` : theoretical maximum volume per m² of coverage for each taxa
@@ -470,7 +470,7 @@ _shelter_species_loop!(X::YAXArray, ASV::YAXArray, nspecies::Int64, colony_vol_m
 Helper method to calculate absolute shelter volume metric across each species/size class for a given scenario.
 
 # Arguments
-- `X` : raw results (proportional coral cover relative to full site area)
+- `X` : raw results (proportional coral cover relative to total area)
 - `ASV` : matrix to hold shelter volume results
 - `nspecies` : number of species (taxa and size classes) considered
 - `scen` : scenario number to calculate metric for
