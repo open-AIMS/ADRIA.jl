@@ -562,7 +562,7 @@ fecundities across size classes.
 - `fec_all` : Matrix[n_taxa, n_locs], temporary cache to place intermediate fecundity values into
 - `fec_params` : Vector, coral fecundity parameters (in per m²) for each species/size class
 - `C_cover_t` : Matrix[n_taxa, n_locs], of coral cover values for the previous time step
-- `loc_area` : Vector[n_locs], total site area in m²
+- `loc_area` : Vector[n_locs], total location area in m²
 """
 function fecundity_scope!(
     fec_groups::AbstractMatrix{T},

@@ -174,7 +174,7 @@ end
 """
     loc_area(domain::Domain)::Vector{Float64}
 
-Get site area for the given domain.
+Get location area for the given domain.
 """
 function loc_area(domain::Domain)::Vector{Float64}
     return domain.loc_data.area
