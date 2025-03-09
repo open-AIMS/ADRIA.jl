@@ -88,8 +88,8 @@ function calculate_linear_extension_factors(ctx::SimulationContext)
     )
 
     # Apply correction for locations with low coral cover
-    lin_ext_scale_factors[_loc_coral_cover(ctx.C_cover_t)[ctx.habitable_locs] .< (0.7 .* ctx.habitable_loc_areas)] .=
-        1
+    habitable_loc_cover = _loc_coral_cover(ctx.C_cover_t)[ctx.habitable_locs]
+    lin_ext_scale_factors[habitable_loc_cover .< (0.7 .* ctx.habitable_loc_areas)] .= 1.0
 
     return lin_ext_scale_factors
 end
@@ -111,35 +111,42 @@ function coral_growth!(
 
     # Apply growth acceleration based on available space
     relative_habitable_cover = _loc_coral_cover(ctx.C_cover_t) ./ loc_k_area(ctx.domain)
-    no_constraint_mask = relative_habitable_cover .< 0.7
+    no_constraint_mask = relative_habitable_cover .< 0.3
 
-    for idx in 1:(ctx.n_biogroups)
-        # Create mask for locations in this bioregion with room to grow
-        bioregion_growth_mask = no_constraint_mask .& ctx.biogroup_masks[:, idx]
+    if ctx.n_biogroups > 1
+        for idx in 1:(ctx.n_biogroups)
+            # Create mask for locations in this bioregion with room to grow
+            bioregion_growth_mask = no_constraint_mask .& ctx.biogroup_masks[:, idx]
 
-        if any(bioregion_growth_mask)
-            # Apply logistic growth acceleration function
-            ctx.growth_constraints[bioregion_growth_mask] .=
-                growth_acceleration.(
-                    ctx.growth_acc_height[idx],
-                    ctx.growth_acc_midpoint[idx],
-                    ctx.growth_acc_steepness[idx],
-                    relative_habitable_cover[bioregion_growth_mask]
-                )
+            if any(bioregion_growth_mask)
+                # Apply logistic growth acceleration function
+                ctx.growth_constraints[bioregion_growth_mask] .=
+                    growth_acceleration.(
+                        ctx.growth_acc_height[idx],
+                        ctx.growth_acc_midpoint[idx],
+                        ctx.growth_acc_steepness[idx],
+                        relative_habitable_cover[bioregion_growth_mask]
+                    )
+            end
         end
     end
 
     # Perform growth calculations for each location
     @floop for i in ctx.habitable_loc_idxs
-        # Get bioregion index for this location
-        bioregion_idx = ctx.loc_biogrp_idxs[i]
+        if ctx.n_biogroups > 1
+            # Get bioregion index for this location
+            bioregion_idx = ctx.loc_biogrp_idxs[i]
 
-        # Apply bioregion-specific linear extensions with growth constraint multiplier
-        scaled_linear_extensions =
-            ctx.biogrp_lin_ext[:, :, bioregion_idx] .* ctx.growth_constraints[i]
+            # Apply bioregion-specific linear extensions with growth constraint multiplier
+            scaled_linear_extensions =
+                ctx.biogrp_lin_ext[:, :, bioregion_idx] .* ctx.growth_constraints[i]
 
-        # Apply bioregion-specific survival rates
-        bioregion_survival = ctx.biogrp_survival[:, :, bioregion_idx]
+            # Apply bioregion-specific survival rates
+            bioregion_survival = ctx.biogrp_survival[:, :, bioregion_idx]
+        else
+            scaled_linear_extensions = ctx.linear_extensions
+            bioregion_survival = ctx.survival_rate[:, :, i]
+        end
 
         # Perform timestep
         timestep!(
@@ -304,7 +311,7 @@ function intervention_phases!(
     ctx::SimulationContext, tstep::Int64, leftover_space_m²::Vector{Float64}
 )::Nothing
     # Process DHW for this timestep
-    ctx.dhw_t .= ctx.dhw_scen[tstep, :]
+    ctx.dhw_t .= ctx.domain.dhw_scen[tstep, :]
 
     # Process shading intervention
     shading_intervention!(ctx, tstep)

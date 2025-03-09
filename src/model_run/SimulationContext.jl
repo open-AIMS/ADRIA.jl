@@ -9,10 +9,13 @@ import .decision: DecisionPreference
 Holds the state during a model run, separating the data flow from processing logic.
 """
 mutable struct SimulationContext
-    # Domain data
+
+    # Could create types/structs for each conceptual area of concern and compose them here
+    # but for now we use a flat structure.
+
     domain::Domain
 
-    # Scenario factors/settings
+    # Base factors/settings
     param_set::YAXArray
 
     # Coral parameters
@@ -452,37 +455,39 @@ function initialize_bioregions!(ctx::SimulationContext)
         for biogrp in loc_data.GROUPED_BIOREGION
     ]
 
-    # Extract growth acceleration parameters
-    growth_acc_names = accel_params_array_to_vec(
-        generate_growth_accel_names(ctx.unique_biogroups)
-    )
-    ctx.growth_accel_parameters = accel_params_vec_to_array(
-        ctx.param_set[factors=At(growth_acc_names)], ctx.n_biogroups
-    )
-
-    ctx.growth_acc_steepness = ctx.growth_accel_parameters[:, 1]
-    ctx.growth_acc_height = ctx.growth_accel_parameters[:, 2]
-    ctx.growth_acc_midpoint = ctx.growth_accel_parameters[:, 3]
-
-    # Extract scale factors
-    sf_col_names = scale_factor_array_to_vec(
-        generate_scale_factor_names(ctx.unique_biogroups)
-    )
-    ctx.scale_factors = scale_factor_vec_to_array(
-        ctx.param_set[factors=At(sf_col_names)],
-        ctx.n_groups,
-        ctx.n_biogroups,
-        2
-    )
-
-    # Initialize bioregion-specific extensions and survival rates
-    ctx.biogrp_lin_ext = repeat(ctx.linear_extensions, 1, 1, ctx.n_biogroups)
-    ctx.biogrp_survival = repeat(ctx.survival_rate, 1, 1, ctx.n_biogroups)
-    for i in 1:ctx.n_biogroups
-        ctx.biogrp_lin_ext[:, :, i] .*= ctx.scale_factors[:, 1, i]
-        ctx.biogrp_survival[:, :, i] .= apply_mortality_scaling(
-            ctx.biogrp_survival[:, :, i], ctx.scale_factors[:, 2, i]
+    if length(ctx.unique_biogroups) > 1
+        # Extract growth acceleration parameters
+        growth_acc_names = accel_params_array_to_vec(
+            generate_growth_accel_names(ctx.unique_biogroups)
         )
+        ctx.growth_accel_parameters = accel_params_vec_to_array(
+            ctx.param_set[factors=At(growth_acc_names)], ctx.n_biogroups
+        )
+
+        ctx.growth_acc_steepness = ctx.growth_accel_parameters[:, 1]
+        ctx.growth_acc_height = ctx.growth_accel_parameters[:, 2]
+        ctx.growth_acc_midpoint = ctx.growth_accel_parameters[:, 3]
+
+        # Extract scale factors
+        sf_col_names = scale_factor_array_to_vec(
+            generate_scale_factor_names(ctx.unique_biogroups)
+        )
+        ctx.scale_factors = scale_factor_vec_to_array(
+            ctx.param_set[factors=At(sf_col_names)],
+            ctx.n_groups,
+            ctx.n_biogroups,
+            2
+        )
+
+        # Initialize bioregion-specific extensions and survival rates
+        ctx.biogrp_lin_ext = repeat(ctx.linear_extensions, 1, 1, ctx.n_biogroups)
+        ctx.biogrp_survival = repeat(ctx.survival_rate, 1, 1, ctx.n_biogroups)
+        for i in 1:ctx.n_biogroups
+            ctx.biogrp_lin_ext[:, :, i] .*= ctx.scale_factors[:, 1, i]
+            ctx.biogrp_survival[:, :, i] .= apply_mortality_scaling(
+                ctx.biogrp_survival[:, :, i], ctx.scale_factors[:, 2, i]
+            )
+        end
     end
 
     # Preallocate vector for growth constraints
