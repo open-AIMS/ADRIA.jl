@@ -27,9 +27,9 @@ mutable struct SimulationContext
     growth_rate::Matrix{Float64}
 
     # Environmental scenarios
-    dhw_scen::YAXArray
-    wave_scen::YAXArray
-    cyclone_mortality_scen::YAXArray
+    dhw_scen::YAXArray  # The specific DHW scenario from domain.dhw_scen
+    wave_scen::YAXArray  # The specific wave scenario from domain.wave_scen
+    cyclone_mortality_scen::YAXArray  # As above, but for domain.cyclone_mortality_scen
 
     # Configuration parameters
     is_guided::Bool
