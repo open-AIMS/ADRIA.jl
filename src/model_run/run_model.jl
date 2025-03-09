@@ -311,7 +311,7 @@ function intervention_phases!(
     ctx::SimulationContext, tstep::Int64, leftover_space_m²::Vector{Float64}
 )::Nothing
     # Process DHW for this timestep
-    ctx.dhw_t .= ctx.domain.dhw_scen[tstep, :]
+    ctx.dhw_t .= ctx.dhw_scen[tstep, :]
 
     # Process shading intervention
     shading_intervention!(ctx, tstep)
