@@ -913,7 +913,7 @@ function run_model(
                 seed_pref,
                 decision_mat[location=locs_with_space[_valid_locs]],
                 MCDA_approach,
-                loc_data.cluster_id,
+                loc_data[:, domain.env_layer_md.cluster_id_col],
                 max_area_to_seed,
                 considered_locs,
                 vec(leftover_space_m²),
