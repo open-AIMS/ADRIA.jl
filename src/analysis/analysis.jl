@@ -116,5 +116,6 @@ include("rule_extraction.jl")
 include("scenario.jl")
 include("feature_set.jl")
 include("data_envelopment.jl")
+include("pathway_diversity.jl")
 
 end
