@@ -45,3 +45,17 @@ end
 function centroids(ds::Union{Domain,ResultSet})::Vector{Tuple{Float64,Float64}}
     return centroids(ds.loc_data)
 end
+
+"""
+    centroid(df::DataFrame)
+
+Extract and return long/lat from a GeoDataFrame.
+"""
+function centroids(data::Vector)::Tuple{Float64,Float64}
+    multipolygon = AG.createmultipolygon()
+    for geom in data
+        AG.addgeom!(multipolygon, geom)
+    end
+    centroid = AG.centroid(multipolygon)
+    return (AG.getx(centroid, 0), AG.gety(centroid, 0))
+end
