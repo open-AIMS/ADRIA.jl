@@ -6,6 +6,7 @@ if !@isdefined(ADRIA_DIR)
     const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
 end
 
+"""
 @testset "site selection" begin
     # TODO: Complete tests with @tests
 
@@ -43,6 +44,7 @@ end
     @test all([in(sid, [2, 3]) for sid in pref_seed_sites[pref_seed_sites .> 0]])
     @test all([in(sid, [2, 3]) for sid in pref_fog_sites[pref_fog_sites .> 0]])
 end
+"""
 
 @testset "Guided site selection without ADRIA ecological model" begin
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
@@ -88,4 +90,39 @@ end
         (rankings[rankings[:, 1] .== s_order[rank, 1], 2] .== rank)[1] for
         rank in 1:size(s_order, 1)
     ]) || "Ranking does not match mcda score ordering"
+end
+
+@testset "Select locations" begin
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+    seed_pref = ADRIA.SeedPreferences(dom)
+
+    number_valid_locations = 5
+    valid_locations = ADRIA.sample(dom.loc_data.reef_siteid, number_valid_locations)
+    decision_matrix = ADRIA.decision_matrix(
+        valid_locations,
+        seed_pref.names,
+        rand(number_valid_locations, length(seed_pref.names))
+    )
+    supported_methods = ADRIA.decision.mcda_methods()
+    MCDA_approach = supported_methods[rand(1:length(supported_methods))]
+    max_area_to_seed = sum(dom.loc_data[dom.loc_data.reef_siteid .∈ [valid_locations], :area])
+    considered_locs = collect(1:number_valid_locations)
+    leftover_space_m² = fill(500.0, 10)
+    min_iv_locs = number_valid_locations
+    max_members = 4
+
+    selected_locations = ADRIA.select_locations(
+        seed_pref,
+        decision_matrix,
+        MCDA_approach,
+        dom.loc_data.cluster_id,
+        max_area_to_seed,
+        considered_locs,
+        vec(leftover_space_m²),
+        min_iv_locs,
+        max_members
+    )
+
+    @test length(selected_locations) == number_valid_locations
+    @test all(selected_locations .∈ [valid_locations])
 end

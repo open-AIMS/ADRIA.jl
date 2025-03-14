@@ -30,7 +30,7 @@ include("viz/taxa_dynamics.jl")
 include("viz/spatial.jl")
 
 # TODO Fix spatial_clustering and site_selection tests
-# include("site_selection.jl")
+include("site_selection.jl")
 # include("spatial_clustering.jl")
 #
 # Always run this example test case last
