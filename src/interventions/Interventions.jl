@@ -41,14 +41,6 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Intervention Locations",
         description="Minimum number of deployment locations (for both seeding and fogging)."
     )
-    cluster_max_member::Param = Factor(
-        3;
-        ptype="ordered discrete",
-        dist=DiscreteUniform,
-        dist_params=(3.0, 10.0),
-        name="Maximum Cluster Membership",
-        description="Maximum number of deployment locations within a single cluster/region/area."
-    )
     fogging::Param = Factor(
         0.0;
         ptype="continuous",
