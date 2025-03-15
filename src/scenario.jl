@@ -487,7 +487,6 @@ function run_model(
 
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
-    max_members::Int64 = param_set[At("cluster_max_member")]
 
     # Years to start seeding/shading/fogging
     seed_start_year::Int64 = param_set[At("seed_year_start")]

@@ -22,7 +22,6 @@ using ADRIA.Graphs
         scenarios::DataFrame;
         rcp=nothing,
         min_iv_locs=nothing,
-        max_members=nothing,
         target_seed_locs=nothing,
         target_fog_locs=nothing
     )::YAXArray
@@ -40,7 +39,6 @@ fogging locations.
 - `scenarios` : Scenario specification
 - `rcp` : RCP conditions to assess
 - `min_iv_locs` : Minimum number of locations to intervene
-- `max_members` : Maximum number of locations per cluster
 - `target_seed_locs` : Specify locations by their IDs to consider for seeding.
 - `target_fog_locs` : Specify locations by their IDs to consider for fogging.
 
@@ -54,7 +52,6 @@ function rank_locations(
     scenarios::DataFrame;
     rcp=nothing,
     min_iv_locs=nothing,
-    max_members=nothing,
     target_seed_locs=nothing,
     target_fog_locs=nothing
 )::YAXArray
@@ -65,12 +62,6 @@ function rank_locations(
         min_iv_locs = scenarios.min_iv_locations
     else
         min_iv_locs = fill(min_iv_locs, nrow(scenarios))
-    end
-
-    if isnothing(max_members)
-        max_members = scenarios.cluster_max_member
-    else
-        max_members = fill(max_members, nrow(scenarios))
     end
 
     if !isnothing(rcp)
@@ -152,13 +143,6 @@ function rank_locations(
         end
 
         MCDA_approach = mcda_methods()[Int64(scen[factors=At("guided")][1])]
-        leftover_space_m² = vec(leftover_space_scens[scen_idx, :])
-
-        corals = to_coral_spec(scenarios[scen_idx, :])
-        area_to_seed = mean(
-            n_corals *
-            colony_mean_area(corals.mean_colony_diameter_m[corals.class_id .== 2])
-        )
 
         seed_pref = SeedPreferences(dom, scen)
         fog_pref = FogPreferences(dom, scen)
@@ -206,12 +190,8 @@ function rank_locations(
                 seed_pref,
                 seed_decision_mat,
                 MCDA_approach,
-                loc_data.cluster_id,
-                area_to_seed,
                 considered_seed_locs,
-                leftover_space_m²,
-                min_locs,
-                max_members[scen_idx]
+                min_locs
             )
 
             if !isempty(selected_seed_ranks)
