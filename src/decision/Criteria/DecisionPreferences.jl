@@ -163,7 +163,9 @@ function criteria_aggregated_scores(
     end
 
     # Recreate preferences, removing criteria that are constant for this scenario
-    _dp = filter_criteria(dp, is_const)
+    if !all(.!is_const)
+        _dp = filter_criteria(dp, is_const)
+    end
 
     # Assess decision matrix only using valid (non-constant) criteria
     res = solve(_dp, dm[criteria=.!is_const], method)
