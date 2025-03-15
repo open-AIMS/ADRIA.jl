@@ -175,6 +175,9 @@ function Domain(
     ]
     location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
 
+    dist_matrix = distance_matrix(location_data)
+    location_data.mean_to_neighbor .= nearest_neighbor_distances(dist_matrix, 10)
+
     n_locs::Int64 = nrow(location_data)
     n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
     coral_growth::CoralGrowth = CoralGrowth(n_locs, n_groups, n_sizes)
