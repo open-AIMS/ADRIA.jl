@@ -155,6 +155,9 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     # Calculate `k` area (1.0 - "ungrazable" area)
     spatial_data[:, :k] .= 1.0 .- id_list[:, 3]
 
+    dist_matrix = distance_matrix(spatial_data)
+    spatial_data.mean_to_neighbor .= nearest_neighbor_distances(dist_matrix, 10)
+
     # Need to load initial coral cover after we know `k` area.
     init_coral_cover::YAXArray{Float64} = load_initial_cover(
         RMEDomain, data_files, loc_ids, spatial_data
