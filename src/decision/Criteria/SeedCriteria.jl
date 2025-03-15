@@ -58,6 +58,24 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         name="Seed Coral Cover",
         description="Preference locations with lower coral cover (higher available space) for seeding deployments."
     )
+    seed_cluster_diversity::Param = Factor(
+        0.5;
+        ptype="continuous",
+        dist=Uniform,
+        dist_params=(0.0, 1.0),
+        direction=maximum,
+        name="Cluster Diversity",
+        description="Prefer locations from clusters that are under-represented."
+    )
+    seed_geographic_separation::Param = Factor(
+        0.5;
+        ptype="continuous",
+        dist=Uniform,
+        dist_params=(0.0, 1.0),
+        direction=minimum,
+        name="Geographic Separation",
+        description="Prefer locations that are distant (when maximized) or closer (when minimized) to their neighbors."
+    )
     # Disabled as they are currently unnecessary
     # seed_priority::Param = Factor(
     #     1.0;
@@ -115,62 +133,53 @@ end
         sp::SeedPreferences,
         dm::YAXArray,
         method::Union{Function,DataType},
-        cluster_ids::Vector{<:Union{Int64,String,Symbol}},
-        area_to_seed::Float64,
         considered_locs::Vector{<:Union{Int64,String,Symbol}},
-        available_space::Vector{Float64},
-        min_locs::Int64,
-        max_members::Int64
+        min_locs::Int64
     )::Vector{<:Union{String,Symbol,Int64}}
 
-Selection locations for seeding deployments.
-Attempts to spread deployment locations based on location clusters.
+Select locations for seeding interventions based on multiple criteria, including spatial
+distribution.
 
-Note: If a subset of locations is passed in, the returned indices
-will relate to the position of the subset, not the canonical dataset.
+# Example
+```julia
+seed_pref = SeedPreferences(domain, param_set)
+decision_mat = decision_matrix(domain.loc_ids, seed_pref.names, criteria_values)
+mcda_method = mcda_methods()[1]  # Use first method from available MCDA methods
+valid_locs = domain.loc_ids
+
+selected_locs = select_locations(
+    seed_pref,
+    decision_mat,
+    mcda_method,
+    valid_locs,
+    5  # Select at least 5 locations
+)
+```
 
 # Arguments
-- `sp` : SeedPreferences
-- `dm` : The decision matrix to assess pertaining to the locations to be considered
-- `method` : MCDA method from JMcDM.jl
-- `cluster_ids` : Cluster membership for *all* locations
-- `area_to_seed` : total area to be seeded in absolute units (n_corals * mean juvenile area)
-- `considered_locs` : Locations to assess, specified by name or indices
-- `available_space` : available space for *all* location in absolute units (e.g., m²)
-- `min_locs` : Minimum number of locations to consider
-- `max_members` : Maximum number of deployment locations per cluster
+- `sp`: SeedPreferences containing criteria names, weights, and optimization directions
+- `dm`: Decision matrix with locations as rows and criteria as columns
+- `method`: MCDA method to use for ranking (from JMcDM package)
+- `cluster_ids`: Vector of cluster identifiers for each location
+- `area_to_seed`: Total area to seed in absolute units
+- `considered_locs`: Vector of location identifiers to consider for selection
+- `available_space`: Vector of available space (in absolute units) for each location
+- `min_locs`: Minimum number of locations to select
+- `max_members`: Maximum number of locations to select from the same cluster
 
 # Returns
-Selected location names/ids in order of their ranks.
-
-# Examples
-```julia
-dom = ADRIA.load_domain("... path to domain ...")
-
-seed_pref = ADRIA.SeedPreferences(dom)
-
-location_names = cluster_ids
-cluster_ids = dom.loc_data.cluster_id
-dm = ADRIA.decision_matrix(location_names, seed_pref.names, rand(3806, 6))
-available_space = dom.loc_data.k .* dom.loc_data.area
-mcda_method = ADRIA.mcda_methods()[1]
-min_locs = 5
-max_members = 2
-
-ADRIA.select_locations(seed_pref, dm, mcda_method, cluster_ids, 2.0, collect(1:3806), available_space, min_locs, max_members)
-```
+Vector of selected location identifiers, ordered by their ranks
 """
 function select_locations(
     sp::SeedPreferences,
     dm::YAXArray,
     method::Union{Function,DataType},
-    cluster_ids::Vector{<:Union{Int64,String,Symbol}},
-    area_to_seed::Float64,
     considered_locs::Vector{<:Union{Int64,String,Symbol}},
-    available_space::Vector{Float64},
-    min_locs::Int64,
-    max_members::Int64
+    min_locs::Int64
 )::Vector{<:Union{String,Symbol,Int64}}
+    loc_names = collect(getAxis(:location, dm))
+
+    # Continue with existing ranking process
     local rank_ordered_idx
     try
         rank_ordered_idx = rank_by_index(sp, dm, method)
@@ -179,7 +188,6 @@ function select_locations(
             # Return empty vector to signify no ranks
             return String[]
         end
-
         rethrow(err)
     end
 
@@ -187,156 +195,70 @@ function select_locations(
         return String[]
     end
 
-    # Disperse selected locations to avoid "clumping" deployment locations
-    dispersed_rank_order, _, n_locs = disperse_locations(
-        rank_ordered_idx,
-        cluster_ids[considered_locs][rank_ordered_idx],  # Reorder to match ranked location order
-        available_space[considered_locs][rank_ordered_idx],
-        area_to_seed,
-        min_locs,
-        max_members
-    )
+    # Take top n_locs from the ranked list
+    n_locs = min(min_locs, length(rank_ordered_idx))
 
-    loc_names = collect(getAxis(:location, dm))
-
-    return loc_names[dispersed_rank_order][1:n_locs]
+    return loc_names[rank_ordered_idx][1:n_locs]
 end
 
 """
-    disperse_locations(ranked_locs::Vector, cluster_ids::Vector, available_space::Vector, area_to_seed::Float64, n_iv_locs::Int64, max_members::Int64; max_iter=5)
+    cluster_diversity(cluster_ids::Vector{<:Union{Int64,String,Symbol}})::Vector{Float64}
 
-Disperse selected deployment locations, ensuring deployment locations are not "clumped"
-together.
-
-# Examples
-```julia
-ranked_locs = string.(collect(1:15))
-available_space = rand(15)
-cluster_ids = [1,4,4,4,4,3,6,2,5,5,6,6,7,7,1]
-area_to_seed = 5.0
-n_iv_locs = 5
-max_members = 2
-disperse_locations(ranked_locs, cluster_ids, available_space, area_to_seed, n_iv_locs, max_members)
-```
-
-# Arguments
-- `ranked_locs` : Name of locations in order of their rank
-- `cluster_ids` : the associated cluster for each location, by location rank order
-- `available_space` : available space for each location in order of their ranks
-- `area_to_seed` : area to be seeded. Must be in same unit as `available_space`.
-- `n_iv_locs` : minimum number of intervention locations
-- `max_members` : maximum number of allowable locations per cluster
-- `max_iter` : maximum number of attempts before giving up
-
-# Returns
-Tuple{Vector,Vector,Int64}
-- Locations in preferred order
-- their corresponding cluster ids, and
-- the number of locations selected
+Calculate how selecting each location would improve cluster diversity.
+Higher scores indicate locations from underrepresented clusters.
 """
-function disperse_locations(
-    ranked_locs::Vector,
-    cluster_ids::Vector,
-    available_space::Vector,
-    area_to_seed::Float64,
-    n_iv_locs::Int64,
-    max_members::Int64;
-    max_iter=3
-)::Tuple{Vector,Vector,Int64}
-    # Only expand the number of locations considered if there is not enough space for
-    # deployed corals.
-    enough_space = findfirst(>=(area_to_seed), cumsum(available_space[ranked_locs]))
+function cluster_diversity(cluster_ids::Vector{<:Union{Int64,String,Symbol}})::Vector{Float64}
+    # Count unique clusters and their frequencies
+    clusters = unique(cluster_ids)
+    n_clusters = length(clusters)
+    n_locations = length(cluster_ids)
 
-    num_locs = n_iv_locs
-    if isnothing(enough_space) || (enough_space < n_iv_locs)
-        # If no combinations >= area_to_seed then consider all potential locations
-        num_locs = min(length(ranked_locs), n_iv_locs)
-    end
+    # Calculate the ideal count per cluster (perfect distribution)
+    ideal_count = n_locations / n_clusters
 
-    # Need to ensure max_members rule is not breached
-    # Count the number of times each selected cluster appears
-    # then identify clusters that breach the max membership rule
-    selected_clusters, cluster_frequency,
-    rule_violators_idx, exceeded_clusters,
-    potential_alternatives = _update_state(cluster_ids, num_locs, max_members)
+    # Create a map of cluster to its count
+    cluster_counts = countmap(cluster_ids)
 
-    # If no cluster breaches the rule, then nothing to do!
-    if length(rule_violators_idx) == 0
-        return ranked_locs, cluster_ids, num_locs
-    end
+    # Calculate diversity score for each unique cluster
+    cluster_scores = Dict{eltype(clusters), Float64}()
 
-    # Otherwise, swap out locations that violate the rule
-    # attempt it `max_iter` times, then abort
-    c = 0
-    while length(exceeded_clusters) > 0
-        for rule_violator in exceeded_clusters
-            if !(rule_violator in keys(cluster_frequency))
-                continue
-            end
+    for cluster in clusters
+        # Calculate how underrepresented this cluster is
+        count_ratio = ideal_count / cluster_counts[cluster]
 
-            # For each cluster that violates the rule find out how much the rule was
-            # violated by. The difference is how many alternate locations we need to find.
-            freq = cluster_frequency[rule_violator]
-            reduce_by = freq - max_members
-
-            for _ in 1:reduce_by
-                # Identify viable clusters that do not breach the rule
-                alternates = vcat(
-                    fill(false, num_locs),
-                    (cluster_ids .∈ Ref(potential_alternatives))[(num_locs + 1):end]
-                )
-
-                if count(alternates) == 0
-                    # No other options available
-                    @debug "No other alternatives. Some grouping remains."
-                    return ranked_locs, cluster_ids, num_locs
-                end
-
-                # Swap the worst/lowest location for the cluster that breaches the rule
-                # for the next best location
-                worst_loc_idx = findlast(selected_clusters .== rule_violator)
-                next_best_loc_idx = findfirst(alternates .> 0)
-
-                # Swap selection for corresponding location, cluster ids and available space
-                worst_loc = ranked_locs[worst_loc_idx]
-                ranked_locs[worst_loc_idx] = ranked_locs[next_best_loc_idx]
-                ranked_locs[next_best_loc_idx] = worst_loc
-
-                worst_member_id = cluster_ids[worst_loc_idx]
-                cluster_ids[worst_loc_idx] = cluster_ids[next_best_loc_idx]
-                cluster_ids[next_best_loc_idx] = worst_member_id
-
-                space_at_worst_loc = available_space[worst_loc_idx]
-                available_space[worst_loc_idx] = available_space[next_best_loc_idx]
-                available_space[next_best_loc_idx] = space_at_worst_loc
-
-                # Swapping out a location may include a location with not much space
-                # so we reconsider how many locations we need
-                num_locs = max(
-                    findfirst(>=(area_to_seed), cumsum(available_space[ranked_locs])),
-                    n_iv_locs
-                )
-
-                # Update state
-                selected_clusters, cluster_frequency,
-                rule_violators_idx, exceeded_clusters,
-                potential_alternatives = _update_state(cluster_ids, num_locs, max_members)
-            end
-
-            if length(exceeded_clusters) == 0
-                # Break out of for loop early if solution found
-                break
-            end
-        end
-
-        c += 1
-        if c > max_iter
-            @debug "Could not reduce clusters down to max_members. Exceeded `max_iter`."
-            break
+        # Scale so the maximum possible value is 1.0
+        # A fully represented cluster gets 0.0
+        # An underrepresented cluster gets a score based on its deficit
+        if count_ratio > 1.0  # Underrepresented
+            cluster_scores[cluster] = min(1.0, (count_ratio - 1.0) / (n_clusters - 1.0))
+        else  # Overrepresented
+            cluster_scores[cluster] = 0.0
         end
     end
 
-    return ranked_locs, cluster_ids, num_locs
+    # Map cluster scores back to each location
+    diversity_scores = zeros(n_locations)
+    for i in 1:n_locations
+        diversity_scores[i] = cluster_scores[cluster_ids[i]]
+    end
+
+    return diversity_scores
+end
+
+"""
+    geographic_separation(mean_distances::Matrix{Float64})::Vector{Float64}
+
+Calculate how spatially separated each location is from others.
+Higher scores indicate locations that are more distant from their neighbors.
+"""
+function geographic_separation(mean_distances::Vector{Float64})::Vector{Float64}
+    # Normalize to [0,1]
+    max_dist = maximum(mean_distances)
+    if max_dist > 0
+        return mean_distances ./ max_dist
+    end
+
+    return zeros(length(mean_distances))
 end
 
 """

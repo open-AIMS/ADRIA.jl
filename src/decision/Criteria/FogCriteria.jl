@@ -58,6 +58,24 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Fog Coral Cover",
         description="Higher values give preference to sites with high coral cover for fogging deployments."
     )
+    fog_cluster_diversity::Param = Factor(
+        0.5;
+        ptype="continuous",
+        dist=Uniform,
+        dist_params=(0.0, 1.0),
+        direction=maximum,
+        name="Cluster Diversity",
+        description="Prefer to fog locations in clusters that are under-represented."
+    )
+    fog_geographic_separation::Param = Factor(
+        0.5;
+        ptype="continuous",
+        dist=Uniform,
+        dist_params=(0.0, 1.0),
+        direction=minimum,
+        name="Geographic Separation",
+        description="Fog locations that are distant (when maximized) or closer (when minimized) to their neighbors."
+    )
     # Disabled as they are currently unnecessary
     # fog_priority::Param= Factor(
     #     0.0;
