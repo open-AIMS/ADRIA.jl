@@ -619,12 +619,18 @@ function run_model(
         seed_pref = SeedPreferences(domain, param_set)
         fog_pref = FogPreferences(domain, param_set)
 
+        # Calculate cluster diversity and geographic separation scores
+        diversity_scores = decision.cluster_diversity(domain.loc_data.cluster_id)
+        separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
+
         # Create shared decision matrix, setting criteria values that do not change
         # between time steps
         decision_mat = decision_matrix(
             domain.loc_ids,
             seed_pref.names;
-            depth=loc_data.depth_med
+            depth=loc_data.depth_med,
+            cluster_diversity=diversity_scores,
+            geographic_separation=separation_scores
         )
 
         # Unsure what to do with this because it is usually empty
@@ -913,12 +919,8 @@ function run_model(
                 seed_pref,
                 decision_mat[location=locs_with_space[_valid_locs]],
                 MCDA_approach,
-                loc_data.cluster_id,
-                max_area_to_seed,
                 considered_locs,
-                vec(leftover_space_m²),
-                min_iv_locs,
-                max_members
+                min_iv_locs
             )
 
             # Log rankings as appropriate
