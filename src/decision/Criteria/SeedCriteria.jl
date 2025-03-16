@@ -74,7 +74,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         dist_params=(0.0, 1.0),
         direction=minimum,
         name="Geographic Separation",
-        description="Prefer locations that are distant (when maximized) or closer (when minimized) to their neighbors."
+        description="Prefer locations that are distant (when maximized) or closer (when minimized; the default) to their neighbors."
     )
     # Disabled as they are currently unnecessary
     # seed_priority::Param = Factor(
@@ -198,7 +198,7 @@ function select_locations(
     # Take top n_locs from the ranked list
     n_locs = min(min_locs, length(rank_ordered_idx))
 
-    return loc_names[rank_ordered_idx][1:n_locs]
+    return collect(loc_names[rank_ordered_idx][1:n_locs])
 end
 
 """
