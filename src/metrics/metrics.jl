@@ -212,7 +212,7 @@ function _relative_juveniles(
 )::AbstractArray{T,2} where {T<:Real}
     # Cover of juvenile corals (< 5cm diameter)
     juv_groups =
-        X[species=(coral_spec.class_id .== 1)] .+ X[species=(coral_spec.class_id .== 2)]
+        X[species=coral_spec.class_id .== 1] .+ X[species=coral_spec.class_id .== 2].data
 
     return dropdims(sum(juv_groups; dims=:species); dims=:species)
 end

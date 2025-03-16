@@ -76,7 +76,7 @@ Get quantiles for a given categorical variable.
 Quantile for a categorical factor.
 """
 function _get_cat_quantile(
-    foi_spec::DataFrame, factor_name::Symbol, steps::Vector{Float64}
+    foi_spec::DataFrame, factor_name::Symbol, steps::AbstractVector{Float64}
 )::Vector{Float64}
     fact_idx::BitVector = foi_spec.fieldname .== factor_name
     lb = foi_spec.lower_bound[fact_idx][1] - 1
