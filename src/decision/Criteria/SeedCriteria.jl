@@ -207,7 +207,9 @@ end
 Calculate how selecting each location would improve cluster diversity.
 Higher scores indicate locations from underrepresented clusters.
 """
-function cluster_diversity(cluster_ids::Vector{<:Union{Int64,String,Symbol}})::Vector{Float64}
+function cluster_diversity(
+    cluster_ids::Vector{<:Union{Int64,String,Symbol}}
+)::Vector{Float64}
     # Count unique clusters and their frequencies
     clusters = unique(cluster_ids)
     n_clusters = length(clusters)
@@ -220,7 +222,7 @@ function cluster_diversity(cluster_ids::Vector{<:Union{Int64,String,Symbol}})::V
     cluster_counts = countmap(cluster_ids)
 
     # Calculate diversity score for each unique cluster
-    cluster_scores = Dict{eltype(clusters), Float64}()
+    cluster_scores = Dict{eltype(clusters),Float64}()
 
     for cluster in clusters
         # Calculate how underrepresented this cluster is

@@ -51,14 +51,14 @@ function distance_matrix(coords::Vector{Tuple{Float64,Float64}})::Matrix{Float64
     dist_matrix = zeros(n_locs, n_locs)
 
     for i in 1:n_locs
-        for j in (i+1):n_locs
+        for j in (i + 1):n_locs
             if i == j
                 continue
             end
 
             dist = Distances.haversine(coords[i], coords[j])
-            dist_matrix[i,j] = dist
-            dist_matrix[j,i] = dist
+            dist_matrix[i, j] = dist
+            dist_matrix[j, i] = dist
         end
     end
 
@@ -91,7 +91,7 @@ indication of spatial spread.
 """
 function mean_distance(dist_matrix::Matrix{Float64})::Vector{Float64}
     n_locs = size(dist_matrix, 1)
-    mean_distances = vec(sum(dist_matrix, dims=2) ./ (n_locs - 1))
+    mean_distances = vec(sum(dist_matrix; dims=2) ./ (n_locs - 1))
 
     return mean_distances
 end
