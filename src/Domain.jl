@@ -86,8 +86,11 @@ end
 """
     mean_distance(dist_matrix::Matrix{Float64})::Vector{Float64}
 
-Calculate the mean distance between a location and all other locations to give an
-indication of spatial spread.
+Calculate the mean pairwise distance between each location and all other locations to
+give an indication of spatial spread.
+
+# See also
+- `nearest_neighbor_distances()`
 """
 function mean_distance(dist_matrix::Matrix{Float64})::Vector{Float64}
     n_locs = size(dist_matrix, 1)
@@ -106,7 +109,7 @@ Calculate the mean distance to the n closest neighbors for each location.
 - `n_neighbors`: Number of closest neighbors to consider
 
 # Returns
-Vector of mean distances (in m) to nearest neighbors for each location
+Vector of mean distances (in meters) to nearest `n_neighbors` for each location.
 """
 function nearest_neighbor_distances(
     dist_matrix::Matrix{Float64},
