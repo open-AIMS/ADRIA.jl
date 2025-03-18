@@ -1019,8 +1019,7 @@ function run_model(
 
         survival_rate_slices = [@view survival_rate_cache[:, :, loc] for loc in 1:n_locs]
         apply_mortality!.(functional_groups, survival_rate_slices)
-        recruitment .*= reshape(survival_rate_cache[:, 1, :], (n_groups, n_locs))
-        recruitment .*= loc_k_area
+        recruitment .*= (view(survival_rate_cache, :, 1, :) .* loc_k_area)
 
         C_cover[tstep, :, :, :] .= C_cover_t
     end
