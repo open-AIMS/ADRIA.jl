@@ -1,5 +1,34 @@
 using ADRIA
 
+@testset "switching_probability returns correct values" begin
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+    past_locations = dom.loc_data.reef_siteid[1:3]
+    min_locs = 5  # select at least 10 locations
+    valid_locations = dom.loc_data.reef_siteid
+
+    supported_methods = ADRIA.decision.mcda_methods()
+    mcda_method = supported_methods[rand(1:length(supported_methods))]
+
+    seed_pref_names = collect(fieldnames(ADRIA.SeedCriteriaWeights))
+    decision_matrix = ADRIA.decision_matrix(
+        valid_locations,
+        seed_pref_names,
+        rand(length(valid_locations), length(seed_pref_names))
+    )
+
+    result = ADRIA.analysis.switching_probability(
+        past_locations, decision_matrix, dom.loc_data, mcda_method, min_locs
+    )
+    @test sum(values(result)) == 1.0
+    @test keys(result) == keys(ADRIA.analysis.OPTION_WEIGHS)
+
+    option = first(keys(ADRIA.analysis.OPTION_WEIGHS))
+    new_result = ADRIA.analysis.switching_probability(past_locations, decision_matrix,
+        dom.loc_data, mcda_method,
+        min_locs, option)
+    @test new_result isa Float64
+end
+
 @testset "distance_selected_locations returns correct values" begin
     @testset "for standard domain" begin
         dom = ADRIA.load_domain(TEST_DOMAIN_PATH)

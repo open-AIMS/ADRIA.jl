@@ -10,6 +10,75 @@ const PORTS = Dict(
     :gladstone => (151.2993586, -23.8740713)
 )
 
+# Weighs used in MCDA critaria for all pathway diversity options.
+# The order of the weighs follow this criteria sorting
+# :seed_heat_stress, :seed_wave_stress, :seed_in_connectivity, :seed_out_connectivity,
+# :seed_depth, :seed_coral_cover, :seed_cluster_diversity, :seed_geographic_separation
+const OPTION_WEIGHS = Dict(
+    :heat_stress => [1.0, 0.0, 0.0, 0.1, 0.8, 0.2, 0.3, 0.3],
+    :connectivity => [0.1, 0.0, 0.4, 1.0, 0.1, 0.9, 0.3, 0.3],
+    :geographic_spread => [0.1, 0.0, 0.0, 0.1, 0.1, 0.2, 0.5, 0.8],
+    :default => [1.0, 0.3, 0.85, 0.9, 0.95, 0.7, 0.5, 0.5]
+)
+
+"""
+    switching_probability(previous_strategy::Symbol, decision_matrix::YAXArray)::Dict{Symbol, Float64}
+
+Compute switching probability for all defined pathway diversity options.
+
+# Arguments
+- `past_locations` : Vector with location id (reef_siteid or UNIQUE_ID) of the past selected locations.
+- `decision_matrix` : Decision matrix with criterias used for MCDA analysis.
+- `loc_data` : Location data for all locations.
+- `mcda_method` : MCDA method used in selec_locations.
+- `min_locs` : Minimum number of locations to be selected by the MCDA algorithm
+- `cost_index_weigh` : Weigh used to cost_index. The complementary is used to weigh the option_similarity.
+Defaults to 0.5
+
+# Returns
+Dictionary with probability of switching to each option or the probability itself if the option is passed.
+"""
+function switching_probability(
+    past_locations::Vector{String},
+    decision_matrix::YAXArray,
+    loc_data::DataFrame,
+    mcda_method::Union{Function,DataType},
+    min_locs::Int64,
+    cost_index_weigh::Float64=0.5
+)::Dict{Symbol,Float64}
+    preferences = option_seed_preference()
+    probs = Dict(zip(keys(preferences), zeros(length(preferences))))
+
+    for (option, preference) in preferences
+        option_locations = ADRIA.select_locations(
+            preference, decision_matrix, mcda_method, collect(1:size(loc_data, 1)), min_locs
+        )
+        probs[option] += (1 - cost_index(option_locations, loc_data)) * cost_index_weigh
+        probs[option] +=
+            option_similarity(option_locations, past_locations, loc_data) *
+            (1 - cost_index_weigh)
+    end
+
+    # Normalize probabilities
+    sum_probs = sum(values(probs))
+    map!(prob -> prob / sum_probs, values(probs))
+
+    return probs
+end
+function switching_probability(
+    past_locations::Vector{String},
+    decision_matrix::YAXArray,
+    loc_data::DataFrame,
+    mcda_method::Union{Function,DataType},
+    min_locs::Int64,
+    option::Symbol,
+    cost_index_weigh::Float64=0.5
+)::Float64
+    return switching_probability(
+        past_locations, decision_matrix, loc_data, mcda_method, min_locs, cost_index_weigh
+    )[option]
+end
+
 """
     option_similarity(selected_locations1::Vector{String}, selected_locations2::Vector{String}, loc_data::DataFrame, max_distance::Float64=100000.0)::Float64
 
@@ -84,6 +153,25 @@ function cost_index(
     return cost_index(reefs; weigh, max_distance_port, max_dispersion)
 end
 
+"""
+    option_seed_preference()::Dict{Symbol}{ADRIA.decision.SeedPreferences}
+
+Return a dictionary where keys are an option name and vales are the seed preferences for the options.
+"""
+function option_seed_preference()::Dict{Symbol}{ADRIA.decision.SeedPreferences}
+    names = collect(fieldnames(ADRIA.SeedCriteriaWeights))
+    scw = ADRIA.SeedCriteriaWeights()
+    directions = map(
+        field -> getfield(scw, field).direction,
+        collect(fieldnames(ADRIA.SeedCriteriaWeights))
+    )
+    preferences = map(
+        weighs -> ADRIA.SeedPreferences(names, weighs, directions),
+        collect(values(OPTION_WEIGHS))
+    )
+
+    return Dict(zip(keys(OPTION_WEIGHS), preferences))
+end
 """
     _filter_locations(loc_data::DataFrame, selected_locations::Vector{String})
 
