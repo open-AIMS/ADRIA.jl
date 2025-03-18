@@ -1,4 +1,75 @@
 """
+    switching_probability(past_option::Symbol, decision_matrix::YAXArray)::Dict{Symbol, Float64}
+
+Compute switching probability for all defined pathway diversity options.
+
+# Arguments
+- `past_option` : Symbol with past option.
+- `decision_matrix` : Decision matrix with criterias used for MCDA analysis.
+- `loc_data` : Location data for all locations.
+- `mcda_method` : MCDA method used in selec_locations.
+- `min_locs` : Minimum number of locations to be selected by the MCDA algorithm
+- `ports` : Dataframe with name and coordinate of ports.
+- `weight` : Weigh used to cost_index. The complementary is used to weight the option_similarity.
+Defaults to 0.5
+
+# Returns
+DataFrame with probability of switching to each option or the probability value for one option if the option is passed.
+"""
+function switching_probability(
+    past_option::Symbol,
+    decision_matrix::YAXArray,
+    loc_data::DataFrame,
+    mcda_method::Union{Function,DataType},
+    min_locs::Int64;
+    ports::Union{DataFrame,Nothing}=nothing,
+    weight::Float64=0.5
+)::DataFrame
+    options = option_seed_preference()
+    options.probability = zeros(size(options, 1))
+    valid_locs = collect(1:size(loc_data, 1))
+
+    if ports == nothing
+        ports = _ports()
+    end
+
+    past_locations = ADRIA.select_locations(
+        options[options.option_name .== past_option, :preference][1], decision_matrix,
+        mcda_method, valid_locs, min_locs
+    )
+
+    for row in eachrow(options)
+        option_locations = ADRIA.select_locations(
+            row.preference, decision_matrix, mcda_method, valid_locs, min_locs
+        )
+        row.probability += (1 - cost_index(option_locations, loc_data, ports)) * weight
+        row.probability +=
+            option_similarity(option_locations, past_locations, loc_data) * (1 - weight)
+    end
+
+    # Normalize probabilities
+    sum_probs = sum(options.probability)
+    options.probability = options.probability / sum_probs
+
+    return options[:, [:option_name, :probability]]
+end
+function switching_probability(
+    past_option::Symbol,
+    decision_matrix::YAXArray,
+    loc_data::DataFrame,
+    mcda_method::Union{Function,DataType},
+    min_locs::Int64,
+    option::Symbol;
+    ports::Union{DataFrame,Nothing}=nothing,
+    weight::Float64=0.5
+)::Float64
+    result = switching_probability(
+        past_option, decision_matrix, loc_data, mcda_method, min_locs; ports, weight
+    )
+    return first(result[result.option_name .== option, :probability])
+end
+
+"""
     option_similarity(selected_locations1::Vector{String}, selected_locations2::Vector{String}, loc_data::DataFrame, max_distance::Float64=100000.0)::Float64
 
 Given two vectors of location IDs, it computes a measure of how similar the locations are regarding geographic
@@ -73,6 +144,37 @@ function cost_index(
 )
     locations = _filter_locations(loc_data, selected_locations)
     return cost_index(locations, ports; weight, max_distance_port, max_dispersion)
+end
+
+"""
+    option_seed_preference(; include_weights::Bool = false)::DataFrame
+
+Return a dataframe with all options, including their names and SeedPreferences object. If include_weights = true it
+also returns the weights given to all MCDA criteria.
+"""
+function option_seed_preference(; include_weights::Bool=false)::DataFrame
+    criteria_names = collect(fieldnames(ADRIA.SeedCriteriaWeights))
+    column_names = vcat([:option_name], criteria_names)
+    option_weights = [
+        :heat_stress 1.0 0.0 0.0 0.1 0.8 0.2 0.3 0.3;
+        :geographic_spread 0.1 0.0 0.0 0.1 0.1 0.2 0.5 0.8;
+        :connectivity 0.1 0.0 0.4 1.0 0.1 0.9 0.3 0.3;
+        :balanced 1.0 0.3 0.85 0.9 0.95 0.7 0.5 0.5
+    ]
+    options = DataFrame(option_weights, column_names)
+
+    scw = ADRIA.SeedCriteriaWeights()
+    directions = map(field -> getfield(scw, field).direction, criteria_names)
+
+    options.preference = map(
+        row -> ADRIA.SeedPreferences(criteria_names, collect(row[2:end]), directions),
+        eachrow(options)
+    )
+
+    if include_weights
+        return options
+    end
+    return options[:, [1, end]]
 end
 
 """
