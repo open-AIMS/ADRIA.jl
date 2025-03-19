@@ -79,9 +79,10 @@ end
 Get the integer encoding for the type of intervention to be used in the scenario dataframe.
 """
 function decision_method_encoding(method_name::String)::Int64
-    if method_name == "counterfactual"
+    method_name = uppercase(method_name)
+    if method_name == "COUNTERFACTUAL"
         return COUNTERFACTUAL_SCEN_ENCODING
-    elseif method_name == "unguided"
+    elseif method_name == "UNGUIDED"
         return UNGUIDED_SCEN_ENCODING
     end
 
