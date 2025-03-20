@@ -9,6 +9,7 @@ include("mock_data/mock_data.jl")
 include("run_scenarios.jl")
 
 include("analysis.jl")
+include("pathway_diversity.jl")
 include("clustering.jl")
 include("data_loading.jl")
 include("domain.jl")
