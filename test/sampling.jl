@@ -107,6 +107,28 @@ end
             "Some fogging weights are not properly normalized."
     end
 
+    @testset "Specific Intervention strategy" begin
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        num_samples = 32
+
+        test_inputs = [
+            ("Cocoso",), ("Mairca",), ("counterfactual", "unguided"),
+            ("counterfactual", "unguided", "Piv"),
+            ("counterfactual", "unguided", "Cocoso", "Moora", "Piv", "Vikor"),
+            ("Cocoso", "Mairca", "Moora", "Piv", "Vikor")
+        ]
+        test_output = [
+            [1], [2], [-1, 0], [-1, 0, 4], [-1, 0, 1, 3, 4, 5]
+        ]
+
+        for (inp, out) in zip(test_inputs, test_output)
+            ADRIA.set_factor_bounds(dom, :guided, inp)
+            scens = ADRIA.sample(dom, 32)
+
+            @test all(scens.guided .∈ [out])
+        end
+    end
+
     @testset "Unguided sampling" begin
         dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         num_samples = 32
