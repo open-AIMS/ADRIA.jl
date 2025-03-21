@@ -3,6 +3,11 @@ using ADRIA.Distributions
 using ADRIA.decision.JMcDM
 using ADRIA.decision: subtypes
 
+if !@isdefined(ADRIA_DIR)
+    const ADRIA_DIR = pkgdir(ADRIA)
+    const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
+end
+
 @testset "Validate included MCDA methods" begin
     """
     Identifies MCDA methods that pass a simple test to inform whether they should be included
@@ -154,4 +159,61 @@ end
     )
 
     @test dm.data == new_vals || "Failed to update criteria values by name"
+end
+
+@testset "Test decision matrix spatial plotting" begin
+    mcda_funcs = ADRIA.decision.mcda_methods()
+
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+    N = 2^3
+    scens = ADRIA.sample_selection(dom, N)  # get scenario dataframe
+    scen = scens[1, :]
+
+    # Get seeding preferences
+    seed_pref = ADRIA.decision.SeedPreferences(dom, scen)
+
+    # Calculate criteria vectors
+    # Cover
+    sum_cover = vec(sum(dom.init_coral_cover; dims=1).data)
+    # DHWS
+    dhw_scens = dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]
+    plan_horizon = Int64(scen["plan_horizon"])
+    decay = 0.99 .^ (1:(plan_horizon + 1)) .^ 2
+    dhw_projection = ADRIA.decision.weighted_projection(
+        dhw_scens, 1, plan_horizon, decay, 75
+    )
+    # Connectivity
+    area_weighted_conn = dom.conn.data .* ADRIA.site_k_area(dom)
+    conn_cache = similar(area_weighted_conn)
+    in_conn, out_conn, network = ADRIA.connectivity_strength(
+        area_weighted_conn, sum_cover, conn_cache
+    )
+
+    # Create decision matrix
+    seed_decision_mat = ADRIA.decision.decision_matrix(
+        dom.loc_ids,
+        seed_pref.names;
+        seed_in_connectivity=in_conn,
+        seed_out_connectivity=out_conn,
+        seed_heat_stress=dhw_projection,
+        seed_coral_cover=sum_cover
+    )
+
+    # Get results from applying MCDA algorithm
+    crit_agg = ADRIA.decision.criteria_aggregated_scores(
+        seed_pref, seed_decision_mat, mcda_funcs[1]
+    )
+
+    # Don't plot constant criteria
+    is_const = Bool[length(x) == 1 for x in unique.(eachcol(seed_decision_mat.data))]
+
+    @test all(.!isnan.(crit_agg.scores)) || "Criteria aggregate score contains NaNs."
+    @test all(.!isnan.(seed_decision_mat)) || "Decision matrix contains NaNs."
+    @test all(seed_decision_mat .>= 0.0) || "Decision matrix contains negative values."
+
+    # Plot normalized scores and criteria as map
+    decision_mat_fig = ADRIA.viz.selection_criteria_map(
+        dom, seed_decision_mat[criteria=.!is_const],
+        crit_agg.scores ./ maximum(crit_agg.scores)
+    )
 end

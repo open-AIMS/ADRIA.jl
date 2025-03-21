@@ -169,7 +169,7 @@ function sample(
     samples = QMC.sample(n, zeros(n_vary_params), ones(n_vary_params), sample_method)
 
     # Scale uniform samples to indicated distributions using the inverse CDF method
-    samples = Matrix(quantile.(vary_dists, samples)')
+    samples = Matrix(Distributions.quantile.(vary_dists, samples)')
 
     # Combine varying and constant values (constant params use their indicated default vals)
     full_df = hcat(fill.(spec.val, n)...)
@@ -488,6 +488,28 @@ function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
 end
 
 """
+    _update_decision_method!(dom, new_dist_params::Tuple)::Domain
+
+Update the model spec with the tuple of DMCA methods to use.
+"""
+function _update_decision_method!(dom, new_dist_params::Tuple)::Domain
+    new_method_names::Vector{String} = collect(new_dist_params)
+
+    new_method_idxs = decision.decision_method_encoding.(new_method_names)
+
+    ms = model_spec(dom)
+    guided_row = findfirst(ms.fieldname .== :guided)
+    @assert !isnothing(guided_row) "Guided variable not found in model spec."
+
+    ms[guided_row, :dist_params] = Tuple(new_method_idxs)
+    ms[guided_row, :val] = first(new_method_idxs)
+    ms[guided_row, :is_constant] = length(new_method_idxs) == 1
+    update!(dom, ms)
+
+    return dom
+end
+
+"""
     set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
     set_factor_bounds!(dom::Domain; factors...)::Nothing
 
@@ -519,6 +541,10 @@ function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple):
     return dom
 end
 function set_factor_bounds!(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
+    if factor == :guided
+        return _update_decision_method!(dom, new_dist_params)
+    end
+
     old_val = get_attr(dom, factor, :val)
     new_val = mean(new_dist_params[1:2])
 
@@ -540,12 +566,23 @@ function set_factor_bounds(dom::Domain; factors...)::Domain
     return dom
 end
 function set_factor_bounds!(dom::Domain; factors...)::Domain
-    ms = model_spec(dom)
+    # Extract factor names and values
     factor_symbols = collect(keys(factors))
+    new_params = collect(values(factors))
+
+    # Handle categorical guided factor separately
+    if :guided in factor_symbols
+        factor_idx::Int64 = findfirst(factor_symbols .== :guided)
+        dom = _update_decision_method!(dom, new_params[factor_idx])
+        factor_symbols = factor_symbols[1:end .!= factor_idx]
+        new_params = new_params[1:end .!= factor_idx]
+    end
+
+    ms = model_spec(dom)
+
     factor_rows = findall(in(factor_symbols), ms.fieldname)
 
     # Update dist_params and values in bulk
-    new_params = collect(values(factors))
     ms[factor_rows, :dist_params] .= new_params
 
     # Calculate new values preserving types

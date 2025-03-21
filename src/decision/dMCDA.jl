@@ -21,6 +21,9 @@ using
     DataFrames,
     JMcDM
 
+const COUNTERFACTUAL_SCEN_ENCODING::Int64 = -1
+const UNGUIDED_SCEN_ENCODING::Int64 = 0
+
 # dummy functions to allow precompilation
 function unguided_selection() end
 function rank_sites!() end
@@ -43,6 +46,47 @@ function mcda_methods()
         JMcDM.PIV.PIVMethod,
         JMcDM.VIKOR.VikorMethod
     ]
+end
+
+"""
+    mcda_method_names()::Vector{String}
+
+List of MCDA method names.
+"""
+function mcda_method_names()::Vector{String}
+    return getindex.(split.(string.(mcda_methods()), "."), 2)
+end
+
+"""
+    mcda_method_encoding(mcda_name::String)::Union{Int64, Nothing}
+
+Find the scenario encoding of the given mcda method. Throws `ArgumentError` if method not 
+found.
+"""
+function mcda_method_encoding(mcda_name::String)::Int64
+    method_idx = findfirst(mcda_method_names() .== uppercase(mcda_name))
+    if isnothing(method_idx)
+        msg = "Given MCDA method $(mcda_name) is not in list of mcda methods.\n"
+        msg *= "Possible MCDA methods are $(mcda_method_names())"
+        throw(ArgumentError(msg))
+    end
+    return method_idx
+end
+
+"""
+    decision_method_encoding(method_name::String)::Int64
+
+Get the integer encoding for the type of intervention to be used in the scenario dataframe.
+"""
+function decision_method_encoding(method_name::String)::Int64
+    method_name = uppercase(method_name)
+    if method_name == "COUNTERFACTUAL"
+        return COUNTERFACTUAL_SCEN_ENCODING
+    elseif method_name == "UNGUIDED"
+        return UNGUIDED_SCEN_ENCODING
+    end
+
+    return mcda_method_encoding(method_name)
 end
 
 """
