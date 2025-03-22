@@ -534,7 +534,8 @@ function run_model(
     vec_abs_k = site_k_area(domain)
     habitable_locs::BitVector = location_k(domain) .> 0.0
     habitable_loc_areas = vec_abs_k[habitable_locs]
-    habitable_loc_areas′ = reshape(habitable_loc_areas, (1, 1, length(habitable_locs)))
+
+    habitable_loc_areas′ = reshape(habitable_loc_areas, (1, 1, length(habitable_loc_areas)))
 
     # Avoid placing importance on sites that were not considered
     # Lower values are higher importance/ranks.
@@ -722,7 +723,7 @@ function run_model(
             C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
 
         # Settlers from t-1 grow into observable sizes.
-        C_cover_t[:, 1, habitable_locs] .+= recruitment
+        C_cover_t[:, 1, habitable_locs] .+= recruitment[:, habitable_locs]
 
         lin_ext_scale_factors::Vector{Float64} = linear_extension_scale_factors(
             C_cover_t[:, :, habitable_locs],
@@ -735,14 +736,14 @@ function run_model(
         lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs] .< (0.7 .* habitable_loc_areas)] .=
             1
 
-        @floop for i in habitable_loc_idxs
+        @floop for (idx_i, i) in enumerate(habitable_loc_idxs)
             # TODO Skip when _loc_rel_leftover_space[i] == 0
 
             # Perform timestep
             timestep!(
                 functional_groups[i],
                 recruitment[:, i],
-                _linear_extensions .* lin_ext_scale_factors[i],
+                _linear_extensions .* lin_ext_scale_factors[idx_i],
                 survival_rate
             )
 
@@ -960,7 +961,7 @@ function run_model(
                 # Calculate proportion to seed based on current available space
                 proportional_increase, n_corals_seeded = distribute_seeded_corals(
                     vec_abs_k[seed_locs],
-                    available_space,
+                    available_space[.!isnan.(available_space)],
                     max_seeded_area,
                     seed_volume.data
                 )
