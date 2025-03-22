@@ -318,7 +318,7 @@ end
 Get name of result set.
 """
 function store_name(rs::ResultSet)::String
-    return "$(rs.name)__RCPs$(rs.RCP)__$(rs.invoke_time)"
+    return "$(rs.name)__RCPs_$(rs.RCP)__$(rs.invoke_time)"
 end
 
 """
