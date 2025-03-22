@@ -163,7 +163,7 @@ function criteria_aggregated_scores(
     end
 
     # Recreate preferences, removing criteria that are constant for this scenario
-    if !all(.!is_const)
+    if any(is_const)
         _dp = filter_criteria(dp, is_const)
     end
 
