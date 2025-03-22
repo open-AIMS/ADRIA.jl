@@ -118,7 +118,8 @@ function Domain(
     conn_path::String,
     dhw_fn::String,
     wave_fn::String,
-    cyclone_mortality_fn::String
+    cyclone_mortality_fn::String;
+    is_cyclone_category::Bool=false
 )::ADRIADomain
     local location_data::DataFrame
     try
@@ -154,8 +155,10 @@ function Domain(
         timeframe
     )
 
-    # Sort data to maintain consistent order
-    sort!(location_data, Symbol[Symbol(location_id_col)])
+    if cluster_id_col == "cluster_id"
+        # Sort data to maintain consistent order (only if domain is cluster-scale).
+        sort!(location_data, Symbol[Symbol(location_id_col)])
+    end
     u_sids::Vector{String} = string.(collect(location_data[!, location_id_col]))
     # If location id column is missing then derive it from the Unique IDs
     if !in(location_id_col, names(location_data))
@@ -173,7 +176,25 @@ function Domain(
     location_data = location_data[
         coalesce.(in.(conn_ids, [connectivity.loc_ids]), false), (:)
     ]
-    location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
+    if ("k" ∉ names(location_data)) &
+        ("ReefMod_habitable_proportion" ∈ names(location_data))
+        @warn "
+        k column not found in gbr-wide canonical-reefs gpkg. 
+        # Defaulting to ReefMod_habitable_proportion (in proportion 0-1 scale).
+        "
+        rename!(location_data, :ReefMod_habitable_proportion => :k)
+    else
+        location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent in cluster-scale data).
+    end
+
+    if ("area" ∉ names(location_data)) &
+        ("ReefMod_area_m2" ∈ names(location_data))
+        @warn " 
+        # area column not found in gbr-wide canonical-reefs gpkg. 
+        # Defaulting to ReefMod_area_m2 (Total possible coral area in m2).
+        "
+        rename!(location_data, :ReefMod_area_m2 => :area)
+    end
 
     n_locs::Int64 = nrow(location_data)
     n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
@@ -190,9 +211,19 @@ function Domain(
     waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
     waves = load_env_data(waves_params...)
 
-    cyc_params =
-        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, location_data)
-    cyclone_mortality = load_cyclone_mortality(cyc_params...)
+    cyclone_mortality = nothing
+    cyc_from_file::Bool = ispath(cyclone_mortality_fn)
+    if cyc_from_file && is_cyclone_category
+        cyclone_mortality = load_cyclone_mortality_from_category(
+            cyclone_mortality_fn, location_data, timeframe
+        )
+    elseif cyc_from_file
+        cyclone_mortality = load_cyclone_mortality(cyclone_mortality_fn)
+    else
+        cyclone_mortality = load_cyclone_mortality(
+            timeframe, location_data, location_id_col
+        )
+    end
 
     # Add compatability with non-migrated datasets but always default current coral spec
     if size(cyclone_mortality, 3) == 6
@@ -206,6 +237,14 @@ function Domain(
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
     msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
+
+    # ReefMod DHW timeseries data (2000:2100) do not match the length of waves/cyclone 
+    # data (2025:2099). Can be fixed when AIMS-sourced DHW trajectories become available. 
+    if size(dhw, 1) > size(waves, 1)
+        first_year = findfirst(collect(2000:2100) .== first(timeframe))
+        last_year = findfirst(collect(2000:2100) .== last(timeframe))
+        dhw = dhw[first_year:last_year, :, :]
+    end
 
     @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
@@ -245,6 +284,8 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
     end
 
     dpkg_details::Dict{String,Any} = _load_dpkg(path)
+    location_id_col = _get_id_col(dpkg_details)
+    cluster_id_col::String = "cluster_id"
 
     # Handle compatibility
     # Extract the time frame represented in this data package
@@ -262,18 +303,22 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         timeframe = parse.(Int64, md_timeframe)
     end
 
-    location_id_col::String = "reef_siteid"
-    cluster_id_col::String = "cluster_id"
-
     conn_path::String = joinpath(path, "connectivity/")
     spatial_path::String = joinpath(path, "spatial")
 
     gpkg_path::String = joinpath(spatial_path, "$(domain_name).gpkg")
     init_coral_cov::String = joinpath(spatial_path, "coral_cover.nc")
 
-    dhw_fn::String = !isempty(rcp) ? joinpath(path, "DHWs", "dhwRCP$(rcp).nc") : ""
+    dhw_dir::String = joinpath(path, "DHWs")
+    # A default DHW must be loaded to know how many scenarios are available.
+    dhw_fn::String =
+        !isempty(rcp) ? joinpath(
+            dhw_dir, "dhwRCP$(rcp).nc"
+        ) : joinpath(dhw_dir, _get_any_dhw(dhw_dir))
+
     wave_fn::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
-    cyclone_mortality_fn::String = joinpath(path, "cyclones", "cyclone_mortality.nc")
+    cyclone_data_fn::String, cyclone_type_flag = get_cyclone_info(dpkg_details)
+    cyclone_data_fn = joinpath(path, cyclone_data_fn)
 
     return Domain(
         domain_name,
@@ -287,9 +332,11 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         conn_path,
         dhw_fn,
         wave_fn,
-        cyclone_mortality_fn
+        cyclone_data_fn;
+        is_cyclone_category=cyclone_type_flag
     )
 end
+
 function load_domain(path::String, rcp::String)::ADRIADomain
     return load_domain(ADRIADomain, path, rcp)
 end
@@ -305,6 +352,53 @@ end
 """Get the path to the wave data associated with the domain."""
 function get_wave_data(d::ADRIADomain, RCP::String)::String
     return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).nc")
+end
+
+function _get_id_col(dpkg_details)
+    spatial_resources = findfirst(
+        [x["name"] for x in dpkg_details["resources"]] .== "spatial_data"
+    )
+    spatial_resources = dpkg_details["resources"][spatial_resources]
+
+    return first(spatial_resources["data"])
+end
+
+"""
+    get_cyclone_info(dpkg_details)::Tuple{String, Bool}
+
+Get the path to the cyclone mortality or category data.
+
+# Returns
+Path to cyclone data, Boolean true if cyclone category false if mortality
+"""
+function get_cyclone_info(dpkg_details)::Tuple{String,Bool}
+    cyclone_mortality_idx = findfirst(
+        get.(dpkg_details["resources"], "name", "") .== "cyclone_mortality"
+    )
+    cyclone_category_idx = findfirst(
+        get.(dpkg_details["resources"], "name", "") .== "cyclone_category"
+    )
+    if !isnothing(cyclone_mortality_idx) && !isnothing(cyclone_category_idx)
+        msg = "Domain data package provides both cyclone mortality and category data. "
+        msg *= "Using mortality data."
+        @warn msg
+    end
+    if !isnothing(cyclone_mortality_idx)
+        return dpkg_details["resources"][cyclone_mortality_idx]["path"], false
+    elseif !isnothing(cyclone_category_idx)
+        return dpkg_details["resources"][cyclone_category_idx]["path"], true
+    else
+        throw(ArgumentError("Unable to find cyclone resource in data package details."))
+    end
+end
+
+"""Get the path of a DHW file in the domain to load as default."""
+function _get_any_dhw(dhw_dir::String)::String
+    dhw_files = filter(x -> !isnothing(match(r"dhwRCP[0-9]+.nc", x)), readdir(dhw_dir))
+    if length(dhw_files) == 0
+        throw(ArgumentError("No DHW files found in $(dhw_dir)."))
+    end
+    return first(dhw_files)
 end
 
 """

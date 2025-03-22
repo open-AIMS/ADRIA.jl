@@ -165,11 +165,105 @@ function load_cyclone_mortality(data_fn::String)::YAXArray
     cyclone_cube::YAXArray = Cube(data_fn)
     return sort_axis(cyclone_cube, :locations)
 end
-function load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
+function load_cyclone_mortality(
+    timeframe::Vector{Int64}, loc_data::DataFrame, location_id_col::String
+)::YAXArray
     return ZeroDataCube(;
         timesteps=1:length(timeframe),
-        locations=sort(loc_data.reef_siteid),
+        locations=loc_data[:, location_id_col],
         species=ADRIA.coral_spec().taxa_names,
         scenarios=[1]
+    )
+end
+
+function load_cyclone_mortality_from_category(
+    data_fn::String, 
+    spatial_data::DataFrame, 
+    timeframe::Vector{Int64}
+)::YAXArray
+    cyclone_categories::YAXArray = Cube(data_fn)[
+        locations=At(spatial_data.UNIQUE_ID), 
+        timesteps=At(timeframe)
+    ]
+
+    return _cyclone_mortality_from_category(
+        cyclone_categories, collect(cyclone_categories.locations), spatial_data
+    )
+end
+
+"""Convert cyclone categories to mortalities."""
+function _cyclone_mortality_from_category(
+    cyclone::YAXArray,
+    location_ids::Vector{String},
+    spatial_data::DataFrame
+)::YAXArray
+    # Convert categories into indices for cyclone_mr
+    cyclone_cats = cyclone .+ 1
+    species = functional_group_names()
+    cyclone_mortality::YAXArray{Float64} = ZeroDataCube(;
+        T=Float64,
+        timesteps=collect(cyclone_cats.timesteps),
+        locations=location_ids,
+        species=species,
+        scenarios=1:length(cyclone_cats.scenario)
+    )
+
+    # Mortality rate was generated using rrap_dg
+    cyclone_mr::NamedTuple = _cyclone_mortalities()
+
+    # To filter massives/branchings
+    massives::BitVector = contains.(String.(species), ["massives"])
+    branchings::BitVector = .!massives
+
+    # Set massives mortality rates
+    mr_massives::Vector{Float64} = cyclone_mr[:massives]
+    cm_scens_massives = mr_massives[cyclone_cats].data
+    for m in species[massives]
+        cyclone_mortality[species=At(m)] .= cm_scens_massives
+    end
+
+    # Set mortality rates for branching corals at <= 5m depth
+    below_5::BitVector = spatial_data.depth_med .<= -5
+    if sum(below_5) > 0
+        mr_bd5::Vector{Float64} = cyclone_mr[:branching_deeper_than_5]
+        cm_scens_bd5::Array{Float64} = mr_bd5[cyclone_cats[location=below_5]].data
+        for b in species[branchings]
+            cyclone_mortality[locations=below_5, species=At(b)] .= cm_scens_bd5
+        end
+    end
+
+    # Set mortality rates for branching corals at > 5m depth
+    above_5::BitVector = spatial_data.depth_med .> -5
+    if sum(above_5) > 0
+        mr_bs5::Vector{Float64} = cyclone_mr[:branching_shallower_than_5]
+        cm_scens_bs5::Array{Float64} = mr_bs5[cyclone_cats[location=above_5]].data
+        for b in species[branchings]
+            cyclone_mortality[locations=above_5, species=At(b)] .= cm_scens_bs5
+        end
+    end
+
+    return cyclone_mortality
+end
+
+"""
+    _cyclone_mortalities()
+
+Mortality rates due to cyclones for each category (0 to 5) and for coral groups and depths.
+
+# Notes
+- Cyclone categories are represented through indices 1 to 6 of the arrays, there can be
+distinct mortality rates for each coral functional group and depth.
+- For Acropora (branching) the mortality depends on the depth (if it is deeper or shallower
+than 5 meters).
+- For massives the mortality does not depend on the depth.
+
+# See also
+https://github.com/open-AIMS/rrap-dg/blob/main/rrap_dg/cyclones/mortality_regression.jl
+"""
+function _cyclone_mortalities()::NamedTuple
+    return (
+        branching_deeper_than_5=[0.0, 0.0, 0.00993649, 0.497092, 0.989037, 0.99994],
+        branching_shallower_than_5=[0.0, 0.0, 0.104957, 0.979102, 0.999976, 1.0],
+        massives=[0.0, 0.0121482, 0.0155069, 0.0197484, 0.0246357, 0.0302982]
     )
 end
