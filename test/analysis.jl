@@ -1,7 +1,7 @@
 using WGLMakie, GeoMakie, GraphMakie
 using ADRIA
 using ADRIA.metrics: total_absolute_cover
-using Statistics, YAXArrays, Distributions
+using ADRIA.YAXArrays, ADRIA.Statistics, ADRIA.Distributions
 
 if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
