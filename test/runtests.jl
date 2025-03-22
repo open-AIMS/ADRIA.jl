@@ -4,7 +4,7 @@ using ADRIA
 
 include("mock_data/mock_data.jl")
 
-# include("aqua.jl")
+include("aqua.jl")
 
 include("run_scenarios.jl")
 
