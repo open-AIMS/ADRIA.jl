@@ -159,7 +159,7 @@ selected_locs = select_locations(
 # Arguments
 - `sp`: SeedPreferences containing criteria names, weights, and optimization directions
 - `dm`: Decision matrix with locations as rows and criteria as columns
-- `method`: MCDA method to use for ranking (from JMcDM package)
+- `method`: MCDA method to use for ranking (from the JMcDM package)
 - `cluster_ids`: Vector of cluster identifiers for each location
 - `area_to_seed`: Total area to seed in absolute units
 - `considered_locs`: Vector of location identifiers to consider for selection
