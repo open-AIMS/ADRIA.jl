@@ -724,7 +724,7 @@ Generate path to the data store of results for the given Domain.
 """
 function result_location(d::Domain)::String
     return joinpath(
-        ENV["ADRIA_OUTPUT_DIR"], "$(d.name)__RCPs$(d.RCP)__$(d.scenario_invoke_time)"
+        ENV["ADRIA_OUTPUT_DIR"], "$(d.name)__RCPs_$(d.RCP)__$(d.scenario_invoke_time)"
     )
 end
 
