@@ -8,7 +8,7 @@ end
 
 @testset "metrics.jl" begin
     n_scenarios::Int64 = size(TEST_SCENS, 1)
-    n_groups::Int64 = length(ADRIA.coral_spec().taxa_names)
+    n_groups::Int64 = length(ADRIA.default_coral_spec().taxa_names)
     test_scens_datacube::YAXArray{Float64,2} = DataCube(
         Matrix(TEST_SCENS); scenarios=1:n_scenarios, factors=names(TEST_SCENS)
     )
@@ -52,7 +52,9 @@ end
 
     @testset "relative_juveniles" begin
         scen_idx = 1
-        coral_spec::DataFrame = ADRIA.to_coral_spec(TEST_SCENS[scen_idx, :])
+        coral_spec::DataFrame = ADRIA.to_coral_spec(
+            ADRIA.default_coral_params(), TEST_SCENS[scen_idx, :]
+        )
         test_metric(metrics.relative_juveniles, (TEST_RS,))
         for cover in _test_covers
             test_metric(
@@ -63,7 +65,9 @@ end
 
     @testset "absolute_juveniles" begin
         scen_idx = 1
-        coral_spec::DataFrame = ADRIA.to_coral_spec(TEST_SCENS[scen_idx, :])
+        coral_spec::DataFrame = ADRIA.to_coral_spec(
+            ADRIA.default_coral_params(), TEST_SCENS[scen_idx, :]
+        )
         test_metric(metrics.absolute_juveniles, (TEST_RS,))
         for cover in _test_covers
             test_metric(
@@ -74,7 +78,9 @@ end
 
     @testset "juvenile_indicator" begin
         scen_idx = 1
-        coral_spec::DataFrame = ADRIA.to_coral_spec(TEST_SCENS[scen_idx, :])
+        coral_spec::DataFrame = ADRIA.to_coral_spec(
+            ADRIA.default_coral_params(), TEST_SCENS[scen_idx, :]
+        )
         test_metric(metrics.juvenile_indicator, (TEST_RS,))
         for cover in _test_covers
             test_metric(

@@ -124,6 +124,8 @@ function rank_locations(
 
     loc_data = dom.loc_data
     coral_habitable_locs = loc_data.k .> 0.0
+
+    coral_params = dom.coral_params
     for (scen_idx, scen) in enumerate(eachrow(scens))
         # Decisions should place more weight on environmental conditions
         # closer to the decision point
@@ -154,7 +156,7 @@ function rank_locations(
         MCDA_approach = mcda_methods()[Int64(scen[factors=At("guided")][1])]
         leftover_space_m² = vec(leftover_space_scens[scen_idx, :])
 
-        corals = to_coral_spec(scenarios[scen_idx, :])
+        corals = to_coral_spec(coral_params, scenarios[scen_idx, :])
         area_to_seed = mean(
             n_corals *
             colony_mean_area(corals.mean_colony_diameter_m[corals.class_id .== 2])

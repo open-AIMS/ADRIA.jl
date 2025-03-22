@@ -80,8 +80,8 @@ end
 
 Helper function defining coral colony diameter bin widths.
 """
-function bin_widths()
-    return bin_edges()[:, 2:end] .- bin_edges()[:, 1:(end - 1)]
+function bin_widths(bin_edges)
+    return bin_edges[:, 2:end] .- bin_edges[:, 1:(end - 1)]
 end
 
 """
@@ -119,9 +119,7 @@ Generate colony area data based on Bozec et al., [1].
        management in the Whitsundays.
      https://doi.org/10.13140/RG.2.2.26976.20482
 """
-function colony_areas()
-    # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
-    edges = bin_edges(; unit=:cm)
+function colony_areas(edges)
 
     # Diameters in cm
     mean_cm_diameters =
@@ -143,7 +141,7 @@ function bins_bounds(mean_diam::Matrix{Float64})::Matrix{Float64}
 end
 
 """
-    coral_spec()
+    coral_spec(coral_params::Dict{Symbol,Any})::NamedTuple
 
 Template for coral parameter values for ADRIA.
 Includes "vital" bio/ecological parameters, to be filled with
@@ -155,6 +153,16 @@ made available to the ADRIA model.
 Notes:
 Values for the historical, temporal patterns of degree heating weeks
 between bleaching years come from [1].
+
+# Returns
+- `coral_params` A dictionary containing key coral parameters, can be loaded from file or using `default_coral_params()`.
+    Must include the keys
+    - `linear_extension` : Radial extensions per year for each functional group and size class
+    - `bin_edges` : The edges for the size class bins for each functional group
+    - `survival_rate` : The survival proportion for each functional group and size class per year due to background mortality
+    - `dist_mean`, `dist_std` : Mean and standard deviation in heat stress survival curve for each functional group (in DHW)
+    - `min_colony_area_full_fec`, `fec_par_a` and `fec_par_b` : See Hall and Hughes 1996
+    - `group_names` : Name of each functional group as strings
 
 # Returns
 - `params` : NamedTuple[taxa_names, param_names, params], taxa names, parameter
@@ -191,7 +199,7 @@ between bleaching years come from [1].
    Global Change Biology 27, 5694-5710.
    https://doi.org/10.1111/gcb.15829
 """
-function coral_spec()::NamedTuple
+function coral_spec(coral_params::Dict{Symbol,Any})::NamedTuple
     # Below parameters pertaining to species are new. We now add size classes
     # to each coral species, but treat each coral size class as a 'species'.
     # Need a better word than 'species' to signal that we are using different
@@ -200,11 +208,11 @@ function coral_spec()::NamedTuple
     params = DataFrame()
 
     # Coral species are divided into taxa and size classes
-    group_names = string.(functional_group_names())
+    group_names::Vector{String} = coral_params[:group_names]
 
     # Coral growth rates as linear extensions.
     # All values in cm/year and are from (unpublished) ecoRRAP data.
-    _linear_extensions::Matrix{Float64} = linear_extensions()
+    _linear_extensions::Matrix{Float64} = coral_params[:linear_extension]
 
     # number of functional groups and size classes modelled in the current version.
     n_groups::Int64, n_sizes::Int64 = size(_linear_extensions)
@@ -223,7 +231,9 @@ function coral_spec()::NamedTuple
     # To be more consistent with parameters in ReefMod, C~Scape and RRAP
     # interventions, we express coral abundance as colony numbers in different
     # size classes and growth rates as linear extension (in cm per year).
-    colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
+    colony_area_mean_cm², mean_colony_diameter_m = colony_areas(
+        coral_params[:bin_edges] .* 100
+    )
     params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_groups_and_sizes)[:]
     params.linear_extension = reshape(_linear_extensions', n_groups_and_sizes)[:]
 
@@ -234,26 +244,72 @@ function coral_spec()::NamedTuple
     # Second, growth as transitions of cover to higher bins is estimated as
     #     rate of growth per year.
     params.growth_rate .= reshape(
-        growth_rate(_linear_extensions, bin_widths()), n_groups_and_sizes
+        growth_rate(_linear_extensions, bin_widths(coral_params[:bin_edges])),
+        n_groups_and_sizes
     )[:]
-
-    # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
-    # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
-    fec_par_a = Float64[1.03; 1.69; 0.02; 0.86; 0.86]  # fecundity parameter a
-    fec_par_b = Float64[1.28; 1.05; 2.27; 1.21; 1.21]  # fecundity parameter b
-    min_colony_area_full_fec = Float64[123.0; 134.0; 134.0; 38.0; 38.0]
 
     # fecundity as a function of colony basal area (cm2) from Hall and Hughes 1996
     # unit is number of larvae per colony
     colony_area_cm2 = colony_mean_area(mean_colony_diameter_m .* 100.0)
-    fec = exp.(log.(fec_par_a) .+ fec_par_b .* log.(colony_area_cm2)) ./ 0.1
+    fec =
+        exp.(
+            log.(coral_params[:fec_par_a]) .+
+            coral_params[:fec_par_b] .* log.(colony_area_cm2)
+        ) ./ 0.1
 
     # Colonies with area (in cm2) below indicated size are not fecund (reproductive)
-    fec[colony_area_cm2 .< min_colony_area_full_fec] .= 0.0
+    fec[colony_area_cm2 .< coral_params[:min_colony_area_full_fec]] .= 0.0
 
     # then convert to number of larvae produced per m2
     fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
     params.fecundity = fec_m²'[:]
+
+    mb = 1.0 .- coral_params[:survival_rate]
+    params.mb_rate = mb'[:]
+
+    upper_bound::Matrix{Float64} = coral_params[:bin_edges][:, 2:end]
+    params.bin_ub = reshape(upper_bound', n_groups_and_sizes)[:]
+
+    # Natural adaptation / heritability
+    # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
+    # Hughes et al., (2018)
+    # Mean and std for each species (row) and size class (cols)
+    params.dist_mean = repeat(coral_params[:dist_mean]; inner=n_sizes)
+    params.dist_std = repeat(coral_params[:dist_std]; inner=n_sizes)
+
+    # Get perturbable coral parameters
+    # i.e., the parameter names not defined in the second list
+    param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "coral_id"])
+
+    return (taxa_names=group_names, param_names=param_names, params=params)
+end
+
+"""
+    default_coral_params()::Dict{Symbol,Any}
+
+Returns the default coral parameters for 5 functional groups and 7 size classes.
+
+# Returns
+- `coral_params` : A dictionary of key coral parameters and their default values
+"""
+function default_coral_params()::Dict{Symbol,Any}
+    coral_params::Dict{Symbol,Any} = Dict(:group_names => string.(functional_group_names()))
+
+    # Coral growth rates as linear extensions.
+    # All values in cm/year and are from (unpublished) ecoRRAP data.
+    coral_params[:linear_extension] = linear_extensions()
+
+    # Edges of size class bins
+    coral_params[:bin_edges] = bin_edges()
+
+    # Planar area for each functional group
+    coral_params[:planar_area_params] = planar_area_params()
+
+    # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
+    # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation
+    coral_params[:fec_par_a] = Float64[1.03; 1.69; 0.02; 0.86; 0.86]  # fecundity parameter a
+    coral_params[:fec_par_b] = Float64[1.28; 1.05; 2.27; 1.21; 1.21]  # fecundity parameter b
+    coral_params[:min_colony_area_full_fec] = Float64[123.0; 134.0; 134.0; 38.0; 38.0]
 
     # Mortality
     # Survival rates taken from (unpublished) ecoRRAP data.
@@ -265,48 +321,45 @@ function coral_spec()::NamedTuple
     #     0.869976692 0.938029324 0.977889252 0.987199004 0.99207702 0.996931548 0.996931548;     # Small massives and encrusting
     #     0.9782479 0.979496637 0.980850254 0.982178103 0.983568572 0.984667677 0.984667677       # Large massives
     # ]
-    survival_rate::Matrix{Float64} = [
+    coral_params[:survival_rate] = [
         0.6 0.76 0.805 0.76 0.85 0.86 0.86;    # Tabular Acropora
         0.6 0.76 0.77 0.875 0.83 0.90 0.90;    # Corymbose Acropora
         0.52 0.77 0.77 0.875 0.89 0.97621179 0.97621179;                # Corymbose non-Acropora
         0.72 0.87 0.77 0.98 0.996931548 0.996931548 0.996931548;        # Small massives and encrusting
         0.58 0.87 0.78 0.983568572 0.984667677 0.984667677 0.984667677  # Large massives
     ]
-    mb = 1.0 .- survival_rate
-    params.mb_rate = mb'[:]
-
-    upper_bound::Matrix{Float64} = bin_edges()[:, 2:end]
-    params.bin_ub = reshape(upper_bound', n_groups_and_sizes)[:]
 
     # Natural adaptation / heritability
     # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
     # Hughes et al., (2018)
     # Mean and std for each species (row) and size class (cols)
-    params.dist_mean = repeat(
-        Float64[
-            # 3.345484656,  # arborescent Acropora
-            3.751612251,  # tabular Acropora
-            4.081622683,  # corymbose Acropora
-            4.487465256,  # Pocillopora + non-Acropora corymbose
-            6.165751937,  # Small massives and encrusting
-            7.153507902   # Large massives
-        ]; inner=n_sizes)
+    coral_params[:dist_mean] = Float64[
+        # 3.345484656,  # arborescent Acropora
+        3.751612251,  # tabular Acropora
+        4.081622683,  # corymbose Acropora
+        4.487465256,  # Pocillopora + non-Acropora corymbose
+        6.165751937,  # Small massives and encrusting
+        7.153507902   # Large massives
+    ]
+    coral_params[:dist_std] = Float64[
+        # 2.590016677,  # arborescent Acropora
+        2.904433676,  # tabular Acropora
+        3.159922076,  # corymbose Acropora
+        3.474118416,  # Pocillopora + non-Acropora corymbose
+        4.773419097,  # Small massives and encrusting
+        5.538122776   # Large massives
+    ]
+    return coral_params
+end
 
-    params.dist_std = repeat(
-        Float64[
-            # 2.590016677,  # arborescent Acropora
-            2.904433676,  # tabular Acropora
-            3.159922076,  # corymbose Acropora
-            3.474118416,  # Pocillopora + non-Acropora corymbose
-            4.773419097,  # Small massives and encrusting
-            5.538122776   # Large massives
-        ]; inner=n_sizes)
+"""
+    default_coral_spec()::NamedTuple
 
-    # Get perturbable coral parameters
-    # i.e., the parameter names not defined in the second list
-    param_names = setdiff(names(params), ["name", "taxa_id", "class_id", "coral_id"])
+Returns the default coral specification for 5 functional groups and 7 size classes.
 
-    return (taxa_names=group_names, param_names=param_names, params=params)
+"""
+function default_coral_spec()::NamedTuple
+    return coral_spec(default_coral_params())
 end
 
 """
@@ -351,7 +404,7 @@ function _coral_struct(field_defs::OrderedDict)::Nothing
 end
 
 """
-    create_coral_struct(bounds=(0.9, 1.1))
+    create_coral_struct(coral_params::Dict, bounds=(0.9, 1.1))
 
 Generates Coral struct using the default parameter spec.
 
@@ -368,7 +421,13 @@ coral = Coral()
 ```
 """
 function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
-    _, base_coral_params, p_vals = coral_spec()
+    coral_params = default_coral_params()
+    return create_coral_struct(coral_params, bounds)
+end
+function create_coral_struct(
+    coral_params::Dict, bounds::Tuple{Float64,Float64}=(0.9, 1.1)
+)::Nothing
+    _, base_coral_params, p_vals = coral_spec(coral_params)
 
     struct_fields = OrderedDict{String,Param}()
     struct_fields["heritability"] = Factor(
@@ -405,24 +464,24 @@ end
 create_coral_struct()
 
 """
-    to_coral_spec(m::Model)::DataFrame
+    to_coral_spec(coral_params::Dict, m::Model)::DataFrame
 
 Convert Coral Model specification to a coral spec DataFrame
 """
-function to_coral_spec(m::Coral)::DataFrame
-    _, pnames, spec = coral_spec()
+function to_coral_spec(coral_params::Dict, m::Coral)::DataFrame
+    _, pnames, spec = coral_spec(coral_params)
     val_df = DataFrame(Model(m))
 
     return _update_coral_spec(spec, pnames, val_df)
 end
 
 """
-    to_coral_spec(coral_df::DataFrame)::DataFrame
+    to_coral_spec(coral_params::Dict, coral_df::DataFrame)::DataFrame
 
 Convert dataframe of model parameters to a coral spec.
 """
-function to_coral_spec(coral_df::DataFrame)::DataFrame
-    _, pnames, spec = coral_spec()
+function to_coral_spec(coral_params::Dict, coral_df::DataFrame)::DataFrame
+    _, pnames, spec = coral_spec(coral_params)
 
     return _update_coral_spec(spec, pnames, coral_df)
 end
@@ -459,7 +518,7 @@ default_scen = ADRIA.param_table(dom)
 # ... modify the coral specification at some point
 # this would normally require restarting the Julia session for changes to take effect.
 # Instead, we update the specification with the updated values instead.
-default_scen = ADRIA._update_coral_factors(default_scen, ADRIA.coral_spec().params)
+default_scen = ADRIA._update_coral_factors(default_scen, ADRIA.default_coral_spec().params)
 ```
 """
 function _update_coral_factors(spec::DataFrame, coral_params::DataFrame)::DataFrame
@@ -480,8 +539,8 @@ function _update_coral_factors(spec::DataFrame, coral_params::DataFrame)::DataFr
     return spec
 end
 
-function to_coral_spec(inputs::YAXArray)::DataFrame
-    _, pnames, spec = coral_spec()
+function to_coral_spec(coral_params::Dict, inputs::YAXArray)::DataFrame
+    _, pnames, spec = coral_spec(coral_params)
 
     coral_ids::Vector{String} = spec[:, :coral_id]
     for p in pnames
@@ -491,9 +550,9 @@ function to_coral_spec(inputs::YAXArray)::DataFrame
 
     return spec
 end
-function to_coral_spec(inputs::DataFrameRow)::DataFrame
+function to_coral_spec(coral_params::Dict, inputs::DataFrameRow)::DataFrame
     ins = DataCube(Vector(inputs); factors=names(inputs))
-    return to_coral_spec(ins)
+    return to_coral_spec(coral_params, ins)
 end
 
 """
