@@ -132,7 +132,9 @@ function scenario_attributes(
         :init_coral_cover_file => env_layer.init_coral_cov_fn,
         :connectivity_file => env_layer.connectivity_fn,
         :DHW_file => env_layer.DHW_fn,
+        :DHW_scenarios_per_rcp => env_layer.dhw_scens_per_rcp,
         :wave_file => env_layer.wave_fn,
+        :wave_scenarios => env_layer.wave_scens,
         :timeframe => env_layer.timeframe,
         :sim_constants => sim_constants,
         :loc_ids => unique_loc_ids,
@@ -651,7 +653,9 @@ function load_results(result_loc::String)::ResultSet
         input_set.attrs["init_coral_cover_file"],
         input_set.attrs["connectivity_file"],
         input_set.attrs["DHW_file"],
+        input_set.attrs["DHW_scenarios_per_rcp"],
         input_set.attrs["wave_file"],
+        input_set.attrs["wave_scenarios"],
         input_set.attrs["timeframe"]
     )
 
