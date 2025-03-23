@@ -117,7 +117,9 @@ function Domain(
     init_coral_fn::String,
     conn_path::String,
     dhw_fn::String,
+    dhw_scens_per_rcp::Int64,
     wave_fn::String,
+    wave_scens::Int64,
     cyclone_mortality_fn::String
 )::ADRIADomain
     local location_data::DataFrame
@@ -150,7 +152,9 @@ function Domain(
         init_coral_fn,
         conn_path,
         dhw_fn,
+        dhw_scens_per_rcp,
         wave_fn,
+        wave_scens,
         timeframe
     )
 
@@ -204,14 +208,14 @@ function Domain(
     cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_group_and_size, n_locs)
     init_coral_cover = load_initial_cover(cover_params...)
 
-    dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
+    dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw", timeframe) : (timeframe, conn_ids, env_layer_md.dhw_scens_per_rcp)
     dhw = load_env_data(dhw_params...)
 
-    waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
+    waves_params = ispath(wave_fn) ? (wave_fn, "Ub", timeframe) : (timeframe, conn_ids, env_layer_md.wave_scens)
     waves = load_env_data(waves_params...)
 
     cyc_params =
-        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) :
+        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn, timeframe) :
         (timeframe, location_data, location_id_col)
     cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
@@ -303,6 +307,10 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
     wave_fn::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
     cyclone_mortality_fn::String = joinpath(path, "cyclones", "cyclone_mortality.nc")
 
+    any_dhw_file::String = joinpath(path, "DHWs", _get_any_dhw(joinpath(path, "DHWs")))
+    _n_dhw_scens::Int64 = _n_dhw_scenarios(any_dhw_file)
+    wave_scens::Int64 = 1
+
     return Domain(
         domain_name,
         path,
@@ -314,7 +322,9 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         init_coral_cov,
         conn_path,
         dhw_fn,
+        _n_dhw_scens,
         wave_fn,
+        wave_scens,
         cyclone_mortality_fn
     )
 end
@@ -345,6 +355,33 @@ function _get_id_col(dpkg_details)
     return first(spatial_resources["data"])
 end
 
+"""Get the path of a DHW file in the domain to load as default."""
+function _get_any_dhw(dhw_dir::String)::String
+    dhw_files = filter(x -> !isnothing(match(r"dhwRCP[0-9]+.nc", x)), readdir(dhw_dir))
+    if length(dhw_files) == 0
+        throw(ArgumentError("No DHW files found in $(dhw_dir)."))
+    end
+    return first(dhw_files)
+end
+
+"""Get the number of dhw scenarios in a dhw netcdf."""
+function _n_dhw_scenarios(dhw_path)::Int64
+    dhw_handle::NcFile = NetCDF.open(dhw_path; mode=NC_NOWRITE)
+
+    possible_scenario_names = ["member", "scenarios"]
+
+    for (k, v) in dhw_handle.dim
+        if k in possible_scenario_names
+            return v.dimlen
+        end
+    end
+
+    msg = "Unable to find the number of dhw scenarios. "
+    msg *= "DHW file did not contain a dimension named \'member\' or \'scenarios\'."
+    throw(ArgumentError(msg))
+end
+
+
 """
     switch_RCPs!(d::Domain, RCP::String)::Domain
 
@@ -355,7 +392,7 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
     @set! d.RCP = RCP
 
-    @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw")
+    @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw", d.env_layer_md.timeframe)
     # @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub")
 
     return d

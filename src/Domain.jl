@@ -13,7 +13,9 @@ mutable struct EnvLayer{S<:AbstractString,TF}
     init_coral_cov_fn::S
     connectivity_fn::S
     DHW_fn::S
+    dhw_scens_per_rcp::Int64
     wave_fn::S
+    wave_scens::Int64
     const timeframe::TF
 end
 

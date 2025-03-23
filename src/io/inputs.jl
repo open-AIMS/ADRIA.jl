@@ -127,6 +127,12 @@ function _nc_dim_labels(
     dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
     dim_labels[locs_idx] = sites
 
+    time_idx = findfirst([k == "timesteps" for k in keys(nc_file.dim)])
+    if !isnothing(time_idx)
+        time_vals = NetCDF.readvar(nc_file["timesteps"])
+        dim_labels[1] = minimum(time_vals):maximum(time_vals)
+    end
+
     return dim_labels
 end
 
@@ -142,28 +148,32 @@ end
 
 """
     load_env_data(data_fn::String, attr::String)::YAXArray
-    load_env_data(timeframe, sites)::YAXArray
+    load_env_data(timeframe, sites, n_scenarios)::YAXArray
 
 Load environmental data layers (DHW, Wave) from netCDF.
 """
-function load_env_data(data_fn::String, attr::String)::YAXArray
+function load_env_data(data_fn::String, attr::String, timeframe::Vector{Int64})::YAXArray
     _dim_names::Vector{Symbol} = [:timesteps, :sites, :scenarios]
-    return load_nc_data(data_fn, attr; dim_names=_dim_names)
+    return load_nc_data(data_fn, attr; dim_names=_dim_names)[timesteps=At(timeframe)]
 end
-function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArray
-    return ZeroDataCube(; T=Float32, timesteps=timeframe, sites=sites, scenarios=1:50)
+function load_env_data(
+    timeframe::Vector{Int64}, sites::Vector{String}, n_scenarios::Int64
+)::YAXArray
+    return ZeroDataCube(;
+        T=Float32, timesteps=timeframe, sites=sites, scenarios=1:n_scenarios
+    )
 end
 
 """
-    load_cyclone_mortality(data_fn::String)::YAXArray
+    load_cyclone_mortality(data_fn::String, timeframe)::YAXArray
     load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
 
 Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
 ordered by :locations
 """
-function load_cyclone_mortality(data_fn::String)::YAXArray
+function load_cyclone_mortality(data_fn::String, timeframe::Vector{Int64})::YAXArray
     cyclone_cube::YAXArray = Cube(data_fn)
-    return sort_axis(cyclone_cube, :locations)
+    return sort_axis(cyclone_cube, :locations)[timesteps=At(timeframe)]
 end
 function load_cyclone_mortality(
     timeframe::Vector{Int64}, loc_data::DataFrame, location_id_col::String
