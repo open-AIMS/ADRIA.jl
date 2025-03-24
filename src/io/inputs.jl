@@ -159,10 +159,12 @@ function load_env_data(data_fn::String, attr::String, timeframe::Vector{Int64}):
     env_data::YAXArray = load_nc_data(data_fn, attr; dim_names=_dim_names)
     env_data_tf = collect(env_data.timesteps)
 
-    if all(timeframe .∈ env_data_tf)
+    if all(timeframe .∈ Ref(env_data_tf))
         return env_data[timesteps=At(timeframe)]
-    elseif length(timeframe) == length(env_data_tf)
-        return env_data
+    elseif all(env_data_tf .== 1:length(env_data_tf))
+        # if the data file has timesteps starting at 1 return the environmental data
+        # starting at one to the length of the input timeframe
+        return env_data[timesteps=1:length(timeframe)]
     end
 
     msg = "Timeframe in environmental netcdf does not contain given timeframe."
@@ -189,7 +191,7 @@ function load_cyclone_mortality(data_fn::String, timeframe::Vector{Int64})::YAXA
     cyclone_tf = collect(cyclone_cube.timesteps)
 
     # Return cyclones with the correct timeframe specified in the data package.
-    if all(timeframe .∈ cyclone_tf)
+    if all(timeframe .∈ Ref(cyclone_tf))
         return cyclone_cube[timesteps=At(timeframe)]
     elseif length(timeframe) == length(cyclone_tf)
         return cyclone_cube
