@@ -129,7 +129,9 @@ function _nc_dim_labels(
 
     time_idx = findfirst([k == "timesteps" for k in keys(nc_file.dim)])
     if !isnothing(time_idx)
-        time_vals = NetCDF.readvar(nc_file["timesteps"])
+        time_vals = "timesteps" in keys(
+            nc_file.vars
+        ) ? NetCDF.readvar(nc_file["timesteps"]) : 1:Int64(nc_file.dim["timesteps"].dimlen)
         dim_labels[1] = minimum(time_vals):maximum(time_vals)
     end
 
@@ -154,7 +156,17 @@ Load environmental data layers (DHW, Wave) from netCDF.
 """
 function load_env_data(data_fn::String, attr::String, timeframe::Vector{Int64})::YAXArray
     _dim_names::Vector{Symbol} = [:timesteps, :sites, :scenarios]
-    return load_nc_data(data_fn, attr; dim_names=_dim_names)[timesteps=At(timeframe)]
+    env_data::YAXArray = load_nc_data(data_fn, attr; dim_names=_dim_names)
+    env_data_tf = collect(env_data.timesteps)
+
+    if all(timeframe .∈ env_data_tf)
+        return env_data[timesteps=At(timeframe)]
+    elseif length(timeframe) == length(env_data_tf)
+        return env_data
+    end
+
+    msg = "Timeframe in environmental netcdf does not contain given timeframe."
+    throw(ArgumentError(msg))
 end
 function load_env_data(
     timeframe::Vector{Int64}, sites::Vector{String}, n_scenarios::Int64
@@ -173,7 +185,17 @@ ordered by :locations
 """
 function load_cyclone_mortality(data_fn::String, timeframe::Vector{Int64})::YAXArray
     cyclone_cube::YAXArray = Cube(data_fn)
-    return sort_axis(cyclone_cube, :locations)[timesteps=At(timeframe)]
+    cyclone_cube = sort_axis(cyclone_cube, :locations)
+    cyclone_tf = collect(cyclone_cube.timesteps)
+
+    # Return cyclones with the correct timeframe specified in the data package.
+    if all(timeframe .∈ cyclone_tf)
+        return cyclone_cube[timesteps=At(timeframe)]
+    elseif length(timeframe) == length(cyclone_tf)
+        return cyclone_cube
+    end
+
+    throw(ArgumentError("Timeframe in cyclone netcdf does not contain given timeframe."))
 end
 function load_cyclone_mortality(
     timeframe::Vector{Int64}, loc_data::DataFrame, location_id_col::String
