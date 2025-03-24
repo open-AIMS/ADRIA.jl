@@ -206,10 +206,13 @@ function Domain(
     cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_group_and_size, n_locs)
     init_coral_cover = load_initial_cover(cover_params...)
 
-    dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw", timeframe) : (timeframe, conn_ids, dhw_scens_per_rcp)
+    dhw_params =
+        ispath(dhw_fn) ? (dhw_fn, "dhw", timeframe) :
+        (timeframe, conn_ids, dhw_scens_per_rcp)
     dhw = load_env_data(dhw_params...)
 
-    waves_params = ispath(wave_fn) ? (wave_fn, "Ub", timeframe) : (timeframe, conn_ids, wave_scens)
+    waves_params =
+        ispath(wave_fn) ? (wave_fn, "Ub", timeframe) : (timeframe, conn_ids, wave_scens)
     waves = load_env_data(waves_params...)
 
     cyc_params =
@@ -379,7 +382,6 @@ function _n_dhw_scenarios(dhw_path)::Int64
     throw(ArgumentError(msg))
 end
 
-
 """
     switch_RCPs!(d::Domain, RCP::String)::Domain
 
@@ -390,7 +392,9 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
     @set! d.RCP = RCP
 
-    @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw", d.env_layer_md.timeframe)
+    @set! d.dhw_scens = load_env_data(
+        d.env_layer_md.DHW_fn, "dhw", d.env_layer_md.timeframe
+    )
     # @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub")
 
     return d

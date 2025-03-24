@@ -129,9 +129,11 @@ function _nc_dim_labels(
 
     time_idx = findfirst([k == "timesteps" for k in keys(nc_file.dim)])
     if !isnothing(time_idx)
-        time_vals = "timesteps" in keys(
-            nc_file.vars
-        ) ? NetCDF.readvar(nc_file["timesteps"]) : 1:Int64(nc_file.dim["timesteps"].dimlen)
+        time_vals =
+            "timesteps" in keys(
+                nc_file.vars
+            ) ? NetCDF.readvar(nc_file["timesteps"]) :
+            1:Int64(nc_file.dim["timesteps"].dimlen)
         dim_labels[1] = minimum(time_vals):maximum(time_vals)
     end
 
