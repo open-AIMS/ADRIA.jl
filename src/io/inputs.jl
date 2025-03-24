@@ -193,8 +193,10 @@ function load_cyclone_mortality(data_fn::String, timeframe::Vector{Int64})::YAXA
     # Return cyclones with the correct timeframe specified in the data package.
     if all(timeframe .∈ Ref(cyclone_tf))
         return cyclone_cube[timesteps=At(timeframe)]
-    elseif length(timeframe) == length(cyclone_tf)
-        return cyclone_cube
+    elseif all(cyclone_tf .== 1:length(cyclone_tf))
+        # if the data file has timesteps starting at 1 return the cyclone data
+        # starting at one to the length of the input timeframe
+        return cyclone_cube[timesteps=1:length(timeframe)]
     end
 
     throw(ArgumentError("Timeframe in cyclone netcdf does not contain given timeframe."))
