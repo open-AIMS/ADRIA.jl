@@ -152,9 +152,7 @@ function Domain(
         init_coral_fn,
         conn_path,
         dhw_fn,
-        dhw_scens_per_rcp,
         wave_fn,
-        wave_scens,
         timeframe
     )
 
@@ -208,10 +206,10 @@ function Domain(
     cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_group_and_size, n_locs)
     init_coral_cover = load_initial_cover(cover_params...)
 
-    dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw", timeframe) : (timeframe, conn_ids, env_layer_md.dhw_scens_per_rcp)
+    dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw", timeframe) : (timeframe, conn_ids, dhw_scens_per_rcp)
     dhw = load_env_data(dhw_params...)
 
-    waves_params = ispath(wave_fn) ? (wave_fn, "Ub", timeframe) : (timeframe, conn_ids, env_layer_md.wave_scens)
+    waves_params = ispath(wave_fn) ? (wave_fn, "Ub", timeframe) : (timeframe, conn_ids, wave_scens)
     waves = load_env_data(waves_params...)
 
     cyc_params =
