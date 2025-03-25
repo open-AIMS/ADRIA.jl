@@ -175,6 +175,7 @@ end
     # Calculate criteria vectors
     # Cover
     sum_cover = vec(sum(dom.init_coral_cover; dims=1).data)
+
     # DHWS
     dhw_scens = dom.dhw_scens[:, :, Int64(scen["dhw_scenario"])]
     plan_horizon = Int64(scen["plan_horizon"])
@@ -182,8 +183,9 @@ end
     dhw_projection = ADRIA.decision.weighted_projection(
         dhw_scens, 1, plan_horizon, decay, 75
     )
+
     # Connectivity
-    area_weighted_conn = dom.conn.data .* ADRIA.site_k_area(dom)
+    area_weighted_conn = dom.conn.data .* ADRIA.loc_k_area(dom)
     conn_cache = similar(area_weighted_conn)
     in_conn, out_conn, network = ADRIA.connectivity_strength(
         area_weighted_conn, sum_cover, conn_cache

@@ -43,7 +43,7 @@ function setup_cache(domain::Domain)::NamedTuple
         C_cover_t=zeros(n_groups, n_sizes, n_locs),  # Cover for previous timestep
         depth_coeff=zeros(n_locs),  # store for depth coefficient
         loc_area=Matrix{Float64}(loc_area(domain)'),  # area of locations
-        site_k_area=Matrix{Float64}(site_k_area(domain)'),  # location carrying capacity
+        habitable_area=Matrix{Float64}(loc_k_area(domain)'),  # location carrying capacity
         wave_damage=zeros(tf, n_group_and_size, n_locs),  # damage coefficient for each size class
         dhw_tol_mean_log=zeros(tf, n_group_and_size, n_locs)  # tmp log for mean dhw tolerances
     )
@@ -306,10 +306,10 @@ function run_scenario(
     vals[vals .< threshold] .= 0.0
     data_store.relative_cover[:, :, idx] .= vals
 
-    vals = absolute_shelter_volume(rs_raw, site_k_area(domain), scenario)
+    vals = absolute_shelter_volume(rs_raw, loc_k_area(domain), scenario)
     vals[vals .< threshold] .= 0.0
     data_store.absolute_shelter_volume[:, :, idx] .= vals
-    vals = relative_shelter_volume(rs_raw, site_k_area(domain), scenario)
+    vals = relative_shelter_volume(rs_raw, loc_k_area(domain), scenario)
     vals[vals .< threshold] .= 0.0
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
@@ -318,16 +318,16 @@ function run_scenario(
     vals[vals .< threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
 
-    vals = juvenile_indicator(rs_raw, coral_spec, site_k_area(domain))
+    vals = juvenile_indicator(rs_raw, coral_spec, loc_k_area(domain))
     vals[vals .< threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
-    vals = relative_taxa_cover(rs_raw, site_k_area(domain), domain.coral_growth.n_groups)
+    vals = relative_taxa_cover(rs_raw, loc_k_area(domain), domain.coral_growth.n_groups)
     vals[vals .< threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
     vals = relative_loc_taxa_cover(
-        rs_raw, site_k_area(domain), domain.coral_growth.n_groups
+        rs_raw, loc_k_area(domain), domain.coral_growth.n_groups
     )
 
     vals = coral_evenness(vals.data)
@@ -500,7 +500,7 @@ function run_model(
     shade_years::Int64 = param_set[At("shade_years")]  # number of years to shade
     fog_years::Int64 = param_set[At("fog_years")]  # number of years to fog
 
-    loc_k_area::Matrix{Float64} = cache.site_k_area
+    habitable_areas::Matrix{Float64} = cache.habitable_area
     fec_params_per_m²::Matrix{Float64} = _to_group_size(
         domain.coral_growth, corals.fecundity
     ) # number of larvae produced per m²
@@ -531,7 +531,7 @@ function run_model(
     )
 
     # Locations that can support corals
-    vec_abs_k = site_k_area(domain)
+    vec_abs_k = loc_k_area(domain)
     habitable_locs::BitVector = location_k(domain) .> 0.0
     habitable_loc_areas = vec_abs_k[habitable_locs]
     habitable_loc_areas′ = reshape(habitable_loc_areas, (1, 1, length(habitable_locs)))
@@ -780,7 +780,7 @@ function run_model(
 
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
-        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, loc_k_area)
+        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, habitable_areas)
 
         loc_coral_cover = _loc_coral_cover(C_cover_t)
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* vec_abs_k
@@ -804,7 +804,7 @@ function run_model(
                 valid_sinks
             )[
                 :, habitable_locs
-            ] ./ loc_k_area[:, habitable_locs]
+            ] ./ habitable_areas[:, habitable_locs]
 
         settler_DHW_tolerance!(
             c_mean_t_1,
@@ -1019,7 +1019,7 @@ function run_model(
 
         survival_rate_slices = [@view survival_rate_cache[:, :, loc] for loc in 1:n_locs]
         apply_mortality!.(functional_groups, survival_rate_slices)
-        recruitment .*= (view(survival_rate_cache, :, 1, :) .* loc_k_area)
+        recruitment .*= (view(survival_rate_cache, :, 1, :) .* habitable_areas)
 
         C_cover[tstep, :, :, :] .= C_cover_t
     end

@@ -89,7 +89,7 @@ export
     run_scenario, coral_spec,
     create_coral_struct, Intervention, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights,
-    loc_area, site_k_area,
+    loc_area, site_k_area, loc_k_area,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz
 
