@@ -65,17 +65,23 @@ function ADRIA.viz.taxonomy(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Figure
-    fig_opts[:size] = get(fig_opts, :size, (1200, 1200))
-    f = Figure(; fig_opts...)
-
-    g = f[1, 1] = GridLayout()
-
     _scenarios = copy(scenarios[1:end .∈ [relative_taxa_cover.scenarios], :])
     scen_groups = if get(opts, :by_RCP, false)
         ADRIA.analysis.scenario_rcps(_scenarios)
     else
         ADRIA.analysis.scenario_types(_scenarios)
     end
+
+    by_functional_groups::Bool = get(opts, :by_functional_groups, true)
+
+    fig_height::Int64 = _fig_height_taxonomy(
+        by_functional_groups, scen_groups, relative_taxa_cover
+    )
+
+    fig_opts[:size] = get(fig_opts, :size, (1200, fig_height))
+    f = Figure(; fig_opts...)
+
+    g = f[1, 1] = GridLayout()
 
     ADRIA.viz.taxonomy!(
         g,
@@ -123,9 +129,13 @@ function ADRIA.viz.taxonomy!(
         n_scenario_groups::Int64 = length(keys(scen_groups))
         color = get(opts, :colors, nothing)
         _colors =
-            isnothing(color) ? [
-                COLORS[scen_name] for scen_name in keys(scen_groups)
-            ] : categorical_colors(color, n_scenario_groups)
+            if isnothing(color)
+                [
+                    COLORS[scen_name] for scen_name in keys(scen_groups)
+                ]
+            else
+                categorical_colors(color, n_scenario_groups)
+            end
 
         # Plot results
         intervention_by_taxonomy!(
@@ -140,7 +150,7 @@ function ADRIA.viz.taxonomy!(
     end
 
     Label(
-        g[1, :, Top()], "Taxa dynamics"; padding=(0, 0, 30, 0), font=:bold, valign=:bottom
+        g[1, :, Top()], "Taxa Dynamics"; padding=(0, 0, 30, 0), font=:bold, valign=:bottom
     )
 
     return g
@@ -172,7 +182,7 @@ function taxonomy_by_intervention!(
     for (idx, scen_name) in enumerate(keys(scen_groups))
         ax = Axis(
             g[idx, 1];
-            title=String(scen_name),
+            title=titlecase(String(scen_name)),
             xticks=xtick_vals,
             xticklabelrotation=xtick_rot,
             axis_opts...
@@ -204,16 +214,19 @@ function taxonomy_by_intervention!(
     confints = zeros(n_timesteps, n_functional_groups, 3)
     for (idx, group) in enumerate(functional_groups)
         confints[:, idx, :] = series_confint(relative_taxa_cover[species=At(group)])
-        show_confints ?
-        band!(
-            ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
-            color=(colors[idx], 0.4)
-        ) : nothing
+        if show_confints
+            band!(
+                ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
+                color=(colors[idx], 0.4)
+            )
+        else
+            nothing
+        end
     end
 
     # Plot series
     series!(ax, 1:n_timesteps, confints[:, :, 2]'; solid_color=colors, series_opts...)
-    show_legend ? axislegend(ax) : nothing
+    show_legend ? axislegend(ax; position=:lt) : nothing
 
     return nothing
 end
@@ -237,7 +250,9 @@ function intervention_by_taxonomy!(
     taxa_names = human_readable_name(functional_group_names(); title_case=true)
 
     scenario_group_names::Vector{Symbol} = collect(keys(scen_groups))
-    series_opts[:labels] = get(series_opts, :labels, String.(scenario_group_names))
+    series_opts[:labels] = get(
+        series_opts, :labels, titlecase.(String.(scenario_group_names))
+    )
 
     for (idx, taxa_name) in enumerate(taxa_names)
         xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(relative_taxa_cover)))
@@ -280,16 +295,46 @@ function intervention_by_taxonomy!(
         confints[:, idx, :] = series_confint(
             relative_taxa_cover[scenarios=scen_groups[scen]]
         )
-        show_confints ?
-        band!(
-            ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
-            color=(colors[idx], 0.4)
-        ) : nothing
+        if show_confints
+            band!(
+                ax, 1:n_timesteps, confints[:, idx, 1], confints[:, idx, 3];
+                color=(colors[idx], 0.4)
+            )
+        else
+            nothing
+        end
     end
 
     # Plot series
     series!(ax, 1:n_timesteps, confints[:, :, 2]'; solid_color=colors, series_opts...)
-    show_legend ? axislegend(ax) : nothing
+    show_legend ? axislegend(ax; position=:lt) : nothing
 
     return nothing
+end
+
+"""
+    _fig_height_taxonomy(
+        by_functional_groups::Bool,
+        scen_groups::Dict{Symbol,BitVector},
+        relative_taxa_cover::YAXArray
+    )::Int64
+
+Auto-adjust taxonomy figure height based on number of plots.
+"""
+function _fig_height_taxonomy(
+    by_functional_groups::Bool,
+    scen_groups::Dict{Symbol,BitVector},
+    relative_taxa_cover::YAXArray
+)::Int64
+    fig_base_height::Int64 = 1200
+    fig_height = if by_functional_groups
+        n_scen_groups = length(scen_groups)
+        base_n_scen_groups = 3
+        fig_base_height * (n_scen_groups / base_n_scen_groups)
+    else
+        n_functional_groups = length(relative_taxa_cover.species)
+        base_n_functional_groups = 5
+        fig_base_height * (n_functional_groups / base_n_functional_groups)
+    end
+    return Int64(ceil(fig_height))
 end
