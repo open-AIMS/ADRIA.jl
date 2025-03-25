@@ -117,7 +117,9 @@ function Domain(
     init_coral_fn::String,
     conn_path::String,
     dhw_fn::String,
+    dhw_scens_per_rcp::Int64,
     wave_fn::String,
+    wave_scens::Int64,
     cyclone_mortality_fn::String
 )::ADRIADomain
     local location_data::DataFrame
@@ -154,8 +156,10 @@ function Domain(
         timeframe
     )
 
-    # Sort data to maintain consistent order
-    sort!(location_data, Symbol[Symbol(location_id_col)])
+    if cluster_id_col == "cluster_id"
+        # Sort data to maintain consistent order (only if domain is cluster-scale).
+        sort!(location_data, Symbol[Symbol(location_id_col)])
+    end
     u_sids::Vector{String} = string.(collect(location_data[!, location_id_col]))
     # If location id column is missing then derive it from the Unique IDs
     if !in(location_id_col, names(location_data))
@@ -173,7 +177,25 @@ function Domain(
     location_data = location_data[
         coalesce.(in.(conn_ids, [connectivity.loc_ids]), false), (:)
     ]
-    location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
+    if ("k" ∉ names(location_data)) &
+        ("ReefMod_habitable_proportion" ∈ names(location_data))
+        @warn "
+        k column not found in gbr-wide canonical-reefs gpkg. 
+        # Defaulting to ReefMod_habitable_proportion (in proportion 0-1 scale).
+        "
+        rename!(location_data, :ReefMod_habitable_proportion => :k)
+    else
+        location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent in cluster-scale data).
+    end
+
+    if ("area" ∉ names(location_data)) &
+        ("ReefMod_area_m2" ∈ names(location_data))
+        @warn " 
+        # area column not found in gbr-wide canonical-reefs gpkg. 
+        # Defaulting to ReefMod_area_m2 (Total possible coral area in m2).
+        "
+        rename!(location_data, :ReefMod_area_m2 => :area)
+    end
 
     n_locs::Int64 = nrow(location_data)
     n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
@@ -184,14 +206,18 @@ function Domain(
     cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_group_and_size, n_locs)
     init_coral_cover = load_initial_cover(cover_params...)
 
-    dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
+    dhw_params =
+        ispath(dhw_fn) ? (dhw_fn, "dhw", timeframe) :
+        (timeframe, conn_ids, dhw_scens_per_rcp)
     dhw = load_env_data(dhw_params...)
 
-    waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
+    waves_params =
+        ispath(wave_fn) ? (wave_fn, "Ub", timeframe) : (timeframe, conn_ids, wave_scens)
     waves = load_env_data(waves_params...)
 
     cyc_params =
-        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, location_data)
+        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn, timeframe) :
+        (timeframe, location_data, location_id_col)
     cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     # Add compatability with non-migrated datasets but always default current coral spec
@@ -206,6 +232,14 @@ function Domain(
 
     msg::String = "Provided time frame must match timesteps in DHW and wave data"
     msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
+
+    # ReefMod DHW timeseries data (2000:2100) do not match the length of waves/cyclone 
+    # data (2025:2099). Can be fixed when AIMS-sourced DHW trajectories become available. 
+    if size(dhw, 1) > size(waves, 1)
+        first_year = findfirst(collect(2000:2100) .== first(timeframe))
+        last_year = findfirst(collect(2000:2100) .== last(timeframe))
+        dhw = dhw[first_year:last_year, :, :]
+    end
 
     @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
@@ -245,6 +279,8 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
     end
 
     dpkg_details::Dict{String,Any} = _load_dpkg(path)
+    location_id_col = _get_id_col(dpkg_details)
+    cluster_id_col::String = "cluster_id"
 
     # Handle compatibility
     # Extract the time frame represented in this data package
@@ -262,9 +298,6 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         timeframe = parse.(Int64, md_timeframe)
     end
 
-    location_id_col::String = "reef_siteid"
-    cluster_id_col::String = "cluster_id"
-
     conn_path::String = joinpath(path, "connectivity/")
     spatial_path::String = joinpath(path, "spatial")
 
@@ -274,6 +307,10 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
     dhw_fn::String = !isempty(rcp) ? joinpath(path, "DHWs", "dhwRCP$(rcp).nc") : ""
     wave_fn::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
     cyclone_mortality_fn::String = joinpath(path, "cyclones", "cyclone_mortality.nc")
+
+    any_dhw_file::String = joinpath(path, "DHWs", _get_any_dhw(joinpath(path, "DHWs")))
+    _n_dhw_scens::Int64 = _n_dhw_scenarios(any_dhw_file)
+    wave_scens::Int64 = 1
 
     return Domain(
         domain_name,
@@ -286,10 +323,13 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         init_coral_cov,
         conn_path,
         dhw_fn,
+        _n_dhw_scens,
         wave_fn,
+        wave_scens,
         cyclone_mortality_fn
     )
 end
+
 function load_domain(path::String, rcp::String)::ADRIADomain
     return load_domain(ADRIADomain, path, rcp)
 end
@@ -307,6 +347,41 @@ function get_wave_data(d::ADRIADomain, RCP::String)::String
     return joinpath(d.env_layer_md.dpkg_path, "waves", "wave_RCP$(RCP).nc")
 end
 
+function _get_id_col(dpkg_details)
+    spatial_resources = findfirst(
+        [x["name"] for x in dpkg_details["resources"]] .== "spatial_data"
+    )
+    spatial_resources = dpkg_details["resources"][spatial_resources]
+
+    return first(spatial_resources["data"])
+end
+
+"""Get the path of a DHW file in the domain to load as default."""
+function _get_any_dhw(dhw_dir::String)::String
+    dhw_files = filter(x -> !isnothing(match(r"dhwRCP[0-9]+.nc", x)), readdir(dhw_dir))
+    if length(dhw_files) == 0
+        throw(ArgumentError("No DHW files found in $(dhw_dir)."))
+    end
+    return first(dhw_files)
+end
+
+"""Get the number of dhw scenarios in a dhw netcdf."""
+function _n_dhw_scenarios(dhw_path)::Int64
+    dhw_handle::NcFile = NetCDF.open(dhw_path; mode=NC_NOWRITE)
+
+    possible_scenario_names = ["member", "scenarios"]
+
+    for (k, v) in dhw_handle.dim
+        if k in possible_scenario_names
+            return v.dimlen
+        end
+    end
+
+    msg = "Unable to find the number of dhw scenarios. "
+    msg *= "DHW file did not contain a dimension named \'member\' or \'scenarios\'."
+    throw(ArgumentError(msg))
+end
+
 """
     switch_RCPs!(d::Domain, RCP::String)::Domain
 
@@ -317,7 +392,9 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     @set! d.env_layer_md.wave_fn = get_wave_data(d, RCP)
     @set! d.RCP = RCP
 
-    @set! d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw")
+    @set! d.dhw_scens = load_env_data(
+        d.env_layer_md.DHW_fn, "dhw", d.env_layer_md.timeframe
+    )
     # @set! d.wave_scens = load_env_data(d.env_layer_md.wave_fn, "Ub")
 
     return d

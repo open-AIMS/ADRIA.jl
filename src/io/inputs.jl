@@ -127,6 +127,16 @@ function _nc_dim_labels(
     dim_labels = Union{UnitRange{Int64},Vector{String}}[1:n for n in size(data)]
     dim_labels[locs_idx] = sites
 
+    time_idx = findfirst([k == "timesteps" for k in keys(nc_file.dim)])
+    if !isnothing(time_idx)
+        time_vals =
+            "timesteps" in keys(
+                nc_file.vars
+            ) ? NetCDF.readvar(nc_file["timesteps"]) :
+            1:Int64(nc_file.dim["timesteps"].dimlen)
+        dim_labels[1] = minimum(time_vals):maximum(time_vals)
+    end
+
     return dim_labels
 end
 
@@ -142,33 +152,63 @@ end
 
 """
     load_env_data(data_fn::String, attr::String)::YAXArray
-    load_env_data(timeframe, sites)::YAXArray
+    load_env_data(timeframe, sites, n_scenarios)::YAXArray
 
 Load environmental data layers (DHW, Wave) from netCDF.
 """
-function load_env_data(data_fn::String, attr::String)::YAXArray
+function load_env_data(data_fn::String, attr::String, timeframe::Vector{Int64})::YAXArray
     _dim_names::Vector{Symbol} = [:timesteps, :sites, :scenarios]
-    return load_nc_data(data_fn, attr; dim_names=_dim_names)
+    env_data::YAXArray = load_nc_data(data_fn, attr; dim_names=_dim_names)
+    env_data_tf = collect(env_data.timesteps)
+
+    if all(timeframe .∈ Ref(env_data_tf))
+        return env_data[timesteps=At(timeframe)]
+    elseif all(env_data_tf .== 1:length(env_data_tf))
+        # if the data file has timesteps starting at 1 return the environmental data
+        # starting at one to the length of the input timeframe
+        return env_data[timesteps=1:length(timeframe)]
+    end
+
+    msg = "Timeframe in environmental netcdf does not contain given timeframe."
+    throw(ArgumentError(msg))
 end
-function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArray
-    return ZeroDataCube(; T=Float32, timesteps=timeframe, sites=sites, scenarios=1:50)
+function load_env_data(
+    timeframe::Vector{Int64}, sites::Vector{String}, n_scenarios::Int64
+)::YAXArray
+    return ZeroDataCube(;
+        T=Float32, timesteps=timeframe, sites=sites, scenarios=1:n_scenarios
+    )
 end
 
 """
-    load_cyclone_mortality(data_fn::String)::YAXArray
+    load_cyclone_mortality(data_fn::String, timeframe)::YAXArray
     load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
 
 Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
 ordered by :locations
 """
-function load_cyclone_mortality(data_fn::String)::YAXArray
+function load_cyclone_mortality(data_fn::String, timeframe::Vector{Int64})::YAXArray
     cyclone_cube::YAXArray = Cube(data_fn)
-    return sort_axis(cyclone_cube, :locations)
+    cyclone_cube = sort_axis(cyclone_cube, :locations)
+    cyclone_tf = collect(cyclone_cube.timesteps)
+
+    # Return cyclones with the correct timeframe specified in the data package.
+    if all(timeframe .∈ Ref(cyclone_tf))
+        return cyclone_cube[timesteps=At(timeframe)]
+    elseif all(cyclone_tf .== 1:length(cyclone_tf))
+        # if the data file has timesteps starting at 1 return the cyclone data
+        # starting at one to the length of the input timeframe
+        return cyclone_cube[timesteps=1:length(timeframe)]
+    end
+
+    throw(ArgumentError("Timeframe in cyclone netcdf does not contain given timeframe."))
 end
-function load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
+function load_cyclone_mortality(
+    timeframe::Vector{Int64}, loc_data::DataFrame, location_id_col::String
+)::YAXArray
     return ZeroDataCube(;
         timesteps=1:length(timeframe),
-        locations=sort(loc_data.reef_siteid),
+        locations=loc_data[:, location_id_col],
         species=ADRIA.coral_spec().taxa_names,
         scenarios=[1]
     )

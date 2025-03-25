@@ -45,16 +45,19 @@ end
 
 @testset "Environmental data" begin
     loc_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "spatial", "Test_domain.gpkg"))
+    dpkg = ADRIA._load_dpkg(TEST_DOMAIN_PATH)
+    timeframe = dpkg["simulation_metadata"]["timeframe"]
+    timeframe = collect(timeframe[1]:timeframe[2])
 
     sort!(loc_data, :reef_siteid)
 
     wave_fn = joinpath(TEST_DOMAIN_PATH, "waves", "wave_RCP45.nc")
-    waves = ADRIA.load_env_data(wave_fn, "Ub")
+    waves = ADRIA.load_env_data(wave_fn, "Ub", timeframe)
     @test all(axes(waves, 2).dim .== loc_data.reef_siteid) ||
         "Wave data not aligned with order specified in geospatial data"
 
     dhw_fn = joinpath(TEST_DOMAIN_PATH, "DHWs", "dhwRCP45.nc")
-    dhw = ADRIA.load_env_data(dhw_fn, "dhw")
+    dhw = ADRIA.load_env_data(dhw_fn, "dhw", timeframe)
     @test all(axes(dhw, 2).dim .== loc_data.reef_siteid) ||
         "Wave data not aligned with order specified in geospatial data"
 end
@@ -73,9 +76,12 @@ end
 @testset "Cyclone mortality data" begin
     loc_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "spatial", "Test_domain.gpkg"))
     sort!(loc_data, :reef_siteid)
+    dpkg = ADRIA._load_dpkg(TEST_DOMAIN_PATH)
+    timeframe = dpkg["simulation_metadata"]["timeframe"]
+    timeframe = collect(timeframe[1]:timeframe[2])
 
     cyclone_mortality_fn = joinpath(TEST_DOMAIN_PATH, "cyclones", "cyclone_mortality.nc")
-    cyclone_mortality = ADRIA.load_cyclone_mortality(cyclone_mortality_fn)
+    cyclone_mortality = ADRIA.load_cyclone_mortality(cyclone_mortality_fn, timeframe)
 
     expected_species_order = [
         "abhorescent_acropora",
