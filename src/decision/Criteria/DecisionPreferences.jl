@@ -163,10 +163,12 @@ function criteria_aggregated_scores(
     end
 
     # Recreate preferences, removing criteria that are constant for this scenario
-    _dp = filter_criteria(dp, is_const)
+    if any(is_const)
+        dp = filter_criteria(dp, is_const)
+    end
 
     # Assess decision matrix only using valid (non-constant) criteria
-    res = solve(_dp, dm[criteria=.!is_const], method)
+    res = solve(dp, dm[criteria=.!is_const], method)
 
     if all(isnan.(res.scores))
         # This may happen if there are constants in the decision matrix
@@ -207,7 +209,7 @@ function select_locations(
     end
 
     min_locs = min(min_locs, length(dm.location[rank_idx]))
-    return collect(dm.location[rank_idx][1:min_locs])
+    return collect(dm.location[rank_idx][1:min_locs]).data
 end
 
 """

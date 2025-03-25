@@ -13,7 +13,7 @@ end
     Identifies MCDA methods that pass a simple test to inform whether they should be included
     in ADRIA.
 
-    - A [10 ⋅ 5] decision matrix is set up (10 alternates, 5 criteria).
+    - A [10 ⋅ 5] decision matrix is set up (10 alternates/options, 5 criteria).
     - Only criteria 2 and 3 are considered, where Criteria 3 is given maximum weight.
       The others are given weights of zero.
     - The desired ranks 10 to 1 based on the values for Criteria 3
