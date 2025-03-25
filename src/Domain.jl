@@ -18,16 +18,17 @@ mutable struct EnvLayer{S<:AbstractString,TF}
 end
 
 """
-    load_domain(path::String)
+    load_domain(path::String; coral_spec_path::String="")
 
 Load ADRIA domain specification from data package.
 No SSP/RCP data is preset.
 
 # Arguments
 - `path` : location of data package.
+- `coral_spec_path` : location of JSON with coral ecological parameters if not using default functional groups and size classes.
 """
-function load_domain(path::String)::Domain
-    return load_domain(path, "")
+function load_domain(path::String; coral_spec_path::String="")::Domain
+    return load_domain(path, ""; coral_spec_path=coral_spec_path)
 end
 
 function unique_loc_ids(d::Domain)::Vector{String}
