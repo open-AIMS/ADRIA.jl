@@ -381,8 +381,8 @@ function timesteps(rs::ResultSet)
     return rs.env_layer_md.timeframe
 end
 
-@deprecate site_k_area(rs) loc_k_area(rs)
-@deprecate site_k(rs) loc_k(rs)
+@deprecate site_k_area(rs::ResultSet) loc_k_area(rs)
+@deprecate site_k(rs::ResultSet) loc_k(rs)
 
 """
     loc_k_area(rs::ResultSet)::Vector{Float64}
