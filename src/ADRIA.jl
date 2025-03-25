@@ -69,6 +69,7 @@ include("io/ResultSet.jl")
 include("spatial/spatial.jl")
 include("io/result_io.jl")
 include("io/rme_result_io.jl")
+include("io/cscape_result_io.jl")
 include("io/result_post_processing.jl")
 include("io/sampling.jl")
 include("metrics/metrics.jl")
@@ -98,6 +99,7 @@ export RMEDomain
 export ReefModDomain
 
 export RMEResultSet
+export CScapeResultSet
 # metric helper methods
 # export dims, ndims
 
