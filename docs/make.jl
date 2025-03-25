@@ -11,7 +11,12 @@ makedocs(;
     ),
     pages=[
         "index.md",
-        "synopsis.md",
+        "Concepts" =>
+            [
+                "concepts/synopsis.md",
+                "concepts/dMCDA.md",
+                "concepts/disturbances.md"
+            ],
         "Usage" => [
             "usage/getting_started.md",
             "usage/domain.md",
@@ -22,13 +27,6 @@ makedocs(;
             "usage/cookbook.md"
             # "usage/scenario_discovery.md"
         ],
-        "dMCDA.md",
-        # "Examples" => [
-        #     "Usage" => [
-        #     ],
-        #     "simple_showcase.md",
-        #     "advanced_showcase.md"
-        # ],
         "Architecture" => [
             "architecture/architecture.md",
             "architecture/domain_and_resultsets.md"
