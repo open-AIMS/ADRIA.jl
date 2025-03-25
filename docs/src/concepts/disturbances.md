@@ -10,6 +10,8 @@ Each cyclone mortality scenario is defined as a series of cyclone mortality rate
 
 ## References
 
-Bozec, Y. M., Adam, A. A., Nava, B. A., Cresswell, A. K., Haller-Bull, V., Iwanaga, T., ... & Mumby, P. J. (2025). A rapidly closing window for coral persistence under global warming. bioRxiv, 2025-01.
-Bureau of Meteorology. (2025). Tropical cyclone categories. Australian Government. http://www.bom.gov.au/cyclone/tropical-cyclone-knowledge-centre/understanding/categories/
-Fabricius, K. E., De'Ath, G., Puotinen, M. L., Done, T., Cooper, T. F., & Burgess, S. C. (2008). Disturbance gradients on inshore and offshore coral reefs caused by a severe tropical cyclone. Limnology and Oceanography, 53(2), 690-704.
+1. Bozec, Y. M., Adam, A. A., Nava, B. A., Cresswell, A. K., Haller-Bull, V., Iwanaga, T., ... & Mumby, P. J. (2025). A rapidly closing window for coral persistence under global warming. bioRxiv, 2025-01.
+
+2. Bureau of Meteorology. (2025). Tropical cyclone categories. Australian Government. http://www.bom.gov.au/cyclone/tropical-cyclone-knowledge-centre/understanding/categories/
+
+3. Fabricius, K. E., De'Ath, G., Puotinen, M. L., Done, T., Cooper, T. F., & Burgess, S. C. (2008). Disturbance gradients on inshore and offshore coral reefs caused by a severe tropical cyclone. Limnology and Oceanography, 53(2), 690-704.
