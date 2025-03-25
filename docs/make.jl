@@ -13,7 +13,6 @@ makedocs(;
         "index.md",
         "Concepts" =>
             [
-                "concepts/synopsis.md",
                 "concepts/dMCDA.md",
                 "concepts/disturbances.md"
             ],
