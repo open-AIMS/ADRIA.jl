@@ -211,7 +211,7 @@ plan_horizon = Int64(scen["plan_horizon"])
 decay = 0.99 .^ (1:(plan_horizon + 1)) .^ 2
 dhw_projection = ADRIA.decision.weighted_projection(dhw_scens, 1, plan_horizon, decay, 75)
 # Connectivity
-area_weighted_conn = dom.conn.data .* ADRIA.site_k_area(dom)
+area_weighted_conn = dom.conn.data .* ADRIA.loc_k_area(dom)
 conn_cache = similar(area_weighted_conn)
 in_conn, out_conn, network = ADRIA.connectivity_strength(
     area_weighted_conn, sum_cover, conn_cache
