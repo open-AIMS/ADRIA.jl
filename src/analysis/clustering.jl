@@ -95,8 +95,8 @@ function complexity_invariance_distance(
             end
 
             @views cid_matrix[ii, jj] = _complexity_invariance(
-                dist_complexity[ii], 
-                dist_complexity[jj], 
+                dist_complexity[ii],
+                dist_complexity[jj],
                 dist_fn
             )
         end
