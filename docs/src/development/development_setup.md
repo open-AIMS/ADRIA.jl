@@ -114,7 +114,6 @@ If a new file is added to the test suite, `include()` it in `test/runtests.jl`
 See [the Test documentation](https://docs.julialang.org/en/v1/stdlib/Test/#Basic-Unit-Tests)
 for further details.
 
-
 ## Code Style
 
 We are currently moving to follow [Blue Style Guide](https://github.com/invenia/BlueStyle).
@@ -122,13 +121,36 @@ All PRs should follow this style guide. The [julia-format](https://github.com/ju
 GitHub workflow will check that your PR's code is formatted. Note that this check requires
 all code in the repo to be formatted, not only the files modified by your PR.
 
+1. Install the VS Code JuliaFormatter extension.
+
+2. Open VS Code settings and search for `Julia-format: flag`
+
+3. Copy/paste the settings defined below:
+
+> style=BlueStyle(), indent=4, margin=92, always_for_in=false, for_in_replacement="∈",
+> whitespace_typedefs=false, import_to_using=true,  whitespace_in_kwargs=false,
+> align_struct_field=true, align_assignment=false, align_conditional=true,
+> align_pair_arrow=false, normalize_line_endings="unix", align_matrix=true,
+> join_lines_based_on_source=true, indent_submodule=true,
+> surround_whereop_typeparameters=false, yas_style_nesting=true, trailing_comma=false,
+> short_to_long_function_def=false, conditional_to_if=false
+
 Use the VSCode `Format Document` or `Format Selection` actions to format your code.
 
+The settings above are the same as defined in the project `.JuliaFormatter.toml` file.
+
+The first time, VS Code will ask for the default formatter to be selected.
+Select "Julia Formatter".
+
+### With the JuliaFormatter package
+
 To reformat the entire project:
+
 ```julia
 using JuliaFormatter
 format(".")
 ```
+
 *If this returns `false`, call `format()` again.*
 
 Formatter configuration is defined in `.JuliaFormatter.toml`, see

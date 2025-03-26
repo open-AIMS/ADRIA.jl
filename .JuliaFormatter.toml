@@ -1,10 +1,11 @@
 style="blue"
 indent=4
 margin=92
-always_for_in="nothing"
+always_for_in=false
 for_in_replacement="∈"
 whitespace_typedefs=false
 import_to_using=true
+whitespace_in_kwargs=false
 align_struct_field=true
 align_assignment=false
 align_conditional=true
