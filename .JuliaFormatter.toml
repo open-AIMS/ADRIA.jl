@@ -5,6 +5,7 @@ always_for_in="nothing"
 for_in_replacement="∈"
 whitespace_typedefs=false
 import_to_using=true
+whitespace_in_kwargs=false
 align_struct_field=true
 align_assignment=false
 align_conditional=true
