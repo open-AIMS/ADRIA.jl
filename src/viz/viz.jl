@@ -40,6 +40,7 @@ function ranks_to_frequencies() end
 function ranks_to_frequencies!() end
 function selection_criteria_map() end
 function selection_criteria_map!() end
+function mcda_options() end
 
 # Spatial
 function map() end
