@@ -17,7 +17,7 @@ using ADRIA.metrics:
     absolute_shelter_volume,
     relative_shelter_volume
 using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
-using ADRIA.metrics: coral_evenness
+using ADRIA.metrics: coral_diversity
 using ADRIA.decision
 
 """
@@ -330,9 +330,9 @@ function run_scenario(
         rs_raw, loc_k_area(domain), domain.coral_growth.n_groups
     )
 
-    vals = coral_evenness(vals.data)
+    vals = coral_diversity(vals.data)
     vals[vals .< threshold] .= 0.0
-    data_store.coral_evenness[:, :, idx] .= vals
+    data_store.coral_diversity[:, :, idx] .= vals
 
     # Store raw results if no metrics specified
     # if length(metrics) == 0
