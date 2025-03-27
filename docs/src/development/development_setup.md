@@ -121,40 +121,19 @@ All PRs should follow this style guide. The [julia-format](https://github.com/ju
 GitHub workflow will check that your PR's code is formatted. Note that this check requires
 all code in the repo to be formatted, not only the files modified by your PR.
 
-1. Install the VS Code JuliaFormatter extension.
+To set things up:
 
-2. Open VS Code settings and search for `Julia-format: flag`
+1. Do **not** install the VS Code Julia Formatter extension. \
+   If you have installed it, remove it.
 
-3. Copy/paste the settings defined below:
+2. Open VS Code settings and search for `default formatter`
 
-> style=BlueStyle(), indent=4, margin=92, always_for_in=false, for_in_replacement="∈",
-> whitespace_typedefs=false, import_to_using=true,  whitespace_in_kwargs=false,
-> align_struct_field=true, align_assignment=false, align_conditional=true,
-> align_pair_arrow=false, normalize_line_endings="unix", align_matrix=true,
-> join_lines_based_on_source=true, indent_submodule=true,
-> surround_whereop_typeparameters=false, yas_style_nesting=true, trailing_comma=false,
-> short_to_long_function_def=false, conditional_to_if=false
+3. Set it to `Julia` (julialang.language-julia)
 
-Use the VSCode `Format Document` or `Format Selection` actions to format your code.
+Use the VSCode `Format Document` or `Format Selection` actions to format your code
+(`shift+alt+f` is the shortcut, or `ctrl+shift+p` and search for `format`).
 
-The settings above are the same as defined in the project `.JuliaFormatter.toml` file.
-
-The first time, VS Code will ask for the default formatter to be selected.
-Select "Julia Formatter".
-
-### With the JuliaFormatter package
-
-To reformat the entire project:
-
-```julia
-using JuliaFormatter
-format(".")
-```
-
-*If this returns `false`, call `format()` again.*
-
-Formatter configuration is defined in `.JuliaFormatter.toml`, see
-[JuliaFormatter docs](https://domluna.github.io/JuliaFormatter.jl/stable/).
+The applied formatting is defined in the project `.JuliaFormatter.toml` file.
 
 ### VSCode Settings
 
@@ -182,6 +161,20 @@ Adding multiple values adds more guide lines at the indicated widths.
 *Important:* if you installed the *oh7z Julia Formatter* VSCode extension, uninstall or disable it for this workspace.
 That extension always uses its formatter settings and does not support `.JuliaFormatter.toml` whereas the main Julia extension does.
 The only reason to use the oh7z extension is for Julia projects that do not have a `.JuliaFormatter.toml` file.
+
+### With the JuliaFormatter package
+
+To reformat the entire project:
+
+```julia
+using JuliaFormatter
+format(".")
+```
+
+*If this returns `false`, call `format()` again.*
+
+Formatter configuration is defined in `.JuliaFormatter.toml`, see
+[JuliaFormatter docs](https://domluna.github.io/JuliaFormatter.jl/stable/).
 
 ## Git blame ignore revs
 
