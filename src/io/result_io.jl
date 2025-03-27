@@ -406,7 +406,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         metrics.absolute_shelter_volume,
         metrics.relative_juveniles,
         metrics.juvenile_indicator,
-        metrics.coral_evenness,
+        metrics.coral_diversity,
         metrics.relative_taxa_cover
     ]
 
