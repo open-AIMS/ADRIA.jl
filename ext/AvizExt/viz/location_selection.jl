@@ -197,6 +197,66 @@ function ADRIA.viz.selection_criteria_map!(
 end
 
 """
+    ADRIA.viz.mcda_options(data::DataFrame; fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(), axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE())::Figure
+
+Plot heatmap with weights given to the MCDA criteria for different options. This method is used in the pathway diversity
+analysis where options are defined based on different set of weights given to the MCDA method.
+
+# Example
+```julia
+options = ADRIA.analysis.option_seed_preference(include_weights=true)
+fig = ADRIA.viz.mcda_options(options)
+save("option_weight_matrix.png", fig)
+```
+
+# Arguments
+- `data` : DataFrame with the weights given to different options.
+- `axis_opts` : Additional options to pass to adjust Axis attributes
+  See: https://docs.makie.org/v0.19/api/index.html#Axis
+- `fig_opts` : Additional options to pass to adjust Figure creation
+  See: https://docs.makie.org/v0.19/api/index.html#Figure
+
+# Returns
+Figure
+"""
+function ADRIA.viz.mcda_options(
+    data::DataFrame;
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)::Figure
+    option_names = string.(data.option_name)
+    criteria_names = string.(names(data))
+    criteria_names = criteria_names[startswith.(criteria_names, "seed_")]
+    number_options = size(data, 1)
+    data = Matrix(data[:, criteria_names])
+
+    fig = Figure(; fig_opts...)
+    ax = Axis(
+        fig[1, 1];
+        xlabel="MCDA criteria",
+        ylabel="Options",
+        xticks=(1:length(criteria_names), criteria_names),
+        yticks=(1:number_options, option_names),
+        xticklabelrotation=2.0 / π,
+        axis_opts...
+    )
+    limits = (0.0, 1.0)
+
+    heatmap!(ax, transpose(data); colorrange=limits)
+    Colorbar(fig[1, 2]; limits=limits)
+    text!(ax,
+        string.(round.(vec(data); digits=1));
+        position=[
+            Point2f(x, y) for x in 1:length(criteria_names) for y in 1:number_options
+        ],
+        align=(:center, :center),
+        color=:white,
+        fontsize=14
+    )
+    return fig
+end
+
+"""
     _default_colormap(rank_groups::Dict{Symbol,BitVector}, alpha_vals::Dict{Symbol,Float64})
 
 Retrieve set of colormaps for plotting overlayed colormaps.
