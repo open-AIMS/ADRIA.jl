@@ -212,7 +212,8 @@ function _relative_juveniles(
 )::AbstractArray{T,2} where {T<:Real}
     # Cover of juvenile corals (< 5cm diameter)
     juv_groups =
-        X[species=(coral_spec.class_id .== 1)] .+ X[species=(coral_spec.class_id .== 2)]
+        X[species=(coral_spec.class_id .== 1)] .+
+        X[species=(coral_spec.class_id .== 2)].data
 
     return dropdims(sum(juv_groups; dims=:species); dims=:species)
 end
@@ -347,6 +348,45 @@ coral_evenness = Metric(
 )
 
 """
+    coral_diversity(r_taxa_cover::AbstractArray{T})::AbstractArray{T} where {T<:Real}
+    coral_diversity(rs::ResultSet)::AbstractArray{T} where {T}
+
+Calculates coral taxa diversity as a dimensionless metric. Derived from thFe simpsons diversity,
+D = 1-sum_i((cov_i/cov)^2) where cov is the total coral cover and cov_i is the cover of taxa i.
+Formulated by Dr Mike Williams (mjmcwilliam@outlook.com) and Dr Morgan Pratchett (morgan.pratchett@jcu.edu.au).
+
+"""
+function _coral_diversity(
+    r_taxa_cover::AbstractArray{T,3}
+)::AbstractArray{T,2} where {T<:Real}
+    n_steps, n_grps, n_locs = size(r_taxa_cover)
+
+    diversity::YAXArray = ZeroDataCube(
+        (:timesteps, :locations), (n_steps, n_locs), r_taxa_cover.properties
+    )
+    loc_cover = dropdims(sum(r_taxa_cover; dims=2); dims=2)
+
+    # Diversity is 1-(approx. probability of same taxa draws)
+    for loc in axes(loc_cover, 2)
+        diversity[:, loc] =
+            1 .- sum((r_taxa_cover[:, :, loc] ./ loc_cover[:, loc]) .^ 2; dims=2)
+    end
+
+    return replace!(
+        diversity, NaN => 0.0, Inf => 0.0
+    )
+end
+function _coral_diversity(rs::ResultSet)::AbstractArray{<:Real,3}
+    return rs.outcomes[:coral_diversity]
+end
+coral_diversity = Metric(
+    _coral_diversity,
+    (:timesteps, :locations, :scenarios),
+    "Coral Diversity",
+    IS_RELATIVE
+)
+
+"""
     _colony_Lcm2_to_m3m2(inputs::DataFrame)::Tuple
     _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Float64}}
 
@@ -356,7 +396,7 @@ Helper function to convert coral colony values from Litres/cm² to m³/m²
 - `inputs` : Scenario values for the simulation
 
 # Returns
-Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
+Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum shelter volume (m³/m²)
 
 # References
 1. Aston Eoghan A., Duce Stephanie, Hoey Andrew S., Ferrari Renata (2022).
@@ -372,10 +412,15 @@ end
 function _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Float64}}
     _, _, cs_p::DataFrame = coral_spec()
     n_sizes::Int64 = length(unique(cs_p.class_id))
-
     # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
     n_groups_sizes::Int64 = size(cs_p, 1)
+
+    # Use largest Tabular Acropora to define max shelter volume
+    ta_ids =
+        occursin.("tabular_Acropora", cs_p.coral_id) .&
+        (cs_p.class_id .== maximum(cs_p.class_id))
+
     colony_mean_diams_cm::Vector{Float64} = reshape(
         (inputs[factors=At(cs_p.coral_id .* "_mean_colony_diameter_m")] .* 100.0).data,
         n_groups_sizes
@@ -400,7 +445,7 @@ function _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Fl
     colony_vol_m3_per_m2::Vector{Float64} = colony_litres_per_cm2 * cm2_to_m3_per_m2
 
     # Assumed maximum colony area for each species and scenario, using largest size class
-    max_colony_vol_m3_per_m2::Vector{Float64} = colony_vol_m3_per_m2[n_sizes:n_sizes:end]
+    max_colony_vol_m3_per_m2::Vector{Float64} = colony_vol_m3_per_m2[ta_ids]
 
     return colony_vol_m3_per_m2, max_colony_vol_m3_per_m2
 end
@@ -431,37 +476,14 @@ function _shelter_species_loop(
     ASV::YAXArray = ZeroDataCube((:timesteps, :species, :locations), size(X))
     _shelter_species_loop!(X, ASV, n_group_and_size, colony_vol_m3_per_m2, k_area)
 
-    # Maximum shelter volume
-    MSV::Matrix{Float64} = k_area' .* max_colony_vol_m3_per_m2  # in m³
+    # Maximum shelter volume - 50% k_area at max shelter volume
+    MSV::Vector{Float64} = dropdims(0.5 .* k_area' .* max_colony_vol_m3_per_m2; dims=1)  # in m³
+
     # Ensure zero division does not occur
     # ASV should be 0.0 where MSV is 0.0 so the end result is 0.0 / 1.0
     MSV[MSV .== 0.0] .= 1.0
 
-    # Number of functional groups
-    n_groups::Int64 = size(MSV, 1)
-    # Number of size classes
-    n_sizes::Int64 = Int64(n_group_and_size / n_groups)
-    # Loop over each taxa group
-
-    RSV::YAXArray = ZeroDataCube(
-        (:timesteps, :species, :locations), size(X[species=1:n_groups]), X.properties
-    )
-    taxa_max_map = zip(
-        [i:(i + n_sizes - 1) for i in 1:n_sizes:n_group_and_size], 1:n_groups
-    )  # map maximum SV for each group
-
-    # Work out RSV for each taxa
-    for (sp, sq) in taxa_max_map
-        for site in 1:size(ASV, :locations)
-            RSV[species=At(sq), locations=At(site)] .=
-                dropdims(
-                    sum(ASV[species=At(sp), locations=At(site)]; dims=:species);
-                    dims=:species
-                ) ./ MSV[sq, site]
-        end
-    end
-
-    return RSV
+    return dropdims(sum(ASV; dims=:species); dims=:species) ./ MSV'
 end
 
 """
@@ -604,7 +626,7 @@ absolute_shelter_volume = Metric(
     relative_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume relative to theoretical maximum volume for the area
-covered by coral.
+covered by coral.The theoretical maximum is the case of 50% cover of the largest Tabular Acropora.
 
 The metric applies log-log linear models developed by Urbina-Barreto et al., [1] which uses
 colony diameter and planar area (2D metrics) to estimate shelter volume (a 3D metric).
@@ -666,10 +688,6 @@ function _relative_shelter_volume(
     )
     RSV::YAXArray = _shelter_species_loop(X, nspecies, colony_vol, max_colony_vol, k_area)
 
-    # Sum over groups and size classes to estimate total shelter volume
-    # proportional to the theoretical maximum (per site)
-    RSV = dropdims(sum(RSV; dims=:species); dims=:species)
-
     clamp!(RSV, 0.0, 1.0)
     return RSV
 end
@@ -703,8 +721,8 @@ function _relative_shelter_volume(
     # Result template - six entries, one for each taxa
     n_groups::Int64 = length(coral_spec().taxa_names)
     RSV::YAXArray = ZeroDataCube(
-        (:timesteps, :species, :locations, :scenarios),
-        size(X[:, 1:n_groups, :, :]),
+        (:timesteps, :locations, :scenarios),
+        (size(X[:, :, :, :], 1), size(X[:, :, :, :])[2, 3]),
         X.properties
     )
     for scen::Int64 in 1:nscens
@@ -713,10 +731,6 @@ function _relative_shelter_volume(
             X[scenarios=scen], nspecies, colony_vol, max_colony_vol, k_area
         )
     end
-
-    # Sum over groups and size classes to estimate total shelter volume
-    # proportional to the theoretical maximum (per site)
-    RSV = dropdims(sum(RSV; dims=:species); dims=:species)
 
     clamp!(RSV, 0.0, 1.0)
     return RSV
