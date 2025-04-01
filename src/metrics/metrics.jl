@@ -9,7 +9,8 @@ using
 
 using YAXArrays
 using ADRIA:
-    DataCube, ZeroDataCube, axes_names, axis_labels, axis_index
+    DataCube, ZeroDataCube, axes_names, axis_labels, axis_index, default_coral_params,
+    default_coral_spec
 using ADRIA: n_sizes, group_indices
 
 using FLoops
@@ -365,17 +366,20 @@ Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical
     https://doi.org/10.3389/fmars.2022.854395
 
 """
-function _colony_Lcm2_to_m3m2(inputs::DataFrame)::Tuple
+function _colony_Lcm2_to_m3m2(inputs::DataFrame, coral_params::Dict)::Tuple
     _inputs = DataCube(Matrix(inputs); scenarios=1:nrow(inputs), factors=names(inputs))
-    return _colony_Lcm2_to_m3m2(_inputs)
+    return _colony_Lcm2_to_m3m2(_inputs, coral_params)
 end
-function _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Float64}}
-    _, _, cs_p::DataFrame = coral_spec()
+function _colony_Lcm2_to_m3m2(
+    inputs::YAXArray, coral_params::Dict
+)::Tuple{Vector{Float64},Vector{Float64}}
+    _, _, cs_p::DataFrame = coral_spec(coral_params)
     n_sizes::Int64 = length(unique(cs_p.class_id))
 
     # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
     # Have to be careful to extract data in the correct order, matching coral id
     n_groups_sizes::Int64 = size(cs_p, 1)
+
     colony_mean_diams_cm::Vector{Float64} = reshape(
         (inputs[factors=At(cs_p.coral_id .* "_mean_colony_diameter_m")] .* 100.0).data,
         n_groups_sizes
@@ -384,7 +388,7 @@ function _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Fl
     # Colony planar area parameters (see Fig 2B in Aston et al., [1])
     # First column is `b`, second column is `a`
     # log(S) = b + a * log(x)
-    pa_params::Array{Float64,2} = planar_area_params()
+    pa_params::Array{Float64,2} = coral_params[:planar_area_params]
 
     # Repeat each entry `n_sizes` times to cover the number size classes represented
     pa_params = repeat(pa_params; inner=(n_sizes, 1))
@@ -429,6 +433,7 @@ function _shelter_species_loop(
 )::YAXArray where {T1<:Real,F<:Float64}
     # Calculate absolute shelter volumes first
     ASV::YAXArray = ZeroDataCube((:timesteps, :species, :locations), size(X))
+
     _shelter_species_loop!(X, ASV, n_group_and_size, colony_vol_m3_per_m2, k_area)
 
     # Maximum shelter volume
@@ -522,29 +527,32 @@ shelter volume (a 3D metric).
 function _absolute_shelter_volume(
     X::YAXArray{T,3},
     k_area::Vector{T},
-    inputs::DataFrameRow
+    inputs::DataFrameRow;
+    coral_params=default_coral_params()
 )::AbstractArray{T} where {T<:Real}
     _inputs::YAXArray = DataCube(
         Matrix(Vector(inputs)'); scenarios=1:1, factors=names(inputs)
     )
 
-    return _absolute_shelter_volume(X, k_area, _inputs)
+    return _absolute_shelter_volume(X, k_area, _inputs; coral_params=coral_params)
 end
 function _absolute_shelter_volume(
     X::YAXArray{T,4},
     k_area::Vector{T},
-    inputs::DataFrame
+    inputs::DataFrame;
+    coral_params=default_coral_params()
 )::AbstractArray{T} where {T<:Real}
     _inputs::YAXArray = DataCube(
         Matrix(inputs); scenarios=1:size(inputs, 1), factors=names(inputs)
     )
 
-    return _absolute_shelter_volume(X, k_area, _inputs)
+    return _absolute_shelter_volume(X, k_area, _inputs; coral_params=coral_params)
 end
 function _absolute_shelter_volume(
     X::YAXArray{T,3},
     k_area::Vector{T},
-    inputs::YAXArray
+    inputs::YAXArray;
+    coral_params=default_coral_params()
 )::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
@@ -554,7 +562,7 @@ function _absolute_shelter_volume(
         (:timesteps, :species, :locations), size(X), X.properties
     )
 
-    colony_vol, _ = _colony_Lcm2_to_m3m2(inputs)
+    colony_vol, _ = _colony_Lcm2_to_m3m2(inputs, coral_params)
     _shelter_species_loop!(X, ASV, nspecies, colony_vol, k_area)
 
     # Sum over groups and size classes to estimate total shelter volume per site
@@ -563,7 +571,8 @@ end
 function _absolute_shelter_volume(
     X::YAXArray{T,4},
     k_area::Vector{T},
-    inputs::YAXArray
+    inputs::YAXArray;
+    coral_params=default_coral_params()
 )::AbstractArray{T} where {T<:Real}
     nspecies::Int64 = size(X, :species)
 
@@ -574,7 +583,7 @@ function _absolute_shelter_volume(
     )
 
     for scen::Int64 in 1:nscens
-        colony_vol, _ = _colony_Lcm2_to_m3m2(inputs[scen, :])
+        colony_vol, _ = _colony_Lcm2_to_m3m2(inputs[scen, :], coral_params)
         _shelter_species_loop!(
             X[scenarios=scen], ASV[scenarios=scen], nspecies, colony_vol, k_area
         )
@@ -637,32 +646,35 @@ https://doi.org/10.1016/j.ecolind.2020.107151
 function _relative_shelter_volume(
     X::AbstractArray{T,3},
     k_area::Vector{T},
-    scens::DataFrameRow
+    scens::DataFrameRow;
+    coral_params=default_coral_params()
 )::AbstractArray{T} where {T<:Real}
-    return _relative_shelter_volume(X, k_area, DataFrame(scens))
+    return _relative_shelter_volume(X, k_area, DataFrame(scens); coral_params=coral_params)
 end
 function _relative_shelter_volume(
     X::AbstractArray{T,3},
     k_area::Vector{T},
-    scens::DataFrame
+    scens::DataFrame;
+    coral_params=default_coral_params()
 )::AbstractArray{T} where {T<:Real}
     @assert size(scens, 1) == 1 "Scens DataFrame should have only one line"
     _inputs::YAXArray = DataCube(
         Matrix(scens); scenarios=axes(scens, 1), factors=names(scens)
     )
-    return _relative_shelter_volume(X, k_area, _inputs)
+    return _relative_shelter_volume(X, k_area, _inputs; coral_params=coral_params)
 end
 function _relative_shelter_volume(
     X::AbstractArray{T,3},
     k_area::Vector{T},
-    scens::YAXArray
+    scens::YAXArray;
+    coral_params=default_coral_params()
 )::AbstractArray{T} where {T<:Real}
     # Collate for a single scenario
     nspecies::Int64 = size(X, :species)
 
     # Calculate shelter volume of groups and size classes and multiply with covers
     colony_vol::Array{Float64}, max_colony_vol::Array{Float64} = _colony_Lcm2_to_m3m2(
-        scens
+        scens, coral_params
     )
     RSV::YAXArray = _shelter_species_loop(X, nspecies, colony_vol, max_colony_vol, k_area)
 
@@ -676,24 +688,27 @@ end
 function _relative_shelter_volume(
     X::AbstractArray{T,4},
     k_area::Vector{T},
-    scens::DataFrameRow
+    scens::DataFrameRow;
+    coral_params=default_coral_params()
 )::AbstractArray{T} where {T<:Real}
-    return _relative_shelter_volume(X, k_area, DataFrame(scens))
+    return _relative_shelter_volume(X, k_area, DataFrame(scens); coral_params=coral_params)
 end
 function _relative_shelter_volume(
     X::AbstractArray{T,4},
     k_area::Vector{T},
-    scens::DataFrame
+    scens::DataFrame;
+    coral_params=default_coral_params()
 )::AbstractArray{T} where {T<:Real}
     _inputs::YAXArray = DataCube(
         Matrix(scens); scenarios=axes(scens, 1), factors=names(scens)
     )
-    return _relative_shelter_volume(X, k_area, _inputs)
+    return _relative_shelter_volume(X, k_area, _inputs; coral_params=coral_params)
 end
 function _relative_shelter_volume(
     X::AbstractArray{T,4},
     k_area::Vector{T},
-    scens::YAXArray
+    scens::YAXArray;
+    coral_params=default_coral_params()
 )::YAXArray where {T<:Real}
     @assert size(scens, :scenarios) == size(X, :scenarios)  # Number of results should match number of scenarios
 
@@ -701,14 +716,14 @@ function _relative_shelter_volume(
     nscens::Int64 = size(X, :scenarios)
 
     # Result template - six entries, one for each taxa
-    n_groups::Int64 = length(coral_spec().taxa_names)
+    n_groups::Int64 = length(default_coral_spec().taxa_names)
     RSV::YAXArray = ZeroDataCube(
         (:timesteps, :species, :locations, :scenarios),
         size(X[:, 1:n_groups, :, :]),
         X.properties
     )
     for scen::Int64 in 1:nscens
-        colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(scens[scen, :])
+        colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(scens[scen, :], coral_params)
         RSV[scenarios=scen] .= _shelter_species_loop(
             X[scenarios=scen], nspecies, colony_vol, max_colony_vol, k_area
         )

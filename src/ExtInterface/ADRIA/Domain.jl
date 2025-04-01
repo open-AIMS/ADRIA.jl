@@ -23,6 +23,7 @@ mutable struct ADRIADomain <: Domain
     const cluster_id_col::String  # column of unique cluster ids
     init_coral_cover::YAXArray  # initial coral cover dataset
     const coral_growth::CoralGrowth  # coral
+    const coral_params::Dict{Symbol,Any}  # coral params
     const loc_ids::Vector{String}  # Location IDs that are represented (i.e., subset of loc_data[:, location_id_col], after missing locations are filtered)
     const removed_locs::Vector{String}  # indices of locations that were removed. Used to align loc_data, DHW, connectivity, etc.
     dhw_scens::YAXArray  # DHW scenarios
@@ -47,6 +48,7 @@ function Domain(
     cluster_id_col::String,
     init_coral_cover::YAXArray,
     coral_growth::CoralGrowth,
+    coral_params::Dict{Symbol,Any},
     location_ids::Vector{String},
     removed_locations::Vector{String},
     DHW::YAXArray,
@@ -77,6 +79,7 @@ function Domain(
         cluster_id_col,
         init_coral_cover,
         coral_growth,
+        coral_params,
         location_ids,
         removed_locations,
         DHW,
@@ -88,13 +91,14 @@ function Domain(
 end
 
 """
-    Domain(name::String, rcp::String, timeframe::Vector, location_data_fn::String, location_id_col::String, cluster_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String)::Domain
+    Domain(name::String, dpkg_path::String, coral_spec_path::String, rcp::String, timeframe::Vector, location_data_fn::String, location_id_col::String, cluster_id_col::String, init_coral_fn::String, conn_path::String, dhw_fn::String, wave_fn::String, cyclone_mortality_fn::String)::ADRIADomain
 
 Convenience constructor for Domain.
 
 # Arguments
 - `name` : Name of domain
 - `dpkg_path` : location of data package
+- `coral_spec_path` : location of JSON with coral ecological parameters if not using default functional groups and size classes.
 - `rcp` : RCP scenario represented
 - `timeframe` : Time steps represented
 - `location_data_fn` : File name of spatial data used
@@ -109,6 +113,7 @@ Convenience constructor for Domain.
 function Domain(
     name::String,
     dpkg_path::String,
+    coral_spec_path::String,
     rcp::String,
     timeframe::Vector,
     location_data_fn::String,
@@ -176,13 +181,25 @@ function Domain(
     location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
 
     n_locs::Int64 = nrow(location_data)
-    n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
+    coral_params::Dict{Symbol,Any} = load_coral_params(coral_spec_path)
+    n_groups::Int64, n_sizes::Int64 = size(coral_params[:linear_extension])
     coral_growth::CoralGrowth = CoralGrowth(n_locs, n_groups, n_sizes)
     n_group_and_size = coral_growth.n_group_and_size
 
     # Load initial coral cover relative to k area
     cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_group_and_size, n_locs)
     init_coral_cover = load_initial_cover(cover_params...)
+
+    if size(init_coral_cover, 1) != n_group_and_size
+        throw(
+            DimensionMismatch(
+                "
+The number of functional groups and size classes specified in the coral parameters file
+does not match the size of the initial coral cover matrix.
+"
+            )
+        )
+    end
 
     dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
     dhw = load_env_data(dhw_params...)
@@ -219,6 +236,7 @@ function Domain(
         cluster_id_col,
         init_coral_cover,
         coral_growth,
+        coral_params,
         connectivity.loc_ids,
         connectivity.truncated,
         dhw,
@@ -228,15 +246,19 @@ function Domain(
 end
 
 """
-    load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
-    load_domain(path::String, rcp::String)
-    load_domain(path::String, rcp::Int64)
+    load_domain(ADRIADomain, path::String, rcp::String; coral_spec_path::String="")::ADRIADomain
+    load_domain(path::String, rcp::String; coral_spec_path::String="")::ADRIADomain
+    load_domain(path::String, rcp::Int64; coral_spec_path::String="")::ADRIADomain
 
 # Arguments
 - `path` : location of data package
 - `rcp` : RCP scenario to run. If none provided, no data path is set.
+- `coral_spec_path` : location of JSON with coral ecological parameters if not using default functional groups and size classes.
+
 """
-function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomain
+function load_domain(
+    ::Type{ADRIADomain}, path::String, rcp::String; coral_spec_path::String=""
+)::ADRIADomain
     isdir(path) ? true : error("Path does not exist or is not a directory.")
 
     domain_name::String = basename(path)
@@ -278,6 +300,7 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
     return Domain(
         domain_name,
         path,
+        coral_spec_path,
         rcp,
         timeframe,
         gpkg_path,
@@ -290,11 +313,11 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         cyclone_mortality_fn
     )
 end
-function load_domain(path::String, rcp::String)::ADRIADomain
-    return load_domain(ADRIADomain, path, rcp)
+function load_domain(path::String, rcp::String; coral_spec_path::String="")::ADRIADomain
+    return load_domain(ADRIADomain, path, rcp; coral_spec_path=coral_spec_path)
 end
-function load_domain(path::String, rcp::Int64)::ADRIADomain
-    return load_domain(ADRIADomain, path, string(rcp))
+function load_domain(path::String, rcp::Int64; coral_spec_path::String="")::ADRIADomain
+    return load_domain(ADRIADomain, path, string(rcp); coral_spec_path=coral_spec_path)
 end
 
 """Get the path to the DHW data associated with the domain."""

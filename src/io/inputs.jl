@@ -169,7 +169,30 @@ function load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::
     return ZeroDataCube(;
         timesteps=1:length(timeframe),
         locations=sort(loc_data.reef_siteid),
-        species=ADRIA.coral_spec().taxa_names,
+        species=ADRIA.default_coral_spec().taxa_names,
         scenarios=[1]
     )
+end
+
+"""
+    load_coral_params(coral_path::String)::Dict{Symbol,Any}
+
+Load coral ecological parameters from JSON, or use default parameters if no file provided.
+"""
+function load_coral_params(coral_path::String)::Dict{Symbol,Any}
+    if coral_path == ""
+        coral_params = default_coral_params()
+    else
+        try
+            coral_params = JSON.parsefile(coral_path; dicttype=Dict{Symbol,Any})
+        catch err
+            if err isa (SystemError)
+                println("Specified path for coral parameters not found.\n")
+            end
+        end
+        coral_params[:survival_rate] = vcat(coral_params[:survival_rate]'...)
+        coral_params[:linear_extension] = vcat(coral_params[:linear_extension]'...)
+        coral_params[:bin_edges] = vcat(coral_params[:bin_edges]'...)
+    end
+    return coral_params
 end
