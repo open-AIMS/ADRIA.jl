@@ -387,8 +387,8 @@ coral_diversity = Metric(
 )
 
 """
-    _colony_Lcm2_to_m3m2(inputs::DataFrame)::Tuple
-    _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Float64}}
+    _colony_L_to_m3m2(inputs::DataFrame)::Tuple
+    _colony_L_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Float64}}
 
 Helper function to convert coral colony values from Litres/cm² to m³/m²
 
@@ -405,11 +405,11 @@ Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical
     https://doi.org/10.3389/fmars.2022.854395
 
 """
-function _colony_Lcm2_to_m3m2(inputs::DataFrame)::Tuple
+function _colony_L_to_m3m2(inputs::DataFrame)::Tuple
     _inputs = DataCube(Matrix(inputs); scenarios=1:nrow(inputs), factors=names(inputs))
-    return _colony_Lcm2_to_m3m2(_inputs)
+    return _colony_L_to_m3m2(_inputs)
 end
-function _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Float64}}
+function _colony_L_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Float64}}
     _, _, cs_p::DataFrame = coral_spec()
     n_sizes::Int64 = length(unique(cs_p.class_id))
     # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
@@ -437,12 +437,17 @@ function _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Fl
     # Estimate colony volume (litres) based on relationship
     # established by Aston et al. 2022, for each taxa/size class and scenario
     # Aston et. al. log-log relationship so we apply `exp()` to transform back to dm³
-    colony_litres_per_cm2::Vector{Float64} =
+    # Labelled R (Absolute spatial refuge in dm3) as in the paper
+    R_dm3_per_colony::Vector{Float64} =
         exp.(pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_mean_diams_cm))
 
+    # Calculate how many colonies fit in 1 m2 for each group (/100 to convert to m)
+    colonies_per_m2 = 1 ./ (pi * (colony_mean_diams_cm ./ 200) .^ 2)
+    volume_dm3_per_m2 = R_dm3_per_colony .* colonies_per_m2 # covert to dm^3/m^2
+
     # Convert from dm^3 to m^3
-    cm2_to_m3_per_m2::Float64 = 10^-3
-    colony_vol_m3_per_m2::Vector{Float64} = colony_litres_per_cm2 * cm2_to_m3_per_m2
+    dm3_per_m3::Float64 = 10^-3
+    colony_vol_m3_per_m2::Vector{Float64} = volume_dm3_per_m2 * dm3_per_m3
 
     # Assumed maximum colony area for each species and scenario, using largest size class
     # of Tabular Acropora
@@ -577,7 +582,7 @@ function _absolute_shelter_volume(
         (:timesteps, :species, :locations), size(X), X.properties
     )
 
-    colony_vol, _ = _colony_Lcm2_to_m3m2(inputs)
+    colony_vol, _ = _colony_L_to_m3m2(inputs)
     _shelter_species_loop!(X, ASV, nspecies, colony_vol, k_area)
 
     # Sum over groups and size classes to estimate total shelter volume per site
@@ -597,7 +602,7 @@ function _absolute_shelter_volume(
     )
 
     for scen::Int64 in 1:nscens
-        colony_vol, _ = _colony_Lcm2_to_m3m2(inputs[scen, :])
+        colony_vol, _ = _colony_L_to_m3m2(inputs[scen, :])
         _shelter_species_loop!(
             X[scenarios=scen], ASV[scenarios=scen], nspecies, colony_vol, k_area
         )
@@ -684,7 +689,7 @@ function _relative_shelter_volume(
     nspecies::Int64 = size(X, :species)
 
     # Calculate shelter volume of groups and size classes and multiply with covers
-    colony_vol::Array{Float64}, max_colony_vol::Array{Float64} = _colony_Lcm2_to_m3m2(
+    colony_vol::Array{Float64}, max_colony_vol::Array{Float64} = _colony_L_to_m3m2(
         scens
     )
     RSV::YAXArray = _shelter_species_loop(X, nspecies, colony_vol, max_colony_vol, k_area)
@@ -727,7 +732,7 @@ function _relative_shelter_volume(
         X.properties
     )
     for scen::Int64 in 1:nscens
-        colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(scens[scen, :])
+        colony_vol, max_colony_vol = _colony_L_to_m3m2(scens[scen, :])
         RSV[scenarios=scen] .= _shelter_species_loop(
             X[scenarios=scen], nspecies, colony_vol, max_colony_vol, k_area
         )
