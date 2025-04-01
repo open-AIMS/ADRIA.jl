@@ -173,6 +173,10 @@ function select_locations(
     considered_locs::Vector{<:Union{Int64,String,Symbol}},
     min_locs::Int64
 )::Vector{<:Union{String,Symbol,Int64}}
+    if length(considered_locs) == 0
+        return String[]
+    end
+
     loc_names = collect(getAxis(:location, dm))
 
     # Continue with existing ranking process
@@ -185,10 +189,6 @@ function select_locations(
             return String[]
         end
         rethrow(err)
-    end
-
-    if length(considered_locs) == 0
-        return String[]
     end
 
     # Take top n_locs from the ranked list
