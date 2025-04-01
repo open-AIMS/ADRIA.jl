@@ -52,10 +52,6 @@ function distance_matrix(coords::Vector{Tuple{Float64,Float64}})::Matrix{Float64
 
     for i in 1:n_locs
         for j in (i + 1):n_locs
-            if i == j
-                continue
-            end
-
             dist = Distances.haversine(coords[i], coords[j])
             dist_matrix[i, j] = dist
             dist_matrix[j, i] = dist
