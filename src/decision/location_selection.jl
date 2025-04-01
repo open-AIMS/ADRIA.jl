@@ -5,7 +5,7 @@ using ADRIA:
     sample,
     connectivity_strength,
     relative_leftover_space,
-    site_k_area,
+    loc_k_area,
     n_locations,
     to_coral_spec,
     colony_mean_area,
@@ -59,7 +59,7 @@ function rank_locations(
     target_fog_locs=nothing
 )::YAXArray
     n_locs = n_locations(dom)
-    k_area_locs = site_k_area(dom)
+    k_area_locs = loc_k_area(dom)
 
     if isnothing(min_iv_locs)
         min_iv_locs = scenarios.min_iv_locations
@@ -103,7 +103,7 @@ function rank_locations(
 
     leftover_space_scens = relative_leftover_space(sum_cover) .* k_area_locs'
 
-    area_weighted_conn = dom.conn.data .* site_k_area(dom)
+    area_weighted_conn = dom.conn.data .* loc_k_area(dom)
     conn_cache = similar(area_weighted_conn)
 
     in_conn, out_conn, network = connectivity_strength(

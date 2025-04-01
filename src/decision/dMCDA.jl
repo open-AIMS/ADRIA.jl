@@ -10,7 +10,7 @@ using ADRIA:
     EcoModel,
     n_locations,
     loc_area,
-    site_k_area
+    loc_k_area
 
 using ADRIA:
     DiscreteOrderedUniformDist,
