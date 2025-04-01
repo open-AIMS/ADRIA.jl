@@ -1,136 +1,60 @@
 using FLoops, DataStructures
 
 """
-    reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray; threshold=2)::AbstractArray
+    reef_condition_index(rc::AbstractArray, cd::AbstractArray, sv::AbstractArray)::AbstractArray
     reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
 
-Estimates a Reef Condition Index (RCI) providing a single value that indicates the condition
-of a reef across four metrics:
+Estimates a Reef Condition Index (RCI) providing a single value (0-1.0) that indicates the condition
+of a reef across 3 metrics:
 - coral cover
-- evenness (coral diversity)
-- shelter volume, and
-- abundance of juveniles
-
-# Notes
-Juveniles are made relative to maximum observed juvenile density (51.8/m²)
-See notes for `juvenile_indicator()`
+- coral diversity
+- shelter volume
 
 # Arguments
 - `rc` : Relative coral cover across all groups
-- `evenness` : Evenness across all coral groups
-- `sv` : Shelter volume based on coral sizes and abundances
-- `juves` : Abundance of coral juveniles < 5 cm diameter
+- `cd` : Coral diversity (as measured by Simpson's diversity, see "coral_diversity" function)
+- `sv` : Relative shelter volume based on coral sizes and abundances
 
 # Returns
 YAXArray[timesteps ⋅ locations ⋅ scenarios]
 """
 function _reef_condition_index(
     rc::AbstractArray,
-    evenness::AbstractArray,
-    sv::AbstractArray,
-    juves::AbstractArray;
-    threshold=2
+    cd::AbstractArray,
+    sv::AbstractArray;
 )::AbstractArray
-    # Compare outputs against reef condition criteria provided by experts
-    # These are median values for 8 experts.
-    condition_category = [:lower, :very_poor, :poor, :fair, :good, :very_good, :very_good]
-    criteria = DataCube(
-        [
-            0.0 0.0 0.0 0.0
-            0.05 0.15 0.175 0.15  # Very Poor [0 to these values]
-            0.15 0.25 0.3 0.25    # Poor
-            0.25 0.25 0.3 0.25    # Fair
-            0.35 0.35 0.35 0.25   # Good
-            0.45 0.45 0.45 0.35   # Very Good [these values and above]
-            Inf Inf Inf Inf       # Note: some metrics might return a value > 1.0
-        ];
-        condition=condition_category,
-        metric=[:RC, :E, :SV, :Juv]
-    )
-    index_metrics = zeros(size(rc)..., 4)
-    @floop for (idx, met) in enumerate([rc, evenness, sv, juves])
-        lower = collect(criteria[1:(end - 1), idx])
-        upper = collect(criteria[2:end, idx])
-        met_cp = map(x -> criteria[2:end, idx][lower .<= x .< upper][1], met.data)
-        replace!(met_cp, Inf => 0.9)
-        index_metrics[:, :, :, idx] .= met_cp
-    end
-
-    replace!(criteria, Inf => 0.9)
-
-    rci = similar(rc)
-    @floop for (ts, loc, scen) in Iterators.product(
-        axes(index_metrics, 1),
-        axes(index_metrics, 2),
-        axes(index_metrics, 3))
-
-        # Find the category name condition score relates to for each metric
-        rci_cats = [
-            condition_category[argmax(index_metrics[ts, loc, scen, i] .== criteria[:, i])]
-            for i in axes(index_metrics, 4)
-        ]
-        c = counter(rci_cats)
-
-        # Get the corresponding score values by index (based on RC only)
-        # Because the index is used and not the score value (0.15, 0.25, etc), it will
-        # always align with the correct category ("poor", "good", etc)
-        scores = dropdims(
-            criteria[condition=At(collect(keys(c))), metric=At([:RC])]; dims=2
-        )
-
-        # RCI is assigned the minimunm score of the greatest number of metrics that meet
-        # `threshold`.
-        # e.g., if RC and evenness are good, and sv and juves are "poor" (both meet threshold)
-        #       the score is "poor".
-        #       If scores are spread out (e.g., unique values), we return the 2nd lowest score
-        if any(values(c) .>= threshold)
-            rci[ts, loc, scen] = minimum(scores[values(c) .>= threshold])
-        else
-            rci[ts, loc, scen] = sort(scores)[2]
-        end
-    end
-
-    clamp!(rci, 0.1, 0.9)
-
-    # TODO: bootstrap to cover expert uncertainty
-    return rci
+    return clamp.((rc .+ cd .+ sv) ./ 3, 0.0, 1.0)
 end
 function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
     rc::AbstractArray{<:Real} = relative_cover(rs)
-    juves::AbstractArray{<:Real} = juvenile_indicator(rs)
-    evenness::AbstractArray{<:Real} = coral_evenness(rs)
+    cd::AbstractArray{<:Real} = coral_diversity(rs)
     sv::AbstractArray{<:Real} = relative_shelter_volume(rs)
 
-    return _reef_condition_index(rc, evenness, sv, juves)
+    return _reef_condition_index(rc, cd, sv)
 end
 reef_condition_index = Metric(
     _reef_condition_index,
     (:timesteps, :locations, :scenarios),
     "RCI",
-    IS_NOT_RELATIVE
+    IS_RELATIVE
 )
 
 """
-    scenario_rci(rci::YAXArray, tac::YAXArray; kwargs...)
+    scenario_rci(rci::YAXArray; kwargs...)
     scenario_rci(rs::ResultSet; kwargs...)
 
-Extract the total populated area of locations with Reef Condition Index of "Good" or higher
-for each scenario for the entire domain.
+Mean RCI over locations for each scenario
 """
-function _scenario_rci(rci::YAXArray, tac::YAXArray; kwargs...)
+function _scenario_rci(rci::YAXArray; kwargs...)
     rci_sliced = slice_results(rci; kwargs...)
-    tac_sliced = slice_results(tac; kwargs...)
-
-    # We want sum of populated area >= "good" condition
-    return scenario_trajectory(tac_sliced .* (rci_sliced .> 0.35); metric=sum)
+    return scenario_trajectory(rci_sliced; metric=mean)
 end
 function _scenario_rci(rs::ResultSet; kwargs...)
     rci = reef_condition_index(rs)
-    tac = total_absolute_cover(rs)
 
-    return _scenario_rci(rci, tac; kwargs...)
+    return _scenario_rci(rci; kwargs...)
 end
-scenario_rci = Metric(_scenario_rci, (:timesteps, :scenarios), "RCI", IS_NOT_RELATIVE)
+scenario_rci = Metric(_scenario_rci, (:timesteps, :scenarios), "RCI", IS_RELATIVE)
 
 """
     reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray, intcp_u::Vector)::AbstractArray

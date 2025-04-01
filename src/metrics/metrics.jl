@@ -351,10 +351,10 @@ coral_evenness = Metric(
     coral_diversity(r_taxa_cover::AbstractArray{T})::AbstractArray{T} where {T<:Real}
     coral_diversity(rs::ResultSet)::AbstractArray{T} where {T}
 
-Calculates coral taxa diversity as a dimensionless metric. Derived from thFe simpsons diversity,
+Calculates coral taxa diversity as a dimensionless metric. Derived from the simpsons diversity,
 D = 1-sum_i((cov_i/cov)^2) where cov is the total coral cover and cov_i is the cover of taxa i.
-Formulated by Dr Mike Williams (mjmcwilliam@outlook.com) and Dr Morgan Pratchett (morgan.pratchett@jcu.edu.au).
-
+Formulated as part of a reef condition index by Dr Mike Williams (mjmcwilliam@outlook.com) and
+Dr Morgan Pratchett (morgan.pratchett@jcu.edu.au).
 """
 function _coral_diversity(
     r_taxa_cover::AbstractArray{T,3}
@@ -445,6 +445,7 @@ function _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Fl
     colony_vol_m3_per_m2::Vector{Float64} = colony_litres_per_cm2 * cm2_to_m3_per_m2
 
     # Assumed maximum colony area for each species and scenario, using largest size class
+    # of Tabular Acropora
     max_colony_vol_m3_per_m2::Vector{Float64} = colony_vol_m3_per_m2[ta_ids]
 
     return colony_vol_m3_per_m2, max_colony_vol_m3_per_m2
