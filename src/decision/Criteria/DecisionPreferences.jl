@@ -207,7 +207,7 @@ function select_locations(
     end
 
     min_locs = min(min_locs, length(dm.location[rank_idx]))
-    return collect(dm.location[rank_idx][1:min_locs])
+    return Array(dm.location[rank_idx][1:min_locs])
 end
 
 """

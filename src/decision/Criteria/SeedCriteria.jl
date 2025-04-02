@@ -199,7 +199,7 @@ function select_locations(
 
     loc_names = collect(getAxis(:location, dm))
 
-    return loc_names[dispersed_rank_order][1:n_locs]
+    return Array(loc_names[dispersed_rank_order][1:n_locs])
 end
 
 """
