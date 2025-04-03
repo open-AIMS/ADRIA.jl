@@ -984,7 +984,7 @@ function run_model(
 
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
-        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, loc_k_area)
+        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, habitable_areas)
 
         loc_coral_cover = _loc_coral_cover(C_cover_t)
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* vec_abs_k
