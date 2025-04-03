@@ -242,7 +242,7 @@ fig = ADRIA.viz.selection_criteria_map(
 save("criteria_plots.png", fig)
 ```
 
-![Spatial maps of location selection criteria](/ADRIA.jl/dev/assets/imgs/criteria_spatial_plots.png?raw=true "Spatial maps of location selection criteria")
+![Spatial maps of location selection criteria](../assets/imgs/analysis/criteria_spatial_plots.png)
 
 
 ### PAWN sensitivity (heatmap overview)
