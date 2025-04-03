@@ -736,6 +736,8 @@ function run_model(
         tf = size(dhw_scen, 1)
     end
 
+    options = ADRIA.analysis.option_seed_preference()
+
     wave_idx::Int64 = Int64(param_set[At("wave_scenario")])
     if wave_idx > 0.0
         # TODO: Better conversion of Ub to wave mortality
@@ -1681,6 +1683,9 @@ function run_model(
                             in_connectivity=in_conn[share_candidate_loc_idx],
                             out_connectivity=out_conn[share_candidate_loc_idx]
                         )
+
+                        option = param_set[At("option_ts")][tstep]
+                        seed_pref = options[options.option_name .== option, :preference][1]
 
                         # Build state for target locations only
                         selected_seed_ranks = select_locations(
