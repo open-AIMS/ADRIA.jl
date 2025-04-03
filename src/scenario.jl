@@ -176,7 +176,7 @@ function run_scenarios(
     sort!(scenarios_df, :RCP)
 
     @info "Setting up Result Set"
-    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df, chunk_size)
+    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df[:, Not("option_ts")], chunk_size)
 
     # Convert DataFrame to named matrix for faster iteration
     scenarios_matrix::YAXArray = DataCube(
