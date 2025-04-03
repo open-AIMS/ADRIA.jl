@@ -177,7 +177,7 @@ end
 """
     setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1)
 
-Setup logs for ranks, seed_log, shading_log, coral_dhw_log, and coral_cover_log.
+Setup logs for ranks, seed_log, shading_log, coral_dhw_log, coral_cover_log, and decision_matrix_log
 
 # Arguments
 - `z_store` : ZArray
@@ -204,6 +204,17 @@ function setup_logs(
     rank_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_locs, n_interventions, n_scens)  # locations, location id and rank, no. scenarios
     # tf, no. species to seed, location id and rank, no. scenarios
     seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_groups, n_locs, n_scens)
+
+    n_mcda_criteria = length(fieldnames(ADRIA.SeedCriteriaWeights))
+    decision_matrix_dims::Tuple{Int64,Int64,Int64,Int64} = (
+        tf, n_locs, n_mcda_criteria, n_scens
+    )
+
+    attrs = Dict(
+        # Here, "intervention" refers to seeding or shading
+        :structure => ("timesteps", "locations", "interventions", "scenarios"),
+        :unique_loc_ids => unique_loc_ids
+    )
 
     # UInt16: integer ranks 0–n_locs (max 3806 << 65535). fill_value=0 (rank 0 = no deployment).
     ranks = zcreate(
@@ -360,7 +371,21 @@ function setup_logs(
         )
     end
 
-    return ranks, mc_log, seed_log, shading_log, coral_dhw_log, coral_cover_log
+    attrs = Dict(
+        :structure => ("timesteps", "location", "criteria", "scenarios"),
+        :unique_loc_ids => unique_loc_ids
+    )
+    decision_matrix_log = zcreate(
+        Float32,
+        decision_matrix_dims...;
+        name="decision_matrix",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(decision_matrix_dims[1:3]..., 1),
+        attrs=attrs
+    )
+    return ranks, mc_log, seed_log, shading_log, coral_dhw_log, coral_cover_log, decision_matrix_log
 end
 
 """
@@ -595,7 +620,8 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::I
                 :seed_log,
                 :shading_log,
                 :coral_dhw_log,
-                :coral_cover_log
+                :coral_cover_log,
+                :decision_matrix_log
             ),
             stores
         )...

@@ -23,7 +23,7 @@ const LOC_METRIC_NAMES = [
 
 abstract type ResultSet end
 
-struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
+struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF,DM} <: ResultSet
     name::String
     RCP::String
     invoke_time::String
@@ -51,6 +51,7 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
     shading_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
+    decision_matrix_log::DM
 end
 
 """
@@ -162,18 +163,24 @@ function ResultSet(
                 )
             )
         end,
-        haskey(log_set, "coral_cover_log") ?
-        let arr = log_set["coral_cover_log"]
-            ax = Symbol.(Tuple(arr.attrs["structure"]))
-            map(
-                x -> Float64(x) / 65535.0,
-                DataCube(
-                    arr;
-                    properties=_log_attrs_to_props(arr.attrs),
-                    NamedTuple{ax}([1:s for s in size(arr)])...
+        (
+            haskey(log_set, "coral_cover_log") ?
+            let arr = log_set["coral_cover_log"]
+                ax = Symbol.(Tuple(arr.attrs["structure"]))
+                map(
+                    x -> Float64(x) / 65535.0,
+                    DataCube(
+                        arr;
+                        properties=_log_attrs_to_props(arr.attrs),
+                        NamedTuple{ax}([1:s for s in size(arr)])...
+                    )
                 )
-            )
-        end : nothing
+            end : nothing
+        ),
+        DataCube(
+            log_set["decision_matrix"],
+            Symbol.(Tuple(log_set["decision_matrix"].attrs["structure"]))
+        )
     )
 end
 
@@ -319,7 +326,8 @@ function combine_results(result_sets...)::ResultSet
                 :seed_log,
                 :shading_log,
                 :coral_dhw_tol_log,
-                :coral_cover_log
+                :coral_cover_log,
+                :decision_matrix_log
             ],
             setup_logs(
                 z_store,

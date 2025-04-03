@@ -415,6 +415,8 @@ function _collect_scenario_results(
     dhw_vals = result_set.coral_dhw_log
     cover_vals = result_set.coral_cover_log
 
+    dm_vals = result_set.decision_matrix_log
+
     return (
         loc_out=loc_out,
         taxa_cover=taxa_vals,
@@ -423,7 +425,8 @@ function _collect_scenario_results(
         mc_log=mc_vals,
         seed_log=seed_vals,
         coral_dhw_log=dhw_vals,
-        coral_cover_log=cover_vals
+        coral_cover_log=cover_vals,
+        decision_matrix_log=dm_vals
     )
 end
 
@@ -483,6 +486,14 @@ function _write_batch!(
     end
     data_store.mc_log[:, :, :, idx_range] .= mc_batch
     data_store.seed_log[:, :, :, idx_range] .= seed_batch
+
+    # decision_matrix_log: (tf, n_locs, n_criteria, n)
+    _, n_l, n_c = size(results[1].decision_matrix_log)
+    dm_batch = Array{Float64}(undef, tf, n_l, n_c, n)
+    for (i, r) in enumerate(results)
+        dm_batch[:, :, :, i] .= r.decision_matrix_log
+    end
+    data_store.decision_matrix_log[:, :, :, idx_range] .= dm_batch
 
     # coral_dhw_log (conditional on ADRIA_LOG_DHW_TOLS)
     if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
@@ -578,6 +589,7 @@ function run_scenario(
 
     result = _collect_scenario_results(domain, scenario, functional_groups)
     _write_batch!(data_store, idx, [result])
+
     return nothing
 end
 function run_scenario(
@@ -1109,6 +1121,10 @@ function run_model(
     _recruitment_col_sum = zeros(n_locs)
     _recruitment_col_sum_2d = reshape(_recruitment_col_sum, 1, n_locs)
     _permuted_buf = zeros(n_sizes, n_groups, n_locs)
+
+    # Decision matrix log
+    decision_matrix_log = ZeroDataCube(; T=Float64, timesteps=1:tf,
+        location=domain.loc_ids[habitable_locs], criteria=seed_pref.names)
 
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
@@ -1684,6 +1700,8 @@ function run_model(
                             out_connectivity=out_conn[share_candidate_loc_idx]
                         )
 
+                        decision_matrix_log[timesteps=tstep, location=considered_locs] .= decision_mat[location=locs_with_space[_valid_locs]]
+
                         option = param_set[At("option_ts")][tstep]
                         seed_pref = options[options.option_name .== option, :preference][1]
 
@@ -1878,6 +1896,7 @@ function run_model(
         site_ranks=log_location_ranks,
         bleaching_mortality=bleach_dhw,
         coral_dhw_log=collated_dhw_tol_log,
-        coral_cover_log=collated_cover_log
+        coral_cover_log=collated_cover_log,
+        decision_matrix_log=decision_matrix_log
     )
 end
