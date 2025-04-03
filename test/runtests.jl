@@ -18,13 +18,18 @@ include("io/inputs.jl")
 include("sampling.jl")
 include("seeding.jl")
 include("spec.jl")
-include("mcda.jl")
+
+include("decisions/mcda.jl")
+include("decisions/location_spread.jl")
+
 include("metrics/test_metrics_helper.jl")
 include("metrics/scenario.jl")
 include("metrics/metrics.jl")
 include("metrics/spatial.jl")
+
 include("utils/scale.jl")
 include("utils/text_display.jl")
+
 include("viz/taxa_dynamics.jl")
 include("viz/spatial.jl")
 

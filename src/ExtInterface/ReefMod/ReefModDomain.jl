@@ -122,6 +122,9 @@ function load_domain(
     # GBRMPA zone types are not contained in matfiles
     spatial_data[:, :zone_type] .= ["" for _ in 1:nrow(spatial_data)]
 
+    dist_matrix = distance_matrix(spatial_data)
+    spatial_data.mean_to_neighbor .= nearest_neighbor_distances(dist_matrix, 10)
+
     # timesteps, location, scenario
     wave_scens = ZeroDataCube(;
         T=Float64,
