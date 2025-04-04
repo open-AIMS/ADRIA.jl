@@ -94,6 +94,9 @@ function mean_distance(dist_matrix::Matrix{Float64})::Vector{Float64}
 
     return mean_distances
 end
+function mean_distance(loc_data::DataFrame)::Vector{Float64}
+    return mean_distance(distance_matrix(loc_data))
+end
 
 """
     nearest_neighbor_distances(dist_matrix::Matrix{Float64}, n_neighbors::Int64)::Vector{Float64}
