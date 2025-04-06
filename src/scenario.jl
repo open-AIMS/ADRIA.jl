@@ -88,8 +88,7 @@ arrays to index data frame columns in the correct order.
 """
 function scale_factor_vec_to_array(
     sf_vec::AbstractVector{T}, n_taxa::Int64, n_biogroups::Int64, n_p_types::Int64
-)::Array{T, 3} where T <: Union{Float64, String, Tuple}
-
+)::Array{T,3} where T<:Union{Float64,String,Tuple}
     return reshape(sf_vec, (n_taxa, n_p_types, n_biogroups))
 end
 
@@ -107,9 +106,8 @@ string arrays to index data frame columns in the correct order.
 - vec(sf_arr)
 """
 function scale_factor_array_to_vec(
-    sf_arr::Array{T, 3}
-)::Vector{T} where T <: Union{Float64, String, Tuple}
-
+    sf_arr::Array{T,3}
+)::Vector{T} where T<:Union{Float64,String,Tuple}
     return vec(sf_arr)
 end
 
@@ -120,21 +118,22 @@ Given a list of bioregion generate the names of the columns corresponding to bio
 
 The format should be biogroup_<id>_<param_name>_<taxa_name>
 """
-function generate_scale_factor_names(bioregion_ids::Vector{Int64})::Array{String, 3}
+function generate_scale_factor_names(bioregion_ids::Vector{Int64})::Array{String,3}
     fg_names::Vector{Symbol} = ADRIA.functional_group_names()
-    param_names::Tuple{Symbol, Symbol} = (:linear_extension, :mb_rate)
+    param_names::Tuple{Symbol,Symbol} = (:linear_extension, :mb_rate)
 
     n_biogroups::Int64 = length(bioregion_ids)
     n_taxa::Int64 = length(fg_names)
     n_type_factors::Int64 = 2
 
-    factor_names::Array{String, 3} = Array{String, 3}(
+    factor_names::Array{String,3} = Array{String,3}(
         undef, n_taxa, n_type_factors, n_biogroups
     )
 
     for (bg_idx, bg) in enumerate(bioregion_ids),
         (pn_idx, pn) in enumerate(param_names),
         (fg_idx, fg) in enumerate(fg_names)
+
         factor_names[fg_idx, pn_idx, bg_idx] = "biogroup_$(string(bg))_$(pn)_$(fg)"
     end
 
@@ -145,8 +144,8 @@ end
     accel_params_array_to_vec(accel_params::AbstractArray{T, 2})::Vector{T} where T <: Union{Float64, String, Tuple}
 """
 function accel_params_array_to_vec(
-    accel_params::AbstractArray{T, 2}
-)::Vector{T} where T <: Union{Float64, String, Tuple}
+    accel_params::AbstractArray{T,2}
+)::Vector{T} where T<:Union{Float64,String,Tuple}
     return vec(accel_params)
 end
 
@@ -156,7 +155,7 @@ end
 function accel_params_vec_to_array(
     accel_params::AbstractVector{T},
     n_biogroups::Int64
-)::Array{T, 2} where T <: Union{Float64, String, Tuple}
+)::Array{T,2} where T<:Union{Float64,String,Tuple}
     return reshape(accel_params, (n_biogroups, 3))
 end
 
@@ -166,8 +165,8 @@ end
 The format should be growth_accel_<param_name>_<biogroup_id>. Return an array of dimensions
 [biogroups ⋅ params]
 """
-function generate_growth_accel_names(biogroup_ids::Vector{Int64})::Array{String, 2}
-    param_names::Tuple{Symbol, Symbol, Symbol} = (:steepness, :height, :midpoint)
+function generate_growth_accel_names(biogroup_ids::Vector{Int64})::Array{String,2}
+    param_names::Tuple{Symbol,Symbol,Symbol} = (:steepness, :height, :midpoint)
 
     n_params::Int64 = 3
     n_biogroups::Int64 = length(biogroup_ids)
@@ -175,6 +174,7 @@ function generate_growth_accel_names(biogroup_ids::Vector{Int64})::Array{String,
     factor_names::Matrix{String} = Matrix{String}(undef, n_biogroups, n_params)
     for (pn_idx, pn) in enumerate(param_names),
         (bg_idx, bg) in enumerate(biogroup_ids)
+
         factor_names[bg_idx, pn_idx] = "growth_accel_$(pn)_$(bg)"
     end
     return factor_names
@@ -369,7 +369,9 @@ function run_scenarios(
     return load_results(_result_location(dom, RCP))
 end
 
-function growth_acceleration(height::Float64, midpoint::Float64, steepness::Float64, available_space::Float64)
+function growth_acceleration(
+    height::Float64, midpoint::Float64, steepness::Float64, available_space::Float64
+)
     return height / (1 + exp(-steepness * (available_space - midpoint))) + 1.0
 end
 
@@ -539,7 +541,7 @@ function run_model(
     n_groups::Int64 = domain.coral_growth.n_groups
     functional_groups = Vector{FunctionalGroup}[
         FunctionalGroup.(
-            eachrow(bin_edges()[:, 1:end-1]),
+            eachrow(bin_edges()[:, 1:(end - 1)]),
             eachrow(bin_edges()[:, 2:end]),
             eachrow(zeros(n_groups, n_sizes))
         ) for _ in 1:n_locs
@@ -550,7 +552,7 @@ end
 function run_model(
     domain::Domain,
     param_set::DataFrameRow,
-    functional_groups::Vector{Vector{FunctionalGroup}},
+    functional_groups::Vector{Vector{FunctionalGroup}}
 )::NamedTuple
     setup()
     ps = DataCube(Vector(param_set); factors=names(param_set))
@@ -566,7 +568,13 @@ function run_model(
     cache = setup_cache(domain)
 
     # Determine growth rate based on linear extension
-    lin_ext = Matrix{Float64}(reshape(corals.linear_extension, domain.coral_growth.n_sizes, domain.coral_growth.n_groups)')
+    lin_ext = Matrix{Float64}(
+        reshape(
+            corals.linear_extension,
+            domain.coral_growth.n_sizes,
+            domain.coral_growth.n_groups
+        )'
+    )
     coral_growth_rate = reshape(
         growth_rate(lin_ext, bin_widths()), domain.coral_growth.n_group_and_size
     )[:]
@@ -877,19 +885,18 @@ function run_model(
     g_height::Float64 = mean(growth_acc_height)
     g_midpoint::Float64 = mean(growth_acc_midpoint)
 
-
     sf_col_names::Vector{String} = scale_factor_array_to_vec(
         generate_scale_factor_names(unique_biogroups)
     )
     # Extract scale factors array of dimensions [taxa ⋅ param_type · bioregion_group]
-    scale_factors::Array{Float64, 3} = scale_factor_vec_to_array(
+    scale_factors::Array{Float64,3} = scale_factor_vec_to_array(
         param_set[factors=At(sf_col_names)],
         n_groups,
         n_biogroups,
         2
     )
-    biogrp_lin_ext::Array{Float64, 3} = repeat(_linear_extensions, 1, 1, n_biogroups)
-    biogrp_survival::Array{Float64, 3} = repeat(survival_rate, 1, 1, n_biogroups)
+    biogrp_lin_ext::Array{Float64,3} = repeat(_linear_extensions, 1, 1, n_biogroups)
+    biogrp_survival::Array{Float64,3} = repeat(survival_rate, 1, 1, n_biogroups)
     for i in 1:n_biogroups
         biogrp_lin_ext[:, :, i] .*= scale_factors[:, 1, i]
         biogrp_survival[:, :, i] .= apply_mortality_scaling(
@@ -951,7 +958,12 @@ function run_model(
 
         if !(sum(_loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas) == 0)
             msk = _loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas
-            C_cover_t[:, :, msk .&& habitable_locs] .*= reshape(vec_abs_k[msk .&& habitable_locs] ./ _loc_coral_cover(C_cover_t)[msk .&& habitable_locs], (1, 1, count(msk .&& habitable_locs))) .* 0.999
+            C_cover_t[:, :, msk .&& habitable_locs] .*=
+                reshape(
+                    vec_abs_k[msk .&& habitable_locs] ./
+                    _loc_coral_cover(C_cover_t)[msk .&& habitable_locs],
+                    (1, 1, count(msk .&& habitable_locs))
+                ) .* 0.999
             @warn "Cover outgrowing habitable area. Constraining."
         end
         # Check if size classes are inappropriately out-growing habitable area
