@@ -913,6 +913,8 @@ function run_model(
 
     FLoops.assistant(false)
     habitable_loc_idxs = findall(habitable_locs)
+
+    apply_growth_acc_mask::BitVector = trues(n_locs)
     for tstep::Int64 in 2:tf
 
         # Convert cover to absolute values to use within CoralBlox model
@@ -934,14 +936,16 @@ function run_model(
         end
 
         relative_habitable_cover = _loc_coral_cover(C_cover_t) ./ vec_abs_k
-        no_constraint_mask = relative_habitable_cover .< 0.7
+        apply_growth_acc_mask .= (relative_habitable_cover .< 0.7)
         for idx in 1:n_biogroups
-            growth_constraints[no_constraint_mask .&& biogroup_masks[:, idx]] .= growth_acceleration.(
-                growth_acc_height[idx],
-                growth_acc_midpoint[idx],
-                growth_acc_steepness[idx],
-                relative_habitable_cover[no_constraint_mask .&& biogroup_masks[:, idx]]
-            )
+            apply_growth_acc_mask .= (apply_growth_acc_mask .&& biogroup_masks[:, idx])
+            growth_constraints[apply_growth_acc_mask] .=
+                growth_acceleration.(
+                    growth_acc_height[idx],
+                    growth_acc_midpoint[idx],
+                    growth_acc_steepness[idx],
+                    relative_habitable_cover[apply_growth_acc_mask]
+                )
         end
 
         for i in habitable_loc_idxs
