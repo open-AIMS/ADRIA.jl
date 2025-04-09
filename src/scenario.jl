@@ -1690,6 +1690,14 @@ function run_model(
                     )
 
                     if is_guided
+                        # Compute diversity index
+                        loc_taxa_cover = relative_loc_taxa_cover(
+                            reshape(C_cover_t, (1, n_group_and_size, n_locs)),
+                            vec_abs_k,
+                            n_groups
+                        )
+                        diversity = coral_diversity(loc_taxa_cover.data)[timesteps=1].data
+
                         # Update decision matrix with current conditions
                         update_criteria_values!(
                             seed_decision_mat[location=At(share_candidate_locs)];
@@ -1697,7 +1705,8 @@ function run_model(
                             wave_stress=wave_projection[share_candidate_loc_idx],
                             coral_cover=current_loc_cover[share_candidate_loc_idx],
                             in_connectivity=in_conn[share_candidate_loc_idx],
-                            out_connectivity=out_conn[share_candidate_loc_idx]
+                            out_connectivity=out_conn[share_candidate_loc_idx],
+                            coral_diversity=diversity[candidate_loc_indices]
                         )
 
                         decision_matrix_log[timesteps=tstep, location=considered_locs] .= decision_mat[location=locs_with_space[_valid_locs]]

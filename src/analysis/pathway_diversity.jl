@@ -216,10 +216,10 @@ function option_seed_preference(; include_weights::Bool=false)::DataFrame
     criteria_names = collect(fieldnames(ADRIA.SeedCriteriaWeights))
     column_names = vcat([:option_name], criteria_names)
     option_weights = [
-        :heat_stress 1.0 0.0 0.0 0.1 0.8 0.2 0.3 0.3;
-        :geographic_spread 0.1 0.0 0.0 0.1 0.1 0.2 0.5 0.8;
-        :connectivity 0.1 0.0 0.4 1.0 0.1 0.9 0.3 0.3;
-        :balanced 1.0 0.3 0.85 0.9 0.95 0.7 0.5 0.5
+        :heat_stress 1.0 0.0 0.0 0.1 0.8 0.2 0.3 0.3 0.1;
+        :geographic_spread 0.1 0.0 0.0 0.1 0.1 0.2 0.5 0.8 0.1;
+        :connectivity 0.1 0.0 0.4 1.0 0.1 0.9 0.3 0.3 0.1;
+        :balanced 1.0 0.3 0.85 0.9 0.95 0.7 0.5 0.5 0.5
     ]
     options = DataFrame(option_weights, column_names)
 

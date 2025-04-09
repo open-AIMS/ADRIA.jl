@@ -76,6 +76,15 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         name="Geographic Separation",
         description="Prefer locations that are distant (when maximized) or closer (when minimized; the default) to their neighbors."
     )
+    seed_coral_diversity::Param = Factor(
+        0.5;
+        ptype="continuous",
+        dist=Uniform,
+        dist_params=(0.0, 1.0),
+        direction=maximum,
+        name="Coral Diversity",
+        description="Prefer locations that have a higher Simpson diversity."
+    )
     # Disabled as they are currently unnecessary
     # seed_priority::Param = Factor(
     #     1.0;
