@@ -15,7 +15,7 @@ function sample_options(
     # Compute all possible option time series
     options = analysis.option_seed_preference()
     number_changes::Int64 = sample.seed_years[1] ÷ pd_frequency
-    max_time::Int64 = size(d.dhw_scens[:, :, 1], 1)
+    max_time::Int64 = sample.seed_year_start[1] + sample.seed_years[1]
     combinations = options_combinations(options.option_name, number_changes)
     options_ts = options_series(combinations, sample[1, :], pd_frequency, max_time)
 

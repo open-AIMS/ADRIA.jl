@@ -1126,7 +1126,7 @@ function run_model(
     decision_matrix_log = ZeroDataCube(; T=Float64, timesteps=1:tf,
         location=domain.loc_ids[habitable_locs], criteria=seed_pref.names)
 
-    for tstep::Int64 in 2:tf
+    for tstep::Int64 in 2:(param_set[At("seed_year_start")] + param_set[At("seed_years")])
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
             C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
