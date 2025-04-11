@@ -239,7 +239,7 @@ function load_domain(
     # Set all site depths to 7m below sea level
     # (ReefMod does not account for depth)
     # Ensure column is of float type
-    spatial_data[:, :depth_med] .= 7.0
+    #spatial_data[:, :depth_med] .= 7.0
     spatial_data[!, :depth_med] = convert.(Float64, spatial_data[!, :depth_med])
 
     # Add GBRMPA zone type info as well
