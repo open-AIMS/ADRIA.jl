@@ -74,7 +74,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
-        direction=minimum,
+        direction=maximum,
         name="Geographic Separation",
         description="Prefer locations that are distant (when maximized) or closer (when minimized; the default) to their neighbors."
     )

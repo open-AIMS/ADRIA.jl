@@ -333,7 +333,7 @@ function setup_guided_intervention(
         (location_k(domain) .> 0.0) .& depth_criteria .& (domain.loc_ids .∈ [target_locs])
 
     # Calculate cluster diversity and geographic separation scores
-    diversity_scores = decision.cluster_diversity(domain.loc_data.cluster_id)
+    diversity_scores = decision.cluster_diversity(domain.loc_data.CB_CALIB_GROUPS)
     separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
 
     pref = preference(domain, param_set)
