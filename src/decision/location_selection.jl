@@ -165,6 +165,7 @@ function rank_locations(
             dhw_scens .= 0.0
         end
 
+        #=
         wave_scen_idx = Int64(scen[factors=At("wave_scenario")][1])
         if wave_scen_idx > 0.0
             wave_scens = dom.wave_scens[:, :, dhw_scen_idx]
@@ -172,9 +173,10 @@ function rank_locations(
             wave_scens = copy(dom.wave_scens[:, :, 1])
             wave_scens .= 0.0
         end
+        =#
 
         dhw_projection = weighted_projection(dhw_scens, 1, plan_horizon, decay, 75)
-        wave_projection = weighted_projection(wave_scens, 1, plan_horizon, decay, 75)
+        #wave_projection = weighted_projection(wave_scens, 1, plan_horizon, decay, 75)
 
         # Create shared decision matrix
         # Ignore locations that cannot support corals or are out of depth bounds
@@ -187,7 +189,7 @@ function rank_locations(
                 in_connectivity=in_conn[valid_seed_locs],
                 out_connectivity=out_conn[valid_seed_locs],
                 heat_stress=dhw_projection[valid_seed_locs],
-                wave_stress=wave_projection[valid_seed_locs],
+                #wave_stress=wave_projection[valid_seed_locs],
                 coral_cover=sum_cover[valid_seed_locs],
                 coral_diversity=diversity[valid_seed_locs]
             )
@@ -221,7 +223,7 @@ function rank_locations(
                 in_connectivity=in_conn[valid_fog_locs],
                 out_connectivity=out_conn[valid_fog_locs],
                 heat_stress=dhw_projection[valid_fog_locs],
-                wave_stress=wave_projection[valid_fog_locs],
+                #wave_stress=wave_projection[valid_fog_locs],
                 coral_cover=sum_cover[valid_fog_locs]
             )
             selected_fog_ranks = select_locations(

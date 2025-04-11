@@ -13,6 +13,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         name="Seed Heat Stress",
         description="Importance of avoiding heat stress when seeding. Prefer locations with lower heat stress."
     )
+    #=
     seed_wave_stress::Param = Factor(
         0.5;
         ptype="continuous",
@@ -22,6 +23,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         name="Seed Wave Stress",
         description="Prefer locations with higher wave activity."
     )
+    =#
     seed_in_connectivity::Param = Factor(
         0.5;
         ptype="continuous",

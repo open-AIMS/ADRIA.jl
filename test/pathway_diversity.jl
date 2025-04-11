@@ -49,7 +49,7 @@ using ADRIA
         @test all(typeof.(options[:, :preference]) .== ADRIA.decision.SeedPreferences)
 
         criteria_names = collect(fieldnames(ADRIA.SeedCriteriaWeights))
-        assumed_names = [:seed_heat_stress, :seed_wave_stress, :seed_in_connectivity,
+        assumed_names = [:seed_heat_stress, :seed_in_connectivity,
             :seed_out_connectivity, :seed_depth, :seed_coral_cover, :seed_cluster_diversity,
             :seed_geographic_separation, :seed_coral_diversity]
 

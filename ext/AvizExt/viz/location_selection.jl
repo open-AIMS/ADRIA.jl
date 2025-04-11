@@ -226,7 +226,7 @@ function ADRIA.viz.mcda_options(
 )::Figure
     option_names = string.(data.option_name)
     criteria_names = string.(names(data))
-    criteria_names = criteria_names[startswith.(criteria_names, "seed_")][Not(2)]
+    criteria_names = criteria_names[startswith.(criteria_names, "seed_")]
     data = Matrix(data[:, criteria_names])
     number_options = size(data, 1)
     criteria_names = replace.(criteria_names, "seed_" => "")

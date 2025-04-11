@@ -13,6 +13,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Fog Heat Stress",
         description="Preference locations with lower heat stress for fogging."
     )
+    #=
     fog_wave_stress::Param = Factor(
         1.0;
         ptype="continuous",
@@ -22,6 +23,7 @@ Base.@kwdef struct FogCriteriaWeights <: DecisionWeights
         name="Fog Wave Stress",
         description="Preference locations with lower wave activity for fogging."
     )
+    =#
     fog_in_connectivity::Param = Factor(
         1.0;
         ptype="continuous",
