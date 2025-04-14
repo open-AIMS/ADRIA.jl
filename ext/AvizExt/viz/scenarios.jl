@@ -457,7 +457,10 @@ function _render_legend(
     _colors = colors(scen_groups)
     line_els::Vector{LineElement} = [LineElement(; color=_colors[n]) for n in legend_labels]
 
-    title = pop!(legend_opts, :title, "Scenarios")
+    title = pop!(legend_opts, :title, "Intervention scenarios")
+    legend_labels = [
+        :heat_stress, :geographic_spread, :connectivity, :functional_diversity, :balanced
+    ]
     Legend(g, line_els, labels(legend_labels), title; framevisible=false, legend_opts...)
 
     return nothing
