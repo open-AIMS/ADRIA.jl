@@ -915,14 +915,53 @@ function run_model(
     habitable_loc_idxs = findall(habitable_locs)
 
     apply_growth_acc_mask::BitVector = trues(n_locs)
+    cache_habitable_max_projected_cover = copy(habitable_max_projected_cover)
     for tstep::Int64 in 2:tf
-
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
             C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
 
+        # To prevent overgrowth when adding recruitment to C_cover_t, set a threshold above
+        # above which recruits are either set to zero or rescaled
+        round_threshold = 0.95
+
+        # Relative coral cover and recruits cover for each location
+        C_rel_cover = loc_coral_cover(C_cover_t) ./ habitable_loc_areas
+        loc_recruits_rel_cover = loc_recruits_cover(recruitment) ./ habitable_loc_areas
+
+        # Set recruitment to 0 where C_cover_t is already round_threshold
+        cover_above_threshold_mask = C_rel_cover .> round_threshold
+        recruitment[:, cover_above_threshold_mask] .= 0.0
+
+        # Mask for locations with (C_cover + recruits) > threshold and C_cover <= threshold
+        agg_cover_above_threshold_mask =
+            (C_rel_cover .+ loc_recruits_rel_cover .> round_threshold) .&&
+            .!cover_above_threshold_mask
+
+        if any(agg_cover_above_threshold_mask)
+            @warn "Constraining recruits within error bounds. tstep = $tstep"
+            recruits_scale_factor =
+                (
+                    (
+                        round_threshold .*
+                        habitable_loc_areas[agg_cover_above_threshold_mask]
+                    ) .- loc_coral_cover(C_cover_t[:, :, agg_cover_above_threshold_mask])
+                ) ./ loc_recruits_cover(recruitment[:, agg_cover_above_threshold_mask])
+
+            @assert !any(recruits_scale_factor .<= 0)
+
+            # Rescale recruits in target locations to fit within error bounds
+            recruitment[:, agg_cover_above_threshold_mask] .*= repeat(
+                recruits_scale_factor', 5
+            )
+        end
+
         # Settlers from t-1 grow into observable sizes.
         C_cover_t[:, 1, habitable_locs] .+= recruitment
+
+        habitable_max_projected_cover =
+            cache_habitable_max_projected_cover .+
+            dropdims(sum(recruitment; dims=1); dims=1)
 
         # Growth constrains need to be calculated seperately for differen growth rates
         for idx in 1:n_biogroups
@@ -935,8 +974,11 @@ function run_model(
             )
         end
 
-        relative_habitable_cover = _loc_coral_cover(C_cover_t) ./ vec_abs_k
-        apply_growth_acc_mask .= (relative_habitable_cover .< 0.7)
+        relative_habitable_cover = loc_coral_cover(C_cover_t) ./ vec_abs_k
+        lin_ext_scale_factor_threshold = 0.5
+        apply_growth_acc_mask .= (
+            relative_habitable_cover .< lin_ext_scale_factor_threshold
+        )
         for idx in 1:n_biogroups
             apply_growth_acc_mask .= (apply_growth_acc_mask .&& biogroup_masks[:, idx])
             growth_constraints[apply_growth_acc_mask] .=
@@ -960,20 +1002,17 @@ function run_model(
             coral_cover(functional_groups[i], @view(C_cover_t[:, :, i]))
         end
 
-        if !(sum(_loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas) == 0)
-            msk = _loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas
-            C_cover_t[:, :, msk .&& habitable_locs] .*=
+        # Check if size classes are inappropriately out-growing habitable area
+        if any(loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas)
+            @warn "Cover outgrowing habitable area at tstep $tstep. Constraining."
+            msk = loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas
+            C_cover_t[:, :, habitable_locs .&& msk] .*=
                 reshape(
                     vec_abs_k[msk .&& habitable_locs] ./
-                    _loc_coral_cover(C_cover_t)[msk .&& habitable_locs],
+                    loc_coral_cover(C_cover_t)[msk .&& habitable_locs],
                     (1, 1, count(msk .&& habitable_locs))
                 ) .* 0.999
-            @warn "Cover outgrowing habitable area. Constraining."
         end
-        # Check if size classes are inappropriately out-growing habitable area
-        @assert (
-            sum(_loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas) == 0
-        ) "Cover outgrowing habitable area"
 
         # Convert C_cover_t to relative values after CoralBlox was run
         C_cover_t[:, :, habitable_locs] .= (
@@ -1002,7 +1041,7 @@ function run_model(
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, habitable_areas)
 
-        loc_coral_cover = _loc_coral_cover(C_cover_t)
+        loc_coral_cover = loc_coral_cover(C_cover_t)
         leftover_space_m² = relative_leftover_space(loc_coral_cover) .* vec_abs_k
 
         # Reset potential settlers to zero
@@ -1318,8 +1357,4 @@ function cyclone_mortality!(
     coral_cover .= coral_cover .* (1 .- reshape(cyclone_mortality, (n_groups, 1, n_locs)))
     clamp!(coral_cover, 0.0, 1.0)
     return nothing
-end
-
-function _loc_coral_cover(C_cover_t::Array{Float64,3})
-    return dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
 end
