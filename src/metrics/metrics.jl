@@ -419,9 +419,10 @@ function _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Fl
     colony_litres_per_cm2::Vector{Float64} =
         exp.(pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_mean_diams_cm))
 
+    colonies_per_m2 = 1 ./ (pi * (colony_mean_diams_cm ./ 200) .^ 2)
     # Convert from dm^3 to m^3
     cm2_to_m3_per_m2::Float64 = 10^-3
-    colony_vol_m3_per_m2::Vector{Float64} = colony_litres_per_cm2 * cm2_to_m3_per_m2
+    colony_vol_m3_per_m2::Vector{Float64} = (colony_litres_per_cm2.*colonies_per_m2) * cm2_to_m3_per_m2
 
     # Assumed maximum colony area for each species and scenario, using largest size class
     max_colony_vol_m3_per_m2::Vector{Float64} = colony_vol_m3_per_m2[n_sizes:n_sizes:end]
