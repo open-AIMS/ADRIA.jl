@@ -322,9 +322,10 @@ function run_scenario(
     vals[vals .< threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
-    vals = relative_taxa_cover(rs_raw, site_k_area(domain), domain.coral_growth.n_groups)
+    #vals = relative_taxa_cover(rs_raw, site_k_area(domain), domain.coral_growth.n_groups)
+    vals = rs_raw
     vals[vals .< threshold] .= 0.0
-    data_store.relative_taxa_cover[:, :, idx] .= vals
+    data_store.relative_taxa_cover[:, :, :, idx] .= vals
 
     vals = relative_loc_taxa_cover(
         rs_raw, site_k_area(domain), domain.coral_growth.n_groups

@@ -431,7 +431,11 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             :axes_units => metrics.axes_units(axis_names[idx])
         ) for (idx, _) in enumerate(metric_symbols)
     ]
-    result_dims::Vector{NTuple{3,Int64}} = dim_lengths.(axis_names)
+    outcomes_attrs[7][:structure]=[:timesteps, :taxa, :locations, :scenarios]
+    outcomes_attrs[7][:axes_names]=[:timesteps, :taxa, :locations, :scenarios]
+    outcomes_attrs[7][:axes_units]=("years", "", "", "")
+    result_dims::Vector{Union{NTuple{3,Int64},NTuple{4,Int64}}} = dim_lengths.(axis_names)
+    result_dims[end] = (result_dims[end][1], 35, result_dims[end-1][2], result_dims[end][3])
 
     # Create stores for each metric
     stores = [
