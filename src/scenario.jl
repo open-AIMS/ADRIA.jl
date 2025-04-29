@@ -644,7 +644,7 @@ function run_model(
 
         # Remove locations that cannot support corals or are out of depth bounds
         # from consideration
-        _valid_locs = habitable_locs .& depth_criteria
+        _valid_locs = habitable_locs .& depth_criteria .& occursin.("Moore", domain.loc_ids) .& occursin.("Slope", domain.loc_ids)
         decision_mat = decision_mat[_valid_locs, :]
 
         # Number of time steps in environmental layers to look ahead when making decisions
