@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.11.2"
 manifest_format = "2.0"
-project_hash = "f5f80681e1f41a61ae2064c46066ad6e608da783"
+project_hash = "14b1f76e1160fec650d420bcc50bc683f482dba6"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -511,10 +511,11 @@ uuid = "fcd2136c-9f69-4db6-97e5-f31981721d63"
 version = "0.1.10"
 
 [[deps.DiskArrays]]
-deps = ["LRUCache", "OffsetArrays"]
-git-tree-sha1 = "dea23e3d787c25fbf5f879c4501da828bc729472"
+deps = ["LRUCache", "Mmap", "OffsetArrays"]
+git-tree-sha1 = "64650943240652ebedc6c43d03cccda247b327a3"
+pinned = true
 uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
-version = "0.4.5"
+version = "0.4.9"
 
 [[deps.Distances]]
 deps = ["LinearAlgebra", "Statistics", "StatsAPI"]
