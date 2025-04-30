@@ -857,16 +857,16 @@ function run_model(
     )
 
     # Extract unique biogroups and creating location masks for each biogroup
-    unique_biogroups::Vector{Int64} = unique(domain.loc_data.GROUPED_BIOREGION)
+    unique_biogroups::Vector{Int64} = unique(domain.loc_data.SPATIAL_GROUPING)
     n_biogroups::Int64 = length(unique_biogroups)
     biogroup_masks::BitMatrix = falses(n_locs, n_biogroups)
     for (idx, biogroup) in enumerate(unique_biogroups)
-        biogroup_masks[:, idx] .= domain.loc_data.GROUPED_BIOREGION .== biogroup
+        biogroup_masks[:, idx] .= domain.loc_data.SPATIAL_GROUPING .== biogroup
     end
     # Index into unique_biogroups for each location
     loc_biogrp_idxs::Vector{Int64} = [
         findfirst(x -> x == biogrp, unique_biogroups)
-        for biogrp in domain.loc_data.GROUPED_BIOREGION
+        for biogrp in domain.loc_data.SPATIAL_GROUPING
     ]
 
     growth_acc_names::Vector{String} = accel_params_array_to_vec(
