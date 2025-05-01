@@ -967,8 +967,6 @@ function run_model(
             # Otherwise, do nothing.
             if length(locs_with_space) > 0
                 seed_locs = seed_locs[locs_with_space]
-                max_seeded_area = seed_volume
-                max_seeded_area .= (sum(leftover_space_m²[seed_locs])/5)/3
 
                 # Calculate proportion to seed based on current available space
                 proportional_increase, n_corals_seeded = distribute_seeded_corals(
