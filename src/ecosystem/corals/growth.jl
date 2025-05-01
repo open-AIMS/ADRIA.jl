@@ -325,7 +325,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
     group_and_sizes = 1:n_sp_sc
     juveniles = sort!(vec(
         [group_and_sizes[1:n_sizes:end]
-         group_and_sizes[2:n_sizes:end]
+            group_and_sizes[2:n_sizes:end]
         ]  # group_and_sizes[3:n_sizes:end]
     ))
     # juveniles = group_and_sizes[1:n_sizes:end]
@@ -414,7 +414,8 @@ function bleaching_mortality!(
                 affected_pop::Float64 = truncated_normal_cdf(
                     # Use the previous mortality threshold or 4.0 as the minimum,
                     # whichever is greater
-                    dhw[loc], μ, stdev[grp, sc], max(4.0, prop_mort[1, grp, sc, loc]), μ + HEAT_UB
+                    dhw[loc], μ, stdev[grp, sc], max(4.0, prop_mort[1, grp, sc, loc]),
+                    μ + HEAT_UB
                 )
 
                 mort_pop::Float64 = 0.0
