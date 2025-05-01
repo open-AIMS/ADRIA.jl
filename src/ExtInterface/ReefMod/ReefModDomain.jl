@@ -349,12 +349,13 @@ function _cyclone_mortality_scens(
     # Add 1 to every scenarios so they represent indexes in cyclone_mr vectors
     cyclone_data::YAXArray = Cube(dom_dataset[["record_applied_cyclone"]])
     c_axes = caxes(cyclone_data)
-    cyclone_scens::YAXArray = DataCube(
-        read(cyclone_data);
-        timestep=Int64.(collect(c_axes[1])),
-        location=Int64.(collect(c_axes[2])),
-        scenario=Int64.(collect(c_axes[3]))
-    )[timestep=At(timeframe[1]:timeframe[2])] .+ 1
+    cyclone_scens::YAXArray =
+        DataCube(
+            read(cyclone_data);
+            timestep=Int64.(collect(c_axes[1])),
+            location=Int64.(collect(c_axes[2])),
+            scenario=Int64.(collect(c_axes[3]))
+        )[timestep=At(timeframe[1]:timeframe[2])] .+ 1
 
     species::Vector{Symbol} = functional_group_names()
     cyclone_mortality_scens::YAXArray{Float64} = ZeroDataCube(;
