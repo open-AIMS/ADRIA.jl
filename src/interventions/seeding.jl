@@ -28,7 +28,7 @@ function distribute_seeded_corals(
     # Proportion of available space on each site relative to available space at these
     # locations
     prop_area_avail = available_space ./ total_available_space
-    if total_seeded_area > total_available_space
+    if (sum(seed_volume)/5) > total_available_space
         @warn "Seeded area exceeds available space. Restricting to available space."
         seeded_area = copy(seeded_area)
         seeded_area .*= total_available_space / total_seeded_area
