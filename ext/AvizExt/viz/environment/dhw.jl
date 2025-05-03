@@ -73,11 +73,12 @@ Figure
 """
 function ADRIA.viz.dhw_scenarios(
     dom::Domain;
+    scens=(:),
     ci_level=0.95,
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
-    data = dom.dhw_scens
+    data = dom.dhw_scens[:, :, scens]
 
     # Extract dimension information
     years = dom.env_layer_md.timeframe
