@@ -5,8 +5,8 @@ using ADRIA
 using ADRIA: model_spec, component_params
 using ADRIA.decision: mcda_normalize
 import Distributions: sample
-import Surrogates.QuasiMonteCarlo as QMC
-import Surrogates.QuasiMonteCarlo: SobolSample, OwenScramble
+import QuasiMonteCarlo as QMC
+import QuasiMonteCarlo: SobolSample, OwenScramble
 
 const DISCRETE_FACTOR_TYPES = [
     "ordered categorical", "unordered categorical", "ordered discrete"

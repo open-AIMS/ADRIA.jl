@@ -45,11 +45,11 @@ Samples for factors with non-uniform distributions are transformed to their indi
 distributions using the Inverse Cumulative Distribution Function method.
 
 Although the Sobol' method is the default, any sampler supported by the
-[Surrogates.jl](https://github.com/SciML/Surrogates.jl) package may be used.
+[QuasiMonteCarlo.jl](https://github.com/SciML/QuasiMonteCarlo.jl) package may be used.
 Below is an example using Latin Hypercube sampling.
 
 ```julia
-import Surrogates.QuasiMonteCarlo: LatinHypercubeSample
+import ADRIA.QuasiMonteCarlo: LatinHypercubeSample
 
 scens = ADRIA.sample(dom, 100, LatinHypercubeSample())
 ```
