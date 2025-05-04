@@ -41,7 +41,6 @@ function intervention_frequency(
     # Get requested log
     interv_log = getfield(rs, Symbol("$(log_type)_log"))
     rcps = collect(Symbol.(keys(scen_indices)))
-    n_locs = n_locations(rs)
 
     interv_freq = ZeroDataCube(; T=Float64, locations=rs.loc_ids, rcps=rcps)
     for rcp in rcps
