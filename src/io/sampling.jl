@@ -534,8 +534,7 @@ set_factor_bounds(dom, :wave_stress, (0.1, 0.2))
 ```
 """
 function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
-    Base.@warn "set_factor_bounds is deprecated, use set_factor_bounds! instead" maxlog =
-        1 _category = :deprecation
+    Base.@warn "set_factor_bounds is deprecated, use set_factor_bounds! instead"
 
     set_factor_bounds!(dom, factor, new_dist_params)
     return dom
@@ -559,8 +558,7 @@ function set_factor_bounds!(dom::Domain, factor::Symbol, new_dist_params::Tuple)
 end
 
 function set_factor_bounds(dom::Domain; factors...)::Domain
-    Base.@warn "set_factor_bounds is deprecated, use set_factor_bounds! instead" maxlog =
-        1 _category = :deprecation
+    Base.@warn "set_factor_bounds is deprecated, use set_factor_bounds! instead"
 
     set_factor_bounds!(dom; factors...)
     return dom
