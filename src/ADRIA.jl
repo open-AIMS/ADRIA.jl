@@ -24,7 +24,9 @@ using
     Graphs,
     ImageIO,
     MAT,
-    SimpleWeightedGraphs
+    NetCDF,
+    SimpleWeightedGraphs,
+    Zarr
 
 # Modelling packages
 using
