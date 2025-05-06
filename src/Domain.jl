@@ -344,7 +344,7 @@ end
 
 Sum coral cover across all functional groups and size classes of a single timestep for each location.
 """
-function loc_coral_cover(C_cover_t::Array{Float64,3})::Vector{Float64}
+function loc_coral_cover(C_cover_t::AbstractArray{Float64,3})::Vector{Float64}
     return dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
 end
 
