@@ -19,6 +19,7 @@ using ADRIA.metrics:
 using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
 using ADRIA.metrics: coral_evenness
 using ADRIA.decision
+using ADRIA: loc_coral_cover, loc_recruits_cover
 
 """
     setup_cache(domain::Domain)::NamedTuple
