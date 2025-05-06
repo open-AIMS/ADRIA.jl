@@ -1006,12 +1006,13 @@ function run_model(
         # Check if size classes are inappropriately out-growing habitable area
         if any(loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas)
             @warn "Cover outgrowing habitable area at tstep $tstep. Constraining."
-            msk = loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas
-            C_cover_t[:, :, habitable_locs .&& msk] .*=
+            outgrowing_locs_maks =
+                loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas
+            C_cover_t[:, :, outgrowing_locs_maks] .*=
                 reshape(
-                    vec_abs_k[msk .&& habitable_locs] ./
-                    loc_coral_cover(C_cover_t)[msk .&& habitable_locs],
-                    (1, 1, count(msk .&& habitable_locs))
+                    vec_abs_k[outgrowing_locs_maks] ./
+                    loc_coral_cover(C_cover_t)[outgrowing_locs_maks],
+                    (1, 1, count(outgrowing_locs_maks))
                 ) .* 0.999
         end
 
