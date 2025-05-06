@@ -955,7 +955,7 @@ function run_model(
 
             # Rescale recruits in target locations to fit within error bounds
             recruitment[:, agg_cover_above_threshold_mask] .*= repeat(
-                recruits_scale_factor', 5
+                recruits_scale_factor', n_groups
             )
         end
 
