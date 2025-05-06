@@ -322,21 +322,39 @@ function n_locations(domain::Domain)::Int64
 end
 
 """
-    relative_leftover_space(loc_coral_cover::AbstractArray)::AbstractArray
+    relative_leftover_space(loc_cover::AbstractArray)::AbstractArray
 
 Get proportion of leftover space, given site_k and proportional cover on each site, summed
 over species.
 
 # Arguments
-- `loc_coral_cover` : Proportion of coral cover relative to `k` (maximum carrying capacity).
+- `loc_cover` : Proportion of coral cover relative to `k` (maximum carrying capacity).
 
 # Returns
 Leftover space ∈ [0, 1]
 """
 function relative_leftover_space(
-    loc_coral_cover::AbstractArray
+    loc_cover::AbstractArray
 )::AbstractArray
-    return max.(1.0 .- loc_coral_cover, 0.0)
+    return max.(1.0 .- loc_cover, 0.0)
+end
+
+"""
+    loc_coral_cover(C_cover_t::Array{Float64,3})::Vector{Float64}
+
+Sum coral cover across all functional groups and size classes of a single timestep for each location.
+"""
+function loc_coral_cover(C_cover_t::AbstractArray{Float64,3})::Vector{Float64}
+    return dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+end
+
+"""
+    loc_recruits_cover(recruits::Matrix{Float64})::Vector{Float64}
+
+Absolute cover of recruits on each location.
+"""
+function loc_recruits_cover(recruits::Matrix{Float64})::Vector{Float64}
+    return vec(sum(recruits; dims=1))
 end
 
 """
