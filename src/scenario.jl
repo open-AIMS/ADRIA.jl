@@ -930,7 +930,7 @@ function run_model(
         C_rel_cover = loc_coral_cover(C_cover_t) ./ habitable_loc_areas
         loc_recruits_rel_cover = loc_recruits_cover(recruitment) ./ habitable_loc_areas
 
-        # Set recruitment to 0 where C_cover_t is already round_threshold
+        # Set recruitment to 0 where C_cover_t is already above round_threshold
         cover_above_threshold_mask = C_rel_cover .> round_threshold
         recruitment[:, cover_above_threshold_mask] .= 0.0
 
