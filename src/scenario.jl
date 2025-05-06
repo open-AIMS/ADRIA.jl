@@ -1042,8 +1042,8 @@ function run_model(
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, habitable_areas)
 
-        loc_coral_cover = loc_coral_cover(C_cover_t)
-        leftover_space_m² = relative_leftover_space(loc_coral_cover) .* vec_abs_k
+        _loc_coral_cover = loc_coral_cover(C_cover_t)
+        leftover_space_m² = relative_leftover_space(_loc_coral_cover) .* vec_abs_k
 
         # Reset potential settlers to zero
         potential_settlers .= 0.0
@@ -1157,14 +1157,14 @@ function run_model(
             # Determine connectivity strength weighting by area.
             # Accounts for strength of connectivity where there is low/no coral cover
             in_conn, out_conn, _ = connectivity_strength(
-                area_weighted_conn, vec(loc_coral_cover), conn_cache
+                area_weighted_conn, vec(_loc_coral_cover), conn_cache
             )
 
             update_criteria_values!(
                 decision_mat;
                 heat_stress=dhw_projection[_valid_locs],
                 wave_stress=wave_projection[_valid_locs],
-                coral_cover=loc_coral_cover[_valid_locs],  # Coral cover relative to `k`
+                coral_cover=_loc_coral_cover[_valid_locs],  # Coral cover relative to `k`
                 in_connectivity=in_conn[_valid_locs],  # area weighted connectivities for time `t`
                 out_connectivity=out_conn[_valid_locs]
             )
