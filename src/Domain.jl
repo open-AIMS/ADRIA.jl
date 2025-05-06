@@ -354,7 +354,7 @@ end
 Absolute cover of recruits on each location.
 """
 function loc_recruits_cover(recruits::Matrix{Float64})::Vector{Float64}
-    return dropdims(sum(recruits; dims=1); dims=1)
+    return vec(sum(recruits; dims=1))
 end
 
 """
