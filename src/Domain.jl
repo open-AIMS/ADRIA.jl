@@ -322,21 +322,21 @@ function n_locations(domain::Domain)::Int64
 end
 
 """
-    relative_leftover_space(loc_coral_cover::AbstractArray)::AbstractArray
+    relative_leftover_space(loc_cover::AbstractArray)::AbstractArray
 
 Get proportion of leftover space, given site_k and proportional cover on each site, summed
 over species.
 
 # Arguments
-- `loc_coral_cover` : Proportion of coral cover relative to `k` (maximum carrying capacity).
+- `loc_cover` : Proportion of coral cover relative to `k` (maximum carrying capacity).
 
 # Returns
 Leftover space ∈ [0, 1]
 """
 function relative_leftover_space(
-    loc_coral_cover::AbstractArray
+    loc_cover::AbstractArray
 )::AbstractArray
-    return max.(1.0 .- loc_coral_cover, 0.0)
+    return max.(1.0 .- loc_cover, 0.0)
 end
 
 """
