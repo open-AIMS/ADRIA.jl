@@ -678,6 +678,7 @@ function run_model(
     habitable_locs::BitVector = location_k(domain) .> 0.0
     habitable_loc_areas = vec_abs_k[habitable_locs]
     habitable_loc_areas′ = reshape(habitable_loc_areas, (1, 1, length(habitable_locs)))
+    n_habitable_locs::Int64 = length(habitable_locs)
 
     # Avoid placing importance on sites that were not considered
     # Lower values are higher importance/ranks.
@@ -917,6 +918,7 @@ function run_model(
 
     apply_growth_acc_mask::BitVector = trues(n_locs)
     cache_habitable_max_projected_cover = copy(habitable_max_projected_cover)
+    agg_cover_above_threshold_mask::BitVector = falses(n_habitable_locs)
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
@@ -935,7 +937,7 @@ function run_model(
         recruitment[:, cover_above_threshold_mask] .= 0.0
 
         # Mask for locations with (C_cover + recruits) > threshold and C_cover <= threshold
-        agg_cover_above_threshold_mask =
+        agg_cover_above_threshold_mask .=
             (C_rel_cover .+ loc_recruits_rel_cover .> round_threshold) .&&
             .!cover_above_threshold_mask
 
