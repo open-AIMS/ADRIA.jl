@@ -20,7 +20,8 @@ function distribute_seeded_corals(
     seed_loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
     seeded_area::YAXArray,
-    seed_volume::Vector{Float64}
+    seed_volume::Vector{Float64},
+    target_density::Float64,
 )::Tuple{YAXArray,Matrix{Float64}}
     total_seeded_area::Float64 = sum(seeded_area)
     total_available_space::Float64 = sum(available_space)
@@ -28,7 +29,7 @@ function distribute_seeded_corals(
     # Proportion of available space on each site relative to available space at these
     # locations
     prop_area_avail = available_space ./ total_available_space
-    if (sum(seed_volume)/5) > total_available_space
+    if (sum(seed_volume)/target_density) > total_available_space
         @warn "Seeded area exceeds available space. Restricting to available space."
         seeded_area = copy(seeded_area)
         seeded_area .*= total_available_space / total_seeded_area
@@ -51,6 +52,29 @@ function distribute_seeded_corals(
         )
 
     return proportional_increase, n_deployed_coral
+end
+
+"""Find the number of locations required to meet the target density."""
+function find_sufficient_n_iv_sites(
+    ordered_avail_areas::Vector{Float64},
+    target_density::Float64,
+    n_corals::Int64
+)::Tuple{Int64, Float64}
+    cum_avail = cumsum(ordered_avail_areas)
+    target_area = n_corals / target_density
+    idx = findfirst(x -> x > target_area, cum_avail)
+
+    if isnothing(idx)
+        new_density = n_corals / cum_avail[end]
+        idx = length(ordered_avail_areas)
+
+        # For consistency, warn if new density is updated to more than 10% greater than the original value
+        if (new_density > target_density*(1.10))
+            @warn "Density has been updated to accommodate coral volume to $(new_density) corals/m2."
+        end
+        return idx, new_density
+    end
+    return idx, target_density
 end
 
 """
