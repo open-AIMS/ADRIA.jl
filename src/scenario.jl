@@ -948,8 +948,9 @@ function run_model(
         if has_seed_locs  # seed_decision_years[tstep] &&
             # Seed selected locations
             # Selected locations can fill up over time so avoid locations with no space
-            seed_locs = findall(log_location_ranks.locations .∈ [selected_seed_ranks])
 
+            #seed_locs = findall(log_location_ranks.locations .∈ [selected_seed_ranks])
+            seed_locs = [findfirst(log_location_ranks.locations.==x) for x in selected_seed_ranks]
             available_space = leftover_space_m²[seed_locs]
             locs_with_space = findall(available_space .> 0.0)
 
@@ -957,13 +958,19 @@ function run_model(
             # Otherwise, do nothing.
             if length(locs_with_space) > 0
                 seed_locs = seed_locs[locs_with_space]
+                available_space = leftover_space_m²[seed_locs]
+                target_density = 5.0
+
+                n_iv_sites, target_density = find_sufficient_n_iv_sites(available_space, target_density, Int64(sum(seed_volume.data)))
+                seed_locs = seed_locs[1:n_iv_sites]
 
                 # Calculate proportion to seed based on current available space
                 proportional_increase, n_corals_seeded = distribute_seeded_corals(
                     vec_abs_k[seed_locs],
-                    available_space,
+                    available_space[1:n_iv_sites],
                     max_seeded_area,
-                    seed_volume.data
+                    seed_volume.data,
+                    target_density
                 )
 
                 # Log estimated number of corals seeded
