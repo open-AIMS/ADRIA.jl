@@ -9,6 +9,14 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Guided",
         description="Choice of MCDA approach."
     )
+    seeding_adjustment_priority::Param = Factor(
+        0;
+        ptype="unordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(Tuple(0:length(decision.seeding_adjustment_priority()))),
+        "Seeding Ajustment Priority",
+        description="Which seeding parameter to vary to achieve deployment strategy."
+    )
     N_seed_TA::Param = Factor(
         0;
         ptype="ordered discrete",

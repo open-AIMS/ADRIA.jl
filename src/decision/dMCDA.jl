@@ -31,6 +31,15 @@ function adria_topsis() end
 function adria_vikor() end
 function decision_matrix() end
 
+"""Names of variables to vary to achieve seeding strategies."""
+function seeding_adjustment_priorities()
+    return [
+        "N_LOCATIONS",
+        "N_CORALS_SEEDED",
+        "SEED_DENSITY"
+    ]
+end
+
 """
     mcda_methods()
 
@@ -60,7 +69,7 @@ end
 """
     mcda_method_encoding(mcda_name::String)::Union{Int64, Nothing}
 
-Find the scenario encoding of the given mcda method. Throws `ArgumentError` if method not 
+Find the scenario encoding of the given mcda method. Throws `ArgumentError` if method not
 found.
 """
 function mcda_method_encoding(mcda_name::String)::Int64
