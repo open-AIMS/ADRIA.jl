@@ -7,16 +7,35 @@ Calculate proportion of deployed corals to be seeded at each of the selected loc
 Distributes seeded corals according to current available space at each selected site.
 
 # Arguments
+- strategy : coral seeding strategy
 - seed_loc_k_m² : Carrying capacity area of locations to seed in m².
 - available_space : Currently available space at each seed location in m².
 - seeded_area : Area (in m²) of each coral type to be seeded with dim taxa.
 - seed_volume : Absolute number of coral to deploy.
+- target_density : density to seed corals n_corals / m^2
 
 # Returns
 - YAXArray[taxa to seed ⋅ number of seed locations], Proportional increase in cover relative to locations' `k` area
 - Matrix[seed locations ⋅ taxa to seed], Number of coral deployed
 """
 function distribute_seeded_corals(
+    strategy::Symbol,
+    seed_loc_k_m²::Vector{Float64},
+    available_space::Vector{Float64},
+    seeded_area::YAXArray,
+    seed_volume::Vector{Float64},
+    target_density::Float64,
+)
+    if strategy == :VARY_LOCATIONS
+        return
+    elseif strategy == :VARY_N_SEEDED
+        return
+    elseif strategy == :VARY_SEED_DENSITY
+        return
+    end
+end
+function _distribute_seeded_corals(
+    strategy::Symbol,
     seed_loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
     seeded_area::YAXArray,
