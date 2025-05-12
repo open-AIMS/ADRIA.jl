@@ -13,14 +13,14 @@ Base.@kwdef struct Intervention <: EcoModel
         0;
         ptype="unordered categorical",
         dist=CategoricalDistribution,
-        dist_params=(Tuple(0:length(decision.seeding_adjustment_priority()))),
+        dist_params=(Tuple(0:length(decision.seeding_adjustment_priorities()))),
         name="Seeding Strategy",
         description="Seeding strategy to deploy corals."
     )
     seeding_density::Param = Factor(
         5.0;
         ptype="continuous",
-        dist=TrianglularDist,
+        dist=TriangularDist,
         dist_params=(2.0, 12.0, 5.0),
         name="Seeding Density",
         description="Density to seed corals."
