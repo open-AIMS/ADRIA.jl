@@ -34,10 +34,13 @@ function decision_matrix() end
 """Names of variables to vary to achieve seeding strategies."""
 function seeding_adjustment_priorities()
     return [
-        "N_LOCATIONS",
-        "N_CORALS_SEEDED",
-        "SEED_DENSITY"
+        "VARY_LOCATIONS",
+        "VARY_N_SEEDED",
+        "VARY_SEED_DENSITY"
     ]
+end
+function seeding_adjustment_priorities(index::Int64)
+    return seeding_adjustment_priorities()[index]
 end
 
 """
