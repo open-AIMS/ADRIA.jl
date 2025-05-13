@@ -13,7 +13,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0;
         ptype="unordered categorical",
         dist=CategoricalDistribution,
-        dist_params=(Tuple(0:length(decision.seeding_adjustment_priorities()))),
+        dist_params=(Tuple(0:length(decision.seeding_strategies()))),
         name="Seeding Strategy",
         description="Seeding strategy to deploy corals."
     )
