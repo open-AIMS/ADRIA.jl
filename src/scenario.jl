@@ -488,7 +488,9 @@ function run_model(
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
     strategy_idx::Int64 = param_set[At("seeding_strategy")]
-    strategy = Symbol(decision.seeding_adjustment_priorities(strategy_idx))
+    if strategy_idx>0
+        strategy = Symbol(decision.seeding_adjustment_priorities(strategy_idx))
+    end
     target_density = param_set[At("seeding_density")]
 
     # Years to start seeding/shading/fogging
