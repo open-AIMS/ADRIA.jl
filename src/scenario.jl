@@ -489,7 +489,7 @@ function run_model(
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
     strategy_idx::Int64 = param_set[At("seeding_strategy")]
     if strategy_idx>0
-        strategy = Symbol(decision.seeding_adjustment_priorities(strategy_idx))
+        strategy = Symbol(decision.seeding_strategies(strategy_idx))
     end
     target_density = param_set[At("seeding_density")]
 

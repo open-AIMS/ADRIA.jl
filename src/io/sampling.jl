@@ -488,22 +488,27 @@ function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
 end
 
 """
-    _update_decision_method!(dom, new_dist_params::Tuple)::Domain
+    update_categorical_distributions!(dom, new_dist_params::Tuple)::Domain
 
-Update the model spec with the tuple of DMCA methods to use.
+Update the model spec with the tuple of values for categorical distributions.
 """
-function _update_decision_method!(dom, new_dist_params::Tuple)::Domain
+function _update_categorical_distributions!(
+    dom, param::Symbol, new_dist_params::Tuple
+)::Domain
     new_method_names::Vector{String} = collect(new_dist_params)
-
-    new_method_idxs = decision.decision_method_encoding.(new_method_names)
-
+    encoding_maps = Dict(
+        :guided => decision.decision_method_encoding,
+        :seeding_strategy => decision.seeding_strategy_encoding
+    )
+    new_method_idxs = encoding_maps[param].(new_method_names)
+    
     ms = model_spec(dom)
-    guided_row = findfirst(ms.fieldname .== :guided)
-    @assert !isnothing(guided_row) "Guided variable not found in model spec."
+    param_row = findfirst(ms.fieldname .== :guided)
+    @assert !isnothing(param_row) "{param} variable not found in model spec."
 
-    ms[guided_row, :dist_params] = Tuple(new_method_idxs)
-    ms[guided_row, :val] = first(new_method_idxs)
-    ms[guided_row, :is_constant] = length(new_method_idxs) == 1
+    ms[param_row, :dist_params] = Tuple(new_method_idxs)
+    ms[param_row, :val] = first(new_method_idxs)
+    ms[param_row, :is_constant] = length(new_method_idxs) == 1
     update!(dom, ms)
 
     return dom
@@ -540,8 +545,8 @@ function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple):
     return dom
 end
 function set_factor_bounds!(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
-    if factor == :guided
-        return _update_decision_method!(dom, new_dist_params)
+    if factor == :guided || factor == :seeding_strategy
+        return _update_categorical_distributions!(dom, factor, new_dist_params)
     end
 
     old_val = get_attr(dom, factor, :val)
@@ -570,10 +575,12 @@ function set_factor_bounds!(dom::Domain; factors...)::Domain
 
     # Handle categorical guided factor separately
     if :guided in factor_symbols
-        factor_idx::Int64 = findfirst(factor_symbols .== :guided)
-        dom = _update_decision_method!(dom, new_params[factor_idx])
-        factor_symbols = factor_symbols[1:end .!= factor_idx]
-        new_params = new_params[1:end .!= factor_idx]
+        factor_idxs::Int64 = findall(factor_symbols .∈ [:guided, :seeding_strategy])
+        dom = _update_categorical_distributions!.(
+            dom, factor_symbols[factor_idxs], new_params[factor_idxs]
+        )[end]
+        factor_symbols = factor_symbols[.!(1:end .∈ [factor_idxs])]
+        new_params = new_params[.!(1:end .∈ [factor_idxs])]
     end
 
     ms = model_spec(dom)
