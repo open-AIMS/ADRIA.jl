@@ -88,8 +88,8 @@ function complexity_invariance_distance(
 
     #? Do we want to normalize the amplitudes of all series?
     # Iterate over data matrix to compute CID (Complexity Invariance Distance)
-    for i in axes(data, 2)
-        @floop for j in axes(data, 2)
+    for i in 1:data_size
+        @floop for j in (i + 1):data_size
             cid_matrix[i, j] =
                 cid_matrix[j, i] = _complexity_invariance(data, complexity, i, j, dist_fn)
         end
