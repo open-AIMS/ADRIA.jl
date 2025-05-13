@@ -32,7 +32,7 @@ function adria_vikor() end
 function decision_matrix() end
 
 """Names of variables to vary to achieve seeding strategies."""
-function seeding_adjustment_priorities()
+function seeding_strategies()
     return [
         "VARY_LOCATIONS",
         "VARY_N_SEEDED",
@@ -40,8 +40,19 @@ function seeding_adjustment_priorities()
         "CAP_DENSITY"
     ]
 end
-function seeding_adjustment_priorities(index::Int64)
-    return seeding_adjustment_priorities()[index]
+function seeding_strategies(index::Int64)
+    return seeding_strategies()[index]
+end
+
+"""Get the index of the seeding strategy used in the scenario dataframe."""
+function seeding_strategy_encoding(method_name::String)
+    method_idx = findfirst(seeding_strategies() .== uppercase(method_name))
+    if isnothing(method_idx)
+        msg = "Given seeding strategy $(method_name) is not in list of seeding strategy.\n"
+        msg *= "Possible seeding strategies are $(seeding_strategies())"
+        throw(ArgumentError(msg))
+    end
+    return method_idx
 end
 
 """
