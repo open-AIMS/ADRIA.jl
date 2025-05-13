@@ -89,7 +89,7 @@ function complexity_invariance_distance(
     #? Do we want to normalize the amplitudes of all series?
     # Iterate over data matrix to compute CID (Complexity Invariance Distance)
     for i in 1:n_timesteps
-        @floop for j in (i + 1):n_timesteps
+        Threads.@threads for j in (i + 1):n_timesteps
             cid_matrix[i, j] =
                 cid_matrix[j, i] = _complexity_invariance(data, complexity, i, j, dist_fn)
         end
