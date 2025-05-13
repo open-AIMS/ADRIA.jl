@@ -963,16 +963,14 @@ function run_model(
             # Otherwise, do nothing.
             if length(locs_with_space) > 0
                 seed_locs = seed_locs[locs_with_space]
-                available_space = leftover_space_m²[seed_locs]
-
-                n_iv_sites, target_density = find_sufficient_n_iv_sites(available_space, target_density, Int64(sum(seed_volume.data)))
-                seed_locs = seed_locs[1:n_iv_sites]
+                #n_iv_sites, target_density = vary_locations(available_space, target_density, Int64(sum(seed_volume.data)))
 
                 # Calculate proportion to seed based on current available space
-                proportional_increase, n_corals_seeded = distribute_seeded_corals(
+                proportional_increase, n_corals_seeded, seed_locs = distribute_seeded_corals(
                     strategy,
-                    vec_abs_k[seed_locs],
-                    available_space[1:n_iv_sites],
+                    seed_locs,
+                    vec_abs_k,
+                    leftover_space_m²,
                     max_seeded_area,
                     seed_volume.data,
                     target_density
