@@ -1,6 +1,24 @@
 using StatsBase
 
 """
+Seed corals, varying the number of corals to meet the specified density.
+
+Deploy less corals, if the deployments would exceed the target density. Do not deploy more
+corals then available.
+"""
+function vary_n_corals_seeding_strategy(
+    seed_loc_k_m²::Vector{Float64},
+    available_space::Vector{Float64},
+    seeded_area::YAXArray,
+    seed_volume::Vector{Float64},
+    target_density::Float64
+)
+    total_available_space = sum(available_space)
+    maximum_density = sum(seed_volume) / total_available_space
+
+end
+
+"""
     distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::YAXArray)::YAXArray
 
 Calculate proportion of deployed corals to be seeded at each of the selected locations.
