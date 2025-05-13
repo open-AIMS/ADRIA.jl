@@ -76,20 +76,20 @@ function complexity_invariance_distance(
     complexity::Vector{Float64} = _complexity(data)
 
     # Create empty Matrix
-    data_size = size(data, 2)
-    cid_matrix::AbstractMatrix{Float64} = zeros(data_size, data_size)
+    n_timesteps, n_scenarios = size(data)
+    cid_matrix::AbstractMatrix{Float64} = zeros(n_timesteps, n_timesteps)
 
     local weights::Vector{Float64}
     if distance == :weuclidean
         # [1, 1/2, 1/3, ..., 1/n]
-        weights = sqrt.(1 ./ (1:size(data, 1)))
+        weights = sqrt.(1 ./ (1:n_scenarios))
     end
     dist_fn(x, y) = (distance == :euclidean) ? euclidean(x, y) : weuclidean(x, y, weights)
 
     #? Do we want to normalize the amplitudes of all series?
     # Iterate over data matrix to compute CID (Complexity Invariance Distance)
-    for i in 1:data_size
-        @floop for j in (i + 1):data_size
+    for i in 1:n_timesteps
+        @floop for j in (i + 1):n_timesteps
             cid_matrix[i, j] =
                 cid_matrix[j, i] = _complexity_invariance(data, complexity, i, j, dist_fn)
         end
