@@ -9,7 +9,7 @@ Retrieve first column found to hold plottable geometries.
 Symbol, indicating column name or `false` if no geometries found.
 """
 function _get_geom_col(gdf::DataFrame)::Union{Symbol,Bool}
-    col = findall(typeof.(eachcol(gdf)) .<: Vector{<:AG.IGeometry})
+    col = findall(typeof.(eachcol(gdf)) .<: Union{Vector{<:AG.IGeometry},GDF.GeometryVector{AG.IGeometry}})
     if !isempty(col)
         return Symbol(names(gdf)[col[1]])
     end
