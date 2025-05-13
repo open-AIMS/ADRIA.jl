@@ -503,7 +503,7 @@ function _update_categorical_distributions!(
     new_method_idxs = encoding_maps[param].(new_method_names)
     
     ms = model_spec(dom)
-    param_row = findfirst(ms.fieldname .== :guided)
+    param_row = findfirst(ms.fieldname .== param)
     @assert !isnothing(param_row) "{param} variable not found in model spec."
 
     ms[param_row, :dist_params] = Tuple(new_method_idxs)
