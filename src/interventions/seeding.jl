@@ -1,22 +1,5 @@
 using StatsBase
 
-"""
-Seed corals, varying the number of corals to meet the specified density.
-
-Deploy less corals, if the deployments would exceed the target density. Do not deploy more
-corals then available.
-"""
-function vary_n_corals_seeding_strategy(
-    seed_loc_k_m²::Vector{Float64},
-    available_space::Vector{Float64},
-    seeded_area::YAXArray,
-    seed_volume::Vector{Float64},
-    target_density::Float64
-)
-    total_available_space = sum(available_space)
-    maximum_density = sum(seed_volume) / total_available_space
-
-end
 
 """
     distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::YAXArray)::YAXArray
@@ -53,7 +36,9 @@ function distribute_seeded_corals(
             available_space, target_density, seed_volume, n_iv_locs
         )
     elseif strategy == :VARY_N_SEEDED
-
+        target_density, seed_volume, n_ic_locs = vary_n_corals(
+            available_space, target_density, seed_volume, n_iv_locs
+        )
     elseif strategy == :VARY_SEED_DENSITY
         target_density, seed_volume, n_iv_locs = vary_seed_density(
             available_space, target_density, seed_volume, n_iv_locs
@@ -133,6 +118,19 @@ end
 #     return proportional_increase, n_deployed_coral
 # end
 
+"""Find the number of corals required to satisfy the target density and available space."""
+function vary_n_corals(
+    ordered_avail_areas::Vector{Float64},
+    target_density::Float64,
+    n_corals::Vector{Float64},
+    n_iv_locs::Int64
+)
+    total_available_space = sum(ordered_avail_areas)
+    coral_required = total_available_space * target_density
+    # Preserve the ratio type of corals deplored.
+    n_corals = n_corals ./ sum(n_corals) .* coral_required
+    return target_density, n_corals, n_iv_locs
+end
 """Find the outplant density required to satsfy the outplant volume and number of locations."""
 function vary_seed_density(
     ordered_avail_areas::Vector{Float64},
