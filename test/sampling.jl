@@ -122,7 +122,7 @@ end
         ]
 
         for (inp, out) in zip(test_inputs, test_output)
-            ADRIA.set_factor_bounds(dom, :guided, inp)
+            ADRIA.set_factor_bounds!(dom, :guided, inp)
             scens = ADRIA.sample(dom, 32)
 
             @test all(scens.guided .∈ [out])
@@ -150,6 +150,32 @@ end
         # Ensure at least one intervention is active
         @test all(any.(>(0), eachcol(scens[:, interv_params]))) ||
             "All intervention factors had values <= 0"
+    end
+
+    @testset "Seeding Strategy Sampling" begin
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        num_samples = 32
+
+        test_inputs = [
+            ("VARY_LOCATIONS",), ("VARY_N_SEEDED",), ("VARY_SEED_DENSITY", "CAP_DENSITY"),
+            ("CAP_DENSITY", "VARY_N_SEEDED", "VARY_LOCATIONS"),
+            ("VARY_SEED_DENSITY", "VARY_N_SEEDED", "CAP_DENSITY", "VARY_LOCATIONS"),
+        ]
+        test_output = [
+            [1], [2], [3, 4], [4, 2, 1], [3, 2, 4, 1]
+        ]
+        # Sample non-counterfactual scenarios
+        ADRIA.set_factor_bounds(
+            dom,
+            :guided,
+            ("unguided", "Cocoso", "Moora", "Piv", "Vikor"),
+        )
+
+        for (inp, out) in zip(test_inputs, test_output)
+            ADRIA.set_factor_bounds!(dom, :seeding_strategy, inp)
+            scens = ADRIA.sample(dom, 32)
+            @test all(scens.seeding_strategy .∈ [out])
+        end
     end
 
     @testset "Site selection sampling" begin
