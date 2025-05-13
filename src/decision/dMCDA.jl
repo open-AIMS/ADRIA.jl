@@ -36,7 +36,8 @@ function seeding_adjustment_priorities()
     return [
         "VARY_LOCATIONS",
         "VARY_N_SEEDED",
-        "VARY_SEED_DENSITY"
+        "VARY_SEED_DENSITY",
+        "CAP_DENSITY"
     ]
 end
 function seeding_adjustment_priorities(index::Int64)
