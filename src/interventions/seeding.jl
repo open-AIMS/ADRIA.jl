@@ -20,35 +20,39 @@ Distributes seeded corals according to current available space at each selected 
 """
 function distribute_seeded_corals(
     strategy::Symbol,
+    seed_locs::Vector{Int64},
     seed_loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
     seeded_area::YAXArray,
     seed_volume::Vector{Float64},
-    target_density::Float64,
+    target_density::Float64
 )
+    available_space = available_space[seed_locs]
+    n_iv_locs = length(seed_locs)
+
     if strategy == :VARY_LOCATIONS
-        return
+        target_density, seed_volume, n_iv_locs = vary_locations(
+            available_space, target_density, seed_volume, n_iv_locs
+        )
     elseif strategy == :VARY_N_SEEDED
-        return
+
     elseif strategy == :VARY_SEED_DENSITY
-        return
+        target_density, seed_volume, n_iv_locs = vary_seed_density(
+            available_space, target_density, seed_volume, n_iv_locs
+        )
     end
-end
-function _distribute_seeded_corals(
-    strategy::Symbol,
-    seed_loc_k_m²::Vector{Float64},
-    available_space::Vector{Float64},
-    seeded_area::YAXArray,
-    seed_volume::Vector{Float64},
-    target_density::Float64,
-)::Tuple{YAXArray,Matrix{Float64}}
+
+    seed_locs = seed_locs[1:n_iv_locs]
+    available_space = available_space[1:n_iv_locs]
+    seed_loc_k_m² = seed_loc_k_m²[seed_locs]
+
     total_seeded_area::Float64 = sum(seeded_area)
     total_available_space::Float64 = sum(available_space)
 
     # Proportion of available space on each site relative to available space at these
     # locations
     prop_area_avail = available_space ./ total_available_space
-    if (sum(seed_volume)/target_density) > total_available_space
+    if (sum(seed_volume) / target_density) > total_available_space
         @warn "Seeded area exceeds available space. Restricting to available space."
         seeded_area = copy(seeded_area)
         seeded_area .*= total_available_space / total_seeded_area
@@ -70,7 +74,47 @@ function _distribute_seeded_corals(
             total_available_space / total_seeded_area, 1.0
         )
 
-    return proportional_increase, n_deployed_coral
+    return proportional_increase, n_deployed_coral, seed_locs
+end
+# function _distribute_seeded_corals(
+#     strategy::Symbol,
+#     seed_loc_k_m²::Vector{Float64},
+#     available_space::Vector{Float64},
+#     seeded_area::YAXArray,
+#     seed_volume::Vector{Float64},
+#     target_density::Float64,
+# )::Tuple{YAXArray,Matrix{Float64}}
+#     total_seeded_area::Float64 = sum(seeded_area)
+#     total_available_space::Float64 = sum(available_space)
+
+#     # Proportion of available space on each site relative to available space at these
+#     # locations
+#     prop_area_avail = available_space ./ total_available_space
+#     if (sum(seed_volume)/target_density) > total_available_space
+#         @warn "Seeded area exceeds available space. Restricting to available space."
+#         seeded_area = copy(seeded_area)
+#         seeded_area .*= total_available_space / total_seeded_area
+#     end
+
+#     # Distribute seeded corals (as area) across locations according to available space
+#     # proportions:
+#     #     proportion * (area of 1 coral * num seeded corals)
+#     # Convert to relative cover proportion by dividing by location area
+#     scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
+#     proportional_increase = DataCube(
+#         scaled_seed;
+#         taxa=caxes(seeded_area)[1].val.data,
+#         locations=1:length(available_space)
+#     )
+
+#     n_deployed_coral =
+#         prop_area_avail .* seed_volume' .* max(
+#             total_available_space / total_seeded_area, 1.0
+#         )
+
+#     return proportional_increase, n_deployed_coral
+# end
+
 """Find the outplant density required to satsfy the outplant volume and number of locations."""
 function vary_seed_density(
     ordered_avail_areas::Vector{Float64},
