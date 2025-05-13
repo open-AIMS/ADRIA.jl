@@ -953,22 +953,20 @@ function run_model(
         if has_seed_locs  # seed_decision_years[tstep] &&
             # Seed selected locations
             # Selected locations can fill up over time so avoid locations with no space
-
-            #seed_locs = findall(log_location_ranks.locations .∈ [selected_seed_ranks])
-            seed_locs = [findfirst(log_location_ranks.locations.==x) for x in selected_seed_ranks]
-            available_space = leftover_space_m²[seed_locs]
+            # Maintain the order of the ranking
+            ordered_seed_locs = [findfirst(log_location_ranks.locations.==x) for x in selected_seed_ranks]
+            available_space = leftover_space_m²[oredered_seed_locs]
             locs_with_space = findall(available_space .> 0.0)
 
             # If there are locations with space to select from, then deploy what we can
             # Otherwise, do nothing.
             if length(locs_with_space) > 0
-                seed_locs = seed_locs[locs_with_space]
-                #n_iv_sites, target_density = vary_locations(available_space, target_density, Int64(sum(seed_volume.data)))
+                ordered_seed_locs = ordered_seed_locs[locs_with_space]
 
                 # Calculate proportion to seed based on current available space
-                proportional_increase, n_corals_seeded, seed_locs = distribute_seeded_corals(
+                proportional_increase, n_corals_seeded, ordered_seed_locs = distribute_seeded_corals(
                     strategy,
-                    seed_locs,
+                    ordered_seed_locs,
                     vec_abs_k,
                     leftover_space_m²,
                     max_seeded_area,
@@ -977,19 +975,19 @@ function run_model(
                 )
 
                 # Log estimated number of corals seeded
-                Yseed[tstep, :, seed_locs] .= n_corals_seeded'
+                Yseed[tstep, :, ordered_seed_locs] .= n_corals_seeded'
 
                 # Add coral seeding to recruitment
                 # (1,2,4) refer to the coral functional groups being seeded
                 # These are tabular Acropora, corymbose Acropora, and small massives
-                recruitment[[1, 2, 4], seed_locs] .+= proportional_increase
+                recruitment[[1, 2, 4], ordered_seed_locs] .+= proportional_increase
 
                 update_tolerance_distribution!(
                     proportional_increase,
                     C_cover_t,
                     c_mean_t,
                     c_std,
-                    seed_locs,
+                    ordered_seed_locs,
                     seed_sc,
                     a_adapt
                 )
