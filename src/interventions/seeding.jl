@@ -43,6 +43,10 @@ function distribute_seeded_corals(
         target_density, seed_volume, n_iv_locs = vary_seed_density(
             available_space, target_density, seed_volume, n_iv_locs
         )
+    elseif strategy == :CAP_DENSITY
+        target_density, seed_volume, n_iv_locs = seed_cap_density(
+            available_space, target_density, seed_volume, n_iv_locs
+        )
     end
 
     seed_locs = seed_locs[1:n_iv_locs]
@@ -131,6 +135,34 @@ function vary_n_corals(
     n_corals = n_corals ./ sum(n_corals) .* coral_required
     return target_density, n_corals, n_iv_locs
 end
+
+"""
+Find the number of corals required to satisfy the target density and available space.
+
+Limit the number of corals to the n_corals given. Deployments may decide to not deploy all
+corals if there is not enough space, and will deploy at a lower density if there is not 
+enough corals.
+"""
+function seed_cap_density(
+    ordered_avail_area::Vector{Float64},
+    target_density::Float64,
+    n_corals::Vector{Float64},
+    n_iv_locs::Int64
+)
+    total_available_space = sum(ordered_avail_area)
+    total_corals = sum(n_corals)
+    implied_density = total_corals / total_available_space
+    if implied_density == 0.0
+        throw(ArgumentError("Attempting to seed 0 corals."))
+    end
+    if implied_density > target_density
+        scale_coef = target_density / implied_density
+        n_corals .*= scale_coef
+        implied_density = target_density
+    end
+    return implied_density, n_corals, n_iv_locs
+end
+
 """Find the outplant density required to satsfy the outplant volume and number of locations."""
 function vary_seed_density(
     ordered_avail_areas::Vector{Float64},
