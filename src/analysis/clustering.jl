@@ -44,6 +44,13 @@ function correction_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
     return max(ce_i, ce_j) / min(ce_i, ce_j)
 end
 
+# function _complexity_invariance((data_x, complexity_x), (data_y, complexity_y), dist_fn)
+function _complexity_invariance(data, complexity, i, j, dist_fn)::Float64
+    ed = dist_fn(data[:, i], data[:, j])
+    cf = correction_factor(complexity[i], complexity[j])
+    return ed * cf
+end
+
 """
     complexity_invariance_distance(data::AbstractMatrix{<:Real}; distance=:euclidean)::AbstractMatrix{Float64}
 
@@ -83,9 +90,8 @@ function complexity_invariance_distance(
     # Iterate over data matrix to compute CID (Complexity Invariance Distance)
     for i in axes(data, 2)
         @floop for j in axes(data, 2)
-            ed = dist_fn(data[:, i], data[:, j])
-            cf = correction_factor(complexity[i], complexity[j])
-            cid_matrix[i, j] = cid_matrix[j, i] = ed * cf
+            cid_matrix[i, j] =
+                cid_matrix[j, i] = _complexity_invariance(data, complexity, i, j, dist_fn)
         end
     end
 
