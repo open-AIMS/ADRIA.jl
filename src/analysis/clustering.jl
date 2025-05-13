@@ -72,8 +72,8 @@ function complexity_invariance_distance(
     data::AbstractMatrix{<:Real};
     distance=:euclidean
 )::AbstractMatrix{Float64}
-    # Compute complexity vector
-    complexity = _complexity(data)
+    # Compute complexity vector (each element is the complexity of a distinct scenario)
+    complexity::Vector{Float64} = _complexity(data)
 
     # Create empty Matrix
     data_size = size(data, 2)
