@@ -71,29 +71,42 @@ function _distribute_seeded_corals(
         )
 
     return proportional_increase, n_deployed_coral
+"""Find the outplant density required to satsfy the outplant volume and number of locations."""
+function vary_seed_density(
+    ordered_avail_areas::Vector{Float64},
+    target_density::Float64,
+    n_corals::Vector{Float64},
+    n_iv_locs::Int64
+)::Tuple{Float64, Vector{Float64}, Int64}
+    # Total available space
+    sum_avail = sum(ordered_avail_areas[1:n_iv_locs])
+    return sum(n_corals) / sum_avail, n_corals, n_iv_locs
 end
 
 """Find the number of locations required to meet the target density."""
-function find_sufficient_n_iv_sites(
+function vary_locations(
     ordered_avail_areas::Vector{Float64},
     target_density::Float64,
-    n_corals::Int64
-)::Tuple{Int64, Float64}
+    n_corals::Vector{Float64},
+    n_iv_locs::Int64
+)::Tuple{Float64, Vector{Float64}, Int64}
+    n_corals_sum = sum(n_corals)
     cum_avail = cumsum(ordered_avail_areas)
-    target_area = n_corals / target_density
-    idx = findfirst(x -> x > target_area, cum_avail)
+    target_area = n_corals_sum / target_density
+    n_iv_locs = findfirst(x -> x > target_area, cum_avail)
 
-    if isnothing(idx)
-        new_density = n_corals / cum_avail[end]
-        idx = length(ordered_avail_areas)
+    if isnothing(n_iv_locs)
+        new_density = n_corals_sum / cum_avail[end]
+        n_iv_locs = length(ordered_avail_areas)
 
         # For consistency, warn if new density is updated to more than 10% greater than the original value
-        if (new_density > target_density*(1.10))
+        if (new_density > target_density * (1.10))
             @warn "Density has been updated to accommodate coral volume to $(new_density) corals/m2."
         end
-        return idx, new_density
+        return new_density, n_corals, n_iv_locs
+
     end
-    return idx, target_density
+    return target_density, n_corals, n_iv_locs
 end
 
 """
