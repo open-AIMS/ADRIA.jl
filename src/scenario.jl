@@ -955,7 +955,7 @@ function run_model(
             # Selected locations can fill up over time so avoid locations with no space
             # Maintain the order of the ranking
             ordered_seed_locs = [findfirst(log_location_ranks.locations.==x) for x in selected_seed_ranks]
-            available_space = leftover_space_m²[oredered_seed_locs]
+            available_space = leftover_space_m²[ordered_seed_locs]
             locs_with_space = findall(available_space .> 0.0)
 
             # If there are locations with space to select from, then deploy what we can
