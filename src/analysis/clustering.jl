@@ -89,14 +89,14 @@ function complexity_invariance_distance(
     local weights::Vector{Float64}
     if distance == :weuclidean
         # [1, 1/2, 1/3, ..., 1/n]
-        weights = sqrt.(1 ./ (1:n_scenarios))
+        weights = sqrt.(1 ./ (1:n_timesteps))
     end
     dist_fn(x, y) = (distance == :euclidean) ? euclidean(x, y) : weuclidean(x, y, weights)
 
     #? Do we want to normalize the amplitudes of all series?
     # Iterate over data matrix to compute CID (Complexity Invariance Distance)
-    for i in 1:n_timesteps
-        Threads.@threads for j in (i + 1):n_timesteps
+    for i in 1:n_scenarios
+        Threads.@threads for j in (i + 1):n_scenarios
             cid_matrix[i, j] =
                 cid_matrix[j, i] = _complexity_invariance(
                     data[:, i], data[:, j], complexity[i], complexity[j], dist_fn
