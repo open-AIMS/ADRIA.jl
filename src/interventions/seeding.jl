@@ -36,7 +36,7 @@ function distribute_seeded_corals(
             available_space, target_density, seed_volume, n_iv_locs
         )
     elseif strategy == :VARY_N_SEEDED
-        target_density, seed_volume, n_ic_locs = vary_n_corals(
+        target_density, seed_volume, n_iv_locs = vary_n_corals(
             available_space, target_density, seed_volume, n_iv_locs
         )
     elseif strategy == :VARY_SEED_DENSITY
@@ -102,7 +102,7 @@ end
 Find the number of corals required to satisfy the target density and available space.
 
 Limit the number of corals to the n_corals given. Deployments may decide to not deploy all
-corals if there is not enough space, and will deploy at a lower density if there is not 
+corals if there is not enough space, and will deploy at a lower density if there is not
 enough corals.
 """
 function seed_cap_density(
