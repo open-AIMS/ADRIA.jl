@@ -215,7 +215,7 @@ end
                 )
 
                 @test all(new_den == t_den)
-                @test sum(new_n_corals)/new_den<=sum(available_space)
+                @test sum(new_n_corals) / new_den <= sum(available_space)
             end
 
             target_density = 5.0
@@ -229,9 +229,8 @@ end
                 )
 
                 @test all(new_den == target_density)
-                @test sum(new_n_corals)/new_den<=sum(available_space)
+                @test sum(new_n_corals) / new_den <= sum(available_space)
             end
-
         end
 
         @testset "Vary Seed Density" begin
@@ -256,6 +255,21 @@ end
         end
 
         @testset "Cap Density" begin
+            target_density = [3.0, 5.0, 7.0, 10.0, 12.0]
+            available_space = [
+                10.0, 20.0, 30.0, 40.0, 50.0
+            ]
+            n_corals = [50.0, 50.0, 50.0]
+
+            # For a range of target densities, check updated density is <= target and new density satisfies avaialble space
+            for t_den in target_density
+                new_den, new_n_corals, n_iv_locs = ADRIA.seed_cap_density(
+                    available_space, t_den, n_corals, 5
+                )
+
+                @test (new_den <= t_den)
+                @test sum(new_n_corals) / new_den <= sum(available_space)
+            end
         end
     end
 end

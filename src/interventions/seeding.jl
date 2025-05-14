@@ -1,6 +1,5 @@
 using StatsBase
 
-
 """
     distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::YAXArray)::YAXArray
 
@@ -131,7 +130,7 @@ function vary_seed_density(
     target_density::Float64,
     n_corals::Vector{Float64},
     n_iv_locs::Int64
-)::Tuple{Float64, Vector{Float64}, Int64}
+)::Tuple{Float64,Vector{Float64},Int64}
     # Total available space
     sum_avail = sum(ordered_avail_areas[1:n_iv_locs])
     return sum(n_corals) / sum_avail, n_corals, n_iv_locs
@@ -143,7 +142,7 @@ function vary_locations(
     target_density::Float64,
     n_corals::Vector{Float64},
     n_iv_locs::Int64
-)::Tuple{Float64, Vector{Float64}, Int64}
+)::Tuple{Float64,Vector{Float64},Int64}
     n_corals_sum = sum(n_corals)
     cum_avail = cumsum(ordered_avail_areas)
     target_area = n_corals_sum / target_density
@@ -158,7 +157,6 @@ function vary_locations(
             @warn "Density has been updated to accommodate coral volume to $(new_density) corals/m2."
         end
         return new_density, n_corals, n_iv_locs
-
     end
     return target_density, n_corals, n_iv_locs
 end
