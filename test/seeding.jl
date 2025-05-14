@@ -194,6 +194,24 @@ end
         end
 
         @testset "Vary Seed Density" begin
+            # Target density is unused
+            target_density = 5.0
+            available_space = [
+                10.0, 20.0, 30.0, 40.0, 50.0
+            ]
+            n_corals = [50.0, 50.0, 50.0]
+            expected_densities = 150.0 ./ [
+                10.0, 30.0, 60.0, 100.0, 150.0
+            ]
+
+            for (exp, n_iv) in zip(expected_densities, 1:5)
+                dens, n_c, n_l = vary_seed_density(
+                    available_space, target_density, n_corals, n_iv
+                )
+                @test dens == exp
+                @test all(n_c .== n_corals)
+                @test n_iv == n_l
+            end
 
         end
 
