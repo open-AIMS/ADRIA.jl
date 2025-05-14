@@ -3,6 +3,7 @@ using Test
 using ADRIA
 using ADRIA.Distributions
 using ADRIA: distribute_seeded_corals, location_k, update_tolerance_distribution!
+using ADRIA: vary_locations, vary_n_corals, vary_seed_density, seed_cap_density
 using ADRIA: At
 
 if !@isdefined(ADRIA_DIR)
@@ -132,7 +133,60 @@ end
     @testset "Seeding Strategies" begin
 
         @testset "Vary Locations" begin
+            target_density = 5.0
+            available_space = [
+                10.0, 20.0, 30.0, 40.0, 50.0
+            ]
+            # deploy [49, 98, 147, 196, ...] corals
+            base_deployment = 49
+            test_in_corals = [
+                fill(base_deployment/3, 3) .* i for i in 1:length(available_space)
+            ]
+            # The expected deployment density should be [49, 98, 147, ...] ./ [50, 100, ...]
+            expected_density = [
+                base_deployment * i / sp for (i, sp) in enumerate(available_space)
+            ]
 
+            for (exp, inp) in zip(expected_density, test_in_corals)
+                new_density, n_corals, n_iv_locs = vary_locations(
+                    available_space, target_density, inp, 5
+                )
+                @test all(n_corals .== inp)
+                @test all([new_density, n_iv_locs] .== [target_density, n_iv_locs])
+            end
+            # similar test case as previous but with different density
+            target_density = 10.0
+            available_space = [
+                30.0, 60.0, 90.0, 120.0
+            ]
+            base_deployment = 299
+            test_in_corals = [
+                fill(base_deployment/3, 3) .* i for i in 1:length(available_space)
+            ]
+            expected_density = [
+                base_deployment * i / sp for (i, sp) in enumerate(available_space)
+            ]
+
+            for (exp, inp) in zip(expected_density, test_in_corals)
+                new_density, n_corals, n_iv_locs = vary_locations(
+                    available_space, target_density, inp, 5
+                )
+                @test all(n_corals .== inp)
+                @test all([new_density, n_iv_locs] .== [target_density, n_iv_locs])
+            end
+
+            target_density = 1.0
+            available_space = [
+                1.0, 149.0
+            ]
+            n_corals = [80.0, 80.0, 80.0]
+            expected_density = 240 / sum(available_space)
+            out_density, out_corals, out_iv_locs = vary_locations(
+                available_space, target_density, n_corals, 2
+            ) 
+            @test expected_density == out_density
+            @test out_corals == n_corals
+            @test 2 == out_iv_locs
         end
 
         @testset "Vary # Corals" begin
