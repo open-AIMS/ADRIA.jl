@@ -12,6 +12,9 @@ if !@isdefined(ADRIA_DIR)
 end
 
 @testset "Seeding" begin
+
+    # dummy density, using vary density strategy will recalculate density
+    DUMMY_DENSITY = 5.0
     # first test function on example domain
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
 
@@ -34,8 +37,13 @@ end
 
         # evaluate seeding distributions
         seed_dist, _ = distribute_seeded_corals(
-            total_loc_area[seed_locs], available_space[seed_locs], seeded_area,
-            seeded_volume
+            :VARY_SEED_DENSITY,
+            seed_locs,
+            total_loc_area,
+            available_space,
+            seeded_area,
+            seeded_volume,
+            DUMMY_DENSITY
         )
 
         # Area to be seeded for each site
@@ -104,10 +112,13 @@ end
 
         # Absolute number of corals seeded is not required
         proportional_increase, _ = distribute_seeded_corals(
-            total_location_area[seed_locs],
-            leftover_space_m²[seed_locs],
+            :VARY_SEED_DENSITY,
+            seed_locs,
+            total_location_area,
+            leftover_space_m²,
             seeded_area,
-            seeded_volume
+            seeded_volume,
+            DUMMY_DENSITY
         )
 
         update_tolerance_distribution!(
@@ -182,7 +193,7 @@ end
             expected_density = 240 / sum(available_space)
             out_density, out_corals, out_iv_locs = vary_locations(
                 available_space, target_density, n_corals, 2
-            ) 
+            )
             @test expected_density == out_density
             @test out_corals == n_corals
             @test 2 == out_iv_locs
