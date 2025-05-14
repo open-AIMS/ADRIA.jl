@@ -142,7 +142,6 @@ end
     end
 
     @testset "Seeding Strategies" begin
-
         @testset "Vary Locations" begin
             target_density = 5.0
             available_space = [
@@ -151,7 +150,7 @@ end
             # deploy [49, 98, 147, 196, ...] corals
             base_deployment = 49
             test_in_corals = [
-                fill(base_deployment/3, 3) .* i for i in 1:length(available_space)
+                fill(base_deployment / 3, 3) .* i for i in 1:length(available_space)
             ]
             # The expected deployment density should be [49, 98, 147, ...] ./ [50, 100, ...]
             expected_density = [
@@ -172,7 +171,7 @@ end
             ]
             base_deployment = 299
             test_in_corals = [
-                fill(base_deployment/3, 3) .* i for i in 1:length(available_space)
+                fill(base_deployment / 3, 3) .* i for i in 1:length(available_space)
             ]
             expected_density = [
                 base_deployment * i / sp for (i, sp) in enumerate(available_space)
@@ -201,6 +200,37 @@ end
         end
 
         @testset "Vary # Corals" begin
+            target_density = [3.0, 5.0, 7.0, 10.0, 12.0]
+            available_space = [
+                10.0, 20.0, 30.0, 40.0, 50.0
+            ]
+            n_corals = [50.0, 50.0, 50.0]
+            n_iv_locs = length(available_space)
+
+            # Test density is held constant for a range of target densities
+            # Test new number of corals satisfies available space
+            for t_den in target_density
+                new_den, new_n_corals, n_iv_locs = vary_n_corals(
+                    available_space, t_den, n_corals, n_iv_locs
+                )
+
+                @test all(new_den == t_den)
+                @test sum(new_n_corals)/new_den<=sum(available_space)
+            end
+
+            target_density = 5.0
+            available_space = rand(Uniform(10.0, 60.0), 20)
+            n_iv_locs = 5:5:20
+
+            # Test new number of corals satisfies available space for variety of n_sites and available space
+            for n_iv in n_iv_locs
+                new_den, new_n_corals, n_iv_locs = vary_n_corals(
+                    available_space[1:n_iv], target_density, n_corals, n_iv
+                )
+
+                @test all(new_den == target_density)
+                @test sum(new_n_corals)/new_den<=sum(available_space)
+            end
 
         end
 
@@ -223,12 +253,9 @@ end
                 @test all(n_c .== n_corals)
                 @test n_iv == n_l
             end
-
         end
 
         @testset "Cap Density" begin
-
         end
-
     end
 end
