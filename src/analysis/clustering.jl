@@ -77,7 +77,7 @@ function complexity_invariance_distance(
 
     # Create empty Matrix
     n_timesteps, n_scenarios = size(data)
-    cid_matrix::AbstractMatrix{Float64} = zeros(n_timesteps, n_timesteps)
+    cid_matrix::Matrix{Float64} = zeros(n_scenarios, n_scenarios)
 
     local weights::Vector{Float64}
     if distance == :weuclidean
