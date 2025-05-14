@@ -45,6 +45,20 @@ function correction_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
 end
 
 """
+    _complexity_invariance(data_i, data_j, complexity_i, complexity_j, dist_fn)::Float64
+
+Complexity invariance between two data series given their complexities and a custom distance
+function.
+"""
+function _complexity_invariance(
+    data_i, data_j, complexity_i, complexity_j, dist_fn
+)::Float64
+    ed = dist_fn(data_i, data_j)
+    cf = correction_factor(complexity_i, complexity_j)
+    return ed * cf
+end
+
+"""
     complexity_invariance_distance(data::AbstractMatrix{<:Real}; distance=:euclidean)::AbstractMatrix{Float64}
 
 Compute Complexity Invariance Distance (CID) between every matrix column pairs (`data`) of
@@ -65,27 +79,28 @@ function complexity_invariance_distance(
     data::AbstractMatrix{<:Real};
     distance=:euclidean
 )::AbstractMatrix{Float64}
-    # Compute complexity vector
-    complexity = _complexity(data)
+    # Compute complexity vector (each element is the complexity of a distinct scenario)
+    complexity::Vector{Float64} = _complexity(data)
 
     # Create empty Matrix
-    data_size = size(data, 2)
-    cid_matrix::AbstractMatrix{Float64} = zeros(data_size, data_size)
+    n_timesteps, n_scenarios = size(data)
+    cid_matrix::Matrix{Float64} = zeros(n_scenarios, n_scenarios)
 
     local weights::Vector{Float64}
     if distance == :weuclidean
         # [1, 1/2, 1/3, ..., 1/n]
-        weights = sqrt.(1 ./ (1:size(data, 1)))
+        weights = sqrt.(1 ./ (1:n_timesteps))
     end
     dist_fn(x, y) = (distance == :euclidean) ? euclidean(x, y) : weuclidean(x, y, weights)
 
     #? Do we want to normalize the amplitudes of all series?
     # Iterate over data matrix to compute CID (Complexity Invariance Distance)
-    for i in axes(data, 2)
-        @floop for j in axes(data, 2)
-            ed = dist_fn(data[:, i], data[:, j])
-            cf = correction_factor(complexity[i], complexity[j])
-            cid_matrix[i, j] = cid_matrix[j, i] = ed * cf
+    for i in 1:n_scenarios
+        Threads.@threads for j in (i + 1):n_scenarios
+            cid_matrix[i, j] =
+                cid_matrix[j, i] = _complexity_invariance(
+                    data[:, i], data[:, j], complexity[i], complexity[j], dist_fn
+                )
         end
     end
 
