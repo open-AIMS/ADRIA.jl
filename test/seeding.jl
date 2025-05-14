@@ -128,4 +128,24 @@ end
             end
         end
     end
+
+    @testset "Seeding Strategies" begin
+
+        @testset "Vary Locations" begin
+
+        end
+
+        @testset "Vary # Corals" begin
+
+        end
+
+        @testset "Vary Seed Density" begin
+
+        end
+
+        @testset "Cap Density" begin
+
+        end
+
+    end
 end
