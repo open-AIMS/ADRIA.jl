@@ -44,10 +44,17 @@ function correction_factor(ce_i::T, ce_j::T)::Float64 where {T<:Real}
     return max(ce_i, ce_j) / min(ce_i, ce_j)
 end
 
-# function _complexity_invariance((data_x, complexity_x), (data_y, complexity_y), dist_fn)
-function _complexity_invariance(data, complexity, i, j, dist_fn)::Float64
-    ed = dist_fn(data[:, i], data[:, j])
-    cf = correction_factor(complexity[i], complexity[j])
+"""
+    _complexity_invariance(data_i, data_j, complexity_i, complexity_j, dist_fn)::Float64
+
+Complexity invariance between two data series given their complexities and a custom distance
+function.
+"""
+function _complexity_invariance(
+    data_i, data_j, complexity_i, complexity_j, dist_fn
+)::Float64
+    ed = dist_fn(data_i, data_j)
+    cf = correction_factor(complexity_i, complexity_j)
     return ed * cf
 end
 
@@ -91,7 +98,9 @@ function complexity_invariance_distance(
     for i in 1:n_timesteps
         Threads.@threads for j in (i + 1):n_timesteps
             cid_matrix[i, j] =
-                cid_matrix[j, i] = _complexity_invariance(data, complexity, i, j, dist_fn)
+                cid_matrix[j, i] = _complexity_invariance(
+                    data[:, i], data[:, j], complexity[i], complexity[j], dist_fn
+                )
         end
     end
 
