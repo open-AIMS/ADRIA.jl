@@ -208,13 +208,13 @@ n_locations)
 - `coral_spec` : Coral spec DataFrame
 """
 function _relative_juveniles(
-    X::AbstractArray{T,3}, coral_spec::DataFrame
-)::AbstractArray{T,2} where {T<:Real}
+    X::YAXArray{T,3}, coral_spec::DataFrame
+)::YAXArray{T,2} where {T<:Real}
     # Cover of juvenile corals (< 5cm diameter)
-    juv_groups =
-        X[species=coral_spec.class_id .== 1] .+ X[species=coral_spec.class_id .== 2].data
-
-    return dropdims(sum(juv_groups; dims=:species); dims=:species)
+    return dropdims(
+        sum(X[species=coral_spec.class_id .== 1]; dims=:species); dims=:species
+    ) .+
+           dropdims(sum(X[species=coral_spec.class_id .== 2]; dims=:species); dims=:species)
 end
 function _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_juveniles]

@@ -37,8 +37,10 @@ end
 
     conn = conn_details.conn
     d1, d2 = axes(conn)
-    @test all(d1.dim .== d2.dim) || "Site order does not match between rows/columns."
-    @test all(d2.dim .== loc_data.reef_siteid) || "Sites do not match expected order."
+    @test all(d1.dim.val.data .== d2.dim.val.data) ||
+        "Site order does not match between rows/columns."
+    @test all(d2.dim.val.data .== loc_data.reef_siteid) ||
+        "Sites do not match expected order."
     @test all(unique_loc_ids .== conn_details.loc_ids) ||
         "Included site ids do not match length/order in geospatial file."
 end

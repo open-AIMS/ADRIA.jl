@@ -214,9 +214,9 @@ function ensemble_loc_difference(
         cf_shuf_set::Vector{Int64} = shuffle(rng, 1:n_cf_outcomes)[1:min_n_outcomes]
         target_shuf_set::Vector{Int64} = shuffle(rng, 1:n_target_outcomes)[1:min_n_outcomes]
 
-        @views target_diff = collect(
-            target_outcomes[loc, target_shuf_set] .- cf_outcomes[loc, cf_shuf_set]
-        )
+        @views target_diff =
+            collect(target_outcomes[loc, target_shuf_set]) .-
+            collect(cf_outcomes[loc, cf_shuf_set])
 
         bootstrap_func(x) = is_quantile_metric ? quantile(x, agg_metric) : agg_metric(x)
         cf_target_bootstrap = bootstrap(bootstrap_func, target_diff, BalancedSampling(100))
