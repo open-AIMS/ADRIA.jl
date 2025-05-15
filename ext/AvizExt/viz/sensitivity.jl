@@ -290,15 +290,16 @@ function ADRIA.viz.rsa!(
     f_name = ms_factor.fieldname[1]
     f_type::String = ms_factor.ptype[1]
 
+    si_param_scens = collect(si.axes[1]).data
     if _is_discrete_factor(f_type)
         fv_s = _get_cat_quantile(
-            ms_factor, f_name, collect(si.axes[1])
+            ms_factor, f_name, si_param_scens
         )
     else
-        fv_s = round.(quantile(f_vals, collect(si.axes[1])), digits=2)
+        fv_s = round.(quantile(f_vals, si_param_scens), digits=2)
     end
 
-    if .!all(si[si=At("Si")] .== 0.0)
+    if !all(si[si=At("Si")] .== 0.0)
         scatterlines!(ax, fv_s, collect(si[si=At("Si")]); markersize=15)
 
         if f_name == :guided
@@ -518,16 +519,16 @@ function ADRIA.viz.outcome_map!(
 )
     f_name = ms_factor.fieldname[1]
     f_type::String = ms_factor.ptype[1]
-
+    outcomes_param_scens = collect(outcomes.axes[1]).data
     if _is_discrete_factor(f_type)
         # If categorical/discrete get categorical quantile
         fv_s = _get_cat_quantile(
             ms_factor, f_name,
-            collect(outcomes.axes[1])
+            outcomes_param_scens
         )
     else
         # Otherwise use regular quantile
-        fv_s = round.(quantile(f_vals, collect(outcomes.axes[1])), digits=2)
+        fv_s = round.(quantile(f_vals, outcomes_param_scens), digits=2)
     end
 
     if .!all(outcomes[CI=At("mean")] .== 0.0)
