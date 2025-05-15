@@ -1,5 +1,5 @@
 using ADRIA, ADRIA.DataFrames, ADRIA.CSV
-using ADRIA.YAXArrays
+using ADRIA: YAXArrays, NetCDF
 import ADRIA.GDF as GDF
 
 if !@isdefined(ADRIA_DIR)
@@ -9,9 +9,8 @@ if !@isdefined(ADRIA_DIR)
 end
 
 @testset "Domain loading" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
-    @test dom isa Domain
-    @test all(dom.dhw_scens .== 0.0)
+    @test TEST_DOM isa Domain
+    @test all(TEST_DOM.dhw_scens .== 0.0)
 
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
     @test dom isa Domain
