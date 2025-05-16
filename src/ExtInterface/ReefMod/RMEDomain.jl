@@ -3,6 +3,8 @@ using Statistics
 
 using CSV, DataFrames, ModelParameters
 
+using Glob
+
 using ADRIA: SimConstants, Domain, GDF
 using ADRIA.decision:
     DecisionThresholds,
@@ -139,9 +141,10 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     # TODO: Create canonical geopackage file that aligns all IDs.
     #       Doing this removes the need for the manual correction below and removes the
     #       dependency on this file.
-    id_file = first(readdir(joinpath(data_files, "id")))
+
+    id_file_path = glob(glob"*.csv", joinpath(data_files, "id"))[1]
     id_list = CSV.read(
-        joinpath(data_files, "id", id_file),
+        id_file_path,
         DataFrame;
         header=false,
         comment="#"
