@@ -265,20 +265,22 @@ function _get_relevant_files(fn_path::String, ident::String)
     return filter(x -> occursin(ident, x), valid_files)
 end
 
-function _data_file_path(data_path, file_name; file_extension="csv")
-    data_file_names = readdir(data_path)
-    files_mask = [occursin(Regex(file_name), file) for file in data_file_names]
-    file_names = data_file_names[files_mask]
-    file_name = if length(file_names) == 1
-        file_names[1]
+function _data_folder_path(data_path, target_folder_name; file_extension="csv")
+    data_folder_names = readdir(data_path)
+    target_folder_mask = [
+        occursin(Regex(target_folder_name), file) for file in data_folder_names
+    ]
+    target_folder_names = data_folder_names[target_folder_mask]
+    target_folder_name = if length(target_folder_names) == 1
+        target_folder_names[1]
     else
         dhw_csv_mask = [
-            occursin(Regex(file_extension), csv_file) for csv_file in file_names
+            occursin(Regex(file_extension), csv_file) for csv_file in target_folder_names
         ]
-        file_names[dhw_csv_mask][1]
+        target_folder_names[dhw_csv_mask][1]
     end
 
-    return joinpath(data_path, file_name)
+    return joinpath(data_path, target_folder_name)
 end
 
 """
@@ -298,7 +300,7 @@ YAXArray[timesteps, locs, scenarios]
 function load_DHW(
     ::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100)
 )::YAXArray
-    dhw_path = _data_file_path(data_path, "dhw")
+    dhw_path = _data_folder_path(data_path, "dhw")
     rcp_files = _get_relevant_files(dhw_path, rcp)
     rcp_files = filter(x -> occursin("SSP", x), rcp_files)
     if isempty(rcp_files)
@@ -422,7 +424,7 @@ YAXArray with dimensions (Source ⋅ Sink) and size (`n_locations` ⋅ `n_locati
 function load_connectivity_csv(
     ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}
 )::YAXArray
-    conn_path = _data_file_path(data_path, "con")
+    conn_path = _data_folder_path(data_path, "con")
     conn_files = _get_relevant_files(conn_path, "CONNECT_ACRO")
     if isempty(conn_files)
         ArgumentError("No CONNECT_ACRO data files found in: $(conn_path)")
@@ -505,7 +507,7 @@ YAXArray[locs, species]
 function load_initial_cover(
     ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame
 )::YAXArray
-    icc_path = _data_file_path(data_path, "initial")
+    icc_path = _data_folder_path(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
 
     # ADRIA no longer models Arborescent Acropora
