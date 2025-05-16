@@ -124,8 +124,14 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     # Standardize IDs to use for site/reef and cluster
     _standardize_cluster_ids!(spatial_data)
 
-    reef_id_col = "UNIQUE_ID"
-    cluster_id_col = "UNIQUE_ID"
+    reef_id_col = if "RME_UNIQUE_ID" ∈ names(spatial_data)
+        "RME_UNIQUE_ID"
+    elseif "UNIQUE_ID" ∈ names(spatial_data)
+        "UNIQUE_ID"
+    else
+        error("No reef id column identified")
+    end
+    cluster_id_col = reef_id_col
 
     reef_ids::Vector{String} = spatial_data[:, reef_id_col]
 
@@ -133,8 +139,9 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
     # TODO: Create canonical geopackage file that aligns all IDs.
     #       Doing this removes the need for the manual correction below and removes the
     #       dependency on this file.
+    id_file = first(readdir(joinpath(data_files, "id")))
     id_list = CSV.read(
-        joinpath(data_files, "id", "id_list_2023_03_30.csv"),
+        joinpath(data_files, "id", id_file),
         DataFrame;
         header=false,
         comment="#"
@@ -163,7 +170,7 @@ function load_domain(::Type{RMEDomain}, fn_path::String, RCP::String)::RMEDomain
         RMEDomain, data_files, loc_ids, spatial_data
     )
 
-    conn_data::YAXArray{Float64} = load_connectivity(RMEDomain, data_files, loc_ids)
+    conn_data::YAXArray{Float64} = load_connectivity_csv(RMEDomain, data_files, loc_ids)
 
     # Set all site depths to 7m below sea level
     # (ReefMod does not account for depth)
@@ -258,6 +265,22 @@ function _get_relevant_files(fn_path::String, ident::String)
     return filter(x -> occursin(ident, x), valid_files)
 end
 
+function _data_file_path(data_path, file_name; file_extension="csv")
+    data_file_names = readdir(data_path)
+    files_mask = [occursin(Regex(file_name), file) for file in data_file_names]
+    file_names = data_file_names[files_mask]
+    file_name = if length(file_names) == 1
+        file_names[1]
+    else
+        dhw_csv_mask = [
+            occursin(Regex(file_extension), csv_file) for csv_file in file_names
+        ]
+        file_names[dhw_csv_mask][1]
+    end
+
+    return joinpath(data_path, file_name)
+end
+
 """
     load_DHW(::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100))::YAXArray
 
@@ -275,7 +298,7 @@ YAXArray[timesteps, locs, scenarios]
 function load_DHW(
     ::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100)
 )::YAXArray
-    dhw_path = joinpath(data_path, "dhw")
+    dhw_path = _data_file_path(data_path, "dhw")
     rcp_files = _get_relevant_files(dhw_path, rcp)
     rcp_files = filter(x -> occursin("SSP", x), rcp_files)
     if isempty(rcp_files)
@@ -334,7 +357,8 @@ end
 """
     load_connectivity(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String})::YAXArray
 
-Loads the average connectivity matrix.
+Loads the average connectivity from  binary connectivity files and returns them as a
+YAXArray. To load from the `csv` connectivity files, refer to`load_connectivity_csv`.
 
 # Arguments
 - `RMEDomain`
@@ -342,7 +366,7 @@ Loads the average connectivity matrix.
 - `loc_ids` : location ids
 
 # Returns
-YAXArray[source, sinks]
+YAXArray with dimensions (Source ⋅ Sink) and size (`n_locations` ⋅ `n_locations`).
 """
 function load_connectivity(
     ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}
@@ -370,6 +394,44 @@ function load_connectivity(
 
         ds = Vector{Float32}(undef, x * y)
         tmp_mat[:, :, i] .= reshape(read!(data, ds), (n_locs, n_locs))
+    end
+
+    # Mean over all years
+    conn_data::Matrix{Float64} = dropdims(mean(tmp_mat; dims=3); dims=3)
+    return DataCube(
+        conn_data;
+        Source=loc_ids,
+        Sink=loc_ids
+    )
+end
+
+"""
+    load_connectivity_csv(::Type{RMEDomain}, data_path::String, loc_ids::Vector{String})::YAXArray
+
+Loads the average connectivity from connectivity `csv` files. To load the binary version
+of the connectivity files refer to `load_connectivity`.
+
+# Arguments
+- `RMEDomain`
+- `data_path` : path to ReefMod data
+- `loc_ids` : location ids
+
+# Returns
+YAXArray with dimensions (Source ⋅ Sink) and size (`n_locations` ⋅ `n_locations`).
+"""
+function load_connectivity_csv(
+    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}
+)::YAXArray
+    conn_path = _data_file_path(data_path, "con")
+    conn_files = _get_relevant_files(conn_path, "CONNECT_ACRO")
+    if isempty(conn_files)
+        ArgumentError("No CONNECT_ACRO data files found in: $(conn_path)")
+    end
+
+    n_locs = length(loc_ids)
+    tmp_mat = zeros(n_locs, n_locs, length(conn_files))
+    for (i, fpath) in enumerate(conn_files)
+        tmp_mat[:, :, i] .= Matrix(CSV.read(fpath, DataFrame; header=false))
     end
 
     # Mean over all years
@@ -443,7 +505,7 @@ YAXArray[locs, species]
 function load_initial_cover(
     ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame
 )::YAXArray
-    icc_path = joinpath(data_path, "initial")
+    icc_path = _data_file_path(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
 
     # ADRIA no longer models Arborescent Acropora
