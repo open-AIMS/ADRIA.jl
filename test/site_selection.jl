@@ -6,11 +6,14 @@ if !@isdefined(ADRIA_DIR)
     const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
 end
 
+if !@isdefined(ADRIA_DOM_45)
+    const ADRIA_DOM_45 = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+end
+
 @testset "site selection" begin
     # TODO: Complete tests with @tests
 
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
-    p_tbl = ADRIA.param_table(dom)
+    p_tbl = ADRIA.param_table(ADRIA_DOM_45)
 
     p_tbl[:, :depth_offset] .= 7.0
 
@@ -45,23 +48,22 @@ end
 end
 
 @testset "Guided site selection without ADRIA ecological model" begin
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
     N = 2^3
-    scens = ADRIA.sample_selection(dom, N)  # get scenario dataframe
+    scens = ADRIA.sample_selection(ADRIA_DOM_45, N)  # get scenario dataframe
 
     area_to_seed = 962.11  # Area of seeded corals in m^2.
 
-    sum_cover = repeat(sum(dom.init_coral_cover; dims=1), size(scens, 1))
-    ranks = ADRIA.decision.rank_locations(dom, scens, sum_cover, area_to_seed)
+    sum_cover = repeat(sum(ADRIA_DOM_45.init_coral_cover; dims=1), size(scens, 1))
+    ranks = ADRIA.decision.rank_locations(ADRIA_DOM_45, scens, sum_cover, area_to_seed)
 
     @test length(ranks.scenarios) == sum(scens.guided .> 0) ||
         "Specified number of scenarios was not carried out."
-    @test length(ranks.sites) == length(dom.loc_ids) ||
+    @test length(ranks.sites) == length(ADRIA_DOM_45.loc_ids) ||
         "Ranks storage is not correct size for this domain."
 
     sel_sites = unique(ranks)
     sel_sites = sel_sites[sel_sites .!= 0.0]
-    possible_ranks = collect(Float64, 1:(ADRIA.n_locations(dom) + 1.0))
+    possible_ranks = collect(Float64, 1:(ADRIA.n_locations(ADRIA_DOM_45) + 1.0))
 
     @test all([in(ss, possible_ranks) for ss in sel_sites]) || "Impossible rank assigned."
 end

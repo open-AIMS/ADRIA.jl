@@ -2,6 +2,8 @@ using Test
 
 using ADRIA
 
+using ADRIA: CSV, DataFrames, YAXArrays, YAXArrays.At
+
 include("mock_data/mock_data.jl")
 
 include("aqua.jl")

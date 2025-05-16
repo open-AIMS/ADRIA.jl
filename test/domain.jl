@@ -1,10 +1,10 @@
-using Test
-using ADRIA
+if !@isdefined(TEST_RS)
+    const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
+end
 
 @testset "Domain loading" begin
     @testset "Domain DataFrame" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
-        p_df = ADRIA.param_table(dom)
+        p_df = ADRIA.param_table(TEST_DOM)
         @test p_df isa DataFrame
     end
 

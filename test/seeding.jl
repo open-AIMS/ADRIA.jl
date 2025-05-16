@@ -10,13 +10,14 @@ if !@isdefined(ADRIA_DIR)
     const TEST_DOMAIN_PATH = joinpath(ADRIA_DIR, "test", "data", "Test_domain")
 end
 
-@testset "Seeding" begin
-    # first test function on example domain
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+if !@isdefined(ADRIA_DOM_45)
+    const ADRIA_DOM_45 = ADRIA.load_domain(TEST_DOMAIN_PATH, 45)
+end
 
+@testset "Seeding" begin
     # extract inputs for function
-    total_loc_area = loc_area(dom)
-    k = location_k(dom)
+    total_loc_area = loc_area(ADRIA_DOM_45)
+    k = location_k(ADRIA_DOM_45)
     current_cover = zeros(size(total_loc_area))
 
     # calculate available space
