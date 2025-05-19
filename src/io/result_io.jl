@@ -217,6 +217,17 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_group_and_si
         attrs=attrs
     )
 
+    density_log = zcreate(
+        Float32,
+        seed_dims...;
+        name="seed_density",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(seed_dims[1:3]..., 1),
+        attrs=attrs
+    )
+
     attrs = Dict(
         :structure => ("timesteps", "locations", "scenarios"),
         :unique_loc_ids => unique_loc_ids
@@ -286,7 +297,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_group_and_si
         )
     end
 
-    return ranks, seed_log, fog_log, shade_log, coral_dhw_log
+    return ranks, seed_log, density_log, fog_log, shade_log, coral_dhw_log
 end
 
 """
@@ -512,6 +523,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
                 conn_names...,
                 :site_ranks,
                 :seed_log,
+                :density_log,
                 :fog_log,
                 :shade_log,
                 :coral_dhw_log
