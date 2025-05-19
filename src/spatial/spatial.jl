@@ -9,7 +9,6 @@ Retrieve first column found to hold plottable geometries.
 Symbol, indicating column name or `false` if no geometries found.
 """
 function _get_geom_col(gdf::DataFrame)::Union{Symbol,Bool}
-    # To ensure backwards compatibility with GeoDataFrames versions lower than 0.4.0
     col_legacy = findall(typeof.(eachcol(gdf)) .<: Vector{<:AG.IGeometry})
     col = findall(typeof.(eachcol(gdf)) .<: GDF.GeometryVector{<:AG.IGeometry})
     if !isempty(col)

@@ -553,6 +553,7 @@ function run_model(
     Yshade = spzeros(tf, n_locs)
     Yfog = spzeros(tf, n_locs)
     Yseed = zeros(tf, 3, n_locs)  # 3 = the number of seeded coral types
+    Ydensity = zeros(tf, 3, n_locs)  # 3 = the number of seeded coral types
 
     # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
@@ -964,7 +965,7 @@ function run_model(
                 ordered_seed_locs = ordered_seed_locs[locs_with_space]
 
                 # Calculate proportion to seed based on current available space
-                proportional_increase, n_corals_seeded, ordered_seed_locs = distribute_seeded_corals(
+                proportional_increase, n_corals_seeded, ordered_seed_locs, updated_density = distribute_seeded_corals(
                     strategy,
                     ordered_seed_locs,
                     vec_abs_k,
@@ -973,9 +974,9 @@ function run_model(
                     seed_volume.data,
                     target_density
                 )
-
                 # Log estimated number of corals seeded
                 Yseed[tstep, :, ordered_seed_locs] .= n_corals_seeded'
+                Ydensity[tstep, :, ordered_seed_locs] .= updated_density
 
                 # Add coral seeding to recruitment
                 # (1,2,4) refer to the coral functional groups being seeded
@@ -1060,6 +1061,7 @@ function run_model(
     return (
         raw=raw,
         seed_log=Yseed,
+        density_log=Ydensity,
         fog_log=Yfog,
         shade_log=Yshade,
         site_ranks=log_location_ranks,

@@ -1,14 +1,15 @@
 using StatsBase
 
 """
-    distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::YAXArray)::YAXArray
+    distribute_seeded_corals(strategy::Symbol, seed_locs::Vector{Int64}, loc_k_m²::Vector{Float64}, available_space::Vector{Float64}, seeded_area::YAXArray, seed_volume::Vector{Float64}, target_density::Float64)
 
 Calculate proportion of deployed corals to be seeded at each of the selected locations.
 Distributes seeded corals according to current available space at each selected site.
 
 # Arguments
 - strategy : coral seeding strategy
-- seed_loc_k_m² : Carrying capacity area of locations to seed in m².
+- seed_locs : ordered list of location indices, ordered by intervention priority.
+- loc_k_m² : Carrying capacity area of locations to seed in m².
 - available_space : Currently available space at each seed location in m².
 - seeded_area : Area (in m²) of each coral type to be seeded with dim taxa.
 - seed_volume : Absolute number of coral to deploy.
@@ -21,7 +22,7 @@ Distributes seeded corals according to current available space at each selected 
 function distribute_seeded_corals(
     strategy::Symbol,
     seed_locs::Vector{Int64},
-    seed_loc_k_m²::Vector{Float64},
+    loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
     seeded_area::YAXArray,
     seed_volume::Vector{Float64},
@@ -50,7 +51,7 @@ function distribute_seeded_corals(
 
     seed_locs = seed_locs[1:n_iv_locs]
     available_space = available_space[1:n_iv_locs]
-    seed_loc_k_m² = seed_loc_k_m²[seed_locs]
+    loc_k_m² = loc_k_m²[seed_locs]
 
     total_seeded_area::Float64 = sum(seeded_area)
     total_available_space::Float64 = sum(available_space)
@@ -68,7 +69,7 @@ function distribute_seeded_corals(
     # proportions:
     #     proportion * (area of 1 coral * num seeded corals)
     # Convert to relative cover proportion by dividing by location area
-    scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
+    scaled_seed = ((prop_area_avail .* seeded_area.data') ./ loc_k_m²)'
     proportional_increase = DataCube(
         scaled_seed;
         taxa=caxes(seeded_area)[1].val.data,
@@ -80,7 +81,10 @@ function distribute_seeded_corals(
             total_available_space / total_seeded_area, 1.0
         )
 
-    return proportional_increase, n_deployed_coral, seed_locs
+    # This assumes each taxa is deployed with the same density, variable density over taxa to be added
+    n_taxa_seed = size(n_deployed_coral, 1)
+
+    return proportional_increase, n_deployed_coral, seed_locs, target_density/n_taxa_seed
 end
 
 """Find the number of corals required to satisfy the target density and available space."""
