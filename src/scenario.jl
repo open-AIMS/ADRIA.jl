@@ -341,9 +341,9 @@ function run_scenario(
 
     # Store logs
     c_dim = Base.ndims(result_set.raw) + 1
-    log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log)
+    log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log, :density_log)
     for k in log_stores
-        if k == :seed_log || k == :site_ranks
+        if k == :seed_log || k == :site_ranks || k == :seed_log
             concat_dim = c_dim
         else
             concat_dim = c_dim - 1
@@ -357,7 +357,7 @@ function run_scenario(
             err isa MethodError ? nothing : rethrow(err)
         end
 
-        if k == :seed_log
+        if k == :seed_log || k == :density_log
             getfield(data_store, k)[:, :, :, idx] .= vals
         elseif k == :site_ranks
             if !isnothing(data_store.site_ranks)
