@@ -48,7 +48,6 @@ function distribute_seeded_corals(
             available_space, target_density, seed_volume, n_iv_locs
         )
     end
-
     seed_locs = seed_locs[1:n_iv_locs]
     available_space = available_space[1:n_iv_locs]
     loc_k_m² = loc_k_m²[seed_locs]
@@ -152,6 +151,11 @@ function vary_locations(
     target_area = n_corals_sum / target_density
     n_iv_locs = findfirst(x -> x > target_area, cum_avail)
 
+    if n_iv_locs!=1
+        new_density = n_corals_sum ./ cum_avail[n_iv_locs-1:n_iv_locs]
+        n_iv_locs = (n_iv_locs-1:n_iv_locs)[argmin(abs.(new_density.-target_density))]
+    end
+
     if isnothing(n_iv_locs)
         new_density = n_corals_sum / cum_avail[end]
         n_iv_locs = length(ordered_avail_areas)
@@ -162,6 +166,9 @@ function vary_locations(
         end
         return new_density, n_corals, n_iv_locs
     end
+
+    target_density = n_corals_sum ./ cum_avail[n_iv_locs]
+
     return target_density, n_corals, n_iv_locs
 end
 
