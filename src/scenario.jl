@@ -961,7 +961,7 @@ function run_model(
 
             # If there are locations with space to select from, then deploy what we can
             # Otherwise, do nothing.
-            if length(locs_with_space) > 0
+            if length(locs_with_space) > 0 && (tstep <= seed_start_year+seed_years)
                 ordered_seed_locs = ordered_seed_locs[locs_with_space]
 
                 # Calculate proportion to seed based on current available space
