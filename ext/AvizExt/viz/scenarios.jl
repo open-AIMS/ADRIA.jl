@@ -223,6 +223,80 @@ function ADRIA.viz.scenarios_legend!(
     )
 end
 
+# TODO Add support for YAXArrays (`Makie.lines!` expects an Array). For now this works.
+"""
+    scenario_stratified(data::AbstractArray{Float64, 4})
+
+Plot a single scenario, averaged across all locations, stratified by size class and
+functional group.
+
+# Arguments
+- `data` : Either a 4D array comprising (timesteps, size_classes, functional_groups and
+locations) or a 3D array comprising (timesteps, size_groups, locations).
+- `axis_opts` : Opts to be passed to Makie.Axis.
+
+# Example
+```
+# Run a single scenario directly using `run_model` directly
+m_rs = ADRIA.run_model(dom, samples[1, :])
+
+n_timesteps, n_size_groups, n_locs = size(m_rs.raw)
+n_groups = dom.coral_growth.n_groups
+n_sizes = dom.coral_growth.n_sizes
+
+# Plot scenario cover stratified by size class and functional group
+ADRIA.viz.scenario_stratified(reshape(m_rs.raw, n_timesteps, n_sizes, n_groups, n_locations))
+
+# Plot scenario bleaching mortality stratified by size class and functional group
+ADRIA.viz.scenario_stratified(
+    permutedims(m_rs.bleaching_mortality, (1,3,2,4));
+    axis_opts=Dict{Symbol,Any}(:limits=(nothing, (0.0, 1.0)))
+)
+
+# Plot scenario cover
+```
+"""
+function ADRIA.viz.scenario_stratified(
+    data::Array{Float64,4};
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    n_timesteps, n_sizes, n_groups, n_locations = size(data)
+    f = Figure(; size=(1000, 1200), fig_opts...)
+    xdata = 1:n_timesteps
+
+    # TODO plot confints
+    mean_data = dropdims(mean(data; dims=4); dims=4)
+
+    limits = pop!(
+        axis_opts,
+        :limits,
+        (nothing, (nothing, ceil(maximum(mean_data); digits=2)))
+    )
+    ylabel = pop!(axis_opts, :ylabel, "")
+
+    # This isn't technically an axis parameter because this title is going to be applied on
+    # as a Label to the whole figure, but left it like this for simplicity
+    title = pop!(axis_opts, :title, "")
+
+    for fg in 1:n_groups
+        for sc in 1:n_sizes
+            ax = Axis(
+                f[sc, fg];
+                title="Functional group = $fg\nSize class = $sc",
+                ylabel=ylabel,
+                xlabel="Year",
+                limits=limits,
+                axis_opts...
+            )
+            ydata = mean_data[:, sc, fg]
+            lines!(ax, xdata, ydata)
+        end
+    end
+    Label(f[0, :], title; fontsize=24)
+    return f
+end
+
 function _confints(
     outcomes::YAXArray,
     scen_groups::Dict{Symbol,BitVector},
