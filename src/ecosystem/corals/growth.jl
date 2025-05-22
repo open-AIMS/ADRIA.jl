@@ -218,11 +218,17 @@ Nothing
    Nature, 556(7702), 492-496.
    https://doi.org/10.1038/s41586-018-0041-2
 """
-function bleaching_mortality!(Y::AbstractArray{Float64,2},
-    capped_dhw::AbstractArray{Float64,2}, depth_coeff::AbstractArray{Float64},
-    tstep::Int64, depth::Vector{Float64}, s::Vector{Float64},
-    dhw::AbstractArray{Float64}, a_adapt::Vector{Float64}, n_adapt::Real)::Nothing
-
+function bleaching_mortality!(
+    Y::AbstractArray{Float64,2},
+    capped_dhw::AbstractArray{Float64,2},
+    depth_coeff::AbstractArray{Float64},
+    tstep::Int64,
+    depth::Vector{Float64},
+    s::Vector{Float64},
+    dhw::AbstractArray{Float64},
+    a_adapt::Vector{Float64},
+    n_adapt::Real
+)::Nothing
     # Initial mortality
     # Bozec et al., (2022) derive their model from Hughes et al., (2018, Fig 2C).
     # They digitized data from the figure and fit a linear model to obtain
