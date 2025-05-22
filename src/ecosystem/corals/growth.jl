@@ -341,7 +341,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
     # we assume the high background mortality of juveniles includes DHW mortality
     for loc in 1:n_locs
         # Skip locations that have no heat stress
-        if dhw[loc] == 0.0
+        if dhw[loc] <= 4.0
             continue
         end
 
@@ -404,7 +404,7 @@ function bleaching_mortality!(
     # we assume the high background mortality of juveniles includes DHW mortality
     for loc in 1:n_locs
         # Skip locations that have no heat stress
-        if dhw[loc] == 0.0
+        if dhw[loc] <= 4.0
             continue
         end
 
