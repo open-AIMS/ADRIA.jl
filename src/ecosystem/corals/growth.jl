@@ -398,7 +398,7 @@ function bleaching_mortality!(
 )::Nothing
     n_groups, n_sizes, n_locs = size(cover)
 
-    non_juveniles = 3:n_sizes
+    non_juveniles = 1:n_sizes
 
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
