@@ -144,9 +144,8 @@ end
     @testset "Seeding Strategies" begin
         @testset "Vary Locations" begin
             target_density = 5.0
-            available_space = [
-                10.0, 20.0, 30.0, 40.0, 50.0
-            ]
+            available_space = fill(10.0, 5)
+            cumulative_space = cumsum(available_space)
             # deploy [49, 98, 147, 196, ...] corals
             base_deployment = 49
             test_in_corals = [
@@ -154,7 +153,7 @@ end
             ]
             # The expected deployment density should be [49, 98, 147, ...] ./ [50, 100, ...]
             expected_density = [
-                base_deployment * i / sp for (i, sp) in enumerate(available_space)
+                base_deployment * i / sp for (i, sp) in enumerate(cumulative_space)
             ]
 
             for (exp, inp) in zip(expected_density, test_in_corals)
@@ -162,19 +161,18 @@ end
                     available_space, target_density, inp, 5
                 )
                 @test all(n_corals .== inp)
-                @test all([new_density, n_iv_locs] .== [target_density, n_iv_locs])
+                @test all([new_density, n_iv_locs] .≈ [exp, n_iv_locs])
             end
             # similar test case as previous but with different density
             target_density = 10.0
-            available_space = [
-                30.0, 60.0, 90.0, 120.0
-            ]
+            available_space = fill(30.0, 4)
+            cumulative_space = cumsum(available_space)
             base_deployment = 299
             test_in_corals = [
                 fill(base_deployment / 3, 3) .* i for i in 1:length(available_space)
             ]
             expected_density = [
-                base_deployment * i / sp for (i, sp) in enumerate(available_space)
+                base_deployment * i / sp for (i, sp) in enumerate(cumulative_space)
             ]
 
             for (exp, inp) in zip(expected_density, test_in_corals)
@@ -182,7 +180,7 @@ end
                     available_space, target_density, inp, 5
                 )
                 @test all(n_corals .== inp)
-                @test all([new_density, n_iv_locs] .== [target_density, n_iv_locs])
+                @test all([new_density, n_iv_locs] .== [exp, n_iv_locs])
             end
 
             target_density = 1.0

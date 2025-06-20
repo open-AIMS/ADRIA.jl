@@ -151,11 +151,6 @@ function vary_locations(
     target_area = n_corals_sum / target_density
     n_iv_locs = findfirst(x -> x > target_area, cum_avail)
 
-    if n_iv_locs!=1
-        new_density = n_corals_sum ./ cum_avail[n_iv_locs-1:n_iv_locs]
-        n_iv_locs = (n_iv_locs-1:n_iv_locs)[argmin(abs.(new_density.-target_density))]
-    end
-
     if isnothing(n_iv_locs)
         new_density = n_corals_sum / cum_avail[end]
         n_iv_locs = length(ordered_avail_areas)
@@ -165,6 +160,11 @@ function vary_locations(
             @warn "Density has been updated to accommodate coral volume to $(new_density) corals/m2."
         end
         return new_density, n_corals, n_iv_locs
+    end
+
+    if n_iv_locs!=1
+        new_density = n_corals_sum ./ cum_avail[n_iv_locs-1:n_iv_locs]
+        n_iv_locs = (n_iv_locs-1:n_iv_locs)[argmin(abs.(new_density.-target_density))]
     end
 
     target_density = n_corals_sum ./ cum_avail[n_iv_locs]
