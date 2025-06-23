@@ -178,6 +178,34 @@ end
         end
     end
 
+    @testset "Fixed Categorical Variable Sampling" begin
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        num_samples = 32
+
+        seed_in = ["VARY_LOCATIONS", "VARY_N_SEEDED", "VARY_SEED_DENSITY", "CAP_DENSITY"]
+        seed_out = [1, 2, 3, 4]
+
+        dmca_in = ["Cocoso", "Mairca", "Piv", "unguided"]
+        dmca_out = [1, 2, 4, 0]
+
+        for (s_in, s_out, d_in, d_out) in zip(seed_in, seed_out, dmca_in, dmca_out)
+            ADRIA.fix_factor!(dom, :seeding_strategy, s_in)
+            ADRIA.fix_factor!(dom, :guided, d_in)
+            scens = ADRIA.sample(dom, num_samples)
+
+            @test all(scens.seeding_strategy .== s_out)
+            @test all(scens.guided .== d_out)
+        end
+
+        for (s_in, s_out, d_in, d_out) in zip(seed_in, seed_out, dmca_in, dmca_out)
+            ADRIA.fix_factor!(dom, seeding_strategy=s_in, guided=d_in)
+            scens = ADRIA.sample(dom, num_samples)
+
+            @test all(scens.seeding_strategy .== s_out)
+            @test all(scens.guided .== d_out)
+        end
+    end
+
     @testset "Site selection sampling" begin
         dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         num_samples = 32

@@ -12,6 +12,38 @@ const DISCRETE_FACTOR_TYPES = [
     "ordered categorical", "unordered categorical", "ordered discrete"
 ]
 
+const CATEGORICAL_PARAMETERS = [
+    :guided, :seeding_strategy
+]
+
+const CATEGORICAL_ENCODING_MAPS = Dict(
+    :guided => decision.decision_method_encoding,
+    :seeding_strategy => decision.seeding_strategy_encoding
+)
+
+"""
+    update_categorical_distributions!(dom, new_dist_params::Tuple)::Domain
+
+Update the model spec with the tuple of values for categorical distributions.
+"""
+function _update_categorical_distributions!(
+    dom, param::Symbol, new_dist_params::Tuple
+)::Domain
+    new_method_names::Vector{String} = collect(new_dist_params)
+    new_method_idxs = CATEGORICAL_ENCODING_MAPS[param].(new_method_names)
+
+    ms = model_spec(dom)
+    param_row = findfirst(ms.fieldname .== param)
+    @assert !isnothing(param_row) "{param} variable not found in model spec."
+
+    ms[param_row, :dist_params] = Tuple(new_method_idxs)
+    ms[param_row, :val] = first(new_method_idxs)
+    ms[param_row, :is_constant] = length(new_method_idxs) == 1
+    update!(dom, ms)
+
+    return dom
+end
+
 """
     adjust_samples(d::Domain, df::DataFrame)::DataFrame
     adjust_samples!(spec::DataFrame, df::DataFrame)::DataFrame
@@ -349,6 +381,7 @@ end
     fix_factor!(d::Domain, factor::Symbol)::Nothing
     fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     fix_factor!(d::Domain, factors::Vector{Symbol})::Nothing
+    fix_factor!(f::Domain, factor::Symbor, val::String)::Nothing
     fix_factor!(d::Domain; factors...)::Nothing
 
 Fix a factor so it gets ignored for the purpose of constructing samples.
@@ -409,9 +442,32 @@ function fix_factor!(d::Domain, factors::Vector{Symbol})::Nothing
     update!(d, params)
     return nothing
 end
+function fix_factor!(d::Domain, factor::Symbol, category::String)::Nothing
+    if factor ∉ CATEGORICAL_PARAMETERS
+        msg = "$(factor) is not a categorical parameter."
+        msg += " Possible categorical parameterts are: $(CATEGORICAL_PARAMETERS)"
+        throw(ArgumentError(msg))
+    end
+
+    _update_categorical_distributions!(d, factor, (category,))
+    return nothing
+end
 function fix_factor!(d::Domain; factors...)::Nothing
     factor_names = keys(factors)
+    factor_symbols = Symbol.(factor_names)
     factor_vals = collect(values(factors))
+
+    # Process categorical params seperately
+    if any(CATEGORICAL_PARAMETERS .∈ [factor_symbols])
+        factor_idxs::Vector{Int64} = findall(factor_symbols .∈ [CATEGORICAL_PARAMETERS])
+        val_to_tuple = x -> (x, )
+        d = _update_categorical_distributions!.(
+            Ref(d), factor_symbols[factor_idxs], val_to_tuple.(factor_vals[factor_idxs])
+        )[end]
+        factor_symbols = factor_symbols[.!(1:end .∈ [factor_idxs])]
+        factor_names = String.(factor_symbols)
+        factor_vals = factor_vals[.!(1:end .∈ [factor_idxs])]
+    end
 
     params = DataFrame(d.model)
 
@@ -488,33 +544,6 @@ function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
 end
 
 """
-    update_categorical_distributions!(dom, new_dist_params::Tuple)::Domain
-
-Update the model spec with the tuple of values for categorical distributions.
-"""
-function _update_categorical_distributions!(
-    dom, param::Symbol, new_dist_params::Tuple
-)::Domain
-    new_method_names::Vector{String} = collect(new_dist_params)
-    encoding_maps = Dict(
-        :guided => decision.decision_method_encoding,
-        :seeding_strategy => decision.seeding_strategy_encoding
-    )
-    new_method_idxs = encoding_maps[param].(new_method_names)
-    
-    ms = model_spec(dom)
-    param_row = findfirst(ms.fieldname .== param)
-    @assert !isnothing(param_row) "{param} variable not found in model spec."
-
-    ms[param_row, :dist_params] = Tuple(new_method_idxs)
-    ms[param_row, :val] = first(new_method_idxs)
-    ms[param_row, :is_constant] = length(new_method_idxs) == 1
-    update!(dom, ms)
-
-    return dom
-end
-
-"""
     set_factor_bounds!(dom::Domain, factor::Symbol, new_bounds::Tuple)::Nothing
     set_factor_bounds!(dom::Domain; factors...)::Nothing
 
@@ -574,8 +603,8 @@ function set_factor_bounds!(dom::Domain; factors...)::Domain
     new_params = collect(values(factors))
 
     # Handle categorical guided factor separately
-    if :guided in factor_symbols
-        factor_idxs::Int64 = findall(factor_symbols .∈ [:guided, :seeding_strategy])
+    if any(CATEGORICAL_PARAMETERS .∈ [factor_symbols])
+        factor_idxs::Vector{Int64} = findall(factor_symbols .∈ CATEGORICAL_PARAMETERS)
         dom = _update_categorical_distributions!.(
             dom, factor_symbols[factor_idxs], new_params[factor_idxs]
         )[end]
