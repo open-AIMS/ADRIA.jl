@@ -52,10 +52,10 @@ function distribute_seeded_corals(
         )
     end
 
-    if any(maximum_density .< target_density)
+    if any(maximum_density[no_dep_mask] .< target_density)
         new_density = minimum(maximum_density)
         msg = "Attempting to deploy target at a density not theoretically possible."
-        msg += "Density: $(target_density). Limiting to $(new_density)."
+        msg *= " Density: $(target_density). Limiting to $(new_density)."
         @warn msg
         seed_volume *= new_density / target_density
         target_density = new_density
