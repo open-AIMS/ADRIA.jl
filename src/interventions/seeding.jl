@@ -30,7 +30,7 @@ function distribute_seeded_corals(
 )
     available_space = available_space[seed_locs]
     n_iv_locs = length(seed_locs)
-    no_dep_mask = findall(seed_volume .== 0.0)
+    no_dep_mask = findall(seed_volume .!= 0.0)
     maximum_density = seed_volume[no_dep_mask] ./ max_seeded_area[no_dep_mask]
 
     if strategy == :VARY_LOCATIONS
