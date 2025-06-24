@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.5"
+julia_version = "1.11.0"
 manifest_format = "2.0"
 project_hash = "25a81ebdf7a3cf4b6c13de44a149410b1910b067"
 
@@ -473,7 +473,7 @@ version = "0.6.4"
 
 [[deps.CoralBlox]]
 deps = ["DataStructures", "YAXArrays"]
-path = "../CoralBlox.jl"
+git-tree-sha1 = "56e7b5690bd96059f50180885f898f3f8e45f690"
 uuid = "f00a6e10-004a-11ef-3676-67ec635bc1a2"
 version = "1.1.0"
 
@@ -1810,7 +1810,7 @@ version = "2.5.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.5+0"
+version = "0.8.1+2"
 
 [[deps.OpenML]]
 deps = ["ARFFFiles", "HTTP", "JSON", "Markdown", "Pkg", "Scratch"]

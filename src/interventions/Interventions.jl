@@ -10,10 +10,10 @@ Base.@kwdef struct Intervention <: EcoModel
         description="Choice of MCDA approach."
     )
     seeding_strategy::Param = Factor(
-        0;
+        decision.seeding_strategy_encoding("CAP_DENSITY");
         ptype="unordered categorical",
         dist=CategoricalDistribution,
-        dist_params=(Tuple(1:length(decision.seeding_strategies()))),
+        dist_params=(decision.seeding_strategy_encoding("CAP_DENSITY"),),
         name="Seeding Strategy",
         description="Seeding strategy to deploy corals."
     )

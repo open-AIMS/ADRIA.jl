@@ -2,7 +2,7 @@ using Printf
 using DataFrames, Distributions, LinearAlgebra
 
 using ADRIA
-using ADRIA: model_spec, component_params
+using ADRIA: model_spec, component_params, factor_lower_bounds, factor_upper_bounds
 using ADRIA.decision: mcda_normalize
 import Distributions: sample
 import QuasiMonteCarlo as QMC
@@ -521,7 +521,9 @@ upper bound corresponds to the upper bound saved at the Domain's model_spec minu
 Minimum and maximum bounds associated with the parameter distribution.
 """
 function get_bounds(dom::Domain, factor::Symbol)::NTuple{2,Float64}
-    return get_attr(dom, factor, :dist_params)[1:2]
+    ms = model_spec(dom)
+    param_row = ms[findfirst(ms.fieldname .== factor), :]
+    return (factor_lower_bounds(param_row), factor_upper_bounds(param_row))
 end
 function get_bounds(param::Param)::NTuple{2,Float64}
     return param.dist_params[1:2]
