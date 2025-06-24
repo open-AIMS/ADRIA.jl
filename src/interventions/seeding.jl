@@ -31,7 +31,8 @@ function distribute_seeded_corals(
     available_space = available_space[seed_locs]
     n_iv_locs = length(seed_locs)
     no_dep_mask = findall(seed_volume .!= 0.0)
-    maximum_density = seed_volume[no_dep_mask] ./ max_seeded_area[no_dep_mask]
+    maximum_density::Vector{Float64} = ones(size(seed_volume))
+    maximum_density[no_dep_mask] = seed_volume[no_dep_mask] ./ max_seeded_area[no_dep_mask]
 
     if strategy == :VARY_LOCATIONS
         target_density, seed_volume, n_iv_locs = vary_locations(
@@ -50,6 +51,7 @@ function distribute_seeded_corals(
             available_space, target_density, seed_volume, n_iv_locs
         )
     end
+
     if any(maximum_density .< target_density)
         new_density = minimum(maximum_density)
         msg = "Attempting to deploy target at a density not theoretically possible."
@@ -63,9 +65,13 @@ function distribute_seeded_corals(
     available_space = available_space[1:n_iv_locs]
     loc_k_m² = loc_k_m²[seed_locs]
 
-    total_max_seeded_area::Float64 = sum(max_seeded_area)
-    total_available_space::Float64 = sum(available_space)
+    # seeded area refers to the real area covered by a seeded coral
+    # seeded area = n_corals / density (/m^2)
+    seeded_area = seed_volume ./ maximum_density
+    # total area cover by seeded corals
+    total_seeded_area = sum(seeded_area)
     total_seeded_corals = sum(seed_volume)
+    total_available_space::Float64 = sum(available_space)
 
     # Proportion of available space on each site relative to available space at these
     # locations
@@ -83,17 +89,14 @@ function distribute_seeded_corals(
     # proportions:
     #     proportion * (area of 1 coral * num seeded corals)
     # Convert to relative cover proportion by dividing by location area
-    scaled_seed = ((prop_area_avail .* max_seeded_area.data') ./ loc_k_m²)'
+    scaled_seed = ((prop_area_avail .* seeded_area') ./ loc_k_m²)'
     proportional_increase = DataCube(
         scaled_seed;
         taxa=caxes(max_seeded_area)[1].val.data,
         locations=1:length(available_space)
     )
 
-    n_deployed_coral =
-        prop_area_avail .* seed_volume' .* max(
-            total_available_space / total_max_seeded_area, 1.0
-        )
+    n_deployed_coral = prop_area_avail .* seed_volume'
 
     # This assumes each taxa is deployed with the same density, variable density over taxa to be added
     n_taxa_seed = size(n_deployed_coral, 2)
