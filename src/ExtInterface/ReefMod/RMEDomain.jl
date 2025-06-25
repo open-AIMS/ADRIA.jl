@@ -109,6 +109,10 @@ Load a ReefMod Engine dataset.
 - `fn_path` : path to ReefMod Engine dataset
 - `RCP` : Representative Concentration Pathway scenario ID
 - `timeframe` : Timeframe for simulations to be run. Defaults to (2022, 2100)
+- `force_single_reef` : If true use a single reef dataset with user defined total and
+habitable areas.
+- `single_reef_total_area` : Reef total area in m² to be used when `force_single_reef` is `true`.
+- `single_reef_k` : Reef k ∈ [0.0, 1.0] ro be used when `force_single_reef` is `true`.
 
 # Returns
 RMEDomain
@@ -117,17 +121,29 @@ function load_domain(
     ::Type{RMEDomain},
     fn_path::String,
     RCP::String;
-    timeframe::Tuple{Int64,Int64}=(2022, 2100)
+    timeframe::Tuple{Int64,Int64}=(2022, 2100),
+    force_single_reef::Bool=false,
+    force_single_reef_id::String="",
+    single_reef_total_area::Float64=1_000_000.0,
+    single_reef_k::Float64=0.5
 )::RMEDomain
     isdir(fn_path) ? true : error("Path does not exist or is not a directory.")
 
     data_files = joinpath(fn_path, "data_files")
-    dhw_scens::YAXArray{Float64} = load_DHW(RMEDomain, data_files, RCP, timeframe)
-    loc_ids::Vector{String} = collect(dhw_scens.locs)
 
     # Load the geopackage file
     gpkg_path = joinpath(data_files, "region", "reefmod_gbr.gpkg")
     spatial_data = GDF.read(gpkg_path)
+
+    # Adjust spatial data if `force_single_reef == true`
+    single_reef_idx = findall(spatial_data.UNIQUE_ID .== force_single_reef_id)
+    isempty(single_reef_idx) && push!(single_reef_idx, 1)
+    force_single_reef && (spatial_data = spatial_data[[1], :])
+
+    # Load DHW scens
+    dhw_scens::YAXArray{Float64} = load_DHW(RMEDomain, data_files, RCP, timeframe)
+    force_single_reef && (dhw_scens = dhw_scens[:, [1], :])
+    loc_ids::Vector{String} = collect(dhw_scens.locs)
 
     # Standardize IDs to use for site/reef and cluster
     _standardize_cluster_ids!(spatial_data)
@@ -155,6 +171,8 @@ function load_domain(
         header=false,
         comment="#"
     )
+    force_single_reef &&
+        (id_list = id_list[spatial_data.RME_GBRMPA_ID .== id_list[:, 1], :])
 
     _manual_id_corrections!(spatial_data, id_list)
 
@@ -165,21 +183,33 @@ function load_domain(
         @assert isempty(findall(spatial_data.RME_GBRMPA_ID .!= id_list[:, 1]))
     end
 
-    # Convert area in km² to m²
-    spatial_data[:, :area] .= id_list[:, 2] .* 1e6
+    # spatial_data[:, :area] in m²
+    spatial_data[:, :area] .= if force_single_reef
+        [single_reef_total_area]
+    else
+        # Convert area in km² to m²
+        id_list[:, 2] .* 1e6
+    end
 
     # Calculate `k` area (1.0 - "ungrazable" area)
-    spatial_data[:, :k] .= 1.0 .- id_list[:, 3]
+    spatial_data[:, :k] .= if force_single_reef
+        [single_reef_k]
+    else
+        1.0 .- id_list[:, 3]
+    end
 
     dist_matrix = distance_matrix(spatial_data)
     spatial_data.mean_to_neighbor .= nearest_neighbor_distances(dist_matrix, 10)
 
     # Need to load initial coral cover after we know `k` area.
     init_coral_cover::YAXArray{Float64} = load_initial_cover(
-        RMEDomain, data_files, loc_ids, spatial_data
+        RMEDomain, data_files, loc_ids, spatial_data; force_single_reef=force_single_reef
     )
 
-    conn_data::YAXArray{Float64} = load_connectivity_csv(RMEDomain, data_files, loc_ids)
+    conn_data::YAXArray{Float64} = load_connectivity_csv(
+        RMEDomain, data_files, loc_ids;
+        force_single_reef=force_single_reef, force_single_reef_idx=single_reef_idx
+    )
 
     # Set all site depths to 7m below sea level
     # (ReefMod does not account for depth)
@@ -194,7 +224,7 @@ function load_domain(
     gbr_zone_types[missing_rows, "GBRMPA Zone Types"] .= ""
     zones = gbr_zone_types[:, "GBRMPA Zone Types"]
     zones = replace.(zones, "Zone" => "", " " => "")
-    spatial_data[:, :zone_type] .= zones
+    spatial_data[:, :zone_type] .= force_single_reef ? zones[single_reef_idx] : zones
 
     # This loads cyclone categories, not mortalities, so ignoring for now.
     # cyc_scens = load_cyclones(RMEDomain, data_files, loc_ids, timeframe)
@@ -430,7 +460,8 @@ of the connectivity files refer to `load_connectivity`.
 YAXArray with dimensions (Source ⋅ Sink) and size (`n_locations` ⋅ `n_locations`).
 """
 function load_connectivity_csv(
-    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}
+    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String};
+    force_single_reef::Bool=false, force_single_reef_idx::Vector{Int64}=[1]
 )::YAXArray
     conn_path = _data_folder_path(data_path, "con")
     conn_files = _get_relevant_files(conn_path, "CONNECT_ACRO")
@@ -438,10 +469,15 @@ function load_connectivity_csv(
         ArgumentError("No CONNECT_ACRO data files found in: $(conn_path)")
     end
 
+    # Ensure compatibility when `force_single_reef == true`
+    locs_selector =
+        force_single_reef ? (force_single_reef_idx, force_single_reef_idx) : (:, :)
+
     n_locs = length(loc_ids)
     tmp_mat = zeros(n_locs, n_locs, length(conn_files))
     for (i, fpath) in enumerate(conn_files)
-        tmp_mat[:, :, i] .= Matrix(CSV.read(fpath, DataFrame; header=false))
+        # TODO Allow some kind of customization when `force_single_reef == true`
+        tmp_mat[:, :, i] .= Matrix(CSV.read(fpath, DataFrame; header=false))[locs_selector...]
     end
 
     # Mean over all years
@@ -508,12 +544,14 @@ end
 - `RMEDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
+- `force_single_reef` : Boolean
 
 # Returns
 YAXArray[locs, species]
 """
 function load_initial_cover(
-    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame
+    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame;
+    force_single_reef::Bool=false
 )::YAXArray
     icc_path = _data_folder_path(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
@@ -528,10 +566,19 @@ function load_initial_cover(
 
     # Shape is locations, scenarios, species
     icc_data = zeros(length(loc_ids), 20, length(icc_files))
+
     for (i, fn) in enumerate(icc_files)
+        # This ensures that this works when `force_single_reef = true`
+        icc_loc_ids = dropdims(
+            Matrix(
+                CSV.read(fn, DataFrame; select=[1], header=false, comment="#")
+            ); dims=2)
+
         icc_data[:, :, i] = Matrix(
             CSV.read(fn, DataFrame; drop=[1], header=false, comment="#")
-        )
+        )[
+            icc_loc_ids .== loc_ids, :
+        ]
     end
 
     # Use ReefMod distribution for coral size class population (shape parameters have units log(cm^2))
