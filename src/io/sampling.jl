@@ -92,7 +92,7 @@ Notes:
 Scenario specification
 """
 function sample(
-    dom::Domain, n::Int, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
+    dom::Domain, n::Int; sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
     return sample(model_spec(dom), n, sample_method)
@@ -243,7 +243,7 @@ function sample_cf(
         [-1 -1 -1 (-1.0, -1.0) true]
 
     # Remove intervention scenarios as an option
-    _deactivate_interventions(spec_df)
+    deactivate_interventions(spec_df)
 
     return sample(spec_df, n, sample_method)
 end
@@ -319,17 +319,19 @@ function sample_unguided(
 end
 
 """
-    _deactivate_interventions(to_update::DataFrame)::Nothing
+    deactivate_interventions(to_update::DataFrame)::Nothing
+    deactivate_interventions!(dom::Domain)::Nothing
 
-Deactivate all intervention factors (excluding `guided`) by settings these to 0.0
+Deactivate all intervention factors (excluding `guided`) by settings these to 0.0.
 
 # Arguments
 - `to_update` : model specification to modify/update
+- `dom` : Domain
 
 # Returns
-Scenario specification
+Nothing
 """
-function _deactivate_interventions(to_update::DataFrame)::Nothing
+function deactivate_interventions(to_update::DataFrame)::Nothing
     intervs = component_params(to_update, Intervention)
     cols = Symbol[fn for fn in intervs.fieldname if fn != :guided]
     for c in cols
@@ -342,6 +344,12 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
             [dval 0.0 0.0 _dparams true]
     end
 
+    return nothing
+end
+function deactivate_interventions!(dom::Domain)::Nothing
+    iv_factors = component_params(model_spec(dom), Intervention).fieldname
+    n_iv_factors = length(iv_factors)
+    ADRIA.fix_factor!(dom; NamedTuple{Tuple(iv_factors)}(zeros(Float64, n_iv_factors))...)
     return nothing
 end
 
