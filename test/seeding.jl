@@ -270,4 +270,55 @@ end
             end
         end
     end
+
+    @testset "Distribute Seeded Corals" begin
+        @testset "Cap Density" begin
+            n_dep_locs = 20.0
+            ADRIA.fix_factor!(ADRIA_DOM_45, seeding_strategy="CAP_DENSITY")
+            ADRIA.fix_factor!(ADRIA_DOM_45, min_iv_locations=n_dep_locs)
+            ADRIA.fix_factor!(ADRIA_DOM_45, seeding_density=6.0)
+            ADRIA.fix_factor!(ADRIA_DOM_45, N_seed_TA=300000)
+            ADRIA.fix_factor!(ADRIA_DOM_45, N_seed_CA=400000)
+            ADRIA.fix_factor!(ADRIA_DOM_45, N_seed_SM=500000)
+
+            n_scens = 4
+            scens = ADRIA.sample_guided(ADRIA_DOM_45, n_scens)
+            rs = ADRIA.run_scenarios(ADRIA_DOM_45, scens, "45")
+
+            for scen_idx in 1:n_scens
+                n_corals = dropdims(
+                    sum(rs.seed_log[scenarios=scen_idx], dims=:locations), dims=:locations
+                )
+                total_corals = dropdims(sum(
+                    rs.seed_log[scenarios=scen_idx], dims=:coral_id
+                ), dims=:coral_id)
+                # Calculate the number of locations with seeding
+                n_locations = dropdims(sum(
+                    total_corals .> 0, dims=:locations
+                ), dims=:locations)
+                total_corals = dropdims(sum(total_corals, dims=:locations), dims=:locations)
+                # Calculate the total number of corals deployed per species
+                n_corals = n_corals.data[total_corals .!= 0.0, :]
+                total_corals = total_corals.data[total_corals .!= 0.0]
+
+                @test all((n_locations .== 0.0) .|| (n_locations .== n_dep_locs))
+                @test all(n_corals[:, 1] .≈ 300000)
+                @test all(n_corals[:, 2] .≈ 400000)
+                @test all(n_corals[:, 3] .≈ 500000)
+
+            end
+        end
+
+        @testset "Vary Locations" begin
+
+        end
+
+        @testset "Vary N Seeded" begin
+
+        end
+
+        @testset "Vary Seed Density" begin
+
+        end
+    end
 end
