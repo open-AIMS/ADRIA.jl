@@ -33,73 +33,12 @@ function colony_mean_area(colony_diam_means::Array{T})::Array{T} where {T<:Float
 end
 
 """
-    linear_extensions()
-
-Linear extensions. The values are converted from `cm` to the desired unit.
-The default unit is `m`.
-"""
-function linear_extensions(; unit=:m)::Matrix{Float64}
-    return [
-        0.609456 1.07184 2.55149 5.07988 9.45091 16.8505 0.0;
-        0.768556 1.22085 1.86447 2.82297 3.52938 3.00422 0.0;
-        0.190455 0.343747 0.615467 0.97477 1.70079 2.91729 0.0;
-        0.318034 0.47385 0.683729 0.710587 0.581085 0.581085 0.0;
-        0.122478 0.217702 0.382098 0.718781 1.24172 2.08546 0.0
-    ] .* linear_scale(:cm, unit)
-end
-
-"""
-    bin_edges()
-
-Helper function defining coral colony diameter bin edges. The values are converted from `cm`
-to the desired unit. The default unit is `m`.
-"""
-function bin_edges(; unit=:m)
-    return Matrix(
-        [
-            2.5 7.5 12.5 25.0 50.0 80.0 120.0 160.0;
-            2.5 7.5 12.5 20.0 30.0 60.0 100.0 150.0;
-            2.5 7.5 12.5 20.0 30.0 40.0 50.0 60.0;
-            2.5 5.0 7.5 10.0 20.0 40.0 50.0 100.0;
-            2.5 5.0 7.5 10.0 20.0 40.0 50.0 100.0
-        ]
-    ) .* linear_scale(:cm, unit)
-end
-# function bin_edges()
-#     return Matrix([
-#         0.0 1.0 2.0 6.0 15.0 36.0 89.0 90.0;
-#         0.0 1.0 2.0 4.0  9.0 18.0 38.0 39.0;
-#         0.0 1.0 2.0 4.0  7.0 14.0 27.0 28.0;
-#         0.0 1.0 2.0 5.0  8.0 12.0 26.0 27.0;
-#         0.0 1.0 2.0 4.0  9.0 19.0 40.0 41.0
-#     ])
-# end
-
-"""
     bin_widths()
 
 Helper function defining coral colony diameter bin widths.
 """
 function bin_widths()
     return bin_edges()[:, 2:end] .- bin_edges()[:, 1:(end - 1)]
-end
-
-"""
-    planar_area_params()
-
-Colony planar area parameters (see Fig 2B in Aston et al., [1])
-First column is `b`, second column is `a`
-log(S) = b + a * log(x)
-"""
-function planar_area_params()
-    return Array{Float64,2}([
-        # -8.97 3.14   # Abhorescent Acropora (using branching porites parameters as similar method of growing ever expanding colonies).
-        -8.95 2.80   # Tabular Acropora
-        -9.13 2.94   # Corymbose Acropora
-        -8.90 2.94   # Corymbose non-Acropora (using branching pocillopora values from fig2B)
-        -8.87 2.30   # Small massives
-        -8.87 2.30   # Large massives
-    ])
 end
 
 """
@@ -120,10 +59,10 @@ Generate colony area data based on Bozec et al., [1].
      https://doi.org/10.13140/RG.2.2.26976.20482
 """
 function colony_areas()
-    # The coral colony diameter bin edges (cm) are: 0, 2, 5, 10, 20, 40, 80
+    # Coral colony diameter bin edges (cm)
     edges = bin_edges(; unit=:cm)
 
-    # Diameters in cm
+    # Diameters (cm)
     mean_cm_diameters =
         edges[:, 1:(end - 1)] + (edges[:, 2:end] - edges[:, 1:(end - 1)]) / 2.0
 
@@ -245,52 +184,15 @@ function coral_spec()::NamedTuple
     fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
     params.fecundity = fec_m²'[:]
 
-    # Mortality
-    # Survival rates taken from (unpublished) ecoRRAP data.
-    # Background mortality is then the complement.
-    # survival_rate::Matrix{Float64} = [
-    #     0.859017851 0.858528906 0.857044217 0.856477498 0.856104353 0.855852241 0.855852241;    # Tabular Acropora
-    #     0.865006527 0.87915437 0.892044073 0.905304164 0.915373252 0.925707536 0.925707536;     # Corymbose Acropora
-    #     0.953069031 0.959152694 0.964460394 0.968306361 0.972598906 0.97621179 0.97621179;     # Corymbose non-Acropora
-    #     0.869976692 0.938029324 0.977889252 0.987199004 0.99207702 0.996931548 0.996931548;     # Small massives and encrusting
-    #     0.9782479 0.979496637 0.980850254 0.982178103 0.983568572 0.984667677 0.984667677       # Large massives
-    # ]
-    survival_rate::Matrix{Float64} = [
-        0.6 0.76 0.805 0.76 0.85 0.86 0.86;    # Tabular Acropora
-        0.6 0.76 0.77 0.875 0.83 0.90 0.90;    # Corymbose Acropora
-        0.52 0.77 0.77 0.875 0.89 0.97621179 0.97621179;                # Corymbose non-Acropora
-        0.72 0.87 0.77 0.98 0.996931548 0.996931548 0.996931548;        # Small massives and encrusting
-        0.58 0.87 0.78 0.983568572 0.984667677 0.984667677 0.984667677  # Large massives
-    ]
-    mb = 1.0 .- survival_rate
-    params.mb_rate = mb'[:]
+    # Mortality base rate
+    params.mb_rate = mortality_base_rate()'[:]
 
     # upper_bound::Matrix{Float64} = bin_edges()[:, 2:end]
     # params.bin_ub = reshape(upper_bound', n_groups_and_sizes)[:]
 
-    # Natural adaptation / heritability
-    # Values here informed by Bairos-Novak et al., (2022) and (unpublished) data from
-    # Hughes et al., (2018)
     # Mean and std for each species (row) and size class (cols)
-    params.dist_mean = repeat(
-        Float64[
-            # 3.345484656,  # arborescent Acropora
-            3.751612251,  # tabular Acropora
-            4.081622683,  # corymbose Acropora
-            4.487465256,  # Pocillopora + non-Acropora corymbose
-            6.165751937,  # Small massives and encrusting
-            7.153507902   # Large massives
-        ]; inner=n_sizes)
-
-    params.dist_std = repeat(
-        Float64[
-            # 2.590016677,  # arborescent Acropora
-            2.904433676,  # tabular Acropora
-            3.159922076,  # corymbose Acropora
-            3.474118416,  # Pocillopora + non-Acropora corymbose
-            4.773419097,  # Small massives and encrusting
-            5.538122776   # Large massives
-        ]; inner=n_sizes)
+    params.dist_mean = dist_mean(; n_sizes=n_sizes)
+    params.dist_std = dist_std(; n_sizes=n_sizes)
 
     # Get perturbable coral parameters
     # i.e., the parameter names not defined in the second list
@@ -302,7 +204,7 @@ end
 """
     _coral_struct(field_defs::Dict)::Nothing
 
-Helper function to dynamically create coral struct.
+Helper function to dynamically create Coral struct.
 
 https://stackoverflow.com/a/27084705/2694952
 https://stackoverflow.com/questions/27083816/is-it-possible-to-create-types-in-julia-at-runtime
@@ -358,7 +260,7 @@ coral = Coral()
 ```
 """
 function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
-    _, base_coral_params, p_vals = coral_spec()
+    _, base_coral_factors_names, coral_factors = coral_spec()
 
     struct_fields = OrderedDict{String,Param}()
     struct_fields["heritability"] = Factor(
@@ -370,16 +272,21 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
         description="Heritability of DHW tolerance."
     )
 
-    for c_id in p_vals.coral_id
-        for p in base_coral_params
-            f_name::String = c_id * "_" * p
-            f_val = p_vals[p_vals.coral_id .== c_id, p][1]
-            struct_fields[f_name] = Factor(
-                f_val;
+    coral_id_math::BitVector = falses(length(coral_factors.coral_id))
+
+    for coral_factor_id in coral_factors.coral_id
+        for base_coral_factor_name in base_coral_factors_names
+            factor_name::String = coral_factor_id * "_" * base_coral_factor_name
+
+            coral_id_math = coral_factors.coral_id .== coral_factor_id
+            factor_val = coral_factors[coral_id_math, base_coral_factor_name][1]
+
+            struct_fields[factor_name] = Factor(
+                factor_val;
                 ptype="continuous",
                 dist=TriangularDist,
-                dist_params=(f_val * bounds[1], f_val * bounds[2], f_val),
-                name=human_readable_name(f_name; title_case=true),
+                dist_params=(factor_val * bounds[1], factor_val * bounds[2], factor_val),
+                name=human_readable_name(factor_name; title_case=true),
                 description=""
             )
         end
