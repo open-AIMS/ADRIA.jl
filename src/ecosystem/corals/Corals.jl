@@ -260,7 +260,7 @@ coral = Coral()
 ```
 """
 function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
-    _, base_coral_factors_names, coral_factors = coral_spec()
+    _, base_coral_factor_names, coral_factors = coral_spec()
 
     struct_fields = OrderedDict{String,Param}()
     struct_fields["heritability"] = Factor(
@@ -275,7 +275,7 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
     coral_id_math::BitVector = falses(length(coral_factors.coral_id))
 
     for coral_factor_id in coral_factors.coral_id
-        for base_coral_factor_name in base_coral_factors_names
+        for base_coral_factor_name in base_coral_factor_names
             factor_name::String = coral_factor_id * "_" * base_coral_factor_name
 
             coral_id_math = coral_factors.coral_id .== coral_factor_id
