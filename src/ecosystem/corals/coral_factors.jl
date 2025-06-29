@@ -1,7 +1,7 @@
 # Base values for coral factors
 
 """
-    dist_std()
+    dist_std(; n_sizes=7)::Vector{Float64}
 
 Natural adaptation / heritability values here informed by Bairos-Novak et al., (2022) and
 (unpublished) data from Hughes et al., (2018).
@@ -19,7 +19,7 @@ function dist_std(; n_sizes=7)::Vector{Float64}
 end
 
 """
-    dist_mean(;version=:legacy)
+    dist_mean(; version=:calib, n_sizes=7)::Vector{Float64}
 
 If `version==:legacy` returns natural adaptation / heritability values informed by
 Bairos-Novak et al., (2022) and (unpublished) data from Hughes et al., (2018).
