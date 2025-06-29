@@ -123,12 +123,6 @@ between bleaching years come from [1].
    Cumulative impacts across Australia's Great Barrier Reef: A mechanistic evaluation.
    Ecological Monographs, 92(1), e01494.
    https://doi.org/10.1002/ecm.1494
-
-5. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021.
-   Coral adaptation to climate change: Meta-analysis reveals high heritability across
-     multiple traits.
-   Global Change Biology 27, 5694-5710.
-   https://doi.org/10.1111/gcb.15829
 """
 function coral_spec()::NamedTuple
     # Below parameters pertaining to species are new. We now add size classes
