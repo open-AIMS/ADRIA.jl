@@ -3,8 +3,22 @@
 """
     dist_std(; n_sizes=7)::Vector{Float64}
 
-Natural adaptation / heritability values here informed by Bairos-Novak et al., (2022) and
-(unpublished) data from Hughes et al., (2018).
+Natural adaptation / heritability values here informed by [1] and
+(unpublished) data from [2].
+
+# References
+1. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021.
+   Coral adaptation to climate change: Meta-analysis reveals high heritability across
+     multiple traits.
+   Global Change Biology 27, 5694-5710.
+   https://doi.org/10.1111/gcb.15829
+
+2. Hughes, T. P., Kerry, J. T., Baird, A. H., Connolly, S. R., Dietzel, A., Eakin, C. M.,
+     Heron, S. F., Hoey, A. S., Hoogenboom, M. O., Liu, G., McWilliam, M. J., Pears, R. J.,
+     Pratchett, M. S., Skirving, W. J., Stella, J. S., & Torda, G. (2018).
+   Global warming transforms coral reef assemblages.
+   Nature, 556(7702), 492-496.
+   https://doi.org/10.1038/s41586-018-0041-2
 """
 function dist_std(; n_sizes=7)::Vector{Float64}
     return repeat(
@@ -22,8 +36,22 @@ end
     dist_mean(; version=:calib, n_sizes=7)::Vector{Float64}
 
 If `version==:legacy` returns natural adaptation / heritability values informed by
-Bairos-Novak et al., (2022) and (unpublished) data from Hughes et al., (2018).
+[1] and (unpublished) data from [2].
 If `version==:calib` returns values resulting from the model calibration.
+
+# References
+1. Bairos-Novak, K.R., Hoogenboom, M.O., van Oppen, M.J.H., Connolly, S.R., 2021.
+   Coral adaptation to climate change: Meta-analysis reveals high heritability across
+     multiple traits.
+   Global Change Biology 27, 5694-5710.
+   https://doi.org/10.1111/gcb.15829
+
+2. Hughes, T. P., Kerry, J. T., Baird, A. H., Connolly, S. R., Dietzel, A., Eakin, C. M.,
+     Heron, S. F., Hoey, A. S., Hoogenboom, M. O., Liu, G., McWilliam, M. J., Pears, R. J.,
+     Pratchett, M. S., Skirving, W. J., Stella, J. S., & Torda, G. (2018).
+   Global warming transforms coral reef assemblages.
+   Nature, 556(7702), 492-496.
+   https://doi.org/10.1038/s41586-018-0041-2
 """
 function dist_mean(; version=:calib, n_sizes=7)::Vector{Float64}
     if version == :legacy
@@ -50,7 +78,7 @@ end
 
 """
     mortality_base_rate(; version=:calib)
-If `version==:legacy` returns values informed by (unpublished) EcoRRAP data.
+If `version==:legacy` returns values informed by EcoRRAP (unpublished) data.
 If `version==:calib` returns values resulting from the model calibration.
 """
 function mortality_base_rate(; version=:calib)
@@ -86,7 +114,7 @@ end
 
 Linear extensions. The values are converted from `cm` to the desired unit.
 The default unit is `m`.
-If `version==:legacy` returns values informed by (unpublished) EcoRRAP data.
+If `version==:legacy` returns values informed by EcoRRAP (unpublished) data.
 If `version==:calib` returns values resulting from the model calibration.
 """
 function linear_extensions(; unit=:m, version=:calib)::Matrix{Float64}
@@ -138,9 +166,15 @@ end
 """
     planar_area_params()
 
-Colony planar area parameters (see Fig 2B in Aston et al., [1])
+Colony planar area parameters (see Fig 2B in [1])
 First column is `b`, second column is `a`
 log(S) = b + a * log(x)
+
+# References
+1. Aston Eoghan A., Duce Stephanie, Hoey Andrew S., Ferrari Renata (2022).
+    A Protocol for Extracting Structural Metrics From 3D Reconstructions of Corals.
+    Frontiers in Marine Science, 9.
+    https://doi.org/10.3389/fmars.2022.854395
 """
 function planar_area_params()
     return Array{Float64,2}([
