@@ -460,7 +460,7 @@ function fix_factor!(d::Domain; factors...)::Nothing
     # Process categorical params seperately
     if any(CATEGORICAL_PARAMETERS .∈ [factor_symbols])
         factor_idxs::Vector{Int64} = findall(factor_symbols .∈ [CATEGORICAL_PARAMETERS])
-        val_to_tuple = x -> (x, )
+        val_to_tuple = x -> (x,)
         d = _update_categorical_distributions!.(
             Ref(d), factor_symbols[factor_idxs], val_to_tuple.(factor_vals[factor_idxs])
         )[end]

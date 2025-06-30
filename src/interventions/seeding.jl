@@ -101,7 +101,7 @@ function distribute_seeded_corals(
     # This assumes each taxa is deployed with the same density, variable density over taxa to be added
     n_taxa_seed = size(n_deployed_coral, 2)
 
-    return proportional_increase, n_deployed_coral, seed_locs, target_density/n_taxa_seed
+    return proportional_increase, n_deployed_coral, seed_locs, target_density / n_taxa_seed
 end
 
 """Find the number of corals required to satisfy the target density and available space."""
@@ -180,9 +180,9 @@ function vary_locations(
         return new_density, n_corals, n_iv_locs
     end
 
-    if n_iv_locs!=1
-        new_density = n_corals_sum ./ cum_avail[n_iv_locs-1:n_iv_locs]
-        n_iv_locs = (n_iv_locs-1:n_iv_locs)[argmin(abs.(new_density.-target_density))]
+    if n_iv_locs != 1
+        new_density = n_corals_sum ./ cum_avail[(n_iv_locs - 1):n_iv_locs]
+        n_iv_locs = ((n_iv_locs - 1):n_iv_locs)[argmin(abs.(new_density .- target_density))]
     end
 
     target_density = n_corals_sum ./ cum_avail[n_iv_locs]

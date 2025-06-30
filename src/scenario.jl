@@ -341,7 +341,9 @@ function run_scenario(
 
     # Store logs
     c_dim = Base.ndims(result_set.raw) + 1
-    log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log, :density_log)
+    log_stores = (
+        :site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log, :density_log
+    )
     for k in log_stores
         if k == :seed_log || k == :site_ranks || k == :seed_log
             concat_dim = c_dim
@@ -488,7 +490,7 @@ function run_model(
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
     strategy_idx::Int64 = param_set[At("seeding_strategy")]
-    if strategy_idx>0
+    if strategy_idx > 0
         strategy = Symbol(decision.seeding_strategies(strategy_idx))
     end
     target_density = param_set[At("seeding_density")]
@@ -955,13 +957,15 @@ function run_model(
             # Seed selected locations
             # Selected locations can fill up over time so avoid locations with no space
             # Maintain the order of the ranking
-            ordered_seed_locs = [findfirst(log_location_ranks.locations.==x) for x in selected_seed_ranks]
+            ordered_seed_locs = [
+                findfirst(log_location_ranks.locations .== x) for x in selected_seed_ranks
+            ]
             available_space = leftover_space_m²[ordered_seed_locs]
             locs_with_space = findall(available_space .> 0.0)
 
             # If there are locations with space to select from, then deploy what we can
             # Otherwise, do nothing.
-            if length(locs_with_space) > 0 && (tstep <= seed_start_year+seed_years)
+            if length(locs_with_space) > 0 && (tstep <= seed_start_year + seed_years)
                 ordered_seed_locs = ordered_seed_locs[locs_with_space]
 
                 # Calculate proportion to seed based on current available space

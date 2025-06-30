@@ -78,7 +78,10 @@ function ResultSet(
         outcomes,
         _rankings_data(log_set["rankings"]),
         DataCube(log_set["seed"], Symbol.(Tuple(log_set["seed"].attrs["structure"]))),
-        DataCube(log_set["seed_density"], Symbol.(Tuple(log_set["seed_density"].attrs["structure"]))),
+        DataCube(
+            log_set["seed_density"],
+            Symbol.(Tuple(log_set["seed_density"].attrs["structure"]))
+        ),
         DataCube(log_set["fog"], Symbol.(Tuple(log_set["fog"].attrs["structure"]))),
         DataCube(log_set["shade"], Symbol.(Tuple(log_set["shade"].attrs["structure"]))),
         DataCube(
