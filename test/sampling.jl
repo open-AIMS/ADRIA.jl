@@ -14,10 +14,22 @@ end
     constant_params = ms.is_constant
 
     @testset "constant params are constant" begin
+        non_int_const_params = ms.is_constant .&& (ms.component .!= ["Intervention"])
+        int_constant_params = ms.is_constant .&& (ms.component .!= ["Intervention"])
+
         @test all(
-            values(scens[1, constant_params]) .== values(scens[end, constant_params])
+            values(scens[1, non_int_const_params]) .== 
+            values(scens[end, non_int_const_params])
         ) ||
             "Constant params are not constant!"
+
+        # Intervention constant params are either 0 or all the same
+        @test all(
+            values(scens[1, int_constant_params]) .==
+            values(scens[end, int_constant_params]) .||
+            values(scens[1, int_constant_params]) .== 0.0 .||
+            values(scens[end, int_constant_params]) .== 0.0
+        )
     end
 
     @testset "values are within expected bounds" begin
@@ -261,7 +273,11 @@ end
         end
 
         @testset "Discrete variables" begin
-            discrete_factors = ms[(ms.ptype .∈ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
+            discrete_factors = ms[
+                (ms.ptype .∈ [ADRIA.DISCRETE_FACTOR_TYPES]) .&&
+                (ms.fieldname .∉ [ADRIA.CATEGORICAL_PARAMETERS]),
+                :
+            ]
             for factor in eachrow(discrete_factors)
                 fn = factor.fieldname
                 @test ADRIA.get_bounds(dom, fn)[1] == factor.dist_params[1]
@@ -270,6 +286,17 @@ end
                     factor.default_dist_params[1]
                 @test ADRIA.get_attr(dom, fn, :default_dist_params)[2] ==
                     factor.default_dist_params[2]
+            end
+        end
+
+        @testset "Categorical Parameters" begin
+            discrete_factors = ms[
+                (ms.fieldname .∈ [ADRIA.CATEGORICAL_PARAMETERS]), :
+            ]
+            for factor in eachrow(discrete_factors)
+                fn = factor.fieldname
+                @test ADRIA.get_bounds(dom, fn)[1] == factor.lower_bound
+                @test ADRIA.get_bounds(dom, fn)[2] == factor.upper_bound
             end
         end
     end
