@@ -349,7 +349,7 @@ end
         end
 
         @testset "Vary N Seeded" begin
-            n_dep_locs = 20.0
+            n_dep_locs = 10.0
             seed_d = 6.0
             ADRIA.fix_factor!(ADRIA_DOM_45, seeding_strategy="VARY_N_SEEDED")
             ADRIA.fix_factor!(ADRIA_DOM_45, seeding_density=seed_d)
@@ -379,7 +379,7 @@ end
         end
 
         @testset "Vary Seed Density" begin
-            n_dep_locs = 20.0
+            n_dep_locs = 10.0
             ADRIA.fix_factor!(ADRIA_DOM_45, seeding_strategy="VARY_SEED_DENSITY")
             ADRIA.fix_factor!(ADRIA_DOM_45, min_iv_locations=n_dep_locs)
             ADRIA.fix_factor!(ADRIA_DOM_45, N_seed_TA=300000)
