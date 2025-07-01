@@ -5,7 +5,7 @@ extract metrics and plot graphs.
 
 ## Setup
 
-### Setup: selecting and configuring a `Makie` backend
+### Selecting and configuring a `Makie` backend
 
 The `Makie.jl` ecosystem is used to produce figures as part of the `viz` extension of `ADRIA`.
 
