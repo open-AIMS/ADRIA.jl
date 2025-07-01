@@ -5,32 +5,56 @@ extract metrics and plot graphs.
 
 ## Setup
 
-### Makie
+### `Makie` and the `viz` backend
 
-The Makie.jl ecosystem is used to produce figures.
+The `Makie.jl` ecosystem is used to produce figures.
 
-Install additional packages if necessary
+`Makie` is configured as an extension to `ADRIA`. This means the standard installation of `ADRIA` does not, by default, include the `viz` backend dependencies.
+
+To enable the `viz` extension, firstly install the following packages:
 
 ```julia
 ]add GeoMakie GraphMakie
 ```
 
-Install a Makie [backend](https://docs.makie.org/stable/explanations/backends/) of your
-choice. WGLMakie is more flexible for our workflows, but GLMakie is a good choice too.
+`Makie` allows the selection of different rendering backends, this allows it to work in a variety of environments. To learn more about Makie backends, see [here](https://docs.makie.org/stable/explanations/backends/).
+
+For example, let's install the `WGLMakie` backend. `WGLMakie` is more flexible for our workflows, but `GLMakie` is a good choice too.
+
+To install the `WGLMakie` backend:
 
 ```julia
 ]add WGLMakie
 ```
 
-Import additional packages and the visualization extension will compile.
+To trigger compilation of the `viz` extension, we must always import the following dependencies in our analysis script(s);
 
 ```julia
-using WGLMakie, GeoMakie, GraphMakie
+using GeoMakie, GraphMakie
+```
+
+You should then import your chosen backend, e.g. `WGLMakie`
+
+```julia
+using WGLMakie
+```
+
+For example, the below scripts assume the following imports
+
+```julia
 using ADRIA
+# always imported
+using GeoMakie, GraphMakie
+# backend selection
+using WGLMakie
+# statistics library used later in this doc
 using Statistics
 ```
 
-If using GLMakie, the plots will appear in the VS Code plots pane.
+### GLMakie inline plots
+
+If using `GLMakie`, the plots will appear in the VS Code plots pane.
+
 You may prefer figures to appear in a separate window, in which case deactivate the inline
 plotting feature.
 
@@ -243,7 +267,6 @@ save("criteria_plots.png", fig)
 ```
 
 ![Spatial maps of location selection criteria](../assets/imgs/analysis/criteria_spatial_plots.png)
-
 
 ### PAWN sensitivity (heatmap overview)
 
@@ -584,6 +607,7 @@ dea_fig = ADRIA.viz.data_envelopment_analysis(rs, DEA_scens)
 
 ![DEA](../assets/imgs/analysis/example_dea_fig.png)
 ```
+
 ### GUI for high-level exploration (prototype only!)
 
 ```julia
