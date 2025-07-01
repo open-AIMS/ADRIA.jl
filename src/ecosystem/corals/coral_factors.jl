@@ -186,3 +186,37 @@ function planar_area_params()
         -8.87 2.30      # Large massives
     ])
 end
+
+"""
+    linear_extension_group_scale_factors()::Matrix{Float64}
+
+Matrix with dimensions (functional_groups ⋅ cb_calib_groups) where each element represents
+the scale factor to be applied to the `linear_extensions`` of all size classes of that
+`functional_group` and `cb_calib_group`.
+"""
+function linear_extension_group_scale_factors()::Matrix{Float64}
+    return [
+        0.82164   1.08925   1.09167   0.999908  1.00538   1.01946   0.937651  0.784938  0.956751  1.08086   0.991705  0.974071;
+        0.923883  1.49121   1.49719   1.16706   0.955033  1.02107   0.70478   0.793097  1.24596   0.806298  0.964745  0.91959;
+        1.17701   0.84639   1.19024   0.786443  1.35553   1.42635   0.834344  0.799714  0.760481  0.767771  1.07771   1.46848;
+        0.865704  1.12302   1.38518   0.711301  0.911399  1.42821   0.780267  1.49374   1.0102    0.70714   0.830893  1.31417;
+        0.819216  0.983586  0.884345  1.46174   0.818091  0.904022  0.715186  1.49572   1.32292   0.806857  1.16899   1.1661
+    ]
+end
+
+"""
+    mb_rate_group_scale_factors()::Matrix{Float64}
+
+Matrix with dimensions (functional_groups ⋅ cb_calib_groups) where each element represents
+the scale factor to be applied to the `mb_rates` of all size classes of that
+`functional_group` and `cb_calib_group`.
+"""
+function mb_rate_group_scale_factors()::Matrix{Float64}
+    return [
+        -0.617747   0.979436   0.99745   -0.789161    0.391622   -0.149784   0.00874778  -0.914765   0.00325658  -0.195597  -0.237917   0.813194;
+        -0.378105   0.999229   0.999292  -0.967839   -0.795322    0.795927  -0.98076      0.161166  -0.0933056    0.365728   0.300143   0.087848;
+         0.508711  -0.535707   0.894669   0.0662139  -0.268865    0.622204  -0.622528    -0.555281   0.00126368  -0.396586  -0.169007   0.961894;
+        -0.537044  -0.139579   0.972233  -0.408186   -0.0325474   0.961359  -0.933316     0.535899   0.279357    -0.810235   0.0632827  0.471081;
+        -0.960488   0.0119783  0.24806    0.951627   -0.0412475  -0.788822  -0.507666     0.961015  -0.848863     0.705065  -0.207037   0.86103
+    ]
+end

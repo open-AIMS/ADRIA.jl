@@ -266,7 +266,8 @@ function load_domain(
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
         Intervention(),
         criteria_weights...,
-        Coral()
+        Coral(),
+        GrowthAcceleration()
     ))
 
     return RMEDomain(

@@ -195,6 +195,50 @@ function coral_spec()::NamedTuple
     return (taxa_names=group_names, param_names=param_names, params=params)
 end
 
+function add_scale_factors(struct_fields::OrderedDict{String,Param}, bounds)
+    _linear_extension_scale_factors = linear_extension_group_scale_factors()
+    _mb_rate_scale_factors = mb_rate_group_scale_factors()
+
+    _, n_cb_calib_groups = size(_linear_extension_scale_factors)
+    for (fgroup_idx, functional_group) in enumerate(functional_group_names())
+        for cb_calib_group in 1:n_cb_calib_groups
+            linear_extension_factor_name::String =
+                "linear_extension_scale_cb_group_" *
+                "$(cb_calib_group)_$(functional_group)"
+            mb_rate_factor_name::String =
+                "mb_rate_scale_cb_group_" *
+                "$(cb_calib_group)_$(functional_group)"
+
+            linear_extension_factor_val = _linear_extension_scale_factors[
+                fgroup_idx, cb_calib_group
+            ]
+            mb_rate_factor_val = _mb_rate_scale_factors[fgroup_idx, cb_calib_group]
+
+            struct_fields[linear_extension_factor_name] = Factor(
+                linear_extension_factor_val;
+                ptype="continuous",
+                dist=Uniform,
+                dist_params=new_bounds(linear_extension_factor_val, bounds),
+                name=human_readable_name(linear_extension_factor_name; title_case=true),
+                description="Scale factor to be applied to linear extensions of " *
+                            "cb_calib_group $cb_calib_group and " *
+                            "functional group $functional_group"
+            )
+
+            struct_fields[mb_rate_factor_name] = Factor(
+                mb_rate_factor_val;
+                ptype="continuous",
+                dist=Uniform,
+                dist_params=new_bounds(mb_rate_factor_val, bounds),
+                name=human_readable_name(mb_rate_factor_name; title_case=true),
+                description="Scale factor to be applied to mortality base rates of " *
+                            "cb_calib_group $cb_calib_group and " *
+                            "functional group $functional_group"
+            )
+        end
+    end
+end
+
 """
     _coral_struct(field_defs::Dict)::Nothing
 
@@ -219,11 +263,16 @@ y.a
 """
 function _coral_struct(field_defs::OrderedDict)::Nothing
     s = IOBuffer()
-    write(s, "Base.@kwdef struct Coral{P,P2} <: EcoModel\n")
+    write(s, "Base.@kwdef struct Coral{P,P2,P3} <: EcoModel\n")
 
     for (f, v) in field_defs
         if f == "heritability"
             write(s, "$(f)::P2 = $(v)\n")
+            continue
+        end
+
+        if occursin("scale", f)
+            write(s, "$(f)::P3 = $(v)\n")
             continue
         end
 
@@ -254,7 +303,7 @@ coral = Coral()
 ```
 """
 function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
-    _, base_coral_factor_names, coral_factors = coral_spec()
+    functional_group_names, base_coral_factor_names, coral_factors = coral_spec()
 
     struct_fields = OrderedDict{String,Param}()
     struct_fields["heritability"] = Factor(
@@ -286,9 +335,17 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
         end
     end
 
+    add_scale_factors(struct_fields, bounds)
+
     _coral_struct(struct_fields)
 
     return nothing
+end
+
+function new_bounds(value::Float64, bounds::Tuple{Float64,Float64})
+    lower_bound = round(value - abs(value) * (1 - bounds[1]))
+    upper_bound = round(value + abs(value) * (1 - bounds[1]))
+    return (lower_bound, upper_bound)
 end
 
 # Generate base coral struct from default spec.
