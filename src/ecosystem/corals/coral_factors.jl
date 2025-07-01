@@ -133,7 +133,7 @@ function linear_extensions(; unit=:m, version=:calib)::Matrix{Float64}
             0.019048 0.018135 0.016260 0.018028 0.015115 0.018014 0.0;    # Corymbose non-Acropora
             0.012374 0.008204 0.008210 0.010310 0.013633 0.014312 0.0;    # Small massives and encrusting
             0.012564 0.008186 0.008138 0.010208 0.014300 0.015012 0.0     # Large massives
-        ]
+        ] .* linear_scale(:m, unit)
     end
     return error("Invalid value $version for param `version`.")
 end
