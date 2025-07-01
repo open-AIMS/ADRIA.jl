@@ -5,11 +5,11 @@ extract metrics and plot graphs.
 
 ## Setup
 
-### `Makie` and the `viz` backend
+### Setup: selecting and configuring a `Makie` backend
 
-The `Makie.jl` ecosystem is used to produce figures.
+The `Makie.jl` ecosystem is used to produce figures as part of the `viz` extension of `ADRIA`.
 
-`Makie` is configured as an extension to `ADRIA`. This means the standard installation of `ADRIA` does not, by default, include the `viz` backend dependencies.
+`Makie` is configured as an extension to `ADRIA`. This means the standard installation of `ADRIA` does not, by default, include the `viz` extension dependencies.
 
 To enable the `viz` extension, firstly install the following packages:
 
@@ -19,7 +19,7 @@ To enable the `viz` extension, firstly install the following packages:
 
 `Makie` allows the selection of different rendering backends, this allows it to work in a variety of environments. To learn more about Makie backends, see [here](https://docs.makie.org/stable/explanations/backends/).
 
-For example, let's install the `WGLMakie` backend. `WGLMakie` is more flexible for our workflows, but `GLMakie` is a good choice too.
+For example, let's install the `WGLMakie` backend. `WGLMakie` is more flexible for our workflows, though `GLMakie` is a good choice too.
 
 To install the `WGLMakie` backend:
 
@@ -27,7 +27,7 @@ To install the `WGLMakie` backend:
 ]add WGLMakie
 ```
 
-To trigger compilation of the `viz` extension, we must always import the following dependencies in our analysis script(s);
+To trigger compilation of the `viz` extension, we must **always** import the following dependencies in our analysis script(s), regardless of your backend selection;
 
 ```julia
 using GeoMakie, GraphMakie
@@ -43,7 +43,7 @@ For example, the below scripts assume the following imports
 
 ```julia
 using ADRIA
-# always imported
+# always imported regardless of backend
 using GeoMakie, GraphMakie
 # backend selection
 using WGLMakie
