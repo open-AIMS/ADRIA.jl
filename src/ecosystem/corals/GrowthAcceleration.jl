@@ -112,5 +112,3 @@ function create_growth_acceleration_struct(
 end
 
 create_growth_acceleration_struct()
-
-# TODO Put this somewhere else
