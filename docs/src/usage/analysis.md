@@ -43,11 +43,13 @@ For example, the below scripts assume the following imports
 
 ```julia
 using ADRIA
-# always imported regardless of backend
+# Always imported regardless of backend
 using GeoMakie, GraphMakie
-# backend selection
+
+# Backend selection
 using WGLMakie
-# statistics library used later in this doc
+
+# Statistics library used later in this doc
 using Statistics
 ```
 
