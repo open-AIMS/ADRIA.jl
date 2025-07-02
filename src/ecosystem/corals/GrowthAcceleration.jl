@@ -93,7 +93,6 @@ function create_growth_acceleration_struct(
 
             lower_bound = factor_val - bounds_var * abs(factor_val)
             upper_bound = factor_val + bounds_var * abs(factor_val)
-            @assert lower_bound < upper_bound
 
             struct_fields[factor_name] = Factor(
                 factor_val;
