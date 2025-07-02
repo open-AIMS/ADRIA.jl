@@ -1,4 +1,4 @@
-function growth_acceleration_values(param_type::Symbol)
+function _growth_acceleration_values(param_type::Symbol)
     if param_type == :steepness
         return growth_acceleration_steepness()
     elseif param_type == :height
@@ -6,7 +6,7 @@ function growth_acceleration_values(param_type::Symbol)
     elseif param_type == :midpoint
         return growth_acceleration_midpoint()
     end
-    return nothing
+    return error("Unknown `param_type` value")
 end
 
 function growth_acceleration_steepness()::Vector{Float64}
@@ -88,7 +88,7 @@ function create_growth_acceleration_struct(
     factor_name::String = ""
     for param in growth_accel_params
         for group in cb_calib_groups
-            factor_val = growth_acceleration_values(param)[group]
+            factor_val = _growth_acceleration_values(param)[group]
             factor_name = "growth_acceleration_" * String(param) * "_$(group)"
 
             lower_bound = factor_val - bounds_var * abs(factor_val)
