@@ -89,7 +89,7 @@ function create_growth_acceleration_struct(
     for param in growth_accel_params
         for group in cb_calib_groups
             factor_val = _growth_acceleration_values(param)[group]
-            factor_name = "growth_acceleration_" * String(param) * "_$(group)"
+            factor_name = "growth_acceleration_" * String(param) * "_cb_group_$(group)"
 
             lower_bound = factor_val - bounds_var * abs(factor_val)
             upper_bound = factor_val + bounds_var * abs(factor_val)
