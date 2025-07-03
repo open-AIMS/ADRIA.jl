@@ -95,24 +95,34 @@ function sample(
     dom::Domain, n::Int; sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
-    if dom isa ADRIADomain
-        factor_names = string.(model_spec(dom).fieldname)
-        cb_calib_group_ids = string.(unique(dom.loc_data.CB_CALIB_GROUPS))
-        groups_to_keep = "cb_group_" .* cb_calib_group_ids
-        group_mask = .!occursin.(groups_to_keep, factor_names)
+    ms::DataFrame = model_spec(dom)
+    cb_calib_groups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS
+    return sample(_filtered_model_spec(ms, cb_calib_groups), n, sample_method)
+end
 
-        growth_acc_mask = occursin.(r"growth_acceleration", factor_names) .&& group_mask
-        mb_rate_mask = occursin.(r"mb_rate_scale", factor_names) .&& group_mask
-        linear_extension_mask =
-            occursin.(r"linear_extension_scale", factor_names) .&& group_mask
+"""
+    _filtered_model_spec(model_spec::DataFrame, cb_calib_groups::Vector{Int64})
 
-        keepat_mask = .!growth_acc_mask .&& .!mb_rate_mask .&& .!linear_extension_mask
-        ms = keepat!(model_spec(dom), keepat_mask)
+Filters `cb_calib_group` specific factors correspondent to `cb_calib_groups` not present in
+loaded domain spatial data.
+"""
+function _filtered_model_spec(model_spec::DataFrame, cb_calib_groups::Vector{Int64})
+    factor_names = string.(model_spec.fieldname)
 
-        return sample(ms, n, sample_method)
-    else
-        return sample(model_spec(dom), n, sample_method)
-    end
+    # The extra "_" garantees that we don't select group "12", for example, when trying to
+    # select just group "1"
+    cb_calib_group_ids = string.(unique(cb_calib_groups))
+    groups_to_keep = "cb_group_" .* cb_calib_group_ids .* "_"
+
+    # Factors to remove
+    group_mask = .!occursin.(groups_to_keep, factor_names)
+    growth_acc_mask = occursin.(r"growth_acceleration", factor_names) .&& group_mask
+    mb_rate_mask = occursin.(r"mb_rate_scale", factor_names) .&& group_mask
+    linear_extension_mask =
+        occursin.(r"linear_extension_scale", factor_names) .&& group_mask
+
+    keep_mask = .!growth_acc_mask .&& .!mb_rate_mask .&& .!linear_extension_mask
+    return keepat!(model_spec, keep_mask)
 end
 
 """
