@@ -769,12 +769,13 @@ function run_model(
         for cb_group in domain.loc_data.CB_CALIB_GROUPS
     ]
 
+    is_growth_acc_mask = occursin.("growth_acceleration", factor_names)
     growth_acc_steepness::Vector{Float64} =
-        param_set[occursin.("acceleration_steepness", factor_names)].data
+        param_set[is_growth_acc_mask .&& occursin.("steepness", factor_names)].data
     growth_acc_height::Vector{Float64} =
-        param_set[occursin.("acceleration_height", factor_names)].data
+        param_set[is_growth_acc_mask .&& occursin.("height", factor_names)].data
     growth_acc_midpoint::Vector{Float64} =
-        param_set[occursin.("acceleration_midpoint", factor_names)].data
+        param_set[is_growth_acc_mask .&& occursin.("midpoint", factor_names)].data
 
     # linear_extension scale factors with dimensions (cb_calib_groups ⋅ functional_groups)
     _linear_extension_scale_factors = reshape(
