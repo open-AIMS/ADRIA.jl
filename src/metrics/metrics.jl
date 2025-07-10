@@ -147,11 +147,11 @@ function _relative_taxa_cover(
 
     return taxa_cover
 end
-function _relative_taxa_cover(rs::ResultSet)::AbstractArray{<:Real,3}
+function _relative_taxa_cover(rs::ResultSet)::AbstractArray{<:Real,4}
     return rs.outcomes[:relative_taxa_cover]
 end
 relative_taxa_cover = Metric(
-    _relative_taxa_cover, (:timesteps, :species, :scenarios), "Cover", IS_RELATIVE
+    _relative_taxa_cover, (:timesteps, :taxa, :locations, :scenarios), "Cover", IS_RELATIVE
 )
 
 """
