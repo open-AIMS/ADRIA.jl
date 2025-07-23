@@ -171,9 +171,14 @@ end
     model_spec(d::Domain)::DataFrame
     model_spec(d::Domain, filepath::String)::Nothing
     model_spec(m::Model)::DataFrame
+    model_spec(d::Domain, param_set::DataFrame)
+    model_spec(d::Domain, param_names::Vector{String})
+    model_spec(d::Domain, param_names::Vector{Symbol})
 
 Get model specification as DataFrame with lower and upper bounds.
 If a filepath is provided, writes the specification out to file with ADRIA metadata.
+If a `param_set` or a vector of `param_set` names is provided, filters params not present in
+the `param_set`.
 """
 function model_spec(d::Domain)::DataFrame
     return model_spec(d.model)
@@ -214,6 +219,16 @@ function model_spec(m::Model)::DataFrame
     select!(spec, Not([:name, :description]), [:name, :description])
 
     return spec
+end
+function model_spec(d::Domain, param_set::DataFrame)
+    return model_spec(d, Symbol.(names(param_set)))
+end
+function model_spec(d::Domain, param_names::Vector{String})
+    return model_spec(d, Symbol.(param_names))
+end
+function model_spec(d::Domain, param_names::Vector{Symbol})
+    ms = model_spec(d)
+    return ms[ms.fieldname .∈ Ref(param_names), :]
 end
 
 """
