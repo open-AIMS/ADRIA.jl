@@ -343,8 +343,8 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
 end
 
 function new_bounds(value::Float64, bounds::Tuple{Float64,Float64})
-    lower_bound = round(value - abs(value) * (1 - bounds[1]))
-    upper_bound = round(value + abs(value) * (1 - bounds[1]))
+    lower_bound = round(value - abs(value) * (1 - bounds[1]); digits=2)
+    upper_bound = round(value + abs(value) * (1 - bounds[1]); digits=2)
     return (lower_bound, upper_bound)
 end
 

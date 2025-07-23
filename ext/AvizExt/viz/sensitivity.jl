@@ -114,7 +114,8 @@ Makie figure
 """
 function ADRIA.viz.tsa!(
     g::Union{GridLayout,GridPosition},
-    rs::ResultSet, si::YAXArray;
+    rs::ResultSet,
+    si::YAXArray;
     opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
@@ -151,7 +152,7 @@ function ADRIA.viz.tsa!(
     lns = Plot[
         series!(
             ax,
-            si[Si=At(stat)][findall(all_comps .== _cmp), :];
+            si[Si=At(stat)][findall(all_comps .== _cmp), :].data;
             labels=repeat([_cmp], count(all_comps .== _cmp)),
             solid_color=(dc[i], 0.2)
         )
