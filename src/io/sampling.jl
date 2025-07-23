@@ -262,7 +262,8 @@ Scenario specification
 function sample_cf(
     d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
-    spec_df = model_spec(d)
+    cb_calib_groups::Vector{Int64} = d.loc_data.CB_CALIB_GROUPS
+    spec_df = _filtered_model_spec(model_spec(d), cb_calib_groups)
 
     # Unguided scenarios only
     guided_col = spec_df.fieldname .== :guided
@@ -307,7 +308,8 @@ Scenario specification
 function sample_guided(
     d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
-    spec_df = model_spec(d)
+    cb_calib_groups::Vector{Int64} = d.loc_data.CB_CALIB_GROUPS
+    spec_df = _filtered_model_spec(model_spec(d), cb_calib_groups)
 
     # Remove unguided scenarios as an option
     # Sample without unguided (i.e., values >= 1), then revert back to original model spec
@@ -335,7 +337,8 @@ Scenario specification
 function sample_unguided(
     d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
-    spec_df = model_spec(d)
+    cb_calib_groups::Vector{Int64} = d.loc_data.CB_CALIB_GROUPS
+    spec_df = _filtered_model_spec(model_spec(d), cb_calib_groups)
 
     # Fix guided factor to 0 (i.e., unguided scenarios only)
     guided_col = spec_df.fieldname .== :guided

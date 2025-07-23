@@ -135,7 +135,9 @@ function ADRIA.viz.tsa!(
         axis_opts...
     )
 
-    all_comps = model_spec(rs)[:, :component]
+    # Some factors in the model_spec related to CB_CALIB_PARAMS are not inputs to the model
+    # so they need to be filtered before selecting `:component` col
+    all_comps = model_spec(rs, collect(si.factors.val))[:, :component]
 
     # Hacky special case handling for SSP/RCP
     if :RCP in factors || :SSP in factors
