@@ -10,7 +10,7 @@ end
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
     num_samples = 32
     scens = ADRIA.sample(dom, num_samples)
-    ms = ADRIA.model_spec(dom)
+    ms = ADRIA.model_spec(dom, scens)
     constant_params = ms.is_constant
 
     @testset "constant params are constant" begin
@@ -81,7 +81,7 @@ end
         dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         num_samples = 32
         scens = ADRIA.sample_guided(dom, num_samples)
-        ms = ADRIA.model_spec(dom)
+        ms = ADRIA.model_spec(dom, scens)
 
         @test all(scens.guided .> 0) || "Non-intervention scenarios found"
 
@@ -193,7 +193,8 @@ end
 @testset "Sample bounds" begin
     @testset "Get sampling bounds" begin
         dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
-        ms = ADRIA.model_spec(dom)
+        cb_calib_groups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS
+        ms = ADRIA._filtered_model_spec(ADRIA.model_spec(dom), cb_calib_groups)
 
         @testset "Continuous variables" begin
             continuous_factors = ms[(ms.ptype .∉ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
@@ -225,7 +226,8 @@ end
 
         dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
         num_samples = 32
-        ms = ADRIA.model_spec(dom)
+        cb_calib_groups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS
+        ms = ADRIA._filtered_model_spec(ADRIA.model_spec(dom), cb_calib_groups)
 
         test_components = ["EnvironmentalLayer", "Intervention", "Coral"]
 
@@ -259,10 +261,10 @@ end
                     ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
                 dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
-                factor_params = dom.model[ms.fieldname .∈ [factor_fieldnames]][1]
+                factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
                 @test all(factor_params.dist_params .== factor_params.default_dist_params)
-
                 scens = ADRIA.sample(dom, num_samples)
+
                 _test_bounds(scens, factor_mask, new_bounds)
             end
         end
@@ -286,9 +288,8 @@ end
                     ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
                 dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
-                factor_params = dom.model[ms.fieldname .∈ [factor_fieldnames]][1]
+                factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
                 @test all(factor_params.dist_params .== factor_params.default_dist_params)
-
                 scens = ADRIA.sample(dom, num_samples)
 
                 _test_bounds(scens, factor_mask, new_bounds)
@@ -319,10 +320,11 @@ end
                     ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
                 dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
-                factor_params = dom.model[ms.fieldname .∈ [factor_fieldnames]][1]
+                factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
                 @test all(factor_params.dist_params .== factor_params.default_dist_params)
 
                 scens = ADRIA.sample(dom, num_samples)
+
                 _test_bounds(scens, factor_mask, new_bounds)
             end
         end
@@ -350,7 +352,7 @@ end
                     ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
                 dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
-                factor_params = dom.model[ms.fieldname .∈ [factor_fieldnames]][1]
+                factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
                 @test all(factor_params.dist_params .== factor_params.default_dist_params)
 
                 scens = ADRIA.sample(dom, num_samples)
@@ -383,7 +385,7 @@ end
                     ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
                 dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
-                factor_params = dom.model[ms.fieldname .∈ [factor_fieldnames]][1]
+                factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
                 @test all(factor_params.dist_params .== factor_params.default_dist_params)
 
                 scens = ADRIA.sample(dom, num_samples)

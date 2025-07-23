@@ -237,7 +237,9 @@ end
 Update given domain with new parameter values.
 """
 function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
-    p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :dist_params]]
+    p_df::DataFrame = model_spec(d, names(params))[
+        :, [:fieldname, :val, :ptype, :dist_params]
+    ]
 
     try
         p_df[!, :val] .= collect(params[Not("RCP")])
@@ -246,13 +248,19 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
             if !occursin("RCP", "$err")
                 error("Error occurred loading scenario samples. $err")
             end
-
             p_df[!, :val] .= collect(params)
         end
     end
 
+    # Unused params need to be merged with `p_df` to keep the same number of factors as d.model
+    ms_all = model_spec(d)
+    p_df_complementar::DataFrame = ms_all[
+        (ms_all.fieldname .∉ Ref(Symbol.(names(params)))),
+        [:fieldname, :val, :ptype, :dist_params]
+    ]
+
     # Update with new parameters
-    update!(d.model, p_df)
+    update!(d.model, vcat(p_df, p_df_complementar))
 
     return nothing
 end
