@@ -1,5 +1,6 @@
 using ADRIA
 using ADRIA.Distributions
+using ADRIA.DataFrames
 
 if !@isdefined(ADRIA_DIR)
     const ADRIA_DIR = pkgdir(ADRIA)
@@ -26,7 +27,7 @@ end
 
         not_cw_mask =
             ms.component .∉
-            [("SeedCriteriaWeights", "FogCriteriaWeights", "DepthThresholds")]
+            [("SeedCriteriaWeights", "FogCriteriaWeights", "decision.DepthThresholds")]
         not_cw_lb, not_cw_ub = lb[not_cw_mask], ub[not_cw_mask]
 
         eco = (ms.component .== "Coral") .& .!(constant_params)
@@ -35,7 +36,7 @@ end
         coral_msg = "Sampled coral values were not in expected bounds!"
         for i in 1:num_samples
             # Filter CriteriaWeights factors
-            scen_vals = values(scens[i, :])
+            scen_vals = collect(scens[i, :])
             not_cw_scen_vals = scen_vals[not_cw_mask]
 
             if scens[i, :guided] > 0
@@ -122,7 +123,7 @@ end
         ]
 
         for (inp, out) in zip(test_inputs, test_output)
-            ADRIA.set_factor_bounds(dom, :guided, inp)
+            ADRIA.set_factor_bounds!(dom, :guided, inp)
             scens = ADRIA.sample(dom, 32)
 
             @test all(scens.guided .∈ [out])
@@ -259,7 +260,9 @@ end
             @testset "set to default bounds" begin
                 new_bounds =
                     ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
-                dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
+                dom = ADRIA.set_factor_bounds!(
+                    dom; NamedTuple{factor_fieldnames}(new_bounds)...
+                )
 
                 factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
                 @test all(factor_params.dist_params .== factor_params.default_dist_params)
@@ -322,7 +325,6 @@ end
 
                 factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
                 @test all(factor_params.dist_params .== factor_params.default_dist_params)
-
                 scens = ADRIA.sample(dom, num_samples)
 
                 _test_bounds(scens, factor_mask, new_bounds)
@@ -354,8 +356,8 @@ end
 
                 factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
                 @test all(factor_params.dist_params .== factor_params.default_dist_params)
-
                 scens = ADRIA.sample(dom, num_samples)
+
                 _test_bounds(scens, factor_mask, new_bounds)
             end
         end
@@ -387,8 +389,8 @@ end
 
                 factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
                 @test all(factor_params.dist_params .== factor_params.default_dist_params)
-
                 scens = ADRIA.sample(dom, num_samples)
+
                 _test_bounds(scens, factor_mask, new_bounds)
             end
         end
