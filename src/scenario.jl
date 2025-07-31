@@ -1168,8 +1168,9 @@ function run_model(
         cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
 
         # Calculate survival_rate due to env. disturbances
-        ΔC_cover_t[ΔC_cover_t .== 0.0] .= 1.0
-        survival_rate_cache .= C_cover_t ./ ΔC_cover_t
+        no_mortality_mask = ΔC_cover_t .== 0.0
+        survival_rate_cache[.!no_mortality_mask] .= (C_cover_t ./ ΔC_cover_t)[.!no_mortality_mask]
+        survival_rate_cache[no_mortality_mask] .= 1.0
         @assert sum(survival_rate_cache .> 1) == 0 "Survival rate should be <= 1"
 
         survival_rate_slices = [@view survival_rate_cache[:, :, loc] for loc in 1:n_locs]
