@@ -2,7 +2,7 @@
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "b025ba807928a3b2b02e0ded07a2a66d10ea0e32"
+project_hash = "51abb782cf18f84963d3fbad2b00d92d71db157b"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "7927b9af540ee964cc5d1b73293f1eb0b761a3a1"
@@ -475,9 +475,9 @@ version = "0.6.4"
 
 [[deps.CoralBlox]]
 deps = ["DataStructures", "YAXArrays"]
-git-tree-sha1 = "ea2f377fdb2df4dbd354f568e9140853d03bcca2"
+git-tree-sha1 = "5d0dc9cd083800cdf37e9005d0a5e6720a330acd"
 uuid = "f00a6e10-004a-11ef-3676-67ec635bc1a2"
-version = "1.1.1"
+version = "1.1.3"
 
     [deps.CoralBlox.extensions]
     CoralBloxPlotExt = "Makie"
