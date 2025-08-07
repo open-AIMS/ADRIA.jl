@@ -222,7 +222,7 @@ function scenarios_confint!(
         band!(ax, x_vals, y_lower, y_upper; color=band_color)
     end
 
-    series_colors = [_colors[group] for group in ordered_groups]
+    series_colors = [(_colors[group], 0.5) for group in ordered_groups]
     series!(ax, x_vals, confints[:, :, 2]'; solid_color=series_colors)
 
     return nothing
