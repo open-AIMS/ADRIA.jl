@@ -178,11 +178,8 @@ function coral_spec()::NamedTuple
     fec_m² = fec ./ (colony_mean_area(mean_colony_diameter_m)) # convert from per colony area to per m2
     params.fecundity = fec_m²'[:]
 
-    # Mortality base rate
+    # Base mortality rate
     params.mb_rate = mortality_base_rate()'[:]
-
-    # upper_bound::Matrix{Float64} = bin_edges()[:, 2:end]
-    # params.bin_ub = reshape(upper_bound', n_groups_and_sizes)[:]
 
     # Mean and std for each species (row) and size class (cols)
     params.dist_mean = dist_mean(; n_sizes=n_sizes)

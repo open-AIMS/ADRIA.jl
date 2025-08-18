@@ -380,6 +380,7 @@ function deactivate_interventions!(dom::Domain)::Nothing
     iv_factors = component_params(model_spec(dom), Intervention).fieldname
     n_iv_factors = length(iv_factors)
     ADRIA.fix_factor!(dom; NamedTuple{Tuple(iv_factors)}(zeros(Float64, n_iv_factors))...)
+
     return nothing
 end
 
