@@ -197,8 +197,10 @@ function load_domain(
         header=false,
         comment="#"
     )
-    force_single_reef &&
-        (id_list = id_list[spatial_data.RME_GBRMPA_ID .== id_list[:, 1], :])
+
+    if force_single_reef
+        id_list = id_list[spatial_data.RME_GBRMPA_ID .== id_list[:, 1], :]
+    end
 
     _manual_id_corrections!(spatial_data, id_list)
 
@@ -209,7 +211,7 @@ function load_domain(
         @assert isempty(findall(spatial_data.RME_GBRMPA_ID .!= id_list[:, 1]))
     end
 
-    # spatial_data[:, :area] in m²
+    # Overwrite spatial area when force_single_reef is true
     spatial_data[:, :area] .= if force_single_reef
         [single_reef_total_area]
     else
