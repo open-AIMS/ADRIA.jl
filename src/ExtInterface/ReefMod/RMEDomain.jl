@@ -235,8 +235,7 @@ function load_domain(
     )
 
     conn_data::YAXArray{Float64} = load_connectivity_csv(
-        RMEDomain, data_files, loc_ids;
-        force_single_reef=force_single_reef, force_single_reef_idx=single_reef_idx
+        RMEDomain, data_files, loc_ids; force_single_reef=single_reef_idx
     )
 
     # Set all site depths to 7m below sea level
@@ -490,7 +489,7 @@ YAXArray with dimensions (Source ⋅ Sink) and size (`n_locations` ⋅ `n_locati
 """
 function load_connectivity_csv(
     ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String};
-    force_single_reef::Bool=false, force_single_reef_idx::Vector{Int64}=[1]
+    force_single_reef::Union{Nothing,Vector{Int64}}=nothing
 )::YAXArray
     conn_path = _data_folder_path(data_path, "con")
     conn_files = _get_relevant_files(conn_path, "CONNECT_ACRO")
@@ -499,8 +498,7 @@ function load_connectivity_csv(
     end
 
     # Ensure compatibility when `force_single_reef == true`
-    locs_selector =
-        force_single_reef ? (force_single_reef_idx, force_single_reef_idx) : (:, :)
+    locs_selector = isnothing(force_single_reef) ? ([1], [1]) : (:, :)
 
     n_locs = length(loc_ids)
     tmp_mat = zeros(n_locs, n_locs, length(conn_files))
