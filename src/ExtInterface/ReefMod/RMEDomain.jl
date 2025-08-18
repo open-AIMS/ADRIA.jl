@@ -121,7 +121,7 @@ function load_domain(
     ::Type{RMEDomain},
     fn_path::String,
     RCP::String;
-    timeframe::Tuple{Int64,Int64}=(2022, 2100),
+    timeframe::Union{Nothing,Tuple{Int64,Int64}}=nothing,
     force_single_reef::Bool=false,
     force_single_reef_id::String="",
     single_reef_total_area::Float64=1_000_000.0,
@@ -140,8 +140,34 @@ function load_domain(
     isempty(single_reef_idx) && push!(single_reef_idx, 1)
     force_single_reef && (spatial_data = spatial_data[[1], :])
 
+    # Find start year
+    initial_csv_files = readdir(joinpath(data_files, "initial_csv"))
+    icc_filename = initial_csv_files[occursin.("coral_sp", initial_csv_files)][1]
+
     # Load DHW scens
-    dhw_scens::YAXArray{Float64} = load_DHW(RMEDomain, data_files, RCP, timeframe)
+    dhw_scens::YAXArray{Float64} = load_DHW(RMEDomain, data_files, RCP)
+
+    # Validates/extracts timeframe
+    start_year::Int64 = parse(Int64, split(icc_filename, r"[_.]")[end - 1])
+    end_year::Int64 = dhw_scens.timesteps[end]
+    if isnothing(timeframe)
+        # If timeframe is not specified, use dhw_scens end_year
+        timeframe = (start_year, end_year)
+    else
+        if timeframe[1] < start_year
+            @warn "Using timeframe start year $(timeframe[1]) that is different from the " *
+                "dataset initial coral cover start year $(start_year)."
+        end
+        if timeframe[2] > end_year
+            error(
+                "Using timeframe end year $(timeframe[2]) that is bigger than the dataset " *
+                "DHW end year $(end_year)."
+            )
+        end
+    end
+
+    # Select desired dhw_scens timeframe
+    dhw_scens = dhw_scens[timesteps=At(timeframe)]
     force_single_reef && (dhw_scens = dhw_scens[:, [1], :])
     loc_ids::Vector{String} = collect(dhw_scens.locs)
 
