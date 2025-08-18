@@ -192,7 +192,7 @@ function coral_spec()::NamedTuple
     return (taxa_names=group_names, param_names=param_names, params=params)
 end
 
-function add_scale_factors(struct_fields::OrderedDict{String,Param}, bounds)
+function add_scale_factors!(struct_fields::OrderedDict{String,Param}, bounds)
     _linear_extension_scale_factors = linear_extension_group_scale_factors()
     _mb_rate_scale_factors = mb_rate_group_scale_factors()
 
@@ -332,7 +332,7 @@ function create_coral_struct(bounds::Tuple{Float64,Float64}=(0.9, 1.1))::Nothing
         end
     end
 
-    add_scale_factors(struct_fields, bounds)
+    add_scale_factors!(struct_fields, bounds)
 
     _coral_struct(struct_fields)
 
