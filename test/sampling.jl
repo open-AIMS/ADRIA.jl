@@ -14,10 +14,22 @@ end
     constant_params = ms.is_constant
 
     @testset "constant params are constant" begin
+        non_int_const_params = ms.is_constant .&& (ms.component .!= ["Intervention"])
+        int_constant_params = ms.is_constant .&& (ms.component .!= ["Intervention"])
+
         @test all(
-            values(scens[1, constant_params]) .== values(scens[end, constant_params])
+            values(scens[1, non_int_const_params]) .== 
+            values(scens[end, non_int_const_params])
         ) ||
             "Constant params are not constant!"
+
+        # Intervention constant params are either 0 or all the same
+        @test all(
+            values(scens[1, int_constant_params]) .==
+            values(scens[end, int_constant_params]) .||
+            values(scens[1, int_constant_params]) .== 0.0 .||
+            values(scens[end, int_constant_params]) .== 0.0
+        )
     end
 
     @testset "values are within expected bounds" begin
@@ -122,7 +134,7 @@ end
         ]
 
         for (inp, out) in zip(test_inputs, test_output)
-            ADRIA.set_factor_bounds(dom, :guided, inp)
+            ADRIA.set_factor_bounds!(dom, :guided, inp)
             scens = ADRIA.sample(dom, 32)
 
             @test all(scens.guided .∈ [out])
@@ -150,6 +162,60 @@ end
         # Ensure at least one intervention is active
         @test all(any.(>(0), eachcol(scens[:, interv_params]))) ||
             "All intervention factors had values <= 0"
+    end
+
+    @testset "Seeding Strategy Sampling" begin
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        num_samples = 32
+
+        test_inputs = [
+            ("VARY_LOCATIONS",), ("VARY_N_SEEDED",), ("VARY_SEED_DENSITY", "CAP_DENSITY"),
+            ("CAP_DENSITY", "VARY_N_SEEDED", "VARY_LOCATIONS"),
+            ("VARY_SEED_DENSITY", "VARY_N_SEEDED", "CAP_DENSITY", "VARY_LOCATIONS"),
+        ]
+        test_output = [
+            [1], [2], [3, 4], [4, 2, 1], [3, 2, 4, 1]
+        ]
+        # Sample non-counterfactual scenarios
+        ADRIA.set_factor_bounds(
+            dom,
+            :guided,
+            ("unguided", "Cocoso", "Moora", "Piv", "Vikor"),
+        )
+
+        for (inp, out) in zip(test_inputs, test_output)
+            ADRIA.set_factor_bounds!(dom, :seeding_strategy, inp)
+            scens = ADRIA.sample(dom, 32)
+            @test all(scens.seeding_strategy .∈ [out])
+        end
+    end
+
+    @testset "Fixed Categorical Variable Sampling" begin
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        num_samples = 32
+
+        seed_in = ["VARY_LOCATIONS", "VARY_N_SEEDED", "VARY_SEED_DENSITY", "CAP_DENSITY"]
+        seed_out = [1, 2, 3, 4]
+
+        dmca_in = ["Cocoso", "Mairca", "Piv", "unguided"]
+        dmca_out = [1, 2, 4, 0]
+
+        for (s_in, s_out, d_in, d_out) in zip(seed_in, seed_out, dmca_in, dmca_out)
+            ADRIA.fix_factor!(dom, :seeding_strategy, s_in)
+            ADRIA.fix_factor!(dom, :guided, d_in)
+            scens = ADRIA.sample(dom, num_samples)
+
+            @test all(scens.seeding_strategy .== s_out)
+            @test all(scens.guided .== d_out)
+        end
+
+        for (s_in, s_out, d_in, d_out) in zip(seed_in, seed_out, dmca_in, dmca_out)
+            ADRIA.fix_factor!(dom, seeding_strategy=s_in, guided=d_in)
+            scens = ADRIA.sample(dom, num_samples)
+
+            @test all(scens.seeding_strategy .== s_out)
+            @test all(scens.guided .== d_out)
+        end
     end
 
     @testset "Site selection sampling" begin
@@ -207,7 +273,11 @@ end
         end
 
         @testset "Discrete variables" begin
-            discrete_factors = ms[(ms.ptype .∈ [ADRIA.DISCRETE_FACTOR_TYPES]), :]
+            discrete_factors = ms[
+                (ms.ptype .∈ [ADRIA.DISCRETE_FACTOR_TYPES]) .&&
+                (ms.fieldname .∉ [ADRIA.CATEGORICAL_PARAMETERS]),
+                :
+            ]
             for factor in eachrow(discrete_factors)
                 fn = factor.fieldname
                 @test ADRIA.get_bounds(dom, fn)[1] == factor.dist_params[1]
@@ -216,6 +286,17 @@ end
                     factor.default_dist_params[1]
                 @test ADRIA.get_attr(dom, fn, :default_dist_params)[2] ==
                     factor.default_dist_params[2]
+            end
+        end
+
+        @testset "Categorical Parameters" begin
+            discrete_factors = ms[
+                (ms.fieldname .∈ [ADRIA.CATEGORICAL_PARAMETERS]), :
+            ]
+            for factor in eachrow(discrete_factors)
+                fn = factor.fieldname
+                @test ADRIA.get_bounds(dom, fn)[1] == factor.lower_bound
+                @test ADRIA.get_bounds(dom, fn)[2] == factor.upper_bound
             end
         end
     end

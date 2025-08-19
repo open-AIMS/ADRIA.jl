@@ -341,9 +341,11 @@ function run_scenario(
 
     # Store logs
     c_dim = Base.ndims(result_set.raw) + 1
-    log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log)
+    log_stores = (
+        :site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log, :density_log
+    )
     for k in log_stores
-        if k == :seed_log || k == :site_ranks
+        if k == :seed_log || k == :site_ranks || k == :seed_log
             concat_dim = c_dim
         else
             concat_dim = c_dim - 1
@@ -357,7 +359,7 @@ function run_scenario(
             err isa MethodError ? nothing : rethrow(err)
         end
 
-        if k == :seed_log
+        if k == :seed_log || k == :density_log
             getfield(data_store, k)[:, :, :, idx] .= vals
         elseif k == :site_ranks
             if !isnothing(data_store.site_ranks)
@@ -487,6 +489,11 @@ function run_model(
 
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
+    strategy_idx::Int64 = param_set[At("seeding_strategy")]
+    if strategy_idx > 0
+        strategy = Symbol(decision.seeding_strategies(strategy_idx))
+    end
+    target_density = param_set[At("seeding_density")]
 
     # Years to start seeding/shading/fogging
     seed_start_year::Int64 = param_set[At("seed_year_start")]
@@ -548,6 +555,7 @@ function run_model(
     Yshade = spzeros(tf, n_locs)
     Yfog = spzeros(tf, n_locs)
     Yseed = zeros(tf, 3, n_locs)  # 3 = the number of seeded coral types
+    Ydensity = zeros(tf, 3, n_locs)  # 3 = the number of seeded coral types
 
     # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
@@ -948,38 +956,43 @@ function run_model(
         if has_seed_locs  # seed_decision_years[tstep] &&
             # Seed selected locations
             # Selected locations can fill up over time so avoid locations with no space
-            seed_locs = findall(log_location_ranks.locations .∈ [selected_seed_ranks])
-
-            available_space = leftover_space_m²[seed_locs]
+            # Maintain the order of the ranking
+            ordered_seed_locs = [
+                findfirst(log_location_ranks.locations .== x) for x in selected_seed_ranks
+            ]
+            available_space = leftover_space_m²[ordered_seed_locs]
             locs_with_space = findall(available_space .> 0.0)
 
             # If there are locations with space to select from, then deploy what we can
             # Otherwise, do nothing.
-            if length(locs_with_space) > 0
-                seed_locs = seed_locs[locs_with_space]
+            if length(locs_with_space) > 0 && (tstep <= seed_start_year + seed_years)
+                ordered_seed_locs = ordered_seed_locs[locs_with_space]
 
                 # Calculate proportion to seed based on current available space
-                proportional_increase, n_corals_seeded = distribute_seeded_corals(
-                    vec_abs_k[seed_locs],
-                    available_space,
+                proportional_increase, n_corals_seeded, ordered_seed_locs, updated_density = distribute_seeded_corals(
+                    strategy,
+                    ordered_seed_locs,
+                    vec_abs_k,
+                    leftover_space_m²,
                     max_seeded_area,
-                    seed_volume.data
+                    seed_volume.data,
+                    target_density
                 )
-
                 # Log estimated number of corals seeded
-                Yseed[tstep, :, seed_locs] .= n_corals_seeded'
+                Yseed[tstep, :, ordered_seed_locs] .= n_corals_seeded'
+                Ydensity[tstep, :, ordered_seed_locs] .= updated_density
 
                 # Add coral seeding to recruitment
                 # (1,2,4) refer to the coral functional groups being seeded
                 # These are tabular Acropora, corymbose Acropora, and small massives
-                recruitment[[1, 2, 4], seed_locs] .+= proportional_increase
+                recruitment[[1, 2, 4], ordered_seed_locs] .+= proportional_increase
 
                 update_tolerance_distribution!(
                     proportional_increase,
                     C_cover_t,
                     c_mean_t,
                     c_std,
-                    seed_locs,
+                    ordered_seed_locs,
                     seed_sc,
                     a_adapt
                 )
@@ -1052,6 +1065,7 @@ function run_model(
     return (
         raw=raw,
         seed_log=Yseed,
+        density_log=Ydensity,
         fog_log=Yfog,
         shade_log=Yshade,
         site_ranks=log_location_ranks,

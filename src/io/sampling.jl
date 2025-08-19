@@ -2,7 +2,7 @@ using Printf
 using DataFrames, Distributions, LinearAlgebra
 
 using ADRIA
-using ADRIA: model_spec, component_params
+using ADRIA: model_spec, component_params, factor_lower_bounds, factor_upper_bounds
 using ADRIA.decision: mcda_normalize
 import Distributions: sample
 import QuasiMonteCarlo as QMC
@@ -11,6 +11,38 @@ import QuasiMonteCarlo: SobolSample, OwenScramble
 const DISCRETE_FACTOR_TYPES = [
     "ordered categorical", "unordered categorical", "ordered discrete"
 ]
+
+const CATEGORICAL_PARAMETERS = [
+    :guided, :seeding_strategy
+]
+
+const CATEGORICAL_ENCODING_MAPS = Dict(
+    :guided => decision.decision_method_encoding,
+    :seeding_strategy => decision.seeding_strategy_encoding
+)
+
+"""
+    update_categorical_distributions!(dom, new_dist_params::Tuple)::Domain
+
+Update the model spec with the tuple of values for categorical distributions.
+"""
+function _update_categorical_distributions!(
+    dom, param::Symbol, new_dist_params::Tuple
+)::Domain
+    new_method_names::Vector{String} = collect(new_dist_params)
+    new_method_idxs = CATEGORICAL_ENCODING_MAPS[param].(new_method_names)
+
+    ms = model_spec(dom)
+    param_row = findfirst(ms.fieldname .== param)
+    @assert !isnothing(param_row) "{param} variable not found in model spec."
+
+    ms[param_row, :dist_params] = Tuple(new_method_idxs)
+    ms[param_row, :val] = first(new_method_idxs)
+    ms[param_row, :is_constant] = length(new_method_idxs) == 1
+    update!(dom, ms)
+
+    return dom
+end
 
 """
     adjust_samples(d::Domain, df::DataFrame)::DataFrame
@@ -349,6 +381,7 @@ end
     fix_factor!(d::Domain, factor::Symbol)::Nothing
     fix_factor!(d::Domain, factor::Symbol, val::Real)::Nothing
     fix_factor!(d::Domain, factors::Vector{Symbol})::Nothing
+    fix_factor!(f::Domain, factor::Symbor, val::String)::Nothing
     fix_factor!(d::Domain; factors...)::Nothing
 
 Fix a factor so it gets ignored for the purpose of constructing samples.
@@ -409,9 +442,32 @@ function fix_factor!(d::Domain, factors::Vector{Symbol})::Nothing
     update!(d, params)
     return nothing
 end
+function fix_factor!(d::Domain, factor::Symbol, category::String)::Nothing
+    if factor ∉ CATEGORICAL_PARAMETERS
+        msg = "$(factor) is not a categorical parameter."
+        msg += " Possible categorical parameterts are: $(CATEGORICAL_PARAMETERS)"
+        throw(ArgumentError(msg))
+    end
+
+    _update_categorical_distributions!(d, factor, (category,))
+    return nothing
+end
 function fix_factor!(d::Domain; factors...)::Nothing
     factor_names = keys(factors)
+    factor_symbols = Symbol.(factor_names)
     factor_vals = collect(values(factors))
+
+    # Process categorical params seperately
+    if any(CATEGORICAL_PARAMETERS .∈ [factor_symbols])
+        factor_idxs::Vector{Int64} = findall(factor_symbols .∈ [CATEGORICAL_PARAMETERS])
+        val_to_tuple = x -> (x,)
+        d = _update_categorical_distributions!.(
+            Ref(d), factor_symbols[factor_idxs], val_to_tuple.(factor_vals[factor_idxs])
+        )[end]
+        factor_symbols = factor_symbols[.!(1:end .∈ [factor_idxs])]
+        factor_names = String.(factor_symbols)
+        factor_vals = factor_vals[.!(1:end .∈ [factor_idxs])]
+    end
 
     params = DataFrame(d.model)
 
@@ -465,7 +521,9 @@ upper bound corresponds to the upper bound saved at the Domain's model_spec minu
 Minimum and maximum bounds associated with the parameter distribution.
 """
 function get_bounds(dom::Domain, factor::Symbol)::NTuple{2,Float64}
-    return get_attr(dom, factor, :dist_params)[1:2]
+    ms = model_spec(dom)
+    param_row = ms[findfirst(ms.fieldname .== factor), :]
+    return (factor_lower_bounds(param_row), factor_upper_bounds(param_row))
 end
 function get_bounds(param::Param)::NTuple{2,Float64}
     return param.dist_params[1:2]
@@ -485,28 +543,6 @@ end
 function get_attr(dom::Domain, factor::Symbol, attr::Symbol)
     ms = model_spec(dom)
     return ms[ms.fieldname .== factor, attr][1]
-end
-
-"""
-    _update_decision_method!(dom, new_dist_params::Tuple)::Domain
-
-Update the model spec with the tuple of DMCA methods to use.
-"""
-function _update_decision_method!(dom, new_dist_params::Tuple)::Domain
-    new_method_names::Vector{String} = collect(new_dist_params)
-
-    new_method_idxs = decision.decision_method_encoding.(new_method_names)
-
-    ms = model_spec(dom)
-    guided_row = findfirst(ms.fieldname .== :guided)
-    @assert !isnothing(guided_row) "Guided variable not found in model spec."
-
-    ms[guided_row, :dist_params] = Tuple(new_method_idxs)
-    ms[guided_row, :val] = first(new_method_idxs)
-    ms[guided_row, :is_constant] = length(new_method_idxs) == 1
-    update!(dom, ms)
-
-    return dom
 end
 
 """
@@ -540,8 +576,8 @@ function set_factor_bounds(dom::Domain, factor::Symbol, new_dist_params::Tuple):
     return dom
 end
 function set_factor_bounds!(dom::Domain, factor::Symbol, new_dist_params::Tuple)::Domain
-    if factor == :guided
-        return _update_decision_method!(dom, new_dist_params)
+    if factor == :guided || factor == :seeding_strategy
+        return _update_categorical_distributions!(dom, factor, new_dist_params)
     end
 
     old_val = get_attr(dom, factor, :val)
@@ -569,11 +605,13 @@ function set_factor_bounds!(dom::Domain; factors...)::Domain
     new_params = collect(values(factors))
 
     # Handle categorical guided factor separately
-    if :guided in factor_symbols
-        factor_idx::Int64 = findfirst(factor_symbols .== :guided)
-        dom = _update_decision_method!(dom, new_params[factor_idx])
-        factor_symbols = factor_symbols[1:end .!= factor_idx]
-        new_params = new_params[1:end .!= factor_idx]
+    if any(CATEGORICAL_PARAMETERS .∈ [factor_symbols])
+        factor_idxs::Vector{Int64} = findall(factor_symbols .∈ CATEGORICAL_PARAMETERS)
+        dom = _update_categorical_distributions!.(
+            dom, factor_symbols[factor_idxs], new_params[factor_idxs]
+        )[end]
+        factor_symbols = factor_symbols[.!(1:end .∈ [factor_idxs])]
+        new_params = new_params[.!(1:end .∈ [factor_idxs])]
     end
 
     ms = model_spec(dom)
