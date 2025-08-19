@@ -11,7 +11,15 @@ using ADRIA
         test_small_spec_rs()
     end
     @test typeof(rs) <: ADRIA.ResultSet
-    # Test RMEDomain loading
-    dom = test_reefmod_engine_domain()
-    @test typeof(dom) <: ADRIA.RMEDomain
+
+    # # Test RMEDomain loading
+    reefmod_dom = ADRIA.load_domain(
+        ReefModDomain,
+        joinpath(TEST_DATA_DIR, "Reefmod_test_domain"),
+        "45"
+    )
+    @test typeof(reefmod_dom) <: ADRIA.ReefModDomain
+
+    rme_dom = ADRIA.load_domain(RMEDomain, joinpath(TEST_DATA_DIR, "RME_test_domain"), "45")
+    @test typeof(rme_dom) <: ADRIA.RMEDomain
 end

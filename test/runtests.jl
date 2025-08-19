@@ -10,6 +10,8 @@ include("aqua.jl")
 
 include("run_scenarios.jl")
 
+include("example_run.jl")
+
 include("analysis.jl")
 include("clustering.jl")
 include("data_loading.jl")
@@ -41,4 +43,3 @@ include("viz/spatial.jl")
 #
 # Always run this example test case last
 # as it sets global environment variables
-# include("example_run.jl")
