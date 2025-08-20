@@ -12,6 +12,8 @@ using ADRIA
     end
     @test typeof(rs) <: ADRIA.ResultSet
 
+    n_samples = 2^5
+
     # # Test RMEDomain loading
     reefmod_dom = ADRIA.load_domain(
         ReefModDomain,
@@ -19,7 +21,9 @@ using ADRIA
         "45"
     )
     @test typeof(reefmod_dom) <: ADRIA.ReefModDomain
+    reefmod_samples = ADRIA.sample(reefmod_dom, n_samples)
 
     rme_dom = ADRIA.load_domain(RMEDomain, joinpath(TEST_DATA_DIR, "RME_test_domain"), "45")
     @test typeof(rme_dom) <: ADRIA.RMEDomain
+    rme_samples = ADRIA.sample(rme_dom, n_samples)
 end
