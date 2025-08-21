@@ -19,6 +19,7 @@ using ADRIA.metrics:
 using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
 using ADRIA.metrics: coral_evenness
 using ADRIA.decision
+using ADRIA: loc_coral_cover, loc_recruits_cover
 
 """
     setup_cache(domain::Domain)::NamedTuple
@@ -71,7 +72,22 @@ function _reshape_init_cover(
 end
 
 """
-    _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64}})::Matrix{<:Union{Float32, Float64}}
+    apply_survival_scaling(survival_rate::AbstractMatrix, scaling_param::AbstractVector)::AbstractMatrix
+"""
+function apply_survival_scaling(
+    survival_rate::AbstractMatrix,
+    scaling_param::AbstractVector
+)::AbstractMatrix
+    # If `scaling_param` is a very low negative number this function will return
+    # negative numbers for lower values of `survival_rate`. For instance, when
+    # `scaling_param = -1` that will happen whenever `survival_rate < 1/3`.
+    # In practice, the lowest `survival_rate` value we have is 0.716, so that issue never
+    # happens.
+    return survival_rate .+ 0.5 .* (1 .- survival_rate) .* scaling_param
+end
+
+"""
+    _to_group_size(growth_spec::CoralGrowth, data::AbstractVector{<:Union{Float32, Float64, Tuple}})::Matrix{<:Union{Float32, Float64}}
 
 Reshape vector to shape [functional_groups ⋅ sizes]
 """
@@ -249,6 +265,12 @@ function run_scenarios(
     return load_results(_result_location(dom, RCP))
 end
 
+function growth_acceleration(
+    height::Float64, midpoint::Float64, steepness::Float64, available_space::Float64
+)
+    return height / (1 + exp(-steepness * (available_space - midpoint))) + 1.0
+end
+
 function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
     target_rows = findall(scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp))
     rep_doms = Iterators.repeated(dom, n)
@@ -406,18 +428,21 @@ NamedTuple of collated results
 - `bleaching_mortality` : Array, Log of mortalities caused by bleaching
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
-function run_model(domain::Domain, param_set::Union{DataFrameRow,YAXArray})::NamedTuple
+function run_model(
+    domain::Domain,
+    param_set::Union{DataFrameRow,YAXArray}
+)
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
-    _bin_edges::Matrix{Float64} = bin_edges()
     functional_groups = Vector{FunctionalGroup}[
         FunctionalGroup.(
-            eachrow(_bin_edges[:, 1:(end - 1)]),
-            eachrow(_bin_edges[:, 2:end]),
+            eachrow(bin_edges()[:, 1:(end - 1)]),
+            eachrow(bin_edges()[:, 2:end]),
             eachrow(zeros(n_groups, n_sizes))
         ) for _ in 1:n_locs
     ]
+
     return run_model(domain, param_set, functional_groups)
 end
 function run_model(
@@ -430,11 +455,27 @@ function run_model(
     return run_model(domain, ps, functional_groups)
 end
 function run_model(
-    domain::Domain, param_set::YAXArray, functional_groups::Vector{Vector{FunctionalGroup}}
+    domain::Domain,
+    param_set::YAXArray,
+    functional_groups::Vector{Vector{FunctionalGroup}}
 )::NamedTuple
     p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
+
+    factor_names::Vector{String} = collect(param_set.factors.val)
+
+    # Determine growth rate based on linear extension
+    lin_ext = Matrix{Float64}(
+        reshape(
+            corals.linear_extension,
+            domain.coral_growth.n_sizes,
+            domain.coral_growth.n_groups
+        )'
+    )
+    coral_growth_rate = reshape(
+        growth_rate(lin_ext, bin_widths()), domain.coral_growth.n_group_and_size
+    )[:]
 
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
@@ -534,6 +575,7 @@ function run_model(
     habitable_locs::BitVector = location_k(domain) .> 0.0
     habitable_loc_areas = vec_abs_k[habitable_locs]
     habitable_loc_areas′ = reshape(habitable_loc_areas, (1, 1, length(habitable_locs)))
+    n_habitable_locs::Int64 = length(habitable_locs)
 
     # Avoid placing importance on sites that were not considered
     # Lower values are higher importance/ranks.
@@ -573,7 +615,7 @@ function run_model(
     )
 
     taxa_names::Vector{String} = collect(
-        param_set.factors[occursin.("N_seed_", param_set.factors)]
+        factor_names[occursin.("N_seed_", factor_names)]
     )
 
     # Define taxa and size class to seed, and identify their factor names
@@ -662,7 +704,6 @@ function run_model(
 
     # Cache for proportional mortality and coral population increases
     bleaching_mort = zeros(tf, n_groups, n_sizes, n_locs)
-
     #### End coral constants
 
     ## Update ecological parameters based on intervention option
@@ -675,7 +716,7 @@ function run_model(
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
-    p.r .= _to_group_size(domain.coral_growth, corals.growth_rate)
+    p.r .= _to_group_size(domain.coral_growth, coral_growth_rate)
     p.mb .= _to_group_size(domain.coral_growth, corals.mb_rate)
 
     area_weighted_conn = conn .* vec_abs_k
@@ -714,41 +755,146 @@ function run_model(
         habitable_loc_areas
     )
 
+    # Extract unique cb_calib_groups and create location masks for each biogroup
+    unique_cb_calib_groups::Vector{Int64} = sort(unique(domain.loc_data.CB_CALIB_GROUPS))
+    n_cb_calib_groups::Int64 = length(unique_cb_calib_groups)
+    cb_calib_group_masks::BitMatrix = falses(n_locs, n_cb_calib_groups)
+    for (idx, cb_calib_group) in enumerate(unique_cb_calib_groups)
+        cb_calib_group_masks[:, idx] .= domain.loc_data.CB_CALIB_GROUPS .== cb_calib_group
+    end
+
+    # Index into unique_biogroups for each location
+    loc_cb_calib_group_idxs::Vector{Int64} = [
+        findfirst(x -> x == cb_group, unique_cb_calib_groups)
+        for cb_group in domain.loc_data.CB_CALIB_GROUPS
+    ]
+
+    is_growth_acc_mask = occursin.("growth_acceleration", factor_names)
+    growth_acc_steepness::Vector{Float64} =
+        param_set[is_growth_acc_mask .&& occursin.("steepness", factor_names)].data
+    growth_acc_height::Vector{Float64} =
+        param_set[is_growth_acc_mask .&& occursin.("height", factor_names)].data
+    growth_acc_midpoint::Vector{Float64} =
+        param_set[is_growth_acc_mask .&& occursin.("midpoint", factor_names)].data
+
+    # linear_extension scale factors with dimensions (cb_calib_groups ⋅ functional_groups)
+    _linear_extension_scale_factors = reshape(
+        param_set[occursin.("linear_extension_scale", factor_names)].data,
+        n_cb_calib_groups,
+        n_groups
+    )
+
+    # mb_rate scale factors with dimensions (cb_calib_groups ⋅ functional_groups)
+    _mb_rate_scale_factors = reshape(
+        param_set[occursin.("mb_rate_scale", factor_names)].data,
+        n_cb_calib_groups,
+        n_groups
+    )
+
+    biogrp_lin_ext::Array{Float64,3} = repeat(_linear_extensions, 1, 1, n_cb_calib_groups)
+    biogrp_survival::Array{Float64,3} = repeat(survival_rate, 1, 1, n_cb_calib_groups)
+    for i in 1:n_cb_calib_groups
+        biogrp_lin_ext[:, :, i] .*= _linear_extension_scale_factors[i, :]
+        biogrp_survival[:, :, i] .= apply_survival_scaling(
+            biogrp_survival[:, :, i], _mb_rate_scale_factors[i, :]
+        )
+    end
+
+    # Preallocate vector for growth constraints
+    growth_constraints::Vector{Float64} = zeros(Float64, n_locs)
+
     # Preallocated cache for source/sink locations
     valid_sources::BitVector = falses(size(conn, 2))
     valid_sinks::BitVector = falses(size(conn, 1))
 
     FLoops.assistant(false)
     habitable_loc_idxs = findall(habitable_locs)
-    for tstep::Int64 in 2:tf
 
+    apply_growth_acc_mask::BitVector = trues(n_locs)
+    cache_habitable_max_projected_cover = copy(habitable_max_projected_cover)
+    agg_cover_above_threshold_mask::BitVector = falses(n_habitable_locs)
+    for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
             C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
 
+        # To prevent overgrowth when adding recruitment to C_cover_t, set a threshold above
+        # above which recruits are either set to zero or rescaled
+        round_threshold = 0.95
+
+        # Relative coral cover and recruits cover for each location
+        C_rel_cover = loc_coral_cover(C_cover_t) ./ habitable_loc_areas
+        loc_recruits_rel_cover = loc_recruits_cover(recruitment) ./ habitable_loc_areas
+
+        # Set recruitment to 0 where C_cover_t is already above round_threshold
+        cover_above_threshold_mask = C_rel_cover .> round_threshold
+        recruitment[:, cover_above_threshold_mask] .= 0.0
+
+        # Mask for locations with (C_cover + recruits) > threshold and C_cover <= threshold
+        agg_cover_above_threshold_mask .=
+            (C_rel_cover .+ loc_recruits_rel_cover .> round_threshold) .&&
+            .!cover_above_threshold_mask
+
+        if any(agg_cover_above_threshold_mask)
+            @warn "Constraining recruits within error bounds. tstep = $tstep"
+            recruits_scale_factor =
+                (
+                    (
+                        round_threshold .*
+                        habitable_loc_areas[agg_cover_above_threshold_mask]
+                    ) .- loc_coral_cover(C_cover_t[:, :, agg_cover_above_threshold_mask])
+                ) ./ loc_recruits_cover(recruitment[:, agg_cover_above_threshold_mask])
+
+            @assert !any(recruits_scale_factor .<= 0)
+
+            # Rescale recruits in target locations to fit within error bounds
+            recruitment[:, agg_cover_above_threshold_mask] .*= repeat(
+                recruits_scale_factor', n_groups
+            )
+        end
+
         # Settlers from t-1 grow into observable sizes.
         C_cover_t[:, 1, habitable_locs] .+= recruitment
 
-        lin_ext_scale_factors::Vector{Float64} = linear_extension_scale_factors(
-            C_cover_t[:, :, habitable_locs],
-            habitable_loc_areas,
-            _linear_extensions,
-            _bin_edges,
-            habitable_max_projected_cover
+        habitable_max_projected_cover =
+            cache_habitable_max_projected_cover .+
+            dropdims(sum(recruitment; dims=1); dims=1)
+
+        # Growth constrains need to be calculated seperately for differen growth rates
+        for idx in 1:n_cb_calib_groups
+            growth_constraints[cb_calib_group_masks[:, idx]] .= linear_extension_scale_factors(
+                C_cover_t[:, :, cb_calib_group_masks[:, idx]],
+                vec_abs_k[cb_calib_group_masks[:, idx]],
+                biogrp_lin_ext[:, :, idx],
+                _bin_edges,
+                habitable_max_projected_cover[cb_calib_group_masks[:, idx]]
+            )
+        end
+
+        relative_habitable_cover = loc_coral_cover(C_cover_t) ./ vec_abs_k
+        lin_ext_scale_factor_threshold = 0.5
+        apply_growth_acc_mask .= (
+            relative_habitable_cover .< lin_ext_scale_factor_threshold
         )
-        # ? Should we bring this inside CoralBlox?
-        lin_ext_scale_factors[_loc_coral_cover(C_cover_t)[habitable_locs] .< (0.7 .* habitable_loc_areas)] .=
-            1
+        for idx in 1:n_cb_calib_groups
+            apply_growth_acc_mask .= (
+                apply_growth_acc_mask .&& cb_calib_group_masks[:, idx]
+            )
+            growth_constraints[apply_growth_acc_mask] .=
+                growth_acceleration.(
+                    growth_acc_height[idx],
+                    growth_acc_midpoint[idx],
+                    growth_acc_steepness[idx],
+                    relative_habitable_cover[apply_growth_acc_mask]
+                )
+        end
 
-        @floop for i in habitable_loc_idxs
-            # TODO Skip when _loc_rel_leftover_space[i] == 0
-
-            # Perform timestep
+        for i in habitable_loc_idxs
             timestep!(
                 functional_groups[i],
                 recruitment[:, i],
-                _linear_extensions .* lin_ext_scale_factors[i],
-                survival_rate
+                biogrp_lin_ext[:, :, loc_cb_calib_group_idxs[i]] .* growth_constraints[i],
+                biogrp_survival[:, :, loc_cb_calib_group_idxs[i]]
             )
 
             # Write to the cover matrix
@@ -756,9 +902,17 @@ function run_model(
         end
 
         # Check if size classes are inappropriately out-growing habitable area
-        @assert (
-            sum(_loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas) == 0
-        ) "Cover outgrowing habitable area"
+        if any(loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas)
+            @warn "Cover outgrowing habitable area at tstep $tstep. Constraining."
+            outgrowing_locs_mask =
+                loc_coral_cover(C_cover_t)[habitable_locs] .> habitable_loc_areas
+            C_cover_t[:, :, outgrowing_locs_mask] .*=
+                reshape(
+                    vec_abs_k[outgrowing_locs_mask] ./
+                    loc_coral_cover(C_cover_t)[outgrowing_locs_mask],
+                    (1, 1, count(outgrowing_locs_mask))
+                ) .* 0.999
+        end
 
         # Convert C_cover_t to relative values after CoralBlox was run
         C_cover_t[:, :, habitable_locs] .= (
@@ -787,8 +941,8 @@ function run_model(
         # Calculates scope for coral fedundity for each size class and at each location
         fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, habitable_areas)
 
-        loc_coral_cover = _loc_coral_cover(C_cover_t)
-        leftover_space_m² = relative_leftover_space(loc_coral_cover) .* vec_abs_k
+        _loc_coral_cover = loc_coral_cover(C_cover_t)
+        leftover_space_m² = relative_leftover_space(_loc_coral_cover) .* vec_abs_k
 
         # Reset potential settlers to zero
         potential_settlers .= 0.0
@@ -902,14 +1056,14 @@ function run_model(
             # Determine connectivity strength weighting by area.
             # Accounts for strength of connectivity where there is low/no coral cover
             in_conn, out_conn, _ = connectivity_strength(
-                area_weighted_conn, vec(loc_coral_cover), conn_cache
+                area_weighted_conn, vec(_loc_coral_cover), conn_cache
             )
 
             update_criteria_values!(
                 decision_mat;
                 heat_stress=dhw_projection[_valid_locs],
                 wave_stress=wave_projection[_valid_locs],
-                coral_cover=loc_coral_cover[_valid_locs],  # Coral cover relative to `k`
+                coral_cover=_loc_coral_cover[_valid_locs],  # Coral cover relative to `k`
                 in_connectivity=in_conn[_valid_locs],  # area weighted connectivities for time `t`
                 out_connectivity=out_conn[_valid_locs]
             )
@@ -1014,8 +1168,9 @@ function run_model(
         cyclone_mortality!(C_cover_t, cyclone_mortality_scen[tstep, :, :]')
 
         # Calculate survival_rate due to env. disturbances
-        ΔC_cover_t[ΔC_cover_t .== 0.0] .= 1.0
-        survival_rate_cache .= C_cover_t ./ ΔC_cover_t
+        no_mortality_mask = ΔC_cover_t .== 0.0
+        survival_rate_cache[.!no_mortality_mask] .= (C_cover_t ./ ΔC_cover_t)[.!no_mortality_mask]
+        survival_rate_cache[no_mortality_mask] .= 1.0
         @assert sum(survival_rate_cache .> 1) == 0 "Survival rate should be <= 1"
 
         survival_rate_slices = [@view survival_rate_cache[:, :, loc] for loc in 1:n_locs]
@@ -1103,8 +1258,4 @@ function cyclone_mortality!(
     coral_cover .= coral_cover .* (1 .- reshape(cyclone_mortality, (n_groups, 1, n_locs)))
     clamp!(coral_cover, 0.0, 1.0)
     return nothing
-end
-
-function _loc_coral_cover(C_cover_t::Array{Float64,3})
-    return dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
 end

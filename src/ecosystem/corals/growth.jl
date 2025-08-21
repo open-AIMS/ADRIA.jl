@@ -329,12 +329,12 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
     # First three of each functional group are the juvenile size classes
     # TODO: Should be a shared parameter set somewhere else...
     group_and_sizes = 1:n_sp_sc
-    # juveniles = sort!(vec(
-    #     [group_and_sizes[1:n_sizes:end]
-    #      group_and_sizes[2:n_sizes:end]
-    #      group_and_sizes[3:n_sizes:end]]
-    # ))
-    juveniles = group_and_sizes[1:n_sizes:end]
+    juveniles = sort!(vec(
+        [group_and_sizes[1:n_sizes:end]
+            group_and_sizes[2:n_sizes:end]
+        ]  # group_and_sizes[3:n_sizes:end]
+    ))
+    # juveniles = group_and_sizes[1:n_sizes:end]
     non_juveniles = setdiff(group_and_sizes, juveniles)
 
     # Adjust distributions for each functional group over all locations, ignoring juveniles
@@ -355,7 +355,7 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
             μ::Float64 = dist_t_1[sp_sc, loc]
             affected_pop::Float64 = truncated_normal_cdf(
                 # Use previous mortality threshold as minimum
-                dhw[loc], μ, stdev[sp_sc], prop_mort[1, sp_sc, loc], μ + HEAT_UB
+                dhw[loc], μ, stdev[sp_sc], max(4.0, prop_mort[1, sp_sc, loc]), μ + HEAT_UB
             )
 
             mort_pop::Float64 = 0.0
@@ -398,7 +398,7 @@ function bleaching_mortality!(
 )::Nothing
     n_groups, n_sizes, n_locs = size(cover)
 
-    non_juveniles = 2:n_sizes
+    non_juveniles = 1:n_sizes
 
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
@@ -418,8 +418,10 @@ function bleaching_mortality!(
 
                 μ::Float64 = dist_t_1[grp, sc, loc]
                 affected_pop::Float64 = truncated_normal_cdf(
-                    # Use previous mortality threshold as minimum
-                    dhw[loc], μ, stdev[grp, sc], prop_mort[1, grp, sc, loc], μ + HEAT_UB
+                    # Use the previous mortality threshold or 4.0 as the minimum,
+                    # whichever is greater
+                    dhw[loc], μ, stdev[grp, sc], max(4.0, prop_mort[1, grp, sc, loc]),
+                    μ + HEAT_UB
                 )
 
                 mort_pop::Float64 = 0.0

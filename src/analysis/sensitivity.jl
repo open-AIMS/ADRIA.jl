@@ -453,7 +453,7 @@ function convergence(
     Si::Function=pawn,
     n_steps::Int64=10
 )::YAXArray
-    ms = model_spec(rs)
+    ms = model_spec(rs, Symbol.(names(X)))
 
     target_factors = [
         ms[ms[:, "component"] .== cc, "fieldname"] for

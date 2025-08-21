@@ -92,10 +92,42 @@ Notes:
 Scenario specification
 """
 function sample(
-    dom::Domain, n::Int, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
+    dom::Domain, n::Int; sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
     n > 0 ? n : throw(DomainError(n, "`n` must be > 0"))
-    return sample(model_spec(dom), n, sample_method)
+    ms::DataFrame = model_spec(dom)
+    cb_calib_groups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS
+    return sample(_filtered_model_spec(ms, cb_calib_groups), n, sample_method)
+end
+
+"""
+    _filtered_model_spec(model_spec::DataFrame, cb_calib_groups::Vector{Int64})
+
+Filters `cb_calib_group` specific factors correspondent to `cb_calib_groups` not present in
+loaded domain spatial data.
+"""
+function _filtered_model_spec(model_spec::DataFrame, cb_calib_groups::Vector{Int64})
+    factor_names = string.(model_spec.fieldname)
+
+    # The extra "_" garantees that we don't select group "12", for example, when trying to
+    # select just group "1"
+    cb_calib_group_ids = string.(unique(cb_calib_groups))
+    groups_to_keep = "cb_group_" .* cb_calib_group_ids .* "_"
+
+    # Factors to remove
+    group_mask =
+        .!reduce.(
+            (x, y) -> x .|| y, [occursin.(groups_to_keep, fname) for fname in factor_names]
+        )
+    growth_acc_mask = occursin.(r"growth_acceleration", factor_names) .&& group_mask
+    mb_rate_mask = occursin.(r"mb_rate_scale", factor_names) .&& group_mask
+    linear_extension_mask =
+        occursin.(r"linear_extension_scale", factor_names) .&& group_mask
+
+    # Factors to keep
+    keep_mask = .!growth_acc_mask .&& .!mb_rate_mask .&& .!linear_extension_mask
+
+    return keepat!(model_spec, keep_mask)
 end
 
 """
@@ -235,7 +267,8 @@ Scenario specification
 function sample_cf(
     d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
-    spec_df = model_spec(d)
+    cb_calib_groups::Vector{Int64} = d.loc_data.CB_CALIB_GROUPS
+    spec_df = _filtered_model_spec(model_spec(d), cb_calib_groups)
 
     # Unguided scenarios only
     guided_col = spec_df.fieldname .== :guided
@@ -243,7 +276,7 @@ function sample_cf(
         [-1 -1 -1 (-1.0, -1.0) true]
 
     # Remove intervention scenarios as an option
-    _deactivate_interventions(spec_df)
+    deactivate_interventions(spec_df)
 
     return sample(spec_df, n, sample_method)
 end
@@ -280,7 +313,8 @@ Scenario specification
 function sample_guided(
     d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
-    spec_df = model_spec(d)
+    cb_calib_groups::Vector{Int64} = d.loc_data.CB_CALIB_GROUPS
+    spec_df = _filtered_model_spec(model_spec(d), cb_calib_groups)
 
     # Remove unguided scenarios as an option
     # Sample without unguided (i.e., values >= 1), then revert back to original model spec
@@ -308,7 +342,8 @@ Scenario specification
 function sample_unguided(
     d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
-    spec_df = model_spec(d)
+    cb_calib_groups::Vector{Int64} = d.loc_data.CB_CALIB_GROUPS
+    spec_df = _filtered_model_spec(model_spec(d), cb_calib_groups)
 
     # Fix guided factor to 0 (i.e., unguided scenarios only)
     guided_col = spec_df.fieldname .== :guided
@@ -319,17 +354,19 @@ function sample_unguided(
 end
 
 """
-    _deactivate_interventions(to_update::DataFrame)::Nothing
+    deactivate_interventions(to_update::DataFrame)::Nothing
+    deactivate_interventions!(dom::Domain)::Nothing
 
-Deactivate all intervention factors (excluding `guided`) by settings these to 0.0
+Deactivate all intervention factors (excluding `guided`) by settings these to 0.0.
 
 # Arguments
 - `to_update` : model specification to modify/update
+- `dom` : Domain
 
 # Returns
-Scenario specification
+Nothing
 """
-function _deactivate_interventions(to_update::DataFrame)::Nothing
+function deactivate_interventions(to_update::DataFrame)::Nothing
     intervs = component_params(to_update, Intervention)
     cols = Symbol[fn for fn in intervs.fieldname if fn != :guided]
     for c in cols
@@ -341,6 +378,13 @@ function _deactivate_interventions(to_update::DataFrame)::Nothing
         to_update[_row, [:val, :lower_bound, :upper_bound, :dist_params, :is_constant]] .=
             [dval 0.0 0.0 _dparams true]
     end
+
+    return nothing
+end
+function deactivate_interventions!(dom::Domain)::Nothing
+    iv_factors = component_params(model_spec(dom), Intervention).fieldname
+    n_iv_factors = length(iv_factors)
+    ADRIA.fix_factor!(dom; NamedTuple{Tuple(iv_factors)}(zeros(Float64, n_iv_factors))...)
 
     return nothing
 end

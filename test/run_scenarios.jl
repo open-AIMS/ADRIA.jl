@@ -7,7 +7,6 @@ const ADRIA_DIR = pkgdir(ADRIA)
 const TEST_DATA_DIR = joinpath(ADRIA_DIR, "test", "data")
 
 const TEST_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Test_domain")
-const TEST_REEFMOD_ENGINE_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Reefmod_test_domain")
 
 # Load and apply configuration options
 ADRIA.setup()
