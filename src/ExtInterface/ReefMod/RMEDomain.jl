@@ -498,7 +498,8 @@ function load_connectivity_csv(
     end
 
     # Ensure compatibility when `force_single_reef == true`
-    locs_selector = isnothing(force_single_reef) ? ([1], [1]) : (:, :)
+    locs_selector =
+        isnothing(force_single_reef) ? (:, :) : (force_single_reef, force_single_reef)
 
     n_locs = length(loc_ids)
     tmp_mat = zeros(n_locs, n_locs, length(conn_files))
