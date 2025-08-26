@@ -662,6 +662,7 @@ function Base.show(io::IO, mime::MIME"text/plain", d::RMEDomain)::Nothing
         ReefMod Engine Domain: $(d.name)
 
         Number of locations: $(n_locations(d))
+        Timeframe: $(d.env_layer_md.timeframe[1]) - $(d.env_layer_md.timeframe[end])
     """)
 
     return nothing
