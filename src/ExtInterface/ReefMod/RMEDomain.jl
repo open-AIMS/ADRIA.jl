@@ -143,31 +143,16 @@ function load_domain(
     # Find start year
     initial_csv_files = readdir(joinpath(data_files, "initial_csv"))
     icc_filename = initial_csv_files[occursin.("coral_sp", initial_csv_files)][1]
+    icc_start_year::Int64 = parse(Int64, split(icc_filename, r"[_.]")[end - 1])
 
-    # Load DHW scens
-    dhw_scens::YAXArray{Float64} = load_DHW(RMEDomain, data_files, RCP)
+    # Se timeframe is nothing, o timeframe 'e do start_year ate o dhw_scens end_year.
+    dhw_scens = load_DHW(RMEDomain, data_files, RCP; timeframe=timeframe)
 
-    # Validates/extracts timeframe
-    start_year::Int64 = parse(Int64, split(icc_filename, r"[_.]")[end - 1])
-    end_year::Int64 = dhw_scens.timesteps[end]
-    if isnothing(timeframe)
-        # If timeframe is not specified, use dhw_scens end_year
-        timeframe = (start_year, end_year)
-    else
-        if timeframe[1] < start_year
-            @warn "Using timeframe start year $(timeframe[1]) that is different from the " *
-                "dataset initial coral cover start year $(start_year)."
-        end
-        if timeframe[2] > end_year
-            error(
-                "Using timeframe end year $(timeframe[2]) that is bigger than the dataset " *
-                "DHW end year $(end_year)."
-            )
-        end
+    if timeframe == nothing
+        timeframe = (icc_start_year, dhw_scens.timesteps[end])
+        dhw_scens = dhw_scens[timesteps=At(timeframe[1]:timeframe[2])]
     end
 
-    # Select desired dhw_scens timeframe
-    dhw_scens = dhw_scens[timesteps=At(timeframe)]
     force_single_reef && (dhw_scens = dhw_scens[:, [1], :])
     loc_ids::Vector{String} = collect(dhw_scens.locs)
 
@@ -364,7 +349,8 @@ Loads ReefMod DHW data as a datacube.
 YAXArray[timesteps, locs, scenarios]
 """
 function load_DHW(
-    ::Type{RMEDomain}, data_path::String, rcp::String, timeframe=(2022, 2100)
+    ::Type{RMEDomain}, data_path::String, rcp::String;
+    timeframe::Union{Nothing,Tuple{Int,Int}}=nothing
 )::YAXArray
     dhw_path = _data_folder_path(data_path, "dhw")
     rcp_files = _get_relevant_files(dhw_path, rcp)
@@ -377,8 +363,11 @@ function load_DHW(
     loc_ids = String.(first_file[:, 1])
 
     data_tf = parse.(Int64, names(first_file[:, 2:end]))
-    tf_start = findall(timeframe[1] .∈ data_tf)[1]
-    tf_end = findall(timeframe[2] .∈ data_tf)[1]
+
+    _timeframe = isnothing(timeframe) ? extrema(data_tf) : timeframe
+
+    tf_start = findall(_timeframe[1] .∈ data_tf)[1]
+    tf_end = findall(_timeframe[2] .∈ data_tf)[1]
 
     d1 = first_file[:, (tf_start + 1):(tf_end + 1)]
     data_shape = reverse(size(d1))
@@ -398,8 +387,8 @@ function load_DHW(
 
         data_tf = parse.(Int64, names(d))
         try
-            tf_start = findall(timeframe[1] .∈ data_tf)[1]
-            tf_end = findall(timeframe[2] .∈ data_tf)[1]
+            tf_start = findall(_timeframe[1] .∈ data_tf)[1]
+            tf_end = findall(_timeframe[2] .∈ data_tf)[1]
         catch err
             if !(err isa BoundsError)
                 rethrow(err)
@@ -416,7 +405,7 @@ function load_DHW(
     # Only return valid scenarios
     return DataCube(
         data_cube[:, :, keep_ds];
-        timesteps=timeframe[1]:timeframe[2],
+        timesteps=_timeframe[1]:_timeframe[2],
         locs=loc_ids,
         scenarios=rcp_files[keep_ds]
     )
@@ -660,7 +649,7 @@ function switch_RCPs!(d::RMEDomain, RCP::String)::RMEDomain
         d.env_layer_md.timeframe[1],
         d.env_layer_md.timeframe[end]
     )
-    @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP, timeframe)
+    @set! d.dhw_scens = load_DHW(RMEDomain, data_files, RCP; timeframe=timeframe)
 
     # Cyclones are not RCP-specific?
     # @set! d.wave_scens = load_cyclones(RMEDomain, data_files, loc_ids)
