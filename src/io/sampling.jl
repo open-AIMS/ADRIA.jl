@@ -383,8 +383,17 @@ function deactivate_interventions(to_update::DataFrame)::Nothing
 end
 function deactivate_interventions!(dom::Domain)::Nothing
     iv_factors = component_params(model_spec(dom), Intervention).fieldname
+    criteria_factors =
+        component_params(
+            model_spec(dom),
+            [SeedCriteriaWeights, FogCriteriaWeights, decision.DepthThresholds]
+        ).fieldname
     n_iv_factors = length(iv_factors)
+    n_criteria_factors = length(criteria_factors)
     ADRIA.fix_factor!(dom; NamedTuple{Tuple(iv_factors)}(zeros(Float64, n_iv_factors))...)
+    ADRIA.fix_factor!(
+        dom; NamedTuple{Tuple(criteria_factors)}(zeros(Float64, n_criteria_factors))...
+    )
 
     return nothing
 end
@@ -588,12 +597,13 @@ function set_factor_bounds!(dom::Domain, factor::Symbol, new_dist_params::Tuple)
         return _update_decision_method!(dom, new_dist_params)
     end
 
+    # Set new base value
     old_val = get_attr(dom, factor, :val)
     new_val = mean(new_dist_params[1:2])
+    (old_val isa Int) && (new_val = round(new_val))
 
     ms = model_spec(dom)
     ms[ms.fieldname .== factor, :dist_params] .= [new_dist_params]
-    (old_val isa Int) && (new_val = round(new_val))
     ms[ms.fieldname .== factor, :val] .= oftype(old_val, new_val)
     ms[!, :is_constant] .= (ms[!, :lower_bound] .== ms[!, :upper_bound])
 
