@@ -140,12 +140,12 @@ function load_domain(
     isempty(single_reef_idx) && push!(single_reef_idx, 1)
     force_single_reef && (spatial_data = spatial_data[[1], :])
 
-    # Find start year
+    # Find initial coral cover start year
     initial_csv_files = readdir(joinpath(data_files, "initial_csv"))
     icc_filename = initial_csv_files[occursin.("coral_sp", initial_csv_files)][1]
     icc_start_year::Int64 = parse(Int64, split(icc_filename, r"[_.]")[end - 1])
 
-    # Se timeframe is nothing, o timeframe 'e do start_year ate o dhw_scens end_year.
+    # Load dhw_scens
     dhw_scens = load_DHW(RMEDomain, data_files, RCP; timeframe=timeframe)
 
     if timeframe == nothing
