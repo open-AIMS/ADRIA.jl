@@ -282,24 +282,43 @@ function load_domain(
         GrowthAcceleration()
     ))
 
-    return RMEDomain(
-        "ReefMod Engine",
-        RCP,
-        env_md,
-        "",
-        conn_data,
-        spatial_data,
-        reef_id_col,
-        cluster_id_col,
-        init_coral_cover,
-        CoralGrowth(nrow(spatial_data)),
-        reef_ids,
-        dhw_scens,
-        wave_scens,
-        cyc_scens,
-        model,
-        SimConstants()
+    return adjust_sampling_bounds(
+        RMEDomain(
+            "ReefMod Engine",
+            RCP,
+            env_md,
+            "",
+            conn_data,
+            spatial_data,
+            reef_id_col,
+            cluster_id_col,
+            init_coral_cover,
+            CoralGrowth(nrow(spatial_data)),
+            reef_ids,
+            dhw_scens,
+            wave_scens,
+            cyc_scens,
+            model,
+            SimConstants()
+        )
     )
+end
+
+function adjust_sampling_bounds(dom::Domain)::Domain
+    _timesteps = timesteps(dom)
+    timeframe = _timesteps[end] - _timesteps[1]
+    ms = model_spec(dom)
+    year_start_factors = ms[occursin.(Ref("year_start"), string.(ms.fieldname)), :]
+
+    for p in eachrow(year_start_factors)
+        if p.dist_params[2] > timeframe
+            @info "Adjusting sampling bounds for $(p.fieldname) to fit within domain timeframe."
+            # Main.@infiltrate
+            set_factor_bounds!(dom, p.fieldname, (p.dist_params[1], timeframe))
+        end
+    end
+
+    return dom
 end
 
 """
