@@ -193,16 +193,24 @@ function ADRIA.viz.scenarios_legend!(
     g::GridPosition, rs::ResultSet, outcomes::YAXArray; opts::OPT_TYPE=Dict{Symbol,Any}(),
     legend_opts::OPT_TYPE=Dict{Symbol,Any}()
 )
-    by_RCP::Bool = get(opts, :by_RCP, false)
-    sort_by::Symbol = get(opts, :sort_by, :default)
-    default_names::Vector{Symbol} = get(opts, :legend_labels, [])
-
     _scenarios = rs.inputs #copy(@view(scenarios[1:end .∈ [outcomes.scenarios], :]))
     scen_groups = if by_RCP
         ADRIA.analysis.scenario_rcps(_scenarios)
     else
         ADRIA.analysis.scenario_types(_scenarios)
     end
+    return ADRIA.viz.scenarios_legend!(
+        g, scen_groups, outcomes; opts=opts, legend_opts=legend_opts
+    )
+end
+function ADRIA.viz.scenarios_legend!(
+    g::GridPosition, scen_groups::Dict, outcomes::YAXArray;
+    opts::OPT_TYPE=Dict{Symbol,Any}(),
+    legend_opts::OPT_TYPE=Dict{Symbol,Any}()
+)
+    by_RCP::Bool = get(opts, :by_RCP, false)
+    sort_by::Symbol = get(opts, :sort_by, :default)
+    default_names::Vector = get(opts, :legend_labels, [])
 
     group_names::Vector{Symbol} = _sort_keys(
         scen_groups;
