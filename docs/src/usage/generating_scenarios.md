@@ -79,7 +79,7 @@ model_spec = ADRIA.model_spec(dom)
 ADRIA.model_spec(dom, "model_spec.csv")
 ```
 
-## Constrained sampling
+## Fixing sampling bounds
 
 At times, it is necessary to create samples while holding some model factors constant.
 
@@ -119,27 +119,35 @@ ADRIA.fix_factor!(dom;
 )
 ```
 
-Samples can also be taken over a constrained range. For example, if one wanted to investigate only
-scenarios with high fogging and seeding, the following could be used:
+## Setting different sampling bounds
+
+Samples can also be taken over a constrained range. For example, one can investigate only
+scenarios with high fogging and seeding, and select a specific MCDA decision method:
 
 ```julia
 dom = ADRIA.load_domain("path to domain data package")
 
 # Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in
 # question have a uniform distribution.
-dom = ADRIA.set_factor_bounds(dom, :N_seed_TA, (500000.0, 1000000.0))
-dom = ADRIA.set_factor_bounds(dom, :N_seed_CA, (500000.0, 1000000.0))
-dom = ADRIA.set_factor_bounds(dom, :N_seed_SA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :N_seed_TA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :N_seed_CA, (500000.0, 1000000.0))
+ADRIA.set_factor_bounds!(dom, :N_seed_SA, (500000.0, 1000000.0))
 
 # Adjust fogging bounds. Note lower, upper and mode parameters are needed because it
 # is a triangular distribution.
-dom = ADRIA.set_factor_bounds(dom, :fogging, (0.2, 0.3, 0.1))
+ADRIA.set_factor_bounds!(dom, :fogging, (0.2, 0.3, 0.1))
 
-# Adjust multiple factors simultaneously.
-dom = ADRIA.set_factor_bounds(dom;
+# Adjust multiple factors simultaneously (more efficient than one at a time)
+ADRIA.set_factor_bounds!(dom;
     seed_heat_stress=(0.3, 0.7),
     N_seed_TA=(500000.0, 1000000.0),
     N_seed_CA=(500000.0, 1000000.0))
+
+# List of available MCDA decision methods
+ADRIA.decision.mcda_method_names()
+
+# Constrain guided options, selecting a specific MCDA decision method
+ADRIA.set_factor_bounds!(dom, :guided, ("counterfactual", "COCOSO"))
 ```
 
 ## Sampling counterfactuals only
