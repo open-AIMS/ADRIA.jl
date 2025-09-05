@@ -307,16 +307,17 @@ end
 function adjust_sampling_bounds(dom::Domain)::Domain
     _timesteps = timesteps(dom)
     timeframe = _timesteps[end] - _timesteps[1]
-    ms = model_spec(dom)
-    year_start_factors = ms[occursin.(Ref("year_start"), string.(ms.fieldname)), :]
 
-    for p in eachrow(year_start_factors)
-        if p.dist_params[2] > timeframe
-            @info "Adjusting sampling bounds for $(p.fieldname) to fit within domain timeframe."
-            # Main.@infiltrate
-            set_factor_bounds!(dom, p.fieldname, (p.dist_params[1], timeframe))
-        end
-    end
+    _year_start_factors = year_start_factors(dom)
+    to_update_mask = getindex.(_year_start_factors[:, :dist_params], 2) .> timeframe
+    to_update = _year_start_factors[to_update_mask, :]
+    to_update_fieldnames = Tuple(to_update[:, :fieldname])
+
+    @info "Adjusting sampling bounds for factors $to_update_fieldnames to fit within domain timeframe."
+    new_dist_params = NamedTuple{to_update_fieldnames}(
+        (d[1], timeframe) for d in to_update.dist_params
+    )
+    set_factor_bounds!(dom; new_dist_params...)
 
     return dom
 end
@@ -406,8 +407,8 @@ function load_DHW(
 
         data_tf = parse.(Int64, names(d))
         try
-            tf_start = findall(_timeframe[1] .∈ data_tf)[1]
-            tf_end = findall(_timeframe[2] .∈ data_tf)[1]
+            tf_start = findfirst(_timeframe[1] .∈ data_tf)
+            tf_end = findfirst(_timeframe[2] .∈ data_tf)
         catch err
             if !(err isa BoundsError)
                 rethrow(err)
