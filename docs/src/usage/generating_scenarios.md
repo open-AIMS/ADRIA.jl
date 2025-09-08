@@ -79,7 +79,7 @@ model_spec = ADRIA.model_spec(dom)
 ADRIA.model_spec(dom, "model_spec.csv")
 ```
 
-## Fixing sampling bounds
+## Fixing factor sampling bounds
 
 At times, it is necessary to create samples while holding some model factors constant.
 
