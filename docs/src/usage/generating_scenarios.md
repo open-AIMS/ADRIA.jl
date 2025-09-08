@@ -137,7 +137,7 @@ ADRIA.set_factor_bounds!(dom, :N_seed_SA, (500000.0, 1000000.0))
 # is a triangular distribution.
 ADRIA.set_factor_bounds!(dom, :fogging, (0.2, 0.3, 0.1))
 
-# Adjust multiple factors simultaneously (more efficient than one at a time)
+# Adjust multiple factors simultaneously (more efficient than setting these one at a time)
 ADRIA.set_factor_bounds!(dom;
     seed_heat_stress=(0.3, 0.7),
     N_seed_TA=(500000.0, 1000000.0),
