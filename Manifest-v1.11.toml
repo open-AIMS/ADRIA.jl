@@ -1,8 +1,14 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.6"
+julia_version = "1.11.7"
 manifest_format = "2.0"
-project_hash = "51abb782cf18f84963d3fbad2b00d92d71db157b"
+project_hash = "04dbe722196436ebaea8479076d30c4e0c3ac114"
+
+[[deps.ADRIAIndicators]]
+deps = ["StatsBase"]
+path = "../ReefMetrics.jl"
+uuid = "05ad51df-066f-4748-8c47-f6b67db83211"
+version = "0.1.0"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "60665b326b75db6517939d0e1875850bc4a54368"
