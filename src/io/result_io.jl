@@ -392,7 +392,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         for d in metric_structure
             if d == :timesteps
                 append!(dl, tf)
-            elseif d == :species
+            elseif d == :groups
                 append!(dl, domain.coral_growth.n_groups)
             elseif d == :locations
                 append!(dl, n_locations)
@@ -422,7 +422,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     )
     # Add axis names relative to the last metric (relative_taxa_cover) separate as they are
     # different from the other metrics
-    push!(axis_names, [:timesteps, :species, :scenarios])
+    push!(axis_names, [:timesteps, :groups, :scenarios])
     _unique_loc_ids::Vector{String} = unique_loc_ids(domain)
 
     outcomes_attrs::Vector{Dict{Symbol,Any}} = [

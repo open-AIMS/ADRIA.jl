@@ -4,6 +4,7 @@ authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken An
 version = "0.14.1"
 
 [deps]
+ADRIAIndicators = "05ad51df-066f-4748-8c47-f6b67db83211"
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 Bootstrap = "e28b5b4c-05e8-5b66-bc03-6f0c0a0a06e0"

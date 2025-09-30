@@ -89,10 +89,10 @@ end
 Slice data as indicated. Dimensions not found in target data are ignored.
 """
 function slice_results(
-    data::YAXArray; timesteps=(:), species=(:), locations=(:), scenarios=(:)
+    data::YAXArray; timesteps=(:), groups=(:), sizes=(:), locations=(:), scenarios=(:)
 )::YAXArray
     f_dims = (
-        timesteps=timesteps, species=species, locations=locations, scenarios=scenarios
+        timesteps=timesteps, groups=groups, sizes=sizes, locations=locations, scenarios=scenarios
     )
 
     s_names = keys(f_dims)

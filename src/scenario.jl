@@ -331,6 +331,7 @@ function run_scenario(
     # Set values below threshold to 0 to save space
     threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
 
+    # rs_raw has dimensions [timesteps ⋅ group ⋅ sizes ⋅ locations]
     rs_raw::Array{Float64} = result_set.raw
     vals = relative_cover(rs_raw)
     vals[vals .< threshold] .= 0.0
@@ -344,7 +345,7 @@ function run_scenario(
     data_store.relative_shelter_volume[:, :, idx] .= vals
 
     coral_spec::DataFrame = to_coral_spec(scenario)
-    vals = relative_juveniles(rs_raw, coral_spec)
+    vals = relative_juveniles(rs_raw)
     vals[vals .< threshold] .= 0.0
     data_store.relative_juveniles[:, :, idx] .= vals
 
@@ -352,13 +353,11 @@ function run_scenario(
     vals[vals .< threshold] .= 0.0
     data_store.juvenile_indicator[:, :, idx] .= vals
 
-    vals = relative_taxa_cover(rs_raw, loc_k_area(domain), domain.coral_growth.n_groups)
+    vals = relative_taxa_cover(rs_raw, loc_k_area(domain))
     vals[vals .< threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
-    vals = relative_loc_taxa_cover(
-        rs_raw, loc_k_area(domain), domain.coral_growth.n_groups
-    )
+    vals = relative_loc_taxa_cover(rs_raw)
 
     vals = coral_evenness(vals.data)
     vals[vals .< threshold] .= 0.0
@@ -1191,14 +1190,8 @@ function run_model(
     wave_scen = nothing
     dhw_tol_mean_log = nothing
 
-    # Final reshape
-    raw = reshape(
-        permutedims(C_cover, (1, 3, 2, 4)),
-        (tf, n_group_and_size, n_locs)
-    )
-
     return (
-        raw=raw,
+        raw=C_cover,
         seed_log=Yseed,
         fog_log=Yfog,
         shade_log=Yshade,
