@@ -9,10 +9,6 @@ using FLoops, DataStructures
 Estimates a Reef Condition Index (RCI).
 
 The RCI is a single value that indicates the condition of a reef.
-This function provides two versions:
-1. A 3-metric version using only coral cover, juvenile abundance, and shelter volume.
-2. A 5-metric version which also includes Crown-of-Thorns Starfish (CoTS) and rubble.
-
 
 # Notes
 Juveniles are made relative to maximum observed juvenile density (51.8/m²)
@@ -29,7 +25,6 @@ See notes for `juvenile_indicator()`
 # Returns
 YAXArray[timesteps ⋅ locations ⋅ scenarios]
 """
-# 5-metric RCI
 function _reef_condition_index(
     rc::AbstractArray{<:Real, 3},
     juves::AbstractArray{<:Real,3},
@@ -54,35 +49,6 @@ function _reef_condition_index(
 
     return DataCube(out_rci, (:timesteps, :locations, :scenarios))
 end
-
-# 3-metric RCI
-function _reef_condition_index(
-    rc::AbstractArray{<:Real, 3},
-    juves::AbstractArray{<:Real,3},
-    sv::AbstractArray{<:Real,3}
-)::AbstractArray{<:Real}
-    juves = collect(juves ./ maximum(juves))
-
-    n_timesteps, n_locations, _= size(rc)
-    dummy_metric = ones(eltype(rc), n_timesteps, n_locations)
-
-    out_rci = zeros(eltype(rc), size(rc)...)
-    for scen_idx in axes(rc, axis_index(rc, :scenarios))
-        @views ADRIAIndicators.reef_condition_index!(
-            rc.data[:, :, scen_idx],
-            sv.data[:, :, scen_idx],
-            juves[:, :, scen_idx],
-            dummy_metric,
-            dummy_metric,
-            out_rci[:, :, scen_idx];
-            n_metrics=3
-        )
-    end
-
-    return DataCube(out_rci, (:timesteps, :locations, :scenarios))
-end
-
-# Dispatch for ResultSet
 function _reef_condition_index(rs::ResultSet, cots::YAXArray, rubble::YAXArray)::AbstractArray{<:Real}
     return _reef_condition_index(
         relative_cover(rs),
@@ -92,14 +58,6 @@ function _reef_condition_index(rs::ResultSet, cots::YAXArray, rubble::YAXArray):
         rubble
     )
 end
-function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
-    return _reef_condition_index(
-        relative_cover(rs),
-        juvenile_indicator(rs),
-        relative_shelter_volume(rs)
-    )
-end
-
 reef_condition_index = Metric(
     _reef_condition_index,
     (:timesteps, :locations, :scenarios),
