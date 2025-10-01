@@ -90,7 +90,7 @@ include("viz/viz.jl")
 
 export
     growthODE,
-    run_scenario, coral_spec,
+    run_scenario, coral_spec, bin_edges,
     create_coral_struct, Intervention, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
