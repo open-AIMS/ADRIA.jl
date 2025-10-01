@@ -15,6 +15,9 @@ function explore() end
 function scenarios() end
 function scenarios!() end
 
+# Plot a single scenario
+function scenario_stratified() end
+
 # Sensitivity analyses
 function pawn() end
 function pawn!() end
