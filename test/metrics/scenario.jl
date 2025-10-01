@@ -5,7 +5,7 @@ if !@isdefined(TEST_RS)
 end
 
 @testset "scenario.jl" begin
-    _test_covers::Vector{YAXArray{Float64,4}} = mock_covers()
+    _test_covers::Vector{YAXArray{Float64,5}} = mock_covers()
     _k_area::Vector{Float64} = k_area()
 
     # Metrics
@@ -31,21 +31,22 @@ end
         _coral_spec = ADRIA.to_coral_spec(TEST_SCENS[1, :])
 
         for cover in _test_covers
+            aj = metrics.absolute_juveniles(cover, _k_area)
             test_metric(
                 metrics.scenario_relative_juveniles,
-                (cover[:, :, :, 1], _coral_spec, _k_area)
+                (aj, _k_area)
             )
         end
     end
 
     @testset "scenario_absolute_juveniles" begin
         test_metric(metrics.scenario_absolute_juveniles, (TEST_RS,))
-        _coral_spec = ADRIA.to_coral_spec(TEST_SCENS[1, :])
 
         for cover in _test_covers
+            aj = metrics.absolute_juveniles(cover, _k_area)
             test_metric(
                 metrics.scenario_absolute_juveniles,
-                (cover[:, :, :, 1], _coral_spec, _k_area)
+                (aj,)
             )
         end
     end
@@ -55,9 +56,10 @@ end
         _coral_spec = ADRIA.to_coral_spec(TEST_SCENS[1, :])
 
         for cover in _test_covers
+            ji = metrics.juvenile_indicator(cover, _coral_spec, _k_area)
             test_metric(
                 metrics.scenario_juvenile_indicator,
-                (cover[:, :, :, 1], _coral_spec, _k_area)
+                (ji,)
             )
         end
     end
@@ -77,13 +79,13 @@ end
     @testset "scenario_rsv" begin
         test_metric(metrics.scenario_rsv, (TEST_RS,))
 
-        # TODO
-        # for cover in _test_covers
-        #     rsv = metrics.relative_shelter_volume(
-        #         cover[:, :, :, 1], _k_area, TEST_SCENS[1, :]
-        #     )
-        #     test_metric(metrics.scenario_rsv, (rsv,))
-        # end
+        for cover in _test_covers
+            rsv = metrics.relative_shelter_volume(cover, _k_area, TEST_SCENS)
+            test_metric(
+                metrics.scenario_rsv,
+                (rsv,)
+            )
+        end
     end
 
     @testset "scenario_evenness" begin
