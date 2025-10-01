@@ -134,7 +134,7 @@ Calculate the mean absolute juvenile population for each scenario for the entire
 - `rs` : Resultset.
 """
 function _scenario_absolute_juveniles(
-    aj::YAXArray,
+    aj::YAXArray
 )::AbstractArray{<:Real}
     return dropdims(sum(aj; dims=:locations); dims=:locations)
 end
@@ -162,7 +162,7 @@ Determine juvenile indicator ∈ [0, 1], where 1 indicates maximum mean juvenile
 - `rs` : Resultset.
 """
 function _scenario_juvenile_indicator(
-    ji::YAXArray{<:Real,3},
+    ji::YAXArray{<:Real,3}
 )::AbstractArray{<:Real}
     return dropdims(mean(ji; dims=:locations); dims=:locations)
 end

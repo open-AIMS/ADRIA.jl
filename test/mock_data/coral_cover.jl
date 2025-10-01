@@ -13,7 +13,8 @@ function coral_cover(;
     )
 
     location_weights::Array{Float64,5} = reshape(
-        rand(n_timesteps, n_locations, n_scenarios), (n_timesteps, 1, 1, n_locations, n_scenarios)
+        rand(n_timesteps, n_locations, n_scenarios),
+        (n_timesteps, 1, 1, n_locations, n_scenarios)
     )
 
     return coral_cover .* location_weights
@@ -37,9 +38,10 @@ function full_coral_cover(
     )
 
     # For each timestep and scenario the total cover of each location sums up to 1
-    cover_data::Array{Float64,5} = (
-        cover_weights ./ sum(cover_weights; dims=(2,3))
-    ) .* 0.999999
+    cover_data::Array{Float64,5} =
+        (
+            cover_weights ./ sum(cover_weights; dims=(2, 3))
+        ) .* 0.999999
 
     return DataCube(cover_data, (:timesteps, :groups, :sizes, :locations, :scenarios))
 end
