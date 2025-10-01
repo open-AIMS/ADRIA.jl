@@ -384,6 +384,39 @@ coral_evenness = Metric(
 )
 
 """
+    coral_diversity(ce::AbstractArray{T})::AbstractArray{T} where {T}
+    coral_diversity(rs::ResultSet)::AbstractArray{T} where {T}
+
+Calculates coral diversity metric as the Gini-Simpson index.
+This is calculated from coral evenness (which is the inverse Simpson's index, `1/D`)
+as `1 - 1/evenness`, which is equivalent to `1 - D`.
+
+# Arguments
+- `ce` : Coral evenness (inverse Simpson's index).
+- `rs` : A ResultSet object.
+"""
+function _coral_diversity(
+    ce::YAXArray{T}
+)::YAXArray{T} where {T<:Real}
+    # cd = 1 - (1 / ce)
+    # Replace NaNs and Infs with 0.0
+    cd = 1.0 .- (1.0 ./ ce)
+    replace!(cd.data, NaN => 0.0, Inf => 0.0, -Inf => 0.0)
+    return cd
+end
+function _coral_diversity(rs::ResultSet)::AbstractArray{<:Real}
+    ce = coral_evenness(rs)
+    return _coral_diversity(ce)
+end
+coral_diversity = Metric(
+    _coral_diversity,
+    (:timesteps, :locations, :scenarios), # Input from coral_evenness
+    (:timesteps, :locations, :scenarios), # Output dims
+    "Diversity",
+    IS_NOT_RELATIVE
+)
+
+"""
     absolute_shelter_volume(X::YAXArray{T,4}, k_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
     absolute_shelter_volume(X::YAXArray{T,4}, k_area::Vector{T}, inputs::YAXArray)::AbstractArray{T} where {T<:Real}
     absolute_shelter_volume(X::YAXArray{T,5}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
