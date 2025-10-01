@@ -45,7 +45,7 @@ end
     @testset "relative_loc_taxa_cover" begin
         for cover in _test_covers
             test_metric(
-                metrics.relative_loc_taxa_cover, (cover[:, :, :, :, 1], )
+                metrics.relative_loc_taxa_cover, (cover[:, :, :, :, 1],)
             )
         end
     end
@@ -56,7 +56,7 @@ end
         test_metric(metrics.relative_juveniles, (TEST_RS,))
         for cover in _test_covers
             test_metric(
-                metrics.relative_juveniles, (cover[:, :, :, :, scen_idx], )
+                metrics.relative_juveniles, (cover[:, :, :, :, scen_idx],)
             )
         end
     end
@@ -78,7 +78,8 @@ end
         test_metric(metrics.juvenile_indicator, (TEST_RS,))
         for cover in _test_covers
             test_metric(
-                metrics.juvenile_indicator, (cover[:, :, :, :, scen_idx], coral_spec, _k_area)
+                metrics.juvenile_indicator,
+                (cover[:, :, :, :, scen_idx], coral_spec, _k_area)
             )
         end
     end

@@ -26,7 +26,7 @@ See notes for `juvenile_indicator()`
 YAXArray[timesteps ⋅ locations ⋅ scenarios]
 """
 function _reef_condition_index(
-    rc::AbstractArray{<:Real, 3},
+    rc::AbstractArray{<:Real,3},
     juves::AbstractArray{<:Real,3},
     sv::AbstractArray{<:Real,3},
     cots::AbstractArray{<:Real,3},
@@ -49,7 +49,9 @@ function _reef_condition_index(
 
     return DataCube(out_rci, (:timesteps, :locations, :scenarios))
 end
-function _reef_condition_index(rs::ResultSet, cots::YAXArray, rubble::YAXArray)::AbstractArray{<:Real}
+function _reef_condition_index(
+    rs::ResultSet, cots::YAXArray, rubble::YAXArray
+)::AbstractArray{<:Real}
     return _reef_condition_index(
         relative_cover(rs),
         juvenile_indicator(rs),
@@ -126,7 +128,7 @@ function _reduced_reef_condition_index(
 )::AbstractArray{<:Real}
     out_rrci = zeros(eltype(rc), size(rc)...)
 
-    juves_rel_baseline  = juves ./ maximum(juves)
+    juves_rel_baseline = juves ./ maximum(juves)
     for scen_idx in axes(rc, axis_index(rc, :scenarios))
         @views ADRIAIndicators.reduced_reef_condition_index!(
             rc.data[:, :, scen_idx],
@@ -460,9 +462,9 @@ function _scenario_rbci(rs::ResultSet; kwargs...)
     return _scenario_rbci(rbci)
 end
 scenario_rbci = Metric(
-    _scenario_rbci, 
+    _scenario_rbci,
     (:timesteps, :locations, :scenarios),
-    (:timesteps, :scenarios), 
-    "RBCI", 
+    (:timesteps, :scenarios),
+    "RBCI",
     IS_NOT_RELATIVE
 )

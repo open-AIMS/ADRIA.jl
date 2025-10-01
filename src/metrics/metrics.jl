@@ -37,7 +37,8 @@ struct Metric{F<:Function,T<:Tuple,U<:Tuple,S<:String,B<:Bool} <: Outcome
     unit::S
 end
 
-Metric(func, in_dims, dims, feature, is_relative) = Metric(func, in_dims, dims, feature, is_relative, "")
+Metric(func, in_dims, dims, feature, is_relative) =
+    Metric(func, in_dims, dims, feature, is_relative, "")
 
 """
     (f::Metric)(raw, args...; kwargs...)
@@ -71,7 +72,7 @@ n_locations) of raw model results (coral cover relative to available space)
 Coral cover [0 - 1], relative to available \$k\$ area for the entire study area.
 """
 function _relative_cover(
-    X::YAXArray{<:Real, 4}
+    X::YAXArray{<:Real,4}
 )::YAXArray{<:Real}
     dims = (:timesteps, :locations)
     return DataCube(
@@ -79,7 +80,7 @@ function _relative_cover(
     )
 end
 function _relative_cover(X::YAXArray{<:Real,5})
-    return dropdims(sum(X, dims=(:groups, :sizes)), dims=(:groups, :sizes))
+    return dropdims(sum(X; dims=(:groups, :sizes)); dims=(:groups, :sizes))
 end
 function _relative_cover(rs::ResultSet)::YAXArray{<:Real}
     return rs.outcomes[:relative_cover]
@@ -143,7 +144,7 @@ Coral cover, grouped by taxa for the given scenario, summed up across all locati
 relative to total k area.
 """
 function _relative_taxa_cover(
-    X::AbstractArray{<:Real, 4},
+    X::AbstractArray{<:Real,4},
     k_area::Vector{<:Real}
 )::AbstractArray{<:Real,2}
     n_timesteps = size(X, 1)
@@ -181,7 +182,7 @@ Coral cover, grouped by taxa for the given scenario, for each timestep and locat
 relative to location k area.
 """
 function _relative_loc_taxa_cover(
-    X::AbstractArray{T, 4}
+    X::AbstractArray{T,4}
 )::AbstractArray{T,3} where {T<:Real}
     n_timesteps, n_groups, _, n_locs = size(X)
 
@@ -486,7 +487,7 @@ function _absolute_shelter_volume(
         X.data, colony_mean_diams_cm, pa_params, k_area, ASV.data
     )
 
-    return dropdims(sum(ASV, dims=(2, 3)), dims=(2, 3))
+    return dropdims(sum(ASV; dims=(2, 3)); dims=(2, 3))
 end
 function _absolute_shelter_volume(
     X::YAXArray{T,5},
@@ -515,11 +516,11 @@ function _absolute_shelter_volume(
     # Flattened Mean colony diameters with shape [scenarios ⋅ groups_sizes]
     flat_mean_diams::Matrix{Float64} = Matrix(inputs.data[:, col_mask])
     # Mean colony diameters with shape [groups ⋅ sizes ⋅ scenarios]
-    colony_mean_diams_cm::Array{Float64, 3} = permutedims(reshape(
-        flat_mean_diams, (n_scens, n_sizes, n_groups)
-    ), (3, 2, 1)) .* 100
+    colony_mean_diams_cm::Array{Float64,3} =
+        permutedims(reshape(
+                flat_mean_diams, (n_scens, n_sizes, n_groups)
+            ), (3, 2, 1)) .* 100
     col_mean_area = colony_mean_area(colony_mean_diams_cm)
-
 
     ASV::YAXArray = ZeroDataCube(
         (:timesteps, :groups, :sizes, :locations, :scenarios), size(X), X.properties
@@ -628,7 +629,7 @@ function _relative_shelter_volume(
         X.data, colony_mean_diams_cm, pa_params, k_area, RSV.data
     )
 
-    RSV = dropdims(sum(RSV, dims=(2, 3)), dims=(2, 3))
+    RSV = dropdims(sum(RSV; dims=(2, 3)); dims=(2, 3))
     clamp!(RSV, 0.0, 1.0)
 
     return RSV
@@ -660,10 +661,10 @@ function _relative_shelter_volume(
     # Flattened Mean colony diameters with shape [scenarios ⋅ groups_sizes]
     flat_mean_diams::Matrix{Float64} = Matrix(inputs[:, col_mask])
     # Mean colony diameters with shape [groups ⋅ sizes ⋅ scenarios]
-    colony_mean_diams_cm::Array{Float64, 3} = permutedims(reshape(
-        flat_mean_diams, (n_scens, n_sizes, n_groups)
-    ), (3, 2, 1)) .* 100
-
+    colony_mean_diams_cm::Array{Float64,3} =
+        permutedims(reshape(
+                flat_mean_diams, (n_scens, n_sizes, n_groups)
+            ), (3, 2, 1)) .* 100
 
     RSV::YAXArray = ZeroDataCube(
         (:timesteps, :groups, :sizes, :locations, :scenarios), size(X), X.properties

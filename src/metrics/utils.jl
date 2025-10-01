@@ -92,7 +92,8 @@ function slice_results(
     data::YAXArray; timesteps=(:), groups=(:), sizes=(:), locations=(:), scenarios=(:)
 )::YAXArray
     f_dims = (
-        timesteps=timesteps, groups=groups, sizes=sizes, locations=locations, scenarios=scenarios
+        timesteps=timesteps, groups=groups, sizes=sizes, locations=locations,
+        scenarios=scenarios
     )
 
     s_names = keys(f_dims)
