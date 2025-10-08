@@ -93,6 +93,37 @@ relative_cover = Metric(
     IS_RELATIVE
 )
 
+function _ltmp_cover(
+    X::YAXArray{<:Real,4}, k_area::AbstractVector{<:Real}, reef_area::AbstractVector{<:Real}
+)::YAXArray{<:Real,2}
+    return DataCube(
+        ADRIAIndicators.ltmp_cover(X, k_area, reef_area),
+        (:timesteps, :locations)
+    )
+end
+function _ltmp_cover(
+    rs::ResultSet
+)::YAXArray{<:Real,3}
+    rel_cover = relative_cover(rs)
+    k_area = loc_k_area(rs)
+    reef_area = loc_area(rs)
+    location_dim = axis_index(rel_cover, :locations)
+
+    return DataCube(
+        ADRIAIndicators.relative_cover_to_ltmp_cover(
+            rel_cover.data, k_area, reef_area, location_dim
+        ),
+        (:timesteps, :locations, :scenarios)
+    )
+end
+ltmp_cover = Metric(
+    _ltmp_cover,
+    (:timesteps, :groups, :sizes, :locations, :scenarios),
+    (:timesteps, :locations, :scenarios),
+    "LTMP Cover",
+    IS_RELATIVE
+)
+
 """
     total_absolute_cover(relative_cover::AbstractArray{<:Real}, k_area::Vector{<:Real})::AbstractArray{<:Real}
     total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
@@ -165,6 +196,36 @@ relative_taxa_cover = Metric(
     (:timesteps, :groups, :sizes, :locations),
     (:timesteps, :groups, :scenarios),
     "Cover",
+    IS_RELATIVE
+)
+
+function _ltmp_taxa_cover(
+    X::YAXArray{<:Real,4}, k_area::AbstractVector{<:Real}, reef_area::AbstractVector{<:Real}
+)::YAXArray{<:Real,2}
+    return DataCube(
+        ADRIAIndicators.ltmp_taxa_cover(X, k_area, reef_area),
+        (:timesteps, :groups)
+    )
+end
+function _ltmp_taxa_cover(
+    rs::ResultSet
+)::YAXArray{<:Real,3}
+    rel_cover = relative_taxa_cover(rs)
+    k_area = loc_k_area(rs)
+    reef_area = loc_area(rs)
+    location_dim = axis_index(rel_cover, :locations)
+    return DataCube(
+        ADRIAIndicators.relative_cover_to_ltmp_cover(
+            rel_cover.data, k_area, reef_area, location_dim
+        ),
+        (:timesteps, :groups, :scenarios)
+    )
+end
+ltmp_taxa_cover = Metric(
+    _ltmp_cover,
+    (:timesteps, :groups, :sizes, :locations, :scenarios),
+    (:timesteps, :groups, :scenarios),
+    "LTMP Cover",
     IS_RELATIVE
 )
 
