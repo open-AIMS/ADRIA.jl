@@ -14,6 +14,7 @@ function explore() end
 # Scenario plotting methods
 function scenarios() end
 function scenarios!() end
+function scenarios_legend!() end
 
 # Sensitivity analyses
 function pawn() end
