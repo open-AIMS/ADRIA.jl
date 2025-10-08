@@ -52,7 +52,12 @@ function _scenario_total_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_total_cover(tac::AbstractArray; kwargs...)
 end
 scenario_total_cover = Metric(
-    _scenario_total_cover, (:timesteps, :scenarios), "Cover", IS_NOT_RELATIVE, UNIT_AREA
+    _scenario_total_cover,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :scenarios),
+    "Cover",
+    IS_NOT_RELATIVE,
+    UNIT_AREA
 )
 
 """
@@ -67,7 +72,31 @@ function _scenario_relative_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Rea
     return _scenario_total_cover(rs; kwargs...) ./ target_area
 end
 scenario_relative_cover = Metric(
-    _scenario_relative_cover, (:timesteps, :scenarios), "Relative Cover", IS_RELATIVE
+    _scenario_relative_cover,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :scenarios),
+    "Relative Cover",
+    IS_RELATIVE
+)
+
+function _scenario_ltmp_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
+    scenario_rc = _scenario_relative_cover(rs; kwargs...)
+    return DataCube(
+        ADRIAIndicators.relative_cover_to_ltmp_cover(
+            scenario_rc.data,
+            loc_k_area(rs),
+            loc_area(rs),
+            -1
+        ),
+        (:timesteps, :scenarios)
+    )
+end
+scenario_ltmp_cover = Metric(
+    _scenario_ltmp_cover,
+    (:timeseps, :locations, :scenarios),
+    (:timesteps, :scenarios),
+    "LTMP Cover",
+    IS_RELATIVE
 )
 
 """
@@ -95,22 +124,19 @@ ADRIA.metrics.scenario_relative_juveniles(X, _coral_spec, _k_area)
 ```
 """
 function _scenario_relative_juveniles(
-    X::YAXArray{<:Real,3},
-    coral_spec::DataFrame,
-    k_area::AbstractVector{<:Real};
-    kwargs...
+    aj::YAXArray{<:Real,3},
+    k_area::AbstractVector{<:Real}
 )::AbstractArray{<:Real}
-    ajuv = call_metric(absolute_juveniles, X, coral_spec, k_area; kwargs...)
-
-    return dropdims(sum(ajuv; dims=:locations); dims=:locations) ./ sum(k_area)
+    return dropdims(sum(aj; dims=:locations); dims=:locations) ./ sum(k_area)
 end
 function _scenario_relative_juveniles(rs::ResultSet; kwargs...)::YAXArray
     # Calculate relative domain-wide cover based on absolute values
     aj = absolute_juveniles(rs)
-    return dropdims(sum(aj; dims=:locations); dims=:locations) ./ sum(loc_k_area(rs))
+    return _scenario_relative_juveniles(aj, loc_k_area(rs))
 end
 scenario_relative_juveniles = Metric(
     _scenario_relative_juveniles,
+    (:timesteps, :locations, :scenarios),
     (:timesteps, :scenarios),
     "Relative Juveniles",
     IS_RELATIVE
@@ -123,26 +149,22 @@ scenario_relative_juveniles = Metric(
 Calculate the mean absolute juvenile population for each scenario for the entire domain.
 
 # Arguments
-- `X` : Raw data for a single scenario.
-- `coral_spec` : Coral spec DataFrame.
+- `aj` : Raw data for a single scenario.
 - `k_area` : K_area.
 - `rs` : Resultset.
 """
 function _scenario_absolute_juveniles(
-    X::YAXArray,
-    coral_spec::DataFrame,
-    k_area::AbstractVector{<:Real};
-    kwargs...
+    aj::YAXArray
 )::AbstractArray{<:Real}
-    juv = call_metric(absolute_juveniles, X, coral_spec, k_area; kwargs...)
-    return dropdims(sum(juv; dims=:locations); dims=:locations) # / sum(k_area)
+    return dropdims(sum(aj; dims=:locations); dims=:locations)
 end
 function _scenario_absolute_juveniles(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
-    # Calculate relative domain-wide cover based on absolute values
-    return dropdims(sum(absolute_juveniles(rs); dims=:locations); dims=:locations)
+    aj = absolute_juveniles(rs)
+    return _scenario_absolute_juveniles(aj)
 end
 scenario_absolute_juveniles = Metric(
     _scenario_absolute_juveniles,
+    (:timesteps, :locations, :scenarios),
     (:timesteps, :scenarios),
     "Number of Juveniles",
     IS_NOT_RELATIVE,
@@ -156,28 +178,24 @@ scenario_absolute_juveniles = Metric(
 Determine juvenile indicator ∈ [0, 1], where 1 indicates maximum mean juvenile density (51.8) has been achieved.
 
 # Arguments
-- `X` : Raw data for a single scenario.
-- `coral_spec` : Coral spec DataFrame.
-- `k_area` : K_area.
+- `ji` : Juvenile Indicator for each location.
 - `rs` : Resultset.
 """
 function _scenario_juvenile_indicator(
-    X::YAXArray,
-    coral_spec::DataFrame,
-    k_area::AbstractVector{<:Real};
-    kwargs...
+    ji::YAXArray{<:Real,3}
 )::AbstractArray{<:Real}
-    juv = call_metric(juvenile_indicator, X, coral_spec, k_area; kwargs...)
-    return dropdims(mean(juv; dims=:locations); dims=:locations) ./ sum(k_area)
+    return dropdims(mean(ji; dims=:locations); dims=:locations)
 end
 function _scenario_juvenile_indicator(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
-    return dropdims(mean(juvenile_indicator(rs); dims=:locations); dims=:locations)
+    ji = juvenile_indicator(rs)
+    return _scenario_juvenile_indicator(ji)
 end
 scenario_juvenile_indicator = Metric(
     _scenario_juvenile_indicator,
+    (:timesteps, :locations, :scenarios),
     (:timesteps, :scenarios),
     "Juvenile Indicator",
-    IS_RELATIVE
+    IS_NOT_RELATIVE
 )
 
 """
@@ -199,6 +217,7 @@ function _scenario_asv(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
 end
 scenario_asv = Metric(
     _scenario_asv,
+    (:timesteps, :locations, :scenarios),
     (:timesteps, :scenarios),
     "Volume",
     IS_NOT_RELATIVE,
@@ -219,7 +238,11 @@ function _scenario_rsv(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     return _scenario_rsv(rs.outcomes[:relative_shelter_volume]; kwargs...)
 end
 scenario_rsv = Metric(
-    _scenario_rsv, (:timesteps, :scenarios), "Relative Volume", IS_RELATIVE
+    _scenario_rsv,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :scenarios),
+    "Relative Volume",
+    IS_RELATIVE
 )
 
 """
@@ -238,6 +261,7 @@ function _scenario_evenness(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
 end
 scenario_evenness = Metric(
     _scenario_evenness,
+    (:timesteps, :locations, :scenarios),
     (:timesteps, :scenarios),
     "Evenness Indicator",
     IS_NOT_RELATIVE
