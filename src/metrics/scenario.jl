@@ -73,9 +73,29 @@ function _scenario_relative_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Rea
 end
 scenario_relative_cover = Metric(
     _scenario_relative_cover,
-    (:timesteps, :scenarios, :locations),
+    (:timesteps, :locations, :scenarios),
     (:timesteps, :scenarios),
     "Relative Cover",
+    IS_RELATIVE
+)
+
+function _scenario_ltmp_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
+    scenario_rc = _scenario_relative_cover(rs; kwargs...)
+    return DataCube(
+        ADRIAIndicators.relative_cover_to_ltmp_cover(
+            scenario_rc.data,
+            loc_k_area(rs),
+            loc_area(rs),
+            -1
+        ),
+        (:timesteps, :scenarios)
+    )
+end
+scenario_ltmp_cover = Metric(
+    _scenario_ltmp_cover,
+    (:timeseps, :locations, :scenarios),
+    (:timesteps, :scenarios),
+    "LTMP Cover",
     IS_RELATIVE
 )
 
