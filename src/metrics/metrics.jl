@@ -367,6 +367,7 @@ for juveniles have been achieved.
 n_locations).
 - `coral_spec` : Coral spec DataFrame.
 - `k_area` : The coral habitable area.
+- `max_juvenile_density` : Maximum density of juveniles defaulting to 51.8 juveniles / m²
 
 # Notes
 Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm diameter.
@@ -385,18 +386,31 @@ function _juvenile_indicator(
     mean_diams = permutedims(
         reshape(coral_spec.mean_colony_diameter_m, (n_sizes, n_groups)), (2, 1)
     )
-    MAX_DENSITY = 51.8
+    max_juvenile_density = 51.8
 
     # If calculating over multiple scenario include scenarios
     dims = ndims(X) == 4 ? (:timesteps, :locations) : (:timesteps, :locations, :scenarios)
-    return DataCube(
+    juv_ind = DataCube(
         ADRIAIndicators.juvenile_indicator(
-            X.data, is_juvenile, k_area, mean_diams, MAX_DENSITY
+            X.data, is_juvenile, k_area, mean_diams, max_juvenile_density
         ), dims
     )
+    # Document the maximum juvenile density used
+    juv_ind.properties[:MAX_JUV_DENSITY] = max_juvenile_density
+
+    return juv_ind
 end
-function _juvenile_indicator(rs::ResultSet)::AbstractArray{<:Real,3}
-    return rs.outcomes[:juvenile_indicator]
+function _juvenile_indicator(rs::ResultSet; max_juvenile_density::Float64=51.8)
+    juv_ind = rs.outcomes[:juvenile_indicator]
+    old_max_density = 51.8
+    if max_juvenile_density == old_max_density
+        return juv_ind
+    end
+
+    new_juv_ind = juv_ind .* old_max_density ./ max_juvenile_density
+    new_juv_ind.properties[:MAX_JUV_DENSITY] = max_juvenile_density
+
+    return new_juv_ind
 end
 juvenile_indicator = Metric(
     _juvenile_indicator,

@@ -1,8 +1,8 @@
 using FLoops, DataStructures
 
 """
-    reef_condition_index(rc::AbstractArray, sv::AbstractArray, juves::AbstractArray,)::AbstractArray
-    reef_condition_index(rc::AbstractArray, juves::AbstractArray, sv::AbstractArray, rubble::AbstractArray)::AbstractArray
+    reef_condition_index(ltmp_cover::AbstractArray, sv::AbstractArray, juves::AbstractArray,)::AbstractArray
+    reef_condition_index(ltmp_cover::AbstractArray, juves::AbstractArray, sv::AbstractArray, rubble::AbstractArray)::AbstractArray
     reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
     reef_condition_index(rs::ResultSet, rubble::AbstractArray)::AbstractArray{<:Real}
 
@@ -12,11 +12,11 @@ cover, juveniles, shelter volume or the 4-metric versions with rubble added.
 The RCI is a single value that indicates the condition of a reef.
 
 # Notes
-Juveniles are made relative to maximum observed juvenile density (51.8/m²)
-See notes for `juvenile_indicator()`
+Juveniles are made relative to maximum observed juvenile density (15.0/m²)
+See table 1 in reference 1.
 
 # Arguments
-- `rc` : Relative coral cover across all groups
+- `ltmp_cover` : LTMP coral cover across all groups
 - `juves` : Abundance of coral juveniles < 5 cm diameter
 - `sv` : Shelter volume based on coral sizes and abundances
 - `rubble` : Cover of rubble (optional)
@@ -24,45 +24,51 @@ See notes for `juvenile_indicator()`
 
 # Returns
 YAXArray[timesteps ⋅ locations ⋅ scenarios]
+
+# References
+1. Ryan F. Heneghan, Gabriela Scheufele, Yves-Marie Bozec et al. A framework to inform 
+   economic valuation of non-use benefits from coral-reef intervention efforts, 02 October 
+   2025, PREPRINT (Version 1) available at Research Square 
+   [https://doi.org/10.21203/rs.3.rs-7644150/v1]
 """
 function _reef_condition_index(
-    rc::AbstractArray{<:Real,3},
+    ltmp_cover::AbstractArray{<:Real,3},
     sv::AbstractArray{<:Real,3},
     juves::AbstractArray{<:Real,3}
 )::AbstractArray{<:Real}
-    out_rrci = zeros(eltype(rc), size(rc)...)
+    out_rci = zeros(eltype(ltmp_cover), size(ltmp_cover)...)
 
     juves_rel_baseline = juves ./ maximum(juves)
-    for scen_idx in axes(rc, axis_index(rc, :scenarios))
+    for scen_idx in axes(ltmp_cover, axis_index(ltmp_cover, :scenarios))
         @views ADRIAIndicators.reef_condition_index!(
-            rc.data[:, :, scen_idx],
+            ltmp_cover.data[:, :, scen_idx],
             sv.data[:, :, scen_idx],
             juves_rel_baseline.data[:, :, scen_idx],
-            out_rrci[:, :, scen_idx]
+            out_rci[:, :, scen_idx]
         )
     end
 
-    return DataCube(out_rrci, (:timesteps, :locations, :scenarios))
+    return DataCube(out_rci, (:timesteps, :locations, :scenarios))
 end
 function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
     return _reef_condition_index(
-        relative_cover(rs),
+        ltmp_cover(rs),
         relative_shelter_volume(rs),
-        juvenile_indicator(rs)
+        juvenile_indicator(rs; max_juvenile_density=15.0)
     )
 end
 function _reef_condition_index(
-    rc::AbstractArray{<:Real,3},
+    ltmp_cover::AbstractArray{<:Real,3},
     sv::AbstractArray{<:Real,3},
     juves::AbstractArray{<:Real,3},
     rubble::AbstractArray{<:Real,3}
 )::AbstractArray{<:Real}
     juves = collect(juves ./ maximum(juves))
 
-    out_rci = zeros(eltype(rc), size(rc)...)
-    for scen_idx in axes(rc, axis_index(rc, :scenarios))
+    out_rci = zeros(eltype(ltmp_cover), size(ltmp_cover)...)
+    for scen_idx in axes(ltmp_cover, axis_index(ltmp_cover, :scenarios))
         @views ADRIAIndicators.reef_condition_index!(
-            rc.data[:, :, scen_idx],
+            ltmp_cover.data[:, :, scen_idx],
             sv.data[:, :, scen_idx],
             juves[:, :, scen_idx],
             rubble.data[:, :, scen_idx],
@@ -76,9 +82,9 @@ function _reef_condition_index(
     rs::ResultSet, rubble::YAXArray
 )::AbstractArray{<:Real}
     return _reef_condition_index(
-        relative_cover(rs),
+        ltmp_cover(rs),
         relative_shelter_volume(rs),
-        juvenile_indicator(rs),
+        juvenile_indicator(rs; max_juvenile_density=15.0),
         rubble
     )
 end
