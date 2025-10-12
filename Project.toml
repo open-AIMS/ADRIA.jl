@@ -77,8 +77,9 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 AvizExt = ["Makie", "GeoMakie", "GraphMakie"]
 
 [compat]
-Aqua = "0.8"
-ArchGDAL = "0.10"
+ADRIAIndicators = "0.1.1"
+Aqua = "0.8, 0.9"
+ArchGDAL = "0.9, 0.10"
 BlackBoxOptim = "0.6"
 Bootstrap = "2"
 CSV = "0.10"

@@ -2,13 +2,12 @@
 
 julia_version = "1.11.7"
 manifest_format = "2.0"
-project_hash = "0003b2b7ec6d2471f611b89ae6b2e3d79eed9777"
+project_hash = "838e2edff62890c965af532781bcb581844bba3f"
 
 [[deps.ADRIAIndicators]]
-deps = ["StatsBase"]
-path = "../ReefMetrics.jl"
+git-tree-sha1 = "252eaf580873f59a9bcb3d351d03b59d699736e2"
 uuid = "05ad51df-066f-4748-8c47-f6b67db83211"
-version = "0.1.0"
+version = "0.1.2"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "8b2b045b22740e4be20654175cc38291d48539db"
