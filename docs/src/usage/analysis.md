@@ -31,15 +31,12 @@ To trigger compilation of the `viz` extension, we must **always** import the fol
 
 ```julia
 using GeoMakie, GraphMakie
-```
 
-You should then import your chosen backend, e.g. `WGLMakie`
-
-```julia
+# Then import the chosen backend, such as:
 using WGLMakie
 ```
 
-For example, the below scripts assume the following imports
+The example scripts below assume the following imports
 
 ```julia
 using ADRIA
