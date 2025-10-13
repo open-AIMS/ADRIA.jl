@@ -1,8 +1,13 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.6"
+julia_version = "1.11.7"
 manifest_format = "2.0"
-project_hash = "51abb782cf18f84963d3fbad2b00d92d71db157b"
+project_hash = "838e2edff62890c965af532781bcb581844bba3f"
+
+[[deps.ADRIAIndicators]]
+git-tree-sha1 = "252eaf580873f59a9bcb3d351d03b59d699736e2"
+uuid = "05ad51df-066f-4748-8c47-f6b67db83211"
+version = "0.1.2"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "60665b326b75db6517939d0e1875850bc4a54368"

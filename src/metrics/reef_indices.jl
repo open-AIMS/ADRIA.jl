@@ -1,110 +1,96 @@
 using FLoops, DataStructures
 
 """
-    reef_condition_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray; threshold=2)::AbstractArray
+    reef_condition_index(ltmp_cover::AbstractArray, sv::AbstractArray, juves::AbstractArray,)::AbstractArray
+    reef_condition_index(ltmp_cover::AbstractArray, juves::AbstractArray, sv::AbstractArray, rubble::AbstractArray)::AbstractArray
     reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
+    reef_condition_index(rs::ResultSet, rubble::AbstractArray)::AbstractArray{<:Real}
 
-Estimates a Reef Condition Index (RCI) providing a single value that indicates the condition
-of a reef across four metrics:
-- coral cover
-- evenness (coral diversity)
-- shelter volume, and
-- abundance of juveniles
+Estimates a Reef Condition Index (RCI) using either the 3-metric version using relative
+cover, juveniles, shelter volume or the 4-metric versions with rubble added.
+
+The RCI is a single value that indicates the condition of a reef.
 
 # Notes
-Juveniles are made relative to maximum observed juvenile density (51.8/m²)
-See notes for `juvenile_indicator()`
+Juveniles are made relative to maximum observed juvenile density (15.0/m²)
+See table 1 in reference 1.
 
 # Arguments
-- `rc` : Relative coral cover across all groups
-- `evenness` : Evenness across all coral groups
-- `sv` : Shelter volume based on coral sizes and abundances
+- `ltmp_cover` : LTMP coral cover across all groups
 - `juves` : Abundance of coral juveniles < 5 cm diameter
+- `sv` : Shelter volume based on coral sizes and abundances
+- `rubble` : Cover of rubble (optional)
+- `rs` : A ResultSet object.
 
 # Returns
 YAXArray[timesteps ⋅ locations ⋅ scenarios]
+
+# References
+1. Ryan F. Heneghan, Gabriela Scheufele, Yves-Marie Bozec et al. A framework to inform 
+   economic valuation of non-use benefits from coral-reef intervention efforts, 02 October 
+   2025, PREPRINT (Version 1) available at Research Square 
+   [https://doi.org/10.21203/rs.3.rs-7644150/v1]
 """
 function _reef_condition_index(
-    rc::AbstractArray,
-    evenness::AbstractArray,
-    sv::AbstractArray,
-    juves::AbstractArray;
-    threshold=2
-)::AbstractArray
-    # Compare outputs against reef condition criteria provided by experts
-    # These are median values for 8 experts.
-    condition_category = [:lower, :very_poor, :poor, :fair, :good, :very_good, :very_good]
-    criteria = DataCube(
-        [
-            0.0 0.0 0.0 0.0
-            0.05 0.15 0.175 0.15  # Very Poor [0 to these values]
-            0.15 0.25 0.3 0.25    # Poor
-            0.25 0.25 0.3 0.25    # Fair
-            0.35 0.35 0.35 0.25   # Good
-            0.45 0.45 0.45 0.35   # Very Good [these values and above]
-            Inf Inf Inf Inf       # Note: some metrics might return a value > 1.0
-        ];
-        condition=condition_category,
-        metric=[:RC, :E, :SV, :Juv]
-    )
-    index_metrics = zeros(size(rc)..., 4)
-    @floop for (idx, met) in enumerate([rc, evenness, sv, juves])
-        lower = collect(criteria[1:(end - 1), idx])
-        upper = collect(criteria[2:end, idx])
-        met_cp = map(x -> criteria[2:end, idx][lower .<= x .< upper][1], met.data)
-        replace!(met_cp, Inf => 0.9)
-        index_metrics[:, :, :, idx] .= met_cp
-    end
+    ltmp_cover::AbstractArray{<:Real,3},
+    sv::AbstractArray{<:Real,3},
+    juves::AbstractArray{<:Real,3}
+)::AbstractArray{<:Real}
+    out_rci = zeros(eltype(ltmp_cover), size(ltmp_cover)...)
 
-    replace!(criteria, Inf => 0.9)
-
-    rci = similar(rc)
-    @floop for (ts, loc, scen) in Iterators.product(
-        axes(index_metrics, 1),
-        axes(index_metrics, 2),
-        axes(index_metrics, 3))
-
-        # Find the category name condition score relates to for each metric
-        rci_cats = [
-            condition_category[argmax(index_metrics[ts, loc, scen, i] .== criteria[:, i])]
-            for i in axes(index_metrics, 4)
-        ]
-        c = counter(rci_cats)
-
-        # Get the corresponding score values by index (based on RC only)
-        # Because the index is used and not the score value (0.15, 0.25, etc), it will
-        # always align with the correct category ("poor", "good", etc)
-        scores = dropdims(
-            criteria[condition=At(collect(keys(c))), metric=At([:RC])]; dims=2
+    juves_rel_baseline = juves ./ maximum(juves)
+    for scen_idx in axes(ltmp_cover, axis_index(ltmp_cover, :scenarios))
+        @views ADRIAIndicators.reef_condition_index!(
+            ltmp_cover.data[:, :, scen_idx],
+            sv.data[:, :, scen_idx],
+            juves_rel_baseline.data[:, :, scen_idx],
+            out_rci[:, :, scen_idx]
         )
-
-        # RCI is assigned the minimunm score of the greatest number of metrics that meet
-        # `threshold`.
-        # e.g., if RC and evenness are good, and sv and juves are "poor" (both meet threshold)
-        #       the score is "poor".
-        #       If scores are spread out (e.g., unique values), we return the 2nd lowest score
-        if any(values(c) .>= threshold)
-            rci[ts, loc, scen] = minimum(scores[values(c) .>= threshold])
-        else
-            rci[ts, loc, scen] = sort(scores)[2]
-        end
     end
 
-    clamp!(rci, 0.1, 0.9)
-
-    # TODO: bootstrap to cover expert uncertainty
-    return rci
+    return DataCube(out_rci, (:timesteps, :locations, :scenarios))
 end
 function _reef_condition_index(rs::ResultSet)::AbstractArray{<:Real}
-    rc::AbstractArray{<:Real} = relative_cover(rs)
-    juves::AbstractArray{<:Real} = juvenile_indicator(rs)
-    evenness::AbstractArray{<:Real} = coral_evenness(rs)
-    sv::AbstractArray{<:Real} = relative_shelter_volume(rs)
+    return _reef_condition_index(
+        ltmp_cover(rs),
+        relative_shelter_volume(rs),
+        juvenile_indicator(rs; max_juvenile_density=15.0)
+    )
+end
+function _reef_condition_index(
+    ltmp_cover::AbstractArray{<:Real,3},
+    sv::AbstractArray{<:Real,3},
+    juves::AbstractArray{<:Real,3},
+    rubble::AbstractArray{<:Real,3}
+)::AbstractArray{<:Real}
+    juves = collect(juves ./ maximum(juves))
 
-    return _reef_condition_index(rc, evenness, sv, juves)
+    out_rci = zeros(eltype(ltmp_cover), size(ltmp_cover)...)
+    for scen_idx in axes(ltmp_cover, axis_index(ltmp_cover, :scenarios))
+        @views ADRIAIndicators.reef_condition_index!(
+            ltmp_cover.data[:, :, scen_idx],
+            sv.data[:, :, scen_idx],
+            juves[:, :, scen_idx],
+            rubble.data[:, :, scen_idx],
+            out_rci[:, :, scen_idx];
+        )
+    end
+
+    return DataCube(out_rci, (:timesteps, :locations, :scenarios))
+end
+function _reef_condition_index(
+    rs::ResultSet, rubble::YAXArray
+)::AbstractArray{<:Real}
+    return _reef_condition_index(
+        ltmp_cover(rs),
+        relative_shelter_volume(rs),
+        juvenile_indicator(rs; max_juvenile_density=15.0),
+        rubble
+    )
 end
 reef_condition_index = Metric(
     _reef_condition_index,
+    (:timesteps, :locations, :scenarios),
     (:timesteps, :locations, :scenarios),
     "RCI",
     IS_NOT_RELATIVE
@@ -112,6 +98,7 @@ reef_condition_index = Metric(
 
 """
     scenario_rci(rci::YAXArray, tac::YAXArray; kwargs...)
+    scenario_rci(rci::YAXArray, rubble::YAXArray; kwargs...)
     scenario_rci(rs::ResultSet; kwargs...)
 
 Extract the total populated area of locations with Reef Condition Index of "Good" or higher
@@ -124,83 +111,110 @@ function _scenario_rci(rci::YAXArray, tac::YAXArray; kwargs...)
     # We want sum of populated area >= "good" condition
     return scenario_trajectory(tac_sliced .* (rci_sliced .> 0.35); metric=sum)
 end
+function _scenario_rci(rs::ResultSet, rubble::YAXArray; kwargs...)
+    rci = reef_condition_index(rs, rubble)
+    tac = total_absolute_cover(rs)
+
+    return _scenario_rci(rci, tac; kwargs...)
+end
 function _scenario_rci(rs::ResultSet; kwargs...)
     rci = reef_condition_index(rs)
     tac = total_absolute_cover(rs)
 
     return _scenario_rci(rci, tac; kwargs...)
 end
-scenario_rci = Metric(_scenario_rci, (:timesteps, :scenarios), "RCI", IS_NOT_RELATIVE)
-
-"""
-    reef_tourism_index(rc::AbstractArray, evenness::AbstractArray, sv::AbstractArray, juves::AbstractArray, intcp_u::Vector)::AbstractArray
-    reef_tourism_index(rs::ResultSet; intcp_u::Bool=false)::AbstractArray
-
-Estimate tourism index.
-
-Note:
-This metric assumes all inputs (relative cover, evenness, shelter volume, coral juveniles)
-are scaled between 0 and 1. For evenness, shelter volume and coral juveniles, a value of 1
-may represent a theoretical maximum.
-
-# Arguments
-- `rc` : Relative coral cover across all groups
-- `evenness` : Evenness across all coral groups
-- `sv` : Shelter volume based on coral sizes and abundances
-- `juves` : Abundance of coral juveniles < 5 cm diameter
-- `intcp_u` : ?
-"""
-function _reef_tourism_index(
-    rc::AbstractArray,
-    evenness::AbstractArray,
-    sv::AbstractArray,
-    juves::AbstractArray,
-    intcp_u::Vector
-)::AbstractArray
-    intcp = 0.47947 .+ intcp_u
-
-    # TODO: Ryan to reinterpolate to account for no CoTS and no rubble
-    # Apply unique intercepts for each scenario
-    rti = cat(
-        map(
-            axe -> (
-                intcp[axe] .+ (0.12764 .* rc[:, :, axe]) .+
-                (0.31946 .* evenness[:, :, axe]) .+
-                (0.11676 .* sv[:, :, axe]) .+
-                (-0.0036065 .* juves[:, :, axe])
-            ),
-            axes(rc, 3)
-        )...;
-        dims=3
-    )
-
-    timesteps = rti.timesteps.val.data
-    locations = rti.locations.val.data
-    n_scenarios = size(rti, 3)
-    rti = DataCube(
-        rti.data; timesteps=timesteps, locations=locations, scenarios=1:n_scenarios
-    )
-
-    return round.(clamp.(rti, 0.1, 0.9), digits=2)
-end
-function _reef_tourism_index(rs::ResultSet; intcp_u::Bool=false)::AbstractArray
-    rc::AbstractArray{<:Real} = relative_cover(rs)
-    juves::AbstractArray{<:Real} = juvenile_indicator(rs)
-    evenness::AbstractArray{<:Real} = coral_evenness(rs)
-    sv::AbstractArray{<:Real} = relative_shelter_volume(rs)
-
-    n_scens = size(rc, :scenarios)
-    intcp = intcp_u ? rand(Normal(0.0, 0.163), n_scens) : zeros(n_scens)
-
-    return _reef_tourism_index(rc, evenness, sv, juves, intcp)
-end
-reef_tourism_index = Metric(
-    _reef_tourism_index, (:timesteps, :locations, :scenarios), "RTI", IS_NOT_RELATIVE
+scenario_rci = Metric(
+    _scenario_rci,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :scenarios),
+    "RCI",
+    IS_NOT_RELATIVE
 )
 
 """
-    scenario_rti(rti::YAXArray; kwargs...)
-    scenario_rti(rs::ResultSet; kwargs...)
+    reef_tourism_index(rc::AbstractArray{<:Real,3}, sv::AbstractArray{<:Real,3}, juves::AbstractArray{<:Real,3}, cots::AbstractArray{<:Real,3}, rubble::AbstractArray{<:Real,3})::AbstractArray
+    reef_tourism_index(rc::AbstractArray{<:Real,3}, ce::AbstractArray{<:Real,3}, sv::AbstractArray{<:Real,3}, juves::AbstractArray{<:Real,3})::AbstractArray
+    reef_tourism_index(rs::ResultSet, cots::YAXArray, rubble::YAXArray)::AbstractArray
+    reef_tourism_index(rs::ResultSet)::AbstractArray
+
+Estimate tourism index.
+
+This metric is a variation of the Reef Condition Index, but weighted by metrics known to be
+of importance to tourists. This version uses 5 metrics: relative cover, shelter volume,
+juvenile abundance, CoTS, and rubble.
+
+# Arguments
+- `rs` : ResultSet
+- `cots` : Outbreak status of Crown-of-Thorns Starfish
+- `rubble` : Cover of rubble
+
+"""
+function _reef_tourism_index(
+    rc::AbstractArray{<:Real,3},
+    ce::AbstractArray{<:Real,3},
+    sv::AbstractArray{<:Real,3},
+    juves::AbstractArray{<:Real,3}
+)::AbstractArray
+    out_rrti = zeros(eltype(rc), size(rc)...)
+    for scen_idx in axes(rc, axis_index(rc, :scenarios))
+        @views ADRIAIndicators.reef_tourism_index!(
+            rc.data[:, :, scen_idx],
+            ce.data[:, :, scen_idx],
+            sv.data[:, :, scen_idx],
+            juves.data[:, :, scen_idx],
+            out_rrti[:, :, scen_idx]
+        )
+    end
+
+    return DataCube(out_rrti, (:timesteps, :locations, :scenarios))
+end
+function _reef_tourism_index(rs::ResultSet)::AbstractArray
+    rc = relative_cover(rs)
+    ce = coral_evenness(rs)
+    sv = relative_shelter_volume(rs)
+    juves = juvenile_indicator(rs)
+
+    return _reef_tourism_index(rc, ce, sv, juves)
+end
+function _reef_tourism_index(
+    rc::AbstractArray{<:Real,3},
+    sv::AbstractArray{<:Real,3},
+    juves::AbstractArray{<:Real,3},
+    cots::AbstractArray{<:Real,3},
+    rubble::AbstractArray{<:Real,3}
+)::AbstractArray
+    out_rti = zeros(eltype(rc), size(rc)...)
+    for scen_idx in axes(rc, axis_index(rc, :scenarios))
+        @views ADRIAIndicators.reef_tourism_index!(
+            rc.data[:, :, scen_idx],
+            sv.data[:, :, scen_idx],
+            juves.data[:, :, scen_idx],
+            cots.data[:, :, scen_idx],
+            rubble.data[:, :, scen_idx],
+            out_rti[:, :, scen_idx]
+        )
+    end
+
+    return DataCube(out_rti, (:timesteps, :locations, :scenarios))
+end
+function _reef_tourism_index(rs::ResultSet, cots::YAXArray, rubble::YAXArray)::AbstractArray
+    rc = relative_cover(rs)
+    sv = relative_shelter_volume(rs)
+    juves = juvenile_indicator(rs)
+
+    return _reef_tourism_index(rc, sv, juves, cots, rubble)
+end
+reef_tourism_index = Metric(
+    _reef_tourism_index,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :locations, :scenarios),
+    "RTI",
+    IS_NOT_RELATIVE
+)
+
+"""
+    scenario_rti(rs::ResultSet, cots::YAXArray, rubble::YAXArray; kwargs...)
+    scenario_rti(rs::ResultSet; kwargs)
 
 Calculate the mean Reef Tourism Index (RTI) for each scenario for the entire domain.
 """
@@ -209,9 +223,19 @@ function _scenario_rti(rti::YAXArray; kwargs...)
     return scenario_trajectory(rti_sliced)
 end
 function _scenario_rti(rs::ResultSet; kwargs...)
-    return _scenario_rti(reef_tourism_index(rs); kwargs...)
+    rti = reef_tourism_index(rs)
+    return _scenario_rti(rti; kwargs...)
 end
-scenario_rti = Metric(_scenario_rti, (:timesteps, :scenarios), "RTI", IS_NOT_RELATIVE)
+function _scenario_rti(rs::ResultSet, cots::YAXArray, rubble::YAXArray; kwargs...)
+    return _scenario_rti(reef_tourism_index(rs, cots, rubble); kwargs...)
+end
+scenario_rti = Metric(
+    _scenario_rti,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :scenarios),
+    "RTI",
+    IS_NOT_RELATIVE
+)
 
 """
     reef_fish_index(rc::AbstractArray)
@@ -240,46 +264,36 @@ The importance of structural complexity in coral reef ecosystems.
 Coral Reefs 32, 315–326.
 https://doi.org/10.1007/s00338-012-0984-y
 """
-function _reef_fish_index(rc::AbstractArray, intcp_u1, intcp_u2)
-    intcp1 = 1.232 .+ intcp_u1
-    intcp2 = -1623.6 .+ intcp_u2
+function _reef_fish_index(rc::AbstractArray{T})::AbstractArray{T} where {T<:Real}
+    n_scenarios = size(rc, axis_index(rc, :scenarios))
+    out_rfi = zeros(eltype(rc), size(rc)...)
 
-    slope1 = 0.007476
-    slope2 = 1883.3
+    for scen_idx in 1:n_scenarios
+        @views ADRIAIndicators.reef_fish_index!(
+            rc.data[:, :, scen_idx],
+            out_rfi[:, :, scen_idx]
+        )
+    end
 
-    # Apply unique intercepts for each scenario
-    rfi = cat(
-        map(
-            axe ->
-                0.01 .* (
-                    intcp2[axe] .+
-                    slope2 .*
-                    (intcp1[axe] .+ slope1 .* (rc[:, :, axe] .* 100.0))
-                ),
-            axes(rc, 3))...;
-        dims=3)
-
-    timesteps = rfi.timesteps.val.data
-    locations = rfi.locations.val.data
-    n_scenarios = size(rfi, 3)
-    rfi = DataCube(
-        rfi.data; timesteps=timesteps, locations=locations, scenarios=1:n_scenarios
+    dims = (
+        rc.timesteps,
+        rc.locations,
+        rc.scenarios
     )
 
-    # Calculate total fish biomass, kg km2
-    # 0.01 coefficient is to convert from kg ha to kg km2
-    return round.(rfi, digits=2)
+    return YAXArray(dims, out_rfi, rc.properties)
 end
-function _reef_fish_index(rs::ResultSet; intcp_u1::Bool=false, intcp_u2::Bool=false)
+function _reef_fish_index(rs::ResultSet)
     rc = relative_cover(rs)
-    n_scens = size(rc, :scenarios)
-    icp1 = intcp_u1 ? rand(Normal(0.0, 0.195), n_scens) : zeros(n_scens)
-    icp2 = intcp_u2 ? rand(Normal(0.0, 533), n_scens) : zeros(n_scens)
 
-    return _reef_fish_index(rc, icp1, icp2)
+    return _reef_fish_index(rc)
 end
 reef_fish_index = Metric(
-    _reef_fish_index, (:timesteps, :locations, :scenarios), "RFI", IS_NOT_RELATIVE
+    _reef_fish_index,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :locations, :scenarios),
+    "RFI",
+    IS_NOT_RELATIVE
 )
 
 """
@@ -295,4 +309,71 @@ end
 function _scenario_rfi(rs::ResultSet; kwargs...)
     return _scenario_rfi(reef_fish_index(rs); kwargs...)
 end
-scenario_rfi = Metric(_scenario_rfi, (:timesteps, :scenarios), "RFI", IS_NOT_RELATIVE)
+scenario_rfi = Metric(
+    _scenario_rfi,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :scenarios),
+    "RFI",
+    IS_NOT_RELATIVE
+)
+
+"""
+    _reef_biodiviersity_condition_index(rs::ResultSet)
+"""
+function _reef_biodiversity_condition_index(
+    rc::AbstractArray{<:Real,3},
+    sv::AbstractArray{<:Real,3},
+    ce::AbstractArray{<:Real,3}
+)::AbstractArray{<:Real,3}
+    cd = collect(1 .- 1 ./ ce)
+    cd = replace!(
+        cd, NaN => 0.0, Inf => 0.0
+    )
+
+    rbci::Array = zeros(eltype(rc), size(rc)...)
+    @views for scen_idx in axes(rc, axis_index(rc, :scenarios))
+        ADRIAIndicators.reef_biodiversity_condition_index!(
+            rc[:, :, scen_idx],
+            cd[:, :, scen_idx],
+            sv[:, :, scen_idx],
+            rbci[:, :, scen_idx]
+        )
+    end
+    dims = (
+        :timesteps,
+        :locations,
+        :scenarios
+    )
+
+    return DataCube(rbci, dims, rc.properties)
+end
+function _reef_biodiversity_condition_index(rs::ResultSet)
+    rc = relative_cover(rs)
+    sv = relative_shelter_volume(rs)
+    ce = coral_evenness(rs)
+
+    return _reef_biodiversity_condition_index(rc, sv, ce)
+end
+reef_biodiversity_condition_index = Metric(
+    _reef_biodiversity_condition_index,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :locations, :scenarios),
+    "RBCI",
+    IS_NOT_RELATIVE
+)
+
+function _scenario_rbci(rbci::YAXArray; kwargs...)
+    rbci_sliced = slice_results(rbci; kwargs...)
+    return scenario_trajectory(rbci_sliced)
+end
+function _scenario_rbci(rs::ResultSet; kwargs...)
+    rbci = _reef_biodiversity_condition_index(rs)
+    return _scenario_rbci(rbci)
+end
+scenario_rbci = Metric(
+    _scenario_rbci,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :scenarios),
+    "RBCI",
+    IS_NOT_RELATIVE
+)
