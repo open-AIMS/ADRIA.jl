@@ -181,12 +181,46 @@ function ADRIA.viz.scenarios!(
     if get(opts, :legend, true)
         legend_position = get(opts, :histogram, true) ? (1, 3) : (1, 2)
         legend_labels = get(opts, :legend_labels, group_names)
-        _render_legend(g, scen_groups, legend_position, legend_labels)
+        _render_legend(g[legend_position...], scen_groups, legend_labels)
     end
 
     ax.xlabel = "Year"
     ax.ylabel = outcome_label(outcomes)
     return g
+end
+
+function ADRIA.viz.scenarios_legend!(
+    g::GridPosition, rs::ResultSet, outcomes::YAXArray; opts::OPT_TYPE=Dict{Symbol,Any}(),
+    legend_opts::OPT_TYPE=Dict{Symbol,Any}()
+)
+    _scenarios = rs.inputs #copy(@view(scenarios[1:end .∈ [outcomes.scenarios], :]))
+    scen_groups = if by_RCP
+        ADRIA.analysis.scenario_rcps(_scenarios)
+    else
+        ADRIA.analysis.scenario_types(_scenarios)
+    end
+    return ADRIA.viz.scenarios_legend!(
+        g, scen_groups, outcomes; opts=opts, legend_opts=legend_opts
+    )
+end
+function ADRIA.viz.scenarios_legend!(
+    g::GridPosition, scen_groups::Dict, outcomes::YAXArray;
+    opts::OPT_TYPE=Dict{Symbol,Any}(),
+    legend_opts::OPT_TYPE=Dict{Symbol,Any}()
+)
+    by_RCP::Bool = get(opts, :by_RCP, false)
+    sort_by::Symbol = get(opts, :sort_by, :default)
+    default_names::Vector = get(opts, :legend_labels, [])
+
+    group_names::Vector{Symbol} = _sort_keys(
+        scen_groups;
+        by_RCP=by_RCP, by=sort_by, outcomes=outcomes, default_names=default_names
+    )
+
+    legend_labels = get(opts, :legend_labels, group_names)
+    return _render_legend(
+        g, scen_groups, legend_labels; legend_opts=legend_opts
+    )
 end
 
 function _confints(
@@ -294,13 +328,14 @@ end
 function _render_legend(
     g::Union{GridLayout,GridPosition},
     scen_groups::Dict{Symbol,BitVector},
-    legend_position::Tuple{Int64,Int64},
-    legend_labels::Vector{Symbol}
+    legend_labels::Vector{Symbol};
+    legend_opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
 )::Nothing
     _colors = colors(scen_groups)
     line_els::Vector{LineElement} = [LineElement(; color=_colors[n]) for n in legend_labels]
 
-    Legend(g[legend_position...], line_els, labels(legend_labels); framevisible=false)
+    title = pop!(legend_opts, :title, "Intervention scenarios")
+    Legend(g, line_els, labels(legend_labels), title; framevisible=false, legend_opts...)
 
     return nothing
 end
