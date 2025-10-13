@@ -1,3 +1,5 @@
+using ADRIA.DataFrames
+
 if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
 end
@@ -18,12 +20,8 @@ end
     end
 
     @testset "Discrete parameters" begin
-        site_path = joinpath(TEST_DATA_DIR, "test_site_data.gpkg")
-        conn_path = joinpath(TEST_DATA_DIR, "test_conn_data.csv")
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
-
         # Create scenario spec
-        samples = ADRIA.sample(dom, 8)
+        samples = deepcopy(TEST_SCENS)
         samples[!, :N_seed_TA] .= 500_000.0
 
         # Write out scenario spec
@@ -35,6 +33,7 @@ end
         test_scens = CSV.read(tmp_fn, DataFrame)
 
         # Update model using values from file
+        dom = deepcopy(TEST_DOM)
         ADRIA.update_params!(dom, test_scens[5, :])
 
         # Ensure values match

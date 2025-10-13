@@ -64,8 +64,10 @@ function Domain(
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
         Intervention(),
         criteria_weights...,
-        Coral()
+        Coral(),
+        GrowthAcceleration()
     ))
+
     return ADRIADomain(
         name,
         rcp,

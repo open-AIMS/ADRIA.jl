@@ -51,10 +51,12 @@ include("utils/scale.jl")
 include("factors/Factors.jl")
 include("factors/const_params.jl")
 
+include("ecosystem/corals/coral_factors.jl")
 include("ecosystem/corals/growth.jl")
 include("ecosystem/corals/CoralGrowth.jl")
 include("ecosystem/Ecosystem.jl")
 include("ecosystem/corals/Corals.jl")
+include("ecosystem/corals/GrowthAcceleration.jl")
 include("ecosystem/connectivity.jl")
 
 include("Domain.jl")
@@ -88,10 +90,10 @@ include("viz/viz.jl")
 
 export
     growthODE,
-    run_scenario, coral_spec,
+    run_scenario, coral_spec, bin_edges,
     create_coral_struct, Intervention, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights,
-    loc_area, site_k_area, loc_k_area,
+    loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz
 
@@ -104,7 +106,7 @@ export RMEResultSet
 # export dims, ndims
 
 # List out compatible domain datapackages
-const COMPAT_DPKG = ["0.7.0-rc", "0.7.0"]
+const COMPAT_DPKG = ["0.8.0"]
 # This adds ~30 seconds to package load times
 if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(load_domain),String})   # time: 19.120537

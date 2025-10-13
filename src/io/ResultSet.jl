@@ -458,6 +458,9 @@ Extract model specification from Result Set.
 function model_spec(rs::ResultSet)::DataFrame
     return rs.model_spec
 end
+function model_spec(rs::ResultSet, param_names::Vector{Symbol})::DataFrame
+    return rs.model_spec[rs.model_spec.fieldname .∈ Ref(param_names), :]
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", rs::ResultSet)
     vers_id = rs.ADRIA_VERSION
