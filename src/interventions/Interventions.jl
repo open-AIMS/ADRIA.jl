@@ -150,3 +150,8 @@ end
 function interventions()
     return [:seed, :fog]
 end
+
+function year_start_factors(dom::Domain)::DataFrame
+    ms = model_spec(dom)
+    return ms[occursin.(Ref("year_start"), string.(ms.fieldname)), :]
+end

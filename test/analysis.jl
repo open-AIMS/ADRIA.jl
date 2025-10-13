@@ -11,11 +11,7 @@ Makie.inline!(false)
 
 """Test larger scenario run with figure creation"""
 function test_rs_w_fig(rs::ADRIA.ResultSet, scens::ADRIA.DataFrame)
-
     # Visualize results (in terms of absolute coral cover)
-    s_tac = ADRIA.metrics.scenario_total_cover(rs)
-    ADRIA.viz.scenarios(rs, s_tac)
-
     tac = ADRIA.metrics.total_absolute_cover(rs)
     rsv = ADRIA.metrics.relative_shelter_volume(rs)
     juves = ADRIA.metrics.relative_juveniles(rs)

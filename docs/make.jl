@@ -18,9 +18,9 @@ makedocs(;
             ],
         "Usage" => [
             "usage/getting_started.md",
-            "usage/domain.md",
-            "usage/results.md",
-            "usage/scenario_generation.md",
+            "usage/loading_a_domain.md",
+            "usage/loading_results.md",
+            "usage/generating_scenarios.md",
             "usage/scenario_runs.md",
             "usage/analysis.md",
             "usage/cookbook.md"

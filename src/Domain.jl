@@ -171,9 +171,14 @@ end
     model_spec(d::Domain)::DataFrame
     model_spec(d::Domain, filepath::String)::Nothing
     model_spec(m::Model)::DataFrame
+    model_spec(d::Domain, param_set::DataFrame)
+    model_spec(d::Domain, param_names::Vector{String})
+    model_spec(d::Domain, param_names::Vector{Symbol})
 
 Get model specification as DataFrame with lower and upper bounds.
 If a filepath is provided, writes the specification out to file with ADRIA metadata.
+If a `param_set` or a vector of `param_set` names is provided, filters params not present in
+the `param_set`.
 """
 function model_spec(d::Domain)::DataFrame
     return model_spec(d.model)
@@ -215,6 +220,16 @@ function model_spec(m::Model)::DataFrame
 
     return spec
 end
+function model_spec(d::Domain, param_set::DataFrame)
+    return model_spec(d, Symbol.(names(param_set)))
+end
+function model_spec(d::Domain, param_names::Vector{String})
+    return model_spec(d, Symbol.(param_names))
+end
+function model_spec(d::Domain, param_names::Vector{Symbol})
+    ms = model_spec(d)
+    return ms[ms.fieldname .∈ Ref(param_names), :]
+end
 
 """
     update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
@@ -222,7 +237,9 @@ end
 Update given domain with new parameter values.
 """
 function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::Nothing
-    p_df::DataFrame = DataFrame(d.model)[:, [:fieldname, :val, :ptype, :dist_params]]
+    p_df::DataFrame = model_spec(d, names(params))[
+        :, [:fieldname, :val, :ptype, :dist_params]
+    ]
 
     try
         p_df[!, :val] .= collect(params[Not("RCP")])
@@ -231,13 +248,19 @@ function update_params!(d::Domain, params::Union{AbstractVector,DataFrameRow})::
             if !occursin("RCP", "$err")
                 error("Error occurred loading scenario samples. $err")
             end
-
             p_df[!, :val] .= collect(params)
         end
     end
 
+    # Unused params need to be merged with `p_df` to keep the same number of factors as d.model
+    ms_all = model_spec(d)
+    p_df_complementar::DataFrame = ms_all[
+        (ms_all.fieldname .∉ Ref(Symbol.(names(params)))),
+        [:fieldname, :val, :ptype, :dist_params]
+    ]
+
     # Update with new parameters
-    update!(d.model, p_df)
+    update!(d.model, vcat(p_df, p_df_complementar))
 
     return nothing
 end
@@ -322,21 +345,39 @@ function n_locations(domain::Domain)::Int64
 end
 
 """
-    relative_leftover_space(loc_coral_cover::AbstractArray)::AbstractArray
+    relative_leftover_space(loc_cover::AbstractArray)::AbstractArray
 
 Get proportion of leftover space, given site_k and proportional cover on each site, summed
 over species.
 
 # Arguments
-- `loc_coral_cover` : Proportion of coral cover relative to `k` (maximum carrying capacity).
+- `loc_cover` : Proportion of coral cover relative to `k` (maximum carrying capacity).
 
 # Returns
 Leftover space ∈ [0, 1]
 """
 function relative_leftover_space(
-    loc_coral_cover::AbstractArray
+    loc_cover::AbstractArray
 )::AbstractArray
-    return max.(1.0 .- loc_coral_cover, 0.0)
+    return max.(1.0 .- loc_cover, 0.0)
+end
+
+"""
+    loc_coral_cover(C_cover_t::Array{Float64,3})::Vector{Float64}
+
+Sum coral cover across all functional groups and size classes of a single timestep for each location.
+"""
+function loc_coral_cover(C_cover_t::AbstractArray{Float64,3})::Vector{Float64}
+    return dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+end
+
+"""
+    loc_recruits_cover(recruits::Matrix{Float64})::Vector{Float64}
+
+Absolute cover of recruits on each location.
+"""
+function loc_recruits_cover(recruits::Matrix{Float64})::Vector{Float64}
+    return vec(sum(recruits; dims=1))
 end
 
 """

@@ -70,7 +70,7 @@ function _reef_mod_area_dist(bin_edges::Matrix{Float64})::Vector{LogNormal{Float
 end
 
 """
-    _init_cover_fracs()::Matrix{Float64}
+    _init_cover_weights()::Matrix{Float64}
 
 Initial cover fraction for each functional group and size class
 """
