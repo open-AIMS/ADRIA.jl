@@ -5,7 +5,7 @@ abstract type DecisionWeights end
 abstract type DecisionThresholds end
 
 """
-    DepthThresholds <: DecisionWeights
+    DepthThresholds <: DecisionThresholds
 
 Properties used to filter out locations.
 """
