@@ -28,23 +28,31 @@ const UNIT_AREA_INVERSE = "m⁻²"
 const IS_RELATIVE = true
 const IS_NOT_RELATIVE = false
 
-struct Metric{F<:Function,T<:Tuple,U<:Tuple,S<:String,B<:Bool} <: Outcome
+struct Metric{F<:Function,T<:Tuple,U<:Tuple} <: Outcome
     func::F
-    in_dims::U
-    dims::T
-    feature::S
-    is_relative::B
-    unit::S
-end
+    in_dims::T
+    dims::U
+    feature::String
+    is_relative::Bool
+    unit::String
 
-Metric(func, in_dims, dims, feature, is_relative) =
-    Metric(func, in_dims, dims, feature, is_relative, "")
+    function Metric(
+        func::F, in_dims::T, dims::U, feature::String, is_relative::Bool, unit::String
+    ) where {F,T,U}
+        return new{F,T,U}(func, in_dims, dims, feature, is_relative, unit)
+    end
+    function Metric(
+        func::F, in_dims::T, dims::U, feature::String, is_relative::Bool
+    ) where {F,T,U}
+        return new{F,T,U}(func, in_dims, dims, feature, is_relative, "")
+    end
+end
 
 """
     (f::Metric)(raw, args...; kwargs...)
     (f::Metric)(rs::ResultSet, args...; kwargs...)
 
-Makes Metric types callable with arbitary arguments that are passed to associated function.
+Makes Metric types callable with arbitrary arguments that are passed to associated function.
 """
 function (f::Metric)(raw, args...; kwargs...)::YAXArray
     if :scenarios in f.in_dims
