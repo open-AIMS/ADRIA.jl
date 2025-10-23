@@ -546,6 +546,9 @@ end
     _update_decision_method!(dom, new_dist_params::Tuple)::Domain
 
 Update the model spec with the tuple of MCDA methods to use.
+
+Converts named MCDA methods to known IDs.
+The nominal default is set to the first MCDA method provided.
 """
 function _update_decision_method!(dom, new_dist_params::Tuple)::Domain
     new_method_names::Vector{String} = collect(new_dist_params)
@@ -620,12 +623,16 @@ function set_factor_bounds(dom::Domain; factors...)::Domain
     return dom
 end
 function set_factor_bounds!(dom::Domain; factors...)::Domain
+    # Convert to OrderedDict to ensure ordered alignment of passed in factors
     factors = OrderedDict(factors)
+
     # Extract factor names and values
     factor_symbols = collect(keys(factors))
     new_params = collect(values(factors))
 
     # Handle categorical guided factor separately
+    # Converts named MCDA methods to known IDs.
+    # The nominal default is set to the first MCDA method provided.
     if :guided in factor_symbols
         factor_idx::Int64 = findfirst(factor_symbols .== :guided)
         dom = _update_decision_method!(dom, new_params[factor_idx])
