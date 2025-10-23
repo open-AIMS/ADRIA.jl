@@ -543,7 +543,7 @@ end
 """
     _update_decision_method!(dom, new_dist_params::Tuple)::Domain
 
-Update the model spec with the tuple of DMCA methods to use.
+Update the model spec with the tuple of MCDA methods to use.
 """
 function _update_decision_method!(dom, new_dist_params::Tuple)::Domain
     new_method_names::Vector{String} = collect(new_dist_params)
