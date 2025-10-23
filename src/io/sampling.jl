@@ -8,6 +8,8 @@ import Distributions: sample
 import QuasiMonteCarlo as QMC
 import QuasiMonteCarlo: SobolSample, OwenScramble
 
+import OrderedCollections: OrderedDict
+
 const DISCRETE_FACTOR_TYPES = [
     "ordered categorical", "unordered categorical", "ordered discrete"
 ]
@@ -543,7 +545,10 @@ end
 """
     _update_decision_method!(dom, new_dist_params::Tuple)::Domain
 
-Update the model spec with the tuple of DMCA methods to use.
+Update the model spec with the tuple of MCDA methods to use.
+
+Converts named MCDA methods to known IDs.
+The nominal default is set to the first MCDA method provided.
 """
 function _update_decision_method!(dom, new_dist_params::Tuple)::Domain
     new_method_names::Vector{String} = collect(new_dist_params)
@@ -618,34 +623,45 @@ function set_factor_bounds(dom::Domain; factors...)::Domain
     return dom
 end
 function set_factor_bounds!(dom::Domain; factors...)::Domain
+    # Convert to OrderedDict to ensure ordered alignment of passed in factors
+    factors = OrderedDict(factors)
+
     # Extract factor names and values
     factor_symbols = collect(keys(factors))
     new_params = collect(values(factors))
 
     # Handle categorical guided factor separately
+    # Converts named MCDA methods to known IDs.
+    # The nominal default is set to the first MCDA method provided.
     if :guided in factor_symbols
         factor_idx::Int64 = findfirst(factor_symbols .== :guided)
         dom = _update_decision_method!(dom, new_params[factor_idx])
-        factor_symbols = factor_symbols[1:end .!= factor_idx]
-        new_params = new_params[1:end .!= factor_idx]
+
+        keep_idx = 1:length(factor_symbols) .!= factor_idx
+        factor_symbols = factor_symbols[keep_idx]
+        new_params = new_params[keep_idx]
     end
 
     ms = model_spec(dom)
+    for (i, fn) in enumerate(factor_symbols)
+        idx = findfirst(ms.fieldname .== fn)
+        ms[idx, :dist_params] = new_params[i]
 
-    factor_rows = findall(in(factor_symbols), ms.fieldname)
+        lb = new_params[i][1]
+        ub = new_params[i][2]
 
-    # Update dist_params and values in bulk
-    ms[factor_rows, :dist_params] .= new_params
+        # Calculate new nominal values ensuring original types (Int or Float) are preserved
+        old_val = ms[idx, :val]
+        new_val = mean([lb, ub])
+        ms[idx, :val] = if old_val isa Int
+            round(new_val)  # Ensure float represents an integer
+        else
+            new_val
+        end
 
-    # Calculate new values preserving types
-    old_vals = ms[factor_rows, :val]
-    new_vals = mean.(zip(first.(new_params), last.(new_params)))
-    ms[factor_rows, :val] .= [
-        v isa Int ? round(n) : n for (v, n) in zip(old_vals, new_vals)
-    ]
-
-    # Update `is_constant` column
-    ms[!, :is_constant] .= (ms[!, :lower_bound] .== ms[!, :upper_bound])
+        # Update lower/upper bounds and mark as constant or not
+        ms[idx, [:lower_bound, :upper_bound, :is_constant]] = [lb, ub, lb == ub]
+    end
 
     update!(dom, ms)
     return dom
