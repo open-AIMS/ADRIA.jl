@@ -8,6 +8,8 @@ import Distributions: sample
 import QuasiMonteCarlo as QMC
 import QuasiMonteCarlo: SobolSample, OwenScramble
 
+import OrderedCollections: OrderedDict
+
 const DISCRETE_FACTOR_TYPES = [
     "ordered categorical", "unordered categorical", "ordered discrete"
 ]
@@ -618,6 +620,7 @@ function set_factor_bounds(dom::Domain; factors...)::Domain
     return dom
 end
 function set_factor_bounds!(dom::Domain; factors...)::Domain
+    factors = OrderedDict(factors)
     # Extract factor names and values
     factor_symbols = collect(keys(factors))
     new_params = collect(values(factors))
