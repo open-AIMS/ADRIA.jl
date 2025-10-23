@@ -643,14 +643,17 @@ function set_factor_bounds!(dom::Domain; factors...)::Domain
         lb = new_params[i][1]
         ub = new_params[i][2]
 
-        # Calculate new values preserving types
+        # Calculate new nominal values ensuring original types (Int or Float) are preserved
         old_val = ms[idx, :val]
         new_val = mean([lb, ub])
-        ms[idx, :val] = old_val isa Int ? Int64(new_val) : new_val
+        ms[idx, :val] = if old_val isa Int
+            round(new_val)  # Ensure float represents an integer
+        else
+            new_val
+        end
 
-        ms[idx, :lower_bound] = lb
-        ms[idx, :upper_bound] = ub
-        ms[idx, :is_constant] = lb == ub
+        # Update lower/upper bounds and mark as constant or not
+        ms[idx, [:lower_bound, :upper_bound, :is_constant]] = [lb, ub, lb == ub]
     end
 
     update!(dom, ms)
