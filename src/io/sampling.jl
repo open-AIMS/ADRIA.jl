@@ -638,7 +638,7 @@ function set_factor_bounds!(dom::Domain; factors...)::Domain
     ms = model_spec(dom)
     for (i, fn) in enumerate(factor_symbols)
         idx = findfirst(ms.fieldname .== fn)
-        ms[idx, :dist_params] .= new_params[i]
+        ms[idx, :dist_params] = new_params[i]
 
         lb = new_params[i][1]
         ub = new_params[i][2]
