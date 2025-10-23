@@ -629,26 +629,29 @@ function set_factor_bounds!(dom::Domain; factors...)::Domain
     if :guided in factor_symbols
         factor_idx::Int64 = findfirst(factor_symbols .== :guided)
         dom = _update_decision_method!(dom, new_params[factor_idx])
-        factor_symbols = factor_symbols[1:end .!= factor_idx]
-        new_params = new_params[1:end .!= factor_idx]
+
+        keep_idx = 1:length(factor_symbols) .!= factor_idx
+        factor_symbols = factor_symbols[keep_idx]
+        new_params = new_params[keep_idx]
     end
 
     ms = model_spec(dom)
+    for (i, fn) in enumerate(factor_symbols)
+        idx = findfirst(ms.fieldname .== fn)
+        ms[idx, :dist_params] .= new_params[i]
 
-    factor_rows = findall(in(factor_symbols), ms.fieldname)
+        lb = new_params[i][1]
+        ub = new_params[i][2]
 
-    # Update dist_params and values in bulk
-    ms[factor_rows, :dist_params] .= new_params
+        # Calculate new values preserving types
+        old_val = ms[idx, :val]
+        new_val = mean([lb, ub])
+        ms[idx, :val] = old_val isa Int ? Int64(new_val) : new_val
 
-    # Calculate new values preserving types
-    old_vals = ms[factor_rows, :val]
-    new_vals = mean.(zip(first.(new_params), last.(new_params)))
-    ms[factor_rows, :val] .= [
-        v isa Int ? round(n) : n for (v, n) in zip(old_vals, new_vals)
-    ]
-
-    # Update `is_constant` column
-    ms[!, :is_constant] .= (ms[!, :lower_bound] .== ms[!, :upper_bound])
+        ms[idx, :lower_bound] = lb
+        ms[idx, :upper_bound] = ub
+        ms[idx, :is_constant] = lb == ub
+    end
 
     update!(dom, ms)
     return dom
