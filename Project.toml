@@ -1,7 +1,7 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony", "Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
-version = "0.12.1"
+version = "0.13.0"
 
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
