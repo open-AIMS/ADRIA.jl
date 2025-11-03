@@ -191,11 +191,9 @@ function Domain(
     coral_growth::CoralGrowth = CoralGrowth(n_locs)
 
     # Load initial coral cover relative to k area
-    cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_groups, n_sizes, n_locs)
-    init_coral_cover = load_initial_cover(cover_params...)
+    init_coral_cover = load_initial_cover(init_coral_fn)
 
-    dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
-    dhw = load_env_data(dhw_params...)
+    dhw = load_env_data(dhw_fn, "dhw")
 
     waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
     waves = load_env_data(waves_params...)
