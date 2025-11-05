@@ -86,9 +86,15 @@ function ADRIA.viz.scenarios(
     f = Figure(; fig_opts...)
     g = f[1, 1] = GridLayout()
 
-    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
-    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
-    ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
+    axis_opts = merge(
+        Dict{Symbol,Any}(
+            :xticks => _time_labels(timesteps(outcomes)),
+            :xticklabelrotation => 2 / π
+        ),
+        axis_opts
+    )
+
+    ax = Axis(g[1, 1]; axis_opts...)
     scen_groups = rs.scenario_groups
 
     ADRIA.viz.scenarios!(
@@ -126,15 +132,17 @@ function ADRIA.viz.scenarios!(
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )::Union{GridLayout,GridPosition}
-    # Ensure last year is always shown in x-axis
-    xtick_vals = get(axis_opts, :xticks, _time_labels(timesteps(outcomes)))
-    xtick_rot = get(axis_opts, :xticklabelrotation, 2 / π)
+    axis_opts = merge(
+        Dict{Symbol,Any}(
+            :xticks => _time_labels(timesteps(outcomes)),
+            :xticklabelrotation => 2 / π,
+            :xlabel => "Year",
+            :title => outcome_title(outcomes)
+        ),
+        axis_opts
+    )
 
-    if !haskey(axis_opts, :title)
-        axis_opts[:title] = outcome_title(outcomes)
-    end
-
-    ax = Axis(g[1, 1]; xticks=xtick_vals, xticklabelrotation=xtick_rot, axis_opts...)
+    ax = Axis(g[1, 1]; axis_opts...)
 
     _scenarios = copy(scenarios[1:end .∈ [outcomes.scenarios], :])
     scen_groups = if get(opts, :by_RCP, false)
@@ -184,8 +192,6 @@ function ADRIA.viz.scenarios!(
         _render_legend(g[legend_position...], scen_groups, legend_labels)
     end
 
-    ax.xlabel = "Year"
-    ax.ylabel = outcome_label(outcomes)
     return g
 end
 
