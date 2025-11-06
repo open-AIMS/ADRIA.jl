@@ -220,7 +220,7 @@ function run_scenarios(
                 # Switch RCPs so correct data is loaded
                 dom = switch_RCPs!(dom, rcp)
                 target_rows = findall(
-                    scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp)
+                    scenarios_matrix[factors = At("RCP")] .== parse(Float64, rcp)
                 )
                 scen_args = _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
 
@@ -272,7 +272,7 @@ function growth_acceleration(
 end
 
 function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
-    target_rows = findall(scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp))
+    target_rows = findall(scenarios_matrix[factors = At("RCP")] .== parse(Float64, rcp))
     rep_doms = Iterators.repeated(dom, n)
     return zip(
         rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :])
@@ -862,12 +862,13 @@ function run_model(
             dropdims(sum(recruitment; dims=1); dims=1)
 
         relative_habitable_cover = zeros(n_locs)
-        relative_habitable_cover[habitable_locs] = loc_coral_cover(C_cover_t[:, :, habitable_locs]) ./ vec_abs_k[habitable_locs]
+        relative_habitable_cover[habitable_locs] =
+            loc_coral_cover(C_cover_t[:, :, habitable_locs]) ./ vec_abs_k[habitable_locs]
 
         lin_ext_scale_factor_threshold = 0.5
 
         # Growth constrains need to be calculated seperately for differen growth rates
-        cover_threshold_mask .= relative_habitable_cover .> lin_ext_scale_factor_threshold
+        cover_threshold_mask .= relative_habitable_cover .>= lin_ext_scale_factor_threshold
         for idx in 1:n_cb_calib_groups
             current_mask .= cb_calib_group_masks[:, idx] .&& cover_threshold_mask
 
@@ -883,13 +884,12 @@ function run_model(
         cover_threshold_mask .= relative_habitable_cover .< lin_ext_scale_factor_threshold
         for idx in 1:n_cb_calib_groups
             current_mask .= cover_threshold_mask .&& cb_calib_group_masks[:, idx]
-            growth_constraints[current_mask] .=
-                growth_acceleration.(
-                    growth_acc_height[idx],
-                    growth_acc_midpoint[idx],
-                    growth_acc_steepness[idx],
-                    relative_habitable_cover[current_mask]
-                )
+            growth_constraints[current_mask] .= growth_acceleration.(
+                growth_acc_height[idx],
+                growth_acc_midpoint[idx],
+                growth_acc_steepness[idx],
+                relative_habitable_cover[current_mask]
+            )
         end
 
         for i in habitable_loc_idxs
@@ -1073,7 +1073,7 @@ function run_model(
 
             selected_seed_ranks = select_locations(
                 seed_pref,
-                decision_mat[location=locs_with_space[_valid_locs]],
+                decision_mat[location = locs_with_space[_valid_locs]],
                 MCDA_approach,
                 considered_locs,
                 min_iv_locs
@@ -1179,7 +1179,7 @@ function run_model(
 
         survival_rate_slices = [@view survival_rate_cache[:, :, loc] for loc in 1:n_locs]
         apply_mortality!.(functional_groups, survival_rate_slices)
-        recruitment .*= (view(survival_rate_cache, :, 1, :) .* habitable_areas)
+        recruitment .*= (view(survival_rate_cache,:,1,:) .* habitable_areas)
 
         C_cover[tstep, :, :, :] .= C_cover_t
     end
