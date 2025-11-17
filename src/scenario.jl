@@ -810,7 +810,11 @@ function run_model(
     FLoops.assistant(false)
     habitable_loc_idxs = findall(habitable_locs)
 
-    apply_growth_acc_mask::BitVector = trues(n_locs)
+    # Growth constraints and acceleration caches and masks
+    LIN_EXT_SCALE_FACTOR_THRESHOLD = 0.5
+    relative_habitable_cover_cache = zeros(n_locs)
+    growth_threshold_mask_cache::BitVector = trues(n_locs)
+    cover_threshold_mask::BitVector = falses(n_locs)
     cache_habitable_max_projected_cover = copy(habitable_max_projected_cover)
     agg_cover_above_threshold_mask::BitVector = falses(n_habitable_locs)
     for tstep::Int64 in 2:tf
@@ -860,32 +864,36 @@ function run_model(
             cache_habitable_max_projected_cover .+
             dropdims(sum(recruitment; dims=1); dims=1)
 
+        relative_habitable_cover_cache[habitable_locs] .=
+            loc_coral_cover(C_cover_t[:, :, habitable_locs]) ./ vec_abs_k[habitable_locs]
+
         # Growth constrains need to be calculated seperately for differen growth rates
+        growth_threshold_mask_cache .=
+            relative_habitable_cover_cache .>= LIN_EXT_SCALE_FACTOR_THRESHOLD
         for idx in 1:n_cb_calib_groups
-            growth_constraints[cb_calib_group_masks[:, idx]] .= linear_extension_scale_factors(
-                C_cover_t[:, :, cb_calib_group_masks[:, idx]],
-                vec_abs_k[cb_calib_group_masks[:, idx]],
+            cover_threshold_mask .=
+                cb_calib_group_masks[:, idx] .&& growth_threshold_mask_cache
+
+            # Only apply linear_extension_scale_factors to locations with high cover
+            growth_constraints[cover_threshold_mask] .= linear_extension_scale_factors(
+                C_cover_t[:, :, cover_threshold_mask],
+                vec_abs_k[cover_threshold_mask],
                 biogrp_lin_ext[:, :, idx],
                 _bin_edges,
-                habitable_max_projected_cover[cb_calib_group_masks[:, idx]]
+                habitable_max_projected_cover[cover_threshold_mask]
             )
         end
-
-        relative_habitable_cover = loc_coral_cover(C_cover_t) ./ vec_abs_k
-        lin_ext_scale_factor_threshold = 0.5
-        apply_growth_acc_mask .= (
-            relative_habitable_cover .< lin_ext_scale_factor_threshold
-        )
+        growth_threshold_mask_cache .=
+            relative_habitable_cover_cache .< LIN_EXT_SCALE_FACTOR_THRESHOLD
         for idx in 1:n_cb_calib_groups
-            apply_growth_acc_mask .= (
-                apply_growth_acc_mask .&& cb_calib_group_masks[:, idx]
-            )
-            growth_constraints[apply_growth_acc_mask] .=
+            cover_threshold_mask .=
+                growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
+            growth_constraints[cover_threshold_mask] .=
                 growth_acceleration.(
                     growth_acc_height[idx],
                     growth_acc_midpoint[idx],
                     growth_acc_steepness[idx],
-                    relative_habitable_cover[apply_growth_acc_mask]
+                    relative_habitable_cover_cache[cover_threshold_mask]
                 )
         end
 
@@ -1111,6 +1119,7 @@ function run_model(
             # Otherwise, do nothing.
             if length(locs_with_space) > 0
                 seed_locs = seed_locs[locs_with_space]
+                available_space = available_space[locs_with_space]
 
                 # Calculate proportion to seed based on current available space
                 proportional_increase, n_corals_seeded = distribute_seeded_corals(
