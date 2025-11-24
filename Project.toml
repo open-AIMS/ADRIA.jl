@@ -1,7 +1,7 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
-authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony", "Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
 version = "0.13.0"
+authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony", "Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
 
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
@@ -115,7 +115,7 @@ JuliennedArrays = "0.4"
 LERC_jll = "3, 4"
 LinearAlgebra = "1"
 Logging = "1"
-MAT = "0.10"
+MAT = "0.10, 0.11"
 MLJ = "0.20, 0.21"
 Makie = "0.22, 0.23, 0.24"
 ModelParameters = "0.4"
