@@ -823,39 +823,10 @@ function run_model(
             C_cover[tstep - 1, :, :, habitable_locs] .* habitable_loc_areas′
 
         # To prevent overgrowth when adding recruitment to C_cover_t, set a threshold above
-        # above which recruits are either set to zero or rescaled
-        round_threshold = 0.95
-
-        # Relative coral cover and recruits cover for each location
-        C_rel_cover = loc_coral_cover(C_cover_t) ./ habitable_loc_areas
-        loc_recruits_rel_cover = loc_recruits_cover(recruitment) ./ habitable_loc_areas
-
-        # Set recruitment to 0 where C_cover_t is already above round_threshold
-        cover_above_threshold_mask = C_rel_cover .> round_threshold
-        recruitment[:, cover_above_threshold_mask] .= 0.0
-
-        # Mask for locations with (C_cover + recruits) > threshold and C_cover <= threshold
-        agg_cover_above_threshold_mask .=
-            (C_rel_cover .+ loc_recruits_rel_cover .> round_threshold) .&&
-            .!cover_above_threshold_mask
-
-        if any(agg_cover_above_threshold_mask)
-            @warn "Constraining recruits within error bounds. tstep = $tstep"
-            recruits_scale_factor =
-                (
-                    (
-                        round_threshold .*
-                        habitable_loc_areas[agg_cover_above_threshold_mask]
-                    ) .- loc_coral_cover(C_cover_t[:, :, agg_cover_above_threshold_mask])
-                ) ./ loc_recruits_cover(recruitment[:, agg_cover_above_threshold_mask])
-
-            @assert !any(recruits_scale_factor .<= 0)
-
-            # Rescale recruits in target locations to fit within error bounds
-            recruitment[:, agg_cover_above_threshold_mask] .*= repeat(
-                recruits_scale_factor', n_groups
-            )
-        end
+        # which recruits are either set to zero or rescaled.
+        constrain_recruitment!(
+            recruitment, agg_cover_above_threshold_mask, C_cover_t, habitable_loc_areas
+        )
 
         # Settlers from t-1 grow into observable sizes.
         C_cover_t[:, 1, habitable_locs] .+= recruitment
