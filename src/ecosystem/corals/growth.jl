@@ -879,3 +879,48 @@ function settler_cover(
     return recruitment_rate(potential_settlers, leftover_space; α=α, β=β) .*
            basal_area_per_settler
 end
+
+"""
+    constrain_recruitment(recruitment, agg_cover_above_threshold_mask, C_cover_t, habitable_loc_areas;round_threshold=0.95)
+
+To prevent overgrowth when adding recruitment to C_cover_t, set a threshold above which
+recruits are either set to zero or rescaled.
+"""
+function constrain_recruitment!(
+    recruitment::Matrix{Float64},
+    agg_cover_above_threshold_mask::BitVector,
+    C_cover_t::Array{Float64,3},
+    habitable_loc_areas::Vector{Float64};
+    round_threshold::Float64=0.95
+)
+    # Relative coral cover and recruits cover for each location
+    C_rel_cover = loc_coral_cover(C_cover_t) ./ habitable_loc_areas
+    loc_recruits_rel_cover = loc_recruits_cover(recruitment) ./ habitable_loc_areas
+
+    # Set recruitment to 0 where C_cover_t is already above round_threshold
+    cover_above_threshold_mask = C_rel_cover .> round_threshold
+    recruitment[:, cover_above_threshold_mask] .= 0.0
+
+    # Mask for locations with (C_cover + recruits) > threshold and C_cover <= threshold
+    agg_cover_above_threshold_mask .=
+        (C_rel_cover .+ loc_recruits_rel_cover .> round_threshold) .&&
+        .!cover_above_threshold_mask
+    if any(agg_cover_above_threshold_mask)
+        @warn "Constraining recruits within error bounds. tstep = $tstep"
+        recruits_scale_factor =
+            (
+                (
+                    round_threshold .*
+                    habitable_loc_areas[agg_cover_above_threshold_mask]
+                ) .-
+                loc_coral_cover(C_cover_t[:, :, agg_cover_above_threshold_mask])
+            ) ./ loc_recruits_cover(recruitment[:, agg_cover_above_threshold_mask])
+
+        @assert !any(recruits_scale_factor .<= 0)
+
+        # Rescale recruits in target locations to fit within error bounds
+        recruitment[:, agg_cover_above_threshold_mask] .*= repeat(
+            recruits_scale_factor', n_groups
+        )
+    end
+end
