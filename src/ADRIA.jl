@@ -23,7 +23,6 @@ using
     GeoInterface,
     Graphs,
     ImageIO,
-    MAT,
     NetCDF,
     SimpleWeightedGraphs,
     Zarr

@@ -2,8 +2,8 @@ using ADRIA: SimConstants, Domain, GDF, DataCube
 
 using Distributions, Statistics
 
-using DataFrames,
-    MAT,
+using
+    DataFrames,
     ModelParameters,
     NetCDF,
     YAXArrays
