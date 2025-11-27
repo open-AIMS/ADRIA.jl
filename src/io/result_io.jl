@@ -357,6 +357,10 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     # Writing geopackages out does not currently automatically include CRS
     # so we manually define it as a workaround.
     col = _get_geom_col(domain.loc_data)
+    if col == false
+        throw(ArgumentError("Domain spatial data does not contain any geometries!"))
+    end
+
     ref = AG.getspatialref(domain.loc_data[1, col])
     proj4_gft = GFT.ProjString(AG.toPROJ4(ref))
     GDF.write(geo_fn, domain.loc_data; crs=proj4_gft, geom_columns=(col,), driver="GPKG")
