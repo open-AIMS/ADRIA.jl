@@ -9,26 +9,21 @@ Retrieve first column found to hold plottable geometries.
 Symbol, indicating column name or `false` if no geometries found.
 """
 function _get_geom_col(gdf::DataFrame)::Union{Symbol,Bool}
-    # To ensure backwards compatibility with GeoDataFrames versions lower than 0.4.0
-    col_legacy = findall(typeof.(eachcol(gdf)) .<: Vector{<:AG.IGeometry})
-    col = findall(typeof.(eachcol(gdf)) .<: GDF.GeometryVector{<:AG.IGeometry})
-    if !isempty(col)
-        return Symbol(names(gdf)[col[1]])
-    elseif !isempty(col_legacy)
-        return Symbol(names(gdf)[col_legacy[1]])
+    possible_cols = GeoInterface.geometrycolumns(gdf)
+    if length(possible_cols) > 0
+        return first(possible_cols)
     end
 
     return false
 end
 
 function get_geometry(df::DataFrame)
-    if columnindex(df, :geometry) > 0
-        return df.geometry
-    elseif columnindex(df, :geom) > 0
-        return df.geom
+    col = _get_geom_col(df)
+    if col == false
+        throw(ArgumentError("No geometry data found"))
     end
 
-    return error("No geometry data found")
+    return df[:, col]
 end
 
 """
