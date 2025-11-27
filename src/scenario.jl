@@ -1,25 +1,29 @@
 """Scenario running functions"""
 
 using CoralBlox
-import CoralBlox.SizeClass
-import CoralBlox.FunctionalGroup
-import CoralBlox.reuse_buffers!
-import CoralBlox.apply_mortality!
-import CoralBlox.timestep!
-import CoralBlox.coral_cover
-import CoralBlox.max_projected_cover
-import CoralBlox.linear_extension_scale_factors
 
-using ADRIA.metrics:
+import CoralBlox:
+    SizeClass,
+    FunctionalGroup,
+    reuse_buffers!,
+    apply_mortality!,
+    timestep!,
+    coral_cover,
+    max_projected_cover,
+    linear_extension_scale_factors
+
+using .metrics:
     relative_cover,
     relative_loc_taxa_cover,
     total_absolute_cover,
     absolute_shelter_volume,
-    relative_shelter_volume
-using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
-using ADRIA.metrics: coral_evenness
-using ADRIA.decision
-using ADRIA: loc_coral_cover, loc_recruits_cover
+    relative_shelter_volume,
+    relative_juveniles,
+    relative_taxa_cover,
+    juvenile_indicator,
+    coral_evenness
+
+using .decision
 
 """
     setup_cache(domain::Domain)::NamedTuple
