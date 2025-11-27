@@ -465,7 +465,7 @@ function _shelter_species_loop(
 end
 
 """
-_shelter_species_loop!(X::YAXArray, ASV::YAXArray, nspecies::Int64, colony_vol_m3_per_m2::V, k_area::V) where {V<:AbstractVector{<:Float64}}
+    _shelter_species_loop!(X::YAXArray, ASV::YAXArray, nspecies::Int64, colony_vol_m3_per_m2::V, k_area::V) where {V<:AbstractVector{<:Float64}}
 
 Helper method to calculate absolute shelter volume metric across each species/size class for a given scenario.
 
