@@ -1154,7 +1154,11 @@ function run_model(
         @assert sum(survival_rate_cache .> 1) == 0 "Survival rate should be <= 1"
 
         survival_rate_slices = [@view survival_rate_cache[:, :, loc] for loc in 1:n_locs]
-        apply_mortality!.(functional_groups, survival_rate_slices)
+
+        for r in eachindex(survival_rate_slices)
+            apply_mortality!(functional_groups[r], survival_rate_slices[r])
+        end
+
         recruitment .*= (view(survival_rate_cache, :, 1, :) .* habitable_areas)
 
         C_cover[tstep, :, :, :] .= C_cover_t
