@@ -203,7 +203,7 @@ function Domain(
     if size(cyclone_mortality, 3) == 6
         n_groups = coral_growth.n_groups
         @warn """
-        Cyclone mortality uses 6 functional groups. ADRIA uses $(n_groups).
+        Cyclone mortality data contains 6 functional groups. ADRIA uses $(n_groups).
         Skipping first functional group.
         """
         cyclone_mortality = cyclone_mortality[:, :, 2:end, :]
