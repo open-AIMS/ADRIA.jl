@@ -326,7 +326,7 @@ function scenarios_hist(
 end
 
 function _render_legend(
-    g::Union{GridLayout,GridPosition},
+    g::Union{GridLayout,GridPosition,GridSubposition},
     scen_groups::Dict{Symbol,BitVector},
     legend_labels::Vector{Symbol};
     legend_opts::Dict{Symbol,Any}=Dict{Symbol,Any}()
