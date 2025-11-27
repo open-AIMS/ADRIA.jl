@@ -1,7 +1,7 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
-version = "0.13.0"
 authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony", "Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
+version = "0.13.0"
 
 [deps]
 ArchGDAL = "c9ce4bd3-c3d5-55b8-8973-c0e20141b8c3"
@@ -76,8 +76,8 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 AvizExt = ["Makie", "GeoMakie", "GraphMakie"]
 
 [compat]
-Aqua = "0.8, 0.9"
-ArchGDAL = "0.9, 0.10"
+Aqua = "0.8"
+ArchGDAL = "0.10"
 BlackBoxOptim = "0.6"
 Bootstrap = "2"
 CSV = "0.10"
@@ -140,6 +140,7 @@ StatsBase = "0.33, 0.34"
 StatsFuns = "1"
 TOML = "1"
 Test = "1"
+WGLMakie = "0.11.10, 0.12, 0.13"
 YAXArrays = "0.5, 0.6, 0.7"
 Zarr = "0.9"
 julia = "1.10, 1.11"
