@@ -60,8 +60,8 @@ end
 """
     mcda_method_encoding(mcda_name::String)::Union{Int64, Nothing}
 
-Find the scenario encoding of the given mcda method. Throws `ArgumentError` if method not 
-found.
+Find the scenario encoding of the given mcda method.
+Throws `ArgumentError` if method not found.
 """
 function mcda_method_encoding(mcda_name::String)::Int64
     method_idx = findfirst(mcda_method_names() .== uppercase(mcda_name))
@@ -161,7 +161,8 @@ function weighted_projection(env_data, tstep, planning_horizon, decay, timeframe
 end
 
 """
-    summary_stat_env(env_layer::AbstractArray, dims::Union{Int64, Symbol, Tuple{Symbol, Symbol}}; w=0.5)::Vector{Float64}
+    summary_stat_env(env_layer::AbstractArray, dims::Union{Symbol,Tuple{Symbol,Symbol}}; w=0.5)::Vector{Float64}
+    summary_stat_env(env_layer::Matrix{<:AbstractFloat}, dims::Int64; w=0.5)::Vector{Float64}
 
 Calculates weighted combinations of mean and standard deviation for a given environmental
 factor.
@@ -180,7 +181,20 @@ Where the time horizon == 1, the original values are returned.
 """
 function summary_stat_env(
     env_layer::AbstractArray,
-    dims::Union{Int64,Symbol,Tuple{Symbol,Symbol}};
+    dims::Union{Symbol,Tuple{Symbol,Symbol}};
+    w=0.5
+)::Vector{Float64}
+    if size(env_layer, 1) > 1
+        return vec(
+            (mean(env_layer; dims=dims) .* w) .+ (std(env_layer; dims=dims) .* (1.0 - w))
+        )
+    end
+
+    return vec(env_layer)
+end
+function summary_stat_env(
+    env_layer::Matrix{<:AbstractFloat},
+    dims::Int64;
     w=0.5
 )::Vector{Float64}
     if size(env_layer, 1) > 1
@@ -251,7 +265,7 @@ function unguided_selection(
     k_area::Vector{Float64},
     depth::BitVector
 )::Vector{<:Union{Symbol,String,Int64}}
-    # Filter down to site ids to be considered
+    # Filter down to location ids to be considered
     candidate_locs = findall((k_area .> 0.0) .& depth)
     n_locs = length(candidate_locs)
     s_iv_locs = n_locs < n_iv_locs ? n_locs : n_iv_locs

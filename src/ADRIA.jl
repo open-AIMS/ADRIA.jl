@@ -56,6 +56,7 @@ include("ecosystem/corals/CoralGrowth.jl")
 include("ecosystem/Ecosystem.jl")
 include("ecosystem/corals/Corals.jl")
 include("ecosystem/corals/GrowthAcceleration.jl")
+include("ecosystem/cyclones.jl")
 include("ecosystem/connectivity.jl")
 
 include("Domain.jl")
@@ -73,7 +74,7 @@ include("spatial/spatial.jl")
 include("io/result_io.jl")
 include("io/rme_result_io.jl")
 include("io/result_post_processing.jl")
-include("io/sampling.jl")
+include("io/sampling/sampling.jl")
 include("metrics/metrics.jl")
 include("metrics/performance.jl")
 
@@ -112,54 +113,7 @@ if ccall(:jl_generating_output, Cint, ()) == 1
     Base.precompile(Tuple{typeof(load_domain),String,String})
     Base.precompile(Tuple{typeof(setup_result_store!),Domain,DataFrame})   # time: 4.6720815
     Base.precompile(Tuple{typeof(combine_results),Vector{String}})   # time: 4.0178256
-    Base.precompile(
-        Tuple{
-            typeof(growthODE),
-            Matrix{Float64},
-            Matrix{Float64},
-            NamedTuple{
-                (
-                    :r,
-                    :k,
-                    :mb,
-                    :comp,
-                    :sm_comp,
-                    :small_massives,
-                    :small,
-                    :mid,
-                    :large,
-                    :acr_5_11,
-                    :acr_6_12,
-                    :rec,
-                    :sigma,
-                    :M_sm,
-                    :sXr,
-                    :X_mb,
-                    :cover
-                ),
-                Tuple{
-                    Matrix{Float64},
-                    Vector{Float64},
-                    Matrix{Float64},
-                    Float64,
-                    Matrix{Float64},
-                    SVector{3,Int64},
-                    SVector{6,Int64},
-                    SVector{19,Int64},
-                    SVector{4,Int64},
-                    SVector{2,Int64},
-                    SVector{2,Int64},
-                    Matrix{Float64},
-                    Matrix{Float64},
-                    Matrix{Float64},
-                    Matrix{Float64},
-                    Matrix{Float64},
-                    Vector{Float64}
-                }
-            },
-            Float64
-        }
-    )   # time: 1.4354926
+
     Base.precompile(
         Tuple{
             typeof(decision.rank_sites!),
