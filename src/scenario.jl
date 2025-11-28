@@ -180,10 +180,10 @@ function run_scenarios(
         ) for _ in 1:n_locs
     ]
 
-    para_threshold =
+    para_threshold::Int64 =
         ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
     active_cores::Int64 = parse(Int64, ENV["ADRIA_NUM_CORES"])
-    parallel =
+    parallel::Bool =
         (parse(Bool, ENV["ADRIA_DEBUG"]) == false) && (active_cores > 1) &&
         (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
@@ -355,11 +355,6 @@ function run_scenario(
     vals = coral_evenness(vals.data)
     vals[vals .< threshold] .= 0.0
     data_store.coral_evenness[:, :, idx] .= vals
-
-    # Store raw results if no metrics specified
-    # if length(metrics) == 0
-    #     data_store.raw[:, :, :, idx] .= r.raw
-    # end
 
     # Store logs
     c_dim = Base.ndims(result_set.raw) + 1
@@ -927,7 +922,7 @@ function run_model(
         potential_settlers .= 0.0
         recruitment .= 0.0
 
-        # Recruitment represents additional cover, relative to total site area
+        # Recruitment represents additional cover, relative to total location area
         # Recruitment/settlement occurs after the full moon in October/November
         @views recruitment[:, habitable_locs] .=
             settler_cover(

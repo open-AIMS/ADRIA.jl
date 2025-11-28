@@ -104,52 +104,6 @@ function proportional_adjustment!(
 end
 
 """
-    growthODE(du, X, p, _)
-
-Base coral growth function.
-
-Proportion of corals within a size class are modeled to transition to the
-next size class up. Assumes colony sizes are evenly distributed within each
-size bin. Transitions are a ratio of the change in colony size to the width
-of the bin. See `coral_spec()` for further detail.
-
-Note that recruitment pertains to coral groups (\$n = 6\$) and represents
-the contribution to the cover of the smallest size class within each
-group.  While growth and mortality metrics pertain to groups (6) as well
-as size classes (6) across all sites (total of 36 by \$n_locs\$), recruitment is
-a 6 by \$n_locs\$ array.
-"""
-function growthODE(du::Matrix{Float64}, X::Matrix{Float64}, p::NamedTuple, t::Real)::Nothing
-    # Indices
-    # small = [1, 7, 13, 19, 25, 31]
-    # mid = [2:5; 8:11; 14:17; 20:23; 26:29; 32:35]
-    # large = [6, 12, 18, 24, 30, 36]
-
-    # sXr : available space (sigma) * current cover (X) * growth rate (r)
-    # X_mb : current cover (X) * background mortality (mb)
-    p.X_mb .= X .* p.mb
-    p.sXr .= (max.(1.0 .- sum(X; dims=1), 0.0) .* X .* p.r)
-
-    # For each size class, we determine the corals coming into size class due to growth,
-    # and subtract those leaving the size class due to growth and background mortality
-    # e.g., C = [corals coming in] - [corals going out]
-    #
-    # In most cases, this takes the form of:
-    # C = [growth from smaller size class - mortality of smaller size class] -
-    #     [growth to next size class + mortality of current size class]
-    #
-    # The smallest size class only has corals leaving the size class.
-    @views @. du[p.small, :] = -(p.sXr[p.small, :] + p.X_mb[p.small, :])
-    @views @. du[p.mid, :] =
-        (p.sXr[p.mid - 1, :] - p.X_mb[p.mid - 1, :]) - (p.sXr[p.mid, :] + p.X_mb[p.mid, :])
-    @views @. du[p.large, :] =
-        (p.sXr[p.large - 1, :] - p.X_mb[p.large - 1, :]) +
-        (p.sXr[p.large, :] - p.X_mb[p.large, :])
-
-    return nothing
-end
-
-"""
     depth_coefficient(d::Union{Int64,Float64})::Float64
 
 Model by Baird et al., [1] providing an indication of a relationship between bleaching
@@ -259,9 +213,6 @@ function bleaching_mortality!(
 end
 
 """
-    bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
-        depth_coeff::Vector{Float64}, stdev::Vector{Float64}, dist_t_1::Matrix,
-        dist_t::Matrix, prop_mort::SubArray{Float64}, n_sizes::Int64)::Nothing
     bleaching_mortality!(cover::AbstractArray{Float64, 3}, dhw::Vector{Float64},
         depth_coeff::Vector{Float64}, stdev::AbstractMatrix{Float64},
         dist_t_1::AbstractArray{Float64, 3}, dist_t::AbstractArray{Float64, 3},
@@ -481,12 +432,12 @@ end
     _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{F})::Nothing where {F<:Float64}
 
 Combines distributions between size classes > 1 to represent the shifts that occur as each
-size class grows. Priors for the distributions are based on proportional cover and the
+size class grows. Weights for the distributions are based on proportional cover and the
 assumed growth rates for each size class.
 
 i.e., \$(w_{i+1,1}, w_{i+1,2}) := (c_{i-1,i} / sum(c_{i-1,i})) * (g_{i-1,i} / sum(g_{i-1,i}))\$
 
-where \$w\$ are the weights/priors and \$g\$ is the growth rates.
+where \$w\$ are the weights and \$g\$ is the growth rates.
 
 # Arguments
 - `cover` : Coral cover for \$t-1\$
@@ -522,8 +473,12 @@ function _shift_distributions!(
 end
 
 """
-    adjust_DHW_distribution!(cover::SubArray{F}, n_sizes::Int64, dist_t::Matrix{F},
-        growth_rate::Matrix{F})::Nothing where {F<:Float64}
+    adjust_DHW_distribution!(
+        cover::SubArray{F},
+        n_sizes::Int64,
+        dist_t::Matrix{F},
+        growth_rate::Matrix{F}
+    )::Nothing where {F<:Float64}
 
 Adjust critical DHW thresholds for a given group/size class distribution as mortalities
 affect the distribution over time, and corals mature (moving up size classes).
@@ -683,7 +638,7 @@ fecundities across size classes.
 - `fec_all` : Matrix[n_taxa, n_locs], temporary cache to place intermediate fecundity values into
 - `fec_params` : Vector, coral fecundity parameters (in per m²) for each species/size class
 - `C_cover_t` : Matrix[n_taxa, n_locs], of coral cover values for the previous time step
-- `loc_area` : Vector[n_locs], total site area in m²
+- `loc_area` : Vector[n_locs], total location area in m²
 """
 function fecundity_scope!(
     fec_groups::AbstractMatrix{T},
@@ -719,50 +674,6 @@ function fecundity_scope!(
     @views fec_groups[:, :] .= dropdims(sum(fec_all; dims=2); dims=2)
 
     return nothing
-end
-
-"""
-    stressed_fecundity(tstep, a_adapt, n_adapt, stresspast, LPdhwcoeff, DHWmaxtot, LPDprm2, n_groups)
-
-Estimate how scope for larval production by each coral type changes as a
-function of last year's heat stress. The function is theoretical and is not
-yet verified by data.
-
-Stressed Fecundity (sf) is based on the proportion of baseline fecundity
-that is unaffected by heat stress in the previous year - e.g., a value
-of 0.9 inside sf(i, j) indicates that species i at site j can only produce
-90% of its usual larval output.
-
-# Arguments
-- `tstep` : Current time step
-- `a_adapt` : DHW reduction of enhanced corals
-- `n_adapt` : DHWs reduction (linearly scales with `tstep`)
-- `stresspast` : DHW at previous time step for each site
-- `LPdhwcoeff` :
-- `DHWmaxtot` : Maximum DHW
-- `LPDprm2` : Larval production parameter 2
-- `n_groups` : Number of groups
-
-# Returns
-`sf` : Array of values ∈ [0,1] indicating reduced fecundity from a baseline.
-"""
-function stressed_fecundity(tstep::Int64, a_adapt::Vector{T}, n_adapt::T,
-    stresspast::Vector{T}, LPdhwcoeff::T, DHWmaxtot::T, LPDprm2::T, n_groups::Int64
-)::Matrix{T} where {T<:Float64}
-    ad::Vector{Float64} = @. a_adapt + tstep * n_adapt
-
-    # using half of DHWmaxtot as a placeholder
-    # for the maximum capacity for thermal adaptation
-    tmp_ad::Vector{Float64} = @. (1.0 - (ad / (DHWmaxtot / 2.0)))
-
-    # One way around dimensional issue - tmp_ad for each class as the averaged
-    # of the enhanced and unenhanced corals in that class
-    # KA note: this works as it averages over size classes and not across groups.
-    tmp_ad2::Vector{Float64} = vec(
-        mean(reshape(tmp_ad, Int64(length(tmp_ad) / n_groups), n_groups); dims=1)
-    )
-
-    return 1.0 .- exp.(.-(exp.(-LPdhwcoeff .* (stresspast' .* tmp_ad2 .- LPDprm2))))
 end
 
 """
