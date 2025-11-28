@@ -175,7 +175,7 @@ function run_scenarios(
     n_locs::Int64 = dom.coral_growth.n_locs
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
-    _bin_edges::Matrix{Float64} = bin_edges()
+    _bin_edges::Matrix{Float64} = bin_edges(; unit=:m)
     functional_groups = [
         FunctionalGroup.(
             eachrow(_bin_edges[:, 1:(end - 1)]),

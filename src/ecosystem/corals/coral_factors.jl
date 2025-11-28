@@ -65,7 +65,7 @@ function dist_mean(; version=:calib, n_sizes=7)::Vector{Float64}
                 7.153507902   # Large massives
             ]; inner=n_sizes)
     elseif version == :calib
-        return [
+        return Float64[
             3.6288, 3.39071, 3.51495, 3.05432, 3.46573, 3.54919, 2.99916,   # tabular Acropora
             4.04999, 3.90801, 3.96954, 3.55288, 3.87375, 3.79475, 3.77829,  # corymbose Acropora
             3.947, 4.03984, 4.06396, 4.01402, 3.76394, 3.81475, 4.00364,    # Pocillopora + non-Acropora corymbose
@@ -73,7 +73,8 @@ function dist_mean(; version=:calib, n_sizes=7)::Vector{Float64}
             6.63257, 6.38167, 6.18104, 5.90905, 6.01206, 6.11049, 6.0298    # Large massives
         ]
     end
-    return error("Invalid param value `version`.")
+
+    throw(ArgumentError("Invalid version: $version. Can be one of [:legacy, :calib]."))
 end
 
 """
@@ -99,16 +100,19 @@ function mortality_base_rate(; version=:calib)
             0.259963  0.0753171  0.0439998  0.0252023  0.0143514  0.0161733  0.0289463     # Large massives
         ]
     end
-    return error("Invalid param value `version`.")
+
+    throw(ArgumentError("Invalid version: $version. Can be one of [:legacy, :calib]."))
 end
 
 """
-    linear_extensions()
+    linear_extensions(; unit=:m, version=:calib)::Matrix{Float64}
 
 Linear extensions. The values are converted from `cm` to the desired unit.
-The default unit is `m`.
-If `version==:legacy` returns values informed by EcoRRAP (unpublished) data.
-If `version==:calib` returns values resulting from the model calibration.
+The default target unit is `m`.
+If `version==:legacy` returns values informed by (unpublished) EcoRRAP data.
+If `version==:calib` returns values resulting from a model calibration.
+
+Throws ArgumentError if `version` is not supported.
 """
 function linear_extensions(; unit=:m, version=:calib)::Matrix{Float64}
     if version == :legacy
@@ -121,21 +125,22 @@ function linear_extensions(; unit=:m, version=:calib)::Matrix{Float64}
         ] .* linear_scale(:cm, unit)
     elseif version == :calib
         return [
-            0.0266831  0.0456663   0.055042    0.0699477  0.0631659  0.0726078  0.0;   # Tabular Acropora
-            0.0267012  0.0314565   0.0305842   0.0312019  0.0343453  0.0392649  0.0;   # Corymbose Acropora
-            0.0192487  0.0183389   0.016142    0.0181973  0.0178266  0.0160711  0.0;   # Corymbose non-Acropora
-            0.0127533  0.00815496  0.00798983  0.0100552  0.0143346  0.0153482  0.0;   # Small massives and encrusting
-            0.0127479  0.00800844  0.00814327  0.0100825  0.0146049  0.0154561  0.0    # Large massives
-        ] .* linear_scale(:m, unit)
+            2.66831  4.56663   5.5042    6.99477  6.31659  7.26078  0.0;   # Tabular Acropora
+            2.67012  3.14565   3.05842   3.12019  3.43453  3.92649  0.0;   # Corymbose Acropora
+            1.92487  1.83389   1.6142    1.81973  1.78266  1.60711  0.0;   # Corymbose non-Acropora
+            1.27533  0.815496  0.798983  1.00552  1.43346  1.53482  0.0;   # Small massives and encrusting
+            1.27479  0.800844  0.814327  1.00825  1.46049  1.54561  0.0    # Large massives
+        ] .* linear_scale(:cm, unit)
     end
-    return error("Invalid value $version for param `version`.")
+
+    throw(ArgumentError("Invalid version: $version. Can be one of [:legacy, :calib]."))
 end
 
 """
     bin_edges()
 
 Helper function defining coral colony diameter bin edges. The values are converted from `cm`
-to the desired unit. The default unit is `m`.
+to the desired unit. The default target unit is `cm`.
 """
 function bin_edges(; unit=:m)
     return Matrix(
@@ -148,13 +153,6 @@ function bin_edges(; unit=:m)
         ]
     ) .* linear_scale(:cm, unit)
 end
-#   Matrix([
-#         0.0 1.0 2.0 6.0 15.0 36.0 89.0 90.0;
-#         0.0 1.0 2.0 4.0  9.0 18.0 38.0 39.0;
-#         0.0 1.0 2.0 4.0  7.0 14.0 27.0 28.0;
-#         0.0 1.0 2.0 5.0  8.0 12.0 26.0 27.0;
-#         0.0 1.0 2.0 4.0  9.0 19.0 40.0 41.0
-#   ]
 
 """
     planar_area_params()
