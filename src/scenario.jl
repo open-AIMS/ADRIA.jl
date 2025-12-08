@@ -434,13 +434,24 @@ function run_model(
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
-    functional_groups = Vector{FunctionalGroup}[
-        FunctionalGroup.(
-            eachrow(bin_edges()[:, 1:(end - 1)]),
-            eachrow(bin_edges()[:, 2:end]),
-            eachrow(zeros(n_groups, n_sizes))
-        ) for _ in 1:n_locs
-    ]
+
+    edges = bin_edges()
+    bin_start = edges[:, 1:(end - 1)]
+    bin_end = edges[:, 2:end]
+    functional_groups::Vector{Vector{FunctionalGroup}} = Vector(undef, n_locs)
+    group_info = zeros(n_groups, n_sizes)
+    for i in 1:n_locs
+        fg::Vector{FunctionalGroup} = Vector(undef, n_groups)
+        for g in 1:n_groups
+            fg[g] = FunctionalGroup(
+                bin_start[g, :],
+                bin_end[g, :],
+                group_info[g, :]
+            )
+        end
+
+        functional_groups[i] = fg
+    end
 
     return run_model(domain, param_set, functional_groups)
 end
@@ -867,8 +878,8 @@ function run_model(
                 )
         end
 
-        for i in habitable_loc_idxs
-            timestep!(
+        @inbounds for i in habitable_loc_idxs
+            @views timestep!(
                 functional_groups[i],
                 recruitment[:, i],
                 biogrp_lin_ext[:, :, loc_cb_calib_group_idxs[i]] .* growth_constraints[i],
@@ -926,9 +937,11 @@ function run_model(
         potential_settlers .= 0.0
         recruitment .= 0.0
 
+        # habitable_areas_view = @view habitable_areas[:, habitable_locs]
+
         # Recruitment represents additional cover, relative to total location area
         # Recruitment/settlement occurs after the full moon in October/November
-        @views recruitment[:, habitable_locs] .=
+        @views recruitment[:, habitable_loc_idxs] .=
             settler_cover(
                 fec_scope,
                 conn,
@@ -940,14 +953,14 @@ function run_model(
                 valid_sources,
                 valid_sinks
             )[
-                :, habitable_locs
-            ] ./ habitable_areas[:, habitable_locs]
+                :, habitable_loc_idxs
+            ] ./ habitable_areas[:, habitable_loc_idxs]
 
         settler_DHW_tolerance!(
             c_mean_t_1,
             c_mean_t,
             vec_abs_k,
-            TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
+            TP_data.data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
             fec_params_per_m²,
             param_set[At("heritability")]
