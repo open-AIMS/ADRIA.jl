@@ -71,7 +71,7 @@ function load_nc_data(
     dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
     data = try
-        sort_axis(Cube(data_fn), :locations)
+        sort_axis(open_dataset(data_fn)[Symbol(attr)], :locations)
     catch
         fallback_nc_data(data_fn, attr; dim_names, dim_names_replace)
     end
@@ -165,10 +165,10 @@ function load_cyclone_mortality(data_fn::String)::YAXArray
     cyclone_cube::YAXArray = Cube(data_fn)
     return sort_axis(cyclone_cube, :locations)
 end
-function load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
+function load_cyclone_mortality(timeframe::Vector{Int64}, location_ids::Vector{String})::YAXArray
     return ZeroDataCube(;
         timesteps=1:length(timeframe),
-        locations=sort(loc_data.reef_siteid),
+        locations=sort(location_ids),
         species=ADRIA.coral_spec().taxa_names,
         scenarios=[1]
     )

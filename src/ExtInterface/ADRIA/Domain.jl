@@ -122,6 +122,8 @@ function Domain(
     location_data_fn::String,
     location_id_col::String,
     cluster_id_col::String,
+    k_area_col::String,
+    area_col::String,
     init_coral_fn::String,
     conn_path::String,
     dhw_fn::String,
@@ -141,14 +143,17 @@ function Domain(
         end
     end
 
-    if cluster_id_col ∉ names(location_data)
-        @warn "Cluster ID column $(cluster_id_col) not found. Defaulting to UNIQUE_ID."
-        cluster_id_col = "UNIQUE_ID"
+    # Ensure other required columns are present
+    required_cols = [location_id_col, cluster_id_col, k_area_col, area_col]
+    existence_mask = [col in names(location_data) for col in required_cols]
+    if !all(existence_mask)
+        error("Columns '$(required_cols[existence_mask])' not found in location data.")
     end
-    if typeof(location_data[:, cluster_id_col][1]) != String
-        location_data[!, cluster_id_col] .=
-            string.(Int64.(location_data[:, cluster_id_col]))
-    end
+
+    _standardise_location_columns!(
+        location_data;
+        cluster_id_col=cluster_id_col, k_area_col=k_area_col, area_col=area_col
+    )
 
     env_layer_md::EnvLayer = EnvLayer(
         dpkg_path,
@@ -181,7 +186,12 @@ function Domain(
     location_data = location_data[
         coalesce.(in.(conn_ids, [connectivity.loc_ids]), false), (:)
     ]
-    location_data.k .= location_data.k / 100.0  # Make `k` non-dimensional (provided as a percent)
+
+    # Make `k` non-dimensional (if it is a percentage)
+    if any(x -> x > 1.0, location_data.k)
+        @info "Values in 'k' are > 1.0, assuming they are percentages and dividing by 100."
+        location_data.k .= location_data.k / 100.0
+    end
 
     dist_matrix = distance_matrix(location_data)
     location_data.mean_to_neighbor .= nearest_neighbor_distances(dist_matrix, 10)
@@ -199,7 +209,7 @@ function Domain(
     waves = load_env_data(waves_params...)
 
     cyc_params =
-        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, location_data)
+        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, u_sids)
     cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     # Add compatability with non-migrated datasets but always default current coral spec
@@ -237,6 +247,60 @@ function Domain(
 end
 
 """
+    _standardise_location_columns!(location_data::DataFrame; cluster_id_col::Union{Nothing, String}=nothing, k_area_col::Union{Nothing, String}=nothing, area_col::Union{Nothing, String}=nothing,)::Nothing
+
+Rename the columns of a given locationd dataframe to intenral ADRIA standards.
+ADRIA Domains assume specific column names for specific features in the location data.
+
+|  Feature | Internal Standard |
+| ------------- |:-------------:|
+| Habitable Space | "k" |
+| Cluster ID | "cluster_id" |
+| Location Area | "area" |
+"""
+function _standardise_location_columns!(
+    location_data::DataFrame;
+    cluster_id_col::Union{Nothing,String}=nothing,
+    k_area_col::Union{Nothing,String}=nothing,
+    area_col::Union{Nothing,String}=nothing,
+)::Nothing
+    if !isnothing(cluster_id_col)
+        location_data[!, :cluster_id] = location_data[!, Symbol(cluster_id_col)]
+    end
+    if !isnothing(k_area_col)
+        location_data[!, :k] = location_data[!, Symbol(k_area_col)]
+    end
+    if !isnothing(area_col)
+        location_data[!, :area] = location_data[!, Symbol(area_col)]
+    end
+
+    return nothing
+end
+
+function _get_spatial_column_names(dpkg_details::Dict{String,Any})::Dict{String,String}
+    # Default column names
+    col_names = Dict(
+        "location_id_col" => "reef_siteid",
+        "cluster_id_col" => "cluster_id",
+        "k_col" => "k",
+        "area_col" => "area"
+    )
+
+    if haskey(dpkg_details, "resources")
+        for resource in dpkg_details["resources"]
+            if resource["name"] == "spatial_data"
+                for (key, val) in col_names
+                    col_names[key] = get(resource, key, val)
+                end
+                break # Found the spatial data resource, no need to check others
+            end
+        end
+    end
+
+    return col_names
+end
+
+"""
     load_domain(ADRIADomain, path::String, rcp::String)::ADRIADomain
     load_domain(path::String, rcp::String)
     load_domain(path::String, rcp::Int64)
@@ -255,6 +319,13 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
 
     dpkg_details::Dict{String,Any} = _load_dpkg(path)
 
+    # Extract spatial column names from datapackage.json
+    spatial_col_names = _get_spatial_column_names(dpkg_details)
+    location_id_col::String = spatial_col_names["location_id_col"]
+    cluster_id_col::String = spatial_col_names["cluster_id_col"]
+    k_area_col::String = spatial_col_names["k_col"]
+    area_col::String = spatial_col_names["area_col"]
+
     # Handle compatibility
     # Extract the time frame represented in this data package
     md_timeframe::Tuple{Int64,Int64} = Tuple(
@@ -270,9 +341,6 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         # Otherwise assume entry specifies yearly timesteps
         timeframe = parse.(Int64, md_timeframe)
     end
-
-    location_id_col::String = "reef_siteid"
-    cluster_id_col::String = "cluster_id"
 
     conn_path::String = joinpath(path, "connectivity/")
     spatial_path::String = joinpath(path, "spatial")
@@ -292,6 +360,8 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
         gpkg_path,
         location_id_col,
         cluster_id_col,
+        k_area_col,
+        area_col,
         init_coral_cov,
         conn_path,
         dhw_fn,

@@ -11,7 +11,7 @@ Load initial coral cover data from netCDF.
 function load_initial_cover(data_fn::String)::YAXArray
     _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
     return _split_cover(
-        load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
+        load_nc_data(data_fn, "layer"; dim_names_replace=_dim_names_replace)
     )
 end
 function load_initial_cover(n_groups::Int64, n_sizes::Int64, n_locs::Int64)::YAXArray
