@@ -694,6 +694,7 @@ function fecundity_scope!(
 
     # Dimensions of fec all are [groups ⋅ sizes ⋅ locations]
     fec_all .= fec_params .* C_cover_t .* reshape(loc_area, (1, size(loc_area)...))
+
     # Sum over size classes
     @views fec_groups[:, :] .= dropdims(sum(fec_all; dims=2); dims=2)
 
