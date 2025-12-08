@@ -429,7 +429,12 @@ function breeders(μ_o::T, μ_s::T, h²::T)::T where {T<:Float64}
 end
 
 """
-    _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{F})::Nothing where {F<:Float64}
+    _shift_distributions!(
+        cover::SubArray{F},
+        growth_rate::SubArray{F},
+        dist_t::SubArray{F};
+        prop_growth_cache=MVector{2,Float64}(0.0, 0.0)
+    )::Nothing where {F<:Float64}
 
 Combines distributions between size classes > 1 to represent the shifts that occur as each
 size class grows. Weights for the distributions are based on proportional cover and the
@@ -443,30 +448,31 @@ where \$w\$ are the weights and \$g\$ is the growth rates.
 - `cover` : Coral cover for \$t-1\$
 - `growth_rate` : Growth rates for the given size classes/species
 - `dist_t` : Critical DHW threshold distribution for timestep \$t\$
-- `stdev` : Standard deviations of coral DHW tolerance
+- `prop_growth_cache` : Proportional growth cache (to avoid repeated allocations)
 """
 function _shift_distributions!(
-    cover::SubArray{F},
-    growth_rate::SubArray{F},
-    dist_t::SubArray{F}
-)::Nothing where {F<:Float64}
+    cover::SubArray{T},
+    growth_rate::SubArray{T},
+    dist_t::SubArray{T};
+    prop_growth_cache=MVector{2,Float64}(0.0, 0.0)
+)::Nothing where {T}
     # Weight distributions based on growth rate and cover
     # Do from largest size class to size class 2
     # (values for size class 1 gets replaced by recruitment process)
-    prop_growth = MVector{2,F}(0.0, 0.0)
     for i in length(growth_rate):-1:2
         # Skip size class if nothing is moving up
         sum(view(cover, (i - 1):i)) == 0.0 ? continue : false
 
-        prop_growth .= @views (cover[(i - 1):i] ./ sum(cover[(i - 1):i])) .*
+        prop_growth_cache .= @views (cover[(i - 1):i] ./ sum(cover[(i - 1):i])) .*
             (growth_rate[(i - 1):i] ./ sum(growth_rate[(i - 1):i]))
-        if sum(prop_growth) == 0.0
+        if sum(prop_growth_cache) == 0.0
             continue
         end
 
         # Weighted sum
         dist_t[i] =
-            (dist_t[i - 1] * prop_growth[1] + dist_t[i] * prop_growth[2]) / sum(prop_growth)
+            (dist_t[i - 1] * prop_growth_cache[1] + dist_t[i] * prop_growth_cache[2]) /
+            sum(prop_growth_cache)
     end
 
     return nothing
@@ -522,7 +528,8 @@ end
 function adjust_DHW_distribution!(
     cover_t_1::SubArray{T,3},
     dist_t::AbstractArray{T,3},
-    growth_rate::Matrix{T}
+    growth_rate::Matrix{T};
+    prop_growth_cache=MVector{2,Float64}(0.0, 0.0)
 )::Nothing where {T<:Float64}
     groups, _, locs = axes(cover_t_1)
 
@@ -535,7 +542,8 @@ function adjust_DHW_distribution!(
             @views _shift_distributions!(
                 cover_t_1[grp, :, loc],
                 growth_rate[grp, :],
-                dist_t[grp, :, loc]
+                dist_t[grp, :, loc];
+                prop_growth_cache=prop_growth_cache
             )
         end
     end
