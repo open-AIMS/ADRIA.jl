@@ -817,7 +817,7 @@ function settler_cover(
 end
 
 """
-    constrain_recruitment(recruitment, agg_cover_above_threshold_mask, C_cover_t, habitable_loc_areas;round_threshold=0.95)
+    constrain_recruitment(recruitment, agg_cover_above_threshold_mask, C_cover_t, habitable_loc_areas; round_threshold=0.95)
 
 To prevent overgrowth when adding recruitment to C_cover_t, set a threshold above which
 recruits are either set to zero or rescaled.
@@ -838,23 +838,23 @@ function constrain_recruitment!(
     recruitment[:, cover_above_threshold_mask] .= 0.0
 
     # Mask for locations with (C_cover + recruits) > threshold and C_cover <= threshold
-    agg_cover_above_threshold_mask .=
-        (C_rel_cover .+ loc_recruits_rel_cover .> round_threshold) .&&
-        .!cover_above_threshold_mask
+    cover_with_recruits = C_rel_cover .+ loc_recruits_rel_cover
+    rec_above_threshold = cover_with_recruits .> round_threshold
+    agg_cover_above_threshold_mask .= rec_above_threshold .&& .!cover_above_threshold_mask
+
     if any(agg_cover_above_threshold_mask)
-        @warn "Constraining recruits within error bounds. tstep = $tstep"
-        recruits_scale_factor =
-            (
-                (
-                    round_threshold .*
-                    habitable_loc_areas[agg_cover_above_threshold_mask]
-                ) .-
-                loc_coral_cover(C_cover_t[:, :, agg_cover_above_threshold_mask])
-            ) ./ loc_recruits_cover(recruitment[:, agg_cover_above_threshold_mask])
+        @warn "Constraining recruits within error bounds."
+        exceeded_agg_cover_locs = habitable_loc_areas[agg_cover_above_threshold_mask]
+        threshold_cap = round_threshold .* exceeded_agg_cover_locs
+        exceeded_locs = loc_coral_cover(C_cover_t[:, :, agg_cover_above_threshold_mask])
+        recruit_cover = loc_recruits_cover(recruitment[:, agg_cover_above_threshold_mask])
+
+        recruits_scale_factor = (threshold_cap .- exceeded_locs) ./ recruit_cover
 
         @assert !any(recruits_scale_factor .<= 0)
 
         # Rescale recruits in target locations to fit within error bounds
+        n_groups = size(C_cover_t, 1)
         recruitment[:, agg_cover_above_threshold_mask] .*= repeat(
             recruits_scale_factor', n_groups
         )
