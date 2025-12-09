@@ -201,15 +201,30 @@ function Domain(
     coral_growth::CoralGrowth = CoralGrowth(n_locs)
 
     # Load initial coral cover relative to k area
+    if !ispath(init_coral_fn)
+        error("Initial coral cover data file not found at $(init_coral_fn). Initial coral cover data is required.")
+    end
     init_coral_cover = load_initial_cover(init_coral_fn)
 
+    if !ispath(dhw_fn)
+        error("DHW data file not found at $(dhw_fn). DHW data is always required.")
+    end
     dhw = load_env_data(dhw_fn, "dhw")
 
-    waves_params = ispath(wave_fn) ? (wave_fn, "Ub") : (timeframe, conn_ids)
+    if !ispath(wave_fn)
+        @info "No wave data file found at $(wave_fn). Using default wave data."
+        waves_params = (timeframe, conn_ids)
+    else
+        waves_params = (wave_fn, "Ub")
+    end
     waves = load_env_data(waves_params...)
 
-    cyc_params =
-        ispath(cyclone_mortality_fn) ? (cyclone_mortality_fn,) : (timeframe, u_sids)
+    if !ispath(cyclone_mortality_fn)
+        @info "No cyclone mortality data file found at $(cyclone_mortality_fn). Using default cyclone mortality data."
+        cyc_params = (timeframe, u_sids)
+    else
+        cyc_params = (cyclone_mortality_fn,)
+    end
     cyclone_mortality = load_cyclone_mortality(cyc_params...)
 
     # Add compatability with non-migrated datasets but always default current coral spec
