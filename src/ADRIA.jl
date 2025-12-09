@@ -89,7 +89,6 @@ include("ExtInterface/ReefMod/ReefModDomain.jl")
 include("viz/viz.jl")
 
 export
-    growthODE,
     run_scenario, coral_spec, bin_edges,
     create_coral_struct, Intervention, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights,

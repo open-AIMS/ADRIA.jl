@@ -15,7 +15,7 @@ using .decision: mcda_normalize
 include("sampling_interface.jl")
 include("sampling_cf.jl")
 include("sampling_unguided.jl")
-include("sampling_interventions.jl")
+include("sampling_guided.jl")
 
 const DISCRETE_FACTOR_TYPES = [
     "ordered categorical", "unordered categorical", "ordered discrete"
