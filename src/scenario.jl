@@ -732,8 +732,8 @@ function run_model(
     p.r .= _to_group_size(domain.coral_growth, coral_growth_rate)
     p.mb .= _to_group_size(domain.coral_growth, corals.mb_rate)
 
-    area_weighted_conn = conn .* vec_abs_k
-    conn_cache = similar(area_weighted_conn.data)
+    area_weighted_conn = sparse(conn .* vec_abs_k)
+    conn_cache = copy(area_weighted_conn)
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(
