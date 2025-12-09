@@ -15,7 +15,7 @@ The overall structure and data formats of the data packages are illustrated in t
 Prior to running the ADRIA coral ecosystem model, the first step (after importing the package) is to load domain data.
 
 ```julia
-dom = ADRIA.load_domain("path to some domain")
+dom = ADRIA.load_domain("path to some domain", "<RCP>")
 ```
 
 As the naming suggests, inputs are taken to represent a given spatial area, and so are referred to as a `Domain`.

@@ -44,7 +44,7 @@ DEAResult, which summarizes inputs, outputs, efficiencies and peers for each sce
 
 # Examples
 ```julia
-dom = ADRIA.load_domain("example_domain")
+dom = ADRIA.load_domain("example_domain", "<RCP>")
 scens = ADRIA.sample(dom, 128)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 

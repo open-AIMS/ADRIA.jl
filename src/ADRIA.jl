@@ -108,7 +108,6 @@ export RMEResultSet
 const COMPAT_DPKG = ["0.8.0"]
 # This adds ~30 seconds to package load times
 if ccall(:jl_generating_output, Cint, ()) == 1
-    Base.precompile(Tuple{typeof(load_domain),String})   # time: 19.120537
     Base.precompile(Tuple{typeof(load_domain),String,String})
     Base.precompile(Tuple{typeof(setup_result_store!),Domain,DataFrame})   # time: 4.6720815
     Base.precompile(Tuple{typeof(combine_results),Vector{String}})   # time: 4.0178256

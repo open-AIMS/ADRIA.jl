@@ -7,7 +7,7 @@ A scenario is defined as a combination of all factors (i.e., all the model input
 
 ```julia
 # Load domain before generating scenarios
-dom = ADRIA.load_domain("path to domain data package")
+dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 
 # Generate 128 scenarios based on available environmental data layers and model parameters
 scens = ADRIA.sample(dom, 128)
@@ -90,7 +90,7 @@ those factors as constants. These then get ignored for the purpose of scenario
 generation.
 
 ```julia
-dom = ADRIA.load_domain("path to domain data package")
+dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 
 # Could keep a copy of the original model parameters/bounds
 # to reset to later.
@@ -125,7 +125,7 @@ Samples can also be taken over a constrained range. For example, one can investi
 scenarios with high fogging and seeding, and select a specific MCDA decision method:
 
 ```julia
-dom = ADRIA.load_domain("path to domain data package")
+dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 
 # Adjust seeding bounds. Note only lower and upper bounds are needed because the factors in
 # question have a uniform distribution.

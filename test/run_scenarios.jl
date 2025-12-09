@@ -17,7 +17,7 @@ ENV["ADRIA_OUTPUT_DIR"] = mktempdir()
 """Test smaller scenario run with example scenario specification"""
 function test_small_spec_rs()
     # Run scenarios with example Domain
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
 
     # Create scenario spec
     samples = ADRIA.sample(dom, 16)

@@ -68,7 +68,7 @@ ADRIAmod. Following, we show usage examples considering ADRIA result set `rs`:
 
 ```julia
 # Load domain data
-dom = ADRIA.load_domain("path to domain data")
+dom = ADRIA.load_domain("path to domain data", "<RCP>")
 
 # Create some scenarios
 num_samples = 4096
