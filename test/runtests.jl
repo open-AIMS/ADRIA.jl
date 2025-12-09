@@ -12,8 +12,6 @@ include("aqua.jl")
 
 include("run_scenarios.jl")
 
-include("example_run.jl")
-
 include("analysis.jl")
 include("clustering.jl")
 include("data_loading.jl")
@@ -24,6 +22,8 @@ include("io/inputs.jl")
 include("sampling.jl")
 include("seeding.jl")
 include("spec.jl")
+
+include("example_run.jl")
 
 include("decisions/mcda.jl")
 include("decisions/location_spread.jl")

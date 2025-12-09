@@ -43,7 +43,7 @@ end
 """Test result set. Return domain, n_samples, scenarios and result set"""
 function test_rs()
     # Load domain data
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
 
     # Set min_iv_locations upper to 10 as this is the number of locations used in tests
     dom = ADRIA.set_factor_bounds!(dom, :min_iv_locations, (5.0, 10.0))
