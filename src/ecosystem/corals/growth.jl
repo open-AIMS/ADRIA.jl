@@ -55,9 +55,15 @@ function proportional_adjustment!(
         """
         @debug msg
 
-        @views @. coral_cover[:, exceeded] = (
-            coral_cover[:, exceeded] / loc_cover_cache[exceeded]'
-        )
+        # @views @. coral_cover[:, exceeded] = (
+        #     coral_cover[:, exceeded] / loc_cover_cache[exceeded]'
+        # )
+        for loc in findall(exceeded)
+            scale_factor = 1.0 / loc_cover_cache[loc]
+            for sp_sc in axes(coral_cover, 1)
+                coral_cover[sp_sc, loc] *= scale_factor
+            end
+        end
 
         coral_cover .= max.(coral_cover, 0.0)
     end
@@ -288,14 +294,12 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
     # juveniles = group_and_sizes[1:n_sizes:end]
     non_juveniles = setdiff(group_and_sizes, juveniles)
 
+    # Potential bleaching locations (skip locations with no heat stress)
+    active_locs = findall(dhw .> 4.0)
+
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
-    for loc in 1:n_locs
-        # Skip locations that have no heat stress
-        if dhw[loc] <= 4.0
-            continue
-        end
-
+    for loc in active_locs
         # Determine bleaching mortality for each non-juvenile species/size class
         for sp_sc in non_juveniles
             # Skip location if there is no population
@@ -351,16 +355,19 @@ function bleaching_mortality!(
 
     non_juveniles = 1:n_sizes
 
+    # Potential bleaching locations (skip locations with no heat stress)
+    active_locs = findall(dhw .> 4.0)
+
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
-    for loc in 1:n_locs
-        # Skip locations that have no heat stress
-        if dhw[loc] <= 4.0
-            continue
-        end
-
+    for loc in active_locs
         # Determine bleaching mortality for each non-juvenile species/size class
         for grp in 1:n_groups
+            # Skip location if there is no population
+            if sum(@view(cover[grp, :, loc])) == 0.0
+                continue
+            end
+
             for sc in non_juveniles
                 # Skip location if there is no population
                 if cover[grp, sc, loc] == 0.0
@@ -460,11 +467,27 @@ function _shift_distributions!(
     # Do from largest size class to size class 2
     # (values for size class 1 gets replaced by recruitment process)
     for i in length(growth_rate):-1:2
-        # Skip size class if nothing is moving up
-        sum(view(cover, (i - 1):i)) == 0.0 ? continue : false
+        # Pre-compute sums once
+        cover_sum = sum(view(cover, (i - 1):i))
 
-        prop_growth_cache .= @views (cover[(i - 1):i] ./ sum(cover[(i - 1):i])) .*
-            (growth_rate[(i - 1):i] ./ sum(growth_rate[(i - 1):i]))
+        # Skip size class if nothing is moving up
+        cover_sum == 0.0 ? continue : false
+
+        growth_sum = sum(view(growth_rate, (i - 1):i))
+
+        # prop_growth_cache .= @views (cover[(i - 1):i] ./ sum(cover[(i - 1):i])) .*
+        #     (growth_rate[(i - 1):i] ./ sum(growth_rate[(i - 1):i]))
+        if cover_sum > 0.0 && growth_sum > 0.0
+            prop_growth_cache[1] =
+                (cover[i - 1] / cover_sum) * (growth_rate[i - 1] / growth_sum)
+            prop_growth_cache[2] = (cover[i] / cover_sum) * (growth_rate[i] / growth_sum)
+
+            cache_sum = prop_growth_cache[1] + prop_growth_cache[2]
+            dist_t[i] =
+                (dist_t[i - 1] * prop_growth_cache[1] + dist_t[i] * prop_growth_cache[2]) /
+                cache_sum
+        end
+
         if sum(prop_growth_cache) == 0.0
             continue
         end
@@ -590,12 +613,12 @@ function settler_DHW_tolerance!(
         # Calculate the sum of incoming larvae for each group
         @inbounds for grp in groups
             # Get proportion of settlers for each group
-            @inbounds @views for src in 1:n_sources
+            @inbounds @views for src in eachindex(k_area)  # 1:n_sources
                 w_sums[grp] += sink_settlers[grp] * tp[src, sink_loc]
             end
 
             # Calculate weight per group based on incoming larvae
-            @inbounds @views for src in 1:n_sources
+            @inbounds @views for src in eachindex(k_area)
                 w_per_group[src, grp] =
                     (sink_settlers[grp] * tp[src, sink_loc]) / w_sums[grp]
             end
@@ -621,7 +644,7 @@ function settler_DHW_tolerance!(
             # Determine combined mean
             # https://en.wikipedia.org/wiki/Mixture_distribution#Properties
             recruit_μ = 0.0
-            @inbounds for src in 1:n_sources
+            @inbounds for src in eachindex(k_area)
                 w = w_per_group[src, grp]  # Cache the weight
                 @inbounds for sc in rsc
                     recruit_μ += c_mean_t_1[grp, sc, src] * w
@@ -693,7 +716,15 @@ function fecundity_scope!(
 )::Nothing where {T<:Float64}
 
     # Dimensions of fec all are [groups ⋅ sizes ⋅ locations]
-    fec_all .= fec_params .* C_cover_t .* reshape(loc_area, (1, size(loc_area)...))
+    # fec_all .= fec_params .* C_cover_t .* reshape(loc_area, (1, size(loc_area)...))
+    for loc in axes(C_cover_t, 3)
+        for sz in axes(C_cover_t, 2)
+            for grp in axes(C_cover_t, 1)
+                fec_all[grp, sz, loc] =
+                    fec_params[grp, sz] * C_cover_t[grp, sz, loc] * loc_area[1, loc]
+            end
+        end
+    end
 
     # Sum over size classes
     @views fec_groups[:, :] .= dropdims(sum(fec_all; dims=2); dims=2)
