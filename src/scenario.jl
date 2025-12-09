@@ -999,8 +999,8 @@ function run_model(
             selected_fog_ranks = unguided_selection(
                 domain.loc_ids,
                 min_iv_locs,
-                vec(leftover_space_m²),
-                depth_criteria
+                vec(leftover_space_m²)
+                # depth_criteria
             )
 
             log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .= 1.0
