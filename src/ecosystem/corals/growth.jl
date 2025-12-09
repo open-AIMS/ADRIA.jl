@@ -783,7 +783,7 @@ function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
 end
 
 """
-    settler_cover(fec_scope::T, conn::AbstractMatrix{Float64}, leftover_space::T, α::V, β::V, basal_area_per_settler::V, potential_settlers::T)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
+    settler_cover(fec_scope::T, conn::SparseMatrixCSC{Float64,Int64}, leftover_space::V, α::V, β::V, basal_area_per_settler::V, potential_settlers::T)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
 Determine area settled by recruited larvae.
 
@@ -804,19 +804,13 @@ Area covered by recruited larvae (in m²)
 """
 function settler_cover(
     fec_scope::T,
-    conn::AbstractMatrix{Float64},
+    conn::SparseMatrixCSC{Float64,Int64},
     leftover_space::V,
     α::V,
     β::V,
     basal_area_per_settler::V,
-    potential_settlers::T,
-    valid_sources::BitVector,
-    valid_sinks::BitVector
+    potential_settlers::T
 )::T where {T<:AbstractMatrix{Float64},V<:Vector{Float64}}
-
-    # Determine active sources and sinks
-    valid_sources .= dropdims(sum(conn.data; dims=2) .> 0.0; dims=2)
-    valid_sinks .= dropdims(sum(conn.data; dims=1) .> 0.0; dims=1)
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
     # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae
@@ -825,9 +819,9 @@ function settler_cover(
     # this is known as in-water mortality.
     # Set to 0.0 as it is now taken care of by connectivity data.
     # Mwater::Float64 = 0.0
-    @views @inbounds potential_settlers[:, valid_sinks] .= (
-        fec_scope[:, valid_sources] * conn.data[valid_sources, valid_sinks]
-    )
+    
+    # Efficient Dense * Sparse multiplication
+    mul!(potential_settlers, fec_scope, conn)
 
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2

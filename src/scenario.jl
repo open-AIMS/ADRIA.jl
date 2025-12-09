@@ -558,13 +558,13 @@ function run_model(
     ) # number of larvae produced per m²
 
     # Caches
-    conn = domain.conn
+    conn = sparse(domain.conn.data)
 
     # Determine contribution of each source to a sink location
     # i.e., columns should sum to 1!
     TP_data = conn ./ sum(conn; dims=1)
-    replace!(TP_data, NaN => 0)
-    TP_data = sparse(TP_data.data)
+    replace!(nonzeros(TP_data), NaN => 0.0)
+    dropzeros!(TP_data)
 
     # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
@@ -816,10 +816,6 @@ function run_model(
     # Preallocate vector for growth constraints
     growth_constraints::Vector{Float64} = zeros(Float64, n_locs)
 
-    # Preallocated cache for source/sink locations
-    valid_sources::BitVector = falses(size(conn, 2))
-    valid_sinks::BitVector = falses(size(conn, 1))
-
     FLoops.assistant(false)
     habitable_loc_idxs = findall(habitable_locs)
 
@@ -952,9 +948,7 @@ function run_model(
                 sim_params.max_settler_density,
                 sim_params.max_larval_density,
                 basal_area_per_settler,
-                potential_settlers,
-                valid_sources,
-                valid_sinks
+                potential_settlers
             )[
                 :, habitable_loc_idxs
             ] ./ habitable_areas[:, habitable_loc_idxs]
