@@ -37,8 +37,9 @@ end
 
 Helper function defining coral colony diameter bin widths.
 """
-function bin_widths()
-    return bin_edges()[:, 2:end] .- bin_edges()[:, 1:(end - 1)]
+function bin_widths()::Matrix{Float64}
+    edges = bin_edges(; unit=:m)
+    return edges[:, 2:end] .- edges[:, 1:(end - 1)]
 end
 
 """

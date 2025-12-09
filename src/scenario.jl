@@ -1,25 +1,29 @@
 """Scenario running functions"""
 
 using CoralBlox
-import CoralBlox.SizeClass
-import CoralBlox.FunctionalGroup
-import CoralBlox.reuse_buffers!
-import CoralBlox.apply_mortality!
-import CoralBlox.timestep!
-import CoralBlox.coral_cover
-import CoralBlox.max_projected_cover
-import CoralBlox.linear_extension_scale_factors
 
-using ADRIA.metrics:
+import CoralBlox:
+    SizeClass,
+    FunctionalGroup,
+    reuse_buffers!,
+    apply_mortality!,
+    timestep!,
+    coral_cover,
+    max_projected_cover,
+    linear_extension_scale_factors
+
+using .metrics:
     relative_cover,
     relative_loc_taxa_cover,
     total_absolute_cover,
     absolute_shelter_volume,
-    relative_shelter_volume
-using ADRIA.metrics: relative_juveniles, relative_taxa_cover, juvenile_indicator
-using ADRIA.metrics: coral_evenness
-using ADRIA.decision
-using ADRIA: loc_coral_cover, loc_recruits_cover
+    relative_shelter_volume,
+    relative_juveniles,
+    relative_taxa_cover,
+    juvenile_indicator,
+    coral_evenness
+
+using .decision
 
 """
     setup_cache(domain::Domain)::NamedTuple
@@ -171,7 +175,7 @@ function run_scenarios(
     n_locs::Int64 = dom.coral_growth.n_locs
     n_sizes::Int64 = dom.coral_growth.n_sizes
     n_groups::Int64 = dom.coral_growth.n_groups
-    _bin_edges::Matrix{Float64} = bin_edges()
+    _bin_edges::Matrix{Float64} = bin_edges(; unit=:m)
     functional_groups = [
         FunctionalGroup.(
             eachrow(_bin_edges[:, 1:(end - 1)]),
@@ -1190,49 +1194,4 @@ function run_model(
         bleaching_mortality=bleaching_mort,
         coral_dhw_log=collated_dhw_tol_log
     )
-end
-
-"""
-    cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
-    cyclone_mortality!(coral_cover::AbstractArray{Float64, 3}, cyclone_mortality::AbstractMatrix{Float64})::Nothing
-
-Apply cyclone mortalities.
-
-# Arguments
-- `coral_cover` : Coral cover for current time step
-- `coral_params` : Coral parameters indicating indices of small/mid/large size classes
-- `cyclone_mortality` : Mortalities for each functional group and size class
-"""
-function cyclone_mortality!(coral_cover, coral_params, cyclone_mortality)::Nothing
-    # TODO: Move to own file.
-
-    # Small class coral mortality
-    coral_deaths_small = coral_cover[:, 1, :] .* cyclone_mortality
-    coral_cover[coral_cover, 1, :] -= coral_deaths_small
-
-    # Mid class coral mortality
-    coral_mid = hcat(
-        collect(Iterators.partition(coral_params.mid, length(coral_params.small)))...
-    )
-    for i in 1:size(coral_mid, 1)
-        coral_deaths_mid = coral_cover[coral_mid[i, :], :] .* cyclone_mortality
-        coral_cover[coral_mid[i, :], :] -= coral_deaths_mid
-    end
-
-    # Large class coral mortality
-    coral_deaths_large = coral_cover[coral_params.large, :] .* cyclone_mortality
-    coral_cover[coral_params.large, :] -= coral_deaths_large
-
-    # Ensure no negative values
-    clamp!(coral_cover, 0.0, 1.0)
-
-    return nothing
-end
-function cyclone_mortality!(
-    coral_cover::AbstractArray{Float64,3}, cyclone_mortality::AbstractMatrix{Float64}
-)::Nothing
-    n_groups, n_locs = size(cyclone_mortality)
-    coral_cover .= coral_cover .* (1 .- reshape(cyclone_mortality, (n_groups, 1, n_locs)))
-    clamp!(coral_cover, 0.0, 1.0)
-    return nothing
 end
