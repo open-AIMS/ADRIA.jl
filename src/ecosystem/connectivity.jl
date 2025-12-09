@@ -159,9 +159,9 @@ function location_connectivity(
 end
 
 function custom_indegree_centrality(conn_matrix::AbstractMatrix)
-    # Sum along dimension 1 (rows) to collapse sources into their sinks.
-    # vec() converts the resulting 1xN Matrix into a standard Vector of length N.
-    indegrees = vec(sum(conn_matrix; dims=1))
+    # Count non-zero elements in each column (incoming connections)
+    # This works for both dense and sparse matrices efficiently.
+    indegrees = vec(sum(.!iszero.(conn_matrix); dims=1)) .|> Float64
 
     n = size(conn_matrix, 1)
     # Avoid division by zero if N=1
