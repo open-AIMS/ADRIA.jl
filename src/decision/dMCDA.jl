@@ -246,9 +246,15 @@ end
         k_area::Vector{Float64},
         depth::Vector{Int64}
     )
+    unguided_selection(
+        n_iv_locs::Int64,
+        k_area::Vector{Float64}
+    )
 
 Randomly select intervention locations, constraining to locations that are able to support
 corals and are within the desired depth range.
+
+If no depth range is provided, then simply selects from reefs with available space.
 
 # Arguments
 - `n_iv_locs` : Number of locations to seed
@@ -267,6 +273,20 @@ function unguided_selection(
 )::Vector{<:Union{Symbol,String,Int64}}
     # Filter down to location ids to be considered
     candidate_locs = findall((k_area .> 0.0) .& depth)
+    n_locs = length(candidate_locs)
+    s_iv_locs = n_locs < n_iv_locs ? n_locs : n_iv_locs
+
+    sel = StatsBase.sample(candidate_locs, s_iv_locs; replace=false)
+
+    return location_ids[sel]
+end
+function unguided_selection(
+    location_ids,
+    n_iv_locs::Int64,
+    k_area::Vector{Float64}
+)::Vector{<:Union{Symbol,String,Int64}}
+    # Filter down to location ids to be considered
+    candidate_locs = findall(k_area .> 0.0)
     n_locs = length(candidate_locs)
     s_iv_locs = n_locs < n_iv_locs ? n_locs : n_iv_locs
 
