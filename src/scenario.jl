@@ -23,6 +23,8 @@ using .metrics:
     juvenile_indicator,
     coral_evenness
 
+using SparseArrays
+
 using .decision
 
 """
@@ -561,8 +563,8 @@ function run_model(
     # Determine contribution of each source to a sink location
     # i.e., columns should sum to 1!
     TP_data = conn ./ sum(conn; dims=1)
-    replace!(TP_data, NaN => 0.0)
-    TP_data = sparse(TP_data)
+    replace!(TP_data, NaN => 0)
+    TP_data = sparse(TP_data.data)
 
     # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all

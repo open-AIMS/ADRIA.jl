@@ -4,6 +4,8 @@ using FLoops
 using Distributions
 using SpecialFunctions
 
+using SparseArrays
+
 """
     growth_rate(linear_extension::Matrix{Float64}, diam_bin_widths::Matrix{Float64})::Matrix{Float64}
 
@@ -578,7 +580,7 @@ function settler_DHW_tolerance!(
     c_mean_t_1::AbstractArray{F,3},
     c_mean_t::AbstractArray{F,3},
     k_area::Vector{F},
-    tp::AbstractMatrix{F},
+    tp::SparseMatrixCSC{F},
     settlers::AbstractMatrix{F},
     fec_params_per_m²::AbstractMatrix{F},
     h²::F
@@ -586,74 +588,61 @@ function settler_DHW_tolerance!(
     groups, sizes, _ = axes(c_mean_t_1)
 
     sink_loc_ids::Vector{Int64} = findall(k_area .> 0.0)
-    n_sources = length(k_area)
 
     # Number of reproductive size classes for each group
-    n_reproductive::Matrix{Int64} = sum(fec_params_per_m² .> 0.0; dims=2)
+    n_reproductive::Vector{Int64} = vec(sum(fec_params_per_m² .> 0.0; dims=2))
 
-    # Pre-allocate temporary caches for use inside loops
-    n_groups::Int64 = length(groups)
-
-    # Cache to hold indication of which size classes are considered reproductive
-    reproductive_sc::BitVector = falses(sizes)
-    update_group::BitVector = falses(n_groups)
-    w_per_group = zeros(n_sources, n_groups)
-    w_sums::Vector{Float64} = zeros(n_groups)
+    rows = rowvals(tp)
+    vals = nonzeros(tp)
 
     @inbounds for sink_loc in sink_loc_ids
-        sink_settlers = @view(settlers[:, sink_loc])'
+        sink_settlers = @view(settlers[:, sink_loc])
         if sum(sink_settlers) == 0.0
             # Only update locations where recruitment occurred
             continue
         end
 
-        fill!(w_per_group, 0.0)
-        fill!(w_sums, 0.0)
-
-        # Calculate the sum of incoming larvae for each group
-        @inbounds for grp in groups
-            # Get proportion of settlers for each group
-            @inbounds @views for src in eachindex(k_area)  # 1:n_sources
-                w_sums[grp] += sink_settlers[grp] * tp[src, sink_loc]
-            end
-
-            # Calculate weight per group based on incoming larvae
-            @inbounds @views for src in eachindex(k_area)
-                w_per_group[src, grp] =
-                    (sink_settlers[grp] * tp[src, sink_loc]) / w_sums[grp]
-            end
+        col_range = nzrange(tp, sink_loc)
+        if isempty(col_range)
+            continue
         end
 
-        # If there is any influence from another location for a group, the tolerance
-        # values should be updated.
-        update_group .= vec(sum(w_per_group; dims=1)) .> 0.0
-        @inbounds for grp in groups
-            if !update_group[grp]
+        # Calculate sum of weights (connectivity strength) to normalize
+        # We perform the summation over the column manually to avoid allocating a view
+        sum_tp::F = 0.0
+        for k in col_range
+            sum_tp += vals[k]
+        end
+
+        if sum_tp == 0.0
+            continue
+        end
+
+        inv_sum_tp::F = 1.0 / sum_tp
+
+        for grp in groups
+            if sink_settlers[grp] == 0.0
                 continue
             end
 
-            # Determine weights based on contribution to recruitment.
-            # This weights the recruited corals by the size classes and source locations
-            # which contributed to recruitment.
-            # Get distribution mean of reproductive size classes at source locations
-            # recalling that source locations may include the sink location due to
-            # self-seeding.
-            reproductive_sc .= @view(fec_params_per_m²[grp, :]) .> 0.0
-            rsc::Vector{Int64} = findall(reproductive_sc)
+            recruit_μ::F = 0.0
 
-            # Determine combined mean
-            # https://en.wikipedia.org/wiki/Mixture_distribution#Properties
-            recruit_μ = 0.0
-            @inbounds for src in eachindex(k_area)
-                w = w_per_group[src, grp]  # Cache the weight
-                @inbounds for sc in rsc
-                    recruit_μ += c_mean_t_1[grp, sc, src] * w
+            # Fused loop: Iterate over sources (non-zeros in TP column)
+            for k in col_range
+                src = rows[k]
+                w = vals[k] * inv_sum_tp
+
+                # Iterate over reproductive size classes
+                for sc in sizes
+                    if fec_params_per_m²[grp, sc] > 0.0
+                        recruit_μ += c_mean_t_1[grp, sc, src] * w
+                    end
                 end
             end
+
             recruit_μ /= n_reproductive[grp]
 
-            # Mean for generation t is determined through Breeder's equation
-            @inbounds c_mean_t[grp, 1, sink_loc] = breeders(
+            c_mean_t[grp, 1, sink_loc] = breeders(
                 c_mean_t_1[grp, 1, sink_loc], recruit_μ, h²
             )
         end
