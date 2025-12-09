@@ -5,7 +5,7 @@ Criteria weights for seeding interventions.
 """
 Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
     seed_heat_stress::Param = Factor(
-        1.0;
+        0.9;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.8, 1.0),
@@ -14,7 +14,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Importance of avoiding heat stress when seeding. Prefer locations with lower heat stress."
     )
     seed_wave_stress::Param = Factor(
-        0.3;
+        0.5;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
@@ -23,7 +23,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Prefer locations with higher wave activity."
     )
     seed_in_connectivity::Param = Factor(
-        0.85;
+        0.5;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.5, 1.0),
@@ -32,7 +32,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Give preference to locations with high incoming connectivity (i.e., receives larvae from other sites) for coral deployments."
     )
     seed_out_connectivity::Param = Factor(
-        0.90;
+        0.80;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.5, 1.0),
@@ -41,7 +41,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Give preference to locations with high outgoing connectivity (i.e., provides larvae to other sites) for coral deployments."
     )
     seed_depth::Param = Factor(
-        0.95;
+        1.0;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.8, 1.0),
@@ -59,7 +59,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Preference locations with lower coral cover (higher available space) for seeding deployments."
     )
     seed_cluster_diversity::Param = Factor(
-        0.5;
+        0.7;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
@@ -68,7 +68,7 @@ Base.@kwdef struct SeedCriteriaWeights <: DecisionWeights
         description="Prefer locations from clusters that are under-represented."
     )
     seed_geographic_separation::Param = Factor(
-        0.5;
+        0.8;
         ptype="continuous",
         dist=Uniform,
         dist_params=(0.0, 1.0),
