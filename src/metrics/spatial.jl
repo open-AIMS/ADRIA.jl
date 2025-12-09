@@ -146,7 +146,7 @@ Defaults to `median`.
 # Example
 ```
 # Load domain
-dom = ADRIA.load_domain(path_to_domain)
+dom = ADRIA.load_domain(path_to_domain, "<RCP>")
 
 # Create scenarios
 num_scens = 2^6

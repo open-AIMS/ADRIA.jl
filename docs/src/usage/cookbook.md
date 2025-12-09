@@ -65,7 +65,7 @@ using ADRIA
 
 
 # Loading data package
-dom = ADRIA.load_domain("Example_domain")
+dom = ADRIA.load_domain("Example_domain", "<RCP>")
 
 # Creating 128 scenarios based on parameter bounds using the Sobol' method
 scens = ADRIA.sample(dom, 128)

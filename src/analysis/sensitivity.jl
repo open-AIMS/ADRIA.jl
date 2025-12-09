@@ -248,7 +248,7 @@ YAXArray, of min, mean, lower bound, median, upper bound, max, std, and cv summa
 
 # Examples
 ```julia
-dom = ADRIA.load_domain("example_domain")
+dom = ADRIA.load_domain("example_domain", "<RCP>")
 scens = ADRIA.sample(dom, 128)
 rs = ADRIA.run_scenarios(dom, scens, "45")
 

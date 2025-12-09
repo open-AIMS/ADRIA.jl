@@ -26,9 +26,7 @@ No SSP/RCP data is preset.
 # Arguments
 - `path` : location of data package.
 """
-function load_domain(path::String)::Domain
-    return load_domain(path, "")
-end
+
 
 function unique_loc_ids(d::Domain)::Vector{String}
     return d.loc_data[:, d.loc_id_col]
