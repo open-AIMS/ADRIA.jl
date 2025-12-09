@@ -561,7 +561,8 @@ function run_model(
     # Determine contribution of each source to a sink location
     # i.e., columns should sum to 1!
     TP_data = conn ./ sum(conn; dims=1)
-    replace!(TP_data, NaN => 0)
+    replace!(TP_data, NaN => 0.0)
+    TP_data = sparse(TP_data)
 
     # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
@@ -960,7 +961,7 @@ function run_model(
             c_mean_t_1,
             c_mean_t,
             vec_abs_k,
-            TP_data.data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
+            TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
             fec_params_per_m²,
             param_set[At("heritability")]
