@@ -803,7 +803,7 @@ function settler_cover(
     # this is known as in-water mortality.
     # Set to 0.0 as it is now taken care of by connectivity data.
     # Mwater::Float64 = 0.0
-    
+
     # Efficient Dense * Sparse multiplication
     mul!(potential_settlers, fec_scope, conn)
 

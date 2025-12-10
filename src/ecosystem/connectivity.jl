@@ -161,7 +161,7 @@ end
 function custom_indegree_centrality(conn_matrix::AbstractMatrix)
     # Count non-zero elements in each column (incoming connections)
     # This works for both dense and sparse matrices efficiently.
-    indegrees = vec(sum(.!iszero.(conn_matrix); dims=1)) .|> Float64
+    indegrees = Float64.(vec(sum(.!iszero.(conn_matrix); dims=1)))
 
     n = size(conn_matrix, 1)
     # Avoid division by zero if N=1
