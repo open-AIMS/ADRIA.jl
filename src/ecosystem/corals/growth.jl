@@ -4,6 +4,8 @@ using FLoops
 using Distributions
 using SpecialFunctions
 
+using SparseArrays
+
 """
     growth_rate(linear_extension::Matrix{Float64}, diam_bin_widths::Matrix{Float64})::Matrix{Float64}
 
@@ -55,9 +57,15 @@ function proportional_adjustment!(
         """
         @debug msg
 
-        @views @. coral_cover[:, exceeded] = (
-            coral_cover[:, exceeded] / loc_cover_cache[exceeded]'
-        )
+        # @views @. coral_cover[:, exceeded] = (
+        #     coral_cover[:, exceeded] / loc_cover_cache[exceeded]'
+        # )
+        for loc in findall(exceeded)
+            scale_factor = 1.0 / loc_cover_cache[loc]
+            for sp_sc in axes(coral_cover, 1)
+                coral_cover[sp_sc, loc] *= scale_factor
+            end
+        end
 
         coral_cover .= max.(coral_cover, 0.0)
     end
@@ -288,14 +296,12 @@ function bleaching_mortality!(cover::Matrix{Float64}, dhw::Vector{Float64},
     # juveniles = group_and_sizes[1:n_sizes:end]
     non_juveniles = setdiff(group_and_sizes, juveniles)
 
+    # Potential bleaching locations (skip locations with no heat stress)
+    active_locs = findall(dhw .> 4.0)
+
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
-    for loc in 1:n_locs
-        # Skip locations that have no heat stress
-        if dhw[loc] <= 4.0
-            continue
-        end
-
+    for loc in active_locs
         # Determine bleaching mortality for each non-juvenile species/size class
         for sp_sc in non_juveniles
             # Skip location if there is no population
@@ -351,16 +357,19 @@ function bleaching_mortality!(
 
     non_juveniles = 1:n_sizes
 
+    # Potential bleaching locations (skip locations with no heat stress)
+    active_locs = findall(dhw .> 4.0)
+
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
-    for loc in 1:n_locs
-        # Skip locations that have no heat stress
-        if dhw[loc] <= 4.0
-            continue
-        end
-
+    for loc in active_locs
         # Determine bleaching mortality for each non-juvenile species/size class
         for grp in 1:n_groups
+            # Skip location if there is no population
+            if sum(@view(cover[grp, :, loc])) == 0.0
+                continue
+            end
+
             for sc in non_juveniles
                 # Skip location if there is no population
                 if cover[grp, sc, loc] == 0.0
@@ -429,7 +438,11 @@ function breeders(μ_o::T, μ_s::T, h²::T)::T where {T<:Float64}
 end
 
 """
-    _shift_distributions!(cover::SubArray{F}, growth_rate::SubArray{F}, dist_t::SubArray{F})::Nothing where {F<:Float64}
+    _shift_distributions!(
+        cover::SubArray{F},
+        growth_rate::SubArray{F},
+        dist_t::SubArray{F}
+    )::Nothing where {F<:Float64}
 
 Combines distributions between size classes > 1 to represent the shifts that occur as each
 size class grows. Weights for the distributions are based on proportional cover and the
@@ -443,30 +456,34 @@ where \$w\$ are the weights and \$g\$ is the growth rates.
 - `cover` : Coral cover for \$t-1\$
 - `growth_rate` : Growth rates for the given size classes/species
 - `dist_t` : Critical DHW threshold distribution for timestep \$t\$
-- `stdev` : Standard deviations of coral DHW tolerance
 """
 function _shift_distributions!(
-    cover::SubArray{F},
-    growth_rate::SubArray{F},
-    dist_t::SubArray{F}
-)::Nothing where {F<:Float64}
+    cover::SubArray{T},
+    growth_rate::SubArray{T},
+    dist_t::SubArray{T}
+)::Nothing where {T}
     # Weight distributions based on growth rate and cover
     # Do from largest size class to size class 2
     # (values for size class 1 gets replaced by recruitment process)
-    prop_growth = MVector{2,F}(0.0, 0.0)
     for i in length(growth_rate):-1:2
+        # Pre-compute sums once
+        cover_sum = sum(view(cover, (i - 1):i))
+
         # Skip size class if nothing is moving up
-        sum(view(cover, (i - 1):i)) == 0.0 ? continue : false
+        cover_sum == 0.0 ? continue : false
 
-        prop_growth .= @views (cover[(i - 1):i] ./ sum(cover[(i - 1):i])) .*
-            (growth_rate[(i - 1):i] ./ sum(growth_rate[(i - 1):i]))
-        if sum(prop_growth) == 0.0
-            continue
+        growth_sum = sum(view(growth_rate, (i - 1):i))
+
+        if cover_sum > 0.0 && growth_sum > 0.0
+            # Calculate weights directly
+            w1 = (cover[i - 1] / cover_sum) * (growth_rate[i - 1] / growth_sum)
+            w2 = (cover[i] / cover_sum) * (growth_rate[i] / growth_sum)
+
+            cache_sum = w1 + w2
+            if cache_sum > 0.0
+                dist_t[i] = (dist_t[i - 1] * w1 + dist_t[i] * w2) / cache_sum
+            end
         end
-
-        # Weighted sum
-        dist_t[i] =
-            (dist_t[i - 1] * prop_growth[1] + dist_t[i] * prop_growth[2]) / sum(prop_growth)
     end
 
     return nothing
@@ -547,7 +564,7 @@ function settler_DHW_tolerance!(
     c_mean_t_1::AbstractArray{F,3},
     c_mean_t::AbstractArray{F,3},
     k_area::Vector{F},
-    tp::AbstractMatrix{F},
+    tp::SparseMatrixCSC{F},
     settlers::AbstractMatrix{F},
     fec_params_per_m²::AbstractMatrix{F},
     h²::F
@@ -555,60 +572,63 @@ function settler_DHW_tolerance!(
     groups, sizes, _ = axes(c_mean_t_1)
 
     sink_loc_ids::Vector{Int64} = findall(k_area .> 0.0)
-    source_locs::BitVector = BitVector(undef, length(k_area))  # cache for source locations
 
     # Number of reproductive size classes for each group
-    n_reproductive::Matrix{Int64} = sum(fec_params_per_m² .> 0.0; dims=2)
+    n_reproductive::Vector{Int64} = vec(sum(fec_params_per_m² .> 0.0; dims=2))
 
-    # Cache to hold indication of which size classes are considered reproductive
-    reproductive_sc::BitVector = falses(sizes)
+    rows = rowvals(tp)
+    vals = nonzeros(tp)
 
     @inbounds for sink_loc in sink_loc_ids
-        sink_settlers = @view(settlers[:, sink_loc])'
-        if sum(sink_settlers) .== 0.0
+        sink_settlers = @view(settlers[:, sink_loc])
+        if sum(sink_settlers) == 0.0
             # Only update locations where recruitment occurred
             continue
         end
 
-        # Find sources for each sink
-        # Note: source locations can include the sink location (self-seeding)
-        @inbounds source_locs .= @view(tp.data[:, sink_loc]) .> 0.0
+        col_range = nzrange(tp, sink_loc)
+        if isempty(col_range)
+            continue
+        end
 
-        # Calculate contribution to cover to determine weights for each functional group
-        @inbounds w::Matrix{F} = sink_settlers .* @view(tp.data[source_locs, sink_loc])
-        w_per_group::Matrix{F} = w ./ sum(w; dims=1)
+        # Calculate sum of weights (connectivity strength) to normalize
+        # We perform the summation over the column manually to avoid allocating a view
+        sum_tp::F = 0.0
+        for k in col_range
+            sum_tp += vals[k]
+        end
 
-        # If there is any influence from another location for a group, the tolerance
-        # values should be updated.
-        update_group::BitMatrix = sum(w_per_group; dims=1) .> 0.0
+        if sum_tp == 0.0
+            continue
+        end
 
-        @inbounds for grp in groups
-            # Determine weights based on contribution to recruitment.
-            # This weights the recruited corals by the size classes and source locations
-            # which contributed to recruitment.
-            if update_group[1, grp]
-                # Get distribution mean of reproductive size classes at source locations
-                # recalling that source locations may include the sink location due to
-                # self-seeding.
-                reproductive_sc .= @view(fec_params_per_m²[grp, :]) .> 0.0
+        inv_sum_tp::F = 1.0 / sum_tp
 
-                # Determine combined mean
-                # https://en.wikipedia.org/wiki/Mixture_distribution#Properties
-                settler_means::SubArray{F} = @view(
-                    c_mean_t_1[grp, reproductive_sc, source_locs]
-                )
-
-                recruit_μ::F = 0.0
-                @inbounds for i in axes(settler_means, 1), j in axes(settler_means, 2)
-                    recruit_μ += settler_means[i, j] * w_per_group[j, grp]
-                end
-                recruit_μ /= n_reproductive[grp]
-
-                # Mean for generation t is determined through Breeder's equation
-                @views c_mean_t[grp, 1, sink_loc] = breeders(
-                    c_mean_t_1[grp, 1, sink_loc], recruit_μ, h²
-                )
+        for grp in groups
+            if sink_settlers[grp] == 0.0
+                continue
             end
+
+            recruit_μ::F = 0.0
+
+            # Fused loop: Iterate over sources (non-zeros in TP column)
+            for k in col_range
+                src = rows[k]
+                w = vals[k] * inv_sum_tp
+
+                # Iterate over reproductive size classes
+                for sc in sizes
+                    if fec_params_per_m²[grp, sc] > 0.0
+                        recruit_μ += c_mean_t_1[grp, sc, src] * w
+                    end
+                end
+            end
+
+            recruit_μ /= n_reproductive[grp]
+
+            c_mean_t[grp, 1, sink_loc] = breeders(
+                c_mean_t_1[grp, 1, sink_loc], recruit_μ, h²
+            )
         end
     end
 
@@ -669,7 +689,16 @@ function fecundity_scope!(
 )::Nothing where {T<:Float64}
 
     # Dimensions of fec all are [groups ⋅ sizes ⋅ locations]
-    fec_all .= fec_params .* C_cover_t .* reshape(loc_area, (1, size(loc_area)...))
+    # fec_all .= fec_params .* C_cover_t .* reshape(loc_area, (1, size(loc_area)...))
+    for loc in axes(C_cover_t, 3)
+        for sz in axes(C_cover_t, 2)
+            for grp in axes(C_cover_t, 1)
+                fec_all[grp, sz, loc] =
+                    fec_params[grp, sz] * C_cover_t[grp, sz, loc] * loc_area[1, loc]
+            end
+        end
+    end
+
     # Sum over size classes
     @views fec_groups[:, :] .= dropdims(sum(fec_all; dims=2); dims=2)
 
@@ -738,7 +767,7 @@ function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
 end
 
 """
-    settler_cover(fec_scope::T, conn::AbstractMatrix{Float64}, leftover_space::T, α::V, β::V, basal_area_per_settler::V, potential_settlers::T)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
+    settler_cover(fec_scope::T, conn::SparseMatrixCSC{Float64,Int64}, leftover_space::V, α::V, β::V, basal_area_per_settler::V, potential_settlers::T)::T where {T<:Matrix{Float64},V<:Vector{Float64}}
 
 Determine area settled by recruited larvae.
 
@@ -759,19 +788,13 @@ Area covered by recruited larvae (in m²)
 """
 function settler_cover(
     fec_scope::T,
-    conn::AbstractMatrix{Float64},
+    conn::SparseMatrixCSC{Float64,Int64},
     leftover_space::V,
     α::V,
     β::V,
     basal_area_per_settler::V,
-    potential_settlers::T,
-    valid_sources::BitVector,
-    valid_sinks::BitVector
+    potential_settlers::T
 )::T where {T<:AbstractMatrix{Float64},V<:Vector{Float64}}
-
-    # Determine active sources and sinks
-    valid_sources .= dropdims(sum(conn.data; dims=2) .> 0.0; dims=2)
-    valid_sinks .= dropdims(sum(conn.data; dims=1) .> 0.0; dims=1)
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
     # Note, conn rows need not sum to 1.0 as this missing probability accounts for larvae
@@ -780,9 +803,9 @@ function settler_cover(
     # this is known as in-water mortality.
     # Set to 0.0 as it is now taken care of by connectivity data.
     # Mwater::Float64 = 0.0
-    @views @inbounds potential_settlers[:, valid_sinks] .= (
-        fec_scope[:, valid_sources] * conn.data[valid_sources, valid_sinks]
-    )
+
+    # Efficient Dense * Sparse multiplication
+    mul!(potential_settlers, fec_scope, conn)
 
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
@@ -792,7 +815,7 @@ function settler_cover(
 end
 
 """
-    constrain_recruitment(recruitment, agg_cover_above_threshold_mask, C_cover_t, habitable_loc_areas;round_threshold=0.95)
+    constrain_recruitment(recruitment, agg_cover_above_threshold_mask, C_cover_t, habitable_loc_areas; round_threshold=0.95)
 
 To prevent overgrowth when adding recruitment to C_cover_t, set a threshold above which
 recruits are either set to zero or rescaled.
@@ -813,23 +836,23 @@ function constrain_recruitment!(
     recruitment[:, cover_above_threshold_mask] .= 0.0
 
     # Mask for locations with (C_cover + recruits) > threshold and C_cover <= threshold
-    agg_cover_above_threshold_mask .=
-        (C_rel_cover .+ loc_recruits_rel_cover .> round_threshold) .&&
-        .!cover_above_threshold_mask
+    cover_with_recruits = C_rel_cover .+ loc_recruits_rel_cover
+    rec_above_threshold = cover_with_recruits .> round_threshold
+    agg_cover_above_threshold_mask .= rec_above_threshold .&& .!cover_above_threshold_mask
+
     if any(agg_cover_above_threshold_mask)
-        @warn "Constraining recruits within error bounds. tstep = $tstep"
-        recruits_scale_factor =
-            (
-                (
-                    round_threshold .*
-                    habitable_loc_areas[agg_cover_above_threshold_mask]
-                ) .-
-                loc_coral_cover(C_cover_t[:, :, agg_cover_above_threshold_mask])
-            ) ./ loc_recruits_cover(recruitment[:, agg_cover_above_threshold_mask])
+        @warn "Constraining recruits within error bounds."
+        exceeded_agg_cover_locs = habitable_loc_areas[agg_cover_above_threshold_mask]
+        threshold_cap = round_threshold .* exceeded_agg_cover_locs
+        exceeded_locs = loc_coral_cover(C_cover_t[:, :, agg_cover_above_threshold_mask])
+        recruit_cover = loc_recruits_cover(recruitment[:, agg_cover_above_threshold_mask])
+
+        recruits_scale_factor = (threshold_cap .- exceeded_locs) ./ recruit_cover
 
         @assert !any(recruits_scale_factor .<= 0)
 
         # Rescale recruits in target locations to fit within error bounds
+        n_groups = size(C_cover_t, 1)
         recruitment[:, agg_cover_above_threshold_mask] .*= repeat(
             recruits_scale_factor', n_groups
         )

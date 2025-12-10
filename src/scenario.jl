@@ -23,6 +23,8 @@ using .metrics:
     juvenile_indicator,
     coral_evenness
 
+using SparseArrays
+
 using .decision
 
 """
@@ -434,13 +436,24 @@ function run_model(
     n_locs::Int64 = domain.coral_growth.n_locs
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
-    functional_groups = Vector{FunctionalGroup}[
-        FunctionalGroup.(
-            eachrow(bin_edges()[:, 1:(end - 1)]),
-            eachrow(bin_edges()[:, 2:end]),
-            eachrow(zeros(n_groups, n_sizes))
-        ) for _ in 1:n_locs
-    ]
+
+    edges = bin_edges()
+    bin_start = edges[:, 1:(end - 1)]
+    bin_end = edges[:, 2:end]
+    functional_groups::Vector{Vector{FunctionalGroup}} = Vector(undef, n_locs)
+    group_info = zeros(n_groups, n_sizes)
+    for i in 1:n_locs
+        fg::Vector{FunctionalGroup} = Vector(undef, n_groups)
+        for g in 1:n_groups
+            fg[g] = FunctionalGroup(
+                bin_start[g, :],
+                bin_end[g, :],
+                group_info[g, :]
+            )
+        end
+
+        functional_groups[i] = fg
+    end
 
     return run_model(domain, param_set, functional_groups)
 end
@@ -545,12 +558,13 @@ function run_model(
     ) # number of larvae produced per m²
 
     # Caches
-    conn = domain.conn
+    conn = sparse(domain.conn.data)
 
     # Determine contribution of each source to a sink location
     # i.e., columns should sum to 1!
     TP_data = conn ./ sum(conn; dims=1)
-    replace!(TP_data, NaN => 0)
+    replace!(nonzeros(TP_data), NaN => 0.0)
+    dropzeros!(TP_data)
 
     # sf = cache.sf  # unused as it is currently deactivated
     fec_all = cache.fec_all
@@ -718,8 +732,8 @@ function run_model(
     p.r .= _to_group_size(domain.coral_growth, coral_growth_rate)
     p.mb .= _to_group_size(domain.coral_growth, corals.mb_rate)
 
-    area_weighted_conn = conn .* vec_abs_k
-    conn_cache = similar(area_weighted_conn.data)
+    area_weighted_conn = sparse(conn .* vec_abs_k)
+    conn_cache = copy(area_weighted_conn)
 
     # basal_area_per_settler is the area in m^2 of a size class one coral
     basal_area_per_settler = colony_mean_area(
@@ -802,10 +816,6 @@ function run_model(
     # Preallocate vector for growth constraints
     growth_constraints::Vector{Float64} = zeros(Float64, n_locs)
 
-    # Preallocated cache for source/sink locations
-    valid_sources::BitVector = falses(size(conn, 2))
-    valid_sinks::BitVector = falses(size(conn, 1))
-
     FLoops.assistant(false)
     habitable_loc_idxs = findall(habitable_locs)
 
@@ -867,8 +877,8 @@ function run_model(
                 )
         end
 
-        for i in habitable_loc_idxs
-            timestep!(
+        @inbounds for i in habitable_loc_idxs
+            @views timestep!(
                 functional_groups[i],
                 recruitment[:, i],
                 biogrp_lin_ext[:, :, loc_cb_calib_group_idxs[i]] .* growth_constraints[i],
@@ -926,9 +936,11 @@ function run_model(
         potential_settlers .= 0.0
         recruitment .= 0.0
 
+        # habitable_areas_view = @view habitable_areas[:, habitable_locs]
+
         # Recruitment represents additional cover, relative to total location area
         # Recruitment/settlement occurs after the full moon in October/November
-        @views recruitment[:, habitable_locs] .=
+        @views recruitment[:, habitable_loc_idxs] .=
             settler_cover(
                 fec_scope,
                 conn,
@@ -936,12 +948,10 @@ function run_model(
                 sim_params.max_settler_density,
                 sim_params.max_larval_density,
                 basal_area_per_settler,
-                potential_settlers,
-                valid_sources,
-                valid_sinks
+                potential_settlers
             )[
-                :, habitable_locs
-            ] ./ habitable_areas[:, habitable_locs]
+                :, habitable_loc_idxs
+            ] ./ habitable_areas[:, habitable_loc_idxs]
 
         settler_DHW_tolerance!(
             c_mean_t_1,

@@ -158,6 +158,30 @@ function location_connectivity(
     )
 end
 
+function custom_indegree_centrality(conn_matrix::AbstractMatrix)
+    # Count non-zero elements in each column (incoming connections)
+    # This works for both dense and sparse matrices efficiently.
+    indegrees = Float64.(vec(sum(.!iszero.(conn_matrix); dims=1)))
+
+    n = size(conn_matrix, 1)
+    # Avoid division by zero if N=1
+    if n > 1
+        # Normalization factor for degree centrality is usually N-1
+        # (the maximum number of possible connections from other nodes)
+        indegrees ./= (n - 1)
+    end
+
+    return indegrees
+end
+
+# Overload for Graphs.SimpleWeightedDiGraph
+function custom_indegree_centrality(g::SimpleWeightedDiGraph)
+    # Extract the sparse adjacency matrix from the graph
+    adj_matrix = Graphs.adjacency_matrix(g)
+    # Call the matrix version of the function
+    return custom_indegree_centrality(adj_matrix)
+end
+
 """
     connectivity_strength(conn::AbstractArray)::NamedTuple
 
@@ -176,13 +200,16 @@ NamedTuple:
 """
 function connectivity_strength(
     conn::AbstractMatrix{<:Union{Float32,Float64}};
-    in_method=indegree_centrality,
+    in_method=custom_indegree_centrality,
     out_method=eigenvector_centrality
 )::NamedTuple
     g = SimpleWeightedDiGraph(conn)
 
     # Measure centrality based on number of incoming connections
+    # Note: Graphs.indegree_centrality is unweighted.
+    # If a weighted metric is desired, use `custom_indegree_centrality`.
     C1 = in_method(g)
+
     C2 = out_method(g)
 
     return (in_conn=C1, out_conn=C2, network=g)
@@ -210,7 +237,7 @@ function connectivity_strength(
     area_weighted_conn::AbstractMatrix{<:Union{Float32,Float64}},
     cover::Vector{<:Union{Float32,Float64}},
     conn_cache::AbstractMatrix{Float64};
-    in_method=indegree_centrality,
+    in_method=custom_indegree_centrality,
     out_method=eigenvector_centrality
 )::NamedTuple
     # Accounts for cases where there is no coral cover
