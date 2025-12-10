@@ -136,9 +136,14 @@ function load_domain(
     spatial_data = GDF.read(gpkg_path)
 
     # Adjust spatial data if `force_single_reef == true`
-    single_reef_idx = findall(spatial_data.UNIQUE_ID .== force_single_reef_id)
-    isempty(single_reef_idx) && push!(single_reef_idx, 1)
-    force_single_reef && (spatial_data = spatial_data[[1], :])
+    single_reef_idx = collect(1:nrow(spatial_data))  # select all locations by default
+    if force_single_reef
+        if !isempty(force_single_reef_id)
+            single_reef_idx = findall(spatial_data.UNIQUE_ID .== force_single_reef_id)
+        end
+
+        spatial_data = spatial_data[single_reef_idx, :]
+    end
 
     # Find initial coral cover start year
     initial_csv_files = readdir(joinpath(data_files, "initial_csv"))
