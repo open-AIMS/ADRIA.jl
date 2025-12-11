@@ -95,14 +95,14 @@ robust = ADRIA.analysis.find_robust(rs, y, rule_func, [45, 60])
 function find_robust(
     scens::DataFrame, y::AbstractArray, rule, rcps::Vector{Int64}; offset::Int64=0
 )::NamedTuple
-    y = col_normalize(copy(y))
+    y_star = col_normalize(copy(y))
 
-    opt = find_pareto_optimal(scens, y, rcps; offset=offset)
+    opt = find_pareto_optimal(scens, y_star, rcps; offset=offset)
 
     vals = Vector{Int64}[]
     sizehint!(vals, length(opt))
     for o in opt
-        r = map(rule, eachrow(y[o, :]))
+        r = map(rule, eachrow(y_star[o, :]))
         if any(r .> 0)
             push!(vals, o[r])
             continue
