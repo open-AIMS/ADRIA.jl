@@ -278,7 +278,9 @@ function growth_acceleration(
 end
 
 function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
-    target_rows = findall(scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp))
+    target_rows = findall(
+        collect(scenarios_matrix[factors=At("RCP")]) .== parse(Float64, rcp)
+    )
     rep_doms = Iterators.repeated(dom, n)
     return zip(
         rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :])
@@ -528,7 +530,7 @@ function run_model(
         cyclone_mortality_scen .= 0.0
     end
     # Environment variables are stored as strings, so convert to bool for use
-    in_debug_mode = parse(Bool, ENV["ADRIA_DEBUG"]) == true
+    in_debug_mode = parse(Bool, get(ENV, "ADRIA_DEBUG", "false")) == true
 
     # Sim constants
     sim_params = domain.sim_constants
