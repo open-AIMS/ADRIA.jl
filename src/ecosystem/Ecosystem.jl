@@ -24,7 +24,7 @@ function EnvironmentalLayer(
             1;
             ptype="unordered categorical",
             dist=CategoricalDistribution,
-            dist_params=(1.0, Float64(size(dhw, 3))),
+            dist_params=(Tuple(1:Float64(size(dhw, 3)))),
             name="DHW Scenario",
             description="DHW scenario member identifier."
         ),
@@ -32,7 +32,7 @@ function EnvironmentalLayer(
             1;
             ptype="unordered categorical",
             dist=CategoricalDistribution,
-            dist_params=(1.0, Float64(size(wave, 3))),
+            dist_params=(Tuple(1:Float64(size(wave, 3)))),
             name="Wave Scenario",
             description="Wave scenario member identifier."
         ),
@@ -40,7 +40,7 @@ function EnvironmentalLayer(
             1;
             ptype="unordered categorical",
             dist=CategoricalDistribution,
-            dist_params=(1.0, Float64(size(cyclone_mortality, 4))),
+            dist_params=(Tuple(1:Float64(size(cyclone_mortality, 4)))),
             name="Cyclone Mortality",
             description="Cyclone mortality scenario identifier."
         )
