@@ -20,7 +20,7 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     traj_mean = dropdims((mean(dhws; dims=2)); dims=2)
     # traj_stdev = dropdims((std(dhws; dims=2)); dims=2)
 
-    clusters = ADRIA.analysis.cluster_scenarios(traj_mean, min(20, size(dhws, 3)))
+    clusters = ADRIA.analysis.cluster_scenarios(traj_mean, min(50, size(dhws, 3)))
 
     Random.seed!(ceil(Int64, mean(traj_mean)))
 
@@ -44,12 +44,11 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     ADRIA.fix_factor!(d, coral_params)
 
     # Fix coral seeding weights
-    seed_criteria_params = ADRIA.component_params(
-        d.model,
-        ADRIA.SeedCriteriaWeights
-    )
-
-    ADRIA.fix_factor!(d, seed_criteria_params.fieldname)
+    # seed_criteria_params = ADRIA.component_params(
+    #     d.model,
+    #     ADRIA.SeedCriteriaWeights
+    # )
+    # ADRIA.fix_factor!(d, seed_criteria_params.fieldname)
 
     scenarios = ADRIA.sample(d, n)
 
