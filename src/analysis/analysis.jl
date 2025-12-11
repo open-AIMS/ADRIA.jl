@@ -110,6 +110,7 @@ function series_confint(data::AbstractMatrix; agg_dim::Symbol=:scenarios)::Matri
 end
 
 include("pareto.jl")
+include("screening.jl")
 include("intervention.jl")
 include("clustering.jl")
 include("rule_extraction.jl")
