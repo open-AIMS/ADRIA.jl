@@ -413,3 +413,57 @@ end
 
 # Dummy interface to allow precompilation
 function switch_RCPs!() end
+
+"""
+    set_seed_target_locations!(domain::Domain, location_ids::Vector{String})
+
+Set the locations eligible for seeding interventions.
+
+# Arguments
+- `domain`: Domain to modify
+- `location_ids`: Vector of location IDs to target for seeding
+
+# Example
+```julia
+dom = ADRIA.load_domain("path/to/domain")
+# Only seed in marine park zones
+ADRIA.set_seed_target_locations!(dom, ["reef_01", "reef_05", "reef_12"])
+```
+"""
+function set_seed_target_locations!(domain::Domain, location_ids::Vector{String})
+    # Validate that all locations exist in domain
+    invalid_locs = setdiff(location_ids, domain.loc_ids)
+    if !isempty(invalid_locs)
+        error("Invalid location IDs: $(join(invalid_locs, ", "))")
+    end
+
+    domain.seed_target_locations = location_ids
+    return nothing
+end
+
+"""
+    set_fog_target_locations!(domain::Domain, location_ids::Vector{String})
+
+Set the locations eligible for fogging interventions.
+
+# Arguments
+- `domain`: Domain to modify
+- `location_ids`: Vector of location IDs to target for fogging
+
+# Example
+```julia
+dom = ADRIA.load_domain("path/to/domain")
+# Only fog high-value tourism reefs
+ADRIA.set_fog_target_locations!(dom, ["reef_03", "reef_07"])
+```
+"""
+function set_fog_target_locations!(domain::Domain, location_ids::Vector{String})
+    # Validate that all locations exist in domain
+    invalid_locs = setdiff(location_ids, domain.loc_ids)
+    if !isempty(invalid_locs)
+        error("Invalid location IDs: $(join(invalid_locs, ", "))")
+    end
+
+    domain.fog_target_locations = location_ids
+    return nothing
+end
