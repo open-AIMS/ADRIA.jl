@@ -32,6 +32,10 @@ mutable struct ReefModDomain <: AbstractReefModDomain
 
     cyclone_mortality_scens
 
+    # Strategy target locations
+    seed_target_locations::Vector{String}  # locations eligible for seeding
+    fog_target_locations::Vector{String}   # locations eligible for fogging
+
     model
     sim_constants::SimConstants
 end

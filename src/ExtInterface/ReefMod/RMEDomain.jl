@@ -39,6 +39,10 @@ mutable struct RMEDomain <: AbstractReefModDomain
     # with ADRIA's dMCDA methods
     cyclone_mortality_scens::YAXArray{Float64}
 
+    # Strategy target locations
+    seed_target_locations::Vector{String}  # locations eligible for seeding
+    fog_target_locations::Vector{String}   # locations eligible for fogging
+
     model::ModelParameters.Model
     sim_constants::SimConstants
 end
