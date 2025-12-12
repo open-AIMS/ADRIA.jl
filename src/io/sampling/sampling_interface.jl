@@ -260,6 +260,9 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[df.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .=
         0.0
 
+    # Also zero out strategy parameters for counterfactuals and unguided
+    df[df.guided .<= 0.0, [:seed_strategy, :fog_strategy]] .= 0.0
+
     # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
     non_depth_names = vcat(
         seed_weights.fieldname,
@@ -283,6 +286,23 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
 
     not_shaded = (df.SRM .== 0)
     df[not_shaded, contains.(names(df), "shade_")] .= 0.0
+
+    # Adaptive Seed and Fog
+    not_adaptive = (df.seed_strategy .!= 2) .& (df.fog_strategy .!= 2)
+    adaptive_params = [
+        :adaptive_absolute_threshold,
+        :adaptive_loss_threshold,
+        :adaptive_min_cover_remaining,
+        :adaptive_response_delay
+    ]
+    df[not_adaptive, adaptive_params] .= 0.0
+
+    # Deactivate periodic parameters when non-periodic strategy is in place
+    not_periodic_seed = (df.seed_strategy .!= 1)
+    df[not_periodic_seed, [:seed_deployment_freq]] .= 0.0
+
+    not_periodic_fog = (df.fog_strategy .!= 1)
+    df[not_periodic_fog, [:fog_deployment_freq]] .= 0.0
 
     # Normalize MCDA weights for fogging scenarios
     guided_fogged = (df.fogging .> 0.0) .& (df.guided .> 0)
