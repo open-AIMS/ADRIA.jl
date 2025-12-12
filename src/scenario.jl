@@ -24,6 +24,7 @@ using .metrics:
     coral_evenness
 
 using SparseArrays
+using DataStructures: CircularBuffer
 
 using .decision
 
@@ -297,8 +298,11 @@ Results are stored in Zarr format at a pre-configured location.
 Sets up a new `cache` if not provided.
 
 # Arguments
-- `domain` : Domain
-- `idx` : Scenario index
+- `domain` : Simulation domain (may be modified via `switch_RCPs!`).
+- `idx` : Scenario index, to store results into `data_store`.
+- `scenario` : Parameter row describing the scenario.
+- `functional_groups` : Preallocated functional group buffers.
+- `data_store` : Pre-opened store with arrays to write results into.
 
 # Returns
 Nothing
@@ -307,7 +311,7 @@ function run_scenario(
     domain::Domain,
     idx::Int64,
     scenario::Union{AbstractVector,DataFrameRow},
-    functional_groups::Vector{Vector{FunctionalGroup}}, # additional argument for reusable buffer
+    functional_groups::Vector{Vector{FunctionalGroup}},
     data_store::NamedTuple
 )::Nothing
     if domain.RCP == ""
@@ -476,6 +480,10 @@ function run_model(
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
 
+    # Initialize cover loss tracking for adaptive strategies
+    max_lookback = Int64(param_set[At("adaptive_response_delay")])
+    recent_cover_losses = CircularBuffer{Vector{Float64}}(max_lookback)
+
     factor_names::Vector{String} = collect(param_set.factors.val)
 
     # Determine growth rate based on linear extension
@@ -542,16 +550,21 @@ function run_model(
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
 
-    # Years to start seeding/shading/fogging
-    seed_start_year::Int64 = param_set[At("seed_year_start")]
-    shade_start_year::Int64 = param_set[At("shade_year_start")]
-    fog_start_year::Int64 = param_set[At("fog_year_start")]
-
-    fogging::Real = param_set[At("fogging")]  # proportion of bleaching mortality reduction through fogging
-    srm::Real = param_set[At("SRM")]  # DHW equivalents reduced by some shading mechanism
+    fogging::Float64 = param_set[At("fogging")]  # proportion of bleaching mortality reduction through fogging
+    srm::Float64 = param_set[At("SRM")]  # DHW equivalents reduced by some shading mechanism
     seed_years::Int64 = param_set[At("seed_years")]  # number of years to seed
     shade_years::Int64 = param_set[At("shade_years")]  # number of years to shade
     fog_years::Int64 = param_set[At("fog_years")]  # number of years to fog
+
+    # Years to start seeding/shading/fogging
+    shade_start_year::Int64 = param_set[At("shade_year_start")]
+
+    # Build deployment strategies
+    n_seed_coral = [
+        param_set[At("N_seed_TA")], param_set[At("N_seed_CA")], param_set[At("N_seed_SM")]
+    ]
+    unguided_seeding = seed_years > 0 && any(n_seed_coral .> 0)
+    unguided_fogging = fogging > 0.0 && fog_years > 0
 
     habitable_areas::Matrix{Float64} = cache.habitable_area
     fec_params_per_m²::Matrix{Float64} = _to_group_size(
@@ -612,18 +625,20 @@ function run_model(
         MCDA_approach = mcda_methods()[Int64(param_set[At("guided")])]
     end
 
+    is_adaptive = param_set[At("seed_strategy")] == 2 || param_set[At("fog_strategy")] == 2
+
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
     α = 0.99
     decay = α .^ (1:(Int64(param_set[At("plan_horizon")]) + 1)) .^ 2
 
     # Years at which intervention locations are re-evaluated and deployed
-    seed_decision_years = decision_frequency(
-        seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")]
-    )
-    fog_decision_years = decision_frequency(
-        fog_start_year, tf, fog_years, param_set[At("fog_deployment_freq")]
-    )
+    # seed_decision_years = decision_frequency(
+    #     seed_start_year, tf, seed_years, param_set[At("seed_deployment_freq")]
+    # )
+    # fog_decision_years = decision_frequency(
+    #     fog_start_year, tf, fog_years, param_set[At("fog_deployment_freq")]
+    # )
     shade_decision_years = decision_frequency(
         shade_start_year, tf, shade_years, param_set[At("shade_deployment_freq")]
     )
@@ -654,11 +669,12 @@ function run_model(
 
     # Flag indicating whether to seed or not to seed when unguided
     is_unguided = param_set[At("guided")] == 0.0
-    seeding = any(param_set[At(taxa_names)] .> 0.0)
-    apply_seeding = is_unguided && seeding
+    is_seeding = any(param_set[At(taxa_names)] .> 0.0)
+    unguided_seeding = is_unguided && is_seeding
 
     # Flag indicating whether to fog or not fog
-    apply_fogging = is_unguided && (fogging > 0.0)
+    is_fogging = fogging > 0.0
+    unguided_fogging = is_unguided && is_fogging
     # Flag indicating whether to apply shading
     apply_shading = srm > 0.0
 
@@ -670,6 +686,7 @@ function run_model(
         loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
 
+    considered_locations = domain.seed_target_locations
     if is_guided
         seed_pref = SeedPreferences(domain, param_set)
         fog_pref = FogPreferences(domain, param_set)
@@ -698,6 +715,28 @@ function run_model(
 
         # Number of time steps in environmental layers to look ahead when making decisions
         plan_horizon::Int64 = Int64(param_set[At("plan_horizon")])
+
+        seed_strategy =
+            is_seeding ?
+            build_seed_strategy(
+                param_set, domain, domain.seed_target_locations[_valid_locs]
+            ) :
+            nothing
+        fog_strategy =
+            is_fogging ?
+            build_fog_strategy(
+                param_set, domain, domain.fog_target_locations[_valid_locs]
+            ) :
+            nothing
+    else
+        seed_strategy =
+            unguided_seeding ?
+            build_seed_strategy(param_set, domain, domain.seed_target_locations) :
+            nothing
+        fog_strategy =
+            unguided_fogging ?
+            build_fog_strategy(param_set, domain, domain.fog_target_locations) :
+            nothing
     end
 
     # Set up distributions for natural adaptation/heritability
@@ -992,29 +1031,103 @@ function run_model(
         end
 
         # Fogging
-        if is_guided
-            if fog_decision_years[tstep] && (fogging .> 0.0)
-                selected_fog_ranks = select_locations(
-                    fog_pref,
-                    decision_mat,
-                    MCDA_approach,
-                    min_iv_locs
-                )
+        # if is_guided
+        #     if fog_decision_years[tstep] && (fogging .> 0.0)
+        #         selected_fog_ranks = select_locations(
+        #             fog_pref,
+        #             decision_mat,
+        #             MCDA_approach,
+        #             min_iv_locs
+        #         )
 
-                if !isempty(selected_fog_ranks)
-                    log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .=
-                        1:length(selected_fog_ranks)
-                end
-            end
-        elseif apply_fogging && fog_decision_years[tstep]
-            selected_fog_ranks = unguided_selection(
-                domain.loc_ids,
-                min_iv_locs,
-                vec(leftover_space_m²)
-                # depth_criteria
+        #         if !isempty(selected_fog_ranks)
+        #             log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .=
+        #                 1:length(selected_fog_ranks)
+        #         end
+        #     end
+        # elseif apply_fogging && fog_decision_years[tstep]
+        #     selected_fog_ranks = unguided_selection(
+        #         domain.loc_ids,
+        #         min_iv_locs,
+        #         vec(leftover_space_m²)
+        #         # depth_criteria
+        #     )
+
+        #     log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .= 1.0
+        # end
+        if is_guided && !isnothing(fog_strategy)
+            # Calculate current location cover
+            current_loc_cover = dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+
+            # Get target location indices for this strategy
+            target_loc_indices = findall(
+                in.(domain.loc_ids, Ref(fog_strategy.target_locations))
             )
 
-            log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .= 1.0
+            # Build state for target locations only
+            state = (
+                current_cover=current_loc_cover[target_loc_indices],
+                recent_cover_losses=recent_cover_losses[target_loc_indices]
+            )
+
+            # Get candidate locations from strategy
+            candidate_fog_locs = filter_candidate_locations(fog_strategy, tstep, state)
+
+            if !isempty(candidate_fog_locs)
+                if is_guided
+                    # MCDA-based selection among candidates
+                    candidate_loc_indices = findall(
+                        in.(domain.loc_ids, Ref(candidate_fog_locs))
+                    )
+
+                    # Update decision matrix with current conditions
+                    # (fog typically uses same decision matrix as seed)
+                    selected_fog_ranks = select_locations(
+                        fog_pref,
+                        decision_mat[location=At(candidate_fog_locs)],
+                        MCDA_approach,
+                        min_iv_locs
+                    )
+
+                    if !isempty(selected_fog_ranks)
+                        log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .=
+                            1:length(selected_fog_ranks)
+                    end
+                else
+                    # Unguided/random selection among candidates
+                    candidate_loc_indices = findall(
+                        in.(domain.loc_ids, Ref(candidate_fog_locs))
+                    )
+
+                    selected_fog_ranks = unguided_selection(
+                        candidate_fog_locs,
+                        min_iv_locs,
+                        vec(leftover_space_m²[candidate_loc_indices])
+                    )
+
+                    if !isempty(selected_fog_ranks)
+                        log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .=
+                            1.0
+                    end
+                end
+            end
+        elseif unguided_fogging
+            candidate_fog_locs = filter_candidate_locations(fog_strategy, tstep, nothing)
+
+            if length(candidate_fog_locs) > 0
+                candidate_loc_indices = findall(
+                    in.(domain.loc_ids, Ref(candidate_fog_locs))
+                )
+
+                selected_fog_ranks = unguided_selection(
+                    candidate_fog_locs,
+                    min_iv_locs,
+                    vec(leftover_space_m²[candidate_loc_indices])
+                    # depth_criteria
+                )
+
+                log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .= 1.0
+            end
         end
 
         has_fog_locs::Bool = !isempty(selected_fog_ranks)
@@ -1032,56 +1145,152 @@ function run_model(
             considered_locs = findall(_valid_locs .& locs_with_space)
         end
 
-        if is_guided && seed_decision_years[tstep] && (length(considered_locs) > 0)
-            considered_locs = findall(_valid_locs .& locs_with_space)
+        # if is_guided && seed_decision_years[tstep] && (length(considered_locs) > 0)
+        #     considered_locs = findall(_valid_locs .& locs_with_space)
 
+        #     # Use modified projected DHW (may have been affected by fogging or shading)
+        #     dhw_p = copy(dhw_scen)
+        #     dhw_p[tstep, :] .= dhw_t
+
+        #     dhw_projection = weighted_projection(dhw_p, tstep, plan_horizon, decay, tf)
+        #     wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
+
+        #     # Determine connectivity strength weighting by area.
+        #     # Accounts for strength of connectivity where there is low/no coral cover
+        #     in_conn, out_conn, _ = connectivity_strength(
+        #         area_weighted_conn, vec(_loc_coral_cover), conn_cache
+        #     )
+
+        #     update_criteria_values!(
+        #         decision_mat;
+        #         heat_stress=dhw_projection[_valid_locs],
+        #         wave_stress=wave_projection[_valid_locs],
+        #         coral_cover=_loc_coral_cover[_valid_locs],  # Coral cover relative to `k`
+        #         in_connectivity=in_conn[_valid_locs],  # area weighted connectivities for time `t`
+        #         out_connectivity=out_conn[_valid_locs]
+        #     )
+
+        #     selected_seed_ranks = select_locations(
+        #         seed_pref,
+        #         decision_mat[location=locs_with_space[_valid_locs]],
+        #         MCDA_approach,
+        #         considered_locs,
+        #         min_iv_locs
+        #     )
+
+        #     # Log rankings as appropriate
+        #     if !isempty(selected_seed_ranks)
+        #         log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
+        #             1:length(selected_seed_ranks)
+        #     end
+        # elseif apply_seeding && seed_decision_years[tstep]
+        #     # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
+        #     selected_seed_ranks = unguided_selection(
+        #         domain.loc_ids,
+        #         min_iv_locs,
+        #         vec(leftover_space_m²),
+        #         depth_criteria
+        #     )
+
+        #     log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .= 1.0
+
+        #     # Estimate proportional change in cover to apply to cubes
+        # end
+        if is_guided && !isnothing(seed_strategy)
             # Use modified projected DHW (may have been affected by fogging or shading)
             dhw_p = copy(dhw_scen)
             dhw_p[tstep, :] .= dhw_t
-
             dhw_projection = weighted_projection(dhw_p, tstep, plan_horizon, decay, tf)
             wave_projection = weighted_projection(wave_scen, tstep, plan_horizon, decay, tf)
 
-            # Determine connectivity strength weighting by area.
-            # Accounts for strength of connectivity where there is low/no coral cover
-            in_conn, out_conn, _ = connectivity_strength(
-                area_weighted_conn, vec(_loc_coral_cover), conn_cache
+            # Calculate current location cover
+            current_loc_cover = dropdims(sum(C_cover_t; dims=(1, 2)); dims=(1, 2))
+
+            # Get target location indices for this strategy
+            target_loc_indices = findall(
+                in.(domain.loc_ids, Ref(seed_strategy.target_locations))
             )
 
-            update_criteria_values!(
-                decision_mat;
-                heat_stress=dhw_projection[_valid_locs],
-                wave_stress=wave_projection[_valid_locs],
-                coral_cover=_loc_coral_cover[_valid_locs],  # Coral cover relative to `k`
-                in_connectivity=in_conn[_valid_locs],  # area weighted connectivities for time `t`
-                out_connectivity=out_conn[_valid_locs]
+            # Build state for target locations only
+            state = (
+                current_cover=current_loc_cover[target_loc_indices],
+                recent_cover_losses=recent_cover_losses
             )
 
-            selected_seed_ranks = select_locations(
-                seed_pref,
-                decision_mat[location=locs_with_space[_valid_locs]],
-                MCDA_approach,
-                considered_locs,
-                min_iv_locs
-            )
+            # Get candidate locations from strategy
+            candidate_seed_locs = filter_candidate_locations(seed_strategy, tstep, state)
 
-            # Log rankings as appropriate
-            if !isempty(selected_seed_ranks)
-                log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
-                    1:length(selected_seed_ranks)
+            if !isempty(candidate_seed_locs)
+                if is_guided
+                    # Determine connectivity strength weighting by area.
+                    # Accounts for strength of connectivity where there is low/no coral cover
+                    in_conn, out_conn, _ = connectivity_strength(
+                        area_weighted_conn, vec(_loc_coral_cover), conn_cache
+                    )
+
+                    # MCDA-based selection among candidates
+                    candidate_loc_indices = findall(
+                        in.(domain.loc_ids, Ref(candidate_seed_locs))
+                    )
+
+                    # Update decision matrix with current conditions
+                    update_criteria_values!(
+                        decision_mat[location=At(candidate_seed_locs)];
+                        heat_stress=dhw_projection[candidate_loc_indices],
+                        wave_stress=wave_projection[candidate_loc_indices],
+                        coral_cover=current_loc_cover[candidate_loc_indices],
+                        in_connectivity=in_conn[candidate_loc_indices],
+                        out_connectivity=out_conn[candidate_loc_indices]
+                    )
+
+                    selected_seed_ranks = select_locations(
+                        seed_pref,
+                        decision_mat[location=At(candidate_seed_locs)],
+                        MCDA_approach,
+                        candidate_seed_locs,
+                        min_iv_locs
+                    )
+
+                    if !isempty(selected_seed_ranks)
+                        log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
+                            1:length(selected_seed_ranks)
+                    end
+                else
+                    # Unguided/random selection among candidates
+                    candidate_loc_indices = findall(
+                        in.(domain.loc_ids, Ref(candidate_seed_locs))
+                    )
+
+                    selected_seed_ranks = unguided_selection(
+                        candidate_seed_locs,
+                        min_iv_locs,
+                        vec(leftover_space_m²[candidate_loc_indices])
+                    )
+
+                    if !isempty(selected_seed_ranks)
+                        log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .= 1.0
+                    end
+                end
             end
-        elseif apply_seeding && seed_decision_years[tstep]
-            # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
-            selected_seed_ranks = unguided_selection(
-                domain.loc_ids,
-                min_iv_locs,
-                vec(leftover_space_m²),
-                depth_criteria
-            )
+        elseif unguided_seeding
+            candidate_seed_locs = filter_candidate_locations(seed_strategy, tstep, nothing)
 
-            log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .= 1.0
+            if length(candidate_seed_locs) > 0
+                candidate_loc_indices = findall(
+                    in.(domain.loc_ids, Ref(candidate_seed_locs))
+                )
 
-            # Estimate proportional change in cover to apply to cubes
+                # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
+                selected_seed_ranks = unguided_selection(
+                    candidate_seed_locs,
+                    min_iv_locs,
+                    vec(leftover_space_m²[candidate_loc_indices]),
+                    depth_criteria
+                )
+
+                # Estimate proportional change in cover to apply to cubes
+                log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .= 1.0
+            end
         end
 
         # Check if locations are selected (can reuse previous selection)
@@ -1170,6 +1379,26 @@ function run_model(
         recruitment .*= (view(survival_rate_cache, :, 1, :) .* habitable_areas)
 
         C_cover[tstep, :, :, :] .= C_cover_t
+
+        # Track cover loss for adaptive strategies
+        max_lookback
+        if is_guided && is_adaptive && (tstep > 1)
+            # Calculate proportional cover loss at each location
+            # due to disturbances this timestep
+            Δcover_loss_proportion = zeros(n_locs)
+            for loc in 1:n_locs
+                cover_before = sum(@view(ΔC_cover_t[:, :, loc]))
+                cover_after = sum(@view(C_cover_t[:, :, loc]))
+
+                if cover_before > 0.0
+                    Δcover_loss_proportion[loc] =
+                        (cover_before - cover_after) / cover_before
+                end
+            end
+
+            # Store in rolling buffer
+            push!(recent_cover_losses, Δcover_loss_proportion)
+        end
     end
 
     # Could collate critical DHW threshold log for corals to reduce disk space...
