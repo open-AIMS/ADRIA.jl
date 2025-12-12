@@ -68,24 +68,24 @@ Base.@kwdef struct Intervention <: EcoModel
     seed_years::Param = Factor(
         10;
         ptype="ordered categorical",
-        dist=DiscreteTriangularDist,
-        dist_params=(5.0, 75.0, 5.0),
+        dist=DiscreteUniform,
+        dist_params=(5.0, 75.0),
         name="Years to Seed",
         description="Number of years to seed for."
     )
     shade_years::Param = Factor(
         10;
         ptype="ordered categorical",
-        dist=DiscreteTriangularDist,
-        dist_params=(5.0, 75.0, 5.0),
+        dist=DiscreteUniform,
+        dist_params=(5.0, 75.0),
         name="Years to Shade",
         description="Number of years to shade for."
     )
     fog_years::Param = Factor(
         10;
         ptype="ordered categorical",
-        dist=DiscreteTriangularDist,
-        dist_params=(5.0, 75.0, 5.0),
+        dist=DiscreteUniform,
+        dist_params=(5.0, 75.0),
         name="Years to fog",
         description="Number of years to fog for."
     )
@@ -144,6 +144,55 @@ Base.@kwdef struct Intervention <: EcoModel
         dist_params=(2.0, 25.0),
         name="Fogging Start Year",
         description="Start of fogging deployments after this number of years has elapsed."
+    )
+    # Intervention strategy parameters
+    seed_strategy::Param = Factor(
+        1;
+        ptype="ordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(0.0, 1.0),
+        name="Seed Strategy Type",
+        description="Deployment strategy: 1=Periodic (time-based), 2=Adaptive (condition-based)"
+    )
+    fog_strategy::Param = Factor(
+        1;
+        ptype="ordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(0.0, 1.0),
+        name="Fog Strategy Type",
+        description="Deployment strategy: 1=Periodic (time-based), 2=Adaptive (condition-based)"
+    )
+    adaptive_absolute_threshold::Param = Factor(
+        0.2;
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.7, 0.95, 0.05),
+        name="Cover Absolute Threshold",
+        description="Deploy when coral cover falls below this proportion (for adaptive strategy)"
+    )
+    adaptive_loss_threshold::Param = Factor(
+        0.30;
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.1, 0.50, 0.05),
+        name="Cover Loss Threshold",
+        description="Deploy when proportional cover loss exceeds this value (for adaptive strategy)"
+    )
+    adaptive_min_cover_remaining::Param = Factor(
+        0.05;
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.0, 0.15, 0.025),
+        name="Minimum Viable Cover",
+        description="Don't deploy to locations with less than this cover proportion (for adaptive strategy)"
+    )
+    adaptive_response_delay::Param = Factor(
+        1;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 5.0),
+        name="Adaptive Response Delay",
+        description="Timesteps to wait after trigger before deployment (for adaptive strategy)"
     )
 end
 
