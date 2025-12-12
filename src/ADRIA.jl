@@ -64,7 +64,7 @@ include("io/datacubes.jl")
 include("io/inputs.jl")  # Need to define input types before MCDA to make types available
 include("io/initial_coral_cover.jl")
 
-include("decision/dMCDA.jl")
+include("decision/Decision.jl")
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
@@ -89,7 +89,6 @@ include("ExtInterface/ReefMod/ReefModDomain.jl")
 include("viz/viz.jl")
 
 export
-    growthODE,
     run_scenario, coral_spec, bin_edges,
     create_coral_struct, Intervention, SimConstants,
     SeedCriteriaWeights, FogCriteriaWeights,
