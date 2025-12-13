@@ -152,7 +152,7 @@ Base.@kwdef struct Intervention <: EcoModel
         dist=CategoricalDistribution,
         dist_params=(0.0, 1.0),
         name="Seed Strategy Type",
-        description="Deployment strategy: 1=Periodic (time-based), 2=Adaptive (condition-based)"
+        description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based)"
     )
     fog_strategy::Param = Factor(
         1;
@@ -160,39 +160,47 @@ Base.@kwdef struct Intervention <: EcoModel
         dist=CategoricalDistribution,
         dist_params=(0.0, 1.0),
         name="Fog Strategy Type",
-        description="Deployment strategy: 1=Periodic (time-based), 2=Adaptive (condition-based)"
+        description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based)"
     )
-    adaptive_absolute_threshold::Param = Factor(
-        0.2;
+    reactive_absolute_threshold::Param = Factor(
+        0.95;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.7, 0.95, 0.05),
         name="Cover Absolute Threshold",
-        description="Deploy when coral cover falls below this proportion (for adaptive strategy)"
+        description="Deploy when coral cover falls below this proportion (for reactive strategy)"
     )
-    adaptive_loss_threshold::Param = Factor(
+    reactive_loss_threshold::Param = Factor(
         0.30;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.1, 0.50, 0.05),
         name="Cover Loss Threshold",
-        description="Deploy when proportional cover loss exceeds this value (for adaptive strategy)"
+        description="Deploy when proportional cover loss exceeds this value (for reactive strategy)"
     )
-    adaptive_min_cover_remaining::Param = Factor(
+    reactive_min_cover_remaining::Param = Factor(
         0.05;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 0.15, 0.025),
         name="Minimum Viable Cover",
-        description="Don't deploy to locations with less than this cover proportion (for adaptive strategy)"
+        description="Do not deploy to locations with less than this cover proportion (for reactive strategy)"
     )
-    adaptive_response_delay::Param = Factor(
-        1;
+    reactive_response_delay::Param = Factor(
+        1.0;
         ptype="ordered categorical",
         dist=DiscreteUniform,
         dist_params=(0.0, 5.0),
-        name="Adaptive Response Delay",
-        description="Timesteps to wait after trigger before deployment (for adaptive strategy)"
+        name="Response Delay",
+        description="Timesteps to wait after trigger before deployment (for reactive strategy)"
+    )
+    reactive_cooldown_period::Param = Factor(
+        4.0;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 10.0),
+        name="Reactive Cooldown Period",
+        description="Timesteps before location becomes eligible again; 0=no cooldown (for reactive strategy)"
     )
 end
 

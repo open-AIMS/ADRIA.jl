@@ -26,8 +26,7 @@ include("dMCDA.jl")
 include("Criteria/DecisionPreferences.jl")
 include("Criteria/DecisionWeights.jl")
 include("location_selection.jl")
-include("strategies.jl")
-include("strategy_builder.jl")
+include("strategies/strategies.jl")
 
 export
     # Intervention preferences
