@@ -10,7 +10,7 @@ Construct appropriate seeding strategy from scenario parameters.
 - `locations` : Location IDs to consider for deployment
 
 # Returns
-DecisionStrategy object (PeriodicStrategy or AdaptiveStrategy)
+DecisionStrategy object (PeriodicStrategy or ReactiveStrategy)
 """
 function build_seed_strategy(
     params::YAXArray, domain::Domain, locations::Vector{String}
@@ -51,14 +51,15 @@ function return_seed_strategy(
             length(timesteps(domain))
         )
     elseif strategy_type == 1
-        return AdaptiveStrategy(
+        return ReactiveStrategy(
             locations,
             Int64(params[At("seed_year_start")]),
             Int64(params[At("seed_years")]),
-            Float64(params[At("adaptive_absolute_threshold")]),
-            Float64(params[At("adaptive_loss_threshold")]),
-            Float64(params[At("adaptive_min_cover_remaining")]),
-            Int64(params[At("adaptive_response_delay")])
+            Float64(params[At("reactive_absolute_threshold")]),
+            Float64(params[At("reactive_loss_threshold")]),
+            Float64(params[At("reactive_min_cover_remaining")]),
+            Int64(params[At("reactive_response_delay")]),
+            Int64(params[At("reactive_cooldown_period")])
         )
     end
 
@@ -76,7 +77,7 @@ Construct appropriate fogging strategy from scenario parameters.
 - `domain`: Domain object containing location information and timeframe
 
 # Returns
-DecisionStrategy object (PeriodicStrategy or AdaptiveStrategy)
+DecisionStrategy object (PeriodicStrategy or ReactiveStrategy)
 """
 function build_fog_strategy(
     params::Union{DataFrameRow,YAXArray},
@@ -95,13 +96,14 @@ function build_fog_strategy(
             Int64(params[At("fog_deployment_freq")])
         )
     elseif strategy_type == 1
-        # Adaptive Strategy
-        return AdaptiveStrategy(
+        # Reactive Strategy
+        return ReactiveStrategy(
             locations,
-            Float64(params[At("adaptive_absolute_threshold")]),
-            Float64(params[At("adaptive_loss_threshold")]),
-            Float64(params[At("adaptive_min_cover_remaining")]),
-            Int64(params[At("adaptive_response_delay")])
+            Float64(params[At("reactive_absolute_threshold")]),
+            Float64(params[At("reactive_loss_threshold")]),
+            Float64(params[At("reactive_min_cover_remaining")]),
+            Int64(params[At("reactive_response_delay")]),
+            Int64(params[At("reactive_cooldown_period")])
         )
     end
 

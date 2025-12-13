@@ -268,8 +268,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
         seed_weights.fieldname,
         fog_weights.fieldname
     )
-    df[df.guided .== 0.0, non_depth_names] .= 0.0  # Turn off weights for unguided
-    df[df.guided .== -1.0, non_depth_names] .= 0.0  # Turn off weights for cf
+    df[df.guided .<= 0.0, non_depth_names] .= 0.0  # Turn off weights for unguided and cf
     df[df.guided .== -1.0, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
 
     # If unguided, set planning horizon to 0.
@@ -287,19 +286,20 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     not_shaded = (df.SRM .== 0)
     df[not_shaded, contains.(names(df), "shade_")] .= 0.0
 
-    # Adaptive Seed and Fog
-    not_adaptive = (df.seed_strategy .!= 2) .& (df.fog_strategy .!= 2)
-    adaptive_params = [
-        :adaptive_absolute_threshold,
-        :adaptive_loss_threshold,
-        :adaptive_min_cover_remaining,
-        :adaptive_response_delay
+    # Reactive Seed and Fog
+    not_reactive = (df.seed_strategy .!= 1) .& (df.fog_strategy .!= 1)
+    reactive_params = [
+        :reactive_absolute_threshold,
+        :reactive_loss_threshold,
+        :reactive_min_cover_remaining,
+        :reactive_response_delay,
+        :reactive_cooldown_period
     ]
-    df[not_adaptive, adaptive_params] .= 0.0
+    df[not_reactive, reactive_params] .= 0.0
 
-    # Deactivate periodic parameters when non-periodic strategy is in place
-    not_periodic_seed = (df.seed_strategy .!= 1)
-    df[not_periodic_seed, [:seed_deployment_freq]] .= 0.0
+    # Deactivate periodic parameters when reactive strategy is in place
+    is_reactive = (df.seed_strategy .== 1)
+    df[is_reactive, [:seed_deployment_freq]] .= 0.0
 
     not_periodic_fog = (df.fog_strategy .!= 1)
     df[not_periodic_fog, [:fog_deployment_freq]] .= 0.0
@@ -314,6 +314,10 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[guided_seeded, seed_weights.fieldname] .= mcda_normalize(
         df[guided_seeded, seed_weights.fieldname]
     )
+
+    # Disable wave decisions if no wave stress is used
+    no_wave_scenario = df.wave_scenario .== 0.0
+    df[no_wave_scenario, :seed_wave_stress] .= 0.0
 
     if nrow(unique(df)) < nrow(df)
         perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(df)) / nrow(df))) * 100.0))%"
