@@ -2,7 +2,7 @@
 
 julia_version = "1.11.7"
 manifest_format = "2.0"
-project_hash = "31958c5993d051c983d3c1ab26983ca5295d8394"
+project_hash = "7209d4feeff71a69788a0b968649bf982295d7db"
 
 [[deps.ADRIAIndicators]]
 git-tree-sha1 = "252eaf580873f59a9bcb3d351d03b59d699736e2"
@@ -362,9 +362,9 @@ weakdeps = ["SparseArrays"]
     ChainRulesCoreSparseArraysExt = "SparseArrays"
 
 [[deps.ChunkCodecCore]]
-git-tree-sha1 = "51f4c10ee01bda57371e977931de39ee0f0cdb3e"
+git-tree-sha1 = "1a3ad7e16a321667698a19e77362b35a1e94c544"
 uuid = "0b6fb165-00bc-4d37-ab8b-79f91016dbe1"
-version = "1.0.0"
+version = "1.0.1"
 
 [[deps.ChunkCodecLibZlib]]
 deps = ["ChunkCodecCore", "Zlib_jll"]
@@ -429,9 +429,9 @@ uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.13.1"
 
 [[deps.Combinatorics]]
-git-tree-sha1 = "8010b6bb3388abe68d95743dcbea77650bb2eddf"
+git-tree-sha1 = "c761b00e7755700f9cdf5b02039939d1359330e1"
 uuid = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
-version = "1.0.3"
+version = "1.1.0"
 
 [[deps.CommonSolve]]
 git-tree-sha1 = "0eee5eb66b1cf62cd6ad1b460238e60e4b09400c"
@@ -508,10 +508,10 @@ uuid = "150eb455-5306-5404-9cee-2592286d6298"
 version = "0.6.4"
 
 [[deps.CoralBlox]]
-deps = ["DataStructures", "YAXArrays"]
-git-tree-sha1 = "6da45eceda1f39bb4870a2758846a74fd981f436"
+deps = ["DataStructures", "StaticArrays", "YAXArrays"]
+git-tree-sha1 = "22855962954938f08ad881c6312e78f4f5ebb661"
 uuid = "f00a6e10-004a-11ef-3676-67ec635bc1a2"
-version = "1.1.4"
+version = "1.1.5"
 
     [deps.CoralBlox.extensions]
     CoralBloxPlotExt = "Makie"
@@ -965,9 +965,9 @@ version = "1.6.0"
 
 [[deps.GeometryOps]]
 deps = ["AbstractTrees", "AdaptivePredicates", "CoordinateTransformations", "DataAPI", "DelaunayTriangulation", "ExactPredicates", "Extents", "GeoFormatTypes", "GeoInterface", "GeometryOpsCore", "LinearAlgebra", "Random", "SortTileRecursiveTree", "StaticArrays", "Statistics", "Tables"]
-git-tree-sha1 = "9fa16be9c28d9c01bf2b5d73f7768d482c12b118"
+git-tree-sha1 = "3e8bfdb7b924c0346ce15a1d11a6938d490a76a3"
 uuid = "3251bfac-6a57-4b6d-aa61-ac1fef2975ab"
-version = "0.1.31"
+version = "0.1.32"
 
     [deps.GeometryOps.extensions]
     GeometryOpsDataFramesExt = "DataFrames"
@@ -985,9 +985,9 @@ version = "0.1.31"
 
 [[deps.GeometryOpsCore]]
 deps = ["DataAPI", "GeoInterface", "StableTasks", "Tables"]
-git-tree-sha1 = "69fc98947b06f8ac4279cf5bf8810373fe042be4"
+git-tree-sha1 = "55ca4091a2808f7918eb857fe35844107b728c5d"
 uuid = "05efe853-fabf-41c8-927e-7063c8b9f013"
-version = "0.1.7"
+version = "0.1.8"
 
 [[deps.Giflib_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1002,9 +1002,9 @@ uuid = "bc5e4493-9b4d-5f90-b8aa-2b2bcaad7a26"
 version = "5.11.0"
 
 [[deps.Glob]]
-git-tree-sha1 = "97285bbd5230dd766e9ef6749b80fc617126d496"
+git-tree-sha1 = "83cb0092e2792b9e3a865b6655e88f5b862607e2"
 uuid = "c27321d9-0574-5035-807b-f59d2c89b15c"
-version = "1.3.1"
+version = "1.4.0"
 
 [[deps.Graphs]]
 deps = ["ArnoldiMethod", "DataStructures", "Distributed", "Inflate", "LinearAlgebra", "Random", "SharedArrays", "SimpleTraits", "SparseArrays", "Statistics"]
@@ -1280,9 +1280,9 @@ version = "0.1.6"
 
 [[deps.JpegTurbo_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "4255f0032eafd6451d707a51d5f0248b8a165e4d"
+git-tree-sha1 = "b6893345fd6658c8e475d40155789f4860ac3b21"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
-version = "3.1.3+0"
+version = "3.1.4+0"
 
 [[deps.JuMP]]
 deps = ["LinearAlgebra", "MacroTools", "MathOptInterface", "MutableArithmetics", "OrderedCollections", "PrecompileTools", "Printf", "SparseArrays"]
@@ -1785,9 +1785,9 @@ weakdeps = ["Adapt"]
 
 [[deps.OnlineStats]]
 deps = ["AbstractTrees", "Dates", "Distributions", "LinearAlgebra", "OnlineStatsBase", "OrderedCollections", "Random", "RecipesBase", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "86b3bdec7f7394ab7400ef2bae3af27ddc001c05"
+git-tree-sha1 = "a19ba00b3968afcde81471033fd22976e62f5fea"
 uuid = "a15396b6-48d5-5d58-9928-6d29437db91e"
-version = "1.7.2"
+version = "1.7.3"
 
 [[deps.OnlineStatsBase]]
 deps = ["AbstractTrees", "Dates", "LinearAlgebra", "OrderedCollections", "Statistics", "StatsBase"]
@@ -2375,9 +2375,9 @@ version = "1.8.0"
 
 [[deps.StatsBase]]
 deps = ["AliasTables", "DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
-git-tree-sha1 = "064b532283c97daae49e544bb9cb413c26511f8c"
+git-tree-sha1 = "be5733d4a2b03341bdcab91cea6caa7e31ced14b"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-version = "0.34.8"
+version = "0.34.9"
 
 [[deps.StatsFuns]]
 deps = ["HypergeometricFunctions", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]
