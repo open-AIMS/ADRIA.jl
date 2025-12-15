@@ -480,10 +480,6 @@ function run_model(
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
 
-    # Initialize cover loss tracking for reactive strategies
-    max_lookback = Int64(param_set[At("reactive_response_delay")])
-    recent_cover_losses = CircularBuffer{Vector{Float64}}(max_lookback)
-
     factor_names::Vector{String} = collect(param_set.factors.val)
 
     # Determine growth rate based on linear extension
@@ -546,6 +542,15 @@ function run_model(
     n_groups::Int64 = domain.coral_growth.n_groups
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_group_and_size::Int64 = domain.coral_growth.n_group_and_size
+
+    # Initialize cover loss tracking for reactive strategies
+    max_lookback = Int64(param_set[At("reactive_response_delay")])
+    if max_lookback < 1
+        recent_cover_losses = CircularBuffer{Vector{Float64}}(1)
+    else
+        recent_cover_losses = CircularBuffer{Vector{Float64}}(max_lookback)
+    end
+    push!(recent_cover_losses, zeros(n_locs))
 
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
@@ -1070,13 +1075,13 @@ function run_model(
                 # Need to track deployment history
                 (
                     current_cover=current_loc_cover[target_loc_indices],
-                    recent_cover_losses=recent_cover_losses[target_loc_indices],
+                    recent_cover_losses=first(recent_cover_losses)[target_loc_indices],
                     last_deployment=last_fog_deployment[target_loc_indices]
                 )
             else
                 (
                     current_cover=current_loc_cover[target_loc_indices],
-                    recent_cover_losses=recent_cover_losses[target_loc_indices]
+                    recent_cover_losses=first(recent_cover_losses)[target_loc_indices]
                 )
             end
 
@@ -1211,13 +1216,13 @@ function run_model(
                 # Need to track deployment history
                 (
                     current_cover=current_loc_cover[target_loc_indices],
-                    recent_cover_losses=recent_cover_losses[target_loc_indices],
+                    recent_cover_losses=first(recent_cover_losses)[target_loc_indices],
                     last_deployment=last_seed_deployment[target_loc_indices]
                 )
             else
                 (
                     current_cover=current_loc_cover[target_loc_indices],
-                    recent_cover_losses=recent_cover_losses
+                    recent_cover_losses=first(recent_cover_losses)[target_loc_indices]
                 )
             end
 
@@ -1258,8 +1263,7 @@ function run_model(
                     log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
                         1:length(selected_seed_ranks)
 
-                    deployed_locs = candidate_loc_indices[selected_seed_ranks]
-                    last_seed_deployment[deployed_locs] .= tstep
+                    last_seed_deployment[candidate_loc_indices] .= tstep
                 end
             end
         elseif unguided_seeding
@@ -1281,6 +1285,8 @@ function run_model(
                 # Estimate proportional change in cover to apply to cubes
                 if !isempty(selected_seed_ranks)
                     log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .= 1.0
+
+                    last_fog_deployment[candidate_loc_indices] .= tstep
                 end
             end
         end
