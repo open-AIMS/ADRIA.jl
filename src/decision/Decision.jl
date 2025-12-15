@@ -48,6 +48,8 @@ export
     is_decision_year,
     build_seed_strategy,
     build_fog_strategy,
-    filter_candidate_locations
+    filter_candidate_locations,
+    PeriodicStrategy,
+    ReactiveStrategy
 
 end
