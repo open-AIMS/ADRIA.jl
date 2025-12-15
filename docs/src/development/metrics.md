@@ -9,16 +9,27 @@ At a minimum, all metrics must define:
 The `Metric` type allows metadata regarding the expected dimension names and unit of measure.
 Note that the unit of measure is optional and can be left out.
 
+The core metric calculation logic is stored in the `ADRIAIndicators.jl` package.
+
 Below is the implementation of the `total_absolute_cover` metric.
 
 ```julia
-function _total_absolute_cover(X::AbstractArray{<:Real}, loc_area::Vector{<:Real})::AbstractArray{<:Real}
-    return dropdims(sum(X, dims=:species), dims=:species) .* loc_area'
+function _total_absolute_cover(relative_cover::YAXArray{<:Real,3}, k_area::Vector{<:Real})::YAXArray
+    return DataCube(
+        relative_cover.data .* k_area', parentmodule(metrics).axes_names(relative_cover)
+    )
 end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
-    return rs.outcomes[:total_absolute_cover]
+    return _total_absolute_cover(relative_cover(rs), loc_k_area(rs))
 end
-total_absolute_cover = Metric(_total_absolute_cover, (:timesteps, :sites, :scenarios), "m²")
+total_absolute_cover = Metric(
+    _total_absolute_cover,
+    (:timesteps, :locations, :scenarios),
+    (:timesteps, :locations, :scenarios),
+    "Cover",
+    IS_NOT_RELATIVE,
+    UNIT_AREA
+)
 
 # Unit of measure is optional, in cases where the values are non-dimensional
 # some_example_metric = Metric(_some_example_metric, (:timesteps, :scenarios))

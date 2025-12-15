@@ -6,24 +6,24 @@ if !@isdefined(TEST_RS)
     const TEST_DOM, TEST_N_SAMPLES, TEST_SCENS, TEST_RS = test_rs()
 end
 
-function mock_covers()::Vector{YAXArray{Float64,4}}
+function mock_covers()::Vector{YAXArray{Float64,5}}
     n_timesteps::Int64 = length(TEST_RS.env_layer_md.timeframe)
     n_groups::Int64 = length(ADRIA.coral_spec().taxa_names)
     n_sizes::Int64 = length(ADRIA.coral_spec().params.name) / n_groups
-    n_group_sizes::Int64 = n_groups * n_sizes
     n_locations::Int64 = length(TEST_RS.coral_dhw_tol_log.locations)
     n_scenarios::Int64 = size(TEST_SCENS, 1)
 
     cover_params = (
         n_timesteps=n_timesteps,
-        n_group_sizes=n_group_sizes,
+        n_groups=n_groups,
+        n_sizes=n_sizes,
         n_locations=n_locations,
         n_scenarios=n_scenarios
     )
 
-    coral_cover::YAXArray{Float64,4} = MockData.coral_cover(; cover_params...)
-    zero_coral_cover::YAXArray{Float64,4} = MockData.zero_coral_cover(; cover_params...)
-    full_coral_cover::YAXArray{Float64,4} = MockData.full_coral_cover(; cover_params...)
+    coral_cover::YAXArray{Float64,5} = MockData.coral_cover(; cover_params...)
+    zero_coral_cover::YAXArray{Float64,5} = MockData.zero_coral_cover(; cover_params...)
+    full_coral_cover::YAXArray{Float64,5} = MockData.full_coral_cover(; cover_params...)
     return [coral_cover, zero_coral_cover, full_coral_cover]
 end
 

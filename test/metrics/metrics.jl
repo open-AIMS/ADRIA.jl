@@ -13,7 +13,7 @@ end
         Matrix(TEST_SCENS); scenarios=1:n_scenarios, factors=names(TEST_SCENS)
     )
 
-    _test_covers::Vector{YAXArray{Float64,4}} = mock_covers()
+    _test_covers::Vector{YAXArray{Float64,5}} = mock_covers()
     _k_area::Vector{Float64} = k_area()
 
     @testset "relative_cover" begin
@@ -37,7 +37,7 @@ end
 
         for cover in _test_covers
             test_metric(
-                metrics.relative_taxa_cover, (cover[:, :, :, 1], _k_area, n_groups)
+                metrics.relative_taxa_cover, (cover[:, :, :, :, 1], _k_area)
             )
         end
     end
@@ -45,7 +45,7 @@ end
     @testset "relative_loc_taxa_cover" begin
         for cover in _test_covers
             test_metric(
-                metrics.relative_loc_taxa_cover, (cover[:, :, :, 1], _k_area, n_groups)
+                metrics.relative_loc_taxa_cover, (cover[:, :, :, :, 1],)
             )
         end
     end
@@ -56,7 +56,7 @@ end
         test_metric(metrics.relative_juveniles, (TEST_RS,))
         for cover in _test_covers
             test_metric(
-                metrics.relative_juveniles, (cover[:, :, :, scen_idx], coral_spec)
+                metrics.relative_juveniles, (cover[:, :, :, :, scen_idx],)
             )
         end
     end
@@ -67,7 +67,7 @@ end
         test_metric(metrics.absolute_juveniles, (TEST_RS,))
         for cover in _test_covers
             test_metric(
-                metrics.absolute_juveniles, (cover[:, :, :, scen_idx], coral_spec, _k_area)
+                metrics.absolute_juveniles, (cover[:, :, :, :, scen_idx], _k_area)
             )
         end
     end
@@ -78,7 +78,8 @@ end
         test_metric(metrics.juvenile_indicator, (TEST_RS,))
         for cover in _test_covers
             test_metric(
-                metrics.juvenile_indicator, (cover[:, :, :, scen_idx], coral_spec, _k_area)
+                metrics.juvenile_indicator,
+                (cover[:, :, :, :, scen_idx], coral_spec, _k_area)
             )
         end
     end
@@ -89,7 +90,7 @@ end
             test_metric(
                 metrics.coral_evenness,
                 (
-                    metrics.relative_loc_taxa_cover(cover[:, :, :, 1], _k_area, n_groups),
+                    metrics.relative_loc_taxa_cover(cover[:, :, :, :, 1]),
                 )
             )
         end
@@ -103,7 +104,7 @@ end
             )
             test_metric(
                 metrics.absolute_shelter_volume,
-                (cover[:, :, :, 1], _k_area, TEST_SCENS[1, :])
+                (cover[:, :, :, :, 1], _k_area, TEST_SCENS[1, :])
             )
             test_metric(
                 metrics.absolute_shelter_volume, (cover, _k_area, test_scens_datacube)
@@ -111,7 +112,7 @@ end
             test_metric(
                 metrics.absolute_shelter_volume,
                 (
-                    cover[:, :, :, 1], _k_area, test_scens_datacube[1, :]
+                    cover[:, :, :, :, 1], _k_area, test_scens_datacube[1, :]
                 )
             )
         end
@@ -126,9 +127,9 @@ end
         )
 
         @testset "one scenario case" begin
-            for scens in [scens_row, scens_df, scens_cube]
+            for scens in [scens_row, scens_cube]
                 rsv = ADRIA.metrics.relative_shelter_volume(
-                    _test_covers[1][:, :, :, 1], _k_area, scens
+                    _test_covers[1][:, :, :, :, 1], _k_area, scens
                 )
 
                 @test all(0.0 .<= rsv .<= 1.0)

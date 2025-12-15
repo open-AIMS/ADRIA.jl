@@ -1,5 +1,7 @@
 module metrics
 
+using ADRIAIndicators
+
 using
     Distributions,
     Interpolations,
@@ -26,24 +28,38 @@ const UNIT_AREA_INVERSE = "m⁻²"
 const IS_RELATIVE = true
 const IS_NOT_RELATIVE = false
 
-struct Metric{F<:Function,T<:Tuple,S<:String,B<:Bool} <: Outcome
+struct Metric{F<:Function,T<:Tuple,U<:Tuple} <: Outcome
     func::F
-    dims::T     # output dimension axes ?
-    feature::S
-    is_relative::B
-    unit::S
-end
+    in_dims::T
+    dims::U
+    feature::String
+    is_relative::Bool
+    unit::String
 
-Metric(func, dims, feature, is_relative) = Metric(func, dims, feature, is_relative, "")
+    function Metric(
+        func::F, in_dims::T, dims::U, feature::String, is_relative::Bool, unit::String
+    ) where {F,T,U}
+        return new{F,T,U}(func, in_dims, dims, feature, is_relative, unit)
+    end
+    function Metric(
+        func::F, in_dims::T, dims::U, feature::String, is_relative::Bool
+    ) where {F,T,U}
+        return new{F,T,U}(func, in_dims, dims, feature, is_relative, "")
+    end
+end
 
 """
     (f::Metric)(raw, args...; kwargs...)
     (f::Metric)(rs::ResultSet, args...; kwargs...)
 
-Makes Metric types callable with arbitary arguments that are passed to associated function.
+Makes Metric types callable with arbitrary arguments that are passed to associated function.
 """
 function (f::Metric)(raw, args...; kwargs...)::YAXArray
-    axes::Tuple = (:timesteps, :species, :locations, :scenarios)[1:ndims(raw)]
+    if :scenarios in f.in_dims
+        axes = f.in_dims[1:ndims(raw)]
+    else
+        axes = f.in_dims
+    end
     return fill_metadata!(f.func(DataCube(raw, axes), args...; kwargs...), f)
 end
 function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
@@ -51,7 +67,7 @@ function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
 end
 
 """
-    relative_cover(X::AbstractArray{<:Real})::AbstractArray{<:Real}
+    relative_cover(X::AbstractArray{<:Real}, loc_area::AbstractVector{<:Real})::AbstractArray{<:Real}
     relative_cover(rs::ResultSet)::AbstractArray{<:Real}
 
 Indicate coral cover relative to available hard substrate (\$k\$ area).
@@ -61,18 +77,59 @@ Indicate coral cover relative to available hard substrate (\$k\$ area).
 n_locations) of raw model results (coral cover relative to available space)
 
 # Returns
-Coral cover [0 - 1], relative to available \$k\$ area for a given location.
+Coral cover [0 - 1], relative to available \$k\$ area for the entire study area.
 """
-function _relative_cover(X::YAXArray{<:Real})::YAXArray{<:Real}
-    # Sum over all species and size classes
-    result::YAXArray = dropdims(sum(X; dims=2); dims=2)
-    return result
+function _relative_cover(
+    X::YAXArray{<:Real,4}
+)::YAXArray{<:Real}
+    dims = (:timesteps, :locations)
+    return DataCube(
+        ADRIAIndicators.relative_cover(X.data), dims
+    )
+end
+function _relative_cover(X::YAXArray{<:Real,5})
+    return dropdims(sum(X; dims=(:groups, :sizes)); dims=(:groups, :sizes))
 end
 function _relative_cover(rs::ResultSet)::YAXArray{<:Real}
     return rs.outcomes[:relative_cover]
 end
 relative_cover = Metric(
-    _relative_cover, (:timesteps, :locations, :scenarios), "Relative Cover", IS_RELATIVE
+    _relative_cover,
+    (:timesteps, :groups, :sizes, :locations, :scenarios),
+    (:timesteps, :locations, :scenarios),
+    "Relative Cover",
+    IS_RELATIVE
+)
+
+function _ltmp_cover(
+    X::YAXArray{<:Real,4}, k_area::AbstractVector{<:Real}, reef_area::AbstractVector{<:Real}
+)::YAXArray{<:Real,2}
+    return DataCube(
+        ADRIAIndicators.ltmp_cover(X, k_area, reef_area),
+        (:timesteps, :locations)
+    )
+end
+function _ltmp_cover(
+    rs::ResultSet
+)::YAXArray{<:Real,3}
+    rel_cover = relative_cover(rs)
+    k_area = loc_k_area(rs)
+    reef_area = loc_area(rs)
+    location_dim = axis_index(rel_cover, :locations)
+
+    return DataCube(
+        ADRIAIndicators.relative_cover_to_ltmp_cover(
+            rel_cover.data, k_area, reef_area, location_dim
+        ),
+        (:timesteps, :locations, :scenarios)
+    )
+end
+ltmp_cover = Metric(
+    _ltmp_cover,
+    (:timesteps, :groups, :sizes, :locations, :scenarios),
+    (:timesteps, :locations, :scenarios),
+    "LTMP Cover",
+    IS_RELATIVE
 )
 
 """
@@ -90,16 +147,19 @@ Sum of proportional area taken up by all corals, multiplied by the location area
 Absolute coral cover for a given location in $UNIT_AREA.
 """
 function _total_absolute_cover(
-    relative_cover::AbstractArray{<:Real},
+    relative_cover::YAXArray{<:Real,3},
     k_area::Vector{<:Real}
-)::AbstractArray{<:Real}
-    return relative_cover .* k_area'
+)::YAXArray
+    return DataCube(
+        relative_cover.data .* k_area', parentmodule(metrics).axes_names(relative_cover)
+    )
 end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
-    return _total_absolute_cover(rs.outcomes[:relative_cover], loc_k_area(rs))
+    return _total_absolute_cover(relative_cover(rs), loc_k_area(rs))
 end
 total_absolute_cover = Metric(
     _total_absolute_cover,
+    (:timesteps, :locations, :scenarios),
     (:timesteps, :locations, :scenarios),
     "Cover",
     IS_NOT_RELATIVE,
@@ -110,7 +170,7 @@ total_absolute_cover = Metric(
     relative_taxa_cover(X::AbstractArray{<:Real}, k_area::Vector{<:Real}, n_groups::Int64)::AbstractArray{<:Real,2}
     relative_taxa_cover(rs::ResultSet)::AbstractArray{<:Real,2}
 
-Relative coral cover grouped by taxa/species sumed up across all locations.
+Relative coral cover grouped by groups summed up across all locations.
 
 # Arguments
 - `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group_sizes,
@@ -123,27 +183,16 @@ Coral cover, grouped by taxa for the given scenario, summed up across all locati
 relative to total k area.
 """
 function _relative_taxa_cover(
-    X::AbstractArray{<:Real},
-    k_area::Vector{<:Real},
-    n_groups::Int64
+    X::AbstractArray{<:Real,4},
+    k_area::Vector{<:Real}
 )::AbstractArray{<:Real,2}
-    n_timesteps, n_group_sizes, n_locs = size(X)
-    _n_sizes::Int64 = n_sizes(n_groups, n_group_sizes)
+    n_timesteps = size(X, 1)
+    n_groups = size(X, 2)
 
     taxa_cover::YAXArray = ZeroDataCube(
-        (:timesteps, :species), (n_timesteps, n_groups), X.properties
+        (:timesteps, :groups), (n_timesteps, n_groups), X.properties
     )
-    k_cover = zeros(n_timesteps, _n_sizes, n_locs)
-    _group_indices::Vector{UnitRange{Int64}} = group_indices(_n_sizes, n_group_sizes)
-    for (idx_group, group) in enumerate(_group_indices)
-        # Fill k_cover with absolute cover for each timestep and location and fixed group
-        for (idx_loc, loc_k_area) in enumerate(k_area)
-            k_cover[:, :, idx_loc] .= X[:, group, idx_loc] .* loc_k_area
-        end
-
-        # Sum over size classes and locations  and divide by total k area
-        taxa_cover[:, idx_group] = vec(sum(k_cover; dims=(2, 3))) ./ sum(k_area)
-    end
+    ADRIAIndicators.relative_taxa_cover!(X, k_area, taxa_cover.data)
 
     return taxa_cover
 end
@@ -151,7 +200,41 @@ function _relative_taxa_cover(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_taxa_cover]
 end
 relative_taxa_cover = Metric(
-    _relative_taxa_cover, (:timesteps, :species, :scenarios), "Cover", IS_RELATIVE
+    _relative_taxa_cover,
+    (:timesteps, :groups, :sizes, :locations),
+    (:timesteps, :groups, :scenarios),
+    "Cover",
+    IS_RELATIVE
+)
+
+function _ltmp_taxa_cover(
+    X::YAXArray{<:Real,4}, k_area::AbstractVector{<:Real}, reef_area::AbstractVector{<:Real}
+)::YAXArray{<:Real,2}
+    return DataCube(
+        ADRIAIndicators.ltmp_taxa_cover(X, k_area, reef_area),
+        (:timesteps, :groups)
+    )
+end
+function _ltmp_taxa_cover(
+    rs::ResultSet
+)::YAXArray{<:Real,3}
+    rel_cover = relative_taxa_cover(rs)
+    k_area = loc_k_area(rs)
+    reef_area = loc_area(rs)
+    location_dim = axis_index(rel_cover, :locations)
+    return DataCube(
+        ADRIAIndicators.relative_cover_to_ltmp_cover(
+            rel_cover.data, k_area, reef_area, location_dim
+        ),
+        (:timesteps, :groups, :scenarios)
+    )
+end
+ltmp_taxa_cover = Metric(
+    _ltmp_cover,
+    (:timesteps, :groups, :sizes, :locations, :scenarios),
+    (:timesteps, :groups, :scenarios),
+    "LTMP Cover",
+    IS_RELATIVE
 )
 
 """
@@ -168,30 +251,21 @@ Coral cover, grouped by taxa for the given scenario, for each timestep and locat
 relative to location k area.
 """
 function _relative_loc_taxa_cover(
-    X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int64
+    X::AbstractArray{T,4}
 )::AbstractArray{T,3} where {T<:Real}
-    n_timesteps, n_group_sizes, n_locs = size(X)
-    _n_sizes::Int64 = n_sizes(n_groups, n_group_sizes)
+    n_timesteps, n_groups, _, n_locs = size(X)
 
     taxa_cover::YAXArray = ZeroDataCube(
-        (:timesteps, :species, :locations), (n_timesteps, n_groups, n_locs), X.properties
+        (:timesteps, :groups, :locations), (n_timesteps, n_groups, n_locs), X.properties
     )
-    k_cover = zeros(n_timesteps, _n_sizes)
-    _group_indices::Vector{UnitRange{Int64}} = group_indices(_n_sizes, n_group_sizes)
-    for (idx_group, group) in enumerate(_group_indices)
-        for (idx_loc, loc_k_area) in enumerate(k_area)
-            k_cover .= X[:, group, idx_loc] .* loc_k_area
-
-            # Sum over size class groups
-            taxa_cover[:, idx_group, idx_loc] = vec(sum(k_cover; dims=2)) ./ loc_k_area
-        end
-    end
+    ADRIAIndicators.relative_loc_taxa_cover!(X, taxa_cover.data)
 
     return replace!(taxa_cover, NaN => 0.0)
 end
 relative_loc_taxa_cover = Metric(
     _relative_loc_taxa_cover,
-    (:timesteps, :species, :locations, :scenarios),
+    (:timesteps, :groups, :sizes, :locations),
+    (:timesteps, :groups, :locations, :scenarios),
     "Relative Cover",
     IS_RELATIVE
 )
@@ -208,19 +282,38 @@ n_locations)
 - `coral_spec` : Coral spec DataFrame
 """
 function _relative_juveniles(
-    X::YAXArray{T,3}, coral_spec::DataFrame
+    X::YAXArray{T,4}
 )::YAXArray{T,2} where {T<:Real}
-    # Cover of juvenile corals (< 5cm diameter)
-    return dropdims(
-        sum(X[species=coral_spec.class_id .== 1]; dims=:species); dims=:species
-    ) .+
-           dropdims(sum(X[species=coral_spec.class_id .== 2]; dims=:species); dims=:species)
+    dims = (:timesteps, :locations)
+    is_juvenile::BitVector = falses(size(X, 3))
+    is_juvenile[1:2] .= true
+    return DataCube(
+        ADRIAIndicators.relative_juveniles(X.data, is_juvenile), dims
+    )
+end
+function _relative_juveniles(
+    X::YAXArray{T,5}
+)::YAXArray{T,2} where {T<:Real}
+    dims = (
+        :timesteps,
+        :locations,
+        :scenarios
+    )
+    is_juvenile::BitVector = falses(size(X, 3))
+    is_juvenile[1:2] .= true
+    return DataCube(
+        ADRIAIndicators.relative_juveniles(X.data, is_juvenile), dims
+    )
 end
 function _relative_juveniles(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:relative_juveniles]
 end
 relative_juveniles = Metric(
-    _relative_juveniles, (:timesteps, :locations, :scenarios), "Relative Cover", IS_RELATIVE
+    _relative_juveniles,
+    (:timesteps, :groups, :sizes, :locations, :scenarios),
+    (:timesteps, :locations, :scenarios),
+    "Relative Cover",
+    IS_RELATIVE
 )
 
 """
@@ -236,15 +329,22 @@ n_locations)
 - `k_area` : The coral habitable area.
 """
 function _absolute_juveniles(
-    X::AbstractArray{T,3}, coral_spec::DataFrame, k_area::AbstractVector{T}
-)::AbstractArray{T,2} where {T<:Real}
-    return _relative_juveniles(X, coral_spec) .* k_area'
+    X::YAXArray{T}, k_area::AbstractVector{T}
+)::YAXArray where {T<:Real}
+    dims = ndims(X) == 4 ? (:timesteps, :locations) : (:timesteps, :locations, :scenarios)
+    is_juvenile::BitVector = falses(size(X, 3))
+    is_juvenile[1:2] .= true
+    return DataCube(
+        ADRIAIndicators.absolute_juveniles(X.data, is_juvenile, k_area), dims
+    )
 end
-function _absolute_juveniles(rs::ResultSet)::AbstractArray{<:Real,3}
-    return rs.outcomes[:relative_juveniles] .* loc_k_area(rs)'
+function _absolute_juveniles(rs::ResultSet)::YAXArray
+    rel_juv = relative_juveniles(rs)
+    return DataCube(rel_juv .* loc_k_area(rs)', parentmodule(metrics).axes_names(rel_juv))
 end
 absolute_juveniles = Metric(
     _absolute_juveniles,
+    (:timesteps, :groups, :sizes, :locations, :scenarios),
     (:timesteps, :locations, :scenarios),
     "Cover",
     IS_NOT_RELATIVE,
@@ -264,7 +364,7 @@ function _max_juvenile_area(coral_params::DataFrame, max_juv_density::Float64=51
 end
 
 """
-    juvenile_indicator(X::AbstractArray{T,3}, coral_spec::DataFrame, k_area::Vector{Float64})::AbstractArray{T,2} where {T<:Real}
+    juvenile_indicator(X::AbstractArray{T}, coral_spec::DataFrame, k_area::Vector{Float64})::AbstractArray{T,2} where {T<:Real}
     juvenile_indicator(rs::ResultSet)::AbstractArray{<:Real,2}
 
 Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretical density
@@ -275,6 +375,7 @@ for juveniles have been achieved.
 n_locations).
 - `coral_spec` : Coral spec DataFrame.
 - `k_area` : The coral habitable area.
+- `max_juvenile_density` : Maximum density of juveniles defaulting to 51.8 juveniles / m²
 
 # Notes
 Maximum density is 51.8 juveniles / m², where juveniles are defined as < 5cm diameter.
@@ -284,19 +385,44 @@ Subject: RE: Max density of juvenile corals on the GBR
 Sent: Friday, 14 October 2022 2:58 PM
 """
 function _juvenile_indicator(
-    X::AbstractArray{T,3}, coral_spec::DataFrame, k_area::Vector{Float64}
-)::AbstractArray{T,2} where {T<:Real}
-    # Replace 0 k areas with 1.0 to avoid zero-division error
-    usable_k_area = Float64[k > 0.0 ? k : 1.0 for k in k_area]'
+    X::AbstractArray{T}, coral_spec::DataFrame, k_area::Vector{Float64}
+)::AbstractArray{T} where {T<:Real}
+    n_groups, n_sizes = size(X)[2:3]
+    is_juvenile::BitVector = falses(size(X, 3))
+    is_juvenile[1:2] .= true
 
-    return _absolute_juveniles(X, coral_spec, k_area) ./
-           (_max_juvenile_area(coral_spec) .* usable_k_area)
+    mean_diams = permutedims(
+        reshape(coral_spec.mean_colony_diameter_m, (n_sizes, n_groups)), (2, 1)
+    )
+    max_juvenile_density = 51.8
+
+    # If calculating over multiple scenario include scenarios
+    dims = ndims(X) == 4 ? (:timesteps, :locations) : (:timesteps, :locations, :scenarios)
+    juv_ind = DataCube(
+        ADRIAIndicators.juvenile_indicator(
+            X.data, is_juvenile, k_area, mean_diams, max_juvenile_density
+        ), dims
+    )
+    # Document the maximum juvenile density used
+    juv_ind.properties[:MAX_JUV_DENSITY] = max_juvenile_density
+
+    return juv_ind
 end
-function _juvenile_indicator(rs::ResultSet)::AbstractArray{<:Real,3}
-    return rs.outcomes[:juvenile_indicator]
+function _juvenile_indicator(rs::ResultSet; max_juvenile_density::Float64=51.8)
+    juv_ind = rs.outcomes[:juvenile_indicator]
+    old_max_density = 51.8
+    if max_juvenile_density == old_max_density
+        return juv_ind
+    end
+
+    new_juv_ind = juv_ind .* old_max_density ./ max_juvenile_density
+    new_juv_ind.properties[:MAX_JUV_DENSITY] = max_juvenile_density
+
+    return new_juv_ind
 end
 juvenile_indicator = Metric(
     _juvenile_indicator,
+    (:timesteps, :groups, :sizes, :locations, :scenarios),
     (:timesteps, :locations, :scenarios),
     "Density Indicator",
     IS_NOT_RELATIVE,
@@ -319,182 +445,66 @@ function _coral_evenness(
     r_taxa_cover::AbstractArray{T,3}
 )::AbstractArray{T,2} where {T<:Real}
     # Evenness as a functional diversity metric
-    n_steps, n_grps, n_locs = size(r_taxa_cover)
+    n_steps, _, n_locs = size(r_taxa_cover)
 
     # Sum across groups represents functional diversity
     # Group evenness (Hill 1973, Ecology 54:427-432)
     simpsons_diversity::YAXArray = ZeroDataCube(
         (:timesteps, :locations), (n_steps, n_locs), r_taxa_cover.properties
     )
-    loc_cover = dropdims(sum(r_taxa_cover; dims=2); dims=2)
-    for loc in axes(loc_cover, 2)
-        simpsons_diversity[:, loc] =
-            1.0 ./ sum((r_taxa_cover[:, :, loc] ./ loc_cover[:, loc]) .^ 2; dims=2)
-    end
+    ADRIAIndicators.coral_evenness!(r_taxa_cover, simpsons_diversity.data)
 
-    return replace!(
-        simpsons_diversity, NaN => 0.0, Inf => 0.0
-    ) ./ n_grps
+    return simpsons_diversity
 end
 function _coral_evenness(rs::ResultSet)::AbstractArray{<:Real,3}
     return rs.outcomes[:coral_evenness]
 end
 coral_evenness = Metric(
     _coral_evenness,
+    (:timesteps, :groups, :locations),
     (:timesteps, :locations, :scenarios),
     "Evenness Indicator",
     IS_NOT_RELATIVE
 )
 
 """
-    _colony_Lcm2_to_m3m2(inputs::DataFrame)::Tuple
-    _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Float64}}
+    coral_diversity(ce::AbstractArray{T})::AbstractArray{T} where {T}
+    coral_diversity(rs::ResultSet)::AbstractArray{T} where {T}
 
-Helper function to convert coral colony values from Litres/cm² to m³/m²
-
-# Arguments
-- `inputs` : Scenario values for the simulation
-
-# Returns
-Tuple : Assumed colony volume (m³/m²) for each species/size class, theoretical maximum for each species/size class
-
-# References
-1. Aston Eoghan A., Duce Stephanie, Hoey Andrew S., Ferrari Renata (2022).
-    A Protocol for Extracting Structural Metrics From 3D Reconstructions of Corals.
-    Frontiers in Marine Science, 9.
-    https://doi.org/10.3389/fmars.2022.854395
-
-"""
-function _colony_Lcm2_to_m3m2(inputs::DataFrame)::Tuple
-    _inputs = DataCube(Matrix(inputs); scenarios=1:nrow(inputs), factors=names(inputs))
-    return _colony_Lcm2_to_m3m2(_inputs)
-end
-function _colony_Lcm2_to_m3m2(inputs::YAXArray)::Tuple{Vector{Float64},Vector{Float64}}
-    _, _, cs_p::DataFrame = coral_spec()
-    n_sizes::Int64 = length(unique(cs_p.class_id))
-
-    # Extract colony diameter (in cm) for each taxa/size class from scenario inputs
-    # Have to be careful to extract data in the correct order, matching coral id
-    n_groups_sizes::Int64 = size(cs_p, 1)
-    colony_mean_diams_cm::Vector{Float64} = reshape(
-        (inputs[factors=At(cs_p.coral_id .* "_mean_colony_diameter_m")] .* 100.0).data,
-        n_groups_sizes
-    )
-
-    # Colony planar area parameters (see Fig 2B in Aston et al., [1])
-    # First column is `b`, second column is `a`
-    # log(S) = b + a * log(x)
-    pa_params::Array{Float64,2} = planar_area_params()
-
-    # Repeat each entry `n_sizes` times to cover the number size classes represented
-    pa_params = repeat(pa_params; inner=(n_sizes, 1))
-
-    # Estimate colony volume (litres) based on relationship
-    # established by Aston et al. 2022, for each taxa/size class and scenario
-    # Aston et. al. log-log relationship so we apply `exp()` to transform back to dm³
-    colony_litres_per_cm2::Vector{Float64} =
-        exp.(pa_params[:, 1] .+ pa_params[:, 2] .* log.(colony_mean_diams_cm))
-
-    # Convert from dm^3 to m^3
-    cm2_to_m3_per_m2::Float64 = 10^-3
-    colony_vol_m3_per_m2::Vector{Float64} = colony_litres_per_cm2 * cm2_to_m3_per_m2
-
-    # Assumed maximum colony area for each species and scenario, using largest size class
-    max_colony_vol_m3_per_m2::Vector{Float64} = colony_vol_m3_per_m2[n_sizes:n_sizes:end]
-
-    return colony_vol_m3_per_m2, max_colony_vol_m3_per_m2
-end
-
-"""
-    _shelter_species_loop(X::AbstractArray{T1,3}, n_species::Int64, colony_vol_m3_per_m2::Array{F}, max_colony_vol_m3_per_m2::Array{F}, k_area::Array{F})::YAXArray where {T1<:Real,F<:Float64}
-
-Helper method to calculate relative shelter volume metric across each species/size class for a given scenario.
-
-Note: Species dimension is an amalgamation of taxa and size class.
-e.g., X[species=1:6] is Taxa 1, size classes 1-6; X[species=7:12] is Taxa 2, size class 1-6, etc.
+Calculates coral diversity metric as the Gini-Simpson index.
+This is calculated from coral evenness (which is the inverse Simpson's index, `1/D`)
+as `1 - 1/evenness`, which is equivalent to `1 - D`.
 
 # Arguments
-- `X` : raw results (proportional coral cover relative to total area)
-- `n_group_and_size` : number of species (taxa and size classes) considered
-- `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class
-- `max_colony_vol_m3_per_m2` : theoretical maximum volume per m² of coverage for each taxa
-- `k_area` : habitable area of site in m² (i.e., `k` area)
+- `ce` : Coral evenness (inverse Simpson's index).
+- `rs` : A ResultSet object.
 """
-function _shelter_species_loop(
-    X::AbstractArray{T1,3},
-    n_group_and_size::Int64,
-    colony_vol_m3_per_m2::Array{F},
-    max_colony_vol_m3_per_m2::Array{F},
-    k_area::Array{F}
-)::YAXArray where {T1<:Real,F<:Float64}
-    # Calculate absolute shelter volumes first
-    ASV::YAXArray = ZeroDataCube((:timesteps, :species, :locations), size(X))
-    _shelter_species_loop!(X, ASV, n_group_and_size, colony_vol_m3_per_m2, k_area)
-
-    # Maximum shelter volume
-    MSV::Matrix{Float64} = k_area' .* max_colony_vol_m3_per_m2  # in m³
-    # Ensure zero division does not occur
-    # ASV should be 0.0 where MSV is 0.0 so the end result is 0.0 / 1.0
-    MSV[MSV .== 0.0] .= 1.0
-
-    # Number of functional groups
-    n_groups::Int64 = size(MSV, 1)
-    # Number of size classes
-    n_sizes::Int64 = Int64(n_group_and_size / n_groups)
-    # Loop over each taxa group
-
-    RSV::YAXArray = ZeroDataCube(
-        (:timesteps, :species, :locations), size(X[species=1:n_groups]), X.properties
-    )
-    taxa_max_map = zip(
-        [i:(i + n_sizes - 1) for i in 1:n_sizes:n_group_and_size], 1:n_groups
-    )  # map maximum SV for each group
-
-    # Work out RSV for each taxa
-    for (sp, sq) in taxa_max_map
-        for site in 1:size(ASV, :locations)
-            RSV[species=At(sq), locations=At(site)] .=
-                dropdims(
-                    sum(ASV[species=At(sp), locations=At(site)]; dims=:species);
-                    dims=:species
-                ) ./ MSV[sq, site]
-        end
-    end
-
-    return RSV
+function _coral_diversity(
+    ce::YAXArray{T}
+)::YAXArray{T} where {T<:Real}
+    # cd = 1 - (1 / ce)
+    # Replace NaNs and Infs with 0.0
+    cd = 1.0 .- (1.0 ./ ce)
+    replace!(cd.data, NaN => 0.0, Inf => 0.0, -Inf => 0.0)
+    return cd
 end
-
-"""
-    _shelter_species_loop!(X::YAXArray, ASV::YAXArray, nspecies::Int64, colony_vol_m3_per_m2::V, k_area::V) where {V<:AbstractVector{<:Float64}}
-
-Helper method to calculate absolute shelter volume metric across each species/size class for a given scenario.
-
-# Arguments
-- `X` : raw results (proportional coral cover relative to total area)
-- `ASV` : matrix to hold shelter volume results
-- `nspecies` : number of species (taxa and size classes) considered
-- `scen` : scenario number to calculate metric for
-- `colony_vol_m3_per_m2` : estimated cubic volume per m² of coverage for each species/size class
-- `k_area` : habitable area of site in m²
-"""
-function _shelter_species_loop!(
-    X::YAXArray,
-    ASV::YAXArray,
-    nspecies::Int64,
-    colony_vol_m3_per_m2::V,
-    k_area::V
-) where {V<:AbstractVector{<:Float64}}
-    for sp::Int64 in 1:nspecies
-        # SV represents absolute shelter volume in cubic meters
-        ASV[species=At(sp)] = (X[species=At(sp)] .* k_area') .* colony_vol_m3_per_m2[sp]
-    end
+function _coral_diversity(rs::ResultSet)::AbstractArray{<:Real}
+    ce = coral_evenness(rs)
+    return _coral_diversity(ce)
 end
+coral_diversity = Metric(
+    _coral_diversity,
+    (:timesteps, :locations, :scenarios), # Input from coral_evenness
+    (:timesteps, :locations, :scenarios), # Output dims
+    "Diversity",
+    IS_NOT_RELATIVE
+)
 
 """
-    absolute_shelter_volume(X::YAXArray{T,3}, k_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
-    absolute_shelter_volume(X::YAXArray{T,4}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
-    absolute_shelter_volume(X::YAXArray{T,3}, k_area::Vector{T}, inputs::YAXArray)::AbstractArray{T} where {T<:Real}
+    absolute_shelter_volume(X::YAXArray{T,4}, k_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
     absolute_shelter_volume(X::YAXArray{T,4}, k_area::Vector{T}, inputs::YAXArray)::AbstractArray{T} where {T<:Real}
+    absolute_shelter_volume(X::YAXArray{T,5}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
+    absolute_shelter_volume(X::YAXArray{T,5}, k_area::Vector{T}, inputs::YAXArray)::AbstractArray{T} where {T<:Real}
     absolute_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume in volume of cubic meters.
@@ -520,74 +530,103 @@ shelter volume (a 3D metric).
    https://doi.org/10.1016/j.ecolind.2020.107151
 """
 function _absolute_shelter_volume(
-    X::YAXArray{T,3},
+    X::YAXArray{T,4},
     k_area::Vector{T},
     inputs::DataFrameRow
 )::AbstractArray{T} where {T<:Real}
     _inputs::YAXArray = DataCube(
         Matrix(Vector(inputs)'); scenarios=1:1, factors=names(inputs)
     )
-
     return _absolute_shelter_volume(X, k_area, _inputs)
 end
 function _absolute_shelter_volume(
     X::YAXArray{T,4},
+    k_area::Vector{T},
+    inputs::YAXArray
+)::AbstractArray{T} where {T<:Real}
+    # Calculate colony mean area for each group and size class
+    n_groups = size(X, 2)
+    n_sizes = size(X, 3)
+    _, _, cs_p::DataFrame = coral_spec()
+    col_mask = inputs.factors .∈ Ref(cs_p.coral_id .* "_mean_colony_diameter_m")
+    colony_mean_diams_cm::Array{Float64} =
+        reshape(
+            (collect(inputs[factors=col_mask]) .* 100.0),
+            n_sizes, n_groups
+        )'
+    col_mean_area = colony_mean_area(colony_mean_diams_cm)
+
+    # Colony planar area parameters (see Fig 2B in Aston et al., [1])
+    # First column is `b`, second column is `a`
+    # log(S) = b + a * log(x)
+    pa_params::Array{Float64,3} = repeat(
+        reshape(planar_area_params(), (n_groups, 1, 2)), 1, n_sizes, 1
+    )
+
+    ASV::YAXArray = ZeroDataCube(
+        (:timesteps, :groups, :sizes, :locations), size(X), X.properties
+    )
+    ADRIAIndicators.absolute_shelter_volume!(
+        X.data, colony_mean_diams_cm, pa_params, k_area, ASV.data
+    )
+
+    return dropdims(sum(ASV; dims=(2, 3)); dims=(2, 3))
+end
+function _absolute_shelter_volume(
+    X::YAXArray{T,5},
     k_area::Vector{T},
     inputs::DataFrame
 )::AbstractArray{T} where {T<:Real}
     _inputs::YAXArray = DataCube(
-        Matrix(inputs); scenarios=1:size(inputs, 1), factors=names(inputs)
+        Matrix(inputs); scenarios=1:size(X, 5), factors=names(inputs)
     )
-
     return _absolute_shelter_volume(X, k_area, _inputs)
 end
 function _absolute_shelter_volume(
-    X::YAXArray{T,3},
+    X::YAXArray{T,5},
     k_area::Vector{T},
     inputs::YAXArray
 )::AbstractArray{T} where {T<:Real}
-    # Collate for a single scenario
-    nspecies::Int64 = size(X, :species)
-
-    # Calculate shelter volume of groups and size classes and multiply with area covered
-    ASV::YAXArray = ZeroDataCube(
-        (:timesteps, :species, :locations), size(X), X.properties
+    n_sizes::Int64 = size(X, :sizes)
+    n_groups::Int64 = size(X, :groups)
+    n_scens::Int64 = size(X, :scenarios)
+    pa_params::Array{Float64,3} = repeat(
+        reshape(planar_area_params(), (n_groups, 1, 2)), 1, n_sizes, 1
     )
 
-    colony_vol, _ = _colony_Lcm2_to_m3m2(inputs)
-    _shelter_species_loop!(X, ASV, nspecies, colony_vol, k_area)
+    _, _, cs_p::DataFrame = coral_spec()
+    col_mask = inputs.factors .∈ Ref(cs_p.coral_id .* "_mean_colony_diameter_m")
+    # Flattened Mean colony diameters with shape [scenarios ⋅ groups_sizes]
+    flat_mean_diams::Matrix{Float64} = Matrix(inputs.data[:, col_mask])
+    # Mean colony diameters with shape [groups ⋅ sizes ⋅ scenarios]
+    colony_mean_diams_cm::Array{Float64,3} =
+        permutedims(reshape(
+                flat_mean_diams, (n_scens, n_sizes, n_groups)
+            ), (3, 2, 1)) .* 100
+    col_mean_area = colony_mean_area(colony_mean_diams_cm)
 
-    # Sum over groups and size classes to estimate total shelter volume per site
-    return dropdims(sum(ASV; dims=:species); dims=:species)
-end
-function _absolute_shelter_volume(
-    X::YAXArray{T,4},
-    k_area::Vector{T},
-    inputs::YAXArray
-)::AbstractArray{T} where {T<:Real}
-    nspecies::Int64 = size(X, :species)
-
-    # Calculate shelter volume of groups and size classes and multiply with area covered
-    nscens::Int64 = size(X, :scenarios)
     ASV::YAXArray = ZeroDataCube(
-        (:timesteps, :species, :locations, :scenarios), size(X), X.properties
+        (:timesteps, :groups, :sizes, :locations, :scenarios), size(X), X.properties
     )
-
-    for scen::Int64 in 1:nscens
-        colony_vol, _ = _colony_Lcm2_to_m3m2(inputs[scen, :])
-        _shelter_species_loop!(
-            X[scenarios=scen], ASV[scenarios=scen], nspecies, colony_vol, k_area
+    for scen::Int64 in 1:n_scens
+        ADRIAIndicators.absolute_shelter_volume!(
+            view(X.data, :, :, :, :, scen),
+            view(col_mean_area, :, :, scen),
+            pa_params,
+            k_area,
+            view(ASV.data, :, :, :, :, scen)
         )
     end
 
     # Sum over groups and size classes to estimate total shelter volume per site
-    return dropdims(sum(ASV; dims=:species); dims=:species)
+    return dropdims(sum(ASV; dims=(:groups, :sizes)); dims=(:groups, :sizes))
 end
 function _absolute_shelter_volume(rs::ResultSet)::AbstractArray
     return rs.outcomes[:absolute_shelter_volume]
 end
 absolute_shelter_volume = Metric(
     _absolute_shelter_volume,
+    (:timesteps, :groups, :sizes, :locations, :scenarios),
     (:timesteps, :locations, :scenarios),
     "Volume",
     IS_NOT_RELATIVE,
@@ -595,12 +634,10 @@ absolute_shelter_volume = Metric(
 )
 
 """
-    relative_shelter_volume(X::AbstractArray{T,3}, k_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
-    relative_shelter_volume(X::AbstractArray{T,3}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
-    relative_shelter_volume(X::AbstractArray{T,3}, k_area::Vector{T}, inputs::YAXArray)::AbstractArray{T} where {T<:Real}
     relative_shelter_volume(X::AbstractArray{T,4}, k_area::Vector{T}, inputs::DataFrameRow)::AbstractArray{T} where {T<:Real}
-    relative_shelter_volume(X::AbstractArray{T,4}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
     relative_shelter_volume(X::AbstractArray{T,4}, k_area::Vector{T}, inputs::YAXArray)::AbstractArray{T} where {T<:Real}
+    relative_shelter_volume(X::AbstractArray{T,5}, k_area::Vector{T}, inputs::DataFrame)::AbstractArray{T} where {T<:Real}
+    relative_shelter_volume(X::AbstractArray{T,5}, k_area::Vector{T}, inputs::YAXArray)::AbstractArray{T} where {T<:Real}
     relative_shelter_volume(rs::ResultSet)
 
 Provide indication of shelter volume relative to theoretical maximum volume for the area
@@ -635,88 +672,99 @@ Kulbicki, M., Quod, J.-P., Dutrieux, E., Garnier, R., Henrich Bruggemann, J., Pe
 https://doi.org/10.1016/j.ecolind.2020.107151
 """
 function _relative_shelter_volume(
-    X::AbstractArray{T,3},
+    X::YAXArray{T,4},
     k_area::Vector{T},
-    scens::DataFrameRow
+    inputs::DataFrameRow
 )::AbstractArray{T} where {T<:Real}
-    return _relative_shelter_volume(X, k_area, DataFrame(scens))
-end
-function _relative_shelter_volume(
-    X::AbstractArray{T,3},
-    k_area::Vector{T},
-    scens::DataFrame
-)::AbstractArray{T} where {T<:Real}
-    @assert size(scens, 1) == 1 "Scens DataFrame should have only one line"
     _inputs::YAXArray = DataCube(
-        Matrix(scens); scenarios=axes(scens, 1), factors=names(scens)
+        Matrix(Vector(inputs)'); scenarios=1:1, factors=names(inputs)
     )
     return _relative_shelter_volume(X, k_area, _inputs)
 end
 function _relative_shelter_volume(
-    X::AbstractArray{T,3},
+    X::AbstractArray{T,4},
     k_area::Vector{T},
-    scens::YAXArray
+    inputs::YAXArray
 )::AbstractArray{T} where {T<:Real}
-    # Collate for a single scenario
-    nspecies::Int64 = size(X, :species)
+    # Calculate colony mean area for each group and size class
+    n_groups = size(X, 2)
+    n_sizes = size(X, 3)
+    _, _, cs_p::DataFrame = coral_spec()
+    col_mask = inputs.factors .∈ Ref(cs_p.coral_id .* "_mean_colony_diameter_m")
+    colony_mean_diams_cm::Array{Float64} =
+        reshape(
+            (collect(inputs[col_mask]) .* 100.0),
+            n_sizes, n_groups
+        )'
+    col_mean_area = colony_mean_area(colony_mean_diams_cm)
 
-    # Calculate shelter volume of groups and size classes and multiply with covers
-    colony_vol::Array{Float64}, max_colony_vol::Array{Float64} = _colony_Lcm2_to_m3m2(
-        scens
+    # Colony planar area parameters (see Fig 2B in Aston et al., [1])
+    # First column is `b`, second column is `a`
+    # log(S) = b + a * log(x)
+    pa_params::Array{Float64,3} = repeat(
+        reshape(planar_area_params(), (n_groups, 1, 2)), 1, n_sizes, 1
     )
-    RSV::YAXArray = _shelter_species_loop(X, nspecies, colony_vol, max_colony_vol, k_area)
 
-    # Sum over groups and size classes to estimate total shelter volume
-    # proportional to the theoretical maximum (per site)
-    RSV = dropdims(sum(RSV; dims=:species); dims=:species)
+    RSV::YAXArray = ZeroDataCube(
+        (:timesteps, :groups, :sizes, :locations), size(X), X.properties
+    )
+    ADRIAIndicators.relative_shelter_volume!(
+        X.data, colony_mean_diams_cm, pa_params, k_area, RSV.data
+    )
 
+    RSV = dropdims(sum(RSV; dims=(2, 3)); dims=(2, 3))
     clamp!(RSV, 0.0, 1.0)
+
     return RSV
 end
 function _relative_shelter_volume(
-    X::AbstractArray{T,4},
+    X::YAXArray{T,5},
     k_area::Vector{T},
-    scens::DataFrameRow
-)::AbstractArray{T} where {T<:Real}
-    return _relative_shelter_volume(X, k_area, DataFrame(scens))
-end
-function _relative_shelter_volume(
-    X::AbstractArray{T,4},
-    k_area::Vector{T},
-    scens::DataFrame
+    inputs::DataFrame
 )::AbstractArray{T} where {T<:Real}
     _inputs::YAXArray = DataCube(
-        Matrix(scens); scenarios=axes(scens, 1), factors=names(scens)
+        Matrix(inputs); scenarios=1:size(X, 5), factors=names(inputs)
     )
     return _relative_shelter_volume(X, k_area, _inputs)
 end
 function _relative_shelter_volume(
-    X::AbstractArray{T,4},
+    X::AbstractArray{T,5},
     k_area::Vector{T},
-    scens::YAXArray
+    inputs::YAXArray
 )::YAXArray where {T<:Real}
-    @assert size(scens, :scenarios) == size(X, :scenarios)  # Number of results should match number of scenarios
-
-    nspecies::Int64 = size(X, :species)
-    nscens::Int64 = size(X, :scenarios)
-
-    # Result template - six entries, one for each taxa
-    n_groups::Int64 = length(coral_spec().taxa_names)
-    RSV::YAXArray = ZeroDataCube(
-        (:timesteps, :species, :locations, :scenarios),
-        size(X[:, 1:n_groups, :, :]),
-        X.properties
+    n_sizes::Int64 = size(X, :sizes)
+    n_groups::Int64 = size(X, :groups)
+    n_scens::Int64 = size(X, :scenarios)
+    pa_params::Array{Float64,3} = repeat(
+        reshape(planar_area_params(), (n_groups, 1, 2)), 1, n_sizes, 1
     )
-    for scen::Int64 in 1:nscens
-        colony_vol, max_colony_vol = _colony_Lcm2_to_m3m2(scens[scen, :])
-        RSV[scenarios=scen] .= _shelter_species_loop(
-            X[scenarios=scen], nspecies, colony_vol, max_colony_vol, k_area
+
+    _, _, cs_p::DataFrame = coral_spec()
+    col_mask = inputs.factors .∈ Ref(cs_p.coral_id .* "_mean_colony_diameter_m")
+    # Flattened Mean colony diameters with shape [scenarios ⋅ groups_sizes]
+    flat_mean_diams::Matrix{Float64} = Matrix(inputs[:, col_mask])
+    # Mean colony diameters with shape [groups ⋅ sizes ⋅ scenarios]
+    colony_mean_diams_cm::Array{Float64,3} =
+        permutedims(reshape(
+                flat_mean_diams, (n_scens, n_sizes, n_groups)
+            ), (3, 2, 1)) .* 100
+
+    RSV::YAXArray = ZeroDataCube(
+        (:timesteps, :groups, :sizes, :locations, :scenarios), size(X), X.properties
+    )
+    for scen::Int64 in 1:n_scens
+        ADRIAIndicators.relative_shelter_volume!(
+            view(X.data, :, :, :, :, scen),
+            view(colony_mean_diams_cm, :, :, scen),
+            pa_params,
+            k_area,
+            view(RSV.data, :, :, :, :, scen)
         )
     end
 
     # Sum over groups and size classes to estimate total shelter volume
     # proportional to the theoretical maximum (per site)
-    RSV = dropdims(sum(RSV; dims=:species); dims=:species)
+    RSV = dropdims(sum(RSV; dims=(:groups, :sizes)); dims=(:groups, :sizes))
 
     clamp!(RSV, 0.0, 1.0)
     return RSV
@@ -726,6 +774,7 @@ function _relative_shelter_volume(rs::ResultSet)::YAXArray
 end
 relative_shelter_volume = Metric(
     _relative_shelter_volume,
+    (:timesteps, :groups, :sizes, :locations, :scenarios),
     (:timesteps, :locations, :scenarios),
     "Relative Volume",
     IS_RELATIVE
