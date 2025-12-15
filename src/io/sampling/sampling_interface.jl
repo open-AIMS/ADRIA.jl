@@ -260,9 +260,6 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[df.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .=
         0.0
 
-    # Also zero out strategy parameters for counterfactuals and unguided
-    df[df.guided .<= 0.0, [:seed_strategy, :fog_strategy]] .= 0.0
-
     # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
     non_depth_names = vcat(
         seed_weights.fieldname,
@@ -270,6 +267,10 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     )
     df[df.guided .<= 0.0, non_depth_names] .= 0.0  # Turn off weights for unguided and cf
     df[df.guided .== -1.0, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
+
+    # Also deactivate strategy parameters for counterfactuals and unguided
+    df[df.guided .== 0.0, [:seed_strategy, :fog_strategy]] .= 0.0
+    df[df.guided .== -1.0, [:seed_strategy, :fog_strategy]] .= -1.0
 
     # If unguided, set planning horizon to 0.
     df[df.guided .== 0.0, :plan_horizon] .= 0.0

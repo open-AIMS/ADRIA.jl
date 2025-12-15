@@ -97,7 +97,7 @@ function filter_candidate_locations(
     recent_losses = if isempty(state.recent_cover_losses)
         trues(length(state.current_cover))
     else
-        (first(state.recent_cover_losses) .>= strategy.loss_threshold)
+        (state.recent_cover_losses .>= strategy.loss_threshold)
     end
 
     above_min_cover = (state.current_cover .> strategy.min_cover_remaining)
