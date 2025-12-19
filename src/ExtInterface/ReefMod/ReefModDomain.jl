@@ -184,6 +184,8 @@ function load_domain(
         dhw_scens,
         wave_scens,
         cyclone_mortality_scens,
+        location_ids,
+        location_ids,
         model,
         SimConstants()
     )

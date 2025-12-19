@@ -307,6 +307,8 @@ function load_domain(
             dhw_scens,
             wave_scens,
             cyc_scens,
+            reef_ids,
+            reef_ids,
             model,
             SimConstants()
         )
