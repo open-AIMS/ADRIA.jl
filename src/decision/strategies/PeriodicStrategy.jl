@@ -45,7 +45,17 @@ function is_decision_year(
     strategy::PeriodicStrategy,
     timestep::Int64
 )::Bool
-    return strategy.decision_years[timestep]
+    make_decision = try
+        strategy.decision_years[timestep]
+    catch err
+        if !(err isa BoundsError)
+            rethrow(err)
+        end
+
+        false
+    end
+
+    return make_decision
 end
 
 """
