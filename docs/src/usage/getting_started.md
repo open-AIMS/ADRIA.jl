@@ -119,3 +119,22 @@ save("path_to_save_figure", fig)
 ```
 
 See [Analysis](@ref) for further examples of analysis and plots.
+
+## Shared package depot paths
+
+If parallel runs are to be conducted, it is recommended to set a shared `JULIA_DEPOT_PATH`.
+This is so each individual worker does not race against each other to compile packages.
+
+On Linux:
+
+```shell
+export JULIA_DEPOT_PATH="/some_shared_accessible_directory"
+```
+
+On Windows:
+
+```shell
+set JULIA_DEPOT_PATH="some_shared_accessible_directory"
+```
+
+https://docs.julialang.org/en/v1/manual/environment-variables/#JULIA_DEPOT_PATH
