@@ -241,7 +241,6 @@ function combine_results(result_sets...)::ResultSet
         end
     end
 
-    compressor = Zarr.BloscCompressor(; cname="zstd", clevel=6, shuffle=true)
     metrics = keys(rs1.outcomes)
     for m_name in metrics
         m_dim_names = axes_names(rs1.outcomes[m_name])
@@ -264,7 +263,7 @@ function combine_results(result_sets...)::ResultSet
                 string(m_name)),
             chunks=(result_dims[1:(end - 1)]..., 1),
             attrs=dim_struct,
-            compressor=compressor
+            compressor=COMPRESSOR
         )
 
         # Copy results over
