@@ -1,26 +1,3 @@
-module decision
-
-using InteractiveUtils: subtypes
-using StatsBase
-using YAXArrays
-using ADRIA:
-    component_params,
-    DataCube,
-    Domain,
-    EcoModel,
-    n_locations,
-    loc_area,
-    loc_k_area
-
-using ADRIA:
-    DiscreteOrderedUniformDist,
-    Factor
-
-using
-    Combinatorics,
-    DataFrames,
-    JMcDM
-
 const COUNTERFACTUAL_SCEN_ENCODING::Int64 = -1
 const UNGUIDED_SCEN_ENCODING::Int64 = 0
 
@@ -293,24 +270,4 @@ function unguided_selection(
     sel = StatsBase.sample(candidate_locs, s_iv_locs; replace=false)
 
     return location_ids[sel]
-end
-
-include("Criteria/DecisionPreferences.jl")
-include("Criteria/DecisionWeights.jl")
-include("location_selection.jl")
-
-export
-    SeedPreferences,
-    FogPreferences,
-    # SRMPreferences,
-    decision_matrix,
-    filter_criteria,
-    update_criteria_values!,
-    select_locations,
-    unguided_selection,
-    decision_frequency,
-    weighted_projection,
-    identify_within_depth_bounds,
-    summary_stat_env,
-    mcda_methods
 end

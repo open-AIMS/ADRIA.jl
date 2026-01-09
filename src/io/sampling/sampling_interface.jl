@@ -218,6 +218,31 @@ function fix_factor!(d::Domain; factors...)::Nothing
 end
 
 """
+    gamma_to_dirichlet(p::Vector{AbstractFloat}; G=Gamma(1))
+
+Gamma-Dirichlet transformation.
+
+Use Gamma distribution trick to convert values `p` into those that sum to 1.
+
+Treat vector `p` as probability levels (0 - 1), used to compute corresponding
+quantiles from a Gamma distribution. These are normalized so that the transformation sums
+to 1.
+
+Taking the quantiles from a Gamma distribution with α:=1 creates a uniform Dirichlet sample.
+
+# Arguments
+- `p` : Vector of probability levels
+- `G` : Gamma distribution (default: Gamma(α=1))
+
+# Returns
+Vector of values that sum to 1.
+"""
+function gamma_to_dirichlet(p::Vector{AbstractFloat}; G=Gamma(1))
+    gamma_samples = quantile.(G, p)
+    return gamma_samples ./ sum(gamma_samples)
+end
+
+"""
     get_bounds(dom::Domain, factor::Symbol)::NTuple{2,Float64}
     get_bounds(param::Param)::NTuple{2,Float64}
 
@@ -260,14 +285,25 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[df.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .=
         0.0
 
-    # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
+    # Treat weight parameters as Gamma quantiles and transform so they sum to 1
+    for (i, r) in enumerate(eachrow(df))
+        df[i, seed_weights.fieldname] .= gamma_to_dirichlet(r[seed_weights.fieldname])
+        df[i, fog_weights.fieldname] .= gamma_to_dirichlet(r[fog_weights.fieldname])
+    end
+
+    # Collect MCDA weight parameters
     non_depth_names = vcat(
         seed_weights.fieldname,
         fog_weights.fieldname
     )
-    df[df.guided .== 0.0, non_depth_names] .= 0.0  # Turn off weights for unguided
-    df[df.guided .== -1.0, non_depth_names] .= 0.0  # Turn off weights for cf
+
+    # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
+    df[df.guided .<= 0.0, non_depth_names] .= 0.0  # Turn off weights for unguided and cf
     df[df.guided .== -1.0, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
+
+    # Also deactivate strategy parameters for counterfactuals and unguided
+    df[df.guided .== 0.0, [:seed_strategy, :fog_strategy]] .= 1.0  # Set to periodic strategy
+    df[df.guided .== -1.0, [:seed_strategy, :fog_strategy]] .= -1.0
 
     # If unguided, set planning horizon to 0.
     df[df.guided .== 0.0, :plan_horizon] .= 0.0
@@ -284,6 +320,24 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     not_shaded = (df.SRM .== 0)
     df[not_shaded, contains.(names(df), "shade_")] .= 0.0
 
+    # Reactive Seed and Fog
+    not_reactive = (df.seed_strategy .!= 1) .& (df.fog_strategy .!= 1)
+    reactive_params = [
+        :reactive_absolute_threshold,
+        :reactive_loss_threshold,
+        :reactive_min_cover_remaining,
+        :reactive_response_delay,
+        :reactive_cooldown_period
+    ]
+    df[not_reactive, reactive_params] .= 0.0
+
+    # Deactivate periodic parameters when reactive strategy is in place
+    is_reactive = (df.seed_strategy .== 1)
+    df[is_reactive, [:seed_deployment_freq]] .= 0.0
+
+    not_periodic_fog = (df.fog_strategy .!= 1)
+    df[not_periodic_fog, [:fog_deployment_freq]] .= 0.0
+
     # Normalize MCDA weights for fogging scenarios
     guided_fogged = (df.fogging .> 0.0) .& (df.guided .> 0)
     df[guided_fogged, fog_weights.fieldname] .= mcda_normalize(
@@ -294,6 +348,10 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[guided_seeded, seed_weights.fieldname] .= mcda_normalize(
         df[guided_seeded, seed_weights.fieldname]
     )
+
+    # Disable wave decisions if no wave stress is used
+    no_wave_scenario = df.wave_scenario .== 0.0
+    df[no_wave_scenario, :seed_wave_stress] .= 0.0
 
     if nrow(unique(df)) < nrow(df)
         perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(df)) / nrow(df))) * 100.0))%"

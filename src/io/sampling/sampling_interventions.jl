@@ -37,6 +37,7 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
         d;
         wave_scenario=0.0,
         cyclone_mortality_scenario=0.0
+        # seed_strategy=0.0
     )
 
     # Assume coral model has been perfectly parameterized
@@ -44,11 +45,11 @@ function sample_set(d::Domain, n::Int64, rcp::String)::DataFrame
     ADRIA.fix_factor!(d, coral_params)
 
     # Fix coral seeding weights
-    # seed_criteria_params = ADRIA.component_params(
-    #     d.model,
-    #     ADRIA.SeedCriteriaWeights
-    # )
-    # ADRIA.fix_factor!(d, seed_criteria_params.fieldname)
+    seed_criteria_params = ADRIA.component_params(
+        d.model,
+        ADRIA.SeedCriteriaWeights
+    )
+    ADRIA.fix_factor!(d, seed_criteria_params.fieldname)
 
     scenarios = ADRIA.sample(d, n)
 

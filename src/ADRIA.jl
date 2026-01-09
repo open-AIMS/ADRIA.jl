@@ -64,7 +64,7 @@ include("io/datacubes.jl")
 include("io/inputs.jl")  # Need to define input types before MCDA to make types available
 include("io/initial_coral_cover.jl")
 
-include("decision/dMCDA.jl")
+include("decision/Decision.jl")
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")

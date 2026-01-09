@@ -92,16 +92,29 @@ function ADRIA.viz.rules_scatter!(
     n_factors = length(rules)
     n_rows, n_cols = _calc_gridsize(n_factors)
     spec = model_spec(rs)
+    feat_names = names(scenarios)
     for r in 1:n_rows
         for c in 1:n_cols
             # Get condition clauses to be shown in x and y axis
             index = c + (r - 1) * n_cols
-            length(rules) < index && break
+            if length(rules) < index
+                break
+            end
+
             condition = rules[index].condition
 
             # Human readable feature names
             fieldnames::Vector{String} = first.(condition)
-            feature_names = _feature_names(fieldnames, spec)
+            feature_names = try
+                _feature_names(fieldnames, spec)
+            catch err
+                if !(err isa BoundsError)
+                    rethrow(err)
+                end
+
+                # Fallback to matching fieldnames
+                string.([feat_names[feat_names .== f][1] for f in fieldnames])
+            end
 
             ax::Axis = Axis(
                 sub_g[r, c];

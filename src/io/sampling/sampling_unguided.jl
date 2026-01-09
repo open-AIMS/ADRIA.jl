@@ -1,5 +1,5 @@
 """
-    sample_unguided(d::Domain, n::Int64, sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
+    sample_unguided(d::Domain, n::Int64; sample_method=SobolSample(R=OwenScramble(base=2, pad=32)))::DataFrame
 
 Generate only unguided scenarios.
 
@@ -12,7 +12,7 @@ Generate only unguided scenarios.
 Scenario specification
 """
 function sample_unguided(
-    d::Domain, n::Int64, sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
+    d::Domain, n::Int64; sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
     cb_calib_groups::Vector{Int64} = d.loc_data.CB_CALIB_GROUPS
     spec_df = _filtered_model_spec(model_spec(d), cb_calib_groups)
