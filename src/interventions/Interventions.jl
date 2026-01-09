@@ -147,20 +147,20 @@ Base.@kwdef struct Intervention <: EcoModel
     )
     # Intervention strategy parameters
     seed_strategy::Param = Factor(
-        1;
+        2;
         ptype="ordered categorical",
         dist=CategoricalDistribution,
-        dist_params=(0.0, 1.0),
+        dist_params=(1.0, 2.0),
         name="Seed Strategy Type",
-        description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based)"
+        description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based); 0 is off"
     )
     fog_strategy::Param = Factor(
-        1;
+        2;
         ptype="ordered categorical",
         dist=CategoricalDistribution,
-        dist_params=(0.0, 1.0),
+        dist_params=(1.0, 2.0),
         name="Fog Strategy Type",
-        description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based)"
+        description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based); 0 is off"
     )
     reactive_absolute_threshold::Param = Factor(
         0.95;

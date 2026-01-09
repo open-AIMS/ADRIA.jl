@@ -302,7 +302,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[df.guided .== -1.0, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
 
     # Also deactivate strategy parameters for counterfactuals and unguided
-    df[df.guided .== 0.0, [:seed_strategy, :fog_strategy]] .= 0.0
+    df[df.guided .== 0.0, [:seed_strategy, :fog_strategy]] .= 1.0  # Set to periodic strategy
     df[df.guided .== -1.0, [:seed_strategy, :fog_strategy]] .= -1.0
 
     # If unguided, set planning horizon to 0.

@@ -630,7 +630,7 @@ function run_model(
         MCDA_approach = mcda_methods()[Int64(param_set[At("guided")])]
     end
 
-    is_reactive = param_set[At("seed_strategy")] == 1 || param_set[At("fog_strategy")] == 1
+    is_reactive = param_set[At("seed_strategy")] == 2 || param_set[At("fog_strategy")] == 2
 
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
