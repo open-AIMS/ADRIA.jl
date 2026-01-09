@@ -218,7 +218,7 @@ function fix_factor!(d::Domain; factors...)::Nothing
 end
 
 """
-    gamma_to_dirichlet(p::Vector{AbstractFloat}; G=Gamma(1))
+    gamma_to_dirichlet(p; G=Gamma(1))
 
 Gamma-Dirichlet transformation.
 
@@ -237,7 +237,7 @@ Taking the quantiles from a Gamma distribution with α:=1 creates a uniform Diri
 # Returns
 Vector of values that sum to 1.
 """
-function gamma_to_dirichlet(p::Vector{AbstractFloat}; G=Gamma(1))
+function gamma_to_dirichlet(p; G=Gamma(1))
     gamma_samples = quantile.(G, p)
     return gamma_samples ./ sum(gamma_samples)
 end
