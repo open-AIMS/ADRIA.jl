@@ -218,6 +218,31 @@ function fix_factor!(d::Domain; factors...)::Nothing
 end
 
 """
+    gamma_to_dirichlet(p::Vector{AbstractFloat}; G=Gamma(1))
+
+Gamma-Dirichlet transformation.
+
+Use Gamma distribution trick to convert values `p` into those that sum to 1.
+
+Treat vector `p` as probability levels (0 - 1), used to compute corresponding
+quantiles from a Gamma distribution. These are normalized so that the transformation sums
+to 1.
+
+Taking the quantiles from a Gamma distribution with α:=1 creates a uniform Dirichlet sample.
+
+# Arguments
+- `p` : Vector of probability levels
+- `G` : Gamma distribution (default: Gamma(α=1))
+
+# Returns
+Vector of values that sum to 1.
+"""
+function gamma_to_dirichlet(p::Vector{AbstractFloat}; G=Gamma(1))
+    gamma_samples = quantile.(G, p)
+    return gamma_samples ./ sum(gamma_samples)
+end
+
+"""
     get_bounds(dom::Domain, factor::Symbol)::NTuple{2,Float64}
     get_bounds(param::Param)::NTuple{2,Float64}
 
@@ -260,11 +285,19 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[df.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .=
         0.0
 
-    # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
+    # Treat weight parameters as Gamma quantiles and transform so they sum to 1
+    for (i, r) in enumerate(eachrow(df))
+        df[i, seed_weights.fieldname] .= gamma_to_dirichlet(r[seed_weights.fieldname])
+        df[i, fog_weights.fieldname] .= gamma_to_dirichlet(r[fog_weights.fieldname])
+    end
+
+    # Collect MCDA weight parameters
     non_depth_names = vcat(
         seed_weights.fieldname,
         fog_weights.fieldname
     )
+
+    # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
     df[df.guided .<= 0.0, non_depth_names] .= 0.0  # Turn off weights for unguided and cf
     df[df.guided .== -1.0, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
 
