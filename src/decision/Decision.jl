@@ -33,7 +33,7 @@ export
     SeedPreferences,
     FogPreferences,
     # SRMPreferences,
-    #Helper Methods
+    # Helper Methods
     decision_matrix,
     filter_criteria,
     update_criteria_values!,
