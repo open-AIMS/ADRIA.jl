@@ -227,7 +227,7 @@ function load_domain(
 
     # Need to load initial coral cover after we know `k` area.
     init_coral_cover::YAXArray{Float64} = load_initial_cover(
-        RMEDomain, data_files, loc_ids, spatial_data; force_single_reef=force_single_reef
+        RMEDomain, data_files, loc_ids, spatial_data
     )
 
     conn_data::YAXArray{Float64} = load_connectivity_csv(
@@ -594,14 +594,12 @@ end
 - `RMEDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
-- `force_single_reef` : Boolean
 
 # Returns
 YAXArray[locs, species]
 """
 function load_initial_cover(
-    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame;
-    force_single_reef::Bool=false
+    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame
 )::YAXArray
     icc_path = _data_folder_path(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
