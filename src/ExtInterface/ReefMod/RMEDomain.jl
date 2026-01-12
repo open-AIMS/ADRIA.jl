@@ -142,8 +142,10 @@ function load_domain(
     # Adjust spatial data if `force_single_reef == true`
     single_reef_idx = collect(1:nrow(spatial_data))  # select all locations by default
     if force_single_reef
-        if !isempty(force_single_reef_id)
-            single_reef_idx = findall(spatial_data.UNIQUE_ID .== force_single_reef_id)
+        single_reef_idx = if isempty(force_single_reef_id)
+            [1]
+        else
+            findall(spatial_data.UNIQUE_ID .== force_single_reef_id)
         end
 
         spatial_data = spatial_data[single_reef_idx, :]
