@@ -142,8 +142,10 @@ function load_domain(
     # Adjust spatial data if `force_single_reef == true`
     single_reef_idx = collect(1:nrow(spatial_data))  # select all locations by default
     if force_single_reef
-        if !isempty(force_single_reef_id)
-            single_reef_idx = findall(spatial_data.UNIQUE_ID .== force_single_reef_id)
+        single_reef_idx = if isempty(force_single_reef_id)
+            [1]
+        else
+            findall(spatial_data.UNIQUE_ID .== force_single_reef_id)
         end
 
         spatial_data = spatial_data[single_reef_idx, :]
@@ -225,7 +227,7 @@ function load_domain(
 
     # Need to load initial coral cover after we know `k` area.
     init_coral_cover::YAXArray{Float64} = load_initial_cover(
-        RMEDomain, data_files, loc_ids, spatial_data; force_single_reef=force_single_reef
+        RMEDomain, data_files, loc_ids, spatial_data
     )
 
     conn_data::YAXArray{Float64} = load_connectivity_csv(
@@ -592,14 +594,12 @@ end
 - `RMEDomain`
 - `data_path` : path to ReefMod data
 - `loc_ids` : location ids
-- `force_single_reef` : Boolean
 
 # Returns
 YAXArray[locs, species]
 """
 function load_initial_cover(
-    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame;
-    force_single_reef::Bool=false
+    ::Type{RMEDomain}, data_path::String, loc_ids::Vector{String}, loc_data::DataFrame
 )::YAXArray
     icc_path = _data_folder_path(data_path, "initial")
     icc_files = _get_relevant_files(icc_path, "coral_")
