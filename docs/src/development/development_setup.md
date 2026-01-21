@@ -16,7 +16,7 @@ In such cases, use the alternate MSIX App installer (https://install.julialang.o
 - We recommend [VS Code](https://code.visualstudio.com/) with its Julia extension when developing ADRIA.
 - Install the VS Code Julia Formatter extension (note: **not** the JuliaFormatter.jl package).
 - We also recommend the built-in Julia REPL within VS Code be used (see the notes below).
-
+- If parallel runs will be done, it is recommended to set a shared [`JULIA_DEPOT_PATH`](https://docs.julialang.org/en/v1/manual/environment-variables/#JULIA_DEPOT_PATH)
 
 ## Initial Setup
 
