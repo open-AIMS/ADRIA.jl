@@ -287,8 +287,14 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
 
     # Treat weight parameters as Gamma quantiles and transform so they sum to 1
     for (i, r) in enumerate(eachrow(df))
-        df[i, seed_weights.fieldname] .= gamma_to_dirichlet(r[seed_weights.fieldname])
-        df[i, fog_weights.fieldname] .= gamma_to_dirichlet(r[fog_weights.fieldname])
+        if r.guided > 0
+            df[i, seed_weights.fieldname] .= gamma_to_dirichlet(
+                collect(r[seed_weights.fieldname])
+            )
+            df[i, fog_weights.fieldname] .= gamma_to_dirichlet(
+                collect(r[fog_weights.fieldname])
+            )
+        end
     end
 
     # Collect MCDA weight parameters
