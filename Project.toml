@@ -1,7 +1,7 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
 authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony", "Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
-version = "0.15.0"
+version = "0.15.1"
 
 [deps]
 ADRIAIndicators = "05ad51df-066f-4748-8c47-f6b67db83211"
