@@ -570,10 +570,6 @@ function settler_DHW_tolerance!(
 end
 
 """
-    fecundity_scope!(fec_groups::Array{Float64, 2}, fec_all::Array{Float64, 2},
-                     fec_params::Array{Float64}, C_cover_t::Array{Float64, 2},
-                     k_area::Array{Float64})::Nothing
-
     fecundity_scope!(
         fec_groups::AbstractMatrix{T},
         fec_params::AbstractMatrix{T},
@@ -596,26 +592,6 @@ fecundities across size classes.
 - `C_cover_t` : Matrix[n_groups, n_sizes, n_locs], of coral cover values for the previous time step
 - `loc_area` : Vector[n_locs], total location area in m²
 """
-function fecundity_scope!(
-    fec_groups::AbstractMatrix{T},
-    fec_all::AbstractMatrix{T},
-    fec_params::AbstractVector{T},
-    C_cover_t::AbstractMatrix{T},
-    loc_area::AbstractMatrix{T}
-)::Nothing where {T<:Float64}
-    n_groups::Int64 = size(fec_groups, 1)   # number of coral groups: 5
-    n_group_and_size::Int64 = size(fec_params, 1)  # number of coral size classes: 35
-    n_classes::Int64 = Int64(n_group_and_size / n_groups)
-
-    fec_all .= fec_params .* C_cover_t .* loc_area
-    for (i, (s, e)) in enumerate(
-        zip(1:n_classes:n_group_and_size, n_classes:n_classes:(n_group_and_size + 1))
-    )
-        @views fec_groups[i, :] .= vec(sum(fec_all[s:e, :]; dims=1))
-    end
-
-    return nothing
-end
 function fecundity_scope!(
     fec_groups::AbstractMatrix{T},
     fec_params::AbstractMatrix{T},
