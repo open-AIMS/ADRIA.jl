@@ -574,9 +574,12 @@ end
                      fec_params::Array{Float64}, C_cover_t::Array{Float64, 2},
                      k_area::Array{Float64})::Nothing
 
-    fecundity_scope!(fec_groups::AbstractMatrix{T}, fec_all::AbstractArray{T, 3},
-                     fec_params::AbstractMatrix{T}, C_cover_t::AbstractArray{T, 3},
-                     loc_area::AbstractMatrix{T})::Nothing where {T<:Float64}
+    fecundity_scope!(
+        fec_groups::AbstractMatrix{T},
+        fec_params::AbstractMatrix{T},
+        C_cover_t::AbstractArray{T,3},
+        loc_area::AbstractMatrix{T}
+    )::Nothing where {T<:Float64}
 
 The scope that different coral groups and size classes have for
 producing larvae without consideration of environment.
@@ -588,10 +591,9 @@ Total relative fecundity of a group is then calculated as the sum of
 fecundities across size classes.
 
 # Arguments
-- `fec_groups` : Matrix[n_classes, n_locs], memory cache to place results into
-- `fec_all` : Matrix[n_taxa, n_locs], temporary cache to place intermediate fecundity values into
-- `fec_params` : Vector, coral fecundity parameters (in per m²) for each species/size class
-- `C_cover_t` : Matrix[n_taxa, n_locs], of coral cover values for the previous time step
+- `fec_groups` : Matrix[n_groups, n_locs], memory cache to place results into
+- `fec_params` : Matrix[n_groups, n_sizes], coral fecundity parameters (in per m²) for each species/size class
+- `C_cover_t` : Matrix[n_groups, n_sizes, n_locs], of coral cover values for the previous time step
 - `loc_area` : Vector[n_locs], total location area in m²
 """
 function fecundity_scope!(
@@ -616,25 +618,18 @@ function fecundity_scope!(
 end
 function fecundity_scope!(
     fec_groups::AbstractMatrix{T},
-    fec_all::AbstractArray{T,3},
     fec_params::AbstractMatrix{T},
     C_cover_t::AbstractArray{T,3},
     loc_area::AbstractMatrix{T}
 )::Nothing where {T<:Float64}
-
-    # Dimensions of fec all are [groups ⋅ sizes ⋅ locations]
-    # fec_all .= fec_params .* C_cover_t .* reshape(loc_area, (1, size(loc_area)...))
     for loc in axes(C_cover_t, 3)
-        for sz in axes(C_cover_t, 2)
-            for grp in axes(C_cover_t, 1)
-                fec_all[grp, sz, loc] =
+        for grp in axes(C_cover_t, 1)
+            for sz in axes(C_cover_t, 2)
+                @views fec_groups[grp, loc] +=
                     fec_params[grp, sz] * C_cover_t[grp, sz, loc] * loc_area[1, loc]
             end
         end
     end
-
-    # Sum over size classes
-    @views fec_groups[:, :] .= dropdims(sum(fec_all; dims=2); dims=2)
 
     return nothing
 end
