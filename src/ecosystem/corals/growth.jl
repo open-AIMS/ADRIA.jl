@@ -598,16 +598,32 @@ function fecundity_scope!(
     C_cover_t::AbstractArray{T,3},
     loc_area::AbstractMatrix{T}
 )::Nothing where {T<:Float64}
+    ae_coef = 0.0
     for loc in axes(C_cover_t, 3)
+        ae_coef = allee_effect(sum(C_cover_t[:, :, loc]))
         for grp in axes(C_cover_t, 1)
             for sz in axes(C_cover_t, 2)
                 @views fec_groups[grp, loc] +=
-                    fec_params[grp, sz] * C_cover_t[grp, sz, loc] * loc_area[1, loc]
+                    fec_params[grp, sz] *
+                    C_cover_t[grp, sz, loc] *
+                    loc_area[1, loc]
             end
+            @views fec_groups[grp, loc] *= ae_coef
         end
     end
 
     return nothing
+end
+
+"""
+# Arguments
+- `C_cover` : Location relative coral cover
+"""
+function allee_effect(relative_cover::Float64)
+    # Below 0.0001 this will quickly start to yield negative values
+    min_rel_cover = 0.0001
+    x = relative_cover < min_rel_cover ? log10(min_rel_cover) : log10(relative_cover)
+    return 0.999 + 0.0169 * x + 0.00197 * x^2 + 0.0125 * x^3
 end
 
 """
