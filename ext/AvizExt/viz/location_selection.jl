@@ -56,7 +56,7 @@ function ADRIA.viz.ranks_to_frequencies!(
     ADRIA.viz.map!(
         g,
         rs,
-        frequencies[ranks=rank_ids[1]];
+        frequencies[ranks = rank_ids[1]];
         opts=opts,
         axis_opts=axis_opts
     )
@@ -70,7 +70,7 @@ function ADRIA.viz.ranks_to_frequencies!(
         poly!(
             ax,
             geodata;
-            color=collect(frequencies[ranks=rr]),
+            color=collect(frequencies[ranks = rr]),
             colormap=all_colormaps[Symbol(rr)],
             strokecolor=:grey,
             strokewidth=0.5,
@@ -103,7 +103,7 @@ function ADRIA.viz.ranks_to_frequencies!(
     return ADRIA.viz.map!(
         g,
         rs,
-        frequencies[ranks=rank_id].data;
+        frequencies[ranks = rank_id].data;
         opts=opts,
         axis_opts=axis_opts
     )

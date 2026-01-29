@@ -41,8 +41,9 @@ end
                     # confidence interval and 2 is the index for the aggregate metric
                     @test all(diff[1, :] .<= diff[2, :] .<= diff[3, :])
                     @test all(
-                        diff[summary=At(:lower_bound)] .<= diff[summary=At(:agg_value)] .<=
-                        diff[summary=At(:upper_bound)]
+                        diff[summary = At(:lower_bound)] .<=
+                        diff[summary = At(:agg_value)] .<=
+                        diff[summary = At(:upper_bound)]
                     )
                 end
             end

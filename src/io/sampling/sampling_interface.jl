@@ -120,8 +120,8 @@ function _filtered_model_spec(model_spec::DataFrame, cb_calib_groups::Vector{Int
     # Factors to remove
     group_mask =
         .!reduce.(
-            (x, y) -> x .|| y, [occursin.(groups_to_keep, fname) for fname in factor_names]
-        )
+        (x, y) -> x .|| y, [occursin.(groups_to_keep, fname) for fname in factor_names]
+    )
     growth_acc_mask = occursin.(r"growth_acceleration", factor_names) .&& group_mask
     mb_rate_mask = occursin.(r"mb_rate_scale", factor_names) .&& group_mask
     linear_extension_mask =

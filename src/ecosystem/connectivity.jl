@@ -57,8 +57,8 @@ function location_connectivity(
 
         # Organize files by their connectivity years
         year_conn_fns = NamedTuple{Tuple(Symbol.("year_" .* years))}(
-        [filter(x -> occursin(yr, x), joinpath.(file_path, conn_fns)) for yr in years]
-)
+            [filter(x -> occursin(yr, x), joinpath.(file_path, conn_fns)) for yr in years]
+        )
 
         # Create store for each year
         tmp_store::Vector{Matrix{Float64}} = Matrix{Float64}[]
@@ -147,8 +147,9 @@ function location_connectivity(
     # Remove any row marked as missing
     if any(ismissing.(unique_loc_ids))
         @warn "Removing entries marked as `missing` from provided list of sites."
-        unique_loc_ids::Vector{String} =
-            String.(unique_loc_ids[.!ismissing.(unique_loc_ids)])
+        unique_loc_ids::Vector{String} = String.(
+            unique_loc_ids[.!ismissing.(unique_loc_ids)]
+        )
     else
         unique_loc_ids = String.(unique_loc_ids)
     end

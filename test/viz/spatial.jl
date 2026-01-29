@@ -20,10 +20,11 @@ Makie.inline!(false)
         )
 
         viz.map(
-            TEST_RS, guided_diff[summary=At(:agg_value)]; diverging=true, fig_opts=fig_opts
+            TEST_RS, guided_diff[summary = At(:agg_value)]; diverging=true,
+            fig_opts=fig_opts
         )
         viz.map(
-            TEST_RS, unguided_diff[summary=At(:agg_value)]; diverging=true,
+            TEST_RS, unguided_diff[summary = At(:agg_value)]; diverging=true,
             fig_opts=fig_opts
         )
     end

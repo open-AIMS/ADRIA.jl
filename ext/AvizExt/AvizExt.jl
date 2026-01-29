@@ -13,7 +13,8 @@ using ImageIO, GeoInterface
 
 import GeoMakie.GeoJSON.FeatureCollection as FC
 
-import ADRIA.FileIO, ADRIA.GFT
+using ADRIA.FileIO: FileIO
+using ADRIA.GFT: GFT
 using ADRIA
 using ADRIA:
     load_results, load_domain, load_scenarios,
@@ -107,7 +108,7 @@ end
 
 function _get_seeded_sites(seed_log, ts, scens; N=10)
     t = dropdims(
-        sum(seed_log[timesteps=ts, scenarios=scens]; dims=:timesteps); dims=:timesteps
+        sum(seed_log[timesteps = ts, scenarios = scens]; dims=:timesteps); dims=:timesteps
     )
     site_scores = dropdims(sum(t; dims=:scenarios); dims=:scenarios)
 
@@ -433,7 +434,7 @@ function ADRIA.viz.explore(rs::ResultSet)
         # Update map
         obs_mean_rc_sites[] = vec(
             mean(
-                mean_rc_sites(; timesteps=timespan)[scenarios=show_idx];
+                mean_rc_sites(; timesteps=timespan)[scenarios = show_idx];
                 dims=(:scenarios, :timesteps)
             )
         )
@@ -500,14 +501,16 @@ function ADRIA.viz.explore(rs::ResultSet)
             mean_tac_med = relative_sensitivities(X[show_idx, :], scen_dist[show_idx])[interv_idx]
 
             sel_asv_scens = dropdims(
-                mean(asv_scens(; timesteps=timespan)[scenarios=show_idx]; dims=:timesteps);
+                mean(
+                    asv_scens(; timesteps=timespan)[scenarios = show_idx]; dims=:timesteps
+                );
                 dims=:timesteps
             )
             mean_asv_med = relative_sensitivities(X[show_idx, :], sel_asv_scens)[interv_idx]
 
             sel_juves_scens = dropdims(
                 mean(
-                    juves_scens(; timesteps=timespan)[scenarios=show_idx]; dims=:timesteps
+                    juves_scens(; timesteps=timespan)[scenarios = show_idx]; dims=:timesteps
                 );
                 dims=:timesteps
             )

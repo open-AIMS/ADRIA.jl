@@ -227,7 +227,7 @@ function run_scenarios(
                 # Switch RCPs so correct data is loaded
                 dom = switch_RCPs!(dom, rcp)
                 target_rows = findall(
-                    scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp)
+                    scenarios_matrix[factors = At("RCP")] .== parse(Float64, rcp)
                 )
                 scen_args = _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
 
@@ -280,7 +280,7 @@ end
 
 function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
     target_rows = findall(
-        collect(scenarios_matrix[factors=At("RCP")]) .== parse(Float64, rcp)
+        collect(scenarios_matrix[factors = At("RCP")]) .== parse(Float64, rcp)
     )
     rep_doms = Iterators.repeated(dom, n)
     return zip(
@@ -914,13 +914,12 @@ function run_model(
         for idx in 1:n_cb_calib_groups
             cover_threshold_mask .=
                 growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
-            growth_constraints[cover_threshold_mask] .=
-                growth_acceleration.(
-                    growth_acc_height[idx],
-                    growth_acc_midpoint[idx],
-                    growth_acc_steepness[idx],
-                    relative_habitable_cover_cache[cover_threshold_mask]
-                )
+            growth_constraints[cover_threshold_mask] .= growth_acceleration.(
+                growth_acc_height[idx],
+                growth_acc_midpoint[idx],
+                growth_acc_steepness[idx],
+                relative_habitable_cover_cache[cover_threshold_mask]
+            )
         end
 
         @inbounds for i in habitable_loc_idxs
@@ -1098,7 +1097,7 @@ function run_model(
                 # (fog typically uses same decision matrix as seed)
                 selected_fog_ranks = select_locations(
                     fog_pref,
-                    decision_mat[location=At(candidate_fog_locs)],
+                    decision_mat[location = At(candidate_fog_locs)],
                     MCDA_approach,
                     min_iv_locs
                 )
@@ -1243,7 +1242,7 @@ function run_model(
 
                 # Update decision matrix with current conditions
                 update_criteria_values!(
-                    decision_mat[location=At(candidate_seed_locs)];
+                    decision_mat[location = At(candidate_seed_locs)];
                     heat_stress=dhw_projection[candidate_loc_indices],
                     wave_stress=wave_projection[candidate_loc_indices],
                     coral_cover=current_loc_cover[candidate_loc_indices],
@@ -1253,7 +1252,7 @@ function run_model(
 
                 selected_seed_ranks = select_locations(
                     seed_pref,
-                    decision_mat[location=At(candidate_seed_locs)],
+                    decision_mat[location = At(candidate_seed_locs)],
                     MCDA_approach,
                     candidate_seed_locs,
                     min_iv_locs
@@ -1374,7 +1373,7 @@ function run_model(
             apply_mortality!(functional_groups[loc], @view(survival_rate_cache[:, :, loc]))
         end
 
-        recruitment .*= (view(survival_rate_cache, :, 1, :) .* habitable_areas)
+        recruitment .*= (view(survival_rate_cache,:,1,:) .* habitable_areas)
 
         C_cover[tstep, :, :, :] .= C_cover_t
 

@@ -551,7 +551,7 @@ function _absolute_shelter_volume(
     col_mask = inputs.factors .∈ Ref(cs_p.coral_id .* "_mean_colony_diameter_m")
     colony_mean_diams_cm::Array{Float64} =
         reshape(
-            (collect(inputs[factors=col_mask]) .* 100.0),
+            (collect(inputs[factors = col_mask]) .* 100.0),
             n_sizes, n_groups
         )'
     col_mean_area = colony_mean_area(colony_mean_diams_cm)
@@ -610,11 +610,11 @@ function _absolute_shelter_volume(
     )
     for scen::Int64 in 1:n_scens
         ADRIAIndicators.absolute_shelter_volume!(
-            view(X.data, :, :, :, :, scen),
-            view(col_mean_area, :, :, scen),
+            view(X.data,:,:,:,:,scen),
+            view(col_mean_area,:,:,scen),
             pa_params,
             k_area,
-            view(ASV.data, :, :, :, :, scen)
+            view(ASV.data,:,:,:,:,scen)
         )
     end
 
@@ -754,11 +754,11 @@ function _relative_shelter_volume(
     )
     for scen::Int64 in 1:n_scens
         ADRIAIndicators.relative_shelter_volume!(
-            view(X.data, :, :, :, :, scen),
-            view(colony_mean_diams_cm, :, :, scen),
+            view(X.data,:,:,:,:,scen),
+            view(colony_mean_diams_cm,:,:,scen),
             pa_params,
             k_area,
-            view(RSV.data, :, :, :, :, scen)
+            view(RSV.data,:,:,:,:,scen)
         )
     end
 

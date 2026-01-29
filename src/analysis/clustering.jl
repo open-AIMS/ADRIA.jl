@@ -334,7 +334,7 @@ function find_scenarios(
 
         # Median series for current cluster
         tf = axes(cluster_metric, :timesteps)
-        timesteps_slices = JuliennedArrays.Slices(cluster_metric[timesteps=tf], 2)
+        timesteps_slices = JuliennedArrays.Slices(cluster_metric[timesteps = tf], 2)
         median_series = median.(timesteps_slices)
 
         # Summary statistics for that cluster metric

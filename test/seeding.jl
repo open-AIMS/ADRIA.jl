@@ -61,14 +61,14 @@ end
         min_ind = argmin(selected_avail_space)
 
         # Distributed areas and seeded areas
-        area_TA = total_area_coral_out[taxa=At("N_seed_TA"), locations=1][1]
-        seed_TA = seeded_area[taxa=At("N_seed_TA")][1]
+        area_TA = total_area_coral_out[taxa = At("N_seed_TA"), locations = 1][1]
+        seed_TA = seeded_area[taxa = At("N_seed_TA")][1]
 
-        area_CA = total_area_coral_out[taxa=At("N_seed_CA"), locations=1][1]
-        seed_CA = seeded_area[taxa=At("N_seed_CA")][1]
+        area_CA = total_area_coral_out[taxa = At("N_seed_CA"), locations = 1][1]
+        seed_CA = seeded_area[taxa = At("N_seed_CA")][1]
 
-        area_SM = total_area_coral_out[taxa=At("N_seed_SM"), locations=1][1]
-        seed_SM = seeded_area[taxa=At("N_seed_SM")][1]
+        area_SM = total_area_coral_out[taxa = At("N_seed_SM"), locations = 1][1]
+        seed_SM = seeded_area[taxa = At("N_seed_SM")][1]
 
         approx_zero(x) = abs(x) + one(1.0) ≈ one(1.0)
         @test approx_zero(seed_TA - area_TA) && approx_zero(seed_CA - area_CA) &&

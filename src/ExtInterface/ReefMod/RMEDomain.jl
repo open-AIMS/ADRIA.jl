@@ -161,7 +161,7 @@ function load_domain(
 
     if timeframe == nothing
         timeframe = (icc_start_year, dhw_scens.timesteps[end])
-        dhw_scens = dhw_scens[timesteps=At(timeframe[1]:timeframe[2])]
+        dhw_scens = dhw_scens[timesteps = At(timeframe[1]:timeframe[2])]
     end
 
     force_single_reef && (dhw_scens = dhw_scens[:, [1], :])
