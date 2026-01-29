@@ -41,11 +41,6 @@ Base.@kwdef mutable struct SimConstants
     ]
 
     ## Environmental parameters
-    # These parameters are applied in `stressed_fecundity()` which is currenlty unused.
-    # It is a hypothetical model of fecundity following a disturbance.
-    # # 50 DHW approximates the highest predicted value for the century for SSPs 3 and 5.
-    # DHWmaxtot::Float64 = 50.0
-
     # # Bleaching stress and coral fecundity parameters
     # LPdhwcoeff::Float64 = 0.4  # shape parameters relating dhw affecting cover to larval production
     # LPDprm2::Float64 = 5.0  # parameter offsetting LPD curve
