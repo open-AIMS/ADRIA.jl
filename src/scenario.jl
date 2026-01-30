@@ -44,7 +44,6 @@ function setup_cache(domain::Domain)::NamedTuple
 
     cache = (
         # sf=zeros(n_groups, n_locs),  # stressed fecundity, commented out as it is disabled
-        fec_all=zeros(n_groups, n_sizes, n_locs),  # all fecundity
         fec_scope=zeros(n_groups, n_locs),  # fecundity scope
         recruitment=zeros(n_groups, n_locs),  # coral recruitment
         dhw_step=zeros(n_locs),  # DHW for each time step
@@ -586,7 +585,6 @@ function run_model(
     dropzeros!(TP_data)
 
     # sf = cache.sf  # unused as it is currently deactivated
-    fec_all = cache.fec_all
     fec_scope = cache.fec_scope
     recruitment = cache.recruitment
     dhw_t = cache.dhw_step
@@ -973,7 +971,7 @@ function run_model(
 
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
-        fecundity_scope!(fec_scope, fec_all, fec_params_per_m², C_cover_t, habitable_areas)
+        fecundity_scope!(fec_scope, fec_params_per_m², C_cover_t, habitable_areas)
 
         _loc_coral_cover = loc_coral_cover(C_cover_t)
         leftover_space_m² = relative_leftover_space(_loc_coral_cover) .* vec_abs_k
@@ -998,6 +996,9 @@ function run_model(
             )[
                 :, habitable_loc_idxs
             ] ./ habitable_areas[:, habitable_loc_idxs]
+
+        # Reset fecundity scope before next run
+        fec_scope .= 0.0
 
         settler_DHW_tolerance!(
             c_mean_t_1,
