@@ -25,12 +25,11 @@ Matrix[timesteps ⋅ scenarios]
 function scenario_trajectory(data::AbstractArray; metric=mean)::YAXArray{<:Real}
     tf_labels = axis_labels(data, :timesteps)
 
-    s::Matrix{eltype(data)} =
-        metric.(
-            JuliennedArrays.Slices(
-                data[timesteps=At(tf_labels)], axis_index(data, :locations)
-            )
+    s::Matrix{eltype(data)} = metric.(
+        JuliennedArrays.Slices(
+            data[timesteps = At(tf_labels)], axis_index(data, :locations)
         )
+    )
 
     return DataCube(s; timesteps=tf_labels, scenarios=1:size(s, 2))
 end

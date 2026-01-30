@@ -113,7 +113,7 @@ function SeedPreferences(dom, params::YAXArray)::SeedPreferences
     w::DataFrame = component_params(dom.model, SeedCriteriaWeights)
     cn = Symbol[Symbol(join(split(string(cn), "_")[2:end], "_")) for cn in w.fieldname]
 
-    return SeedPreferences(cn, params[factors=At(string.(w.fieldname))], w.direction)
+    return SeedPreferences(cn, params[factors = At(string.(w.fieldname))], w.direction)
 end
 function SeedPreferences(dom, params...)::SeedPreferences
     w::DataFrame = component_params(dom.model, SeedCriteriaWeights)

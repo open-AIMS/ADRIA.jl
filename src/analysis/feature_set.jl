@@ -6,7 +6,7 @@ Filter out features/factors that do not vary.
 function _filter_constants(scens::DataFrame)::DataFrame
     varying_cols = [
         i for (i, col) in enumerate(eachcol(scens))
-        if !all(==(first(col)), col)
+              if !all(==(first(col)), col)
     ]
 
     return scens[:, varying_cols]
@@ -60,8 +60,8 @@ function feature_set(rs::ResultSet)::DataFrame
 
     # Add DHW statistics
     dhw_stat = mean(rs.dhw_stats[rcp_id]; dims=:locations)
-    dhw_means = dhw_stat[stat=At("mean")].data[:]
-    dhw_stdevs = dhw_stat[stat=At("std")].data[:]
+    dhw_means = dhw_stat[stat = At("mean")].data[:]
+    dhw_stdevs = dhw_stat[stat = At("std")].data[:]
 
     insertcols!(scens, 2, :dhw_mean => -99.0, :dhw_stdev => -99.0)
     for (i, r) in enumerate(eachrow(scens))
@@ -79,8 +79,8 @@ function feature_set(rs::ResultSet)::DataFrame
     # Only attach mean of deployment effort
     insertcols!(
         scens,
-        :n_loc_seed_mean => seed_stats[stats=At(:mean)].data[:],
-        :n_loc_fog_mean => fog_stats[stats=At(:mean)].data[:]
+        :n_loc_seed_mean => seed_stats[stats = At(:mean)].data[:],
+        :n_loc_fog_mean => fog_stats[stats = At(:mean)].data[:]
     )
 
     # Replace `depth_offset` with maximum depth

@@ -203,8 +203,9 @@ function bleaching_mortality!(
 
     # The model is modified to incorporate adaptation effect but maximum
     # reduction is to capped to 0.
-    @. capped_dhw =
-        min.(ℯ^(0.17 + 0.35 * max(0.0, dhw' - (a_adapt + (tstep * n_adapt)))) - 1.0, 100.0)
+    @. capped_dhw = min.(
+        ℯ^(0.17 + 0.35 * max(0.0, dhw' - (a_adapt + (tstep * n_adapt)))) - 1.0, 100.0
+    )
     @. depth_coeff = ℯ^(-0.07551 * (depth - 2.0))
 
     # Estimate long-term bleaching mortality with an estimated depth coefficient and

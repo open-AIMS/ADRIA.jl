@@ -4,7 +4,7 @@
 Extracts results for a specific intervention (:seed or :fog)
 """
 function _get_ranks(rs::ResultSet, intervention::Symbol; kwargs...)
-    return slice_results(rs.ranks[intervention=At(intervention)]; kwargs...)
+    return slice_results(rs.ranks[intervention = At(intervention)]; kwargs...)
 end
 
 """

@@ -59,12 +59,12 @@ function ADRIA.viz.pawn!(
 
     foi = get(opts, :factors, :all)
     if foi != :all
-        Si = Si[factors=At(foi)]
+        Si = Si[factors = At(foi)]
     end
 
     # Sort by
     sort_by = get(opts, :by, :median)
-    Si = Si[sortperm(Si[Si=At(sort_by)]; rev=true), :]
+    Si = Si[sortperm(Si[Si = At(sort_by)]; rev=true), :]
 
     y, x = Si.axes
     ax = Axis(
@@ -152,7 +152,7 @@ function ADRIA.viz.tsa!(
     lns = Plot[
         series!(
             ax,
-            si[Si=At(stat)][findall(all_comps .== _cmp), :].data;
+            si[Si = At(stat)][findall(all_comps .== _cmp), :].data;
             labels=repeat([_cmp], count(all_comps .== _cmp)),
             solid_color=(dc[i], 0.2)
         )
@@ -299,11 +299,11 @@ function ADRIA.viz.rsa!(
             ms_factor, f_name, si_param_scens
         )
     else
-        fv_s = round.(quantile(f_vals, si_param_scens), digits=2)
+        fv_s = round.(quantile(f_vals, si_param_scens); digits=2)
     end
 
-    if !all(si[si=At("Si")] .== 0.0)
-        scatterlines!(ax, fv_s, collect(si[si=At("Si")]); markersize=15)
+    if !all(si[si = At("Si")] .== 0.0)
+        scatterlines!(ax, fv_s, collect(si[si = At("Si")]); markersize=15)
 
         if f_name == :guided
             fv_labels = _get_guided_labels()
@@ -531,17 +531,17 @@ function ADRIA.viz.outcome_map!(
         )
     else
         # Otherwise use regular quantile
-        fv_s = round.(quantile(f_vals, outcomes_param_scens), digits=2)
+        fv_s = round.(quantile(f_vals, outcomes_param_scens); digits=2)
     end
 
-    if .!all(outcomes[CI=At("mean")] .== 0.0)
+    if .!all(outcomes[CI = At("mean")] .== 0.0)
         band!(
             ax,
-            fv_s[.!ismissing.(outcomes[CI=At("lower")])],
-            collect(skipmissing(outcomes[CI=At("lower")])),
-            collect(skipmissing(outcomes[CI=At("upper")]))
+            fv_s[.!ismissing.(outcomes[CI = At("lower")])],
+            collect(skipmissing(outcomes[CI = At("lower")])),
+            collect(skipmissing(outcomes[CI = At("upper")]))
         )
-        scatterlines!(ax, fv_s, collect(outcomes[CI=At("mean")]); markersize=15)
+        scatterlines!(ax, fv_s, collect(outcomes[CI = At("mean")]); markersize=15)
 
         if f_name == :guided
             fv_labels = _get_guided_labels()
@@ -625,7 +625,7 @@ function _series_convergence(
         _colors = colors(grps)
         scenarios_confint!(
             ax,
-            permutedims(Si_conv[Si=At([:lb, :median, :ub])], (3, 1, 2)).data,
+            permutedims(Si_conv[Si = At([:lb, :median, :ub])], (3, 1, 2)).data,
             collect(keys(grps)),
             _colors;
             x_vals=n_scenarios
@@ -656,15 +656,15 @@ function _series_convergence(
             lines!(
                 ax,
                 n_scenarios,
-                Si_conv[Si=At(:median)][factors=At(factors[step])].data;
+                Si_conv[Si = At(:median)][factors = At(factors[step])].data;
                 color=(_colors[factors[step]], _alphas[factors[step]])
             )
 
             band!(
                 ax,
                 n_scenarios,
-                Si_conv[Si=At(:lb), factors=At(factors[step])].data,
-                Si_conv[Si=At(:ub), factors=At(factors[step])].data;
+                Si_conv[Si = At(:lb), factors = At(factors[step])].data,
+                Si_conv[Si = At(:ub), factors = At(factors[step])].data;
                 color=(_colors[factors[step]], _alphas[factors[step]])
             )
             step += 1
@@ -738,7 +738,7 @@ function _heatmap_convergence(
     y_labelsize = get(axis_opts, :ylabelsize, 22)
     x_labelsize = get(axis_opts, :xlabelsize, 22)
 
-    z = Array(Si_conv[Si=At(:median)])
+    z = Array(Si_conv[Si = At(:median)])
     xtick_vals = (1:length(Si_conv.n_scenarios), string.(Si_conv.n_scenarios))
     ytick_vals = (1:length(factors), string.(factors))
 

@@ -89,8 +89,9 @@ end
 
 function _rankings_data(rankings_set::ZArray{T})::YAXArray{T} where {T}
     ax_names = Symbol.(Tuple(rankings_set.attrs["structure"]))
-    ax_labels::Vector{Union{UnitRange{Int64},Vector{Symbol}}} =
-        range.([1], size(rankings_set))
+    ax_labels::Vector{Union{UnitRange{Int64},Vector{Symbol}}} = range.(
+        [1], size(rankings_set)
+    )
 
     # Replace intervention
     intervention_idx = findfirst(x -> x == :intervention, ax_names)

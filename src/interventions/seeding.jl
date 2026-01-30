@@ -101,10 +101,9 @@ function update_tolerance_distribution!(
 
         # Truncated normal distributions for deployed corals
         # Assume same stdev and bounds as original
-        tn::Vector{Float64} =
-            truncated_normal_mean.(
-                a_adapt[seed_sc], stdev[seed_sc], 0.0, a_adapt[seed_sc] .+ HEAT_UB
-            )
+        tn::Vector{Float64} = truncated_normal_mean.(
+            a_adapt[seed_sc], stdev[seed_sc], 0.0, a_adapt[seed_sc] .+ HEAT_UB
+        )
 
         # If seeding an empty location, no need to do any further calculations
         if all(isapprox.(w_taxa[:, i], 1.0))

@@ -46,9 +46,9 @@ function intervention_frequency(
     for rcp in rcps
         # Select scenarios satisfying condition and tally selection for each location
         logged_data = dropdims(
-            sum(interv_log[scenarios=scen_indices[rcp]]; dims=:coral_id); dims=:coral_id
+            sum(interv_log[scenarios = scen_indices[rcp]]; dims=:coral_id); dims=:coral_id
         )
-        interv_freq[rcps=At(rcp)] .= vec(
+        interv_freq[rcps = At(rcp)] .= vec(
             dropdims(sum(logged_data .> 0; dims=(:timesteps, :scenarios)); dims=:timesteps)
         )
     end

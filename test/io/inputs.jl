@@ -52,7 +52,7 @@ end
 
     match = true
     for location in locations
-        if cube[locations=At(location)] != sorted_cube[locations=At(location)]
+        if cube[locations = At(location)] != sorted_cube[locations = At(location)]
             match = false
         end
     end

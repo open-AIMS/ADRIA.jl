@@ -436,11 +436,11 @@ function convergence(
     scens_idx = randperm(N)
 
     for nn in N_it
-        pawn_store[n_scenarios=At(nn)] .= Si(
+        pawn_store[n_scenarios = At(nn)] .= Si(
             X[scens_idx[1:nn], :], Array(y[scens_idx[1:nn]])
         )[
-        factors=At(target_factors)
-]
+            factors = At(target_factors)
+        ]
     end
 
     return pawn_store
@@ -471,8 +471,8 @@ function convergence(
     )
 
     for (cc, factors) in zip(components, target_factors)
-        Si_grouped[factors=At(cc)] .= dropdims(
-            mean(Si_n[factors=At(Symbol.(factors))]; dims=:factors);
+        Si_grouped[factors = At(cc)] .= dropdims(
+            mean(Si_n[factors = At(Symbol.(factors))]; dims=:factors);
             dims=:factors
         )
     end

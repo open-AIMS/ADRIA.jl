@@ -67,10 +67,9 @@ end
         @test all(scens.guided .== -1) || "Intervention scenarios found"
 
         # Get Intervention params
-        interv_params =
-            string.(
-                ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
-            )
+        interv_params = string.(
+            ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
+        )
 
         # Ensure all interventions are deactivated (ignoring the "guided" factor)
         interv_params = String[ip for ip in interv_params if ip != "guided"]
@@ -87,10 +86,9 @@ end
         @test all(scens.guided .> 0) || "Non-intervention scenarios found"
 
         # Get Intervention params
-        interv_params =
-            string.(
-                ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
-            )
+        interv_params = string.(
+            ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
+        )
 
         # Ignore guided
         interv_params = String[ip for ip in interv_params if ip != "guided"]
@@ -138,10 +136,9 @@ end
         @test all(scens.guided .== 0) || "Intervention or counterfactual scenarios found"
 
         # Get Intervention params
-        interv_params =
-            string.(
-                ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
-            )
+        interv_params = string.(
+            ADRIA.component_params(ADRIA.model_spec(dom), ADRIA.Intervention).fieldname
+        )
 
         # Ignore guided and planning horizon
         interv_params = String[
@@ -162,18 +159,17 @@ end
 
         # Get Intervention params
         ms = ADRIA.model_spec(dom)
-        target_params =
-            string.(
-                ADRIA.component_params(
-                    ms,
-                    [
-                        ADRIA.EnvironmentalLayer,
-                        ADRIA.Intervention,
-                        ADRIA.SeedCriteriaWeights,
-                        ADRIA.FogCriteriaWeights
-                    ]
-                ).fieldname
-            )
+        target_params = string.(
+            ADRIA.component_params(
+                ms,
+                [
+                    ADRIA.EnvironmentalLayer,
+                    ADRIA.Intervention,
+                    ADRIA.SeedCriteriaWeights,
+                    ADRIA.FogCriteriaWeights
+                ]
+            ).fieldname
+        )
 
         # Ignore guided
         target_params = String[ip for ip in target_params if ip != "guided"]
@@ -258,8 +254,9 @@ end
             end
 
             @testset "set to default bounds" begin
-                new_bounds =
-                    ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
+                new_bounds = ADRIA.get_attr.(
+                    [dom], factor_fieldnames, [:default_dist_params]
+                )
                 dom = ADRIA.set_factor_bounds!(
                     dom; NamedTuple{factor_fieldnames}(new_bounds)...
                 )
@@ -287,8 +284,9 @@ end
             end
 
             @testset "get_default_dist_params" begin
-                new_bounds =
-                    ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
+                new_bounds = ADRIA.get_attr.(
+                    [dom], factor_fieldnames, [:default_dist_params]
+                )
                 dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
                 factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
@@ -319,8 +317,9 @@ end
             end
 
             @testset "get_default_dist_params" begin
-                new_bounds =
-                    ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
+                new_bounds = ADRIA.get_attr.(
+                    [dom], factor_fieldnames, [:default_dist_params]
+                )
                 dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
                 factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
@@ -350,8 +349,9 @@ end
             end
 
             @testset "get_default_dist_params" begin
-                new_bounds =
-                    ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
+                new_bounds = ADRIA.get_attr.(
+                    [dom], factor_fieldnames, [:default_dist_params]
+                )
                 dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
                 factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
@@ -383,8 +383,9 @@ end
             end
 
             @testset "get_default_dist_params" begin
-                new_bounds =
-                    ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
+                new_bounds = ADRIA.get_attr.(
+                    [dom], factor_fieldnames, [:default_dist_params]
+                )
                 dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
                 factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
