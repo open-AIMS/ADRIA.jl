@@ -67,6 +67,17 @@ function (f::Metric)(rs::ResultSet, args...; kwargs...)::YAXArray
 end
 
 """
+Helper method to extract pairs of YAXArray axes (names and their values).
+"""
+function _extract_axes_values(m::YAXArray)::NamedTuple
+    ax_names = parentmodule(metrics).axes_names(m)
+    ax_vals = collect.(caxes(m))
+    axes_vals = (; zip(ax_names, ax_vals)...)
+
+    return axes_vals
+end
+
+"""
     relative_cover(X::AbstractArray{<:Real}, loc_area::AbstractVector{<:Real})::AbstractArray{<:Real}
     relative_cover(rs::ResultSet)::AbstractArray{<:Real}
 
@@ -104,6 +115,11 @@ relative_cover = Metric(
 function _ltmp_cover(
     X::YAXArray{<:Real,4}, k_area::AbstractVector{<:Real}, reef_area::AbstractVector{<:Real}
 )::YAXArray{<:Real,2}
+    Main.@infiltrate
+    lc = ADRIAIndicators.ltmp_cover(X, k_area, reef_area)
+    axes_vals = _extract_axes_values(lc)
+    # return DataCube(rel_juv .* loc_k_area(rs)'; axes_vals...)
+
     return DataCube(
         ADRIAIndicators.ltmp_cover(X, k_area, reef_area),
         (:timesteps, :locations)
@@ -117,11 +133,12 @@ function _ltmp_cover(
     reef_area = loc_area(rs)
     location_dim = axis_index(rel_cover, :locations)
 
+    axes_vals = _extract_axes_values(rel_cover)
     return DataCube(
         ADRIAIndicators.relative_cover_to_ltmp_cover(
             rel_cover.data, k_area, reef_area, location_dim
-        ),
-        (:timesteps, :locations, :scenarios)
+        );
+        axes_vals...
     )
 end
 ltmp_cover = Metric(
@@ -150,9 +167,9 @@ function _total_absolute_cover(
     relative_cover::YAXArray{<:Real,3},
     k_area::Vector{<:Real}
 )::YAXArray
-    return DataCube(
-        relative_cover.data .* k_area', parentmodule(metrics).axes_names(relative_cover)
-    )
+    axes_vals = _extract_axes_values(relative_cover)
+
+    return DataCube(relative_cover.data .* k_area'; axes_vals...)
 end
 function _total_absolute_cover(rs::ResultSet)::AbstractArray{<:Real}
     return _total_absolute_cover(relative_cover(rs), loc_k_area(rs))
@@ -210,6 +227,8 @@ relative_taxa_cover = Metric(
 function _ltmp_taxa_cover(
     X::YAXArray{<:Real,4}, k_area::AbstractVector{<:Real}, reef_area::AbstractVector{<:Real}
 )::YAXArray{<:Real,2}
+    # axes_vals = _extract_axes_values(rel_juv)
+    # return DataCube(rel_juv .* loc_k_area(rs)'; axes_vals...)
     return DataCube(
         ADRIAIndicators.ltmp_taxa_cover(X, k_area, reef_area),
         (:timesteps, :groups)
@@ -222,6 +241,10 @@ function _ltmp_taxa_cover(
     k_area = loc_k_area(rs)
     reef_area = loc_area(rs)
     location_dim = axis_index(rel_cover, :locations)
+
+    # axes_vals = _extract_axes_values(rel_juv)
+    # return DataCube(rel_juv .* loc_k_area(rs)'; axes_vals...)
+
     return DataCube(
         ADRIAIndicators.relative_cover_to_ltmp_cover(
             rel_cover.data, k_area, reef_area, location_dim
@@ -340,7 +363,9 @@ function _absolute_juveniles(
 end
 function _absolute_juveniles(rs::ResultSet)::YAXArray
     rel_juv = relative_juveniles(rs)
-    return DataCube(rel_juv .* loc_k_area(rs)', parentmodule(metrics).axes_names(rel_juv))
+    axes_vals = _extract_axes_values(rel_juv)
+
+    return DataCube(rel_juv .* loc_k_area(rs)'; axes_vals...)
 end
 absolute_juveniles = Metric(
     _absolute_juveniles,
