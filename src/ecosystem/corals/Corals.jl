@@ -154,7 +154,7 @@ function coral_spec()::NamedTuple
     params.coral_id = String[join(x, "_") for x in zip(tn, params.taxa_id, params.class_id)]
 
     # Ecological parameters
-    # To be more consistent with parameters in ReefMod, C~Scape and RRAP
+    # To be more consistent with parameters in ReefMod, C~scape and RRAP
     # interventions, we express coral abundance as colony numbers in different
     # size classes and growth rates as linear extension (in cm per year).
     colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
