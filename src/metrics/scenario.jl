@@ -81,14 +81,16 @@ scenario_relative_cover = Metric(
 
 function _scenario_ltmp_cover(rs::ResultSet; kwargs...)::AbstractArray{<:Real}
     scenario_rc = _scenario_relative_cover(rs; kwargs...)
+    axes_info = _extract_axes_values(scenario_rc)
+
     return DataCube(
         ADRIAIndicators.relative_cover_to_ltmp_cover(
             scenario_rc.data,
             loc_k_area(rs),
             loc_area(rs),
             -1
-        ),
-        (:timesteps, :scenarios)
+        );
+        axes_info...
     )
 end
 scenario_ltmp_cover = Metric(
