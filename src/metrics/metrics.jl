@@ -117,11 +117,10 @@ function _ltmp_cover(
 )::YAXArray{<:Real,2}
     lc = ADRIAIndicators.ltmp_cover(X, k_area, reef_area)
     axes_vals = _extract_axes_values(lc)
-    # return DataCube(rel_juv .* loc_k_area(rs)'; axes_vals...)
 
     return DataCube(
         ADRIAIndicators.ltmp_cover(X, k_area, reef_area),
-        (:timesteps, :locations)
+        axes_vals...
     )
 end
 function _ltmp_cover(
@@ -240,11 +239,13 @@ function _ltmp_taxa_cover(
     k_area = loc_k_area(rs)
     reef_area = loc_area(rs)
 
+    axes_vals = _extract_axes_values(rel_cover)
+
     return DataCube(
         ADRIAIndicators.relative_cover_to_ltmp_cover(
             rel_cover.data, k_area, reef_area, -1
-        ),
-        (:timesteps, :groups, :scenarios)
+        );
+        axes_vals...
     )
 end
 ltmp_taxa_cover = Metric(
