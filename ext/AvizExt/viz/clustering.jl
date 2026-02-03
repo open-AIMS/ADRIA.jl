@@ -197,7 +197,7 @@ function _cluster_legend_params(
     end
 
     legend_labels =
-        labels(group_keys) .* ": " .* ADRIA.to_scientific.(label_means, digits=2)
+        labels(group_keys) .* ": " .* ADRIA.to_scientific.(label_means; digits=2)
     legend_title = "Cluster mean $(outcome_label(data; label_case=lowercase))"
 
     return (legend_entries, legend_labels, legend_title)

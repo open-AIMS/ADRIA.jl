@@ -146,8 +146,9 @@ function Domain(
         cluster_id_col = "UNIQUE_ID"
     end
     if typeof(location_data[:, cluster_id_col][1]) != String
-        location_data[!, cluster_id_col] .=
-            string.(Int64.(location_data[:, cluster_id_col]))
+        location_data[!, cluster_id_col] .= string.(
+            Int64.(location_data[:, cluster_id_col])
+        )
     end
 
     env_layer_md::EnvLayer = EnvLayer(

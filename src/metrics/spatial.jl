@@ -23,7 +23,7 @@ end
 function per_loc(
     metric, data::YAXArray{D,T,N,A}, timesteps::Union{UnitRange,Int64}
 )::YAXArray where {D,T,N,A}
-    return summarize(data[timesteps=timesteps], [:scenarios, :timesteps], metric)
+    return summarize(data[timesteps = timesteps], [:scenarios, :timesteps], metric)
 end
 
 """
@@ -68,7 +68,7 @@ end
 function loc_trajectory(
     metric, data::YAXArray{D,T,N,A}, timesteps::Union{UnitRange,Int64}
 )::YAXArray where {D,T,N,A}
-    return summarize(data[timesteps=timesteps], [:scenarios], metric)
+    return summarize(data[timesteps = timesteps], [:scenarios], metric)
 end
 
 """
@@ -123,7 +123,7 @@ function summarize(
     metric::Function,
     timesteps::Union{UnitRange,Vector{Int64},BitVector}
 )::YAXArray where {D,T,N,A}
-    return summarize(data[timesteps=timesteps], alongs_axis, metric)
+    return summarize(data[timesteps = timesteps], alongs_axis, metric)
 end
 
 """
@@ -189,11 +189,11 @@ function ensemble_loc_difference(
     outcomes_agg = dropdims(mean(outcome; dims=:timesteps); dims=:timesteps)
 
     # Counterfactual, target outcomes
-    cf_outcomes = outcomes_agg[scenarios=scens.guided .== -1]
+    cf_outcomes = outcomes_agg[scenarios = scens.guided .== -1]
     target_outcomes = if diff_target == :guided
-        outcomes_agg[scenarios=scens.guided .> 0]
+        outcomes_agg[scenarios = scens.guided .> 0]
     elseif diff_target == :unguided
-        outcomes_agg[scenarios=scens.guided .== 0]
+        outcomes_agg[scenarios = scens.guided .== 0]
     else
         error("Invalid diff_target value. Valid values are :guided and :unguided.")
     end
