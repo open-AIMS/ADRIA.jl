@@ -327,7 +327,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[not_shaded, contains.(names(df), "shade_")] .= 0.0
 
     # Reactive Seed and Fog
-    not_reactive = (df.seed_strategy .!= 1) .& (df.fog_strategy .!= 1)
+    not_reactive = (df.seed_strategy .!= 2) .& (df.fog_strategy .!= 2)
     reactive_params = [
         :reactive_absolute_threshold,
         :reactive_loss_threshold,
@@ -338,7 +338,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[not_reactive, reactive_params] .= 0.0
 
     # Deactivate periodic parameters when reactive strategy is in place
-    is_reactive = (df.seed_strategy .== 1)
+    is_reactive = (df.seed_strategy .== 2)
     df[is_reactive, [:seed_deployment_freq]] .= 0.0
 
     not_periodic_fog = (df.fog_strategy .!= 1)
