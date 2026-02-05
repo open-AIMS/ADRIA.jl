@@ -42,7 +42,7 @@ end
 function return_seed_strategy(
     strategy_type::Int64, params::YAXArray, domain::Domain, locations::Vector{String}
 )::DecisionStrategy
-    if strategy_type == 1
+    if is_periodic(strategy_type)
         return PeriodicStrategy(
             locations,
             Int64(params[At("seed_year_start")]),
@@ -50,7 +50,7 @@ function return_seed_strategy(
             Int64(params[At("seed_deployment_freq")]),
             length(timesteps(domain))
         )
-    elseif strategy_type == 2
+    elseif is_reactive(strategy_type)
         return ReactiveStrategy(
             locations,
             Int64(params[At("seed_year_start")]),
@@ -86,7 +86,7 @@ function build_fog_strategy(
 )::DecisionStrategy
     strategy_type = Int64(params[At("fog_strategy")])
 
-    if strategy_type == 1
+    if is_periodic(strategy_type)
         # Periodic Strategy
         return PeriodicStrategy(
             locations,
@@ -95,7 +95,7 @@ function build_fog_strategy(
             Int64(params[At("fog_years")]),
             Int64(params[At("fog_deployment_freq")])
         )
-    elseif strategy_type == 2
+    elseif is_reactive(strategy_type)
         # Reactive Strategy
         return ReactiveStrategy(
             locations,
