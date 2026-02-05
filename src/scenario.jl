@@ -628,8 +628,6 @@ function run_model(
         MCDA_approach = mcda_methods()[Int64(param_set[At("guided")])]
     end
 
-    is_reactive = param_set[At("seed_strategy")] == 2 || param_set[At("fog_strategy")] == 2
-
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
     α = 0.99
@@ -1381,7 +1379,8 @@ function run_model(
 
         # Track cover loss for reactive strategies
         max_lookback
-        if is_guided && is_reactive && (tstep > 1)
+        _is_reactive = any(is_reactive(param_set[At(["seed_strategy", "fog_strategy"])]))
+        if is_guided && _is_reactive && (tstep > 1)
             # Calculate proportional cover loss at each location
             # due to disturbances this timestep
             Δcover_loss_proportion = zeros(n_locs)

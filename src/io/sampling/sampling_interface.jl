@@ -1,3 +1,5 @@
+using ADRIA.decision: is_reactive
+
 """
     _adjust_guided_lower_bound!(guided_spec::DataFrame, lower::Int64)::DataFrame
 
@@ -308,7 +310,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[df.guided .== -1.0, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
 
     # Also deactivate strategy parameters for counterfactuals and unguided
-    df[df.guided .== 0.0, [:seed_strategy, :fog_strategy]] .= 1.0  # Set to periodic strategy
+    (df[df.guided .== 0.0, [:seed_strategy, :fog_strategy]]) .= DECISION_STRATEGY[:periodic]
     df[df.guided .== -1.0, [:seed_strategy, :fog_strategy]] .= -1.0
 
     # If unguided, set planning horizon to 0.
@@ -327,7 +329,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[not_shaded, contains.(names(df), "shade_")] .= 0.0
 
     # Reactive Seed and Fog
-    not_reactive = (df.seed_strategy .!= 2) .& (df.fog_strategy .!= 2)
+    not_reactive = .!is_reactive(df.seed_strategy) .& .!is_reactive(df.fog_strategy)
     reactive_params = [
         :reactive_absolute_threshold,
         :reactive_loss_threshold,
@@ -338,8 +340,7 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     df[not_reactive, reactive_params] .= 0.0
 
     # Deactivate periodic parameters when reactive strategy is in place
-    is_reactive = (df.seed_strategy .== 2)
-    df[is_reactive, [:seed_deployment_freq]] .= 0.0
+    df[is_reactive(df.seed_strategy), [:seed_deployment_freq]] .= 0.0
 
     not_periodic_fog = (df.fog_strategy .!= 1)
     df[not_periodic_fog, [:fog_deployment_freq]] .= 0.0
