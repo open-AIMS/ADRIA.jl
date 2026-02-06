@@ -1,6 +1,8 @@
 using Printf: @sprintf
 import GeoMakie: alpha
 
+COLOR_TYPE = Union{RGBA,String,Symbol}
+
 const COLORS::Dict{Symbol,Union{Symbol,String}} = Dict(
     :RCP45 => :darkblue,
     :RCP60 => :seagreen,
@@ -17,16 +19,16 @@ const COLORS::Dict{Symbol,Union{Symbol,String}} = Dict(
 
 function colors(
     scen_groups::Dict{Symbol,BitVector}
-)::Dict{Symbol,Any}
+)::Dict{Symbol,COLOR_TYPE}
     group_names = keys(scen_groups)
     if count(group_names .∉ [keys(COLORS)]) > 0
         colormap = cgrad(:brg, length(group_names); categorical=true).colors
 
-        return Dict(
+        return Dict{Symbol,COLOR_TYPE}(
             group => colormap[idx] for (idx, group) in enumerate(group_names)
         )
     else
-        return Dict(group => COLORS[group] for group in group_names)
+        return Dict{Symbol,COLOR_TYPE}(group => COLORS[group] for group in group_names)
     end
 end
 function colors(
@@ -46,12 +48,12 @@ function colors(
 end
 function colors(
     scen_groups::Dict{Symbol,BitVector}, weights::Dict{Symbol,Float64}
-)::Dict{Symbol,RGBA{Float32},String}
+)::Dict{Symbol,COLOR_TYPE}
     groups = collect(keys(scen_groups))
     scen_colors = colors(scen_groups)
 
     return Dict(
-        group => RGBA{Float32}(
+        group => RGBA(
             scen_colors[group].r,
             scen_colors[group].g,
             scen_colors[group].b,

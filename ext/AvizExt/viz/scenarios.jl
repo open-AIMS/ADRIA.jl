@@ -247,7 +247,7 @@ function scenarios_confint!(
     ax::Axis,
     confints::AbstractArray,
     ordered_groups::Vector{Symbol},
-    _colors::Dict{Symbol,Any};
+    _colors::Dict{Symbol,COLOR_TYPE};
     x_vals::Union{Vector{Int64},Vector{Float64}}=collect(1:size(confints, 1))
 )::Nothing
     for idx in eachindex(ordered_groups)
@@ -267,7 +267,7 @@ function scenarios_confint!(
     scen_groups::Dict{Symbol,BitVector},
     group_names::Vector{Symbol}
 )::Nothing
-    _colors::Dict = colors(scen_groups)
+    _colors::Dict{Symbol,COLOR_TYPE} = colors(scen_groups)
     confints = _confints(outcomes, scen_groups, group_names)
     return scenarios_confint!(
         ax,
@@ -286,7 +286,7 @@ function scenarios_series!(
     series_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     x_vals::T=collect(1:size(outcomes, 1))
 )::Nothing where {T<:Union{Vector{Int64},Vector{Float64}}}
-    _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(scen_groups)
+    _colors::Dict{Symbol,COLOR_TYPE} = colors(scen_groups)
     _alphas::Dict{Symbol,Float64} = alphas(scen_groups)
 
     for group in group_names

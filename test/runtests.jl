@@ -4,6 +4,8 @@ using ADRIA
 
 using ADRIA: CSV, DataFrames, YAXArrays, YAXArrays.At
 
+ENV["TEST"] = "true"
+
 include("mock_data/mock_data.jl")
 
 include("aqua.jl")

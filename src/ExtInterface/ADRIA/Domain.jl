@@ -208,10 +208,12 @@ function Domain(
     # Add compatability with non-migrated datasets but always default current coral spec
     if size(cyclone_mortality, 3) == 6
         n_groups = coral_growth.n_groups
-        @warn """
-        Cyclone mortality data contains 6 functional groups. ADRIA uses $(n_groups).
-        Skipping first functional group.
-        """
+        if get(ENV, "TEST", "false") == "false"
+            @warn """
+                Cyclone mortality data contains 6 functional groups. ADRIA uses $(n_groups).
+                Skipping first functional group.
+            """
+        end
         cyclone_mortality = cyclone_mortality[:, :, 2:end, :]
     end
 

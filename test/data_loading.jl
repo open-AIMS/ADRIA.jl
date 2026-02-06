@@ -15,6 +15,7 @@ end
     dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
     @test dom isa Domain
     @test maximum(dom.dhw_scens) > 0.0
+    GC.gc()
 end
 
 @testset "Connectivity loading" begin
@@ -42,6 +43,7 @@ end
         "Sites do not match expected order."
     @test all(unique_loc_ids .== conn_details.loc_ids) ||
         "Included site ids do not match length/order in geospatial file."
+    GC.gc()
 end
 
 @testset "Environmental data" begin
@@ -58,6 +60,7 @@ end
     dhw = ADRIA.load_env_data(dhw_fn, "dhw")
     @test all(axes(dhw, 2).dim .== loc_data.reef_siteid) ||
         "Wave data not aligned with order specified in geospatial data"
+    GC.gc()
 end
 
 @testset "Initial covers" begin
@@ -69,6 +72,7 @@ end
 
     @test all(axes(coral_covers, 2).dim .== loc_data.reef_siteid) ||
         "Coral cover data not aligned with order specified in geospatial data"
+    GC.gc()
 end
 
 @testset "Cyclone mortality data" begin
@@ -91,4 +95,5 @@ end
         "Cyclone mortality locations do not align with location order specified in geospatial data"
     @test all(axes(cyclone_mortality, 3).dim .== expected_species_order) ||
         "Cyclone mortality data does not list species in expected order"
+    GC.gc()
 end
