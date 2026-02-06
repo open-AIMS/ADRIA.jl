@@ -50,7 +50,7 @@ end
         highlight::Union{Vector,Tuple,Nothing},
         show_colorbar::Bool=true,
         colorbar_label::String="",
-        color_map::$COLORMAP_TYPE_DOCSTRING,
+        color_map::$COLORMAP_TYPE=:grayC,
         legend_params::Union{Tuple,Nothing}=nothing,
         axis_opts::Dict{Symbol, <:Any}=set_axis_defaults(Dict{Symbol,Any}())
     )
@@ -77,7 +77,7 @@ function create_map!(
     highlight::Union{Vector,Tuple,Nothing};
     show_colorbar::Bool=true,
     colorbar_label::String="",
-    color_map::COLORMAP_TYPE(T)=:grayC,
+    color_map::COLORMAP_TYPE=:grayC,
     legend_params::Union{Tuple,Nothing}=nothing,
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
 )::Union{GridLayout,GridPosition} where {T<:Real}
