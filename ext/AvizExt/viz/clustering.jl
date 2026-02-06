@@ -146,11 +146,12 @@ function ADRIA.viz.map!(
 )::Union{GridLayout,GridPosition}
     # Although this function is called scenario_clusters, here we have locations clusters
     loc_groups::Dict{Symbol,BitVector} = ADRIA.analysis.scenario_clusters(clusters)
-    group_colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(loc_groups)
+
+    group_colors::Dict{Symbol,COLOR_TYPE} = colors(loc_groups)
 
     legend_params::Tuple = _cluster_legend_params(loc_outcomes, loc_groups, group_colors)
 
-    _colors::Vector{Union{Symbol,RGBA{Float32}}} = Vector{Union{Symbol,RGBA{Float32}}}(
+    _colors::Vector{COLOR_TYPE} = Vector{COLOR_TYPE}(
         undef, length(clusters)
     )
     for (idx, filt) in loc_groups
@@ -167,7 +168,11 @@ function ADRIA.viz.map!(
 end
 
 """
-    _cluster_legend_params(data::AbstractVector{<:Real}, scen_groups::Dict{Symbol,BitVector}, group_colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}})::Tuple
+    _cluster_legend_params(
+        data::AbstractVector{<:Real},
+        scen_groups::Dict{Symbol,BitVector},
+        group_colors::Dict{Symbol,Union{RGBA,String,Symbol}}
+    )::Tuple
 
 Color parameter for current cluster weighted by number of scenarios.
 
@@ -175,8 +180,7 @@ Color parameter for current cluster weighted by number of scenarios.
 - `data` : Vector of some metric outcome for each location
 - `loc_groups` : Dictionary of (group_names => filter), where filter is a BitVector to
 select locations that belong to each group
-- `group_colors` : Dictionary of (group_names => colors), where colors can be Symbols or
-RGBA{Float32}
+- `group_colors` : Dictionary of (group_names => colors)
 
 # Returns
 Tuple of legend params to be passed to map! containing legend_entries, legend_labels and
@@ -185,7 +189,7 @@ legend_title (in that order).
 function _cluster_legend_params(
     data::AbstractVector{<:Real},
     loc_groups::Dict{Symbol,BitVector},
-    group_colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}}
+    group_colors::Dict{Symbol,COLOR_TYPE}
 )::Tuple
     group_keys = sort(collect(keys(group_colors)))
     colors = [group_colors[key] for key in group_keys]

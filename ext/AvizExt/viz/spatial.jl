@@ -332,7 +332,7 @@ function ADRIA.viz.map!(
     return g
 end
 
-function _diverging_cmap(outcomes::YAXArray)::Vector{RGB{Float64}}
+function _diverging_cmap(outcomes::YAXArray)::Vector{RGB}
     min_val, max_val = extrema(outcomes)
 
     # Hande only positive or only negative value cases

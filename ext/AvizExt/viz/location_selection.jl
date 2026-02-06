@@ -97,7 +97,7 @@ function ADRIA.viz.ranks_to_frequencies!(
     opts[:color_map] = get(
         opts,
         :color_map,
-        [RGBA{Float32}(1.0, 1.0, 1.0, 1.0), RGBA{Float32}(0.00784314, 0.243137, 1.0, 1.0)]
+        [RGBA(1.0, 1.0, 1.0, 1.0), RGBA(0.00784314, 0.243137, 1.0, 1.0)]
     )
 
     return ADRIA.viz.map!(
@@ -215,7 +215,7 @@ function _default_colormap(
     rank_ids = keys(rank_groups)
     return Dict(
         rank_grp =>
-            [RGBA{Float32}(1.0, 1.0, 1.0, 0.1), rank_colors[rank_grp]] for
+            [RGBA(1.0, 1.0, 1.0, 0.1), rank_colors[rank_grp]] for
         rank_grp in rank_ids
     )
 end

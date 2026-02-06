@@ -85,7 +85,7 @@ function ADRIA.viz.data_envelopment_analysis!(
     DEA_output::DEAResult;
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     opts::OPT_TYPE=DEFAULT_OPT_TYPE())
-    scatter_colors = get(opts, :scatter_colors, [:red, :black])
+    scatter_colors::Vector{COLOR_TYPE} = get(opts, :scatter_colors, [:red, :black])
     legend_names = get(
         opts, :legend_names, ["Best practice frontier", "Scenario data cloud"]
     )
@@ -139,7 +139,7 @@ end
 function _render_marker_legend(g::Union{GridLayout,GridPosition},
     legend_position::Tuple{Int64,Int64},
     legend_labels::Union{Vector{Symbol},Vector{String}},
-    colors::Union{Vector{Symbol},RGBA{Float32}}
+    colors::Vector{COLOR_TYPE}
 )::Nothing
     marker_els::Vector{MarkerElement} = [
         MarkerElement(; color=color, marker=:circle) for color in colors

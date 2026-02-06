@@ -620,9 +620,9 @@ function _series_convergence(
         title_val = pop!(axis_opts, :title)
     end
 
+    _colors::Dict{Symbol,COLOR_TYPE} = colors(grps)
     if plot_overlay
         ax = Axis(g; axis_opts...)
-        _colors = colors(grps)
         scenarios_confint!(
             ax,
             permutedims(Si_conv[Si=At([:lb, :median, :ub])], (3, 1, 2)).data,
@@ -637,7 +637,6 @@ function _series_convergence(
             ax.title = title_val
         end
     else
-        _colors::Dict{Symbol,Union{Symbol,RGBA{Float32}}} = colors(grps)
         _alphas::Dict{Symbol,Float64} = alphas(grps)
 
         n_factors::Int64 = length(factors)
