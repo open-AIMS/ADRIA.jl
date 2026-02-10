@@ -25,6 +25,14 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Seeded Corymbose Acropora",
         description="Number of Corymbose Acropora to seed per deployment event."
     )
+    N_seed_CNA::Param = Factor(
+        0;
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
+        name="Seeded Corymbose non-Acropora",
+        description="Number of Corymbose non-Acropora to seed per deployment event."
+    )
     N_seed_SM::Param = Factor(
         0;
         ptype="ordered discrete",
@@ -32,6 +40,14 @@ Base.@kwdef struct Intervention <: EcoModel
         dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
         name="Seeded Small Massives",
         description="Number of small massives/encrusting to seed per deployment event."
+    )
+    N_seed_LM::Param = Factor(
+        0;
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
+        name="Seeded Large Massives",
+        description="Number of large massives/encrusting to seed per deployment event."
     )
     min_iv_locations::Param = Factor(
         5;

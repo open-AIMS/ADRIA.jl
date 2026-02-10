@@ -548,13 +548,6 @@ function run_model(
     # Years to start seeding/shading/fogging
     shade_start_year::Int64 = param_set[At("shade_year_start")]
 
-    # Build deployment strategies
-    n_seed_coral = [
-        param_set[At("N_seed_TA")], param_set[At("N_seed_CA")], param_set[At("N_seed_SM")]
-    ]
-    unguided_seeding = seed_years > 0 && any(n_seed_coral .> 0)
-    unguided_fogging = fogging > 0.0 && fog_years > 0
-
     habitable_areas::Matrix{Float64} = cache.habitable_area
     fec_params_per_m²::Matrix{Float64} = _to_group_size(
         domain.coral_growth, corals.fecundity
@@ -604,7 +597,7 @@ function run_model(
 
     Yshade = spzeros(tf, n_locs)
     Yfog = spzeros(tf, n_locs)
-    Yseed = zeros(tf, 3, n_locs)  # 3 = the number of seeded coral types
+    Yseed = zeros(tf, n_groups, n_locs)  # 3 = the number of seeded coral types
 
     # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
@@ -631,44 +624,35 @@ function run_model(
         shade_start_year, tf, shade_years, param_set[At("shade_deployment_freq")]
     )
 
-    taxa_names::Vector{String} = collect(
-        factor_names[occursin.("N_seed_", factor_names)]
-    )
-
     # Define taxa and size class to seed, and identify their factor names
     # TODO: Seed 1-year old corals!!! If this is the 1st size class, that's fine but needs
     # to be confirmed with ecoRRAP
-    taxa_to_seed = [2, 3, 5]
-    target_class_id::BitArray = corals.class_id .== 1
-    seed_sc = _to_group_size(
-        domain.coral_growth, (corals.taxa_id .∈ [taxa_to_seed]) .& target_class_id
-    )
-
-    # Extract colony areas and determine approximate seeded area in m^2
-    seed_volume = param_set[At(taxa_names)]
-    colony_areas = _to_group_size(
-        domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
-    )
-    max_seeded_area = colony_areas[seed_sc] .* seed_volume
+    seed_sc::BitMatrix = seeded_size_classes(n_groups, n_sizes)
 
     # Set up assisted adaptation values
     a_adapt = zeros(n_groups, n_sizes)
     a_adapt[seed_sc] .= param_set[At("a_adapt")]
 
-    # Flag indicating whether to seed or not to seed when unguided
+    # Extract colony areas and determine approximate seeded area in m^2
+    seed_factor_names = factor_names[contains.(factor_names, "N_seed")]
+    seed_volume = param_set[At(seed_factor_names)]
+    _colony_areas = _to_group_size(
+        domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
+    )
+    max_seeded_area = _colony_areas[seed_sc] .* seed_volume
+
     is_unguided = param_set[At("guided")] == 0.0
-    is_seeding = any(param_set[At(taxa_names)] .> 0.0)
+
+    # Flag indicating whether to seed or not to seed when unguided
+    is_seeding = any(seed_volume .> 0)
     unguided_seeding = is_unguided && is_seeding
 
     # Flag indicating whether to fog or not fog
     is_fogging = fogging > 0.0
     unguided_fogging = is_unguided && is_fogging
+
     # Flag indicating whether to apply shading
     apply_shading = srm > 0.0
-
-    # Calculate total area to seed respecting tolerance for minimum available space to still
-    # seed at a site
-    max_area_to_seed = sum(max_seeded_area)
 
     depth_criteria = identify_within_depth_bounds(
         loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
@@ -1293,7 +1277,6 @@ function run_model(
             if length(locs_with_space) > 0
                 seed_locs = seed_locs[locs_with_space]
                 available_space = available_space[locs_with_space]
-
                 # Calculate proportion to seed based on current available space
                 proportional_increase, n_corals_seeded = distribute_seeded_corals(
                     vec_abs_k[seed_locs],
@@ -1308,7 +1291,7 @@ function run_model(
                 # Add coral seeding to recruitment
                 # (1,2,4) refer to the coral functional groups being seeded
                 # These are tabular Acropora, corymbose Acropora, and small massives
-                recruitment[[1, 2, 4], seed_locs] .+= proportional_increase
+                recruitment[:, seed_locs] .+= proportional_increase
 
                 update_tolerance_distribution!(
                     proportional_increase,
