@@ -29,7 +29,10 @@ function distribute_seeded_corals(
     # locations
     prop_area_avail = available_space ./ total_available_space
     if total_seeded_area > total_available_space
-        @warn "Seeded area exceeds available space. Restricting to available space."
+        if !is_test_env()
+            @warn "Seeded area exceeds available space. Restricting to available space."
+        end
+
         seeded_area = copy(seeded_area)
         seeded_area .*= total_available_space / total_seeded_area
     end

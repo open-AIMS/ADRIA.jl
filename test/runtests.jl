@@ -4,7 +4,7 @@ using ADRIA
 
 using ADRIA: CSV, DataFrames, YAXArrays, YAXArrays.At
 
-ENV["TEST"] = "true"
+ENV["ADRIA_TEST"] = "true"
 
 include("mock_data/mock_data.jl")
 
@@ -45,3 +45,5 @@ include("viz/spatial.jl")
 #
 # Always run this example test case last
 # as it sets global environment variables
+
+ENV["ADRIA_TEST"] = "false"

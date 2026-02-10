@@ -227,7 +227,10 @@ function _remove_duplicates(
 
     n_rules = length(rules)
     n_duplicates = n_rules - n_unique_rules
-    @warn "$n_duplicates of $n_rules duplicated rules were found and are going to be removed."
+
+    if !is_test_env()
+        @warn "$n_duplicates of $n_rules duplicated rules were found and are going to be removed."
+    end
 
     unique_rules::Vector{Rule} = Vector{Rule}(undef, n_unique_rules)
     for (unique_idx, unique_subclause) in enumerate(unique_subclauses)
