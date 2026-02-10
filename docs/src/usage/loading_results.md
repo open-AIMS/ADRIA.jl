@@ -31,10 +31,66 @@ data_dir
         results.nc
         scenarios.csv
 ```
-In order to reduce the duplication of geospatial and conectivity data, the data directory
-and results directory can be supplied seperately to avoid having copies for each resuilt set
+
+In order to reduce the duplication of geospatial and connectivity data, the data directory
+and results directory can be supplied separately to avoid having copies for each result set
 analysed.
 
 ```julia
 rs = ADRIA.load_domain(RMEResultSet, "<path to data dir>", "<path to results dir>")
+```
+
+## Loading C~scape Results
+
+Results from C~scape can be loaded with the `load_results` function.
+
+```julia
+# Assumes NetCDFs are contained in result subdirectory (see example directory tree below)
+rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>")
+
+# Retrieves NetCDFs from separate directory
+rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>", "<path to result directory>")
+
+# Manually pass in a list of files to load as results
+rs = ADRIA.load_results(CScapeResultSet, "<path to data dir>", ["netcdf_fn1", "netcdf_fn2", ...])
+```
+
+The expected directory structure is:
+
+```bash
+data_dir
+│   ScenarioID.csv
+│
+├───connectivity
+│       connectivity.csv
+│
+├───site_data
+│       geospatial_data.gpkg
+│
+├───initial_cover
+│       initial_cover.csv
+│
+└───results (optional)
+        NetCDF_Scn_140001.nc
+        NetCDF_Scn_140002.nc
+        NetCDF_Scn_140003.nc
+        ...
+```
+
+### Loading Variables using the interface
+
+All variables except from relative cover are not loaded automatically. The outcomes
+dictionary contained in the result structure is where all outputs are stored.
+
+```julia
+julia> rs.outcomes[:relative_cover]
+```
+
+To analyse a variable contained in the NetCDFs, use the function
+
+```julia
+julia> var = ADRIA.load_variable!(rs, :var_name)
+
+# The variable will also be stored in the outcomes dictionary.
+julia> rs.outcomes[:var_name]
 ```
