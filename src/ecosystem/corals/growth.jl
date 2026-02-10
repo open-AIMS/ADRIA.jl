@@ -473,7 +473,7 @@ end
 function adjust_DHW_distribution!(
     cover_t_1::SubArray{T,3},
     dist_t::AbstractArray{T,3},
-    growth_rate::Matrix{T}
+    growth_rate::AbstractArray{T,3}
 )::Nothing where {T<:Float64}
     groups, _, locs = axes(cover_t_1)
 
@@ -485,7 +485,7 @@ function adjust_DHW_distribution!(
 
             @views _shift_distributions!(
                 cover_t_1[grp, :, loc],
-                growth_rate[grp, :],
+                growth_rate[grp, :, loc],
                 dist_t[grp, :, loc]
             )
         end
