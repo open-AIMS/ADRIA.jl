@@ -69,3 +69,7 @@ function _remove_workers()::Nothing
 
     return nothing
 end
+
+function is_test_env()::Bool
+    return get(ENV, "ADRIA_TEST", "false") == "true"
+end

@@ -80,7 +80,7 @@ function create_map!(
     color_map::COLORMAP_TYPE=:grayC,
     legend_params::Union{Tuple,Nothing}=nothing,
     axis_opts::OPT_TYPE=set_axis_defaults(DEFAULT_OPT_TYPE())
-)::Union{GridLayout,GridPosition} where {T<:Real}
+)::Union{GridLayout,GridPosition}
     spatial = GeoAxis(
         f[1, 1];
         axis_opts...
