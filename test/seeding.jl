@@ -15,6 +15,9 @@ if !@isdefined(ADRIA_DOM_45)
 end
 
 @testset "Seeding" begin
+    n_groups = 5
+    n_sizes = 7
+
     # extract inputs for function
     total_loc_area = loc_area(ADRIA_DOM_45)
     k = location_k(ADRIA_DOM_45)
@@ -25,7 +28,8 @@ end
 
     # Randomly generate seeded area
     seeded_area = ADRIA.DataCube(
-        rand(Uniform(0.0, 500.0), 3); taxa=["N_seed_TA", "N_seed_CA", "N_seed_SM"]
+        rand(Uniform(0.0, 500.0), n_groups);
+        taxa=["N_seed_TA", "N_seed_CA", "N_seed_CNA", "N_seed_SM", "N_seed_LM"]
     )
     # Aprroximate number of corals deployed from the seeded_area
     seeded_volume = seeded_area.data ./ (pi * (3.5 / 2)^2)
@@ -34,7 +38,9 @@ end
 
         # evaluate seeding distributions
         seed_dist, _ = distribute_seeded_corals(
-            total_loc_area[seed_locs], available_space[seed_locs], seeded_area,
+            total_loc_area[seed_locs],
+            available_space[seed_locs],
+            seeded_area,
             seeded_volume
         )
 
@@ -85,22 +91,22 @@ end
     end
 
     @testset "DHW distribution priors" begin
-        C_cover_t = rand(5, 7, 10)  # size class, locations
-        a_adapt = rand(2.0:6.0, 5, 7)
-        total_location_area = fill(5000.0, 10)
+        n_locs = 10
+        C_cover_t = rand(n_groups, n_sizes, n_locs)  # size class, locations
+        a_adapt = rand(2.0:6.0, n_groups, n_sizes)
+        total_location_area = fill(5000.0, n_locs)
 
-        seed_locs = rand(1:10, 5)  # Pick 5 random locations
+        seed_locs = rand(1:n_locs, 5)  # Pick 5 random locations
 
-        leftover_space_m² = fill(500.0, 10)
-        seed_sc = falses(5, 7)
-        seed_sc[[2, 3, 5], 1] .= true
+        leftover_space_m² = fill(500.0, n_locs)
+        seed_sc = ADRIA.seeded_size_classes(n_groups, n_sizes)
 
         # Initial distributions
         d = truncated(Normal(1.0, 0.15), 0.0, 3.0)
-        c_dist_t = rand(d, 5, 7, 10)
+        c_dist_t = rand(d, 5, n_sizes, n_locs)
         orig_dist = copy(c_dist_t)
 
-        dist_std = rand(5, 7)
+        dist_std = rand(n_groups, n_sizes)
 
         # Absolute number of corals seeded is not required
         proportional_increase, _ = distribute_seeded_corals(
