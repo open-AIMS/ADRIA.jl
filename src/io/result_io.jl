@@ -159,7 +159,7 @@ function scenario_attributes(domain::Domain, param_df::DataFrame)::Dict{Symbol,A
 end
 
 """
-    setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_group_and_size)
+    setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes)
 
 Setup logs for ranks, seed_log, fog_log, shade_log and coral_dhw_log.
 
@@ -169,11 +169,12 @@ Setup logs for ranks, seed_log, fog_log, shade_log and coral_dhw_log.
 - `n_scens` : number of scenarios
 - `tf` : timeframe
 - `n_locs` : number of location
-- `n_group_and_size` : number of function groups ⋅ number of size classes
+- `n_groups` : number of functional groups
+- `n_sizes` : number of size classes
 
 Note: This setup relies on hardcoded values for number of species represented and seeded.
 """
-function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_group_and_size)
+function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes)
     # Set up logs for location ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
@@ -260,28 +261,28 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_group_and_si
         coral_dhw_log = zcreate(
             Float32,
             tf,
-            n_group_and_size,
+            n_groups * n_sizes,
             n_locs,
             n_scens;
             name="coral_dhw_log",
             fill_value=nothing,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_group_and_size, n_locs, 1),
+            chunks=(tf, n_groups * n_sizes, n_locs, 1),
             attrs=attrs
         )
     else
         coral_dhw_log = zcreate(
             Float32,
             tf,
-            n_group_and_size,
+            n_groups * n_sizes,
             1,
             n_scens;
             name="coral_dhw_log",
             fill_value=0.0,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_group_and_size, 1, 1),
+            chunks=(tf, n_groups * n_sizes, 1, 1),
             attrs=attrs
         )
     end
@@ -495,7 +496,6 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     end
     stat_store_names = vcat(dhw_stat_names, wave_stat_names)
 
-    n_group_and_size::Int64 = domain.coral_growth.n_group_and_size
     # Group all data stores
     stores = [
         stores...,
@@ -503,7 +503,13 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         wave_stats...,
         connectivity...,
         setup_logs(
-            z_store, _unique_loc_ids, nrow(scen_spec), tf, n_locations, n_group_and_size
+            z_store,
+            _unique_loc_ids,
+            nrow(scen_spec),
+            tf,
+            n_locations,
+            domain.coral_growth.n_groups,
+            domain.coral_growth.n_sizes
         )...
     ]
 

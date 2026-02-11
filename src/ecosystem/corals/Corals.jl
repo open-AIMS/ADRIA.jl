@@ -142,7 +142,6 @@ function coral_spec()::NamedTuple
 
     # number of functional groups and size classes modelled in the current version.
     n_groups::Int64, n_sizes::Int64 = size(_linear_extensions)
-    n_groups_and_sizes::Int64 = n_groups * n_sizes
 
     tn = repeat(group_names; inner=n_sizes)
 
@@ -158,8 +157,8 @@ function coral_spec()::NamedTuple
     # interventions, we express coral abundance as colony numbers in different
     # size classes and growth rates as linear extension (in cm per year).
     colony_area_mean_cm², mean_colony_diameter_m = colony_areas()
-    params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_groups_and_sizes)[:]
-    params.linear_extension = reshape(_linear_extensions', n_groups_and_sizes)[:]
+    params.mean_colony_diameter_m = reshape(mean_colony_diameter_m', n_groups * n_sizes)[:]
+    params.linear_extension = reshape(_linear_extensions', n_groups * n_sizes)[:]
 
     # Scope for fecundity as a function of colony area (Hall and Hughes 1996)
     # Corymbose non-acropora uses the Stylophora data from Hall and Hughes with interpolation

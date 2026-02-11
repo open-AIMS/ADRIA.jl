@@ -37,7 +37,6 @@ function setup_cache(domain::Domain)::NamedTuple
 
     # Simulation constants
     n_locs::Int64 = domain.coral_growth.n_locs
-    n_group_and_size::Int64 = domain.coral_growth.n_group_and_size
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
     tf = length(timesteps(domain))
@@ -51,8 +50,8 @@ function setup_cache(domain::Domain)::NamedTuple
         depth_coeff=zeros(n_locs),  # store for depth coefficient
         loc_area=Matrix{Float64}(loc_area(domain)'),  # area of locations
         habitable_area=Matrix{Float64}(loc_k_area(domain)'),  # location carrying capacity
-        wave_damage=zeros(tf, n_group_and_size, n_locs),  # damage coefficient for each size class
-        dhw_tol_mean_log=zeros(tf, n_group_and_size, n_locs)  # tmp log for mean dhw tolerances
+        wave_damage=zeros(tf, n_sizes * n_groups, n_locs),  # damage coefficient for each size class
+        dhw_tol_mean_log=zeros(tf, n_sizes * n_groups, n_locs)  # tmp log for mean dhw tolerances
     )
 
     return cache
@@ -61,7 +60,7 @@ end
 """
     _reshape_init_cover(data::AbstractMatrix{<:Union{Float32, Float64}})
 
-Reshape initial coral cover of shape [groups_and_sizes ⋅ locations] to shape
+Reshape initial coral cover of shape [n_groups * n_sizes ⋅ n_locations] to shape
 [groups ⋅ sizes ⋅ locations]
 """
 function _reshape_init_cover(
@@ -527,7 +526,6 @@ function run_model(
     n_locs::Int64 = domain.coral_growth.n_locs
     n_groups::Int64 = domain.coral_growth.n_groups
     n_sizes::Int64 = domain.coral_growth.n_sizes
-    n_group_and_size::Int64 = domain.coral_growth.n_group_and_size
 
     # Initialize cover loss tracking for reactive strategies
     max_lookback = Int64(param_set[At("reactive_response_delay")])

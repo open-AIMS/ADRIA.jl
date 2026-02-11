@@ -1,5 +1,5 @@
 """
-    CoralGrowth(n_locs::Integer, n_groups::Integer, n_sizes::Integer, n_group_and_size::Integer)
+    CoralGrowth(n_locs::Integer, n_groups::Integer, n_sizes::Integer)
 
 Coral growth specification.
 """
@@ -7,7 +7,6 @@ struct CoralGrowth{A<:Integer}
     n_locs::A
     n_groups::A
     n_sizes::A
-    n_group_and_size::A
 end
 
 """
@@ -17,7 +16,7 @@ Implements temporary hardcoded caches for a scenario with 35 'species' (split in
 """
 function CoralGrowth(n_locs::Int64)
     n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
-    return CoralGrowth(n_locs, n_groups, n_sizes, n_groups * n_sizes)
+    return CoralGrowth(n_locs, n_groups, n_sizes)
 end
 
 #     @NamedTuple{

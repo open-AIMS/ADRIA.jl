@@ -14,8 +14,9 @@ function load_initial_cover(data_fn::String)::YAXArray
         load_nc_data(data_fn, "covers"; dim_names_replace=_dim_names_replace)
     )
 end
-function load_initial_cover(n_group_and_size::Int64, n_locs::Int64)::YAXArray
+function load_initial_cover(n_groups::Int64, n_sizes::Int64, n_locs::Int64)::YAXArray
     @warn "Using random initial coral cover"
+    n_group_and_size::Int64 = n_groups * n_sizes
     random_cover_data = rand(Float32, n_group_and_size, n_locs)
     return DataCube(random_cover_data; species=1:n_group_and_size, sites=1:n_locs)
 end
@@ -35,9 +36,8 @@ function _split_cover(cover::YAXArray)::YAXArray
 
     # Build initial cover final data
     n_groups::Int64, n_sizes::Int64 = size(init_cover_weights)
-    n_groups_sizes::Int64 = n_groups * n_sizes
     cover_data::Matrix{Float64} =
-        reshape(init_cover_weights', n_groups_sizes) .*
+        reshape(init_cover_weights', n_groups * n_sizes) .*
         repeat(cover[selected_groups, :]; inner=(n_sizes, 1))
 
     return DataCube(cover_data; _cover_labels(cover, n_sizes, selected_groups)...)
