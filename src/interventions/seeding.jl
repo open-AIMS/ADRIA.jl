@@ -1,6 +1,15 @@
 using StatsBase
 
 """
+    seeded_size_classes(n_groups::Int64, n_sizes::Int64)::BitMatrix
+
+Seed only the smallest size class for each group
+"""
+function seeded_size_classes(n_groups::Int64, n_sizes::Int64)::BitMatrix
+    return hcat(trues(n_groups), falses(n_groups, n_sizes - 1))
+end
+
+"""
     distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::YAXArray)::YAXArray
 
 Calculate proportion of deployed corals to be seeded at each of the selected locations.

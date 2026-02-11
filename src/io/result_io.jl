@@ -185,7 +185,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
     fog_dims::Tuple{Int64,Int64,Int64} = (tf, n_locs, n_scens)  # timeframe, location, no. scenarios
 
     # tf, no. species to seed, location id and rank, no. scenarios
-    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, 3, n_locs, n_scens)
+    seed_dims::Tuple{Int64,Int64,Int64,Int64} = (tf, n_groups, n_locs, n_scens)
 
     attrs = Dict(
         # Here, "intervention" refers to seeding or shading
@@ -256,6 +256,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         :unique_loc_ids => unique_loc_ids
     )
 
+    n_group_and_size = n_groups * n_sizes
     local coral_dhw_log
     if parse(Bool, ENV["ADRIA_DEBUG"]) == true
         coral_dhw_log = zcreate(

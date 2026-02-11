@@ -112,7 +112,8 @@ This is referred to as \$F\$.
 
 # Returns
 Matrix of `s * 8`, where `s` is the number of scenarios and columns are:
-`N_seed_TA`, `N_seed_CA`, `N_seed_SM`, `fogging`, `SRM`, `seed_years`, `shade_years`, `fog_years`
+`N_seed_TA`, `N_seed_CA`, `N_seed_CNA`, `N_seed_SM`, `N_seed_LM`, `fogging`, `SRM`,
+`seed_years`, `shade_years`, `fog_years`
 """
 function intervention_effort(X, ub, lb)
     return (X .- lb) ./ (ub .- lb)
@@ -121,7 +122,9 @@ function intervention_effort(ms::DataFrame, X::DataFrame;
     interv_cols=[
         :N_seed_TA,
         :N_seed_CA,
+        :N_seed_CNA,
         :N_seed_SM,
+        :N_seed_LM,
         :fogging,
         :SRM,
         :seed_years,

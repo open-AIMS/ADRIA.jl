@@ -37,7 +37,7 @@ function guided(scenarios::DataFrame)::BitVector
 end
 
 function _no_seed(scenarios::DataFrame)::BitVector
-    return (scenarios.N_seed_TA .== 0) .&
-           (scenarios.N_seed_CA .== 0) .&
-           (scenarios.N_seed_SM .== 0)
+    return dropdims(
+        sum(Matrix(scenarios[:, contains.(names(scenarios), "N_seed")]); dims=2); dims=2
+    ) .== 0
 end

@@ -80,6 +80,12 @@ function _is_discrete_factor(p_type::String)::Bool
     return p_type ∈ DISCRETE_FACTOR_TYPES
 end
 
+function no_seeding(scenarios::DataFrame)::BitVector
+    return dropdims(
+        sum(Matrix(scenarios[:, contains.(names(scenarios), "N_seed")]); dims=2); dims=2
+    ) .== 0
+end
+
 """
     _update_decision_method!(dom, new_dist_params::Tuple)::Domain
 
@@ -268,32 +274,34 @@ function get_bounds(param::Param)::NTuple{2,Float64}
 end
 
 """
-    adjust_samples(d::Domain, df::DataFrame)::DataFrame
-    adjust_samples!(spec::DataFrame, df::DataFrame)::DataFrame
+    adjust_samples(dom::Domain, samples::DataFrame)::DataFrame
+    adjust_samples!(spec::DataFrame, samples::DataFrame)::DataFrame
 
 Adjust given samples to ensure parameter value combinations for unguided
 scenarios are plausible.
 """
-function adjust_samples(d::Domain, df::DataFrame)::DataFrame
-    return adjust_samples(model_spec(d), df)
+function adjust_samples(dom::Domain, samples::DataFrame)::DataFrame
+    return adjust_samples(model_spec(dom), samples)
 end
-function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
+function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
     interv = component_params(spec, Intervention)
     seed_weights = component_params(spec, SeedCriteriaWeights)
     fog_weights = component_params(spec, FogCriteriaWeights)
     depth_offsets = component_params(spec, DepthThresholds)
 
     # If counterfactual, set all intervention options to 0.0
-    df[df.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)] .=
+    samples[
+        samples.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)
+    ] .=
         0.0
 
     # Treat weight parameters as Gamma quantiles and transform so they sum to 1
-    for (i, r) in enumerate(eachrow(df))
+    for (i, r) in enumerate(eachrow(samples))
         if r.guided > 0
-            df[i, seed_weights.fieldname] .= gamma_to_dirichlet(
+            samples[i, seed_weights.fieldname] .= gamma_to_dirichlet(
                 collect(r[seed_weights.fieldname])
             )
-            df[i, fog_weights.fieldname] .= gamma_to_dirichlet(
+            samples[i, fog_weights.fieldname] .= gamma_to_dirichlet(
                 collect(r[fog_weights.fieldname])
             )
         end
@@ -306,30 +314,31 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
     )
 
     # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
-    df[df.guided .<= 0.0, non_depth_names] .= 0.0  # Turn off weights for unguided and cf
-    df[df.guided .== -1.0, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
+    samples[samples.guided .<= 0.0, non_depth_names] .= 0.0  # Turn off weights for unguided and cf
+    samples[samples.guided .== -1.0, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
 
     # Also deactivate strategy parameters for counterfactuals and unguided
-    (df[df.guided .== 0.0, [:seed_strategy, :fog_strategy]]) .= DECISION_STRATEGY[:periodic]
-    df[df.guided .== -1.0, [:seed_strategy, :fog_strategy]] .= -1.0
+    (samples[samples.guided .== 0.0, [:seed_strategy, :fog_strategy]]) .= DECISION_STRATEGY[:periodic]
+    samples[samples.guided .== -1.0, [:seed_strategy, :fog_strategy]] .= -1.0
 
     # If unguided, set planning horizon to 0.
-    df[df.guided .== 0.0, :plan_horizon] .= 0.0
+    samples[samples.guided .== 0.0, :plan_horizon] .= 0.0
 
     # If no seeding is to occur, set related variables to 0
-    not_seeded = (df.N_seed_TA .== 0) .& (df.N_seed_CA .== 0) .& (df.N_seed_SM .== 0)
-    df[not_seeded, contains.(names(df), "seed_")] .= 0.0
-    df[not_seeded, :a_adapt] .= 0.0
+    not_seeded::BitVector = no_seeding(samples)
+    samples[not_seeded, contains.(names(samples), "seed_")] .= 0.0
+    samples[not_seeded, :a_adapt] .= 0.0
 
     # Same for fogging/shading
-    not_fogged = (df.fogging .== 0)
-    df[not_fogged, contains.(names(df), "fog_")] .= 0.0
+    not_fogged = (samples.fogging .== 0)
+    samples[not_fogged, contains.(names(samples), "fog_")] .= 0.0
 
-    not_shaded = (df.SRM .== 0)
-    df[not_shaded, contains.(names(df), "shade_")] .= 0.0
+    not_shaded = (samples.SRM .== 0)
+    samples[not_shaded, contains.(names(samples), "shade_")] .= 0.0
 
     # Reactive Seed and Fog
-    not_reactive = .!is_reactive(df.seed_strategy) .& .!is_reactive(df.fog_strategy)
+    not_reactive =
+        .!is_reactive(samples.seed_strategy) .& .!is_reactive(samples.fog_strategy)
     reactive_params = [
         :reactive_absolute_threshold,
         :reactive_loss_threshold,
@@ -337,35 +346,35 @@ function adjust_samples(spec::DataFrame, df::DataFrame)::DataFrame
         :reactive_response_delay,
         :reactive_cooldown_period
     ]
-    df[not_reactive, reactive_params] .= 0.0
+    samples[not_reactive, reactive_params] .= 0.0
 
     # Deactivate periodic parameters when reactive strategy is in place
-    df[is_reactive(df.seed_strategy), [:seed_deployment_freq]] .= 0.0
+    samples[is_reactive(samples.seed_strategy), [:seed_deployment_freq]] .= 0.0
 
-    not_periodic_fog = (df.fog_strategy .!= 1)
-    df[not_periodic_fog, [:fog_deployment_freq]] .= 0.0
+    not_periodic_fog = (samples.fog_strategy .!= 1)
+    samples[not_periodic_fog, [:fog_deployment_freq]] .= 0.0
 
     # Normalize MCDA weights for fogging scenarios
-    guided_fogged = (df.fogging .> 0.0) .& (df.guided .> 0)
-    df[guided_fogged, fog_weights.fieldname] .= mcda_normalize(
-        df[guided_fogged, fog_weights.fieldname]
+    guided_fogged = (samples.fogging .> 0.0) .& (samples.guided .> 0)
+    samples[guided_fogged, fog_weights.fieldname] .= mcda_normalize(
+        samples[guided_fogged, fog_weights.fieldname]
     )
     # Normalize MCDA weights for seeding scenarios
-    guided_seeded = .!(not_seeded) .& (df.guided .> 0)
-    df[guided_seeded, seed_weights.fieldname] .= mcda_normalize(
-        df[guided_seeded, seed_weights.fieldname]
+    guided_seeded = .!(not_seeded) .& (samples.guided .> 0)
+    samples[guided_seeded, seed_weights.fieldname] .= mcda_normalize(
+        samples[guided_seeded, seed_weights.fieldname]
     )
 
     # Disable wave decisions if no wave stress is used
-    no_wave_scenario = df.wave_scenario .== 0.0
-    df[no_wave_scenario, :seed_wave_stress] .= 0.0
+    no_wave_scenario = samples.wave_scenario .== 0.0
+    samples[no_wave_scenario, :seed_wave_stress] .= 0.0
 
-    if nrow(unique(df)) < nrow(df)
-        perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(df)) / nrow(df))) * 100.0))%"
+    if nrow(unique(samples)) < nrow(samples)
+        perc = "$(@sprintf("%.3f", (1.0 - (nrow(unique(samples)) / nrow(samples))) * 100.0))%"
         @warn "Non-unique samples created: $perc of the samples are duplicates."
     end
 
-    return df
+    return samples
 end
 
 """
