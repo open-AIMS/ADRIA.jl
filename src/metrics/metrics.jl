@@ -188,7 +188,7 @@ total_absolute_cover = Metric(
 Relative coral cover grouped by groups summed up across all locations.
 
 # Arguments
-- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group_sizes,
+- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group, n_sizes,
 n_locations).
 - `k_area` : The coral habitable area.
 - `n_groups` : Number of function coral groups.
@@ -260,7 +260,7 @@ ltmp_taxa_cover = Metric(
     relative_loc_taxa_cover(X::AbstractArray{T}, k_area::Vector{T}, n_groups::Int64)::AbstractArray{T,3} where {T<:Real}
 
 # Arguments
-- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group_sizes,
+- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group, n_sizes,
 n_locations)
 - `k_area` : The coral habitable area.
 - `n_groups` : Number of function coral groups.
@@ -296,7 +296,7 @@ relative_loc_taxa_cover = Metric(
 Juvenile coral cover relative to the location's area.
 
 # Arguments
-- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group_sizes,
+- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group, n_sizes,
 n_locations)
 - `coral_spec` : Coral spec DataFrame
 """
@@ -342,7 +342,7 @@ relative_juveniles = Metric(
 Juvenile coral cover in m².
 
 # Arguments
-- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group_sizes,
+- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group, n_sizes,
 n_locations)
 - `coral_spec` : Coral spec DataFrame
 - `k_area` : The coral habitable area.
@@ -392,7 +392,7 @@ Indicator for juvenile density (0 - 1), where 1 indicates the maximum theoretica
 for juveniles have been achieved.
 
 # Arguments
-- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group_sizes,
+- `X` : Raw model results for a single scenario. Dimensions (n_timesteps, n_group, n_sizes,
 n_locations).
 - `coral_spec` : Coral spec DataFrame.
 - `k_area` : The coral habitable area.
@@ -617,7 +617,7 @@ function _absolute_shelter_volume(
 
     _, _, cs_p::DataFrame = coral_spec()
     col_mask = inputs.factors .∈ Ref(cs_p.coral_id .* "_mean_colony_diameter_m")
-    # Flattened Mean colony diameters with shape [scenarios ⋅ groups_sizes]
+    # Flattened Mean colony diameters with shape [n_scenarios ⋅ n_groups * n_sizes]
     flat_mean_diams::Matrix{Float64} = Matrix(inputs.data[:, col_mask])
     # Mean colony diameters with shape [groups ⋅ sizes ⋅ scenarios]
     colony_mean_diams_cm::Array{Float64,3} =
@@ -762,7 +762,7 @@ function _relative_shelter_volume(
 
     _, _, cs_p::DataFrame = coral_spec()
     col_mask = inputs.factors .∈ Ref(cs_p.coral_id .* "_mean_colony_diameter_m")
-    # Flattened Mean colony diameters with shape [scenarios ⋅ groups_sizes]
+    # Flattened Mean colony diameters with shape [n_scenarios ⋅ n_groups * n_sizes]
     flat_mean_diams::Matrix{Float64} = Matrix(inputs[:, col_mask])
     # Mean colony diameters with shape [groups ⋅ sizes ⋅ scenarios]
     colony_mean_diams_cm::Array{Float64,3} =

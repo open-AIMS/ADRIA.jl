@@ -37,7 +37,6 @@ function setup_cache(domain::Domain)::NamedTuple
 
     # Simulation constants
     n_locs::Int64 = domain.coral_growth.n_locs
-    n_group_and_size::Int64 = domain.coral_growth.n_group_and_size
     n_sizes::Int64 = domain.coral_growth.n_sizes
     n_groups::Int64 = domain.coral_growth.n_groups
     tf = length(timesteps(domain))
@@ -51,8 +50,8 @@ function setup_cache(domain::Domain)::NamedTuple
         depth_coeff=zeros(n_locs),  # store for depth coefficient
         loc_area=Matrix{Float64}(loc_area(domain)'),  # area of locations
         habitable_area=Matrix{Float64}(loc_k_area(domain)'),  # location carrying capacity
-        wave_damage=zeros(tf, n_group_and_size, n_locs),  # damage coefficient for each size class
-        dhw_tol_mean_log=zeros(tf, n_group_and_size, n_locs)  # tmp log for mean dhw tolerances
+        wave_damage=zeros(tf, n_sizes * n_groups, n_locs),  # damage coefficient for each size class
+        dhw_tol_mean_log=zeros(tf, n_sizes * n_groups, n_locs)  # tmp log for mean dhw tolerances
     )
 
     return cache
@@ -61,7 +60,7 @@ end
 """
     _reshape_init_cover(data::AbstractMatrix{<:Union{Float32, Float64}})
 
-Reshape initial coral cover of shape [groups_and_sizes ⋅ locations] to shape
+Reshape initial coral cover of shape [n_groups * n_sizes ⋅ n_locations] to shape
 [groups ⋅ sizes ⋅ locations]
 """
 function _reshape_init_cover(
@@ -475,23 +474,10 @@ function run_model(
     param_set::YAXArray,
     functional_groups::Vector{Vector{FunctionalGroup}}
 )::NamedTuple
-    p = domain.coral_growth.ode_p
     corals = to_coral_spec(param_set)
     cache = setup_cache(domain)
 
     factor_names::Vector{String} = collect(param_set.factors.val)
-
-    # Determine growth rate based on linear extension
-    lin_ext = Matrix{Float64}(
-        reshape(
-            corals.linear_extension,
-            domain.coral_growth.n_sizes,
-            domain.coral_growth.n_groups
-        )'
-    )
-    coral_growth_rate = reshape(
-        growth_rate(lin_ext, bin_widths()), domain.coral_growth.n_group_and_size
-    )[:]
 
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
@@ -540,7 +526,6 @@ function run_model(
     n_locs::Int64 = domain.coral_growth.n_locs
     n_groups::Int64 = domain.coral_growth.n_groups
     n_sizes::Int64 = domain.coral_growth.n_sizes
-    n_group_and_size::Int64 = domain.coral_growth.n_group_and_size
 
     # Initialize cover loss tracking for reactive strategies
     max_lookback = Int64(param_set[At("reactive_response_delay")])
@@ -771,9 +756,6 @@ function run_model(
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
-    p.r .= _to_group_size(domain.coral_growth, coral_growth_rate)
-    p.mb .= _to_group_size(domain.coral_growth, corals.mb_rate)
-
     area_weighted_conn = sparse(conn .* vec_abs_k)
     conn_cache = copy(area_weighted_conn)
 
@@ -868,6 +850,8 @@ function run_model(
     cover_threshold_mask::BitVector = falses(n_locs)
     cache_habitable_max_projected_cover = copy(habitable_max_projected_cover)
     agg_cover_above_threshold_mask::BitVector = falses(n_habitable_locs)
+    net_growth_rates = zeros(n_groups, n_sizes, n_locs)
+
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
@@ -920,10 +904,12 @@ function run_model(
         end
 
         @inbounds for i in habitable_loc_idxs
+            net_growth_rates[:, :, i] .=
+                biogrp_lin_ext[:, :, loc_cb_calib_group_idxs[i]] .* growth_constraints[i]
             @views timestep!(
                 functional_groups[i],
                 recruitment[:, i],
-                biogrp_lin_ext[:, :, loc_cb_calib_group_idxs[i]] .* growth_constraints[i],
+                net_growth_rates[:, :, i],
                 biogrp_survival[:, :, loc_cb_calib_group_idxs[i]]
             )
 
@@ -953,7 +939,7 @@ function run_model(
         # Natural adaptation (doesn't change C_cover_t)
         if tstep <= tf
             adjust_DHW_distribution!(
-                @view(C_cover[tstep - 1, :, :, :]), c_mean_t, p.r
+                @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates
             )
 
             # Set values for t to t-1

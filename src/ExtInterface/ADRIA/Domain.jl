@@ -188,11 +188,10 @@ function Domain(
 
     n_locs::Int64 = nrow(location_data)
     n_groups::Int64, n_sizes::Int64 = size(linear_extensions())
-    coral_growth::CoralGrowth = CoralGrowth(n_locs, n_groups, n_sizes)
-    n_group_and_size = coral_growth.n_group_and_size
+    coral_growth::CoralGrowth = CoralGrowth(n_locs)
 
     # Load initial coral cover relative to k area
-    cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_group_and_size, n_locs)
+    cover_params = ispath(init_coral_fn) ? (init_coral_fn,) : (n_groups, n_sizes, n_locs)
     init_coral_cover = load_initial_cover(cover_params...)
 
     dhw_params = ispath(dhw_fn) ? (dhw_fn, "dhw") : (timeframe, conn_ids)
@@ -207,7 +206,6 @@ function Domain(
 
     # Add compatability with non-migrated datasets but always default current coral spec
     if size(cyclone_mortality, 3) == 6
-        n_groups = coral_growth.n_groups
         if !is_test_env()
             @warn """
                 Cyclone mortality data contains 6 functional groups. ADRIA uses $(n_groups).
