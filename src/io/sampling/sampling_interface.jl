@@ -80,6 +80,12 @@ function _is_discrete_factor(p_type::String)::Bool
     return p_type ∈ DISCRETE_FACTOR_TYPES
 end
 
+function no_seeding(scenarios::DataFrame)::BitVector
+    return dropdims(
+        sum(Matrix(scenarios[:, contains.(names(scenarios), "N_seed")]); dims=2); dims=2
+    ) .== 0
+end
+
 """
     _update_decision_method!(dom, new_dist_params::Tuple)::Domain
 

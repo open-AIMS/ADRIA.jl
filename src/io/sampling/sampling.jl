@@ -92,11 +92,15 @@ Scenario specification
 """
 function sample(
     spec::DataFrame,
-    n::Int64,
+    n_samples::Int64,
     sample_method=SobolSample(; R=OwenScramble(; base=2, pad=32))
 )::DataFrame
-    if contains(string(sample_method), "SobolSample") && !ispow2(n)
-        throw(DomainError(n, "`n` must be a power of 2 when using the Sobol' sampler"))
+    if contains(string(sample_method), "SobolSample") && !ispow2(n_samples)
+        throw(
+            DomainError(
+                n_samples, "`n_samples` must be a power of 2 when using the Sobol' sampler"
+            )
+        )
     end
 
     # Select non-constant params
@@ -116,17 +120,21 @@ function sample(
     end
 
     # Create uniformly distributed samples for uncertain parameters
-    samples = QMC.sample(n, zeros(n_vary_params), ones(n_vary_params), sample_method)
+    samples_tmp = QMC.sample(
+        n_samples, zeros(n_vary_params), ones(n_vary_params), sample_method
+    )
 
     # Scale uniform samples to indicated distributions using the inverse CDF method
-    samples = Matrix(Distributions.quantile.(vary_dists, samples)')
+    samples_tmp = Matrix(
+        Distributions.quantile.(vary_dists, samples_tmp)'
+    )
 
     # Combine varying and constant values (constant params use their indicated default vals)
-    full_df = hcat(fill.(spec.val, n)...)
-    full_df[:, spec.is_constant .== false] .= samples
+    samples = hcat(fill.(spec.val, n_samples)...)
+    samples[:, spec.is_constant .== false] .= samples_tmp
 
     # Ensure unguided scenarios do not have superfluous factor combinations
-    return adjust_samples(spec, DataFrame(full_df, spec.fieldname))
+    return adjust_samples(spec, DataFrame(samples, spec.fieldname))
 end
 
 """
