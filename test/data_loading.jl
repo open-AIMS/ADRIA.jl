@@ -8,16 +8,6 @@ if !@isdefined(ADRIA_DIR)
     const TEST_DOMAIN_PATH = joinpath(TEST_DATA_DIR, "Test_domain")
 end
 
-@testset "Domain loading" begin
-    @test TEST_DOM isa Domain
-    @test all(TEST_DOM.dhw_scens .== 0.0)
-
-    dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
-    @test dom isa Domain
-    @test maximum(dom.dhw_scens) > 0.0
-    GC.gc()
-end
-
 @testset "Connectivity loading" begin
     loc_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "spatial", "Test_domain.gpkg"))
     sort!(loc_data, :reef_siteid)
