@@ -355,7 +355,7 @@ function load_domain(::Type{ADRIADomain}, path::String, rcp::String)::ADRIADomai
     gpkg_path::String = joinpath(spatial_path, "$(domain_name).gpkg")
     init_coral_cov::String = joinpath(spatial_path, "coral_cover.nc")
 
-    dhw_fn::String = !isempty(rcp) ? joinpath(path, "DHWs", "dhwRCP$(rcp).nc") : ""
+    dhw_fn::String = joinpath(path, "DHWs", "dhwRCP$(rcp).nc")
     wave_fn::String = !isempty(rcp) ? joinpath(path, "waves", "wave_RCP$(rcp).nc") : ""
     cyclone_mortality_fn::String = joinpath(path, "cyclones", "cyclone_mortality.nc")
 
