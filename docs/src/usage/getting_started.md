@@ -67,7 +67,7 @@ Load data for a spatial domain. See [Loading a Domain](@ref) for more details:
 ```julia
 using ADRIA
 
-dom = ADRIA.load_domain("path to domain data package directory")
+dom = ADRIA.load_domain("path to domain data package directory", "<RCP>")
 ```
 
 Generate scenarios based on available environmental data layers and model parameters. The

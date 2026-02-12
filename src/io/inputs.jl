@@ -25,6 +25,15 @@ function _check_compat(dpkg_details::Dict{String,Any})::Nothing
     return nothing
 end
 
+function load_location_data(location_data_fn::String)::DataFrame
+    err_msg = "Provided location data path is not valid or missing: $(location_data_fn)."
+    return try
+        GDF.read(location_data_fn)
+    catch err
+        error(err_msg) ? !isfile(location_data_fn) : rethrow(err)
+    end
+end
+
 """
     _load_dpkg(dpkg_path::String)
 
@@ -71,7 +80,7 @@ function load_nc_data(
     dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
     data = try
-        sort_axis(Cube(data_fn), :locations)
+        sort_axis(open_dataset(data_fn)[Symbol(attr)], :locations)
     catch
         fallback_nc_data(data_fn, attr; dim_names, dim_names_replace)
     end
@@ -155,21 +164,54 @@ function load_env_data(timeframe::Vector{Int64}, sites::Vector{String})::YAXArra
 end
 
 """
-    load_cyclone_mortality(data_fn::String)::YAXArray
-    load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
+    load_cyclone_data(data_fn::String)::YAXArray
+    load_cyclone_data(data_fn::String, timeframe::Vector{Int64}, location_ids::Vector{String})::YAXArray
+    load_cyclone_data(timeframe::Vector{Int64}, location_ids::Vector{String})::YAXArray
 
 Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
 ordered by :locations
 """
-function load_cyclone_mortality(data_fn::String)::YAXArray
+function load_cyclone_data(data_fn::String)
     cyclone_cube::YAXArray = Cube(data_fn)
     return sort_axis(cyclone_cube, :locations)
 end
-function load_cyclone_mortality(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
+function load_cyclone_data(
+    data_fn::String, timeframe::Vector{Int64}, location_ids::Vector{String}
+)::YAXArray
+    cyclone_mortality = if !ispath(data_fn)
+        @info "No cyclone mortality data file found at $(cyclone_mortality_fn). Using default cyclone mortality data."
+        load_cyclone_data(timeframe, location_ids)
+    else
+        load_cyclone_data(data_fn)
+    end
+
+    # Add compatability with non-migrated datasets but always default current coral spec
+    if size(cyclone_mortality, 3) == 6
+        if !is_test_env()
+            @warn """
+                Cyclone mortality data contains 6 functional groups. ADRIA uses $(n_groups).
+                Skipping first functional group.
+            """
+        end
+        return cyclone_mortality[:, :, 2:end, :]
+    end
+
+    return cyclone_mortality
+end
+function load_cyclone_data(timeframe::Vector{Int64}, location_ids::Vector{String})::YAXArray
     return ZeroDataCube(;
         timesteps=1:length(timeframe),
-        locations=sort(loc_data.reef_siteid),
+        locations=sort(location_ids),
         species=ADRIA.coral_spec().taxa_names,
         scenarios=[1]
     )
+end
+
+function load_wave_data(data_fn::String, timeframe::Vector{Int64}, conn_ids)
+    return if !ispath(data_fn)
+        @info "No wave data file found at $(data_fn). Using default wave data."
+        load_env_data(timeframe, conn_ids)
+    else
+        load_env_data(data_fn, "Ub")
+    end
 end

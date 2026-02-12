@@ -15,7 +15,7 @@ package. Note that the data package is the *directory*.
 By convention we assign the `Domain` to `dom`, although this variable can be named anything.
 
 ```julia
-dom = ADRIA.load_domain("path to domain data package")
+dom = ADRIA.load_domain("path to domain data package", "<RCP>")
 ```
 
 ReefMod Engine datasets can also be used to run ADRIAmod simulations for the Great Barrier

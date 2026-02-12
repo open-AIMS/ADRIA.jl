@@ -16,7 +16,7 @@ using ADRIA.decision:
     """
 
     @testset "Select under-represented cluster" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         loc_data = dom.loc_data
         n_locs = length(dom.loc_ids)
         min_locs = 10  # select at least 10 locations
@@ -75,7 +75,7 @@ using ADRIA.decision:
     end
 
     @testset "Select location closest to other locations" begin
-        dom = ADRIA.load_domain(TEST_DOMAIN_PATH)
+        dom = ADRIA.load_domain(TEST_DOMAIN_PATH, "45")
         loc_data = dom.loc_data
         n_locs = length(dom.loc_ids)
         min_locs = 10  # select at least 10 locations

@@ -413,7 +413,7 @@ weighted by the connectivity values and node weights.
 Basic visualization, plotting out-centralities by default:
 
 ```julia
-dom = ADRIA.load_domain("<Path to Domain>")
+dom = ADRIA.load_domain("<Path to Domain>", "<RCP>")
 ADRIA.viz.connectivity(dom)
 
 # Plot indegree centrality instead
@@ -423,7 +423,7 @@ ADRIA.viz.connectivity(dom; in_method=indegree_centrality, out_method=nothing)
 Finer grain control:
 
 ```julia
-dom = ADRIA.load_domain("<Path to Domain>")
+dom = ADRIA.load_domain("<Path to Domain>", "<RCP>")
 
 in_conn, out_conn, network = ADRIA.connectivity_strength(dom.conn; out_method=eigenvector_centrality)
 

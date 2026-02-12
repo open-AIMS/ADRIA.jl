@@ -4,7 +4,7 @@
 ```julia
 using ADRIA
 
-dom = ADRIA.load_domain("...")
+dom = ADRIA.load_domain("...", "<RCP>")
 scens = ADRIA.sample(dom, 4096)
 
 rs = ADRIA.run_scenarios(dom, scens, "45")
