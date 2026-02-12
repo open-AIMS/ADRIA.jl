@@ -17,17 +17,6 @@ mutable struct EnvLayer{S<:AbstractString,TF}
     const timeframe::TF
 end
 
-"""
-    load_domain(path::String)
-
-Load ADRIA domain specification from data package.
-No SSP/RCP data is preset.
-
-# Arguments
-- `path` : location of data package.
-"""
-
-
 function unique_loc_ids(d::Domain)::Vector{String}
     return d.loc_data[:, d.loc_id_col]
 end
