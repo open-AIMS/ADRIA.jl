@@ -186,6 +186,7 @@ function load_cyclone_data(
     end
 
     # Add compatability with non-migrated datasets but always default current coral spec
+    n_groups = length(coral_spec().taxa_names)
     if size(cyclone_mortality, 3) == 6
         if !is_test_env()
             @warn """
