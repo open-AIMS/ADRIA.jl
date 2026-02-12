@@ -15,6 +15,7 @@ function explore() end
 function scenarios() end
 function scenarios!() end
 function scenarios_legend!() end
+function scenario_by_group_and_size() end
 
 # Sensitivity analyses
 function pawn() end
