@@ -165,7 +165,8 @@ end
 
 """
     load_cyclone_data(data_fn::String)::YAXArray
-    load_cyclone_data(timeframe::Vector{Int64}, loc_data::DataFrame)::YAXArray
+    load_cyclone_data(data_fn::String, timeframe::Vector{Int64}, location_ids::Vector{String})::YAXArray
+    load_cyclone_data(timeframe::Vector{Int64}, location_ids::Vector{String})::YAXArray
 
 Load cyclone mortality datacube from NetCDF file. The returned cyclone_mortality datacube is
 ordered by :locations
@@ -197,10 +198,7 @@ function load_cyclone_data(
 
     return cyclone_mortality
 end
-function load_cyclone_data(
-    timeframe::Vector{Int64}, location_ids::Vector{String}
-)::YAXArray
-    @info "No cyclone mortality data file found at $(cyclone_mortality_fn). Using default cyclone mortality data."
+function load_cyclone_data(timeframe::Vector{Int64}, location_ids::Vector{String})::YAXArray
     return ZeroDataCube(;
         timesteps=1:length(timeframe),
         locations=sort(location_ids),

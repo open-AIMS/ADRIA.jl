@@ -69,8 +69,14 @@ end
     loc_data = GDF.read(joinpath(TEST_DOMAIN_PATH, "spatial", "Test_domain.gpkg"))
     sort!(loc_data, :reef_siteid)
 
+    timeframe = collect(2000:2010)
+    loc_ids = ["loc1", "loc2", "loc3"]
+
     cyclone_mortality_fn = joinpath(TEST_DOMAIN_PATH, "cyclones", "cyclone_mortality.nc")
-    cyclone_mortality = ADRIA.load_cyclone_mortality(cyclone_mortality_fn)
+    cyclone_mortality = ADRIA.load_cyclone_data(cyclone_mortality_fn)
+
+    ADRIA.load_cyclone_data(cyclone_mortality_fn, timeframe, loc_ids)
+    ADRIA.load_cyclone_data(timeframe, loc_ids)
 
     expected_species_order = [
         "abhorescent_acropora",
