@@ -130,25 +130,12 @@ function Domain(
     wave_fn::String,
     cyclone_mortality_fn::String
 )::ADRIADomain
-    local location_data::DataFrame
-    try
-        location_data = GDF.read(location_data_fn)
-    catch err
-        if !isfile(location_data_fn)
-            error(
-                "Provided location data path is not valid or missing: $(location_data_fn)."
-            )
-        else
-            rethrow(err)
-        end
-    end
+    location_data = load_location_data(location_data_fn)
 
-    # Ensure other required columns are present
-    required_cols = [location_id_col, cluster_id_col, k_area_col, area_col]
-    existence_mask = [col in names(location_data) for col in required_cols]
-    if !all(existence_mask)
-        error("Columns '$(required_cols[existence_mask])' not found in location data.")
-    end
+    _validate_Domain(
+        location_data, location_id_col, cluster_id_col, k_area_col, area_col, init_coral_fn,
+        dhw_fn
+    )
 
     _standardise_location_columns!(
         location_data;
@@ -201,45 +188,14 @@ function Domain(
     coral_growth::CoralGrowth = CoralGrowth(n_locs)
 
     # Load initial coral cover relative to k area
-    if !ispath(init_coral_fn)
-        error("Initial coral cover data file not found at $(init_coral_fn). Initial coral cover data is required.")
-    end
     init_coral_cover = load_initial_cover(init_coral_fn)
-
-    if !ispath(dhw_fn)
-        error("DHW data file not found at $(dhw_fn). DHW data is always required.")
-    end
     dhw = load_env_data(dhw_fn, "dhw")
+    waves = load_wave_data(wave_fn, timeframe, conn_ids)
+    cyclone_mortality = load_cyclone_data(cyclone_mortality_fn, timeframe, u_sids)
 
-    if !ispath(wave_fn)
-        @info "No wave data file found at $(wave_fn). Using default wave data."
-        waves_params = (timeframe, conn_ids)
-    else
-        waves_params = (wave_fn, "Ub")
-    end
-    waves = load_env_data(waves_params...)
-
-    if !ispath(cyclone_mortality_fn)
-        @info "No cyclone mortality data file found at $(cyclone_mortality_fn). Using default cyclone mortality data."
-        cyc_params = (timeframe, u_sids)
-    else
-        cyc_params = (cyclone_mortality_fn,)
-    end
-    cyclone_mortality = load_cyclone_mortality(cyc_params...)
-
-    # Add compatability with non-migrated datasets but always default current coral spec
-    if size(cyclone_mortality, 3) == 6
-        if !is_test_env()
-            @warn """
-                Cyclone mortality data contains 6 functional groups. ADRIA uses $(n_groups).
-                Skipping first functional group.
-            """
-        end
-        cyclone_mortality = cyclone_mortality[:, :, 2:end, :]
-    end
-
-    msg::String = "Provided time frame must match timesteps in DHW and wave data"
-    msg = msg * "\n Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
+    msg::String =
+        "Provided time frame must match timesteps in DHW and wave data\n" *
+        "Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
 
     @assert length(timeframe) == size(dhw, 1) == size(waves, 1) msg
 
@@ -261,6 +217,42 @@ function Domain(
     )
 end
 
+function _validate_Domain(
+    location_data::DataFrame,
+    location_id_col::String,
+    cluster_id_col::String,
+    k_area_col::String,
+    area_col::String,
+    init_coral_fn::String,
+    dhw_fn::String
+)::Nothing
+    # Ensure other required columns are present
+    required_cols = [location_id_col, cluster_id_col, k_area_col, area_col]
+    existence_mask = [col in names(location_data) for col in required_cols]
+    if !all(existence_mask)
+        error("Columns '$(required_cols[existence_mask])' not found in location data.")
+    end
+
+    if !ispath(init_coral_fn)
+        error(
+            "Initial coral cover data file not found at $(init_coral_fn). Initial coral cover data is required."
+        )
+    end
+
+    if !ispath(dhw_fn)
+        error("DHW data file not found at $(dhw_fn). DHW data is always required.")
+    end
+
+    # Ensure other required columns are present
+    required_cols = [location_id_col, cluster_id_col, k_area_col, area_col]
+    existence_mask = [col in names(location_data) for col in required_cols]
+    if !all(existence_mask)
+        error("Columns '$(required_cols[existence_mask])' not found in location data.")
+    end
+
+    return nothing
+end
+
 """
     _standardise_location_columns!(location_data::DataFrame; cluster_id_col::Union{Nothing, String}=nothing, k_area_col::Union{Nothing, String}=nothing, area_col::Union{Nothing, String}=nothing,)::Nothing
 
@@ -277,7 +269,7 @@ function _standardise_location_columns!(
     location_data::DataFrame;
     cluster_id_col::Union{Nothing,String}=nothing,
     k_area_col::Union{Nothing,String}=nothing,
-    area_col::Union{Nothing,String}=nothing,
+    area_col::Union{Nothing,String}=nothing
 )::Nothing
     if !isnothing(cluster_id_col)
         location_data[!, :cluster_id] = location_data[!, Symbol(cluster_id_col)]
