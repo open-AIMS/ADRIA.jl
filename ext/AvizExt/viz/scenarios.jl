@@ -225,76 +225,95 @@ end
 
 # TODO Add support for YAXArrays (`Makie.lines!` expects an Array). For now this works.
 """
-    scenario_stratified(data::AbstractArray{Float64, 4})
+    scenario_by_group_and_size(
+        data::Array{Float64,4};
+        agg_fn::Function=median,
+        fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+        axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+    )
+    scenario_by_group_and_size(
+        data::Array{Float64,3};
+        fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+        axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+    )
 
 Plot a single scenario, averaged across all locations, stratified by size class and
-functional group.
+functional group. When a 4 dimensional Array is passed, the last dimension is assumed to be
+`locations` and the median data is aggregated across this dimension.
 
 # Arguments
-- `data` : Either a 4D array comprising (timesteps, size_classes, functional_groups and
-locations) or a 3D array comprising (timesteps, size_groups, locations).
-- `axis_opts` : Opts to be passed to Makie.Axis.
+- `data` : A 4D array comprising (`timesteps`, `functional_groups`, `size_classes` and
+`locations`) or a 3D array comprising (`timesteps`, `functional_groups`, `size_classes`).
+- `agg_fn` : Function used to aggregate `location` dimension data. Defaults to `median`.
+- `axis_opts` : Options to be passed to `Makie.Axis()`.
 
 # Example
 ```
-# Run a single scenario directly using `run_model` directly
-m_rs = ADRIA.run_model(dom, samples[1, :])
+# Run a single scenario using `run_model` directly
+m_rs = ADRIA.run_model(dom, scens[1, :])
 
-n_timesteps, n_size_groups, n_locs = size(m_rs.raw)
-n_groups = dom.coral_growth.n_groups
-n_sizes = dom.coral_growth.n_sizes
+# Plot scenario cover by size class and functional group
+ADRIA.viz.scenario_by_group_and_size(m_rs.raw)
 
-# Plot scenario cover stratified by size class and functional group
-ADRIA.viz.scenario_stratified(reshape(m_rs.raw, n_timesteps, n_sizes, n_groups, n_locations))
-
-# Plot scenario bleaching mortality stratified by size class and functional group
-ADRIA.viz.scenario_stratified(
-    permutedims(m_rs.bleaching_mortality, (1,3,2,4));
-    axis_opts=Dict{Symbol,Any}(:limits=(nothing, (0.0, 1.0)))
+# Plot scenario bleaching mortality by size class and functional group
+ADRIA.viz.scenario_by_group_and_size(
+    m_rs.bleaching_mortality;
+    axis_opts=Dict{Symbol,Any}(:limits=>(nothing, (0.0, 1.0)))
 )
-
-# Plot scenario cover
 ```
 """
-function ADRIA.viz.scenario_stratified(
+function ADRIA.viz.scenario_by_group_and_size(
     data::Array{Float64,4};
+    agg_fn::Function=median,
     fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
     axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
 )
-    n_timesteps, n_sizes, n_groups, n_locations = size(data)
-    f = Figure(; size=(1000, 1200), fig_opts...)
-    xdata = 1:n_timesteps
-
     # TODO plot confints
-    mean_data = dropdims(mean(data; dims=4); dims=4)
+    agg_data = dropdims(agg_fn(data; dims=4); dims=4)
+
+    return ADRIA.viz.scenario_by_group_and_size(
+        agg_data; fig_opts=fig_opts, axis_opts=axis_opts
+    )
+end
+function ADRIA.viz.scenario_by_group_and_size(
+    data::Array{Float64,3};
+    fig_opts::OPT_TYPE=DEFAULT_OPT_TYPE(),
+    axis_opts::OPT_TYPE=DEFAULT_OPT_TYPE()
+)
+    n_timesteps, n_groups, n_sizes = size(data)
+    fig_size = pop!(fig_opts, :size, (1000, 1200))
+    fig = Figure(; size=fig_size, fig_opts...)
+    xdata = 1:n_timesteps
 
     limits = pop!(
         axis_opts,
         :limits,
-        (nothing, (nothing, ceil(maximum(mean_data); digits=2)))
+        (nothing, (nothing, ceil(maximum(data); digits=2)))
     )
     ylabel = pop!(axis_opts, :ylabel, "")
 
     # This isn't technically an axis parameter because this title is going to be applied on
     # as a Label to the whole figure, but left it like this for simplicity
-    title = pop!(axis_opts, :title, "")
+    title = pop!(fig_opts, :title, "")
 
     for fg in 1:n_groups
         for sc in 1:n_sizes
             ax = Axis(
-                f[sc, fg];
+                fig[sc, fg];
                 title="Functional group = $fg\nSize class = $sc",
                 ylabel=ylabel,
                 xlabel="Year",
                 limits=limits,
                 axis_opts...
             )
-            ydata = mean_data[:, sc, fg]
+            ydata = data[:, fg, sc]
             lines!(ax, xdata, ydata)
         end
     end
-    Label(f[0, :], title; fontsize=24)
-    return f
+
+    Label(fig[0, :], title; fontsize=24)
+
+    return fig
 end
 
 function _confints(
