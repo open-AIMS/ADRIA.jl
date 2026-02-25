@@ -606,10 +606,13 @@ function run_model(
         MCDA_approach = mcda_methods()[Int64(param_set[At("guided")])]
     end
 
+    # Number of time steps in environmental layers to look ahead when making decisions
+    plan_horizon::Int64 = Int64(param_set[At("plan_horizon")])
+
     # Decisions should place more weight on environmental conditions
     # closer to the decision point
     α = 0.99
-    decay = α .^ (1:(Int64(param_set[At("plan_horizon")]) + 1)) .^ 2
+    decay = α .^ (1:(plan_horizon + 1)) .^ 2
 
     # Years at which intervention locations are re-evaluated and deployed
     # seed_decision_years = decision_frequency(
@@ -642,9 +645,9 @@ function run_model(
     max_seeded_area = _colony_areas[seed_sc] .* seed_volume
 
     is_unguided = param_set[At("guided")] == 0.0
+    is_seeding = any(seed_volume .> 0)
 
     # Flag indicating whether to seed or not to seed when unguided
-    is_seeding = any(seed_volume .> 0)
     unguided_seeding = is_unguided && is_seeding
 
     # Flag indicating whether to fog or not fog
@@ -659,44 +662,58 @@ function run_model(
     )
 
     if is_guided
-        seed_pref = SeedPreferences(domain, param_set)
-        fog_pref = FogPreferences(domain, param_set)
+        # Unsure what to do with this because it is usually empty
+        # decision_mat[criteria=At("seed_zone")]
 
         # Calculate cluster diversity and geographic separation scores
         diversity_scores = decision.cluster_diversity(domain.loc_data.cluster_id)
         separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
 
-        # Create shared decision matrix, setting criteria values that do not change
-        # between time steps
-        decision_mat = decision_matrix(
-            domain.loc_ids,
-            seed_pref.names;
-            depth=loc_data.depth_med,
-            cluster_diversity=diversity_scores,
-            geographic_separation=separation_scores
-        )
-
-        # Unsure what to do with this because it is usually empty
-        # decision_mat[criteria=At("seed_zone")]
-
         # Remove locations that cannot support corals or are out of depth bounds
         # from consideration
-        _valid_locs = habitable_locs .& depth_criteria
-        decision_mat = decision_mat[_valid_locs, :]
+        _valid_locs_mask =
+            habitable_locs .&
+            depth_criteria .&
+            (domain.loc_ids .∈ [domain.seed_target_locations])
 
-        # Number of time steps in environmental layers to look ahead when making decisions
-        plan_horizon::Int64 = Int64(param_set[At("plan_horizon")])
+        seed_pref = SeedPreferences(domain, param_set)
+
+        # Create shared decision matrix, setting criteria values that do not change
+        # between time steps
+        seed_decision_mat = decision_matrix(
+            domain.loc_ids[_valid_locs_mask],
+            seed_pref.names;
+            depth=loc_data.depth_med[_valid_locs_mask],
+            cluster_diversity=diversity_scores[_valid_locs_mask],
+            geographic_separation=separation_scores[_valid_locs_mask]
+        )
 
         seed_strategy =
             is_seeding ?
             build_seed_strategy(
-                param_set, domain, domain.seed_target_locations[_valid_locs]
+                param_set, domain, domain.loc_ids[_valid_locs_mask]
             ) :
             nothing
+
+        _valid_locs_mask =
+            habitable_locs .&
+            depth_criteria .&
+            (domain.loc_ids .∈ [domain.fog_target_locations])
+
+        fog_pref = FogPreferences(domain, param_set)
+
+        fog_decision_mat = decision_matrix(
+            domain.loc_ids[_valid_locs_mask],
+            fog_pref.names;
+            depth=loc_data.depth_med[_valid_locs_mask],
+            cluster_diversity=diversity_scores[_valid_locs_mask],
+            geographic_separation=separation_scores[_valid_locs_mask]
+        )
+
         fog_strategy =
             is_fogging ?
             build_fog_strategy(
-                param_set, domain, domain.fog_target_locations[_valid_locs]
+                param_set, domain, domain.fog_target_locations[_valid_locs_mask]
             ) :
             nothing
     else
@@ -1067,7 +1084,7 @@ function run_model(
                 # (fog typically uses same decision matrix as seed)
                 selected_fog_ranks = select_locations(
                     fog_pref,
-                    decision_mat[location=At(candidate_fog_locs)],
+                    fog_decision_mat[location=At(candidate_fog_locs)],
                     MCDA_approach,
                     min_iv_locs
                 )
@@ -1110,9 +1127,6 @@ function run_model(
         # Seeding
         # IDs of valid locations considering locations that have space for corals
         locs_with_space = vec(leftover_space_m²) .> 0.0
-        if is_guided
-            considered_locs = findall(_valid_locs .& locs_with_space)
-        end
 
         # if is_guided && seed_decision_years[tstep] && (length(considered_locs) > 0)
         #     considered_locs = findall(_valid_locs .& locs_with_space)
@@ -1212,7 +1226,7 @@ function run_model(
 
                 # Update decision matrix with current conditions
                 update_criteria_values!(
-                    decision_mat[location=At(candidate_seed_locs)];
+                    seed_decision_mat[location=At(candidate_seed_locs)];
                     heat_stress=dhw_projection[candidate_loc_indices],
                     wave_stress=wave_projection[candidate_loc_indices],
                     coral_cover=current_loc_cover[candidate_loc_indices],
@@ -1222,7 +1236,7 @@ function run_model(
 
                 selected_seed_ranks = select_locations(
                     seed_pref,
-                    decision_mat[location=At(candidate_seed_locs)],
+                    seed_decision_mat[location=At(candidate_seed_locs)],
                     MCDA_approach,
                     candidate_seed_locs,
                     min_iv_locs
@@ -1239,16 +1253,14 @@ function run_model(
             candidate_seed_locs = filter_candidate_locations(seed_strategy, tstep, nothing)
 
             if length(candidate_seed_locs) > 0
-                candidate_loc_indices = findall(
-                    in.(domain.loc_ids, Ref(candidate_seed_locs))
-                )
+                candidate_loc_indices = findall(domain.loc_ids .∈ [candidate_seed_locs])
 
                 # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
                 selected_seed_ranks = unguided_selection(
                     candidate_seed_locs,
                     min_iv_locs,
                     vec(leftover_space_m²[candidate_loc_indices]),
-                    depth_criteria
+                    depth_criteria[candidate_loc_indices]
                 )
 
                 # Estimate proportional change in cover to apply to cubes

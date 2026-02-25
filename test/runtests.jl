@@ -21,6 +21,7 @@ include("growth.jl")
 include("io/inputs.jl")
 include("sampling.jl")
 include("seeding.jl")
+include("interventions.jl")
 include("spec.jl")
 
 include("example_run.jl")
