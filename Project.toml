@@ -1,7 +1,7 @@
 name = "ADRIA"
 uuid = "7dc409a7-fbe5-4c9d-b3e2-b0c19a6ba600"
-authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony", "Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
 version = "0.15.1"
+authors = ["Takuya Iwanaga", "Rose Crocker", "Pedro Ribeiro de Almeida", "Ken Anthony", "Arlo White", "Daniel Tan", "Benjamin Grier", "Peter Baker"]
 
 [deps]
 ADRIAIndicators = "05ad51df-066f-4748-8c47-f6b67db83211"
@@ -91,7 +91,7 @@ DataEnvelopmentAnalysis = "0.9.1"
 DataFrames = "1"
 DataStructures = "0.18, 0.2, 0.19"
 Dates = "1"
-DimensionalData = "0.25, 0.26, 0.27, 0.29"
+DimensionalData = "0.25, 0.26, 0.27, 0.29, 0.30"
 Distances = "0.10"
 Distributed = "1"
 Distributions = "0.25"
