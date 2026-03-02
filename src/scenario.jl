@@ -1016,10 +1016,11 @@ function run_model(
         # Apply regional cooling effect before selecting locations to seed
         dhw_t .= dhw_scen[tstep, :]  # subset of DHW for given timestep
         if apply_shading && shade_decision_years[tstep]
+            shade_locs_mask = domain.loc_ids .∈ [domain.shade_target_locations]
             Yshade[tstep, :] .= srm
 
             # Apply reduction in DHW due to SRM
-            dhw_t .= max.(0.0, dhw_t .- srm)
+            dhw_t[shade_locs_mask] .= max.(0.0, dhw_t[shade_locs_mask] .- srm)
         end
 
         # Fogging
