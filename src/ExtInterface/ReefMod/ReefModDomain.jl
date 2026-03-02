@@ -33,8 +33,9 @@ mutable struct ReefModDomain <: AbstractReefModDomain
     cyclone_mortality_scens
 
     # Strategy target locations
-    seed_target_locations::Vector{String}  # locations eligible for seeding
-    fog_target_locations::Vector{String}   # locations eligible for fogging
+    seed_target_locations::Vector{String}       # locations eligible for seeding
+    fog_target_locations::Vector{String}        # locations eligible for fogging
+    shade_target_locations::Vector{String}    # locations eligible for shading
 
     model
     sim_constants::SimConstants
@@ -184,6 +185,7 @@ function load_domain(
         dhw_scens,
         wave_scens,
         cyclone_mortality_scens,
+        location_ids,
         location_ids,
         location_ids,
         model,

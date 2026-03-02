@@ -30,8 +30,9 @@ mutable struct ADRIADomain <: Domain
     cyclone_mortality_scens::Union{Matrix{<:Real},YAXArray}  # Cyclone mortality scenarios
 
     # Strategy target locations
-    seed_target_locations::Vector{String}  # locations eligible for seeding
-    fog_target_locations::Vector{String}   # locations eligible for fogging
+    seed_target_locations::Vector{String}       # locations eligible for seeding
+    fog_target_locations::Vector{String}        # locations eligible for fogging
+    shade_target_locations::Vector{String}    # locations eligible for shading
 
     # Parameters
     model::Model  # core model
@@ -88,6 +89,7 @@ function Domain(
         DHW,
         wave,
         cyclone_mortality,
+        location_ids,
         location_ids,
         location_ids,
         model,
