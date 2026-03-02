@@ -74,8 +74,8 @@ function build_fog_strategy(
         # Reactive Strategy
         return ReactiveStrategy(
             locations,
-            Int64(params[At("seed_year_start")]),
-            Int64(params[At("seed_years")]),
+            Int64(params[At("fog_year_start")]),
+            Int64(params[At("fog_years")]),
             Float64(params[At("reactive_absolute_threshold")]),
             Float64(params[At("reactive_loss_threshold")]),
             Float64(params[At("reactive_min_cover_remaining")]),
