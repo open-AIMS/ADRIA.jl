@@ -662,60 +662,14 @@ function run_model(
     )
 
     if is_guided
-        # Unsure what to do with this because it is usually empty
-        # decision_mat[criteria=At("seed_zone")]
-
-        # Calculate cluster diversity and geographic separation scores
-        diversity_scores = decision.cluster_diversity(domain.loc_data.cluster_id)
-        separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
-
-        # Remove locations that cannot support corals or are out of depth bounds
-        # from consideration
-        _valid_locs_mask =
-            habitable_locs .&
-            depth_criteria .&
-            (domain.loc_ids .∈ [domain.seed_target_locations])
-
-        seed_pref = SeedPreferences(domain, param_set)
-
-        # Create shared decision matrix, setting criteria values that do not change
-        # between time steps
-        seed_decision_mat = decision_matrix(
-            domain.loc_ids[_valid_locs_mask],
-            seed_pref.names;
-            depth=loc_data.depth_med[_valid_locs_mask],
-            cluster_diversity=diversity_scores[_valid_locs_mask],
-            geographic_separation=separation_scores[_valid_locs_mask]
+        seed_pref, seed_decision_mat, seed_strategy = setup_guided_intervention(
+            domain, param_set, depth_criteria, SeedPreferences,
+            domain.seed_target_locations, is_seeding, build_seed_strategy
         )
-
-        seed_strategy =
-            is_seeding ?
-            build_seed_strategy(
-                param_set, domain, domain.loc_ids[_valid_locs_mask]
-            ) :
-            nothing
-
-        _valid_locs_mask =
-            habitable_locs .&
-            depth_criteria .&
-            (domain.loc_ids .∈ [domain.fog_target_locations])
-
-        fog_pref = FogPreferences(domain, param_set)
-
-        fog_decision_mat = decision_matrix(
-            domain.loc_ids[_valid_locs_mask],
-            fog_pref.names;
-            depth=loc_data.depth_med[_valid_locs_mask],
-            cluster_diversity=diversity_scores[_valid_locs_mask],
-            geographic_separation=separation_scores[_valid_locs_mask]
+        fog_pref, fog_decision_mat, fog_strategy = setup_guided_intervention(
+            domain, param_set, depth_criteria, FogPreferences, domain.fog_target_locations,
+            is_fogging, build_fog_strategy
         )
-
-        fog_strategy =
-            is_fogging ?
-            build_fog_strategy(
-                param_set, domain, domain.fog_target_locations[_valid_locs_mask]
-            ) :
-            nothing
     else
         seed_strategy =
             unguided_seeding ?

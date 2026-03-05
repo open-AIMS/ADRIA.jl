@@ -228,3 +228,38 @@ function year_start_factors(dom::Domain)::DataFrame
     ms = model_spec(dom)
     return ms[occursin.(Ref("year_start"), string.(ms.fieldname)), :]
 end
+
+function setup_guided_intervention(
+    domain::Domain,
+    param_set::YAXArray,
+    depth_criteria::BitVector,
+    preference,
+    target_locs::Vector{String},
+    is_intervention::Bool,
+    build_strategy::Function
+)
+    # Remove locations that cannot support corals or are out of depth bounds
+    # from consideration
+    valid_locs_mask =
+        (location_k(domain) .> 0.0) .& depth_criteria .& (domain.loc_ids .∈ [target_locs])
+
+    # Calculate cluster diversity and geographic separation scores
+    diversity_scores = decision.cluster_diversity(domain.loc_data.cluster_id)
+    separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
+
+    pref = preference(domain, param_set)
+    decision_mat = decision_matrix(
+        domain.loc_ids[valid_locs_mask],
+        pref.names;
+        depth=domain.loc_data.depth_med[valid_locs_mask],
+        cluster_diversity=diversity_scores[valid_locs_mask],
+        geographic_separation=separation_scores[valid_locs_mask]
+    )
+    strategy =
+        is_intervention ?
+        build_strategy(
+            param_set, domain, domain.loc_ids[valid_locs_mask]
+        ) :
+        nothing
+    return pref, decision_mat, strategy
+end
