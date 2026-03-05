@@ -1,11 +1,12 @@
 using StatsBase
 
 """
-    seeded_size_classes(n_groups::Int64, n_sizes::Int64)::BitMatrix
+    seed_size_groups(n_groups::Int64, n_sizes::Int64)::BitMatrix
 
-Seed only the smallest size class for each group
+BitMatrix with dimensions (n_groups, n_sizes) where trues represent size classes and
+functional groups to seed. Seed only the smallest size class for each group.
 """
-function seeded_size_classes(n_groups::Int64, n_sizes::Int64)::BitMatrix
+function seed_size_groups(n_groups::Int64, n_sizes::Int64)::BitMatrix
     return hcat(trues(n_groups), falses(n_groups, n_sizes - 1))
 end
 
