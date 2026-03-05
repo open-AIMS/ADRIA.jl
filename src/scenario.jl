@@ -630,11 +630,11 @@ function run_model(
     # Define taxa and size class to seed, and identify their factor names
     # TODO: Seed 1-year old corals!!! If this is the 1st size class, that's fine but needs
     # to be confirmed with ecoRRAP
-    seed_sc::BitMatrix = seeded_size_classes(n_groups, n_sizes)
+    _seed_size_groups::BitMatrix = seed_size_groups(n_groups, n_sizes)
 
     # Set up assisted adaptation values
     a_adapt = zeros(n_groups, n_sizes)
-    a_adapt[seed_sc] .= param_set[At("a_adapt")]
+    a_adapt[_seed_size_groups] .= param_set[At("a_adapt")]
 
     # Extract colony areas and determine approximate seeded area in m^2
     seed_factor_names = factor_names[contains.(factor_names, "N_seed")]
@@ -642,7 +642,7 @@ function run_model(
     _colony_areas = _to_group_size(
         domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
     )
-    max_seeded_area = _colony_areas[seed_sc] .* seed_volume
+    max_seeded_area = _colony_areas[_seed_size_groups] .* seed_volume
 
     is_unguided = param_set[At("guided")] == 0.0
     is_seeding = any(seed_volume .> 0)
@@ -1311,7 +1311,7 @@ function run_model(
                     c_mean_t,
                     c_std,
                     seed_locs,
-                    seed_sc,
+                    _seed_size_groups,
                     a_adapt
                 )
             end
