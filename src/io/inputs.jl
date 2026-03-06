@@ -179,7 +179,7 @@ function load_cyclone_data(
     data_fn::String, timeframe::Vector{Int64}, location_ids::Vector{String}
 )::YAXArray
     cyclone_mortality = if !ispath(data_fn)
-        @info "No cyclone mortality data file found at $(cyclone_mortality_fn). Using default cyclone mortality data."
+        @info "No cyclone mortality data file found at $(data_fn). Using default cyclone mortality data."
         load_cyclone_data(timeframe, location_ids)
     else
         load_cyclone_data(data_fn)

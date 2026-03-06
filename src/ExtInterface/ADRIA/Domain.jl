@@ -193,6 +193,17 @@ function Domain(
     waves = load_wave_data(wave_fn, timeframe, conn_ids)
     cyclone_mortality = load_cyclone_data(cyclone_mortality_fn, timeframe, u_sids)
 
+    # If environmental data is over different timeframes align them.
+    if !all(dhw.timesteps .== 1:length(dhw.timesteps))
+        dhw = dhw[timesteps=At(timeframe)]
+    end
+    if !all(waves.timesteps .== 1:length(waves.timesteps))
+        waves = waves[timesteps=At(timeframe)]
+    end
+    if !all(cyclone_mortality.timesteps .== 1:length(cyclone_mortality.timesteps))
+        cyclone_mortality = cyclone_mortality[timesteps=At(timeframe)]
+    end
+
     msg::String =
         "Provided time frame must match timesteps in DHW and wave data\n" *
         "Got: $(length(timeframe)) | $(size(dhw, 1)) | $(size(waves, 1))"
@@ -416,6 +427,13 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     d.RCP = RCP
 
     d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw")
+
+    # Constraint dhw timeframe to timeframe in datapackage
+    if !all(d.dhw_scens.timesteps .== 1:length(d.dhw_scens.timesteps))
+        d.dhw_scens = d.dhw_scens[timesteps=At(
+            d.env_layer_md.timeframe
+        )]
+    end
 
     return d
 end
