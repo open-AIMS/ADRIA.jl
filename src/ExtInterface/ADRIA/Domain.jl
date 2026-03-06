@@ -419,7 +419,9 @@ function switch_RCPs!(d::ADRIADomain, RCP::String)::ADRIADomain
     d.env_layer_md.wave_fn = get_wave_data(d, RCP)
     d.RCP = RCP
 
-    d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw")[timesteps=At(d.env_layer_md.timeframe)]
+    d.dhw_scens = load_env_data(d.env_layer_md.DHW_fn, "dhw")[timesteps=At(
+        d.env_layer_md.timeframe
+    )]
 
     return d
 end
