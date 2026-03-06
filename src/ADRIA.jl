@@ -68,6 +68,7 @@ include("decision/Decision.jl")
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
+include("interventions/moving_corals.jl")
 
 include("io/ResultSet.jl")
 include("spatial/spatial.jl")

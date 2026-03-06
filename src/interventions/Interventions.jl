@@ -49,7 +49,23 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Seeded Large Massives",
         description="Number of large massives/encrusting to seed per deployment event."
     )
+    N_mc_settlers::Param = Factor(
+        0;
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
+        name="Moving corals settlers",
+        description="Number of moving coral settlers added per deployment event."
+    )
     min_iv_locations::Param = Factor(
+        5;
+        ptype="ordered discrete",
+        dist=DiscreteUniform,
+        dist_params=(5.0, 20.0),
+        name="Minimum moving corals locations",
+        description="Minimum number of locations to perform moving corals intervention"
+    )
+    min_mc_locations::Param = Factor(
         5;
         ptype="ordered discrete",
         dist=DiscreteUniform,
