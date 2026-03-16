@@ -80,7 +80,19 @@ function load_nc_data(
     dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
     data = try
-        sort_axis(open_dataset(data_fn)[Symbol(attr)], :locations)
+        res = open_dataset(data_fn)[Symbol(attr)]
+        ax_names = name.(res.axes)
+        loc_dim = :locations in ax_names ? :locations : (:sites in ax_names ? :sites : nothing)
+
+        if isnothing(loc_dim)
+            error("Error loading $data_fn: could not find location/site dimension.")
+        end
+
+        if !(eltype(lookup(res, loc_dim)) <: String)
+            error("Error loading $data_fn: location/site dimension labels must be Strings.")
+        end
+
+        sort_axis(res, loc_dim)
     catch
         fallback_nc_data(data_fn, attr; dim_names, dim_names_replace)
     end
@@ -105,7 +117,9 @@ function fallback_nc_data(
         end
 
         dim_labels = _nc_dim_labels(data_fn, data, nc_file)
-        return sort_axis(DataCube(data; zip(dim_names, dim_labels)...), :sites)
+        loc_dim = :locations in dim_names ? :locations : (:sites in dim_names ? :sites : nothing)
+
+        return sort_axis(DataCube(data; zip(dim_names, dim_labels)...), loc_dim)
     end
 end
 
@@ -120,7 +134,14 @@ function _nc_dim_labels(
 )::Vector{Union{UnitRange{Int64},Vector{String}}}
     local locs_idx::Int64
 
-    sites = "reef_siteid" in keys(nc_file.vars) ? _site_labels(nc_file) : 1:size(data, 2)
+    if !("reef_siteid" in keys(nc_file.vars))
+        error(
+            "Error loading $data_fn : could not find 'reef_siteid' variable. " *
+            "NetCDF data must have location ID labels."
+        )
+    end
+
+    sites = _site_labels(nc_file)
 
     try
         # This will be an issue if the number of elements for two or more dimensions have
@@ -173,6 +194,11 @@ ordered by :locations
 """
 function load_cyclone_data(data_fn::String)
     cyclone_cube::YAXArray = Cube(data_fn)
+
+    if !(eltype(lookup(cyclone_cube, :locations)) <: String)
+        error("Error loading $data_fn: cyclone mortality data must have String location labels.")
+    end
+
     return sort_axis(cyclone_cube, :locations)
 end
 function load_cyclone_data(
