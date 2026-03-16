@@ -1097,6 +1097,9 @@ function run_model(
         if has_fog_locs  # fog_decision_years[tstep] &&
             fog_locs = findall(log_location_ranks.locations .∈ [selected_fog_ranks])
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
+
+            # Empty selected_fog_ranks before the next iteration
+            selected_fog_ranks = []
         end
 
         # Moving corals intervention
@@ -1353,6 +1356,9 @@ function run_model(
                     a_adapt
                 )
             end
+
+            # Empty selected_seed_ranks before the next iteration
+            selected_seed_ranks = []
         end
 
         # Apply disturbances
