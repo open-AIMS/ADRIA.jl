@@ -11,7 +11,11 @@ function seed_size_groups(n_groups::Int64, n_sizes::Int64)::BitMatrix
 end
 
 """
-    distribute_seeded_corals(seed_loc_area::Vector{Float64}, available_space::Vector{Float64}, seeded_area::YAXArray)::YAXArray
+    distribute_seeded_corals(
+        seed_loc_k_m²::Vector{Float64},
+        available_space::Vector{Float64},
+        seed_volume::Vector{Float64}
+    )::Tuple{YAXArray,Matrix{Float64}}
 
 Calculate proportion of deployed corals to be seeded at each of the selected locations.
 Distributes seeded corals according to current available space at each selected site.
@@ -19,11 +23,11 @@ Distributes seeded corals according to current available space at each selected 
 # Arguments
 - seed_loc_k_m² : Carrying capacity area of locations to seed in m².
 - available_space : Currently available space at each seed location in m².
-- seeded_area : Area (in m²) of each coral type to be seeded with dim taxa.
 - seed_volume : Absolute number of coral to deploy.
 
 # Returns
-- YAXArray[taxa to seed ⋅ number of seed locations], Proportional increase in cover relative to locations' `k` area
+- YAXArray[taxa to seed ⋅ number of seed locations], Proportional increase in cover relative
+to locations' `k` area
 - Matrix[seed locations ⋅ taxa to seed], Number of coral deployed
 """
 function distribute_seeded_corals(

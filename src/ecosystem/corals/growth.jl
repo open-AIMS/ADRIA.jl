@@ -494,13 +494,26 @@ function adjust_DHW_distribution!(
     return nothing
 end
 
+"""
+# Arguments
+- `c_mean_t_1` : Mean of heat tolerance distribution at t-1 for each functional group,
+size class and location
+- `c_mean_t` : Mean of heat tolerance distribution at t for each functional group,
+size class and location
+- `k_area` : Coral habitable available at each location (`k` value) in either relative or
+absolute units.
+- `tp` : Connectivity matrix
+- `settlers` : Recruitment cover matrix for each functional group (rows) and locations (cols)
+- `fecundity_per_m²` : Fecundity in number of corals per area (in m²) each functional group
+- `h²` : Heritability parameter
+"""
 function settler_DHW_tolerance!(
     c_mean_t_1::AbstractArray{F,3},
     c_mean_t::AbstractArray{F,3},
     k_area::Vector{F},
     tp::SparseMatrixCSC{F},
     settlers::AbstractMatrix{F},
-    fec_params_per_m²::AbstractMatrix{F},
+    fecundity_per_m²::AbstractMatrix{F},
     h²::F
 )::Nothing where {F<:Float64}
     groups, sizes, _ = axes(c_mean_t_1)
@@ -508,7 +521,7 @@ function settler_DHW_tolerance!(
     sink_loc_ids::Vector{Int64} = findall(k_area .> 0.0)
 
     # Number of reproductive size classes for each group
-    n_reproductive::Vector{Int64} = vec(sum(fec_params_per_m² .> 0.0; dims=2))
+    n_reproductive::Vector{Int64} = vec(sum(fecundity_per_m² .> 0.0; dims=2))
 
     rows = rowvals(tp)
     vals = nonzeros(tp)
@@ -552,7 +565,7 @@ function settler_DHW_tolerance!(
 
                 # Iterate over reproductive size classes
                 for sc in sizes
-                    if fec_params_per_m²[grp, sc] > 0.0
+                    if fecundity_per_m²[grp, sc] > 0.0
                         recruit_μ += c_mean_t_1[grp, sc, src] * w
                     end
                 end
@@ -572,7 +585,7 @@ end
 """
     fecundity_scope!(
         fec_groups::AbstractMatrix{T},
-        fec_params::AbstractMatrix{T},
+        fecundity_per_m²::AbstractMatrix{T},
         C_cover_t::AbstractArray{T,3},
         loc_area::AbstractMatrix{T}
     )::Nothing where {T<:Float64}
@@ -588,13 +601,13 @@ fecundities across size classes.
 
 # Arguments
 - `fec_groups` : Matrix[n_groups, n_locs], memory cache to place results into
-- `fec_params` : Matrix[n_groups, n_sizes], coral fecundity parameters (in per m²) for each species/size class
+- `fecundity_per_m²` : Matrix[n_groups, n_sizes], coral fecundity parameters (in per m²) for each species/size class
 - `C_cover_t` : Matrix[n_groups, n_sizes, n_locs], of coral cover values for the previous time step
 - `loc_area` : Vector[n_locs], total location area in m²
 """
 function fecundity_scope!(
     fec_groups::AbstractMatrix{T},
-    fec_params::AbstractMatrix{T},
+    fecundity_per_m²::AbstractMatrix{T},
     C_cover_t::AbstractArray{T,3},
     loc_area::AbstractMatrix{T}
 )::Nothing where {T<:Float64}
@@ -604,7 +617,7 @@ function fecundity_scope!(
         for grp in axes(C_cover_t, 1)
             for sz in axes(C_cover_t, 2)
                 @views fec_groups[grp, loc] +=
-                    fec_params[grp, sz] *
+                    fecundity_per_m²[grp, sz] *
                     C_cover_t[grp, sz, loc] *
                     loc_area[1, loc]
             end
