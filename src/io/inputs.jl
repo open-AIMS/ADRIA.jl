@@ -82,7 +82,8 @@ function load_nc_data(
     data = try
         res = open_dataset(data_fn)[Symbol(attr)]
         ax_names = name.(res.axes)
-        loc_dim = :locations in ax_names ? :locations : (:sites in ax_names ? :sites : nothing)
+        loc_dim =
+            :locations in ax_names ? :locations : (:sites in ax_names ? :sites : nothing)
 
         if isnothing(loc_dim)
             error("Error loading $data_fn: could not find location/site dimension.")
@@ -117,7 +118,8 @@ function fallback_nc_data(
         end
 
         dim_labels = _nc_dim_labels(data_fn, data, nc_file)
-        loc_dim = :locations in dim_names ? :locations : (:sites in dim_names ? :sites : nothing)
+        loc_dim =
+            :locations in dim_names ? :locations : (:sites in dim_names ? :sites : nothing)
 
         return sort_axis(DataCube(data; zip(dim_names, dim_labels)...), loc_dim)
     end
@@ -196,7 +198,9 @@ function load_cyclone_data(data_fn::String)
     cyclone_cube::YAXArray = Cube(data_fn)
 
     if !(eltype(lookup(cyclone_cube, :locations)) <: String)
-        error("Error loading $data_fn: cyclone mortality data must have String location labels.")
+        error(
+            "Error loading $data_fn: cyclone mortality data must have String location labels."
+        )
     end
 
     return sort_axis(cyclone_cube, :locations)
