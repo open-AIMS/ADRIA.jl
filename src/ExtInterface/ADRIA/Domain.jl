@@ -5,7 +5,8 @@ using ADRIA.decision:
 
 using ADRIA.decision:
     SeedCriteriaWeights,
-    FogCriteriaWeights
+    FogCriteriaWeights,
+    MCCriteriaWeights
 
 """
     ADRIADomain{Σ,M,I,D,X,Y,Z}
@@ -30,8 +31,9 @@ mutable struct ADRIADomain <: Domain
     cyclone_mortality_scens::Union{Matrix{<:Real},YAXArray}  # Cyclone mortality scenarios
 
     # Strategy target locations
-    seed_target_locations::Vector{String}       # locations eligible for seeding
-    fog_target_locations::Vector{String}        # locations eligible for fogging
+    seed_target_locations::Vector{String}  # locations eligible for seeding
+    fog_target_locations::Vector{String}   # locations eligible for fogging
+    mc_target_locations::Vector{String}   # locations eligible for moving corals
     shade_target_locations::Vector{String}    # locations eligible for shading
 
     # Parameters
@@ -62,6 +64,7 @@ function Domain(
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
         SeedCriteriaWeights(),
         FogCriteriaWeights(),
+        MCCriteriaWeights(),
         DepthThresholds()
     ]
 

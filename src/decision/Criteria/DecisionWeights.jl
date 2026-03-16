@@ -30,3 +30,4 @@ end
 
 include("SeedCriteria.jl")
 include("FogCriteria.jl")
+include("MCCriteria.jl")
