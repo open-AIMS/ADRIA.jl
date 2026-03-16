@@ -169,6 +169,30 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Fogging Start Year",
         description="Start of fogging deployments after this number of years has elapsed."
     )
+    mc_year_start::Param = Factor(
+        2;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 25.0),
+        name="Moving corals Start Year",
+        description="Start moving corals deployments after this number of years has elapsed."
+    )
+    mc_years::Param = Factor(
+        10;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(5.0, 75.0),
+        name="Years to deploy moving corals",
+        description="Number of years to deploy moving corals."
+    )
+    mc_deployment_freq::Param = Factor(
+        1;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(1.0, 15.0),
+        name="Deployment Frequency (Moving corals)",
+        description="Frequency of moving corals deployments."
+    )
     # Intervention strategy parameters
     seed_strategy::Param = Factor(
         2;
@@ -184,6 +208,14 @@ Base.@kwdef struct Intervention <: EcoModel
         dist=CategoricalDistribution,
         dist_params=(1.0, 2.0),
         name="Fog Strategy Type",
+        description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based); 0 is off"
+    )
+    mc_strategy::Param = Factor(
+        2;
+        ptype="ordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(1.0, 2.0),
+        name="Moving Corals Strategy Type",
         description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based); 0 is off"
     )
     reactive_absolute_threshold::Param = Factor(

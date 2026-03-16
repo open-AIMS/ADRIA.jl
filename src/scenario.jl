@@ -548,8 +548,12 @@ function run_model(
     # Years to start seeding/shading/fogging
     shade_start_year::Int64 = param_set[At("shade_year_start")]
 
+    colony_areas = _to_group_size(
+        domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
+    )
+
     habitable_areas::Matrix{Float64} = cache.habitable_area
-    fec_params_per_m²::Matrix{Float64} = _to_group_size(
+    fecundity_per_m²::Matrix{Float64} = _to_group_size(
         domain.coral_growth, corals.fecundity
     ) # number of larvae produced per m²
 
@@ -568,6 +572,9 @@ function run_model(
     dhw_t = cache.dhw_step
     C_cover_t = cache.C_cover_t
     depth_coeff = cache.depth_coeff
+
+    # Used to distribute moving corals settlers
+    prop_fecundity = copy(cache.fec_scope)
 
     loc_data = domain.loc_data
     depth_coeff .= depth_coefficient.(loc_data.depth_med)
@@ -623,6 +630,7 @@ function run_model(
     # )
     last_seed_deployment = zeros(Int64, n_locs)
     last_fog_deployment = zeros(Int64, n_locs)
+    last_mc_deployment = zeros(Int64, n_locs)
     shade_decision_years = decision_frequency(
         shade_start_year, tf, shade_years, param_set[At("shade_deployment_freq")]
     )
@@ -637,12 +645,7 @@ function run_model(
     a_adapt[_seed_size_groups] .= param_set[At("a_adapt")]
 
     # Extract colony areas and determine approximate seeded area in m^2
-    seed_factor_names = factor_names[contains.(factor_names, "N_seed")]
-    seed_volume = param_set[At(seed_factor_names)]
-    _colony_areas = _to_group_size(
-        domain.coral_growth, colony_mean_area(corals.mean_colony_diameter_m)
-    )
-    max_seeded_area = _colony_areas[_seed_size_groups] .* seed_volume
+    seed_volume = param_set[At(factor_names[contains.(factor_names, "N_seed")])]
 
     is_unguided = param_set[At("guided")] == 0.0
     is_seeding = any(seed_volume .> 0)
@@ -653,6 +656,11 @@ function run_model(
     # Flag indicating whether to fog or not fog
     is_fogging = fogging > 0.0
     unguided_fogging = is_unguided && is_fogging
+
+    # Moving corals flag
+    n_mc_settlers = param_set[At("N_mc_settlers")]
+    is_mc = n_mc_settlers > 0.0
+    unguided_moving_corals = is_unguided && is_mc
 
     # Flag indicating whether to apply shading
     apply_shading = srm > 0.0
@@ -670,6 +678,10 @@ function run_model(
             domain, param_set, depth_criteria, FogPreferences, domain.fog_target_locations,
             is_fogging, build_fog_strategy
         )
+        mc_pref, mc_decision_mat, mc_strategy = setup_guided_intervention(
+            domain, param_set, depth_criteria, MCPreferences, domain.mc_target_locations,
+            is_mc, build_mc_strategy
+        )
     else
         seed_strategy =
             unguided_seeding ?
@@ -678,6 +690,10 @@ function run_model(
         fog_strategy =
             unguided_fogging ?
             build_fog_strategy(param_set, domain, domain.fog_target_locations) :
+            nothing
+        mc_strategy =
+            unguided_moving_corals ?
+            build_mc_strategy(param_set, domain, domain.mc_target_locations) :
             nothing
     end
 
@@ -725,6 +741,7 @@ function run_model(
     # Dummy vars to fill/replace with ranks of selected locations
     selected_seed_ranks = []
     selected_fog_ranks = []
+    selected_mc_ranks = []
 
     # Cache matrix to store potential settlers
     potential_settlers = zeros(size(fec_scope)...)
@@ -913,7 +930,11 @@ function run_model(
 
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
-        fecundity_scope!(fec_scope, fec_params_per_m², C_cover_t, habitable_areas)
+        fecundity_scope!(fec_scope, fecundity_per_m², C_cover_t, habitable_areas)
+
+        for l in 1:n_locs
+            prop_fecundity[:, l] .= fec_scope[:, l] ./ sum(fec_scope[:, l])
+        end
 
         _loc_coral_cover = loc_coral_cover(C_cover_t)
         leftover_space_m² = relative_leftover_space(_loc_coral_cover) .* vec_abs_k
@@ -941,16 +962,6 @@ function run_model(
 
         # Reset fecundity scope before next run
         fec_scope .= 0.0
-
-        settler_DHW_tolerance!(
-            c_mean_t_1,
-            c_mean_t,
-            vec_abs_k,
-            TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
-            recruitment,
-            fec_params_per_m²,
-            param_set[At("heritability")]
-        )
 
         leftover_space_m² .-= dropdims(sum(recruitment; dims=1); dims=1) .* vec_abs_k
 
@@ -1087,6 +1098,111 @@ function run_model(
             fog_locs = findall(log_location_ranks.locations .∈ [selected_fog_ranks])
             fog_locations!(@view(Yfog[tstep, :]), fog_locs, dhw_t, fogging)
         end
+
+        # Moving corals intervention
+        if !isnothing(mc_strategy)
+            state = if is_guided
+                build_state(
+                    domain, mc_strategy, current_loc_cover, recent_cover_losses,
+                    last_mc_deployment
+                )
+            else
+                nothing
+            end
+
+            # Get candidate locations from strategy
+            candidate_locs = filter_candidate_locations(mc_strategy, tstep, state)
+            candidate_loc_indices = findall(
+                in.(domain.loc_ids, Ref(candidate_locs))
+            )
+            if !isempty(candidate_locs)
+                if is_guided
+                    # Update decision matrix with current conditions
+                    update_criteria_values!(
+                        mc_decision_mat[location=At(candidate_locs)];
+                        heat_stress=dhw_projection[candidate_loc_indices],
+                        wave_stress=wave_projection[candidate_loc_indices],
+                        coral_cover=current_loc_cover[candidate_loc_indices],
+                        in_connectivity=in_conn[candidate_loc_indices],
+                        out_connectivity=out_conn[candidate_loc_indices]
+                    )
+
+                    # Build state for target locations only
+                    selected_mc_ranks = select_locations(
+                        mc_pref,
+                        mc_decision_mat[location=At(candidate_locs)],
+                        MCDA_approach,
+                        min_iv_locs
+                    )
+                else
+                    # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
+                    selected_mc_ranks = unguided_selection(
+                        candidate_locs,
+                        min_iv_locs,
+                        vec(leftover_space_m²[candidate_loc_indices]),
+                        depth_criteria[candidate_loc_indices]
+                    )
+                end
+                if !isempty(selected_mc_ranks)
+                    log_val = is_guided ? (1:length(selected_mc_ranks)) : 1.0
+                    # log_location_ranks[tstep, At(selected_mc_ranks), At(:seed)] .= log_val
+                    last_mc_deployment[candidate_loc_indices] .= tstep
+                end
+            end
+        end
+
+        # Check if locations are selected (can reuse previous selection)
+        has_mc_locs::Bool = !isempty(selected_mc_ranks)
+
+        # Apply Moving Corals (assumed to occur after spawning)
+        if has_mc_locs
+            # Selected locations can fill up over time so avoid locations with no space´
+            mc_loc_idx = findall(domain.loc_ids .∈ [selected_mc_ranks])
+
+            # Discount recruits added via seeding from leftover space
+            @views available_space =
+                leftover_space_m²[mc_loc_idx] .-
+                dropdims(sum(recruitment[:, mc_loc_idx]; dims=1); dims=1)
+
+            # available_space = leftover_space_m²[mc_loc_idx]
+            locs_with_space = findall(available_space .> 0.0)
+
+            # If there are locations with space to select from, then deploy what we can
+            # Otherwise, do nothing.
+            if length(locs_with_space) > 0
+                # Calculate proportion to seed based on current available space
+                mc_loc_idx = mc_loc_idx[locs_with_space]
+                available_space = available_space[locs_with_space]
+
+                @views mc_proportional_increase, n_mc_corals = distribute_moving_corals_settlers(
+                    vec_abs_k[mc_loc_idx],
+                    available_space,
+                    n_mc_settlers,
+                    colony_areas[_seed_size_groups],
+                    prop_fecundity[:, mc_loc_idx]
+                )
+
+                @views recruitment[:, mc_loc_idx] .+= mc_proportional_increase
+
+                # TODO log moving corals
+                # Log estimated number of corals seeded
+                Ymc[tstep, :, mc_loc_idx] .= n_mc_corals
+            end
+
+            # Empty selected_mc_ranks before the next iteration
+            selected_mc_ranks = []
+        end
+
+        # Set next settlers DHW tolerance after reproducton and moving corals intervention
+        settler_DHW_tolerance!(
+            c_mean_t_1,
+            c_mean_t,
+            vec_abs_k,
+            TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
+            recruitment,
+            fecundity_per_m²,
+            param_set[At("heritability")]
+        )
 
         # Seeding
         # IDs of valid locations considering locations that have space for corals

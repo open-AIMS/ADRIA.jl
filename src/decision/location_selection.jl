@@ -110,6 +110,7 @@ function rank_locations(
 
     seed_pref = SeedPreferences(dom, scens[1, :])
     fog_pref = FogPreferences(dom, scens[1, :])
+    mc_pref = MCPreferences(dom, scens[1, :])
 
     α = 0.99
 
@@ -146,6 +147,7 @@ function rank_locations(
 
         seed_pref = SeedPreferences(dom, scen)
         fog_pref = FogPreferences(dom, scen)
+        mc_pref = MCPreferences(dom, scen)
 
         # Determine environmental projections
         dhw_scen_idx = Int64(scen[factors=At("dhw_scenario")][1])
