@@ -109,7 +109,7 @@ function ADRIA.viz.dhw_scenarios(
 
     ci_band = band!(ax, years, lower_ci, upper_ci; color=(:red, 0.3))
     each_scen = series!(
-        ax, years, dropdims(mean(data; dims=:sites); dims=:sites).data';
+        ax, years, dropdims(mean(data; dims=:locations); dims=:locations).data';
         solid_color=(:red, 0.2)
     )
     mean_line = lines!(ax, years, means; color=(:black, 0.7))
