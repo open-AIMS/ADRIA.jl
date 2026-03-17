@@ -439,7 +439,7 @@ function load_DHW(
     return DataCube(
         data_cube[:, :, keep_ds];
         timesteps=_timeframe[1]:_timeframe[2],
-        locs=loc_ids,
+        locations=loc_ids,
         scenarios=rcp_files[keep_ds]
     )
 end
