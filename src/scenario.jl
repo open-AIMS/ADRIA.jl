@@ -367,7 +367,7 @@ function run_scenario(
 
     # Store logs
     c_dim = Base.ndims(result_set.raw) + 1
-    log_stores = (:site_ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_log)
+    log_stores = (:site_ranks, :mc_log, :seed_log, :fog_log, :shade_log, :coral_dhw_log)
     for k in log_stores
         if k == :seed_log || k == :site_ranks
             concat_dim = c_dim
@@ -383,7 +383,7 @@ function run_scenario(
             err isa MethodError ? nothing : rethrow(err)
         end
 
-        if k == :seed_log
+        if k == :seed_log || k == :mc_log
             getfield(data_store, k)[:, :, :, idx] .= vals
         elseif k == :site_ranks
             if !isnothing(data_store.site_ranks)
@@ -605,6 +605,7 @@ function run_model(
     Yshade = spzeros(tf, n_locs)
     Yfog = spzeros(tf, n_locs)
     Yseed = zeros(tf, n_groups, n_locs)  # 3 = the number of seeded coral types
+    Ymc = zeros(tf, n_groups, n_locs)
 
     # Prep scenario-specific flags/values
     # Intervention strategy: < 0 is no intervention, 0 is random location selection, > 0 is guided
@@ -1445,6 +1446,7 @@ function run_model(
     return (
         raw=C_cover,
         seed_log=Yseed,
+        mc_log=Ymc,
         fog_log=Yfog,
         shade_log=Yshade,
         site_ranks=log_location_ranks,

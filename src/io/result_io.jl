@@ -217,6 +217,16 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         chunks=(seed_dims[1:3]..., 1),
         attrs=attrs
     )
+    mc_log = zcreate(
+        Float32,
+        seed_dims...;
+        name="moving_corals",
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=log_fn,
+        chunks=(seed_dims[1:3]..., 1),
+        attrs=attrs
+    )
 
     attrs = Dict(
         :structure => ("timesteps", "locations", "scenarios"),
@@ -288,7 +298,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         )
     end
 
-    return ranks, seed_log, fog_log, shade_log, coral_dhw_log
+    return ranks, mc_log, seed_log, fog_log, shade_log, coral_dhw_log
 end
 
 """
@@ -522,6 +532,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
                 stat_store_names...,
                 conn_names...,
                 :site_ranks,
+                :mc_log,
                 :seed_log,
                 :fog_log,
                 :shade_log,
