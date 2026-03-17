@@ -347,15 +347,17 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
     samples[not_fogged, contains.(names(samples), "fog_")] .= 0.0
 
     # # Same for moving corals
-    no_moving_corals = (samples.N_mc_settlers .== 0)
-    samples[no_moving_corals, contains.(names(samples), "mc_")] .= 0.0
+    not_moving_corals = (samples.N_mc_settlers .== 0)
+    samples[not_moving_corals, contains.(names(samples), "mc_")] .= 0.0
 
     not_shaded = (samples.SRM .== 0)
     samples[not_shaded, contains.(names(samples), "shade_")] .= 0.0
 
-    # Reactive Seed and Fog
+    # Reactive
     not_reactive =
-        .!is_reactive(samples.seed_strategy) .& .!is_reactive(samples.fog_strategy)
+        .!is_reactive(samples.seed_strategy) .&
+        .!is_reactive(samples.fog_strategy) .&
+        .!is_reactive(samples.mc_strategy)
     reactive_params = [
         :reactive_absolute_threshold,
         :reactive_loss_threshold,
@@ -367,6 +369,7 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
 
     # Deactivate periodic parameters when reactive strategy is in place
     samples[is_reactive(samples.seed_strategy), [:seed_deployment_freq]] .= 0.0
+    samples[is_reactive(samples.mc_strategy), [:mc_deployment_freq]] .= 0.0
 
     not_periodic_fog = (samples.fog_strategy .!= 1)
     samples[not_periodic_fog, [:fog_deployment_freq]] .= 0.0
@@ -380,6 +383,11 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
     guided_seeded = .!(not_seeded) .& (samples.guided .> 0)
     samples[guided_seeded, seed_weights.fieldname] .= mcda_normalize(
         samples[guided_seeded, seed_weights.fieldname]
+    )
+    # Normalize MCDA weights for mc scenarios
+    guided_mc = .!(not_moving_corals) .& (samples.guided .> 0)
+    samples[guided_mc, mc_weights.fieldname] .= mcda_normalize(
+        samples[guided_mc, mc_weights.fieldname]
     )
 
     # Disable wave decisions if no wave stress is used
