@@ -165,7 +165,7 @@ function load_domain(
     end
 
     force_single_reef && (dhw_scens = dhw_scens[:, [1], :])
-    loc_ids::Vector{String} = collect(dhw_scens.locs)
+    loc_ids::Vector{String} = collect(dhw_scens.locations)
 
     # Standardize IDs to use for site/reef and cluster
     _standardize_cluster_ids!(spatial_data)
