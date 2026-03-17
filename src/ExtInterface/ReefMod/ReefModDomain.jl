@@ -295,7 +295,7 @@ end
 
 function correct_axis_names!(reefmod_cube::YAXArray)::YAXArray
     reefmod_cube = renameaxis!(reefmod_cube, :timestep => :timesteps)
-    reefmod_cube = renameaxis!(reefmod_cube, :location => :locs)
+    reefmod_cube = renameaxis!(reefmod_cube, :location => :locations)
     reefmod_cube = renameaxis!(reefmod_cube, :scenario => :scenarios)
     return reefmod_cube
 end

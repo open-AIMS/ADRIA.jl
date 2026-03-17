@@ -385,7 +385,7 @@ function load_DHW(
     ::Type{RMEDomain}, data_path::String, rcp::String;
     timeframe::Union{Nothing,Tuple{Int,Int}}=nothing
 )::YAXArray
-    dhw_path = _data_folder_path(data_path, "dhw")
+    dhw_path = _data_folder_path(data_path, "dhw_csv")
     rcp_files = _get_relevant_files(dhw_path, rcp)
     rcp_files = filter(x -> occursin("SSP", x), rcp_files)
     if isempty(rcp_files)
