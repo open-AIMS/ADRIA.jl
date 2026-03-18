@@ -1,15 +1,19 @@
-# TODO turn into constant
-# This represents how many adult settlers survive after one year for each deployed box
-MC_SETTLERS_PER_POOL = 1
+# This represents how many corals survive after one year for each deployment
+# TODO Use a realistic value for this
+const MC_CORALS_PER_POOL = 1
 
 """
-    distribute_moving_corals_settlers(
+    distribute_moving_corals(
         loc_k_m²::Union{Vector{Float64},SubArray{Float64,1}},
         available_space_per_loc_m2::Union{Vector{Float64},SubArray{Float64,1}},
         n_mc_settlers::Float64,
         colony_areas::Union{Vector{Float64},SubArray{Float64,1}},
         prop_fecundity::Union{Matrix{Float64},SubArray{Float64,2}}
     )::Tuple{Matrix{Float64},Matrix{Float64}}
+
+Distribute pools for moving corals intervention. Number of corals per pool is determined by
+the constant `MC_CORALS_PER_POOL`. Number of pools follows available space relative to the
+overall available space across all selected locations.
 
 # Arguments
 - `loc_k_m²` : Carrying capacity area of locations to seed in m².
@@ -18,34 +22,32 @@ MC_SETTLERS_PER_POOL = 1
 - `colony_areas` : Area of one coral of each functional group and size class
 - `prop_fecundity` : Proportional fecundity to infer
 """
-function distribute_moving_corals_settlers(
+function distribute_moving_corals(
     loc_k_m²::Union{Vector{Float64},SubArray{Float64,1}},
     available_space_per_loc_m2::Union{Vector{Float64},SubArray{Float64,1}},
     n_mc_settlers::Float64,
     colony_areas::Union{Vector{Float64},SubArray{Float64,1}},
     prop_fecundity::Union{Matrix{Float64},SubArray{Float64,2}}
 )::Tuple{Matrix{Float64},Matrix{Float64}}
-    # Proportion of available space on each site relative to available space at these
-    # locations
+    # Proportion of available space on each location
     total_available_space::Float64 = sum(available_space_per_loc_m2)
     prop_available_space = available_space_per_loc_m2 ./ total_available_space
 
-    # Intervention uses boxes that hold a certain number of settlers
-    n_boxes = (n_mc_settlers / MC_SETTLERS_PER_POOL)
+    n_pools = (n_mc_settlers / MC_CORALS_PER_POOL)
 
-    # Use prop_area_avail to determine proportion of seeds for each location
-    n_boxes_per_loc = prop_available_space .* n_boxes
+    # Use prop_area_avail to determine proportion of corals for each location
+    n_pools_per_loc = prop_available_space .* n_pools
 
-    box_surplus = 0.0
-    for i in eachindex(n_boxes_per_loc)
-        _nbpl = floor(n_boxes_per_loc[i])
-        box_surplus += (n_boxes_per_loc[i] - _nbpl)
-        n_boxes_per_loc[i] = _nbpl
+    pool_surplus = 0.0
+    for i in eachindex(n_pools_per_loc)
+        _nppl = floor(n_pools_per_loc[i])
+        pool_surplus += (n_pools_per_loc[i] - _nppl)
+        n_pools_per_loc[i] = _nppl
     end
 
-    # Designate box_surplus to location with more boxes (because it has more available space)
-    n_boxes_per_loc[findmax(n_boxes_per_loc)[2]] += round(box_surplus)
-    n_settlers_per_loc = n_boxes_per_loc .* MC_SETTLERS_PER_POOL
+    # Designate pool_surplus to location with more pools (because it has more available space)
+    n_pools_per_loc[findmax(n_pools_per_loc)[2]] += round(pool_surplus)
+    n_settlers_per_loc = n_pools_per_loc .* MC_CORALS_PER_POOL
 
     # Use prop_fecundity do determine how many settlers of each group per location
     n_deployed_corals = zeros(size(prop_fecundity))

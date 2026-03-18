@@ -1178,7 +1178,7 @@ function run_model(
                 mc_loc_idx = mc_loc_idx[locs_with_space]
                 available_space = available_space[locs_with_space]
 
-                @views mc_proportional_increase, n_mc_corals = distribute_moving_corals_settlers(
+                @views mc_proportional_increase, n_mc_corals = distribute_moving_corals(
                     vec_abs_k[mc_loc_idx],
                     available_space,
                     n_mc_settlers,
