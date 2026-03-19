@@ -95,6 +95,7 @@ function Domain(
         location_ids,
         location_ids,
         location_ids,
+        location_ids,
         model,
         sim_constants
     )
