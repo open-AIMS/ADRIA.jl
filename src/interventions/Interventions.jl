@@ -141,9 +141,17 @@ Base.@kwdef struct Intervention <: EcoModel
         1;
         ptype="ordered categorical",
         dist=DiscreteUniform,
-        dist_params=(1.0, 15.0),
+        dist_params=(0.0, 15.0),
         name="Deployment Frequency (Shading)",
         description="Frequency of shading deployments."
+    )
+    mc_deployment_freq::Param = Factor(
+        1;
+        ptype="ordered categorical",
+        dist=DiscreteUniform,
+        dist_params=(0.0, 15.0),
+        name="Deployment Frequency (Moving corals)",
+        description="Frequency of moving corals deployments."
     )
     seed_year_start::Param = Factor(
         2;
@@ -185,14 +193,7 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Years to deploy moving corals",
         description="Number of years to deploy moving corals."
     )
-    mc_deployment_freq::Param = Factor(
-        1;
-        ptype="ordered categorical",
-        dist=DiscreteUniform,
-        dist_params=(1.0, 15.0),
-        name="Deployment Frequency (Moving corals)",
-        description="Frequency of moving corals deployments."
-    )
+
     # Intervention strategy parameters
     seed_strategy::Param = Factor(
         2;

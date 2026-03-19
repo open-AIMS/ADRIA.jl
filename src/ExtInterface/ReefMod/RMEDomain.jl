@@ -315,6 +315,7 @@ function load_domain(
             reef_ids,
             reef_ids,
             reef_ids,
+            reef_ids,
             model,
             SimConstants()
         )

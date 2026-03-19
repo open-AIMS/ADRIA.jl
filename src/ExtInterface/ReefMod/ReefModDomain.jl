@@ -190,6 +190,7 @@ function load_domain(
         location_ids,
         location_ids,
         location_ids,
+        location_ids,
         model,
         SimConstants()
     )
