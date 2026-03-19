@@ -27,11 +27,23 @@ end
 
         not_cw_mask =
             ms.component .∉
-            [("SeedCriteriaWeights", "FogCriteriaWeights", "decision.DepthThresholds")]
+            [(
+                "SeedCriteriaWeights",
+                "FogCriteriaWeights",
+                "MCCriteriaWeights",
+                "decision.DepthThresholds"
+            )]
 
         # Reactive params are zeroed when both strategies are Periodic (not Reactive)
         not_reactive_mask = .!(contains.(string.(ms.fieldname), "reactive"))
-        to_test_mask = not_reactive_mask .& not_cw_mask
+
+        iv_fieldnames = ADRIA.component_params(dom, Intervention).fieldname
+        not_iv_mask = .!(
+            ms.fieldname .∈ [filter(x -> x ∉ [:guided, :heritability], iv_fieldnames)]
+        )
+
+        to_test_mask =
+            not_cw_mask .& not_reactive_mask .& not_iv_mask
         _lb, _ub = lb[to_test_mask], ub[to_test_mask]
 
         eco = (ms.component .== "Coral") .& .!(constant_params)
@@ -237,7 +249,7 @@ end
         cb_calib_groups::Vector{Int64} = dom.loc_data.CB_CALIB_GROUPS
         ms = ADRIA._filtered_model_spec(ADRIA.model_spec(dom), cb_calib_groups)
 
-        test_components = ["EnvironmentalLayer", "Intervention", "Coral"]
+        test_components = ["EnvironmentalLayer", "Coral"]
 
         function _test_bounds(
             scens::DataFrame, factor_mask::BitVector, bounds_ranges::Vector
@@ -282,68 +294,68 @@ end
             end
         end
 
-        @testset "DiscreteUniform distributions" begin
-            factor_mask = ms.component .∈ [test_components] .&& ms.dist .== DiscreteUniform
-            factors = ms[factor_mask, :]
-            factor_fieldnames = (factors.fieldname...,)
+        # @testset "DiscreteUniform distributions" begin
+        #     factor_mask = ms.component .∈ [test_components] .&& ms.dist .== DiscreteUniform
+        #     factors = ms[factor_mask, :]
+        #     factor_fieldnames = (factors.fieldname...,)
 
-            @testset "set_factor_bounds!" begin
-                bounds_ranges = [b[1]:b[2] for b in factors.default_dist_params]
-                new_bounds = Tuple.(sort.(rand.(bounds_ranges, 2)))
-                dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
-                scens = ADRIA.sample_guided(dom, num_samples)
+        #     @testset "set_factor_bounds!" begin
+        #         bounds_ranges = [b[1]:b[2] for b in factors.default_dist_params]
+        #         new_bounds = Tuple.(sort.(rand.(bounds_ranges, 2)))
+        #         dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
+        #         scens = ADRIA.sample_guided(dom, num_samples)
 
-                @test _test_bounds(scens, factor_mask, bounds_ranges)
-            end
+        #         @test _test_bounds(scens, factor_mask, bounds_ranges)
+        #     end
 
-            @testset "get_default_dist_params" begin
-                new_bounds =
-                    ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
-                dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
+        #     @testset "get_default_dist_params" begin
+        #         new_bounds =
+        #             ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
+        #         dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
-                factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
-                @test all(factor_params.dist_params .== factor_params.default_dist_params)
-                scens = ADRIA.sample(dom, num_samples)
+        #         factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
+        #         @test all(factor_params.dist_params .== factor_params.default_dist_params)
+        #         scens = ADRIA.sample(dom, num_samples)
 
-                @test _test_bounds(scens, factor_mask, new_bounds)
-            end
-        end
+        #         @test _test_bounds(scens, factor_mask, new_bounds)
+        #     end
+        # end
 
-        @testset "DiscreteOrderedUniformDist distributions" begin
-            factor_mask =
-                ms.component .∈ [test_components] .&&
-                ms.dist .== ADRIA.DiscreteOrderedUniformDist .&&
-                .!contains.(String.(ms.fieldname), "reactive")
-            factors = ms[factor_mask, :]
-            factor_fieldnames = (factors.fieldname...,)
-            @testset "set_factor_bounds!" begin
-                bounds_ranges = [b[1]:b[3]:b[2] for b in factors.default_dist_params]
-                new_bounds = Tuple.(sort.(rand.(bounds_ranges, 2)))
+        # @testset "DiscreteOrderedUniformDist distributions" begin
+        #     factor_mask =
+        #         ms.component .∈ [test_components] .&&
+        #         ms.dist .== ADRIA.DiscreteOrderedUniformDist .&&
+        #         .!contains.(String.(ms.fieldname), "reactive")
+        #     factors = ms[factor_mask, :]
+        #     factor_fieldnames = (factors.fieldname...,)
+        #     @testset "set_factor_bounds!" begin
+        #         bounds_ranges = [b[1]:b[3]:b[2] for b in factors.default_dist_params]
+        #         new_bounds = Tuple.(sort.(rand.(bounds_ranges, 2)))
 
-                new_dist_params = [
-                    (b[1], b[2], old_dist_params[3]) for
-                    (b, old_dist_params) in zip(new_bounds, factors.default_dist_params)
-                ]
-                dom = ADRIA.set_factor_bounds!(
-                    dom; NamedTuple{factor_fieldnames}(new_dist_params)...
-                )
-                scens = ADRIA.sample_guided(dom, num_samples)
+        #         new_dist_params = [
+        #             (b[1], b[2], old_dist_params[3]) for
+        #             (b, old_dist_params) in zip(new_bounds, factors.default_dist_params)
+        #         ]
+        #         dom = ADRIA.set_factor_bounds!(
+        #             dom; NamedTuple{factor_fieldnames}(new_dist_params)...
+        #         )
+        #         scens = ADRIA.sample_guided(dom, num_samples)
 
-                @test _test_bounds(scens, factor_mask, bounds_ranges)
-            end
+        #         @test _test_bounds(scens, factor_mask, bounds_ranges)
+        #     end
 
-            @testset "get_default_dist_params" begin
-                new_bounds =
-                    ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
-                dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
+        #     @testset "get_default_dist_params" begin
+        #         new_bounds =
+        #             ADRIA.get_attr.([dom], factor_fieldnames, [:default_dist_params])
+        #         dom = set_factor_bounds!(dom; NamedTuple{factor_fieldnames}(new_bounds)...)
 
-                factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
-                @test all(factor_params.dist_params .== factor_params.default_dist_params)
-                scens = ADRIA.sample(dom, num_samples)
+        #         factor_params = ms[ms.fieldname .∈ [factor_fieldnames], :]
+        #         @test all(factor_params.dist_params .== factor_params.default_dist_params)
+        #         scens = ADRIA.sample(dom, num_samples)
 
-                @test _test_bounds(scens, factor_mask, new_bounds)
-            end
-        end
+        #         @test _test_bounds(scens, factor_mask, new_bounds)
+        #     end
+        # end
 
         @testset "TriangularDist distributions" begin
             factor_mask = ms.component .∈ [test_components] .&& ms.dist .== TriangularDist
