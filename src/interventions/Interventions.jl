@@ -285,8 +285,8 @@ function setup_guided_intervention(
         (location_k(domain) .> 0.0) .& depth_criteria .& (domain.loc_ids .∈ [target_locs])
 
     # Calculate cluster diversity and geographic separation scores
-    diversity_scores = cluster_diversity(domain.loc_data.cluster_id)
-    separation_scores = geographic_separation(domain.loc_data.mean_to_neighbor)
+    diversity_scores = decision.cluster_diversity(domain.loc_data.cluster_id)
+    separation_scores = decision.geographic_separation(domain.loc_data.mean_to_neighbor)
 
     pref = preference(domain, param_set)
     decision_mat = decision_matrix(
@@ -304,94 +304,3 @@ function setup_guided_intervention(
         nothing
     return pref, decision_mat, strategy
 end
-
-"""
-    cluster_diversity(cluster_ids::Vector{<:Union{Int64,String,Symbol}})::Vector{Float64}
-
-Calculate how selecting each location would improve cluster diversity.
-Higher scores indicate locations from underrepresented clusters.
-"""
-function cluster_diversity(
-    cluster_ids::Vector{<:Union{Int64,String,Symbol}}
-)::Vector{Float64}
-    # Count unique clusters and their frequencies
-    clusters = unique(cluster_ids)
-    n_clusters = length(clusters)
-    n_locations = length(cluster_ids)
-
-    # Calculate the ideal count per cluster (perfect distribution)
-    ideal_count = n_locations / n_clusters
-
-    # Create a map of cluster to its count
-    cluster_counts = countmap(cluster_ids)
-
-    # Calculate diversity score for each unique cluster
-    cluster_scores = Dict{eltype(clusters),Float64}()
-
-    for cluster in clusters
-        # Calculate how underrepresented this cluster is
-        count_ratio = ideal_count / cluster_counts[cluster]
-
-        # Scale so the maximum possible value is 1.0
-        # A fully represented cluster gets 0.0
-        # An underrepresented cluster gets a score based on its deficit
-        if count_ratio > 1.0  # Underrepresented
-            cluster_scores[cluster] = min(1.0, (count_ratio - 1.0) / (n_clusters - 1.0))
-        else  # Overrepresented
-            cluster_scores[cluster] = 0.0
-        end
-    end
-
-    # Map cluster scores back to each location
-    diversity_scores = zeros(n_locations)
-    for i in 1:n_locations
-        diversity_scores[i] = cluster_scores[cluster_ids[i]]
-    end
-
-    return diversity_scores
-end
-
-"""
-    geographic_separation(mean_distances::Matrix{Float64})::Vector{Float64}
-
-Calculate how spatially separated each location is from others.
-Higher scores indicate locations that are more distant from their neighbors.
-"""
-function geographic_separation(mean_distances::Vector{Float64})::Vector{Float64}
-    # Normalize to [0,1]
-    max_dist = maximum(mean_distances)
-    if max_dist > 0
-        return mean_distances ./ max_dist
-    end
-
-    return zeros(length(mean_distances))
-end
-
-# """
-#     _update_state(cluster_ids::Vector, num_locs::Int64, max_members::Int64)
-
-# Update list of:
-# - selected clusters
-# - number of locations selected for each cluster
-# - the indices of clusters which exceed the membership rule
-# - IDs of the above
-# - and potential suitable alternative locations
-
-# # Arguments
-# - `cluster_ids` : ID of clusters
-# - `num_locs` : Number of locations to select
-# - `max_members` : Maximum number of members per cluster
-# """
-# function _update_state(cluster_ids::Vector, num_locs::Int64, max_members::Int64)
-#     selected_clusters = cluster_ids[1:min(num_locs, length(cluster_ids))]
-#     cluster_frequency = countmap(selected_clusters)
-#     rule_violators_idx = findall(values(cluster_frequency) .> max_members)
-#     exceeded_clusters = collect(keys(cluster_frequency))[rule_violators_idx]
-#     potential_alternatives = cluster_ids[cluster_ids .∉ Ref(exceeded_clusters)]
-
-#     return selected_clusters,
-#     cluster_frequency,
-#     rule_violators_idx,
-#     exceeded_clusters,
-#     potential_alternatives
-# end
