@@ -99,7 +99,7 @@ end
         seed_locs = rand(1:n_locs, 5)  # Pick 5 random locations
 
         leftover_space_m² = fill(500.0, n_locs)
-        seed_sc = ADRIA.seeded_size_classes(n_groups, n_sizes)
+        seed_sc = ADRIA.seed_size_groups(n_groups, n_sizes)
 
         # Initial distributions
         d = truncated(Normal(1.0, 0.15), 0.0, 3.0)
