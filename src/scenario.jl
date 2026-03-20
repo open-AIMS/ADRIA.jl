@@ -541,9 +541,7 @@ function run_model(
 
     fogging::Float64 = param_set[At("fogging")]  # proportion of bleaching mortality reduction through fogging
     srm::Float64 = param_set[At("SRM")]  # DHW equivalents reduced by some shading mechanism
-    seed_years::Int64 = param_set[At("seed_years")]  # number of years to seed
     shade_years::Int64 = param_set[At("shade_years")]  # number of years to shade
-    fog_years::Int64 = param_set[At("fog_years")]  # number of years to fog
 
     # Years to start seeding/shading/fogging
     shade_start_year::Int64 = param_set[At("shade_year_start")]
@@ -645,8 +643,8 @@ function run_model(
     a_adapt = zeros(n_groups, n_sizes)
     a_adapt[_seed_size_groups] .= param_set[At("a_adapt")]
 
-    # Extract colony areas and determine approximate seeded area in m^2
     seed_volume = param_set[At(factor_names[contains.(factor_names, "N_seed")])]
+    seeding_devices_per_m2::Float64 = param_set[At("seeding_devices_per_m2")]
 
     is_unguided = param_set[At("guided")] == 0.0
     is_seeding = any(seed_volume .> 0)
@@ -1348,9 +1346,15 @@ function run_model(
                 seed_loc_idx = seed_loc_idx[locs_with_space]
                 available_space = available_space[locs_with_space]
 
+                # Extract colony areas and determine approximate seeded area in m^2
                 seeded_area = colony_areas[_seed_size_groups] .* seed_volume
+
                 proportional_increase, n_corals_seeded = distribute_seeded_corals(
-                    vec_abs_k[seed_loc_idx], available_space, seeded_area, seed_volume.data
+                    vec_abs_k[seed_loc_idx],
+                    available_space,
+                    seed_volume.data,
+                    seeded_area,
+                    seeding_devices_per_m2
                 )
 
                 # Log estimated number of corals seeded

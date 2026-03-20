@@ -14,16 +14,21 @@ end
     distribute_seeded_corals(
         seed_loc_k_m²::Vector{Float64},
         available_space::Vector{Float64},
-        seed_volume::Vector{Float64}
+        seed_volume::Vector{Float64},
+        seeded_area::YAXArray,
+        seeding_devices_per_m2::Float64
     )::Tuple{YAXArray,Matrix{Float64}}
 
 Calculate proportion of deployed corals to be seeded at each of the selected locations.
 Distributes seeded corals according to current available space at each selected site.
+Seeding device
 
 # Arguments
-- seed_loc_k_m² : Carrying capacity area of locations to seed in m².
-- available_space : Currently available space at each seed location in m².
-- seed_volume : Absolute number of coral to deploy.
+- `seed_loc_k_m²` : Carrying capacity area of locations to seed in m².
+- `available_space` : Currently available space at each seed location in m².
+- `seed_volume` : Absolute number of coral to deploy of each functional group.
+- `seeded_area` : Area to seed for each functional group in m².
+- `seeding_devices_per_m2` : Seeding device density (number of devices per m²).
 
 # Returns
 - YAXArray[taxa to seed ⋅ number of seed locations], Proportional increase in cover relative
@@ -33,11 +38,22 @@ to locations' `k` area
 function distribute_seeded_corals(
     seed_loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
+    seed_volume::Vector{Float64},
     seeded_area::YAXArray,
-    seed_volume::Vector{Float64}
+    seeding_devices_per_m2::Float64
 )::Tuple{YAXArray,Matrix{Float64}}
     total_seeded_area::Float64 = sum(seeded_area)
     total_available_space::Float64 = sum(available_space)
+
+    # If n_devices > max_n_devices , cap seed_volume
+    max_n_devices = seeding_devices_per_m2 * total_available_space
+    n_devices = sum(seed_volume)            # Assuming one coral per device
+    if n_devices > max_n_devices
+        seed_volume .*= (max_n_devices / n_devices)
+        cap = n_devices - sum(seed_volume)
+        @warn "Number of seeding devices exceeds available space." *
+            "Excluding $cap devices to fit."
+    end
 
     # Proportion of available space on each site relative to available space at these
     # locations
