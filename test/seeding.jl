@@ -17,6 +17,7 @@ end
 @testset "Seeding" begin
     n_groups = 5
     n_sizes = 7
+    seeding_devices_per_m2::Float64 = 9.0
 
     # extract inputs for function
     total_loc_area = loc_area(ADRIA_DOM_45)
@@ -40,8 +41,9 @@ end
         seed_dist, _ = distribute_seeded_corals(
             total_loc_area[seed_locs],
             available_space[seed_locs],
+            seeded_volume,
             seeded_area,
-            seeded_volume
+            seeding_devices_per_m2
         )
 
         # Area to be seeded for each site
@@ -112,8 +114,9 @@ end
         proportional_increase, _ = distribute_seeded_corals(
             total_location_area[seed_locs],
             leftover_space_m²[seed_locs],
+            seeded_volume,
             seeded_area,
-            seeded_volume
+            seeding_devices_per_m2
         )
 
         update_tolerance_distribution!(
