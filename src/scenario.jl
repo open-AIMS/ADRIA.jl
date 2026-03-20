@@ -640,8 +640,7 @@ function run_model(
     _seed_size_groups::BitMatrix = seed_size_groups(n_groups, n_sizes)
 
     # Set up assisted adaptation values
-    a_adapt = zeros(n_groups, n_sizes)
-    a_adapt[_seed_size_groups] .= param_set[At("a_adapt")]
+    a_adapt::Vector{Float64} = fill(param_set[At("a_adapt")], n_groups)
 
     seed_volume = param_set[At(factor_names[contains.(factor_names, "N_seed")])]
     seeding_devices_per_m2::Float64 = param_set[At("seeding_devices_per_m2")]
@@ -720,12 +719,6 @@ function run_model(
     #### End coral constants
 
     ## Update ecological parameters based on intervention option
-
-    # Treat as enhancement from mean of "natural" DHW tolerance
-    a_adapt[a_adapt .> 0.0] .+= _to_group_size(
-        domain.coral_growth, corals.dist_mean
-    )[a_adapt .> 0.0]
-
     # Pre-calculate proportion of survivers from wave stress
     # Sw_t = wave_damage!(cache.wave_damage, wave_scen, corals.wavemort90, n_species)
 
@@ -826,6 +819,24 @@ function run_model(
     agg_cover_above_threshold_mask::BitVector = falses(n_habitable_locs)
     net_growth_rates = zeros(n_groups, n_sizes, n_locs)
 
+    # Assume heat tolerance enhancement is based on population from `a_adapt_ref` years ago
+    # If a_adapt == 0, use always first year as reference for a_adapt
+    a_adapt_ref::Int64 = param_set[At("a_adapt_ref")]
+
+    c_mean_reference::Array{Float64,3} = if a_adapt_ref == 0
+        # If a_adapt_ref == 0, 3rd dim holds c_mean at t-1 (idx 1), updated yearly, and
+        # c_mean at t=1
+        zeros(n_groups, n_locs, 2)
+    else
+        # If a_adapt_ref > 0, updates c_mean_reference yearly moving elements 1:end-1 to
+        # 2:end and adds c_mean at t-1 (idx 1).
+        zeros(n_groups, n_locs, a_adapt_ref)
+    end
+
+    # Keeps track of the heat tolerance means of juvenilles to use as a base for thermal
+    # tolerance enhancement
+    c_mean_reference .= copy(c_mean_t[:, 1, :])
+
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
@@ -845,7 +856,8 @@ function run_model(
             dropdims(sum(recruitment; dims=1); dims=1)
 
         relative_habitable_cover_cache[habitable_locs] .=
-            loc_coral_cover(C_cover_t[:, :, habitable_locs]) ./ vec_abs_k[habitable_locs]
+            loc_coral_cover(C_cover_t[:, :, habitable_locs]) ./
+            vec_abs_k[habitable_locs]
 
         # Growth constrains need to be calculated seperately for differen growth rates
         growth_threshold_mask_cache .=
@@ -879,7 +891,8 @@ function run_model(
 
         @inbounds for i in habitable_loc_idxs
             net_growth_rates[:, :, i] .=
-                biogrp_lin_ext[:, :, loc_cb_calib_group_idxs[i]] .* growth_constraints[i]
+                biogrp_lin_ext[:, :, loc_cb_calib_group_idxs[i]] .*
+                growth_constraints[i]
             @views timestep!(
                 functional_groups[i],
                 recruitment[:, i],
@@ -1088,7 +1101,8 @@ function run_model(
                 end
                 if !isempty(selected_fog_ranks)
                     log_val = is_guided ? (1:length(selected_fog_ranks)) : 1.0
-                    log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .= log_val
+                    log_location_ranks[tstep, At(selected_fog_ranks), At(:fog)] .=
+                        log_val
                     last_fog_deployment[candidate_loc_indices] .= tstep
                 end
             end
@@ -1320,7 +1334,8 @@ function run_model(
                 end
                 if !isempty(selected_seed_ranks)
                     log_val = is_guided ? (1:length(selected_seed_ranks)) : 1.0
-                    log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .= log_val
+                    log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
+                        log_val
                     last_seed_deployment[candidate_loc_indices] .= tstep
                 end
             end
@@ -1367,6 +1382,7 @@ function run_model(
                     proportional_increase,
                     C_cover_t,
                     c_mean_t,
+                    c_mean_reference[:, :, end],
                     c_std,
                     seed_loc_idx,
                     _seed_size_groups,
@@ -1400,6 +1416,11 @@ function run_model(
             @view(bleaching_mort[(tstep - 1):tstep, :, :, :])
         )
 
+        if a_adapt_ref > 0
+            c_mean_reference[:, :, 2:end] .= c_mean_reference[:, :, 1:(end - 1)]
+        end
+        c_mean_reference[:, :, 1] .= c_mean_t[:, 1, :]
+
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
         # TODO: Update cyclone data to hold data for relevant functional groups
@@ -1412,7 +1433,9 @@ function run_model(
         @assert sum(survival_rate_cache .> 1) == 0 "Survival rate should be <= 1"
 
         for loc in 1:n_locs
-            apply_mortality!(functional_groups[loc], @view(survival_rate_cache[:, :, loc]))
+            apply_mortality!(
+                functional_groups[loc], @view(survival_rate_cache[:, :, loc])
+            )
         end
 
         recruitment .*= (view(survival_rate_cache, :, 1, :) .* habitable_areas)
@@ -1421,7 +1444,9 @@ function run_model(
 
         # Track cover loss for reactive strategies
         max_lookback
-        _is_reactive = any(is_reactive(param_set[At(["seed_strategy", "fog_strategy"])]))
+        _is_reactive = any(
+            is_reactive(param_set[At(["seed_strategy", "fog_strategy"])])
+        )
         if is_guided && _is_reactive && (tstep > 1)
             # Calculate proportional cover loss at each location
             # due to disturbances this timestep

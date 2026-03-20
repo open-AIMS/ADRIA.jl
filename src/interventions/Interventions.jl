@@ -97,6 +97,14 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Assisted Adaptation",
         description="Assisted adaptation in terms of DHW resistance."
     )
+    a_adapt_ref::Param = Factor(
+        0.0;
+        ptype="ordered discrete",
+        dist=DiscreteOrderedUniformDist,
+        dist_params=(0.0, 15.0, 1.0),
+        name="Assisted adaptation reference",
+        description="Distance from current year used as referece for assisted adaptation."
+    )
     seed_years::Param = Factor(
         10;
         ptype="ordered categorical",

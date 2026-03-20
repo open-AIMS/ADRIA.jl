@@ -289,6 +289,8 @@ function adjust_samples(dom::Domain, samples::DataFrame)::DataFrame
     return adjust_samples(model_spec(dom), samples)
 end
 function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
+    samples[:, :a_adapt_ref] .= floor.(samples[:, :a_adapt_ref])
+
     interv = component_params(spec, Intervention)
     seed_weights = component_params(spec, SeedCriteriaWeights)
     fog_weights = component_params(spec, FogCriteriaWeights)
