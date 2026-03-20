@@ -94,7 +94,7 @@ end
         stdev::Vector{T},
         seed_locs::Vector{Int64},
         seed_sc::BitVector,
-        a_adapt::Vector{T}
+        a_adapt::AbstractVector{T}
     )::Nothing where {T<:Float64}
 
 Update the thermal tolerance distribution of a population due to seeding.
@@ -113,11 +113,13 @@ function update_tolerance_distribution!(
     scaled_seed::YAXArray,
     cover::AbstractArray{T},
     c_dist_t::AbstractArray{T},
+    c_mean_reference::AbstractArray{T,2},
     stdev::AbstractArray{T},
     seed_locs::Vector{Int64},
     seed_sc::AbstractMatrix{Bool},
-    a_adapt::AbstractMatrix{T}
+    a_adapt::AbstractVector{T}
 )::Nothing where {T<:Float64}
+
     # Calculate distribution weights using proportion of area (used as priors for MixtureModel)
     # Note: It is entirely possible for a location to be ranked in the top N, but
     #       with no deployments (for a given species). A location with 0 cover
@@ -128,7 +130,9 @@ function update_tolerance_distribution!(
     replace!(w_taxa, NaN => 1.0)
 
     # Update critical DHW distribution for deployed size classes
+    a_adapt_relative = copy(a_adapt)
     for (i, loc) in enumerate(seed_locs)
+        a_adapt_relative .= (a_adapt .+ c_mean_reference[:, loc])
         # Previous distributions
         c_dist_ti = @view(c_dist_t[seed_sc, loc])
 
@@ -136,7 +140,7 @@ function update_tolerance_distribution!(
         # Assume same stdev and bounds as original
         tn::Vector{Float64} =
             truncated_normal_mean.(
-                a_adapt[seed_sc], stdev[seed_sc], 0.0, a_adapt[seed_sc] .+ HEAT_UB
+                a_adapt_relative, stdev[seed_sc], 0.0, a_adapt_relative .+ HEAT_UB
             )
 
         # If seeding an empty location, no need to do any further calculations
