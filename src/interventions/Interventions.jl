@@ -13,7 +13,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
-        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
+        dist_params=(0.0, 1_000_000.0, 50_000.0),  # increase in steps of 50K
         name="Seeded Tabular Acropora",
         description="Number of Tabular Acropora to seed per deployment event."
     )
@@ -21,7 +21,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
-        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
+        dist_params=(0.0, 1_000_000.0, 50_000.0),  # increase in steps of 50K
         name="Seeded Corymbose Acropora",
         description="Number of Corymbose Acropora to seed per deployment event."
     )
@@ -29,7 +29,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
-        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
+        dist_params=(0.0, 1_000_000.0, 50_000.0),  # increase in steps of 50K
         name="Seeded Corymbose non-Acropora",
         description="Number of Corymbose non-Acropora to seed per deployment event."
     )
@@ -37,7 +37,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
-        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
+        dist_params=(0.0, 1_000_000.0, 50_000.0),  # increase in steps of 50K
         name="Seeded Small Massives",
         description="Number of small massives/encrusting to seed per deployment event."
     )
@@ -45,7 +45,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
-        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
+        dist_params=(0.0, 1_000_000.0, 50_000.0),  # increase in steps of 50K
         name="Seeded Large Massives",
         description="Number of large massives/encrusting to seed per deployment event."
     )
@@ -53,7 +53,7 @@ Base.@kwdef struct Intervention <: EcoModel
         0;
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
-        dist_params=(0.0, 1000000.0, 50000.0),  # increase in steps of 50K
+        dist_params=(0.0, 25_000_000.0, 1_000_000.0),  # increase in steps of 50K
         name="Moving corals settlers",
         description="Number of moving coral settlers added per deployment event."
     )
