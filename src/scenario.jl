@@ -1044,8 +1044,12 @@ function run_model(
         if !isnothing(fog_strategy)
             state = if is_guided
                 build_state(
-                    domain, fog_strategy, current_loc_cover, recent_cover_losses,
-                    last_fog_deployment
+                    domain, fog_strategy,
+                    (
+                        current_cover=current_loc_cover,
+                        recent_cover_losses=recent_cover_losses,
+                        last_deployment=last_seed_deployment
+                    )
                 )
             else
                 nothing
@@ -1107,8 +1111,12 @@ function run_model(
         if !isnothing(mc_strategy)
             state = if is_guided
                 build_state(
-                    domain, mc_strategy, current_loc_cover, recent_cover_losses,
-                    last_mc_deployment
+                    domain, mc_strategy,
+                    (
+                        current_cover=current_loc_cover,
+                        recent_cover_losses=recent_cover_losses,
+                        last_deployment=last_seed_deployment
+                    )
                 )
             else
                 nothing
@@ -1268,8 +1276,12 @@ function run_model(
         if !isnothing(seed_strategy)
             state = if is_guided
                 build_state(
-                    domain, seed_strategy, current_loc_cover, recent_cover_losses,
-                    last_seed_deployment
+                    domain, seed_strategy,
+                    (
+                        current_cover=current_loc_cover,
+                        recent_cover_losses=recent_cover_losses,
+                        last_deployment=last_seed_deployment
+                    )
                 )
             else
                 nothing
