@@ -417,7 +417,7 @@ dom = ADRIA.load_domain("path/to/domain")
 ADRIA.set_seed_target_locations!(dom, ["reef_01", "reef_05", "reef_12"])
 ```
 """
-function set_seed_target_locations!(domain::Domain, location_ids::Vector{String})
+function set_seed_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
     _validate_iv_locations(domain, location_ids)
     domain.seed_target_locations = location_ids
     return nothing
@@ -439,7 +439,7 @@ dom = ADRIA.load_domain("path/to/domain")
 ADRIA.set_fog_target_locations!(dom, ["reef_03", "reef_07"])
 ```
 """
-function set_fog_target_locations!(domain::Domain, location_ids::Vector{String})
+function set_fog_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
     _validate_iv_locations(domain, location_ids)
     domain.fog_target_locations = location_ids
     return nothing
@@ -461,7 +461,7 @@ dom = ADRIA.load_domain("path/to/domain")
 ADRIA.set_shade_target_locations!(dom, ["reef_03", "reef_07"])
 ```
 """
-function set_shade_target_locations!(domain::Domain, location_ids::Vector{String})
+function set_shade_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
     _validate_iv_locations(domain, location_ids)
     domain.shade_target_locations = location_ids
     return nothing
@@ -492,11 +492,11 @@ dom = ADRIA.load_domain("path/to/domain")
 ADRIA.set_mc_target_locations!(dom, ["reef_03", "reef_07"])
 ```
 """
-function set_mc_target_locations!(domain::Domain, location_ids::Vector{String})
+function set_mc_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
     # Validate that all locations exist in domain
     invalid_locs = setdiff(location_ids, domain.loc_ids)
     if !isempty(invalid_locs)
-        error("Invalid location IDs: $(join(invalid_locs, ", "))")
+        throw(ArgumentError("Invalid location IDs: $(join(invalid_locs, ", "))"))
     end
 
     domain.mc_target_locations = location_ids

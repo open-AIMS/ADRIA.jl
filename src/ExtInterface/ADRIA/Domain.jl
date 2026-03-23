@@ -195,7 +195,7 @@ function Domain(
 
     # Load initial coral cover relative to k area
     init_coral_cover = load_initial_cover(init_coral_fn)
-    dhw = load_env_data(dhw_fn, "dhw")
+
     dhw::YAXArray{Float64} = load_env_data(dhw_fn, "dhw")
     waves = load_wave_data(wave_fn, timeframe, conn_ids)
     cyclone_mortality = load_cyclone_data(cyclone_mortality_fn, timeframe, u_sids)

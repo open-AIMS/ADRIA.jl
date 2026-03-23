@@ -495,6 +495,16 @@ function adjust_DHW_distribution!(
 end
 
 """
+    settler_DHW_tolerance!(
+        c_mean_t_1::AbstractArray{F,3},
+        c_mean_t::AbstractArray{F,3},
+        k_area::Vector{F},
+        tp::SparseMatrixCSC{F},
+        settlers::AbstractMatrix{F},
+        fecundity_per_m²::AbstractMatrix{F},
+        h²::F
+    )::Nothing where {F<:Float64}
+
 # Arguments
 - `c_mean_t_1` : Mean of heat tolerance distribution at t-1 for each functional group,
 size class and location
