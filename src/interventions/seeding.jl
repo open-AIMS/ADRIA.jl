@@ -21,7 +21,6 @@ end
 
 Calculate proportion of deployed corals to be seeded at each of the selected locations.
 Distributes seeded corals according to current available space at each selected site.
-Seeding device
 
 # Arguments
 - `seed_loc_k_m²` : Carrying capacity area of locations to seed in m².
