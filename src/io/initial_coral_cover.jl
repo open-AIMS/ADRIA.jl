@@ -9,7 +9,7 @@ using Distributions,
 Load initial coral cover data from netCDF.
 """
 function load_initial_cover(data_fn::String)::YAXArray
-    _dim_names_replace = [:covers => :species, :reef_siteid => :sites]
+    _dim_names_replace = [:covers => :species, :reef_siteid => :locations]
     return _split_cover(
         load_nc_data(data_fn, "layer"; dim_names_replace=_dim_names_replace)
     )
@@ -18,7 +18,7 @@ function load_initial_cover(n_groups::Int64, n_sizes::Int64, n_locs::Int64)::YAX
     @warn "Using random initial coral cover"
     n_group_and_size::Int64 = n_groups * n_sizes
     random_cover_data = rand(Float32, n_group_and_size, n_locs)
-    return DataCube(random_cover_data; species=1:n_group_and_size, sites=1:n_locs)
+    return DataCube(random_cover_data; species=1:n_group_and_size, locations=1:n_locs)
 end
 
 """
@@ -52,7 +52,11 @@ function _cover_labels(
     size_id::Vector{Int64} = repeat(1:n_sizes, n_sizes)
     species_labels::Vector{String} = String[join(x, "_") for x in zip(tn, taxa_id, size_id)]
 
-    return (species=species_labels, locations=cover.locations.val.data)
+    ax_names = ADRIA.axes_names(cover)
+    loc_dim = :locations in ax_names ? :locations : :sites
+    loc_labels = collect(lookup(cover, loc_dim))
+
+    return (species=species_labels, locations=string.(loc_labels))
 end
 
 function _reef_mod_area_dist(bin_edges::Matrix{Float64})::Vector{LogNormal{Float64}}
