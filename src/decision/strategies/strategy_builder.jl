@@ -16,29 +16,9 @@ DecisionStrategy object (PeriodicStrategy or ReactiveStrategy)
 function build_seed_strategy(
     params::YAXArray, domain::Domain, locations::Vector{String}
 )::DecisionStrategy
-    strategy_type = Int64(params[At("seed_strategy")])
-    if is_periodic(strategy_type)
-        return PeriodicStrategy(
-            locations,
-            Int64(params[At("seed_year_start")]),
-            Int64(params[At("seed_years")]),
-            Int64(params[At("seed_deployment_freq")]),
-            length(timesteps(domain))
-        )
-    elseif is_reactive(strategy_type)
-        return ReactiveStrategy(
-            locations,
-            Int64(params[At("seed_year_start")]),
-            Int64(params[At("seed_years")]),
-            Float64(params[At("reactive_absolute_threshold")]),
-            Float64(params[At("reactive_loss_threshold")]),
-            Float64(params[At("reactive_min_cover_remaining")]),
-            Int64(params[At("reactive_response_delay")]),
-            Int64(params[At("reactive_cooldown_period")])
-        )
-    end
-
-    return throw(ArgumentError("Unknown seed strategy type: $strategy_type"))
+    strategy_idx = Int64(params[At("seed_strategy")])
+    strategy_params = build_strategy_params("seed", params, domain, locations)
+    return build_strategy(strategy_type(strategy_idx), strategy_params)
 end
 
 """
@@ -59,32 +39,9 @@ DecisionStrategy object (PeriodicStrategy or ReactiveStrategy)
 function build_fog_strategy(
     params::YAXArray, domain::Domain, locations::Vector{String}
 )::DecisionStrategy
-    strategy_type = Int64(params[At("fog_strategy")])
-
-    if is_periodic(strategy_type)
-        # Periodic Strategy
-        return PeriodicStrategy(
-            locations,
-            Int64(params[At("fog_year_start")]),
-            Int64(params[At("fog_years")]),
-            Int64(params[At("fog_deployment_freq")]),
-            length(timesteps(domain))
-        )
-    elseif is_reactive(strategy_type)
-        # Reactive Strategy
-        return ReactiveStrategy(
-            locations,
-            Int64(params[At("fog_year_start")]),
-            Int64(params[At("fog_years")]),
-            Float64(params[At("reactive_absolute_threshold")]),
-            Float64(params[At("reactive_loss_threshold")]),
-            Float64(params[At("reactive_min_cover_remaining")]),
-            Int64(params[At("reactive_response_delay")]),
-            Int64(params[At("reactive_cooldown_period")])
-        )
-    end
-
-    return throw(ArgumentError("Unknown fog strategy type: $strategy_type"))
+    strategy_idx = Int64(params[At("fog_strategy")])
+    strategy_params = build_strategy_params("fog", params, domain, locations)
+    return build_strategy(strategy_type(strategy_idx), strategy_params)
 end
 
 """
@@ -105,30 +62,48 @@ DecisionStrategy object (PeriodicStrategy or ReactiveStrategy)
 function build_mc_strategy(
     params::YAXArray, domain::Domain, locations::Vector{String}
 )::DecisionStrategy
-    strategy_type = Int64(params[At("mc_strategy")])
+    strategy_idx = Int64(params[At("mc_strategy")])
+    strategy_params = build_strategy_params("mc", params, domain, locations)
+    return build_strategy(strategy_type(strategy_idx), strategy_params)
+end
 
-    if is_periodic(strategy_type)
-        # Periodic Strategy
-        return PeriodicStrategy(
-            locations,
-            Int64(params[At("mc_year_start")]),
-            Int64(params[At("mc_years")]),
-            Int64(params[At("mc_deployment_freq")]),
-            length(timesteps(domain))
-        )
-    elseif is_reactive(strategy_type)
-        # Reactive Strategy
-        return ReactiveStrategy(
-            locations,
-            Int64(params[At("mc_year_start")]),
-            Int64(params[At("mc_years")]),
-            Float64(params[At("reactive_absolute_threshold")]),
-            Float64(params[At("reactive_loss_threshold")]),
-            Float64(params[At("reactive_min_cover_remaining")]),
-            Int64(params[At("reactive_response_delay")]),
-            Int64(params[At("reactive_cooldown_period")])
-        )
-    end
+function build_strategy_params(prefix::String, params::YAXArray, domain::Domain, locations)
+    return (
+        locations=locations,
+        timesteps=length(timesteps(domain)),
+        iv_year_start=Int64(params[At("$(prefix)_year_start")]),
+        iv_years=Int64(params[At("$(prefix)_years")]),
+        iv_deployment_freq=Int64(params[At("$(prefix)_deployment_freq")]),
+        reactive_absolute_threshold=Float64(params[At("reactive_absolute_threshold")]),
+        reactive_loss_threshold=Float64(params[At("reactive_loss_threshold")]),
+        reactive_min_cover_remaining=Float64(params[At("reactive_min_cover_remaining")]),
+        reactive_response_delay=Int64(params[At("reactive_response_delay")]),
+        reactive_cooldown_period=Int64(params[At("reactive_cooldown_period")])
+    )
+end
 
-    return throw(ArgumentError("Unknown mc strategy type: $strategy_type"))
+function build_strategy(
+    ::Type{PeriodicStrategy}, params::NamedTuple
+)::PeriodicStrategy
+    return PeriodicStrategy(
+        params.locations,
+        params.iv_year_start,
+        params.iv_years,
+        params.iv_deployment_freq,
+        params.timesteps
+    )
+end
+function build_strategy(
+    ::Type{ReactiveStrategy}, params::NamedTuple
+)::ReactiveStrategy
+    return ReactiveStrategy(
+        params.locations,
+        params.iv_year_start,
+        params.iv_years,
+        params.reactive_absolute_threshold,
+        params.reactive_loss_threshold,
+        params.reactive_min_cover_remaining,
+        params.reactive_response_delay,
+        params.reactive_cooldown_period
+    )
 end
