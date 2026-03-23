@@ -30,7 +30,8 @@ end
 function unguided(scenarios::DataFrame)::BitVector
     has_seed = .!_no_seed(scenarios)
     has_shade = (scenarios.fogging .> 0) .| (scenarios.SRM .> 0)
-    return (scenarios.guided .== 0) .& (has_seed .| has_shade)
+    has_mc_corals = scenarios.N_mc_settlers .> 0
+    return (scenarios.guided .== 0) .& (has_seed .| has_shade .| has_mc_corals)
 end
 
 function guided(scenarios::DataFrame)::BitVector
