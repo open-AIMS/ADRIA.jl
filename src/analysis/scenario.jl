@@ -28,9 +28,9 @@ function counterfactual(scenarios::DataFrame)::BitVector
 end
 
 function unguided(scenarios::DataFrame)::BitVector
-    # has_seed = .!_no_seed(scenarios)
-    # has_shade = (scenarios.fogging .> 0) .| (scenarios.SRM .> 0)
-    return (scenarios.guided .== 0) #.& (has_seed .| has_shade)
+    has_seed = .!_no_seed(scenarios)
+    has_shade = (scenarios.fogging .> 0) .| (scenarios.SRM .> 0)
+    return (scenarios.guided .== 0) .& (has_seed .| has_shade)
 end
 
 function guided(scenarios::DataFrame)::BitVector
