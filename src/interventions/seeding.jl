@@ -90,11 +90,12 @@ end
 """
     update_tolerance_distribution!(
         scaled_seed::YAXArray,
-        cover::Matrix{T},
-        c_dist_t::Matrix{T},
-        stdev::Vector{T},
+        cover::AbstractArray{T},
+        c_dist_t::AbstractArray{T},
+        c_mean_reference::AbstractArray{T,2},
+        stdev::AbstractArray{T},
         seed_locs::Vector{Int64},
-        seed_sc::BitVector,
+        seed_sc::AbstractMatrix{Bool},
         a_adapt::AbstractVector{T}
     )::Nothing where {T<:Float64}
 
@@ -105,6 +106,8 @@ Updates the store `c_dist_t` in place.
 - `scaled_seed` : Seeding values transformed to proportion cover increase relative to k area.
 - `cover` : Current coral cover state.
 - `c_dist_t` : Critical DHW distributions of corals to update (i.e., for time \$t\$).
+- `c_mean_reference` : Matrix with c_mean to be used as reference for seeding corals heat
+tolerance enhancement.
 - `stdev` : Standard deviation of DHW tolerance distributions for each functional type.
 - `seed_locs` : Seeding locations
 - `seed_sc` : Size classes to seed

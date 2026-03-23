@@ -823,6 +823,8 @@ function run_model(
     # If a_adapt == 0, use always first year as reference for a_adapt
     a_adapt_ref::Int64 = param_set[At("a_adapt_ref")]
 
+    # c_mean tolerance of the "natural" population used as the reference for seeding corals
+    # heat tolerance distribution
     c_mean_reference::Array{Float64,3} = if a_adapt_ref == 0
         # If a_adapt_ref == 0, 3rd dim holds c_mean at t-1 (idx 1), updated yearly, and
         # c_mean at t=1

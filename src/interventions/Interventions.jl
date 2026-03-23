@@ -98,7 +98,7 @@ Base.@kwdef struct Intervention <: EcoModel
         description="Assisted adaptation in terms of DHW resistance."
     )
     a_adapt_ref::Param = Factor(
-        0.0;
+        0.0;        # If a_adapt_ref == 0 uses first year as c_mean reference for entire run
         ptype="ordered discrete",
         dist=DiscreteOrderedUniformDist,
         dist_params=(0.0, 15.0, 1.0),
