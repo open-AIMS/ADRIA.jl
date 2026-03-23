@@ -46,7 +46,7 @@ function distribute_seeded_corals(
 
     # If n_devices > max_n_devices , cap seed_volume
     max_n_devices = seeding_devices_per_m2 * total_available_space
-    n_devices = sum(seed_volume)            # Assuming one coral per device
+    n_devices = sum(seed_volume)            # Assuming one coral per device survives to 1-yr old
     if n_devices > max_n_devices
         seed_volume .*= (max_n_devices / n_devices)
         cap = n_devices - sum(seed_volume)
