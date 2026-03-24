@@ -57,6 +57,14 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Moving corals settlers",
         description="Number of moving coral settlers added per deployment event."
     )
+    seeding_devices_per_m2::Param = Factor(
+        0;
+        ptype="unordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(3, 5, 6, 9),
+        name="seeding_devices_per_m2",
+        description="Number of seeding devices per m²."
+    )
     min_iv_locations::Param = Factor(
         5;
         ptype="ordered discrete",
