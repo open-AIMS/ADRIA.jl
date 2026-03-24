@@ -169,10 +169,10 @@ The mean of the truncated normal distribution
 function truncated_normal_mean(
     normal_mean::Float64, normal_stdev::Float64, lower_bound::Float64, upper_bound::Float64
 )::Float64
-    alpha::Float64 = (lower_bound - normal_mean) / normal_stdev
-    beta::Float64 = (upper_bound - normal_mean) / normal_stdev
+    _lb::Float64 = (lower_bound - normal_mean) / normal_stdev
+    _ub::Float64 = (upper_bound - normal_mean) / normal_stdev
 
-    return normal_mean + truncated_standard_normal_mean(alpha, beta) * normal_stdev
+    return normal_mean + truncated_standard_normal_mean(_lb, _ub) * normal_stdev
 end
 
 """

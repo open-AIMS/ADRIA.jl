@@ -95,7 +95,7 @@ end
     @testset "DHW distribution priors" begin
         n_locs = 10
         C_cover_t = rand(n_groups, n_sizes, n_locs)  # size class, locations
-        a_adapt = rand(2.0:6.0, n_groups, n_sizes)
+        a_adapt = rand(2.0:6.0, n_groups)
         total_location_area = fill(5000.0, n_locs)
 
         seed_locs = rand(1:n_locs, 5)  # Pick 5 random locations
@@ -123,6 +123,7 @@ end
             proportional_increase,
             C_cover_t,
             c_dist_t,
+            c_dist_t[:, 1, :],
             dist_std,
             seed_locs,
             seed_sc,
