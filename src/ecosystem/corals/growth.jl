@@ -221,10 +221,14 @@ function bleaching_mortality!(
 end
 
 """
-    bleaching_mortality!(cover::AbstractArray{Float64, 3}, dhw::Vector{Float64},
-        depth_coeff::Vector{Float64}, stdev::AbstractMatrix{Float64},
-        dist_t_1::AbstractArray{Float64, 3}, dist_t::AbstractArray{Float64, 3},
-        prop_mort::SubArray{Float64})::Nothing
+    bleaching_mortality!(
+        cover::AbstractArray{Float64,3},
+        dhw::Vector{Float64},
+        depth_coeff::Vector{Float64},
+        stdev::AbstractMatrix{Float64},
+        dist_t::AbstractArray{Float64,3},
+        prop_mort::SubArray{Float64}
+    )::Nothing
 
 Applies bleaching mortality by assuming critical DHW thresholds are normally distributed for
 all non-juvenile (> 5cm diameter) size classes.
@@ -241,9 +245,7 @@ Function. Bleaching mortality is then estimated with a depth-adjusted coefficien
 - `dhw` : DHW for all represented locations
 - `depth_coeff` : Pre-calculated depth coefficient for all locations
 - `stdev` : Standard deviation of DHW tolerance
-- `dist_t_1` : Critical DHW threshold distribution for current timestep, for all species and
-    locations
-- `dist_t` : Critical DHW threshold distribution for next timestep, for all species and
+- `dist_t` : Critical DHW threshold distribution for current timestep, for all species and
     locations
 - `prop_mort` : Cache to store records of bleaching mortality (stores mortalities for
     t-1 and t)
@@ -283,7 +285,6 @@ function bleaching_mortality!(
     dhw::Vector{Float64},
     depth_coeff::Vector{Float64},
     stdev::AbstractMatrix{Float64},
-    dist_t_1::AbstractArray{Float64,3},
     dist_t::AbstractArray{Float64,3},
     prop_mort::SubArray{Float64}
 )::Nothing
@@ -310,7 +311,7 @@ function bleaching_mortality!(
                     continue
                 end
 
-                μ::Float64 = dist_t_1[grp, sc, loc]
+                μ::Float64 = dist_t[grp, sc, loc]
                 affected_pop::Float64 = truncated_normal_cdf(
                     # Use the previous mortality threshold or 4.0 as the minimum,
                     # whichever is greater
@@ -500,6 +501,7 @@ end
     settler_DHW_tolerance!(
         c_mean_t_1::AbstractArray{F,3},
         c_mean_t::AbstractArray{F,3},
+        C_cover_t::AbstractArray{F,3},
         k_area::Vector{F},
         tp::SparseMatrixCSC{F},
         settlers::AbstractMatrix{F},
@@ -509,26 +511,53 @@ end
 
 # Arguments
 - `c_mean_t_1` : Mean of heat tolerance distribution at t-1 for each functional group,
-size class and location
+size class and location.
 - `c_mean_t` : Mean of heat tolerance distribution at t for each functional group,
-size class and location
+size class and location.
+- `C_cover_t` : Coral cover at timestep t.
 - `k_area` : Coral habitable available at each location (`k` value) in either relative or
 absolute units.
-- `tp` : Connectivity matrix
-- `settlers` : Recruitment cover matrix for each functional group (rows) and locations (cols)
-- `fecundity_per_m²` : Fecundity in number of corals per area (in m²) each functional group
-- `h²` : Heritability parameter
+- `tp` : Connectivity matrix.
+- `settlers` : Recruitment cover matrix for each functional group (rows) and locations (cols).
+- `fecundity_per_m²` : Fecundity in number of corals per area (in m²) each functional group.
+- `h²` : Heritability parameter.
 """
 function settler_DHW_tolerance!(
     c_mean_t_1::AbstractArray{F,3},
     c_mean_t::AbstractArray{F,3},
+    C_cover_t::AbstractArray{F,3},
     k_area::Vector{F},
     tp::SparseMatrixCSC{F},
     settlers::AbstractMatrix{F},
     fecundity_per_m²::AbstractMatrix{F},
     h²::F
 )::Nothing where {F<:Float64}
-    groups, sizes, _ = axes(c_mean_t_1)
+    groups, _, locs = axes(c_mean_t_1)
+    n_groups = length(groups)
+    n_locs = length(locs)
+
+    # Use Breeder's equation to calculate mean heat tolerance of offspring for each loc/grp
+    fecund_size_mask = fecundity_per_m²[1, :] .> 0.0
+    c_mean_settlers = zeros(n_groups, n_locs)       # will be the next c_mean_t[:,1,:]
+    source_loc_idx = 1:sum(dropdims(sum(settlers; dims=1); dims=1) .> 0)
+    for loc in source_loc_idx
+        for grp in groups
+            cover_sum = sum(C_cover_t[grp, fecund_size_mask, loc])
+            if cover_sum == 0
+                continue
+            end
+            w = StatsBase.weights(C_cover_t[grp, fecund_size_mask, loc] ./ cover_sum)
+
+            @views c_mean_settlers[grp, loc] = StatsBase.mean(
+                breeders.(
+                    c_mean_t_1[grp, fecund_size_mask, loc],
+                    c_mean_t[grp, fecund_size_mask, loc],
+                    h²
+                ),
+                w
+            )
+        end
+    end
 
     sink_loc_ids::Vector{Int64} = findall(k_area .> 0.0)
 
@@ -574,20 +603,10 @@ function settler_DHW_tolerance!(
             for k in col_range
                 src = rows[k]
                 w = vals[k] * inv_sum_tp
-
-                # Iterate over reproductive size classes
-                for sc in sizes
-                    if fecundity_per_m²[grp, sc] > 0.0
-                        recruit_μ += c_mean_t_1[grp, sc, src] * w
-                    end
-                end
+                recruit_μ += c_mean_settlers[grp, src] * w
             end
 
-            recruit_μ /= n_reproductive[grp]
-
-            c_mean_t[grp, 1, sink_loc] = breeders(
-                c_mean_t_1[grp, 1, sink_loc], recruit_μ, h²
-            )
+            c_mean_t[grp, 1, sink_loc] = recruit_μ
         end
     end
 
