@@ -161,6 +161,7 @@ function sample_selection(
             Intervention,
             SeedCriteriaWeights,
             FogCriteriaWeights,
+            MCCriteriaWeights,
             DepthThresholds
         ]
     )

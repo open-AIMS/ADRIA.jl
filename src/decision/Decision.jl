@@ -32,6 +32,7 @@ export
     # Intervention preferences
     SeedPreferences,
     FogPreferences,
+    MCPreferences,
     # SRMPreferences,
     # Helper Methods
     decision_matrix,
@@ -51,6 +52,8 @@ export
     is_decision_year,
     build_seed_strategy,
     build_fog_strategy,
+    build_mc_strategy,
+    build_state,
     filter_candidate_locations,
     PeriodicStrategy,
     ReactiveStrategy

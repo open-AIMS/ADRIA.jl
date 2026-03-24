@@ -39,6 +39,7 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF} <: ResultSet
     # raw::AbstractArray
     outcomes::D2
     ranks::A
+    mc_log::B  # Values stored in m^2
     seed_log::B  # Values stored in m^2
     fog_log::C   # Reduction in bleaching mortality (0.0 - 1.0)
     shade_log::C # Reduction in bleaching mortality (0.0 - 1.0)
@@ -77,6 +78,10 @@ function ResultSet(
         model_spec,
         outcomes,
         _rankings_data(log_set["rankings"]),
+        DataCube(
+            log_set["moving_corals"],
+            Symbol.(Tuple(log_set["moving_corals"].attrs["structure"]))
+        ),
         DataCube(log_set["seed"], Symbol.(Tuple(log_set["seed"].attrs["structure"]))),
         DataCube(log_set["fog"], Symbol.(Tuple(log_set["fog"].attrs["structure"]))),
         DataCube(log_set["shade"], Symbol.(Tuple(log_set["shade"].attrs["structure"]))),

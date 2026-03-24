@@ -68,6 +68,7 @@ include("decision/Decision.jl")
 include("interventions/Interventions.jl")
 include("interventions/seeding.jl")
 include("interventions/fogging.jl")
+include("interventions/moving_corals.jl")
 
 include("io/ResultSet.jl")
 include("spatial/spatial.jl")
@@ -91,7 +92,7 @@ include("viz/viz.jl")
 export
     run_scenario, coral_spec, bin_edges,
     create_coral_struct, Intervention, SimConstants,
-    SeedCriteriaWeights, FogCriteriaWeights,
+    SeedCriteriaWeights, FogCriteriaWeights, MCCriteriaWeights,
     loc_area, site_k_area, loc_k_area, loc_coral_cover, loc_recruits_cover,
     Domain, ADRIADomain,
     metrics, select, timesteps, env_stats, viz

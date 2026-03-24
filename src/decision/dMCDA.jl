@@ -127,7 +127,22 @@ function identify_within_depth_bounds(
     return depth_criteria
 end
 
-function weighted_projection(env_data, tstep, planning_horizon, decay, timeframe)
+"""
+    weighted_projection(
+        env_data::AbstractMatrix{Float64}, tstep::Int64, planning_horizon::Int64,
+        decay::AbstractVector{Float64}, timeframe::Int64
+    )::Vector{Float64}
+
+Projection of environmental data for locations present in `env_data` for the next
+`planning_horizon` timesteps weighted by `decay`.
+"""
+function weighted_projection(
+    env_data::AbstractMatrix{T},
+    tstep::Int64,
+    planning_horizon::Int64,
+    decay::AbstractVector{Float64},
+    timeframe::Int64
+)::Vector{Float64} where T<:Real
     # Determine subset of data to select data for planning horizon
     horizon::UnitRange{Int64} = tstep:min(tstep + planning_horizon, timeframe)
     d_s::UnitRange{Int64} = 1:length(horizon)
@@ -150,8 +165,8 @@ factor.
 - `w` : Weight for mean value (the complement will be used to weight stdev).
 
 # Returns
-If the time horizon > 1, returns the weighted combination of mean and standard deviation of the projected environmental
-conditions (e.g., DHWs, wave stress, etc):
+If the time horizon > 1, returns the weighted combination of mean and standard deviation of
+the projected environmental conditions (e.g., DHWs, wave stress, etc):
     (μ * w) + (σ * (1 - w))
 
 Where the time horizon == 1, the original values are returned.

@@ -49,7 +49,12 @@ function deactivate_interventions!(dom::Domain)::Nothing
     criteria_factors =
         component_params(
             model_spec(dom),
-            [SeedCriteriaWeights, FogCriteriaWeights, decision.DepthThresholds]
+            [
+                SeedCriteriaWeights,
+                FogCriteriaWeights,
+                MCCriteriaWeights,
+                decision.DepthThresholds
+            ]
         ).fieldname
     n_iv_factors = length(iv_factors)
     n_criteria_factors = length(criteria_factors)
@@ -287,11 +292,15 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
     interv = component_params(spec, Intervention)
     seed_weights = component_params(spec, SeedCriteriaWeights)
     fog_weights = component_params(spec, FogCriteriaWeights)
+    mc_weights = component_params(spec, MCCriteriaWeights)
     depth_offsets = component_params(spec, DepthThresholds)
+
+    counterfactual_mask = (samples.guided .== -1.0)
+    unguided_mask = (samples.guided .== 0.0)
 
     # If counterfactual, set all intervention options to 0.0
     samples[
-        samples.guided .== -1.0, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)
+        counterfactual_mask, filter(x -> x ∉ [:guided, :heritability], interv.fieldname)
     ] .=
         0.0
 
@@ -304,25 +313,29 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
             samples[i, fog_weights.fieldname] .= gamma_to_dirichlet(
                 collect(r[fog_weights.fieldname])
             )
+            samples[i, mc_weights.fieldname] .= gamma_to_dirichlet(
+                collect(r[mc_weights.fieldname])
+            )
         end
     end
 
     # Collect MCDA weight parameters
     non_depth_names = vcat(
         seed_weights.fieldname,
-        fog_weights.fieldname
+        fog_weights.fieldname,
+        mc_weights.fieldname
     )
 
     # If unguided/counterfactual, set all preference criteria, except those related to depth, to 0.
     samples[samples.guided .<= 0.0, non_depth_names] .= 0.0  # Turn off weights for unguided and cf
-    samples[samples.guided .== -1.0, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
+    samples[counterfactual_mask, depth_offsets.fieldname] .= 0.0  # No depth offsets for cf
 
     # Also deactivate strategy parameters for counterfactuals and unguided
-    (samples[samples.guided .== 0.0, [:seed_strategy, :fog_strategy]]) .= DECISION_STRATEGY[:periodic]
-    samples[samples.guided .== -1.0, [:seed_strategy, :fog_strategy]] .= -1.0
+    (samples[unguided_mask, [:seed_strategy, :fog_strategy, :mc_strategy]]) .= DECISION_STRATEGY[:periodic]
+    samples[counterfactual_mask, [:seed_strategy, :fog_strategy, :mc_strategy]] .= -1.0
 
     # If unguided, set planning horizon to 0.
-    samples[samples.guided .== 0.0, :plan_horizon] .= 0.0
+    samples[unguided_mask, :plan_horizon] .= 0.0
 
     # If no seeding is to occur, set related variables to 0
     not_seeded::BitVector = no_seeding(samples)
@@ -333,12 +346,18 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
     not_fogged = (samples.fogging .== 0)
     samples[not_fogged, contains.(names(samples), "fog_")] .= 0.0
 
+    # # Same for moving corals
+    not_moving_corals = (samples.N_mc_settlers .== 0)
+    samples[not_moving_corals, contains.(names(samples), "mc_")] .= 0.0
+
     not_shaded = (samples.SRM .== 0)
     samples[not_shaded, contains.(names(samples), "shade_")] .= 0.0
 
-    # Reactive Seed and Fog
+    # Reactive
     not_reactive =
-        .!is_reactive(samples.seed_strategy) .& .!is_reactive(samples.fog_strategy)
+        .!is_reactive(samples.seed_strategy) .&
+        .!is_reactive(samples.fog_strategy) .&
+        .!is_reactive(samples.mc_strategy)
     reactive_params = [
         :reactive_absolute_threshold,
         :reactive_loss_threshold,
@@ -350,6 +369,7 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
 
     # Deactivate periodic parameters when reactive strategy is in place
     samples[is_reactive(samples.seed_strategy), [:seed_deployment_freq]] .= 0.0
+    samples[is_reactive(samples.mc_strategy), [:mc_deployment_freq]] .= 0.0
 
     not_periodic_fog = (samples.fog_strategy .!= 1)
     samples[not_periodic_fog, [:fog_deployment_freq]] .= 0.0
@@ -363,6 +383,11 @@ function adjust_samples(spec::DataFrame, samples::DataFrame)::DataFrame
     guided_seeded = .!(not_seeded) .& (samples.guided .> 0)
     samples[guided_seeded, seed_weights.fieldname] .= mcda_normalize(
         samples[guided_seeded, seed_weights.fieldname]
+    )
+    # Normalize MCDA weights for mc scenarios
+    guided_mc = .!(not_moving_corals) .& (samples.guided .> 0)
+    samples[guided_mc, mc_weights.fieldname] .= mcda_normalize(
+        samples[guided_mc, mc_weights.fieldname]
     )
 
     # Disable wave decisions if no wave stress is used

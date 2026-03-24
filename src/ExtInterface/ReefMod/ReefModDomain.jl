@@ -36,6 +36,7 @@ mutable struct ReefModDomain <: AbstractReefModDomain
     seed_target_locations::Vector{String}       # locations eligible for seeding
     fog_target_locations::Vector{String}        # locations eligible for fogging
     shade_target_locations::Vector{String}    # locations eligible for shading
+    mc_target_locations::Vector{String}   # locations eligible for moving corals
 
     model
     sim_constants::SimConstants
@@ -152,6 +153,7 @@ function load_domain(
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
         SeedCriteriaWeights(),
         FogCriteriaWeights(),
+        MCCriteriaWeights(),
         DepthThresholds()
     ]
 
@@ -185,6 +187,7 @@ function load_domain(
         dhw_scens,
         wave_scens,
         cyclone_mortality_scens,
+        location_ids,
         location_ids,
         location_ids,
         location_ids,

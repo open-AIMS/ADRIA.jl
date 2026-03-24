@@ -5,7 +5,8 @@ using ADRIA.decision:
 
 using ADRIA.decision:
     SeedCriteriaWeights,
-    FogCriteriaWeights
+    FogCriteriaWeights,
+    MCCriteriaWeights
 
 """
     ADRIADomain{Σ,M,I,D,X,Y,Z}
@@ -30,8 +31,9 @@ mutable struct ADRIADomain <: Domain
     cyclone_mortality_scens::Union{Matrix{<:Real},YAXArray}  # Cyclone mortality scenarios
 
     # Strategy target locations
-    seed_target_locations::Vector{String}       # locations eligible for seeding
-    fog_target_locations::Vector{String}        # locations eligible for fogging
+    seed_target_locations::Vector{String}  # locations eligible for seeding
+    fog_target_locations::Vector{String}   # locations eligible for fogging
+    mc_target_locations::Vector{String}   # locations eligible for moving corals
     shade_target_locations::Vector{String}    # locations eligible for shading
 
     # Parameters
@@ -62,6 +64,7 @@ function Domain(
     criteria_weights::Vector{Union{DecisionWeights,DecisionThresholds}} = [
         SeedCriteriaWeights(),
         FogCriteriaWeights(),
+        MCCriteriaWeights(),
         DepthThresholds()
     ]
 
@@ -89,6 +92,7 @@ function Domain(
         DHW,
         wave,
         cyclone_mortality,
+        location_ids,
         location_ids,
         location_ids,
         location_ids,
@@ -191,7 +195,8 @@ function Domain(
 
     # Load initial coral cover relative to k area
     init_coral_cover = load_initial_cover(init_coral_fn)
-    dhw = load_env_data(dhw_fn, "dhw")
+
+    dhw::YAXArray{Float64} = load_env_data(dhw_fn, "dhw")
     waves = load_wave_data(wave_fn, timeframe, conn_ids)
     cyclone_mortality = load_cyclone_data(cyclone_mortality_fn, timeframe, u_sids)
 
