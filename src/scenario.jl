@@ -538,6 +538,7 @@ function run_model(
 
     # Locations to intervene
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
+    mc_min_iv_locs::Int64 = param_set[At("mc_min_iv_locations")]
 
     fogging::Float64 = param_set[At("fogging")]  # proportion of bleaching mortality reduction through fogging
     srm::Float64 = param_set[At("SRM")]  # DHW equivalents reduced by some shading mechanism
@@ -1158,13 +1159,13 @@ function run_model(
                         mc_pref,
                         mc_decision_mat[location=At(candidate_locs)],
                         MCDA_approach,
-                        min_iv_locs
+                        mc_min_iv_locs
                     )
                 else
                     # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
                     selected_mc_ranks = unguided_selection(
                         candidate_locs,
-                        min_iv_locs,
+                        mc_min_iv_locs,
                         vec(leftover_space_m²[candidate_loc_indices]),
                         depth_criteria[candidate_loc_indices]
                     )
