@@ -73,6 +73,14 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Minimum intervention locations",
         description="Minimum number of locations to perform intervention"
     )
+    mc_min_iv_locations::Param = Factor(
+        5;
+        ptype="ordered discrete",
+        dist=DiscreteUniform,
+        dist_params=(5.0, 20.0),
+        name="Moving corals minimum intervention locations",
+        description="Minimum number of locations to perform moving corals intervention"
+    )
     fogging::Param = Factor(
         0.0;
         ptype="continuous",
