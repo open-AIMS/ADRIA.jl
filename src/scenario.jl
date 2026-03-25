@@ -1446,7 +1446,7 @@ function run_model(
 
         # Track cover loss for reactive strategies
         _is_reactive = any(
-            is_reactive(param_set[At(["seed_strategy", "fog_strategy"])])
+            is_reactive(param_set[At(["seed_strategy", "fog_strategy", "mc_strategy"])])
         )
         if is_guided && _is_reactive && (tstep > 1)
             # Calculate proportional cover loss at each location
