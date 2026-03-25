@@ -1445,7 +1445,6 @@ function run_model(
         C_cover[tstep, :, :, :] .= C_cover_t
 
         # Track cover loss for reactive strategies
-        max_lookback
         _is_reactive = any(
             is_reactive(param_set[At(["seed_strategy", "fog_strategy"])])
         )
