@@ -286,7 +286,7 @@ Base.@kwdef struct Intervention <: EcoModel
 end
 
 function interventions()
-    return [:seed, :fog]
+    return [:seed, :fog, :mc]
 end
 
 function year_start_factors(dom::Domain)::DataFrame
