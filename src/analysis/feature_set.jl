@@ -24,22 +24,22 @@ relative to the locations' carrying capacity.
 # Returns
 DataFrames of mean and total deployment for each coral group
 """
-function _seeding_stats(rs::ResultSet)::Tuple{DataFrame,DataFrame}
-    deployed_corals = rs.seed_log.coral_id
+function _iv_log_stats(logs::YAXArray; prefix::String="")::Tuple{DataFrame,DataFrame}
+    deployed_corals = logs.coral_id
 
     mean_deployment = [
-        mean(sum(rs.seed_log[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
+        mean(sum(logs[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
         for c_id in deployed_corals
     ]
 
     total_deployment = [
-        sum(sum(rs.seed_log[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
+        sum(sum(logs[:, c_id, :, :]; dims=:timesteps); dims=:locations).data[:]
         for c_id in deployed_corals
     ]
 
-    col_names = ["deployed_coral_$(i)" for i in string.(collect(deployed_corals))]
-    μ = DataFrame(hcat(mean_deployment...), "mean_" .* col_names)
-    T = DataFrame(hcat(total_deployment...), "total_" .* col_names)
+    col_names = ["fg_$(i)" for i in string.(collect(deployed_corals))]
+    μ = DataFrame(hcat(mean_deployment...), "$(prefix)deployed_volume_mean_" .* col_names)
+    T = DataFrame(hcat(total_deployment...), "$(prefix)volume_total_" .* col_names)
 
     return μ, T
 end
@@ -75,22 +75,29 @@ function feature_set(rs::ResultSet)::DataFrame
     # Add indicators of deployments
     seed_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :seed)
     fog_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :fog)
+    mc_stats = ADRIA.decision.deployment_summary_stats(rs.ranks, :mc)
 
     # Only attach mean of deployment effort
     insertcols!(
         scens,
         :n_loc_seed_mean => seed_stats[stats=At(:mean)].data[:],
-        :n_loc_fog_mean => fog_stats[stats=At(:mean)].data[:]
+        :n_loc_fog_mean => fog_stats[stats=At(:mean)].data[:],
+        :n_loc_mc_mean => mc_stats[stats=At(:mean)].data[:]
     )
 
     # Replace `depth_offset` with maximum depth
     scens.depth_max = scens.depth_min .+ scens.depth_offset
     scens = scens[:, Not(:depth_offset)]
 
-    total_seeded, mean_seeded = _seeding_stats(rs)
-    DataFrames.hcat!(scens, mean_seeded)
-    DataFrames.hcat!(scens, total_seeded)
-    scens.total_deployed_coral = sum.(eachrow(total_seeded))
+    seed_volume_mean, seed_volume_total = _iv_log_stats(rs.seed_log; prefix="seed_")
+    DataFrames.hcat!(scens, seed_volume_mean)
+    DataFrames.hcat!(scens, seed_volume_total)
+    scens.seed_total_deployed_coral = sum.(eachrow(seed_volume_total))
+
+    mc_volume_mean, mc_volume_total = _iv_log_stats(rs.mc_log; prefix="mc_")
+    DataFrames.hcat!(scens, mc_volume_mean)
+    DataFrames.hcat!(scens, mc_volume_total)
+    scens.mc_total_deployed_coral = sum.(eachrow(mc_volume_total))
 
     # Remove `dhw_scenario` as Scenario IDs are not very informative for analyses
     scens = scens[:, Not(:dhw_scenario)]
