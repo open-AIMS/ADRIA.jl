@@ -1171,7 +1171,7 @@ function run_model(
                 end
                 if !isempty(selected_mc_ranks)
                     log_val = is_guided ? (1:length(selected_mc_ranks)) : 1.0
-                    # log_location_ranks[tstep, At(selected_mc_ranks), At(:seed)] .= log_val
+                    log_location_ranks[tstep, At(selected_mc_ranks), At(:mc)] .= log_val
                     last_mc_deployment[candidate_loc_indices] .= tstep
                 end
             end
