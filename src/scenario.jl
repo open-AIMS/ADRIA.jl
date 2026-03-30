@@ -488,15 +488,27 @@ function run_model(
     dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
     if dhw_idx > 0.0
         if has_mcb_scenarios(domain.dhw_scens)
-            fog_albedo = param_set[At("fog_albedo")]
-            fog_duration = param_set[At("fog_duration")]
-            # Check counterfactual and assign albedo to default to prevent index error.
-            # There is no intervention so non-zero albedo doesn't do anything.
-            if fog_albedo == 0.0 && fog_duration == 0.0
-                fog_albedo = domain.dhw_scens.albedo[1]
-            end
+            mcb_albedo = param_set[At("mcb_albedo")]
+            mcb_duration = param_set[At("mcb_duration")]
+            mcb_start_year = Int64(param_set[At("mcb_start_year")])
+            mcb_freq = Int64(param_set[At("mcb_deployment_freq")])
 
-            dhw_scen = @view(domain.dhw_scens[scenarios=At(dhw_idx), mcb_durations=At(fog_duration), albedo=At(fog_albedo)])
+            # Get baseline (0-day) and treated slices
+            # Slicing results in (timesteps, locations)
+            dhw_baseline = @view(domain.dhw_scens[scenarios=At(dhw_idx), mcb_durations=1, albedo=At(domain.dhw_scens.albedo[1])])
+            dhw_treated = @view(domain.dhw_scens[scenarios=At(dhw_idx), mcb_durations=At(mcb_duration), albedo=At(mcb_albedo)])
+
+            # Create hybrid DHW environment (Temporal Splicing)
+            dhw_scen = copy(dhw_baseline)
+            mcb_years = mcb_start_year:tf
+            if !isempty(mcb_years)
+                mcb_active_years = decision_frequency(mcb_start_year, tf, mcb_years, mcb_freq)
+                for t in 1:tf
+                    if mcb_active_years[t]
+                        dhw_scen[t, :] .= dhw_treated[t, :]
+                    end
+                end
+            end
         else
             dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
         end
@@ -669,8 +681,7 @@ function run_model(
     unguided_seeding = is_unguided && is_seeding
 
     # Flag indicating whether to fog or not fog
-    # In prescribed mode (5D data), reactive selection is disabled
-    is_fogging = (fogging > 0.0) && !has_mcb_scenarios(domain.dhw_scens)
+    is_fogging = fogging > 0.0
     unguided_fogging = is_unguided && is_fogging
 
     # Moving corals flag

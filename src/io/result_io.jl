@@ -10,13 +10,13 @@ Matrix{Float64, 2}, of mean and standard deviation for each environmental scenar
 """
 function summarize_env_data(
     data::AbstractArray;
-    albedo_idx::Int64=1,
-    duration_idx::Int64=1
+    mcb_albedo_idx::Int64=1,
+    mcb_duration_idx::Int64=1
 )::Array{Float64}
     if has_mcb_scenarios(data)
-        # Slice to baseline: duration_idx, albedo_idx
+        # Slice to baseline: mcb_duration_idx, mcb_albedo_idx
         # Optimized order: (timesteps, locations, scenarios, mcb_durations, albedo)
-        baseline_data = data[:, :, :, duration_idx, albedo_idx]
+        baseline_data = data[:, :, :, mcb_duration_idx, mcb_albedo_idx]
         # Now 3D: (timesteps, locations, scenarios)
         # Mean over timesteps (dim 1)
         stats_store = zeros(2, size(baseline_data, 3), size(baseline_data, 2))
