@@ -487,10 +487,26 @@ function run_model(
     # Extract environmental data
     dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
     if dhw_idx > 0.0
-        dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
+        if has_mcb_scenarios(domain.dhw_scens)
+            fog_albedo = param_set[At("fog_albedo")]
+            fog_duration = param_set[At("fog_duration")]
+            # Check counterfactual and assign albedo to default to prevent index error.
+            # There is no intervention so non-zero albedo doesn't do anything.
+            if fog_albedo == 0.0 && fog_duration == 0.0
+                fog_albedo = domain.dhw_scens.albedo[1]
+            end
+
+            dhw_scen = @view(domain.dhw_scens[scenarios=At(dhw_idx), mcb_durations=At(fog_duration), albedo=At(fog_albedo)])
+        else
+            dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
+        end
     else
         # Run with no DHW disturbances
-        dhw_scen = copy(domain.dhw_scens[:, :, 1])
+        dhw_scen = if has_mcb_scenarios(domain.dhw_scens)
+            copy(domain.dhw_scens[:, :, 1, 1, 1])
+        else
+            copy(domain.dhw_scens[:, :, 1])
+        end
         dhw_scen .= 0.0
     end
 
@@ -540,7 +556,7 @@ function run_model(
     min_iv_locs::Int64 = param_set[At("min_iv_locations")]
     mc_min_iv_locs::Int64 = param_set[At("mc_min_iv_locations")]
 
-    fogging::Float64 = param_set[At("fogging")]  # proportion of bleaching mortality reduction through fogging
+    fogging::Float64 = param_set[At("fogging")]
     srm::Float64 = param_set[At("SRM")]  # DHW equivalents reduced by some shading mechanism
     shade_years::Int64 = param_set[At("shade_years")]  # number of years to shade
 
@@ -653,7 +669,8 @@ function run_model(
     unguided_seeding = is_unguided && is_seeding
 
     # Flag indicating whether to fog or not fog
-    is_fogging = fogging > 0.0
+    # In prescribed mode (5D data), reactive selection is disabled
+    is_fogging = (fogging > 0.0) && !has_mcb_scenarios(domain.dhw_scens)
     unguided_fogging = is_unguided && is_fogging
 
     # Moving corals flag

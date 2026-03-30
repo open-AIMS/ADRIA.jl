@@ -217,6 +217,22 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Years to deploy moving corals",
         description="Number of years to deploy moving corals."
     )
+    fog_albedo::Param = Factor(
+        0.0;
+        ptype="ordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(0.0, 0.0),
+        name="Fog Albedo",
+        description="Albedo level to use from 5D DHW dataset."
+    )
+    fog_duration::Param = Factor(
+        0.0;
+        ptype="ordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(0.0, 0.0),
+        name="Fog Duration",
+        description="Duration level (yearly days) to use from 5D DHW dataset."
+    )
 
     # Intervention strategy parameters
     seed_strategy::Param = Factor(

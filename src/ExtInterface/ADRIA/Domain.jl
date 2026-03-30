@@ -68,9 +68,71 @@ function Domain(
         DepthThresholds()
     ]
 
+    dhw_axes = DimensionalData.name.(DHW.axes)
+    if has_mcb_scenarios(DHW)
+        albedos = collect(DHW.albedo)
+        durations = collect(DHW.mcb_durations)
+
+        intervention_params = (
+            fog_albedo=Factor(
+                albedos[1];
+                ptype="ordered categorical",
+                dist=CategoricalDistribution,
+                dist_params=(Tuple(albedos)),
+                name="Fog Albedo",
+                description="Albedo level to use from 5D DHW dataset."
+            ),
+            fog_duration=Factor(
+                durations[1];
+                ptype="ordered categorical",
+                dist=CategoricalDistribution,
+                dist_params=(Tuple(durations)),
+                name="Fog Duration",
+                description="Duration level (yearly days) to use from 5D DHW dataset."
+            ),
+            fogging=Factor(
+                0.0;
+                ptype="continuous",
+                dist=Uniform,
+                dist_params=(0.0, 0.0),
+                name="Fogging",
+                description="Assumed reduction in bleaching mortality. Disabled in prescribed mode."
+            ),
+            fog_strategy=Factor(
+                0;
+                ptype="unordered categorical",
+                dist=CategoricalDistribution,
+                dist_params=(Tuple([0.0])),
+                name="Fog Strategy Type",
+                description="Deployment strategy: 1=Periodic (time-based), 2=Reactive (condition-based); 0 is off. Disabled in prescribed mode."
+            )
+        )
+    else
+        albedos = [0.0]
+        durations = [0.0]
+        intervention_params = (
+            fog_albedo=Factor(
+                albedos[1];
+                ptype="ordered categorical",
+                dist=CategoricalDistribution,
+                dist_params=(Tuple(albedos)),
+                name="Fog Albedo",
+                description="Albedo level to use from 5D DHW dataset."
+            ),
+            fog_duration=Factor(
+                durations[1];
+                ptype="ordered categorical",
+                dist=CategoricalDistribution,
+                dist_params=(Tuple(durations)),
+                name="Fog Duration",
+                description="Duration level (yearly days) to use from 5D DHW dataset."
+            )
+        )
+    end
+
     model::Model = Model((
         EnvironmentalLayer(DHW, wave, cyclone_mortality),
-        Intervention(),
+        Intervention(; intervention_params...),
         criteria_weights...,
         Coral(),
         GrowthAcceleration()

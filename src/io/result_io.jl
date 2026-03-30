@@ -8,7 +8,23 @@ Summarize environmental data layers (mean and standard deviation).
 # Returns
 Matrix{Float64, 2}, of mean and standard deviation for each environmental scenario.
 """
-function summarize_env_data(data::AbstractArray)::Array{Float64}
+function summarize_env_data(
+    data::AbstractArray;
+    albedo_idx::Int64=1,
+    duration_idx::Int64=1
+)::Array{Float64}
+    if has_mcb_scenarios(data)
+        # Slice to baseline: duration_idx, albedo_idx
+        # Optimized order: (timesteps, locations, scenarios, mcb_durations, albedo)
+        baseline_data = data[:, :, :, duration_idx, albedo_idx]
+        # Now 3D: (timesteps, locations, scenarios)
+        # Mean over timesteps (dim 1)
+        stats_store = zeros(2, size(baseline_data, 3), size(baseline_data, 2))
+        stats_store[1, :, :] .= dropdims(mean(baseline_data; dims=1); dims=1)'
+        stats_store[2, :, :] .= dropdims(std(baseline_data; dims=1); dims=1)'
+        return stats_store
+    end
+
     # TODO: Update once
     stats_store::Array{Float64} = zeros(2, size(data, 3), size(data, 2))
     stats_store[1, :, :] .= dropdims(mean(data; dims=1); dims=1)'

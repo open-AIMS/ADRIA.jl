@@ -288,9 +288,30 @@ function load_domain(
         DepthThresholds()
     ]
 
+    dhw_axes = name.(dhw_scens.axes)
+    n_albedos = :albedo in dhw_axes ? length(dhw_scens.albedo) : 1
+    n_durations = :mcb_durations in dhw_axes ? length(dhw_scens.mcb_durations) : 1
+
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
-        Intervention(),
+        Intervention(
+            fog_albedo_idx=Factor(
+                1;
+                ptype="ordered discrete",
+                dist=DiscreteUniform,
+                dist_params=(1.0, Float64(n_albedos)),
+                name="Fog Albedo Index",
+                description="Index of albedo level to use from 5D DHW dataset."
+            ),
+            fog_duration_idx=Factor(
+                1;
+                ptype="ordered discrete",
+                dist=DiscreteUniform,
+                dist_params=(1.0, Float64(n_durations)),
+                name="Fog Duration Index",
+                description="Index of duration level to use from 5D DHW dataset."
+            )
+        ),
         criteria_weights...,
         Coral(),
         GrowthAcceleration()
