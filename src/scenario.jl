@@ -479,6 +479,12 @@ function run_model(
 
     factor_names::Vector{String} = collect(param_set.factors.val)
 
+    # Sim constants
+    sim_params = domain.sim_constants
+    n_locs::Int64 = domain.coral_growth.n_locs
+    n_groups::Int64 = domain.coral_growth.n_groups
+    n_sizes::Int64 = domain.coral_growth.n_sizes
+
     # Set random seed using intervention values
     # TODO: More robust way of getting intervention/criteria values
     rnd_seed_val::Int64 = floor(Int64, sum(param_set[Where(x -> x != "RCP")]))  # select everything except RCP
@@ -496,13 +502,20 @@ function run_model(
             # Get baseline (0-day) and treated slices
             # Slicing results in (timesteps, locations)
             dhw_baseline = @view(domain.dhw_scens[scenarios=At(dhw_idx), mcb_durations=1, albedo=At(domain.dhw_scens.albedo[1])])
-            dhw_treated = @view(domain.dhw_scens[scenarios=At(dhw_idx), mcb_durations=At(mcb_duration), albedo=At(mcb_albedo)])
+
+            # Default treated to baseline. If MCB is active, slice the treated array.
+            dhw_treated = dhw_baseline
+            if mcb_duration > 0.0 && mcb_albedo > 0.0
+                dhw_treated = @view(domain.dhw_scens[scenarios=At(dhw_idx), mcb_durations=At(mcb_duration), albedo=At(mcb_albedo)])
+            end
+
+            tf::Int64 = size(dhw_baseline, 1)
 
             # Create hybrid DHW environment (Temporal Splicing)
             dhw_scen = copy(dhw_baseline)
             mcb_years = mcb_start_year:tf
             if !isempty(mcb_years)
-                mcb_active_years = decision_frequency(mcb_start_year, tf, mcb_years, mcb_freq)
+                mcb_active_years = decision_frequency(mcb_start_year, tf, length(mcb_years), mcb_freq)
                 for t in 1:tf
                     if mcb_active_years[t]
                         dhw_scen[t, :] .= dhw_treated[t, :]
@@ -511,6 +524,7 @@ function run_model(
             end
         else
             dhw_scen = @view(domain.dhw_scens[:, :, dhw_idx])
+            tf = size(dhw_scen, 1)
         end
     else
         # Run with no DHW disturbances
@@ -520,6 +534,7 @@ function run_model(
             copy(domain.dhw_scens[:, :, 1])
         end
         dhw_scen .= 0.0
+        tf = size(dhw_scen, 1)
     end
 
     wave_idx::Int64 = Int64(param_set[At("wave_scenario")])
@@ -547,13 +562,6 @@ function run_model(
     end
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, get(ENV, "ADRIA_DEBUG", "false")) == true
-
-    # Sim constants
-    sim_params = domain.sim_constants
-    tf::Int64 = size(dhw_scen, 1)
-    n_locs::Int64 = domain.coral_growth.n_locs
-    n_groups::Int64 = domain.coral_growth.n_groups
-    n_sizes::Int64 = domain.coral_growth.n_sizes
 
     # Initialize cover loss tracking for reactive strategies
     max_lookback = Int64(param_set[At("reactive_response_delay")])
