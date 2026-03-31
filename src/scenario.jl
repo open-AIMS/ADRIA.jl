@@ -494,19 +494,34 @@ function run_model(
     dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
     if dhw_idx > 0.0
         if has_mcb_scenarios(domain.dhw_scens)
-            mcb_albedo = param_set[At("mcb_albedo")]
-            mcb_duration = param_set[At("mcb_duration")]
+            # Cast to axis type to prevent Float32/Float64 mismatch SelectorErrors
+            mcb_albedo = eltype(domain.dhw_scens.albedo)(param_set[At("mcb_albedo")])
+            mcb_duration = eltype(domain.dhw_scens.mcb_durations)(
+                param_set[At("mcb_duration")]
+            )
             mcb_start_year = Int64(param_set[At("mcb_start_year")])
             mcb_freq = Int64(param_set[At("mcb_deployment_freq")])
 
             # Get baseline (0-day) and treated slices
             # Slicing results in (timesteps, locations)
-            dhw_baseline = @view(domain.dhw_scens[scenarios=At(dhw_idx), mcb_durations=1, albedo=At(domain.dhw_scens.albedo[1])])
+            dhw_baseline = @view(
+                domain.dhw_scens[
+                    scenarios=At(dhw_idx),
+                    mcb_durations=1,
+                    albedo=At(domain.dhw_scens.albedo[1])
+                ]
+            )
 
             # Default treated to baseline. If MCB is active, slice the treated array.
             dhw_treated = dhw_baseline
             if mcb_duration > 0.0 && mcb_albedo > 0.0
-                dhw_treated = @view(domain.dhw_scens[scenarios=At(dhw_idx), mcb_durations=At(mcb_duration), albedo=At(mcb_albedo)])
+                dhw_treated = @view(
+                    domain.dhw_scens[
+                        scenarios=At(dhw_idx),
+                        mcb_durations=At(mcb_duration),
+                        albedo=At(mcb_albedo)
+                    ]
+                )
             end
 
             tf::Int64 = size(dhw_baseline, 1)
@@ -515,7 +530,9 @@ function run_model(
             dhw_scen = copy(dhw_baseline)
             mcb_years = mcb_start_year:tf
             if !isempty(mcb_years)
-                mcb_active_years = decision_frequency(mcb_start_year, tf, length(mcb_years), mcb_freq)
+                mcb_active_years = decision_frequency(
+                    mcb_start_year, tf, length(mcb_years), mcb_freq
+                )
                 for t in 1:tf
                     if mcb_active_years[t]
                         dhw_scen[t, :] .= dhw_treated[t, :]
