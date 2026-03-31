@@ -19,23 +19,27 @@ function EnvironmentalLayer(
 )::EnvironmentalLayer where {
     T<:Union{Missing,Float32,Float64},T2<:Union{Missing,Float32,Float64}
 }
-    n_dhw_scens::Int64 = if dhw isa YAXArray && :scenarios in DimensionalData.name.(dhw.axes)
-        size(dhw, :scenarios)
-    else
-        size(dhw, 3)
-    end
+    n_dhw_scens::Int64 =
+        if dhw isa YAXArray && :scenarios in DimensionalData.name.(dhw.axes)
+            size(dhw, :scenarios)
+        else
+            size(dhw, 3)
+        end
 
-    n_wave_scens::Int64 = if wave isa YAXArray && :scenarios in DimensionalData.name.(wave.axes)
-        size(wave, :scenarios)
-    else
-        size(wave, 3)
-    end
+    n_wave_scens::Int64 =
+        if wave isa YAXArray && :scenarios in DimensionalData.name.(wave.axes)
+            size(wave, :scenarios)
+        else
+            size(wave, 3)
+        end
 
-    n_cyc_scens::Int64 = if cyclone_mortality isa YAXArray && :scenarios in DimensionalData.name.(cyclone_mortality.axes)
-        size(cyclone_mortality, :scenarios)
-    else
-        size(cyclone_mortality, ndims(cyclone_mortality))
-    end
+    n_cyc_scens::Int64 =
+        if cyclone_mortality isa YAXArray &&
+            :scenarios in DimensionalData.name.(cyclone_mortality.axes)
+            size(cyclone_mortality, :scenarios)
+        else
+            size(cyclone_mortality, ndims(cyclone_mortality))
+        end
 
     return EnvironmentalLayer(
         Factor(

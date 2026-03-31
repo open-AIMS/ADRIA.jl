@@ -294,7 +294,7 @@ function load_domain(
 
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
-        Intervention(
+        Intervention(;
             fog_albedo_idx=Factor(
                 1;
                 ptype="ordered discrete",
