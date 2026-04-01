@@ -499,8 +499,14 @@ function run_model(
             mcb_duration = eltype(domain.dhw_scens.mcb_durations)(
                 param_set[At("mcb_duration")]
             )
-            mcb_start_year = Int64(param_set[At("mcb_start_year")])
             mcb_freq = Int64(param_set[At("mcb_deployment_freq")])
+
+            # Hardcode MCB start year to 2035
+            mcb_start_year = findfirst(domain.env_layer_md.timeframe .== 2035)
+            if isnothing(mcb_start_year)
+                mcb_start_year = 1
+                @warn "MCB start year 2035 not found in timeframe. Defaulting to first year."
+            end
 
             # Get baseline (0-day) and treated slices
             # Slicing results in (timesteps, locations)

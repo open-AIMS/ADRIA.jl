@@ -233,14 +233,6 @@ Base.@kwdef struct Intervention <: EcoModel
         name="MCB Duration",
         description="Duration level (yearly days) to use from 5D DHW dataset."
     )
-    mcb_start_year::Param = Factor(
-        1;
-        ptype="ordered discrete",
-        dist=DiscreteUniform,
-        dist_params=(1.0, 100.0),
-        name="MCB Start Year",
-        description="Year to start MCB deployment."
-    )
     mcb_deployment_freq::Param = Factor(
         1;
         ptype="ordered discrete",
