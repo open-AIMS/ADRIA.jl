@@ -11,3 +11,4 @@ JuliaSysimage.dll
 docs/build/
 input/
 output/
+.aider*
