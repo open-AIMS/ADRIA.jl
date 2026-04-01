@@ -150,6 +150,31 @@ ADRIA.decision.mcda_method_names()
 ADRIA.set_factor_bounds!(dom, :guided, ("counterfactual", "COCOSO"))
 ```
 
+## Marine Cloud Brightening (MCB) Scenarios
+
+When a domain is loaded with a 5D DHW dataset (containing `mcb_durations` and `albedo` dimensions), ADRIA automatically populates MCB-specific intervention factors. These are prefixed with `mcb_` and their sampling distributions are derived from the NetCDF axis labels.
+
+The primary MCB factors are:
+- `mcb_albedo`: The reflectiveness level to apply.
+- `mcb_duration`: The yearly duration (in days) of MCB deployment.
+- `mcb_deployment_freq`: How often to deploy (e.g., every 1 year, every 2 years).
+
+Note that `mcb_start_year` is currently hardcoded to **2035**.
+
+Because these factors are tied to specific levels available in the provided NetCDF, it is often necessary to fix them to a specific value or adjust their bounds to match the dataset's constraints.
+
+```julia
+dom = ADRIA.load_domain("path/to/5d/domain", "45")
+
+# Fix MCB to a specific duration and albedo level available in the NetCDF
+ADRIA.fix_factor!(dom, :mcb_duration, 50.0)
+ADRIA.fix_factor!(dom, :mcb_albedo, 0.3)
+
+# Or allow them to vary across their available categorical range
+# (Default behavior if not fixed)
+scens = ADRIA.sample(dom, 128)
+```
+
 ## Sampling counterfactuals only
 
 A convenience function to create scenarios with no interventions (counterfactuals).

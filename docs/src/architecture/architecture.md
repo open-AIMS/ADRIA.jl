@@ -53,7 +53,12 @@ Factors in ADRIA are defined across four sub-components:
 Each sub-component is represented by a struct with fields for each parameter. The `Intervention`
 sub-component holds parameters that define a given adopted intervention strategy/option: how
 many (and type of) corals are to be seeded, the length of any deployment, the start/end years,
-and so on. The `CriteriaWeights` sub-component relates to the preferences for the Multi-Criteria
+and so on. When a 5D DHW dataset (containing MCB durations and albedo levels) is loaded, ADRIA
+dynamically populates additional MCB-specific intervention factors (prefixed with `mcb_`).
+These factors are used in a "Temporal Splicing" approach, where the environmental conditions
+switch between a baseline and a treated slice according to the specified intervention strategy.
+See [Marine Cloud Brightening (MCB) Scenarios](@ref) for more details.
+ The `CriteriaWeights` sub-component relates to the preferences for the Multi-Criteria
 Decision Analysis methods, further detailed in [Dynamic Multi-Criteria Decision Analysis](@ref). For the ADRIA ecosystem model
 (ADRIAmod), `EnviromentalLayer` relate to the environmental scenarios available for a given
 simulation (a time series of DHW and Wave stress), itself determined on the loading of data
