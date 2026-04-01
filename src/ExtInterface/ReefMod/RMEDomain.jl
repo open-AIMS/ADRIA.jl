@@ -289,7 +289,11 @@ function load_domain(
     ]
 
     if ndims(dhw_scens) != 3
-        throw(ArgumentError("RMEDomain only supports 3D DHW data (timesteps, locations, scenarios)."))
+        throw(
+            ArgumentError(
+                "RMEDomain only supports 3D DHW data (timesteps, locations, scenarios)."
+            )
+        )
     end
 
     model::Model = Model((
