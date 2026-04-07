@@ -439,18 +439,20 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         metrics.relative_juveniles,
         metrics.juvenile_indicator,
         metrics.coral_evenness,
-        metrics.relative_taxa_cover
+        metrics.relative_taxa_cover,
+        metrics.relative_loc_taxa_cover
     ]
 
     metric_symbols::Vector{Symbol} = metrics.to_symbol.(outcome_metrics)
     metric_names::Vector{String} = metrics.to_string.(outcome_metrics; is_titlecase=true)
     metric_units::Vector{String} = getfield.(outcome_metrics, :unit)
     axis_names::Vector{Vector{Symbol}} = fill(
-        [:timesteps, :locations, :scenarios], length(outcome_metrics) - 1
+        [:timesteps, :locations, :scenarios], length(outcome_metrics) - 2
     )
-    # Add axis names relative to the last metric (relative_taxa_cover) separate as they are
+    # Add axis names relative to the last metrics separate as they are
     # different from the other metrics
-    push!(axis_names, [:timesteps, :groups, :scenarios])
+    push!(axis_names, [:timesteps, :groups, :scenarios]) # relative_taxa_cover
+    push!(axis_names, [:timesteps, :groups, :locations, :scenarios]) # relative_loc_taxa_cover
     _unique_loc_ids::Vector{String} = unique_loc_ids(domain)
 
     outcomes_attrs::Vector{Dict{Symbol,Any}} = [
@@ -463,7 +465,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             :axes_units => metrics.axes_units(axis_names[idx])
         ) for (idx, _) in enumerate(metric_symbols)
     ]
-    result_dims::Vector{NTuple{3,Int64}} = dim_lengths.(axis_names)
+    result_dims::Vector{Tuple{Vararg{Int64}}} = dim_lengths.(axis_names)
 
     # Create stores for each metric
     stores = [
