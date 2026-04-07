@@ -54,19 +54,41 @@ function export_to_rme(rs::ResultSet, out_dir::String)
     nc_path = joinpath(out_dir, "results.nc")
     isfile(nc_path) && rm(nc_path)
     
+    # 1. Define dimensions with coordinate variables
+    # timesteps: years
+    timesteps = parse.(Int, string.(rs.outcomes[:relative_cover].timesteps))
+    # 1. Define coordinate variables
+    # timesteps: years
+    years = Int32.(parse.(Int, string.(lookup(rs.outcomes[:relative_cover], :timesteps))))
+    # locations: unique location IDs (using loc_ids from ResultSet)
+    loc_ids = String.(rs.loc_ids)
+    # scenarios: standard indices
+    scen_indices = Int32.(1:n_scens)
+
     nccreate(nc_path, "total_cover", "timesteps", n_timesteps, "locations", n_locs, "scenarios", n_scens, t=NC_FLOAT)
     nccreate(nc_path, "coral_juv_m2", "timesteps", n_timesteps, "locations", n_locs, "scenarios", n_scens, t=NC_FLOAT)
     nccreate(nc_path, "relative_shelter_volume", "timesteps", n_timesteps, "locations", n_locs, "scenarios", n_scens, t=NC_FLOAT)
     nccreate(nc_path, "rubble", "timesteps", n_timesteps, "locations", n_locs, "scenarios", n_scens, t=NC_FLOAT)
     nccreate(nc_path, "cots", "timesteps", n_timesteps, "locations", n_locs, "scenarios", n_scens, t=NC_FLOAT)
-    nccreate(nc_path, "total_taxa_cover", "timesteps", n_timesteps, "locations", n_locs, "taxa", n_taxa, "scenarios", n_scens, t=NC_FLOAT)
+    nccreate(nc_path, "total_taxa_cover", "timesteps", n_timesteps, "locations", n_locs, "coral_id", n_taxa, "scenarios", n_scens, t=NC_FLOAT)
 
+    # 2. Define coordinate variables
+    nccreate(nc_path, "timesteps", "timesteps", n_timesteps, t=NC_INT)
+    nccreate(nc_path, "locations", "locations", n_locs, t=NC_STRING)
+    nccreate(nc_path, "scenarios", "scenarios", n_scens, t=NC_INT)
+
+    # 3. Write data
     ncwrite(total_cover_data, nc_path, "total_cover")
     ncwrite(juveniles_data, nc_path, "coral_juv_m2")
     ncwrite(shelter_volume_data, nc_path, "relative_shelter_volume")
     ncwrite(rubble_data, nc_path, "rubble")
     ncwrite(cots_data, nc_path, "cots")
     ncwrite(total_taxa_cover_data, nc_path, "total_taxa_cover")
+
+    # 4. Write coordinates
+    ncwrite(years, nc_path, "timesteps")
+    ncwrite(loc_ids, nc_path, "locations")
+    ncwrite(scen_indices, nc_path, "scenarios")
 # 3. Dynamic Reefset and IV Scenario synthesis
 # A scenario is a counterfactual if no interventions occur
 # Check all seeding and intervention factors
@@ -126,7 +148,7 @@ start_year = parse(Int, string(rs.outcomes[:relative_cover].timesteps[1]))
             # Find indices of locations where seeding occurred in this (t, scen)
             # Sum over coral_id dimension
             loc_seeding = sum(rs.seed_log[t, :, :, scen], dims=1)
-            intervened_loc_indices = findall(loc_seeding .> 0)
+            intervened_loc_indices = getindex.(findall(loc_seeding .> 0), 2)
             
             total_corals = sum(loc_seeding)
             
