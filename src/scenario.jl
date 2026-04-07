@@ -566,6 +566,7 @@ function run_scenario(
 
     result = _collect_scenario_results(domain, scenario, functional_groups)
     _write_batch!(data_store, idx, [result])
+
     return nothing
 end
 function run_scenario(
