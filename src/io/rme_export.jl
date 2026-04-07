@@ -24,7 +24,7 @@ function export_to_rme(rs::ResultSet, out_dir::String)
     n_locs = length(rs.outcomes[:relative_cover].locations)
     n_scens = length(rs.outcomes[:relative_cover].scenarios)
     
-    # Check if relative_loc_taxa_cover is available (we just added it)
+    # Check if relative_loc_taxa_cover is available
     if !haskey(rs.outcomes, :relative_loc_taxa_cover)
         @warn "Result set is missing `relative_loc_taxa_cover`. Please re-run the scenarios with the updated ADRIA code."
         return
@@ -32,10 +32,6 @@ function export_to_rme(rs::ResultSet, out_dir::String)
     n_taxa = length(rs.outcomes[:relative_loc_taxa_cover].groups)
 
     # 2. Build the NetCDF data
-    # Pre-allocate RME-formatted YAXArrays
-    # RME expects dimensions (timesteps, locations, scenarios) mostly
-    # and (timesteps, locations, taxa, scenarios) for taxa cover
-    
     # Convert ADRIA's proportions (0-1) to RME's percentages (0-100)
     total_cover_data = Array(rs.outcomes[:relative_cover].data) .* 100.0f0
     
@@ -50,68 +46,20 @@ function export_to_rme(rs::ResultSet, out_dir::String)
     # Relative shelter volume
     shelter_volume_data = Array(rs.outcomes[:relative_shelter_volume].data)
     
-    # Placeholders for cots and rubble, required by the linker
+    # Placeholders for cots and rubble
     cots_data = zeros(Float32, n_timesteps, n_locs, n_scens)
     rubble_data = zeros(Float32, n_timesteps, n_locs, n_scens)
 
-    # Note: Linker expects these variable names explicitly
-    vars = [
-        "total_cover" => total_cover_data,
-        "coral_juv_m2" => juveniles_data,
-        "relative_shelter_volume" => shelter_volume_data,
-        "rubble" => rubble_data,
-        "cots" => cots_data
-    ]
-
     # Save to NetCDF
     nc_path = joinpath(out_dir, "results.nc")
-    # Clean up existing file to prevent NetCDF dimension mismatch errors
     isfile(nc_path) && rm(nc_path)
     
-    # Create the variables using NetCDF.jl directly to perfectly emulate RME
-    nccreate(
-        nc_path, "total_cover",
-        "timesteps", n_timesteps,
-        "locations", n_locs,
-        "scenarios", n_scens,
-        t=NC_FLOAT
-    )
-    nccreate(
-        nc_path, "coral_juv_m2",
-        "timesteps", n_timesteps,
-        "locations", n_locs,
-        "scenarios", n_scens,
-        t=NC_FLOAT
-    )
-    nccreate(
-        nc_path, "relative_shelter_volume",
-        "timesteps", n_timesteps,
-        "locations", n_locs,
-        "scenarios", n_scens,
-        t=NC_FLOAT
-    )
-    nccreate(
-        nc_path, "rubble",
-        "timesteps", n_timesteps,
-        "locations", n_locs,
-        "scenarios", n_scens,
-        t=NC_FLOAT
-    )
-    nccreate(
-        nc_path, "cots",
-        "timesteps", n_timesteps,
-        "locations", n_locs,
-        "scenarios", n_scens,
-        t=NC_FLOAT
-    )
-    nccreate(
-        nc_path, "total_taxa_cover",
-        "timesteps", n_timesteps,
-        "locations", n_locs,
-        "taxa", n_taxa,
-        "scenarios", n_scens,
-        t=NC_FLOAT
-    )
+    nccreate(nc_path, "total_cover", "timesteps", n_timesteps, "locations", n_locs, "scenarios", n_scens, t=NC_FLOAT)
+    nccreate(nc_path, "coral_juv_m2", "timesteps", n_timesteps, "locations", n_locs, "scenarios", n_scens, t=NC_FLOAT)
+    nccreate(nc_path, "relative_shelter_volume", "timesteps", n_timesteps, "locations", n_locs, "scenarios", n_scens, t=NC_FLOAT)
+    nccreate(nc_path, "rubble", "timesteps", n_timesteps, "locations", n_locs, "scenarios", n_scens, t=NC_FLOAT)
+    nccreate(nc_path, "cots", "timesteps", n_timesteps, "locations", n_locs, "scenarios", n_scens, t=NC_FLOAT)
+    nccreate(nc_path, "total_taxa_cover", "timesteps", n_timesteps, "locations", n_locs, "taxa", n_taxa, "scenarios", n_scens, t=NC_FLOAT)
 
     ncwrite(total_cover_data, nc_path, "total_cover")
     ncwrite(juveniles_data, nc_path, "coral_juv_m2")
@@ -120,36 +68,12 @@ function export_to_rme(rs::ResultSet, out_dir::String)
     ncwrite(cots_data, nc_path, "cots")
     ncwrite(total_taxa_cover_data, nc_path, "total_taxa_cover")
 
-    # 3. Build scenario_info.json
-    # The linker expects "counterfactual" array and reefsets based on the scenario
-    # We will identify unguided/non-intervened scenarios as counterfactuals.
-    
-    # In ADRIA, a scenario is a counterfactual if no outplanting/enrichment occurs
+    # 3. Dynamic Reefset and IV Scenario synthesis
     is_counterfactual = (rs.inputs.N_seed_TA .+ rs.inputs.N_seed_CA .+ rs.inputs.N_seed_SM) .== 0
-    # Also considering fogging and shading
     is_counterfactual = is_counterfactual .& (rs.inputs.fogging .== 0) .& (rs.inputs.SRM .== 0)
     
-    # Generate a single dummy reefset or extract real reefsets
-    # The linker looks at all keys not in ("counterfactual", "dhw_tolerance") as reefsets
-    # We'll just define "reefset_all" containing all locations that got intervened anywhere
-    intervened_locs = findall(sum(rs.seed_log, dims=(1,2,4))[1,1,:,1] .> 0)
-    reefset_ids = rs.loc_ids[intervened_locs]
-    if isempty(reefset_ids)
-        # fallback if no intervention
-        reefset_ids = [rs.loc_ids[1]]
-    end
-
-    scenario_info = Dict(
-        "counterfactual" => Int.(is_counterfactual),
-        "dhw_tolerance" => zeros(Float64, n_scens), # placeholder
-        "reefset_adria" => reefset_ids
-    )
-
-    open(joinpath(out_dir, "scenario_info.json"), "w") do f
-        write(f, JSON.json(scenario_info))
-    end
-
-    # 4. Build iv_yearly_scenarios.csv
+    start_year = parse(Int, string(rs.outcomes[:relative_cover].timesteps[1]))
+    
     # Linker expects: intervention id, GCM name, type, reefset, year, rep, number of corals, corals per m2, intervention area km2
     iv_df = DataFrame(
         "intervention id" => Int[],
@@ -163,46 +87,78 @@ function export_to_rme(rs::ResultSet, out_dir::String)
         "intervention area km2" => Float64[]
     )
     
-    start_year = parse(Int, string(rs.outcomes[:relative_cover].timesteps[1]))
+    # Registry of unique location sets to avoid redundancy in scenario_info.json
+    # Map: Set(location_indices) -> reefset_name
+    reefset_registry = Dict{Set{Int}, String}()
+    reefset_counter = 1
     
-    # ADRIA's seed_log is in m² of coral coverage, or number of corals?
-    # Actually, seed_log stores "Estimated number of corals seeded" (per scenario.jl)
-    # Let's sum across species and locations
+    # Process seed_log: (timesteps, coral_id, locations, scenarios)
+    # Sum over coral_id (2nd dim) to find intervened locations
     for scen in 1:n_scens
         if is_counterfactual[scen]
             continue
         end
         for t in 1:n_timesteps
-            # total corals seeded this year
-            total_corals = sum(rs.seed_log[t, :, :, scen])
-            if total_corals > 0
-                year = start_year + t - 1
+            # Find indices of locations where seeding occurred in this (t, scen)
+            # Sum over coral_id dimension
+            loc_seeding = sum(rs.seed_log[t, :, :, scen], dims=1)
+            intervened_loc_indices = findall(loc_seeding .> 0)
+            
+            total_corals = sum(loc_seeding)
+            
+            if !isempty(intervened_loc_indices)
+                loc_set = Set(intervened_loc_indices)
                 
-                # Approximate area (km²) and density
-                # ADRIA usually seeds into a small portion, we can rough this out
-                # or derive it exactly if needed. 
-                # For Linker, "number of corals" is the primary driver of cost.
+                # Assign or retrieve reefset name
+                if !haskey(reefset_registry, loc_set)
+                    rs_name = "reefset_$(reefset_counter)"
+                    reefset_registry[loc_set] = rs_name
+                    reefset_counter += 1
+                end
+                rs_name = reefset_registry[loc_set]
+                
+                year = start_year + t - 1
                 push!(iv_df, (
-                    1, "ADRIA_GCM", "outplant", "reefset_adria", year, scen,
-                    total_corals, 
+                    1, "ADRIA_GCM", "outplant", rs_name, year, scen,
+                    Float64(total_corals), 
                     1.0, # dummy density
                     (total_corals * 0.01) / 1e6 # dummy area
                 ))
             end
         end
     end
+
+    # 4. Build scenario_info.json
+    # Map reefset names back to location IDs
+    scenario_info = Dict{String, Any}(
+        "counterfactual" => Int.(is_counterfactual),
+        "dhw_tolerance" => zeros(Float64, n_scens)
+    )
+    
+    for (loc_set, rs_name) in reefset_registry
+        # loc_set contains indices, convert to IDs
+        scenario_info[rs_name] = rs.loc_ids[collect(loc_set)]
+    end
+    
+    # Fallback if no interventions occurred
+    if isempty(reefset_registry)
+        scenario_info["reefset_empty"] = [rs.loc_ids[1]]
+    end
+
+    open(joinpath(out_dir, "scenario_info.json"), "w") do f
+        write(f, JSON.json(scenario_info))
+    end
     
     CSV.write(joinpath(out_dir, "iv_yearly_scenarios.csv"), iv_df)
 
     # 5. Build reef_information.csv
-    # Expected by Linker? Actually Linker loads reefmod_gbr.gpkg, but RME saves reef_information.csv
     reef_info = DataFrame(
         "reef_id" => rs.loc_ids,
         "area_km2" => rs.loc_area ./ 1e6
     )
     CSV.write(joinpath(out_dir, "reef_information.csv"), reef_info)
 
-    @info "Successfully exported ADRIA ResultSet to RME format at $out_dir"
+    @info "Successfully exported ADRIA ResultSet to RME format with dynamic yearly reefsets at $out_dir"
 end
 
 end # module
