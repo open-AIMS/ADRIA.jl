@@ -67,12 +67,36 @@ function export_to_rme(rs::ResultSet, out_dir::String)
     ncwrite(rubble_data, nc_path, "rubble")
     ncwrite(cots_data, nc_path, "cots")
     ncwrite(total_taxa_cover_data, nc_path, "total_taxa_cover")
+# 3. Dynamic Reefset and IV Scenario synthesis
+# A scenario is a counterfactual if no interventions occur
+# Check all seeding and intervention factors
+seed_factors = [
+    :N_seed_TA, :N_seed_CA, :N_seed_CNA, :N_seed_SM, :N_seed_LM, :N_mc_settlers
+]
 
-    # 3. Dynamic Reefset and IV Scenario synthesis
-    is_counterfactual = (rs.inputs.N_seed_TA .+ rs.inputs.N_seed_CA .+ rs.inputs.N_seed_SM) .== 0
-    is_counterfactual = is_counterfactual .& (rs.inputs.fogging .== 0) .& (rs.inputs.SRM .== 0)
-    
-    start_year = parse(Int, string(rs.outcomes[:relative_cover].timesteps[1]))
+# Filter to only those present in inputs
+seed_cols = intersect(seed_factors, propertynames(rs.inputs))
+intensity = zeros(n_scens)
+for c in seed_cols
+    intensity .+= rs.inputs[!, c]
+end
+
+is_counterfactual = (intensity .== 0)
+
+# Also check fogging and shading if they exist
+if hasproperty(rs.inputs, :fogging)
+    is_counterfactual = is_counterfactual .& (rs.inputs.fogging .== 0)
+end
+if hasproperty(rs.inputs, :SRM)
+    is_counterfactual = is_counterfactual .& (rs.inputs.SRM .== 0)
+end
+
+# Also consider guided status (<= 0 includes unguided and counterfactual)
+if hasproperty(rs.inputs, :guided)
+    is_counterfactual = is_counterfactual .& (rs.inputs.guided .<= 0)
+end
+
+start_year = parse(Int, string(rs.outcomes[:relative_cover].timesteps[1]))
     
     # Linker expects: intervention id, GCM name, type, reefset, year, rep, number of corals, corals per m2, intervention area km2
     iv_df = DataFrame(
