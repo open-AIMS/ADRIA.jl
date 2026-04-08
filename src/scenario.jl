@@ -700,7 +700,7 @@ function run_model(
     wave_projection::Vector{Float64} = zeros(Float64, n_locs)
 
     # Set up distributions for natural adaptation/heritability
-    c_mean_t_1::Array{Float64,3} = repeat(
+    c_mean_t::Array{Float64,3} = repeat(
         _to_group_size(domain.coral_growth, corals.dist_mean),
         1,
         1,
@@ -710,7 +710,8 @@ function run_model(
         domain.coral_growth, corals.dist_std
     )
 
-    c_mean_t = copy(c_mean_t_1)
+    # Store means before mortality and growth events to use during update
+    c_mean_t_1 = copy(c_mean_t)
 
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
@@ -931,9 +932,6 @@ function run_model(
             adjust_DHW_distribution!(
                 @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates
             )
-
-            # Set values for t to t-1
-            c_mean_t_1 .= c_mean_t
 
             if in_debug_mode
                 # Log dhw tolerances if in debug mode
@@ -1224,6 +1222,7 @@ function run_model(
         settler_DHW_tolerance!(
             c_mean_t_1,
             c_mean_t,
+            C_cover_t,
             vec_abs_k,
             TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
@@ -1402,6 +1401,10 @@ function run_model(
         # ΔC_cover_t should only hold changes in cover due to env. disturbances
         ΔC_cover_t .= copy(C_cover_t)
 
+        # Store current c_mean before bleaching. This will be used in the next timestep to
+        # update the settler's DHW tolerance dists.
+        c_mean_t_1 .= c_mean_t
+
         # Bleaching
         # Calculate and apply bleaching mortality
         # Bleaching typically occurs in the warmer months (November - February)
@@ -1414,11 +1417,11 @@ function run_model(
             dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
             depth_coeff,
             c_std,
-            c_mean_t_1,
             c_mean_t,
             @view(bleaching_mort[(tstep - 1):tstep, :, :, :])
         )
 
+        # Store current means to be used in future timesteps
         if a_adapt_ref > 0
             c_mean_reference[:, :, 2:end] .= c_mean_reference[:, :, 1:(end - 1)]
         end
