@@ -236,13 +236,19 @@ function export_to_rme(rs::ResultSet, out_dir::String)
                 rs_name = reefset_registry[loc_set]
 
                 year = start_year + t - 1
+
+                # Get the actual seeding density for this scenario
+                density = rs.inputs[scen, :seeding_devices_per_m2]
+                # Calculate the realized area in km2 (m2 / 1e6)
+                area_km2 = (total_corals / density) / 1e6
+
                 push!(
                     iv_df,
                     (
                         1, "ADRIA_GCM", "outplant", rs_name, year, scen,
                         Float64(total_corals),
-                        1.0, # dummy density
-                        (total_corals * 0.01) / 1e6 # dummy area
+                        Float64(density),
+                        Float64(area_km2)
                     )
                 )
             end
