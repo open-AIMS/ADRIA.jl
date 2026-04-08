@@ -3,7 +3,7 @@ module RMEExport
 using DataFrames, NetCDF, CSV, JSON, YAXArrays, DimensionalData
 using ADRIA: ResultSet, timesteps
 using ADRIA.metrics: total_absolute_cover, relative_cover, relative_loc_taxa_cover,
-    ltmp_loc_taxa_cover, relative_shelter_volume, relative_juveniles
+    ltmp_cover, relative_shelter_volume, relative_juveniles
 using ADRIA: to_coral_spec
 
 export export_to_rme
@@ -26,28 +26,17 @@ function export_to_rme(rs::ResultSet, out_dir::String)
     n_locs = length(rs.outcomes[:relative_cover].locations)
     n_scens = length(rs.outcomes[:relative_cover].scenarios)
 
-    # 2. Extract or Calculate LTMP Taxa Cover
-    # Linker expects 6 functional groups (LTMP style)
-    ltmp_taxa_cube = if haskey(rs.outcomes, :ltmp_loc_taxa_cover)
-        rs.outcomes[:ltmp_loc_taxa_cover]
-    else
-        @info "Calculating ltmp_loc_taxa_cover for export..."
-        ltmp_loc_taxa_cover(rs)
-    end
-
-    n_taxa = length(ltmp_taxa_cube.groups)
-    # Convert proportions to percentages and reorder to (T, L, G, S)
-    # ltmp_loc_taxa_cover is (T, G, L, S)
-    total_taxa_cover_data = permutedims(Array(ltmp_taxa_cube.data), (1, 3, 2, 4)) .* 100.0f0
-
-    # Derive total_cover as the sum of LTMP groups
-    total_cover_data = dropdims(sum(total_taxa_cover_data; dims=3); dims=3)
+    total_cover_data = Array(ltmp_cover(rs).data) .* 100.0
 
     # Juveniles: ADRIA relative_juveniles is density (individuals/m2)
     juveniles_data = Array(rs.outcomes[:relative_juveniles].data)
 
     # Relative shelter volume
-    shelter_volume_data = Array(rs.outcomes[:relative_shelter_volume].data)
+    msg = "Exporting relative shelter volume as half of the ADRIAIndicators metric."
+    msg *= "ADRIAIndicators uses a maximum shelter volume 50% lower than used in RME."
+    msg *= "Halving the metric aligns them."
+    @info msg
+    shelter_volume_data = Array(rs.outcomes[:relative_shelter_volume].data) ./ 2.0
 
     # Placeholders for cots and rubble
     cots_data = zeros(Float32, n_timesteps, n_locs, n_scens)
@@ -76,7 +65,7 @@ function export_to_rme(rs::ResultSet, out_dir::String)
     )
     nccreate(
         nc_path,
-        "coral_juv_m2",
+        "relative_juveniles",
         "timesteps",
         n_timesteps,
         "locations",
@@ -129,19 +118,6 @@ function export_to_rme(rs::ResultSet, out_dir::String)
         n_scens;
         t=NC_FLOAT
     )
-    nccreate(
-        nc_path,
-        "total_taxa_cover",
-        "timesteps",
-        n_timesteps,
-        "locations",
-        n_locs,
-        "coral_id",
-        n_taxa,
-        "scenarios",
-        n_scens;
-        t=NC_FLOAT
-    )
 
     # 2. Define coordinate variables
     nccreate(nc_path, "timesteps", "timesteps", n_timesteps; t=NC_INT)
@@ -150,18 +126,17 @@ function export_to_rme(rs::ResultSet, out_dir::String)
 
     # 3. Write data
     ncwrite(total_cover_data, nc_path, "total_cover")
-    ncwrite(juveniles_data, nc_path, "coral_juv_m2")
+    ncwrite(juveniles_data, nc_path, "relative_juveniles")
     ncwrite(shelter_volume_data, nc_path, "relative")
     ncwrite(shelter_volume_data, nc_path, "relative_shelter_volume")
     ncwrite(rubble_data, nc_path, "rubble")
     ncwrite(cots_data, nc_path, "cots")
-    ncwrite(total_taxa_cover_data, nc_path, "total_taxa_cover")
 
     # 4. Write coordinates
     ncwrite(years, nc_path, "timesteps")
     ncwrite(loc_ids, nc_path, "locations")
     ncwrite(scen_indices, nc_path, "scenarios")
-    # 3. Dynamic Reefset and IV Scenario synthesis
+    # 3. Dynamic Reef set and IV Scenario synthesis
     # A scenario is a counterfactual if no interventions occur
     # Check all seeding and intervention factors
     seed_factors = [
