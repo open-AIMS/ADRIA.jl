@@ -252,6 +252,32 @@ function export_to_rme(rs::ResultSet, out_dir::String)
                     )
                 )
             end
+
+            # Process mc_log: (timesteps, coral_id, locations, scenarios)
+            loc_mc = sum(rs.mc_log[t, :, :, scen]; dims=1)
+            mc_loc_indices = getindex.(findall(loc_mc .> 0), 2)
+            total_mc_corals = sum(loc_mc)
+
+            if !isempty(mc_loc_indices)
+                loc_set_mc = Set(mc_loc_indices)
+                if !haskey(reefset_registry, loc_set_mc)
+                    rs_name_mc = "reefset_$(reefset_counter)"
+                    reefset_registry[loc_set_mc] = rs_name_mc
+                    reefset_counter += 1
+                end
+                rs_name_mc = reefset_registry[loc_set_mc]
+
+                year = start_year + t - 1
+                push!(
+                    iv_df,
+                    (
+                        1, "ADRIA_GCM", "enrich", rs_name_mc, year, scen,
+                        Float64(total_mc_corals),
+                        1.0,  # dummy density
+                        0.01  # dummy area
+                    )
+                )
+            end
         end
     end
 
