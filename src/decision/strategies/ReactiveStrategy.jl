@@ -87,6 +87,11 @@ function filter_candidate_locations(
     timestep::Int64,
     state::NamedTuple
 )::Vector{String}
+    # Check if we are within the deployment timeframe
+    if !is_decision_year(strategy, timestep)
+        return String[]
+    end
+
     # Absolute threshold condition
     absolute_mask = (
         (state.current_cover .< strategy.absolute_threshold) .&
