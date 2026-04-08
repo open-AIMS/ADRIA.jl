@@ -360,8 +360,6 @@ function run_scenario(
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
     vals = relative_loc_taxa_cover(rs_raw)
-    vals[vals .< threshold] .= 0.0
-    data_store.relative_loc_taxa_cover[:, :, :, idx] .= vals
 
     vals = coral_evenness(vals.data)
     vals[vals .< threshold] .= 0.0
