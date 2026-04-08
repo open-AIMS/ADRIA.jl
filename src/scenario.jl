@@ -932,9 +932,6 @@ function run_model(
                 @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates
             )
 
-            # Set values for t to t-1
-            c_mean_t_1 .= c_mean_t
-
             if in_debug_mode
                 # Log dhw tolerances if in debug mode
                 dhw_tol_mean_log[tstep, :, :] .= reshape(
@@ -1224,6 +1221,7 @@ function run_model(
         settler_DHW_tolerance!(
             c_mean_t_1,
             c_mean_t,
+            C_cover_t,
             vec_abs_k,
             TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
@@ -1402,6 +1400,10 @@ function run_model(
         # ΔC_cover_t should only hold changes in cover due to env. disturbances
         ΔC_cover_t .= copy(C_cover_t)
 
+        # Store current c_mean before bleaching. This will be used in the next timestep to
+        # update the settler's DHW tolerance dists.
+        c_mean_t_1 .= c_mean_t
+
         # Bleaching
         # Calculate and apply bleaching mortality
         # Bleaching typically occurs in the warmer months (November - February)
@@ -1414,11 +1416,11 @@ function run_model(
             dhw_t,  # collect(dhw_t .* (1.0 .- @view(wave_scen[tstep, :]))),
             depth_coeff,
             c_std,
-            c_mean_t_1,
             c_mean_t,
             @view(bleaching_mort[(tstep - 1):tstep, :, :, :])
         )
 
+        # Store current means to be used in future timesteps
         if a_adapt_ref > 0
             c_mean_reference[:, :, 2:end] .= c_mean_reference[:, :, 1:(end - 1)]
         end
