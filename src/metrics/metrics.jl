@@ -278,7 +278,7 @@ function _ltmp_loc_taxa_cover(
     return DataCube(
         ADRIAIndicators.relative_cover_to_ltmp_cover(
             rel_taxa_cover.data, k_area, reef_area, location_dim
-        ),
+        );
         axes_vals...
     )
 end
