@@ -700,7 +700,7 @@ function run_model(
     wave_projection::Vector{Float64} = zeros(Float64, n_locs)
 
     # Set up distributions for natural adaptation/heritability
-    c_mean_t_1::Array{Float64,3} = repeat(
+    c_mean_t::Array{Float64,3} = repeat(
         _to_group_size(domain.coral_growth, corals.dist_mean),
         1,
         1,
@@ -710,7 +710,8 @@ function run_model(
         domain.coral_growth, corals.dist_std
     )
 
-    c_mean_t = copy(c_mean_t_1)
+    # Store means before mortality and growth events to use during update
+    c_mean_t_1 = copy(c_mean_t)
 
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances

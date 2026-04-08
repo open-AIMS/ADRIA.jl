@@ -537,8 +537,12 @@ function settler_DHW_tolerance!(
     n_locs = length(locs)
 
     # Use Breeder's equation to calculate mean heat tolerance of offspring for each loc/grp
-    fecund_size_mask = fecundity_per_m²[1, :] .> 0.0
+    fecund_size_mask = sum(fecundity_per_m²; dims=1)[1, :] .> 0.0
     c_mean_settlers = zeros(n_groups, n_locs)       # will be the next c_mean_t[:,1,:]
+
+    # Cache for settlers c_mean for each functional group
+    c_mean_per_group::Vector{Float64} = zeros(Float64, n_groups)
+
     source_loc_idx = 1:sum(dropdims(sum(settlers; dims=1); dims=1) .> 0)
     for loc in source_loc_idx
         for grp in groups
@@ -547,15 +551,13 @@ function settler_DHW_tolerance!(
                 continue
             end
             w = StatsBase.weights(C_cover_t[grp, fecund_size_mask, loc] ./ cover_sum)
-
-            @views c_mean_settlers[grp, loc] = StatsBase.mean(
+            c_mean_per_group .=
                 breeders.(
                     c_mean_t_1[grp, fecund_size_mask, loc],
                     c_mean_t[grp, fecund_size_mask, loc],
                     h²
-                ),
-                w
-            )
+                )
+            @views c_mean_settlers[grp, loc] = StatsBase.mean(c_mean_per_group, w)
         end
     end
 
