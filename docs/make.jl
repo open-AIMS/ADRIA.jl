@@ -23,7 +23,8 @@ makedocs(;
             "usage/generating_scenarios.md",
             "usage/scenario_runs.md",
             "usage/analysis.md",
-            "usage/cookbook.md"
+            "usage/cookbook.md",
+            "usage/exporting_to_rme.md"
             # "usage/scenario_discovery.md"
         ],
         "Architecture" => [
