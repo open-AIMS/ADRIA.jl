@@ -92,7 +92,7 @@ end
 
         # Ensure all interventions are deactivated (ignoring the "guided" factor)
         interv_params = String[ip for ip in interv_params if ip != "guided"]
-        @test all(all.(==(0), eachcol(scens[:, interv_params]))) ||
+        @test all(all.(==(0), eachrow(scens[:, interv_params]))) ||
             "Intervention factors with values > 0 found"
     end
 
@@ -114,7 +114,7 @@ end
         interv_params = String[ip for ip in interv_params if ip != "guided"]
 
         # Ensure at least one intervention is active
-        @test all(any.(>(0), eachcol(scens[:, interv_params]))) ||
+        @test all(any.(>(0), eachrow(scens[:, interv_params]))) ||
             "All intervention factors had values <= 0"
 
         seed_weights = ADRIA.component_params(ms, ADRIA.SeedCriteriaWeights).fieldname
@@ -168,7 +168,7 @@ end
         ]
 
         # Ensure at least one intervention is active
-        @test all(any.(>(0), eachcol(scens[:, interv_params]))) ||
+        @test all(any.(>(0), eachrow(scens[:, interv_params]))) ||
             "Some intervention params had values <= 0"
     end
 
@@ -198,7 +198,7 @@ end
         target_params = String[ip for ip in target_params if ip != "guided"]
 
         # Ensure at least one intervention is active
-        @test all(any.(>(0), eachcol(scens[:, target_params]))) ||
+        @test all(any.(>(0), eachrow(scens[:, target_params]))) ||
             "All target factors had values <= 0"
 
         # Check that all coral parameters are set to their nominated default values
