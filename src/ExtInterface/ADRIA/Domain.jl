@@ -92,8 +92,8 @@ function Domain(
             )
         )
     else
-        albedos = [0.0]
-        durations = [0.0]
+        albedos = [0.0, 0.0]
+        durations = [0.0, 0.0]
         intervention_params = (
             mcb_albedo=Factor(
                 albedos[1];
