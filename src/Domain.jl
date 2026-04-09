@@ -67,6 +67,27 @@ function distance_matrix(loc_data::DataFrame)::Matrix{Float64}
 end
 
 """
+    has_mcb_scenarios(dhw::AbstractArray)::Bool
+
+Check if the DHW dataset represents prescribed MCB scenarios.
+
+Prescribed MCB datasets are 5D YAXArrays with the following dimension ordering:
+1. timesteps
+2. locations
+3. scenarios
+4. mcb_durations (yearly duration of fogging in days)
+5. albedo (reflectiveness levels)
+
+Standard (non-prescribed) DHW datasets are 3D:
+1. timesteps
+2. locations
+3. scenarios
+"""
+function has_mcb_scenarios(dhw::AbstractArray)::Bool
+    return ndims(dhw) == 5
+end
+
+"""
     mean_distance(dist_matrix::Matrix{Float64})::Vector{Float64}
 
 Calculate the mean pairwise distance between each location and all other locations to

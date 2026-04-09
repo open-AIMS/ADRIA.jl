@@ -217,6 +217,30 @@ Base.@kwdef struct Intervention <: EcoModel
         name="Years to deploy moving corals",
         description="Number of years to deploy moving corals."
     )
+    mcb_albedo::Param = Factor(
+        0.0;
+        ptype="ordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(0.0, 0.0),
+        name="MCB Albedo",
+        description="Albedo level to use from 5D DHW dataset."
+    )
+    mcb_duration::Param = Factor(
+        0.0;
+        ptype="ordered categorical",
+        dist=CategoricalDistribution,
+        dist_params=(0.0, 0.0),
+        name="MCB Duration",
+        description="Duration level (yearly days) to use from 5D DHW dataset."
+    )
+    mcb_deployment_freq::Param = Factor(
+        1;
+        ptype="ordered discrete",
+        dist=DiscreteUniform,
+        dist_params=(1.0, 50.0),
+        name="MCB Deployment Frequency",
+        description="Frequency of MCB deployment in years (e.g. 1 is every year, 2 is every 2nd year)."
+    )
 
     # Intervention strategy parameters
     seed_strategy::Param = Factor(

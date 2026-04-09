@@ -19,12 +19,34 @@ function EnvironmentalLayer(
 )::EnvironmentalLayer where {
     T<:Union{Missing,Float32,Float64},T2<:Union{Missing,Float32,Float64}
 }
+    n_dhw_scens::Int64 =
+        if dhw isa YAXArray && :scenarios in DimensionalData.name.(dhw.axes)
+            size(dhw, :scenarios)
+        else
+            size(dhw, 3)
+        end
+
+    n_wave_scens::Int64 =
+        if wave isa YAXArray && :scenarios in DimensionalData.name.(wave.axes)
+            size(wave, :scenarios)
+        else
+            size(wave, 3)
+        end
+
+    n_cyc_scens::Int64 =
+        if cyclone_mortality isa YAXArray &&
+            :scenarios in DimensionalData.name.(cyclone_mortality.axes)
+            size(cyclone_mortality, :scenarios)
+        else
+            size(cyclone_mortality, ndims(cyclone_mortality))
+        end
+
     return EnvironmentalLayer(
         Factor(
             1;
             ptype="unordered categorical",
             dist=CategoricalDistribution,
-            dist_params=(Tuple(1:Float64(size(dhw, 3)))),
+            dist_params=(Tuple(1.0:Float64(n_dhw_scens))),
             name="DHW Scenario",
             description="DHW scenario member identifier."
         ),
@@ -32,7 +54,7 @@ function EnvironmentalLayer(
             1;
             ptype="unordered categorical",
             dist=CategoricalDistribution,
-            dist_params=(Tuple(1:Float64(size(wave, 3)))),
+            dist_params=(Tuple(1.0:Float64(n_wave_scens))),
             name="Wave Scenario",
             description="Wave scenario member identifier."
         ),
@@ -40,7 +62,7 @@ function EnvironmentalLayer(
             1;
             ptype="unordered categorical",
             dist=CategoricalDistribution,
-            dist_params=(Tuple(1:Float64(size(cyclone_mortality, 4)))),
+            dist_params=(Tuple(1.0:Float64(n_cyc_scens))),
             name="Cyclone Mortality",
             description="Cyclone mortality scenario identifier."
         )

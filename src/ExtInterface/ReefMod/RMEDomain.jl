@@ -288,6 +288,14 @@ function load_domain(
         DepthThresholds()
     ]
 
+    if ndims(dhw_scens) != 3
+        throw(
+            ArgumentError(
+                "RMEDomain only supports 3D DHW data (timesteps, locations, scenarios)."
+            )
+        )
+    end
+
     model::Model = Model((
         EnvironmentalLayer(dhw_scens, wave_scens, cyc_scens),
         Intervention(),

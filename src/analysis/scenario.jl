@@ -24,14 +24,16 @@ function counterfactual(scenarios::DataFrame)::BitVector
     no_fog = scenarios.fogging .== 0
     no_SRM = scenarios.SRM .== 0
     no_mc = scenarios.N_mc_settlers .== 0
-    return no_seed .& no_fog .& no_SRM .& no_mc
+    no_mcb = scenarios.mcb_duration .== 0
+    return no_seed .& no_fog .& no_SRM .& no_mc .& no_mcb
 end
 
 function unguided(scenarios::DataFrame)::BitVector
     has_seed = .!_no_seed(scenarios)
     has_shade = (scenarios.fogging .> 0) .| (scenarios.SRM .> 0)
     has_mc_corals = scenarios.N_mc_settlers .> 0
-    return (scenarios.guided .== 0) .& (has_seed .| has_shade .| has_mc_corals)
+    has_mcb = scenarios.mcb_duration .> 0
+    return (scenarios.guided .== 0) .& (has_seed .| has_shade .| has_mc_corals .| has_mcb)
 end
 
 function guided(scenarios::DataFrame)::BitVector
