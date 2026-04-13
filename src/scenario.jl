@@ -535,13 +535,14 @@ function run_model(
             # Create hybrid DHW environment (Temporal Splicing)
             dhw_scen = copy(dhw_baseline)
             mcb_years = mcb_start_year:tf
+            mcb_loc_mask = domain.loc_data.UNIQUE_ID .∈ [domain.shade_target_locations]
             if !isempty(mcb_years)
                 mcb_active_years = decision_frequency(
                     mcb_start_year, tf, length(mcb_years), mcb_freq
                 )
                 for t in 1:tf
                     if mcb_active_years[t]
-                        dhw_scen[t, :] .= dhw_treated[t, :]
+                        dhw_scen[t, mcb_loc_mask] .= dhw_treated[t, mcb_loc_mask]
                     end
                 end
             end
