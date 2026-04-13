@@ -80,7 +80,8 @@ function load_nc_data(
     dim_names_replace::Vector{Pair{Symbol,Symbol}}=Pair{Symbol,Symbol}[]
 )::YAXArray
     data = try
-        res = open_dataset(data_fn)[Symbol(attr)]
+        ds = open_dataset(data_fn)
+        res = ds[Symbol(attr)]
         ax_names = name.(res.axes)
         loc_dim =
             :locations in ax_names ? :locations : (:sites in ax_names ? :sites : nothing)
@@ -91,6 +92,10 @@ function load_nc_data(
 
         if !(eltype(lookup(res, loc_dim)) <: String)
             error("Error loading $data_fn: location/site dimension labels must be Strings.")
+        end
+
+        if attr == "dhw" && (:model_names ∈ propertynames(ds))
+            res.properties["model_names"] = collect(ds.model_names)
         end
 
         sort_axis(res, loc_dim)
