@@ -282,7 +282,7 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String)
                 push!(
                     iv_df,
                     (
-                        scen, gcm_name, "enrich", rs_name_mc, year, 1,
+                        scen, gcm_name, "lm", rs_name_mc, year, 1,
                         Float64(total_mc_corals),
                         1.0,  # dummy density
                         0.01  # dummy area
@@ -301,7 +301,7 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String)
 
     for (loc_set, rs_name) in reefset_registry
         # loc_set contains indices, convert to IDs
-        scenario_info[rs_name] = rs.loc_ids[collect(loc_set)]
+        scenario_info[rs_name] = rs.loc_data.GBRMPA_ID[collect(loc_set)]
     end
 
     # Fallback if no interventions occurred
