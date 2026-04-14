@@ -4,9 +4,44 @@ using DataFrames, NetCDF, CSV, JSON, YAXArrays, DimensionalData
 using ADRIA: ResultSet, timesteps
 using ADRIA.metrics: total_absolute_cover, relative_cover, relative_loc_taxa_cover,
     ltmp_cover, relative_shelter_volume, relative_juveniles
-using ADRIA: to_coral_spec
+using ADRIA: to_coral_spec, Domain, switch_RCPs!
 
 export export_to_rme
+
+"""
+    extract_GCM_from_RME(filepath::String)::String
+
+Extract GCM name from the scenarios dimension in the DHW dimensions.
+"""
+function extract_GCM_from_RME(filepath::String)::String
+    filename = basename(filepath)
+    gcm = split(filename, "_SSP")[1]
+
+    return gcm
+end
+
+function extract_GCM_from_results(
+    dom::Domain, rs::ResultSet, scen_idx::Int64
+)::String
+    RCP::String = split(string(rs.inputs.RCP[scen_idx]), ".")[1]
+    if dom.RCP != RCP
+        switch_RCPs!(dom, RCP)
+    end
+
+    dhw_scen_idx::Int64 = Int64(rs.inputs.dhw_scenario[scen_idx])
+
+    if eltype(dom.dhw_scens.scenarios) == String
+        scen_name = dom.dhw_scens.scenarios[dhw_scen_idx]
+        # RME Domain lists dimensions as filepaths to netcdf files.
+        if ispath(scen_name)
+            return extract_GCM_from_RME(scen_name)
+        else
+            return scen_name
+        end
+    end
+
+    return "ADRIA_GCM"
+end
 
 """
     export_to_rme(rs::ResultSet, out_dir::String)
@@ -18,7 +53,7 @@ emulating the output of ReefModEngine.jl.
 - `rs` : ResultSet to export
 - `out_dir` : Directory to save the exported files
 """
-function export_to_rme(rs::ResultSet, out_dir::String)
+function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String)
     mkpath(out_dir)
 
     # 1. Extract dimensions
@@ -198,6 +233,7 @@ function export_to_rme(rs::ResultSet, out_dir::String)
             intervened_loc_indices = getindex.(findall(loc_seeding .> 0), 2)
 
             total_corals = sum(loc_seeding)
+            gcm_name::String = extract_GCM_from_results(dom, rs, scen)
 
             if !isempty(intervened_loc_indices)
                 loc_set = Set(intervened_loc_indices)
@@ -220,7 +256,7 @@ function export_to_rme(rs::ResultSet, out_dir::String)
                 push!(
                     iv_df,
                     (
-                        1, "ADRIA_GCM", "outplant", rs_name, year, scen,
+                        scen, gcm_name, "outplant", rs_name, year, 1,
                         Float64(total_corals),
                         Float64(density),
                         Float64(area_km2)
@@ -246,7 +282,7 @@ function export_to_rme(rs::ResultSet, out_dir::String)
                 push!(
                     iv_df,
                     (
-                        1, "ADRIA_GCM", "enrich", rs_name_mc, year, scen,
+                        scen, gcm_name, "enrich", rs_name_mc, year, 1,
                         Float64(total_mc_corals),
                         1.0,  # dummy density
                         0.01  # dummy area
@@ -260,7 +296,7 @@ function export_to_rme(rs::ResultSet, out_dir::String)
     # Map reefset names back to location IDs
     scenario_info = Dict{String,Any}(
         "counterfactual" => Int.(is_counterfactual),
-        "dhw_tolerance" => zeros(Float64, n_scens)
+        "dhw_tolerance" => rs.inputs.a_adapt
     )
 
     for (loc_set, rs_name) in reefset_registry
