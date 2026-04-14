@@ -216,14 +216,20 @@ function combine_results(result_sets...)::ResultSet
 
     # Store post-processed table of input parameters.
     input_set[:, :] = Matrix(all_inputs)
+    n_timesteps = size(rs1.seed_log, :timesteps)
+    n_locs = size(rs1.seed_log, :locations)
+    n_groups = size(rs1.seed_log, :coral_id)
+    n_sizes = Int(size(result_sets[1].coral_dhw_tol_log, :species) / n_groups)
     logs = (;
-        zip([:ranks, :seed_log, :fog_log, :shade_log, :coral_dhw_tol_log],
+        zip([:ranks, :mc_log, :seed_log, :fog_log, :shade_log, :coral_dhw_tol_log],
             setup_logs(
                 z_store,
                 rs1.loc_ids,
                 nrow(all_inputs),
-                size(rs1.seed_log, :timesteps),
-                size(rs1.seed_log, :locations)
+                n_timesteps,
+                n_locs,
+                n_groups,
+                n_sizes
             )
         )...
     )
@@ -249,8 +255,13 @@ function combine_results(result_sets...)::ResultSet
     metrics = keys(rs1.outcomes)
     for m_name in metrics
         m_dim_names = axes_names(rs1.outcomes[m_name])
+        properties = rs1.outcomes[m_name].properties
         dim_struct = Dict{Symbol,Any}(
-            :structure => m_dim_names
+            :structure => m_dim_names,
+            :metric_name => properties[:metric_name],
+            :metric_unit => properties[:metric_unit],
+            :axes_names => properties[:axes_names],
+            :axes_units => properties[:axes_units]
         )
         if :locations in m_dim_names
             dim_struct[:unique_loc_ids] = rs1.loc_ids
