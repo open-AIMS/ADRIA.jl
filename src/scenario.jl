@@ -512,7 +512,7 @@ function run_model(
             # Slicing results in (timesteps, locations)
             dhw_baseline = @view(
                 domain.dhw_scens[
-                    scenarios=At(dhw_idx),
+                    scenarios=dhw_idx,
                     mcb_durations=1,
                     albedo=At(domain.dhw_scens.albedo[1])
                 ]
@@ -523,7 +523,7 @@ function run_model(
             if mcb_duration > 0.0 && mcb_albedo > 0.0
                 dhw_treated = @view(
                     domain.dhw_scens[
-                        scenarios=At(dhw_idx),
+                        scenarios=dhw_idx,
                         mcb_durations=At(mcb_duration),
                         albedo=At(mcb_albedo)
                     ]
