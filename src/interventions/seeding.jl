@@ -38,10 +38,9 @@ function distribute_seeded_corals(
     seed_loc_k_m²::Vector{Float64},
     available_space::Vector{Float64},
     seed_volume::Vector{Float64},
-    seeded_area::YAXArray,
+    colony_areas::Vector{Float64},
     seeding_devices_per_m2::Float64
 )::Tuple{YAXArray,Matrix{Float64}}
-    total_seeded_area::Float64 = sum(seeded_area)
     total_available_space::Float64 = sum(available_space)
 
     # If n_devices > max_n_devices , cap seed_volume
@@ -56,6 +55,10 @@ function distribute_seeded_corals(
         """
     end
 
+    # Extract colony areas and determine approximate seeded area in m^2
+    seeded_area = colony_areas .* seed_volume
+    total_seeded_area::Float64 = sum(seeded_area)
+
     # Proportion of available space on each site relative to available space at these
     # locations
     prop_area_avail = available_space ./ total_available_space
@@ -64,25 +67,27 @@ function distribute_seeded_corals(
             @warn "Seeded area exceeds available space. Restricting to available space."
         end
 
-        seeded_area = copy(seeded_area)
         seeded_area .*= total_available_space / total_seeded_area
+
+        # Update seed_volume if seeded_area is capped
+        seed_volume = seeded_area ./ colony_areas[_seed_size_groups]
     end
 
     # Distribute seeded corals (as area) across locations according to available space
     # proportions:
-    #     proportion * (area of 1 coral * num seeded corals)
+    #     proportion available space * (area of 1 coral * num seeded corals)
     # Convert to relative cover proportion by dividing by location area
-    scaled_seed = ((prop_area_avail .* seeded_area.data') ./ seed_loc_k_m²)'
+    relative_seeded_area = ((prop_area_avail .* seeded_area') ./ seed_loc_k_m²)'
+
     proportional_increase = DataCube(
-        scaled_seed;
-        taxa=caxes(seeded_area)[1].val.data,
+        relative_seeded_area;
+        taxa=collect(caxes(seeded_area)[1].val),
         locations=1:length(available_space)
     )
 
-    n_deployed_coral =
-        prop_area_avail .* seed_volume' .* max(
-            total_available_space / total_seeded_area, 1.0
-        )
+    n_deployed_coral = prop_area_avail .* seed_volume'
+
+    @assert sum(n_deployed_coral) ≈ sum(seed_volume)
 
     return proportional_increase, n_deployed_coral
 end

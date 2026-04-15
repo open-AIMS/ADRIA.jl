@@ -1423,14 +1423,11 @@ function run_model(
                 seed_loc_idx = seed_loc_idx[locs_with_space]
                 available_space = available_space[locs_with_space]
 
-                # Extract colony areas and determine approximate seeded area in m^2
-                seeded_area = colony_areas[_seed_size_groups] .* seed_volume
-
                 proportional_increase, n_corals_seeded = distribute_seeded_corals(
                     vec_abs_k[seed_loc_idx],
                     available_space,
                     seed_volume.data,
-                    seeded_area,
+                    colony_areas[_seed_size_groups],
                     seeding_devices_per_m2
                 )
 
