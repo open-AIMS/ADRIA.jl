@@ -238,8 +238,7 @@ end
         k_area::Vector{Float64},
         depth::Vector{Int64}
     )
-    unguided_selection(81 +     reef_area = loc_area(rs)                                                                                                                                                              │
-
+    unguided_selection(
         n_iv_locs::Int64,
         k_area::Vector{Float64}
     )
