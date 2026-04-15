@@ -55,7 +55,9 @@ emulating the output of ReefModEngine.jl.
 - `out_dir` : Directory to save the exported files
 - `map_counterfactuals` : Whether to map guided scenarios to their counterfactuals. Defaults to false.
 """
-function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String; map_counterfactuals::Bool=false)
+function export_to_rme(
+    dom::Domain, rs::ResultSet, out_dir::String; map_counterfactuals::Bool=false
+)
     mkpath(out_dir)
 
     # 1. Extract dimensions
@@ -204,7 +206,9 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String; map_counterf
     end
 
     # Group scenarios by intervention settings to assign IDs and repetitions
-    env_cols = intersect([:dhw_scenario, :wave_scenario, :cyclone_scenario, :RCP], propertynames(rs.inputs))
+    env_cols = intersect(
+        [:dhw_scenario, :wave_scenario, :cyclone_scenario, :RCP], propertynames(rs.inputs)
+    )
     iv_cols = setdiff(propertynames(rs.inputs), env_cols)
     iv_groups = groupby(rs.inputs, iv_cols)
     iv_id_map = zeros(Int, n_scens)
@@ -318,7 +322,10 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String; map_counterf
     )
 
     if map_counterfactuals
-        env_cols = intersect([:dhw_scenario, :wave_scenario, :cyclone_scenario, :RCP], propertynames(rs.inputs))
+        env_cols = intersect(
+            [:dhw_scenario, :wave_scenario, :cyclone_scenario, :RCP],
+            propertynames(rs.inputs)
+        )
         cf_indices = findall(is_counterfactual)
 
         if !isempty(cf_indices)
@@ -327,7 +334,9 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String; map_counterf
             for i in 1:n_scens
                 current_profile = Vector(rs.inputs[i, env_cols])
                 # Find matching CF index
-                match_row_idx = findfirst(r -> Vector(r) == current_profile, eachrow(cf_profiles))
+                match_row_idx = findfirst(
+                    r -> Vector(r) == current_profile, eachrow(cf_profiles)
+                )
                 if !isnothing(match_row_idx)
                     mapping[i] = cf_indices[match_row_idx]
                 end
