@@ -44,16 +44,18 @@ function extract_GCM_from_results(
 end
 
 """
-    export_to_rme(rs::ResultSet, out_dir::String)
+    export_to_rme(dom::Domain, rs::ResultSet, out_dir::String; map_counterfactuals::Bool=false)
 
 Exports an ADRIA `ResultSet` into the format expected by `cost-eco-model-linker`,
 emulating the output of ReefModEngine.jl.
 
 # Arguments
+- `dom` : Domain used to run scenarios
 - `rs` : ResultSet to export
 - `out_dir` : Directory to save the exported files
+- `map_counterfactuals` : Whether to map guided scenarios to their counterfactuals. Defaults to false.
 """
-function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String)
+function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String; map_counterfactuals::Bool=false)
     mkpath(out_dir)
 
     # 1. Extract dimensions
@@ -66,12 +68,13 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String)
     # Juveniles: ADRIA relative_juveniles is density (individuals/m2)
     juveniles_data = Array(rs.outcomes[:relative_juveniles].data)
 
+    # Proportion of 1 m² occupied by circle of diameter 95cm
+    baseline_prop::Float64 = π * (0.95 / 2)^2
+
     # Relative shelter volume
-    msg = "Exporting relative shelter volume as half of the ADRIAIndicators metric."
-    msg *= "ADRIAIndicators uses a maximum shelter volume 50% lower than used in RME."
-    msg *= "Halving the metric aligns them."
-    @info msg
-    shelter_volume_data = Array(rs.outcomes[:relative_shelter_volume].data) ./ 2.0
+    shelter_volume_data = Array(
+        rs.outcomes[:relative_shelter_volume].data
+    )
 
     # Placeholders for cots and rubble
     cots_data = zeros(Float32, n_timesteps, n_locs, n_scens)
@@ -200,6 +203,20 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String)
         is_counterfactual = is_counterfactual .& (rs.inputs.guided .<= 0)
     end
 
+    # Group scenarios by intervention settings to assign IDs and repetitions
+    env_cols = intersect([:dhw_scenario, :wave_scenario, :cyclone_scenario, :RCP], propertynames(rs.inputs))
+    iv_cols = setdiff(propertynames(rs.inputs), env_cols)
+    iv_groups = groupby(rs.inputs, iv_cols)
+    iv_id_map = zeros(Int, n_scens)
+    rep_map = zeros(Int, n_scens)
+    for (g_idx, group) in enumerate(iv_groups)
+        orig_indices = parentindices(group)[1]
+        for (r_idx, scen_idx) in enumerate(orig_indices)
+            iv_id_map[scen_idx] = g_idx
+            rep_map[scen_idx] = r_idx
+        end
+    end
+
     start_year = parse(Int, string(rs.outcomes[:relative_cover].timesteps[1]))
 
     # Linker expects: intervention id, GCM name, type, reefset, year, rep, number of corals, corals per m2, intervention area km2
@@ -256,7 +273,7 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String)
                 push!(
                     iv_df,
                     (
-                        scen, gcm_name, "outplant", rs_name, year, 1,
+                        iv_id_map[scen], gcm_name, "outplant", rs_name, year, rep_map[scen],
                         Float64(total_corals),
                         Float64(density),
                         Float64(area_km2)
@@ -266,10 +283,11 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String)
 
             # Process mc_log: (timesteps, coral_id, locations, scenarios)
             loc_mc = sum(rs.mc_log[t, :, :, scen]; dims=1)
-            mc_loc_indices = getindex.(findall(loc_mc .> 0), 2)
+            mc_loc_indices = findall(loc_mc .> 0)
             total_mc_corals = sum(loc_mc)
 
             if !isempty(mc_loc_indices)
+                mc_loc_indices = getindex.(mc_loc_indices, 2)
                 loc_set_mc = Set(mc_loc_indices)
                 if !haskey(reefset_registry, loc_set_mc)
                     rs_name_mc = "reefset_$(reefset_counter)"
@@ -282,7 +300,7 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String)
                 push!(
                     iv_df,
                     (
-                        scen, gcm_name, "lm", rs_name_mc, year, 1,
+                        iv_id_map[scen], gcm_name, "lm", rs_name_mc, year, rep_map[scen],
                         Float64(total_mc_corals),
                         1.0,  # dummy density
                         0.01  # dummy area
@@ -298,6 +316,25 @@ function export_to_rme(dom::Domain, rs::ResultSet, out_dir::String)
         "counterfactual" => Int.(is_counterfactual),
         "dhw_tolerance" => rs.inputs.a_adapt
     )
+
+    if map_counterfactuals
+        env_cols = intersect([:dhw_scenario, :wave_scenario, :cyclone_scenario, :RCP], propertynames(rs.inputs))
+        cf_indices = findall(is_counterfactual)
+
+        if !isempty(cf_indices)
+            cf_profiles = rs.inputs[cf_indices, env_cols]
+            mapping = zeros(Int, n_scens)
+            for i in 1:n_scens
+                current_profile = Vector(rs.inputs[i, env_cols])
+                # Find matching CF index
+                match_row_idx = findfirst(r -> Vector(r) == current_profile, eachrow(cf_profiles))
+                if !isnothing(match_row_idx)
+                    mapping[i] = cf_indices[match_row_idx]
+                end
+            end
+            scenario_info["counterfactual_mapping"] = mapping
+        end
+    end
 
     for (loc_set, rs_name) in reefset_registry
         # loc_set contains indices, convert to IDs
