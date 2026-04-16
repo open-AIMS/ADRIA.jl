@@ -11,7 +11,7 @@ using
 
 using YAXArrays
 using ADRIA:
-    DataCube, ZeroDataCube, axes_names, axis_labels, axis_index
+    DataCube, ZeroDataCube, axes_names, axis_labels, axis_index, functional_group_names
 using ADRIA: n_sizes, group_indices
 
 using FLoops
@@ -725,12 +725,16 @@ function _relative_shelter_volume(
     pa_params::Array{Float64,3} = repeat(
         reshape(planar_area_params(), (n_groups, 1, 2)), 1, n_sizes, 1
     )
+    tab_acro_idx::Int64 = findfirst(functional_group_names() .== :tabular_Acropora)
+    reference_params::Tuple{Float64, Float64, Float64} = (
+        95.0, pa_params[tab_acro_idx, n_sizes, 1], pa_params[tab_acro_idx, n_sizes, 2]
+    )
 
     RSV::YAXArray = ZeroDataCube(
         (:timesteps, :groups, :sizes, :locations), size(X), X.properties
     )
     ADRIAIndicators.relative_shelter_volume!(
-        X.data, colony_mean_diams_cm, pa_params, k_area, RSV.data
+        X.data, colony_mean_diams_cm, pa_params, k_area, RSV.data, reference_params
     )
 
     RSV = dropdims(sum(RSV; dims=(2, 3)); dims=(2, 3))
@@ -773,13 +777,19 @@ function _relative_shelter_volume(
     RSV::YAXArray = ZeroDataCube(
         (:timesteps, :groups, :sizes, :locations, :scenarios), size(X), X.properties
     )
+
+    tab_acro_idx::Int64 = findfirst(functional_group_names() .== :tabular_Acropora)
+    reference_params::Tuple{Float64, Float64, Float64} = (
+        95.0, pa_params[tab_acro_idx, n_sizes, 1], pa_params[tab_acro_idx, n_sizes, 2]
+    )
     for scen::Int64 in 1:n_scens
         ADRIAIndicators.relative_shelter_volume!(
             view(X.data, :, :, :, :, scen),
             view(colony_mean_diams_cm, :, :, scen),
             pa_params,
             k_area,
-            view(RSV.data, :, :, :, :, scen)
+            view(RSV.data, :, :, :, :, scen),
+            reference_params
         )
     end
 
