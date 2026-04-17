@@ -507,28 +507,31 @@ function _validate_iv_locations(domain::Domain, location_ids::Vector{String})::N
 end
 
 """
-    set_mc_target_locations!(domain::Domain, location_ids::Vector{String})
+    set_mc_target_locations!(
+        domain::Domain,
+        location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+    )
 
 Set the locations eligible for moving corals interventions.
 
 # Arguments
 - `domain`: Domain to modify
-- `location_ids`: Vector of location IDs to target for fogging
+- `location_ids`: Vector of named tuples with weights and target location IDs for moving corals
 
 # Example
 ```julia
 dom = ADRIA.load_domain("path/to/domain")
-# Only fog high-value tourism reefs
-ADRIA.set_mc_target_locations!(dom, ["reef_03", "reef_07"])
+ADRIA.set_mc_target_locations!(
+    dom,
+    [(weight=1.0, target_locs=["reef_03", "reef_07"])]
+)
 ```
 """
-function set_mc_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
-    # Validate that all locations exist in domain
-    invalid_locs = setdiff(location_ids, domain.loc_ids)
-    if !isempty(invalid_locs)
-        throw(ArgumentError("Invalid location IDs: $(join(invalid_locs, ", "))"))
-    end
-
+function set_mc_target_locations!(
+    domain::Domain,
+    location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+)::Nothing
+    _validate_iv_locations(domain, vcat(getproperty.(location_ids, :target_locs)...))
     domain.mc_target_locations = location_ids
     return nothing
 end

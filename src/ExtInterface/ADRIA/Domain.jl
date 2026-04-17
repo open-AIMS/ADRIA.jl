@@ -36,7 +36,7 @@ mutable struct ADRIADomain <: Domain
     # to each list of locations
     seed_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}  # locations eligible for seeding
     fog_target_locations::Vector{String}   # locations eligible for fogging
-    mc_target_locations::Vector{String}   # locations eligible for moving corals
+    mc_target_locations::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}  # locations eligible for moving corals
     shade_target_locations::Vector{String}    # locations eligible for shading
 
     # Parameters
@@ -143,7 +143,7 @@ function Domain(
         cyclone_mortality,
         [(weight=1.0, target_locs=location_ids)],
         location_ids,
-        location_ids,
+        [(weight=1.0, target_locs=location_ids)],
         location_ids,
         model,
         sim_constants
