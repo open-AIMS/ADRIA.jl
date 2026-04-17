@@ -719,7 +719,7 @@ function run_model(
     # Moving corals flag
     n_mc_settlers = param_set[At("N_mc_settlers")]
     is_mc = n_mc_settlers > 0.0
-    unguided_moving_corals = is_unguided && is_mc
+    unguided_mc = is_unguided && is_mc
 
     # Flag indicating whether to apply shading
     apply_shading = srm > 0.0
@@ -727,11 +727,12 @@ function run_model(
     depth_criteria = identify_within_depth_bounds(
         loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
+    seed_t_locs = vcat(getproperty.(domain.seed_target_locations, :target_locs)...)
 
     if is_guided
         seed_pref, seed_decision_mat, seed_strategy = setup_guided_intervention(
-            domain, param_set, depth_criteria, SeedPreferences,
-            domain.seed_target_locations, is_seeding, build_seed_strategy
+            domain, param_set, depth_criteria, SeedPreferences, seed_t_locs, is_seeding,
+            build_seed_strategy
         )
         fog_pref, fog_decision_mat, fog_strategy = setup_guided_intervention(
             domain, param_set, depth_criteria, FogPreferences, domain.fog_target_locations,
@@ -743,15 +744,13 @@ function run_model(
         )
     else
         seed_strategy =
-            unguided_seeding ?
-            build_seed_strategy(param_set, domain, domain.seed_target_locations) :
-            nothing
+            unguided_seeding ? build_seed_strategy(param_set, domain, seed_t_locs) : nothing
         fog_strategy =
             unguided_fogging ?
             build_fog_strategy(param_set, domain, domain.fog_target_locations) :
             nothing
         mc_strategy =
-            unguided_moving_corals ?
+            unguided_mc ?
             build_mc_strategy(param_set, domain, domain.mc_target_locations) :
             nothing
     end
@@ -1269,7 +1268,6 @@ function run_model(
 
                 @views recruitment[:, mc_loc_idx] .+= mc_proportional_increase
 
-                # TODO log moving corals
                 # Log estimated number of corals seeded
                 Ymc[tstep, :, mc_loc_idx] .= n_mc_corals
             end
@@ -1350,7 +1348,8 @@ function run_model(
         if !isnothing(seed_strategy)
             state = if is_guided
                 build_state(
-                    domain, seed_strategy,
+                    domain,
+                    seed_strategy,
                     (
                         current_cover=current_loc_cover,
                         recent_cover_losses=recent_cover_losses,
@@ -1361,96 +1360,114 @@ function run_model(
                 nothing
             end
 
-            # Get candidate locations from strategy
-            candidate_locs = filter_candidate_locations(seed_strategy, tstep, state)
-            candidate_loc_indices = findall(
-                in.(domain.loc_ids, Ref(candidate_locs))
-            )
-            if !isempty(candidate_locs)
-                if is_guided
-                    # Update decision matrix with current conditions
-                    update_criteria_values!(
-                        seed_decision_mat[location=At(candidate_locs)];
-                        heat_stress=dhw_projection[candidate_loc_indices],
-                        wave_stress=wave_projection[candidate_loc_indices],
-                        coral_cover=current_loc_cover[candidate_loc_indices],
-                        in_connectivity=in_conn[candidate_loc_indices],
-                        out_connectivity=out_conn[candidate_loc_indices]
+            if is_decision_year(seed_strategy, tstep)
+                # Get candidate locations from strategy
+                candidate_locs = filter_candidate_locations(seed_strategy, tstep, state)
+
+                # seed_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
+                for seed_share in domain.seed_target_locations
+                    share_candidate_locs = intersect(candidate_locs, seed_share.target_locs)
+                    if isempty(share_candidate_locs)
+                        if ADRIA.decision.strategy_type(param_set, "seed") ==
+                            PeriodicStrategy
+                            @warn """
+                                tstep $tstep: Deployment with PeriodicStrategy on
+                                $(length(seed_share.target_locs)) reefs with weight
+                                $(seed_share.weight) skipped because no candidate reefs
+                                were found.
+                            """
+                        end
+                        continue
+                    end
+
+                    share_candidate_loc_idx = findall(
+                        in.(domain.loc_ids, Ref(share_candidate_locs))
                     )
 
-                    # Build state for target locations only
-                    selected_seed_ranks = select_locations(
-                        seed_pref,
-                        seed_decision_mat[location=At(candidate_locs)],
-                        MCDA_approach,
-                        min_iv_locs
-                    )
-                else
-                    # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
-                    selected_seed_ranks = unguided_selection(
-                        candidate_locs,
-                        min_iv_locs,
-                        vec(leftover_space_m²[candidate_loc_indices]),
-                        depth_criteria[candidate_loc_indices]
-                    )
-                end
-                if !isempty(selected_seed_ranks)
-                    log_val = is_guided ? (1:length(selected_seed_ranks)) : 1.0
-                    log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
-                        log_val
-                    last_seed_deployment[candidate_loc_indices] .= tstep
+                    if is_guided
+                        # Update decision matrix with current conditions
+                        update_criteria_values!(
+                            seed_decision_mat[location=At(share_candidate_locs)];
+                            heat_stress=dhw_projection[share_candidate_loc_idx],
+                            wave_stress=wave_projection[share_candidate_loc_idx],
+                            coral_cover=current_loc_cover[share_candidate_loc_idx],
+                            in_connectivity=in_conn[share_candidate_loc_idx],
+                            out_connectivity=out_conn[share_candidate_loc_idx]
+                        )
+
+                        # Build state for target locations only
+                        selected_seed_ranks = select_locations(
+                            seed_pref,
+                            seed_decision_mat[location=At(share_candidate_locs)],
+                            MCDA_approach,
+                            min_iv_locs
+                        )
+                    else
+                        # Unguided deployment, seed/fog corals anywhere, so long as available space > 0
+                        selected_seed_ranks = unguided_selection(
+                            share_candidate_locs,
+                            min_iv_locs,
+                            vec(leftover_space_m²[share_candidate_loc_idx]),
+                            depth_criteria[share_candidate_loc_idx]
+                        )
+                    end
+                    if !isempty(selected_seed_ranks)
+                        log_val = is_guided ? (1:length(selected_seed_ranks)) : 1.0
+                        log_location_ranks[tstep, At(selected_seed_ranks), At(:seed)] .=
+                            log_val
+                        last_seed_deployment[share_candidate_loc_idx] .= tstep
+                    end
+
+                    # Check if locations are selected (can reuse previous selection)
+                    has_seed_locs::Bool = !isempty(selected_seed_ranks)
+
+                    # Apply seeding (assumed to occur after spawning)
+                    if has_seed_locs  # seed_decision_years[tstep] &&
+                        # Seed selected locations
+                        # Selected locations can fill up over time so avoid locations with no space´
+                        seed_loc_idx = findall(domain.loc_ids .∈ [selected_seed_ranks])
+
+                        available_space = leftover_space_m²[seed_loc_idx]
+                        locs_with_space = findall(available_space .> 0.0)
+
+                        # If there are locations with space to select from, then deploy what we can
+                        # Otherwise, do nothing.
+                        if length(locs_with_space) > 0
+                            # Calculate proportion to seed based on current available space
+                            seed_loc_idx = seed_loc_idx[locs_with_space]
+                            available_space = available_space[locs_with_space]
+
+                            proportional_increase, n_corals_seeded = distribute_seeded_corals(
+                                vec_abs_k[seed_loc_idx],
+                                available_space,
+                                seed_volume.data .* seed_share.weight,
+                                colony_areas[_seed_size_groups],
+                                seeding_devices_per_m2
+                            )
+
+                            # Log estimated number of corals seeded
+                            Yseed[tstep, :, seed_loc_idx] .= n_corals_seeded'
+
+                            # Add coral seeding to recruitment
+                            recruitment[:, seed_loc_idx] .+= proportional_increase
+
+                            update_tolerance_distribution!(
+                                proportional_increase,
+                                C_cover_t,
+                                c_mean_t,
+                                c_mean_reference[:, :, end],
+                                c_std,
+                                seed_loc_idx,
+                                _seed_size_groups,
+                                a_adapt
+                            )
+                        end
+
+                        # Empty selected_seed_ranks before the next iteration
+                        selected_seed_ranks = []
+                    end
                 end
             end
-        end
-
-        # Check if locations are selected (can reuse previous selection)
-        has_seed_locs::Bool = !isempty(selected_seed_ranks)
-
-        # Apply seeding (assumed to occur after spawning)
-        if has_seed_locs  # seed_decision_years[tstep] &&
-            # Seed selected locations
-            # Selected locations can fill up over time so avoid locations with no space´
-            # Main.@infiltrate
-            seed_loc_idx = findall(domain.loc_ids .∈ [selected_seed_ranks])
-
-            available_space = leftover_space_m²[seed_loc_idx]
-            locs_with_space = findall(available_space .> 0.0)
-
-            # If there are locations with space to select from, then deploy what we can
-            # Otherwise, do nothing.
-            if length(locs_with_space) > 0
-                # Calculate proportion to seed based on current available space
-                seed_loc_idx = seed_loc_idx[locs_with_space]
-                available_space = available_space[locs_with_space]
-
-                proportional_increase, n_corals_seeded = distribute_seeded_corals(
-                    vec_abs_k[seed_loc_idx],
-                    available_space,
-                    seed_volume.data,
-                    colony_areas[_seed_size_groups],
-                    seeding_devices_per_m2
-                )
-
-                # Log estimated number of corals seeded
-                Yseed[tstep, :, seed_loc_idx] .= n_corals_seeded'
-
-                # Add coral seeding to recruitment
-                recruitment[:, seed_loc_idx] .+= proportional_increase
-
-                update_tolerance_distribution!(
-                    proportional_increase,
-                    C_cover_t,
-                    c_mean_t,
-                    c_mean_reference[:, :, end],
-                    c_std,
-                    seed_loc_idx,
-                    _seed_size_groups,
-                    a_adapt
-                )
-            end
-
-            # Empty selected_seed_ranks before the next iteration
-            selected_seed_ranks = []
         end
 
         # Apply disturbances

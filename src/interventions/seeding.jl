@@ -15,7 +15,7 @@ end
         seed_loc_k_m²::Vector{Float64},
         available_space::Vector{Float64},
         seed_volume::Vector{Float64},
-        seeded_area::YAXArray,
+        colony_areas::Vector{Float64},
         seeding_devices_per_m2::Float64
     )::Tuple{YAXArray,Matrix{Float64}}
 
@@ -26,7 +26,7 @@ Distributes seeded corals according to current available space at each selected 
 - `seed_loc_k_m²` : Carrying capacity area of locations to seed in m².
 - `available_space` : Currently available space at each seed location in m².
 - `seed_volume` : Absolute number of coral to deploy of each functional group.
-- `seeded_area` : Area to seed for each functional group in m².
+- `colony_areas` : Area of single 1yo colony of each functional group.
 - `seeding_devices_per_m2` : Seeding device density (number of devices per m²).
 
 # Returns
@@ -52,6 +52,9 @@ function distribute_seeded_corals(
         @warn """
         Number of seeding devices exceeds available space.
         Excluding $cap devices to fit.
+        Total available space: $(round(total_available_space))
+        Max n devices = $max_n_devices
+        N_devices = $n_devices
         """
     end
 
@@ -70,7 +73,7 @@ function distribute_seeded_corals(
         seeded_area .*= total_available_space / total_seeded_area
 
         # Update seed_volume if seeded_area is capped
-        seed_volume = seeded_area ./ colony_areas[_seed_size_groups]
+        seed_volume = seeded_area ./ colony_areas
     end
 
     # Distribute seeded corals (as area) across locations according to available space

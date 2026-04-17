@@ -423,23 +423,32 @@ end
 function switch_RCPs!() end
 
 """
-    set_seed_target_locations!(domain::Domain, location_ids::Vector{String})
+    set_seed_target_locations!(
+        domain::Domain,
+        location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+    )
 
 Set the locations eligible for seeding interventions.
 
 # Arguments
 - `domain`: Domain to modify
-- `location_ids`: Vector of location IDs to target for seeding
+- `location_ids`: Vector of named tuples with weights and target location IDs for seeding
 
 # Example
 ```julia
 dom = ADRIA.load_domain("path/to/domain")
 # Only seed in marine park zones
-ADRIA.set_seed_target_locations!(dom, ["reef_01", "reef_05", "reef_12"])
+ADRIA.set_seed_target_locations!(
+    dom,
+    [(weight=1.0, target_locs=["reef_01", "reef_05", "reef_12"])]
+)
 ```
 """
-function set_seed_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
-    _validate_iv_locations(domain, location_ids)
+function set_seed_target_locations!(
+    domain::Domain,
+    location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+)::Nothing
+    _validate_iv_locations(domain, vcat(getproperty.(location_ids, :target_locs)...))
     domain.seed_target_locations = location_ids
     return nothing
 end
