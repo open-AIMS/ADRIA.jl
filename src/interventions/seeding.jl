@@ -15,7 +15,7 @@ end
         seed_loc_k_m²::Vector{Float64},
         available_space::Vector{Float64},
         seed_volume::Vector{Float64},
-        seeded_area::YAXArray,
+        colony_areas::Vector{Float64},
         seeding_devices_per_m2::Float64
     )::Tuple{YAXArray,Matrix{Float64}}
 
@@ -26,7 +26,7 @@ Distributes seeded corals according to current available space at each selected 
 - `seed_loc_k_m²` : Carrying capacity area of locations to seed in m².
 - `available_space` : Currently available space at each seed location in m².
 - `seed_volume` : Absolute number of coral to deploy of each functional group.
-- `seeded_area` : Area to seed for each functional group in m².
+- `colony_areas` : Area of single 1yo colony of each functional group.
 - `seeding_devices_per_m2` : Seeding device density (number of devices per m²).
 
 # Returns
@@ -42,21 +42,25 @@ function distribute_seeded_corals(
     seeding_devices_per_m2::Float64
 )::Tuple{YAXArray,Matrix{Float64}}
     total_available_space::Float64 = sum(available_space)
+    seed_volume_tmp = deepcopy(seed_volume)
 
     # If n_devices > max_n_devices , cap seed_volume
     max_n_devices = seeding_devices_per_m2 * total_available_space
-    n_devices = sum(seed_volume)            # Assuming one coral per device survives to 1-yr old
+    n_devices = sum(seed_volume_tmp)            # Assuming one coral per device survives to 1-yr old
     if n_devices > max_n_devices
-        seed_volume .*= (max_n_devices / n_devices)
-        cap = n_devices - sum(seed_volume)
+        seed_volume_tmp .*= (max_n_devices / n_devices)
+        cap = n_devices - sum(seed_volume_tmp)
         @warn """
         Number of seeding devices exceeds available space.
         Excluding $cap devices to fit.
+        Total available space: $(round(total_available_space))
+        Max n devices = $max_n_devices
+        N_devices = $n_devices
         """
     end
 
     # Extract colony areas and determine approximate seeded area in m^2
-    seeded_area = colony_areas .* seed_volume
+    seeded_area = colony_areas .* seed_volume_tmp
     total_seeded_area::Float64 = sum(seeded_area)
 
     # Proportion of available space on each site relative to available space at these
@@ -69,8 +73,8 @@ function distribute_seeded_corals(
 
         seeded_area .*= total_available_space / total_seeded_area
 
-        # Update seed_volume if seeded_area is capped
-        seed_volume = seeded_area ./ colony_areas[_seed_size_groups]
+        # Update seed_volume_tmp if seeded_area is capped
+        seed_volume_tmp = seeded_area ./ colony_areas
     end
 
     # Distribute seeded corals (as area) across locations according to available space
@@ -85,9 +89,9 @@ function distribute_seeded_corals(
         locations=1:length(available_space)
     )
 
-    n_deployed_coral = prop_area_avail .* seed_volume'
+    n_deployed_coral = prop_area_avail .* seed_volume_tmp'
 
-    @assert sum(n_deployed_coral) ≈ sum(seed_volume)
+    @assert sum(n_deployed_coral) ≈ sum(seed_volume_tmp)
 
     return proportional_increase, n_deployed_coral
 end

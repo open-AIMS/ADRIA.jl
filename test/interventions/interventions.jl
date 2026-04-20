@@ -6,7 +6,7 @@ end
     target_mask = ADRIA_DOM_45.loc_ids .∈ [ADRIA_DOM_45.loc_ids[(end - 9):end]]
 
     target_locs = ADRIA_DOM_45.loc_ids[target_mask]
-    ADRIA.set_seed_target_locations!(ADRIA_DOM_45, target_locs)
+    ADRIA.set_seed_target_locations!(ADRIA_DOM_45, [(weight=1.0, target_locs=target_locs)])
     ADRIA.set_fog_target_locations!(ADRIA_DOM_45, target_locs)
 
     num_samples = 2

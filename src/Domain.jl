@@ -423,23 +423,33 @@ end
 function switch_RCPs!() end
 
 """
-    set_seed_target_locations!(domain::Domain, location_ids::Vector{String})
+    set_seed_target_locations!(
+        domain::Domain,
+        location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+    )
 
 Set the locations eligible for seeding interventions.
 
 # Arguments
 - `domain`: Domain to modify
-- `location_ids`: Vector of location IDs to target for seeding
+- `location_ids`: Vector of named tuples with weights and target location IDs for seeding
 
 # Example
 ```julia
 dom = ADRIA.load_domain("path/to/domain")
 # Only seed in marine park zones
-ADRIA.set_seed_target_locations!(dom, ["reef_01", "reef_05", "reef_12"])
+ADRIA.set_seed_target_locations!(
+    dom,
+    [(weight=1.0, target_locs=["reef_01", "reef_05", "reef_12"])]
+)
 ```
 """
-function set_seed_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
-    _validate_iv_locations(domain, location_ids)
+function set_seed_target_locations!(
+    domain::Domain,
+    location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+)::Nothing
+    _validate_iv_locations(domain, vcat(getproperty.(location_ids, :target_locs)...))
+    _validate_no_overlap(location_ids)
     domain.seed_target_locations = location_ids
     return nothing
 end
@@ -497,29 +507,50 @@ function _validate_iv_locations(domain::Domain, location_ids::Vector{String})::N
     return nothing
 end
 
+function _validate_no_overlap(
+    location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+)::Nothing
+    sets = getproperty.(location_ids, :target_locs)
+    for i in 1:length(sets), j in (i + 1):length(sets)
+        overlap = intersect(sets[i], sets[j])
+        if !isempty(overlap)
+            error(
+                "Target location sets must be disjoint. " *
+                "Sets $i and $j share $(length(overlap)) location(s): " *
+                join(overlap, ", ")
+            )
+        end
+    end
+    return nothing
+end
+
 """
-    set_mc_target_locations!(domain::Domain, location_ids::Vector{String})
+    set_mc_target_locations!(
+        domain::Domain,
+        location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+    )
 
 Set the locations eligible for moving corals interventions.
 
 # Arguments
 - `domain`: Domain to modify
-- `location_ids`: Vector of location IDs to target for fogging
+- `location_ids`: Vector of named tuples with weights and target location IDs for moving corals
 
 # Example
 ```julia
 dom = ADRIA.load_domain("path/to/domain")
-# Only fog high-value tourism reefs
-ADRIA.set_mc_target_locations!(dom, ["reef_03", "reef_07"])
+ADRIA.set_mc_target_locations!(
+    dom,
+    [(weight=1.0, target_locs=["reef_03", "reef_07"])]
+)
 ```
 """
-function set_mc_target_locations!(domain::Domain, location_ids::Vector{String})::Nothing
-    # Validate that all locations exist in domain
-    invalid_locs = setdiff(location_ids, domain.loc_ids)
-    if !isempty(invalid_locs)
-        throw(ArgumentError("Invalid location IDs: $(join(invalid_locs, ", "))"))
-    end
-
+function set_mc_target_locations!(
+    domain::Domain,
+    location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+)::Nothing
+    _validate_iv_locations(domain, vcat(getproperty.(location_ids, :target_locs)...))
+    _validate_no_overlap(location_ids)
     domain.mc_target_locations = location_ids
     return nothing
 end

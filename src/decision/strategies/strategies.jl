@@ -24,6 +24,15 @@ function is_decision_year(
     return true
 end
 
+"""
+    strategy_type(strategy_idx::Int64)
+    strategy_type(param_set::YAXArray{Float64,1}, iv_type::String)
+
+#  Arguments
+- `strategy_idx` : Can be either `1` (periodic) or `2` (reactive).
+- `param_set` : Single scenario param_set.
+- `iv_type` : Can be either `"seed"`, `"mc"` or `"fog"`.
+"""
 function strategy_type(strategy_idx::Int64)
     if is_reactive(strategy_idx)
         return ReactiveStrategy
@@ -31,6 +40,9 @@ function strategy_type(strategy_idx::Int64)
         return PeriodicStrategy
     end
     throw(ArgumentError("Unknown mc strategy type: $strategy_type"))
+end
+function strategy_type(param_set::YAXArray{Float64,1}, iv_type::String)
+    return strategy_type(Int64(param_set[factors=At(["$(iv_type)_strategy"])][1]))
 end
 
 function is_reactive(strategy_idx::T)::Bool where {T<:Real}

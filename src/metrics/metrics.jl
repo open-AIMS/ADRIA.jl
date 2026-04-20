@@ -726,7 +726,7 @@ function _relative_shelter_volume(
         reshape(planar_area_params(), (n_groups, 1, 2)), 1, n_sizes, 1
     )
     tab_acro_idx::Int64 = findfirst(functional_group_names() .== :tabular_Acropora)
-    reference_params::Tuple{Float64, Float64, Float64} = (
+    reference_params::Tuple{Float64,Float64,Float64} = (
         95.0, pa_params[tab_acro_idx, n_sizes, 1], pa_params[tab_acro_idx, n_sizes, 2]
     )
 
@@ -779,7 +779,7 @@ function _relative_shelter_volume(
     )
 
     tab_acro_idx::Int64 = findfirst(functional_group_names() .== :tabular_Acropora)
-    reference_params::Tuple{Float64, Float64, Float64} = (
+    reference_params::Tuple{Float64,Float64,Float64} = (
         95.0, pa_params[tab_acro_idx, n_sizes, 1], pa_params[tab_acro_idx, n_sizes, 2]
     )
     for scen::Int64 in 1:n_scens
