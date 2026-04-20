@@ -167,7 +167,7 @@ function load_domain(
     end
 
     force_single_reef && (dhw_scens = dhw_scens[:, [1], :])
-    loc_ids::Vector{String} = collect(dhw_scens.locs)
+    loc_ids::Vector{String} = collect(dhw_scens.locations)
 
     # Standardize IDs to use for site/reef and cluster
     _standardize_cluster_ids!(spatial_data)
@@ -398,7 +398,7 @@ function load_DHW(
     ::Type{RMEDomain}, data_path::String, rcp::String;
     timeframe::Union{Nothing,Tuple{Int,Int}}=nothing
 )::YAXArray
-    dhw_path = _data_folder_path(data_path, "dhw")
+    dhw_path = _data_folder_path(data_path, "dhw_csv")
     rcp_files = _get_relevant_files(dhw_path, rcp)
     rcp_files = filter(x -> occursin("SSP", x), rcp_files)
     if isempty(rcp_files)
@@ -452,7 +452,7 @@ function load_DHW(
     return DataCube(
         data_cube[:, :, keep_ds];
         timesteps=_timeframe[1]:_timeframe[2],
-        locs=loc_ids,
+        locations=loc_ids,
         scenarios=rcp_files[keep_ds]
     )
 end
