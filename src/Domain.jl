@@ -449,6 +449,7 @@ function set_seed_target_locations!(
     location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
 )::Nothing
     _validate_iv_locations(domain, vcat(getproperty.(location_ids, :target_locs)...))
+    _validate_no_overlap(location_ids)
     domain.seed_target_locations = location_ids
     return nothing
 end
@@ -506,6 +507,23 @@ function _validate_iv_locations(domain::Domain, location_ids::Vector{String})::N
     return nothing
 end
 
+function _validate_no_overlap(
+    location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
+)::Nothing
+    sets = getproperty.(location_ids, :target_locs)
+    for i in 1:length(sets), j in (i + 1):length(sets)
+        overlap = intersect(sets[i], sets[j])
+        if !isempty(overlap)
+            error(
+                "Target location sets must be disjoint. " *
+                "Sets $i and $j share $(length(overlap)) location(s): " *
+                join(overlap, ", ")
+            )
+        end
+    end
+    return nothing
+end
+
 """
     set_mc_target_locations!(
         domain::Domain,
@@ -532,6 +550,7 @@ function set_mc_target_locations!(
     location_ids::Vector{@NamedTuple{weight::Float64, target_locs::Vector{String}}}
 )::Nothing
     _validate_iv_locations(domain, vcat(getproperty.(location_ids, :target_locs)...))
+    _validate_no_overlap(location_ids)
     domain.mc_target_locations = location_ids
     return nothing
 end
