@@ -775,6 +775,12 @@ function run_model(
     # Store means before mortality and growth events to use during update
     c_mean_t_1 = copy(c_mean_t)
 
+    # Snapshot of juvenile tolerance AFTER natural adaptation but BEFORE seeding.
+    # Used as the reference base for a_adapt enhancement (c_mean_reference).
+    # Storing the post-seeding state would cause a_adapt to compound year-over-year,
+    # driving unrealistic tolerance values (>100 DHW-weeks over long runs).
+    c_mean_pre_seed = zeros(n_groups, n_locs)
+
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
 
@@ -1002,6 +1008,11 @@ function run_model(
                 )
             end
         end
+
+        # Snapshot juvenile tolerance after natural adaptation, before seeding modifies it.
+        # This is the correct baseline for a_adapt enhancement: using the post-seeding state
+        # here would cause the enhancement to compound each deployment year.
+        c_mean_pre_seed .= c_mean_t[:, 1, :]
 
         # Reproduction
         # Calculates scope for coral fedundity for each size class and at each location
@@ -1512,11 +1523,13 @@ function run_model(
             @view(bleaching_mort[(tstep - 1):tstep, :, :, :])
         )
 
-        # Store current means to be used in future timesteps
+        # Store current means to be used in future timesteps.
+        # Use pre-seeding snapshot so that a_adapt enhancement is not compounded
+        # into the reference year-over-year.
         if a_adapt_ref > 0
             c_mean_reference[:, :, 2:end] .= c_mean_reference[:, :, 1:(end - 1)]
         end
-        c_mean_reference[:, :, 1] .= c_mean_t[:, 1, :]
+        c_mean_reference[:, :, 1] .= c_mean_pre_seed
 
         # Coral deaths due to selected cyclone scenario
         # Peak cyclone period is January to March
