@@ -1004,7 +1004,8 @@ function run_model(
         fecundity_scope!(fec_scope, fecundity_per_m², C_cover_t, habitable_areas)
 
         for l in 1:n_locs
-            prop_fecundity[:, l] .= fec_scope[:, l] ./ sum(fec_scope[:, l])
+            s = sum(fec_scope[:, l])
+            prop_fecundity[:, l] .= s > 0.0 ? fec_scope[:, l] ./ s : 0.0
         end
 
         _loc_coral_cover = loc_coral_cover(C_cover_t)
