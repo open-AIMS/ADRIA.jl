@@ -140,7 +140,8 @@ function update_tolerance_distribution!(
     #       These are replaced with 1.0 so that the distribution for unseeded
     #       corals are used.
     w_taxa::Matrix{Float64} = scaled_seed ./ (cover[seed_sc, seed_locs] .+ scaled_seed)
-    replace!(w_taxa, NaN => 1.0)
+    # NaN occurs when both cover and scaled_seed are 0 (undeployed taxa at bare locations).
+    replace!(w_taxa, NaN => 0.0)
 
     # Update critical DHW distribution for deployed size classes
     a_adapt_relative = copy(a_adapt)
