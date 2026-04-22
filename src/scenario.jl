@@ -185,7 +185,7 @@ function run_scenarios(
         ) for _ in 1:n_locs
     ]
 
-    env_debug = parse(Bool, ENV["ADRIA_DEBUG"]) == false
+    env_debug = parse(Bool, ENV["ADRIA_DEBUG"]) == true
     @info "ADRIA_DEBUG = $env_debug"
 
     env_num_cores = ENV["ADRIA_NUM_CORES"]
@@ -194,7 +194,7 @@ function run_scenarios(
     para_threshold::Int64 =
         ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
     active_cores::Int64 = parse(Int64, env_num_cores)
-    parallel::Bool = env_debug && (active_cores > 1) && (nrow(scens) >= para_threshold)
+    parallel::Bool = !env_debug && (active_cores > 1) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
