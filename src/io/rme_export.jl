@@ -1,6 +1,10 @@
 module RMEExport
 
 using DataFrames, NetCDF, CSV, JSON, YAXArrays, DimensionalData
+import GeoDataFrames as GDF
+import ArchGDAL as AG
+import GeoFormatTypes as GFT
+
 using ADRIA: ResultSet, timesteps
 using ADRIA.metrics: total_absolute_cover, relative_cover, relative_loc_taxa_cover,
     ltmp_cover, relative_shelter_volume, relative_juveniles
@@ -44,7 +48,7 @@ function extract_GCM_from_results(
 end
 
 """
-    export_to_rme(dom::Domain, rs::ResultSet, out_dir::String; map_counterfactuals::Bool=false)
+    export_to_rme(dom::Domain, rs::ResultSet, out_dir::String; map_counterfactuals::Bool=false, pdp_geopackage_path::Union{String, Nothing}=nothing, scen_spec::Union{DataFrame, Nothing}=nothing)
 
 Exports an ADRIA `ResultSet` into the format expected by `cost-eco-model-linker`,
 emulating the output of ReefModEngine.jl.
@@ -54,9 +58,16 @@ emulating the output of ReefModEngine.jl.
 - `rs` : ResultSet to export
 - `out_dir` : Directory to save the exported files
 - `map_counterfactuals` : Whether to map guided scenarios to their counterfactuals. Defaults to false.
+- `pdp_geopackage_path` : Path to GeoPackage containing PDP_region column. Defaults to nothing.
+- `scen_spec` : Scenario specification to use. If nothing, uses `rs.inputs`. Defaults to nothing.
 """
 function export_to_rme(
-    dom::Domain, rs::ResultSet, out_dir::String; map_counterfactuals::Bool=false
+    dom::Domain,
+    rs::ResultSet,
+    out_dir::String;
+    map_counterfactuals::Bool=false,
+    pdp_geopackage_path::Union{String,Nothing}=nothing,
+    scen_spec::Union{DataFrame,Nothing}=nothing
 )
     mkpath(out_dir)
 
@@ -65,13 +76,21 @@ function export_to_rme(
     n_locs = length(rs.outcomes[:relative_cover].locations)
     n_scens = length(rs.outcomes[:relative_cover].scenarios)
 
+    # Load PDP region information if geopackage is provided
+    loc_idx_to_region = if isnothing(pdp_geopackage_path)
+        fill("Domain", n_locs)
+    else
+        pdp_df = GDF.read(pdp_geopackage_path)
+        id_to_region = Dict(
+            string(row.UNIQUE_ID) => string(row.PDP_region) for row in eachrow(pdp_df)
+        )
+        [get(id_to_region, id, "outside_pdp") for id in rs.loc_ids]
+    end
+
     total_cover_data = Array(ltmp_cover(rs).data) .* 100.0
 
     # Juveniles: ADRIA relative_juveniles is density (individuals/m2)
     juveniles_data = Array(rs.outcomes[:relative_juveniles].data)
-
-    # Proportion of 1 m² occupied by circle of diameter 95cm
-    baseline_prop::Float64 = π * (0.95 / 2)^2
 
     # Relative shelter volume
     shelter_volume_data = Array(
@@ -179,38 +198,42 @@ function export_to_rme(
     # 3. Dynamic Reef set and IV Scenario synthesis
     # A scenario is a counterfactual if no interventions occur
     # Check all seeding and intervention factors
+
+    # Use provided scenario specification if available, otherwise fallback to rs.inputs
+    inputs = isnothing(scen_spec) ? rs.inputs : scen_spec
+
     seed_factors = [
         :N_seed_TA, :N_seed_CA, :N_seed_CNA, :N_seed_SM, :N_seed_LM, :N_mc_settlers
     ]
 
     # Filter to only those present in inputs
-    seed_cols = intersect(seed_factors, propertynames(rs.inputs))
+    seed_cols = intersect(seed_factors, propertynames(inputs))
     intensity = zeros(n_scens)
     for c in seed_cols
-        intensity .+= rs.inputs[!, c]
+        intensity .+= inputs[!, c]
     end
 
     is_counterfactual = (intensity .== 0)
 
     # Also check fogging and shading if they exist
-    if hasproperty(rs.inputs, :fogging)
-        is_counterfactual = is_counterfactual .& (rs.inputs.fogging .== 0)
+    if hasproperty(inputs, :fogging)
+        is_counterfactual = is_counterfactual .& (inputs.fogging .== 0)
     end
-    if hasproperty(rs.inputs, :SRM)
-        is_counterfactual = is_counterfactual .& (rs.inputs.SRM .== 0)
+    if hasproperty(inputs, :SRM)
+        is_counterfactual = is_counterfactual .& (inputs.SRM .== 0)
     end
 
     # Also consider guided status (<= 0 includes unguided and counterfactual)
-    if hasproperty(rs.inputs, :guided)
-        is_counterfactual = is_counterfactual .& (rs.inputs.guided .<= 0)
+    if hasproperty(inputs, :guided)
+        is_counterfactual = is_counterfactual .& (inputs.guided .<= 0)
     end
 
     # Group scenarios by intervention settings to assign IDs and repetitions
     env_cols = intersect(
-        [:dhw_scenario, :wave_scenario, :cyclone_scenario, :RCP], propertynames(rs.inputs)
+        [:dhw_scenario, :wave_scenario, :cyclone_scenario, :RCP], propertynames(inputs)
     )
-    iv_cols = setdiff(propertynames(rs.inputs), env_cols)
-    iv_groups = groupby(rs.inputs, iv_cols)
+    iv_cols = setdiff(propertynames(inputs), env_cols)
+    iv_groups = groupby(inputs, iv_cols)
     iv_id_map = zeros(Int, n_scens)
     rep_map = zeros(Int, n_scens)
     for (g_idx, group) in enumerate(iv_groups)
@@ -237,8 +260,8 @@ function export_to_rme(
     )
 
     # Registry of unique location sets to avoid redundancy in scenario_info.json
-    # Map: Set(location_indices) -> reefset_name
-    reefset_registry = Dict{Set{Int},String}()
+    # Map: (Region, Set(location_indices)) -> reefset_name
+    reefset_registry = Dict{Tuple{String,Set{Int}},String}()
     reefset_counter = 1
 
     # Process seed_log: (timesteps, coral_id, locations, scenarios)
@@ -253,63 +276,94 @@ function export_to_rme(
             loc_seeding = sum(rs.seed_log[t, :, :, scen]; dims=1)
             intervened_loc_indices = getindex.(findall(loc_seeding .> 0), 2)
 
-            total_corals = sum(loc_seeding)
             gcm_name::String = extract_GCM_from_results(dom, rs, scen)
 
             if !isempty(intervened_loc_indices)
-                loc_set = Set(intervened_loc_indices)
-
-                # Assign or retrieve reefset name
-                if !haskey(reefset_registry, loc_set)
-                    rs_name = "reefset_$(reefset_counter)"
-                    reefset_registry[loc_set] = rs_name
-                    reefset_counter += 1
+                # Group by region
+                regional_groups = Dict{String,Vector{Int}}()
+                for idx in intervened_loc_indices
+                    region = loc_idx_to_region[idx]
+                    push!(get!(regional_groups, region, Int[]), idx)
                 end
-                rs_name = reefset_registry[loc_set]
 
-                year = start_year + t - 1
+                for (region, indices) in regional_groups
+                    loc_set = Set(indices)
+                    key = (region, loc_set)
 
-                # Get the actual seeding density for this scenario
-                density = rs.inputs[scen, :seeding_devices_per_m2]
-                # Calculate the realized area in km2 (m2 / 1e6)
-                area_km2 = (total_corals / density) / 1e6
+                    # Assign or retrieve reefset name
+                    if !haskey(reefset_registry, key)
+                        rs_name = "reefset_$(region)_$(reefset_counter)"
+                        reefset_registry[key] = rs_name
+                        reefset_counter += 1
+                    end
+                    rs_name = reefset_registry[key]
 
-                push!(
-                    iv_df,
-                    (
-                        iv_id_map[scen], gcm_name, "outplant", rs_name, year, rep_map[scen],
-                        Float64(total_corals),
-                        Float64(density),
-                        Float64(area_km2)
+                    year = start_year + t - 1
+
+                    # Get total corals for this regional group
+                    regional_total_corals = sum(loc_seeding[indices])
+
+                    # Get the actual seeding density for this scenario
+                    density = inputs[scen, :seeding_devices_per_m2]
+                    # Calculate the realized area in km2 (m2 / 1e6)
+                    area_km2 = (regional_total_corals / density) / 1e6
+
+                    push!(
+                        iv_df,
+                        (
+                            iv_id_map[scen], gcm_name, "outplant", rs_name, year, rep_map[scen],
+                            Float64(regional_total_corals),
+                            Float64(density),
+                            Float64(area_km2)
+                        )
                     )
-                )
+                end
             end
 
             # Process mc_log: (timesteps, coral_id, locations, scenarios)
             loc_mc = sum(rs.mc_log[t, :, :, scen]; dims=1)
-            mc_loc_indices = findall(loc_mc .> 0)
-            total_mc_corals = sum(loc_mc)
+            mc_loc_indices = getindex.(findall(loc_mc .> 0), 2)
 
             if !isempty(mc_loc_indices)
-                mc_loc_indices = getindex.(mc_loc_indices, 2)
-                loc_set_mc = Set(mc_loc_indices)
-                if !haskey(reefset_registry, loc_set_mc)
-                    rs_name_mc = "reefset_$(reefset_counter)"
-                    reefset_registry[loc_set_mc] = rs_name_mc
-                    reefset_counter += 1
+                # Group by region
+                regional_groups_mc = Dict{String,Vector{Int}}()
+                for idx in mc_loc_indices
+                    region = loc_idx_to_region[idx]
+                    push!(get!(regional_groups_mc, region, Int[]), idx)
                 end
-                rs_name_mc = reefset_registry[loc_set_mc]
 
-                year = start_year + t - 1
-                push!(
-                    iv_df,
-                    (
-                        iv_id_map[scen], gcm_name, "lm", rs_name_mc, year, rep_map[scen],
-                        Float64(total_mc_corals),
-                        1.0,  # dummy density
-                        0.01  # dummy area
+                for (region, indices) in regional_groups_mc
+                    loc_set_mc = Set(indices)
+                    key = (region, loc_set_mc)
+
+                    if !haskey(reefset_registry, key)
+                        rs_name_mc = "reefset_$(region)_$(reefset_counter)"
+                        reefset_registry[key] = rs_name_mc
+                        reefset_counter += 1
+                    end
+                    rs_name_mc = reefset_registry[key]
+
+                    year = start_year + t - 1
+
+                    # Get total corals for this regional group
+                    regional_total_mc_corals = sum(loc_mc[indices])
+
+                    # Calculate actual density and area for MC
+                    # loc_area is in m^2
+                    total_loc_area_m2 = sum(rs.loc_area[indices])
+                    mc_density = regional_total_mc_corals / total_loc_area_m2
+                    mc_area_km2 = total_loc_area_m2 / 1e6
+
+                    push!(
+                        iv_df,
+                        (
+                            iv_id_map[scen], gcm_name, "lm", rs_name_mc, year, rep_map[scen],
+                            Float64(regional_total_mc_corals),
+                            Float64(mc_density),
+                            Float64(mc_area_km2)
+                        )
                     )
-                )
+                end
             end
         end
     end
@@ -318,21 +372,21 @@ function export_to_rme(
     # Map reefset names back to location IDs
     scenario_info = Dict{String,Any}(
         "counterfactual" => Int.(is_counterfactual),
-        "dhw_tolerance" => rs.inputs.a_adapt
+        "dhw_tolerance" => inputs.a_adapt
     )
 
     if map_counterfactuals
         env_cols = intersect(
             [:dhw_scenario, :wave_scenario, :cyclone_scenario, :RCP],
-            propertynames(rs.inputs)
+            propertynames(inputs)
         )
         cf_indices = findall(is_counterfactual)
 
         if !isempty(cf_indices)
-            cf_profiles = rs.inputs[cf_indices, env_cols]
+            cf_profiles = inputs[cf_indices, env_cols]
             mapping = zeros(Int, n_scens)
             for i in 1:n_scens
-                current_profile = Vector(rs.inputs[i, env_cols])
+                current_profile = Vector(inputs[i, env_cols])
                 # Find matching CF index
                 match_row_idx = findfirst(
                     r -> Vector(r) == current_profile, eachrow(cf_profiles)
@@ -345,7 +399,7 @@ function export_to_rme(
         end
     end
 
-    for (loc_set, rs_name) in reefset_registry
+    for ((region, loc_set), rs_name) in reefset_registry
         # loc_set contains indices, convert to IDs
         scenario_info[rs_name] = rs.loc_data.GBRMPA_ID[collect(loc_set)]
     end
