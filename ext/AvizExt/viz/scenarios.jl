@@ -184,8 +184,8 @@ function ADRIA.viz.scenarios!(
         _render_legend(g[legend_position...], scen_groups, legend_labels)
     end
 
-    ax.xlabel = "Year"
-    ax.ylabel = outcome_label(outcomes)
+    ax.xlabel = get(axis_opts, :xlabel, "Year")
+    ax.ylabel = get(axis_opts, :ylabel, outcome_label(outcomes))
     return g
 end
 
@@ -194,6 +194,7 @@ function ADRIA.viz.scenarios_legend!(
     legend_opts::OPT_TYPE=Dict{Symbol,Any}()
 )
     _scenarios = rs.inputs #copy(@view(scenarios[1:end .∈ [outcomes.scenarios], :]))
+    by_RCP::Bool = get(opts, :by_RCP, false)
     scen_groups = if by_RCP
         ADRIA.analysis.scenario_rcps(_scenarios)
     else
@@ -210,7 +211,7 @@ function ADRIA.viz.scenarios_legend!(
 )
     by_RCP::Bool = get(opts, :by_RCP, false)
     sort_by::Symbol = get(opts, :sort_by, :default)
-    default_names::Vector = get(opts, :legend_labels, [])
+    default_names::Vector{Symbol} = get(opts, :legend_labels, [])
 
     group_names::Vector{Symbol} = _sort_keys(
         scen_groups;
