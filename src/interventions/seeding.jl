@@ -134,11 +134,12 @@ function update_tolerance_distribution!(
 )::Nothing where {T<:Float64}
 
     # Calculate distribution weights using proportion of area (used as priors for MixtureModel)
+    # w_taxa[j, i] = fraction of total (cover + seeds) that consists of newly seeded corals
+    # for taxon j at location i. Used as the weight for the seeded distribution (tn).
     # Note: It is entirely possible for a location to be ranked in the top N, but
     #       with no deployments (for a given species). A location with 0 cover
-    #       and no deployments will therefore be NaN due to zero division.
-    #       These are replaced with 1.0 so that the distribution for unseeded
-    #       corals are used.
+    #       and 0 deployments will therefore be NaN due to zero division.
+    #       These are replaced with 0.0 so that the existing distribution is used unchanged.
     w_taxa::Matrix{Float64} = scaled_seed ./ (cover[seed_sc, seed_locs] .+ scaled_seed)
     # NaN occurs when both cover and scaled_seed are 0 (undeployed taxa at bare locations).
     replace!(w_taxa, NaN => 0.0)
@@ -150,11 +151,12 @@ function update_tolerance_distribution!(
         # Previous distributions
         c_dist_ti = @view(c_dist_t[seed_sc, loc])
 
-        # Truncated normal distributions for deployed corals
-        # Assume same stdev and bounds as original
+        # Truncated normal distributions for deployed corals.
+        # Lower bound fixed at 4.0 DHW-weeks (minimum susceptibility threshold),
+        # consistent with bleaching_mortality! which uses the same floor.
         tn::Vector{Float64} =
             truncated_normal_mean.(
-                a_adapt_relative, stdev[seed_sc], 0.0, a_adapt_relative .+ HEAT_UB
+                a_adapt_relative, stdev[seed_sc], 4.0, a_adapt_relative .+ HEAT_UB
             )
 
         # If seeding an empty location, no need to do any further calculations
@@ -163,10 +165,10 @@ function update_tolerance_distribution!(
             continue
         end
 
-        # Create new distributions by mixing previous and current distributions using
-        # proportional cover as the priors/weights
-        # Priors (weights based on cover for each species)
-        tx::Vector{Weights} = Weights.(eachcol(vcat(w_taxa[:, i]', 1.0 .- w_taxa[:, i]')))
+        # Mix existing and seeded distributions weighted by their proportional cover.
+        # w_taxa = seeds fraction → weights tn (seeded enhanced distribution).
+        # 1 - w_taxa = existing fraction → weights c_dist_ti (pre-seeding distribution).
+        tx::Vector{Weights} = Weights.(eachcol(vcat(1.0 .- w_taxa[:, i]', w_taxa[:, i]')))
         c_dist_t[seed_sc, loc] = sum.(eachcol(vcat(c_dist_ti', tn')), tx)
     end
 
