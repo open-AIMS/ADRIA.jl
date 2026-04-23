@@ -549,13 +549,11 @@ function settler_DHW_tolerance!(
     # Cache for settlers c_mean for each functional group
     c_mean_per_group::Vector{Float64} = zeros(Float64, n_groups)
 
-    source_loc_idx = 1:sum(dropdims(sum(settlers; dims=1); dims=1) .> 0)
-    for loc in source_loc_idx
+    pos_settlers_loc_idx = findall(dropdims(sum(settlers; dims=1); dims=1) .> 0)
+    for loc in pos_settlers_loc_idx
         for grp in groups
             cover_sum = sum(C_cover_t[grp, fecund_size_mask, loc])
-            if cover_sum == 0
-                continue
-            end
+            (cover_sum == 0) ? continue : 0
             w = StatsBase.weights(C_cover_t[grp, fecund_size_mask, loc] ./ cover_sum)
             c_mean_per_group .=
                 breeders.(
