@@ -433,7 +433,7 @@ NamedTuple of collated results
 - `fog_log` : Array, Log of fogged locations
 - `shade_log` : Array, Log of shaded locations
 - `site_ranks` : Array, Log of location rankings
-- `bleaching_mortality` : Array, Log of mortalities caused by bleaching
+- `bleaching_mortality` : Array, Log of bleaching DHW (DHW-weeks) per location/group/size class — used as the lower bound of the tolerance distribution in the following timestep
 - `coral_dhw_log` : Array, Log of DHW tolerances / adaptation over time (only logged in debug mode)
 """
 function run_model(
@@ -784,8 +784,10 @@ function run_model(
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
 
-    # Cache for proportional mortality and coral population increases
-    bleaching_mort = zeros(tf, n_groups, n_sizes, n_locs)
+    # Cache for per-location bleaching DHW (DHW-weeks) used as the lower bound of the
+    # tolerance distribution in the following timestep. Sliding window over two timesteps:
+    # dim-1 index 1 = previous timestep's bleaching DHW, 2 = current (being written).
+    bleach_dhw = zeros(tf, n_groups, n_sizes, n_locs)
     #### End coral constants
 
     ## Update ecological parameters based on intervention option
@@ -1520,7 +1522,7 @@ function run_model(
             depth_coeff,
             c_std,
             c_mean_t,
-            @view(bleaching_mort[(tstep - 1):tstep, :, :, :])
+            @view(bleach_dhw[(tstep - 1):tstep, :, :, :])
         )
 
         # Store current means to be used in future timesteps.
@@ -1600,7 +1602,7 @@ function run_model(
         fog_log=Yfog,
         shade_log=Yshade,
         site_ranks=log_location_ranks,
-        bleaching_mortality=bleaching_mort,
+        bleaching_mortality=bleach_dhw,
         coral_dhw_log=collated_dhw_tol_log
     )
 end
