@@ -286,7 +286,7 @@ function bleaching_mortality!(
     depth_coeff::Vector{Float64},
     stdev::AbstractMatrix{Float64},
     dist_t::AbstractArray{Float64,3},
-    prop_mort::SubArray{Float64}
+    bleach_dhw::SubArray{Float64}
 )::Nothing
     n_groups, n_sizes, n_locs = size(cover)
 
@@ -313,9 +313,9 @@ function bleaching_mortality!(
 
                 μ::Float64 = dist_t[grp, sc, loc]
                 affected_pop::Float64 = truncated_normal_cdf(
-                    # Use the previous mortality threshold or 4.0 as the minimum,
-                    # whichever is greater
-                    dhw[loc], μ, stdev[grp, sc], max(4.0, prop_mort[1, grp, sc, loc]),
+                    # Use the previous bleaching DHW as the distribution lower bound,
+                    # with 4.0 DHW-weeks as the minimum susceptibility threshold.
+                    dhw[loc], μ, stdev[grp, sc], max(4.0, bleach_dhw[1, grp, sc, loc]),
                     μ + HEAT_UB
                 )
 
@@ -331,13 +331,19 @@ function bleaching_mortality!(
                     end
                 end
 
-                prop_mort[2, grp, sc, loc] = mort_pop
+                # Store current DHW (DHW-weeks) as the bleaching threshold for this location.
+                # Previously stored mort_pop (a dimensionless fraction 0-1), which caused a
+                # dimensional mismatch: the value was used as a lower bound on the DHW
+                # tolerance distribution (units: DHW-weeks) in the next timestep, making
+                # the truncation effectively identical to truncating at 0.
+                bleach_dhw[2, grp, sc, loc] = dhw[loc]
                 if mort_pop > 0.0
-                    # Re-create distribution
-                    # Use same stdev as target size class to maintain genetic variance
+                    # Re-create distribution truncated at current bleaching DHW: survivors
+                    # must have had tolerance above dhw[loc], so this is the correct lower
+                    # bound. Use same stdev as target size class to maintain genetic variance
                     # pers comm K.B-N (2023-08-09 16:24 AEST)
                     dist_t[grp, sc, loc] = truncated_normal_mean(
-                        μ, stdev[grp, sc], mort_pop, μ + HEAT_UB
+                        μ, stdev[grp, sc], 4.0, μ + HEAT_UB
                     )
 
                     # Update population
