@@ -290,7 +290,13 @@ function bleaching_mortality!(
 )::Nothing
     n_groups, n_sizes, n_locs = size(cover)
 
-    non_juveniles = 1:n_sizes
+    # New evidence that all size classes bleach
+    # Álvarez-Noriega et al., 2025.
+    # Challenging Paradigms Around the Role of Colony Size, Taxa, and Environment on
+    # Bleaching Susceptibility.
+    # Global Change Biology 31, e70090.
+    # https://doi.org/10.1111/gcb.70090
+    all_sizes = 1:n_sizes
 
     # Potential bleaching locations (skip locations with no heat stress)
     active_locs = findall(dhw .> 4.0)
@@ -305,7 +311,7 @@ function bleaching_mortality!(
                 continue
             end
 
-            for sc in non_juveniles
+            for sc in all_sizes
                 # Skip location if there is no population
                 if cover[grp, sc, loc] == 0.0
                     continue
