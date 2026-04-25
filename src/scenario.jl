@@ -395,8 +395,7 @@ function run_scenario(
                 data_store.site_ranks[:, :, :, idx] .= vals
             end
         elseif k == :coral_dhw_log
-            # Only log coral DHW tolerances if in debug mode
-            if parse(Bool, ENV["ADRIA_DEBUG"]) == true
+            if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
                 getfield(data_store, k)[:, :, :, idx] .= vals
             end
         else
@@ -590,6 +589,7 @@ function run_model(
     end
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, get(ENV, "ADRIA_DEBUG", "false")) == true
+    log_dhw_tols = parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "true")) == true
 
     # Initialize cover loss tracking for reactive strategies
     max_lookback = Int64(param_set[At("reactive_response_delay")])
@@ -1003,8 +1003,8 @@ function run_model(
                 @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates
             )
 
-            if in_debug_mode
-                # Log dhw tolerances if in debug mode
+            if log_dhw_tols
+                # Log dhw tolerances if requested
                 dhw_tol_mean_log[tstep, :, :] .= reshape(
                     permutedims(c_mean_t, (2, 1, 3)), size(dhw_tol_mean_log)[2:3]
                 )
@@ -1582,7 +1582,7 @@ function run_model(
     # dhw_tol_mean_std = dropdims(mean(dhw_tol_std_log, dims=3), dims=3)
     # collated_dhw_tol_log = DataCube(cat(dhw_tol_mean, dhw_tol_mean_std, dims=3);
     #     timesteps=1:tf, species=corals.coral_id, stat=[:mean, :stdev])
-    if in_debug_mode
+    if log_dhw_tols
         collated_dhw_tol_log = DataCube(
             dhw_tol_mean_log; timesteps=1:tf, species=corals.coral_id, sites=1:n_locs
         )

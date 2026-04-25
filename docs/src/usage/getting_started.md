@@ -33,9 +33,10 @@ This is optional, and the assumed default values are shown below:
 
 ```toml
 [operation]
-num_cores = 2     # No. of cores to use. Values <= 0 will use all available cores.
-threshold = 1e-8  # Result values below this will be set to 0.0 (to save disk space)
-debug = false     # Disable multi-processing to allow error messages to be shown
+num_cores = 2         # No. of cores to use. Values <= 0 will use all available cores.
+threshold = 1e-8      # Result values below this will be set to 0.0 (to save disk space)
+debug = false         # Disable multi-processing to allow error messages to be shown
+log_dhw_tols = false  # Log per-location coral DHW tolerance trajectories (increases disk usage)
 
 [results]
 output_dir = "./Outputs"  # Change this to point to where you want to store results
