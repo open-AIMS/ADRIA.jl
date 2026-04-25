@@ -191,8 +191,8 @@ function run_scenarios(
     env_num_cores = ENV["ADRIA_NUM_CORES"]
     @info "ADRIA_NUM_CORES = $env_num_cores"
 
-    para_threshold::Int64 =
-        ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain)) ? 8 : 256
+    is_RME_based = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain))
+    para_threshold::Int64 = is_RME_based ? 8 : 20
     active_cores::Int64 = parse(Int64, env_num_cores)
     parallel::Bool = !env_debug && (active_cores > 1) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
