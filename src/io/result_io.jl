@@ -284,7 +284,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
 
     n_group_and_size = n_groups * n_sizes
     local coral_dhw_log
-    if parse(Bool, ENV["ADRIA_DEBUG"]) == true
+    if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
         coral_dhw_log = zcreate(
             Float32,
             tf,
