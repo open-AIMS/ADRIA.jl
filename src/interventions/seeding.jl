@@ -121,6 +121,9 @@ tolerance enhancement.
 - `seed_locs` : Seeding locations
 - `seed_sc` : Size classes to seed
 - `a_adapt` : Level of assisted adaptation (as DHW tolerance increase)
+- `tol_ceil` : Per-(group, size, location) ceiling on tolerance (initial mean + HEAT_UB).
+  Applied as a hard cap to `c_dist_t` after mixing, so tolerance cannot drift above the
+  initial population ceiling regardless of cumulative seeding.
 """
 function update_tolerance_distribution!(
     scaled_seed::YAXArray,
@@ -130,7 +133,8 @@ function update_tolerance_distribution!(
     stdev::AbstractArray{T},
     seed_locs::Vector{Int64},
     seed_sc::AbstractMatrix{Bool},
-    a_adapt::AbstractVector{T}
+    a_adapt::AbstractVector{T},
+    tol_ceil::AbstractArray{T,3}
 )::Nothing where {T<:Float64}
 
     # Calculate distribution weights using proportion of area (used as priors for MixtureModel)
@@ -154,9 +158,12 @@ function update_tolerance_distribution!(
         # Truncated normal distributions for deployed corals.
         # Lower bound fixed at 4.0 DHW-weeks (minimum susceptibility threshold),
         # consistent with bleaching_mortality! which uses the same floor.
+        # Upper bound anchored to initial mean + HEAT_UB (fixed ceiling) shifted by
+        # the a_adapt enhancement, so the cap does not drift with population tolerance.
         tn::Vector{Float64} =
             truncated_normal_mean.(
-                a_adapt_relative, stdev[seed_sc], 4.0, a_adapt_relative .+ HEAT_UB
+                a_adapt_relative, stdev[seed_sc], 4.0,
+                view(tol_ceil, :, :, loc)[seed_sc] .+ a_adapt
             )
 
         # If seeding an empty location, no need to do any further calculations
@@ -172,5 +179,6 @@ function update_tolerance_distribution!(
         c_dist_t[seed_sc, loc] = sum.(eachcol(vcat(c_dist_ti', tn')), tx)
     end
 
+    c_dist_t .= min.(c_dist_t, tol_ceil)
     return nothing
 end

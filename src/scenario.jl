@@ -775,6 +775,9 @@ function run_model(
     # Store means before mortality and growth events to use during update
     c_mean_t_1 = copy(c_mean_t)
 
+    # Hard ceiling: tolerance cannot increase more than HEAT_UB DHW-weeks above initial values
+    c_mean_tol_ceil = c_mean_t .+ HEAT_UB
+
     # Snapshot of juvenile tolerance AFTER natural adaptation but BEFORE seeding.
     # Used as the reference base for a_adapt enhancement (c_mean_reference).
     # Storing the post-seeding state would cause a_adapt to compound year-over-year,
@@ -1000,7 +1003,7 @@ function run_model(
         # Natural adaptation (doesn't change C_cover_t)
         if tstep <= tf
             adjust_DHW_distribution!(
-                @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates
+                @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates, c_mean_tol_ceil
             )
 
             if log_dhw_tols
@@ -1315,7 +1318,8 @@ function run_model(
             TP_data,  # ! IMPORTANT: Pass in transition probability matrix, not connectivity!
             recruitment,
             fecundity_per_m²,
-            param_set[At("heritability")]
+            param_set[At("heritability")],
+            c_mean_tol_ceil
         )
 
         # Seeding
@@ -1489,7 +1493,8 @@ function run_model(
                                 c_std,
                                 seed_loc_idx,
                                 _seed_size_groups,
-                                a_adapt
+                                a_adapt,
+                                c_mean_tol_ceil
                             )
                         end
 
@@ -1522,7 +1527,8 @@ function run_model(
             depth_coeff,
             c_std,
             c_mean_t,
-            @view(bleach_dhw[(tstep - 1):tstep, :, :, :])
+            @view(bleach_dhw[(tstep - 1):tstep, :, :, :]),
+            c_mean_tol_ceil
         )
 
         # Store current means to be used in future timesteps.
