@@ -32,6 +32,10 @@ function extract_GCM_from_results(
         switch_RCPs!(dom, RCP)
     end
 
+    if rs.inputs[scen_idx, :dhw_scenario] == 0.0
+        return "No DHWs Used"
+    end
+
     dhw_scen_idx::Int64 = Int64(rs.inputs.dhw_scenario[scen_idx])
 
     if eltype(dom.dhw_scens.scenarios) == String
