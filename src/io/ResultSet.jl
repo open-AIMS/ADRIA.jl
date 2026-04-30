@@ -16,7 +16,7 @@ const SPATIAL_DATA = "spatial"
 
 abstract type ResultSet end
 
-struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF} <: ResultSet
+struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
     name::String
     RCP::String
     invoke_time::String
@@ -44,6 +44,7 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,DF} <: ResultSet
     fog_log::C   # Reduction in bleaching mortality (0.0 - 1.0)
     shade_log::C # Reduction in bleaching mortality (0.0 - 1.0)
     coral_dhw_tol_log::D3
+    coral_cover_log::D4
 end
 
 function ResultSet(
@@ -88,7 +89,11 @@ function ResultSet(
         DataCube(
             log_set["coral_dhw_log"],
             Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))
-        )
+        ),
+        haskey(log_set, "coral_cover_log") ? DataCube(
+            log_set["coral_cover_log"],
+            Symbol.(Tuple(log_set["coral_cover_log"].attrs["structure"]))
+        ) : nothing
     )
 end
 
@@ -221,7 +226,7 @@ function combine_results(result_sets...)::ResultSet
     n_groups = size(rs1.seed_log, :coral_id)
     n_sizes = Int(size(result_sets[1].coral_dhw_tol_log, :species) / n_groups)
     logs = (;
-        zip([:ranks, :mc_log, :seed_log, :fog_log, :shade_log, :coral_dhw_tol_log],
+        zip([:ranks, :mc_log, :seed_log, :fog_log, :shade_log, :coral_dhw_tol_log, :coral_cover_log],
             setup_logs(
                 z_store,
                 rs1.loc_ids,

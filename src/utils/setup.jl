@@ -22,6 +22,11 @@ function setup()::Nothing
             haskey(config["operation"], "log_dhw_tols") ?
             config["operation"]["log_dhw_tols"] :
             false
+
+        ENV["ADRIA_LOG_COVER"] =
+            haskey(config["operation"], "log_cover") ?
+            config["operation"]["log_cover"] :
+            false
     catch
         @warn "Could not find config.toml file.\nApplying default configuration and saving results to 'Outputs' in current directory."
 
@@ -31,6 +36,7 @@ function setup()::Nothing
         ENV["ADRIA_THRESHOLD"] = Float32(1e-8)
         ENV["ADRIA_DEBUG"] = false
         ENV["ADRIA_LOG_DHW_TOLS"] = false
+        ENV["ADRIA_LOG_COVER"] = false
     end
 
     return nothing
