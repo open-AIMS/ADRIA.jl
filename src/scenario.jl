@@ -51,7 +51,8 @@ function setup_cache(domain::Domain)::NamedTuple
         loc_area=Matrix{Float64}(loc_area(domain)'),  # area of locations
         habitable_area=Matrix{Float64}(loc_k_area(domain)'),  # location carrying capacity
         wave_damage=zeros(tf, n_sizes * n_groups, n_locs),  # damage coefficient for each size class
-        dhw_tol_mean_log=zeros(tf, n_sizes * n_groups, n_locs)  # tmp log for mean dhw tolerances
+        dhw_tol_mean_log=zeros(tf, n_sizes * n_groups, n_locs),  # tmp log for mean dhw tolerances
+        cover_log=zeros(tf, n_sizes * n_groups, n_locs)  # tmp log for per-species cover
     )
 
     return cache
@@ -371,7 +372,15 @@ function run_scenario(
 
     # Store logs
     c_dim = Base.ndims(result_set.raw) + 1
-    log_stores = (:site_ranks, :mc_log, :seed_log, :fog_log, :shade_log, :coral_dhw_log)
+    log_stores = (
+        :site_ranks,
+        :mc_log,
+        :seed_log,
+        :fog_log,
+        :shade_log,
+        :coral_dhw_log,
+        :coral_cover_log
+    )
     for k in log_stores
         if k == :seed_log || k == :site_ranks
             concat_dim = c_dim
@@ -396,6 +405,10 @@ function run_scenario(
             end
         elseif k == :coral_dhw_log
             if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
+                getfield(data_store, k)[:, :, :, idx] .= vals
+            end
+        elseif k == :coral_cover_log
+            if parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
                 getfield(data_store, k)[:, :, :, idx] .= vals
             end
         else
@@ -590,6 +603,7 @@ function run_model(
     # Environment variables are stored as strings, so convert to bool for use
     in_debug_mode = parse(Bool, get(ENV, "ADRIA_DEBUG", "false")) == true
     log_dhw_tols = parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "true")) == true
+    log_cover = parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
 
     # Initialize cover loss tracking for reactive strategies
     max_lookback = Int64(param_set[At("reactive_response_delay")])
@@ -786,6 +800,7 @@ function run_model(
 
     # Log of distributions
     dhw_tol_mean_log = cache.dhw_tol_mean_log  # tmp log for mean dhw tolerances
+    cover_log = cache.cover_log  # tmp log for per-species cover
 
     # Cache for per-location bleaching DHW (DHW-weeks) used as the lower bound of the
     # tolerance distribution in the following timestep. Sliding window over two timesteps:
@@ -1010,6 +1025,12 @@ function run_model(
                 # Log dhw tolerances if requested
                 dhw_tol_mean_log[tstep, :, :] .= reshape(
                     permutedims(c_mean_t, (2, 1, 3)), size(dhw_tol_mean_log)[2:3]
+                )
+            end
+
+            if log_cover
+                cover_log[tstep, :, :] .= reshape(
+                    permutedims(C_cover[tstep, :, :, :], (2, 1, 3)), size(cover_log)[2:3]
                 )
             end
         end
@@ -1596,10 +1617,19 @@ function run_model(
         collated_dhw_tol_log = false
     end
 
+    if log_cover
+        collated_cover_log = DataCube(
+            cover_log; timesteps=1:tf, species=corals.coral_id, sites=1:n_locs
+        )
+    else
+        collated_cover_log = false
+    end
+
     # Set variables to nothing so garbage collector clears them
     # Leads to memory leak issues in multiprocessing contexts without these.
     wave_scen = nothing
     dhw_tol_mean_log = nothing
+    cover_log = nothing
 
     return (
         raw=C_cover,
@@ -1609,6 +1639,7 @@ function run_model(
         shade_log=Yshade,
         site_ranks=log_location_ranks,
         bleaching_mortality=bleach_dhw,
-        coral_dhw_log=collated_dhw_tol_log
+        coral_dhw_log=collated_dhw_tol_log,
+        coral_cover_log=collated_cover_log
     )
 end

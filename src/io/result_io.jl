@@ -314,7 +314,38 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         )
     end
 
-    return ranks, mc_log, seed_log, fog_log, shade_log, coral_dhw_log
+    local coral_cover_log
+    if parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
+        coral_cover_log = zcreate(
+            Float32,
+            tf,
+            n_groups * n_sizes,
+            n_locs,
+            n_scens;
+            name="coral_cover_log",
+            fill_value=nothing,
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(tf, n_groups * n_sizes, n_locs, 1),
+            attrs=attrs
+        )
+    else
+        coral_cover_log = zcreate(
+            Float32,
+            tf,
+            n_groups * n_sizes,
+            1,
+            n_scens;
+            name="coral_cover_log",
+            fill_value=0.0,
+            fill_as_missing=false,
+            path=log_fn,
+            chunks=(tf, n_groups * n_sizes, 1, 1),
+            attrs=attrs
+        )
+    end
+
+    return ranks, mc_log, seed_log, fog_log, shade_log, coral_dhw_log, coral_cover_log
 end
 
 """
@@ -329,6 +360,7 @@ Sets up an on-disk result store.
 ├───env_stats
 ├───inputs
 ├───logs
+|   ├───coral_cover_log
 |   ├───coral_dhw_log
 │   ├───fog
 │   ├───rankings
@@ -552,7 +584,8 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
                 :seed_log,
                 :fog_log,
                 :shade_log,
-                :coral_dhw_log
+                :coral_dhw_log,
+                :coral_cover_log
             ),
             stores
         )...

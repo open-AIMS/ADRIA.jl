@@ -2,6 +2,7 @@
 num_cores = 1         # No. of cores to use. Values <= 0 will use all available cores.
 threshold = 1e-6      # Result values below this will be set to 0.0
 log_dhw_tols = true   # Log per-location coral DHW tolerance trajectories
+log_cover = false     # Log per-species per-size-class cover (expensive; enable for targeted runs only)
 
 [results]
 output_dir = "./outputs"  # save to current working directory
