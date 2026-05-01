@@ -12,21 +12,23 @@ function setup()::Nothing
     try
         # Load in configuration settings
         config = TOML.parsefile(joinpath(pwd(), "config.toml"))
+        config_operation = config["operation"]
         ENV["ADRIA_OUTPUT_DIR"] = config["results"]["output_dir"]
-        ENV["ADRIA_NUM_CORES"] = config["operation"]["num_cores"]
-        ENV["ADRIA_THRESHOLD"] = config["operation"]["threshold"]
+        ENV["ADRIA_NUM_CORES"] = config_operation["num_cores"]
+        ENV["ADRIA_THRESHOLD"] = config_operation["threshold"]
         ENV["ADRIA_DEBUG"] =
-            haskey(config["operation"], "debug") ? config["operation"]["debug"] : false
+            haskey(config_operation, "debug") ? config_operation["debug"] : false
 
         ENV["ADRIA_LOG_DHW_TOLS"] =
-            haskey(config["operation"], "log_dhw_tols") ?
-            config["operation"]["log_dhw_tols"] :
+            haskey(config_operation, "log_dhw_tols") ?
+            config_operation["log_dhw_tols"] :
             false
 
         ENV["ADRIA_LOG_COVER"] =
-            haskey(config["operation"], "log_cover") ?
-            config["operation"]["log_cover"] :
-            false
+            haskey(config_operation, "log_cover") ? config_operation["log_cover"] : false
+
+        ENV["ADRIA_RNG_SEED"] =
+            haskey(config_operation, "rng_seed") ? config_operation["rng_seed"] : false
     catch
         @warn "Could not find config.toml file.\nApplying default configuration and saving results to 'Outputs' in current directory."
 
@@ -84,4 +86,21 @@ end
 
 function is_test_env()::Bool
     return get(ENV, "ADRIA_TEST", "false") == "true"
+end
+
+"""
+    set_random_seed(param_set)::Nothing
+
+Set the RNG seed from `ENV["ADRIA_RNG_SEED"]`. If unset or `"false"`, derives the seed
+from the sum of all non-RCP parameters in `param_set`.
+
+# Arguments
+- `param_set` : YAXArray of scenario parameter values for a single run.
+"""
+function set_random_seed(param_set::YAXArray)::AbstractRNG
+    rnd_seed_val::Int64 =
+        ENV["ADRIA_RNG_SEED"] == "false" ?
+        floor(Int64, sum(param_set[Where(x -> x != "RCP")])) : # select everything except RCP
+        parse(Int64, ENV["ADRIA_RNG_SEED"])
+    return Xoshiro(rnd_seed_val)
 end
