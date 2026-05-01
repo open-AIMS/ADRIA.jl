@@ -34,12 +34,14 @@ This is optional, and the assumed default values are shown below:
 ```toml
 [operation]
 num_cores = 2         # No. of cores to use. Values <= 0 will use all available cores.
-threshold = 1e-8      # Result values below this will be set to 0.0 (to save disk space)
-debug = false         # Disable multi-processing to allow error messages to be shown
-log_dhw_tols = false  # Log per-location coral DHW tolerance trajectories (increases disk usage)
+threshold = 1e-8      # Result values below this will be set to 0.0 (to save disk space).
+debug = false         # Disable multi-processing to allow error messages to be shown.
+log_dhw_tols = false  # Log per-location coral DHW tolerance trajectories (increases disk usage).
+log_cover = false     # Log raw results (coral cover) for all timesteps, locations, functional groups, size classes and scenarios.
+rng_seed = false      # Set to an integer to be used as RNG seed for all runs.
 
 [results]
-output_dir = "./Outputs"  # Change this to point to where you want to store results
+output_dir = "./Outputs"  # Change this to point to where you want to store results.
 ```
 
 This `config.toml` file is specific to your computer and project. It **should not be**

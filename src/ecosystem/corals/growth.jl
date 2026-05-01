@@ -759,10 +759,13 @@ Calculates coral recruitment for each species/group and location.
 # Returns
 λ, total coral recruitment for each coral taxa and location based on a Poisson distribution.
 """
-function recruitment_rate(larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
-    α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0)::Matrix{T} where {T<:Float64}
+function recruitment_rate(
+    larval_pool::AbstractArray{T,2}, A::AbstractArray{T};
+    α::Union{T,Vector{T}}=2.5, β::Union{T,Vector{T}}=5000.0, rng=Random.GLOBAL_RNG
+)::Matrix{T} where {T<:Float64}
     sd = settler_density.(α, β, larval_pool) .* A'
-    @views sd[sd .> 0.0] .= rand.(Poisson.(sd[sd .> 0.0]))
+
+    @views sd[sd .> 0.0] .= rand.(rng, Poisson.(sd[sd .> 0.0]))
 
     return sd
 end
@@ -794,7 +797,8 @@ function settler_cover(
     α::V,
     β::V,
     basal_area_per_settler::V,
-    potential_settlers::T
+    potential_settlers::T;
+    rng::AbstractRNG=Random.GLOBAL_RNG
 )::T where {T<:AbstractMatrix{Float64},V<:Vector{Float64}}
 
     # Send larvae out into the world (reuse potential_settlers to reduce allocations)
@@ -811,7 +815,7 @@ function settler_cover(
     # Larvae have landed, work out how many are recruited
     # Determine area covered by recruited larvae (settler cover) per m^2
     # recruits per m^2 per site multiplied by area per settler
-    return recruitment_rate(potential_settlers, leftover_space; α=α, β=β) .*
+    return recruitment_rate(potential_settlers, leftover_space; α=α, β=β, rng=rng) .*
            basal_area_per_settler
 end
 

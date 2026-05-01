@@ -501,10 +501,7 @@ function run_model(
     n_groups::Int64 = domain.coral_growth.n_groups
     n_sizes::Int64 = domain.coral_growth.n_sizes
 
-    # Set random seed using intervention values
-    # TODO: More robust way of getting intervention/criteria values
-    rnd_seed_val::Int64 = floor(Int64, sum(param_set[Where(x -> x != "RCP")]))  # select everything except RCP
-    Random.seed!(rnd_seed_val)
+    rng = set_random_seed(param_set)
 
     # Extract environmental data
     dhw_idx::Int64 = Int64(param_set[At("dhw_scenario")])
@@ -1068,7 +1065,8 @@ function run_model(
                 sim_params.max_settler_density,
                 sim_params.max_larval_density,
                 basal_area_per_settler,
-                potential_settlers
+                potential_settlers;
+                rng=rng
             )[
                 :, habitable_loc_idxs
             ] ./ habitable_areas[:, habitable_loc_idxs]
