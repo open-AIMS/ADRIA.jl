@@ -289,7 +289,7 @@ function bleaching_mortality!(
     bleach_dhw::SubArray{Float64},
     tol_ceil::AbstractArray{Float64,3}
 )::Nothing
-    n_groups, n_sizes, n_locs = size(cover)
+    n_groups, n_sizes, _ = size(cover)
 
     # New evidence that all size classes bleach
     # Álvarez-Noriega et al., 2025.
@@ -300,7 +300,8 @@ function bleaching_mortality!(
     all_sizes = 1:n_sizes
 
     # Potential bleaching locations (skip locations with no heat stress)
-    active_locs = findall(dhw .> 4.0)
+    # Use HEAT_LB (heat tolerance distribution lower bound) as the bleaching threshold
+    active_locs = findall(dhw .> HEAT_LB)
 
     # Adjust distributions for each functional group over all locations, ignoring juveniles
     # we assume the high background mortality of juveniles includes DHW mortality
@@ -322,8 +323,8 @@ function bleaching_mortality!(
                 μ_ceil::Float64 = tol_ceil[grp, sc, loc]  # initial mean + HEAT_UB (fixed)
                 affected_pop::Float64 = truncated_normal_cdf(
                     # Use the previous bleaching DHW as the distribution lower bound,
-                    # with 4.0 DHW-weeks as the minimum susceptibility threshold.
-                    dhw[loc], μ, stdev[grp, sc], max(4.0, bleach_dhw[1, grp, sc, loc]),
+                    # with 4.0 DHW-weeks as the minimum susceptibility threshold
+                    dhw[loc], μ, stdev[grp, sc], max(HEAT_LB, bleach_dhw[1, grp, sc, loc]),
                     μ_ceil
                 )
 
@@ -353,7 +354,7 @@ function bleaching_mortality!(
                     # 2. Use same stdev as target size class to maintain genetic variance
                     # pers comm K.B-N (2023-08-09 16:24 AEST)
                     dist_t[grp, sc, loc] = truncated_normal_mean(
-                        μ, stdev[grp, sc], 4.0, μ_ceil
+                        μ, stdev[grp, sc], HEAT_LB, μ_ceil
                     )
 
                     # Update population

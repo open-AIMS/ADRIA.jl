@@ -156,14 +156,13 @@ function update_tolerance_distribution!(
         c_dist_ti = @view(c_dist_t[seed_sc, loc])
 
         # Truncated normal distributions for deployed corals.
-        # Lower bound fixed at 4.0 DHW-weeks (minimum susceptibility threshold),
-        # consistent with bleaching_mortality! which uses the same floor.
-        # Upper bound anchored to initial mean + HEAT_UB (fixed ceiling) shifted by
-        # the a_adapt enhancement, so the cap does not drift with population tolerance.
+        # Lower bound fixed (HEAT_LB), consistent with bleaching_mortality! which uses the
+        # same floor. Upper bound anchored to initial mean + HEAT_UB (fixed ceiling) shifted
+        # by the a_adapt enhancement, so the cap does not drift with population tolerance.
         tn::Vector{Float64} =
             truncated_normal_mean.(
-                a_adapt_relative, stdev[seed_sc], 4.0,
-                view(tol_ceil, :, :, loc)[seed_sc] .+ a_adapt
+                a_adapt_relative, stdev[seed_sc], HEAT_LB,
+                view(tol_ceil, :, :, loc)[seed_sc]
             )
 
         # If seeding an empty location, no need to do any further calculations

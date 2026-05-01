@@ -3,6 +3,7 @@ import ModelParameters: Model
 
 # Upper bound offset to use when re-creating critical DHW distributions
 const HEAT_UB = 8.0
+const HEAT_LB = 1.0     # minimum susceptibility threshold
 
 """
     functional_group_names()::Vector{Symbol}
