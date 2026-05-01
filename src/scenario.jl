@@ -898,7 +898,6 @@ function run_model(
     habitable_loc_idxs = findall(habitable_locs)
 
     # Growth constraints and acceleration caches and masks
-    LIN_EXT_SCALE_FACTOR_THRESHOLD = 0.5
     relative_habitable_cover_cache = zeros(n_locs)
     growth_threshold_mask_cache::BitVector = trues(n_locs)
     cover_threshold_mask::BitVector = falses(n_locs)
@@ -926,6 +925,9 @@ function run_model(
     # tolerance enhancement
     c_mean_reference .= copy(c_mean_t[:, 1, :])
 
+    cover_transition_lb = 0.05
+    cover_transition_ub = 0.95
+
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
         C_cover_t[:, :, habitable_locs] .=
@@ -950,7 +952,7 @@ function run_model(
 
         # Growth constrains need to be calculated seperately for differen growth rates
         growth_threshold_mask_cache .=
-            relative_habitable_cover_cache .>= LIN_EXT_SCALE_FACTOR_THRESHOLD
+            relative_habitable_cover_cache .>= cover_transition_ub
         for idx in 1:n_cb_calib_groups
             cover_threshold_mask .=
                 cb_calib_group_masks[:, idx] .&& growth_threshold_mask_cache
@@ -964,8 +966,45 @@ function run_model(
                 habitable_max_projected_cover[cover_threshold_mask]
             )
         end
+
+        # When cover is between cover_transition_lb and cover_transition_ub use a weighted mean
+        growth_threshold_mask_cache .= (
+            cover_transition_lb .<= relative_habitable_cover_cache .<
+            cover_transition_ub
+        )
+        if sum(growth_threshold_mask_cache) > 0
+            for idx in 1:n_cb_calib_groups
+                cover_threshold_mask .=
+                    growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
+                transition_scale =
+                    (
+                        relative_habitable_cover_cache[cover_threshold_mask] .-
+                        cover_transition_lb
+                    ) ./ (cover_transition_ub - cover_transition_lb)
+                growth_constraints[cover_threshold_mask] .=
+                    (
+                        transition_scale .*
+                        linear_extension_scale_factors(
+                            C_cover_t[:, :, cover_threshold_mask],
+                            vec_abs_k[cover_threshold_mask],
+                            biogrp_lin_ext[:, :, idx],
+                            _bin_edges,
+                            habitable_max_projected_cover[cover_threshold_mask]
+                        )
+                    ) .+
+                    (
+                        (1 .- transition_scale) .*
+                        growth_acceleration.(
+                            growth_acc_height[idx],
+                            growth_acc_midpoint[idx],
+                            growth_acc_steepness[idx],
+                            relative_habitable_cover_cache[cover_threshold_mask]
+                        )
+                    )
+            end
+        end
         growth_threshold_mask_cache .=
-            relative_habitable_cover_cache .< LIN_EXT_SCALE_FACTOR_THRESHOLD
+            relative_habitable_cover_cache .< cover_transition_lb
         for idx in 1:n_cb_calib_groups
             cover_threshold_mask .=
                 growth_threshold_mask_cache .&& cb_calib_group_masks[:, idx]
