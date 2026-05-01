@@ -1054,7 +1054,8 @@ function run_model(
         # Natural adaptation (doesn't change C_cover_t)
         if tstep <= tf
             adjust_DHW_distribution!(
-                @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates, c_mean_tol_ceil
+                @view(C_cover[tstep - 1, :, :, :]), c_mean_t, net_growth_rates,
+                c_mean_tol_ceil
             )
 
             if log_dhw_tols
@@ -1278,9 +1279,12 @@ function run_model(
 
                 # mc_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
                 for mc_share in domain.mc_target_locations
-                    share_candidate_locs = intersect(candidate_locs, mc_share.target_locs)
+                    share_candidate_locs = intersect(
+                        candidate_locs, mc_share.target_locs
+                    )
                     if isempty(share_candidate_locs)
-                        if ADRIA.decision.strategy_type(param_set, "mc") == PeriodicStrategy
+                        if ADRIA.decision.strategy_type(param_set, "mc") ==
+                            PeriodicStrategy
                             @warn """
                                 tstep $tstep: Deployment with PeriodicStrategy on
                                 $(length(mc_share.target_locs)) reefs with weight
@@ -1323,7 +1327,8 @@ function run_model(
                     end
                     if !isempty(selected_mc_ranks)
                         log_val = is_guided ? (1:length(selected_mc_ranks)) : 1.0
-                        log_location_ranks[tstep, At(selected_mc_ranks), At(:mc)] .= log_val
+                        log_location_ranks[tstep, At(selected_mc_ranks), At(:mc)] .=
+                            log_val
                         last_mc_deployment[share_candidate_loc_idx] .= tstep
                     end
 
@@ -1354,7 +1359,8 @@ function run_model(
                                 prop_fecundity[:, mc_loc_idx]
                             )
 
-                            @views recruitment[:, mc_loc_idx] .+= mc_proportional_increase
+                            @views recruitment[:, mc_loc_idx] .+=
+                                mc_proportional_increase
 
                             # Log estimated number of corals moved
                             Ymc[tstep, :, mc_loc_idx] .= n_mc_corals
@@ -1458,7 +1464,9 @@ function run_model(
 
                 # seed_share is a @NamedTuple{weight::Float64, target_locs::Vector{String}}
                 for seed_share in domain.seed_target_locations
-                    share_candidate_locs = intersect(candidate_locs, seed_share.target_locs)
+                    share_candidate_locs = intersect(
+                        candidate_locs, seed_share.target_locs
+                    )
                     if isempty(share_candidate_locs)
                         if ADRIA.decision.strategy_type(param_set, "seed") ==
                             PeriodicStrategy
