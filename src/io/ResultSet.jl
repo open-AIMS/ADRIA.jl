@@ -14,6 +14,13 @@ const MODEL_SPEC = "model_spec"
 const RESULTS = "results"
 const SPATIAL_DATA = "spatial"
 
+# Combined store name for the 6 location-based outcome metrics
+const LOC_METRICS = "loc_outcomes"
+const LOC_METRIC_NAMES = [
+    :relative_cover, :relative_shelter_volume, :absolute_shelter_volume,
+    :relative_juveniles, :juvenile_indicator, :coral_evenness
+]
+
 abstract type ResultSet end
 
 struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
@@ -41,10 +48,35 @@ struct ADRIAResultSet{T1,T2,A,B,C,D,G,D1,D2,D3,D4,DF} <: ResultSet
     ranks::A
     mc_log::B  # Values stored in m^2
     seed_log::B  # Values stored in m^2
-    fog_log::C   # Reduction in bleaching mortality (0.0 - 1.0)
-    shade_log::C # Reduction in bleaching mortality (0.0 - 1.0)
+    shading_log::C  # Fog and shade intervention log, dims: (timesteps, locations, intervention, scenarios)
     coral_dhw_tol_log::D3
     coral_cover_log::D4
+end
+
+"""
+Load shading log from a Zarr log group, handling both the new combined format
+(`shading_log`) and old stores that kept `fog` and `shade` as separate arrays.
+"""
+function _load_shading_log(log_set::Zarr.ZGroup)::YAXArray
+    if "shading_log" in keys(log_set)
+        return DataCube(
+            log_set["shading_log"],
+            Symbol.(Tuple(log_set["shading_log"].attrs["structure"]))
+        )
+    end
+
+    # Old format: two separate (T, L, N) arrays — load and stack into (T, L, 2, N)
+    fog_arr = log_set["fog"][:, :, :]
+    shade_arr = log_set["shade"][:, :, :]
+    tf, n_locs, n_scens = size(fog_arr)
+    combined = Array{Float32}(undef, tf, n_locs, 2, n_scens)
+    combined[:, :, 1, :] .= fog_arr
+    combined[:, :, 2, :] .= shade_arr
+    return DataCube(
+        combined;
+        timesteps=1:tf, locations=1:n_locs,
+        intervention=["fog", "shade"], scenarios=1:n_scens
+    )
 end
 
 function ResultSet(
@@ -84,8 +116,7 @@ function ResultSet(
             Symbol.(Tuple(log_set["moving_corals"].attrs["structure"]))
         ),
         DataCube(log_set["seed"], Symbol.(Tuple(log_set["seed"].attrs["structure"]))),
-        DataCube(log_set["fog"], Symbol.(Tuple(log_set["fog"].attrs["structure"]))),
-        DataCube(log_set["shade"], Symbol.(Tuple(log_set["shade"].attrs["structure"]))),
+        _load_shading_log(log_set),
         DataCube(
             log_set["coral_dhw_log"],
             Symbol.(Tuple(log_set["coral_dhw_log"].attrs["structure"]))
@@ -226,79 +257,88 @@ function combine_results(result_sets...)::ResultSet
     n_groups = size(rs1.seed_log, :coral_id)
     n_sizes = Int(size(result_sets[1].coral_dhw_tol_log, :species) / n_groups)
     logs = (;
-        zip([:ranks, :mc_log, :seed_log, :fog_log, :shade_log, :coral_dhw_tol_log, :coral_cover_log],
+        zip([:ranks, :mc_log, :seed_log, :shading_log, :coral_dhw_tol_log, :coral_cover_log],
             setup_logs(
                 z_store,
                 rs1.loc_ids,
                 nrow(all_inputs),
-                n_timesteps,
-                n_locs,
-                n_groups,
-                n_sizes
+                size(rs1.seed_log, :timesteps),
+                size(rs1.seed_log, :locations),
+                size(rs1.seed_log, :coral_id),
+                size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.seed_log, :coral_id)
             )
         )...
     )
 
-    # Copy logs over
+    # Copy logs over (all are 4D; try/catch handles the indexing generically)
     for log in keys(logs)
         scen_id = 1
         for rs in result_sets
             s_log = getfield(rs, log)
             n_log = getfield(logs, log)
-            rs_scen_len = size(s_log, :scenarios)
+            # coral_cover_log may be nothing for result sets loaded from old stores
+            rs_scen_len = isnothing(s_log) ? size(rs.seed_log, :scenarios) : size(s_log, :scenarios)
 
-            try
-                n_log[:, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
-            catch
-                n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
+            if !isnothing(s_log)
+                try
+                    n_log[:, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
+                catch
+                    n_log[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] .= s_log
+                end
             end
 
             scen_id = scen_id + rs_scen_len
         end
     end
 
-    metrics = keys(rs1.outcomes)
-    for m_name in metrics
-        m_dim_names = axes_names(rs1.outcomes[m_name])
-        properties = rs1.outcomes[m_name].properties
-        dim_struct = Dict{Symbol,Any}(
-            :structure => m_dim_names,
-            :metric_name => properties[:metric_name],
-            :metric_unit => properties[:metric_unit],
-            :axes_names => properties[:axes_names],
-            :axes_units => properties[:axes_units]
-        )
-        if :locations in m_dim_names
-            dim_struct[:unique_loc_ids] = rs1.loc_ids
-        end
-
-        result_dims = (size(rs1.outcomes[m_name])[1:(end - 1)]..., n_scenarios)
-        m_store = zcreate(
-            Float32,
-            result_dims...;
-            fill_value=nothing,
-            fill_as_missing=false,
-            path=joinpath(
-                z_store.folder,
-                RESULTS,
-                string(m_name)),
-            chunks=(result_dims[1:(end - 1)]..., 1),
-            attrs=dim_struct,
-            compressor=COMPRESSOR
-        )
-
-        # Copy results over
+    # Create combined location-based metrics store
+    tf_len = size(rs1.outcomes[LOC_METRIC_NAMES[1]], :timesteps)
+    n_locs = size(rs1.outcomes[LOC_METRIC_NAMES[1]], :locations)
+    n_loc_metrics = length(LOC_METRIC_NAMES)
+    loc_dims = (tf_len, n_locs, n_loc_metrics, n_scenarios)
+    loc_store = zcreate(
+        Float32,
+        loc_dims...;
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=joinpath(z_store.folder, RESULTS, LOC_METRICS),
+        chunks=(loc_dims[1:3]..., 1),
+        attrs=Dict{Symbol,Any}(
+            :structure => ("timesteps", "locations", "metrics", "scenarios"),
+            :unique_loc_ids => rs1.loc_ids,
+            :metrics => string.(LOC_METRIC_NAMES)
+        ),
+        compressor=COMPRESSOR
+    )
+    for (m_idx, m_name) in enumerate(LOC_METRIC_NAMES)
         scen_id = 1
         for rs in result_sets
             rs_scen_len = size(rs.outcomes[m_name], :scenarios)
-            try
-                m_store[:, :, scen_id:(scen_id + (rs_scen_len - 1))] .= rs.outcomes[m_name]
-            catch
-                m_store[:, :, :, scen_id:(scen_id + (rs_scen_len - 1))] .= rs.outcomes[m_name]
-            end
-
-            scen_id = scen_id + rs_scen_len
+            loc_store[:, :, m_idx, scen_id:(scen_id + rs_scen_len - 1)] .= rs.outcomes[m_name]
+            scen_id += rs_scen_len
         end
+    end
+
+    # Taxa cover metric (groups axis instead of locations — kept as its own store)
+    taxa_name = :relative_taxa_cover
+    taxa_dims = (size(rs1.outcomes[taxa_name])[1:(end - 1)]..., n_scenarios)
+    taxa_store = zcreate(
+        Float32,
+        taxa_dims...;
+        fill_value=nothing,
+        fill_as_missing=false,
+        path=joinpath(z_store.folder, RESULTS, string(taxa_name)),
+        chunks=(taxa_dims[1:(end - 1)]..., 1),
+        attrs=Dict{Symbol,Any}(
+            :structure => ("timesteps", "groups", "scenarios")
+        ),
+        compressor=COMPRESSOR
+    )
+    scen_id = 1
+    for rs in result_sets
+        rs_scen_len = size(rs.outcomes[taxa_name], :scenarios)
+        taxa_store[:, :, scen_id:(scen_id + rs_scen_len - 1)] .= rs.outcomes[taxa_name]
+        scen_id += rs_scen_len
     end
 
     # Copy env stats

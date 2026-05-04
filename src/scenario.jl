@@ -340,55 +340,61 @@ function run_scenario(
 
     # rs_raw has dimensions [timesteps ⋅ group ⋅ sizes ⋅ locations]
     rs_raw::Array{Float64} = result_set.raw
+    lk = loc_k_area(domain)
+    coral_spec::DataFrame = to_coral_spec(scenario)
+
+    # Write all 6 location-based metrics into the combined store in one Zarr chunk write.
+    # Order must match LOC_METRIC_NAMES = [:relative_cover, :relative_shelter_volume,
+    #   :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator, :coral_evenness]
+    loc_out = Array{Float32}(
+        undef, size(rs_raw, 1), size(rs_raw, 4), length(LOC_METRIC_NAMES)
+    )
+
     vals = relative_cover(rs_raw)
     vals[vals .< threshold] .= 0.0
-    data_store.relative_cover[:, :, idx] .= vals
-
-    vals = absolute_shelter_volume(rs_raw, loc_k_area(domain), scenario)
+    loc_out[:, :, 1] .= vals
+    vals = relative_shelter_volume(rs_raw, lk, scenario)
     vals[vals .< threshold] .= 0.0
-    data_store.absolute_shelter_volume[:, :, idx] .= vals
-    vals = relative_shelter_volume(rs_raw, loc_k_area(domain), scenario)
+    loc_out[:, :, 2] .= vals
+    vals = absolute_shelter_volume(rs_raw, lk, scenario)
     vals[vals .< threshold] .= 0.0
-    data_store.relative_shelter_volume[:, :, idx] .= vals
-
-    coral_spec::DataFrame = to_coral_spec(scenario)
+    loc_out[:, :, 3] .= vals
     vals = relative_juveniles(rs_raw)
     vals[vals .< threshold] .= 0.0
-    data_store.relative_juveniles[:, :, idx] .= vals
-
-    vals = juvenile_indicator(rs_raw, coral_spec, loc_k_area(domain))
+    loc_out[:, :, 4] .= vals
+    vals = juvenile_indicator(rs_raw, coral_spec, lk)
     vals[vals .< threshold] .= 0.0
-    data_store.juvenile_indicator[:, :, idx] .= vals
+    loc_out[:, :, 5] .= vals
+    rtc_vals = relative_loc_taxa_cover(rs_raw)
+    vals = coral_evenness(rtc_vals.data)
+    vals[vals .< threshold] .= 0.0
+    loc_out[:, :, 6] .= vals
 
-    vals = relative_taxa_cover(rs_raw, loc_k_area(domain))
+    data_store.loc_outcomes[:, :, :, idx] .= loc_out
+
+    # Taxa cover uses a groups axis rather than locations — kept as its own store
+    vals = relative_taxa_cover(rs_raw, lk)
     vals[vals .< threshold] .= 0.0
     data_store.relative_taxa_cover[:, :, idx] .= vals
 
-    vals = relative_loc_taxa_cover(rs_raw)
+    # Write fog and shade together as a single 4-D shading_log chunk
+    shading_buf = Array{Float32}(undef, size(rs_raw, 1), size(rs_raw, 4), 2)
+    fog_vals = Matrix{Float32}(result_set.fog_log)
+    shade_vals = Matrix{Float32}(result_set.shade_log)
+    fog_vals[fog_vals .< threshold] .= 0.0f0
+    shade_vals[shade_vals .< threshold] .= 0.0f0
+    shading_buf[:, :, 1] .= fog_vals
+    shading_buf[:, :, 2] .= shade_vals
+    data_store.shading_log[:, :, :, idx] .= shading_buf
 
-    vals = coral_evenness(vals.data)
-    vals[vals .< threshold] .= 0.0
-    data_store.coral_evenness[:, :, idx] .= vals
-
-    # Store logs
-    c_dim = Base.ndims(result_set.raw) + 1
-    log_stores = (
-        :site_ranks,
-        :mc_log,
-        :seed_log,
-        :fog_log,
-        :shade_log,
-        :coral_dhw_log,
-        :coral_cover_log
-    )
+    # Store remaining logs
+    log_stores = (:site_ranks, :mc_log, :seed_log, :coral_dhw_log, :coral_cover_log)
     for k in log_stores
-        if k == :seed_log || k == :site_ranks
-            concat_dim = c_dim
-        else
-            concat_dim = c_dim - 1
-        end
-
         vals = getfield(result_set, k)
+
+        if vals === false || isnothing(vals)
+            continue
+        end
 
         try
             vals[vals .< threshold] .= Float32(0.0)
@@ -411,8 +417,6 @@ function run_scenario(
             if parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
                 getfield(data_store, k)[:, :, :, idx] .= vals
             end
-        else
-            getfield(data_store, k)[:, :, idx] .= vals
         end
     end
 
