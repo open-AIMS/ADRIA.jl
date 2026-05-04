@@ -353,8 +353,8 @@ Plot an arbitrary GeoDataFrame, optionally specifying a color for each feature.
 - `geom_col` : Column in GeoDataFrame that holds feature data
 - `color` : Colors to use for each feature
 """
-function ADRIA.viz.map(gdf::DataFrame; geom_col=:geometry, color=nothing)
-    f = Figure(; size=(600, 900), figure_padding=0.1)
+function ADRIA.viz.map(gdf::DataFrame; geom_col=:geometry, color=nothing, title="")
+    f = Figure(; size=(600, 900), figure_padding=0.2)
     ga = GeoAxis(
         f[1, 1];
         dest="+proj=latlong +datum=WGS84",
@@ -370,6 +370,22 @@ function ADRIA.viz.map(gdf::DataFrame; geom_col=:geometry, color=nothing)
     )
 
     ADRIA.viz.map!(ga, gdf; geom_col=geom_col, color=color)
+
+    if !isempty(title)
+        ga.title = title
+    end
+
+    if !isnothing(color)
+        finite_vals = filter(isfinite, color)  # clear out any infs
+        Colorbar(
+            f[1, 2];
+            colormap=:viridis,
+            colorrange=(minimum(finite_vals), maximum(finite_vals)),
+            vertical=true,
+            height=Relative(0.8),
+            tellwidth=true
+        )
+    end
 
     display(f)
 
