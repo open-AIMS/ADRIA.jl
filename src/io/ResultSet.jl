@@ -58,7 +58,7 @@ Load shading log from a Zarr log group, handling both the new combined format
 (`shading_log`) and old stores that kept `fog` and `shade` as separate arrays.
 """
 function _load_shading_log(log_set::Zarr.ZGroup)::YAXArray
-    if "shading_log" in keys(log_set)
+    if haskey(log_set, "shading_log")
         return DataCube(
             log_set["shading_log"],
             Symbol.(Tuple(log_set["shading_log"].attrs["structure"]))
