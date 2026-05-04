@@ -192,6 +192,9 @@ function run_scenarios(
     env_num_cores = ENV["ADRIA_NUM_CORES"]
     @info "ADRIA_NUM_CORES = $env_num_cores"
 
+    batch_size::Int = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "32"))
+    @info "ADRIA_BATCH_SIZE = $batch_size"
+
     is_RME_based = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain))
     para_threshold::Int64 = is_RME_based ? 8 : 20
     active_cores::Int64 = parse(Int64, env_num_cores)
@@ -201,45 +204,45 @@ function run_scenarios(
         spinup_time = @elapsed begin
             _setup_workers()
 
-            # Load ADRIA on workers and define helper function
-            # Note: Workers do not share the same cache in parallel workloads.
-            #       Previously, cache would be reserialized so each worker has access to
-            #       a separate cache.
-            #       Using CachingPool() resolves the the repeated reserialization but it
-            #       seems each worker was then attempting to use the same cache, causing the
-            #       Julia kernel to crash in multi-processing contexts.
-            #       Getting each worker to create its own cache reduces serialization time
-            #       (at the cost of increased run time) but resolves the kernel crash issue.
+            # Load ADRIA on workers. Workers only run _collect_scenario_results; all
+            # disk I/O is done on the main process via _write_batch!, so data_store is
+            # never serialised to workers and there are no concurrent chunk writes.
             @sync @async @everywhere @eval begin
                 using ADRIA
-                func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
             end
         end
 
         @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
     end
 
-    if parallel
-        # Define local helper
-        func = (dfx) -> run_scenario(dfx..., functional_groups, data_store)
+    # collect_func captures only functional_groups (no data_store) so serialisation cost
+    # to workers is minimal and disk writes are always single-threaded.
+    collect_func = (dfx) -> _collect_scenario_results(dfx[1], dfx[3], functional_groups)
 
+    if parallel
         try
             for rcp in RCP
                 run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
-                # Switch RCPs so correct data is loaded
                 dom = switch_RCPs!(dom, rcp)
                 target_rows = findall(
                     scenarios_matrix[factors=At("RCP")] .== parse(Float64, rcp)
                 )
-                scen_args = _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
+                scen_args = collect(
+                    _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
+                )
 
+                batches = Iterators.partition(scen_args, batch_size)
                 if show_progress
-                    @showprogress desc = run_msg dt = 4 pmap(
-                        func, CachingPool(workers()), scen_args
-                    )
+                    @showprogress desc = run_msg dt = 4 for batch in batches
+                        batch_results = pmap(collect_func, CachingPool(workers()), batch)
+                        _write_batch!(data_store, first(batch)[2], batch_results)
+                    end
                 else
-                    pmap(func, CachingPool(workers()), scen_args)
+                    for batch in batches
+                        batch_results = pmap(collect_func, CachingPool(workers()), batch)
+                        _write_batch!(data_store, first(batch)[2], batch_results)
+                    end
                 end
             end
         catch err
@@ -248,22 +251,25 @@ function run_scenarios(
             rethrow(err)
         end
     else
-        # Define local helper
-        func = dfx -> run_scenario(dfx..., functional_groups, data_store)
-
         for rcp in RCP
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
-            # Switch RCPs so correct data is loaded
             dom = switch_RCPs!(dom, rcp)
-            scen_args = _scenario_args(
-                dom, scenarios_matrix, rcp, size(scenarios_matrix, 1)
+            scen_args = collect(
+                _scenario_args(dom, scenarios_matrix, rcp, size(scenarios_matrix, 1))
             )
 
+            batches = Iterators.partition(scen_args, batch_size)
             if show_progress
-                @showprogress desc = run_msg dt = 4 map(func, scen_args)
+                @showprogress desc = run_msg dt = 4 for batch in batches
+                    batch_results = map(collect_func, batch)
+                    _write_batch!(data_store, first(batch)[2], batch_results)
+                end
             else
-                map(func, scen_args)
+                for batch in batches
+                    batch_results = map(collect_func, batch)
+                    _write_batch!(data_store, first(batch)[2], batch_results)
+                end
             end
         end
     end
@@ -289,6 +295,159 @@ function _scenario_args(dom, scenarios_matrix::YAXArray, rcp::String, n::Int)
     return zip(
         rep_doms, target_rows, eachrow(scenarios_matrix[target_rows, :])
     )
+end
+
+"""
+    _collect_scenario_results(domain, scenario, functional_groups)
+
+Run one scenario and return all computed metric arrays without writing to disk.
+Called by `run_scenario` (single write) and by the batched pmap path in `run_scenarios`.
+"""
+function _collect_scenario_results(
+    domain::Domain,
+    scenario::Union{AbstractVector,DataFrameRow},
+    functional_groups::Vector{Vector{FunctionalGroup}}
+)::NamedTuple
+    result_set = run_model(domain, scenario, functional_groups)
+    threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
+
+    rs_raw::Array{Float64} = result_set.raw
+    lk = loc_k_area(domain)
+    coral_spec::DataFrame = to_coral_spec(scenario)
+
+    # 6 location-based metrics — order must match LOC_METRIC_NAMES
+    loc_out = Array{Float32}(undef, size(rs_raw, 1), size(rs_raw, 4), length(LOC_METRIC_NAMES))
+    vals = relative_cover(rs_raw);                      vals[vals .< threshold] .= 0.0; loc_out[:, :, 1] .= vals
+    vals = relative_shelter_volume(rs_raw, lk, scenario); vals[vals .< threshold] .= 0.0; loc_out[:, :, 2] .= vals
+    vals = absolute_shelter_volume(rs_raw, lk, scenario); vals[vals .< threshold] .= 0.0; loc_out[:, :, 3] .= vals
+    vals = relative_juveniles(rs_raw);                  vals[vals .< threshold] .= 0.0; loc_out[:, :, 4] .= vals
+    vals = juvenile_indicator(rs_raw, coral_spec, lk);  vals[vals .< threshold] .= 0.0; loc_out[:, :, 5] .= vals
+    rtc_vals = relative_loc_taxa_cover(rs_raw)
+    vals = coral_evenness(rtc_vals.data);               vals[vals .< threshold] .= 0.0; loc_out[:, :, 6] .= vals
+
+    # Taxa cover (groups axis, not locations)
+    taxa_vals = relative_taxa_cover(rs_raw, lk)
+    taxa_vals[taxa_vals .< threshold] .= 0.0
+
+    # Fog and shade combined into a single (tf, n_locs, 2) buffer
+    shading_buf = Array{Float32}(undef, size(rs_raw, 1), size(rs_raw, 4), 2)
+    fog_vals = Matrix{Float32}(result_set.fog_log)
+    shade_vals = Matrix{Float32}(result_set.shade_log)
+    fog_vals[fog_vals .< threshold] .= 0f0
+    shade_vals[shade_vals .< threshold] .= 0f0
+    shading_buf[:, :, 1] .= fog_vals
+    shading_buf[:, :, 2] .= shade_vals
+
+    # Remaining log arrays — apply threshold where possible
+    site_ranks_vals = result_set.site_ranks
+    try; site_ranks_vals[site_ranks_vals .< threshold] .= Float32(0.0); catch err; err isa MethodError ? nothing : rethrow(err); end
+
+    mc_vals = result_set.mc_log
+    mc_vals[mc_vals .< threshold] .= Float32(0.0)
+
+    seed_vals = result_set.seed_log
+    seed_vals[seed_vals .< threshold] .= Float32(0.0)
+
+    # coral_dhw_log / coral_cover_log are false when their env var is disabled
+    dhw_vals = result_set.coral_dhw_log
+    cover_vals = result_set.coral_cover_log
+
+    return (
+        loc_out=loc_out,
+        taxa_cover=taxa_vals,
+        shading=shading_buf,
+        site_ranks=site_ranks_vals,
+        mc_log=mc_vals,
+        seed_log=seed_vals,
+        coral_dhw_log=dhw_vals,
+        coral_cover_log=cover_vals
+    )
+end
+
+"""
+    _write_batch!(data_store, start_idx, results)
+
+Write a contiguous batch of collected scenario results to the Zarr data store.
+All arrays in the batch are stacked into a single in-memory buffer and written in one
+Zarr call per array, so the entire batch lands in a single chunk file per array.
+"""
+function _write_batch!(
+    data_store::NamedTuple, start_idx::Int, results::AbstractVector
+)::Nothing
+    n = length(results)
+    idx_range = start_idx:(start_idx + n - 1)
+
+    # loc_outcomes: (tf, n_locs, n_metrics, n)
+    tf, n_locs, n_metrics = size(results[1].loc_out)
+    loc_batch = Array{Float32}(undef, tf, n_locs, n_metrics, n)
+    for (i, r) in enumerate(results)
+        loc_batch[:, :, :, i] .= r.loc_out
+    end
+    data_store.loc_outcomes[:, :, :, idx_range] .= loc_batch
+
+    # relative_taxa_cover: (tf, n_groups, n)
+    _, n_groups = size(results[1].taxa_cover)
+    taxa_batch = Array{Float32}(undef, tf, n_groups, n)
+    for (i, r) in enumerate(results)
+        taxa_batch[:, :, i] .= r.taxa_cover
+    end
+    data_store.relative_taxa_cover[:, :, idx_range] .= taxa_batch
+
+    # shading_log: (tf, n_locs, 2, n)
+    shading_batch = Array{Float32}(undef, tf, n_locs, 2, n)
+    for (i, r) in enumerate(results)
+        shading_batch[:, :, :, i] .= r.shading
+    end
+    data_store.shading_log[:, :, :, idx_range] .= shading_batch
+
+    # site_ranks: (tf, n_locs, n_interventions, n)
+    if !isnothing(data_store.site_ranks)
+        _, _, n_ivs = size(results[1].site_ranks)
+        ranks_batch = Array{Float32}(undef, tf, n_locs, n_ivs, n)
+        for (i, r) in enumerate(results)
+            ranks_batch[:, :, :, i] .= r.site_ranks
+        end
+        data_store.site_ranks[:, :, :, idx_range] .= ranks_batch
+    end
+
+    # mc_log and seed_log: (tf, n_groups, n_locs, n)
+    _, n_g, n_l = size(results[1].mc_log)
+    mc_batch   = Array{Float32}(undef, tf, n_g, n_l, n)
+    seed_batch = Array{Float32}(undef, tf, n_g, n_l, n)
+    for (i, r) in enumerate(results)
+        mc_batch[:, :, :, i]   .= r.mc_log
+        seed_batch[:, :, :, i] .= r.seed_log
+    end
+    data_store.mc_log[:, :, :, idx_range]   .= mc_batch
+    data_store.seed_log[:, :, :, idx_range] .= seed_batch
+
+    # coral_dhw_log (conditional on ADRIA_LOG_DHW_TOLS)
+    if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
+        dhw_r = results[1].coral_dhw_log
+        if dhw_r !== false && !isnothing(dhw_r)
+            _, n_sp, n_ld = size(dhw_r)
+            dhw_batch = Array{Float32}(undef, tf, n_sp, n_ld, n)
+            for (i, r) in enumerate(results)
+                dhw_batch[:, :, :, i] .= r.coral_dhw_log
+            end
+            data_store.coral_dhw_log[:, :, :, idx_range] .= dhw_batch
+        end
+    end
+
+    # coral_cover_log (conditional on ADRIA_LOG_COVER)
+    if parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
+        cc_r = results[1].coral_cover_log
+        if cc_r !== false && !isnothing(cc_r)
+            _, n_sp_c, n_lc = size(cc_r)
+            cc_batch = Array{Float32}(undef, tf, n_sp_c, n_lc, n)
+            for (i, r) in enumerate(results)
+                cc_batch[:, :, :, i] .= r.coral_cover_log
+            end
+            data_store.coral_cover_log[:, :, :, idx_range] .= cc_batch
+        end
+    end
+
+    return nothing
 end
 
 """
@@ -332,94 +491,8 @@ function run_scenario(
         domain = switch_RCPs!(domain, rcp)
     end
 
-    result_set = run_model(domain, scenario, functional_groups)
-
-    # Capture results to disk
-    # Set values below threshold to 0 to save space
-    threshold = parse(Float32, ENV["ADRIA_THRESHOLD"])
-
-    # rs_raw has dimensions [timesteps ⋅ group ⋅ sizes ⋅ locations]
-    rs_raw::Array{Float64} = result_set.raw
-    lk = loc_k_area(domain)
-    coral_spec::DataFrame = to_coral_spec(scenario)
-
-    # Write all 6 location-based metrics into the combined store in one Zarr chunk write.
-    # Order must match LOC_METRIC_NAMES = [:relative_cover, :relative_shelter_volume,
-    #   :absolute_shelter_volume, :relative_juveniles, :juvenile_indicator, :coral_evenness]
-    loc_out = Array{Float32}(
-        undef, size(rs_raw, 1), size(rs_raw, 4), length(LOC_METRIC_NAMES)
-    )
-
-    vals = relative_cover(rs_raw)
-    vals[vals .< threshold] .= 0.0
-    loc_out[:, :, 1] .= vals
-    vals = relative_shelter_volume(rs_raw, lk, scenario)
-    vals[vals .< threshold] .= 0.0
-    loc_out[:, :, 2] .= vals
-    vals = absolute_shelter_volume(rs_raw, lk, scenario)
-    vals[vals .< threshold] .= 0.0
-    loc_out[:, :, 3] .= vals
-    vals = relative_juveniles(rs_raw)
-    vals[vals .< threshold] .= 0.0
-    loc_out[:, :, 4] .= vals
-    vals = juvenile_indicator(rs_raw, coral_spec, lk)
-    vals[vals .< threshold] .= 0.0
-    loc_out[:, :, 5] .= vals
-    rtc_vals = relative_loc_taxa_cover(rs_raw)
-    vals = coral_evenness(rtc_vals.data)
-    vals[vals .< threshold] .= 0.0
-    loc_out[:, :, 6] .= vals
-
-    data_store.loc_outcomes[:, :, :, idx] .= loc_out
-
-    # Taxa cover uses a groups axis rather than locations — kept as its own store
-    vals = relative_taxa_cover(rs_raw, lk)
-    vals[vals .< threshold] .= 0.0
-    data_store.relative_taxa_cover[:, :, idx] .= vals
-
-    # Write fog and shade together as a single 4-D shading_log chunk
-    shading_buf = Array{Float32}(undef, size(rs_raw, 1), size(rs_raw, 4), 2)
-    fog_vals = Matrix{Float32}(result_set.fog_log)
-    shade_vals = Matrix{Float32}(result_set.shade_log)
-    fog_vals[fog_vals .< threshold] .= 0.0f0
-    shade_vals[shade_vals .< threshold] .= 0.0f0
-    shading_buf[:, :, 1] .= fog_vals
-    shading_buf[:, :, 2] .= shade_vals
-    data_store.shading_log[:, :, :, idx] .= shading_buf
-
-    # Store remaining logs
-    log_stores = (:site_ranks, :mc_log, :seed_log, :coral_dhw_log, :coral_cover_log)
-    for k in log_stores
-        vals = getfield(result_set, k)
-
-        if vals === false || isnothing(vals)
-            continue
-        end
-
-        try
-            vals[vals .< threshold] .= Float32(0.0)
-        catch err
-            err isa MethodError ? nothing : rethrow(err)
-        end
-
-        if k == :seed_log || k == :mc_log
-            getfield(data_store, k)[:, :, :, idx] .= vals
-        elseif k == :site_ranks
-            if !isnothing(data_store.site_ranks)
-                # Squash site ranks down to average rankings over environmental repeats
-                data_store.site_ranks[:, :, :, idx] .= vals
-            end
-        elseif k == :coral_dhw_log
-            if parse(Bool, get(ENV, "ADRIA_LOG_DHW_TOLS", "false")) == true
-                getfield(data_store, k)[:, :, :, idx] .= vals
-            end
-        elseif k == :coral_cover_log
-            if parse(Bool, get(ENV, "ADRIA_LOG_COVER", "false")) == true
-                getfield(data_store, k)[:, :, :, idx] .= vals
-            end
-        end
-    end
-
+    result = _collect_scenario_results(domain, scenario, functional_groups)
+    _write_batch!(data_store, idx, [result])
     return nothing
 end
 function run_scenario(

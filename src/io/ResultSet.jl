@@ -256,6 +256,7 @@ function combine_results(result_sets...)::ResultSet
     n_locs = size(rs1.seed_log, :locations)
     n_groups = size(rs1.seed_log, :coral_id)
     n_sizes = Int(size(result_sets[1].coral_dhw_tol_log, :species) / n_groups)
+    batch_size::Int = min(parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "32")), nrow(all_inputs))
     logs = (;
         zip([:ranks, :mc_log, :seed_log, :shading_log, :coral_dhw_tol_log, :coral_cover_log],
             setup_logs(
@@ -265,7 +266,8 @@ function combine_results(result_sets...)::ResultSet
                 size(rs1.seed_log, :timesteps),
                 size(rs1.seed_log, :locations),
                 size(rs1.seed_log, :coral_id),
-                size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.seed_log, :coral_id)
+                size(rs1.coral_dhw_tol_log, :species) ÷ size(rs1.seed_log, :coral_id),
+                batch_size
             )
         )...
     )
