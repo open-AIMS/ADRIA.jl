@@ -1131,14 +1131,16 @@ function run_model(
         end
 
         @inbounds for i in habitable_loc_idxs
+            cb_idx::Int64 = loc_cb_calib_group_idxs[i]
             net_growth_rates[:, :, i] .=
-                biogrp_lin_ext[:, :, loc_cb_calib_group_idxs[i]] .*
+                @view(biogrp_lin_ext[:, :, cb_idx]) .*
                 growth_constraints[i]
-            @views timestep!(
+
+            timestep!(
                 functional_groups[i],
-                recruitment[:, i],
-                net_growth_rates[:, :, i],
-                biogrp_survival[:, :, loc_cb_calib_group_idxs[i]]
+                @view(recruitment[:, i]),
+                @view(net_growth_rates[:, :, i]),
+                @view(biogrp_survival[:, :, cb_idx])
             )
 
             # Write to the cover matrix
