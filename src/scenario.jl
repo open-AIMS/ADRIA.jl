@@ -152,13 +152,37 @@ function run_scenarios(
 
     @info "Running $(nrow(scens)) scenarios over $(length(RCP)) RCPs: $RCP"
 
+    env_debug = parse(Bool, ENV["ADRIA_DEBUG"]) == true
+    @info "ADRIA_DEBUG = $env_debug"
+
+    env_num_cores = ENV["ADRIA_NUM_CORES"]
+    @info "ADRIA_NUM_CORES = $env_num_cores"
+
+    is_RME_based = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain))
+    para_threshold::Int64 = is_RME_based ? 8 : 20
+    active_cores::Int64 = parse(Int64, env_num_cores)
+    parallel::Bool = !env_debug && (active_cores > 1) && (nrow(scens) >= para_threshold)
+
+    # Compute batch size before setting up the store so chunk sizes match the pmap batch
+    # sizes. In parallel mode: ceil(N/P) gives exactly one batch per worker and the fewest
+    # possible chunk files. In serial mode: fall back to the env var (default 32).
+    env_batch = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "0"))
+    batch_size::Int = if env_batch > 0
+        env_batch  # explicit override always wins
+    elseif parallel
+        ceil(Int, nrow(scens) / active_cores)
+    else
+        32
+    end
+    @info "ADRIA_BATCH_SIZE (effective) = $batch_size"
+
     # Cross product between rcps and param_df to have every row of param_df for each rcp
     rcps_df = DataFrame(; RCP=parse.(Int64, RCP))
     scenarios_df = crossjoin(scens, rcps_df)
     sort!(scenarios_df, :RCP)
 
     @info "Setting up Result Set"
-    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df)
+    dom, data_store = ADRIA.setup_result_store!(dom, scenarios_df, batch_size)
 
     # Convert DataFrame to named matrix for faster iteration
     scenarios_matrix::YAXArray = DataCube(
@@ -186,27 +210,14 @@ function run_scenarios(
         ) for _ in 1:n_locs
     ]
 
-    env_debug = parse(Bool, ENV["ADRIA_DEBUG"]) == true
-    @info "ADRIA_DEBUG = $env_debug"
-
-    env_num_cores = ENV["ADRIA_NUM_CORES"]
-    @info "ADRIA_NUM_CORES = $env_num_cores"
-
-    batch_size::Int = parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "32"))
-    @info "ADRIA_BATCH_SIZE = $batch_size"
-
-    is_RME_based = ((typeof(dom) == RMEDomain) || (typeof(dom) == ReefModDomain))
-    para_threshold::Int64 = is_RME_based ? 8 : 20
-    active_cores::Int64 = parse(Int64, env_num_cores)
-    parallel::Bool = !env_debug && (active_cores > 1) && (nrow(scens) >= para_threshold)
     if parallel && nworkers() == 1
         @info "Setting up parallel processing..."
         spinup_time = @elapsed begin
             _setup_workers()
 
-            # Load ADRIA on workers. Workers only run _collect_scenario_results; all
-            # disk I/O is done on the main process via _write_batch!, so data_store is
-            # never serialised to workers and there are no concurrent chunk writes.
+            # Load ADRIA on workers. Each pmap task runs _run_batch!, which computes
+            # and writes a full batch directly. Workers write to non-overlapping chunk
+            # ranges (chunk size == batch size) so concurrent Zarr writes are safe.
             @sync @async @everywhere @eval begin
                 using ADRIA
             end
@@ -215,11 +226,11 @@ function run_scenarios(
         @info "Time taken to spin up workers: $(round(spinup_time; digits=2)) seconds"
     end
 
-    # collect_func captures only functional_groups (no data_store) so serialisation cost
-    # to workers is minimal and disk writes are always single-threaded.
-    collect_func = (dfx) -> _collect_scenario_results(dfx[1], dfx[3], functional_groups)
-
     if parallel
+        # Each pmap task is one batch: workers compute B scenarios and write them
+        # directly. Only `nothing` returns to the main process — no result IPC.
+        batch_func = (batch) -> _run_batch!(batch, functional_groups, data_store)
+
         try
             for rcp in RCP
                 run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
@@ -231,18 +242,16 @@ function run_scenarios(
                 scen_args = collect(
                     _scenario_args(dom, scenarios_matrix, rcp, length(target_rows))
                 )
+                all_batches = [
+                    collect(b) for b in Iterators.partition(scen_args, batch_size)
+                ]
 
-                batches = Iterators.partition(scen_args, batch_size)
                 if show_progress
-                    @showprogress desc = run_msg dt = 4 for batch in batches
-                        batch_results = pmap(collect_func, CachingPool(workers()), batch)
-                        _write_batch!(data_store, first(batch)[2], batch_results)
-                    end
+                    @showprogress desc = run_msg dt = 4 pmap(
+                        batch_func, CachingPool(workers()), all_batches
+                    )
                 else
-                    for batch in batches
-                        batch_results = pmap(collect_func, CachingPool(workers()), batch)
-                        _write_batch!(data_store, first(batch)[2], batch_results)
-                    end
+                    pmap(batch_func, CachingPool(workers()), all_batches)
                 end
             end
         catch err
@@ -251,6 +260,9 @@ function run_scenarios(
             rethrow(err)
         end
     else
+        # Serial: collect B results then write once (batch write, no IPC overhead)
+        collect_func = (dfx) -> _collect_scenario_results(dfx[1], dfx[3], functional_groups)
+
         for rcp in RCP
             run_msg = "Running $(nrow(scens)) scenarios for RCP $rcp"
 
@@ -258,15 +270,17 @@ function run_scenarios(
             scen_args = collect(
                 _scenario_args(dom, scenarios_matrix, rcp, size(scenarios_matrix, 1))
             )
+            all_batches = [
+                collect(b) for b in Iterators.partition(scen_args, batch_size)
+            ]
 
-            batches = Iterators.partition(scen_args, batch_size)
             if show_progress
-                @showprogress desc = run_msg dt = 4 for batch in batches
+                @showprogress desc = run_msg dt = 4 for batch in all_batches
                     batch_results = map(collect_func, batch)
                     _write_batch!(data_store, first(batch)[2], batch_results)
                 end
             else
-                for batch in batches
+                for batch in all_batches
                     batch_results = map(collect_func, batch)
                     _write_batch!(data_store, first(batch)[2], batch_results)
                 end
@@ -447,6 +461,27 @@ function _write_batch!(
         end
     end
 
+    return nothing
+end
+
+"""
+    _run_batch!(batch_args, functional_groups, data_store)
+
+Compute and write a contiguous batch of scenarios entirely on the calling worker.
+Each pmap task gets one batch, so result arrays never travel back to the main process.
+Workers write to non-overlapping chunk ranges, so concurrent writes are safe.
+"""
+function _run_batch!(
+    batch_args::AbstractVector,
+    functional_groups::Vector{Vector{FunctionalGroup}},
+    data_store::NamedTuple
+)::Nothing
+    start_idx = batch_args[1][2]
+    results = [
+        _collect_scenario_results(args[1], args[3], functional_groups)
+        for args in batch_args
+    ]
+    _write_batch!(data_store, start_idx, results)
     return nothing
 end
 
