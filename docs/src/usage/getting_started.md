@@ -128,16 +128,38 @@ See [Analysis](@ref) for further examples of analysis and plots.
 If parallel runs are to be conducted, it is recommended to set a shared `JULIA_DEPOT_PATH`.
 This is so each individual worker does not race against each other to compile packages.
 
+This would be defined in your user `.bashrc` file (or equivalent) on Linux, or configured
+via the user environment variable control panel dialog on Windows.
+
+If runs outside of VS Code are not expected, the variable can be set using within
+`settings.json` by:
+
+- Opening settings in VS Code (Ctrl+,)
+- Search for terminal.integrated.env.windows
+- Add: "JULIA_DEPOT_PATH": "<path to depot>"
+
+`C:\Users\tiwanaga\development\julia_shared_depot`
+
+
+Below are instructions to set a temporary environment variable for a session.
+
 On Linux:
 
 ```shell
-export JULIA_DEPOT_PATH="/some_shared_accessible_directory"
+export JULIA_DEPOT_PATH="some_shared_accessible_directory"
 ```
 
-On Windows:
+On Windows (Command Prompt):
 
 ```shell
 set JULIA_DEPOT_PATH="some_shared_accessible_directory"
 ```
 
-https://docs.julialang.org/en/v1/manual/environment-variables/#JULIA_DEPOT_PATH
+On Windows (Powershell):
+
+```powershell
+$Env:JULIA_DEPOT_PATH="some_shared_accessible_directory"
+```
+
+- https://docs.julialang.org/en/v1/manual/environment-variables/#JULIA_DEPOT_PATH
+- https://pkgdocs.julialang.org/dev/depots/#Platform-specific-configuration
