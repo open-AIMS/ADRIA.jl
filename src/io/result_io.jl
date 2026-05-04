@@ -385,7 +385,7 @@ Sets up an on-disk result store.
 domain, (loc_outcomes, relative_taxa_cover, site_ranks, mc_log, seed_log, shading_log,
 coral_dhw_log, coral_cover_log)
 """
-function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
+function setup_result_store!(domain::Domain, scen_spec::DataFrame, batch_size::Int=0)::Tuple
     @set! domain.scenario_invoke_time = replace(
         string(now()), "T" => "_", ":" => "_", "." => "_"
     )
@@ -439,7 +439,10 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
 
     _unique_loc_ids::Vector{String} = unique_loc_ids(domain)
     n_groups = domain.coral_growth.n_groups
-    batch_size::Int = min(parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "32")), n_scenarios)
+    batch_size = min(
+        batch_size > 0 ? batch_size : parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "32")),
+        n_scenarios
+    )
 
     # Combined store for the 6 location-based outcome metrics (timesteps × locations × metrics × scenarios)
     loc_outcome_metrics::Vector{metrics.Metric} = [
@@ -746,7 +749,7 @@ function load_results(result_loc::String)::ResultSet
         try
             outcomes[sd_name] = DataCube(
                 data;
-                properties=Dict(
+                properties=Dict{Symbol,Any}(
                     p => data.attrs[string(p)] for p in outcome_properties
                     if haskey(data.attrs, string(p))
                 ),
