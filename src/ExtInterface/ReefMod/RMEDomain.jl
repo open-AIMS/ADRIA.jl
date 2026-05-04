@@ -400,7 +400,7 @@ function load_DHW(
 )::YAXArray
     dhw_path = _data_folder_path(data_path, "dhw")
     rcp_files = _get_relevant_files(dhw_path, rcp)
-    rcp_files = filter(x -> occursin("SSP", x), rcp_files)
+    rcp_files = filter(x -> occursin("$(rcp)_", x), rcp_files)
     if isempty(rcp_files)
         ArgumentError("No DHW data files found in: $(dhw_path)")
     end
@@ -452,8 +452,8 @@ function load_DHW(
     return DataCube(
         data_cube[:, :, keep_ds];
         timesteps=_timeframe[1]:_timeframe[2],
-        locs=loc_ids,
-        scenarios=rcp_files[keep_ds]
+        locations=loc_ids,
+        scenarios=map(x -> split.(basename.(x), ".")[1], rcp_files[keep_ds])
     )
 end
 
