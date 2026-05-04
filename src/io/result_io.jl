@@ -175,9 +175,9 @@ function scenario_attributes(domain::Domain, param_df::DataFrame)::Dict{Symbol,A
 end
 
 """
-    setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes)
+    setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1)
 
-Setup logs for ranks, seed_log, fog_log, shade_log and coral_dhw_log.
+Setup logs for ranks, seed_log, shading_log, coral_dhw_log, and coral_cover_log.
 
 # Arguments
 - `z_store` : ZArray
@@ -187,10 +187,12 @@ Setup logs for ranks, seed_log, fog_log, shade_log and coral_dhw_log.
 - `n_locs` : number of location
 - `n_groups` : number of functional groups
 - `n_sizes` : number of size classes
+- `batch_size` : chunk size along the scenarios dimension; set to the write batch size so
+  that each batch write lands in exactly one chunk file per array.
 
 Note: This setup relies on hardcoded values for number of species represented and seeded.
 """
-function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes)
+function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_sizes, batch_size=1)
     # Set up logs for location ranks, seed/fog log
     zgroup(z_store, LOG_GRP)
     log_fn::String = joinpath(z_store.folder, LOG_GRP)
@@ -213,7 +215,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         fill_value=nothing,
         fill_as_missing=false,
         path=log_fn,
-        chunks=(rank_dims[1:3]..., 1),
+        chunks=(rank_dims[1:3]..., batch_size),
         attrs=attrs
     )
 
@@ -228,7 +230,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         fill_value=nothing,
         fill_as_missing=false,
         path=log_fn,
-        chunks=(seed_dims[1:3]..., 1),
+        chunks=(seed_dims[1:3]..., batch_size),
         attrs=attrs
     )
     mc_log = zcreate(
@@ -238,7 +240,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         fill_value=nothing,
         fill_as_missing=false,
         path=log_fn,
-        chunks=(seed_dims[1:3]..., 1),
+        chunks=(seed_dims[1:3]..., batch_size),
         attrs=attrs
     )
 
@@ -250,7 +252,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
         fill_value=nothing,
         fill_as_missing=false,
         path=log_fn,
-        chunks=(shading_dims[1:3]..., 1),
+        chunks=(shading_dims[1:3]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "locations", "intervention", "scenarios"),
             :interventions => ["fog", "shade"],
@@ -284,7 +286,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
             fill_value=nothing,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_groups * n_sizes, n_locs, 1),
+            chunks=(tf, n_groups * n_sizes, n_locs, batch_size),
             attrs=attrs
         )
     else
@@ -298,7 +300,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
             fill_value=0.0,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_groups * n_sizes, 1, 1),
+            chunks=(tf, n_groups * n_sizes, 1, batch_size),
             attrs=attrs
         )
     end
@@ -315,7 +317,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
             fill_value=nothing,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_group_and_size, n_locs, 1),
+            chunks=(tf, n_group_and_size, n_locs, batch_size),
             attrs=attrs
         )
     else
@@ -329,7 +331,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
             fill_value=0.0,
             fill_as_missing=false,
             path=log_fn,
-            chunks=(tf, n_group_and_size, 1, 1),
+            chunks=(tf, n_group_and_size, 1, batch_size),
             attrs=attrs
         )
     end
@@ -349,20 +351,17 @@ Sets up an on-disk result store.
 ├───env_stats
 ├───inputs
 ├───logs
-|   ├───coral_cover_log
-|   ├───coral_dhw_log
-│   ├───fog
+│   ├───coral_cover_log  (full shape when ADRIA_LOG_COVER=true, 1-location dummy otherwise)
+│   ├───coral_dhw_log    (full shape when ADRIA_LOG_DHW_TOLS=true, 1-location dummy otherwise)
+│   ├───moving_corals
 │   ├───rankings
 │   ├───seed
-│   └───shade
+│   └───shading_log      (fog and shade combined along an intervention axis)
 ├───model_spec
 ├───results
-|   ├───absolute_shelter_volume
-|   ├───coral_evenness
-|   ├───juvenile_indicator
-│   ├───relative_cover
-|   ├───relative_juveniles
-│   ├───relative_shelter_volume
+│   ├───loc_outcomes     (relative_cover, relative_shelter_volume, absolute_shelter_volume,
+│   │                     relative_juveniles, juvenile_indicator, coral_evenness combined
+│   │                     along a metrics axis)
 │   └───relative_taxa_cover
 └───spatial
 ```
@@ -374,14 +373,17 @@ Sets up an on-disk result store.
 # Notes
 - `domain` is replaced with an identical copy with an updated scenario invoke time.
 - -9999.0 is used as an arbitrary fill value.
+- `loc_outcomes` is split back into individually named outcomes on load (see `load_results`).
+- `shading_log` has shape `(timesteps, locations, intervention, scenarios)` where the
+  intervention axis holds `["fog", "shade"]` in that order.
 
 # Arguments
 - `domain` : ADRIA scenario domain
 - `scen_spec` : ADRIA scenario specification
 
 # Returns
-domain, (relative_cover, relative_shelter_volume, absolute_shelter_volume, relative_juveniles,
-juvenile_indicator, relative_taxa_cover, site_ranks, seed_log, fog_log, shade_log)
+domain, (loc_outcomes, relative_taxa_cover, site_ranks, mc_log, seed_log, shading_log,
+coral_dhw_log, coral_cover_log)
 """
 function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
     @set! domain.scenario_invoke_time = replace(
@@ -437,6 +439,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
 
     _unique_loc_ids::Vector{String} = unique_loc_ids(domain)
     n_groups = domain.coral_growth.n_groups
+    batch_size::Int = min(parse(Int, get(ENV, "ADRIA_BATCH_SIZE", "32")), n_scenarios)
 
     # Combined store for the 6 location-based outcome metrics (timesteps × locations × metrics × scenarios)
     loc_outcome_metrics::Vector{metrics.Metric} = [
@@ -455,7 +458,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         fill_value=nothing,
         fill_as_missing=false,
         path=joinpath(z_store.folder, RESULTS, LOC_METRICS),
-        chunks=(loc_dims[1:3]..., 1),
+        chunks=(loc_dims[1:3]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "locations", "metrics", "scenarios"),
             :unique_loc_ids => _unique_loc_ids,
@@ -476,7 +479,7 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
         fill_value=nothing,
         fill_as_missing=false,
         path=joinpath(z_store.folder, RESULTS, string(metrics.to_symbol(taxa_cover_metric))),
-        chunks=(taxa_dims[1:2]..., 1),
+        chunks=(taxa_dims[1:2]..., batch_size),
         attrs=Dict(
             :structure => ("timesteps", "groups", "scenarios"),
             :metric_name => metrics.to_string(taxa_cover_metric; is_titlecase=true),
@@ -545,7 +548,8 @@ function setup_result_store!(domain::Domain, scen_spec::DataFrame)::Tuple
             tf,
             n_locations,
             n_groups,
-            domain.coral_growth.n_sizes
+            domain.coral_growth.n_sizes,
+            batch_size
         )...
     ]
 
