@@ -926,7 +926,7 @@ function run_model(
     c_mean_reference .= copy(c_mean_t[:, 1, :])
 
     cover_transition_lb = 0.05
-    cover_transition_ub = 0.95
+    cover_transition_ub = 0.80
 
     for tstep::Int64 in 2:tf
         # Convert cover to absolute values to use within CoralBlox model
