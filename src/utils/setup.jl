@@ -99,7 +99,7 @@ from the sum of all non-RCP parameters in `param_set`.
 """
 function set_random_seed(param_set::YAXArray)::AbstractRNG
     rnd_seed_val::Int64 =
-        ENV["ADRIA_RNG_SEED"] == "false" ?
+        get(ENV, "ADRIA_RNG_SEED", "false") == "false" ?
         floor(Int64, sum(param_set[Where(x -> x != "RCP")])) : # select everything except RCP
         parse(Int64, ENV["ADRIA_RNG_SEED"])
     return Xoshiro(rnd_seed_val)
