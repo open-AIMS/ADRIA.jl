@@ -742,10 +742,10 @@ function run_model(
     depth_criteria = identify_within_depth_bounds(
         loc_data.depth_med, param_set[At("depth_min")], param_set[At("depth_offset")]
     )
-    seed_t_locs = vcat(getproperty.(domain.seed_target_locations, :target_locs)...)
-    mc_t_locs = vcat(getproperty.(domain.mc_target_locations, :target_locs)...)
 
     if is_guided
+        seed_t_locs = vcat(getproperty.(domain.seed_target_locations, :target_locs)...)
+        mc_t_locs = vcat(getproperty.(domain.mc_target_locations, :target_locs)...)
         seed_pref, seed_decision_mat, seed_strategy = setup_guided_intervention(
             domain, param_set, depth_criteria, SeedPreferences, seed_t_locs, is_seeding,
             build_seed_strategy
