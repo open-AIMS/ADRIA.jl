@@ -13,3 +13,13 @@ input/
 output/
 .aider*
 GEMINI.md
+
+graphify-out/
+
+.claudeignore
+
+.claude/
+
+.graphify_python
+
+.graphify_uncached.txt
