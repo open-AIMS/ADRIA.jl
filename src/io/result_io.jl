@@ -205,7 +205,7 @@ function setup_logs(z_store, unique_loc_ids, n_scens, tf, n_locs, n_groups, n_si
 
     attrs = Dict(
         # Here, "intervention" refers to seeding or shading
-        :structure => ("timesteps", "locations", "intervention", "scenarios"),
+        :structure => ("timesteps", "locations", "interventions", "scenarios"),
         :unique_loc_ids => unique_loc_ids
     )
     ranks = zcreate(

@@ -102,9 +102,9 @@ function _rankings_data(rankings_set::ZArray{T})::YAXArray{T} where {T}
     ax_labels::Vector{Union{UnitRange{Int64},Vector{Symbol}}} =
         range.([1], size(rankings_set))
 
-    # Replace intervention
-    intervention_idx = findfirst(x -> x == :intervention, ax_names)
-    ax_labels[intervention_idx] = interventions()
+    # Replace interventions axis with named labels
+    intervention_idx = findfirst(x -> x == :interventions, ax_names)
+    !isnothing(intervention_idx) && (ax_labels[intervention_idx] = interventions())
 
     return DataCube(rankings_set; NamedTuple{ax_names}(ax_labels)...)
 end
